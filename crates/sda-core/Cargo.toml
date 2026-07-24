@@ -2,13 +2,11 @@
 name = "sda-lib"
 version.workspace = true
 edition.workspace = true
-license = "GPL-3.0-or-later"
-authors = ["Alexander R. Croft"]
+license.workspace = true
+authors.workspace = true
 description = "Structured Data Algebra as a pure Rust library for validating, formatting, and transforming structured data."
 readme = "README.md"
-documentation = "https://docs.rs/sda-lib"
-homepage = "https://github.com/frogfishio/axiom"
-repository = "https://github.com/frogfishio/axiom"
+repository.workspace = true
 keywords = ["sda", "json", "transformation", "algebra", "validation"]
 categories = ["data-structures", "parser-implementations", "text-processing"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]

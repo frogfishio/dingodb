@@ -28,8 +28,14 @@ fn assert_parse_error(expr: &str, expected_code: &str, expected_msg: &str) {
     match err {
         SdaError::Parse(parse_err) => {
             let rendered = parse_err.to_string();
-            assert!(rendered.contains(expected_code), "missing code in error: {rendered}");
-            assert!(rendered.contains(expected_msg), "missing msg in error: {rendered}");
+            assert!(
+                rendered.contains(expected_code),
+                "missing code in error: {rendered}"
+            );
+            assert!(
+                rendered.contains(expected_msg),
+                "missing msg in error: {rendered}"
+            );
         }
         other => panic!("expected parse error, got {other:?}"),
     }
@@ -40,12 +46,24 @@ mod section_6_eliminators {
 
     #[test]
     fn wrong_shape_on_total_map_projection() {
-        assert_fail(r#"Map{"name" -> "Ada"}<"name">;"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"Map{"name" -> "Ada"}<"name">;"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 
     #[test]
     fn missing_key_on_required_map_projection() {
         assert_fail(r#"Map{}<"name">!;"#, "t_sda_missing_key", "missing key");
+    }
+
+    #[test]
+    fn duplicate_key_on_optional_bagkv_projection_is_none() {
+        assert_eq!(
+            run_json(r#"BagKV{"k" -> 1, "k" -> 2}<"k">?;"#),
+            serde_json::json!({"$type": "none"})
+        );
     }
 
     #[test]
@@ -58,18 +76,46 @@ mod section_6_eliminators {
     }
 
     #[test]
+    fn null_value_is_present_for_optional_map_projection() {
+        assert_eq!(
+            run_json(r#"Map{"x" -> null}<"x">?;"#),
+            serde_json::json!({"$type": "some", "$value": null})
+        );
+    }
+
+    #[test]
+    fn missing_key_is_none_for_optional_map_projection() {
+        assert_eq!(
+            run_json(r#"Map{}<"x">?;"#),
+            serde_json::json!({"$type": "none"})
+        );
+    }
+
+    #[test]
     fn unknown_field_on_total_prod_projection() {
-        assert_fail(r#"Prod{name: "Ada"}<age>;"#, "t_sda_unknown_field", "unknown field");
+        assert_fail(
+            r#"Prod{name: "Ada"}<age>;"#,
+            "t_sda_unknown_field",
+            "unknown field",
+        );
     }
 
     #[test]
     fn optional_prod_projection_is_wrong_shape() {
-        assert_fail(r#"Prod{name: "Ada"}<name>?;"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"Prod{name: "Ada"}<name>?;"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 
     #[test]
     fn required_prod_projection_is_wrong_shape() {
-        assert_fail(r#"Prod{name: "Ada"}<name>!;"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"Prod{name: "Ada"}<name>!;"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 }
 
@@ -78,17 +124,55 @@ mod section_7_normalization {
 
     #[test]
     fn wrong_shape_on_normalize_unique() {
-        assert_fail(r#"normalizeUnique(Seq[1, 2]);"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"normalizeUnique(Seq[1, 2]);"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 
     #[test]
-    fn wrong_shape_on_normalize_first() {
-        assert_fail(r#"normalizeFirst(Seq[1, 2]);"#, "t_sda_wrong_shape", "wrong shape");
+    fn normalize_unique_ok_on_unique_keys() {
+        assert_eq!(
+            run_json(r#"normalizeUnique(BagKV{"a" -> 1, "b" -> 2});"#),
+            serde_json::json!({"$type": "ok", "$value": {"a": 1, "b": 2}})
+        );
     }
 
     #[test]
-    fn wrong_shape_on_normalize_last() {
-        assert_fail(r#"normalizeLast(Seq[1, 2]);"#, "t_sda_wrong_shape", "wrong shape");
+    fn normalize_unique_fails_on_duplicates() {
+        assert_fail(
+            r#"normalizeUnique(BagKV{"k" -> 1, "k" -> 2});"#,
+            "t_sda_duplicate_key",
+            "duplicate key",
+        );
+    }
+
+    #[test]
+    fn normalize_unique_is_order_independent() {
+        assert_same_result(
+            r#"normalizeUnique(BagKV{"b" -> 2, "a" -> 1});"#,
+            r#"normalizeUnique(BagKV{"a" -> 1, "b" -> 2});"#,
+        );
+    }
+
+    /// §7.2 / §14.1: core exposes no first-wins or last-wins over unordered BagKV.
+    #[test]
+    fn normalize_first_is_not_core() {
+        assert_fail(
+            r#"normalizeFirst(BagKV{"k" -> 1, "k" -> 2});"#,
+            "t_sda_unbound_name",
+            "unbound name",
+        );
+    }
+
+    #[test]
+    fn normalize_last_is_not_core() {
+        assert_fail(
+            r#"normalizeLast(BagKV{"k" -> 1, "k" -> 2});"#,
+            "t_sda_unbound_name",
+            "unbound name",
+        );
     }
 }
 
@@ -301,10 +385,7 @@ mod section_8_algebra {
 
     #[test]
     fn map_canonical_serialization_is_order_independent() {
-        assert_same_result(
-            r#"Map{"b" -> 2, "a" -> 1};"#,
-            r#"Map{"a" -> 1, "b" -> 2};"#,
-        );
+        assert_same_result(r#"Map{"b" -> 2, "a" -> 1};"#, r#"Map{"a" -> 1, "b" -> 2};"#);
     }
 }
 
@@ -328,6 +409,22 @@ mod section_9_comprehensions {
     }
 
     #[test]
+    fn set_comprehension_preserves_set_carrier() {
+        assert_eq!(
+            run_json(r#"{ a in Set{1, 2, 3} | a > 1 };"#),
+            serde_json::json!({"$type": "set", "$items": [2, 3]})
+        );
+    }
+
+    #[test]
+    fn bag_comprehension_preserves_bag_carrier() {
+        assert_eq!(
+            run_json(r#"{ a in Bag{1, 1, 2} | a > 1 };"#),
+            serde_json::json!({"$type": "bag", "$items": [2]})
+        );
+    }
+
+    #[test]
     fn bagkv_comprehension_exposes_bind_values() {
         assert_eq!(
             run_json(r#"{ yield a<val> | a in BagKV{"x" -> 1, "y" -> 2} };"#),
@@ -342,7 +439,11 @@ mod section_9_comprehensions {
 
     #[test]
     fn non_bool_comprehension_predicate_is_wrong_shape() {
-        assert_fail(r#"{ a in Seq[1] | 1 };"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"{ a in Seq[1] | 1 };"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 }
 
@@ -355,6 +456,11 @@ mod section_10_pipe {
     }
 
     #[test]
+    fn unbound_bullet_placeholder_is_stable() {
+        assert_fail("•;", "t_sda_unbound_placeholder", "unbound placeholder");
+    }
+
+    #[test]
     fn placeholder_pipeline_composes_explicitly() {
         assert_eq!(
             run_json(r#"Seq[1, 2] |> _ ++ Seq[3];"#),
@@ -363,8 +469,25 @@ mod section_10_pipe {
     }
 
     #[test]
+    fn nested_pipes_bind_to_nearest_enclosing_pipe() {
+        // Inner `_` is 1; outer `_` is 10 → 11.
+        assert_eq!(run_json(r#"10 |> (_ + (1 |> _));"#), serde_json::json!(11));
+        // Both `_` in the inner pipe bind to nearest left (1), not outer 10.
+        assert_eq!(run_json(r#"10 |> (1 |> _ + _);"#), serde_json::json!(2));
+    }
+
+    #[test]
+    fn bullet_and_underscore_are_synonyms_in_pipe() {
+        assert_same_result(r#"5 |> _ + 1;"#, r#"5 |> • + 1;"#);
+    }
+
+    #[test]
     fn pipe_does_not_insert_implicit_argument() {
-        assert_fail(r#"BagKV{"k" -> 1} |> normalizeUnique();"#, "t_sda_arity_mismatch", "arity mismatch");
+        assert_fail(
+            r#"BagKV{"k" -> 1} |> normalizeUnique();"#,
+            "t_sda_arity_mismatch",
+            "arity mismatch",
+        );
     }
 }
 
@@ -388,12 +511,20 @@ mod section_11_core_functions {
 
     #[test]
     fn bind_opt_returns_wrong_shape_for_non_option() {
-        assert_fail(r#"bindOpt(1, x => Some(x));"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"bindOpt(1, x => Some(x));"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 
     #[test]
     fn bind_res_returns_wrong_shape_for_non_result() {
-        assert_fail(r#"bindRes(1, x => Ok(x));"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"bindRes(1, x => Ok(x));"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
     }
 
     #[test]
@@ -423,17 +554,54 @@ mod section_11_standalone_helpers {
 
     #[test]
     fn membership_on_map_uses_string_keys() {
-        assert_eq!(run_json(r#""name" in Map{"name" -> 1};"#), serde_json::json!(true));
+        assert_eq!(
+            run_json(r#""name" in Map{"name" -> 1};"#),
+            serde_json::json!(true)
+        );
     }
 
     #[test]
     fn membership_on_prod_uses_field_names() {
-        assert_eq!(run_json(r#""name" in Prod{name: 1};"#), serde_json::json!(true));
+        assert_eq!(
+            run_json(r#""name" in Prod{name: 1};"#),
+            serde_json::json!(true)
+        );
     }
 
     #[test]
     fn membership_on_map_requires_string_probe() {
-        assert_fail(r#"1 in Map{"name" -> 1};"#, "t_sda_wrong_shape", "wrong shape");
+        assert_fail(
+            r#"1 in Map{"name" -> 1};"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
+    }
+
+    #[test]
+    fn keys_returns_set_of_map_keys() {
+        assert_eq!(
+            run_json(r#"keys(Map{"b" -> 2, "a" -> 1});"#),
+            serde_json::json!({"$type": "set", "$items": ["a", "b"]})
+        );
+    }
+
+    #[test]
+    fn values_returns_seq_in_ascending_key_order() {
+        assert_eq!(
+            run_json(r#"values(Map{"b" -> 2, "a" -> 1});"#),
+            serde_json::json!([1, 2])
+        );
+    }
+
+    #[test]
+    fn count_returns_bag_multiplicity() {
+        assert_eq!(run_json(r#"count(1, Bag{1, 2, 1});"#), serde_json::json!(2));
+    }
+
+    #[test]
+    fn typeof_returns_kind_tag() {
+        assert_eq!(run_json(r#"typeOf(1);"#), serde_json::json!("num"));
+        assert_eq!(run_json(r#"typeOf(Some(1));"#), serde_json::json!("some"));
     }
 }
 
@@ -480,17 +648,29 @@ mod section_12_static_selector_errors {
 
     #[test]
     fn duplicate_label_tag_is_stable() {
-        assert_parse_error("{a a};", "t_sda_duplicate_label_in_selector", "duplicate label");
+        assert_parse_error(
+            "{a a};",
+            "t_sda_duplicate_label_in_selector",
+            "duplicate label",
+        );
     }
 
     #[test]
     fn reserved_placeholder_in_let_is_stable() {
-        assert_parse_error("let _ = 1;", "t_sda_reserved_placeholder", "reserved placeholder");
+        assert_parse_error(
+            "let _ = 1;",
+            "t_sda_reserved_placeholder",
+            "reserved placeholder",
+        );
     }
 
     #[test]
     fn reserved_placeholder_as_lambda_param_is_stable() {
-        assert_parse_error("_ => 1;", "t_sda_reserved_placeholder", "reserved placeholder");
+        assert_parse_error(
+            "_ => 1;",
+            "t_sda_reserved_placeholder",
+            "reserved placeholder",
+        );
     }
 
     #[test]
@@ -500,7 +680,11 @@ mod section_12_static_selector_errors {
 
     #[test]
     fn invalid_bagkv_key_tag_is_stable() {
-        assert_parse_error("BagKV{1 -> 1};", "t_sda_invalid_bagkv_key", "invalid bagkv key");
+        assert_parse_error(
+            "BagKV{1 -> 1};",
+            "t_sda_invalid_bagkv_key",
+            "invalid bagkv key",
+        );
     }
 
     #[test]
@@ -514,11 +698,7 @@ mod section_12_static_selector_errors {
 
     #[test]
     fn general_bind_sugar_is_not_required_in_standalone() {
-        assert_parse_error(
-            r#"{ yield "x" -> 1 | a in Seq[1] };"#,
-            "Expected",
-            "Arrow",
-        );
+        assert_parse_error(r#"{ yield "x" -> 1 | a in Seq[1] };"#, "Expected", "Arrow");
     }
 }
 
@@ -538,5 +718,135 @@ mod section_12_invocation_failures {
     #[test]
     fn lambda_arity_mismatch_is_stable() {
         assert_fail("(x => x)(1, 2);", "t_sda_arity_mismatch", "arity mismatch");
+    }
+}
+
+/// Automated coverage for SDA_SPEC §14.1 minimal suite outline.
+mod section_14_1_minimal_suite {
+    use super::*;
+
+    #[test]
+    fn placeholder_scoping_unbound_and_nested() {
+        assert_fail("_;", "t_sda_unbound_placeholder", "unbound placeholder");
+        assert_fail("•;", "t_sda_unbound_placeholder", "unbound placeholder");
+        assert_eq!(run_json(r#"10 |> (_ + (1 |> _));"#), serde_json::json!(11));
+        assert_eq!(run_json(r#"10 |> (1 |> _ + _);"#), serde_json::json!(2));
+    }
+
+    #[test]
+    fn bagkv_duplicate_optional_and_required() {
+        assert_eq!(
+            run_json(r#"BagKV{"k" -> 1, "k" -> 2}<"k">?;"#),
+            serde_json::json!({"$type": "none"})
+        );
+        assert_fail(
+            r#"BagKV{"k" -> 1, "k" -> 2}<"k">!;"#,
+            "t_sda_duplicate_key",
+            "duplicate key",
+        );
+    }
+
+    #[test]
+    fn normalization_unique_and_no_ordered_policies() {
+        assert_eq!(
+            run_json(r#"normalizeUnique(BagKV{"a" -> 1, "b" -> 2});"#),
+            serde_json::json!({"$type": "ok", "$value": {"a": 1, "b": 2}})
+        );
+        assert_fail(
+            r#"normalizeUnique(BagKV{"k" -> 1, "k" -> 2});"#,
+            "t_sda_duplicate_key",
+            "duplicate key",
+        );
+        assert_same_result(
+            r#"normalizeUnique(BagKV{"b" -> 2, "a" -> 1});"#,
+            r#"normalizeUnique(BagKV{"a" -> 1, "b" -> 2});"#,
+        );
+        assert_fail(
+            r#"normalizeFirst(BagKV{"k" -> 1});"#,
+            "t_sda_unbound_name",
+            "unbound name",
+        );
+        assert_fail(
+            r#"normalizeLast(BagKV{"k" -> 1});"#,
+            "t_sda_unbound_name",
+            "unbound name",
+        );
+    }
+
+    #[test]
+    fn equality_core_cases() {
+        assert_eq!(
+            run_json(r#"Prod{a: 1, b: 2} = Prod{b: 2, a: 1};"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            run_json(r#"BagKV{"k" -> 1, "k" -> 2} = BagKV{"k" -> 2, "k" -> 1};"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(run_json(r#"Some(null) = None;"#), serde_json::json!(false));
+        assert_eq!(
+            run_json(r#"Ok(1) = Fail("x", "y");"#),
+            serde_json::json!(false)
+        );
+    }
+
+    #[test]
+    fn standalone_helper_profile_cases() {
+        assert_eq!(
+            run_json(r#"keys(Map{"b" -> 2, "a" -> 1});"#),
+            serde_json::json!({"$type": "set", "$items": ["a", "b"]})
+        );
+        assert_eq!(
+            run_json(r#"values(Map{"b" -> 2, "a" -> 1});"#),
+            serde_json::json!([1, 2])
+        );
+        assert_eq!(run_json(r#"count(1, Bag{1, 2, 1});"#), serde_json::json!(2));
+    }
+
+    #[test]
+    fn carrier_preservation_seq_set_bag() {
+        assert_eq!(
+            run_json(r#"{ a in Seq[1, 2, 3] | a > 1 };"#),
+            serde_json::json!([2, 3])
+        );
+        assert_eq!(
+            run_json(r#"{ a in Set{1, 2, 3} | a > 1 };"#),
+            serde_json::json!({"$type": "set", "$items": [2, 3]})
+        );
+        assert_eq!(
+            run_json(r#"{ a in Bag{1, 1, 2} | a > 1 };"#),
+            serde_json::json!({"$type": "bag", "$items": [2]})
+        );
+    }
+
+    #[test]
+    fn null_vs_absence() {
+        assert_eq!(
+            run_json(r#"Map{"x" -> null}<"x">?;"#),
+            serde_json::json!({"$type": "some", "$value": null})
+        );
+        assert_eq!(
+            run_json(r#"Map{}<"x">?;"#),
+            serde_json::json!({"$type": "none"})
+        );
+    }
+
+    #[test]
+    fn unicode_ascii_operator_synonyms() {
+        assert_same_result(r#"Map{"a" -> 1};"#, r#"Map{"a" → 1};"#);
+        assert_same_result(r#"(x => x + 1)(2);"#, r#"(x ↦ x + 1)(2);"#);
+        assert_same_result(r#"5 |> _ + 1;"#, r#"5 |> • + 1;"#);
+    }
+
+    #[test]
+    fn bind_constructor_is_standalone_binding_form() {
+        assert_eq!(
+            run_json(r#"Bind("k", 1);"#),
+            serde_json::json!({"$type": "bind", "$key": "k", "$val": 1})
+        );
+        assert_eq!(
+            run_json(r#"Bind("k", 1) = Bind("k", 1);"#),
+            serde_json::json!(true)
+        );
     }
 }

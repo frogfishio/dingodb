@@ -1,17 +1,19 @@
 # sda-lib
 
-`sda-lib` is the Rust library for Structured Data Algebra.
+`sda-lib` is the Rust library for Structured Data Algebra (SDA), the pure
+examination and transformation language used by DingoDB.
 
-It provides a small host-facing API for parsing, validating, formatting, and evaluating standalone SDA programs over JSON values.
+It provides a small host-facing API for parsing, validating, formatting, and
+evaluating standalone SDA programs over JSON values. Evaluation is pure: no
+file or network IO lives in this crate.
 
-The library is intended for host applications that want SDA semantics without shelling out to the CLI. It keeps evaluation pure and leaves file IO, process control, and orchestration to the caller.
-
-## Install
+## Install (workspace)
 
 ```toml
 [dependencies]
-sda-lib = "1"
-serde_json = "1"
+sda-lib = { path = "crates/sda-core" }
+# or via the workspace key (crate path becomes sda_core):
+# sda-core = { workspace = true }
 ```
 
 ## Example
@@ -22,24 +24,24 @@ assert_eq!(output, serde_json::json!({"$type": "ok", "$value": "Ada"}));
 # Ok::<(), sda_lib::SdaError>(())
 ```
 
-If you want to bind host input under a name other than `input`, use `run_with_input_binding`.
+If you want to bind host input under a name other than `input`, use
+`run_with_input_binding`.
 
-## API Surface
+## API surface
 
-- `run`: evaluate an SDA program against JSON bound as `input`
-- `run_with_input_binding`: evaluate against a caller-chosen binding name
-- `check`: parse and validate source without evaluating it
-- `format_source`: emit canonical SDA formatting
-- `from_json` / `to_json`: bridge between JSON and SDA values
+- `run` — evaluate an SDA program against JSON bound as `input`
+- `run_with_input_binding` — evaluate against a caller-chosen binding name
+- `check` — parse and validate source without evaluating it
+- `format_source` — emit canonical SDA formatting
+- `from_json` / `to_json` — bridge between JSON and SDA values
 
 ## Documentation
 
-- Repository: https://github.com/frogfishio/axiom
-- docs.rs crate docs: https://docs.rs/sda-lib
-- Formal specification: https://github.com/frogfishio/axiom/blob/main/SDA/SDA_SPEC.md
-- User manual: https://github.com/frogfishio/axiom/blob/main/SDA/USER_MANUAL.md
-- jq guide: https://github.com/frogfishio/axiom/blob/main/SDA/FOR_JQ_USERS.md
+- Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
+- DingoDB examination profile: [SDA_PROFILE.md](../../SDA_PROFILE.md)
+- User-facing SDA docs: [doc/SDA/](../../doc/SDA/)
+- Delivery stage: Stage 1 in [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)
 
 ## CLI
 
-If you want the Unix-facing tool instead of the embedded library, install the `sda` crate.
+For shell use, see the `sda` package in `crates/sda-cli`.

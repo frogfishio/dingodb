@@ -89,7 +89,9 @@ impl PartialEq for Value {
 
 fn set_equal(left: &[Value], right: &[Value]) -> bool {
     left.len() == right.len()
-        && left.iter().all(|left_value| right.iter().any(|right_value| left_value == right_value))
+        && left
+            .iter()
+            .all(|left_value| right.iter().any(|right_value| left_value == right_value))
 }
 
 fn multiset_equal(left: &[Value], right: &[Value]) -> bool {
@@ -205,9 +207,10 @@ pub fn from_json(v: serde_json::Value) -> Value {
     match v {
         serde_json::Value::Null => Value::Null,
         serde_json::Value::Bool(b) => Value::Bool(b),
-        serde_json::Value::Number(n) => {
-            Value::Num(ExactNum::parse_literal(&n.to_string()).expect("serde_json number should parse exactly"))
-        }
+        serde_json::Value::Number(n) => Value::Num(
+            ExactNum::parse_literal(&n.to_string())
+                .expect("serde_json number should parse exactly"),
+        ),
         serde_json::Value::String(s) => Value::Str(s),
         serde_json::Value::Array(arr) => Value::Seq(arr.into_iter().map(from_json).collect()),
         serde_json::Value::Object(obj) => {
@@ -235,7 +238,7 @@ pub fn from_json(v: serde_json::Value) -> Value {
                         if let Some(serde_json::Value::String(value)) = obj.get("$value") {
                             return Value::Num(
                                 ExactNum::parse_canonical(value)
-                                    .expect("canonical numeric wrapper should parse")
+                                    .expect("canonical numeric wrapper should parse"),
                             );
                         }
                     }
@@ -319,7 +322,10 @@ pub fn from_json(v: serde_json::Value) -> Value {
 
 fn canonical_json_text(value: &serde_json::Value) -> String {
     match value {
-        serde_json::Value::Null | serde_json::Value::Bool(_) | serde_json::Value::Number(_) | serde_json::Value::String(_) => {
+        serde_json::Value::Null
+        | serde_json::Value::Bool(_)
+        | serde_json::Value::Number(_)
+        | serde_json::Value::String(_) => {
             serde_json::to_string(value).expect("canonical JSON rendering should succeed")
         }
         serde_json::Value::Array(items) => {
@@ -370,8 +376,10 @@ fn canonicalize_bag_items(items: Vec<Value>) -> Vec<serde_json::Value> {
 }
 
 fn canonicalize_map_entries(entries: Vec<(String, Value)>) -> Vec<(String, serde_json::Value)> {
-    let mut mapped_entries: Vec<(String, serde_json::Value)> =
-        entries.into_iter().map(|(key, value)| (key, to_json(value))).collect();
+    let mut mapped_entries: Vec<(String, serde_json::Value)> = entries
+        .into_iter()
+        .map(|(key, value)| (key, to_json(value)))
+        .collect();
     mapped_entries.sort_by(|(left_key, _), (right_key, _)| left_key.cmp(right_key));
     mapped_entries
 }
@@ -544,7 +552,10 @@ mod tests {
         assert_eq!(r("10 - 3;"), serde_json::json!(7));
         assert_eq!(r("4 * 5;"), serde_json::json!(20));
         assert_eq!(r("10 / 2;"), serde_json::json!(5));
-        assert_eq!(r("1 / 0;"), serde_json::json!({"$type": "fail", "$code": "t_sda_div_by_zero", "$msg": "division by zero"}));
+        assert_eq!(
+            r("1 / 0;"),
+            serde_json::json!({"$type": "fail", "$code": "t_sda_div_by_zero", "$msg": "division by zero"})
+        );
     }
 
     #[test]
@@ -613,13 +624,20 @@ mod tests {
 
     #[test]
     fn test_custom_input_binding_name() {
-        let result = rib(r#"root<"name">!;"#, "root", serde_json::json!({"name": "Ada"}));
+        let result = rib(
+            r#"root<"name">!;"#,
+            "root",
+            serde_json::json!({"name": "Ada"}),
+        );
         assert_eq!(result, serde_json::json!({"$type": "ok", "$value": "Ada"}));
     }
 
     #[test]
     fn test_string_concat() {
-        assert_eq!(r(r#""hello" ++ " world";"#), serde_json::json!("hello world"));
+        assert_eq!(
+            r(r#""hello" ++ " world";"#),
+            serde_json::json!("hello world")
+        );
     }
 
     #[test]
@@ -651,25 +669,37 @@ mod tests {
             r(r#"Bytes("00ff");"#),
             serde_json::json!({"$type": "bytes", "$base16": "00ff"})
         );
-        assert_eq!(r(r#"Bytes("00ff") = Bytes("00FF");"#), serde_json::json!(true));
+        assert_eq!(
+            r(r#"Bytes("00ff") = Bytes("00FF");"#),
+            serde_json::json!(true)
+        );
     }
 
     #[test]
     fn test_bytes_literal_rejects_invalid_hex() {
         let err = run(r#"Bytes("0fg");"#, serde_json::Value::Null).unwrap_err();
-        assert!(matches!(err, SdaError::Parse(ParseError::InvalidBytesLiteral { .. })));
+        assert!(matches!(
+            err,
+            SdaError::Parse(ParseError::InvalidBytesLiteral { .. })
+        ));
     }
 
     #[test]
     fn test_reserved_placeholder_in_let_is_stable_parse_error() {
         let err = run("let _ = 1;", serde_json::Value::Null).unwrap_err();
-        assert!(matches!(err, SdaError::Parse(ParseError::ReservedPlaceholder)));
+        assert!(matches!(
+            err,
+            SdaError::Parse(ParseError::ReservedPlaceholder)
+        ));
     }
 
     #[test]
     fn test_reserved_placeholder_as_lambda_param_is_stable_parse_error() {
         let err = run("_ => 1;", serde_json::Value::Null).unwrap_err();
-        assert!(matches!(err, SdaError::Parse(ParseError::ReservedPlaceholder)));
+        assert!(matches!(
+            err,
+            SdaError::Parse(ParseError::ReservedPlaceholder)
+        ));
     }
 
     #[test]
@@ -700,10 +730,7 @@ mod tests {
         assert_json_round_trip(
             Value::Map(vec![
                 ("$type".to_string(), Value::Str("set".to_string())),
-                (
-                    "$items".to_string(),
-                    Value::Seq(vec![num("1"), num("2")]),
-                ),
+                ("$items".to_string(), Value::Seq(vec![num("1"), num("2")])),
             ]),
             serde_json::json!({
                 "$type": "map",
@@ -735,7 +762,10 @@ mod tests {
         assert_json_round_trip(
             Value::Map(vec![
                 ("$type".to_string(), Value::Str("bytes".to_string())),
-                ("$base16".to_string(), Value::Str("not-a-wrapper".to_string())),
+                (
+                    "$base16".to_string(),
+                    Value::Str("not-a-wrapper".to_string()),
+                ),
             ]),
             serde_json::json!({
                 "$type": "map",
@@ -754,7 +784,10 @@ mod tests {
             serde_json::json!({"$type": "bytes", "$base16": "00ff"}),
         );
         assert_json_round_trip(
-            Value::Set(vec![Value::Str("a".to_string()), Value::Str("b".to_string())]),
+            Value::Set(vec![
+                Value::Str("a".to_string()),
+                Value::Str("b".to_string()),
+            ]),
             serde_json::json!({"$type": "set", "$items": ["a", "b"]}),
         );
         assert_json_round_trip(
@@ -770,10 +803,7 @@ mod tests {
             serde_json::json!({"$type": "bagkv", "$items": [["k", 2]]}),
         );
         assert_json_round_trip(
-            Value::Bind(
-                Box::new(Value::Str("k".to_string())),
-                Box::new(num("2")),
-            ),
+            Value::Bind(Box::new(Value::Str("k".to_string())), Box::new(num("2"))),
             serde_json::json!({"$type": "bind", "$key": "k", "$val": 2}),
         );
         assert_json_round_trip(
@@ -824,8 +854,14 @@ mod tests {
     fn test_set_intersection_is_canonical_and_idempotent() {
         let intersection = r("Set{3, 1, 2} inter Set{2, 3, 4};");
         let idempotent = r("Set{3, 1, 2} inter Set{3, 1, 2};");
-        assert_eq!(intersection, serde_json::json!({"$type": "set", "$items": [2, 3]}));
-        assert_eq!(idempotent, serde_json::json!({"$type": "set", "$items": [1, 2, 3]}));
+        assert_eq!(
+            intersection,
+            serde_json::json!({"$type": "set", "$items": [2, 3]})
+        );
+        assert_eq!(
+            idempotent,
+            serde_json::json!({"$type": "set", "$items": [1, 2, 3]})
+        );
     }
 
     #[test]
@@ -979,7 +1015,10 @@ mod tests {
     #[test]
     fn test_line_comments_are_ignored() {
         assert_eq!(r("1 + ;; comment\n 2;"), serde_json::json!(3));
-        assert_eq!(r("Seq[1, ;; keep going\n 2, 3];"), serde_json::json!([1, 2, 3]));
+        assert_eq!(
+            r("Seq[1, ;; keep going\n 2, 3];"),
+            serde_json::json!([1, 2, 3])
+        );
     }
 
     #[test]
@@ -989,15 +1028,24 @@ mod tests {
             serde_json::json!(3)
         );
         assert_eq!(
-            ri(" \n input < \"name\" > ! ; \n", serde_json::json!({"name": "Ada"})),
+            ri(
+                " \n input < \"name\" > ! ; \n",
+                serde_json::json!({"name": "Ada"})
+            ),
             serde_json::json!({"$type": "ok", "$value": "Ada"})
         );
     }
 
     #[test]
     fn test_required_string_escapes() {
-        assert_eq!(r(r#""line\nindent\tquote\"slash\\";"#), serde_json::json!("line\nindent\tquote\"slash\\"));
-        assert_eq!(r(r#"";; not a comment";"#), serde_json::json!(";; not a comment"));
+        assert_eq!(
+            r(r#""line\nindent\tquote\"slash\\";"#),
+            serde_json::json!("line\nindent\tquote\"slash\\")
+        );
+        assert_eq!(
+            r(r#"";; not a comment";"#),
+            serde_json::json!(";; not a comment")
+        );
     }
 
     #[test]
@@ -1020,7 +1068,10 @@ mod tests {
 
     #[test]
     fn test_values_map_from_json_input_uses_canonical_key_order() {
-        let result = ri(r#"values(input);"#, serde_json::json!({"z": 3, "a": 1, "m": 2}));
+        let result = ri(
+            r#"values(input);"#,
+            serde_json::json!({"z": 3, "a": 1, "m": 2}),
+        );
         assert_eq!(result, serde_json::json!([1, 2, 3]));
     }
 
@@ -1164,10 +1215,16 @@ mod tests {
 
     #[test]
     fn test_bind_option_result_equality_is_pointwise() {
-        assert_eq!(r(r#"Bind("a", 1) = Bind("a", 1);"#), serde_json::Value::Bool(true));
+        assert_eq!(
+            r(r#"Bind("a", 1) = Bind("a", 1);"#),
+            serde_json::Value::Bool(true)
+        );
         assert_eq!(r(r#"Some(Null) = None;"#), serde_json::Value::Bool(false));
         assert_eq!(r(r#"Ok(1) = Ok(1);"#), serde_json::Value::Bool(true));
-        assert_eq!(r(r#"Ok(1) = Fail("x", "y");"#), serde_json::Value::Bool(false));
+        assert_eq!(
+            r(r#"Ok(1) = Fail("x", "y");"#),
+            serde_json::Value::Bool(false)
+        );
     }
 
     #[test]
@@ -1206,12 +1263,18 @@ mod tests {
     #[test]
     fn test_required_selector_ok() {
         let result = ri(r#"input<"name">!;"#, serde_json::json!({"name": "steve"}));
-        assert_eq!(result, serde_json::json!({"$type": "ok", "$value": "steve"}));
+        assert_eq!(
+            result,
+            serde_json::json!({"$type": "ok", "$value": "steve"})
+        );
     }
 
     #[test]
     fn test_required_selector_missing() {
-        let result = ri(r#"input<"missing">!;"#, serde_json::json!({"name": "steve"}));
+        let result = ri(
+            r#"input<"missing">!;"#,
+            serde_json::json!({"name": "steve"}),
+        );
         assert_eq!(
             result,
             serde_json::json!({"$type": "fail", "$code": "t_sda_missing_key", "$msg": "missing key"})
@@ -1221,12 +1284,18 @@ mod tests {
     #[test]
     fn test_optional_selector_present() {
         let result = ri(r#"input<"name">?;"#, serde_json::json!({"name": "steve"}));
-        assert_eq!(result, serde_json::json!({"$type": "some", "$value": "steve"}));
+        assert_eq!(
+            result,
+            serde_json::json!({"$type": "some", "$value": "steve"})
+        );
     }
 
     #[test]
     fn test_optional_selector_missing() {
-        let result = ri(r#"input<"missing">?;"#, serde_json::json!({"name": "steve"}));
+        let result = ri(
+            r#"input<"missing">?;"#,
+            serde_json::json!({"name": "steve"}),
+        );
         assert_eq!(result, serde_json::json!({"$type": "none"}));
     }
 
@@ -1260,7 +1329,10 @@ mod tests {
     #[test]
     fn test_normalize_unique_ok() {
         let result = r(r#"normalizeUnique(BagKV{"a" -> 1, "b" -> 2});"#);
-        assert_eq!(result, serde_json::json!({"$type": "ok", "$value": {"a": 1, "b": 2}}));
+        assert_eq!(
+            result,
+            serde_json::json!({"$type": "ok", "$value": {"a": 1, "b": 2}})
+        );
     }
 
     #[test]
@@ -1282,32 +1354,21 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_first() {
+    fn test_normalize_first_is_not_core() {
+        // Root SDA_SPEC §7.2: ordered conflict policies are not BagKV operations.
         let result = r(r#"normalizeFirst(BagKV{"k" -> 1, "k" -> 2});"#);
-        assert_eq!(result, serde_json::json!({"k": 1}));
-    }
-
-    #[test]
-    fn test_normalize_first_wrong_shape_returns_fail() {
-        let result = r(r#"normalizeFirst(Seq[1, 2]);"#);
         assert_eq!(
             result,
-            serde_json::json!({"$type": "fail", "$code": "t_sda_wrong_shape", "$msg": "wrong shape"})
+            serde_json::json!({"$type": "fail", "$code": "t_sda_unbound_name", "$msg": "unbound name"})
         );
     }
 
     #[test]
-    fn test_normalize_last() {
+    fn test_normalize_last_is_not_core() {
         let result = r(r#"normalizeLast(BagKV{"k" -> 1, "k" -> 2});"#);
-        assert_eq!(result, serde_json::json!({"k": 2}));
-    }
-
-    #[test]
-    fn test_normalize_last_wrong_shape_returns_fail() {
-        let result = r(r#"normalizeLast(Seq[1, 2]);"#);
         assert_eq!(
             result,
-            serde_json::json!({"$type": "fail", "$code": "t_sda_wrong_shape", "$msg": "wrong shape"})
+            serde_json::json!({"$type": "fail", "$code": "t_sda_unbound_name", "$msg": "unbound name"})
         );
     }
 
@@ -1328,7 +1389,10 @@ mod tests {
 
     #[test]
     fn test_carrier_preservation_seq() {
-        let result = ri(r#"{ x | x in input | x > 2 };"#, serde_json::json!([1, 2, 3, 4]));
+        let result = ri(
+            r#"{ x | x in input | x > 2 };"#,
+            serde_json::json!([1, 2, 3, 4]),
+        );
         assert_eq!(result, serde_json::json!([3, 4]));
     }
 
@@ -1435,13 +1499,19 @@ mod tests {
     #[test]
     fn test_static_selector_literal_is_rejected() {
         let err = run("{a b};", serde_json::Value::Null).unwrap_err();
-        assert!(matches!(err, SdaError::Parse(ParseError::SelectorNotStatic)));
+        assert!(matches!(
+            err,
+            SdaError::Parse(ParseError::SelectorNotStatic)
+        ));
     }
 
     #[test]
     fn test_static_selector_duplicate_label_is_rejected() {
         let err = run("{a a};", serde_json::Value::Null).unwrap_err();
-        assert!(matches!(err, SdaError::Parse(ParseError::DuplicateLabelInSelector)));
+        assert!(matches!(
+            err,
+            SdaError::Parse(ParseError::DuplicateLabelInSelector)
+        ));
     }
 
     #[test]
@@ -1464,7 +1534,10 @@ mod tests {
     #[test]
     fn test_format_source_canonicalizes_selectors_and_bagkv_keys() {
         let formatted = format_source(r#"BagKV{"two words" -> 1, key -> input<name>!};"#).unwrap();
-        assert_eq!(formatted, "BagKV{\"two words\" -> 1, key -> input<\"name\">!};\n");
+        assert_eq!(
+            formatted,
+            "BagKV{\"two words\" -> 1, key -> input<\"name\">!};\n"
+        );
     }
 
     #[test]
@@ -1488,7 +1561,10 @@ mod tests {
     #[test]
     fn test_format_source_canonicalizes_comprehension_spacing() {
         let formatted = format_source("{yield x+1|x in Seq[1,2,3]|x>1 and x<3};").unwrap();
-        assert_eq!(formatted, "{ yield x + 1 | x in Seq[1, 2, 3] | x > 1 and x < 3 };\n");
+        assert_eq!(
+            formatted,
+            "{ yield x + 1 | x in Seq[1, 2, 3] | x > 1 and x < 3 };\n"
+        );
     }
 
     #[test]

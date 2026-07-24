@@ -5,7 +5,7 @@ const APP_VERSION: &str = concat!(env!("SDA_VERSION"), "-build ", env!("SDA_BUIL
 const CLI_ABOUT: &str = "Structured Data Algebra command-line interface";
 const CLI_LONG_ABOUT: &str = "Structured Data Algebra command-line interface\n\nEvaluate, validate, and format standalone SDA programs against JSON input.\n\nThe shipped surface is the `sda` binary: use `sda eval` to run filters, `sda check` to validate source, and `sda fmt` to emit canonical SDA source for editor and CI workflows.";
 const CLI_AFTER_HELP: &str = "Examples:\n  sda eval -e 'values(input)' < event.json\n  sda eval -f extract.sda -i event.json --compact\n  sda check -f extract.sda\n  sda fmt -f extract.sda --check\n  sda fmt --stdin-filepath extract.sda < extract.sda\n  sda --license";
-const LICENSE_TEXT: &str = "Copyright (R) Alexander R. Croft\nGPL-3-or-later\n\nThis program is offered under GPL-3-or-later. See the repository licensing materials for the full terms.";
+const LICENSE_TEXT: &str = "Copyright (c) Alexander R. Croft\nMIT License\n\nThis program is offered under the MIT License. See the repository LICENSE file for the full terms.";
 
 #[derive(Parser)]
 #[command(
@@ -64,7 +64,10 @@ struct SourceArgs {
 }
 
 #[derive(Args)]
-#[command(next_line_help = true, after_help = "Examples:\n  sda eval -e 'values(input)' < event.json\n  sda eval -f extract.sda -i event.json --compact\n  sda eval -e 'root<\"name\">!' --bind root < event.json")]
+#[command(
+    next_line_help = true,
+    after_help = "Examples:\n  sda eval -e 'values(input)' < event.json\n  sda eval -f extract.sda -i event.json --compact\n  sda eval -e 'root<\"name\">!' --bind root < event.json"
+)]
 struct EvalArgs {
     /// Inline SDA expression.
     #[arg(short = 'e', long = "expr", conflicts_with = "file")]
@@ -88,7 +91,10 @@ struct EvalArgs {
 }
 
 #[derive(Args)]
-#[command(next_line_help = true, after_help = "Examples:\n  sda fmt -f extract.sda\n  sda fmt -f extract.sda --check\n  sda fmt -f extract.sda --write\n  sda fmt --stdin-filepath extract.sda < extract.sda")]
+#[command(
+    next_line_help = true,
+    after_help = "Examples:\n  sda fmt -f extract.sda\n  sda fmt -f extract.sda --check\n  sda fmt -f extract.sda --write\n  sda fmt --stdin-filepath extract.sda < extract.sda"
+)]
 struct FmtArgs {
     #[command(flatten)]
     source: SourceArgs,
@@ -134,10 +140,11 @@ fn legacy_eval(cli: Cli) {
     });
 
     let input_json = read_input_json(cli.input_file, true);
-    let result = sda_core::run_with_input_binding(&expr, &cli.bind, input_json).unwrap_or_else(|error| {
-        eprintln!("Error: {error}");
-        std::process::exit(1);
-    });
+    let result =
+        sda_core::run_with_input_binding(&expr, &cli.bind, input_json).unwrap_or_else(|error| {
+            eprintln!("Error: {error}");
+            std::process::exit(1);
+        });
 
     print_json(&result, false);
 }
@@ -145,10 +152,11 @@ fn legacy_eval(cli: Cli) {
 fn eval_command(args: EvalArgs) {
     let source = read_source(args.expr, args.file);
     let input_json = read_input_json(args.input, true);
-    let result = sda_core::run_with_input_binding(&source, &args.bind, input_json).unwrap_or_else(|error| {
-        eprintln!("Error: {error}");
-        std::process::exit(1);
-    });
+    let result =
+        sda_core::run_with_input_binding(&source, &args.bind, input_json).unwrap_or_else(|error| {
+            eprintln!("Error: {error}");
+            std::process::exit(1);
+        });
 
     print_json(&result, args.compact);
 }
@@ -164,7 +172,11 @@ fn check_command(args: SourceArgs) {
 
 fn fmt_command(args: FmtArgs) {
     let file_path = args.source.file.clone();
-    let source = read_fmt_source(args.source.expr.clone(), args.source.file.clone(), args.stdin_filepath.clone());
+    let source = read_fmt_source(
+        args.source.expr.clone(),
+        args.source.file.clone(),
+        args.stdin_filepath.clone(),
+    );
     let formatted = sda_core::format_source(&source).unwrap_or_else(|error| {
         eprintln!("Error: {error}");
         std::process::exit(1);
@@ -237,7 +249,10 @@ fn read_source(expr: Option<String>, file: Option<std::path::PathBuf>) -> String
     }
 }
 
-fn read_input_json(path: Option<std::path::PathBuf>, default_null_if_tty: bool) -> serde_json::Value {
+fn read_input_json(
+    path: Option<std::path::PathBuf>,
+    default_null_if_tty: bool,
+) -> serde_json::Value {
     let input_str = if let Some(path) = path {
         std::fs::read_to_string(path).unwrap_or_else(|error| {
             eprintln!("Error: failed to read input JSON: {error}");

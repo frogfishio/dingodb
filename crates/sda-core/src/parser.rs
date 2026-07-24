@@ -19,7 +19,11 @@ pub enum ParseError {
     #[error("t_sda_invalid_bagkv_key: invalid bagkv key")]
     InvalidBagkvKey,
     #[error("Invalid bytes literal '{literal}' at position {pos}: {reason}")]
-    InvalidBytesLiteral { literal: String, pos: usize, reason: String },
+    InvalidBytesLiteral {
+        literal: String,
+        pos: usize,
+        reason: String,
+    },
     #[error("Unexpected end of input")]
     UnexpectedEof,
 }
@@ -376,14 +380,20 @@ impl Parser {
                     }
                     token => {
                         let pos = self.peek_pos();
-                        return Err(ParseError::Expected("string literal".to_string(), token, pos));
+                        return Err(ParseError::Expected(
+                            "string literal".to_string(),
+                            token,
+                            pos,
+                        ));
                     }
                 };
                 self.expect(TokenKind::RParen)?;
-                let bytes = parse_bytes_literal(&literal).map_err(|reason| ParseError::InvalidBytesLiteral {
-                    literal,
-                    pos,
-                    reason,
+                let bytes = parse_bytes_literal(&literal).map_err(|reason| {
+                    ParseError::InvalidBytesLiteral {
+                        literal,
+                        pos,
+                        reason,
+                    }
                 })?;
                 Ok(Expr::Bytes(bytes))
             }
@@ -661,7 +671,10 @@ impl Parser {
             idx += 1;
         }
 
-        if idx >= self.tokens.len() || self.tokens[idx].kind != TokenKind::RBrace || labels.is_empty() {
+        if idx >= self.tokens.len()
+            || self.tokens[idx].kind != TokenKind::RBrace
+            || labels.is_empty()
+        {
             return None;
         }
 

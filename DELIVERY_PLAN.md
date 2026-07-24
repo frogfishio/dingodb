@@ -1,11 +1,11 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.1  
-Audience: implementation after the codebase lands  
+Status: Draft v0.4 (Stage 0–1 §14.1 done; Stage 2a `dingo-format` frame codec)  
+Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
 [DX_SPEC.md](DX_SPEC.md), [CLUSTER_SPEC.md](CLUSTER_SPEC.md),
-[USP.md](USP.md)
+[USP.md](USP.md), [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## 1. Purpose
 
@@ -476,18 +476,36 @@ tracks:
    still salvage offline.
 7. **“Keep it fifteen years”** — Stage 9: tier move + cold search story.
 
-## 9. Open decisions (resolve when codebase lands)
+## 9. Open decisions
 
 Record answers in-repo; they block packaging, not the stage order:
 
-1. Implementation language(s) for core vs SDK.
-2. Sync marker, integrity algorithms, and draft wire constants (FORMAT_SPEC).
-3. Default durability mode for embedded open (DX says safe/durable default).
-4. First secondary-index implementation (in-process vs external).
-5. Consensus library vs purpose-built for partition leadership (Stage 8).
-6. Whether `sda` CLI ships inside `dingo` or as a separate binary.
+| # | Decision | Status |
+|---|----------|--------|
+| 1 | Implementation language(s) for core vs SDK | **Resolved (Stage 0):** Rust core; first SDK is Rust lib API; DX TypeScript-like samples remain the product shape (other language SDKs later). See [ARCHITECTURE.md](ARCHITECTURE.md). |
+| 2 | Sync marker, integrity algorithms, draft wire constants | **Open** — resolve at Stage 2a against [FORMAT_SPEC.md](FORMAT_SPEC.md). |
+| 3 | Default durability mode for embedded open | **Open** — DX says safe/durable default; confirm at Stage 3–4. |
+| 4 | First secondary-index implementation | **Open** — Stage 6 (in-process vs external). |
+| 5 | Consensus library vs purpose-built leadership | **Open** — Stage 8 only. |
+| 6 | Whether `sda` ships inside `dingo` or separate | **Resolved for now:** separate `sda` binary (Stage 1). Stage 7 may add `dingo` without removing `sda`. |
 
-## 10. What “done” means for this plan document
+## 10. Work apportionment (streams)
+
+Parallel streams after Stage 0; refuse out-of-order starts:
+
+| Stream | Stages | Start when |
+|--------|--------|------------|
+| **A — SDA** | 1 | Stage 0 builds green |
+| **B — Survival format** | 2 | Stage 0; full freeze after 1 exits preferred |
+| **C — Store** | 3 | Frame codec + scanner (2a–2c) usable |
+| **D — Collection SDK** | 4 | Store put/get/delete path (3) |
+| **E — Examination** | 5 | SDA locked (1) + salvage units (2–3) |
+| **F — Operator path** | 6–7 | Ordinary DX (4) solid |
+| **G — Cluster / tiering** | 8–9 | Single-node salvage + doctor (2–4, 7) |
+
+**Do not start G before C salvage is proven.**
+
+## 11. What “done” means for this plan document
 
 This plan is successful if an implementer can:
 
@@ -499,9 +517,22 @@ This plan is successful if an implementer can:
 When the codebase arrives, convert each stage into issues/milestones and attach
 the cited conformance suites as required checks—not optional polish.
 
-## 11. Immediate next step after this plan
+## 12. Immediate next steps (codebase has landed)
 
-1. Land Stage 0 scaffold when the codebase is added.
-2. Implement Stage 1 (SDA) against the existing §14 suite outline.
-3. Freeze SDA standalone behavior behind a versioned conformance corpus.
-4. Only then open Stage 2 format work in earnest.
+1. ~~Land Stage 0 scaffold when the codebase is added.~~ **Done** — workspace,
+   CI, architecture map, language decision.
+2. ~~Stage 1 SDA §14.1 minimal suite automated.~~ **Done** — `crates/sda-core/tests/sda_conformance.rs`
+   module `section_14_1_minimal_suite` covers placeholder scoping, BagKV
+   duplicates, `normalizeUnique`, equality, standalone helpers, carrier
+   preservation, null-vs-absence, Unicode/ASCII synonyms, and `Bind`. Core
+   no longer exposes `normalizeFirst`/`normalizeLast` (§7.2).
+3. Expand beyond §14.1 to full §14 MUST lock (remaining edge cases, versioned
+   golden corpus under `tests/sda/` if desired); keep `sda-core` pure.
+4. Freeze SDA standalone behavior behind a versioned conformance corpus tag.
+5. ~~Open Stage 2 format work (`dingo-format` frame codec).~~ **Done (2a)** —
+   `crates/dingo-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
+   BLAKE3-256 body hash and structural `verified-complete` checks (envelope
+   still opaque bytes; deterministic CBOR rules not yet enforced).
+6. **Next:** Stage 2b–2c — active segment seal, forward salvage scanner + hole
+   reports, then FORMAT_SPEC §13 destructive corpus; optional deterministic
+   CBOR envelope validation for full §5 condition 6.

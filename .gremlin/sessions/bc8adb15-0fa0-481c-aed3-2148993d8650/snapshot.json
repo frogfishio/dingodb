@@ -3,14 +3,14 @@
   "record": {
     "session_id": "bc8adb15-0fa0-481c-aed3-2148993d8650",
     "status": "running",
-    "next_sequence": 1836,
+    "next_sequence": 6809,
     "backend_id": "native",
-    "provider_continuation": "981494f0-e683-49fc-8716-4cd5e869f0a9",
+    "provider_continuation": "cbf7775e-afc8-46b2-a1fa-bb51d1ead914",
     "label": "tinker",
     "workspace": "/Users/rumpelstiltskin/Code/Frogfish/dingodb",
     "created_at": "2026-07-24T11:31:36.403711Z",
-    "updated_at": "2026-07-24T11:36:50.907911Z"
+    "updated_at": "2026-07-24T12:02:42.132404Z"
   },
-  "backend_cursor": 1835,
+  "backend_cursor": 6808,
   "events": []
 }

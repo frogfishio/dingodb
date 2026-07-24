@@ -12,7 +12,7 @@ fn unique_temp_path(name: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards")
         .as_nanos();
-    std::env::temp_dir().join(format!("axiom-sda-{name}-{}-{nanos}", std::process::id()))
+    std::env::temp_dir().join(format!("dingodb-sda-{name}-{}-{nanos}", std::process::id()))
 }
 
 fn repo_root() -> PathBuf {
@@ -33,27 +33,48 @@ fn expected_version_string() -> String {
 
 #[test]
 fn version_reports_root_version_and_build() {
-    let output = sda_bin().arg("--version").output().expect("run sda --version");
+    let output = sda_bin()
+        .arg("--version")
+        .output()
+        .expect("run sda --version");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(String::from_utf8_lossy(&output.stdout), expected_version_string());
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        expected_version_string()
+    );
 }
 
 #[test]
 fn license_prints_notice() {
-    let output = sda_bin().arg("--license").output().expect("run sda --license");
+    let output = sda_bin()
+        .arg("--license")
+        .output()
+        .expect("run sda --license");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Alexander R. Croft"));
-    assert!(stdout.contains("GPL-3-or-later"));
+    assert!(stdout.contains("MIT License"));
 }
 
 #[test]
 fn help_mentions_core_workflows() {
     let output = sda_bin().arg("--help").output().expect("run sda --help");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Structured Data Algebra command-line interface"));
     assert!(stdout.contains("sda eval -e 'values(input)' < event.json"));
@@ -81,7 +102,11 @@ fn eval_reads_stdin_json() {
     drop(child.stdin.take());
 
     let output = child.wait_with_output().expect("wait output");
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&output.stdout), "[\n  1,\n  2\n]\n");
 }
 
@@ -107,7 +132,11 @@ fn eval_reads_source_and_input_files() {
     let _ = fs::remove_file(&source_path);
     let _ = fs::remove_file(&input_path);
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&output.stdout), "[1,2,3]\n");
 }
 
@@ -118,7 +147,11 @@ fn check_reports_ok_for_valid_source() {
         .output()
         .expect("run sda check");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&output.stdout), "ok\n");
 }
 
@@ -129,8 +162,15 @@ fn fmt_emits_canonical_source() {
         .output()
         .expect("run sda fmt");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(String::from_utf8_lossy(&output.stdout), "let x = 1 + 2;\ninput<\"name\">!;\n");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "let x = 1 + 2;\ninput<\"name\">!;\n"
+    );
 }
 
 #[test]
@@ -152,8 +192,15 @@ fn fmt_reads_source_from_stdin() {
     drop(child.stdin.take());
 
     let output = child.wait_with_output().expect("wait output");
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(String::from_utf8_lossy(&output.stdout), "let x = 1 + 2;\ninput<\"name\">!;\n");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "let x = 1 + 2;\ninput<\"name\">!;\n"
+    );
 }
 
 #[test]
@@ -163,7 +210,11 @@ fn fmt_check_succeeds_for_canonical_source() {
         .output()
         .expect("run sda fmt --check");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.stdout.is_empty());
 }
 
@@ -197,7 +248,11 @@ fn fmt_check_succeeds_for_canonical_stdin_source() {
     drop(child.stdin.take());
 
     let output = child.wait_with_output().expect("wait output");
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.stdout.is_empty());
 }
 
@@ -207,12 +262,24 @@ fn fmt_write_rewrites_source_file() {
     fs::write(&source_path, " let x=1+2; input<name>! ").expect("write source file");
 
     let output = sda_bin()
-        .args(["fmt", "-f", source_path.to_str().expect("source path str"), "--write"])
+        .args([
+            "fmt",
+            "-f",
+            source_path.to_str().expect("source path str"),
+            "--write",
+        ])
         .output()
         .expect("run sda fmt --write");
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(fs::read_to_string(&source_path).expect("read source file"), "let x = 1 + 2;\ninput<\"name\">!;\n");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(&source_path).expect("read source file"),
+        "let x = 1 + 2;\ninput<\"name\">!;\n"
+    );
 
     let _ = fs::remove_file(&source_path);
 }

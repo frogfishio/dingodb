@@ -41,12 +41,15 @@ impl ExactNum {
             (1i8, src)
         };
 
-        let (mantissa, exponent) = if let Some((mantissa, exponent)) = unsigned.split_once(['e', 'E']) {
-            let parsed_exp = exponent.parse::<i64>().map_err(|_| ParseNumError::InvalidFormat)?;
-            (mantissa, parsed_exp)
-        } else {
-            (unsigned, 0i64)
-        };
+        let (mantissa, exponent) =
+            if let Some((mantissa, exponent)) = unsigned.split_once(['e', 'E']) {
+                let parsed_exp = exponent
+                    .parse::<i64>()
+                    .map_err(|_| ParseNumError::InvalidFormat)?;
+                (mantissa, parsed_exp)
+            } else {
+                (unsigned, 0i64)
+            };
 
         let (int_part, frac_part) = if let Some((int_part, frac_part)) = mantissa.split_once('.') {
             (int_part, frac_part)
@@ -58,7 +61,9 @@ impl ExactNum {
             return Err(ParseNumError::InvalidFormat);
         }
 
-        if !int_part.chars().all(|c| c.is_ascii_digit()) || !frac_part.chars().all(|c| c.is_ascii_digit()) {
+        if !int_part.chars().all(|c| c.is_ascii_digit())
+            || !frac_part.chars().all(|c| c.is_ascii_digit())
+        {
             return Err(ParseNumError::InvalidDigits);
         }
 
@@ -86,8 +91,10 @@ impl ExactNum {
 
     pub fn parse_canonical(src: &str) -> Result<Self, ParseNumError> {
         if let Some((numerator, denominator)) = src.split_once('/') {
-            let numerator = BigInt::from_str(numerator).map_err(|_| ParseNumError::InvalidDigits)?;
-            let denominator = BigInt::from_str(denominator).map_err(|_| ParseNumError::InvalidDigits)?;
+            let numerator =
+                BigInt::from_str(numerator).map_err(|_| ParseNumError::InvalidDigits)?;
+            let denominator =
+                BigInt::from_str(denominator).map_err(|_| ParseNumError::InvalidDigits)?;
             if denominator.is_zero() {
                 return Err(ParseNumError::ZeroDenominator);
             }

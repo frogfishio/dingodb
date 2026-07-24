@@ -293,7 +293,10 @@ pub fn eval_expr(expr: &Expr, env: &Env) -> Result<Value, EvalError> {
 fn eval_select(obj: Value, field: &str, mode: &SelectMode) -> Result<Value, EvalError> {
     match &obj {
         Value::Map(entries) => {
-            let found = entries.iter().find(|(k, _)| k == field).map(|(_, v)| v.clone());
+            let found = entries
+                .iter()
+                .find(|(k, _)| k == field)
+                .map(|(_, v)| v.clone());
             match mode {
                 SelectMode::Plain => Ok(Value::Fail_(
                     "t_sda_wrong_shape".to_string(),
@@ -302,18 +305,18 @@ fn eval_select(obj: Value, field: &str, mode: &SelectMode) -> Result<Value, Eval
                 SelectMode::Optional => Ok(found
                     .map(|v| Value::Some_(Box::new(v)))
                     .unwrap_or(Value::None_)),
-                SelectMode::Required => Ok(found
-                    .map(|v| Value::Ok_(Box::new(v)))
-                    .unwrap_or_else(|| {
-                        Value::Fail_(
-                            "t_sda_missing_key".to_string(),
-                            "missing key".to_string(),
-                        )
-                    })),
+                SelectMode::Required => {
+                    Ok(found.map(|v| Value::Ok_(Box::new(v))).unwrap_or_else(|| {
+                        Value::Fail_("t_sda_missing_key".to_string(), "missing key".to_string())
+                    }))
+                }
             }
         }
         Value::Prod(fields) => {
-            let found = fields.iter().find(|(k, _)| k == field).map(|(_, v)| v.clone());
+            let found = fields
+                .iter()
+                .find(|(k, _)| k == field)
+                .map(|(_, v)| v.clone());
             match mode {
                 SelectMode::Plain => Ok(found.unwrap_or_else(|| {
                     Value::Fail_(
@@ -338,14 +341,11 @@ fn eval_select(obj: Value, field: &str, mode: &SelectMode) -> Result<Value, Eval
                 SelectMode::Optional => Ok(found
                     .map(|v| Value::Some_(Box::new(v)))
                     .unwrap_or(Value::None_)),
-                SelectMode::Required => Ok(found
-                    .map(|v| Value::Ok_(Box::new(v)))
-                    .unwrap_or_else(|| {
-                        Value::Fail_(
-                            "t_sda_missing_key".to_string(),
-                            "missing key".to_string(),
-                        )
-                    })),
+                SelectMode::Required => {
+                    Ok(found.map(|v| Value::Ok_(Box::new(v))).unwrap_or_else(|| {
+                        Value::Fail_("t_sda_missing_key".to_string(), "missing key".to_string())
+                    }))
+                }
             }
         }
         Value::BagKV(entries) => {

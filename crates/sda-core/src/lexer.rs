@@ -117,7 +117,9 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
             continue;
         }
 
-        if ch.is_ascii_digit() || (ch == '.' && pos + 1 < chars.len() && chars[pos + 1].is_ascii_digit()) {
+        if ch.is_ascii_digit()
+            || (ch == '.' && pos + 1 < chars.len() && chars[pos + 1].is_ascii_digit())
+        {
             let num_start = pos;
             while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '.') {
                 pos += 1;
@@ -132,11 +134,12 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 }
             }
             let num_str: String = chars[num_start..pos].iter().collect();
-            let n = ExactNum::parse_literal(&num_str).map_err(|source| LexError::InvalidNumber {
-                literal: num_str.clone(),
-                pos: start,
-                source,
-            })?;
+            let n =
+                ExactNum::parse_literal(&num_str).map_err(|source| LexError::InvalidNumber {
+                    literal: num_str.clone(),
+                    pos: start,
+                    source,
+                })?;
             tokens.push(Token {
                 kind: TokenKind::Num(n),
                 pos: start,

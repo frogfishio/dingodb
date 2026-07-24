@@ -52,7 +52,9 @@ fn format_expr(expr: &Expr, min_prec: u8) -> String {
         Expr::BagKV(entries) => {
             let items = entries
                 .iter()
-                .map(|(key, value)| format!("{} -> {}", format_selector_key(key), format_expr(value, 0)))
+                .map(|(key, value)| {
+                    format!("{} -> {}", format_selector_key(key), format_expr(value, 0))
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             format!("BagKV{{{items}}}")
@@ -60,11 +62,17 @@ fn format_expr(expr: &Expr, min_prec: u8) -> String {
         Expr::Some_(value) => format!("Some({})", format_expr(value, 0)),
         Expr::None_ => "None".to_string(),
         Expr::Ok_(value) => format!("Ok({})", format_expr(value, 0)),
-        Expr::Fail_(code, msg) => format!("Fail({}, {})", format_expr(code, 0), format_expr(msg, 0)),
+        Expr::Fail_(code, msg) => {
+            format!("Fail({}, {})", format_expr(code, 0), format_expr(msg, 0))
+        }
         Expr::BinOp(op, lhs, rhs) => {
             let prec = precedence(expr);
             let left = format_expr(lhs, prec);
-            let right_prec = if is_right_sensitive_binary(op) { prec + 1 } else { prec };
+            let right_prec = if is_right_sensitive_binary(op) {
+                prec + 1
+            } else {
+                prec
+            };
             let right = format_expr(rhs, right_prec);
             let rendered = format!("{left} {} {right}", format_binop(op));
             wrap_if_needed(rendered, prec, min_prec)
@@ -80,7 +88,11 @@ fn format_expr(expr: &Expr, min_prec: u8) -> String {
         }
         Expr::Pipe(lhs, rhs) => {
             let prec = precedence(expr);
-            let rendered = format!("{} |> {}", format_expr(lhs, prec), format_expr(rhs, prec + 1));
+            let rendered = format!(
+                "{} |> {}",
+                format_expr(lhs, prec),
+                format_expr(rhs, prec + 1)
+            );
             wrap_if_needed(rendered, prec, min_prec)
         }
         Expr::Lambda(param, body) => {
@@ -142,7 +154,11 @@ fn format_expr(expr: &Expr, min_prec: u8) -> String {
 }
 
 fn format_delimited(prefix: &str, items: &[Expr], suffix: &str) -> String {
-    let body = items.iter().map(|item| format_expr(item, 0)).collect::<Vec<_>>().join(", ");
+    let body = items
+        .iter()
+        .map(|item| format_expr(item, 0))
+        .collect::<Vec<_>>()
+        .join(", ");
     format!("{prefix}{body}{suffix}")
 }
 
@@ -199,8 +215,26 @@ fn precedence(expr: &Expr) -> u8 {
         Expr::Pipe(_, _) => 1,
         Expr::BinOp(BinOpKind::Or, _, _) => 2,
         Expr::BinOp(BinOpKind::And, _, _) => 3,
-        Expr::BinOp(BinOpKind::Eq | BinOpKind::Neq | BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, _, _) => 4,
-        Expr::BinOp(BinOpKind::Union | BinOpKind::Inter | BinOpKind::Diff | BinOpKind::BUnion | BinOpKind::BDiff | BinOpKind::In, _, _) => 5,
+        Expr::BinOp(
+            BinOpKind::Eq
+            | BinOpKind::Neq
+            | BinOpKind::Lt
+            | BinOpKind::Le
+            | BinOpKind::Gt
+            | BinOpKind::Ge,
+            _,
+            _,
+        ) => 4,
+        Expr::BinOp(
+            BinOpKind::Union
+            | BinOpKind::Inter
+            | BinOpKind::Diff
+            | BinOpKind::BUnion
+            | BinOpKind::BDiff
+            | BinOpKind::In,
+            _,
+            _,
+        ) => 5,
         Expr::BinOp(BinOpKind::Add | BinOpKind::Sub | BinOpKind::Concat, _, _) => 6,
         Expr::BinOp(BinOpKind::Mul | BinOpKind::Div, _, _) => 7,
         Expr::UnOp(_, _) => 8,

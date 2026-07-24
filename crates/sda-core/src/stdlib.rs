@@ -1,5 +1,5 @@
-use crate::number::ExactNum;
 use crate::eval::{apply_lambda, ensure_comparable, EvalError};
+use crate::number::ExactNum;
 use crate::Value;
 
 pub fn call_stdlib(name: &str, args: Vec<Value>) -> Option<Result<Value, EvalError>> {
@@ -9,8 +9,7 @@ pub fn call_stdlib(name: &str, args: Vec<Value>) -> Option<Result<Value, EvalErr
         "values" => Some(stdlib_values(args)),
         "count" => Some(stdlib_count(args)),
         "normalizeUnique" => Some(stdlib_normalize_unique(args)),
-        "normalizeFirst" => Some(stdlib_normalize_first(args)),
-        "normalizeLast" => Some(stdlib_normalize_last(args)),
+        // normalizeFirst / normalizeLast are not core SDA (§7.2 / §14.1).
         "Bind" => Some(stdlib_bind(args)),
         "asBagKV" => Some(stdlib_as_bag_kv(args)),
         "mapOpt" => Some(stdlib_map_opt(args)),
@@ -66,10 +65,7 @@ fn stdlib_keys(args: Vec<Value>) -> Result<Value, EvalError> {
     check_arity("keys", &args, 1)?;
     match &args[0] {
         Value::Map(entries) => Ok(Value::Set(
-            entries
-                .iter()
-                .map(|(k, _)| Value::Str(k.clone()))
-                .collect(),
+            entries.iter().map(|(k, _)| Value::Str(k.clone())).collect(),
         )),
         _ => Ok(wrong_shape()),
     }
@@ -133,64 +129,6 @@ fn stdlib_normalize_unique(args: Vec<Value>) -> Result<Value, EvalError> {
                 map.push((key_str, v));
             }
             Ok(Value::Ok_(Box::new(Value::Map(map))))
-        }
-        _ => Ok(Value::Fail_(
-            "t_sda_wrong_shape".to_string(),
-            "wrong shape".to_string(),
-        )),
-    }
-}
-
-fn stdlib_normalize_first(args: Vec<Value>) -> Result<Value, EvalError> {
-    check_arity("normalizeFirst", &args, 1)?;
-    match args.into_iter().next().unwrap() {
-        Value::BagKV(pairs) => {
-            let mut map: Vec<(String, Value)> = Vec::new();
-            for (k, v) in pairs {
-                let key_str = match value_as_map_key(&k) {
-                    Ok(key) => key,
-                    Err(_) => {
-                        return Ok(Value::Fail_(
-                            "t_sda_wrong_shape".to_string(),
-                            "wrong shape".to_string(),
-                        ))
-                    }
-                };
-                if !map.iter().any(|(existing_key, _)| existing_key == &key_str) {
-                    map.push((key_str, v));
-                }
-            }
-            Ok(Value::Map(map))
-        }
-        _ => Ok(Value::Fail_(
-            "t_sda_wrong_shape".to_string(),
-            "wrong shape".to_string(),
-        )),
-    }
-}
-
-fn stdlib_normalize_last(args: Vec<Value>) -> Result<Value, EvalError> {
-    check_arity("normalizeLast", &args, 1)?;
-    match args.into_iter().next().unwrap() {
-        Value::BagKV(pairs) => {
-            let mut map: Vec<(String, Value)> = Vec::new();
-            for (k, v) in pairs {
-                let key_str = match value_as_map_key(&k) {
-                    Ok(key) => key,
-                    Err(_) => {
-                        return Ok(Value::Fail_(
-                            "t_sda_wrong_shape".to_string(),
-                            "wrong shape".to_string(),
-                        ))
-                    }
-                };
-                if let Some(existing) = map.iter_mut().find(|(existing_key, _)| existing_key == &key_str) {
-                    existing.1 = v;
-                } else {
-                    map.push((key_str, v));
-                }
-            }
-            Ok(Value::Map(map))
         }
         _ => Ok(Value::Fail_(
             "t_sda_wrong_shape".to_string(),
