@@ -1,0 +1,507 @@
+# DingoDB staged delivery plan
+
+Status: Draft v0.1  
+Audience: implementation after the codebase lands  
+Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
+[FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
+[DX_SPEC.md](DX_SPEC.md), [CLUSTER_SPEC.md](CLUSTER_SPEC.md),
+[USP.md](USP.md)
+
+## 1. Purpose
+
+Specs are ahead of code. SDA is already specified; the rest of DingoDB is
+specified as architecture, wire format, DX, and clustering.
+
+This plan answers: **how do we ship DingoDB in stages** so each stage is
+demoable, testable, and aligned with the product thesis, without waiting for
+the full system.
+
+The governing product rule stays:
+
+> Put anything in. Keep it at scale. Damage it. Find what survived.
+
+## 2. Delivery principles
+
+1. **Spec before behavior.** Each stage implements a named slice of an existing
+   normative document. New behavior needs a spec amendment first.
+2. **Vertical slices over horizontal layers.** Prefer “one path that works end
+   to end” over building every subsystem half-complete.
+3. **Conformance tests are the gate.** A stage is done when its conformance
+   suite (and for storage stages, destructive tests) pass—not when APIs exist.
+4. **SDA is pure and early.** SDA has no IO dependency. Ship and lock it
+   before coupling it to storage.
+5. **Ordinary DX before deep machinery.** Everyday put/get/filter must feel
+   boring before salvage, clusters, and tiering dominate the surface.
+6. **Damage early, optimize later.** Island recovery and hole reporting land
+   before Redis-class hot-path tuning claims.
+7. **Derived state is never the only map.** Catalogs and indexes may lag
+   authority; salvage must not depend on them.
+8. **Language and packaging TBD.** Stages assume a host runtime and one primary
+   SDK. Concrete crates/packages wait for the codebase.
+
+## 3. Spec → stage map
+
+| Spec | Primary stages |
+|------|----------------|
+| [SDA_SPEC.md](SDA_SPEC.md) | 0–1 |
+| [FORMAT_SPEC.md](FORMAT_SPEC.md) | 2–3 |
+| [OVERVIEW.md](OVERVIEW.md) storage + recovery | 2–4, 6 |
+| [SDA_PROFILE.md](SDA_PROFILE.md) | 5 |
+| [DX_SPEC.md](DX_SPEC.md) | 4–7 |
+| [CLUSTER_SPEC.md](CLUSTER_SPEC.md) | 8+ |
+| [USP.md](USP.md) | product framing for all stages |
+
+## 4. Stage overview
+
+```text
+0  Repo + CI harness
+1  SDA standalone (pure)
+2  Wire format + salvage scanner
+3  Single-node store (append journal + sealed segments)
+4  Collection SDK (embedded put/get/delete/filter)
+5  SDA examination profile over recovered units
+6  Indexes, catalogs, history, chunked payloads
+7  CLI (doctor, salvage) + server mode
+8  Cluster (partition-local consensus, coverage)
+9  Tiering, archive path, long-retention polish
+```
+
+Stages 0–4 are the **minimum path to a useful embedded database**.  
+Stages 5–7 complete the **README initial implementation target**.  
+Stages 8–9 are **scale-out and retention** after the single-node product is real.
+
+---
+
+## Stage 0 — Repository and engineering harness
+
+**Goal:** Make the empty or incoming codebase a place where later stages can
+land without thrash.
+
+**Deliverables**
+
+- Repo layout (core library, SDA, format, store, SDK, CLI, tests).
+- Build, format, lint, unit-test CI on every PR.
+- Golden-test and property-test harnesses ready for conformance corpora.
+- Documented decision: primary implementation language + first SDK language
+  (DX examples are TypeScript-like; implementation need not be TS).
+- Version and feature flags for draft wire formats (FORMAT_SPEC is not frozen
+  until wire major 1).
+
+**Exit criteria**
+
+- `main` builds green on CI with a trivial smoke test.
+- CONTRIBUTING / architecture map points at the normative specs.
+- No product claims beyond “spec phase + scaffold.”
+
+**Risks**
+
+- Over-scaffolding packages for cluster/server before Stage 3 exists.
+
+**Do not do yet**
+
+- Cluster, network protocol, object-store backends.
+
+---
+
+## Stage 1 — SDA standalone engine
+
+**Goal:** A pure, conformance-tested SDA implementation with no storage IO.
+
+**Normative scope:** [SDA_SPEC.md](SDA_SPEC.md) core + standalone profile,
+especially §1–§12 and §14.
+
+**Deliverables**
+
+1. Value model: `Null`, numbers, strings, bytes, `None`/`Some`, `Ok`/`Fail`,
+   `Seq`/`Set`/`Bag`/`Map`/`Prod`/`BagKV`/`Bind`.
+2. Lex/parse for the standalone surface (ASCII + Unicode operator spellings).
+3. Static validity where required; evaluation with stable error tags (§12).
+4. Three eliminators (`?`, `!`, and the strict form), normalization, carrier
+   operators, comprehensions, pipe (`|>` with `_` / `•`).
+5. Standalone helpers (`type`, `keys`, `values`, `count`, …) exactly as §11.2.
+6. JSON bridge: host tree ↔ SDA values for CLI and tests.
+7. Conformance corpus from §14.1 (and expanded golden vectors checked into
+   `tests/sda/`).
+
+**Exit criteria**
+
+- All §14 MUST items for standalone conformance pass.
+- Minimal suite in §14.1 fully automated.
+- Determinism: same program + input ⇒ same value or stable `Fail`.
+- Public surface: library API + optional `sda` CLI (`eval`, `check`).
+- **No** DingoDB types, segments, or host IO inside the SDA core.
+
+**Why first**
+
+- SDA is already fully written and independent.
+- Later query filters compile to SDA; examination is SDA over host-built
+  values. Locking semantics early prevents storage APIs from inventing a second
+  expression language.
+
+**Suggested sub-milestones**
+
+| 1a | Values, equality, literals, parse of closed expressions |
+| 1b | Eliminators + absence/`Null` laws |
+| 1c | Normalization + Set/Bag/Seq ops |
+| 1d | Comprehensions + carrier preservation |
+| 1e | Pipe + helpers + JSON bridge + full §14 suite |
+
+---
+
+## Stage 2 — Survival wire format and salvage scanner
+
+**Goal:** Encode, decode, and rediscover frames without trusting catalogs.
+
+**Normative scope:** [FORMAT_SPEC.md](FORMAT_SPEC.md) (frames, segments,
+scanner, §13 wire tests); [OVERVIEW.md](OVERVIEW.md) §§4, 6.
+
+**Deliverables**
+
+1. Frame encode/decode with independent header and body integrity.
+2. Segment header/trailer (or equivalent self-description) and sealing.
+3. Forward salvage scanner with resync after garbage, truncations, and corrupt
+   lengths.
+4. Hole construction (explicit discontinuities; no silent join across damage).
+5. Diagnostic projection of frames/holes suitable for later SDA examination.
+6. Destructive test corpus from FORMAT_SPEC §13 and OVERVIEW §16 items that
+   apply to offline segments.
+
+**Exit criteria**
+
+- Every FORMAT_SPEC §13 case automated.
+- Later intact frames remain discoverable after earlier corruption.
+- Corrupt candidates never labeled `verified`.
+- Scan works with segment descriptor/summary deleted.
+- Draft wire version tagged as draft until major 1 freeze.
+
+**Why before the “database API”**
+
+- Independent survival is the product differentiator. If salvage is bolted on
+  after a normal key-value store, framing will be wrong.
+
+**Suggested sub-milestones**
+
+| 2a | Frame codec + unit integrity tests |
+| 2b | Active append segment + seal |
+| 2c | Forward scanner + hole reports |
+| 2d | Full destructive corpus |
+
+---
+
+## Stage 3 — Single-node authoritative store
+
+**Goal:** Append-only store of items/events with durability modes and
+catalog-independent recovery.
+
+**Normative scope:** OVERVIEW §§5–7 (model, layout, write path); FORMAT_SPEC
+chunks as needed for inline-only first.
+
+**Deliverables**
+
+1. Store open/create on a filesystem path (zero ceremony directory layout).
+2. Event kinds needed for MVP: at least `put`, `delete`; stub or defer
+   `link` / `checkpoint` / `repair` / `purge` unless required by tests.
+3. Append path: encode frame → append → publish visibility by durability mode
+   (`memory`, `buffered`, `durable` minimum; `replicated` later).
+4. Logical open path: subject/key → current event via rebuildable index **or**
+   segment scan.
+5. Delete of catalogs/indexes still allows full salvage scan of segments.
+6. Interrupted append: incomplete tail does not poison earlier frames.
+
+**Exit criteria**
+
+- Put/get/delete at the store layer (may be internal API, not full SDK yet).
+- Destroy catalogs/indexes → salvage reconstructs surviving items.
+- Durability mode on every ack; docs state failure boundary per mode.
+- OVERVIEW §16 cases 1–10 applicable to single-node segments pass.
+
+**Explicit non-goals for Stage 3**
+
+- Secondary indexes, query language, network, multi-writer consensus.
+- Cold object storage tiers.
+
+---
+
+## Stage 4 — Embedded collection SDK (ordinary DX)
+
+**Goal:** The boring happy path from [DX_SPEC.md](DX_SPEC.md) and README:
+
+```ts
+const db = await Dingo.open("./app.dingo");
+await db.collection("users").put("user-42", { name: "Alice" });
+```
+
+**Normative scope:** DX_SPEC §§1–7 (journeys 1–3, 6 partial), progressive
+disclosure layers 1–2.
+
+**Deliverables**
+
+1. `Dingo.open(path)` create-or-open with safe defaults.
+2. Collections: `put`, `get`, `delete`, optional `append` for streams.
+3. JSON and raw bytes as first-class payloads.
+4. Simple filters without requiring callers to write SDA (builder or object
+   filter → internal plan; may compile to SDA under the hood).
+5. Streaming iteration for results larger than memory (bounded materialize).
+6. Typed errors for missing key vs damaged vs incomplete (no silent empty
+   success when coverage is broken).
+7. Write receipts reporting actual durability mode.
+
+**Exit criteria**
+
+- DX journeys: open + store JSON in under one minute; bytes round-trip; common
+  JSON field filter without learning SDA; stream larger-than-memory dataset.
+- README-style sample works against a real store from Stage 3.
+- No requirement that app developers understand frames/segments.
+
+**Suggested sub-milestones**
+
+| 4a | Open + put/get/delete JSON |
+| 4b | Bytes + streaming scan of collection |
+| 4c | Filter builder + limit/order basics |
+| 4d | Error taxonomy + durability receipts |
+
+---
+
+## Stage 5 — SDA examination profile (recovery as data)
+
+**Goal:** Host builds [SDA_PROFILE.md](SDA_PROFILE.md) `ExaminationUnit` values;
+SDA programs examine verified items, partial payloads, and holes.
+
+**Normative scope:** SDA_PROFILE; OVERVIEW §11; DX progressive layer 3–4.
+
+**Deliverables**
+
+1. Map recovered frames/items/holes → normative `ExaminationUnit` product
+   shape.
+2. API: stream examination units (salvage or online), evaluate SDA program over
+   each unit or over pages.
+3. Status tags: `verified-complete`, `verified-partial`, holes, encryption
+   unavailable, format unsupported—without collapsing them into one “error.”
+4. Determinism rules: host supplies ordered/bounded input; SDA remains pure.
+5. Resource limits produce explicit incomplete results, never fake empty
+   success.
+
+**Exit criteria**
+
+- “If DingoDB can recover it, SDA can examine it” holds for Stage 2–3 salvage
+  outputs.
+- Profile field set matches SDA_PROFILE (unknown future tags preserved).
+- Golden tests: damaged segment → examination stream → SDA filter finds only
+  verified islands / reports holes.
+
+**Dependency note**
+
+- Stage 1 must be done. Stage 2–3 provide the host values. Stage 4 can partially
+  proceed in parallel with 5, but public “raw SDA on collection” (DX §7.6)
+  should not ship before profile shapes stabilize.
+
+---
+
+## Stage 6 — Indexes, catalogs, history, chunks
+
+**Goal:** Fast path without violating “no essential derived state.”
+
+**Normative scope:** OVERVIEW §§5.4–5.5, 6.7, 13; DX §§7–9; FORMAT chunk
+manifests.
+
+**Deliverables**
+
+1. Rebuildable primary/current-state index and collection catalog.
+2. Secondary indexes online, resumable, deletable; queries correct without
+   them (scan + budget).
+3. History / event stream for a subject key.
+4. Chunked payloads: partial chunk maps, completeness never overstated.
+5. Compaction that preserves identities and hole honesty.
+6. Optional checkpoints as derived projections with declared coverage.
+
+**Exit criteria**
+
+- Delete all indexes/catalogs → rebuild from segments → same logical content.
+- Index states (`building`, `ready`, `stale`, …) visible; queries never claim
+  complete absence when tiers/indexes are incomplete without disclosure.
+- Chunk tests: missing middle chunk → partial payload + completeness map.
+- Benchmark harness skeleton (no marketing claims yet): point read, append by
+  durability mode, salvage scan throughput.
+
+---
+
+## Stage 7 — CLI, doctor, salvage, server
+
+**Goal:** Complete the README initial implementation target for single-node /
+operator tooling and same-API remote access.
+
+**Normative scope:** DX_SPEC CLI and doctor/salvage; DX server connect shape.
+
+**Deliverables**
+
+1. CLI mirroring logical API: put/get/list basics.
+2. `dingo doctor` — read-only diagnostics by default.
+3. `dingo salvage` — non-destructive recovery to a new store path.
+4. Server process + `Dingo.connect("dingo://...")` with the same collection API
+   as embedded.
+5. Authn/deadline/retry as connection options only (no app-level API split).
+6. Reproducible corruption + performance test packaging for CI/nightly.
+
+**Exit criteria**
+
+- DX journeys 4–5, 7, 9–10 satisfied for single-node.
+- Doctor never writes by default; salvage does not mutate the source store.
+- Embedded and server pass the same logical SDK test suite (transport differs).
+- README “initial implementation target” checklist checked item-by-item.
+
+**README initial target mapping**
+
+| README bullet | Stage |
+|---------------|-------|
+| zero-config embedded | 3–4 |
+| collection-oriented SDK | 4 |
+| JSON/bytes put get delete append filters | 4 |
+| CLI doctor + non-destructive salvage | 7 |
+| resync framed journal | 2–3 |
+| immutable self-describing segments | 2–3 |
+| inline and chunked payloads | 3 + 6 |
+| independent verification + island recovery | 2–3, 5 |
+| rebuildable catalogs and indexes | 6 |
+| SDA examination | 1 + 5 |
+| reproducible corruption and performance tests | 2–3, 6–7 |
+
+---
+
+## Stage 8 — Cluster (after single-node is real)
+
+**Goal:** Federation of independently salvageable nodes without making the
+control plane payload authority.
+
+**Normative scope:** [CLUSTER_SPEC.md](CLUSTER_SPEC.md).
+
+**Deliverables (high level)**
+
+1. Partitioned keyspace; partition-local consensus for strong writes.
+2. Frame replication + ack modes including `replicated`.
+3. Coverage records on every distributed result.
+4. Convergent-append mode for split-friendly immutable events.
+5. Node salvage without cluster software still yields ordinary segments.
+6. Same SDK API as embedded/server; routing cached and refreshed safely.
+
+**Exit criteria**
+
+- CLUSTER_SPEC conformance tests (§22) for the chosen deployment profile.
+- Control plane loss does not make surviving segments unreadable.
+- No global hot-path lock; strong ordering remains partition-local.
+
+**Do not start Stage 8 until**
+
+- Stages 2–4 destructive and DX gates are green.
+- Salvage and doctor work on a single node without cluster metadata.
+
+---
+
+## Stage 9 — Tiering, archive, long retention
+
+**Goal:** One logical store across hot/warm/cold/archive without rewrite-the-
+world migrations.
+
+**Normative scope:** OVERVIEW retention/tiering; CLUSTER_SPEC tiered cluster;
+USP long retention.
+
+**Deliverables**
+
+1. Segment move/copy to colder media with stable identities.
+2. Hierarchical catalogs for cold search; rebuild after catalog loss.
+3. Archive-path performance class benchmarks (separate from hot path).
+4. Media migration and multi-generation format readers
+   (`format-unsupported` + byte preservation).
+
+**Exit criteria**
+
+- Cold retrieval never claimed under hot-path latency SLOs.
+- Offline tier unavailable → explicit coverage hole, not empty success.
+- Multi-year story is operationally documented (runbooks), not only aspirational.
+
+---
+
+## 5. Parallelism after Stage 1
+
+Once Stage 1 is locked, work can fan out carefully:
+
+```text
+        ┌── Stage 2 (format/salvage) ── Stage 3 (store) ──┐
+Stage 1 ┤                                                   ├── Stage 5 (profile)
+        └── Stage 4 stubs (API design, fakes) ─────────────┘
+                              │
+                         Stage 4 full
+                              │
+                    Stage 6 ── Stage 7 ── Stage 8 ── Stage 9
+```
+
+- **Do parallelize:** SDA conformance growth vs format codec experiments.
+- **Do not parallelize naively:** SDK release vs unfinished frame identity
+  rules; cluster vs unproven single-node salvage.
+
+## 6. Quality bars by stage type
+
+| Stage type | Required gates |
+|------------|----------------|
+| SDA (1) | Semantic golden tests, error-tag stability, determinism |
+| Format/store (2–3, 6) | Destructive island tests, hole honesty, rebuild from authority |
+| DX (4, 7) | Journey tests, progressive disclosure (no salvage jargon on happy path) |
+| Examination (5) | Profile shape tests, damaged-store SDA scripts |
+| Cluster (8) | Coverage, split behavior, node-local salvage |
+| Perf claims (6+) | Benchmark disclosure checklist from OVERVIEW §12.2 |
+
+## 7. Freezes and versioning
+
+| Artifact | Freeze target |
+|----------|----------------|
+| SDA core semantics | After Stage 1 exit; changes need explicit versioning |
+| Standalone SDA surface | With core; helpers only via profile version |
+| Wire format major 1 | After Stage 2–3 production soak; until then draft bytes |
+| Collection SDK 1.0 | After Stage 4 + 7 embedded/server parity |
+| Cluster profile v1 | After Stage 8 conformance; no cross-partition atomic writes (per CLUSTER_SPEC) |
+
+## 8. Suggested first demo milestones (human-facing)
+
+These are narrative checkpoints for users and sponsors, not separate engineering
+tracks:
+
+1. **“Algebra works”** — Stage 1: paste JSON, run SDA, get deterministic tree.
+2. **“Punch a hole”** — Stage 2: corrupt a segment file; scanner lists islands
+   and holes.
+3. **“Database that survives”** — Stage 3–4: app puts data; wipe indexes;
+   salvage; app still reads survivors.
+4. **“Examine the damage”** — Stage 5: SDA over examination units filters
+   verified vs holes.
+5. **“Ordinary product”** — Stage 6–7: indexes, doctor, CLI, server.
+6. **“Federation”** — Stage 8: kill a node; others serve; dead node’s disks
+   still salvage offline.
+7. **“Keep it fifteen years”** — Stage 9: tier move + cold search story.
+
+## 9. Open decisions (resolve when codebase lands)
+
+Record answers in-repo; they block packaging, not the stage order:
+
+1. Implementation language(s) for core vs SDK.
+2. Sync marker, integrity algorithms, and draft wire constants (FORMAT_SPEC).
+3. Default durability mode for embedded open (DX says safe/durable default).
+4. First secondary-index implementation (in-process vs external).
+5. Consensus library vs purpose-built for partition leadership (Stage 8).
+6. Whether `sda` CLI ships inside `dingo` or as a separate binary.
+
+## 10. What “done” means for this plan document
+
+This plan is successful if an implementer can:
+
+- pick up work at Stage 0 or 1 without rereading every spec end-to-end;
+- know which spec sections gate each stage;
+- refuse out-of-order work (especially cluster-before-salvage);
+- map the README initial target to concrete exit criteria.
+
+When the codebase arrives, convert each stage into issues/milestones and attach
+the cited conformance suites as required checks—not optional polish.
+
+## 11. Immediate next step after this plan
+
+1. Land Stage 0 scaffold when the codebase is added.
+2. Implement Stage 1 (SDA) against the existing §14 suite outline.
+3. Freeze SDA standalone behavior behind a versioned conformance corpus.
+4. Only then open Stage 2 format work in earnest.

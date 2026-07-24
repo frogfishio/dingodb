@@ -175,6 +175,8 @@ Its promise is narrower and stronger:
 
 DingoDB is in the specification phase.
 
+Staged implementation is planned in [DELIVERY_PLAN.md](DELIVERY_PLAN.md).
+
 The initial implementation target is:
 
 - zero-configuration embedded operation;

@@ -1,0 +1,23 @@
+[package]
+name = "sda"
+version.workspace = true
+edition.workspace = true
+license = "GPL-3.0-or-later"
+authors = ["Alexander R. Croft"]
+description = "Structured Data Algebra command-line interface for evaluating, checking, and formatting SDA programs over JSON input."
+readme = "README.md"
+documentation = "https://docs.rs/sda"
+homepage = "https://github.com/frogfishio/axiom"
+repository = "https://github.com/frogfishio/axiom"
+keywords = ["sda", "json", "cli", "transformation", "validation"]
+categories = ["command-line-utilities", "parser-implementations", "text-processing"]
+include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
+
+[[bin]]
+name = "sda"
+path = "src/main.rs"
+
+[dependencies]
+sda-core.workspace = true
+serde_json.workspace = true
+clap.workspace = true

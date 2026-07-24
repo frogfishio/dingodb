@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDA: A Scholarly Introduction</title>
+  <meta name="description" content="A detailed introduction to Structured Data Algebra (SDA): what it is, why it exists, and how it works.">
+  <style>
+    :root {
+      --paper: #ffffff;
+      --ink: #111111;
+      --muted: #444444;
+      --rule: #b8b8b8;
+      --panel: #ffffff;
+      --code: #f5f5f5;
+      --quote: #fafafa;
+      --maxw: 980px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.65;
+    }
+
+    a {
+      color: var(--ink);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.14em;
+    }
+
+    .page {
+      width: min(calc(100% - 2rem), var(--maxw));
+      margin: 0 auto;
+      padding: 2rem 0 4rem;
+    }
+
+    header {
+      padding: 3rem 0 1.5rem;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .eyebrow {
+      margin: 0 0 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    h1, h2, h3 {
+      font-weight: 700;
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2.1rem, 4vw, 3.2rem);
+      max-width: 16ch;
+    }
+
+    .subtitle {
+      font-size: 1.08rem;
+      color: var(--muted);
+      max-width: 46rem;
+      margin: 1rem 0 0;
+    }
+
+    .abstract {
+      margin-top: 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      padding: 1.1rem 1.2rem;
+    }
+
+    nav {
+      margin: 1.5rem 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem 1.2rem;
+    }
+
+    nav a {
+      padding: 0;
+    }
+
+    main {
+      display: block;
+      margin-top: 2rem;
+    }
+
+    section {
+      background: var(--panel);
+      border: 0;
+      border-top: 1px solid var(--rule);
+      padding: 1.6rem 0;
+    }
+
+    h2 {
+      font-size: 1.6rem;
+      margin-bottom: 1rem;
+    }
+
+    h3 {
+      font-size: 1.12rem;
+      margin: 1.4rem 0 0.6rem;
+    }
+
+    p, li { font-size: 1.04rem; }
+
+    ul, ol {
+      margin: 0.7rem 0 0.7rem 1.4rem;
+      padding: 0;
+    }
+
+    blockquote {
+      margin: 1rem 0;
+      padding: 1rem 1.2rem;
+      background: var(--quote);
+      border-left: 2px solid #000000;
+      color: var(--ink);
+    }
+
+    .formula, pre, code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-x: auto;
+      background: var(--code);
+      border: 1px solid var(--rule);
+      padding: 1rem;
+      margin: 1rem 0;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .formula-block {
+      margin: 1.1rem 0;
+      padding: 1rem;
+      background: var(--code);
+      border: 1px solid var(--rule);
+      overflow-x: auto;
+    }
+
+    .two-col {
+      display: grid;
+      gap: 1.2rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .callout {
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      padding: 1rem 1.1rem;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      border-top: 1px solid var(--rule);
+      padding-top: 1rem;
+      padding-bottom: 2rem;
+    }
+
+    @media (max-width: 640px) {
+      .page { width: min(calc(100% - 1.2rem), var(--maxw)); }
+      section { padding: 1.2rem 0; }
+      header { padding-top: 2rem; }
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="eyebrow">Structured Data Algebra</p>
+      <h1>SDA: What It Is, Why It Exists, and How It Works</h1>
+      <p class="subtitle">A detailed introduction for mathematically and computationally literate readers who care about semantics, determinism, and the recovery of trustworthy meaning from untrustworthy structured data.</p>
+      <div class="abstract">
+        <strong>Abstract.</strong>
+        SDA is a small, pure language for structured-data transformation. Its aim is not mere convenience, nor the imitation of existing query tools, but the establishment of a stable semantic kernel for extraction, normalization, validation, and reduction over tree-shaped data. The central claim is that much ordinary data work fails not because transformation is impossible, but because the semantics of transformation are left underspecified. SDA exists to remove that underspecification.
+      </div>
+      <nav>
+        <a href="#problem">The Problem</a>
+        <a href="#definition">What SDA Is</a>
+        <a href="#mathematical-shape">Mathematical Shape</a>
+        <a href="#core-ideas">Core Ideas</a>
+        <a href="#examples">Examples</a>
+        <a href="#place-in-system">Place in the System</a>
+        <a href="#why-now">Why It Matters</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="problem">
+        <h2>The Problem SDA Is Trying to Solve</h2>
+        <p>Modern software is saturated with structured data and saturated equally with semantic ambiguity. JSON payloads, event envelopes, API responses, message buses, configuration trees, audit records, and telemetry snapshots all present themselves as if their structure were already meaningful. It rarely is.</p>
+        <p>The difficulty is not merely that data may be missing or malformed. The deeper difficulty is that ordinary host-language access paths leave the status of data unclear. A path expression in JavaScript, Python, or even a typed language often confounds several quite distinct questions:</p>
+        <ul>
+          <li>Was the field present?</li>
+          <li>Was the container of the right shape?</li>
+          <li>Was there one answer, no answers, or many answers?</li>
+          <li>Was a default silently introduced?</li>
+          <li>Was a duplicate collapsed?</li>
+          <li>Was an operational accident reinterpreted as a semantic fact?</li>
+        </ul>
+        <blockquote>
+          The usual problem is not that a program cannot reach data. It is that, having reached something, it cannot say with precision what that something means.
+        </blockquote>
+        <p>SDA begins from the claim that this is not a peripheral inconvenience. It is the central defect of ad hoc structured-data transformation. If a data language cannot distinguish absence from null, multiplicity from uniqueness, and wrong shape from missing value, then it cannot support dependable reasoning.</p>
+      </section>
+
+      <section id="definition">
+        <h2>What SDA Is</h2>
+        <p>SDA stands for <strong>Structured Data Algebra</strong>. It is a small, formal, pure language for transforming structured data without hidden coercions and without surrendering key semantic distinctions.</p>
+        <div class="two-col">
+          <div class="callout">
+            <h3>What it is</h3>
+            <ul>
+              <li>a transformation language</li>
+              <li>a semantic kernel</li>
+              <li>a precise model of extraction, normalization, and reduction</li>
+              <li>a tool that can be embedded or run standalone</li>
+            </ul>
+          </div>
+          <div class="callout">
+            <h3>What it is not</h3>
+            <ul>
+              <li>not a general scripting runtime</li>
+              <li>not a replacement for host programming in general</li>
+              <li>not a bag of JSON tricks</li>
+              <li>not a workflow engine</li>
+            </ul>
+          </div>
+        </div>
+        <p>One may put the matter plainly: SDA exists only if it yields stronger semantic guarantees than ordinary host-language data munging. Its purpose is certainty.</p>
+      </section>
+
+      <section id="mathematical-shape">
+        <h2>The Mathematical Shape of the Language</h2>
+        <p>At a high level, an SDA program is a pure transformation from a host-supplied input value to a resulting value or an explicit failure condition. One may describe the denotation schematically as:</p>
+        <div class="formula-block">$$\left[\!\left[ e \right]\!\right] : Env \times V \to V \cup F$$</div>
+        <p>Here:</p>
+        <ul>
+          <li>$V$ is the space of SDA values</li>
+          <li>$Env$ is the lexical environment for names</li>
+          <li>$F$ is the family of explicit failure values</li>
+        </ul>
+        <p>The important point is not the notation itself, but what it excludes. There is no ambient I/O in the core meaning. There is no hidden state. There is no host callback smuggled into evaluation. There is no “best effort” reinterpretation that silently mutates the semantic question.</p>
+        <p>Nor is SDA merely a pointwise map over ordinary JSON values. It distinguishes several carriers because those distinctions matter:</p>
+        <div class="formula-block">$$V ::= Null \mid Bool \mid Num \mid Str \mid Seq(V) \mid Set(V) \mid Bag(V) \mid Map(Str, V) \mid Prod(Label, V) \mid \cdots$$</div>
+        <p>Why keep these distinctions? Because different carriers tell different semantic truths:</p>
+        <ul>
+          <li>a sequence says order matters</li>
+          <li>a set says uniqueness matters</li>
+          <li>a bag says multiplicity matters</li>
+          <li>a map says lookup is by key</li>
+          <li>a product says field structure is part of the meaning</li>
+        </ul>
+        <p>A language that erases these too early also erases the very evidence on which later reasoning depends.</p>
+      </section>
+
+      <section id="core-ideas">
+        <h2>Core Ideas</h2>
+        <h3>1. Absence is not null</h3>
+        <p>One of SDA's first commitments is that the absence of a key and the presence of a key whose value is null are not the same condition. Many practical systems collapse these. SDA refuses that collapse because it destroys information.</p>
+
+        <h3>2. Multiplicity is not a nuisance</h3>
+        <p>Duplicate-bearing structures occur constantly in the real world: repeated headers, repeated observations, repeated records, repeated candidate matches. Most everyday tooling either ignores or prematurely normalizes them. SDA keeps multiplicity explicit until the user asks for normalization.</p>
+
+        <h3>3. Failure is semantic, not merely operational</h3>
+        <p>In SDA, failure is not just “the interpreter got upset.” A missing required key, a wrong-shape access, or an illegal normalization condition is part of the defined semantic space. This is why the tool emits named failure values rather than vague host-language accidents.</p>
+
+        <h3>4. Determinism matters</h3>
+        <p>If two conforming implementations of the language can disagree because of host map ordering, incidental parser behavior, or library quirks, then the language is not yet well defined. SDA therefore treats determinism as part of the language contract, not a performance detail.</p>
+
+        <h3>5. Surface convenience must answer to the core</h3>
+        <p>Sugar is acceptable only when its meaning is precise. The point of SDA is not to produce pretty syntax detached from semantic law. The point is to ensure that every surface form desugars to a stable underlying meaning.</p>
+      </section>
+
+      <section id="examples">
+        <h2>How SDA Looks in Practice</h2>
+        <p>The surface language is intentionally small. Here are a few representative patterns.</p>
+
+        <h3>Required projection</h3>
+        <pre>input&lt;"name"&gt;!</pre>
+        <p>This asks for a required `name` entry from the incoming value. If the key is missing, the result is not a vague host error but a defined SDA failure.</p>
+
+        <h3>Optional projection</h3>
+        <pre>input&lt;"name"&gt;?</pre>
+        <p>This asks the softer question: is there such a key, and if so what is its value?</p>
+
+        <h3>Value extraction over a JSON object</h3>
+        <pre>values(input)</pre>
+
+        <h3>Filtering a sequence</h3>
+        <pre>{ x in input | x &gt; 2 }</pre>
+        <p>Conceptually: range over the incoming sequence, keep those elements satisfying the predicate, and preserve the carrier.</p>
+
+        <h3>Projection under a filter</h3>
+        <pre>{ yield x * 10 | x in input | x &gt; 2 }</pre>
+
+        <h3>Piped composition</h3>
+        <pre>input |&gt; values(_) |&gt; count(2, _)</pre>
+        <p>The pipe is explicit. The placeholder is explicit. The language does not pretend that every right-hand side is an implicit host-language function application.</p>
+
+        <h3>Rebuilding structure under explicit success flow</h3>
+        <pre>bindRes(
+  input&lt;"name"&gt;!,
+  name =&gt; bindRes(
+    input&lt;"city"&gt;!,
+    city =&gt; Ok(Map{"person" -&gt; name, "location" -&gt; city})
+  )
+)</pre>
+        <p>What is notable here is not complexity for its own sake. It is that required extraction remains visibly required all the way through the transformation.</p>
+      </section>
+
+      <section>
+        <h2>A Small Piecewise Example</h2>
+        <p>One can think of required keyed access in the standalone profile as obeying a case distinction of the following general sort:</p>
+        <div class="formula-block">$$
+select_{!}(x, k) =
+\begin{cases}
+Ok(v) & \text{if } x \text{ has exactly one value at key } k \\
+Fail(t\_sda\_missing\_key, \text{"missing key"}) & \text{if no such value exists} \\
+Fail(t\_sda\_duplicate\_key, \text{"duplicate key"}) & \text{if strict keyed multiplicity is violated} \\
+Fail(t\_sda\_wrong\_shape, \text{"wrong shape"}) & \text{if } x \text{ is not a lawful keyed carrier}
+\end{cases}
+$$</div>
+        <p>The point is not that every user must think in piecewise functions while using the tool. The point is that a rigorous language ought to admit such a description. If it does not, it is usually because the semantics are being improvised rather than specified.</p>
+      </section>
+
+      <section id="place-in-system">
+        <h2>Where SDA Sits in the Larger System</h2>
+        <p>SDA is not the whole Axiom family. It is the reduction kernel. Its role is to reduce noisy structured input into semantically sharper artefacts. In the larger architecture:</p>
+        <ul>
+          <li><strong>SDA</strong> reduces</li>
+          <li><strong>ENR</strong> expands relationally</li>
+          <li><strong>ENR+</strong> ranks, explains, and resolves enriched candidates</li>
+          <li><strong>Axiom</strong> orchestrates effectful movement between stages</li>
+        </ul>
+        <p>Why isolate reduction in this way? Because data workflows typically alternate between phases of semantic sharpening and phases of semantic expansion. SDA owns the sharpening phase.</p>
+        <div class="formula-block">$$
+raw\ input \; \xrightarrow{SDA} \; artefact\ A \; \xrightarrow{ENR} \; relational\ artefact\ E \; \xrightarrow{SDA} \; artefact\ B
+$$</div>
+        <p>This alternation is architectural, not cosmetic. If extraction, validation, and normalization are not kept semantically honest at the reduction stage, everything built on top becomes less trustworthy.</p>
+      </section>
+
+      <section id="why-now">
+        <h2>Why This Matters Now</h2>
+        <p>Contemporary systems increasingly rely on data assembled from partial observations, loosely governed interfaces, and operationally noisy boundaries. In such environments the central intellectual problem is not “how to parse JSON.” It is how to recover dependable meaning from unreliable evidence.</p>
+        <p>That is why a language like SDA is worth taking seriously. Its ambition is modest in one sense, because it is deliberately small. Yet it is ambitious in the deeper sense, because it insists that the semantics of structured-data work ought to be explicit, deterministic, and testable.</p>
+        <blockquote>
+          The intellectual wager behind SDA is that structure alone is not enough. What matters is whether the transformation language preserves the semantic facts on which one wishes to reason.
+        </blockquote>
+        <p>From that point of view, SDA is best understood neither as a scripting convenience nor as a fashionable domain-specific language. It is a proposal about where precision ought to reside in software systems that live by structured data.</p>
+      </section>
+
+      <section>
+        <h2>How to Read Further</h2>
+        <p>If this document has persuaded you that SDA is worth examining in detail, the most sensible next steps are:</p>
+        <ol>
+          <li>the approachable [USER_MANUAL.md](USER_MANUAL.md) for practical use</li>
+          <li>the [CHEATSHEET.md](CHEATSHEET.md) for working memory</li>
+          <li>the [FOR_JQ_USERS.md](FOR_JQ_USERS.md) note if your prior intuition comes from `jq`</li>
+          <li>the formal [SDA_SPEC.md](SDA_SPEC.md) once you want exact laws, boundaries, and conformance requirements</li>
+        </ol>
+        <p class="small">MathJax is loaded from a CDN in this document so that mathematical notation renders cleanly in ordinary browsers.</p>
+      </section>
+    </main>
+
+    <footer>
+      SDA introduction document for the Axiom repository. For the normative contract, read the formal specification.
+    </footer>
+  </div>
+</body>
+</html>
