@@ -239,5 +239,3 @@ fn sync_dir_best_effort(path: &std::path::Path) {
         let _ = path;
     }
 }
-
-

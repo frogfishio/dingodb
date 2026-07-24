@@ -33,7 +33,12 @@ pub fn examine_bytes(
         materialize_payloads: limits.materialize_payloads,
         store_id: None,
     };
-    examine_sources(&[(source.to_string(), bytes.to_vec())], safety, &limits, &opts)
+    examine_sources(
+        &[(source.to_string(), bytes.to_vec())],
+        safety,
+        &limits,
+        &opts,
+    )
 }
 
 /// Project and order units from pre-loaded sources.
@@ -145,14 +150,13 @@ mod tests {
     fn examine_clean_store_has_verified_events() {
         let dir = tempdir().unwrap();
         let mut store = Store::create(dir.path()).unwrap();
-        store
-            .put("alpha", b"A", DurabilityMode::Durable)
-            .unwrap();
+        store.put("alpha", b"A", DurabilityMode::Durable).unwrap();
         let page = examine_store(&store, ExamineLimits::default()).unwrap();
         assert!(page.complete);
-        assert!(page.units.iter().any(|u| {
-            u.unit_kind == "event" && u.status == "verified-complete"
-        }));
+        assert!(page
+            .units
+            .iter()
+            .any(|u| { u.unit_kind == "event" && u.status == "verified-complete" }));
     }
 
     #[test]

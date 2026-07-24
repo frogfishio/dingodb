@@ -74,6 +74,44 @@ fn incomplete_tail_does_not_poison_earlier_frames() {
 }
 
 #[test]
+fn salvage_to_new_path_is_non_destructive() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src");
+    let dst = dir.path().join("dst");
+    {
+        let mut store = Store::create(&src).unwrap();
+        store
+            .put("keep", b"alive", DurabilityMode::Durable)
+            .unwrap();
+        store.put("gone", b"x", DurabilityMode::Durable).unwrap();
+        store.delete("gone", DurabilityMode::Durable).unwrap();
+    }
+    let active_meta = fs::metadata(src.join("active").join("active.dingo"))
+        .unwrap()
+        .modified()
+        .unwrap();
+
+    let src_store = Store::open_inspect(&src).unwrap();
+    let report = src_store.salvage_to(&dst).unwrap();
+    assert_eq!(report.subjects_copied, 1);
+    assert_eq!(report.source.live_subjects, 1);
+
+    // Source active segment mtime unchanged.
+    let after = fs::metadata(src.join("active").join("active.dingo"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    assert_eq!(active_meta, after);
+
+    let recovered = Store::open(&dst).unwrap();
+    assert_eq!(
+        recovered.get("keep").unwrap().as_deref(),
+        Some(b"alive".as_slice())
+    );
+    assert!(recovered.get("gone").unwrap().is_none());
+}
+
+#[test]
 fn rebuild_index_matches_get() {
     let dir = tempdir().unwrap();
     let mut store = Store::create(dir.path()).unwrap();

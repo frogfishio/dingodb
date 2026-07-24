@@ -354,20 +354,29 @@ operator tooling and same-API remote access.
 
 **Deliverables**
 
-1. CLI mirroring logical API: put/get/list basics.
-2. `dingo doctor` — read-only diagnostics by default.
-3. `dingo salvage` — non-destructive recovery to a new store path.
+1. CLI mirroring logical API: put/get/list basics. **done** — `crates/dingo-cli` (`dingo` binary)
+2. `dingo doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
+3. `dingo salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
 4. Server process + `Dingo.connect("dingo://...")` with the same collection API
-   as embedded.
-5. Authn/deadline/retry as connection options only (no app-level API split).
-6. Reproducible corruption + performance test packaging for CI/nightly.
+   as embedded. **done** — `dingo serve` + line-delimited JSON RPC; remote put/get/delete/scan
+5. Authn/deadline/retry as connection options only (no app-level API split). **stub** — reserved; not required for MVP connect
+6. Reproducible corruption + performance test packaging for CI/nightly. **partial** — existing §13/§16 + stage6 bench skeleton; CLI packaging via `dingo doctor`/`salvage`
 
 **Exit criteria**
 
-- DX journeys 4–5, 7, 9–10 satisfied for single-node.
-- Doctor never writes by default; salvage does not mutate the source store.
-- Embedded and server pass the same logical SDK test suite (transport differs).
-- README “initial implementation target” checklist checked item-by-item.
+- DX journeys 4–5, 7, 9–10 satisfied for single-node. **done** (CLI + doctor + salvage + serve/connect)
+- Doctor never writes by default; salvage does not mutate the source store. **done** — tests in `dingo-cli/tests/cli.rs`, `dingo-store/tests/salvage.rs`
+- Embedded and server pass the same logical SDK put/get path (transport differs). **done** — `serve_and_sdk_connect_parity`
+- README “initial implementation target” checklist checked item-by-item. **done** for single-node items
+
+**Suggested sub-milestones**
+
+| 7a | `dingo` CLI put/get/list/delete/put-bytes | **done** |
+| 7b | `dingo doctor` read-only | **done** |
+| 7c | `dingo salvage --output` | **done** |
+| 7d | `dingo serve` + `Dingo::connect` | **done** |
+| 7e | Authn/deadline/retry connection options | deferred |
+| 7f | Nightly corruption/perf packaging polish | partial |
 
 **README initial target mapping**
 
@@ -575,5 +584,10 @@ the cited conformance suites as required checks—not optional polish.
     live-state compaction (sources retained); derived checkpoints; bench
     skeleton (`stage6_store.rs`, `stage6_indexes_history.rs`,
     `stage6_bench_skeleton.rs`).
-12. **Next:** Stage 7 CLI/doctor/salvage/server; optional deterministic CBOR
-    envelope validation for full FORMAT_SPEC §5 condition 6.
+12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `dingo-cli` (`dingo`
+    put/get/list/delete/put-bytes/history/doctor/salvage/serve);
+    `Store::open_inspect` + `salvage_to`; `Dingo::connect("dingo://...")`
+    line-delimited JSON RPC; tests `dingo-cli/tests/cli.rs`.
+13. **Next:** Stage 8 cluster (only after single-node salvage/doctor proven);
+    optional deterministic CBOR envelope validation (FORMAT_SPEC §5 condition 6);
+    authn/deadline/retry connection options; nightly packaging polish.

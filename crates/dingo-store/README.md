@@ -2,21 +2,23 @@
 
 Single-node authoritative store for DingoDB: filesystem-backed append-only
 segments, put/get/delete by subject, durability modes, catalog-independent
-recovery, and Stage 6 derived state (catalogs, secondary indexes, chunks,
-history, compaction, checkpoints).
+recovery, Stage 6 derived state (catalogs, secondary indexes, chunks, history,
+compaction, checkpoints), and Stage 7 inspect/salvage-to-path helpers.
 
 Normative sources: repository root [`OVERVIEW.md`](../../OVERVIEW.md) §§5–7, §13;
 [`FORMAT_SPEC.md`](../../FORMAT_SPEC.md); [`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md)
-Stages 3 and 6.
+Stages 3, 6, and 7.
 
 ## Status
 
-**Stages 3a–3c + 6** — open/create, put/get/delete, durability modes (`memory`,
-`buffered`, `durable`), rebuildable primary index, salvage after catalog wipe,
-OVERVIEW §16 store-level destructive suite, framed store descriptor, optional
-on-disk primary index cache, collection catalog, secondary index files, subject
-history, chunked payloads with partial maps, live-state compaction (sources
-retained), derived checkpoints, benchmark skeleton.
+**Stages 3a–3c + 6 + 7** — open/create, put/get/delete, durability modes
+(`memory`, `buffered`, `durable`), rebuildable primary index, salvage after
+catalog wipe, OVERVIEW §16 store-level destructive suite, framed store
+descriptor, optional on-disk primary index cache, collection catalog, secondary
+index files, subject history, chunked payloads with partial maps, live-state
+compaction (sources retained), derived checkpoints, benchmark skeleton,
+`open_inspect` (read-only open for doctor), and `salvage_to` (non-destructive
+materialisation into a new store path).
 
 Envelope bytes use a **draft fixed layout** (not yet deterministic CBOR).
 
@@ -42,12 +44,14 @@ the store rebuilds current state by scanning `active/` + `segments/`.
 | API | Role |
 |-----|------|
 | `Store::open` / `Store::create` | Create-or-open on a directory path |
+| `Store::open_inspect` | Read-only open (no writer, no derived writes) |
 | `put` / `get` / `delete` | Subject-keyed current-state operations |
 | `get_payload` | Completeness-aware read (`PayloadResult`) |
 | `history` | Per-subject event stream |
 | `WriteReceipt` | Event identity + acknowledged durability mode |
 | `DurabilityMode` | `Memory`, `Buffered`, `Durable` |
 | `rebuild_index` / `salvage` | Catalog-free scan of all segment files |
+| `salvage_to` | Non-destructive copy of live subjects to a new path |
 | `rebuild_catalogs` / `list_collections` | Derived collection catalog |
 | `compact_live` | Live projection into a new segment (sources retained) |
 | `checkpoint` | Derived snapshot with declared coverage |
@@ -59,7 +63,7 @@ the store rebuilds current state by scanning `active/` + `segments/`.
 
 - Collection JSON DX (Stage 4/6 — see `dingo-sdk`)
 - SDA examination projection (Stage 5 — see `dingo-examine`)
-- Network / CLI doctor (Stage 7)
+- CLI binary (Stage 7 — see `dingo-cli`)
 - Full deterministic-CBOR envelopes
 - `replicated` durability
 

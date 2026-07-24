@@ -1,11 +1,11 @@
 //! Map salvage scan regions → ExaminationUnit (SDA_PROFILE + FORMAT_SPEC §7).
 
 use crate::unit::{
-    EnvelopeEntry, EnvelopeValue, ExaminationUnit, IntegrityEvidence, PayloadInfo, PhysicalLocation,
-    ProvenanceEntry,
+    EnvelopeEntry, EnvelopeValue, ExaminationUnit, IntegrityEvidence, PayloadInfo,
+    PhysicalLocation, ProvenanceEntry,
 };
 use dingo_format::{
-    DecodedFrame, FrameKind, FrameVerifyError, HoleReason, ScanRegion, SafetyLimits, scan_forward,
+    scan_forward, DecodedFrame, FrameKind, FrameVerifyError, HoleReason, SafetyLimits, ScanRegion,
 };
 use dingo_store::{decode_item_envelope, hex16, EventKind};
 
@@ -36,11 +36,7 @@ impl Default for ProjectOptions {
 /// Project a single scan region into zero or more examination units.
 ///
 /// Holes become one unit each. Verified frames become one unit each.
-pub fn project_region(
-    source: &str,
-    region: &ScanRegion,
-    opts: &ProjectOptions,
-) -> ExaminationUnit {
+pub fn project_region(source: &str, region: &ScanRegion, opts: &ProjectOptions) -> ExaminationUnit {
     match region {
         ScanRegion::VerifiedFrame { range, frame } => {
             project_verified_frame(source, range.start, range.len(), frame, opts)
@@ -88,9 +84,9 @@ fn project_verified_frame(
     }];
 
     match frame.header.known_kind() {
-        Some(FrameKind::ItemEvent) => {
-            project_item_event(source, physical, integrity, event_id, frame, opts, provenance)
-        }
+        Some(FrameKind::ItemEvent) => project_item_event(
+            source, physical, integrity, event_id, frame, opts, provenance,
+        ),
         Some(kind) => ExaminationUnit {
             unit_kind: "structural-frame".into(),
             status: "verified-complete".into(),
@@ -284,10 +280,7 @@ fn project_hole(
         },
         EnvelopeEntry {
             key: "affects".into(),
-            value: EnvelopeValue::StrSet(vec![
-                "payload".into(),
-                "state-completeness".into(),
-            ]),
+            value: EnvelopeValue::StrSet(vec!["payload".into(), "state-completeness".into()]),
         },
     ];
     ExaminationUnit {
@@ -335,9 +328,7 @@ fn map_hole_reason(reason: &HoleReason) -> (&'static str, &'static str, &'static
                 | FrameVerifyError::FrameLenMismatch { .. }
                 | FrameVerifyError::HeaderPayloadMismatch
                 | FrameVerifyError::ReservedNonZero
-                | FrameVerifyError::TrailingBytes { .. } => {
-                    ("invalid-framing", "known", "corrupt")
-                }
+                | FrameVerifyError::TrailingBytes { .. } => ("invalid-framing", "known", "corrupt"),
                 FrameVerifyError::UnsupportedWireMajor(_) => {
                     ("unsupported-format", "known", "format-unsupported")
                 }
@@ -391,15 +382,23 @@ mod tests {
             body: body.to_vec(),
         };
         let bytes = encode_frame(&parts).unwrap();
-        let units = project_bytes("seg.dingo", &bytes, SafetyLimits::default(), &ProjectOptions {
-            materialize_payloads: true,
-            store_id: Some([1u8; 16]),
-        });
+        let units = project_bytes(
+            "seg.dingo",
+            &bytes,
+            SafetyLimits::default(),
+            &ProjectOptions {
+                materialize_payloads: true,
+                store_id: Some([1u8; 16]),
+            },
+        );
         assert_eq!(units.len(), 1);
         assert_eq!(units[0].unit_kind, "event");
         assert_eq!(units[0].status, "verified-complete");
         assert_eq!(units[0].payload.availability, "complete");
-        assert_eq!(units[0].payload.value.as_deref(), Some(b"payload".as_slice()));
+        assert_eq!(
+            units[0].payload.value.as_deref(),
+            Some(b"payload".as_slice())
+        );
     }
 
     #[test]

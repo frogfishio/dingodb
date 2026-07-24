@@ -1,8 +1,6 @@
 //! Filesystem-backed append store (OVERVIEW §§6–7, Stage 6).
 
-use crate::catalog::{
-    rebuild_collection_catalog, try_load_collection_catalog, CollectionCatalog,
-};
+use crate::catalog::{rebuild_collection_catalog, try_load_collection_catalog, CollectionCatalog};
 use crate::chunk_payload::{
     decode_chunk_manifest, decode_piece_body, encode_chunk_manifest, encode_piece_body,
     is_chunk_manifest, manifest_from_pieces, reassemble_with_manifest, split_into_pieces,
@@ -76,6 +74,17 @@ pub struct SalvageReport {
     pub holes: u64,
     /// Live subjects after applying events in file order.
     pub live_subjects: usize,
+}
+
+/// Result of non-destructive salvage into a new store path (Stage 7).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SalvageCopyReport {
+    /// Scan summary of the **source** store (source is never mutated).
+    pub source: SalvageReport,
+    /// Destination store root that received recovered live subjects.
+    pub destination: PathBuf,
+    /// Number of live subjects written into the destination.
+    pub subjects_copied: usize,
 }
 
 /// Open single-node store handle.
@@ -202,6 +211,62 @@ impl Store {
         Ok(store)
     }
 
+    /// Open an **existing** store for read-only inspection (Stage 7 doctor).
+    ///
+    /// Never creates a store, never opens the active segment for append, and
+    /// never persists derived catalogs/indexes. Primary index and collection
+    /// catalog are rebuilt in memory from authoritative segment bytes when
+    /// needed. Suitable for `dingo doctor` (DX_SPEC §13.3).
+    pub fn open_inspect(path: impl AsRef<Path>) -> Result<Self, StoreError> {
+        let root = path.as_ref();
+        let paths = StorePaths::new(root);
+        if !paths.looks_like_store() {
+            return Err(StoreError::NotAStore(root.to_path_buf()));
+        }
+
+        let store_id = read_store_id(&paths)?;
+        let meta = fs::read_to_string(paths.meta_file()).unwrap_or_default();
+        if !meta.starts_with("dingo-store-") {
+            return Err(StoreError::CorruptMeta("unexpected meta version"));
+        }
+        verify_store_descriptor_if_present(&paths, store_id)?;
+
+        let mut store = Self {
+            paths,
+            store_id,
+            limits: SafetyLimits::default(),
+            index: PrimaryIndex::new(),
+            active: None,
+            segment_seq: 0,
+            seal_threshold: DEFAULT_SEAL_THRESHOLD,
+            event_counter: 0,
+            chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
+            chunk_size: DEFAULT_CHUNK_SIZE,
+            collection_catalog: CollectionCatalog::new(),
+        };
+        // Memory-only index: prefer valid cache, else rebuild without writing.
+        let seg_paths = all_segment_paths(&store.paths)?;
+        let fp = segment_fingerprint(&seg_paths)?;
+        let cache_path = primary_cache_path(&store.paths.indexes_dir());
+        if let Some(index) = try_load_primary_index(&cache_path, store.store_id, fp)? {
+            store.index = index;
+            let sealed = list_dingo_files(&store.paths.segments_dir())?;
+            store.segment_seq = max_segment_seq_from_paths(&seg_paths).max(sealed.len() as u64);
+        } else {
+            store.rebuild_index_from_segments()?;
+        }
+        // Catalog: load if valid, else rebuild in memory only (no write).
+        let cat_path = crate::catalog::collections_catalog_path(&store.paths.catalogs_dir());
+        if let Some(cat) = try_load_collection_catalog(&cat_path, store.store_id, fp)? {
+            store.collection_catalog = cat;
+        } else {
+            store.collection_catalog =
+                rebuild_collection_catalog(&store.paths, store.store_id, &store.index, fp)?;
+        }
+        // Intentionally no resume_or_start_active — no writer handle.
+        Ok(store)
+    }
+
     /// Store root path.
     pub fn path(&self) -> &Path {
         &self.paths.root
@@ -239,11 +304,7 @@ impl Store {
     /// [`Self::get_payload`].
     pub fn live_logical_entries(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
         let mut out = Vec::new();
-        let subjects: Vec<Vec<u8>> = self
-            .index
-            .live_entries()
-            .map(|(k, _)| k.clone())
-            .collect();
+        let subjects: Vec<Vec<u8>> = self.index.live_entries().map(|(k, _)| k.clone()).collect();
         for subject in subjects {
             let subject_str = match std::str::from_utf8(&subject) {
                 Ok(s) => s,
@@ -441,11 +502,7 @@ impl Store {
 
     /// Persist a secondary index file (derived only).
     pub fn write_secondary_index(&self, index: &SecondaryIndex) -> Result<PathBuf, StoreError> {
-        let path = secondary_index_path(
-            &self.paths,
-            &index.meta.collection,
-            &index.meta.name,
-        );
+        let path = secondary_index_path(&self.paths, &index.meta.collection, &index.meta.name);
         write_secondary_index(&path, self.store_id, index)?;
         Ok(path)
     }
@@ -573,6 +630,37 @@ impl Store {
             item_events,
             holes,
             live_subjects: temp_index.live_entries().count(),
+        })
+    }
+
+    /// Non-destructive salvage into a **new** store directory (DX_SPEC §13.4).
+    ///
+    /// The source store is never mutated. Destination must not already be a
+    /// store (same rules as [`Store::create`]). Live logical payloads are
+    /// re-appended as durable puts into the destination (new store id /
+    /// event lineage — this is recovery materialization, not byte-identical
+    /// segment copy).
+    pub fn salvage_to(&self, dest: impl AsRef<Path>) -> Result<SalvageCopyReport, StoreError> {
+        let dest = dest.as_ref();
+        let source = self.salvage()?;
+        let live = self.live_logical_entries()?;
+        let mut dest_store = Store::create(dest)?;
+        let mut subjects_copied = 0usize;
+        for (subject, body) in live {
+            let subject_str = std::str::from_utf8(&subject).map_err(|_| {
+                StoreError::BadEnvelope("non-utf8 subject cannot be materialised via put")
+            })?;
+            dest_store.put(subject_str, &body, DurabilityMode::Durable)?;
+            subjects_copied += 1;
+        }
+        // Best-effort seal so destination is fully self-describing on disk.
+        let _ = dest_store.seal_active();
+        let _ = dest_store.persist_index_cache();
+        let _ = dest_store.rebuild_catalogs();
+        Ok(SalvageCopyReport {
+            source,
+            destination: dest.to_path_buf(),
+            subjects_copied,
         })
     }
 

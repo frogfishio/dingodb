@@ -135,9 +135,11 @@ pub fn decode_chunk_manifest(body: &[u8]) -> Option<ChunkManifest> {
         return None;
     }
     let content_hash: [u8; BODY_HASH_LEN] = body[8..8 + BODY_HASH_LEN].try_into().ok()?;
-    let total = u32::from_le_bytes(body[8 + BODY_HASH_LEN..8 + BODY_HASH_LEN + 4]
-        .try_into()
-        .ok()?) as usize;
+    let total = u32::from_le_bytes(
+        body[8 + BODY_HASH_LEN..8 + BODY_HASH_LEN + 4]
+            .try_into()
+            .ok()?,
+    ) as usize;
     let logical_total_len = u64::from_le_bytes(
         body[8 + BODY_HASH_LEN + 4..8 + BODY_HASH_LEN + 4 + 8]
             .try_into()
@@ -237,10 +239,7 @@ pub fn decode_piece_body(body: &[u8]) -> Option<ChunkPiece> {
 }
 
 /// Reassemble using the manifest and discovered pieces (FORMAT_SPEC §8).
-pub fn reassemble_with_manifest(
-    manifest: &ChunkManifest,
-    pieces: &[ChunkPiece],
-) -> PayloadResult {
+pub fn reassemble_with_manifest(manifest: &ChunkManifest, pieces: &[ChunkPiece]) -> PayloadResult {
     if pieces.is_empty() {
         return PayloadResult::Unavailable {
             content_hash: manifest.content_hash,
@@ -250,10 +249,7 @@ pub fn reassemble_with_manifest(
     match reassemble_chunks(pieces, Some(manifest.content_hash)) {
         ReassemblyState::Complete { body, .. } => PayloadResult::Complete { body },
         ReassemblyState::Partial { extents, missing } => {
-            let present_bodies: Vec<_> = pieces
-                .iter()
-                .map(|p| (p.index, p.body.clone()))
-                .collect();
+            let present_bodies: Vec<_> = pieces.iter().map(|p| (p.index, p.body.clone())).collect();
             PayloadResult::Partial {
                 extents,
                 missing,
@@ -304,7 +300,9 @@ mod tests {
         // Drop middle chunk.
         let surviving = vec![pieces[0].clone(), pieces[2].clone()];
         match reassemble_with_manifest(&man, &surviving) {
-            PayloadResult::Partial { missing, extents, .. } => {
+            PayloadResult::Partial {
+                missing, extents, ..
+            } => {
                 assert_eq!(missing, vec![1]);
                 assert_eq!(extents.len(), 3);
                 assert!(extents[0].present);

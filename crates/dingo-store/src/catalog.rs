@@ -122,7 +122,11 @@ pub fn rebuild_collection_catalog(
     Ok(catalog)
 }
 
-fn encode_catalog(store_id: [u8; 16], fingerprint: [u8; 32], catalog: &CollectionCatalog) -> Vec<u8> {
+fn encode_catalog(
+    store_id: [u8; 16],
+    fingerprint: [u8; 32],
+    catalog: &CollectionCatalog,
+) -> Vec<u8> {
     let names: Vec<_> = catalog.names().collect();
     let mut out = Vec::with_capacity(8 + 4 + 16 + 32 + 4 + names.len() * 32);
     out.extend_from_slice(MAGIC);
@@ -230,9 +234,6 @@ mod tests {
         s.extend_from_slice(&5u16.to_le_bytes());
         s.extend_from_slice(b"users");
         s.extend_from_slice(b"u1");
-        assert_eq!(
-            collection_name_from_subject(&s).as_deref(),
-            Some("users")
-        );
+        assert_eq!(collection_name_from_subject(&s).as_deref(), Some("users"));
     }
 }

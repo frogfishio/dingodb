@@ -47,7 +47,7 @@ fn create_or_open_and_reopen_persists() {
             .unwrap();
     }
     let mut db = Dingo::open(&path).unwrap();
-    let users = db.collection("users").unwrap();
+    let mut users = db.collection("users").unwrap();
     assert_eq!(users.get("u1").unwrap().unwrap()["n"], 1);
 }
 
@@ -143,7 +143,7 @@ fn scan_keys_and_json() {
         .put("a", &json!(true))
         .unwrap();
 
-    let users = db.collection("users").unwrap();
+    let mut users = db.collection("users").unwrap();
     assert_eq!(users.scan_keys().unwrap(), vec!["a", "c"]);
     let rows = users.scan_json().unwrap();
     assert_eq!(rows.len(), 2);
@@ -165,7 +165,7 @@ fn memory_mode_not_visible_after_reopen() {
         assert!(c.get("mem").unwrap().is_some());
     }
     let mut db = Dingo::open(&path).unwrap();
-    let c = db.collection("t").unwrap();
+    let mut c = db.collection("t").unwrap();
     assert_eq!(c.get("disk").unwrap().unwrap(), json!(1));
     assert!(c.get("mem").unwrap().is_none());
 }
@@ -230,7 +230,7 @@ fn find_object_filter_and_builder() {
             .unwrap();
     }
 
-    let users = db.collection("users").unwrap();
+    let mut users = db.collection("users").unwrap();
 
     // DX_SPEC §7.1 object filter
     let rows = users
@@ -272,9 +272,7 @@ fn find_object_filter_and_builder() {
     let rows = users
         .find_with(
             &Filter::field("status").eq("active"),
-            QueryOptions::new()
-                .order_by("age", SortOrder::Asc)
-                .limit(2),
+            QueryOptions::new().order_by("age", SortOrder::Asc).limit(2),
         )
         .unwrap();
     assert_eq!(rows[0].0, "b"); // 17
@@ -291,7 +289,7 @@ fn scan_json_iter_streams() {
             c.put(&format!("k{i:02}"), &json!({"i": i})).unwrap();
         }
     }
-    let c = db.collection("docs").unwrap();
+    let mut c = db.collection("docs").unwrap();
     let mut n = 0;
     for row in c.scan_json_iter().unwrap() {
         let (k, v) = row.unwrap();

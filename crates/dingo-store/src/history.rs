@@ -5,8 +5,8 @@
 
 use crate::envelope::EventKind;
 use crate::error::StoreError;
-use crate::store::{collect_item_events_pub, cmp_disk_events_pub, DiskEventPub};
 use crate::layout::StorePaths;
+use crate::store::{cmp_disk_events_pub, collect_item_events_pub, DiskEventPub};
 use dingo_format::SafetyLimits;
 use std::collections::HashSet;
 

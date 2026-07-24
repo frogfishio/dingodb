@@ -23,12 +23,8 @@ use tempfile::tempdir;
 fn clean_store_verified_islands_via_sda() {
     let dir = tempdir().unwrap();
     let mut store = Store::create(dir.path()).unwrap();
-    store
-        .put("early", b"one", DurabilityMode::Durable)
-        .unwrap();
-    store
-        .put("late", b"two", DurabilityMode::Durable)
-        .unwrap();
+    store.put("early", b"one", DurabilityMode::Durable).unwrap();
+    store.put("late", b"two", DurabilityMode::Durable).unwrap();
 
     let page = examine_store(&store, ExamineLimits::default()).unwrap();
     assert!(page.complete, "unbounded exam should be complete");
@@ -48,9 +44,7 @@ fn clean_store_verified_islands_via_sda() {
     // Profile fixed field set on every unit.
     for u in &page.units {
         let json = u.to_json();
-        let fields = json
-            .get("$fields")
-            .expect("ExaminationUnit JSON is a prod");
+        let fields = json.get("$fields").expect("ExaminationUnit JSON is a prod");
         for key in [
             "unit_kind",
             "status",
@@ -90,13 +84,9 @@ fn damaged_segment_sda_finds_islands_and_holes() {
     let path = dir.path().to_path_buf();
     {
         let mut store = Store::create(&path).unwrap();
-        store
-            .put("early", b"1", DurabilityMode::Durable)
-            .unwrap();
+        store.put("early", b"1", DurabilityMode::Durable).unwrap();
         store.seal_active().unwrap();
-        store
-            .put("late", b"2", DurabilityMode::Durable)
-            .unwrap();
+        store.put("late", b"2", DurabilityMode::Durable).unwrap();
     }
 
     // Corrupt middle of the sealed segment (OVERVIEW §16 / Stage 3 salvage style).
@@ -125,11 +115,7 @@ fn damaged_segment_sda_finds_islands_and_holes() {
     let islands = filter_verified_complete(&page.units).unwrap();
 
     // SDA filter: verified islands only.
-    let sda_islands = filter_units(
-        &page.units,
-        r#"input<status> = "verified-complete""#,
-    )
-    .unwrap();
+    let sda_islands = filter_units(&page.units, r#"input<status> = "verified-complete""#).unwrap();
     assert_eq!(sda_islands.len(), islands.len());
 
     // SDA filter: holes only.

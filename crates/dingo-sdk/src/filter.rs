@@ -137,9 +137,7 @@ impl Filter {
 
     /// Start a field predicate builder: `Filter::field("status").eq("active")`.
     pub fn field(path: impl Into<String>) -> FieldBuilder {
-        FieldBuilder {
-            path: path.into(),
-        }
+        FieldBuilder { path: path.into() }
     }
 
     /// Conjunction of filters (empty ⇒ always true).
@@ -307,14 +305,14 @@ impl FieldBuilder {
 ///     .limit(100)
 ///     .collect()?;
 /// ```
-pub struct QueryBuilder<'a> {
-    pub(crate) collection: &'a crate::collection::Collection<'a>,
+pub struct QueryBuilder<'c, 'a> {
+    pub(crate) collection: &'c mut crate::collection::Collection<'a>,
     filters: Vec<Filter>,
     options: QueryOptions,
 }
 
-impl<'a> QueryBuilder<'a> {
-    pub(crate) fn new(collection: &'a crate::collection::Collection<'a>) -> Self {
+impl<'c, 'a> QueryBuilder<'c, 'a> {
+    pub(crate) fn new(collection: &'c mut crate::collection::Collection<'a>) -> Self {
         Self {
             collection,
             filters: Vec::new(),
@@ -498,9 +496,7 @@ fn parse_filter(value: &JsonValue) -> Result<Filter, Error> {
             }
             Ok(Filter::and(parts))
         }
-        _ => Err(Error::QueryInvalid(
-            "filter must be a JSON object".into(),
-        )),
+        _ => Err(Error::QueryInvalid("filter must be a JSON object".into())),
     }
 }
 
@@ -545,21 +541,21 @@ fn parse_field_pred(path: &str, value: &JsonValue) -> Result<Filter, Error> {
             "$gt" => Pred::Gt(rhs.clone()),
             "$gte" => Pred::Gte(rhs.clone()),
             "$in" => {
-                let arr = rhs.as_array().ok_or_else(|| {
-                    Error::QueryInvalid("$in expects an array".into())
-                })?;
+                let arr = rhs
+                    .as_array()
+                    .ok_or_else(|| Error::QueryInvalid("$in expects an array".into()))?;
                 Pred::In(arr.clone())
             }
             "$exists" => {
-                let b = rhs.as_bool().ok_or_else(|| {
-                    Error::QueryInvalid("$exists expects a boolean".into())
-                })?;
+                let b = rhs
+                    .as_bool()
+                    .ok_or_else(|| Error::QueryInvalid("$exists expects a boolean".into()))?;
                 Pred::Exists(b)
             }
             "$prefix" => {
-                let s = rhs.as_str().ok_or_else(|| {
-                    Error::QueryInvalid("$prefix expects a string".into())
-                })?;
+                let s = rhs
+                    .as_str()
+                    .ok_or_else(|| Error::QueryInvalid("$prefix expects a string".into()))?;
                 Pred::Prefix(s.to_string())
             }
             "$contains" => Pred::Contains(rhs.clone()),

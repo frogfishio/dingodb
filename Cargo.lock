@@ -177,6 +177,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dingo-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dingo-examine",
+ "dingo-sdk",
+ "dingo-store",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "dingo-examine"
 version = "0.1.0"
 dependencies = [

@@ -419,12 +419,7 @@ pub fn encode_store_descriptor_frame(
     let body = encode_store_descriptor_body(store_id, created_ns);
     let mut event_id = [0u8; 16];
     event_id.copy_from_slice(&store_id);
-    let header = FrameHeader::new_draft(
-        FrameKind::StoreDescriptor,
-        0,
-        body.len() as u64,
-        event_id,
-    );
+    let header = FrameHeader::new_draft(FrameKind::StoreDescriptor, 0, body.len() as u64, event_id);
     encode_frame(&FrameParts {
         header,
         envelope: Vec::new(),

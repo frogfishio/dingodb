@@ -47,4 +47,4 @@ pub use secondary::{
     try_load_secondary_index, write_secondary_index, IndexState, SecondaryIndex,
     SecondaryIndexMeta,
 };
-pub use store::{SalvageReport, Store, WriteReceipt};
+pub use store::{SalvageCopyReport, SalvageReport, Store, WriteReceipt};

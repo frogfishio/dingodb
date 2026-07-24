@@ -169,7 +169,10 @@ impl SecondaryIndex {
 
 /// Directory for secondary indexes of one collection.
 pub fn secondary_index_dir(paths: &StorePaths, collection: &str) -> PathBuf {
-    paths.indexes_dir().join("sec").join(sanitize_name(collection))
+    paths
+        .indexes_dir()
+        .join("sec")
+        .join(sanitize_name(collection))
 }
 
 /// Path for one secondary index file.
@@ -190,7 +193,11 @@ fn sanitize_name(name: &str) -> String {
 }
 
 /// Persist a secondary index (atomic replace).
-pub fn write_secondary_index(path: &Path, store_id: [u8; 16], index: &SecondaryIndex) -> Result<(), StoreError> {
+pub fn write_secondary_index(
+    path: &Path,
+    store_id: [u8; 16],
+    index: &SecondaryIndex,
+) -> Result<(), StoreError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -217,7 +224,10 @@ pub fn try_load_secondary_index(
 }
 
 /// List secondary index files under a collection's sec directory.
-pub fn list_secondary_index_paths(paths: &StorePaths, collection: &str) -> Result<Vec<PathBuf>, StoreError> {
+pub fn list_secondary_index_paths(
+    paths: &StorePaths,
+    collection: &str,
+) -> Result<Vec<PathBuf>, StoreError> {
     let dir = secondary_index_dir(paths, collection);
     if !dir.exists() {
         return Ok(Vec::new());

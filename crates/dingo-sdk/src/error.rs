@@ -117,14 +117,46 @@ pub enum Error {
     /// Coverage incomplete; absence cannot be proven.
     #[error("coverage incomplete: {0}")]
     CoverageIncomplete(String),
+
+    /// Validation failure with a dynamic message (URLs, options).
+    #[error("validation failed: {0}")]
+    ValidationMsg(String),
+
+    /// Remote server returned an error.
+    #[error("remote error ({code}): {message}")]
+    Remote {
+        /// Stable code from the server when available.
+        code: String,
+        /// Human-readable message.
+        message: String,
+    },
+
+    /// Feature not available on remote connections (indexes/history/etc.).
+    #[error("not available over remote connection: {0}")]
+    RemoteUnsupported(&'static str),
+
+    /// Internal SDK failure.
+    #[error("internal: {0}")]
+    Internal(String),
+
+    /// Direct IO failure (remote sockets, CLI paths).
+    #[error("io: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 impl Error {
+    /// Wrap an IO error (remote transport).
+    pub fn from_io(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+
     /// Stable machine code (DX_SPEC §15). Prefer this over parsing [`Display`].
     pub fn code(&self) -> ErrorCode {
         match self {
             Self::Store(e) => map_store(e),
-            Self::InvalidCollectionName(_) | Self::InvalidKey(_) => ErrorCode::ValidationFailed,
+            Self::InvalidCollectionName(_) | Self::InvalidKey(_) | Self::ValidationMsg(_) => {
+                ErrorCode::ValidationFailed
+            }
             Self::InvalidJson(_) => ErrorCode::DataDamaged,
             Self::TypeMismatch { .. } => ErrorCode::TypeMismatch,
             Self::BadPayload => ErrorCode::DataDamaged,
@@ -133,6 +165,10 @@ impl Error {
             Self::QueryBudgetRequired(_) => ErrorCode::QueryBudgetRequired,
             Self::PayloadPartial => ErrorCode::PayloadPartial,
             Self::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
+            Self::Remote { .. } => ErrorCode::Internal,
+            Self::RemoteUnsupported(_) => ErrorCode::FormatUnsupported,
+            Self::Internal(_) => ErrorCode::Internal,
+            Self::Io(_) => ErrorCode::Io,
         }
     }
 

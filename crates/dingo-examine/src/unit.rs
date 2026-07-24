@@ -210,20 +210,25 @@ impl ExaminationUnit {
             ("payload".into(), payload_to_value(&self.payload)),
             (
                 "holes".into(),
-                Value::Seq(self.holes.iter().map(ExaminationUnit::to_sda_value).collect()),
-            ),
-            (
-                "provenance".into(),
                 Value::Seq(
-                    self.provenance
+                    self.holes
                         .iter()
-                        .map(provenance_to_value)
+                        .map(ExaminationUnit::to_sda_value)
                         .collect(),
                 ),
             ),
             (
+                "provenance".into(),
+                Value::Seq(self.provenance.iter().map(provenance_to_value).collect()),
+            ),
+            (
                 "uncertainty".into(),
-                Value::Set(self.uncertainty.iter().map(|s| Value::Str(s.clone())).collect()),
+                Value::Set(
+                    self.uncertainty
+                        .iter()
+                        .map(|s| Value::Str(s.clone()))
+                        .collect(),
+                ),
             ),
         ])
     }
@@ -249,15 +254,11 @@ fn opt_num_u64(v: Option<u64>) -> Value {
 }
 
 fn num_u64(n: u64) -> Value {
-    Value::Num(
-        ExactNum::parse_literal(&n.to_string()).expect("u64 is a valid ExactNum literal"),
-    )
+    Value::Num(ExactNum::parse_literal(&n.to_string()).expect("u64 is a valid ExactNum literal"))
 }
 
 fn num_i64(n: i64) -> Value {
-    Value::Num(
-        ExactNum::parse_literal(&n.to_string()).expect("i64 is a valid ExactNum literal"),
-    )
+    Value::Num(ExactNum::parse_literal(&n.to_string()).expect("i64 is a valid ExactNum literal"))
 }
 
 fn physical_to_value(p: &PhysicalLocation) -> Value {
@@ -287,7 +288,10 @@ fn integrity_to_value(i: &IntegrityEvidence) -> Value {
         ("framing".into(), Value::Str(i.framing.clone())),
         ("structural".into(), Value::Str(i.structural.clone())),
         ("content".into(), Value::Str(i.content.clone())),
-        ("authentication".into(), Value::Str(i.authentication.clone())),
+        (
+            "authentication".into(),
+            Value::Str(i.authentication.clone()),
+        ),
     ])
 }
 
@@ -337,7 +341,10 @@ fn payload_to_value(p: &PayloadInfo) -> Value {
     );
     Value::Prod(vec![
         ("availability".into(), Value::Str(p.availability.clone())),
-        ("representation".into(), Value::Str(p.representation.clone())),
+        (
+            "representation".into(),
+            Value::Str(p.representation.clone()),
+        ),
         ("media_type".into(), opt_str(&p.media_type)),
         ("logical_length".into(), opt_num_u64(p.logical_length)),
         ("value".into(), value),

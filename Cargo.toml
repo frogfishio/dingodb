@@ -6,6 +6,7 @@ members = [
   "crates/dingo-store",
   "crates/dingo-sdk",
   "crates/dingo-examine",
+  "crates/dingo-cli",
 ]
 resolver = "2"
 

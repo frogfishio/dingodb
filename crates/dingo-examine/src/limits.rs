@@ -97,9 +97,8 @@ impl ExaminePage {
     /// Convert to SDA `Prod` page shape (SDA_PROFILE §11).
     pub fn to_sda_value(&self) -> sda_core::Value {
         use sda_core::{ExactNum, Value};
-        let num = |n: u64| {
-            Value::Num(ExactNum::parse_literal(&n.to_string()).expect("u64 literal"))
-        };
+        let num =
+            |n: u64| Value::Num(ExactNum::parse_literal(&n.to_string()).expect("u64 literal"));
         Value::Prod(vec![
             ("query_id".into(), Value::Str(self.query_id.clone())),
             ("page_number".into(), num(self.page_number)),
@@ -116,20 +115,14 @@ impl ExaminePage {
             (
                 "coverage".into(),
                 Value::Prod(vec![
-                    ("catalogs".into(), Value::Str(self.coverage.catalogs.clone())),
+                    (
+                        "catalogs".into(),
+                        Value::Str(self.coverage.catalogs.clone()),
+                    ),
                     ("indexes".into(), Value::Str(self.coverage.indexes.clone())),
-                    (
-                        "requested_partitions".into(),
-                        Value::Set(vec![]),
-                    ),
-                    (
-                        "completed_partitions".into(),
-                        Value::Set(vec![]),
-                    ),
-                    (
-                        "unavailable_partitions".into(),
-                        Value::Set(vec![]),
-                    ),
+                    ("requested_partitions".into(), Value::Set(vec![])),
+                    ("completed_partitions".into(), Value::Set(vec![])),
+                    ("unavailable_partitions".into(), Value::Set(vec![])),
                     ("partition_frontiers".into(), Value::Map(vec![])),
                     (
                         "tiers".into(),

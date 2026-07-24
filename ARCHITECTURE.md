@@ -37,7 +37,7 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 4 | Collection SDK | **4a–4d** — `dingo-sdk` open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
 | 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
-| 7 | CLI doctor/salvage + server | not started |
+| 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, `open_inspect`/`salvage_to`, `Dingo::connect` |
 | 8+ | Cluster, tiering | blocked until single-node salvage is real |
 
 ## Crate layout (current)
@@ -48,9 +48,10 @@ dingodb/
     sda-core/       # package name sda-lib; pure SDA (Stage 1)
     sda-cli/        # package name sda; `sda` binary (Stage 1)
     dingo-format/   # frames, seal, fwd/rev scan, §13 corpus (Stage 2a–2d)
-    dingo-store/    # single-node append store (Stages 3 + 6)
-    dingo-sdk/      # embedded collection API (Stages 4 + 6)
+    dingo-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to)
+    dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7)
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5)
+    dingo-cli/      # `dingo` binary: put/get, doctor, salvage, serve (Stage 7)
 ```
 
 Planned crates (do **not** add until the owning stage starts):
@@ -58,11 +59,10 @@ Planned crates (do **not** add until the owning stage starts):
 | Stage | Crate (proposed) | Role |
 |-------|------------------|------|
 | 2 | `dingo-format` | **Present** — frames, segment seal, fwd/rev scanner, §13 corpus (2a–2d) |
-| 3+6 | `dingo-store` | **Present** — put/get/delete, salvage, catalogs, chunks, history, compact, secondary index files |
-| 4+6 | `dingo-sdk` | **Present** — collections, filters, secondary indexes, history, query budgets |
+| 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, catalogs, chunks, history, compact |
+| 4+6+7 | `dingo-sdk` | **Present** — collections, filters, indexes, history, `Dingo::connect` RPC client/server helpers |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
-| 7 | `dingo-cli` | `dingo` doctor/salvage/put/get |
-| 7 | `dingo-server` | Network front end, same logical API |
+| 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/serve (server lives in CLI + sdk remote module) |
 | 8 | `dingo-cluster` | Partition ownership, coverage (later) |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**
@@ -74,7 +74,7 @@ Do not scaffold cluster/server before Stage 3 store salvage works.
 |--------|----------|
 | Core implementation language | **Rust** |
 | First embedded surface | Rust library API; TypeScript-like examples in DX_SPEC remain the product shape |
-| First CLI | `sda` now; `dingo` at Stage 7 |
+| First CLI | `sda` (Stage 1) + `dingo` (Stage 7) |
 | SDA packaging | `sda-lib` (lib) + `sda` (CLI binary); no storage IO inside SDA core |
 | Wire format versioning | Draft until wire major 1 freeze after Stage 2–3 soak |
 | Default license | MIT (repo root) |
