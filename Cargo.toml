@@ -1,0 +1,37 @@
+[workspace]
+members = [
+  "crates/sda-core",
+  "crates/sda-cli",
+  "crates/dingo-format",
+  "crates/dingo-store",
+  "crates/dingo-sdk",
+  "crates/dingo-examine",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Alexander R. Croft"]
+repository = "https://github.com/frogfishio/dingodb"
+
+[workspace.dependencies]
+# Directory is crates/sda-core; published package name remains sda-lib for crates.io.
+# Dependents that use the workspace key import the crate as `sda_core`.
+sda-core = { package = "sda-lib", path = "crates/sda-core" }
+dingo-format = { path = "crates/dingo-format" }
+dingo-store = { path = "crates/dingo-store" }
+dingo-sdk = { path = "crates/dingo-sdk" }
+dingo-examine = { path = "crates/dingo-examine" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+clap = { version = "4", features = ["derive"] }
+num-bigint = "0.4"
+num-rational = "0.4"
+num-traits = "0.2"
+blake3 = "1"
+crc32c = "0.6"
+tempfile = "3"
+

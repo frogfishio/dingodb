@@ -1,0 +1,21 @@
+[package]
+name = "dingo-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "DingoDB embedded collection SDK: open, put/get/delete, JSON filters (Stage 4)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "sdk", "embedded", "json", "database"]
+categories = ["database", "api-bindings"]
+include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
+
+[dependencies]
+dingo-store.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

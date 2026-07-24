@@ -1,0 +1,17 @@
+[package]
+name = "dingo-format"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "DingoDB survival wire format: frame codec, integrity, and salvage scanning (Stage 2)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "wire-format", "salvage", "blake3", "crc32c"]
+categories = ["encoding", "data-structures"]
+include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
+
+[dependencies]
+blake3.workspace = true
+crc32c.workspace = true
+thiserror.workspace = true

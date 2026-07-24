@@ -1,0 +1,20 @@
+[package]
+name = "dingo-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "DingoDB single-node append store: segments, durability, catalog-independent recovery (Stage 3)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "store", "append-only", "salvage", "durability"]
+categories = ["database-implementations", "filesystem"]
+include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
+
+[dependencies]
+dingo-format.workspace = true
+thiserror.workspace = true
+blake3.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,22 @@
+[package]
+name = "dingo-examine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "DingoDB SDA examination host: project salvage regions to ExaminationUnit values (Stage 5)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "sda", "examination", "salvage", "recovery"]
+categories = ["database", "data-structures"]
+include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
+
+[dependencies]
+dingo-format.workspace = true
+dingo-store.workspace = true
+sda-core.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
