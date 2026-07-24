@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.7 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a `dingo-store` put/get/delete + salvage)  
+Status: Draft v0.8 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -218,8 +218,8 @@ chunks as needed for inline-only first.
 **Suggested sub-milestones**
 
 | 3a | Open/create, put/get/delete, durability modes, rebuildable index, catalog wipe salvage | **done** — `dingo-store` |
-| 3b | Broader OVERVIEW §16 store-level suite (middle segment loss, reorder, etc.) | open |
-| 3c | Store descriptor frame + optional index cache on disk | open |
+| 3b | Broader OVERVIEW §16 store-level suite (middle segment loss, reorder, etc.) | **done** — `tests/section16_store.rs` (cases 1–10) |
+| 3c | Store descriptor frame + optional index cache on disk | **done** — `store-info/descriptor.dingo` + `indexes/primary.idx` |
 
 **Explicit non-goals for Stage 3**
 
