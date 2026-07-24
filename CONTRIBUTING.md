@@ -63,6 +63,16 @@ cargo clippy --workspace --all-targets -- -D warnings   # when clippy is install
 
 CI runs format check and tests on every PR.
 
+### Nightly packaging (Stage 7f)
+
+Destructive corpora and the performance skeleton also run on a schedule:
+
+```sh
+./scripts/nightly.sh
+```
+
+GitHub Actions: `.github/workflows/nightly.yml` (daily + `workflow_dispatch`).
+
 ## Suggested work streams (apportionment)
 
 | Stream | Owner focus | Stages | Depends on |
@@ -74,10 +84,10 @@ CI runs format check and tests on every PR.
 | **E — Examination** | ExaminationUnit + SDA profile | 5 | Stage 1 + 2/3 salvage |
 | **F — Operator** | Indexes, CLI doctor/salvage, server | 6–7 | Stage 4–5 |
 
-Immediate priority: **Stage 4c–4d** (filter builder, fuller error taxonomy).
-Stage **4a–4b** (`dingo-sdk`: open, JSON/bytes put/get/delete, scan) and
-Stage 3a–3c / 2a–2d are done. Optional: Stage 1 full §14 freeze and
-deterministic CBOR envelope validation in parallel.
+Stages **0–7** (including 7e auth/deadline/retry and 7f nightly packaging) are
+implemented for single-node. Immediate priority: Stage 8 only after salvage/doctor
+stay green; optional Stage 1 full §14 freeze and deterministic CBOR envelope
+validation in parallel.
 
 ## Version and BUILD numbers
 

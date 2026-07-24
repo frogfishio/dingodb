@@ -4,7 +4,7 @@ use crate::dingo::Backend;
 use crate::error::Error;
 use crate::filter::{compare_field, Filter, QueryBuilder, QueryOptions};
 use crate::history::KeyHistory;
-use crate::indexes::{try_index_lookup, IndexInfo, Indexes};
+use crate::indexes::{mark_indexes_stale, try_index_lookup, IndexInfo, Indexes};
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::subject::{collection_prefix, decode_subject, encode_subject};
 use crate::value::{decode_bytes, decode_json, encode_bytes, encode_json};
@@ -40,11 +40,13 @@ impl<'a> Collection<'a> {
         }
     }
 
-    /// Secondary index management (DX_SPEC §8). Embedded only.
+    /// Secondary index management (DX_SPEC §8). Embedded and remote.
     pub fn indexes(&mut self) -> Result<Indexes<'_>, Error> {
         let collection = self.name.clone();
-        let store = self.local_store()?;
-        Ok(Indexes { store, collection })
+        Ok(Indexes {
+            backend: self.backend,
+            collection,
+        })
     }
 
     /// Put (create-or-replace) a JSON-serializable value under `key`.
@@ -174,13 +176,17 @@ impl<'a> Collection<'a> {
         }
     }
 
-    /// Immutable event history for `key` (DX_SPEC §10.1). Embedded only for Stage 7.
+    /// Immutable event history for `key` (DX_SPEC §10.1). Embedded and remote.
     pub fn history(&mut self, key: &str) -> Result<KeyHistory, Error> {
-        let subject = encode_subject(&self.name, key)?;
-        let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
-        let store = self.local_store()?;
-        let hist = store.history(subject_str)?;
-        KeyHistory::from_store(key.to_string(), hist)
+        match self.backend {
+            Backend::Local(store) => {
+                let subject = encode_subject(&self.name, key)?;
+                let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
+                let hist = store.history(subject_str)?;
+                KeyHistory::from_store(key.to_string(), hist)
+            }
+            Backend::Remote(client) => client.history(&self.name, key),
+        }
     }
 
     /// Scan live keys in this collection (deterministic key order).
@@ -270,22 +276,9 @@ impl<'a> Collection<'a> {
         QueryBuilder::new(self)
     }
 
-    /// List ready indexes (convenience). Embedded only.
+    /// List indexes on this collection (convenience). Embedded and remote.
     pub fn list_indexes(&mut self) -> Result<Vec<IndexInfo>, Error> {
-        let name = self.name.clone();
-        let store = self.local_store()?;
-        Ok(store
-            .list_secondary_indexes(&name)?
-            .iter()
-            .map(|i| IndexInfo {
-                name: i.meta.name.clone(),
-                collection: i.meta.collection.clone(),
-                fields: i.meta.fields.clone(),
-                state: i.meta.state,
-                entry_count: i.meta.entry_count,
-                complete_coverage: i.meta.complete_coverage,
-            })
-            .collect())
+        self.indexes()?.list()
     }
 
     fn scan_json_filtered(
@@ -347,17 +340,6 @@ impl<'a> Collection<'a> {
             }
         }
     }
-}
-
-fn mark_indexes_stale(store: &mut Store, collection: &str) -> Result<(), Error> {
-    let indexes = store.list_secondary_indexes(collection)?;
-    for mut idx in indexes {
-        if idx.meta.state.usable() || idx.meta.state == dingo_store::IndexState::Ready {
-            idx.mark_stale();
-            store.write_secondary_index(&idx)?;
-        }
-    }
-    Ok(())
 }
 
 fn collect_from_subjects(

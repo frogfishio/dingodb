@@ -67,6 +67,19 @@ impl IndexState {
     pub fn usable(self) -> bool {
         matches!(self, Self::Ready | Self::Partial)
     }
+
+    /// Parse the snake_case name produced by [`Self::as_str`].
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "building" => Some(Self::Building),
+            "ready" => Some(Self::Ready),
+            "stale" => Some(Self::Stale),
+            "partial" => Some(Self::Partial),
+            "failed" => Some(Self::Failed),
+            "rebuilding" => Some(Self::Rebuilding),
+            _ => None,
+        }
+    }
 }
 
 const MAGIC: &[u8; 8] = b"DSIX0001";

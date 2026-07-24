@@ -37,7 +37,7 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 4 | Collection SDK | **4a–4d** — `dingo-sdk` open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
 | 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
-| 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, `open_inspect`/`salvage_to`, `Dingo::connect` |
+| 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, connect options (auth/deadline/retry), nightly packaging |
 | 8+ | Cluster, tiering | blocked until single-node salvage is real |
 
 ## Crate layout (current)
@@ -60,7 +60,7 @@ Planned crates (do **not** add until the owning stage starts):
 |-------|------------------|------|
 | 2 | `dingo-format` | **Present** — frames, segment seal, fwd/rev scanner, §13 corpus (2a–2d) |
 | 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, catalogs, chunks, history, compact |
-| 4+6+7 | `dingo-sdk` | **Present** — collections, filters, indexes, history, `Dingo::connect` RPC client/server helpers |
+| 4+6+7 | `dingo-sdk` | **Present** — collections, filters, indexes, history, `Dingo::connect` RPC (history + index CRUD remote parity) |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/serve (server lives in CLI + sdk remote module) |
 | 8 | `dingo-cluster` | Partition ownership, coverage (later) |

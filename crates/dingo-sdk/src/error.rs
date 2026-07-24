@@ -36,6 +36,12 @@ pub enum ErrorCode {
     FormatUnsupported,
     /// JSON vs bytes (or other) type mismatch on get.
     TypeMismatch,
+    /// Shared token / authentication failed (remote).
+    AuthenticationFailed,
+    /// Permission denied after authentication (reserved).
+    PermissionDenied,
+    /// Connect or request deadline exceeded (remote).
+    DeadlineExceeded,
     /// Underlying IO failure.
     Io,
     /// Internal / unexpected failure.
@@ -60,6 +66,9 @@ impl ErrorCode {
             Self::PayloadPartial => "payload_partial",
             Self::FormatUnsupported => "format_unsupported",
             Self::TypeMismatch => "type_mismatch",
+            Self::AuthenticationFailed => "authentication_failed",
+            Self::PermissionDenied => "permission_denied",
+            Self::DeadlineExceeded => "deadline_exceeded",
             Self::Io => "io",
             Self::Internal => "internal",
         }
@@ -135,6 +144,14 @@ pub enum Error {
     #[error("not available over remote connection: {0}")]
     RemoteUnsupported(&'static str),
 
+    /// Shared token missing or wrong (DX_SPEC §15 `AuthenticationFailed`).
+    #[error("authentication failed: {0}")]
+    AuthenticationFailed(String),
+
+    /// Connect or request deadline exceeded (DX_SPEC §15 `DeadlineExceeded`).
+    #[error("deadline exceeded: {0}")]
+    DeadlineExceeded(String),
+
     /// Internal SDK failure.
     #[error("internal: {0}")]
     Internal(String),
@@ -145,9 +162,14 @@ pub enum Error {
 }
 
 impl Error {
-    /// Wrap an IO error (remote transport).
+    /// Wrap an IO error (remote transport). Timeouts become [`Error::DeadlineExceeded`].
     pub fn from_io(e: std::io::Error) -> Self {
-        Self::Io(e)
+        match e.kind() {
+            std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock => {
+                Self::DeadlineExceeded(e.to_string())
+            }
+            _ => Self::Io(e),
+        }
     }
 
     /// Stable machine code (DX_SPEC §15). Prefer this over parsing [`Display`].
@@ -165,8 +187,10 @@ impl Error {
             Self::QueryBudgetRequired(_) => ErrorCode::QueryBudgetRequired,
             Self::PayloadPartial => ErrorCode::PayloadPartial,
             Self::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
-            Self::Remote { .. } => ErrorCode::Internal,
+            Self::Remote { code, .. } => remote_code(code),
             Self::RemoteUnsupported(_) => ErrorCode::FormatUnsupported,
+            Self::AuthenticationFailed(_) => ErrorCode::AuthenticationFailed,
+            Self::DeadlineExceeded(_) => ErrorCode::DeadlineExceeded,
             Self::Internal(_) => ErrorCode::Internal,
             Self::Io(_) => ErrorCode::Io,
         }
@@ -204,5 +228,20 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::Frame(_) | StoreError::Segment(_) => ErrorCode::DataDamaged,
         StoreError::PayloadPartial => ErrorCode::PayloadPartial,
         StoreError::PayloadConflict => ErrorCode::DataDamaged,
+    }
+}
+
+fn remote_code(code: &str) -> ErrorCode {
+    match code {
+        "authentication_failed" => ErrorCode::AuthenticationFailed,
+        "permission_denied" => ErrorCode::PermissionDenied,
+        "deadline_exceeded" => ErrorCode::DeadlineExceeded,
+        "validation_failed" => ErrorCode::ValidationFailed,
+        "not_found" => ErrorCode::NotFound,
+        "resource_limit" => ErrorCode::ResourceLimit,
+        "data_damaged" => ErrorCode::DataDamaged,
+        "query_invalid" => ErrorCode::QueryInvalid,
+        "io" => ErrorCode::Io,
+        _ => ErrorCode::Internal,
     }
 }

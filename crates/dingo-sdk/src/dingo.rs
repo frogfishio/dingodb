@@ -2,7 +2,7 @@
 
 use crate::collection::Collection;
 use crate::error::Error;
-use crate::remote::{parse_dingo_url, RemoteClient};
+use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
 use crate::subject::validate_collection_name;
 use dingo_store::Store;
 use std::path::{Path, PathBuf};
@@ -18,6 +18,11 @@ use std::path::{Path, PathBuf};
 /// Remote (Stage 7):
 /// ```ignore
 /// let mut db = Dingo::connect("dingo://localhost:7434/app")?;
+/// // or with auth / deadlines / connect retry:
+/// let mut db = Dingo::connect_with(
+///     "dingo://localhost:7434/app",
+///     ConnectOptions::new().auth_token("secret"),
+/// )?;
 /// ```
 pub struct Dingo {
     pub(crate) backend: Backend,
@@ -41,14 +46,25 @@ impl Dingo {
 
     /// Connect to a remote `dingo serve` endpoint (`dingo://host:port[/label]`).
     ///
+    /// Uses default [`ConnectOptions`] (no auth token, 5s connect / 30s request
+    /// deadlines, 3 connect attempts). Prefer [`Self::connect_with`] when the
+    /// server requires a token or custom deadlines.
+    ///
     /// The optional path label is informational only for Stage 7 (the server
-    /// process already binds a store directory). Connection options such as
-    /// authn / deadline / retry are reserved for later; transport is TCP
-    /// line-delimited JSON.
+    /// process already binds a store directory). Transport is TCP line-delimited
+    /// JSON.
     pub fn connect(url: impl AsRef<str>) -> Result<Self, Error> {
+        Self::connect_with(url, ConnectOptions::default())
+    }
+
+    /// Connect with explicit connection options (authn, deadlines, retry).
+    ///
+    /// Application put/get APIs stay the same; only the transport policy changes
+    /// (DX_SPEC §4.2).
+    pub fn connect_with(url: impl AsRef<str>, options: ConnectOptions) -> Result<Self, Error> {
         let url = url.as_ref();
         let (hostport, _label) = parse_dingo_url(url)?;
-        let client = RemoteClient::connect(&hostport, url.to_string())?;
+        let client = RemoteClient::connect_with(&hostport, url.to_string(), options)?;
         Ok(Self {
             backend: Backend::Remote(client),
         })
@@ -67,12 +83,11 @@ impl Dingo {
         }
     }
 
-    /// Store identifier (16 bytes). Remote returns zeros until a future
-    /// protocol extension surfaces the server store id on every handle.
+    /// Store identifier (16 bytes). Remote uses the id returned at connect.
     pub fn store_id(&self) -> [u8; 16] {
         match &self.backend {
             Backend::Local(s) => s.store_id(),
-            Backend::Remote(_) => [0u8; 16],
+            Backend::Remote(c) => c.store_id(),
         }
     }
 

@@ -26,7 +26,10 @@ pub use filter::{FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOpt
 pub use history::{KeyHistory, Version};
 pub use indexes::{IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
-pub use remote::{handle_connection, parse_dingo_url, serve_store, RemoteClient, DEFAULT_PORT};
+pub use remote::{
+    handle_connection, handle_connection_with, parse_dingo_url, serve_store, serve_store_with,
+    ConnectOptions, RemoteClient, ServeOptions, DEFAULT_PORT,
+};
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,
     MAX_COLLECTION_NAME_LEN, MAX_KEY_LEN,

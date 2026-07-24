@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.12 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4d `dingo-sdk`; Stage 5 `dingo-examine`; Stage 6 indexes/catalogs/history/chunks)  
+Status: Draft v0.14 (Stages 0–7 done including 7e auth/deadline/retry, 7f nightly packaging, remote history/index parity; Stage 8+ deferred)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -359,8 +359,8 @@ operator tooling and same-API remote access.
 3. `dingo salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
 4. Server process + `Dingo.connect("dingo://...")` with the same collection API
    as embedded. **done** — `dingo serve` + line-delimited JSON RPC; remote put/get/delete/scan
-5. Authn/deadline/retry as connection options only (no app-level API split). **stub** — reserved; not required for MVP connect
-6. Reproducible corruption + performance test packaging for CI/nightly. **partial** — existing §13/§16 + stage6 bench skeleton; CLI packaging via `dingo doctor`/`salvage`
+5. Authn/deadline/retry as connection options only (no app-level API split). **done** — `ConnectOptions` / `ServeOptions` / `Dingo::connect_with`; `dingo serve --token`; DX codes `authentication_failed` / `deadline_exceeded`
+6. Reproducible corruption + performance test packaging for CI/nightly. **done** — `.github/workflows/nightly.yml` + `scripts/nightly.sh` run §13/§16/stage6 bench + Stage 7 CLI
 
 **Exit criteria**
 
@@ -375,8 +375,8 @@ operator tooling and same-API remote access.
 | 7b | `dingo doctor` read-only | **done** |
 | 7c | `dingo salvage --output` | **done** |
 | 7d | `dingo serve` + `Dingo::connect` | **done** |
-| 7e | Authn/deadline/retry connection options | deferred |
-| 7f | Nightly corruption/perf packaging polish | partial |
+| 7e | Authn/deadline/retry connection options | **done** |
+| 7f | Nightly corruption/perf packaging polish | **done** |
 
 **README initial target mapping**
 
@@ -588,6 +588,13 @@ the cited conformance suites as required checks—not optional polish.
     put/get/list/delete/put-bytes/history/doctor/salvage/serve);
     `Store::open_inspect` + `salvage_to`; `Dingo::connect("dingo://...")`
     line-delimited JSON RPC; tests `dingo-cli/tests/cli.rs`.
-13. **Next:** Stage 8 cluster (only after single-node salvage/doctor proven);
+13. ~~Stage 7e–7f tighten (authn/deadline/retry + nightly packaging).~~ **Done** —
+    `ConnectOptions` / `ServeOptions`, remote receipt ids, nightly workflow.
+14. ~~Remote parity for history + secondary indexes.~~ **Done** — RPC ops
+    `history`, `index_list` / `index_create` / `index_drop` / `index_rebuild`;
+    server marks indexes stale on put/delete; tests
+    `stage7_remote_parity.rs`. Chunk partial maps (`get_payload`) and
+    server-side index-accelerated find remain embedded-only.
+15. **Next:** Stage 8 cluster (only after single-node salvage/doctor proven);
     optional deterministic CBOR envelope validation (FORMAT_SPEC §5 condition 6);
-    authn/deadline/retry connection options; nightly packaging polish.
+    remote `get_payload` / server-side index find if needed.
