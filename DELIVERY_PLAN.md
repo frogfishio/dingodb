@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.17 (Stages 0–7 done; Stage 8a–8b cluster foundation + Raft landed; 8c+ open)  
+Status: Draft v0.18 (Stages 0–7 done; Stage 8a–8c cluster foundation + Raft + convergent-append; 8d+ open)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -417,7 +417,7 @@ control plane payload authority.
 
 | 8a | Foundation: `dingo-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
 | 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
-| 8c | Convergent-append path + split dual-accept tests | open |
+| 8c | Convergent-append path + split dual-accept tests | **done** — `src/convergent.rs`, `tests/stage8c_convergent.rs` |
 | 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | open |
 | 8e | Distributed scan/find coverage + partial-query honesty | open |
 | 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | open |
@@ -451,6 +451,15 @@ control plane payload authority.
 - Client commands enter the Raft log first; stores are applied only after
   `commit_index` advances (commit evidence on acks).
 - Membership changes, leases, and log snapshots remain later work.
+
+**Stage 8c notes**
+
+- `convergent-append` writes skip Raft: any online replica may accept; acks
+  report `commit_status: prepared` and `committed: false` (not linearizable).
+- `append_local` targets one ingest node for dual-accept split tests.
+- `reconcile` fans out missing `(subject, body)` by content hash; same subject
+  with differing live bodies is reported as an explicit conflict (both retained
+  in history). Linearizable reads return `consistency_violation` in this mode.
 
 ---
 
@@ -636,6 +645,9 @@ the cited conformance suites as required checks—not optional polish.
     commit evidence (`src/raft.rs`); linearizable path elects/re-elects,
     proposes through the log, applies after quorum commit; tests
     `stage8b_raft.rs`.
-18. **Next:** Stage 8c+ (convergent-append, SDK routing, §22 remainder);
+18. ~~Stage 8c convergent-append.~~ **Done** — dual-accept without quorum,
+    `append_local` + `reconcile` with explicit subject conflicts; tests
+    `stage8c_convergent.rs` (§22 items 7–8).
+19. **Next:** Stage 8d+ (SDK cluster routing, distributed find, §22 remainder);
     optional deterministic CBOR envelope validation (FORMAT_SPEC §5
     condition 6); Stage 9 tiering.

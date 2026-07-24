@@ -38,7 +38,7 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
 | 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
 | 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, connect options (auth/deadline/retry), nightly packaging |
-| 8 | Cluster federation | **8a–8b done** — partitions, coverage, multi-node stores, per-partition Raft; 8c+ open |
+| 8 | Cluster federation | **8a–8c done** — partitions, coverage, multi-node stores, Raft, convergent-append; 8d+ open |
 | 9 | Tiering / archive | open |
 
 ## Crate layout (current)
@@ -53,7 +53,7 @@ dingodb/
     dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7)
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5)
     dingo-cli/      # `dingo` binary: put/get, doctor, salvage, serve (Stage 7)
-    dingo-cluster/  # partitions, coverage, multi-node + Raft (Stage 8a–8b)
+    dingo-cluster/  # partitions, coverage, multi-node + Raft + convergent (Stage 8a–8c)
 ```
 
 Crate ownership:
@@ -65,7 +65,7 @@ Crate ownership:
 | 4+6+7 | `dingo-sdk` | **Present** — collections, filters, indexes, history, `Dingo::connect` RPC (history, index CRUD, get_payload, server-side find) |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/serve (server lives in CLI + sdk remote module) |
-| 8 | `dingo-cluster` | **Present (8a–8b)** — virtual partitions, coverage, placement directory, in-process multi-node, per-partition Raft; SDK routing later |
+| 8 | `dingo-cluster` | **Present (8a–8c)** — virtual partitions, coverage, placement, multi-node, Raft, convergent-append; SDK routing later |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**
 
@@ -88,6 +88,6 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 
 ## Non-goals until listed stages
 
-- Convergent-append dual-accept and SDK cluster URL routing (Stage 8c–8d)
+- SDK cluster URL routing and client directory cache (Stage 8d)
 - Object-store backends and archive tiering (Stage 9)
 - Marketing-grade Redis-class latency claims without OVERVIEW §12.2 disclosure
