@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.16 (Stages 0–7 done; Stage 8a cluster foundation landed; 8b+ open)  
+Status: Draft v0.17 (Stages 0–7 done; Stage 8a–8b cluster foundation + Raft landed; 8c+ open)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -416,7 +416,7 @@ control plane payload authority.
 **Suggested sub-milestones**
 
 | 8a | Foundation: `dingo-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
-| 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | open |
+| 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
 | 8c | Convergent-append path + split dual-accept tests | open |
 | 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | open |
 | 8e | Distributed scan/find coverage + partial-query honesty | open |
@@ -435,12 +435,22 @@ control plane payload authority.
 
 **Stage 8a notes**
 
-- Leadership is **static primary** from the placement directory (term fencing
-  on the assignment only). Full Raft is 8b.
+- Leadership was **static primary** from the placement directory (term fencing
+  on the assignment only). Superseded by 8b for live writes/reads.
 - Balanced placement puts every voting node as a replica of every virtual
   partition (simple for tests; rebalance is later).
 - Development profile explicitly warns that replicated durability is
   unavailable.
+
+**Stage 8b notes**
+
+- Per-partition Raft-equivalent groups (`dingo_cluster::raft`) with published
+  election, log-matching, and commit rules (CLUSTER_SPEC §10.1).
+- Leadership is elected among online voters; quorum is majority of the
+  **configured** voter set. Leader loss with a live majority re-elects.
+- Client commands enter the Raft log first; stores are applied only after
+  `commit_index` advances (commit evidence on acks).
+- Membership changes, leases, and log snapshots remain later work.
 
 ---
 
@@ -622,6 +632,10 @@ the cited conformance suites as required checks—not optional polish.
     directory, development (1-node) + dependable-local (3-node) profiles,
     quorum-style put/delete, node salvage without cluster software;
     tests `stage8a_cluster.rs`.
-17. **Next:** Stage 8b+ (Raft / elections, convergent-append, SDK routing,
-    §22 remainder); optional deterministic CBOR envelope validation
-    (FORMAT_SPEC §5 condition 6); Stage 9 tiering.
+17. ~~Stage 8b per-partition Raft.~~ **Done** — elections, log matching,
+    commit evidence (`src/raft.rs`); linearizable path elects/re-elects,
+    proposes through the log, applies after quorum commit; tests
+    `stage8b_raft.rs`.
+18. **Next:** Stage 8c+ (convergent-append, SDK routing, §22 remainder);
+    optional deterministic CBOR envelope validation (FORMAT_SPEC §5
+    condition 6); Stage 9 tiering.
