@@ -189,6 +189,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dingo-cluster"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "dingo-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "dingo-examine"
 version = "0.1.0"
 dependencies = [

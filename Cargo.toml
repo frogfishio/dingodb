@@ -7,6 +7,7 @@ members = [
   "crates/dingo-sdk",
   "crates/dingo-examine",
   "crates/dingo-cli",
+  "crates/dingo-cluster",
 ]
 resolver = "2"
 
@@ -25,6 +26,7 @@ dingo-format = { path = "crates/dingo-format" }
 dingo-store = { path = "crates/dingo-store" }
 dingo-sdk = { path = "crates/dingo-sdk" }
 dingo-examine = { path = "crates/dingo-examine" }
+dingo-cluster = { path = "crates/dingo-cluster" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"

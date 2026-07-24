@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.15 (Stages 0–7 done including remote get_payload + server-side find; Stage 8+ deferred)  
+Status: Draft v0.16 (Stages 0–7 done; Stage 8a cluster foundation landed; 8b+ open)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -62,13 +62,14 @@ The governing product rule stays:
 5  SDA examination profile over recovered units
 6  Indexes, catalogs, history, chunked payloads
 7  CLI (doctor, salvage) + server mode
-8  Cluster (partition-local consensus, coverage)
+8  Cluster (partition-local consensus, coverage)  — 8a foundation done
 9  Tiering, archive path, long-retention polish
 ```
 
 Stages 0–4 are the **minimum path to a useful embedded database**.  
 Stages 5–7 complete the **README initial implementation target**.  
 Stages 8–9 are **scale-out and retention** after the single-node product is real.
+Stage **8a** (`dingo-cluster`) is the first scale-out vertical slice.
 
 ---
 
@@ -412,6 +413,15 @@ control plane payload authority.
 5. Node salvage without cluster software still yields ordinary segments.
 6. Same SDK API as embedded/server; routing cached and refreshed safely.
 
+**Suggested sub-milestones**
+
+| 8a | Foundation: `dingo-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
+| 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | open |
+| 8c | Convergent-append path + split dual-accept tests | open |
+| 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | open |
+| 8e | Distributed scan/find coverage + partial-query honesty | open |
+| 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | open |
+
 **Exit criteria**
 
 - CLUSTER_SPEC conformance tests (§22) for the chosen deployment profile.
@@ -422,6 +432,15 @@ control plane payload authority.
 
 - Stages 2–4 destructive and DX gates are green.
 - Salvage and doctor work on a single node without cluster metadata.
+
+**Stage 8a notes**
+
+- Leadership is **static primary** from the placement directory (term fencing
+  on the assignment only). Full Raft is 8b.
+- Balanced placement puts every voting node as a replica of every virtual
+  partition (simple for tests; rebalance is later).
+- Development profile explicitly warns that replicated durability is
+  unavailable.
 
 ---
 
@@ -598,5 +617,11 @@ the cited conformance suites as required checks—not optional polish.
     `get_payload` (complete/partial/unavailable/conflicting maps) and `find`
     (JSON filter, limit/order/budget/`force_scan`, index-accelerated via
     shared `find_on_store`); tests in `stage7_remote_parity.rs`.
-16. **Next:** Stage 8 cluster (only after single-node salvage/doctor proven);
-    optional deterministic CBOR envelope validation (FORMAT_SPEC §5 condition 6).
+16. ~~Stage 8a cluster foundation.~~ **Done** — `dingo-cluster` crate:
+    virtual partitions (`blake3-mod-v1`), coverage records, placement
+    directory, development (1-node) + dependable-local (3-node) profiles,
+    quorum-style put/delete, node salvage without cluster software;
+    tests `stage8a_cluster.rs`.
+17. **Next:** Stage 8b+ (Raft / elections, convergent-append, SDK routing,
+    §22 remainder); optional deterministic CBOR envelope validation
+    (FORMAT_SPEC §5 condition 6); Stage 9 tiering.

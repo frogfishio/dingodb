@@ -38,7 +38,8 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
 | 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
 | 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, connect options (auth/deadline/retry), nightly packaging |
-| 8+ | Cluster, tiering | blocked until single-node salvage is real |
+| 8 | Cluster federation | **8a done** — `dingo-cluster` partitions, coverage, multi-node stores; 8b+ open |
+| 9 | Tiering / archive | open |
 
 ## Crate layout (current)
 
@@ -52,21 +53,21 @@ dingodb/
     dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7)
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5)
     dingo-cli/      # `dingo` binary: put/get, doctor, salvage, serve (Stage 7)
+    dingo-cluster/  # partitions, coverage, multi-node federation (Stage 8a)
 ```
 
-Planned crates (do **not** add until the owning stage starts):
+Crate ownership:
 
-| Stage | Crate (proposed) | Role |
-|-------|------------------|------|
+| Stage | Crate | Role |
+|-------|-------|------|
 | 2 | `dingo-format` | **Present** — frames, segment seal, fwd/rev scanner, §13 corpus (2a–2d) |
 | 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, catalogs, chunks, history, compact |
 | 4+6+7 | `dingo-sdk` | **Present** — collections, filters, indexes, history, `Dingo::connect` RPC (history, index CRUD, get_payload, server-side find) |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/serve (server lives in CLI + sdk remote module) |
-| 8 | `dingo-cluster` | Partition ownership, coverage (later) |
+| 8 | `dingo-cluster` | **Present (8a)** — virtual partitions, coverage, placement directory, in-process multi-node; Raft/SDK routing later |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**
-Do not scaffold cluster/server before Stage 3 store salvage works.
 
 ## Language decisions (Stage 0)
 
@@ -87,6 +88,6 @@ Do not scaffold cluster/server before Stage 3 store salvage works.
 
 ## Non-goals until listed stages
 
-- Cluster / consensus (Stage 8+)
+- Full Raft elections / log matching (Stage 8b+; 8a uses static primaries)
 - Object-store backends and archive tiering (Stage 9)
 - Marketing-grade Redis-class latency claims without OVERVIEW §12.2 disclosure
