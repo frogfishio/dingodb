@@ -105,6 +105,18 @@ pub enum Error {
     /// Result materialization exceeded a configured or explicit limit.
     #[error("resource limit exceeded: {0}")]
     ResourceLimit(String),
+
+    /// Query needs an explicit budget (expensive scan without usable index).
+    #[error("query budget required: {0}")]
+    QueryBudgetRequired(String),
+
+    /// Payload only partially available (chunk completeness).
+    #[error("payload only partially available")]
+    PayloadPartial,
+
+    /// Coverage incomplete; absence cannot be proven.
+    #[error("coverage incomplete: {0}")]
+    CoverageIncomplete(String),
 }
 
 impl Error {
@@ -118,6 +130,9 @@ impl Error {
             Self::BadPayload => ErrorCode::DataDamaged,
             Self::QueryInvalid(_) => ErrorCode::QueryInvalid,
             Self::ResourceLimit(_) => ErrorCode::ResourceLimit,
+            Self::QueryBudgetRequired(_) => ErrorCode::QueryBudgetRequired,
+            Self::PayloadPartial => ErrorCode::PayloadPartial,
+            Self::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
         }
     }
 
@@ -151,5 +166,7 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::PayloadTooLarge => ErrorCode::ResourceLimit,
         StoreError::BadEnvelope(_) | StoreError::CorruptMeta(_) => ErrorCode::DataDamaged,
         StoreError::Frame(_) | StoreError::Segment(_) => ErrorCode::DataDamaged,
+        StoreError::PayloadPartial => ErrorCode::PayloadPartial,
+        StoreError::PayloadConflict => ErrorCode::DataDamaged,
     }
 }

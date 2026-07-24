@@ -222,30 +222,105 @@ impl Store {
         self.index.len()
     }
 
-    /// Iterate live subjects and payload bodies (derived primary index).
+    /// Iterate live subjects and **stored** bodies (derived primary index).
     ///
-    /// Used by higher layers (collection SDK) for scans. Catalog-free salvage
-    /// remains available via [`Self::salvage`] / [`Self::rebuild_index`].
+    /// Chunked values yield the chunk **manifest**, not the logical payload.
+    /// Prefer [`Self::live_logical_entries`] for application-level scans.
     pub fn live_entries(&self) -> impl Iterator<Item = (&[u8], &[u8])> + '_ {
         self.index
             .live_entries()
             .map(|(k, v)| (k.as_slice(), v.body.as_slice()))
     }
 
+    /// Live subjects with logical payloads fully reassembled when chunked.
+    ///
+    /// Subjects whose chunks are incomplete are **omitted** (they are not
+    /// silently returned as empty). Callers that need partial maps use
+    /// [`Self::get_payload`].
+    pub fn live_logical_entries(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+        let mut out = Vec::new();
+        let subjects: Vec<Vec<u8>> = self
+            .index
+            .live_entries()
+            .map(|(k, _)| k.clone())
+            .collect();
+        for subject in subjects {
+            let subject_str = match std::str::from_utf8(&subject) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            match self.get(subject_str) {
+                Ok(Some(body)) => out.push((subject, body)),
+                Ok(None) => {}
+                Err(StoreError::PayloadPartial) => {
+                    // Incomplete chunked payload: skip for ordinary scans.
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(out)
+    }
+
     /// Put opaque bytes under `subject` (OVERVIEW put event).
+    ///
+    /// Bodies larger than the chunk threshold are stored as chunked payloads
+    /// (FORMAT_SPEC §8). The primary index retains the chunk manifest; get
+    /// reassembles surviving chunks.
     pub fn put(
         &mut self,
         subject: &str,
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
-        self.write_event(subject, EventKind::Put, value, mode)
+        if value.len() > self.chunk_threshold {
+            self.write_chunked_put(subject, value, mode)
+        } else {
+            self.write_event(subject, EventKind::Put, value, mode)
+        }
     }
 
     /// Get current live value for `subject`, if any.
+    ///
+    /// For chunked values this reassembles chunks and returns the complete body
+    /// only when every required chunk is present. Use [`Self::get_payload`] for
+    /// partial maps.
     pub fn get(&self, subject: &str) -> Result<Option<Vec<u8>>, StoreError> {
+        match self.get_payload(subject)? {
+            None => Ok(None),
+            Some(PayloadResult::Complete { body }) => Ok(Some(body)),
+            Some(PayloadResult::Partial { .. })
+            | Some(PayloadResult::Unavailable { .. })
+            | Some(PayloadResult::Conflicting { .. }) => {
+                // Do not silently return incomplete data as a full get.
+                Err(StoreError::PayloadPartial)
+            }
+        }
+    }
+
+    /// Get the current payload with explicit completeness (Stage 6 chunks).
+    ///
+    /// Returns `Ok(None)` when the subject has no live value. Inline (non-chunked)
+    /// bodies always yield [`PayloadResult::Complete`].
+    pub fn get_payload(&self, subject: &str) -> Result<Option<PayloadResult>, StoreError> {
         let key = subject.as_bytes();
-        Ok(self.index.get_live(key).map(|b| b.to_vec()))
+        let Some(body) = self.index.get_live(key) else {
+            return Ok(None);
+        };
+        if !is_chunk_manifest(body) {
+            return Ok(Some(PayloadResult::Complete {
+                body: body.to_vec(),
+            }));
+        }
+        let Some(manifest) = decode_chunk_manifest(body) else {
+            return Err(StoreError::CorruptMeta("invalid chunk manifest"));
+        };
+        let item_id = self
+            .index
+            .get(key)
+            .map(|e| e.item_id())
+            .unwrap_or([0u8; 16]);
+        let pieces = self.collect_chunk_pieces(item_id)?;
+        Ok(Some(reassemble_with_manifest(&manifest, &pieces)))
     }
 
     /// Record a logical delete for `subject`.
@@ -257,14 +332,163 @@ impl Store {
         self.write_event(subject, EventKind::Delete, &[], mode)
     }
 
+    /// Event history for a subject key (oldest first; DX_SPEC §10.1).
+    pub fn history(&self, subject: &str) -> Result<SubjectHistory, StoreError> {
+        subject_history(&self.paths, self.limits, subject.as_bytes())
+    }
+
     /// Rebuild the primary index by scanning all segment files (no catalog trust).
     ///
-    /// Also refreshes the optional on-disk index cache (Stage 3c).
+    /// Also refreshes the optional on-disk index cache and collection catalog.
     pub fn rebuild_index(&mut self) -> Result<(), StoreError> {
         self.rebuild_index_from_segments()?;
         // Best-effort cache refresh; failure to write cache must not fail rebuild.
         let _ = self.persist_index_cache();
+        let _ = self.refresh_collection_catalog();
         Ok(())
+    }
+
+    /// Rebuild derived catalogs from the primary index / segments.
+    pub fn rebuild_catalogs(&mut self) -> Result<(), StoreError> {
+        self.refresh_collection_catalog()
+    }
+
+    /// Collection names known from the derived catalog (sorted).
+    pub fn list_collections(&self) -> Vec<String> {
+        self.collection_catalog
+            .names()
+            .map(|s| s.to_string())
+            .collect()
+    }
+
+    /// Override the chunk size threshold (primarily for tests).
+    pub fn set_chunk_threshold(&mut self, threshold: usize) {
+        self.chunk_threshold = threshold;
+    }
+
+    /// Override per-chunk payload size (primarily for tests).
+    pub fn set_chunk_size(&mut self, size: usize) {
+        if size > 0 {
+            self.chunk_size = size;
+        }
+    }
+
+    /// Compact live state into a new sealed segment (sources retained).
+    pub fn compact_live(&mut self) -> Result<CompactReport, StoreError> {
+        self.seal_active()?;
+        let sources = all_segment_paths(&self.paths)?
+            .into_iter()
+            .map(|p| examination_source_name(&self.paths.root, &p))
+            .collect::<Vec<_>>();
+        let segment_id = self.next_segment_id();
+        let created_ns = now_ns();
+        let mut counter = self.event_counter;
+        let store_id = self.store_id;
+        let mut mint = || {
+            counter = counter.saturating_add(1);
+            let mut id = random_id();
+            id[..8].copy_from_slice(&counter.to_le_bytes());
+            id
+        };
+        let report = compact_live_to_new_segment(
+            &self.paths,
+            store_id,
+            self.limits,
+            &self.index,
+            &sources,
+            segment_id,
+            &mut mint,
+            created_ns,
+        )?;
+        self.event_counter = counter;
+        // Index remains valid (live values unchanged). Refresh cache/catalog.
+        let _ = self.persist_index_cache();
+        Ok(report)
+    }
+
+    /// Write a derived checkpoint under `snapshots/` with declared coverage.
+    pub fn checkpoint(&self, coverage: &str) -> Result<(CheckpointMeta, PathBuf), StoreError> {
+        let paths_list = all_segment_paths(&self.paths)?;
+        let fp = segment_fingerprint(&paths_list)?;
+        let live: Vec<(Vec<u8>, Vec<u8>)> = self
+            .index
+            .live_entries()
+            .map(|(k, v)| (k.clone(), v.body.clone()))
+            .collect();
+        let pairs: Vec<(&[u8], &[u8])> = live
+            .iter()
+            .map(|(k, v)| (k.as_slice(), v.as_slice()))
+            .collect();
+        let meta = CheckpointMeta {
+            checkpoint_id: random_id(),
+            live_subjects: live.len(),
+            segment_fingerprint: fp,
+            coverage: coverage.to_string(),
+            projection: "primary-live-v1".into(),
+            created_ns: now_ns(),
+        };
+        let path = write_checkpoint(&self.paths, self.store_id, &meta, &pairs)?;
+        Ok((meta, path))
+    }
+
+    /// Load a checkpoint file if it belongs to this store.
+    pub fn load_checkpoint(
+        &self,
+        path: &Path,
+    ) -> Result<Option<(CheckpointMeta, Vec<(Vec<u8>, Vec<u8>)>)>, StoreError> {
+        try_load_checkpoint(path, self.store_id)
+    }
+
+    /// Persist a secondary index file (derived only).
+    pub fn write_secondary_index(&self, index: &SecondaryIndex) -> Result<PathBuf, StoreError> {
+        let path = secondary_index_path(
+            &self.paths,
+            &index.meta.collection,
+            &index.meta.name,
+        );
+        write_secondary_index(&path, self.store_id, index)?;
+        Ok(path)
+    }
+
+    /// Load a secondary index by collection + name.
+    pub fn load_secondary_index(
+        &self,
+        collection: &str,
+        name: &str,
+    ) -> Result<Option<SecondaryIndex>, StoreError> {
+        let path = secondary_index_path(&self.paths, collection, name);
+        try_load_secondary_index(&path, self.store_id)
+    }
+
+    /// List secondary indexes for a collection.
+    pub fn list_secondary_indexes(
+        &self,
+        collection: &str,
+    ) -> Result<Vec<SecondaryIndex>, StoreError> {
+        let mut out = Vec::new();
+        for path in list_secondary_index_paths(&self.paths, collection)? {
+            if let Some(idx) = try_load_secondary_index(&path, self.store_id)? {
+                out.push(idx);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Delete a secondary index file (never touches segments).
+    pub fn delete_secondary_index(&self, collection: &str, name: &str) -> Result<(), StoreError> {
+        let path = secondary_index_path(&self.paths, collection, name);
+        delete_secondary_index(&path)
+    }
+
+    /// Current segment fingerprint (for index build coverage).
+    pub fn segment_fingerprint(&self) -> Result<[u8; 32], StoreError> {
+        let paths = all_segment_paths(&self.paths)?;
+        segment_fingerprint(&paths)
+    }
+
+    /// Store layout paths (derived dirs safe to wipe for salvage tests).
+    pub fn paths(&self) -> &StorePaths {
+        &self.paths
     }
 
     /// Load optional index cache when fingerprint matches; otherwise rebuild.
@@ -424,6 +648,200 @@ impl Store {
 
     // --- internals ---
 
+    fn load_or_rebuild_catalog(&mut self) -> Result<(), StoreError> {
+        let paths = all_segment_paths(&self.paths)?;
+        let fp = segment_fingerprint(&paths)?;
+        let cat_path = crate::catalog::collections_catalog_path(&self.paths.catalogs_dir());
+        if let Some(cat) = try_load_collection_catalog(&cat_path, self.store_id, fp)? {
+            self.collection_catalog = cat;
+            return Ok(());
+        }
+        self.refresh_collection_catalog()
+    }
+
+    fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
+        let paths = all_segment_paths(&self.paths)?;
+        let fp = segment_fingerprint(&paths)?;
+        self.collection_catalog =
+            rebuild_collection_catalog(&self.paths, self.store_id, &self.index, fp)?;
+        Ok(())
+    }
+
+    fn write_chunked_put(
+        &mut self,
+        subject: &str,
+        value: &[u8],
+        mode: DurabilityMode,
+    ) -> Result<WriteReceipt, StoreError> {
+        let subject_bytes = subject.as_bytes();
+        if subject_bytes.len() > MAX_SUBJECT_LEN {
+            return Err(StoreError::SubjectTooLong {
+                max: MAX_SUBJECT_LEN,
+            });
+        }
+        if self.active.is_none() {
+            self.start_active_segment()?;
+        }
+        if let Some(w) = &self.active {
+            if w.segment.len() >= self.seal_threshold {
+                self.seal_active()?;
+            }
+        }
+
+        let segment_id = self
+            .active
+            .as_ref()
+            .map(|w| w.segment_id)
+            .expect("active segment");
+        let item_id = match self.index.get(subject_bytes) {
+            Some(entry) => entry.item_id(),
+            None => subject_item_id(subject_bytes),
+        };
+
+        let pieces = split_into_pieces(item_id, value, self.chunk_size)?;
+        // Pre-mint event ids so we do not hold &mut active across next_event_id.
+        let mut chunk_event_ids: Vec<[u8; 16]> = Vec::with_capacity(pieces.len());
+        for _ in 0..pieces.len() {
+            chunk_event_ids.push(self.next_event_id());
+        }
+        let event_id = self.next_event_id();
+        let created_ns = now_ns();
+
+        let chunk_envelopes: Result<Vec<_>, _> = pieces
+            .iter()
+            .map(|_| {
+                encode_item_envelope(&ItemEnvelope {
+                    store_id: self.store_id,
+                    segment_id,
+                    item_id,
+                    event_kind: EventKind::Put,
+                    created_ns,
+                    subject: subject_bytes.to_vec(),
+                })
+                .map_err(StoreError::BadEnvelope)
+            })
+            .collect();
+        let chunk_envelopes = chunk_envelopes?;
+
+        {
+            let writer = self.active.as_mut().expect("active segment");
+            for (piece, (chunk_event_id, envelope)) in pieces
+                .iter()
+                .zip(chunk_event_ids.iter().zip(chunk_envelopes.iter()))
+            {
+                let body = encode_piece_body(piece);
+                let header = FrameHeader {
+                    wire_major: dingo_format::WIRE_MAJOR,
+                    wire_minor: dingo_format::WIRE_MINOR,
+                    frame_kind: FrameKind::PayloadChunk.as_u8(),
+                    flags: FrameFlags::new(FrameFlags::CHUNKED),
+                    envelope_len: envelope.len() as u32,
+                    body_len: body.len() as u64,
+                    logical_len: piece.logical_len,
+                    writer_sequence: 0,
+                    event_id: *chunk_event_id,
+                };
+                writer.segment.append_parts(&FrameParts {
+                    header,
+                    envelope: envelope.clone(),
+                    body,
+                })?;
+            }
+        }
+
+        let manifest = manifest_from_pieces(&pieces, &chunk_event_ids, value)?;
+        let manifest_body = encode_chunk_manifest(&manifest);
+        let item_envelope = encode_item_envelope(&ItemEnvelope {
+            store_id: self.store_id,
+            segment_id,
+            item_id,
+            event_kind: EventKind::Put,
+            created_ns,
+            subject: subject_bytes.to_vec(),
+        })
+        .map_err(StoreError::BadEnvelope)?;
+
+        let offset = {
+            let writer = self.active.as_mut().expect("active segment");
+            let header = FrameHeader {
+                wire_major: dingo_format::WIRE_MAJOR,
+                wire_minor: dingo_format::WIRE_MINOR,
+                frame_kind: FrameKind::ItemEvent.as_u8(),
+                flags: FrameFlags::new(FrameFlags::CHUNKED),
+                envelope_len: item_envelope.len() as u32,
+                body_len: manifest_body.len() as u64,
+                logical_len: value.len() as u64,
+                writer_sequence: 0,
+                event_id,
+            };
+            let offset = writer.segment.append_parts(&FrameParts {
+                header,
+                envelope: item_envelope,
+                body: manifest_body.clone(),
+            })?;
+            match mode {
+                DurabilityMode::Memory => {}
+                DurabilityMode::Buffered | DurabilityMode::Durable => {
+                    Self::write_segment_tail(writer, mode)?;
+                }
+            }
+            offset
+        };
+
+        self.index.apply_event(
+            subject_bytes.to_vec(),
+            EventKind::Put,
+            manifest_body,
+            item_id,
+            event_id,
+            segment_id,
+            0,
+        );
+
+        if mode != DurabilityMode::Memory {
+            let _ = self.persist_index_cache();
+            let _ = self.refresh_collection_catalog();
+        }
+
+        Ok(WriteReceipt {
+            store_id: self.store_id,
+            segment_id,
+            item_id,
+            event_id,
+            event_kind: EventKind::Put,
+            durability: mode,
+            offset,
+        })
+    }
+
+    fn collect_chunk_pieces(
+        &self,
+        item_id: [u8; 16],
+    ) -> Result<Vec<dingo_format::ChunkPiece>, StoreError> {
+        let mut pieces = Vec::new();
+        let mut seen_hashes: HashSet<([u8; 16], u32, [u8; 32])> = HashSet::new();
+        for path in all_segment_paths(&self.paths)? {
+            let bytes = fs::read(&path)?;
+            let report = scan_forward(&bytes, self.limits);
+            for (_offset, frame) in report.verified_frames() {
+                if frame.header.known_kind() != Some(FrameKind::PayloadChunk) {
+                    continue;
+                }
+                let Some(piece) = decode_piece_body(&frame.body) else {
+                    continue;
+                };
+                if piece.item_id != item_id {
+                    continue;
+                }
+                let h = *blake3::hash(&piece.body).as_bytes();
+                if seen_hashes.insert((piece.item_id, piece.index, h)) {
+                    pieces.push(piece);
+                }
+            }
+        }
+        Ok(pieces)
+    }
+
     fn write_event(
         &mut self,
         subject: &str,
@@ -513,6 +931,7 @@ impl Store {
         // Refresh derived cache after durable/buffered acks (not memory-only).
         if mode != DurabilityMode::Memory {
             let _ = self.persist_index_cache();
+            let _ = self.refresh_collection_catalog();
         }
 
         Ok(WriteReceipt {
@@ -643,27 +1062,71 @@ impl Store {
     }
 }
 
-/// One verified item event discovered on disk.
-struct DiskEvent {
-    file: PathBuf,
-    offset: u64,
-    writer_sequence: u64,
-    subject: Vec<u8>,
-    kind: EventKind,
-    body: Vec<u8>,
-    item_id: [u8; 16],
-    event_id: [u8; 16],
-    segment_id: [u8; 16],
+/// One verified item event discovered on disk (shared with history module).
+#[derive(Debug, Clone)]
+pub(crate) struct DiskEventPub {
+    pub(crate) file: PathBuf,
+    pub(crate) offset: u64,
+    pub(crate) writer_sequence: u64,
+    pub(crate) subject: Vec<u8>,
+    pub(crate) kind: EventKind,
+    pub(crate) body: Vec<u8>,
+    pub(crate) item_id: [u8; 16],
+    pub(crate) event_id: [u8; 16],
+    pub(crate) segment_id: [u8; 16],
 }
 
 /// Compare recovery order for item events (segment mint order, then sequence).
-fn cmp_disk_events(a: &DiskEvent, b: &DiskEvent) -> Ordering {
+pub(crate) fn cmp_disk_events_pub(a: &DiskEventPub, b: &DiskEventPub) -> Ordering {
     segment_seq_key(&a.segment_id)
         .cmp(&segment_seq_key(&b.segment_id))
         .then(a.writer_sequence.cmp(&b.writer_sequence))
         .then(a.offset.cmp(&b.offset))
         .then(a.file.cmp(&b.file))
         .then(a.event_id.cmp(&b.event_id))
+}
+
+/// Collect verified item events from all segment files; also reports holes.
+pub(crate) fn collect_item_events_pub(
+    paths: &StorePaths,
+    limits: SafetyLimits,
+) -> Result<(Vec<DiskEventPub>, bool), StoreError> {
+    let mut events = Vec::new();
+    let mut has_holes = false;
+    for path in all_segment_paths(paths)? {
+        let bytes = fs::read(&path)?;
+        let report = scan_forward(&bytes, limits);
+        if report.holes().next().is_some() {
+            has_holes = true;
+        }
+        for (offset, frame) in report.verified_frames() {
+            if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
+                continue;
+            }
+            let Some(env) = decode_item_envelope(&frame.envelope) else {
+                continue;
+            };
+            events.push(DiskEventPub {
+                file: path.clone(),
+                offset,
+                writer_sequence: frame.header.writer_sequence,
+                subject: env.subject,
+                kind: env.event_kind,
+                body: frame.body.clone(),
+                item_id: env.item_id,
+                event_id: frame.header.event_id,
+                segment_id: env.segment_id,
+            });
+        }
+    }
+    Ok((events, has_holes))
+}
+
+type DiskEvent = DiskEventPub;
+
+/// Compare recovery order for item events (segment mint order, then sequence).
+fn cmp_disk_events(a: &DiskEvent, b: &DiskEvent) -> Ordering {
+    cmp_disk_events_pub(a, b)
 }
 
 /// First 8 LE bytes of segment_id are the mint counter (see `next_segment_id`).
@@ -750,30 +1213,7 @@ fn collect_item_events(
     paths: &StorePaths,
     limits: SafetyLimits,
 ) -> Result<Vec<DiskEvent>, StoreError> {
-    let mut events = Vec::new();
-    for path in all_segment_paths(paths)? {
-        let bytes = fs::read(&path)?;
-        let report = scan_forward(&bytes, limits);
-        for (offset, frame) in report.verified_frames() {
-            if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
-                continue;
-            }
-            let Some(env) = decode_item_envelope(&frame.envelope) else {
-                continue;
-            };
-            events.push(DiskEvent {
-                file: path.clone(),
-                offset,
-                writer_sequence: frame.header.writer_sequence,
-                subject: env.subject,
-                kind: env.event_kind,
-                body: frame.body.clone(),
-                item_id: env.item_id,
-                event_id: frame.header.event_id,
-                segment_id: env.segment_id,
-            });
-        }
-    }
+    let (events, _holes) = collect_item_events_pub(paths, limits)?;
     Ok(events)
 }
 
@@ -878,16 +1318,21 @@ fn rebuild_active_from_bytes(
 
     let report = scan_forward(kept, limits);
     for (_offset, frame) in report.verified_frames() {
-        // Stage 3a: only re-append item events into the new active buffer.
-        if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
-            continue;
+        // Re-append application content frames (items + payload chunks).
+        // Preserve flags/kind via append_parts so chunked puts survive reopen.
+        match frame.header.known_kind() {
+            Some(FrameKind::ItemEvent) | Some(FrameKind::PayloadChunk) => {
+                let mut header = frame.header.clone();
+                // writer_sequence is reassigned by append_parts.
+                header.writer_sequence = 0;
+                seg.append_parts(&FrameParts {
+                    header,
+                    envelope: frame.envelope.clone(),
+                    body: frame.body.clone(),
+                })?;
+            }
+            _ => {}
         }
-        seg.append(
-            FrameKind::ItemEvent,
-            &frame.envelope,
-            &frame.body,
-            frame.header.event_id,
-        )?;
     }
     Ok(seg)
 }

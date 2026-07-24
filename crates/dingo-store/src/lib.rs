@@ -28,8 +28,9 @@ pub use catalog::{
     COLLECTIONS_CATALOG_FILE,
 };
 pub use chunk_payload::{
-    decode_chunk_manifest, encode_chunk_manifest, is_chunk_manifest, ChunkManifest, ChunkSlot,
-    PayloadResult, CHUNK_MANIFEST_MAGIC, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
+    decode_chunk_manifest, encode_chunk_manifest, is_chunk_manifest, reassemble_with_manifest,
+    ChunkManifest, ChunkSlot, PayloadResult, CHUNK_MANIFEST_MAGIC, DEFAULT_CHUNK_SIZE,
+    DEFAULT_CHUNK_THRESHOLD,
 };
 pub use compact::{CheckpointMeta, CompactReport};
 pub use durability::DurabilityMode;

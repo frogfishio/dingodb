@@ -92,7 +92,7 @@ pub struct SecondaryIndexMeta {
 }
 
 /// In-memory secondary index: serialized field key → list of subject keys.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SecondaryIndex {
     /// Index metadata.
     pub meta: SecondaryIndexMeta,

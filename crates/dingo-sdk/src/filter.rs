@@ -18,6 +18,24 @@ pub enum SortOrder {
     Desc,
 }
 
+/// Explicit resource budget for scans (DX_SPEC §8.1).
+#[derive(Debug, Clone, Default)]
+pub struct QueryBudget {
+    /// Maximum live documents the engine may examine (index probe + scan).
+    ///
+    /// When unset, scans are unbounded (Stage 4 compatible default).
+    pub max_docs_scanned: Option<usize>,
+}
+
+impl QueryBudget {
+    /// Budget allowing at most `n` documents to be examined.
+    pub fn max_docs(n: usize) -> Self {
+        Self {
+            max_docs_scanned: Some(n),
+        }
+    }
+}
+
 /// Options for [`crate::Collection::find_with`].
 #[derive(Debug, Clone, Default)]
 pub struct QueryOptions {
@@ -28,6 +46,11 @@ pub struct QueryOptions {
     ///
     /// When unset, results are in stable subject/key order (deterministic).
     pub order_by: Option<(String, SortOrder)>,
+    /// Optional scan budget. When set and a scan would exceed it without a
+    /// usable index, the query fails with [`ErrorCode::QueryBudgetRequired`].
+    pub budget: Option<QueryBudget>,
+    /// When true, force a full collection scan even if an index exists.
+    pub force_scan: bool,
 }
 
 impl QueryOptions {
@@ -45,6 +68,18 @@ impl QueryOptions {
     /// Order by a JSON field path.
     pub fn order_by(mut self, field: impl Into<String>, order: SortOrder) -> Self {
         self.order_by = Some((field.into(), order));
+        self
+    }
+
+    /// Attach a scan budget (DX_SPEC §8.1).
+    pub fn budget(mut self, budget: QueryBudget) -> Self {
+        self.budget = Some(budget);
+        self
+    }
+
+    /// Force scan path (skip secondary indexes).
+    pub fn force_scan(mut self) -> Self {
+        self.force_scan = true;
         self
     }
 }
@@ -366,6 +401,14 @@ impl<'a> QueryBuilder<'a> {
 enum PathHit<'a> {
     Missing,
     Present(&'a JsonValue),
+}
+
+/// Resolve a dotted JSON path to a present value (for index key extraction).
+pub(crate) fn resolve_path_value<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    match resolve_path(doc, path) {
+        PathHit::Present(v) => Some(v),
+        PathHit::Missing => None,
+    }
 }
 
 fn resolve_path<'a>(doc: &'a JsonValue, path: &str) -> PathHit<'a> {

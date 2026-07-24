@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.11 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4d `dingo-sdk`; Stage 5 `dingo-examine`)  
+Status: Draft v0.12 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4d `dingo-sdk`; Stage 5 `dingo-examine`; Stage 6 indexes/catalogs/history/chunks)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -333,7 +333,17 @@ manifests.
 - Benchmark harness skeleton (no marketing claims yet): point read, append by
   durability mode, salvage scan throughput.
 
+| Slice | Deliverable | Status |
+|-------|-------------|--------|
+| 6a | Collection catalog + wipe/rebuild parity | **done** — `catalogs/collections.cat`; `rebuild_catalogs` / `list_collections` |
+| 6b | Secondary indexes + states + scan budget | **done** — `indexes/sec/…/*.six`; SDK `indexes().create/drop/rebuild`; `QueryBudget` |
+| 6c | Subject / key history | **done** — `Store::history`, SDK `Collection::history` |
+| 6d | Chunked payloads + partial maps | **done** — threshold chunking, `PayloadResult`, manifest `DCHM0001` |
+| 6e | Compaction + checkpoints | **done** — `compact_live` (sources retained), `checkpoint` under `snapshots/` |
+| 6f | Bench skeleton | **done** — `tests/stage6_bench_skeleton.rs` |
+
 ---
+
 
 ## Stage 7 — CLI, doctor, salvage, server
 
@@ -495,7 +505,7 @@ Record answers in-repo; they block packaging, not the stage order:
 | 1 | Implementation language(s) for core vs SDK | **Resolved (Stage 0):** Rust core; first SDK is Rust lib API; DX TypeScript-like samples remain the product shape (other language SDKs later). See [ARCHITECTURE.md](ARCHITECTURE.md). |
 | 2 | Sync marker, integrity algorithms, draft wire constants | **Open** — resolve at Stage 2a against [FORMAT_SPEC.md](FORMAT_SPEC.md). |
 | 3 | Default durability mode for embedded open | **Open** — DX says safe/durable default; confirm at Stage 3–4. |
-| 4 | First secondary-index implementation | **Open** — Stage 6 (in-process vs external). |
+| 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
 | 5 | Consensus library vs purpose-built leadership | **Open** — Stage 8 only. |
 | 6 | Whether `sda` ships inside `dingo` or separate | **Resolved for now:** separate `sda` binary (Stage 1). Stage 7 may add `dingo` without removing `sda`. |
 
@@ -559,5 +569,11 @@ the cited conformance suites as required checks—not optional polish.
     projection from salvage, `examine_store` / `examine_bytes`, SDA
     `filter_units` / `map_units`, bounded `ExaminePage` with resource-limit
     honesty; golden tests `stage5_examination.rs`.
-11. **Next:** Stage 6 indexes/catalogs/history/chunks; optional deterministic
-    CBOR envelope validation for full FORMAT_SPEC §5 condition 6.
+11. ~~Stage 6 indexes/catalogs/history/chunks.~~ **Done** — rebuildable
+    collection catalog; secondary field indexes (`building`/`ready`/`stale`/…);
+    scan + `QueryBudget`; per-key history; chunked puts with partial maps;
+    live-state compaction (sources retained); derived checkpoints; bench
+    skeleton (`stage6_store.rs`, `stage6_indexes_history.rs`,
+    `stage6_bench_skeleton.rs`).
+12. **Next:** Stage 7 CLI/doctor/salvage/server; optional deterministic CBOR
+    envelope validation for full FORMAT_SPEC §5 condition 6.

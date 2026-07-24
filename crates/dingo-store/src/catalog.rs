@@ -207,11 +207,6 @@ pub fn collection_name_from_subject(subject: &[u8]) -> Option<String> {
     Some(name.to_string())
 }
 
-/// Absolute path helpers for tests.
-pub fn catalog_path_for_store(paths: &StorePaths) -> PathBuf {
-    collections_catalog_path(&paths.catalogs_dir())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

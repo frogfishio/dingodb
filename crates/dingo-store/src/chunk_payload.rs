@@ -6,8 +6,8 @@
 
 use crate::error::StoreError;
 use dingo_format::{
-    body_hash, decode_chunk_body, encode_chunk_body, reassemble_chunks, ChunkPiece, FrameKind,
-    LogicalExtent, ReassemblyState, BODY_HASH_LEN,
+    body_hash, decode_chunk_body, encode_chunk_body, reassemble_chunks, ChunkPiece, LogicalExtent,
+    ReassemblyState, BODY_HASH_LEN,
 };
 
 /// Magic identifying a draft chunked-payload manifest in an item-event body.
@@ -267,11 +267,6 @@ pub fn reassemble_with_manifest(
         },
         ReassemblyState::Conflicting { index, .. } => PayloadResult::Conflicting { index },
     }
-}
-
-/// Frame kind used for payload chunks.
-pub fn payload_chunk_kind() -> FrameKind {
-    FrameKind::PayloadChunk
 }
 
 #[cfg(test)]

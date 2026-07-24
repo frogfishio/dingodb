@@ -58,6 +58,40 @@ impl Dingo {
         Ok(())
     }
 
+    /// Rebuild derived collection catalogs from the primary index.
+    pub fn rebuild_catalogs(&mut self) -> Result<(), Error> {
+        self.store.rebuild_catalogs()?;
+        Ok(())
+    }
+
+    /// Collection names known from the derived catalog (sorted).
+    pub fn list_collections(&self) -> Vec<String> {
+        self.store.list_collections()
+    }
+
+    /// Compact live state into a new sealed segment (sources retained).
+    pub fn compact_live(&mut self) -> Result<dingo_store::CompactReport, Error> {
+        Ok(self.store.compact_live()?)
+    }
+
+    /// Write a derived checkpoint with declared coverage.
+    pub fn checkpoint(
+        &self,
+        coverage: &str,
+    ) -> Result<(dingo_store::CheckpointMeta, PathBuf), Error> {
+        Ok(self.store.checkpoint(coverage)?)
+    }
+
+    /// Access the underlying store (advanced / Stage 6 operator paths).
+    pub fn store(&self) -> &Store {
+        &self.store
+    }
+
+    /// Mutable access to the underlying store.
+    pub fn store_mut(&mut self) -> &mut Store {
+        &mut self.store
+    }
+
     /// Path buffer for callers that need an owned root.
     pub fn path_buf(&self) -> PathBuf {
         self.store.path().to_path_buf()

@@ -36,7 +36,7 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 3 | Single-node store | **3a–3c** — put/get/delete, §16 suite, descriptor + index cache |
 | 4 | Collection SDK | **4a–4d** — `dingo-sdk` open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
-| 6 | Indexes, catalogs, chunks | not started |
+| 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
 | 7 | CLI doctor/salvage + server | not started |
 | 8+ | Cluster, tiering | blocked until single-node salvage is real |
 
@@ -48,8 +48,8 @@ dingodb/
     sda-core/       # package name sda-lib; pure SDA (Stage 1)
     sda-cli/        # package name sda; `sda` binary (Stage 1)
     dingo-format/   # frames, seal, fwd/rev scan, §13 corpus (Stage 2a–2d)
-    dingo-store/    # single-node append store (Stage 3a–3c)
-    dingo-sdk/      # embedded collection API (Stage 4a–4d)
+    dingo-store/    # single-node append store (Stages 3 + 6)
+    dingo-sdk/      # embedded collection API (Stages 4 + 6)
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5)
 ```
 
@@ -58,8 +58,8 @@ Planned crates (do **not** add until the owning stage starts):
 | Stage | Crate (proposed) | Role |
 |-------|------------------|------|
 | 2 | `dingo-format` | **Present** — frames, segment seal, fwd/rev scanner, §13 corpus (2a–2d) |
-| 3 | `dingo-store` | **Present** — open/create, put/get/delete, durability, §16 suite, descriptor + index cache (3a–3c) |
-| 4 | `dingo-sdk` | **Present** — open, collections, JSON/bytes, scan/stream, filters, `ErrorCode` (4a–4d) |
+| 3+6 | `dingo-store` | **Present** — put/get/delete, salvage, catalogs, chunks, history, compact, secondary index files |
+| 4+6 | `dingo-sdk` | **Present** — collections, filters, secondary indexes, history, query budgets |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `dingo-cli` | `dingo` doctor/salvage/put/get |
 | 7 | `dingo-server` | Network front end, same logical API |

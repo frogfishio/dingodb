@@ -188,7 +188,9 @@ descriptor + optional index cache), and **Stage 4a–4d** land in `dingo-sdk`
 | 3 | Single-node store | **3a–3c** put/get/delete, §16 suite, descriptor + index cache |
 | 4 | Collection SDK | **4a–4d** open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` |
-| 6–9 | Indexes → cluster | not started |
+| 6 | Indexes, catalogs, history, chunks | done |
+| 7 | CLI, doctor, salvage, server | not started |
+| 8–9 | Cluster, tiering | later |
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  
 Crate map and language decisions: [ARCHITECTURE.md](ARCHITECTURE.md).  

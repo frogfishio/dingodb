@@ -13,7 +13,6 @@ use dingo_format::{ActiveSegment, FrameKind, SafetyLimits, SegmentId};
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Report from a live-state compaction pass.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -241,10 +240,4 @@ fn sync_dir_best_effort(path: &std::path::Path) {
     }
 }
 
-/// Wall-clock nanoseconds helper for checkpoint timestamps.
-pub fn now_ns() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(0)
-}
+

@@ -45,6 +45,14 @@ pub enum StoreError {
     /// Corrupt or incomplete store metadata.
     #[error("corrupt store metadata: {0}")]
     CorruptMeta(&'static str),
+
+    /// Payload is only partially available (missing/corrupt chunks).
+    #[error("payload only partially available")]
+    PayloadPartial,
+
+    /// Chunk reassembly found conflicting content at a manifest position.
+    #[error("conflicting chunk content")]
+    PayloadConflict,
 }
 
 impl StoreError {
