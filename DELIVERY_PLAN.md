@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.10 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4d `dingo-sdk`)  
+Status: Draft v0.11 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4d `dingo-sdk`; Stage 5 `dingo-examine`)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -295,6 +295,10 @@ SDA programs examine verified items, partial payloads, and holes.
 - Golden tests: damaged segment → examination stream → SDA filter finds only
   verified islands / reports holes.
 
+**Status**
+
+| 5 | ExaminationUnit host + SDA over salvage | **done** — `dingo-examine` (`examine_store` / `examine_bytes`, `filter_units` / `map_units`, `ExaminePage` + limits); `Store::examination_sources`; golden tests in `stage5_examination.rs` |
+
 **Dependency note**
 
 - Stage 1 must be done. Stage 2–3 provide the host values. Stage 4 can partially
@@ -547,5 +551,13 @@ the cited conformance suites as required checks—not optional polish.
    `tests/section13_corpus.rs` automates every §13 bullet; `scan_reverse`
    (§7.4); `group_by_event_id` (§9); draft `reassemble_chunks` partial maps
    (§8). Envelope CBOR (§5 condition 6) still deferred.
-8. **Next:** optional deterministic CBOR envelope validation for full §5
-   condition 6; then Stage 3 store (`dingo-store`).
+8. ~~Stage 3 store (`dingo-store`).~~ **Done (3a–3c)** — put/get/delete,
+   durability, salvage, §16 suite, descriptor + index cache.
+9. ~~Stage 4 collection SDK (`dingo-sdk`).~~ **Done (4a–4d)** — open,
+   JSON/bytes, scan/stream, filters, `ErrorCode`, receipts.
+10. ~~Stage 5 SDA examination (`dingo-examine`).~~ **Done** — ExaminationUnit
+    projection from salvage, `examine_store` / `examine_bytes`, SDA
+    `filter_units` / `map_units`, bounded `ExaminePage` with resource-limit
+    honesty; golden tests `stage5_examination.rs`.
+11. **Next:** Stage 6 indexes/catalogs/history/chunks; optional deterministic
+    CBOR envelope validation for full FORMAT_SPEC §5 condition 6.
