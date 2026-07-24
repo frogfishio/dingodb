@@ -14,8 +14,8 @@ Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, 
 iter, SDK-native filters, stable `ErrorCode`, write receipts, secondary field
 indexes, query budgets, per-key history, chunked large payloads, and Stage 7
 `Dingo::connect("dingo://host:port")` over line-delimited JSON TCP. Remote
-parity covers put/get/delete/scan, **history**, and **secondary index**
-create/list/rebuild/drop (server marks indexes stale on writes).
+parity covers put/get/delete/scan, **history**, **secondary indexes**,
+**`get_payload`**, and **server-side find** (index-accelerated when ready).
 
 Application developers do not need to know about frames or segments.
 
@@ -30,10 +30,10 @@ Application developers do not need to know about frames or segments.
 | `Dingo::list_collections` / `rebuild_catalogs` | Derived catalog (rebuild embedded only) |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |
 | `Collection::put_bytes` / `get_bytes` | Opaque byte payloads |
-| `Collection::get_payload` | Completeness-aware chunked read (embedded) |
+| `Collection::get_payload` | Completeness-aware chunked read (embedded + remote) |
 | `Collection::scan_keys` / `scan_json` | Bounded live scan |
 | `Collection::scan_json_iter` | Streaming JSON rows (embedded) |
-| `Collection::find` / `find_json` / `query` | Filters (+ index acceleration embedded; remote filters client-side after scan) |
+| `Collection::find` / `find_json` / `query` | Filters + index acceleration (embedded + remote server-side) |
 | `Collection::indexes` | Create / drop / rebuild / list secondary indexes (embedded + remote) |
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
 | `handle_connection` / `handle_connection_with` | Per-connection server dispatch |
@@ -101,7 +101,6 @@ returns complete data only when every chunk verifies.
 ## Non-goals (yet)
 
 - Cluster routing (Stage 8)
-- Remote `get_payload` partial maps / server-side index-accelerated find (history + index CRUD remote; chunk partial maps still embedded)
 - Mutual TLS / multi-tenant ACLs (shared token only for Stage 7e)
 - SDA examination of holes / recovery units — see [`dingo-examine`](../dingo-examine) (Stage 5)
 - Unique secondary indexes with partition consistency scopes

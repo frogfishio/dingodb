@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.14 (Stages 0–7 done including 7e auth/deadline/retry, 7f nightly packaging, remote history/index parity; Stage 8+ deferred)  
+Status: Draft v0.15 (Stages 0–7 done including remote get_payload + server-side find; Stage 8+ deferred)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -593,8 +593,10 @@ the cited conformance suites as required checks—not optional polish.
 14. ~~Remote parity for history + secondary indexes.~~ **Done** — RPC ops
     `history`, `index_list` / `index_create` / `index_drop` / `index_rebuild`;
     server marks indexes stale on put/delete; tests
-    `stage7_remote_parity.rs`. Chunk partial maps (`get_payload`) and
-    server-side index-accelerated find remain embedded-only.
-15. **Next:** Stage 8 cluster (only after single-node salvage/doctor proven);
-    optional deterministic CBOR envelope validation (FORMAT_SPEC §5 condition 6);
-    remote `get_payload` / server-side index find if needed.
+    `stage7_remote_parity.rs`.
+15. ~~Remote `get_payload` + server-side find.~~ **Done** — RPC ops
+    `get_payload` (complete/partial/unavailable/conflicting maps) and `find`
+    (JSON filter, limit/order/budget/`force_scan`, index-accelerated via
+    shared `find_on_store`); tests in `stage7_remote_parity.rs`.
+16. **Next:** Stage 8 cluster (only after single-node salvage/doctor proven);
+    optional deterministic CBOR envelope validation (FORMAT_SPEC §5 condition 6).

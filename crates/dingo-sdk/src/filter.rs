@@ -200,6 +200,87 @@ impl Filter {
             Self::Not(inner) => !inner.matches(doc),
         }
     }
+
+    /// Encode this filter as a DX/Mongo-style JSON object (round-trips via [`Self::from_json`]).
+    ///
+    /// Used for remote `find` RPC: the server parses with [`Self::from_json`].
+    pub fn to_json(&self) -> JsonValue {
+        match self {
+            Self::Always => JsonValue::Object(serde_json::Map::new()),
+            Self::Field { path, pred } => {
+                let mut map = serde_json::Map::new();
+                map.insert(path.clone(), pred_to_json(pred));
+                JsonValue::Object(map)
+            }
+            Self::And(parts) => {
+                if parts.is_empty() {
+                    return JsonValue::Object(serde_json::Map::new());
+                }
+                if parts.len() == 1 {
+                    return parts[0].to_json();
+                }
+                // Prefer a flat multi-key object when every part is a distinct field predicate.
+                let mut flat = serde_json::Map::new();
+                let mut can_flat = true;
+                for p in parts {
+                    match p {
+                        Self::Field { path, pred } if !flat.contains_key(path) => {
+                            flat.insert(path.clone(), pred_to_json(pred));
+                        }
+                        _ => {
+                            can_flat = false;
+                            break;
+                        }
+                    }
+                }
+                if can_flat {
+                    JsonValue::Object(flat)
+                } else {
+                    JsonValue::Object(serde_json::Map::from_iter([(
+                        "$and".into(),
+                        JsonValue::Array(parts.iter().map(|p| p.to_json()).collect()),
+                    )]))
+                }
+            }
+            Self::Or(parts) => {
+                if parts.is_empty() {
+                    // Empty OR matches nothing ≡ Not(Always).
+                    return Self::not(Self::Always).to_json();
+                }
+                if parts.len() == 1 {
+                    return parts[0].to_json();
+                }
+                JsonValue::Object(serde_json::Map::from_iter([(
+                    "$or".into(),
+                    JsonValue::Array(parts.iter().map(|p| p.to_json()).collect()),
+                )]))
+            }
+            Self::Not(inner) => JsonValue::Object(serde_json::Map::from_iter([(
+                "$not".into(),
+                inner.to_json(),
+            )])),
+        }
+    }
+}
+
+fn pred_to_json(pred: &Pred) -> JsonValue {
+    match pred {
+        // Bare value → equality (matches `from_json` bare-value rule).
+        Pred::Eq(v) => v.clone(),
+        Pred::Ne(v) => json_op("$ne", v.clone()),
+        Pred::Lt(v) => json_op("$lt", v.clone()),
+        Pred::Lte(v) => json_op("$lte", v.clone()),
+        Pred::Gt(v) => json_op("$gt", v.clone()),
+        Pred::Gte(v) => json_op("$gte", v.clone()),
+        Pred::In(list) => json_op("$in", JsonValue::Array(list.clone())),
+        Pred::Exists(b) => json_op("$exists", JsonValue::Bool(*b)),
+        Pred::Prefix(s) => json_op("$prefix", JsonValue::String(s.clone())),
+        Pred::Contains(v) => json_op("$contains", v.clone()),
+    }
+}
+
+fn json_op(op: &str, rhs: JsonValue) -> JsonValue {
+    JsonValue::Object(serde_json::Map::from_iter([(op.into(), rhs)]))
 }
 
 /// Builder for a single field predicate.
@@ -649,5 +730,18 @@ mod tests {
         let doc = json!({"address": {"city": "Bangkok"}});
         assert!(Filter::field("address.city").eq("Bangkok").matches(&doc));
         assert!(!Filter::field("address.city").eq("Singapore").matches(&doc));
+    }
+
+    #[test]
+    fn to_json_roundtrip() {
+        let f = Filter::and([
+            Filter::field("status").eq("active"),
+            Filter::field("age").gte(18),
+        ]);
+        let j = f.to_json();
+        let back = Filter::from_json(&j).unwrap();
+        let doc = json!({"status": "active", "age": 21});
+        assert!(back.matches(&doc));
+        assert!(!back.matches(&json!({"status": "active", "age": 10})));
     }
 }

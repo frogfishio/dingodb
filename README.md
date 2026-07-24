@@ -176,8 +176,8 @@ Its promise is narrower and stronger:
 DingoDB is past pure-spec: Stages **0–7** land in-tree. SDA library + CLI,
 wire format + salvage, single-node store, collection SDK, SDA examination,
 indexes/history/chunks, and the Stage 7 operator surface (`dingo` CLI doctor /
-salvage / serve + `Dingo::connect` with auth/deadline/retry, remote history +
-index management, and nightly packaging).
+salvage / serve + `Dingo::connect` with auth/deadline/retry, remote history /
+indexes / `get_payload` / server-side find, and nightly packaging).
 
 | Stage | Focus | Status |
 |-------|--------|--------|
@@ -188,7 +188,7 @@ index management, and nightly packaging).
 | 4 | Collection SDK | **4a–4d** open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` |
 | 6 | Indexes, catalogs, history, chunks | done |
-| 7 | CLI, doctor, salvage, server | **done** — 7a–7f + remote history/index parity |
+| 7 | CLI, doctor, salvage, server | **done** — 7a–7f + full single-node remote parity |
 | 8–9 | Cluster, tiering | later |
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  

@@ -241,6 +241,7 @@ fn remote_code(code: &str) -> ErrorCode {
         "resource_limit" => ErrorCode::ResourceLimit,
         "data_damaged" => ErrorCode::DataDamaged,
         "query_invalid" => ErrorCode::QueryInvalid,
+        "query_budget_required" => ErrorCode::QueryBudgetRequired,
         "io" => ErrorCode::Io,
         _ => ErrorCode::Internal,
     }

@@ -94,12 +94,19 @@ impl<'a> Collection<'a> {
         }
     }
 
-    /// Get payload with explicit completeness (chunked values). Embedded only.
+    /// Get payload with explicit completeness (chunked values).
+    ///
+    /// Returns partial / unavailable / conflicting maps without silent fill.
+    /// Works over embedded and remote (`dingo://`) backends.
     pub fn get_payload(&mut self, key: &str) -> Result<Option<PayloadResult>, Error> {
-        let subject = encode_subject(&self.name, key)?;
-        let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
-        let store = self.local_store()?;
-        Ok(store.get_payload(subject_str)?)
+        match self.backend {
+            Backend::Local(store) => {
+                let subject = encode_subject(&self.name, key)?;
+                let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
+                Ok(store.get_payload(subject_str)?)
+            }
+            Backend::Remote(client) => client.get_payload(&self.name, key),
+        }
     }
 
     /// Get and deserialize into `T`.
@@ -287,59 +294,62 @@ impl<'a> Collection<'a> {
         options: &QueryOptions,
     ) -> Result<Vec<(String, JsonValue)>, Error> {
         match self.backend {
-            Backend::Remote(client) => {
-                // Remote: materialize scan then filter client-side.
-                let mut rows = client.scan_json(&self.name, None)?;
-                rows.retain(|(_, v)| filter.matches(v));
-                finish_query(rows, options)
-            }
-            Backend::Local(store) => {
-                // Try index acceleration when not force-scanning.
-                if !options.force_scan {
-                    if let Some((info, subjects)) = try_index_lookup(store, &self.name, filter)? {
-                        if info.state.usable() {
-                            return collect_from_subjects(
-                                store, &self.name, subjects, filter, options,
-                            );
-                        }
-                    }
-                }
+            Backend::Remote(client) => client.find(&self.name, filter, options),
+            Backend::Local(store) => find_on_store(store, &self.name, filter, options),
+        }
+    }
+}
 
-                let prefix = collection_prefix(&self.name)?;
-                let logical = store.live_logical_entries()?;
-                let mut scanned = 0usize;
-                let mut out = Vec::new();
-                for (subject, body) in logical {
-                    if !subject.starts_with(&prefix) {
-                        continue;
-                    }
-                    let Some((coll, key)) = decode_subject(&subject) else {
-                        continue;
-                    };
-                    if coll != self.name {
-                        continue;
-                    }
-                    scanned += 1;
-                    if let Some(budget) = &options.budget {
-                        if let Some(max) = budget.max_docs_scanned {
-                            if scanned > max {
-                                return Err(Error::QueryBudgetRequired(format!(
-                                    "scan examined more than {max} documents without a usable index; \
-                                     raise budget or create an index"
-                                )));
-                            }
-                        }
-                    }
-                    let value = decode_json(&body)?;
-                    if !filter.matches(&value) {
-                        continue;
-                    }
-                    out.push((key.to_string(), value));
-                }
-                finish_query(out, options)
+/// Run a filter query against an open store (index-accelerated when possible).
+///
+/// Shared by the embedded collection path and the remote server dispatch.
+pub(crate) fn find_on_store(
+    store: &Store,
+    collection: &str,
+    filter: &Filter,
+    options: &QueryOptions,
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    // Try index acceleration when not force-scanning.
+    if !options.force_scan {
+        if let Some((info, subjects)) = try_index_lookup(store, collection, filter)? {
+            if info.state.usable() {
+                return collect_from_subjects(store, collection, subjects, filter, options);
             }
         }
     }
+
+    let prefix = collection_prefix(collection)?;
+    let logical = store.live_logical_entries()?;
+    let mut scanned = 0usize;
+    let mut out = Vec::new();
+    for (subject, body) in logical {
+        if !subject.starts_with(&prefix) {
+            continue;
+        }
+        let Some((coll, key)) = decode_subject(&subject) else {
+            continue;
+        };
+        if coll != collection {
+            continue;
+        }
+        scanned += 1;
+        if let Some(budget) = &options.budget {
+            if let Some(max) = budget.max_docs_scanned {
+                if scanned > max {
+                    return Err(Error::QueryBudgetRequired(format!(
+                        "scan examined more than {max} documents without a usable index; \
+                         raise budget or create an index"
+                    )));
+                }
+            }
+        }
+        let value = decode_json(&body)?;
+        if !filter.matches(&value) {
+            continue;
+        }
+        out.push((key.to_string(), value));
+    }
+    finish_query(out, options)
 }
 
 fn collect_from_subjects(

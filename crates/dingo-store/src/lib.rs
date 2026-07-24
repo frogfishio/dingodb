@@ -32,6 +32,8 @@ pub use chunk_payload::{
     ChunkManifest, ChunkSlot, PayloadResult, CHUNK_MANIFEST_MAGIC, DEFAULT_CHUNK_SIZE,
     DEFAULT_CHUNK_THRESHOLD,
 };
+/// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
+pub use dingo_format::{ByteRange, LogicalExtent};
 pub use compact::{CheckpointMeta, CompactReport};
 pub use durability::DurabilityMode;
 pub use envelope::{
