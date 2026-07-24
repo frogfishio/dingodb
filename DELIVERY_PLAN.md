@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.9 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4b `dingo-sdk`)  
+Status: Draft v0.10 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format`; Stage 3a–3c `dingo-store`; Stage 4a–4d `dingo-sdk`)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -262,9 +262,9 @@ disclosure layers 1–2.
 **Suggested sub-milestones**
 
 | 4a | Open + put/get/delete JSON | **done** — `dingo-sdk` (`Dingo::open`, `collection`, JSON put/get/delete) |
-| 4b | Bytes + streaming scan of collection | **partial** — bytes put/get + bounded `scan_keys`/`scan_json` (full streaming iterator later) |
-| 4c | Filter builder + limit/order basics | not started |
-| 4d | Error taxonomy + durability receipts | **partial** — receipts report durability; typed damage/incomplete errors still thin |
+| 4b | Bytes + streaming scan of collection | **done** — `put_bytes`/`get_bytes`, `scan_keys`/`scan_json`, `scan_json_iter` |
+| 4c | Filter builder + limit/order basics | **done** — `Filter` AST, `find`/`find_json`, fluent `query()`, limit/order |
+| 4d | Error taxonomy + durability receipts | **done** — `ErrorCode` + `Error::code`; receipts report achieved durability |
 
 ---
 

@@ -175,9 +175,10 @@ Its promise is narrower and stronger:
 
 DingoDB is past pure-spec: **Stage 0–1** are in place (SDA library, CLI, §14.1
 conformance), **Stage 2a–2d** land in `dingo-format` (frames, segment seal,
-forward/reverse salvage, FORMAT_SPEC §13 destructive corpus), and **Stage 3a–3c**
+forward/reverse salvage, FORMAT_SPEC §13 destructive corpus), **Stage 3a–3c**
 land in `dingo-store` (put/get/delete, durability, §16 store suite, store
-descriptor + optional index cache).
+descriptor + optional index cache), and **Stage 4a–4d** land in `dingo-sdk`
+(collections, JSON/bytes, scan/stream, filters, stable error codes).
 
 | Stage | Focus | Status |
 |-------|--------|--------|
@@ -185,7 +186,8 @@ descriptor + optional index cache).
 | 1 | SDA standalone | library + CLI + §14.1 suite |
 | 2 | Wire format + salvage | **2a–2d** frames, seal, scanners, §13 corpus |
 | 3 | Single-node store | **3a–3c** put/get/delete, §16 suite, descriptor + index cache |
-| 4–9 | SDK → cluster | not started |
+| 4 | Collection SDK | **4a–4d** open, JSON/bytes, scan/stream, filters, `ErrorCode` |
+| 5–9 | Examination → cluster | not started |
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  
 Crate map and language decisions: [ARCHITECTURE.md](ARCHITECTURE.md).  
