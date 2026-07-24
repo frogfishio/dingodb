@@ -1,236 +1,206 @@
 # DingoDB
 
-## The human-readable, resilient JSON database
+## Damage the database. Keep the data you did not destroy.
 
-DingoDB is an embedded, append-only JSON database designed for systems where **data durability, transparency, and recoverability matter more than hiding complexity behind a storage engine**.
+DingoDB is a damage-tolerant, high-performance database for arbitrary digital
+material.
 
-DingoDB stores its source of truth as open, inspectable data files. Every change is recorded. Indexes and materialized views are rebuildable. If something goes wrong, a human can open the database directory, understand what happened, and recover.
+Put structured records, logs, documents, binary objects, application state,
+unknown formats, or uninterpreted bytes into it. Read them immediately through
+fast indexes, retain them across massive storage tiers, and return years later
+to examine whatever remains.
 
-No black box. No opaque binary state. No database server required.
+DingoDB is designed around a simple recovery rule:
+
+> What is gone is gone. What remains still lives.
 
 ```text
-application
-    |
-  DingoDB
-    |
-+----------------+
-| journal.jsonl  |  <- source of truth
-| snapshots/     |
-| indexes/       |
-+----------------+
+┌─────────────────────────────────────────────────────────┐
+│ DATA │ DATA │ █ HOLE █ │ DATA │ SCRATCH │ DATA │ DATA │
+│  ✓   │  ✓   │    ✗     │  ✓   │    ✗    │  ✓   │  ✓   │
+└─────────────────────────────────────────────────────────┘
 ```
 
----
+A hole in the middle does not poison the healthy data after it. DingoDB finds
+and verifies every surviving data island instead of treating the store as one
+fragile object.
 
-## Why DingoDB?
+## Ordinary to use
 
-Modern applications increasingly need more than storage.
+The unusual recovery model is not the everyday API.
 
-They need:
+```ts
+const db = await Dingo.open("./app.dingo");
+const users = db.collection("users");
 
-- history
-- provenance
-- auditability
-- human recovery
-- deterministic reconstruction
-- structured knowledge
+await users.put("user-42", {
+  name: "Alice",
+  status: "active"
+});
 
-Traditional databases are excellent at querying current state.
+const alice = await users.get("user-42");
 
-DingoDB is designed for systems that also need to answer:
-
-> "How did we get here?"
-
----
-
-## Core principles
-
-### Open data
-
-The database is made of normal files.
-
-You can:
-
-- inspect it with standard tools
-- back it up
-- copy it
-- recover it manually
-- write your own readers
-
-Your data is not trapped inside a proprietary storage format.
-
----
-
-### Append-only truth
-
-DingoDB treats history as valuable.
-
-Updates are recorded as events rather than silently overwriting the past.
-
-Example:
-
-```json
-{
-  "event": "fact.updated",
-  "id": "compiler-abi",
-  "value": "EXTERN C ABI is pinned",
-  "timestamp": "2026-07-24T12:00:00Z"
+for await (const user of users.find({ status: "active" })) {
+  console.log(user);
 }
 ```
 
-The current state is derived from history.
+JSON and bytes are first-class. Collections are schemaless by default.
+Ordinary filters do not require learning SDA. Embedded, server, and clustered
+deployments use the same logical API.
 
----
+## Core promises
 
-### Rebuildable acceleration
+### Independent survival
 
-Indexes are not the truth.
+Records, payload chunks, and immutable segments are independently framed and
+verified.
 
-They can be:
+Corrupt a record, truncate a segment, lose an index, delete a catalog, or punch
+a hole through the storage medium: unrelated intact data remains recoverable.
 
-- deleted
-- regenerated
-- repaired
+Recovery does not stop at the first damaged byte.
 
-The database survives damaged acceleration structures.
+### Extreme speed
 
----
+DingoDB separates durable truth from acceleration:
 
-### Human-first recovery
+- append-oriented, sharded ingestion;
+- memory-resident hot indexes;
+- immutable segments for parallel reads;
+- asynchronous, rebuildable search structures;
+- explicit memory, buffered, durable, and replicated acknowledgement modes.
 
-A DingoDB installation should remain understandable without special tooling.
+The hot path targets the performance class of dedicated in-memory stores.
+Durability and verification modes are always disclosed with benchmark claims.
 
-When everything fails:
+### Massive retention
 
-```bash
-cat journal.jsonl
+One logical DingoDB store may span:
+
+- memory and local flash;
+- local or network disks;
+- object storage;
+- replicated or erasure-coded storage;
+- offline archival media;
+- multiple hardware and format generations.
+
+Segments are independently movable and self-identifying. No operation requires
+rewriting the entire store, and losing the global catalog does not make the
+underlying segments meaningless.
+
+Store it today. Find it fifteen years later.
+
+### Clustering without a new black box
+
+A DingoDB cluster is a federation of independently recoverable partitions and
+segments.
+
+Consensus controls partition ownership and strong writes, but it is never the
+only map back to the bytes. Destroy the cluster catalog or remove a storage
+node: its surviving segments remain ordinary, self-identifying DingoDB data.
+
+Strong ordering is partition-local. There is no global lock or global sequence
+on the hot path. Workloads that prefer ingestion availability can use
+convergent append and retain both sides of a network split explicitly.
+
+### SDA examination
+
+[SDA](SDA_SPEC.md), the Structured Data Algebra, is DingoDB's deterministic
+examination and transformation language.
+
+SDA can inspect:
+
+- verified envelopes and structured payloads;
+- opaque-byte descriptors;
+- recovered fragments;
+- missing chunks;
+- physical holes;
+- incomplete and uncertain derived state.
+
+If DingoDB can recover it, SDA can examine it.
+
+## Preserve first, understand later
+
+DingoDB does not need to understand a payload before preserving it.
+
+Every item receives a durable, self-describing envelope. The payload may be
+structured data, opaque bytes, or independently recoverable chunks.
+
+New decoders, schemas, labels, full-text indexes, semantic indexes, and SDA
+projections can be applied years after ingestion without rewriting the
+original bytes.
+
+```text
+ingest → hot indexes → immutable segments → cold archive
+          fast now        durable history     cheap retention
 ```
 
-should still tell you what happened.
+## Recovery is evidence, not optimism
 
----
+DingoDB distinguishes:
 
-## Built for knowledge systems
+- physically verified data;
+- complete logical state;
+- partial payloads;
+- unsupported formats;
+- encrypted data whose keys are unavailable;
+- corruption;
+- known holes;
+- uncertain reconstructions.
 
-DingoDB is especially suited for:
+It never silently converts “survived” into “complete.”
 
-- AI agent memory
-- project knowledge bases
-- configuration systems
-- audit trails
-- experiment tracking
-- build systems
-- developer tooling
-- local-first applications
-
-It is designed around the idea that structured knowledge is not just data — it has history, authority, and context.
-
----
-
-## DingoDB + SDA
-
-DingoDB uses **SDA (Structured Data Algebra)** as its transformation layer.
-
-SDA provides a small, deterministic language for:
-
-- filtering
-- reshaping
-- validation
-- normalization
-- querying structured data
-
-Example:
-
-```sda
-facts
-|> { f ∈ _ |
-       f⟨status⟩ = "active"
-       ∧ f⟨scope⟩ = "compiler"
-   }
-```
-
-Storage and transformation remain separate:
-
-```
-DingoDB
-    |
-    | records
-    v
-SDA
-    |
-    | meaning
-    v
-application
-```
-
----
+An event after a hole remains valid as an event. A current-state projection
+that may depend on missing history is returned as incomplete or uncertain.
 
 ## What DingoDB is not
 
-DingoDB is not intended to replace:
+DingoDB is not magic. It cannot recover bytes after every physical copy has
+been destroyed.
 
-- PostgreSQL for relational workloads
-- distributed databases for massive clusters
-- analytical warehouses
-- high-frequency transactional systems
+It does not claim:
 
-DingoDB optimizes for:
+- Redis-class latency for offline archival data;
+- semantic understanding of arbitrary bytes;
+- complete state when required history is missing;
+- zero-cost durability;
+- SQL compatibility or distributed transactions by default.
 
-- trust
-- inspectability
-- resilience
-- portability
+Its promise is narrower and stronger:
 
----
-
-## Design goals
-
-DingoDB aims to be:
-
-✅ embedded  
-✅ local-first  
-✅ crash resistant  
-✅ human inspectable  
-✅ deterministic  
-✅ rebuildable  
-✅ easy to backup  
-✅ easy to understand  
-
----
+> Localized destruction causes localized loss.
 
 ## Status
 
-DingoDB is currently under active development.
+DingoDB is in the specification phase.
 
-The initial target is a small, reliable core:
+The initial implementation target is:
 
-- JSONL journal
-- snapshots
-- indexes
-- query engine
-- recovery tooling
-- SDA integration
+- zero-configuration embedded operation;
+- one excellent collection-oriented SDK;
+- JSON and bytes with put, get, delete, append, and streaming filters;
+- a small, safe CLI with doctor and non-destructive salvage;
+- a resynchronizable framed journal;
+- immutable self-describing segments;
+- inline and chunked payloads;
+- independent verification and island recovery;
+- rebuildable catalogs and indexes;
+- SDA examination;
+- reproducible corruption and performance tests.
 
----
+See the [architecture specification](OVERVIEW.md) for normative requirements,
+the [survival format](FORMAT_SPEC.md) for the draft wire profile, the
+[SDA specification](SDA_SPEC.md) for the algebra, and the
+[DingoDB SDA profile](SDA_PROFILE.md) for recovery examination semantics.
+Distributed deployments are defined by the
+[cluster architecture](CLUSTER_SPEC.md). The everyday API, CLI, defaults, and
+progressive-disclosure rules are defined by the
+[developer experience specification](DX_SPEC.md).
 
 ## License
 
 DingoDB is released under the MIT License.
 
-The DingoDB data format and specifications are intended to remain open and publicly documented.
-
----
-
-## Philosophy
-
-> A database should not become a mystery box containing your most important information.
-
-DingoDB exists so that software can remember — while humans can still understand.
-
----
-
-I would probably put a one-line tagline right at the top:
-
-**"DingoDB — the database that remembers how it got there."**
-
-That actually captures the difference.
+The storage formats and specifications are intended to remain open, documented,
+and implementable without a proprietary service.

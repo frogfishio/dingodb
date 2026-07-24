@@ -1,488 +1,267 @@
-# DingoDB Unique Selling Proposition (USP)
+# DingoDB Product Thesis
 
-## Why DingoDB Exists
+Status: Draft v0.1
 
-## Version 0.1
+## 1. The problem
 
----
+Most databases behave as a single logical machine.
 
-# 1. The Problem
+When their critical metadata, file structure, or storage engine is damaged,
+healthy bytes may still exist but become inaccessible. Recovery commonly means
+restoring an intact replica, accepting a valid prefix, or reconstructing the
+database as a whole.
 
-Modern software has become extremely good at storing data.
+At the same time, storage systems tend to divide into separate categories:
 
-It has become much worse at preserving **understanding**.
+- fast stores for active data;
+- object stores for large data;
+- archives for old data;
+- search engines for finding data;
+- specialist tools for recovery.
 
-Most databases answer:
+That division creates fragile handoffs and long-term dependencies. Fifteen
+years later, the original application, schema, catalog, or vendor service may
+be gone even though most of the underlying content survives.
 
-> "What is the current value?"
+## 2. The DingoDB thesis
 
-But many important systems need to answer:
+DingoDB treats a database as a fabric of independently survivable data islands,
+not one all-or-nothing object.
 
-> "Why is this the current value?"
+Its product promise is:
 
-and:
+> Put anything in. Keep it at scale. Damage it. Find what survived.
 
-> "Who decided this?"
+DingoDB combines:
 
-and:
+- a memory-store-class hot path;
+- append-oriented durable ingestion;
+- immutable, self-verifying storage segments;
+- partition-local consensus without a global hot-path lock;
+- massive tiered retention;
+- catalog-independent salvage;
+- SDA-based deterministic examination.
 
-> "What happened before?"
+## 3. The defining difference
 
-and:
+Other databases primarily ask:
 
-> "Can we still recover this if everything breaks?"
+> Can I reconstruct the database?
 
-This problem becomes increasingly important in:
+DingoDB first asks:
 
-- AI systems;
-- autonomous agents;
-- software engineering tools;
-- knowledge management;
-- compliance systems;
-- infrastructure automation.
+> Which pieces can I still prove are intact?
 
-These systems do not merely store data.
+```text
+ordinary failure model
 
-They accumulate:
+critical damage → database unavailable
 
-- decisions;
-- assumptions;
-- constraints;
-- history;
-- evidence;
-- reasoning.
+DingoDB failure model
 
-Traditional databases are optimized for state.
-
-DingoDB is optimized for **state plus memory**.
-
----
-
-# 2. The Fundamental Difference
-
-Traditional databases store:
-
-```
-current truth
+DATA │ DATA │ HOLE │ DATA │ HOLE │ DATA
+  ✓      ✓      ✗      ✓      ✗      ✓
 ```
 
-DingoDB stores:
+Missing material is reported as a hole. It is not allowed to invalidate
+unrelated material or to disappear from the recovery report.
 
-```
-the path to current truth
-```
+## 4. Why arbitrary data matters
 
-A traditional database answers:
+Valuable future data often looks worthless in the present:
 
-```
-User.email = alice@example.com
-```
+- raw logs;
+- abandoned application formats;
+- device output;
+- intermediate build artifacts;
+- old documents;
+- binary blobs;
+- malformed imports;
+- model inputs and outputs;
+- data whose schema has been lost;
+- data no one knows how to interpret yet.
 
-DingoDB answers:
+DingoDB preserves the bytes and a small self-describing envelope first.
+Understanding may be added later.
 
-```
-User.email became alice@example.com because:
+The database does not require every payload to become a document, row, fact,
+or vector before it deserves durable storage.
 
-2026-01-01:
-created by import
+## 5. Why massive retention matters
 
-2026-02-10:
-changed by migration
+“Store everything” is useful only if storage remains economical and retrieval
+remains possible.
 
-2026-04-03:
-verified by administrator
-```
+DingoDB separates one logical namespace from physical location. Immutable
+segments move between hot, warm, cold, and archival tiers without changing
+their identities.
 
-The history is not metadata.
+Hierarchical catalogs and indexes make large stores searchable. They are
+replaceable accelerators, not the only map back to the data. If they disappear,
+surviving segments can recreate them.
 
-The history is the data.
+This supports two very different questions:
 
----
+- “Give me this active item now.”
+- “Search fifteen years of retained material for anything matching this new
+  interpretation.”
 
-# 3. The Core Insight
+## 6. Why speed matters
 
-## Data without provenance becomes unreliable
+Dependability is not an excuse for a slow hot path.
 
-As systems become more autonomous, the biggest problem is not storage.
+DingoDB is built around:
 
-It is trust.
+- sequential appends;
+- sharded writers;
+- memory-resident indexes;
+- immutable data structures;
+- parallel readers;
+- bounded independent compression and encryption;
+- delayed extraction and secondary indexing;
+- streaming queries.
 
-An AI agent may retrieve information.
+The project targets Redis-class performance for memory-resident indexed reads,
+not Oracle-style heavyweight coordination on every operation.
 
-But:
+Claims are tied to explicit acknowledgement modes. A memory acknowledgement,
+an `fsync`-equivalent durable acknowledgement, and a replicated
+acknowledgement are not presented as the same benchmark.
 
-- Where did it come from?
-- Is it still valid?
-- Who established it?
-- Was it replaced?
-- Was it only a guess?
+## 7. Why SDA matters
 
-A vector database can find similar information.
+Storage without a durable examination model merely moves the black box.
 
-A search engine can find documents.
+SDA gives DingoDB a small, deterministic algebra for filtering, projecting,
+normalizing, validating, and transforming recovered material.
 
-A database can store records.
+SDA can operate over streams and indexed candidates without loading the whole
+store into memory. It can also represent the recovery evidence itself:
 
-But none of those automatically answer:
+- verified data;
+- partial data;
+- missing data;
+- corruption;
+- unsupported encodings;
+- uncertainty.
 
-> "Should I believe this?"
+This allows future software to examine old data without inheriting the
+behavior of the application that originally wrote it.
 
-DingoDB introduces a different concept:
+## 8. Why not just use another system?
 
-## Governed knowledge.
+### Relational databases
 
----
+Relational databases excel at transactions, constraints, joins, and strongly
+structured current state. They are not generally designed for catalog-free
+salvage of arbitrary surviving byte islands.
 
-# 4. The DingoDB Model
+### Document databases
 
-DingoDB separates four layers:
+Document databases handle flexible structured objects. DingoDB additionally
+targets opaque data, independent physical survival, multi-decade tiering, and
+explicit recovery evidence.
 
-```
-              Application
+### Object storage
 
-                  |
-                  v
+Object storage handles large scale and durable objects. DingoDB adds an
+embedded hot path, event history, local recovery semantics, derived indexes,
+and SDA examination across objects and holes.
 
-          SDA Transformation Layer
+### Redis
 
-                  |
-                  v
+Redis is the performance reference for the hot working set. DingoDB adds a
+storage format and recovery model intended for massive, damaged, long-lived
+data. It does not claim archive reads have memory latency.
 
-          DingoDB Knowledge Store
+### Git
 
-                  |
-                  v
+Git preserves versioned content and history. DingoDB is optimized for
+high-volume ingestion, arbitrary payloads, indexed access, tiered retention,
+partial physical recovery, and streaming examination.
 
-        Human-readable Event History
-```
+### Backup systems
 
----
+Backups restore known copies. DingoDB also salvages independently valid
+material when no intact copy or catalog remains.
 
-# 5. Human Ownership
+## 9. Honest limits
 
-Most databases require specialized tools.
+No system can recover data after every copy of its bytes has been destroyed.
 
-DingoDB deliberately avoids this.
+DingoDB's “database that refuses to die” claim means:
 
-A DingoDB database is:
+- damage containment;
+- independent verification;
+- resynchronization after corruption;
+- explicit holes;
+- redundant retention;
+- evidence-preserving repair;
+- recovery of every surviving valid island.
 
-- files;
-- JSON;
-- text;
-- inspectable records.
+It does not mean recovery from nonexistence.
 
-A human can:
+## 10. Category and pitch
 
-```bash
-cat journal.jsonl
-```
+Category:
 
-and understand the system.
+> Damage-tolerant universal data store
 
-No proprietary binary format.
+One-sentence pitch:
 
-No vendor lock-in.
+> DingoDB is an extremely fast database for arbitrary, massive, long-lived
+> data that recovers every intact piece after partial destruction and exposes
+> the result through SDA.
 
-No dependency on a running database server.
+Short form:
 
----
+> Damage the database. Keep the data you did not destroy.
 
-# 6. Crash Resistance as a First-Class Feature
+## 11. Clustering story
 
-Software fails.
+DingoDB does not turn a cluster into one larger fragile database.
 
-Computers fail.
+It distributes independently meaningful partitions and immutable segments.
+Consensus decides which node may order strong writes for a partition, while
+the frames retain their own identity and integrity evidence.
 
-Power fails.
+This produces a clear failure story:
 
-Processes crash.
+- lose a leader: its partition elects another from verified replicas;
+- lose quorum: strong writes pause, surviving data remains readable or
+  salvageable;
+- split the network: only the quorum side commits strong writes;
+- select convergent append: both sides retain uniquely identified events and
+  merge explicitly;
+- lose the catalog and control plane: rebuild placement from self-identifying
+  node inventories and segments;
+- delete half the cluster: every intact remaining frame still speaks for
+  itself.
 
-The question is not:
+The clustering principle is:
 
-> "Can failure happen?"
+> Consensus controls the right to write. The data remains able to speak for
+> itself.
 
-The question is:
+## 12. Everyday product
 
-> "What survives after failure?"
+Damage tolerance earns trust, but it is not the only reason to install
+DingoDB.
 
-DingoDB is built around failure.
+For ordinary work, DingoDB is a zero-configuration database for JSON, bytes,
+events, and large retained datasets:
 
-The design assumes:
-
-- incomplete writes;
-- corrupted indexes;
-- interrupted compaction;
-- damaged caches.
-
-The recovery strategy is simple:
-
-## The truth is always reconstructable.
-
----
-
-# 7. The Database That Can Explain Itself
-
-A conventional database can tell you:
-
-```
-value = X
-```
-
-DingoDB can tell you:
-
-```
-value = X
-
-because:
-
-Fact A was created
-Fact B modified it
-Fact C superseded Fact A
-Fact D confirmed the final state
-```
-
-This creates an explainable information system.
-
----
-
-# 8. Why JSONL?
-
-JSONL is intentionally chosen.
-
-Not because JSON is fashionable.
-
-Because JSONL provides:
-
-## Transparency
-
-Humans can read it.
-
-## Streaming
-
-Large histories can be processed incrementally.
-
-## Fault isolation
-
-A damaged record does not destroy the entire database.
-
-## Tool compatibility
-
-Every language can read it.
-
-## Long-term survivability
-
-The format is simple enough to outlive implementations.
-
----
-
-# 9. Why Not Use SQL?
-
-SQL databases are excellent.
-
-They solve a different problem.
-
-SQL optimizes for:
-
-- transactions;
-- relational queries;
-- concurrent workloads.
-
-DingoDB optimizes for:
-
-- provenance;
-- recovery;
-- knowledge;
-- auditability.
-
-A relational database asks:
-
-> "What rows exist?"
-
-DingoDB asks:
-
-> "What should we know, and why?"
-
----
-
-# 10. Why Not Use MongoDB?
-
-MongoDB popularized flexible documents.
-
-But documents are not knowledge.
-
-A document says:
-
-```
-this is the object
+```text
+open → put → get → find → stream
 ```
 
-DingoDB says:
+Collections are schemaless by default. Common filters are familiar and compile
+to SDA internally. Indexes accelerate queries but do not define truth.
+Embedded, server, and cluster deployments retain the same logical API.
 
-```
-this is how the object became what it is
-```
+History, verification, tiering, and salvage remain beneath the normal path
+until the user asks for them or correctness requires surfacing a problem.
 
-MongoDB stores documents.
+The DX principle is:
 
-DingoDB stores decisions.
-
----
-
-# 11. Why Not Use Git?
-
-Git is close.
-
-Git provides:
-
-- history;
-- changes;
-- distributed copies.
-
-But Git tracks files.
-
-DingoDB tracks structured facts.
-
-Git asks:
-
-> "What changed in this file?"
-
-DingoDB asks:
-
-> "What changed in this piece of knowledge?"
-
----
-
-# 12. AI Systems Need This
-
-AI changes the storage problem.
-
-A human usually remembers:
-
-- context;
-- intent;
-- exceptions;
-- decisions.
-
-A machine does not.
-
-Without durable memory, every AI session begins from zero.
-
-With DingoDB:
-
-An agent can store:
-
-```
-Fact:
-
-Generated files must not be edited manually.
-
-Authority:
-architect
-
-Evidence:
-build-system.md
-
-Status:
-active
-```
-
-Future agents inherit understanding.
-
-Not just documents.
-
----
-
-# 13. The DingoDB Advantage
-
-## 1. Human recoverability
-
-The database remains understandable without special software.
-
----
-
-## 2. Historical truth
-
-The system remembers how it arrived at its current state.
-
----
-
-## 3. Knowledge governance
-
-Facts can have:
-
-- authority;
-- confidence;
-- evidence;
-- lifecycle.
-
----
-
-## 4. Rebuildable architecture
-
-Indexes and acceleration layers can fail without destroying truth.
-
----
-
-## 5. AI-native design
-
-DingoDB models the information requirements of autonomous systems.
-
----
-
-# 14. The Category
-
-DingoDB is not:
-
-- a document database;
-- a SQL replacement;
-- a vector database.
-
-DingoDB creates a new category:
-
-# Persistent Knowledge Database
-
-A system designed to store:
-
-- facts;
-- decisions;
-- evidence;
-- history;
-- structured understanding.
-
----
-
-# 15. The Vision
-
-The next generation of software will not only execute code.
-
-It will reason.
-
-Reasoning systems require memory.
-
-Memory requires trust.
-
-Trust requires provenance.
-
-DingoDB exists to provide the missing layer:
-
-```
-Information
-     |
-     v
-Knowledge
-     |
-     v
-Trusted Knowledge
-```
-
----
-
-# 16. The One Sentence Pitch
-
-**DingoDB is a human-readable, crash-resistant knowledge database that remembers not only what is true, but why.**
-
----
-
-I would actually keep this document separate from the technical spec. The technical spec explains **how DingoDB works**. The USP explains **why anyone should care**.
-
-The interesting strategic angle is that DingoDB's strongest market is probably not "database users". It is people building **systems that need memory and accountability** — especially AI agents, developer automation, and autonomous tooling.
+> Extraordinary internals. Ordinary database experience.
