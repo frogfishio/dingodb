@@ -174,13 +174,14 @@ Its promise is narrower and stronger:
 ## Status
 
 DingoDB is past pure-spec: **Stage 0–1** are in place (SDA library, CLI, §14.1
-conformance), and **Stage 2a** has started (`dingo-format` frame codec).
+conformance), and **Stage 2a–2d** land in `dingo-format` (frames, segment seal,
+forward/reverse salvage, FORMAT_SPEC §13 destructive corpus).
 
 | Stage | Focus | Status |
 |-------|--------|--------|
 | 0 | Repo + CI | done |
 | 1 | SDA standalone | library + CLI + §14.1 suite |
-| 2 | Wire format + salvage | **2a** frame codec; scanner next |
+| 2 | Wire format + salvage | **2a–2d** frames, seal, scanners, §13 corpus |
 | 3–9 | Store → SDK → cluster | not started |
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  

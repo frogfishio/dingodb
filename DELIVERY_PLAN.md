@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.4 (Stage 0–1 §14.1 done; Stage 2a `dingo-format` frame codec)  
+Status: Draft v0.6 (Stage 0–1 §14.1 done; Stage 2a–2d `dingo-format` frames, seal, scanners, §13 corpus)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -181,10 +181,10 @@ scanner, §13 wire tests); [OVERVIEW.md](OVERVIEW.md) §§4, 6.
 
 **Suggested sub-milestones**
 
-| 2a | Frame codec + unit integrity tests |
-| 2b | Active append segment + seal |
-| 2c | Forward scanner + hole reports |
-| 2d | Full destructive corpus |
+| 2a | Frame codec + unit integrity tests | **done** |
+| 2b | Active append segment + seal | **done** |
+| 2c | Forward scanner + hole reports | **done** |
+| 2d | Full destructive corpus (§13) | **done** — `tests/section13_corpus.rs`; reverse scan; event conflicts; draft chunk maps |
 
 ---
 
@@ -533,6 +533,13 @@ the cited conformance suites as required checks—not optional polish.
    `crates/dingo-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
    BLAKE3-256 body hash and structural `verified-complete` checks (envelope
    still opaque bytes; deterministic CBOR rules not yet enforced).
-6. **Next:** Stage 2b–2c — active segment seal, forward salvage scanner + hole
-   reports, then FORMAT_SPEC §13 destructive corpus; optional deterministic
-   CBOR envelope validation for full §5 condition 6.
+6. ~~Stage 2b–2c — active segment seal + forward salvage scanner.~~ **Done** —
+   `ActiveSegment` / `SealedSegment` (draft descriptor & summary bodies);
+   `scan_forward` with hole reports; later islands remain discoverable after
+   corrupt candidates (search resumes at `q + 1`).
+7. ~~Stage 2d — full FORMAT_SPEC §13 destructive corpus.~~ **Done** —
+   `tests/section13_corpus.rs` automates every §13 bullet; `scan_reverse`
+   (§7.4); `group_by_event_id` (§9); draft `reassemble_chunks` partial maps
+   (§8). Envelope CBOR (§5 condition 6) still deferred.
+8. **Next:** optional deterministic CBOR envelope validation for full §5
+   condition 6; then Stage 3 store (`dingo-store`).
