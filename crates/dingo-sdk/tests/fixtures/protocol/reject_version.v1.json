@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "msg": "reject",
+  "protocol_minor": 0,
+  "protocol_major": 1,
+  "protocol_profile": "dingo-rpc-v1",
+  "wire_label": "1.0-draft",
+  "error": "unsupported protocol major 99 (server speaks 1)",
+  "code": "protocol_version_unsupported"
+}
