@@ -245,7 +245,11 @@ Acceptance:
 ### DEF-012 — Eliminate silent omission in reads and scans
 
 Priority: P0  
-Normative basis: `DX_SPEC.md` §§3.6, 3.7, 6.5; `CLUSTER_SPEC.md` §6.7
+Normative basis: `DX_SPEC.md` §§3.6, 3.7, 6.5; `CLUSTER_SPEC.md` §6.7  
+Status: **partially remediated in-tree** (2026-07-25) — fail-closed
+`live_logical_entries` + `scan_live_logical` envelope + remote `scan_json`
+decode honesty; remaining: offline-tier scan envelope, full query coverage
+merge, secondary-index miss authority
 
 Problem:
 
@@ -278,6 +282,15 @@ Acceptance:
 - Ordinary `get`, `scan`, and `find` never return a complete empty result when
   required coverage is missing.
 - Embedded, remote, and cluster conformance suites return equivalent semantics.
+
+In-tree so far:
+
+- `Store::live_logical_entries` returns `CoverageIncomplete` when any live
+  subject is partial/unavailable/conflicting (no silent skip).
+- `Store::scan_live_logical` returns `{entries, incomplete, complete}` for
+  opt-in partial-aware callers.
+- Remote `scan_json` fails closed on JSON decode failure instead of `continue`.
+- Tests: `stage_def_020_021_lock_coverage` incomplete-chunk scan cases.
 
 ### DEF-013 — Fix persisted collection-catalog contamination
 
@@ -312,7 +325,10 @@ Acceptance:
 
 ### DEF-014 — Propagate achieved guarantees without optimistic defaults
 
-Priority: P0
+Priority: P0  
+Status: **remediated in-tree** (2026-07-25) — fail-closed receipt parsing +
+`ProtocolViolation`; remaining follow-on: richer requested-vs-achieved fields
+for cluster quorum receipts when network Raft lands
 
 Work:
 
@@ -332,13 +348,25 @@ Acceptance:
   proved.
 - Compatibility tests cover every supported protocol version.
 
+In-tree:
+
+- `write_receipt_from_resp` / `delete_receipt_from_resp` require `committed`,
+  `acknowledgement`, `event_id`, `version`, `store_id`, `segment_id` (no
+  `unwrap_or(true)` / durability fallback / zero IDs).
+- Connect and reconnect require a non-zero `store_id` from `store_info`.
+- `Error` / `ErrorCode::ProtocolViolation` for missing guarantee fields.
+- Unit tests cover absent `committed`, absent durability, and missing event id.
+
 ---
 
 ## 7. Single-node persistence and concurrency
 
 ### DEF-020 — Enforce exclusive store ownership
 
-Priority: P0
+Priority: P0  
+Status: **remediated in-tree** (2026-07-25) — OS `flock` + in-process path
+registry + `open_inspect` without lock; remaining: generation fencing token,
+explicit NFS reject, Windows LockFileEx CI
 
 Problem:
 
@@ -364,6 +392,16 @@ Acceptance:
 - Kill -9 releases ownership through the OS and recovery preserves the valid
   prefix.
 - Linux, macOS, and supported Windows behavior is tested.
+
+In-tree:
+
+- `WriterLock` on `store-info/writer.lock` via Unix `flock(LOCK_EX|LOCK_NB)`.
+- In-process path registry so two handles in one process also collide.
+- `Store::create` / `Store::open` acquire before active segment open;
+  `Store::open_inspect` / `Dingo::open_inspect` do not.
+- Diagnostic lock file text is not trusted for exclusion.
+- Startup report claims exclusive-writer lock status.
+- Tests: second writer, concurrent inspect, drop-release, cross-process flock.
 
 ### DEF-021 — Make all metadata writes atomic and durable
 

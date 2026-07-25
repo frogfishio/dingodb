@@ -51,9 +51,24 @@ impl Dingo {
     ///
     /// If the path does not exist, it is created. If it exists as a DingoDB
     /// store, it is opened (using the optional index cache when valid).
+    ///
+    /// Writer opens take an exclusive store lock (DEF-020). A second writer —
+    /// including `dingo serve` while an embedded handle is open — fails until
+    /// the first handle is dropped. Use [`Self::open_inspect`] for concurrent
+    /// read-only doctor/parity checks.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         Ok(Self {
             backend: Backend::Local(Store::open(path)?),
+        })
+    }
+
+    /// Open an **existing** store for read-only inspection (no writer lock).
+    ///
+    /// Suitable while another process holds the exclusive writer (for example
+    /// `dingo serve`). Mutations fail because no active writer is opened.
+    pub fn open_inspect(path: impl AsRef<Path>) -> Result<Self, Error> {
+        Ok(Self {
+            backend: Backend::Local(Store::open_inspect(path)?),
         })
     }
 

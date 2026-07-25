@@ -495,7 +495,12 @@ impl RemoteClient {
         };
         // Immediate store_info validates auth token, proves protocol, caches store id.
         let (_path, sid_hex, _n) = client.store_info()?;
-        client.store_id = parse_hex16(Some(&sid_hex)).unwrap_or([0u8; 16]);
+        client.store_id = require_hex16(Some(sid_hex.as_str()), "store_info.store_id")?;
+        if client.store_id == [0u8; 16] {
+            return Err(Error::ProtocolViolation(
+                "store_info.store_id must not be the zero id".into(),
+            ));
+        }
         Ok(client)
     }
 
@@ -560,16 +565,18 @@ impl RemoteClient {
         self.addr = addr.to_string();
         self.route_hops = self.route_hops.saturating_add(1);
         // Refresh store id on the new node (each node has its own store).
-        let (_path, sid_hex, _n) = {
-            // Inline store_info without routing to avoid recursion.
-            let resp = self.call_on_current(base_req("store_info"))?;
-            (
-                resp.path.unwrap_or_default(),
-                resp.store_id.unwrap_or_default(),
-                resp.live_count.unwrap_or(0),
-            )
-        };
-        self.store_id = parse_hex16(Some(&sid_hex)).unwrap_or([0u8; 16]);
+        // Fail closed on missing/malformed identity (DEF-014); multi-hop may
+        // legitimately change store_id when routing to a different node.
+        let resp = self.call_on_current(base_req("store_info"))?;
+        let sid_hex = resp.store_id.as_deref().ok_or_else(|| {
+            Error::ProtocolViolation("store_info response missing store_id".into())
+        })?;
+        self.store_id = require_hex16(Some(sid_hex), "store_info.store_id")?;
+        if self.store_id == [0u8; 16] {
+            return Err(Error::ProtocolViolation(
+                "store_info.store_id must not be the zero id".into(),
+            ));
+        }
         Ok(())
     }
 
@@ -1206,53 +1213,112 @@ fn hex32(bytes: &[u8; 32]) -> String {
 fn write_receipt_from_resp(
     key: &str,
     resp: &RpcResponse,
-    fallback: DurabilityMode,
+    _fallback: DurabilityMode,
 ) -> Result<WriteReceipt, Error> {
+    // DEF-014: never invent stronger guarantees than the server proved.
+    let _ = _fallback;
+    let acknowledgement = require_durability(resp.acknowledgement.as_deref(), "acknowledgement")?;
+    let committed = resp.committed.ok_or_else(|| {
+        Error::ProtocolViolation("write receipt missing required field `committed`".into())
+    })?;
+    let event_id = require_hex16(resp.event_id.as_deref(), "event_id")?;
+    let version = require_hex16(resp.version.as_deref(), "version")?;
+    let store_id = require_hex16(resp.store_id.as_deref(), "store_id")?;
+    let segment_id = require_hex16(resp.segment_id.as_deref(), "segment_id")?;
+    if event_id == [0u8; 16] {
+        return Err(Error::ProtocolViolation(
+            "write receipt event_id must not be the zero id".into(),
+        ));
+    }
     Ok(WriteReceipt {
+        // Request key is authoritative when the server omits the echo.
         key: resp.key.clone().unwrap_or_else(|| key.to_string()),
-        event_id: parse_hex16(resp.event_id.as_deref())?,
-        version: parse_hex16(resp.version.as_deref())?,
-        acknowledgement: parse_durability(resp.acknowledgement.as_deref()).unwrap_or(fallback),
-        committed: resp.committed.unwrap_or(true),
-        store_id: parse_hex16(resp.store_id.as_deref())?,
-        segment_id: parse_hex16(resp.segment_id.as_deref())?,
+        event_id,
+        version,
+        acknowledgement,
+        committed,
+        store_id,
+        segment_id,
     })
 }
 
 fn delete_receipt_from_resp(
     key: &str,
     resp: &RpcResponse,
-    fallback: DurabilityMode,
+    _fallback: DurabilityMode,
 ) -> Result<DeleteReceipt, Error> {
+    let _ = _fallback;
+    let acknowledgement = require_durability(resp.acknowledgement.as_deref(), "acknowledgement")?;
+    let committed = resp.committed.ok_or_else(|| {
+        Error::ProtocolViolation("delete receipt missing required field `committed`".into())
+    })?;
+    let removed = resp.removed.ok_or_else(|| {
+        Error::ProtocolViolation("delete receipt missing required field `removed`".into())
+    })?;
+    let event_id = require_hex16(resp.event_id.as_deref(), "event_id")?;
+    let version = require_hex16(resp.version.as_deref(), "version")?;
+    let store_id = require_hex16(resp.store_id.as_deref(), "store_id")?;
+    let segment_id = require_hex16(resp.segment_id.as_deref(), "segment_id")?;
+    if event_id == [0u8; 16] {
+        return Err(Error::ProtocolViolation(
+            "delete receipt event_id must not be the zero id".into(),
+        ));
+    }
     Ok(DeleteReceipt {
         key: resp.key.clone().unwrap_or_else(|| key.to_string()),
-        removed: resp.removed.unwrap_or(false),
-        event_id: parse_hex16(resp.event_id.as_deref())?,
-        version: parse_hex16(resp.version.as_deref())?,
-        acknowledgement: parse_durability(resp.acknowledgement.as_deref()).unwrap_or(fallback),
-        committed: resp.committed.unwrap_or(true),
-        store_id: parse_hex16(resp.store_id.as_deref())?,
-        segment_id: parse_hex16(resp.segment_id.as_deref())?,
+        removed,
+        event_id,
+        version,
+        acknowledgement,
+        committed,
+        store_id,
+        segment_id,
     })
 }
 
-fn parse_hex16(s: Option<&str>) -> Result<[u8; 16], Error> {
+/// Require a present, well-formed 16-byte hex id (DEF-014: no zero defaults).
+fn require_hex16(s: Option<&str>, field: &str) -> Result<[u8; 16], Error> {
     let Some(s) = s else {
-        return Ok([0u8; 16]);
+        return Err(Error::ProtocolViolation(format!(
+            "missing required id field `{field}`"
+        )));
     };
+    parse_hex16_strict(s, field)
+}
+
+fn parse_hex16_strict(s: &str, field: &str) -> Result<[u8; 16], Error> {
     if s.len() != 32 {
-        return Err(Error::Internal(format!(
-            "expected 32 hex chars for id, got {}",
+        return Err(Error::ProtocolViolation(format!(
+            "expected 32 hex chars for `{field}`, got {}",
             s.len()
         )));
     }
     let mut out = [0u8; 16];
     for i in 0..16 {
-        let byte = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16)
-            .map_err(|e| Error::Internal(format!("invalid hex id: {e}")))?;
+        let byte = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).map_err(|e| {
+            Error::ProtocolViolation(format!("invalid hex id for `{field}`: {e}"))
+        })?;
         out[i] = byte;
     }
     Ok(out)
+}
+
+/// Parse optional hex id for non-receipt diagnostics (legacy tests only).
+#[cfg(test)]
+fn parse_hex16(s: Option<&str>) -> Result<[u8; 16], Error> {
+    match s {
+        None => Err(Error::ProtocolViolation("missing hex id".into())),
+        Some(s) => parse_hex16_strict(s, "id"),
+    }
+}
+
+fn require_durability(s: Option<&str>, field: &str) -> Result<DurabilityMode, Error> {
+    match parse_durability(s) {
+        Some(m) => Ok(m),
+        None => Err(Error::ProtocolViolation(format!(
+            "missing or unknown durability field `{field}` (got {s:?})"
+        ))),
+    }
 }
 
 fn fill_receipt_fields(resp: &mut RpcResponse, receipt: &StoreWriteReceipt) {
@@ -1781,10 +1847,12 @@ fn dispatch(
                 if c != coll {
                     continue;
                 }
-                let value = match decode_json(&body) {
-                    Ok(v) => v,
-                    Err(_) => continue,
-                };
+                // DEF-012: never convert decode failure into a shorter success.
+                let value = decode_json(&body).map_err(|e| {
+                    Error::CoverageIncomplete(format!(
+                        "scan_json: key {key:?} failed JSON decode: {e}"
+                    ))
+                })?;
                 rows.push(ScanRow {
                     key: key.to_string(),
                     value,
@@ -2157,7 +2225,61 @@ mod tests {
         let s = hex16(&id);
         assert_eq!(s.len(), 32);
         assert_eq!(parse_hex16(Some(&s)).unwrap(), id);
-        assert_eq!(parse_hex16(None).unwrap(), [0u8; 16]);
+        assert!(parse_hex16(None).is_err());
+    }
+
+    #[test]
+    fn write_receipt_fails_closed_without_committed() {
+        let resp = RpcResponse {
+            id: 1,
+            ok: true,
+            event_id: Some(hex16(&[1u8; 16])),
+            version: Some(hex16(&[2u8; 16])),
+            store_id: Some(hex16(&[3u8; 16])),
+            segment_id: Some(hex16(&[4u8; 16])),
+            acknowledgement: Some("durable".into()),
+            committed: None,
+            key: Some("k".into()),
+            ..empty_resp(1)
+        };
+        let err = write_receipt_from_resp("k", &resp, DurabilityMode::Durable).unwrap_err();
+        assert_eq!(err.code(), crate::ErrorCode::ProtocolViolation);
+    }
+
+    #[test]
+    fn write_receipt_rejects_optimistic_durability_fallback() {
+        let resp = RpcResponse {
+            id: 1,
+            ok: true,
+            event_id: Some(hex16(&[1u8; 16])),
+            version: Some(hex16(&[2u8; 16])),
+            store_id: Some(hex16(&[3u8; 16])),
+            segment_id: Some(hex16(&[4u8; 16])),
+            acknowledgement: None,
+            committed: Some(true),
+            key: Some("k".into()),
+            ..empty_resp(1)
+        };
+        let err = write_receipt_from_resp("k", &resp, DurabilityMode::Durable).unwrap_err();
+        assert_eq!(err.code(), crate::ErrorCode::ProtocolViolation);
+    }
+
+    #[test]
+    fn write_receipt_requires_event_id() {
+        let resp = RpcResponse {
+            id: 1,
+            ok: true,
+            event_id: None,
+            version: Some(hex16(&[2u8; 16])),
+            store_id: Some(hex16(&[3u8; 16])),
+            segment_id: Some(hex16(&[4u8; 16])),
+            acknowledgement: Some("durable".into()),
+            committed: Some(true),
+            key: Some("k".into()),
+            ..empty_resp(1)
+        };
+        let err = write_receipt_from_resp("k", &resp, DurabilityMode::Durable).unwrap_err();
+        assert_eq!(err.code(), crate::ErrorCode::ProtocolViolation);
     }
 
     #[test]

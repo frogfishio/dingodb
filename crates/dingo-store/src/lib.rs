@@ -31,6 +31,7 @@ mod secondary;
 mod segment_catalog;
 mod store;
 mod tier;
+mod writer_lock;
 
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, CollectionCatalog,
@@ -71,9 +72,13 @@ pub use secondary::{
 pub use segment_catalog::{
     segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
 };
-pub use store::{SalvageCopyReport, SalvageReport, Store, WriteReceipt};
+pub use store::{
+    IncompleteReason, LiveIncomplete, LiveLogicalScan, SalvageCopyReport, SalvageReport, Store,
+    WriteReceipt,
+};
 pub use tier::{
     classify_segment_bytes, tier_placement_path, FormatClassification, MigrationEvidence,
     SegmentPlacement, TierAwareGet, TierClass, TierCoverage, TierMoveMode, TierPlacement,
     TIER_PLACEMENT_FILE,
 };
+pub use writer_lock::{WriterLock, WRITER_LOCK_FILE};

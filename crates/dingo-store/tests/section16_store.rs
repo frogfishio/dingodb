@@ -468,9 +468,12 @@ fn index_cache_accelerates_open_and_is_optional() {
     }
     // Stale cache (wrong fingerprint after append) → rebuild.
     {
-        let store = Store::open(root).unwrap();
-        store.persist_index_cache().unwrap();
+        {
+            let store = Store::open(root).unwrap();
+            store.persist_index_cache().unwrap();
+        }
         // Force cache identity mismatch by editing the store_id field.
+        // Exclusive writer lock (DEF-020) requires the previous handle to be dropped.
         let mut cache_bytes = fs::read(root.join("indexes").join("primary.idx")).unwrap();
         if cache_bytes.len() > 20 {
             cache_bytes[12] ^= 0xff; // inside store_id

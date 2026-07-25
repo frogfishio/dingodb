@@ -35,6 +35,7 @@ use crate::tier::{
     write_tier_roots_file, FormatClassification, MigrationEvidence, TierAwareGet, TierClass,
     TierCoverage, TierMoveMode, TierPlacement,
 };
+use crate::writer_lock::WriterLock;
 use dingo_format::{
     decode_store_descriptor_body, encode_store_descriptor_frame, scan_forward, ActiveSegment,
     FrameFlags, FrameHeader, FrameKind, FrameParts, SafetyLimits, SegmentId,
@@ -51,6 +52,39 @@ const META_VERSION: &str = "dingo-store-9\n";
 
 /// Soft max size of the active segment before auto-seal (bytes).
 const DEFAULT_SEAL_THRESHOLD: u64 = 4 * 1024 * 1024;
+
+/// Why a live subject could not contribute a complete logical body (DEF-012).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IncompleteReason {
+    /// Chunked payload is only partially available.
+    PayloadPartial,
+    /// No surviving chunk bodies for a declared manifest.
+    PayloadUnavailable,
+    /// Conflicting chunk content at a manifest position.
+    PayloadConflict,
+    /// Subject bytes are not valid UTF-8 (cannot be addressed by string APIs).
+    NonUtf8Subject,
+}
+
+/// One live subject that could not be fully read during a logical scan.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LiveIncomplete {
+    /// Subject key bytes.
+    pub subject: Vec<u8>,
+    /// Why reassembly failed.
+    pub reason: IncompleteReason,
+}
+
+/// Result of scanning live logical payloads with coverage honesty (DEF-012).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LiveLogicalScan {
+    /// Fully reassembled live entries.
+    pub entries: Vec<(Vec<u8>, Vec<u8>)>,
+    /// Live subjects that are not fully readable.
+    pub incomplete: Vec<LiveIncomplete>,
+    /// True only when `incomplete` is empty (ordinary complete success).
+    pub complete: bool,
+}
 
 /// Receipt returned after an acknowledged write (OVERVIEW §7.2).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,6 +155,8 @@ pub struct Store {
     tier_placement: TierPlacement,
     /// Hierarchical segment summary catalog (Stage 9, derived).
     segment_catalog: SegmentCatalog,
+    /// Exclusive writer ownership (DEF-020). `None` for inspect/read-only opens.
+    writer_lock: Option<WriterLock>,
 }
 
 struct ActiveWriter {
@@ -151,6 +187,8 @@ impl Store {
             }
         }
         paths.create_dirs()?;
+        // Exclusive ownership before any authoritative write (DEF-020).
+        let writer_lock = WriterLock::acquire(&paths)?;
         let store_id = random_id();
         let created_ns = now_ns();
         fs::write(paths.store_id_file(), store_id)?;
@@ -173,6 +211,7 @@ impl Store {
             collection_catalog: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
+            writer_lock: Some(writer_lock),
         };
         store.start_active_segment()?;
         store.persist_active(DurabilityMode::Durable)?;
@@ -200,6 +239,8 @@ impl Store {
             return Self::create(root);
         }
 
+        // Exclusive ownership before opening the active segment (DEF-020).
+        let writer_lock = WriterLock::acquire(&paths)?;
         let store_id = read_store_id(&paths)?;
         let meta = fs::read_to_string(paths.meta_file()).unwrap_or_default();
         if !meta.starts_with("dingo-store-") {
@@ -223,6 +264,7 @@ impl Store {
             collection_catalog: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
+            writer_lock: Some(writer_lock),
         };
         store.load_tier_state()?;
         store.load_or_rebuild_index()?;
@@ -236,7 +278,8 @@ impl Store {
     /// Never creates a store, never opens the active segment for append, and
     /// never persists derived catalogs/indexes. Primary index and collection
     /// catalog are rebuilt in memory from authoritative segment bytes when
-    /// needed. Suitable for `dingo doctor` (DX_SPEC §13.3).
+    /// needed. Suitable for `dingo doctor` (DX_SPEC §13.3). Does **not** take
+    /// the exclusive writer lock, so it can run while a writer holds the store.
     pub fn open_inspect(path: impl AsRef<Path>) -> Result<Self, StoreError> {
         let root = path.as_ref();
         let paths = StorePaths::new(root);
@@ -265,6 +308,7 @@ impl Store {
             collection_catalog: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
+            writer_lock: None,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer valid cache, else rebuild without writing.
@@ -321,27 +365,69 @@ impl Store {
 
     /// Live subjects with logical payloads fully reassembled when chunked.
     ///
-    /// Subjects whose chunks are incomplete are **omitted** (they are not
-    /// silently returned as empty). Callers that need partial maps use
-    /// [`Self::get_payload`].
+    /// **Fail-closed (DEF-012):** if any live subject has a partial, conflicting,
+    /// or unavailable payload, returns [`StoreError::CoverageIncomplete`] rather
+    /// than silently omitting those subjects. Use [`Self::scan_live_logical`] for
+    /// an explicit partial-aware envelope, or [`Self::get_payload`] for one key.
     pub fn live_logical_entries(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
-        let mut out = Vec::new();
+        let scan = self.scan_live_logical()?;
+        if !scan.complete {
+            return Err(StoreError::CoverageIncomplete(format!(
+                "{} live subject(s) have incomplete payloads; use scan_live_logical \
+                 or get_payload for partial maps",
+                scan.incomplete.len()
+            )));
+        }
+        Ok(scan.entries)
+    }
+
+    /// Scan live logical payloads with explicit incompleteness (DEF-012).
+    ///
+    /// Always returns every complete reassembly and lists incomplete subjects.
+    /// `complete` is true only when every live subject produced a full body.
+    pub fn scan_live_logical(&self) -> Result<LiveLogicalScan, StoreError> {
+        let mut entries = Vec::new();
+        let mut incomplete = Vec::new();
         let subjects: Vec<Vec<u8>> = self.index.live_entries().map(|(k, _)| k.clone()).collect();
         for subject in subjects {
             let subject_str = match std::str::from_utf8(&subject) {
                 Ok(s) => s,
-                Err(_) => continue,
-            };
-            match self.get(subject_str) {
-                Ok(Some(body)) => out.push((subject, body)),
-                Ok(None) => {}
-                Err(StoreError::PayloadPartial) => {
-                    // Incomplete chunked payload: skip for ordinary scans.
+                Err(_) => {
+                    incomplete.push(LiveIncomplete {
+                        subject,
+                        reason: IncompleteReason::NonUtf8Subject,
+                    });
+                    continue;
                 }
-                Err(e) => return Err(e),
+            };
+            match self.get_payload(subject_str)? {
+                None => {}
+                Some(PayloadResult::Complete { body }) => entries.push((subject, body)),
+                Some(PayloadResult::Partial { .. }) => incomplete.push(LiveIncomplete {
+                    subject,
+                    reason: IncompleteReason::PayloadPartial,
+                }),
+                Some(PayloadResult::Unavailable { .. }) => incomplete.push(LiveIncomplete {
+                    subject,
+                    reason: IncompleteReason::PayloadUnavailable,
+                }),
+                Some(PayloadResult::Conflicting { .. }) => incomplete.push(LiveIncomplete {
+                    subject,
+                    reason: IncompleteReason::PayloadConflict,
+                }),
             }
         }
-        Ok(out)
+        let complete = incomplete.is_empty();
+        Ok(LiveLogicalScan {
+            entries,
+            incomplete,
+            complete,
+        })
+    }
+
+    /// Whether this handle holds exclusive writer ownership (DEF-020).
+    pub fn holds_writer_lock(&self) -> bool {
+        self.writer_lock.is_some()
     }
 
     /// Put opaque bytes under `subject` (OVERVIEW put event).

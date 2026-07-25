@@ -118,8 +118,9 @@ fn remote_indexes_create_list_stale_rebuild_drop() {
         assert!(users.list_indexes().unwrap().is_empty());
     }
 
-    // Embedded reopen sees index gone and data intact.
-    let mut local = Dingo::open(&path).unwrap();
+    // Read-only inspect while the server still holds the exclusive writer lock
+    // (DEF-020): index gone and data intact without competing for ownership.
+    let mut local = Dingo::open_inspect(&path).unwrap();
     assert!(local
         .collection("users")
         .unwrap()

@@ -48,6 +48,10 @@ pub enum ErrorCode {
     DeadlineExceeded,
     /// Underlying IO failure.
     Io,
+    /// Wire/protocol fields missing, malformed, or inconsistently optimistic.
+    ProtocolViolation,
+    /// Exclusive store writer ownership is held by another process/handle.
+    WriterLockHeld,
     /// Internal / unexpected failure.
     Internal,
 }
@@ -76,6 +80,8 @@ impl ErrorCode {
             Self::PermissionDenied => "permission_denied",
             Self::DeadlineExceeded => "deadline_exceeded",
             Self::Io => "io",
+            Self::ProtocolViolation => "protocol_violation",
+            Self::WriterLockHeld => "writer_lock_held",
             Self::Internal => "internal",
         }
     }
@@ -187,6 +193,10 @@ pub enum Error {
     #[error("deadline exceeded: {0}")]
     DeadlineExceeded(String),
 
+    /// Wire response omitted or weakened required guarantee fields (DEF-014).
+    #[error("protocol violation: {0}")]
+    ProtocolViolation(String),
+
     /// Internal SDK failure.
     #[error("internal: {0}")]
     Internal(String),
@@ -230,6 +240,7 @@ impl Error {
             Self::RemoteUnsupported(_) => ErrorCode::FormatUnsupported,
             Self::AuthenticationFailed(_) => ErrorCode::AuthenticationFailed,
             Self::DeadlineExceeded(_) => ErrorCode::DeadlineExceeded,
+            Self::ProtocolViolation(_) => ErrorCode::ProtocolViolation,
             Self::Internal(_) => ErrorCode::Internal,
             Self::Io(_) => ErrorCode::Io,
         }
@@ -271,6 +282,8 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::TierOffline(_) => ErrorCode::PartitionUnavailable,
         StoreError::FormatUnsupported { .. } => ErrorCode::FormatUnsupported,
         StoreError::MediaUnsupported(_) => ErrorCode::FormatUnsupported,
+        StoreError::WriterLockHeld(_) => ErrorCode::WriterLockHeld,
+        StoreError::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
     }
 }
 
@@ -289,6 +302,10 @@ fn remote_code(code: &str) -> ErrorCode {
         "stale_route" | "stale_epoch" | "not_leader" => ErrorCode::StaleRoute,
         "consistency_violation" => ErrorCode::ConsistencyViolation,
         "durability_unavailable" => ErrorCode::DurabilityUnavailable,
+        "protocol_violation" => ErrorCode::ProtocolViolation,
+        "writer_lock_held" => ErrorCode::WriterLockHeld,
+        "coverage_incomplete" => ErrorCode::CoverageIncomplete,
+        "payload_partial" => ErrorCode::PayloadPartial,
         "io" => ErrorCode::Io,
         _ => ErrorCode::Internal,
     }

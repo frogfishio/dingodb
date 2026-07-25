@@ -215,7 +215,11 @@ fn serve_and_sdk_connect_parity() {
         assert_eq!(users.get("remote").unwrap().unwrap()["from"], "sdk");
     }
 
-    // Embedded reopen sees remote write.
+    // Stop the server so exclusive writer ownership is released (DEF-020),
+    // then reopen embedded and confirm the remote write is durable.
+    let _ = child.kill();
+    let _ = child.wait();
+
     let mut local = dingo_sdk::Dingo::open(&store).unwrap();
     let v = local
         .collection("users")
@@ -224,9 +228,6 @@ fn serve_and_sdk_connect_parity() {
         .unwrap()
         .unwrap();
     assert_eq!(v["from"], "sdk");
-
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]

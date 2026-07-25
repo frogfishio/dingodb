@@ -17,13 +17,14 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Area | What you get |
 |------|----------------|
 | Core | open/create, put/get/delete, durability modes (`memory`, `buffered`, `durable`) |
+| Ownership | exclusive writer lock (`store-info/writer.lock`, DEF-020); inspect is lock-free |
 | Recovery | rebuildable primary index, salvage after catalog wipe, OVERVIEW §16 suite |
 | Meta | framed store descriptor, optional on-disk primary index cache |
 | Derived | collection catalog, secondary index files, subject history, checkpoints |
 | Chunks | chunked payloads with partial maps; live-state compaction (sources retained) |
 | Operator | `open_inspect` (read-only doctor), `salvage_to` |
 | Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
-| Honesty | offline-tier coverage holes, multi-generation format classification |
+| Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); multi-gen format |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -51,8 +52,8 @@ live there.
 
 | API | Role |
 |-----|------|
-| `Store::open` / `Store::create` | Create-or-open on a directory path |
-| `Store::open_inspect` | Read-only open (no writer, no derived writes) |
+| `Store::open` / `Store::create` | Create-or-open; takes exclusive writer lock |
+| `Store::open_inspect` | Read-only open (no writer lock, no derived writes) |
 | `put` / `get` / `delete` | Subject-keyed current-state operations |
 | `get_payload` | Completeness-aware read (`PayloadResult`) |
 | `history` | Per-subject event stream |
@@ -65,7 +66,9 @@ live there.
 | `checkpoint` | Derived snapshot with declared coverage |
 | secondary index helpers | Persist/load/delete `*.six` files |
 | `examination_sources` | Ordered `(source_name, bytes)` for examination |
-| `live_entries` / `live_logical_entries` | Index raw vs reassembled bodies |
+| `live_entries` | Index raw bodies (manifests for chunked subjects) |
+| `live_logical_entries` | Fail-closed complete reassembly only |
+| `scan_live_logical` | Opt-in envelope with incomplete subjects listed |
 | `transfer_segment_to_tier` | Copy/move sealed segment (stable id) |
 | `set_tier_available` / `tier_coverage` | Offline tier → coverage hole |
 | `get_with_tier_coverage` | Absence only proven when coverage complete |

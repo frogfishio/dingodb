@@ -75,6 +75,14 @@ pub enum StoreError {
     /// Media locator requires a backend this build does not ship (e.g. live S3/GCS).
     #[error("media backend unsupported: {0}")]
     MediaUnsupported(String),
+
+    /// Another process or handle already holds the exclusive writer lock (DEF-020).
+    #[error("store writer lock held: {0}")]
+    WriterLockHeld(String),
+
+    /// Scan/get coverage is incomplete; ordinary complete results are refused (DEF-012).
+    #[error("coverage incomplete: {0}")]
+    CoverageIncomplete(String),
 }
 
 impl StoreError {

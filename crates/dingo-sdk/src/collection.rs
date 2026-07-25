@@ -241,8 +241,10 @@ impl<'a> Collection<'a> {
 
     /// Stream live JSON entries one at a time (DX journey 6 / Stage 4b).
     ///
-    /// Yields `(key, value)` in stable key order. Incomplete chunked payloads are
-    /// skipped (use [`Self::get_payload`] for partial maps). Embedded only.
+    /// Yields `(key, value)` in stable key order. Incomplete chunked payloads
+    /// cause [`Error::CoverageIncomplete`] (DEF-012 fail-closed); use
+    /// [`dingo_store::Store::scan_live_logical`] or get_payload for partial maps.
+    /// Embedded only.
     ///
     /// Materializes the logical live set first so the iterator does not hold a
     /// long-lived store borrow.
