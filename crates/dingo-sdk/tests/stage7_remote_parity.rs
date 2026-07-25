@@ -232,9 +232,12 @@ fn remote_find_index_accelerated_under_budget() {
 
 #[test]
 fn remote_put_is_idempotent_with_operation_id() {
-    use dingo_sdk::{handle_connection_with, ServeOptions};
+    use dingo_sdk::{
+        client_handshake, handle_connection_with, read_frame, write_frame, ServeOptions,
+        DEFAULT_MAX_FRAME_BYTES,
+    };
     use dingo_store::{EventKind, Store};
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::BufReader;
     use std::net::{TcpListener, TcpStream};
 
     let dir = tempdir().unwrap();
@@ -255,23 +258,28 @@ fn remote_put_is_idempotent_with_operation_id() {
     });
 
     let mut stream = TcpStream::connect(addr).unwrap();
-    let put_line = format!(
+    let mut reader = BufReader::new(stream.try_clone().unwrap());
+    client_handshake(&mut reader, &mut stream).unwrap();
+    let put_body = format!(
         r#"{{"id":1,"op":"put","collection":"docs","key":"k","json":{{"n":1}},"durability":"durable","operation_id":"{op}"}}"#
     );
-    stream.write_all(put_line.as_bytes()).unwrap();
-    stream.write_all(b"\n").unwrap();
-    stream.flush().unwrap();
-    let mut reader = BufReader::new(stream.try_clone().unwrap());
-    let mut resp1 = String::new();
-    reader.read_line(&mut resp1).unwrap();
+    write_frame(&mut stream, put_body.as_bytes()).unwrap();
+    let resp1 = String::from_utf8(
+        read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
     assert!(resp1.contains("\"ok\":true"), "{resp1}");
 
     // Exact retry with same operation_id.
-    stream.write_all(put_line.as_bytes()).unwrap();
-    stream.write_all(b"\n").unwrap();
-    stream.flush().unwrap();
-    let mut resp2 = String::new();
-    reader.read_line(&mut resp2).unwrap();
+    write_frame(&mut stream, put_body.as_bytes()).unwrap();
+    let resp2 = String::from_utf8(
+        read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
     assert!(resp2.contains("\"ok\":true"), "{resp2}");
     let e1 = extract_field(&resp1, "event_id");
     let e2 = extract_field(&resp2, "event_id");
@@ -281,11 +289,13 @@ fn remote_put_is_idempotent_with_operation_id() {
     let bad = format!(
         r#"{{"id":3,"op":"put","collection":"docs","key":"k","json":{{"n":2}},"durability":"durable","operation_id":"{op}"}}"#
     );
-    stream.write_all(bad.as_bytes()).unwrap();
-    stream.write_all(b"\n").unwrap();
-    stream.flush().unwrap();
-    let mut resp3 = String::new();
-    reader.read_line(&mut resp3).unwrap();
+    write_frame(&mut stream, bad.as_bytes()).unwrap();
+    let resp3 = String::from_utf8(
+        read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
     assert!(
         resp3.contains("consistency_violation") || resp3.contains("\"ok\":false"),
         "{resp3}"

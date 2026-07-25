@@ -1,7 +1,8 @@
 //! Stage 7 CLI integration tests: put/get/list, doctor, salvage, serve+connect.
 
+use dingo_sdk::{client_handshake, read_frame, write_frame, DEFAULT_MAX_FRAME_BYTES};
 use std::fs;
-use std::io::{Read, Write};
+use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -9,21 +10,23 @@ use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
 
-/// Wait until a dingo serve process answers a line of JSON RPC (not a bare TCP connect).
+/// Wait until a dingo serve process completes a framed handshake + ping.
 ///
-/// A bare connect leaves the single-threaded server blocked on `read_line` until
-/// the probe socket is fully torn down, which races with the real client on macOS.
-/// Any JSON response (including auth failure) means the server is live.
+/// A bare TCP connect is not enough: production servers (DEF-031) require the
+/// `dingo-rpc-v1` hello/welcome exchange before application RPCs. Any framed
+/// JSON response (including auth failure on a later store_info) means live.
 fn wait_for_dingo_ping(bind: &str) {
     for _ in 0..100 {
         if let Ok(mut stream) = TcpStream::connect(bind) {
-            let _ = stream.set_read_timeout(Some(Duration::from_millis(300)));
-            let _ = stream.set_write_timeout(Some(Duration::from_millis(300)));
-            if stream.write_all(b"{\"id\":1,\"op\":\"ping\"}\n").is_ok() {
-                let mut buf = vec![0u8; 256];
-                if let Ok(n) = stream.read(&mut buf) {
-                    if n > 0 && buf[..n].contains(&b'{') {
-                        return;
+            let _ = stream.set_read_timeout(Some(Duration::from_millis(400)));
+            let _ = stream.set_write_timeout(Some(Duration::from_millis(400)));
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            if client_handshake(&mut reader, &mut stream).is_ok() {
+                if write_frame(&mut stream, br#"{"id":1,"op":"ping"}"#).is_ok() {
+                    if let Ok(Some(bytes)) = read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES) {
+                        if bytes.contains(&b'{') {
+                            return;
+                        }
                     }
                 }
             }

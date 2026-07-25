@@ -29,6 +29,7 @@ mod error;
 mod filter;
 mod history;
 mod indexes;
+mod protocol;
 mod receipt;
 mod remote;
 mod resource;
@@ -58,10 +59,17 @@ pub use resource::{
     DEFAULT_MAX_JSON_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_RESULT_BYTES,
     DEFAULT_MAX_RPC_LINE_BYTES, RESOURCE_PROFILE,
 };
+pub use protocol::{
+    client_handshake, encode_frame, read_frame, server_handshake, write_frame, write_json_frame,
+    write_reject_frame, Handshake, HandshakeMsg, NegotiatedSession, DEFAULT_MAX_FRAME_BYTES,
+    FEATURE_IDEMPOTENCY_V1, FEATURE_JSON_RPC_V1, FEATURE_RECEIPTS_V1, HANDSHAKE_MAX_FRAME_BYTES,
+    PROTOCOL_MAJOR, PROTOCOL_MINOR, PROTOCOL_PROFILE, REQUIRED_DELETE_RECEIPT_FIELDS,
+    REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL,
+};
 pub use remote::{
     handle_connection, handle_connection_shared, handle_connection_with, parse_dingo_url,
     serve_cluster_node, serve_store, serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient,
-    ServeOptions, DEFAULT_PORT,
+    RpcRequest, RpcResponse, ServeOptions, DEFAULT_PORT,
 };
 pub use server::{
     ServerLimits, ServerRuntime, ServerStats, DEFAULT_DRAIN_TIMEOUT, DEFAULT_IDLE_TIMEOUT,

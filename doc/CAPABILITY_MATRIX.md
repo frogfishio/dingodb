@@ -44,6 +44,8 @@ with the acceptance evidence expected before a stronger label.
 | `QUERY_PLAN_PROFILE` | `dingo-query-plan-v1` | Serializable filter/query plans (DEF-028) |
 | `RESOURCE_PROFILE` | `dingo-resource-v1` | Query budgets + host resource limits (DEF-029) |
 | `SERVER_PROFILE` | `dingo-server-v1` | Bounded TCP server admission + drain (DEF-030) |
+| `PROTOCOL_PROFILE` | `dingo-rpc-v1` | Framed RPC + handshake (DEF-031) |
+| `RPC_WIRE_LABEL` | `1.0-draft` | Network RPC interoperability draft (DEF-031; not frozen) |
 
 ## Network bind policy (DEF-002)
 
@@ -53,6 +55,20 @@ with the acceptance evidence expected before a stronger label.
 | `0.0.0.0`, `::`, LAN/public IPs | **refused** before accept | allowed (development only; no TLS yet) |
 
 `serve-cluster` additionally requires `--experimental-network-cluster`.
+
+## Network RPC framing (DEF-031)
+
+| Mode | How | Handshake | Message shape |
+|------|-----|-----------|---------------|
+| Production (`dingo-rpc-v1`) | default `connect` / `serve` | client `hello` → server `welcome` | `u32` BE length + JSON payload |
+| Diagnostic line | both sides set `diagnostic_line_protocol` | none | newline-delimited JSON |
+
+- Negotiated features: `json-rpc-v1`, `receipts-v1`, `idempotency-v1`.
+- `max_frame` is checked **before** allocating the payload buffer.
+- Legacy bare-line clients against a production server fail with
+  `protocol_violation` (clear error; no silent dual-mode).
+- `RPC_WIRE_LABEL = 1.0-draft` is not an interoperability freeze (DEF-053).
+- Golden fixtures: `crates/dingo-sdk/tests/fixtures/protocol/`.
 
 ## Writer ownership (DEF-020)
 

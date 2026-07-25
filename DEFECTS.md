@@ -874,7 +874,9 @@ Evidence:
 
 ### DEF-031 — Version and frame the network protocol
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (framed `dingo-rpc-v1` handshake; see
+`stage_def_031_protocol`, `tests/fixtures/protocol/`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -886,11 +888,35 @@ Work:
 - Preserve a human-debuggable mode only as a diagnostic profile.
 - Add compatibility fixtures for supported versions.
 
+Implementation notes:
+
+- Profile tag `PROTOCOL_PROFILE = "dingo-rpc-v1"`; draft label
+  `RPC_WIRE_LABEL = "1.0-draft"`.
+- Transport frame: big-endian `u32` length + UTF-8 JSON payload. Application
+  bodies remain `RpcRequest` / `RpcResponse` (encoding separate from framing).
+- Connect path: client `hello` → server `welcome` (or `reject`) with
+  `max_frame`, feature tokens (`json-rpc-v1`, `receipts-v1`, `idempotency-v1`),
+  and `required_receipt_fields` for `receipts-v1`.
+- Length is checked against negotiated `max_frame` **before** payload
+  allocation. Legacy clients that send bare `{...}` lines get a clear
+  `protocol_violation` reject (or connection close).
+- Diagnostic profile: `ConnectOptions` / `ServeOptions::diagnostic_line_protocol`
+  restores newline-delimited JSON without handshake for local debugging only.
+- Overload/drain admission rejects are framed handshake `reject` messages with
+  `code=resource_limit`.
+
 Acceptance:
 
 - Old/new clients fail clearly or negotiate a documented compatible subset.
 - Oversized and malformed frames are rejected without unbounded allocation.
 - Golden protocol fixtures run in CI.
+
+Evidence:
+
+- `crates/dingo-sdk/tests/stage_def_031_protocol.rs` — handshake, legacy
+  rejection, version reject, oversized frames, diagnostic mode, fixtures.
+- `crates/dingo-sdk/tests/fixtures/protocol/*.json` — golden payloads.
+- Unit: `protocol::tests` frame limits and feature negotiation.
 
 ### DEF-032 — Add TLS and authenticated peer identity
 

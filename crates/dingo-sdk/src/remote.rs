@@ -1,13 +1,19 @@
-//! Line-delimited JSON protocol for `dingo://` remote access (Stages 7 + 8d).
+//! Framed, versioned JSON RPC for `dingo://` remote access (Stages 7 + 8d, DEF-031).
 //!
-//! Server and client share the same request/response shapes. Transport is TCP;
-//! each message is one UTF-8 JSON object terminated by `\n`.
+//! Server and client share the same request/response shapes. Transport is TCP.
+//! **Production profile** (`dingo-rpc-v1`):
+//! 1. length-prefixed frames (`u32` BE + UTF-8 JSON payload);
+//! 2. explicit hello/welcome handshake with feature negotiation;
+//! 3. application [`RpcRequest`] / [`RpcResponse`] only after session setup.
+//!
+//! **Diagnostic profile:** optional newline-delimited JSON when both sides set
+//! `diagnostic_line_protocol` (human debugging with `nc`; not for production).
 //!
 //! Supported ops include put/get/delete/scan, **history**, secondary index
 //! list/create/drop/rebuild, **get_payload** (chunk completeness), **find**
 //! (server-side filter with index acceleration), and **directory** (Stage 8d
 //! partition route snapshot for client caches). Connection-only concerns (auth
-//! token, deadlines, connect retries) live on [`ConnectOptions`] /
+//! token, deadlines, connect retries, wire profile) live on [`ConnectOptions`] /
 //! [`ServeOptions`] — not on the collection API (DX_SPEC §4.2).
 
 use crate::collection::find_on_store;
@@ -16,6 +22,10 @@ use crate::error::Error;
 use crate::filter::{Filter, QueryBudget, QueryOptions, SortOrder};
 use crate::history::{KeyHistory, Version};
 use crate::indexes::{create_index_on_store, mark_indexes_stale, IndexInfo};
+use crate::protocol::{
+    self, client_handshake, server_handshake, write_json_frame, write_reject_frame,
+    NegotiatedSession, PROTOCOL_PROFILE,
+};
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,
@@ -60,6 +70,12 @@ pub struct ConnectOptions {
     pub max_connect_attempts: u32,
     /// Sleep between connect attempts.
     pub retry_backoff: Duration,
+    /// Use legacy newline-delimited JSON (diagnostic only; DEF-031).
+    ///
+    /// Requires the server to also enable
+    /// [`ServeOptions::diagnostic_line_protocol`]. Production clients leave
+    /// this `false` and perform the framed `dingo-rpc-v1` handshake.
+    pub diagnostic_line_protocol: bool,
 }
 
 impl Default for ConnectOptions {
@@ -70,6 +86,7 @@ impl Default for ConnectOptions {
             request_timeout: Duration::from_secs(30),
             max_connect_attempts: 3,
             retry_backoff: Duration::from_millis(50),
+            diagnostic_line_protocol: false,
         }
     }
 }
@@ -109,6 +126,12 @@ impl ConnectOptions {
         self.retry_backoff = d;
         self
     }
+
+    /// Enable legacy line-delimited JSON (must match server diagnostic mode).
+    pub fn diagnostic_line_protocol(mut self, enabled: bool) -> Self {
+        self.diagnostic_line_protocol = enabled;
+        self
+    }
 }
 
 /// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
@@ -146,6 +169,11 @@ pub struct ServeOptions {
     /// Optional external shutdown flag. When set true, the accept loop stops
     /// admitting work and drains in-flight connections (DEF-030).
     pub shutdown: Option<Arc<AtomicBool>>,
+    /// Accept legacy newline-delimited JSON without handshake (DEF-031 diagnostic).
+    ///
+    /// Defaults to `false`. Production servers require the framed
+    /// `dingo-rpc-v1` hello/welcome exchange. Enable only for local debugging.
+    pub diagnostic_line_protocol: bool,
 }
 
 impl Default for ServeOptions {
@@ -160,6 +188,7 @@ impl Default for ServeOptions {
             suppress_startup_report: false,
             server_limits: ServerLimits::draft_defaults(),
             shutdown: None,
+            diagnostic_line_protocol: false,
         }
     }
 }
@@ -239,6 +268,12 @@ impl ServeOptions {
     /// External shutdown signal shared with the accept loop (DEF-030).
     pub fn shutdown_flag(mut self, flag: Arc<AtomicBool>) -> Self {
         self.shutdown = Some(flag);
+        self
+    }
+
+    /// Enable legacy line-delimited JSON (diagnostic / `nc` debugging only).
+    pub fn diagnostic_line_protocol(mut self, enabled: bool) -> Self {
+        self.diagnostic_line_protocol = enabled;
         self
     }
 }
@@ -525,6 +560,10 @@ pub struct RemoteClient {
     route_hops: u64,
     /// How many times we refreshed the directory after transport failure.
     directory_refreshes: u64,
+    /// Negotiated max frame size (framed profile) or host line limit (diagnostic).
+    max_frame: usize,
+    /// Snapshot of negotiated features (empty in diagnostic line mode).
+    session: Option<NegotiatedSession>,
 }
 
 impl RemoteClient {
@@ -557,7 +596,14 @@ impl RemoteClient {
         stream
             .set_write_timeout(Some(options.request_timeout))
             .map_err(Error::from_io)?;
-        let reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
+        let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
+        let mut stream = stream;
+        let (max_frame, session) = if options.diagnostic_line_protocol {
+            (crate::resource::host_limits().max_rpc_line_bytes, None)
+        } else {
+            let session = client_handshake(&mut reader, &mut stream)?;
+            (session.max_frame, Some(session))
+        };
         let mut client = Self {
             stream,
             reader,
@@ -569,6 +615,8 @@ impl RemoteClient {
             directory: None,
             route_hops: 0,
             directory_refreshes: 0,
+            max_frame,
+            session,
         };
         // Immediate store_info validates auth token, proves protocol, caches store id.
         let (_path, sid_hex, _n) = client.store_info()?;
@@ -624,6 +672,11 @@ impl RemoteClient {
         Ok(self.directory.as_ref().expect("just set"))
     }
 
+    /// Negotiated session after framed handshake (None in diagnostic line mode).
+    pub fn session(&self) -> Option<&NegotiatedSession> {
+        self.session.as_ref()
+    }
+
     /// Reconnect this client to a different `host:port`, keeping directory cache.
     pub fn reconnect(&mut self, addr: &str) -> Result<(), Error> {
         if addr == self.addr {
@@ -636,7 +689,16 @@ impl RemoteClient {
         stream
             .set_write_timeout(Some(self.options.request_timeout))
             .map_err(Error::from_io)?;
-        let reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
+        let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
+        let mut stream = stream;
+        if self.options.diagnostic_line_protocol {
+            self.max_frame = crate::resource::host_limits().max_rpc_line_bytes;
+            self.session = None;
+        } else {
+            let session = client_handshake(&mut reader, &mut stream)?;
+            self.max_frame = session.max_frame;
+            self.session = Some(session);
+        }
         self.stream = stream;
         self.reader = reader;
         self.addr = addr.to_string();
@@ -718,48 +780,43 @@ impl RemoteClient {
         if req.token.is_none() {
             req.token = self.options.auth_token.clone();
         }
-        let mut line = serde_json::to_string(&req).map_err(|e| Error::Internal(e.to_string()))?;
-        line.push('\n');
-        // DEF-029: fail closed on oversized outbound request lines.
-        crate::resource::check_rpc_line_len(line.len(), &crate::resource::host_limits())?;
-        self.stream
-            .write_all(line.as_bytes())
-            .map_err(Error::from_io)?;
-        self.stream.flush().map_err(Error::from_io)?;
-
-        let mut resp_line = String::new();
-        let n = self
-            .reader
-            .read_line(&mut resp_line)
-            .map_err(Error::from_io)?;
-        if n == 0 {
-            return Err(Error::Internal(format!(
-                "remote closed connection: {} ({})",
-                self.endpoint, self.addr
+        let payload = serde_json::to_vec(&req).map_err(|e| Error::Internal(e.to_string()))?;
+        // DEF-029 / DEF-031: fail closed on oversized outbound messages before write.
+        if payload.len() > self.max_frame {
+            return Err(Error::ResourceLimit(format!(
+                "rpc request {} bytes exceeds negotiated max_frame {}",
+                payload.len(),
+                self.max_frame
             )));
         }
-        let resp: RpcResponse = serde_json::from_str(resp_line.trim()).map_err(|e| {
+        if self.options.diagnostic_line_protocol {
+            self.stream
+                .write_all(&payload)
+                .map_err(Error::from_io)?;
+            self.stream.write_all(b"\n").map_err(Error::from_io)?;
+            self.stream.flush().map_err(Error::from_io)?;
+            let mut resp_line = String::new();
+            let n = self
+                .reader
+                .read_line(&mut resp_line)
+                .map_err(Error::from_io)?;
+            if n == 0 {
+                return Err(Error::Internal(format!(
+                    "remote closed connection: {} ({})",
+                    self.endpoint, self.addr
+                )));
+            }
+            return decode_rpc_response(resp_line.trim().as_bytes(), &self.endpoint, &self.addr);
+        }
+
+        write_json_frame(&mut self.stream, &req)?;
+        let resp_bytes = protocol::read_frame(&mut self.reader, self.max_frame)?.ok_or_else(|| {
             Error::Internal(format!(
-                "invalid rpc response from {} ({}): {e}",
+                "remote closed connection: {} ({})",
                 self.endpoint, self.addr
             ))
         })?;
-        if !resp.ok {
-            let code = resp.code.unwrap_or_else(|| "internal".into());
-            let message = resp
-                .error
-                .unwrap_or_else(|| "remote operation failed".into());
-            return Err(match code.as_str() {
-                "authentication_failed" => Error::AuthenticationFailed(message),
-                "deadline_exceeded" => Error::DeadlineExceeded(message),
-                "query_budget_required" => Error::QueryBudgetRequired(message),
-                "query_invalid" => Error::QueryInvalid(message),
-                "consistency_violation" => Error::ConsistencyViolation(message),
-                "coverage_incomplete" => Error::CoverageIncomplete(message),
-                _ => Error::Remote { code, message },
-            });
-        }
-        Ok(resp)
+        decode_rpc_response(&resp_bytes, &self.endpoint, &self.addr)
     }
 
     /// Ping the server.
@@ -1504,9 +1561,11 @@ pub fn serve_store_with(
         )
         .emit_stderr();
         eprintln!(
-            "dingo serve: profile={SERVER_PROFILE} max_connections={} idle_timeout_ms={}",
+            "dingo serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
+             max_connections={} idle_timeout_ms={} diagnostic_line={}",
             options.server_limits.max_connections,
-            options.server_limits.idle_timeout.as_millis()
+            options.server_limits.idle_timeout.as_millis(),
+            options.diagnostic_line_protocol
         );
     }
 
@@ -1609,19 +1668,44 @@ fn serve_accept_loop(
     Ok(())
 }
 
-/// Write an unsolicited overload/drain error line and close the socket.
+/// Write an unsolicited overload/drain framed reject and close the socket.
+///
+/// Emitted before the worker admits the connection (and before application
+/// RPCs). Framed clients parse this as a handshake reject with
+/// `code=resource_limit`. Diagnostic servers also emit a line JSON body so
+/// simple tools can still observe the refusal.
 fn reject_connection(mut stream: TcpStream, reason: &str) -> Result<(), Error> {
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
-    write_resp(
-        &mut stream,
-        RpcResponse {
-            id: 0,
-            ok: false,
-            error: Some(reason.to_string()),
-            code: Some("resource_limit".into()),
-            ..empty_resp(0)
-        },
-    )
+    // Prefer framed reject (production clients expect a frame on first read
+    // after their hello, or as an unsolicited first frame on overload).
+    let _ = write_reject_frame(&mut stream, "resource_limit", reason);
+    Ok(())
+}
+
+fn decode_rpc_response(bytes: &[u8], endpoint: &str, addr: &str) -> Result<RpcResponse, Error> {
+    let resp: RpcResponse = serde_json::from_slice(bytes).map_err(|e| {
+        Error::Internal(format!(
+            "invalid rpc response from {endpoint} ({addr}): {e}"
+        ))
+    })?;
+    if !resp.ok {
+        let code = resp.code.unwrap_or_else(|| "internal".into());
+        let message = resp
+            .error
+            .unwrap_or_else(|| "remote operation failed".into());
+        return Err(match code.as_str() {
+            "authentication_failed" => Error::AuthenticationFailed(message),
+            "deadline_exceeded" => Error::DeadlineExceeded(message),
+            "query_budget_required" => Error::QueryBudgetRequired(message),
+            "query_invalid" => Error::QueryInvalid(message),
+            "consistency_violation" => Error::ConsistencyViolation(message),
+            "coverage_incomplete" => Error::CoverageIncomplete(message),
+            "resource_limit" => Error::ResourceLimit(message),
+            "protocol_violation" => Error::ProtocolViolation(message),
+            _ => Error::Remote { code, message },
+        });
+    }
+    Ok(resp)
 }
 
 /// Serve one node of a multi-node cluster root over TCP (network follow-on).
@@ -1750,80 +1834,51 @@ pub fn handle_connection_shared(
         .map_err(Error::from_io)?;
     let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
     let mut writer = stream;
-    let limits = crate::resource::host_limits();
+
+    let max_frame = if options.diagnostic_line_protocol {
+        crate::resource::host_limits().max_rpc_line_bytes
+    } else {
+        match server_handshake(&mut reader, &mut writer) {
+            Ok(session) => session.max_frame,
+            Err(e) => {
+                // Handshake already wrote a reject when possible.
+                return Err(e);
+            }
+        }
+    };
+
     loop {
         if runtime.is_draining() {
             // Finish after the current request; refuse further work cleanly.
-            // (Drain may start mid-connection; first check is here.)
         }
-        let mut line = String::new();
-        let n = match reader.read_line(&mut line) {
-            Ok(n) => n,
-            Err(e)
-                if e.kind() == std::io::ErrorKind::WouldBlock
-                    || e.kind() == std::io::ErrorKind::TimedOut =>
-            {
-                // Idle timeout: close quietly.
-                break;
-            }
-            Err(e) => return Err(Error::from_io(e)),
+        let req = match read_rpc_request(&mut reader, &mut writer, max_frame, &options) {
+            Ok(Some(r)) => r,
+            Ok(None) => break,
+            Err(ReadRpc::Idle) => break,
+            Err(ReadRpc::Fatal(e)) => return Err(e),
+            Err(ReadRpc::Continue) => continue,
+            Err(ReadRpc::Close) => break,
         };
-        if n == 0 {
-            break;
-        }
         if runtime.is_draining() {
-            write_resp(
+            write_rpc_response(
                 &mut writer,
+                &options,
                 RpcResponse {
-                    id: 0,
+                    id: req.id,
                     ok: false,
                     error: Some("server draining; request refused".into()),
                     code: Some("resource_limit".into()),
-                    ..empty_resp(0)
+                    ..empty_resp(req.id)
                 },
             )?;
             break;
         }
-        // DEF-029: refuse oversized request lines before JSON parse.
-        if let Err(e) = crate::resource::check_rpc_line_len(line.len(), &limits) {
-            write_resp(
-                &mut writer,
-                RpcResponse {
-                    id: 0,
-                    ok: false,
-                    error: Some(e.to_string()),
-                    code: Some(e.code().as_str().into()),
-                    ..empty_resp(0)
-                },
-            )?;
-            // Drop the connection: the remainder of an adversarial stream is untrusted.
-            break;
-        }
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let req: RpcRequest = match serde_json::from_str(line) {
-            Ok(r) => r,
-            Err(e) => {
-                write_resp(
-                    &mut writer,
-                    RpcResponse {
-                        id: 0,
-                        ok: false,
-                        error: Some(format!("bad request: {e}")),
-                        code: Some("validation_failed".into()),
-                        ..empty_resp(0)
-                    },
-                )?;
-                continue;
-            }
-        };
         if let Some(required) = options.auth_token.as_deref() {
             let presented = req.token.as_deref().unwrap_or("");
             if presented != required {
-                write_resp(
+                write_rpc_response(
                     &mut writer,
+                    &options,
                     RpcResponse {
                         id: req.id,
                         ok: false,
@@ -1856,7 +1911,7 @@ pub fn handle_connection_shared(
                 },
             }
         };
-        write_resp(&mut writer, resp)?;
+        write_rpc_response(&mut writer, &options, resp)?;
     }
     Ok(())
 }
@@ -1877,60 +1932,28 @@ fn connection_loop(
         .map_err(Error::from_io)?;
     let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
     let mut writer = stream;
-    let limits = crate::resource::host_limits();
+
+    let max_frame = if options.diagnostic_line_protocol {
+        crate::resource::host_limits().max_rpc_line_bytes
+    } else {
+        server_handshake(&mut reader, &mut writer)?.max_frame
+    };
+
     loop {
-        let mut line = String::new();
-        let n = match reader.read_line(&mut line) {
-            Ok(n) => n,
-            Err(e)
-                if e.kind() == std::io::ErrorKind::WouldBlock
-                    || e.kind() == std::io::ErrorKind::TimedOut =>
-            {
-                break;
-            }
-            Err(e) => return Err(Error::from_io(e)),
-        };
-        if n == 0 {
-            break;
-        }
-        if let Err(e) = crate::resource::check_rpc_line_len(line.len(), &limits) {
-            write_resp(
-                &mut writer,
-                RpcResponse {
-                    id: 0,
-                    ok: false,
-                    error: Some(e.to_string()),
-                    code: Some(e.code().as_str().into()),
-                    ..empty_resp(0)
-                },
-            )?;
-            break;
-        }
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let req: RpcRequest = match serde_json::from_str(line) {
-            Ok(r) => r,
-            Err(e) => {
-                write_resp(
-                    &mut writer,
-                    RpcResponse {
-                        id: 0,
-                        ok: false,
-                        error: Some(format!("bad request: {e}")),
-                        code: Some("validation_failed".into()),
-                        ..empty_resp(0)
-                    },
-                )?;
-                continue;
-            }
+        let req = match read_rpc_request(&mut reader, &mut writer, max_frame, options) {
+            Ok(Some(r)) => r,
+            Ok(None) => break,
+            Err(ReadRpc::Idle) => break,
+            Err(ReadRpc::Fatal(e)) => return Err(e),
+            Err(ReadRpc::Continue) => continue,
+            Err(ReadRpc::Close) => break,
         };
         if let Some(required) = options.auth_token.as_deref() {
             let presented = req.token.as_deref().unwrap_or("");
             if presented != required {
-                write_resp(
+                write_rpc_response(
                     &mut writer,
+                    options,
                     RpcResponse {
                         id: req.id,
                         ok: false,
@@ -1955,9 +1978,138 @@ fn connection_loop(
                 ..empty_resp(req.id)
             },
         };
-        write_resp(&mut writer, resp)?;
+        write_rpc_response(&mut writer, options, resp)?;
     }
     Ok(())
+}
+
+/// Outcome of reading one application RPC from the wire.
+enum ReadRpc {
+    /// Idle timeout on the socket.
+    Idle,
+    /// Soft error already answered; keep the connection.
+    Continue,
+    /// Drop the connection (adversarial / oversized).
+    Close,
+    /// Hard transport failure.
+    Fatal(Error),
+}
+
+fn read_rpc_request(
+    reader: &mut BufReader<TcpStream>,
+    writer: &mut TcpStream,
+    max_frame: usize,
+    options: &ServeOptions,
+) -> Result<Option<RpcRequest>, ReadRpc> {
+    if options.diagnostic_line_protocol {
+        let mut line = String::new();
+        let n = match reader.read_line(&mut line) {
+            Ok(n) => n,
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                return Err(ReadRpc::Idle);
+            }
+            Err(e) => return Err(ReadRpc::Fatal(Error::from_io(e))),
+        };
+        if n == 0 {
+            return Ok(None);
+        }
+        if let Err(e) = crate::resource::check_rpc_line_len(line.len(), &crate::resource::host_limits())
+        {
+            let _ = write_rpc_response(
+                writer,
+                options,
+                RpcResponse {
+                    id: 0,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(0)
+                },
+            );
+            return Err(ReadRpc::Close);
+        }
+        let line = line.trim();
+        if line.is_empty() {
+            return Err(ReadRpc::Continue);
+        }
+        match serde_json::from_str(line) {
+            Ok(r) => Ok(Some(r)),
+            Err(e) => {
+                let _ = write_rpc_response(
+                    writer,
+                    options,
+                    RpcResponse {
+                        id: 0,
+                        ok: false,
+                        error: Some(format!("bad request: {e}")),
+                        code: Some("validation_failed".into()),
+                        ..empty_resp(0)
+                    },
+                );
+                Err(ReadRpc::Continue)
+            }
+        }
+    } else {
+        let bytes = match protocol::read_frame(reader, max_frame) {
+            Ok(Some(b)) => b,
+            Ok(None) => return Ok(None),
+            Err(e)
+                if matches!(
+                    e,
+                    Error::DeadlineExceeded(_)
+                ) =>
+            {
+                return Err(ReadRpc::Idle);
+            }
+            Err(e) if e.code() == crate::ErrorCode::ResourceLimit => {
+                let _ = write_rpc_response(
+                    writer,
+                    options,
+                    RpcResponse {
+                        id: 0,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some("resource_limit".into()),
+                        ..empty_resp(0)
+                    },
+                );
+                return Err(ReadRpc::Close);
+            }
+            Err(e) => return Err(ReadRpc::Fatal(e)),
+        };
+        match serde_json::from_slice(&bytes) {
+            Ok(r) => Ok(Some(r)),
+            Err(e) => {
+                let _ = write_rpc_response(
+                    writer,
+                    options,
+                    RpcResponse {
+                        id: 0,
+                        ok: false,
+                        error: Some(format!("bad request: {e}")),
+                        code: Some("validation_failed".into()),
+                        ..empty_resp(0)
+                    },
+                );
+                Err(ReadRpc::Continue)
+            }
+        }
+    }
+}
+
+fn write_rpc_response(
+    w: &mut TcpStream,
+    options: &ServeOptions,
+    resp: RpcResponse,
+) -> Result<(), Error> {
+    if options.diagnostic_line_protocol {
+        write_resp_line(w, resp)
+    } else {
+        write_json_frame(w, &resp)
+    }
 }
 
 fn empty_resp(id: u64) -> RpcResponse {
@@ -2052,7 +2204,7 @@ fn tcp_connect_once(addr: &str, timeout: Duration) -> Result<TcpStream, Error> {
     })))
 }
 
-fn write_resp(w: &mut TcpStream, resp: RpcResponse) -> Result<(), Error> {
+fn write_resp_line(w: &mut TcpStream, resp: RpcResponse) -> Result<(), Error> {
     let mut line = serde_json::to_string(&resp).map_err(|e| Error::Internal(e.to_string()))?;
     line.push('\n');
     w.write_all(line.as_bytes()).map_err(Error::from_io)?;
