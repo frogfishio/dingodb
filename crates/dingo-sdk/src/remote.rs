@@ -23,8 +23,7 @@ use crate::filter::{Filter, QueryBudget, QueryOptions, SortOrder};
 use crate::history::{KeyHistory, Version};
 use crate::indexes::{create_index_on_store, mark_indexes_stale, IndexInfo};
 use crate::protocol::{
-    self, client_handshake, server_handshake, write_json_frame, write_reject_frame,
-    NegotiatedSession, PROTOCOL_PROFILE,
+    self, write_json_frame, write_reject_frame, NegotiatedSession, PROTOCOL_PROFILE,
 };
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::subject::{
@@ -40,6 +39,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use crate::server::{
     is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, SERVER_PROFILE,
+};
+use crate::tls::{
+    client_connect, constant_time_str_eq, IoStream, TlsClientOptions, TlsServerOptions,
+    TlsServerState, TLS_PROFILE,
 };
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
@@ -76,6 +79,11 @@ pub struct ConnectOptions {
     /// [`ServeOptions::diagnostic_line_protocol`]. Production clients leave
     /// this `false` and perform the framed `dingo-rpc-v1` handshake.
     pub diagnostic_line_protocol: bool,
+    /// Optional TLS client configuration (DEF-032).
+    ///
+    /// When set, the client performs a TLS 1.3 handshake before the framed
+    /// RPC handshake. The server must be configured with matching TLS material.
+    pub tls: Option<TlsClientOptions>,
 }
 
 impl Default for ConnectOptions {
@@ -87,6 +95,7 @@ impl Default for ConnectOptions {
             max_connect_attempts: 3,
             retry_backoff: Duration::from_millis(50),
             diagnostic_line_protocol: false,
+            tls: None,
         }
     }
 }
@@ -132,6 +141,12 @@ impl ConnectOptions {
         self.diagnostic_line_protocol = enabled;
         self
     }
+
+    /// Enable TLS 1.3 with the given client options (DEF-032).
+    pub fn tls(mut self, options: TlsClientOptions) -> Self {
+        self.tls = Some(options);
+        self
+    }
 }
 
 /// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
@@ -154,8 +169,8 @@ pub struct ServeOptions {
     pub cluster_root: Option<std::path::PathBuf>,
     /// Allow non-loopback plaintext binds (development only; DEF-002).
     ///
-    /// Defaults to `false`. TLS is not implemented yet; public binds require
-    /// this explicit opt-in (CLI: `--allow-insecure-bind`).
+    /// Defaults to `false`. Public binds without TLS require this opt-in
+    /// (CLI: `--allow-insecure-bind`). Prefer [`Self::tls`] for non-loopback.
     pub allow_insecure_bind: bool,
     /// Acknowledge that network `serve-cluster` is experimental (DEF-002).
     ///
@@ -174,6 +189,18 @@ pub struct ServeOptions {
     /// Defaults to `false`. Production servers require the framed
     /// `dingo-rpc-v1` hello/welcome exchange. Enable only for local debugging.
     pub diagnostic_line_protocol: bool,
+    /// Optional TLS server configuration (DEF-032).
+    ///
+    /// When set, every accepted connection is wrapped in TLS 1.3 before the
+    /// framed RPC handshake. Non-loopback binds without TLS still require
+    /// [`Self::allow_insecure_bind`].
+    pub tls: Option<TlsServerOptions>,
+    /// Optional out-parameter filled with the live [`TlsServerState`] so tests
+    /// and operators can call [`TlsServerState::reload`] without restarting.
+    ///
+    /// Not set by CLI defaults; library callers may provide
+    /// `Arc::new(Mutex::new(None))` and read it after serve starts.
+    pub tls_state_slot: Option<Arc<Mutex<Option<TlsServerState>>>>,
 }
 
 impl Default for ServeOptions {
@@ -189,6 +216,8 @@ impl Default for ServeOptions {
             server_limits: ServerLimits::draft_defaults(),
             shutdown: None,
             diagnostic_line_protocol: false,
+            tls: None,
+            tls_state_slot: None,
         }
     }
 }
@@ -274,6 +303,23 @@ impl ServeOptions {
     /// Enable legacy line-delimited JSON (diagnostic / `nc` debugging only).
     pub fn diagnostic_line_protocol(mut self, enabled: bool) -> Self {
         self.diagnostic_line_protocol = enabled;
+        self
+    }
+
+    /// Enable TLS 1.3 with the given server options (DEF-032).
+    pub fn tls(mut self, options: TlsServerOptions) -> Self {
+        self.tls = Some(options);
+        self
+    }
+
+    /// Whether TLS is configured for this serve process.
+    pub fn tls_enabled(&self) -> bool {
+        self.tls.is_some()
+    }
+
+    /// Publish the live TLS server state into this slot after material loads.
+    pub fn tls_state_slot(mut self, slot: Arc<Mutex<Option<TlsServerState>>>) -> Self {
+        self.tls_state_slot = Some(slot);
         self
     }
 }
@@ -544,8 +590,8 @@ const MAX_ROUTE_TRANSPORT_RETRIES: u32 = 3;
 /// keyed ops, routes to the advertised leader `host:port` (CLUSTER_SPEC §13).
 /// On transport failure the directory is refreshed and the op is retried.
 pub struct RemoteClient {
-    stream: TcpStream,
-    reader: BufReader<TcpStream>,
+    /// Buffered transport (plaintext or TLS). Writes use `reader.get_mut()`.
+    reader: BufReader<IoStream>,
     next_id: AtomicU64,
     /// Logical URL (`dingo://…`) for display / errors.
     endpoint: String,
@@ -589,23 +635,21 @@ impl RemoteClient {
     }
 
     fn connect_raw(addr: &str, endpoint: String, options: ConnectOptions) -> Result<Self, Error> {
-        let stream = tcp_connect_with_retry(addr, &options)?;
+        let stream = open_client_stream(addr, &options)?;
         stream
             .set_read_timeout(Some(options.request_timeout))
             .map_err(Error::from_io)?;
         stream
             .set_write_timeout(Some(options.request_timeout))
             .map_err(Error::from_io)?;
-        let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
-        let mut stream = stream;
+        let mut reader = BufReader::new(stream);
         let (max_frame, session) = if options.diagnostic_line_protocol {
             (crate::resource::host_limits().max_rpc_line_bytes, None)
         } else {
-            let session = client_handshake(&mut reader, &mut stream)?;
+            let session = client_handshake_buffered(&mut reader)?;
             (session.max_frame, Some(session))
         };
         let mut client = Self {
-            stream,
             reader,
             next_id: AtomicU64::new(1),
             endpoint,
@@ -682,24 +726,22 @@ impl RemoteClient {
         if addr == self.addr {
             return Ok(());
         }
-        let stream = tcp_connect_with_retry(addr, &self.options)?;
+        let stream = open_client_stream(addr, &self.options)?;
         stream
             .set_read_timeout(Some(self.options.request_timeout))
             .map_err(Error::from_io)?;
         stream
             .set_write_timeout(Some(self.options.request_timeout))
             .map_err(Error::from_io)?;
-        let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
-        let mut stream = stream;
+        let mut reader = BufReader::new(stream);
         if self.options.diagnostic_line_protocol {
             self.max_frame = crate::resource::host_limits().max_rpc_line_bytes;
             self.session = None;
         } else {
-            let session = client_handshake(&mut reader, &mut stream)?;
+            let session = client_handshake_buffered(&mut reader)?;
             self.max_frame = session.max_frame;
             self.session = Some(session);
         }
-        self.stream = stream;
         self.reader = reader;
         self.addr = addr.to_string();
         self.route_hops = self.route_hops.saturating_add(1);
@@ -790,11 +832,12 @@ impl RemoteClient {
             )));
         }
         if self.options.diagnostic_line_protocol {
-            self.stream
-                .write_all(&payload)
-                .map_err(Error::from_io)?;
-            self.stream.write_all(b"\n").map_err(Error::from_io)?;
-            self.stream.flush().map_err(Error::from_io)?;
+            {
+                let w = self.reader.get_mut();
+                w.write_all(&payload).map_err(Error::from_io)?;
+                w.write_all(b"\n").map_err(Error::from_io)?;
+                w.flush().map_err(Error::from_io)?;
+            }
             let mut resp_line = String::new();
             let n = self
                 .reader
@@ -809,7 +852,7 @@ impl RemoteClient {
             return decode_rpc_response(resp_line.trim().as_bytes(), &self.endpoint, &self.addr);
         }
 
-        write_json_frame(&mut self.stream, &req)?;
+        write_json_frame(self.reader.get_mut(), &req)?;
         let resp_bytes = protocol::read_frame(&mut self.reader, self.max_frame)?.ok_or_else(|| {
             Error::Internal(format!(
                 "remote closed connection: {} ({})",
@@ -1534,35 +1577,58 @@ pub fn serve_store(store_path: impl AsRef<Path>, bind: &str) -> Result<(), Error
 
 /// Serve with explicit auth / server options.
 ///
-/// Enforces the plaintext bind policy (DEF-002): non-loopback addresses require
-/// [`ServeOptions::allow_insecure_bind`]. Emits a structured startup report to
-/// stderr that never claims network quorum durability for single-node serve.
+/// Enforces the bind policy (DEF-002 / DEF-032): non-loopback **plaintext**
+/// requires [`ServeOptions::allow_insecure_bind`]; non-loopback with TLS is
+/// allowed. Emits a structured startup report to stderr that never claims
+/// network quorum durability for single-node serve.
 ///
 /// **Bounded server (DEF-030):** one store owner, worker threads per connection,
 /// connection admission limits, idle timeouts, overload responses, and optional
 /// graceful drain via [`ServeOptions::shutdown_flag`].
+///
+/// **TLS (DEF-032):** when [`ServeOptions::tls`] is set, every accepted
+/// connection is wrapped in TLS 1.3 before the framed RPC handshake. Call
+/// [`TlsServerState::reload`] via the shared state to rotate certs without
+/// downtime (new handshakes pick up reloaded material).
 pub fn serve_store_with(
     store_path: impl AsRef<Path>,
     bind: &str,
     options: ServeOptions,
 ) -> Result<(), Error> {
-    crate::bind_policy::validate_plaintext_bind(bind, options.allow_insecure_bind)?;
+    let tls_enabled = options.tls.is_some();
+    crate::bind_policy::validate_bind(bind, options.allow_insecure_bind, tls_enabled)?;
     let path = store_path.as_ref().to_path_buf();
+    let tls_state = match options.tls.clone() {
+        Some(tls_opts) => Some(TlsServerState::from_options(tls_opts)?),
+        None => None,
+    };
+    if let Some(slot) = options.tls_state_slot.as_ref() {
+        if let Ok(mut g) = slot.lock() {
+            *g = tls_state.clone();
+        }
+    }
+    let mtls = tls_state
+        .as_ref()
+        .map(|s| s.options().require_client_cert)
+        .unwrap_or(false);
     // Cluster serve prints its own report; single-node prints unless suppressed.
     if !options.suppress_startup_report
         && options.directory.is_none()
         && options.cluster_root.is_none()
     {
-        crate::bind_policy::ServeStartupReport::single_node(
+        crate::bind_policy::ServeStartupReport::single_node_tls(
             path.display().to_string(),
             bind,
             options.auth_token.is_some(),
             options.allow_insecure_bind,
+            tls_enabled,
+            mtls,
         )
         .emit_stderr();
         eprintln!(
             "dingo serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
-             max_connections={} idle_timeout_ms={} diagnostic_line={}",
+             tls={TLS_PROFILE}/{} max_connections={} idle_timeout_ms={} diagnostic_line={}",
+            if tls_enabled { "on" } else { "off" },
             options.server_limits.max_connections,
             options.server_limits.idle_timeout.as_millis(),
             options.diagnostic_line_protocol
@@ -1578,7 +1644,7 @@ pub fn serve_store_with(
         .set_nonblocking(true)
         .map_err(Error::from_io)?;
 
-    serve_accept_loop(listener, store, runtime, options)
+    serve_accept_loop(listener, store, runtime, options, tls_state)
 }
 
 /// Bounded accept loop: admit connections as worker threads until shutdown.
@@ -1587,6 +1653,7 @@ fn serve_accept_loop(
     store: Arc<Mutex<Store>>,
     runtime: Arc<ServerRuntime>,
     options: ServeOptions,
+    tls_state: Option<TlsServerState>,
 ) -> Result<(), Error> {
     loop {
         if runtime.is_shutdown_requested() {
@@ -1608,22 +1675,25 @@ fn serve_accept_loop(
                     } else {
                         format!("connection limit exceeded (max {max})")
                     };
-                    let _ = reject_connection(stream, &reason);
+                    let _ = reject_connection(stream, tls_state.as_ref(), &reason);
                     continue;
                 }
                 let guard = ConnectionGuard::new(Arc::clone(&runtime));
                 let store_c = Arc::clone(&store);
                 let opts_c = options.clone();
                 let runtime_c = Arc::clone(&runtime);
+                let tls_c = tls_state.clone();
                 // Detach worker: accept loop must not wait on client I/O.
                 // On spawn failure the ConnectionGuard drops here and releases the slot.
                 thread::Builder::new()
                     .name("dingo-serve-conn".into())
                     .spawn(move || {
                         let _guard = guard;
-                        if let Err(e) =
-                            handle_connection_shared(store_c, stream, opts_c, runtime_c)
-                        {
+                        if let Err(e) = handle_connection_shared(
+                            store_c, stream, opts_c, runtime_c, tls_c,
+                        ) {
+                            // Avoid logging secrets (tokens never appear in Error Display
+                            // for auth failures; still keep messages short).
                             eprintln!("dingo serve connection error: {e}");
                         }
                     })
@@ -1672,14 +1742,161 @@ fn serve_accept_loop(
 ///
 /// Emitted before the worker admits the connection (and before application
 /// RPCs). Framed clients parse this as a handshake reject with
-/// `code=resource_limit`. Diagnostic servers also emit a line JSON body so
-/// simple tools can still observe the refusal.
-fn reject_connection(mut stream: TcpStream, reason: &str) -> Result<(), Error> {
+/// `code=resource_limit`. When TLS is configured the reject is sent after a
+/// short TLS handshake so framed clients still observe a clean reject.
+fn reject_connection(
+    stream: TcpStream,
+    tls: Option<&TlsServerState>,
+    reason: &str,
+) -> Result<(), Error> {
+    let mut stream = wrap_server_stream(stream, tls)?;
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
-    // Prefer framed reject (production clients expect a frame on first read
-    // after their hello, or as an unsolicited first frame on overload).
     let _ = write_reject_frame(&mut stream, "resource_limit", reason);
     Ok(())
+}
+
+/// Wrap an accepted TCP stream with TLS when server TLS is configured.
+fn wrap_server_stream(
+    tcp: TcpStream,
+    tls: Option<&TlsServerState>,
+) -> Result<IoStream, Error> {
+    match tls {
+        Some(state) => {
+            let (stream, _peer) = state.accept(tcp)?;
+            Ok(stream)
+        }
+        None => Ok(IoStream::plain(tcp)),
+    }
+}
+
+/// Open a client transport (TCP + optional TLS).
+fn open_client_stream(addr: &str, options: &ConnectOptions) -> Result<IoStream, Error> {
+    let tcp = tcp_connect_with_retry(addr, options)?;
+    match &options.tls {
+        Some(tls) => {
+            let (stream, _peer) = client_connect(tcp, tls)?;
+            Ok(stream)
+        }
+        None => Ok(IoStream::plain(tcp)),
+    }
+}
+
+/// Client handshake over a buffered duplex stream (single ownership).
+fn client_handshake_buffered(
+    reader: &mut BufReader<IoStream>,
+) -> Result<NegotiatedSession, Error> {
+    write_json_frame(reader.get_mut(), &protocol::Handshake::hello())?;
+    let payload = match protocol::read_frame(reader, protocol::HANDSHAKE_MAX_FRAME_BYTES)? {
+        Some(p) => p,
+        None => {
+            return Err(Error::ProtocolViolation(
+                "server closed connection during handshake".into(),
+            ));
+        }
+    };
+    let hs = protocol::parse_handshake(&payload)?;
+    match hs.msg {
+        protocol::HandshakeMsg::Welcome => {
+            let max_frame = protocol::negotiate_max_frame(hs.max_frame);
+            let features = hs.features.unwrap_or_default();
+            protocol::negotiate_features(&features)?;
+            Ok(NegotiatedSession {
+                max_frame,
+                features,
+                protocol_major: hs.protocol_major.unwrap_or(hs.v),
+                protocol_minor: hs.protocol_minor.unwrap_or(0),
+            })
+        }
+        protocol::HandshakeMsg::Reject => {
+            let code = hs.code.unwrap_or_else(|| "protocol_violation".into());
+            let message = hs
+                .error
+                .unwrap_or_else(|| "server rejected protocol handshake".into());
+            Err(match code.as_str() {
+                "resource_limit" => Error::ResourceLimit(message),
+                "authentication_failed" => Error::AuthenticationFailed(message),
+                "protocol_version_unsupported" | "protocol_violation" => {
+                    Error::ProtocolViolation(message)
+                }
+                _ => Error::Remote { code, message },
+            })
+        }
+        other => Err(Error::ProtocolViolation(format!(
+            "expected welcome or reject, got {other:?}"
+        ))),
+    }
+}
+
+/// Server handshake over a buffered duplex stream (single ownership).
+fn server_handshake_buffered(
+    reader: &mut BufReader<IoStream>,
+) -> Result<NegotiatedSession, Error> {
+    // server_handshake needs separate Read/Write; use BufReader + get_mut.
+    // Temporarily implement inline using the same logic as protocol::server_handshake.
+    let payload = match protocol::read_frame_or_detect_legacy(
+        reader,
+        protocol::HANDSHAKE_MAX_FRAME_BYTES,
+    )? {
+        Some(p) => p,
+        None => {
+            return Err(Error::ProtocolViolation(
+                "connection closed before protocol hello".into(),
+            ));
+        }
+    };
+    let hello = match protocol::parse_handshake(&payload) {
+        Ok(h) => h,
+        Err(e) => {
+            let _ = write_json_frame(
+                reader.get_mut(),
+                &protocol::Handshake::reject("protocol_violation", e.to_string()),
+            );
+            return Err(e);
+        }
+    };
+    if hello.msg != protocol::HandshakeMsg::Hello {
+        let msg = format!("expected hello, got {:?}", hello.msg);
+        let _ = write_json_frame(
+            reader.get_mut(),
+            &protocol::Handshake::reject("protocol_violation", &msg),
+        );
+        return Err(Error::ProtocolViolation(msg));
+    }
+    if hello.v != protocol::PROTOCOL_MAJOR
+        && hello.protocol_major.unwrap_or(hello.v) != protocol::PROTOCOL_MAJOR
+    {
+        let msg = format!(
+            "unsupported protocol major {} (server speaks {})",
+            hello.v,
+            protocol::PROTOCOL_MAJOR
+        );
+        let _ = write_json_frame(
+            reader.get_mut(),
+            &protocol::Handshake::reject("protocol_version_unsupported", &msg),
+        );
+        return Err(Error::ProtocolViolation(msg));
+    }
+    let features = match protocol::negotiate_features(hello.features.as_deref().unwrap_or(&[])) {
+        Ok(f) => f,
+        Err(e) => {
+            let _ = write_json_frame(
+                reader.get_mut(),
+                &protocol::Handshake::reject("protocol_violation", e.to_string()),
+            );
+            return Err(e);
+        }
+    };
+    let max_frame = protocol::negotiate_max_frame(hello.max_frame);
+    write_json_frame(
+        reader.get_mut(),
+        &protocol::Handshake::welcome(max_frame, features.clone()),
+    )?;
+    Ok(NegotiatedSession {
+        max_frame,
+        features,
+        protocol_major: protocol::PROTOCOL_MAJOR,
+        protocol_minor: protocol::PROTOCOL_MINOR,
+    })
 }
 
 fn decode_rpc_response(bytes: &[u8], endpoint: &str, addr: &str) -> Result<RpcResponse, Error> {
@@ -1735,7 +1952,8 @@ pub fn serve_cluster_node(
                 .into(),
         ));
     }
-    crate::bind_policy::validate_plaintext_bind(bind, options.allow_insecure_bind)?;
+    let tls_enabled = options.tls.is_some();
+    crate::bind_policy::validate_bind(bind, options.allow_insecure_bind, tls_enabled)?;
 
     let root = cluster_root.as_ref();
     let meta = dingo_cluster::ClusterMeta::load(root)
@@ -1771,19 +1989,27 @@ pub fn serve_cluster_node(
     }
 
     if !opts.suppress_startup_report {
-        crate::bind_policy::ServeStartupReport::cluster_node(
+        let mtls = opts
+            .tls
+            .as_ref()
+            .map(|t| t.require_client_cert)
+            .unwrap_or(false);
+        crate::bind_policy::ServeStartupReport::cluster_node_tls(
             root.display().to_string(),
             bind,
             opts.auth_token.is_some(),
             opts.allow_insecure_bind,
             node_index,
+            tls_enabled,
+            mtls,
         )
         .emit_stderr();
         eprintln!(
-            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={}",
+            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={}",
             root.display(),
             store_path.display(),
-            meta.node_count
+            meta.node_count,
+            if tls_enabled { "on" } else { "off" }
         );
     }
     // Avoid a second single-node-style report inside serve_store_with.
@@ -1811,7 +2037,11 @@ pub fn handle_connection_with(
     // Pretend admitted so drain checks are no-ops.
     let _ = runtime.try_admit_connection();
     let _guard = ConnectionGuard::new(Arc::clone(&runtime));
-    connection_loop(store, stream, &options, &runtime)
+    let tls = match options.tls.clone() {
+        Some(o) => Some(TlsServerState::from_options(o)?),
+        None => None,
+    };
+    connection_loop(store, stream, &options, &runtime, tls.as_ref())
 }
 
 /// Handle one client against a shared store owner (DEF-030 worker path).
@@ -1824,21 +2054,22 @@ pub fn handle_connection_shared(
     stream: TcpStream,
     options: ServeOptions,
     runtime: Arc<ServerRuntime>,
+    tls: Option<TlsServerState>,
 ) -> Result<(), Error> {
     let idle = options.server_limits.idle_timeout;
+    let stream = wrap_server_stream(stream, tls.as_ref())?;
     stream
         .set_read_timeout(Some(idle))
         .map_err(Error::from_io)?;
     stream
         .set_write_timeout(Some(idle))
         .map_err(Error::from_io)?;
-    let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
-    let mut writer = stream;
+    let mut reader = BufReader::new(stream);
 
     let max_frame = if options.diagnostic_line_protocol {
         crate::resource::host_limits().max_rpc_line_bytes
     } else {
-        match server_handshake(&mut reader, &mut writer) {
+        match server_handshake_buffered(&mut reader) {
             Ok(session) => session.max_frame,
             Err(e) => {
                 // Handshake already wrote a reject when possible.
@@ -1851,7 +2082,7 @@ pub fn handle_connection_shared(
         if runtime.is_draining() {
             // Finish after the current request; refuse further work cleanly.
         }
-        let req = match read_rpc_request(&mut reader, &mut writer, max_frame, &options) {
+        let req = match read_rpc_request(&mut reader, max_frame, &options) {
             Ok(Some(r)) => r,
             Ok(None) => break,
             Err(ReadRpc::Idle) => break,
@@ -1861,7 +2092,7 @@ pub fn handle_connection_shared(
         };
         if runtime.is_draining() {
             write_rpc_response(
-                &mut writer,
+                &mut reader,
                 &options,
                 RpcResponse {
                     id: req.id,
@@ -1875,9 +2106,10 @@ pub fn handle_connection_shared(
         }
         if let Some(required) = options.auth_token.as_deref() {
             let presented = req.token.as_deref().unwrap_or("");
-            if presented != required {
+            // Constant-time compare; never log presented or required secrets (DEF-032).
+            if !constant_time_str_eq(presented, required) {
                 write_rpc_response(
-                    &mut writer,
+                    &mut reader,
                     &options,
                     RpcResponse {
                         id: req.id,
@@ -1911,7 +2143,7 @@ pub fn handle_connection_shared(
                 },
             }
         };
-        write_rpc_response(&mut writer, &options, resp)?;
+        write_rpc_response(&mut reader, &options, resp)?;
     }
     Ok(())
 }
@@ -1921,26 +2153,27 @@ fn connection_loop(
     store: &mut Store,
     stream: TcpStream,
     options: &ServeOptions,
-    runtime: &ServerRuntime,
+    _runtime: &ServerRuntime,
+    tls: Option<&TlsServerState>,
 ) -> Result<(), Error> {
     let idle = options.server_limits.idle_timeout;
+    let stream = wrap_server_stream(stream, tls)?;
     stream
         .set_read_timeout(Some(idle))
         .map_err(Error::from_io)?;
     stream
         .set_write_timeout(Some(idle))
         .map_err(Error::from_io)?;
-    let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
-    let mut writer = stream;
+    let mut reader = BufReader::new(stream);
 
     let max_frame = if options.diagnostic_line_protocol {
         crate::resource::host_limits().max_rpc_line_bytes
     } else {
-        server_handshake(&mut reader, &mut writer)?.max_frame
+        server_handshake_buffered(&mut reader)?.max_frame
     };
 
     loop {
-        let req = match read_rpc_request(&mut reader, &mut writer, max_frame, options) {
+        let req = match read_rpc_request(&mut reader, max_frame, options) {
             Ok(Some(r)) => r,
             Ok(None) => break,
             Err(ReadRpc::Idle) => break,
@@ -1950,9 +2183,9 @@ fn connection_loop(
         };
         if let Some(required) = options.auth_token.as_deref() {
             let presented = req.token.as_deref().unwrap_or("");
-            if presented != required {
+            if !constant_time_str_eq(presented, required) {
                 write_rpc_response(
-                    &mut writer,
+                    &mut reader,
                     options,
                     RpcResponse {
                         id: req.id,
@@ -1967,7 +2200,6 @@ fn connection_loop(
         }
         // Exclusive test path: no process-wide mutation accounting (runtime is
         // local to this connection). Shared workers use MutationGuard.
-        let _ = runtime;
         let resp = match dispatch(store, &req, options) {
             Ok(r) => r,
             Err(e) => RpcResponse {
@@ -1978,7 +2210,7 @@ fn connection_loop(
                 ..empty_resp(req.id)
             },
         };
-        write_rpc_response(&mut writer, options, resp)?;
+        write_rpc_response(&mut reader, options, resp)?;
     }
     Ok(())
 }
@@ -1996,8 +2228,7 @@ enum ReadRpc {
 }
 
 fn read_rpc_request(
-    reader: &mut BufReader<TcpStream>,
-    writer: &mut TcpStream,
+    reader: &mut BufReader<IoStream>,
     max_frame: usize,
     options: &ServeOptions,
 ) -> Result<Option<RpcRequest>, ReadRpc> {
@@ -2019,7 +2250,7 @@ fn read_rpc_request(
         if let Err(e) = crate::resource::check_rpc_line_len(line.len(), &crate::resource::host_limits())
         {
             let _ = write_rpc_response(
-                writer,
+                reader,
                 options,
                 RpcResponse {
                     id: 0,
@@ -2039,7 +2270,7 @@ fn read_rpc_request(
             Ok(r) => Ok(Some(r)),
             Err(e) => {
                 let _ = write_rpc_response(
-                    writer,
+                    reader,
                     options,
                     RpcResponse {
                         id: 0,
@@ -2066,7 +2297,7 @@ fn read_rpc_request(
             }
             Err(e) if e.code() == crate::ErrorCode::ResourceLimit => {
                 let _ = write_rpc_response(
-                    writer,
+                    reader,
                     options,
                     RpcResponse {
                         id: 0,
@@ -2084,7 +2315,7 @@ fn read_rpc_request(
             Ok(r) => Ok(Some(r)),
             Err(e) => {
                 let _ = write_rpc_response(
-                    writer,
+                    reader,
                     options,
                     RpcResponse {
                         id: 0,
@@ -2101,14 +2332,14 @@ fn read_rpc_request(
 }
 
 fn write_rpc_response(
-    w: &mut TcpStream,
+    reader: &mut BufReader<IoStream>,
     options: &ServeOptions,
     resp: RpcResponse,
 ) -> Result<(), Error> {
     if options.diagnostic_line_protocol {
-        write_resp_line(w, resp)
+        write_resp_line(reader.get_mut(), resp)
     } else {
-        write_json_frame(w, &resp)
+        write_json_frame(reader.get_mut(), &resp)
     }
 }
 
@@ -2204,7 +2435,7 @@ fn tcp_connect_once(addr: &str, timeout: Duration) -> Result<TcpStream, Error> {
     })))
 }
 
-fn write_resp_line(w: &mut TcpStream, resp: RpcResponse) -> Result<(), Error> {
+fn write_resp_line(w: &mut IoStream, resp: RpcResponse) -> Result<(), Error> {
     let mut line = serde_json::to_string(&resp).map_err(|e| Error::Internal(e.to_string()))?;
     line.push('\n');
     w.write_all(line.as_bytes()).map_err(Error::from_io)?;

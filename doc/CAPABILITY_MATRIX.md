@@ -46,15 +46,29 @@ with the acceptance evidence expected before a stronger label.
 | `SERVER_PROFILE` | `dingo-server-v1` | Bounded TCP server admission + drain (DEF-030) |
 | `PROTOCOL_PROFILE` | `dingo-rpc-v1` | Framed RPC + handshake (DEF-031) |
 | `RPC_WIRE_LABEL` | `1.0-draft` | Network RPC interoperability draft (DEF-031; not frozen) |
+| `TLS_PROFILE` | `dingo-tls-v1` | TLS 1.3 transport + peer identity (DEF-032) |
 
-## Network bind policy (DEF-002)
+## Network bind policy (DEF-002 / DEF-032)
 
-| Bind | Plaintext without override | With `--allow-insecure-bind` |
-|------|----------------------------|------------------------------|
-| `127.0.0.1`, `::1`, `localhost` | allowed | allowed |
-| `0.0.0.0`, `::`, LAN/public IPs | **refused** before accept | allowed (development only; no TLS yet) |
+| Bind | Plaintext without override | With `--allow-insecure-bind` | With TLS (`--tls-cert`/`--tls-key`) |
+|------|----------------------------|------------------------------|-------------------------------------|
+| `127.0.0.1`, `::1`, `localhost` | allowed | allowed | allowed |
+| `0.0.0.0`, `::`, LAN/public IPs | **refused** before accept | allowed (development-only plaintext) | **allowed** (production path) |
 
 `serve-cluster` additionally requires `--experimental-network-cluster`.
+
+## Transport security (DEF-032)
+
+| Mode | How | Peer auth |
+|------|-----|-----------|
+| Plaintext | default on loopback | optional shared token (constant-time compare) |
+| TLS 1.3 | `ServeOptions::tls` / `ConnectOptions::tls` | server cert; hostname/SNI verify |
+| mTLS | server `--tls-client-ca` + client identity | mutual certs; cluster/node SAN URIs |
+
+- Cluster/node identity: SAN URIs `urn:dingo:cluster:{id}` / `urn:dingo:node:{id}`.
+- Operator revocation denylist: certificate serial hex on client/server options.
+- Cert rotation: `TlsServerState::reload()` without downtime (new handshakes).
+- Evidence: `stage_def_032_tls`.
 
 ## Network RPC framing (DEF-031)
 

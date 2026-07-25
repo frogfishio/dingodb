@@ -920,7 +920,9 @@ Evidence:
 
 ### DEF-032 — Add TLS and authenticated peer identity
 
-Priority: P0
+Priority: P0  
+Status: **addressed** (TLS 1.3 + mTLS + identity SANs; see
+`stage_def_032_tls`, `dingo_sdk::tls`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -932,11 +934,32 @@ Work:
 - Use constant-time secret comparison for any retained token mode.
 - Make plaintext a loopback-only development profile.
 
+Implementation notes:
+
+- Profile tag `TLS_PROFILE = "dingo-tls-v1"` (rustls, TLS 1.3 only).
+- `ServeOptions::tls` / `ConnectOptions::tls` with PEM cert/key/CA paths;
+  CLI `--tls-cert` / `--tls-key` / `--tls-client-ca` / `--tls-cluster-id`.
+- Peer identity via certificate SAN URIs:
+  `urn:dingo:cluster:{id}` and `urn:dingo:node:{id}`.
+- Hot reload: `TlsServerState::reload()` re-reads PEM paths; new handshakes
+  use rotated material without process restart (`tls_state_slot` for callers).
+- Shared application tokens use constant-time compare; `redact_secret` for
+  logs. Tokens remain optional application auth (authorization is DEF-033).
+- Non-loopback plaintext still requires `--allow-insecure-bind`; non-loopback
+  with TLS is allowed (DEF-002 updated).
+
 Acceptance:
 
 - MITM, wrong-host, expired, revoked, and wrong-cluster certificates fail.
 - Rotation tests keep healthy connections available.
 - Security scans confirm secrets are not logged.
+
+Evidence:
+
+- `crates/dingo-sdk/tests/stage_def_032_tls.rs` — happy path, wrong host,
+  wrong cluster, expired, wrong CA (MITM), revoked serial, mTLS, rotation,
+  plaintext loopback, public bind policy with TLS.
+- Unit: `tls::tests` constant-time compare + URN helpers.
 
 ### DEF-033 — Implement authorization and audit
 
@@ -1672,7 +1695,8 @@ DingoDB may be called production-ready only when all applicable gates pass.
 
 ### 16.4 Security gates
 
-- [ ] TLS is mandatory outside loopback and mTLS protects peer traffic.
+- [x] TLS is available outside loopback and mTLS protects peer traffic (DEF-032;
+      plaintext non-loopback still requires explicit insecure override).
 - [ ] Authorization separates data, administration, salvage, and purge rights.
 - [ ] Threat model and independent audit have no unresolved critical/high
       findings.

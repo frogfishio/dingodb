@@ -35,10 +35,11 @@ mod remote;
 mod resource;
 mod server;
 mod subject;
+mod tls;
 mod value;
 
 pub use bind_policy::{
-    bind_host, host_is_loopback, validate_plaintext_bind, ServeStartupReport,
+    bind_host, host_is_loopback, validate_bind, validate_plaintext_bind, ServeStartupReport,
 };
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
 pub use collection::{Collection, JsonScanIter, JsonScanPage};
@@ -70,6 +71,12 @@ pub use remote::{
     handle_connection, handle_connection_shared, handle_connection_with, parse_dingo_url,
     serve_cluster_node, serve_store, serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient,
     RpcRequest, RpcResponse, ServeOptions, DEFAULT_PORT,
+};
+pub use tls::{
+    client_connect, cluster_urn, constant_time_eq, constant_time_str_eq, load_certs,
+    load_private_key, node_urn, redact_secret, build_client_config, IoStream, PeerIdentity,
+    TlsClientOptions, TlsServerOptions, TlsServerState, TLS_PROFILE, CLUSTER_URN_PREFIX,
+    NODE_URN_PREFIX,
 };
 pub use server::{
     ServerLimits, ServerRuntime, ServerStats, DEFAULT_DRAIN_TIMEOUT, DEFAULT_IDLE_TIMEOUT,

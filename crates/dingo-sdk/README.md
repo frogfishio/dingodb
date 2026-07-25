@@ -141,7 +141,8 @@ returns complete data only when every chunk verifies.
 
 These live elsewhere or remain product follow-ons:
 
-- Mutual TLS / multi-tenant ACLs (shared token only for Stage 7e-style auth)
+- Multi-tenant ACLs / authorization (TLS/mTLS shipped in DEF-032; shared token
+  remains optional application auth — see DEF-033)
 - SDA examination of holes / recovery units — see [`dingo-examine`](../dingo-examine)
 - Unique secondary indexes with partition consistency scopes
 - Full DX §15 codes that only apply beyond the current cluster profile

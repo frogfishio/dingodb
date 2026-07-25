@@ -2,7 +2,9 @@
 
 use clap::{ArgAction, Parser, Subcommand};
 use dingo_examine::{examine_store, ExaminationUnit, ExamineLimits};
-use dingo_sdk::{serve_cluster_node, serve_store_with, Dingo, ServeOptions, DEFAULT_PORT};
+use dingo_sdk::{
+    serve_cluster_node, serve_store_with, Dingo, ServeOptions, TlsServerOptions, DEFAULT_PORT,
+};
 use dingo_store::Store;
 use serde_json::{json as sjson, Value as JsonValue};
 use std::fs;
@@ -101,7 +103,8 @@ enum Command {
     /// Serve the store over TCP for `Dingo::connect("dingo://...")` (development).
     ///
     /// Defaults to loopback. Non-loopback plaintext binds require
-    /// `--allow-insecure-bind` (TLS is not implemented yet; DEF-002).
+    /// `--allow-insecure-bind`. Non-loopback binds with `--tls-cert`/`--tls-key`
+    /// are allowed (DEF-032).
     Serve {
         store: PathBuf,
         /// Bind address (default `127.0.0.1:7434`).
@@ -111,12 +114,24 @@ enum Command {
         /// Also accepted from the `DINGO_TOKEN` environment variable when the flag is omitted.
         #[arg(long = "token")]
         token: Option<String>,
-        /// Allow non-loopback plaintext bind (development only; no TLS yet).
+        /// Allow non-loopback plaintext bind (development only).
         #[arg(long = "allow-insecure-bind", action = ArgAction::SetTrue)]
         allow_insecure_bind: bool,
         /// Max simultaneous client connections (DEF-030; default 64).
         #[arg(long = "max-connections", default_value_t = 64)]
         max_connections: usize,
+        /// PEM certificate chain for TLS 1.3 (DEF-032). Requires `--tls-key`.
+        #[arg(long = "tls-cert")]
+        tls_cert: Option<PathBuf>,
+        /// PEM private key for TLS 1.3 (DEF-032). Requires `--tls-cert`.
+        #[arg(long = "tls-key")]
+        tls_key: Option<PathBuf>,
+        /// PEM CA bundle to verify client certificates (mTLS).
+        #[arg(long = "tls-client-ca")]
+        tls_client_ca: Option<PathBuf>,
+        /// Expected peer cluster id (`urn:dingo:cluster:…` SAN).
+        #[arg(long = "tls-cluster-id")]
+        tls_cluster_id: Option<String>,
     },
     /// Serve one node of a multi-node cluster root (**experimental**).
     ///
@@ -139,12 +154,24 @@ enum Command {
         /// Optional shared auth token (also `DINGO_TOKEN`).
         #[arg(long = "token")]
         token: Option<String>,
-        /// Allow non-loopback plaintext bind (development only; no TLS yet).
+        /// Allow non-loopback plaintext bind (development only).
         #[arg(long = "allow-insecure-bind", action = ArgAction::SetTrue)]
         allow_insecure_bind: bool,
         /// Required opt-in: network serve-cluster is experimental (DEF-002).
         #[arg(long = "experimental-network-cluster", action = ArgAction::SetTrue)]
         experimental_network_cluster: bool,
+        /// PEM certificate chain for TLS 1.3 (DEF-032). Requires `--tls-key`.
+        #[arg(long = "tls-cert")]
+        tls_cert: Option<PathBuf>,
+        /// PEM private key for TLS 1.3 (DEF-032). Requires `--tls-cert`.
+        #[arg(long = "tls-key")]
+        tls_key: Option<PathBuf>,
+        /// PEM CA bundle to verify client certificates (mTLS).
+        #[arg(long = "tls-client-ca")]
+        tls_client_ca: Option<PathBuf>,
+        /// Expected peer cluster id (`urn:dingo:cluster:…` SAN).
+        #[arg(long = "tls-cluster-id")]
+        tls_cluster_id: Option<String>,
     },
     /// List collection names (alias of `list` without collection).
     Collections { store: PathBuf },
@@ -198,6 +225,10 @@ fn run() -> Result<(), String> {
             token,
             allow_insecure_bind,
             max_connections,
+            tls_cert,
+            tls_key,
+            tls_client_ca,
+            tls_cluster_id,
         } => {
             // Flag wins; otherwise fall back to DINGO_TOKEN for operator convenience.
             let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
@@ -208,6 +239,7 @@ fn run() -> Result<(), String> {
             if let Some(t) = token {
                 opts = opts.auth_token(t);
             }
+            opts = apply_tls_options(opts, tls_cert, tls_key, tls_client_ca, tls_cluster_id)?;
             serve_store_with(&store, &bind, opts).map_err(|e| e.to_string())
         }
         Command::ServeCluster {
@@ -217,6 +249,10 @@ fn run() -> Result<(), String> {
             token,
             allow_insecure_bind,
             experimental_network_cluster,
+            tls_cert,
+            tls_key,
+            tls_client_ca,
+            tls_cluster_id,
         } => {
             if !experimental_network_cluster {
                 return Err(
@@ -233,9 +269,43 @@ fn run() -> Result<(), String> {
             if let Some(t) = token {
                 opts = opts.auth_token(t);
             }
+            opts = apply_tls_options(opts, tls_cert, tls_key, tls_client_ca, tls_cluster_id)?;
             serve_cluster_node(&cluster, node, &bind, opts).map_err(|e| e.to_string())
         }
         Command::Collections { store } => cmd_list(&store, None, json_out),
+    }
+}
+
+fn apply_tls_options(
+    mut opts: ServeOptions,
+    tls_cert: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+    tls_client_ca: Option<PathBuf>,
+    tls_cluster_id: Option<String>,
+) -> Result<ServeOptions, String> {
+    match (tls_cert, tls_key) {
+        (None, None) => {
+            if tls_client_ca.is_some() || tls_cluster_id.is_some() {
+                return Err(
+                    "TLS client CA / cluster id require --tls-cert and --tls-key (DEF-032)".into(),
+                );
+            }
+            Ok(opts)
+        }
+        (Some(cert), Some(key)) => {
+            let mut tls = TlsServerOptions::new(cert, key);
+            if let Some(ca) = tls_client_ca {
+                tls = tls.with_client_ca(ca);
+            }
+            if let Some(id) = tls_cluster_id {
+                tls = tls.expected_cluster_id(id);
+            }
+            opts = opts.tls(tls);
+            Ok(opts)
+        }
+        (Some(_), None) | (None, Some(_)) => Err(
+            "TLS requires both --tls-cert and --tls-key (DEF-032)".into(),
+        ),
     }
 }
 

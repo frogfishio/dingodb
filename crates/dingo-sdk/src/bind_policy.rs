@@ -1,9 +1,9 @@
-//! Plaintext bind policy for `dingo serve` / `serve-cluster` (DEF-002).
+//! Bind policy for `dingo serve` / `serve-cluster` (DEF-002 + DEF-032).
 //!
-//! Defaults stay on loopback. Non-loopback plaintext binds are refused unless
-//! the operator (or library caller) opts in with an explicit development-only
-//! override. TLS is not yet implemented; until it is, public binds remain an
-//! insecure escape hatch, not a production path.
+//! Defaults stay on loopback. Non-loopback **plaintext** binds are refused
+//! unless the operator opts in with `--allow-insecure-bind`. Non-loopback
+//! binds **with TLS** (DEF-032) are allowed. Plaintext remains a loopback-only
+//! development profile.
 
 use crate::error::Error;
 use std::net::IpAddr;
@@ -74,11 +74,26 @@ pub fn bind_host(bind: &str) -> Result<&str, Error> {
 
 /// Refuse non-loopback plaintext binds unless `allow_insecure_bind` is set.
 ///
-/// TLS is not available yet; a public bind is development-only and must be
-/// opted into explicitly (DEF-002).
+/// Prefer [`validate_bind`] when TLS may be enabled (DEF-032).
 pub fn validate_plaintext_bind(bind: &str, allow_insecure_bind: bool) -> Result<(), Error> {
+    validate_bind(bind, allow_insecure_bind, false)
+}
+
+/// Validate a serve bind address under the DEF-002 / DEF-032 policy.
+///
+/// - Loopback: always allowed (plaintext or TLS).
+/// - Non-loopback + TLS: allowed (production path).
+/// - Non-loopback + plaintext: requires `allow_insecure_bind`.
+pub fn validate_bind(
+    bind: &str,
+    allow_insecure_bind: bool,
+    tls_enabled: bool,
+) -> Result<(), Error> {
     let host = bind_host(bind)?;
     if host_is_loopback(host) {
+        return Ok(());
+    }
+    if tls_enabled {
         return Ok(());
     }
     if allow_insecure_bind {
@@ -86,13 +101,13 @@ pub fn validate_plaintext_bind(bind: &str, allow_insecure_bind: bool) -> Result<
     }
     Err(Error::ValidationMsg(format!(
         "refusing non-loopback plaintext bind {bind:?}: \
-         TLS is not available yet; pass allow_insecure_bind / \
-         --allow-insecure-bind for development-only public binds \
-         (DEF-002). Prefer 127.0.0.1 or localhost."
+         enable TLS (--tls-cert / --tls-key) for public binds, or pass \
+         allow_insecure_bind / --allow-insecure-bind for development-only \
+         plaintext (DEF-002, DEF-032). Prefer 127.0.0.1 or localhost."
     )))
 }
 
-/// Structured startup status for serve / serve-cluster (DEF-002).
+/// Structured startup status for serve / serve-cluster (DEF-002 / DEF-032).
 ///
 /// Printed to stderr so operators cannot miss transport and durability limits.
 #[derive(Debug, Clone)]
@@ -105,8 +120,10 @@ pub struct ServeStartupReport {
     pub bind: String,
     /// Whether a shared auth token is required.
     pub auth_enabled: bool,
-    /// Whether TLS protects the listener (always false until DEF-030+).
+    /// Whether TLS protects the listener (DEF-032).
     pub tls_enabled: bool,
+    /// Whether mTLS (client certificates) is required.
+    pub mtls_required: bool,
     /// Durability story for this process.
     pub durability: &'static str,
     /// Replication story for this process.
@@ -127,12 +144,25 @@ impl ServeStartupReport {
         auth_enabled: bool,
         allow_insecure_bind: bool,
     ) -> Self {
+        Self::single_node_tls(path, bind, auth_enabled, allow_insecure_bind, false, false)
+    }
+
+    /// Single-node `dingo serve` with explicit TLS flags.
+    pub fn single_node_tls(
+        path: impl Into<String>,
+        bind: impl Into<String>,
+        auth_enabled: bool,
+        allow_insecure_bind: bool,
+        tls_enabled: bool,
+        mtls_required: bool,
+    ) -> Self {
         Self {
             mode: "serve",
             path: path.into(),
             bind: bind.into(),
             auth_enabled,
-            tls_enabled: false,
+            tls_enabled,
+            mtls_required,
             durability: "local-store-only (no network quorum)",
             replication: "none (single process)",
             store_lock: "exclusive-writer (OS advisory + in-process; DEF-020)",
@@ -149,12 +179,34 @@ impl ServeStartupReport {
         allow_insecure_bind: bool,
         node_index: u32,
     ) -> Self {
+        Self::cluster_node_tls(
+            path,
+            bind,
+            auth_enabled,
+            allow_insecure_bind,
+            node_index,
+            false,
+            false,
+        )
+    }
+
+    /// Network `dingo serve-cluster` with explicit TLS flags.
+    pub fn cluster_node_tls(
+        path: impl Into<String>,
+        bind: impl Into<String>,
+        auth_enabled: bool,
+        allow_insecure_bind: bool,
+        node_index: u32,
+        tls_enabled: bool,
+        mtls_required: bool,
+    ) -> Self {
         Self {
             mode: "serve-cluster",
             path: path.into(),
             bind: bind.into(),
             auth_enabled,
-            tls_enabled: false,
+            tls_enabled,
+            mtls_required,
             durability: "this-node-store-only (routing advertise; not quorum commit)",
             replication: "none over network (in-process quorum only via Dingo::open_cluster)",
             store_lock: "exclusive-writer per node store (DEF-020)",
@@ -170,7 +222,15 @@ impl ServeStartupReport {
         } else {
             "none"
         };
-        let tls = if self.tls_enabled { "on" } else { "off" };
+        let tls = if self.tls_enabled {
+            if self.mtls_required {
+                "on (mTLS)"
+            } else {
+                "on"
+            }
+        } else {
+            "off"
+        };
         let insecure = if self.allow_insecure_bind {
             "yes (development override)"
         } else {
@@ -200,8 +260,8 @@ impl ServeStartupReport {
         }
         if !self.tls_enabled {
             lines.push(
-                "  warning: plaintext transport; do not expose outside a trusted network \
-                 without --allow-insecure-bind understanding."
+                "  warning: plaintext transport; loopback-only unless \
+                 --allow-insecure-bind. Prefer --tls-cert/--tls-key for non-loopback."
                     .into(),
             );
         }
@@ -248,6 +308,13 @@ mod tests {
         assert!(validate_plaintext_bind("0.0.0.0:7434", false).is_err());
         assert!(validate_plaintext_bind("[::]:80", false).is_err());
         validate_plaintext_bind("0.0.0.0:7434", true).unwrap();
+    }
+
+    #[test]
+    fn tls_allows_public_bind() {
+        validate_bind("0.0.0.0:7434", false, true).unwrap();
+        validate_bind("192.168.1.10:7434", false, true).unwrap();
+        assert!(validate_bind("0.0.0.0:7434", false, false).is_err());
     }
 
     #[test]

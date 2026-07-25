@@ -51,7 +51,8 @@ dingo --json-out doctor ./app.dingo
 - Auth token: `--token` or environment `DINGO_TOKEN`.
 - **Bind policy (DEF-002):** `serve` / `serve-cluster` default to `127.0.0.1`.
   Non-loopback plaintext binds are refused unless `--allow-insecure-bind`
-  (TLS not implemented yet). Startup prints transport/auth/durability/replication status.
+  or enable TLS with `--tls-cert` / `--tls-key` (optional mTLS via
+  `--tls-client-ca`). Startup prints transport/auth/durability/replication status.
 - **`serve-cluster` is experimental:** requires `--experimental-network-cluster`.
   Writes apply to **this node only**; three processes do not equal replicated durability.
 
