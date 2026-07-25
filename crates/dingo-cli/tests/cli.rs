@@ -483,7 +483,9 @@ fn capability_matrix_document_present() {
     assert!(text.contains("DEF-002") || text.contains("allow-insecure-bind"));
     let readme = fs::read_to_string(root.join("README.md")).expect("README");
     assert!(
-        readme.contains("Not production-ready") || readme.contains("not production-ready"),
+        readme.contains("Not production-ready")
+            || readme.contains("not production-ready")
+            || readme.contains("not yet production-ready"),
         "README must state production maturity honestly"
     );
     assert!(

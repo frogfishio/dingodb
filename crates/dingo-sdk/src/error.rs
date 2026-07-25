@@ -274,7 +274,9 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::NotAStore(_) => ErrorCode::ValidationFailed,
         StoreError::SubjectTooLong { .. } => ErrorCode::ValidationFailed,
         StoreError::PayloadTooLarge => ErrorCode::ResourceLimit,
-        StoreError::BadEnvelope(_) | StoreError::CorruptMeta(_) => ErrorCode::DataDamaged,
+        StoreError::BadEnvelope(_)
+        | StoreError::CorruptMeta(_)
+        | StoreError::CorruptControl { .. } => ErrorCode::DataDamaged,
         StoreError::Frame(_) | StoreError::Segment(_) => ErrorCode::DataDamaged,
         StoreError::PayloadPartial => ErrorCode::PayloadPartial,
         StoreError::PayloadConflict => ErrorCode::DataDamaged,
@@ -285,6 +287,8 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::WriterLockHeld(_) => ErrorCode::WriterLockHeld,
         StoreError::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
         StoreError::ConsistencyViolation(_) => ErrorCode::ConsistencyViolation,
+        // Failpoints are test-only injection; surface as I/O class failures.
+        StoreError::Failpoint(_) => ErrorCode::Io,
     }
 }
 

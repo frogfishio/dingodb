@@ -18,6 +18,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 |------|----------------|
 | Core | open/create, put/get/delete, durability modes (`memory`, `buffered`, `durable`) |
 | Ownership | exclusive writer lock (`store-info/writer.lock`, DEF-020); inspect is lock-free |
+| Control docs | atomic durable replace via `atomic_file` (DEF-021); `*.prev` for non-trivial meta |
 | Recovery | rebuildable primary index, salvage after catalog wipe, OVERVIEW §16 suite |
 | Meta | framed store descriptor, optional on-disk primary index cache |
 | Derived | collection catalog, secondary index files, subject history, checkpoints |

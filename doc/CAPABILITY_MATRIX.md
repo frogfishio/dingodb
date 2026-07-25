@@ -60,6 +60,16 @@ with the acceptance evidence expected before a stronger label.
 
 Kill -9 releases the OS advisory lock; recovery rebuilds from segment bytes.
 
+## Control-document durability (DEF-021)
+
+Mutable metadata uses `dingo_store::write_atomic` (temp → `sync_all` → rename →
+parent dirsync). Non-trivial documents (`write_dedup.v1`, `lifecycle.json`,
+`endpoints.json`, `cluster.json`, `placement.json`, recovery manifests) also
+retain a `*.prev` generation. Endpoint upserts take a process + OS lock so
+concurrent registrations cannot drop unrelated nodes. Parse failures surface
+`StoreError::CorruptControl` (or cluster `CorruptMeta`) with a recovery action
+rather than silently inventing state.
+
 ## Receipt honesty (DEF-014)
 
 Remote write/delete receipts require server-proved `committed`, `acknowledgement`,
