@@ -15,6 +15,7 @@ cargo test -p dingo-sdk --test stage8d_routing \
   multi_hop_and_kill_node_survivor -- --nocapture
 
 echo
-echo "Also available: dingo serve-cluster CLUSTER --node N --bind HOST:PORT"
+echo "Also available (experimental routing only; not network quorum):"
+echo "  dingo serve-cluster CLUSTER --node N --bind 127.0.0.1:PORT --experimental-network-cluster"
 echo "Offline salvage of a dead node: dingo doctor / dingo salvage on nodes/node-N"
 echo "demo complete"

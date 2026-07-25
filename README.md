@@ -61,7 +61,7 @@ a hole through the storage medium: unrelated intact data remains recoverable.
 
 Recovery does not stop at the first damaged byte.
 
-### Extreme speed
+### Performance with disclosed modes
 
 DingoDB separates durable truth from acceleration:
 
@@ -69,10 +69,12 @@ DingoDB separates durable truth from acceleration:
 - memory-resident hot indexes;
 - immutable segments for parallel reads;
 - asynchronous, rebuildable search structures;
-- explicit memory, buffered, durable, and replicated acknowledgement modes.
+- explicit memory, buffered, durable, and (cluster-profile) replicated
+  acknowledgement modes.
 
-The hot path targets the performance class of dedicated in-memory stores.
-Durability and verification modes are always disclosed with benchmark claims.
+Performance claims are mode-specific and require reproducible disclosure; see
+[doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md). Do not read this
+section as a Redis-class latency guarantee for every deployment profile.
 
 ### Massive retention
 
@@ -171,38 +173,68 @@ Its promise is narrower and stronger:
 
 > Localized destruction causes localized loss.
 
-## Status
+## Status and maturity
 
-Stages **0–9** and product follow-ons **1–4** are landed in-tree. What ships:
+**Not production-ready** as a network database or distributed storage system.
+Support labels until the release gates in [DEFECTS.md](DEFECTS.md) §16 pass:
 
-| Layer | Crate / binary | Freeze / notes |
-|-------|----------------|----------------|
-| SDA library + CLI | `sda-lib`, `sda` | `sda-standalone-v1.0` §14 MUST lock |
-| Wire format + salvage | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` |
-| Single-node store | `dingo-store` | put/get/delete, §16 suite, catalogs, chunks, history, tiers |
-| Collection SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` (embedded + remote + cluster open) |
+| Deployment | Label |
+|------------|--------|
+| Embedded single-node (`Dingo::open`) | experimental / early-access |
+| Single-node TCP (`dingo serve`) | development only (loopback by default) |
+| In-process cluster (`Dingo::open_cluster`) | deterministic integration-test harness |
+| Network `dingo serve-cluster` | **routing / endpoint advertise prototype** — writes hit **one node**; no network quorum |
+| S3/GCS | filesystem-mirror integration, not a native cloud backend |
+| Erasure coding / lifecycle automation | scaffolds only |
+| Wire format | `1.0-draft` (not frozen for long-term interop) |
+
+Capability matrix (what is tested vs experimental):  
+[doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).  
+Known production-readiness gaps: [DEFECTS.md](DEFECTS.md).
+
+### Version labels (do not conflate)
+
+| Label | Where | Meaning |
+|-------|--------|---------|
+| Crate semver `0.1.0` | `[workspace.package].version` / crates.io | Package release number only |
+| `SDK_API_VERSION` = `1.0` | `dingo-sdk` | Collection API freeze label after Stage 4+7 parity |
+| `CLUSTER_PROFILE_VERSION` = `v1` | `dingo-cluster` | **In-process** cluster profile (8a–8f), not network Raft maturity |
+| `WIRE_PROFILE_LABEL` = `1.0-draft` | `dingo-format` | Draft wire bytes until major-1 freeze |
+| `CONFORMANCE_CORPUS_TAG` | `sda-lib` | SDA §14 corpus tag (`sda-standalone-v1.0`) |
+
+Stages **0–9** and product follow-ons **1–4** are **implemented in-tree** (stage
+exit criteria met). That is not the same as production qualification.
+
+| Layer | Crate / binary | Maturity / notes |
+|-------|----------------|------------------|
+| SDA library + CLI | `sda-lib`, `sda` | conformance-locked `sda-standalone-v1.0` |
+| Wire format + salvage | `dingo-format` | draft wire; §13 corpus |
+| Single-node store | `dingo-store` | early-access embedded; put/get/delete, §16 suite |
+| Collection SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` (embedded + remote + in-process cluster) |
 | SDA examination | `dingo-examine` | ExaminationUnit stream over salvage |
-| Operator CLI | `dingo` | put/get/list, doctor, salvage, `serve`, `serve-cluster` |
-| Cluster federation | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (8a–8f in-process) |
-| Tiering / media | store tiers + mirrors | filesystem + `object:local:` + S3/GCS mirrors |
-| Follow-ons | network multi-hop, lifecycle / erasure scaffolds, [benchmark disclosure](doc/BENCHMARK_DISCLOSURE.md) | see [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Operator CLI | `dingo` | put/get/list, doctor, salvage, `serve`, experimental `serve-cluster` |
+| Cluster federation | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process** 8a–8f) |
+| Tiering / media | store tiers + mirrors | filesystem + `object:local:` + **S3/GCS filesystem mirrors** |
+| Network multi-hop | `serve-cluster` + client routes | experimental; **not** replicated durability |
+| Lifecycle / erasure | store scaffolds | API scaffolds only |
+| Benchmarks | [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) | disclosure template; no Redis-class claims |
 
-| Stage | Focus | Status |
-|-------|--------|--------|
-| 0 | Repo + CI | **done** |
-| 1 | SDA standalone | **done** — library + CLI + §14 MUST lock (`sda-standalone-v1.0`) |
-| 2 | Wire format + salvage | **done** — 2a–2d frames, seal, scanners, §13 corpus |
-| 3 | Single-node store | **done** — 3a–3c put/get/delete, §16 suite, descriptor + index cache |
-| 4 | Collection SDK | **done** — 4a–4d open, JSON/bytes, scan/stream, filters, `ErrorCode` |
-| 5 | SDA examination profile | **done** — `dingo-examine` |
-| 6 | Indexes, catalogs, history, chunks | **done** |
-| 7 | CLI, doctor, salvage, server | **done** — 7a–7f + full single-node remote parity |
-| 8 | Cluster | **done** — 8a–8f find coverage, rebalance, directory routing |
-| 9 | Tiering | **done** — segment move/copy, hierarchical catalogs, offline coverage, retention runbook |
+| Stage | Focus | Implementation status |
+|-------|--------|------------------------|
+| 0 | Repo + CI | implemented |
+| 1 | SDA standalone | implemented — §14 MUST lock (`sda-standalone-v1.0`) |
+| 2 | Wire format + salvage | implemented — frames, seal, scanners, §13 corpus |
+| 3 | Single-node store | implemented — put/get/delete, §16 suite |
+| 4 | Collection SDK | implemented — open, JSON/bytes, scan/stream, filters |
+| 5 | SDA examination profile | implemented — `dingo-examine` |
+| 6 | Indexes, catalogs, history, chunks | implemented |
+| 7 | CLI, doctor, salvage, server | implemented — development `serve` |
+| 8 | Cluster | implemented **in-process** — 8a–8f (not network Raft) |
+| 9 | Tiering | implemented — filesystem media roots + mirrors |
 
-Remaining product polish (not stage gates): network Raft log shipping over TCP
-(multi-hop client routing is shipped), native cloud SDKs beyond mirrors, and
-erasure codecs.
+Still **not** production: network Raft log shipping / quorum over TCP, native
+cloud object SDKs beyond mirrors, erasure codecs, exclusive store locks, and
+the rest of [DEFECTS.md](DEFECTS.md).
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  
 Crate map and language decisions: [ARCHITECTURE.md](ARCHITECTURE.md).  
@@ -215,20 +247,24 @@ cargo run -p sda --bin sda -- eval -e '1 + 2'
 cargo run -p dingo --bin dingo -- --help
 ```
 
-### What ships today
+### What is available in-tree today
 
-- zero-configuration embedded operation (`Dingo::open`);
+- zero-configuration embedded operation (`Dingo::open`) — experimental;
 - collection-oriented Rust SDK with JSON and bytes, put/get/delete, filters,
   indexes, history, and streaming scans;
-- remote `Dingo::connect` / `dingo serve` parity and multi-seed / cluster open;
-- `dingo` CLI with doctor, non-destructive salvage, and `serve-cluster`;
+- remote `Dingo::connect` / development-only `dingo serve` (loopback default;
+  non-loopback plaintext requires `--allow-insecure-bind`);
+- `dingo` CLI with doctor and non-destructive salvage;
+- experimental `dingo serve-cluster` (**routing only**; requires
+  `--experimental-network-cluster`; **three processes ≠ replicated durability**);
 - resynchronizable framed journal and immutable self-describing segments;
 - inline and chunked payloads with completeness-aware reads;
 - independent verification and island recovery;
 - rebuildable catalogs and indexes;
 - SDA examination over recovered units (`dingo-examine` / doctor);
-- in-process cluster federation with coverage honesty and rebalance;
-- hot/warm/cold/archive tiering with offline coverage disclosure;
+- **in-process** cluster federation with coverage honesty and rebalance;
+- hot/warm/cold/archive filesystem tiering with offline coverage disclosure;
+- S3/GCS **mirrors** (not native cloud backends);
 - reproducible corruption and performance test packaging (nightly + demos).
 
 See the [architecture specification](OVERVIEW.md) for normative requirements,

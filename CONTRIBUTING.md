@@ -92,37 +92,38 @@ Human demos: [scripts/demos/](scripts/demos/).
 
 ## Current product surface (apportionment)
 
-Stages **0–9** are implemented (single-node through cluster federation and
-filesystem tiering/archive). Follow-ons 1–4 landed: S3/GCS mirrors, multi-hop
-`serve-cluster`, freeze labels, lifecycle/erasure scaffolds + benchmark
-disclosure.
+Stages **0–9** are **implemented in-tree** (not production-qualified). Follow-ons
+1–4: S3/GCS **filesystem mirrors**, experimental multi-hop `serve-cluster`
+routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 
 | Area | Crate | Notes |
 |------|-------|--------|
-| SDA | `sda-lib` / `sda` | Frozen `sda-standalone-v1.0` |
+| SDA | `sda-lib` / `sda` | Conformance-locked `sda-standalone-v1.0` |
 | Wire | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` |
-| Store | `dingo-store` | Authority + tiers + media mirrors |
+| Store | `dingo-store` | Authority + tiers + media mirrors (early-access) |
 | SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` |
 | Examination | `dingo-examine` | Profile over salvage |
-| CLI | `dingo` | doctor / salvage / serve / serve-cluster |
-| Cluster | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` |
+| CLI | `dingo` | doctor / salvage / development `serve` / experimental `serve-cluster` |
+| Cluster | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
-Immediate follow-on priorities (not stage gates): network Raft log shipping
-over TCP (multi-hop client routing is already shipped), optional native cloud
-object SDKs beyond the mirror seam, and erasure encode/decode codecs.
+Immediate priorities: production-readiness work in [DEFECTS.md](DEFECTS.md)
+(containment done first: truthful claims + bind gates). Network Raft quorum,
+native cloud SDKs, and erasure codecs remain future.
+
+Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
 
 ## Version and BUILD numbers
 
-- `VERSION` — semantic version mirrored by `[workspace.package].version`
+- `VERSION` / crate semver (`0.1.0`) — packaging only; **not** a maturity claim
 - `BUILD` — integer build stamp used by CLI `--version` output
 - `crates/sda-cli/BUILD` and `crates/dingo-cli/BUILD` — keep in sync with root
   `BUILD` when CLI version tests require it
 
-Freeze labels (product, not crate semver):
+Freeze labels (product API/profile labels, **not** crate semver):
 
-- `SDK_API_VERSION` (`dingo-sdk`) = `1.0`
-- `CLUSTER_PROFILE_VERSION` (`dingo-cluster`) = `v1`
-- `WIRE_PROFILE_LABEL` (`dingo-format`) = `1.0-draft`
+- `SDK_API_VERSION` (`dingo-sdk`) = `1.0` — collection API surface
+- `CLUSTER_PROFILE_VERSION` (`dingo-cluster`) = `v1` — in-process cluster only
+- `WIRE_PROFILE_LABEL` (`dingo-format`) = `1.0-draft` — draft wire bytes
 - `CONFORMANCE_CORPUS_TAG` (`sda-lib`) = `sda-standalone-v1.0`
 
 ## License

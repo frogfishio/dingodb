@@ -20,6 +20,7 @@
 /// breaking collection API changes require a major bump of this label.
 pub const SDK_API_VERSION: &str = "1.0";
 
+mod bind_policy;
 mod cluster_backend;
 mod collection;
 mod dingo;
@@ -33,6 +34,9 @@ mod remote;
 mod subject;
 mod value;
 
+pub use bind_policy::{
+    bind_host, host_is_loopback, validate_plaintext_bind, ServeStartupReport,
+};
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
 pub use collection::Collection;
 pub use dingo::Dingo;

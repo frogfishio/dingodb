@@ -25,13 +25,14 @@ dingo history ./app.dingo users/user-42
 dingo doctor ./app.dingo
 dingo salvage ./damaged.dingo --output ./recovered.dingo
 
-# Single-node TCP server (Dingo::connect)
+# Single-node TCP server (development; Dingo::connect)
+# Default bind is loopback. Non-loopback plaintext needs --allow-insecure-bind.
 dingo serve ./app.dingo --bind 127.0.0.1:7434
 dingo serve ./app.dingo --bind 127.0.0.1:7434 --token SECRET
 
-# Multi-node cluster node (directory + endpoints advertise)
-dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434
-dingo serve-cluster ./cluster --node 1 --bind 127.0.0.1:7435 --token SECRET
+# Experimental multi-node routing/advertise (NOT network quorum replication)
+dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster
+dingo serve-cluster ./cluster --node 1 --bind 127.0.0.1:7435 --token SECRET --experimental-network-cluster
 
 # Global flags
 dingo --version
@@ -46,6 +47,11 @@ dingo --json-out doctor ./app.dingo
 - `--json-out` emits stable machine-readable output (distinct from put `--json` body).
 - Nonzero exit status when an operation fails its guarantee.
 - Auth token: `--token` or environment `DINGO_TOKEN`.
+- **Bind policy (DEF-002):** `serve` / `serve-cluster` default to `127.0.0.1`.
+  Non-loopback plaintext binds are refused unless `--allow-insecure-bind`
+  (TLS not implemented yet). Startup prints transport/auth/durability/replication status.
+- **`serve-cluster` is experimental:** requires `--experimental-network-cluster`.
+  Writes apply to **this node only**; three processes do not equal replicated durability.
 
 ## Remote SDK clients
 
@@ -66,16 +72,17 @@ let mut db = Dingo::connect_with(
 ```
 
 Cluster nodes (after `Dingo::create_cluster` laid down `cluster.json` /
-`placement.json` / `nodes/`):
+`placement.json` / `nodes/`) — experimental routing only:
 
 ```text
-dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434
-dingo serve-cluster ./cluster --node 1 --bind 127.0.0.1:7435
+dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster
+dingo serve-cluster ./cluster --node 1 --bind 127.0.0.1:7435 --experimental-network-cluster
 ```
 
 SDK multi-hop routing uses the advertised `directory` + `endpoints.json`.
-In-process quorum remains `Dingo::open_cluster`; network Raft log shipping is
-future work on the same advertise path. Demo: `scripts/demos/08_kill_a_node.sh`.
+**In-process quorum** remains `Dingo::open_cluster`. Network Raft log shipping
+is future work. Do not treat multi-process `serve-cluster` as replicated
+storage. Demo: `scripts/demos/08_kill_a_node.sh`.
 
 ## Normative
 

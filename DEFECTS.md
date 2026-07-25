@@ -98,7 +98,9 @@ Recommended phases:
 ### DEF-001 — Correct product maturity and capability claims
 
 Priority: P0  
-Dependencies: none
+Dependencies: none  
+Status: **remediated in-tree** (2026-07-25) — README / ARCHITECTURE /
+CONTRIBUTING / `doc/CAPABILITY_MATRIX.md` + CLI matrix CI check
 
 Work:
 
@@ -124,7 +126,9 @@ Acceptance:
 ### DEF-002 — Gate unsafe network binds
 
 Priority: P0  
-Dependencies: none
+Dependencies: none  
+Status: **remediated in-tree** (2026-07-25) — `dingo-sdk` bind policy +
+`ServeOptions` + CLI flags + structured startup report + CLI tests
 
 Work:
 

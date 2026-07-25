@@ -125,6 +125,18 @@ pub struct ServeOptions {
     pub node_index: Option<u32>,
     /// Cluster root directory for live `endpoints.json` reload on `directory` RPC.
     pub cluster_root: Option<std::path::PathBuf>,
+    /// Allow non-loopback plaintext binds (development only; DEF-002).
+    ///
+    /// Defaults to `false`. TLS is not implemented yet; public binds require
+    /// this explicit opt-in (CLI: `--allow-insecure-bind`).
+    pub allow_insecure_bind: bool,
+    /// Acknowledge that network `serve-cluster` is experimental (DEF-002).
+    ///
+    /// Required by [`serve_cluster_node`]. Quorum replication over TCP is not
+    /// implemented; this flag only unlocks the routing/advertise prototype.
+    pub experimental_network_cluster: bool,
+    /// Skip the structured stderr startup report (when the CLI already printed it).
+    pub suppress_startup_report: bool,
 }
 
 impl ServeOptions {
@@ -154,6 +166,24 @@ impl ServeOptions {
     /// Reload `endpoints.json` from this cluster root on every `directory` RPC.
     pub fn cluster_root(mut self, root: impl Into<std::path::PathBuf>) -> Self {
         self.cluster_root = Some(root.into());
+        self
+    }
+
+    /// Allow binding to a non-loopback address without TLS (development only).
+    pub fn allow_insecure_bind(mut self, allow: bool) -> Self {
+        self.allow_insecure_bind = allow;
+        self
+    }
+
+    /// Opt into experimental network cluster serve (routing/advertise only).
+    pub fn experimental_network_cluster(mut self, enabled: bool) -> Self {
+        self.experimental_network_cluster = enabled;
+        self
+    }
+
+    /// Do not print the structured serve startup report (caller already did).
+    pub fn suppress_startup_report(mut self, suppress: bool) -> Self {
+        self.suppress_startup_report = suppress;
         self
     }
 }
@@ -1242,12 +1272,30 @@ pub fn serve_store(store_path: impl AsRef<Path>, bind: &str) -> Result<(), Error
 }
 
 /// Serve with explicit auth / server options.
+///
+/// Enforces the plaintext bind policy (DEF-002): non-loopback addresses require
+/// [`ServeOptions::allow_insecure_bind`]. Emits a structured startup report to
+/// stderr that never claims network quorum durability for single-node serve.
 pub fn serve_store_with(
     store_path: impl AsRef<Path>,
     bind: &str,
     options: ServeOptions,
 ) -> Result<(), Error> {
+    crate::bind_policy::validate_plaintext_bind(bind, options.allow_insecure_bind)?;
     let path = store_path.as_ref().to_path_buf();
+    // Cluster serve prints its own report; single-node prints unless suppressed.
+    if !options.suppress_startup_report
+        && options.directory.is_none()
+        && options.cluster_root.is_none()
+    {
+        crate::bind_policy::ServeStartupReport::single_node(
+            path.display().to_string(),
+            bind,
+            options.auth_token.is_some(),
+            options.allow_insecure_bind,
+        )
+        .emit_stderr();
+    }
     let listener = TcpListener::bind(bind).map_err(Error::from_io)?;
     for conn in listener.incoming() {
         let stream = conn.map_err(Error::from_io)?;
@@ -1268,12 +1316,26 @@ pub fn serve_store_with(
 /// Writes still apply to **this node's store only** in this slice (single-node
 /// RPC dispatch). In-process quorum remains `Dingo::open_cluster`; multi-hop
 /// Raft over the network continues to harden on this advertise path.
+///
+/// **Experimental (DEF-002):** requires
+/// [`ServeOptions::experimental_network_cluster`]. This is a routing and
+/// endpoint-advertisement prototype, **not** network quorum replication.
 pub fn serve_cluster_node(
     cluster_root: impl AsRef<Path>,
     node_index: u32,
     bind: &str,
     options: ServeOptions,
 ) -> Result<(), Error> {
+    if !options.experimental_network_cluster {
+        return Err(Error::ValidationMsg(
+            "serve-cluster is experimental: pass ServeOptions::experimental_network_cluster(true) \
+             or CLI --experimental-network-cluster. Network quorum replication is not implemented; \
+             writes apply to this node only (DEF-002)."
+                .into(),
+        ));
+    }
+    crate::bind_policy::validate_plaintext_bind(bind, options.allow_insecure_bind)?;
+
     let root = cluster_root.as_ref();
     let meta = dingo_cluster::ClusterMeta::load(root)
         .map_err(|e| Error::Internal(format!("cluster root {}: {e}", root.display())))?;
@@ -1307,12 +1369,24 @@ pub fn serve_cluster_node(
         )));
     }
 
-    eprintln!(
-        "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={}",
-        root.display(),
-        store_path.display(),
-        meta.node_count
-    );
+    if !opts.suppress_startup_report {
+        crate::bind_policy::ServeStartupReport::cluster_node(
+            root.display().to_string(),
+            bind,
+            opts.auth_token.is_some(),
+            opts.allow_insecure_bind,
+            node_index,
+        )
+        .emit_stderr();
+        eprintln!(
+            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={}",
+            root.display(),
+            store_path.display(),
+            meta.node_count
+        );
+    }
+    // Avoid a second single-node-style report inside serve_store_with.
+    let opts = opts.suppress_startup_report(true);
     serve_store_with(store_path, bind, opts)
 }
 

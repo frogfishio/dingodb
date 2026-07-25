@@ -216,7 +216,12 @@ fn multi_hop_and_kill_node_survivor() {
         let bind_t = bind.clone();
         let idx = i as u32;
         thread::spawn(move || {
-            let _ = serve_cluster_node(&root_t, idx, &bind_t, ServeOptions::new());
+            let _ = serve_cluster_node(
+                &root_t,
+                idx,
+                &bind_t,
+                ServeOptions::new().experimental_network_cluster(true),
+            );
         });
         wait_for(bind);
     }

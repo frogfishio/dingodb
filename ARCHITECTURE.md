@@ -86,22 +86,29 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 - Workspace dependency key: `sda-core` → Rust path `sda_core::…` (CLI)
 - Integration tests of the library use `sda_lib::…`
 
-## Product follow-ons (landed v0.23)
+## Product follow-ons (in-tree v0.23 — not production)
 
-Stages **0–9** are landed. Product follow-ons 1–4:
+Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 
-1. **Live S3/GCS connectors** — `MediaLocator` + `CloudMirrorConfig`
+1. **S3/GCS filesystem mirrors** — `MediaLocator` + `CloudMirrorConfig`
    (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`); `object:local:` stand-in unchanged.
-2. **Network multi-hop polish** — `dingo serve-cluster` + live `endpoints.json`
-   reload; `RemoteClient` routes keyed ops to partition leaders and refreshes
-   on transport failure; demo `scripts/demos/08_kill_a_node.sh`.
+   These are **mirrors**, not native cloud backends.
+2. **Network multi-hop routing prototype** — `dingo serve-cluster` + live
+   `endpoints.json` reload; `RemoteClient` routes keyed ops and refreshes on
+   transport failure; demo `scripts/demos/08_kill_a_node.sh`.
+   **Writes still apply to one node’s store.** Requires
+   `--experimental-network-cluster`. Quorum replication remains
+   **in-process only** (`Dingo::open_cluster`).
 3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
-   `CLUSTER_PROFILE_VERSION` (`v1`), `WIRE_PROFILE_LABEL` (`1.0-draft`).
+   `CLUSTER_PROFILE_VERSION` (`v1` in-process), `WIRE_PROFILE_LABEL`
+   (`1.0-draft`). Distinct from crate semver `0.1.0`.
 4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
    [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).
 
-Network Raft log shipping over TCP remains future work; multi-hop client routing
-and offline node salvage are the shipped operator path.
+Network Raft log shipping / quorum over TCP remains future work (DEF-030+).
+Operator path today: development `dingo serve`, experimental `serve-cluster`
+routing, and offline node salvage. Maturity labels:
+[doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md), [DEFECTS.md](DEFECTS.md).
 
 ## Stage 9 (landed)
 

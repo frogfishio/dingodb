@@ -30,17 +30,21 @@ profiles. Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 SDK surface (8d–8e): `dingo_sdk::Dingo::create_cluster` / `open_cluster` with
 client directory cache; `find_with_coverage` / `allow_partial_coverage`.
 
-### Network multi-node serve (product follow-on — landed)
+### Network multi-node serve (experimental routing prototype)
 
-Process-per-node TCP beyond the in-process `Cluster` handle:
+Process-per-node TCP beyond the in-process `Cluster` handle. **Not** network
+quorum replication — three processes do not equal replicated durability.
 
 - `endpoints.json` — node index → `host:port` (`load_endpoints` / `upsert_endpoint`)
-- `dingo serve-cluster CLUSTER_ROOT --node N --bind HOST:PORT` — opens
-  `nodes/node-N`, upserts this process into `endpoints.json`, and reloads
+- `dingo serve-cluster CLUSTER_ROOT --node N --bind 127.0.0.1:PORT --experimental-network-cluster`
+  — opens `nodes/node-N`, upserts this process into `endpoints.json`, and reloads
   endpoints on every `directory` RPC so late joiners appear without restart
-- SDK: `dingo_sdk::serve_cluster_node`; `RemoteClient` multi-hop routes keyed
-  ops to partition leaders from the cached directory
-- Profile freeze: `CLUSTER_PROFILE_VERSION` = `v1`
+- SDK: `dingo_sdk::serve_cluster_node` (requires
+  `ServeOptions::experimental_network_cluster(true)`); `RemoteClient` multi-hop
+  routes keyed ops from the cached directory
+- Profile freeze: `CLUSTER_PROFILE_VERSION` = `v1` (**in-process** profile)
+- Bind policy: loopback by default; non-loopback plaintext needs
+  `--allow-insecure-bind` (DEF-002)
 - Demo: `scripts/demos/08_kill_a_node.sh`
 
 Writes on a served node still apply to that node's store (single-node RPC

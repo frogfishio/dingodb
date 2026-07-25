@@ -3,6 +3,7 @@
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
@@ -57,6 +58,20 @@ fn version_and_help() {
     assert!(help.contains("salvage"));
     assert!(help.contains("serve"));
     assert!(help.contains("serve-cluster"));
+    assert!(
+        help.contains("experimental") || help.contains("development"),
+        "top-level help should qualify serve maturity, help={help}"
+    );
+    let serve_help = run_ok(&["serve", "--help"]);
+    assert!(
+        serve_help.contains("allow-insecure-bind"),
+        "serve help={serve_help}"
+    );
+    let sc_help = run_ok(&["serve-cluster", "--help"]);
+    assert!(
+        sc_help.contains("experimental-network-cluster"),
+        "serve-cluster help={sc_help}"
+    );
 }
 
 #[test]
@@ -338,6 +353,7 @@ fn serve_cluster_missing_root_fails_fast() {
             "0",
             "--bind",
             "127.0.0.1:0",
+            "--experimental-network-cluster",
         ])
         .output()
         .expect("run serve-cluster");
@@ -345,6 +361,150 @@ fn serve_cluster_missing_root_fails_fast() {
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(
         err.contains("cluster") || err.contains("error"),
+        "stderr={err}"
+    );
+}
+
+#[test]
+fn serve_cluster_requires_experimental_flag() {
+    let dir = tempdir().unwrap();
+    let out = dingo_bin()
+        .args([
+            "serve-cluster",
+            dir.path().to_str().unwrap(),
+            "--node",
+            "0",
+            "--bind",
+            "127.0.0.1:0",
+        ])
+        .output()
+        .expect("run serve-cluster without flag");
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("experimental-network-cluster") || err.contains("DEF-002"),
+        "stderr={err}"
+    );
+}
+
+#[test]
+fn serve_refuses_public_plaintext_bind_without_override() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join("app.dingo");
+    let store_s = store.to_str().unwrap();
+    // Create a store first so failure is about bind policy, not missing path.
+    run_ok(&[
+        "put",
+        store_s,
+        "t/k",
+        "--json",
+        r#"{"ok":true}"#,
+    ]);
+    let out = dingo_bin()
+        .args(["serve", store_s, "--bind", "0.0.0.0:17434"])
+        .output()
+        .expect("run serve with public bind");
+    assert!(!out.status.success(), "public bind must fail closed");
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("non-loopback")
+            || err.contains("allow-insecure-bind")
+            || err.contains("DEF-002"),
+        "stderr={err}"
+    );
+}
+
+#[test]
+fn serve_loopback_bind_is_allowed() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join("app.dingo");
+    let store_s = store.to_str().unwrap();
+    run_ok(&["put", store_s, "t/k", "--json", r#"{"ok":true}"#]);
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let bind = format!("127.0.0.1:{port}");
+
+    let mut child = dingo_bin()
+        .args(["serve", store_s, "--bind", &bind])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn dingo serve");
+    wait_for_dingo_ping(&bind);
+
+    // Startup report must not claim network quorum durability.
+    // Kill after a successful ping; capture any stderr already written.
+    let _ = child.kill();
+    let output = child.wait_with_output().expect("wait serve");
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        err.contains("startup status") || err.contains("replication: none"),
+        "expected structured startup report, stderr={err}"
+    );
+    assert!(
+        !err.to_lowercase().contains("replicated durability"),
+        "must not claim replicated durability, stderr={err}"
+    );
+}
+
+#[test]
+fn capability_matrix_document_present() {
+    // DEF-001: release-facing capability matrix must stay in-tree.
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let matrix = root.join("doc/CAPABILITY_MATRIX.md");
+    let text = fs::read_to_string(&matrix).expect("doc/CAPABILITY_MATRIX.md must exist");
+    assert!(
+        text.contains("Three `serve-cluster` processes do not provide replicated durability")
+            || text.contains("do not provide replicated durability"),
+        "matrix must forbid multi-process replicated-durability inference"
+    );
+    assert!(text.contains("DEF-002") || text.contains("allow-insecure-bind"));
+    let readme = fs::read_to_string(root.join("README.md")).expect("README");
+    assert!(
+        readme.contains("Not production-ready") || readme.contains("not production-ready"),
+        "README must state production maturity honestly"
+    );
+    assert!(
+        !readme.contains("Extreme speed"),
+        "README must not lead with unqualified extreme-speed marketing"
+    );
+}
+
+#[test]
+fn serve_public_bind_allowed_with_insecure_override() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join("app.dingo");
+    let store_s = store.to_str().unwrap();
+    run_ok(&["put", store_s, "t/k", "--json", r#"{"ok":true}"#]);
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    // Bind all interfaces on an ephemeral port with explicit override (DEF-002).
+    let bind = format!("0.0.0.0:{port}");
+
+    let mut child = dingo_bin()
+        .args([
+            "serve",
+            store_s,
+            "--bind",
+            &bind,
+            "--allow-insecure-bind",
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn dingo serve with insecure bind");
+    // Connect via loopback to the same port.
+    let connect = format!("127.0.0.1:{port}");
+    wait_for_dingo_ping(&connect);
+    let _ = child.kill();
+    let output = child.wait_with_output().expect("wait serve");
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        err.contains("allow_insecure_bind: yes") || err.contains("development override"),
         "stderr={err}"
     );
 }
@@ -374,7 +534,12 @@ fn serve_cluster_advertises_placement_and_endpoints() {
     let root_thread = root.clone();
     let bind_thread = bind.clone();
     let handle = thread::spawn(move || {
-        let _ = serve_cluster_node(&root_thread, 0, &bind_thread, ServeOptions::new());
+        let _ = serve_cluster_node(
+            &root_thread,
+            0,
+            &bind_thread,
+            ServeOptions::new().experimental_network_cluster(true),
+        );
     });
 
     wait_for_dingo_ping(&bind);

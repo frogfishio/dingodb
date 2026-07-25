@@ -12,7 +12,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, non-destructive salvage, single-node TCP serve, and multi-node cluster node serve (directory + endpoints).";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, non-destructive salvage, single-node TCP serve (development), and experimental multi-node serve-cluster (routing/advertise only; not network quorum).";
 const LICENSE_TEXT: &str = "Copyright (c) Alexander R. Croft\nMIT License\n\nThis program is offered under the MIT License. See the repository LICENSE file for the full terms.";
 
 #[derive(Parser)]
@@ -82,7 +82,10 @@ enum Command {
         #[arg(long = "output", short = 'o')]
         output: PathBuf,
     },
-    /// Serve the store over TCP for `Dingo::connect("dingo://...")`.
+    /// Serve the store over TCP for `Dingo::connect("dingo://...")` (development).
+    ///
+    /// Defaults to loopback. Non-loopback plaintext binds require
+    /// `--allow-insecure-bind` (TLS is not implemented yet; DEF-002).
     Serve {
         store: PathBuf,
         /// Bind address (default `127.0.0.1:7434`).
@@ -92,11 +95,19 @@ enum Command {
         /// Also accepted from the `DINGO_TOKEN` environment variable when the flag is omitted.
         #[arg(long = "token")]
         token: Option<String>,
+        /// Allow non-loopback plaintext bind (development only; no TLS yet).
+        #[arg(long = "allow-insecure-bind", action = ArgAction::SetTrue)]
+        allow_insecure_bind: bool,
     },
-    /// Serve one node of a multi-node cluster root (network follow-on).
+    /// Serve one node of a multi-node cluster root (**experimental**).
     ///
-    /// Advertises real `placement.json` + `endpoints.json` on `directory` RPC.
-    /// Example: `dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434`
+    /// Routing and `endpoints.json` advertise only: writes apply to **this node**.
+    /// Network quorum replication is not implemented. Requires
+    /// `--experimental-network-cluster`. Prefer in-process `Dingo::open_cluster`
+    /// for replicated integration tests.
+    ///
+    /// Example:
+    /// `dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster`
     ServeCluster {
         /// Cluster root (contains cluster.json, placement.json, nodes/).
         cluster: PathBuf,
@@ -109,6 +120,12 @@ enum Command {
         /// Optional shared auth token (also `DINGO_TOKEN`).
         #[arg(long = "token")]
         token: Option<String>,
+        /// Allow non-loopback plaintext bind (development only; no TLS yet).
+        #[arg(long = "allow-insecure-bind", action = ArgAction::SetTrue)]
+        allow_insecure_bind: bool,
+        /// Required opt-in: network serve-cluster is experimental (DEF-002).
+        #[arg(long = "experimental-network-cluster", action = ArgAction::SetTrue)]
+        experimental_network_cluster: bool,
     },
     /// List collection names (alias of `list` without collection).
     Collections { store: PathBuf },
@@ -155,15 +172,16 @@ fn run() -> Result<(), String> {
         Command::History { store, target } => cmd_history(&store, &target, json_out),
         Command::Doctor { store } => cmd_doctor(&store, json_out),
         Command::Salvage { store, output } => cmd_salvage(&store, &output, json_out),
-        Command::Serve { store, bind, token } => {
+        Command::Serve {
+            store,
+            bind,
+            token,
+            allow_insecure_bind,
+        } => {
             // Flag wins; otherwise fall back to DINGO_TOKEN for operator convenience.
             let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
-            let auth = if token.is_some() { "on" } else { "off" };
-            eprintln!(
-                "dingo serve: store={} bind={bind} auth={auth}",
-                store.display()
-            );
-            let mut opts = ServeOptions::new();
+            // Library emits the structured startup report and enforces bind policy (DEF-002).
+            let mut opts = ServeOptions::new().allow_insecure_bind(allow_insecure_bind);
             if let Some(t) = token {
                 opts = opts.auth_token(t);
             }
@@ -174,9 +192,21 @@ fn run() -> Result<(), String> {
             node,
             bind,
             token,
+            allow_insecure_bind,
+            experimental_network_cluster,
         } => {
+            if !experimental_network_cluster {
+                return Err(
+                    "serve-cluster requires --experimental-network-cluster (DEF-002). \
+                     Network quorum replication is not implemented; writes apply to this \
+                     node only. In-process quorum: Dingo::open_cluster."
+                        .into(),
+                );
+            }
             let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
-            let mut opts = ServeOptions::new();
+            let mut opts = ServeOptions::new()
+                .allow_insecure_bind(allow_insecure_bind)
+                .experimental_network_cluster(true);
             if let Some(t) = token {
                 opts = opts.auth_token(t);
             }
