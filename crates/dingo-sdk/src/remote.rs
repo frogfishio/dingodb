@@ -231,6 +231,12 @@ pub struct RpcRequest {
     /// Max documents the server may examine for `find` (query budget).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_docs_scanned: Option<usize>,
+    /// Max payload bytes the server may examine for `find` (DEF-029).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_bytes_scanned: Option<u64>,
+    /// Max approximate result materialisation bytes for `find` (DEF-029).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_result_bytes: Option<u64>,
     /// Client-generated operation id (32 hex chars) for idempotent mutations (DEF-010).
     ///
     /// Required on put/delete/put_bytes from modern clients. Retries reuse the
@@ -659,6 +665,8 @@ impl RemoteClient {
         }
         let mut line = serde_json::to_string(&req).map_err(|e| Error::Internal(e.to_string()))?;
         line.push('\n');
+        // DEF-029: fail closed on oversized outbound request lines.
+        crate::resource::check_rpc_line_len(line.len(), &crate::resource::host_limits())?;
         self.stream
             .write_all(line.as_bytes())
             .map_err(Error::from_io)?;
@@ -1019,6 +1027,8 @@ impl RemoteClient {
             None => (None, None),
         };
         let max_docs = options.budget.as_ref().and_then(|b| b.max_docs_scanned);
+        let max_bytes = options.budget.as_ref().and_then(|b| b.max_bytes_scanned);
+        let max_result = options.budget.as_ref().and_then(|b| b.max_result_bytes);
         let resp = self.call(RpcRequest {
             op: "find".into(),
             collection: Some(collection.into()),
@@ -1028,6 +1038,8 @@ impl RemoteClient {
             order_field,
             order_dir,
             max_docs_scanned: max_docs,
+            max_bytes_scanned: max_bytes,
+            max_result_bytes: max_result,
             ..base_req("find")
         })?;
         Ok(resp
@@ -1080,6 +1092,8 @@ fn base_req(op: &str) -> RpcRequest {
         order_field: None,
         order_dir: None,
         max_docs_scanned: None,
+        max_bytes_scanned: None,
+        max_result_bytes: None,
         operation_id: None,
     }
 }
@@ -1540,10 +1554,26 @@ pub fn handle_connection_with(
         .map_err(Error::from_io)?;
     let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
     let mut writer = stream;
+    let limits = crate::resource::host_limits();
     loop {
         let mut line = String::new();
         let n = reader.read_line(&mut line).map_err(Error::from_io)?;
         if n == 0 {
+            break;
+        }
+        // DEF-029: refuse oversized request lines before JSON parse.
+        if let Err(e) = crate::resource::check_rpc_line_len(line.len(), &limits) {
+            write_resp(
+                &mut writer,
+                RpcResponse {
+                    id: 0,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(0)
+                },
+            )?;
+            // Drop the connection: the remainder of an adversarial stream is untrusted.
             break;
         }
         let line = line.trim();
@@ -1776,11 +1806,15 @@ fn dispatch(
                 .json
                 .as_ref()
                 .ok_or_else(|| Error::QueryInvalid("put requires json".into()))?;
+            // DEF-029: host limits on depth and payload size (server-side).
+            let limits = crate::resource::host_limits();
+            crate::resource::check_json_depth(json, &limits)?;
             let mode =
                 parse_durability(req.durability.as_deref()).unwrap_or(DurabilityMode::Durable);
             let subject = encode_subject(coll, key)?;
             let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
             let body = encode_json(json)?;
+            crate::resource::check_payload_len(body.len(), &limits)?;
             let dedup = prepare_mutation_dedup(
                 store,
                 req.operation_id.as_deref(),
@@ -1878,6 +1912,8 @@ fn dispatch(
                 .as_deref()
                 .ok_or_else(|| Error::QueryInvalid("put_bytes requires bytes_b64".into()))?;
             let bytes = b64_decode(b64)?;
+            let limits = crate::resource::host_limits();
+            crate::resource::check_payload_len(bytes.len().saturating_add(1), &limits)?;
             let mode =
                 parse_durability(req.durability.as_deref()).unwrap_or(DurabilityMode::Durable);
             let subject = encode_subject(coll, key)?;
@@ -2112,15 +2148,25 @@ fn dispatch(
                 (Some(f), _) => Some((f.to_string(), SortOrder::Asc)),
                 (None, _) => None,
             };
-            let budget = req.max_docs_scanned.map(|n| QueryBudget {
-                max_docs_scanned: Some(n),
-            });
+            let budget = if req.max_docs_scanned.is_some()
+                || req.max_bytes_scanned.is_some()
+                || req.max_result_bytes.is_some()
+            {
+                Some(QueryBudget {
+                    max_docs_scanned: req.max_docs_scanned,
+                    max_bytes_scanned: req.max_bytes_scanned,
+                    max_result_bytes: req.max_result_bytes,
+                })
+            } else {
+                None
+            };
             let options = QueryOptions {
                 limit: req.limit,
                 order_by,
                 budget,
                 force_scan: req.force_scan.unwrap_or(false),
                 allow_partial_coverage: false,
+                cancel: None,
             };
             let rows = find_on_store(store, coll, &filter, &options)?;
             Ok(RpcResponse {

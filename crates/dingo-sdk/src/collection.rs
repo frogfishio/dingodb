@@ -6,6 +6,9 @@ use crate::filter::{compare_field, Filter, QueryBuilder, QueryOptions};
 use crate::history::KeyHistory;
 use crate::indexes::{mark_indexes_stale, try_index_lookup, IndexInfo, Indexes};
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
+use crate::resource::{
+    check_json_depth, check_payload_len, check_result_bytes, estimate_row_bytes, host_limits,
+};
 use crate::subject::{collection_prefix, decode_subject, encode_subject};
 use crate::value::{decode_bytes, decode_json, encode_bytes, encode_json};
 use dingo_store::{PayloadResult, Store};
@@ -66,10 +69,14 @@ impl<'a> Collection<'a> {
         options: PutOptions,
     ) -> Result<WriteReceipt, Error> {
         let json = serde_json::to_value(value)?;
+        // DEF-029: hard host limits on JSON depth and payload size.
+        let limits = host_limits();
+        check_json_depth(&json, &limits)?;
         match self.backend {
             Backend::Local(store) => {
                 let subject = encode_subject(&self.name, key)?;
                 let body = encode_json(&json)?;
+                check_payload_len(body.len(), &limits)?;
                 let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
                 let receipt = store.put(subject_str, &body, options.durability)?;
                 // DEF-027: surface stale-marking failures (health / diagnostics).
@@ -140,6 +147,9 @@ impl<'a> Collection<'a> {
         bytes: &[u8],
         options: PutOptions,
     ) -> Result<WriteReceipt, Error> {
+        let limits = host_limits();
+        // Typed body = tag + payload; bound the full on-disk body size.
+        check_payload_len(bytes.len().saturating_add(1), &limits)?;
         match self.backend {
             Backend::Local(store) => {
                 let subject = encode_subject(&self.name, key)?;
@@ -402,7 +412,11 @@ pub(crate) fn find_on_store(
 
     let prefix = collection_prefix(collection)?;
     // DEF-026: page through live subjects; never materialize the full body set.
+    // DEF-029: docs/bytes budgets, result memory, cooperative cancel.
+    let limits = host_limits();
     let mut scanned = 0usize;
+    let mut bytes_scanned = 0u64;
+    let mut result_bytes = 0u64;
     let mut out = Vec::new();
     let mut cont: Option<Vec<u8>> = None;
     let page_size = options
@@ -410,22 +424,33 @@ pub(crate) fn find_on_store(
         .unwrap_or(dingo_store::DEFAULT_PAGE_SIZE)
         .clamp(1, dingo_store::MAX_PAGE_SIZE);
     loop {
+        if let Some(token) = &options.cancel {
+            token.check()?;
+        }
         let page = scan_json_page_on_store(store, collection, &prefix, page_size, cont.as_deref())?;
         scanned = scanned.saturating_add(page.examined);
-        if let Some(budget) = &options.budget {
-            if let Some(max) = budget.max_docs_scanned {
-                if scanned > max {
-                    return Err(Error::QueryBudgetRequired(format!(
-                        "scan examined more than {max} documents without a usable index; \
-                         raise budget or create an index"
-                    )));
-                }
+        bytes_scanned = bytes_scanned.saturating_add(page.bytes_examined);
+        if let Some(stop) = budget_stop(
+            options,
+            scanned,
+            bytes_scanned,
+            "scan examined more than budget without a usable index; raise budget or create an index",
+        )? {
+            if stop {
+                return finish_query(out, options);
             }
         }
         for (key, value) in page.rows {
             if !filter.matches(&value) {
                 continue;
             }
+            let row_bytes = estimate_row_bytes(&key, &value);
+            result_bytes = result_bytes.saturating_add(row_bytes);
+            let budget_cap = options
+                .budget
+                .as_ref()
+                .and_then(|b| b.max_result_bytes);
+            check_result_bytes(result_bytes, budget_cap, &limits)?;
             out.push((key, value));
         }
         if page.complete {
@@ -452,17 +477,24 @@ fn collect_from_subjects(
     filter: &Filter,
     options: &QueryOptions,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
+    let limits = host_limits();
     let mut out = Vec::new();
     let mut scanned = 0usize;
+    let mut bytes_scanned = 0u64;
+    let mut result_bytes = 0u64;
     for subject in subjects {
+        if let Some(token) = &options.cancel {
+            token.check()?;
+        }
         scanned += 1;
-        if let Some(budget) = &options.budget {
-            if let Some(max) = budget.max_docs_scanned {
-                if scanned > max {
-                    return Err(Error::QueryBudgetRequired(format!(
-                        "index probe exceeded budget of {max} documents"
-                    )));
-                }
+        if let Some(stop) = budget_stop(
+            options,
+            scanned,
+            bytes_scanned,
+            "index probe exceeded document/byte budget",
+        )? {
+            if stop {
+                return finish_query(out, options);
             }
         }
         let subject_str = match str::from_utf8(&subject) {
@@ -472,6 +504,17 @@ fn collect_from_subjects(
         let Some(body) = store.get(subject_str)? else {
             continue;
         };
+        bytes_scanned = bytes_scanned.saturating_add(body.len() as u64);
+        if let Some(stop) = budget_stop(
+            options,
+            scanned,
+            bytes_scanned,
+            "index probe exceeded document/byte budget",
+        )? {
+            if stop {
+                return finish_query(out, options);
+            }
+        }
         let value = decode_json(&body)?;
         if !filter.matches(&value) {
             continue;
@@ -482,9 +525,50 @@ fn collect_from_subjects(
         if coll != collection {
             continue;
         }
+        let row_bytes = estimate_row_bytes(key, &value);
+        result_bytes = result_bytes.saturating_add(row_bytes);
+        let budget_cap = options
+            .budget
+            .as_ref()
+            .and_then(|b| b.max_result_bytes);
+        check_result_bytes(result_bytes, budget_cap, &limits)?;
         out.push((key.to_string(), value));
     }
     finish_query(out, options)
+}
+
+/// Returns `Ok(Some(true))` when the caller should return partial matches,
+/// `Ok(Some(false))` is unused, `Ok(None)` continue, `Err` hard budget stop.
+fn budget_stop(
+    options: &QueryOptions,
+    scanned: usize,
+    bytes_scanned: u64,
+    context: &str,
+) -> Result<Option<bool>, Error> {
+    let Some(budget) = &options.budget else {
+        return Ok(None);
+    };
+    let docs_hit = budget
+        .max_docs_scanned
+        .is_some_and(|max| scanned > max);
+    let bytes_hit = budget
+        .max_bytes_scanned
+        .is_some_and(|max| bytes_scanned > max);
+    if !docs_hit && !bytes_hit {
+        return Ok(None);
+    }
+    if options.allow_partial_coverage {
+        return Ok(Some(true));
+    }
+    let detail = match (budget.max_docs_scanned, budget.max_bytes_scanned) {
+        (Some(d), Some(b)) if docs_hit && bytes_hit => {
+            format!("docs>{d} and bytes>{b}")
+        }
+        (Some(d), _) if docs_hit => format!("docs examined {scanned} > {d}"),
+        (_, Some(b)) if bytes_hit => format!("bytes examined {bytes_scanned} > {b}"),
+        _ => format!("docs={scanned} bytes={bytes_scanned}"),
+    };
+    Err(Error::QueryBudgetRequired(format!("{context} ({detail})")))
 }
 
 /// One page of JSON scan results (DEF-026).
@@ -498,6 +582,8 @@ pub struct JsonScanPage {
     pub complete: bool,
     /// Subjects examined on this page (for budgets / diagnostics).
     pub examined: usize,
+    /// Raw body bytes examined on this page (DEF-029 scan-byte budgets).
+    pub bytes_examined: u64,
 }
 
 /// Streaming JSON scan over the embedded store (DEF-026).
@@ -582,7 +668,9 @@ fn scan_json_page_on_store(
         )));
     }
     let mut rows = Vec::with_capacity(page.entries.len());
+    let mut bytes_examined = 0u64;
     for (subject, body) in page.entries {
+        bytes_examined = bytes_examined.saturating_add(body.len() as u64);
         if !subject.starts_with(prefix) {
             continue;
         }
@@ -598,6 +686,7 @@ fn scan_json_page_on_store(
         continuation: page.continuation,
         complete: !page.has_more,
         examined: page.examined,
+        bytes_examined,
     })
 }
 
@@ -613,6 +702,22 @@ fn finish_query(
     mut out: Vec<(String, JsonValue)>,
     options: &QueryOptions,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
+    if let Some(token) = &options.cancel {
+        token.check()?;
+    }
+    // DEF-029: fail closed on oversized materialised sets before sort.
+    // Spill-to-disk is not enabled in this profile.
+    let limits = host_limits();
+    let result_bytes: u64 = out
+        .iter()
+        .map(|(k, v)| estimate_row_bytes(k, v))
+        .fold(0u64, u64::saturating_add);
+    let budget_cap = options
+        .budget
+        .as_ref()
+        .and_then(|b| b.max_result_bytes);
+    check_result_bytes(result_bytes, budget_cap, &limits)?;
+
     if let Some((ref field, order)) = options.order_by {
         let order = order;
         out.sort_by(|a, b| {

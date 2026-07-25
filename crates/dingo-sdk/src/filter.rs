@@ -29,13 +29,27 @@ pub enum SortOrder {
     Desc,
 }
 
-/// Explicit resource budget for scans (DX_SPEC §8.1).
+/// Explicit resource budget for scans (DX_SPEC §8.1 / DEF-029).
+///
+/// When set and a scan would exceed a field without a usable index, the query
+/// fails with [`crate::ErrorCode::QueryBudgetRequired`] (unless
+/// [`QueryOptions::allow_partial_coverage`] returns the matches collected so
+/// far). Hard host ceilings still apply via [`crate::ResourceLimits`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct QueryBudget {
     /// Maximum live documents the engine may examine (index probe + scan).
     ///
-    /// When unset, scans are unbounded (Stage 4 compatible default).
+    /// When unset, document count is not budget-capped (host result-byte
+    /// ceilings still apply).
     pub max_docs_scanned: Option<usize>,
+    /// Maximum payload bytes examined while scanning or probing (raw bodies).
+    pub max_bytes_scanned: Option<u64>,
+    /// Maximum approximate memory for materialised matches before sort/limit.
+    ///
+    /// Checked against the tighter of this value and the host
+    /// [`crate::ResourceLimits::max_result_bytes`]. Spill-to-disk sort is not
+    /// enabled in this profile — oversize sorts fail closed.
+    pub max_result_bytes: Option<u64>,
 }
 
 impl QueryBudget {
@@ -43,7 +57,21 @@ impl QueryBudget {
     pub fn max_docs(n: usize) -> Self {
         Self {
             max_docs_scanned: Some(n),
+            max_bytes_scanned: None,
+            max_result_bytes: None,
         }
+    }
+
+    /// Cap payload bytes examined during scan/probe.
+    pub fn max_bytes(mut self, n: u64) -> Self {
+        self.max_bytes_scanned = Some(n);
+        self
+    }
+
+    /// Cap approximate materialised result / sort memory.
+    pub fn max_result_memory(mut self, n: u64) -> Self {
+        self.max_result_bytes = Some(n);
+        self
     }
 }
 
@@ -51,22 +79,25 @@ impl QueryBudget {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct QueryOptions {
     /// Maximum number of matching rows to return. `None` means unbounded
-    /// (caller is responsible for result size).
+    /// (caller is responsible for result size; host result-byte ceilings apply).
     pub limit: Option<usize>,
     /// Optional order-by field path (JSON path, dotted) and direction.
     ///
     /// When unset, results are in stable subject/key order (deterministic).
     pub order_by: Option<(String, SortOrder)>,
     /// Optional scan budget. When set and a scan would exceed it without a
-    /// usable index, the query fails with [`ErrorCode::QueryBudgetRequired`].
+    /// usable index, the query fails with [`crate::ErrorCode::QueryBudgetRequired`]
+    /// unless [`Self::allow_partial_coverage`] is set.
     pub budget: Option<QueryBudget>,
     /// When true, force a full collection scan even if an index exists.
     pub force_scan: bool,
     /// When true, allow returning matches under incomplete cluster coverage
-    /// (Stage 8e). Default `false`: incomplete coverage yields
-    /// [`ErrorCode::CoverageIncomplete`] so partial results are never mistaken
-    /// for a complete empty set (CLUSTER_SPEC §17.2).
+    /// (Stage 8e) **or** when an explicit budget stops the scan early (DEF-029).
+    /// Default `false`: incomplete coverage / budget stop yields an error so
+    /// partial results are never mistaken for a complete empty set.
     pub allow_partial_coverage: bool,
+    /// Cooperative cancellation (not serialized in [`QueryPlan`]).
+    pub cancel: Option<crate::resource::CancelToken>,
 }
 
 impl QueryOptions {
@@ -99,9 +130,15 @@ impl QueryOptions {
         self
     }
 
-    /// Allow partial cluster coverage (return matches + incomplete coverage).
+    /// Allow partial cluster coverage or budget-truncated match lists.
     pub fn allow_partial_coverage(mut self) -> Self {
         self.allow_partial_coverage = true;
+        self
+    }
+
+    /// Attach a cooperative cancellation token (DEF-029).
+    pub fn cancel(mut self, token: crate::resource::CancelToken) -> Self {
+        self.cancel = Some(token);
         self
     }
 }
@@ -523,14 +560,18 @@ fn options_to_json(opts: &QueryOptions) -> JsonValue {
         );
     }
     if let Some(budget) = &opts.budget {
+        let mut b = serde_json::Map::new();
         if let Some(n) = budget.max_docs_scanned {
-            map.insert(
-                "budget".into(),
-                JsonValue::Object(serde_json::Map::from_iter([(
-                    "max_docs_scanned".into(),
-                    JsonValue::from(n as u64),
-                )])),
-            );
+            b.insert("max_docs_scanned".into(), JsonValue::from(n as u64));
+        }
+        if let Some(n) = budget.max_bytes_scanned {
+            b.insert("max_bytes_scanned".into(), JsonValue::from(n));
+        }
+        if let Some(n) = budget.max_result_bytes {
+            b.insert("max_result_bytes".into(), JsonValue::from(n));
+        }
+        if !b.is_empty() {
+            map.insert("budget".into(), JsonValue::Object(b));
         }
     }
     if opts.force_scan {
@@ -578,13 +619,30 @@ fn options_from_json(value: &JsonValue) -> Result<QueryOptions, Error> {
         let b = b
             .as_object()
             .ok_or_else(|| Error::QueryInvalid("options.budget must be an object".into()))?;
+        let mut budget = QueryBudget::default();
         if let Some(n) = b.get("max_docs_scanned") {
             let n = n.as_u64().ok_or_else(|| {
                 Error::QueryInvalid("budget.max_docs_scanned must be a number".into())
             })? as usize;
-            opts.budget = Some(QueryBudget {
-                max_docs_scanned: Some(n),
-            });
+            budget.max_docs_scanned = Some(n);
+        }
+        if let Some(n) = b.get("max_bytes_scanned") {
+            let n = n.as_u64().ok_or_else(|| {
+                Error::QueryInvalid("budget.max_bytes_scanned must be a number".into())
+            })?;
+            budget.max_bytes_scanned = Some(n);
+        }
+        if let Some(n) = b.get("max_result_bytes") {
+            let n = n.as_u64().ok_or_else(|| {
+                Error::QueryInvalid("budget.max_result_bytes must be a number".into())
+            })?;
+            budget.max_result_bytes = Some(n);
+        }
+        if budget.max_docs_scanned.is_some()
+            || budget.max_bytes_scanned.is_some()
+            || budget.max_result_bytes.is_some()
+        {
+            opts.budget = Some(budget);
         }
     }
     if obj.get("force_scan") == Some(&JsonValue::Bool(true)) {
@@ -686,6 +744,18 @@ impl<'c, 'a> QueryBuilder<'c, 'a> {
     /// Order by field path.
     pub fn order_by(mut self, field: impl Into<String>, order: SortOrder) -> Self {
         self.options.order_by = Some((field.into(), order));
+        self
+    }
+
+    /// Attach a scan / materialisation budget (DEF-029).
+    pub fn budget(mut self, budget: QueryBudget) -> Self {
+        self.options.budget = Some(budget);
+        self
+    }
+
+    /// Cooperative cancellation token.
+    pub fn cancel(mut self, token: crate::resource::CancelToken) -> Self {
+        self.options.cancel = Some(token);
         self
     }
 

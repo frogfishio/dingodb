@@ -146,8 +146,11 @@ impl ClusterBackend {
         value: &JsonValue,
         options: PutOptions,
     ) -> Result<WriteReceipt, Error> {
+        let limits = crate::resource::host_limits();
+        crate::resource::check_json_depth(value, &limits)?;
         let subject = subject_str(collection, key)?;
         let body = encode_json(value)?;
+        crate::resource::check_payload_len(body.len(), &limits)?;
         let ack = self.write_routed(&subject, &body, options.durability, false)?;
         self.last_store_id = ack.store_id;
         Ok(write_receipt_from_ack(key, &ack, options.durability))
@@ -161,6 +164,8 @@ impl ClusterBackend {
         bytes: &[u8],
         options: PutOptions,
     ) -> Result<WriteReceipt, Error> {
+        let limits = crate::resource::host_limits();
+        crate::resource::check_payload_len(bytes.len().saturating_add(1), &limits)?;
         let subject = subject_str(collection, key)?;
         let body = encode_bytes(bytes);
         let ack = self.write_routed(&subject, &body, options.durability, false)?;

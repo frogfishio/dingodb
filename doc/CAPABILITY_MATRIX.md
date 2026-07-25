@@ -42,6 +42,7 @@ with the acceptance evidence expected before a stronger label.
 | `WIRE_PROFILE_LABEL` | `1.0-draft` | On-disk/network frame draft |
 | `CONFORMANCE_CORPUS_TAG` | `sda-standalone-v1.0` | SDA §14 corpus |
 | `QUERY_PLAN_PROFILE` | `dingo-query-plan-v1` | Serializable filter/query plans (DEF-028) |
+| `RESOURCE_PROFILE` | `dingo-resource-v1` | Query budgets + host resource limits (DEF-029) |
 
 ## Network bind policy (DEF-002)
 
@@ -205,6 +206,22 @@ collection catalogs are built from segment-derived durable state only.
 | Dual corpus | shipped | native ≡ SDA ≡ embedded find / force-scan |
 | Remote plan RPC | not yet | wire still carries Mongo-style filter objects |
 | Tests | shipped | `stage_def_028_filter_sda` + filter unit tests |
+
+## Resource governance (DEF-029)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Profile tag | shipped | `dingo_sdk::RESOURCE_PROFILE = "dingo-resource-v1"` |
+| Query budget | shipped | `max_docs_scanned` / `max_bytes_scanned` / `max_result_bytes` → `query_budget_required` |
+| Partial budget stop | shipped | `allow_partial_coverage` returns matches so far instead of error |
+| Host JSON depth | shipped | default 64; put paths fail closed with `resource_limit` |
+| Host payload / RPC line | shipped | 16 MiB defaults; remote refuse oversized lines before parse |
+| Result / sort memory | shipped | budget + 64 MiB host ceiling; no spill-to-disk in this profile |
+| Cancellation | shipped | `CancelToken` on `QueryOptions` / builder (embedded find loops) |
+| Frame length bounds | shipped | `dingo_format::SafetyLimits` (unchanged) |
+| Conn / concurrent query admission | not yet | DEF-030 bounded server |
+| Per-tenant work quotas | not yet | follow-on |
+| Tests | shipped | `stage_def_029_resource_governance` + resource unit tests |
 
 ## CI check
 

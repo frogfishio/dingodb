@@ -784,7 +784,9 @@ Acceptance:
 
 ### DEF-029 — Add resource governance
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (query budgets + host limits + cancel; see
+`stage_def_029_resource_governance`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -795,6 +797,22 @@ Work:
 - Return typed `ResourceLimit`/`QueryBudgetRequired` errors with partial
   coverage.
 - Add cancellation propagation through storage and network loops.
+
+Implementation notes:
+
+- Profile tag `RESOURCE_PROFILE = "dingo-resource-v1"`.
+- Explicit [`QueryBudget`]: `max_docs_scanned`, `max_bytes_scanned`,
+  `max_result_bytes` — exceed → `QueryBudgetRequired` unless
+  `allow_partial_coverage` returns matches collected so far.
+- Hard host [`ResourceLimits`]: JSON depth (default 64), payload bytes
+  (16 MiB), RPC line bytes (16 MiB), result materialisation ceiling (64 MiB)
+  → `ResourceLimit`. Frame length bounds remain in `dingo_format::SafetyLimits`.
+- Cooperative [`CancelToken`] on `QueryOptions` / builder; checked between
+  scan pages and index probes (not serialized in query plans).
+- Sort/materialise fail closed when over budget/ceiling; spill-to-disk sort
+  is **not** enabled in this profile (documented).
+- Follow-ons (DEF-030+): concurrent query / open connection / per-tenant
+  admission, server worker pools, verified temp spill format.
 
 Acceptance:
 

@@ -31,6 +31,7 @@ mod history;
 mod indexes;
 mod receipt;
 mod remote;
+mod resource;
 mod subject;
 mod value;
 
@@ -51,6 +52,11 @@ pub use filter::{
 pub use history::{KeyHistory, Version};
 pub use indexes::{IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
+pub use resource::{
+    estimate_json_bytes, estimate_row_bytes, json_depth, CancelToken, ResourceLimits,
+    DEFAULT_MAX_JSON_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_RESULT_BYTES,
+    DEFAULT_MAX_RPC_LINE_BYTES, RESOURCE_PROFILE,
+};
 pub use remote::{
     handle_connection, handle_connection_with, parse_dingo_url, serve_cluster_node, serve_store,
     serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient, ServeOptions, DEFAULT_PORT,
