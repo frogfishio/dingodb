@@ -53,6 +53,24 @@ pub enum StoreError {
     /// Chunk reassembly found conflicting content at a manifest position.
     #[error("conflicting chunk content")]
     PayloadConflict,
+
+    /// Requested sealed segment is not registered or not on disk.
+    #[error("segment not found")]
+    SegmentNotFound,
+
+    /// Required storage tier is offline or unmounted (Stage 9).
+    #[error("storage tier offline: {0}")]
+    TierOffline(&'static str),
+
+    /// Segment bytes use a wire major this build cannot interpret.
+    ///
+    /// Authoritative bytes are preserved; interpretation is refused
+    /// (`format-unsupported`, OVERVIEW §9.5).
+    #[error("format unsupported: wire major {wire_major}")]
+    FormatUnsupported {
+        /// Unsupported wire major observed.
+        wire_major: u8,
+    },
 }
 
 impl StoreError {

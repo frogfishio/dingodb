@@ -191,7 +191,7 @@ rebalance).
 | 6 | Indexes, catalogs, history, chunks | done |
 | 7 | CLI, doctor, salvage, server | **done** — 7a–7f + full single-node remote parity |
 | 8 | Cluster | **8a–8f done** — find coverage honesty + rebalance + §22 remainder |
-| 9 | Tiering | later |
+| 9 | Tiering | **done** — segment move/copy, hierarchical catalogs, offline coverage, retention runbook |
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  
 Crate map and language decisions: [ARCHITECTURE.md](ARCHITECTURE.md).  

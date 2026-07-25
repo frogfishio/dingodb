@@ -1,4 +1,4 @@
-//! DingoDB single-node authoritative store (Stages 3 + 6).
+//! DingoDB single-node authoritative store (Stages 3 + 6 + 9).
 //!
 //! Append-only segments on the filesystem, subject-keyed put/get/delete, and
 //! catalog-independent recovery via [`dingo_format`] salvage scanning.
@@ -6,7 +6,11 @@
 //! Stage 6 adds rebuildable catalogs, secondary index files, subject history,
 //! chunked payloads with partial maps, live-state compaction, and checkpoints.
 //!
-//! Normative: OVERVIEW §§5–7, §13; FORMAT_SPEC frames/segments/chunks.
+//! Stage 9 adds storage tiers (hot/warm/cold/archive), segment move/copy with
+//! stable identities, hierarchical segment catalogs, offline-tier coverage
+//! honesty, and multi-generation format classification (byte preservation).
+//!
+//! Normative: OVERVIEW §§5–7, §9, §13; FORMAT_SPEC frames/segments/chunks.
 
 #![deny(missing_docs)]
 
@@ -21,7 +25,9 @@ mod index;
 mod index_cache;
 mod layout;
 mod secondary;
+mod segment_catalog;
 mod store;
+mod tier;
 
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, CollectionCatalog,
@@ -49,4 +55,12 @@ pub use secondary::{
     try_load_secondary_index, write_secondary_index, IndexState, SecondaryIndex,
     SecondaryIndexMeta,
 };
+pub use segment_catalog::{
+    segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
+};
 pub use store::{SalvageCopyReport, SalvageReport, Store, WriteReceipt};
+pub use tier::{
+    classify_segment_bytes, tier_placement_path, FormatClassification, MigrationEvidence,
+    SegmentPlacement, TierAwareGet, TierClass, TierCoverage, TierMoveMode, TierPlacement,
+    TIER_PLACEMENT_FILE,
+};

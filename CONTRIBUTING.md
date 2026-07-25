@@ -84,9 +84,11 @@ GitHub Actions: `.github/workflows/nightly.yml` (daily + `workflow_dispatch`).
 | **E — Examination** | ExaminationUnit + SDA profile | 5 | Stage 1 + 2/3 salvage |
 | **F — Operator** | Indexes, CLI doctor/salvage, server | 6–7 | Stage 4–5 |
 
-Stages **0–8** are implemented (single-node through cluster federation). Stage 1
-is frozen under `sda-standalone-v1.0`; deterministic CBOR envelopes are enforced
-in `dingo-format`. Immediate priority: Stage 9 tiering / archive.
+Stages **0–9** are implemented (single-node through cluster federation and
+filesystem tiering/archive). Stage 1 is frozen under `sda-standalone-v1.0`;
+deterministic CBOR envelopes are enforced in `dingo-format`. Immediate
+priority: network multi-node Raft serve polish and optional object-store media
+connectors (Stage 9 placement API is the seam).
 
 ## Version and BUILD numbers
 

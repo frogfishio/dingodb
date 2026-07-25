@@ -88,6 +88,13 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 
 ## Non-goals until listed stages
 
-- Object-store backends and archive tiering (Stage 9)
+- Live object-store connectors (S3/GCS) — Stage 9 placement/tier API is in
+  `dingo-store`; cloud backends remain a follow-on behind the same seam
 - Marketing-grade Redis-class latency claims without OVERVIEW §12.2 disclosure
 - Network-level multi-node Raft serve (in-process cluster is Stage 8 complete)
+
+## Stage 9 (landed)
+
+Filesystem hot/warm/cold/archive media roots, segment move/copy with stable
+identities, hierarchical segment catalogs, offline-tier coverage honesty, and
+[doc/RUNBOOK_RETENTION.md](doc/RUNBOOK_RETENTION.md).

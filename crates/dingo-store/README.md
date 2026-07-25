@@ -3,41 +3,44 @@
 Single-node authoritative store for DingoDB: filesystem-backed append-only
 segments, put/get/delete by subject, durability modes, catalog-independent
 recovery, Stage 6 derived state (catalogs, secondary indexes, chunks, history,
-compaction, checkpoints), and Stage 7 inspect/salvage-to-path helpers.
+compaction, checkpoints), Stage 7 inspect/salvage-to-path helpers, and Stage 9
+tiering (hot/warm/cold/archive) with offline coverage honesty.
 
-Normative sources: repository root [`OVERVIEW.md`](../../OVERVIEW.md) §§5–7, §13;
+Normative sources: repository root [`OVERVIEW.md`](../../OVERVIEW.md) §§5–7, §9, §13;
 [`FORMAT_SPEC.md`](../../FORMAT_SPEC.md); [`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md)
-Stages 3, 6, and 7.
+Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.md).
 
 ## Status
 
-**Stages 3a–3c + 6 + 7** — open/create, put/get/delete, durability modes
+**Stages 3a–3c + 6 + 7 + 9** — open/create, put/get/delete, durability modes
 (`memory`, `buffered`, `durable`), rebuildable primary index, salvage after
 catalog wipe, OVERVIEW §16 store-level destructive suite, framed store
 descriptor, optional on-disk primary index cache, collection catalog, secondary
 index files, subject history, chunked payloads with partial maps, live-state
 compaction (sources retained), derived checkpoints, benchmark skeleton,
-`open_inspect` (read-only open for doctor), and `salvage_to` (non-destructive
-materialisation into a new store path).
+`open_inspect` (read-only open for doctor), `salvage_to`, segment tier
+move/copy with stable identities, hierarchical segment catalogs, offline-tier
+coverage holes, and multi-generation format classification.
 
-Envelope bytes use a **draft fixed layout** (not yet deterministic CBOR).
-
-## Layout (OVERVIEW §6.1)
+## Layout (OVERVIEW §6.1, §9)
 
 ```text
 store/
   store-info/     # store_id + meta + descriptor.dingo
   active/         # open append segment (at most one)
-  segments/       # sealed immutable segments
+  segments/       # sealed hot segments
+  tiers/          # warm/cold/archive media + roots.txt (Stage 9)
   chunks/         # reserved (payload chunks live in segments for Stage 6)
-  catalogs/       # derived only (collections.cat)
+  catalogs/       # derived only (collections.cat, tier-placement.cat, segments.cat)
   indexes/        # derived only (primary.idx, sec/<coll>/*.six)
   snapshots/      # derived checkpoints
-  recovery/       # operator scratch
+  recovery/       # operator scratch + migrations/ evidence
 ```
 
 Deleting `catalogs/`, `indexes/`, and `snapshots/` must not prevent recovery:
-the store rebuilds current state by scanning `active/` + `segments/`.
+the store rebuilds current state by scanning `active/`, `segments/`, and online
+tier media. Tier **media** files under `tiers/*` are authoritative when segments
+live there.
 
 ## Surface
 
@@ -58,13 +61,16 @@ the store rebuilds current state by scanning `active/` + `segments/`.
 | secondary index helpers | Persist/load/delete `*.six` files |
 | `examination_sources` | Ordered `(source_name, bytes)` for Stage 5 examination |
 | `live_entries` / `live_logical_entries` | Index raw vs reassembled bodies |
+| `transfer_segment_to_tier` | Copy/move sealed segment (stable id) |
+| `set_tier_available` / `tier_coverage` | Offline tier → coverage hole |
+| `get_with_tier_coverage` | Absence only proven when coverage complete |
+| `list_segment_summaries` / `rebuild_segment_catalog` | Cold-search hierarchy |
+| `classify_segment` | Multi-gen format class; preserve unsupported bytes |
 
 ## Non-goals (yet)
 
-- Collection JSON DX (Stage 4/6 — see `dingo-sdk`)
-- SDA examination projection (Stage 5 — see `dingo-examine`)
-- CLI binary (Stage 7 — see `dingo-cli`)
-- Full deterministic-CBOR envelopes
+- Live S3/GCS connectors (filesystem roots stand in for object media)
+- Automatic lifecycle policies
 - `replicated` durability
 
 ## Quick example

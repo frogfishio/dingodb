@@ -13,6 +13,8 @@ pub const CATALOGS: &str = "catalogs";
 pub const INDEXES: &str = "indexes";
 pub const SNAPSHOTS: &str = "snapshots";
 pub const RECOVERY: &str = "recovery";
+/// Tier media roots and operator tier config (Stage 9).
+pub const TIERS: &str = "tiers";
 
 /// Meta file under `store-info/`.
 pub const STORE_ID_FILE: &str = "store_id";
@@ -102,6 +104,11 @@ impl StorePaths {
         self.root.join(RECOVERY)
     }
 
+    /// `tiers/` — warm/cold/archive media roots + roots.txt (Stage 9).
+    pub fn tiers_dir(&self) -> PathBuf {
+        self.root.join(TIERS)
+    }
+
     /// Create the full directory tree for a new store.
     pub fn create_dirs(&self) -> io::Result<()> {
         for dir in [
@@ -113,6 +120,10 @@ impl StorePaths {
             self.indexes_dir(),
             self.snapshots_dir(),
             self.recovery_dir(),
+            self.tiers_dir(),
+            self.tiers_dir().join("warm"),
+            self.tiers_dir().join("cold"),
+            self.tiers_dir().join("archive"),
         ] {
             fs::create_dir_all(dir)?;
         }

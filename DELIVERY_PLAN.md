@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.20 (Stages 0–7 done; Stage 8a–8f cluster complete for in-process profile — find coverage + rebalance + §22 remainder)  
+Status: Draft v0.21 (Stages 0–9: Stage 9 tiering/archive/long-retention landed)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -63,13 +63,14 @@ The governing product rule stays:
 6  Indexes, catalogs, history, chunked payloads
 7  CLI (doctor, salvage) + server mode
 8  Cluster (partition-local consensus, coverage)  — 8a–8f in-process done
-9  Tiering, archive path, long-retention polish
+9  Tiering, archive path, long-retention polish   — done (filesystem media roots)
 ```
 
 Stages 0–4 are the **minimum path to a useful embedded database**.  
 Stages 5–7 complete the **README initial implementation target**.  
 Stages 8–9 are **scale-out and retention** after the single-node product is real.
 Stage **8a–8f** (`dingo-cluster`) completes the in-process cluster profile.
+Stage **9** (`dingo-store` tiers + runbook) completes single-node long retention.
 
 ---
 
@@ -503,6 +504,8 @@ world migrations.
 **Normative scope:** OVERVIEW retention/tiering; CLUSTER_SPEC tiered cluster;
 USP long retention.
 
+**Status:** **Done** (filesystem media roots; object-store connectors later).
+
 **Deliverables**
 
 1. Segment move/copy to colder media with stable identities.
@@ -511,11 +514,27 @@ USP long retention.
 4. Media migration and multi-generation format readers
    (`format-unsupported` + byte preservation).
 
+**Implementation notes**
+
+- `dingo-store`: `tier.rs` (placement, transfer, coverage, format classify),
+  `segment_catalog.rs` (hierarchical summaries), layout `tiers/` +
+  `catalogs/tier-placement.cat` + `catalogs/segments.cat`.
+- APIs: `transfer_segment_to_tier`, `set_tier_available`, `tier_coverage`,
+  `get_with_tier_coverage`, `list_segment_summaries`, `classify_segment`.
+- Tests: `stage9_tiering.rs`, `stage9_archive_bench.rs`.
+- Runbook: [doc/RUNBOOK_RETENTION.md](doc/RUNBOOK_RETENTION.md).
+
 **Exit criteria**
 
-- Cold retrieval never claimed under hot-path latency SLOs.
-- Offline tier unavailable → explicit coverage hole, not empty success.
-- Multi-year story is operationally documented (runbooks), not only aspirational.
+- ~~Cold retrieval never claimed under hot-path latency SLOs.~~
+- ~~Offline tier unavailable → explicit coverage hole, not empty success.~~
+- ~~Multi-year story is operationally documented (runbooks), not only aspirational.~~
+
+**Follow-ons (not Stage 9 blockers)**
+
+- Live S3/GCS backends behind the same placement API.
+- Automatic lifecycle policies; erasure-coded archive shards.
+- Network multi-node Raft serve polish (post–Stage 8 in-process).
 
 ---
 
@@ -697,5 +716,8 @@ the cited conformance suites as required checks—not optional polish.
     (`cbor_envelope.rs`, FORMAT_SPEC §4.4 / §5 condition 6); empty envelope
     is the empty map `0xa0`; item envelopes in `dingo-store` are CBOR
     uint-keyed maps (keys 1–6).
-23. **Next:** Stage 9 tiering / archive; network-level multi-node Raft serve
-    polish.
+23. ~~Stage 9 tiering / archive.~~ **Done** — segment move/copy, hierarchical
+    catalogs, offline coverage honesty, archive-path bench class, retention
+    runbook (`stage9_tiering.rs`, `doc/RUNBOOK_RETENTION.md`).
+24. **Next:** network-level multi-node Raft serve polish; optional object-store
+    media connectors behind Stage 9 placement.

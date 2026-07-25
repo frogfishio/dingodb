@@ -1,4 +1,4 @@
-//! Filesystem-backed append store (OVERVIEW §§6–7, Stage 6).
+//! Filesystem-backed append store (OVERVIEW §§6–7, §9; Stages 3, 6, 9).
 
 use crate::catalog::{rebuild_collection_catalog, try_load_collection_catalog, CollectionCatalog};
 use crate::chunk_payload::{
@@ -15,7 +15,7 @@ use crate::envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
 };
 use crate::error::StoreError;
-use crate::history::{subject_history, SubjectHistory};
+use crate::history::{subject_history_tiered, SubjectHistory};
 use crate::index::PrimaryIndex;
 use crate::index_cache::{
     primary_cache_path, segment_fingerprint, try_load_primary_index, write_primary_index,
@@ -24,6 +24,16 @@ use crate::layout::{list_dingo_files, StorePaths};
 use crate::secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,
     try_load_secondary_index, write_secondary_index, SecondaryIndex,
+};
+use crate::segment_catalog::{
+    rebuild_segment_catalog, segment_catalog_path, try_load_segment_catalog, write_segment_catalog,
+    SegmentCatalog, SegmentSummary,
+};
+use crate::tier::{
+    classify_segment_bytes, discover_placements, load_tier_roots_file, register_hot_segment,
+    tier_placement_path, transfer_segment, try_load_placement, write_placement,
+    write_tier_roots_file, FormatClassification, MigrationEvidence, TierAwareGet, TierClass,
+    TierCoverage, TierMoveMode, TierPlacement,
 };
 use dingo_format::{
     decode_store_descriptor_body, encode_store_descriptor_frame, scan_forward, ActiveSegment,
@@ -37,7 +47,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Draft meta format version written under `store-info/meta`.
-const META_VERSION: &str = "dingo-store-6\n";
+const META_VERSION: &str = "dingo-store-9\n";
 
 /// Soft max size of the active segment before auto-seal (bytes).
 const DEFAULT_SEAL_THRESHOLD: u64 = 4 * 1024 * 1024;
@@ -107,6 +117,10 @@ pub struct Store {
     chunk_size: usize,
     /// Derived collection catalog (rebuildable).
     collection_catalog: CollectionCatalog,
+    /// Segment placement across storage tiers (Stage 9, derived).
+    tier_placement: TierPlacement,
+    /// Hierarchical segment summary catalog (Stage 9, derived).
+    segment_catalog: SegmentCatalog,
 }
 
 struct ActiveWriter {
@@ -157,11 +171,14 @@ impl Store {
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
+            tier_placement: TierPlacement::new(),
+            segment_catalog: SegmentCatalog::new(),
         };
         store.start_active_segment()?;
         store.persist_active(DurabilityMode::Durable)?;
         store.persist_index_cache()?;
         store.refresh_collection_catalog()?;
+        store.refresh_tier_state()?;
         Ok(store)
     }
 
@@ -204,7 +221,10 @@ impl Store {
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
+            tier_placement: TierPlacement::new(),
+            segment_catalog: SegmentCatalog::new(),
         };
+        store.load_tier_state()?;
         store.load_or_rebuild_index()?;
         store.load_or_rebuild_catalog()?;
         store.resume_or_start_active()?;
@@ -243,9 +263,12 @@ impl Store {
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
+            tier_placement: TierPlacement::new(),
+            segment_catalog: SegmentCatalog::new(),
         };
+        store.load_tier_state_readonly()?;
         // Memory-only index: prefer valid cache, else rebuild without writing.
-        let seg_paths = all_segment_paths(&store.paths)?;
+        let seg_paths = all_segment_paths(&store.paths, Some(&store.tier_placement))?;
         let fp = segment_fingerprint(&seg_paths)?;
         let cache_path = primary_cache_path(&store.paths.indexes_dir());
         if let Some(index) = try_load_primary_index(&cache_path, store.store_id, fp)? {
@@ -261,7 +284,7 @@ impl Store {
             store.collection_catalog = cat;
         } else {
             store.collection_catalog =
-                rebuild_collection_catalog(&store.paths, store.store_id, &store.index, fp)?;
+                CollectionCatalog::from_index(&store.index);
         }
         // Intentionally no resume_or_start_active — no writer handle.
         Ok(store)
@@ -395,7 +418,12 @@ impl Store {
 
     /// Event history for a subject key (oldest first; DX_SPEC §10.1).
     pub fn history(&self, subject: &str) -> Result<SubjectHistory, StoreError> {
-        subject_history(&self.paths, self.limits, subject.as_bytes())
+        subject_history_tiered(
+            &self.paths,
+            self.limits,
+            subject.as_bytes(),
+            Some(&self.tier_placement),
+        )
     }
 
     /// Rebuild the primary index by scanning all segment files (no catalog trust).
@@ -437,7 +465,7 @@ impl Store {
     /// Compact live state into a new sealed segment (sources retained).
     pub fn compact_live(&mut self) -> Result<CompactReport, StoreError> {
         self.seal_active()?;
-        let sources = all_segment_paths(&self.paths)?
+        let sources = all_segment_paths(&self.paths, Some(&self.tier_placement))?
             .into_iter()
             .map(|p| examination_source_name(&self.paths.root, &p))
             .collect::<Vec<_>>();
@@ -462,6 +490,9 @@ impl Store {
             created_ns,
         )?;
         self.event_counter = counter;
+        let _ = register_hot_segment(&self.paths, &mut self.tier_placement, segment_id);
+        let _ = self.persist_tier_state();
+        let _ = self.refresh_segment_catalog();
         // Index remains valid (live values unchanged). Refresh cache/catalog.
         let _ = self.persist_index_cache();
         Ok(report)
@@ -469,7 +500,7 @@ impl Store {
 
     /// Write a derived checkpoint under `snapshots/` with declared coverage.
     pub fn checkpoint(&self, coverage: &str) -> Result<(CheckpointMeta, PathBuf), StoreError> {
-        let paths_list = all_segment_paths(&self.paths)?;
+        let paths_list = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths_list)?;
         let live: Vec<(Vec<u8>, Vec<u8>)> = self
             .index
@@ -539,7 +570,7 @@ impl Store {
 
     /// Current segment fingerprint (for index build coverage).
     pub fn segment_fingerprint(&self) -> Result<[u8; 32], StoreError> {
-        let paths = all_segment_paths(&self.paths)?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         segment_fingerprint(&paths)
     }
 
@@ -550,7 +581,7 @@ impl Store {
 
     /// Load optional index cache when fingerprint matches; otherwise rebuild.
     fn load_or_rebuild_index(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths)?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
         let cache_path = primary_cache_path(&self.paths.indexes_dir());
         if let Some(index) = try_load_primary_index(&cache_path, self.store_id, fp)? {
@@ -563,9 +594,9 @@ impl Store {
     }
 
     fn rebuild_index_from_segments(&mut self) -> Result<(), StoreError> {
-        self.index = index_from_segments(&self.paths, self.limits)?;
+        self.index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
         let sealed = list_dingo_files(&self.paths.segments_dir())?;
-        let paths = all_segment_paths(&self.paths)?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
         Ok(())
     }
@@ -576,9 +607,9 @@ impl Store {
     /// in-process memory-mode publishes are never persisted. Safe to delete:
     /// open/rebuild rescans segments.
     pub fn persist_index_cache(&self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths)?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
-        let disk_index = index_from_segments(&self.paths, self.limits)?;
+        let disk_index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
         write_primary_index(
             &primary_cache_path(&self.paths.indexes_dir()),
             self.store_id,
@@ -607,7 +638,7 @@ impl Store {
         let mut item_events = 0u64;
         let mut holes = 0u64;
 
-        for path in all_segment_paths(&self.paths)? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
             let bytes = fs::read(&path)?;
             files_scanned += 1;
             let report = scan_forward(&bytes, self.limits);
@@ -623,7 +654,8 @@ impl Store {
             }
         }
 
-        let temp_index = index_from_segments(&self.paths, self.limits)?;
+        let temp_index =
+            index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
         Ok(SalvageReport {
             files_scanned,
             verified_frames,
@@ -673,7 +705,7 @@ impl Store {
     /// examination units without depending on catalogs or indexes.
     pub fn examination_sources(&self) -> Result<Vec<(String, Vec<u8>)>, StoreError> {
         let mut out = Vec::new();
-        for path in all_segment_paths(&self.paths)? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
             let source = examination_source_name(&self.paths.root, &path);
             let bytes = fs::read(&path)?;
             out.push((source, bytes));
@@ -711,12 +743,18 @@ impl Store {
         sync_dir(&self.paths.segments_dir())?;
 
         // Truncate/remove active.
+        let sealed_id = writer.segment_id;
         drop(writer.file);
         let active_path = self.paths.active_segment();
         if active_path.exists() {
             fs::remove_file(&active_path)?;
         }
         sync_dir(&self.paths.active_dir())?;
+
+        // Stage 9: register sealed segment on hot tier.
+        let _ = register_hot_segment(&self.paths, &mut self.tier_placement, sealed_id);
+        let _ = self.persist_tier_state();
+        let _ = self.refresh_segment_catalog();
 
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment()?;
@@ -726,6 +764,9 @@ impl Store {
     }
 
     /// Paths used for derived state (safe to delete for salvage tests).
+    ///
+    /// Tier **media** under `tiers/warm|cold|archive` is authoritative when
+    /// segments live there; only `catalogs/` placement/summary files are derived.
     pub fn derived_dirs(&self) -> Vec<PathBuf> {
         vec![
             self.paths.catalogs_dir(),
@@ -734,10 +775,217 @@ impl Store {
         ]
     }
 
+    // --- Stage 9: tiers / archive ---
+
+    /// Current tier placement map (segment id → media).
+    pub fn tier_placement(&self) -> &TierPlacement {
+        &self.tier_placement
+    }
+
+    /// Hierarchical segment summary catalog (cold-search accelerator).
+    pub fn segment_catalog(&self) -> &SegmentCatalog {
+        &self.segment_catalog
+    }
+
+    /// Tier coverage for the current open state (offline media → incomplete).
+    pub fn tier_coverage(&self) -> TierCoverage {
+        self.tier_placement.coverage()
+    }
+
+    /// Mark a storage tier online or offline without deleting media.
+    ///
+    /// Offline tiers create coverage holes; they must not be reported as empty
+    /// successful absence (OVERVIEW §9.2).
+    pub fn set_tier_available(&mut self, tier: TierClass, available: bool) -> Result<(), StoreError> {
+        self.tier_placement.set_tier_available(tier, available);
+        self.persist_tier_state()?;
+        // Rebuild index from remaining available segments only.
+        self.rebuild_index_from_segments()?;
+        let _ = self.persist_index_cache();
+        let _ = self.refresh_collection_catalog();
+        self.refresh_segment_catalog()?;
+        Ok(())
+    }
+
+    /// Copy or move a sealed segment to another tier (stable segment identity).
+    pub fn transfer_segment_to_tier(
+        &mut self,
+        segment_id: [u8; 16],
+        to_tier: TierClass,
+        mode: TierMoveMode,
+    ) -> Result<MigrationEvidence, StoreError> {
+        // Ensure placement knows about hot sealed segments.
+        discover_placements(&self.paths, &mut self.tier_placement)?;
+        let evidence = transfer_segment(
+            &self.paths,
+            &mut self.tier_placement,
+            segment_id,
+            to_tier,
+            mode,
+        )?;
+        self.persist_tier_state()?;
+        self.refresh_segment_catalog()?;
+        // Fingerprint changed; refresh derived caches.
+        let _ = self.persist_index_cache();
+        Ok(evidence)
+    }
+
+    /// List sealed segment ids currently registered (any tier).
+    pub fn list_segment_ids(&self) -> Vec<[u8; 16]> {
+        self.tier_placement
+            .entries()
+            .map(|p| p.segment_id)
+            .collect()
+    }
+
+    /// Segment summaries for cold search (hierarchical catalog).
+    pub fn list_segment_summaries(&self) -> Vec<SegmentSummary> {
+        self.segment_catalog.summaries().cloned().collect()
+    }
+
+    /// Rebuild hierarchical segment catalog from available media.
+    ///
+    /// After catalog loss, offline segments retained in placement keep last-known
+    /// metadata when possible; available segments are re-scanned.
+    pub fn rebuild_segment_catalog(&mut self) -> Result<(), StoreError> {
+        discover_placements(&self.paths, &mut self.tier_placement)?;
+        self.refresh_segment_catalog()?;
+        self.persist_tier_state()?;
+        Ok(())
+    }
+
+    /// Get with explicit tier coverage (absence only proven when coverage complete).
+    pub fn get_with_tier_coverage(&self, subject: &str) -> Result<TierAwareGet, StoreError> {
+        let coverage = self.tier_coverage();
+        let value = self.get(subject)?;
+        let absence_proven = value.is_none() && coverage.is_complete();
+        Ok(TierAwareGet {
+            value,
+            coverage,
+            absence_proven,
+        })
+    }
+
+    /// Classify a sealed segment file without rewriting bytes (multi-gen readers).
+    pub fn classify_segment(&self, segment_id: &[u8; 16]) -> Result<FormatClassification, StoreError> {
+        let path = if let Some(p) = self.tier_placement.get(segment_id) {
+            crate::tier::resolve_placement_path(&self.paths, p)?
+        } else {
+            self.paths.sealed_segment(segment_id)
+        };
+        if !path.is_file() {
+            return Err(StoreError::SegmentNotFound);
+        }
+        let bytes = fs::read(&path)?;
+        Ok(classify_segment_bytes(&bytes))
+    }
+
+    /// Soft seal threshold override (tests / operators).
+    pub fn set_seal_threshold(&mut self, bytes: u64) {
+        if bytes > 0 {
+            self.seal_threshold = bytes;
+        }
+    }
+
     // --- internals ---
 
+    fn load_tier_state(&mut self) -> Result<(), StoreError> {
+        load_tier_roots_file(&self.paths, &mut self.tier_placement);
+        let path = tier_placement_path(&self.paths.catalogs_dir());
+        if let Some(p) = try_load_placement(&path, self.store_id)? {
+            // Preserve offline flags from roots after load.
+            let roots_avail: Vec<_> = [
+                TierClass::Hot,
+                TierClass::Warm,
+                TierClass::Cold,
+                TierClass::Archive,
+            ]
+            .into_iter()
+            .map(|t| (t, self.tier_placement.is_tier_available(t)))
+            .collect();
+            self.tier_placement = p;
+            for (t, a) in roots_avail {
+                // roots.txt is operator source of truth for online/offline.
+                if !a {
+                    self.tier_placement.set_tier_available(t, false);
+                }
+            }
+            load_tier_roots_file(&self.paths, &mut self.tier_placement);
+        }
+        discover_placements(&self.paths, &mut self.tier_placement)?;
+        let prior = try_load_segment_catalog(
+            &segment_catalog_path(&self.paths.catalogs_dir()),
+            self.store_id,
+        )?;
+        self.segment_catalog = rebuild_segment_catalog(
+            &self.paths,
+            &self.tier_placement,
+            prior.as_ref(),
+            self.limits,
+        )?;
+        let _ = write_segment_catalog(
+            &segment_catalog_path(&self.paths.catalogs_dir()),
+            self.store_id,
+            &self.segment_catalog,
+        );
+        let _ = write_placement(&path, self.store_id, &self.tier_placement);
+        let _ = write_tier_roots_file(&self.paths, &self.tier_placement);
+        Ok(())
+    }
+
+    fn load_tier_state_readonly(&mut self) -> Result<(), StoreError> {
+        load_tier_roots_file(&self.paths, &mut self.tier_placement);
+        let path = tier_placement_path(&self.paths.catalogs_dir());
+        if let Some(p) = try_load_placement(&path, self.store_id)? {
+            self.tier_placement = p;
+            load_tier_roots_file(&self.paths, &mut self.tier_placement);
+        }
+        discover_placements(&self.paths, &mut self.tier_placement)?;
+        let prior = try_load_segment_catalog(
+            &segment_catalog_path(&self.paths.catalogs_dir()),
+            self.store_id,
+        )?;
+        self.segment_catalog = rebuild_segment_catalog(
+            &self.paths,
+            &self.tier_placement,
+            prior.as_ref(),
+            self.limits,
+        )?;
+        Ok(())
+    }
+
+    fn refresh_tier_state(&mut self) -> Result<(), StoreError> {
+        discover_placements(&self.paths, &mut self.tier_placement)?;
+        self.refresh_segment_catalog()?;
+        self.persist_tier_state()?;
+        Ok(())
+    }
+
+    fn persist_tier_state(&self) -> Result<(), StoreError> {
+        let path = tier_placement_path(&self.paths.catalogs_dir());
+        write_placement(&path, self.store_id, &self.tier_placement)?;
+        write_tier_roots_file(&self.paths, &self.tier_placement)?;
+        Ok(())
+    }
+
+    fn refresh_segment_catalog(&mut self) -> Result<(), StoreError> {
+        let prior = self.segment_catalog.clone();
+        self.segment_catalog = rebuild_segment_catalog(
+            &self.paths,
+            &self.tier_placement,
+            Some(&prior),
+            self.limits,
+        )?;
+        let _ = write_segment_catalog(
+            &segment_catalog_path(&self.paths.catalogs_dir()),
+            self.store_id,
+            &self.segment_catalog,
+        );
+        Ok(())
+    }
+
     fn load_or_rebuild_catalog(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths)?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
         let cat_path = crate::catalog::collections_catalog_path(&self.paths.catalogs_dir());
         if let Some(cat) = try_load_collection_catalog(&cat_path, self.store_id, fp)? {
@@ -748,7 +996,7 @@ impl Store {
     }
 
     fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths)?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
         self.collection_catalog =
             rebuild_collection_catalog(&self.paths, self.store_id, &self.index, fp)?;
@@ -908,7 +1156,7 @@ impl Store {
     ) -> Result<Vec<dingo_format::ChunkPiece>, StoreError> {
         let mut pieces = Vec::new();
         let mut seen_hashes: HashSet<([u8; 16], u32, [u8; 32])> = HashSet::new();
-        for path in all_segment_paths(&self.paths)? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
             let bytes = fs::read(&path)?;
             let report = scan_forward(&bytes, self.limits);
             for (_offset, frame) in report.verified_frames() {
@@ -1175,13 +1423,22 @@ pub(crate) fn cmp_disk_events_pub(a: &DiskEventPub, b: &DiskEventPub) -> Orderin
 }
 
 /// Collect verified item events from all segment files; also reports holes.
-pub(crate) fn collect_item_events_pub(
+pub(crate) fn collect_item_events_for_history(
     paths: &StorePaths,
     limits: SafetyLimits,
+    placement: Option<&TierPlacement>,
+) -> Result<(Vec<DiskEventPub>, bool), StoreError> {
+    collect_item_events_tiered(paths, limits, placement)
+}
+
+fn collect_item_events_tiered(
+    paths: &StorePaths,
+    limits: SafetyLimits,
+    placement: Option<&TierPlacement>,
 ) -> Result<(Vec<DiskEventPub>, bool), StoreError> {
     let mut events = Vec::new();
     let mut has_holes = false;
-    for path in all_segment_paths(paths)? {
+    for path in all_segment_paths(paths, placement)? {
         let bytes = fs::read(&path)?;
         let report = scan_forward(&bytes, limits);
         if report.holes().next().is_some() {
@@ -1276,13 +1533,21 @@ fn verify_store_descriptor_if_present(
     Ok(())
 }
 
-fn all_segment_paths(paths: &StorePaths) -> Result<Vec<PathBuf>, StoreError> {
-    let mut out = list_dingo_files(&paths.segments_dir())?;
+fn all_segment_paths(
+    paths: &StorePaths,
+    placement: Option<&TierPlacement>,
+) -> Result<Vec<PathBuf>, StoreError> {
+    let mut out = if let Some(p) = placement {
+        crate::tier::available_sealed_paths(paths, p)?
+    } else {
+        // Hot sealed only (legacy callers without placement).
+        list_dingo_files(&paths.segments_dir())?
+    };
     let active = paths.active_segment();
     if active.is_file() {
         out.push(active);
     }
-    // Sealed first (sorted), then active last — list_dingo already sorted sealed.
+    // Sealed first (sorted), then active last.
     Ok(out)
 }
 
@@ -1300,8 +1565,9 @@ fn examination_source_name(root: &Path, path: &Path) -> String {
 fn collect_item_events(
     paths: &StorePaths,
     limits: SafetyLimits,
+    placement: Option<&TierPlacement>,
 ) -> Result<Vec<DiskEvent>, StoreError> {
-    let (events, _holes) = collect_item_events_pub(paths, limits)?;
+    let (events, _holes) = collect_item_events_tiered(paths, limits, placement)?;
     Ok(events)
 }
 
@@ -1311,11 +1577,15 @@ fn collect_item_events(
 /// (OVERVIEW §16.10) do not scramble put/delete application: segment mint
 /// order (LE u64 in `segment_id`) → `writer_sequence` → offset. Duplicate
 /// segment copies are ignored via `event_id` dedup (first occurrence wins).
+///
+/// When `placement` is set, only **available** tier media are scanned; offline
+/// segments are omitted and must be reported via [`TierCoverage`].
 fn index_from_segments(
     paths: &StorePaths,
     limits: SafetyLimits,
+    placement: Option<&TierPlacement>,
 ) -> Result<PrimaryIndex, StoreError> {
-    let mut events = collect_item_events(paths, limits)?;
+    let mut events = collect_item_events(paths, limits, placement)?;
     events.sort_by(cmp_disk_events);
     let mut index = PrimaryIndex::new();
     let mut seen_events: HashSet<[u8; 16]> = HashSet::new();

@@ -267,6 +267,9 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::Frame(_) | StoreError::Segment(_) => ErrorCode::DataDamaged,
         StoreError::PayloadPartial => ErrorCode::PayloadPartial,
         StoreError::PayloadConflict => ErrorCode::DataDamaged,
+        StoreError::SegmentNotFound => ErrorCode::NotFound,
+        StoreError::TierOffline(_) => ErrorCode::PartitionUnavailable,
+        StoreError::FormatUnsupported { .. } => ErrorCode::FormatUnsupported,
     }
 }
 

@@ -6,7 +6,8 @@
 use crate::envelope::EventKind;
 use crate::error::StoreError;
 use crate::layout::StorePaths;
-use crate::store::{cmp_disk_events_pub, collect_item_events_pub, DiskEventPub};
+use crate::store::{cmp_disk_events_pub, collect_item_events_for_history, DiskEventPub};
+use crate::tier::TierPlacement;
 use dingo_format::SafetyLimits;
 use std::collections::HashSet;
 
@@ -44,13 +45,25 @@ pub struct SubjectHistory {
     pub has_known_holes: bool,
 }
 
-/// Collect history for `subject` by scanning all segment files.
+/// Collect history for `subject` by scanning all available segment files.
+#[allow(dead_code)] // hot-only helper retained for salvage tools
 pub fn subject_history(
     paths: &StorePaths,
     limits: SafetyLimits,
     subject: &[u8],
 ) -> Result<SubjectHistory, StoreError> {
-    let (mut events, has_known_holes) = collect_subject_disk_events(paths, limits, subject)?;
+    subject_history_tiered(paths, limits, subject, None)
+}
+
+/// Collect history scanning only available tiers when `placement` is set.
+pub fn subject_history_tiered(
+    paths: &StorePaths,
+    limits: SafetyLimits,
+    subject: &[u8],
+    placement: Option<&TierPlacement>,
+) -> Result<SubjectHistory, StoreError> {
+    let (mut events, has_known_holes) =
+        collect_subject_disk_events(paths, limits, subject, placement)?;
     events.sort_by(cmp_disk_events_pub);
 
     let mut seen: HashSet<[u8; 16]> = HashSet::new();
@@ -89,8 +102,9 @@ fn collect_subject_disk_events(
     paths: &StorePaths,
     limits: SafetyLimits,
     subject: &[u8],
+    placement: Option<&TierPlacement>,
 ) -> Result<(Vec<DiskEventPub>, bool), StoreError> {
-    let (all, has_holes) = collect_item_events_pub(paths, limits)?;
+    let (all, has_holes) = collect_item_events_for_history(paths, limits, placement)?;
     let filtered: Vec<_> = all
         .into_iter()
         .filter(|e| e.subject.as_slice() == subject)
