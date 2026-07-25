@@ -2,22 +2,29 @@
 
 Collection SDK for DingoDB: ordinary `open`, remote `connect`, or multi-node
 `open_cluster` / `create_cluster` + named collections with JSON and raw-byte
-put/get/delete, JSON filters, secondary indexes, per-key history, and query
-budgets over [`dingo-store`](../dingo-store) / [`dingo-cluster`](../dingo-cluster).
+put/get/delete, JSON filters, secondary indexes, per-key history, query budgets,
+and cluster find coverage over [`dingo-store`](../dingo-store) /
+[`dingo-cluster`](../dingo-cluster).
 
 Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, §14;
-[`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md) Stages 4, 6, 7, and 8d;
-[`CLUSTER_SPEC.md`](../../CLUSTER_SPEC.md) §13 (client routing).
+[`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md) Stages 4, 6, 7, and 8d–8e;
+[`CLUSTER_SPEC.md`](../../CLUSTER_SPEC.md) §13 (client routing), §17 (coverage).
 
 ## Status
 
-**Stages 4a–4d + 6 + 7 + 8d** — open, JSON/bytes put/get/delete, scan + streaming
-iter, SDK-native filters, stable `ErrorCode`, write receipts, secondary field
-indexes, query budgets, per-key history, chunked large payloads, Stage 7
-`Dingo::connect("dingo://host:port")` over line-delimited JSON TCP, and Stage 8d
-**cluster routing** with a client partition directory cache. Remote parity
-covers put/get/delete/scan, **history**, **secondary indexes**,
-**`get_payload`**, **server-side find**, and **`directory`**.
+**Shipped** (Stages 4a–4d + 6 + 7 + 8d–8e) — freeze label
+`SDK_API_VERSION` = `1.0`.
+
+| Area | What you get |
+|------|----------------|
+| Embedded | `Dingo::open`, JSON/bytes put/get/delete, scan + streaming iter |
+| Filters | SDK-native `Filter` / `find` / `query`, secondary field indexes, budgets |
+| History | Per-key immutable event stream |
+| Chunks | Completeness-aware `get_payload` for large bodies |
+| Remote | `Dingo::connect("dingo://host:port")` line-delimited JSON TCP; auth token, deadline, retry |
+| Parity | Remote put/get/delete/scan, history, indexes, `get_payload`, server-side find, `directory` |
+| Cluster | `create_cluster` / `open_cluster`, client partition directory cache, `find_with_coverage` |
+| Network multi-hop | `serve_cluster_node` + multi-seed connect; leader routing from directory |
 
 Application developers do not need to know about frames or segments.
 
@@ -27,9 +34,10 @@ Application developers do not need to know about frames or segments.
 |-----|------|
 | `Dingo::open` | Create-or-open store directory with safe defaults |
 | `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` or multi-seed `h1:p1,h2:p2` + `ConnectOptions` |
-| `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster (Stage 8d); same collection API + route cache |
+| `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster; same collection API + route cache |
 | `ClientDirectoryCache` | Client partition → leader cache; refresh on stale placement |
 | `serve_store` / `serve_store_with` | TCP server helpers (`ServeOptions` token; `directory` op) |
+| `serve_cluster_node` | Serve one cluster node; advertise placement + endpoints |
 | `Dingo::collection` | Lazy named collection handle (no disk write) |
 | `Dingo::list_collections` / `rebuild_catalogs` | Derived catalog (rebuild embedded only) |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |
@@ -38,12 +46,14 @@ Application developers do not need to know about frames or segments.
 | `Collection::scan_keys` / `scan_json` | Bounded live scan |
 | `Collection::scan_json_iter` | Streaming JSON rows (embedded) |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration (embedded + remote server-side) |
+| `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list secondary indexes (embedded + remote) |
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
 | `handle_connection` / `handle_connection_with` | Per-connection server dispatch |
-| `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget |
+| `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget / `allow_partial_coverage` |
 | `WriteReceipt` / `DeleteReceipt` | Event identity + achieved durability |
 | `Error::code` / `ErrorCode` | Stable machine codes (DX §15) |
+| `SDK_API_VERSION` | Product freeze label for this collection surface |
 
 ## Quick example
 
@@ -84,7 +94,28 @@ db.collection("users")?.put("user-42", &json!({ "name": "Alice" }))?;
 # Ok::<(), dingo_sdk::Error>(())
 ```
 
-## Subject encoding (draft)
+In-process cluster:
+
+```rust
+use dingo_sdk::{json, ClusterConfig, Dingo, Filter, QueryOptions};
+
+# let dir = tempfile::tempdir().unwrap();
+let mut db = Dingo::create_cluster(
+    ClusterConfig::development(dir.path().join("cluster")).with_virtual_partitions(16),
+)?;
+{
+    let mut users = db.collection("users")?;
+    users.put("user-42", &json!({ "status": "active" }))?;
+    let covered = users.find_with_coverage(
+        &Filter::field("status").eq("active"),
+        QueryOptions::new().allow_partial_coverage(),
+    )?;
+    let _ = covered.coverage.is_complete();
+}
+# Ok::<(), dingo_sdk::Error>(())
+```
+
+## Subject encoding
 
 Logical `(collection, key)` pairs map to store subjects as:
 
@@ -102,10 +133,13 @@ Payloads are typed:
 Large bodies may be stored as chunked payloads (store threshold); ordinary get
 returns complete data only when every chunk verifies.
 
-## Non-goals (yet)
+## Out of scope (this crate)
 
-- Cluster routing (Stage 8)
-- Mutual TLS / multi-tenant ACLs (shared token only for Stage 7e)
-- SDA examination of holes / recovery units — see [`dingo-examine`](../dingo-examine) (Stage 5)
+These live elsewhere or remain product follow-ons:
+
+- Mutual TLS / multi-tenant ACLs (shared token only for Stage 7e-style auth)
+- SDA examination of holes / recovery units — see [`dingo-examine`](../dingo-examine)
 - Unique secondary indexes with partition consistency scopes
-- Full DX §15 codes that only apply in cluster mode
+- Full DX §15 codes that only apply beyond the current cluster profile
+- Network Raft log shipping (multi-hop client routing is shipped; quorum write
+  path remains in-process `open_cluster`)

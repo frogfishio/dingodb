@@ -7,6 +7,15 @@ It provides a small host-facing API for parsing, validating, formatting, and
 evaluating standalone SDA programs over JSON values. Evaluation is pure: no
 file or network IO lives in this crate.
 
+## Status
+
+**Shipped** (Stage 1 complete). Standalone behavior is frozen under
+`sda_lib::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
+require a new corpus tag.
+
+DingoDB recovery examination (ExaminationUnit projection) lives in
+[`dingo-examine`](../dingo-examine), not here — this crate stays pure.
+
 ## Install (workspace)
 
 ```toml
@@ -34,25 +43,25 @@ If you want to bind host input under a name other than `input`, use
 - `check` — parse and validate source without evaluating it
 - `format_source` — emit canonical SDA formatting
 - `from_json` / `to_json` — bridge between JSON and SDA values
+- `CONFORMANCE_CORPUS_TAG` — freeze identity for standalone semantics
 
 ## Conformance freeze
-
-Standalone behavior is locked under the corpus tag
-`sda_lib::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`):
 
 - Automated suite: `tests/sda_conformance.rs` (`section_14_1_minimal_suite`,
   `section_14_must_lock`, and related §6–§13 modules)
 - Golden vectors: `tests/sda/section14_must.json` (tag in `tests/sda/VERSION`)
 
-Semantic changes require a new corpus tag.
+```sh
+cargo test -p sda-lib
+```
 
 ## Documentation
 
 - Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
 - DingoDB examination profile: [SDA_PROFILE.md](../../SDA_PROFILE.md)
 - User-facing SDA docs: [doc/SDA/](../../doc/SDA/)
-- Delivery stage: Stage 1 in [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)
+- Delivery: Stage 1 **done** in [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)
 
 ## CLI
 
-For shell use, see the `sda` package in `crates/sda-cli`.
+For shell use, see the `sda` package in [`crates/sda-cli`](../sda-cli).

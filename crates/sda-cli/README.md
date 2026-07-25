@@ -5,6 +5,11 @@
 It evaluates SDA programs over JSON input, validates source without executing
 it, and emits canonical SDA formatting for editor and CI workflows.
 
+## Status
+
+**Shipped** with Stage 1. Library freeze tag `sda-standalone-v1.0` lives in
+`sda-lib`; this binary is the shell front-end (`eval`, `check`, `fmt`).
+
 ## Install from this workspace
 
 ```sh
@@ -19,6 +24,8 @@ sda eval -f extract.sda -i event.json --compact
 sda check -f extract.sda
 sda fmt -f extract.sda --check
 sda fmt -f extract.sda --write
+sda --version
+sda --license
 ```
 
 ## Exit behavior
@@ -32,9 +39,11 @@ sda fmt -f extract.sda --write
 
 - Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
 - User docs: [doc/SDA/](../../doc/SDA/)
-- Library: [crates/sda-core](../sda-core)
+- Library: [crates/sda-core](../sda-core) (`sda-lib`)
+- Delivery: Stage 1 **done** in [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)
 
 ## Library
 
 Embed SDA in a Rust program with the `sda-lib` crate (`crates/sda-core`), not
-by shelling out to this binary.
+by shelling out to this binary. For DingoDB recovery examination, use
+[`dingo-examine`](../dingo-examine) (or `dingo doctor`).

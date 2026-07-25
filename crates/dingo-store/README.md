@@ -2,9 +2,9 @@
 
 Single-node authoritative store for DingoDB: filesystem-backed append-only
 segments, put/get/delete by subject, durability modes, catalog-independent
-recovery, Stage 6 derived state (catalogs, secondary indexes, chunks, history,
-compaction, checkpoints), Stage 7 inspect/salvage-to-path helpers, and Stage 9
-tiering (hot/warm/cold/archive) with offline coverage honesty.
+recovery, derived state (catalogs, secondary indexes, chunks, history,
+compaction, checkpoints), inspect/salvage-to-path helpers, and tiering
+(hot/warm/cold/archive) with offline coverage honesty.
 
 Normative sources: repository root [`OVERVIEW.md`](../../OVERVIEW.md) §§5–7, §9, §13;
 [`FORMAT_SPEC.md`](../../FORMAT_SPEC.md); [`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md)
@@ -12,17 +12,20 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 
 ## Status
 
-**Stages 3a–3c + 6 + 7 + 9** — open/create, put/get/delete, durability modes
-(`memory`, `buffered`, `durable`), rebuildable primary index, salvage after
-catalog wipe, OVERVIEW §16 store-level destructive suite, framed store
-descriptor, optional on-disk primary index cache, collection catalog, secondary
-index files, subject history, chunked payloads with partial maps, live-state
-compaction (sources retained), derived checkpoints, benchmark skeleton,
-`open_inspect` (read-only open for doctor), `salvage_to`, segment tier
-move/copy with stable identities, hierarchical segment catalogs, offline-tier
-coverage holes, multi-generation format classification, and the object-store
-media seam (`MediaLocator`, `object:local:`, live `s3://` / `gs://` via
-`DINGO_S3_ROOT` / `DINGO_GS_ROOT` mirrors).
+**Shipped** (Stages 3a–3c + 6 + 7 inspect/salvage + 9) —
+
+| Area | What you get |
+|------|----------------|
+| Core | open/create, put/get/delete, durability modes (`memory`, `buffered`, `durable`) |
+| Recovery | rebuildable primary index, salvage after catalog wipe, OVERVIEW §16 suite |
+| Meta | framed store descriptor, optional on-disk primary index cache |
+| Derived | collection catalog, secondary index files, subject history, checkpoints |
+| Chunks | chunked payloads with partial maps; live-state compaction (sources retained) |
+| Operator | `open_inspect` (read-only doctor), `salvage_to` |
+| Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
+| Honesty | offline-tier coverage holes, multi-generation format classification |
+| Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
+| Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
 ## Layout (OVERVIEW §6.1, §9)
 
@@ -31,8 +34,8 @@ store/
   store-info/     # store_id + meta + descriptor.dingo
   active/         # open append segment (at most one)
   segments/       # sealed hot segments
-  tiers/          # warm/cold/archive media + roots.txt (Stage 9)
-  chunks/         # reserved (payload chunks live in segments for Stage 6)
+  tiers/          # warm/cold/archive media + roots.txt
+  chunks/         # reserved (payload chunks live in segments)
   catalogs/       # derived only (collections.cat, tier-placement.cat, segments.cat)
   indexes/        # derived only (primary.idx, sec/<coll>/*.six)
   snapshots/      # derived checkpoints
@@ -61,7 +64,7 @@ live there.
 | `compact_live` | Live projection into a new segment (sources retained) |
 | `checkpoint` | Derived snapshot with declared coverage |
 | secondary index helpers | Persist/load/delete `*.six` files |
-| `examination_sources` | Ordered `(source_name, bytes)` for Stage 5 examination |
+| `examination_sources` | Ordered `(source_name, bytes)` for examination |
 | `live_entries` / `live_logical_entries` | Index raw vs reassembled bodies |
 | `transfer_segment_to_tier` | Copy/move sealed segment (stable id) |
 | `set_tier_available` / `tier_coverage` | Offline tier → coverage hole |
@@ -72,12 +75,12 @@ live there.
 | `LifecyclePolicy` | Declarative tier aging rules (`tiers/lifecycle.json`) |
 | `ErasureManifest` | Archive shard naming contract (codec not shipped) |
 
-## Non-goals (yet)
+## Out of scope (this crate)
 
 - Native SigV4 HTTP object SDK (use mirror / fuse mount)
 - Erasure encode/decode codecs (manifest only)
 - Background lifecycle scheduler (policy evaluate only)
-- `replicated` durability
+- `replicated` durability (cluster path; see [`dingo-cluster`](../dingo-cluster))
 
 ## Quick example
 

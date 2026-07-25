@@ -173,51 +173,63 @@ Its promise is narrower and stronger:
 
 ## Status
 
-DingoDB is past pure-spec: Stages **0–9** land in-tree. SDA library + CLI, wire
-format + salvage, single-node store, collection SDK, SDA examination,
-indexes/history/chunks, Stage 7 operator surface (`dingo` CLI + remote parity),
-`dingo-cluster` multi-node federation (partitions, coverage, Raft,
-convergent-append, SDK route cache, find coverage, rebalance), and Stage 9
-tiering/archive with a media-locator seam for object roots. Product follow-ons
-landed: live S3/GCS mirrors (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`), multi-hop
-`dingo serve-cluster` client routing, freeze labels (SDK 1.0 / cluster v1 /
-wire 1.0-draft), lifecycle + erasure scaffolds, benchmark disclosure checklist.
+Stages **0–9** and product follow-ons **1–4** are landed in-tree. What ships:
+
+| Layer | Crate / binary | Freeze / notes |
+|-------|----------------|----------------|
+| SDA library + CLI | `sda-lib`, `sda` | `sda-standalone-v1.0` §14 MUST lock |
+| Wire format + salvage | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` |
+| Single-node store | `dingo-store` | put/get/delete, §16 suite, catalogs, chunks, history, tiers |
+| Collection SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` (embedded + remote + cluster open) |
+| SDA examination | `dingo-examine` | ExaminationUnit stream over salvage |
+| Operator CLI | `dingo` | put/get/list, doctor, salvage, `serve`, `serve-cluster` |
+| Cluster federation | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (8a–8f in-process) |
+| Tiering / media | store tiers + mirrors | filesystem + `object:local:` + S3/GCS mirrors |
+| Follow-ons | network multi-hop, lifecycle / erasure scaffolds, [benchmark disclosure](doc/BENCHMARK_DISCLOSURE.md) | see [ARCHITECTURE.md](ARCHITECTURE.md) |
 
 | Stage | Focus | Status |
 |-------|--------|--------|
-| 0 | Repo + CI | done |
-| 1 | SDA standalone | library + CLI + §14 MUST lock (`sda-standalone-v1.0`) |
-| 2 | Wire format + salvage | **2a–2d** frames, seal, scanners, §13 corpus |
-| 3 | Single-node store | **3a–3c** put/get/delete, §16 suite, descriptor + index cache |
-| 4 | Collection SDK | **4a–4d** open, JSON/bytes, scan/stream, filters, `ErrorCode` |
+| 0 | Repo + CI | **done** |
+| 1 | SDA standalone | **done** — library + CLI + §14 MUST lock (`sda-standalone-v1.0`) |
+| 2 | Wire format + salvage | **done** — 2a–2d frames, seal, scanners, §13 corpus |
+| 3 | Single-node store | **done** — 3a–3c put/get/delete, §16 suite, descriptor + index cache |
+| 4 | Collection SDK | **done** — 4a–4d open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` |
-| 6 | Indexes, catalogs, history, chunks | done |
+| 6 | Indexes, catalogs, history, chunks | **done** |
 | 7 | CLI, doctor, salvage, server | **done** — 7a–7f + full single-node remote parity |
-| 8 | Cluster | **8a–8f done** — find coverage honesty + rebalance + §22 remainder |
+| 8 | Cluster | **done** — 8a–8f find coverage, rebalance, directory routing |
 | 9 | Tiering | **done** — segment move/copy, hierarchical catalogs, offline coverage, retention runbook |
+
+Remaining product polish (not stage gates): network Raft log shipping over TCP
+(multi-hop client routing is shipped), native cloud SDKs beyond mirrors, and
+erasure codecs.
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  
 Crate map and language decisions: [ARCHITECTURE.md](ARCHITECTURE.md).  
-How to contribute / apportion work: [CONTRIBUTING.md](CONTRIBUTING.md).
+How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md).  
+Human demos: [scripts/demos/](scripts/demos/).
 
 ```sh
 cargo test --workspace
 cargo run -p sda --bin sda -- eval -e '1 + 2'
+cargo run -p dingo --bin dingo -- --help
 ```
 
-The initial implementation target is:
+### What ships today
 
-- zero-configuration embedded operation;
-- one excellent collection-oriented SDK;
-- JSON and bytes with put, get, delete, append, and streaming filters;
-- a small, safe CLI with doctor and non-destructive salvage;
-- a resynchronizable framed journal;
-- immutable self-describing segments;
-- inline and chunked payloads;
+- zero-configuration embedded operation (`Dingo::open`);
+- collection-oriented Rust SDK with JSON and bytes, put/get/delete, filters,
+  indexes, history, and streaming scans;
+- remote `Dingo::connect` / `dingo serve` parity and multi-seed / cluster open;
+- `dingo` CLI with doctor, non-destructive salvage, and `serve-cluster`;
+- resynchronizable framed journal and immutable self-describing segments;
+- inline and chunked payloads with completeness-aware reads;
 - independent verification and island recovery;
 - rebuildable catalogs and indexes;
-- SDA examination;
-- reproducible corruption and performance tests.
+- SDA examination over recovered units (`dingo-examine` / doctor);
+- in-process cluster federation with coverage honesty and rebalance;
+- hot/warm/cold/archive tiering with offline coverage disclosure;
+- reproducible corruption and performance test packaging (nightly + demos).
 
 See the [architecture specification](OVERVIEW.md) for normative requirements,
 the [survival format](FORMAT_SPEC.md) for the draft wire profile, the

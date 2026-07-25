@@ -10,8 +10,8 @@ Normative sources: repository root [`CLUSTER_SPEC.md`](../../CLUSTER_SPEC.md);
 
 ## Status
 
-**Stage 8a–8f** — in-process cluster complete for the chosen development /
-dependable-local profiles:
+**Shipped** (Stage **8a–8f** complete) for the development and dependable-local
+profiles. Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 
 | Piece | Role |
 |-------|------|
@@ -27,10 +27,10 @@ dependable-local profiles:
 | Rebalance (8f) | Interruptible §14 step machine; joint config; epoch activation |
 | Node salvage | Each node directory remains an ordinary store without cluster software |
 
-SDK surface (Stage 8d–8e): `dingo_sdk::Dingo::create_cluster` / `open_cluster`
-with client directory cache; `find_with_coverage` / `allow_partial_coverage`.
+SDK surface (8d–8e): `dingo_sdk::Dingo::create_cluster` / `open_cluster` with
+client directory cache; `find_with_coverage` / `allow_partial_coverage`.
 
-### Network multi-node serve (product follow-on)
+### Network multi-node serve (product follow-on — landed)
 
 Process-per-node TCP beyond the in-process `Cluster` handle:
 
@@ -96,7 +96,7 @@ assert!(found.coverage.is_complete());
 assert!(found.query_id.starts_with("q-"));
 ```
 
-## Rebalance (Stage 8f)
+## Rebalance
 
 ```rust
 use dingo_cluster::{Cluster, ClusterConfig, NodeId, PartitionId, RebalancePhase};
@@ -127,7 +127,8 @@ assert_eq!(report.job.phase, RebalancePhase::Reclaimed);
 ```text
 cluster-root/
   cluster.json          # cluster id, profile, virtual partition count, hash profile
-  placement.json        # partition → replica set / leader / epoch (Stage 8f)
+  placement.json        # partition → replica set / leader / epoch
+  endpoints.json        # optional node → host:port for network serve
   nodes/
     node-0/             # ordinary dingo-store directory
     node-1/

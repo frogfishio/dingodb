@@ -1,7 +1,7 @@
 # dingo-examine
 
-Stage 5 SDA examination host for DingoDB: map recovered frames, items, and
-holes to normative [`ExaminationUnit`](../../SDA_PROFILE.md) values, stream them
+SDA examination host for DingoDB: map recovered frames, items, and holes to
+normative [`ExaminationUnit`](../../SDA_PROFILE.md) values, stream them
 deterministically from store salvage, and evaluate pure SDA programs over them.
 
 Normative sources: [`SDA_PROFILE.md`](../../SDA_PROFILE.md),
@@ -10,15 +10,17 @@ Stage 5.
 
 ## Status
 
-**Stage 5** — ExaminationUnit projection, store-wide salvage stream, SDA filter
-/ map over units, bounded pages with explicit incomplete results.
+**Shipped** (Stage 5 complete) — ExaminationUnit projection, store-wide salvage
+stream, SDA filter / map over units, bounded pages with explicit incomplete
+results.
 
 Rule:
 
 > If DingoDB can recover it, SDA can examine it.
 
 SDA remains pure. Storage access, decoding, and resource control happen in this
-host before evaluation.
+host before evaluation. The `dingo doctor` CLI uses this crate for recovery
+unit summaries.
 
 ## Surface
 

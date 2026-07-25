@@ -1,23 +1,25 @@
 # dingo-format
 
-Stage 2 survival wire format for DingoDB: frame encode/decode, structural
-integrity (CRC32C + BLAKE3-256), deterministic CBOR envelopes, in-memory active
-segments + seal, forward and reverse salvage scanning, event-id conflict
-analysis, and draft chunk reassembly helpers.
+Survival wire format for DingoDB: frame encode/decode, structural integrity
+(CRC32C + BLAKE3-256), deterministic CBOR envelopes, in-memory active segments +
+seal, forward and reverse salvage scanning, event-id conflict analysis, and
+draft chunk reassembly helpers.
 
 Normative source: repository root [`FORMAT_SPEC.md`](../../FORMAT_SPEC.md).
+Delivery: Stage **2a–2d** (complete) in [`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md).
 
 ## Status
 
-**Draft wire profile.** Constants and layouts match FORMAT_SPEC draft v0.1
-(`wire_major = 1`, `wire_minor = 0`). Not frozen until the project declares
-wire major 1 stable.
+**Shipped** for Stage 2. Wire profile label `WIRE_PROFILE_LABEL` = `1.0-draft`
+(`wire_major = 1`, `wire_minor = 0`). Not frozen as production wire major 1
+until the project declares a soak freeze; a breaking on-disk change would require
+a major bump and dual-read support.
 
-Stage **2a–2d** are implemented: frames, segment seal, scanners, the
-FORMAT_SPEC §13 destructive corpus (`tests/section13_corpus.rs`), and
-deterministic CBOR envelope validation (§5 condition 6).
+Implemented: frames, segment seal, scanners, the FORMAT_SPEC §13 destructive
+corpus (`tests/section13_corpus.rs`), and deterministic CBOR envelope validation
+(§5 condition 6).
 
-## Surface (Stages 2a–2d)
+## Surface
 
 | Area | API highlights |
 |------|----------------|
@@ -28,18 +30,18 @@ deterministic CBOR envelope validation (§5 condition 6).
 | Scanner | `scan_forward` / `scan_reverse` → `ScanReport` |
 | Events | `group_by_event_id` → unique / replicas / conflicting |
 | Chunks | `reassemble_chunks` → complete / partial / unavailable / conflicting |
-| Draft meta | Fixed descriptor/summary/chunk body layouts |
+| Meta | Fixed descriptor/summary/chunk body layouts; `WIRE_PROFILE_LABEL` |
 
 Envelopes must be a single definite-length CBOR map with unsigned integer keys,
 shortest integer encodings, sorted unique keys, and valid UTF-8 text
 (FORMAT_SPEC §4.4). The empty map `0xa0` (`EMPTY_ENVELOPE`) is the minimal
 valid envelope.
 
-## Non-goals (yet)
+## Out of scope (this crate)
 
-- Durable storage IO / immutability enforcement (Stage 3 `dingo-store`)
+- Durable storage IO / immutability enforcement — see [`dingo-store`](../dingo-store)
 - Compression or encryption transforms
-- Full production chunk manifests (draft reassembly only)
+- Full production chunk manifests (reassembly helpers only; store owns chunked puts)
 - Required-field checks per frame kind (FORMAT_SPEC §5 condition 11 partial)
 
 ## Quick example
