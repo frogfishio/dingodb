@@ -25,6 +25,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Operator | `open_inspect` (read-only doctor), evidence `salvage_to` + `export_live_state` |
 | Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
 | Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); durable-frontier catalogs (DEF-013); write dedup table (DEF-010); multi-gen format |
+| Crash matrix | DEF-022 skeleton: `crash_matrix.v1.json` + failpoints; CI subset always, full matrix nightly (`DINGO_CRASH_MATRIX_FULL=1`) |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -78,6 +79,9 @@ live there.
 | `open_media` / `CloudMirrorConfig` | Object/media backends incl. S3/GCS mirrors |
 | `LifecyclePolicy` | Declarative tier aging rules (`tiers/lifecycle.json`) |
 | `ErasureManifest` | Archive shard naming contract (codec not shipped) |
+| `failpoint` / crash matrix | DEF-022 injection points + embedded `crash_matrix.v1.json` |
+
+Crash-boundary narrative: [`doc/CRASH_CONSISTENCY.md`](../../doc/CRASH_CONSISTENCY.md).
 
 ## Out of scope (this crate)
 

@@ -47,5 +47,10 @@ jobs:
       - name: Stage 6 bench skeleton (no marketing gates)
         run: cargo test -p dingo-store --test stage6_bench_skeleton -- --nocapture
 
+      - name: DEF-022 full crash matrix
+        env:
+          DINGO_CRASH_MATRIX_FULL: "1"
+        run: cargo test -p dingo-store --test stage_def_022_crash_matrix -- --nocapture --test-threads=1
+
       - name: Stage 7 CLI doctor / salvage / serve
         run: cargo test -p dingo-cli --test cli -- --nocapture

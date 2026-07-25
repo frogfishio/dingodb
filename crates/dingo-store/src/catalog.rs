@@ -87,6 +87,7 @@ pub fn write_collection_catalog(
     }
     let bytes = encode_catalog(store_id, fingerprint, catalog);
     let tmp = path.with_extension("cat.tmp");
+    crate::failpoint::hit("store.catalog.before_write")?;
     fs::write(&tmp, &bytes)?;
     fs::rename(&tmp, path)?;
     Ok(())

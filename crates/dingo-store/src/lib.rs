@@ -17,10 +17,12 @@
 mod catalog;
 mod chunk_payload;
 mod compact;
+mod crash_matrix;
 mod durability;
 mod envelope;
 mod erasure;
 mod error;
+mod failpoint;
 mod history;
 mod index;
 mod index_cache;
@@ -47,6 +49,10 @@ pub use chunk_payload::{
 pub use compact::{CheckpointMeta, CompactReport};
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};
+pub use crash_matrix::{
+    all_cells, ci_subset_cells, load_embedded as load_crash_matrix, validate as validate_crash_matrix,
+    CrashMatrix, ExpectedReopen, MatrixFailpoint, MatrixOperation, CRASH_MATRIX_JSON,
+};
 pub use durability::DurabilityMode;
 pub use envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
@@ -56,6 +62,11 @@ pub use erasure::{
     DEFAULT_DATA_SHARDS, DEFAULT_PARITY_SHARDS,
 };
 pub use error::StoreError;
+pub use failpoint::{
+    any_armed as failpoints_armed, arm as arm_failpoint, arm_n as arm_failpoint_n,
+    arm_once as arm_failpoint_once, clear as clear_failpoints, disarm as disarm_failpoint,
+    hit as hit_failpoint, Action as FailpointAction,
+};
 pub use history::{HistoryEvent, SubjectHistory};
 pub use index::{IndexEntry, LiveValue};
 pub use index_cache::PRIMARY_CACHE_FILE;

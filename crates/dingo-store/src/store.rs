@@ -211,6 +211,7 @@ impl Store {
         let created_ns = now_ns();
         fs::write(paths.store_id_file(), store_id)?;
         fs::write(paths.meta_file(), META_VERSION)?;
+        crate::failpoint::hit("store.create.after_meta")?;
         write_store_descriptor_file(&paths, store_id, created_ns)?;
         // Ensure parent dir entry is durable for create.
         sync_dir(&paths.root)?;
@@ -234,6 +235,7 @@ impl Store {
         };
         store.start_active_segment()?;
         store.persist_active(DurabilityMode::Durable)?;
+        crate::failpoint::hit("store.create.after_active_header")?;
         store.persist_index_cache()?;
         store.refresh_collection_catalog()?;
         store.refresh_tier_state()?;
@@ -982,6 +984,8 @@ impl Store {
         let bytes = sealed.as_bytes();
         let dest = self.paths.sealed_segment(&writer.segment_id);
 
+        crate::failpoint::hit("store.seal.before_dest_write")?;
+
         // Write sealed image to destination, then remove active file.
         {
             let mut out = OpenOptions::new()
@@ -992,6 +996,7 @@ impl Store {
             out.write_all(bytes)?;
             out.sync_all()?;
         }
+        crate::failpoint::hit("store.seal.after_dest_sync")?;
         sync_dir(&self.paths.segments_dir())?;
 
         // Truncate/remove active.
@@ -1001,6 +1006,7 @@ impl Store {
         if active_path.exists() {
             fs::remove_file(&active_path)?;
         }
+        crate::failpoint::hit("store.seal.after_active_remove")?;
         sync_dir(&self.paths.active_dir())?;
 
         // Stage 9: register sealed segment on hot tier.
@@ -1577,6 +1583,7 @@ impl Store {
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
     ) -> Result<(), StoreError> {
+        crate::failpoint::hit("store.active.write_tail.before")?;
         let bytes = writer.segment.as_bytes();
         let start = writer.durable_len as usize;
         if start > bytes.len() {
@@ -1587,8 +1594,10 @@ impl Store {
             writer.file.write_all(&bytes[start..])?;
             writer.durable_len = bytes.len() as u64;
         }
+        crate::failpoint::hit("store.active.write_tail.after_write")?;
         if mode == DurabilityMode::Durable {
             writer.file.sync_all()?;
+            crate::failpoint::hit("store.active.write_tail.after_sync")?;
         }
         Ok(())
     }
@@ -1605,6 +1614,7 @@ impl Store {
         if let Some(writer) = self.active.as_mut() {
             Self::write_segment_tail(writer, mode)?;
             if mode == DurabilityMode::Durable {
+                crate::failpoint::hit("store.active.dir_sync")?;
                 sync_dir(&self.paths.active_dir())?;
             }
         }

@@ -88,8 +88,10 @@ pub fn write_primary_index(
     }
     let bytes = encode_cache(store_id, fingerprint, index);
     let tmp = path.with_extension("idx.tmp");
+    crate::failpoint::hit("store.index_cache.before_write")?;
     fs::write(&tmp, &bytes)?;
     fs::rename(&tmp, path)?;
+    crate::failpoint::hit("store.index_cache.after_write")?;
     Ok(())
 }
 

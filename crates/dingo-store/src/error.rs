@@ -87,6 +87,10 @@ pub enum StoreError {
     /// Client operation id reused with different content (DEF-010).
     #[error("consistency violation: {0}")]
     ConsistencyViolation(String),
+
+    /// Injected failure from an armed failpoint (DEF-022 testing only).
+    #[error("failpoint hit: {0}")]
+    Failpoint(&'static str),
 }
 
 impl StoreError {

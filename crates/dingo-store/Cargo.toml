@@ -9,7 +9,7 @@ readme = "README.md"
 repository.workspace = true
 keywords = ["dingodb", "store", "append-only", "salvage", "durability"]
 categories = ["database-implementations", "filesystem"]
-include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
+include = ["Cargo.toml", "README.md", "src/**", "tests/**", "crash_matrix.v1.json"]
 
 [dependencies]
 dingo-format.workspace = true

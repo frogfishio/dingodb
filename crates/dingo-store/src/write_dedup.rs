@@ -114,8 +114,10 @@ pub fn save_write_dedup(path: &Path, table: &WriteDedupTable) -> Result<(), Stor
     }
     let bytes = encode_table(table);
     let tmp = path.with_extension("v1.tmp");
+    crate::failpoint::hit("store.dedup.before_write")?;
     fs::write(&tmp, &bytes)?;
     fs::rename(&tmp, path)?;
+    crate::failpoint::hit("store.dedup.after_rename")?;
     Ok(())
 }
 

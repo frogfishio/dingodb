@@ -479,7 +479,10 @@ Acceptance:
 
 ### DEF-022 — Define and test crash-consistency boundaries
 
-Priority: P0
+Priority: P0  
+Status: **skeleton in-tree** (2026-07-25) — machine-readable matrix + failpoints
++ CI subset; remaining: real process-kill harness, filesystem-full / short-write
+injection, and tightening every cell to production acceptance strength
 
 Work:
 
@@ -501,6 +504,20 @@ Acceptance:
 - A machine-readable crash matrix maps every operation and failpoint to an
   expected state.
 - CI runs a bounded subset per PR and the full matrix nightly.
+
+In-tree so far:
+
+- `crates/dingo-store/crash_matrix.v1.json` — operations, ordered persistence
+  steps, failpoint cells, expected reopen state, CI subset flags.
+- `dingo_store::failpoint` — arm/disarm/hit; `Panic` or `Error` actions;
+  no-op when unarmed.
+- Instrumented boundaries: create meta, active write_tail (before/after write/
+  after sync), active dir_sync, seal dest write/remove, index cache, write
+  dedup, catalog, checkpoint, compact segment sync, tier placement write.
+- Tests: `stage_def_022_crash_matrix` (document validation + CI subset always;
+  full matrix when `DINGO_CRASH_MATRIX_FULL=1`).
+- Nightly workflow / `scripts/nightly.sh` run the full matrix.
+- Doc: `doc/CRASH_CONSISTENCY.md`.
 
 ### DEF-023 — Remove full-store rescans from the write acknowledgement path
 

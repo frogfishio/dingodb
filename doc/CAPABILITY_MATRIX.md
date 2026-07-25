@@ -95,6 +95,17 @@ Dedup evidence lives under `store-info/write_dedup.v1`.
 Memory-mode publishes are visibility-only (no segment append). Persisted
 collection catalogs are built from segment-derived durable state only.
 
+## Crash-consistency matrix (DEF-022)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Machine-readable matrix | shipped skeleton | `crates/dingo-store/crash_matrix.v1.json` |
+| Failpoint framework | shipped | `dingo_store::failpoint` / `StoreError::Failpoint` |
+| Persistence-order docs | shipped | [CRASH_CONSISTENCY.md](CRASH_CONSISTENCY.md) + matrix `persistence_order` |
+| CI subset | shipped | `stage_def_022_crash_matrix` (default) |
+| Full matrix | nightly | `DINGO_CRASH_MATRIX_FULL=1` in nightly workflow / `scripts/nightly.sh` |
+| Process-kill / ENOSPC injection | not yet | remaining DEF-022 work |
+
 ## CI check
 
 A lightweight workspace test asserts this file exists and still forbids the

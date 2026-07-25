@@ -95,6 +95,7 @@ pub fn compact_live_to_new_segment(
             .truncate(true)
             .open(&dest)?;
         out.write_all(sealed.as_bytes())?;
+        crate::failpoint::hit("store.compact.before_segment_sync")?;
         out.sync_all()?;
     }
     sync_dir_best_effort(&paths.segments_dir());
@@ -133,6 +134,7 @@ pub fn write_checkpoint(
         write_bytes(&mut out, body);
     }
     let tmp = path.with_extension("ckpt.tmp");
+    crate::failpoint::hit("store.checkpoint.before_write")?;
     fs::write(&tmp, &out)?;
     fs::rename(&tmp, &path)?;
     Ok(path)

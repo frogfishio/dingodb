@@ -246,6 +246,8 @@ DingoDB is specification-driven:
 - [Survival wire format](FORMAT_SPEC.md)
 - [Developer experience](DX_SPEC.md)
 - [Cluster architecture](CLUSTER_SPEC.md)
+- [Scoped transaction extension proposal](TRANSACTIONS.md)
+- [Jurisdiction and sovereign placement proposal](JURISDICTION_PROPOSAL.md)
 - [Structured Data Algebra](SDA_SPEC.md)
 - [DingoDB SDA profile](SDA_PROFILE.md)
 - [Crate map](ARCHITECTURE.md)

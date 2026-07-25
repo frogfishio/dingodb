@@ -522,6 +522,8 @@ pub fn transfer_segment(
     };
     write_migration_evidence(paths, &evidence)?;
 
+    crate::failpoint::hit("store.tier.before_placement_write")?;
+
     let rel = relative_segment_path(paths, &dest);
     placement.upsert(SegmentPlacement {
         segment_id,
