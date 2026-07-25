@@ -51,6 +51,11 @@ pub struct QueryOptions {
     pub budget: Option<QueryBudget>,
     /// When true, force a full collection scan even if an index exists.
     pub force_scan: bool,
+    /// When true, allow returning matches under incomplete cluster coverage
+    /// (Stage 8e). Default `false`: incomplete coverage yields
+    /// [`ErrorCode::CoverageIncomplete`] so partial results are never mistaken
+    /// for a complete empty set (CLUSTER_SPEC §17.2).
+    pub allow_partial_coverage: bool,
 }
 
 impl QueryOptions {
@@ -80,6 +85,12 @@ impl QueryOptions {
     /// Force scan path (skip secondary indexes).
     pub fn force_scan(mut self) -> Self {
         self.force_scan = true;
+        self
+    }
+
+    /// Allow partial cluster coverage (return matches + incomplete coverage).
+    pub fn allow_partial_coverage(mut self) -> Self {
+        self.allow_partial_coverage = true;
         self
     }
 }

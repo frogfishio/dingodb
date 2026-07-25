@@ -38,7 +38,7 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
 | 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
 | 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, connect options (auth/deadline/retry), nightly packaging |
-| 8 | Cluster federation | **8a–8c done** — partitions, coverage, multi-node stores, Raft, convergent-append; 8d+ open |
+| 8 | Cluster federation | **8a–8f done** — partitions, coverage, Raft, convergent-append, SDK routing, find coverage, rebalance |
 | 9 | Tiering / archive | open |
 
 ## Crate layout (current)
@@ -50,10 +50,10 @@ dingodb/
     sda-cli/        # package name sda; `sda` binary (Stage 1)
     dingo-format/   # frames, seal, fwd/rev scan, §13 corpus (Stage 2a–2d)
     dingo-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to)
-    dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7)
+    dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7 + 8d–8e)
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5)
     dingo-cli/      # `dingo` binary: put/get, doctor, salvage, serve (Stage 7)
-    dingo-cluster/  # partitions, coverage, multi-node + Raft + convergent (Stage 8a–8c)
+    dingo-cluster/  # partitions, coverage, multi-node + Raft + find + rebalance (Stage 8a–8f)
 ```
 
 Crate ownership:
@@ -62,10 +62,10 @@ Crate ownership:
 |-------|-------|------|
 | 2 | `dingo-format` | **Present** — frames, segment seal, fwd/rev scanner, §13 corpus (2a–2d) |
 | 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, catalogs, chunks, history, compact |
-| 4+6+7+8d | `dingo-sdk` | **Present** — collections, filters, indexes, history, remote RPC, cluster open + client directory cache |
+| 4+6+7+8d–8e | `dingo-sdk` | **Present** — collections, filters, indexes, history, remote RPC, cluster open + find coverage |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/serve (server lives in CLI + sdk remote module) |
-| 8 | `dingo-cluster` | **Present (8a–8d)** — partitions, coverage, placement, multi-node, Raft, convergent-append; SDK routes via cache |
+| 8 | `dingo-cluster` | **Present (8a–8f)** — partitions, coverage, Raft, convergent-append, find honesty, rebalance |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**
 
@@ -88,6 +88,6 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 
 ## Non-goals until listed stages
 
-- Distributed scan/find coverage honesty (Stage 8e)
 - Object-store backends and archive tiering (Stage 9)
 - Marketing-grade Redis-class latency claims without OVERVIEW §12.2 disclosure
+- Network-level multi-node Raft serve (in-process cluster is Stage 8 complete)

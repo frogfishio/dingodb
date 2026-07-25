@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.19 (Stages 0–7 done; Stage 8a–8d cluster foundation + Raft + convergent-append + SDK routing; 8e+ open)  
+Status: Draft v0.20 (Stages 0–7 done; Stage 8a–8f cluster complete for in-process profile — find coverage + rebalance + §22 remainder)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -62,14 +62,14 @@ The governing product rule stays:
 5  SDA examination profile over recovered units
 6  Indexes, catalogs, history, chunked payloads
 7  CLI (doctor, salvage) + server mode
-8  Cluster (partition-local consensus, coverage)  — 8a foundation done
+8  Cluster (partition-local consensus, coverage)  — 8a–8f in-process done
 9  Tiering, archive path, long-retention polish
 ```
 
 Stages 0–4 are the **minimum path to a useful embedded database**.  
 Stages 5–7 complete the **README initial implementation target**.  
 Stages 8–9 are **scale-out and retention** after the single-node product is real.
-Stage **8a** (`dingo-cluster`) is the first scale-out vertical slice.
+Stage **8a–8f** (`dingo-cluster`) completes the in-process cluster profile.
 
 ---
 
@@ -419,8 +419,8 @@ control plane payload authority.
 | 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
 | 8c | Convergent-append path + split dual-accept tests | **done** — `src/convergent.rs`, `tests/stage8c_convergent.rs` |
 | 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
-| 8e | Distributed scan/find coverage + partial-query honesty | open |
-| 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | open |
+| 8e | Distributed scan/find coverage + partial-query honesty | **done** — `FindResult` / `ScanOptions`, `Cluster::scan_with` / `find`, SDK `find_with_coverage` + `allow_partial_coverage`; tests `stage8e_find.rs`, `stage8e_find_coverage.rs` |
+| 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | **done** — interruptible rebalance (§14), placement persist, directory reconstruct; tests `stage8f_rebalance.rs` |
 
 **Exit criteria**
 
@@ -469,6 +469,27 @@ control plane payload authority.
 - Multi-seed `dingo://h1:p1,h2:p2[/label]` URLs parse and try seeds in order.
 - Single-node `dingo serve` answers `directory` with a synthetic all-local
   placement snapshot for uniform client caching.
+
+**Stage 8e notes**
+
+- Every multi-partition scan/find returns [`FindResult`] with coverage,
+  `query_id`, and optional truncation (CLUSTER_SPEC §17).
+- Unavailable partitions are listed; never treated as empty success (§6.7, §22.15).
+- Resource budgets set `coverage.resource_limit_reached` (incomplete, not silent).
+- SDK default `find` requires complete coverage; `allow_partial_coverage` or
+  `find_with_coverage` returns partial matches with honest coverage.
+
+**Stage 8f notes**
+
+- Interruptible rebalance job machine (CLUSTER_SPEC §14 steps 1–9): plan →
+  learners → segment copy → log catch-up → joint membership → epoch activate →
+  safety window → reclaim.
+- Failure mid-job leaves old placement authoritative or explicit joint config
+  (no unrecorded ownership gap); §22.12–13 covered in tests.
+- `placement.json` persists replica sets; `reconstruct_directory_from_stores`
+  rebuilds placement after control-plane loss (§22.9–10 simplified).
+- Remaining §22 archive/SDA-order items stay deferred to Stage 9 / distributed
+  SDA examination polish.
 
 ---
 
@@ -660,6 +681,10 @@ the cited conformance suites as required checks—not optional polish.
 19. ~~Stage 8d SDK routing + client directory cache.~~ **Done** —
     `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed
     URL parse, `directory` RPC; tests `stage8d_routing.rs` (§13, §22.5).
-20. **Next:** Stage 8e–8f (distributed find coverage, §22 remainder);
-    optional deterministic CBOR envelope validation (FORMAT_SPEC §5
-    condition 6); Stage 9 tiering.
+20. ~~Stage 8e distributed find coverage.~~ **Done** — `FindResult` /
+    `ScanOptions`, partial-query honesty; tests `stage8e_find.rs`,
+    `stage8e_find_coverage.rs` (§17, §22.15).
+21. ~~Stage 8f rebalance + §22 remainder.~~ **Done** — interruptible rebalance
+    (§14), placement persist/reconstruct; tests `stage8f_rebalance.rs`.
+22. **Next:** optional deterministic CBOR envelope validation (FORMAT_SPEC §5
+    condition 6); Stage 9 tiering; network-level multi-node Raft serve polish.

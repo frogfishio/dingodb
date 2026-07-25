@@ -173,11 +173,12 @@ Its promise is narrower and stronger:
 
 ## Status
 
-DingoDB is past pure-spec: Stages **0–7** land in-tree, plus **Stage 8a–8d**
-cluster foundation. SDA library + CLI, wire format + salvage, single-node store,
+DingoDB is past pure-spec: Stages **0–7** land in-tree, plus **Stage 8a–8f**
+in-process cluster. SDA library + CLI, wire format + salvage, single-node store,
 collection SDK, SDA examination, indexes/history/chunks, Stage 7 operator
 surface (`dingo` CLI + remote parity), and `dingo-cluster` multi-node federation
-(partitions, coverage, Raft, convergent-append, SDK route cache).
+(partitions, coverage, Raft, convergent-append, SDK route cache, find coverage,
+rebalance).
 
 | Stage | Focus | Status |
 |-------|--------|--------|
@@ -189,7 +190,7 @@ surface (`dingo` CLI + remote parity), and `dingo-cluster` multi-node federation
 | 5 | SDA examination profile | **done** — `dingo-examine` |
 | 6 | Indexes, catalogs, history, chunks | done |
 | 7 | CLI, doctor, salvage, server | **done** — 7a–7f + full single-node remote parity |
-| 8 | Cluster | **8a–8d done** — `dingo-cluster` + Raft + convergent-append + SDK route cache; 8e+ open |
+| 8 | Cluster | **8a–8f done** — find coverage honesty + rebalance + §22 remainder |
 | 9 | Tiering | later |
 
 Staged plan: [DELIVERY_PLAN.md](DELIVERY_PLAN.md).  

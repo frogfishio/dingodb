@@ -282,6 +282,30 @@ impl<'a> Collection<'a> {
         self.scan_json_filtered(filter, &options)
     }
 
+    /// Cluster-only find that returns matches **and** coverage (Stage 8e).
+    ///
+    /// Embedded and remote backends return complete coverage (single-node /
+    /// single-store scope). On cluster backends, incomplete coverage is always
+    /// reported even when `allow_partial_coverage` is set.
+    pub fn find_with_coverage(
+        &mut self,
+        filter: &Filter,
+        options: QueryOptions,
+    ) -> Result<crate::ClusterFindResult, Error> {
+        match self.backend {
+            Backend::Cluster(c) => c.find_with_coverage(&self.name, filter, &options),
+            Backend::Local(_) | Backend::Remote(_) => {
+                let rows = self.scan_json_filtered(filter, &options)?;
+                Ok(crate::ClusterFindResult {
+                    rows,
+                    coverage: dingo_cluster::Coverage::default(),
+                    query_id: "local-or-remote".into(),
+                    truncated: false,
+                })
+            }
+        }
+    }
+
     /// Parse a DX/Mongo-style object filter and find matching documents.
     pub fn find_json(&mut self, filter_obj: &JsonValue) -> Result<Vec<(String, JsonValue)>, Error> {
         let filter = Filter::from_json(filter_obj)?;

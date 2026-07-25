@@ -1,12 +1,12 @@
-//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d).
+//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d–8e).
 //!
 //! Ordinary application surface: open a store directory, connect to a server,
 //! or open a multi-node cluster; name a collection; put/get/delete JSON or
 //! bytes; filter JSON documents; manage secondary indexes; inspect per-key
 //! history — without learning SDA.
 //!
-//! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d;
-//! CLUSTER_SPEC §13 (client routing / directory cache).
+//! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d–8e;
+//! CLUSTER_SPEC §13 (client routing / directory cache), §17 (query coverage).
 
 #![deny(missing_docs)]
 
@@ -23,7 +23,9 @@ mod remote;
 mod subject;
 mod value;
 
-pub use cluster_backend::ClusterBackend;
+pub use cluster_backend::{ClusterBackend, ClusterFindResult};
+/// Re-export cluster coverage / scan types for Stage 8e callers.
+pub use dingo_cluster::{Coverage, FindResult, ScanOptions};
 pub use collection::Collection;
 pub use dingo::Dingo;
 pub use directory_cache::{
