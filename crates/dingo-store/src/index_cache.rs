@@ -76,21 +76,16 @@ pub fn try_load_primary_index(
     }
 }
 
-/// Persist the primary index to `path` (creates parent dirs as needed).
+/// Persist the primary index to `path` (atomic durable replace, DEF-021).
 pub fn write_primary_index(
     path: &Path,
     store_id: [u8; 16],
     fingerprint: [u8; 32],
     index: &PrimaryIndex,
 ) -> Result<(), StoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
     let bytes = encode_cache(store_id, fingerprint, index);
-    let tmp = path.with_extension("idx.tmp");
     crate::failpoint::hit("store.index_cache.before_write")?;
-    fs::write(&tmp, &bytes)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic(path, &bytes)?;
     crate::failpoint::hit("store.index_cache.after_write")?;
     Ok(())
 }

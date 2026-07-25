@@ -96,27 +96,33 @@ pub fn content_identity(op: &str, collection: &str, key: &str, payload: &[u8]) -
 }
 
 /// Load dedup table when present and valid; otherwise empty.
+///
+/// Tries the previous known-good generation when the primary fails validation
+/// (DEF-021). Loss of the table resets retry memory only; segment bytes stay.
 pub fn load_write_dedup(path: &Path) -> Result<WriteDedupTable, StoreError> {
-    if !path.is_file() {
-        return Ok(WriteDedupTable::new());
+    if path.is_file() {
+        if let Ok(bytes) = fs::read(path) {
+            if let Some(table) = decode_table(&bytes) {
+                return Ok(table);
+            }
+        }
     }
-    let bytes = match fs::read(path) {
-        Ok(b) => b,
-        Err(_) => return Ok(WriteDedupTable::new()),
-    };
-    Ok(decode_table(&bytes).unwrap_or_default())
+    let prev = crate::atomic_file::previous_path(path);
+    if prev.is_file() {
+        if let Ok(bytes) = fs::read(&prev) {
+            if let Some(table) = decode_table(&bytes) {
+                return Ok(table);
+            }
+        }
+    }
+    Ok(WriteDedupTable::new())
 }
 
-/// Persist the full dedup table (atomic replace).
+/// Persist the full dedup table (atomic durable replace; keeps prior generation).
 pub fn save_write_dedup(path: &Path, table: &WriteDedupTable) -> Result<(), StoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
     let bytes = encode_table(table);
-    let tmp = path.with_extension("v1.tmp");
     crate::failpoint::hit("store.dedup.before_write")?;
-    fs::write(&tmp, &bytes)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic_keep_previous(path, &bytes)?;
     crate::failpoint::hit("store.dedup.after_rename")?;
     Ok(())
 }

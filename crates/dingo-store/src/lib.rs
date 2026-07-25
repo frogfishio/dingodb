@@ -14,6 +14,7 @@
 
 #![deny(missing_docs)]
 
+mod atomic_file;
 mod catalog;
 mod chunk_payload;
 mod compact;
@@ -37,6 +38,10 @@ mod tier;
 mod write_dedup;
 mod writer_lock;
 
+pub use atomic_file::{
+    previous_path, read_with_previous, recover_previous_or_corrupt, sync_dir as sync_parent_dir,
+    write_atomic, write_atomic_keep_previous, write_atomic_with, AtomicWriteOptions, PREV_SUFFIX,
+};
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, try_load_collection_catalog,
     CollectionCatalog, COLLECTIONS_CATALOG_FILE,

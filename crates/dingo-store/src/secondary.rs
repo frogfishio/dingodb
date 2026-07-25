@@ -205,19 +205,14 @@ fn sanitize_name(name: &str) -> String {
         .collect()
 }
 
-/// Persist a secondary index (atomic replace).
+/// Persist a secondary index (atomic durable replace, DEF-021).
 pub fn write_secondary_index(
     path: &Path,
     store_id: [u8; 16],
     index: &SecondaryIndex,
 ) -> Result<(), StoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
     let bytes = encode_secondary(store_id, index);
-    let tmp = path.with_extension("six.tmp");
-    fs::write(&tmp, &bytes)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic(path, &bytes)?;
     Ok(())
 }
 

@@ -209,8 +209,8 @@ impl Store {
         let writer_lock = WriterLock::acquire(&paths)?;
         let store_id = random_id();
         let created_ns = now_ns();
-        fs::write(paths.store_id_file(), store_id)?;
-        fs::write(paths.meta_file(), META_VERSION)?;
+        crate::atomic_file::write_atomic(&paths.store_id_file(), &store_id)?;
+        crate::atomic_file::write_atomic(&paths.meta_file(), META_VERSION.as_bytes())?;
         crate::failpoint::hit("store.create.after_meta")?;
         write_store_descriptor_file(&paths, store_id, created_ns)?;
         // Ensure parent dir entry is durable for create.
@@ -1798,7 +1798,7 @@ fn write_store_descriptor_file(
 ) -> Result<(), StoreError> {
     let frame = encode_store_descriptor_frame(store_id, created_ns)?;
     let path = paths.store_descriptor_file();
-    fs::write(&path, frame)?;
+    crate::atomic_file::write_atomic(&path, &frame)?;
     Ok(())
 }
 

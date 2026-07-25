@@ -46,6 +46,20 @@ pub enum StoreError {
     #[error("corrupt store metadata: {0}")]
     CorruptMeta(&'static str),
 
+    /// Control document failed validation; recovery action is documented.
+    ///
+    /// Used when a mutable control file (endpoints, dedup table, catalogs, …)
+    /// is damaged and the previous generation is also unusable (DEF-021).
+    #[error("corrupt control document {path}: {detail} (recovery: {recovery})")]
+    CorruptControl {
+        /// Absolute or store-relative path of the damaged document.
+        path: String,
+        /// Why the primary generation was rejected.
+        detail: String,
+        /// Operator / automatic recovery action (rebuild, use .prev, etc.).
+        recovery: String,
+    },
+
     /// Payload is only partially available (missing/corrupt chunks).
     #[error("payload only partially available")]
     PayloadPartial,

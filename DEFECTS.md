@@ -457,7 +457,10 @@ In-tree:
 
 ### DEF-021 — Make all metadata writes atomic and durable
 
-Priority: P1
+Priority: P1  
+Status: **remediated in-tree** (2026-07-25) — shared atomic helper + parent
+dirsync; previous generations for non-trivial control docs; endpoints lock +
+checksum/generation; failpoint boundaries under `atomic.*`
 
 Work:
 
@@ -476,6 +479,21 @@ Acceptance:
   new valid generation.
 - Concurrent endpoint registration cannot lose unrelated endpoints.
 - Recovery diagnostics identify the damaged generation and next action.
+
+In-tree:
+
+- `dingo_store::atomic_file` — `write_atomic` / `write_atomic_keep_previous`,
+  `previous_path` / `read_with_previous`, failpoints
+  `atomic.before_tmp_write` … `atomic.after_dir_sync`.
+- Wired for store meta/descriptor, catalogs, index cache, secondary indexes,
+  checkpoints, tier placement/roots, migration evidence, lifecycle policy,
+  write dedup, recovery manifest; cluster `cluster.json`, `placement.json`,
+  `endpoints.json`.
+- Non-trivial docs keep `*.prev`; endpoints add `generation` + `content_blake3`
+  and OS/process lock on upsert.
+- `StoreError::CorruptControl` carries path, detail, and recovery action.
+- Tests: `stage_def_021_atomic_meta`, `atomic_file` unit tests, endpoints unit
+  tests.
 
 ### DEF-022 — Define and test crash-consistency boundaries
 

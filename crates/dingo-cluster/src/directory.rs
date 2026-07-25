@@ -120,24 +120,50 @@ impl PartitionDirectory {
     }
 
     /// Persist the directory under a cluster root (`placement.json`).
+    ///
+    /// Atomic durable replace with previous generation retained (DEF-021).
     pub fn save(&self, root: &std::path::Path) -> Result<(), crate::error::ClusterError> {
         let path = root.join("placement.json");
         let json = serde_json::to_string_pretty(self)
             .map_err(|_| crate::error::ClusterError::CorruptMeta("serialize placement.json"))?;
-        std::fs::write(path, json)?;
+        dingo_store::write_atomic_keep_previous(&path, json.as_bytes())?;
         Ok(())
     }
 
     /// Load a directory from `placement.json`, if present.
+    ///
+    /// Falls back to `placement.json.prev` when the primary is corrupt (DEF-021).
     pub fn load(root: &std::path::Path) -> Result<Option<Self>, crate::error::ClusterError> {
         let path = root.join("placement.json");
-        if !path.is_file() {
-            return Ok(None);
+        if let Some(dir) = try_parse_placement(&path)? {
+            return Ok(Some(dir));
         }
-        let bytes = std::fs::read(&path)?;
-        let dir: Self = serde_json::from_slice(&bytes)
-            .map_err(|_| crate::error::ClusterError::CorruptMeta("parse placement.json"))?;
-        Ok(Some(dir))
+        let prev = dingo_store::previous_path(&path);
+        if let Some(dir) = try_parse_placement(&prev)? {
+            return Ok(Some(dir));
+        }
+        if path.is_file() || prev.is_file() {
+            return Err(crate::error::ClusterError::CorruptMeta(
+                "placement.json unreadable; restore .prev or recreate cluster placement",
+            ));
+        }
+        Ok(None)
+    }
+}
+
+fn try_parse_placement(
+    path: &std::path::Path,
+) -> Result<Option<PartitionDirectory>, crate::error::ClusterError> {
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(_) => return Ok(None),
+    };
+    match serde_json::from_slice::<PartitionDirectory>(&bytes) {
+        Ok(dir) => Ok(Some(dir)),
+        Err(_) => Ok(None),
     }
 }
 

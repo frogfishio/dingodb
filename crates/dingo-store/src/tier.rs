@@ -452,9 +452,7 @@ pub fn write_migration_evidence(
         evidence.tool_version,
         evidence.migrated_ns,
     );
-    let tmp = path.with_extension("txt.tmp");
-    fs::write(&tmp, body)?;
-    fs::rename(&tmp, &path)?;
+    crate::atomic_file::write_atomic(&path, body.as_bytes())?;
     Ok(path)
 }
 
@@ -843,19 +841,14 @@ pub fn decode_placement(bytes: &[u8], store_id: [u8; 16]) -> Option<TierPlacemen
     Some(placement)
 }
 
-/// Persist placement catalog (atomic replace).
+/// Persist placement catalog (atomic durable replace, DEF-021).
 pub fn write_placement(
     path: &Path,
     store_id: [u8; 16],
     placement: &TierPlacement,
 ) -> Result<(), StoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
     let bytes = encode_placement(store_id, placement);
-    let tmp = path.with_extension("cat.tmp");
-    fs::write(&tmp, &bytes)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic(path, &bytes)?;
     Ok(())
 }
 
@@ -899,9 +892,7 @@ pub fn write_tier_roots_file(
             .unwrap_or_else(|| default_tier_dir(paths, tier).display().to_string());
         body.push_str(&format!("{} {} {}\n", tier.as_str(), avail, root));
     }
-    let tmp = path.with_extension("txt.tmp");
-    fs::write(&tmp, body)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic(&path, body.as_bytes())?;
     Ok(())
 }
 

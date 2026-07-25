@@ -107,29 +107,53 @@ impl ClusterMeta {
         let path = root.join("cluster.json");
         let json = serde_json::to_string_pretty(self)
             .map_err(|_| ClusterError::CorruptMeta("serialize cluster.json"))?;
-        std::fs::write(path, json)?;
+        // Keep previous generation: cluster identity is not trivially rebuilt (DEF-021).
+        dingo_store::write_atomic_keep_previous(&path, json.as_bytes())?;
         Ok(())
     }
 
     /// Load `cluster.json` from a cluster root.
+    ///
+    /// Falls back to `cluster.json.prev` when the primary is corrupt (DEF-021).
     pub fn load(root: &Path) -> Result<Self, ClusterError> {
         let path = root.join("cluster.json");
-        if !path.is_file() {
+        if let Some(meta) = Self::try_parse(&path)? {
+            return Ok(meta);
+        }
+        let prev = dingo_store::previous_path(&path);
+        if let Some(meta) = Self::try_parse(&prev)? {
+            return Ok(meta);
+        }
+        if !path.is_file() && !prev.is_file() {
             return Err(ClusterError::NotACluster(format!(
                 "missing cluster.json at {}",
                 root.display()
             )));
         }
-        let bytes = std::fs::read(&path)?;
-        let meta: Self = serde_json::from_slice(&bytes)
-            .map_err(|_| ClusterError::CorruptMeta("parse cluster.json"))?;
+        Err(ClusterError::CorruptMeta(
+            "cluster.json unreadable; restore cluster.json.prev or recreate the cluster root",
+        ))
+    }
+
+    fn try_parse(path: &Path) -> Result<Option<Self>, ClusterError> {
+        if !path.is_file() {
+            return Ok(None);
+        }
+        let bytes = match std::fs::read(path) {
+            Ok(b) => b,
+            Err(_) => return Ok(None),
+        };
+        let meta: Self = match serde_json::from_slice(&bytes) {
+            Ok(m) => m,
+            Err(_) => return Ok(None),
+        };
         if !Self::FORMAT_COMPAT.contains(&meta.format.as_str()) {
-            return Err(ClusterError::CorruptMeta("unsupported cluster format"));
+            return Ok(None);
         }
         if meta.hash_profile != HASH_PROFILE_BLAKE3_MOD {
-            return Err(ClusterError::CorruptMeta("unsupported hash profile"));
+            return Ok(None);
         }
-        Ok(meta)
+        Ok(Some(meta))
     }
 }
 

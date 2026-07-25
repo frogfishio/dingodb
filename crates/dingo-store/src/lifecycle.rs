@@ -72,28 +72,42 @@ impl LifecyclePolicy {
     }
 
     /// Load from `root/tiers/lifecycle.json`, or empty if missing.
+    ///
+    /// Falls back to the previous generation when the primary is corrupt (DEF-021).
     pub fn load(store_root: &Path) -> Result<Self, StoreError> {
         let path = policy_path(store_root);
-        if !path.is_file() {
-            return Ok(Self::new());
+        if path.is_file() {
+            if let Ok(bytes) = fs::read(&path) {
+                if let Ok(pol) = serde_json::from_slice::<Self>(&bytes) {
+                    return Ok(pol);
+                }
+            }
         }
-        let bytes = fs::read(&path)?;
-        let pol: Self = serde_json::from_slice(&bytes)
-            .map_err(|_| StoreError::CorruptMeta("parse tiers/lifecycle.json"))?;
-        Ok(pol)
+        let prev = crate::atomic_file::previous_path(&path);
+        if prev.is_file() {
+            if let Ok(bytes) = fs::read(&prev) {
+                if let Ok(pol) = serde_json::from_slice::<Self>(&bytes) {
+                    return Ok(pol);
+                }
+            }
+        }
+        if path.is_file() || prev.is_file() {
+            return Err(StoreError::CorruptControl {
+                path: path.display().to_string(),
+                detail: "parse tiers/lifecycle.json (and .prev) failed".into(),
+                recovery: "restore a valid lifecycle.json or rewrite via LifecyclePolicy::save"
+                    .into(),
+            });
+        }
+        Ok(Self::new())
     }
 
-    /// Persist under the store root.
+    /// Persist under the store root (atomic durable; keeps previous generation).
     pub fn save(&self, store_root: &Path) -> Result<(), StoreError> {
         let path = policy_path(store_root);
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
         let json = serde_json::to_string_pretty(self)
             .map_err(|_| StoreError::CorruptMeta("serialize tiers/lifecycle.json"))?;
-        let tmp = path.with_extension("json.tmp");
-        fs::write(&tmp, json)?;
-        fs::rename(tmp, path)?;
+        crate::atomic_file::write_atomic_keep_previous(&path, json.as_bytes())?;
         Ok(())
     }
 

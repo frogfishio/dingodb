@@ -207,19 +207,14 @@ pub fn rebuild_segment_catalog(
     Ok(cat)
 }
 
-/// Persist segment catalog.
+/// Persist segment catalog (atomic durable replace, DEF-021).
 pub fn write_segment_catalog(
     path: &Path,
     store_id: [u8; 16],
     catalog: &SegmentCatalog,
 ) -> Result<(), StoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
     let bytes = encode_catalog(store_id, catalog);
-    let tmp = path.with_extension("cat.tmp");
-    fs::write(&tmp, &bytes)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic(path, &bytes)?;
     Ok(())
 }
 

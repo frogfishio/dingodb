@@ -252,23 +252,21 @@ pub fn copy_verified_frames(
     Ok((manifest, frames_copied, holes_recorded))
 }
 
-/// Persist the recovery manifest under `recovery/`.
+/// Persist the recovery manifest under `recovery/` (atomic durable, DEF-021).
 pub fn write_recovery_manifest(
     paths: &StorePaths,
     manifest: &RecoveryManifest,
 ) -> Result<PathBuf, StoreError> {
     fs::create_dir_all(paths.recovery_dir())?;
     let path = salvage_manifest_path(paths);
-    let body = serde_json::to_vec_pretty(manifest).map_err(|e| {
+    let mut body = serde_json::to_vec_pretty(manifest).map_err(|e| {
         StoreError::Io(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("serialize recovery manifest: {e}"),
         ))
     })?;
-    let mut f = fs::File::create(&path)?;
-    f.write_all(&body)?;
-    f.write_all(b"\n")?;
-    f.sync_all()?;
+    body.push(b'\n');
+    crate::atomic_file::write_atomic_keep_previous(&path, &body)?;
     Ok(path)
 }
 

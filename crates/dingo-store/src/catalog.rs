@@ -75,21 +75,16 @@ pub fn collections_catalog_path(catalogs_dir: &Path) -> PathBuf {
     catalogs_dir.join(COLLECTIONS_CATALOG_FILE)
 }
 
-/// Persist the collection catalog (atomic replace).
+/// Persist the collection catalog (atomic durable replace, DEF-021).
 pub fn write_collection_catalog(
     path: &Path,
     store_id: [u8; 16],
     fingerprint: [u8; 32],
     catalog: &CollectionCatalog,
 ) -> Result<(), StoreError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
     let bytes = encode_catalog(store_id, fingerprint, catalog);
-    let tmp = path.with_extension("cat.tmp");
     crate::failpoint::hit("store.catalog.before_write")?;
-    fs::write(&tmp, &bytes)?;
-    fs::rename(&tmp, path)?;
+    crate::atomic_file::write_atomic(path, &bytes)?;
     Ok(())
 }
 

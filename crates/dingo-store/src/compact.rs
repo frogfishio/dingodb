@@ -133,10 +133,8 @@ pub fn write_checkpoint(
         write_bytes(&mut out, subj);
         write_bytes(&mut out, body);
     }
-    let tmp = path.with_extension("ckpt.tmp");
     crate::failpoint::hit("store.checkpoint.before_write")?;
-    fs::write(&tmp, &out)?;
-    fs::rename(&tmp, &path)?;
+    crate::atomic_file::write_atomic(&path, &out)?;
     Ok(path)
 }
 
