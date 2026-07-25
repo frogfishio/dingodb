@@ -10,9 +10,12 @@ use crate::chunk_payload::{
     PayloadResult, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
 use crate::compact::{
-    compact_live_to_new_segment, try_load_checkpoint, write_checkpoint, CheckpointMeta,
-    CompactReport,
+    estimate_compact_bytes, new_planned_job, reclaim_source_segments, reclaimable_source_ids,
+    report_from_job, try_load_checkpoint, try_load_compact_job, verify_live_segment,
+    write_checkpoint, write_compact_job, write_live_segment, CheckpointMeta, CompactJob,
+    CompactOptions, CompactPhase, CompactReport,
 };
+
 use crate::durability::DurabilityMode;
 use crate::envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
@@ -311,6 +314,8 @@ impl Store {
         store.load_or_rebuild_catalog()?;
         store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
         store.resume_or_start_active()?;
+        // Finish or cancel incomplete compaction jobs (DEF-024).
+        let _ = store.recover_compact_jobs()?;
         Ok(store)
     }
 
@@ -655,14 +660,66 @@ impl Store {
     }
 
     /// Compact live state into a new sealed segment (sources retained).
+    ///
+    /// Runs the DEF-024 phase pipeline through **activate** and leaves sources
+    /// on disk. Use [`Self::compact_live_with`] to reclaim after activate.
     pub fn compact_live(&mut self) -> Result<CompactReport, StoreError> {
+        self.compact_live_with(CompactOptions::default())
+    }
+
+    /// Compact live state with explicit reclaim / horizon options (DEF-024).
+    ///
+    /// Phases: plan → create → verify → activate → optional reclaim.
+    /// Reclaim of live-projection sources requires `allow_history_loss`.
+    pub fn compact_live_with(
+        &mut self,
+        options: CompactOptions,
+    ) -> Result<CompactReport, StoreError> {
+        if options.reclaim_sources && !options.allow_history_loss {
+            return Err(StoreError::ConsistencyViolation(
+                "compact reclaim requires allow_history_loss for live-projection coverage".into(),
+            ));
+        }
+
         self.seal_active()?;
-        let sources = all_segment_paths(&self.paths, Some(&self.tier_placement))?
-            .into_iter()
-            .map(|p| examination_source_name(&self.paths.root, &p))
-            .collect::<Vec<_>>();
+        let source_paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let sources: Vec<String> = source_paths
+            .iter()
+            .map(|p| examination_source_name(&self.paths.root, p))
+            .collect();
+        let source_ids = reclaimable_source_ids(&self.paths, &sources);
+        let live_planned = self.index.live_entries().count();
+        let (est_read, est_write) = estimate_compact_bytes(&self.paths, &sources, &self.index);
         let segment_id = self.next_segment_id();
+        let job_id = random_id();
         let created_ns = now_ns();
+        let recovery_generation = next_compact_recovery_generation(&self.paths)?;
+
+        let mut job = new_planned_job(
+            self.store_id,
+            job_id,
+            segment_id,
+            sources.clone(),
+            source_ids,
+            live_planned,
+            est_read,
+            est_write,
+            recovery_generation,
+            &options,
+            created_ns,
+        );
+        write_compact_job(&self.paths, &job)?;
+        crate::failpoint::hit("store.compact.after_plan")?;
+
+        if job.cancel_requested {
+            job.phase = CompactPhase::Cancelled;
+            job.detail = Some("cancelled before create".into());
+            job.updated_ns = now_ns();
+            write_compact_job(&self.paths, &job)?;
+            return report_from_job(&job);
+        }
+
+        // --- create ---
         let mut counter = self.event_counter;
         let store_id = self.store_id;
         let mut mint = || {
@@ -671,23 +728,241 @@ impl Store {
             id[..8].copy_from_slice(&counter.to_le_bytes());
             id
         };
-        let report = compact_live_to_new_segment(
+        let create_result = write_live_segment(
             &self.paths,
             store_id,
             self.limits,
             &self.index,
-            &sources,
             segment_id,
             &mut mint,
             created_ns,
-        )?;
+        );
         self.event_counter = counter;
+        let (written, bytes_written) = match create_result {
+            Ok(v) => v,
+            Err(e) => {
+                job.phase = CompactPhase::Failed;
+                job.detail = Some(format!("create failed: {e}"));
+                job.updated_ns = now_ns();
+                let _ = write_compact_job(&self.paths, &job);
+                return Err(e);
+            }
+        };
+        job.phase = CompactPhase::Created;
+        job.live_subjects_written = written;
+        job.bytes_written = bytes_written;
+        job.bytes_read = est_read;
+        job.updated_ns = now_ns();
+        write_compact_job(&self.paths, &job)?;
+        crate::failpoint::hit("store.compact.after_create")?;
+
+        // --- verify ---
+        if let Err(e) = verify_live_segment(
+            &self.paths,
+            self.limits,
+            &self.index,
+            &segment_id,
+            written,
+        ) {
+            job.phase = CompactPhase::Failed;
+            job.detail = Some(format!("verify failed: {e}"));
+            job.updated_ns = now_ns();
+            let _ = write_compact_job(&self.paths, &job);
+            return Err(e);
+        }
+        job.phase = CompactPhase::Verified;
+        job.updated_ns = now_ns();
+        write_compact_job(&self.paths, &job)?;
+
+        // --- activate ---
         let _ = register_hot_segment(&self.paths, &mut self.tier_placement, segment_id);
         let _ = self.persist_tier_state();
         let _ = self.refresh_segment_catalog();
-        // Index remains valid (live values unchanged). Refresh cache/catalog.
         let _ = self.persist_index_cache();
-        Ok(report)
+        crate::failpoint::hit("store.compact.after_activate")?;
+        job.phase = CompactPhase::Activated;
+        job.updated_ns = now_ns();
+        write_compact_job(&self.paths, &job)?;
+
+        // --- optional reclaim ---
+        if options.reclaim_sources {
+            job.phase = CompactPhase::RetentionHold;
+            job.updated_ns = now_ns();
+            write_compact_job(&self.paths, &job)?;
+            self.reclaim_compact_job_inner(&mut job)?;
+        }
+
+        report_from_job(&job)
+    }
+
+    /// Explicitly reclaim sources for an activated compact job (DEF-024).
+    ///
+    /// Requires the job to have `allow_history_loss` (set at plan time or via
+    /// this call's force flag when the job already recorded it).
+    pub fn reclaim_compact_job(&mut self, job_id: &[u8; 16]) -> Result<CompactReport, StoreError> {
+        let mut job = try_load_compact_job(&self.paths, job_id)?
+            .ok_or(StoreError::CorruptMeta("compact job not found"))?;
+        if !job.allow_history_loss {
+            return Err(StoreError::ConsistencyViolation(
+                "compact reclaim refused: job does not allow history loss".into(),
+            ));
+        }
+        if matches!(job.phase, CompactPhase::Activated) {
+            job.phase = CompactPhase::RetentionHold;
+            job.updated_ns = now_ns();
+            write_compact_job(&self.paths, &job)?;
+        }
+        self.reclaim_compact_job_inner(&mut job)?;
+        report_from_job(&job)
+    }
+
+    /// Cancel an in-flight compact job that has not yet activated.
+    ///
+    /// Activated/reclaimed jobs cannot be cancelled (output is already live).
+    pub fn cancel_compact_job(&mut self, job_id: &[u8; 16]) -> Result<CompactJob, StoreError> {
+        let mut job = try_load_compact_job(&self.paths, job_id)?
+            .ok_or(StoreError::CorruptMeta("compact job not found"))?;
+        if matches!(
+            job.phase,
+            CompactPhase::Activated
+                | CompactPhase::RetentionHold
+                | CompactPhase::Reclaimed
+                | CompactPhase::Cancelled
+                | CompactPhase::Failed
+        ) {
+            return Err(StoreError::ConsistencyViolation(format!(
+                "cannot cancel compact job in phase {}",
+                job.phase.as_str()
+            )));
+        }
+        job.cancel_requested = true;
+        job.phase = CompactPhase::Cancelled;
+        job.detail = Some("operator cancel".into());
+        job.updated_ns = now_ns();
+        // Best-effort: remove unactivated output segment so it does not linger.
+        if let Some(out_id) = job.output_segment_bytes() {
+            let p = self.paths.sealed_segment(&out_id);
+            if p.is_file() && matches!(job.phase, CompactPhase::Cancelled) {
+                // Only delete if we never activated (still true here).
+                let _ = fs::remove_file(&p);
+            }
+        }
+        write_compact_job(&self.paths, &job)?;
+        Ok(job)
+    }
+
+    /// Load a compaction job record if present.
+    pub fn load_compact_job(&self, job_id: &[u8; 16]) -> Result<Option<CompactJob>, StoreError> {
+        try_load_compact_job(&self.paths, job_id)
+    }
+
+    /// List durable compaction job records.
+    pub fn list_compact_jobs(&self) -> Result<Vec<CompactJob>, StoreError> {
+        crate::compact::list_compact_jobs(&self.paths)
+    }
+
+    /// Resume incomplete compact jobs after open (DEF-024 recovery).
+    ///
+    /// - `planned`: cancel (no durable output yet, or incomplete create)
+    /// - `created` / `verified`: finish verify+activate (sources retained)
+    /// - `activated` / `retention_hold` / terminal: leave for operator
+    pub fn recover_compact_jobs(&mut self) -> Result<Vec<CompactJob>, StoreError> {
+        let jobs = crate::compact::list_compact_jobs(&self.paths)?;
+        let mut out = Vec::new();
+        for mut job in jobs {
+            match job.phase {
+                CompactPhase::Planned => {
+                    job.phase = CompactPhase::Cancelled;
+                    job.detail = Some("cancelled on recover: incomplete plan".into());
+                    job.updated_ns = now_ns();
+                    if let Some(id) = job.output_segment_bytes() {
+                        let p = self.paths.sealed_segment(&id);
+                        if p.is_file() {
+                            // Incomplete create may have left a partial file;
+                            // only remove if not registered as activated output.
+                            let _ = fs::remove_file(&p);
+                        }
+                    }
+                    write_compact_job(&self.paths, &job)?;
+                }
+                CompactPhase::Created | CompactPhase::Verified => {
+                    if let Err(e) = self.finish_compact_job_after_create(&mut job) {
+                        job.phase = CompactPhase::Failed;
+                        job.detail = Some(format!("recover failed: {e}"));
+                        job.updated_ns = now_ns();
+                        let _ = write_compact_job(&self.paths, &job);
+                    }
+                }
+                CompactPhase::Activated
+                | CompactPhase::RetentionHold
+                | CompactPhase::Reclaimed
+                | CompactPhase::Cancelled
+                | CompactPhase::Failed => {}
+            }
+            out.push(job);
+        }
+        Ok(out)
+    }
+
+    fn finish_compact_job_after_create(&mut self, job: &mut CompactJob) -> Result<(), StoreError> {
+        let segment_id = job
+            .output_segment_bytes()
+            .ok_or(StoreError::CorruptMeta("compact output segment id"))?;
+        let expected = job.live_subjects_written.max(job.live_subjects_planned);
+        if job.phase == CompactPhase::Created {
+            verify_live_segment(
+                &self.paths,
+                self.limits,
+                &self.index,
+                &segment_id,
+                expected,
+            )?;
+            job.phase = CompactPhase::Verified;
+            job.updated_ns = now_ns();
+            write_compact_job(&self.paths, job)?;
+        }
+        let _ = register_hot_segment(&self.paths, &mut self.tier_placement, segment_id);
+        let _ = self.persist_tier_state();
+        let _ = self.refresh_segment_catalog();
+        let _ = self.persist_index_cache();
+        job.phase = CompactPhase::Activated;
+        job.updated_ns = now_ns();
+        write_compact_job(&self.paths, job)?;
+        Ok(())
+    }
+
+    fn reclaim_compact_job_inner(&mut self, job: &mut CompactJob) -> Result<(), StoreError> {
+        let (reclaimed, retained, deleted_ids) = reclaim_source_segments(&self.paths, job)?;
+        for id in &deleted_ids {
+            self.tier_placement.remove(id);
+        }
+        let _ = self.persist_tier_state();
+        let _ = self.refresh_segment_catalog();
+        // Live index still valid; rebuild so segment pointers prefer survivors.
+        let _ = self.rebuild_index_from_segments();
+        let _ = self.persist_index_cache();
+        job.bytes_reclaimed = job.bytes_reclaimed.saturating_add(reclaimed);
+        job.bytes_retained = retained;
+        job.sources_retained = retained > 0
+            || job
+                .source_segment_ids
+                .iter()
+                .filter_map(|h| crate::layout::unhex16(h))
+                .any(|id| self.paths.sealed_segment(&id).is_file());
+        // After reclaim of all listed sources, sources_retained is false.
+        if deleted_ids.len() == job.source_segment_ids.len()
+            || job
+                .source_segment_ids
+                .iter()
+                .filter_map(|h| crate::layout::unhex16(h))
+                .all(|id| !self.paths.sealed_segment(&id).is_file())
+        {
+            job.sources_retained = false;
+        }
+        job.phase = CompactPhase::Reclaimed;
+        job.updated_ns = now_ns();
+        write_compact_job(&self.paths, job)?;
+        Ok(())
     }
 
     /// Write a derived checkpoint under `snapshots/` with declared coverage.
@@ -1942,6 +2217,17 @@ type DiskEvent = DiskEventPub;
 /// Compare recovery order for item events (segment mint order, then sequence).
 fn cmp_disk_events(a: &DiskEvent, b: &DiskEvent) -> Ordering {
     cmp_disk_events_pub(a, b)
+}
+
+/// Next recovery generation for a compact job (max existing + 1).
+fn next_compact_recovery_generation(paths: &StorePaths) -> Result<u64, StoreError> {
+    let jobs = crate::compact::list_compact_jobs(paths)?;
+    let max = jobs
+        .iter()
+        .map(|j| j.recovery_generation)
+        .max()
+        .unwrap_or(0);
+    Ok(max.saturating_add(1))
 }
 
 /// First 8 LE bytes of segment_id are the mint counter (see `next_segment_id`).

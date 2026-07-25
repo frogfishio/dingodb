@@ -598,7 +598,9 @@ Acceptance:
 
 ### DEF-024 — Make compaction reclaim space safely
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (phased job + optional reclaim; see
+`stage_def_024_compaction`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -610,6 +612,18 @@ Work:
 - Carry tombstone and deduplication horizons explicitly.
 - Support cancellation and restart from every phase.
 - Report estimated and actual bytes read, written, retained, and reclaimed.
+
+Implementation notes:
+
+- Durable job records under `recovery/compaction/<job_id>.job.json` with phases
+  `planned → created → verified → activated → retention_hold → reclaimed`
+  (plus `cancelled` / `failed`).
+- Default `compact_live` stops at **activated** with sources retained (history
+  preserved). Reclaim requires `allow_history_loss` for live-projection coverage.
+- Open runs `recover_compact_jobs`: incomplete plan → cancel; created/verified →
+  finish activate; activated/reclaimed left for the operator.
+- Byte estimates and actuals on `CompactReport` / job; failpoints at plan,
+  create, verify, activate, and reclaim boundaries.
 
 Acceptance:
 

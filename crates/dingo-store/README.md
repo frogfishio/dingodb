@@ -22,12 +22,13 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Recovery | rebuildable primary index, salvage after catalog wipe, OVERVIEW §16 suite |
 | Meta | framed store descriptor, optional on-disk primary index cache (DEF-023 frontier v2) |
 | Derived | collection catalog, secondary index files, subject history, checkpoints |
-| Chunks | chunked payloads with partial maps; live-state compaction (sources retained) |
+| Chunks | chunked payloads with partial maps; live-state compaction (phased DEF-024 jobs; sources retained by default) |
 | Operator | `open_inspect` (read-only doctor), evidence `salvage_to` + `export_live_state` |
 | Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
 | Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); durable-frontier catalogs (DEF-013); write dedup table (DEF-010); multi-gen format |
 | Crash matrix | DEF-022 hardened: matrix + failpoints (`Abort`, ENOSPC, short-write) + multi-process child; CI subset always, full matrix nightly (`DINGO_CRASH_MATRIX_FULL=1`) |
 | Write path | DEF-023: durable projection + rate-limited frontier checkpoints; no full-store rescan on ack |
+| Compaction | DEF-024: durable phases + job records; reclaim only with `allow_history_loss` |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -43,7 +44,7 @@ store/
   catalogs/       # derived only (collections.cat, tier-placement.cat, segments.cat)
   indexes/        # derived only (primary.idx, sec/<coll>/*.six)
   snapshots/      # derived checkpoints
-  recovery/       # operator scratch + migrations/ evidence
+  recovery/       # operator scratch + migrations/ + compaction/ jobs (DEF-024)
 ```
 
 Deleting `catalogs/`, `indexes/`, and `snapshots/` must not prevent recovery:
@@ -66,7 +67,9 @@ live there.
 | `salvage_to` | Evidence-preserving frame copy + recovery manifest (DEF-011) |
 | `export_live_state` | Live-only re-put materialization (new lineage) |
 | `rebuild_catalogs` / `list_collections` | Derived collection catalog |
-| `compact_live` | Live projection into a new segment (sources retained) |
+| `compact_live` / `compact_live_with` | Live projection via phased job (activate; optional reclaim) |
+| `reclaim_compact_job` / `cancel_compact_job` | Explicit reclaim or pre-activate cancel (DEF-024) |
+| `list_compact_jobs` / `load_compact_job` | Inspect durable compaction job records |
 | `checkpoint` | Derived snapshot with declared coverage |
 | secondary index helpers | Persist/load/delete `*.six` files |
 | `examination_sources` | Ordered `(source_name, bytes)` for examination |
@@ -86,6 +89,7 @@ live there.
 
 Crash-boundary narrative: [`doc/CRASH_CONSISTENCY.md`](../../doc/CRASH_CONSISTENCY.md).
 Write-path derived state: [CAPABILITY_MATRIX.md](../../doc/CAPABILITY_MATRIX.md) (DEF-023).
+Compaction reclaim: same matrix (DEF-024).
 
 ## Out of scope (this crate)
 

@@ -139,6 +139,19 @@ collection catalogs are built from segment-derived durable state only.
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 
+## Compaction reclaim (DEF-024)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Phased compact job | shipped | `planned → created → verified → activated → [retention_hold] → reclaimed` |
+| Durable job record | shipped | `recovery/compaction/<job_id>.job.json` (+ `.prev`) |
+| Default retains sources | shipped | `compact_live` activates only; history remains in sources |
+| Safe reclaim | shipped | Requires `allow_history_loss` for live-projection; never deletes output/active |
+| Byte metrics | shipped | estimated/actual read, write, retained, reclaimed on `CompactReport` |
+| Restart recovery | shipped | `recover_compact_jobs` on open finishes or cancels incomplete phases |
+| Cancel | shipped | Cancel pre-activate jobs; refuse after activate |
+| Tests | shipped | `stage_def_024_compaction` |
+
 ## CI check
 
 A lightweight workspace test asserts this file exists and still forbids the

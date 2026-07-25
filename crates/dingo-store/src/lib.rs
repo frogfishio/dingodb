@@ -51,7 +51,11 @@ pub use chunk_payload::{
     ChunkManifest, ChunkSlot, PayloadResult, CHUNK_MANIFEST_MAGIC, DEFAULT_CHUNK_SIZE,
     DEFAULT_CHUNK_THRESHOLD,
 };
-pub use compact::{CheckpointMeta, CompactReport};
+pub use compact::{
+    compaction_job_path, compaction_jobs_dir, list_compact_jobs, try_load_compact_job,
+    CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport, COMPACTION_JOB_DIR,
+    COMPACTION_JOB_SUFFIX,
+};
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};
 pub use crash_matrix::{

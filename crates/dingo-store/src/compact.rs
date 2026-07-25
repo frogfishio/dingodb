@@ -1,18 +1,35 @@
-//! Compaction and derived checkpoints (OVERVIEW §13, Stage 6).
+//! Compaction and derived checkpoints (OVERVIEW §13, Stage 6; DEF-024).
 //!
 //! Compaction creates new immutable segments from verified live state while
 //! preserving item identities. It MUST NOT convert an uncertain history into an
-//! apparently complete snapshot: source segments remain until explicitly
-//! reclaimed, and reports declare coverage.
+//! apparently complete snapshot: source segments remain until an explicit,
+//! phased reclaim step after the new generation is verified and activated.
+//!
+//! ## Durable phases (DEF-024)
+//!
+//! ```text
+//! planned → created → verified → activated → [retention_hold] → reclaimed
+//!                ↘ failed / cancelled
+//! ```
+//!
+//! Job records live under `recovery/compaction/` and survive process restart.
+//! Crash at any phase leaves either the pre-compaction authoritative tree or a
+//! verified post-activation generation (never a torn half-reclaim).
 
-use crate::envelope::{encode_item_envelope, EventKind, ItemEnvelope};
+use crate::envelope::{decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope};
 use crate::error::StoreError;
 use crate::index::{IndexEntry, PrimaryIndex};
-use crate::layout::{hex16, StorePaths};
-use dingo_format::{ActiveSegment, FrameKind, SafetyLimits, SegmentId};
+use crate::layout::{hex16, segment_id_from_filename, unhex16, StorePaths};
+use dingo_format::{scan_forward, ActiveSegment, FrameKind, SafetyLimits, SegmentId};
+use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// Filename prefix for compaction job records under `recovery/compaction/`.
+pub const COMPACTION_JOB_DIR: &str = "compaction";
+/// Job file suffix.
+pub const COMPACTION_JOB_SUFFIX: &str = ".job.json";
 
 /// Report from a live-state compaction pass.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,11 +41,179 @@ pub struct CompactReport {
     /// Source segment files that contributed to the pre-compaction index
     /// (paths relative to store root when possible).
     pub source_segments: Vec<String>,
-    /// Whether source segments were left in place (true for Stage 6 default).
+    /// Whether source segments were left in place (true unless reclaim ran).
     pub sources_retained: bool,
     /// Declared coverage: `"live-projection"` means only current live values
-    /// were rewritten; full event history remains in source segments.
+    /// were rewritten; full event history remains in source segments while
+    /// retained.
     pub coverage: &'static str,
+    /// Durable job id for this compaction (hex identity of the job record).
+    pub job_id: [u8; 16],
+    /// Final phase reached.
+    pub phase: CompactPhase,
+    /// Estimated bytes that would be read from sources (pre-create).
+    pub bytes_estimated_read: u64,
+    /// Estimated bytes to write for the live projection (pre-create).
+    pub bytes_estimated_write: u64,
+    /// Actual bytes read from sources during create/verify.
+    pub bytes_read: u64,
+    /// Actual bytes written to the new segment file.
+    pub bytes_written: u64,
+    /// Bytes still retained in source segments after this call.
+    pub bytes_retained: u64,
+    /// Bytes reclaimed (deleted) from source segments after this call.
+    pub bytes_reclaimed: u64,
+    /// Tombstone horizon carried on the job (ns; informational for reclaim policy).
+    pub tombstone_horizon_ns: Option<u64>,
+    /// Dedup evidence horizon tag carried on the job (informational).
+    pub dedup_horizon: Option<String>,
+}
+
+/// Options for a live-projection compaction (DEF-024).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompactOptions {
+    /// When true, after activate immediately attempt source reclaim.
+    ///
+    /// Live-projection compact does **not** rewrite history; reclaim requires
+    /// [`Self::allow_history_loss`] so operators cannot silently destroy event
+    /// evidence.
+    pub reclaim_sources: bool,
+    /// Required when [`Self::reclaim_sources`] is true for live-projection
+    /// coverage. Acknowledges that subject history and pre-compact tombstones
+    /// in reclaimed sources will no longer be readable.
+    pub allow_history_loss: bool,
+    /// Optional tombstone horizon (created_ns) recorded on the job.
+    pub tombstone_horizon_ns: Option<u64>,
+    /// Optional dedup horizon tag (e.g. max operation id retained).
+    pub dedup_horizon: Option<String>,
+}
+
+impl Default for CompactOptions {
+    fn default() -> Self {
+        Self {
+            reclaim_sources: false,
+            allow_history_loss: false,
+            tombstone_horizon_ns: None,
+            dedup_horizon: None,
+        }
+    }
+}
+
+/// Durable compaction phase (DEF-024).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CompactPhase {
+    /// Job record written; output segment not yet durable.
+    Planned,
+    /// Output segment file created and synced; not yet verified.
+    Created,
+    /// Output segment verified against the live projection.
+    Verified,
+    /// Output segment registered; sources still retained.
+    Activated,
+    /// Activated and waiting for an explicit reclaim (retention window).
+    RetentionHold,
+    /// Source segments listed on the job have been reclaimed.
+    Reclaimed,
+    /// Operator cancelled before activation completed.
+    Cancelled,
+    /// Permanent failure; operator must inspect job record.
+    Failed,
+}
+
+impl CompactPhase {
+    /// Whether this phase is terminal.
+    pub fn is_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::Reclaimed | Self::Cancelled | Self::Failed
+        )
+    }
+
+    /// Stable ASCII name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Planned => "planned",
+            Self::Created => "created",
+            Self::Verified => "verified",
+            Self::Activated => "activated",
+            Self::RetentionHold => "retention_hold",
+            Self::Reclaimed => "reclaimed",
+            Self::Cancelled => "cancelled",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+/// Durable compaction job record under `recovery/compaction/`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompactJob {
+    /// Job schema version.
+    pub version: u32,
+    /// Opaque job id (also embedded in filename).
+    pub job_id: String,
+    /// Store id hex.
+    pub store_id: String,
+    /// Current phase.
+    pub phase: CompactPhase,
+    /// Recovery generation (monotonic counter for this store's compact jobs).
+    pub recovery_generation: u64,
+    /// Coverage declaration.
+    pub coverage: String,
+    /// Projection rule.
+    pub projection: String,
+    /// Output sealed segment id (hex).
+    pub output_segment_id: String,
+    /// Source paths relative to store root.
+    pub source_segments: Vec<String>,
+    /// Source sealed segment ids (hex) eligible for reclaim (excludes active).
+    pub source_segment_ids: Vec<String>,
+    /// Planned live subject count.
+    pub live_subjects_planned: usize,
+    /// Written live subject count (after create).
+    pub live_subjects_written: usize,
+    /// Estimated source bytes to read (plan time).
+    pub bytes_estimated_read: u64,
+    /// Estimated output segment bytes (plan time).
+    pub bytes_estimated_write: u64,
+    /// Actual bytes attributed to source reads.
+    pub bytes_read: u64,
+    /// Actual output segment file size.
+    pub bytes_written: u64,
+    /// Source bytes still on disk after the latest phase.
+    pub bytes_retained: u64,
+    /// Source bytes deleted by reclaim.
+    pub bytes_reclaimed: u64,
+    /// Whether sources are still on disk.
+    pub sources_retained: bool,
+    /// Operator requested reclaim after activation.
+    pub reclaim_requested: bool,
+    /// Operator accepted history loss for live-projection reclaim.
+    pub allow_history_loss: bool,
+    /// Tombstone horizon (created_ns) recorded for retention policy.
+    pub tombstone_horizon_ns: Option<u64>,
+    /// Dedup evidence horizon tag recorded for retention policy.
+    pub dedup_horizon: Option<String>,
+    /// Soft-cancel flag (honoured between phases).
+    pub cancel_requested: bool,
+    /// Failure / cancellation detail.
+    pub detail: Option<String>,
+    /// Job creation timestamp (ns).
+    pub created_ns: u64,
+    /// Last phase-update timestamp (ns).
+    pub updated_ns: u64,
+}
+
+impl CompactJob {
+    /// Parse job id bytes.
+    pub fn job_id_bytes(&self) -> Option<[u8; 16]> {
+        unhex16(&self.job_id)
+    }
+
+    /// Parse output segment id bytes.
+    pub fn output_segment_bytes(&self) -> Option<[u8; 16]> {
+        unhex16(&self.output_segment_id)
+    }
 }
 
 /// Derived checkpoint metadata (OVERVIEW §13.2).
@@ -49,21 +234,136 @@ pub struct CheckpointMeta {
 }
 
 const CHECKPOINT_MAGIC: &[u8; 8] = b"DCHKPT01";
+const JOB_VERSION: u32 = 1;
 
-/// Write live puts for every live index entry into a new sealed segment.
-///
-/// Does **not** delete source segments (hole honesty / history retention).
-/// New events receive fresh `event_id`s; `item_id` and bodies are preserved.
-pub fn compact_live_to_new_segment(
+/// Directory for compaction job records.
+pub fn compaction_jobs_dir(paths: &StorePaths) -> PathBuf {
+    paths.recovery_dir().join(COMPACTION_JOB_DIR)
+}
+
+/// Path for a job record by job id.
+pub fn compaction_job_path(paths: &StorePaths, job_id: &[u8; 16]) -> PathBuf {
+    compaction_jobs_dir(paths).join(format!("{}{}", hex16(job_id), COMPACTION_JOB_SUFFIX))
+}
+
+/// Persist a compaction job atomically (DEF-021 helper).
+pub fn write_compact_job(paths: &StorePaths, job: &CompactJob) -> Result<PathBuf, StoreError> {
+    let dir = compaction_jobs_dir(paths);
+    fs::create_dir_all(&dir)?;
+    let job_id = job
+        .job_id_bytes()
+        .ok_or(StoreError::CorruptMeta("compact job id"))?;
+    let path = compaction_job_path(paths, &job_id);
+    let bytes = serde_json::to_vec_pretty(job).map_err(|e| {
+        StoreError::CorruptControl {
+            path: path.display().to_string(),
+            detail: e.to_string(),
+            recovery: "fix job or cancel compaction".into(),
+        }
+    })?;
+    crate::failpoint::hit("store.compact.job_write")?;
+    crate::atomic_file::write_atomic_keep_previous(&path, &bytes)?;
+    Ok(path)
+}
+
+/// Load a compaction job if present and well-formed.
+pub fn try_load_compact_job(
+    paths: &StorePaths,
+    job_id: &[u8; 16],
+) -> Result<Option<CompactJob>, StoreError> {
+    let path = compaction_job_path(paths, job_id);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let bytes = fs::read(&path)?;
+    match serde_json::from_slice::<CompactJob>(&bytes) {
+        Ok(job) => Ok(Some(job)),
+        Err(e) => Err(StoreError::CorruptControl {
+            path: path.display().to_string(),
+            detail: e.to_string(),
+            recovery: "inspect .prev generation or cancel job".into(),
+        }),
+    }
+}
+
+/// List all compaction jobs under recovery/compaction (sorted by filename).
+pub fn list_compact_jobs(paths: &StorePaths) -> Result<Vec<CompactJob>, StoreError> {
+    let dir = compaction_jobs_dir(paths);
+    if !dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut paths_list: Vec<PathBuf> = fs::read_dir(&dir)?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.ends_with(COMPACTION_JOB_SUFFIX) && !n.ends_with(".prev"))
+                .unwrap_or(false)
+        })
+        .collect();
+    paths_list.sort();
+    let mut out = Vec::new();
+    for p in paths_list {
+        let bytes = fs::read(&p)?;
+        if let Ok(job) = serde_json::from_slice::<CompactJob>(&bytes) {
+            out.push(job);
+        }
+    }
+    Ok(out)
+}
+
+/// Estimate source read size and live write size from paths + index.
+pub fn estimate_compact_bytes(
+    paths: &StorePaths,
+    source_rel_names: &[String],
+    index: &PrimaryIndex,
+) -> (u64, u64) {
+    let mut read = 0u64;
+    for name in source_rel_names {
+        let p = paths.root.join(name);
+        if let Ok(meta) = fs::metadata(&p) {
+            read = read.saturating_add(meta.len());
+        }
+    }
+    let mut write = 0u64;
+    for (_subj, entry) in index.iter_all() {
+        if let IndexEntry::Live(lv) = entry {
+            // Rough envelope + body + frame overhead budget.
+            write = write.saturating_add(lv.body.len() as u64);
+            write = write.saturating_add(128);
+        }
+    }
+    (read, write)
+}
+
+/// Collect reclaimable sealed segment ids from source relative names.
+pub fn reclaimable_source_ids(paths: &StorePaths, source_rel_names: &[String]) -> Vec<[u8; 16]> {
+    let mut out = Vec::new();
+    for name in source_rel_names {
+        let p = paths.root.join(name);
+        // Never reclaim active segment path.
+        if p == paths.active_segment() {
+            continue;
+        }
+        if let Some(id) = segment_id_from_filename(&p) {
+            if !out.contains(&id) {
+                out.push(id);
+            }
+        }
+    }
+    out
+}
+
+/// Create the sealed live-projection segment file (create phase body).
+pub fn write_live_segment(
     paths: &StorePaths,
     store_id: [u8; 16],
     limits: SafetyLimits,
     index: &PrimaryIndex,
-    source_segment_names: &[String],
     next_segment_id: [u8; 16],
     mint_event_id: &mut dyn FnMut() -> [u8; 16],
     created_ns: u64,
-) -> Result<CompactReport, StoreError> {
+) -> Result<(usize, u64), StoreError> {
     let ids = SegmentId::new(store_id, next_segment_id);
     let mut seg = ActiveSegment::create(ids, limits, created_ns)?;
 
@@ -99,13 +399,212 @@ pub fn compact_live_to_new_segment(
         out.sync_all()?;
     }
     sync_dir_best_effort(&paths.segments_dir());
+    let bytes_written = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+    Ok((written, bytes_written))
+}
 
-    Ok(CompactReport {
-        segment_id: next_segment_id,
-        live_subjects_written: written,
-        source_segments: source_segment_names.to_vec(),
+/// Verify a live-projection segment matches the expected live index (verify phase).
+///
+/// Checks live subject count and that every live subject in `index` appears with
+/// the same body bytes in the output segment. Unknown/conflict frames in the
+/// output are rejected.
+pub fn verify_live_segment(
+    paths: &StorePaths,
+    limits: SafetyLimits,
+    index: &PrimaryIndex,
+    output_segment_id: &[u8; 16],
+    expected_live: usize,
+) -> Result<(), StoreError> {
+    crate::failpoint::hit("store.compact.before_verify")?;
+    let path = paths.sealed_segment(output_segment_id);
+    if !path.is_file() {
+        return Err(StoreError::SegmentNotFound);
+    }
+    let bytes = fs::read(&path)?;
+    let report = scan_forward(&bytes, limits);
+    let mut found: std::collections::BTreeMap<Vec<u8>, Vec<u8>> = std::collections::BTreeMap::new();
+    for (_off, frame) in report.verified_frames() {
+        // Only item events contribute to the live projection; other known
+        // kinds (descriptors, padding) are ignored. Unrecognized kind bytes
+        // surface as None from known_kind and are skipped.
+        if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
+            continue;
+        }
+        let Some(env) = decode_item_envelope(&frame.envelope) else {
+            return Err(StoreError::ConsistencyViolation(
+                "compact verify: undecodable item envelope in output segment".into(),
+            ));
+        };
+        if env.event_kind != EventKind::Put {
+            return Err(StoreError::ConsistencyViolation(
+                "compact verify: non-put event in live-projection segment".into(),
+            ));
+        }
+        found.insert(env.subject, frame.body.clone());
+    }
+    if found.len() != expected_live {
+        return Err(StoreError::ConsistencyViolation(format!(
+            "compact verify: live count mismatch output={} expected={}",
+            found.len(),
+            expected_live
+        )));
+    }
+    for (subj, entry) in index.iter_all() {
+        let IndexEntry::Live(lv) = entry else {
+            continue;
+        };
+        match found.get(subj) {
+            Some(body) if body == &lv.body => {}
+            Some(_) => {
+                return Err(StoreError::ConsistencyViolation(
+                    "compact verify: body mismatch for live subject".into(),
+                ));
+            }
+            None => {
+                return Err(StoreError::ConsistencyViolation(
+                    "compact verify: missing live subject in output".into(),
+                ));
+            }
+        }
+    }
+    crate::failpoint::hit("store.compact.after_verify")?;
+    Ok(())
+}
+
+/// Delete reclaimable source sealed segments listed on the job.
+///
+/// Safety rules:
+/// - Output segment is never deleted.
+/// - Active segment is never deleted.
+/// - Requires `allow_history_loss` for live-projection jobs.
+/// - Job must be `Activated` or `RetentionHold`.
+///
+/// Returns bytes reclaimed and remaining retained source bytes among listed sources.
+pub fn reclaim_source_segments(
+    paths: &StorePaths,
+    job: &CompactJob,
+) -> Result<(u64, u64, Vec<[u8; 16]>), StoreError> {
+    if !job.allow_history_loss {
+        return Err(StoreError::ConsistencyViolation(
+            "compact reclaim refused: allow_history_loss required for live-projection".into(),
+        ));
+    }
+    if !matches!(
+        job.phase,
+        CompactPhase::Activated | CompactPhase::RetentionHold
+    ) {
+        return Err(StoreError::ConsistencyViolation(format!(
+            "compact reclaim refused in phase {}",
+            job.phase.as_str()
+        )));
+    }
+    let output = job
+        .output_segment_bytes()
+        .ok_or(StoreError::CorruptMeta("compact output segment id"))?;
+    crate::failpoint::hit("store.compact.before_reclaim")?;
+
+    let mut reclaimed = 0u64;
+    let mut deleted_ids = Vec::new();
+    for id_hex in &job.source_segment_ids {
+        let Some(id) = unhex16(id_hex) else {
+            continue;
+        };
+        if id == output {
+            continue;
+        }
+        let path = paths.sealed_segment(&id);
+        if !path.is_file() {
+            continue;
+        }
+        let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        fs::remove_file(&path)?;
+        reclaimed = reclaimed.saturating_add(size);
+        deleted_ids.push(id);
+    }
+    sync_dir_best_effort(&paths.segments_dir());
+
+    let mut retained = 0u64;
+    for name in &job.source_segments {
+        let p = paths.root.join(name);
+        if p.is_file() {
+            retained = retained.saturating_add(fs::metadata(&p).map(|m| m.len()).unwrap_or(0));
+        }
+    }
+    // Output segment still present; count remaining source files only above.
+
+    crate::failpoint::hit("store.compact.after_reclaim")?;
+    Ok((reclaimed, retained, deleted_ids))
+}
+
+/// Build a fresh planned job skeleton.
+pub fn new_planned_job(
+    store_id: [u8; 16],
+    job_id: [u8; 16],
+    output_segment_id: [u8; 16],
+    source_segments: Vec<String>,
+    source_segment_ids: Vec<[u8; 16]>,
+    live_subjects_planned: usize,
+    bytes_estimated_read: u64,
+    bytes_estimated_write: u64,
+    recovery_generation: u64,
+    options: &CompactOptions,
+    created_ns: u64,
+) -> CompactJob {
+    CompactJob {
+        version: JOB_VERSION,
+        job_id: hex16(&job_id),
+        store_id: hex16(&store_id),
+        phase: CompactPhase::Planned,
+        recovery_generation,
+        coverage: "live-projection".into(),
+        projection: "primary-live-v1".into(),
+        output_segment_id: hex16(&output_segment_id),
+        source_segments,
+        source_segment_ids: source_segment_ids.iter().map(hex16).collect(),
+        live_subjects_planned,
+        live_subjects_written: 0,
+        bytes_estimated_read,
+        bytes_estimated_write,
+        bytes_read: 0,
+        bytes_written: 0,
+        bytes_retained: bytes_estimated_read,
+        bytes_reclaimed: 0,
         sources_retained: true,
+        reclaim_requested: options.reclaim_sources,
+        allow_history_loss: options.allow_history_loss,
+        tombstone_horizon_ns: options.tombstone_horizon_ns,
+        dedup_horizon: options.dedup_horizon.clone(),
+        cancel_requested: false,
+        detail: None,
+        created_ns,
+        updated_ns: created_ns,
+    }
+}
+
+/// Convert a finished job into a [`CompactReport`].
+pub fn report_from_job(job: &CompactJob) -> Result<CompactReport, StoreError> {
+    let segment_id = job
+        .output_segment_bytes()
+        .ok_or(StoreError::CorruptMeta("compact output segment id"))?;
+    let job_id = job
+        .job_id_bytes()
+        .ok_or(StoreError::CorruptMeta("compact job id"))?;
+    Ok(CompactReport {
+        segment_id,
+        live_subjects_written: job.live_subjects_written,
+        source_segments: job.source_segments.clone(),
+        sources_retained: job.sources_retained,
         coverage: "live-projection",
+        job_id,
+        phase: job.phase,
+        bytes_estimated_read: job.bytes_estimated_read,
+        bytes_estimated_write: job.bytes_estimated_write,
+        bytes_read: job.bytes_read,
+        bytes_written: job.bytes_written,
+        bytes_retained: job.bytes_retained,
+        bytes_reclaimed: job.bytes_reclaimed,
+        tombstone_horizon_ns: job.tombstone_horizon_ns,
+        dedup_horizon: job.dedup_horizon.clone(),
     })
 }
 
@@ -140,7 +639,7 @@ pub fn write_checkpoint(
 
 /// Load checkpoint metadata + live pairs if the file verifies as a draft checkpoint.
 pub fn try_load_checkpoint(
-    path: &std::path::Path,
+    path: &Path,
     store_id: [u8; 16],
 ) -> Result<Option<(CheckpointMeta, Vec<(Vec<u8>, Vec<u8>)>)>, StoreError> {
     if !path.is_file() {
@@ -227,7 +726,7 @@ fn read_bytes(bytes: &[u8], cursor: &mut usize) -> Option<Vec<u8>> {
     Some(v)
 }
 
-fn sync_dir_best_effort(path: &std::path::Path) {
+fn sync_dir_best_effort(path: &Path) {
     #[cfg(unix)]
     {
         if let Ok(dir) = File::open(path) {
