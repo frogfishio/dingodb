@@ -15,6 +15,8 @@
 //!   ([`raft`] module; CLUSTER_SPEC §10)
 //! - Durable Raft hard state / log / membership / snapshots
 //!   ([`raft_persist`]; DEF-035 / `dingo-raft-persist-v1`)
+//! - Network Raft RPC types + single-peer node over a transport
+//!   ([`raft_rpc`]; DEF-036 / `dingo-raft-rpc-v1`)
 //! - Convergent-append dual-accept + reconcile ([`convergent`]; CLUSTER_SPEC §9.2)
 //! - Distributed find/scan with coverage honesty (Stage 8e; CLUSTER_SPEC §17)
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
@@ -46,6 +48,7 @@ mod modes;
 mod partition;
 pub mod raft;
 pub mod raft_persist;
+pub mod raft_rpc;
 mod rebalance;
 
 pub use ack::ClusterWriteAck;
@@ -65,10 +68,20 @@ pub use modes::{CommitStatus, ConsistencyMode, DeploymentProfile, ReadMode};
 pub use partition::{
     default_partition_key, PartitionMap, DEFAULT_VIRTUAL_PARTITIONS, HASH_PROFILE_BLAKE3_MOD,
 };
-pub use raft::{CommitEvidence, LogCommand, LogEntry, PartitionRaft, RaftPeer, RaftRole};
+pub use raft::{
+    CommitEvidence, ElectError, LogCommand, LogEntry, PartitionRaft, ProposeError, ProposeResult,
+    RaftPeer, RaftRole,
+};
 pub use raft_persist::{
     snapshot_meta_for, ConsensusEvidenceClass, HardState, MembershipState, RaftPeerStore,
     Snapshot, SnapshotMeta, RAFT_PERSIST_PROFILE,
+};
+pub use raft_rpc::{
+    AppendEntriesRequest, AppendEntriesResponse, InstallSnapshotRequest, InstallSnapshotResponse,
+    MemoryRaftNetwork, MemoryRaftTransport, NetworkRaftNode, RaftRpcConfig, RaftRpcError,
+    RaftTransport, ReadIndexRequest, ReadIndexResponse, RequestVoteRequest, RequestVoteResponse,
+    DEFAULT_MAX_APPEND_BATCH, DEFAULT_PEER_BACKOFF_MAX_MS, DEFAULT_PEER_BACKOFF_MS,
+    DEFAULT_REPLICATE_ATTEMPTS, RAFT_RPC_PROFILE,
 };
 pub use rebalance::{RebalanceJob, RebalancePhase, RebalanceReport};
 

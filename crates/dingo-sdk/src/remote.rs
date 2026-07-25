@@ -219,6 +219,12 @@ pub struct ServeOptions {
     /// builds one from [`Self::admission_limits`]. Tests may inject a prebuilt
     /// controller to observe counters.
     pub admission: Option<Arc<AdmissionController>>,
+    /// Network Raft control-plane state for this process (DEF-036).
+    ///
+    /// When set, `raft_request_vote` / `raft_append_entries` /
+    /// `raft_install_snapshot` / `raft_read_index` are served from this state.
+    /// Endpoint maps remain routing hints only — never write authority.
+    pub raft: Option<crate::raft_server::SharedRaftState>,
 }
 
 impl Default for ServeOptions {
@@ -240,6 +246,7 @@ impl Default for ServeOptions {
             audit: None,
             admission_limits: AdmissionLimits::draft_defaults(),
             admission: None,
+            raft: None,
         }
     }
 }
@@ -274,6 +281,12 @@ impl ServeOptions {
     /// Set protocol admission limits (DEF-034).
     pub fn admission_limits(mut self, limits: AdmissionLimits) -> Self {
         self.admission_limits = limits;
+        self
+    }
+
+    /// Attach network Raft control-plane state (DEF-036).
+    pub fn raft(mut self, state: crate::raft_server::SharedRaftState) -> Self {
+        self.raft = Some(state);
         self
     }
 
@@ -888,6 +901,14 @@ impl RemoteClient {
     }
 
     fn call(&mut self, req: RpcRequest) -> Result<RpcResponse, Error> {
+        self.call_on_current(req)
+    }
+
+    /// Public one-shot RPC on the current connection (control-plane / Raft peers).
+    ///
+    /// Used by [`crate::raft_server::TcpRaftTransport`] so peer RPCs do not need
+    /// collection routing. Not a data-plane write authority path.
+    pub fn call_rpc(&mut self, req: RpcRequest) -> Result<RpcResponse, Error> {
         self.call_on_current(req)
     }
 
@@ -2024,13 +2045,14 @@ fn decode_rpc_response(bytes: &[u8], endpoint: &str, addr: &str) -> Result<RpcRe
 /// `endpoints.json`, and advertises the live [`PartitionDirectory`] plus
 /// endpoints on every `directory` RPC so multi-seed clients can cache routes.
 ///
-/// Writes still apply to **this node's store only** in this slice (single-node
-/// RPC dispatch). In-process quorum remains `Dingo::open_cluster`; multi-hop
-/// Raft over the network continues to harden on this advertise path.
+/// When Raft state is attached (default for experimental serve-cluster),
+/// control-plane `raft_*` RPCs (DEF-036) are served from durable peer stores
+/// under `{cluster_root}/raft/`. **Data-plane** collection writes still apply
+/// to this node's store unless a higher layer routes through Raft propose
+/// (DEF-037). In-process quorum remains `Dingo::open_cluster`.
 ///
 /// **Experimental (DEF-002):** requires
-/// [`ServeOptions::experimental_network_cluster`]. This is a routing and
-/// endpoint-advertisement prototype, **not** network quorum replication.
+/// [`ServeOptions::experimental_network_cluster`].
 pub fn serve_cluster_node(
     cluster_root: impl AsRef<Path>,
     node_index: u32,
@@ -2040,8 +2062,8 @@ pub fn serve_cluster_node(
     if !options.experimental_network_cluster {
         return Err(Error::ValidationMsg(
             "serve-cluster is experimental: pass ServeOptions::experimental_network_cluster(true) \
-             or CLI --experimental-network-cluster. Network quorum replication is not implemented; \
-             writes apply to this node only (DEF-002)."
+             or CLI --experimental-network-cluster. Network data-plane quorum (DEF-037) is separate; \
+             control-plane raft_* RPCs (DEF-036) attach when Raft state is available."
                 .into(),
         ));
     }
@@ -2068,10 +2090,31 @@ pub fn serve_cluster_node(
         })?;
 
     let snapshot = DirectorySnapshot::from_directory(&directory, endpoints);
-    let opts = options
+    let mut opts = options
         .directory(snapshot)
         .node_index(node_index)
         .cluster_root(root);
+
+    // Attach durable network Raft control plane when the caller did not inject one.
+    if opts.raft.is_none() {
+        match crate::raft_server::shared_raft_state(root, node_index, opts.auth_token.clone()) {
+            Ok(state) => {
+                // Seed this node's advertise address into the runtime map.
+                if let Ok(mut g) = state.lock() {
+                    if let Ok(eps) = dingo_cluster::load_endpoints(root) {
+                        g.set_endpoints(eps);
+                    }
+                }
+                opts = opts.raft(state);
+            }
+            Err(e) => {
+                // Raft attach is best-effort: routing-only serve still works.
+                eprintln!(
+                    "dingo serve-cluster: raft control plane not attached: {e} (directory-only mode)"
+                );
+            }
+        }
+    }
 
     let store_path = dingo_cluster::node_store_path(root, node_index);
     if !store_path.join("store-info").is_dir() {
@@ -2098,11 +2141,16 @@ pub fn serve_cluster_node(
         )
         .emit_stderr();
         eprintln!(
-            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={}",
+            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={} raft={}",
             root.display(),
             store_path.display(),
             meta.node_count,
-            if tls_enabled { "on" } else { "off" }
+            if tls_enabled { "on" } else { "off" },
+            if opts.raft.is_some() {
+                crate::raft_server::FEATURE_RAFT_RPC_V1
+            } else {
+                "off"
+            }
         );
     }
     // Avoid a second single-node-style report inside serve_store_with.
@@ -2661,6 +2709,35 @@ fn dispatch(
             live_count: Some(store.live_count()),
             ..empty_resp(id)
         }),
+        "raft_request_vote" | "raft_append_entries" | "raft_install_snapshot" | "raft_read_index" => {
+            let Some(raft) = options.raft.as_ref() else {
+                return Err(Error::ValidationMsg(
+                    "raft RPC not available on this server (no RaftServerState)".into(),
+                ));
+            };
+            let body = req
+                .json
+                .as_ref()
+                .ok_or_else(|| Error::QueryInvalid("raft RPC requires json body".into()))?;
+            // Reload endpoints so late-joining peers appear (routing only).
+            if let Some(root) = options.cluster_root.as_ref() {
+                if let Ok(mut g) = raft.lock() {
+                    g.reload_endpoints(root);
+                }
+            }
+            let value = {
+                let mut g = raft
+                    .lock()
+                    .map_err(|_| Error::Internal("raft state lock poisoned".into()))?;
+                g.dispatch_json(&req.op, body)?
+            };
+            Ok(RpcResponse {
+                id,
+                ok: true,
+                value: Some(value),
+                ..empty_resp(id)
+            })
+        }
         "directory" => {
             // Prefer operator-supplied cluster snapshot (serve-cluster).
             if let Some(mut dir) = options.directory.clone() {

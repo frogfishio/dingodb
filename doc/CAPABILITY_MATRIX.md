@@ -50,6 +50,8 @@ with the acceptance evidence expected before a stronger label.
 | `AUTHZ_PROFILE` | `dingo-authz-v1` | Principal privileges + audit chain (DEF-033) |
 | `ADMISSION_PROFILE` | `dingo-admission-v1` | Protocol admission: rate, auth lockout, churn, expensive budgets (DEF-034) |
 | `RAFT_PERSIST_PROFILE` | `dingo-raft-persist-v1` | Durable Raft hard state, log, membership, snapshots (DEF-035) |
+| `RAFT_RPC_PROFILE` | `dingo-raft-rpc-v1` | Network Raft control-plane RPCs (DEF-036) |
+| `FEATURE_RAFT_RPC_V1` | `raft-rpc-v1` | Handshake feature when server serves `raft_*` ops |
 
 ## Raft persistence (DEF-035)
 
@@ -62,13 +64,30 @@ with the acceptance evidence expected before a stronger label.
 | Persist-before-ack | Votes and AppendEntries flush before grant/success | **in-process cluster** shipped |
 | Restart | `Cluster::open` restores peers as Followers; re-elect on demand | **in-process cluster** shipped |
 | Evidence classes | `committed` / `prepared` / `conflicting` / `unknown_commit` | **in-process cluster** shipped |
-| Network multi-process Raft | Disk layout ready; RPC still DEF-036 | **not yet** |
+| Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
+| Data-plane client writes via network Raft | DEF-037 | **not yet** |
 | Jepsen-style partition histories | DEF-041 | **not yet** |
 
 Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
 ordinary `dingo-store` segments (salvage independent of Raft control plane).
 
 Evidence: `stage_def_035_raft_persist`, `dingo_cluster::raft_persist` unit tests.
+
+## Network Raft RPC (DEF-036)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| RequestVote | Framed `raft_request_vote`; term + log-up-to-date + epoch fences | **shipped** |
+| AppendEntries | Framed `raft_append_entries`; bounded batch; match/conflict hints | **shipped** |
+| InstallSnapshot | Framed `raft_install_snapshot`; blake3 meta + blob via DEF-035 store | **shipped** |
+| ReadIndex / leadership | Framed `raft_read_index` | **shipped** |
+| Transport | `RaftTransport` trait; `MemoryRaftNetwork` (tests); `TcpRaftTransport` (SDK) | **shipped** |
+| Auth | Shared token / authz on peer connections when configured | **shipped** |
+| Authority | Endpoints = routing only; epoch/cluster/term/membership fence writes | **shipped** |
+| Retry identity | `operation_id` dedup → same log index | **shipped** |
+| Client put/get via Raft propose | DEF-037 | **not yet** |
+
+Evidence: `stage_def_036_raft_rpc` (cluster + SDK), `dingo_cluster::raft_rpc` unit tests.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

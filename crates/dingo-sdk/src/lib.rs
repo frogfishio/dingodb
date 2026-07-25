@@ -32,6 +32,7 @@ mod filter;
 mod history;
 mod indexes;
 mod protocol;
+mod raft_server;
 mod receipt;
 mod remote;
 mod resource;
@@ -81,6 +82,10 @@ pub use protocol::{
     FEATURE_IDEMPOTENCY_V1, FEATURE_JSON_RPC_V1, FEATURE_RECEIPTS_V1, HANDSHAKE_MAX_FRAME_BYTES,
     PROTOCOL_MAJOR, PROTOCOL_MINOR, PROTOCOL_PROFILE, REQUIRED_DELETE_RECEIPT_FIELDS,
     REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL,
+};
+pub use raft_server::{
+    shared_raft_state, RaftServerState, SharedRaftState, TcpRaftTransport, FEATURE_RAFT_RPC_V1,
+    SDK_RAFT_RPC_PROFILE,
 };
 pub use remote::{
     handle_connection, handle_connection_shared, handle_connection_with, parse_dingo_url,

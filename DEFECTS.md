@@ -1126,7 +1126,11 @@ Remaining (out of this cut; tracked by DEF-036+ / DEF-041):
 ### DEF-036 — Implement real network Raft RPC
 
 Priority: P0  
-Dependencies: DEF-031, DEF-032, DEF-035
+Dependencies: DEF-031, DEF-032, DEF-035  
+Status: **addressed** (control-plane RequestVote / AppendEntries /
+InstallSnapshot / ReadIndex over framed transport; term / membership /
+placement-epoch fences; see `stage_def_036_raft_rpc`,
+`dingo_cluster::raft_rpc`, `dingo_sdk::raft_server`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1137,6 +1141,23 @@ Work:
 - Never treat endpoint routing data as authority to write.
 - Separate control-plane and data-plane availability.
 
+Implementation notes:
+
+- Profile tag `RAFT_RPC_PROFILE = "dingo-raft-rpc-v1"` (SDK feature
+  `FEATURE_RAFT_RPC_V1 = "raft-rpc-v1"`).
+- `NetworkRaftNode` — single-peer Raft actor over a `RaftTransport`;
+  `MemoryRaftNetwork` for in-process multi-peer tests; `TcpRaftTransport`
+  for framed `raft_*` ops between processes.
+- Wire ops: `raft_request_vote`, `raft_append_entries`,
+  `raft_install_snapshot`, `raft_read_index` on `serve_store` /
+  `serve_cluster_node` when `ServeOptions::raft` is set.
+- Fences: `cluster_id`, `placement_epoch`, voter membership, and term;
+  endpoint maps are routing hints only (`raft_fenced` on epoch mismatch).
+- Bounded batching (`DEFAULT_MAX_APPEND_BATCH`), per-peer backoff, and
+  replicate retries; `operation_id` dedup preserves one log index on retry.
+- Persist-before-ack (DEF-035) remains on each peer when a store is attached.
+- Auth: shared token / authz path required for peer RPCs when configured.
+
 Acceptance:
 
 - Three independent processes on separate storage roots provide quorum
@@ -1144,6 +1165,24 @@ Acceptance:
 - Minority partitions cannot commit strong writes.
 - Old leaders cannot write after a new term.
 - Response loss and retries preserve one event identity.
+
+Evidence:
+
+- `crates/dingo-cluster/tests/stage_def_036_raft_rpc.rs` — three-peer quorum
+  commit, minority no-elect, stale leader fence, operation_id retry,
+  placement-epoch fence, multi-root durable peers.
+- `crates/dingo-sdk/tests/stage_def_036_raft_rpc.rs` — TCP RequestVote /
+  AppendEntries / ReadIndex across three listeners; unauthenticated reject.
+- Unit: `raft_rpc::tests` (campaign/propose, offline peers, snapshot install).
+
+Remaining (out of this cut; tracked by DEF-037 / DEF-041):
+
+- Data-plane collection put/get routed through network Raft propose
+  (DEF-037) — control-plane quorum is live; client writes still need the
+  propose path on served nodes.
+- Full multi-process Jepsen-style partition histories (DEF-041).
+- Independent formal/safety review (or proven Raft library) before freezing
+  network Raft as the only production path.
 
 ### DEF-037 — Make cluster SDK requests actually use cluster commitment
 

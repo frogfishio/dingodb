@@ -22,6 +22,7 @@ profiles. Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 | In-process cluster | Development (1 node) and dependable-local (3 voting nodes) profiles |
 | Raft (8b) | Per-partition elections, log matching, majority commit evidence |
 | Raft persistence (DEF-035) | Durable hard state, log, membership, snapshots under `raft/node-*/p*` (`dingo-raft-persist-v1`) |
+| Network Raft RPC (DEF-036) | RequestVote / AppendEntries / InstallSnapshot / ReadIndex over framed transport (`dingo-raft-rpc-v1`) |
 | Write path (linearizable) | Propose → replicate → commit → apply to replica stores |
 | Convergent-append (8c) | Any online replica may accept; dual-accept across splits; `reconcile` by content hash |
 | Find / scan (8e) | `scan_with` / `find` + `FindResult` query id + resource-budget honesty |
@@ -31,26 +32,30 @@ profiles. Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 SDK surface (8d–8e): `dingo_sdk::Dingo::create_cluster` / `open_cluster` with
 client directory cache; `find_with_coverage` / `allow_partial_coverage`.
 
-### Network multi-node serve (experimental routing prototype)
+### Network multi-node serve (experimental)
 
-Process-per-node TCP beyond the in-process `Cluster` handle. **Not** network
-quorum replication — three processes do not equal replicated durability.
+Process-per-node TCP beyond the in-process `Cluster` handle.
 
 - `endpoints.json` — node index → `host:port` (`load_endpoints` / `upsert_endpoint`)
+  — **routing hints only**; never write authority (DEF-036 fences epoch/cluster)
 - `dingo serve-cluster CLUSTER_ROOT --node N --bind 127.0.0.1:PORT --experimental-network-cluster`
   — opens `nodes/node-N`, upserts this process into `endpoints.json`, and reloads
   endpoints on every `directory` RPC so late joiners appear without restart
 - SDK: `dingo_sdk::serve_cluster_node` (requires
   `ServeOptions::experimental_network_cluster(true)`); `RemoteClient` multi-hop
   routes keyed ops from the cached directory
+- **Control-plane Raft RPC (DEF-036):** `raft_request_vote` /
+  `raft_append_entries` / `raft_install_snapshot` / `raft_read_index` when
+  `ServeOptions::raft` is attached (`RaftServerState` / durable peer stores).
+  Profile `RAFT_RPC_PROFILE` = `dingo-raft-rpc-v1`.
 - Profile freeze: `CLUSTER_PROFILE_VERSION` = `v1` (**in-process** profile)
 - Bind policy: loopback by default; non-loopback plaintext needs
   `--allow-insecure-bind` (DEF-002)
 - Demo: `scripts/demos/08_kill_a_node.sh`
 
-Writes on a served node still apply to that node's store (single-node RPC
-dispatch). In-process quorum remains `Dingo::open_cluster`; network Raft log
-shipping remains future work on the same advertise path.
+**Data-plane** collection put/get on a served node still apply to that node's
+store (single-node RPC dispatch) until DEF-037 routes client writes through
+network Raft propose. In-process quorum remains `Dingo::open_cluster`.
 
 Archive tiers: see `dingo-store` Stage 9 and `doc/RUNBOOK_RETENTION.md`
 (filesystem, `object:local:`, and S3/GCS mirrors).
@@ -70,6 +75,9 @@ See module docs on [`dingo_cluster::raft`](src/raft.rs),
   AppendEntries success; torn tails and corrupt snapshots discarded; leadership
   role is volatile across restart; profile `RAFT_PERSIST_PROFILE` =
   `dingo-raft-persist-v1`.
+- **Network RPC (DEF-036)** — same vote/append/snapshot/read-index rules over a
+  transport; placement epoch and cluster id fence every request; endpoints are
+  not authority; profile `RAFT_RPC_PROFILE` = `dingo-raft-rpc-v1`.
 
 ## Governing rule
 

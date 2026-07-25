@@ -490,6 +490,26 @@ impl PartitionRaft {
     ///
     /// Hard state is flushed before a granted vote is returned (DEF-035).
     /// If flush fails, the vote is not granted (fail closed).
+    ///
+    /// Public for network RPC dispatch (DEF-036 / [`crate::raft_rpc`]).
+    pub fn handle_request_vote(
+        &mut self,
+        voter: NodeId,
+        candidate: NodeId,
+        candidate_term: Term,
+        last_log_index: u64,
+        last_log_term: Term,
+    ) -> VoteResult {
+        self.request_vote(
+            voter,
+            candidate,
+            candidate_term,
+            last_log_index,
+            last_log_term,
+        )
+    }
+
+    /// Run RequestVote on `voter` for `candidate` (internal name).
     fn request_vote(
         &mut self,
         voter: NodeId,
