@@ -348,11 +348,24 @@ pub(crate) fn find_on_store(
     filter: &Filter,
     options: &QueryOptions,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
+    // DEF-012: offline tiers make ordinary complete find results dishonest.
+    let tier_cov = store.tier_coverage();
+    if tier_cov.is_incomplete() && !options.allow_partial_coverage {
+        return Err(Error::CoverageIncomplete(format!(
+            "find refused: tier coverage incomplete (offline tiers / unavailable segments)"
+        )));
+    }
+
     // Try index acceleration when not force-scanning.
     if !options.force_scan {
         if let Some((info, subjects)) = try_index_lookup(store, collection, filter)? {
             if info.state.usable() {
-                return collect_from_subjects(store, collection, subjects, filter, options);
+                // DEF-012: index miss is authoritative only with a complete frontier.
+                if subjects.is_empty() && !info.complete_coverage {
+                    // Fall through to full scan — partial indexes cannot prove absence.
+                } else {
+                    return collect_from_subjects(store, collection, subjects, filter, options);
+                }
             }
         }
     }

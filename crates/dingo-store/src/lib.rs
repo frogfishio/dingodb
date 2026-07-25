@@ -31,11 +31,12 @@ mod secondary;
 mod segment_catalog;
 mod store;
 mod tier;
+mod write_dedup;
 mod writer_lock;
 
 pub use catalog::{
-    collection_name_from_subject, collections_catalog_path, CollectionCatalog,
-    COLLECTIONS_CATALOG_FILE,
+    collection_name_from_subject, collections_catalog_path, try_load_collection_catalog,
+    CollectionCatalog, COLLECTIONS_CATALOG_FILE,
 };
 pub use chunk_payload::{
     decode_chunk_manifest, encode_chunk_manifest, is_chunk_manifest, reassemble_with_manifest,
@@ -80,5 +81,8 @@ pub use tier::{
     classify_segment_bytes, tier_placement_path, FormatClassification, MigrationEvidence,
     SegmentPlacement, TierAwareGet, TierClass, TierCoverage, TierMoveMode, TierPlacement,
     TIER_PLACEMENT_FILE,
+};
+pub use write_dedup::{
+    content_identity, write_dedup_path, DedupRecord, WriteDedupTable, WRITE_DEDUP_FILE,
 };
 pub use writer_lock::{WriterLock, WRITER_LOCK_FILE};

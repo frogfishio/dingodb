@@ -171,7 +171,11 @@ Acceptance:
 ### DEF-010 — Make remote writes idempotent across ambiguous failures
 
 Priority: P0  
-Normative basis: `DX_SPEC.md` retry safety; `CLUSTER_SPEC.md` §13
+Normative basis: `DX_SPEC.md` retry safety; `CLUSTER_SPEC.md` §13  
+Status: **remediated in-tree** (2026-07-25) — client `operation_id` + content
+identity + persisted `store-info/write_dedup.v1`; remaining follow-on: retention
+/ compaction policy for dedup evidence, property tests for arbitrary response
+loss points, network-cluster leader failover coverage
 
 Problem:
 
@@ -201,6 +205,18 @@ Acceptance:
 - Deduplication survives process restart, compaction, tier movement, and leader
   failover.
 - Property tests cover arbitrary response-loss points.
+
+In-tree so far:
+
+- SDK mutations mint a client `operation_id` once per call so `call_keyed`
+  transport retries reuse the same id.
+- Content identity over `(op, collection, key, payload)` via
+  `dingo_store::content_identity`.
+- Server looks up `WriteDedupTable` before append; exact retry returns the
+  original receipt; content-mismatched reuse → `ConsistencyViolation`.
+- Dedup table persisted under `store-info/write_dedup.v1` after each accepted
+  mutation; reloaded on `Store::open`.
+- Tests: `stage_def_010_012_013`, `stage7_remote_parity::remote_put_is_idempotent_with_operation_id`.
 
 ### DEF-011 — Split evidence-preserving salvage from live-state export
 
@@ -246,10 +262,10 @@ Acceptance:
 
 Priority: P0  
 Normative basis: `DX_SPEC.md` §§3.6, 3.7, 6.5; `CLUSTER_SPEC.md` §6.7  
-Status: **partially remediated in-tree** (2026-07-25) — fail-closed
-`live_logical_entries` + `scan_live_logical` envelope + remote `scan_json`
-decode honesty; remaining: offline-tier scan envelope, full query coverage
-merge, secondary-index miss authority
+Status: **largely remediated in-tree** (2026-07-25) — fail-closed logical
+scans, offline-tier scan honesty, secondary-index miss authority; remaining:
+unified query result envelope (holes/truncation fields), full cluster coverage
+merge parity beyond Stage 8e
 
 Problem:
 
@@ -287,15 +303,23 @@ In-tree so far:
 
 - `Store::live_logical_entries` returns `CoverageIncomplete` when any live
   subject is partial/unavailable/conflicting (no silent skip).
-- `Store::scan_live_logical` returns `{entries, incomplete, complete}` for
-  opt-in partial-aware callers.
+- `Store::scan_live_logical` returns `{entries, incomplete, complete,
+  tier_coverage_incomplete}`; offline tiers force `complete = false`.
+- Ordinary `find` refuses incomplete tier coverage unless
+  `allow_partial_coverage`.
+- Secondary-index empty lookups are authoritative only when
+  `complete_coverage` is true (partial indexes fall through to scan).
 - Remote `scan_json` fails closed on JSON decode failure instead of `continue`.
-- Tests: `stage_def_020_021_lock_coverage` incomplete-chunk scan cases.
+- Tests: `stage_def_020_021_lock_coverage`, `stage_def_010_012_013` offline
+  scan cases.
 
 ### DEF-013 — Fix persisted collection-catalog contamination
 
 Priority: P0  
-Normative basis: authority-before-acceleration invariant
+Normative basis: authority-before-acceleration invariant  
+Status: **remediated in-tree** (2026-07-25) — durable-frontier catalogs +
+memory-mode visibility-only publishes; remaining follow-on: model-based mode
+transition fuzzer
 
 Problem:
 
@@ -322,6 +346,17 @@ Acceptance:
 - Catalogs, primary cache, secondary indexes, and checkpoints agree after every
   durability-mode sequence.
 - A model-based test explores mode transitions and crashes.
+
+In-tree so far:
+
+- Memory-mode put/delete update the in-process visibility index only; they
+  never append frames (so a later durable write cannot flush them via
+  `write_segment_tail`).
+- Persisted collection catalog is always rebuilt from a segment-derived
+  durable index; `list_collections` may still reflect in-process memory
+  visibility.
+- Primary index cache already segment-derived (unchanged).
+- Tests: `stage_def_010_012_013` memory/catalog/reopen cases.
 
 ### DEF-014 — Propagate achieved guarantees without optimistic defaults
 

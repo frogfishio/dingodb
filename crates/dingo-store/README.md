@@ -24,7 +24,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Chunks | chunked payloads with partial maps; live-state compaction (sources retained) |
 | Operator | `open_inspect` (read-only doctor), `salvage_to` |
 | Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
-| Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); multi-gen format |
+| Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); durable-frontier catalogs (DEF-013); write dedup table (DEF-010); multi-gen format |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -32,7 +32,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 
 ```text
 store/
-  store-info/     # store_id + meta + descriptor.dingo
+  store-info/     # store_id + meta + descriptor.dingo + writer.lock + write_dedup.v1
   active/         # open append segment (at most one)
   segments/       # sealed hot segments
   tiers/          # warm/cold/archive media + roots.txt

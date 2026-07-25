@@ -236,8 +236,15 @@ pub(crate) fn try_index_lookup(
             }
             out
         };
+        // Only treat Ready + complete_coverage indexes as authoritative for
+        // empty (miss) results; Partial usable indexes may still accelerate
+        // non-empty hits but callers must not trust miss as proven absence.
         let subjects = idx.lookup(&key).to_vec();
-        return Ok(Some((IndexInfo::from_store(&idx), subjects)));
+        let info = IndexInfo::from_store(&idx);
+        if subjects.is_empty() && !info.complete_coverage {
+            continue;
+        }
+        return Ok(Some((info, subjects)));
     }
     Ok(None)
 }

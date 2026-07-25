@@ -284,6 +284,7 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::MediaUnsupported(_) => ErrorCode::FormatUnsupported,
         StoreError::WriterLockHeld(_) => ErrorCode::WriterLockHeld,
         StoreError::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
+        StoreError::ConsistencyViolation(_) => ErrorCode::ConsistencyViolation,
     }
 }
 

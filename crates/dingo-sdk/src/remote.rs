@@ -231,6 +231,12 @@ pub struct RpcRequest {
     /// Max documents the server may examine for `find` (query budget).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_docs_scanned: Option<usize>,
+    /// Client-generated operation id (32 hex chars) for idempotent mutations (DEF-010).
+    ///
+    /// Required on put/delete/put_bytes from modern clients. Retries reuse the
+    /// same id; reuse with different content yields `consistency_violation`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation_id: Option<String>,
 }
 
 /// Wire response (one JSON line).
@@ -675,6 +681,8 @@ impl RemoteClient {
                 "deadline_exceeded" => Error::DeadlineExceeded(message),
                 "query_budget_required" => Error::QueryBudgetRequired(message),
                 "query_invalid" => Error::QueryInvalid(message),
+                "consistency_violation" => Error::ConsistencyViolation(message),
+                "coverage_incomplete" => Error::CoverageIncomplete(message),
                 _ => Error::Remote { code, message },
             });
         }
@@ -713,6 +721,8 @@ impl RemoteClient {
     ) -> Result<WriteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
+        // Mint once so call_keyed transport retries stay idempotent (DEF-010).
+        let operation_id = Some(hex16(&client_operation_id()));
         let resp = self.call_keyed(
             collection,
             key,
@@ -722,6 +732,7 @@ impl RemoteClient {
                 key: Some(key.into()),
                 json: Some(value.clone()),
                 durability: Some(durability_name(options.durability).into()),
+                operation_id,
                 ..base_req("put")
             },
         )?;
@@ -757,6 +768,7 @@ impl RemoteClient {
     ) -> Result<DeleteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
+        let operation_id = Some(hex16(&client_operation_id()));
         let resp = self.call_keyed(
             collection,
             key,
@@ -765,6 +777,7 @@ impl RemoteClient {
                 collection: Some(collection.into()),
                 key: Some(key.into()),
                 durability: Some(durability_name(options.durability).into()),
+                operation_id,
                 ..base_req("delete")
             },
         )?;
@@ -781,6 +794,7 @@ impl RemoteClient {
     ) -> Result<WriteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
+        let operation_id = Some(hex16(&client_operation_id()));
         let resp = self.call_keyed(
             collection,
             key,
@@ -790,6 +804,7 @@ impl RemoteClient {
                 key: Some(key.into()),
                 bytes_b64: Some(b64_encode(bytes)),
                 durability: Some(durability_name(options.durability).into()),
+                operation_id,
                 ..base_req("put_bytes")
             },
         )?;
@@ -1055,7 +1070,38 @@ fn base_req(op: &str) -> RpcRequest {
         order_field: None,
         order_dir: None,
         max_docs_scanned: None,
+        operation_id: None,
     }
+}
+
+/// Mint a fresh client operation id (cryptographic when available).
+fn client_operation_id() -> [u8; 16] {
+    let mut id = [0u8; 16];
+    if getrandom_fill(&mut id) {
+        return id;
+    }
+    // Fallback: mix wall-clock nanos with a process-local counter.
+    static COUNTER: AtomicU64 = AtomicU64::new(1);
+    let t = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let c = COUNTER.fetch_add(1, Ordering::Relaxed);
+    id[..8].copy_from_slice(&t.to_le_bytes());
+    id[8..].copy_from_slice(&c.to_le_bytes());
+    id
+}
+
+fn getrandom_fill(buf: &mut [u8]) -> bool {
+    #[cfg(unix)]
+    {
+        use std::io::Read;
+        if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
+            return f.read_exact(buf).is_ok();
+        }
+    }
+    let _ = buf;
+    false
 }
 
 fn payload_from_resp(resp: &RpcResponse) -> Result<PayloadResult, Error> {
@@ -1328,6 +1374,43 @@ fn fill_receipt_fields(resp: &mut RpcResponse, receipt: &StoreWriteReceipt) {
     resp.segment_id = Some(hex16(&receipt.segment_id));
     resp.acknowledgement = Some(durability_name(receipt.durability).into());
     resp.committed = Some(true);
+}
+
+/// Outcome of client operation_id lookup before a mutation (DEF-010).
+enum DedupOutcome {
+    /// Exact retry — return the original receipt without writing again.
+    Replay(StoreWriteReceipt),
+    /// New operation (optional op_id when client omitted it).
+    Fresh {
+        op_id: Option<[u8; 16]>,
+        content_hash: [u8; 32],
+    },
+}
+
+/// Look up a client operation id; reject content-mismatched reuse.
+fn prepare_mutation_dedup(
+    store: &Store,
+    operation_id_hex: Option<&str>,
+    op: &str,
+    collection: &str,
+    key: &str,
+    payload: &[u8],
+) -> Result<DedupOutcome, Error> {
+    let content_hash = dingo_store::content_identity(op, collection, key, payload);
+    let Some(hex) = operation_id_hex else {
+        return Ok(DedupOutcome::Fresh {
+            op_id: None,
+            content_hash,
+        });
+    };
+    let op_id = parse_hex16_strict(hex, "operation_id")?;
+    match store.resolve_write_dedup(&op_id, &content_hash)? {
+        Some(prior) => Ok(DedupOutcome::Replay(prior)),
+        None => Ok(DedupOutcome::Fresh {
+            op_id: Some(op_id),
+            content_hash,
+        }),
+    }
 }
 
 /// Serve one store over TCP until the listener ends (Stage 7).
@@ -1713,7 +1796,24 @@ fn dispatch(
             let subject = encode_subject(coll, key)?;
             let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
             let body = encode_json(json)?;
-            let receipt = store.put(subject_str, &body, mode)?;
+            let dedup = prepare_mutation_dedup(
+                store,
+                req.operation_id.as_deref(),
+                "put",
+                coll,
+                key,
+                &body,
+            )?;
+            let receipt = match dedup {
+                DedupOutcome::Replay(r) => r,
+                DedupOutcome::Fresh { op_id, content_hash } => {
+                    let receipt = store.put(subject_str, &body, mode)?;
+                    if let Some(op_id) = op_id {
+                        store.record_write_dedup(op_id, content_hash, &receipt)?;
+                    }
+                    receipt
+                }
+            };
             let _ = mark_indexes_stale(store, coll);
             let mut resp = RpcResponse {
                 id,
@@ -1752,8 +1852,28 @@ fn dispatch(
                 parse_durability(req.durability.as_deref()).unwrap_or(DurabilityMode::Durable);
             let subject = encode_subject(coll, key)?;
             let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
-            let removed = store.get(subject_str)?.is_some();
-            let receipt = store.delete(subject_str, mode)?;
+            let dedup = prepare_mutation_dedup(
+                store,
+                req.operation_id.as_deref(),
+                "delete",
+                coll,
+                key,
+                &[],
+            )?;
+            let (receipt, removed) = match dedup {
+                DedupOutcome::Replay(r) => {
+                    // Exact retry: subject is already gone after the first delete.
+                    (r, false)
+                }
+                DedupOutcome::Fresh { op_id, content_hash } => {
+                    let removed = store.get(subject_str)?.is_some();
+                    let receipt = store.delete(subject_str, mode)?;
+                    if let Some(op_id) = op_id {
+                        store.record_write_dedup(op_id, content_hash, &receipt)?;
+                    }
+                    (receipt, removed)
+                }
+            };
             let _ = mark_indexes_stale(store, coll);
             let mut resp = RpcResponse {
                 id,
@@ -1778,7 +1898,24 @@ fn dispatch(
             let subject = encode_subject(coll, key)?;
             let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
             let body = encode_bytes(&bytes);
-            let receipt = store.put(subject_str, &body, mode)?;
+            let dedup = prepare_mutation_dedup(
+                store,
+                req.operation_id.as_deref(),
+                "put_bytes",
+                coll,
+                key,
+                &body,
+            )?;
+            let receipt = match dedup {
+                DedupOutcome::Replay(r) => r,
+                DedupOutcome::Fresh { op_id, content_hash } => {
+                    let receipt = store.put(subject_str, &body, mode)?;
+                    if let Some(op_id) = op_id {
+                        store.record_write_dedup(op_id, content_hash, &receipt)?;
+                    }
+                    receipt
+                }
+            };
             let _ = mark_indexes_stale(store, coll);
             let mut resp = RpcResponse {
                 id,

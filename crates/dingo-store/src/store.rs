@@ -1,6 +1,9 @@
 //! Filesystem-backed append store (OVERVIEW §§6–7, §9; Stages 3, 6, 9).
 
-use crate::catalog::{rebuild_collection_catalog, try_load_collection_catalog, CollectionCatalog};
+use crate::catalog::{
+    collections_catalog_path, try_load_collection_catalog, write_collection_catalog,
+    CollectionCatalog,
+};
 use crate::chunk_payload::{
     decode_chunk_manifest, decode_piece_body, encode_chunk_manifest, encode_piece_body,
     is_chunk_manifest, manifest_from_pieces, reassemble_with_manifest, split_into_pieces,
@@ -34,6 +37,9 @@ use crate::tier::{
     tier_placement_path, transfer_segment, try_load_placement, write_placement,
     write_tier_roots_file, FormatClassification, MigrationEvidence, TierAwareGet, TierClass,
     TierCoverage, TierMoveMode, TierPlacement,
+};
+use crate::write_dedup::{
+    load_write_dedup, save_write_dedup, write_dedup_path, DedupRecord, WriteDedupTable,
 };
 use crate::writer_lock::WriterLock;
 use dingo_format::{
@@ -82,8 +88,10 @@ pub struct LiveLogicalScan {
     pub entries: Vec<(Vec<u8>, Vec<u8>)>,
     /// Live subjects that are not fully readable.
     pub incomplete: Vec<LiveIncomplete>,
-    /// True only when `incomplete` is empty (ordinary complete success).
+    /// True only when `incomplete` is empty **and** tier coverage is complete.
     pub complete: bool,
+    /// Offline / unmounted tiers or unavailable segments prevent proven completeness.
+    pub tier_coverage_incomplete: bool,
 }
 
 /// Receipt returned after an acknowledged write (OVERVIEW §7.2).
@@ -157,6 +165,8 @@ pub struct Store {
     segment_catalog: SegmentCatalog,
     /// Exclusive writer ownership (DEF-020). `None` for inspect/read-only opens.
     writer_lock: Option<WriterLock>,
+    /// Client operation dedup table (DEF-010); empty when unused.
+    write_dedup: WriteDedupTable,
 }
 
 struct ActiveWriter {
@@ -212,6 +222,7 @@ impl Store {
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
             writer_lock: Some(writer_lock),
+            write_dedup: WriteDedupTable::new(),
         };
         store.start_active_segment()?;
         store.persist_active(DurabilityMode::Durable)?;
@@ -265,10 +276,12 @@ impl Store {
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
             writer_lock: Some(writer_lock),
+            write_dedup: WriteDedupTable::new(),
         };
         store.load_tier_state()?;
         store.load_or_rebuild_index()?;
         store.load_or_rebuild_catalog()?;
+        store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
         store.resume_or_start_active()?;
         Ok(store)
     }
@@ -309,6 +322,7 @@ impl Store {
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
             writer_lock: None,
+            write_dedup: WriteDedupTable::new(),
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer valid cache, else rebuild without writing.
@@ -372,10 +386,19 @@ impl Store {
     pub fn live_logical_entries(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
         let scan = self.scan_live_logical()?;
         if !scan.complete {
+            let mut reasons = Vec::new();
+            if !scan.incomplete.is_empty() {
+                reasons.push(format!(
+                    "{} live subject(s) have incomplete payloads",
+                    scan.incomplete.len()
+                ));
+            }
+            if scan.tier_coverage_incomplete {
+                reasons.push("offline or unavailable storage tier(s)".into());
+            }
             return Err(StoreError::CoverageIncomplete(format!(
-                "{} live subject(s) have incomplete payloads; use scan_live_logical \
-                 or get_payload for partial maps",
-                scan.incomplete.len()
+                "{}; use scan_live_logical or get_payload for partial maps",
+                reasons.join("; ")
             )));
         }
         Ok(scan.entries)
@@ -384,7 +407,8 @@ impl Store {
     /// Scan live logical payloads with explicit incompleteness (DEF-012).
     ///
     /// Always returns every complete reassembly and lists incomplete subjects.
-    /// `complete` is true only when every live subject produced a full body.
+    /// `complete` is true only when every live subject produced a full body
+    /// **and** tier coverage has no offline/unavailable segments.
     pub fn scan_live_logical(&self) -> Result<LiveLogicalScan, StoreError> {
         let mut entries = Vec::new();
         let mut incomplete = Vec::new();
@@ -417,11 +441,13 @@ impl Store {
                 }),
             }
         }
-        let complete = incomplete.is_empty();
+        let tier_coverage_incomplete = self.tier_coverage().is_incomplete();
+        let complete = incomplete.is_empty() && !tier_coverage_incomplete;
         Ok(LiveLogicalScan {
             entries,
             incomplete,
             complete,
+            tier_coverage_incomplete,
         })
     }
 
@@ -441,11 +467,69 @@ impl Store {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        // Memory mode is visibility-only: keep the full body in the index and
+        // never append frames (avoids later durable flushes contaminating disk).
+        if mode == DurabilityMode::Memory {
+            return self.write_event(subject, EventKind::Put, value, mode);
+        }
         if value.len() > self.chunk_threshold {
             self.write_chunked_put(subject, value, mode)
         } else {
             self.write_event(subject, EventKind::Put, value, mode)
         }
+    }
+
+    /// Resolve a client operation id for idempotent remote writes (DEF-010).
+    ///
+    /// - `Ok(Some(receipt))` — exact retry; return the original receipt
+    /// - `Ok(None)` — new operation; caller should perform the write then
+    ///   [`Self::record_write_dedup`]
+    /// - `Err(ConsistencyViolation)` — id reused with different content
+    pub fn resolve_write_dedup(
+        &self,
+        operation_id: &[u8; 16],
+        content_hash: &[u8; 32],
+    ) -> Result<Option<WriteReceipt>, StoreError> {
+        match self.write_dedup.get(operation_id) {
+            None => Ok(None),
+            Some(rec) if &rec.content_hash == content_hash => Ok(Some(WriteReceipt {
+                store_id: rec.store_id,
+                segment_id: rec.segment_id,
+                item_id: rec.item_id,
+                event_id: rec.event_id,
+                event_kind: rec.event_kind,
+                durability: rec.durability,
+                offset: rec.offset,
+            })),
+            Some(_) => Err(StoreError::ConsistencyViolation(
+                "operation_id reused with different content identity".into(),
+            )),
+        }
+    }
+
+    /// Persist a successful mutation under `operation_id` (DEF-010).
+    ///
+    /// Called after the authoritative append so restart recovers the receipt.
+    pub fn record_write_dedup(
+        &mut self,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+        receipt: &WriteReceipt,
+    ) -> Result<(), StoreError> {
+        self.write_dedup.insert(
+            operation_id,
+            DedupRecord {
+                content_hash,
+                store_id: receipt.store_id,
+                segment_id: receipt.segment_id,
+                item_id: receipt.item_id,
+                event_id: receipt.event_id,
+                event_kind: receipt.event_kind,
+                durability: receipt.durability,
+                offset: receipt.offset,
+            },
+        );
+        save_write_dedup(&write_dedup_path(&self.paths), &self.write_dedup)
     }
 
     /// Get current live value for `subject`, if any.
@@ -1085,8 +1169,16 @@ impl Store {
     fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
-        self.collection_catalog =
-            rebuild_collection_catalog(&self.paths, self.store_id, &self.index, fp)?;
+        // DEF-013: persist only a durable-frontier catalog (segment-derived).
+        // Memory-mode publishes live in `self.index` but must not contaminate
+        // on-disk catalogs, index caches, or checkpoints.
+        let disk_index =
+            index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
+        let durable_cat = CollectionCatalog::from_index(&disk_index);
+        let cat_path = collections_catalog_path(&self.paths.catalogs_dir());
+        write_collection_catalog(&cat_path, self.store_id, fp, &durable_cat)?;
+        // In-process list_collections reflects visibility (includes memory).
+        self.collection_catalog = CollectionCatalog::from_index(&self.index);
         Ok(())
     }
 
@@ -1285,6 +1377,46 @@ impl Store {
             return Err(StoreError::PayloadTooLarge);
         }
 
+        // DEF-013: memory mode is visibility-only — never append frames that a
+        // later durable write would flush via write_segment_tail.
+        if mode == DurabilityMode::Memory {
+            if self.active.is_none() {
+                self.start_active_segment()?;
+            }
+            let segment_id = self
+                .active
+                .as_ref()
+                .map(|w| w.segment_id)
+                .expect("active segment");
+            let item_id = match self.index.get(subject_bytes) {
+                Some(entry) => entry.item_id(),
+                None => subject_item_id(subject_bytes),
+            };
+            let event_id = self.next_event_id();
+            self.index.apply_event(
+                subject_bytes.to_vec(),
+                kind,
+                body.to_vec(),
+                item_id,
+                event_id,
+                segment_id,
+                0,
+            );
+            // Visibility catalog only (not persisted).
+            if let Some(name) = crate::catalog::collection_name_from_subject(subject_bytes) {
+                self.collection_catalog.insert(name);
+            }
+            return Ok(WriteReceipt {
+                store_id: self.store_id,
+                segment_id,
+                item_id,
+                event_id,
+                event_kind: kind,
+                durability: DurabilityMode::Memory,
+                offset: 0,
+            });
+        }
+
         if self.active.is_none() {
             self.start_active_segment()?;
         }
@@ -1330,15 +1462,7 @@ impl Store {
             .segment
             .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
 
-        // Persist according to durability (memory skips disk for the new frame).
-        match mode {
-            DurabilityMode::Memory => {
-                // In-memory only: do not extend durable_len; file not updated.
-            }
-            DurabilityMode::Buffered | DurabilityMode::Durable => {
-                Self::write_segment_tail(writer, mode)?;
-            }
-        }
+        Self::write_segment_tail(writer, mode)?;
 
         // Publish visibility in the index only after encode succeeded.
         self.index.apply_event(
@@ -1351,11 +1475,8 @@ impl Store {
             0, // writer_sequence already inside frame; not required for index
         );
 
-        // Refresh derived cache after durable/buffered acks (not memory-only).
-        if mode != DurabilityMode::Memory {
-            let _ = self.persist_index_cache();
-            let _ = self.refresh_collection_catalog();
-        }
+        let _ = self.persist_index_cache();
+        let _ = self.refresh_collection_catalog();
 
         Ok(WriteReceipt {
             store_id: self.store_id,

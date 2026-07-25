@@ -83,6 +83,10 @@ pub enum StoreError {
     /// Scan/get coverage is incomplete; ordinary complete results are refused (DEF-012).
     #[error("coverage incomplete: {0}")]
     CoverageIncomplete(String),
+
+    /// Client operation id reused with different content (DEF-010).
+    #[error("consistency violation: {0}")]
+    ConsistencyViolation(String),
 }
 
 impl StoreError {

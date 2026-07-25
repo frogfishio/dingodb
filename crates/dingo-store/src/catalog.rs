@@ -109,6 +109,10 @@ pub fn try_load_collection_catalog(
 }
 
 /// Rebuild catalog purely from store paths (segment scan → primary index).
+///
+/// Prefer building from a **durable** (segment-derived) index so memory-mode
+/// publishes never enter the on-disk catalog (DEF-013).
+#[allow(dead_code)] // retained for salvage / operator rebuild tools
 pub fn rebuild_collection_catalog(
     paths: &StorePaths,
     store_id: [u8; 16],

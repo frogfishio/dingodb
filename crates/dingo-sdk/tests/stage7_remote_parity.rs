@@ -229,3 +229,86 @@ fn remote_find_index_accelerated_under_budget() {
         .unwrap_err();
     assert_eq!(err.code(), ErrorCode::QueryBudgetRequired);
 }
+
+#[test]
+fn remote_put_is_idempotent_with_operation_id() {
+    use dingo_sdk::{handle_connection_with, ServeOptions};
+    use dingo_store::{EventKind, Store};
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::{TcpListener, TcpStream};
+
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.dingo");
+    {
+        let _ = Store::create(&path).unwrap();
+    }
+
+    // Same operation_id twice over the wire → one history event.
+    let op = "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1";
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let path_c = path.clone();
+    thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut store = Store::open(path_c).unwrap();
+        let _ = handle_connection_with(&mut store, stream, ServeOptions::default());
+    });
+
+    let mut stream = TcpStream::connect(addr).unwrap();
+    let put_line = format!(
+        r#"{{"id":1,"op":"put","collection":"docs","key":"k","json":{{"n":1}},"durability":"durable","operation_id":"{op}"}}"#
+    );
+    stream.write_all(put_line.as_bytes()).unwrap();
+    stream.write_all(b"\n").unwrap();
+    stream.flush().unwrap();
+    let mut reader = BufReader::new(stream.try_clone().unwrap());
+    let mut resp1 = String::new();
+    reader.read_line(&mut resp1).unwrap();
+    assert!(resp1.contains("\"ok\":true"), "{resp1}");
+
+    // Exact retry with same operation_id.
+    stream.write_all(put_line.as_bytes()).unwrap();
+    stream.write_all(b"\n").unwrap();
+    stream.flush().unwrap();
+    let mut resp2 = String::new();
+    reader.read_line(&mut resp2).unwrap();
+    assert!(resp2.contains("\"ok\":true"), "{resp2}");
+    let e1 = extract_field(&resp1, "event_id");
+    let e2 = extract_field(&resp2, "event_id");
+    assert_eq!(e1, e2, "exact retry must return original event_id");
+
+    // Content mismatch reuses id → consistency_violation.
+    let bad = format!(
+        r#"{{"id":3,"op":"put","collection":"docs","key":"k","json":{{"n":2}},"durability":"durable","operation_id":"{op}"}}"#
+    );
+    stream.write_all(bad.as_bytes()).unwrap();
+    stream.write_all(b"\n").unwrap();
+    stream.flush().unwrap();
+    let mut resp3 = String::new();
+    reader.read_line(&mut resp3).unwrap();
+    assert!(
+        resp3.contains("consistency_violation") || resp3.contains("\"ok\":false"),
+        "{resp3}"
+    );
+
+    drop(stream);
+    // Inspect path does not need exclusive writer ownership (server may still hold it).
+    let store = Store::open_inspect(&path).unwrap();
+    let subject = dingo_sdk::encode_subject("docs", "k").unwrap();
+    let subject_str = std::str::from_utf8(&subject).unwrap();
+    let hist = store.history(subject_str).unwrap();
+    let puts: Vec<_> = hist
+        .events
+        .iter()
+        .filter(|e| e.kind == EventKind::Put)
+        .collect();
+    assert_eq!(puts.len(), 1, "only one put event after idempotent retry");
+}
+
+fn extract_field(json_line: &str, field: &str) -> String {
+    let needle = format!("\"{field}\":\"");
+    let start = json_line.find(&needle).expect("field present") + needle.len();
+    let rest = &json_line[start..];
+    let end = rest.find('"').expect("closing quote");
+    rest[..end].to_string()
+}
