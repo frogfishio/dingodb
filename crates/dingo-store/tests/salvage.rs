@@ -95,6 +95,9 @@ fn salvage_to_new_path_is_non_destructive() {
     let report = src_store.salvage_to(&dst).unwrap();
     assert_eq!(report.subjects_copied, 1);
     assert_eq!(report.source.live_subjects, 1);
+    assert_eq!(report.mode, dingo_store::SalvageMode::Evidence);
+    assert!(report.frames_copied >= 3, "put/put/delete item frames");
+    assert!(report.manifest_path.is_some());
 
     // Source active segment mtime unchanged.
     let after = fs::metadata(src.join("active").join("active.dingo"))

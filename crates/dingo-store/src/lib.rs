@@ -27,6 +27,7 @@ mod index_cache;
 mod layout;
 mod lifecycle;
 mod media;
+mod recovery;
 mod secondary;
 mod segment_catalog;
 mod store;
@@ -72,6 +73,10 @@ pub use secondary::{
 };
 pub use segment_catalog::{
     segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
+};
+pub use recovery::{
+    salvage_manifest_path, try_load_recovery_manifest, FrameEvidence, HoleEvidence,
+    LimitsSnapshot, RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
 };
 pub use store::{
     IncompleteReason, LiveIncomplete, LiveLogicalScan, SalvageCopyReport, SalvageReport, Store,

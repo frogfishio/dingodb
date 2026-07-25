@@ -22,7 +22,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Meta | framed store descriptor, optional on-disk primary index cache |
 | Derived | collection catalog, secondary index files, subject history, checkpoints |
 | Chunks | chunked payloads with partial maps; live-state compaction (sources retained) |
-| Operator | `open_inspect` (read-only doctor), `salvage_to` |
+| Operator | `open_inspect` (read-only doctor), evidence `salvage_to` + `export_live_state` |
 | Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
 | Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); durable-frontier catalogs (DEF-013); write dedup table (DEF-010); multi-gen format |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
@@ -60,7 +60,8 @@ live there.
 | `WriteReceipt` | Event identity + acknowledged durability mode |
 | `DurabilityMode` | `Memory`, `Buffered`, `Durable` |
 | `rebuild_index` / `salvage` | Catalog-free scan of all segment files |
-| `salvage_to` | Non-destructive copy of live subjects to a new path |
+| `salvage_to` | Evidence-preserving frame copy + recovery manifest (DEF-011) |
+| `export_live_state` | Live-only re-put materialization (new lineage) |
 | `rebuild_catalogs` / `list_collections` | Derived collection catalog |
 | `compact_live` | Live projection into a new segment (sources retained) |
 | `checkpoint` | Derived snapshot with declared coverage |

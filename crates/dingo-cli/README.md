@@ -24,6 +24,7 @@ dingo history ./app.dingo users/user-42
 # Operator path
 dingo doctor ./app.dingo
 dingo salvage ./damaged.dingo --output ./recovered.dingo
+dingo export-live ./damaged.dingo --output ./live-only.dingo
 
 # Single-node TCP server (development; Dingo::connect)
 # Default bind is loopback. Non-loopback plaintext needs --allow-insecure-bind.
@@ -43,7 +44,8 @@ dingo --json-out doctor ./app.dingo
 ## Guarantees
 
 - `doctor` is **read-only** (`Store::open_inspect` + examination units) — no repairs, compact, or catalog writes.
-- `salvage` never mutates the **source**; it materialises live subjects into a new store path.
+- `salvage` never mutates the **source**; it copies verified frames and writes a recovery manifest (DEF-011).
+- `export-live` materialises **current live state** only (new lineage); prefer `salvage` when history/holes matter.
 - `--json-out` emits stable machine-readable output (distinct from put `--json` body).
 - Nonzero exit status when an operation fails its guarantee.
 - Auth token: `--token` or environment `DINGO_TOKEN`.

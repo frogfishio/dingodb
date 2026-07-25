@@ -167,6 +167,9 @@ fn salvage_to_new_path_preserves_live_data() {
     let report = run_ok(&["salvage", src_s, "--output", dst_s]);
     assert!(report.contains("source immutable: true"));
     assert!(report.contains("subjects_copied: 2"));
+    assert!(report.contains("evidence"));
+    assert!(report.contains("frames_copied:"));
+    assert!(report.contains("manifest:"));
 
     // Source still readable via open (segments intact).
     let src_get = run_ok(&["get", src_s, "users/alice"]);
@@ -175,6 +178,22 @@ fn salvage_to_new_path_preserves_live_data() {
     // Destination has recovered values.
     let dst_get = run_ok(&["get", dst_s, "users/bob"]);
     assert!(dst_get.contains("Bob"));
+}
+
+#[test]
+fn export_live_is_distinct_from_salvage() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("src.dingo");
+    let dst = dir.path().join("export.dingo");
+    let src_s = src.to_str().unwrap();
+    let dst_s = dst.to_str().unwrap();
+
+    run_ok(&["put", src_s, "users/alice", "--json", r#"{"name":"Alice"}"#]);
+    let report = run_ok(&["export-live", src_s, "--output", dst_s]);
+    assert!(report.contains("live_state_export") || report.contains("subjects_copied: 1"));
+    assert!(report.contains("frames_copied: 0"));
+    let dst_get = run_ok(&["get", dst_s, "users/alice"]);
+    assert!(dst_get.contains("Alice"));
 }
 
 #[test]

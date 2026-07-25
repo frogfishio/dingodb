@@ -128,15 +128,23 @@ pub struct SalvageReport {
     pub live_subjects: usize,
 }
 
-/// Result of non-destructive salvage into a new store path (Stage 7).
+/// Result of non-destructive salvage / export into a new store path (Stage 7 + DEF-011).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SalvageCopyReport {
     /// Scan summary of the **source** store (source is never mutated).
     pub source: SalvageReport,
-    /// Destination store root that received recovered live subjects.
+    /// Destination store root that received recovered evidence or live state.
     pub destination: PathBuf,
-    /// Number of live subjects written into the destination.
+    /// Recovery mode used for this copy.
+    pub mode: crate::recovery::SalvageMode,
+    /// Live subjects present in the destination after recovery.
     pub subjects_copied: usize,
+    /// Verified frames byte-copied (evidence mode); zero for live-state export.
+    pub frames_copied: u64,
+    /// Holes recorded in the recovery manifest (evidence mode).
+    pub holes_recorded: u64,
+    /// Path of the recovery manifest when written (evidence mode).
+    pub manifest_path: Option<PathBuf>,
 }
 
 /// Open single-node store handle.
@@ -833,14 +841,86 @@ impl Store {
         })
     }
 
-    /// Non-destructive salvage into a **new** store directory (DX_SPEC §13.4).
+    /// Evidence-preserving salvage into a **new** store directory (DX_SPEC §13.4, DEF-011).
     ///
     /// The source store is never mutated. Destination must not already be a
-    /// store (same rules as [`Store::create`]). Live logical payloads are
-    /// re-appended as durable puts into the destination (new store id /
-    /// event lineage — this is recovery materialization, not byte-identical
-    /// segment copy).
+    /// store (same rules as [`Store::create`]). Verified frames are copied
+    /// **byte-identical** into destination sealed segments; holes and scan
+    /// parameters are recorded under `recovery/salvage-manifest.v1.json`.
+    /// Event, item, and frame identities inside those frames are preserved.
+    ///
+    /// For a clean current-state database (re-put live values, new lineage),
+    /// use [`Self::export_live_state`] instead.
     pub fn salvage_to(&self, dest: impl AsRef<Path>) -> Result<SalvageCopyReport, StoreError> {
+        let dest = dest.as_ref();
+        let source = self.salvage()?;
+
+        // Skeleton destination: empty active segment + store identity. Recovered
+        // frames go only into `segments/` so open does not re-encode them.
+        let dest_store = Store::create(dest)?;
+        let dest_store_id = dest_store.store_id;
+        let dest_paths = dest_store.paths.clone();
+        drop(dest_store);
+
+        let mut source_files = Vec::new();
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+            let rel = examination_source_name(&self.paths.root, &path);
+            source_files.push((rel, path));
+        }
+
+        let (mut manifest, frames_copied, holes_recorded) = crate::recovery::copy_verified_frames(
+            &self.paths.root,
+            self.store_id,
+            &dest_paths,
+            dest_store_id,
+            &source_files,
+            self.limits,
+        )?;
+
+        // Rebuild derived state from the copied frames (does not rewrite them).
+        let mut dest_open = Store::open(dest)?;
+        let live_subjects = dest_open.index.live_entries().count();
+        manifest.live_subjects = live_subjects;
+        // Re-hash after filling live_subjects.
+        manifest.content_hash_hex = {
+            let mut for_hash = manifest.clone();
+            for_hash.content_hash_hex.clear();
+            let body = serde_json::to_vec(&for_hash).map_err(|e| {
+                StoreError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("serialize recovery manifest for hash: {e}"),
+                ))
+            })?;
+            let h = blake3::hash(&body);
+            let mut s = String::with_capacity(64);
+            for b in h.as_bytes() {
+                s.push_str(&format!("{b:02x}"));
+            }
+            s
+        };
+        let manifest_path = crate::recovery::write_recovery_manifest(&dest_paths, &manifest)?;
+        let _ = dest_open.persist_index_cache();
+        let _ = dest_open.rebuild_catalogs();
+        drop(dest_open);
+
+        Ok(SalvageCopyReport {
+            source,
+            destination: dest.to_path_buf(),
+            mode: crate::recovery::SalvageMode::Evidence,
+            subjects_copied: live_subjects,
+            frames_copied,
+            holes_recorded,
+            manifest_path: Some(manifest_path),
+        })
+    }
+
+    /// Materialize **live logical state** into a new store (DEF-011 export path).
+    ///
+    /// Unlike [`Self::salvage_to`], this re-appends complete live payloads as
+    /// durable puts with **new** store/event lineage. History, tombstones,
+    /// partials, and holes are **not** preserved. Prefer `salvage_to` when
+    /// examination evidence must survive.
+    pub fn export_live_state(&self, dest: impl AsRef<Path>) -> Result<SalvageCopyReport, StoreError> {
         let dest = dest.as_ref();
         let source = self.salvage()?;
         let live = self.live_logical_entries()?;
@@ -860,7 +940,11 @@ impl Store {
         Ok(SalvageCopyReport {
             source,
             destination: dest.to_path_buf(),
+            mode: crate::recovery::SalvageMode::LiveStateExport,
             subjects_copied,
+            frames_copied: 0,
+            holes_recorded: 0,
+            manifest_path: None,
         })
     }
 

@@ -12,7 +12,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, non-destructive salvage, single-node TCP serve (development), and experimental multi-node serve-cluster (routing/advertise only; not network quorum).";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), single-node TCP serve (development), and experimental multi-node serve-cluster (routing/advertise only; not network quorum).";
 const LICENSE_TEXT: &str = "Copyright (c) Alexander R. Croft\nMIT License\n\nThis program is offered under the MIT License. See the repository LICENSE file for the full terms.";
 
 #[derive(Parser)]
@@ -74,8 +74,24 @@ enum Command {
     History { store: PathBuf, target: String },
     /// Read-only store health report (DX_SPEC §13.3).
     Doctor { store: PathBuf },
-    /// Non-destructive salvage to a new path (DX_SPEC §13.4).
+    /// Evidence-preserving salvage to a new path (DX_SPEC §13.4, DEF-011).
+    ///
+    /// Copies verified frames byte-identically and writes a recovery manifest.
+    /// Does not re-encode live values. For a clean current-state database with
+    /// new lineage, use `export-live` instead.
     Salvage {
+        /// Source store (never mutated).
+        store: PathBuf,
+        /// Destination store path (must not already be a store).
+        #[arg(long = "output", short = 'o')]
+        output: PathBuf,
+    },
+    /// Export live logical state to a new store (DEF-011 materialization).
+    ///
+    /// Re-appends complete live payloads with **new** event lineage. History,
+    /// tombstones, partials, and holes are not preserved. Prefer `salvage` when
+    /// examination evidence must survive.
+    ExportLive {
         /// Source store (never mutated).
         store: PathBuf,
         /// Destination store path (must not already be a store).
@@ -172,6 +188,7 @@ fn run() -> Result<(), String> {
         Command::History { store, target } => cmd_history(&store, &target, json_out),
         Command::Doctor { store } => cmd_doctor(&store, json_out),
         Command::Salvage { store, output } => cmd_salvage(&store, &output, json_out),
+        Command::ExportLive { store, output } => cmd_export_live(&store, &output, json_out),
         Command::Serve {
             store,
             bind,
@@ -544,15 +561,31 @@ fn cmd_salvage(source: &Path, dest: &Path, json_out: bool) -> Result<(), String>
     if source == dest {
         return Err("salvage source and --output must differ".into());
     }
-    // Inspect source without mutating; then salvage_to creates dest.
+    // Inspect source without mutating; evidence-preserving salvage_to creates dest.
     let inspect = Store::open_inspect(source).map_err(|e| e.to_string())?;
     let report = inspect.salvage_to(dest).map_err(|e| e.to_string())?;
+    emit_copy_report("evidence", source, &report, json_out)
+}
 
-    // Verify source path tree was not rewritten by comparing a simple marker:
-    // we never opened a writer on source.
+fn cmd_export_live(source: &Path, dest: &Path, json_out: bool) -> Result<(), String> {
+    if source == dest {
+        return Err("export-live source and --output must differ".into());
+    }
+    let inspect = Store::open_inspect(source).map_err(|e| e.to_string())?;
+    let report = inspect.export_live_state(dest).map_err(|e| e.to_string())?;
+    emit_copy_report("live_state_export", source, &report, json_out)
+}
+
+fn emit_copy_report(
+    mode: &str,
+    source: &Path,
+    report: &dingo_store::SalvageCopyReport,
+    json_out: bool,
+) -> Result<(), String> {
     if json_out {
         emit_json(sjson!({
             "ok": true,
+            "mode": mode,
             "source": source.display().to_string(),
             "destination": report.destination.display().to_string(),
             "source_immutable": true,
@@ -562,10 +595,13 @@ fn cmd_salvage(source: &Path, dest: &Path, json_out: bool) -> Result<(), String>
             "holes": report.source.holes,
             "live_subjects": report.source.live_subjects,
             "subjects_copied": report.subjects_copied,
+            "frames_copied": report.frames_copied,
+            "holes_recorded": report.holes_recorded,
+            "manifest_path": report.manifest_path.as_ref().map(|p| p.display().to_string()),
         }))?;
     } else {
         println!(
-            "salvage {} → {}",
+            "{mode} {} → {}",
             source.display(),
             report.destination.display()
         );
@@ -579,6 +615,11 @@ fn cmd_salvage(source: &Path, dest: &Path, json_out: bool) -> Result<(), String>
             report.source.live_subjects
         );
         println!("  subjects_copied: {}", report.subjects_copied);
+        println!("  frames_copied: {}", report.frames_copied);
+        println!("  holes_recorded: {}", report.holes_recorded);
+        if let Some(m) = &report.manifest_path {
+            println!("  manifest: {}", m.display());
+        }
     }
     Ok(())
 }
@@ -627,7 +668,7 @@ fn doctor_recommendations(
     let mut out = Vec::new();
     if salvage.holes > 0 || summary.holes > 0 {
         out.push(
-            "holes detected: run `dingo salvage SRC --output DST` (source stays immutable)".into(),
+            "holes detected: run `dingo salvage SRC --output DST` for evidence-preserving recovery (source stays immutable); use `dingo export-live` only for clean live-state materialization".into(),
         );
     }
     if summary.damaged > 0 {

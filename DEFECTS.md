@@ -221,7 +221,11 @@ In-tree so far:
 ### DEF-011 — Split evidence-preserving salvage from live-state export
 
 Priority: P0  
-Normative basis: `DX_SPEC.md` §13.4; `FORMAT_SPEC.md`; `SDA_PROFILE.md`
+Normative basis: `DX_SPEC.md` §13.4; `FORMAT_SPEC.md`; `SDA_PROFILE.md`  
+Status: **remediated in-tree** (2026-07-25) — evidence `salvage_to` + hashed
+recovery manifest + `export_live_state` / CLI `export-live`; remaining:
+signed manifests, unsupported-format byte islands as opaque extents, chunk
+partial-map examination parity beyond frame copy
 
 Problem:
 
@@ -257,6 +261,19 @@ Acceptance:
 - Byte-identical verified frames remain byte-identical.
 - Re-salvaging the result is deterministic.
 - Current-state export is clearly distinguished in CLI help and JSON output.
+
+In-tree so far:
+
+- `Store::salvage_to` copies verified frame **bytes** into destination sealed
+  segments (no re-encode); holes and scan parameters land in
+  `recovery/salvage-manifest.v1.json` with a BLAKE3 content hash.
+- Event/item identities inside frames are preserved (history and tombstones
+  survive).
+- `Store::export_live_state` keeps the old re-put materialization path with new
+  lineage.
+- CLI: `dingo salvage` = evidence mode; `dingo export-live` = live-state export;
+  JSON reports `mode`, `frames_copied`, `holes_recorded`, `manifest_path`.
+- Tests: `stage_def_011_salvage`, updated `salvage` suite.
 
 ### DEF-012 — Eliminate silent omission in reads and scans
 
