@@ -36,8 +36,9 @@ Application developers do not need to know about frames or segments.
 | `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` or multi-seed `h1:p1,h2:p2` + `ConnectOptions` |
 | `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster; same collection API + route cache |
 | `ClientDirectoryCache` | Client partition → leader cache; refresh on stale placement |
-| `serve_store` / `serve_store_with` | TCP server helpers (`ServeOptions` token; `directory` op) |
+| `serve_store` / `serve_store_with` | Bounded TCP server (`ServeOptions` token, limits, shutdown; `directory` op) |
 | `serve_cluster_node` | Serve one cluster node; advertise placement + endpoints |
+| `ServerLimits` / `ServerRuntime` / `SERVER_PROFILE` | Connection admission, idle/drain timeouts, stats (DEF-030) |
 | `Dingo::collection` | Lazy named collection handle (no disk write) |
 | `Dingo::list_collections` / `rebuild_catalogs` | Derived catalog (rebuild embedded only) |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |
@@ -49,7 +50,7 @@ Application developers do not need to know about frames or segments.
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list / continue_build secondary indexes (DEF-027 lifecycle; embedded + remote create/rebuild) |
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
-| `handle_connection` / `handle_connection_with` | Per-connection server dispatch |
+| `handle_connection` / `handle_connection_with` / `handle_connection_shared` | Per-connection server dispatch (shared store owner for workers) |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget (docs, bytes, result memory) / `allow_partial_coverage` |
 | `Filter::to_sda` / `matches_sda` / `QueryPlan` | Filter→SDA alignment + versioned plans (`QUERY_PLAN_PROFILE`, DEF-028) |
 | `ResourceLimits` / `CancelToken` / `RESOURCE_PROFILE` | Host depth/payload/RPC ceilings + cooperative cancel (DEF-029) |

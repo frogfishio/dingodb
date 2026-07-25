@@ -114,6 +114,9 @@ enum Command {
         /// Allow non-loopback plaintext bind (development only; no TLS yet).
         #[arg(long = "allow-insecure-bind", action = ArgAction::SetTrue)]
         allow_insecure_bind: bool,
+        /// Max simultaneous client connections (DEF-030; default 64).
+        #[arg(long = "max-connections", default_value_t = 64)]
+        max_connections: usize,
     },
     /// Serve one node of a multi-node cluster root (**experimental**).
     ///
@@ -194,11 +197,14 @@ fn run() -> Result<(), String> {
             bind,
             token,
             allow_insecure_bind,
+            max_connections,
         } => {
             // Flag wins; otherwise fall back to DINGO_TOKEN for operator convenience.
             let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
             // Library emits the structured startup report and enforces bind policy (DEF-002).
-            let mut opts = ServeOptions::new().allow_insecure_bind(allow_insecure_bind);
+            let mut opts = ServeOptions::new()
+                .allow_insecure_bind(allow_insecure_bind)
+                .max_connections(max_connections);
             if let Some(t) = token {
                 opts = opts.auth_token(t);
             }

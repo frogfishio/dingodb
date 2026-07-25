@@ -32,6 +32,7 @@ mod indexes;
 mod receipt;
 mod remote;
 mod resource;
+mod server;
 mod subject;
 mod value;
 
@@ -58,8 +59,13 @@ pub use resource::{
     DEFAULT_MAX_RPC_LINE_BYTES, RESOURCE_PROFILE,
 };
 pub use remote::{
-    handle_connection, handle_connection_with, parse_dingo_url, serve_cluster_node, serve_store,
-    serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient, ServeOptions, DEFAULT_PORT,
+    handle_connection, handle_connection_shared, handle_connection_with, parse_dingo_url,
+    serve_cluster_node, serve_store, serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient,
+    ServeOptions, DEFAULT_PORT,
+};
+pub use server::{
+    ServerLimits, ServerRuntime, ServerStats, DEFAULT_DRAIN_TIMEOUT, DEFAULT_IDLE_TIMEOUT,
+    DEFAULT_MAX_CONNECTIONS, SERVER_PROFILE,
 };
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,

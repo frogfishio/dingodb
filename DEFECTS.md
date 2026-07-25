@@ -811,8 +811,8 @@ Implementation notes:
   scan pages and index probes (not serialized in query plans).
 - Sort/materialise fail closed when over budget/ceiling; spill-to-disk sort
   is **not** enabled in this profile (documented).
-- Follow-ons (DEF-030+): concurrent query / open connection / per-tenant
-  admission, server worker pools, verified temp spill format.
+- Follow-ons: per-tenant work quotas, verified temp spill format; connection
+  admission addressed in DEF-030.
 
 Acceptance:
 
@@ -827,7 +827,9 @@ Acceptance:
 ### DEF-030 — Replace the sequential TCP loop with a bounded server architecture
 
 Priority: P1  
-Dependencies: DEF-020
+Dependencies: DEF-020  
+Status: **addressed** (bounded worker server; see
+`stage_def_030_bounded_server`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -839,12 +841,36 @@ Work:
 - Avoid holding a connection open in the accept loop.
 - Add request cancellation and server draining.
 
+Implementation notes:
+
+- Profile tag `SERVER_PROFILE = "dingo-server-v1"`.
+- `serve_store_with` opens **one** `Store` (exclusive writer), wraps it in
+  `Arc<Mutex<Store>>`, and admits up to `ServerLimits::max_connections`
+  (default 64) worker threads. Accept loop is non-blocking and never runs
+  request I/O inline.
+- Over-limit / draining admissions get an immediate `resource_limit` line and
+  close (backpressure). Idle sockets use configurable read/write timeouts
+  (default 120s).
+- Mutations serialize on the store mutex (writer ownership); mutex is not held
+  across socket I/O. Mutation start/finish counters are reported on drain.
+- Graceful shutdown via `ServeOptions::shutdown_flag`: stop accept, drain
+  workers up to `drain_timeout`, report stats; mismatch or timeout is an error.
+- Follow-ons: concurrent read snapshots without mutex, worker pool reuse
+  (instead of thread-per-connection), load-test CI artifacts (DEF-050), TLS
+  (DEF-032).
+
 Acceptance:
 
 - One slow client cannot block unrelated clients.
 - Load tests prove bounded memory and stable tail latency under overload.
 - Graceful shutdown either completes or reports the outcome of every accepted
   mutation.
+
+Evidence:
+
+- `crates/dingo-sdk/tests/stage_def_030_bounded_server.rs` — concurrent clients,
+  connection limit overload, single store owner under load, graceful shutdown.
+- Unit: `server::tests` admission/drain/mutation accounting.
 
 ### DEF-031 — Version and frame the network protocol
 

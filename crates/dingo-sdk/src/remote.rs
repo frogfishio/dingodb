@@ -28,12 +28,16 @@ use dingo_store::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use crate::server::{
+    is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, SERVER_PROFILE,
+};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::str;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -108,7 +112,7 @@ impl ConnectOptions {
 }
 
 /// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ServeOptions {
     /// When set, every RPC must carry a matching `token` field.
     pub auth_token: Option<String>,
@@ -137,6 +141,27 @@ pub struct ServeOptions {
     pub experimental_network_cluster: bool,
     /// Skip the structured stderr startup report (when the CLI already printed it).
     pub suppress_startup_report: bool,
+    /// Connection admission, idle timeout, and drain bounds (DEF-030).
+    pub server_limits: ServerLimits,
+    /// Optional external shutdown flag. When set true, the accept loop stops
+    /// admitting work and drains in-flight connections (DEF-030).
+    pub shutdown: Option<Arc<AtomicBool>>,
+}
+
+impl Default for ServeOptions {
+    fn default() -> Self {
+        Self {
+            auth_token: None,
+            directory: None,
+            node_index: None,
+            cluster_root: None,
+            allow_insecure_bind: false,
+            experimental_network_cluster: false,
+            suppress_startup_report: false,
+            server_limits: ServerLimits::draft_defaults(),
+            shutdown: None,
+        }
+    }
 }
 
 impl ServeOptions {
@@ -184,6 +209,36 @@ impl ServeOptions {
     /// Do not print the structured serve startup report (caller already did).
     pub fn suppress_startup_report(mut self, suppress: bool) -> Self {
         self.suppress_startup_report = suppress;
+        self
+    }
+
+    /// Set connection / drain limits for the bounded server (DEF-030).
+    pub fn server_limits(mut self, limits: ServerLimits) -> Self {
+        self.server_limits = limits;
+        self
+    }
+
+    /// Maximum simultaneous client connections (shorthand for server limits).
+    pub fn max_connections(mut self, n: usize) -> Self {
+        self.server_limits.max_connections = n.max(1);
+        self
+    }
+
+    /// Idle socket timeout for established connections.
+    pub fn idle_timeout(mut self, d: Duration) -> Self {
+        self.server_limits.idle_timeout = d;
+        self
+    }
+
+    /// How long graceful shutdown waits for in-flight connections.
+    pub fn drain_timeout(mut self, d: Duration) -> Self {
+        self.server_limits.drain_timeout = d;
+        self
+    }
+
+    /// External shutdown signal shared with the accept loop (DEF-030).
+    pub fn shutdown_flag(mut self, flag: Arc<AtomicBool>) -> Self {
+        self.shutdown = Some(flag);
         self
     }
 }
@@ -1412,9 +1467,10 @@ fn prepare_mutation_dedup(
     }
 }
 
-/// Serve one store over TCP until the listener ends (Stage 7).
+/// Serve one store over TCP until shutdown or the listener fails (Stage 7 + DEF-030).
 ///
-/// Handles connections sequentially (single-threaded MVP). No auth required.
+/// Opens the store **once** (exclusive writer ownership), then admits a bounded
+/// number of concurrent connection workers. No auth required by default.
 pub fn serve_store(store_path: impl AsRef<Path>, bind: &str) -> Result<(), Error> {
     serve_store_with(store_path, bind, ServeOptions::default())
 }
@@ -1424,6 +1480,10 @@ pub fn serve_store(store_path: impl AsRef<Path>, bind: &str) -> Result<(), Error
 /// Enforces the plaintext bind policy (DEF-002): non-loopback addresses require
 /// [`ServeOptions::allow_insecure_bind`]. Emits a structured startup report to
 /// stderr that never claims network quorum durability for single-node serve.
+///
+/// **Bounded server (DEF-030):** one store owner, worker threads per connection,
+/// connection admission limits, idle timeouts, overload responses, and optional
+/// graceful drain via [`ServeOptions::shutdown_flag`].
 pub fn serve_store_with(
     store_path: impl AsRef<Path>,
     bind: &str,
@@ -1443,16 +1503,125 @@ pub fn serve_store_with(
             options.allow_insecure_bind,
         )
         .emit_stderr();
+        eprintln!(
+            "dingo serve: profile={SERVER_PROFILE} max_connections={} idle_timeout_ms={}",
+            options.server_limits.max_connections,
+            options.server_limits.idle_timeout.as_millis()
+        );
     }
+
+    // One coordinated store owner for the whole process (DEF-020 + DEF-030).
+    let store = Arc::new(Mutex::new(Store::open(&path)?));
+    let runtime = ServerRuntime::new(options.server_limits.clone(), options.shutdown.clone());
     let listener = TcpListener::bind(bind).map_err(Error::from_io)?;
-    for conn in listener.incoming() {
-        let stream = conn.map_err(Error::from_io)?;
-        let mut store = Store::open(&path)?;
-        if let Err(e) = handle_connection_with(&mut store, stream, options.clone()) {
-            eprintln!("dingo serve connection error: {e}");
+    // Non-blocking accept so the loop can observe shutdown without a stuck client.
+    listener
+        .set_nonblocking(true)
+        .map_err(Error::from_io)?;
+
+    serve_accept_loop(listener, store, runtime, options)
+}
+
+/// Bounded accept loop: admit connections as worker threads until shutdown.
+fn serve_accept_loop(
+    listener: TcpListener,
+    store: Arc<Mutex<Store>>,
+    runtime: Arc<ServerRuntime>,
+    options: ServeOptions,
+) -> Result<(), Error> {
+    loop {
+        if runtime.is_shutdown_requested() {
+            break;
+        }
+        match listener.accept() {
+            Ok((stream, _addr)) => {
+                // Accepted fds inherit non-blocking from the listener on some
+                // platforms; workers use blocking reads with idle timeouts.
+                if let Err(e) = stream.set_nonblocking(false) {
+                    eprintln!("dingo serve: set_nonblocking(false) failed: {e}");
+                    continue;
+                }
+                if !runtime.try_admit_connection() {
+                    // Overload / drain: reply once and drop (backpressure).
+                    let max = runtime.limits().max_connections;
+                    let reason = if runtime.is_draining() {
+                        "server draining; connection refused".to_string()
+                    } else {
+                        format!("connection limit exceeded (max {max})")
+                    };
+                    let _ = reject_connection(stream, &reason);
+                    continue;
+                }
+                let guard = ConnectionGuard::new(Arc::clone(&runtime));
+                let store_c = Arc::clone(&store);
+                let opts_c = options.clone();
+                let runtime_c = Arc::clone(&runtime);
+                // Detach worker: accept loop must not wait on client I/O.
+                // On spawn failure the ConnectionGuard drops here and releases the slot.
+                thread::Builder::new()
+                    .name("dingo-serve-conn".into())
+                    .spawn(move || {
+                        let _guard = guard;
+                        if let Err(e) =
+                            handle_connection_shared(store_c, stream, opts_c, runtime_c)
+                        {
+                            eprintln!("dingo serve connection error: {e}");
+                        }
+                    })
+                    .map_err(Error::from_io)?;
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(20));
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(Error::from_io(e)),
         }
     }
+
+    // Graceful drain: stop new admissions, wait for workers, report mutation outcome.
+    runtime.begin_drain();
+    let idle = runtime.wait_for_idle();
+    let stats = runtime.stats();
+    eprintln!(
+        "dingo serve: drain {} active={} peak={} rejected={} accepted={} \
+         mutations_started={} mutations_finished={}",
+        if idle { "complete" } else { "timeout" },
+        stats.active_connections,
+        stats.peak_connections,
+        stats.rejected_connections,
+        stats.accepted_connections,
+        stats.mutations_started,
+        stats.mutations_finished
+    );
+    if !idle {
+        return Err(Error::ResourceLimit(format!(
+            "graceful drain timed out with {} connection(s) still active; \
+             mutations_started={} mutations_finished={}",
+            stats.active_connections, stats.mutations_started, stats.mutations_finished
+        )));
+    }
+    if stats.mutations_started != stats.mutations_finished {
+        return Err(Error::Internal(format!(
+            "drain accounting mismatch: mutations_started={} mutations_finished={}",
+            stats.mutations_started, stats.mutations_finished
+        )));
+    }
     Ok(())
+}
+
+/// Write an unsolicited overload/drain error line and close the socket.
+fn reject_connection(mut stream: TcpStream, reason: &str) -> Result<(), Error> {
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+    write_resp(
+        &mut stream,
+        RpcResponse {
+            id: 0,
+            ok: false,
+            error: Some(reason.to_string()),
+            code: Some("resource_limit".into()),
+            ..empty_resp(0)
+        },
+    )
 }
 
 /// Serve one node of a multi-node cluster root over TCP (network follow-on).
@@ -1544,21 +1713,75 @@ pub fn handle_connection(store: &mut Store, stream: TcpStream) -> Result<(), Err
 }
 
 /// Handle one client with server options (auth token).
+///
+/// Single-threaded helper for tests that own a exclusive [`Store`]. Production
+/// `serve_store_with` uses [`handle_connection_shared`] so many clients share
+/// one store owner under a mutex.
 pub fn handle_connection_with(
     store: &mut Store,
     stream: TcpStream,
     options: ServeOptions,
 ) -> Result<(), Error> {
+    // Local single-connection path: no shared runtime accounting.
+    let runtime = ServerRuntime::new(options.server_limits.clone(), None);
+    // Pretend admitted so drain checks are no-ops.
+    let _ = runtime.try_admit_connection();
+    let _guard = ConnectionGuard::new(Arc::clone(&runtime));
+    connection_loop(store, stream, &options, &runtime)
+}
+
+/// Handle one client against a shared store owner (DEF-030 worker path).
+///
+/// Holds the store mutex only while dispatching an RPC — never across socket
+/// reads/writes — so one slow peer cannot block unrelated clients' store access
+/// during network I/O.
+pub fn handle_connection_shared(
+    store: Arc<Mutex<Store>>,
+    stream: TcpStream,
+    options: ServeOptions,
+    runtime: Arc<ServerRuntime>,
+) -> Result<(), Error> {
+    let idle = options.server_limits.idle_timeout;
     stream
-        .set_read_timeout(Some(Duration::from_secs(120)))
+        .set_read_timeout(Some(idle))
+        .map_err(Error::from_io)?;
+    stream
+        .set_write_timeout(Some(idle))
         .map_err(Error::from_io)?;
     let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
     let mut writer = stream;
     let limits = crate::resource::host_limits();
     loop {
+        if runtime.is_draining() {
+            // Finish after the current request; refuse further work cleanly.
+            // (Drain may start mid-connection; first check is here.)
+        }
         let mut line = String::new();
-        let n = reader.read_line(&mut line).map_err(Error::from_io)?;
+        let n = match reader.read_line(&mut line) {
+            Ok(n) => n,
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                // Idle timeout: close quietly.
+                break;
+            }
+            Err(e) => return Err(Error::from_io(e)),
+        };
         if n == 0 {
+            break;
+        }
+        if runtime.is_draining() {
+            write_resp(
+                &mut writer,
+                RpcResponse {
+                    id: 0,
+                    ok: false,
+                    error: Some("server draining; request refused".into()),
+                    code: Some("resource_limit".into()),
+                    ..empty_resp(0)
+                },
+            )?;
             break;
         }
         // DEF-029: refuse oversized request lines before JSON parse.
@@ -1612,7 +1835,117 @@ pub fn handle_connection_with(
                 continue;
             }
         }
-        let resp = match dispatch(store, &req, &options) {
+        let resp = {
+            let _mutation = if is_mutating_op(&req.op) {
+                Some(MutationGuard::new(Arc::clone(&runtime)))
+            } else {
+                None
+            };
+            // Serialize store access; release before writing the response.
+            let mut guard = store.lock().map_err(|_| {
+                Error::Internal("store mutex poisoned".into())
+            })?;
+            match dispatch(&mut guard, &req, &options) {
+                Ok(r) => r,
+                Err(e) => RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                },
+            }
+        };
+        write_resp(&mut writer, resp)?;
+    }
+    Ok(())
+}
+
+/// Exclusive-store connection loop used by [`handle_connection_with`].
+fn connection_loop(
+    store: &mut Store,
+    stream: TcpStream,
+    options: &ServeOptions,
+    runtime: &ServerRuntime,
+) -> Result<(), Error> {
+    let idle = options.server_limits.idle_timeout;
+    stream
+        .set_read_timeout(Some(idle))
+        .map_err(Error::from_io)?;
+    stream
+        .set_write_timeout(Some(idle))
+        .map_err(Error::from_io)?;
+    let mut reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
+    let mut writer = stream;
+    let limits = crate::resource::host_limits();
+    loop {
+        let mut line = String::new();
+        let n = match reader.read_line(&mut line) {
+            Ok(n) => n,
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                break;
+            }
+            Err(e) => return Err(Error::from_io(e)),
+        };
+        if n == 0 {
+            break;
+        }
+        if let Err(e) = crate::resource::check_rpc_line_len(line.len(), &limits) {
+            write_resp(
+                &mut writer,
+                RpcResponse {
+                    id: 0,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(0)
+                },
+            )?;
+            break;
+        }
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let req: RpcRequest = match serde_json::from_str(line) {
+            Ok(r) => r,
+            Err(e) => {
+                write_resp(
+                    &mut writer,
+                    RpcResponse {
+                        id: 0,
+                        ok: false,
+                        error: Some(format!("bad request: {e}")),
+                        code: Some("validation_failed".into()),
+                        ..empty_resp(0)
+                    },
+                )?;
+                continue;
+            }
+        };
+        if let Some(required) = options.auth_token.as_deref() {
+            let presented = req.token.as_deref().unwrap_or("");
+            if presented != required {
+                write_resp(
+                    &mut writer,
+                    RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some("invalid or missing auth token".into()),
+                        code: Some("authentication_failed".into()),
+                        ..empty_resp(req.id)
+                    },
+                )?;
+                continue;
+            }
+        }
+        // Exclusive test path: no process-wide mutation accounting (runtime is
+        // local to this connection). Shared workers use MutationGuard.
+        let _ = runtime;
+        let resp = match dispatch(store, &req, options) {
             Ok(r) => r,
             Err(e) => RpcResponse {
                 id: req.id,

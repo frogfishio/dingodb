@@ -43,6 +43,7 @@ with the acceptance evidence expected before a stronger label.
 | `CONFORMANCE_CORPUS_TAG` | `sda-standalone-v1.0` | SDA §14 corpus |
 | `QUERY_PLAN_PROFILE` | `dingo-query-plan-v1` | Serializable filter/query plans (DEF-028) |
 | `RESOURCE_PROFILE` | `dingo-resource-v1` | Query budgets + host resource limits (DEF-029) |
+| `SERVER_PROFILE` | `dingo-server-v1` | Bounded TCP server admission + drain (DEF-030) |
 
 ## Network bind policy (DEF-002)
 
@@ -219,9 +220,25 @@ collection catalogs are built from segment-derived durable state only.
 | Result / sort memory | shipped | budget + 64 MiB host ceiling; no spill-to-disk in this profile |
 | Cancellation | shipped | `CancelToken` on `QueryOptions` / builder (embedded find loops) |
 | Frame length bounds | shipped | `dingo_format::SafetyLimits` (unchanged) |
-| Conn / concurrent query admission | not yet | DEF-030 bounded server |
+| Conn / concurrent query admission | shipped | DEF-030 bounded server (`SERVER_PROFILE`) |
 | Per-tenant work quotas | not yet | follow-on |
 | Tests | shipped | `stage_def_029_resource_governance` + resource unit tests |
+
+## Bounded TCP server (DEF-030)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Profile tag | shipped | `dingo_sdk::SERVER_PROFILE = "dingo-server-v1"` |
+| Single store owner | shipped | one `Store::open` per serve process; shared via `Arc<Mutex<Store>>` |
+| Concurrent connections | shipped | thread-per-connection workers; accept loop never blocks on client I/O |
+| Connection limit | shipped | `ServeOptions::max_connections` / `ServerLimits` (default 64) |
+| Overload response | shipped | unsolicited `resource_limit` line then close |
+| Idle timeout | shipped | configurable; default 120s read/write |
+| Graceful drain | shipped | `shutdown_flag` → stop accept, wait workers, report mutation counters |
+| Mutation serialization | shipped | store mutex; not held across socket I/O |
+| Worker pool reuse | not yet | thread-per-conn is the draft model |
+| Concurrent read snapshots | not yet | reads still take the store mutex |
+| Tests | shipped | `stage_def_030_bounded_server` + `server` unit tests |
 
 ## CI check
 
