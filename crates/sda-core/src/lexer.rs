@@ -269,6 +269,18 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 pos += 1;
                 TokenKind::Bar
             }
+            '∪' => {
+                pos += 1;
+                TokenKind::Union
+            }
+            '∩' => {
+                pos += 1;
+                TokenKind::Inter
+            }
+            '\\' => {
+                pos += 1;
+                TokenKind::Diff
+            }
             '⊎' => {
                 pos += 1;
                 TokenKind::BUnion

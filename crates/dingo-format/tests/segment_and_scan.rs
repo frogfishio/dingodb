@@ -3,6 +3,7 @@
 use dingo_format::{
     decode_descriptor_body, decode_summary_body, encode_frame, scan_forward, ActiveSegment,
     FrameHeader, FrameKind, FrameParts, HoleReason, SafetyLimits, SegmentId, START_MAGIC,
+    EMPTY_ENVELOPE,
 };
 
 fn ids() -> SegmentId {
@@ -17,8 +18,13 @@ fn item_frame(body: &[u8], event: u8) -> FrameParts {
     let mut event_id = [0u8; 16];
     event_id[0] = event;
     FrameParts {
-        header: FrameHeader::new_draft(FrameKind::ItemEvent, 0, body.len() as u64, event_id),
-        envelope: vec![],
+        header: FrameHeader::new_draft(
+            FrameKind::ItemEvent,
+            EMPTY_ENVELOPE.len() as u32,
+            body.len() as u64,
+            event_id,
+        ),
+        envelope: EMPTY_ENVELOPE.to_vec(),
         body: body.to_vec(),
     }
 }
@@ -27,10 +33,10 @@ fn item_frame(body: &[u8], event: u8) -> FrameParts {
 fn sealed_segment_scan_finds_descriptor_items_summary() {
     let mut active = ActiveSegment::create(ids(), SafetyLimits::default(), 42).unwrap();
     active
-        .append(FrameKind::ItemEvent, b"", b"one", [1u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"one", [1u8; 16])
         .unwrap();
     active
-        .append(FrameKind::ItemEvent, b"", b"two", [2u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"two", [2u8; 16])
         .unwrap();
     let sealed = active.seal().unwrap();
     assert_eq!(sealed.frame_count(), 4); // desc + 2 items + summary
@@ -86,20 +92,20 @@ fn corrupt_middle_frame_later_island_survives() {
     // FORMAT_SPEC §13: corrupt length / damage followed by a valid frame.
     let mut active = ActiveSegment::create(ids(), SafetyLimits::default(), 0).unwrap();
     active
-        .append(FrameKind::ItemEvent, b"", b"before", [1u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"before", [1u8; 16])
         .unwrap();
     let mid_off = active
-        .append(FrameKind::ItemEvent, b"", b"middle", [2u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"middle", [2u8; 16])
         .unwrap() as usize;
     active
-        .append(FrameKind::ItemEvent, b"", b"after", [3u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"after", [3u8; 16])
         .unwrap();
     let sealed = active.seal().unwrap();
     let mut damaged = sealed.into_bytes();
 
     // Flip a body byte in the middle item so body hash fails.
-    // Middle frame starts at mid_off; body follows 64-byte prefix + empty envelope.
-    let body_at = mid_off + 64;
+    // Middle frame starts at mid_off; body follows 64-byte prefix + empty CBOR map.
+    let body_at = mid_off + 64 + EMPTY_ENVELOPE.len();
     damaged[body_at] ^= 0xff;
 
     let report = scan_forward(&damaged, SafetyLimits::default());
@@ -165,7 +171,7 @@ fn active_segment_rejects_append_after_seal_path() {
     // Rebuild is not possible from SealedSegment; ensure seal is terminal via
     // second seal attempt on a fresh active that we seal once.
     let mut a2 = ActiveSegment::create(ids(), SafetyLimits::default(), 0).unwrap();
-    a2.append(FrameKind::Padding, b"", b"", [0u8; 16]).unwrap();
+    a2.append(FrameKind::Padding, EMPTY_ENVELOPE, b"", [0u8; 16]).unwrap();
     let s = a2.seal().unwrap();
     assert!(s.frame_count() >= 2);
     let _ = sealed;
@@ -175,10 +181,10 @@ fn active_segment_rejects_append_after_seal_path() {
 fn truncated_tail_does_not_poison_earlier_frames() {
     let mut active = ActiveSegment::create(ids(), SafetyLimits::default(), 0).unwrap();
     active
-        .append(FrameKind::ItemEvent, b"", b"stable", [1u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"stable", [1u8; 16])
         .unwrap();
     let off = active
-        .append(FrameKind::ItemEvent, b"", b"cut-me", [2u8; 16])
+        .append(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"cut-me", [2u8; 16])
         .unwrap() as usize;
     let mut bytes = active.as_bytes().to_vec();
     // Truncate mid-second-frame.

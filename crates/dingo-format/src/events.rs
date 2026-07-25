@@ -95,6 +95,7 @@ pub fn group_by_event_id(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cbor_envelope::EMPTY_ENVELOPE;
     use crate::frame::{encode_frame, FrameHeader, FrameParts};
     use crate::kinds::FrameKind;
     use crate::limits::SafetyLimits;
@@ -104,8 +105,13 @@ mod tests {
         let mut event_id = [0u8; 16];
         event_id[0] = event;
         encode_frame(&FrameParts {
-            header: FrameHeader::new_draft(FrameKind::ItemEvent, 0, body.len() as u64, event_id),
-            envelope: vec![],
+            header: FrameHeader::new_draft(
+                FrameKind::ItemEvent,
+                EMPTY_ENVELOPE.len() as u32,
+                body.len() as u64,
+                event_id,
+            ),
+            envelope: EMPTY_ENVELOPE.to_vec(),
             body: body.to_vec(),
         })
         .unwrap()

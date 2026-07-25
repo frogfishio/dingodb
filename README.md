@@ -183,7 +183,7 @@ rebalance).
 | Stage | Focus | Status |
 |-------|--------|--------|
 | 0 | Repo + CI | done |
-| 1 | SDA standalone | library + CLI + §14.1 suite |
+| 1 | SDA standalone | library + CLI + §14 MUST lock (`sda-standalone-v1.0`) |
 | 2 | Wire format + salvage | **2a–2d** frames, seal, scanners, §13 corpus |
 | 3 | Single-node store | **3a–3c** put/get/delete, §16 suite, descriptor + index cache |
 | 4 | Collection SDK | **4a–4d** open, JSON/bytes, scan/stream, filters, `ErrorCode` |

@@ -850,3 +850,294 @@ mod section_14_1_minimal_suite {
         );
     }
 }
+
+/// Full SDA_SPEC §14 MUST lock (beyond the §14.1 minimal outline).
+///
+/// Each test maps to one of the 13 normative MUST bullets. Together with the
+/// golden corpus under `tests/sda/` this freezes standalone behavior under
+/// [`sda_lib::CONFORMANCE_CORPUS_TAG`].
+mod section_14_must_lock {
+    use super::*;
+
+    #[test]
+    fn must_1_three_eliminators() {
+        // ?, !, and total form — Map optional/required + Prod total.
+        assert_eq!(
+            run_json(r#"Map{"x" -> null}<"x">?;"#),
+            serde_json::json!({"$type": "some", "$value": null})
+        );
+        assert_fail(r#"Map{}<"name">!;"#, "t_sda_missing_key", "missing key");
+        assert_eq!(
+            run_json(r#"Prod{name: "Ada"}<name>;"#),
+            serde_json::json!("Ada")
+        );
+    }
+
+    #[test]
+    fn must_2_normalization_semantics() {
+        assert_eq!(
+            run_json(r#"normalizeUnique(BagKV{"a" -> 1, "b" -> 2});"#),
+            serde_json::json!({"$type": "ok", "$value": {"a": 1, "b": 2}})
+        );
+        assert_fail(
+            r#"normalizeUnique(BagKV{"k" -> 1, "k" -> 2});"#,
+            "t_sda_duplicate_key",
+            "duplicate key",
+        );
+        assert_fail(
+            r#"normalizeFirst(BagKV{"k" -> 1});"#,
+            "t_sda_unbound_name",
+            "unbound name",
+        );
+    }
+
+    #[test]
+    fn must_3_carrier_preservation() {
+        assert_eq!(
+            run_json(r#"{ a in Seq[1, 2] | true };"#),
+            serde_json::json!([1, 2])
+        );
+        assert_eq!(
+            run_json(r#"{ a in Set{1, 2} | true };"#),
+            serde_json::json!({"$type": "set", "$items": [1, 2]})
+        );
+        assert_eq!(
+            run_json(r#"{ a in Bag{1, 1} | true };"#),
+            serde_json::json!({"$type": "bag", "$items": [1, 1]})
+        );
+    }
+
+    #[test]
+    fn must_4_stable_error_codes() {
+        assert_fail("1 / 0;", "t_sda_div_by_zero", "division by zero");
+        assert_fail("_;", "t_sda_unbound_placeholder", "unbound placeholder");
+        assert_fail("missing;", "t_sda_unbound_name", "unbound name");
+        assert_fail("1(2);", "t_sda_not_callable", "not callable");
+    }
+
+    #[test]
+    fn must_5_unicode_and_ascii_spellings() {
+        assert_same_result(r#"Map{"a" -> 1};"#, r#"Map{"a" → 1};"#);
+        assert_same_result(r#"(x => x)(1);"#, r#"(x ↦ x)(1);"#);
+        assert_same_result("2 in Set{1, 2};", "2 ∈ Set{1, 2};");
+        assert_same_result("true and false;", "true ∧ false;");
+        assert_same_result("true or false;", "true ∨ false;");
+        assert_same_result("not false;", "¬false;");
+        assert_same_result("1 != 2;", "1 ≠ 2;");
+        assert_same_result("1 <= 2;", "1 ≤ 2;");
+        assert_same_result("2 >= 1;", "2 ≥ 1;");
+        assert_same_result("Set{1} union Set{2};", "Set{1} ∪ Set{2};");
+        assert_same_result("Set{1, 2} inter Set{2};", "Set{1, 2} ∩ Set{2};");
+        assert_same_result("Set{1, 2} diff Set{2};", r#"Set{1, 2} \ Set{2};"#);
+        assert_same_result("Bag{1} bunion Bag{2};", "Bag{1} ⊎ Bag{2};");
+        assert_same_result("Bag{1, 1} bdiff Bag{1};", "Bag{1, 1} ⊖ Bag{1};");
+        assert_same_result(r#"5 |> _ + 1;"#, r#"5 |> • + 1;"#);
+        let input = serde_json::json!({"name": "Ada"});
+        assert_eq!(
+            run_json_with_input(r#"input<"name">!;"#, "input", input.clone()),
+            run_json_with_input(r#"input⟨"name"⟩!;"#, "input", input)
+        );
+    }
+
+    #[test]
+    fn must_6_pipe_scoping_and_left_associativity() {
+        assert_eq!(run_json(r#"10 |> (_ + (1 |> _));"#), serde_json::json!(11));
+        assert_eq!(run_json(r#"1 |> _ + 1 |> _ * 2;"#), serde_json::json!(4));
+        assert_fail(
+            r#"BagKV{"k" -> 1} |> normalizeUnique();"#,
+            "t_sda_arity_mismatch",
+            "arity mismatch",
+        );
+    }
+
+    #[test]
+    fn must_7_bagkv_comprehension_binding() {
+        assert_eq!(
+            run_json(r#"{ yield a<val> | a in BagKV{"x" -> 1, "y" -> 2} };"#),
+            serde_json::json!({"$type": "bag", "$items": [1, 2]})
+        );
+        assert_eq!(
+            run_json(r#"{ yield a<key> | a in BagKV{"x" -> 1} };"#),
+            serde_json::json!({"$type": "bag", "$items": ["x"]})
+        );
+    }
+
+    #[test]
+    fn must_8_prod_vs_map_access_distinction() {
+        assert_eq!(
+            run_json(r#"Prod{name: "Ada"}<name>;"#),
+            serde_json::json!("Ada")
+        );
+        assert_fail(
+            r#"Map{"name" -> "Ada"}<"name">;"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
+        assert_fail(
+            r#"Prod{name: "Ada"}<name>?;"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
+    }
+
+    #[test]
+    fn must_9_standalone_helper_contracts() {
+        assert_eq!(
+            run_json(r#"keys(Map{"b" -> 2, "a" -> 1});"#),
+            serde_json::json!({"$type": "set", "$items": ["a", "b"]})
+        );
+        assert_eq!(
+            run_json(r#"values(Map{"b" -> 2, "a" -> 1});"#),
+            serde_json::json!([1, 2])
+        );
+        assert_eq!(run_json(r#"count(1, Bag{1, 2, 1});"#), serde_json::json!(2));
+        assert_eq!(run_json(r#"typeOf(null);"#), serde_json::json!("null"));
+        assert_eq!(
+            run_json(r#"bindOpt(Some(1), x => Some(x + 1));"#),
+            serde_json::json!({"$type": "some", "$value": 2})
+        );
+        assert_fail(
+            r#"bindOpt(Some(1), x => x);"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
+        assert_fail(
+            r#"bindRes(Ok(1), x => x);"#,
+            "t_sda_wrong_shape",
+            "wrong shape",
+        );
+        assert_eq!(
+            run_json(r#"bindRes(Ok(1), x => Ok(x + 1));"#),
+            serde_json::json!({"$type": "ok", "$value": 2})
+        );
+    }
+
+    #[test]
+    fn must_10_equality_across_core_kinds() {
+        assert_eq!(run_json("null = null;"), serde_json::json!(true));
+        assert_eq!(run_json("true = false;"), serde_json::json!(false));
+        assert_eq!(run_json(r#""a" = "a";"#), serde_json::json!(true));
+        assert_eq!(
+            run_json(r#"Bytes("00ff") = Bytes("00ff");"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(run_json("Seq[1, 2] = Seq[1, 2];"), serde_json::json!(true));
+        assert_eq!(run_json("Set{1, 2} = Set{2, 1};"), serde_json::json!(true));
+        assert_eq!(
+            run_json("Bag{1, 1, 2} = Bag{2, 1, 1};"),
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            run_json(r#"Map{"a" -> 1} = Map{"a" -> 1};"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            run_json(r#"Prod{a: 1, b: 2} = Prod{b: 2, a: 1};"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            run_json(r#"BagKV{"k" -> 1, "k" -> 2} = BagKV{"k" -> 2, "k" -> 1};"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            run_json(r#"Bind("k", 1) = Bind("k", 1);"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(run_json("Some(1) = Some(1);"), serde_json::json!(true));
+        assert_eq!(run_json("None = None;"), serde_json::json!(true));
+        assert_eq!(run_json("Ok(1) = Ok(1);"), serde_json::json!(true));
+        assert_eq!(
+            run_json(r#"Fail("c", "m") = Fail("c", "m");"#),
+            serde_json::json!(true)
+        );
+        assert_eq!(run_json("Some(null) = None;"), serde_json::json!(false));
+    }
+
+    #[test]
+    fn must_11_static_and_eval_error_codes_align() {
+        // Static parse errors use stable tags; runtime Fail uses the same family.
+        assert_parse_error(
+            "let _ = 1;",
+            "t_sda_reserved_placeholder",
+            "reserved placeholder",
+        );
+        assert_fail("_;", "t_sda_unbound_placeholder", "unbound placeholder");
+        assert_fail(
+            r#"Map{}<"x">!;"#,
+            "t_sda_missing_key",
+            "missing key",
+        );
+    }
+
+    #[test]
+    fn must_12_pipe_is_placeholder_composition() {
+        assert_eq!(
+            run_json(r#"Seq[1, 2] |> _ ++ Seq[3];"#),
+            serde_json::json!([1, 2, 3])
+        );
+        // No implicit insertion of the left value as a call argument.
+        assert_fail(
+            r#"1 |> (x => x + 1)();"#,
+            "t_sda_arity_mismatch",
+            "arity mismatch",
+        );
+    }
+
+    #[test]
+    fn must_13_bind_constructor_not_general_arrow_sugar() {
+        assert_eq!(
+            run_json(r#"Bind("k", 1);"#),
+            serde_json::json!({"$type": "bind", "$key": "k", "$val": 1})
+        );
+        assert_parse_error(r#"{ yield "x" -> 1 | a in Seq[1] };"#, "Expected", "Arrow");
+    }
+
+    #[test]
+    fn frozen_corpus_tag_is_stable() {
+        assert_eq!(sda_lib::CONFORMANCE_CORPUS_TAG, "sda-standalone-v1.0");
+        assert_eq!(
+            sda_lib::SdaRuntime::conformance_corpus_tag(),
+            "sda-standalone-v1.0"
+        );
+        let version_file = include_str!("sda/VERSION").trim();
+        assert_eq!(version_file, sda_lib::CONFORMANCE_CORPUS_TAG);
+    }
+}
+
+/// Golden-vector runner for `tests/sda/section14_must.json`.
+mod section_14_golden_corpus {
+    use super::*;
+
+    #[test]
+    fn golden_section14_must_vectors() {
+        let raw = include_str!("sda/section14_must.json");
+        let corpus: serde_json::Value =
+            serde_json::from_str(raw).expect("parse golden corpus JSON");
+        let tag = corpus["tag"].as_str().expect("corpus.tag string");
+        assert_eq!(
+            tag,
+            sda_lib::CONFORMANCE_CORPUS_TAG,
+            "golden corpus tag must match CONFORMANCE_CORPUS_TAG"
+        );
+        let cases = corpus["cases"].as_array().expect("corpus.cases array");
+        assert!(!cases.is_empty(), "golden corpus must not be empty");
+
+        for case in cases {
+            let id = case["id"].as_str().unwrap_or("<missing id>");
+            let source = case["source"]
+                .as_str()
+                .unwrap_or_else(|| panic!("case {id}: missing source"));
+            let expected = case["expected"].clone();
+            let got = if case.get("input").is_some() && !case["input"].is_null() {
+                // When the golden entry includes an `input` field, bind it as `input`.
+                run_json_with_input(source, "input", case["input"].clone())
+            } else {
+                run_json(source)
+            };
+            assert_eq!(
+                got, expected,
+                "golden case {id} failed\nsource: {source}\ngot: {got}\nexpected: {expected}"
+            );
+        }
+    }
+}

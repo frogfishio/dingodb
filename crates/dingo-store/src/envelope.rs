@@ -1,26 +1,22 @@
-//! Draft item-event envelope layout (Stage 3a).
+//! Item-event envelope layout (FORMAT_SPEC §4.4 deterministic CBOR).
 //!
-//! Wire major 1 envelopes are specified as deterministic CBOR (FORMAT_SPEC §4.4).
-//! Until that validation lands, Stage 3 uses a fixed little-endian layout that
-//! is self-describing enough for put/delete recovery and remains opaque to
-//! `dingo-format` scanners.
+//! Wire major 1 envelopes are a single definite-length CBOR map with unsigned
+//! integer keys. Core keys used here:
 //!
-//! Layout:
-//! ```text
-//! magic[8] = b"DENV0001"
-//! store_id[16]
-//! segment_id[16]
-//! item_id[16]
-//! event_kind:u8
-//! created_ns:u64 LE
-//! subject_len:u16 LE
-//! subject[subject_len]
-//! ```
+//! | Key | Name | Type |
+//! |---:|---|---|
+//! | 1 | `item_id` | bstr(16) |
+//! | 2 | `event_kind` | uint |
+//! | 3 | `store_id` | bstr(16) |
+//! | 4 | `segment_id` | bstr(16) |
+//! | 5 | `created_ns` | uint |
+//! | 6 | `subject_id` | bstr |
 
-/// Magic identifying draft item envelopes.
-pub const ENVELOPE_MAGIC: &[u8; 8] = b"DENV0001";
+use dingo_format::{
+    decode_deterministic_uint_map, encode_deterministic_uint_map, CborValue,
+};
 
-/// Maximum subject length in this draft (fits in u16; also bounds envelopes).
+/// Maximum subject length in this draft (also bounds envelopes).
 pub const MAX_SUBJECT_LEN: usize = 4096;
 
 /// Core event kinds for Stage 3 (OVERVIEW §5.4 subset).
@@ -57,7 +53,7 @@ impl EventKind {
     }
 }
 
-/// Decoded draft item envelope fields.
+/// Decoded item envelope fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemEnvelope {
     /// Store identifier.
@@ -74,60 +70,101 @@ pub struct ItemEnvelope {
     pub subject: Vec<u8>,
 }
 
-/// Encode a draft item envelope.
+fn bstr16(bytes: &[u8]) -> Option<[u8; 16]> {
+    if bytes.len() != 16 {
+        return None;
+    }
+    bytes.try_into().ok()
+}
+
+/// Encode an item envelope as deterministic CBOR.
 pub fn encode_item_envelope(env: &ItemEnvelope) -> Result<Vec<u8>, &'static str> {
     if env.subject.len() > MAX_SUBJECT_LEN {
         return Err("subject too long");
     }
-    let subject_len = u16::try_from(env.subject.len()).map_err(|_| "subject too long")?;
-    let mut out = Vec::with_capacity(8 + 16 * 3 + 1 + 8 + 2 + env.subject.len());
-    out.extend_from_slice(ENVELOPE_MAGIC);
-    out.extend_from_slice(&env.store_id);
-    out.extend_from_slice(&env.segment_id);
-    out.extend_from_slice(&env.item_id);
-    out.push(env.event_kind.as_u8());
-    out.extend_from_slice(&env.created_ns.to_le_bytes());
-    out.extend_from_slice(&subject_len.to_le_bytes());
-    out.extend_from_slice(&env.subject);
-    Ok(out)
+    let entries = [
+        (1u64, CborValue::Bytes(env.item_id.to_vec())),
+        (2u64, CborValue::Uint(u64::from(env.event_kind.as_u8()))),
+        (3u64, CborValue::Bytes(env.store_id.to_vec())),
+        (4u64, CborValue::Bytes(env.segment_id.to_vec())),
+        (5u64, CborValue::Uint(env.created_ns)),
+        (6u64, CborValue::Bytes(env.subject.clone())),
+    ];
+    encode_deterministic_uint_map(&entries).map_err(|_| "cbor encode failed")
 }
 
-/// Decode a draft item envelope. Returns `None` if magic or lengths fail.
+/// Decode an item envelope from deterministic CBOR. Returns `None` if the map
+/// is missing required keys or has wrong value types.
 pub fn decode_item_envelope(bytes: &[u8]) -> Option<ItemEnvelope> {
-    if bytes.len() < 8 + 16 * 3 + 1 + 8 + 2 {
-        return None;
+    let map = decode_deterministic_uint_map(bytes).ok()?;
+    let mut item_id = None;
+    let mut event_kind = None;
+    let mut store_id = None;
+    let mut segment_id = None;
+    let mut created_ns = None;
+    let mut subject = None;
+    for (k, v) in map {
+        match k {
+            1 => {
+                let CborValue::Bytes(b) = v else {
+                    return None;
+                };
+                item_id = Some(bstr16(&b)?);
+            }
+            2 => {
+                let CborValue::Uint(n) = v else {
+                    return None;
+                };
+                if n > u64::from(u8::MAX) {
+                    return None;
+                }
+                event_kind = EventKind::from_u8(n as u8);
+            }
+            3 => {
+                let CborValue::Bytes(b) = v else {
+                    return None;
+                };
+                store_id = Some(bstr16(&b)?);
+            }
+            4 => {
+                let CborValue::Bytes(b) = v else {
+                    return None;
+                };
+                segment_id = Some(bstr16(&b)?);
+            }
+            5 => {
+                let CborValue::Uint(n) = v else {
+                    return None;
+                };
+                created_ns = Some(n);
+            }
+            6 => {
+                let CborValue::Bytes(b) = v else {
+                    return None;
+                };
+                if b.len() > MAX_SUBJECT_LEN {
+                    return None;
+                }
+                subject = Some(b);
+            }
+            // Unknown keys retained by lossless tools; readers may ignore.
+            _ => {}
+        }
     }
-    if &bytes[0..8] != ENVELOPE_MAGIC.as_slice() {
-        return None;
-    }
-    let store_id: [u8; 16] = bytes[8..24].try_into().ok()?;
-    let segment_id: [u8; 16] = bytes[24..40].try_into().ok()?;
-    let item_id: [u8; 16] = bytes[40..56].try_into().ok()?;
-    let event_kind = EventKind::from_u8(bytes[56])?;
-    let created_ns = u64::from_le_bytes(bytes[57..65].try_into().ok()?);
-    let subject_len = u16::from_le_bytes(bytes[65..67].try_into().ok()?) as usize;
-    if subject_len > MAX_SUBJECT_LEN {
-        return None;
-    }
-    let subject_start: usize = 67;
-    let subject_end = subject_start.checked_add(subject_len)?;
-    if bytes.len() != subject_end {
-        return None;
-    }
-    let subject = bytes[subject_start..subject_end].to_vec();
     Some(ItemEnvelope {
-        store_id,
-        segment_id,
-        item_id,
-        event_kind,
-        created_ns,
-        subject,
+        store_id: store_id?,
+        segment_id: segment_id?,
+        item_id: item_id?,
+        event_kind: event_kind?,
+        created_ns: created_ns.unwrap_or(0),
+        subject: subject.unwrap_or_default(),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dingo_format::validate_deterministic_cbor_envelope;
 
     #[test]
     fn roundtrip() {
@@ -140,6 +177,7 @@ mod tests {
             subject: b"user-42".to_vec(),
         };
         let bytes = encode_item_envelope(&env).unwrap();
+        validate_deterministic_cbor_envelope(&bytes).unwrap();
         let decoded = decode_item_envelope(&bytes).unwrap();
         assert_eq!(decoded, env);
     }
@@ -159,17 +197,15 @@ mod tests {
     }
 
     #[test]
-    fn rejects_bad_magic() {
-        let mut bytes = encode_item_envelope(&ItemEnvelope {
-            store_id: [0u8; 16],
-            segment_id: [0u8; 16],
-            item_id: [0u8; 16],
-            event_kind: EventKind::Put,
-            created_ns: 0,
-            subject: b"x".to_vec(),
-        })
-        .unwrap();
-        bytes[0] = b'X';
+    fn rejects_non_cbor() {
+        assert!(decode_item_envelope(b"DENV0001notcbor").is_none());
+    }
+
+    #[test]
+    fn rejects_incomplete_map() {
+        // map{1: bstr(16 zeros)} only — missing required keys.
+        let mut bytes = vec![0xa1, 0x01, 0x50];
+        bytes.extend_from_slice(&[0u8; 16]);
         assert!(decode_item_envelope(&bytes).is_none());
     }
 }

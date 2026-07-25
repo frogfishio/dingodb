@@ -2,10 +2,12 @@
 //!
 //! Stage 2: frame codec, active segment + seal, forward/reverse salvage
 //! scanning, event-id conflict analysis, and chunk reassembly helpers.
+//! Deterministic CBOR envelope validation (FORMAT_SPEC §5 condition 6).
 //! No durable storage IO (Stage 3).
 
 #![deny(missing_docs)]
 
+mod cbor_envelope;
 mod chunks;
 mod events;
 mod frame;
@@ -15,6 +17,10 @@ mod limits;
 mod scan;
 mod segment;
 
+pub use cbor_envelope::{
+    decode_deterministic_uint_map, encode_deterministic_uint_map, validate_deterministic_cbor_envelope,
+    CborEnvelopeError, CborValue, EMPTY_ENVELOPE,
+};
 pub use chunks::{
     decode_chunk_body, encode_chunk_body, reassemble_chunks, ChunkPiece, LogicalExtent,
     ReassemblyState, CHUNK_BODY_HEADER_LEN,

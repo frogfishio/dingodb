@@ -1,9 +1,10 @@
 //! Active append segment and seal (FORMAT_SPEC §6).
 //!
 //! Stage 2b: in-memory segment buffer. No durable IO — that lands with Stage 3
-//! (`dingo-store`). Descriptor and summary bodies use a draft fixed layout until
-//! deterministic CBOR envelopes are frozen.
+//! (`dingo-store`). Descriptor and summary bodies use a draft fixed layout;
+//! envelopes are deterministic CBOR maps (empty map when no fields).
 
+use crate::cbor_envelope::EMPTY_ENVELOPE;
 use crate::frame::{encode_frame, FrameHeader, FrameParts, FrameVerifyError};
 use crate::kinds::FrameKind;
 use crate::limits::SafetyLimits;
@@ -96,7 +97,7 @@ impl ActiveSegment {
         let body = encode_descriptor_body(&ids, created_ns, limits);
         let mut event_id = [0u8; 16];
         event_id.copy_from_slice(&ids.segment_id);
-        seg.append_raw(FrameKind::SegmentDescriptor, b"", &body, event_id)?;
+        seg.append_raw(FrameKind::SegmentDescriptor, EMPTY_ENVELOPE, &body, event_id)?;
         Ok(seg)
     }
 
@@ -203,12 +204,13 @@ impl ActiveSegment {
 
         // Provisional: sealed length = current + summary frame length with known body.
         let body_len = SUMMARY_BODY_LEN as u64;
-        let summary_frame_len = crate::limits::checked_frame_len(0, body_len)
+        let env_len = EMPTY_ENVELOPE.len() as u32;
+        let summary_frame_len = crate::limits::checked_frame_len(env_len, body_len)
             .ok_or(FrameVerifyError::LengthsOutOfLimits)?;
         let sealed_len = self.bytes.len() as u64 + summary_frame_len;
         let body = encode_summary_body(&self.ids, sealed_len, frames_after);
 
-        self.append_raw(FrameKind::SegmentSummary, b"", &body, event_id)?;
+        self.append_raw(FrameKind::SegmentSummary, EMPTY_ENVELOPE, &body, event_id)?;
         debug_assert_eq!(self.bytes.len() as u64, sealed_len);
         self.sealed = true;
 
@@ -419,10 +421,15 @@ pub fn encode_store_descriptor_frame(
     let body = encode_store_descriptor_body(store_id, created_ns);
     let mut event_id = [0u8; 16];
     event_id.copy_from_slice(&store_id);
-    let header = FrameHeader::new_draft(FrameKind::StoreDescriptor, 0, body.len() as u64, event_id);
+    let header = FrameHeader::new_draft(
+        FrameKind::StoreDescriptor,
+        EMPTY_ENVELOPE.len() as u32,
+        body.len() as u64,
+        event_id,
+    );
     encode_frame(&FrameParts {
         header,
-        envelope: Vec::new(),
+        envelope: EMPTY_ENVELOPE.to_vec(),
         body,
     })
 }
@@ -461,11 +468,11 @@ mod tests {
             &encode_frame(&FrameParts {
                 header: FrameHeader::new_draft(
                     FrameKind::SegmentDescriptor,
-                    0,
+                    EMPTY_ENVELOPE.len() as u32,
                     DESCRIPTOR_BODY_LEN as u64,
                     [0u8; 16],
                 ),
-                envelope: vec![],
+                envelope: EMPTY_ENVELOPE.to_vec(),
                 body: encode_descriptor_body(&sample_ids(), 1_000, SafetyLimits::default()),
             })
             .unwrap(),
@@ -490,7 +497,7 @@ mod tests {
     fn reserved_kinds_rejected_on_append() {
         let mut active = ActiveSegment::create(sample_ids(), SafetyLimits::default(), 0).unwrap();
         let err = active
-            .append(FrameKind::SegmentDescriptor, b"", b"", [0u8; 16])
+            .append(FrameKind::SegmentDescriptor, EMPTY_ENVELOPE, b"", [0u8; 16])
             .unwrap_err();
         assert!(matches!(err, SegmentError::ReservedKind(_)));
     }

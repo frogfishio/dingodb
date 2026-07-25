@@ -126,11 +126,13 @@ especially §1–§12 and §14.
 
 **Exit criteria**
 
-- All §14 MUST items for standalone conformance pass.
-- Minimal suite in §14.1 fully automated.
+- All §14 MUST items for standalone conformance pass. **Met** —
+  `section_14_must_lock` + golden `tests/sda/section14_must.json`.
+- Minimal suite in §14.1 fully automated. **Met**.
 - Determinism: same program + input ⇒ same value or stable `Fail`.
 - Public surface: library API + optional `sda` CLI (`eval`, `check`).
 - **No** DingoDB types, segments, or host IO inside the SDA core.
+- Standalone freeze tag: `sda-standalone-v1.0` (`CONFORMANCE_CORPUS_TAG`).
 
 **Why first**
 
@@ -623,13 +625,17 @@ the cited conformance suites as required checks—not optional polish.
    duplicates, `normalizeUnique`, equality, standalone helpers, carrier
    preservation, null-vs-absence, Unicode/ASCII synonyms, and `Bind`. Core
    no longer exposes `normalizeFirst`/`normalizeLast` (§7.2).
-3. Expand beyond §14.1 to full §14 MUST lock (remaining edge cases, versioned
-   golden corpus under `tests/sda/` if desired); keep `sda-core` pure.
-4. Freeze SDA standalone behavior behind a versioned conformance corpus tag.
+3. ~~Expand beyond §14.1 to full §14 MUST lock.~~ **Done** —
+   `section_14_must_lock` maps all 13 §14 MUST bullets; golden vectors in
+   `crates/sda-core/tests/sda/section14_must.json`; `∪`/`∩`/`\` spellings;
+   `bindOpt`/`bindRes` enforce Opt/Res return contracts (§11.3).
+4. ~~Freeze SDA standalone behind a versioned conformance corpus tag.~~ **Done** —
+   `sda_lib::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
+   `tests/sda/VERSION`). Semantic changes require a new tag.
 5. ~~Open Stage 2 format work (`dingo-format` frame codec).~~ **Done (2a)** —
    `crates/dingo-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
-   BLAKE3-256 body hash and structural `verified-complete` checks (envelope
-   still opaque bytes; deterministic CBOR rules not yet enforced).
+   BLAKE3-256 body hash and structural `verified-complete` checks including
+   deterministic CBOR envelope rules (§5 condition 6).
 6. ~~Stage 2b–2c — active segment seal + forward salvage scanner.~~ **Done** —
    `ActiveSegment` / `SealedSegment` (draft descriptor & summary bodies);
    `scan_forward` with hole reports; later islands remain discoverable after
@@ -637,7 +643,7 @@ the cited conformance suites as required checks—not optional polish.
 7. ~~Stage 2d — full FORMAT_SPEC §13 destructive corpus.~~ **Done** —
    `tests/section13_corpus.rs` automates every §13 bullet; `scan_reverse`
    (§7.4); `group_by_event_id` (§9); draft `reassemble_chunks` partial maps
-   (§8). Envelope CBOR (§5 condition 6) still deferred.
+   (§8). Deterministic envelope CBOR (§5 condition 6) enforced.
 8. ~~Stage 3 store (`dingo-store`).~~ **Done (3a–3c)** — put/get/delete,
    durability, salvage, §16 suite, descriptor + index cache.
 9. ~~Stage 4 collection SDK (`dingo-sdk`).~~ **Done (4a–4d)** — open,
@@ -686,5 +692,10 @@ the cited conformance suites as required checks—not optional polish.
     `stage8e_find_coverage.rs` (§17, §22.15).
 21. ~~Stage 8f rebalance + §22 remainder.~~ **Done** — interruptible rebalance
     (§14), placement persist/reconstruct; tests `stage8f_rebalance.rs`.
-22. **Next:** optional deterministic CBOR envelope validation (FORMAT_SPEC §5
-    condition 6); Stage 9 tiering; network-level multi-node Raft serve polish.
+22. ~~Optional deterministic CBOR envelope validation.~~ **Done** —
+    `dingo-format` validates deterministic CBOR maps on encode/decode
+    (`cbor_envelope.rs`, FORMAT_SPEC §4.4 / §5 condition 6); empty envelope
+    is the empty map `0xa0`; item envelopes in `dingo-store` are CBOR
+    uint-keyed maps (keys 1–6).
+23. **Next:** Stage 9 tiering / archive; network-level multi-node Raft serve
+    polish.

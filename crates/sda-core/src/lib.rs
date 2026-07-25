@@ -30,6 +30,13 @@ use thiserror::Error;
 
 pub type Env = HashMap<String, Value>;
 
+/// Frozen standalone SDA conformance corpus tag (Stage 1 full §14 lock).
+///
+/// Behavior covered by `tests/sda_conformance.rs` and the golden vectors under
+/// `tests/sda/` is versioned under this tag. Semantic changes require a new tag
+/// (and an explicit DELIVERY_PLAN / CHANGELOG note).
+pub const CONFORMANCE_CORPUS_TAG: &str = "sda-standalone-v1.0";
+
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct SdaRuntime;
 
@@ -37,6 +44,12 @@ impl SdaRuntime {
     #[must_use]
     pub fn name() -> &'static str {
         "sda-lib"
+    }
+
+    /// Tag for the frozen standalone conformance corpus.
+    #[must_use]
+    pub fn conformance_corpus_tag() -> &'static str {
+        CONFORMANCE_CORPUS_TAG
     }
 }
 

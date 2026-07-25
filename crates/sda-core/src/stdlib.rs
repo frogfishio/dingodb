@@ -208,7 +208,14 @@ fn stdlib_bind_opt(args: Vec<Value>) -> Result<Value, EvalError> {
     let opt = iter.next().unwrap();
     let f = iter.next().unwrap();
     match opt {
-        Value::Some_(inner) => apply_lambda(f, vec![*inner]),
+        Value::Some_(inner) => {
+            let result = apply_lambda(f, vec![*inner])?;
+            // §11.3: f MUST return Opt; otherwise Fail(t_sda_wrong_shape).
+            match result {
+                Value::Some_(_) | Value::None_ => Ok(result),
+                _ => Ok(wrong_shape()),
+            }
+        }
         Value::None_ => Ok(Value::None_),
         _ => Ok(wrong_shape()),
     }
@@ -247,7 +254,14 @@ fn stdlib_bind_res(args: Vec<Value>) -> Result<Value, EvalError> {
     let res = iter.next().unwrap();
     let f = iter.next().unwrap();
     match res {
-        Value::Ok_(inner) => apply_lambda(f, vec![*inner]),
+        Value::Ok_(inner) => {
+            let result = apply_lambda(f, vec![*inner])?;
+            // §11.3: f MUST return Res; otherwise Fail(t_sda_wrong_shape).
+            match result {
+                Value::Ok_(_) | Value::Fail_(_, _) => Ok(result),
+                _ => Ok(wrong_shape()),
+            }
+        }
         Value::Fail_(c, m) => Ok(Value::Fail_(c, m)),
         _ => Ok(wrong_shape()),
     }

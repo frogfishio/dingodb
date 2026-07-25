@@ -1,5 +1,9 @@
 //! Frame layout: fixed prefix, envelope, body, fixed suffix (FORMAT_SPEC §4).
 
+use crate::cbor_envelope::{validate_deterministic_cbor_envelope, CborEnvelopeError};
+
+#[cfg(test)]
+use crate::cbor_envelope::EMPTY_ENVELOPE;
 use crate::integrity::{body_hash, prefix_crc32c, suffix_crc32c, BODY_HASH_LEN};
 use crate::kinds::{FrameFlags, FrameKind};
 use crate::limits::{checked_frame_len, SafetyLimits};
@@ -73,7 +77,7 @@ impl FrameHeader {
 pub struct FrameParts {
     /// Fixed-prefix logical fields (lengths must match envelope/body).
     pub header: FrameHeader,
-    /// Deterministic-CBOR envelope bytes (opaque in Stage 2a).
+    /// Deterministic-CBOR envelope bytes (FORMAT_SPEC §4.4).
     pub envelope: Vec<u8>,
     /// Stored body bytes.
     pub body: Vec<u8>,
@@ -148,9 +152,14 @@ pub enum FrameVerifyError {
         /// Length of the provided buffer.
         buffer_len: u64,
     },
+    /// Envelope fails deterministic CBOR rules (FORMAT_SPEC §5 condition 6).
+    #[error("envelope deterministic CBOR: {0}")]
+    BadEnvelopeCbor(#[from] CborEnvelopeError),
 }
 
 /// Encode a complete frame into a new buffer.
+///
+/// The envelope must satisfy deterministic CBOR rules (FORMAT_SPEC §4.4).
 pub fn encode_frame(parts: &FrameParts) -> Result<Vec<u8>, FrameVerifyError> {
     if parts.envelope.len() as u32 != parts.header.envelope_len
         || parts.body.len() as u64 != parts.header.body_len
@@ -162,6 +171,7 @@ pub fn encode_frame(parts: &FrameParts) -> Result<Vec<u8>, FrameVerifyError> {
             parts.header.wire_major,
         ));
     }
+    validate_deterministic_cbor_envelope(&parts.envelope)?;
     let frame_len = checked_frame_len(parts.header.envelope_len, parts.header.body_len)
         .ok_or(FrameVerifyError::LengthsOutOfLimits)?;
     let mut out = Vec::with_capacity(frame_len as usize);
@@ -192,9 +202,7 @@ pub fn encode_frame(parts: &FrameParts) -> Result<Vec<u8>, FrameVerifyError> {
 
 /// Decode and structurally verify a complete frame buffer (exact length).
 ///
-/// Envelope bytes are treated as opaque length-bounded data. Deterministic
-/// CBOR envelope rules (FORMAT_SPEC §4.4) are not yet enforced for
-/// `verified-complete`.
+/// Includes deterministic CBOR envelope rules (FORMAT_SPEC §4.4 / §5 condition 6).
 pub fn decode_frame(bytes: &[u8], limits: SafetyLimits) -> Result<DecodedFrame, FrameVerifyError> {
     let (header, envelope, body, hash, frame_len) = verify_frame_at(bytes, limits)?;
     if bytes.len() as u64 != frame_len {
@@ -269,6 +277,9 @@ pub fn verify_frame_at<'a>(
     if expected_pcrc != actual_pcrc {
         return Err(FrameVerifyError::BadPrefixCrc);
     }
+
+    // §5 condition 6: envelope deterministic-CBOR rules verify.
+    validate_deterministic_cbor_envelope(envelope)?;
 
     if &suffix_bytes[0..8] != END_MAGIC.as_slice() {
         return Err(FrameVerifyError::BadEndMagic);
@@ -365,34 +376,41 @@ mod tests {
 
     #[test]
     fn roundtrip_empty_envelope_and_body() {
-        let parts = sample_parts(b"", b"");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"");
         let bytes = encode_frame(&parts).unwrap();
-        assert_eq!(bytes.len(), 120);
+        assert_eq!(bytes.len(), 121);
         assert_eq!(&bytes[0..8], START_MAGIC);
         assert_eq!(&bytes[bytes.len() - 56..bytes.len() - 48], END_MAGIC);
 
         let decoded = decode_frame(&bytes, SafetyLimits::default()).unwrap();
         assert_eq!(decoded.header.frame_kind, FrameKind::ItemEvent.as_u8());
-        assert_eq!(decoded.envelope, b"");
+        assert_eq!(decoded.envelope, EMPTY_ENVELOPE);
         assert_eq!(decoded.body, b"");
-        assert_eq!(decoded.frame_len, 120);
+        assert_eq!(decoded.frame_len, 121);
     }
 
     #[test]
     fn roundtrip_with_payload() {
-        let parts = sample_parts(b"\xa0", b"hello-body");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"hello-body");
         let bytes = encode_frame(&parts).unwrap();
         let decoded = decode_frame(&bytes, SafetyLimits::default()).unwrap();
-        assert_eq!(decoded.envelope, b"\xa0");
+        assert_eq!(decoded.envelope, EMPTY_ENVELOPE);
         assert_eq!(decoded.body, b"hello-body");
         assert_eq!(decoded.body_hash, body_hash(b"hello-body"));
     }
 
     #[test]
+    fn rejects_non_cbor_envelope_on_encode() {
+        let parts = sample_parts(b"not-cbor", b"");
+        let err = encode_frame(&parts).unwrap_err();
+        assert!(matches!(err, FrameVerifyError::BadEnvelopeCbor(_)));
+    }
+
+    #[test]
     fn detects_body_corruption() {
-        let parts = sample_parts(b"", b"payload");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"payload");
         let mut bytes = encode_frame(&parts).unwrap();
-        let body_off = FRAME_PREFIX_LEN;
+        let body_off = FRAME_PREFIX_LEN + EMPTY_ENVELOPE.len();
         bytes[body_off] ^= 0xff;
         let err = decode_frame(&bytes, SafetyLimits::default()).unwrap_err();
         // Body change may fail body hash; CRC over body is only via body_hash.
@@ -409,7 +427,7 @@ mod tests {
 
     #[test]
     fn detects_prefix_crc_corruption() {
-        let parts = sample_parts(b"env", b"body");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"body");
         let mut bytes = encode_frame(&parts).unwrap();
         bytes[56] ^= 0x01;
         assert_eq!(
@@ -420,7 +438,7 @@ mod tests {
 
     #[test]
     fn detects_end_magic_corruption() {
-        let parts = sample_parts(b"", b"x");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"x");
         let mut bytes = encode_frame(&parts).unwrap();
         let end_magic_off = bytes.len() - FRAME_SUFFIX_LEN;
         bytes[end_magic_off] ^= 0x01;
@@ -433,7 +451,7 @@ mod tests {
 
     #[test]
     fn rejects_bad_start_magic() {
-        let parts = sample_parts(b"", b"");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"");
         let mut bytes = encode_frame(&parts).unwrap();
         bytes[0] = b'X';
         assert_eq!(
@@ -444,7 +462,8 @@ mod tests {
 
     #[test]
     fn rejects_truncation() {
-        let parts = sample_parts(b"ab", b"cd");
+        // map{1: 0}
+        let parts = sample_parts(&[0xa1, 0x01, 0x00], b"cd");
         let bytes = encode_frame(&parts).unwrap();
         let err = decode_frame(&bytes[..bytes.len() - 1], SafetyLimits::default()).unwrap_err();
         assert!(matches!(err, FrameVerifyError::Truncated { .. }));
@@ -452,7 +471,7 @@ mod tests {
 
     #[test]
     fn rejects_oversize_via_limits() {
-        let parts = sample_parts(b"", b"hi");
+        let parts = sample_parts(EMPTY_ENVELOPE, b"hi");
         let bytes = encode_frame(&parts).unwrap();
         let tight = SafetyLimits {
             max_envelope_len: 0,
@@ -467,7 +486,7 @@ mod tests {
 
     #[test]
     fn encode_requires_matching_lengths() {
-        let mut parts = sample_parts(b"x", b"y");
+        let mut parts = sample_parts(EMPTY_ENVELOPE, b"y");
         parts.header.envelope_len = 99;
         assert_eq!(
             encode_frame(&parts).unwrap_err(),

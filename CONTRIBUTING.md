@@ -84,10 +84,9 @@ GitHub Actions: `.github/workflows/nightly.yml` (daily + `workflow_dispatch`).
 | **E — Examination** | ExaminationUnit + SDA profile | 5 | Stage 1 + 2/3 salvage |
 | **F — Operator** | Indexes, CLI doctor/salvage, server | 6–7 | Stage 4–5 |
 
-Stages **0–7** (including 7e auth/deadline/retry and 7f nightly packaging) are
-implemented for single-node. Immediate priority: Stage 8 only after salvage/doctor
-stay green; optional Stage 1 full §14 freeze and deterministic CBOR envelope
-validation in parallel.
+Stages **0–8** are implemented (single-node through cluster federation). Stage 1
+is frozen under `sda-standalone-v1.0`; deterministic CBOR envelopes are enforced
+in `dingo-format`. Immediate priority: Stage 9 tiering / archive.
 
 ## Version and BUILD numbers
 

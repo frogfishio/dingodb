@@ -7,8 +7,8 @@
 use dingo_format::{
     body_hash, decode_frame, encode_chunk_body, encode_frame, group_by_event_id, reassemble_chunks,
     scan_forward, scan_reverse, ChunkPiece, EventIdOutcome, FrameFlags, FrameHeader, FrameKind,
-    FrameParts, FrameVerifyError, ReassemblyState, SafetyLimits, END_MAGIC, FRAME_PREFIX_LEN,
-    FRAME_SUFFIX_LEN, START_MAGIC, WIRE_MAJOR, WIRE_MINOR,
+    FrameParts, FrameVerifyError, ReassemblyState, SafetyLimits, EMPTY_ENVELOPE, END_MAGIC,
+    FRAME_PREFIX_LEN, FRAME_SUFFIX_LEN, START_MAGIC, WIRE_MAJOR, WIRE_MINOR,
 };
 
 fn event_id(n: u8) -> [u8; 16] {
@@ -36,7 +36,7 @@ fn item_parts(event: u8, envelope: &[u8], body: &[u8]) -> FrameParts {
 }
 
 fn encode_item(event: u8, body: &[u8]) -> Vec<u8> {
-    encode_frame(&item_parts(event, b"", body)).unwrap()
+    encode_frame(&item_parts(event, EMPTY_ENVELOPE, body)).unwrap()
 }
 
 fn survivor() -> Vec<u8> {
@@ -69,15 +69,21 @@ fn assert_survivor_discoverable(buf: &[u8]) {
 
 #[test]
 fn prefix_and_suffix_fields_at_boundaries() {
-    // Empty envelope + empty body → minimum frame (120 bytes).
-    let min = encode_frame(&item_parts(1, b"", b"")).unwrap();
-    assert_eq!(min.len(), FRAME_PREFIX_LEN + FRAME_SUFFIX_LEN);
+    // Empty CBOR map envelope + empty body → minimum valid wire-v1 frame.
+    let min = encode_frame(&item_parts(1, EMPTY_ENVELOPE, b"")).unwrap();
+    assert_eq!(
+        min.len(),
+        FRAME_PREFIX_LEN + EMPTY_ENVELOPE.len() + FRAME_SUFFIX_LEN
+    );
     assert_eq!(&min[0..8], START_MAGIC);
     assert_eq!(min[8], WIRE_MAJOR);
     assert_eq!(min[9], WIRE_MINOR);
     assert_eq!(min[10], FrameKind::ItemEvent.as_u8());
     assert_eq!(min[11], 0); // flags
-    assert_eq!(&min[12..16], &0u32.to_le_bytes()); // envelope_len
+    assert_eq!(
+        &min[12..16],
+        &(EMPTY_ENVELOPE.len() as u32).to_le_bytes()
+    ); // envelope_len
     assert_eq!(&min[16..24], &0u64.to_le_bytes()); // body_len
     assert_eq!(&min[24..32], &0u64.to_le_bytes()); // logical_len
     assert_eq!(&min[min.len() - FRAME_SUFFIX_LEN..][..8], END_MAGIC);
@@ -332,7 +338,7 @@ fn valid_suffix_missing_prefix_standalone() {
 #[test]
 fn unsupported_kinds_flags_still_structurally_verified() {
     // Unknown extension kind remains recoverable as opaque verified frame.
-    let mut parts = item_parts(10, b"", b"opaque-ext");
+    let mut parts = item_parts(10, EMPTY_ENVELOPE, b"opaque-ext");
     parts.header.frame_kind = 200;
     let enc = encode_frame(&parts).unwrap();
     let dec = decode_frame(&enc, SafetyLimits::default()).unwrap();
@@ -340,7 +346,7 @@ fn unsupported_kinds_flags_still_structurally_verified() {
     assert_eq!(dec.header.known_kind(), None);
 
     // Unknown / reserved flag bits do not make a structurally valid frame corrupt.
-    let mut flagged = item_parts(11, b"", b"flagged");
+    let mut flagged = item_parts(11, EMPTY_ENVELOPE, b"flagged");
     flagged.header.flags =
         FrameFlags::new(FrameFlags::COMPRESSED | FrameFlags::ENCRYPTED | FrameFlags::RESERVED_MASK);
     let enc = encode_frame(&flagged).unwrap();
@@ -350,8 +356,9 @@ fn unsupported_kinds_flags_still_structurally_verified() {
     // "codec unsupported" is a higher-layer interpretation; structural verify passes.
     assert_eq!(dec.body, b"flagged");
 
-    // Envelope treated as opaque bytes (unknown keys retained losslessly).
-    let env = b"\xa1\x65codec\x63xyz"; // map-like bytes, not validated as CBOR yet
+    // Unknown uint envelope keys are retained losslessly (FORMAT_SPEC §4.4).
+    // map{99: "xyz"} — key 99 is not a core field; deterministic CBOR still verifies.
+    let env = b"\xa1\x18\x63\x63xyz";
     let with_env = item_parts(12, env, b"body");
     let enc = encode_frame(&with_env).unwrap();
     let dec = decode_frame(&enc, SafetyLimits::default()).unwrap();
@@ -498,8 +505,13 @@ fn partial_chunk_maps_never_fill_holes() {
     // Chunks remain independently verifiable as frames.
     let body0 = encode_chunk_body(&p0);
     let frame = encode_frame(&FrameParts {
-        header: FrameHeader::new_draft(FrameKind::PayloadChunk, 0, body0.len() as u64, item),
-        envelope: vec![],
+        header: FrameHeader::new_draft(
+            FrameKind::PayloadChunk,
+            EMPTY_ENVELOPE.len() as u32,
+            body0.len() as u64,
+            item,
+        ),
+        envelope: EMPTY_ENVELOPE.to_vec(),
         body: body0,
     })
     .unwrap();

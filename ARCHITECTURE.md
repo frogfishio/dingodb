@@ -31,8 +31,8 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | Stage | Focus | Status |
 |-------|--------|--------|
 | 0 | Repo + CI harness | **done** (workspace, CI, language decision) |
-| 1 | SDA standalone (pure) | **§14.1 suite automated**; full freeze open |
-| 2 | Wire format + salvage scanner | **2a–2d** — frames, seal, fwd/rev scan, §13 corpus |
+| 1 | SDA standalone (pure) | **done** — full §14 MUST lock; corpus tag `sda-standalone-v1.0` |
+| 2 | Wire format + salvage scanner | **2a–2d** — frames, seal, fwd/rev scan, §13 corpus, deterministic CBOR envelopes |
 | 3 | Single-node store | **3a–3c** — put/get/delete, §16 suite, descriptor + index cache |
 | 4 | Collection SDK | **4a–4d** — `dingo-sdk` open, JSON/bytes, scan/stream, filters, `ErrorCode` |
 | 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
@@ -48,7 +48,7 @@ dingodb/
   crates/
     sda-core/       # package name sda-lib; pure SDA (Stage 1)
     sda-cli/        # package name sda; `sda` binary (Stage 1)
-    dingo-format/   # frames, seal, fwd/rev scan, §13 corpus (Stage 2a–2d)
+    dingo-format/   # frames, CBOR envelopes, seal, scan, §13 corpus (Stage 2a–2d)
     dingo-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to)
     dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7 + 8d–8e)
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5)
@@ -60,7 +60,7 @@ Crate ownership:
 
 | Stage | Crate | Role |
 |-------|-------|------|
-| 2 | `dingo-format` | **Present** — frames, segment seal, fwd/rev scanner, §13 corpus (2a–2d) |
+| 2 | `dingo-format` | **Present** — frames, deterministic CBOR envelopes, seal, scanner, §13 corpus (2a–2d) |
 | 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, catalogs, chunks, history, compact |
 | 4+6+7+8d–8e | `dingo-sdk` | **Present** — collections, filters, indexes, history, remote RPC, cluster open + find coverage |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |

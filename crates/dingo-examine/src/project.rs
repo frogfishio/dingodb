@@ -328,7 +328,8 @@ fn map_hole_reason(reason: &HoleReason) -> (&'static str, &'static str, &'static
                 | FrameVerifyError::FrameLenMismatch { .. }
                 | FrameVerifyError::HeaderPayloadMismatch
                 | FrameVerifyError::ReservedNonZero
-                | FrameVerifyError::TrailingBytes { .. } => ("invalid-framing", "known", "corrupt"),
+                | FrameVerifyError::TrailingBytes { .. }
+                | FrameVerifyError::BadEnvelopeCbor(_) => ("invalid-framing", "known", "corrupt"),
                 FrameVerifyError::UnsupportedWireMajor(_) => {
                     ("unsupported-format", "known", "format-unsupported")
                 }

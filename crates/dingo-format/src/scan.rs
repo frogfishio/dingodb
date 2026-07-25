@@ -456,13 +456,19 @@ fn coalesce_adjacent_garbage(regions: &mut Vec<ScanRegion>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cbor_envelope::EMPTY_ENVELOPE;
     use crate::frame::{encode_frame, FrameHeader, FrameParts};
     use crate::kinds::FrameKind;
 
     fn item(body: &[u8]) -> Vec<u8> {
         encode_frame(&FrameParts {
-            header: FrameHeader::new_draft(FrameKind::ItemEvent, 0, body.len() as u64, [1u8; 16]),
-            envelope: vec![],
+            header: FrameHeader::new_draft(
+                FrameKind::ItemEvent,
+                EMPTY_ENVELOPE.len() as u32,
+                body.len() as u64,
+                [1u8; 16],
+            ),
+            envelope: EMPTY_ENVELOPE.to_vec(),
             body: body.to_vec(),
         })
         .unwrap()
