@@ -9,8 +9,14 @@
 //!
 //! - [`Action::Panic`] — process-local crash simulation (catchable with
 //!   `catch_unwind` in tests; drop the store handle and reopen).
-//! - [`Action::Error`] — inject a [`StoreError::Failpoint`] without panicking.
-//! - [`Action::Return`] — same as Error (alias for matrix wording).
+//! - [`Action::Abort`] — true process death via [`std::process::abort`] (for
+//!   multi-process kill harnesses; not catchable).
+//! - [`Action::Error`] / [`Action::Return`] — inject [`StoreError::Failpoint`].
+//! - [`Action::IoEnospc`] / [`Action::IoPermission`] — inject realistic
+//!   [`StoreError::Io`] kinds (filesystem-full / permission loss).
+//! - [`Action::ShortWrite`] — consumed by instrumented write sites via
+//!   [`consume_short_write`]; partial bytes may land, then the site returns
+//!   a short-write I/O error.
 //!
 //! Arm with [`arm`] / [`arm_once`]. Clear with [`disarm`] / [`clear`].
 //!
@@ -18,6 +24,7 @@
 
 use crate::error::StoreError;
 use std::collections::HashMap;
+use std::io;
 use std::sync::{Mutex, OnceLock};
 
 /// What happens when a named failpoint is hit while armed.
@@ -25,10 +32,22 @@ use std::sync::{Mutex, OnceLock};
 pub enum Action {
     /// Unwind the current thread (crash simulation).
     Panic,
+    /// Kill the process immediately (multi-process crash harness).
+    Abort,
     /// Return [`StoreError::Failpoint`] to the caller.
     Error,
     /// Same as [`Action::Error`] (matrix synonym for injected I/O failure).
     Return,
+    /// Inject `ErrorKind::StorageFull` (ENOSPC-class).
+    IoEnospc,
+    /// Inject `ErrorKind::PermissionDenied`.
+    IoPermission,
+    /// Arm a short-write at the next instrumented write site for this name.
+    ///
+    /// Use [`consume_short_write`] from write paths; [`hit`] treats this as a
+    /// no-op so boundary markers can share names with write injection when
+    /// needed. Prefer dedicated `*.short_write` names in the matrix.
+    ShortWrite,
 }
 
 #[derive(Debug, Clone)]
@@ -91,48 +110,124 @@ pub fn any_armed() -> bool {
     !g.is_empty()
 }
 
-/// Hit a named failpoint. No-op when not armed.
+fn take_action(name: &'static str) -> Option<Action> {
+    let mut g = registry().lock().expect("failpoint registry");
+    let Some(entry) = g.get_mut(name) else {
+        return None;
+    };
+    let action = entry.action;
+    if let Some(ref mut rem) = entry.remaining {
+        if *rem == 0 {
+            g.remove(name);
+            return None;
+        }
+        *rem = rem.saturating_sub(1);
+        if *rem == 0 {
+            g.remove(name);
+        }
+    }
+    Some(action)
+}
+
+/// Hit a named failpoint. No-op when not armed or armed only for short-write
+/// consumption (use [`consume_short_write`] for those).
 ///
 /// # Panics
 ///
 /// Panics when the armed action is [`Action::Panic`] (intentional).
+///
+/// # Aborts
+///
+/// Calls [`std::process::abort`] when the armed action is [`Action::Abort`].
 pub fn hit(name: &'static str) -> Result<(), StoreError> {
-    let action = {
-        let mut g = registry().lock().expect("failpoint registry");
-        let Some(entry) = g.get_mut(name) else {
-            return Ok(());
-        };
-        let action = entry.action;
-        if let Some(ref mut rem) = entry.remaining {
-            if *rem == 0 {
-                g.remove(name);
-                return Ok(());
-            }
-            *rem = rem.saturating_sub(1);
-            if *rem == 0 {
-                g.remove(name);
-            }
-        }
-        action
+    let Some(action) = take_action(name) else {
+        return Ok(());
     };
     match action {
         Action::Panic => panic!("dingo failpoint: {name}"),
+        Action::Abort => {
+            // True process death — not catchable with catch_unwind.
+            std::process::abort();
+        }
         Action::Error | Action::Return => Err(StoreError::Failpoint(name)),
+        Action::IoEnospc => Err(StoreError::Io(io::Error::new(
+            io::ErrorKind::StorageFull,
+            format!("failpoint enospc: {name}"),
+        ))),
+        Action::IoPermission => Err(StoreError::Io(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            format!("failpoint permission: {name}"),
+        ))),
+        // ShortWrite is consumed only via consume_short_write at write sites.
+        // If hit() is called on a ShortWrite arm by mistake, re-arm once so
+        // the write site can still observe it, and continue.
+        Action::ShortWrite => {
+            arm_once(name, Action::ShortWrite);
+            Ok(())
+        }
     }
+}
+
+/// If `name` is armed with [`Action::ShortWrite`], consume one hit and return
+/// `true` so the write site can truncate the next write.
+pub fn consume_short_write(name: &'static str) -> bool {
+    let mut g = registry().lock().expect("failpoint registry");
+    let Some(entry) = g.get_mut(name) else {
+        return false;
+    };
+    if entry.action != Action::ShortWrite {
+        return false;
+    }
+    if let Some(ref mut rem) = entry.remaining {
+        if *rem == 0 {
+            g.remove(name);
+            return false;
+        }
+        *rem = rem.saturating_sub(1);
+        if *rem == 0 {
+            g.remove(name);
+        }
+    }
+    true
+}
+
+/// How many bytes of `len` to actually write under a short-write injection.
+///
+/// Returns a value in `0..len` when `len > 0` so the write is strictly short.
+pub fn short_write_len(len: usize) -> usize {
+    if len == 0 {
+        return 0;
+    }
+    if len == 1 {
+        return 0;
+    }
+    len / 2
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    /// Failpoints are process-global; unit tests must not interleave clear/arm/hit.
+    fn test_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+    }
 
     #[test]
     fn unarmed_is_noop() {
+        let _g = test_lock();
         clear();
         assert!(hit("test.never_armed").is_ok());
+        assert!(!consume_short_write("test.never_armed"));
     }
 
     #[test]
     fn error_action_returns_failpoint() {
+        let _g = test_lock();
         clear();
         arm_once("test.error", Action::Error);
         let err = hit("test.error").unwrap_err();
@@ -144,12 +239,51 @@ mod tests {
 
     #[test]
     fn panic_action_unwinds() {
+        let _g = test_lock();
         clear();
         arm_once("test.panic", Action::Panic);
         let r = std::panic::catch_unwind(|| {
             let _ = hit("test.panic");
         });
         assert!(r.is_err());
+        clear();
+    }
+
+    #[test]
+    fn io_enospc_is_storage_full() {
+        let _g = test_lock();
+        clear();
+        arm_once("test.enospc", Action::IoEnospc);
+        let err = hit("test.enospc").unwrap_err();
+        match err {
+            StoreError::Io(e) => assert_eq!(e.kind(), io::ErrorKind::StorageFull),
+            other => panic!("expected Io, got {other:?}"),
+        }
+        clear();
+    }
+
+    #[test]
+    fn short_write_consume() {
+        let _g = test_lock();
+        clear();
+        arm_once("test.short", Action::ShortWrite);
+        assert!(consume_short_write("test.short"));
+        assert!(!consume_short_write("test.short"));
+        assert_eq!(short_write_len(10), 5);
+        assert_eq!(short_write_len(1), 0);
+        clear();
+    }
+
+    #[test]
+    fn io_permission_is_permission_denied() {
+        let _g = test_lock();
+        clear();
+        arm_once("test.perm", Action::IoPermission);
+        let err = hit("test.perm").unwrap_err();
+        match err {
+            StoreError::Io(e) => assert_eq!(e.kind(), io::ErrorKind::PermissionDenied),
+            other => panic!("expected Io, got {other:?}"),
+        }
         clear();
     }
 }

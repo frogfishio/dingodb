@@ -1590,8 +1590,23 @@ impl Store {
             return Err(StoreError::CorruptMeta("durable_len past segment"));
         }
         if start < bytes.len() {
+            let pending = &bytes[start..];
             writer.file.seek(SeekFrom::Start(writer.durable_len))?;
-            writer.file.write_all(&bytes[start..])?;
+            // DEF-022: optional short-write injection mid-append.
+            if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
+                let n = crate::failpoint::short_write_len(pending.len());
+                if n > 0 {
+                    writer.file.write_all(&pending[..n])?;
+                    // Do not advance durable_len past the short write so a
+                    // later retry could rewrite; crash/drop leaves torn bytes.
+                    writer.durable_len += n as u64;
+                }
+                return Err(StoreError::Io(std::io::Error::new(
+                    std::io::ErrorKind::WriteZero,
+                    "failpoint short write: store.active.write_tail.short_write",
+                )));
+            }
+            writer.file.write_all(pending)?;
             writer.durable_len = bytes.len() as u64;
         }
         crate::failpoint::hit("store.active.write_tail.after_write")?;

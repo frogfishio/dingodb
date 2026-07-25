@@ -93,7 +93,7 @@
             "no_fabricated_commit": true,
             "salvageable": true,
             "prior_durable_retained": true,
-            "notes": "Authoritative bytes synced; if op returned before this failpoint, receipt was not issued — skeleton treats post-sync failure as durable-on-disk (may be visible on reopen even if caller saw error)."
+            "notes": "Authoritative bytes synced; if op returned before this failpoint, receipt was not issued — post-sync failure leaves durable-on-disk (may be visible on reopen even if caller saw error)."
           }
         },
         {
@@ -127,6 +127,90 @@
             "salvageable": true,
             "prior_durable_retained": true,
             "notes": "Cache may be partial; rebuild from segments wins."
+          }
+        },
+        {
+          "name": "store.active.write_tail.short_write",
+          "ci_subset": true,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Partial frame bytes may exist; recovery keeps verified prefix only. Unacked put must not appear as live."
+          }
+        }
+      ]
+    },
+    {
+      "id": "put_durable_io_faults",
+      "description": "Durable put under ENOSPC / permission-loss injection at write_tail boundaries",
+      "persistence_order": [
+        "encode_frame_memory",
+        "active.append_in_memory",
+        "active.write_tail",
+        "active.file.sync_all"
+      ],
+      "failpoints": [
+        {
+          "name": "store.active.write_tail.before",
+          "ci_subset": true,
+          "fault": "enospc",
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "ENOSPC before any new bytes; prior durable retained; put not visible."
+          }
+        },
+        {
+          "name": "store.active.write_tail.before",
+          "ci_subset": true,
+          "fault": "permission",
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Permission denied before write; prior durable retained."
+          }
+        }
+      ]
+    },
+    {
+      "id": "put_durable_process_kill",
+      "description": "Multi-process abort (process::abort) at durable put boundaries",
+      "persistence_order": [
+        "encode_frame_memory",
+        "active.append_in_memory",
+        "active.write_tail",
+        "active.file.sync_all",
+        "active.dir_sync"
+      ],
+      "failpoints": [
+        {
+          "name": "store.active.write_tail.before",
+          "ci_subset": true,
+          "fault": "process_abort",
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Child killed before write; no fabricated commit; prior retained."
+          }
+        },
+        {
+          "name": "store.active.write_tail.after_sync",
+          "ci_subset": false,
+          "fault": "process_abort",
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Child killed after fsync of frame; bytes durable even though caller never got receipt."
           }
         }
       ]

@@ -69,8 +69,9 @@ pub use erasure::{
 pub use error::StoreError;
 pub use failpoint::{
     any_armed as failpoints_armed, arm as arm_failpoint, arm_n as arm_failpoint_n,
-    arm_once as arm_failpoint_once, clear as clear_failpoints, disarm as disarm_failpoint,
-    hit as hit_failpoint, Action as FailpointAction,
+    arm_once as arm_failpoint_once, clear as clear_failpoints,
+    consume_short_write as consume_failpoint_short_write, disarm as disarm_failpoint,
+    hit as hit_failpoint, short_write_len as failpoint_short_write_len, Action as FailpointAction,
 };
 pub use history::{HistoryEvent, SubjectHistory};
 pub use index::{IndexEntry, LiveValue};

@@ -20,3 +20,9 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
+
+# Multi-process crash harness for DEF-022 (not a product CLI).
+[[bin]]
+name = "dingo-store-crash-child"
+path = "src/bin/crash_child.rs"
+doc = false

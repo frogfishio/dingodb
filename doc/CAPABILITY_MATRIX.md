@@ -118,12 +118,14 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Machine-readable matrix | shipped skeleton | `crates/dingo-store/crash_matrix.v1.json` |
-| Failpoint framework | shipped | `dingo_store::failpoint` / `StoreError::Failpoint` |
+| Machine-readable matrix | shipped (hardened) | `crates/dingo-store/crash_matrix.v1.json` |
+| Failpoint framework | shipped | `dingo_store::failpoint` (`Abort`, I/O faults, short-write) |
 | Persistence-order docs | shipped | [CRASH_CONSISTENCY.md](CRASH_CONSISTENCY.md) + matrix `persistence_order` |
 | CI subset | shipped | `stage_def_022_crash_matrix` (default) |
 | Full matrix | nightly | `DINGO_CRASH_MATRIX_FULL=1` in nightly workflow / `scripts/nightly.sh` |
-| Process-kill / ENOSPC injection | not yet | remaining DEF-022 work |
+| Multi-process abort | shipped | `dingo-store-crash-child` + kill before-write / after-sync |
+| ENOSPC / permission / short-write | shipped | failpoint I/O actions + instrumented write sites |
+| Buffered power-loss equivalence | not yet | remaining DEF-022 work |
 
 ## CI check
 

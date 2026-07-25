@@ -43,6 +43,12 @@ pub struct MatrixFailpoint {
     /// Whether CI runs this cell on every PR.
     #[serde(default)]
     pub ci_subset: bool,
+    /// Optional fault class beyond the default `Error` action.
+    ///
+    /// Recognized values: `enospc`, `permission`, `short_write`, `process_abort`,
+    /// `panic`, `error` (default when omitted).
+    #[serde(default)]
+    pub fault: Option<String>,
     /// Expected state after drop + reopen when the failpoint fires mid-op.
     pub expected_on_reopen: ExpectedReopen,
 }
@@ -103,9 +109,30 @@ pub fn validate(matrix: &CrashMatrix) -> Result<(), String> {
             if fp.name.is_empty() {
                 return Err(format!("empty failpoint name under {}", op.id));
             }
-            if !names.insert(fp.name.clone()) {
-                // Same failpoint may appear under multiple ops; that is ok.
-                // Only require unique (op, name) pairs.
+            // Unique per (op, name, fault); same name may appear with different faults.
+            let cell_key = format!(
+                "{}|{}|{}",
+                op.id,
+                fp.name,
+                fp.fault.as_deref().unwrap_or("")
+            );
+            if !names.insert(cell_key) {
+                return Err(format!(
+                    "duplicate matrix cell {} / {} / {:?}",
+                    op.id, fp.name, fp.fault
+                ));
+            }
+            if let Some(ref fault) = fp.fault {
+                match fault.as_str() {
+                    "enospc" | "permission" | "short_write" | "process_abort" | "panic"
+                    | "error" => {}
+                    other => {
+                        return Err(format!(
+                            "unknown fault class {other:?} on {} / {}",
+                            op.id, fp.name
+                        ));
+                    }
+                }
             }
             if fp.ci_subset {
                 ci_count += 1;

@@ -79,6 +79,18 @@ pub fn write_atomic_with(
             .create_new(true)
             .write(true)
             .open(&tmp)?;
+        // DEF-022: optional short-write of control-document temp body.
+        if crate::failpoint::consume_short_write("atomic.tmp.short_write") {
+            let n = crate::failpoint::short_write_len(bytes.len());
+            if n > 0 {
+                f.write_all(&bytes[..n])?;
+            }
+            // Leave the incomplete temp in place; published path untouched.
+            return Err(StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::WriteZero,
+                "failpoint short write: atomic.tmp.short_write",
+            )));
+        }
         f.write_all(bytes)?;
         f.sync_all()?;
     }

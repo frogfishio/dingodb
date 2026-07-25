@@ -512,9 +512,10 @@ In-tree:
 ### DEF-022 — Define and test crash-consistency boundaries
 
 Priority: P0  
-Status: **skeleton in-tree** (2026-07-25) — machine-readable matrix + failpoints
-+ CI subset; remaining: real process-kill harness, filesystem-full / short-write
-injection, and tightening every cell to production acceptance strength
+Status: **hardened in-tree** (2026-07-25) — matrix + failpoints + multi-process
+abort + ENOSPC/permission/short-write injection + CI subset; remaining:
+power-loss equivalence for buffered mode, and production-strength gates on
+every seal/compact/tier cell under adversarial FS
 
 Work:
 
@@ -537,17 +538,22 @@ Acceptance:
   expected state.
 - CI runs a bounded subset per PR and the full matrix nightly.
 
-In-tree so far:
+In-tree:
 
 - `crates/dingo-store/crash_matrix.v1.json` — operations, ordered persistence
-  steps, failpoint cells, expected reopen state, CI subset flags.
-- `dingo_store::failpoint` — arm/disarm/hit; `Panic` or `Error` actions;
-  no-op when unarmed.
+  steps, failpoint cells (`fault`: enospc / permission / short_write /
+  process_abort), expected reopen state, CI subset flags.
+- `dingo_store::failpoint` — `Panic`, `Abort`, `Error`/`Return`, `IoEnospc`,
+  `IoPermission`, `ShortWrite`; `consume_short_write` for instrumented sites.
 - Instrumented boundaries: create meta, active write_tail (before/after write/
-  after sync), active dir_sync, seal dest write/remove, index cache, write
-  dedup, catalog, checkpoint, compact segment sync, tier placement write.
-- Tests: `stage_def_022_crash_matrix` (document validation + CI subset always;
-  full matrix when `DINGO_CRASH_MATRIX_FULL=1`).
+  after sync/short_write), active dir_sync, seal dest write/remove, index cache,
+  write dedup, catalog, checkpoint, compact segment sync, tier placement write,
+  atomic tmp short_write.
+- Multi-process harness: `dingo-store-crash-child` binary + parent reopen
+  asserts (kill before write / after sync).
+- Tests: `stage_def_022_crash_matrix` (document validation + CI subset + I/O
+  suite + multi-process abort always; full matrix when
+  `DINGO_CRASH_MATRIX_FULL=1`).
 - Nightly workflow / `scripts/nightly.sh` run the full matrix.
 - Doc: `doc/CRASH_CONSISTENCY.md`.
 
