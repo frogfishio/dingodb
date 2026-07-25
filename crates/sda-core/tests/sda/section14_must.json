@@ -1,0 +1,218 @@
+{
+  "tag": "sda-standalone-v1.0",
+  "spec": "SDA_SPEC.md §14",
+  "description": "Frozen standalone SDA §14 MUST golden vectors. Semantic changes require a new CONFORMANCE_CORPUS_TAG.",
+  "cases": [
+    {
+      "id": "14.must.1.eliminators.optional_null_present",
+      "must": 1,
+      "source": "Map{\"x\" -> null}<\"x\">?;",
+      "expected": { "$type": "some", "$value": null }
+    },
+    {
+      "id": "14.must.1.eliminators.missing_is_none",
+      "must": 1,
+      "source": "Map{}<\"x\">?;",
+      "expected": { "$type": "none" }
+    },
+    {
+      "id": "14.must.1.eliminators.required_missing",
+      "must": 1,
+      "source": "Map{}<\"name\">!;",
+      "expected": { "$type": "fail", "$code": "t_sda_missing_key", "$msg": "missing key" }
+    },
+    {
+      "id": "14.must.1.eliminators.prod_total_vs_map",
+      "must": 1,
+      "source": "Prod{name: \"Ada\"}<name>;",
+      "expected": "Ada"
+    },
+    {
+      "id": "14.must.2.normalize_unique_ok",
+      "must": 2,
+      "source": "normalizeUnique(BagKV{\"a\" -> 1, \"b\" -> 2});",
+      "expected": { "$type": "ok", "$value": { "a": 1, "b": 2 } }
+    },
+    {
+      "id": "14.must.2.normalize_unique_duplicate",
+      "must": 2,
+      "source": "normalizeUnique(BagKV{\"k\" -> 1, \"k\" -> 2});",
+      "expected": { "$type": "fail", "$code": "t_sda_duplicate_key", "$msg": "duplicate key" }
+    },
+    {
+      "id": "14.must.3.carrier_seq",
+      "must": 3,
+      "source": "{ a in Seq[1, 2, 3] | a > 1 };",
+      "expected": [2, 3]
+    },
+    {
+      "id": "14.must.3.carrier_set",
+      "must": 3,
+      "source": "{ a in Set{1, 2, 3} | a > 1 };",
+      "expected": { "$type": "set", "$items": [2, 3] }
+    },
+    {
+      "id": "14.must.3.carrier_bag",
+      "must": 3,
+      "source": "{ a in Bag{1, 1, 2} | a > 1 };",
+      "expected": { "$type": "bag", "$items": [2] }
+    },
+    {
+      "id": "14.must.4.error_div_zero",
+      "must": 4,
+      "source": "1 / 0;",
+      "expected": { "$type": "fail", "$code": "t_sda_div_by_zero", "$msg": "division by zero" }
+    },
+    {
+      "id": "14.must.4.error_unbound_placeholder",
+      "must": 4,
+      "source": "_;",
+      "expected": { "$type": "fail", "$code": "t_sda_unbound_placeholder", "$msg": "unbound placeholder" }
+    },
+    {
+      "id": "14.must.5.unicode_arrow",
+      "must": 5,
+      "source": "Map{\"a\" → 1};",
+      "expected": { "a": 1 }
+    },
+    {
+      "id": "14.must.5.ascii_arrow",
+      "must": 5,
+      "source": "Map{\"a\" -> 1};",
+      "expected": { "a": 1 }
+    },
+    {
+      "id": "14.must.5.unicode_set_ops",
+      "must": 5,
+      "source": "Set{1, 2} ∪ Set{2, 3};",
+      "expected": { "$type": "set", "$items": [1, 2, 3] }
+    },
+    {
+      "id": "14.must.5.unicode_inter_diff",
+      "must": 5,
+      "source": "(Set{1, 2, 3} ∩ Set{2, 3, 4}) \\ Set{3};",
+      "expected": { "$type": "set", "$items": [2] }
+    },
+    {
+      "id": "14.must.6.pipe_nested_scoping",
+      "must": 6,
+      "source": "10 |> (_ + (1 |> _));",
+      "expected": 11
+    },
+    {
+      "id": "14.must.6.pipe_left_associative",
+      "must": 6,
+      "source": "1 |> _ + 1 |> _ * 2;",
+      "expected": 4
+    },
+    {
+      "id": "14.must.6.pipe_bullet_synonym",
+      "must": 6,
+      "source": "5 |> • + 1;",
+      "expected": 6
+    },
+    {
+      "id": "14.must.7.bagkv_comprehension_binds",
+      "must": 7,
+      "source": "{ yield a<val> | a in BagKV{\"x\" -> 1, \"y\" -> 2} };",
+      "expected": { "$type": "bag", "$items": [1, 2] }
+    },
+    {
+      "id": "14.must.8.prod_optional_wrong_shape",
+      "must": 8,
+      "source": "Prod{name: \"Ada\"}<name>?;",
+      "expected": { "$type": "fail", "$code": "t_sda_wrong_shape", "$msg": "wrong shape" }
+    },
+    {
+      "id": "14.must.8.map_total_wrong_shape",
+      "must": 8,
+      "source": "Map{\"name\" -> \"Ada\"}<\"name\">;",
+      "expected": { "$type": "fail", "$code": "t_sda_wrong_shape", "$msg": "wrong shape" }
+    },
+    {
+      "id": "14.must.9.helpers.keys",
+      "must": 9,
+      "source": "keys(Map{\"b\" -> 2, \"a\" -> 1});",
+      "expected": { "$type": "set", "$items": ["a", "b"] }
+    },
+    {
+      "id": "14.must.9.helpers.values_order",
+      "must": 9,
+      "source": "values(Map{\"b\" -> 2, \"a\" -> 1});",
+      "expected": [1, 2]
+    },
+    {
+      "id": "14.must.9.helpers.count",
+      "must": 9,
+      "source": "count(1, Bag{1, 2, 1});",
+      "expected": 2
+    },
+    {
+      "id": "14.must.9.helpers.typeof",
+      "must": 9,
+      "source": "typeOf(Some(1));",
+      "expected": "some"
+    },
+    {
+      "id": "14.must.10.eq.prod_order_independent",
+      "must": 10,
+      "source": "Prod{a: 1, b: 2} = Prod{b: 2, a: 1};",
+      "expected": true
+    },
+    {
+      "id": "14.must.10.eq.bagkv_multiplicity",
+      "must": 10,
+      "source": "BagKV{\"k\" -> 1, \"k\" -> 2} = BagKV{\"k\" -> 2, \"k\" -> 1};",
+      "expected": true
+    },
+    {
+      "id": "14.must.10.eq.some_none",
+      "must": 10,
+      "source": "Some(null) = None;",
+      "expected": false
+    },
+    {
+      "id": "14.must.10.eq.bind_pointwise",
+      "must": 10,
+      "source": "Bind(\"k\", 1) = Bind(\"k\", 1);",
+      "expected": true
+    },
+    {
+      "id": "14.must.10.eq.set_extensional",
+      "must": 10,
+      "source": "Set{1, 2} = Set{2, 1};",
+      "expected": true
+    },
+    {
+      "id": "14.must.12.pipe_no_implicit_arg",
+      "must": 12,
+      "source": "BagKV{\"k\" -> 1} |> normalizeUnique();",
+      "expected": { "$type": "fail", "$code": "t_sda_arity_mismatch", "$msg": "arity mismatch" }
+    },
+    {
+      "id": "14.must.13.bind_constructor",
+      "must": 13,
+      "source": "Bind(\"k\", 1);",
+      "expected": { "$type": "bind", "$key": "k", "$val": 1 }
+    },
+    {
+      "id": "14.must.combinators.bind_opt",
+      "must": 9,
+      "source": "bindOpt(Some(1), x => Some(x + 1));",
+      "expected": { "$type": "some", "$value": 2 }
+    },
+    {
+      "id": "14.must.combinators.bind_opt_wrong_return",
+      "must": 9,
+      "source": "bindOpt(Some(1), x => x);",
+      "expected": { "$type": "fail", "$code": "t_sda_wrong_shape", "$msg": "wrong shape" }
+    },
+    {
+      "id": "14.must.input.json_bridge",
+      "must": 9,
+      "source": "input<\"name\">!;",
+      "input": { "name": "Ada" },
+      "expected": { "$type": "ok", "$value": "Ada" }
+    }
+  ]
+}

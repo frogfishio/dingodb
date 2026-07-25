@@ -1,0 +1,22 @@
+[package]
+name = "dingo-cluster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "DingoDB cluster federation: partitions, coverage, placement, multi-node stores, Raft, convergent-append, find coverage, rebalance (Stage 8)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "cluster", "partition", "replication", "coverage"]
+categories = ["database", "database-implementations"]
+include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
+
+[dependencies]
+dingo-store.workspace = true
+blake3.workspace = true
+thiserror.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
