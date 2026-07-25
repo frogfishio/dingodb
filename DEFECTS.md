@@ -668,7 +668,9 @@ Acceptance:
 
 ### DEF-026 — Implement true bounded-memory cursors
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (embedded paged cursors; see `stage_def_026_cursors`,
+`doc/CAPABILITY_MATRIX.md`)
 
 Problem:
 
@@ -685,6 +687,23 @@ Work:
 - Stream remote pages without building a complete `Vec`.
 - Support cancellation and deadlines.
 - Preserve partial-result evidence across page boundaries.
+
+Implementation notes:
+
+- Profile tag `CURSOR_PROFILE = "dingo-cursor-v1"` in `dingo_store::cursor`.
+- `Store::scan_live_page` walks the primary index in subject order, loading at
+  most one page of complete bodies (default 64, cap 4096). Incomplete subjects
+  are reported per page and still advance the cursor.
+- Continuation tokens encode store_id, scan generation, prefix, after-subject,
+  and page_size; MAC'd with a key derived from `store_id` (tamper / cross-store
+  → `StoreError::CursorInvalid`).
+- Scan generation = BLAKE3(store_id ‖ segment_fingerprint ‖ live_count).
+  Concurrent mutations that change the fence → `StoreError::CursorStale`.
+  Declared model: read-committed paging with generation fencing (not MVCC).
+- SDK: `Collection::scan_json_page`, `scan_json_iter` / `scan_json_iter_paged`
+  page on demand; embedded `find` scan path uses the same pager.
+- Follow-ons (not blocking this defect): remote/cluster page RPCs, cancellation
+  deadlines, authenticated remote tokens across restarts.
 
 Acceptance:
 

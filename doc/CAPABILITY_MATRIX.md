@@ -164,6 +164,20 @@ collection catalogs are built from segment-derived durable state only.
 | Content item ids | shipped | `blake3(subject)[..16]` (stable, not random) |
 | Tests | shipped | `stage_def_025_identifiers` + `ids` unit tests |
 
+## Bounded-memory cursors (DEF-026)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Profile tag | shipped | `dingo_store::CURSOR_PROFILE = "dingo-cursor-v1"` |
+| Paged store scan | shipped | `Store::scan_live_page` — subject order, bounded bodies per page |
+| Continuation tokens | shipped | MAC'd opaque tokens (store_id + generation + prefix + after) |
+| Generation fence | shipped | BLAKE3(store_id ‖ segment_fp ‖ live_count); stale → `CursorStale` |
+| Tamper / cross-store | shipped | `StoreError::CursorInvalid` |
+| SDK streaming | shipped | `scan_json_page`, `scan_json_iter` / `scan_json_iter_paged` (embedded) |
+| Find scan path | shipped | Embedded filter scan pages instead of full materialization |
+| Remote page RPC | not yet | Follow-on; remote still uses list/find materialization |
+| Tests | shipped | `stage_def_026_cursors` + cursor unit tests |
+
 ## CI check
 
 A lightweight workspace test asserts this file exists and still forbids the

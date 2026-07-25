@@ -33,7 +33,7 @@ impl<'a> Collection<'a> {
         &self.name
     }
 
-    fn local_store(&mut self) -> Result<&mut Store, Error> {
+    fn local_store(&mut self) -> Result<&Store, Error> {
         match self.backend {
             Backend::Local(s) => Ok(s),
             Backend::Remote(_) | Backend::Cluster(_) => {
@@ -243,29 +243,58 @@ impl<'a> Collection<'a> {
     ///
     /// Yields `(key, value)` in stable key order. Incomplete chunked payloads
     /// cause [`Error::CoverageIncomplete`] (DEF-012 fail-closed); use
-    /// [`dingo_store::Store::scan_live_logical`] or get_payload for partial maps.
+    /// [`dingo_store::Store::scan_live_page`] / `scan_live_logical` for partial maps.
     /// Embedded only.
     ///
-    /// Materializes the logical live set first so the iterator does not hold a
-    /// long-lived store borrow.
-    pub fn scan_json_iter(
-        &mut self,
-    ) -> Result<impl Iterator<Item = Result<(String, JsonValue), Error>>, Error> {
+    /// **DEF-026:** pages through the store with a bounded page size (default
+    /// [`dingo_store::DEFAULT_PAGE_SIZE`]) instead of materializing the full
+    /// live set up front. The returned iterator holds a borrow of the local
+    /// store for the duration of the scan.
+    pub fn scan_json_iter(&mut self) -> Result<JsonScanIter<'_>, Error> {
+        let page_size = dingo_store::DEFAULT_PAGE_SIZE;
+        self.scan_json_iter_paged(page_size)
+    }
+
+    /// Like [`Self::scan_json_iter`] with an explicit page size (DEF-026).
+    pub fn scan_json_iter_paged(&mut self, page_size: usize) -> Result<JsonScanIter<'_>, Error> {
         let prefix = collection_prefix(&self.name)?;
         let name = self.name.clone();
-        let store = self.local_store()?;
-        let logical = store.live_logical_entries()?;
-        Ok(logical.into_iter().filter_map(move |(subject, body)| {
-            if !subject.starts_with(&prefix) {
-                return None;
-            }
-            match decode_subject(&subject) {
-                Some((coll, key)) if coll == name => {
-                    Some(decode_json(&body).map(|v| (key.to_string(), v)))
-                }
-                _ => None,
-            }
-        }))
+        // Validate embedded-only before constructing the iterator.
+        let _ = self.local_store().map_err(|_| {
+            Error::RemoteUnsupported("scan_json_iter (embedded only)")
+        })?;
+        let store = match self.backend {
+            Backend::Local(s) => &*s,
+            Backend::Remote(_) | Backend::Cluster(_) => unreachable!("checked above"),
+        };
+        Ok(JsonScanIter {
+            store,
+            collection: name,
+            prefix,
+            page_size: page_size.max(1).min(dingo_store::MAX_PAGE_SIZE),
+            continuation: None,
+            buffer: std::collections::VecDeque::new(),
+            done: false,
+            started: false,
+        })
+    }
+
+    /// Fetch one page of live JSON rows with an optional continuation (DEF-026).
+    ///
+    /// Embedded only. Tokens are opaque, store-bound, and generation-fenced.
+    /// Tampered or cross-store tokens fail; concurrent mutations that change
+    /// the scan generation fail with a consistency error so the client restarts.
+    pub fn scan_json_page(
+        &mut self,
+        page_size: usize,
+        continuation: Option<&[u8]>,
+    ) -> Result<JsonScanPage, Error> {
+        let prefix = collection_prefix(&self.name)?;
+        let name = self.name.clone();
+        let store = self
+            .local_store()
+            .map_err(|_| Error::RemoteUnsupported("scan_json_page (embedded only)"))?;
+        scan_json_page_on_store(store, &name, &prefix, page_size, continuation)
     }
 
     /// Find JSON documents matching `filter` (DX_SPEC §7.1).
@@ -371,20 +400,17 @@ pub(crate) fn find_on_store(
     }
 
     let prefix = collection_prefix(collection)?;
-    let logical = store.live_logical_entries()?;
+    // DEF-026: page through live subjects; never materialize the full body set.
     let mut scanned = 0usize;
     let mut out = Vec::new();
-    for (subject, body) in logical {
-        if !subject.starts_with(&prefix) {
-            continue;
-        }
-        let Some((coll, key)) = decode_subject(&subject) else {
-            continue;
-        };
-        if coll != collection {
-            continue;
-        }
-        scanned += 1;
+    let mut cont: Option<Vec<u8>> = None;
+    let page_size = options
+        .limit
+        .unwrap_or(dingo_store::DEFAULT_PAGE_SIZE)
+        .clamp(1, dingo_store::MAX_PAGE_SIZE);
+    loop {
+        let page = scan_json_page_on_store(store, collection, &prefix, page_size, cont.as_deref())?;
+        scanned = scanned.saturating_add(page.examined);
         if let Some(budget) = &options.budget {
             if let Some(max) = budget.max_docs_scanned {
                 if scanned > max {
@@ -395,11 +421,25 @@ pub(crate) fn find_on_store(
                 }
             }
         }
-        let value = decode_json(&body)?;
-        if !filter.matches(&value) {
-            continue;
+        for (key, value) in page.rows {
+            if !filter.matches(&value) {
+                continue;
+            }
+            out.push((key, value));
         }
-        out.push((key.to_string(), value));
+        if page.complete {
+            break;
+        }
+        cont = page.continuation;
+        if cont.is_none() {
+            break;
+        }
+        // Early exit when the caller only needs `limit` matches (still may over-scan).
+        if let Some(lim) = options.limit {
+            if out.len() >= lim && options.order_by.is_none() {
+                break;
+            }
+        }
     }
     finish_query(out, options)
 }
@@ -444,6 +484,120 @@ fn collect_from_subjects(
         out.push((key.to_string(), value));
     }
     finish_query(out, options)
+}
+
+/// One page of JSON scan results (DEF-026).
+#[derive(Debug, Clone)]
+pub struct JsonScanPage {
+    /// Rows in stable key order for this page.
+    pub rows: Vec<(String, JsonValue)>,
+    /// Opaque continuation for the next page (`None` when complete).
+    pub continuation: Option<Vec<u8>>,
+    /// True when no further pages remain under the cursor consistency model.
+    pub complete: bool,
+    /// Subjects examined on this page (for budgets / diagnostics).
+    pub examined: usize,
+}
+
+/// Streaming JSON scan over the embedded store (DEF-026).
+///
+/// Fetches bounded pages on demand; peak buffer is one page of decoded rows.
+pub struct JsonScanIter<'a> {
+    store: &'a Store,
+    collection: String,
+    prefix: Vec<u8>,
+    page_size: usize,
+    continuation: Option<Vec<u8>>,
+    buffer: std::collections::VecDeque<(String, JsonValue)>,
+    done: bool,
+    started: bool,
+}
+
+impl Iterator for JsonScanIter<'_> {
+    type Item = Result<(String, JsonValue), Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(row) = self.buffer.pop_front() {
+                return Some(Ok(row));
+            }
+            if self.done {
+                return None;
+            }
+            let cont = if self.started {
+                self.continuation.as_deref()
+            } else {
+                None
+            };
+            self.started = true;
+            match scan_json_page_on_store(
+                self.store,
+                &self.collection,
+                &self.prefix,
+                self.page_size,
+                cont,
+            ) {
+                Ok(page) => {
+                    self.continuation = page.continuation;
+                    if page.complete || self.continuation.is_none() {
+                        self.done = true;
+                    }
+                    if page.rows.is_empty() {
+                        // Empty final page or only incompletes filtered out.
+                        if self.done {
+                            return None;
+                        }
+                        continue;
+                    }
+                    self.buffer.extend(page.rows);
+                }
+                Err(e) => {
+                    self.done = true;
+                    return Some(Err(e));
+                }
+            }
+        }
+    }
+}
+
+fn scan_json_page_on_store(
+    store: &Store,
+    collection: &str,
+    prefix: &[u8],
+    page_size: usize,
+    continuation: Option<&[u8]>,
+) -> Result<JsonScanPage, Error> {
+    use dingo_store::LiveScanPageOptions;
+
+    let mut opts = LiveScanPageOptions::new(page_size).prefix(prefix.to_vec());
+    if let Some(tok) = continuation {
+        opts = opts.continuation(tok.to_vec());
+    }
+    let page = store.scan_live_page(&opts)?;
+    if !page.incomplete.is_empty() {
+        return Err(Error::CoverageIncomplete(format!(
+            "{} live subject(s) incomplete during paged scan; use store.scan_live_page for partial maps",
+            page.incomplete.len()
+        )));
+    }
+    let mut rows = Vec::with_capacity(page.entries.len());
+    for (subject, body) in page.entries {
+        if !subject.starts_with(prefix) {
+            continue;
+        }
+        match decode_subject(&subject) {
+            Some((coll, key)) if coll == collection => {
+                rows.push((key.to_string(), decode_json(&body)?));
+            }
+            _ => continue,
+        }
+    }
+    Ok(JsonScanPage {
+        rows,
+        continuation: page.continuation,
+        complete: !page.has_more,
+        examined: page.examined,
+    })
 }
 
 /// Shared by embedded find and the cluster backend (Stage 8d).

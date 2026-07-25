@@ -38,7 +38,7 @@ pub use bind_policy::{
     bind_host, host_is_loopback, validate_plaintext_bind, ServeStartupReport,
 };
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
-pub use collection::Collection;
+pub use collection::{Collection, JsonScanIter, JsonScanPage};
 pub use dingo::Dingo;
 /// Re-export cluster coverage / scan types for Stage 8e callers.
 pub use dingo_cluster::{Coverage, FindResult, ScanOptions};

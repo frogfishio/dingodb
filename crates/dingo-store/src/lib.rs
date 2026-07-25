@@ -19,6 +19,7 @@ mod catalog;
 mod chunk_payload;
 mod compact;
 mod crash_matrix;
+mod cursor;
 mod durability;
 mod envelope;
 mod erasure;
@@ -56,6 +57,10 @@ pub use compact::{
     compaction_job_path, compaction_jobs_dir, list_compact_jobs, try_load_compact_job,
     CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport, COMPACTION_JOB_DIR,
     COMPACTION_JOB_SUFFIX,
+};
+pub use cursor::{
+    scan_generation, LiveScanPage, LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
 };
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};

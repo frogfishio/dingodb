@@ -30,6 +30,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Write path | DEF-023: durable projection + rate-limited frontier checkpoints; no full-store rescan on ack |
 | Compaction | DEF-024: durable phases + job records; reclaim only with `allow_history_loss` |
 | Identifiers | DEF-025: `dingo-id-v1` — OS CSPRNG (`getrandom`) for random ids; sortable segment seq; fail closed |
+| Cursors | DEF-026: `dingo-cursor-v1` paged live scan + authenticated continuation tokens |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -77,6 +78,7 @@ live there.
 | `live_entries` | Index raw bodies (manifests for chunked subjects) |
 | `live_logical_entries` | Fail-closed complete reassembly only |
 | `scan_live_logical` | Opt-in envelope with incomplete subjects listed |
+| `scan_live_page` | Bounded page + continuation token (DEF-026) |
 | `transfer_segment_to_tier` | Copy/move sealed segment (stable id) |
 | `set_tier_available` / `tier_coverage` | Offline tier → coverage hole |
 | `get_with_tier_coverage` | Absence only proven when coverage complete |
@@ -88,6 +90,7 @@ live there.
 | `failpoint` / crash matrix | DEF-022 injection points + embedded `crash_matrix.v1.json` |
 | `IndexFrontier` / `persist_index_cache` | DEF-023 sealed fingerprint + active covered length; no write-path rescan |
 | `random_id` / `mint_sortable_segment_id` / `ID_PROFILE` | DEF-025 CSPRNG random identities vs sortable segment ids |
+| `LiveScanPage` / `CURSOR_PROFILE` | DEF-026 paged scan + generation-fenced tokens |
 
 Crash-boundary narrative: [`doc/CRASH_CONSISTENCY.md`](../../doc/CRASH_CONSISTENCY.md).
 Write-path derived state: [CAPABILITY_MATRIX.md](../../doc/CAPABILITY_MATRIX.md) (DEF-023).

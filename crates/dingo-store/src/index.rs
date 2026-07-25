@@ -4,6 +4,7 @@
 
 use crate::envelope::EventKind;
 use std::collections::BTreeMap;
+use std::ops::Bound;
 
 /// Live value for a subject after applying surviving put/delete events.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,6 +140,38 @@ impl PrimaryIndex {
             IndexEntry::Live(lv) => Some((k, lv)),
             IndexEntry::Deleted { .. } => None,
         })
+    }
+
+    /// Live subjects strictly after `after` (exclusive), optional prefix (DEF-026).
+    ///
+    /// Order is subject-byte ascending. When `prefix` is set and `after` is
+    /// `None`, iteration starts at the first key ≥ prefix (not the map start),
+    /// then stops once the prefix range is left.
+    pub fn live_entries_after<'a>(
+        &'a self,
+        after: Option<&[u8]>,
+        prefix: Option<&[u8]>,
+    ) -> impl Iterator<Item = (&'a Vec<u8>, &'a LiveValue)> + 'a {
+        let lower = match after {
+            Some(a) => Bound::Excluded(a.to_vec()),
+            None => match prefix {
+                // Seek to the first key in the prefix range so a foreign
+                // collection that sorts earlier cannot starve the scan.
+                Some(p) => Bound::Included(p.to_vec()),
+                None => Bound::Unbounded,
+            },
+        };
+        let prefix = prefix.map(|p| p.to_vec());
+        self.map
+            .range((lower, Bound::Unbounded))
+            .filter_map(|(k, v)| match v {
+                IndexEntry::Live(lv) => Some((k, lv)),
+                IndexEntry::Deleted { .. } => None,
+            })
+            .take_while(move |(k, _)| match &prefix {
+                None => true,
+                Some(p) => k.starts_with(p),
+            })
     }
 
     /// Iterate every subject entry (live and deleted), in subject order.

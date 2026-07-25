@@ -44,7 +44,7 @@ Application developers do not need to know about frames or segments.
 | `Collection::put_bytes` / `get_bytes` | Opaque byte payloads |
 | `Collection::get_payload` | Completeness-aware chunked read (embedded + remote) |
 | `Collection::scan_keys` / `scan_json` | Bounded live scan |
-| `Collection::scan_json_iter` | Streaming JSON rows (embedded) |
+| `Collection::scan_json_iter` / `scan_json_page` | Streaming / paged JSON rows (embedded; DEF-026) |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration (embedded + remote server-side) |
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list secondary indexes (embedded + remote) |

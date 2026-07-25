@@ -291,6 +291,9 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::Failpoint(_) => ErrorCode::Io,
         // OS CSPRNG unavailable (DEF-025); rare host configuration failure.
         StoreError::RandomUnavailable(_) => ErrorCode::Internal,
+        // DEF-026: bad/tampered token → query invalid; generation fence → stale route class.
+        StoreError::CursorInvalid(_) => ErrorCode::QueryInvalid,
+        StoreError::CursorStale(_) => ErrorCode::ConsistencyViolation,
     }
 }
 

@@ -112,6 +112,17 @@ pub enum StoreError {
     /// weak mixes when secure randomness is needed.
     #[error("secure randomness unavailable: {0}")]
     RandomUnavailable(String),
+
+    /// Continuation token is malformed, tampered, expired shape, or wrong store (DEF-026).
+    #[error("invalid scan cursor: {0}")]
+    CursorInvalid(String),
+
+    /// Continuation token generation no longer matches live store state (DEF-026).
+    ///
+    /// The scan generation fence changed (segment fingerprint and/or live count);
+    /// restart the scan from the first page.
+    #[error("stale scan cursor: {0}")]
+    CursorStale(String),
 }
 
 impl StoreError {

@@ -433,45 +433,165 @@ impl Store {
     /// Always returns every complete reassembly and lists incomplete subjects.
     /// `complete` is true only when every live subject produced a full body
     /// **and** tier coverage has no offline/unavailable segments.
+    ///
+    /// **Memory:** materializes the full live set. Prefer
+    /// [`Self::scan_live_page`] for bounded-memory scans (DEF-026).
     pub fn scan_live_logical(&self) -> Result<LiveLogicalScan, StoreError> {
+        let mut opts = crate::cursor::LiveScanPageOptions::new(crate::cursor::MAX_PAGE_SIZE);
+        // Drain all pages without holding a giant intermediate only for subjects —
+        // still assembles the full result (legacy API contract).
         let mut entries = Vec::new();
         let mut incomplete = Vec::new();
-        let subjects: Vec<Vec<u8>> = self.index.live_entries().map(|(k, _)| k.clone()).collect();
-        for subject in subjects {
-            let subject_str = match std::str::from_utf8(&subject) {
-                Ok(s) => s,
-                Err(_) => {
-                    incomplete.push(LiveIncomplete {
-                        subject,
-                        reason: IncompleteReason::NonUtf8Subject,
-                    });
-                    continue;
-                }
-            };
-            match self.get_payload(subject_str)? {
-                None => {}
-                Some(PayloadResult::Complete { body }) => entries.push((subject, body)),
-                Some(PayloadResult::Partial { .. }) => incomplete.push(LiveIncomplete {
-                    subject,
-                    reason: IncompleteReason::PayloadPartial,
-                }),
-                Some(PayloadResult::Unavailable { .. }) => incomplete.push(LiveIncomplete {
-                    subject,
-                    reason: IncompleteReason::PayloadUnavailable,
-                }),
-                Some(PayloadResult::Conflicting { .. }) => incomplete.push(LiveIncomplete {
-                    subject,
-                    reason: IncompleteReason::PayloadConflict,
-                }),
+        let mut tier_coverage_incomplete = false;
+        let mut cont: Option<Vec<u8>> = None;
+        loop {
+            opts.continuation = cont.take();
+            let page = self.scan_live_page(&opts)?;
+            entries.extend(page.entries);
+            incomplete.extend(page.incomplete);
+            tier_coverage_incomplete |= page.tier_coverage_incomplete;
+            if !page.has_more {
+                break;
             }
+            cont = page.continuation;
+            // Keep prefix if set (none for full scan).
+            opts.page_size = crate::cursor::MAX_PAGE_SIZE;
         }
-        let tier_coverage_incomplete = self.tier_coverage().is_incomplete();
         let complete = incomplete.is_empty() && !tier_coverage_incomplete;
         Ok(LiveLogicalScan {
             entries,
             incomplete,
             complete,
             tier_coverage_incomplete,
+        })
+    }
+
+    /// One bounded page of live logical payloads (DEF-026).
+    ///
+    /// Reads at most `options.page_size` complete bodies. Subject order is
+    /// ascending. Pass the returned `continuation` token to resume; tokens are
+    /// MAC-authenticated to this store and fenced by scan generation.
+    ///
+    /// Incomplete subjects encountered on the page are reported in
+    /// `incomplete` and still advance the cursor so scans make forward progress.
+    pub fn scan_live_page(
+        &self,
+        options: &crate::cursor::LiveScanPageOptions,
+    ) -> Result<crate::cursor::LiveScanPage, StoreError> {
+        use crate::cursor::{
+            decode_token, encode_token, incomplete, scan_generation, CursorState, LiveScanPage,
+            DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+        };
+
+        let page_size = if options.page_size == 0 {
+            DEFAULT_PAGE_SIZE
+        } else {
+            options.page_size.min(MAX_PAGE_SIZE)
+        };
+
+        let seg_fp = self.segment_fingerprint()?;
+        let live_count = self.index.live_len() as u64;
+        let generation = scan_generation(&self.store_id, &seg_fp, live_count);
+
+        let (prefix, after, token_page_size) = if let Some(ref tok) = options.continuation {
+            let state = decode_token(&self.store_id, tok)?;
+            if state.generation != generation {
+                return Err(StoreError::CursorStale(
+                    "scan generation changed (live set or segment fingerprint); restart scan"
+                        .into(),
+                ));
+            }
+            // Prefix is fixed for the lifetime of the cursor.
+            if let (Some(ref want), Some(ref got)) = (&options.prefix, &state.prefix) {
+                if want != got {
+                    return Err(StoreError::CursorInvalid(
+                        "continuation prefix does not match request".into(),
+                    ));
+                }
+            }
+            let prefix = state.prefix.clone().or_else(|| options.prefix.clone());
+            (prefix, state.after, state.page_size.max(1).min(MAX_PAGE_SIZE))
+        } else {
+            (options.prefix.clone(), None, page_size)
+        };
+
+        // Prefer token page size on resume so clients cannot silently widen.
+        let page_size = if options.continuation.is_some() {
+            token_page_size
+        } else {
+            page_size
+        };
+
+        let mut entries = Vec::new();
+        let mut incomplete_list = Vec::new();
+        let mut examined = 0usize;
+        let mut last_subject: Option<Vec<u8>> = after.clone();
+        let mut saw_more = false;
+
+        // Bound work per page: page_size complete bodies, or a cap of examined
+        // subjects when many are incomplete (forward progress without O(n) bodies).
+        let max_examine = page_size.saturating_mul(8).max(page_size);
+        let mut iter = self
+            .index
+            .live_entries_after(after.as_deref(), prefix.as_deref());
+
+        loop {
+            if entries.len() >= page_size || examined >= max_examine {
+                saw_more = iter.next().is_some();
+                break;
+            }
+            let Some((subject_ref, _)) = iter.next() else {
+                break;
+            };
+            let subject = subject_ref.clone();
+            examined += 1;
+            last_subject = Some(subject.clone());
+            let subject_str = match std::str::from_utf8(&subject) {
+                Ok(s) => s,
+                Err(_) => {
+                    incomplete_list.push(incomplete(subject, IncompleteReason::NonUtf8Subject));
+                    continue;
+                }
+            };
+            match self.get_payload(subject_str)? {
+                None => {}
+                Some(PayloadResult::Complete { body }) => entries.push((subject, body)),
+                Some(PayloadResult::Partial { .. }) => {
+                    incomplete_list.push(incomplete(subject, IncompleteReason::PayloadPartial));
+                }
+                Some(PayloadResult::Unavailable { .. }) => {
+                    incomplete_list
+                        .push(incomplete(subject, IncompleteReason::PayloadUnavailable));
+                }
+                Some(PayloadResult::Conflicting { .. }) => {
+                    incomplete_list.push(incomplete(subject, IncompleteReason::PayloadConflict));
+                }
+            }
+        }
+
+        let tier_coverage_incomplete = self.tier_coverage().is_incomplete();
+        let continuation = if saw_more {
+            let state = CursorState {
+                generation,
+                prefix: prefix.clone(),
+                after: last_subject,
+                page_size,
+            };
+            Some(encode_token(&self.store_id, &state)?)
+        } else {
+            None
+        };
+
+        let complete =
+            !saw_more && incomplete_list.is_empty() && !tier_coverage_incomplete;
+        Ok(LiveScanPage {
+            entries,
+            incomplete: incomplete_list,
+            complete,
+            tier_coverage_incomplete,
+            has_more: saw_more,
+            continuation,
+            examined,
         })
     }
 
