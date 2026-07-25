@@ -24,6 +24,7 @@ use crate::id::{ClusterId, LogPosition, NodeId, PartitionId, PlacementEpoch, Ter
 use crate::modes::{CommitStatus, ConsistencyMode, DeploymentProfile, ReadMode};
 use crate::partition::{default_partition_key, PartitionMap};
 use crate::raft::{ElectError, LogCommand, PartitionRaft, ProposeError};
+use crate::raft_persist::RaftPeerStore;
 use crate::rebalance::{RebalanceJob, RebalancePhase, RebalanceReport};
 use dingo_store::{DurabilityMode, SalvageReport, Store};
 use std::collections::{HashMap, HashSet};
@@ -87,7 +88,8 @@ impl Cluster {
         );
         directory.save(&root)?;
 
-        let raft = Self::build_raft_groups(&directory);
+        let mut raft = Self::build_raft_groups(&directory);
+        Self::attach_and_seed_raft_stores(&root, &directory, &mut raft)?;
 
         Ok(Self {
             root,
@@ -143,7 +145,8 @@ impl Cluster {
             }
         }
 
-        let raft = Self::build_raft_groups(&directory);
+        let mut raft = Self::build_raft_groups(&directory);
+        Self::attach_and_restore_raft_stores(&root, &directory, &mut raft)?;
 
         Ok(Self {
             root,
@@ -169,6 +172,49 @@ impl Cluster {
             );
         }
         raft
+    }
+
+    /// Attach empty durable stores and seed membership (cluster create).
+    fn attach_and_seed_raft_stores(
+        root: &Path,
+        directory: &PartitionDirectory,
+        raft: &mut HashMap<u32, PartitionRaft>,
+    ) -> Result<(), ClusterError> {
+        for a in &directory.assignments {
+            let Some(group) = raft.get_mut(&a.partition.get()) else {
+                continue;
+            };
+            for node in &a.replicas {
+                let store = RaftPeerStore::open(root, *node, a.partition)?;
+                group.attach_store(store);
+            }
+            group.persist_membership()?;
+            group.flush_all()?;
+        }
+        Ok(())
+    }
+
+    /// Attach stores and restore hard state / logs after reopen (DEF-035).
+    fn attach_and_restore_raft_stores(
+        root: &Path,
+        directory: &PartitionDirectory,
+        raft: &mut HashMap<u32, PartitionRaft>,
+    ) -> Result<(), ClusterError> {
+        for a in &directory.assignments {
+            let Some(group) = raft.get_mut(&a.partition.get()) else {
+                continue;
+            };
+            for node in &a.replicas {
+                let store = RaftPeerStore::open(root, *node, a.partition)?;
+                group.attach_store(store);
+                group.restore_peer_from_store(*node)?;
+            }
+            // Membership from directory is authoritative for placement; peer
+            // stores may carry a prior epoch which restore_peer applies from
+            // the last replica loaded. Re-assert directory assignment.
+            group.set_voters(a.replicas.clone(), a.placement_epoch);
+        }
+        Ok(())
     }
 
     /// Cluster root path.
@@ -292,7 +338,8 @@ impl Cluster {
         let (leader, term) = group.ensure_leader(&online).map_err(|e| match e {
             ElectError::NoQuorum { .. }
             | ElectError::NoOnlineVoters
-            | ElectError::CandidateOffline => ClusterError::PartitionUnavailable {
+            | ElectError::CandidateOffline
+            | ElectError::PersistFailed => ClusterError::PartitionUnavailable {
                 partition: partition.get(),
                 reason: "no leader elected (quorum unavailable)",
             },
@@ -680,6 +727,9 @@ impl Cluster {
                         partition: partition.get(),
                         reason: "leader stepped down during propose",
                     },
+                    ProposeError::PersistFailed => ClusterError::DurabilityUnavailable(
+                        "raft log persist failed before replication".into(),
+                    ),
                 })?
         };
 
@@ -1143,16 +1193,22 @@ impl Cluster {
         }
         directory.placement_epoch = epoch;
         self.directory = directory.clone();
-        self.raft = Self::build_raft_groups(&self.directory);
+        let mut raft = Self::build_raft_groups(&self.directory);
+        Self::attach_and_restore_raft_stores(&self.root, &self.directory, &mut raft)?;
+        self.raft = raft;
         self.directory.save(&self.root)?;
         Ok(directory)
     }
 
     fn rb_learners_added(&mut self, mut job: RebalanceJob) -> Result<RebalanceJob, ClusterError> {
         // Register peer slots for destinations (non-voting until membership).
-        if let Some(group) = self.raft.get_mut(&job.partition.get()) {
-            for d in &job.destinations {
+        let partition = job.partition;
+        let destinations = job.destinations.clone();
+        if let Some(group) = self.raft.get_mut(&partition.get()) {
+            for d in &destinations {
                 group.ensure_peer(*d);
+                let store = RaftPeerStore::open(&self.root, *d, partition)?;
+                group.attach_store(store);
             }
         }
         // Ensure destination stores are open when on disk.

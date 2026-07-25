@@ -21,6 +21,7 @@ profiles. Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 | Placement directory | Partition → replica set, leader, term, placement epoch (`placement.json`) |
 | In-process cluster | Development (1 node) and dependable-local (3 voting nodes) profiles |
 | Raft (8b) | Per-partition elections, log matching, majority commit evidence |
+| Raft persistence (DEF-035) | Durable hard state, log, membership, snapshots under `raft/node-*/p*` (`dingo-raft-persist-v1`) |
 | Write path (linearizable) | Propose → replicate → commit → apply to replica stores |
 | Convergent-append (8c) | Any online replica may accept; dual-accept across splits; `reconcile` by content hash |
 | Find / scan (8e) | `scan_with` / `find` + `FindResult` query id + resource-budget honesty |
@@ -56,7 +57,8 @@ Archive tiers: see `dingo-store` Stage 9 and `doc/RUNBOOK_RETENTION.md`
 
 ## Consensus rules (published)
 
-See module docs on [`dingo_cluster::raft`](src/raft.rs) and CLUSTER_SPEC §10:
+See module docs on [`dingo_cluster::raft`](src/raft.rs),
+[`dingo_cluster::raft_persist`](src/raft_persist.rs), and CLUSTER_SPEC §10:
 
 - **Elections** — majority of the *configured* voter set; log up-to-date check.
 - **Log matching** — AppendEntries prev term/index; truncate on conflict.
@@ -64,6 +66,10 @@ See module docs on [`dingo_cluster::raft`](src/raft.rs) and CLUSTER_SPEC §10:
 - **Fencing** — higher term steps down leaders; wall clock alone does not fence.
 - **Membership (8f)** — `set_voters` during rebalance; old placement or joint
   config remains explicit on interrupt.
+- **Persistence (DEF-035)** — hard state and log flush before vote grant /
+  AppendEntries success; torn tails and corrupt snapshots discarded; leadership
+  role is volatile across restart; profile `RAFT_PERSIST_PROFILE` =
+  `dingo-raft-persist-v1`.
 
 ## Governing rule
 

@@ -1058,7 +1058,10 @@ Evidence:
 ### DEF-035 — Persist Raft state correctly
 
 Priority: P0  
-Dependencies: DEF-021, DEF-022
+Dependencies: DEF-021, DEF-022  
+Status: **addressed** (durable hard state / log / membership / snapshots;
+in-process cluster restore on open; see `stage_def_035_raft_persist`,
+`dingo_cluster::raft_persist`, `doc/CAPABILITY_MATRIX.md`)
 
 Problem:
 
@@ -1077,6 +1080,26 @@ Work:
   commitment.
 - Keep user payload frames independently salvageable.
 
+Implementation notes:
+
+- Profile tag `RAFT_PERSIST_PROFILE = "dingo-raft-persist-v1"`.
+- On-disk layout: `{cluster_root}/raft/node-{n}/p{partition}/` with
+  checksummed `hard_state.json`, `membership.json`, append-only
+  length-prefixed `log.ndjson`, and optional `snapshot.meta.json` +
+  `snapshot.blob`.
+- `PartitionRaft::attach_store` / `flush_peer`: votes and AppendEntries success
+  flush hard state + log before ack (fail closed on I/O error).
+- `Cluster::create` / `open` seed or restore peer stores; leadership role is
+  always volatile (Follower on reopen).
+- Snapshots: `install_local_snapshot` writes blake3-checked meta/blob and
+  truncates the durable log past `last_included_index`.
+- Torn log tails and corrupt snapshot blobs are discarded; commit never
+  advances past validated durable evidence.
+- `ConsensusEvidenceClass`: `committed` | `prepared` | `conflicting` |
+  `unknown_commit`.
+- User payload frames remain in ordinary `dingo-store` segments (salvage
+  independent of Raft control plane).
+
 Acceptance:
 
 - Raft safety tests cover crash/restart at every persistence boundary.
@@ -1084,6 +1107,21 @@ Acceptance:
   commitments, or stale-leader acceptance.
 - Consensus evidence can distinguish committed, prepared, conflicting, and
   unknown-commit frames after disaster.
+
+Evidence:
+
+- `crates/dingo-cluster/tests/stage_def_035_raft_persist.rs` — process restart
+  with committed write, vote hard-state durability, torn tail, corrupt
+  snapshot discard, snapshot compact+recover, uncommitted not promoted,
+  term restore across nodes.
+- Unit: `raft_persist::tests` hard state/.prev fallback, log append/torn
+  tail, snapshot install, evidence classes, peer save/load.
+
+Remaining (out of this cut; tracked by DEF-036+ / DEF-041):
+
+- Full multi-process Jepsen-style network partition histories.
+- Independent formal/safety review of the purpose-built protocol (or adopt a
+  proven Raft library) before freezing network Raft.
 
 ### DEF-036 — Implement real network Raft RPC
 
@@ -1737,8 +1775,9 @@ DingoDB may be called production-ready only when all applicable gates pass.
 
 ### 16.3 Distributed gates
 
-- [ ] Raft term, vote, log, commit, applied, snapshot, and membership state are
-      durable.
+- [x] Raft term, vote, log, commit, applied, snapshot, and membership state are
+      durable for the **in-process** cluster (DEF-035; network multi-process
+      durability still depends on DEF-036 RPC).
 - [ ] Network replication passes every cluster conformance test.
 - [ ] Minority partitions cannot commit strong writes.
 - [ ] Old leaders and stale placements are fenced.

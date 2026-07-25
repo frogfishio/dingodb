@@ -35,12 +35,18 @@
 //!   ([`PartitionRaft::set_voters`]); leader leases and log snapshots remain
 //!   out of scope.
 //!
-//! ## Persistence
-//! - Raft state is held in the in-process cluster handle. Physical subject
-//!   data remains in ordinary `dingo-store` nodes; salvage does not depend on
-//!   this control plane (CLUSTER_SPEC §6).
+//! ## Persistence (DEF-035)
+//! - When peer stores are attached ([`PartitionRaft::attach_store`]), hard
+//!   state (`current_term`, `voted_for`), the log, and commit/applied frontiers
+//!   are flushed to disk **before** votes are granted or AppendEntries succeeds.
+//! - Physical subject data remains in ordinary `dingo-store` nodes; salvage
+//!   does not depend on this control plane (CLUSTER_SPEC §6).
+//! - Snapshots: [`PartitionRaft::install_local_snapshot`] writes checksummed
+//!   snapshot meta/blob and truncates the durable log.
 
+use crate::error::ClusterError;
 use crate::id::{LogPosition, NodeId, PartitionId, PlacementEpoch, Term};
+use crate::raft_persist::{MembershipState, RaftPeerStore};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -240,6 +246,8 @@ pub struct PartitionRaft {
     pub placement_epoch: PlacementEpoch,
     /// Per-voter Raft state.
     peers: HashMap<u32, RaftPeer>,
+    /// Optional durable stores per node index (DEF-035). Absent ⇒ memory-only.
+    stores: HashMap<u32, RaftPeerStore>,
 }
 
 impl PartitionRaft {
@@ -258,7 +266,118 @@ impl PartitionRaft {
             voters,
             placement_epoch,
             peers,
+            stores: HashMap::new(),
         }
+    }
+
+    /// Attach a durable peer store. Subsequent votes/appends flush before ack.
+    pub fn attach_store(&mut self, store: RaftPeerStore) {
+        self.stores.insert(store.node().index(), store);
+    }
+
+    /// Whether this group has at least one durable store attached.
+    pub fn has_persistence(&self) -> bool {
+        !self.stores.is_empty()
+    }
+
+    /// Load peer state from an attached store (Follower role on recovery).
+    pub fn restore_peer_from_store(&mut self, node: NodeId) -> Result<(), ClusterError> {
+        let Some(store) = self.stores.get(&node.index()) else {
+            return Ok(());
+        };
+        let peer = store.load_peer()?;
+        self.peers.insert(node.index(), peer);
+        if let Some(m) = store.load_membership()? {
+            self.voters = m.voters.into_iter().map(NodeId::new).collect();
+            self.placement_epoch = PlacementEpoch(m.placement_epoch);
+        }
+        Ok(())
+    }
+
+    /// Persist membership for every attached store.
+    pub fn persist_membership(&self) -> Result<(), ClusterError> {
+        let m = MembershipState {
+            voters: self.voters.iter().map(|n| n.index()).collect(),
+            placement_epoch: self.placement_epoch.0,
+        };
+        for store in self.stores.values() {
+            store.persist_membership(&m)?;
+        }
+        Ok(())
+    }
+
+    /// Flush one peer's hard state + log to its store (no-op if unattached).
+    pub fn flush_peer(&self, node: NodeId) -> Result<(), ClusterError> {
+        let Some(store) = self.stores.get(&node.index()) else {
+            return Ok(());
+        };
+        let Some(peer) = self.peers.get(&node.index()) else {
+            return Ok(());
+        };
+        store.save_peer(peer)
+    }
+
+    /// Flush every attached peer.
+    pub fn flush_all(&self) -> Result<(), ClusterError> {
+        for idx in self.stores.keys().copied().collect::<Vec<_>>() {
+            self.flush_peer(NodeId::new(idx))?;
+        }
+        Ok(())
+    }
+
+    /// Install a local snapshot on `node` (checksummed) and truncate its log.
+    pub fn install_local_snapshot(
+        &mut self,
+        node: NodeId,
+        last_included_index: u64,
+        blob: &[u8],
+        note: &str,
+    ) -> Result<(), ClusterError> {
+        let Some(peer) = self.peers.get_mut(&node.index()) else {
+            return Err(ClusterError::CorruptMeta("snapshot: unknown peer"));
+        };
+        let term = peer
+            .term_at(last_included_index)
+            .ok_or(ClusterError::CorruptMeta("snapshot: index not in log"))?;
+        let remaining: Vec<LogEntry> = peer
+            .log
+            .iter()
+            .filter(|e| e.index > last_included_index)
+            .cloned()
+            .collect();
+        // Keep a snapshot-base placeholder for last_log_index.
+        peer.log = remaining.clone();
+        if peer.log.is_empty() && last_included_index > 0 {
+            peer.log.push(LogEntry {
+                term,
+                index: last_included_index,
+                command: LogCommand::Delete {
+                    subject: "__dingo_snapshot_base__".into(),
+                },
+            });
+        }
+        if peer.commit_index < last_included_index {
+            peer.commit_index = last_included_index;
+        }
+        if peer.last_applied < last_included_index {
+            peer.last_applied = last_included_index;
+        }
+
+        if let Some(store) = self.stores.get(&node.index()) {
+            let meta = crate::raft_persist::snapshot_meta_for(
+                last_included_index,
+                term,
+                blob,
+                note,
+            );
+            let disk_remaining: Vec<LogEntry> = remaining
+                .into_iter()
+                .filter(|e| e.command.subject() != "__dingo_snapshot_base__")
+                .collect();
+            store.install_snapshot(meta, blob, &disk_remaining)?;
+            store.save_peer(peer)?;
+        }
+        Ok(())
     }
 
     /// Ensure a peer slot exists (learner catch-up or membership add).
@@ -274,6 +393,8 @@ impl PartitionRaft {
     /// (callers stream the log first). Peers no longer voting remain in
     /// `peers` until explicitly dropped so safety-window replicas retain
     /// evidence; they are ignored for quorum.
+    ///
+    /// When stores are attached, membership is flushed before return.
     pub fn set_voters(&mut self, voters: Vec<NodeId>, placement_epoch: PlacementEpoch) {
         for v in &voters {
             self.ensure_peer(*v);
@@ -288,6 +409,7 @@ impl PartitionRaft {
                 peer.role = RaftRole::Follower;
             }
         }
+        let _ = self.persist_membership();
     }
 
     /// Copy the leader's log and commit index onto a destination peer
@@ -365,6 +487,9 @@ impl PartitionRaft {
     }
 
     /// Run RequestVote on `voter` for `candidate`.
+    ///
+    /// Hard state is flushed before a granted vote is returned (DEF-035).
+    /// If flush fails, the vote is not granted (fail closed).
     fn request_vote(
         &mut self,
         voter: NodeId,
@@ -395,15 +520,34 @@ impl PartitionRaft {
         let can_vote = peer.voted_for.is_none() || peer.voted_for == Some(candidate);
 
         if can_vote && up_to_date {
+            let prev_vote = peer.voted_for;
+            let prev_term = peer.current_term;
             peer.voted_for = Some(candidate);
             peer.current_term = candidate_term;
+            let term = peer.current_term;
+            // Drop mut borrow before flush.
+            let _ = peer;
+            if self.flush_peer(voter).is_err() {
+                if let Some(p) = self.peers.get_mut(&voter.index()) {
+                    p.voted_for = prev_vote;
+                    p.current_term = prev_term;
+                }
+                return VoteResult {
+                    term,
+                    vote_granted: false,
+                };
+            }
             VoteResult {
-                term: peer.current_term,
+                term,
                 vote_granted: true,
             }
         } else {
+            let term = peer.current_term;
+            // Term may have advanced on become_follower — persist before return.
+            let _ = peer;
+            let _ = self.flush_peer(voter);
             VoteResult {
-                term: peer.current_term,
+                term,
                 vote_granted: false,
             }
         }
@@ -438,6 +582,13 @@ impl PartitionRaft {
             new_term = peer.current_term;
             cand_last_index = peer.last_log_index();
             cand_last_term = peer.last_log_term();
+        }
+        // Persist self-vote hard state before soliciting votes (DEF-035).
+        if self.flush_peer(candidate).is_err() {
+            if let Some(peer) = self.peers.get_mut(&candidate.index()) {
+                peer.role = RaftRole::Follower;
+            }
+            return Err(ElectError::PersistFailed);
         }
 
         let mut votes = 1u32; // self-vote
@@ -489,11 +640,15 @@ impl PartitionRaft {
                 peer.current_term = new_term;
                 peer.become_leader(&voters);
             }
+            // Role is volatile; hard state (term/vote) already durable. Flush
+            // anyway so commit_index baseline is on disk.
+            let _ = self.flush_peer(candidate);
             Ok((candidate, new_term))
         } else {
             if let Some(peer) = self.peers.get_mut(&candidate.index()) {
                 peer.role = RaftRole::Follower;
             }
+            let _ = self.flush_peer(candidate);
             Err(ElectError::NoQuorum {
                 votes,
                 need: self.quorum(),
@@ -558,6 +713,8 @@ impl PartitionRaft {
     }
 
     /// AppendEntries RPC: leader → follower.
+    ///
+    /// Log + hard state are flushed before success is returned (DEF-035).
     pub fn append_entries(
         &mut self,
         follower: NodeId,
@@ -647,8 +804,19 @@ impl PartitionRaft {
             peer.commit_index = leader_commit.min(last);
         }
 
+        let term = peer.current_term;
+        let _ = peer;
+        // Persist-before-ack: fail closed if disk flush fails.
+        if self.flush_peer(follower).is_err() {
+            return AppendResult {
+                term,
+                success: false,
+                conflict_index: None,
+            };
+        }
+
         AppendResult {
-            term: peer.current_term,
+            term,
             success: true,
             conflict_index: None,
         }
@@ -684,6 +852,21 @@ impl PartitionRaft {
             peer.next_index.insert(leader.index(), new_index + 1);
             (term, new_index, entry)
         };
+        // Persist leader log entry before replication acks (DEF-035).
+        if self.flush_peer(leader).is_err() {
+            // Roll back the in-memory append so we do not advertise an
+            // unpersisted entry as matched on the leader.
+            if let Some(peer) = self.peers.get_mut(&leader.index()) {
+                if peer.last_log_index() == new_index {
+                    peer.log.pop();
+                }
+                peer.match_index
+                    .insert(leader.index(), peer.last_log_index());
+                peer.next_index
+                    .insert(leader.index(), peer.last_log_index() + 1);
+            }
+            return Err(ProposeError::PersistFailed);
+        }
 
         // Replicate to online followers.
         let mut acked = vec![leader];
@@ -857,10 +1040,14 @@ impl PartitionRaft {
             if let Some(p) = self.peers.get_mut(&leader.index()) {
                 p.commit_index = new_commit;
             }
+            let _ = self.flush_peer(leader);
         }
     }
 
     /// Entries that still need applying on `node` (`last_applied < commit_index`).
+    ///
+    /// Skips the snapshot-base placeholder. Advances `last_applied` and flushes
+    /// when stores are attached.
     pub fn take_apply_batch(&mut self, node: NodeId) -> Vec<LogEntry> {
         let Some(peer) = self.peers.get_mut(&node.index()) else {
             return Vec::new();
@@ -869,12 +1056,16 @@ impl PartitionRaft {
         while peer.last_applied < peer.commit_index {
             let next = peer.last_applied + 1;
             if let Some(e) = peer.entry_at(next).cloned() {
-                out.push(e);
                 peer.last_applied = next;
+                if e.command.subject() != "__dingo_snapshot_base__" {
+                    out.push(e);
+                }
             } else {
                 break;
             }
         }
+        let _ = peer;
+        let _ = self.flush_peer(node);
         out
     }
 
@@ -935,6 +1126,8 @@ pub enum ElectError {
     },
     /// Observed a higher term during election.
     HigherTerm(Term),
+    /// Durable hard-state flush failed (DEF-035).
+    PersistFailed,
 }
 
 /// Propose / replicate failure.
@@ -944,6 +1137,8 @@ pub enum ProposeError {
     NotLeader,
     /// Leader stepped down after seeing a higher term.
     SteppedDown(Term),
+    /// Durable log/hard-state flush failed (DEF-035).
+    PersistFailed,
 }
 
 /// Successful propose outcome.

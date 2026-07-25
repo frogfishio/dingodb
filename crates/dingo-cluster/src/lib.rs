@@ -13,6 +13,8 @@
 //! - In-process multi-node [`Cluster`] (development + dependable-local)
 //! - Per-partition Raft-equivalent elections, log matching, and commit evidence
 //!   ([`raft`] module; CLUSTER_SPEC §10)
+//! - Durable Raft hard state / log / membership / snapshots
+//!   ([`raft_persist`]; DEF-035 / `dingo-raft-persist-v1`)
 //! - Convergent-append dual-accept + reconcile ([`convergent`]; CLUSTER_SPEC §9.2)
 //! - Distributed find/scan with coverage honesty (Stage 8e; CLUSTER_SPEC §17)
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
@@ -43,6 +45,7 @@ mod id;
 mod modes;
 mod partition;
 pub mod raft;
+pub mod raft_persist;
 mod rebalance;
 
 pub use ack::ClusterWriteAck;
@@ -63,6 +66,10 @@ pub use partition::{
     default_partition_key, PartitionMap, DEFAULT_VIRTUAL_PARTITIONS, HASH_PROFILE_BLAKE3_MOD,
 };
 pub use raft::{CommitEvidence, LogCommand, LogEntry, PartitionRaft, RaftPeer, RaftRole};
+pub use raft_persist::{
+    snapshot_meta_for, ConsensusEvidenceClass, HardState, MembershipState, RaftPeerStore,
+    Snapshot, SnapshotMeta, RAFT_PERSIST_PROFILE,
+};
 pub use rebalance::{RebalanceJob, RebalancePhase, RebalanceReport};
 
 /// Re-export durability modes used on cluster acks.

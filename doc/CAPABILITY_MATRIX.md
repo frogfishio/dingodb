@@ -49,6 +49,26 @@ with the acceptance evidence expected before a stronger label.
 | `TLS_PROFILE` | `dingo-tls-v1` | TLS 1.3 transport + peer identity (DEF-032) |
 | `AUTHZ_PROFILE` | `dingo-authz-v1` | Principal privileges + audit chain (DEF-033) |
 | `ADMISSION_PROFILE` | `dingo-admission-v1` | Protocol admission: rate, auth lockout, churn, expensive budgets (DEF-034) |
+| `RAFT_PERSIST_PROFILE` | `dingo-raft-persist-v1` | Durable Raft hard state, log, membership, snapshots (DEF-035) |
+
+## Raft persistence (DEF-035)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Hard state | `current_term`, `voted_for`, `commit_index`, `last_applied` in checksummed `hard_state.json` | **in-process cluster** shipped |
+| Log | Append-only length-prefixed + blake3 records in `log.ndjson`; torn tails truncated | **in-process cluster** shipped |
+| Membership | Checksummed `membership.json` (voters + placement epoch) | **in-process cluster** shipped |
+| Snapshots | `snapshot.meta.json` + blake3 blob; atomic install truncates log | **in-process cluster** shipped |
+| Persist-before-ack | Votes and AppendEntries flush before grant/success | **in-process cluster** shipped |
+| Restart | `Cluster::open` restores peers as Followers; re-elect on demand | **in-process cluster** shipped |
+| Evidence classes | `committed` / `prepared` / `conflicting` / `unknown_commit` | **in-process cluster** shipped |
+| Network multi-process Raft | Disk layout ready; RPC still DEF-036 | **not yet** |
+| Jepsen-style partition histories | DEF-041 | **not yet** |
+
+Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
+ordinary `dingo-store` segments (salvage independent of Raft control plane).
+
+Evidence: `stage_def_035_raft_persist`, `dingo_cluster::raft_persist` unit tests.
 
 ## Network bind policy (DEF-002 / DEF-032)
 
