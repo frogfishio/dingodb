@@ -20,13 +20,14 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Ownership | exclusive writer lock (`store-info/writer.lock`, DEF-020); inspect is lock-free |
 | Control docs | atomic durable replace via `atomic_file` (DEF-021); `*.prev` for non-trivial meta |
 | Recovery | rebuildable primary index, salvage after catalog wipe, OVERVIEW §16 suite |
-| Meta | framed store descriptor, optional on-disk primary index cache |
+| Meta | framed store descriptor, optional on-disk primary index cache (DEF-023 frontier v2) |
 | Derived | collection catalog, secondary index files, subject history, checkpoints |
 | Chunks | chunked payloads with partial maps; live-state compaction (sources retained) |
 | Operator | `open_inspect` (read-only doctor), evidence `salvage_to` + `export_live_state` |
 | Tiering | segment tier move/copy with stable identities, hierarchical segment catalogs |
 | Honesty | offline-tier coverage holes; fail-closed logical scans (DEF-012); durable-frontier catalogs (DEF-013); write dedup table (DEF-010); multi-gen format |
 | Crash matrix | DEF-022 hardened: matrix + failpoints (`Abort`, ENOSPC, short-write) + multi-process child; CI subset always, full matrix nightly (`DINGO_CRASH_MATRIX_FULL=1`) |
+| Write path | DEF-023: durable projection + rate-limited frontier checkpoints; no full-store rescan on ack |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -81,8 +82,10 @@ live there.
 | `LifecyclePolicy` | Declarative tier aging rules (`tiers/lifecycle.json`) |
 | `ErasureManifest` | Archive shard naming contract (codec not shipped) |
 | `failpoint` / crash matrix | DEF-022 injection points + embedded `crash_matrix.v1.json` |
+| `IndexFrontier` / `persist_index_cache` | DEF-023 sealed fingerprint + active covered length; no write-path rescan |
 
 Crash-boundary narrative: [`doc/CRASH_CONSISTENCY.md`](../../doc/CRASH_CONSISTENCY.md).
+Write-path derived state: [CAPABILITY_MATRIX.md](../../doc/CAPABILITY_MATRIX.md) (DEF-023).
 
 ## Out of scope (this crate)
 

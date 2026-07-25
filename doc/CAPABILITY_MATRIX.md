@@ -127,6 +127,18 @@ collection catalogs are built from segment-derived durable state only.
 | ENOSPC / permission / short-write | shipped | failpoint I/O actions + instrumented write sites |
 | Buffered power-loss equivalence | not yet | remaining DEF-022 work |
 
+## Write-path derived state (DEF-023)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| In-memory durable projection | shipped | `Store` keeps `durable_index` updated only after buffered/durable append |
+| No full-store rescan on ack | shipped | Write path does not call `index_from_segments`; catalogs/index from durable projection |
+| Frontier index cache (v2) | shipped | `indexes/primary.idx` records sealed fingerprint + active covered length |
+| Open acceleration | shipped | Matching sealed frontier → apply active tail only; else rebuild from segments |
+| Rate-limited checkpoints | shipped | Full cache rewrite every N durable ops / on seal / explicit `persist_index_cache` |
+| Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
+| Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
+
 ## CI check
 
 A lightweight workspace test asserts this file exists and still forbids the

@@ -559,11 +559,13 @@ In-tree:
 
 ### DEF-023 — Remove full-store rescans from the write acknowledgement path
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (frontier cache v2 + durable projection; see
+`stage_def_023_write_path`, `doc/CAPABILITY_MATRIX.md`)
 
 Problem:
 
-Every buffered/durable write calls `persist_index_cache`, which reconstructs
+Every buffered/durable write called `persist_index_cache`, which reconstructed
 the index by scanning all segment files.
 
 Work:
@@ -576,6 +578,16 @@ Work:
 - Record a durable frontier so cache validation is O(number of changed
   segments), not O(total data).
 - Bound active-segment memory and metadata work.
+
+Implementation notes:
+
+- In-memory `durable_index` updated only after buffered/durable append.
+- `indexes/primary.idx` v2 records sealed-segment fingerprint + active covered
+  length; open applies the active tail beyond that frontier (checkpoint+delta).
+- Full cache rewrite is rate-limited (and forced on seal / explicit persist);
+  catalog refresh uses the durable projection without a segment rescan.
+- Wipe of `indexes/` / `catalogs/` / `snapshots/` still rebuilds identical
+  logical state from segments.
 
 Acceptance:
 

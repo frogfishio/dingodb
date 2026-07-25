@@ -21,7 +21,8 @@ use crate::error::StoreError;
 use crate::history::{subject_history_tiered, SubjectHistory};
 use crate::index::PrimaryIndex;
 use crate::index_cache::{
-    primary_cache_path, segment_fingerprint, try_load_primary_index, write_primary_index,
+    primary_cache_path, segment_fingerprint, try_load_primary_index,
+    try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier,
 };
 use crate::layout::{list_dingo_files, StorePaths};
 use crate::secondary::{
@@ -58,6 +59,10 @@ const META_VERSION: &str = "dingo-store-9\n";
 
 /// Soft max size of the active segment before auto-seal (bytes).
 const DEFAULT_SEAL_THRESHOLD: u64 = 4 * 1024 * 1024;
+
+/// How many buffered/durable writes may land before a full index-cache checkpoint
+/// is forced (DEF-023 rate limit). Catalog refresh is cheap and not limited.
+const DERIVED_CHECKPOINT_EVERY_OPS: u64 = 32;
 
 /// Why a live subject could not contribute a complete logical body (DEF-012).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,7 +157,16 @@ pub struct Store {
     paths: StorePaths,
     store_id: [u8; 16],
     limits: SafetyLimits,
+    /// Visibility index (includes memory-mode publishes).
     index: PrimaryIndex,
+    /// Segment-derived durable projection only (DEF-013 / DEF-023).
+    ///
+    /// Updated only after buffered/durable append succeeds. Never includes
+    /// memory-mode visibility. Used for index-cache and on-disk catalog writes
+    /// so the write path never rescans sealed segment bytes.
+    durable_index: PrimaryIndex,
+    /// Buffered/durable ops since the last full index-cache checkpoint (DEF-023).
+    derived_ops_since_checkpoint: u64,
     /// Active in-memory segment + file, if any.
     active: Option<ActiveWriter>,
     /// Counter used to mint segment ids (monotonic diagnostic).
@@ -221,6 +235,8 @@ impl Store {
             store_id,
             limits: SafetyLimits::default(),
             index: PrimaryIndex::new(),
+            durable_index: PrimaryIndex::new(),
+            derived_ops_since_checkpoint: 0,
             active: None,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
@@ -276,6 +292,8 @@ impl Store {
             store_id,
             limits: SafetyLimits::default(),
             index: PrimaryIndex::new(),
+            durable_index: PrimaryIndex::new(),
+            derived_ops_since_checkpoint: 0,
             active: None,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
@@ -322,6 +340,8 @@ impl Store {
             store_id,
             limits: SafetyLimits::default(),
             index: PrimaryIndex::new(),
+            durable_index: PrimaryIndex::new(),
+            derived_ops_since_checkpoint: 0,
             active: None,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
@@ -335,17 +355,10 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
         };
         store.load_tier_state_readonly()?;
-        // Memory-only index: prefer valid cache, else rebuild without writing.
+        // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
+        store.load_or_rebuild_index_readonly()?;
         let seg_paths = all_segment_paths(&store.paths, Some(&store.tier_placement))?;
         let fp = segment_fingerprint(&seg_paths)?;
-        let cache_path = primary_cache_path(&store.paths.indexes_dir());
-        if let Some(index) = try_load_primary_index(&cache_path, store.store_id, fp)? {
-            store.index = index;
-            let sealed = list_dingo_files(&store.paths.segments_dir())?;
-            store.segment_seq = max_segment_seq_from_paths(&seg_paths).max(sealed.len() as u64);
-        } else {
-            store.rebuild_index_from_segments()?;
-        }
         // Catalog: load if valid, else rebuild in memory only (no write).
         let cat_path = crate::catalog::collections_catalog_path(&store.paths.catalogs_dir());
         if let Some(cat) = try_load_collection_catalog(&cat_path, store.store_id, fp)? {
@@ -758,43 +771,185 @@ impl Store {
         &self.paths
     }
 
-    /// Load optional index cache when fingerprint matches; otherwise rebuild.
+    /// Load optional index cache via frontier (DEF-023) or v1 fingerprint; else rebuild.
     fn load_or_rebuild_index(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
-        let fp = segment_fingerprint(&paths)?;
-        let cache_path = primary_cache_path(&self.paths.indexes_dir());
-        if let Some(index) = try_load_primary_index(&cache_path, self.store_id, fp)? {
-            self.index = index;
-            let sealed = list_dingo_files(&self.paths.segments_dir())?;
-            self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
+        if self.try_load_index_from_cache()? {
             return Ok(());
         }
         self.rebuild_index()
     }
 
-    fn rebuild_index_from_segments(&mut self) -> Result<(), StoreError> {
-        self.index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
+    /// Read-only open path: load cache or rebuild without writing derived files.
+    fn load_or_rebuild_index_readonly(&mut self) -> Result<(), StoreError> {
+        if self.try_load_index_from_cache()? {
+            return Ok(());
+        }
+        self.rebuild_index_from_segments()
+    }
+
+    /// Attempt frontier v2 or legacy v1 cache load. Returns true when applied.
+    fn try_load_index_from_cache(&mut self) -> Result<bool, StoreError> {
+        let sealed_paths = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let sealed_fp = segment_fingerprint(&sealed_paths)?;
+        let all_paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let cache_path = primary_cache_path(&self.paths.indexes_dir());
+
+        // DEF-023: v2 checkpoint + active-tail delta (O(changed bytes), not full rescan).
+        if let Some((mut index, frontier)) =
+            try_load_primary_index_frontier(&cache_path, self.store_id)?
+        {
+            if frontier.sealed_fingerprint == sealed_fp {
+                let active_path = self.paths.active_segment();
+                let active_ok = match (
+                    active_path.is_file(),
+                    frontier.active_segment_id != [0u8; 16],
+                ) {
+                    (false, false) => true,
+                    (false, true) => {
+                        // Cache expected an active segment that is gone — treat as miss
+                        // only when covered_len was non-zero (empty active is fine).
+                        frontier.active_covered_len == 0
+                    }
+                    (true, _) => {
+                        let meta_len = fs::metadata(&active_path).map(|m| m.len()).unwrap_or(0);
+                        if meta_len < frontier.active_covered_len {
+                            false
+                        } else {
+                            apply_active_tail(
+                                &mut index,
+                                &active_path,
+                                frontier.active_covered_len,
+                                self.limits,
+                            )?;
+                            true
+                        }
+                    }
+                };
+                if active_ok {
+                    self.install_loaded_index(index, &all_paths)?;
+                    return Ok(true);
+                }
+            }
+        }
+
+        // Legacy v1: exact full fingerprint match (sealed + active lengths).
+        let fp = segment_fingerprint(&all_paths)?;
+        if let Some(index) = try_load_primary_index(&cache_path, self.store_id, fp)? {
+            self.install_loaded_index(index, &all_paths)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn install_loaded_index(
+        &mut self,
+        index: PrimaryIndex,
+        all_paths: &[PathBuf],
+    ) -> Result<(), StoreError> {
+        self.index = index.clone();
+        self.durable_index = index;
         let sealed = list_dingo_files(&self.paths.segments_dir())?;
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
-        self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
+        self.segment_seq = max_segment_seq_from_paths(all_paths).max(sealed.len() as u64);
+        self.derived_ops_since_checkpoint = 0;
         Ok(())
     }
 
-    /// Write the optional primary index cache under `indexes/` (Stage 3c).
-    ///
-    /// The cache is built from a segment scan (authoritative bytes only), so
-    /// in-process memory-mode publishes are never persisted. Safe to delete:
-    /// open/rebuild rescans segments.
-    pub fn persist_index_cache(&self) -> Result<(), StoreError> {
+    fn rebuild_index_from_segments(&mut self) -> Result<(), StoreError> {
+        self.index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
+        self.durable_index = self.index.clone();
+        let sealed = list_dingo_files(&self.paths.segments_dir())?;
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
-        let fp = segment_fingerprint(&paths)?;
-        let disk_index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
-        write_primary_index(
+        self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
+        self.derived_ops_since_checkpoint = 0;
+        Ok(())
+    }
+
+    /// Write the optional primary index cache under `indexes/` (Stage 3c / DEF-023).
+    ///
+    /// Checkpoint is built from the in-memory **durable** projection (no full
+    /// segment rescan). Memory-mode publishes are never persisted. Safe to
+    /// delete: open/rebuild recovers from segments (full scan) or from a prior
+    /// frontier checkpoint plus the active tail.
+    pub fn persist_index_cache(&mut self) -> Result<(), StoreError> {
+        let frontier = self.current_index_frontier()?;
+        write_primary_index_frontier(
             &primary_cache_path(&self.paths.indexes_dir()),
             self.store_id,
-            fp,
-            &disk_index,
-        )
+            &frontier,
+            &self.durable_index,
+        )?;
+        self.derived_ops_since_checkpoint = 0;
+        Ok(())
+    }
+
+    /// Sealed-set fingerprint + active covered length for the durable index.
+    fn current_index_frontier(&self) -> Result<IndexFrontier, StoreError> {
+        let sealed = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let sealed_fingerprint = segment_fingerprint(&sealed)?;
+        let (active_segment_id, active_covered_len) = match &self.active {
+            Some(w) => (w.segment_id, w.durable_len),
+            None => {
+                // No writer handle (inspect) or inactive: use on-disk active metadata.
+                let path = self.paths.active_segment();
+                if path.is_file() {
+                    let len = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                    // Segment id unknown without scanning; zeros means "any/unknown".
+                    // Callers that only persist with an active writer always set id.
+                    ([0u8; 16], len)
+                } else {
+                    ([0u8; 16], 0)
+                }
+            }
+        };
+        Ok(IndexFrontier {
+            sealed_fingerprint,
+            active_segment_id,
+            active_covered_len,
+        })
+    }
+
+    /// After a durable append: update derived state without scanning sealed data.
+    ///
+    /// Catalog refresh is always applied (small). Full index-cache checkpoints
+    /// are rate-limited so amortized write work stays independent of retained
+    /// segment volume (DEF-023).
+    fn note_durable_derived(&mut self) -> Result<(), StoreError> {
+        let _ = self.refresh_collection_catalog();
+        self.derived_ops_since_checkpoint = self.derived_ops_since_checkpoint.saturating_add(1);
+        if self.derived_ops_since_checkpoint >= DERIVED_CHECKPOINT_EVERY_OPS {
+            let _ = self.persist_index_cache();
+        }
+        Ok(())
+    }
+
+    fn apply_durable_event(
+        &mut self,
+        subject: Vec<u8>,
+        kind: EventKind,
+        body: Vec<u8>,
+        item_id: [u8; 16],
+        event_id: [u8; 16],
+        segment_id: [u8; 16],
+        writer_sequence: u64,
+    ) {
+        self.index.apply_event(
+            subject.clone(),
+            kind,
+            body.clone(),
+            item_id,
+            event_id,
+            segment_id,
+            writer_sequence,
+        );
+        self.durable_index.apply_event(
+            subject,
+            kind,
+            body,
+            item_id,
+            event_id,
+            segment_id,
+            writer_sequence,
+        );
     }
 
     /// Path of the optional primary index cache file.
@@ -1259,12 +1414,10 @@ impl Store {
     fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
-        // DEF-013: persist only a durable-frontier catalog (segment-derived).
+        // DEF-013 / DEF-023: persist only the durable projection (no segment rescan).
         // Memory-mode publishes live in `self.index` but must not contaminate
         // on-disk catalogs, index caches, or checkpoints.
-        let disk_index =
-            index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
-        let durable_cat = CollectionCatalog::from_index(&disk_index);
+        let durable_cat = CollectionCatalog::from_index(&self.durable_index);
         let cat_path = collections_catalog_path(&self.paths.catalogs_dir());
         write_collection_catalog(&cat_path, self.store_id, fp, &durable_cat)?;
         // In-process list_collections reflects visibility (includes memory).
@@ -1393,7 +1546,8 @@ impl Store {
             offset
         };
 
-        self.index.apply_event(
+        // Publish visibility only after authoritative append succeeded (DEF-023).
+        self.apply_durable_event(
             subject_bytes.to_vec(),
             EventKind::Put,
             manifest_body,
@@ -1404,8 +1558,7 @@ impl Store {
         );
 
         if mode != DurabilityMode::Memory {
-            let _ = self.persist_index_cache();
-            let _ = self.refresh_collection_catalog();
+            let _ = self.note_durable_derived();
         }
 
         Ok(WriteReceipt {
@@ -1554,8 +1707,9 @@ impl Store {
 
         Self::write_segment_tail(writer, mode)?;
 
-        // Publish visibility in the index only after encode succeeded.
-        self.index.apply_event(
+        // Publish visibility only after authoritative append succeeded (DEF-023).
+        // Durable projection updated incrementally — no full-store segment rescan.
+        self.apply_durable_event(
             subject_bytes.to_vec(),
             kind,
             body.to_vec(),
@@ -1565,8 +1719,7 @@ impl Store {
             0, // writer_sequence already inside frame; not required for index
         );
 
-        let _ = self.persist_index_cache();
-        let _ = self.refresh_collection_catalog();
+        let _ = self.note_durable_derived();
 
         Ok(WriteReceipt {
             store_id: self.store_id,
@@ -1850,22 +2003,69 @@ fn verify_store_descriptor_if_present(
     Ok(())
 }
 
+fn sealed_segment_paths(
+    paths: &StorePaths,
+    placement: Option<&TierPlacement>,
+) -> Result<Vec<PathBuf>, StoreError> {
+    if let Some(p) = placement {
+        crate::tier::available_sealed_paths(paths, p)
+    } else {
+        // Hot sealed only (legacy callers without placement).
+        Ok(list_dingo_files(&paths.segments_dir())?)
+    }
+}
+
 fn all_segment_paths(
     paths: &StorePaths,
     placement: Option<&TierPlacement>,
 ) -> Result<Vec<PathBuf>, StoreError> {
-    let mut out = if let Some(p) = placement {
-        crate::tier::available_sealed_paths(paths, p)?
-    } else {
-        // Hot sealed only (legacy callers without placement).
-        list_dingo_files(&paths.segments_dir())?
-    };
+    let mut out = sealed_segment_paths(paths, placement)?;
     let active = paths.active_segment();
     if active.is_file() {
         out.push(active);
     }
     // Sealed first (sorted), then active last.
     Ok(out)
+}
+
+/// Apply item events from the active segment starting at byte offset `from_offset`.
+///
+/// Used with a frontier checkpoint so open cost is O(active tail), not O(all data).
+fn apply_active_tail(
+    index: &mut PrimaryIndex,
+    active_path: &Path,
+    from_offset: u64,
+    limits: SafetyLimits,
+) -> Result<(), StoreError> {
+    let bytes = fs::read(active_path)?;
+    if from_offset as usize > bytes.len() {
+        return Err(StoreError::CorruptMeta("active frontier past file end"));
+    }
+    if from_offset as usize == bytes.len() {
+        return Ok(());
+    }
+    let report = scan_forward(&bytes, limits);
+    for (offset, frame) in report.verified_frames() {
+        if offset < from_offset {
+            continue;
+        }
+        if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
+            continue;
+        }
+        let Some(env) = decode_item_envelope(&frame.envelope) else {
+            continue;
+        };
+        index.apply_event(
+            env.subject,
+            env.event_kind,
+            frame.body.clone(),
+            env.item_id,
+            frame.header.event_id,
+            env.segment_id,
+            frame.header.writer_sequence,
+        );
+    }
+    Ok(())
 }
 
 /// Relative scan-report name for a segment path under the store root.

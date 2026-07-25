@@ -469,7 +469,7 @@ fn index_cache_accelerates_open_and_is_optional() {
     // Stale cache (wrong fingerprint after append) → rebuild.
     {
         {
-            let store = Store::open(root).unwrap();
+            let mut store = Store::open(root).unwrap();
             store.persist_index_cache().unwrap();
         }
         // Force cache identity mismatch by editing the store_id field.

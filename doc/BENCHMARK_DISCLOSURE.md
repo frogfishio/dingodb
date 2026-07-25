@@ -39,6 +39,7 @@ durability conditions.
 | Suite | Path class |
 |-------|------------|
 | `dingo-store` `stage6_bench_skeleton` | hot-path skeleton |
+| `dingo-store` `stage_def_023_write_path` | hot-path write amplification / fsync-ack disclosure (DEF-023) |
 | `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
 
 ## Marketing language
