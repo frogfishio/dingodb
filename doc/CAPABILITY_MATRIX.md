@@ -70,6 +70,15 @@ concurrent registrations cannot drop unrelated nodes. Parse failures surface
 `StoreError::CorruptControl` (or cluster `CorruptMeta`) with a recovery action
 rather than silently inventing state.
 
+## Release content (DEF-003)
+
+| Gate | What it checks | Evidence |
+|------|----------------|----------|
+| Clean work tree | No uncommitted slice fragments in CI | `git status --short` empty in `ci.yml` |
+| Package lists | Every member `cargo package --list` is complete | `scripts/release_content.sh` |
+| Package build | Workspace builds from package file lists only | same script, temp staging tree |
+| Artifact policy | Crates vs specs/demos vs non-artifacts | [RELEASE_ARTIFACTS.md](RELEASE_ARTIFACTS.md) |
+
 ## Receipt honesty (DEF-014)
 
 Remote write/delete receipts require server-proved `committed`, `acknowledgement`,

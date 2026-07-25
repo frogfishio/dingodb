@@ -21,12 +21,13 @@ repository = "https://github.com/frogfishio/dingodb"
 [workspace.dependencies]
 # Directory is crates/sda-core; published package name remains sda-lib for crates.io.
 # Dependents that use the workspace key import the crate as `sda_core`.
-sda-core = { package = "sda-lib", path = "crates/sda-core" }
-dingo-format = { path = "crates/dingo-format" }
-dingo-store = { path = "crates/dingo-store" }
-dingo-sdk = { path = "crates/dingo-sdk" }
-dingo-examine = { path = "crates/dingo-examine" }
-dingo-cluster = { path = "crates/dingo-cluster" }
+# `version` is required so `cargo package` can rewrite path deps for publish.
+sda-core = { package = "sda-lib", path = "crates/sda-core", version = "0.1.0" }
+dingo-format = { path = "crates/dingo-format", version = "0.1.0" }
+dingo-store = { path = "crates/dingo-store", version = "0.1.0" }
+dingo-sdk = { path = "crates/dingo-sdk", version = "0.1.0" }
+dingo-examine = { path = "crates/dingo-examine", version = "0.1.0" }
+dingo-cluster = { path = "crates/dingo-cluster", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"

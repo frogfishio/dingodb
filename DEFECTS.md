@@ -149,7 +149,11 @@ Acceptance:
 ### DEF-003 — Commit and release complete feature slices
 
 Priority: P1  
-Dependencies: none
+Dependencies: none  
+Status: **remediated in-tree** (2026-07-25) — clean-tree CI gate;
+`scripts/release_content.sh` (`cargo package --list` + rebuild from package
+file lists); `doc/RELEASE_ARTIFACTS.md`; session dirs ignored; path deps
+versioned for packaging
 
 Work:
 
@@ -163,6 +167,16 @@ Acceptance:
 - `git status --short` is empty in release CI.
 - Every workspace crate packages and builds from its packaged tarball.
 - Published documentation never references an omitted file.
+
+Evidence:
+
+- CI: `.github/workflows/ci.yml` runs clean-tree check +
+  `./scripts/release_content.sh`.
+- Policy: [doc/RELEASE_ARTIFACTS.md](doc/RELEASE_ARTIFACTS.md) classifies crate
+  packages vs monorepo specs/demos vs non-artifacts (`.gremlin/`, proposals).
+- Packaging: workspace path deps carry `version = "0.1.0"` so `cargo package`
+  can rewrite them; the gate rebuilds from package file lists in a temp
+  workspace (path deps stay local until crates.io publish).
 
 ---
 

@@ -27,8 +27,14 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
+      - name: Working tree clean
+        run: test -z "$(git status --short)"
+
       - name: Build
         run: cargo build --workspace --all-targets
 
       - name: Test
         run: cargo test --workspace
+
+      - name: Release content (DEF-003)
+        run: ./scripts/release_content.sh

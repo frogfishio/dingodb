@@ -76,7 +76,20 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings   # when clippy is installed
 ```
 
-CI runs format check and tests on every PR.
+CI runs format check, tests, and the DEF-003 release-content gate on every PR.
+
+### Release content (DEF-003)
+
+Before a release slice lands, the work tree must be clean and every workspace
+crate must package completely:
+
+```sh
+./scripts/release_content.sh
+```
+
+What counts as a release artifact (crates, specs, demos) is defined in
+[doc/RELEASE_ARTIFACTS.md](doc/RELEASE_ARTIFACTS.md). Local dry-runs on a dirty
+tree: `DINGO_RELEASE_ALLOW_DIRTY=1 ./scripts/release_content.sh`.
 
 ### Nightly packaging
 
@@ -88,7 +101,7 @@ Destructive corpora and the performance skeleton also run on a schedule:
 
 GitHub Actions: `.github/workflows/nightly.yml` (daily + `workflow_dispatch`).
 
-Human demos: [scripts/demos/](scripts/demos/).
+Human demos: [scripts/demos/](scripts/demos/) (workspace release artifacts).
 
 ## Current product surface (apportionment)
 
