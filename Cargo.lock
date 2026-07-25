@@ -227,6 +227,7 @@ version = "0.1.0"
 dependencies = [
  "dingo-cluster",
  "dingo-store",
+ "sda-lib",
  "serde",
  "serde_json",
  "tempfile",

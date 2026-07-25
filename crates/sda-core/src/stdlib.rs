@@ -18,6 +18,10 @@ pub fn call_stdlib(name: &str, args: Vec<Value>) -> Option<Result<Value, EvalErr
         "mapRes" => Some(stdlib_map_res(args)),
         "bindRes" => Some(stdlib_bind_res(args)),
         "orElseRes" => Some(stdlib_or_else_res(args)),
+        // Filter/query host helpers (DEF-028). Pure; additive to standalone surface.
+        "getPath" => Some(stdlib_get_path(args)),
+        "startsWith" => Some(stdlib_starts_with(args)),
+        "strContains" => Some(stdlib_str_contains(args)),
         _ => None,
     }
 }
@@ -275,6 +279,64 @@ fn stdlib_or_else_res(args: Vec<Value>) -> Result<Value, EvalError> {
     match res {
         Value::Ok_(inner) => Ok(Value::Ok_(inner)),
         Value::Fail_(_, _) => Ok(default),
+        _ => Ok(wrong_shape()),
+    }
+}
+
+/// Optional dotted-path walk over nested `Map` values (JSON objects).
+///
+/// - Missing key or non-`Map` intermediate → `None` (absence; never `Fail`).
+/// - Present value, including `Null`, → `Some(value)`.
+/// - Path must be `Seq[Str]` (empty path yields `Some(root)`).
+///
+/// Aligns native filter path resolution (DX_SPEC §7.1 / DEF-028) with SDA
+/// absence-vs-`Null` rules: stored `Null` is `Some(Null)`, not `None`.
+fn stdlib_get_path(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("getPath", &args, 2)?;
+    let mut iter = args.into_iter();
+    let mut cur = iter.next().unwrap();
+    let path = iter.next().unwrap();
+    let segments = match path {
+        Value::Seq(items) => items,
+        _ => return Ok(wrong_shape()),
+    };
+    for seg in segments {
+        let key = match seg {
+            Value::Str(s) => s,
+            _ => return Ok(wrong_shape()),
+        };
+        match cur {
+            Value::Map(entries) => {
+                match entries.into_iter().find(|(k, _)| k == &key) {
+                    Some((_, v)) => cur = v,
+                    None => return Ok(Value::None_),
+                }
+            }
+            // Intermediate non-object: treat as absence (native filter Missing).
+            _ => return Ok(Value::None_),
+        }
+    }
+    Ok(Value::Some_(Box::new(cur)))
+}
+
+fn stdlib_starts_with(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("startsWith", &args, 2)?;
+    let mut iter = args.into_iter();
+    let hay = iter.next().unwrap();
+    let prefix = iter.next().unwrap();
+    match (hay, prefix) {
+        (Value::Str(h), Value::Str(p)) => Ok(Value::Bool(h.starts_with(&p))),
+        _ => Ok(wrong_shape()),
+    }
+}
+
+fn stdlib_str_contains(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("strContains", &args, 2)?;
+    let mut iter = args.into_iter();
+    let hay = iter.next().unwrap();
+    let needle = iter.next().unwrap();
+    match (hay, needle) {
+        (Value::Str(h), Value::Str(n)) => Ok(Value::Bool(h.contains(&n))),
         _ => Ok(wrong_shape()),
     }
 }

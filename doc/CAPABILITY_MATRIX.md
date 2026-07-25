@@ -41,6 +41,7 @@ with the acceptance evidence expected before a stronger label.
 | `CLUSTER_PROFILE_VERSION` | `v1` | In-process cluster profile |
 | `WIRE_PROFILE_LABEL` | `1.0-draft` | On-disk/network frame draft |
 | `CONFORMANCE_CORPUS_TAG` | `sda-standalone-v1.0` | SDA §14 corpus |
+| `QUERY_PLAN_PROFILE` | `dingo-query-plan-v1` | Serializable filter/query plans (DEF-028) |
 
 ## Network bind policy (DEF-002)
 
@@ -191,6 +192,19 @@ collection catalogs are built from segment-derived durable state only.
 | Stale marking | shipped | put/delete surface write failures (no silent drop) |
 | Unique indexes | not yet | needs enforceable partition scope (follow-on) |
 | Tests | shipped | `stage_def_027_index_lifecycle` + secondary unit tests |
+
+## Filter / SDA alignment (DEF-028)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Profile tag | shipped | `dingo_sdk::QUERY_PLAN_PROFILE = "dingo-query-plan-v1"` |
+| Filter → SDA | shipped | `Filter::to_sda` / `matches_sda` over portable vocabulary |
+| Path helpers | shipped | SDA `getPath` / `startsWith` / `strContains` (pure stdlib) |
+| Absence vs Null | shipped | missing/`None` ≠ stored `null`/`Some(null)` |
+| Query plans | shipped | `QueryPlan` JSON round-trip; unknown profile rejected |
+| Dual corpus | shipped | native ≡ SDA ≡ embedded find / force-scan |
+| Remote plan RPC | not yet | wire still carries Mongo-style filter objects |
+| Tests | shipped | `stage_def_028_filter_sda` + filter unit tests |
 
 ## CI check
 

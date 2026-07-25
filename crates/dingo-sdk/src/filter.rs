@@ -2,11 +2,22 @@
 //!
 //! Common field predicates without requiring callers to write SDA. Filters are
 //! evaluated by scanning live collection entries (correct without secondary
-//! indexes; DX_SPEC §8.1). Compilation of filters to SDA and raw examination
-//! over recovery units live in the `dingo-examine` crate (Stage 5).
+//! indexes; DX_SPEC §8.1).
+//!
+//! ## SDA alignment (DEF-028 / DX_SPEC §7.1)
+//!
+//! Portable filters compile to boolean SDA programs over document `input`
+//! ([`Filter::to_sda`]) and evaluate equivalently via [`Filter::matches`] and
+//! [`Filter::matches_sda`]. Path absence uses `getPath` → `None`; stored JSON
+//! `null` is `Some(null)`. Comparison and containment failures do not match.
+//!
+//! Serializable plans use profile tag [`QUERY_PLAN_PROFILE`].
 
 use crate::error::Error;
 use serde_json::Value as JsonValue;
+
+/// Version tag for serialized SDK query plans (DEF-028).
+pub const QUERY_PLAN_PROFILE: &str = "dingo-query-plan-v1";
 
 /// Sort direction for ordered queries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -19,7 +30,7 @@ pub enum SortOrder {
 }
 
 /// Explicit resource budget for scans (DX_SPEC §8.1).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct QueryBudget {
     /// Maximum live documents the engine may examine (index probe + scan).
     ///
@@ -37,7 +48,7 @@ impl QueryBudget {
 }
 
 /// Options for [`crate::Collection::find_with`].
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct QueryOptions {
     /// Maximum number of matching rows to return. `None` means unbounded
     /// (caller is responsible for result size).
@@ -194,7 +205,7 @@ impl Filter {
         parse_filter(value)
     }
 
-    /// Whether `doc` satisfies this filter.
+    /// Whether `doc` satisfies this filter (native evaluator).
     pub fn matches(&self, doc: &JsonValue) -> bool {
         match self {
             Self::Always => true,
@@ -210,6 +221,36 @@ impl Filter {
             Self::Or(parts) => parts.iter().any(|p| p.matches(doc)),
             Self::Not(inner) => !inner.matches(doc),
         }
+    }
+
+    /// Compile this filter to a boolean SDA program over binding `input`.
+    ///
+    /// The program is pure standalone SDA plus filter host helpers `getPath`,
+    /// `startsWith`, and `strContains` (DEF-028). Evaluation via
+    /// [`Self::matches_sda`] MUST agree with [`Self::matches`] on the portable
+    /// vocabulary.
+    pub fn to_sda(&self) -> String {
+        compile_filter_sda(self)
+    }
+
+    /// Evaluate this filter by compiling to SDA and running `sda_core`.
+    ///
+    /// Non-boolean results (including SDA `Fail`) are treated as non-matches so
+    /// comparison/type failures align with the native evaluator.
+    pub fn matches_sda(&self, doc: &JsonValue) -> Result<bool, Error> {
+        let program = self.to_sda();
+        match sda_core::run(&program, doc.clone()) {
+            Ok(JsonValue::Bool(b)) => Ok(b),
+            Ok(_) => Ok(false),
+            Err(e) => Err(Error::QueryInvalid(format!(
+                "filter SDA evaluation failed: {e}"
+            ))),
+        }
+    }
+
+    /// Build a versioned [`QueryPlan`] with default options.
+    pub fn into_plan(self) -> QueryPlan {
+        QueryPlan::new(self, QueryOptions::default())
     }
 
     /// Encode this filter as a DX/Mongo-style JSON object (round-trips via [`Self::from_json`]).
@@ -386,6 +427,175 @@ impl FieldBuilder {
     }
 }
 
+/// Versioned, serializable query plan (DX_SPEC §7.2 / DEF-028).
+///
+/// Embeds the portable filter object plus materialization options. Suitable for
+/// embedded, remote, and cluster execution once the wire path carries the plan
+/// profile tag [`QUERY_PLAN_PROFILE`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct QueryPlan {
+    /// Profile / schema version (`dingo-query-plan-v1`).
+    pub profile: String,
+    /// Filter expression.
+    pub filter: Filter,
+    /// Result options (limit, order, budget, …).
+    pub options: QueryOptions,
+}
+
+impl QueryPlan {
+    /// Construct a plan under the current profile tag.
+    pub fn new(filter: Filter, options: QueryOptions) -> Self {
+        Self {
+            profile: QUERY_PLAN_PROFILE.to_string(),
+            filter,
+            options,
+        }
+    }
+
+    /// Encode as JSON (round-trips via [`Self::from_json`]).
+    pub fn to_json(&self) -> JsonValue {
+        let mut map = serde_json::Map::new();
+        map.insert(
+            "profile".into(),
+            JsonValue::String(self.profile.clone()),
+        );
+        map.insert("filter".into(), self.filter.to_json());
+        map.insert("options".into(), options_to_json(&self.options));
+        JsonValue::Object(map)
+    }
+
+    /// Parse a plan object; rejects unknown or missing profile tags.
+    pub fn from_json(value: &JsonValue) -> Result<Self, Error> {
+        let obj = value.as_object().ok_or_else(|| {
+            Error::QueryInvalid("query plan must be a JSON object".into())
+        })?;
+        let profile = obj
+            .get("profile")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::QueryInvalid("query plan missing profile".into()))?;
+        if profile != QUERY_PLAN_PROFILE {
+            return Err(Error::QueryInvalid(format!(
+                "unsupported query plan profile {profile:?}; expected {QUERY_PLAN_PROFILE:?}"
+            )));
+        }
+        let filter = match obj.get("filter") {
+            Some(f) => Filter::from_json(f)?,
+            None => Filter::Always,
+        };
+        let options = match obj.get("options") {
+            Some(o) => options_from_json(o)?,
+            None => QueryOptions::default(),
+        };
+        Ok(Self {
+            profile: profile.to_string(),
+            filter,
+            options,
+        })
+    }
+
+    /// SDA program for the embedded filter.
+    pub fn to_sda(&self) -> String {
+        self.filter.to_sda()
+    }
+}
+
+fn options_to_json(opts: &QueryOptions) -> JsonValue {
+    let mut map = serde_json::Map::new();
+    if let Some(n) = opts.limit {
+        map.insert("limit".into(), JsonValue::from(n as u64));
+    }
+    if let Some((field, order)) = &opts.order_by {
+        map.insert(
+            "order_by".into(),
+            JsonValue::Object(serde_json::Map::from_iter([
+                ("field".into(), JsonValue::String(field.clone())),
+                (
+                    "order".into(),
+                    JsonValue::String(
+                        match order {
+                            SortOrder::Asc => "asc",
+                            SortOrder::Desc => "desc",
+                        }
+                        .into(),
+                    ),
+                ),
+            ])),
+        );
+    }
+    if let Some(budget) = &opts.budget {
+        if let Some(n) = budget.max_docs_scanned {
+            map.insert(
+                "budget".into(),
+                JsonValue::Object(serde_json::Map::from_iter([(
+                    "max_docs_scanned".into(),
+                    JsonValue::from(n as u64),
+                )])),
+            );
+        }
+    }
+    if opts.force_scan {
+        map.insert("force_scan".into(), JsonValue::Bool(true));
+    }
+    if opts.allow_partial_coverage {
+        map.insert("allow_partial_coverage".into(), JsonValue::Bool(true));
+    }
+    JsonValue::Object(map)
+}
+
+fn options_from_json(value: &JsonValue) -> Result<QueryOptions, Error> {
+    let obj = value.as_object().ok_or_else(|| {
+        Error::QueryInvalid("query plan options must be a JSON object".into())
+    })?;
+    let mut opts = QueryOptions::default();
+    if let Some(n) = obj.get("limit") {
+        let n = n
+            .as_u64()
+            .ok_or_else(|| Error::QueryInvalid("options.limit must be a number".into()))?
+            as usize;
+        opts.limit = Some(n);
+    }
+    if let Some(ob) = obj.get("order_by") {
+        let ob = ob.as_object().ok_or_else(|| {
+            Error::QueryInvalid("options.order_by must be an object".into())
+        })?;
+        let field = ob
+            .get("field")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::QueryInvalid("options.order_by.field required".into()))?
+            .to_string();
+        let order = match ob.get("order").and_then(|v| v.as_str()).unwrap_or("asc") {
+            "asc" => SortOrder::Asc,
+            "desc" => SortOrder::Desc,
+            other => {
+                return Err(Error::QueryInvalid(format!(
+                    "options.order_by.order unknown: {other:?}"
+                )));
+            }
+        };
+        opts.order_by = Some((field, order));
+    }
+    if let Some(b) = obj.get("budget") {
+        let b = b
+            .as_object()
+            .ok_or_else(|| Error::QueryInvalid("options.budget must be an object".into()))?;
+        if let Some(n) = b.get("max_docs_scanned") {
+            let n = n.as_u64().ok_or_else(|| {
+                Error::QueryInvalid("budget.max_docs_scanned must be a number".into())
+            })? as usize;
+            opts.budget = Some(QueryBudget {
+                max_docs_scanned: Some(n),
+            });
+        }
+    }
+    if obj.get("force_scan") == Some(&JsonValue::Bool(true)) {
+        opts.force_scan = true;
+    }
+    if obj.get("allow_partial_coverage") == Some(&JsonValue::Bool(true)) {
+        opts.allow_partial_coverage = true;
+    }
+    Ok(opts)
+}
+
 /// Fluent query builder (DX_SPEC §7.2).
 ///
 /// ```ignore
@@ -483,6 +693,155 @@ impl<'c, 'a> QueryBuilder<'c, 'a> {
     pub fn collect(self) -> Result<Vec<(String, JsonValue)>, Error> {
         let filter = Filter::and(self.filters);
         self.collection.find_with(&filter, self.options)
+    }
+
+    /// Build a serializable [`QueryPlan`] without executing.
+    pub fn plan(self) -> QueryPlan {
+        QueryPlan::new(Filter::and(self.filters), self.options)
+    }
+}
+
+// --- SDA compilation (DEF-028) ------------------------------------------------
+
+fn compile_filter_sda(filter: &Filter) -> String {
+    compile_filter_expr(filter)
+}
+
+fn compile_filter_expr(filter: &Filter) -> String {
+    match filter {
+        Filter::Always => "true".to_string(),
+        Filter::Field { path, pred } => compile_field_pred(path, pred),
+        Filter::And(parts) => {
+            if parts.is_empty() {
+                return "true".to_string();
+            }
+            let inner = parts
+                .iter()
+                .map(|p| format!("({})", compile_filter_expr(p)))
+                .collect::<Vec<_>>()
+                .join(" and ");
+            inner
+        }
+        Filter::Or(parts) => {
+            if parts.is_empty() {
+                return "false".to_string();
+            }
+            let inner = parts
+                .iter()
+                .map(|p| format!("({})", compile_filter_expr(p)))
+                .collect::<Vec<_>>()
+                .join(" or ");
+            inner
+        }
+        Filter::Not(inner) => format!("not ({})", compile_filter_expr(inner)),
+    }
+}
+
+fn path_expr(path: &str) -> String {
+    let segs: Vec<String> = if path.is_empty() {
+        Vec::new()
+    } else {
+        path.split('.')
+            .map(|s| sda_string_literal(s))
+            .collect()
+    };
+    format!("getPath(input, Seq[{}])", segs.join(", "))
+}
+
+fn compile_field_pred(path: &str, pred: &Pred) -> String {
+    let gp = path_expr(path);
+    match pred {
+        Pred::Eq(v) => format!("{gp} = Some({})", json_to_sda_literal(v)),
+        Pred::Ne(v) => format!("{gp} != Some({})", json_to_sda_literal(v)),
+        Pred::Lt(v) => format!(
+            "mapOpt({gp}, x => x < {}) = Some(true)",
+            json_to_sda_literal(v)
+        ),
+        Pred::Lte(v) => format!(
+            "mapOpt({gp}, x => x <= {}) = Some(true)",
+            json_to_sda_literal(v)
+        ),
+        Pred::Gt(v) => format!(
+            "mapOpt({gp}, x => x > {}) = Some(true)",
+            json_to_sda_literal(v)
+        ),
+        Pred::Gte(v) => format!(
+            "mapOpt({gp}, x => x >= {}) = Some(true)",
+            json_to_sda_literal(v)
+        ),
+        Pred::In(list) => {
+            let items = list
+                .iter()
+                .map(json_to_sda_literal)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("mapOpt({gp}, x => x in Seq[{items}]) = Some(true)")
+        }
+        Pred::Exists(true) => format!("{gp} != None"),
+        Pred::Exists(false) => format!("{gp} = None"),
+        Pred::Prefix(p) => format!(
+            "mapOpt({gp}, s => startsWith(s, {})) = Some(true)",
+            sda_string_literal(p)
+        ),
+        Pred::Contains(needle) => {
+            // Native: string⊃substring OR array∋element.
+            // SDA and/or evaluate both sides (no short-circuit), so each branch
+            // must be a separate mapOpt that cannot Fail on the other type.
+            let lit = json_to_sda_literal(needle);
+            if needle.is_string() {
+                format!(
+                    "((mapOpt({gp}, v => typeOf(v) = \"str\") = Some(true) and mapOpt({gp}, v => strContains(v, {lit})) = Some(true)) or (mapOpt({gp}, v => typeOf(v) = \"seq\") = Some(true) and mapOpt({gp}, v => {lit} in v) = Some(true)))"
+                )
+            } else {
+                format!("mapOpt({gp}, v => {lit} in v) = Some(true)")
+            }
+        }
+    }
+}
+
+fn sda_string_literal(s: &str) -> String {
+    // SDA strings use JSON-style escapes.
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c.is_control() => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn json_to_sda_literal(v: &JsonValue) -> String {
+    match v {
+        JsonValue::Null => "null".to_string(),
+        JsonValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
+        JsonValue::Number(n) => n.to_string(),
+        JsonValue::String(s) => sda_string_literal(s),
+        JsonValue::Array(items) => {
+            let inner = items
+                .iter()
+                .map(json_to_sda_literal)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Seq[{inner}]")
+        }
+        JsonValue::Object(map) => {
+            let inner = map
+                .iter()
+                .map(|(k, val)| format!("{} -> {}", sda_string_literal(k), json_to_sda_literal(val)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Map{{{inner}}}")
+        }
     }
 }
 
@@ -754,5 +1113,123 @@ mod tests {
         let doc = json!({"status": "active", "age": 21});
         assert!(back.matches(&doc));
         assert!(!back.matches(&json!({"status": "active", "age": 10})));
+    }
+
+    #[test]
+    fn matches_sda_agrees_on_core_vocab() {
+        let cases: Vec<(Filter, JsonValue, bool)> = vec![
+            (
+                Filter::field("status").eq("active"),
+                json!({"status": "active"}),
+                true,
+            ),
+            (
+                Filter::field("status").eq("active"),
+                json!({"status": "paused"}),
+                false,
+            ),
+            (
+                Filter::field("n").eq(JsonValue::Null),
+                json!({"n": null}),
+                true,
+            ),
+            (
+                Filter::field("n").eq(JsonValue::Null),
+                json!({}),
+                false,
+            ),
+            (Filter::field("missing").ne(1), json!({}), true),
+            (Filter::field("age").gte(18), json!({"age": 21}), true),
+            (Filter::field("age").gte(18), json!({"age": 10}), false),
+            (Filter::field("age").gte(18), json!({}), false),
+            (Filter::field("age").gte(18), json!({"age": null}), false),
+            (Filter::field("a").exists(true), json!({"a": null}), true),
+            (Filter::field("a").exists(false), json!({}), true),
+            (Filter::field("a").exists(false), json!({"a": null}), false),
+            (
+                Filter::field("name").prefix("Al"),
+                json!({"name": "Alice"}),
+                true,
+            ),
+            (
+                Filter::field("tags").contains("y"),
+                json!({"tags": ["x", "y"]}),
+                true,
+            ),
+            (
+                Filter::field("name").contains("ice"),
+                json!({"name": "Alice"}),
+                true,
+            ),
+            (
+                Filter::field("address.city").eq("Bangkok"),
+                json!({"address": {"city": "Bangkok"}}),
+                true,
+            ),
+            (
+                // Intermediate non-object → absence
+                Filter::field("a.city").exists(false),
+                json!({"a": "x"}),
+                true,
+            ),
+            (
+                Filter::and([
+                    Filter::field("status").eq("active"),
+                    Filter::field("age").gte(18),
+                ]),
+                json!({"status": "active", "age": 21}),
+                true,
+            ),
+            (
+                Filter::or([
+                    Filter::field("status").eq("active"),
+                    Filter::field("status").eq("trial"),
+                ]),
+                json!({"status": "trial"}),
+                true,
+            ),
+            (
+                Filter::not(Filter::field("status").eq("active")),
+                json!({"status": "paused"}),
+                true,
+            ),
+            (
+                Filter::field("c").is_in(["TH", "SG"]),
+                json!({"c": "TH"}),
+                true,
+            ),
+        ];
+        for (i, (filter, doc, want)) in cases.iter().enumerate() {
+            let native = filter.matches(doc);
+            let sda = filter.matches_sda(doc).unwrap_or_else(|e| {
+                panic!("case {i} SDA error: {e}; program={}", filter.to_sda())
+            });
+            assert_eq!(
+                native, *want,
+                "case {i} native mismatch; program={}",
+                filter.to_sda()
+            );
+            assert_eq!(
+                sda, *want,
+                "case {i} sda mismatch; program={}",
+                filter.to_sda()
+            );
+            assert_eq!(native, sda, "case {i} native≠sda; program={}", filter.to_sda());
+        }
+    }
+
+    #[test]
+    fn query_plan_roundtrip() {
+        let plan = QueryPlan::new(
+            Filter::field("status").eq("active"),
+            QueryOptions::new().limit(10).order_by("age", SortOrder::Desc),
+        );
+        let j = plan.to_json();
+        assert_eq!(j["profile"], QUERY_PLAN_PROFILE);
+        let back = QueryPlan::from_json(&j).unwrap();
+        assert_eq!(back.profile, QUERY_PLAN_PROFILE);
+        assert_eq!(back.options.limit, Some(10));
+        assert!(back.filter.matches(&json!({"status": "active"})));
+        assert_eq!(back.to_sda(), plan.filter.to_sda());
     }
 }

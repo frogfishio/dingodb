@@ -44,7 +44,10 @@ pub use dingo::Dingo;
 pub use dingo_cluster::{Coverage, FindResult, ScanOptions};
 pub use directory_cache::{AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot};
 pub use error::{Error, ErrorCode};
-pub use filter::{FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, SortOrder};
+pub use filter::{
+    FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, QueryPlan, SortOrder,
+    QUERY_PLAN_PROFILE,
+};
 pub use history::{KeyHistory, Version};
 pub use indexes::{IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};

@@ -751,7 +751,9 @@ Acceptance:
 
 ### DEF-028 — Align native filters and SDA semantics
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (filter→SDA + dual corpus; see
+`stage_def_028_filter_sda`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -761,6 +763,19 @@ Work:
   containment, and failures.
 - Run every portable filter through both paths and compare results.
 - Version serialized query plans.
+
+Implementation notes:
+
+- Profile tag `QUERY_PLAN_PROFILE = "dingo-query-plan-v1"` for serializable
+  [`QueryPlan`] (filter + options JSON).
+- `Filter::to_sda` / `matches_sda` compile the portable vocabulary to boolean
+  SDA over `input`, using host helpers `getPath`, `startsWith`, `strContains`.
+- `getPath` matches native path rules: missing or non-object intermediate →
+  `None`; stored JSON `null` → `Some(null)`.
+- Comparison / type failures do not match (SDA non-bool/`Fail` → false).
+- Corpus: native `matches` ≡ `matches_sda` ≡ embedded `find` / force-scan.
+- Follow-on: remote/cluster plan RPC carrying the profile tag; index path is
+  already constrained to equality and re-checks with the same filter.
 
 Acceptance:
 

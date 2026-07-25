@@ -51,6 +51,7 @@ Application developers do not need to know about frames or segments.
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
 | `handle_connection` / `handle_connection_with` | Per-connection server dispatch |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget / `allow_partial_coverage` |
+| `Filter::to_sda` / `matches_sda` / `QueryPlan` | Filter→SDA alignment + versioned plans (`QUERY_PLAN_PROFILE`, DEF-028) |
 | `WriteReceipt` / `DeleteReceipt` | Event identity + achieved durability |
 | `Error::code` / `ErrorCode` | Stable machine codes (DX §15) |
 | `SDK_API_VERSION` | Product freeze label for this collection surface |
