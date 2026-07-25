@@ -100,7 +100,7 @@ pub use media::{
 pub use secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,
     try_load_secondary_index, write_secondary_index, IndexState, SecondaryIndex,
-    SecondaryIndexMeta,
+    SecondaryIndexMeta, INDEX_LIFECYCLE_PROFILE,
 };
 pub use segment_catalog::{
     segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
@@ -110,8 +110,8 @@ pub use recovery::{
     LimitsSnapshot, RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
 };
 pub use store::{
-    IncompleteReason, LiveIncomplete, LiveLogicalScan, SalvageCopyReport, SalvageReport, Store,
-    WriteReceipt,
+    IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan, SalvageCopyReport,
+    SalvageReport, Store, WriteReceipt,
 };
 pub use tier::{
     classify_segment_bytes, tier_placement_path, FormatClassification, MigrationEvidence,

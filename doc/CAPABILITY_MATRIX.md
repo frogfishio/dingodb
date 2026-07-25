@@ -178,6 +178,20 @@ collection catalogs are built from segment-derived durable state only.
 | Remote page RPC | not yet | Follow-on; remote still uses list/find materialization |
 | Tests | shipped | `stage_def_026_cursors` + cursor unit tests |
 
+## Secondary index lifecycle (DEF-027)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Profile tag | shipped | `dingo_store::INDEX_LIFECYCLE_PROFILE = "dingo-index-lifecycle-v1"` |
+| Durable states | shipped | building / ready / stale / partial / failed / rebuilding on `.six` v2 |
+| Build metadata | shipped | build_id, source_frontier, resume_after_subject, failure_reason |
+| Snapshot + catch-up | shipped | unfenced build pages + one frontier catch-up before Ready |
+| Resume | shipped | create / `continue_build` resume mid-build; failpoints at plan/mid/ready |
+| Absence honesty | shipped | only Ready+complete_coverage may prove miss; Partial hits-only |
+| Stale marking | shipped | put/delete surface write failures (no silent drop) |
+| Unique indexes | not yet | needs enforceable partition scope (follow-on) |
+| Tests | shipped | `stage_def_027_index_lifecycle` + secondary unit tests |
+
 ## CI check
 
 A lightweight workspace test asserts this file exists and still forbids the

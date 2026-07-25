@@ -103,6 +103,21 @@ pub struct LiveLogicalScan {
     pub tier_coverage_incomplete: bool,
 }
 
+/// One unfenced page of live bodies for secondary index construction (DEF-027).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexBuildPage {
+    /// Complete (subject, body) pairs on this page.
+    pub entries: Vec<(Vec<u8>, Vec<u8>)>,
+    /// Subjects skipped because payload reassembly was incomplete.
+    pub incomplete: Vec<Vec<u8>>,
+    /// More live subjects remain after `after`.
+    pub has_more: bool,
+    /// Exclusive resume point (last examined subject), when any work ran.
+    pub after: Option<Vec<u8>>,
+    /// Subjects examined (complete + incomplete).
+    pub examined: usize,
+}
+
 /// Receipt returned after an acknowledged write (OVERVIEW §7.2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WriteReceipt {
@@ -1106,6 +1121,62 @@ impl Store {
         path: &Path,
     ) -> Result<Option<(CheckpointMeta, Vec<(Vec<u8>, Vec<u8>)>)>, StoreError> {
         try_load_checkpoint(path, self.store_id)
+    }
+
+    /// One page of live complete bodies for secondary index builds (DEF-027).
+    ///
+    /// Unlike [`Self::scan_live_page`], this walk is **not** generation-fenced:
+    /// concurrent writes may extend the live set while the build runs; callers
+    /// reconcile via snapshot fingerprint + catch-up before marking Ready.
+    /// Incomplete payloads are skipped (listed separately) so builds make
+    /// forward progress without blocking writes.
+    pub fn scan_live_bodies_for_build(
+        &self,
+        prefix: Option<&[u8]>,
+        after: Option<&[u8]>,
+        page_size: usize,
+    ) -> Result<IndexBuildPage, StoreError> {
+        let page_size = page_size.clamp(1, crate::cursor::MAX_PAGE_SIZE);
+        let max_examine = page_size.saturating_mul(8).max(page_size);
+        let mut entries = Vec::new();
+        let mut incomplete = Vec::new();
+        let mut examined = 0usize;
+        let mut last_subject: Option<Vec<u8>> = after.map(|a| a.to_vec());
+        let mut has_more = false;
+        let mut iter = self.index.live_entries_after(after, prefix);
+        loop {
+            if entries.len() >= page_size || examined >= max_examine {
+                has_more = iter.next().is_some();
+                break;
+            }
+            let Some((subject_ref, _)) = iter.next() else {
+                break;
+            };
+            let subject = subject_ref.clone();
+            examined += 1;
+            last_subject = Some(subject.clone());
+            let subject_str = match std::str::from_utf8(&subject) {
+                Ok(s) => s,
+                Err(_) => {
+                    incomplete.push(subject);
+                    continue;
+                }
+            };
+            match self.get_payload(subject_str)? {
+                None => {}
+                Some(PayloadResult::Complete { body }) => entries.push((subject, body)),
+                Some(PayloadResult::Partial { .. })
+                | Some(PayloadResult::Unavailable { .. })
+                | Some(PayloadResult::Conflicting { .. }) => incomplete.push(subject),
+            }
+        }
+        Ok(IndexBuildPage {
+            entries,
+            incomplete,
+            has_more,
+            after: last_subject,
+            examined,
+        })
     }
 
     /// Persist a secondary index file (derived only).

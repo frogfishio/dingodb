@@ -31,6 +31,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Compaction | DEF-024: durable phases + job records; reclaim only with `allow_history_loss` |
 | Identifiers | DEF-025: `dingo-id-v1` — OS CSPRNG (`getrandom`) for random ids; sortable segment seq; fail closed |
 | Cursors | DEF-026: `dingo-cursor-v1` paged live scan + authenticated continuation tokens |
+| Index lifecycle | DEF-027: durable building/ready/stale/partial/failed/rebuilding + resume (`.six` v2) |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 

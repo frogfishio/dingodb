@@ -378,6 +378,12 @@ pub struct IndexInfoRow {
     pub entry_count: u64,
     /// Whether the index claims complete coverage.
     pub complete_coverage: bool,
+    /// Failure / partial detail (DEF-027); empty when healthy.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub failure_reason: String,
+    /// Hex build id (DEF-027).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub build_id_hex: String,
 }
 
 /// One present chunk body on the wire (`get_payload` partial).
@@ -411,6 +417,8 @@ impl IndexInfoRow {
             state: info.state.as_str().into(),
             entry_count: info.entry_count,
             complete_coverage: info.complete_coverage,
+            failure_reason: info.failure_reason.clone(),
+            build_id_hex: info.build_id_hex.clone(),
         }
     }
 
@@ -425,6 +433,8 @@ impl IndexInfoRow {
             state,
             entry_count: self.entry_count,
             complete_coverage: self.complete_coverage,
+            failure_reason: self.failure_reason,
+            build_id_hex: self.build_id_hex,
         })
     }
 }

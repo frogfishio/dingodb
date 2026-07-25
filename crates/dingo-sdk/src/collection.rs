@@ -72,7 +72,8 @@ impl<'a> Collection<'a> {
                 let body = encode_json(&json)?;
                 let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
                 let receipt = store.put(subject_str, &body, options.durability)?;
-                let _ = mark_indexes_stale(store, &self.name);
+                // DEF-027: surface stale-marking failures (health / diagnostics).
+                mark_indexes_stale(store, &self.name)?;
                 Ok(WriteReceipt::from_store(key.to_string(), receipt))
             }
             Backend::Remote(client) => client.put_json(&self.name, key, &json, options),
@@ -145,7 +146,7 @@ impl<'a> Collection<'a> {
                 let body = encode_bytes(bytes);
                 let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
                 let receipt = store.put(subject_str, &body, options.durability)?;
-                let _ = mark_indexes_stale(store, &self.name);
+                mark_indexes_stale(store, &self.name)?;
                 Ok(WriteReceipt::from_store(key.to_string(), receipt))
             }
             Backend::Remote(client) => client.put_bytes(&self.name, key, bytes, options),
@@ -185,7 +186,7 @@ impl<'a> Collection<'a> {
                 let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
                 let removed = store.get(subject_str)?.is_some();
                 let receipt = store.delete(subject_str, options.durability)?;
-                let _ = mark_indexes_stale(store, &self.name);
+                mark_indexes_stale(store, &self.name)?;
                 Ok(DeleteReceipt::from_store(key.to_string(), removed, receipt))
             }
             Backend::Remote(client) => client.delete(&self.name, key, options),

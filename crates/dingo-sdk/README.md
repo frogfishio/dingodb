@@ -47,7 +47,7 @@ Application developers do not need to know about frames or segments.
 | `Collection::scan_json_iter` / `scan_json_page` | Streaming / paged JSON rows (embedded; DEF-026) |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration (embedded + remote server-side) |
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
-| `Collection::indexes` | Create / drop / rebuild / list secondary indexes (embedded + remote) |
+| `Collection::indexes` | Create / drop / rebuild / list / continue_build secondary indexes (DEF-027 lifecycle; embedded + remote create/rebuild) |
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
 | `handle_connection` / `handle_connection_with` | Per-connection server dispatch |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget / `allow_partial_coverage` |

@@ -1,16 +1,37 @@
-//! Secondary indexes (DX_SPEC §8, Stage 6).
+//! Secondary indexes (DX_SPEC §8, Stage 6; DEF-027 lifecycle).
 //!
 //! Indexes are derived, online, resumable, and deletable. Queries remain
 //! correct without them via scan (+ optional budget). Work over both embedded
 //! stores and remote `dingo serve` connections (Stage 7 remote parity).
+//!
+//! ## Lifecycle (DEF-027)
+//!
+//! Durable states: `building` → `ready` (or `partial` / `failed`); writes mark
+//! usable indexes `stale`; rebuild uses `rebuilding`. Build progress (source
+//! frontier, resume subject, failure reason, build id) is persisted on the
+//! `.six` file so a crash mid-build can resume without blocking writes.
+//!
+//! Absence is never proven from a stale, partial, building, rebuilding, or
+//! failed index — only `ready` with `complete_coverage`.
 
 use crate::dingo::Backend;
 use crate::error::Error;
 use crate::filter::{resolve_path_value, Filter, Pred};
-use crate::subject::{decode_subject, encode_subject};
+use crate::subject::collection_prefix;
 use crate::value::decode_json;
 use dingo_store::{IndexState, SecondaryIndex, Store};
 use serde_json::Value as JsonValue;
+
+/// Subjects processed between durable checkpoints during an index build.
+const BUILD_CHECKPOINT_EVERY: usize = 32;
+/// Page size for unfenced live walks during index construction.
+const BUILD_PAGE_SIZE: usize = 64;
+/// Failpoint: after durable Building/Rebuilding plan is written.
+pub const FP_INDEX_BUILD_AFTER_PLAN: &str = "index.build.after_plan";
+/// Failpoint: mid-build after a progress checkpoint.
+pub const FP_INDEX_BUILD_MID: &str = "index.build.mid";
+/// Failpoint: immediately before marking Ready.
+pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
 
 /// Public view of a secondary index.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +48,10 @@ pub struct IndexInfo {
     pub entry_count: u64,
     /// Whether the index claims complete coverage of live keys.
     pub complete_coverage: bool,
+    /// Last failure reason (empty unless state is failed / partial detail).
+    pub failure_reason: String,
+    /// Hex build id for the current or last build attempt.
+    pub build_id_hex: String,
 }
 
 impl IndexInfo {
@@ -38,6 +63,8 @@ impl IndexInfo {
             state: idx.meta.state,
             entry_count: idx.meta.entry_count,
             complete_coverage: idx.meta.complete_coverage,
+            failure_reason: idx.meta.failure_reason.clone(),
+            build_id_hex: dingo_store::hex16(&idx.meta.build_id),
         }
     }
 }
@@ -50,6 +77,9 @@ pub struct Indexes<'a> {
 
 impl<'a> Indexes<'a> {
     /// Create (or rebuild) a field index. Online: builds from current live docs.
+    ///
+    /// If a prior build for the same name/fields was interrupted (`building` /
+    /// `rebuilding`), this resumes from the durable resume point.
     pub fn create(&mut self, name: &str, fields: &[&str]) -> Result<IndexInfo, Error> {
         match self.backend {
             Backend::Local(store) => create_index_on_store(store, &self.collection, name, fields),
@@ -109,9 +139,36 @@ impl<'a> Indexes<'a> {
                     .load_secondary_index(&self.collection, name)?
                     .ok_or_else(|| Error::QueryInvalid(format!("index not found: {name}")))?;
                 let fields: Vec<&str> = existing.meta.fields.iter().map(|s| s.as_str()).collect();
-                create_index_on_store(store, &self.collection, name, &fields)
+                // Force a fresh rebuild (not resume of a partial mid-build of
+                // different generation) by clearing and using rebuilding state.
+                create_index_on_store_inner(store, &self.collection, name, &fields, true)
             }
             Backend::Remote(client) => client.index_rebuild(&self.collection, name),
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported(
+                "secondary indexes on cluster (Stage 8e+)",
+            )),
+        }
+    }
+
+    /// Resume an interrupted `building` / `rebuilding` index without changing fields.
+    pub fn continue_build(&mut self, name: &str) -> Result<IndexInfo, Error> {
+        match self.backend {
+            Backend::Local(store) => {
+                let existing = store
+                    .load_secondary_index(&self.collection, name)?
+                    .ok_or_else(|| Error::QueryInvalid(format!("index not found: {name}")))?;
+                if !existing.is_build_in_progress() {
+                    return Err(Error::QueryInvalid(format!(
+                        "index {name} is not building (state={})",
+                        existing.meta.state.as_str()
+                    )));
+                }
+                let fields: Vec<&str> = existing.meta.fields.iter().map(|s| s.as_str()).collect();
+                create_index_on_store(store, &self.collection, name, &fields)
+            }
+            Backend::Remote(_) => Err(Error::RemoteUnsupported(
+                "continue_build is embedded-only; remote create/rebuild resume server-side",
+            )),
             Backend::Cluster(_) => Err(Error::RemoteUnsupported(
                 "secondary indexes on cluster (Stage 8e+)",
             )),
@@ -126,6 +183,16 @@ pub(crate) fn create_index_on_store(
     name: &str,
     fields: &[&str],
 ) -> Result<IndexInfo, Error> {
+    create_index_on_store_inner(store, collection, name, fields, false)
+}
+
+fn create_index_on_store_inner(
+    store: &mut Store,
+    collection: &str,
+    name: &str,
+    fields: &[&str],
+    force_rebuild: bool,
+) -> Result<IndexInfo, Error> {
     if name.is_empty() {
         return Err(Error::InvalidKey("index name empty"));
     }
@@ -135,36 +202,160 @@ pub(crate) fn create_index_on_store(
         ));
     }
     let field_owned: Vec<String> = fields.iter().map(|s| (*s).to_string()).collect();
-    let mut idx = SecondaryIndex::new_building(collection, name, field_owned.clone());
 
-    // Full build from live logical entries.
-    let fp = store.segment_fingerprint()?;
-    let live = store.live_logical_entries()?;
-    for (subject, body) in live {
-        let Some((coll, _key)) = decode_subject(&subject) else {
-            continue;
-        };
-        if coll != collection {
-            continue;
+    let existing = store.load_secondary_index(collection, name)?;
+    let resume = existing
+        .as_ref()
+        .filter(|idx| {
+            !force_rebuild
+                && idx.is_build_in_progress()
+                && idx.meta.fields == field_owned
+        })
+        .cloned();
+
+    let mut idx = if let Some(prior) = resume {
+        prior
+    } else {
+        let had_definition = existing.is_some();
+        let mut fresh = SecondaryIndex::new_building(collection, name, field_owned.clone());
+        let build_id = dingo_store::random_id().map_err(Error::from)?;
+        let frontier = store.segment_fingerprint()?;
+        fresh.begin_build(build_id, frontier, force_rebuild || had_definition);
+        // Durable plan before any scan work (crash → resume from empty progress).
+        store.write_secondary_index(&fresh)?;
+        dingo_store::hit_failpoint(FP_INDEX_BUILD_AFTER_PLAN)?;
+        fresh
+    };
+
+    match run_index_build(store, &mut idx) {
+        Ok(()) => {
+            store.write_secondary_index(&idx)?;
+            Ok(IndexInfo::from_store(&idx))
         }
-        let Ok(doc) = decode_json(&body) else {
-            continue;
-        };
-        if let Some(ikey) = index_key_for_doc(&doc, &field_owned) {
-            idx.insert(ikey, subject);
+        Err(e) => {
+            // Persist Failed with reason so operators and resume paths see it.
+            // Failpoints that simulate crash (Panic) will not reach here.
+            if !matches!(
+                &e,
+                Error::Store(dingo_store::StoreError::Failpoint(_))
+            ) {
+                idx.mark_failed(e.to_string());
+                let _ = store.write_secondary_index(&idx);
+            }
+            Err(e)
         }
     }
-    idx.mark_ready(fp);
-    store.write_secondary_index(&idx)?;
-    Ok(IndexInfo::from_store(&idx))
+}
+
+/// Snapshot walk + optional catch-up, then Ready / Partial (DEF-027).
+fn run_index_build(store: &mut Store, idx: &mut SecondaryIndex) -> Result<(), Error> {
+    let collection = idx.meta.collection.clone();
+    let fields = idx.meta.fields.clone();
+    let prefix = collection_prefix(&collection)?;
+
+    let mut incomplete_payloads = fill_index_from_live(store, idx, &prefix, &fields)?;
+
+    // Catch-up: if the frontier moved during the walk, rebuild once from a
+    // fresh snapshot so concurrent writes do not leave silent gaps.
+    let fp_now = store.segment_fingerprint()?;
+    if fp_now != idx.meta.source_frontier {
+        idx.clear_entries();
+        let build_id = dingo_store::random_id().map_err(Error::from)?;
+        idx.begin_build(build_id, fp_now, true);
+        store.write_secondary_index(idx)?;
+        incomplete_payloads = fill_index_from_live(store, idx, &prefix, &fields)?;
+    }
+
+    let fp_final = store.segment_fingerprint()?;
+    dingo_store::hit_failpoint(FP_INDEX_BUILD_BEFORE_READY)?;
+
+    if incomplete_payloads {
+        idx.mark_partial(
+            fp_final,
+            "incomplete payloads during build; absence not proven",
+        );
+    } else if fp_final == idx.meta.source_frontier {
+        idx.mark_ready(fp_final);
+    } else {
+        // Still drifting after one catch-up: Partial — usable for hits only.
+        idx.mark_partial(
+            fp_final,
+            "source frontier drifted after catch-up; absence not proven",
+        );
+    }
+    Ok(())
+}
+
+/// Walk live subjects and insert postings. Returns true if any payload was incomplete.
+fn fill_index_from_live(
+    store: &mut Store,
+    idx: &mut SecondaryIndex,
+    prefix: &[u8],
+    fields: &[String],
+) -> Result<bool, Error> {
+    let mut after = if idx.meta.resume_after_subject.is_empty() {
+        None
+    } else {
+        Some(idx.meta.resume_after_subject.clone())
+    };
+    let mut since_checkpoint = 0usize;
+    let mut saw_incomplete = false;
+
+    loop {
+        let page = store.scan_live_bodies_for_build(
+            Some(prefix),
+            after.as_deref(),
+            BUILD_PAGE_SIZE,
+        )?;
+        if !page.incomplete.is_empty() {
+            saw_incomplete = true;
+        }
+        for (subject, body) in page.entries {
+            let Ok(doc) = decode_json(&body) else {
+                // Non-JSON bodies are not field-indexed; still advance resume.
+                after = Some(subject.clone());
+                idx.set_resume_after(&subject);
+                since_checkpoint = since_checkpoint.saturating_add(1);
+                continue;
+            };
+            if let Some(ikey) = index_key_for_doc(&doc, fields) {
+                idx.insert(ikey, subject.clone());
+            }
+            after = Some(subject.clone());
+            idx.set_resume_after(&subject);
+            since_checkpoint = since_checkpoint.saturating_add(1);
+            if since_checkpoint >= BUILD_CHECKPOINT_EVERY {
+                store.write_secondary_index(idx)?;
+                dingo_store::hit_failpoint(FP_INDEX_BUILD_MID)?;
+                since_checkpoint = 0;
+            }
+        }
+        // Advance past incomplete subjects so builds do not stall.
+        if let Some(ref last) = page.after {
+            after = Some(last.clone());
+            idx.set_resume_after(last);
+        }
+        if !page.has_more {
+            break;
+        }
+    }
+
+    // Final checkpoint of scan progress before readiness decision.
+    store.write_secondary_index(idx)?;
+    Ok(saw_incomplete)
 }
 
 /// Mark usable secondary indexes on `collection` as stale after a write.
+///
+/// Failures are returned to the caller (DEF-027: do not silently drop
+/// stale-marking errors — they affect health/diagnostics).
 pub(crate) fn mark_indexes_stale(store: &mut Store, collection: &str) -> Result<(), Error> {
     let indexes = store.list_secondary_indexes(collection)?;
     for mut idx in indexes {
-        if idx.meta.state.usable() || idx.meta.state == IndexState::Ready {
-            idx.mark_stale();
+        let before = idx.meta.state;
+        let before_cov = idx.meta.complete_coverage;
+        idx.mark_stale();
+        if idx.meta.state != before || idx.meta.complete_coverage != before_cov {
             store.write_secondary_index(&idx)?;
         }
     }
@@ -205,7 +396,7 @@ pub(crate) fn try_index_lookup(
     let indexes = store.list_secondary_indexes(collection)?;
     // Prefer a ready index whose fields are a prefix of the equality set order.
     for idx in indexes {
-        if !idx.meta.state.usable() {
+        if !idx.meta.may_accelerate_hits() {
             continue;
         }
         if idx.meta.fields.is_empty() {
@@ -216,7 +407,7 @@ pub(crate) fn try_index_lookup(
         let mut ok = true;
         for f in &idx.meta.fields {
             match eqs.iter().find(|(path, _)| path == f) {
-                Some((_, v)) => values.push((*v).clone()),
+                Some((_, v)) => values.push(v.clone()),
                 None => {
                     ok = false;
                     break;
@@ -236,12 +427,11 @@ pub(crate) fn try_index_lookup(
             }
             out
         };
-        // Only treat Ready + complete_coverage indexes as authoritative for
-        // empty (miss) results; Partial usable indexes may still accelerate
-        // non-empty hits but callers must not trust miss as proven absence.
+        // DEF-027 / DEF-012: empty (miss) results are authoritative only when
+        // Ready + complete_coverage. Partial/stale/building never prove absence.
         let subjects = idx.lookup(&key).to_vec();
         let info = IndexInfo::from_store(&idx);
-        if subjects.is_empty() && !info.complete_coverage {
+        if subjects.is_empty() && !idx.meta.may_prove_absence() {
             continue;
         }
         return Ok(Some((info, subjects)));
@@ -271,5 +461,5 @@ fn equality_fields(filter: &Filter) -> Vec<(String, JsonValue)> {
 /// Encode a collection key into a store subject (helper for tests/SDK).
 #[allow(dead_code)]
 pub(crate) fn subject_for(collection: &str, key: &str) -> Result<Vec<u8>, Error> {
-    encode_subject(collection, key)
+    crate::subject::encode_subject(collection, key)
 }

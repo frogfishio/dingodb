@@ -714,7 +714,9 @@ Acceptance:
 
 ### DEF-027 — Make index lifecycle online and truthful
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (durable lifecycle + resume; see
+`stage_def_027_index_lifecycle`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -725,6 +727,21 @@ Work:
 - Never use a stale/partial index to prove absence.
 - Propagate stale-marking failures to diagnostics and health metrics.
 - Add unique indexes only after defining enforceable partition scope.
+
+Implementation notes:
+
+- Profile tag `INDEX_LIFECYCLE_PROFILE = "dingo-index-lifecycle-v1"`.
+- `.six` format v2 records `build_id`, `source_frontier`, `resume_after_subject`,
+  and `failure_reason` (v1 files still load).
+- Create persists `building`/`rebuilding` before the live walk; checkpoints every
+  32 subjects; failpoints `index.build.after_plan` / `.mid` / `.before_ready`.
+- Unfenced `Store::scan_live_bodies_for_build` + one catch-up pass when the
+  segment fingerprint drifts; otherwise Ready, or Partial if still drifting /
+  incomplete payloads.
+- Absence only via Ready + `complete_coverage` (`may_prove_absence`); Partial
+  may accelerate non-empty hits only.
+- Put/delete surface stale-marking I/O errors (no longer `let _ =`).
+- Follow-on: unique indexes with enforceable partition scope (not in this cut).
 
 Acceptance:
 

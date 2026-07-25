@@ -83,7 +83,13 @@ impl IndexState {
 }
 
 const MAGIC: &[u8; 8] = b"DSIX0001";
-const VERSION: u32 = 1;
+/// On-disk secondary index format version (v2 adds build lifecycle fields, DEF-027).
+const VERSION: u32 = 2;
+/// Legacy readers still decode this version (no build_id / resume / failure fields).
+const VERSION_V1: u32 = 1;
+
+/// Profile tag for secondary index lifecycle (DEF-027).
+pub const INDEX_LIFECYCLE_PROFILE: &str = "dingo-index-lifecycle-v1";
 
 /// Metadata for one secondary index definition + build state.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +108,32 @@ pub struct SecondaryIndexMeta {
     pub built_fingerprint: [u8; 32],
     /// Whether the index claims complete coverage of live collection keys.
     pub complete_coverage: bool,
+    /// Identity of the current (or last) build attempt (DEF-027).
+    pub build_id: [u8; 16],
+    /// Segment fingerprint captured when the build started (source frontier).
+    pub source_frontier: [u8; 32],
+    /// Last fully processed subject during a resumable build (exclusive resume).
+    pub resume_after_subject: Vec<u8>,
+    /// Last failure reason when [`IndexState::Failed`]; empty otherwise.
+    pub failure_reason: String,
+}
+
+impl SecondaryIndexMeta {
+    /// Whether this index may accelerate queries that need non-empty hits only.
+    ///
+    /// Ready and Partial may return candidate subjects. Stale / Building /
+    /// Failed / Rebuilding must never be treated as authoritative for absence.
+    pub fn may_accelerate_hits(&self) -> bool {
+        self.state.usable()
+    }
+
+    /// Whether an empty lookup may be treated as proven absence.
+    ///
+    /// Only Ready + complete_coverage may prove a key is absent. Partial,
+    /// Stale, Building, Rebuilding, and Failed never prove absence.
+    pub fn may_prove_absence(&self) -> bool {
+        self.state == IndexState::Ready && self.complete_coverage
+    }
 }
 
 /// In-memory secondary index: serialized field key → list of subject keys.
@@ -125,6 +157,10 @@ impl SecondaryIndex {
                 entry_count: 0,
                 built_fingerprint: [0u8; 32],
                 complete_coverage: false,
+                build_id: [0u8; 16],
+                source_frontier: [0u8; 32],
+                resume_after_subject: Vec::new(),
+                failure_reason: String::new(),
             },
             entries: BTreeMap::new(),
         }
@@ -156,6 +192,14 @@ impl SecondaryIndex {
         }
     }
 
+    /// Clear all postings (used when restarting a catch-up rebuild).
+    pub fn clear_entries(&mut self) {
+        self.entries.clear();
+        self.meta.entry_count = 0;
+        self.meta.resume_after_subject.clear();
+        self.meta.complete_coverage = false;
+    }
+
     /// Lookup subjects for an exact index key.
     pub fn lookup(&self, index_key: &[u8]) -> &[Vec<u8>] {
         self.entries
@@ -164,19 +208,78 @@ impl SecondaryIndex {
             .unwrap_or(&[])
     }
 
-    /// Mark ready after a full build.
+    /// Begin a build: set build id, source frontier, and Building/Rebuilding.
+    pub fn begin_build(&mut self, build_id: [u8; 16], source_frontier: [u8; 32], rebuilding: bool) {
+        self.meta.build_id = build_id;
+        self.meta.source_frontier = source_frontier;
+        self.meta.resume_after_subject.clear();
+        self.meta.failure_reason.clear();
+        self.meta.complete_coverage = false;
+        self.meta.state = if rebuilding {
+            IndexState::Rebuilding
+        } else {
+            IndexState::Building
+        };
+        self.meta.built_fingerprint = [0u8; 32];
+    }
+
+    /// Record progress through the live subject walk (exclusive resume point).
+    pub fn set_resume_after(&mut self, subject: &[u8]) {
+        self.meta.resume_after_subject = subject.to_vec();
+    }
+
+    /// Mark ready after a full build that matches the live frontier.
     pub fn mark_ready(&mut self, fingerprint: [u8; 32]) {
         self.meta.state = IndexState::Ready;
         self.meta.built_fingerprint = fingerprint;
+        self.meta.source_frontier = fingerprint;
         self.meta.complete_coverage = true;
+        self.meta.resume_after_subject.clear();
+        self.meta.failure_reason.clear();
     }
 
-    /// Mark stale (writes happened after build).
+    /// Mark partial coverage (build finished but frontier drifted or incomplete).
+    pub fn mark_partial(&mut self, fingerprint: [u8; 32], reason: impl Into<String>) {
+        self.meta.state = IndexState::Partial;
+        self.meta.built_fingerprint = fingerprint;
+        self.meta.complete_coverage = false;
+        self.meta.failure_reason = reason.into();
+        self.meta.resume_after_subject.clear();
+    }
+
+    /// Mark failed with an operator-visible reason.
+    pub fn mark_failed(&mut self, reason: impl Into<String>) {
+        self.meta.state = IndexState::Failed;
+        self.meta.complete_coverage = false;
+        self.meta.failure_reason = reason.into();
+    }
+
+    /// Mark stale (writes happened after a usable build).
+    ///
+    /// Ready and Partial become Stale. Building/Rebuilding lose complete
+    /// coverage claims but keep their in-progress state so resume can continue.
     pub fn mark_stale(&mut self) {
-        if self.meta.state == IndexState::Ready || self.meta.state == IndexState::Partial {
-            self.meta.state = IndexState::Stale;
-            self.meta.complete_coverage = false;
+        match self.meta.state {
+            IndexState::Ready | IndexState::Partial => {
+                self.meta.state = IndexState::Stale;
+                self.meta.complete_coverage = false;
+            }
+            IndexState::Building | IndexState::Rebuilding => {
+                // Concurrent writes during build: refuse absence proofs; keep building.
+                self.meta.complete_coverage = false;
+            }
+            IndexState::Stale | IndexState::Failed => {
+                self.meta.complete_coverage = false;
+            }
         }
+    }
+
+    /// Whether the index is mid-build and eligible for resume.
+    pub fn is_build_in_progress(&self) -> bool {
+        matches!(
+            self.meta.state,
+            IndexState::Building | IndexState::Rebuilding
+        )
     }
 }
 
@@ -275,6 +378,11 @@ fn encode_secondary(store_id: [u8; 16], index: &SecondaryIndex) -> Vec<u8> {
     for f in &index.meta.fields {
         write_str(&mut out, f);
     }
+    // DEF-027 v2 lifecycle fields (after fields, before postings).
+    out.extend_from_slice(&index.meta.build_id);
+    out.extend_from_slice(&index.meta.source_frontier);
+    write_bytes(&mut out, &index.meta.resume_after_subject);
+    write_str(&mut out, &index.meta.failure_reason);
     out.extend_from_slice(&(index.entries.len() as u32).to_le_bytes());
     for (k, subjects) in &index.entries {
         write_bytes(&mut out, k);
@@ -297,7 +405,7 @@ fn decode_secondary(bytes: &[u8], store_id: [u8; 16]) -> Option<SecondaryIndex> 
         return None;
     }
     let version = u32::from_le_bytes(bytes[8..12].try_into().ok()?);
-    if version != VERSION {
+    if version != VERSION && version != VERSION_V1 {
         return None;
     }
     let sid: [u8; 16] = bytes[12..28].try_into().ok()?;
@@ -327,6 +435,20 @@ fn decode_secondary(bytes: &[u8], store_id: [u8; 16]) -> Option<SecondaryIndex> 
     for _ in 0..n_fields {
         fields.push(read_str(bytes, &mut cursor)?);
     }
+    let (build_id, source_frontier, resume_after_subject, failure_reason) = if version >= VERSION {
+        if cursor + 16 + 32 > bytes.len() {
+            return None;
+        }
+        let build_id: [u8; 16] = bytes[cursor..cursor + 16].try_into().ok()?;
+        cursor += 16;
+        let source_frontier: [u8; 32] = bytes[cursor..cursor + 32].try_into().ok()?;
+        cursor += 32;
+        let resume_after_subject = read_bytes(bytes, &mut cursor)?;
+        let failure_reason = read_str(bytes, &mut cursor)?;
+        (build_id, source_frontier, resume_after_subject, failure_reason)
+    } else {
+        ([0u8; 16], [0u8; 32], Vec::new(), String::new())
+    };
     let n_entries = u32::from_le_bytes(bytes[cursor..cursor + 4].try_into().ok()?) as usize;
     cursor += 4;
     let mut entries = BTreeMap::new();
@@ -357,6 +479,10 @@ fn decode_secondary(bytes: &[u8], store_id: [u8; 16]) -> Option<SecondaryIndex> 
             entry_count,
             built_fingerprint,
             complete_coverage,
+            build_id,
+            source_frontier,
+            resume_after_subject,
+            failure_reason,
         },
         entries,
     })
@@ -397,14 +523,44 @@ mod tests {
     #[test]
     fn secondary_roundtrip() {
         let mut idx = SecondaryIndex::new_building("users", "by-email", vec!["email".into()]);
+        idx.begin_build([1u8; 16], [2u8; 32], false);
         idx.insert(b"a@x.com".to_vec(), b"subj1".to_vec());
         idx.insert(b"b@x.com".to_vec(), b"subj2".to_vec());
+        idx.set_resume_after(b"subj1");
         idx.mark_ready([9u8; 32]);
         let store_id = [3u8; 16];
         let enc = encode_secondary(store_id, &idx);
         let dec = decode_secondary(&enc, store_id).unwrap();
         assert_eq!(dec.meta.name, "by-email");
         assert_eq!(dec.meta.state, IndexState::Ready);
+        assert_eq!(dec.meta.build_id, [1u8; 16]);
+        assert_eq!(dec.meta.source_frontier, [9u8; 32]);
+        assert!(dec.meta.resume_after_subject.is_empty());
         assert_eq!(dec.lookup(b"a@x.com"), &[b"subj1".to_vec()]);
+        assert!(dec.meta.may_prove_absence());
+    }
+
+    #[test]
+    fn partial_and_stale_never_prove_absence() {
+        let mut idx = SecondaryIndex::new_building("c", "i", vec!["f".into()]);
+        idx.mark_partial([1u8; 32], "frontier drifted");
+        assert!(!idx.meta.may_prove_absence());
+        assert!(idx.meta.state.usable());
+        idx.mark_stale();
+        assert_eq!(idx.meta.state, IndexState::Stale);
+        assert!(!idx.meta.may_prove_absence());
+        assert!(!idx.meta.state.usable());
+    }
+
+    #[test]
+    fn failed_retains_reason() {
+        let mut idx = SecondaryIndex::new_building("c", "i", vec!["f".into()]);
+        idx.mark_failed("boom");
+        assert_eq!(idx.meta.state, IndexState::Failed);
+        assert_eq!(idx.meta.failure_reason, "boom");
+        let store_id = [7u8; 16];
+        let enc = encode_secondary(store_id, &idx);
+        let dec = decode_secondary(&enc, store_id).unwrap();
+        assert_eq!(dec.meta.failure_reason, "boom");
     }
 }
