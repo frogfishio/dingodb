@@ -152,6 +152,18 @@ collection catalogs are built from segment-derived durable state only.
 | Cancel | shipped | Cancel pre-activate jobs; refuse after activate |
 | Tests | shipped | `stage_def_024_compaction` |
 
+## Identifier generation (DEF-025)
+
+| Surface | Status | Evidence |
+|---------|--------|----------|
+| Profile tag | shipped | `dingo_store::ID_PROFILE = "dingo-id-v1"` |
+| OS CSPRNG | shipped | `getrandom` via `dingo_store::random_id` / `fill_random` |
+| Fail closed | shipped | `StoreError::RandomUnavailable` (no time-hash fallback) |
+| Random identities | shipped | `event_id`, `store_id`, job/checkpoint ids, client `operation_id`, `ClusterId::generate` |
+| Sortable segment ids | shipped | LE seq + store mix; seq recovered from disk on open |
+| Content item ids | shipped | `blake3(subject)[..16]` (stable, not random) |
+| Tests | shipped | `stage_def_025_identifiers` + `ids` unit tests |
+
 ## CI check
 
 A lightweight workspace test asserts this file exists and still forbids the

@@ -23,7 +23,7 @@ use crate::subject::{
 use crate::value::{decode_bytes, decode_json, encode_bytes, encode_json};
 use dingo_cluster::{DEFAULT_VIRTUAL_PARTITIONS, HASH_PROFILE_BLAKE3_MOD};
 use dingo_store::{
-    ByteRange, DurabilityMode, IndexState, LogicalExtent, PayloadResult, Store,
+    random_id, ByteRange, DurabilityMode, IndexState, LogicalExtent, PayloadResult, Store,
     WriteReceipt as StoreWriteReceipt,
 };
 use serde::{Deserialize, Serialize};
@@ -722,7 +722,7 @@ impl RemoteClient {
         validate_collection_name(collection)?;
         validate_key(key)?;
         // Mint once so call_keyed transport retries stay idempotent (DEF-010).
-        let operation_id = Some(hex16(&client_operation_id()));
+        let operation_id = Some(hex16(&client_operation_id()?));
         let resp = self.call_keyed(
             collection,
             key,
@@ -768,7 +768,7 @@ impl RemoteClient {
     ) -> Result<DeleteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let operation_id = Some(hex16(&client_operation_id()));
+        let operation_id = Some(hex16(&client_operation_id()?));
         let resp = self.call_keyed(
             collection,
             key,
@@ -794,7 +794,7 @@ impl RemoteClient {
     ) -> Result<WriteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let operation_id = Some(hex16(&client_operation_id()));
+        let operation_id = Some(hex16(&client_operation_id()?));
         let resp = self.call_keyed(
             collection,
             key,
@@ -1074,34 +1074,9 @@ fn base_req(op: &str) -> RpcRequest {
     }
 }
 
-/// Mint a fresh client operation id (cryptographic when available).
-fn client_operation_id() -> [u8; 16] {
-    let mut id = [0u8; 16];
-    if getrandom_fill(&mut id) {
-        return id;
-    }
-    // Fallback: mix wall-clock nanos with a process-local counter.
-    static COUNTER: AtomicU64 = AtomicU64::new(1);
-    let t = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(0);
-    let c = COUNTER.fetch_add(1, Ordering::Relaxed);
-    id[..8].copy_from_slice(&t.to_le_bytes());
-    id[8..].copy_from_slice(&c.to_le_bytes());
-    id
-}
-
-fn getrandom_fill(buf: &mut [u8]) -> bool {
-    #[cfg(unix)]
-    {
-        use std::io::Read;
-        if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
-            return f.read_exact(buf).is_ok();
-        }
-    }
-    let _ = buf;
-    false
+/// Mint a fresh client operation id via OS CSPRNG (DEF-025; fail closed).
+fn client_operation_id() -> Result<[u8; 16], Error> {
+    random_id().map_err(Error::from)
 }
 
 fn payload_from_resp(resp: &RpcResponse) -> Result<PayloadResult, Error> {

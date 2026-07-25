@@ -29,6 +29,7 @@ Stages 3, 6, 7, and 9; [`doc/RUNBOOK_RETENTION.md`](../../doc/RUNBOOK_RETENTION.
 | Crash matrix | DEF-022 hardened: matrix + failpoints (`Abort`, ENOSPC, short-write) + multi-process child; CI subset always, full matrix nightly (`DINGO_CRASH_MATRIX_FULL=1`) |
 | Write path | DEF-023: durable projection + rate-limited frontier checkpoints; no full-store rescan on ack |
 | Compaction | DEF-024: durable phases + job records; reclaim only with `allow_history_loss` |
+| Identifiers | DEF-025: `dingo-id-v1` — OS CSPRNG (`getrandom`) for random ids; sortable segment seq; fail closed |
 | Media | `MediaLocator`, `object:local:`, live S3/GCS mirrors via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` |
 | Scaffold | `LifecyclePolicy`, `ErasureManifest` (codec not shipped) |
 
@@ -86,10 +87,12 @@ live there.
 | `ErasureManifest` | Archive shard naming contract (codec not shipped) |
 | `failpoint` / crash matrix | DEF-022 injection points + embedded `crash_matrix.v1.json` |
 | `IndexFrontier` / `persist_index_cache` | DEF-023 sealed fingerprint + active covered length; no write-path rescan |
+| `random_id` / `mint_sortable_segment_id` / `ID_PROFILE` | DEF-025 CSPRNG random identities vs sortable segment ids |
 
 Crash-boundary narrative: [`doc/CRASH_CONSISTENCY.md`](../../doc/CRASH_CONSISTENCY.md).
 Write-path derived state: [CAPABILITY_MATRIX.md](../../doc/CAPABILITY_MATRIX.md) (DEF-023).
 Compaction reclaim: same matrix (DEF-024).
+Identifiers: same matrix (DEF-025).
 
 ## Out of scope (this crate)
 

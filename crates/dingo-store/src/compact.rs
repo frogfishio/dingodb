@@ -361,7 +361,7 @@ pub fn write_live_segment(
     limits: SafetyLimits,
     index: &PrimaryIndex,
     next_segment_id: [u8; 16],
-    mint_event_id: &mut dyn FnMut() -> [u8; 16],
+    mint_event_id: &mut dyn FnMut() -> Result<[u8; 16], StoreError>,
     created_ns: u64,
 ) -> Result<(usize, u64), StoreError> {
     let ids = SegmentId::new(store_id, next_segment_id);
@@ -372,7 +372,7 @@ pub fn write_live_segment(
         let IndexEntry::Live(lv) = entry else {
             continue;
         };
-        let event_id = mint_event_id();
+        let event_id = mint_event_id()?;
         let env = ItemEnvelope {
             store_id,
             segment_id: next_segment_id,

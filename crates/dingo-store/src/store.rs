@@ -22,6 +22,7 @@ use crate::envelope::{
 };
 use crate::error::StoreError;
 use crate::history::{subject_history_tiered, SubjectHistory};
+use crate::ids::{mint_sortable_segment_id, random_id, segment_seq_from_id, subject_item_id};
 use crate::index::PrimaryIndex;
 use crate::index_cache::{
     primary_cache_path, segment_fingerprint, try_load_primary_index,
@@ -172,12 +173,10 @@ pub struct Store {
     derived_ops_since_checkpoint: u64,
     /// Active in-memory segment + file, if any.
     active: Option<ActiveWriter>,
-    /// Counter used to mint segment ids (monotonic diagnostic).
+    /// Counter used to mint sortable segment ids (recovered from on-disk max).
     segment_seq: u64,
     /// Seal active segment when it reaches this many bytes.
     seal_threshold: u64,
-    /// Counter for event_id generation within process.
-    event_counter: u64,
     /// Bodies larger than this are written as chunked payloads (Stage 6).
     chunk_threshold: usize,
     /// Max logical bytes per payload-chunk frame.
@@ -224,7 +223,7 @@ impl Store {
         paths.create_dirs()?;
         // Exclusive ownership before any authoritative write (DEF-020).
         let writer_lock = WriterLock::acquire(&paths)?;
-        let store_id = random_id();
+        let store_id = random_id()?;
         let created_ns = now_ns();
         crate::atomic_file::write_atomic(&paths.store_id_file(), &store_id)?;
         crate::atomic_file::write_atomic(&paths.meta_file(), META_VERSION.as_bytes())?;
@@ -243,7 +242,6 @@ impl Store {
             active: None,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
-            event_counter: 0,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
@@ -300,7 +298,6 @@ impl Store {
             active: None,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
-            event_counter: 0,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
@@ -350,7 +347,6 @@ impl Store {
             active: None,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
-            event_counter: 0,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
@@ -691,7 +687,7 @@ impl Store {
         let live_planned = self.index.live_entries().count();
         let (est_read, est_write) = estimate_compact_bytes(&self.paths, &sources, &self.index);
         let segment_id = self.next_segment_id();
-        let job_id = random_id();
+        let job_id = random_id()?;
         let created_ns = now_ns();
         let recovery_generation = next_compact_recovery_generation(&self.paths)?;
 
@@ -720,14 +716,9 @@ impl Store {
         }
 
         // --- create ---
-        let mut counter = self.event_counter;
+        // Event ids are pure CSPRNG identities (DEF-025); ordering is writer_seq.
         let store_id = self.store_id;
-        let mut mint = || {
-            counter = counter.saturating_add(1);
-            let mut id = random_id();
-            id[..8].copy_from_slice(&counter.to_le_bytes());
-            id
-        };
+        let mut mint = || random_id();
         let create_result = write_live_segment(
             &self.paths,
             store_id,
@@ -737,7 +728,6 @@ impl Store {
             &mut mint,
             created_ns,
         );
-        self.event_counter = counter;
         let (written, bytes_written) = match create_result {
             Ok(v) => v,
             Err(e) => {
@@ -979,7 +969,7 @@ impl Store {
             .map(|(k, v)| (k.as_slice(), v.as_slice()))
             .collect();
         let meta = CheckpointMeta {
-            checkpoint_id: random_id(),
+            checkpoint_id: random_id()?,
             live_subjects: live.len(),
             segment_fingerprint: fp,
             coverage: coverage.to_string(),
@@ -1735,9 +1725,9 @@ impl Store {
         // Pre-mint event ids so we do not hold &mut active across next_event_id.
         let mut chunk_event_ids: Vec<[u8; 16]> = Vec::with_capacity(pieces.len());
         for _ in 0..pieces.len() {
-            chunk_event_ids.push(self.next_event_id());
+            chunk_event_ids.push(self.next_event_id()?);
         }
-        let event_id = self.next_event_id();
+        let event_id = self.next_event_id()?;
         let created_ns = now_ns();
 
         let chunk_envelopes: Result<Vec<_>, _> = pieces
@@ -1910,7 +1900,7 @@ impl Store {
                 Some(entry) => entry.item_id(),
                 None => subject_item_id(subject_bytes),
             };
-            let event_id = self.next_event_id();
+            let event_id = self.next_event_id()?;
             self.index.apply_event(
                 subject_bytes.to_vec(),
                 kind,
@@ -1956,7 +1946,7 @@ impl Store {
             Some(entry) => entry.item_id(),
             None => subject_item_id(subject_bytes),
         };
-        let event_id = self.next_event_id();
+        let event_id = self.next_event_id()?;
         let created_ns = now_ns();
 
         let env = ItemEnvelope {
@@ -2126,20 +2116,13 @@ impl Store {
 
     fn next_segment_id(&mut self) -> [u8; 16] {
         self.segment_seq = self.segment_seq.saturating_add(1);
-        let mut id = [0u8; 16];
-        id[..8].copy_from_slice(&self.segment_seq.to_le_bytes());
-        // Mix store id for uniqueness across stores.
-        for i in 0..8 {
-            id[8 + i] = self.store_id[i] ^ id[i];
-        }
-        id
+        // Sortable identity: monotonic seq recovered from disk on open (DEF-025).
+        mint_sortable_segment_id(self.segment_seq, &self.store_id)
     }
 
-    fn next_event_id(&mut self) -> [u8; 16] {
-        self.event_counter = self.event_counter.saturating_add(1);
-        let mut id = random_id();
-        id[..8].copy_from_slice(&self.event_counter.to_le_bytes());
-        id
+    /// Pure CSPRNG event identity (not sortable; order uses writer_sequence).
+    fn next_event_id(&mut self) -> Result<[u8; 16], StoreError> {
+        random_id()
     }
 }
 
@@ -2232,7 +2215,7 @@ fn next_compact_recovery_generation(paths: &StorePaths) -> Result<u64, StoreErro
 
 /// First 8 LE bytes of segment_id are the mint counter (see `next_segment_id`).
 fn segment_seq_key(segment_id: &[u8; 16]) -> u64 {
-    u64::from_le_bytes(segment_id[..8].try_into().unwrap_or([0; 8]))
+    segment_seq_from_id(segment_id)
 }
 
 fn max_segment_seq_from_paths(paths: &[PathBuf]) -> u64 {
@@ -2417,7 +2400,7 @@ fn recover_active_bytes(
     limits: SafetyLimits,
 ) -> Result<(Vec<u8>, [u8; 16]), StoreError> {
     if bytes.is_empty() {
-        return Ok((Vec::new(), random_id()));
+        return Ok((Vec::new(), random_id()?));
     }
     let report = scan_forward(bytes, limits);
     let mut end = 0u64;
@@ -2445,7 +2428,10 @@ fn recover_active_bytes(
         }
     }
     let kept = bytes[..end as usize].to_vec();
-    let sid = segment_id.unwrap_or_else(random_id);
+    let sid = match segment_id {
+        Some(id) => id,
+        None => random_id()?,
+    };
     Ok((kept, sid))
 }
 
@@ -2506,38 +2492,6 @@ fn read_store_id(paths: &StorePaths) -> Result<[u8; 16], StoreError> {
     let mut id = [0u8; 16];
     id.copy_from_slice(&raw);
     Ok(id)
-}
-
-fn subject_item_id(subject: &[u8]) -> [u8; 16] {
-    let hash = blake3::hash(subject);
-    let mut id = [0u8; 16];
-    id.copy_from_slice(&hash.as_bytes()[..16]);
-    id
-}
-
-fn random_id() -> [u8; 16] {
-    // Prefer OS randomness when available; fall back to time-based mix.
-    let mut id = [0u8; 16];
-    if fill_os_random(&mut id) {
-        return id;
-    }
-    let t = now_ns().to_le_bytes();
-    id[..8].copy_from_slice(&t);
-    let h = blake3::hash(&id);
-    id.copy_from_slice(&h.as_bytes()[..16]);
-    id
-}
-
-fn fill_os_random(buf: &mut [u8; 16]) -> bool {
-    #[cfg(unix)]
-    {
-        use std::io::Read;
-        if let Ok(mut f) = File::open("/dev/urandom") {
-            return f.read_exact(buf).is_ok();
-        }
-    }
-    let _ = buf;
-    false
 }
 
 fn now_ns() -> u64 {

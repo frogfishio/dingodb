@@ -289,6 +289,8 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::ConsistencyViolation(_) => ErrorCode::ConsistencyViolation,
         // Failpoints are test-only injection; surface as I/O class failures.
         StoreError::Failpoint(_) => ErrorCode::Io,
+        // OS CSPRNG unavailable (DEF-025); rare host configuration failure.
+        StoreError::RandomUnavailable(_) => ErrorCode::Internal,
     }
 }
 

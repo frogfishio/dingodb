@@ -1,5 +1,9 @@
 //! Cluster identity types (CLUSTER_SPEC §5, §8.3).
+//!
+//! Random cluster ids use the shared OS CSPRNG path (`dingo_store::random_id`,
+//! DEF-025 / `dingo-id-v1`). Deterministic seed derivation is for tests only.
 
+use dingo_store::{random_id, StoreError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -8,8 +12,15 @@ use std::fmt;
 pub struct ClusterId(pub [u8; 16]);
 
 impl ClusterId {
-    /// Generate a new random-ish id from blake3 of process entropy + counter.
-    pub fn generate(seed: &[u8]) -> Self {
+    /// Mint a new cluster id from the OS CSPRNG (DEF-025). Fails closed.
+    pub fn generate() -> Result<Self, StoreError> {
+        Ok(Self(random_id()?))
+    }
+
+    /// Deterministic id from an explicit seed (tests / fixtures only).
+    ///
+    /// Not suitable for production cluster identity: same seed → same id.
+    pub fn from_seed(seed: &[u8]) -> Self {
         let hash = blake3::hash(seed);
         let mut id = [0u8; 16];
         id.copy_from_slice(&hash.as_bytes()[..16]);
@@ -133,9 +144,17 @@ mod tests {
 
     #[test]
     fn cluster_id_roundtrip() {
-        let id = ClusterId::generate(b"test-seed");
+        let id = ClusterId::from_seed(b"test-seed");
         let hex = id.to_hex();
         assert_eq!(hex.len(), 32);
         assert_eq!(ClusterId::from_hex(&hex), Some(id));
+    }
+
+    #[test]
+    fn cluster_id_csprng_unique() {
+        let a = ClusterId::generate().expect("CSPRNG");
+        let b = ClusterId::generate().expect("CSPRNG");
+        assert_ne!(a, b);
+        assert_ne!(a.0, [0u8; 16]);
     }
 }

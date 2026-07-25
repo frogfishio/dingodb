@@ -25,6 +25,7 @@ mod erasure;
 mod error;
 mod failpoint;
 mod history;
+mod ids;
 mod index;
 mod index_cache;
 mod layout;
@@ -78,6 +79,10 @@ pub use failpoint::{
     hit as hit_failpoint, short_write_len as failpoint_short_write_len, Action as FailpointAction,
 };
 pub use history::{HistoryEvent, SubjectHistory};
+pub use ids::{
+    fill_random, hex16 as id_hex16, mint_sortable_segment_id, random_id, segment_seq_from_id,
+    subject_item_id, ID_LEN, ID_PROFILE,
+};
 pub use index::{IndexEntry, LiveValue};
 pub use index_cache::{IndexFrontier, PRIMARY_CACHE_FILE};
 pub use layout::{hex16, list_dingo_files, segment_id_from_filename, unhex16, StorePaths};

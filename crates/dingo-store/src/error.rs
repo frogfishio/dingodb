@@ -105,6 +105,13 @@ pub enum StoreError {
     /// Injected failure from an armed failpoint (DEF-022 testing only).
     #[error("failpoint hit: {0}")]
     Failpoint(&'static str),
+
+    /// OS CSPRNG was required and unavailable (DEF-025).
+    ///
+    /// Store/event/operation identity must not fall back to wall-clock or
+    /// weak mixes when secure randomness is needed.
+    #[error("secure randomness unavailable: {0}")]
+    RandomUnavailable(String),
 }
 
 impl StoreError {

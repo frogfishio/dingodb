@@ -37,5 +37,6 @@ num-rational = "0.4"
 num-traits = "0.2"
 blake3 = "1"
 crc32c = "0.6"
+getrandom = "0.3"
 tempfile = "3"
 

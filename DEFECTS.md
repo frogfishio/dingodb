@@ -634,7 +634,9 @@ Acceptance:
 
 ### DEF-025 — Strengthen identifier generation
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (`dingo-id-v1` + `getrandom`; see
+`stage_def_025_identifiers`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -643,6 +645,17 @@ Work:
 - Define stable sortable IDs separately from random event identity.
 - Persist monotonic counters only where the protocol depends on monotonicity.
 - Add collision tests and format/version tags.
+
+Implementation notes:
+
+- Profile tag `ID_PROFILE = "dingo-id-v1"` in `dingo_store::ids`.
+- Random identities (`event_id`, `store_id`, job/checkpoint/operation ids,
+  cluster id) use `getrandom` via `random_id()`; `StoreError::RandomUnavailable`
+  on failure (no wall-clock/hash fallback).
+- Sortable `segment_id`: LE `u64` seq + store mix (`mint_sortable_segment_id`);
+  seq recovered from on-disk segment names on open.
+- Content-derived `item_id` remains `blake3(subject)[..16]`.
+- SDK remote `operation_id` and `ClusterId::generate` share the same path.
 
 Acceptance:
 

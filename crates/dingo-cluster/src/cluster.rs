@@ -62,17 +62,10 @@ impl Cluster {
             std::fs::create_dir_all(&root)?;
         }
 
-        let seed = format!(
-            "{}-{}",
-            root.display(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|d| d.as_nanos())
-                .unwrap_or(0)
-        );
-        let cluster_id = cfg
-            .cluster_id
-            .unwrap_or_else(|| ClusterId::generate(seed.as_bytes()));
+        let cluster_id = match cfg.cluster_id {
+            Some(id) => id,
+            None => ClusterId::generate()?,
+        };
 
         let meta = ClusterMeta::from_config(&cfg, cluster_id);
         meta.write(&root)?;

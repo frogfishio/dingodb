@@ -15,6 +15,7 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**", "crash_matrix.v1.jso
 dingo-format.workspace = true
 thiserror.workspace = true
 blake3.workspace = true
+getrandom.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 
