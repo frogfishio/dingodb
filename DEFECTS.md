@@ -1008,7 +1008,10 @@ Evidence:
 
 ### DEF-034 — Add protocol admission control
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (rate / auth lockout / connect churn / expensive budgets /
+operation-id replay; see `stage_def_034_admission`, `dingo_sdk::admission`,
+`doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1017,9 +1020,36 @@ Work:
 - Protect expensive scan/index/doctor operations with budgets.
 - Add replay windows where credentials or signed requests require them.
 
+Implementation notes:
+
+- Profile tag `ADMISSION_PROFILE = "dingo-admission-v1"`.
+- `AdmissionLimits` / `AdmissionController` shared process-wide via
+  `ServeOptions::admission` (built from `admission_limits` at serve start).
+- Fixed 1s windows for global and per-principal RPC rates; overload →
+  `resource_limit`.
+- Auth-failure keys are hashes of the presented token (secrets never stored);
+  after `max_auth_failures` within the window, lockout returns generic
+  `authentication_failed` without re-scanning tokens.
+- Connection churn limited at accept (`try_admit_connect`) before simultaneous
+  connection slots (DEF-030); rejects use framed handshake `resource_limit`.
+- Expensive ops (`find`, `scan_json`, `index_*`, salvage/admin scaffolds, …)
+  take a concurrency budget (`ExpensiveGuard`).
+- Mutation `operation_id` values enter a bounded TTL replay window: retries of
+  the same `(principal, operation_id)` are admitted; capacity pressure returns
+  `resource_limit`. Store-level idempotency (DEF-010) remains authoritative for
+  content matching.
+
 Acceptance:
 
 - Load and abuse tests show bounded resource use and useful overload errors.
+
+Evidence:
+
+- `crates/dingo-sdk/tests/stage_def_034_admission.rs` — global rate, auth
+  lockout, connect churn, expensive concurrency, operation-id replay, SDK
+  client `resource_limit` surface.
+- Unit: `admission::tests` rate windows, lockout key hygiene, expensive guard,
+  replay fresh/retry/full.
 
 ---
 
@@ -1723,6 +1753,8 @@ DingoDB may be called production-ready only when all applicable gates pass.
       plaintext non-loopback still requires explicit insecure override).
 - [x] Authorization separates data, administration, salvage, and purge rights
       (DEF-033; full salvage/tier/purge engines still scaffolded).
+- [x] Protocol admission control bounds rate, auth failures, connection churn,
+      expensive ops, and operation-id replay (DEF-034).
 - [ ] Threat model and independent audit have no unresolved critical/high
       findings.
 - [ ] Fuzzing covers all untrusted parsers.

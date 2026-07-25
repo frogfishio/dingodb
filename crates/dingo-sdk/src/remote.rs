@@ -16,6 +16,9 @@
 //! token, deadlines, connect retries, wire profile) live on [`ConnectOptions`] /
 //! [`ServeOptions`] — not on the collection API (DX_SPEC §4.2).
 
+use crate::admission::{
+    is_replayable_mutation, AdmissionController, AdmissionLimits, ADMISSION_PROFILE,
+};
 use crate::authz::{
     check_rpc, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM,
 };
@@ -209,6 +212,13 @@ pub struct ServeOptions {
     pub authz: Option<AuthzPolicy>,
     /// Optional audit log for security- and recovery-sensitive actions (DEF-033).
     pub audit: Option<Arc<AuditLog>>,
+    /// Protocol admission limits (DEF-034): rate, auth lockout, connect churn,
+    /// expensive-op concurrency, operation-id replay window.
+    pub admission_limits: AdmissionLimits,
+    /// Optional shared admission controller. When unset, [`serve_store_with`]
+    /// builds one from [`Self::admission_limits`]. Tests may inject a prebuilt
+    /// controller to observe counters.
+    pub admission: Option<Arc<AdmissionController>>,
 }
 
 impl Default for ServeOptions {
@@ -228,6 +238,8 @@ impl Default for ServeOptions {
             tls_state_slot: None,
             authz: None,
             audit: None,
+            admission_limits: AdmissionLimits::draft_defaults(),
+            admission: None,
         }
     }
 }
@@ -259,6 +271,18 @@ impl ServeOptions {
         self
     }
 
+    /// Set protocol admission limits (DEF-034).
+    pub fn admission_limits(mut self, limits: AdmissionLimits) -> Self {
+        self.admission_limits = limits;
+        self
+    }
+
+    /// Inject a shared admission controller (DEF-034 tests / multi-listener).
+    pub fn admission(mut self, controller: Arc<AdmissionController>) -> Self {
+        self.admission = Some(controller);
+        self
+    }
+
     /// Resolve the effective authorization policy for this serve configuration.
     pub fn effective_authz(&self) -> AuthzPolicy {
         if let Some(p) = self.authz.clone() {
@@ -268,6 +292,14 @@ impl ServeOptions {
             return AuthzPolicy::shared_superuser(token.clone());
         }
         AuthzPolicy::new()
+    }
+
+    /// Resolve the process-wide admission controller (build from limits if needed).
+    pub fn effective_admission(&self) -> Arc<AdmissionController> {
+        if let Some(c) = self.admission.as_ref() {
+            return Arc::clone(c);
+        }
+        AdmissionController::new(self.admission_limits.clone())
     }
 
     /// Advertise a cluster placement directory on `directory` RPC.
@@ -1671,10 +1703,12 @@ pub fn serve_store_with(
         .emit_stderr();
         eprintln!(
             "dingo serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
-             tls={TLS_PROFILE}/{} max_connections={} idle_timeout_ms={} diagnostic_line={}",
+             tls={TLS_PROFILE}/{} admission={ADMISSION_PROFILE} max_connections={} \
+             idle_timeout_ms={} global_rps={} diagnostic_line={}",
             if tls_enabled { "on" } else { "off" },
             options.server_limits.max_connections,
             options.server_limits.idle_timeout.as_millis(),
+            options.admission_limits.global_max_rps,
             options.diagnostic_line_protocol
         );
     }
@@ -1682,6 +1716,10 @@ pub fn serve_store_with(
     // One coordinated store owner for the whole process (DEF-020 + DEF-030).
     let store = Arc::new(Mutex::new(Store::open(&path)?));
     let runtime = ServerRuntime::new(options.server_limits.clone(), options.shutdown.clone());
+    // One process-wide admission controller (DEF-034).
+    let admission = options.effective_admission();
+    let mut options = options;
+    options.admission = Some(Arc::clone(&admission));
     let listener = TcpListener::bind(bind).map_err(Error::from_io)?;
     // Non-blocking accept so the loop can observe shutdown without a stuck client.
     listener
@@ -1709,6 +1747,16 @@ fn serve_accept_loop(
                 // platforms; workers use blocking reads with idle timeouts.
                 if let Err(e) = stream.set_nonblocking(false) {
                     eprintln!("dingo serve: set_nonblocking(false) failed: {e}");
+                    continue;
+                }
+                // DEF-034: bound connection churn before simultaneous-slot admission.
+                let admission = options.effective_admission();
+                if !admission.try_admit_connect() {
+                    let max = admission.limits().max_connects_per_window;
+                    let reason = format!(
+                        "connection churn limit exceeded (max {max} per window)"
+                    );
+                    let _ = reject_connection(stream, tls_state.as_ref(), &reason);
                     continue;
                 }
                 if !runtime.try_admit_connection() {
@@ -2149,28 +2197,59 @@ pub fn handle_connection_shared(
             )?;
             break;
         }
-        // DEF-033: authenticate then authorize; audit sensitive / denied ops.
-        let policy = options.effective_authz();
-        if let Err(e) = check_rpc(
-            &policy,
-            options.audit.as_deref(),
-            req.token.as_deref(),
-            &req.op,
-            req.collection.as_deref(),
-            req.confirm.as_deref(),
-        ) {
-            write_rpc_response(
-                &mut reader,
-                &options,
-                RpcResponse {
-                    id: req.id,
-                    ok: false,
-                    error: Some(e.to_string()),
-                    code: Some(e.code().as_str().into()),
-                    ..empty_resp(req.id)
-                },
-            )?;
-            continue;
+        let admission = options.effective_admission();
+        let gate = admit_and_authorize(&options, &admission, &req);
+        let principal_id = match gate {
+            Ok(id) => id,
+            Err(e) => {
+                write_rpc_response(
+                    &mut reader,
+                    &options,
+                    RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some(e.code().as_str().into()),
+                        ..empty_resp(req.id)
+                    },
+                )?;
+                continue;
+            }
+        };
+        let _expensive = match admission.try_begin_expensive(&req.op) {
+            Ok(g) => g,
+            Err(e) => {
+                write_rpc_response(
+                    &mut reader,
+                    &options,
+                    RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some(e.code().as_str().into()),
+                        ..empty_resp(req.id)
+                    },
+                )?;
+                continue;
+            }
+        };
+        if is_replayable_mutation(&req.op) {
+            if let Some(oid) = req.operation_id.as_deref() {
+                if let Err(e) = admission.register_operation_id(&principal_id, oid) {
+                    write_rpc_response(
+                        &mut reader,
+                        &options,
+                        RpcResponse {
+                            id: req.id,
+                            ok: false,
+                            error: Some(e.to_string()),
+                            code: Some(e.code().as_str().into()),
+                            ..empty_resp(req.id)
+                        },
+                    )?;
+                    continue;
+                }
+            }
         }
         let resp = {
             let _mutation = if is_mutating_op(&req.op) {
@@ -2215,6 +2294,7 @@ fn connection_loop(
         .set_write_timeout(Some(idle))
         .map_err(Error::from_io)?;
     let mut reader = BufReader::new(stream);
+    let admission = options.effective_admission();
 
     let max_frame = if options.diagnostic_line_protocol {
         crate::resource::host_limits().max_rpc_line_bytes
@@ -2231,27 +2311,58 @@ fn connection_loop(
             Err(ReadRpc::Continue) => continue,
             Err(ReadRpc::Close) => break,
         };
-        let policy = options.effective_authz();
-        if let Err(e) = check_rpc(
-            &policy,
-            options.audit.as_deref(),
-            req.token.as_deref(),
-            &req.op,
-            req.collection.as_deref(),
-            req.confirm.as_deref(),
-        ) {
-            write_rpc_response(
-                &mut reader,
-                options,
-                RpcResponse {
-                    id: req.id,
-                    ok: false,
-                    error: Some(e.to_string()),
-                    code: Some(e.code().as_str().into()),
-                    ..empty_resp(req.id)
-                },
-            )?;
-            continue;
+        let gate = admit_and_authorize(options, &admission, &req);
+        let principal_id = match gate {
+            Ok(id) => id,
+            Err(e) => {
+                write_rpc_response(
+                    &mut reader,
+                    options,
+                    RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some(e.code().as_str().into()),
+                        ..empty_resp(req.id)
+                    },
+                )?;
+                continue;
+            }
+        };
+        let _expensive = match admission.try_begin_expensive(&req.op) {
+            Ok(g) => g,
+            Err(e) => {
+                write_rpc_response(
+                    &mut reader,
+                    options,
+                    RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some(e.code().as_str().into()),
+                        ..empty_resp(req.id)
+                    },
+                )?;
+                continue;
+            }
+        };
+        if is_replayable_mutation(&req.op) {
+            if let Some(oid) = req.operation_id.as_deref() {
+                if let Err(e) = admission.register_operation_id(&principal_id, oid) {
+                    write_rpc_response(
+                        &mut reader,
+                        options,
+                        RpcResponse {
+                            id: req.id,
+                            ok: false,
+                            error: Some(e.to_string()),
+                            code: Some(e.code().as_str().into()),
+                            ..empty_resp(req.id)
+                        },
+                    )?;
+                    continue;
+                }
+            }
         }
         // Exclusive test path: no process-wide mutation accounting (runtime is
         // local to this connection). Shared workers use MutationGuard.
@@ -2268,6 +2379,38 @@ fn connection_loop(
         write_rpc_response(&mut reader, options, resp)?;
     }
     Ok(())
+}
+
+/// DEF-033 authz + DEF-034 rate/auth-lockout gates. Returns principal id on allow.
+fn admit_and_authorize(
+    options: &ServeOptions,
+    admission: &AdmissionController,
+    req: &RpcRequest,
+) -> Result<String, Error> {
+    // Bound auth-failure CPU before constant-time token scan.
+    admission.check_auth_lockout(req.token.as_deref())?;
+    let policy = options.effective_authz();
+    let principal = match check_rpc(
+        &policy,
+        options.audit.as_deref(),
+        req.token.as_deref(),
+        &req.op,
+        req.collection.as_deref(),
+        req.confirm.as_deref(),
+    ) {
+        Ok(p) => {
+            admission.clear_auth_failures(req.token.as_deref());
+            p
+        }
+        Err(e) => {
+            if matches!(e, Error::AuthenticationFailed(_)) {
+                admission.record_auth_failure(req.token.as_deref());
+            }
+            return Err(e);
+        }
+    };
+    admission.admit_rpc(&principal.id)?;
+    Ok(principal.id)
 }
 
 /// Outcome of reading one application RPC from the wire.

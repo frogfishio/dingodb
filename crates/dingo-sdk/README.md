@@ -39,6 +39,7 @@ Application developers do not need to know about frames or segments.
 | `serve_store` / `serve_store_with` | Bounded TCP server (`ServeOptions` token, limits, shutdown; `directory` op) |
 | `serve_cluster_node` | Serve one cluster node; advertise placement + endpoints |
 | `ServerLimits` / `ServerRuntime` / `SERVER_PROFILE` | Connection admission, idle/drain timeouts, stats (DEF-030) |
+| `AdmissionLimits` / `AdmissionController` / `ADMISSION_PROFILE` | RPC rate, auth lockout, connect churn, expensive budgets, op-id replay (DEF-034) |
 | `PROTOCOL_PROFILE` / `RPC_WIRE_LABEL` / frame helpers | Framed RPC handshake + length-prefixed messages (DEF-031) |
 | `Dingo::collection` | Lazy named collection handle (no disk write) |
 | `Dingo::list_collections` / `rebuild_catalogs` | Derived catalog (rebuild embedded only) |

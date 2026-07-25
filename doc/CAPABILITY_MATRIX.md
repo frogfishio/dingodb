@@ -48,6 +48,7 @@ with the acceptance evidence expected before a stronger label.
 | `RPC_WIRE_LABEL` | `1.0-draft` | Network RPC interoperability draft (DEF-031; not frozen) |
 | `TLS_PROFILE` | `dingo-tls-v1` | TLS 1.3 transport + peer identity (DEF-032) |
 | `AUTHZ_PROFILE` | `dingo-authz-v1` | Principal privileges + audit chain (DEF-033) |
+| `ADMISSION_PROFILE` | `dingo-admission-v1` | Protocol admission: rate, auth lockout, churn, expensive budgets (DEF-034) |
 
 ## Network bind policy (DEF-002 / DEF-032)
 
@@ -84,6 +85,22 @@ with the acceptance evidence expected before a stronger label.
 
 - Profile: `AUTHZ_PROFILE = dingo-authz-v1`.
 - Evidence: `stage_def_033_authz`.
+
+## Protocol admission control (DEF-034)
+
+| Concern | How |
+|---------|-----|
+| Global RPC rate | `AdmissionLimits::global_max_rps` (1s fixed window) → `resource_limit` |
+| Per-principal rate | `per_principal_max_rps` after authz → `resource_limit` |
+| Auth failure budget | Hashed token key; lockout → generic `authentication_failed` |
+| Connection churn | Accept-time window before DEF-030 slot admission |
+| Expensive ops | Concurrent budget for scan/find/index/salvage/admin scaffolds |
+| Operation-id replay | Bounded TTL window; retries of same id admitted; full → `resource_limit` |
+| Config | `ServeOptions::admission_limits` / `ServeOptions::admission` |
+
+- Profile: `ADMISSION_PROFILE = dingo-admission-v1`.
+- Complements DEF-029 host ceilings and DEF-030 connection slots (does not replace them).
+- Evidence: `stage_def_034_admission` + `admission` unit tests.
 
 ## Network RPC framing (DEF-031)
 
@@ -266,7 +283,8 @@ collection catalogs are built from segment-derived durable state only.
 | Cancellation | shipped | `CancelToken` on `QueryOptions` / builder (embedded find loops) |
 | Frame length bounds | shipped | `dingo_format::SafetyLimits` (unchanged) |
 | Conn / concurrent query admission | shipped | DEF-030 bounded server (`SERVER_PROFILE`) |
-| Per-tenant work quotas | not yet | follow-on |
+| Protocol rate / auth lockout / expensive budgets | shipped | DEF-034 admission (`ADMISSION_PROFILE`) |
+| Per-tenant work quotas | partial | DEF-034 per-principal RPS; multi-tenant ACL store still follow-on |
 | Tests | shipped | `stage_def_029_resource_governance` + resource unit tests |
 
 ## Bounded TCP server (DEF-030)

@@ -20,6 +20,7 @@
 /// breaking collection API changes require a major bump of this label.
 pub const SDK_API_VERSION: &str = "1.0";
 
+mod admission;
 mod authz;
 mod bind_policy;
 mod cluster_backend;
@@ -39,6 +40,13 @@ mod subject;
 mod tls;
 mod value;
 
+pub use admission::{
+    is_expensive_op, is_replayable_mutation, AdmissionController, AdmissionLimits, AdmissionStats,
+    ExpensiveGuard, ReplayStatus, ADMISSION_PROFILE, DEFAULT_AUTH_FAILURE_WINDOW,
+    DEFAULT_AUTH_LOCKOUT, DEFAULT_CONNECT_WINDOW, DEFAULT_GLOBAL_MAX_RPS,
+    DEFAULT_MAX_AUTH_FAILURES, DEFAULT_MAX_CONNECTS_PER_WINDOW, DEFAULT_MAX_EXPENSIVE_CONCURRENT,
+    DEFAULT_PER_PRINCIPAL_MAX_RPS, DEFAULT_REPLAY_CAPACITY, DEFAULT_REPLAY_TTL, RATE_WINDOW,
+};
 pub use authz::{
     authorize, bound_label, check_rpc, redact_token, requirement_for_op, AuditDecision, AuditLog,
     AuditRecord, AuthzPolicy, OpRequirement, Principal, PrincipalSpec, Privilege, PrivilegeSet,
