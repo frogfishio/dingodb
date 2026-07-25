@@ -1,15 +1,19 @@
-//! DingoDB collection SDK (Stages 4 + 6 + 7).
+//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d).
 //!
-//! Ordinary application surface: open a store directory or connect to a server,
-//! name a collection, put/get/delete JSON or bytes, filter JSON documents,
-//! manage secondary indexes, and inspect per-key history — without learning SDA.
+//! Ordinary application surface: open a store directory, connect to a server,
+//! or open a multi-node cluster; name a collection; put/get/delete JSON or
+//! bytes; filter JSON documents; manage secondary indexes; inspect per-key
+//! history — without learning SDA.
 //!
-//! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, and 7.
+//! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d;
+//! CLUSTER_SPEC §13 (client routing / directory cache).
 
 #![deny(missing_docs)]
 
+mod cluster_backend;
 mod collection;
 mod dingo;
+mod directory_cache;
 mod error;
 mod filter;
 mod history;
@@ -19,8 +23,12 @@ mod remote;
 mod subject;
 mod value;
 
+pub use cluster_backend::ClusterBackend;
 pub use collection::Collection;
 pub use dingo::Dingo;
+pub use directory_cache::{
+    AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot,
+};
 pub use error::{Error, ErrorCode};
 pub use filter::{FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, SortOrder};
 pub use history::{KeyHistory, Version};
@@ -28,12 +36,15 @@ pub use indexes::{IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 pub use remote::{
     handle_connection, handle_connection_with, parse_dingo_url, serve_store, serve_store_with,
-    ConnectOptions, RemoteClient, ServeOptions, DEFAULT_PORT,
+    ConnectOptions, ParsedDingoUrl, RemoteClient, ServeOptions, DEFAULT_PORT,
 };
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,
     MAX_COLLECTION_NAME_LEN, MAX_KEY_LEN,
 };
+
+/// Re-export cluster config for [`Dingo::create_cluster`].
+pub use dingo_cluster::ClusterConfig;
 
 /// Re-export durability modes used on receipts and put options.
 pub use dingo_store::DurabilityMode;

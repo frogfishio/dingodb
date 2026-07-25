@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.18 (Stages 0–7 done; Stage 8a–8c cluster foundation + Raft + convergent-append; 8d+ open)  
+Status: Draft v0.19 (Stages 0–7 done; Stage 8a–8d cluster foundation + Raft + convergent-append + SDK routing; 8e+ open)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -418,7 +418,7 @@ control plane payload authority.
 | 8a | Foundation: `dingo-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
 | 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
 | 8c | Convergent-append path + split dual-accept tests | **done** — `src/convergent.rs`, `tests/stage8c_convergent.rs` |
-| 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | open |
+| 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
 | 8e | Distributed scan/find coverage + partial-query honesty | open |
 | 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | open |
 
@@ -460,6 +460,15 @@ control plane payload authority.
 - `reconcile` fans out missing `(subject, body)` by content hash; same subject
   with differing live bodies is reported as an explicit conflict (both retained
   in history). Linearizable reads return `consistency_violation` in this mode.
+
+**Stage 8d notes**
+
+- Same collection API over an in-process cluster via `Dingo::create_cluster` /
+  `open_cluster`; client holds a [`ClientDirectoryCache`] of partition → leader
+  routes and refreshes on stale placement (CLUSTER_SPEC §13, §22.5).
+- Multi-seed `dingo://h1:p1,h2:p2[/label]` URLs parse and try seeds in order.
+- Single-node `dingo serve` answers `directory` with a synthetic all-local
+  placement snapshot for uniform client caching.
 
 ---
 
@@ -648,6 +657,9 @@ the cited conformance suites as required checks—not optional polish.
 18. ~~Stage 8c convergent-append.~~ **Done** — dual-accept without quorum,
     `append_local` + `reconcile` with explicit subject conflicts; tests
     `stage8c_convergent.rs` (§22 items 7–8).
-19. **Next:** Stage 8d+ (SDK cluster routing, distributed find, §22 remainder);
+19. ~~Stage 8d SDK routing + client directory cache.~~ **Done** —
+    `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed
+    URL parse, `directory` RPC; tests `stage8d_routing.rs` (§13, §22.5).
+20. **Next:** Stage 8e–8f (distributed find coverage, §22 remainder);
     optional deterministic CBOR envelope validation (FORMAT_SPEC §5
     condition 6); Stage 9 tiering.

@@ -225,6 +225,7 @@ dependencies = [
 name = "dingo-sdk"
 version = "0.1.0"
 dependencies = [
+ "dingo-cluster",
  "dingo-store",
  "serde",
  "serde_json",

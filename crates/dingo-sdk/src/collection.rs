@@ -36,7 +36,9 @@ impl<'a> Collection<'a> {
     fn local_store(&mut self) -> Result<&mut Store, Error> {
         match self.backend {
             Backend::Local(s) => Ok(s),
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("local store access")),
+            Backend::Remote(_) | Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("local store access"))
+            }
         }
     }
 
@@ -74,6 +76,7 @@ impl<'a> Collection<'a> {
                 Ok(WriteReceipt::from_store(key.to_string(), receipt))
             }
             Backend::Remote(client) => client.put_json(&self.name, key, &json, options),
+            Backend::Cluster(c) => c.put_json(&self.name, key, &json, options),
         }
     }
 
@@ -91,6 +94,7 @@ impl<'a> Collection<'a> {
                 }
             }
             Backend::Remote(client) => client.get_json(&self.name, key),
+            Backend::Cluster(c) => c.get_json(&self.name, key),
         }
     }
 
@@ -106,6 +110,7 @@ impl<'a> Collection<'a> {
                 Ok(store.get_payload(subject_str)?)
             }
             Backend::Remote(client) => client.get_payload(&self.name, key),
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("get_payload on cluster (use get)")),
         }
     }
 
@@ -142,6 +147,7 @@ impl<'a> Collection<'a> {
                 Ok(WriteReceipt::from_store(key.to_string(), receipt))
             }
             Backend::Remote(client) => client.put_bytes(&self.name, key, bytes, options),
+            Backend::Cluster(c) => c.put_bytes(&self.name, key, bytes, options),
         }
     }
 
@@ -157,6 +163,7 @@ impl<'a> Collection<'a> {
                 }
             }
             Backend::Remote(client) => client.get_bytes(&self.name, key),
+            Backend::Cluster(c) => c.get_bytes(&self.name, key),
         }
     }
 
@@ -180,10 +187,11 @@ impl<'a> Collection<'a> {
                 Ok(DeleteReceipt::from_store(key.to_string(), removed, receipt))
             }
             Backend::Remote(client) => client.delete(&self.name, key, options),
+            Backend::Cluster(c) => c.delete(&self.name, key, options),
         }
     }
 
-    /// Immutable event history for `key` (DX_SPEC §10.1). Embedded and remote.
+    /// Immutable event history for `key` (DX_SPEC §10.1). Embedded, remote, cluster.
     pub fn history(&mut self, key: &str) -> Result<KeyHistory, Error> {
         match self.backend {
             Backend::Local(store) => {
@@ -193,6 +201,7 @@ impl<'a> Collection<'a> {
                 KeyHistory::from_store(key.to_string(), hist)
             }
             Backend::Remote(client) => client.history(&self.name, key),
+            Backend::Cluster(c) => c.history(&self.name, key),
         }
     }
 
@@ -216,6 +225,7 @@ impl<'a> Collection<'a> {
                 Ok(keys)
             }
             Backend::Remote(client) => client.list_keys(&self.name),
+            Backend::Cluster(c) => c.scan_keys(&self.name),
         }
     }
 
@@ -296,6 +306,7 @@ impl<'a> Collection<'a> {
         match self.backend {
             Backend::Remote(client) => client.find(&self.name, filter, options),
             Backend::Local(store) => find_on_store(store, &self.name, filter, options),
+            Backend::Cluster(c) => c.find(&self.name, filter, options),
         }
     }
 }
@@ -391,6 +402,14 @@ fn collect_from_subjects(
         }
         out.push((key.to_string(), value));
     }
+    finish_query(out, options)
+}
+
+/// Shared by embedded find and the cluster backend (Stage 8d).
+pub(crate) fn finish_query_pub(
+    out: Vec<(String, JsonValue)>,
+    options: &QueryOptions,
+) -> Result<Vec<(String, JsonValue)>, Error> {
     finish_query(out, options)
 }
 

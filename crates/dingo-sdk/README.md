@@ -1,21 +1,23 @@
 # dingo-sdk
 
-Collection SDK for DingoDB: ordinary `open` or remote `connect` + named
-collections with JSON and raw-byte put/get/delete, JSON filters, secondary
-indexes, per-key history, and query budgets over the
-[`dingo-store`](../dingo-store) append store.
+Collection SDK for DingoDB: ordinary `open`, remote `connect`, or multi-node
+`open_cluster` / `create_cluster` + named collections with JSON and raw-byte
+put/get/delete, JSON filters, secondary indexes, per-key history, and query
+budgets over [`dingo-store`](../dingo-store) / [`dingo-cluster`](../dingo-cluster).
 
 Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, §14;
-[`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md) Stages 4, 6, and 7.
+[`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md) Stages 4, 6, 7, and 8d;
+[`CLUSTER_SPEC.md`](../../CLUSTER_SPEC.md) §13 (client routing).
 
 ## Status
 
-**Stages 4a–4d + 6 + 7** — open, JSON/bytes put/get/delete, scan + streaming
+**Stages 4a–4d + 6 + 7 + 8d** — open, JSON/bytes put/get/delete, scan + streaming
 iter, SDK-native filters, stable `ErrorCode`, write receipts, secondary field
-indexes, query budgets, per-key history, chunked large payloads, and Stage 7
-`Dingo::connect("dingo://host:port")` over line-delimited JSON TCP. Remote
-parity covers put/get/delete/scan, **history**, **secondary indexes**,
-**`get_payload`**, and **server-side find** (index-accelerated when ready).
+indexes, query budgets, per-key history, chunked large payloads, Stage 7
+`Dingo::connect("dingo://host:port")` over line-delimited JSON TCP, and Stage 8d
+**cluster routing** with a client partition directory cache. Remote parity
+covers put/get/delete/scan, **history**, **secondary indexes**,
+**`get_payload`**, **server-side find**, and **`directory`**.
 
 Application developers do not need to know about frames or segments.
 
@@ -24,8 +26,10 @@ Application developers do not need to know about frames or segments.
 | API | Role |
 |-----|------|
 | `Dingo::open` | Create-or-open store directory with safe defaults |
-| `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` + `ConnectOptions` (auth/deadline/retry) |
-| `serve_store` / `serve_store_with` | TCP server helpers (`ServeOptions` token) |
+| `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` or multi-seed `h1:p1,h2:p2` + `ConnectOptions` |
+| `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster (Stage 8d); same collection API + route cache |
+| `ClientDirectoryCache` | Client partition → leader cache; refresh on stale placement |
+| `serve_store` / `serve_store_with` | TCP server helpers (`ServeOptions` token; `directory` op) |
 | `Dingo::collection` | Lazy named collection handle (no disk write) |
 | `Dingo::list_collections` / `rebuild_catalogs` | Derived catalog (rebuild embedded only) |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |

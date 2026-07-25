@@ -1,13 +1,15 @@
-//! Database handle: `Dingo::open` / `Dingo::connect` (DX_SPEC §4.1, Stage 7).
+//! Database handle: `Dingo::open` / `Dingo::connect` / `Dingo::open_cluster` (DX_SPEC §4).
 
+use crate::cluster_backend::ClusterBackend;
 use crate::collection::Collection;
 use crate::error::Error;
 use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
 use crate::subject::validate_collection_name;
+use dingo_cluster::ClusterConfig;
 use dingo_store::Store;
 use std::path::{Path, PathBuf};
 
-/// Embedded or remote DingoDB database handle.
+/// Embedded, remote, or clustered DingoDB database handle.
 ///
 /// ```ignore
 /// let mut db = Dingo::open("./app.dingo")?;
@@ -24,6 +26,16 @@ use std::path::{Path, PathBuf};
 ///     ConnectOptions::new().auth_token("secret"),
 /// )?;
 /// ```
+///
+/// Cluster (Stage 8d) — same collection API; partition routes are cached client-side:
+/// ```ignore
+/// let mut db = Dingo::create_cluster(
+///     dingo_cluster::ClusterConfig::dependable_local("./cluster")
+/// )?;
+/// // or open an existing cluster root:
+/// let mut db = Dingo::open_cluster("./cluster")?;
+/// db.collection("users")?.put("user-42", &serde_json::json!({"name": "Alice"}))?;
+/// ```
 pub struct Dingo {
     pub(crate) backend: Backend,
 }
@@ -31,6 +43,7 @@ pub struct Dingo {
 pub(crate) enum Backend {
     Local(Store),
     Remote(RemoteClient),
+    Cluster(ClusterBackend),
 }
 
 impl Dingo {
@@ -60,34 +73,82 @@ impl Dingo {
     /// Connect with explicit connection options (authn, deadlines, retry).
     ///
     /// Application put/get APIs stay the same; only the transport policy changes
-    /// (DX_SPEC §4.2).
+    /// (DX_SPEC §4.2). Multi-seed URLs (`dingo://h1:p1,h2:p2/app`) try seeds in
+    /// order and use the first that accepts a connection; the client may then
+    /// fetch a `directory` snapshot for route caching (Stage 8d).
     pub fn connect_with(url: impl AsRef<str>, options: ConnectOptions) -> Result<Self, Error> {
         let url = url.as_ref();
-        let (hostport, _label) = parse_dingo_url(url)?;
-        let client = RemoteClient::connect_with(&hostport, url.to_string(), options)?;
+        let parsed = parse_dingo_url(url)?;
+        if parsed.seeds.is_empty() {
+            return Err(Error::ValidationMsg("empty dingo:// URL".into()));
+        }
+        let mut last_err: Option<Error> = None;
+        for hostport in &parsed.seeds {
+            match RemoteClient::connect_with(hostport, url.to_string(), options.clone()) {
+                Ok(client) => {
+                    return Ok(Self {
+                        backend: Backend::Remote(client),
+                    });
+                }
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or_else(|| {
+            Error::Internal("connect failed with no seed errors".into())
+        }))
+    }
+
+    /// Create a new multi-node cluster and return a SDK handle (Stage 8d).
+    ///
+    /// Ordinary collection put/get/delete use the same API as embedded/server;
+    /// the client caches partition routes and refreshes on stale placement
+    /// (CLUSTER_SPEC §13).
+    pub fn create_cluster(cfg: ClusterConfig) -> Result<Self, Error> {
         Ok(Self {
-            backend: Backend::Remote(client),
+            backend: Backend::Cluster(ClusterBackend::create(cfg)?),
         })
     }
 
-    /// Whether this handle is a remote connection.
+    /// Open an existing cluster root directory as a SDK handle (Stage 8d).
+    pub fn open_cluster(root: impl AsRef<Path>) -> Result<Self, Error> {
+        Ok(Self {
+            backend: Backend::Cluster(ClusterBackend::open(root)?),
+        })
+    }
+
+    /// Whether this handle is a remote connection (single-node or multi-seed).
     pub fn is_remote(&self) -> bool {
         matches!(self.backend, Backend::Remote(_))
     }
 
-    /// Filesystem root of this store (embedded only).
+    /// Whether this handle is an in-process cluster.
+    pub fn is_cluster(&self) -> bool {
+        matches!(self.backend, Backend::Cluster(_))
+    }
+
+    /// Borrow the cluster backend (Stage 8d tests / ops).
+    pub fn cluster_backend_mut(&mut self) -> Result<&mut ClusterBackend, Error> {
+        match &mut self.backend {
+            Backend::Cluster(c) => Ok(c),
+            _ => Err(Error::RemoteUnsupported("cluster_backend_mut")),
+        }
+    }
+
+    /// Filesystem root of this store (embedded or cluster root).
     pub fn path(&self) -> Option<&Path> {
         match &self.backend {
             Backend::Local(s) => Some(s.path()),
             Backend::Remote(_) => None,
+            Backend::Cluster(c) => Some(c.root()),
         }
     }
 
-    /// Store identifier (16 bytes). Remote uses the id returned at connect.
+    /// Store / cluster identifier (16 bytes).
     pub fn store_id(&self) -> [u8; 16] {
         match &self.backend {
             Backend::Local(s) => s.store_id(),
             Backend::Remote(c) => c.store_id(),
+            Backend::Cluster(c) => c.store_id(),
         }
     }
 
@@ -103,7 +164,7 @@ impl Dingo {
 
     /// Number of live subjects across all collections (embedded).
     ///
-    /// Remote issues a `store_info` RPC.
+    /// Remote issues a `store_info` RPC. Cluster scans online partitions.
     pub fn live_count(&mut self) -> Result<usize, Error> {
         match &mut self.backend {
             Backend::Local(s) => Ok(s.live_count()),
@@ -111,6 +172,7 @@ impl Dingo {
                 let (_path, _id, n) = c.store_info()?;
                 Ok(n)
             }
+            Backend::Cluster(c) => c.live_count_approx(),
         }
     }
 
@@ -121,7 +183,9 @@ impl Dingo {
                 s.rebuild_index()?;
                 Ok(())
             }
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("rebuild_index")),
+            Backend::Remote(_) | Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("rebuild_index"))
+            }
         }
     }
 
@@ -132,7 +196,9 @@ impl Dingo {
                 s.rebuild_catalogs()?;
                 Ok(())
             }
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("rebuild_catalogs")),
+            Backend::Remote(_) | Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("rebuild_catalogs"))
+            }
         }
     }
 
@@ -141,6 +207,7 @@ impl Dingo {
         match &mut self.backend {
             Backend::Local(s) => Ok(s.list_collections()),
             Backend::Remote(c) => c.list_collections(),
+            Backend::Cluster(c) => c.list_collections(),
         }
     }
 
@@ -148,7 +215,9 @@ impl Dingo {
     pub fn compact_live(&mut self) -> Result<dingo_store::CompactReport, Error> {
         match &mut self.backend {
             Backend::Local(s) => Ok(s.compact_live()?),
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("compact_live")),
+            Backend::Remote(_) | Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("compact_live"))
+            }
         }
     }
 
@@ -159,7 +228,9 @@ impl Dingo {
     ) -> Result<(dingo_store::CheckpointMeta, PathBuf), Error> {
         match &self.backend {
             Backend::Local(s) => Ok(s.checkpoint(coverage)?),
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("checkpoint")),
+            Backend::Remote(_) | Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("checkpoint"))
+            }
         }
     }
 
@@ -167,7 +238,7 @@ impl Dingo {
     pub fn store(&self) -> Result<&Store, Error> {
         match &self.backend {
             Backend::Local(s) => Ok(s),
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("store()")),
+            Backend::Remote(_) | Backend::Cluster(_) => Err(Error::RemoteUnsupported("store()")),
         }
     }
 
@@ -175,11 +246,13 @@ impl Dingo {
     pub fn store_mut(&mut self) -> Result<&mut Store, Error> {
         match &mut self.backend {
             Backend::Local(s) => Ok(s),
-            Backend::Remote(_) => Err(Error::RemoteUnsupported("store_mut()")),
+            Backend::Remote(_) | Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("store_mut()"))
+            }
         }
     }
 
-    /// Path buffer for callers that need an owned root (embedded only).
+    /// Path buffer for callers that need an owned root (embedded or cluster).
     pub fn path_buf(&self) -> Option<PathBuf> {
         self.path().map(|p| p.to_path_buf())
     }

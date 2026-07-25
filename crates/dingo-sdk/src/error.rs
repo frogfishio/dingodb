@@ -26,6 +26,10 @@ pub enum ErrorCode {
     CoverageIncomplete,
     /// Required partition/tier is offline (cluster).
     PartitionUnavailable,
+    /// Cached placement route was stale (usually retried internally).
+    StaleRoute,
+    /// Consistency mode does not allow the operation.
+    ConsistencyViolation,
     /// Requested durability mode cannot be met.
     DurabilityUnavailable,
     /// Payload or store bytes failed integrity / are damaged.
@@ -61,6 +65,8 @@ impl ErrorCode {
             Self::ResourceLimit => "resource_limit",
             Self::CoverageIncomplete => "coverage_incomplete",
             Self::PartitionUnavailable => "partition_unavailable",
+            Self::StaleRoute => "stale_route",
+            Self::ConsistencyViolation => "consistency_violation",
             Self::DurabilityUnavailable => "durability_unavailable",
             Self::DataDamaged => "data_damaged",
             Self::PayloadPartial => "payload_partial",
@@ -127,6 +133,35 @@ pub enum Error {
     #[error("coverage incomplete: {0}")]
     CoverageIncomplete(String),
 
+    /// Required partition is offline or has no electable leader.
+    #[error("partition unavailable: partition {partition} ({reason})")]
+    PartitionUnavailable {
+        /// Virtual partition id.
+        partition: u32,
+        /// Human-readable reason.
+        reason: &'static str,
+    },
+
+    /// Client directory cache held a stale placement route (CLUSTER_SPEC §13).
+    ///
+    /// Ordinary SDK paths refresh and retry; callers see this only when retries
+    /// are exhausted or when probing cache behaviour in tests.
+    #[error("stale route for partition {partition}: {message}")]
+    StaleRoute {
+        /// Virtual partition id.
+        partition: u32,
+        /// Detail.
+        message: String,
+    },
+
+    /// Consistency mode does not allow this operation.
+    #[error("consistency mode violation: {0}")]
+    ConsistencyViolation(String),
+
+    /// Requested durability cannot be met.
+    #[error("durability unavailable: {0}")]
+    DurabilityUnavailable(String),
+
     /// Validation failure with a dynamic message (URLs, options).
     #[error("validation failed: {0}")]
     ValidationMsg(String),
@@ -187,6 +222,10 @@ impl Error {
             Self::QueryBudgetRequired(_) => ErrorCode::QueryBudgetRequired,
             Self::PayloadPartial => ErrorCode::PayloadPartial,
             Self::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
+            Self::PartitionUnavailable { .. } => ErrorCode::PartitionUnavailable,
+            Self::StaleRoute { .. } => ErrorCode::StaleRoute,
+            Self::ConsistencyViolation(_) => ErrorCode::ConsistencyViolation,
+            Self::DurabilityUnavailable(_) => ErrorCode::DurabilityUnavailable,
             Self::Remote { code, .. } => remote_code(code),
             Self::RemoteUnsupported(_) => ErrorCode::FormatUnsupported,
             Self::AuthenticationFailed(_) => ErrorCode::AuthenticationFailed,
@@ -242,6 +281,10 @@ fn remote_code(code: &str) -> ErrorCode {
         "data_damaged" => ErrorCode::DataDamaged,
         "query_invalid" => ErrorCode::QueryInvalid,
         "query_budget_required" => ErrorCode::QueryBudgetRequired,
+        "partition_unavailable" => ErrorCode::PartitionUnavailable,
+        "stale_route" | "stale_epoch" | "not_leader" => ErrorCode::StaleRoute,
+        "consistency_violation" => ErrorCode::ConsistencyViolation,
+        "durability_unavailable" => ErrorCode::DurabilityUnavailable,
         "io" => ErrorCode::Io,
         _ => ErrorCode::Internal,
     }
