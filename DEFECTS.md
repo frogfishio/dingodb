@@ -963,7 +963,9 @@ Evidence:
 
 ### DEF-033 — Implement authorization and audit
 
-Priority: P1
+Priority: P1  
+Status: **addressed** (privilege model + audit chain; see `stage_def_033_authz`,
+`dingo_sdk::authz`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -976,11 +978,33 @@ Work:
   actions.
 - Bound audit labels and redact payloads/secrets.
 
+Implementation notes:
+
+- Profile tag `AUTHZ_PROFILE = "dingo-authz-v1"`.
+- `Privilege` / `PrivilegeSet` roles: reader, writer, dba, operator, superuser.
+- `AuthzPolicy` maps shared tokens → principals (public id + privilege set);
+  constant-time token compare; never stores tokens in audit.
+- `ServeOptions::authz` + `ServeOptions::audit`; legacy `auth_token` synthesizes
+  a single superuser principal.
+- RPC op → privilege map; `purge` / `force_reconfig` also require `confirm`
+  strings `PURGE` / `FORCE_RECONFIG`.
+- `AuditLog` hash-chained records (seq, prev_hash, principal_id, op, decision);
+  labels bounded (`MAX_AUDIT_LABEL_LEN`); secrets redacted from reasons.
+- Scaffold privileged RPCs (`admin_stats`, `salvage_export`, `tier_move`,
+  `purge`, `force_reconfig`) so gates are testable before full engines land.
+
 Acceptance:
 
 - A writer cannot administer, salvage, move tiers, or purge without explicit
   permission.
 - Denied operations are tested and audited without exposing secrets.
+
+Evidence:
+
+- `crates/dingo-sdk/tests/stage_def_033_authz.rs` — writer denial matrix, high-
+  friction confirm, reader cannot write, auth vs authz error codes, legacy
+  token superuser, secret non-leakage.
+- Unit: `authz::tests` chain integrity, open mode, constant-time auth.
 
 ### DEF-034 — Add protocol admission control
 
@@ -1697,7 +1721,8 @@ DingoDB may be called production-ready only when all applicable gates pass.
 
 - [x] TLS is available outside loopback and mTLS protects peer traffic (DEF-032;
       plaintext non-loopback still requires explicit insecure override).
-- [ ] Authorization separates data, administration, salvage, and purge rights.
+- [x] Authorization separates data, administration, salvage, and purge rights
+      (DEF-033; full salvage/tier/purge engines still scaffolded).
 - [ ] Threat model and independent audit have no unresolved critical/high
       findings.
 - [ ] Fuzzing covers all untrusted parsers.

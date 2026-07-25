@@ -141,8 +141,8 @@ returns complete data only when every chunk verifies.
 
 These live elsewhere or remain product follow-ons:
 
-- Multi-tenant ACLs / authorization (TLS/mTLS shipped in DEF-032; shared token
-  remains optional application auth — see DEF-033)
+- Rich multi-tenant ACL stores / UI (DEF-033 ships principal privileges + audit
+  chain; TLS/mTLS is DEF-032; shared tokens remain application auth)
 - SDA examination of holes / recovery units — see [`dingo-examine`](../dingo-examine)
 - Unique secondary indexes with partition consistency scopes
 - Full DX §15 codes that only apply beyond the current cluster profile

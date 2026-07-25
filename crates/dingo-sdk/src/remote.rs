@@ -16,6 +16,9 @@
 //! token, deadlines, connect retries, wire profile) live on [`ConnectOptions`] /
 //! [`ServeOptions`] — not on the collection API (DX_SPEC §4.2).
 
+use crate::authz::{
+    check_rpc, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM,
+};
 use crate::collection::find_on_store;
 use crate::directory_cache::{AssignmentWire, ClientDirectoryCache, DirectorySnapshot};
 use crate::error::Error;
@@ -41,8 +44,7 @@ use crate::server::{
     is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, SERVER_PROFILE,
 };
 use crate::tls::{
-    client_connect, constant_time_str_eq, IoStream, TlsClientOptions, TlsServerOptions,
-    TlsServerState, TLS_PROFILE,
+    client_connect, IoStream, TlsClientOptions, TlsServerOptions, TlsServerState, TLS_PROFILE,
 };
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
@@ -201,6 +203,12 @@ pub struct ServeOptions {
     /// Not set by CLI defaults; library callers may provide
     /// `Arc::new(Mutex::new(None))` and read it after serve starts.
     pub tls_state_slot: Option<Arc<Mutex<Option<TlsServerState>>>>,
+    /// Authorization policy (DEF-033). When unset and [`Self::auth_token`] is
+    /// set, a single superuser principal is synthesized from that token. When
+    /// both are unset, the server runs in open mode (anonymous superuser).
+    pub authz: Option<AuthzPolicy>,
+    /// Optional audit log for security- and recovery-sensitive actions (DEF-033).
+    pub audit: Option<Arc<AuditLog>>,
 }
 
 impl Default for ServeOptions {
@@ -218,6 +226,8 @@ impl Default for ServeOptions {
             diagnostic_line_protocol: false,
             tls: None,
             tls_state_slot: None,
+            authz: None,
+            audit: None,
         }
     }
 }
@@ -232,6 +242,32 @@ impl ServeOptions {
     pub fn auth_token(mut self, token: impl Into<String>) -> Self {
         self.auth_token = Some(token.into());
         self
+    }
+
+    /// Set an explicit multi-principal authorization policy (DEF-033).
+    ///
+    /// Overrides the single-token superuser synthesis when present. Prefer this
+    /// when writers must not hold admin / salvage / purge rights.
+    pub fn authz(mut self, policy: AuthzPolicy) -> Self {
+        self.authz = Some(policy);
+        self
+    }
+
+    /// Attach a tamper-evident audit log (DEF-033).
+    pub fn audit(mut self, log: Arc<AuditLog>) -> Self {
+        self.audit = Some(log);
+        self
+    }
+
+    /// Resolve the effective authorization policy for this serve configuration.
+    pub fn effective_authz(&self) -> AuthzPolicy {
+        if let Some(p) = self.authz.clone() {
+            return p;
+        }
+        if let Some(token) = self.auth_token.as_ref() {
+            return AuthzPolicy::shared_superuser(token.clone());
+        }
+        AuthzPolicy::new()
     }
 
     /// Advertise a cluster placement directory on `directory` RPC.
@@ -379,6 +415,13 @@ pub struct RpcRequest {
     /// same id; reuse with different content yields `consistency_violation`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub operation_id: Option<String>,
+    /// High-friction confirmation for privileged ops (DEF-033).
+    ///
+    /// Required values: `PURGE` for `purge`, `FORCE_RECONFIG` for
+    /// `force_reconfig`. Never log this field as a secret — it is a deliberate
+    /// operator acknowledgement, not a credential.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confirm: Option<String>,
 }
 
 /// Wire response (one JSON line).
@@ -1250,6 +1293,7 @@ fn base_req(op: &str) -> RpcRequest {
         max_bytes_scanned: None,
         max_result_bytes: None,
         operation_id: None,
+        confirm: None,
     }
 }
 
@@ -1912,6 +1956,7 @@ fn decode_rpc_response(bytes: &[u8], endpoint: &str, addr: &str) -> Result<RpcRe
             .unwrap_or_else(|| "remote operation failed".into());
         return Err(match code.as_str() {
             "authentication_failed" => Error::AuthenticationFailed(message),
+            "permission_denied" => Error::PermissionDenied(message),
             "deadline_exceeded" => Error::DeadlineExceeded(message),
             "query_budget_required" => Error::QueryBudgetRequired(message),
             "query_invalid" => Error::QueryInvalid(message),
@@ -2104,23 +2149,28 @@ pub fn handle_connection_shared(
             )?;
             break;
         }
-        if let Some(required) = options.auth_token.as_deref() {
-            let presented = req.token.as_deref().unwrap_or("");
-            // Constant-time compare; never log presented or required secrets (DEF-032).
-            if !constant_time_str_eq(presented, required) {
-                write_rpc_response(
-                    &mut reader,
-                    &options,
-                    RpcResponse {
-                        id: req.id,
-                        ok: false,
-                        error: Some("invalid or missing auth token".into()),
-                        code: Some("authentication_failed".into()),
-                        ..empty_resp(req.id)
-                    },
-                )?;
-                continue;
-            }
+        // DEF-033: authenticate then authorize; audit sensitive / denied ops.
+        let policy = options.effective_authz();
+        if let Err(e) = check_rpc(
+            &policy,
+            options.audit.as_deref(),
+            req.token.as_deref(),
+            &req.op,
+            req.collection.as_deref(),
+            req.confirm.as_deref(),
+        ) {
+            write_rpc_response(
+                &mut reader,
+                &options,
+                RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                },
+            )?;
+            continue;
         }
         let resp = {
             let _mutation = if is_mutating_op(&req.op) {
@@ -2181,22 +2231,27 @@ fn connection_loop(
             Err(ReadRpc::Continue) => continue,
             Err(ReadRpc::Close) => break,
         };
-        if let Some(required) = options.auth_token.as_deref() {
-            let presented = req.token.as_deref().unwrap_or("");
-            if !constant_time_str_eq(presented, required) {
-                write_rpc_response(
-                    &mut reader,
-                    options,
-                    RpcResponse {
-                        id: req.id,
-                        ok: false,
-                        error: Some("invalid or missing auth token".into()),
-                        code: Some("authentication_failed".into()),
-                        ..empty_resp(req.id)
-                    },
-                )?;
-                continue;
-            }
+        let policy = options.effective_authz();
+        if let Err(e) = check_rpc(
+            &policy,
+            options.audit.as_deref(),
+            req.token.as_deref(),
+            &req.op,
+            req.collection.as_deref(),
+            req.confirm.as_deref(),
+        ) {
+            write_rpc_response(
+                &mut reader,
+                options,
+                RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                },
+            )?;
+            continue;
         }
         // Exclusive test path: no process-wide mutation accounting (runtime is
         // local to this connection). Shared workers use MutationGuard.
@@ -2893,6 +2948,33 @@ fn dispatch(
                         .map(|(key, value)| ScanRow { key, value })
                         .collect(),
                 ),
+                ..empty_resp(id)
+            })
+        }
+        // DEF-033 privileged / recovery ops: authorization already enforced in
+        // the connection loop. These handlers are scaffolds so permission gates
+        // and high-friction confirm can be tested end-to-end before full
+        // salvage/tier/purge engines land.
+        "admin_stats" => Ok(RpcResponse {
+            id,
+            ok: true,
+            live_count: Some(store.live_count()),
+            path: Some(store.path().display().to_string()),
+            store_id: Some(hex16(&store.store_id())),
+            ..empty_resp(id)
+        }),
+        // Scaffold: privilege + audit already enforced; full engines land later.
+        "salvage_export" | "tier_move" | "force_reconfig" => Ok(RpcResponse {
+            id,
+            ok: true,
+            ..empty_resp(id)
+        }),
+        "purge" => {
+            let _ = (PURGE_CONFIRM, FORCE_RECONFIG_CONFIRM);
+            Ok(RpcResponse {
+                id,
+                ok: true,
+                removed: Some(false),
                 ..empty_resp(id)
             })
         }

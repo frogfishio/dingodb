@@ -47,6 +47,7 @@ with the acceptance evidence expected before a stronger label.
 | `PROTOCOL_PROFILE` | `dingo-rpc-v1` | Framed RPC + handshake (DEF-031) |
 | `RPC_WIRE_LABEL` | `1.0-draft` | Network RPC interoperability draft (DEF-031; not frozen) |
 | `TLS_PROFILE` | `dingo-tls-v1` | TLS 1.3 transport + peer identity (DEF-032) |
+| `AUTHZ_PROFILE` | `dingo-authz-v1` | Principal privileges + audit chain (DEF-033) |
 
 ## Network bind policy (DEF-002 / DEF-032)
 
@@ -69,6 +70,20 @@ with the acceptance evidence expected before a stronger label.
 - Operator revocation denylist: certificate serial hex on client/server options.
 - Cert rotation: `TlsServerState::reload()` without downtime (new handshakes).
 - Evidence: `stage_def_032_tls`.
+
+## Authorization and audit (DEF-033)
+
+| Concern | How |
+|---------|-----|
+| Authentication | Shared token → principal (constant-time); mTLS is transport identity (DEF-032) |
+| Authorization | `PrivilegeSet` on principal; RPC op map in `requirement_for_op` |
+| Roles | `reader`, `writer`, `dba`, `operator`, `superuser` |
+| High-friction | `purge` needs `confirm=PURGE`; `force_reconfig` needs `confirm=FORCE_RECONFIG` |
+| Audit | `AuditLog` hash chain; sensitive allow + all deny; no tokens/payloads |
+| Legacy | `ServeOptions::auth_token` alone ⇒ single superuser principal |
+
+- Profile: `AUTHZ_PROFILE = dingo-authz-v1`.
+- Evidence: `stage_def_033_authz`.
 
 ## Network RPC framing (DEF-031)
 

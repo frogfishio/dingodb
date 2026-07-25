@@ -189,6 +189,10 @@ pub enum Error {
     #[error("authentication failed: {0}")]
     AuthenticationFailed(String),
 
+    /// Authenticated principal lacks the required privilege (DEF-033).
+    #[error("permission denied: {0}")]
+    PermissionDenied(String),
+
     /// Connect or request deadline exceeded (DX_SPEC §15 `DeadlineExceeded`).
     #[error("deadline exceeded: {0}")]
     DeadlineExceeded(String),
@@ -239,6 +243,7 @@ impl Error {
             Self::Remote { code, .. } => remote_code(code),
             Self::RemoteUnsupported(_) => ErrorCode::FormatUnsupported,
             Self::AuthenticationFailed(_) => ErrorCode::AuthenticationFailed,
+            Self::PermissionDenied(_) => ErrorCode::PermissionDenied,
             Self::DeadlineExceeded(_) => ErrorCode::DeadlineExceeded,
             Self::ProtocolViolation(_) => ErrorCode::ProtocolViolation,
             Self::Internal(_) => ErrorCode::Internal,

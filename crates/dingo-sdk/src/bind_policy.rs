@@ -218,9 +218,9 @@ impl ServeStartupReport {
     /// Human-readable multi-line report for stderr.
     pub fn format_lines(&self) -> String {
         let auth = if self.auth_enabled {
-            "shared-token"
+            "shared-token + authz (DEF-033)"
         } else {
-            "none"
+            "none (open; DEF-033 anonymous superuser)"
         };
         let tls = if self.tls_enabled {
             if self.mtls_required {

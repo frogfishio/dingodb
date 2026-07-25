@@ -20,6 +20,7 @@
 /// breaking collection API changes require a major bump of this label.
 pub const SDK_API_VERSION: &str = "1.0";
 
+mod authz;
 mod bind_policy;
 mod cluster_backend;
 mod collection;
@@ -38,6 +39,12 @@ mod subject;
 mod tls;
 mod value;
 
+pub use authz::{
+    authorize, bound_label, check_rpc, redact_token, requirement_for_op, AuditDecision, AuditLog,
+    AuditRecord, AuthzPolicy, OpRequirement, Principal, PrincipalSpec, Privilege, PrivilegeSet,
+    AUTHZ_PROFILE, FORCE_RECONFIG_CONFIRM, MAX_AUDIT_LABEL_LEN, MAX_PRINCIPAL_ID_LEN,
+    PURGE_CONFIRM,
+};
 pub use bind_policy::{
     bind_host, host_is_loopback, validate_bind, validate_plaintext_bind, ServeStartupReport,
 };
