@@ -2,7 +2,7 @@
 
 use clap::{ArgAction, Parser, Subcommand};
 use dingo_examine::{examine_store, ExaminationUnit, ExamineLimits};
-use dingo_sdk::{serve_store_with, Dingo, ServeOptions, DEFAULT_PORT};
+use dingo_sdk::{serve_cluster_node, serve_store_with, Dingo, ServeOptions, DEFAULT_PORT};
 use dingo_store::Store;
 use serde_json::{json as sjson, Value as JsonValue};
 use std::fs;
@@ -12,7 +12,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, non-destructive salvage, and a simple TCP server for dingo:// connections.";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, non-destructive salvage, single-node TCP serve, and multi-node cluster node serve (directory + endpoints).";
 const LICENSE_TEXT: &str = "Copyright (c) Alexander R. Croft\nMIT License\n\nThis program is offered under the MIT License. See the repository LICENSE file for the full terms.";
 
 #[derive(Parser)]
@@ -93,6 +93,23 @@ enum Command {
         #[arg(long = "token")]
         token: Option<String>,
     },
+    /// Serve one node of a multi-node cluster root (network follow-on).
+    ///
+    /// Advertises real `placement.json` + `endpoints.json` on `directory` RPC.
+    /// Example: `dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434`
+    ServeCluster {
+        /// Cluster root (contains cluster.json, placement.json, nodes/).
+        cluster: PathBuf,
+        /// Dense node index to serve (`nodes/node-N`).
+        #[arg(long = "node", default_value_t = 0)]
+        node: u32,
+        /// Bind address (default `127.0.0.1:7434`).
+        #[arg(long = "bind", default_value_t = format!("127.0.0.1:{DEFAULT_PORT}"))]
+        bind: String,
+        /// Optional shared auth token (also `DINGO_TOKEN`).
+        #[arg(long = "token")]
+        token: Option<String>,
+    },
     /// List collection names (alias of `list` without collection).
     Collections { store: PathBuf },
 }
@@ -151,6 +168,19 @@ fn run() -> Result<(), String> {
                 opts = opts.auth_token(t);
             }
             serve_store_with(&store, &bind, opts).map_err(|e| e.to_string())
+        }
+        Command::ServeCluster {
+            cluster,
+            node,
+            bind,
+            token,
+        } => {
+            let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
+            let mut opts = ServeOptions::new();
+            if let Some(t) = token {
+                opts = opts.auth_token(t);
+            }
+            serve_cluster_node(&cluster, node, &bind, opts).map_err(|e| e.to_string())
         }
         Command::Collections { store } => cmd_list(&store, None, json_out),
     }

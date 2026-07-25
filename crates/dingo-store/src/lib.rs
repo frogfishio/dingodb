@@ -24,6 +24,7 @@ mod history;
 mod index;
 mod index_cache;
 mod layout;
+mod media;
 mod secondary;
 mod segment_catalog;
 mod store;
@@ -38,9 +39,9 @@ pub use chunk_payload::{
     ChunkManifest, ChunkSlot, PayloadResult, CHUNK_MANIFEST_MAGIC, DEFAULT_CHUNK_SIZE,
     DEFAULT_CHUNK_THRESHOLD,
 };
+pub use compact::{CheckpointMeta, CompactReport};
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};
-pub use compact::{CheckpointMeta, CompactReport};
 pub use durability::DurabilityMode;
 pub use envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
@@ -50,6 +51,10 @@ pub use history::{HistoryEvent, SubjectHistory};
 pub use index::{IndexEntry, LiveValue};
 pub use index_cache::PRIMARY_CACHE_FILE;
 pub use layout::{hex16, list_dingo_files, segment_id_from_filename, unhex16, StorePaths};
+pub use media::{
+    media_root_directory, open_media, FilesystemMedia, LocalObjectMedia, MediaBackend,
+    MediaLocator, ObjectMediaUri, ObjectScheme, UnsupportedCloudMedia,
+};
 pub use secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,
     try_load_secondary_index, write_secondary_index, IndexState, SecondaryIndex,

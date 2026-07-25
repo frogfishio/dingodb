@@ -111,7 +111,8 @@ impl ClusterMeta {
         Ok(())
     }
 
-    pub(crate) fn load(root: &Path) -> Result<Self, ClusterError> {
+    /// Load `cluster.json` from a cluster root.
+    pub fn load(root: &Path) -> Result<Self, ClusterError> {
         let path = root.join("cluster.json");
         if !path.is_file() {
             return Err(ClusterError::NotACluster(format!(

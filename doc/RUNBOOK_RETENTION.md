@@ -139,9 +139,24 @@ a product bug.
 | Hash mismatch on transfer | Source media flaky; abort; do not delete source |
 | `format-unsupported` | Preserve file; upgrade reader; do not “fix” in place |
 
-## 7. Non-goals (this stage)
+## 7. Media locators (object-store seam)
 
-- Live S3/GCS connectors (filesystem roots stand in for object media)
+The third column of `tiers/roots.txt` is a **media root spec**:
+
+| Spec | Meaning |
+|------|---------|
+| path / `file:///path` | Filesystem directory (Stage 9 baseline) |
+| `object:local:/path` | Local object layout (in-tree stand-in; optional `#prefix`) |
+| `s3://bucket/prefix` | Amazon S3 (parse-ready; live HTTP connector follow-on) |
+| `gs://bucket/prefix` | GCS (parse-ready; same) |
+
+Rust: `dingo_store::MediaLocator::parse`, `open_media`, `FilesystemMedia`,
+`LocalObjectMedia`. Cloud put/get return `MediaUnsupported` until a connector
+lands; unresolvable cloud roots are treated as **offline** for coverage honesty.
+
+## 8. Non-goals (this stage)
+
+- Live S3/GCS HTTP connectors (locator seam + `object:local:` shipped)
 - Erasure coding across archive shards
 - Automatic lifecycle policies (operator-driven transfer only)
 - Claiming archive reads have memory latency

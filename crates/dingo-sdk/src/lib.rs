@@ -24,21 +24,19 @@ mod subject;
 mod value;
 
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
-/// Re-export cluster coverage / scan types for Stage 8e callers.
-pub use dingo_cluster::{Coverage, FindResult, ScanOptions};
 pub use collection::Collection;
 pub use dingo::Dingo;
-pub use directory_cache::{
-    AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot,
-};
+/// Re-export cluster coverage / scan types for Stage 8e callers.
+pub use dingo_cluster::{Coverage, FindResult, ScanOptions};
+pub use directory_cache::{AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot};
 pub use error::{Error, ErrorCode};
 pub use filter::{FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, SortOrder};
 pub use history::{KeyHistory, Version};
 pub use indexes::{IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 pub use remote::{
-    handle_connection, handle_connection_with, parse_dingo_url, serve_store, serve_store_with,
-    ConnectOptions, ParsedDingoUrl, RemoteClient, ServeOptions, DEFAULT_PORT,
+    handle_connection, handle_connection_with, parse_dingo_url, serve_cluster_node, serve_store,
+    serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient, ServeOptions, DEFAULT_PORT,
 };
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,

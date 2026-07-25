@@ -270,6 +270,7 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::SegmentNotFound => ErrorCode::NotFound,
         StoreError::TierOffline(_) => ErrorCode::PartitionUnavailable,
         StoreError::FormatUnsupported { .. } => ErrorCode::FormatUnsupported,
+        StoreError::MediaUnsupported(_) => ErrorCode::FormatUnsupported,
     }
 }
 

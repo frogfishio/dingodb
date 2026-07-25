@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.21 (Stages 0–9: Stage 9 tiering/archive/long-retention landed)  
+Status: Draft v0.22 (Stages 0–9 done; Doc P2 aligned; product follow-ons in progress)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -532,9 +532,12 @@ USP long retention.
 
 **Follow-ons (not Stage 9 blockers)**
 
-- Live S3/GCS backends behind the same placement API.
+- Live S3/GCS HTTP backends behind the same [`MediaLocator`](crates/dingo-store/src/media.rs)
+  placement API (`object:local:` stand-in shipped; `s3://` / `gs://` parse-ready).
 - Automatic lifecycle policies; erasure-coded archive shards.
-- Network multi-node Raft serve polish (post–Stage 8 in-process).
+- Network multi-node Raft serve polish (post–Stage 8 in-process):
+  `endpoints.json` + `dingo serve-cluster` directory advertise; further client
+  multi-hop routing / chaos demos continue.
 
 ---
 
@@ -580,19 +583,22 @@ Stage 1 ┤                                                   ├── Stage 5 
 ## 8. Suggested first demo milestones (human-facing)
 
 These are narrative checkpoints for users and sponsors, not separate engineering
-tracks:
+tracks. Living scripts (where checked in) live under `scripts/demos/`.
 
 1. **“Algebra works”** — Stage 1: paste JSON, run SDA, get deterministic tree.
+   (`cargo run -p sda --bin sda -- eval -e '1 + 2'`)
 2. **“Punch a hole”** — Stage 2: corrupt a segment file; scanner lists islands
-   and holes.
+   and holes. → [`scripts/demos/02_punch_a_hole.sh`](scripts/demos/02_punch_a_hole.sh)
 3. **“Database that survives”** — Stage 3–4: app puts data; wipe indexes;
    salvage; app still reads survivors.
+   → [`scripts/demos/03_salvage_survives.sh`](scripts/demos/03_salvage_survives.sh)
 4. **“Examine the damage”** — Stage 5: SDA over examination units filters
    verified vs holes.
 5. **“Ordinary product”** — Stage 6–7: indexes, doctor, CLI, server.
 6. **“Federation”** — Stage 8: kill a node; others serve; dead node’s disks
-   still salvage offline.
+   still salvage offline. Network process serve: `dingo serve-cluster`.
 7. **“Keep it fifteen years”** — Stage 9: tier move + cold search story.
+   → [`scripts/demos/07_tier_move.sh`](scripts/demos/07_tier_move.sh)
 
 ## 9. Open decisions
 
@@ -601,11 +607,11 @@ Record answers in-repo; they block packaging, not the stage order:
 | # | Decision | Status |
 |---|----------|--------|
 | 1 | Implementation language(s) for core vs SDK | **Resolved (Stage 0):** Rust core; first SDK is Rust lib API; DX TypeScript-like samples remain the product shape (other language SDKs later). See [ARCHITECTURE.md](ARCHITECTURE.md). |
-| 2 | Sync marker, integrity algorithms, draft wire constants | **Open** — resolve at Stage 2a against [FORMAT_SPEC.md](FORMAT_SPEC.md). |
-| 3 | Default durability mode for embedded open | **Open** — DX says safe/durable default; confirm at Stage 3–4. |
+| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `DINGOFRM` / `DINGOEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `dingo-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
+| 3 | Default durability mode for embedded open | **As implemented (Stage 3–4):** SDK default is `DurabilityMode::Durable` (`WriteOptions::default`, remote/server fallback). DX “safe by default” holds. |
 | 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
-| 5 | Consensus library vs purpose-built leadership | **Open** — Stage 8 only. |
-| 6 | Whether `sda` ships inside `dingo` or separate | **Resolved for now:** separate `sda` binary (Stage 1). Stage 7 may add `dingo` without removing `sda`. |
+| 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `dingo-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
+| 6 | Whether `sda` ships inside `dingo` or separate | **Resolved for now:** separate `sda` binary (Stage 1). Stage 7 `dingo` coexists without removing `sda`. |
 
 ## 10. Work apportionment (streams)
 
@@ -719,5 +725,10 @@ the cited conformance suites as required checks—not optional polish.
 23. ~~Stage 9 tiering / archive.~~ **Done** — segment move/copy, hierarchical
     catalogs, offline coverage honesty, archive-path bench class, retention
     runbook (`stage9_tiering.rs`, `doc/RUNBOOK_RETENTION.md`).
-24. **Next:** network-level multi-node Raft serve polish; optional object-store
-    media connectors behind Stage 9 placement.
+24. **Product follow-ons (in progress):**
+    - **Network multi-node serve** — `dingo serve-cluster` advertises real
+      placement + `endpoints.json`; process-per-node TCP beyond in-process 8a–8f.
+    - **Object-store media seam** — `MediaLocator` + local object backend in
+      `dingo-store`; live S3/GCS HTTP connectors still optional.
+25. **Doc P2 (done):** `ARCHITECTURE.md` Stage 9 status aligned; open decisions
+    §9 annotated as implemented; human demos under `scripts/demos/`.

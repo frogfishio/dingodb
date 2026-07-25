@@ -20,7 +20,9 @@ index files, subject history, chunked payloads with partial maps, live-state
 compaction (sources retained), derived checkpoints, benchmark skeleton,
 `open_inspect` (read-only open for doctor), `salvage_to`, segment tier
 move/copy with stable identities, hierarchical segment catalogs, offline-tier
-coverage holes, and multi-generation format classification.
+coverage holes, multi-generation format classification, and the object-store
+media seam (`MediaLocator`, `object:local:` stand-in; `s3://` / `gs://`
+parse-ready).
 
 ## Layout (OVERVIEW §6.1, §9)
 

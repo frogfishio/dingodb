@@ -107,11 +107,19 @@ impl ConnectOptions {
     }
 }
 
-/// Server options for `dingo serve` / [`serve_store_with`].
+/// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
 #[derive(Debug, Clone, Default)]
 pub struct ServeOptions {
     /// When set, every RPC must carry a matching `token` field.
     pub auth_token: Option<String>,
+    /// When set, `directory` RPC returns this snapshot (network multi-node serve).
+    ///
+    /// Single-node `dingo serve` leaves this unset and synthesizes an all-local
+    /// directory. Cluster nodes (`dingo serve-cluster`) pass real placement +
+    /// `endpoints.json` so clients can cache routes (CLUSTER_SPEC §13).
+    pub directory: Option<DirectorySnapshot>,
+    /// Dense node index this process represents (informational; for logs/tests).
+    pub node_index: Option<u32>,
 }
 
 impl ServeOptions {
@@ -123,6 +131,18 @@ impl ServeOptions {
     /// Require this shared token on every request.
     pub fn auth_token(mut self, token: impl Into<String>) -> Self {
         self.auth_token = Some(token.into());
+        self
+    }
+
+    /// Advertise a cluster placement directory on `directory` RPC.
+    pub fn directory(mut self, snapshot: DirectorySnapshot) -> Self {
+        self.directory = Some(snapshot);
+        self
+    }
+
+    /// Record which cluster node index this process is serving.
+    pub fn node_index(mut self, index: u32) -> Self {
+        self.node_index = Some(index);
         self
     }
 }
@@ -732,9 +752,8 @@ impl RemoteClient {
     /// partition so clients can cache routes uniformly with multi-node clusters.
     pub fn fetch_directory(&mut self) -> Result<DirectorySnapshot, Error> {
         let resp = self.call(base_req("directory"))?;
-        resp.directory.ok_or_else(|| {
-            Error::Internal("directory response missing directory payload".into())
-        })
+        resp.directory
+            .ok_or_else(|| Error::Internal("directory response missing directory payload".into()))
     }
 
     /// Server-side find with optional index acceleration.
@@ -750,20 +769,13 @@ impl RemoteClient {
             Some((f, SortOrder::Desc)) => (Some(f.clone()), Some("desc".into())),
             None => (None, None),
         };
-        let max_docs = options
-            .budget
-            .as_ref()
-            .and_then(|b| b.max_docs_scanned);
+        let max_docs = options.budget.as_ref().and_then(|b| b.max_docs_scanned);
         let resp = self.call(RpcRequest {
             op: "find".into(),
             collection: Some(collection.into()),
             json: Some(filter.to_json()),
             limit: options.limit,
-            force_scan: if options.force_scan {
-                Some(true)
-            } else {
-                None
-            },
+            force_scan: if options.force_scan { Some(true) } else { None },
             order_field,
             order_dir,
             max_docs_scanned: max_docs,
@@ -1060,6 +1072,60 @@ pub fn serve_store_with(
     Ok(())
 }
 
+/// Serve one node of a multi-node cluster root over TCP (network follow-on).
+///
+/// Opens `cluster_root/nodes/node-{node_index}`, upserts `bind` into
+/// `endpoints.json`, and advertises the live [`PartitionDirectory`] plus
+/// endpoints on every `directory` RPC so multi-seed clients can cache routes.
+///
+/// Writes still apply to **this node's store only** in this slice (single-node
+/// RPC dispatch). In-process quorum remains `Dingo::open_cluster`; multi-hop
+/// Raft over the network continues to harden on this advertise path.
+pub fn serve_cluster_node(
+    cluster_root: impl AsRef<Path>,
+    node_index: u32,
+    bind: &str,
+    options: ServeOptions,
+) -> Result<(), Error> {
+    let root = cluster_root.as_ref();
+    let meta = dingo_cluster::ClusterMeta::load(root)
+        .map_err(|e| Error::Internal(format!("cluster root {}: {e}", root.display())))?;
+    if node_index >= meta.node_count {
+        return Err(Error::ValidationMsg(format!(
+            "node index {node_index} out of range (cluster has {} nodes)",
+            meta.node_count
+        )));
+    }
+
+    let endpoints = dingo_cluster::upsert_endpoint(root, node_index, bind)
+        .map_err(|e| Error::Internal(format!("endpoints.json: {e}")))?;
+
+    let directory = dingo_cluster::PartitionDirectory::load(root)
+        .map_err(|e| Error::Internal(format!("placement.json: {e}")))?
+        .ok_or_else(|| {
+            Error::Internal(format!("missing placement.json under {}", root.display()))
+        })?;
+
+    let snapshot = DirectorySnapshot::from_directory(&directory, endpoints);
+    let opts = options.directory(snapshot).node_index(node_index);
+
+    let store_path = dingo_cluster::node_store_path(root, node_index);
+    if !store_path.join("store-info").is_dir() {
+        return Err(Error::Internal(format!(
+            "node store missing at {} (expected store-info/)",
+            store_path.display()
+        )));
+    }
+
+    eprintln!(
+        "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={}",
+        root.display(),
+        store_path.display(),
+        meta.node_count
+    );
+    serve_store_with(store_path, bind, opts)
+}
+
 /// Serve a single already-open TCP client (used by tests and `serve_store`).
 pub fn handle_connection(store: &mut Store, stream: TcpStream) -> Result<(), Error> {
     handle_connection_with(store, stream, ServeOptions::default())
@@ -1118,7 +1184,7 @@ pub fn handle_connection_with(
                 continue;
             }
         }
-        let resp = match dispatch(store, &req) {
+        let resp = match dispatch(store, &req, &options) {
             Ok(r) => r,
             Err(e) => RpcResponse {
                 id: req.id,
@@ -1211,7 +1277,11 @@ fn write_resp(w: &mut TcpStream, resp: RpcResponse) -> Result<(), Error> {
     Ok(())
 }
 
-fn dispatch(store: &mut Store, req: &RpcRequest) -> Result<RpcResponse, Error> {
+fn dispatch(
+    store: &mut Store,
+    req: &RpcRequest,
+    options: &ServeOptions,
+) -> Result<RpcResponse, Error> {
     let id = req.id;
     match req.op.as_str() {
         "ping" => Ok(RpcResponse {
@@ -1228,6 +1298,15 @@ fn dispatch(store: &mut Store, req: &RpcRequest) -> Result<RpcResponse, Error> {
             ..empty_resp(id)
         }),
         "directory" => {
+            // Prefer operator-supplied cluster snapshot (serve-cluster).
+            if let Some(dir) = options.directory.clone() {
+                return Ok(RpcResponse {
+                    id,
+                    ok: true,
+                    directory: Some(dir),
+                    ..empty_resp(id)
+                });
+            }
             // Single-node: all virtual partitions led by node 0 (this server).
             // Clients cache this and may refresh on stale_epoch (CLUSTER_SPEC §13).
             let n = DEFAULT_VIRTUAL_PARTITIONS;
@@ -1772,11 +1851,7 @@ mod tests {
         let p = parse_dingo_url("dingo://a:1,b:2,c:3/app").unwrap();
         assert_eq!(
             p.seeds,
-            vec![
-                "a:1".to_string(),
-                "b:2".to_string(),
-                "c:3".to_string()
-            ]
+            vec!["a:1".to_string(), "b:2".to_string(), "c:3".to_string()]
         );
         assert_eq!(p.label.as_deref(), Some("app"));
     }

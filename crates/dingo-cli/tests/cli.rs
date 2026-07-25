@@ -1,11 +1,36 @@
 //! Stage 7 CLI integration tests: put/get/list, doctor, salvage, serve+connect.
 
 use std::fs;
-use std::net::TcpListener;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
+
+/// Wait until a dingo serve process answers a line of JSON RPC (not a bare TCP connect).
+///
+/// A bare connect leaves the single-threaded server blocked on `read_line` until
+/// the probe socket is fully torn down, which races with the real client on macOS.
+/// Any JSON response (including auth failure) means the server is live.
+fn wait_for_dingo_ping(bind: &str) {
+    for _ in 0..100 {
+        if let Ok(mut stream) = TcpStream::connect(bind) {
+            let _ = stream.set_read_timeout(Some(Duration::from_millis(300)));
+            let _ = stream.set_write_timeout(Some(Duration::from_millis(300)));
+            if stream.write_all(b"{\"id\":1,\"op\":\"ping\"}\n").is_ok() {
+                let mut buf = vec![0u8; 256];
+                if let Ok(n) = stream.read(&mut buf) {
+                    if n > 0 && buf[..n].contains(&b'{') {
+                        return;
+                    }
+                }
+            }
+        }
+        thread::sleep(Duration::from_millis(30));
+    }
+    panic!("dingo serve did not answer ping on {bind}");
+}
 
 fn dingo_bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_dingo"))
@@ -31,6 +56,7 @@ fn version_and_help() {
     assert!(help.contains("doctor"));
     assert!(help.contains("salvage"));
     assert!(help.contains("serve"));
+    assert!(help.contains("serve-cluster"));
 }
 
 #[test]
@@ -158,14 +184,7 @@ fn serve_and_sdk_connect_parity() {
         .spawn()
         .expect("spawn dingo serve");
 
-    // Wait for accept.
-    thread::sleep(Duration::from_millis(200));
-    for _ in 0..20 {
-        if std::net::TcpStream::connect(&bind).is_ok() {
-            break;
-        }
-        thread::sleep(Duration::from_millis(50));
-    }
+    wait_for_dingo_ping(&bind);
 
     let url = format!("dingo://{bind}/app");
     let mut db = dingo_sdk::Dingo::connect(&url).expect("connect");
@@ -228,13 +247,7 @@ fn serve_auth_token_required() {
         .spawn()
         .expect("spawn dingo serve");
 
-    thread::sleep(Duration::from_millis(200));
-    for _ in 0..20 {
-        if std::net::TcpStream::connect(&bind).is_ok() {
-            break;
-        }
-        thread::sleep(Duration::from_millis(50));
-    }
+    wait_for_dingo_ping(&bind);
 
     let url = format!("dingo://{bind}/app");
 
@@ -311,4 +324,86 @@ fn connect_retry_deadline_to_closed_port() {
         "code={:?}",
         err.code()
     );
+}
+
+#[test]
+fn serve_cluster_missing_root_fails_fast() {
+    let dir = tempdir().unwrap();
+    let missing = dir.path().join("no-such-cluster");
+    let out = dingo_bin()
+        .args([
+            "serve-cluster",
+            missing.to_str().unwrap(),
+            "--node",
+            "0",
+            "--bind",
+            "127.0.0.1:0",
+        ])
+        .output()
+        .expect("run serve-cluster");
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("cluster") || err.contains("error"),
+        "stderr={err}"
+    );
+}
+
+#[test]
+fn serve_cluster_advertises_placement_and_endpoints() {
+    use dingo_sdk::{serve_cluster_node, ClusterConfig, RemoteClient, ServeOptions};
+
+    let dir = tempdir().unwrap();
+    let root = dir.path().join("c");
+    // Build a 3-node cluster on disk, then serve node 0 in-process over TCP.
+    let mut db = dingo_sdk::Dingo::create_cluster(
+        ClusterConfig::dependable_local(&root).with_virtual_partitions(8),
+    )
+    .expect("create cluster");
+    db.collection("users")
+        .unwrap()
+        .put("seed", &serde_json::json!({"n": 1}))
+        .unwrap();
+    drop(db);
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let bind = format!("127.0.0.1:{port}");
+
+    let root_thread = root.clone();
+    let bind_thread = bind.clone();
+    let handle = thread::spawn(move || {
+        let _ = serve_cluster_node(&root_thread, 0, &bind_thread, ServeOptions::new());
+    });
+
+    wait_for_dingo_ping(&bind);
+
+    let url = format!("dingo://{bind}/c");
+    let mut client = RemoteClient::connect(&bind, url.clone()).expect("connect to cluster node");
+    let snap = client.fetch_directory().expect("directory");
+    assert_eq!(snap.virtual_partitions, 8);
+    assert_eq!(snap.assignments.len(), 8);
+    assert!(snap.assignments.iter().all(|a| a.replicas.len() == 3));
+    assert_eq!(
+        snap.endpoints.get(&0).map(String::as_str),
+        Some(bind.as_str()),
+        "endpoints={:?}",
+        snap.endpoints
+    );
+    // Ping/get on the same open connection (server is single-threaded).
+    assert!(client.store_info().is_ok());
+    drop(client);
+
+    let ep = fs::read_to_string(root.join("endpoints.json")).unwrap();
+    assert!(ep.contains(&bind));
+
+    // Second client after the first connection is closed.
+    let mut db = dingo_sdk::Dingo::connect(&url).unwrap();
+    assert!(db.is_remote());
+    let _ = db.collection("users").unwrap().get("seed");
+    drop(db);
+
+    // serve_cluster_node loops forever; thread ends with the test process.
+    let _ = handle.thread().id();
 }

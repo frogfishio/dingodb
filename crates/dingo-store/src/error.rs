@@ -71,6 +71,10 @@ pub enum StoreError {
         /// Unsupported wire major observed.
         wire_major: u8,
     },
+
+    /// Media locator requires a backend this build does not ship (e.g. live S3/GCS).
+    #[error("media backend unsupported: {0}")]
+    MediaUnsupported(String),
 }
 
 impl StoreError {

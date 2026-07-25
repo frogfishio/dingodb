@@ -191,7 +191,12 @@ impl TierPlacement {
     /// Empty placement (hot only until segments are discovered).
     pub fn new() -> Self {
         let mut tier_available = BTreeMap::new();
-        for t in [TierClass::Hot, TierClass::Warm, TierClass::Cold, TierClass::Archive] {
+        for t in [
+            TierClass::Hot,
+            TierClass::Warm,
+            TierClass::Cold,
+            TierClass::Archive,
+        ] {
             tier_available.insert(t, true);
         }
         Self {
@@ -265,7 +270,12 @@ impl TierPlacement {
         let mut offline = Vec::new();
         let mut unavailable_segments = Vec::new();
 
-        for tier in [TierClass::Hot, TierClass::Warm, TierClass::Cold, TierClass::Archive] {
+        for tier in [
+            TierClass::Hot,
+            TierClass::Warm,
+            TierClass::Cold,
+            TierClass::Archive,
+        ] {
             if self.is_tier_available(tier) {
                 searched.push(tier);
             } else {
@@ -332,10 +342,7 @@ pub fn segment_path_on_tier(
 }
 
 /// Relative path string stored in the placement catalog.
-pub fn relative_segment_path(
-    paths: &StorePaths,
-    absolute: &Path,
-) -> String {
+pub fn relative_segment_path(paths: &StorePaths, absolute: &Path) -> String {
     absolute
         .strip_prefix(&paths.root)
         .map(|rel| rel.to_string_lossy().replace('\\', "/"))
@@ -566,36 +573,37 @@ pub fn discover_placements(
         let _ = fs::create_dir_all(&dir);
     }
 
-    let scan_dir = |placement: &mut TierPlacement, tier: TierClass, dir: &Path| -> Result<(), StoreError> {
-        if !placement.is_tier_available(tier) {
-            return Ok(());
-        }
-        for path in list_dingo_files(dir)? {
-            let Some(id) = segment_id_from_filename(&path) else {
-                continue;
-            };
-            let (hash, size) = hash_file(&path)?;
-            let rel = relative_segment_path(paths, &path);
-            // Honour operator-chosen primary placement when its file still
-            // exists (copy leaves dual residency; do not snap back to hot).
-            if let Some(existing) = placement.get(&id) {
-                let existing_path = resolve_placement_path(paths, existing)?;
-                if existing_path.is_file() {
-                    continue;
-                }
-                // Primary missing: adopt this available copy.
+    let scan_dir =
+        |placement: &mut TierPlacement, tier: TierClass, dir: &Path| -> Result<(), StoreError> {
+            if !placement.is_tier_available(tier) {
+                return Ok(());
             }
-            placement.upsert(SegmentPlacement {
-                segment_id: id,
-                tier,
-                relative_path: rel,
-                content_hash: hash,
-                size,
-                available: true,
-            });
-        }
-        Ok(())
-    };
+            for path in list_dingo_files(dir)? {
+                let Some(id) = segment_id_from_filename(&path) else {
+                    continue;
+                };
+                let (hash, size) = hash_file(&path)?;
+                let rel = relative_segment_path(paths, &path);
+                // Honour operator-chosen primary placement when its file still
+                // exists (copy leaves dual residency; do not snap back to hot).
+                if let Some(existing) = placement.get(&id) {
+                    let existing_path = resolve_placement_path(paths, existing)?;
+                    if existing_path.is_file() {
+                        continue;
+                    }
+                    // Primary missing: adopt this available copy.
+                }
+                placement.upsert(SegmentPlacement {
+                    segment_id: id,
+                    tier,
+                    relative_path: rel,
+                    content_hash: hash,
+                    size,
+                    available: true,
+                });
+            }
+            Ok(())
+        };
 
     if placement.is_tier_available(TierClass::Hot) {
         scan_dir(placement, TierClass::Hot, &paths.segments_dir())?;
@@ -607,7 +615,12 @@ pub fn discover_placements(
 
     // Mark placements unavailable when their tier is offline.
     for p in placement.entries.values_mut() {
-        if !placement.tier_available.get(&p.tier).copied().unwrap_or(true) {
+        if !placement
+            .tier_available
+            .get(&p.tier)
+            .copied()
+            .unwrap_or(true)
+        {
             p.available = false;
         }
     }
@@ -643,7 +656,12 @@ pub fn available_sealed_paths(
         if seen_ids.contains(&p.segment_id) {
             continue;
         }
-        for tier in [TierClass::Hot, TierClass::Warm, TierClass::Cold, TierClass::Archive] {
+        for tier in [
+            TierClass::Hot,
+            TierClass::Warm,
+            TierClass::Cold,
+            TierClass::Archive,
+        ] {
             if !placement.is_tier_available(tier) {
                 continue;
             }
@@ -681,7 +699,12 @@ pub fn encode_placement(store_id: [u8; 16], placement: &TierPlacement) -> Vec<u8
     out.extend_from_slice(&store_id);
 
     // Tier availability: 4 entries.
-    for tier in [TierClass::Hot, TierClass::Warm, TierClass::Cold, TierClass::Archive] {
+    for tier in [
+        TierClass::Hot,
+        TierClass::Warm,
+        TierClass::Cold,
+        TierClass::Archive,
+    ] {
         out.push(tier as u8);
         out.push(u8::from(placement.is_tier_available(tier)));
     }
@@ -850,11 +873,19 @@ pub fn try_load_placement(
 }
 
 /// Persist simple tier roots / availability text (operator-editable).
-pub fn write_tier_roots_file(paths: &StorePaths, placement: &TierPlacement) -> Result<(), StoreError> {
+pub fn write_tier_roots_file(
+    paths: &StorePaths,
+    placement: &TierPlacement,
+) -> Result<(), StoreError> {
     let path = paths.tiers_dir().join(TIER_ROOTS_FILE);
     fs::create_dir_all(paths.tiers_dir())?;
     let mut body = String::from("# dingo tier roots v1 — derived; edit with care\n");
-    for tier in [TierClass::Hot, TierClass::Warm, TierClass::Cold, TierClass::Archive] {
+    for tier in [
+        TierClass::Hot,
+        TierClass::Warm,
+        TierClass::Cold,
+        TierClass::Archive,
+    ] {
         let avail = if placement.is_tier_available(tier) {
             "online"
         } else {
@@ -873,6 +904,10 @@ pub fn write_tier_roots_file(paths: &StorePaths, placement: &TierPlacement) -> R
 }
 
 /// Best-effort load of roots.txt (availability + external roots).
+///
+/// The third column may be a filesystem path or a media URI
+/// (`object:local:…`, `file://…`). Live cloud schemes (`s3://`, `gs://`) are
+/// recorded as offline unless a connector maps them to a local directory.
 pub fn load_tier_roots_file(paths: &StorePaths, placement: &mut TierPlacement) {
     let path = paths.tiers_dir().join(TIER_ROOTS_FILE);
     let Ok(text) = fs::read_to_string(path) else {
@@ -885,13 +920,29 @@ pub fn load_tier_roots_file(paths: &StorePaths, placement: &mut TierPlacement) {
         }
         let mut parts = line.split_whitespace();
         let Some(name) = parts.next() else { continue };
-        let Some(tier) = TierClass::parse(name) else { continue };
+        let Some(tier) = TierClass::parse(name) else {
+            continue;
+        };
         let Some(state) = parts.next() else { continue };
         let online = !matches!(state, "offline" | "unmounted" | "unavailable");
         placement.set_tier_available(tier, online);
         if let Some(root) = parts.next() {
             if tier != TierClass::Hot {
-                placement.set_external_root(tier, PathBuf::from(root));
+                // Prefer resolving media URIs to a concrete directory when the
+                // build can open them (filesystem / object:local). Cloud-only
+                // URIs leave placement without an external path and mark the
+                // tier offline so coverage stays honest.
+                match crate::media::media_root_directory(root) {
+                    Ok(dir) => placement.set_external_root(tier, dir),
+                    Err(_) => {
+                        // Unresolvable cloud (or bad) root: do not pretend empty success.
+                        if root.contains("://") || root.starts_with("object:") {
+                            placement.set_tier_available(tier, false);
+                        } else {
+                            placement.set_external_root(tier, PathBuf::from(root));
+                        }
+                    }
+                }
             }
         }
     }
@@ -1039,7 +1090,10 @@ mod tests {
     fn classify_empty_supported() {
         assert!(matches!(
             classify_segment_bytes(&[]),
-            FormatClassification::Supported { wire_major: None, .. }
+            FormatClassification::Supported {
+                wire_major: None,
+                ..
+            }
         ));
     }
 

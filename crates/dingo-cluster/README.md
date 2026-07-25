@@ -30,9 +30,23 @@ dependable-local profiles:
 SDK surface (Stage 8d–8e): `dingo_sdk::Dingo::create_cluster` / `open_cluster`
 with client directory cache; `find_with_coverage` / `allow_partial_coverage`.
 
-Later work (outside 8a–8f): network-level multi-node Raft serve, full distributed
-SDA examination merge order polish. Archive tiers: see `dingo-store` Stage 9
-and `doc/RUNBOOK_RETENTION.md` (filesystem media; cluster-wide policy later).
+### Network multi-node serve (follow-on)
+
+Process-per-node TCP beyond the in-process `Cluster` handle:
+
+- `endpoints.json` — node index → `host:port` (`load_endpoints` / `upsert_endpoint`)
+- `dingo serve-cluster CLUSTER_ROOT --node N --bind HOST:PORT` — opens
+  `nodes/node-N`, upserts this process into `endpoints.json`, and returns the
+  real `placement.json` + endpoints on `directory` RPC
+- SDK: `dingo_sdk::serve_cluster_node`
+
+Writes on a served node still apply to that node's store (single-node RPC
+dispatch). In-process quorum remains `Dingo::open_cluster`; multi-hop network
+Raft continues to harden on this advertise path.
+
+Later still: full distributed SDA examination merge order polish. Archive tiers:
+see `dingo-store` Stage 9 and `doc/RUNBOOK_RETENTION.md` (filesystem +
+`object:local:` media; live S3/GCS connectors optional).
 
 ## Consensus rules (published)
 

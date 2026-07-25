@@ -26,6 +26,7 @@ mod config;
 mod convergent;
 mod coverage;
 mod directory;
+mod endpoints;
 mod error;
 mod id;
 mod modes;
@@ -35,23 +36,22 @@ mod rebalance;
 
 pub use ack::ClusterWriteAck;
 pub use cluster::Cluster;
-pub use config::ClusterConfig;
+pub use config::{node_store_path, ClusterConfig, ClusterMeta};
 pub use convergent::{
     body_content_hash, ConvergentIdentity, ReconcileReport, SubjectConflict, SubjectVariant,
 };
-pub use coverage::{
-    Coverage, FindResult, GetResult, PartitionFrontier, ScanOptions, ScanResult,
-};
+pub use coverage::{Coverage, FindResult, GetResult, PartitionFrontier, ScanOptions, ScanResult};
 pub use directory::{PartitionAssignment, PartitionDirectory};
+pub use endpoints::{
+    load_endpoints, save_endpoints, upsert_endpoint, EndpointsFile, ENDPOINTS_FILE,
+};
 pub use error::ClusterError;
 pub use id::{ClusterId, LogPosition, NodeId, PartitionId, PlacementEpoch, Term};
 pub use modes::{CommitStatus, ConsistencyMode, DeploymentProfile, ReadMode};
 pub use partition::{
     default_partition_key, PartitionMap, DEFAULT_VIRTUAL_PARTITIONS, HASH_PROFILE_BLAKE3_MOD,
 };
-pub use raft::{
-    CommitEvidence, LogCommand, LogEntry, PartitionRaft, RaftPeer, RaftRole,
-};
+pub use raft::{CommitEvidence, LogCommand, LogEntry, PartitionRaft, RaftPeer, RaftRole};
 pub use rebalance::{RebalanceJob, RebalancePhase, RebalanceReport};
 
 /// Re-export durability modes used on cluster acks.
