@@ -62,10 +62,7 @@ impl RebalancePhase {
     pub fn old_placement_authoritative(self) -> bool {
         matches!(
             self,
-            Self::PlanCommitted
-                | Self::LearnersAdded
-                | Self::SegmentsCopied
-                | Self::LogCaughtUp
+            Self::PlanCommitted | Self::LearnersAdded | Self::SegmentsCopied | Self::LogCaughtUp
         )
     }
 

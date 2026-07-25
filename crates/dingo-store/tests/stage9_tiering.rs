@@ -7,8 +7,7 @@
 //! - Multi-generation format classification preserves bytes
 
 use dingo_store::{
-    classify_segment_bytes, FormatClassification, TierClass, TierMoveMode, Store,
-    DurabilityMode,
+    classify_segment_bytes, DurabilityMode, FormatClassification, Store, TierClass, TierMoveMode,
 };
 use std::fs;
 
@@ -104,9 +103,7 @@ fn copy_then_offline_archive_is_coverage_hole_not_empty_success() {
     assert!(!hot.is_file(), "move must remove hot copy");
     assert!(arch.is_file(), "archive must hold the segment");
 
-    store
-        .set_tier_available(TierClass::Archive, false)
-        .unwrap();
+    store.set_tier_available(TierClass::Archive, false).unwrap();
 
     let cov = store.tier_coverage();
     assert!(cov.is_incomplete());
@@ -135,13 +132,9 @@ fn hierarchical_catalog_rebuilds_after_loss() {
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create(dir.path().join("s")).unwrap();
     store.set_seal_threshold(64 * 1024 * 1024);
-    store
-        .put("a", b"1", DurabilityMode::Durable)
-        .unwrap();
+    store.put("a", b"1", DurabilityMode::Durable).unwrap();
     store.seal_active().unwrap();
-    store
-        .put("b", b"2", DurabilityMode::Durable)
-        .unwrap();
+    store.put("b", b"2", DurabilityMode::Durable).unwrap();
     store.seal_active().unwrap();
 
     let before = store.list_segment_summaries();
@@ -213,9 +206,7 @@ fn format_classification_preserves_unsupported_identity() {
     // Real sealed segment should classify as supported.
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create(dir.path().join("s")).unwrap();
-    store
-        .put("x", b"y", DurabilityMode::Durable)
-        .unwrap();
+    store.put("x", b"y", DurabilityMode::Durable).unwrap();
     store.seal_active().unwrap();
     let seg = store.list_segment_ids()[0];
     match store.classify_segment(&seg).unwrap() {
@@ -231,9 +222,7 @@ fn migration_evidence_written() {
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create(dir.path().join("s")).unwrap();
     store.set_seal_threshold(64 * 1024 * 1024);
-    store
-        .put("m", b"e", DurabilityMode::Durable)
-        .unwrap();
+    store.put("m", b"e", DurabilityMode::Durable).unwrap();
     store.seal_active().unwrap();
     let seg = store
         .list_segment_summaries()
@@ -260,9 +249,7 @@ fn archive_path_note_not_hot_slo() {
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create(dir.path().join("s")).unwrap();
     store.set_seal_threshold(64 * 1024 * 1024);
-    store
-        .put("z", b"1", DurabilityMode::Durable)
-        .unwrap();
+    store.put("z", b"1", DurabilityMode::Durable).unwrap();
     store.seal_active().unwrap();
     let seg = store
         .list_segment_summaries()

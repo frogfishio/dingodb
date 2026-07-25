@@ -12,9 +12,7 @@
 //! | 5 | `created_ns` | uint |
 //! | 6 | `subject_id` | bstr |
 
-use dingo_format::{
-    decode_deterministic_uint_map, encode_deterministic_uint_map, CborValue,
-};
+use dingo_format::{decode_deterministic_uint_map, encode_deterministic_uint_map, CborValue};
 
 /// Maximum subject length in this draft (also bounds envelopes).
 pub const MAX_SUBJECT_LEN: usize = 4096;

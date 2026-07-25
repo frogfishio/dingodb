@@ -357,7 +357,11 @@ impl PartitionRaft {
 
     /// Highest commit_index observed on any peer.
     pub fn max_commit_index(&self) -> u64 {
-        self.peers.values().map(|p| p.commit_index).max().unwrap_or(0)
+        self.peers
+            .values()
+            .map(|p| p.commit_index)
+            .max()
+            .unwrap_or(0)
     }
 
     /// Run RequestVote on `voter` for `candidate`.
@@ -448,13 +452,8 @@ impl PartitionRaft {
             if !online.iter().any(|n| *n == voter) {
                 continue;
             }
-            let res = self.request_vote(
-                voter,
-                candidate,
-                new_term,
-                cand_last_index,
-                cand_last_term,
-            );
+            let res =
+                self.request_vote(voter, candidate, new_term, cand_last_index, cand_last_term);
             if res.term.0 > new_term.0 {
                 saw_higher = Some(res.term);
                 break;
@@ -495,7 +494,10 @@ impl PartitionRaft {
             if let Some(peer) = self.peers.get_mut(&candidate.index()) {
                 peer.role = RaftRole::Follower;
             }
-            Err(ElectError::NoQuorum { votes, need: self.quorum() })
+            Err(ElectError::NoQuorum {
+                votes,
+                need: self.quorum(),
+            })
         }
     }
 
@@ -504,10 +506,7 @@ impl PartitionRaft {
     /// Prefer an existing online leader. Otherwise try candidates in stable
     /// order: highest last-log-term, then highest last-log-index, then lowest
     /// node id (deterministic for tests).
-    pub fn ensure_leader(
-        &mut self,
-        online: &[NodeId],
-    ) -> Result<(NodeId, Term), ElectError> {
+    pub fn ensure_leader(&mut self, online: &[NodeId]) -> Result<(NodeId, Term), ElectError> {
         if let Some((leader, term)) = self.current_leader() {
             if online.iter().any(|n| *n == leader) {
                 return Ok((leader, term));
@@ -897,9 +896,7 @@ impl PartitionRaft {
     /// Build commit evidence for a position from the leader's match_index map.
     pub fn commit_evidence(&self, leader: NodeId, position: LogPosition) -> CommitEvidence {
         let peer = self.peers.get(&leader.index());
-        let term = peer
-            .and_then(|p| p.term_at(position.0))
-            .unwrap_or(Term(0));
+        let term = peer.and_then(|p| p.term_at(position.0)).unwrap_or(Term(0));
         let mut acked_by = Vec::new();
         if let Some(p) = peer {
             for v in &self.voters {
@@ -909,9 +906,7 @@ impl PartitionRaft {
                 }
             }
         }
-        let committed = peer
-            .map(|p| p.commit_index >= position.0)
-            .unwrap_or(false);
+        let committed = peer.map(|p| p.commit_index >= position.0).unwrap_or(false);
         CommitEvidence {
             partition: self.partition,
             term,
@@ -986,9 +981,7 @@ mod tests {
     fn election_requires_majority_of_configured_voters() {
         let mut g = three_node_group();
         // Only one online → cannot get 2 votes.
-        let err = g
-            .elect(NodeId::new(0), &[NodeId::new(0)])
-            .unwrap_err();
+        let err = g.elect(NodeId::new(0), &[NodeId::new(0)]).unwrap_err();
         assert!(matches!(err, ElectError::NoQuorum { votes: 1, need: 2 }));
 
         let (leader, term) = g
@@ -1091,9 +1084,7 @@ mod tests {
         if let Some(p) = g.peer_mut(NodeId::new(0)) {
             p.role = RaftRole::Follower;
         }
-        let (leader, _) = g
-            .ensure_leader(&[NodeId::new(1), NodeId::new(2)])
-            .unwrap();
+        let (leader, _) = g.ensure_leader(&[NodeId::new(1), NodeId::new(2)]).unwrap();
         assert_eq!(leader, NodeId::new(1));
     }
 }

@@ -239,6 +239,8 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "dingo-format",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
 ]

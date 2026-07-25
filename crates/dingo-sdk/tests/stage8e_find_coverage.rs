@@ -13,12 +13,8 @@ fn cluster_find_complete_when_healthy() {
 
     {
         let mut users = db.collection("users").unwrap();
-        users
-            .put("alice", &json!({"status": "active"}))
-            .unwrap();
-        users
-            .put("bob", &json!({"status": "idle"}))
-            .unwrap();
+        users.put("alice", &json!({"status": "active"})).unwrap();
+        users.put("bob", &json!({"status": "idle"})).unwrap();
     }
 
     let found = db

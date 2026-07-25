@@ -26,9 +26,7 @@ fn rebalance_full_run_changes_replica_set() {
     for i in 0..100 {
         let s = format!("rb/{i}");
         if cluster.partition_for_subject(&s) == p {
-            cluster
-                .put(&s, b"before", DurabilityMode::Durable)
-                .unwrap();
+            cluster.put(&s, b"before", DurabilityMode::Durable).unwrap();
             subject = Some(s);
             break;
         }
@@ -39,8 +37,12 @@ fn rebalance_full_run_changes_replica_set() {
         .rebalance_partition(p, vec![NodeId::new(0), NodeId::new(1)])
         .unwrap();
     assert_eq!(report.job.phase, RebalancePhase::Reclaimed);
-    assert!(report.phases_completed.contains(&RebalancePhase::LearnersAdded));
-    assert!(report.phases_completed.contains(&RebalancePhase::EpochActivated));
+    assert!(report
+        .phases_completed
+        .contains(&RebalancePhase::LearnersAdded));
+    assert!(report
+        .phases_completed
+        .contains(&RebalancePhase::EpochActivated));
     assert_eq!(
         cluster.directory().get(p).unwrap().replicas,
         vec![NodeId::new(0), NodeId::new(1)]
@@ -101,7 +103,10 @@ fn rebalance_interruptible_at_every_step() {
             | RebalancePhase::LearnersAdded
             | RebalancePhase::SegmentsCopied
             | RebalancePhase::LogCaughtUp => {
-                assert!(job.phase.old_placement_authoritative() || phase != RebalancePhase::PlanCommitted);
+                assert!(
+                    job.phase.old_placement_authoritative()
+                        || phase != RebalancePhase::PlanCommitted
+                );
             }
             RebalancePhase::MembershipChanged => {
                 assert!(job.joint || job.phase.is_joint());
@@ -109,7 +114,10 @@ fn rebalance_interruptible_at_every_step() {
             RebalancePhase::EpochActivated
             | RebalancePhase::SafetyWindow
             | RebalancePhase::Reclaimed => {
-                assert!(job.phase.new_placement_authoritative() || phase == RebalancePhase::MembershipChanged);
+                assert!(
+                    job.phase.new_placement_authoritative()
+                        || phase == RebalancePhase::MembershipChanged
+                );
             }
         }
     }
@@ -162,10 +170,9 @@ fn placement_persists_across_open() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("persist");
     {
-        let mut cluster = Cluster::create(
-            ClusterConfig::dependable_local(&root).with_virtual_partitions(4),
-        )
-        .unwrap();
+        let mut cluster =
+            Cluster::create(ClusterConfig::dependable_local(&root).with_virtual_partitions(4))
+                .unwrap();
         let p = PartitionId::new(3);
         cluster
             .rebalance_partition(p, vec![NodeId::new(2)])
@@ -177,7 +184,11 @@ fn placement_persists_across_open() {
     }
     let cluster = Cluster::open(&root).unwrap();
     assert_eq!(
-        cluster.directory().get(PartitionId::new(3)).unwrap().replicas,
+        cluster
+            .directory()
+            .get(PartitionId::new(3))
+            .unwrap()
+            .replicas,
         vec![NodeId::new(2)]
     );
 }
@@ -187,10 +198,8 @@ fn control_plane_destruction_and_reconstruction() {
     // §22 items 9–10: destroy placement/meta and rebuild from stores.
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("cp");
-    let mut cluster = Cluster::create(
-        ClusterConfig::dependable_local(&root).with_virtual_partitions(4),
-    )
-    .unwrap();
+    let mut cluster =
+        Cluster::create(ClusterConfig::dependable_local(&root).with_virtual_partitions(4)).unwrap();
 
     cluster
         .put("keep/me", b"alive", DurabilityMode::Durable)

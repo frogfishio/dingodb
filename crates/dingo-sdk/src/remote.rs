@@ -11,7 +11,7 @@
 //! [`ServeOptions`] — not on the collection API (DX_SPEC §4.2).
 
 use crate::collection::find_on_store;
-use crate::directory_cache::{AssignmentWire, DirectorySnapshot};
+use crate::directory_cache::{AssignmentWire, ClientDirectoryCache, DirectorySnapshot};
 use crate::error::Error;
 use crate::filter::{Filter, QueryBudget, QueryOptions, SortOrder};
 use crate::history::{KeyHistory, Version};
@@ -117,9 +117,14 @@ pub struct ServeOptions {
     /// Single-node `dingo serve` leaves this unset and synthesizes an all-local
     /// directory. Cluster nodes (`dingo serve-cluster`) pass real placement +
     /// `endpoints.json` so clients can cache routes (CLUSTER_SPEC §13).
+    ///
+    /// When [`Self::cluster_root`] is also set, each `directory` RPC reloads
+    /// `endpoints.json` so late-joining nodes appear without restarting peers.
     pub directory: Option<DirectorySnapshot>,
     /// Dense node index this process represents (informational; for logs/tests).
     pub node_index: Option<u32>,
+    /// Cluster root directory for live `endpoints.json` reload on `directory` RPC.
+    pub cluster_root: Option<std::path::PathBuf>,
 }
 
 impl ServeOptions {
@@ -143,6 +148,12 @@ impl ServeOptions {
     /// Record which cluster node index this process is serving.
     pub fn node_index(mut self, index: u32) -> Self {
         self.node_index = Some(index);
+        self
+    }
+
+    /// Reload `endpoints.json` from this cluster root on every `directory` RPC.
+    pub fn cluster_root(mut self, root: impl Into<std::path::PathBuf>) -> Self {
+        self.cluster_root = Some(root.into());
         self
     }
 }
@@ -382,15 +393,31 @@ impl IndexInfoRow {
     }
 }
 
-/// Client connection to a `dingo serve` process.
+/// Maximum transport retries after a directory refresh (multi-hop polish).
+const MAX_ROUTE_TRANSPORT_RETRIES: u32 = 3;
+
+/// Client connection to a `dingo serve` / `dingo serve-cluster` process.
+///
+/// After connect the client fetches a partition [`DirectorySnapshot`] and, for
+/// keyed ops, routes to the advertised leader `host:port` (CLUSTER_SPEC §13).
+/// On transport failure the directory is refreshed and the op is retried.
 pub struct RemoteClient {
     stream: TcpStream,
     reader: BufReader<TcpStream>,
     next_id: AtomicU64,
+    /// Logical URL (`dingo://…`) for display / errors.
     endpoint: String,
+    /// TCP address of the current connection (`host:port`).
+    addr: String,
     options: ConnectOptions,
     /// Cached store id from the first `store_info` after connect.
     store_id: [u8; 16],
+    /// Client route cache (populated after connect via `directory` RPC).
+    directory: Option<ClientDirectoryCache>,
+    /// How many times we reconnected to a different leader for routing.
+    route_hops: u64,
+    /// How many times we refreshed the directory after transport failure.
+    directory_refreshes: u64,
 }
 
 impl RemoteClient {
@@ -400,11 +427,22 @@ impl RemoteClient {
     }
 
     /// Connect with explicit auth / deadline / retry options.
+    ///
+    /// On success, loads a partition directory snapshot for multi-hop routing
+    /// when the server advertises real endpoints (`dingo serve-cluster`).
     pub fn connect_with(
         addr: &str,
         endpoint: String,
         options: ConnectOptions,
     ) -> Result<Self, Error> {
+        let mut client = Self::connect_raw(addr, endpoint, options)?;
+        // Best-effort directory load: single-node servers return a synthetic
+        // map; cluster nodes return placement + endpoints.json.
+        let _ = client.refresh_directory();
+        Ok(client)
+    }
+
+    fn connect_raw(addr: &str, endpoint: String, options: ConnectOptions) -> Result<Self, Error> {
         let stream = tcp_connect_with_retry(addr, &options)?;
         stream
             .set_read_timeout(Some(options.request_timeout))
@@ -418,8 +456,12 @@ impl RemoteClient {
             reader,
             next_id: AtomicU64::new(1),
             endpoint,
+            addr: addr.to_string(),
             options,
             store_id: [0u8; 16],
+            directory: None,
+            route_hops: 0,
+            directory_refreshes: 0,
         };
         // Immediate store_info validates auth token, proves protocol, caches store id.
         let (_path, sid_hex, _n) = client.store_info()?;
@@ -432,6 +474,11 @@ impl RemoteClient {
         &self.endpoint
     }
 
+    /// Current TCP address (`host:port`).
+    pub fn addr(&self) -> &str {
+        &self.addr
+    }
+
     /// Connection options used for this client.
     pub fn options(&self) -> &ConnectOptions {
         &self.options
@@ -442,7 +489,116 @@ impl RemoteClient {
         self.store_id
     }
 
-    fn call(&mut self, mut req: RpcRequest) -> Result<RpcResponse, Error> {
+    /// Borrow the client directory cache when loaded.
+    pub fn directory_cache(&self) -> Option<&ClientDirectoryCache> {
+        self.directory.as_ref()
+    }
+
+    /// Number of multi-hop reconnects performed for routing.
+    pub fn route_hops(&self) -> u64 {
+        self.route_hops
+    }
+
+    /// Number of directory refreshes after transport failure.
+    pub fn directory_refreshes(&self) -> u64 {
+        self.directory_refreshes
+    }
+
+    /// Fetch and install a fresh partition directory snapshot.
+    pub fn refresh_directory(&mut self) -> Result<&ClientDirectoryCache, Error> {
+        let snap = self.fetch_directory()?;
+        self.directory = Some(ClientDirectoryCache::from_snapshot(&snap));
+        self.directory_refreshes = self.directory_refreshes.saturating_add(1);
+        Ok(self.directory.as_ref().expect("just set"))
+    }
+
+    /// Reconnect this client to a different `host:port`, keeping directory cache.
+    pub fn reconnect(&mut self, addr: &str) -> Result<(), Error> {
+        if addr == self.addr {
+            return Ok(());
+        }
+        let stream = tcp_connect_with_retry(addr, &self.options)?;
+        stream
+            .set_read_timeout(Some(self.options.request_timeout))
+            .map_err(Error::from_io)?;
+        stream
+            .set_write_timeout(Some(self.options.request_timeout))
+            .map_err(Error::from_io)?;
+        let reader = BufReader::new(stream.try_clone().map_err(Error::from_io)?);
+        self.stream = stream;
+        self.reader = reader;
+        self.addr = addr.to_string();
+        self.route_hops = self.route_hops.saturating_add(1);
+        // Refresh store id on the new node (each node has its own store).
+        let (_path, sid_hex, _n) = {
+            // Inline store_info without routing to avoid recursion.
+            let resp = self.call_on_current(base_req("store_info"))?;
+            (
+                resp.path.unwrap_or_default(),
+                resp.store_id.unwrap_or_default(),
+                resp.live_count.unwrap_or(0),
+            )
+        };
+        self.store_id = parse_hex16(Some(&sid_hex)).unwrap_or([0u8; 16]);
+        Ok(())
+    }
+
+    /// Route a keyed op to the cached partition leader when endpoints are known.
+    fn ensure_route_for_key(&mut self, collection: &str, key: &str) -> Result<(), Error> {
+        let subject = encode_subject(collection, key)?;
+        let target = {
+            let Some(cache) = self.directory.as_ref() else {
+                return Ok(());
+            };
+            let Some(route) = cache.route(&subject) else {
+                return Ok(());
+            };
+            let Some(ep) = cache.endpoint(route.leader) else {
+                return Ok(());
+            };
+            if ep.is_empty() || ep == self.addr {
+                return Ok(());
+            }
+            ep.to_string()
+        };
+        self.reconnect(&target)
+    }
+
+    /// Try a keyed RPC with multi-hop routing and transport refresh.
+    fn call_keyed(
+        &mut self,
+        collection: &str,
+        key: &str,
+        req: RpcRequest,
+    ) -> Result<RpcResponse, Error> {
+        let mut last_err: Option<Error> = None;
+        for attempt in 0..MAX_ROUTE_TRANSPORT_RETRIES {
+            // Best-effort hop to the cached leader; fall through on failure.
+            let _ = self.ensure_route_for_key(collection, key);
+            match self.call_on_current(req.clone()) {
+                Ok(r) => return Ok(r),
+                Err(e) if is_transport_error(&e) && attempt + 1 < MAX_ROUTE_TRANSPORT_RETRIES => {
+                    // Mark partition stale, refresh directory, try again.
+                    if let Ok(subject) = encode_subject(collection, key) {
+                        if let Some(cache) = self.directory.as_mut() {
+                            let p = cache.partition_of(&subject);
+                            cache.mark_stale(p);
+                        }
+                    }
+                    let _ = self.refresh_directory();
+                    last_err = Some(e);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Err(last_err.unwrap_or_else(|| Error::Internal("route retries exhausted".into())))
+    }
+
+    fn call(&mut self, req: RpcRequest) -> Result<RpcResponse, Error> {
+        self.call_on_current(req)
+    }
+
+    fn call_on_current(&mut self, mut req: RpcRequest) -> Result<RpcResponse, Error> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         req.id = id;
         if req.token.is_none() {
@@ -462,12 +618,15 @@ impl RemoteClient {
             .map_err(Error::from_io)?;
         if n == 0 {
             return Err(Error::Internal(format!(
-                "remote closed connection: {}",
-                self.endpoint
+                "remote closed connection: {} ({})",
+                self.endpoint, self.addr
             )));
         }
         let resp: RpcResponse = serde_json::from_str(resp_line.trim()).map_err(|e| {
-            Error::Internal(format!("invalid rpc response from {}: {e}", self.endpoint))
+            Error::Internal(format!(
+                "invalid rpc response from {} ({}): {e}",
+                self.endpoint, self.addr
+            ))
         })?;
         if !resp.ok {
             let code = resp.code.unwrap_or_else(|| "internal".into());
@@ -507,7 +666,7 @@ impl RemoteClient {
         Ok(resp.keys.unwrap_or_default())
     }
 
-    /// Put JSON under collection/key.
+    /// Put JSON under collection/key (multi-hop: routes to partition leader).
     pub fn put_json(
         &mut self,
         collection: &str,
@@ -517,34 +676,42 @@ impl RemoteClient {
     ) -> Result<WriteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "put".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            json: Some(value.clone()),
-            durability: Some(durability_name(options.durability).into()),
-            ..base_req("put")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "put".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                json: Some(value.clone()),
+                durability: Some(durability_name(options.durability).into()),
+                ..base_req("put")
+            },
+        )?;
         Ok(write_receipt_from_resp(key, &resp, options.durability)?)
     }
 
-    /// Get JSON for collection/key.
+    /// Get JSON for collection/key (multi-hop: routes to partition leader).
     pub fn get_json(&mut self, collection: &str, key: &str) -> Result<Option<JsonValue>, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "get".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            ..base_req("get")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "get".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                ..base_req("get")
+            },
+        )?;
         if resp.found == Some(false) {
             return Ok(None);
         }
         Ok(resp.value)
     }
 
-    /// Delete collection/key.
+    /// Delete collection/key (multi-hop: routes to partition leader).
     pub fn delete(
         &mut self,
         collection: &str,
@@ -553,17 +720,21 @@ impl RemoteClient {
     ) -> Result<DeleteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "delete".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            durability: Some(durability_name(options.durability).into()),
-            ..base_req("delete")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "delete".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                durability: Some(durability_name(options.durability).into()),
+                ..base_req("delete")
+            },
+        )?;
         Ok(delete_receipt_from_resp(key, &resp, options.durability)?)
     }
 
-    /// Put raw bytes (base64 on the wire).
+    /// Put raw bytes (base64 on the wire; multi-hop routed).
     pub fn put_bytes(
         &mut self,
         collection: &str,
@@ -573,27 +744,35 @@ impl RemoteClient {
     ) -> Result<WriteReceipt, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "put_bytes".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            bytes_b64: Some(b64_encode(bytes)),
-            durability: Some(durability_name(options.durability).into()),
-            ..base_req("put_bytes")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "put_bytes".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                bytes_b64: Some(b64_encode(bytes)),
+                durability: Some(durability_name(options.durability).into()),
+                ..base_req("put_bytes")
+            },
+        )?;
         Ok(write_receipt_from_resp(key, &resp, options.durability)?)
     }
 
-    /// Get raw bytes.
+    /// Get raw bytes (multi-hop routed).
     pub fn get_bytes(&mut self, collection: &str, key: &str) -> Result<Option<Vec<u8>>, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "get_bytes".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            ..base_req("get_bytes")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "get_bytes".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                ..base_req("get_bytes")
+            },
+        )?;
         if resp.found == Some(false) {
             return Ok(None);
         }
@@ -635,16 +814,20 @@ impl RemoteClient {
             .collect())
     }
 
-    /// Per-key history (DX_SPEC §10.1).
+    /// Per-key history (DX_SPEC §10.1; multi-hop routed).
     pub fn history(&mut self, collection: &str, key: &str) -> Result<KeyHistory, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "history".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            ..base_req("history")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "history".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                ..base_req("history")
+            },
+        )?;
         let versions = resp
             .versions
             .unwrap_or_default()
@@ -726,7 +909,7 @@ impl RemoteClient {
         row.into_info()
     }
 
-    /// Completeness-aware payload read (chunked values; FORMAT_SPEC §8).
+    /// Completeness-aware payload read (chunked values; FORMAT_SPEC §8; multi-hop).
     pub fn get_payload(
         &mut self,
         collection: &str,
@@ -734,12 +917,16 @@ impl RemoteClient {
     ) -> Result<Option<PayloadResult>, Error> {
         validate_collection_name(collection)?;
         validate_key(key)?;
-        let resp = self.call(RpcRequest {
-            op: "get_payload".into(),
-            collection: Some(collection.into()),
-            key: Some(key.into()),
-            ..base_req("get_payload")
-        })?;
+        let resp = self.call_keyed(
+            collection,
+            key,
+            RpcRequest {
+                op: "get_payload".into(),
+                collection: Some(collection.into()),
+                key: Some(key.into()),
+                ..base_req("get_payload")
+            },
+        )?;
         if resp.found == Some(false) {
             return Ok(None);
         }
@@ -1107,7 +1294,10 @@ pub fn serve_cluster_node(
         })?;
 
     let snapshot = DirectorySnapshot::from_directory(&directory, endpoints);
-    let opts = options.directory(snapshot).node_index(node_index);
+    let opts = options
+        .directory(snapshot)
+        .node_index(node_index)
+        .cluster_root(root);
 
     let store_path = dingo_cluster::node_store_path(root, node_index);
     if !store_path.join("store-info").is_dir() {
@@ -1234,6 +1424,28 @@ fn empty_resp(id: u64) -> RpcResponse {
     }
 }
 
+/// Whether an error is a transport / connection failure worth re-routing.
+fn is_transport_error(err: &Error) -> bool {
+    match err {
+        Error::DeadlineExceeded(_) | Error::Io(_) => true,
+        Error::Internal(msg) => {
+            msg.contains("remote closed")
+                || msg.contains("Connection refused")
+                || msg.contains("Broken pipe")
+                || msg.contains("os error")
+                || msg.contains("timed out")
+                || msg.contains("reset")
+        }
+        Error::Store(se) if se.is_io() => true,
+        _ => {
+            let s = err.to_string();
+            s.contains("Connection refused")
+                || s.contains("Broken pipe")
+                || s.contains("Connection reset")
+        }
+    }
+}
+
 fn tcp_connect_with_retry(addr: &str, options: &ConnectOptions) -> Result<TcpStream, Error> {
     let attempts = options.max_connect_attempts.max(1);
     let mut last_err: Option<Error> = None;
@@ -1299,7 +1511,14 @@ fn dispatch(
         }),
         "directory" => {
             // Prefer operator-supplied cluster snapshot (serve-cluster).
-            if let Some(dir) = options.directory.clone() {
+            if let Some(mut dir) = options.directory.clone() {
+                // Live reload endpoints so nodes that join after this process
+                // started are visible without restarting every peer.
+                if let Some(root) = options.cluster_root.as_ref() {
+                    if let Ok(eps) = dingo_cluster::load_endpoints(root) {
+                        dir.endpoints = eps;
+                    }
+                }
                 return Ok(RpcResponse {
                     id,
                     ok: true,

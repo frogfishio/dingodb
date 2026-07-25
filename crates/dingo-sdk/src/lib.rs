@@ -1,4 +1,4 @@
-//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d–8e).
+//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d–8e + product freezes).
 //!
 //! Ordinary application surface: open a store directory, connect to a server,
 //! or open a multi-node cluster; name a collection; put/get/delete JSON or
@@ -7,8 +7,18 @@
 //!
 //! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d–8e;
 //! CLUSTER_SPEC §13 (client routing / directory cache), §17 (query coverage).
+//!
+//! **Product freeze:** [`SDK_API_VERSION`] labels the collection API surface
+//! after Stage 4 + 7 embedded/server parity (DELIVERY_PLAN §7).
 
 #![deny(missing_docs)]
+
+/// Collection SDK API freeze label (DELIVERY_PLAN §7: Collection SDK 1.0).
+///
+/// Stages 4 + 7 parity are met: embedded, `dingo serve`, and cluster handles
+/// share put/get/delete/scan/find/history/indexes. Patch releases may fix bugs;
+/// breaking collection API changes require a major bump of this label.
+pub const SDK_API_VERSION: &str = "1.0";
 
 mod cluster_backend;
 mod collection;

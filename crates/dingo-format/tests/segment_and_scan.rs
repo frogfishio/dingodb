@@ -2,8 +2,8 @@
 
 use dingo_format::{
     decode_descriptor_body, decode_summary_body, encode_frame, scan_forward, ActiveSegment,
-    FrameHeader, FrameKind, FrameParts, HoleReason, SafetyLimits, SegmentId, START_MAGIC,
-    EMPTY_ENVELOPE,
+    FrameHeader, FrameKind, FrameParts, HoleReason, SafetyLimits, SegmentId, EMPTY_ENVELOPE,
+    START_MAGIC,
 };
 
 fn ids() -> SegmentId {
@@ -171,7 +171,8 @@ fn active_segment_rejects_append_after_seal_path() {
     // Rebuild is not possible from SealedSegment; ensure seal is terminal via
     // second seal attempt on a fresh active that we seal once.
     let mut a2 = ActiveSegment::create(ids(), SafetyLimits::default(), 0).unwrap();
-    a2.append(FrameKind::Padding, EMPTY_ENVELOPE, b"", [0u8; 16]).unwrap();
+    a2.append(FrameKind::Padding, EMPTY_ENVELOPE, b"", [0u8; 16])
+        .unwrap();
     let s = a2.seal().unwrap();
     assert!(s.frame_count() >= 2);
     let _ = sealed;

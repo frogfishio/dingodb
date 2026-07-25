@@ -4,7 +4,7 @@
 //! **not** subject to hot-path latency SLOs. Do not publish archive timings
 //! as Redis-class claims (OVERVIEW §12.2, USP §6 / §8).
 
-use dingo_store::{DurabilityMode, TierClass, TierMoveMode, Store};
+use dingo_store::{DurabilityMode, Store, TierClass, TierMoveMode};
 use std::time::Instant;
 use tempfile::tempdir;
 
@@ -58,7 +58,9 @@ fn archive_path_bench_skeleton() {
 
     let cov = store.tier_coverage();
     assert!(
-        cov.notes.iter().any(|n| n.contains("hot-path") || n.contains("archive")),
+        cov.notes
+            .iter()
+            .any(|n| n.contains("hot-path") || n.contains("archive")),
         "archive-path coverage must disclose non-hot SLO"
     );
 

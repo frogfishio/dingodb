@@ -19,11 +19,13 @@ mod chunk_payload;
 mod compact;
 mod durability;
 mod envelope;
+mod erasure;
 mod error;
 mod history;
 mod index;
 mod index_cache;
 mod layout;
+mod lifecycle;
 mod media;
 mod secondary;
 mod segment_catalog;
@@ -46,14 +48,20 @@ pub use durability::DurabilityMode;
 pub use envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
 };
+pub use erasure::{
+    decode_shards, encode_shards, is_shard_key, shard_layout_note, ErasureManifest, ErasureProfile,
+    DEFAULT_DATA_SHARDS, DEFAULT_PARITY_SHARDS,
+};
 pub use error::StoreError;
 pub use history::{HistoryEvent, SubjectHistory};
 pub use index::{IndexEntry, LiveValue};
 pub use index_cache::PRIMARY_CACHE_FILE;
 pub use layout::{hex16, list_dingo_files, segment_id_from_filename, unhex16, StorePaths};
+pub use lifecycle::{policy_path, LifecyclePolicy, LifecycleRule, LIFECYCLE_POLICY_FILE};
 pub use media::{
-    media_root_directory, open_media, FilesystemMedia, LocalObjectMedia, MediaBackend,
-    MediaLocator, ObjectMediaUri, ObjectScheme, UnsupportedCloudMedia,
+    media_root_directory, media_root_directory_with, open_media, open_media_with,
+    CloudMirrorConfig, FilesystemMedia, LocalObjectMedia, MediaBackend, MediaLocator,
+    MirroredCloudMedia, ObjectMediaUri, ObjectScheme, UnsupportedCloudMedia,
 };
 pub use secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,

@@ -48,9 +48,7 @@ fn prefix_find_carries_query_id_and_coverage() {
         .put("orders/1", br#"{"n":3}"#, DurabilityMode::Durable)
         .unwrap();
 
-    let found = cluster
-        .find(ScanOptions::new().prefix("users/"))
-        .unwrap();
+    let found = cluster.find(ScanOptions::new().prefix("users/")).unwrap();
     assert!(found.coverage.is_complete());
     assert!(found.query_id.starts_with("q-"));
     assert_eq!(found.entries.len(), 2);

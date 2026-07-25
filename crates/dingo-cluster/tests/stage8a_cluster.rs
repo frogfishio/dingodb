@@ -27,17 +27,22 @@ fn development_profile_put_get_with_coverage() {
     assert_eq!(cluster.online_node_count(), 1);
 
     let ack = cluster
-        .put("users/alice", br#"{"name":"Alice"}"#, DurabilityMode::Durable)
+        .put(
+            "users/alice",
+            br#"{"name":"Alice"}"#,
+            DurabilityMode::Durable,
+        )
         .unwrap();
     assert!(ack.committed);
     assert_eq!(ack.replica_acks, 1);
     assert_eq!(ack.consistency_mode, ConsistencyMode::PartitionLinearizable);
     assert_eq!(ack.durability_mode, DurabilityMode::Durable);
 
-    let got = cluster
-        .get("users/alice", ReadMode::Linearizable)
-        .unwrap();
-    assert_eq!(got.value.as_deref(), Some(br#"{"name":"Alice"}"#.as_slice()));
+    let got = cluster.get("users/alice", ReadMode::Linearizable).unwrap();
+    assert_eq!(
+        got.value.as_deref(),
+        Some(br#"{"name":"Alice"}"#.as_slice())
+    );
     assert!(got.coverage.is_complete());
     assert!(got.absence_proven);
     assert!(got
@@ -61,10 +66,9 @@ fn partition_map_is_stable_and_published() {
 fn dependable_local_quorum_replication() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("ha");
-    let mut cluster = Cluster::create(
-        ClusterConfig::dependable_local(&root).with_virtual_partitions(16),
-    )
-    .unwrap();
+    let mut cluster =
+        Cluster::create(ClusterConfig::dependable_local(&root).with_virtual_partitions(16))
+            .unwrap();
 
     assert_eq!(cluster.profile(), DeploymentProfile::DependableLocal);
     assert_eq!(cluster.online_node_count(), 3);
@@ -250,8 +254,8 @@ fn open_roundtrip_preserves_data() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("persist");
     {
-        let mut c = Cluster::create(ClusterConfig::development(&root).with_virtual_partitions(4))
-            .unwrap();
+        let mut c =
+            Cluster::create(ClusterConfig::development(&root).with_virtual_partitions(4)).unwrap();
         c.put("a", b"1", DurabilityMode::Durable).unwrap();
     }
     let mut c = Cluster::open(&root).unwrap();

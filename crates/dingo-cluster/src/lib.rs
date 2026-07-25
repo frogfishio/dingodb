@@ -1,4 +1,4 @@
-//! DingoDB cluster federation (Stage 8).
+//! DingoDB cluster federation (Stage 8 + product freezes).
 //!
 //! A cluster is a **federation of independently recoverable partitions and
 //! segments** ([CLUSTER_SPEC](../../CLUSTER_SPEC.md)). Consensus decides who may
@@ -17,8 +17,19 @@
 //! - Distributed find/scan with coverage honesty (Stage 8e; CLUSTER_SPEC §17)
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
 //! - Node-local salvage without cluster software
+//! - Network advertise path: [`endpoints`] + `dingo serve-cluster`
+//!
+//! **Product freeze:** [`CLUSTER_PROFILE_VERSION`] labels the Stage 8
+//! conformance profile (no cross-partition atomic writes; CLUSTER_SPEC).
 
 #![deny(missing_docs)]
+
+/// Cluster federation profile freeze label (DELIVERY_PLAN §7: Cluster profile v1).
+///
+/// Stage 8a–8f conformance is locked: partitions, coverage, Raft-equivalent
+/// leadership, convergent-append, find coverage, rebalance. Network multi-hop
+/// continues to harden on the same rules without changing this label.
+pub const CLUSTER_PROFILE_VERSION: &str = "v1";
 
 mod ack;
 mod cluster;

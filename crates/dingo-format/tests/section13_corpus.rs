@@ -80,10 +80,7 @@ fn prefix_and_suffix_fields_at_boundaries() {
     assert_eq!(min[9], WIRE_MINOR);
     assert_eq!(min[10], FrameKind::ItemEvent.as_u8());
     assert_eq!(min[11], 0); // flags
-    assert_eq!(
-        &min[12..16],
-        &(EMPTY_ENVELOPE.len() as u32).to_le_bytes()
-    ); // envelope_len
+    assert_eq!(&min[12..16], &(EMPTY_ENVELOPE.len() as u32).to_le_bytes()); // envelope_len
     assert_eq!(&min[16..24], &0u64.to_le_bytes()); // body_len
     assert_eq!(&min[24..32], &0u64.to_le_bytes()); // logical_len
     assert_eq!(&min[min.len() - FRAME_SUFFIX_LEN..][..8], END_MAGIC);

@@ -15,6 +15,8 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 dingo-format.workspace = true
 thiserror.workspace = true
 blake3.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -33,7 +33,10 @@ impl Default for PartitionMap {
 impl PartitionMap {
     /// Create with an explicit virtual partition count.
     pub fn new(virtual_partitions: u32) -> Self {
-        assert!(virtual_partitions >= 1, "need at least one virtual partition");
+        assert!(
+            virtual_partitions >= 1,
+            "need at least one virtual partition"
+        );
         Self {
             virtual_partitions,
             hash_profile: HASH_PROFILE_BLAKE3_MOD.to_string(),

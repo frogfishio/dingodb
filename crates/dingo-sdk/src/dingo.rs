@@ -93,9 +93,8 @@ impl Dingo {
                 Err(e) => last_err = Some(e),
             }
         }
-        Err(last_err.unwrap_or_else(|| {
-            Error::Internal("connect failed with no seed errors".into())
-        }))
+        Err(last_err
+            .unwrap_or_else(|| Error::Internal("connect failed with no seed errors".into())))
     }
 
     /// Create a new multi-node cluster and return a SDK handle (Stage 8d).
@@ -228,9 +227,7 @@ impl Dingo {
     ) -> Result<(dingo_store::CheckpointMeta, PathBuf), Error> {
         match &self.backend {
             Backend::Local(s) => Ok(s.checkpoint(coverage)?),
-            Backend::Remote(_) | Backend::Cluster(_) => {
-                Err(Error::RemoteUnsupported("checkpoint"))
-            }
+            Backend::Remote(_) | Backend::Cluster(_) => Err(Error::RemoteUnsupported("checkpoint")),
         }
     }
 

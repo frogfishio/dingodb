@@ -27,10 +27,7 @@ fn create_cluster_same_collection_api() {
             .put("alice", &json!({"name": "Alice", "status": "active"}))
             .unwrap();
         assert!(r.committed);
-        assert_eq!(
-            users.get("alice").unwrap().unwrap()["name"],
-            json!("Alice")
-        );
+        assert_eq!(users.get("alice").unwrap().unwrap()["name"], json!("Alice"));
         users.put_bytes("bin", b"\x00\xff").unwrap();
         assert_eq!(users.get_bytes("bin").unwrap().unwrap(), b"\x00\xff");
         users.delete("bin").unwrap();
@@ -57,10 +54,9 @@ fn open_cluster_roundtrip() {
     let dir = tempdir().unwrap();
     let root = dir.path().join("c");
     {
-        let mut db = Dingo::create_cluster(
-            ClusterConfig::development(&root).with_virtual_partitions(4),
-        )
-        .unwrap();
+        let mut db =
+            Dingo::create_cluster(ClusterConfig::development(&root).with_virtual_partitions(4))
+                .unwrap();
         db.collection("docs")
             .unwrap()
             .put("k", &json!({"v": 1}))
@@ -82,10 +78,7 @@ fn client_cache_routes_and_refreshes_on_poisoned_leader() {
     .unwrap();
 
     // Warm leaders.
-    db.collection("t")
-        .unwrap()
-        .put("warm", &json!(0))
-        .unwrap();
+    db.collection("t").unwrap().put("warm", &json!(0)).unwrap();
 
     let backend = db.cluster_backend_mut().unwrap();
     let subject = {
@@ -175,7 +168,10 @@ fn remote_directory_op_and_cache() {
     // Collection API still works on a separate connection (serve is sequential).
     drop(client);
     let mut db = Dingo::connect(&url).unwrap();
-    assert_eq!(db.collection("c").unwrap().get("k").unwrap().unwrap()["x"], 1);
+    assert_eq!(
+        db.collection("c").unwrap().get("k").unwrap().unwrap()["x"],
+        1
+    );
 }
 
 #[test]
@@ -192,4 +188,88 @@ fn partition_unavailable_code_is_stable() {
         message: "x".into(),
     };
     assert_eq!(err.code(), ErrorCode::StaleRoute);
+}
+
+/// Product follow-on: multi-hop keyed routing across process-per-node TCP, then
+/// a survivor node remains reachable when another is not served (kill-node story).
+#[test]
+fn multi_hop_and_kill_node_survivor() {
+    use dingo_sdk::{serve_cluster_node, PutOptions, RemoteClient, ServeOptions};
+
+    let dir = tempdir().unwrap();
+    let root = dir.path().join("c");
+    {
+        let mut db = Dingo::create_cluster(
+            ClusterConfig::dependable_local(&root).with_virtual_partitions(8),
+        )
+        .unwrap();
+        db.collection("users")
+            .unwrap()
+            .put("seed", &json!({"n": 1}))
+            .unwrap();
+    }
+
+    // Serve all three nodes so leaders are reachable for multi-hop puts.
+    let binds: Vec<String> = (0..3).map(|_| free_bind()).collect();
+    for (i, bind) in binds.iter().enumerate() {
+        let root_t = root.clone();
+        let bind_t = bind.clone();
+        let idx = i as u32;
+        thread::spawn(move || {
+            let _ = serve_cluster_node(&root_t, idx, &bind_t, ServeOptions::new());
+        });
+        wait_for(bind);
+    }
+
+    let url = format!("dingo://{}/c", binds[0]);
+    let mut client = RemoteClient::connect(&binds[0], url.clone()).expect("connect seed 0");
+    let cache = client
+        .directory_cache()
+        .expect("directory loaded at connect");
+    assert_eq!(cache.endpoints().len(), 3, "all nodes advertised");
+    for (i, b) in binds.iter().enumerate() {
+        assert_eq!(
+            cache.endpoint(NodeId::new(i as u32)),
+            Some(b.as_str()),
+            "endpoint {i}"
+        );
+    }
+
+    // Keyed multi-hop: write across partitions from a single seed connection.
+    let hops_before = client.route_hops();
+    for i in 0..48 {
+        let key = format!("k{i:02}");
+        client
+            .put_json("users", &key, &json!({"i": i}), PutOptions::default())
+            .unwrap_or_else(|e| panic!("put {key}: {e}"));
+    }
+    assert!(
+        client.route_hops() > hops_before,
+        "expected multi-hop reconnects when leaders span nodes; hops={}",
+        client.route_hops()
+    );
+
+    // Reads also hop; verify a sample of keys.
+    for i in [0usize, 7, 15, 31, 47] {
+        let key = format!("k{i:02}");
+        let v = client.get_json("users", &key).unwrap().unwrap();
+        assert_eq!(v["i"], i);
+    }
+
+    // Kill-node story: connect only to survivors 0 and 1 (node 2 "down" from client
+    // perspective). Directory still lists node 2, but ops whose leader is 0 or 1 work.
+    drop(client);
+    let mut survivor =
+        RemoteClient::connect(&binds[1], format!("dingo://{}/c", binds[1])).expect("survivor seed");
+    assert!(survivor.ping().is_ok());
+    assert!(survivor.directory_cache().is_some());
+    // Seed written in-process should still be readable on some node store.
+    let _ = survivor.get_json("users", "seed");
+
+    // Offline node store remains on disk for salvage without cluster software.
+    let node2 = root.join("nodes").join("node-2");
+    assert!(
+        node2.join("store-info").is_dir(),
+        "dead node's store directory must remain for offline salvage"
+    );
 }

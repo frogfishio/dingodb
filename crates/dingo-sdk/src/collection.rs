@@ -110,7 +110,9 @@ impl<'a> Collection<'a> {
                 Ok(store.get_payload(subject_str)?)
             }
             Backend::Remote(client) => client.get_payload(&self.name, key),
-            Backend::Cluster(_) => Err(Error::RemoteUnsupported("get_payload on cluster (use get)")),
+            Backend::Cluster(_) => {
+                Err(Error::RemoteUnsupported("get_payload on cluster (use get)"))
+            }
         }
     }
 

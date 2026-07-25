@@ -30,14 +30,15 @@ fn convergent_accepts_without_quorum() {
         .put("telemetry/1", b"side-a-only", DurabilityMode::Durable)
         .unwrap();
     assert_eq!(ack.consistency_mode, ConsistencyMode::ConvergentAppend);
-    assert!(!ack.committed, "convergent must not claim linearizable commit");
+    assert!(
+        !ack.committed,
+        "convergent must not claim linearizable commit"
+    );
     assert_eq!(ack.commit_status, CommitStatus::Prepared);
     assert_eq!(ack.replica_acks, 1);
     assert_ne!(ack.event_id, [0u8; 16]);
 
-    let got = cluster
-        .get("telemetry/1", ReadMode::Available)
-        .unwrap();
+    let got = cluster.get("telemetry/1", ReadMode::Available).unwrap();
     assert_eq!(got.value.as_deref(), Some(b"side-a-only".as_slice()));
     assert!(got
         .coverage
@@ -50,9 +51,7 @@ fn convergent_accepts_without_quorum() {
 fn linearizable_read_rejected_in_convergent_mode() {
     let dir = tempfile::tempdir().unwrap();
     let mut cluster = convergent_cluster(&dir.path().join("c"));
-    cluster
-        .put("k", b"v", DurabilityMode::Buffered)
-        .unwrap();
+    cluster.put("k", b"v", DurabilityMode::Buffered).unwrap();
     let err = cluster.get("k", ReadMode::Linearizable).unwrap_err();
     assert_eq!(err.code(), "consistency_violation");
 }

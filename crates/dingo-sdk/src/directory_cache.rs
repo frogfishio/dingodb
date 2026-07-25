@@ -71,10 +71,7 @@ pub struct AssignmentWire {
 
 impl DirectorySnapshot {
     /// Build from a live placement directory and optional endpoint map.
-    pub fn from_directory(
-        dir: &PartitionDirectory,
-        endpoints: HashMap<u32, String>,
-    ) -> Self {
+    pub fn from_directory(dir: &PartitionDirectory, endpoints: HashMap<u32, String>) -> Self {
         Self {
             virtual_partitions: dir.map.virtual_partitions,
             hash_profile: dir.map.hash_profile.clone(),

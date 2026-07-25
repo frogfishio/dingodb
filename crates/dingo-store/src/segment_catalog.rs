@@ -5,9 +5,7 @@
 
 use crate::error::StoreError;
 use crate::layout::StorePaths;
-use crate::tier::{
-    available_sealed_paths, resolve_placement_path, TierClass, TierPlacement,
-};
+use crate::tier::{available_sealed_paths, resolve_placement_path, TierClass, TierPlacement};
 use blake3::Hasher;
 use dingo_format::{scan_forward, FrameKind, SafetyLimits};
 use std::collections::BTreeMap;
@@ -100,10 +98,7 @@ impl SegmentCatalog {
             }
             // Retain last-known summary when segment is offline / unavailable.
             if !placement.is_tier_available(prior_sum.tier)
-                || placement
-                    .get(id)
-                    .map(|p| !p.available)
-                    .unwrap_or(false)
+                || placement.get(id).map(|p| !p.available).unwrap_or(false)
             {
                 let mut s = prior_sum.clone();
                 s.available = false;
@@ -186,14 +181,8 @@ pub fn rebuild_segment_catalog(
             });
             continue;
         }
-        let summary = summarize_segment_file(
-            p.segment_id,
-            p.tier,
-            &path,
-            p.content_hash,
-            p.size,
-            limits,
-        )?;
+        let summary =
+            summarize_segment_file(p.segment_id, p.tier, &path, p.content_hash, p.size, limits)?;
         cat.upsert(summary);
     }
 

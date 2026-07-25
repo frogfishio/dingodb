@@ -95,22 +95,16 @@ impl ClusterBackend {
     /// Refresh the entire client cache from the live placement directory.
     pub fn refresh_directory(&mut self) {
         // Ensure leaders are current in the cluster directory first.
-        let partitions: Vec<PartitionId> = self
-            .cluster
-            .partition_map()
-            .all_partitions()
-            .collect();
+        let partitions: Vec<PartitionId> = self.cluster.partition_map().all_partitions().collect();
         for p in partitions {
             let _ = self.cluster.ensure_partition_leader(p);
         }
-        self.cache
-            .replace(self.cluster.directory(), HashMap::new());
+        self.cache.replace(self.cluster.directory(), HashMap::new());
     }
 
     /// Sync cache with live directory without forcing elections.
     pub fn sync_cache_from_cluster(&mut self) {
-        self.cache
-            .replace(self.cluster.directory(), HashMap::new());
+        self.cache.replace(self.cluster.directory(), HashMap::new());
     }
 
     /// Cluster id bytes.
@@ -340,10 +334,7 @@ impl ClusterBackend {
     }
 
     /// Full multi-partition scan with coverage (Stage 8e).
-    pub fn scan_with_coverage(
-        &mut self,
-        options: ScanOptions,
-    ) -> Result<FindResult, Error> {
+    pub fn scan_with_coverage(&mut self, options: ScanOptions) -> Result<FindResult, Error> {
         let find = self.cluster.find(options).map_err(map_cluster)?;
         self.sync_cache_from_cluster();
         Ok(find)
@@ -409,8 +400,7 @@ impl ClusterBackend {
                     }
                     return Ok(ack);
                 }
-                Err(ClusterError::NoLeader(_))
-                | Err(ClusterError::PartitionUnavailable { .. }) => {
+                Err(ClusterError::NoLeader(_)) | Err(ClusterError::PartitionUnavailable { .. }) => {
                     self.cache.mark_stale(route.partition);
                     self.refresh_directory();
                     last_err = Some(map_cluster(result.err().unwrap()));
@@ -441,8 +431,7 @@ impl ClusterBackend {
 
             let live = self.cluster.directory().get(route.partition).cloned();
             if let Some(ref live_a) = live {
-                if live_a.leader != route.leader
-                    || live_a.placement_epoch != route.placement_epoch
+                if live_a.leader != route.leader || live_a.placement_epoch != route.placement_epoch
                 {
                     self.cache.refresh_entry(live_a);
                     last_err = Some(Error::StaleRoute {
@@ -468,8 +457,7 @@ impl ClusterBackend {
                         .map_err(map_cluster)?;
                     return Ok(got.value);
                 }
-                Err(ClusterError::NoLeader(_))
-                | Err(ClusterError::PartitionUnavailable { .. }) => {
+                Err(ClusterError::NoLeader(_)) | Err(ClusterError::PartitionUnavailable { .. }) => {
                     self.cache.mark_stale(route.partition);
                     self.refresh_directory();
                     last_err = Some(Error::PartitionUnavailable {
@@ -515,7 +503,11 @@ fn subject_str(collection: &str, key: &str) -> Result<String, Error> {
         .map_err(|_| Error::Internal("subject is not UTF-8".into()))
 }
 
-fn write_receipt_from_ack(key: &str, ack: &ClusterWriteAck, requested: DurabilityMode) -> WriteReceipt {
+fn write_receipt_from_ack(
+    key: &str,
+    ack: &ClusterWriteAck,
+    requested: DurabilityMode,
+) -> WriteReceipt {
     WriteReceipt {
         key: key.to_string(),
         event_id: ack.event_id,
@@ -541,10 +533,14 @@ pub(crate) fn map_cluster(e: ClusterError) -> Error {
         },
         ClusterError::ConsistencyViolation(m) => Error::ConsistencyViolation(m),
         ClusterError::Rebalance(m) => Error::Internal(format!("rebalance: {m}")),
-        ClusterError::AlreadyExists(p) => Error::ValidationMsg(format!("cluster already exists: {p}")),
+        ClusterError::AlreadyExists(p) => {
+            Error::ValidationMsg(format!("cluster already exists: {p}"))
+        }
         ClusterError::NotACluster(p) => Error::ValidationMsg(format!("not a cluster: {p}")),
         ClusterError::CorruptMeta(m) => Error::Internal(format!("corrupt cluster meta: {m}")),
-        ClusterError::ReplicationRejected(m) => Error::Internal(format!("replication rejected: {m}")),
+        ClusterError::ReplicationRejected(m) => {
+            Error::Internal(format!("replication rejected: {m}"))
+        }
         ClusterError::Io(e) => Error::from_io(e),
     }
 }

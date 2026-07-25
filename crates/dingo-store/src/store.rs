@@ -283,8 +283,7 @@ impl Store {
         if let Some(cat) = try_load_collection_catalog(&cat_path, store.store_id, fp)? {
             store.collection_catalog = cat;
         } else {
-            store.collection_catalog =
-                CollectionCatalog::from_index(&store.index);
+            store.collection_catalog = CollectionCatalog::from_index(&store.index);
         }
         // Intentionally no resume_or_start_active — no writer handle.
         Ok(store)
@@ -654,8 +653,7 @@ impl Store {
             }
         }
 
-        let temp_index =
-            index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
+        let temp_index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
         Ok(SalvageReport {
             files_scanned,
             verified_frames,
@@ -796,7 +794,11 @@ impl Store {
     ///
     /// Offline tiers create coverage holes; they must not be reported as empty
     /// successful absence (OVERVIEW §9.2).
-    pub fn set_tier_available(&mut self, tier: TierClass, available: bool) -> Result<(), StoreError> {
+    pub fn set_tier_available(
+        &mut self,
+        tier: TierClass,
+        available: bool,
+    ) -> Result<(), StoreError> {
         self.tier_placement.set_tier_available(tier, available);
         self.persist_tier_state()?;
         // Rebuild index from remaining available segments only.
@@ -867,7 +869,10 @@ impl Store {
     }
 
     /// Classify a sealed segment file without rewriting bytes (multi-gen readers).
-    pub fn classify_segment(&self, segment_id: &[u8; 16]) -> Result<FormatClassification, StoreError> {
+    pub fn classify_segment(
+        &self,
+        segment_id: &[u8; 16],
+    ) -> Result<FormatClassification, StoreError> {
         let path = if let Some(p) = self.tier_placement.get(segment_id) {
             crate::tier::resolve_placement_path(&self.paths, p)?
         } else {
@@ -970,12 +975,8 @@ impl Store {
 
     fn refresh_segment_catalog(&mut self) -> Result<(), StoreError> {
         let prior = self.segment_catalog.clone();
-        self.segment_catalog = rebuild_segment_catalog(
-            &self.paths,
-            &self.tier_placement,
-            Some(&prior),
-            self.limits,
-        )?;
+        self.segment_catalog =
+            rebuild_segment_catalog(&self.paths, &self.tier_placement, Some(&prior), self.limits)?;
         let _ = write_segment_catalog(
             &segment_catalog_path(&self.paths.catalogs_dir()),
             self.store_id,

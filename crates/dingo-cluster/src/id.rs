@@ -91,15 +91,21 @@ impl fmt::Display for PartitionId {
 }
 
 /// Monotonic leadership generation for one partition (CLUSTER_SPEC §5, §10).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default,
+)]
 pub struct Term(pub u64);
 
 /// Monotonic generation of the partition-to-replica assignment.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default,
+)]
 pub struct PlacementEpoch(pub u64);
 
 /// Partition-local log / event position (Stage 8a: opaque monotonic counter).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default,
+)]
 pub struct LogPosition(pub u64);
 
 fn hex16(bytes: &[u8; 16]) -> String {

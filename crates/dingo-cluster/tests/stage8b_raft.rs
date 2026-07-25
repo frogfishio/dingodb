@@ -69,7 +69,9 @@ fn election_fails_without_majority_of_configured_voters() {
             Err(e) => {
                 let c = e.code();
                 assert!(
-                    c == "partition_unavailable" || c == "durability_unavailable" || c == "no_leader",
+                    c == "partition_unavailable"
+                        || c == "durability_unavailable"
+                        || c == "no_leader",
                     "unexpected {c}"
                 );
                 saw = true;
@@ -185,9 +187,7 @@ fn ensure_leader_prefers_longer_log() {
         p.role = RaftRole::Follower;
     }
 
-    let (leader, _) = g
-        .ensure_leader(&[NodeId::new(1), NodeId::new(2)])
-        .unwrap();
+    let (leader, _) = g.ensure_leader(&[NodeId::new(1), NodeId::new(2)]).unwrap();
     assert_eq!(
         leader,
         NodeId::new(1),
@@ -203,9 +203,7 @@ fn single_node_development_elects_and_commits() {
     )
     .unwrap();
 
-    let ack = cluster
-        .put("solo", b"ok", DurabilityMode::Durable)
-        .unwrap();
+    let ack = cluster.put("solo", b"ok", DurabilityMode::Durable).unwrap();
     assert!(ack.committed);
     assert_eq!(ack.replica_acks, 1);
     assert_eq!(ack.leader, NodeId::new(0));
@@ -223,8 +221,5 @@ fn pure_raft_election_no_quorum_error() {
         PlacementEpoch(1),
     );
     let err = g.elect(NodeId::new(0), &[NodeId::new(0)]).unwrap_err();
-    assert!(matches!(
-        err,
-        ElectError::NoQuorum { votes: 1, need: 2 }
-    ));
+    assert!(matches!(err, ElectError::NoQuorum { votes: 1, need: 2 }));
 }

@@ -1062,11 +1062,7 @@ mod section_14_must_lock {
             "reserved placeholder",
         );
         assert_fail("_;", "t_sda_unbound_placeholder", "unbound placeholder");
-        assert_fail(
-            r#"Map{}<"x">!;"#,
-            "t_sda_missing_key",
-            "missing key",
-        );
+        assert_fail(r#"Map{}<"x">!;"#, "t_sda_missing_key", "missing key");
     }
 
     #[test]

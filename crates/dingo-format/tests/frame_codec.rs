@@ -175,8 +175,7 @@ fn body_hash_matches_blake3() {
 
 #[test]
 fn corrupt_length_fields_fail_closed() {
-    let mut encoded =
-        encode_frame(&parts(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"cd")).unwrap();
+    let mut encoded = encode_frame(&parts(FrameKind::ItemEvent, EMPTY_ENVELOPE, b"cd")).unwrap();
     // Blow up envelope_len in prefix without fixing CRC — reject via CRC or limits.
     encoded[12] = 0xff;
     encoded[13] = 0xff;

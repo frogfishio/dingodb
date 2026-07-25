@@ -1,6 +1,6 @@
 # DingoDB staged delivery plan
 
-Status: Draft v0.22 (Stages 0–9 done; Doc P2 aligned; product follow-ons in progress)  
+Status: Draft v0.23 (Stages 0–9 done; Doc P2 aligned; product follow-ons 1–4 landed)  
 Audience: implementers  
 Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), [OVERVIEW.md](OVERVIEW.md),
@@ -572,13 +572,13 @@ Stage 1 ┤                                                   ├── Stage 5 
 
 ## 7. Freezes and versioning
 
-| Artifact | Freeze target |
-|----------|----------------|
-| SDA core semantics | After Stage 1 exit; changes need explicit versioning |
-| Standalone SDA surface | With core; helpers only via profile version |
-| Wire format major 1 | After Stage 2–3 production soak; until then draft bytes |
-| Collection SDK 1.0 | After Stage 4 + 7 embedded/server parity |
-| Cluster profile v1 | After Stage 8 conformance; no cross-partition atomic writes (per CLUSTER_SPEC) |
+| Artifact | Freeze target | Label (in tree) |
+|----------|----------------|-----------------|
+| SDA core semantics | After Stage 1 exit; changes need explicit versioning | `sda-standalone-v1.0` |
+| Standalone SDA surface | With core; helpers only via profile version | same corpus tag |
+| Wire format major 1 | After Stage 2–3 production soak; until then draft bytes | `WIRE_PROFILE_LABEL` = `1.0-draft` (`WIRE_MAJOR=1`) |
+| Collection SDK 1.0 | After Stage 4 + 7 embedded/server parity | `SDK_API_VERSION` = `1.0` |
+| Cluster profile v1 | After Stage 8 conformance; no cross-partition atomic writes | `CLUSTER_PROFILE_VERSION` = `v1` |
 
 ## 8. Suggested first demo milestones (human-facing)
 
@@ -597,6 +597,7 @@ tracks. Living scripts (where checked in) live under `scripts/demos/`.
 5. **“Ordinary product”** — Stage 6–7: indexes, doctor, CLI, server.
 6. **“Federation”** — Stage 8: kill a node; others serve; dead node’s disks
    still salvage offline. Network process serve: `dingo serve-cluster`.
+   → [`scripts/demos/08_kill_a_node.sh`](scripts/demos/08_kill_a_node.sh)
 7. **“Keep it fifteen years”** — Stage 9: tier move + cold search story.
    → [`scripts/demos/07_tier_move.sh`](scripts/demos/07_tier_move.sh)
 
@@ -725,10 +726,14 @@ the cited conformance suites as required checks—not optional polish.
 23. ~~Stage 9 tiering / archive.~~ **Done** — segment move/copy, hierarchical
     catalogs, offline coverage honesty, archive-path bench class, retention
     runbook (`stage9_tiering.rs`, `doc/RUNBOOK_RETENTION.md`).
-24. **Product follow-ons (in progress):**
-    - **Network multi-node serve** — `dingo serve-cluster` advertises real
-      placement + `endpoints.json`; process-per-node TCP beyond in-process 8a–8f.
-    - **Object-store media seam** — `MediaLocator` + local object backend in
-      `dingo-store`; live S3/GCS HTTP connectors still optional.
+24. ~~**Product follow-ons 1–4.**~~ **Done** —
+    - **Live S3/GCS** — `CloudMirrorConfig` / `DINGO_S3_ROOT` / `DINGO_GS_ROOT`
+      + `MirroredCloudMedia` (`media.rs`).
+    - **Network multi-hop** — `RemoteClient` leader routing + live
+      `endpoints.json` reload; `multi_hop_and_kill_node_survivor` + demo 08.
+    - **Freeze labels** — `SDK_API_VERSION`, `CLUSTER_PROFILE_VERSION`,
+      `WIRE_PROFILE_LABEL` (see §7).
+    - **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
+      `doc/BENCHMARK_DISCLOSURE.md`.
 25. **Doc P2 (done):** `ARCHITECTURE.md` Stage 9 status aligned; open decisions
     §9 annotated as implemented; human demos under `scripts/demos/`.

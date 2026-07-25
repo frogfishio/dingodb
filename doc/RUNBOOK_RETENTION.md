@@ -147,16 +147,31 @@ The third column of `tiers/roots.txt` is a **media root spec**:
 |------|---------|
 | path / `file:///path` | Filesystem directory (Stage 9 baseline) |
 | `object:local:/path` | Local object layout (in-tree stand-in; optional `#prefix`) |
-| `s3://bucket/prefix` | Amazon S3 (parse-ready; live HTTP connector follow-on) |
-| `gs://bucket/prefix` | GCS (parse-ready; same) |
+| `s3://bucket/prefix` | Amazon S3 — live via `DINGO_S3_ROOT` mirror |
+| `gs://bucket/prefix` | GCS — live via `DINGO_GS_ROOT` mirror |
 
-Rust: `dingo_store::MediaLocator::parse`, `open_media`, `FilesystemMedia`,
-`LocalObjectMedia`. Cloud put/get return `MediaUnsupported` until a connector
-lands; unresolvable cloud roots are treated as **offline** for coverage honesty.
+Rust: `dingo_store::MediaLocator::parse`, `open_media` / `open_media_with`,
+`CloudMirrorConfig`, `MirroredCloudMedia`, `FilesystemMedia`, `LocalObjectMedia`.
 
-## 8. Non-goals (this stage)
+### Live cloud mirrors
 
-- Live S3/GCS HTTP connectors (locator seam + `object:local:` shipped)
-- Erasure coding across archive shards
-- Automatic lifecycle policies (operator-driven transfer only)
+| Env | Layout |
+|-----|--------|
+| `DINGO_S3_ROOT` | `{root}/{bucket}/{prefix}/…` object keys as files |
+| `DINGO_GS_ROOT` | same for `gs://` |
+
+Point these at an rclone/s3fs mount, MinIO disk tree, or offline copy. Without
+a mirror, cloud roots stay **offline** for coverage honesty (`MediaUnsupported`
+on put/get).
+
+Lifecycle policy (declarative): `tiers/lifecycle.json` via
+`dingo_store::LifecyclePolicy` — evaluation is pure; transfers remain explicit.
+Erasure-coded archive shards are scaffolded (`ErasureManifest`) but codecs are
+not shipped. Latency claims: see [BENCHMARK_DISCLOSURE.md](BENCHMARK_DISCLOSURE.md).
+
+## 8. Non-goals (remaining polish)
+
+- Native SigV4 HTTP SDK (mirror / fuse mount is the shipped connector path)
+- Erasure encode/decode codecs (manifest + naming only)
+- Background lifecycle scheduler (policy file + evaluate only)
 - Claiming archive reads have memory latency

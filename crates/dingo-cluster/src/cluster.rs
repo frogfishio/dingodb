@@ -16,9 +16,7 @@
 
 use crate::ack::ClusterWriteAck;
 use crate::config::{node_store_path, ClusterConfig, ClusterMeta};
-use crate::convergent::{
-    body_content_hash, ReconcileReport, SubjectConflict, SubjectVariant,
-};
+use crate::convergent::{body_content_hash, ReconcileReport, SubjectConflict, SubjectVariant};
 use crate::coverage::{Coverage, FindResult, GetResult, ScanOptions, ScanResult};
 use crate::directory::PartitionDirectory;
 use crate::error::ClusterError;
@@ -174,11 +172,7 @@ impl Cluster {
         for a in &directory.assignments {
             raft.insert(
                 a.partition.get(),
-                PartitionRaft::new(
-                    a.partition,
-                    a.replicas.clone(),
-                    a.placement_epoch,
-                ),
+                PartitionRaft::new(a.partition, a.replicas.clone(), a.placement_epoch),
             );
         }
         raft
@@ -316,8 +310,7 @@ impl Cluster {
             },
         })?;
 
-        self.directory
-            .set_leader(partition, leader, term);
+        self.directory.set_leader(partition, leader, term);
         Ok((leader, term))
     }
 
@@ -612,13 +605,13 @@ impl Cluster {
         let mut acks = 0u32;
 
         for node in targets {
-            let store = self
-                .nodes
-                .get_mut(&node.index())
-                .ok_or(ClusterError::PartitionUnavailable {
-                    partition: partition.get(),
-                    reason: "ingest store missing",
-                })?;
+            let store =
+                self.nodes
+                    .get_mut(&node.index())
+                    .ok_or(ClusterError::PartitionUnavailable {
+                        partition: partition.get(),
+                        reason: "ingest store missing",
+                    })?;
             let receipt = if is_delete {
                 store.delete(subject, mode)?
             } else {
@@ -686,13 +679,15 @@ impl Cluster {
                 .raft
                 .get_mut(&partition.get())
                 .ok_or(ClusterError::NoLeader(partition.get()))?;
-            group.propose(leader, command, &online).map_err(|e| match e {
-                ProposeError::NotLeader => ClusterError::NoLeader(partition.get()),
-                ProposeError::SteppedDown(_) => ClusterError::PartitionUnavailable {
-                    partition: partition.get(),
-                    reason: "leader stepped down during propose",
-                },
-            })?
+            group
+                .propose(leader, command, &online)
+                .map_err(|e| match e {
+                    ProposeError::NotLeader => ClusterError::NoLeader(partition.get()),
+                    ProposeError::SteppedDown(_) => ClusterError::PartitionUnavailable {
+                        partition: partition.get(),
+                        reason: "leader stepped down during propose",
+                    },
+                })?
         };
 
         if !propose.committed {
@@ -794,12 +789,13 @@ impl Cluster {
                         return Err(e);
                     }
                 };
-                let store = self.nodes.get(&leader.index()).ok_or(
-                    ClusterError::PartitionUnavailable {
-                        partition: partition.get(),
-                        reason: "leader handle missing",
-                    },
-                )?;
+                let store =
+                    self.nodes
+                        .get(&leader.index())
+                        .ok_or(ClusterError::PartitionUnavailable {
+                            partition: partition.get(),
+                            reason: "leader handle missing",
+                        })?;
                 let value = store.get(subject)?;
                 let pos = self
                     .raft
@@ -843,19 +839,12 @@ impl Cluster {
                                 .raft
                                 .get(&partition.get())
                                 .map(|g| {
-                                    let term = g
-                                        .current_leader()
-                                        .map(|(_, t)| t)
-                                        .unwrap_or(Term(0));
+                                    let term =
+                                        g.current_leader().map(|(_, t)| t).unwrap_or(Term(0));
                                     (term, LogPosition(g.max_commit_index()))
                                 })
                                 .unwrap_or((Term(0), LogPosition(0)));
-                            coverage.mark_completed(
-                                partition,
-                                term,
-                                pos,
-                                Some(node.index()),
-                            );
+                            coverage.mark_completed(partition, term, pos, Some(node.index()));
                             return Ok(GetResult {
                                 value,
                                 coverage,
@@ -902,11 +891,8 @@ impl Cluster {
             }
             None => self.partition_map.all_partitions().collect(),
         };
-        let query_id = FindResult::make_query_id(
-            &requested,
-            options.subject_prefix.as_deref(),
-            options.limit,
-        );
+        let query_id =
+            FindResult::make_query_id(&requested, options.subject_prefix.as_deref(), options.limit);
 
         let mut coverage = Coverage::for_partitions(requested.iter().copied());
         coverage.with_read_mode(options.read_mode);
@@ -1079,8 +1065,7 @@ impl Cluster {
                 return Err(ClusterError::Rebalance("cannot re-enter plan".into()));
             }
         };
-        self.rebalance_jobs
-            .insert(partition.get(), updated.clone());
+        self.rebalance_jobs.insert(partition.get(), updated.clone());
         if updated.phase == RebalancePhase::Reclaimed {
             self.rebalance_jobs.remove(&partition.get());
         }
@@ -1116,7 +1101,9 @@ impl Cluster {
     /// Scans every online node for subjects, maps them to partitions, and
     /// builds a balanced-style directory with those nodes as replicas. Does
     /// not invent commitment evidence.
-    pub fn reconstruct_directory_from_stores(&mut self) -> Result<PartitionDirectory, ClusterError> {
+    pub fn reconstruct_directory_from_stores(
+        &mut self,
+    ) -> Result<PartitionDirectory, ClusterError> {
         let online = self.online_nodes();
         if online.is_empty() {
             return Err(ClusterError::Rebalance(
@@ -1256,7 +1243,12 @@ impl Cluster {
         let leader = group
             .current_leader()
             .map(|(n, _)| n)
-            .or_else(|| job.old_replicas.iter().copied().find(|n| group.peer(*n).is_some()))
+            .or_else(|| {
+                job.old_replicas
+                    .iter()
+                    .copied()
+                    .find(|n| group.peer(*n).is_some())
+            })
             .ok_or_else(|| ClusterError::Rebalance("no leader/source for log catch-up".into()))?;
         for dest in &job.destinations {
             let n = group.stream_log_to(leader, *dest);
@@ -1266,7 +1258,10 @@ impl Cluster {
         Ok(job)
     }
 
-    fn rb_membership_changed(&mut self, mut job: RebalanceJob) -> Result<RebalanceJob, ClusterError> {
+    fn rb_membership_changed(
+        &mut self,
+        mut job: RebalanceJob,
+    ) -> Result<RebalanceJob, ClusterError> {
         // Joint configuration: old ∪ new.
         let mut joint = job.old_replicas.clone();
         for n in &job.new_replicas {
@@ -1390,7 +1385,9 @@ impl Cluster {
                     .get(&partition.get())
                     .map(|g| {
                         (
-                            g.current_leader().map(|(_, t)| t).unwrap_or(assignment.term),
+                            g.current_leader()
+                                .map(|(_, t)| t)
+                                .unwrap_or(assignment.term),
                             LogPosition(g.max_commit_index()),
                         )
                     })

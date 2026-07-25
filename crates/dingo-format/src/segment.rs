@@ -97,7 +97,12 @@ impl ActiveSegment {
         let body = encode_descriptor_body(&ids, created_ns, limits);
         let mut event_id = [0u8; 16];
         event_id.copy_from_slice(&ids.segment_id);
-        seg.append_raw(FrameKind::SegmentDescriptor, EMPTY_ENVELOPE, &body, event_id)?;
+        seg.append_raw(
+            FrameKind::SegmentDescriptor,
+            EMPTY_ENVELOPE,
+            &body,
+            event_id,
+        )?;
         Ok(seg)
     }
 

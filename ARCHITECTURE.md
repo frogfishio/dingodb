@@ -86,19 +86,22 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 - Workspace dependency key: `sda-core` → Rust path `sda_core::…` (CLI)
 - Integration tests of the library use `sda_lib::…`
 
-## Non-goals / post-plan follow-ons
+## Product follow-ons (landed v0.23)
 
-Stages **0–9** are landed. These remain product follow-ons (not Stage 9 blockers):
+Stages **0–9** are landed. Product follow-ons 1–4:
 
-- **Live cloud object-store connectors (S3/GCS)** — Stage 9 placement/tier API
-  and media locators live in `dingo-store`; cloud HTTP backends plug in behind
-  the same [`MediaLocator`](crates/dingo-store/src/media.rs) seam (`object:local:`
-  is the in-tree stand-in).
-- **Network multi-node Raft serve polish** — in-process cluster is Stage 8
-  complete; process-per-node TCP serve advertises real placement + endpoints
-  (`dingo serve-cluster`). Full multi-hop client routing and chaos operator
-  story continue to harden.
-- Marketing-grade Redis-class latency claims without OVERVIEW §12.2 disclosure
+1. **Live S3/GCS connectors** — `MediaLocator` + `CloudMirrorConfig`
+   (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`); `object:local:` stand-in unchanged.
+2. **Network multi-hop polish** — `dingo serve-cluster` + live `endpoints.json`
+   reload; `RemoteClient` routes keyed ops to partition leaders and refreshes
+   on transport failure; demo `scripts/demos/08_kill_a_node.sh`.
+3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
+   `CLUSTER_PROFILE_VERSION` (`v1`), `WIRE_PROFILE_LABEL` (`1.0-draft`).
+4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
+   [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).
+
+Network Raft log shipping over TCP remains future work; multi-hop client routing
+and offline node salvage are the shipped operator path.
 
 ## Stage 9 (landed)
 
@@ -107,5 +110,4 @@ identities, hierarchical segment catalogs, offline-tier coverage honesty, and
 [doc/RUNBOOK_RETENTION.md](doc/RUNBOOK_RETENTION.md).
 
 Object-style addressing: parse `MediaLocator` (`file` / `object:local` / `s3` /
-`gs`); local object media works under the placement API; live S3/GCS remain
-optional connectors.
+`gs`); local object media and mirrored cloud roots work under the placement API.

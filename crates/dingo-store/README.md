@@ -21,8 +21,8 @@ compaction (sources retained), derived checkpoints, benchmark skeleton,
 `open_inspect` (read-only open for doctor), `salvage_to`, segment tier
 move/copy with stable identities, hierarchical segment catalogs, offline-tier
 coverage holes, multi-generation format classification, and the object-store
-media seam (`MediaLocator`, `object:local:` stand-in; `s3://` / `gs://`
-parse-ready).
+media seam (`MediaLocator`, `object:local:`, live `s3://` / `gs://` via
+`DINGO_S3_ROOT` / `DINGO_GS_ROOT` mirrors).
 
 ## Layout (OVERVIEW §6.1, §9)
 
@@ -68,11 +68,15 @@ live there.
 | `get_with_tier_coverage` | Absence only proven when coverage complete |
 | `list_segment_summaries` / `rebuild_segment_catalog` | Cold-search hierarchy |
 | `classify_segment` | Multi-gen format class; preserve unsupported bytes |
+| `open_media` / `CloudMirrorConfig` | Object/media backends incl. S3/GCS mirrors |
+| `LifecyclePolicy` | Declarative tier aging rules (`tiers/lifecycle.json`) |
+| `ErasureManifest` | Archive shard naming contract (codec not shipped) |
 
 ## Non-goals (yet)
 
-- Live S3/GCS connectors (filesystem roots stand in for object media)
-- Automatic lifecycle policies
+- Native SigV4 HTTP object SDK (use mirror / fuse mount)
+- Erasure encode/decode codecs (manifest only)
+- Background lifecycle scheduler (policy evaluate only)
 - `replicated` durability
 
 ## Quick example

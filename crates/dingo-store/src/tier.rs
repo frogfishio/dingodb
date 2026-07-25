@@ -906,13 +906,15 @@ pub fn write_tier_roots_file(
 /// Best-effort load of roots.txt (availability + external roots).
 ///
 /// The third column may be a filesystem path or a media URI
-/// (`object:local:…`, `file://…`). Live cloud schemes (`s3://`, `gs://`) are
-/// recorded as offline unless a connector maps them to a local directory.
+/// (`object:local:…`, `file://…`, `s3://…`, `gs://…`). Cloud schemes resolve
+/// via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` mirrors; without a mirror they are
+/// recorded as offline so coverage stays honest.
 pub fn load_tier_roots_file(paths: &StorePaths, placement: &mut TierPlacement) {
     let path = paths.tiers_dir().join(TIER_ROOTS_FILE);
     let Ok(text) = fs::read_to_string(path) else {
         return;
     };
+    let mirror = crate::media::CloudMirrorConfig::from_env();
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -929,10 +931,8 @@ pub fn load_tier_roots_file(paths: &StorePaths, placement: &mut TierPlacement) {
         if let Some(root) = parts.next() {
             if tier != TierClass::Hot {
                 // Prefer resolving media URIs to a concrete directory when the
-                // build can open them (filesystem / object:local). Cloud-only
-                // URIs leave placement without an external path and mark the
-                // tier offline so coverage stays honest.
-                match crate::media::media_root_directory(root) {
+                // build can open them (filesystem / object:local / mirrored cloud).
+                match crate::media::media_root_directory_with(root, &mirror) {
                     Ok(dir) => placement.set_external_root(tier, dir),
                     Err(_) => {
                         // Unresolvable cloud (or bad) root: do not pretend empty success.

@@ -196,10 +196,7 @@ fn remote_find_index_accelerated_under_budget() {
             docs.put(&format!("k{i}"), &json!({"n": i, "tag": format!("t{i}")}))
                 .unwrap();
         }
-        docs.indexes()
-            .unwrap()
-            .create("by-n", &["n"])
-            .unwrap();
+        docs.indexes().unwrap().create("by-n", &["n"]).unwrap();
     }
 
     let bind = free_bind();

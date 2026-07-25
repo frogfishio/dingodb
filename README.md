@@ -178,8 +178,10 @@ format + salvage, single-node store, collection SDK, SDA examination,
 indexes/history/chunks, Stage 7 operator surface (`dingo` CLI + remote parity),
 `dingo-cluster` multi-node federation (partitions, coverage, Raft,
 convergent-append, SDK route cache, find coverage, rebalance), and Stage 9
-tiering/archive with a media-locator seam for object roots. Product follow-ons:
-network `dingo serve-cluster` and live cloud object connectors.
+tiering/archive with a media-locator seam for object roots. Product follow-ons
+landed: live S3/GCS mirrors (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`), multi-hop
+`dingo serve-cluster` client routing, freeze labels (SDK 1.0 / cluster v1 /
+wire 1.0-draft), lifecycle + erasure scaffolds, benchmark disclosure checklist.
 
 | Stage | Focus | Status |
 |-------|--------|--------|
