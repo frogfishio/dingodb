@@ -179,8 +179,9 @@ pub struct ServeOptions {
     pub allow_insecure_bind: bool,
     /// Acknowledge that network `serve-cluster` is experimental (DEF-002).
     ///
-    /// Required by [`serve_cluster_node`]. Quorum replication over TCP is not
-    /// implemented; this flag only unlocks the routing/advertise prototype.
+    /// Required by [`serve_cluster_node`]. When Raft state is attached (default),
+    /// data-plane put/delete use quorum commit (DEF-037); without Raft the node
+    /// remains a routing/advertise prototype only.
     pub experimental_network_cluster: bool,
     /// Skip the structured stderr startup report (when the CLI already printed it).
     pub suppress_startup_report: bool,
@@ -219,10 +220,14 @@ pub struct ServeOptions {
     /// builds one from [`Self::admission_limits`]. Tests may inject a prebuilt
     /// controller to observe counters.
     pub admission: Option<Arc<AdmissionController>>,
-    /// Network Raft control-plane state for this process (DEF-036).
+    /// Network Raft state for this process (DEF-036 control plane + DEF-037 data plane).
     ///
-    /// When set, `raft_request_vote` / `raft_append_entries` /
-    /// `raft_install_snapshot` / `raft_read_index` are served from this state.
+    /// When set:
+    /// - Control plane: `raft_request_vote` / `raft_append_entries` /
+    ///   `raft_install_snapshot` / `raft_read_index`
+    /// - Data plane: collection put/delete/put_bytes propose through Raft and
+    ///   return `committed=true` only after quorum + local apply
+    ///
     /// Endpoint maps remain routing hints only — never write authority.
     pub raft: Option<crate::raft_server::SharedRaftState>,
 }
@@ -870,7 +875,10 @@ impl RemoteClient {
         self.reconnect(&target)
     }
 
-    /// Try a keyed RPC with multi-hop routing and transport refresh.
+    /// Try a keyed RPC with multi-hop routing and transport / fence refresh.
+    ///
+    /// Retries on transport failures **and** typed epoch/term/not-leader errors
+    /// (DEF-037). The same `operation_id` is preserved across redirects.
     fn call_keyed(
         &mut self,
         collection: &str,
@@ -883,8 +891,10 @@ impl RemoteClient {
             let _ = self.ensure_route_for_key(collection, key);
             match self.call_on_current(req.clone()) {
                 Ok(r) => return Ok(r),
-                Err(e) if is_transport_error(&e) && attempt + 1 < MAX_ROUTE_TRANSPORT_RETRIES => {
-                    // Mark partition stale, refresh directory, try again.
+                Err(e)
+                    if is_route_refresh_error(&e) && attempt + 1 < MAX_ROUTE_TRANSPORT_RETRIES =>
+                {
+                    // Mark partition stale, refresh directory (live leaders), try again.
                     if let Ok(subject) = encode_subject(collection, key) {
                         if let Some(cache) = self.directory.as_mut() {
                             let p = cache.partition_of(&subject);
@@ -892,6 +902,8 @@ impl RemoteClient {
                         }
                     }
                     let _ = self.refresh_directory();
+                    // After refresh, hop again to the updated leader endpoint.
+                    let _ = self.ensure_route_for_key(collection, key);
                     last_err = Some(e);
                 }
                 Err(e) => return Err(e),
@@ -2033,6 +2045,16 @@ fn decode_rpc_response(bytes: &[u8], endpoint: &str, addr: &str) -> Result<RpcRe
             "coverage_incomplete" => Error::CoverageIncomplete(message),
             "resource_limit" => Error::ResourceLimit(message),
             "protocol_violation" => Error::ProtocolViolation(message),
+            "durability_unavailable" => Error::DurabilityUnavailable(message),
+            // DEF-037: typed fence / leadership errors trigger client directory refresh.
+            "stale_route" | "stale_epoch" | "not_leader" => Error::StaleRoute {
+                partition: 0,
+                message,
+            },
+            "partition_unavailable" => Error::PartitionUnavailable {
+                partition: 0,
+                reason: "remote partition unavailable",
+            },
             _ => Error::Remote { code, message },
         });
     }
@@ -2046,10 +2068,10 @@ fn decode_rpc_response(bytes: &[u8], endpoint: &str, addr: &str) -> Result<RpcRe
 /// endpoints on every `directory` RPC so multi-seed clients can cache routes.
 ///
 /// When Raft state is attached (default for experimental serve-cluster),
-/// control-plane `raft_*` RPCs (DEF-036) are served from durable peer stores
-/// under `{cluster_root}/raft/`. **Data-plane** collection writes still apply
-/// to this node's store unless a higher layer routes through Raft propose
-/// (DEF-037). In-process quorum remains `Dingo::open_cluster`.
+/// control-plane `raft_*` RPCs (DEF-036) and data-plane collection put/delete
+/// via Raft propose (DEF-037) are served from durable peer stores under
+/// `{cluster_root}/raft/`. Acks report `committed=true` only after quorum.
+/// In-process quorum remains available via `Dingo::open_cluster`.
 ///
 /// **Experimental (DEF-002):** requires
 /// [`ServeOptions::experimental_network_cluster`].
@@ -2062,8 +2084,8 @@ pub fn serve_cluster_node(
     if !options.experimental_network_cluster {
         return Err(Error::ValidationMsg(
             "serve-cluster is experimental: pass ServeOptions::experimental_network_cluster(true) \
-             or CLI --experimental-network-cluster. Network data-plane quorum (DEF-037) is separate; \
-             control-plane raft_* RPCs (DEF-036) attach when Raft state is available."
+             or CLI --experimental-network-cluster. When Raft attaches, data-plane writes use \
+             quorum commit (DEF-037); control-plane raft_* RPCs are DEF-036."
                 .into(),
         ));
     }
@@ -2646,6 +2668,131 @@ fn is_transport_error(err: &Error) -> bool {
     }
 }
 
+/// Transport failure **or** typed leadership/epoch fence (DEF-037).
+fn is_route_refresh_error(err: &Error) -> bool {
+    if is_transport_error(err) {
+        return true;
+    }
+    match err {
+        Error::StaleRoute { .. } | Error::PartitionUnavailable { .. } => true,
+        Error::Remote { code, .. } => matches!(
+            code.as_str(),
+            "stale_route" | "stale_epoch" | "not_leader" | "partition_unavailable"
+        ),
+        _ => false,
+    }
+}
+
+/// Virtual partition for a subject using the server's advertised map.
+fn partition_for_subject(options: &ServeOptions, subject: &str) -> u32 {
+    use dingo_cluster::PartitionMap;
+    if let Some(dir) = options.directory.as_ref() {
+        let map = PartitionMap {
+            virtual_partitions: dir.virtual_partitions.max(1),
+            hash_profile: if dir.hash_profile.is_empty() {
+                HASH_PROFILE_BLAKE3_MOD.to_string()
+            } else {
+                dir.hash_profile.clone()
+            },
+        };
+        return map.partition_of(subject.as_bytes()).get();
+    }
+    PartitionMap::new(DEFAULT_VIRTUAL_PARTITIONS)
+        .partition_of(subject.as_bytes())
+        .get()
+}
+
+/// When Raft is attached, propose + apply a mutation; otherwise write the store directly.
+fn mutation_via_raft_or_store(
+    store: &mut Store,
+    options: &ServeOptions,
+    subject: &str,
+    body: &[u8],
+    mode: DurabilityMode,
+    is_delete: bool,
+    operation_id_hex: Option<&str>,
+) -> Result<dingo_store::WriteReceipt, Error> {
+    let Some(raft) = options.raft.as_ref() else {
+        return if is_delete {
+            Ok(store.delete(subject, mode)?)
+        } else {
+            Ok(store.put(subject, body, mode)?)
+        };
+    };
+    let partition = partition_for_subject(options, subject);
+    let command = if is_delete {
+        dingo_cluster::LogCommand::Delete {
+            subject: subject.to_string(),
+        }
+    } else {
+        dingo_cluster::LogCommand::Put {
+            subject: subject.to_string(),
+            value: body.to_vec(),
+        }
+    };
+    let mut g = raft
+        .lock()
+        .map_err(|_| Error::Internal("raft state lock poisoned".into()))?;
+    // Refresh peer routing hints before campaign/propose (endpoints are not
+    // write authority, but stale maps cause false NoQuorum during startup).
+    if let Some(root) = options.cluster_root.as_ref() {
+        g.reload_endpoints(root);
+    }
+    // Verify cluster identity when we have a directory (cluster node).
+    if options.directory.is_some() && !g.has_partition(partition) {
+        return Err(Error::StaleRoute {
+            partition,
+            message: format!(
+                "this node has no raft replica for partition {partition} (code=not_leader)"
+            ),
+        });
+    }
+    if !g.has_partition(partition) {
+        // Raft attached for tests with a single partition — fall back to local
+        // store when the subject maps elsewhere (single-node serve with raft).
+        return if is_delete {
+            Ok(store.delete(subject, mode)?)
+        } else {
+            Ok(store.put(subject, body, mode)?)
+        };
+    }
+    let (_propose, receipt) =
+        g.propose_and_apply(partition, command, store, mode, operation_id_hex)?;
+    Ok(receipt)
+}
+
+/// Catch up state-machine apply after control-plane replication (followers).
+fn apply_raft_committed_all(store: &mut Store, options: &ServeOptions) {
+    let Some(raft) = options.raft.as_ref() else {
+        return;
+    };
+    if let Ok(mut g) = raft.lock() {
+        let _ = g.apply_all_committed(store, DurabilityMode::Durable);
+    }
+}
+
+/// Linearizable read barrier when Raft is attached (DEF-037).
+fn linearizable_read_barrier(
+    store: &mut Store,
+    options: &ServeOptions,
+    subject: &str,
+) -> Result<(), Error> {
+    let Some(raft) = options.raft.as_ref() else {
+        return Ok(());
+    };
+    let partition = partition_for_subject(options, subject);
+    let mut g = raft
+        .lock()
+        .map_err(|_| Error::Internal("raft state lock poisoned".into()))?;
+    if let Some(root) = options.cluster_root.as_ref() {
+        g.reload_endpoints(root);
+    }
+    if !g.has_partition(partition) {
+        return Ok(());
+    }
+    g.read_index_barrier(partition, store)
+}
+
 fn tcp_connect_with_retry(addr: &str, options: &ConnectOptions) -> Result<TcpStream, Error> {
     let attempts = options.max_connect_attempts.max(1);
     let mut last_err: Option<Error> = None;
@@ -2731,6 +2878,11 @@ fn dispatch(
                     .map_err(|_| Error::Internal("raft state lock poisoned".into()))?;
                 g.dispatch_json(&req.op, body)?
             };
+            // DEF-037: after AppendEntries / InstallSnapshot, apply committed
+            // entries to the local data store so followers hold replicated data.
+            if req.op == "raft_append_entries" || req.op == "raft_install_snapshot" {
+                apply_raft_committed_all(store, options);
+            }
             Ok(RpcResponse {
                 id,
                 ok: true,
@@ -2746,6 +2898,12 @@ fn dispatch(
                 if let Some(root) = options.cluster_root.as_ref() {
                     if let Ok(eps) = dingo_cluster::load_endpoints(root) {
                         dir.endpoints = eps;
+                    }
+                }
+                // Overlay live leaders from Raft (routing hints; epoch still authoritative).
+                if let Some(raft) = options.raft.as_ref() {
+                    if let Ok(g) = raft.lock() {
+                        g.overlay_live_leaders(&mut dir);
                     }
                 }
                 return Ok(RpcResponse {
@@ -2817,7 +2975,16 @@ fn dispatch(
             let receipt = match dedup {
                 DedupOutcome::Replay(r) => r,
                 DedupOutcome::Fresh { op_id, content_hash } => {
-                    let receipt = store.put(subject_str, &body, mode)?;
+                    let oid_hex = op_id.as_ref().map(hex16);
+                    let receipt = mutation_via_raft_or_store(
+                        store,
+                        options,
+                        subject_str,
+                        &body,
+                        mode,
+                        false,
+                        oid_hex.as_deref(),
+                    )?;
                     if let Some(op_id) = op_id {
                         store.record_write_dedup(op_id, content_hash, &receipt)?;
                     }
@@ -2839,6 +3006,8 @@ fn dispatch(
             let key = require_key(req)?;
             let subject = encode_subject(coll, key)?;
             let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
+            // DEF-037: linearizable barrier (leader + apply catch-up) when Raft is on.
+            linearizable_read_barrier(store, options, subject_str)?;
             match store.get(subject_str)? {
                 None => Ok(RpcResponse {
                     id,
@@ -2877,7 +3046,16 @@ fn dispatch(
                 }
                 DedupOutcome::Fresh { op_id, content_hash } => {
                     let removed = store.get(subject_str)?.is_some();
-                    let receipt = store.delete(subject_str, mode)?;
+                    let oid_hex = op_id.as_ref().map(hex16);
+                    let receipt = mutation_via_raft_or_store(
+                        store,
+                        options,
+                        subject_str,
+                        &[],
+                        mode,
+                        true,
+                        oid_hex.as_deref(),
+                    )?;
                     if let Some(op_id) = op_id {
                         store.record_write_dedup(op_id, content_hash, &receipt)?;
                     }
@@ -2921,7 +3099,16 @@ fn dispatch(
             let receipt = match dedup {
                 DedupOutcome::Replay(r) => r,
                 DedupOutcome::Fresh { op_id, content_hash } => {
-                    let receipt = store.put(subject_str, &body, mode)?;
+                    let oid_hex = op_id.as_ref().map(hex16);
+                    let receipt = mutation_via_raft_or_store(
+                        store,
+                        options,
+                        subject_str,
+                        &body,
+                        mode,
+                        false,
+                        oid_hex.as_deref(),
+                    )?;
                     if let Some(op_id) = op_id {
                         store.record_write_dedup(op_id, content_hash, &receipt)?;
                     }
@@ -2943,6 +3130,7 @@ fn dispatch(
             let key = require_key(req)?;
             let subject = encode_subject(coll, key)?;
             let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
+            linearizable_read_barrier(store, options, subject_str)?;
             match store.get(subject_str)? {
                 None => Ok(RpcResponse {
                     id,

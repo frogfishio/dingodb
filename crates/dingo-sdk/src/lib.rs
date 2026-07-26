@@ -84,8 +84,8 @@ pub use protocol::{
     REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL,
 };
 pub use raft_server::{
-    shared_raft_state, RaftServerState, SharedRaftState, TcpRaftTransport, FEATURE_RAFT_RPC_V1,
-    SDK_RAFT_RPC_PROFILE,
+    shared_raft_state, RaftServerState, SharedRaftState, TcpRaftTransport, CLUSTER_COMMIT_PROFILE,
+    FEATURE_CLUSTER_COMMIT_V1, FEATURE_RAFT_RPC_V1, SDK_RAFT_RPC_PROFILE,
 };
 pub use remote::{
     handle_connection, handle_connection_shared, handle_connection_with, parse_dingo_url,
