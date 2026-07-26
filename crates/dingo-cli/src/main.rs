@@ -15,7 +15,7 @@ use std::process::ExitCode;
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
 const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), single-node TCP serve (development), and experimental multi-node serve-cluster (routing/advertise only; not network quorum).";
-const LICENSE_TEXT: &str = "Copyright (c) Alexander R. Croft\nMIT License\n\nThis program is offered under the MIT License. See the repository LICENSE file for the full terms.";
+const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`dingo`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, this CLI, and the combined SDK until split).";
 
 #[derive(Parser)]
 #[command(

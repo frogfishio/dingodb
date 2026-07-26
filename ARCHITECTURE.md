@@ -78,7 +78,7 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 | First CLI | `sda` (Stage 1) + `dingo` (Stage 7) |
 | SDA packaging | `sda-lib` (lib) + `sda` (CLI binary); no storage IO inside SDA core |
 | Wire format versioning | Draft until wire major 1 freeze after Stage 2–3 soak |
-| Default license | MIT (repo root) |
+| License | Multi-tier: MIT / MPL-2.0 / AGPL-3.0-or-later (see `doc/LICENSING.md`) |
 
 ## SDA import convention
 

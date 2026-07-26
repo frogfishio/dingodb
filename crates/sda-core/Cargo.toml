@@ -2,7 +2,7 @@
 name = "sda-lib"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license = "MIT"
 authors.workspace = true
 description = "Structured Data Algebra as a pure Rust library for validating, formatting, and transforming structured data."
 readme = "README.md"

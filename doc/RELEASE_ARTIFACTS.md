@@ -47,7 +47,8 @@ crate tarballs:
 
 ### Product / operator documentation
 
-- Root `README.md`, `CONTRIBUTING.md`, `LICENSE`, `VERSION`
+- Root `README.md`, `CONTRIBUTING.md`, `LICENSE`, `LICENSE-MIT`,
+  `LICENSE-MPL-2.0`, `LICENSE-AGPL-3.0`, `doc/LICENSING.md`, `VERSION`
 - `doc/CAPABILITY_MATRIX.md`, `doc/CRASH_CONSISTENCY.md`
 - `doc/RUNBOOK_RETENTION.md`, `doc/BENCHMARK_DISCLOSURE.md`
 - `DEFECTS.md`, `DELIVERY_PLAN.md` (execution plan; not customer marketing)

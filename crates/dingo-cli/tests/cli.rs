@@ -53,6 +53,20 @@ fn run_ok(args: &[&str]) -> String {
 }
 
 #[test]
+fn license_prints_notice() {
+    let out = run_ok(&["--license"]);
+    assert!(out.contains("Alexander R. Croft"), "license={out}");
+    assert!(
+        out.contains("AGPL") || out.contains("Affero"),
+        "dingo CLI must advertise AGPL, license={out}"
+    );
+    assert!(
+        !out.contains("MIT License") || out.contains("multi-licensed"),
+        "dingo must not claim pure MIT, license={out}"
+    );
+}
+
+#[test]
 fn version_and_help() {
     let out = run_ok(&["--version"]);
     assert!(out.contains("-build"), "version={out}");

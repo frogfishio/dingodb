@@ -141,4 +141,10 @@ Freeze labels (product API/profile labels, **not** crate semver):
 
 ## License
 
-Contributions are under the MIT License (see [LICENSE](LICENSE)).
+DingoDB is multi-licensed (MIT / MPL-2.0 / AGPL-3.0-or-later by crate). See
+[LICENSE](LICENSE) and [doc/LICENSING.md](doc/LICENSING.md).
+
+**Inbound = outbound:** by contributing, you license your contribution under
+the same license(s) that apply to the files you modify (and any SPDX declared
+on the containing crate). Do not add material you cannot offer under those
+terms.

@@ -1,21 +1,45 @@
-MIT License
+DingoDB multi-license notice
+============================
 
 Copyright (c) 2026 Alexander R. Croft
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This repository is **not** under a single uniform license. MIT was used only
+as temporary scaffolding during project setup. The adopted product license
+map is multi-tier (GPL-family track with AGPL for networked bits).
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Policy and crate map: `doc/LICENSING.md`
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+License text files (full terms)
+-------------------------------
+
+| File | SPDX | Covers |
+|------|------|--------|
+| `LICENSE-MIT` | MIT | SDA language, wire format / salvage codec, pure client material |
+| `LICENSE-MPL-2.0` | MPL-2.0 | Embedded store, examination host, embedded collection API (target) |
+| `LICENSE-AGPL-3.0` | AGPL-3.0-or-later | Cluster, server/serve path, operator CLI, and any crate that still ships those surfaces |
+
+Per-crate SPDX identifiers are declared in each package’s `Cargo.toml`. When a
+crate’s sources and dependency edges are mixed, the **strongest** applicable
+license for that package’s current sources is what `license` reports until the
+sdk/client/server split lands (see `doc/LICENSING.md` §4).
+
+How to use this tree
+--------------------
+
+- **SDA only** (`sda-lib`, `sda`): MIT — see `LICENSE-MIT`.
+- **Wire format only** (`dingo-format`): MIT — see `LICENSE-MIT`.
+- **Embedded store / examine** (`dingo-store`, `dingo-examine`): MPL-2.0 —
+  see `LICENSE-MPL-2.0`.
+- **Networked product** (`dingo-cluster`, `dingo-cli`, and currently
+  `dingo-sdk` while it still includes server modules and depends on
+  `dingo-cluster`): AGPL-3.0-or-later — see `LICENSE-AGPL-3.0`.
+
+Contributions
+-------------
+
+By contributing, you license your contribution under the license(s) that apply
+to the files you modify (inbound = outbound). See `CONTRIBUTING.md`.
+
+This notice is not legal advice. Confirm with counsel for your distribution
+model (especially AGPL network use and MPL file-level obligations under
+static linking).

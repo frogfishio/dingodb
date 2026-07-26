@@ -289,7 +289,17 @@ cargo run -p dingo --bin dingo -- --help
 
 ## License
 
-DingoDB is released under the MIT License.
+DingoDB is **multi-licensed** (not uniform MIT). MIT was temporary scaffolding
+during project setup. Adopted policy: [doc/LICENSING.md](doc/LICENSING.md).
+
+| Tier | SPDX | Crates (today) |
+|------|------|----------------|
+| Permissive | MIT | `sda-lib`, `sda`, `dingo-format` |
+| Weak copyleft | MPL-2.0 | `dingo-store`, `dingo-examine` |
+| Network copyleft | AGPL-3.0-or-later | `dingo-cluster`, `dingo-cli`, `dingo-sdk` *(interim until client/embedded/server split)* |
+
+Full texts: [LICENSE-MIT](LICENSE-MIT), [LICENSE-MPL-2.0](LICENSE-MPL-2.0),
+[LICENSE-AGPL-3.0](LICENSE-AGPL-3.0). Overview: [LICENSE](LICENSE).
 
 The storage formats and specifications are intended to remain open, documented,
 and implementable without a proprietary service. Data that cannot be replaced

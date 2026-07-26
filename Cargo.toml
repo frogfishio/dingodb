@@ -14,7 +14,8 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+# Multi-tier licensing (not a single workspace license). Per-crate SPDX in
+# each package; policy in doc/LICENSING.md. MIT was temporary scaffolding only.
 authors = ["Alexander R. Croft"]
 repository = "https://github.com/frogfishio/dingodb"
 

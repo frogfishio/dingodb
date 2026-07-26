@@ -2,7 +2,7 @@
 name = "dingo-cli"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license = "AGPL-3.0-or-later"
 authors.workspace = true
 description = "DingoDB command-line interface: put/get, doctor, salvage, and serve (Stage 7)."
 readme = "README.md"

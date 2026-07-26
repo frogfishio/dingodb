@@ -2,7 +2,7 @@
 name = "dingo-sdk"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license = "AGPL-3.0-or-later"  # interim until client/embedded/server split; see doc/LICENSING.md
 authors.workspace = true
 description = "DingoDB collection SDK: collections, filters, indexes, history, remote + cluster connect (Stages 4+6+7+8d)."
 readme = "README.md"
