@@ -3,13 +3,94 @@
 //! Clients MAY cache partition → leader/replica routes and refresh on stale
 //! placement epochs. A stale route may cost a redirect; it MUST NOT authorize
 //! an obsolete writer (CLUSTER_SPEC §13).
+//!
+//! This module is deliberately free of `dingo-cluster` so remote routing stays
+//! available on the MPL embedded/remote SDK path. Wire types use plain integers;
+//! in-process cluster code converts [`dingo_cluster`] directories under the
+//! `cluster` feature (see [`DirectorySnapshot::from_cluster_directory`]).
 
-use dingo_cluster::{
-    NodeId, PartitionAssignment, PartitionDirectory, PartitionId, PartitionMap, PlacementEpoch,
-    Term,
-};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Published hash profile name for partition-key → virtual partition mapping.
+pub const HASH_PROFILE_BLAKE3_MOD: &str = "blake3-mod-v1";
+
+/// Dense node index within a cluster (wire form of `dingo_cluster::NodeId`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct NodeId(pub u32);
+
+impl NodeId {
+    /// Construct from a dense node index.
+    pub fn new(index: u32) -> Self {
+        Self(index)
+    }
+
+    /// Dense index used for endpoint maps.
+    pub fn index(self) -> u32 {
+        self.0
+    }
+}
+
+/// Virtual partition identifier (wire form of `dingo_cluster::PartitionId`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct PartitionId(pub u32);
+
+impl PartitionId {
+    /// Wrap a virtual partition index.
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Raw index.
+    pub fn get(self) -> u32 {
+        self.0
+    }
+}
+
+/// Leadership term (wire form).
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default,
+)]
+pub struct Term(pub u64);
+
+/// Placement generation (wire form).
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default,
+)]
+pub struct PlacementEpoch(pub u64);
+
+/// Parameters of the deterministic partition map for one store generation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PartitionMap {
+    /// Number of virtual partitions (must be ≥ 1).
+    pub virtual_partitions: u32,
+    /// Published hash profile identifier.
+    pub hash_profile: String,
+}
+
+impl PartitionMap {
+    /// Create with an explicit virtual partition count.
+    pub fn new(virtual_partitions: u32) -> Self {
+        assert!(
+            virtual_partitions >= 1,
+            "need at least one virtual partition"
+        );
+        Self {
+            virtual_partitions,
+            hash_profile: HASH_PROFILE_BLAKE3_MOD.to_string(),
+        }
+    }
+
+    /// Map a partition key to a virtual partition (CLUSTER_SPEC §8.1–§8.2).
+    pub fn partition_of(&self, partition_key: &[u8]) -> PartitionId {
+        let hash = blake3::hash(partition_key);
+        let mut buf = [0u8; 8];
+        buf.copy_from_slice(&hash.as_bytes()[..8]);
+        let n = u64::from_le_bytes(buf);
+        let id = (n % u64::from(self.virtual_partitions)) as u32;
+        PartitionId::new(id)
+    }
+}
 
 /// Snapshot of one partition route held by a client.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,18 +105,6 @@ pub struct CachedRoute {
     pub placement_epoch: PlacementEpoch,
     /// Voting replicas (may be used for available reads / convergent ingest).
     pub replicas: Vec<NodeId>,
-}
-
-impl From<&PartitionAssignment> for CachedRoute {
-    fn from(a: &PartitionAssignment) -> Self {
-        Self {
-            partition: a.partition,
-            leader: a.leader,
-            term: a.term,
-            placement_epoch: a.placement_epoch,
-            replicas: a.replicas.clone(),
-        }
-    }
 }
 
 /// Wire-friendly directory snapshot for RPC / multi-seed connect (Stage 8d).
@@ -70,8 +139,14 @@ pub struct AssignmentWire {
 }
 
 impl DirectorySnapshot {
-    /// Build from a live placement directory and optional endpoint map.
-    pub fn from_directory(dir: &PartitionDirectory, endpoints: HashMap<u32, String>) -> Self {
+    /// Build from a live `dingo-cluster` placement directory and optional endpoints.
+    ///
+    /// Available only when the `cluster` feature is enabled (AGPL `dingo-cluster`).
+    #[cfg(feature = "cluster")]
+    pub fn from_cluster_directory(
+        dir: &dingo_cluster::PartitionDirectory,
+        endpoints: HashMap<u32, String>,
+    ) -> Self {
         Self {
             virtual_partitions: dir.map.virtual_partitions,
             hash_profile: dir.map.hash_profile.clone(),
@@ -91,29 +166,13 @@ impl DirectorySnapshot {
         }
     }
 
-    /// Convert into a [`PartitionDirectory`] (endpoints are separate).
-    pub fn to_directory(&self) -> PartitionDirectory {
-        let map = PartitionMap {
-            virtual_partitions: self.virtual_partitions,
-            hash_profile: self.hash_profile.clone(),
-        };
-        let mut assignments: Vec<PartitionAssignment> = self
-            .assignments
-            .iter()
-            .map(|a| PartitionAssignment {
-                partition: PartitionId::new(a.partition),
-                replicas: a.replicas.iter().copied().map(NodeId::new).collect(),
-                leader: NodeId::new(a.leader),
-                term: Term(a.term),
-                placement_epoch: PlacementEpoch(a.placement_epoch),
-            })
-            .collect();
-        assignments.sort_by_key(|a| a.partition);
-        PartitionDirectory {
-            map,
-            placement_epoch: PlacementEpoch(self.placement_epoch),
-            assignments,
-        }
+    /// Compatibility alias used by serve / cluster glue under the `cluster` feature.
+    #[cfg(feature = "cluster")]
+    pub fn from_directory(
+        dir: &dingo_cluster::PartitionDirectory,
+        endpoints: HashMap<u32, String>,
+    ) -> Self {
+        Self::from_cluster_directory(dir, endpoints)
     }
 }
 
@@ -139,7 +198,7 @@ pub struct ClientDirectoryCache {
 }
 
 impl ClientDirectoryCache {
-    /// Empty cache (must [`Self::replace`] before routing).
+    /// Empty cache (must [`Self::replace_from_snapshot`] before routing).
     pub fn empty() -> Self {
         Self {
             map: PartitionMap::new(1),
@@ -152,44 +211,91 @@ impl ClientDirectoryCache {
         }
     }
 
-    /// Build a cache from a placement directory (no network endpoints).
-    pub fn from_directory(dir: &PartitionDirectory) -> Self {
-        let mut cache = Self::empty();
-        cache.replace(dir, HashMap::new());
-        cache
+    /// Build a cache from a `dingo-cluster` placement directory (no network endpoints).
+    #[cfg(feature = "cluster")]
+    pub fn from_directory(dir: &dingo_cluster::PartitionDirectory) -> Self {
+        let snap = DirectorySnapshot::from_cluster_directory(dir, HashMap::new());
+        Self::from_snapshot(&snap)
     }
 
     /// Build from a wire snapshot (includes optional endpoints).
     pub fn from_snapshot(snap: &DirectorySnapshot) -> Self {
-        let dir = snap.to_directory();
         let mut cache = Self::empty();
-        cache.replace(&dir, snap.endpoints.clone());
+        cache.replace_from_snapshot(snap);
         cache
     }
 
-    /// Replace the entire cache from a fresh directory + endpoints.
-    pub fn replace(&mut self, dir: &PartitionDirectory, endpoints: HashMap<u32, String>) {
-        self.map = dir.map.clone();
-        self.placement_epoch = dir.placement_epoch;
+    /// Replace the entire cache from a wire snapshot.
+    pub fn replace_from_snapshot(&mut self, snap: &DirectorySnapshot) {
+        self.map = PartitionMap {
+            virtual_partitions: snap.virtual_partitions.max(1),
+            hash_profile: snap.hash_profile.clone(),
+        };
+        self.placement_epoch = PlacementEpoch(snap.placement_epoch);
         self.routes.clear();
-        for a in &dir.assignments {
-            self.routes.insert(a.partition.get(), CachedRoute::from(a));
+        for a in &snap.assignments {
+            self.routes.insert(
+                a.partition,
+                CachedRoute {
+                    partition: PartitionId::new(a.partition),
+                    leader: NodeId::new(a.leader),
+                    term: Term(a.term),
+                    placement_epoch: PlacementEpoch(a.placement_epoch),
+                    replicas: a.replicas.iter().copied().map(NodeId::new).collect(),
+                },
+            );
         }
-        self.endpoints = endpoints;
+        self.endpoints = snap.endpoints.clone();
         self.stale.clear();
         self.refresh_count = self.refresh_count.saturating_add(1);
     }
 
-    /// Refresh a single partition assignment (CLUSTER_SPEC §13 step 4).
-    pub fn refresh_entry(&mut self, assignment: &PartitionAssignment) {
-        self.routes
-            .insert(assignment.partition.get(), CachedRoute::from(assignment));
-        self.stale.remove(&assignment.partition.get());
-        // Keep whole-directory epoch at least as high as the entry.
-        if assignment.placement_epoch > self.placement_epoch {
-            self.placement_epoch = assignment.placement_epoch;
+    /// Replace the entire cache from a `dingo-cluster` directory + endpoints.
+    #[cfg(feature = "cluster")]
+    pub fn replace(
+        &mut self,
+        dir: &dingo_cluster::PartitionDirectory,
+        endpoints: HashMap<u32, String>,
+    ) {
+        let snap = DirectorySnapshot::from_cluster_directory(dir, endpoints);
+        self.replace_from_snapshot(&snap);
+    }
+
+    /// Refresh a single partition assignment from wire fields.
+    pub fn refresh_entry_wire(&mut self, assignment: &AssignmentWire) {
+        self.routes.insert(
+            assignment.partition,
+            CachedRoute {
+                partition: PartitionId::new(assignment.partition),
+                leader: NodeId::new(assignment.leader),
+                term: Term(assignment.term),
+                placement_epoch: PlacementEpoch(assignment.placement_epoch),
+                replicas: assignment
+                    .replicas
+                    .iter()
+                    .copied()
+                    .map(NodeId::new)
+                    .collect(),
+            },
+        );
+        self.stale.remove(&assignment.partition);
+        let epoch = PlacementEpoch(assignment.placement_epoch);
+        if epoch > self.placement_epoch {
+            self.placement_epoch = epoch;
         }
         self.entry_refresh_count = self.entry_refresh_count.saturating_add(1);
+    }
+
+    /// Refresh a single partition assignment (CLUSTER_SPEC §13 step 4).
+    #[cfg(feature = "cluster")]
+    pub fn refresh_entry(&mut self, assignment: &dingo_cluster::PartitionAssignment) {
+        self.refresh_entry_wire(&AssignmentWire {
+            partition: assignment.partition.get(),
+            replicas: assignment.replicas.iter().map(|n| n.index()).collect(),
+            leader: assignment.leader.index(),
+            term: assignment.term.0,
+            placement_epoch: assignment.placement_epoch.0,
+        });
     }
 
     /// Mark a partition route as stale (forces refresh on next route lookup
@@ -311,12 +417,33 @@ impl ClientDirectoryCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dingo_cluster::PartitionMap;
+
+    fn balanced_snapshot(virtual_partitions: u32, node_count: u32, epoch: u64) -> DirectorySnapshot {
+        assert!(node_count >= 1);
+        let replicas: Vec<u32> = (0..node_count).collect();
+        let mut assignments = Vec::with_capacity(virtual_partitions as usize);
+        for p in 0..virtual_partitions {
+            assignments.push(AssignmentWire {
+                partition: p,
+                replicas: replicas.clone(),
+                leader: p % node_count,
+                term: 1,
+                placement_epoch: epoch,
+            });
+        }
+        DirectorySnapshot {
+            virtual_partitions,
+            hash_profile: HASH_PROFILE_BLAKE3_MOD.to_string(),
+            placement_epoch: epoch,
+            assignments,
+            endpoints: HashMap::new(),
+        }
+    }
 
     #[test]
     fn route_is_stable_for_subject() {
-        let dir = PartitionDirectory::balanced(PartitionMap::new(8), 3, PlacementEpoch(1));
-        let cache = ClientDirectoryCache::from_directory(&dir);
+        let snap = balanced_snapshot(8, 3, 1);
+        let cache = ClientDirectoryCache::from_snapshot(&snap);
         let a = cache.route(b"users/alice").unwrap().clone();
         let b = cache.route(b"users/alice").unwrap().clone();
         assert_eq!(a, b);
@@ -325,24 +452,27 @@ mod tests {
 
     #[test]
     fn stale_gate_hides_route_until_refresh() {
-        let dir = PartitionDirectory::balanced(PartitionMap::new(4), 2, PlacementEpoch(1));
-        let mut cache = ClientDirectoryCache::from_directory(&dir);
+        let snap = balanced_snapshot(4, 2, 1);
+        let mut cache = ClientDirectoryCache::from_snapshot(&snap);
         let p = cache.partition_of(b"k");
         cache.mark_stale(p);
         assert!(cache.route_checked(b"k").is_none());
-        let assignment = dir.get(p).unwrap().clone();
-        cache.refresh_entry(&assignment);
+        let assignment = snap
+            .assignments
+            .iter()
+            .find(|a| a.partition == p.get())
+            .unwrap()
+            .clone();
+        cache.refresh_entry_wire(&assignment);
         assert!(cache.route_checked(b"k").is_some());
         assert_eq!(cache.entry_refresh_count(), 1);
     }
 
     #[test]
     fn snapshot_roundtrip() {
-        let dir = PartitionDirectory::balanced(PartitionMap::new(4), 2, PlacementEpoch(3));
-        let mut endpoints = HashMap::new();
-        endpoints.insert(0, "127.0.0.1:7400".into());
-        endpoints.insert(1, "127.0.0.1:7401".into());
-        let snap = DirectorySnapshot::from_directory(&dir, endpoints.clone());
+        let mut snap = balanced_snapshot(4, 2, 3);
+        snap.endpoints.insert(0, "127.0.0.1:7400".into());
+        snap.endpoints.insert(1, "127.0.0.1:7401".into());
         let cache = ClientDirectoryCache::from_snapshot(&snap);
         assert_eq!(cache.placement_epoch().0, 3);
         assert_eq!(cache.endpoint(NodeId::new(0)), Some("127.0.0.1:7400"));

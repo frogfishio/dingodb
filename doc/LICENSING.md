@@ -21,10 +21,10 @@ MIT was temporary scaffolding only; it is **not** the product license policy.
 | 1 | Strong copyleft for cluster / server / CLI | **AGPL-3.0-or-later** |
 | 2 | Weak copyleft for store + embedded API | **MPL-2.0** (not LGPL) |
 | 3 | SDA + wire format | **MIT** (remains permissive) |
-| 4 | Thin network client (after extract) | **MIT** |
+| 4 | Thin network client (wire) | **MIT** (`dingo-client`) |
 | 5 | Inbound contributions | **Inbound = outbound** (license of modified files / crate SPDX) |
 | 6 | `dingo-format` | Stays **MIT** even when store is MPL |
-| 7 | `dingo-sdk` crate split | **Required before** publishing a non-AGPL “SDK” or MIT client; until then `dingo-sdk` is **AGPL-3.0-or-later** (honest for server modules + `dingo-cluster` dep) |
+| 7 | `dingo-sdk` crate split | **Done for publish path:** default features are MPL embedded + remote; optional `cluster` feature pulls AGPL `dingo-cluster` |
 
 ---
 
@@ -83,31 +83,31 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
-│  MPL-2.0 — linkable embedded engine                         │
-│  dingo-store · dingo-examine · (future) embedded-only SDK   │
+│  MPL-2.0 — linkable embedded engine + collection SDK        │
+│  dingo-store · dingo-examine · dingo-sdk (default features) │
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
 │  AGPL-3.0-or-later — networked product                      │
-│  dingo-cluster · dingo-server · dingo-cli · dingo-sdk       │
-│  (sdk remains AGPL until embedded-only extract)             │
+│  dingo-cluster · dingo-server · dingo-cli                   │
+│  (+ dingo-sdk when built with features = ["cluster"])       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.1 Per-crate SPDX (current tree)
 
-| Crate (dir → package) | SPDX today | Target after full sdk split |
-|----------------------|------------|-----------------------------|
-| `sda-core` → `sda-lib` | **MIT** | MIT |
-| `sda-cli` → `sda` | **MIT** | MIT |
-| `dingo-format` | **MIT** | MIT |
-| `dingo-client` | **MIT** | MIT (wire framing + handshake) |
-| `dingo-store` | **MPL-2.0** | MPL-2.0 |
-| `dingo-examine` | **MPL-2.0** | MPL-2.0 |
-| `dingo-cluster` | **AGPL-3.0-or-later** | AGPL-3.0-or-later |
-| `dingo-server` | **AGPL-3.0-or-later** | AGPL-3.0-or-later |
-| `dingo-cli` → `dingo` | **AGPL-3.0-or-later** | AGPL-3.0-or-later |
-| `dingo-sdk` | **AGPL-3.0-or-later** *(interim)* | MPL-2.0 embedded-only (after remote/cluster extract) |
+| Crate (dir → package) | SPDX today | Notes |
+|----------------------|------------|-------|
+| `sda-core` → `sda-lib` | **MIT** | |
+| `sda-cli` → `sda` | **MIT** | |
+| `dingo-format` | **MIT** | |
+| `dingo-client` | **MIT** | Wire framing + handshake |
+| `dingo-store` | **MPL-2.0** | |
+| `dingo-examine` | **MPL-2.0** | |
+| `dingo-sdk` | **MPL-2.0** | Default: embedded + remote; optional `cluster` → AGPL dep |
+| `dingo-cluster` | **AGPL-3.0-or-later** | |
+| `dingo-server` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
+| `dingo-cli` → `dingo` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
 
 ### 3.2 License files
 
@@ -122,46 +122,48 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 
 ## 4. Split status: `dingo-sdk` was three products
 
-### 4.0 Done (first cut)
+### 4.0 Done
 
 | Package | Status | License |
 |---------|--------|---------|
 | `dingo-client` | **Extracted** — framed RPC + handshake only | MIT |
 | `dingo-server` | **Extracted** — accept loop, authz, admission, raft RPC glue, `serve_*` | AGPL-3.0-or-later |
-| `dingo-sdk` | Server modules **removed**; still ships remote client, TLS helpers, and `dingo-cluster` for `open_cluster` | AGPL-3.0-or-later *(interim)* |
+| `dingo-sdk` | **MPL default**; remote client + TLS always on; `cluster` feature optional | MPL-2.0 |
 
-### 4.1 Remaining modules in `dingo-sdk` (why still AGPL)
+### 4.1 Modules in `dingo-sdk`
 
 | Module group | Natural tier | Status |
 |--------------|--------------|--------|
-| `collection`, `dingo` (local open), `filter`, `history`, `indexes`, `value`, `receipt`, `error` | **Embedded** (MPL) | Still in sdk |
-| `remote`, `directory_cache`, client TLS, connect helpers | **Client** (MIT target) | Still in sdk (re-exports wire from `dingo-client`) |
-| `cluster_backend`, `Dingo::open_cluster` | **Networked / AGPL** (pulls `dingo-cluster`) | Still in sdk — blocks MPL label |
+| `collection`, `dingo` (local open), `filter`, `history`, `indexes`, `value`, `receipt`, `error` | **Embedded** (MPL) | Always on |
+| `remote`, `directory_cache` (wire types, no `dingo-cluster`), client TLS, connect helpers | **Remote client** (MPL; wire re-export MIT) | Always on; directory cache no longer imports AGPL types |
+| `cluster_backend`, `Dingo::open_cluster` / `create_cluster` | **Networked / AGPL** | Behind `features = ["cluster"]` only |
 
-**Today:** `dingo-sdk` is honestly **AGPL-3.0-or-later** because it still
-depends on `dingo-cluster`. Do **not** publish it as MIT or MPL while that
-remains true. Serve path lives only in `dingo-server`.
+**Today:** default `dingo-sdk` is honestly **MPL-2.0** (depends on `dingo-store` +
+`dingo-client`, not `dingo-cluster`). Builds with `cluster` pull AGPL
+`dingo-cluster` — document that effective license for those binaries follows
+the AGPL dependency. Serve path lives only in `dingo-server`.
 
-### 4.2 Target crate apportionment
+### 4.2 Crate apportionment
 
 | Package | Contents | License | Depends on |
 |---------|----------|---------|------------|
 | `dingo-format` | unchanged | MIT | — |
-| `dingo-client` | wire framing + handshake (**done**) | MIT | — |
+| `dingo-client` | wire framing + handshake | MIT | — |
 | `dingo-store` | unchanged | MPL-2.0 | format |
-| `dingo-sdk` (embedded-only) | `Dingo::open`, collections, filters, indexes | MPL-2.0 | store, sda-lib optional |
+| `dingo-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, sda-lib; optional cluster |
 | `dingo-examine` | unchanged | MPL-2.0 | store, format, sda-lib |
 | `dingo-cluster` | unchanged | AGPL-3.0-or-later | store |
-| `dingo-server` | accept loop, authz, admission, raft RPC glue (**done**) | AGPL-3.0-or-later | sdk, cluster, store |
-| `dingo-cli` | CLI + doctor/salvage/serve | AGPL-3.0-or-later | server, sdk, examine |
+| `dingo-server` | accept loop, authz, admission, raft RPC glue | AGPL-3.0-or-later | sdk+cluster, store |
+| `dingo-cli` | CLI + doctor/salvage/serve | AGPL-3.0-or-later | server, sdk+cluster, examine |
 | `sda-lib` / `sda` | unchanged | MIT | — |
 
-### 4.3 Remaining work (before non-AGPL SDK publish)
+### 4.3 Remaining optional polish
 
 1. ~~**`dingo-client`** (MIT) — protocol framing~~ **done**
 2. ~~**`dingo-server`** (AGPL) — serve modules out of sdk~~ **done**
-3. **`dingo-sdk`** → MPL-2.0 embedded only: move or dual-crate remote + drop
-   `dingo-cluster` from default features (or extract `dingo-cluster-client`).
+3. ~~**`dingo-sdk`** → MPL-2.0 default; cluster feature-gated~~ **done**
+4. Optional: move remote/TLS into a separate MIT/MPL crate later; dual-crate
+   is not required for an honest MPL embedded + remote publish.
 
 ---
 
@@ -169,8 +171,9 @@ remains true. Serve path lives only in `dingo-server`.
 
 ```text
 MIT                → sda-lib, sda, dingo-format, dingo-client
-MPL-2.0            → dingo-store, dingo-examine, (future) embedded-only dingo-sdk
-AGPL-3.0-or-later  → dingo-cluster, dingo-server, dingo-cli, dingo-sdk (interim)
+MPL-2.0            → dingo-store, dingo-examine, dingo-sdk (default features)
+AGPL-3.0-or-later  → dingo-cluster, dingo-server, dingo-cli
+                     (+ dingo-sdk when features = ["cluster"])
 ```
 
 AGPL protects “networked bits” against pure SaaS freeloading (source offer on
@@ -185,48 +188,37 @@ store remains an optional business track; keep pure client and format MIT.
 2. **LICENSE files** — root multi-license tree (done).
 3. **README + CONTRIBUTING** — multi-license notice; inbound = outbound (done).
 4. **CLI `--license`** — `sda` MIT; `dingo` AGPL (done).
-5. **Do not publish** a MIT- or MPL-labeled `dingo-sdk` that still path-depends
-   on AGPL `dingo-cluster` (or any AGPL dep).
+5. **Publish `dingo-sdk` as MPL-2.0** with default features only (no
+   `dingo-cluster`). Document that `features = ["cluster"]` pulls AGPL.
 6. **`cargo deny` / license policies** — optional hardening before crates.io.
-7. **Remaining sdk split** — extract remote/cluster from sdk (or feature-gate)
-   before first honest non-AGPL SDK publish. Server extract is **done**.
+7. ~~**Remaining sdk split**~~ — server extract + cluster feature-gate **done**.
 
 ---
 
 ## 7. Compatibility with current dependency edges
 
-Today (after first-cut split):
+Today:
 
 ```text
-dingo-cli      → dingo-sdk, dingo-server, dingo-store, dingo-examine  (AGPL)
-dingo-server   → dingo-sdk, dingo-cluster, dingo-store               (AGPL)
-dingo-sdk      → dingo-client, dingo-store, dingo-cluster, sda-core  (AGPL interim)
-dingo-client   → (none of store/cluster)                             (MIT)
-dingo-cluster  → dingo-store                                         (AGPL)
-dingo-examine  → dingo-format, dingo-store, sda-core                 (MPL)
-dingo-store    → dingo-format                                        (MPL)
-sda-cli        → sda-core                                            (MIT)
+dingo-cli      → dingo-sdk (cluster), dingo-server, dingo-store, dingo-examine  (AGPL)
+dingo-server   → dingo-sdk (cluster), dingo-cluster, dingo-store               (AGPL)
+dingo-sdk      → dingo-client, dingo-store, sda-core  (+ optional dingo-cluster) (MPL)
+dingo-client   → (none of store/cluster)                                       (MIT)
+dingo-cluster  → dingo-store                                                   (AGPL)
+dingo-examine  → dingo-format, dingo-store, sda-core                           (MPL)
+dingo-store    → dingo-format                                                  (MPL)
+sda-cli        → sda-core                                                      (MIT)
 ```
 
-All edges respect “stronger may depend on weaker.”
-
-After full embedded extract (§4.3):
-
-```text
-dingo-client   (MIT)     → (standalone wire)
-dingo-sdk      (MPL)     → dingo-store (MPL) → dingo-format (MIT)
-dingo-cluster  (AGPL)    → dingo-store (MPL)
-dingo-server   (AGPL)    → dingo-sdk/cluster/store (+ wire via sdk or client)
-dingo-cli      (AGPL)    → dingo-server, dingo-sdk, dingo-examine
-```
+All edges respect “stronger may depend on weaker.” Default `dingo-sdk` has no
+AGPL dependency.
 
 ---
 
 ## 8. One-paragraph summary
 
 **Adopted:** keep **SDA and the wire format MIT**; keep a **thin network
-client MIT** (after extract); put **MPL-2.0 on the embedded store and
-examination host**; put **AGPL-3.0-or-later on cluster, the `dingo` operator
-binary, and (until split) the combined `dingo-sdk`**. The **`dingo-sdk` crate
-must be split** (client vs embedded vs server) before MIT/MPL labels on those
-surfaces are honest on crates.io.
+client MIT** (`dingo-client`); put **MPL-2.0 on the embedded store, examination
+host, and default `dingo-sdk`** (embedded + remote); put **AGPL-3.0-or-later on
+cluster, server, the `dingo` operator binary**, and any build that enables
+`dingo-sdk`’s `cluster` feature.

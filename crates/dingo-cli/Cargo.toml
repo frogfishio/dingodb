@@ -16,7 +16,7 @@ name = "dingo"
 path = "src/main.rs"
 
 [dependencies]
-dingo-sdk.workspace = true
+dingo-sdk = { workspace = true, features = ["cluster"] }
 dingo-server.workspace = true
 dingo-store.workspace = true
 dingo-examine.workspace = true

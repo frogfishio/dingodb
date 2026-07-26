@@ -295,8 +295,8 @@ during project setup. Adopted policy: [doc/LICENSING.md](doc/LICENSING.md).
 | Tier | SPDX | Crates (today) |
 |------|------|----------------|
 | Permissive | MIT | `sda-lib`, `sda`, `dingo-format` |
-| Weak copyleft | MPL-2.0 | `dingo-store`, `dingo-examine` |
-| Network copyleft | AGPL-3.0-or-later | `dingo-cluster`, `dingo-cli`, `dingo-sdk` *(interim until client/embedded/server split)* |
+| Weak copyleft | MPL-2.0 | `dingo-store`, `dingo-examine`, `dingo-sdk` (default; optional `cluster` feature pulls AGPL) |
+| Network copyleft | AGPL-3.0-or-later | `dingo-cluster`, `dingo-server`, `dingo-cli` |
 
 Full texts: [LICENSE-MIT](LICENSE-MIT), [LICENSE-MPL-2.0](LICENSE-MPL-2.0),
 [LICENSE-AGPL-3.0](LICENSE-AGPL-3.0). Overview: [LICENSE](LICENSE).

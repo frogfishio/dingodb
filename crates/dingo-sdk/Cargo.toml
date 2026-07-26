@@ -2,23 +2,31 @@
 name = "dingo-sdk"
 version.workspace = true
 edition.workspace = true
-license = "AGPL-3.0-or-later"  # interim until client/embedded/server split; see doc/LICENSING.md
+# MPL-2.0 for embedded + remote. Enabling the `cluster` feature pulls AGPL
+# `dingo-cluster` (in-process multi-node); see doc/LICENSING.md.
+license = "MPL-2.0"
 authors.workspace = true
-description = "DingoDB collection SDK: collections, filters, indexes, history, remote client + cluster connect (Stages 4+6+7+8d). Serve path: dingo-server."
+description = "DingoDB collection SDK: embedded open, remote connect, filters, indexes, history (Stages 4+6+7). Optional cluster via feature."
 readme = "README.md"
 repository.workspace = true
 keywords = ["dingodb", "sdk", "embedded", "json", "database"]
 categories = ["database", "api-bindings"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
+[features]
+default = []
+# In-process multi-node (`Dingo::open_cluster` / `create_cluster`) via AGPL dingo-cluster.
+cluster = ["dep:dingo-cluster"]
+
 [dependencies]
 dingo-client.workspace = true
 dingo-store.workspace = true
-dingo-cluster.workspace = true
+dingo-cluster = { workspace = true, optional = true }
 sda-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+blake3.workspace = true
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pemfile = "2"
 rustls-pki-types = "1"
@@ -26,6 +34,49 @@ webpki-roots = "0.26"
 x509-parser = "0.16"
 
 [dev-dependencies]
-dingo-server.workspace = true
+dingo-server = { workspace = true }
+dingo-cluster = { workspace = true }
 tempfile.workspace = true
 rcgen = "0.13"
+
+# Integration tests that exercise in-process / network cluster require the
+# AGPL `cluster` feature (pulled by dingo-server in those tests too).
+[[test]]
+name = "stage8d_routing"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage8e_find_coverage"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_036_raft_rpc"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_037_cluster_commit"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_030_bounded_server"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_032_tls"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_033_authz"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_034_admission"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage7_remote_parity"
+required-features = ["cluster"]
+
+[[test]]
+name = "stage_def_031_protocol"
+required-features = ["cluster"]

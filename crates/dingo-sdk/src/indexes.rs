@@ -85,6 +85,7 @@ impl<'a> Indexes<'a> {
         match self.backend {
             Backend::Local(store) => create_index_on_store(store, &self.collection, name, fields),
             Backend::Remote(client) => client.index_create(&self.collection, name, fields),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => Err(Error::RemoteUnsupported(
                 "secondary indexes on cluster (Stage 8e+)",
             )),
@@ -100,6 +101,7 @@ impl<'a> Indexes<'a> {
                 .map(IndexInfo::from_store)
                 .collect()),
             Backend::Remote(client) => client.index_list(&self.collection),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => Ok(Vec::new()),
         }
     }
@@ -114,6 +116,7 @@ impl<'a> Indexes<'a> {
                 let all = client.index_list(&self.collection)?;
                 Ok(all.into_iter().find(|i| i.name == name))
             }
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => Ok(None),
         }
     }
@@ -126,6 +129,7 @@ impl<'a> Indexes<'a> {
                 Ok(())
             }
             Backend::Remote(client) => client.index_drop(&self.collection, name),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => Err(Error::RemoteUnsupported(
                 "secondary indexes on cluster (Stage 8e+)",
             )),
@@ -145,6 +149,7 @@ impl<'a> Indexes<'a> {
                 create_index_on_store_inner(store, &self.collection, name, &fields, true)
             }
             Backend::Remote(client) => client.index_rebuild(&self.collection, name),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => Err(Error::RemoteUnsupported(
                 "secondary indexes on cluster (Stage 8e+)",
             )),
@@ -170,6 +175,7 @@ impl<'a> Indexes<'a> {
             Backend::Remote(_) => Err(Error::RemoteUnsupported(
                 "continue_build is embedded-only; remote create/rebuild resume server-side",
             )),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => Err(Error::RemoteUnsupported(
                 "secondary indexes on cluster (Stage 8e+)",
             )),

@@ -39,7 +39,11 @@ impl<'a> Collection<'a> {
     fn local_store(&mut self) -> Result<&Store, Error> {
         match self.backend {
             Backend::Local(s) => Ok(s),
-            Backend::Remote(_) | Backend::Cluster(_) => {
+            Backend::Remote(_) => {
+                Err(Error::RemoteUnsupported("local store access"))
+            }
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => {
                 Err(Error::RemoteUnsupported("local store access"))
             }
         }
@@ -84,6 +88,7 @@ impl<'a> Collection<'a> {
                 Ok(WriteReceipt::from_store(key.to_string(), receipt))
             }
             Backend::Remote(client) => client.put_json(&self.name, key, &json, options),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.put_json(&self.name, key, &json, options),
         }
     }
@@ -102,6 +107,7 @@ impl<'a> Collection<'a> {
                 }
             }
             Backend::Remote(client) => client.get_json(&self.name, key),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.get_json(&self.name, key),
         }
     }
@@ -118,6 +124,7 @@ impl<'a> Collection<'a> {
                 Ok(store.get_payload(subject_str)?)
             }
             Backend::Remote(client) => client.get_payload(&self.name, key),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(_) => {
                 Err(Error::RemoteUnsupported("get_payload on cluster (use get)"))
             }
@@ -160,6 +167,7 @@ impl<'a> Collection<'a> {
                 Ok(WriteReceipt::from_store(key.to_string(), receipt))
             }
             Backend::Remote(client) => client.put_bytes(&self.name, key, bytes, options),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.put_bytes(&self.name, key, bytes, options),
         }
     }
@@ -176,6 +184,7 @@ impl<'a> Collection<'a> {
                 }
             }
             Backend::Remote(client) => client.get_bytes(&self.name, key),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.get_bytes(&self.name, key),
         }
     }
@@ -200,6 +209,7 @@ impl<'a> Collection<'a> {
                 Ok(DeleteReceipt::from_store(key.to_string(), removed, receipt))
             }
             Backend::Remote(client) => client.delete(&self.name, key, options),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.delete(&self.name, key, options),
         }
     }
@@ -214,6 +224,7 @@ impl<'a> Collection<'a> {
                 KeyHistory::from_store(key.to_string(), hist)
             }
             Backend::Remote(client) => client.history(&self.name, key),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.history(&self.name, key),
         }
     }
@@ -238,6 +249,7 @@ impl<'a> Collection<'a> {
                 Ok(keys)
             }
             Backend::Remote(client) => client.list_keys(&self.name),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.scan_keys(&self.name),
         }
     }
@@ -276,7 +288,9 @@ impl<'a> Collection<'a> {
         })?;
         let store = match self.backend {
             Backend::Local(s) => &*s,
-            Backend::Remote(_) | Backend::Cluster(_) => unreachable!("checked above"),
+            Backend::Remote(_) => unreachable!("checked above"),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => unreachable!("checked above"),
         };
         Ok(JsonScanIter {
             store,
@@ -326,11 +340,13 @@ impl<'a> Collection<'a> {
         self.scan_json_filtered(filter, &options)
     }
 
-    /// Cluster-only find that returns matches **and** coverage (Stage 8e).
+    /// Cluster-capable find that returns matches **and** coverage (Stage 8e).
     ///
-    /// Embedded and remote backends return complete coverage (single-node /
-    /// single-store scope). On cluster backends, incomplete coverage is always
-    /// reported even when `allow_partial_coverage` is set.
+    /// Requires the `cluster` feature. Embedded and remote backends return
+    /// complete coverage (single-node / single-store scope). On cluster
+    /// backends, incomplete coverage is always reported even when
+    /// `allow_partial_coverage` is set.
+    #[cfg(feature = "cluster")]
     pub fn find_with_coverage(
         &mut self,
         filter: &Filter,
@@ -374,6 +390,7 @@ impl<'a> Collection<'a> {
         match self.backend {
             Backend::Remote(client) => client.find(&self.name, filter, options),
             Backend::Local(store) => find_on_store(store, &self.name, filter, options),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.find(&self.name, filter, options),
         }
     }

@@ -1,15 +1,17 @@
 //! Database handle: `Dingo::open` / `Dingo::connect` / `Dingo::open_cluster` (DX_SPEC §4).
 
+#[cfg(feature = "cluster")]
 use crate::cluster_backend::ClusterBackend;
 use crate::collection::Collection;
 use crate::error::Error;
 use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
 use crate::subject::validate_collection_name;
+#[cfg(feature = "cluster")]
 use dingo_cluster::ClusterConfig;
 use dingo_store::Store;
 use std::path::{Path, PathBuf};
 
-/// Embedded, remote, or clustered DingoDB database handle.
+/// Embedded, remote, or (with `cluster` feature) clustered DingoDB handle.
 ///
 /// ```ignore
 /// let mut db = Dingo::open("./app.dingo")?;
@@ -27,7 +29,8 @@ use std::path::{Path, PathBuf};
 /// )?;
 /// ```
 ///
-/// Cluster (Stage 8d) — same collection API; partition routes are cached client-side:
+/// Cluster (Stage 8d, requires feature `cluster`) — same collection API;
+/// partition routes are cached client-side:
 /// ```ignore
 /// let mut db = Dingo::create_cluster(
 ///     dingo_cluster::ClusterConfig::dependable_local("./cluster")
@@ -43,6 +46,7 @@ pub struct Dingo {
 pub(crate) enum Backend {
     Local(Store),
     Remote(RemoteClient),
+    #[cfg(feature = "cluster")]
     Cluster(ClusterBackend),
 }
 
@@ -79,8 +83,8 @@ impl Dingo {
     /// server requires a token or custom deadlines.
     ///
     /// The optional path label is informational only for Stage 7 (the server
-    /// process already binds a store directory). Transport is TCP line-delimited
-    /// JSON.
+    /// process already binds a store directory). Transport is TCP framed
+    /// `dingo-rpc-v1` JSON (or diagnostic line mode when configured).
     pub fn connect(url: impl AsRef<str>) -> Result<Self, Error> {
         Self::connect_with(url, ConnectOptions::default())
     }
@@ -114,9 +118,12 @@ impl Dingo {
 
     /// Create a new multi-node cluster and return a SDK handle (Stage 8d).
     ///
+    /// Requires the `cluster` feature (AGPL `dingo-cluster`).
+    ///
     /// Ordinary collection put/get/delete use the same API as embedded/server;
     /// the client caches partition routes and refreshes on stale placement
     /// (CLUSTER_SPEC §13).
+    #[cfg(feature = "cluster")]
     pub fn create_cluster(cfg: ClusterConfig) -> Result<Self, Error> {
         Ok(Self {
             backend: Backend::Cluster(ClusterBackend::create(cfg)?),
@@ -124,6 +131,9 @@ impl Dingo {
     }
 
     /// Open an existing cluster root directory as a SDK handle (Stage 8d).
+    ///
+    /// Requires the `cluster` feature (AGPL `dingo-cluster`).
+    #[cfg(feature = "cluster")]
     pub fn open_cluster(root: impl AsRef<Path>) -> Result<Self, Error> {
         Ok(Self {
             backend: Backend::Cluster(ClusterBackend::open(root)?),
@@ -137,10 +147,18 @@ impl Dingo {
 
     /// Whether this handle is an in-process cluster.
     pub fn is_cluster(&self) -> bool {
-        matches!(self.backend, Backend::Cluster(_))
+        #[cfg(feature = "cluster")]
+        {
+            matches!(self.backend, Backend::Cluster(_))
+        }
+        #[cfg(not(feature = "cluster"))]
+        {
+            false
+        }
     }
 
     /// Borrow the cluster backend (Stage 8d tests / ops).
+    #[cfg(feature = "cluster")]
     pub fn cluster_backend_mut(&mut self) -> Result<&mut ClusterBackend, Error> {
         match &mut self.backend {
             Backend::Cluster(c) => Ok(c),
@@ -153,6 +171,7 @@ impl Dingo {
         match &self.backend {
             Backend::Local(s) => Some(s.path()),
             Backend::Remote(_) => None,
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => Some(c.root()),
         }
     }
@@ -162,6 +181,7 @@ impl Dingo {
         match &self.backend {
             Backend::Local(s) => s.store_id(),
             Backend::Remote(c) => c.store_id(),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.store_id(),
         }
     }
@@ -186,6 +206,7 @@ impl Dingo {
                 let (_path, _id, n) = c.store_info()?;
                 Ok(n)
             }
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.live_count_approx(),
         }
     }
@@ -197,9 +218,9 @@ impl Dingo {
                 s.rebuild_index()?;
                 Ok(())
             }
-            Backend::Remote(_) | Backend::Cluster(_) => {
-                Err(Error::RemoteUnsupported("rebuild_index"))
-            }
+            Backend::Remote(_) => Err(Error::RemoteUnsupported("rebuild_index")),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("rebuild_index")),
         }
     }
 
@@ -210,9 +231,9 @@ impl Dingo {
                 s.rebuild_catalogs()?;
                 Ok(())
             }
-            Backend::Remote(_) | Backend::Cluster(_) => {
-                Err(Error::RemoteUnsupported("rebuild_catalogs"))
-            }
+            Backend::Remote(_) => Err(Error::RemoteUnsupported("rebuild_catalogs")),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("rebuild_catalogs")),
         }
     }
 
@@ -221,6 +242,7 @@ impl Dingo {
         match &mut self.backend {
             Backend::Local(s) => Ok(s.list_collections()),
             Backend::Remote(c) => c.list_collections(),
+            #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.list_collections(),
         }
     }
@@ -229,9 +251,9 @@ impl Dingo {
     pub fn compact_live(&mut self) -> Result<dingo_store::CompactReport, Error> {
         match &mut self.backend {
             Backend::Local(s) => Ok(s.compact_live()?),
-            Backend::Remote(_) | Backend::Cluster(_) => {
-                Err(Error::RemoteUnsupported("compact_live"))
-            }
+            Backend::Remote(_) => Err(Error::RemoteUnsupported("compact_live")),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("compact_live")),
         }
     }
 
@@ -242,7 +264,9 @@ impl Dingo {
     ) -> Result<(dingo_store::CheckpointMeta, PathBuf), Error> {
         match &self.backend {
             Backend::Local(s) => Ok(s.checkpoint(coverage)?),
-            Backend::Remote(_) | Backend::Cluster(_) => Err(Error::RemoteUnsupported("checkpoint")),
+            Backend::Remote(_) => Err(Error::RemoteUnsupported("checkpoint")),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("checkpoint")),
         }
     }
 
@@ -250,7 +274,9 @@ impl Dingo {
     pub fn store(&self) -> Result<&Store, Error> {
         match &self.backend {
             Backend::Local(s) => Ok(s),
-            Backend::Remote(_) | Backend::Cluster(_) => Err(Error::RemoteUnsupported("store()")),
+            Backend::Remote(_) => Err(Error::RemoteUnsupported("store()")),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("store()")),
         }
     }
 
@@ -258,9 +284,9 @@ impl Dingo {
     pub fn store_mut(&mut self) -> Result<&mut Store, Error> {
         match &mut self.backend {
             Backend::Local(s) => Ok(s),
-            Backend::Remote(_) | Backend::Cluster(_) => {
-                Err(Error::RemoteUnsupported("store_mut()"))
-            }
+            Backend::Remote(_) => Err(Error::RemoteUnsupported("store_mut()")),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => Err(Error::RemoteUnsupported("store_mut()")),
         }
     }
 

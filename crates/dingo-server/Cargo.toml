@@ -12,7 +12,7 @@ categories = ["database", "network-programming"]
 include = ["Cargo.toml", "README.md", "src/**"]
 
 [dependencies]
-dingo-sdk.workspace = true
+dingo-sdk = { workspace = true, features = ["cluster"] }
 dingo-store.workspace = true
 dingo-cluster.workspace = true
 serde.workspace = true

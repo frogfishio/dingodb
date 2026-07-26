@@ -1,8 +1,11 @@
 //! Stage 8d: SDK cluster routing + client directory cache (CLUSTER_SPEC §13, §22.5).
 
 
-use dingo_cluster::{ClusterConfig, NodeId};
-use dingo_sdk::{json, parse_dingo_url, ClientDirectoryCache, ClusterConfig as SdkClusterConfig, Dingo, DirectorySnapshot, ErrorCode, Filter};
+use dingo_cluster::ClusterConfig;
+use dingo_sdk::{
+    json, parse_dingo_url, ClientDirectoryCache, ClusterConfig as SdkClusterConfig, Dingo,
+    DirectorySnapshot, ErrorCode, Filter, NodeId,
+};
 
 
 use std::net::TcpListener;

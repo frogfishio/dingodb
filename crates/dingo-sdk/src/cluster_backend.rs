@@ -369,11 +369,15 @@ impl ClusterBackend {
                 .ok_or_else(|| Error::Internal("no cached route after refresh".into()))?;
 
             // Compare with live directory: stale placement → refresh + retry.
-            let live = self.cluster.directory().get(route.partition).cloned();
+            let live = self
+                .cluster
+                .directory()
+                .get(cluster_partition(route.partition))
+                .cloned();
             if let Some(ref live_a) = live {
-                if live_a.leader != route.leader
-                    || live_a.placement_epoch != route.placement_epoch
-                    || live_a.term != route.term
+                if live_a.leader.index() != route.leader.index()
+                    || live_a.placement_epoch.0 != route.placement_epoch.0
+                    || live_a.term.0 != route.term.0
                 {
                     self.cache.mark_stale(route.partition);
                     self.cache.refresh_entry(live_a);
@@ -434,9 +438,14 @@ impl ClusterBackend {
                 }
             };
 
-            let live = self.cluster.directory().get(route.partition).cloned();
+            let live = self
+                .cluster
+                .directory()
+                .get(cluster_partition(route.partition))
+                .cloned();
             if let Some(ref live_a) = live {
-                if live_a.leader != route.leader || live_a.placement_epoch != route.placement_epoch
+                if live_a.leader.index() != route.leader.index()
+                    || live_a.placement_epoch.0 != route.placement_epoch.0
                 {
                     self.cache.refresh_entry(live_a);
                     last_err = Some(Error::StaleRoute {
@@ -449,7 +458,12 @@ impl ClusterBackend {
 
             match self.cluster.get(subject, ReadMode::Linearizable) {
                 Ok(got) => {
-                    if let Some(a) = self.cluster.directory().get(route.partition).cloned() {
+                    if let Some(a) = self
+                        .cluster
+                        .directory()
+                        .get(cluster_partition(route.partition))
+                        .cloned()
+                    {
                         self.cache.refresh_entry(&a);
                     }
                     return Ok(got.value);
@@ -508,6 +522,10 @@ fn subject_str(collection: &str, key: &str) -> Result<String, Error> {
         .map_err(|_| Error::Internal("subject is not UTF-8".into()))
 }
 
+fn cluster_partition(p: crate::directory_cache::PartitionId) -> PartitionId {
+    PartitionId::new(p.get())
+}
+
 fn write_receipt_from_ack(
     key: &str,
     ack: &ClusterWriteAck,
@@ -553,7 +571,8 @@ pub(crate) fn map_cluster(e: ClusterError) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dingo_cluster::{ClusterConfig, NodeId};
+    use crate::directory_cache::NodeId;
+    use dingo_cluster::ClusterConfig;
     use serde_json::json;
 
     #[test]

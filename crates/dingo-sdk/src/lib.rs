@@ -1,13 +1,14 @@
 //! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d–8e + product freezes).
 //!
 //! Ordinary application surface: open a store directory, connect to a server,
-//! or open a multi-node cluster; name a collection; put/get/delete JSON or
-//! bytes; filter JSON documents; manage secondary indexes; inspect per-key
-//! history — without learning SDA.
+//! or (with the `cluster` feature) open a multi-node cluster; name a collection;
+//! put/get/delete JSON or bytes; filter JSON documents; manage secondary indexes;
+//! inspect per-key history — without learning SDA.
 //!
-//! Network **serve** (accept loop, authz, admission, Raft RPC glue) lives in
-//! the AGPL crate `dingo-server`. Wire framing lives in MIT `dingo-client`
-//! (re-exported here for compatibility).
+//! **License:** MPL-2.0 for the default embedded + remote surface. The optional
+//! `cluster` feature depends on AGPL `dingo-cluster` (in-process multi-node).
+//! Network **serve** lives in AGPL `dingo-server`. Wire framing lives in MIT
+//! `dingo-client` (re-exported here for compatibility).
 //!
 //! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d–8e;
 //! CLUSTER_SPEC §13 (client routing / directory cache), §17 (query coverage).
@@ -24,6 +25,7 @@
 /// breaking collection API changes require a major bump of this label.
 pub const SDK_API_VERSION: &str = "1.0";
 
+#[cfg(feature = "cluster")]
 mod cluster_backend;
 mod collection;
 mod dingo;
@@ -39,12 +41,17 @@ mod subject;
 mod tls;
 mod value;
 
+#[cfg(feature = "cluster")]
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
 pub use collection::{find_on_store, Collection, JsonScanIter, JsonScanPage};
 pub use dingo::Dingo;
-/// Re-export cluster coverage / scan types for Stage 8e callers.
+/// Re-export cluster coverage / scan types when the `cluster` feature is on.
+#[cfg(feature = "cluster")]
 pub use dingo_cluster::{Coverage, FindResult, ScanOptions};
-pub use directory_cache::{AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot};
+pub use directory_cache::{
+    AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot, NodeId, PartitionId,
+    PartitionMap, PlacementEpoch, Term, HASH_PROFILE_BLAKE3_MOD,
+};
 pub use error::{Error, ErrorCode};
 pub use filter::{
     FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, QueryPlan, SortOrder,
@@ -156,7 +163,8 @@ pub fn write_reject_frame<W: std::io::Write>(
     dingo_client::write_reject_frame(w, code, error).map_err(Error::from)
 }
 
-/// Re-export cluster config for [`Dingo::create_cluster`].
+/// Re-export cluster config for [`Dingo::create_cluster`] (requires `cluster` feature).
+#[cfg(feature = "cluster")]
 pub use dingo_cluster::ClusterConfig;
 
 /// Re-export durability modes used on receipts and put options.

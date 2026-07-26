@@ -1,14 +1,15 @@
 # dingo-sdk
 
-Collection SDK for DingoDB: ordinary `open`, remote `connect`, or multi-node
-`open_cluster` / `create_cluster` + named collections with JSON and raw-byte
-put/get/delete, JSON filters, secondary indexes, per-key history, query budgets,
-and cluster find coverage over [`dingo-store`](../dingo-store) /
+Collection SDK for DingoDB: ordinary `open`, remote `connect`, and (optional)
+multi-node `open_cluster` / `create_cluster` + named collections with JSON and
+raw-byte put/get/delete, JSON filters, secondary indexes, per-key history, query
+budgets, and cluster find coverage over [`dingo-store`](../dingo-store) /
 [`dingo-cluster`](../dingo-cluster).
 
-**License:** AGPL-3.0-or-later *(interim)* — still depends on `dingo-cluster`.
-Wire framing is MIT [`dingo-client`](../dingo-client). TCP **serve** lives in
-AGPL [`dingo-server`](../dingo-server). See [`doc/LICENSING.md`](../../doc/LICENSING.md).
+**License:** MPL-2.0 for default features (embedded + remote). Enabling the
+`cluster` feature depends on AGPL [`dingo-cluster`](../dingo-cluster). Wire
+framing is MIT [`dingo-client`](../dingo-client). TCP **serve** lives in AGPL
+[`dingo-server`](../dingo-server). See [`doc/LICENSING.md`](../../doc/LICENSING.md).
 
 Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, §14;
 [`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md) Stages 4, 6, 7, and 8d–8e;
@@ -27,10 +28,17 @@ Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, 
 | Chunks | Completeness-aware `get_payload` for large bodies |
 | Remote | `Dingo::connect("dingo://host:port")` framed `dingo-rpc-v1` TCP (handshake + length-prefixed JSON); auth token, deadline, retry; optional diagnostic line mode |
 | Parity | Remote put/get/delete/scan, history, indexes, `get_payload`, server-side find, `directory` |
-| Cluster | `create_cluster` / `open_cluster`, client partition directory cache, `find_with_coverage` |
+| Cluster | Feature `cluster`: `create_cluster` / `open_cluster`, client partition directory cache, `find_with_coverage` |
 | Network multi-hop | multi-seed connect + leader routing from directory (serve via `dingo-server`) |
 
 Application developers do not need to know about frames or segments.
+
+## Features
+
+```toml
+dingo-sdk = "0.1"                    # MPL: embedded + remote
+dingo-sdk = { version = "0.1", features = ["cluster"] }  # + AGPL dingo-cluster
+```
 
 ## Surface
 
@@ -38,7 +46,7 @@ Application developers do not need to know about frames or segments.
 |-----|------|
 | `Dingo::open` | Create-or-open store directory with safe defaults |
 | `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` or multi-seed `h1:p1,h2:p2` + `ConnectOptions` |
-| `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster; same collection API + route cache |
+| `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster (`cluster` feature); same collection API + route cache |
 | `ClientDirectoryCache` | Client partition → leader cache; refresh on stale placement |
 | `PROTOCOL_PROFILE` / `RPC_WIRE_LABEL` / frame helpers | Framed RPC handshake + length-prefixed messages (re-export of `dingo-client`; DEF-031) |
 | `Dingo::collection` | Lazy named collection handle (no disk write) |
@@ -49,7 +57,7 @@ Application developers do not need to know about frames or segments.
 | `Collection::scan_keys` / `scan_json` | Bounded live scan |
 | `Collection::scan_json_iter` / `scan_json_page` | Streaming / paged JSON rows (embedded; DEF-026) |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration (embedded + remote server-side) |
-| `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
+| `Collection::find_with_coverage` | Cluster find with explicit partition coverage (`cluster` feature) |
 | `Collection::indexes` | Create / drop / rebuild / list / continue_build secondary indexes (DEF-027 lifecycle; embedded + remote create/rebuild) |
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget (docs, bytes, result memory) / `allow_partial_coverage` |
@@ -101,7 +109,7 @@ db.collection("users")?.put("user-42", &json!({ "name": "Alice" }))?;
 # Ok::<(), dingo_sdk::Error>(())
 ```
 
-In-process cluster:
+In-process cluster (requires `features = ["cluster"]`):
 
 ```rust
 use dingo_sdk::{json, ClusterConfig, Dingo, Filter, QueryOptions};

@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 echo "== multi-hop route + kill-node (dingo-sdk integration) =="
-cargo test -p dingo-sdk --test stage8d_routing \
+cargo test -p dingo-sdk --features cluster --test stage8d_routing \
   multi_hop_and_kill_node_survivor -- --nocapture
 
 echo
