@@ -1,67 +1,90 @@
 # sda-lib
 
-`sda-lib` is the Rust library for Structured Data Algebra (SDA), the pure
-examination and transformation language used by DingoDB.
+`sda-lib` is the Rust library for **Structured Data Algebra (SDA)** — a pure
+examination and transformation language used by DingoDB and usable on its own
+over JSON.
 
 It provides a small host-facing API for parsing, validating, formatting, and
-evaluating standalone SDA programs over JSON values. Evaluation is pure: no
-file or network IO lives in this crate.
+evaluating standalone SDA programs. Evaluation is pure: no file or network IO
+lives in this crate.
 
-## Status
+> **Package name:** published on crates.io as **`sda-lib`**. The source lives
+> under `crates/sda-core` in the monorepo; dependents import the crate as
+> `sda_lib`.
 
-**Shipped** (Stage 1 complete). Standalone behavior is frozen under
-`sda_lib::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
-require a new corpus tag.
+## When to use this crate
 
-DingoDB recovery examination (ExaminationUnit projection) lives in
-[`dingo-examine`](../dingo-examine), not here — this crate stays pure.
+| You want… | Use |
+|-----------|-----|
+| Embed SDA evaluation in a Rust program | **`sda-lib`** (this crate) |
+| Shell CLI (`eval` / `check` / `fmt`) | [`sda`](https://crates.io/crates/sda) |
+| DingoDB recovery examination units | [`dingo-examine`](https://crates.io/crates/dingo-examine) |
 
-## Install (workspace)
+## Install
 
 ```toml
 [dependencies]
-sda-lib = { path = "crates/sda-core" }
-# or via the workspace key (crate path becomes sda_core):
-# sda-core = { workspace = true }
+sda-lib = "0.1"
 ```
 
-## Example
+Or: `cargo add sda-lib`
+
+## Quick example
 
 ```rust
-let output = sda_lib::run("input<\"name\">!", serde_json::json!({"name": "Ada"}))?;
-assert_eq!(output, serde_json::json!({"$type": "ok", "$value": "Ada"}));
+let output = sda_lib::run(
+    r#"input<"name">!"#,
+    serde_json::json!({"name": "Ada"}),
+)?;
+assert_eq!(
+    output,
+    serde_json::json!({"$type": "ok", "$value": "Ada"})
+);
 # Ok::<(), sda_lib::SdaError>(())
 ```
 
-If you want to bind host input under a name other than `input`, use
+Bind host input under a name other than `input` with
 `run_with_input_binding`.
 
 ## API surface
 
-- `run` — evaluate an SDA program against JSON bound as `input`
-- `run_with_input_binding` — evaluate against a caller-chosen binding name
-- `check` — parse and validate source without evaluating it
-- `format_source` — emit canonical SDA formatting
-- `from_json` / `to_json` — bridge between JSON and SDA values
-- `CONFORMANCE_CORPUS_TAG` — freeze identity for standalone semantics
+| Function | Role |
+|----------|------|
+| `run` | Evaluate an SDA program against JSON bound as `input` |
+| `run_with_input_binding` | Evaluate against a caller-chosen binding name |
+| `check` | Parse and validate source without evaluating |
+| `format_source` | Emit canonical SDA formatting |
+| `from_json` / `to_json` | Bridge between JSON and SDA values |
+| `CONFORMANCE_CORPUS_TAG` | Freeze identity for standalone semantics (`sda-standalone-v1.0`) |
 
-## Conformance freeze
+## Status
 
-- Automated suite: `tests/sda_conformance.rs` (`section_14_1_minimal_suite`,
-  `section_14_must_lock`, and related §6–§13 modules)
-- Golden vectors: `tests/sda/section14_must.json` (tag in `tests/sda/VERSION`)
+**Shipped.** Standalone behavior is frozen under
+`sda_lib::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
+require a new corpus tag.
+
+DingoDB recovery examination (ExaminationUnit projection) lives in
+[`dingo-examine`](https://crates.io/crates/dingo-examine), not here — this crate
+stays pure.
+
+## Conformance
 
 ```sh
 cargo test -p sda-lib
 ```
 
+Golden vectors and the automated suite lock §14 MUST behavior under the
+conformance corpus tag.
+
 ## Documentation
 
-- Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
-- DingoDB examination profile: [SDA_PROFILE.md](../../SDA_PROFILE.md)
-- User-facing SDA docs: [doc/SDA/](../../doc/SDA/)
-- Delivery: Stage 1 **done** in [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)
+- Spec: [SDA_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/SDA_SPEC.md)
+- User docs: [doc/SDA/](https://github.com/frogfishio/dingodb/tree/main/doc/SDA)
+- DingoDB examination profile: [SDA_PROFILE.md](https://github.com/frogfishio/dingodb/blob/main/SDA_PROFILE.md)
+- CLI package: [`sda`](https://crates.io/crates/sda)
 
-## CLI
+## License
 
-For shell use, see the `sda` package in [`crates/sda-cli`](../sda-cli).
+MIT.
+
+Part of [DingoDB](https://github.com/frogfishio/dingodb).
