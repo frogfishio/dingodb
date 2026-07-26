@@ -17,12 +17,17 @@
 //! [`RPC_WIRE_LABEL`] (`1.0-draft`).
 
 use crate::error::Error;
-use crate::resource::{host_limits, DEFAULT_MAX_RPC_LINE_BYTES};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
+/// Default maximum application frame size (matches historical host RPC ceiling).
+pub const DEFAULT_MAX_RPC_LINE_BYTES: usize = 16 * 1024 * 1024;
+
 /// Profile tag for the framed RPC protocol (DEF-031).
 pub const PROTOCOL_PROFILE: &str = "dingo-rpc-v1";
+
+/// Server runtime profile advertised on welcome (wire-stable string).
+pub const DEFAULT_SERVER_PROFILE: &str = "dingo-server-v1";
 
 /// Draft network RPC interoperability label (not a freeze).
 pub const RPC_WIRE_LABEL: &str = "1.0-draft";
@@ -164,7 +169,7 @@ impl Handshake {
                     .map(|s| (*s).to_string())
                     .collect(),
             ),
-            server_profile: Some(crate::server::SERVER_PROFILE.into()),
+            server_profile: Some(DEFAULT_SERVER_PROFILE.into()),
             protocol_profile: Some(PROTOCOL_PROFILE.into()),
             wire_label: Some(RPC_WIRE_LABEL.into()),
             error: None,
@@ -353,14 +358,13 @@ pub fn negotiate_features(client_features: &[String]) -> Result<Vec<String>, Err
     Ok(granted)
 }
 
-/// Negotiate max frame: min(client offer, server host limit, DEFAULT).
+/// Negotiate max frame: min(client offer, DEFAULT).
 pub fn negotiate_max_frame(client_offer: Option<u32>) -> usize {
-    let host = host_limits().max_rpc_line_bytes.min(DEFAULT_MAX_FRAME_BYTES);
     let client = client_offer
         .map(|n| n as usize)
         .unwrap_or(DEFAULT_MAX_FRAME_BYTES)
         .max(1024); // floor so tiny offers cannot break control messages
-    client.min(host).min(DEFAULT_MAX_FRAME_BYTES)
+    client.min(DEFAULT_MAX_FRAME_BYTES)
 }
 
 /// Server-side: read hello, validate, write welcome (or reject). Returns session.
@@ -508,7 +512,7 @@ mod tests {
         // No payload bytes follow — must fail on length check, not hang.
         let mut cur = Cursor::new(bad);
         let err = read_frame(&mut cur, 1024).unwrap_err();
-        assert_eq!(err.code(), crate::ErrorCode::ResourceLimit);
+        assert_eq!(err.code(), crate::error::ErrorCode::ResourceLimit);
         assert!(err.to_string().contains("refused before allocation"));
     }
 
@@ -516,7 +520,7 @@ mod tests {
     fn legacy_brace_detected() {
         let mut cur = Cursor::new(b"{\"id\":1,\"op\":\"ping\"}\n".as_slice());
         let err = read_frame_or_detect_legacy(&mut cur, 1024).unwrap_err();
-        assert_eq!(err.code(), crate::ErrorCode::ProtocolViolation);
+        assert_eq!(err.code(), crate::error::ErrorCode::ProtocolViolation);
         assert!(err.to_string().contains("legacy"));
     }
 
@@ -553,7 +557,7 @@ mod tests {
         let mut server_in = Cursor::new(client_out);
         let mut server_out = Vec::new();
         let err = server_handshake(&mut server_in, &mut server_out).unwrap_err();
-        assert_eq!(err.code(), crate::ErrorCode::ProtocolViolation);
+        assert_eq!(err.code(), crate::error::ErrorCode::ProtocolViolation);
         let reject = read_frame(&mut Cursor::new(server_out), HANDSHAKE_MAX_FRAME_BYTES)
             .unwrap()
             .unwrap();

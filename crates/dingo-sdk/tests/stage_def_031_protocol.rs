@@ -4,12 +4,10 @@
 //! frame refusal before allocation, diagnostic line profile, and golden
 //! fixtures under `tests/fixtures/protocol/`.
 
-use dingo_sdk::{
-    client_handshake, encode_frame, json, read_frame, write_frame, write_json_frame, write_reject_frame,
-    ConnectOptions, Dingo, ErrorCode, Handshake, HandshakeMsg, ServeOptions, DEFAULT_MAX_FRAME_BYTES,
-    FEATURE_JSON_RPC_V1, HANDSHAKE_MAX_FRAME_BYTES, PROTOCOL_MAJOR, PROTOCOL_PROFILE,
-    REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL, SERVER_PROFILE,
-};
+
+use dingo_sdk::{client_handshake, encode_frame, json, read_frame, write_frame, write_json_frame, write_reject_frame, ConnectOptions, Dingo, ErrorCode, Handshake, HandshakeMsg, DEFAULT_MAX_FRAME_BYTES, FEATURE_JSON_RPC_V1, HANDSHAKE_MAX_FRAME_BYTES, PROTOCOL_MAJOR, PROTOCOL_PROFILE, REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL};
+
+
 use std::io::{BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -18,6 +16,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
+use dingo_server::{SERVER_PROFILE, ServeOptions, serve_store_with};
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/protocol")
@@ -53,7 +52,7 @@ fn spawn_server(path: PathBuf, bind: &str, options: ServeOptions) -> Arc<AtomicB
     };
     let bind_c = bind.to_string();
     thread::spawn(move || {
-        let _ = dingo_sdk::serve_store_with(path, &bind_c, opts);
+        let _ = serve_store_with(path, &bind_c, opts);
     });
     wait_for(bind);
     flag

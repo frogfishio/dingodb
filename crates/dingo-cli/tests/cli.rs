@@ -550,7 +550,8 @@ fn serve_public_bind_allowed_with_insecure_override() {
 
 #[test]
 fn serve_cluster_advertises_placement_and_endpoints() {
-    use dingo_sdk::{serve_cluster_node, ClusterConfig, RemoteClient, ServeOptions};
+    use dingo_sdk::{ClusterConfig, RemoteClient};
+    use dingo_server::{serve_cluster_node, ServeOptions};
 
     let dir = tempdir().unwrap();
     let root = dir.path().join("c");

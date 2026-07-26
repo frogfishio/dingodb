@@ -41,7 +41,7 @@ Process-per-node TCP beyond the in-process `Cluster` handle.
 - `dingo serve-cluster CLUSTER_ROOT --node N --bind 127.0.0.1:PORT --experimental-network-cluster`
   — opens `nodes/node-N`, upserts this process into `endpoints.json`, and reloads
   endpoints on every `directory` RPC so late joiners appear without restart
-- SDK: `dingo_sdk::serve_cluster_node` (requires
+- Server: `dingo_server::serve_cluster_node` (requires
   `ServeOptions::experimental_network_cluster(true)`); `RemoteClient` multi-hop
   routes keyed ops from the cached directory
 - **Control-plane Raft RPC (DEF-036):** `raft_request_vote` /

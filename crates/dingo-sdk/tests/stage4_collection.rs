@@ -1,8 +1,8 @@
 //! Stage 4a–4d: open, put/get/delete, bytes, scan, filters, error codes.
 
-use dingo_sdk::{
-    json, Dingo, DurabilityMode, ErrorCode, Filter, PutOptions, QueryOptions, SortOrder,
-};
+use dingo_sdk::{json, Dingo, DurabilityMode, ErrorCode, Filter, PutOptions, QueryOptions, SortOrder};
+
+
 use serde::Deserialize;
 use tempfile::tempdir;
 

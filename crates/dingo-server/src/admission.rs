@@ -1,7 +1,7 @@
 //! Protocol admission control (DEF-034).
 //!
 //! Bounds abuse and overload at the RPC edge, complementary to connection
-//! slots ([`crate::server`]) and host resource ceilings ([`crate::resource`]):
+//! slots ([`crate::runtime`]) and host resource ceilings ([`dingo_sdk::resource`]):
 //!
 //! - **Global and per-principal rate limits** on application RPCs
 //! - **Authentication failure budgets** with temporary lockout (no secret storage)
@@ -9,13 +9,13 @@
 //! - **Expensive-op concurrency budgets** (scan / find / index rebuild / salvage…)
 //! - **Operation-id replay window** for idempotent mutation retries
 //!
-//! Overload answers use [`crate::ErrorCode::ResourceLimit`] (`resource_limit`).
-//! Auth lockouts use [`crate::ErrorCode::AuthenticationFailed`] with a generic
+//! Overload answers use [`dingo_sdk::ErrorCode::ResourceLimit`] (`resource_limit`).
+//! Auth lockouts use [`dingo_sdk::ErrorCode::AuthenticationFailed`] with a generic
 //! message so timing/content cannot distinguish "bad token" from "locked out".
 //!
 //! Profile tag: [`ADMISSION_PROFILE`].
 
-use crate::error::Error;
+use dingo_sdk::Error;
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -344,7 +344,7 @@ impl AdmissionController {
     /// Admit one new TCP connection under the churn window.
     ///
     /// Returns `false` when the connect rate is exhausted. Callers still apply
-    /// [`crate::ServerRuntime::try_admit_connection`] for simultaneous caps.
+    /// [`crate::runtime::ServerRuntime::try_admit_connection`] for simultaneous caps.
     pub fn try_admit_connect(&self) -> bool {
         let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();

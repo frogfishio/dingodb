@@ -4,13 +4,13 @@
 //! ReadIndex on independent listeners with shared cluster token. Data-plane
 //! collection writes over Raft propose remain DEF-037.
 
+
 use dingo_cluster::{
     ClusterId, LogCommand, NodeId, PartitionId, PlacementEpoch, RequestVoteRequest,
 };
-use dingo_sdk::{
-    AuthzPolicy, ConnectOptions, Dingo, RaftServerState, RemoteClient, ServeOptions,
-    SharedRaftState, TcpRaftTransport, FEATURE_RAFT_RPC_V1, SDK_RAFT_RPC_PROFILE,
-};
+use dingo_sdk::{ConnectOptions, Dingo, RemoteClient};
+
+
 use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+use dingo_server::{AuthzPolicy, FEATURE_RAFT_RPC_V1, RaftServerState, SDK_RAFT_RPC_PROFILE, ServeOptions, SharedRaftState, TcpRaftTransport, serve_store_with};
 
 fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -60,7 +61,7 @@ fn start_peer(
             .raft(raft)
             .shutdown_flag(Arc::clone(&stop_c))
             .suppress_startup_report(true);
-        let _ = dingo_sdk::serve_store_with(path_c, &bind_c, opts);
+        let _ = serve_store_with(path_c, &bind_c, opts);
     });
     wait_for_server(&bind);
     thread::sleep(Duration::from_millis(40));

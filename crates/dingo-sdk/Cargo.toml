@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license = "AGPL-3.0-or-later"  # interim until client/embedded/server split; see doc/LICENSING.md
 authors.workspace = true
-description = "DingoDB collection SDK: collections, filters, indexes, history, remote + cluster connect (Stages 4+6+7+8d)."
+description = "DingoDB collection SDK: collections, filters, indexes, history, remote client + cluster connect (Stages 4+6+7+8d). Serve path: dingo-server."
 readme = "README.md"
 repository.workspace = true
 keywords = ["dingodb", "sdk", "embedded", "json", "database"]
@@ -12,6 +12,7 @@ categories = ["database", "api-bindings"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
 [dependencies]
+dingo-client.workspace = true
 dingo-store.workspace = true
 dingo-cluster.workspace = true
 sda-core.workspace = true
@@ -25,5 +26,6 @@ webpki-roots = "0.26"
 x509-parser = "0.16"
 
 [dev-dependencies]
+dingo-server.workspace = true
 tempfile.workspace = true
 rcgen = "0.13"

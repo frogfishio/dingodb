@@ -4,10 +4,10 @@
 //! admission enforces limits with typed overload responses, one coordinated
 //! store owner is used, and graceful shutdown drains in-flight work.
 
-use dingo_sdk::{
-    client_handshake, json, read_frame, write_frame, Dingo, ErrorCode, ServeOptions, ServerLimits,
-    DEFAULT_MAX_CONNECTIONS, DEFAULT_MAX_FRAME_BYTES, SERVER_PROFILE,
-};
+
+use dingo_sdk::{client_handshake, json, read_frame, write_frame, Dingo, ErrorCode, DEFAULT_MAX_FRAME_BYTES};
+
+
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,6 +15,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
+use dingo_server::{DEFAULT_MAX_CONNECTIONS, SERVER_PROFILE, ServeOptions, ServerLimits, serve_store_with};
 
 fn free_bind() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -50,7 +51,7 @@ fn spawn_server(
     };
     let bind_c = bind.to_string();
     thread::spawn(move || {
-        let _ = dingo_sdk::serve_store_with(path, &bind_c, opts);
+        let _ = serve_store_with(path, &bind_c, opts);
     });
     wait_for(bind);
     flag

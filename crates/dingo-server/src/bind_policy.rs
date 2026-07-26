@@ -5,7 +5,7 @@
 //! binds **with TLS** (DEF-032) are allowed. Plaintext remains a loopback-only
 //! development profile.
 
-use crate::error::Error;
+use dingo_sdk::Error;
 use std::net::IpAddr;
 
 /// True when the host portion of a bind address is loopback-only.

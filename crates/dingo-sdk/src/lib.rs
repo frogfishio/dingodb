@@ -5,6 +5,10 @@
 //! bytes; filter JSON documents; manage secondary indexes; inspect per-key
 //! history — without learning SDA.
 //!
+//! Network **serve** (accept loop, authz, admission, Raft RPC glue) lives in
+//! the AGPL crate `dingo-server`. Wire framing lives in MIT `dingo-client`
+//! (re-exported here for compatibility).
+//!
 //! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d–8e;
 //! CLUSTER_SPEC §13 (client routing / directory cache), §17 (query coverage).
 //!
@@ -20,9 +24,6 @@
 /// breaking collection API changes require a major bump of this label.
 pub const SDK_API_VERSION: &str = "1.0";
 
-mod admission;
-mod authz;
-mod bind_policy;
 mod cluster_backend;
 mod collection;
 mod dingo;
@@ -31,34 +32,15 @@ mod error;
 mod filter;
 mod history;
 mod indexes;
-mod protocol;
-mod raft_server;
 mod receipt;
 mod remote;
 mod resource;
-mod server;
 mod subject;
 mod tls;
 mod value;
 
-pub use admission::{
-    is_expensive_op, is_replayable_mutation, AdmissionController, AdmissionLimits, AdmissionStats,
-    ExpensiveGuard, ReplayStatus, ADMISSION_PROFILE, DEFAULT_AUTH_FAILURE_WINDOW,
-    DEFAULT_AUTH_LOCKOUT, DEFAULT_CONNECT_WINDOW, DEFAULT_GLOBAL_MAX_RPS,
-    DEFAULT_MAX_AUTH_FAILURES, DEFAULT_MAX_CONNECTS_PER_WINDOW, DEFAULT_MAX_EXPENSIVE_CONCURRENT,
-    DEFAULT_PER_PRINCIPAL_MAX_RPS, DEFAULT_REPLAY_CAPACITY, DEFAULT_REPLAY_TTL, RATE_WINDOW,
-};
-pub use authz::{
-    authorize, bound_label, check_rpc, redact_token, requirement_for_op, AuditDecision, AuditLog,
-    AuditRecord, AuthzPolicy, OpRequirement, Principal, PrincipalSpec, Privilege, PrivilegeSet,
-    AUTHZ_PROFILE, FORCE_RECONFIG_CONFIRM, MAX_AUDIT_LABEL_LEN, MAX_PRINCIPAL_ID_LEN,
-    PURGE_CONFIRM,
-};
-pub use bind_policy::{
-    bind_host, host_is_loopback, validate_bind, validate_plaintext_bind, ServeStartupReport,
-};
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
-pub use collection::{Collection, JsonScanIter, JsonScanPage};
+pub use collection::{find_on_store, Collection, JsonScanIter, JsonScanPage};
 pub use dingo::Dingo;
 /// Re-export cluster coverage / scan types for Stage 8e callers.
 pub use dingo_cluster::{Coverage, FindResult, ScanOptions};
@@ -69,43 +51,110 @@ pub use filter::{
     QUERY_PLAN_PROFILE,
 };
 pub use history::{KeyHistory, Version};
-pub use indexes::{IndexInfo, Indexes};
+pub use indexes::{create_index_on_store, mark_indexes_stale, IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 pub use resource::{
-    estimate_json_bytes, estimate_row_bytes, json_depth, CancelToken, ResourceLimits,
-    DEFAULT_MAX_JSON_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_RESULT_BYTES,
-    DEFAULT_MAX_RPC_LINE_BYTES, RESOURCE_PROFILE,
-};
-pub use protocol::{
-    client_handshake, encode_frame, read_frame, server_handshake, write_frame, write_json_frame,
-    write_reject_frame, Handshake, HandshakeMsg, NegotiatedSession, DEFAULT_MAX_FRAME_BYTES,
-    FEATURE_IDEMPOTENCY_V1, FEATURE_JSON_RPC_V1, FEATURE_RECEIPTS_V1, HANDSHAKE_MAX_FRAME_BYTES,
-    PROTOCOL_MAJOR, PROTOCOL_MINOR, PROTOCOL_PROFILE, REQUIRED_DELETE_RECEIPT_FIELDS,
-    REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL,
-};
-pub use raft_server::{
-    shared_raft_state, RaftServerState, SharedRaftState, TcpRaftTransport, CLUSTER_COMMIT_PROFILE,
-    FEATURE_CLUSTER_COMMIT_V1, FEATURE_RAFT_RPC_V1, SDK_RAFT_RPC_PROFILE,
+    check_json_depth, check_payload_len, check_rpc_line_len, estimate_json_bytes, estimate_row_bytes,
+    host_limits, json_depth, CancelToken, ResourceLimits, DEFAULT_MAX_JSON_DEPTH,
+    DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_RESULT_BYTES, DEFAULT_MAX_RPC_LINE_BYTES,
+    RESOURCE_PROFILE,
 };
 pub use remote::{
-    handle_connection, handle_connection_shared, handle_connection_with, parse_dingo_url,
-    serve_cluster_node, serve_store, serve_store_with, ConnectOptions, ParsedDingoUrl, RemoteClient,
-    RpcRequest, RpcResponse, ServeOptions, DEFAULT_PORT,
+    parse_dingo_url, ConnectOptions, ExtentRow, HistoryVersionRow, IndexInfoRow, ParsedDingoUrl,
+    PresentChunkRow, RemoteClient, RpcRequest, RpcResponse, ScanRow, DEFAULT_PORT,
 };
 pub use tls::{
-    client_connect, cluster_urn, constant_time_eq, constant_time_str_eq, load_certs,
-    load_private_key, node_urn, redact_secret, build_client_config, IoStream, PeerIdentity,
-    TlsClientOptions, TlsServerOptions, TlsServerState, TLS_PROFILE, CLUSTER_URN_PREFIX,
-    NODE_URN_PREFIX,
-};
-pub use server::{
-    ServerLimits, ServerRuntime, ServerStats, DEFAULT_DRAIN_TIMEOUT, DEFAULT_IDLE_TIMEOUT,
-    DEFAULT_MAX_CONNECTIONS, SERVER_PROFILE,
+    build_client_config, client_connect, cluster_urn, constant_time_eq, constant_time_str_eq,
+    load_certs, load_private_key, node_urn, redact_secret, IoStream, PeerIdentity, TlsClientOptions,
+    TlsServerOptions, TlsServerState, CLUSTER_URN_PREFIX, NODE_URN_PREFIX, TLS_PROFILE,
 };
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,
     MAX_COLLECTION_NAME_LEN, MAX_KEY_LEN,
 };
+pub use value::{decode_bytes, decode_json, encode_bytes, encode_json};
+
+// --- MIT dingo-client protocol (constants + types re-exported; IO maps errors) ---
+pub use dingo_client::{
+    Handshake, HandshakeMsg, NegotiatedSession, DEFAULT_MAX_FRAME_BYTES, FEATURE_IDEMPOTENCY_V1,
+    FEATURE_JSON_RPC_V1, FEATURE_RECEIPTS_V1, HANDSHAKE_MAX_FRAME_BYTES, PROTOCOL_MAJOR,
+    PROTOCOL_MINOR, PROTOCOL_PROFILE, REQUIRED_DELETE_RECEIPT_FIELDS, REQUIRED_FEATURES,
+    REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL,
+};
+
+/// Encode a length-prefixed frame (see `dingo-client`).
+pub fn encode_frame(payload: &[u8]) -> Result<Vec<u8>, Error> {
+    dingo_client::encode_frame(payload).map_err(Error::from)
+}
+
+/// Write one framed payload.
+pub fn write_frame<W: std::io::Write>(w: &mut W, payload: &[u8]) -> Result<(), Error> {
+    dingo_client::write_frame(w, payload).map_err(Error::from)
+}
+
+/// Write a JSON value as one framed message.
+pub fn write_json_frame<W: std::io::Write, T: serde::Serialize>(
+    w: &mut W,
+    value: &T,
+) -> Result<(), Error> {
+    dingo_client::write_json_frame(w, value).map_err(Error::from)
+}
+
+/// Read one length-prefixed frame.
+pub fn read_frame<R: std::io::Read>(
+    r: &mut R,
+    max_frame: usize,
+) -> Result<Option<Vec<u8>>, Error> {
+    dingo_client::read_frame(r, max_frame).map_err(Error::from)
+}
+
+/// Read a frame, detecting legacy line protocol.
+pub fn read_frame_or_detect_legacy<R: std::io::Read>(
+    r: &mut R,
+    max_frame: usize,
+) -> Result<Option<Vec<u8>>, Error> {
+    dingo_client::read_frame_or_detect_legacy(r, max_frame).map_err(Error::from)
+}
+
+/// Parse handshake JSON.
+pub fn parse_handshake(bytes: &[u8]) -> Result<Handshake, Error> {
+    dingo_client::parse_handshake(bytes).map_err(Error::from)
+}
+
+/// Intersect client features with required set.
+pub fn negotiate_features(client_features: &[String]) -> Result<Vec<String>, Error> {
+    dingo_client::negotiate_features(client_features).map_err(Error::from)
+}
+
+/// Negotiate max frame size.
+pub fn negotiate_max_frame(client_offer: Option<u32>) -> usize {
+    dingo_client::negotiate_max_frame(client_offer)
+}
+
+/// Server-side hello/welcome handshake.
+pub fn server_handshake<R: std::io::Read, W: std::io::Write>(
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<NegotiatedSession, Error> {
+    dingo_client::server_handshake(reader, writer).map_err(Error::from)
+}
+
+/// Client-side hello/welcome handshake.
+pub fn client_handshake<R: std::io::Read, W: std::io::Write>(
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<NegotiatedSession, Error> {
+    dingo_client::client_handshake(reader, writer).map_err(Error::from)
+}
+
+/// Write an unsolicited framed reject.
+pub fn write_reject_frame<W: std::io::Write>(
+    w: &mut W,
+    code: &str,
+    error: &str,
+) -> Result<(), Error> {
+    dingo_client::write_reject_frame(w, code, error).map_err(Error::from)
+}
 
 /// Re-export cluster config for [`Dingo::create_cluster`].
 pub use dingo_cluster::ClusterConfig;

@@ -8,9 +8,9 @@
 //! attached must go through [`RaftServerState::propose_and_apply`] so acks are
 //! only returned after quorum commit and local state-machine apply.
 
-use crate::directory_cache::DirectorySnapshot;
-use crate::error::Error;
-use crate::remote::{ConnectOptions, RemoteClient, RpcRequest};
+use dingo_sdk::DirectorySnapshot;
+use dingo_sdk::Error;
+use dingo_sdk::{ConnectOptions, RemoteClient, RpcRequest};
 use dingo_cluster::raft_rpc::{
     AppendEntriesRequest, AppendEntriesResponse, InstallSnapshotRequest, InstallSnapshotResponse,
     NetworkRaftNode, RaftTransport, ReadIndexRequest, ReadIndexResponse, RequestVoteRequest,

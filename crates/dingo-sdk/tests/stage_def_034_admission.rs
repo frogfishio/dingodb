@@ -4,11 +4,10 @@
 //! churn bounds, expensive-op concurrency budgets, and operation-id replay
 //! windows return useful overload / auth errors under abuse.
 
-use dingo_sdk::{
-    client_handshake, json, read_frame, write_frame, AdmissionController, AdmissionLimits,
-    AuthzPolicy, ConnectOptions, Dingo, ErrorCode, PrivilegeSet, ServeOptions, ADMISSION_PROFILE,
-    DEFAULT_MAX_FRAME_BYTES,
-};
+
+use dingo_sdk::{client_handshake, json, read_frame, write_frame, ConnectOptions, Dingo, ErrorCode, DEFAULT_MAX_FRAME_BYTES};
+
+
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,6 +15,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+use dingo_server::{ADMISSION_PROFILE, AdmissionController, AdmissionLimits, AuthzPolicy, PrivilegeSet, ServeOptions, serve_store_with};
 
 fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -57,7 +57,7 @@ fn start_server(
         .shutdown_flag(Arc::clone(&stop))
         .suppress_startup_report(true);
     let handle = thread::spawn(move || {
-        let _ = dingo_sdk::serve_store_with(path_c, &bind_c, opts);
+        let _ = serve_store_with(path_c, &bind_c, opts);
     });
     wait_for_server(&bind);
     thread::sleep(Duration::from_millis(30));

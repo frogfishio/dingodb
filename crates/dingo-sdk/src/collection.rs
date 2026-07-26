@@ -382,7 +382,7 @@ impl<'a> Collection<'a> {
 /// Run a filter query against an open store (index-accelerated when possible).
 ///
 /// Shared by the embedded collection path and the remote server dispatch.
-pub(crate) fn find_on_store(
+pub fn find_on_store(
     store: &Store,
     collection: &str,
     filter: &Filter,

@@ -36,7 +36,8 @@ pub struct KeyHistory {
 }
 
 impl KeyHistory {
-    pub(crate) fn from_store(key: String, hist: SubjectHistory) -> Result<Self, Error> {
+    /// Project store history events into the SDK history view.
+    pub fn from_store(key: String, hist: SubjectHistory) -> Result<Self, Error> {
         let mut versions = Vec::with_capacity(hist.events.len());
         for ev in hist.events {
             versions.push(project_event(ev)?);

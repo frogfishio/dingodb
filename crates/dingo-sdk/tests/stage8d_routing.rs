@@ -1,14 +1,15 @@
 //! Stage 8d: SDK cluster routing + client directory cache (CLUSTER_SPEC §13, §22.5).
 
+
 use dingo_cluster::{ClusterConfig, NodeId};
-use dingo_sdk::{
-    json, parse_dingo_url, ClientDirectoryCache, ClusterConfig as SdkClusterConfig, Dingo,
-    DirectorySnapshot, ErrorCode, Filter,
-};
+use dingo_sdk::{json, parse_dingo_url, ClientDirectoryCache, ClusterConfig as SdkClusterConfig, Dingo, DirectorySnapshot, ErrorCode, Filter};
+
+
 use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
+use dingo_server::{ServeOptions, serve_cluster_node, serve_store};
 
 #[test]
 fn create_cluster_same_collection_api() {
@@ -149,7 +150,7 @@ fn remote_directory_op_and_cache() {
     let path_c = path.clone();
     let bind_c = bind.clone();
     thread::spawn(move || {
-        let _ = dingo_sdk::serve_store(path_c, &bind_c);
+        let _ = serve_store(path_c, &bind_c);
     });
     wait_for(&bind);
 
@@ -194,7 +195,9 @@ fn partition_unavailable_code_is_stable() {
 /// a survivor node remains reachable when another is not served (kill-node story).
 #[test]
 fn multi_hop_and_kill_node_survivor() {
-    use dingo_sdk::{serve_cluster_node, PutOptions, RemoteClient, ServeOptions};
+    use dingo_sdk::{PutOptions, RemoteClient};
+
+
 
     let dir = tempdir().unwrap();
     let root = dir.path().join("c");

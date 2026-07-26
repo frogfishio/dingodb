@@ -4,7 +4,9 @@ members = [
   "crates/sda-cli",
   "crates/dingo-format",
   "crates/dingo-store",
+  "crates/dingo-client",
   "crates/dingo-sdk",
+  "crates/dingo-server",
   "crates/dingo-examine",
   "crates/dingo-cli",
   "crates/dingo-cluster",
@@ -26,7 +28,9 @@ repository = "https://github.com/frogfishio/dingodb"
 sda-core = { package = "sda-lib", path = "crates/sda-core", version = "0.1.0" }
 dingo-format = { path = "crates/dingo-format", version = "0.1.0" }
 dingo-store = { path = "crates/dingo-store", version = "0.1.0" }
+dingo-client = { path = "crates/dingo-client", version = "0.1.0" }
 dingo-sdk = { path = "crates/dingo-sdk", version = "0.1.0" }
+dingo-server = { path = "crates/dingo-server", version = "0.1.0" }
 dingo-examine = { path = "crates/dingo-examine", version = "0.1.0" }
 dingo-cluster = { path = "crates/dingo-cluster", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }

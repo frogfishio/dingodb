@@ -2,10 +2,10 @@
 //!
 //! Uses an ephemeral private PKI (rcgen) — not system roots.
 
-use dingo_sdk::{
-    cluster_urn, node_urn, ConnectOptions, Dingo, Error, PeerIdentity, RemoteClient, ServeOptions,
-    TlsClientOptions, TlsServerOptions, TlsServerState,
-};
+
+use dingo_sdk::{cluster_urn, node_urn, ConnectOptions, Dingo, Error, PeerIdentity, RemoteClient, TlsClientOptions, TlsServerOptions, TlsServerState};
+
+
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa,
     KeyPair, KeyUsagePurpose, SanType,
@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use tempfile::TempDir;
+use dingo_server::{ServeOptions, serve_store_with, validate_bind};
 
 fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -143,7 +144,7 @@ fn spawn_server(path: PathBuf, bind: &str, options: ServeOptions) -> Arc<AtomicB
     let bind_c = bind.to_string();
     let opts = options.shutdown_flag(Arc::clone(&shutdown));
     thread::spawn(move || {
-        let _ = dingo_sdk::serve_store_with(path, &bind_c, opts);
+        let _ = serve_store_with(path, &bind_c, opts);
     });
     wait_for_server(bind);
     flag
@@ -469,8 +470,8 @@ fn plaintext_loopback_still_works() {
 
 #[test]
 fn public_bind_allowed_with_tls() {
-    dingo_sdk::validate_bind("0.0.0.0:7434", false, true).unwrap();
-    assert!(dingo_sdk::validate_bind("0.0.0.0:7434", false, false).is_err());
+    validate_bind("0.0.0.0:7434", false, true).unwrap();
+    assert!(validate_bind("0.0.0.0:7434", false, false).is_err());
 }
 
 #[test]

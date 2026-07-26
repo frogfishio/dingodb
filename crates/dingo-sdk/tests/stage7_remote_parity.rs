@@ -1,12 +1,14 @@
 //! Stage 7 remote parity: history, indexes, get_payload, server-side find.
 
-use dingo_sdk::{
-    json, Dingo, ErrorCode, Filter, IndexState, PayloadResult, QueryBudget, QueryOptions,
-};
+
+use dingo_sdk::{json, Dingo, ErrorCode, Filter, IndexState, PayloadResult, QueryBudget, QueryOptions};
+
+
 use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
+use dingo_server::{ServeOptions, serve_store};
 
 fn free_bind() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -29,7 +31,7 @@ fn spawn_server(path: std::path::PathBuf, bind: &str) {
     let path_c = path;
     let bind_c = bind.to_string();
     thread::spawn(move || {
-        let _ = dingo_sdk::serve_store(path_c, &bind_c);
+        let _ = serve_store(path_c, &bind_c);
     });
     wait_for(bind);
 }
@@ -232,10 +234,10 @@ fn remote_find_index_accelerated_under_budget() {
 
 #[test]
 fn remote_put_is_idempotent_with_operation_id() {
-    use dingo_sdk::{
-        client_handshake, handle_connection_with, read_frame, write_frame, ServeOptions,
-        DEFAULT_MAX_FRAME_BYTES,
-    };
+    use dingo_sdk::{client_handshake, read_frame, write_frame, DEFAULT_MAX_FRAME_BYTES};
+
+    use dingo_server::handle_connection_with;
+
     use dingo_store::{EventKind, Store};
     use std::io::BufReader;
     use std::net::{TcpListener, TcpStream};

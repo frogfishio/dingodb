@@ -17,6 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 dingo-sdk.workspace = true
+dingo-server.workspace = true
 dingo-store.workspace = true
 dingo-examine.workspace = true
 serde_json.workspace = true

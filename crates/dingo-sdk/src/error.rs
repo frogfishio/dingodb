@@ -325,3 +325,18 @@ fn remote_code(code: &str) -> ErrorCode {
         _ => ErrorCode::Internal,
     }
 }
+
+
+impl From<dingo_client::Error> for Error {
+    fn from(e: dingo_client::Error) -> Self {
+        match e {
+            dingo_client::Error::ProtocolViolation(s) => Self::ProtocolViolation(s),
+            dingo_client::Error::ResourceLimit(s) => Self::ResourceLimit(s),
+            dingo_client::Error::AuthenticationFailed(s) => Self::AuthenticationFailed(s),
+            dingo_client::Error::DeadlineExceeded(s) => Self::DeadlineExceeded(s),
+            dingo_client::Error::Remote { code, message } => Self::Remote { code, message },
+            dingo_client::Error::Internal(s) => Self::Internal(s),
+            dingo_client::Error::Io(e) => Self::from_io(e),
+        }
+    }
+}

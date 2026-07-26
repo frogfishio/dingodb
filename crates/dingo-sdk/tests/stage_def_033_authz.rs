@@ -1,10 +1,10 @@
 //! DEF-033: authorization privileges + tamper-evident audit (no secret leakage).
 
-use dingo_sdk::{
-    client_handshake, json, read_frame, write_frame, AuditDecision, AuditLog, AuthzPolicy,
-    ConnectOptions, Dingo, Error, ErrorCode, Privilege, PrivilegeSet, ServeOptions, AUTHZ_PROFILE,
-    FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM,
-};
+
+use dingo_sdk::{client_handshake, json, read_frame, write_frame, ConnectOptions, Dingo, Error, ErrorCode};
+
+
+
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+use dingo_server::{AUTHZ_PROFILE, AuditDecision, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM, Privilege, PrivilegeSet, ServeOptions, serve_store_with};
 
 fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -48,7 +49,7 @@ fn start_server(
         .shutdown_flag(Arc::clone(&stop))
         .suppress_startup_report(true);
     let handle = thread::spawn(move || {
-        let _ = dingo_sdk::serve_store_with(path_c, &bind_c, opts);
+        let _ = serve_store_with(path_c, &bind_c, opts);
     });
     wait_for_server(&bind);
     thread::sleep(Duration::from_millis(30));

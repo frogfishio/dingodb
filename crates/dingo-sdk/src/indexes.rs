@@ -55,7 +55,8 @@ pub struct IndexInfo {
 }
 
 impl IndexInfo {
-    pub(crate) fn from_store(idx: &SecondaryIndex) -> Self {
+    /// Project a store secondary index record into the SDK view.
+    pub fn from_store(idx: &SecondaryIndex) -> Self {
         Self {
             name: idx.meta.name.clone(),
             collection: idx.meta.collection.clone(),
@@ -177,7 +178,7 @@ impl<'a> Indexes<'a> {
 }
 
 /// Build (or rebuild) a secondary field index on an open store.
-pub(crate) fn create_index_on_store(
+pub fn create_index_on_store(
     store: &mut Store,
     collection: &str,
     name: &str,
@@ -349,7 +350,7 @@ fn fill_index_from_live(
 ///
 /// Failures are returned to the caller (DEF-027: do not silently drop
 /// stale-marking errors — they affect health/diagnostics).
-pub(crate) fn mark_indexes_stale(store: &mut Store, collection: &str) -> Result<(), Error> {
+pub fn mark_indexes_stale(store: &mut Store, collection: &str) -> Result<(), Error> {
     let indexes = store.list_secondary_indexes(collection)?;
     for mut idx in indexes {
         let before = idx.meta.state;

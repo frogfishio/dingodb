@@ -1,6 +1,8 @@
 //! Stage 6 SDK: secondary indexes, history, query budget, catalog rebuild.
 
 use dingo_sdk::{json, Dingo, ErrorCode, Filter, IndexState, QueryBudget, QueryOptions, SortOrder};
+
+
 use std::fs;
 use tempfile::tempdir;
 

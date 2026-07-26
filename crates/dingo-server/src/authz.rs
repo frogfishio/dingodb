@@ -8,8 +8,8 @@
 //!
 //! Profile tag: [`AUTHZ_PROFILE`].
 
-use crate::error::Error;
-use crate::tls::{constant_time_str_eq, redact_secret};
+use dingo_sdk::Error;
+use dingo_sdk::{constant_time_str_eq, redact_secret};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 

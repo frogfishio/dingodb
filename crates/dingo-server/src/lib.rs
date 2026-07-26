@@ -1,0 +1,43 @@
+//! DingoDB networked server surfaces (AGPL-3.0-or-later).
+//!
+//! Accept loop, authorization, protocol admission, bind policy, network Raft
+//! glue, and TCP serve dispatch. Collection / remote-client APIs remain in
+//! `dingo-sdk`; wire framing is MIT `dingo-client`.
+
+#![deny(missing_docs)]
+
+mod admission;
+mod authz;
+mod bind_policy;
+mod raft_server;
+mod runtime;
+mod serve;
+
+pub use admission::{
+    is_expensive_op, is_replayable_mutation, AdmissionController, AdmissionLimits, AdmissionStats,
+    ExpensiveGuard, ReplayStatus, ADMISSION_PROFILE, DEFAULT_AUTH_FAILURE_WINDOW,
+    DEFAULT_AUTH_LOCKOUT, DEFAULT_CONNECT_WINDOW, DEFAULT_GLOBAL_MAX_RPS,
+    DEFAULT_MAX_AUTH_FAILURES, DEFAULT_MAX_CONNECTS_PER_WINDOW, DEFAULT_MAX_EXPENSIVE_CONCURRENT,
+    DEFAULT_PER_PRINCIPAL_MAX_RPS, DEFAULT_REPLAY_CAPACITY, DEFAULT_REPLAY_TTL, RATE_WINDOW,
+};
+pub use authz::{
+    authorize, bound_label, check_rpc, redact_token, requirement_for_op, AuditDecision, AuditLog,
+    AuditRecord, AuthzPolicy, OpRequirement, Principal, PrincipalSpec, Privilege, PrivilegeSet,
+    AUTHZ_PROFILE, FORCE_RECONFIG_CONFIRM, MAX_AUDIT_LABEL_LEN, MAX_PRINCIPAL_ID_LEN,
+    PURGE_CONFIRM,
+};
+pub use bind_policy::{
+    bind_host, host_is_loopback, validate_bind, validate_plaintext_bind, ServeStartupReport,
+};
+pub use raft_server::{
+    shared_raft_state, RaftServerState, SharedRaftState, TcpRaftTransport, CLUSTER_COMMIT_PROFILE,
+    FEATURE_CLUSTER_COMMIT_V1, FEATURE_RAFT_RPC_V1, SDK_RAFT_RPC_PROFILE,
+};
+pub use runtime::{
+    is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, ServerStats,
+    DEFAULT_DRAIN_TIMEOUT, DEFAULT_IDLE_TIMEOUT, DEFAULT_MAX_CONNECTIONS, SERVER_PROFILE,
+};
+pub use serve::{
+    handle_connection, handle_connection_shared, handle_connection_with, serve_cluster_node,
+    serve_store, serve_store_with, ServeOptions,
+};

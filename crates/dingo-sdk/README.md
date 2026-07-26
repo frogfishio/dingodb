@@ -6,6 +6,10 @@ put/get/delete, JSON filters, secondary indexes, per-key history, query budgets,
 and cluster find coverage over [`dingo-store`](../dingo-store) /
 [`dingo-cluster`](../dingo-cluster).
 
+**License:** AGPL-3.0-or-later *(interim)* — still depends on `dingo-cluster`.
+Wire framing is MIT [`dingo-client`](../dingo-client). TCP **serve** lives in
+AGPL [`dingo-server`](../dingo-server). See [`doc/LICENSING.md`](../../doc/LICENSING.md).
+
 Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, §14;
 [`DELIVERY_PLAN.md`](../../DELIVERY_PLAN.md) Stages 4, 6, 7, and 8d–8e;
 [`CLUSTER_SPEC.md`](../../CLUSTER_SPEC.md) §13 (client routing), §17 (coverage).
@@ -24,7 +28,7 @@ Normative sources: repository root [`DX_SPEC.md`](../../DX_SPEC.md) §§1–10, 
 | Remote | `Dingo::connect("dingo://host:port")` framed `dingo-rpc-v1` TCP (handshake + length-prefixed JSON); auth token, deadline, retry; optional diagnostic line mode |
 | Parity | Remote put/get/delete/scan, history, indexes, `get_payload`, server-side find, `directory` |
 | Cluster | `create_cluster` / `open_cluster`, client partition directory cache, `find_with_coverage` |
-| Network multi-hop | `serve_cluster_node` + multi-seed connect; leader routing from directory |
+| Network multi-hop | multi-seed connect + leader routing from directory (serve via `dingo-server`) |
 
 Application developers do not need to know about frames or segments.
 
@@ -36,11 +40,7 @@ Application developers do not need to know about frames or segments.
 | `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` or multi-seed `h1:p1,h2:p2` + `ConnectOptions` |
 | `Dingo::create_cluster` / `open_cluster` | In-process multi-node cluster; same collection API + route cache |
 | `ClientDirectoryCache` | Client partition → leader cache; refresh on stale placement |
-| `serve_store` / `serve_store_with` | Bounded TCP server (`ServeOptions` token, limits, shutdown; `directory` op) |
-| `serve_cluster_node` | Serve one cluster node; advertise placement + endpoints |
-| `ServerLimits` / `ServerRuntime` / `SERVER_PROFILE` | Connection admission, idle/drain timeouts, stats (DEF-030) |
-| `AdmissionLimits` / `AdmissionController` / `ADMISSION_PROFILE` | RPC rate, auth lockout, connect churn, expensive budgets, op-id replay (DEF-034) |
-| `PROTOCOL_PROFILE` / `RPC_WIRE_LABEL` / frame helpers | Framed RPC handshake + length-prefixed messages (DEF-031) |
+| `PROTOCOL_PROFILE` / `RPC_WIRE_LABEL` / frame helpers | Framed RPC handshake + length-prefixed messages (re-export of `dingo-client`; DEF-031) |
 | `Dingo::collection` | Lazy named collection handle (no disk write) |
 | `Dingo::list_collections` / `rebuild_catalogs` | Derived catalog (rebuild embedded only) |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |
@@ -52,13 +52,15 @@ Application developers do not need to know about frames or segments.
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list / continue_build secondary indexes (DEF-027 lifecycle; embedded + remote create/rebuild) |
 | `Collection::history` | Immutable event stream for one key (embedded + remote) |
-| `handle_connection` / `handle_connection_with` / `handle_connection_shared` | Per-connection server dispatch (shared store owner for workers) |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget (docs, bytes, result memory) / `allow_partial_coverage` |
 | `Filter::to_sda` / `matches_sda` / `QueryPlan` | Filter→SDA alignment + versioned plans (`QUERY_PLAN_PROFILE`, DEF-028) |
 | `ResourceLimits` / `CancelToken` / `RESOURCE_PROFILE` | Host depth/payload/RPC ceilings + cooperative cancel (DEF-029) |
 | `WriteReceipt` / `DeleteReceipt` | Event identity + achieved durability |
 | `Error::code` / `ErrorCode` | Stable machine codes (DX §15) |
 | `SDK_API_VERSION` | Product freeze label for this collection surface |
+
+Serve path (`serve_store`, `serve_cluster_node`, authz, admission, bounds):
+**`dingo-server`**, not this crate.
 
 ## Quick example
 

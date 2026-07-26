@@ -3,6 +3,8 @@
 use dingo_cluster::{ClusterConfig, NodeId, PartitionId};
 use dingo_sdk::{json, Dingo, ErrorCode, Filter, QueryOptions};
 
+
+
 #[test]
 fn cluster_find_complete_when_healthy() {
     let dir = tempfile::tempdir().unwrap();
