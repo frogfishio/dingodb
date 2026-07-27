@@ -1,0 +1,42 @@
+[package]
+name = "dingo-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+# DEF-091 — cargo-fuzz targets for untrusted parsers. Not a workspace member;
+# build with: cargo +nightly fuzz run <target>  (requires cargo-fuzz installed).
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+dingo-format = { path = "../crates/dingo-format" }
+
+[[bin]]
+name = "decode_frame"
+path = "fuzz_targets/decode_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cbor_envelope"
+path = "fuzz_targets/cbor_envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scan_forward"
+path = "fuzz_targets/scan_forward.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scan_reverse"
+path = "fuzz_targets/scan_reverse.rs"
+test = false
+doc = false
+bench = false
