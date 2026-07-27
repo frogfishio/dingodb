@@ -120,6 +120,7 @@ let mut db = Dingo::create_cluster(
 |------|------------|
 | Embedded | `Dingo::open`, JSON/bytes put/get/delete, scan + streaming iter |
 | Filters | SDK-native `Filter` / `find` / `query`, secondary field indexes, budgets |
+| Multi-collection join | `Dingo::query().from(..).join(..).on(X,Y).collect()`; `.map_sda(..)` normalises |
 | History | Per-key immutable event stream |
 | Chunks | Completeness-aware `get_payload` for large bodies |
 | Remote | `Dingo::connect("dingo://host:port")` framed `dingo-rpc-v1` TCP; auth token, deadline, retry |
@@ -141,10 +142,12 @@ Application developers do not need to know about frames or segments.
 | `Collection::get_payload` | Completeness-aware chunked read |
 | `Collection::scan_keys` / `scan_json` / `scan_json_iter` / `scan_json_page` | Live scan |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration |
+| `Dingo::query` | Multi-collection equijoin (`from` / `join` / `on`) + optional SDA map |
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list secondary indexes |
 | `Collection::history` | Immutable event stream for one key |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget |
+| `MultiQuery` / `map_joined_sda` | Join bag then pure SDA normalisation |
 | `WriteReceipt` / `DeleteReceipt` | Event identity + achieved durability |
 | `Error::code` / `ErrorCode` | Stable machine codes |
 | `SDK_API_VERSION` | Product freeze label |

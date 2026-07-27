@@ -4,6 +4,7 @@
 use crate::cluster_backend::ClusterBackend;
 use crate::collection::Collection;
 use crate::error::Error;
+use crate::multi_query::MultiQuery;
 use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
 use crate::subject::validate_collection_name;
 #[cfg(feature = "cluster")]
@@ -194,6 +195,35 @@ impl Dingo {
         let name = name.into();
         validate_collection_name(&name)?;
         Ok(Collection::new(&mut self.backend, name))
+    }
+
+    /// Multi-collection join query axis (equijoin → optional SDA normalisation).
+    ///
+    /// Unlike [`Collection::query`] (single-collection filters), this builds a
+    /// SQL/Mongo-ish multi-table query: scan/filter each named collection, hash
+    /// equijoin on `X = Y`, then either return the rough joined bag or pass it
+    /// through pure SDA for projection/normalisation.
+    ///
+    /// ```ignore
+    /// let bag = db
+    ///     .query()
+    ///     .from("orders")
+    ///     .where_eq("status", "paid")
+    ///     .join("customers").on("customer_id", "id")
+    ///     .join("products").on("product_id", "id")
+    ///     .collect()?;
+    ///
+    /// let shaped = db
+    ///     .query()
+    ///     .from("orders")
+    ///     .join("customers").on("customer_id", "id")
+    ///     .map_sda(r#"{ yield row | row in input }"#)?;
+    /// ```
+    ///
+    /// Client-side only: not a distributed relational planner. Bound inputs
+    /// with per-source filters / budgets when collections are large.
+    pub fn query(&mut self) -> MultiQuery<'_> {
+        MultiQuery::new(self)
     }
 
     /// Number of live subjects across all collections (embedded).
