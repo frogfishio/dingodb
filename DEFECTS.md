@@ -21,6 +21,10 @@ partial outages, and operator mistakes.
 The work below is complete only when the release gates in §16 pass. A task is
 not complete merely because an API or type exists.
 
+For a short read on whether remaining labor is high-leverage vs polish thrash,
+see [doc/WORK_HORIZON.md](doc/WORK_HORIZON.md). Stages 0–9 of the delivery plan
+are complete; most §16 gates and several P0/P1 defects are not.
+
 ## 2. Current deployment classification
 
 Until this plan is complete, use these support labels:

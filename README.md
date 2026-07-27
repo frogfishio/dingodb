@@ -273,6 +273,7 @@ Progress is tracked openly:
 
 - [Capability matrix](doc/CAPABILITY_MATRIX.md)
 - [Production-readiness work](DEFECTS.md)
+- [Work horizon self-check](doc/WORK_HORIZON.md) (stages done vs remaining gates)
 - [Release artifacts (DEF-003)](doc/RELEASE_ARTIFACTS.md)
 - [Benchmark disclosure requirements](doc/BENCHMARK_DISCLOSURE.md)
 - [Delivery plan](DELIVERY_PLAN.md)

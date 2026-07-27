@@ -354,6 +354,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dingo-testrig"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dingo-store",
+ "getrandom 0.3.4",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "displaydoc"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

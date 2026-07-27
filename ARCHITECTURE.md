@@ -122,6 +122,8 @@ on the experimental path (DEF-035–041). Production local-cluster gates
 development `dingo serve`, experimental `serve-cluster` with Raft when attached,
 and offline node salvage. Maturity labels:
 [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md), [DEFECTS.md](DEFECTS.md).
+Work horizon (stage plan vs remaining gates):
+[doc/WORK_HORIZON.md](doc/WORK_HORIZON.md).
 
 ## Stage 9 (landed)
 

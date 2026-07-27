@@ -13,6 +13,10 @@ Run from the repo root (or set `DINGO_BIN` to a built `dingo` binary).
 | [`07_tier_move.sh`](07_tier_move.sh) | Tier/archive acceptance + [retention runbook](../../doc/RUNBOOK_RETENTION.md) |
 | [`08_kill_a_node.sh`](08_kill_a_node.sh) | Multi-hop `serve-cluster` + kill-node survivor |
 
+For a **scale + multi-hit chaos ladder** (1 GiB → 10 GiB → …), use the
+non-product harness [`dingo-testrig`](../../crates/dingo-testrig/README.md)
+(`scripts/testrig_smoke.sh` for a small smoke).
+
 ```sh
 chmod +x scripts/demos/*.sh
 ./scripts/demos/03_salvage_survives.sh
