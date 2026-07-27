@@ -397,6 +397,23 @@ fn eval_binop(op: &BinOpKind, lhs: Value, rhs: Value) -> Result<Value, EvalError
     match op {
         BinOpKind::Add => match (lhs, rhs) {
             (Value::Num(a), Value::Num(b)) => Ok(Value::Num(a.add(&b))),
+            // ENR1 attach / mergeFail via `+` (Prod or Map; field collision → t_enr_field_collision).
+            (Value::Prod(left), Value::Prod(right)) => Ok(merge_record_fields(
+                left,
+                right,
+                RecordKind::Prod,
+            )),
+            (Value::Map(left), Value::Map(right)) => {
+                Ok(merge_record_fields(left, right, RecordKind::Map))
+            }
+            (Value::Prod(left), Value::Map(right)) => Ok(merge_record_fields(
+                left,
+                right,
+                RecordKind::Prod,
+            )),
+            (Value::Map(left), Value::Prod(right)) => {
+                Ok(merge_record_fields(left, right, RecordKind::Map))
+            }
             _ => Ok(wrong_shape_value()),
         },
         BinOpKind::Sub => match (lhs, rhs) {
@@ -571,6 +588,30 @@ fn eval_binop(op: &BinOpKind, lhs: Value, rhs: Value) -> Result<Value, EvalError
             }
             _ => Ok(wrong_shape_value()),
         },
+    }
+}
+
+enum RecordKind {
+    Prod,
+    Map,
+}
+
+/// ENR1 mergeFail / attach: combine field maps; collide → `t_enr_field_collision`.
+fn merge_record_fields(
+    left: Vec<(String, Value)>,
+    right: Vec<(String, Value)>,
+    kind: RecordKind,
+) -> Value {
+    let mut out = left;
+    for (key, value) in right {
+        if out.iter().any(|(existing, _)| existing == &key) {
+            return fail_value("t_enr_field_collision", "field collision");
+        }
+        out.push((key, value));
+    }
+    match kind {
+        RecordKind::Prod => Value::Prod(out),
+        RecordKind::Map => Value::Map(out),
     }
 }
 

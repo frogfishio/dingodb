@@ -266,6 +266,32 @@ impl Parser {
 
     fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.parse_primary()?;
+        // ENR1 cardinality sugar: one?(B) / one!(B) → Call("one?"|"one!", [B]).
+        // Same compile path as ordinary SDA calls; see crates/enr-core/ENR1.md §03.
+        if let Expr::Ident(name) = &expr {
+            if name == "one"
+                && matches!(self.peek(), TokenKind::QMark | TokenKind::Bang)
+                && *self.peek_next() == TokenKind::LParen
+            {
+                let enr_name = match self.peek() {
+                    TokenKind::QMark => "one?",
+                    TokenKind::Bang => "one!",
+                    _ => unreachable!(),
+                };
+                self.advance(); // ? or !
+                self.advance(); // (
+                let mut args = Vec::new();
+                if *self.peek() != TokenKind::RParen {
+                    args.push(self.parse_expr()?);
+                    while *self.peek() == TokenKind::Comma {
+                        self.advance();
+                        args.push(self.parse_expr()?);
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+                expr = Expr::Call(Box::new(Expr::Ident(enr_name.to_string())), args);
+            }
+        }
         loop {
             match self.peek() {
                 TokenKind::Lt if self.is_selector_access() => {

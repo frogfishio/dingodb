@@ -22,7 +22,147 @@ pub fn call_stdlib(name: &str, args: Vec<Value>) -> Option<Result<Value, EvalErr
         "getPath" => Some(stdlib_get_path(args)),
         "startsWith" => Some(stdlib_starts_with(args)),
         "strContains" => Some(stdlib_str_contains(args)),
+        // ENR1 kernel (match-bag cardinality + combine). Same Program::parse compile path as SDA.
+        // Spec: crates/enr-core/ENR1.md minimal subset. Tags t_enr_*. ENR2 not implemented.
+        "one?" | "oneOpt" => Some(stdlib_enr_one_opt(args)),
+        "one!" | "oneReq" => Some(stdlib_enr_one_req(args)),
+        "only" => Some(stdlib_enr_only(args)),
+        "first" => Some(stdlib_enr_first(args)),
+        "last" => Some(stdlib_enr_last(args)),
+        "merge" => Some(stdlib_enr_merge(args)),
+        "asBag" | "matchBag" => Some(stdlib_as_bag(args)),
         _ => None,
+    }
+}
+
+fn enr_fail(code: &str, msg: &str) -> Value {
+    Value::Fail_(code.to_string(), msg.to_string())
+}
+
+fn enr_wrong_shape() -> Value {
+    enr_fail("t_enr_wrong_shape", "wrong shape")
+}
+
+/// Collect multiset items for ENR1 cardinality. Bag is the primitive match carrier;
+/// Seq is accepted (order-bearing host datasets). Set is accepted without order claim.
+fn enr_match_items(value: Value) -> Result<Vec<Value>, Value> {
+    match value {
+        Value::Bag(items) | Value::Seq(items) | Value::Set(items) => Ok(items),
+        _ => Err(enr_wrong_shape()),
+    }
+}
+
+/// `one?(B)` — 0 → None, 1 → Some(v), >1 → Fail(t_enr_duplicate).
+fn stdlib_enr_one_opt(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("one?", &args, 1)?;
+    let items = match enr_match_items(args.into_iter().next().unwrap()) {
+        Ok(items) => items,
+        Err(fail) => return Ok(fail),
+    };
+    match items.len() {
+        0 => Ok(Value::None_),
+        1 => Ok(Value::Some_(Box::new(items.into_iter().next().unwrap()))),
+        _ => Ok(enr_fail("t_enr_duplicate", "duplicate match")),
+    }
+}
+
+/// `one!(B)` — 0 → Fail(t_enr_missing), 1 → v, >1 → Fail(t_enr_duplicate).
+fn stdlib_enr_one_req(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("one!", &args, 1)?;
+    let items = match enr_match_items(args.into_iter().next().unwrap()) {
+        Ok(items) => items,
+        Err(fail) => return Ok(fail),
+    };
+    match items.len() {
+        0 => Ok(enr_fail("t_enr_missing", "missing match")),
+        1 => Ok(items.into_iter().next().unwrap()),
+        _ => Ok(enr_fail("t_enr_duplicate", "duplicate match")),
+    }
+}
+
+/// `only(B)` — exact uniqueness (same outcomes as `one!` for empty/multi).
+fn stdlib_enr_only(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("only", &args, 1)?;
+    let items = match enr_match_items(args.into_iter().next().unwrap()) {
+        Ok(items) => items,
+        Err(fail) => return Ok(fail),
+    };
+    match items.len() {
+        1 => Ok(items.into_iter().next().unwrap()),
+        0 => Ok(enr_fail("t_enr_missing", "missing match")),
+        _ => Ok(enr_fail("t_enr_duplicate", "duplicate match")),
+    }
+}
+
+/// `first(B)` — ordered policy only (Seq). Bag/Set → t_enr_unordered_policy.
+fn stdlib_enr_first(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("first", &args, 1)?;
+    match args.into_iter().next().unwrap() {
+        Value::Seq(items) => match items.into_iter().next() {
+            Some(v) => Ok(Value::Some_(Box::new(v))),
+            None => Ok(Value::None_),
+        },
+        Value::Bag(_) | Value::Set(_) => Ok(enr_fail(
+            "t_enr_unordered_policy",
+            "unordered policy",
+        )),
+        _ => Ok(enr_wrong_shape()),
+    }
+}
+
+/// `last(B)` — ordered policy only (Seq).
+fn stdlib_enr_last(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("last", &args, 1)?;
+    match args.into_iter().next().unwrap() {
+        Value::Seq(items) => match items.into_iter().next_back() {
+            Some(v) => Ok(Value::Some_(Box::new(v))),
+            None => Ok(Value::None_),
+        },
+        Value::Bag(_) | Value::Set(_) => Ok(enr_fail(
+            "t_enr_unordered_policy",
+            "unordered policy",
+        )),
+        _ => Ok(enr_wrong_shape()),
+    }
+}
+
+/// `merge(l, r)` — mergeFail on Prod/Map; collision → t_enr_field_collision.
+fn stdlib_enr_merge(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("merge", &args, 2)?;
+    let mut iter = args.into_iter();
+    let left = iter.next().unwrap();
+    let right = iter.next().unwrap();
+    Ok(match (left, right) {
+        (Value::Prod(l), Value::Prod(r)) => merge_kv(l, r, true),
+        (Value::Map(l), Value::Map(r)) => merge_kv(l, r, false),
+        (Value::Prod(l), Value::Map(r)) => merge_kv(l, r, true),
+        (Value::Map(l), Value::Prod(r)) => merge_kv(l, r, false),
+        _ => enr_wrong_shape(),
+    })
+}
+
+fn merge_kv(left: Vec<(String, Value)>, right: Vec<(String, Value)>, as_prod: bool) -> Value {
+    let mut out = left;
+    for (key, value) in right {
+        if out.iter().any(|(existing, _)| existing == &key) {
+            return enr_fail("t_enr_field_collision", "field collision");
+        }
+        out.push((key, value));
+    }
+    if as_prod {
+        Value::Prod(out)
+    } else {
+        Value::Map(out)
+    }
+}
+
+/// `asBag` / `matchBag` — force ENR match-bag carrier (Bag) from Seq/Set/Bag.
+fn stdlib_as_bag(args: Vec<Value>) -> Result<Value, EvalError> {
+    check_arity("asBag", &args, 1)?;
+    match args.into_iter().next().unwrap() {
+        Value::Bag(items) => Ok(Value::Bag(items)),
+        Value::Seq(items) | Value::Set(items) => Ok(Value::Bag(items)),
+        _ => Ok(enr_wrong_shape()),
     }
 }
 

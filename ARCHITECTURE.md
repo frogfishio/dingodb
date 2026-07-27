@@ -18,6 +18,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
 | SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
+| Enrichment algebra (ENR1 kernel in `sda-lib`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](CLUSTER_SPEC.md) |
 | Product framing | [USP.md](USP.md) |
 | Staged delivery and exit criteria | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) |
@@ -48,6 +49,7 @@ dingodb/
   crates/
     sda-core/       # package name sda-lib; pure SDA (Stage 1) — MIT
     sda-cli/        # package name sda; `sda` binary (Stage 1) — MIT
+    enr-core/       # ENR1/ENR2 specs; ENR1 runtime lives in sda-lib (one compile path)
     dingo-format/   # frames, CBOR envelopes, seal, scan, §13 corpus (Stage 2a–2d) — MIT
     dingo-client/   # framed RPC + handshake only — MIT
     dingo-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to) — MPL-2.0

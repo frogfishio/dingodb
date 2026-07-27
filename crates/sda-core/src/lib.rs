@@ -46,6 +46,14 @@ pub type Env = HashMap<String, Value>;
 /// (and an explicit DELIVERY_PLAN / CHANGELOG note).
 pub const CONFORMANCE_CORPUS_TAG: &str = "sda-standalone-v1.0";
 
+/// ENR1 enrichment kernel profile identity (additive to standalone SDA).
+///
+/// Match-bag cardinality (`one?` / `one!` / `only` / `first` / `last`),
+/// `merge` / `+` attach, and `asBag` / `matchBag` share [`Program::parse`] with
+/// core SDA — one compile path. Spec: `crates/enr-core/ENR1.md`. ENR2 is not
+/// implemented. See `tests/enr1_kernel.rs`.
+pub const ENR1_PROFILE_TAG: &str = "sda-enr1-v0.1";
+
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct SdaRuntime;
 
@@ -59,6 +67,12 @@ impl SdaRuntime {
     #[must_use]
     pub fn conformance_corpus_tag() -> &'static str {
         CONFORMANCE_CORPUS_TAG
+    }
+
+    /// Tag for the ENR1 enrichment kernel profile (additive; same parser).
+    #[must_use]
+    pub fn enr1_profile_tag() -> &'static str {
+        ENR1_PROFILE_TAG
     }
 }
 
