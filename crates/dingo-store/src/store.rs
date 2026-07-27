@@ -68,6 +68,12 @@ const META_VERSION: &str = "dingo-store-9\n";
 /// Soft max size of the active segment before auto-seal (bytes).
 const DEFAULT_SEAL_THRESHOLD: u64 = 4 * 1024 * 1024;
 
+/// Default writer shard count (legacy single-active segment).
+const DEFAULT_WRITER_SHARDS: usize = 1;
+
+/// Upper bound on writer shards (DEF-096 Axis B) — keeps pending seal backpressure sane.
+pub const MAX_WRITER_SHARDS: usize = 64;
+
 /// How many buffered/durable writes may land before a derived-state checkpoint
 /// (index cache + collection catalog) is forced (DEF-023 rate limit).
 ///
@@ -200,8 +206,12 @@ pub struct Store {
     durable_index: PrimaryIndex,
     /// Buffered/durable ops since the last derived-state disk checkpoint (DEF-023).
     derived_ops_since_checkpoint: u64,
-    /// Active in-memory segment + file, if any.
-    active: Option<ActiveWriter>,
+    /// Active segment per writer shard (DEF-096 Axis B). Length == `writer_shards`.
+    ///
+    /// Shard 0 with `writer_shards == 1` uses the legacy `active/active.dingo` path.
+    actives: Vec<Option<ActiveWriter>>,
+    /// Number of concurrent append shards (subject-hash routing). Always ≥ 1.
+    writer_shards: usize,
     /// Counter used to mint sortable segment ids (recovered from on-disk max).
     segment_seq: u64,
     /// Seal active segment when it reaches this many bytes.
@@ -239,7 +249,24 @@ struct ActiveWriter {
 
 impl Store {
     /// Create a new store at `path` (directory). Fails if a store already exists.
+    ///
+    /// Uses a single active segment (legacy layout). Prefer
+    /// [`Self::create_with_shards`] for multi-core append (DEF-096 Axis B).
     pub fn create(path: impl AsRef<Path>) -> Result<Self, StoreError> {
+        Self::create_with_shards(path, DEFAULT_WRITER_SHARDS)
+    }
+
+    /// Create a store with `writer_shards` independent active segments.
+    ///
+    /// Subjects are routed by BLAKE3 hash (`subject_item_id` prefix). Each shard
+    /// has its own file handle, append offset, and seal lifecycle. `writer_shards`
+    /// must be in `1..=MAX_WRITER_SHARDS`. Count is persisted under
+    /// `store-info/writer_shards` and recovered on open (DEF-096 Axis B).
+    pub fn create_with_shards(
+        path: impl AsRef<Path>,
+        writer_shards: usize,
+    ) -> Result<Self, StoreError> {
+        let writer_shards = writer_shards.clamp(1, MAX_WRITER_SHARDS);
         let paths = StorePaths::new(path.as_ref());
         if paths.looks_like_store() {
             return Err(StoreError::AlreadyExists(paths.root.clone()));
@@ -257,12 +284,19 @@ impl Store {
             }
         }
         paths.create_dirs()?;
+        // Ensure multi-shard active directories exist.
+        if writer_shards > 1 {
+            for shard in 0..writer_shards {
+                fs::create_dir_all(paths.active_shard_dir(shard, writer_shards))?;
+            }
+        }
         // Exclusive ownership before any authoritative write (DEF-020).
         let writer_lock = WriterLock::acquire(&paths)?;
         let store_id = random_id()?;
         let created_ns = now_ns();
         crate::atomic_file::write_atomic(&paths.store_id_file(), &store_id)?;
         crate::atomic_file::write_atomic(&paths.meta_file(), META_VERSION.as_bytes())?;
+        write_writer_shards_file(&paths, writer_shards)?;
         crate::failpoint::hit("store.create.after_meta")?;
         write_store_descriptor_file(&paths, store_id, created_ns)?;
         // Ensure parent dir entry is durable for create.
@@ -275,7 +309,8 @@ impl Store {
             index: PrimaryIndex::new(),
             durable_index: PrimaryIndex::new(),
             derived_ops_since_checkpoint: 0,
-            active: None,
+            actives: (0..writer_shards).map(|_| None).collect(),
+            writer_shards,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
@@ -289,8 +324,13 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
         };
-        store.start_active_segment()?;
-        store.persist_active(DurabilityMode::Durable)?;
+        // Scale pending-seal backpressure with shard count (each shard may rotate).
+        if let Some(pipe) = store.seal_pipeline.as_mut() {
+            pipe.max_pending_seals =
+                DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
+        }
+        store.start_all_active_segments()?;
+        store.persist_all_actives(DurabilityMode::Durable)?;
         crate::failpoint::hit("store.create.after_active_header")?;
         store.persist_index_cache()?;
         store.refresh_collection_catalog()?;
@@ -326,6 +366,7 @@ impl Store {
         // Store descriptor is framed evidence, not the sole identity map.
         // Mismatch with store_id is corrupt; absence is tolerated for older trees.
         verify_store_descriptor_if_present(&paths, store_id)?;
+        let writer_shards = read_writer_shards(&paths)?;
 
         let mut store = Self {
             paths,
@@ -334,7 +375,8 @@ impl Store {
             index: PrimaryIndex::new(),
             durable_index: PrimaryIndex::new(),
             derived_ops_since_checkpoint: 0,
-            active: None,
+            actives: (0..writer_shards).map(|_| None).collect(),
+            writer_shards,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
@@ -348,13 +390,17 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
         };
+        if let Some(pipe) = store.seal_pipeline.as_mut() {
+            pipe.max_pending_seals =
+                DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
+        }
         store.load_tier_state()?;
         // Finish any pending seals left by a prior crash before index rebuild.
         let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
         store.load_or_rebuild_index()?;
         store.load_or_rebuild_catalog()?;
         store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
-        store.resume_or_start_active()?;
+        store.resume_or_start_all_actives()?;
         // Finish or cancel incomplete compaction jobs (DEF-024).
         let _ = store.recover_compact_jobs()?;
         Ok(store)
@@ -381,6 +427,7 @@ impl Store {
         }
         verify_store_descriptor_if_present(&paths, store_id)?;
 
+        let writer_shards = read_writer_shards(&paths)?;
         let mut store = Self {
             paths,
             store_id,
@@ -388,7 +435,8 @@ impl Store {
             index: PrimaryIndex::new(),
             durable_index: PrimaryIndex::new(),
             derived_ops_since_checkpoint: 0,
-            active: None,
+            actives: (0..writer_shards).map(|_| None).collect(),
+            writer_shards,
             segment_seq: 0,
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
@@ -405,7 +453,8 @@ impl Store {
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
         store.load_or_rebuild_index_readonly()?;
-        let seg_paths = all_segment_paths(&store.paths, Some(&store.tier_placement))?;
+        let seg_paths =
+            all_segment_paths(&store.paths, Some(&store.tier_placement), store.writer_shards)?;
         let fp = segment_fingerprint(&seg_paths)?;
         // Catalog: load if valid, else rebuild in memory only (no write).
         let cat_path = crate::catalog::collections_catalog_path(&store.paths.catalogs_dir());
@@ -417,6 +466,25 @@ impl Store {
         }
         // Intentionally no resume_or_start_active — no writer handle.
         Ok(store)
+    }
+
+    /// Number of writer shards (DEF-096 Axis B). Always ≥ 1.
+    pub fn writer_shards(&self) -> usize {
+        self.writer_shards.max(1)
+    }
+
+    /// Home shard for `subject` bytes (stable BLAKE3-derived).
+    pub fn subject_shard(&self, subject: &[u8]) -> usize {
+        subject_writer_shard(subject, self.writer_shards())
+    }
+
+    /// Writer model label for benchmark disclosure.
+    pub fn writer_model(&self) -> &'static str {
+        if self.writer_shards() <= 1 {
+            "single_active_segment"
+        } else {
+            "sharded_active_segments"
+        }
     }
 
     /// Store root path.
@@ -659,6 +727,9 @@ impl Store {
     /// Bodies larger than the chunk threshold are stored as chunked payloads
     /// (FORMAT_SPEC §8). The primary index retains the chunk manifest; get
     /// reassembles surviving chunks.
+    ///
+    /// With [`Self::create_with_shards`] / multi-shard open, the subject is
+    /// routed to its home writer shard (DEF-096 Axis B).
     pub fn put(
         &mut self,
         subject: &str,
@@ -675,6 +746,223 @@ impl Store {
         } else {
             self.write_event(subject, EventKind::Put, value, mode)
         }
+    }
+
+    /// Put many items, partitioning by subject hash across writer shards.
+    ///
+    /// When `writer_shards > 1` and items are non-chunked buffered/durable puts,
+    /// shard appends run in parallel (`std::thread::scope`) then the primary
+    /// index is published serially. Memory mode, chunked bodies, or a single
+    /// shard fall back to sequential [`Self::put`] (DEF-096 Axis B).
+    pub fn put_many(
+        &mut self,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let parallel_ok = self.writer_shards() > 1
+            && mode != DurabilityMode::Memory
+            && items.iter().all(|(_, b)| b.len() <= self.chunk_threshold);
+        if !parallel_ok {
+            let mut out = Vec::with_capacity(items.len());
+            for (subject, value) in items {
+                out.push(self.put(subject, value, mode)?);
+            }
+            return Ok(out);
+        }
+        self.put_many_parallel(items, mode)
+    }
+
+    /// Parallel multi-shard append path (non-chunked durable/buffered only).
+    fn put_many_parallel(
+        &mut self,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        use std::thread;
+
+        let n = self.writer_shards();
+        // Ensure actives and honor auto-seal before taking writers out.
+        for shard in 0..n {
+            self.ensure_active(shard)?;
+            self.maybe_auto_seal(shard)?;
+        }
+
+        // Partition item indices by home shard.
+        let mut by_shard: Vec<Vec<usize>> = (0..n).map(|_| Vec::new()).collect();
+        for (i, (subject, _)) in items.iter().enumerate() {
+            let shard = self.subject_shard(subject.as_bytes());
+            by_shard[shard].push(i);
+        }
+
+        // Pre-mint identities and encode envelopes while we still have &mut self.
+        struct Prepared {
+            item_idx: usize,
+            subject: Vec<u8>,
+            body: Vec<u8>,
+            segment_id: [u8; 16],
+            item_id: [u8; 16],
+            event_id: [u8; 16],
+            envelope: Vec<u8>,
+        }
+        let mut prepared: Vec<Vec<Prepared>> = (0..n).map(|_| Vec::new()).collect();
+        for shard in 0..n {
+            let segment_id = self
+                .active_ref(shard)
+                .map(|w| w.segment_id)
+                .expect("active segment");
+            for &item_idx in &by_shard[shard] {
+                let (subject, body) = items[item_idx];
+                let subject_bytes = subject.as_bytes();
+                if subject_bytes.len() > MAX_SUBJECT_LEN {
+                    return Err(StoreError::SubjectTooLong {
+                        max: MAX_SUBJECT_LEN,
+                    });
+                }
+                if body.len() as u64 > self.limits.max_body_len {
+                    return Err(StoreError::PayloadTooLarge);
+                }
+                let item_id = match self.index.get(subject_bytes) {
+                    Some(entry) => entry.item_id(),
+                    None => subject_item_id(subject_bytes),
+                };
+                let event_id = self.next_event_id()?;
+                let env = ItemEnvelope {
+                    store_id: self.store_id,
+                    segment_id,
+                    item_id,
+                    event_kind: EventKind::Put,
+                    created_ns: now_ns(),
+                    subject: subject_bytes.to_vec(),
+                };
+                let envelope = encode_item_envelope(&env).map_err(StoreError::BadEnvelope)?;
+                if !self
+                    .limits
+                    .accepts_lengths(envelope.len() as u32, body.len() as u64)
+                {
+                    return Err(StoreError::PayloadTooLarge);
+                }
+                prepared[shard].push(Prepared {
+                    item_idx,
+                    subject: subject_bytes.to_vec(),
+                    body: body.to_vec(),
+                    segment_id,
+                    item_id,
+                    event_id,
+                    envelope,
+                });
+            }
+        }
+
+        // Pull writers out so each shard thread owns one ActiveWriter exclusively.
+        // Mutex lets each scoped thread hold a unique shard without split_at_mut.
+        let writers: Vec<std::sync::Mutex<Option<ActiveWriter>>> = (0..n)
+            .map(|s| std::sync::Mutex::new(self.take_active(s)))
+            .collect();
+        let store_id = self.store_id;
+
+        // Results: (item_idx, offset, segment_id, item_id, event_id, subject, body)
+        type ShardRow = (usize, u64, [u8; 16], [u8; 16], [u8; 16], Vec<u8>, Vec<u8>);
+        type ShardOut = Result<Vec<ShardRow>, StoreError>;
+        let shard_outputs: Vec<std::sync::Mutex<ShardOut>> =
+            (0..n).map(|_| std::sync::Mutex::new(Ok(Vec::new()))).collect();
+
+        thread::scope(|scope| {
+            for shard in 0..n {
+                let prep = std::mem::take(&mut prepared[shard]);
+                if prep.is_empty() {
+                    continue;
+                }
+                let writer_mu = &writers[shard];
+                let out_mu = &shard_outputs[shard];
+                scope.spawn(move || {
+                    let mut writer_guard = writer_mu.lock().unwrap_or_else(|e| e.into_inner());
+                    let Some(writer) = writer_guard.as_mut() else {
+                        *out_mu.lock().unwrap_or_else(|e| e.into_inner()) =
+                            Err(StoreError::CorruptMeta("missing active writer for shard"));
+                        return;
+                    };
+                    let mut outs = Vec::with_capacity(prep.len());
+                    for p in prep {
+                        match writer.segment.append(
+                            FrameKind::ItemEvent,
+                            &p.envelope,
+                            &p.body,
+                            p.event_id,
+                        ) {
+                            Ok(offset) => {
+                                if let Err(e) = Self::write_segment_tail(writer, mode) {
+                                    *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
+                                    return;
+                                }
+                                outs.push((
+                                    p.item_idx,
+                                    offset,
+                                    p.segment_id,
+                                    p.item_id,
+                                    p.event_id,
+                                    p.subject,
+                                    p.body,
+                                ));
+                            }
+                            Err(e) => {
+                                *out_mu.lock().unwrap_or_else(|err| err.into_inner()) =
+                                    Err(StoreError::Segment(e));
+                                return;
+                            }
+                        }
+                    }
+                    *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Ok(outs);
+                });
+            }
+        });
+
+        // Restore writers before index publish / error return.
+        for (shard, mu) in writers.into_iter().enumerate() {
+            let w = mu.into_inner().unwrap_or_else(|e| e.into_inner());
+            self.set_active(shard, w);
+        }
+
+        let mut receipts: Vec<Option<WriteReceipt>> = (0..items.len()).map(|_| None).collect();
+        for out_mu in shard_outputs {
+            let batch = out_mu.into_inner().unwrap_or_else(|e| e.into_inner())?;
+            for (item_idx, offset, segment_id, item_id, event_id, subject, body) in batch {
+                self.apply_durable_event(
+                    subject.clone(),
+                    EventKind::Put,
+                    body,
+                    item_id,
+                    event_id,
+                    segment_id,
+                    0,
+                    offset,
+                );
+                self.note_collection_for_subject(&subject);
+                receipts[item_idx] = Some(WriteReceipt {
+                    store_id,
+                    segment_id,
+                    item_id,
+                    event_id,
+                    event_kind: EventKind::Put,
+                    durability: mode,
+                    offset,
+                });
+            }
+        }
+        let _ = self.note_durable_derived();
+
+        let mut out = Vec::with_capacity(items.len());
+        for (i, r) in receipts.into_iter().enumerate() {
+            out.push(r.ok_or_else(|| {
+                StoreError::CorruptMeta(match items.get(i) {
+                    Some(_) => "put_many missing receipt",
+                    None => "put_many index OOB",
+                })
+            })?);
+        }
+        Ok(out)
     }
 
     /// Resolve a client operation id for idempotent remote writes (DEF-010).
@@ -882,7 +1170,7 @@ impl Store {
         }
 
         self.seal_active()?;
-        let source_paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let source_paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         let sources: Vec<String> = source_paths
             .iter()
             .map(|p| examination_source_name(&self.paths.root, p))
@@ -1166,7 +1454,7 @@ impl Store {
 
     /// Write a derived checkpoint under `snapshots/` with declared coverage.
     pub fn checkpoint(&self, coverage: &str) -> Result<(CheckpointMeta, PathBuf), StoreError> {
-        let paths_list = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let paths_list = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         let fp = segment_fingerprint(&paths_list)?;
         // Resolve locator-only entries so the checkpoint still carries payloads.
         let mut live: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
@@ -1293,7 +1581,7 @@ impl Store {
 
     /// Current segment fingerprint (for index build coverage).
     pub fn segment_fingerprint(&self) -> Result<[u8; 32], StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         segment_fingerprint(&paths)
     }
 
@@ -1322,37 +1610,47 @@ impl Store {
     fn try_load_index_from_cache(&mut self) -> Result<bool, StoreError> {
         let sealed_paths = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let sealed_fp = segment_fingerprint(&sealed_paths)?;
-        let all_paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let all_paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         let cache_path = primary_cache_path(&self.paths.indexes_dir());
 
-        // DEF-023: v2 checkpoint + active-tail delta (O(changed bytes), not full rescan).
+        // DEF-023: v2/v3 checkpoint + active-tail delta (O(changed bytes), not full rescan).
         if let Some((mut index, frontier)) =
             try_load_primary_index_frontier(&cache_path, self.store_id)?
         {
             if frontier.sealed_fingerprint == sealed_fp {
-                let active_path = self.paths.active_segment();
-                let active_ok = match (
-                    active_path.is_file(),
-                    frontier.active_segment_id != [0u8; 16],
-                ) {
-                    (false, false) => true,
-                    (false, true) => {
-                        // Cache expected an active segment that is gone — treat as miss
-                        // only when covered_len was non-zero (empty active is fine).
-                        frontier.active_covered_len == 0
+                let active_ok = if self.writer_shards() > 1 {
+                    // Axis B: frontier is sealed-only; re-apply every active shard
+                    // fully (idempotent latest-wins overwrites same event ids).
+                    for path in self.paths.list_active_segment_paths(self.writer_shards()) {
+                        apply_active_tail(&mut index, &path, 0, self.limits)?;
                     }
-                    (true, _) => {
-                        let meta_len = fs::metadata(&active_path).map(|m| m.len()).unwrap_or(0);
-                        if meta_len < frontier.active_covered_len {
-                            false
-                        } else {
-                            apply_active_tail(
-                                &mut index,
-                                &active_path,
-                                frontier.active_covered_len,
-                                self.limits,
-                            )?;
-                            true
+                    true
+                } else {
+                    let active_path = self.paths.active_segment_for_shard(0, 1);
+                    match (
+                        active_path.is_file(),
+                        frontier.active_segment_id != [0u8; 16],
+                    ) {
+                        (false, false) => true,
+                        (false, true) => {
+                            // Cache expected an active segment that is gone — treat as miss
+                            // only when covered_len was non-zero (empty active is fine).
+                            frontier.active_covered_len == 0
+                        }
+                        (true, _) => {
+                            let meta_len =
+                                fs::metadata(&active_path).map(|m| m.len()).unwrap_or(0);
+                            if meta_len < frontier.active_covered_len {
+                                false
+                            } else {
+                                apply_active_tail(
+                                    &mut index,
+                                    &active_path,
+                                    frontier.active_covered_len,
+                                    self.limits,
+                                )?;
+                                true
+                            }
                         }
                     }
                 };
@@ -1387,11 +1685,16 @@ impl Store {
     }
 
     fn rebuild_index_from_segments(&mut self) -> Result<(), StoreError> {
-        self.index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
+        self.index = index_from_segments(
+            &self.paths,
+            self.limits,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         self.durable_index = self.index.clone();
         self.recompute_collection_catalogs_from_index();
         let sealed = list_dingo_files(&self.paths.segments_dir())?;
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
         self.derived_ops_since_checkpoint = 0;
         Ok(())
@@ -1416,14 +1719,24 @@ impl Store {
     }
 
     /// Sealed-set fingerprint + active covered length for the durable index.
+    ///
+    /// Multi-shard (Axis B): frontier records sealed-only coverage
+    /// (`active_segment_id = 0`); open re-applies all active shard files.
     fn current_index_frontier(&self) -> Result<IndexFrontier, StoreError> {
         let sealed = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let sealed_fingerprint = segment_fingerprint(&sealed)?;
-        let (active_segment_id, active_covered_len) = match &self.active {
+        if self.writer_shards() > 1 {
+            return Ok(IndexFrontier {
+                sealed_fingerprint,
+                active_segment_id: [0u8; 16],
+                active_covered_len: 0,
+            });
+        }
+        let (active_segment_id, active_covered_len) = match self.active_ref(0) {
             Some(w) => (w.segment_id, w.durable_len),
             None => {
                 // No writer handle (inspect) or inactive: use on-disk active metadata.
-                let path = self.paths.active_segment();
+                let path = self.paths.active_segment_for_shard(0, 1);
                 if path.is_file() {
                     let len = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                     // Segment id unknown without scanning; zeros means "any/unknown".
@@ -1534,16 +1847,14 @@ impl Store {
             return Ok(lv.body.clone());
         }
         // Prefer in-memory active segment (avoids re-read of just-written frames).
-        if let Some(w) = &self.active {
-            if w.segment_id == lv.segment_id {
-                let bytes = w.segment.as_bytes();
-                let off = lv.frame_offset as usize;
-                if off < bytes.len() {
-                    if let Ok((_h, _e, body, _hash, _len)) =
-                        dingo_format::verify_frame_at(&bytes[off..], self.limits)
-                    {
-                        return Ok(body.to_vec());
-                    }
+        if let Some(w) = self.find_active_by_segment(&lv.segment_id) {
+            let bytes = w.segment.as_bytes();
+            let off = lv.frame_offset as usize;
+            if off < bytes.len() {
+                if let Ok((_h, _e, body, _hash, _len)) =
+                    dingo_format::verify_frame_at(&bytes[off..], self.limits)
+                {
+                    return Ok(body.to_vec());
                 }
             }
         }
@@ -1565,11 +1876,20 @@ impl Store {
         frame_offset: u64,
     ) -> Result<Vec<u8>, StoreError> {
         let mut tried = Vec::new();
-        if let Some(w) = &self.active {
-            if w.segment_id == *segment_id {
-                let p = self.paths.active_segment();
-                if p.is_file() {
-                    tried.push(p);
+        if self.find_active_by_segment(segment_id).is_some() {
+            // Locate the on-disk path for this shard's active file.
+            let n = self.writer_shards();
+            for shard in 0..n {
+                if self
+                    .active_ref(shard)
+                    .map(|a| a.segment_id == *segment_id)
+                    .unwrap_or(false)
+                {
+                    let p = self.paths.active_segment_for_shard(shard, n);
+                    if p.is_file() {
+                        tried.push(p);
+                    }
+                    break;
                 }
             }
         }
@@ -1600,7 +1920,7 @@ impl Store {
             }
         }
         // Salvage/hash-renamed or swapped sealed files.
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
             if tried.iter().any(|t| t == &path) {
                 continue;
             }
@@ -1633,7 +1953,7 @@ impl Store {
         let mut item_events = 0u64;
         let mut holes = 0u64;
 
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
             let bytes = fs::read(&path)?;
             files_scanned += 1;
             let report = scan_forward(&bytes, self.limits);
@@ -1649,7 +1969,12 @@ impl Store {
             }
         }
 
-        let temp_index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
+        let temp_index = index_from_segments(
+            &self.paths,
+            self.limits,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         Ok(SalvageReport {
             files_scanned,
             verified_frames,
@@ -1678,7 +2003,7 @@ impl Store {
         package: impl AsRef<Path>,
     ) -> Result<crate::backup::BackupReport, StoreError> {
         let consistency = if self.writer_lock.is_some() {
-            self.persist_active(DurabilityMode::Durable)?;
+            self.persist_all_actives(DurabilityMode::Durable)?;
             crate::backup::BackupConsistency::FlushedExclusive
         } else {
             crate::backup::BackupConsistency::OnDiskInspect
@@ -1774,7 +2099,7 @@ impl Store {
         opts: crate::MigrateOptions,
     ) -> Result<crate::MigrateReport, StoreError> {
         if self.writer_lock.is_some() {
-            self.persist_active(DurabilityMode::Durable)?;
+            self.persist_all_actives(DurabilityMode::Durable)?;
         }
         crate::migrate::migrate_store(&self.paths.root, dest.as_ref(), self.store_id, opts)
     }
@@ -1806,7 +2131,7 @@ impl Store {
         drop(dest_store);
 
         let mut source_files = Vec::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
             let rel = examination_source_name(&self.paths.root, &path);
             source_files.push((rel, path));
         }
@@ -1900,7 +2225,7 @@ impl Store {
     /// examination units without depending on catalogs or indexes.
     pub fn examination_sources(&self) -> Result<Vec<(String, Vec<u8>)>, StoreError> {
         let mut out = Vec::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
             let source = examination_source_name(&self.paths.root, &path);
             let bytes = fs::read(&path)?;
             out.push((source, bytes));
@@ -1913,7 +2238,7 @@ impl Store {
         self.limits
     }
 
-    /// Seal the active segment if present, moving it to `segments/`.
+    /// Seal every active writer shard, moving each to `segments/`.
     ///
     /// Seal work is **O(active segment size)** for placement + catalog update.
     /// It does **not** rewrite the full primary index cache (that was O(N) in
@@ -1925,8 +2250,16 @@ impl Store {
     pub fn seal_active(&mut self) -> Result<(), StoreError> {
         // Drain background finalizers so sealed set is consistent.
         self.drain_lifecycle()?;
+        let n = self.writer_shards();
+        for shard in 0..n {
+            self.seal_active_shard(shard)?;
+        }
+        Ok(())
+    }
 
-        let Some(mut writer) = self.active.take() else {
+    /// Synchronously seal one writer shard (DEF-096 Axis B).
+    fn seal_active_shard(&mut self, shard: usize) -> Result<(), StoreError> {
+        let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
         // Ensure all buffered bytes are on the file before seal rewrite.
@@ -1956,12 +2289,12 @@ impl Store {
         // Truncate/remove active.
         let sealed_id = writer.segment_id;
         drop(writer.file);
-        let active_path = self.paths.active_segment();
+        let active_path = self.paths.active_segment_for_shard(shard, self.writer_shards());
         if active_path.exists() {
             fs::remove_file(&active_path)?;
         }
         crate::failpoint::hit("store.seal.after_active_remove")?;
-        sync_dir(&self.paths.active_dir())?;
+        sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
 
         // Stage 9: register sealed segment on hot tier using the in-memory hash
         // (no second full-file read). Catalog upsert is O(this segment only).
@@ -1981,8 +2314,8 @@ impl Store {
         let _ = self.write_chimera_for_sealed(sealed_id);
 
         self.segment_seq = self.segment_seq.saturating_add(1);
-        self.start_active_segment()?;
-        self.persist_active(DurabilityMode::Durable)?;
+        self.start_active_segment(shard)?;
+        self.persist_active_shard(shard, DurabilityMode::Durable)?;
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
     }
@@ -2125,9 +2458,9 @@ impl Store {
         Ok(())
     }
 
-    /// O(1) foreground rotate: rename active → pending, start new active, enqueue
-    /// background finalize (DEF-096 Axis A).
-    fn rotate_active_async(&mut self) -> Result<(), StoreError> {
+    /// O(1) foreground rotate for one shard: rename active → pending, start new
+    /// active, enqueue background finalize (DEF-096 Axis A / B).
+    fn rotate_active_async(&mut self, shard: usize) -> Result<(), StoreError> {
         let _ = self.poll_lifecycle();
         // Backpressure when workers lag (bound pending seals).
         while self
@@ -2141,7 +2474,7 @@ impl Store {
             }
         }
 
-        let Some(mut writer) = self.active.take() else {
+        let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
         // Durable flush so pending file is crash-safe before we open a new active.
@@ -2149,7 +2482,8 @@ impl Store {
         let segment_id = writer.segment_id;
         drop(writer); // close file handle; bytes remain at active path
 
-        let active_path = self.paths.active_segment();
+        let n = self.writer_shards();
+        let active_path = self.paths.active_segment_for_shard(shard, n);
         let pending_dir = self.paths.pending_seal_dir();
         fs::create_dir_all(&pending_dir)?;
         let pending_path = self.paths.pending_segment(&segment_id);
@@ -2166,16 +2500,18 @@ impl Store {
             );
         }
         fs::rename(&active_path, &pending_path)?;
-        sync_dir(&self.paths.active_dir())?;
+        sync_dir(&self.paths.active_shard_dir(shard, n))?;
         let _ = sync_dir(&pending_dir);
 
         self.segment_seq = self.segment_seq.saturating_add(1);
-        self.start_active_segment()?;
-        self.persist_active(DurabilityMode::Durable)?;
+        self.start_active_segment(shard)?;
+        self.persist_active_shard(shard, DurabilityMode::Durable)?;
 
         if let Some(pipe) = self.seal_pipeline.as_mut() {
             pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
-            let max = pipe.max_pending_seals.max(DEFAULT_MAX_PENDING_SEALS);
+            let max = pipe
+                .max_pending_seals
+                .max(DEFAULT_MAX_PENDING_SEALS.saturating_mul(n.max(1)));
             pipe.max_pending_seals = max;
             pipe.submit_seal(LifecycleJob::FinalizeSeal {
                 store_id: self.store_id,
@@ -2215,20 +2551,19 @@ impl Store {
         Ok(())
     }
 
-    /// Seal or rotate when the active segment is at/over the threshold.
-    fn maybe_auto_seal(&mut self) -> Result<(), StoreError> {
+    /// Seal or rotate when the given shard's active segment is at/over threshold.
+    fn maybe_auto_seal(&mut self, shard: usize) -> Result<(), StoreError> {
         let need = self
-            .active
-            .as_ref()
+            .active_ref(shard)
             .map(|w| w.segment.len() >= self.seal_threshold)
             .unwrap_or(false);
         if !need {
             return Ok(());
         }
         if self.async_lifecycle_enabled() {
-            self.rotate_active_async()
+            self.rotate_active_async(shard)
         } else {
-            self.seal_active()
+            self.seal_active_shard(shard)
         }
     }
 
@@ -2685,7 +3020,7 @@ impl Store {
     }
 
     fn load_or_rebuild_catalog(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         let fp = segment_fingerprint(&paths)?;
         let cat_path = crate::catalog::collections_catalog_path(&self.paths.catalogs_dir());
         if let Some(cat) = try_load_collection_catalog(&cat_path, self.store_id, fp)? {
@@ -2699,7 +3034,7 @@ impl Store {
     }
 
     fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         let fp = segment_fingerprint(&paths)?;
         // DEF-013 / DEF-023: persist only the durable name set (no segment rescan,
         // no O(N) subject walk — names are maintained incrementally on put/delete).
@@ -2726,14 +3061,12 @@ impl Store {
                 max: MAX_SUBJECT_LEN,
             });
         }
-        if self.active.is_none() {
-            self.start_active_segment()?;
-        }
-        self.maybe_auto_seal()?;
+        let shard = self.subject_shard(subject_bytes);
+        self.ensure_active(shard)?;
+        self.maybe_auto_seal(shard)?;
 
         let segment_id = self
-            .active
-            .as_ref()
+            .active_ref(shard)
             .map(|w| w.segment_id)
             .expect("active segment");
         let item_id = match self.index.get(subject_bytes) {
@@ -2767,7 +3100,7 @@ impl Store {
         let chunk_envelopes = chunk_envelopes?;
 
         {
-            let writer = self.active.as_mut().expect("active segment");
+            let writer = self.active_mut(shard).expect("active segment");
             for (piece, (chunk_event_id, envelope)) in pieces
                 .iter()
                 .zip(chunk_event_ids.iter().zip(chunk_envelopes.iter()))
@@ -2805,7 +3138,7 @@ impl Store {
         .map_err(StoreError::BadEnvelope)?;
 
         let offset = {
-            let writer = self.active.as_mut().expect("active segment");
+            let writer = self.active_mut(shard).expect("active segment");
             let header = FrameHeader {
                 wire_major: dingo_format::WIRE_MAJOR,
                 wire_minor: dingo_format::WIRE_MINOR,
@@ -2866,7 +3199,7 @@ impl Store {
     ) -> Result<Vec<dingo_format::ChunkPiece>, StoreError> {
         let mut pieces = Vec::new();
         let mut seen_hashes: HashSet<([u8; 16], u32, [u8; 32])> = HashSet::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
             let bytes = fs::read(&path)?;
             let report = scan_forward(&bytes, self.limits);
             for (_offset, frame) in report.verified_frames() {
@@ -2908,15 +3241,14 @@ impl Store {
             return Err(StoreError::PayloadTooLarge);
         }
 
+        let shard = self.subject_shard(subject_bytes);
+
         // DEF-013: memory mode is visibility-only — never append frames that a
         // later durable write would flush via write_segment_tail.
         if mode == DurabilityMode::Memory {
-            if self.active.is_none() {
-                self.start_active_segment()?;
-            }
+            self.ensure_active(shard)?;
             let segment_id = self
-                .active
-                .as_ref()
+                .active_ref(shard)
                 .map(|w| w.segment_id)
                 .expect("active segment");
             let item_id = match self.index.get(subject_bytes) {
@@ -2950,16 +3282,13 @@ impl Store {
             });
         }
 
-        if self.active.is_none() {
-            self.start_active_segment()?;
-        }
+        self.ensure_active(shard)?;
 
         // Maybe seal/rotate first if oversized (async lifecycle: DEF-096 Axis A).
-        self.maybe_auto_seal()?;
+        self.maybe_auto_seal(shard)?;
 
         let segment_id = self
-            .active
-            .as_ref()
+            .active_ref(shard)
             .map(|w| w.segment_id)
             .expect("active segment");
 
@@ -2986,7 +3315,7 @@ impl Store {
             return Err(StoreError::PayloadTooLarge);
         }
 
-        let writer = self.active.as_mut().expect("active segment");
+        let writer = self.active_mut(shard).expect("active segment");
         let offset = writer
             .segment
             .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
@@ -3066,22 +3395,41 @@ impl Store {
         Self::write_segment_tail(writer, mode)
     }
 
-    fn persist_active(&mut self, mode: DurabilityMode) -> Result<(), StoreError> {
-        if let Some(writer) = self.active.as_mut() {
+    fn persist_all_actives(&mut self, mode: DurabilityMode) -> Result<(), StoreError> {
+        let n = self.writer_shards();
+        for shard in 0..n {
+            self.persist_active_shard(shard, mode)?;
+        }
+        Ok(())
+    }
+
+    fn persist_active_shard(&mut self, shard: usize, mode: DurabilityMode) -> Result<(), StoreError> {
+        if let Some(writer) = self.active_mut(shard) {
             Self::write_segment_tail(writer, mode)?;
             if mode == DurabilityMode::Durable {
                 crate::failpoint::hit("store.active.dir_sync")?;
-                sync_dir(&self.paths.active_dir())?;
+                sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
             }
         }
         Ok(())
     }
 
-    fn start_active_segment(&mut self) -> Result<(), StoreError> {
+    fn start_all_active_segments(&mut self) -> Result<(), StoreError> {
+        let n = self.writer_shards();
+        for shard in 0..n {
+            self.start_active_segment(shard)?;
+        }
+        Ok(())
+    }
+
+    fn start_active_segment(&mut self, shard: usize) -> Result<(), StoreError> {
+        let n = self.writer_shards();
         let segment_id = self.next_segment_id();
         let ids = SegmentId::new(self.store_id, segment_id);
         let segment = ActiveSegment::create(ids, self.limits, now_ns())?;
-        let path = self.paths.active_segment();
+        let dir = self.paths.active_shard_dir(shard, n);
+        fs::create_dir_all(&dir)?;
+        let path = self.paths.active_segment_for_shard(shard, n);
         let mut file = OpenOptions::new()
             .create(true)
             .read(true)
@@ -3091,20 +3439,32 @@ impl Store {
         file.write_all(segment.as_bytes())?;
         let durable_len = segment.len();
         file.sync_all()?;
-        self.active = Some(ActiveWriter {
-            segment_id,
-            segment,
-            file,
-            durable_len,
-        });
+        self.set_active(
+            shard,
+            Some(ActiveWriter {
+                segment_id,
+                segment,
+                file,
+                durable_len,
+            }),
+        );
         Ok(())
     }
 
-    fn resume_or_start_active(&mut self) -> Result<(), StoreError> {
-        let path = self.paths.active_segment();
+    fn resume_or_start_all_actives(&mut self) -> Result<(), StoreError> {
+        let n = self.writer_shards();
+        for shard in 0..n {
+            self.resume_or_start_active_shard(shard)?;
+        }
+        Ok(())
+    }
+
+    fn resume_or_start_active_shard(&mut self, shard: usize) -> Result<(), StoreError> {
+        let n = self.writer_shards();
+        let path = self.paths.active_segment_for_shard(shard, n);
         if !path.exists() {
-            self.start_active_segment()?;
-            self.persist_active(DurabilityMode::Durable)?;
+            self.start_active_segment(shard)?;
+            self.persist_active_shard(shard, DurabilityMode::Durable)?;
             return Ok(());
         }
 
@@ -3128,12 +3488,48 @@ impl Store {
         file.write_all(rebuilt.as_bytes())?;
         file.sync_all()?;
 
-        self.active = Some(ActiveWriter {
-            segment_id,
-            segment: rebuilt,
-            file,
-            durable_len,
-        });
+        self.set_active(
+            shard,
+            Some(ActiveWriter {
+                segment_id,
+                segment: rebuilt,
+                file,
+                durable_len,
+            }),
+        );
+        Ok(())
+    }
+
+    fn take_active(&mut self, shard: usize) -> Option<ActiveWriter> {
+        self.actives.get_mut(shard).and_then(|s| s.take())
+    }
+
+    fn set_active(&mut self, shard: usize, writer: Option<ActiveWriter>) {
+        if shard < self.actives.len() {
+            self.actives[shard] = writer;
+        }
+    }
+
+    fn active_ref(&self, shard: usize) -> Option<&ActiveWriter> {
+        self.actives.get(shard).and_then(|s| s.as_ref())
+    }
+
+    fn active_mut(&mut self, shard: usize) -> Option<&mut ActiveWriter> {
+        self.actives.get_mut(shard).and_then(|s| s.as_mut())
+    }
+
+    /// Find the in-memory active writer that owns `segment_id`, if any.
+    fn find_active_by_segment(&self, segment_id: &[u8; 16]) -> Option<&ActiveWriter> {
+        self.actives
+            .iter()
+            .filter_map(|s| s.as_ref())
+            .find(|w| w.segment_id == *segment_id)
+    }
+
+    fn ensure_active(&mut self, shard: usize) -> Result<(), StoreError> {
+        if self.active_ref(shard).is_none() {
+            self.start_active_segment(shard)?;
+        }
         Ok(())
     }
 
@@ -3147,6 +3543,41 @@ impl Store {
     fn next_event_id(&mut self) -> Result<[u8; 16], StoreError> {
         random_id()
     }
+}
+
+/// Stable home shard for a subject under `writer_shards` (DEF-096 Axis B).
+///
+/// Uses the first 8 LE bytes of [`subject_item_id`] (BLAKE3-derived) so routing
+/// matches item lineage identity and is independent of UTF-8 string form.
+pub fn subject_writer_shard(subject: &[u8], writer_shards: usize) -> usize {
+    let n = writer_shards.max(1);
+    if n == 1 {
+        return 0;
+    }
+    let id = subject_item_id(subject);
+    let h = u64::from_le_bytes(id[0..8].try_into().expect("8 bytes"));
+    (h % n as u64) as usize
+}
+
+fn write_writer_shards_file(paths: &StorePaths, writer_shards: usize) -> Result<(), StoreError> {
+    let n = writer_shards.clamp(1, MAX_WRITER_SHARDS);
+    let body = format!("{n}\n");
+    crate::atomic_file::write_atomic(&paths.writer_shards_file(), body.as_bytes())?;
+    Ok(())
+}
+
+fn read_writer_shards(paths: &StorePaths) -> Result<usize, StoreError> {
+    let path = paths.writer_shards_file();
+    if !path.is_file() {
+        return Ok(DEFAULT_WRITER_SHARDS);
+    }
+    let text = fs::read_to_string(&path).unwrap_or_default();
+    let n = text
+        .trim()
+        .parse::<usize>()
+        .unwrap_or(DEFAULT_WRITER_SHARDS)
+        .clamp(1, MAX_WRITER_SHARDS);
+    Ok(n)
 }
 
 /// One verified item event discovered on disk (shared with history module).
@@ -3179,17 +3610,20 @@ pub(crate) fn collect_item_events_for_history(
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
 ) -> Result<(Vec<DiskEventPub>, bool), StoreError> {
-    collect_item_events_tiered(paths, limits, placement)
+    // History scans discover actives from on-disk layout (legacy + shard dirs).
+    let writer_shards = read_writer_shards(paths).unwrap_or(1);
+    collect_item_events_tiered(paths, limits, placement, writer_shards)
 }
 
 fn collect_item_events_tiered(
     paths: &StorePaths,
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
+    writer_shards: usize,
 ) -> Result<(Vec<DiskEventPub>, bool), StoreError> {
     let mut events = Vec::new();
     let mut has_holes = false;
-    for path in all_segment_paths(paths, placement)? {
+    for path in all_segment_paths(paths, placement, writer_shards)? {
         let bytes = fs::read(&path)?;
         let report = scan_forward(&bytes, limits);
         if report.holes().next().is_some() {
@@ -3310,17 +3744,18 @@ fn sealed_segment_paths(
 fn all_segment_paths(
     paths: &StorePaths,
     placement: Option<&TierPlacement>,
+    writer_shards: usize,
 ) -> Result<Vec<PathBuf>, StoreError> {
     let mut out = sealed_segment_paths(paths, placement)?;
     // DEF-096: pending seals are still authoritative for locators / rebuild.
     for p in list_pending_paths(paths)? {
         out.push(p);
     }
-    let active = paths.active_segment();
-    if active.is_file() {
-        out.push(active);
+    // Axis B: every active shard file is authoritative.
+    for p in paths.list_active_segment_paths(writer_shards.max(1)) {
+        out.push(p);
     }
-    // Sealed + pending first, then active last.
+    // Sealed + pending first, then actives last.
     Ok(out)
 }
 
@@ -3385,9 +3820,10 @@ fn collect_item_events_slim_for_index(
     paths: &StorePaths,
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
+    writer_shards: usize,
 ) -> Result<Vec<DiskEvent>, StoreError> {
     let mut events = Vec::new();
-    for path in all_segment_paths(paths, placement)? {
+    for path in all_segment_paths(paths, placement, writer_shards)? {
         let bytes = fs::read(&path)?;
         let report = scan_forward(&bytes, limits);
         for (offset, frame) in report.verified_frames() {
@@ -3430,8 +3866,9 @@ fn index_from_segments(
     paths: &StorePaths,
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
+    writer_shards: usize,
 ) -> Result<PrimaryIndex, StoreError> {
-    let mut events = collect_item_events_slim_for_index(paths, limits, placement)?;
+    let mut events = collect_item_events_slim_for_index(paths, limits, placement, writer_shards)?;
     events.sort_by(cmp_disk_events);
     let mut index = PrimaryIndex::new();
     let mut seen_events: HashSet<[u8; 16]> = HashSet::new();

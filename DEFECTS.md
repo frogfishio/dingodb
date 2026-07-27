@@ -631,15 +631,16 @@ lifecycle) so p99 is not coupled to lifecycle spikes. Preferred shape: dual (or
 more) active segment slots with O(1) foreground rotate; finalize seal, BLAKE3
 completion, and index checkpoints off the writer thread; bound pending seals
 with backpressure only when workers lag. **Landed as DEF-096 Axis A**
-(`seal_pipeline`, `active/pending/` rotate); full multi-core / sharded-writer
-sequencing in `doc/PARALLEL_INGEST.md` (Axis B still open).
+(`seal_pipeline`, `active/pending/` rotate) **and Axis B**
+(`create_with_shards`, `put_many`); sequencing in `doc/PARALLEL_INGEST.md`.
 
 **Maximum-point note (2026-07-27 self-check):** ordinary in-memory index
 insertion on the steady-state put path is past the asymptotic cliff — further
 index micro-optimization is diminishing returns relative to lifecycle spikes.
-The next high-leverage write-path work is the async lifecycle follow-on above,
-not a new primary index structure. See `doc/BENCHMARK_DISCLOSURE.md`
-(“Maximum point self-check”) and DEF-096 (post–10 GiB M4 CPU-headroom observation).
+Async lifecycle and sharded writers are landed (DEF-096 Axis A/B). Remaining
+write-path leverage is harness measurement and Axis C capacity — not a new
+primary index structure. See `doc/BENCHMARK_DISCLOSURE.md` (“Maximum point
+self-check”) and `doc/PARALLEL_INGEST.md`.
 
 Acceptance:
 
@@ -944,7 +945,8 @@ pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 
 Priority: P1  
 Dependencies: DEF-023 (follow-on), DEF-020, DEF-095  
-Status: **Axis A addressed** (async lifecycle 2026-07-27); Axis B/C open — see
+Status: **Axis A + Axis B addressed** (async lifecycle + sharded writers 2026-07-27);
+Axis C (horizontal multi-process) remains the capacity path — see
 `doc/PARALLEL_INGEST.md`
 
 Problem:
@@ -966,13 +968,15 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
    **Done:** `seal_pipeline` worker; `active/pending/` rotate; `drain_lifecycle` /
    recover-on-open; tests `stage_def_096_async_lifecycle`. Explicit `seal_active`
    remains sync (failpoint-compatible).
-2. **Axis B — Sharded writers:** N active segments by subject hash; per-shard
-   append + seal pipeline; sharded or mergeable PrimaryIndex; concurrent clients.
+2. **Axis B — Sharded writers (done):** N active segments by subject hash
+   (`create_with_shards`); per-shard append + auto-seal; shared PrimaryIndex;
+   `put_many` parallel appends; tests `stage_def_096_sharded_writers`.
 3. **Axis C — Horizontal:** multi-store / partition / cluster (already partially
    present) — capacity path, not single-node efficiency.
 4. **Harness:** testrig disclosure of `concurrency` / writer model; optional
    multi-store pump for media upper-bound; process CPU samples after Axis A.
-   (Partial: pump JSON already emits `concurrency: 1` / single_active model.)
+   (Partial: pump JSON already emits `concurrency: 1` / single_active model;
+   wire `--writer-shards` / `put_many` into testrig as a follow-on.)
 
 Anti-goals:
 
@@ -986,8 +990,8 @@ Acceptance:
 - Axis A: put p99 not coupled to seal/checkpoint duration; crash matrix preserved;
   unit/integration tests for rotate+get+recover. **10 GiB re-measure follow-on**
   (ops/s + multi-core CPU%) not required to close Axis A code cut.
-- Axis B: documented only after Axis A measurement shows one append core saturated
-  with idle media.
+- Axis B: multi-shard create/open/put/get/seal/put_many tests pass; legacy
+  single-shard layout unchanged; subject home-shard routing stable.
 
 ---
 

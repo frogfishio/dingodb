@@ -174,8 +174,8 @@ pub use scrub::{
     SCRUB_STATE_FILE,
 };
 pub use store::{
-    IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan, SalvageCopyReport,
-    SalvageReport, Store, WriteReceipt,
+    subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,
+    SalvageCopyReport, SalvageReport, Store, WriteReceipt, MAX_WRITER_SHARDS,
 };
 pub use tier::{
     classify_segment_bytes, tier_placement_path, FormatClassification, MigrationEvidence,

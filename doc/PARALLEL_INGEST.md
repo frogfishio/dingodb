@@ -1,6 +1,6 @@
 # Parallel ingest: multi-core write path
 
-Status: **Axis A implemented (2026-07-27); Axis B/C still design**  
+Status: **Axis A + Axis B implemented (2026-07-27); Axis C is the multi-process path**  
 Date: 2026-07-27  
 Trigger: 10 GiB `dingo-testrig` on MacBook Air M4 after DEF-095  
 Companion: DEF-023 follow-on, DEF-096, `doc/BENCHMARK_DISCLOSURE.md`, OVERVIEW §12
@@ -106,23 +106,25 @@ Why this matches the M4 observation:
 
 ### Axis B — Sharded writers (second; true multi-core append)
 
-When Axis A saturates **one** append core and media still has headroom:
+**Status: landed** in `dingo-store` (`Store::create_with_shards`, subject-hash routing, `put_many`).
 
-1. **Shard by subject hash** (or explicit collection/partition) into **N active segments**.
-2. Each shard: own file handle, own append offset, own seal pipeline.
-3. **Sharded PrimaryIndex** (fingerprint buckets) or per-shard maps + merge on get.
-4. Testring / clients issue concurrent puts across shards.
+Implementation shape:
 
-This is the USP “sharded writers” and OVERVIEW “sharded append” promise. It is a **store model change**, not a pump flag.
+1. **Shard by subject hash** (`subject_writer_shard` / first 8 LE bytes of `subject_item_id`) into **N active segments** (`1..=MAX_WRITER_SHARDS`).
+2. Each shard: own file handle + append offset under `active/shard-NN/active.dingo` (N=1 keeps legacy `active/active.dingo`).
+3. Shared process-wide writer lock (DEF-020); seal lifecycle is per-shard auto-rotate with a shared pending dir + worker pool (backpressure scales with N).
+4. Single primary index (latest-wins); subject → one home shard so concurrent multi-subject puts never race the same key across writers.
+5. **`put_many`** partitions by shard and runs shard appends in parallel (`std::thread::scope`), then publishes the index serially.
+6. Count persisted in `store-info/writer_shards`; recovered on open. Tests: `stage_def_096_sharded_writers`.
 
-**Correctness rules:**
+**Correctness rules (held):**
 
 - Latest-wins per subject stays well-defined (subject → one home shard).
-- History / salvage still segment-local.
-- Writer lock becomes **per-shard** or process-wide with shard sub-locks.
-- `open_inspect` / rebuild scan all shards.
+- History / salvage still segment-local; rebuild/open scan all active shards + pending + sealed.
+- Process-wide exclusive writer lock retained; shard sub-ownership only for the parallel batch path.
+- Multi-shard index frontier is sealed-only; open re-applies all active shard files.
 
-**When to start:** after Axis A is measured. If one core append + free seals already fill the SSD, sharding is optional; if one core tops out ~100% and disk is idle, sharding is the multiplier.
+**When to use:** create with `Store::create_with_shards(path, n)` when one append core saturates and media still has headroom. Default `create` remains single-shard for compatibility.
 
 ### Axis C — Horizontal / multi-process (already partially built)
 
@@ -168,16 +170,16 @@ Multi-store pump is a **harness** parallelization, not product sharding — usef
 
 ## 7. Sequencing and anti-goals
 
-**Do next (DEF-096 / DEF-023 follow-on):**
+**Done (DEF-096):**
 
-1. Design + implement Axis A (async lifecycle, dual slots).
-2. Instrument seal/checkpoint time off the hot path.
-3. Re-run 1 GiB and 10 GiB testrig; compare ops/s, p99, process CPU%, RSS.
+1. Axis A (async lifecycle, dual slots) — landed.
+2. Axis B sharded writers (`create_with_shards`, `put_many`) — landed.
 
-**Do after A is measured:**
+**Do next:**
 
-4. Multi-store harness mode if needed for upper-bound media bench.
-5. Axis B sharded writers when one append core saturates.
+3. Re-run 1 GiB / 10 GiB testrig with writer shards; compare ops/s, p99, process CPU%, RSS.
+4. Wire testrig `--writer-shards N` / multi-core pump disclosure fields.
+5. Multi-store harness mode if needed for upper-bound media bench (Axis C).
 
 **Do not:**
 

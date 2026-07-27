@@ -22,12 +22,20 @@ pub const META_FILE: &str = "meta";
 /// Single-frame store descriptor under `store-info/` (Stage 3c).
 pub const STORE_DESCRIPTOR_FILE: &str = "descriptor.dingo";
 
-/// Active segment filename (single active writer in Stage 3).
+/// Active segment filename (single active writer in Stage 3 / Axis B shard-0 legacy).
 pub const ACTIVE_SEGMENT_FILE: &str = "active.dingo";
 
 /// Subdirectory under `active/` for rotated segments awaiting background seal
-/// finalize (DEF-096 Axis A dual-slot / async lifecycle).
+/// finalize (DEF-096 Axis A dual-slot / async lifecycle). Shared across shards
+/// (segment ids are globally unique).
 pub const PENDING_SEAL_DIR: &str = "pending";
+
+/// Filename under `store-info/` recording writer shard count (DEF-096 Axis B).
+/// Absent → 1 shard (legacy single-active layout).
+pub const WRITER_SHARDS_FILE: &str = "writer_shards";
+
+/// Directory name prefix for multi-shard actives: `active/shard-00/`, …
+pub const SHARD_DIR_PREFIX: &str = "shard-";
 
 /// Paths derived from a store root.
 #[derive(Debug, Clone)]
@@ -67,9 +75,28 @@ impl StorePaths {
         self.root.join(ACTIVE)
     }
 
-    /// `active/active.dingo`
+    /// `active/active.dingo` — legacy single-writer path (writer_shards == 1).
     pub fn active_segment(&self) -> PathBuf {
         self.active_dir().join(ACTIVE_SEGMENT_FILE)
+    }
+
+    /// Directory for writer shard `shard` under `active/`.
+    ///
+    /// Shard 0 with `writer_shards == 1` uses the legacy `active/` root (no
+    /// `shard-00/` subdirectory) so existing stores stay on-disk compatible.
+    pub fn active_shard_dir(&self, shard: usize, writer_shards: usize) -> PathBuf {
+        if writer_shards <= 1 {
+            self.active_dir()
+        } else {
+            self.active_dir()
+                .join(format!("{SHARD_DIR_PREFIX}{shard:02}"))
+        }
+    }
+
+    /// Active segment file for a writer shard (DEF-096 Axis B).
+    pub fn active_segment_for_shard(&self, shard: usize, writer_shards: usize) -> PathBuf {
+        self.active_shard_dir(shard, writer_shards)
+            .join(ACTIVE_SEGMENT_FILE)
     }
 
     /// `active/pending/` — rotated segments waiting for seal finalize (DEF-096).
@@ -81,6 +108,31 @@ impl StorePaths {
     pub fn pending_segment(&self, segment_id: &[u8; 16]) -> PathBuf {
         self.pending_seal_dir()
             .join(format!("{}.dingo", hex16(segment_id)))
+    }
+
+    /// `store-info/writer_shards` — Axis B shard count (ASCII decimal + newline).
+    pub fn writer_shards_file(&self) -> PathBuf {
+        self.store_info().join(WRITER_SHARDS_FILE)
+    }
+
+    /// List on-disk active segment paths for `writer_shards` (existing files only).
+    pub fn list_active_segment_paths(&self, writer_shards: usize) -> Vec<PathBuf> {
+        let n = writer_shards.max(1);
+        let mut out = Vec::with_capacity(n);
+        for shard in 0..n {
+            let p = self.active_segment_for_shard(shard, n);
+            if p.is_file() {
+                out.push(p);
+            }
+        }
+        // Legacy: multi-shard config but only root active.dingo exists (upgrade).
+        if out.is_empty() {
+            let legacy = self.active_segment();
+            if legacy.is_file() {
+                out.push(legacy);
+            }
+        }
+        out
     }
 
     /// `segments/`

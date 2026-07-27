@@ -58,7 +58,7 @@ partially cut:
 
 | ID | Gap |
 |----|-----|
-| **DEF-096** | Parallel ingest after DEF-095 freed memory: **Axis A async lifecycle landed** (O(1) rotate + seal pipeline); Axis B sharded writers still open — `PARALLEL_INGEST.md`. Re-measure 10 GiB for multi-core CPU% follow-on. |
+| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B landed** (async lifecycle + `create_with_shards` / `put_many`). Axis C multi-process remains. Re-measure 10 GiB with shards for multi-core CPU% follow-on. |
 | **DEF-039 / 040 network** | Anti-entropy repair and query paging still in-process only. |
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
@@ -175,8 +175,8 @@ we parallelize and max out all the cores?”
 | Observation correct? | **Yes.** One exclusive writer, one active segment, lifecycle on put ack. Process CPU% ≈ one core. |
 | Memory/disk the limiter? | **No** after DEF-095. |
 | Multi-thread `Store::put` first? | **No** — thrash without model change. |
-| Next high-leverage cut? | **DEF-096 Axis A** — async lifecycle (dual slots, background seal/Hydra/Chimera/checkpoint). |
-| True multi-core append? | **Axis B** sharded writers — after A saturates one append core. |
+| Next high-leverage cut? | **DEF-096 Axis B testrig harness** — pump with `--writer-shards N` / `put_many`; 10 GiB re-measure. |
+| True multi-core append? | **Axis B shipped** (`create_with_shards` + `put_many`); wire into testrig disclosure. |
 | Spec already requires this? | **Yes** — OVERVIEW parallel ingest, USP sharded writers. |
 
 Design authority: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md). Do not spend the
