@@ -1454,6 +1454,38 @@ impl Store {
         })
     }
 
+    /// Create a full, content-hashed backup package (DEF-050).
+    ///
+    /// Distinct from [`Self::salvage_to`] (damage recovery) and
+    /// [`Self::export_live_state`] (new lineage). Authoritative trees
+    /// (`store-info`, `active`, `segments`, `chunks`, `recovery`, `tiers`) are
+    /// copied into `package/store/` with blake3 per file; derived catalogs are
+    /// omitted and rebuilt on restore.
+    ///
+    /// When this handle holds the exclusive writer lock, the active segment is
+    /// flushed durable first ([`BackupConsistency::FlushedExclusive`]).
+    /// Inspect-only opens copy on-disk files without a flush
+    /// ([`BackupConsistency::OnDiskInspect`]).
+    ///
+    /// `package` must not already exist (or must be empty).
+    pub fn backup_to(
+        &mut self,
+        package: impl AsRef<Path>,
+    ) -> Result<crate::backup::BackupReport, StoreError> {
+        let consistency = if self.writer_lock.is_some() {
+            self.persist_active(DurabilityMode::Durable)?;
+            crate::backup::BackupConsistency::FlushedExclusive
+        } else {
+            crate::backup::BackupConsistency::OnDiskInspect
+        };
+        crate::backup::write_full_backup(
+            &self.paths.root,
+            self.store_id,
+            package.as_ref(),
+            consistency,
+        )
+    }
+
     /// Evidence-preserving salvage into a **new** store directory (DX_SPEC §13.4, DEF-011).
     ///
     /// The source store is never mutated. Destination must not already be a

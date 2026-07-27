@@ -32,7 +32,7 @@ Until this plan is complete, use these support labels:
   data-plane commit DEF-037, durable rebalance DEF-038, in-process anti-entropy
   repair DEF-039 when attached, distributed query paging DEF-040, seeded
   in-process verification DEF-041); not production-ready (DEF-041 multi-process
-  follow-ons + DEF-050+ / §16).
+  follow-ons + DEF-050 incremental/cluster/encryption follow-ons + §16).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -1424,7 +1424,12 @@ Evidence:
 
 ### DEF-050 — Productize backup and restore
 
-Priority: P1
+Priority: P1  
+Status: **addressed (single-node full cut)** (2026-07-27) — content-hashed
+full backup package (`dingo-backup-v1`), exclusive-flush and inspect
+consistencies, verified restore with optional identity reassignment; CLI
+`dingo backup` / `dingo restore`. Incremental, encrypted, remote-target,
+cluster, and tiered multi-volume remain follow-ons.
 
 Work:
 
@@ -1442,6 +1447,30 @@ Acceptance:
   interrupted upload, and missing encryption keys.
 - Recovery point and recovery time are measured.
 - Quarterly restore drills are documented and automated.
+
+Evidence (this cut):
+
+- `crates/dingo-store/src/backup.rs` — `BACKUP_PROFILE` = `dingo-backup-v1`,
+  `write_full_backup` / `restore_full_backup`, manifest + per-file blake3,
+  `BackupConsistency::{FlushedExclusive,OnDiskInspect}`.
+- `Store::backup_to` flushes durable active under exclusive writer; inspect
+  opens copy on-disk files without flush.
+- Restore verifies manifest hash and every file; optional
+  `RestoreOptions::reassign_identity` for clones (new `store_id`, wipe keyed
+  derived state).
+- CLI: `dingo backup STORE -o PKG`, `dingo restore PKG -o STORE
+  [--reassign-identity]`.
+- Tests: `stage_def_050_backup.rs`, module unit tests, CLI
+  `backup_and_restore_roundtrip` / `restore_reassign_identity_clone`.
+- Salvage / export-live remain separate paths (no backup package confusion).
+
+Remaining (out of this cut):
+
+- Incremental backup chains; encryption at rest for packages; remote targets
+  (S3/GCS native).
+- Cluster-coordinated backup (Raft snapshots + multi-node identity).
+- Tiered multi-volume / offline archive inclusion policy.
+- Automated quarterly restore drills and RPO/RTO measurement harness.
 
 ### DEF-051 — Add integrity scrub and media-health automation
 

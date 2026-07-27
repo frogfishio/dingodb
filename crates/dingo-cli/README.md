@@ -3,9 +3,10 @@
 Operator and everyday command-line interface for DingoDB.
 
 Put and get JSON or bytes, list collections, inspect history, run read-only
-`doctor`, evidence-preserving `salvage`, and start a development TCP server
-(`serve`). Experimental multi-node `serve-cluster` is available when Raft
-attaches (control plane + data-plane commit); not production-ready.
+`doctor`, evidence-preserving `salvage`, full `backup` / verified `restore`
+(DEF-050), and start a development TCP server (`serve`). Experimental
+multi-node `serve-cluster` is available when Raft attaches (control plane +
+data-plane commit); not production-ready.
 
 Binary name: **`dingo`**. Package name on crates.io: **`dingo-cli`**.
 
@@ -13,7 +14,7 @@ Binary name: **`dingo`**. Package name on crates.io: **`dingo-cli`**.
 
 | You want… | Use |
 |-----------|-----|
-| Shell / ops: put, get, doctor, salvage, serve | **`dingo`** (this binary) |
+| Shell / ops: put, get, doctor, salvage, backup, restore, serve | **`dingo`** (this binary) |
 | Embed collections in a Rust app | [`dingo-sdk`](https://crates.io/crates/dingo-sdk) |
 | Pure SDA language CLI | [`sda`](https://crates.io/crates/sda) |
 
@@ -58,6 +59,12 @@ dingo salvage ./damaged.dingo --output ./recovered.dingo
 
 # Live-state only materialization (new lineage; prefer salvage when history matters)
 dingo export-live ./damaged.dingo --output ./live-only.dingo
+
+# Full backup package (content-hashed; distinct from salvage)
+dingo backup ./app.dingo --output ./app.bak
+dingo restore ./app.bak --output ./restored.dingo
+# Clone with a new store identity:
+dingo restore ./app.bak --output ./clone.dingo --reassign-identity
 ```
 
 ## Serve (development)

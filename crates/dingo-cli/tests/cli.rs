@@ -73,6 +73,8 @@ fn version_and_help() {
     let help = run_ok(&["--help"]);
     assert!(help.contains("doctor"));
     assert!(help.contains("salvage"));
+    assert!(help.contains("backup"));
+    assert!(help.contains("restore"));
     assert!(help.contains("serve"));
     assert!(help.contains("serve-cluster"));
     assert!(
@@ -211,6 +213,63 @@ fn export_live_is_distinct_from_salvage() {
     assert!(report.contains("frames_copied: 0"));
     let dst_get = run_ok(&["get", dst_s, "users/alice"]);
     assert!(dst_get.contains("Alice"));
+}
+
+#[test]
+fn backup_and_restore_roundtrip() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("app.dingo");
+    let bak = dir.path().join("app.bak");
+    let dst = dir.path().join("restored.dingo");
+    let src_s = src.to_str().unwrap();
+    let bak_s = bak.to_str().unwrap();
+    let dst_s = dst.to_str().unwrap();
+
+    run_ok(&["put", src_s, "users/alice", "--json", r#"{"name":"Alice"}"#]);
+    run_ok(&["put", src_s, "users/bob", "--json", r#"{"name":"Bob"}"#]);
+
+    let report = run_ok(&["backup", src_s, "--output", bak_s]);
+    assert!(report.contains("full_backup"), "report={report}");
+    assert!(report.contains("files_copied:"), "report={report}");
+    assert!(
+        report.contains("flushed_exclusive") || report.contains("on_disk_inspect"),
+        "report={report}"
+    );
+    assert!(bak.join("backup-manifest.v1.json").is_file());
+
+    let restore = run_ok(&["restore", bak_s, "--output", dst_s]);
+    assert!(restore.contains("restore"), "restore={restore}");
+    assert!(restore.contains("live_subjects: 2"), "restore={restore}");
+    assert!(restore.contains("identity_reassigned: false"), "restore={restore}");
+
+    let alice = run_ok(&["get", dst_s, "users/alice"]);
+    assert!(alice.contains("Alice"), "alice={alice}");
+    let bob = run_ok(&["get", dst_s, "users/bob"]);
+    assert!(bob.contains("Bob"), "bob={bob}");
+}
+
+#[test]
+fn restore_reassign_identity_clone() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("app.dingo");
+    let bak = dir.path().join("app.bak");
+    let clone = dir.path().join("clone.dingo");
+    let src_s = src.to_str().unwrap();
+    let bak_s = bak.to_str().unwrap();
+    let clone_s = clone.to_str().unwrap();
+
+    run_ok(&["put", src_s, "k/x", "--json", r#"{"v":1}"#]);
+    run_ok(&["backup", src_s, "--output", bak_s]);
+    let restore = run_ok(&[
+        "restore",
+        bak_s,
+        "--output",
+        clone_s,
+        "--reassign-identity",
+    ]);
+    assert!(restore.contains("identity_reassigned: true"), "restore={restore}");
+    let got = run_ok(&["get", clone_s, "k/x"]);
+    assert!(got.contains(r#""v":1"#) || got.contains("1"), "got={got}");
 }
 
 #[test]

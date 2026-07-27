@@ -156,6 +156,8 @@ The rule is deliberately unsentimental:
 `dingo doctor` inspects without modifying the source. `dingo salvage` writes
 verified recovery evidence to a separate destination. `dingo export-live`
 materializes only current complete state when that is what the operator wants.
+`dingo backup` / `dingo restore` produce and consume content-hashed full backup
+packages (DEF-050; distinct from salvage).
 
 [SDA](SDA_SPEC.md), the Structured Data Algebra, provides deterministic
 filtering and transformation over both normal structured values and recovered

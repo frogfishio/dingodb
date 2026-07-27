@@ -54,7 +54,7 @@ dingodb/
     dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7); cluster via feature — MPL-2.0
     dingo-server/   # accept loop, authz, admission, Raft RPC glue, serve_* — AGPL
     dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5) — MPL-2.0
-    dingo-cli/      # `dingo` binary: put/get, doctor, salvage, serve (Stage 7) — AGPL
+    dingo-cli/      # `dingo` binary: put/get, doctor, salvage, backup/restore, serve (Stage 7) — AGPL
     dingo-cluster/  # partitions, coverage, multi-node + Raft + find + rebalance (Stage 8a–8f) — AGPL
 ```
 
@@ -64,11 +64,11 @@ Crate ownership:
 |-------|-------|------|
 | 2 | `dingo-format` | **Present** — frames, deterministic CBOR envelopes, seal, scanner, §13 corpus (2a–2d) |
 | — | `dingo-client` | **Present** — MIT wire framing + handshake (`dingo-rpc-v1`) |
-| 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, catalogs, chunks, history, compact |
+| 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, backup_to/restore (DEF-050), catalogs, chunks, history, compact |
 | 4+6+7+8d–8e | `dingo-sdk` | **Present** — collections, filters, indexes, history, remote RPC; `cluster` feature for open_cluster |
 | 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `dingo-server` | **Present** — bounded serve, authz, admission, TLS bind policy, network Raft glue |
-| 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/serve (serve via `dingo-server`) |
+| 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/backup/restore/serve (serve via `dingo-server`) |
 | 8 | `dingo-cluster` | **Present (8a–8f)** — partitions, coverage, Raft, convergent-append, find honesty, rebalance |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**

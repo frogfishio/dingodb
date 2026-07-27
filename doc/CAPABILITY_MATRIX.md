@@ -62,6 +62,7 @@ with the acceptance evidence expected before a stronger label.
 | `FEATURE_CLUSTER_COMMIT_V1` | `cluster-commit-v1` | Feature token for quorum-committed collection ops |
 | `REBALANCE_CONTROL_PROFILE` | `dingo-rebalance-control-v1` | Durable rebalance jobs + joint membership (DEF-038) |
 | `ANTI_ENTROPY_PROFILE` | `dingo-anti-entropy-v1` | Hierarchical inventory + integrity-based repair (DEF-039) |
+| `BACKUP_PROFILE` | `dingo-backup-v1` | Full single-node backup package + verified restore (DEF-050) |
 
 ## Raft persistence (DEF-035)
 
@@ -160,6 +161,24 @@ Evidence: `stage_def_039_repair` (8 tests), `dingo_cluster::repair` unit tests.
 | Network multi-process page RPC | Remote worker page protocol over `serve-cluster` | **not yet** (coordinator is in-process) |
 
 Evidence: `stage_def_040_query` (7 tests), `dingo_cluster::coverage` continuation unit tests.
+
+## Backup and restore (DEF-050)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Full package format | `backup-manifest.v1.json` + `store/` tree; profile `dingo-backup-v1` | **shipped** (single-node) |
+| Content integrity | BLAKE3 per file + manifest `content_hash_hex` | **shipped** |
+| Crash-consistent exclusive backup | Flush durable active under writer lock (`flushed_exclusive`) | **shipped** |
+| Concurrent inspect backup | On-disk file copy without flush (`on_disk_inspect`) | **shipped** |
+| Identity-preserving restore | Default: same `store_id` | **shipped** |
+| Clone restore | `--reassign-identity` / `RestoreOptions::reassign_identity` | **shipped** |
+| Distinct from salvage | Salvage = damage recovery; backup = intentional package | **shipped** |
+| CLI | `dingo backup` / `dingo restore` | **shipped** |
+| Incremental / encrypted / remote targets | — | **not yet** |
+| Cluster-coordinated multi-node backup | — | **not yet** |
+
+Evidence: `stage_def_050_backup`, `dingo_store::backup` unit tests, CLI
+`backup_and_restore_roundtrip`.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

@@ -57,7 +57,7 @@ assert!(store.get("user-42")?.is_none());
 | Recovery | rebuildable primary index, salvage after catalog wipe, evidence-preserving `salvage_to` |
 | Derived | collection catalog, secondary indexes, subject history, checkpoints |
 | Chunks | chunked payloads with partial maps; phased live compaction |
-| Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state` |
+| Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050) |
 | Tiering | segment move/copy with stable identities; offline-tier coverage holes |
 | Honesty | fail-closed logical scans; absence only proven when coverage is complete |
 
@@ -74,6 +74,35 @@ store/
   snapshots/      # derived checkpoints
   recovery/       # operator scratch + compaction jobs
 ```
+
+## Backup and restore (DEF-050)
+
+Full backups are **packages**, not live stores:
+
+```text
+backup-package/
+  backup-manifest.v1.json   # profile dingo-backup-v1 + blake3 of files
+  store/                    # authoritative trees only (no lock files)
+```
+
+```rust
+use dingo_store::{restore_full_backup, DurabilityMode, RestoreOptions, Store};
+
+# let dir = tempfile::tempdir().unwrap();
+# let src = dir.path().join("src");
+# let bak = dir.path().join("bak");
+# let dst = dir.path().join("dst");
+let mut store = Store::create(&src)?;
+store.put("k", b"v", DurabilityMode::Durable)?;
+store.backup_to(&bak)?;
+drop(store);
+let report = restore_full_backup(&bak, &dst, RestoreOptions::default())?;
+assert_eq!(report.live_subjects, 1);
+# Ok::<(), dingo_store::StoreError>(())
+```
+
+Salvage remains the damage-recovery path; export-live re-materializes current
+values with new lineage. Neither produces a `dingo-backup-v1` package.
 
 Deleting `catalogs/`, `indexes/`, and `snapshots/` must not prevent recovery:
 the store rebuilds current state by scanning `active/`, `segments/`, and online

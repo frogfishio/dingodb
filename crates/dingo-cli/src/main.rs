@@ -4,7 +4,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use dingo_examine::{examine_store, ExaminationUnit, ExamineLimits};
 use dingo_sdk::{Dingo, TlsServerOptions, DEFAULT_PORT};
 use dingo_server::{serve_cluster_node, serve_store_with, ServeOptions};
-use dingo_store::Store;
+use dingo_store::{restore_full_backup, RestoreOptions, Store};
 use serde_json::{json as sjson, Value as JsonValue};
 use std::fs;
 use std::io::{self, Write};
@@ -13,7 +13,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
 const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`dingo`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
 
 #[derive(Parser)]
@@ -98,6 +98,34 @@ enum Command {
         /// Destination store path (must not already be a store).
         #[arg(long = "output", short = 'o')]
         output: PathBuf,
+    },
+    /// Full backup package with verified content hashes (DEF-050).
+    ///
+    /// Copies authoritative store trees into a package directory with a hashed
+    /// `backup-manifest.v1.json`. Distinct from `salvage` (damage recovery) and
+    /// `export-live` (new lineage). Opens the source exclusively and flushes
+    /// durable state first when no other writer holds the lock.
+    Backup {
+        /// Source store directory.
+        store: PathBuf,
+        /// Backup package directory (must not already exist / must be empty).
+        #[arg(long = "output", short = 'o')]
+        output: PathBuf,
+    },
+    /// Restore a verified backup package into a new store path (DEF-050).
+    ///
+    /// Verifies the package manifest and every file blake3 before materializing.
+    /// Default preserves store identity; `--reassign-identity` mints a new
+    /// `store_id` for clones.
+    Restore {
+        /// Backup package directory (contains `backup-manifest.v1.json`).
+        backup: PathBuf,
+        /// Destination store path (must not already be a store).
+        #[arg(long = "output", short = 'o')]
+        output: PathBuf,
+        /// Mint a new store identity (clone) instead of preserving the original.
+        #[arg(long = "reassign-identity", action = ArgAction::SetTrue)]
+        reassign_identity: bool,
     },
     /// Serve the store over TCP for `Dingo::connect("dingo://...")` (development).
     ///
@@ -219,6 +247,12 @@ fn run() -> Result<(), String> {
         Command::Doctor { store } => cmd_doctor(&store, json_out),
         Command::Salvage { store, output } => cmd_salvage(&store, &output, json_out),
         Command::ExportLive { store, output } => cmd_export_live(&store, &output, json_out),
+        Command::Backup { store, output } => cmd_backup(&store, &output, json_out),
+        Command::Restore {
+            backup,
+            output,
+            reassign_identity,
+        } => cmd_restore(&backup, &output, reassign_identity, json_out),
         Command::Serve {
             store,
             bind,
@@ -650,6 +684,106 @@ fn cmd_export_live(source: &Path, dest: &Path, json_out: bool) -> Result<(), Str
     let inspect = Store::open_inspect(source).map_err(|e| e.to_string())?;
     let report = inspect.export_live_state(dest).map_err(|e| e.to_string())?;
     emit_copy_report("live_state_export", source, &report, json_out)
+}
+
+fn cmd_backup(source: &Path, package: &Path, json_out: bool) -> Result<(), String> {
+    if source == package {
+        return Err("backup source and --output must differ".into());
+    }
+    // Prefer exclusive open so we can flush durable state (crash-consistent).
+    // Fall back to inspect if another writer holds the lock.
+    let report = match Store::open(source) {
+        Ok(mut store) => store.backup_to(package).map_err(|e| e.to_string())?,
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("writer lock") || msg.contains("lock held") {
+                let mut inspect = Store::open_inspect(source).map_err(|e| e.to_string())?;
+                inspect.backup_to(package).map_err(|e| e.to_string())?
+            } else {
+                return Err(msg);
+            }
+        }
+    };
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "mode": "full_backup",
+            "profile": dingo_store::BACKUP_PROFILE,
+            "source": report.source.display().to_string(),
+            "destination": report.destination.display().to_string(),
+            "manifest": report.manifest_path.display().to_string(),
+            "store_id_hex": hex16(&report.store_id),
+            "backup_id_hex": hex16(&report.backup_id),
+            "files_copied": report.files_copied,
+            "total_bytes": report.total_bytes,
+            "consistency": match report.consistency {
+                dingo_store::BackupConsistency::FlushedExclusive => "flushed_exclusive",
+                dingo_store::BackupConsistency::OnDiskInspect => "on_disk_inspect",
+            },
+        }))?;
+    } else {
+        println!("full_backup");
+        println!("  profile: {}", dingo_store::BACKUP_PROFILE);
+        println!("  source: {}", report.source.display());
+        println!("  package: {}", report.destination.display());
+        println!("  manifest: {}", report.manifest_path.display());
+        println!("  store_id: {}", hex16(&report.store_id));
+        println!("  backup_id: {}", hex16(&report.backup_id));
+        println!("  files_copied: {}", report.files_copied);
+        println!("  total_bytes: {}", report.total_bytes);
+        println!(
+            "  consistency: {}",
+            match report.consistency {
+                dingo_store::BackupConsistency::FlushedExclusive => "flushed_exclusive",
+                dingo_store::BackupConsistency::OnDiskInspect => "on_disk_inspect",
+            }
+        );
+    }
+    Ok(())
+}
+
+fn cmd_restore(
+    package: &Path,
+    dest: &Path,
+    reassign_identity: bool,
+    json_out: bool,
+) -> Result<(), String> {
+    if package == dest {
+        return Err("restore backup and --output must differ".into());
+    }
+    let report = restore_full_backup(
+        package,
+        dest,
+        RestoreOptions {
+            reassign_identity,
+        },
+    )
+    .map_err(|e| e.to_string())?;
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "mode": "restore",
+            "backup": report.backup_root.display().to_string(),
+            "destination": report.destination.display().to_string(),
+            "manifest": report.manifest_path.display().to_string(),
+            "source_store_id_hex": hex16(&report.source_store_id),
+            "restored_store_id_hex": hex16(&report.restored_store_id),
+            "identity_reassigned": report.identity_reassigned,
+            "files_restored": report.files_restored,
+            "live_subjects": report.live_subjects,
+        }))?;
+    } else {
+        println!("restore");
+        println!("  backup: {}", report.backup_root.display());
+        println!("  destination: {}", report.destination.display());
+        println!("  manifest: {}", report.manifest_path.display());
+        println!("  source_store_id: {}", hex16(&report.source_store_id));
+        println!("  restored_store_id: {}", hex16(&report.restored_store_id));
+        println!("  identity_reassigned: {}", report.identity_reassigned);
+        println!("  files_restored: {}", report.files_restored);
+        println!("  live_subjects: {}", report.live_subjects);
+    }
+    Ok(())
 }
 
 fn emit_copy_report(

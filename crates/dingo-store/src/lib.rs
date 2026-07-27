@@ -15,6 +15,7 @@
 #![deny(missing_docs)]
 
 mod atomic_file;
+mod backup;
 mod catalog;
 mod chunk_payload;
 mod compact;
@@ -43,6 +44,12 @@ mod writer_lock;
 pub use atomic_file::{
     previous_path, read_with_previous, recover_previous_or_corrupt, sync_dir as sync_parent_dir,
     write_atomic, write_atomic_keep_previous, write_atomic_with, AtomicWriteOptions, PREV_SUFFIX,
+};
+pub use backup::{
+    backup_manifest_path, backup_store_path, load_and_verify_manifest, restore_full_backup,
+    verify_package_files, write_full_backup, BackupConsistency, BackupFileEntry, BackupManifest,
+    BackupReport, RestoreOptions, RestoreReport, BACKUP_MANIFEST_FILE, BACKUP_PROFILE,
+    BACKUP_STORE_DIR,
 };
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, try_load_collection_catalog,
