@@ -254,10 +254,10 @@ implementation and that standard.
 - **Wire format:** `1.0-draft`, not frozen
 
 Network quorum commit exists on the experimental path when Raft attaches, but
-do **not** treat it as a production release: Jepsen-style verification and
-other §16 gates remain open (DEF-041+; durable rebalance is DEF-038;
-in-process anti-entropy repair is DEF-039; distributed query paging is
-DEF-040).
+do **not** treat it as a production release: multi-process Jepsen-style soak and
+other §16 gates remain open (DEF-041 follow-ons + DEF-050+; in-process seeded
+verification is DEF-041 `dingo-cluster-verify-v1`; durable rebalance DEF-038;
+anti-entropy repair DEF-039; distributed query paging DEF-040).
 
 Progress is tracked openly:
 

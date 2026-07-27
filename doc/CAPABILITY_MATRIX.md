@@ -25,9 +25,9 @@ with the acceptance evidence expected before a stronger label.
    acks report `committed` only after quorum + local apply (DEF-037). If Raft
    attach fails, the process falls back to **directory-only** routing and
    single-node apply — still not a release claim. Production gates remain
-   DEF-041 and §16 (durable rebalance DEF-038, in-process anti-entropy repair
-   DEF-039, and distributed query paging DEF-040 are shipped; network chaos /
-   linearizability program still open).
+   DEF-041 follow-ons and §16 (durable rebalance DEF-038, anti-entropy repair
+   DEF-039, query paging DEF-040, and in-process seeded verification DEF-041
+   are shipped; multi-process Jepsen / long soak still open).
 2. **In-process quorum ≠ production network cluster.** Prefer
    `Dingo::open_cluster` for deterministic multi-replica tests; use
    `serve-cluster` + DEF-037 suite for multi-process data-plane checks.
@@ -78,7 +78,10 @@ with the acceptance evidence expected before a stronger label.
 | Anti-entropy inventory + replica repair | DEF-039 majority/integrity source select; `repair_audit.json` | **in-process cluster** shipped |
 | Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
 | Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
-| Jepsen-style partition histories | DEF-041 | **not yet** |
+| Seeded in-process fault sim + lincheck | DEF-041 `dingo-cluster-verify-v1` | **shipped** (network Raft in-process) |
+| CLUSTER_SPEC §22 core matrix (network Raft) | DEF-041 | **shipped** (§22.1–.4, .6–.8 + chaos) |
+| Multi-process Jepsen-style partition histories | DEF-041 follow-on | **not yet** |
+| Long-duration soak / rolling restart | DEF-041 follow-on | **not yet** |
 
 Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
 ordinary `dingo-store` segments (salvage independent of Raft control plane).

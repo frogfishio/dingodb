@@ -51,6 +51,7 @@ Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 | Find / scan | `find` / `scan_page` + coverage on every page; authenticated continuation (`dingo-query-continuation-v1`); deterministic subject merge |
 | Rebalance | Interruptible step machine; joint config; epoch activation |
 | Anti-entropy / repair | Hierarchical inventory; majority/integrity source select (never mtime); audited, rate-limited copies (`dingo-anti-entropy-v1`) |
+| Verification (DEF-041) | Seeded fault sim, history dumps, linearizability + convergent checkers (`dingo-cluster-verify-v1`); §22 core matrix in-process |
 
 Each node directory remains an ordinary `dingo-store` and can be salvaged
 without cluster software.

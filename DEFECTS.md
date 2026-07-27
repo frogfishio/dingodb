@@ -30,8 +30,9 @@ Until this plan is complete, use these support labels:
 - **In-process cluster:** deterministic integration-test harness.
 - **`serve-cluster`:** experimental multi-process Raft (control plane DEF-036,
   data-plane commit DEF-037, durable rebalance DEF-038, in-process anti-entropy
-  repair DEF-039 when attached, distributed query paging DEF-040); not
-  production-ready (DEF-041+ / §16).
+  repair DEF-039 when attached, distributed query paging DEF-040, seeded
+  in-process verification DEF-041); not production-ready (DEF-041 multi-process
+  follow-ons + DEF-050+ / §16).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -1382,7 +1383,12 @@ Evidence:
 
 ### DEF-041 — Build a distributed-system verification program
 
-Priority: P0
+Priority: P0  
+Status: **addressed (in-process cut)** (2026-07-27) — seeded simulation harness
+`dingo-cluster-verify-v1` with fault model (crash, directed partition, RPC drop/
+duplicate), client history + partition-linearizable checker, convergent
+variant preservation checker, and CLUSTER_SPEC §22 core cases against network
+Raft; multi-process OS chaos / long soak remain follow-ons
 
 Work:
 
@@ -1398,6 +1404,16 @@ Acceptance:
 
 - The complete cluster conformance matrix runs before a production release.
 - Failures retain seeds and histories for deterministic replay.
+
+Evidence:
+
+- `crates/dingo-cluster/src/sim.rs` — `SeedRng`, `FaultModel`, `SimTransport`,
+  `SimWorld`, `check_partition_linearizable`, `check_convergent_preserved`,
+  `run_conformance_matrix`, profile `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
+- Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.4/.6–.8, chaos
+  linearizability, dump retains seed); module unit tests under `sim::tests`.
+- Remaining (out of this cut): multi-process Jepsen-style partition histories,
+  long-duration soak / rolling restart, full §22.5/.9–.20 network surface.
 
 ---
 
