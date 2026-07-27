@@ -199,8 +199,65 @@ reclustering, dictionary training, hot/cold, lifetime placement).
 **Verdict:** Seal/compaction layout wire-up **landed**. Put still writes frames;
 Chimera is a derived placement that get can resolve. Do not claim “primary
 storage is workload-compiled” until put classifies at write time and segment
-bodies can omit medium/large payloads. Next: optional put-path placement and
-compiler worker — not more planner cosmetics.
+bodies can omit medium/large payloads.
+
+### Decision: implement put-path Chimera / dual-rep·ZNS·worker? (2026-07-27)
+
+Question (two rows often conflated):
+
+| Candidate | Prior note | Decision |
+|-----------|------------|----------|
+| Put is workload-compiled (no full frame body) | No — put still appends frames; Chimera is derived | **Do not implement yet** |
+| Dual-rep / ZNS / compiler worker | Still deferred | **Split:** worker is next Chimera step; dual-rep and ZNS stay deferred |
+
+#### Put is workload-compiled — reasons **not** to (yet)
+
+There **is** a strong reason not to flip put authority now. It is not laziness.
+
+1. **Authority contract (OVERVIEW).** Segment frames are authoritative evidence.
+   Indexes and `indexes/chimera/*.cmr` are derived and must remain wipeable.
+   “Recovery without derived state” is already a shipped claim
+   (`CAPABILITY_MATRIX`, salvage/open after wiping `indexes/` + `catalogs/`).
+   If put omits medium/large bodies from frames and only writes Chimera placement,
+   `.cmr` becomes irreplaceable data — that **inverts** the product model.
+
+2. **FORMAT_SPEC + crash matrix.** Write-time placement without full frame bodies
+   is a format/profile change: dual durable paths, ack rules, interrupted-append
+   semantics, scrub/salvage of partial value-log vs frame, and new failpoints.
+   That is a major gate, not a Chimera codec PR.
+
+3. **Same pattern as Hydra (deliberate).** Hydra is seal-time derived sidecars;
+   hot get still has PrimaryIndex fallback. Chimera matches that honesty bar.
+   Seal-time compile + get resolve is the correct intermediate architecture.
+
+4. **Double-write amp is accepted tax.** Put → full frames; seal → re-read live
+   values into `.cmr`. Wasteful, but correct and rebuildable. Optimizing amp by
+   making put the compiler **before** a relocating worker exists skips the proof
+   that recompilation is safe under generation-aware locators.
+
+5. **Program leverage.** Open P0/§16 gates (wire freeze, security review, continuous
+   fuzz, multi-process partition evidence) dominate production readiness. A put
+   authority flip does not close those gates.
+
+**When put-path compilation becomes right:** (a) a compiler worker has executed
+relocate/GC/recluster against derived layouts with generation-safe swaps;
+(b) an explicit FORMAT/profile extension defines frame-as-locator / payload-in-layout
+with salvage and wipe-derived stories rewritten; (c) crash matrix and durability
+modes cover both paths. Until then: **keep put appending full frames.**
+
+#### Dual-rep / ZNS / compiler worker — split the bucket
+
+Do **not** treat these three as one “still deferred” blob.
+
+| Piece | Implement now? | Why |
+|-------|----------------|-----|
+| **Compiler worker** | **Yes — next Chimera cut** (when labor stays on Chimera) | `plan_compile` already emits ops; nothing executes them. Without a worker, layouts freeze at seal/compact and never recompile. Start with Relocate / Gc / Recluster / HotColdMigrate against `.cmr` only; frames stay authority. Not more planner cosmetics. |
+| **Dual representation** | **No — keep deferred** | Proposal §218: prove inline / value-log / micro-pages + temperature GC first. Needs real point_gets/scan_hits telemetry, space-amp policy, and op-type Hydra choice. `CompilerOp::DualRepresent` + `enable_dual_representation` already stubbed off by default. |
+| **ZNS (or FDP) placement** | **No — keep deferred** | Hardware- and prototype-specific; not the portable default. Lifetime/temperature *logical* zones on ordinary NVMe come first; bind to ZNS only with device-backed evidence. |
+
+**Net:** Do **not** implement write-time put compilation or dual-rep/ZNS now.
+**Do** allow a compiler **worker** (execute plans on derived Chimera layouts) as
+the next Chimera step when that lane is prioritized — separate from dual-rep/ZNS.
 
 ## What this document is not
 

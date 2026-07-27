@@ -10,6 +10,8 @@ Honesty: hot `Store::get` still uses `PrimaryIndex`; Hydra is seal/rebuild/load 
 containers, large-value log codec, adaptive I/O path selection, background-compiler
 plans, and `indexes/chimera/*.cmr` layouts written at seal/compact. `Store::get`
 may resolve sealed layouts; put still writes segment frames (derived placement).
+Sequencing: do **not** flip put to omit frame bodies yet; dual-rep/ZNS stay
+deferred; next Chimera cut is a compiler **worker** (see sequencing table below).
 
 ## Recipe: hydra + multithread
 
@@ -234,5 +236,19 @@ Tests: unit tests under `chimera::*` + store seal/get/compact wire-up tests.
 **Seal/compaction wire-up (landed):** `build_layout` → `indexes/chimera/{hex}.cmr`
 at `seal_active` and live-projection compact; `Store::get` resolves via layout when
 present for the live establishing segment (PrimaryIndex / chunks remain fallback).
-Dual-representation and ZNS placement stay deferred. Put path still writes full
-segment frames (Chimera is derived placement, not yet write-time authority).
+Put path still writes full segment frames (Chimera is **derived** placement, not
+write-time authority). Dual-representation and ZNS placement stay deferred.
+
+### Sequencing decision (do we implement put-compile / dual-rep·ZNS·worker?)
+
+| Candidate | Decision | Rationale (short) |
+|-----------|----------|-------------------|
+| Put workload-compiled (omit full frame bodies) | **Not yet** | Would make `.cmr` authoritative and break “wipe derived → still recover” (OVERVIEW). Needs FORMAT/profile + crash-matrix redesign first. |
+| Compiler **worker** (execute `plan_compile` ops) | **Next Chimera cut** when prioritized | Planner exists; without execute, layouts never recompile after seal. Operate on derived `.cmr` only; frames remain salvage truth. |
+| Dual physical representation | **Deferred** | After temperature GC + measured mixed-hot telemetry; opt-in already stubbed (`enable_dual_representation`). |
+| ZNS / FDP host placement | **Deferred** | After portable lifetime/temperature zones; device-specific evidence required. |
+
+See `doc/WORK_HORIZON.md` “Decision: implement put-path Chimera / dual-rep·ZNS·worker?”
+for the full authority and program-leverage argument. Do not claim “primary storage
+is workload-compiled” until put classification and payload omission are explicit
+format work — not a silent put-path change.

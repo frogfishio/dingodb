@@ -21,10 +21,13 @@
 //! hot/cold migration, and lifetime-aware placement.
 //!
 //! **Honesty:** codecs + planner + **seal/compaction layout sidecars**. Live
-//! `Store::put` still writes segment frames + `PrimaryIndex`. At seal/compact,
-//! Chimera compiles live values into `indexes/chimera/*.cmr`. `Store::get` may
-//! resolve through that layout when present; PrimaryIndex / chunks remain the
-//! fallback. Dual-rep and ZNS placement are still deferred.
+//! `Store::put` still writes segment frames + `PrimaryIndex` (frames remain
+//! authoritative; do not omit bodies on put until FORMAT/profile says so).
+//! At seal/compact, Chimera compiles live values into `indexes/chimera/*.cmr`.
+//! `Store::get` may resolve through that layout when present; PrimaryIndex /
+//! chunks remain the fallback. Next Chimera cut: a **compiler worker** that
+//! executes `plan_compile` ops against derived layouts. Dual-rep and ZNS stay
+//! deferred (see `INDEXING_STRATEGY_PROPOSAL.md` sequencing decision).
 
 mod classify;
 mod compiler;
