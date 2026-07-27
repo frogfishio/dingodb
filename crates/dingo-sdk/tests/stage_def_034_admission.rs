@@ -346,8 +346,7 @@ fn expensive_op_concurrency_budget() {
         assert!(ctrl.limits().max_expensive_concurrent == 1);
     } else {
         assert!(
-            codes.iter().any(|c| *c == "resource_limit")
-                || ctrl.stats().expensive_rejected >= 1,
+            codes.contains(&"resource_limit") || ctrl.stats().expensive_rejected >= 1,
             "expected expensive rejection: r1={r1} r2={r2} stats={:?}",
             ctrl.stats()
         );

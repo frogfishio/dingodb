@@ -328,11 +328,11 @@ fn main() -> ExitCode {
 fn run() -> Result<(), String> {
     let cli = Cli::parse();
     if cli.version_flag {
-        print!("{APP_VERSION}\n");
+        println!("{APP_VERSION}");
         return Ok(());
     }
     if cli.license {
-        print!("{LICENSE_TEXT}\n");
+        println!("{LICENSE_TEXT}");
         return Ok(());
     }
     let Some(cmd) = cli.command else {
@@ -1031,6 +1031,7 @@ fn cmd_restore(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)] // CLI flag surface maps 1:1 to params
 fn cmd_migrate(
     store: &Path,
     output: Option<&Path>,
@@ -1221,6 +1222,7 @@ fn emit_migrate_job(
     }
 }
 
+#[allow(clippy::too_many_arguments)] // CLI flag surface maps 1:1 to params
 fn cmd_scrub(
     store: &Path,
     status_only: bool,

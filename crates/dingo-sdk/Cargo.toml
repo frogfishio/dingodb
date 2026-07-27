@@ -2,6 +2,7 @@
 name = "dingo-sdk"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 # MPL-2.0 for embedded + remote. Enabling the `cluster` feature pulls AGPL
 # `dingo-cluster` (in-process multi-node); see doc/LICENSING.md.
 license = "MPL-2.0"

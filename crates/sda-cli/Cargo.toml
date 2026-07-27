@@ -2,6 +2,7 @@
 name = "sda"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
 description = "Structured Data Algebra command-line interface for evaluating, checking, and formatting SDA programs over JSON input."

@@ -695,7 +695,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ParseError> {
 }
 
 fn parse_bytes_literal(src: &str) -> Result<Vec<u8>, String> {
-    if src.len() % 2 != 0 {
+    if !src.len().is_multiple_of(2) {
         return Err("expected even-length base16 string".to_string());
     }
 

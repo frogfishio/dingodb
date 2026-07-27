@@ -636,10 +636,10 @@ impl PartitionRaft {
         candidate: NodeId,
         online: &[NodeId],
     ) -> Result<(NodeId, Term), ElectError> {
-        if !self.voters.iter().any(|v| *v == candidate) {
+        if !self.voters.contains(&candidate) {
             return Err(ElectError::NotAVoter);
         }
-        if !online.iter().any(|n| *n == candidate) {
+        if !online.contains(&candidate) {
             return Err(ElectError::CandidateOffline);
         }
 
@@ -675,7 +675,7 @@ impl PartitionRaft {
                 continue;
             }
             // Offline voters cannot grant votes (they do not respond).
-            if !online.iter().any(|n| *n == voter) {
+            if !online.contains(&voter) {
                 continue;
             }
             let res =
@@ -703,10 +703,10 @@ impl PartitionRaft {
                     continue;
                 }
                 if let Some(p) = self.peers.get_mut(&v.index()) {
-                    if p.role == RaftRole::Leader || p.role == RaftRole::Candidate {
-                        if p.current_term.0 <= new_term.0 {
-                            p.role = RaftRole::Follower;
-                        }
+                    if (p.role == RaftRole::Leader || p.role == RaftRole::Candidate)
+                        && p.current_term.0 <= new_term.0
+                    {
+                        p.role = RaftRole::Follower;
                     }
                 }
             }
@@ -738,7 +738,7 @@ impl PartitionRaft {
     /// node id (deterministic for tests).
     pub fn ensure_leader(&mut self, online: &[NodeId]) -> Result<(NodeId, Term), ElectError> {
         if let Some((leader, term)) = self.current_leader() {
-            if online.iter().any(|n| *n == leader) {
+            if online.contains(&leader) {
                 return Ok((leader, term));
             }
             // Leader is offline — step it down so a new election can proceed.
@@ -790,6 +790,7 @@ impl PartitionRaft {
     /// AppendEntries RPC: leader → follower.
     ///
     /// Log + hard state are flushed before success is returned (DEF-035).
+    #[allow(clippy::too_many_arguments)] // Raft AppendEntries fields are explicit
     pub fn append_entries(
         &mut self,
         follower: NodeId,
@@ -817,15 +818,14 @@ impl PartitionRaft {
         }
 
         // Valid leader heartbeat / append: adopt term and become follower.
-        if leader_term.0 > peer.current_term.0
+        if (leader_term.0 > peer.current_term.0
             || peer.role != RaftRole::Follower
-            || peer.voted_for != Some(leader_id)
+            || peer.voted_for != Some(leader_id))
+            && leader_term.0 >= peer.current_term.0
         {
-            if leader_term.0 >= peer.current_term.0 {
-                peer.current_term = leader_term;
-                peer.role = RaftRole::Follower;
-                peer.voted_for = Some(leader_id);
-            }
+            peer.current_term = leader_term;
+            peer.role = RaftRole::Follower;
+            peer.voted_for = Some(leader_id);
         }
 
         // Log matching: reject if prev does not match.
@@ -980,7 +980,7 @@ impl PartitionRaft {
                 if follower == leader {
                     continue;
                 }
-                if !online.iter().any(|n| *n == follower) {
+                if !online.contains(&follower) {
                     continue;
                 }
                 let _ = self.replicate_to(leader, follower);

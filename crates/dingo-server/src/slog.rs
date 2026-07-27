@@ -567,6 +567,7 @@ fn now_ms() -> u64 {
 /// Emit an RPC completion (and optional guarantee-failed) from response metadata.
 ///
 /// Never receives request/response bodies — only scalar correlation fields.
+#[allow(clippy::too_many_arguments)] // correlation fields stay explicit (DEF-060)
 pub fn log_rpc_complete(
     logger: &Logger,
     op: &str,

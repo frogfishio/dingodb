@@ -16,6 +16,10 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+# DEF-090 MSRV: keep in sync with .github/workflows/ci.yml `msrv` job and
+# CONTRIBUTING.md. Bump deliberately when a dependency or language feature
+# requires a newer compiler (`is_multiple_of` needs ≥1.87).
+rust-version = "1.88.0"
 # Multi-tier licensing (not a single workspace license). Per-crate SPDX in
 # each package; policy in doc/LICENSING.md. MIT was temporary scaffolding only.
 authors = ["Alexander R. Croft"]

@@ -2,6 +2,7 @@
 name = "dingo-store"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license = "MPL-2.0"
 authors.workspace = true
 description = "DingoDB single-node append store: segments, durability, catalogs, chunks, history, tiers (Stages 3+6+9)."

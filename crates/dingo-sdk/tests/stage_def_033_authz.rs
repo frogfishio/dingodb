@@ -317,7 +317,7 @@ fn legacy_shared_token_is_superuser() {
 
     {
         let mut db = Dingo::connect_with(
-            &format!("dingo://{bind}"),
+            format!("dingo://{bind}"),
             ConnectOptions::new().auth_token("legacy-token"),
         )
         .unwrap();

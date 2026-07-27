@@ -422,7 +422,7 @@ impl Store {
     /// or unavailable payload, returns [`StoreError::CoverageIncomplete`] rather
     /// than silently omitting those subjects. Use [`Self::scan_live_logical`] for
     /// an explicit partial-aware envelope, or [`Self::get_payload`] for one key.
-    pub fn live_logical_entries(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+    pub fn live_logical_entries(&self) -> Result<crate::compact::CheckpointPairs, StoreError> {
         let scan = self.scan_live_logical()?;
         if !scan.complete {
             let mut reasons = Vec::new();
@@ -525,7 +525,7 @@ impl Store {
                 }
             }
             let prefix = state.prefix.clone().or_else(|| options.prefix.clone());
-            (prefix, state.after, state.page_size.max(1).min(MAX_PAGE_SIZE))
+            (prefix, state.after, state.page_size.clamp(1, MAX_PAGE_SIZE))
         } else {
             (options.prefix.clone(), None, page_size)
         };
@@ -1119,7 +1119,7 @@ impl Store {
     pub fn load_checkpoint(
         &self,
         path: &Path,
-    ) -> Result<Option<(CheckpointMeta, Vec<(Vec<u8>, Vec<u8>)>)>, StoreError> {
+    ) -> Result<Option<(CheckpointMeta, crate::compact::CheckpointPairs)>, StoreError> {
         try_load_checkpoint(path, self.store_id)
     }
 
@@ -1378,6 +1378,7 @@ impl Store {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)] // mirrors index::apply_event event fields
     fn apply_durable_event(
         &mut self,
         subject: Vec<u8>,

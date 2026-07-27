@@ -510,6 +510,35 @@ fn reserved_json_tag(tag: &str) -> bool {
     )
 }
 
+fn encode_base16(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        use std::fmt::Write as _;
+        write!(&mut out, "{byte:02x}").expect("write to string");
+    }
+    out
+}
+
+fn decode_base16(src: &str) -> Result<Vec<u8>, String> {
+    if !src.len().is_multiple_of(2) {
+        return Err("expected even-length base16 string".to_string());
+    }
+
+    let mut out = Vec::with_capacity(src.len() / 2);
+    let mut chars = src.chars();
+    while let (Some(hi), Some(lo)) = (chars.next(), chars.next()) {
+        let hi = hi
+            .to_digit(16)
+            .ok_or_else(|| "expected base16 digits only".to_string())?;
+        let lo = lo
+            .to_digit(16)
+            .ok_or_else(|| "expected base16 digits only".to_string())?;
+        out.push(((hi << 4) | lo) as u8);
+    }
+
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1635,33 +1664,4 @@ mod tests {
             serde_json::json!({"$type": "fail", "$code": "t_sda_wrong_shape", "$msg": "wrong shape"})
         );
     }
-}
-
-fn encode_base16(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        use std::fmt::Write as _;
-        write!(&mut out, "{byte:02x}").expect("write to string");
-    }
-    out
-}
-
-fn decode_base16(src: &str) -> Result<Vec<u8>, String> {
-    if src.len() % 2 != 0 {
-        return Err("expected even-length base16 string".to_string());
-    }
-
-    let mut out = Vec::with_capacity(src.len() / 2);
-    let mut chars = src.chars();
-    while let (Some(hi), Some(lo)) = (chars.next(), chars.next()) {
-        let hi = hi
-            .to_digit(16)
-            .ok_or_else(|| "expected base16 digits only".to_string())?;
-        let lo = lo
-            .to_digit(16)
-            .ok_or_else(|| "expected base16 digits only".to_string())?;
-        out.push(((hi << 4) | lo) as u8);
-    }
-
-    Ok(out)
 }

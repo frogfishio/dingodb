@@ -70,7 +70,7 @@ pub struct CompactReport {
 }
 
 /// Options for a live-projection compaction (DEF-024).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CompactOptions {
     /// When true, after activate immediately attempt source reclaim.
     ///
@@ -86,17 +86,6 @@ pub struct CompactOptions {
     pub tombstone_horizon_ns: Option<u64>,
     /// Optional dedup horizon tag (e.g. max operation id retained).
     pub dedup_horizon: Option<String>,
-}
-
-impl Default for CompactOptions {
-    fn default() -> Self {
-        Self {
-            reclaim_sources: false,
-            allow_history_loss: false,
-            tombstone_horizon_ns: None,
-            dedup_horizon: None,
-        }
-    }
 }
 
 /// Durable compaction phase (DEF-024).
@@ -537,6 +526,7 @@ pub fn reclaim_source_segments(
 }
 
 /// Build a fresh planned job skeleton.
+#[allow(clippy::too_many_arguments)] // job fields are explicit for durable serialization
 pub fn new_planned_job(
     store_id: [u8; 16],
     job_id: [u8; 16],
@@ -637,11 +627,14 @@ pub fn write_checkpoint(
     Ok(path)
 }
 
+/// Subject/body pairs recovered from a checkpoint file.
+pub type CheckpointPairs = Vec<(Vec<u8>, Vec<u8>)>;
+
 /// Load checkpoint metadata + live pairs if the file verifies as a draft checkpoint.
 pub fn try_load_checkpoint(
     path: &Path,
     store_id: [u8; 16],
-) -> Result<Option<(CheckpointMeta, Vec<(Vec<u8>, Vec<u8>)>)>, StoreError> {
+) -> Result<Option<(CheckpointMeta, CheckpointPairs)>, StoreError> {
     if !path.is_file() {
         return Ok(None);
     }

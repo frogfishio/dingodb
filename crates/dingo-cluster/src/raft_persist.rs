@@ -57,7 +57,7 @@ pub enum ConsensusEvidenceClass {
 }
 
 /// Durable hard state (Raft §3.2 + applied frontier).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct HardState {
     /// Latest term this peer has observed.
     pub current_term: u64,
@@ -67,17 +67,6 @@ pub struct HardState {
     pub commit_index: u64,
     /// Highest log index applied to the local state machine on this peer.
     pub last_applied: u64,
-}
-
-impl Default for HardState {
-    fn default() -> Self {
-        Self {
-            current_term: 0,
-            voted_for: None,
-            commit_index: 0,
-            last_applied: 0,
-        }
-    }
 }
 
 /// Durable membership configuration for the partition group.

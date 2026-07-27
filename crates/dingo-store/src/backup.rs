@@ -413,14 +413,9 @@ pub fn restore_full_backup(
                 "restored store_id mismatch after open",
             ));
         }
-        // Best-effort: rewrite descriptor under new identity.
-        if opts.reassign_identity {
-            let _ = opened.persist_index_cache();
-            let _ = opened.rebuild_catalogs();
-        } else {
-            let _ = opened.persist_index_cache();
-            let _ = opened.rebuild_catalogs();
-        }
+        // Best-effort: refresh derived state (identity rewrite is separate).
+        let _ = opened.persist_index_cache();
+        let _ = opened.rebuild_catalogs();
         opened.live_logical_entries()?.len()
     };
 
@@ -609,7 +604,7 @@ fn write_manifest_atomic(path: &Path, manifest: &BackupManifest) -> Result<(), S
 }
 
 fn parse_store_id_hex(s: &str) -> Result<[u8; 16], StoreError> {
-    crate::layout::unhex16(s).ok_or_else(|| StoreError::CorruptMeta("invalid store_id hex"))
+    crate::layout::unhex16(s).ok_or(StoreError::CorruptMeta("invalid store_id hex"))
 }
 
 fn hex32(bytes: &[u8; 32]) -> String {

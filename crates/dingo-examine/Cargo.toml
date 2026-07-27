@@ -2,6 +2,7 @@
 name = "dingo-examine"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license = "MPL-2.0"
 authors.workspace = true
 description = "DingoDB SDA examination host: project salvage regions to ExaminationUnit values (Stage 5)."

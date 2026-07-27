@@ -153,9 +153,8 @@ pub fn recover_previous_or_corrupt(
 ) -> Result<Option<Vec<u8>>, StoreError> {
     let prev = previous_path(path);
     if prev.is_file() {
-        match fs::read(&prev) {
-            Ok(b) => return Ok(Some(b)),
-            Err(_) => {}
+        if let Ok(b) = fs::read(&prev) {
+            return Ok(Some(b));
         }
     }
     Err(StoreError::CorruptControl {

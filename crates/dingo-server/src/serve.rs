@@ -1427,7 +1427,7 @@ fn read_rpc_request(
         let bytes = match dingo_sdk::read_frame(reader, max_frame) {
             Ok(Some(b)) => b,
             Ok(None) => return Ok(None),
-            Err(e) if matches!(e, Error::DeadlineExceeded(_)) => {
+            Err(Error::DeadlineExceeded(_)) => {
                 return Err(ReadRpc::Idle);
             }
             Err(e) if e.code() == dingo_sdk::ErrorCode::ResourceLimit => {
@@ -2375,7 +2375,7 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, Error> {
         }
     }
     let bytes = s.as_bytes();
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return Err(Error::QueryInvalid("invalid base64 length".into()));
     }
     let mut out = Vec::with_capacity(bytes.len() / 4 * 3);

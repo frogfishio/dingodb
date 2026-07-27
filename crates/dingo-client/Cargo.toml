@@ -2,6 +2,7 @@
 name = "dingo-client"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
 description = "DingoDB thin network client: framed RPC protocol and handshake (MIT)."

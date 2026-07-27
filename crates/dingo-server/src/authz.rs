@@ -760,7 +760,7 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, Error::PermissionDenied(_)));
-        assert!(log.len() >= 1);
+        assert!(!log.is_empty());
         assert!(!log.contains_literal("w-secret"));
         assert!(!log.contains_literal("r-secret"));
         log.verify_chain().unwrap();

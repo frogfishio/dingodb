@@ -311,7 +311,7 @@ impl<'a> Cursor<'a> {
                 let _ = self.take(1)?;
                 Err(CborEnvelopeError::Unsupported)
             }
-            25 | 26 | 27 => Err(CborEnvelopeError::FloatRejected),
+            25..=27 => Err(CborEnvelopeError::FloatRejected),
             31 => Err(CborEnvelopeError::Indefinite),
             _ => Err(CborEnvelopeError::Unsupported),
         }

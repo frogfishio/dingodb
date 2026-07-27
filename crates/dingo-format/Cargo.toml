@@ -2,6 +2,7 @@
 name = "dingo-format"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
 description = "DingoDB survival wire format: frame codec, integrity, and salvage scanning (Stage 2)."

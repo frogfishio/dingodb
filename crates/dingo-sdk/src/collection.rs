@@ -296,7 +296,7 @@ impl<'a> Collection<'a> {
             store,
             collection: name,
             prefix,
-            page_size: page_size.max(1).min(dingo_store::MAX_PAGE_SIZE),
+            page_size: page_size.clamp(1, dingo_store::MAX_PAGE_SIZE),
             continuation: None,
             buffer: std::collections::VecDeque::new(),
             done: false,
@@ -410,9 +410,7 @@ pub fn find_on_store(
     // DEF-012: offline tiers make ordinary complete find results dishonest.
     let tier_cov = store.tier_coverage();
     if tier_cov.is_incomplete() && !options.allow_partial_coverage {
-        return Err(Error::CoverageIncomplete(format!(
-            "find refused: tier coverage incomplete (offline tiers / unavailable segments)"
-        )));
+        return Err(Error::CoverageIncomplete("find refused: tier coverage incomplete (offline tiers / unavailable segments)".to_string()));
     }
 
     // Try index acceleration when not force-scanning.
@@ -738,7 +736,6 @@ fn finish_query(
     check_result_bytes(result_bytes, budget_cap, &limits)?;
 
     if let Some((ref field, order)) = options.order_by {
-        let order = order;
         out.sort_by(|a, b| {
             let cmp = compare_field(&a.1, &b.1, field, order);
             if cmp == std::cmp::Ordering::Equal {

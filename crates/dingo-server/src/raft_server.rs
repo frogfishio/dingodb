@@ -78,7 +78,7 @@ impl RaftServerState {
         let local = NodeId::new(node_index);
         let mut nodes = HashMap::new();
         for a in &directory.assignments {
-            if !a.replicas.iter().any(|r| *r == local) {
+            if !a.replicas.contains(&local) {
                 continue;
             }
             let store = RaftPeerStore::open(cluster_root, local, a.partition)
@@ -158,7 +158,7 @@ impl RaftServerState {
             .copied()
             .map(NodeId::new)
             .collect();
-        if !v.iter().any(|n| *n == self.local) {
+        if !v.contains(&self.local) {
             v.push(self.local);
         }
         v.sort_by_key(|n| n.index());

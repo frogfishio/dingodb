@@ -225,6 +225,7 @@ impl Filter {
     }
 
     /// Negation.
+    #[allow(clippy::should_implement_trait)] // constructor, not operator overload
     pub fn not(inner: Filter) -> Self {
         Self::Not(Box::new(inner))
     }
@@ -812,7 +813,7 @@ fn path_expr(path: &str) -> String {
         Vec::new()
     } else {
         path.split('.')
-            .map(|s| sda_string_literal(s))
+            .map(sda_string_literal)
             .collect()
     };
     format!("getPath(input, Seq[{}])", segs.join(", "))

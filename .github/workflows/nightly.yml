@@ -1,8 +1,10 @@
 name: nightly
 
-# Stage 7f packaging: reproducible corruption corpora + performance skeleton
-# on a schedule (and on demand). Keeps the main CI job fast while still
-# exercising §13 / §16 damage tests and the bench harness regularly.
+# Stage 7f packaging + DEF-090 expensive suites: reproducible corruption
+# corpora, full crash matrix, and performance skeleton on a schedule (and on
+# demand). Keeps the main CI job fast while remaining **release-blocking** when
+# the schedule fails (branch protection should require this workflow green on
+# the default branch for release tags).
 
 on:
   schedule:
@@ -13,6 +15,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
 
 jobs:
   nightly:
@@ -24,13 +27,16 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
       - name: Format
         run: cargo fmt --all -- --check
+
+      - name: Clippy (strict)
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Full workspace test
         run: cargo test --workspace
@@ -54,3 +60,6 @@ jobs:
 
       - name: Stage 7 CLI doctor / salvage / serve
         run: cargo test -p dingo-cli --test cli -- --nocapture
+
+      - name: Release content (DEF-003)
+        run: ./scripts/release_content.sh

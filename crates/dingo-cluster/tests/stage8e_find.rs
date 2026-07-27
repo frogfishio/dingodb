@@ -108,9 +108,10 @@ fn partial_query_when_partition_replicas_all_offline() {
     assert!(found.coverage.unavailable.contains(&target));
     // Must not present unavailable partition as empty success.
     assert!(!found.coverage.completed.contains(&target));
-    // Other partitions may still return data.
+    // Incomplete coverage is the honesty contract (other partitions may still
+    // return data under the same report).
     assert!(
-        !found.coverage.completed.is_empty() || !found.entries.is_empty() || true,
+        found.coverage.is_incomplete(),
         "incomplete coverage recorded"
     );
 }
@@ -159,7 +160,7 @@ fn limit_truncates_with_flag() {
     assert!(found.truncated);
     assert_eq!(found.entries.len(), 3);
     // Limit alone does not make coverage incomplete (all partitions examined).
-    assert!(found.coverage.is_complete() || found.coverage.resource_limit_reached == false);
+    assert!(found.coverage.is_complete() || !found.coverage.resource_limit_reached);
 }
 
 #[test]

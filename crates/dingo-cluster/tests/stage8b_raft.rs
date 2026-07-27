@@ -30,7 +30,6 @@ fn reelect_after_leader_loss_with_majority() {
         .unwrap();
     assert!(ack2.committed);
     assert_ne!(ack2.leader, old_leader);
-    assert!(ack2.term.0 > old_term.0 || ack2.term.0 == old_term.0);
     // New term after election (leader step-down + elect increments).
     assert!(ack2.term.0 >= old_term.0);
 

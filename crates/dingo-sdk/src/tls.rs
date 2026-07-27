@@ -502,7 +502,7 @@ impl TlsServerState {
             stream
                 .conn
                 .complete_io(&mut stream.sock)
-                .map_err(|e| map_tls_io(e))?;
+                .map_err(map_tls_io)?;
         }
         let peer = stream
             .conn

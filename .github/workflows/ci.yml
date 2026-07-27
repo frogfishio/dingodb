@@ -1,5 +1,9 @@
 name: ci
 
+# DEF-090 — required quality bar for every PR / push to main.
+# Expensive corruption / crash-matrix suites stay on nightly.yml (release-blocking
+# when the schedule runs; see scripts/nightly.sh).
+
 on:
   push:
     branches: [main, master]
@@ -8,18 +12,23 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
 
 jobs:
   test:
-    name: fmt + test
-    runs-on: ubuntu-latest
+    name: quality (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -27,14 +36,61 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
+      - name: Clippy (strict)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
       - name: Working tree clean
         run: test -z "$(git status --short)"
 
-      - name: Build
+      - name: Build all targets
         run: cargo build --workspace --all-targets
 
       - name: Test
         run: cargo test --workspace
 
-      - name: Release content (DEF-003)
+      - name: Docs + doctests
+        run: cargo doc --workspace --no-deps --document-private-items
+
+      - name: Release content / package lists (DEF-003)
+        # Dirty-tree check is already above; allow-dirty avoids double-fail noise
+        # if platform-specific files appear under target/ only (they should not).
         run: ./scripts/release_content.sh
+        env:
+          DINGO_RELEASE_ALLOW_DIRTY: "0"
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build + test on MSRV
+        run: |
+          cargo +1.88.0 build --workspace --all-targets
+          cargo +1.88.0 test --workspace
+
+  audit:
+    name: deps + licenses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo-deny (advisories + licenses + bans)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --all-features

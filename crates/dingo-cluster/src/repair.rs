@@ -202,7 +202,7 @@ pub struct RepairReport {
 }
 
 /// Options for a bounded repair pass (DEF-039 rate limit / foreground isolation).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RepairOptions {
     /// Maximum distinct subjects to repair (copy) in this pass.
     pub max_subjects: Option<usize>,
@@ -210,16 +210,6 @@ pub struct RepairOptions {
     pub max_bytes: Option<u64>,
     /// When true, only inventory / plan — do not write.
     pub dry_run: bool,
-}
-
-impl Default for RepairOptions {
-    fn default() -> Self {
-        Self {
-            max_subjects: None,
-            max_bytes: None,
-            dry_run: false,
-        }
-    }
 }
 
 impl RepairOptions {

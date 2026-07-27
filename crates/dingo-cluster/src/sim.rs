@@ -399,11 +399,7 @@ fn check_subject_linearizable(
     let constrained: Vec<&HistoryEntry> = ops
         .iter()
         .copied()
-        .filter(|e| match (&e.op, &e.outcome) {
-            (ClientOp::Put { .. }, Some(OpOutcome::PutOk { committed: true, .. })) => true,
-            (ClientOp::Get { .. }, Some(OpOutcome::GetOk { value: Some(_) })) => true,
-            _ => false,
-        })
+        .filter(|e| matches!((&e.op, &e.outcome), (ClientOp::Put { .. }, Some(OpOutcome::PutOk { committed: true, .. })) | (ClientOp::Get { .. }, Some(OpOutcome::GetOk { value: Some(_) }))))
         .collect();
 
     if constrained.len() > 12 {
@@ -1152,7 +1148,7 @@ impl SimWorld {
         let op = ClientOp::Get {
             subject: subject.into(),
         };
-        let result = if !self.online_voters().iter().any(|n| *n == node) {
+        let result = if !self.online_voters().contains(&node) {
             Err(format!("{node} offline"))
         } else {
             match self.committed_value(node, subject) {

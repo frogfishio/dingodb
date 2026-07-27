@@ -321,7 +321,7 @@ fn readiness_fails_when_runtime_draining() {
                 .unwrap();
             if let Ok(mut reader) = stream.try_clone().map(BufReader::new) {
                 if client_handshake(&mut reader, &mut stream).is_ok() {
-                    if let Ok(bytes) = (|| {
+                    if let Ok(Some(bytes)) = (|| {
                         write_frame(
                             &mut stream,
                             json!({"id": 2u64, "op": "health_ready"})
@@ -330,16 +330,14 @@ fn readiness_fails_when_runtime_draining() {
                         )?;
                         read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES)
                     })() {
-                        if let Some(bytes) = bytes {
-                            let ready: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-                            // Either not ready, or connection refused-equivalent.
-                            if ready.get("ok").is_some() {
-                                assert_eq!(
-                                    ready["ok"], false,
-                                    "expected not ready while draining: {ready}"
-                                );
-                                assert_eq!(ready["value"]["ready"], false);
-                            }
+                        let ready: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+                        // Either not ready, or connection refused-equivalent.
+                        if ready.get("ok").is_some() {
+                            assert_eq!(
+                                ready["ok"], false,
+                                "expected not ready while draining: {ready}"
+                            );
+                            assert_eq!(ready["value"]["ready"], false);
                         }
                     }
                 }

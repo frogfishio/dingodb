@@ -97,6 +97,7 @@ impl PrimaryIndex {
     }
 
     /// Apply one verified item event in recovery order.
+    #[allow(clippy::too_many_arguments)] // event identity fields stay explicit
     pub fn apply_event(
         &mut self,
         subject: Vec<u8>,

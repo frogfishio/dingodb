@@ -389,13 +389,16 @@ pub(crate) fn index_key_for_doc(doc: &JsonValue, fields: &[String]) -> Option<Ve
     Some(out)
 }
 
+/// Index acceleration candidates: metadata plus subject keys.
+pub(crate) type IndexLookupCandidates = (IndexInfo, Vec<Vec<u8>>);
+
 /// If the filter is a simple equality (or AND of equalities) on fields that
 /// match an index prefix, return candidate subjects from that index.
 pub(crate) fn try_index_lookup(
     store: &Store,
     collection: &str,
     filter: &Filter,
-) -> Result<Option<(IndexInfo, Vec<Vec<u8>>)>, Error> {
+) -> Result<Option<IndexLookupCandidates>, Error> {
     let eqs = equality_fields(filter);
     if eqs.is_empty() {
         return Ok(None);

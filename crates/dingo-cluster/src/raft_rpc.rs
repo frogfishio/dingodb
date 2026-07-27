@@ -183,7 +183,7 @@ pub struct ReadIndexResponse {
 mod serde_bytes_b64 {
     use serde::{Deserialize, Deserializer, Serializer};
 
-    pub fn serialize<S: Serializer>(bytes: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(&b64_encode(bytes))
     }
 
@@ -194,7 +194,7 @@ mod serde_bytes_b64 {
 
     fn b64_encode(data: &[u8]) -> String {
         const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+        let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
         for chunk in data.chunks(3) {
             let b0 = chunk[0] as u32;
             let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
@@ -228,7 +228,7 @@ mod serde_bytes_b64 {
             }
         }
         let bytes = s.as_bytes();
-        if bytes.len() % 4 != 0 {
+        if !bytes.len().is_multiple_of(4) {
             return Err("invalid base64 length");
         }
         let mut out = Vec::with_capacity(bytes.len() / 4 * 3);
@@ -397,7 +397,7 @@ impl NetworkRaftNode {
         placement_epoch: PlacementEpoch,
     ) -> Self {
         assert!(
-            voters.iter().any(|v| *v == local),
+            voters.contains(&local),
             "local node must be a voter"
         );
         // Full voter set for quorum math; only the local peer's log/hard state
@@ -694,10 +694,10 @@ impl NetworkRaftNode {
         transport: &dyn RaftTransport,
         online: &[NodeId],
     ) -> Result<(NodeId, Term), ElectError> {
-        if !self.group.voters.iter().any(|v| *v == self.local) {
+        if !self.group.voters.contains(&self.local) {
             return Err(ElectError::NotAVoter);
         }
-        if !online.iter().any(|n| *n == self.local) {
+        if !online.contains(&self.local) {
             return Err(ElectError::CandidateOffline);
         }
 
@@ -739,7 +739,7 @@ impl NetworkRaftNode {
             if voter == self.local {
                 continue;
             }
-            if !online.iter().any(|n| *n == voter) {
+            if !online.contains(&voter) {
                 continue;
             }
             match transport.request_vote(voter, &req) {
@@ -901,7 +901,7 @@ impl NetworkRaftNode {
                 if follower == self.local {
                     continue;
                 }
-                if !online.iter().any(|n| *n == follower) {
+                if !online.contains(&follower) {
                     continue;
                 }
                 let _ = self.replicate_to(follower, transport);
@@ -1110,20 +1110,12 @@ pub struct MemoryRaftNetwork {
     inner: Arc<Mutex<MemoryRaftNetworkInner>>,
 }
 
+#[derive(Default)]
 struct MemoryRaftNetworkInner {
     /// partition → node_index → node
     nodes: HashMap<u32, HashMap<u32, Arc<Mutex<NetworkRaftNode>>>>,
     /// Nodes marked offline (RPCs fail as Unavailable).
     offline: HashSet<u32>,
-}
-
-impl Default for MemoryRaftNetworkInner {
-    fn default() -> Self {
-        Self {
-            nodes: HashMap::new(),
-            offline: HashSet::new(),
-        }
-    }
 }
 
 impl MemoryRaftNetwork {
@@ -1572,7 +1564,8 @@ mod tests {
             let store = RaftPeerStore::open(dir.path(), *v, p).unwrap();
             let peer = store.load_peer().unwrap();
             assert!(peer.current_term.0 >= 1);
-            assert!(peer.last_log_index() >= 1 || peer.commit_index >= 1 || true);
+            // Log and hard state must reopen without inventing an empty peer.
+            assert!(peer.last_log_index() >= 1 || peer.commit_index >= 1);
         }
     }
 

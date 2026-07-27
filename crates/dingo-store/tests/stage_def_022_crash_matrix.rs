@@ -482,17 +482,14 @@ fn run_store_create(path: &Path, failpoint: &str, expected: &dingo_store::Expect
         result.err().map(|e| e.to_string()).unwrap_or_default()
     );
     clear_failpoints();
-    match Store::open(path) {
-        Ok(s) => {
-            assert!(
-                s.get("ghost").unwrap().is_none(),
-                "must not fabricate subjects"
-            );
-            if expected.salvageable {
-                let _ = s.salvage();
-            }
+    if let Ok(s) = Store::open(path) {
+        assert!(
+            s.get("ghost").unwrap().is_none(),
+            "must not fabricate subjects"
+        );
+        if expected.salvageable {
+            let _ = s.salvage();
         }
-        Err(_) => {}
     }
 }
 
@@ -578,10 +575,11 @@ fn run_put_buffered(path: &Path, failpoint: &str, expected: &dingo_store::Expect
     clear_failpoints();
     let store = Store::open(path).expect("reopen");
     assert_prior_ok(&store, expected);
-    if expected.acknowledged_visible == Some(false) && !acknowledged {
-        if failpoint.ends_with(".before") {
-            assert!(store.get("k").unwrap().is_none());
-        }
+    if expected.acknowledged_visible == Some(false)
+        && !acknowledged
+        && failpoint.ends_with(".before")
+    {
+        assert!(store.get("k").unwrap().is_none());
     }
 }
 

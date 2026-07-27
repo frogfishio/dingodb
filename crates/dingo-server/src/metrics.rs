@@ -374,6 +374,7 @@ impl MetricsRegistry {
     }
 
     /// Record one completed application RPC (no payloads).
+    #[allow(clippy::too_many_arguments)] // RPC observation fields are explicit
     pub fn observe_rpc(
         &self,
         op: &str,
@@ -634,11 +635,10 @@ pub fn evaluate_health(input: HealthEvalInput<'_>) -> HealthReport {
         reasons.push("replication claimed but raft not attached".into());
     }
 
-    let ready = live
-        && !input.draining
+    let ready = (input.raft_attached || !input.claims_replication)
         && input.store_open
-        && !(input.claims_replication && !input.raft_attached);
-
+        && !input.draining
+        && live;
     let status = if !live {
         HealthStatus::NotReady
     } else if ready {

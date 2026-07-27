@@ -15,9 +15,9 @@ fn wipe_indexes_and_catalogs_rebuild_same_content() {
         store.delete("a", DurabilityMode::Durable).unwrap();
         assert_eq!(store.get("b").unwrap().as_deref(), Some(b"two".as_slice()));
         assert!(store.get("a").unwrap().is_none());
-        // Ensure catalog/cache exist.
+        // Ensure catalog/cache exist (path may be written lazily by rebuild).
         store.rebuild_catalogs().unwrap();
-        assert!(store.index_cache_path().is_file() || true);
+        let _ = store.index_cache_path();
     }
 
     // Wipe derived dirs.

@@ -220,15 +220,24 @@ pub fn decode_frame(bytes: &[u8], limits: SafetyLimits) -> Result<DecodedFrame, 
     })
 }
 
+/// Views into a verified frame: header, envelope, body, body hash, frame length.
+pub type VerifiedFrameViews<'a> = (
+    FrameHeader,
+    &'a [u8],
+    &'a [u8],
+    [u8; BODY_HASH_LEN],
+    u64,
+);
+
 /// Verify a frame candidate starting at offset 0 of `bytes`.
 ///
 /// The buffer may be longer than the frame: only the leading `frame_len` bytes
 /// are checked. Used by the salvage scanner when candidates sit inside a larger
 /// segment. Returns `(header, envelope, body, body_hash, frame_len)`.
-pub fn verify_frame_at<'a>(
-    bytes: &'a [u8],
+pub fn verify_frame_at(
+    bytes: &[u8],
     limits: SafetyLimits,
-) -> Result<(FrameHeader, &'a [u8], &'a [u8], [u8; BODY_HASH_LEN], u64), FrameVerifyError> {
+) -> Result<VerifiedFrameViews<'_>, FrameVerifyError> {
     if bytes.len() < FRAME_PREFIX_LEN {
         return Err(FrameVerifyError::Truncated {
             need: FRAME_PREFIX_LEN,
@@ -312,10 +321,10 @@ pub fn verify_frame_at<'a>(
 /// Exact-length verify (alias used by callers that already sliced the window).
 ///
 /// Prefer [`verify_frame_at`] when the buffer may contain trailing bytes.
-pub fn verify_frame_bytes<'a>(
-    bytes: &'a [u8],
+pub fn verify_frame_bytes(
+    bytes: &[u8],
     limits: SafetyLimits,
-) -> Result<(FrameHeader, &'a [u8], &'a [u8], [u8; BODY_HASH_LEN], u64), FrameVerifyError> {
+) -> Result<VerifiedFrameViews<'_>, FrameVerifyError> {
     let (header, envelope, body, hash, frame_len) = verify_frame_at(bytes, limits)?;
     if bytes.len() as u64 != frame_len {
         return Err(FrameVerifyError::TrailingBytes {

@@ -138,7 +138,7 @@ fn hierarchical_catalog_rebuilds_after_loss() {
     store.seal_active().unwrap();
 
     let before = store.list_segment_summaries();
-    assert!(before.len() >= 1);
+    assert!(!before.is_empty());
     let n = before.len();
 
     // Wipe derived catalogs (including segment + tier placement catalogs).

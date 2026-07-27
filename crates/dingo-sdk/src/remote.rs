@@ -743,7 +743,7 @@ impl RemoteClient {
                 ..base_req("put")
             },
         )?;
-        Ok(write_receipt_from_resp(key, &resp, options.durability)?)
+        write_receipt_from_resp(key, &resp, options.durability)
     }
 
     /// Get JSON for collection/key (multi-hop: routes to partition leader).
@@ -788,7 +788,7 @@ impl RemoteClient {
                 ..base_req("delete")
             },
         )?;
-        Ok(delete_receipt_from_resp(key, &resp, options.durability)?)
+        delete_receipt_from_resp(key, &resp, options.durability)
     }
 
     /// Put raw bytes (base64 on the wire; multi-hop routed).
@@ -815,7 +815,7 @@ impl RemoteClient {
                 ..base_req("put_bytes")
             },
         )?;
-        Ok(write_receipt_from_resp(key, &resp, options.durability)?)
+        write_receipt_from_resp(key, &resp, options.durability)
     }
 
     /// Get raw bytes (multi-hop routed).
@@ -1516,7 +1516,7 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, Error> {
         }
     }
     let bytes = s.as_bytes();
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return Err(Error::QueryInvalid("invalid base64 length".into()));
     }
     let mut out = Vec::with_capacity(bytes.len() / 4 * 3);

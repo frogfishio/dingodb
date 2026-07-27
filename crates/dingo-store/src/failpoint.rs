@@ -112,9 +112,7 @@ pub fn any_armed() -> bool {
 
 fn take_action(name: &'static str) -> Option<Action> {
     let mut g = registry().lock().expect("failpoint registry");
-    let Some(entry) = g.get_mut(name) else {
-        return None;
-    };
+    let entry = g.get_mut(name)?;
     let action = entry.action;
     if let Some(ref mut rem) = entry.remaining {
         if *rem == 0 {

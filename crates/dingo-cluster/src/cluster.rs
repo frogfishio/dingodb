@@ -740,7 +740,7 @@ impl Cluster {
                 }
             }
             // Deterministic order for conflict multi-put.
-            unique_bodies.sort_by(|a, b| body_content_hash(a).cmp(&body_content_hash(b)));
+            unique_bodies.sort_by_key(|a| body_content_hash(a));
 
             let is_conflict = conflict_subjects.contains(subject);
 
@@ -1732,6 +1732,7 @@ impl Cluster {
         Ok(job)
     }
 
+    #[allow(clippy::too_many_arguments)] // query contact state is intentionally expanded
     fn contact_partition(
         &mut self,
         partition: PartitionId,
@@ -1831,6 +1832,7 @@ impl Cluster {
     ///
     /// When `after_subject` is set, only subjects strictly greater than that
     /// value are returned (DEF-040 page resume).
+    #[allow(clippy::too_many_arguments)] // page scan state stays explicit
     fn collect_partition_entries(
         &self,
         store: &Store,

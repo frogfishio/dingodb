@@ -21,12 +21,12 @@ fn wait_for_dingo_ping(bind: &str) {
             let _ = stream.set_read_timeout(Some(Duration::from_millis(400)));
             let _ = stream.set_write_timeout(Some(Duration::from_millis(400)));
             let mut reader = BufReader::new(stream.try_clone().unwrap());
-            if client_handshake(&mut reader, &mut stream).is_ok() {
-                if write_frame(&mut stream, br#"{"id":1,"op":"ping"}"#).is_ok() {
-                    if let Ok(Some(bytes)) = read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES) {
-                        if bytes.contains(&b'{') {
-                            return;
-                        }
+            if client_handshake(&mut reader, &mut stream).is_ok()
+                && write_frame(&mut stream, br#"{"id":1,"op":"ping"}"#).is_ok()
+            {
+                if let Ok(Some(bytes)) = read_frame(&mut reader, DEFAULT_MAX_FRAME_BYTES) {
+                    if bytes.contains(&b'{') {
+                        return;
                     }
                 }
             }

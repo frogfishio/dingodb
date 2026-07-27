@@ -11,6 +11,9 @@ export RUSTFLAGS="${RUSTFLAGS:--D warnings}"
 echo "== fmt =="
 cargo fmt --all -- --check
 
+echo "== clippy (strict) =="
+cargo clippy --workspace --all-targets -- -D warnings
+
 echo "== workspace tests =="
 cargo test --workspace
 

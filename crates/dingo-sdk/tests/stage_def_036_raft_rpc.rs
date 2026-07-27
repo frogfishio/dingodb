@@ -297,9 +297,8 @@ fn unauthenticated_raft_rpc_rejected_when_token_required() {
                 confirm: None,
             };
             let resp = c.call_rpc(req);
-            match resp {
-                Ok(r) => assert!(!r.ok),
-                Err(_) => {}
+            if let Ok(r) = resp {
+                assert!(!r.ok);
             }
         }
     }

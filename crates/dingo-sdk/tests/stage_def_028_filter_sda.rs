@@ -4,6 +4,7 @@
 //! - native [`Filter::matches`]
 //! - compiled SDA [`Filter::matches_sda`]
 //! - embedded `find` (scan path)
+//!
 //! and asserts agreement. Also checks versioned [`QueryPlan`] round-trips.
 
 use dingo_sdk::{json, Dingo, Filter, Pred, QueryOptions, QueryPlan, QUERY_PLAN_PROFILE};
@@ -259,7 +260,7 @@ fn embedded_find_agrees_with_filter_matches() {
         ("d5", json!({"a": "not-object"})),
     ];
     for (k, v) in &docs {
-        col.put(*k, v).unwrap();
+        col.put(k, v).unwrap();
     }
 
     let filters = [

@@ -282,7 +282,7 @@ fn endpoints_os_lock(root: &Path) -> Result<EndpointsOsLock, ClusterError> {
     std::fs::create_dir_all(root)?;
     let path: PathBuf = root.join(ENDPOINTS_LOCK);
     let file = OpenOptions::new()
-        .create(true)
+        .create(true).truncate(true)
         .read(true)
         .write(true)
         .open(&path)?;

@@ -2,6 +2,7 @@
 name = "dingo-cli"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license = "AGPL-3.0-or-later"
 authors.workspace = true
 description = "DingoDB command-line interface: put/get, doctor, salvage, backup/restore, and serve (Stage 7)."

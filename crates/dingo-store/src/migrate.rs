@@ -292,21 +292,12 @@ pub struct MigrateReport {
 }
 
 /// Options for migration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct MigrateOptions {
     /// Stop after writing the plan (no destination bytes).
     pub plan_only: bool,
     /// Stop after apply without verify (operator may verify later).
     pub skip_verify: bool,
-}
-
-impl Default for MigrateOptions {
-    fn default() -> Self {
-        Self {
-            plan_only: false,
-            skip_verify: false,
-        }
-    }
 }
 
 /// Path of the migration control directory under a store root.
@@ -941,7 +932,7 @@ fn dest_is_acceptable(dest_root: &Path) -> Result<bool, StoreError> {
     if StorePaths::new(dest_root).looks_like_store() {
         return Ok(false);
     }
-    Ok(dest_is_empty_dir(dest_root)?)
+    dest_is_empty_dir(dest_root)
 }
 
 fn dest_is_empty_dir(dest_root: &Path) -> Result<bool, StoreError> {
@@ -1059,7 +1050,7 @@ fn fail_job(
 }
 
 fn parse_job_id(s: &str) -> Result<[u8; 16], StoreError> {
-    crate::layout::unhex16(s).ok_or_else(|| StoreError::CorruptMeta("invalid job_id hex"))
+    crate::layout::unhex16(s).ok_or(StoreError::CorruptMeta("invalid job_id hex"))
 }
 
 fn path_to_posix(p: &Path) -> String {
