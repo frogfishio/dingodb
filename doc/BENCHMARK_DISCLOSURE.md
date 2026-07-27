@@ -108,7 +108,7 @@ optimization — beyond which further work is diminishing returns?
 | Asymptotic indexing failure fixed? | **Yes.** Amortized put work no longer grows with retained history; late/early ≳ 0.7. |
 | Steady-state put path healthy? | **Yes.** ~µs-class buffered puts; dual-index is a minority share on mid-size values. |
 | Further primary-index micro-opts on the put path? | **Diminishing returns.** Shaving dual-index from ~40% → ~20% of a 20 µs put is low leverage vs **tens of ms** lifecycle spikes. |
-| Fancy read indexes (PGM++/Hydra proposal)? | **Different axis** — not a write-path steady-state win; evaluate under read benchmarks, not this cliff. |
+| Fancy read indexes (PGM++/Hydra foundation)? | **Different axis** — foundation shipped at seal as derived sidecars; **not** yet wired into `Store::get`. Evaluate under dedicated read/rebuild benches, not the write cliff. |
 | Write-path performance work finished? | **No.** Next high-leverage move is **async lifecycle**: dual active segments, O(1) rotate, background seal/checkpoint so p99 is not coupled to `seal_active` / `persist_index_cache`. |
 
 **Plain answer:** For *ordinary index insertion on the steady-state write path*,
@@ -120,9 +120,36 @@ Do **not** spend the next labor tranche on SwissTable/PGM/micro-opts of
 `PrimaryIndex` apply unless a new measurement shows index re-dominating after
 lifecycle is off the ack path.
 
+### 1 GiB testrig diagnostic snapshot (not a published SLO)
+
+Latest local campaign (`dingo-testrig run`, buffered, 4 KiB payloads, target 1 GiB;
+summary under the work dir `testrig-summary.v1.json`). **Diagnostic only.**
+
+| Phase | Signal (order of magnitude) |
+|-------|-----------------------------|
+| Pump | Target met (~131k keys / ~1.04 GiB on disk); release-mode tens of k ops/s class on quiet developer hardware |
+| Baseline gets (128 samples) | All ok; p50/p95/p99 in the **µs** class via hot `PrimaryIndex` path |
+| Chaos | Offline punches into sealed segments; salvage reports holes; live subjects retained |
+| Post-chaos gets | Sampled keys still ok — integrity path speaks after damage |
+| Hydra sidecars | Seal path writes `indexes/seg/*.hdx` (derived); not the get path above |
+
+Do **not** quote these as Redis comparisons, multi-node SLOs, or “Hydra latency”
+without a dedicated read bench that actually probes `HydraIndex` and full
+disclosure fields in the table at the top of this file.
+
+### “Big flex” honesty line
+
+Hydra + testrig + write-cliff fix is a **legitimate engineering flex** when
+scoped as: adaptive derived segment indexes, scale-ladder integrity evidence,
+and fixed asymptotic write indexing. It is **not** a production-maturity or
+cross-engine performance claim. Full scope table:
+[WORK_HORIZON.md](WORK_HORIZON.md) (“Is this a big flex?” self-check).
+
 ## Marketing language
 
 - Prefer “hot-path p99 under durable ack on NVMe” over unqualified “Redis-fast”.
 - Never claim archive reads have memory latency.
+- Never attribute hot-path get latency to Hydra until `Store::get` (or a
+  documented sealed-segment probe) actually uses `HydraIndex`.
 - Incomplete coverage (offline tier) is not “empty success” and must not appear
   as a zero-latency miss in charts without labeling.
