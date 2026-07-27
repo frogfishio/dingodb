@@ -81,12 +81,25 @@ impl Default for HardState {
 }
 
 /// Durable membership configuration for the partition group.
+///
+/// During rebalance joint consensus (DEF-038 / CLUSTER_SPEC §14), `joint` is
+/// true, `voters` is the union of old and new sets, and `outgoing` /
+/// `incoming` record the pre-activation configuration for recovery.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipState {
-    /// Dense node indexes of voting members.
+    /// Dense node indexes of voting members (joint union when [`Self::joint`]).
     pub voters: Vec<u32>,
     /// Placement epoch fencing writes for this assignment.
     pub placement_epoch: u64,
+    /// True while voters are in joint (old ∪ new) configuration.
+    #[serde(default)]
+    pub joint: bool,
+    /// Pre-rebalance replica set (dense indexes); empty when not joint.
+    #[serde(default)]
+    pub outgoing: Vec<u32>,
+    /// Target replica set after activation; empty when not joint.
+    #[serde(default)]
+    pub incoming: Vec<u32>,
 }
 
 /// Snapshot metadata with integrity over the optional blob and last-included position.

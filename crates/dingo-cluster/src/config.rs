@@ -77,6 +77,13 @@ pub struct ClusterMeta {
     pub node_count: u32,
     /// Placement epoch at create time.
     pub placement_epoch: u64,
+    /// Optional BLAKE3 hex of the endpoint registration secret (DEF-038).
+    ///
+    /// When set, [`crate::endpoints::upsert_endpoint_authenticated`] requires a
+    /// matching plaintext secret. Absent ⇒ unauthenticated upserts allowed
+    /// (development / existing clusters).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub registration_token_hash: Option<String>,
 }
 
 impl ClusterMeta {
@@ -100,6 +107,48 @@ impl ClusterMeta {
             hash_profile: cfg.partition_map.hash_profile.clone(),
             node_count: cfg.profile.default_node_count(),
             placement_epoch: 1,
+            registration_token_hash: None,
+        }
+    }
+
+    /// BLAKE3 hex of a registration secret (for `registration_token_hash`).
+    pub fn hash_registration_secret(secret: &str) -> String {
+        blake3::hash(secret.as_bytes()).to_hex().to_string()
+    }
+
+    /// Persist a registration secret requirement (DEF-038 endpoint auth).
+    ///
+    /// Subsequent authenticated endpoint upserts must present the same secret.
+    pub fn set_registration_secret(
+        root: &Path,
+        secret: &str,
+    ) -> Result<(), ClusterError> {
+        let mut meta = Self::load(root)?;
+        meta.registration_token_hash = Some(Self::hash_registration_secret(secret));
+        meta.write(root)
+    }
+
+    /// Clear registration secret requirement (dev only).
+    pub fn clear_registration_secret(root: &Path) -> Result<(), ClusterError> {
+        let mut meta = Self::load(root)?;
+        meta.registration_token_hash = None;
+        meta.write(root)
+    }
+
+    /// Verify a plaintext registration secret against this meta (if configured).
+    pub fn check_registration_secret(&self, secret: &str) -> Result<(), ClusterError> {
+        match &self.registration_token_hash {
+            None => Ok(()),
+            Some(expect) => {
+                let got = Self::hash_registration_secret(secret);
+                if &got == expect {
+                    Ok(())
+                } else {
+                    Err(ClusterError::ReplicationRejected(
+                        "endpoint registration secret mismatch".into(),
+                    ))
+                }
+            }
         }
     }
 

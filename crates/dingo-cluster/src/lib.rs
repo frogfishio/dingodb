@@ -20,6 +20,8 @@
 //! - Convergent-append dual-accept + reconcile ([`convergent`]; CLUSTER_SPEC §9.2)
 //! - Distributed find/scan with coverage honesty (Stage 8e; CLUSTER_SPEC §17)
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
+//! - Durable rebalance jobs + joint membership restore (DEF-038 /
+//!   `dingo-rebalance-control-v1`)
 //! - Node-local salvage without cluster software
 //! - Network advertise path: [`endpoints`] + `dingo serve-cluster`
 //!
@@ -52,7 +54,7 @@ pub mod raft_rpc;
 mod rebalance;
 
 pub use ack::ClusterWriteAck;
-pub use cluster::Cluster;
+pub use cluster::{Cluster, ClusterHealth};
 pub use config::{node_store_path, ClusterConfig, ClusterMeta};
 pub use convergent::{
     body_content_hash, ConvergentIdentity, ReconcileReport, SubjectConflict, SubjectVariant,
@@ -60,7 +62,8 @@ pub use convergent::{
 pub use coverage::{Coverage, FindResult, GetResult, PartitionFrontier, ScanOptions, ScanResult};
 pub use directory::{PartitionAssignment, PartitionDirectory};
 pub use endpoints::{
-    load_endpoints, save_endpoints, upsert_endpoint, EndpointsFile, ENDPOINTS_FILE,
+    load_endpoints, save_endpoints, upsert_endpoint, upsert_endpoint_authenticated, EndpointsFile,
+    ENDPOINTS_FILE,
 };
 pub use error::ClusterError;
 pub use id::{ClusterId, LogPosition, NodeId, PartitionId, PlacementEpoch, Term};
@@ -83,7 +86,10 @@ pub use raft_rpc::{
     DEFAULT_MAX_APPEND_BATCH, DEFAULT_PEER_BACKOFF_MAX_MS, DEFAULT_PEER_BACKOFF_MS,
     DEFAULT_REPLICATE_ATTEMPTS, RAFT_RPC_PROFILE,
 };
-pub use rebalance::{RebalanceJob, RebalancePhase, RebalanceReport};
+pub use rebalance::{
+    RebalanceJob, RebalanceJobsFile, RebalancePhase, RebalanceReport, REBALANCE_CONTROL_PROFILE,
+    REBALANCE_JOBS_FILE,
+};
 
 /// Re-export durability modes used on cluster acks.
 pub use dingo_store::DurabilityMode;

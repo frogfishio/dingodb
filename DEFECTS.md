@@ -29,7 +29,8 @@ Until this plan is complete, use these support labels:
 - **Single-node TCP server:** development only.
 - **In-process cluster:** deterministic integration-test harness.
 - **`serve-cluster`:** experimental multi-process Raft (control plane DEF-036,
-  data-plane commit DEF-037 when attached); not production-ready (DEF-038+).
+  data-plane commit DEF-037, durable rebalance control plane DEF-038 when
+  attached); not production-ready (DEF-039+).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -138,7 +139,8 @@ Work:
 - Print a structured startup warning showing transport security, authentication,
   durability, replication, and store-lock status.
 - Make network cluster mode require an explicit experimental flag until
-  DEF-030 through DEF-038 are complete.
+  DEF-030 through DEF-038 are complete (rebalance durability is in-process
+  experimental; network production still gated by DEF-039–041 / §16).
 
 Acceptance:
 
@@ -1233,9 +1235,9 @@ Evidence:
 - Server path: `dingo_server::raft_server::RaftServerState::propose_and_apply`,
   `serve.rs` mutate + linearizable read barrier.
 
-Remaining (out of this cut; tracked by DEF-038+ / DEF-041):
+Remaining (out of DEF-037 cut; DEF-038 addressed separately):
 
-- Durable rebalance / joint consensus across restarts (DEF-038).
+- ~~Durable rebalance / joint consensus across restarts (DEF-038)~~ — **addressed**.
 - Anti-entropy / repair (DEF-039), distributed query pages (DEF-040).
 - Full multi-process Jepsen-style partition histories (DEF-041).
 - Formal/safety review before freezing network Raft as production-only path.
@@ -1243,7 +1245,11 @@ Remaining (out of this cut; tracked by DEF-038+ / DEF-041):
 ### DEF-038 — Persist control-plane and rebalance workflows
 
 Priority: P0  
-Dependencies: DEF-035
+Dependencies: DEF-035  
+Status: **addressed** (2026-07-27) — durable rebalance jobs, joint membership
+persist/restore, degraded open health, authenticated endpoint registration;
+see `stage_def_038_control_plane`, `REBALANCE_CONTROL_PROFILE`,
+`doc/CAPABILITY_MATRIX.md`
 
 Work:
 
@@ -1257,12 +1263,35 @@ Work:
 - Refuse silent cluster open when expected nodes or metadata are missing;
   expose degraded state explicitly.
 
+Implementation notes:
+
+- Profile tag `REBALANCE_CONTROL_PROFILE = "dingo-rebalance-control-v1"`.
+- In-flight jobs persisted as checksummed `rebalance_jobs.json` (atomic +
+  `.prev`) after every `begin_rebalance` / `advance_rebalance`.
+- `MembershipState` records joint flag + outgoing/incoming voter sets;
+  `PartitionRaft::set_joint_voters` flushes before return.
+- `Cluster::open` reloads jobs, re-attaches learners, restores joint or old
+  voters so directory ownership never invents a gap mid-job.
+- `Cluster::health` exposes expected/online/offline/missing stores and
+  in-flight phases (`degraded` when incomplete).
+- Multi-node open refuses missing `placement.json` (no silent synthetic map).
+- Optional `registration_token_hash` on `cluster.json`; when set,
+  `upsert_endpoint` refuses and `upsert_endpoint_authenticated` verifies
+  the secret (atomic endpoint writes retained from DEF-021).
+
 Acceptance:
 
 - Restart at every rebalance phase leaves old placement authoritative or a
   valid joint configuration.
 - Loss of the coordinator does not lose the operation state.
 - Missing nodes are visible in health, coverage, and operator output.
+
+Evidence:
+
+- `crates/dingo-cluster/tests/stage_def_038_control_plane.rs` — restart at
+  every phase + resume; joint membership restore; health missing nodes;
+  missing placement refused; authenticated endpoints.
+- Unit: `RebalanceJobsFile` roundtrip; Stage 8f suite still green.
 
 ### DEF-039 — Implement anti-entropy and replica repair
 

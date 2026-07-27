@@ -25,7 +25,9 @@ use crate::modes::{CommitStatus, ConsistencyMode, DeploymentProfile, ReadMode};
 use crate::partition::{default_partition_key, PartitionMap};
 use crate::raft::{ElectError, LogCommand, PartitionRaft, ProposeError};
 use crate::raft_persist::RaftPeerStore;
-use crate::rebalance::{RebalanceJob, RebalancePhase, RebalanceReport};
+use crate::rebalance::{
+    RebalanceJob, RebalanceJobsFile, RebalancePhase, RebalanceReport, REBALANCE_CONTROL_PROFILE,
+};
 use dingo_store::{DurabilityMode, SalvageReport, Store};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -39,16 +41,37 @@ pub struct Cluster {
     consistency_mode: ConsistencyMode,
     partition_map: PartitionMap,
     directory: PartitionDirectory,
+    /// Expected node count from `cluster.json` (DEF-038 degraded open).
+    expected_node_count: u32,
     /// Live nodes keyed by dense index. Absent / offline nodes are missing.
     nodes: HashMap<u32, Store>,
     /// Offline node ids (explicitly marked down for tests / ops).
     offline: Vec<u32>,
+    /// Node indexes expected but missing store paths at open (DEF-038).
+    missing_nodes: Vec<u32>,
     /// Per-partition Raft groups (Stage 8b; unused for convergent writes).
     raft: HashMap<u32, PartitionRaft>,
     /// Partition-local accept counters for convergent-append (not Raft index).
     convergent_pos: HashMap<u32, u64>,
-    /// In-flight rebalance jobs keyed by partition id (Stage 8f).
+    /// In-flight rebalance jobs keyed by partition id (Stage 8f / DEF-038).
     rebalance_jobs: HashMap<u32, RebalanceJob>,
+}
+
+/// Explicit health / degraded-state snapshot after open or during operation (DEF-038).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClusterHealth {
+    /// Expected node count from cluster metadata.
+    pub expected_nodes: u32,
+    /// Currently online nodes.
+    pub online: Vec<NodeId>,
+    /// Explicitly offline (marked down).
+    pub offline: Vec<NodeId>,
+    /// Expected indexes with no on-disk store at last open.
+    pub missing_store_paths: Vec<NodeId>,
+    /// In-flight rebalance jobs (partition → phase name).
+    pub rebalance_phases: Vec<(PartitionId, RebalancePhase)>,
+    /// True when any expected node is offline or missing.
+    pub degraded: bool,
 }
 
 impl Cluster {
@@ -91,6 +114,9 @@ impl Cluster {
         let mut raft = Self::build_raft_groups(&directory);
         Self::attach_and_seed_raft_stores(&root, &directory, &mut raft)?;
 
+        // Empty durable rebalance control plane at create.
+        RebalanceJobsFile::new().save(&root)?;
+
         Ok(Self {
             root,
             cluster_id,
@@ -98,8 +124,10 @@ impl Cluster {
             consistency_mode: cfg.consistency_mode,
             partition_map: cfg.partition_map,
             directory,
+            expected_node_count: node_count,
             nodes,
             offline: Vec::new(),
+            missing_nodes: Vec::new(),
             raft,
             convergent_pos: HashMap::new(),
             rebalance_jobs: HashMap::new(),
@@ -107,6 +135,11 @@ impl Cluster {
     }
 
     /// Open an existing cluster root, bringing all on-disk nodes online.
+    ///
+    /// Restores durable rebalance jobs and joint membership (DEF-038). Missing
+    /// expected node stores are recorded in [`Cluster::health`]; open still
+    /// succeeds so operators can inspect degraded state rather than failing
+    /// silently with a full-looking directory.
     pub fn open(root: impl AsRef<Path>) -> Result<Self, ClusterError> {
         let root = root.as_ref().to_path_buf();
         let meta = ClusterMeta::load(&root)?;
@@ -126,6 +159,13 @@ impl Cluster {
         let directory = match PartitionDirectory::load(&root)? {
             Some(d) => d,
             None => {
+                // Refuse silent synthetic placement when meta claimed a prior
+                // epoch with expected nodes — expose via missing placement.
+                if meta.placement_epoch > 1 || meta.node_count > 1 {
+                    return Err(ClusterError::CorruptMeta(
+                        "placement.json missing; reconstruct or restore control plane",
+                    ));
+                }
                 let d = PartitionDirectory::balanced(
                     partition_map.clone(),
                     meta.node_count,
@@ -137,16 +177,26 @@ impl Cluster {
         };
 
         let mut nodes = HashMap::new();
+        let mut missing_nodes = Vec::new();
         for i in 0..meta.node_count {
             let path = node_store_path(&root, i);
             if path.exists() {
                 let store = Store::open(&path)?;
                 nodes.insert(i, store);
+            } else {
+                missing_nodes.push(i);
             }
+        }
+
+        let jobs_file = RebalanceJobsFile::load(&root)?;
+        let mut rebalance_jobs = HashMap::new();
+        for job in jobs_file.jobs {
+            rebalance_jobs.insert(job.partition.get(), job);
         }
 
         let mut raft = Self::build_raft_groups(&directory);
         Self::attach_and_restore_raft_stores(&root, &directory, &mut raft)?;
+        Self::restore_rebalance_raft_state(&root, &rebalance_jobs, &mut raft)?;
 
         Ok(Self {
             root,
@@ -155,11 +205,13 @@ impl Cluster {
             consistency_mode,
             partition_map,
             directory,
+            expected_node_count: meta.node_count,
             nodes,
             offline: Vec::new(),
+            missing_nodes,
             raft,
             convergent_pos: HashMap::new(),
-            rebalance_jobs: HashMap::new(),
+            rebalance_jobs,
         })
     }
 
@@ -209,12 +261,67 @@ impl Cluster {
                 group.attach_store(store);
                 group.restore_peer_from_store(*node)?;
             }
-            // Membership from directory is authoritative for placement; peer
-            // stores may carry a prior epoch which restore_peer applies from
-            // the last replica loaded. Re-assert directory assignment.
-            group.set_voters(a.replicas.clone(), a.placement_epoch);
+            // Directory placement is authoritative unless a durable joint
+            // rebalance job overrides it in [`restore_rebalance_raft_state`].
+            // Prefer durable joint membership when peer store recorded it.
+            if group.joint {
+                // Keep restored joint voters from membership.json.
+            } else {
+                group.set_voters(a.replicas.clone(), a.placement_epoch);
+            }
         }
         Ok(())
+    }
+
+    /// Re-apply durable rebalance jobs onto Raft groups after open (DEF-038).
+    ///
+    /// Attaches destination learner stores, restores joint voter sets, and
+    /// ensures old placement stays authoritative in the directory until epoch
+    /// activation (directory is not rewritten here).
+    fn restore_rebalance_raft_state(
+        root: &Path,
+        jobs: &HashMap<u32, RebalanceJob>,
+        raft: &mut HashMap<u32, PartitionRaft>,
+    ) -> Result<(), ClusterError> {
+        for job in jobs.values() {
+            let Some(group) = raft.get_mut(&job.partition.get()) else {
+                continue;
+            };
+            // Learners / destinations need peer stores even before activation.
+            for d in &job.destinations {
+                let store = RaftPeerStore::open(root, *d, job.partition)?;
+                group.attach_store(store);
+                group.ensure_peer(*d);
+                let _ = group.restore_peer_from_store(*d);
+            }
+            for n in &job.old_replicas {
+                if group.peer(*n).is_none() {
+                    let store = RaftPeerStore::open(root, *n, job.partition)?;
+                    group.attach_store(store);
+                    group.ensure_peer(*n);
+                    let _ = group.restore_peer_from_store(*n);
+                }
+            }
+            if job.phase.is_joint() || job.joint {
+                group.set_joint_voters(
+                    job.old_replicas.clone(),
+                    job.new_replicas.clone(),
+                    job.plan_epoch,
+                );
+            } else if job.phase.new_placement_authoritative() {
+                let epoch = job.activated_epoch.unwrap_or(job.plan_epoch);
+                group.set_voters(job.new_replicas.clone(), epoch);
+            } else {
+                // Old placement still sole authoritative membership.
+                group.set_voters(job.old_replicas.clone(), job.plan_epoch);
+            }
+        }
+        Ok(())
+    }
+
+    fn persist_rebalance_jobs(&self) -> Result<(), ClusterError> {
+        let jobs: Vec<RebalanceJob> = self.rebalance_jobs.values().cloned().collect();
+        RebalanceJobsFile::from_jobs(jobs).save(&self.root)
     }
 
     /// Cluster root path.
@@ -316,6 +423,39 @@ impl Cluster {
     /// Whether a node is currently online.
     pub fn is_online(&self, node: NodeId) -> bool {
         self.nodes.contains_key(&node.index())
+    }
+
+    /// Explicit cluster health / degraded state (DEF-038).
+    ///
+    /// Missing expected stores, offline marks, and in-flight rebalance phases
+    /// are visible to operators — open never pretends a partial cluster is full.
+    pub fn health(&self) -> ClusterHealth {
+        let online = self.online_nodes();
+        let offline: Vec<NodeId> = self.offline.iter().copied().map(NodeId::new).collect();
+        let missing_store_paths: Vec<NodeId> =
+            self.missing_nodes.iter().copied().map(NodeId::new).collect();
+        let mut rebalance_phases: Vec<(PartitionId, RebalancePhase)> = self
+            .rebalance_jobs
+            .values()
+            .map(|j| (j.partition, j.phase))
+            .collect();
+        rebalance_phases.sort_by_key(|(p, _)| p.get());
+        let degraded = !missing_store_paths.is_empty()
+            || !offline.is_empty()
+            || (online.len() as u32) < self.expected_node_count;
+        ClusterHealth {
+            expected_nodes: self.expected_node_count,
+            online,
+            offline,
+            missing_store_paths,
+            rebalance_phases,
+            degraded,
+        }
+    }
+
+    /// Profile tag for durable rebalance control plane (DEF-038).
+    pub fn rebalance_control_profile() -> &'static str {
+        REBALANCE_CONTROL_PROFILE
     }
 
     /// Resolve the virtual partition for a subject (default partition key).
@@ -1070,10 +1210,14 @@ impl Cluster {
         );
         let job = RebalanceJob::plan(job_id, partition, old, new_replicas, plan_epoch);
         self.rebalance_jobs.insert(partition.get(), job.clone());
+        self.persist_rebalance_jobs()?;
         Ok(job)
     }
 
     /// Advance the in-flight rebalance for `partition` by one phase.
+    ///
+    /// Persists job phase (and joint membership when applicable) before return
+    /// so coordinator restart cannot lose operation state (DEF-038).
     pub fn advance_rebalance(
         &mut self,
         partition: PartitionId,
@@ -1108,10 +1252,12 @@ impl Cluster {
                 return Err(ClusterError::Rebalance("cannot re-enter plan".into()));
             }
         };
-        self.rebalance_jobs.insert(partition.get(), updated.clone());
         if updated.phase == RebalancePhase::Reclaimed {
             self.rebalance_jobs.remove(&partition.get());
+        } else {
+            self.rebalance_jobs.insert(partition.get(), updated.clone());
         }
+        self.persist_rebalance_jobs()?;
         Ok(updated)
     }
 
@@ -1311,17 +1457,10 @@ impl Cluster {
         &mut self,
         mut job: RebalanceJob,
     ) -> Result<RebalanceJob, ClusterError> {
-        // Joint configuration: old ∪ new.
-        let mut joint = job.old_replicas.clone();
-        for n in &job.new_replicas {
-            if !joint.contains(n) {
-                joint.push(*n);
-            }
-        }
-        joint.sort();
+        // Joint configuration: old ∪ new (durable via membership.json + job file).
         let epoch = job.plan_epoch;
         if let Some(group) = self.raft.get_mut(&job.partition.get()) {
-            group.set_voters(joint, epoch);
+            group.set_joint_voters(job.old_replicas.clone(), job.new_replicas.clone(), epoch);
         }
         job.joint = true;
         job.phase = RebalancePhase::MembershipChanged;

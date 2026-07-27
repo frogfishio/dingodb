@@ -25,7 +25,8 @@ with the acceptance evidence expected before a stronger label.
    acks report `committed` only after quorum + local apply (DEF-037). If Raft
    attach fails, the process falls back to **directory-only** routing and
    single-node apply — still not a release claim. Production gates remain
-   DEF-038–041 and §16.
+   DEF-039–041 and §16 (durable rebalance control plane DEF-038 is shipped
+   for in-process cluster; network chaos/repair still open).
 2. **In-process quorum ≠ production network cluster.** Prefer
    `Dingo::open_cluster` for deterministic multi-replica tests; use
    `serve-cluster` + DEF-037 suite for multi-process data-plane checks.
@@ -58,6 +59,7 @@ with the acceptance evidence expected before a stronger label.
 | `FEATURE_RAFT_RPC_V1` | `raft-rpc-v1` | Handshake feature when server serves `raft_*` ops |
 | `CLUSTER_COMMIT_PROFILE` | `dingo-cluster-commit-v1` | Data-plane put/get via network Raft propose (DEF-037) |
 | `FEATURE_CLUSTER_COMMIT_V1` | `cluster-commit-v1` | Feature token for quorum-committed collection ops |
+| `REBALANCE_CONTROL_PROFILE` | `dingo-rebalance-control-v1` | Durable rebalance jobs + joint membership (DEF-038) |
 
 ## Raft persistence (DEF-035)
 
@@ -70,6 +72,7 @@ with the acceptance evidence expected before a stronger label.
 | Persist-before-ack | Votes and AppendEntries flush before grant/success | **in-process cluster** shipped |
 | Restart | `Cluster::open` restores peers as Followers; re-elect on demand | **in-process cluster** shipped |
 | Evidence classes | `committed` / `prepared` / `conflicting` / `unknown_commit` | **in-process cluster** shipped |
+| Durable rebalance jobs / joint membership | DEF-038 `rebalance_jobs.json` + joint `membership.json` | **in-process cluster** shipped |
 | Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
 | Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
 | Jepsen-style partition histories | DEF-041 | **not yet** |
@@ -108,6 +111,19 @@ Evidence: `stage_def_036_raft_rpc` (cluster + SDK), `dingo_cluster::raft_rpc` un
 
 Evidence: `stage_def_037_cluster_commit` (5 tests: labels, shared semantics,
 kill seed after commit, op identity, solo serve).
+
+## Durable rebalance control plane (DEF-038)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Job persistence | Checksummed `rebalance_jobs.json` (atomic + `.prev`) after each phase | **in-process cluster** shipped |
+| Joint consensus | `PartitionRaft::set_joint_voters`; `MembershipState.{joint,outgoing,incoming}` | **in-process cluster** shipped |
+| Coordinator restart | `Cluster::open` reloads jobs; restores old or joint voters; resume advances | **in-process cluster** shipped |
+| Degraded open | `Cluster::health` — missing stores, offline marks, in-flight phases | **in-process cluster** shipped |
+| Missing placement | Multi-node open refuses silent synthetic `placement.json` | **in-process cluster** shipped |
+| Endpoint registration | Atomic upsert; optional `registration_token_hash` + authenticated path | **in-process / serve-cluster** shipped |
+
+Evidence: `stage_def_038_control_plane` (6 tests), Stage 8f rebalance suite.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

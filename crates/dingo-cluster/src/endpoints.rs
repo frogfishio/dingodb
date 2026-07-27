@@ -208,7 +208,47 @@ pub fn save_endpoints(root: &Path, map: &HashMap<u32, String>) -> Result<(), Clu
 ///
 /// Holds a process-local mutex and an OS advisory lock so concurrent
 /// registrations cannot drop unrelated endpoints (DEF-021 acceptance).
+///
+/// When the cluster has a registration secret configured
+/// ([`crate::ClusterMeta::set_registration_secret`]), prefer
+/// [`upsert_endpoint_authenticated`]; this unauthenticated path still works
+/// for development clusters without a secret.
 pub fn upsert_endpoint(
+    root: &Path,
+    node_index: u32,
+    hostport: impl Into<String>,
+) -> Result<HashMap<u32, String>, ClusterError> {
+    // Refuse silent unauthenticated upserts when a secret is required (DEF-038).
+    let meta = crate::config::ClusterMeta::load(root);
+    if let Ok(meta) = meta {
+        if meta.registration_token_hash.is_some() {
+            return Err(ClusterError::ReplicationRejected(
+                "endpoint registration requires authentication (use upsert_endpoint_authenticated)"
+                    .into(),
+            ));
+        }
+    }
+    upsert_endpoint_unlocked(root, node_index, hostport)
+}
+
+/// Authenticated endpoint registration (DEF-038).
+///
+/// Atomically upserts `node_index → hostport` after verifying `secret` against
+/// `cluster.json`'s `registration_token_hash`. When no secret is configured,
+/// the call succeeds (same as unauthenticated upsert) so existing clusters keep
+/// working.
+pub fn upsert_endpoint_authenticated(
+    root: &Path,
+    node_index: u32,
+    hostport: impl Into<String>,
+    secret: &str,
+) -> Result<HashMap<u32, String>, ClusterError> {
+    let meta = crate::config::ClusterMeta::load(root)?;
+    meta.check_registration_secret(secret)?;
+    upsert_endpoint_unlocked(root, node_index, hostport)
+}
+
+fn upsert_endpoint_unlocked(
     root: &Path,
     node_index: u32,
     hostport: impl Into<String>,

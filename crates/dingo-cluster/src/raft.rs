@@ -235,15 +235,21 @@ pub struct CommitEvidence {
     pub committed: bool,
 }
 
-/// Per-partition Raft group over a fixed voter set.
+/// Per-partition Raft group over a fixed or joint voter set.
 #[derive(Debug, Clone)]
 pub struct PartitionRaft {
     /// Virtual partition this group owns.
     pub partition: PartitionId,
-    /// Voting members (placement membership).
+    /// Voting members (joint union when [`Self::joint`]).
     pub voters: Vec<NodeId>,
     /// Placement epoch fencing writes for this assignment.
     pub placement_epoch: PlacementEpoch,
+    /// True while membership is joint (old ∪ new) during rebalance (DEF-038).
+    pub joint: bool,
+    /// Outgoing (pre-rebalance) voters when joint; empty otherwise.
+    pub outgoing: Vec<NodeId>,
+    /// Incoming (target) voters when joint; empty otherwise.
+    pub incoming: Vec<NodeId>,
     /// Per-voter Raft state.
     peers: HashMap<u32, RaftPeer>,
     /// Optional durable stores per node index (DEF-035). Absent ⇒ memory-only.
@@ -265,6 +271,9 @@ impl PartitionRaft {
             partition,
             voters,
             placement_epoch,
+            joint: false,
+            outgoing: Vec::new(),
+            incoming: Vec::new(),
             peers,
             stores: HashMap::new(),
         }
@@ -290,6 +299,9 @@ impl PartitionRaft {
         if let Some(m) = store.load_membership()? {
             self.voters = m.voters.into_iter().map(NodeId::new).collect();
             self.placement_epoch = PlacementEpoch(m.placement_epoch);
+            self.joint = m.joint;
+            self.outgoing = m.outgoing.into_iter().map(NodeId::new).collect();
+            self.incoming = m.incoming.into_iter().map(NodeId::new).collect();
         }
         Ok(())
     }
@@ -299,6 +311,9 @@ impl PartitionRaft {
         let m = MembershipState {
             voters: self.voters.iter().map(|n| n.index()).collect(),
             placement_epoch: self.placement_epoch.0,
+            joint: self.joint,
+            outgoing: self.outgoing.iter().map(|n| n.index()).collect(),
+            incoming: self.incoming.iter().map(|n| n.index()).collect(),
         };
         for store in self.stores.values() {
             store.persist_membership(&m)?;
@@ -394,6 +409,8 @@ impl PartitionRaft {
     /// `peers` until explicitly dropped so safety-window replicas retain
     /// evidence; they are ignored for quorum.
     ///
+    /// Clears joint configuration (single configuration).
+    ///
     /// When stores are attached, membership is flushed before return.
     pub fn set_voters(&mut self, voters: Vec<NodeId>, placement_epoch: PlacementEpoch) {
         for v in &voters {
@@ -401,7 +418,45 @@ impl PartitionRaft {
         }
         self.voters = voters;
         self.placement_epoch = placement_epoch;
+        self.joint = false;
+        self.outgoing.clear();
+        self.incoming.clear();
         // If the former leader is no longer a voter, step it down.
+        let voter_set: std::collections::HashSet<u32> =
+            self.voters.iter().map(|n| n.index()).collect();
+        for (idx, peer) in self.peers.iter_mut() {
+            if peer.role == RaftRole::Leader && !voter_set.contains(idx) {
+                peer.role = RaftRole::Follower;
+            }
+        }
+        let _ = self.persist_membership();
+    }
+
+    /// Enter joint consensus configuration: voters = old ∪ new (DEF-038).
+    ///
+    /// Quorum uses the union until [`Self::set_voters`] activates the new set.
+    /// Membership is persisted before return when stores are attached.
+    pub fn set_joint_voters(
+        &mut self,
+        old: Vec<NodeId>,
+        new: Vec<NodeId>,
+        placement_epoch: PlacementEpoch,
+    ) {
+        let mut union = old.clone();
+        for n in &new {
+            if !union.contains(n) {
+                union.push(*n);
+            }
+        }
+        union.sort();
+        for v in &union {
+            self.ensure_peer(*v);
+        }
+        self.voters = union;
+        self.placement_epoch = placement_epoch;
+        self.joint = true;
+        self.outgoing = old;
+        self.incoming = new;
         let voter_set: std::collections::HashSet<u32> =
             self.voters.iter().map(|n| n.index()).collect();
         for (idx, peer) in self.peers.iter_mut() {
