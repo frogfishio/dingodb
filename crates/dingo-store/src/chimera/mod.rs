@@ -24,10 +24,12 @@
 //! `Store::put` still writes segment frames + `PrimaryIndex` (frames remain
 //! authoritative; do not omit bodies on put until FORMAT/profile says so).
 //! At seal/compact, Chimera compiles live values into `indexes/chimera/*.cmr`.
-//! `Store::get` may resolve through that layout when present; PrimaryIndex /
-//! chunks remain the fallback. Next Chimera cut: a **compiler worker** that
-//! executes `plan_compile` ops against derived layouts. Dual-rep and ZNS stay
-//! deferred (see `INDEXING_STRATEGY_PROPOSAL.md` sequencing decision).
+//! Hot `Store::get` uses the **resident PrimaryIndex body** first (µs-class);
+//! `Store::get_via_chimera` probes the full sidecar (diagnostic / future
+//! body-less path). Loading `.cmr` on every product get re-decodes whole-segment
+//! placement and is not acceptable. Next Chimera cut: a **compiler worker** that
+//! executes `plan_compile` ops against derived layouts, plus cached locators.
+//! Dual-rep and ZNS stay deferred (see `INDEXING_STRATEGY_PROPOSAL.md`).
 
 mod classify;
 mod compiler;

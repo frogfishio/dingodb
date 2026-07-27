@@ -42,6 +42,7 @@ durability conditions.
 | `dingo-store` `stage_def_023_write_path` | hot-path write amplification / fsync-ack disclosure (DEF-023) |
 | `dingo-store` example `write_latency_breakdown` | hot-path phase split: memory index vs buffered data vs full `persist_index_cache` vs seal |
 | `dingo-store` example `write_scale_curve` | buffered scale curve (early vs late windows) |
+| `dingo-store` example `read_latency_breakdown` | open-once vs reopen-per-get; PrimaryIndex gets vs Chimera sidecar probe |
 | `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
 
 ### Write latency: data vs indexing (measured attribution)
@@ -132,10 +133,32 @@ summary under the work dir `testrig-summary.v1.json`). **Diagnostic only.**
 | Chaos | Offline punches into sealed segments; salvage reports holes; live subjects retained |
 | Post-chaos gets | Sampled keys still ok — integrity path speaks after damage |
 | Hydra sidecars | Seal path writes `indexes/seg/*.hdx` (derived); not the get path above |
+| Chimera sidecars | Seal path writes `indexes/chimera/*.cmr` (derived); **not** on hot `Store::get` |
 
-Do **not** quote these as Redis comparisons, multi-node SLOs, or “Hydra latency”
-without a dedicated read bench that actually probes `HydraIndex` and full
-disclosure fields in the table at the top of this file.
+#### Read-path failure that was fixed (Chimera-before-index)
+
+A review of an intermediate testrig report saw **~245–259 ms get p50** with healthy
+writes (~15k ops/s, 4–6 µs puts). Root cause was **not** salvage, reopen-per-get in
+the harness, or NVMe cold reads: `Store::get_payload` preferred
+`try_get_via_chimera`, which **fs::read + decode of the full per-segment `.cmr`**
+(containers + value log) on **every** get, even when `PrimaryIndex` already held
+the resident body.
+
+| Surface | Expected after fix |
+|---------|-------------------|
+| Open-once `Store::get` / `open_inspect` get | **µs** class (resident PrimaryIndex) |
+| Reopen inspect per get | open+rebuild cost (anti-pattern; measured separately) |
+| `Store::get_via_chimera` | full sidecar load — diagnostic / future body-less path only |
+
+Measure with:
+
+```bash
+cargo run -p dingo-store --release --example read_latency_breakdown
+```
+
+Do **not** quote testrig or example numbers as Redis comparisons, multi-node SLOs,
+or “Hydra/Chimera latency” without a dedicated probe that actually uses those
+indexes and full disclosure fields in the table at the top of this file.
 
 ### “Big flex” honesty line
 
@@ -151,5 +174,7 @@ cross-engine performance claim. Full scope table:
 - Never claim archive reads have memory latency.
 - Never attribute hot-path get latency to Hydra until `Store::get` (or a
   documented sealed-segment probe) actually uses `HydraIndex`.
+- Never attribute hot-path get latency to Chimera until product get uses a
+  **cached** locator path; full `.cmr` reload is not a point-read.
 - Incomplete coverage (offline tier) is not “empty success” and must not appear
   as a zero-latency miss in charts without labeling.

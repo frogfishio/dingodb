@@ -193,13 +193,15 @@ reclustering, dictionary training, hot/cold, lifetime placement).
 | Large-value log | `ValueLog` inside `.cmr` layouts | **Derived** — not FORMAT_SPEC chunks; put path unchanged |
 | Adaptive I/O | `select_io_path` on resolve | **Policy** — no io_uring submit yet |
 | Background compiler | `plan_compile` ops | **Planner** — no worker executes ops yet |
-| `Store::get` | Prefers Chimera layout when present for live segment_id | **Wired** — fallback PrimaryIndex / chunk reassembly |
+| `Store::get` | **Resident PrimaryIndex first** (hot path) | **Fixed** — never full-load `.cmr` when body is resident |
+| `Store::get_via_chimera` | Explicit full-sidecar probe | Diagnostic / future body-less path only |
 | Dual representation / ZNS | Design only | Deferred per proposal |
 
 **Verdict:** Seal/compaction layout wire-up **landed**. Put still writes frames;
-Chimera is a derived placement that get can resolve. Do not claim “primary
-storage is workload-compiled” until put classifies at write time and segment
-bodies can omit medium/large payloads.
+Chimera is derived placement. An intermediate bug preferred Chimera on every
+`get` (~250 ms class testrig samples); hot get is back on PrimaryIndex. Do not
+claim “primary storage is workload-compiled” until put classifies at write time,
+segment bodies can omit medium/large payloads, and locators are **cached**.
 
 ### Decision: implement put-path Chimera / dual-rep·ZNS·worker? (2026-07-27)
 

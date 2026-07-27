@@ -2,16 +2,19 @@
 
 Status: **implemented (foundation)** in `dingo-store::hydra`  
 Companion: seal path writes `indexes/seg/{segment_hex}.hdx` sidecars (derived only).  
-Honesty: hot `Store::get` still uses `PrimaryIndex`; Hydra is seal/rebuild/load API today
-(see `doc/WORK_HORIZON.md` “big flex” self-check and `doc/BENCHMARK_DISCLOSURE.md`).
+Honesty: hot `Store::get` uses resident `PrimaryIndex` only. Hydra is seal/rebuild/load
+API today; Chimera layouts are seal/compact derived sidecars probed via
+`Store::get_via_chimera` (see `doc/WORK_HORIZON.md` and `doc/BENCHMARK_DISCLOSURE.md`).
+**Do not** load full `.cmr` files on the product get path — that regression produced
+~250 ms sample gets on 1 GiB testrig runs.
 
 **Chimera** (FINAL DESIGN below): **foundation + seal/compaction wire-up** in
 `dingo-store::chimera` — locator types, value-class selection, micro-page
 containers, large-value log codec, adaptive I/O path selection, background-compiler
-plans, and `indexes/chimera/*.cmr` layouts written at seal/compact. `Store::get`
-may resolve sealed layouts; put still writes segment frames (derived placement).
-Sequencing: do **not** flip put to omit frame bodies yet; dual-rep/ZNS stay
-deferred; next Chimera cut is a compiler **worker** (see sequencing table below).
+plans, and `indexes/chimera/*.cmr` layouts written at seal/compact. Put still writes
+segment frames (authoritative). Sequencing: do **not** flip put to omit frame bodies
+yet; dual-rep/ZNS stay deferred; next Chimera cut is a compiler **worker** plus
+**cached** locator resolve (see sequencing table below).
 
 ## Recipe: hydra + multithread
 

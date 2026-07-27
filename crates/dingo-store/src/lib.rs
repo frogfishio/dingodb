@@ -13,7 +13,8 @@
 //! Chimera adds workload-compiled **value placement** (inline / point micro-pages
 //! / scan extents / large-value log), adaptive I/O path selection, a background
 //! compiler planner, and **seal/compaction layout sidecars** under
-//! `indexes/chimera/` that `Store::get` may resolve for sealed-segment values.
+//! `indexes/chimera/` (seal/compact derived placement). Hot `Store::get` uses
+//! the resident PrimaryIndex body; use `Store::get_via_chimera` to probe layouts.
 //!
 //! Stage 9 adds storage tiers (hot/warm/cold/archive), segment move/copy with
 //! stable identities, hierarchical segment catalogs, offline-tier coverage

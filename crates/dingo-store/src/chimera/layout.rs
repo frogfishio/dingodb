@@ -12,8 +12,9 @@
 //! Layouts live under `indexes/chimera/{hex16}.cmr` and are **derived only** —
 //! loss must never block segment salvage or PrimaryIndex rebuild.
 //!
-//! `Store::get` may resolve through this layout when present for the live
-//! value's establishing segment; PrimaryIndex bodies remain the fallback.
+//! Product `Store::get` resolves via the resident PrimaryIndex body. Layouts
+//! are loaded by `Store::get_via_chimera` / seal tooling; do not full-read a
+//! `.cmr` on every hot get.
 
 use super::{
     pack_point_containers, resolve, ClassifyOptions, IoSelectOptions, LocatorKind, PointContainer,

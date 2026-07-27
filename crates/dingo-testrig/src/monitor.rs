@@ -44,27 +44,36 @@ pub fn run_monitor(cfg: &MonitorConfig) -> Result<MonitorResult, String> {
     let salvage = inspect.salvage().map_err(|e| format!("salvage: {e}"))?;
     let salvage_ms = t_salvage.elapsed().as_millis() as u64;
 
-    // Point-get sample via inspect when possible.
+    // Point-get sample on the **already-open** inspect handle (PrimaryIndex
+    // resident bodies). Do not reopen per get, do not fold salvage into get
+    // latency, and do not probe Chimera sidecars here — those are separate
+    // surfaces (see dingo-store example `read_latency_breakdown`).
     let sample_keys = resolve_sample_keys(&manifest, cfg.sample_keys);
     let mut get_latencies = Vec::with_capacity(sample_keys.len());
     let mut gets_ok = 0u64;
     let mut gets_fail = 0u64;
     let mut gets_missing = 0u64;
+    let mut first_get_us: Option<u64> = None;
 
-    for key in &sample_keys {
+    for (i, key) in sample_keys.iter().enumerate() {
         let t0 = Instant::now();
-        match inspect.get(key) {
+        let result = inspect.get(key);
+        let elapsed = t0.elapsed();
+        if i == 0 {
+            first_get_us = Some(elapsed.as_micros().min(u64::MAX as u128) as u64);
+        }
+        match result {
             Ok(Some(_)) => {
-                get_latencies.push(t0.elapsed());
+                get_latencies.push(elapsed);
                 gets_ok += 1;
             }
             Ok(None) => {
-                get_latencies.push(t0.elapsed());
+                get_latencies.push(elapsed);
                 gets_missing += 1;
                 gets_fail += 1;
             }
             Err(_) => {
-                get_latencies.push(t0.elapsed());
+                get_latencies.push(elapsed);
                 gets_fail += 1;
             }
         }
@@ -148,7 +157,11 @@ pub fn run_monitor(cfg: &MonitorConfig) -> Result<MonitorResult, String> {
             "ok": gets_ok,
             "fail_or_missing": gets_fail,
             "missing": gets_missing,
+            "path": "primary_index_resident",
+            "open_mode": "open_inspect_once",
+            "first_get_us": first_get_us,
             "latency_us": get_stats,
+            "note": "Latencies exclude open_inspect and salvage; one handle for all samples.",
         },
         "puts": {
             "sampled": put_latencies.len(),
@@ -179,8 +192,11 @@ pub fn run_monitor(cfg: &MonitorConfig) -> Result<MonitorResult, String> {
             salvage.verified_frames
         );
         println!(
-            "  gets: ok={gets_ok} fail={gets_fail} p50={}us p95={}us p99={}us",
-            get_stats["p50"], get_stats["p95"], get_stats["p99"]
+            "  gets: ok={gets_ok} fail={gets_fail} first={}us p50={}us p95={}us p99={}us (primary_index, open once)",
+            first_get_us.unwrap_or(0),
+            get_stats["p50"],
+            get_stats["p95"],
+            get_stats["p99"]
         );
         if !put_latencies.is_empty() {
             println!(

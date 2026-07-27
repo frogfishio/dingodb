@@ -730,9 +730,15 @@ impl Store {
     /// Returns `Ok(None)` when the subject has no live value. Inline (non-chunked)
     /// bodies always yield [`PayloadResult::Complete`].
     ///
-    /// When a Chimera layout sidecar exists for the live value's establishing
-    /// sealed segment, resolution prefers that path (workload-compiled placement).
-    /// Failure or absence falls back to the PrimaryIndex body / chunk reassembly.
+    /// **Hot path:** resolve from the resident [`PrimaryIndex`] body (one map
+    /// lookup + clone / chunk reassembly). Chimera seal layouts are **derived
+    /// only** and must never sit in front of an already-resident body — loading
+    /// `indexes/chimera/*.cmr` on every get re-reads and re-decodes a full
+    /// segment placement (containers + value log) and was measured as ~250 ms
+    /// class latency on 1 GiB testrig samples.
+    ///
+    /// Chimera is used only when the live index entry has no usable body
+    /// (future slim-index / body-less put path). See [`Self::get_via_chimera`].
     pub fn get_payload(&self, subject: &str) -> Result<Option<PayloadResult>, StoreError> {
         let key = subject.as_bytes();
         let Some(entry) = self.index.get(key) else {
@@ -742,12 +748,16 @@ impl Store {
             return Ok(None);
         };
 
-        // Chimera seal/compaction wire-up: resolve via layout when present.
-        if let Some(body) = self.try_get_via_chimera(key, &lv.segment_id)? {
-            return Ok(Some(PayloadResult::Complete { body }));
-        }
-
         let body = lv.body.as_slice();
+        // Empty body: try derived Chimera placement (no resident payload yet).
+        if body.is_empty() {
+            if let Some(via) = self.try_get_via_chimera(key, &lv.segment_id)? {
+                return Ok(Some(PayloadResult::Complete { body: via }));
+            }
+            return Ok(Some(PayloadResult::Complete {
+                body: body.to_vec(),
+            }));
+        }
         if !is_chunk_manifest(body) {
             return Ok(Some(PayloadResult::Complete {
                 body: body.to_vec(),
@@ -759,6 +769,21 @@ impl Store {
         let item_id = lv.item_id;
         let pieces = self.collect_chunk_pieces(item_id)?;
         Ok(Some(reassemble_with_manifest(&manifest, &pieces)))
+    }
+
+    /// Resolve a subject exclusively through the Chimera layout for its live
+    /// segment (diagnostic / future body-less path). Does **not** use the
+    /// resident PrimaryIndex body. Returns `Ok(None)` when no live entry or
+    /// no usable layout exists.
+    pub fn get_via_chimera(&self, subject: &str) -> Result<Option<Vec<u8>>, StoreError> {
+        let key = subject.as_bytes();
+        let Some(entry) = self.index.get(key) else {
+            return Ok(None);
+        };
+        let crate::index::IndexEntry::Live(lv) = entry else {
+            return Ok(None);
+        };
+        self.try_get_via_chimera(key, &lv.segment_id)
     }
 
     /// Record a logical delete for `subject`.
@@ -1926,6 +1951,9 @@ impl Store {
     }
 
     /// Resolve a subject via the Chimera layout for `segment_id` when present.
+    ///
+    /// Loads the full per-segment sidecar from disk (no process-wide cache).
+    /// Callers must not put this on the hot get path when a resident body exists.
     fn try_get_via_chimera(
         &self,
         key: &[u8],
@@ -3200,10 +3228,46 @@ mod tests {
         assert_eq!(layout.get(b"m").unwrap().unwrap(), medium);
         assert_eq!(layout.get(b"l").unwrap().unwrap(), large);
 
-        // Store::get prefers Chimera resolution for sealed-segment live values.
+        // Hot Store::get uses resident PrimaryIndex (not a full .cmr reload).
         assert_eq!(store.get("t").unwrap().as_deref(), Some(tiny.as_slice()));
         assert_eq!(store.get("m").unwrap().as_deref(), Some(medium.as_slice()));
         assert_eq!(store.get("l").unwrap().as_deref(), Some(large.as_slice()));
+        // Explicit Chimera probe still resolves sealed layouts.
+        assert_eq!(
+            store.get_via_chimera("t").unwrap().as_deref(),
+            Some(tiny.as_slice())
+        );
+        assert_eq!(
+            store.get_via_chimera("m").unwrap().as_deref(),
+            Some(medium.as_slice())
+        );
+        assert_eq!(
+            store.get_via_chimera("l").unwrap().as_deref(),
+            Some(large.as_slice())
+        );
+    }
+
+    #[test]
+    fn get_uses_primary_index_without_chimera_sidecars() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        store
+            .put("k", b"value", DurabilityMode::Durable)
+            .unwrap();
+        let seg = match store.index.get(b"k") {
+            Some(crate::index::IndexEntry::Live(lv)) => lv.segment_id,
+            _ => panic!("expected live k"),
+        };
+        store.seal_active().unwrap();
+        assert!(store.load_chimera_layout(seg).unwrap().is_some());
+        // Wipe derived chimera; hot get must still hit PrimaryIndex in µs-class path.
+        let chimera_root = crate::chimera::chimera_dir(&store.paths);
+        if chimera_root.is_dir() {
+            fs::remove_dir_all(&chimera_root).unwrap();
+        }
+        assert!(store.load_chimera_layout(seg).unwrap().is_none());
+        assert_eq!(store.get("k").unwrap().as_deref(), Some(b"value".as_slice()));
+        assert!(store.get_via_chimera("k").unwrap().is_none());
     }
 
     #[test]
