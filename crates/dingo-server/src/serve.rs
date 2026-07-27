@@ -13,6 +13,7 @@ use crate::raft_server;
 use crate::runtime::{
     is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, SERVER_PROFILE,
 };
+use crate::slog::{self, events as log_events, log_rpc_complete, Logger, LOG_PROFILE};
 use dingo_sdk::{
     collection_prefix, create_index_on_store, decode_bytes, decode_json, decode_subject,
     encode_bytes, encode_json, encode_subject, find_on_store, mark_indexes_stale,
@@ -32,7 +33,7 @@ use std::str;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
 #[derive(Debug, Clone)]
@@ -110,6 +111,9 @@ pub struct ServeOptions {
     ///
     /// Endpoint maps remain routing hints only — never write authority.
     pub raft: Option<raft_server::SharedRaftState>,
+    /// Structured process logger (DEF-060). When unset, serve installs a default
+    /// stderr NDJSON logger with store/mode context.
+    pub logger: Option<Arc<Logger>>,
 }
 
 impl Default for ServeOptions {
@@ -132,6 +136,7 @@ impl Default for ServeOptions {
             admission_limits: AdmissionLimits::draft_defaults(),
             admission: None,
             raft: None,
+            logger: None,
         }
     }
 }
@@ -181,6 +186,12 @@ impl ServeOptions {
         self
     }
 
+    /// Attach a structured logger (DEF-060). Prefer [`Logger::with_sink`] in tests.
+    pub fn logger(mut self, logger: Arc<Logger>) -> Self {
+        self.logger = Some(logger);
+        self
+    }
+
     /// Resolve the effective authorization policy for this serve configuration.
     pub fn effective_authz(&self) -> AuthzPolicy {
         if let Some(p) = self.authz.clone() {
@@ -198,6 +209,14 @@ impl ServeOptions {
             return Arc::clone(c);
         }
         AdmissionController::new(self.admission_limits.clone())
+    }
+
+    /// Resolve the process logger (default stderr NDJSON when unset).
+    pub fn effective_logger(&self) -> Arc<Logger> {
+        if let Some(l) = self.logger.as_ref() {
+            return Arc::clone(l);
+        }
+        Logger::stderr().shared()
     }
 
     /// Advertise a cluster placement directory on `directory` RPC.
@@ -473,6 +492,18 @@ pub fn serve_store_with(
         .as_ref()
         .map(|s| s.options().require_client_cert)
         .unwrap_or(false);
+    // Install default structured logger with process context when caller omitted one.
+    let mut options = options;
+    if options.logger.is_none() {
+        options.logger = Some(
+            Logger::stderr()
+                .store(path.display().to_string())
+                .mode("serve")
+                .shared(),
+        );
+    }
+    let logger = options.effective_logger();
+
     // Cluster serve prints its own report; single-node prints unless suppressed.
     if !options.suppress_startup_report
         && options.directory.is_none()
@@ -489,14 +520,22 @@ pub fn serve_store_with(
         .emit_stderr();
         eprintln!(
             "dingo serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
-             tls={TLS_PROFILE}/{} admission={ADMISSION_PROFILE} max_connections={} \
-             idle_timeout_ms={} global_rps={} diagnostic_line={}",
+             tls={TLS_PROFILE}/{} admission={ADMISSION_PROFILE} log={LOG_PROFILE} \
+             max_connections={} idle_timeout_ms={} global_rps={} diagnostic_line={}",
             if tls_enabled { "on" } else { "off" },
             options.server_limits.max_connections,
             options.server_limits.idle_timeout.as_millis(),
             options.admission_limits.global_max_rps,
             options.diagnostic_line_protocol
         );
+        logger
+            .info(log_events::SERVER_START)
+            .reason(&format!(
+                "bind={bind} tls={} max_connections={} admission={ADMISSION_PROFILE}",
+                if tls_enabled { "on" } else { "off" },
+                options.server_limits.max_connections
+            ))
+            .emit();
     }
 
     // One coordinated store owner for the whole process (DEF-020 + DEF-030).
@@ -504,7 +543,6 @@ pub fn serve_store_with(
     let runtime = ServerRuntime::new(options.server_limits.clone(), options.shutdown.clone());
     // One process-wide admission controller (DEF-034).
     let admission = options.effective_admission();
-    let mut options = options;
     options.admission = Some(Arc::clone(&admission));
     let listener = TcpListener::bind(bind).map_err(Error::from_io)?;
     // Non-blocking accept so the loop can observe shutdown without a stuck client.
@@ -523,6 +561,7 @@ fn serve_accept_loop(
     options: ServeOptions,
     tls_state: Option<TlsServerState>,
 ) -> Result<(), Error> {
+    let logger = options.effective_logger();
     loop {
         if runtime.is_shutdown_requested() {
             break;
@@ -532,7 +571,10 @@ fn serve_accept_loop(
                 // Accepted fds inherit non-blocking from the listener on some
                 // platforms; workers use blocking reads with idle timeouts.
                 if let Err(e) = stream.set_nonblocking(false) {
-                    eprintln!("dingo serve: set_nonblocking(false) failed: {e}");
+                    logger
+                        .warn(log_events::CONNECTION_ERROR)
+                        .reason(&format!("set_nonblocking(false) failed: {e}"))
+                        .emit();
                     continue;
                 }
                 // DEF-034: bound connection churn before simultaneous-slot admission.
@@ -542,6 +584,11 @@ fn serve_accept_loop(
                     let reason = format!(
                         "connection churn limit exceeded (max {max} per window)"
                     );
+                    logger
+                        .warn(log_events::CONNECTION_REJECTED)
+                        .error_code(Some("resource_limit"))
+                        .reason(&reason)
+                        .emit();
                     let _ = reject_connection(stream, tls_state.as_ref(), &reason);
                     continue;
                 }
@@ -553,6 +600,11 @@ fn serve_accept_loop(
                     } else {
                         format!("connection limit exceeded (max {max})")
                     };
+                    logger
+                        .warn(log_events::CONNECTION_REJECTED)
+                        .error_code(Some("resource_limit"))
+                        .reason(&reason)
+                        .emit();
                     let _ = reject_connection(stream, tls_state.as_ref(), &reason);
                     continue;
                 }
@@ -561,6 +613,7 @@ fn serve_accept_loop(
                 let opts_c = options.clone();
                 let runtime_c = Arc::clone(&runtime);
                 let tls_c = tls_state.clone();
+                let logger_c = Arc::clone(&logger);
                 // Detach worker: accept loop must not wait on client I/O.
                 // On spawn failure the ConnectionGuard drops here and releases the slot.
                 thread::Builder::new()
@@ -572,7 +625,10 @@ fn serve_accept_loop(
                         ) {
                             // Avoid logging secrets (tokens never appear in Error Display
                             // for auth failures; still keep messages short).
-                            eprintln!("dingo serve connection error: {e}");
+                            logger_c
+                                .error(log_events::CONNECTION_ERROR)
+                                .reason(&e.to_string())
+                                .emit();
                         }
                     })
                     .map_err(Error::from_io)?;
@@ -589,10 +645,10 @@ fn serve_accept_loop(
     runtime.begin_drain();
     let idle = runtime.wait_for_idle();
     let stats = runtime.stats();
+    let drain_status = if idle { "complete" } else { "timeout" };
     eprintln!(
-        "dingo serve: drain {} active={} peak={} rejected={} accepted={} \
+        "dingo serve: drain {drain_status} active={} peak={} rejected={} accepted={} \
          mutations_started={} mutations_finished={}",
-        if idle { "complete" } else { "timeout" },
         stats.active_connections,
         stats.peak_connections,
         stats.rejected_connections,
@@ -600,6 +656,20 @@ fn serve_accept_loop(
         stats.mutations_started,
         stats.mutations_finished
     );
+    logger
+        .info(log_events::SERVER_DRAIN)
+        .reason(&format!(
+            "status={drain_status} active={} peak={} rejected={} accepted={} \
+             mutations_started={} mutations_finished={}",
+            stats.active_connections,
+            stats.peak_connections,
+            stats.rejected_connections,
+            stats.accepted_connections,
+            stats.mutations_started,
+            stats.mutations_finished
+        ))
+        .ok(idle)
+        .emit();
     if !idle {
         return Err(Error::ResourceLimit(format!(
             "graceful drain timed out with {} connection(s) still active; \
@@ -792,6 +862,11 @@ pub fn serve_cluster_node(
                 eprintln!(
                     "dingo serve-cluster: raft control plane not attached: {e} (directory-only mode)"
                 );
+                opts.effective_logger()
+                    .warn(log_events::RAFT_ATTACH_FAILED)
+                    .reason(&format!("{e}"))
+                    .node_index(node_index)
+                    .emit();
             }
         }
     }
@@ -802,6 +877,17 @@ pub fn serve_cluster_node(
             "node store missing at {} (expected store-info/)",
             store_path.display()
         )));
+    }
+
+    if opts.logger.is_none() {
+        opts.logger = Some(
+            Logger::stderr()
+                .store(store_path.display().to_string())
+                .cluster(root.display().to_string())
+                .node_index(node_index)
+                .mode("serve-cluster")
+                .shared(),
+        );
     }
 
     if !opts.suppress_startup_report {
@@ -821,7 +907,7 @@ pub fn serve_cluster_node(
         )
         .emit_stderr();
         eprintln!(
-            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={} raft={}",
+            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={} raft={} log={LOG_PROFILE}",
             root.display(),
             store_path.display(),
             meta.node_count,
@@ -926,55 +1012,63 @@ pub fn handle_connection_shared(
             break;
         }
         let admission = options.effective_admission();
+        let logger = options.effective_logger();
+        let started = Instant::now();
         let gate = admit_and_authorize(&options, &admission, &req);
         let principal_id = match gate {
             Ok(id) => id,
             Err(e) => {
-                write_rpc_response(
-                    &mut reader,
-                    &options,
-                    RpcResponse {
-                        id: req.id,
-                        ok: false,
-                        error: Some(e.to_string()),
-                        code: Some(e.code().as_str().into()),
-                        ..empty_resp(req.id)
-                    },
-                )?;
+                let resp = RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                };
+                log_rpc_from_wire(&logger, &req, None, &resp, started.elapsed());
+                write_rpc_response(&mut reader, &options, resp)?;
                 continue;
             }
         };
         let _expensive = match admission.try_begin_expensive(&req.op) {
             Ok(g) => g,
             Err(e) => {
-                write_rpc_response(
-                    &mut reader,
-                    &options,
-                    RpcResponse {
-                        id: req.id,
-                        ok: false,
-                        error: Some(e.to_string()),
-                        code: Some(e.code().as_str().into()),
-                        ..empty_resp(req.id)
-                    },
-                )?;
+                let resp = RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                };
+                log_rpc_from_wire(
+                    &logger,
+                    &req,
+                    Some(principal_id.as_str()),
+                    &resp,
+                    started.elapsed(),
+                );
+                write_rpc_response(&mut reader, &options, resp)?;
                 continue;
             }
         };
         if is_replayable_mutation(&req.op) {
             if let Some(oid) = req.operation_id.as_deref() {
                 if let Err(e) = admission.register_operation_id(&principal_id, oid) {
-                    write_rpc_response(
-                        &mut reader,
-                        &options,
-                        RpcResponse {
-                            id: req.id,
-                            ok: false,
-                            error: Some(e.to_string()),
-                            code: Some(e.code().as_str().into()),
-                            ..empty_resp(req.id)
-                        },
-                    )?;
+                    let resp = RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some(e.code().as_str().into()),
+                        ..empty_resp(req.id)
+                    };
+                    log_rpc_from_wire(
+                        &logger,
+                        &req,
+                        Some(principal_id.as_str()),
+                        &resp,
+                        started.elapsed(),
+                    );
+                    write_rpc_response(&mut reader, &options, resp)?;
                     continue;
                 }
             }
@@ -1000,6 +1094,13 @@ pub fn handle_connection_shared(
                 },
             }
         };
+        log_rpc_from_wire(
+            &logger,
+            &req,
+            Some(principal_id.as_str()),
+            &resp,
+            started.elapsed(),
+        );
         write_rpc_response(&mut reader, &options, resp)?;
     }
     Ok(())
@@ -1023,6 +1124,7 @@ fn connection_loop(
         .map_err(Error::from_io)?;
     let mut reader = BufReader::new(stream);
     let admission = options.effective_admission();
+    let logger = options.effective_logger();
 
     let max_frame = if options.diagnostic_line_protocol {
         dingo_sdk::host_limits().max_rpc_line_bytes
@@ -1039,55 +1141,62 @@ fn connection_loop(
             Err(ReadRpc::Continue) => continue,
             Err(ReadRpc::Close) => break,
         };
+        let started = Instant::now();
         let gate = admit_and_authorize(options, &admission, &req);
         let principal_id = match gate {
             Ok(id) => id,
             Err(e) => {
-                write_rpc_response(
-                    &mut reader,
-                    options,
-                    RpcResponse {
-                        id: req.id,
-                        ok: false,
-                        error: Some(e.to_string()),
-                        code: Some(e.code().as_str().into()),
-                        ..empty_resp(req.id)
-                    },
-                )?;
+                let resp = RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                };
+                log_rpc_from_wire(&logger, &req, None, &resp, started.elapsed());
+                write_rpc_response(&mut reader, options, resp)?;
                 continue;
             }
         };
         let _expensive = match admission.try_begin_expensive(&req.op) {
             Ok(g) => g,
             Err(e) => {
-                write_rpc_response(
-                    &mut reader,
-                    options,
-                    RpcResponse {
-                        id: req.id,
-                        ok: false,
-                        error: Some(e.to_string()),
-                        code: Some(e.code().as_str().into()),
-                        ..empty_resp(req.id)
-                    },
-                )?;
+                let resp = RpcResponse {
+                    id: req.id,
+                    ok: false,
+                    error: Some(e.to_string()),
+                    code: Some(e.code().as_str().into()),
+                    ..empty_resp(req.id)
+                };
+                log_rpc_from_wire(
+                    &logger,
+                    &req,
+                    Some(principal_id.as_str()),
+                    &resp,
+                    started.elapsed(),
+                );
+                write_rpc_response(&mut reader, options, resp)?;
                 continue;
             }
         };
         if is_replayable_mutation(&req.op) {
             if let Some(oid) = req.operation_id.as_deref() {
                 if let Err(e) = admission.register_operation_id(&principal_id, oid) {
-                    write_rpc_response(
-                        &mut reader,
-                        options,
-                        RpcResponse {
-                            id: req.id,
-                            ok: false,
-                            error: Some(e.to_string()),
-                            code: Some(e.code().as_str().into()),
-                            ..empty_resp(req.id)
-                        },
-                    )?;
+                    let resp = RpcResponse {
+                        id: req.id,
+                        ok: false,
+                        error: Some(e.to_string()),
+                        code: Some(e.code().as_str().into()),
+                        ..empty_resp(req.id)
+                    };
+                    log_rpc_from_wire(
+                        &logger,
+                        &req,
+                        Some(principal_id.as_str()),
+                        &resp,
+                        started.elapsed(),
+                    );
+                    write_rpc_response(&mut reader, options, resp)?;
                     continue;
                 }
             }
@@ -1104,9 +1213,42 @@ fn connection_loop(
                 ..empty_resp(req.id)
             },
         };
+        log_rpc_from_wire(
+            &logger,
+            &req,
+            Some(principal_id.as_str()),
+            &resp,
+            started.elapsed(),
+        );
         write_rpc_response(&mut reader, options, resp)?;
     }
     Ok(())
+}
+
+/// Emit DEF-060 `rpc.complete` (+ optional `guarantee.failed`) without payloads.
+fn log_rpc_from_wire(
+    logger: &Logger,
+    req: &RpcRequest,
+    principal_id: Option<&str>,
+    resp: &RpcResponse,
+    latency: Duration,
+) {
+    log_rpc_complete(
+        logger,
+        &req.op,
+        req.id,
+        req.operation_id.as_deref(),
+        principal_id,
+        req.collection.as_deref(),
+        resp.ok,
+        resp.code.as_deref(),
+        latency,
+        req.durability.as_deref(),
+        resp.acknowledgement.as_deref(),
+        resp.committed,
+        resp.event_id.as_deref(),
+        resp.error.as_deref(),
+    );
 }
 
 /// DEF-033 authz + DEF-034 rate/auth-lockout gates. Returns principal id on allow.

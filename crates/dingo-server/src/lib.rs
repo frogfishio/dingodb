@@ -13,6 +13,7 @@ mod config;
 mod raft_server;
 mod runtime;
 mod serve;
+mod slog;
 
 pub use config::{
     load_and_validate, redact_json_value, resolve_secret_ref, setting_class, validate_document,
@@ -20,6 +21,11 @@ pub use config::{
     ConfigOverrides, DingoConfigFile, EffectiveConfigReport, EffectiveSetting, ServeConfigSection,
     SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
     CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
+};
+pub use slog::{
+    bound_field, bound_name, events as log_events, log_rpc_complete, redact_credential,
+    sanitize_reason, LogEvent, LogLevel, LogSink, Logger, MemorySink, StderrSink, LOG_PROFILE,
+    MAX_FIELD_BYTES, MAX_NAME_BYTES,
 };
 pub use admission::{
     is_expensive_op, is_replayable_mutation, AdmissionController, AdmissionLimits, AdmissionStats,
