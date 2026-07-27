@@ -190,6 +190,79 @@ we parallelize and max out all the cores?”
 Design authority: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md). Do not spend the
 next tranche on PrimaryIndex micro-opts or pump rayon against one store.
 
+### “Things can go faster / numbers not ideal” strategy self-check (2026-07-27)
+
+User read after Axis A–C measurement: *things can go faster; numbers still not
+ideal; we are making movement. What strategies should we apply?*
+
+**Short answer: Agree. Movement is real and correctly attributed. The remaining
+write-path work is one or two surgical efficiency cuts — not another cliff —
+and program labor should mostly leave the write path for gate-driven work.**
+
+#### Scoreboard (diagnostic, M4-class, buffered 8 KiB)
+
+| Stage | What changed | Wall ops/s (10 GiB class) | Multi-core? |
+|-------|--------------|--------------------------|-------------|
+| Pre-DEF-023 | Full index on seal / O(history) derived work | collapsed (~0.13 late/early) | no |
+| DEF-023 + DEF-095 | Amortized puts + O(keys) RSS | ~7.4k, RSS ~0.92 GiB | no (~1 core) |
+| Axis A | Seal/checkpoint off put ack | enables sustained single-writer | seal workers |
+| Axis B (`--writer-shards 4`) | N active segments + `put_many` | ~8.1k (**+~10%**) | **no** (CPU% ~95) |
+| Axis C (`--stores 4`, free disk) | N processes | **~17.7k (~2.4×)** | **yes** (CPU% sum ~376) |
+
+“Making movement” = cliffs removed, memory honest, multi-process capacity
+proven. “Not ideal” = Axis B does not buy cores yet; Axis C is harness not
+product; ~2.4× not ~4×; early windows still much higher than wall averages
+(lifecycle / publish pressure late-run).
+
+#### What the numbers teach (strategy principles)
+
+1. **Fix the cliff, then measure, then choose the next bottleneck.** We did not
+   guess: write cliff → RSS → single-core → serial index publish after
+   `put_many` / multi-process capacity. Keep that loop.
+2. **Parallelism only pays when the shared serial section shrinks.** Axis B
+   parallelizes appends but still serializes PrimaryIndex publish — wall lift
+   stays modest; CPU% stays one-core class. Axis C multiplies whole processes
+   (each with its own index) and actually moves wall ops/s + CPU%.
+3. **Capacity ≠ efficiency.** Multi-store proves media and cores can be used;
+   product multi-tenant / multi-node is still dingo-cluster.
+4. **Free disk and path class are part of the experiment.** Near-full volume
+   poisoned Axis C 4 GiB; free-disk 10 GiB is the honest capacity number.
+5. **Diminishing returns are local, not global.** Write-index micro-opts are
+   done; production readiness is not.
+
+#### Strategies to apply (ordered)
+
+| # | Strategy | Do | Do not |
+|---|----------|----|--------|
+| **S1** | **Declare write cliffs closed** | Treat DEF-023 / DEF-095 / DEF-096 A–C harness as closed cuts with residual only | Reopen PrimaryIndex structure thrash or “one more seal threshold tweak” as the main program |
+| **S2** | **One optional Axis B efficiency cut** (only if labor stays on single-node write) | Shrink serial work after `put_many`: sharded or batched index publish, reduce dual-apply tax on batch path, ensure seal pipeline scales with shard count so early-window rates hold late | Rayon over one `Store::put`; multi-thread one active segment |
+| **S3** | **Productize capacity on the cluster path** | Independent store/partition leaders (dingo-cluster), honest RF/ack modes, network repair/query only as needed for multi-process proof | Treat testrig `--stores N` as multi-tenant product sharding |
+| **S4** | **Gate-driven program labor (default next)** | Milestone A quality (DEF-090–092), multi-process Jepsen/soak (DEF-041), fuzz (DEF-091), wire freeze path (DEF-053), security review (DEF-063) | Polish already-landed cut follow-ons (extra gauges, log join fields, etc.) as if they move maturity |
+| **S5** | **Measurement hygiene** | Always disclose concurrency / writer_model / free disk / durability; re-run only when a cut claims a new bottleneck; keep hot/warm/archive claims separate | Publish averages alone; mix path classes; claim “maxed M4” while CPU% ~100 |
+| **S6** | **Read path only under dedicated benches** | Wire Hydra/Chimera into get only after body-less / locator-cache design + `read_latency_breakdown` attribution | “Parallelize gets” by loading full `.cmr` (already fixed once) |
+
+#### Recommended labor split (next few tranches)
+
+```text
+~70%  gate-driven readiness   (S4)  — Jepsen/fuzz/wire/security/quality bar
+~20%  product capacity path   (S3)  — cluster partitions, not more harness
+~10%  optional Axis B residual (S2) — only with before/after put_many CPU% + wall ops/s
+  0%  PrimaryIndex micro-opts / Chimera-as-hot-get / put authority flip
+```
+
+#### Verdict table
+
+| Claim | Verdict |
+|-------|---------|
+| Things can go faster? | **Yes** — Axis C ~2.4× wall; early windows and seal-off-path show headroom. |
+| Numbers ideal? | **No** — Axis B ~+10% wall; single-process still ~1-core; not linear. |
+| Making movement? | **Yes** — three real cliffs fixed; multi-core capacity evidence exists. |
+| Next main strategy? | **S4 gates by default**; **S2 only if** still investing in single-node write; **S3** for product scale. |
+| Stop performance work forever? | **No** — stop **cliff-hunting** without a new measured bottleneck. |
+
+Companion detail: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md) §10,
+[`BENCHMARK_DISCLOSURE.md`](BENCHMARK_DISCLOSURE.md).
+
 ### “Is this a big flex?” self-check (2026-07-27)
 
 User question after Hydra + 1 GiB testrig: *dude… this is a big flex isn’t it?*

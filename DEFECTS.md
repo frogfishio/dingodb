@@ -951,6 +951,14 @@ integrity + **clean multi-store 10 GiB PASS** 2026-07-27, ~17.7k ops/s wall /
 CPU% sum ~376 with free disk) — see `doc/PARALLEL_INGEST.md` /
 `doc/BENCHMARK_DISCLOSURE.md`. Product multi-node cluster capacity remains separate.
 
+**Post-measure residual (not blocking DEF-096 acceptance):** Axis B wall lift is
+modest (~7.4k → ~8.1k ops/s) because PrimaryIndex publish after `put_many` stays
+serial (process CPU% still ~1-core class). Optional follow-on: shrink that serial
+section so shard count and wall ops/s move together. Strategy order after this
+cut: gate-driven readiness + product cluster path — see
+`doc/WORK_HORIZON.md` (“Things can go faster” strategy self-check) and
+`doc/PARALLEL_INGEST.md` §10.
+
 Problem:
 
 After DEF-095, a 10 GiB buffered pump on Apple M4 keeps RSS ~0.92 GiB and does

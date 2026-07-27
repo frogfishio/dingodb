@@ -230,3 +230,28 @@ No SLO claims until measured with full `doc/BENCHMARK_DISCLOSURE.md` fields.
 **Answer: Yes — but via async lifecycle first, then sharded writers, not by multi-threading a single `Store::put`.**
 
 Your instinct (“single-CPU game; max out all the cores”) is correct. The product specs already demand it. The implementation debt is **lifecycle on the ack path + single active segment**, not missing rayon on the pump loop.
+
+## 10. Post-measurement strategy (2026-07-27)
+
+**Question:** After Axis A–C numbers: *things can go faster; not ideal; making movement — what strategies?*
+
+**Answer: Agree. Apply S1–S6 below; default program labor is gates + product cluster, not another write cliff.**
+
+Measured reality (buffered 8 KiB, M4-class, diagnostic):
+
+| Path | Wall (10 GiB class) | Peak process CPU% | Lesson |
+|------|---------------------|-------------------|--------|
+| Single | ~7.4k ops/s | ~97 (1 core) | Baseline healthy post DEF-095 |
+| Axis B shards=4 | ~8.1k ops/s | ~95 (still 1-core class) | Append parallel; **index publish serial** → little wall lift |
+| Axis C stores=4 | ~17.7k ops/s | ~376 (sum) | Whole processes multiply capacity; media can keep up |
+
+### Strategies (apply in this order)
+
+1. **Close the write-cliff chapter** — asymptotic index, O(keys) RSS, async seal, sharded layout, multi-store harness are **done**. Residual is efficiency, not survival of the write path.
+2. **If still tuning single-node write: attack the serial section after `put_many`** — PrimaryIndex publish (and any dual-apply tax) is the measured limiter for Axis B multi-core %. Goal: wall ops/s and CPU% move together. Not “more shards with the same serial publish.”
+3. **Product scale = cluster partitions / multi-node** — testrig `--stores N` is an upper-bound harness. Wire real independent leaders and honest durability/replication labels.
+4. **Program default: gate-driven readiness** — multi-process Jepsen/soak, continuous fuzz, wire freeze path, security review, CI quality bar. These move maturity labels; another 10% wall ops/s does not.
+5. **Keep measurement discipline** — free disk before large multi-store; disclose concurrency/writer_model; never claim multi-core from a 1-core CPU% sample.
+6. **Anti-strategies** — PrimaryIndex micro-rewrite for write; Chimera full-load on get; rayon on exclusive single-segment put; treating harness multi-store as product sharding.
+
+Full scoreboard and labor split: [`WORK_HORIZON.md`](WORK_HORIZON.md) (“Things can go faster” strategy self-check).

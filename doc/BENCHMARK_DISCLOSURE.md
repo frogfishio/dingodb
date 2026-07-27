@@ -224,6 +224,7 @@ Honest notes:
 - Free disk matters: near-full volume crushed the 4 GiB Axis C wall rate; with ≥15 GiB free the 10 GiB multi-store pump is the first disclosed Axis C number that clearly beats single-store wall ops/s.
 - Still a **harness**, not multi-tenant product sharding. Product capacity remains dingo-cluster.
 - Per-process efficiency is not 4× linear vs single-store 10 GiB (~7.4k → ~17.7k ≈ 2.4× wall), but CPU% sum proves multi-core media utilization.
+- **Strategy read (2026-07-27):** movement is real; numbers not ideal. Prefer gate-driven + product cluster labor next; optional Axis B residual is serial index publish after `put_many`, not another PrimaryIndex structure. See `doc/WORK_HORIZON.md` and `doc/PARALLEL_INGEST.md` §10.
 
 #### Multi-core write path status
 
