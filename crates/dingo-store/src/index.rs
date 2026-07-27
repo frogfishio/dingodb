@@ -1,16 +1,27 @@
 //! Rebuildable current-state projection (OVERVIEW §5.5, §4.5).
 //!
 //! Derived only — never the sole map of surviving data.
+//!
+//! ## Memory model (DEF-095)
+//!
+//! Durable puts keep **locators** (`segment_id` + `frame_offset`) in the primary
+//! index. Full payload bodies are **not** retained for ordinary durable values;
+//! [`crate::Store::get`] reloads the item frame on demand. Memory-mode publishes
+//! and small chunk manifests remain resident (no durable frame, or body is the
+//! tiny manifest). This keeps process RSS O(keys × metadata) instead of
+//! O(dataset size).
 
 use crate::envelope::EventKind;
-use std::collections::BTreeMap;
 use std::ops::Bound;
 
 /// Live value for a subject after applying surviving put/delete events.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LiveValue {
-    /// Payload bytes from the latest put (empty for delete tombstones that are
-    /// not exposed via get).
+    /// Resident payload bytes, if any.
+    ///
+    /// Empty for ordinary durable puts (body lives in the segment frame at
+    /// [`Self::frame_offset`]). Non-empty for memory-mode visibility, chunk
+    /// manifests, and legacy fat index caches.
     pub body: Vec<u8>,
     /// Item id lineage for this subject.
     pub item_id: [u8; 16],
@@ -20,6 +31,8 @@ pub struct LiveValue {
     pub segment_id: [u8; 16],
     /// Writer-local sequence of the establishing event (diagnostic).
     pub writer_sequence: u64,
+    /// Byte offset of the establishing item frame in `segment_id` (0 when none).
+    pub frame_offset: u64,
 }
 
 /// Index entry: either a live put or a delete tombstone (get returns None).
@@ -37,14 +50,24 @@ pub enum IndexEntry {
         segment_id: [u8; 16],
         /// Writer sequence of the delete.
         writer_sequence: u64,
+        /// Byte offset of the delete frame (0 when none / memory-mode).
+        frame_offset: u64,
     },
 }
 
 impl IndexEntry {
-    /// Current live body, if any.
+    /// Current live body, if any **and** resident in the index.
+    ///
+    /// Does not load from segments. Prefer `Store::get` for logical payloads.
     pub fn live_body(&self) -> Option<&[u8]> {
         match self {
-            Self::Live(v) => Some(&v.body),
+            Self::Live(v) => {
+                if v.body.is_empty() {
+                    None
+                } else {
+                    Some(v.body.as_slice())
+                }
+            }
             Self::Deleted { .. } => None,
         }
     }
@@ -56,12 +79,28 @@ impl IndexEntry {
             Self::Deleted { item_id, .. } => *item_id,
         }
     }
+
+    /// Segment of the establishing event.
+    pub fn segment_id(&self) -> [u8; 16] {
+        match self {
+            Self::Live(v) => v.segment_id,
+            Self::Deleted { segment_id, .. } => *segment_id,
+        }
+    }
+
+    /// Frame offset of the establishing event.
+    pub fn frame_offset(&self) -> u64 {
+        match self {
+            Self::Live(v) => v.frame_offset,
+            Self::Deleted { frame_offset, .. } => *frame_offset,
+        }
+    }
 }
 
 /// Subject → current projection. Ordered map for deterministic rebuild tests.
 #[derive(Debug, Clone, Default)]
 pub struct PrimaryIndex {
-    map: BTreeMap<Vec<u8>, IndexEntry>,
+    map: std::collections::BTreeMap<Vec<u8>, IndexEntry>,
 }
 
 impl PrimaryIndex {
@@ -86,12 +125,23 @@ impl PrimaryIndex {
         self.live_entries().count()
     }
 
+    /// Sum of resident body bytes (excludes locator-only entries).
+    pub fn resident_body_bytes(&self) -> u64 {
+        self.map
+            .values()
+            .map(|e| match e {
+                IndexEntry::Live(lv) => lv.body.len() as u64,
+                IndexEntry::Deleted { .. } => 0,
+            })
+            .sum()
+    }
+
     /// Lookup by subject bytes.
     pub fn get(&self, subject: &[u8]) -> Option<&IndexEntry> {
         self.map.get(subject)
     }
 
-    /// Live body only.
+    /// Resident live body only (not a disk fetch).
     pub fn get_live(&self, subject: &[u8]) -> Option<&[u8]> {
         self.map.get(subject).and_then(|e| e.live_body())
     }
@@ -107,6 +157,7 @@ impl PrimaryIndex {
         event_id: [u8; 16],
         segment_id: [u8; 16],
         writer_sequence: u64,
+        frame_offset: u64,
     ) {
         match kind {
             EventKind::Put => {
@@ -118,6 +169,7 @@ impl PrimaryIndex {
                         event_id,
                         segment_id,
                         writer_sequence,
+                        frame_offset,
                     }),
                 );
             }
@@ -129,6 +181,7 @@ impl PrimaryIndex {
                         event_id,
                         segment_id,
                         writer_sequence,
+                        frame_offset,
                     },
                 );
             }
@@ -188,6 +241,20 @@ impl PrimaryIndex {
     /// Clear all entries (before rebuild).
     #[allow(dead_code)]
     pub fn clear(&mut self) {
-        self.map.clear();
+        self.map.clear()
     }
+}
+
+/// Decide which put body bytes stay resident in the primary index (DEF-095).
+///
+/// Chunk manifests are small and required for reassembly routing; ordinary
+/// payload bytes are dropped when a durable `frame_offset` will be recorded.
+pub fn slim_put_body_for_index(body: Vec<u8>, keep_resident: bool) -> Vec<u8> {
+    if keep_resident {
+        return body;
+    }
+    if crate::chunk_payload::is_chunk_manifest(&body) {
+        return body;
+    }
+    Vec::new()
 }

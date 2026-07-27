@@ -142,6 +142,20 @@ seal/checkpoint (DEF-023 follow-on) is still high leverage for p99. Do not
 confuse “index asymptote fixed” with “write performance finished” or with
 “product readiness finished.”
 
+### 10 GiB memory-eat self-check (2026-07-27)
+
+User observation after 10 GiB testrig: process RSS ~10 GiB → host swap →
+poisoned latency metrics.
+
+**Root cause (not “MacBook weak”):** fat primary index held full payload bodies
+twice (`index` + `durable_index`) and checkpointed them into `primary.idx`
+(~3.5 GiB bodies for ~3.5 GiB segments). See **DEF-095**.
+
+**Cut shipped:** locator-first PrimaryIndex + cache v3 + frame pread on get.
+Resident index bodies are O(keys × metadata), not O(dataset). Chimera still
+duplicates values on **disk** (~3.5 GiB `.cmr`); that is a follow-on disk
+amplification issue, not the RSS spike path.
+
 ### “Is this a big flex?” self-check (2026-07-27)
 
 User question after Hydra + 1 GiB testrig: *dude… this is a big flex isn’t it?*

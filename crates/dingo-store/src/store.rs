@@ -10,10 +10,10 @@ use crate::chunk_payload::{
     PayloadResult, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
 use crate::compact::{
-    estimate_compact_bytes, new_planned_job, reclaim_source_segments, reclaimable_source_ids,
-    report_from_job, try_load_checkpoint, try_load_compact_job, verify_live_segment,
-    write_checkpoint, write_compact_job, write_live_segment, CheckpointMeta, CompactJob,
-    CompactOptions, CompactPhase, CompactReport,
+    estimate_compact_bytes, new_planned_job, pread_item_body_if_segment, reclaim_source_segments,
+    reclaimable_source_ids, report_from_job, try_load_checkpoint, try_load_compact_job,
+    verify_live_segment, write_checkpoint, write_compact_job, write_live_segment, CheckpointMeta,
+    CompactJob, CompactOptions, CompactPhase, CompactReport,
 };
 
 use crate::durability::DurabilityMode;
@@ -23,7 +23,7 @@ use crate::envelope::{
 use crate::error::StoreError;
 use crate::history::{subject_history_tiered, SubjectHistory};
 use crate::ids::{mint_sortable_segment_id, random_id, segment_seq_from_id, subject_item_id};
-use crate::index::PrimaryIndex;
+use crate::index::{slim_put_body_for_index, PrimaryIndex};
 use crate::index_cache::{
     primary_cache_path, segment_fingerprint, try_load_primary_index,
     try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier,
@@ -422,14 +422,20 @@ impl Store {
         self.index.len()
     }
 
-    /// Iterate live subjects and **stored** bodies (derived primary index).
+    /// Iterate live subjects and **resident** bodies (derived primary index).
     ///
-    /// Chunked values yield the chunk **manifest**, not the logical payload.
-    /// Prefer [`Self::live_logical_entries`] for application-level scans.
+    /// After DEF-095, ordinary durable values may have an empty resident body
+    /// (locator-only). Chunk manifests remain resident. Prefer
+    /// [`Self::live_logical_entries`] / [`Self::get`] for application payloads.
     pub fn live_entries(&self) -> impl Iterator<Item = (&[u8], &[u8])> + '_ {
         self.index
             .live_entries()
             .map(|(k, v)| (k.as_slice(), v.body.as_slice()))
+    }
+
+    /// Approximate resident primary-index body bytes (excludes on-disk payloads).
+    pub fn resident_index_body_bytes(&self) -> u64 {
+        self.index.resident_body_bytes()
     }
 
     /// Live subjects with logical payloads fully reassembled when chunked.
@@ -730,15 +736,15 @@ impl Store {
     /// Returns `Ok(None)` when the subject has no live value. Inline (non-chunked)
     /// bodies always yield [`PayloadResult::Complete`].
     ///
-    /// **Hot path:** resolve from the resident [`PrimaryIndex`] body (one map
-    /// lookup + clone / chunk reassembly). Chimera seal layouts are **derived
-    /// only** and must never sit in front of an already-resident body — loading
-    /// `indexes/chimera/*.cmr` on every get re-reads and re-decodes a full
-    /// segment placement (containers + value log) and was measured as ~250 ms
-    /// class latency on 1 GiB testrig samples.
+    /// **Hot path (DEF-095):** one map lookup, then either a resident body clone
+    /// (memory-mode / chunk manifest) or a **bounded frame pread** at
+    /// `frame_offset`. Chimera seal layouts are **derived only** and must never
+    /// sit in front of a resolvable locator — loading `indexes/chimera/*.cmr`
+    /// on every get re-decodes a full segment placement and was measured as
+    /// ~250 ms class latency on 1 GiB testrig samples.
     ///
-    /// Chimera is used only when the live index entry has no usable body
-    /// (future slim-index / body-less put path). See [`Self::get_via_chimera`].
+    /// Chimera is a last-resort fallback when the index has neither a resident
+    /// body nor a usable frame offset. See [`Self::get_via_chimera`].
     pub fn get_payload(&self, subject: &str) -> Result<Option<PayloadResult>, StoreError> {
         let key = subject.as_bytes();
         let Some(entry) = self.index.get(key) else {
@@ -748,22 +754,17 @@ impl Store {
             return Ok(None);
         };
 
-        let body = lv.body.as_slice();
-        // Empty body: try derived Chimera placement (no resident payload yet).
+        let body = self.resolve_live_value_body(lv)?;
         if body.is_empty() {
             if let Some(via) = self.try_get_via_chimera(key, &lv.segment_id)? {
                 return Ok(Some(PayloadResult::Complete { body: via }));
             }
-            return Ok(Some(PayloadResult::Complete {
-                body: body.to_vec(),
-            }));
+            return Ok(Some(PayloadResult::Complete { body }));
         }
-        if !is_chunk_manifest(body) {
-            return Ok(Some(PayloadResult::Complete {
-                body: body.to_vec(),
-            }));
+        if !is_chunk_manifest(&body) {
+            return Ok(Some(PayloadResult::Complete { body }));
         }
-        let Some(manifest) = decode_chunk_manifest(body) else {
+        let Some(manifest) = decode_chunk_manifest(&body) else {
             return Err(StoreError::CorruptMeta("invalid chunk manifest"));
         };
         let item_id = lv.item_id;
@@ -1150,11 +1151,12 @@ impl Store {
     pub fn checkpoint(&self, coverage: &str) -> Result<(CheckpointMeta, PathBuf), StoreError> {
         let paths_list = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths_list)?;
-        let live: Vec<(Vec<u8>, Vec<u8>)> = self
-            .index
-            .live_entries()
-            .map(|(k, v)| (k.clone(), v.body.clone()))
-            .collect();
+        // Resolve locator-only entries so the checkpoint still carries payloads.
+        let mut live: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+        for (k, lv) in self.index.live_entries() {
+            let body = self.resolve_live_value_body(lv)?;
+            live.push((k.clone(), body));
+        }
         let pairs: Vec<(&[u8], &[u8])> = live
             .iter()
             .map(|(k, v)| (k.as_slice(), v.as_slice()))
@@ -1459,7 +1461,11 @@ impl Store {
         event_id: [u8; 16],
         segment_id: [u8; 16],
         writer_sequence: u64,
+        frame_offset: u64,
     ) {
+        // DEF-095: durable projection is locator-first; do not pin full payloads
+        // in both visibility and durable maps (was O(dataset) RSS dual-copy).
+        let body = slim_put_body_for_index(body, false);
         self.index.apply_event(
             subject.clone(),
             kind,
@@ -1468,6 +1474,7 @@ impl Store {
             event_id,
             segment_id,
             writer_sequence,
+            frame_offset,
         );
         self.durable_index.apply_event(
             subject,
@@ -1477,7 +1484,91 @@ impl Store {
             event_id,
             segment_id,
             writer_sequence,
+            frame_offset,
         );
+    }
+
+    /// Resolve logical stored body for a live entry (resident or frame pread).
+    fn resolve_live_value_body(
+        &self,
+        lv: &crate::index::LiveValue,
+    ) -> Result<Vec<u8>, StoreError> {
+        if !lv.body.is_empty() {
+            return Ok(lv.body.clone());
+        }
+        // Prefer in-memory active segment (avoids re-read of just-written frames).
+        if let Some(w) = &self.active {
+            if w.segment_id == lv.segment_id {
+                let bytes = w.segment.as_bytes();
+                let off = lv.frame_offset as usize;
+                if off < bytes.len() {
+                    if let Ok((_h, _e, body, _hash, _len)) =
+                        dingo_format::verify_frame_at(&bytes[off..], self.limits)
+                    {
+                        return Ok(body.to_vec());
+                    }
+                }
+            }
+        }
+        if lv.frame_offset == 0 {
+            return Ok(Vec::new());
+        }
+        self.pread_body_for_locator(&lv.segment_id, lv.frame_offset)
+    }
+
+    /// Pread an item body by (segment_id, frame_offset).
+    ///
+    /// Canonical sealed path first; then placement; then any segment file that
+    /// holds a verified item frame at that offset whose envelope segment_id
+    /// matches. The last path covers salvage/evidence copies that rename active
+    /// → hash-named sealed files while preserving original envelope ids.
+    fn pread_body_for_locator(
+        &self,
+        segment_id: &[u8; 16],
+        frame_offset: u64,
+    ) -> Result<Vec<u8>, StoreError> {
+        let mut tried = Vec::new();
+        if let Some(w) = &self.active {
+            if w.segment_id == *segment_id {
+                let p = self.paths.active_segment();
+                if p.is_file() {
+                    tried.push(p);
+                }
+            }
+        }
+        if let Some(p) = self.tier_placement.get(segment_id) {
+            if let Ok(path) = crate::tier::resolve_placement_path(&self.paths, p) {
+                if path.is_file() {
+                    tried.push(path);
+                }
+            }
+        }
+        let sealed = self.paths.sealed_segment(segment_id);
+        if sealed.is_file() {
+            tried.push(sealed);
+        }
+        // Always require envelope segment_id match. After §16.10 reorder/swap,
+        // the canonical sealed filename may hold another segment's bytes; bare
+        // pread at the same post-descriptor offset would return the wrong body.
+        for path in &tried {
+            if let Ok(body) =
+                pread_item_body_if_segment(path, frame_offset, segment_id, self.limits)
+            {
+                return Ok(body);
+            }
+        }
+        // Salvage/hash-renamed or swapped sealed files.
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement))? {
+            if tried.iter().any(|t| t == &path) {
+                continue;
+            }
+            if let Ok(body) =
+                pread_item_body_if_segment(&path, frame_offset, segment_id, self.limits)
+            {
+                return Ok(body);
+            }
+        }
+        Err(StoreError::SegmentNotFound)
     }
 
     /// Path of the optional primary index cache file.
@@ -1924,10 +2015,11 @@ impl Store {
         &self,
         lv: &crate::index::LiveValue,
     ) -> Result<Option<Vec<u8>>, StoreError> {
-        if !is_chunk_manifest(&lv.body) {
-            return Ok(Some(lv.body.clone()));
+        let body = self.resolve_live_value_body(lv)?;
+        if !is_chunk_manifest(&body) {
+            return Ok(Some(body));
         }
-        let Some(manifest) = decode_chunk_manifest(&lv.body) else {
+        let Some(manifest) = decode_chunk_manifest(&body) else {
             return Ok(None);
         };
         let pieces = self.collect_chunk_pieces(lv.item_id)?;
@@ -2451,6 +2543,7 @@ impl Store {
         };
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
+        // Chunk manifest is small and kept resident by slim_put_body_for_index.
         self.apply_durable_event(
             subject_bytes.to_vec(),
             EventKind::Put,
@@ -2459,6 +2552,7 @@ impl Store {
             event_id,
             segment_id,
             0,
+            offset,
         );
         self.note_collection_for_subject(subject_bytes);
 
@@ -2541,6 +2635,7 @@ impl Store {
                 None => subject_item_id(subject_bytes),
             };
             let event_id = self.next_event_id()?;
+            // Memory mode: body must stay resident (no durable frame to pread).
             self.index.apply_event(
                 subject_bytes.to_vec(),
                 kind,
@@ -2548,6 +2643,7 @@ impl Store {
                 item_id,
                 event_id,
                 segment_id,
+                0,
                 0,
             );
             // Visibility catalog only (not persisted).
@@ -2613,7 +2709,7 @@ impl Store {
         Self::write_segment_tail(writer, mode)?;
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
-        // Durable projection updated incrementally — no full-store segment rescan.
+        // Durable projection is locator-first (DEF-095): frame_offset + slim body.
         self.apply_durable_event(
             subject_bytes.to_vec(),
             kind,
@@ -2622,6 +2718,7 @@ impl Store {
             event_id,
             segment_id,
             0, // writer_sequence already inside frame; not required for index
+            offset,
         );
         self.note_collection_for_subject(subject_bytes);
 
@@ -2965,14 +3062,16 @@ fn apply_active_tail(
         let Some(env) = decode_item_envelope(&frame.envelope) else {
             continue;
         };
+        let body = slim_put_body_for_index(frame.body.clone(), false);
         index.apply_event(
             env.subject,
             env.event_kind,
-            frame.body.clone(),
+            body,
             env.item_id,
             frame.header.event_id,
             env.segment_id,
             frame.header.writer_sequence,
+            offset,
         );
     }
     Ok(())
@@ -2989,12 +3088,40 @@ fn examination_source_name(root: &Path, path: &Path) -> String {
         })
 }
 
-fn collect_item_events(
+/// Collect item events for **index rebuild only** (DEF-095).
+///
+/// Ordinary put bodies are not retained in the event vector (only chunk
+/// manifests), so rebuild peak RSS is O(keys × metadata) rather than O(dataset).
+fn collect_item_events_slim_for_index(
     paths: &StorePaths,
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
 ) -> Result<Vec<DiskEvent>, StoreError> {
-    let (events, _holes) = collect_item_events_tiered(paths, limits, placement)?;
+    let mut events = Vec::new();
+    for path in all_segment_paths(paths, placement)? {
+        let bytes = fs::read(&path)?;
+        let report = scan_forward(&bytes, limits);
+        for (offset, frame) in report.verified_frames() {
+            if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
+                continue;
+            }
+            let Some(env) = decode_item_envelope(&frame.envelope) else {
+                continue;
+            };
+            let body = slim_put_body_for_index(frame.body.clone(), false);
+            events.push(DiskEventPub {
+                file: path.clone(),
+                offset,
+                writer_sequence: frame.header.writer_sequence,
+                subject: env.subject,
+                kind: env.event_kind,
+                body,
+                item_id: env.item_id,
+                event_id: frame.header.event_id,
+                segment_id: env.segment_id,
+            });
+        }
+    }
     Ok(events)
 }
 
@@ -3007,12 +3134,15 @@ fn collect_item_events(
 ///
 /// When `placement` is set, only **available** tier media are scanned; offline
 /// segments are omitted and must be reported via [`TierCoverage`].
+///
+/// DEF-095: rebuild is locator-first — does not materialize ordinary payload
+/// bodies into the primary projection (chunk manifests only).
 fn index_from_segments(
     paths: &StorePaths,
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
 ) -> Result<PrimaryIndex, StoreError> {
-    let mut events = collect_item_events(paths, limits, placement)?;
+    let mut events = collect_item_events_slim_for_index(paths, limits, placement)?;
     events.sort_by(cmp_disk_events);
     let mut index = PrimaryIndex::new();
     let mut seen_events: HashSet<[u8; 16]> = HashSet::new();
@@ -3028,6 +3158,7 @@ fn index_from_segments(
             ev.event_id,
             ev.segment_id,
             ev.writer_sequence,
+            ev.offset,
         );
     }
     Ok(index)
@@ -3260,7 +3391,7 @@ mod tests {
         };
         store.seal_active().unwrap();
         assert!(store.load_chimera_layout(seg).unwrap().is_some());
-        // Wipe derived chimera; hot get must still hit PrimaryIndex in µs-class path.
+        // Wipe derived chimera; hot get must still resolve via index locator/pread.
         let chimera_root = crate::chimera::chimera_dir(&store.paths);
         if chimera_root.is_dir() {
             fs::remove_dir_all(&chimera_root).unwrap();
@@ -3268,6 +3399,50 @@ mod tests {
         assert!(store.load_chimera_layout(seg).unwrap().is_none());
         assert_eq!(store.get("k").unwrap().as_deref(), Some(b"value".as_slice()));
         assert!(store.get_via_chimera("k").unwrap().is_none());
+    }
+
+    #[test]
+    fn durable_puts_are_locator_first_not_body_resident() {
+        // DEF-095: multi-KiB durable payloads must not pin in PrimaryIndex RSS.
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        let payload = vec![0xABu8; 8192];
+        for i in 0..64 {
+            store
+                .put(
+                    &format!("k{i}"),
+                    &payload,
+                    DurabilityMode::Buffered,
+                )
+                .unwrap();
+        }
+        // Resident bodies ≪ 64 * 8 KiB (locator-only; only metadata).
+        let resident = store.resident_index_body_bytes();
+        assert!(
+            resident < 8 * 1024,
+            "expected slim index, resident_body_bytes={resident}"
+        );
+        // Gets still return full payloads via frame pread.
+        assert_eq!(store.get("k0").unwrap().as_deref(), Some(payload.as_slice()));
+        assert_eq!(store.get("k63").unwrap().as_deref(), Some(payload.as_slice()));
+
+        // Memory-mode still keeps the body resident (no durable frame).
+        store
+            .put("mem", b"only-in-ram", DurabilityMode::Memory)
+            .unwrap();
+        assert!(store.resident_index_body_bytes() >= b"only-in-ram".len() as u64);
+        assert_eq!(
+            store.get("mem").unwrap().as_deref(),
+            Some(b"only-in-ram".as_slice())
+        );
+
+        // Reopen rebuilds slim index and still serves durable keys.
+        drop(store);
+        let store = Store::open(dir.path()).unwrap();
+        assert!(store.resident_index_body_bytes() < 8 * 1024);
+        assert_eq!(store.get("k0").unwrap().as_deref(), Some(payload.as_slice()));
+        // Memory-mode publish did not survive reopen.
+        assert!(store.get("mem").unwrap().is_none());
     }
 
     #[test]

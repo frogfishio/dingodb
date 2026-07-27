@@ -870,6 +870,69 @@ Acceptance:
   disk growth.
 - Limits are observable and tested at boundary values.
 
+### DEF-095 — Locator-first primary index (stop O(dataset) RSS)
+
+Priority: P0  
+Status: **addressed (cut)** (2026-07-27) — slim PrimaryIndex + v3 cache
+
+Problem:
+
+The 10 GiB `dingo-testrig` campaign drove process RSS to ~10 GiB and forced the
+host into swap, poisoning latency metrics. Root cause:
+
+1. **`PrimaryIndex` stored full payload bodies** for every live subject
+   (`LiveValue.body`), so resident memory tracked dataset size (~3.5 GiB of
+   8 KiB payloads for 450k keys).
+2. **Dual maps** (`index` + `durable_index`) each held a full body copy via
+   `apply_durable_event` → ~2× bodies.
+3. **`indexes/primary.idx` v2** serialized every body (~3.5 GiB on disk for a
+   3.5 GiB segment set). Open + `fs::read` + decode + clone into both maps
+   peaked near **dataset × 3**.
+4. Checkpoint encode built another full body `Vec` while dual maps still held
+   payloads → additional multi-GB peak during pump rate-limited checkpoints.
+
+Evidence from `/var/tmp/dingo-testrig-10g/store`:
+
+| Component | On-disk |
+|-----------|---------|
+| `segments/` | ~3.5 GiB |
+| `indexes/primary.idx` (fat v2) | ~3.5 GiB |
+| `indexes/chimera/*.cmr` | ~3.5 GiB |
+| **Total** | ~10.5 GiB |
+
+Chimera layouts are a **disk** amplification issue (derived full-value
+sidecars); they were not on the hot get path, but fat primary index memory was.
+
+Work:
+
+- Store **frame locators** (`segment_id` + `frame_offset`) in the primary index
+  for durable puts; drop ordinary payload bodies from resident maps.
+- Keep resident only: memory-mode publishes, chunk **manifests** (small).
+- `Store::get` / `get_payload`: map lookup → resident body **or** bounded frame
+  pread at `frame_offset` (active segment bytes first, then disk).
+- Primary cache **v3** (`DIDX0003`): frontier + offsets + slim bodies only.
+- Refuse to load legacy fat v1/v2 caches above a 64 MiB resident-body budget
+  (force slim rebuild instead of re-inflating multi-GB RSS).
+- Compaction / checkpoint / Chimera pair builders resolve bodies via locator.
+
+Implementation notes:
+
+- `index::LiveValue::{frame_offset, body}` with `slim_put_body_for_index`.
+- `index_cache` write path always v3; `try_load_primary_index_frontier` prefers v3.
+- `compact::{pread_item_body, resolve_live_body}` for disk re-read.
+- `Store::resident_index_body_bytes()` for operators / tests.
+- Follow-ons (not blocking this cut): stop dual full-value Chimera sidecars on
+  seal (disk bloat); streaming rebuild without holding all event bodies;
+  optional tiny-body inline threshold; process RSS gauge on metrics.
+
+Acceptance:
+
+- Durable pump of multi-GiB data keeps primary-index resident bodies ≪ dataset
+  (metadata + manifests only).
+- `get` after buffered/durable put returns correct payloads via frame pread.
+- Reopen with v3 cache does not load O(dataset) body bytes into RSS.
+- Existing store unit/integration suites pass.
+
 ---
 
 ## 9. Production server and wire protocol

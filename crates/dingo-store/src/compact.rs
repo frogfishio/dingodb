@@ -18,12 +18,15 @@
 
 use crate::envelope::{decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope};
 use crate::error::StoreError;
-use crate::index::{IndexEntry, PrimaryIndex};
+use crate::index::{IndexEntry, LiveValue, PrimaryIndex};
 use crate::layout::{hex16, segment_id_from_filename, unhex16, StorePaths};
-use dingo_format::{scan_forward, ActiveSegment, FrameKind, SafetyLimits, SegmentId};
+use dingo_format::{
+    scan_forward, verify_frame_at, ActiveSegment, FrameKind, SafetyLimits, SegmentId,
+    FRAME_PREFIX_LEN, FRAME_SUFFIX_LEN,
+};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 /// Filename prefix for compaction job records under `recovery/compaction/`.
@@ -314,15 +317,113 @@ pub fn estimate_compact_bytes(
             read = read.saturating_add(meta.len());
         }
     }
-    let mut write = 0u64;
-    for (_subj, entry) in index.iter_all() {
-        if let IndexEntry::Live(lv) = entry {
-            // Rough envelope + body + frame overhead budget.
-            write = write.saturating_add(lv.body.len() as u64);
-            write = write.saturating_add(128);
+    // With locator-first index (DEF-095), resident bodies may be empty; budget
+    // from source bytes instead of summing index payloads.
+    let write = read / 2; // live projection is typically ≤ source (history dropped)
+    let _ = index; // live count already planned separately; keep signature stable
+    (read, write.max(128 * index.live_len() as u64))
+}
+
+/// Resolve payload bytes for a live index entry (resident or frame at offset).
+///
+/// Tries canonical sealed path, active path, then every `*.dingo` under the
+/// store (salvage may hash-rename active → sealed while envelopes keep the
+/// original `segment_id`).
+pub fn resolve_live_body(
+    paths: &StorePaths,
+    limits: SafetyLimits,
+    lv: &LiveValue,
+) -> Result<Vec<u8>, StoreError> {
+    if !lv.body.is_empty() {
+        return Ok(lv.body.clone());
+    }
+    if lv.frame_offset == 0 {
+        return Ok(Vec::new());
+    }
+    let mut candidates = Vec::new();
+    let sealed = paths.sealed_segment(&lv.segment_id);
+    if sealed.is_file() {
+        candidates.push(sealed);
+    }
+    let active = paths.active_segment();
+    if active.is_file() {
+        candidates.push(active);
+    }
+    // Other sealed names (evidence salvage hash renames).
+    if let Ok(entries) = fs::read_dir(paths.segments_dir()) {
+        for ent in entries.flatten() {
+            let p = ent.path();
+            if p.extension().and_then(|e| e.to_str()) == Some("dingo") {
+                if !candidates.iter().any(|c| c == &p) {
+                    candidates.push(p);
+                }
+            }
         }
     }
-    (read, write)
+    for path in &candidates {
+        if let Ok(body) = pread_item_body_if_segment(path, lv.frame_offset, &lv.segment_id, limits) {
+            return Ok(body);
+        }
+    }
+    Err(StoreError::SegmentNotFound)
+}
+
+/// Read a verified item-event body at `offset` when the envelope `segment_id` matches.
+pub fn pread_item_body_if_segment(
+    path: &Path,
+    offset: u64,
+    expect_segment_id: &[u8; 16],
+    limits: SafetyLimits,
+) -> Result<Vec<u8>, StoreError> {
+    let (env_seg, body) = pread_item_frame(path, offset, limits)?;
+    if env_seg != *expect_segment_id {
+        return Err(StoreError::CorruptMeta("frame segment_id mismatch at offset"));
+    }
+    Ok(body)
+}
+
+fn pread_item_frame(
+    path: &Path,
+    offset: u64,
+    limits: SafetyLimits,
+) -> Result<([u8; 16], Vec<u8>), StoreError> {
+    let mut file = File::open(path)?;
+    let file_len = file.metadata()?.len();
+    if offset >= file_len {
+        return Err(StoreError::Io(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "frame offset past end of segment",
+        )));
+    }
+    file.seek(SeekFrom::Start(offset))?;
+    let mut prefix = [0u8; FRAME_PREFIX_LEN];
+    file.read_exact(&mut prefix)?;
+    // body_len at prefix[16..24], envelope_len at [12..16] (see frame layout).
+    let envelope_len = u32::from_le_bytes(prefix[12..16].try_into().unwrap()) as u64;
+    let body_len = u64::from_le_bytes(prefix[16..24].try_into().unwrap());
+    let frame_len = (FRAME_PREFIX_LEN as u64)
+        .checked_add(envelope_len)
+        .and_then(|n| n.checked_add(body_len))
+        .and_then(|n| n.checked_add(FRAME_SUFFIX_LEN as u64))
+        .ok_or(StoreError::CorruptMeta("frame length overflow at resolve"))?;
+    if frame_len > limits.max_frame_len {
+        return Err(StoreError::CorruptMeta("frame exceeds safety limits"));
+    }
+    if offset.saturating_add(frame_len) > file_len {
+        return Err(StoreError::Io(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "frame extends past end of segment",
+        )));
+    }
+    let mut frame = vec![0u8; frame_len as usize];
+    frame[..FRAME_PREFIX_LEN].copy_from_slice(&prefix);
+    file.read_exact(&mut frame[FRAME_PREFIX_LEN..])?;
+    let (_h, envelope, body, _hash, _len) = verify_frame_at(&frame, limits)
+        .map_err(|_| StoreError::CorruptMeta("item frame verify failed at offset"))?;
+    let env_seg = crate::envelope::decode_item_envelope(envelope)
+        .map(|e| e.segment_id)
+        .unwrap_or([0u8; 16]);
+    Ok((env_seg, body.to_vec()))
 }
 
 /// Collect reclaimable sealed segment ids from source relative names.
@@ -361,6 +462,7 @@ pub fn write_live_segment(
         let IndexEntry::Live(lv) = entry else {
             continue;
         };
+        let body = resolve_live_body(paths, limits, lv)?;
         let event_id = mint_event_id()?;
         let env = ItemEnvelope {
             store_id,
@@ -371,7 +473,7 @@ pub fn write_live_segment(
             subject: subject.clone(),
         };
         let envelope = encode_item_envelope(&env).map_err(StoreError::BadEnvelope)?;
-        seg.append(FrameKind::ItemEvent, &envelope, &lv.body, event_id)?;
+        seg.append(FrameKind::ItemEvent, &envelope, &body, event_id)?;
         written += 1;
     }
 
@@ -442,8 +544,9 @@ pub fn verify_live_segment(
         let IndexEntry::Live(lv) = entry else {
             continue;
         };
+        let expected = resolve_live_body(paths, limits, lv)?;
         match found.get(subj) {
-            Some(body) if body == &lv.body => {}
+            Some(body) if body == &expected => {}
             Some(_) => {
                 return Err(StoreError::ConsistencyViolation(
                     "compact verify: body mismatch for live subject".into(),
