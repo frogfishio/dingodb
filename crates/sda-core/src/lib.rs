@@ -52,9 +52,10 @@ pub const CONFORMANCE_CORPUS_TAG: &str = "sda-standalone-v1.0";
 
 /// ENR1 enrichment kernel profile identity (additive to standalone SDA).
 ///
-/// Match-bag kernel: `Match(l,R,kL,kR)`, `enrich {…}` pipe attach, cardinality
-/// (`one?` / `one!` / `only` / `first` / `last`), `merge` / `+` attach, and
-/// `asBag` / `matchBag` share [`Program::parse`] with core SDA — one compile
+/// Match-bag kernel: `Match(l,R,kL,kR)`, keyed sugar `R[kR = kL]`, `enrich {…}`
+/// pipe attach, cardinality (`one?` / `one!` / `only` / `first` / `last`),
+/// `merge` / `mergeLeft` / `mergeRight` / `+` attach, `asBag` / `matchBag`, and
+/// `source` declarations share [`Program::parse`] with core SDA — one compile
 /// path. Spec: `crates/enr-core/ENR1.md`. ENR2 is not implemented. See
 /// `tests/enr1_kernel.rs`.
 pub const ENR1_PROFILE_TAG: &str = "sda-enr1-v0.1";

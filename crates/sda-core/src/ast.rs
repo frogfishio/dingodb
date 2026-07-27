@@ -79,8 +79,29 @@ pub struct Program {
     pub stmts: Vec<Stmt>,
 }
 
+/// ENR1 source declaration kind ([`ENR1.md`](../../enr-core/ENR1.md) §06).
+///
+/// Semantic expectations only — not acquisition / transport. Hosts bind the
+/// actual dataset; Index uniqueness is a claim, not an automatic collapse.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SourceKind {
+    /// Unique key semantics (no silent multi-match).
+    Index,
+    /// Duplicate keys allowed.
+    MultiIndex,
+    /// No uniqueness claim.
+    Dataset,
+}
+
 #[derive(Debug, Clone)]
 pub enum Stmt {
     Let(String, Expr),
     Expr(Expr),
+    /// `source name : Index[K, V]` — ENR1 semantic source declaration (eval no-op).
+    Source {
+        name: String,
+        kind: SourceKind,
+        /// Optional type parameters as written (`Str`, `Customer`, …); documentation only.
+        type_params: Vec<String>,
+    },
 }

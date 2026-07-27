@@ -63,7 +63,7 @@ partially cut:
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
 | **DEF-080–084** | SDK MVP gaps, operator CLI depth, executable journeys, distribution, compatibility policy. |
-| **ENR1 (in `dingo-sda`)** | Match-bag kernel shipped as additive SDA profile (`sda-enr1-v0.1`: `one?`/`one!`/`merge`/`+` attach/`asBag`). Specs under `crates/enr-core/`; **do not open ENR2 yet**. Hosts still prefer hash join engines for scale; ENR1 is the portable pure surface. **Text path first-class:** `Collection::sda` / `Dingo::sda_query` so people write ENR+SDA source (not only fluent joins). Layering: [enr-core/README.md](../crates/enr-core/README.md). |
+| **ENR1 (in `dingo-sda`)** | Match-bag **kernel + surface** shipped (`sda-enr1-v0.1`: `Match`/`enrich`/`one?`/`one!`/`merge`/`mergeLeft`/`mergeRight`/`+`/`asBag`/keyed sugar/`source` decls/`t_enr_invalid_key`). Multi-gen expand still blocked on SDA multi-gen. **DQL** v0.1 official dialect compiles to the same kernel (`compile_dialect("dql", …)`); proof tests equate DQL ≡ pure ENR. Foreign dialects absorb comfort. **Do not open ENR2 yet.** |
 
 ### Engineering quality bar (release blockers, not vanity)
 

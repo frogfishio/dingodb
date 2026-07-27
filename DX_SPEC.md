@@ -498,20 +498,29 @@ Raw SDA/ENR text is an advanced capability, not the only query interface.
 ### 7.7 Query dialects
 
 SDA (with ENR1) is the **mathematical** query language (see [SDA_SPEC.md](SDA_SPEC.md)).
-Everyday and familiar surfaces are **dialects**: frontends that compile into
-pure SDA and never redefine algebra semantics. This is **not** a hybrid of
-co-equal languages: dialects are comfort; pure SDA remains mandatory when the
-job needs exact meaning a foreign surface cannot express.
+Pure ENR + SDA is exact and often unpleasant to write; a small loud audience
+will prefer it. Everyone else uses **dialects**: frontends that compile into
+the same ENR+SDA IR and never redefine algebra semantics. This is **not** a
+hybrid of co-equal languages.
+
+**DQL (Dingo Query Language) is the official human dialect** — co-designed with
+ENR for readable enrichment and nested projection. It is not SQL; foreign
+SQL/Mongo/GraphQL surfaces remain optional comfort with known holes. Design:
+[DQL_SPEC.md](DQL_SPEC.md).
 
 **Null vs absence is the hard case.** SQL `NULL` and Mongo-style filters cannot
 losslessly encode SDA’s distinction between a stored `null` and a missing key
 (SDA_SPEC §4.0.1). If callers must separate those, they write pure SDA (or ENR
-text). Dialects may approximate and MUST attach notes or refuse rather than
-quietly redefine the algebra.
+text), or DQL once it covers that construct faithfully. Foreign dialects may
+approximate and MUST attach notes or refuse rather than quietly redefine the
+algebra.
 
 ```ts
 // Pure SDA (always available) — only path for exact null vs absence, etc.
 await users.sda(`{ yield u | u in input | getPath(u, Seq["status"]) = Some("active") }`);
+
+// Official human dialect (design; compile → same IR as pure ENR+SDA)
+// await db.queryDialect("dql", `from orders\nenrich customer using customers …`);
 
 // JSON / Mongo-style filter dialect (already the portable §7.1 object)
 await users.find({ status: "active", age: { $gte: 18 } });
@@ -526,17 +535,19 @@ Builtin dialect ids:
 | Id | Role |
 |----|------|
 | `sda` | Pure SDA/ENR1 text (parse-checked) |
+| `dql` | **Official** Dingo Query Language → ENR1+SDA ([DQL_SPEC.md](DQL_SPEC.md); v0.1) |
 | `json` / `mongo` | DX portable filter object → document predicate |
-| `sql` | Partial `SELECT` / `WHERE` mimicry (not full SQL) |
+| `sql` | Partial `SELECT` / `WHERE` mimicry (foreign comfort; not DQL) |
 | `graphql` | Reserved; not implemented |
 
-None of the familiar dialects is a complete encoding of SDA, SQL, MongoDB, or
-GraphQL. Mimicry is intentional: the product offers the pure language (hard)
-plus comfortable options. Hosts MAY register additional dialects that compile
-to pure SDA.
+None of the *foreign* dialects is a complete encoding of SDA, SQL, MongoDB, or
+GraphQL. Mimicry is intentional: the product offers the pure language (hard),
+DQL as the official human surface, plus comfortable foreign options. Hosts MAY
+register additional dialects that compile to pure SDA / shared IR.
 
-Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md). Rust surface:
-`dingo-sdk::dialects` (`compile_dialect`, `DialectRegistry`, `QueryDialect`).
+Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [DQL_SPEC.md](DQL_SPEC.md).
+Rust surface: `dingo-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
+`QueryDialect`).
 
 ### 7.8 Explain
 

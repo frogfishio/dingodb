@@ -1,4 +1,4 @@
-use crate::ast::{BinOpKind, Expr, Program, SelectMode, Stmt, UnOpKind};
+use crate::ast::{BinOpKind, Expr, Program, SelectMode, SourceKind, Stmt, UnOpKind};
 
 pub fn format_program(program: &Program) -> String {
     let mut out = String::new();
@@ -13,6 +13,26 @@ pub fn format_program(program: &Program) -> String {
             }
             Stmt::Expr(expr) => {
                 out.push_str(&format_expr(expr, 0));
+                out.push_str(";\n");
+            }
+            Stmt::Source {
+                name,
+                kind,
+                type_params,
+            } => {
+                out.push_str("source ");
+                out.push_str(name);
+                out.push_str(" : ");
+                out.push_str(match kind {
+                    SourceKind::Index => "Index",
+                    SourceKind::MultiIndex => "MultiIndex",
+                    SourceKind::Dataset => "Dataset",
+                });
+                if !type_params.is_empty() {
+                    out.push('[');
+                    out.push_str(&type_params.join(", "));
+                    out.push(']');
+                }
                 out.push_str(";\n");
             }
         }

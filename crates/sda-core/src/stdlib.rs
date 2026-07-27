@@ -23,16 +23,26 @@ pub fn call_stdlib(name: &str, args: Vec<Value>) -> Option<Result<Value, EvalErr
         "startsWith" => Some(stdlib_starts_with(args)),
         "strContains" => Some(stdlib_str_contains(args)),
         // ENR1 kernel (match-bag cardinality + combine). Same Program::parse compile path as SDA.
-        // Spec: crates/enr-core/ENR1.md minimal subset. Tags t_enr_*. ENR2 not implemented.
+        // Spec: crates/enr-core/ENR1.md. Tags t_enr_*. ENR2 not implemented.
         "one?" | "oneOpt" => Some(stdlib_enr_one_opt(args)),
         "one!" | "oneReq" => Some(stdlib_enr_one_req(args)),
         "only" => Some(stdlib_enr_only(args)),
         "first" => Some(stdlib_enr_first(args)),
         "last" => Some(stdlib_enr_last(args)),
-        "merge" => Some(stdlib_enr_merge(args)),
+        // merge / mergeFail: collision fails. mergeLeft / mergeRight: explicit policies.
+        "merge" | "mergeFail" => Some(stdlib_enr_merge(args, MergePolicy::Fail)),
+        "mergeLeft" => Some(stdlib_enr_merge(args, MergePolicy::Left)),
+        "mergeRight" => Some(stdlib_enr_merge(args, MergePolicy::Right)),
         "asBag" | "matchBag" => Some(stdlib_as_bag(args)),
         _ => None,
     }
+}
+
+#[derive(Clone, Copy)]
+enum MergePolicy {
+    Fail,
+    Left,
+    Right,
 }
 
 fn enr_fail(code: &str, msg: &str) -> Value {
@@ -126,28 +136,50 @@ fn stdlib_enr_last(args: Vec<Value>) -> Result<Value, EvalError> {
     }
 }
 
-/// `merge(l, r)` — mergeFail on Prod/Map; collision → t_enr_field_collision.
-fn stdlib_enr_merge(args: Vec<Value>) -> Result<Value, EvalError> {
-    check_arity("merge", &args, 2)?;
+/// `merge` / `mergeFail` / `mergeLeft` / `mergeRight` on Prod/Map.
+fn stdlib_enr_merge(args: Vec<Value>, policy: MergePolicy) -> Result<Value, EvalError> {
+    let name = match policy {
+        MergePolicy::Fail => "merge",
+        MergePolicy::Left => "mergeLeft",
+        MergePolicy::Right => "mergeRight",
+    };
+    check_arity(name, &args, 2)?;
     let mut iter = args.into_iter();
     let left = iter.next().unwrap();
     let right = iter.next().unwrap();
     Ok(match (left, right) {
-        (Value::Prod(l), Value::Prod(r)) => merge_kv(l, r, true),
-        (Value::Map(l), Value::Map(r)) => merge_kv(l, r, false),
-        (Value::Prod(l), Value::Map(r)) => merge_kv(l, r, true),
-        (Value::Map(l), Value::Prod(r)) => merge_kv(l, r, false),
+        (Value::Prod(l), Value::Prod(r)) => merge_kv(l, r, true, policy),
+        (Value::Map(l), Value::Map(r)) => merge_kv(l, r, false, policy),
+        (Value::Prod(l), Value::Map(r)) => merge_kv(l, r, true, policy),
+        (Value::Map(l), Value::Prod(r)) => merge_kv(l, r, false, policy),
         _ => enr_wrong_shape(),
     })
 }
 
-fn merge_kv(left: Vec<(String, Value)>, right: Vec<(String, Value)>, as_prod: bool) -> Value {
+fn merge_kv(
+    left: Vec<(String, Value)>,
+    right: Vec<(String, Value)>,
+    as_prod: bool,
+    policy: MergePolicy,
+) -> Value {
     let mut out = left;
     for (key, value) in right {
-        if out.iter().any(|(existing, _)| existing == &key) {
-            return enr_fail("t_enr_field_collision", "field collision");
+        if let Some(pos) = out.iter().position(|(existing, _)| existing == &key) {
+            match policy {
+                MergePolicy::Fail => {
+                    return enr_fail("t_enr_field_collision", "field collision");
+                }
+                MergePolicy::Left => {
+                    // keep existing left value; drop right
+                    let _ = value;
+                }
+                MergePolicy::Right => {
+                    out[pos].1 = value;
+                }
+            }
+        } else {
+            out.push((key, value));
         }
-        out.push((key, value));
     }
     if as_prod {
         Value::Prod(out)

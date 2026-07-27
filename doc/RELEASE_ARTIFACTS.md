@@ -19,10 +19,13 @@ by each crate’s `include` list in `Cargo.toml`.
 | `crates/sda-cli` | `dingo-sda-cli` | `dingo-sda` | Hybrid evaluator CLI |
 | `crates/dingo-format` | `dingo-format` | — | Wire format / salvage scan |
 | `crates/dingo-store` | `dingo-store` | — | Includes `crash_matrix.v1.json` |
-| `crates/dingo-sdk` | `dingo-sdk` | — | Collection API |
+| `crates/dingo-client` | `dingo-client` | — | Wire framing / client protocol |
+| `crates/dingo-sdk` | `dingo-sdk` | — | Collection API + dialects (incl. official `dql`) |
+| `crates/dingo-server` | `dingo-server` | — | Network serve runtime |
 | `crates/dingo-examine` | `dingo-examine` | — | Examination host |
 | `crates/dingo-cli` | `dingo-cli` | `dingo` | Operator CLI |
 | `crates/dingo-cluster` | `dingo-cluster` | — | In-process federation |
+| `crates/dingo-testrig` | `dingo-testrig` | `dingo-testrig` | Stress rig (`publish = false`; workspace release only) |
 
 **Package rules**
 
@@ -105,10 +108,11 @@ dependencies are versioned so packaging *can* rewrite them later, but members
 are not yet the primary distribution channel. Full crates.io verify would
 resolve foreign packages. **Do not republish under bare `sda` / `sda-lib`** —
 those names were misused for this hybrid surface; new publishes use
-`dingo-sda` / `dingo-sda-cli` only (yank any mistaken prior `0.1.0` under the
-old names when credentials allow). The workspace release gate validates
-tarball *content completeness* via `--list` + rebuild, which is the monorepo
-equivalent of “builds from the packaged tree.”
+`dingo-sda` / `dingo-sda-cli` only. Mistaken hybrid `0.1.0` under the old
+names was yanked on crates.io (2026-07-28); pre-existing pure-SDA `1.0.x`
+under those names is out of scope for this monorepo. The workspace release
+gate validates tarball *content completeness* via `--list` + rebuild, which
+is the monorepo equivalent of “builds from the packaged tree.”
 
 Main CI runs the script on every PR/push. Nightly continues to run heavier
 corpora via `scripts/nightly.sh`.

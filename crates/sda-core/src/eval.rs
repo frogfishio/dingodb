@@ -320,8 +320,12 @@ fn eval_enr_match(args: &[Expr], env: &Env) -> Result<Value, EvalError> {
         child.insert("r".to_string(), r.clone());
         let k_l = eval_expr(&args[2], &child)?;
         let k_r = eval_expr(&args[3], &child)?;
+        // ENR1 §09: invalid key type → t_enr_invalid_key (not a silent non-match).
         if ensure_comparable(&k_l).is_err() || ensure_comparable(&k_r).is_err() {
-            return Ok(wrong_shape_value());
+            return Ok(Value::Fail_(
+                "t_enr_invalid_key".to_string(),
+                "invalid key".to_string(),
+            ));
         }
         if values_equal(&k_l, &k_r) {
             matched.push(r);
@@ -742,6 +746,10 @@ pub fn eval_program(program: &Program, env: &mut Env) -> Result<Option<Value>, E
             }
             Stmt::Expr(expr) => {
                 last = Some(eval_expr(expr, env)?);
+            }
+            // ENR1 source declarations are pure semantic annotations; data comes from host binds.
+            Stmt::Source { .. } => {
+                last = None;
             }
         }
     }

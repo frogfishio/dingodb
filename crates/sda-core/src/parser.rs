@@ -111,6 +111,45 @@ impl Parser {
             let expr = self.parse_expr()?;
             self.expect(TokenKind::Semi)?;
             Ok(Stmt::Let(name, expr))
+        } else if matches!(self.peek(), TokenKind::Ident(n) if n == "source") {
+            // ENR1 §06: `source name : Index[K, V];` (semantic annotation; eval no-op).
+            self.advance();
+            let name = self.expect_ident()?;
+            self.expect(TokenKind::Colon)?;
+            let kind_name = self.expect_ident()?;
+            let kind = match kind_name.as_str() {
+                "Index" => SourceKind::Index,
+                "MultiIndex" => SourceKind::MultiIndex,
+                "Dataset" => SourceKind::Dataset,
+                _ => {
+                    return Err(ParseError::Expected(
+                        "Index, MultiIndex, or Dataset".to_string(),
+                        TokenKind::Ident(kind_name),
+                        self.peek_pos(),
+                    ));
+                }
+            };
+            let mut type_params = Vec::new();
+            if *self.peek() == TokenKind::LBrack {
+                self.advance();
+                if *self.peek() != TokenKind::RBrack {
+                    type_params.push(self.expect_ident()?);
+                    while *self.peek() == TokenKind::Comma {
+                        self.advance();
+                        if *self.peek() == TokenKind::RBrack {
+                            break;
+                        }
+                        type_params.push(self.expect_ident()?);
+                    }
+                }
+                self.expect(TokenKind::RBrack)?;
+            }
+            self.expect(TokenKind::Semi)?;
+            Ok(Stmt::Source {
+                name,
+                kind,
+                type_params,
+            })
         } else {
             let expr = self.parse_expr()?;
             self.expect(TokenKind::Semi)?;
@@ -386,6 +425,24 @@ impl Parser {
                     }
                     self.expect(TokenKind::RParen)?;
                     expr = Expr::Call(Box::new(expr), args);
+                }
+                // ENR1 §07 keyed sugar: R[kR = kL] → { r | r in R | kR = kL } (match bag).
+                TokenKind::LBrack => {
+                    self.advance();
+                    let k_r = self.parse_setish()?;
+                    self.expect(TokenKind::Eq)?;
+                    let k_l = self.parse_setish()?;
+                    self.expect(TokenKind::RBrack)?;
+                    expr = Expr::Comprehension {
+                        yield_expr: None,
+                        binding: "r".to_string(),
+                        collection: Box::new(expr),
+                        pred: Some(Box::new(Expr::BinOp(
+                            BinOpKind::Eq,
+                            Box::new(k_r),
+                            Box::new(k_l),
+                        ))),
+                    };
                 }
                 _ => break,
             }

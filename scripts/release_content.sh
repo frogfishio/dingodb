@@ -24,6 +24,8 @@ MEMBERS=(
   "dingo-examine|crates/dingo-examine"
   "dingo-cli|crates/dingo-cli"
   "dingo-cluster|crates/dingo-cluster"
+  # Workspace member (publish = false); still required for staged rebuild from package lists.
+  "dingo-testrig|crates/dingo-testrig"
 )
 
 ALLOW_DIRTY="${DINGO_RELEASE_ALLOW_DIRTY:-0}"

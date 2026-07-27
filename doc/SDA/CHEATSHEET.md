@@ -8,11 +8,12 @@ This is the short version of SDA for day-to-day use.
 - `dingo-sda eval` runs SDA code
 - `dingo-sda check` validates SDA code
 - `dingo-sda fmt` formats SDA code
-- **SDA (+ ENR1) is the mathematical language**; JSON/Mongo filters and SQL-ish
-  strings are optional **dialects** that compile into pure SDA — not a hybrid of
+- **SDA (+ ENR1) is the mathematical language**; **DQL** is the official human
+  dialect ([DQL_SPEC.md](../../DQL_SPEC.md)); JSON/Mongo filters and SQL-ish
+  strings are foreign **dialects** that compile into pure SDA — not a hybrid of
   peer languages (see [DIALECTS.md](DIALECTS.md))
 - **Null ≠ absence.** Stored `null` is `Some(null)`; missing key is `None`. If you
-  need that distinction, write pure SDA — dialects cannot express it losslessly
+  need that distinction, write pure SDA — foreign dialects cannot express it losslessly
 
 ## Most useful commands
 

@@ -337,10 +337,36 @@ model.
 
 As ugly as ENR + SDA notation can look, it remains mathematical notation: it
 can express distinctions (Null vs absence, carriers, Fail tags, match bags)
-that familiar query surfaces cannot encode losslessly. If the job needs those
-distinctions, the pure path is mandatory. Comfort never redefines the algebra.
+that familiar foreign query surfaces cannot encode losslessly. If the job
+needs those distinctions, the pure path is mandatory. Comfort never redefines
+the algebra.
 
-See [DIALECTS.md](DIALECTS.md).
+**DQL** is the official human dialect co-designed to lower *faithfully* into
+that algebra (not SQL mimicry). Foreign dialects remain imperfect comfort.
+See [DIALECTS.md](DIALECTS.md) and [DQL_SPEC.md](../../DQL_SPEC.md).
+
+## Language Design Authority (Top-Down Kernel)
+
+SDA and ENR are **not** designed by collecting application-developer wishlists
+and growing the grammar until it feels familiar. That is not how serious
+languages are made.
+
+- **Kernel:** closed algebra, frozen laws, explicit failure. Completeness is
+  semantic (can the model state the distinction?) — not “did a user ask?”
+- **Implementation order** may stage work (kernel first, sugar later,
+  dependencies on SDA multi-gen, etc.). Staging is engineering capacity.
+  It is **not** permission to leave designed surface indefinitely on the
+  grounds that nobody has petitioned for it yet.
+- **Dialects / host APIs:** where familiarity and impurities live. SQL
+  mimicry, Mongo filters, fluent builders. They compile in or refuse; they
+  do not rewrite the kernel when millions of users “prefer NULL three-valued
+  logic.”
+
+Historical pattern (SQL, PL/SQL, C, standards committees): designers and
+authorities shape the language; markets and users pressure *adoption* and
+sometimes *extensions* that committees later ratify. Bob does not phone
+Oracle and redesign PL/SQL. Full note:
+[enr-core/README.md — How this language is designed](../../crates/enr-core/README.md#how-this-language-is-designed-not-bob-called-oracle).
 
 ## Standard For Completion
 
