@@ -46,6 +46,8 @@ durability conditions.
 | `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
 | `sda-lib` example `sda_latency_breakdown` | pure-SDA phase split: parse / from_json / eval / to_json / reparse vs compile-once |
 | `sda-lib` `sda_bench_skeleton` | pure-SDA CI skeleton (absurdity bounds only) |
+| `dingo-sdk` `multi_collection_sda_join_perf` | nested-SDA multi-collection join (viability / anti-pattern cliff) |
+| `dingo-sdk` `multi_query_join_perf` | host hash equijoin + SDA normalise (product multi-query path) |
 
 Strategies (write-path S1–S6, max-performance residuals, SDA A1–A5):
 [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md).
