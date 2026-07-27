@@ -956,8 +956,12 @@ wall / CPU% sum ~376 with free disk) — see `doc/PARALLEL_INGEST.md` /
 modest (~7.4k → ~8.1k ops/s) because PrimaryIndex publish after `put_many` stays
 serial (process CPU% still ~1-core class). Optional follow-on: shrink that serial
 section so shard count and wall ops/s move together (only with before/after
-numbers). Strategy order after this cut: gate-driven readiness + product cluster
-path — see `doc/WORK_HORIZON.md` and `doc/PARALLEL_INGEST.md` §10.
+numbers). **Ordered next steps toward maximum performance** (ingest residual →
+product cluster → durable disclosure → Hydra hot get → Chimera worker → DEF-093)
+are frozen in `doc/WORK_HORIZON.md` (“Next steps towards maximum performance”
+self-check, 2026-07-27) and `doc/PARALLEL_INGEST.md` §7 / §10. Strategy order
+after this cut: gate-driven readiness by default; performance labor only against
+those measured residuals.
 
 **Product capacity path (S3, 2026-07-27):** `Cluster::put_many` groups items by
 virtual partition, ensures leadership once per partition, and returns honest

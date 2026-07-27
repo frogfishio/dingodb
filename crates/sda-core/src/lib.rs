@@ -9,6 +9,15 @@
 //! assert_eq!(output, serde_json::json!({"$type": "ok", "$value": "Ada"}));
 //! # Ok::<(), sda_lib::SdaError>(())
 //! ```
+//!
+//! For hosts that evaluate one program against many inputs, parse once:
+//!
+//! ```rust
+//! let prog = sda_lib::Program::parse(r#"input<"name">!"#)?;
+//! let out = prog.run_json("input", serde_json::json!({"name": "Ada"}))?;
+//! assert_eq!(out, serde_json::json!({"$type": "ok", "$value": "Ada"}));
+//! # Ok::<(), sda_lib::SdaError>(())
+//! ```
 
 mod ast;
 mod format;
@@ -176,30 +185,85 @@ pub enum SdaError {
     Eval(#[from] EvalError),
 }
 
+/// A parse-once SDA program for repeated evaluation.
+///
+/// Hosts that apply one program to many inputs (filter pushdown, examination
+/// units, benches) should parse once and call [`Program::run_json`] /
+/// [`Program::eval`] per document. Prefer this over [`run`], which re-parses
+/// on every call.
+///
+/// ```rust
+/// let prog = sda_lib::Program::parse(r#"input<"name">!"#)?;
+/// let out = prog.run_json("input", serde_json::json!({"name": "Ada"}))?;
+/// assert_eq!(out, serde_json::json!({"$type": "ok", "$value": "Ada"}));
+/// # Ok::<(), sda_lib::SdaError>(())
+/// ```
+#[derive(Debug, Clone)]
+pub struct Program {
+    inner: ast::Program,
+}
+
+impl Program {
+    /// Lex and parse `source` into a reusable program.
+    ///
+    /// A trailing `;` is optional (normalized for the parser).
+    pub fn parse(source: &str) -> Result<Self, SdaError> {
+        Ok(Self {
+            inner: parse_source(source)?,
+        })
+    }
+
+    /// Evaluate against an already-converted SDA [`Value`] bound as `binding_name`.
+    ///
+    /// Skips JSON bridge cost. Returns the last expression value, or
+    /// [`Value::Null`] when the program ends on a `let` with no trailing expr.
+    pub fn eval(&self, binding_name: &str, input: Value) -> Result<Value, SdaError> {
+        let mut env = Env::new();
+        env.insert(binding_name.to_string(), input);
+        let result = eval::eval_program(&self.inner, &mut env)?;
+        Ok(result.unwrap_or(Value::Null))
+    }
+
+    /// Evaluate against JSON: `from_json` → eval → `to_json`.
+    pub fn run_json(
+        &self,
+        binding_name: &str,
+        input: serde_json::Value,
+    ) -> Result<serde_json::Value, SdaError> {
+        let result = self.eval(binding_name, from_json(input))?;
+        Ok(to_json(result))
+    }
+
+    /// Emit canonical SDA source for this program.
+    #[must_use]
+    pub fn format(&self) -> String {
+        format::format_program(&self.inner)
+    }
+}
+
+/// Parse + evaluate once (convenience). Prefer [`Program::parse`] when the same
+/// source will run against many inputs.
 pub fn run(expr: &str, input: serde_json::Value) -> Result<serde_json::Value, SdaError> {
     run_with_input_binding(expr, "input", input)
 }
 
+/// Parse + evaluate once with a custom input binding name.
 pub fn run_with_input_binding(
     expr: &str,
     binding_name: &str,
     input: serde_json::Value,
 ) -> Result<serde_json::Value, SdaError> {
-    let input_val = from_json(input);
-    let program = parse_source(expr)?;
-    let mut env = Env::new();
-    env.insert(binding_name.to_string(), input_val);
-    let result = eval::eval_program(&program, &mut env)?;
-    Ok(to_json(result.unwrap_or(Value::Null)))
+    Program::parse(expr)?.run_json(binding_name, input)
 }
 
+/// Parse and validate source without evaluating.
 pub fn check(expr: &str) -> Result<(), SdaError> {
-    parse_source(expr).map(|_| ())
+    Program::parse(expr).map(|_| ())
 }
 
+/// Parse, validate, and emit canonical SDA formatting.
 pub fn format_source(expr: &str) -> Result<String, SdaError> {
-    let program = parse_source(expr)?;
-    Ok(format::format_program(&program))
+    Ok(Program::parse(expr)?.format())
 }
 
 fn parse_source(expr: &str) -> Result<ast::Program, SdaError> {

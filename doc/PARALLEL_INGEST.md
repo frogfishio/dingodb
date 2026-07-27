@@ -195,14 +195,17 @@ Multi-store pump is a **harness** parallelization for Axis C upper-bound media b
 1. Axis A (async lifecycle, dual slots) — landed.
 2. Axis B sharded writers (`create_with_shards`, `put_many`) — landed.
 
-**Do next:**
+**Do next (toward maximum performance — see WORK_HORIZON “Next steps towards maximum performance”):**
 
 3. ~~Wire testrig `--writer-shards N` / multi-core pump disclosure fields.~~ **Done** (2026-07-27).
 4. ~~Re-run 10 GiB testrig with writer shards; compare ops/s, p99, process CPU%, RSS.~~ See `doc/BENCHMARK_DISCLOSURE.md` (sharded 10 GiB snapshot).
 5. ~~Multi-store harness mode (`--stores N`).~~ **Done** (2026-07-27) — multi-process child pumps + disclosure.
 6. ~~1 GiB Axis C comparative + 256 MiB multi-store integrity.~~ **Done** (2026-07-27) — see `doc/BENCHMARK_DISCLOSURE.md` (peak CPU% sum ~316 on 4 stores; wall ops/s not linear; integrity PASS).
 7. ~~Optional: large multi-store 10 GiB re-measure when host has ≥15 GiB free.~~ **Done** (2026-07-27) — clean Axis C 10 GiB with ~32 GiB free pre-pump: **~17.7k ops/s wall**, peak CPU% sum ~376, RSS sum ~2.49 GiB, **PASS** all four roots. See `doc/BENCHMARK_DISCLOSURE.md` (Multi-store 10 GiB).
-8. Product cluster capacity remains dingo-cluster partitions / multi-node (not this harness).
+8. **Optional Axis B residual:** shrink serial PrimaryIndex publish after `put_many` so wall ops/s and process CPU% move together (only with before/after disclosure).
+9. **Product capacity:** dingo-cluster multi-partition / multi-node (network serve-cluster); `Cluster::put_many` started — not this harness.
+10. **Hot/read (separate lane):** cached Hydra → frame pread; Chimera compiler worker — not on the write-parallelization critical path.
+11. **DEF-093:** durable/replicated ingest + published reproducible profiles.
 
 **Do not:**
 
@@ -255,3 +258,4 @@ Measured reality (buffered 8 KiB, M4-class, diagnostic):
 6. **Anti-strategies** — PrimaryIndex micro-rewrite for write; Chimera full-load on get; rayon on exclusive single-segment put; treating harness multi-store as product sharding.
 
 Full scoreboard and labor split: [`WORK_HORIZON.md`](WORK_HORIZON.md) (“Things can go faster” strategy self-check).
+**Canonical strategies write-up:** [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md).

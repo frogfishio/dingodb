@@ -271,19 +271,44 @@ impl Filter {
         compile_filter_sda(self)
     }
 
-    /// Evaluate this filter by compiling to SDA and running `sda_core`.
+    /// Compile this filter to a parse-once [`sda_core::Program`].
+    ///
+    /// Prefer this when evaluating the same filter against many documents
+    /// ([`Self::matches_compiled_sda`]). [`Self::matches_sda`] recompiles
+    /// every call for convenience.
+    pub fn compile_sda(&self) -> Result<sda_core::Program, Error> {
+        sda_core::Program::parse(&self.to_sda()).map_err(|e| {
+            Error::QueryInvalid(format!("filter SDA compile failed: {e}"))
+        })
+    }
+
+    /// Evaluate a pre-compiled filter program against `doc`.
     ///
     /// Non-boolean results (including SDA `Fail`) are treated as non-matches so
     /// comparison/type failures align with the native evaluator.
-    pub fn matches_sda(&self, doc: &JsonValue) -> Result<bool, Error> {
-        let program = self.to_sda();
-        match sda_core::run(&program, doc.clone()) {
+    pub fn matches_compiled_sda(
+        program: &sda_core::Program,
+        doc: &JsonValue,
+    ) -> Result<bool, Error> {
+        match program.run_json("input", doc.clone()) {
             Ok(JsonValue::Bool(b)) => Ok(b),
             Ok(_) => Ok(false),
             Err(e) => Err(Error::QueryInvalid(format!(
                 "filter SDA evaluation failed: {e}"
             ))),
         }
+    }
+
+    /// Evaluate this filter by compiling to SDA and running `sda_core`.
+    ///
+    /// Compiles on every call. For multi-doc paths use [`Self::compile_sda`]
+    /// once then [`Self::matches_compiled_sda`].
+    ///
+    /// Non-boolean results (including SDA `Fail`) are treated as non-matches so
+    /// comparison/type failures align with the native evaluator.
+    pub fn matches_sda(&self, doc: &JsonValue) -> Result<bool, Error> {
+        let program = self.compile_sda()?;
+        Self::matches_compiled_sda(&program, doc)
     }
 
     /// Build a versioned [`QueryPlan`] with default options.
@@ -1286,6 +1311,27 @@ mod tests {
                 filter.to_sda()
             );
             assert_eq!(native, sda, "case {i} native≠sda; program={}", filter.to_sda());
+        }
+    }
+
+    #[test]
+    fn compile_sda_once_agrees_with_matches_sda() {
+        let filter = Filter::and([
+            Filter::field("status").eq("active"),
+            Filter::field("age").gte(18),
+        ]);
+        let prog = filter.compile_sda().expect("compile_sda");
+        let docs = [
+            json!({"status": "active", "age": 21}),
+            json!({"status": "active", "age": 10}),
+            json!({"status": "paused", "age": 30}),
+        ];
+        for doc in &docs {
+            let once = Filter::matches_compiled_sda(&prog, doc).unwrap();
+            let convenience = filter.matches_sda(doc).unwrap();
+            let native = filter.matches(doc);
+            assert_eq!(once, convenience);
+            assert_eq!(once, native);
         }
     }
 

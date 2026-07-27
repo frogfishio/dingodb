@@ -44,6 +44,11 @@ durability conditions.
 | `dingo-store` example `write_scale_curve` | buffered scale curve (early vs late windows) |
 | `dingo-store` example `read_latency_breakdown` | open-once vs reopen-per-get; PrimaryIndex gets vs Chimera sidecar probe |
 | `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
+| `sda-lib` example `sda_latency_breakdown` | pure-SDA phase split: parse / from_json / eval / to_json / reparse vs compile-once |
+| `sda-lib` `sda_bench_skeleton` | pure-SDA CI skeleton (absurdity bounds only) |
+
+Strategies (write-path S1–S6, max-performance residuals, SDA A1–A5):
+[`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md).
 
 ### Write latency: data vs indexing (measured attribution)
 
@@ -234,6 +239,46 @@ After DEF-095 + DEF-096 Axis A+B+C harness:
 2. Sharded writers + testrig `--writer-shards N` disclosure — **shipped** (measured above).
 3. Multi-store multi-process harness (`--stores N`) — **shipped** (smoke + 1 GiB comparative + 256 MiB integrity + **10 GiB multi-store PASS** with free disk).
 4. Product multi-node cluster capacity — remains dingo-cluster (not this harness).
+
+#### Next steps toward maximum performance (pointer)
+
+Cliffs above are closed. Ordered residuals (serial `put_many` index publish →
+product cluster capacity → durable/replicated disclosure → Hydra hot get →
+Chimera compiler worker → DEF-093 suite) live in
+[WORK_HORIZON.md](WORK_HORIZON.md) (“Next steps towards maximum performance”
+self-check), [PARALLEL_INGEST.md](PARALLEL_INGEST.md) §7 / §10, and the
+canonical [PERFORMANCE_STRATEGIES.md](PERFORMANCE_STRATEGIES.md). Do not reopen
+PrimaryIndex structure work without a new measured bottleneck.
+
+## SDA pure-eval diagnostic snapshot (not a published SLO)
+
+Separate performance class from store hot/ingest/archive. First harness cut
+(2026-07-27): `cargo run -p sda-lib --release --example sda_latency_breakdown`
+on Apple M4-class developer hardware. **Diagnostic only.**
+
+| Case | parse p50 | eval p50 | run_json_once p50 | run (re-parse) p50 | Compile-once vs reparse |
+|------|-----------|----------|-------------------|--------------------|-------------------------|
+| `literal_arith` | ~2.3 µs | ~0.9 µs | ~1.0 µs | ~2.8 µs | ~40% of reparse full |
+| `map_projection` | ~0.6 µs | ~0.5 µs | ~0.9 µs | ~1.5 µs | ~59% of reparse full |
+| `filter_eq` (DEF-028 shape) | ~1.0 µs | ~0.4 µs | ~0.8 µs | ~1.7 µs | ~42% of reparse full |
+| `filter_and` | ~2.0 µs | ~0.8 µs | ~1.2 µs | ~3.3 µs | ~38% of reparse full |
+| `seq_comp_small` (8 elems) | ~1.0 µs | ~3.9 µs | ~5.8 µs | ~7.0 µs | parse share small; eval dominates |
+| `seq_comp_1k` | ~1.0 µs | ~**6.5 ms** | ~**6.7 ms** | ~**6.8 ms** | parse share ≈0%; **eval-bound** |
+
+### What the SDA numbers teach
+
+1. **Filter-shaped multi-doc paths must compile once.** Re-parsing every document
+   spends ~40–60% of wall on lex/parse for DEF-028-style predicates. Use
+   `Program::parse` / `Filter::compile_sda` + `matches_compiled_sda`.
+2. **Micro projection/eval is already sub-µs to low-µs.** Further host polish
+   on tiny filters is low leverage vs store I/O when examination is store-backed.
+3. **Large comprehensions are eval-bound** (ExactNum + per-element allocation).
+   Next SDA residual is bulk eval efficiency, not more parse shaving — only with
+   a measured host workload that needs 1k+ element pure transforms.
+4. **Default collection find stays native** (`Filter::matches`). SDA path is
+   parity / pushdown readiness, not a silent replacement for scan find.
+
+Strategies: [PERFORMANCE_STRATEGIES.md](PERFORMANCE_STRATEGIES.md) § SDA.
 
 #### Read-path failure that was fixed (Chimera-before-index)
 

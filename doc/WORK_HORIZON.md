@@ -384,6 +384,119 @@ Do **not** treat these three as one “still deferred” blob.
 **Do** allow a compiler **worker** (execute plans on derived Chimera layouts) as
 the next Chimera step when that lane is prioritized — separate from dual-rep/ZNS.
 
+### Next steps towards maximum performance (2026-07-27 self-check)
+
+**Question:** What are our next steps towards *maximum performance*?
+
+**Short answer:** The write cliffs are closed. Maximum performance is three
+path classes (OVERVIEW §12.1), not one knob. Next work is **ordered residuals
+per class**, not another PrimaryIndex rewrite. Default program labor remains
+gate-driven readiness; performance labor must attack a **measured** bottleneck
+with before/after disclosure.
+
+#### Where we already are (do not re-hunt)
+
+| Cliff / cut | Status | Evidence |
+|-------------|--------|----------|
+| Write index asymptote | **Closed** (DEF-023) | late/early ≳ 0.7; ~µs steady-state puts |
+| O(dataset) RSS | **Closed** (DEF-095) | 10 GiB pump peak RSS ~0.92 GiB |
+| Lifecycle on put ack | **Closed** (DEF-096 Axis A) | seal pipeline + pending rotate |
+| Sharded append layout | **Closed** (Axis B) | `create_with_shards` / `put_many` |
+| Multi-process capacity harness | **Closed** (Axis C) | 4×stores 10 GiB ~17.7k ops/s, CPU% sum ~376 |
+| Product multi-partition batch | **Started** | `Cluster::put_many` + `stage_def_096_product_capacity` |
+| Hot get integrity | **Fixed** | PrimaryIndex first; no full `.cmr` on get |
+
+Scoreboard (buffered 8 KiB, M4-class, diagnostic only — full tables in
+[`BENCHMARK_DISCLOSURE.md`](BENCHMARK_DISCLOSURE.md)):
+
+| Config | Wall ops/s (10 GiB class) | Multi-core? | Residual |
+|--------|---------------------------|-------------|----------|
+| Single | ~7.4k | no (~1 core) | — |
+| Axis B shards=4 | ~8.1k (~+10%) | **no** (CPU% ~95) | serial index publish after `put_many` |
+| Axis C stores=4 | ~17.7k (~2.4×) | **yes** (CPU% sum ~376) | harness ≠ product; not linear 4× |
+
+#### Maximum performance = three destinations
+
+| Class | Product target | Current ceiling | Next step toward max |
+|-------|----------------|-----------------|----------------------|
+| **Ingest** | Sustained multi-core firehose; durable/replicated modes disclosed | Single-process still ~1-core wall; Axis C proves media headroom | **P1 residual:** shrink serial PrimaryIndex publish on `put_many` (S2). **P1 product:** network multi-partition / multi-node capacity (S3). **P2:** durable + replicated append benches (DEF-093). |
+| **Hot path** | Memory-store class p50/p99 on resident working set | µs-class gets via PrimaryIndex; Hydra/Chimera **not** on `Store::get` | **P1:** body-less sealed-segment get via **cached** Hydra locator + frame pread (read benches only). **P2:** Chimera compiler **worker** (relocate/GC/recluster on derived `.cmr` only). **Never:** full `.cmr` load per get. |
+| **Archive** | Catalog prune + parallel stream; high latency OK | Scaffold / mirror tier; separate class | Only after hot/ingest product paths are real; never mix archive latency into hot claims. |
+
+No single number is “maximum performance.” Claims must name the class and full
+disclosure fields.
+
+#### Ordered next steps (performance lane only)
+
+Execute only when labor is intentionally on performance — otherwise prefer S4
+gates from the earlier strategy self-check.
+
+| Priority | Step | Why | Acceptance signal | Anti-goal |
+|----------|------|-----|-------------------|-----------|
+| **1** | **Axis B residual — serial index publish** | Measured: appends parallelize; `apply_durable_event` loop after `put_many` is serial → wall ~+10%, CPU% stays 1-core | Before/after on same machine: wall ops/s **and** process CPU% rise together at shards≥4; late/early still ≳ 0.7; crash matrix green | More shards with same serial publish; PrimaryIndex structure thrash |
+| **2** | **Product capacity path (cluster)** | Axis C multiplies whole processes; product scale is independent partition leaders + network serve-cluster, not testrig `--stores N` | Multi-process / multi-node pump with honest RF/ack; `Cluster::put_many` beyond in-process; disclosure of concurrency + topology | Treating harness multi-store as multi-tenant product |
+| **3** | **Durable / replicated ingest disclosure** | Buffered is the diagnostic default; “max performance” without durability modes is incomplete (DEF-093) | `write_latency_breakdown` + testrig runs for `durable` (and replicated when network path exists); p50/p95/p99 + fsync amp | Claiming durable ≈ buffered |
+| **4** | **Hot sealed-segment reads (Hydra wire-up)** | Hydra sidecars already compile at seal; get still frontier-index only | Dedicated probe: open-once get via cached Hydra → frame pread; `read_latency_breakdown` attributes Hydra path; no `.cmr` full load | “Parallelize gets” by loading Chimera containers |
+| **5** | **Chimera compiler worker** | Layouts freeze at seal without execution; worker unlocks recompilation amp wins later | Worker executes Relocate/Gc/Recluster/HotColdMigrate on derived layouts; frames stay authority; generation-safe swaps | Put-path authority flip; dual-rep/ZNS |
+| **6** | **DEF-093 reproducible suite** | Maximum performance is not credible without published profiles | README links to commands + raw results; CI catastrophic regression guard; path classes separated | Marketing averages without disclosure |
+| **7** | **Archive path (later)** | Separate performance class | Only after Milestone B/C maturity; archive bench already skeletoned (`stage9_archive_bench`) | Cold retrieval under hot SLOs |
+
+#### Concrete code residual for step 1 (Axis B)
+
+Today in `Store::put_many_parallel` (`dingo-store` `store.rs`):
+
+1. Prepare envelopes (serial, needs `&mut self`).
+2. Parallel shard appends (`thread::scope`) — **already multi-core capable**.
+3. Serial loop: `apply_durable_event` + `note_collection_for_subject` for every item.
+
+**Surgical targets (only with measurement):**
+
+- Batch / sharded PrimaryIndex publish after append (reduce dual-apply tax on the batch path if durable_index apply dominates).
+- Avoid redundant body clones on locator-first entries when the batch already owns the body.
+- Ensure seal-pipeline worker count scales with `writer_shards` so late-run early-window rates hold (lifecycle pressure, not index asymptote).
+
+Do **not** flip put authority to Chimera or multi-thread one active segment.
+
+#### Labor split for “maximum performance” program (next few tranches)
+
+```text
+If program default (readiness):     ~0–10% perf residual; rest gates (Jepsen/fuzz/wire/security)
+If intentionally maxing ingest:     ~50% step 1 (serial publish) + ~40% step 2 (cluster) + ~10% measure
+If intentionally maxing hot reads:  ~70% step 4 (Hydra get) + ~20% step 5 (Chimera worker) + ~10% measure
+Never:                              PrimaryIndex micro-rewrite / Chimera-on-every-get / rayon-on-single-put
+```
+
+#### Verdict table
+
+| Claim | Verdict |
+|-------|---------|
+| Next steps exist toward max performance? | **Yes** — ordered residuals above. |
+| Are write cliffs the main story? | **No** — closed; residual is efficiency + product scale + read path. |
+| Single biggest single-node write lever left? | **Serial index publish after `put_many`** (step 1). |
+| Single biggest capacity lever left? | **Product multi-partition / multi-node** (step 2), not more harness stores. |
+| Single biggest hot-read lever left? | **Cached Hydra → frame pread** (step 4), not Chimera full sidecar. |
+| Should we stop all performance work? | **No** — stop **unmeasured** cliff-hunting and path-class mixing. |
+| Does max performance require production gates? | **Yes for product claims** — network maturity, wire freeze, security, DEF-093. Diagnostic micro-opts can proceed without them but must stay labeled. |
+
+Companions: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md) §10, [`BENCHMARK_DISCLOSURE.md`](BENCHMARK_DISCLOSURE.md), DEF-023 / DEF-095 / DEF-096 / DEF-093 in [`DEFECTS.md`](../DEFECTS.md).
+
+**Canonical write-up of all strategies (S1–S6, max-performance residuals, SDA
+A1–A5):** [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md).
+
+### SDA performance harness (2026-07-27)
+
+Started: pure-SDA path is a separate performance class from store ingest/hot-get.
+
+| Hook | Role |
+|------|------|
+| `sda-lib` `Program::parse` + `run_json` / `eval` | Compile-once host API |
+| `sda-lib` example `sda_latency_breakdown` | Phase attribution (diagnostic) |
+| `sda-lib` `sda_bench_skeleton` | CI absurdity bounds |
+| SDK `Filter::compile_sda` / `matches_compiled_sda` | Multi-doc filter parity without re-parse |
+
+Strategies: [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md) § SDA.
+Default collection find remains native `Filter::matches` (A3).
+
 ## What this document is not
 
 - Not a commitment to a schedule.

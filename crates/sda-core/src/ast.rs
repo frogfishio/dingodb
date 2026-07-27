@@ -69,10 +69,12 @@ pub enum SelectMode {
     Required,
 }
 
+#[derive(Debug, Clone)]
 pub struct Program {
     pub stmts: Vec<Stmt>,
 }
 
+#[derive(Debug, Clone)]
 pub enum Stmt {
     Let(String, Expr),
     Expr(Expr),

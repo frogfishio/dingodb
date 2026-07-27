@@ -48,14 +48,19 @@ Bind host input under a name other than `input` with
 
 ## API surface
 
-| Function | Role |
-|----------|------|
-| `run` | Evaluate an SDA program against JSON bound as `input` |
-| `run_with_input_binding` | Evaluate against a caller-chosen binding name |
+| Function / type | Role |
+|-----------------|------|
+| `Program::parse` | **Compile once** for repeated evaluation (preferred host path) |
+| `Program::run_json` / `Program::eval` | Eval a parsed program (JSON bridge or SDA `Value`) |
+| `run` | Convenience: parse + evaluate against JSON bound as `input` |
+| `run_with_input_binding` | Convenience with a caller-chosen binding name |
 | `check` | Parse and validate source without evaluating |
 | `format_source` | Emit canonical SDA formatting |
 | `from_json` / `to_json` | Bridge between JSON and SDA values |
 | `CONFORMANCE_CORPUS_TAG` | Freeze identity for standalone semantics (`sda-standalone-v1.0`) |
+
+Hosts that apply one program to many documents should use `Program::parse` once
+and `run_json` / `eval` per document — not `run` in a loop (re-parses every call).
 
 ## Status
 
@@ -75,6 +80,19 @@ cargo test -p sda-lib
 
 Golden vectors and the automated suite lock §14 MUST behavior under the
 conformance corpus tag.
+
+## Performance harness (diagnostic)
+
+```sh
+# Phase breakdown: lex/parse, from_json, eval, to_json, reparse vs compile-once
+cargo run -p sda-lib --release --example sda_latency_breakdown
+
+# CI skeleton (absurdity bounds only — not a performance gate)
+cargo test -p sda-lib --test sda_bench_skeleton
+```
+
+Strategies and disclosure: [PERFORMANCE_STRATEGIES.md](../../doc/PERFORMANCE_STRATEGIES.md),
+[BENCHMARK_DISCLOSURE.md](../../doc/BENCHMARK_DISCLOSURE.md).
 
 ## Documentation
 
