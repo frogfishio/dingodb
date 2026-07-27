@@ -973,10 +973,11 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
    `put_many` parallel appends; tests `stage_def_096_sharded_writers`.
 3. **Axis C — Horizontal:** multi-store / partition / cluster (already partially
    present) — capacity path, not single-node efficiency.
-4. **Harness:** testrig disclosure of `concurrency` / writer model; optional
-   multi-store pump for media upper-bound; process CPU samples after Axis A.
-   (Partial: pump JSON already emits `concurrency: 1` / single_active model;
-   wire `--writer-shards` / `put_many` into testrig as a follow-on.)
+4. **Harness (done for Axis B):** testrig `--writer-shards N` creates with
+   `create_with_shards`, pumps via `put_many` when N>1, and discloses
+   `concurrency` / `writer_shards` / `writer_model` plus peak RSS / process
+   CPU% (`ps` samples). Optional multi-store pump for Axis C media upper-bound
+   remains open.
 
 Anti-goals:
 

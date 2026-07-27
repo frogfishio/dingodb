@@ -153,19 +153,33 @@ Second local campaign after locator-first PrimaryIndex (**DEF-095**):
 | Concurrency | **1** writer thread / single active segment (not multi-core ingest) |
 | Host resource note | On Apple M4 (10 cores), process CPU mostly ~50% with peaks ~97% of **one** core; RSS ~0.92 GiB; SSD not saturated — headroom for DEF-096 parallel ingest |
 
-#### Multi-core write path (design, not yet measured)
+### 10 GiB sharded testrig diagnostic snapshot (Axis B, not a published SLO)
 
-After DEF-095, single-node pumps are no longer memory-bound. Remaining scale is
-**serial write architecture**, not media. Sequencing authority:
-[`PARALLEL_INGEST.md`](PARALLEL_INGEST.md) / **DEF-096**:
+Third local campaign after Axis A+B + testrig harness (2026-07-27):
+`dingo-testrig run --work /var/tmp/dingo-testrig-10g-shards --target-bytes 10G
+--payload-size 8192 --durability buffered --chaos-hits 64 --sample-keys 128
+--seed 2 --writer-shards 4` (release binary). Summary:
+`testrig-summary.v1.json`. **Diagnostic only.**
 
-1. Async lifecycle (dual active slots, background seal/checkpoint) — first cut.
-2. Sharded writers — after one append core saturates.
-3. Multi-store / cluster — horizontal capacity.
+| Phase | Signal (order of magnitude) |
+|-------|-----------------------------|
+| Pump | Target met (~680k keys / ~10.57 GiB on disk); **~8.1k ops/s / ~129 MB/s** wall average; early window ~15–28k ops/s class before late-run lifecycle pressure |
+| Process samples (`ps`, 2 s) | Peak RSS ~**1.05 GiB** (still O(keys), not O(dataset)); peak process CPU% ~**95** (macOS: 100% ≈ one core — serial index publish after `put_many` still limits multi-core %) |
+| Baseline gets (128 samples) | All ok; p50 **24 µs** / p95 **426 µs** / p99 **563 µs** |
+| Chaos | 64 offline punches; salvage reports 128 holes; live subjects retained |
+| Post-chaos gets | All 128 samples ok; p50 **40 µs** / p95 **495 µs** / p99 **808 µs** |
+| Result | **PASS** |
+| Concurrency | **4** (`writer_shards: 4`, `writer_model: sharded_active_segments`, pump via `put_many`) |
 
-Do **not** report multi-core or “maxed out the M4” claims until concurrency > 1
-or process CPU samples show multi-core seal workers, with the disclosure table
-above filled in.
+Compare to single-shard 10 GiB snapshot above (~7.4k ops/s, concurrency 1, peak RSS ~0.92 GiB). Axis B raises disclosed concurrency and early-window throughput; wall-average lift is modest while serial PrimaryIndex publish + seal pipeline still bound multi-core CPU%. **Do not** claim “maxed out the M4.” Axis C (multi-process / cluster) remains the capacity path — see [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md).
+
+#### Multi-core write path status
+
+After DEF-095 + DEF-096 Axis A+B:
+
+1. Async lifecycle — **shipped**.
+2. Sharded writers + testrig `--writer-shards N` disclosure — **shipped** (measured above).
+3. Multi-store / cluster — **Axis C remains** (horizontal capacity).
 
 #### Read-path failure that was fixed (Chimera-before-index)
 

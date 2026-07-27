@@ -58,7 +58,7 @@ partially cut:
 
 | ID | Gap |
 |----|-----|
-| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B landed** (async lifecycle + `create_with_shards` / `put_many`). Axis C multi-process remains. Re-measure 10 GiB with shards for multi-core CPU% follow-on. |
+| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B landed** (async lifecycle + `create_with_shards` / `put_many`). Testrig `--writer-shards N` + multi-core disclosure shipped. Axis C multi-process / cluster capacity remains. |
 | **DEF-039 / 040 network** | Anti-entropy repair and query paging still in-process only. |
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
@@ -164,6 +164,14 @@ Peak process RSS while pumping ~**0.92 GiB** (2 s samples via `ps`), not ~10
 **19 µs** with 128 salvage holes; pump ~7.4k ops/s. Summary:
 `/var/tmp/dingo-testrig-10g/testrig-summary.v1.json`. Diagnostic only.
 
+**Sharded re-measure (2026-07-27, Axis B harness):**
+`dingo-testrig run --target-bytes 10G --payload-size 8192 --seed 2
+--writer-shards 4` → **PASS**. ~680k keys / 10.57 GiB; wall ~**8.1k ops/s**
+(~129 MB/s); peak RSS ~**1.05 GiB**; peak CPU% ~95 (still ~1-core class under
+`ps` — serial index publish after `put_many`); concurrency **4** /
+`sharded_active_segments`. Summary:
+`/var/tmp/dingo-testrig-10g-shards/testrig-summary.v1.json`. Diagnostic only.
+
 ### Multi-core / parallel ingest self-check (2026-07-27)
 
 User observation on M4 during the fixed 10 GiB run: CPU mostly ~50% with peaks
@@ -175,8 +183,8 @@ we parallelize and max out all the cores?”
 | Observation correct? | **Yes.** One exclusive writer, one active segment, lifecycle on put ack. Process CPU% ≈ one core. |
 | Memory/disk the limiter? | **No** after DEF-095. |
 | Multi-thread `Store::put` first? | **No** — thrash without model change. |
-| Next high-leverage cut? | **DEF-096 Axis B testrig harness** — pump with `--writer-shards N` / `put_many`; 10 GiB re-measure. |
-| True multi-core append? | **Axis B shipped** (`create_with_shards` + `put_many`); wire into testrig disclosure. |
+| Next high-leverage cut? | **Axis C** multi-process / cluster capacity (optional multi-store harness). Sharded 10 GiB re-measure done (~8.1k ops/s wall, concurrency 4). |
+| True multi-core append? | **Axis B shipped** + testrig `--writer-shards N`; peak `ps` CPU still ~1-core class — serial index publish after `put_many` remains a limiter. |
 | Spec already requires this? | **Yes** — OVERVIEW parallel ingest, USP sharded writers. |
 
 Design authority: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md). Do not spend the

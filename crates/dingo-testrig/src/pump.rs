@@ -2,11 +2,12 @@
 
 use crate::manifest::{write_manifest, WorkloadManifest};
 use crate::size::{dir_size_bytes, format_bytes};
-use dingo_store::{DurabilityMode, Store};
+use dingo_store::{DurabilityMode, Store, StorePaths, MAX_WRITER_SHARDS};
 use serde_json::json;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,22 @@ pub struct PumpConfig {
     pub key_prefix: String,
     pub manifest_path: PathBuf,
     pub json_out: bool,
+    /// Number of writer shards (DEF-096 Axis B). `1` = legacy single active segment.
+    /// Values `> 1` create with `Store::create_with_shards` and pump via `put_many`.
+    pub writer_shards: usize,
+}
+
+/// Peak process resource samples collected during the pump (diagnostic).
+#[derive(Debug, Clone, Default)]
+struct ProcessSamples {
+    /// Peak RSS in bytes (from `ps` RSS column, KiB → bytes).
+    peak_rss_bytes: Option<u64>,
+    /// Peak process CPU% as reported by `ps` (on macOS: 100% ≈ one core).
+    peak_cpu_pct: Option<f64>,
+    /// Last observed CPU%.
+    last_cpu_pct: Option<f64>,
+    /// Number of successful `ps` samples.
+    sample_count: u64,
 }
 
 pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
@@ -29,9 +46,20 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
     if cfg.payload_size == 0 {
         return Err("payload-size must be > 0".into());
     }
+    if cfg.writer_shards == 0 {
+        return Err("writer-shards must be >= 1".into());
+    }
+    if cfg.writer_shards > MAX_WRITER_SHARDS {
+        return Err(format!(
+            "writer-shards must be <= {MAX_WRITER_SHARDS} (got {})",
+            cfg.writer_shards
+        ));
+    }
 
-    let mut store = Store::open(&cfg.store).map_err(|e| format!("open/create store: {e}"))?;
+    let mut store = open_or_create_store(&cfg.store, cfg.writer_shards)?;
     store.set_seal_threshold(cfg.seal_threshold);
+    let actual_shards = store.writer_shards();
+    let writer_model = store.writer_model().to_string();
 
     // Deterministic-looking payload body (not crypto). Pattern helps spot garbage later.
     let mut payload = vec![0u8; cfg.payload_size];
@@ -40,32 +68,61 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
     let t0 = Instant::now();
     let mut keys_written = 0u64;
     let mut last_report = Instant::now();
+    let mut samples = ProcessSamples::default();
 
     // Size check every N puts — dir walk is expensive at GB scale.
     let size_check_every = size_check_interval(cfg.target_bytes, cfg.payload_size);
 
-    loop {
+    // Parallel put_many batching when multi-shard (DEF-096 Axis B).
+    // Larger batches amortize serial index publish and keep shard threads busy.
+    let batch_size = put_batch_size(actual_shards);
+    let mut pending_keys: Vec<String> = Vec::with_capacity(batch_size);
+    let mut reached_target = false;
+
+    while !reached_target {
         let key = format!("{}{:020}", cfg.key_prefix, keys_written);
-        store
-            .put(&key, &payload, cfg.durability)
-            .map_err(|e| format!("put {key}: {e}"))?;
+        pending_keys.push(key);
         keys_written += 1;
 
+        // Flush full batches promptly so multi-shard put_many stays busy.
+        // Size checks stay on `size_check_every` (dir walk is expensive at GB scale).
+        if pending_keys.len() >= batch_size {
+            flush_puts(&mut store, &pending_keys, &payload, cfg.durability)?;
+            pending_keys.clear();
+        }
+
         if keys_written % size_check_every == 0 || keys_written == 1 {
+            if !pending_keys.is_empty() {
+                flush_puts(&mut store, &pending_keys, &payload, cfg.durability)?;
+                pending_keys.clear();
+            }
             let on_disk = dir_size_bytes(&cfg.store).map_err(|e| format!("dir size: {e}"))?;
             if on_disk >= cfg.target_bytes {
-                break;
+                reached_target = true;
             }
-            if !cfg.json_out && last_report.elapsed().as_secs() >= 2 {
-                let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
-                eprintln!(
-                    "pump: keys={keys_written} disk={} / {} ({:.1}%) {:.1} ops/s {:.2} MB/s",
-                    format_bytes(on_disk),
-                    format_bytes(cfg.target_bytes),
-                    100.0 * on_disk as f64 / cfg.target_bytes as f64,
-                    keys_written as f64 / elapsed,
-                    (on_disk as f64 / (1024.0 * 1024.0)) / elapsed
-                );
+
+            // Resource sample + progress on ~2s cadence (and first key).
+            if last_report.elapsed().as_secs() >= 2 || keys_written == 1 {
+                sample_process(&mut samples);
+                if !cfg.json_out {
+                    let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
+                    let rss_note = samples
+                        .peak_rss_bytes
+                        .map(|b| format!(" peak_rss={}", format_bytes(b)))
+                        .unwrap_or_default();
+                    let cpu_note = samples
+                        .last_cpu_pct
+                        .map(|c| format!(" cpu={c:.0}%"))
+                        .unwrap_or_default();
+                    eprintln!(
+                        "pump: keys={keys_written} shards={actual_shards} disk={} / {} ({:.1}%) {:.1} ops/s {:.2} MB/s{cpu_note}{rss_note}",
+                        format_bytes(on_disk),
+                        format_bytes(cfg.target_bytes),
+                        100.0 * on_disk as f64 / cfg.target_bytes as f64,
+                        keys_written as f64 / elapsed,
+                        (on_disk as f64 / (1024.0 * 1024.0)) / elapsed
+                    );
+                }
                 last_report = Instant::now();
             }
         }
@@ -76,6 +133,15 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         }
     }
 
+    // Flush any trailing keys left after the last size-check break.
+    if !pending_keys.is_empty() {
+        flush_puts(&mut store, &pending_keys, &payload, cfg.durability)?;
+        pending_keys.clear();
+    }
+
+    // Final resource sample before seal (seal can be heavy).
+    sample_process(&mut samples);
+
     // Seal active so chaos has sealed segment files to punch.
     let _ = store.seal_active();
     drop(store);
@@ -85,6 +151,10 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
     let secs = elapsed.as_secs_f64().max(1e-9);
     let ops_per_sec = keys_written as f64 / secs;
     let mb_per_sec = (bytes_on_disk as f64 / (1024.0 * 1024.0)) / secs;
+
+    // Honest concurrency: number of active writer shards / parallel append paths.
+    // put_many fans out across shards; with shards==1 this remains a single path.
+    let concurrency = actual_shards;
 
     let manifest = WorkloadManifest {
         format_version: 1,
@@ -101,6 +171,11 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         pump_ops_per_sec: ops_per_sec,
         pump_mb_per_sec: mb_per_sec,
         seed: cfg.seed,
+        writer_shards: actual_shards,
+        concurrency,
+        writer_model: writer_model.clone(),
+        peak_rss_bytes: samples.peak_rss_bytes,
+        peak_cpu_pct: samples.peak_cpu_pct,
     };
 
     write_manifest(&cfg.manifest_path, &manifest).map_err(|e| format!("write manifest: {e}"))?;
@@ -117,24 +192,39 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         "ops_per_sec": ops_per_sec,
         "mb_per_sec": mb_per_sec,
         // Honest concurrency disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
-        // Pump is a single exclusive writer over one active segment today.
-        "concurrency": 1,
-        "writer_model": "single_active_segment",
+        "concurrency": concurrency,
+        "writer_shards": actual_shards,
+        "writer_model": writer_model,
+        "put_batch_size": batch_size,
+        "peak_rss_bytes": samples.peak_rss_bytes,
+        "peak_cpu_pct": samples.peak_cpu_pct,
+        "process_sample_count": samples.sample_count,
         "manifest": cfg.manifest_path.display().to_string(),
         "store": cfg.store.display().to_string(),
+        "disclosure": "Diagnostic only — not a published SLO (doc/BENCHMARK_DISCLOSURE.md).",
     });
 
     if cfg.json_out {
         println!("{}", serde_json::to_string_pretty(&report).unwrap());
     } else {
         println!(
-            "pump done: keys={keys_written} disk={} (target {}) in {:.2}s — {:.1} ops/s, {:.2} MB/s",
+            "pump done: keys={keys_written} shards={actual_shards} model={writer_model} disk={} (target {}) in {:.2}s — {:.1} ops/s, {:.2} MB/s",
             format_bytes(bytes_on_disk),
             format_bytes(cfg.target_bytes),
             secs,
             ops_per_sec,
             mb_per_sec
         );
+        if let Some(rss) = samples.peak_rss_bytes {
+            println!(
+                "  peak_rss={}  peak_cpu%={}  (ps samples; macOS 100%≈1 core)",
+                format_bytes(rss),
+                samples
+                    .peak_cpu_pct
+                    .map(|c| format!("{c:.0}"))
+                    .unwrap_or_else(|| "n/a".into())
+            );
+        }
         println!("manifest: {}", cfg.manifest_path.display());
     }
 
@@ -146,6 +236,105 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         ));
     }
     Ok(manifest)
+}
+
+/// Open existing store, or create with the requested writer shard count.
+///
+/// If the store already exists, its on-disk shard count is authoritative. A
+/// mismatched `--writer-shards` is an error so campaigns stay honest.
+fn open_or_create_store(path: &Path, writer_shards: usize) -> Result<Store, String> {
+    let paths = StorePaths::new(path);
+    if paths.looks_like_store() {
+        let store = Store::open(path).map_err(|e| format!("open store: {e}"))?;
+        let actual = store.writer_shards();
+        if actual != writer_shards {
+            return Err(format!(
+                "store at {} has writer_shards={actual}, but --writer-shards={writer_shards} was requested \
+                 (shard count is fixed at create; recreate the store or match the flag)",
+                path.display()
+            ));
+        }
+        return Ok(store);
+    }
+    // Not a store yet: create with the requested shard layout (DEF-096 Axis B).
+    Store::create_with_shards(path, writer_shards)
+        .map_err(|e| format!("create store with {writer_shards} writer shards: {e}"))
+}
+
+fn flush_puts(
+    store: &mut Store,
+    keys: &[String],
+    payload: &[u8],
+    durability: DurabilityMode,
+) -> Result<(), String> {
+    if keys.is_empty() {
+        return Ok(());
+    }
+    if keys.len() == 1 || store.writer_shards() <= 1 {
+        for k in keys {
+            store
+                .put(k, payload, durability)
+                .map_err(|e| format!("put {k}: {e}"))?;
+        }
+        return Ok(());
+    }
+    // Multi-shard: put_many partitions by subject hash and appends in parallel.
+    let items: Vec<(&str, &[u8])> = keys.iter().map(|k| (k.as_str(), payload)).collect();
+    store
+        .put_many(&items, durability)
+        .map_err(|e| format!("put_many ({} keys): {e}", keys.len()))?;
+    Ok(())
+}
+
+fn put_batch_size(writer_shards: usize) -> usize {
+    if writer_shards <= 1 {
+        1
+    } else {
+        // Enough keys per flush that each shard is likely to see work, without
+        // holding huge pending sets in the harness. Clamp to a modest range.
+        (writer_shards * 64).clamp(64, 1024)
+    }
+}
+
+fn sample_process(samples: &mut ProcessSamples) {
+    let Some((cpu, rss_kib)) = read_self_ps() else {
+        return;
+    };
+    samples.sample_count += 1;
+    samples.last_cpu_pct = Some(cpu);
+    samples.peak_cpu_pct = Some(
+        samples
+            .peak_cpu_pct
+            .map(|p| p.max(cpu))
+            .unwrap_or(cpu),
+    );
+    let rss_bytes = rss_kib.saturating_mul(1024);
+    samples.peak_rss_bytes = Some(
+        samples
+            .peak_rss_bytes
+            .map(|p| p.max(rss_bytes))
+            .unwrap_or(rss_bytes),
+    );
+}
+
+/// Best-effort self sample via `ps` (macOS / Linux). Returns (cpu_pct, rss_kib).
+fn read_self_ps() -> Option<(f64, u64)> {
+    let pid = std::process::id().to_string();
+    let output = Command::new("ps")
+        .args(["-o", "%cpu=,rss=", "-p", &pid])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    let parts: Vec<&str> = text.split_whitespace().collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let cpu: f64 = parts[0].parse().ok()?;
+    let rss_kib: u64 = parts[1].parse().ok()?;
+    Some((cpu, rss_kib))
 }
 
 fn fill_payload(buf: &mut [u8], seed: u64) {

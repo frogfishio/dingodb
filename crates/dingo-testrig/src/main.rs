@@ -70,6 +70,10 @@ enum Command {
         /// Manifest path (default: sibling testrig-manifest.v1.json).
         #[arg(long)]
         manifest: Option<PathBuf>,
+        /// Writer shards for multi-core append (DEF-096 Axis B). 1 = legacy single
+        /// active segment; N>1 uses create_with_shards + put_many. Fixed at create.
+        #[arg(long, default_value_t = 1)]
+        writer_shards: usize,
         /// Machine-readable JSON on stdout.
         #[arg(long)]
         json_out: bool,
@@ -148,6 +152,10 @@ enum Command {
         /// Allow chaos into headers.
         #[arg(long)]
         brutal: bool,
+        /// Writer shards for multi-core append (DEF-096 Axis B). 1 = single active
+        /// segment; N>1 creates with N shards and pumps via put_many.
+        #[arg(long, default_value_t = 1)]
+        writer_shards: usize,
         #[arg(long)]
         json_out: bool,
     },
@@ -165,6 +173,7 @@ fn main() -> ExitCode {
             seed,
             key_prefix,
             manifest,
+            writer_shards,
             json_out,
         } => cmd_pump(
             store,
@@ -175,6 +184,7 @@ fn main() -> ExitCode {
             seed,
             key_prefix,
             manifest,
+            writer_shards,
             json_out,
         ),
         Command::Chaos {
@@ -224,6 +234,7 @@ fn main() -> ExitCode {
             seed,
             sample_keys,
             brutal,
+            writer_shards,
             json_out,
         } => cmd_run(
             work,
@@ -236,6 +247,7 @@ fn main() -> ExitCode {
             seed,
             sample_keys,
             brutal,
+            writer_shards,
             json_out,
         ),
     };
@@ -268,6 +280,7 @@ fn cmd_pump(
     seed: u64,
     key_prefix: String,
     manifest: Option<PathBuf>,
+    writer_shards: usize,
     json_out: bool,
 ) -> Result<(), String> {
     ensure_parent(&store).map_err(|e| format!("create parent: {e}"))?;
@@ -286,6 +299,7 @@ fn cmd_pump(
         key_prefix,
         manifest_path,
         json_out,
+        writer_shards,
     })
     .map(|_| ())
 }
@@ -350,6 +364,7 @@ fn cmd_run(
     seed: u64,
     sample_keys: usize,
     brutal: bool,
+    writer_shards: usize,
     json_out: bool,
 ) -> Result<(), String> {
     std::fs::create_dir_all(&work).map_err(|e| format!("create work dir: {e}"))?;
@@ -362,7 +377,7 @@ fn cmd_run(
 
     if !json_out {
         println!(
-            "=== testrig run ===\nwork={}\nstore={}\ntarget={}\npayload={} durability={:?} seed={seed}",
+            "=== testrig run ===\nwork={}\nstore={}\ntarget={}\npayload={} durability={:?} writer_shards={writer_shards} seed={seed}",
             work.display(),
             store.display(),
             format_bytes(target),
@@ -382,6 +397,7 @@ fn cmd_run(
         key_prefix: "load/".into(),
         manifest_path: manifest_path.clone(),
         json_out: false, // orchestrator owns final JSON
+        writer_shards,
     })?;
 
     if !json_out {
@@ -438,11 +454,18 @@ fn cmd_run(
         "keys_written": pump_manifest.keys_written,
         "pump_ops_per_sec": pump_manifest.pump_ops_per_sec,
         "pump_mb_per_sec": pump_manifest.pump_mb_per_sec,
+        "pump_elapsed_ms": pump_manifest.pump_elapsed_ms,
+        // Multi-core / Axis B disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
+        "concurrency": pump_manifest.concurrency,
+        "writer_shards": pump_manifest.writer_shards,
+        "writer_model": pump_manifest.writer_model,
+        "peak_rss_bytes": pump_manifest.peak_rss_bytes,
+        "peak_cpu_pct": pump_manifest.peak_cpu_pct,
         "chaos_hits": chaos.hits_applied,
         "baseline": baseline.report,
         "post_chaos": post.report,
         "reasons": reasons,
-        "ladder_hint": "If ok at 1G, re-run with --target-bytes 10G (then larger).",
+        "ladder_hint": "If ok at 1G, re-run with --target-bytes 10G (then larger). For multi-core append: --writer-shards N (e.g. 4 or 8).",
         "disclosure": "Diagnostic only — not a published SLO (doc/BENCHMARK_DISCLOSURE.md).",
     });
 

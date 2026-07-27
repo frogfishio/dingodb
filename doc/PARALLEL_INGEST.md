@@ -1,6 +1,6 @@
 # Parallel ingest: multi-core write path
 
-Status: **Axis A + Axis B implemented (2026-07-27); Axis C is the multi-process path**  
+Status: **Axis A + Axis B implemented; testrig `--writer-shards` + 10 GiB re-measure done (2026-07-27); Axis C remains multi-process / cluster**  
 Date: 2026-07-27  
 Trigger: 10 GiB `dingo-testrig` on MacBook Air M4 after DEF-095  
 Companion: DEF-023 follow-on, DEF-096, `doc/BENCHMARK_DISCLOSURE.md`, OVERVIEW §12
@@ -155,18 +155,26 @@ Implementation shape:
 
 Hydra `build_many` already knows how to fan out; seal workers should call the same builders off the put thread.
 
-## 6. Testring / measurement changes (cheap, do early)
+## 6. Testrig / measurement changes
 
-Even before Axis A code:
+| Change | Status |
+|--------|--------|
+| Report `concurrency` / `writer_model` / `writer_shards` in pump + run JSON | **Done** — honest disclosure (BENCHMARK_DISCLOSURE “Concurrency”). |
+| Per-interval ops/s + peak RSS / process CPU% via `ps` | **Done** in pump progress + summary. |
+| `--writer-shards N` on `pump` / `run` | **Done** — creates with `create_with_shards(N)`; N>1 pumps via `put_many`. |
+| Optional multi-store pump mode (`--stores N` → N store roots) | **Axis C harness** — still optional; multi-process capacity path. |
 
-| Change | Why |
-|--------|-----|
-| Report `concurrency: 1` / `writer_model: single_active` in pump JSON | Honest disclosure (BENCHMARK_DISCLOSURE “Concurrency”). |
-| Per-interval ops/s + optional seal count / RSS | Explains 1 GiB vs 10 GiB gap without guessing. |
-| Optional multi-store pump mode (`--shards N` → N store roots) | Cheap Axis-C experiment: prove aggregate MB/s scales with cores *before* shared-index sharding. |
-| Process CPU sample in monitor | Confirm multi-core use after Axis A. |
+```sh
+# Multi-core Axis B campaign (diagnostic only)
+dingo-testrig run \
+  --work /var/tmp/dingo-testrig-10g-shards \
+  --target-bytes 10G \
+  --payload-size 8192 \
+  --writer-shards 4 \
+  --seed 2
+```
 
-Multi-store pump is a **harness** parallelization, not product sharding — useful as an existence proof that media + cores can take the load.
+Multi-store pump remains a **harness** parallelization for Axis C upper-bound media benches — not product sharding.
 
 ## 7. Sequencing and anti-goals
 
@@ -177,9 +185,9 @@ Multi-store pump is a **harness** parallelization, not product sharding — usef
 
 **Do next:**
 
-3. Re-run 1 GiB / 10 GiB testrig with writer shards; compare ops/s, p99, process CPU%, RSS.
-4. Wire testrig `--writer-shards N` / multi-core pump disclosure fields.
-5. Multi-store harness mode if needed for upper-bound media bench (Axis C).
+3. ~~Wire testrig `--writer-shards N` / multi-core pump disclosure fields.~~ **Done** (2026-07-27).
+4. ~~Re-run 10 GiB testrig with writer shards; compare ops/s, p99, process CPU%, RSS.~~ See `doc/BENCHMARK_DISCLOSURE.md` (sharded 10 GiB snapshot).
+5. Multi-store harness mode if needed for upper-bound media bench (Axis C remains).
 
 **Do not:**
 

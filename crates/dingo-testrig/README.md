@@ -53,12 +53,21 @@ cargo run -p dingo-testrig --release -- run \
 If that **PASS**es, raise the bar:
 
 ```sh
-# 10 GiB
+# 10 GiB (single-shard baseline)
 cargo run -p dingo-testrig --release -- run \
   --work /var/tmp/dingo-testrig-10g \
   --target-bytes 10G \
   --payload-size 8192 \
   --chaos-hits 64
+
+# 10 GiB multi-core append (DEF-096 Axis B: create_with_shards + put_many)
+cargo run -p dingo-testrig --release -- run \
+  --work /var/tmp/dingo-testrig-10g-shards \
+  --target-bytes 10G \
+  --payload-size 8192 \
+  --chaos-hits 64 \
+  --writer-shards 4 \
+  --seed 2
 ```
 
 ## Standalone prongs
@@ -91,7 +100,7 @@ Summary JSON: `<work>/testrig-summary.v1.json`.
 
 - **Chaos is offline filesystem damage**, same family as `scripts/demos/02_punch_a_hole.sh`. It does not hold the store writer lock; run it only when the store is closed.
 - **Pump** defaults to `buffered` durability for throughput; pass `--durability durable` when you want fsync-honest campaigns.
-- **Pump concurrency is 1** today (`writer_model: single_active_segment` in JSON). Parallel multi-core ingest is **DEF-096** / [`doc/PARALLEL_INGEST.md`](../../doc/PARALLEL_INGEST.md) — not a missing pump flag over one `Store`.
+- **Pump writer model** is disclosed in JSON: default `--writer-shards 1` → `concurrency: 1` / `writer_model: single_active_segment`. With `--writer-shards N` (N>1) the pump creates via `Store::create_with_shards(N)` and writes with `put_many` → `concurrency: N` / `writer_model: sharded_active_segments`, plus peak RSS / process CPU% samples from `ps` (macOS: 100% ≈ one core). See **DEF-096** / [`doc/PARALLEL_INGEST.md`](../../doc/PARALLEL_INGEST.md). Shard count is fixed at create — rematch the flag or recreate the store.
 - **Monitor** reports p50/p95/p99 get latency, salvage frame/hole counts, and optional scrub failures. Not a replacement for DEF-093 disclosed benchmarks.
 - Manifest: `testrig-manifest.v1.json` next to the store (or under `--work`) so monitor can sample keys the pump wrote.
 

@@ -24,6 +24,29 @@ pub struct WorkloadManifest {
     pub pump_ops_per_sec: f64,
     pub pump_mb_per_sec: f64,
     pub seed: u64,
+    /// Writer shard count used for the pump (DEF-096 Axis B). Default 1 when absent in old manifests.
+    #[serde(default = "default_one")]
+    pub writer_shards: usize,
+    /// Client / append concurrency disclosed for BENCHMARK_DISCLOSURE.
+    #[serde(default = "default_one")]
+    pub concurrency: usize,
+    /// `single_active_segment` or `sharded_active_segments`.
+    #[serde(default = "default_single_model")]
+    pub writer_model: String,
+    /// Peak process RSS observed during pump (bytes), if sampled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peak_rss_bytes: Option<u64>,
+    /// Peak process CPU% from `ps` during pump (macOS: 100% ≈ one core).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peak_cpu_pct: Option<f64>,
+}
+
+fn default_one() -> usize {
+    1
+}
+
+fn default_single_model() -> String {
+    "single_active_segment".into()
 }
 
 impl WorkloadManifest {
