@@ -179,6 +179,27 @@ sidecars, and (c) survives a 1 GiB pump + offline chaos with salvage still
 speaking — **that is a big flex**. Marketing it as a production distributed
 database or Redis-class product without the open gates would be a fake one.
 
+### Chimera storage (FINAL DESIGN) self-check (2026-07-27)
+
+User extended `INDEXING_STRATEGY_PROPOSAL.md` with Chimera: Hydra locator →
+resident / inline / point container / scan extent / large-value log → adaptive
+I/O → record-level decompression, plus a background compiler (GC, relocation,
+reclustering, dictionary training, hot/cold, lifetime placement).
+
+| Layer | State after foundation cut | Claim boundary |
+|-------|----------------------------|----------------|
+| Locator + value classes | `dingo-store::chimera` — `ValueLocator`, `classify_value`, `place_value` | **API only** — not `Store::put` path |
+| Point micro-pages | `PointContainer` encode/decode, independent slots, CRC, builder | **Codec** — not sealed to disk by store yet |
+| Large-value log | `ValueLog` append/read | **Codec** — distinct from FORMAT_SPEC chunk manifests |
+| Adaptive I/O | `select_io_path` (buffered / direct / async) | **Policy** — no io_uring submit yet |
+| Background compiler | `plan_compile` ops (GC, relocate, recluster, dict, hot/cold, lifetime, dual) | **Planner** — no worker executes ops yet |
+| Dual representation / ZNS | Design only; dual opt-in on planner, ZNS not started | Deferred per proposal |
+
+**Verdict:** Storage game is **designed and scaffolded**, not deployed on the
+hot path. Next hard step is seal/compaction wire-up of locators — not more
+planner cosmetics. Do not claim “workload-compiled storage is live” until
+`Store::get` resolves Chimera locators for sealed data.
+
 ## What this document is not
 
 - Not a commitment to a schedule.

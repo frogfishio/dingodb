@@ -10,6 +10,10 @@
 //! PGM/RadixSpline, compressed radix, MPHF+fingerprint) with multithreaded
 //! rebuild — derived only under `indexes/seg/`.
 //!
+//! Chimera adds workload-compiled **value placement** (inline / point micro-pages
+//! / scan extents / large-value log), adaptive I/O path selection, and a
+//! background-compiler planner — foundation APIs only until seal/compaction wire-up.
+//!
 //! Stage 9 adds storage tiers (hot/warm/cold/archive), segment move/copy with
 //! stable identities, hierarchical segment catalogs, offline-tier coverage
 //! honesty, and multi-generation format classification (byte preservation).
@@ -24,6 +28,7 @@
 mod atomic_file;
 mod backup;
 mod catalog;
+mod chimera;
 mod chunk_payload;
 mod compact;
 mod crash_matrix;
@@ -64,6 +69,15 @@ pub use backup::{
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, try_load_collection_catalog,
     CollectionCatalog, COLLECTIONS_CATALOG_FILE,
+};
+pub use chimera::{
+    classify_value, decode_record, initial_locator_kind, pack_point_containers, place_value,
+    plan_compile, plan_recluster_range, read_slot, resolve, select_io_path, ClassifyOptions,
+    CompilerOp, CompilerOptions, CompilerPlan, ContainerBuilder, ContainerSlot, IoHints, IoPath,
+    IoSelectOptions, LifetimeClass, LocatorKind, PlacementHints, PointContainer, RecordStats,
+    ResolveContext, ResolvedValue, TemperatureClass, ValueClass, ValueLocator, ValueLog,
+    ValueLogRecord, CODEC_RAW, CONTAINER_MAGIC, CONTAINER_VERSION, DEFAULT_CONTAINER_TARGET,
+    DEFAULT_MEDIUM_MAX, DEFAULT_TINY_MAX, VALUE_LOG_HEADER_LEN, VALUE_LOG_MAGIC,
 };
 pub use chunk_payload::{
     decode_chunk_manifest, encode_chunk_manifest, is_chunk_manifest, reassemble_with_manifest,

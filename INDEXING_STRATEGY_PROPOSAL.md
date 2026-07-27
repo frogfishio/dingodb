@@ -5,6 +5,11 @@ Companion: seal path writes `indexes/seg/{segment_hex}.hdx` sidecars (derived on
 Honesty: hot `Store::get` still uses `PrimaryIndex`; Hydra is seal/rebuild/load API today
 (see `doc/WORK_HORIZON.md` “big flex” self-check and `doc/BENCHMARK_DISCLOSURE.md`).
 
+**Chimera** (FINAL DESIGN below): **foundation landed** in `dingo-store::chimera` —
+locator types, value-class selection, micro-page containers, large-value log codec,
+adaptive I/O path selection, and background-compiler plans. Not yet the live
+`Store::put`/`get` path (same honesty model as Hydra).
+
 ## Recipe: hydra + multithread
 
 Most engines pick one index structure globally. Hydra **compiles the optimal
@@ -210,3 +215,18 @@ The genuinely insane differentiator is:
 > **Indexes and data are both compiled independently per segment or key range from measured workload characteristics.**
 
 Traditional engines ask, “Which global storage format should we use?” Yours asks, “What physical representation is fastest for this particular data partition right now?” That could produce exceptional results—but begin with inline/value-log hybrid, micro-pages, and temperature-aware GC before adding duplicate representations or ZNS-specific placement.
+
+## Implementation map (Chimera foundation)
+
+```text
+crates/dingo-store/src/chimera/
+  mod.rs        # ValueLocator, resolve API, module root
+  classify.rs   # ValueClass + temperature/lifetime selection
+  container.rs  # point micro-page containers (independent slots)
+  value_log.rs  # large-value append log codec
+  io_path.rs    # adaptive buffered vs direct/async selection
+  compiler.rs   # GC / relocation / reclustering / dictionary / hot-cold plans
+```
+
+Tests: unit tests under `chimera::*`. First production cut: wire locator resolution
+into seal/compaction; keep dual-representation and ZNS placement later.

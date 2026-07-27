@@ -57,6 +57,7 @@ assert!(store.get("user-42")?.is_none());
 | Recovery | rebuildable primary index, salvage after catalog wipe, evidence-preserving `salvage_to` |
 | Derived | collection catalog, secondary indexes, subject history, checkpoints |
 | Hydra | adaptive per-segment indexes at seal (Eytzinger / PGM·RadixSpline / compressed radix / MPHF); multithread rebuild |
+| Chimera | value locators (inline / point container / scan extent / value log), adaptive I/O policy, compiler planner — foundation APIs, not live put/get yet |
 | Chunks | chunked payloads with partial maps; phased live compaction |
 | Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050), `scrub_once` / `scrub_status` (DEF-051), `migrate_to` (DEF-052) |
 | Tiering | segment move/copy with stable identities; offline-tier coverage holes |
