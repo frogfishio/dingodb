@@ -64,6 +64,7 @@ with the acceptance evidence expected before a stronger label.
 | `ANTI_ENTROPY_PROFILE` | `dingo-anti-entropy-v1` | Hierarchical inventory + integrity-based repair (DEF-039) |
 | `BACKUP_PROFILE` | `dingo-backup-v1` | Full single-node backup package + verified restore (DEF-050) |
 | `SCRUB_PROFILE` | `dingo-scrub-v1` | Bounded integrity scrub + findings quarantine (DEF-051) |
+| `MIGRATE_PROFILE` | `dingo-migrate-v1` | Phased format migration + version matrix (DEF-052) |
 
 ## Raft persistence (DEF-035)
 
@@ -199,6 +200,24 @@ Evidence: `stage_def_050_backup`, `dingo_store::backup` unit tests, CLI
 
 Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
 `scrub_clean_store_and_status`.
+
+## Format and protocol migration (DEF-052)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Profile | `dingo-migrate-v1` job under `recovery/migration/` | **shipped** (single-generation) |
+| Wire reader/writer matrix | `dingo-format::compat` (`SUPPORTED_READER_MAJORS`, current major 1) | **shipped** |
+| Protocol policy snapshot | Declared `dingo-rpc-v1` / `1.0-draft` in job documents | **shipped** |
+| Phases | preflight → plan → apply → verify; rollback of incomplete | **shipped** |
+| Evidence-preserving copy | Never in-place rewrite; blake3 per file | **shipped** |
+| Unsupported / unreadable segments | Preserve opaque bytes + plan notes | **shipped** |
+| Failed migration | Source remains fully readable | **shipped** |
+| CLI | `dingo migrate` / `--preflight` / `--plan-only` / `--status` / `--rollback` | **shipped** |
+| Second wire major dual-read + rewrite | — | **not yet** (DEF-053) |
+| Rolling mixed-cluster upgrade drills | — | **not yet** |
+
+Evidence: `stage_def_052_migrate`, `dingo_format::compat` / `dingo_store::migrate`
+unit tests, CLI `migrate_roundtrip_and_status`.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

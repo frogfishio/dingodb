@@ -4,7 +4,10 @@ use clap::{ArgAction, Parser, Subcommand};
 use dingo_examine::{examine_store, ExaminationUnit, ExamineLimits};
 use dingo_sdk::{Dingo, TlsServerOptions, DEFAULT_PORT};
 use dingo_server::{serve_cluster_node, serve_store_with, ServeOptions};
-use dingo_store::{restore_full_backup, RestoreOptions, ScrubOptions, Store};
+use dingo_store::{
+    load_migration_job, migrate_rollback, restore_full_backup, MigrateOptions, RestoreOptions,
+    ScrubOptions, Store, MIGRATE_PROFILE,
+};
 use serde_json::{json as sjson, Value as JsonValue};
 use std::fs;
 use std::io::{self, Write};
@@ -13,7 +16,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), format migration preflight/plan/apply/verify/rollback (DEF-052), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
 const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`dingo`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
 
 #[derive(Parser)]
@@ -159,6 +162,37 @@ enum Command {
         #[arg(long = "no-quarantine", action = ArgAction::SetTrue)]
         no_quarantine: bool,
     },
+    /// Format migration with explicit phases (DEF-052).
+    ///
+    /// Never rewrites the source in place. Copies authoritative trees into a
+    /// new destination store, preserves unsupported/unreadable segment bytes,
+    /// and records a durable job under `recovery/migration/`. Default runs
+    /// preflight → plan → apply → verify. Use `--plan-only` to stop after the
+    /// plan, `--preflight` for a read-only matrix/classification report, or
+    /// `--rollback` to abandon an incomplete destination.
+    Migrate {
+        /// Source store directory (never rewritten in place).
+        store: PathBuf,
+        /// Destination store path (must not already be a store).
+        #[arg(long = "output", short = 'o')]
+        output: Option<PathBuf>,
+        /// Print preflight only (version matrix + classification; no job write
+        /// unless combined with a full run). Requires `--output`.
+        #[arg(long = "preflight", action = ArgAction::SetTrue)]
+        preflight: bool,
+        /// Stop after writing the durable plan (no destination bytes).
+        #[arg(long = "plan-only", action = ArgAction::SetTrue)]
+        plan_only: bool,
+        /// Apply without verify (operator may verify later).
+        #[arg(long = "skip-verify", action = ArgAction::SetTrue)]
+        skip_verify: bool,
+        /// Print durable migration job status from the source store.
+        #[arg(long = "status", action = ArgAction::SetTrue)]
+        status_only: bool,
+        /// Rollback an incomplete migration (refuses completed destinations).
+        #[arg(long = "rollback", action = ArgAction::SetTrue)]
+        rollback: bool,
+    },
     /// Serve the store over TCP for `Dingo::connect("dingo://...")` (development).
     ///
     /// Defaults to loopback. Non-loopback plaintext binds require
@@ -285,6 +319,24 @@ fn run() -> Result<(), String> {
             output,
             reassign_identity,
         } => cmd_restore(&backup, &output, reassign_identity, json_out),
+        Command::Migrate {
+            store,
+            output,
+            preflight,
+            plan_only,
+            skip_verify,
+            status_only,
+            rollback,
+        } => cmd_migrate(
+            &store,
+            output.as_deref(),
+            preflight,
+            plan_only,
+            skip_verify,
+            status_only,
+            rollback,
+            json_out,
+        ),
         Command::Scrub {
             store,
             status_only,
@@ -836,6 +888,196 @@ fn cmd_restore(
         println!("  live_subjects: {}", report.live_subjects);
     }
     Ok(())
+}
+
+fn cmd_migrate(
+    store: &Path,
+    output: Option<&Path>,
+    preflight: bool,
+    plan_only: bool,
+    skip_verify: bool,
+    status_only: bool,
+    rollback: bool,
+    json_out: bool,
+) -> Result<(), String> {
+    if status_only {
+        let job = load_migration_job(store).map_err(|e| e.to_string())?;
+        return match job {
+            None => {
+                if json_out {
+                    emit_json(sjson!({
+                        "ok": true,
+                        "mode": "migrate_status",
+                        "store": store.display().to_string(),
+                        "job": null,
+                    }))
+                } else {
+                    println!("migrate_status");
+                    println!("  store: {}", store.display());
+                    println!("  job: none");
+                    Ok(())
+                }
+            }
+            Some(j) => emit_migrate_job("migrate_status", store, &j, json_out),
+        };
+    }
+
+    if rollback {
+        let job = load_migration_job(store)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "no migration job on source; nothing to rollback".to_string())?;
+        let rolled = migrate_rollback(&job).map_err(|e| e.to_string())?;
+        return emit_migrate_job("migrate_rollback", store, &rolled, json_out);
+    }
+
+    let dest = output.ok_or_else(|| {
+        "migrate requires --output DEST (or use --status / --rollback)".to_string()
+    })?;
+    if store == dest {
+        return Err("migrate source and --output must differ".into());
+    }
+
+    if preflight && plan_only {
+        return Err("use either --preflight or --plan-only, not both".into());
+    }
+
+    // Prefer exclusive open for crash-consistent boundary; fall back to inspect.
+    let mut exclusive = Store::open(store).ok();
+    if preflight {
+        let pre = if let Some(ref s) = exclusive {
+            s.migrate_preflight(dest).map_err(|e| e.to_string())?
+        } else {
+            let inspect = Store::open_inspect(store).map_err(|e| e.to_string())?;
+            inspect.migrate_preflight(dest).map_err(|e| e.to_string())?
+        };
+        if json_out {
+            return emit_json(sjson!({
+                "ok": pre.blockers.is_empty(),
+                "mode": "migrate_preflight",
+                "profile": MIGRATE_PROFILE,
+                "source": pre.source_root,
+                "destination": pre.dest_root,
+                "source_store_id_hex": pre.source_store_id_hex,
+                "writer_wire": pre.writer_wire,
+                "writer_wire_profile": pre.writer_wire_profile,
+                "wire_support_summary": pre.wire_support_summary,
+                "wire_matrix": pre.wire_matrix,
+                "protocol": pre.protocol,
+                "files_classified": pre.files_classified,
+                "supported_segments": pre.supported_segments,
+                "unsupported_segments": pre.unsupported_segments,
+                "unreadable_segments": pre.unreadable_segments,
+                "dest_ok": pre.dest_ok,
+                "blockers": pre.blockers,
+                "warnings": pre.warnings,
+            }));
+        }
+        println!("migrate_preflight");
+        println!("  source: {}", pre.source_root);
+        println!("  destination: {}", pre.dest_root);
+        println!("  writer_wire: {} ({})", pre.writer_wire, pre.writer_wire_profile);
+        println!("  files_classified: {}", pre.files_classified);
+        println!("  supported_segments: {}", pre.supported_segments);
+        println!("  unsupported_segments: {}", pre.unsupported_segments);
+        println!("  unreadable_segments: {}", pre.unreadable_segments);
+        println!("  dest_ok: {}", pre.dest_ok);
+        for b in &pre.blockers {
+            println!("  blocker: {b}");
+        }
+        for w in &pre.warnings {
+            println!("  warning: {w}");
+        }
+        if !pre.blockers.is_empty() {
+            return Err("migration preflight blocked".into());
+        }
+        return Ok(());
+    }
+
+    let opts = MigrateOptions {
+        plan_only,
+        skip_verify,
+    };
+    let report = if let Some(ref mut s) = exclusive {
+        s.migrate_to(dest, opts).map_err(|e| e.to_string())?
+    } else {
+        let mut inspect = Store::open_inspect(store).map_err(|e| e.to_string())?;
+        inspect.migrate_to(dest, opts).map_err(|e| e.to_string())?
+    };
+
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "mode": "migrate",
+            "profile": MIGRATE_PROFILE,
+            "phase": report.phase.as_str(),
+            "source": report.source.display().to_string(),
+            "destination": report.destination.display().to_string(),
+            "job_id_hex": hex16(&report.job_id),
+            "job_path": report.job_path.display().to_string(),
+            "files_planned": report.files_planned,
+            "files_applied": report.files_applied,
+            "bytes_applied": report.bytes_applied,
+            "verified_live_subjects": report.verified_live_subjects,
+            "unsupported_preserved": report.unsupported_preserved,
+            "unreadable_preserved": report.unreadable_preserved,
+        }))?;
+    } else {
+        println!("migrate");
+        println!("  phase: {}", report.phase.as_str());
+        println!("  source: {}", report.source.display());
+        println!("  destination: {}", report.destination.display());
+        println!("  job_id: {}", hex16(&report.job_id));
+        println!("  files_planned: {}", report.files_planned);
+        println!("  files_applied: {}", report.files_applied);
+        println!("  bytes_applied: {}", report.bytes_applied);
+        if let Some(n) = report.verified_live_subjects {
+            println!("  verified_live_subjects: {n}");
+        }
+        println!("  unsupported_preserved: {}", report.unsupported_preserved);
+        println!("  unreadable_preserved: {}", report.unreadable_preserved);
+    }
+    Ok(())
+}
+
+fn emit_migrate_job(
+    mode: &str,
+    store: &Path,
+    job: &dingo_store::MigrationJob,
+    json_out: bool,
+) -> Result<(), String> {
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "mode": mode,
+            "store": store.display().to_string(),
+            "profile": job.profile,
+            "job_id_hex": job.job_id_hex,
+            "phase": job.phase.as_str(),
+            "source_root": job.source_root,
+            "dest_root": job.dest_root,
+            "files": job.files.len(),
+            "files_applied": job.files_applied,
+            "bytes_applied": job.bytes_applied,
+            "verified_live_subjects": job.verified_live_subjects,
+            "error": job.error,
+            "target_wire_profile": job.target_wire_profile,
+        }))
+    } else {
+        println!("{mode}");
+        println!("  store: {}", store.display());
+        println!("  job_id: {}", job.job_id_hex);
+        println!("  phase: {}", job.phase.as_str());
+        println!("  destination: {}", job.dest_root);
+        println!("  files: {}", job.files.len());
+        println!("  files_applied: {}", job.files_applied);
+        if let Some(n) = job.verified_live_subjects {
+            println!("  verified_live_subjects: {n}");
+        }
+        if let Some(ref e) = job.error {
+            println!("  error: {e}");
+        }
+        Ok(())
+    }
 }
 
 fn cmd_scrub(

@@ -75,6 +75,8 @@ fn version_and_help() {
     assert!(help.contains("salvage"));
     assert!(help.contains("backup"));
     assert!(help.contains("restore"));
+    assert!(help.contains("migrate"));
+    assert!(help.contains("scrub"));
     assert!(help.contains("serve"));
     assert!(help.contains("serve-cluster"));
     assert!(
@@ -297,6 +299,40 @@ fn scrub_clean_store_and_status() {
     assert!(paused.contains("paused: true"), "paused={paused}");
     let resumed = run_ok(&["scrub", store_s, "--resume"]);
     assert!(resumed.contains("paused: false"), "resumed={resumed}");
+}
+
+#[test]
+fn migrate_roundtrip_and_status() {
+    let dir = tempdir().unwrap();
+    let src = dir.path().join("app.dingo");
+    let dst = dir.path().join("migrated.dingo");
+    let src_s = src.to_str().unwrap();
+    let dst_s = dst.to_str().unwrap();
+
+    run_ok(&["put", src_s, "users/alice", "--json", r#"{"name":"Alice"}"#]);
+    run_ok(&["put", src_s, "users/bob", "--json", r#"{"name":"Bob"}"#]);
+
+    let pre = run_ok(&["migrate", src_s, "--output", dst_s, "--preflight"]);
+    assert!(pre.contains("migrate_preflight"), "pre={pre}");
+    assert!(pre.contains("dest_ok: true"), "pre={pre}");
+
+    let report = run_ok(&["migrate", src_s, "--output", dst_s]);
+    assert!(report.contains("migrate"), "report={report}");
+    assert!(report.contains("phase: done"), "report={report}");
+    assert!(
+        report.contains("verified_live_subjects: 2"),
+        "report={report}"
+    );
+
+    let alice = run_ok(&["get", dst_s, "users/alice"]);
+    assert!(alice.contains("Alice"), "alice={alice}");
+    // Source still readable.
+    let bob_src = run_ok(&["get", src_s, "users/bob"]);
+    assert!(bob_src.contains("Bob"), "bob_src={bob_src}");
+
+    let status = run_ok(&["migrate", src_s, "--status"]);
+    assert!(status.contains("migrate_status"), "status={status}");
+    assert!(status.contains("phase: done"), "status={status}");
 }
 
 #[test]

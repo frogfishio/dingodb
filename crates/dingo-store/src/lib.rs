@@ -10,6 +10,9 @@
 //! stable identities, hierarchical segment catalogs, offline-tier coverage
 //! honesty, and multi-generation format classification (byte preservation).
 //!
+//! DEF-052 adds phased format migration (preflight/plan/apply/verify/rollback)
+//! with a declared wire and protocol compatibility matrix.
+//!
 //! Normative: OVERVIEW §§5–7, §9, §13; FORMAT_SPEC frames/segments/chunks.
 
 #![deny(missing_docs)]
@@ -33,6 +36,7 @@ mod index_cache;
 mod layout;
 mod lifecycle;
 mod media;
+mod migrate;
 mod recovery;
 mod scrub;
 mod secondary;
@@ -104,6 +108,14 @@ pub use media::{
     media_root_directory, media_root_directory_with, open_media, open_media_with,
     CloudMirrorConfig, FilesystemMedia, LocalObjectMedia, MediaBackend, MediaLocator,
     MirroredCloudMedia, ObjectMediaUri, ObjectScheme, UnsupportedCloudMedia,
+};
+pub use migrate::{
+    load_migration_job, migrate_apply, migrate_dir, migrate_job_path, migrate_plan,
+    migrate_preflight, migrate_rollback, migrate_store, migrate_verify, snapshot_protocol_compat,
+    snapshot_wire_matrix, MigrateFileAction, MigrateFilePlan, MigrateOptions, MigratePhase,
+    MigratePreflight, MigrateReport, MigrationJob, ProtocolCompatSnapshot, WireMatrixRow,
+    MIGRATE_DIR, MIGRATE_JOB_FILE, MIGRATE_PROFILE, PROTOCOL_MAJOR_DECLARED,
+    PROTOCOL_MINOR_DECLARED, PROTOCOL_PROFILE_DECLARED, RPC_WIRE_LABEL_DECLARED,
 };
 pub use secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,

@@ -32,10 +32,11 @@ Until this plan is complete, use these support labels:
   data-plane commit DEF-037, durable rebalance DEF-038, in-process anti-entropy
   repair DEF-039 when attached, distributed query paging DEF-040, seeded
   in-process verification DEF-041); not production-ready (DEF-041 multi-process
-  follow-ons + DEF-050/051 follow-ons + §16).
+  follow-ons + DEF-050/051/052 follow-ons + §16).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
-- **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
+- **Wire format:** `1.0-draft` with declared reader/writer matrix and phased
+  migration (DEF-052); not frozen for long-term interoperability (DEF-053).
 
 Public documentation, CLI help, release notes, and crate READMEs MUST use these
 labels until the corresponding gates pass.
@@ -1518,6 +1519,14 @@ Remaining (out of this cut):
 
 Priority: P0
 
+Status: **addressed (single-generation cut)** (2026-07-27) — declared wire
+reader/writer matrix (`dingo-format::compat`), protocol policy snapshot,
+phased store migration `dingo-migrate-v1` (preflight / plan / apply / verify /
+rollback), evidence-preserving copy (never in-place rewrite), unsupported and
+unreadable segment bytes preserved as opaque evidence, durable job under
+`recovery/migration/`, CLI `dingo migrate`; multi-major dual-read writers and
+rolling mixed-cluster upgrade drills remain follow-ons (DEF-053 freeze).
+
 Work:
 
 - Define supported reader/writer version matrix.
@@ -1532,6 +1541,24 @@ Acceptance:
 - A mixed-version cluster follows an explicit compatibility policy.
 - Failed migration leaves the prior generation readable.
 - Golden corpora survive upgrade and downgrade where promised.
+
+Evidence (this cut):
+
+- `dingo-format::compat` — `wire_compat_matrix`, `SUPPORTED_READER_MAJORS`,
+  `wire_reader_supports` / `wire_writer_emits`.
+- `dingo-store::migrate` — `migrate_preflight`, `migrate_plan`, `migrate_apply`,
+  `migrate_verify`, `migrate_rollback`, `migrate_store`; `Store::migrate_to`.
+- Tests: `stage_def_052_migrate`, `migrate::tests`, CLI
+  `migrate_roundtrip_and_status`.
+- CLI: `dingo migrate STORE --output DEST` (`--preflight`, `--plan-only`,
+  `--status`, `--rollback`, `--skip-verify`).
+
+Remaining (out of this cut):
+
+- Second wire major with dual-read + rewrite-to-current plan actions.
+- Rolling multi-node cluster upgrade drills (mixed protocol majors).
+- Golden corpus upgrade/downgrade suite across promised support windows
+  (ties to DEF-053 freeze).
 
 ### DEF-053 — Freeze wire major 1 only after qualification
 

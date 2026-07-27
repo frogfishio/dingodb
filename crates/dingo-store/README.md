@@ -57,7 +57,7 @@ assert!(store.get("user-42")?.is_none());
 | Recovery | rebuildable primary index, salvage after catalog wipe, evidence-preserving `salvage_to` |
 | Derived | collection catalog, secondary indexes, subject history, checkpoints |
 | Chunks | chunked payloads with partial maps; phased live compaction |
-| Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050), `scrub_once` / `scrub_status` (DEF-051) |
+| Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050), `scrub_once` / `scrub_status` (DEF-051), `migrate_to` (DEF-052) |
 | Tiering | segment move/copy with stable identities; offline-tier coverage holes |
 | Honesty | fail-closed logical scans; absence only proven when coverage is complete |
 
@@ -72,8 +72,28 @@ store/
   catalogs/       # derived only (rebuildable)
   indexes/        # derived only (rebuildable)
   snapshots/      # derived checkpoints
-  recovery/       # operator scratch + compaction jobs + scrub state
+  recovery/       # operator scratch + compaction jobs + scrub + migration jobs
 ```
+
+## Format migration (DEF-052)
+
+Phased, evidence-preserving copy into a **new** store (never in-place rewrite):
+
+```rust
+use dingo_store::{DurabilityMode, MigrateOptions, MigratePhase, Store};
+
+# let dir = tempfile::tempdir().unwrap();
+# let src = dir.path().join("src");
+# let dst = dir.path().join("dst");
+let mut store = Store::create(&src)?;
+store.put("k", b"v", DurabilityMode::Durable)?;
+let report = store.migrate_to(&dst, MigrateOptions::default())?;
+assert_eq!(report.phase, MigratePhase::Done);
+# Ok::<(), dingo_store::StoreError>(())
+```
+
+Job documents live under `recovery/migration/job.v1.json`. Wire support is
+declared in `dingo-format` (`wire_compat_matrix` / `SUPPORTED_READER_MAJORS`).
 
 ## Integrity scrub (DEF-051)
 

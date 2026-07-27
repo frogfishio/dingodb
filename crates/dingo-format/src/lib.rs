@@ -19,6 +19,7 @@ pub const WIRE_PROFILE_LABEL: &str = "1.0-draft";
 
 mod cbor_envelope;
 mod chunks;
+mod compat;
 mod events;
 mod frame;
 mod integrity;
@@ -30,6 +31,11 @@ mod segment;
 pub use cbor_envelope::{
     decode_deterministic_uint_map, encode_deterministic_uint_map,
     validate_deterministic_cbor_envelope, CborEnvelopeError, CborValue, EMPTY_ENVELOPE,
+};
+pub use compat::{
+    wire_compat_matrix, wire_reader_supports, wire_support_for, wire_support_summary,
+    wire_writer_emits, WireSupportEntry, WireSupportStatus, SUPPORTED_READER_MAJORS,
+    WRITER_WIRE_MAJOR, WRITER_WIRE_MINOR,
 };
 pub use chunks::{
     decode_chunk_body, encode_chunk_body, reassemble_chunks, ChunkPiece, LogicalExtent,

@@ -158,7 +158,8 @@ verified recovery evidence to a separate destination. `dingo export-live`
 materializes only current complete state when that is what the operator wants.
 `dingo backup` / `dingo restore` produce and consume content-hashed full backup
 packages (DEF-050; distinct from salvage). `dingo scrub` runs bounded integrity
-verification with durable findings (DEF-051).
+verification with durable findings (DEF-051). `dingo migrate` runs phased
+format migration into a new store without rewriting the source (DEF-052).
 
 [SDA](SDA_SPEC.md), the Structured Data Algebra, provides deterministic
 filtering and transformation over both normal structured values and recovered

@@ -4,10 +4,10 @@ Operator and everyday command-line interface for DingoDB.
 
 Put and get JSON or bytes, list collections, inspect history, run read-only
 `doctor`, evidence-preserving `salvage`, full `backup` / verified `restore`
-(DEF-050), integrity `scrub` (DEF-051), and start a development TCP server
-(`serve`). Experimental
-multi-node `serve-cluster` is available when Raft attaches (control plane +
-data-plane commit); not production-ready.
+(DEF-050), integrity `scrub` (DEF-051), format `migrate` (DEF-052), and start
+a development TCP server (`serve`). Experimental multi-node `serve-cluster` is
+available when Raft attaches (control plane + data-plane commit); not
+production-ready.
 
 Binary name: **`dingo`**. Package name on crates.io: **`dingo-cli`**.
 
@@ -15,7 +15,7 @@ Binary name: **`dingo`**. Package name on crates.io: **`dingo-cli`**.
 
 | You want… | Use |
 |-----------|-----|
-| Shell / ops: put, get, doctor, salvage, backup, restore, scrub, serve | **`dingo`** (this binary) |
+| Shell / ops: put, get, doctor, salvage, backup, restore, scrub, migrate, serve | **`dingo`** (this binary) |
 | Embed collections in a Rust app | [`dingo-sdk`](https://crates.io/crates/dingo-sdk) |
 | Pure SDA language CLI | [`sda`](https://crates.io/crates/sda) |
 
@@ -73,6 +73,13 @@ dingo scrub ./app.dingo --status
 dingo scrub ./app.dingo --once --max-files 4
 dingo scrub ./app.dingo --pause
 dingo scrub ./app.dingo --resume
+
+# Format migration (source preserved; new destination store)
+dingo migrate ./app.dingo --output ./migrated.dingo --preflight
+dingo migrate ./app.dingo --output ./migrated.dingo
+dingo migrate ./app.dingo --status
+# Abandon incomplete apply (refuses completed migrations):
+# dingo migrate ./app.dingo --rollback
 ```
 
 ## Serve (development)

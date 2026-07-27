@@ -1544,6 +1544,41 @@ impl Store {
         Ok(last)
     }
 
+    /// Format migration preflight (DEF-052): version matrix + segment classification.
+    ///
+    /// Does not write a durable job. Destination must be empty / absent.
+    pub fn migrate_preflight(
+        &self,
+        dest: impl AsRef<Path>,
+    ) -> Result<crate::MigratePreflight, StoreError> {
+        crate::migrate::migrate_preflight(&self.paths.root, dest.as_ref(), self.store_id)
+    }
+
+    /// Phased format migration into a new store directory (DEF-052).
+    ///
+    /// Never rewrites the source in place. Copies authoritative trees with
+    /// per-file blake3, preserves unsupported / unreadable segment bytes as
+    /// opaque evidence, and only marks success after open+verify of the
+    /// destination. Durable job under `recovery/migration/job.v1.json`.
+    ///
+    /// When this handle holds the exclusive writer lock, the active segment is
+    /// flushed durable first so the migration boundary is crash-consistent.
+    pub fn migrate_to(
+        &mut self,
+        dest: impl AsRef<Path>,
+        opts: crate::MigrateOptions,
+    ) -> Result<crate::MigrateReport, StoreError> {
+        if self.writer_lock.is_some() {
+            self.persist_active(DurabilityMode::Durable)?;
+        }
+        crate::migrate::migrate_store(&self.paths.root, dest.as_ref(), self.store_id, opts)
+    }
+
+    /// Load the durable migration job from this store's recovery directory.
+    pub fn load_migration_job(&self) -> Result<Option<crate::MigrationJob>, StoreError> {
+        crate::migrate::load_migration_job(&self.paths.root)
+    }
+
     /// Evidence-preserving salvage into a **new** store directory (DX_SPEC §13.4, DEF-011).
     ///
     /// The source store is never mutated. Destination must not already be a
