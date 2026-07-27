@@ -375,6 +375,43 @@ impl<'a> Collection<'a> {
         self.find(&filter)
     }
 
+    /// Find via a **query dialect** that compiles to pure SDA (`doc/SDA/DIALECTS.md`).
+    ///
+    /// Builtin dialect ids: `json` / `mongo` (object filter text), `sql`
+    /// (`SELECT` / `WHERE` mimicry), `sda` (pure predicate text). Document
+    /// predicates scan live rows; program-shaped dialects materialise the
+    /// collection as a JSON array under `input` and return the SDA result as a
+    /// single synthetic row key `"$result"`.
+    ///
+    /// Pure SDA remains the mathematical language; dialects are comfortable
+    /// imperfect frontends.
+    pub fn find_dialect(
+        &mut self,
+        dialect: &str,
+        source: &str,
+    ) -> Result<Vec<(String, JsonValue)>, Error> {
+        self.find_dialect_with(dialect, source, QueryOptions::default())
+    }
+
+    /// Like [`Self::find_dialect`] with scan options.
+    pub fn find_dialect_with(
+        &mut self,
+        dialect: &str,
+        source: &str,
+        options: QueryOptions,
+    ) -> Result<Vec<(String, JsonValue)>, Error> {
+        let compiled = crate::dialects::compile_dialect(dialect, source)?;
+        match compiled.shape {
+            crate::dialects::SdaShape::DocumentPredicate => {
+                self.filter_sda_with(&compiled.sda, options)
+            }
+            crate::dialects::SdaShape::Program => {
+                let value = self.sda_with(&compiled.sda, options)?;
+                Ok(vec![("$result".into(), value)])
+            }
+        }
+    }
+
     /// Fluent query builder (DX_SPEC §7.2).
     pub fn query(&mut self) -> QueryBuilder<'_, 'a> {
         QueryBuilder::new(self)

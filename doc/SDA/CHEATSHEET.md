@@ -8,6 +8,11 @@ This is the short version of SDA for day-to-day use.
 - `sda eval` runs SDA code
 - `sda check` validates SDA code
 - `sda fmt` formats SDA code
+- **SDA (+ ENR1) is the mathematical language**; JSON/Mongo filters and SQL-ish
+  strings are optional **dialects** that compile into pure SDA — not a hybrid of
+  peer languages (see [DIALECTS.md](DIALECTS.md))
+- **Null ≠ absence.** Stored `null` is `Some(null)`; missing key is `None`. If you
+  need that distinction, write pure SDA — dialects cannot express it losslessly
 
 ## Most useful commands
 

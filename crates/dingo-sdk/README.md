@@ -4,8 +4,9 @@
 
 Open a local store, connect to a remote server, or (optionally) open an
 in-process multi-node cluster. Name a collection; put/get/delete JSON or bytes;
-filter JSON documents; manage secondary indexes; inspect per-key history —
-without learning frames, segments, or SDA.
+filter JSON documents; use pluggable query dialects that compile to pure SDA
+(`json` / `mongo` / `sql` mimicry / raw `sda`); manage secondary indexes;
+inspect per-key history — without learning frames or segments for common paths.
 
 Freeze label: `SDK_API_VERSION` = `1.0`.
 
@@ -63,8 +64,13 @@ let mut db = Dingo::open(&path)?;
     users.indexes()?.create("by-status", &["status"])?;
 
     let rows = users.find(&Filter::field("status").eq("active"))?;
+    // SQL mimicry dialect → pure SDA predicate (doc/SDA/DIALECTS.md)
+    let via_sql = users.find_dialect(
+        "sql",
+        "SELECT * WHERE status = 'active' AND age >= 18",
+    )?;
     let hist = users.history("user-42")?;
-    let _ = (rows, hist);
+    let _ = (rows, via_sql, hist);
 }
 # Ok::<(), dingo_sdk::Error>(())
 ```

@@ -306,8 +306,8 @@ impl Parser {
                 }
                 self.expect(TokenKind::RBrace)?;
                 expr = Expr::Enrich(fields);
-            } else if name == "sda" && *self.peek() == TokenKind::LBrace {
-                // sda { ... } — readability sugar for a bare SDA comprehension.
+            } else if name == "refine" && *self.peek() == TokenKind::LBrace {
+                // refine { ... } — verb sugar for a bare SDA comprehension over pipe `_`.
                 self.advance(); // {
                 expr = self.parse_comprehension()?;
             }

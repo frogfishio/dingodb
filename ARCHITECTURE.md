@@ -17,6 +17,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](FORMAT_SPEC.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
+| Query dialects (json/mongo/sql/… → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
 | SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
 | Enrichment algebra (ENR1 kernel in `sda-lib`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](CLUSTER_SPEC.md) |

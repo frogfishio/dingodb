@@ -13,6 +13,11 @@ The goal is simple:
 - teach the basic language by example
 - avoid academic language unless it is truly needed
 
+Hosts may also offer **query dialects** (JSON/Mongo filters, SQL-ish strings)
+that compile into SDA for everyday comfort. Those are not a replacement for
+SDA: if you need exact meaning around missing fields vs stored `null`, use pure
+SDA (see [DIALECTS.md](DIALECTS.md)).
+
 ## 0. A quick start you can finish in 10 minutes
 
 If you want the fastest possible introduction, start here.
@@ -910,6 +915,7 @@ If you want more after this guide:
 - [SDA Cheat Sheet](CHEATSHEET.md)
 - [SDA for jq Users](FOR_JQ_USERS.md)
 - [SDA JSON Filter Demo](JSON_FILTER_DEMO.md)
+- [Query Dialects](DIALECTS.md) — pure SDA plus json/mongo/sql frontends
 - [Commands Overview](../COMMANDS.md)
 - [SDA Specification](SDA_SPEC.md)
 

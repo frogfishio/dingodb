@@ -4,8 +4,10 @@
 //! or (with the `cluster` feature) open a multi-node cluster; name a collection;
 //! put/get/delete JSON or bytes; filter JSON documents; multi-collection equijoin
 //! queries ([`Dingo::query`]) with optional SDA normalisation; raw SDA/ENR1 text
-//! queries ([`Dingo::sda_query`], [`Collection::sda`]); manage secondary indexes;
-//! inspect per-key history — without learning SDA for common paths.
+//! queries ([`Dingo::sda_query`], [`Collection::sda`]); pluggable query
+//! [dialects](dialects) that compile into pure SDA (`json`/`mongo`/`sql`/…);
+//! manage secondary indexes; inspect per-key history — without learning SDA for
+//! common paths.
 //!
 //! **License:** MPL-2.0 for the default embedded + remote surface. The optional
 //! `cluster` feature depends on AGPL `dingo-cluster` (in-process multi-node).
@@ -31,6 +33,7 @@ pub const SDK_API_VERSION: &str = "1.0";
 mod cluster_backend;
 mod collection;
 mod dingo;
+mod dialects;
 mod directory_cache;
 mod error;
 mod filter;
@@ -57,6 +60,10 @@ pub use directory_cache::{
     PartitionMap, PlacementEpoch, Term, HASH_PROFILE_BLAKE3_MOD,
 };
 pub use error::{Error, ErrorCode};
+pub use dialects::{
+    compile_dialect, compile_json_value, list_builtin_dialects, BuiltinDialect, CompiledSda,
+    DialectInfo, DialectInfoOwned, DialectRegistry, QueryDialect, SdaShape, DIALECT_PROFILE,
+};
 pub use filter::{
     FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, QueryPlan, SortOrder,
     QUERY_PLAN_PROFILE,

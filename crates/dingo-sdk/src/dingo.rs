@@ -263,7 +263,7 @@ impl Dingo {
     ///               )
     ///             )
     ///         }
-    ///       |> sda {
+    ///       |> refine {
     ///           yield o + Map{
     ///             "customer_name" -> getPath(o, Seq["customer", "name"])
     ///           }

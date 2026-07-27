@@ -8,6 +8,14 @@ SDA is **not** a database/query language (SQL/Mongo) and not a scripting runtime
 Its purpose is to give hosts a *closed, testable algebra* for reshaping, validating,
 and normalizing structured data without hidden coercions.
 
+Familiar query notations (JSON/Mongo filters, SQL mimicry, GraphQL, …) may be
+offered by hosts as **dialects that compile into pure SDA**. They are not part of
+this algebra and must not redefine core meaning. They are also not a hybrid peer
+to SDA: no foreign surface can losslessly express every algebraic distinction
+(notably **Null vs absence**, §4.0.1). When exact meaning is required, hosts
+MUST expose pure SDA (and ENR1 where enrichment is in play). See
+[doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md).
+
 ### What SDA is for (Normative)
 
 SDA exists to make common “tree in → tree out” transformations precise and portable (JSON/CBOR/MsgPack/Protobuf after parsing).

@@ -4,6 +4,12 @@
 //! evaluated by scanning live collection entries (correct without secondary
 //! indexes; DX_SPEC §8.1).
 //!
+//! This is the **JSON / Mongo filter dialect**: the portable object vocabulary
+//! is also available as dialect ids `json` and `mongo` via
+//! [`crate::compile_dialect`] (see `doc/SDA/DIALECTS.md`). Pure SDA remains the
+//! mathematical language; this module is a comfortable frontend that compiles
+//! into it ([`Filter::to_sda`]).
+//!
 //! ## SDA alignment (DEF-028 / DX_SPEC §7.1)
 //!
 //! Portable filters compile to boolean SDA programs over document `input`

@@ -329,6 +329,19 @@ Promote the real contract into a spec-indexed conformance suite rather than rely
 5. Align the implementation to the frozen contract.
 6. Only then expand CLI or outer-language ergonomics.
 
+## Dialects Are Not A Hybrid Product Language
+
+Hosts may expose SQL mimicry, Mongo-style filters, and other frontends that
+**compile into** pure SDA. That is intentional comfort, not a second truth
+model.
+
+As ugly as ENR + SDA notation can look, it remains mathematical notation: it
+can express distinctions (Null vs absence, carriers, Fail tags, match bags)
+that familiar query surfaces cannot encode losslessly. If the job needs those
+distinctions, the pure path is mandatory. Comfort never redefines the algebra.
+
+See [DIALECTS.md](DIALECTS.md).
+
 ## Standard For Completion
 
 SDA is complete enough for its purpose only when:

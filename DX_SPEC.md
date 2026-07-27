@@ -477,7 +477,7 @@ const attached = db.enrQuery()
             )
           )
       }
-    |> sda {
+    |> refine {
         yield o + Map{
           "customer_name" -> getPath(o, Seq["customer", "name"])
         }
@@ -488,14 +488,57 @@ const attached = db.enrQuery()
 
 `Match(l, R, kL, kR)` is the ENR1 primitive match bag (returns `Bag`).
 `enrich { field: E }` attaches evaluated fields to each left row (`l` bound).
-`sda { … }` is readability sugar for a bare SDA comprehension over the pipe `_`.
+`refine { … }` is verb sugar for a bare SDA comprehension over the pipe `_`.
 
 Verbose comprehensions (`bindOpt` / `{ yield o + Map{…} | o in orders }`) remain
 valid. The host supplies bounded streams or pages. SDA remains pure.
 
 Raw SDA/ENR text is an advanced capability, not the only query interface.
 
-### 7.7 Explain
+### 7.7 Query dialects
+
+SDA (with ENR1) is the **mathematical** query language (see [SDA_SPEC.md](SDA_SPEC.md)).
+Everyday and familiar surfaces are **dialects**: frontends that compile into
+pure SDA and never redefine algebra semantics. This is **not** a hybrid of
+co-equal languages: dialects are comfort; pure SDA remains mandatory when the
+job needs exact meaning a foreign surface cannot express.
+
+**Null vs absence is the hard case.** SQL `NULL` and Mongo-style filters cannot
+losslessly encode SDA’s distinction between a stored `null` and a missing key
+(SDA_SPEC §4.0.1). If callers must separate those, they write pure SDA (or ENR
+text). Dialects may approximate and MUST attach notes or refuse rather than
+quietly redefine the algebra.
+
+```ts
+// Pure SDA (always available) — only path for exact null vs absence, etc.
+await users.sda(`{ yield u | u in input | getPath(u, Seq["status"]) = Some("active") }`);
+
+// JSON / Mongo-style filter dialect (already the portable §7.1 object)
+await users.find({ status: "active", age: { $gte: 18 } });
+
+// Explicit dialect id (SDK: find_dialect / compile_dialect)
+await users.findDialect("sql", "SELECT * WHERE status = 'active' AND age >= 18");
+await users.findDialect("json", `{"status":"active"}`);
+```
+
+Builtin dialect ids:
+
+| Id | Role |
+|----|------|
+| `sda` | Pure SDA/ENR1 text (parse-checked) |
+| `json` / `mongo` | DX portable filter object → document predicate |
+| `sql` | Partial `SELECT` / `WHERE` mimicry (not full SQL) |
+| `graphql` | Reserved; not implemented |
+
+None of the familiar dialects is a complete encoding of SDA, SQL, MongoDB, or
+GraphQL. Mimicry is intentional: the product offers the pure language (hard)
+plus comfortable options. Hosts MAY register additional dialects that compile
+to pure SDA.
+
+Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md). Rust surface:
+`dingo-sdk::dialects` (`compile_dialect`, `DialectRegistry`, `QueryDialect`).
+
+### 7.8 Explain
 
 ```ts
 const plan = await result.explain();
@@ -508,6 +551,7 @@ Explain output contains:
 - scan estimates;
 - ordering plan;
 - SDA pushdown;
+- dialect id and compiled pure SDA (when a dialect was used);
 - consistency mode;
 - coverage limitations;
 - resource budget;
