@@ -390,7 +390,7 @@ collection catalogs are built from segment-derived durable state only.
 | No full-store rescan on ack | shipped | Write path does not call `index_from_segments`; catalogs/index from durable projection |
 | Frontier index cache (v2) | shipped | `indexes/primary.idx` records sealed fingerprint + active covered length |
 | Open acceleration | shipped | Matching sealed frontier → apply active tail only; else rebuild from segments |
-| Rate-limited checkpoints | shipped | Full cache rewrite every N durable ops / on seal / explicit `persist_index_cache` |
+| Rate-limited checkpoints | shipped | Index cache **and** collection catalog share one high rate limit (`DERIVED_CHECKPOINT_EVERY_OPS`); **not** forced on seal (seal is O(segment) incremental catalog + placement only); explicit `persist_index_cache` still checkpoints. Avoids O(N) full-index rewrite on the write scale path |
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 

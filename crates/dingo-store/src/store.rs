@@ -34,14 +34,14 @@ use crate::secondary::{
     try_load_secondary_index, write_secondary_index, SecondaryIndex,
 };
 use crate::segment_catalog::{
-    rebuild_segment_catalog, segment_catalog_path, try_load_segment_catalog, write_segment_catalog,
-    SegmentCatalog, SegmentSummary,
+    rebuild_segment_catalog, segment_catalog_path, summarize_segment_bytes, try_load_segment_catalog,
+    upsert_sealed_summary, write_segment_catalog, SegmentCatalog, SegmentSummary,
 };
 use crate::tier::{
     classify_segment_bytes, discover_placements, load_tier_roots_file, register_hot_segment,
-    tier_placement_path, transfer_segment, try_load_placement, write_placement,
-    write_tier_roots_file, FormatClassification, MigrationEvidence, TierAwareGet, TierClass,
-    TierCoverage, TierMoveMode, TierPlacement,
+    register_hot_segment_known, tier_placement_path, transfer_segment, try_load_placement,
+    write_placement, write_tier_roots_file, FormatClassification, MigrationEvidence, TierAwareGet,
+    TierClass, TierCoverage, TierMoveMode, TierPlacement,
 };
 use crate::write_dedup::{
     load_write_dedup, save_write_dedup, write_dedup_path, DedupRecord, WriteDedupTable,
@@ -64,9 +64,19 @@ const META_VERSION: &str = "dingo-store-9\n";
 /// Soft max size of the active segment before auto-seal (bytes).
 const DEFAULT_SEAL_THRESHOLD: u64 = 4 * 1024 * 1024;
 
-/// How many buffered/durable writes may land before a full index-cache checkpoint
-/// is forced (DEF-023 rate limit). Catalog refresh is cheap and not limited.
-const DERIVED_CHECKPOINT_EVERY_OPS: u64 = 32;
+/// How many buffered/durable writes may land before a derived-state checkpoint
+/// (index cache + collection catalog) is forced (DEF-023 rate limit).
+///
+/// Full index-cache rewrites are **O(live subjects × body size)**. Doing them
+/// every few hundred puts (or on every seal) produced an 87% write-throughput
+/// drop over a single gigabyte (classic O(N) scale curve). Recovery does not
+/// depend on a fresh checkpoint: open rebuilds from segments or applies the
+/// active tail past a stale frontier.
+///
+/// Checkpoints still run occasionally so long-running writers accelerate open
+/// without dominating the hot path. Seal no longer forces a full rewrite;
+/// explicit [`Store::persist_index_cache`] always does.
+const DERIVED_CHECKPOINT_EVERY_OPS: u64 = 65_536;
 
 /// Why a live subject could not contribute a complete logical body (DEF-012).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -184,7 +194,7 @@ pub struct Store {
     /// memory-mode visibility. Used for index-cache and on-disk catalog writes
     /// so the write path never rescans sealed segment bytes.
     durable_index: PrimaryIndex,
-    /// Buffered/durable ops since the last full index-cache checkpoint (DEF-023).
+    /// Buffered/durable ops since the last derived-state disk checkpoint (DEF-023).
     derived_ops_since_checkpoint: u64,
     /// Active in-memory segment + file, if any.
     active: Option<ActiveWriter>,
@@ -196,8 +206,10 @@ pub struct Store {
     chunk_threshold: usize,
     /// Max logical bytes per payload-chunk frame.
     chunk_size: usize,
-    /// Derived collection catalog (rebuildable).
+    /// Derived collection catalog (rebuildable). Includes memory-mode names.
     collection_catalog: CollectionCatalog,
+    /// Durable-only collection names (segment-backed); used for on-disk catalog.
+    durable_collections: CollectionCatalog,
     /// Segment placement across storage tiers (Stage 9, derived).
     tier_placement: TierPlacement,
     /// Hierarchical segment summary catalog (Stage 9, derived).
@@ -260,6 +272,7 @@ impl Store {
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
+            durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
             writer_lock: Some(writer_lock),
@@ -316,6 +329,7 @@ impl Store {
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
+            durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
             writer_lock: Some(writer_lock),
@@ -365,6 +379,7 @@ impl Store {
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
             collection_catalog: CollectionCatalog::new(),
+            durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
             writer_lock: None,
@@ -378,9 +393,10 @@ impl Store {
         // Catalog: load if valid, else rebuild in memory only (no write).
         let cat_path = crate::catalog::collections_catalog_path(&store.paths.catalogs_dir());
         if let Some(cat) = try_load_collection_catalog(&cat_path, store.store_id, fp)? {
+            store.durable_collections = cat.clone();
             store.collection_catalog = cat;
         } else {
-            store.collection_catalog = CollectionCatalog::from_index(&store.index);
+            store.recompute_collection_catalogs_from_index();
         }
         // Intentionally no resume_or_start_active — no writer handle.
         Ok(store)
@@ -1304,6 +1320,7 @@ impl Store {
     ) -> Result<(), StoreError> {
         self.index = index.clone();
         self.durable_index = index;
+        self.recompute_collection_catalogs_from_index();
         let sealed = list_dingo_files(&self.paths.segments_dir())?;
         self.segment_seq = max_segment_seq_from_paths(all_paths).max(sealed.len() as u64);
         self.derived_ops_since_checkpoint = 0;
@@ -1313,6 +1330,7 @@ impl Store {
     fn rebuild_index_from_segments(&mut self) -> Result<(), StoreError> {
         self.index = index_from_segments(&self.paths, self.limits, Some(&self.tier_placement))?;
         self.durable_index = self.index.clone();
+        self.recompute_collection_catalogs_from_index();
         let sealed = list_dingo_files(&self.paths.segments_dir())?;
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
@@ -1364,18 +1382,31 @@ impl Store {
         })
     }
 
-    /// After a durable append: update derived state without scanning sealed data.
+    /// After a buffered/durable append: touch derived state without segment rescan.
     ///
-    /// Catalog refresh is always applied (small). Full index-cache checkpoints
-    /// are rate-limited so amortized write work stays independent of retained
-    /// segment volume (DEF-023).
+    /// In-memory collection membership is updated by the caller via
+    /// [`Self::note_collection_for_subject`]. Disk checkpoints (index cache +
+    /// collection catalog) are **rate-limited**: both use atomic fsync writes and
+    /// must not sit on every put acknowledgement path (DEF-023).
     fn note_durable_derived(&mut self) -> Result<(), StoreError> {
-        let _ = self.refresh_collection_catalog();
         self.derived_ops_since_checkpoint = self.derived_ops_since_checkpoint.saturating_add(1);
         if self.derived_ops_since_checkpoint >= DERIVED_CHECKPOINT_EVERY_OPS {
+            // Best-effort: a failed derived write must not fail the already-acked
+            // authoritative append. Recovery rebuilds from segments.
             let _ = self.persist_index_cache();
+            let _ = self.refresh_collection_catalog();
         }
         Ok(())
+    }
+
+    /// Record a collection name for a durable subject (visibility + durable set).
+    ///
+    /// No disk I/O. Avoids O(N) `from_index` rebuilds on the checkpoint path.
+    fn note_collection_for_subject(&mut self, subject: &[u8]) {
+        if let Some(name) = crate::catalog::collection_name_from_subject(subject) {
+            self.collection_catalog.insert(name.clone());
+            self.durable_collections.insert(name);
+        }
     }
 
     #[allow(clippy::too_many_arguments)] // mirrors index::apply_event event fields
@@ -1710,6 +1741,11 @@ impl Store {
     }
 
     /// Seal the active segment if present, moving it to `segments/`.
+    ///
+    /// Seal work is **O(active segment size)** for placement + catalog update.
+    /// It does **not** rewrite the full primary index cache (that was O(N) in
+    /// live subjects and caused write-throughput collapse at GB scale). Use
+    /// [`Self::persist_index_cache`] when a durable frontier checkpoint is wanted.
     pub fn seal_active(&mut self) -> Result<(), StoreError> {
         let Some(mut writer) = self.active.take() else {
             return Ok(());
@@ -1720,6 +1756,8 @@ impl Store {
         let sealed = writer.segment.seal()?;
         let bytes = sealed.as_bytes();
         let dest = self.paths.sealed_segment(&writer.segment_id);
+        let content_hash = *blake3::hash(bytes).as_bytes();
+        let size = bytes.len() as u64;
 
         crate::failpoint::hit("store.seal.before_dest_write")?;
 
@@ -1746,15 +1784,22 @@ impl Store {
         crate::failpoint::hit("store.seal.after_active_remove")?;
         sync_dir(&self.paths.active_dir())?;
 
-        // Stage 9: register sealed segment on hot tier.
-        let _ = register_hot_segment(&self.paths, &mut self.tier_placement, sealed_id);
+        // Stage 9: register sealed segment on hot tier using the in-memory hash
+        // (no second full-file read). Catalog upsert is O(this segment only).
+        let _ = register_hot_segment_known(
+            &self.paths,
+            &mut self.tier_placement,
+            sealed_id,
+            content_hash,
+            size,
+        );
         let _ = self.persist_tier_state();
-        let _ = self.refresh_segment_catalog();
+        let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
 
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment()?;
         self.persist_active(DurabilityMode::Durable)?;
-        let _ = self.persist_index_cache();
+        // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
     }
 
@@ -1982,29 +2027,58 @@ impl Store {
         Ok(())
     }
 
+    /// Incrementally record one newly sealed segment in the hierarchical catalog.
+    ///
+    /// Scans only `bytes` (already in memory on the seal path). Does **not**
+    /// rescan prior sealed segments — that O(total retained data) path is
+    /// reserved for [`Self::rebuild_segment_catalog`] / recovery.
+    fn note_sealed_segment(
+        &mut self,
+        segment_id: [u8; 16],
+        tier: TierClass,
+        bytes: &[u8],
+        content_hash: [u8; 32],
+        size: u64,
+    ) -> Result<(), StoreError> {
+        let summary =
+            summarize_segment_bytes(segment_id, tier, bytes, content_hash, size, self.limits);
+        upsert_sealed_summary(&mut self.segment_catalog, summary);
+        let _ = write_segment_catalog(
+            &segment_catalog_path(&self.paths.catalogs_dir()),
+            self.store_id,
+            &self.segment_catalog,
+        );
+        Ok(())
+    }
+
     fn load_or_rebuild_catalog(&mut self) -> Result<(), StoreError> {
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
         let cat_path = crate::catalog::collections_catalog_path(&self.paths.catalogs_dir());
         if let Some(cat) = try_load_collection_catalog(&cat_path, self.store_id, fp)? {
+            self.durable_collections = cat.clone();
+            // Visibility starts from durable; memory-mode names attach later.
             self.collection_catalog = cat;
             return Ok(());
         }
+        self.recompute_collection_catalogs_from_index();
         self.refresh_collection_catalog()
     }
 
     fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let fp = segment_fingerprint(&paths)?;
-        // DEF-013 / DEF-023: persist only the durable projection (no segment rescan).
-        // Memory-mode publishes live in `self.index` but must not contaminate
-        // on-disk catalogs, index caches, or checkpoints.
-        let durable_cat = CollectionCatalog::from_index(&self.durable_index);
+        // DEF-013 / DEF-023: persist only the durable name set (no segment rescan,
+        // no O(N) subject walk — names are maintained incrementally on put/delete).
         let cat_path = collections_catalog_path(&self.paths.catalogs_dir());
-        write_collection_catalog(&cat_path, self.store_id, fp, &durable_cat)?;
-        // In-process list_collections reflects visibility (includes memory).
-        self.collection_catalog = CollectionCatalog::from_index(&self.index);
+        write_collection_catalog(&cat_path, self.store_id, fp, &self.durable_collections)?;
         Ok(())
+    }
+
+    /// Rebuild in-memory collection catalogs from the primary index (open/rebuild).
+    fn recompute_collection_catalogs_from_index(&mut self) {
+        self.durable_collections = CollectionCatalog::from_index(&self.durable_index);
+        self.collection_catalog = CollectionCatalog::from_index(&self.index);
     }
 
     fn write_chunked_put(
@@ -2138,6 +2212,7 @@ impl Store {
             segment_id,
             0,
         );
+        self.note_collection_for_subject(subject_bytes);
 
         if mode != DurabilityMode::Memory {
             let _ = self.note_durable_derived();
@@ -2300,6 +2375,7 @@ impl Store {
             segment_id,
             0, // writer_sequence already inside frame; not required for index
         );
+        self.note_collection_for_subject(subject_bytes);
 
         let _ = self.note_durable_derived();
 

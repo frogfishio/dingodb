@@ -597,8 +597,18 @@ Implementation notes:
 - In-memory `durable_index` updated only after buffered/durable append.
 - `indexes/primary.idx` v2 records sealed-segment fingerprint + active covered
   length; open applies the active tail beyond that frontier (checkpoint+delta).
-- Full cache rewrite is rate-limited (and forced on seal / explicit persist);
-  catalog refresh uses the durable projection without a segment rescan.
+- Full index-cache rewrite **and** collection-catalog atomic writes are
+  rate-limited together at a high ops watermark (`DERIVED_CHECKPOINT_EVERY_OPS`);
+  **seal no longer forces a full index rewrite** (that O(N) body serialization
+  caused an ~87% write-throughput drop over 1 GB). Explicit
+  `persist_index_cache` still checkpoints. Per-put catalog fsync was removed so
+  buffered mode is not fsync-bound.
+- Seal updates the hierarchical segment catalog **incrementally** (scan only
+  the newly sealed segment bytes already in memory) and registers placement
+  with a precomputed content hash — no full-media rescan or second full-file
+  hash on the hot path. Full catalog rebuild remains the recovery path.
+- Collection names for durable subjects are maintained incrementally (no
+  O(N) `from_index` walk on every checkpoint).
 - Wipe of `indexes/` / `catalogs/` / `snapshots/` still rebuilds identical
   logical state from segments.
 

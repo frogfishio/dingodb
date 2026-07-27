@@ -216,6 +216,57 @@ fn rate_limited_checkpoint_still_allows_recovery() {
     }
 }
 
+/// Seal must stay O(segment), not O(retained volume).
+///
+/// A naive path that re-scans every sealed segment (or rewrites the full
+/// primary index with bodies) on each seal produces a classic write
+/// degradation curve: early seals are fast, late seals dominate.
+#[test]
+fn seal_cost_independent_of_retained_segment_count() {
+    let dir = tempdir().unwrap();
+    let root = dir.path().join("s");
+    let mut store = Store::create(&root).unwrap();
+    // Small seal threshold so we can create many sealed segments quickly.
+    store.set_seal_threshold(64 * 1024);
+
+    let payload = vec![0xABu8; 1024];
+    let seals = 24usize;
+    let keys_per_seal = 48usize;
+    let mut seal_times = Vec::with_capacity(seals);
+
+    for s in 0..seals {
+        for k in 0..keys_per_seal {
+            store
+                .put(
+                    &format!("scale/{s}/{k}"),
+                    &payload,
+                    DurabilityMode::Buffered,
+                )
+                .unwrap();
+        }
+        let t0 = Instant::now();
+        store.seal_active().unwrap();
+        seal_times.push(t0.elapsed());
+    }
+
+    let early: u128 = seal_times[..4].iter().map(|d| d.as_micros()).sum::<u128>() / 4;
+    let late: u128 = seal_times[seals - 4..]
+        .iter()
+        .map(|d| d.as_micros())
+        .sum::<u128>()
+        / 4;
+    // Late seals must not blow up with retained segment count. Allow generous
+    // jitter for CI (cold start, fsync variance) but catch true O(N) regressions
+    // that used to be 5–10× slower by the end of a single GB pump.
+    assert!(
+        late < early.saturating_mul(8).max(50_000),
+        "seal latency grew too much with retained volume: early_avg={early}µs late_avg={late}µs times={seal_times:?}"
+    );
+
+    // Catalog still tracks every sealed segment.
+    assert!(store.segment_catalog().len() >= seals);
+}
+
 #[test]
 fn write_path_bench_disclosure() {
     // Disclosure fields for DEF-023 / doc/BENCHMARK_DISCLOSURE.md (skeleton only).

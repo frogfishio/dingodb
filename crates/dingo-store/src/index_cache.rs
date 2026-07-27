@@ -154,9 +154,9 @@ pub fn write_primary_index_frontier(
 }
 
 fn encode_entries(out: &mut Vec<u8>, index: &PrimaryIndex) {
-    let entries: Vec<_> = index.iter_all().collect();
-    out.extend_from_slice(&(entries.len() as u64).to_le_bytes());
-    for (subject, entry) in entries {
+    // Stream entries; do not collect into an intermediate Vec (write-path scale).
+    out.extend_from_slice(&(index.len() as u64).to_le_bytes());
+    for (subject, entry) in index.iter_all() {
         let subject_len = u16::try_from(subject.len()).unwrap_or(u16::MAX);
         out.extend_from_slice(&subject_len.to_le_bytes());
         out.extend_from_slice(&subject[..subject_len as usize]);

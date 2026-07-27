@@ -123,14 +123,36 @@ pub fn summarize_segment_file(
     limits: SafetyLimits,
 ) -> Result<SegmentSummary, StoreError> {
     let bytes = fs::read(path)?;
-    let report = scan_forward(&bytes, limits);
+    Ok(summarize_segment_bytes(
+        segment_id,
+        tier,
+        &bytes,
+        content_hash,
+        size,
+        limits,
+    ))
+}
+
+/// Build a summary from segment bytes already in memory (no extra disk read).
+///
+/// Used on the seal path so catalog maintenance is O(segment size), not
+/// O(total retained data). Full rebuild remains available for recovery.
+pub fn summarize_segment_bytes(
+    segment_id: [u8; 16],
+    tier: TierClass,
+    bytes: &[u8],
+    content_hash: [u8; 32],
+    size: u64,
+    limits: SafetyLimits,
+) -> SegmentSummary {
+    let report = scan_forward(bytes, limits);
     let mut item_events = 0u64;
     for (_off, frame) in report.verified_frames() {
         if frame.header.known_kind() == Some(FrameKind::ItemEvent) {
             item_events += 1;
         }
     }
-    Ok(SegmentSummary {
+    SegmentSummary {
         segment_id,
         tier,
         size,
@@ -139,7 +161,15 @@ pub fn summarize_segment_file(
         item_events,
         holes: report.holes().count() as u64,
         available: true,
-    })
+    }
+}
+
+/// Upsert one sealed segment into an existing catalog (incremental, DEF-023 scale).
+pub fn upsert_sealed_summary(
+    catalog: &mut SegmentCatalog,
+    summary: SegmentSummary,
+) {
+    catalog.upsert(summary);
 }
 
 /// Rebuild segment catalog from available media + placement; merge offline priors.

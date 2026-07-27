@@ -1044,11 +1044,29 @@ pub fn register_hot_segment(
         return Ok(());
     }
     let (hash, size) = hash_file(&path)?;
+    register_hot_segment_known(paths, placement, segment_id, hash, size)
+}
+
+/// Register a hot sealed segment when content hash/size are already known.
+///
+/// Avoids a second full-file hash after seal has just written the bytes
+/// (write-path scale: seal work must stay O(segment), not O(retained data)).
+pub fn register_hot_segment_known(
+    paths: &StorePaths,
+    placement: &mut TierPlacement,
+    segment_id: [u8; 16],
+    content_hash: [u8; 32],
+    size: u64,
+) -> Result<(), StoreError> {
+    let path = paths.sealed_segment(&segment_id);
+    if !path.is_file() {
+        return Ok(());
+    }
     placement.upsert(SegmentPlacement {
         segment_id,
         tier: TierClass::Hot,
         relative_path: relative_segment_path(paths, &path),
-        content_hash: hash,
+        content_hash,
         size,
         available: placement.is_tier_available(TierClass::Hot),
     });
