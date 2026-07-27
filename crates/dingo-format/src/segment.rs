@@ -116,6 +116,37 @@ impl ActiveSegment {
         self.limits
     }
 
+    /// Resume an unsealed active segment from durable bytes without re-encoding
+    /// frames.
+    ///
+    /// Frame offsets in `bytes` are preserved (required for locator-first indexes).
+    /// Caller must supply accurate `frame_count` and `writer_sequence` matching
+    /// the contiguous verified prefix (typically from a forward scan).
+    pub fn resume_unsealed(
+        ids: SegmentId,
+        limits: SafetyLimits,
+        bytes: Vec<u8>,
+        frame_count: u64,
+        writer_sequence: u64,
+        created_ns: u64,
+    ) -> Result<Self, SegmentError> {
+        if bytes.is_empty() {
+            return Err(SegmentError::MissingDescriptor);
+        }
+        if frame_count == 0 {
+            return Err(SegmentError::MissingDescriptor);
+        }
+        Ok(Self {
+            ids,
+            limits,
+            bytes,
+            writer_sequence,
+            frame_count,
+            sealed: false,
+            created_ns,
+        })
+    }
+
     /// Whether a segment summary has been appended and the segment is immutable.
     pub fn is_sealed(&self) -> bool {
         self.sealed

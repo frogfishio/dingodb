@@ -25,6 +25,10 @@ pub const STORE_DESCRIPTOR_FILE: &str = "descriptor.dingo";
 /// Active segment filename (single active writer in Stage 3).
 pub const ACTIVE_SEGMENT_FILE: &str = "active.dingo";
 
+/// Subdirectory under `active/` for rotated segments awaiting background seal
+/// finalize (DEF-096 Axis A dual-slot / async lifecycle).
+pub const PENDING_SEAL_DIR: &str = "pending";
+
 /// Paths derived from a store root.
 #[derive(Debug, Clone)]
 pub struct StorePaths {
@@ -66,6 +70,17 @@ impl StorePaths {
     /// `active/active.dingo`
     pub fn active_segment(&self) -> PathBuf {
         self.active_dir().join(ACTIVE_SEGMENT_FILE)
+    }
+
+    /// `active/pending/` — rotated segments waiting for seal finalize (DEF-096).
+    pub fn pending_seal_dir(&self) -> PathBuf {
+        self.active_dir().join(PENDING_SEAL_DIR)
+    }
+
+    /// Path for a pending (rotated, not yet finalized) segment by id.
+    pub fn pending_segment(&self, segment_id: &[u8; 16]) -> PathBuf {
+        self.pending_seal_dir()
+            .join(format!("{}.dingo", hex16(segment_id)))
     }
 
     /// `segments/`
@@ -114,6 +129,7 @@ impl StorePaths {
         for dir in [
             self.store_info(),
             self.active_dir(),
+            self.pending_seal_dir(),
             self.segments_dir(),
             self.chunks_dir(),
             self.catalogs_dir(),

@@ -57,6 +57,7 @@ assert!(store.get("user-42")?.is_none());
 | Recovery | rebuildable primary index, salvage after catalog wipe, evidence-preserving `salvage_to` |
 | Derived | collection catalog, secondary indexes, subject history, checkpoints |
 | Hydra | adaptive per-segment indexes at seal (Eytzinger / PGM·RadixSpline / compressed radix / MPHF); multithread rebuild |
+| Async lifecycle | DEF-096 Axis A: auto-seal O(1) rotates to `active/pending/`; background worker finalizes sealed image + Hydra/Chimera; `seal_active` stays sync; `drain_lifecycle` / recover-on-open |
 | Chimera | value locators + seal/compaction layouts under `indexes/chimera/`; hot `get` uses PrimaryIndex; `get_via_chimera` probes layouts (put still segment frames; dual-rep/ZNS deferred; compiler worker next) |
 | Chunks | chunked payloads with partial maps; phased live compaction |
 | Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050), `scrub_once` / `scrub_status` (DEF-051), `migrate_to` (DEF-052) |
@@ -68,7 +69,9 @@ assert!(store.get("user-42")?.is_none());
 ```text
 store/
   store-info/     # store_id + meta + descriptor + writer.lock
-  active/         # open append segment (at most one)
+  active/         # open append segment (at most one live file)
+    active.dingo
+    pending/      # rotated segments awaiting background seal finalize (DEF-096)
   segments/       # sealed hot segments
   tiers/          # warm/cold/archive media
   catalogs/       # derived only (rebuildable)

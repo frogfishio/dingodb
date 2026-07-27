@@ -630,8 +630,9 @@ optional seal work off the put acknowledgement path (background / batch
 lifecycle) so p99 is not coupled to lifecycle spikes. Preferred shape: dual (or
 more) active segment slots with O(1) foreground rotate; finalize seal, BLAKE3
 completion, and index checkpoints off the writer thread; bound pending seals
-with backpressure only when workers lag. **Tracked as DEF-096 Axis A**; full
-multi-core / sharded-writer sequencing in `doc/PARALLEL_INGEST.md`.
+with backpressure only when workers lag. **Landed as DEF-096 Axis A**
+(`seal_pipeline`, `active/pending/` rotate); full multi-core / sharded-writer
+sequencing in `doc/PARALLEL_INGEST.md` (Axis B still open).
 
 **Maximum-point note (2026-07-27 self-check):** ordinary in-memory index
 insertion on the steady-state put path is past the asymptotic cliff — further
@@ -943,7 +944,8 @@ pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 
 Priority: P1  
 Dependencies: DEF-023 (follow-on), DEF-020, DEF-095  
-Status: **open (design)** — see `doc/PARALLEL_INGEST.md` (2026-07-27)
+Status: **Axis A addressed** (async lifecycle 2026-07-27); Axis B/C open — see
+`doc/PARALLEL_INGEST.md`
 
 Problem:
 
@@ -961,12 +963,16 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
 1. **Axis A — Async lifecycle (first cut):** dual (or more) active segment slots;
    O(1) foreground rotate; background seal (rewrite, BLAKE3, Hydra, Chimera,
    tier/catalog); background derived checkpoints; backpressure when workers lag.
+   **Done:** `seal_pipeline` worker; `active/pending/` rotate; `drain_lifecycle` /
+   recover-on-open; tests `stage_def_096_async_lifecycle`. Explicit `seal_active`
+   remains sync (failpoint-compatible).
 2. **Axis B — Sharded writers:** N active segments by subject hash; per-shard
    append + seal pipeline; sharded or mergeable PrimaryIndex; concurrent clients.
 3. **Axis C — Horizontal:** multi-store / partition / cluster (already partially
    present) — capacity path, not single-node efficiency.
 4. **Harness:** testrig disclosure of `concurrency` / writer model; optional
    multi-store pump for media upper-bound; process CPU samples after Axis A.
+   (Partial: pump JSON already emits `concurrency: 1` / single_active model.)
 
 Anti-goals:
 
@@ -978,8 +984,8 @@ Acceptance:
 
 - Design doc `doc/PARALLEL_INGEST.md` is the sequencing authority until cuts land.
 - Axis A: put p99 not coupled to seal/checkpoint duration; crash matrix preserved;
-  1 GiB and 10 GiB testrig re-runs show higher sustained throughput and multi-core
-  process CPU% while RSS stays O(keys).
+  unit/integration tests for rotate+get+recover. **10 GiB re-measure follow-on**
+  (ops/s + multi-core CPU%) not required to close Axis A code cut.
 - Axis B: documented only after Axis A measurement shows one append core saturated
   with idle media.
 

@@ -58,7 +58,7 @@ partially cut:
 
 | ID | Gap |
 |----|-----|
-| **DEF-096** | Parallel ingest after DEF-095 freed memory: async lifecycle (dual active slots) then sharded writers — design in `PARALLEL_INGEST.md`. Single-node cores still idle on 10 GiB pumps. |
+| **DEF-096** | Parallel ingest after DEF-095 freed memory: **Axis A async lifecycle landed** (O(1) rotate + seal pipeline); Axis B sharded writers still open — `PARALLEL_INGEST.md`. Re-measure 10 GiB for multi-core CPU% follow-on. |
 | **DEF-039 / 040 network** | Anti-entropy repair and query paging still in-process only. |
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |

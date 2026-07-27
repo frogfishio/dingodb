@@ -29,6 +29,10 @@ use crate::index_cache::{
     try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier,
 };
 use crate::layout::{list_dingo_files, StorePaths};
+use crate::seal_pipeline::{
+    list_pending_paths, recover_all_pending, LifecycleJob, LifecycleResult, SealPipeline,
+    DEFAULT_MAX_PENDING_SEALS,
+};
 use crate::secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,
     try_load_secondary_index, write_secondary_index, SecondaryIndex,
@@ -218,6 +222,11 @@ pub struct Store {
     writer_lock: Option<WriterLock>,
     /// Client operation dedup table (DEF-010); empty when unused.
     write_dedup: WriteDedupTable,
+    /// Background seal/checkpoint worker (DEF-096 Axis A). Writer opens only.
+    seal_pipeline: Option<SealPipeline>,
+    /// When true, auto-seal on threshold uses O(1) rotate + background finalize.
+    /// Explicit [`Self::seal_active`] always drains and runs the synchronous path.
+    async_lifecycle: bool,
 }
 
 struct ActiveWriter {
@@ -277,6 +286,8 @@ impl Store {
             segment_catalog: SegmentCatalog::new(),
             writer_lock: Some(writer_lock),
             write_dedup: WriteDedupTable::new(),
+            seal_pipeline: Some(SealPipeline::start()),
+            async_lifecycle: true,
         };
         store.start_active_segment()?;
         store.persist_active(DurabilityMode::Durable)?;
@@ -334,8 +345,12 @@ impl Store {
             segment_catalog: SegmentCatalog::new(),
             writer_lock: Some(writer_lock),
             write_dedup: WriteDedupTable::new(),
+            seal_pipeline: Some(SealPipeline::start()),
+            async_lifecycle: true,
         };
         store.load_tier_state()?;
+        // Finish any pending seals left by a prior crash before index rebuild.
+        let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
         store.load_or_rebuild_index()?;
         store.load_or_rebuild_catalog()?;
         store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
@@ -384,6 +399,8 @@ impl Store {
             segment_catalog: SegmentCatalog::new(),
             writer_lock: None,
             write_dedup: WriteDedupTable::new(),
+            seal_pipeline: None,
+            async_lifecycle: false,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -1430,13 +1447,33 @@ impl Store {
     /// [`Self::note_collection_for_subject`]. Disk checkpoints (index cache +
     /// collection catalog) are **rate-limited**: both use atomic fsync writes and
     /// must not sit on every put acknowledgement path (DEF-023).
+    ///
+    /// With async lifecycle (DEF-096 Axis A), the rate-limited index checkpoint is
+    /// submitted to the seal pipeline worker so fsync cost is off the put path.
     fn note_durable_derived(&mut self) -> Result<(), StoreError> {
+        let _ = self.poll_lifecycle();
         self.derived_ops_since_checkpoint = self.derived_ops_since_checkpoint.saturating_add(1);
         if self.derived_ops_since_checkpoint >= DERIVED_CHECKPOINT_EVERY_OPS {
             // Best-effort: a failed derived write must not fail the already-acked
             // authoritative append. Recovery rebuilds from segments.
-            let _ = self.persist_index_cache();
-            let _ = self.refresh_collection_catalog();
+            if self.async_lifecycle_enabled() {
+                self.derived_ops_since_checkpoint = 0;
+                if let Ok(frontier) = self.current_index_frontier() {
+                    let job = LifecycleJob::Checkpoint {
+                        cache_path: primary_cache_path(&self.paths.indexes_dir()),
+                        store_id: self.store_id,
+                        frontier,
+                        index: self.durable_index.clone(),
+                    };
+                    if let Some(pipe) = self.seal_pipeline.as_ref() {
+                        let _ = pipe.submit_checkpoint(job);
+                    }
+                }
+                let _ = self.refresh_collection_catalog();
+            } else {
+                let _ = self.persist_index_cache();
+                let _ = self.refresh_collection_catalog();
+            }
         }
         Ok(())
     }
@@ -1546,6 +1583,11 @@ impl Store {
         let sealed = self.paths.sealed_segment(segment_id);
         if sealed.is_file() {
             tried.push(sealed);
+        }
+        // DEF-096: rotated-but-not-finalized segment may still hold locators.
+        let pending = self.paths.pending_segment(segment_id);
+        if pending.is_file() {
+            tried.push(pending);
         }
         // Always require envelope segment_id match. After §16.10 reorder/swap,
         // the canonical sealed filename may hold another segment's bytes; bare
@@ -1877,7 +1919,13 @@ impl Store {
     /// It does **not** rewrite the full primary index cache (that was O(N) in
     /// live subjects and caused write-throughput collapse at GB scale). Use
     /// [`Self::persist_index_cache`] when a durable frontier checkpoint is wanted.
+    ///
+    /// Always **synchronous** (including Hydra/Chimera) so failpoints and tests
+    /// see a completed seal. Drains any in-flight async seals first (DEF-096).
     pub fn seal_active(&mut self) -> Result<(), StoreError> {
+        // Drain background finalizers so sealed set is consistent.
+        self.drain_lifecycle()?;
+
         let Some(mut writer) = self.active.take() else {
             return Ok(());
         };
@@ -1937,6 +1985,251 @@ impl Store {
         self.persist_active(DurabilityMode::Durable)?;
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
+    }
+
+    /// Whether auto-seal uses the async lifecycle pipeline (DEF-096 Axis A).
+    pub fn async_lifecycle_enabled(&self) -> bool {
+        self.async_lifecycle && self.seal_pipeline.is_some()
+    }
+
+    /// Enable or disable async auto-seal (tests / operators). Default: enabled
+    /// for writer opens.
+    pub fn set_async_lifecycle(&mut self, enabled: bool) {
+        self.async_lifecycle = enabled;
+    }
+
+    /// In-flight background seals not yet applied to in-memory catalogs.
+    pub fn pending_seal_inflight(&self) -> usize {
+        self.seal_pipeline
+            .as_ref()
+            .map(|p| p.inflight_seals)
+            .unwrap_or(0)
+    }
+
+    /// Drain the seal pipeline: wait for all in-flight finalizes and apply
+    /// catalog updates. No-op when async lifecycle is off or no pipeline.
+    pub fn drain_lifecycle(&mut self) -> Result<(), StoreError> {
+        loop {
+            let inflight = self
+                .seal_pipeline
+                .as_ref()
+                .map(|p| p.inflight_seals)
+                .unwrap_or(0);
+            if inflight == 0 {
+                // Also apply any residual results.
+                while self.poll_lifecycle()? {}
+                return Ok(());
+            }
+            if !self.wait_one_lifecycle()? {
+                // Worker disconnected with outstanding count — recover pending.
+                let _ = recover_all_pending(&self.paths, self.store_id, self.limits)?;
+                if let Some(p) = self.seal_pipeline.as_mut() {
+                    p.inflight_seals = 0;
+                }
+                return Ok(());
+            }
+        }
+    }
+
+    /// Non-blocking: apply completed lifecycle results. Returns true if any applied.
+    fn poll_lifecycle(&mut self) -> Result<bool, StoreError> {
+        let mut any = false;
+        loop {
+            let Some(result) = self.seal_pipeline.as_ref().and_then(|p| p.try_recv()) else {
+                break;
+            };
+            self.apply_lifecycle_result(result)?;
+            any = true;
+        }
+        Ok(any)
+    }
+
+    /// Block for one lifecycle result and apply it. Returns false if none/disconnected.
+    fn wait_one_lifecycle(&mut self) -> Result<bool, StoreError> {
+        let Some(result) = self.seal_pipeline.as_ref().and_then(|p| p.recv()) else {
+            return Ok(false);
+        };
+        self.apply_lifecycle_result(result)?;
+        Ok(true)
+    }
+
+    fn apply_lifecycle_result(&mut self, result: LifecycleResult) -> Result<(), StoreError> {
+        match result {
+            LifecycleResult::SealDone {
+                segment_id,
+                content_hash,
+                size,
+                sealed_bytes,
+            } => {
+                if let Some(p) = self.seal_pipeline.as_mut() {
+                    p.inflight_seals = p.inflight_seals.saturating_sub(1);
+                }
+                let _ = register_hot_segment_known(
+                    &self.paths,
+                    &mut self.tier_placement,
+                    segment_id,
+                    content_hash,
+                    size,
+                );
+                let _ = self.persist_tier_state();
+                let _ = self.note_sealed_segment(
+                    segment_id,
+                    TierClass::Hot,
+                    &sealed_bytes,
+                    content_hash,
+                    size,
+                );
+            }
+            LifecycleResult::SealFailed { segment_id, error } => {
+                if let Some(p) = self.seal_pipeline.as_mut() {
+                    p.inflight_seals = p.inflight_seals.saturating_sub(1);
+                }
+                // Best-effort recover this segment on the writer thread.
+                let pending = self.paths.pending_segment(&segment_id);
+                let sealed = self.paths.sealed_segment(&segment_id);
+                match crate::seal_pipeline::finalize_seal(
+                    self.store_id,
+                    segment_id,
+                    &pending,
+                    &sealed,
+                    self.limits,
+                    &self.paths,
+                ) {
+                    Ok((content_hash, size, sealed_bytes)) => {
+                        let _ = register_hot_segment_known(
+                            &self.paths,
+                            &mut self.tier_placement,
+                            segment_id,
+                            content_hash,
+                            size,
+                        );
+                        let _ = self.persist_tier_state();
+                        let _ = self.note_sealed_segment(
+                            segment_id,
+                            TierClass::Hot,
+                            &sealed_bytes,
+                            content_hash,
+                            size,
+                        );
+                    }
+                    Err(_) => {
+                        return Err(StoreError::Io(std::io::Error::other(format!(
+                            "async seal failed for {}: {error}",
+                            crate::layout::hex16(&segment_id)
+                        ))));
+                    }
+                }
+            }
+            LifecycleResult::CheckpointDone { .. } => {}
+        }
+        Ok(())
+    }
+
+    /// O(1) foreground rotate: rename active → pending, start new active, enqueue
+    /// background finalize (DEF-096 Axis A).
+    fn rotate_active_async(&mut self) -> Result<(), StoreError> {
+        let _ = self.poll_lifecycle();
+        // Backpressure when workers lag (bound pending seals).
+        while self
+            .seal_pipeline
+            .as_ref()
+            .map(|p| p.inflight_seals >= p.max_pending_seals)
+            .unwrap_or(false)
+        {
+            if !self.wait_one_lifecycle()? {
+                break;
+            }
+        }
+
+        let Some(mut writer) = self.active.take() else {
+            return Ok(());
+        };
+        // Durable flush so pending file is crash-safe before we open a new active.
+        self.flush_active_file(&mut writer, DurabilityMode::Durable)?;
+        let segment_id = writer.segment_id;
+        drop(writer); // close file handle; bytes remain at active path
+
+        let active_path = self.paths.active_segment();
+        let pending_dir = self.paths.pending_seal_dir();
+        fs::create_dir_all(&pending_dir)?;
+        let pending_path = self.paths.pending_segment(&segment_id);
+        if pending_path.exists() {
+            // Should not happen; recover old pending first.
+            let sealed = self.paths.sealed_segment(&segment_id);
+            let _ = crate::seal_pipeline::finalize_seal(
+                self.store_id,
+                segment_id,
+                &pending_path,
+                &sealed,
+                self.limits,
+                &self.paths,
+            );
+        }
+        fs::rename(&active_path, &pending_path)?;
+        sync_dir(&self.paths.active_dir())?;
+        let _ = sync_dir(&pending_dir);
+
+        self.segment_seq = self.segment_seq.saturating_add(1);
+        self.start_active_segment()?;
+        self.persist_active(DurabilityMode::Durable)?;
+
+        if let Some(pipe) = self.seal_pipeline.as_mut() {
+            pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
+            let max = pipe.max_pending_seals.max(DEFAULT_MAX_PENDING_SEALS);
+            pipe.max_pending_seals = max;
+            pipe.submit_seal(LifecycleJob::FinalizeSeal {
+                store_id: self.store_id,
+                segment_id,
+                pending_path: pending_path.clone(),
+                sealed_path: self.paths.sealed_segment(&segment_id),
+                limits: self.limits,
+                paths: self.paths.clone(),
+            })?;
+        } else {
+            // No worker — finalize synchronously.
+            let sealed = self.paths.sealed_segment(&segment_id);
+            let (content_hash, size, sealed_bytes) = crate::seal_pipeline::finalize_seal(
+                self.store_id,
+                segment_id,
+                &pending_path,
+                &sealed,
+                self.limits,
+                &self.paths,
+            )?;
+            let _ = register_hot_segment_known(
+                &self.paths,
+                &mut self.tier_placement,
+                segment_id,
+                content_hash,
+                size,
+            );
+            let _ = self.persist_tier_state();
+            let _ = self.note_sealed_segment(
+                segment_id,
+                TierClass::Hot,
+                &sealed_bytes,
+                content_hash,
+                size,
+            );
+        }
+        Ok(())
+    }
+
+    /// Seal or rotate when the active segment is at/over the threshold.
+    fn maybe_auto_seal(&mut self) -> Result<(), StoreError> {
+        let need = self
+            .active
+            .as_ref()
+            .map(|w| w.segment.len() >= self.seal_threshold)
+            .unwrap_or(false);
+        if !need {
+            return Ok(());
+        }
+        if self.async_lifecycle_enabled() {
+            self.rotate_active_async()
+        } else {
+            self.seal_active()
+        }
     }
 
     /// Compile and persist a Hydra index for one sealed segment (derived only).
@@ -2436,11 +2729,7 @@ impl Store {
         if self.active.is_none() {
             self.start_active_segment()?;
         }
-        if let Some(w) = &self.active {
-            if w.segment.len() >= self.seal_threshold {
-                self.seal_active()?;
-            }
-        }
+        self.maybe_auto_seal()?;
 
         let segment_id = self
             .active
@@ -2665,12 +2954,8 @@ impl Store {
             self.start_active_segment()?;
         }
 
-        // Maybe seal first if oversized.
-        if let Some(w) = &self.active {
-            if w.segment.len() >= self.seal_threshold {
-                self.seal_active()?;
-            }
-        }
+        // Maybe seal/rotate first if oversized (async lifecycle: DEF-096 Axis A).
+        self.maybe_auto_seal()?;
 
         let segment_id = self
             .active
@@ -3027,11 +3312,15 @@ fn all_segment_paths(
     placement: Option<&TierPlacement>,
 ) -> Result<Vec<PathBuf>, StoreError> {
     let mut out = sealed_segment_paths(paths, placement)?;
+    // DEF-096: pending seals are still authoritative for locators / rebuild.
+    for p in list_pending_paths(paths)? {
+        out.push(p);
+    }
     let active = paths.active_segment();
     if active.is_file() {
         out.push(active);
     }
-    // Sealed first (sorted), then active last.
+    // Sealed + pending first, then active last.
     Ok(out)
 }
 

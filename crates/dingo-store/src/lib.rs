@@ -53,6 +53,7 @@ mod media;
 mod migrate;
 mod recovery;
 mod scrub;
+mod seal_pipeline;
 mod secondary;
 mod segment_catalog;
 mod store;
@@ -159,6 +160,9 @@ pub use segment_catalog::{
 pub use recovery::{
     salvage_manifest_path, try_load_recovery_manifest, FrameEvidence, HoleEvidence,
     LimitsSnapshot, RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
+};
+pub use seal_pipeline::{
+    list_pending_paths, recover_all_pending, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
 };
 pub use scrub::{
     list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,
