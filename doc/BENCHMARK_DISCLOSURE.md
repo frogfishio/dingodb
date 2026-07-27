@@ -135,6 +135,22 @@ summary under the work dir `testrig-summary.v1.json`). **Diagnostic only.**
 | Hydra sidecars | Seal path writes `indexes/seg/*.hdx` (derived); not the get path above |
 | Chimera sidecars | Seal path writes `indexes/chimera/*.cmr` (derived); **not** on hot `Store::get` |
 
+### 10 GiB testrig diagnostic snapshot (not a published SLO)
+
+Second local campaign after locator-first PrimaryIndex (**DEF-095**):
+`dingo-testrig run --work /var/tmp/dingo-testrig-10g --target-bytes 10G
+--payload-size 8192 --durability buffered --chaos-hits 64 --sample-keys 128
+--seed 2` (release binary). Summary: `testrig-summary.v1.json`. **Diagnostic only.**
+
+| Phase | Signal (order of magnitude) |
+|-------|-----------------------------|
+| Pump | Target met (~643k keys / ~10.05 GiB on disk); ~7.4k ops/s / ~119 MB/s class on quiet developer hardware |
+| Process RSS (2 s `ps` samples) | Peak ~**0.92 GiB** during pump — **not** O(dataset); pre-fix observation was ~10 GiB → swap |
+| Baseline gets (128 samples) | All ok; p50 **18 µs** / p95 **139 µs** / p99 **284 µs** via hot `PrimaryIndex` path |
+| Chaos | 64 offline punches; salvage reports 128 holes; live subjects retained |
+| Post-chaos gets | All 128 samples ok; p50 **19 µs** / p95 **152 µs** / p99 **279 µs** |
+| Result | **PASS** — pump target, baseline healthy, chaos landed, salvage still speaks |
+
 #### Read-path failure that was fixed (Chimera-before-index)
 
 A review of an intermediate testrig report saw **~245–259 ms get p50** with healthy

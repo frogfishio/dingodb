@@ -933,6 +933,11 @@ Acceptance:
 - Reopen with v3 cache does not load O(dataset) body bytes into RSS.
 - Existing store unit/integration suites pass.
 
+**Re-verification (2026-07-27):** second 10 GiB `dingo-testrig` campaign
+(`--seed 2`, 8 KiB payloads, buffered) **PASS**; peak RSS ~0.92 GiB (vs ~10 GiB
+pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
+`doc/WORK_HORIZON.md` (memory-eat self-check).
+
 ---
 
 ## 9. Production server and wire protocol

@@ -156,6 +156,13 @@ Resident index bodies are O(keys × metadata), not O(dataset). Chimera still
 duplicates values on **disk** (~3.5 GiB `.cmr`); that is a follow-on disk
 amplification issue, not the RSS spike path.
 
+**Re-run confirmation (2026-07-27, second 10 GiB campaign):**
+`dingo-testrig run --target-bytes 10G --payload-size 8192 --seed 2` → **PASS**.
+Peak process RSS while pumping ~**0.92 GiB** (2 s samples via `ps`), not ~10 GiB.
+~643k keys / 10.05 GiB on disk; baseline get p50 **18 µs**; post-chaos get p50
+**19 µs** with 128 salvage holes; pump ~7.4k ops/s. Summary:
+`/var/tmp/dingo-testrig-10g/testrig-summary.v1.json`. Diagnostic only.
+
 ### “Is this a big flex?” self-check (2026-07-27)
 
 User question after Hydra + 1 GiB testrig: *dude… this is a big flex isn’t it?*
