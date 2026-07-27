@@ -10,23 +10,12 @@ mod admission;
 mod authz;
 mod bind_policy;
 mod config;
+mod metrics;
 mod raft_server;
 mod runtime;
 mod serve;
 mod slog;
 
-pub use config::{
-    load_and_validate, redact_json_value, resolve_secret_ref, setting_class, validate_document,
-    AdmissionConfigSection, ClusterConfigSection, ConfigError, ConfigLayer, ConfigMode,
-    ConfigOverrides, DingoConfigFile, EffectiveConfigReport, EffectiveSetting, ServeConfigSection,
-    SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
-    CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
-};
-pub use slog::{
-    bound_field, bound_name, events as log_events, log_rpc_complete, redact_credential,
-    sanitize_reason, LogEvent, LogLevel, LogSink, Logger, MemorySink, StderrSink, LOG_PROFILE,
-    MAX_FIELD_BYTES, MAX_NAME_BYTES,
-};
 pub use admission::{
     is_expensive_op, is_replayable_mutation, AdmissionController, AdmissionLimits, AdmissionStats,
     ExpensiveGuard, ReplayStatus, ADMISSION_PROFILE, DEFAULT_AUTH_FAILURE_WINDOW,
@@ -43,6 +32,19 @@ pub use authz::{
 pub use bind_policy::{
     bind_host, host_is_loopback, validate_bind, validate_plaintext_bind, ServeStartupReport,
 };
+pub use config::{
+    load_and_validate, redact_json_value, resolve_secret_ref, setting_class, validate_document,
+    AdmissionConfigSection, ClusterConfigSection, ConfigError, ConfigLayer, ConfigMode,
+    ConfigOverrides, DingoConfigFile, EffectiveConfigReport, EffectiveSetting, ServeConfigSection,
+    SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
+    CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
+};
+pub use metrics::{
+    evaluate_health, is_public_probe_op, AdmissionStatsWire, EdgeMetrics, GuaranteeMetrics,
+    HealthEvalInput, HealthReport, HealthStatus, HistogramBucket, MetricsRegistry, MetricsSnapshot,
+    OpMetricSnapshot, ServerStatsWire, HEALTH_PROFILE, LATENCY_BUCKET_MS, MAX_OP_LABELS,
+    METRICS_PROFILE,
+};
 pub use raft_server::{
     shared_raft_state, RaftServerState, SharedRaftState, TcpRaftTransport, CLUSTER_COMMIT_PROFILE,
     FEATURE_CLUSTER_COMMIT_V1, FEATURE_RAFT_RPC_V1, SDK_RAFT_RPC_PROFILE,
@@ -54,4 +56,9 @@ pub use runtime::{
 pub use serve::{
     handle_connection, handle_connection_shared, handle_connection_with, serve_cluster_node,
     serve_store, serve_store_with, ServeOptions,
+};
+pub use slog::{
+    bound_field, bound_name, events as log_events, log_rpc_complete, redact_credential,
+    sanitize_reason, LogEvent, LogLevel, LogSink, Logger, MemorySink, StderrSink, LOG_PROFILE,
+    MAX_FIELD_BYTES, MAX_NAME_BYTES,
 };

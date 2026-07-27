@@ -5,25 +5,27 @@
 use crate::admission::{
     is_replayable_mutation, AdmissionController, AdmissionLimits, ADMISSION_PROFILE,
 };
-use crate::authz::{
-    check_rpc, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM,
-};
+use crate::authz::{check_rpc, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM};
 use crate::bind_policy;
+use crate::metrics::{
+    evaluate_health, is_public_probe_op, HealthEvalInput, MetricsRegistry, HEALTH_PROFILE,
+    METRICS_PROFILE,
+};
 use crate::raft_server;
 use crate::runtime::{
     is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, SERVER_PROFILE,
 };
 use crate::slog::{events as log_events, log_rpc_complete, Logger, LOG_PROFILE};
+use dingo_cluster::{DEFAULT_VIRTUAL_PARTITIONS, HASH_PROFILE_BLAKE3_MOD};
 use dingo_sdk::{
     collection_prefix, create_index_on_store, decode_bytes, decode_json, decode_subject,
     encode_bytes, encode_json, encode_subject, find_on_store, mark_indexes_stale,
     read_frame_or_detect_legacy, validate_collection_name, validate_key, write_json_frame,
-    write_reject_frame, AssignmentWire, DirectorySnapshot, Error, Filter, IndexInfo, IoStream,
-    KeyHistory, NegotiatedSession, QueryBudget, QueryOptions, RpcRequest, RpcResponse, SortOrder,
-    TlsServerOptions, TlsServerState, PROTOCOL_PROFILE, TLS_PROFILE, ScanRow, HistoryVersionRow,
-    IndexInfoRow, PresentChunkRow, ExtentRow,
+    write_reject_frame, AssignmentWire, DirectorySnapshot, Error, ExtentRow, Filter,
+    HistoryVersionRow, IndexInfo, IndexInfoRow, IoStream, KeyHistory, NegotiatedSession,
+    PresentChunkRow, QueryBudget, QueryOptions, RpcRequest, RpcResponse, ScanRow, SortOrder,
+    TlsServerOptions, TlsServerState, PROTOCOL_PROFILE, TLS_PROFILE,
 };
-use dingo_cluster::{DEFAULT_VIRTUAL_PARTITIONS, HASH_PROFILE_BLAKE3_MOD};
 use dingo_store::{DurabilityMode, PayloadResult, Store, WriteReceipt as StoreWriteReceipt};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
@@ -114,6 +116,14 @@ pub struct ServeOptions {
     /// Structured process logger (DEF-060). When unset, serve installs a default
     /// stderr NDJSON logger with store/mode context.
     pub logger: Option<Arc<Logger>>,
+    /// Process metrics registry (DEF-061). When unset, serve installs a default
+    /// in-process registry shared across connections.
+    pub metrics: Option<Arc<MetricsRegistry>>,
+    /// Shared server runtime for health/metrics RPCs (filled by serve loops).
+    ///
+    /// Tests may inject a prebuilt runtime; production `serve_store_with` sets
+    /// this after constructing the accept-loop runtime.
+    pub runtime: Option<Arc<ServerRuntime>>,
 }
 
 impl Default for ServeOptions {
@@ -137,6 +147,8 @@ impl Default for ServeOptions {
             admission: None,
             raft: None,
             logger: None,
+            metrics: None,
+            runtime: None,
         }
     }
 }
@@ -192,6 +204,18 @@ impl ServeOptions {
         self
     }
 
+    /// Attach a metrics registry (DEF-061). Prefer a shared [`MetricsRegistry`] in tests.
+    pub fn metrics(mut self, metrics: Arc<MetricsRegistry>) -> Self {
+        self.metrics = Some(metrics);
+        self
+    }
+
+    /// Attach a server runtime for health/metrics observation (DEF-061).
+    pub fn runtime(mut self, runtime: Arc<ServerRuntime>) -> Self {
+        self.runtime = Some(runtime);
+        self
+    }
+
     /// Resolve the effective authorization policy for this serve configuration.
     pub fn effective_authz(&self) -> AuthzPolicy {
         if let Some(p) = self.authz.clone() {
@@ -217,6 +241,14 @@ impl ServeOptions {
             return Arc::clone(l);
         }
         Logger::stderr().shared()
+    }
+
+    /// Resolve the process metrics registry (default empty registry when unset).
+    pub fn effective_metrics(&self) -> Arc<MetricsRegistry> {
+        if let Some(m) = self.metrics.as_ref() {
+            return Arc::clone(m);
+        }
+        MetricsRegistry::new().shared()
     }
 
     /// Advertise a cluster placement directory on `directory` RPC.
@@ -405,9 +437,8 @@ fn parse_hex16_strict(s: &str, field: &str) -> Result<[u8; 16], Error> {
     }
     let mut out = [0u8; 16];
     for i in 0..16 {
-        let byte = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).map_err(|e| {
-            Error::ProtocolViolation(format!("invalid hex id for `{field}`: {e}"))
-        })?;
+        let byte = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16)
+            .map_err(|e| Error::ProtocolViolation(format!("invalid hex id for `{field}`: {e}")))?;
         out[i] = byte;
     }
     Ok(out)
@@ -502,6 +533,9 @@ pub fn serve_store_with(
                 .shared(),
         );
     }
+    if options.metrics.is_none() {
+        options.metrics = Some(MetricsRegistry::new().shared());
+    }
     let logger = options.effective_logger();
 
     // Cluster serve prints its own report; single-node prints unless suppressed.
@@ -521,6 +555,7 @@ pub fn serve_store_with(
         eprintln!(
             "dingo serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
              tls={TLS_PROFILE}/{} admission={ADMISSION_PROFILE} log={LOG_PROFILE} \
+             metrics={METRICS_PROFILE} health={HEALTH_PROFILE} \
              max_connections={} idle_timeout_ms={} global_rps={} diagnostic_line={}",
             if tls_enabled { "on" } else { "off" },
             options.server_limits.max_connections,
@@ -544,11 +579,14 @@ pub fn serve_store_with(
     // One process-wide admission controller (DEF-034).
     let admission = options.effective_admission();
     options.admission = Some(Arc::clone(&admission));
+    // Expose runtime + metrics to health/metrics RPCs (DEF-061).
+    options.runtime = Some(Arc::clone(&runtime));
+    if options.metrics.is_none() {
+        options.metrics = Some(MetricsRegistry::new().shared());
+    }
     let listener = TcpListener::bind(bind).map_err(Error::from_io)?;
     // Non-blocking accept so the loop can observe shutdown without a stuck client.
-    listener
-        .set_nonblocking(true)
-        .map_err(Error::from_io)?;
+    listener.set_nonblocking(true).map_err(Error::from_io)?;
 
     serve_accept_loop(listener, store, runtime, options, tls_state)
 }
@@ -579,11 +617,11 @@ fn serve_accept_loop(
                 }
                 // DEF-034: bound connection churn before simultaneous-slot admission.
                 let admission = options.effective_admission();
+                let metrics = options.effective_metrics();
                 if !admission.try_admit_connect() {
                     let max = admission.limits().max_connects_per_window;
-                    let reason = format!(
-                        "connection churn limit exceeded (max {max} per window)"
-                    );
+                    let reason = format!("connection churn limit exceeded (max {max} per window)");
+                    metrics.observe_connection(false);
                     logger
                         .warn(log_events::CONNECTION_REJECTED)
                         .error_code(Some("resource_limit"))
@@ -600,6 +638,7 @@ fn serve_accept_loop(
                     } else {
                         format!("connection limit exceeded (max {max})")
                     };
+                    metrics.observe_connection(false);
                     logger
                         .warn(log_events::CONNECTION_REJECTED)
                         .error_code(Some("resource_limit"))
@@ -608,6 +647,7 @@ fn serve_accept_loop(
                     let _ = reject_connection(stream, tls_state.as_ref(), &reason);
                     continue;
                 }
+                metrics.observe_connection(true);
                 let guard = ConnectionGuard::new(Arc::clone(&runtime));
                 let store_c = Arc::clone(&store);
                 let opts_c = options.clone();
@@ -620,9 +660,9 @@ fn serve_accept_loop(
                     .name("dingo-serve-conn".into())
                     .spawn(move || {
                         let _guard = guard;
-                        if let Err(e) = handle_connection_shared(
-                            store_c, stream, opts_c, runtime_c, tls_c,
-                        ) {
+                        if let Err(e) =
+                            handle_connection_shared(store_c, stream, opts_c, runtime_c, tls_c)
+                        {
                             // Avoid logging secrets (tokens never appear in Error Display
                             // for auth failures; still keep messages short).
                             logger_c
@@ -704,10 +744,7 @@ fn reject_connection(
 }
 
 /// Wrap an accepted TCP stream with TLS when server TLS is configured.
-fn wrap_server_stream(
-    tcp: TcpStream,
-    tls: Option<&TlsServerState>,
-) -> Result<IoStream, Error> {
+fn wrap_server_stream(tcp: TcpStream, tls: Option<&TlsServerState>) -> Result<IoStream, Error> {
     match tls {
         Some(state) => {
             let (stream, _peer) = state.accept(tcp)?;
@@ -718,15 +755,10 @@ fn wrap_server_stream(
 }
 
 /// Server handshake over a buffered duplex stream (single ownership).
-fn server_handshake_buffered(
-    reader: &mut BufReader<IoStream>,
-) -> Result<NegotiatedSession, Error> {
+fn server_handshake_buffered(reader: &mut BufReader<IoStream>) -> Result<NegotiatedSession, Error> {
     // server_handshake needs separate Read/Write; use BufReader + get_mut.
     // Temporarily implement inline using the same logic as dingo_sdk::server_handshake.
-    let payload = match read_frame_or_detect_legacy(
-        reader,
-        dingo_sdk::HANDSHAKE_MAX_FRAME_BYTES,
-    )? {
+    let payload = match read_frame_or_detect_legacy(reader, dingo_sdk::HANDSHAKE_MAX_FRAME_BYTES)? {
         Some(p) => p,
         None => {
             return Err(Error::ProtocolViolation(
@@ -865,6 +897,9 @@ pub fn serve_cluster_node(
                 .shared(),
         );
     }
+    if opts.metrics.is_none() {
+        opts.metrics = Some(MetricsRegistry::new().shared());
+    }
 
     // Attach durable network Raft control plane when the caller did not inject one.
     if opts.raft.is_none() {
@@ -942,10 +977,15 @@ pub fn handle_connection_with(
     options: ServeOptions,
 ) -> Result<(), Error> {
     // Local single-connection path: no shared runtime accounting.
+    let mut options = options;
     let runtime = ServerRuntime::new(options.server_limits.clone(), None);
     // Pretend admitted so drain checks are no-ops.
     let _ = runtime.try_admit_connection();
     let _guard = ConnectionGuard::new(Arc::clone(&runtime));
+    options.runtime = Some(Arc::clone(&runtime));
+    if options.metrics.is_none() {
+        options.metrics = Some(MetricsRegistry::new().shared());
+    }
     let tls = match options.tls.clone() {
         Some(o) => Some(TlsServerState::from_options(o)?),
         None => None,
@@ -999,7 +1039,9 @@ pub fn handle_connection_shared(
             Err(ReadRpc::Continue) => continue,
             Err(ReadRpc::Close) => break,
         };
-        if runtime.is_draining() {
+        // During drain, refuse application work but still answer public probes so
+        // readiness can report not-ready (DEF-061).
+        if runtime.is_draining() && !is_public_probe_op(&req.op) {
             write_rpc_response(
                 &mut reader,
                 &options,
@@ -1015,6 +1057,7 @@ pub fn handle_connection_shared(
         }
         let admission = options.effective_admission();
         let logger = options.effective_logger();
+        let metrics = options.effective_metrics();
         let started = Instant::now();
         let gate = admit_and_authorize(&options, &admission, &req);
         let principal_id = match gate {
@@ -1027,7 +1070,7 @@ pub fn handle_connection_shared(
                     code: Some(e.code().as_str().into()),
                     ..empty_resp(req.id)
                 };
-                log_rpc_from_wire(&logger, &req, None, &resp, started.elapsed());
+                log_rpc_from_wire(&logger, &metrics, &req, None, &resp, started.elapsed());
                 write_rpc_response(&mut reader, &options, resp)?;
                 continue;
             }
@@ -1044,6 +1087,7 @@ pub fn handle_connection_shared(
                 };
                 log_rpc_from_wire(
                     &logger,
+                    &metrics,
                     &req,
                     Some(principal_id.as_str()),
                     &resp,
@@ -1065,6 +1109,7 @@ pub fn handle_connection_shared(
                     };
                     log_rpc_from_wire(
                         &logger,
+                        &metrics,
                         &req,
                         Some(principal_id.as_str()),
                         &resp,
@@ -1082,9 +1127,9 @@ pub fn handle_connection_shared(
                 None
             };
             // Serialize store access; release before writing the response.
-            let mut guard = store.lock().map_err(|_| {
-                Error::Internal("store mutex poisoned".into())
-            })?;
+            let mut guard = store
+                .lock()
+                .map_err(|_| Error::Internal("store mutex poisoned".into()))?;
             match dispatch(&mut guard, &req, &options) {
                 Ok(r) => r,
                 Err(e) => RpcResponse {
@@ -1098,6 +1143,7 @@ pub fn handle_connection_shared(
         };
         log_rpc_from_wire(
             &logger,
+            &metrics,
             &req,
             Some(principal_id.as_str()),
             &resp,
@@ -1127,6 +1173,7 @@ fn connection_loop(
     let mut reader = BufReader::new(stream);
     let admission = options.effective_admission();
     let logger = options.effective_logger();
+    let metrics = options.effective_metrics();
 
     let max_frame = if options.diagnostic_line_protocol {
         dingo_sdk::host_limits().max_rpc_line_bytes
@@ -1155,7 +1202,7 @@ fn connection_loop(
                     code: Some(e.code().as_str().into()),
                     ..empty_resp(req.id)
                 };
-                log_rpc_from_wire(&logger, &req, None, &resp, started.elapsed());
+                log_rpc_from_wire(&logger, &metrics, &req, None, &resp, started.elapsed());
                 write_rpc_response(&mut reader, options, resp)?;
                 continue;
             }
@@ -1172,6 +1219,7 @@ fn connection_loop(
                 };
                 log_rpc_from_wire(
                     &logger,
+                    &metrics,
                     &req,
                     Some(principal_id.as_str()),
                     &resp,
@@ -1193,6 +1241,7 @@ fn connection_loop(
                     };
                     log_rpc_from_wire(
                         &logger,
+                        &metrics,
                         &req,
                         Some(principal_id.as_str()),
                         &resp,
@@ -1217,6 +1266,7 @@ fn connection_loop(
         };
         log_rpc_from_wire(
             &logger,
+            &metrics,
             &req,
             Some(principal_id.as_str()),
             &resp,
@@ -1227,9 +1277,10 @@ fn connection_loop(
     Ok(())
 }
 
-/// Emit DEF-060 `rpc.complete` (+ optional `guarantee.failed`) without payloads.
+/// Emit DEF-060 `rpc.complete` (+ optional `guarantee.failed`) and DEF-061 metrics.
 fn log_rpc_from_wire(
     logger: &Logger,
+    metrics: &MetricsRegistry,
     req: &RpcRequest,
     principal_id: Option<&str>,
     resp: &RpcResponse,
@@ -1251,14 +1302,34 @@ fn log_rpc_from_wire(
         resp.event_id.as_deref(),
         resp.error.as_deref(),
     );
+    metrics.observe_rpc(
+        &req.op,
+        resp.ok,
+        latency,
+        req.durability.as_deref(),
+        resp.acknowledgement.as_deref(),
+        resp.committed,
+        resp.code.as_deref(),
+    );
 }
 
 /// DEF-033 authz + DEF-034 rate/auth-lockout gates. Returns principal id on allow.
+///
+/// Public probes (`health_live`, `health_ready`) are admitted without a token so
+/// orchestrators can probe authenticated servers (DEF-061). Detailed `health`
+/// and `metrics` still require normal authentication.
 fn admit_and_authorize(
     options: &ServeOptions,
     admission: &AdmissionController,
     req: &RpcRequest,
 ) -> Result<String, Error> {
+    // Public liveness/readiness probes: skip token auth (still rate-limited).
+    if is_public_probe_op(&req.op) {
+        let probe_principal = "probe";
+        admission.admit_rpc(probe_principal)?;
+        return Ok(probe_principal.to_string());
+    }
+
     // Bound auth-failure CPU before constant-time token scan.
     admission.check_auth_lockout(req.token.as_deref())?;
     let policy = options.effective_authz();
@@ -1317,8 +1388,7 @@ fn read_rpc_request(
         if n == 0 {
             return Ok(None);
         }
-        if let Err(e) = dingo_sdk::check_rpc_line_len(line.len(), &dingo_sdk::host_limits())
-        {
+        if let Err(e) = dingo_sdk::check_rpc_line_len(line.len(), &dingo_sdk::host_limits()) {
             let _ = write_rpc_response(
                 reader,
                 options,
@@ -1357,12 +1427,7 @@ fn read_rpc_request(
         let bytes = match dingo_sdk::read_frame(reader, max_frame) {
             Ok(Some(b)) => b,
             Ok(None) => return Ok(None),
-            Err(e)
-                if matches!(
-                    e,
-                    Error::DeadlineExceeded(_)
-                ) =>
-            {
+            Err(e) if matches!(e, Error::DeadlineExceeded(_)) => {
                 return Err(ReadRpc::Idle);
             }
             Err(e) if e.code() == dingo_sdk::ErrorCode::ResourceLimit => {
@@ -1578,6 +1643,65 @@ fn dispatch(
             ok: true,
             ..empty_resp(id)
         }),
+        // DEF-061: public liveness — process is handling RPCs.
+        "health_live" => {
+            let report = health_report_for(store, options, /*ready_gate*/ false);
+            Ok(RpcResponse {
+                id,
+                ok: report.live,
+                value: Some(serde_json::to_value(&report).unwrap_or_default()),
+                ..empty_resp(id)
+            })
+        }
+        // DEF-061: public readiness — fails when advertised guarantees unavailable.
+        "health_ready" => {
+            let report = health_report_for(store, options, /*ready_gate*/ true);
+            Ok(RpcResponse {
+                id,
+                ok: report.ready,
+                error: if report.ready {
+                    None
+                } else {
+                    Some(
+                        report
+                            .reasons
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(|| "not ready".into()),
+                    )
+                },
+                code: if report.ready {
+                    None
+                } else {
+                    Some("resource_limit".into())
+                },
+                value: Some(serde_json::to_value(&report).unwrap_or_default()),
+                ..empty_resp(id)
+            })
+        }
+        // DEF-061: authenticated detailed health (Read privilege).
+        "health" => {
+            let report = health_report_for(store, options, /*ready_gate*/ true);
+            Ok(RpcResponse {
+                id,
+                ok: true,
+                value: Some(serde_json::to_value(&report).unwrap_or_default()),
+                ..empty_resp(id)
+            })
+        }
+        // DEF-061: authenticated metrics scrape (Admin privilege).
+        "metrics" => {
+            let metrics = options.effective_metrics();
+            let server = options.runtime.as_ref().map(|r| r.stats());
+            let admission = Some(options.effective_admission().stats());
+            let snap = metrics.snapshot(server, admission);
+            Ok(RpcResponse {
+                id,
+                ok: true,
+                value: Some(serde_json::to_value(&snap).unwrap_or_default()),
+                ..empty_resp(id)
+            })
+        }
         "store_info" => Ok(RpcResponse {
             id,
             ok: true,
@@ -1586,7 +1710,10 @@ fn dispatch(
             live_count: Some(store.live_count()),
             ..empty_resp(id)
         }),
-        "raft_request_vote" | "raft_append_entries" | "raft_install_snapshot" | "raft_read_index" => {
+        "raft_request_vote"
+        | "raft_append_entries"
+        | "raft_install_snapshot"
+        | "raft_read_index" => {
             let Some(raft) = options.raft.as_ref() else {
                 return Err(Error::ValidationMsg(
                     "raft RPC not available on this server (no RaftServerState)".into(),
@@ -1704,7 +1831,10 @@ fn dispatch(
             )?;
             let receipt = match dedup {
                 DedupOutcome::Replay(r) => r,
-                DedupOutcome::Fresh { op_id, content_hash } => {
+                DedupOutcome::Fresh {
+                    op_id,
+                    content_hash,
+                } => {
                     let oid_hex = op_id.as_ref().map(hex16);
                     let receipt = mutation_via_raft_or_store(
                         store,
@@ -1774,7 +1904,10 @@ fn dispatch(
                     // Exact retry: subject is already gone after the first delete.
                     (r, false)
                 }
-                DedupOutcome::Fresh { op_id, content_hash } => {
+                DedupOutcome::Fresh {
+                    op_id,
+                    content_hash,
+                } => {
                     let removed = store.get(subject_str)?.is_some();
                     let oid_hex = op_id.as_ref().map(hex16);
                     let receipt = mutation_via_raft_or_store(
@@ -1828,7 +1961,10 @@ fn dispatch(
             )?;
             let receipt = match dedup {
                 DedupOutcome::Replay(r) => r,
-                DedupOutcome::Fresh { op_id, content_hash } => {
+                DedupOutcome::Fresh {
+                    op_id,
+                    content_hash,
+                } => {
                     let oid_hex = op_id.as_ref().map(hex16);
                     let receipt = mutation_via_raft_or_store(
                         store,
@@ -2120,6 +2256,42 @@ fn dispatch(
     }
 }
 
+/// Build a DEF-061 health report from the live process + store.
+///
+/// `ready_gate` is reserved for callers that only care about readiness shape;
+/// evaluation always computes both live and ready.
+fn health_report_for(
+    store: &Store,
+    options: &ServeOptions,
+    _ready_gate: bool,
+) -> crate::metrics::HealthReport {
+    let draining = options
+        .runtime
+        .as_ref()
+        .map(|r| r.is_draining())
+        .unwrap_or(false);
+    let active = options.runtime.as_ref().map(|r| r.active_connections());
+    let mode = if options.cluster_root.is_some() || options.experimental_network_cluster {
+        "serve-cluster"
+    } else {
+        "serve"
+    };
+    let store_path = store.path().display().to_string();
+    evaluate_health(HealthEvalInput {
+        process_up: true,
+        draining,
+        store_open: true,
+        store_path: Some(store_path.as_str()),
+        live_count: Some(store.live_count()),
+        mode: Some(mode),
+        node_index: options.node_index,
+        raft_attached: options.raft.is_some(),
+        claims_replication: options.experimental_network_cluster,
+        active_connections: active,
+        log_profile: LOG_PROFILE,
+    })
+}
+
 fn require_coll(req: &RpcRequest) -> Result<&str, Error> {
     let c = req
         .collection
@@ -2233,4 +2405,3 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, Error> {
     }
     Ok(out)
 }
-

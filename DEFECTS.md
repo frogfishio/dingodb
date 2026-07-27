@@ -1686,6 +1686,12 @@ Remaining (out of this cut):
 
 Priority: P1
 
+Status: **addressed (process metrics + health cut)** (2026-07-27) — versioned
+`dingo-metrics-v1` registry and `dingo-health-v1` probes on the serve path;
+public liveness/readiness RPCs, authenticated detail/metrics scrapes, bounded
+op labels + latency histograms + guarantee/admission counters. Store-tier
+bytes, index lag, scrub/backup series, and dashboard packages remain follow-ons.
+
 Required metrics:
 
 - operation throughput and latency histograms;
@@ -1710,6 +1716,30 @@ Acceptance:
 
 - Dashboards and alerts exist for every supported deployment profile.
 - Metric cardinality and overhead are load-tested.
+
+Evidence (this cut):
+
+- `dingo-server::metrics` — `MetricsRegistry`, `MetricsSnapshot`,
+  `evaluate_health` / `HealthReport`, profiles `METRICS_PROFILE` /
+  `HEALTH_PROFILE`.
+- RPCs: `health_live` and `health_ready` (public probes, no token);
+  `health` (Read, detailed); `metrics` (Admin scrape).
+- Readiness fails when draining, store not open, or replication is claimed
+  without Raft attached; public probes still answer during drain.
+- Bounded labels: fixed known-op set + `other` overflow; fixed latency
+  buckets; no collection/key/token labels.
+- Counters: per-op total/ok/err + latency histogram; guarantee miss /
+  committed; connection reject; admission rate/auth/expensive mirrored on
+  scrape.
+- Tests: `metrics::tests`, `stage_def_061_metrics_health`.
+
+Remaining (out of this cut):
+
+- Store/media gauges (active/sealed/tier bytes, holes, scrub age).
+- Index lag, cache hit ratio, query amplification series.
+- Partition/leader/quorum/replica/repair/rebalance gauges from cluster.
+- Prometheus/OpenMetrics text exposition and example dashboards/alerts.
+- Cardinality + overhead load tests under high RPS.
 
 ### DEF-062 — Implement distributed tracing
 
@@ -2109,7 +2139,9 @@ DingoDB may be called production-ready only when all applicable gates pass.
       findings.
 - [ ] Fuzzing covers all untrusted parsers.
 - [x] Secrets and payloads are absent from **serve** structured logs by default
-      (DEF-060; metrics still DEF-061; client logs follow-on).
+      (DEF-060; client logs follow-on).
+- [x] Process metrics + liveness/readiness/detail health RPCs on serve
+      (DEF-061 cut; store/cluster gauges + dashboards follow-on).
 
 ### 16.5 Operational gates
 

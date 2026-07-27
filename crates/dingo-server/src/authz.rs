@@ -133,9 +133,7 @@ impl PrivilegeSet {
     /// Operator: DBA + salvage + tier moves (not purge / force-reconfig).
     pub const fn operator() -> Self {
         Self {
-            bits: Self::dba().bits
-                | (Privilege::Salvage as u32)
-                | (Privilege::TierMove as u32),
+            bits: Self::dba().bits | (Privilege::Salvage as u32) | (Privilege::TierMove as u32),
         }
     }
 
@@ -229,7 +227,12 @@ impl AuthzPolicy {
     }
 
     /// Register a principal. Token must be non-empty; id is bounded and sanitized.
-    pub fn with_principal(mut self, id: impl Into<String>, token: impl Into<String>, privileges: PrivilegeSet) -> Result<Self, Error> {
+    pub fn with_principal(
+        mut self,
+        id: impl Into<String>,
+        token: impl Into<String>,
+        privileges: PrivilegeSet,
+    ) -> Result<Self, Error> {
         let id = sanitize_label(&id.into(), MAX_PRINCIPAL_ID_LEN)?;
         let token = token.into();
         if token.is_empty() {
@@ -283,9 +286,7 @@ impl AuthzPolicy {
         }
         let presented = presented.unwrap_or("");
         if presented.is_empty() {
-            return Err(Error::AuthenticationFailed(
-                "missing auth token".into(),
-            ));
+            return Err(Error::AuthenticationFailed("missing auth token".into()));
         }
         // Constant-time scan: always compare against every principal.
         let mut matched: Option<usize> = None;
@@ -330,17 +331,22 @@ pub struct OpRequirement {
 pub fn requirement_for_op(op: &str) -> OpRequirement {
     match op {
         // Unauthenticated health is intentional; still audited lightly.
-        "ping" => OpRequirement {
+        // `health_live` / `health_ready` are public probes (DEF-061): when auth
+        // is configured they still authenticate if a token is presented, but
+        // the serve path admits them without a token for orchestrator probes.
+        "ping" | "health_live" | "health_ready" => OpRequirement {
             privilege: Privilege::Read,
             confirm: None,
             audit_always: false,
         },
         "store_info" | "directory" | "list_collections" | "list_keys" | "get" | "get_bytes"
-        | "scan_json" | "find" | "history" | "index_list" | "get_payload" => OpRequirement {
-            privilege: Privilege::Read,
-            confirm: None,
-            audit_always: false,
-        },
+        | "scan_json" | "find" | "history" | "index_list" | "get_payload" | "health" => {
+            OpRequirement {
+                privilege: Privilege::Read,
+                confirm: None,
+                audit_always: false,
+            }
+        }
         "put" | "put_bytes" | "delete" => OpRequirement {
             privilege: Privilege::Write,
             confirm: None,
@@ -348,19 +354,21 @@ pub fn requirement_for_op(op: &str) -> OpRequirement {
         },
         // Control-plane Raft (DEF-036): peer RPCs use the shared cluster token
         // (superuser by default). Not a data-plane write path.
-        "raft_request_vote" | "raft_append_entries" | "raft_install_snapshot" | "raft_read_index" => {
-            OpRequirement {
-                privilege: Privilege::Admin,
-                confirm: None,
-                audit_always: true,
-            }
-        }
+        "raft_request_vote"
+        | "raft_append_entries"
+        | "raft_install_snapshot"
+        | "raft_read_index" => OpRequirement {
+            privilege: Privilege::Admin,
+            confirm: None,
+            audit_always: true,
+        },
         "index_create" | "index_drop" | "index_rebuild" => OpRequirement {
             privilege: Privilege::IndexAdmin,
             confirm: None,
             audit_always: true,
         },
-        "admin_stats" => OpRequirement {
+        // Metrics scrape is admin-scoped (DEF-061); health detail is Read above.
+        "admin_stats" | "metrics" => OpRequirement {
             privilege: Privilege::Admin,
             confirm: None,
             audit_always: true,
@@ -611,7 +619,13 @@ pub fn check_rpc(
                     Error::AuthenticationFailed(m) => m.as_str(),
                     _ => "authentication failed",
                 };
-                log.append("unauthenticated", op, collection, AuditDecision::Deny, Some(reason));
+                log.append(
+                    "unauthenticated",
+                    op,
+                    collection,
+                    AuditDecision::Deny,
+                    Some(reason),
+                );
             }
             return Err(e);
         }

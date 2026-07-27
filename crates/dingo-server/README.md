@@ -72,7 +72,7 @@ let mut db = Dingo::connect_with(
 |-----|------|
 | `serve_store` / `serve_store_with` | Single-node TCP serve over a store directory |
 | `serve_cluster_node` | Multi-node node process (experimental network cluster) |
-| `ServeOptions` | Auth token, TLS, bind policy, admission, Raft, logger, shutdown |
+| `ServeOptions` | Auth token, TLS, bind policy, admission, Raft, logger, metrics, shutdown |
 | `handle_connection` / `handle_connection_with` | Per-connection RPC dispatch |
 | `ServerRuntime` / `ServerLimits` | Connection caps, idle timeout, drain |
 | `AdmissionController` / `AdmissionLimits` | Rate limits, auth lockout, replay window |
@@ -80,6 +80,7 @@ let mut db = Dingo::connect_with(
 | `validate_bind` / `ServeStartupReport` | Loopback-default bind policy (DEF-002) |
 | `load_and_validate` / `DingoConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `dingo-config-v1`) |
 | `Logger` / `LogEvent` / `MemorySink` / `log_rpc_complete` | Structured NDJSON process logs (DEF-060, `dingo-log-v1`) |
+| `MetricsRegistry` / `HealthReport` / `evaluate_health` | Process metrics + health probes (DEF-061) |
 | `RaftServerState` / `TcpRaftTransport` | Network Raft RPC (vote / append / snapshot / read-index) |
 
 ## Process configuration (DEF-054)
@@ -124,6 +125,31 @@ let sink = Arc::new(MemorySink::new(64));
 let log = Logger::with_sink(sink).store("/data/store").mode("serve").shared();
 let opts = ServeOptions::new().logger(log);
 // Production: omit `.logger(...)` — serve installs stderr NDJSON automatically.
+# let _ = opts;
+```
+
+## Metrics and health (DEF-061)
+
+Serve installs an in-process `MetricsRegistry` (`profile: dingo-metrics-v1`)
+and answers:
+
+| RPC | Auth | Role |
+|-----|------|------|
+| `health_live` | public | Liveness — process is handling RPCs |
+| `health_ready` | public | Readiness — fails when draining, store unavailable, or replication claimed without Raft |
+| `health` | Read | Detailed operator health (`dingo-health-v1`) |
+| `metrics` | Admin | Bounded scrape: per-op counters + latency histograms, guarantee/admission edges |
+
+Op labels are a fixed known set plus `other` (no collection/key/token labels).
+Public probes work without a token even when the data plane requires auth.
+
+```rust
+use dingo_server::{MetricsRegistry, ServeOptions};
+use std::sync::Arc;
+
+let metrics = MetricsRegistry::new().shared();
+let opts = ServeOptions::new().metrics(Arc::clone(&metrics));
+// Production: omit `.metrics(...)` — serve installs a default registry.
 # let _ = opts;
 ```
 

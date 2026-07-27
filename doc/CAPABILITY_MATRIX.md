@@ -67,6 +67,8 @@ with the acceptance evidence expected before a stronger label.
 | `MIGRATE_PROFILE` | `dingo-migrate-v1` | Phased format migration + version matrix (DEF-052) |
 | `CONFIG_PROFILE` | `dingo-config-v1` | Versioned process config + validate-before-serve (DEF-054) |
 | `LOG_PROFILE` | `dingo-log-v1` | Structured NDJSON process logs + correlation fields (DEF-060) |
+| `METRICS_PROFILE` | `dingo-metrics-v1` | Bounded process metrics scrape (`metrics` RPC) (DEF-061) |
+| `HEALTH_PROFILE` | `dingo-health-v1` | Liveness / readiness / detail health RPCs (DEF-061) |
 
 ## Raft persistence (DEF-035)
 

@@ -163,7 +163,9 @@ format migration into a new store without rewriting the source (DEF-052).
 `dingo config validate|show` checks versioned `dingo-config-v1` documents;
 `dingo serve --config` applies them before bind (DEF-054). Serve paths emit
 structured `dingo-log-v1` NDJSON (DEF-060) with correlation fields and no
-payloads/secrets by default.
+payloads/secrets by default. Serve also exposes `dingo-health-v1` probes
+(`health_live` / `health_ready` / `health`) and a bounded `dingo-metrics-v1`
+scrape (`metrics` RPC) for operators (DEF-061).
 
 [SDA](SDA_SPEC.md), the Structured Data Algebra, provides deterministic
 filtering and transformation over both normal structured values and recovered
