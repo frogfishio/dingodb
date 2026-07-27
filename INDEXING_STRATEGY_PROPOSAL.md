@@ -90,3 +90,123 @@ crates/dingo-store/src/hydra/
 ```
 
 Tests: unit tests under `hydra::*` and integration `tests/hydra_segment_index.rs`.
+
+
+
+# FINAL DESIGN
+
+Yes: build a **workload-compiled storage layer**, not one universal SSTable format.
+
+## “Chimera” data storage
+
+### 1. Three physical value classes
+
+At write time, classify by size and access pattern:
+
+```text
+tiny values       → inline with Hydra entry
+medium values     → packed into immutable micro-pages
+large values      → append-only extent/value log
+```
+
+Do not send every value through the same layout. Key/value separation reduces compaction write amplification, but indiscriminate separation hurts tiny-value locality. WiscKey validates the basic SSD-oriented separation model. 
+
+### 2. Direct-addressable micro-pages
+
+Replace traditional 4–16 KiB SSTable blocks with sealed **64–256 KiB containers** containing independently readable records:
+
+```text
+container header
+dictionary
+offset table
+individually compressed values
+checksums
+```
+
+Hydra stores:
+
+```text
+container_id + slot + generation
+```
+
+A point read fetches only the record’s required aligned region—not a whole compressed block.
+
+### 3. Temperature-and-lifetime placement
+
+Compile sealed data into physical classes:
+
+```text
+hot/random       → replicated or cache-aligned NVMe extents
+warm/mixed       → packed micro-pages
+cold/range-heavy → key-ordered compressed runs
+short-lived      → dedicated append zones
+long-lived       → separate zones/extents
+```
+
+Grouping objects with similar lifetimes reduces garbage-collection copying. This becomes even more powerful on ZNS or FDP-capable SSDs, where the host controls placement instead of fighting opaque device garbage collection. Recent ZNS research reports large reductions in device-level write amplification when placement and zone management are handled carefully, although results remain hardware- and prototype-specific. 
+
+### 4. Data recompilation during GC
+
+Garbage collection becomes an optimizer:
+
+```text
+point-hot records     → dense random-read containers
+scan-hot key ranges   → key-ordered extents
+compressible families → shared trained dictionary
+cold records          → larger compressed containers
+```
+
+Hydra locator updates occur through generation-safe atomic relocation. Old extents remain readable until epoch reclamation completes.
+
+### 5. Dual physical representations
+
+For truly hot mixed workloads, allow selected values to exist twice:
+
+```text
+point-optimized copy + scan-optimized copy
+```
+
+Hydra chooses the representation based on operation type. This trades controlled space amplification for lower read amplification—the same type of explicit trade-off conventional engines already make, but at record or range granularity.
+
+### 6. Hardware-native I/O
+
+Use:
+
+- per-core registered-buffer pools;
+- batched `io_uring`;
+- fixed file descriptors;
+- direct I/O for controlled large reads/writes;
+- buffered I/O for tiny or highly cached access;
+- multiple independent queues per NVMe device;
+- NUMA-local completion processing.
+
+Do not assume `io_uring` or direct I/O is inherently faster. Select the path by size and locality.
+
+## Final architecture
+
+```text
+Hydra locator
+    ↓
+resident value
+OR inline value
+OR point container
+OR scan extent
+OR large-value log
+    ↓
+adaptive buffered/direct async I/O
+    ↓
+record-level decompression
+
+Background compiler:
+GC + relocation + reclustering
++ dictionary training
++ hot/cold migration
++ lifetime-aware placement
++ optional representation replication
+```
+
+The genuinely insane differentiator is:
+
+> **Indexes and data are both compiled independently per segment or key range from measured workload characteristics.**
+
+Traditional engines ask, “Which global storage format should we use?” Yours asks, “What physical representation is fastest for this particular data partition right now?” That could produce exceptional results—but begin with inline/value-log hybrid, micro-pages, and temperature-aware GC before adding duplicate representations or ZNS-specific placement.
