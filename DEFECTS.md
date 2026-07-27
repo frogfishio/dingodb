@@ -945,19 +945,25 @@ pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 
 Priority: P1  
 Dependencies: DEF-023 (follow-on), DEF-020, DEF-095  
-Status: **Axis A + Axis B + Axis C harness addressed and measured** (async lifecycle +
-sharded writers + multi-store multi-process testrig; 1 GiB comparative + 256 MiB
-integrity + **clean multi-store 10 GiB PASS** 2026-07-27, ~17.7k ops/s wall /
-CPU% sum ~376 with free disk) — see `doc/PARALLEL_INGEST.md` /
-`doc/BENCHMARK_DISCLOSURE.md`. Product multi-node cluster capacity remains separate.
+Status: **Axis A + Axis B + Axis C harness addressed and measured**; **product
+cluster capacity path started** (async lifecycle + sharded writers + multi-store
+testrig + `Cluster::put_many` multi-partition fan-out; 1 GiB comparative +
+256 MiB integrity + **clean multi-store 10 GiB PASS** 2026-07-27, ~17.7k ops/s
+wall / CPU% sum ~376 with free disk) — see `doc/PARALLEL_INGEST.md` /
+`doc/BENCHMARK_DISCLOSURE.md`. Network multi-process product capacity still open.
 
 **Post-measure residual (not blocking DEF-096 acceptance):** Axis B wall lift is
 modest (~7.4k → ~8.1k ops/s) because PrimaryIndex publish after `put_many` stays
 serial (process CPU% still ~1-core class). Optional follow-on: shrink that serial
-section so shard count and wall ops/s move together. Strategy order after this
-cut: gate-driven readiness + product cluster path — see
-`doc/WORK_HORIZON.md` (“Things can go faster” strategy self-check) and
-`doc/PARALLEL_INGEST.md` §10.
+section so shard count and wall ops/s move together (only with before/after
+numbers). Strategy order after this cut: gate-driven readiness + product cluster
+path — see `doc/WORK_HORIZON.md` and `doc/PARALLEL_INGEST.md` §10.
+
+**Product capacity path (S3, 2026-07-27):** `Cluster::put_many` groups items by
+virtual partition, ensures leadership once per partition, and returns honest
+per-item `ClusterWriteAck` (replica_acks / committed / leader). Tests:
+`stage_def_096_product_capacity.rs` (dev + dependable-local multi-leader
+spread). Not a substitute for multi-process OS Jepsen (DEF-041 follow-on).
 
 Problem:
 
@@ -981,11 +987,11 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
 2. **Axis B — Sharded writers (done):** N active segments by subject hash
    (`create_with_shards`); per-shard append + auto-seal; shared PrimaryIndex;
    `put_many` parallel appends; tests `stage_def_096_sharded_writers`.
-3. **Axis C — Horizontal (harness done):** testrig `--stores N` spawns N child
-   pump processes under independent store roots (`store-00`…), splits target
-   bytes, aggregates wall-clock ops/s + summed child RSS/CPU%, discloses
-   `store_count` / multi-process `writer_model`. Product multi-node remains
-   dingo-cluster partitions / leaders — capacity path, not single-node efficiency.
+3. **Axis C — Horizontal (harness done; product path started):** testrig
+   `--stores N` multi-process harness (capacity upper bound). Product path:
+   `Cluster::put_many` multi-partition batch on dingo-cluster with independent
+   partition leaders (dependable-local multi-node). Network multi-process
+   serve-cluster capacity still open.
 4. **Harness (done for Axis B + C):** testrig `--writer-shards N` creates with
    `create_with_shards`, pumps via `put_many` when N>1; `--stores N` multi-process
    capacity; discloses `concurrency` / `writer_shards` / `store_count` /
@@ -1939,6 +1945,12 @@ Acceptance:
 Priority: P0  
 Dependencies: DEF-032 through DEF-034
 
+Status: **addressed (threat-model first cut)** (2026-07-27) — in-tree
+`doc/THREAT_MODEL.md` (`dingo-threat-model-v0` draft) covering assets, trust
+boundaries, adversaries, hostile-input surfaces, and open risks. Independent
+security audit, vulnerability disclosure policy, and full fuzz coverage remain
+required for acceptance.
+
 Work:
 
 - Threat-model local files, RPC, cluster membership, salvage, archive media,
@@ -1951,6 +1963,17 @@ Acceptance:
 
 - No unresolved critical/high security finding remains at release.
 - Fuzz targets cover every untrusted decoder and protocol parser.
+
+Evidence (this cut):
+
+- `doc/THREAT_MODEL.md` — structured first-cut model aligned with DEF-091
+  surfaces and DEF-032–034 controls already in tree.
+
+Remaining (out of this cut):
+
+- Independent external audit + remediation of critical/high findings.
+- Published vulnerability disclosure and supported-version policy.
+- Full continuous fuzz coverage of every untrusted decoder (DEF-091).
 
 ---
 
@@ -2161,6 +2184,11 @@ Acceptance:
 
 Priority: P1
 
+Status: **addressed** (2026-07-27) — required PR/push CI enforces fmt, strict
+clippy, clean-tree, build/test all targets, docs, release-content package lists,
+MSRV 1.88, OS matrix (ubuntu + macos), and cargo-deny; local mirror
+`scripts/quality.sh`; expensive suites on `nightly.yml`.
+
 Work:
 
 - Fix current strict clippy failures in `dingo-format`.
@@ -2180,9 +2208,31 @@ Acceptance:
 
 - Main cannot merge with a failed required gate.
 
+Evidence:
+
+- `.github/workflows/ci.yml` — `quality` (ubuntu/macos), `msrv`, `audit` jobs.
+- `.github/workflows/nightly.yml` — corruption corpus, crash matrix, benches.
+- `scripts/quality.sh` — local full bar including DEF-091 property tests.
+- `deny.toml` — advisories / licenses / bans for `cargo deny check`.
+- Workspace `rust-version = "1.88.0"` kept in sync with MSRV job.
+
+Remaining (out of this cut):
+
+- Branch-protection proof that all required checks are mandatory on the default
+  branch (repo settings; not in-tree).
+- Windows matrix (optional; exclusive-writer Windows lock path is a separate
+  DEF-020 follow-on).
+
 ### DEF-091 — Add property testing and fuzzing
 
 Priority: P0
+
+Status: **addressed (dingo-format first cut)** (2026-07-27) — proptest property
+tests for frame encode/decode roundtrip, adversarial no-panic decode, CBOR
+envelope validate, forward/reverse salvage scan + embedded-frame recovery;
+`fuzz/` cargo-fuzz targets (`decode_frame`, `cbor_envelope`, `scan_forward`,
+`scan_reverse`); nightly 30s smoke job; permanent corpus policy documented.
+Broader surfaces (SDA, RPC, store decoders, continuous service) remain.
 
 Targets:
 
@@ -2201,6 +2251,21 @@ Acceptance:
 
 - Fuzzers run continuously or on a scheduled service.
 - Every discovered crash receives a minimized permanent regression corpus.
+
+Evidence (this cut):
+
+- `crates/dingo-format/tests/stage_def_091_properties.rs` — proptest in PR CI.
+- `fuzz/` — cargo-fuzz package (not a workspace member) + README corpus policy.
+- `.github/workflows/nightly.yml` job `fuzz_smoke` — 30s per target.
+- `scripts/quality.sh` runs the property test binary.
+- Hostile CBOR map/array length bound + regression
+  `hostile_map_len_does_not_allocate_or_panic` (OOM class found by proptest).
+
+Remaining (out of this cut):
+
+- Fuzz SDA, RPC/URL, store index/catalog/checkpoint, salvage/migration manifests.
+- Continuous fuzzing service (OSS-Fuzz or equivalent) beyond nightly smoke.
+- Seed corpora and minimized regression fixtures for any future crashes.
 
 ### DEF-092 — Add coverage, sanitizers, and model checking
 
@@ -2313,8 +2378,9 @@ DingoDB may be called production-ready only when all applicable gates pass.
 - [x] Protocol admission control bounds rate, auth failures, connection churn,
       expensive ops, and operation-id replay (DEF-034).
 - [ ] Threat model and independent audit have no unresolved critical/high
-      findings.
-- [ ] Fuzzing covers all untrusted parsers.
+      findings. *(threat-model first cut: `doc/THREAT_MODEL.md`; audit open)*
+- [ ] Fuzzing covers all untrusted parsers. *(format first cut: DEF-091 properties
+      + cargo-fuzz smoke; remaining surfaces open)*
 - [x] Secrets and payloads are absent from **serve** structured logs by default
       (DEF-060; client logs follow-on).
 - [x] Process metrics + liveness/readiness/detail health RPCs on serve

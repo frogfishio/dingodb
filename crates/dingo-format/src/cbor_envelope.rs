@@ -165,7 +165,9 @@ impl<'a> Cursor<'a> {
         }
         let n = self.read_map_len()?;
         let mut prev_key_enc: Option<Vec<u8>> = None;
-        let mut seen: Vec<u64> = Vec::with_capacity(n);
+        // Prefer push growth over with_capacity(n) so a bug in bound checks
+        // cannot allocate multi-GiB from a hostile length (DEF-091).
+        let mut seen: Vec<u64> = Vec::new();
         for _ in 0..n {
             let key_start = self.pos;
             let key = self.read_uint()?;
@@ -190,7 +192,23 @@ impl<'a> Cursor<'a> {
         if major != 5 {
             return Err(CborEnvelopeError::NotMap);
         }
-        Ok(arg as usize)
+        // Each map entry needs ≥1 byte key + ≥1 byte value. Bound before
+        // with_capacity / iteration so adversarial lengths cannot OOM (DEF-091).
+        self.bound_collection_len(arg, 2)
+    }
+
+    /// Cap collection length by remaining bytes (hostile-input safety).
+    fn bound_collection_len(
+        &self,
+        arg: u64,
+        min_item_bytes: usize,
+    ) -> Result<usize, CborEnvelopeError> {
+        let n = usize::try_from(arg).map_err(|_| CborEnvelopeError::Truncated)?;
+        let max_items = self.remaining() / min_item_bytes.max(1);
+        if n > max_items {
+            return Err(CborEnvelopeError::Truncated);
+        }
+        Ok(n)
     }
 
     fn read_uint(&mut self) -> Result<u64, CborEnvelopeError> {
@@ -221,7 +239,7 @@ impl<'a> Cursor<'a> {
             }
             4 => {
                 let n = self.read_array_len()?;
-                let mut items = Vec::with_capacity(n);
+                let mut items = Vec::new();
                 for _ in 0..n {
                     items.push(self.read_value()?);
                 }
@@ -229,7 +247,7 @@ impl<'a> Cursor<'a> {
             }
             5 => {
                 let n = self.read_map_len()?;
-                let mut items = Vec::with_capacity(n);
+                let mut items = Vec::new();
                 for _ in 0..n {
                     let k = self.read_uint()?;
                     let v = self.read_value()?;
@@ -270,7 +288,7 @@ impl<'a> Cursor<'a> {
                 // Nested maps obey the same deterministic rules as the top level.
                 let n = self.read_map_len()?;
                 let mut prev_key_enc: Option<Vec<u8>> = None;
-                let mut seen: Vec<u64> = Vec::with_capacity(n);
+                let mut seen: Vec<u64> = Vec::new();
                 for _ in 0..n {
                     let key_start = self.pos;
                     let key = self.read_uint()?;
@@ -322,7 +340,8 @@ impl<'a> Cursor<'a> {
         if major != 4 {
             return Err(CborEnvelopeError::Unsupported);
         }
-        Ok(arg as usize)
+        // Each array element needs ≥1 byte.
+        self.bound_collection_len(arg, 1)
     }
 
     fn read_bstr(&mut self) -> Result<&'a [u8], CborEnvelopeError> {
@@ -330,7 +349,8 @@ impl<'a> Cursor<'a> {
         if major != 2 {
             return Err(CborEnvelopeError::Unsupported);
         }
-        self.take(arg as usize)
+        let n = usize::try_from(arg).map_err(|_| CborEnvelopeError::Truncated)?;
+        self.take(n)
     }
 
     fn read_tstr(&mut self) -> Result<&'a str, CborEnvelopeError> {
@@ -338,7 +358,8 @@ impl<'a> Cursor<'a> {
         if major != 3 {
             return Err(CborEnvelopeError::Unsupported);
         }
-        let raw = self.take(arg as usize)?;
+        let n = usize::try_from(arg).map_err(|_| CborEnvelopeError::Truncated)?;
+        let raw = self.take(n)?;
         std::str::from_utf8(raw).map_err(|_| CborEnvelopeError::InvalidUtf8)
     }
 
@@ -546,6 +567,25 @@ mod tests {
         assert_eq!(
             validate_deterministic_cbor_envelope(&bad),
             Err(CborEnvelopeError::TrailingBytes)
+        );
+    }
+
+    #[test]
+    fn hostile_map_len_does_not_allocate_or_panic() {
+        // DEF-091: definite map claiming 2^64-1 entries (CBOR 0xbb + u64::MAX)
+        // must fail closed without multi-GiB with_capacity / hang.
+        let mut bad = vec![0xbb];
+        bad.extend_from_slice(&u64::MAX.to_be_bytes());
+        assert_eq!(
+            validate_deterministic_cbor_envelope(&bad),
+            Err(CborEnvelopeError::Truncated)
+        );
+        // Same class for nested array length inside a 1-entry map value.
+        let mut nested = vec![0xa1, 0x01, 0x9b]; // map{1: array(u64::MAX)}
+        nested.extend_from_slice(&u64::MAX.to_be_bytes());
+        assert_eq!(
+            validate_deterministic_cbor_envelope(&nested),
+            Err(CborEnvelopeError::Truncated)
         );
     }
 }

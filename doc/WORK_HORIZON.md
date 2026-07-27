@@ -50,15 +50,15 @@ partially cut:
 |----|----------------------|
 | **DEF-041 follow-ons** | Multi-process Jepsen-style partition histories; long soak / rolling restart. In-process sim is not production evidence. |
 | **DEF-053** | Wire major-1 freeze after soak, fuzz, external review. Still `1.0-draft`. |
-| **DEF-063** | Threat model + independent security review (P0). |
-| **DEF-091** | Continuous fuzz of every untrusted parser (P0). |
+| **DEF-063** | Threat model first cut landed; **independent audit** + disclosure policy still required (P0). |
+| **DEF-091** | Format first cut landed (proptest + cargo-fuzz); **continuous service + remaining parsers** still open (P0). |
 | **§16.1–16.3** | Most data-safety and distributed gates remain unchecked. |
 
 ### Product completeness (real surfaces, not nits)
 
 | ID | Gap |
 |----|-----|
-| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B + C harness landed** (async lifecycle + `create_with_shards` / `put_many` + testrig `--stores N` multi-process). Product multi-node cluster capacity remains separate. |
+| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B + C harness landed** + **product `Cluster::put_many` multi-partition fan-out** (`stage_def_096_product_capacity`). Network multi-process product capacity still open. |
 | **DEF-039 / 040 network** | Anti-entropy repair and query paging still in-process only. |
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
@@ -68,7 +68,9 @@ partially cut:
 
 | ID | Gap |
 |----|-----|
-| **DEF-090** | CI quality bar (fmt/clippy/deny/doc/package) — partially landing (`scripts/quality.sh`, `deny.toml` may still be uncommitted). |
+| **DEF-090** | **Addressed** — CI quality bar (fmt/clippy/deny/doc/package/MSRV/OS matrix) + `scripts/quality.sh`. |
+| **DEF-091** | **Format first cut** — proptest + cargo-fuzz targets for frame/scan/cbor; broader surfaces + continuous service remain. |
+| **DEF-063** | **Threat-model first cut** — `doc/THREAT_MODEL.md`; independent audit + disclosure policy remain. |
 | **DEF-092–094** | Coverage/sanitizers/models; disclosed benchmarks; release + incident process. |
 | **DEF-062** | Distributed tracing (P2; only after metrics/logs are load-bearing). |
 

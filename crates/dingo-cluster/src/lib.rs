@@ -28,6 +28,8 @@
 //!   `dingo-anti-entropy-v1`)
 //! - Deterministic verification harness: seeded faults, history, linearizability
 //!   ([`sim`]; DEF-041 / `dingo-cluster-verify-v1`)
+//! - Multi-partition batch put ([`Cluster::put_many`]; product capacity path /
+//!   WORK_HORIZON S3 — independent partition leaders, honest acks)
 //! - Node-local salvage without cluster software
 //! - Network advertise path: [`endpoints`] + `dingo serve-cluster`
 //!
@@ -87,8 +89,8 @@ pub use raft::{
     RaftPeer, RaftRole,
 };
 pub use raft_persist::{
-    snapshot_meta_for, ConsensusEvidenceClass, HardState, MembershipState, RaftPeerStore,
-    Snapshot, SnapshotMeta, RAFT_PERSIST_PROFILE,
+    snapshot_meta_for, ConsensusEvidenceClass, HardState, MembershipState, RaftPeerStore, Snapshot,
+    SnapshotMeta, RAFT_PERSIST_PROFILE,
 };
 pub use raft_rpc::{
     AppendEntriesRequest, AppendEntriesResponse, InstallSnapshotRequest, InstallSnapshotResponse,
@@ -101,16 +103,16 @@ pub use rebalance::{
     RebalanceJob, RebalanceJobsFile, RebalancePhase, RebalanceReport, REBALANCE_CONTROL_PROFILE,
     REBALANCE_JOBS_FILE,
 };
-pub use sim::{
-    check_convergent_preserved, check_partition_linearizable, run_conformance_matrix, CaseReport,
-    ClientOp, ConformanceCase, ConvergentVariant, FaultModel, HistoryEntry, LinError, OpOutcome,
-    SeedRng, SimConfig, SimEvent, SimWorld, VERIFY_PROFILE,
-};
 pub use repair::{
     hash_hex, select_repair_source, ClusterInventory, NodeSubjectView, PartitionInventory,
     RepairActionKind, RepairAuditEntry, RepairAuditFile, RepairOptions, RepairReport,
     ReplicaObservation, SourceSelectError, SubjectInventory, ANTI_ENTROPY_PROFILE,
     REPAIR_AUDIT_FILE,
+};
+pub use sim::{
+    check_convergent_preserved, check_partition_linearizable, run_conformance_matrix, CaseReport,
+    ClientOp, ConformanceCase, ConvergentVariant, FaultModel, HistoryEntry, LinError, OpOutcome,
+    SeedRng, SimConfig, SimEvent, SimWorld, VERIFY_PROFILE,
 };
 
 /// Re-export durability modes used on cluster acks.

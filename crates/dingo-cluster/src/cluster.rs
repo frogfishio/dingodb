@@ -426,13 +426,13 @@ impl Cluster {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<(), ClusterError> {
-        let store = self
-            .nodes
-            .get_mut(&node.index())
-            .ok_or(ClusterError::PartitionUnavailable {
-                partition: 0,
-                reason: "node offline for local put",
-            })?;
+        let store =
+            self.nodes
+                .get_mut(&node.index())
+                .ok_or(ClusterError::PartitionUnavailable {
+                    partition: 0,
+                    reason: "node offline for local put",
+                })?;
         store.put(subject, value, mode)?;
         Ok(())
     }
@@ -444,13 +444,13 @@ impl Cluster {
         subject: &str,
         mode: DurabilityMode,
     ) -> Result<(), ClusterError> {
-        let store = self
-            .nodes
-            .get_mut(&node.index())
-            .ok_or(ClusterError::PartitionUnavailable {
-                partition: 0,
-                reason: "node offline for local delete",
-            })?;
+        let store =
+            self.nodes
+                .get_mut(&node.index())
+                .ok_or(ClusterError::PartitionUnavailable {
+                    partition: 0,
+                    reason: "node offline for local delete",
+                })?;
         store.delete(subject, mode)?;
         Ok(())
     }
@@ -520,8 +520,12 @@ impl Cluster {
     pub fn health(&self) -> ClusterHealth {
         let online = self.online_nodes();
         let offline: Vec<NodeId> = self.offline.iter().copied().map(NodeId::new).collect();
-        let missing_store_paths: Vec<NodeId> =
-            self.missing_nodes.iter().copied().map(NodeId::new).collect();
+        let missing_store_paths: Vec<NodeId> = self
+            .missing_nodes
+            .iter()
+            .copied()
+            .map(NodeId::new)
+            .collect();
         let mut rebalance_phases: Vec<(PartitionId, RebalancePhase)> = self
             .rebalance_jobs
             .values()
@@ -558,30 +562,40 @@ impl Cluster {
     }
 
     /// Ensure a live Raft leader for `partition`, updating the placement directory.
+    ///
+    /// When no leader is online yet, prefers the placement-directory primary
+    /// (`partition_id % node_count` under balanced layout) so multi-node clusters
+    /// spread leadership for product capacity (WORK_HORIZON S3). Sticky leadership
+    /// still wins if a live leader already holds the partition.
     pub fn ensure_partition_leader(
         &mut self,
         partition: PartitionId,
     ) -> Result<(NodeId, Term), ClusterError> {
         let online = self.online_nodes();
+        // Placement primary before election (balanced map spreads by partition id).
+        let preferred = self.directory.get(partition).map(|a| a.leader);
         let group = self
             .raft
             .get_mut(&partition.get())
             .ok_or(ClusterError::NoLeader(partition.get()))?;
 
-        let (leader, term) = group.ensure_leader(&online).map_err(|e| match e {
-            ElectError::NoQuorum { .. }
-            | ElectError::NoOnlineVoters
-            | ElectError::CandidateOffline
-            | ElectError::PersistFailed => ClusterError::PartitionUnavailable {
-                partition: partition.get(),
-                reason: "no leader elected (quorum unavailable)",
-            },
-            ElectError::NotAVoter => ClusterError::NoLeader(partition.get()),
-            ElectError::HigherTerm(_) => ClusterError::PartitionUnavailable {
-                partition: partition.get(),
-                reason: "election observed higher term",
-            },
-        })?;
+        let (leader, term) =
+            group
+                .ensure_leader_preferring(&online, preferred)
+                .map_err(|e| match e {
+                    ElectError::NoQuorum { .. }
+                    | ElectError::NoOnlineVoters
+                    | ElectError::CandidateOffline
+                    | ElectError::PersistFailed => ClusterError::PartitionUnavailable {
+                        partition: partition.get(),
+                        reason: "no leader elected (quorum unavailable)",
+                    },
+                    ElectError::NotAVoter => ClusterError::NoLeader(partition.get()),
+                    ElectError::HigherTerm(_) => ClusterError::PartitionUnavailable {
+                        partition: partition.get(),
+                        reason: "election observed higher term",
+                    },
+                })?;
 
         self.directory.set_leader(partition, leader, term);
         Ok((leader, term))
@@ -599,6 +613,60 @@ impl Cluster {
         mode: DurabilityMode,
     ) -> Result<ClusterWriteAck, ClusterError> {
         self.write_event(subject, value, mode, false)
+    }
+
+    /// Batch put that **groups by virtual partition** then writes each group.
+    ///
+    /// Product capacity path (WORK_HORIZON S3): multi-partition ingest fans out
+    /// to independent partition leaders / node stores rather than treating the
+    /// testrig `--stores N` harness as multi-tenant product sharding. Each item
+    /// still receives a full [`ClusterWriteAck`] with honest
+    /// `replica_acks` / `committed` / `leader` fields (CLUSTER_SPEC §11.2).
+    ///
+    /// Order of acks matches `items`. Within a partition, writes are sequential
+    /// (Raft log order). Across partitions, groups are processed in ascending
+    /// partition id so the batch is deterministic under a fixed partition map.
+    ///
+    /// Empty `items` returns an empty ack list. On the first error the batch
+    /// stops; prior acks in the return value are not produced (fail-closed).
+    pub fn put_many(
+        &mut self,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<ClusterWriteAck>, ClusterError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Group item indices by partition for deterministic multi-leader fan-out.
+        let mut by_partition: HashMap<u32, Vec<usize>> = HashMap::new();
+        for (i, (subject, _)) in items.iter().enumerate() {
+            let p = self.partition_for_subject(subject).get();
+            by_partition.entry(p).or_default().push(i);
+        }
+
+        let mut partition_order: Vec<u32> = by_partition.keys().copied().collect();
+        partition_order.sort_unstable();
+
+        let mut slots: Vec<Option<ClusterWriteAck>> = (0..items.len()).map(|_| None).collect();
+        for p in partition_order {
+            let indices = by_partition.get(&p).expect("key from map");
+            // Ensure leadership once per partition group (product path: one
+            // election cost per partition, not per key).
+            let _ = self.ensure_partition_leader(PartitionId::new(p))?;
+            for &i in indices {
+                let (subject, value) = items[i];
+                let ack = self.write_event(subject, value, mode, false)?;
+                debug_assert_eq!(ack.partition.get(), p);
+                slots[i] = Some(ack);
+            }
+        }
+
+        let mut out = Vec::with_capacity(items.len());
+        for slot in slots {
+            out.push(slot.ok_or(ClusterError::CorruptMeta("put_many missing ack slot"))?);
+        }
+        Ok(out)
     }
 
     /// Delete a subject (tombstone) with the same routing/replication path.
@@ -1335,8 +1403,7 @@ impl Cluster {
                     if remaining_limit == Some(0) {
                         has_more = false;
                     } else {
-                        let remaining_max_docs =
-                            max_docs.map(|m| m.saturating_sub(docs_scanned));
+                        let remaining_max_docs = max_docs.map(|m| m.saturating_sub(docs_scanned));
                         let next = QueryContinuation {
                             query_id: query_id.clone(),
                             after_subject: last.0.clone(),

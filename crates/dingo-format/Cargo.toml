@@ -16,3 +16,7 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 blake3.workspace = true
 crc32c.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+# DEF-091 — property tests for untrusted frame / envelope / scan surfaces.
+proptest = "1.6"

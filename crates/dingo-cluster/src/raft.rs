@@ -379,12 +379,8 @@ impl PartitionRaft {
         }
 
         if let Some(store) = self.stores.get(&node.index()) {
-            let meta = crate::raft_persist::snapshot_meta_for(
-                last_included_index,
-                term,
-                blob,
-                note,
-            );
+            let meta =
+                crate::raft_persist::snapshot_meta_for(last_included_index, term, blob, note);
             let disk_remaining: Vec<LogEntry> = remaining
                 .into_iter()
                 .filter(|e| e.command.subject() != "__dingo_snapshot_base__")
@@ -737,6 +733,19 @@ impl PartitionRaft {
     /// order: highest last-log-term, then highest last-log-index, then lowest
     /// node id (deterministic for tests).
     pub fn ensure_leader(&mut self, online: &[NodeId]) -> Result<(NodeId, Term), ElectError> {
+        self.ensure_leader_preferring(online, None)
+    }
+
+    /// Like [`Self::ensure_leader`], but when logs are equally up-to-date prefer
+    /// `preferred` (product capacity: balanced partition leadership across nodes).
+    ///
+    /// Sticky leadership still wins: an existing online leader is retained even
+    /// if it is not the preferred placement primary.
+    pub fn ensure_leader_preferring(
+        &mut self,
+        online: &[NodeId],
+        preferred: Option<NodeId>,
+    ) -> Result<(NodeId, Term), ElectError> {
         if let Some((leader, term)) = self.current_leader() {
             if online.contains(&leader) {
                 return Ok((leader, term));
@@ -751,7 +760,8 @@ impl PartitionRaft {
             return Err(ElectError::NoOnlineVoters);
         }
 
-        // Rank candidates by log up-to-date-ness, then node id.
+        // Rank candidates by log up-to-date-ness, then preferred placement, then
+        // lowest node id (deterministic for tests).
         let mut candidates: Vec<NodeId> = online
             .iter()
             .copied()
@@ -760,6 +770,7 @@ impl PartitionRaft {
         if candidates.is_empty() {
             return Err(ElectError::NoOnlineVoters);
         }
+        let preferred_idx = preferred.map(|n| n.index());
         candidates.sort_by(|a, b| {
             let pa = self.peers.get(&a.index()).unwrap();
             let pb = self.peers.get(&b.index()).unwrap();
@@ -771,7 +782,12 @@ impl PartitionRaft {
                 std::cmp::Ordering::Equal => {}
                 other => return other,
             }
-            a.index().cmp(&b.index())
+            // Prefer the placement primary when logs are equal (WORK_HORIZON S3).
+            match (preferred_idx, a.index(), b.index()) {
+                (Some(p), ai, bi) if ai == p && bi != p => std::cmp::Ordering::Less,
+                (Some(p), ai, bi) if bi == p && ai != p => std::cmp::Ordering::Greater,
+                _ => a.index().cmp(&b.index()),
+            }
         });
 
         let mut last_err = ElectError::NoQuorum {

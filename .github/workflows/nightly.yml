@@ -63,3 +63,32 @@ jobs:
 
       - name: Release content (DEF-003)
         run: ./scripts/release_content.sh
+
+  # DEF-091 — short scheduled fuzz smoke. Property tests already run in the
+  # main nightly + PR quality job; this job exercises cargo-fuzz targets when
+  # the toolchain is available. Failures are release-blocking when scheduled.
+  fuzz_smoke:
+    name: DEF-091 fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nightly + cargo-fuzz
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "fuzz -> target"
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Fuzz smoke (30s per target)
+        working-directory: fuzz
+        run: |
+          set -euo pipefail
+          for t in decode_frame cbor_envelope scan_forward scan_reverse; do
+            echo "== fuzz $t =="
+            cargo +nightly fuzz run "$t" -- -max_total_time=30 -timeout=5
+          done

@@ -18,6 +18,12 @@ target
 .tinker/
 .DS_Store
 
+# cargo-fuzz artifacts (DEF-091); keep checked-in seed corpora if added under
+# fuzz/corpus/ intentionally.
+fuzz/target/
+fuzz/artifacts/
+fuzz/coverage/
+
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
