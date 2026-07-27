@@ -131,6 +131,20 @@ dingo --json-out doctor ./app.dingo   # stable machine-readable output
 
 Auth token for serve: `--token` or environment variable `DINGO_TOKEN`.
 
+### Configuration (DEF-054)
+
+```sh
+# Validate a versioned dingo-config-v1 document before deploy
+dingo config validate ./dingo.json --mode serve
+dingo --json-out config show ./dingo.json --mode serve
+
+# Apply config at serve time (CLI flags still override the file)
+dingo serve ./app.dingo --config ./dingo.json --bind 127.0.0.1:7434
+```
+
+Secrets belong in the environment or secret files (`serve.token_env`,
+`serve.token_secret_ref` as `env:NAME` / `file:PATH`) — never inline in JSON.
+
 ## Guarantees
 
 | Command / policy | Guarantee |
@@ -138,6 +152,8 @@ Auth token for serve: `--token` or environment variable `DINGO_TOKEN`.
 | `doctor` | **Read-only** — no repairs, compact, or catalog writes |
 | `salvage` | Never mutates the **source**; copies verified frames + recovery manifest |
 | `export-live` | Materialises **current live state** only (new lineage) |
+| `config validate` | Fails on schema errors and unsafe combinations (DEF-054) |
+| `config show` | Redacts tokens/secrets in the effective report |
 | `--json-out` | Stable machine-readable output (distinct from put `--json` body) |
 | Exit status | Nonzero when an operation fails its guarantee |
 | Bind policy | `serve` / `serve-cluster` default to loopback; non-loopback plaintext needs `--allow-insecure-bind` or TLS |

@@ -65,6 +65,7 @@ with the acceptance evidence expected before a stronger label.
 | `BACKUP_PROFILE` | `dingo-backup-v1` | Full single-node backup package + verified restore (DEF-050) |
 | `SCRUB_PROFILE` | `dingo-scrub-v1` | Bounded integrity scrub + findings quarantine (DEF-051) |
 | `MIGRATE_PROFILE` | `dingo-migrate-v1` | Phased format migration + version matrix (DEF-052) |
+| `CONFIG_PROFILE` | `dingo-config-v1` | Versioned process config + validate-before-serve (DEF-054) |
 
 ## Raft persistence (DEF-035)
 
@@ -218,6 +219,23 @@ Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
 
 Evidence: `stage_def_052_migrate`, `dingo_format::compat` / `dingo_store::migrate`
 unit tests, CLI `migrate_roundtrip_and_status`.
+
+## Process configuration (DEF-054)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Profile | `dingo-config-v1` JSON document | **shipped** |
+| Validate before serve | `load_and_validate` / CLI `config validate` | **shipped** |
+| Layering | defaults &lt; file &lt; env secrets &lt; CLI flags | **shipped** |
+| Setting classes | static / restart-required / dynamic (`setting_class`) | **shipped** |
+| Secrets | `token_env`, `token_secret_ref` (`env:` / `file:`); never inline | **shipped** |
+| Redaction | effective report + `redact_json_value` | **shipped** |
+| Unsafe combos | replication claim &lt; 3 nodes; public plaintext; serve-cluster gate | **shipped** |
+| CLI | `dingo config validate\|show`, `serve --config` | **shipped** |
+| Live dynamic reload + audit | — | **not yet** |
+
+Evidence: `stage_def_054_config`, `dingo_server::config` unit tests, CLI
+`config_validate_show_and_unsafe_reject`.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

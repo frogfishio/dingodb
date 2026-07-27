@@ -9,10 +9,18 @@
 mod admission;
 mod authz;
 mod bind_policy;
+mod config;
 mod raft_server;
 mod runtime;
 mod serve;
 
+pub use config::{
+    load_and_validate, redact_json_value, resolve_secret_ref, setting_class, validate_document,
+    AdmissionConfigSection, ClusterConfigSection, ConfigError, ConfigLayer, ConfigMode,
+    ConfigOverrides, DingoConfigFile, EffectiveConfigReport, EffectiveSetting, ServeConfigSection,
+    SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
+    CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
+};
 pub use admission::{
     is_expensive_op, is_replayable_mutation, AdmissionController, AdmissionLimits, AdmissionStats,
     ExpensiveGuard, ReplayStatus, ADMISSION_PROFILE, DEFAULT_AUTH_FAILURE_WINDOW,

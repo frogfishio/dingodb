@@ -2,8 +2,11 @@
 
 use clap::{ArgAction, Parser, Subcommand};
 use dingo_examine::{examine_store, ExaminationUnit, ExamineLimits};
-use dingo_sdk::{Dingo, TlsServerOptions, DEFAULT_PORT};
-use dingo_server::{serve_cluster_node, serve_store_with, ServeOptions};
+use dingo_sdk::Dingo;
+use dingo_server::{
+    load_and_validate, serve_cluster_node, serve_store_with, ConfigMode, ConfigOverrides,
+    ServeOptions, CONFIG_PROFILE,
+};
 use dingo_store::{
     load_migration_job, migrate_rollback, restore_full_backup, MigrateOptions, RestoreOptions,
     ScrubOptions, Store, MIGRATE_PROFILE,
@@ -16,7 +19,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), format migration preflight/plan/apply/verify/rollback (DEF-052), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), format migration preflight/plan/apply/verify/rollback (DEF-052), versioned config validate/show (DEF-054), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
 const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`dingo`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
 
 #[derive(Parser)]
@@ -197,12 +200,17 @@ enum Command {
     ///
     /// Defaults to loopback. Non-loopback plaintext binds require
     /// `--allow-insecure-bind`. Non-loopback binds with `--tls-cert`/`--tls-key`
-    /// are allowed (DEF-032).
+    /// are allowed (DEF-032). Optional `--config` loads a `dingo-config-v1`
+    /// document; CLI flags override the file (DEF-054).
     Serve {
+        /// Store directory path (overrides `store.path` from `--config`).
         store: PathBuf,
-        /// Bind address (default `127.0.0.1:7434`).
-        #[arg(long = "bind", default_value_t = format!("127.0.0.1:{DEFAULT_PORT}"))]
-        bind: String,
+        /// Optional versioned config file (`dingo-config-v1`, DEF-054).
+        #[arg(long = "config", short = 'c')]
+        config: Option<PathBuf>,
+        /// Bind address (default `127.0.0.1:7434`, or `serve.bind` from config).
+        #[arg(long = "bind")]
+        bind: Option<String>,
         /// Optional shared auth token (clients must pass the same via ConnectOptions).
         /// Also accepted from the `DINGO_TOKEN` environment variable when the flag is omitted.
         #[arg(long = "token")]
@@ -211,8 +219,8 @@ enum Command {
         #[arg(long = "allow-insecure-bind", action = ArgAction::SetTrue)]
         allow_insecure_bind: bool,
         /// Max simultaneous client connections (DEF-030; default 64).
-        #[arg(long = "max-connections", default_value_t = 64)]
-        max_connections: usize,
+        #[arg(long = "max-connections")]
+        max_connections: Option<usize>,
         /// PEM certificate chain for TLS 1.3 (DEF-032). Requires `--tls-key`.
         #[arg(long = "tls-cert")]
         tls_cert: Option<PathBuf>,
@@ -234,17 +242,22 @@ enum Command {
     /// applies writes to this node alone. Not production-ready. Prefer
     /// in-process `Dingo::open_cluster` for deterministic multi-replica tests.
     ///
+    /// Optional `--config` loads a `dingo-config-v1` document (DEF-054).
+    ///
     /// Example:
     /// `dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster`
     ServeCluster {
         /// Cluster root (contains cluster.json, placement.json, nodes/).
         cluster: PathBuf,
+        /// Optional versioned config file (`dingo-config-v1`, DEF-054).
+        #[arg(long = "config", short = 'c')]
+        config: Option<PathBuf>,
         /// Dense node index to serve (`nodes/node-N`).
-        #[arg(long = "node", default_value_t = 0)]
-        node: u32,
-        /// Bind address (default `127.0.0.1:7434`).
-        #[arg(long = "bind", default_value_t = format!("127.0.0.1:{DEFAULT_PORT}"))]
-        bind: String,
+        #[arg(long = "node")]
+        node: Option<u32>,
+        /// Bind address (default `127.0.0.1:7434`, or `serve.bind` from config).
+        #[arg(long = "bind")]
+        bind: Option<String>,
         /// Optional shared auth token (also `DINGO_TOKEN`).
         #[arg(long = "token")]
         token: Option<String>,
@@ -267,8 +280,39 @@ enum Command {
         #[arg(long = "tls-cluster-id")]
         tls_cluster_id: Option<String>,
     },
+    /// Validate or show a versioned configuration document (DEF-054).
+    ///
+    /// Config files use profile `dingo-config-v1`. Secrets must never appear
+    /// inline: use `serve.token_env` / `serve.token_secret_ref` (env: or file:).
+    /// `validate` fails on unsafe combinations (e.g. replication claim with one
+    /// local copy). `show` prints a redacted effective report.
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
     /// List collection names (alias of `list` without collection).
     Collections { store: PathBuf },
+}
+
+/// Subcommands under `dingo config` (DEF-054).
+#[derive(Subcommand)]
+enum ConfigAction {
+    /// Validate a config file (schema, ranges, unsafe combinations).
+    Validate {
+        /// Path to a `dingo-config-v1` JSON document.
+        file: PathBuf,
+        /// Validation mode: `serve`, `serve-cluster`, or `validate` (default).
+        #[arg(long = "mode", default_value = "validate")]
+        mode: String,
+    },
+    /// Print the redacted effective configuration report.
+    Show {
+        /// Path to a `dingo-config-v1` JSON document.
+        file: PathBuf,
+        /// Mode used when resolving required paths (`serve` / `serve-cluster` / `validate`).
+        #[arg(long = "mode", default_value = "validate")]
+        mode: String,
+    },
 }
 
 fn main() -> ExitCode {
@@ -359,6 +403,7 @@ fn run() -> Result<(), String> {
         ),
         Command::Serve {
             store,
+            config,
             bind,
             token,
             allow_insecure_bind,
@@ -368,20 +413,39 @@ fn run() -> Result<(), String> {
             tls_client_ca,
             tls_cluster_id,
         } => {
-            // Flag wins; otherwise fall back to DINGO_TOKEN for operator convenience.
-            let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
-            // Library emits the structured startup report and enforces bind policy (DEF-002).
-            let mut opts = ServeOptions::new()
-                .allow_insecure_bind(allow_insecure_bind)
-                .max_connections(max_connections);
-            if let Some(t) = token {
-                opts = opts.auth_token(t);
+            let overrides = ConfigOverrides {
+                bind,
+                store_path: Some(store.clone()),
+                auth_token: token,
+                allow_insecure_bind: if allow_insecure_bind {
+                    Some(true)
+                } else {
+                    None
+                },
+                max_connections,
+                tls_cert,
+                tls_key,
+                tls_client_ca,
+                tls_cluster_id,
+                ..Default::default()
+            };
+            let validated = load_and_validate(config.as_deref(), ConfigMode::Serve, overrides)
+                .map_err(|e| e.to_string())?;
+            let bind = validated.bind.clone();
+            let store_path = validated
+                .store_path
+                .clone()
+                .unwrap_or(store);
+            let _ = json_out; // serve is long-running; use `dingo config show` for reports
+            for w in &validated.warnings {
+                eprintln!("config warning: {w}");
             }
-            opts = apply_tls_options(opts, tls_cert, tls_key, tls_client_ca, tls_cluster_id)?;
-            serve_store_with(&store, &bind, opts).map_err(|e| e.to_string())
+            let opts = validated.apply_to_serve_options(ServeOptions::new());
+            serve_store_with(&store_path, &bind, opts).map_err(|e| e.to_string())
         }
         Command::ServeCluster {
             cluster,
+            config,
             node,
             bind,
             token,
@@ -392,59 +456,136 @@ fn run() -> Result<(), String> {
             tls_client_ca,
             tls_cluster_id,
         } => {
-            if !experimental_network_cluster {
-                return Err(
-                    "serve-cluster requires --experimental-network-cluster (DEF-002). \
-                     Network quorum replication is not implemented; writes apply to this \
-                     node only. In-process quorum: Dingo::open_cluster."
-                        .into(),
-                );
+            let overrides = ConfigOverrides {
+                bind,
+                cluster_root: Some(cluster.clone()),
+                node_index: node,
+                auth_token: token,
+                allow_insecure_bind: if allow_insecure_bind {
+                    Some(true)
+                } else {
+                    None
+                },
+                experimental_network_cluster: if experimental_network_cluster {
+                    Some(true)
+                } else {
+                    None
+                },
+                tls_cert,
+                tls_key,
+                tls_client_ca,
+                tls_cluster_id,
+                ..Default::default()
+            };
+            let validated =
+                load_and_validate(config.as_deref(), ConfigMode::ServeCluster, overrides)
+                    .map_err(|e| e.to_string())?;
+            let bind = validated.bind.clone();
+            let cluster_root = validated
+                .cluster_root
+                .clone()
+                .unwrap_or(cluster);
+            let node_index = validated.node_index;
+            let _ = json_out;
+            for w in &validated.warnings {
+                eprintln!("config warning: {w}");
             }
-            let token = token.or_else(|| std::env::var("DINGO_TOKEN").ok());
-            let mut opts = ServeOptions::new()
-                .allow_insecure_bind(allow_insecure_bind)
-                .experimental_network_cluster(true);
-            if let Some(t) = token {
-                opts = opts.auth_token(t);
-            }
-            opts = apply_tls_options(opts, tls_cert, tls_key, tls_client_ca, tls_cluster_id)?;
-            serve_cluster_node(&cluster, node, &bind, opts).map_err(|e| e.to_string())
+            let opts = validated.apply_to_serve_options(ServeOptions::new());
+            serve_cluster_node(&cluster_root, node_index, &bind, opts).map_err(|e| e.to_string())
         }
+        Command::Config { action } => match action {
+            ConfigAction::Validate { file, mode } => {
+                cmd_config_validate(&file, &mode, json_out)
+            }
+            ConfigAction::Show { file, mode } => cmd_config_show(&file, &mode, json_out),
+        },
         Command::Collections { store } => cmd_list(&store, None, json_out),
     }
 }
 
-fn apply_tls_options(
-    mut opts: ServeOptions,
-    tls_cert: Option<PathBuf>,
-    tls_key: Option<PathBuf>,
-    tls_client_ca: Option<PathBuf>,
-    tls_cluster_id: Option<String>,
-) -> Result<ServeOptions, String> {
-    match (tls_cert, tls_key) {
-        (None, None) => {
-            if tls_client_ca.is_some() || tls_cluster_id.is_some() {
-                return Err(
-                    "TLS client CA / cluster id require --tls-cert and --tls-key (DEF-032)".into(),
-                );
-            }
-            Ok(opts)
-        }
-        (Some(cert), Some(key)) => {
-            let mut tls = TlsServerOptions::new(cert, key);
-            if let Some(ca) = tls_client_ca {
-                tls = tls.with_client_ca(ca);
-            }
-            if let Some(id) = tls_cluster_id {
-                tls = tls.expected_cluster_id(id);
-            }
-            opts = opts.tls(tls);
-            Ok(opts)
-        }
-        (Some(_), None) | (None, Some(_)) => Err(
-            "TLS requires both --tls-cert and --tls-key (DEF-032)".into(),
-        ),
+fn parse_config_mode(mode: &str) -> Result<ConfigMode, String> {
+    match mode {
+        "validate" => Ok(ConfigMode::Validate),
+        "serve" => Ok(ConfigMode::Serve),
+        "serve-cluster" | "cluster" => Ok(ConfigMode::ServeCluster),
+        other => Err(format!(
+            "unknown config mode {other:?}; expected validate|serve|serve-cluster"
+        )),
     }
+}
+
+fn cmd_config_validate(file: &Path, mode: &str, json_out: bool) -> Result<(), String> {
+    let mode = parse_config_mode(mode)?;
+    let validated = load_and_validate(Some(file), mode, ConfigOverrides::default())
+        .map_err(|e| e.to_string())?;
+    let report = validated.effective_report(mode);
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "profile": CONFIG_PROFILE,
+            "mode": report.mode,
+            "config_path": report.config_path,
+            "warnings": report.warnings,
+            "settings": report.settings,
+        }))?;
+    } else {
+        println!(
+            "config ok profile={} mode={} path={}",
+            CONFIG_PROFILE,
+            report.mode,
+            file.display()
+        );
+        for w in &report.warnings {
+            println!("warning: {w}");
+        }
+        println!(
+            "settings={} bind={}",
+            report.settings.len(),
+            validated.bind
+        );
+    }
+    Ok(())
+}
+
+fn cmd_config_show(file: &Path, mode: &str, json_out: bool) -> Result<(), String> {
+    let mode = parse_config_mode(mode)?;
+    // Show is best-effort: for serve modes without paths, fall back to validate
+    // so operators can still inspect bind/admission without a full path set.
+    let validated = match load_and_validate(Some(file), mode, ConfigOverrides::default()) {
+        Ok(v) => v,
+        Err(e) if mode != ConfigMode::Validate => {
+            // Retry in pure validate mode for partial documents.
+            eprintln!(
+                "note: full mode validation failed ({e}); showing validate-mode report"
+            );
+            load_and_validate(Some(file), ConfigMode::Validate, ConfigOverrides::default())
+                .map_err(|e| e.to_string())?
+        }
+        Err(e) => return Err(e.to_string()),
+    };
+    let report = validated.effective_report(mode);
+    if json_out {
+        emit_json(serde_json::to_value(&report).map_err(|e| e.to_string())?)?;
+    } else {
+        println!(
+            "profile={} format_version={}",
+            report.profile, report.format_version
+        );
+        if let Some(p) = &report.config_path {
+            println!("config_path={p}");
+        }
+        println!("mode={}", report.mode);
+        for s in &report.settings {
+            println!(
+                "  {} = {} ({:?}, {:?})",
+                s.path, s.value, s.class, s.source
+            );
+        }
+        for w in &report.warnings {
+            println!("warning: {w}");
+        }
+    }
+    Ok(())
 }
 
 fn parse_target(target: &str) -> Result<(String, String), String> {

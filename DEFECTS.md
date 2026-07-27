@@ -37,6 +37,8 @@ Until this plan is complete, use these support labels:
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft` with declared reader/writer matrix and phased
   migration (DEF-052); not frozen for long-term interoperability (DEF-053).
+- **Process config:** versioned `dingo-config-v1` validate-before-serve
+  (DEF-054); live dynamic reload still follow-on.
 
 Public documentation, CLI help, release notes, and crate READMEs MUST use these
 labels until the corresponding gates pass.
@@ -1583,6 +1585,14 @@ Acceptance:
 
 Priority: P1
 
+Status: **addressed (process config cut)** (2026-07-27) — versioned
+`dingo-config-v1` JSON schema, load/validate before serve bind, static vs
+restart-required vs dynamic setting classes, secret refs (`env:` / `file:`)
+with redacted effective reports, unsafe-combination gates (replication claim
+with one local copy, public plaintext bind, serve-cluster without experimental
+opt-in), CLI `dingo config validate|show` and `serve`/`serve-cluster --config`;
+live atomic admission reload + audit chain remain follow-ons.
+
 Work:
 
 - Define a versioned configuration schema.
@@ -1596,6 +1606,27 @@ Acceptance:
 
 - Invalid configuration fails with actionable typed errors.
 - Dynamic reload is atomic and audited.
+
+Evidence (this cut):
+
+- `dingo-server::config` — `DingoConfigFile`, `load_and_validate`,
+  `validate_document`, `ConfigOverrides`, `ValidatedConfig`,
+  `EffectiveConfigReport`, `resolve_secret_ref`, `redact_json_value`,
+  `setting_class`; profile `CONFIG_PROFILE` = `dingo-config-v1`.
+- Typed errors: `ConfigError::Validation` / `Unsafe` / `UnsupportedFormat` /
+  `Secret` with stable `code` strings.
+- CLI: `dingo config validate|show [--mode serve|serve-cluster|validate]`,
+  `dingo serve --config`, `dingo serve-cluster --config` (flags override file).
+- Tests: `stage_def_054_config`, `config::tests`, CLI
+  `config_validate_show_and_unsafe_reject`.
+
+Remaining (out of this cut):
+
+- Live atomic reload of dynamic admission limits with audit log entries
+  (no restart) while serve is running.
+- Hot-reload of TLS material beyond existing `TlsServerState::reload`.
+- Multi-document / directory include layering and remote config providers.
+- Persist effective config snapshot under store diagnostics on every open.
 
 ---
 

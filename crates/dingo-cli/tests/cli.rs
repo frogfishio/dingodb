@@ -77,6 +77,7 @@ fn version_and_help() {
     assert!(help.contains("restore"));
     assert!(help.contains("migrate"));
     assert!(help.contains("scrub"));
+    assert!(help.contains("config"));
     assert!(help.contains("serve"));
     assert!(help.contains("serve-cluster"));
     assert!(
@@ -88,11 +89,18 @@ fn version_and_help() {
         serve_help.contains("allow-insecure-bind"),
         "serve help={serve_help}"
     );
+    assert!(
+        serve_help.contains("config"),
+        "serve should accept --config (DEF-054), help={serve_help}"
+    );
     let sc_help = run_ok(&["serve-cluster", "--help"]);
     assert!(
         sc_help.contains("experimental-network-cluster"),
         "serve-cluster help={sc_help}"
     );
+    let cfg_help = run_ok(&["config", "--help"]);
+    assert!(cfg_help.contains("validate"), "config help={cfg_help}");
+    assert!(cfg_help.contains("show"), "config help={cfg_help}");
 }
 
 #[test]
@@ -299,6 +307,67 @@ fn scrub_clean_store_and_status() {
     assert!(paused.contains("paused: true"), "paused={paused}");
     let resumed = run_ok(&["scrub", store_s, "--resume"]);
     assert!(resumed.contains("paused: false"), "resumed={resumed}");
+}
+
+#[test]
+fn config_validate_show_and_unsafe_reject() {
+    let dir = tempdir().unwrap();
+    let good = dir.path().join("good.json");
+    fs::write(
+        &good,
+        r#"{
+          "format": "dingo-config-v1",
+          "format_version": 1,
+          "store": { "path": "/tmp/dingo-store", "durability_default": "durable" },
+          "serve": {
+            "bind": "127.0.0.1:7434",
+            "max_connections": 8,
+            "token_env": "DINGO_TEST_CLI_NO_TOKEN",
+            "admission": { "global_max_rps": 50 }
+          }
+        }"#,
+    )
+    .unwrap();
+    let good_s = good.to_str().unwrap();
+
+    let out = run_ok(&["config", "validate", good_s, "--mode", "serve"]);
+    assert!(out.contains("config ok"), "out={out}");
+    assert!(out.contains("dingo-config-v1") || out.contains("profile="), "out={out}");
+
+    let show = run_ok(&["--json-out", "config", "show", good_s, "--mode", "serve"]);
+    assert!(show.contains("dingo-config-v1"), "show={show}");
+    assert!(show.contains("[redacted]") || show.contains("<unset>"), "show={show}");
+    assert!(show.contains("serve.bind"), "show={show}");
+
+    let bad = dir.path().join("bad.json");
+    fs::write(
+        &bad,
+        r#"{
+          "format": "dingo-config-v1",
+          "format_version": 1,
+          "cluster": {
+            "root": "/tmp/c",
+            "expected_node_count": 1,
+            "claim_replication": true
+          },
+          "serve": { "experimental_network_cluster": true }
+        }"#,
+    )
+    .unwrap();
+    let bad_s = bad.to_str().unwrap();
+    let output = dingo_bin()
+        .args(["config", "validate", bad_s, "--mode", "serve-cluster"])
+        .output()
+        .expect("run");
+    assert!(
+        !output.status.success(),
+        "unsafe config must fail validation"
+    );
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        err.contains("unsafe") || err.contains("replication"),
+        "stderr={err}"
+    );
 }
 
 #[test]

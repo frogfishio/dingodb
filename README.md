@@ -160,6 +160,8 @@ materializes only current complete state when that is what the operator wants.
 packages (DEF-050; distinct from salvage). `dingo scrub` runs bounded integrity
 verification with durable findings (DEF-051). `dingo migrate` runs phased
 format migration into a new store without rewriting the source (DEF-052).
+`dingo config validate|show` checks versioned `dingo-config-v1` documents;
+`dingo serve --config` applies them before bind (DEF-054).
 
 [SDA](SDA_SPEC.md), the Structured Data Algebra, provides deterministic
 filtering and transformation over both normal structured values and recovered

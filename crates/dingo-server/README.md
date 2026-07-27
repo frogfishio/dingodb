@@ -78,7 +78,33 @@ let mut db = Dingo::connect_with(
 | `AdmissionController` / `AdmissionLimits` | Rate limits, auth lockout, replay window |
 | `AuthzPolicy` / `Principal` / `Privilege` | Principal privileges + audit chain |
 | `validate_bind` / `ServeStartupReport` | Loopback-default bind policy (DEF-002) |
+| `load_and_validate` / `DingoConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `dingo-config-v1`) |
 | `RaftServerState` / `TcpRaftTransport` | Network Raft RPC (vote / append / snapshot / read-index) |
+
+## Process configuration (DEF-054)
+
+```rust
+use dingo_server::{load_and_validate, ConfigMode, ConfigOverrides, ServeOptions};
+use std::path::Path;
+
+let validated = load_and_validate(
+    Some(Path::new("dingo.json")),
+    ConfigMode::Serve,
+    ConfigOverrides {
+        store_path: Some(Path::new("/data/store").into()),
+        ..Default::default()
+    },
+)?;
+// Secrets never appear in effective reports:
+let report = validated.effective_report(ConfigMode::Serve);
+let opts: ServeOptions = validated.apply_to_serve_options(ServeOptions::new());
+# Ok::<(), dingo_server::ConfigError>(())
+```
+
+JSON documents use profile `dingo-config-v1`. Put only secret *references*
+(`serve.token_env`, `serve.token_secret_ref` as `env:NAME` or `file:PATH`) in
+the file — never token values. Validation refuses unsafe combinations such as
+`cluster.claim_replication=true` with fewer than three expected nodes.
 
 ## Serve options (highlights)
 
