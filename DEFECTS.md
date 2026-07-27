@@ -1388,7 +1388,8 @@ Status: **addressed (in-process cut)** (2026-07-27) — seeded simulation harnes
 `dingo-cluster-verify-v1` with fault model (crash, directed partition, RPC drop/
 duplicate), client history + partition-linearizable checker, convergent
 variant preservation checker, and CLUSTER_SPEC §22 core cases against network
-Raft; multi-process OS chaos / long soak remain follow-ons
+Raft (§22.1–.8 in-process; put/get soak); multi-process OS chaos / long soak
+remain follow-ons
 
 Work:
 
@@ -1408,12 +1409,14 @@ Acceptance:
 Evidence:
 
 - `crates/dingo-cluster/src/sim.rs` — `SeedRng`, `FaultModel`, `SimTransport`,
-  `SimWorld`, `check_partition_linearizable`, `check_convergent_preserved`,
-  `run_conformance_matrix`, profile `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
-- Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.4/.6–.8, chaos
+  `SimWorld` (`client_put` / `client_get` / `run_chaos` / `run_soak` /
+  `campaign_with_epoch`), `check_partition_linearizable`,
+  `check_convergent_preserved`, `run_conformance_matrix`, profile
+  `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
+- Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.8, chaos + soak
   linearizability, dump retains seed); module unit tests under `sim::tests`.
 - Remaining (out of this cut): multi-process Jepsen-style partition histories,
-  long-duration soak / rolling restart, full §22.5/.9–.20 network surface.
+  long-duration soak / rolling restart, full §22.9–.20 network surface.
 
 ---
 

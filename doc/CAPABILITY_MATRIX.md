@@ -79,7 +79,8 @@ with the acceptance evidence expected before a stronger label.
 | Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
 | Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
 | Seeded in-process fault sim + lincheck | DEF-041 `dingo-cluster-verify-v1` | **shipped** (network Raft in-process) |
-| CLUSTER_SPEC §22 core matrix (network Raft) | DEF-041 | **shipped** (§22.1–.4, .6–.8 + chaos) |
+| CLUSTER_SPEC §22 core matrix (network Raft) | DEF-041 | **shipped** (§22.1–.8 + chaos) |
+| In-process soak put/get after chaos | DEF-041 | **shipped** (`run_soak`; multi-process still follow-on) |
 | Multi-process Jepsen-style partition histories | DEF-041 follow-on | **not yet** |
 | Long-duration soak / rolling restart | DEF-041 follow-on | **not yet** |
 
