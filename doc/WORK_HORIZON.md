@@ -186,19 +186,21 @@ resident / inline / point container / scan extent / large-value log → adaptive
 I/O → record-level decompression, plus a background compiler (GC, relocation,
 reclustering, dictionary training, hot/cold, lifetime placement).
 
-| Layer | State after foundation cut | Claim boundary |
-|-------|----------------------------|----------------|
-| Locator + value classes | `dingo-store::chimera` — `ValueLocator`, `classify_value`, `place_value` | **API only** — not `Store::put` path |
-| Point micro-pages | `PointContainer` encode/decode, independent slots, CRC, builder | **Codec** — not sealed to disk by store yet |
-| Large-value log | `ValueLog` append/read | **Codec** — distinct from FORMAT_SPEC chunk manifests |
-| Adaptive I/O | `select_io_path` (buffered / direct / async) | **Policy** — no io_uring submit yet |
-| Background compiler | `plan_compile` ops (GC, relocate, recluster, dict, hot/cold, lifetime, dual) | **Planner** — no worker executes ops yet |
-| Dual representation / ZNS | Design only; dual opt-in on planner, ZNS not started | Deferred per proposal |
+| Layer | State after seal/compaction wire-up | Claim boundary |
+|-------|--------------------------------------|----------------|
+| Locator + value classes | `ValueLocator`, `classify_value`, `place_value`, `build_layout` | **Live at seal** for complete live values on that segment |
+| Point micro-pages | `PointContainer` in `indexes/chimera/{seg}.cmr` | **Derived sidecar** — authoritative still segment frames |
+| Large-value log | `ValueLog` inside `.cmr` layouts | **Derived** — not FORMAT_SPEC chunks; put path unchanged |
+| Adaptive I/O | `select_io_path` on resolve | **Policy** — no io_uring submit yet |
+| Background compiler | `plan_compile` ops | **Planner** — no worker executes ops yet |
+| `Store::get` | Prefers Chimera layout when present for live segment_id | **Wired** — fallback PrimaryIndex / chunk reassembly |
+| Dual representation / ZNS | Design only | Deferred per proposal |
 
-**Verdict:** Storage game is **designed and scaffolded**, not deployed on the
-hot path. Next hard step is seal/compaction wire-up of locators — not more
-planner cosmetics. Do not claim “workload-compiled storage is live” until
-`Store::get` resolves Chimera locators for sealed data.
+**Verdict:** Seal/compaction layout wire-up **landed**. Put still writes frames;
+Chimera is a derived placement that get can resolve. Do not claim “primary
+storage is workload-compiled” until put classifies at write time and segment
+bodies can omit medium/large payloads. Next: optional put-path placement and
+compiler worker — not more planner cosmetics.
 
 ## What this document is not
 

@@ -20,14 +20,17 @@
 //! Background compiler plans GC, relocation, reclustering, dictionary training,
 //! hot/cold migration, and lifetime-aware placement.
 //!
-//! **Honesty:** this module is a **foundation** — codecs, classification, and
-//! planner APIs. Live `Store::put`/`get` still use segment frames +
-//! `PrimaryIndex` / chunk manifests. Wire Chimera into seal/compaction next.
+//! **Honesty:** codecs + planner + **seal/compaction layout sidecars**. Live
+//! `Store::put` still writes segment frames + `PrimaryIndex`. At seal/compact,
+//! Chimera compiles live values into `indexes/chimera/*.cmr`. `Store::get` may
+//! resolve through that layout when present; PrimaryIndex / chunks remain the
+//! fallback. Dual-rep and ZNS placement are still deferred.
 
 mod classify;
 mod compiler;
 mod container;
 mod io_path;
+mod layout;
 mod value_log;
 
 pub use classify::{
@@ -42,6 +45,10 @@ pub use container::{
     CONTAINER_VERSION, DEFAULT_CONTAINER_TARGET,
 };
 pub use io_path::{select_io_path, IoHints, IoPath, IoSelectOptions};
+pub use layout::{
+    build_layout, chimera_dir, chimera_layout_path, delete_chimera_layout, try_load_chimera_layout,
+    write_chimera_layout, ChimeraKindCounts, ChimeraLayout,
+};
 pub use value_log::{
     decode_record, ValueLog, ValueLogRecord, VALUE_LOG_HEADER_LEN, VALUE_LOG_MAGIC,
 };

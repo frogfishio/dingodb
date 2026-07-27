@@ -5,10 +5,11 @@ Companion: seal path writes `indexes/seg/{segment_hex}.hdx` sidecars (derived on
 Honesty: hot `Store::get` still uses `PrimaryIndex`; Hydra is seal/rebuild/load API today
 (see `doc/WORK_HORIZON.md` “big flex” self-check and `doc/BENCHMARK_DISCLOSURE.md`).
 
-**Chimera** (FINAL DESIGN below): **foundation landed** in `dingo-store::chimera` —
-locator types, value-class selection, micro-page containers, large-value log codec,
-adaptive I/O path selection, and background-compiler plans. Not yet the live
-`Store::put`/`get` path (same honesty model as Hydra).
+**Chimera** (FINAL DESIGN below): **foundation + seal/compaction wire-up** in
+`dingo-store::chimera` — locator types, value-class selection, micro-page
+containers, large-value log codec, adaptive I/O path selection, background-compiler
+plans, and `indexes/chimera/*.cmr` layouts written at seal/compact. `Store::get`
+may resolve sealed layouts; put still writes segment frames (derived placement).
 
 ## Recipe: hydra + multithread
 
@@ -228,5 +229,10 @@ crates/dingo-store/src/chimera/
   compiler.rs   # GC / relocation / reclustering / dictionary / hot-cold plans
 ```
 
-Tests: unit tests under `chimera::*`. First production cut: wire locator resolution
-into seal/compaction; keep dual-representation and ZNS placement later.
+Tests: unit tests under `chimera::*` + store seal/get/compact wire-up tests.
+
+**Seal/compaction wire-up (landed):** `build_layout` → `indexes/chimera/{hex}.cmr`
+at `seal_active` and live-projection compact; `Store::get` resolves via layout when
+present for the live establishing segment (PrimaryIndex / chunks remain fallback).
+Dual-representation and ZNS placement stay deferred. Put path still writes full
+segment frames (Chimera is derived placement, not yet write-time authority).

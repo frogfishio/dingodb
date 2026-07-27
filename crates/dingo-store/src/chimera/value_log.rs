@@ -60,7 +60,7 @@ impl ValueLogRecord {
 }
 
 /// Append-only in-memory log used by tests and the compiler planner.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ValueLog {
     /// Concatenated encoded records.
     bytes: Vec<u8>,

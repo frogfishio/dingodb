@@ -11,8 +11,9 @@
 //! rebuild — derived only under `indexes/seg/`.
 //!
 //! Chimera adds workload-compiled **value placement** (inline / point micro-pages
-//! / scan extents / large-value log), adaptive I/O path selection, and a
-//! background-compiler planner — foundation APIs only until seal/compaction wire-up.
+//! / scan extents / large-value log), adaptive I/O path selection, a background
+//! compiler planner, and **seal/compaction layout sidecars** under
+//! `indexes/chimera/` that `Store::get` may resolve for sealed-segment values.
 //!
 //! Stage 9 adds storage tiers (hot/warm/cold/archive), segment move/copy with
 //! stable identities, hierarchical segment catalogs, offline-tier coverage
@@ -71,9 +72,11 @@ pub use catalog::{
     CollectionCatalog, COLLECTIONS_CATALOG_FILE,
 };
 pub use chimera::{
-    classify_value, decode_record, initial_locator_kind, pack_point_containers, place_value,
-    plan_compile, plan_recluster_range, read_slot, resolve, select_io_path, ClassifyOptions,
-    CompilerOp, CompilerOptions, CompilerPlan, ContainerBuilder, ContainerSlot, IoHints, IoPath,
+    build_layout, chimera_dir, chimera_layout_path, classify_value, decode_record,
+    delete_chimera_layout, initial_locator_kind, pack_point_containers, place_value, plan_compile,
+    plan_recluster_range, read_slot, resolve, select_io_path, try_load_chimera_layout,
+    write_chimera_layout, ChimeraKindCounts, ChimeraLayout, ClassifyOptions, CompilerOp,
+    CompilerOptions, CompilerPlan, ContainerBuilder, ContainerSlot, IoHints, IoPath,
     IoSelectOptions, LifetimeClass, LocatorKind, PlacementHints, PointContainer, RecordStats,
     ResolveContext, ResolvedValue, TemperatureClass, ValueClass, ValueLocator, ValueLog,
     ValueLogRecord, CODEC_RAW, CONTAINER_MAGIC, CONTAINER_VERSION, DEFAULT_CONTAINER_TARGET,

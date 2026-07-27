@@ -729,11 +729,25 @@ impl Store {
     ///
     /// Returns `Ok(None)` when the subject has no live value. Inline (non-chunked)
     /// bodies always yield [`PayloadResult::Complete`].
+    ///
+    /// When a Chimera layout sidecar exists for the live value's establishing
+    /// sealed segment, resolution prefers that path (workload-compiled placement).
+    /// Failure or absence falls back to the PrimaryIndex body / chunk reassembly.
     pub fn get_payload(&self, subject: &str) -> Result<Option<PayloadResult>, StoreError> {
         let key = subject.as_bytes();
-        let Some(body) = self.index.get_live(key) else {
+        let Some(entry) = self.index.get(key) else {
             return Ok(None);
         };
+        let crate::index::IndexEntry::Live(lv) = entry else {
+            return Ok(None);
+        };
+
+        // Chimera seal/compaction wire-up: resolve via layout when present.
+        if let Some(body) = self.try_get_via_chimera(key, &lv.segment_id)? {
+            return Ok(Some(PayloadResult::Complete { body }));
+        }
+
+        let body = lv.body.as_slice();
         if !is_chunk_manifest(body) {
             return Ok(Some(PayloadResult::Complete {
                 body: body.to_vec(),
@@ -742,11 +756,7 @@ impl Store {
         let Some(manifest) = decode_chunk_manifest(body) else {
             return Err(StoreError::CorruptMeta("invalid chunk manifest"));
         };
-        let item_id = self
-            .index
-            .get(key)
-            .map(|e| e.item_id())
-            .unwrap_or([0u8; 16]);
+        let item_id = lv.item_id;
         let pieces = self.collect_chunk_pieces(item_id)?;
         Ok(Some(reassemble_with_manifest(&manifest, &pieces)))
     }
@@ -920,6 +930,10 @@ impl Store {
         let _ = self.persist_tier_state();
         let _ = self.refresh_segment_catalog();
         let _ = self.persist_index_cache();
+        // Chimera: compile live-projection placement for the compact output
+        // (derived only). PrimaryIndex segment_ids still point at sources until
+        // reclaim/rebuild; per-source chimera sidecars remain the get path.
+        let _ = self.write_chimera_for_live_projection(segment_id);
         crate::failpoint::hit("store.compact.after_activate")?;
         job.phase = CompactPhase::Activated;
         job.updated_ns = now_ns();
@@ -1066,6 +1080,7 @@ impl Store {
         let _ = self.persist_tier_state();
         let _ = self.refresh_segment_catalog();
         let _ = self.persist_index_cache();
+        let _ = self.write_chimera_for_live_projection(segment_id);
         job.phase = CompactPhase::Activated;
         job.updated_ns = now_ns();
         write_compact_job(&self.paths, job)?;
@@ -1798,6 +1813,8 @@ impl Store {
 
         // Hydra: adaptive per-segment index (derived only; failure is non-fatal).
         let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+        // Chimera: workload-compiled value placement (derived only; non-fatal).
+        let _ = self.write_chimera_for_sealed(sealed_id);
 
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment()?;
@@ -1822,6 +1839,105 @@ impl Store {
         let index = crate::hydra::build(&records, &crate::hydra::HydraBuildOptions::default());
         let path = crate::hydra::hydra_index_path(&self.paths, &segment_id);
         crate::hydra::write_hydra_index(&path, self.store_id, segment_id, &index)
+    }
+
+    /// Compile and persist a Chimera layout for live values established on `segment_id`.
+    ///
+    /// Derived only — tiny/medium/large classes map to inline / point containers /
+    /// value-log records under `indexes/chimera/`. Failure is non-fatal for seal.
+    fn write_chimera_for_sealed(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
+        let pairs = self.logical_live_pairs_for_segment(&segment_id)?;
+        if pairs.is_empty() {
+            return Ok(());
+        }
+        let layout = crate::chimera::build_layout(
+            &pairs,
+            1,
+            &crate::chimera::ClassifyOptions::default(),
+        );
+        let path = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
+        crate::chimera::write_chimera_layout(&path, self.store_id, segment_id, &layout)
+    }
+
+    /// Chimera layout for a live-projection compact output (all complete live values).
+    fn write_chimera_for_live_projection(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
+        let pairs = self.logical_live_pairs_all()?;
+        if pairs.is_empty() {
+            return Ok(());
+        }
+        let layout = crate::chimera::build_layout(
+            &pairs,
+            1,
+            &crate::chimera::ClassifyOptions::default(),
+        );
+        let path = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
+        crate::chimera::write_chimera_layout(&path, self.store_id, segment_id, &layout)
+    }
+
+    /// Logical (subject, body) pairs still live and established on `segment_id`.
+    ///
+    /// Chunked subjects contribute only when fully reassembled; partials are skipped
+    /// so the layout never encodes incomplete values.
+    fn logical_live_pairs_for_segment(
+        &self,
+        segment_id: &[u8; 16],
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+        let mut pairs = Vec::new();
+        for (subject, lv) in self.index.live_entries() {
+            if lv.segment_id != *segment_id {
+                continue;
+            }
+            if let Some(body) = self.logical_body_for_live(lv)? {
+                pairs.push((subject.clone(), body));
+            }
+        }
+        Ok(pairs)
+    }
+
+    /// Fully reassembled logical body for a live index entry, if complete.
+    fn logical_body_for_live(
+        &self,
+        lv: &crate::index::LiveValue,
+    ) -> Result<Option<Vec<u8>>, StoreError> {
+        if !is_chunk_manifest(&lv.body) {
+            return Ok(Some(lv.body.clone()));
+        }
+        let Some(manifest) = decode_chunk_manifest(&lv.body) else {
+            return Ok(None);
+        };
+        let pieces = self.collect_chunk_pieces(lv.item_id)?;
+        match reassemble_with_manifest(&manifest, &pieces) {
+            PayloadResult::Complete { body } => Ok(Some(body)),
+            PayloadResult::Partial { .. }
+            | PayloadResult::Unavailable { .. }
+            | PayloadResult::Conflicting { .. } => Ok(None),
+        }
+    }
+
+    /// All complete live (subject, body) pairs (used for compact-output Chimera).
+    fn logical_live_pairs_all(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+        let mut pairs = Vec::new();
+        for (subject, lv) in self.index.live_entries() {
+            if let Some(body) = self.logical_body_for_live(lv)? {
+                pairs.push((subject.clone(), body));
+            }
+        }
+        Ok(pairs)
+    }
+
+    /// Resolve a subject via the Chimera layout for `segment_id` when present.
+    fn try_get_via_chimera(
+        &self,
+        key: &[u8],
+        segment_id: &[u8; 16],
+    ) -> Result<Option<Vec<u8>>, StoreError> {
+        let path = crate::chimera::chimera_layout_path(&self.paths, segment_id);
+        let Some(layout) =
+            crate::chimera::try_load_chimera_layout(&path, self.store_id, *segment_id)?
+        else {
+            return Ok(None);
+        };
+        layout.get(key)
     }
 
     /// Rebuild Hydra indexes for all available sealed segments (multithread).
@@ -1872,6 +1988,39 @@ impl Store {
     ) -> Result<Option<crate::hydra::HydraIndex>, StoreError> {
         let path = crate::hydra::hydra_index_path(&self.paths, &segment_id);
         crate::hydra::try_load_hydra_index(&path, self.store_id, segment_id)
+    }
+
+    /// Load the Chimera layout sidecar for a sealed segment when present and valid.
+    pub fn load_chimera_layout(
+        &self,
+        segment_id: [u8; 16],
+    ) -> Result<Option<crate::chimera::ChimeraLayout>, StoreError> {
+        let path = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
+        crate::chimera::try_load_chimera_layout(&path, self.store_id, segment_id)
+    }
+
+    /// Rebuild Chimera layouts for all sealed segments that still hold live values.
+    ///
+    /// Derived only — safe after wiping `indexes/chimera/`. Returns how many
+    /// layouts were written.
+    pub fn rebuild_chimera_layouts(&self) -> Result<usize, StoreError> {
+        let mut written = 0usize;
+        let mut seen = HashSet::new();
+        for (_subject, lv) in self.index.live_entries() {
+            if !seen.insert(lv.segment_id) {
+                continue;
+            }
+            // Only write when the establishing segment file still exists.
+            let path = self.paths.sealed_segment(&lv.segment_id);
+            if !path.is_file() {
+                continue;
+            }
+            match self.write_chimera_for_sealed(lv.segment_id) {
+                Ok(()) => written += 1,
+                Err(_) => continue,
+            }
+        }
+        Ok(written)
     }
 
     /// Paths used for derived state (safe to delete for salvage tests).
@@ -3012,5 +3161,104 @@ mod tests {
         let store = Store::open(dir.path()).unwrap();
         assert_eq!(store.get("a").unwrap().as_deref(), Some(b"1".as_slice()));
         assert_eq!(store.get("b").unwrap().as_deref(), Some(b"2".as_slice()));
+    }
+
+    #[test]
+    fn chimera_seal_layout_and_get_resolve() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        let tiny = b"hi";
+        let medium = vec![3u8; 200];
+        let large = vec![5u8; 32 * 1024];
+        store
+            .put("t", tiny, DurabilityMode::Durable)
+            .unwrap();
+        store
+            .put("m", &medium, DurabilityMode::Durable)
+            .unwrap();
+        store
+            .put("l", &large, DurabilityMode::Durable)
+            .unwrap();
+
+        // Capture establishing segment from index before seal rotates writer.
+        let seg = match store.index.get(b"t") {
+            Some(crate::index::IndexEntry::Live(lv)) => lv.segment_id,
+            _ => panic!("expected live t"),
+        };
+
+        store.seal_active().unwrap();
+
+        let layout = store
+            .load_chimera_layout(seg)
+            .unwrap()
+            .expect("chimera layout after seal");
+        let counts = layout.count_by_kind();
+        assert_eq!(counts.inline, 1);
+        assert_eq!(counts.point_container, 1);
+        assert_eq!(counts.large_value_log, 1);
+        assert_eq!(layout.get(b"t").unwrap().unwrap(), tiny);
+        assert_eq!(layout.get(b"m").unwrap().unwrap(), medium);
+        assert_eq!(layout.get(b"l").unwrap().unwrap(), large);
+
+        // Store::get prefers Chimera resolution for sealed-segment live values.
+        assert_eq!(store.get("t").unwrap().as_deref(), Some(tiny.as_slice()));
+        assert_eq!(store.get("m").unwrap().as_deref(), Some(medium.as_slice()));
+        assert_eq!(store.get("l").unwrap().as_deref(), Some(large.as_slice()));
+    }
+
+    #[test]
+    fn chimera_rebuild_after_wipe() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        store
+            .put("x", b"tiny-x", DurabilityMode::Durable)
+            .unwrap();
+        store
+            .put("y", &vec![1u8; 128], DurabilityMode::Durable)
+            .unwrap();
+        let seg = match store.index.get(b"x") {
+            Some(crate::index::IndexEntry::Live(lv)) => lv.segment_id,
+            _ => panic!("expected live x"),
+        };
+        store.seal_active().unwrap();
+        assert!(store.load_chimera_layout(seg).unwrap().is_some());
+
+        // Wipe derived chimera tree and rebuild.
+        let chimera_root = crate::chimera::chimera_dir(&store.paths);
+        if chimera_root.is_dir() {
+            fs::remove_dir_all(&chimera_root).unwrap();
+        }
+        assert!(store.load_chimera_layout(seg).unwrap().is_none());
+        // Fallback get still works via PrimaryIndex.
+        assert_eq!(
+            store.get("x").unwrap().as_deref(),
+            Some(b"tiny-x".as_slice())
+        );
+        let n = store.rebuild_chimera_layouts().unwrap();
+        assert!(n >= 1);
+        let layout = store.load_chimera_layout(seg).unwrap().expect("rebuilt");
+        assert_eq!(layout.get(b"x").unwrap().unwrap(), b"tiny-x");
+    }
+
+    #[test]
+    fn chimera_compact_writes_output_layout() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        store
+            .put("a", b"one", DurabilityMode::Durable)
+            .unwrap();
+        store
+            .put("b", &vec![2u8; 256], DurabilityMode::Durable)
+            .unwrap();
+        store.seal_active().unwrap();
+        let report = store.compact_live().unwrap();
+        let out_seg = report.segment_id;
+        let layout = store
+            .load_chimera_layout(out_seg)
+            .unwrap()
+            .expect("compact output chimera");
+        assert!(layout.len() >= 2);
+        assert_eq!(layout.get(b"a").unwrap().unwrap(), b"one");
+        assert_eq!(layout.get(b"b").unwrap().unwrap(), vec![2u8; 256]);
     }
 }
