@@ -25,8 +25,9 @@ with the acceptance evidence expected before a stronger label.
    acks report `committed` only after quorum + local apply (DEF-037). If Raft
    attach fails, the process falls back to **directory-only** routing and
    single-node apply — still not a release claim. Production gates remain
-   DEF-040–041 and §16 (durable rebalance DEF-038 and in-process anti-entropy
-   repair DEF-039 are shipped; network chaos / distributed query still open).
+   DEF-041 and §16 (durable rebalance DEF-038, in-process anti-entropy repair
+   DEF-039, and distributed query paging DEF-040 are shipped; network chaos /
+   linearizability program still open).
 2. **In-process quorum ≠ production network cluster.** Prefer
    `Dingo::open_cluster` for deterministic multi-replica tests; use
    `serve-cluster` + DEF-037 suite for multi-process data-plane checks.
@@ -141,6 +142,20 @@ Evidence: `stage_def_038_control_plane` (6 tests), Stage 8f rebalance suite.
 | Network multi-process repair RPC | Background peer exchange over `serve-cluster` | **not yet** (inventory/repair is in-process) |
 
 Evidence: `stage_def_039_repair` (8 tests), `dingo_cluster::repair` unit tests.
+
+## Distributed query paging (DEF-040)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Coverage on every page | `FindResult.coverage` always attached (`scan_page` / `scan_with`) | **in-process cluster** shipped |
+| Deterministic merge | Subject-ascending order; independent of `visit_order` / worker completion | **in-process cluster** shipped |
+| Per-partition frontiers | `Coverage.frontiers` + `read_mode` on each page | **in-process cluster** shipped |
+| Coordinator resume | MAC'd `QueryContinuation` (`dingo-query-continuation-v1`) bound to `cluster_id` | **in-process cluster** shipped |
+| Index / tier / resource fields | `indexes_used`, `tiers_searched`/`tiers_excluded`, `resource_limit_reached` | **in-process cluster** shipped |
+| Partial partition honesty | Unavailable partitions never look like empty complete success | **in-process cluster** shipped |
+| Network multi-process page RPC | Remote worker page protocol over `serve-cluster` | **not yet** (coordinator is in-process) |
+
+Evidence: `stage_def_040_query` (7 tests), `dingo_cluster::coverage` continuation unit tests.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

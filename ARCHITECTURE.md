@@ -114,8 +114,8 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 
 Network Raft control plane, data-plane commit, durable rebalance jobs, and
 in-process anti-entropy repair are in-tree on the experimental path
-(DEF-035–039). Production local-cluster gates (distributed query, Jepsen
-program) remain DEF-040–041. Operator path today:
+(DEF-035–040). Production local-cluster gates (Jepsen / network chaos program)
+remain DEF-041. Operator path today:
 development `dingo serve`, experimental `serve-cluster` with Raft when attached,
 and offline node salvage. Maturity labels:
 [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md), [DEFECTS.md](DEFECTS.md).

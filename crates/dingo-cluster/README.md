@@ -48,7 +48,7 @@ Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 | Raft persistence | Durable hard state, log, membership, snapshots |
 | Network Raft RPC | RequestVote / AppendEntries / InstallSnapshot / ReadIndex |
 | Convergent-append | Dual-accept across splits; reconcile by content hash |
-| Find / scan | `find` + `FindResult` query id + resource-budget honesty |
+| Find / scan | `find` / `scan_page` + coverage on every page; authenticated continuation (`dingo-query-continuation-v1`); deterministic subject merge |
 | Rebalance | Interruptible step machine; joint config; epoch activation |
 | Anti-entropy / repair | Hierarchical inventory; majority/integrity source select (never mtime); audited, rate-limited copies (`dingo-anti-entropy-v1`) |
 

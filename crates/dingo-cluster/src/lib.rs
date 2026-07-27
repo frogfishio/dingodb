@@ -19,6 +19,8 @@
 //!   ([`raft_rpc`]; DEF-036 / `dingo-raft-rpc-v1`)
 //! - Convergent-append dual-accept + reconcile ([`convergent`]; CLUSTER_SPEC §9.2)
 //! - Distributed find/scan with coverage honesty (Stage 8e; CLUSTER_SPEC §17)
+//! - Multi-page distributed query continuation + deterministic merge
+//!   ([`QUERY_CONTINUATION_PROFILE`]; DEF-040 / CLUSTER_SPEC §17.3–§17.4)
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
 //! - Durable rebalance jobs + joint membership restore (DEF-038 /
 //!   `dingo-rebalance-control-v1`)
@@ -62,7 +64,10 @@ pub use config::{node_store_path, ClusterConfig, ClusterMeta};
 pub use convergent::{
     body_content_hash, ConvergentIdentity, ReconcileReport, SubjectConflict, SubjectVariant,
 };
-pub use coverage::{Coverage, FindResult, GetResult, PartitionFrontier, ScanOptions, ScanResult};
+pub use coverage::{
+    Coverage, FindResult, GetResult, PartitionFrontier, QueryContinuation, ScanOptions, ScanResult,
+    DEFAULT_FIND_PAGE_SIZE, MAX_FIND_PAGE_SIZE, QUERY_CONTINUATION_PROFILE,
+};
 pub use directory::{PartitionAssignment, PartitionDirectory};
 pub use endpoints::{
     load_endpoints, save_endpoints, upsert_endpoint, upsert_endpoint_authenticated, EndpointsFile,

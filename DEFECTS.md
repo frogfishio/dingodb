@@ -30,7 +30,8 @@ Until this plan is complete, use these support labels:
 - **In-process cluster:** deterministic integration-test harness.
 - **`serve-cluster`:** experimental multi-process Raft (control plane DEF-036,
   data-plane commit DEF-037, durable rebalance DEF-038, in-process anti-entropy
-  repair DEF-039 when attached); not production-ready (DEF-040+ / §16).
+  repair DEF-039 when attached, distributed query paging DEF-040); not
+  production-ready (DEF-041+ / §16).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -140,7 +141,7 @@ Work:
   durability, replication, and store-lock status.
 - Make network cluster mode require an explicit experimental flag until
   DEF-030 through DEF-038 are complete (rebalance durability is in-process
-  experimental; network production still gated by DEF-040–041 / §16).
+  experimental; network production still gated by DEF-041 / §16).
 
 Acceptance:
 
@@ -1239,7 +1240,7 @@ Remaining (out of DEF-037 cut; DEF-038 addressed separately):
 
 - ~~Durable rebalance / joint consensus across restarts (DEF-038)~~ — **addressed**.
 - ~~Anti-entropy / repair (DEF-039)~~ — **addressed** (in-process).
-- Distributed query pages (DEF-040).
+- ~~Distributed query pages (DEF-040)~~ — **addressed**.
 - Full multi-process Jepsen-style partition histories (DEF-041).
 - Formal/safety review before freezing network Raft as production-only path.
 
@@ -1346,7 +1347,12 @@ Evidence:
 ### DEF-040 — Complete distributed query semantics
 
 Priority: P1  
-Dependencies: DEF-026, DEF-037
+Dependencies: DEF-026, DEF-037  
+Status: **addressed** (2026-07-27) — multi-page distributed find with
+authenticated continuation (`dingo-query-continuation-v1`), deterministic
+subject merge independent of visit/worker order, coverage on every page
+including frontiers / read mode / indexes / tiers / resource limits;
+coordinator resume without silent dup/omit
 
 Work:
 
@@ -1361,6 +1367,18 @@ Acceptance:
 - Randomized worker ordering produces identical sequence results.
 - Coordinator failover neither silently duplicates nor omits rows.
 - Partial partitions are never represented as empty complete partitions.
+
+Evidence:
+
+- `crates/dingo-cluster/src/coverage.rs` — `QueryContinuation` MAC'd tokens;
+  `Coverage` indexes/tiers fields; `FindResult.has_more` / `continuation`.
+- `Cluster::scan_with` / `scan_page` — paged merge by subject order;
+  `ScanOptions::{page_size, continuation, visit_order, after_subject}`.
+- Tests: `stage_def_040_query.rs` (visit-order identity, multi-page sequence,
+  coordinator reopen resume, partial-partition honesty, budget, tamper,
+  frontiers); unit tests for token roundtrip / wrong cluster / tamper.
+- SDK: `ClusterFindResult` carries `has_more` + `continuation`;
+  `ClusterBackend::scan_page`.
 
 ### DEF-041 — Build a distributed-system verification program
 

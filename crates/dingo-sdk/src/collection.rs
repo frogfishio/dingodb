@@ -361,6 +361,8 @@ impl<'a> Collection<'a> {
                     coverage: dingo_cluster::Coverage::default(),
                     query_id: "local-or-remote".into(),
                     truncated: false,
+                    has_more: false,
+                    continuation: None,
                 })
             }
         }

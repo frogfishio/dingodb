@@ -55,6 +55,10 @@ pub enum ClusterError {
     #[error("rebalance error: {0}")]
     Rebalance(String),
 
+    /// Distributed query continuation token is invalid, stale, or tampered (DEF-040).
+    #[error("continuation invalid: {0}")]
+    ContinuationInvalid(String),
+
     /// Underlying IO failure outside the store layer.
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
@@ -75,6 +79,7 @@ impl ClusterError {
             Self::ReplicationRejected(_) => "replication_rejected",
             Self::ConsistencyViolation(_) => "consistency_violation",
             Self::Rebalance(_) => "rebalance",
+            Self::ContinuationInvalid(_) => "continuation_invalid",
             Self::Io(_) => "io",
         }
     }

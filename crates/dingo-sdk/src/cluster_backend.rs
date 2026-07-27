@@ -24,17 +24,24 @@ use std::str;
 /// Maximum misroute retries after a directory refresh (bounded staleness).
 const MAX_ROUTE_RETRIES: u32 = 3;
 
-/// Cluster find outcome with coverage (Stage 8e, CLUSTER_SPEC §17).
+/// Cluster find outcome with coverage (Stage 8e / DEF-040, CLUSTER_SPEC §17).
 #[derive(Debug, Clone)]
 pub struct ClusterFindResult {
     /// Matching application keys and JSON values from completed partitions.
+    ///
+    /// Ordered by application key ascending (deterministic merge).
     pub rows: Vec<(String, JsonValue)>,
     /// Distributed coverage; inspect before treating empty as absence.
+    /// Present on every page.
     pub coverage: Coverage,
     /// Stable query identity for pagination / coordinator replacement.
     pub query_id: String,
-    /// Whether the underlying scan truncated by limit before filtering.
+    /// Whether the underlying scan truncated by limit/page before filtering.
     pub truncated: bool,
+    /// True when a further page is available via [`Self::continuation`].
+    pub has_more: bool,
+    /// Authenticated continuation for the next distributed page (DEF-040).
+    pub continuation: Option<Vec<u8>>,
 }
 
 /// SDK handle over an in-process multi-node [`Cluster`].
@@ -335,12 +342,21 @@ impl ClusterBackend {
             coverage: find.coverage,
             query_id: find.query_id,
             truncated: find.truncated,
+            has_more: find.has_more,
+            continuation: find.continuation,
         })
     }
 
-    /// Full multi-partition scan with coverage (Stage 8e).
+    /// Full multi-partition scan with coverage (Stage 8e / DEF-040).
     pub fn scan_with_coverage(&mut self, options: ScanOptions) -> Result<FindResult, Error> {
         let find = self.cluster.find(options).map_err(map_cluster)?;
+        self.sync_cache_from_cluster();
+        Ok(find)
+    }
+
+    /// One page of a distributed scan with coverage and continuation (DEF-040).
+    pub fn scan_page(&mut self, options: ScanOptions) -> Result<FindResult, Error> {
+        let find = self.cluster.scan_page(options).map_err(map_cluster)?;
         self.sync_cache_from_cluster();
         Ok(find)
     }
@@ -556,6 +572,9 @@ pub(crate) fn map_cluster(e: ClusterError) -> Error {
         },
         ClusterError::ConsistencyViolation(m) => Error::ConsistencyViolation(m),
         ClusterError::Rebalance(m) => Error::Internal(format!("rebalance: {m}")),
+        ClusterError::ContinuationInvalid(m) => Error::ValidationMsg(format!(
+            "distributed query continuation invalid: {m}"
+        )),
         ClusterError::AlreadyExists(p) => {
             Error::ValidationMsg(format!("cluster already exists: {p}"))
         }

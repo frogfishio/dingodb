@@ -14,11 +14,16 @@
 //! Stage 8e adds distributed find with coverage honesty on partial queries.
 //! Stage 8f adds interruptible partition rebalance (CLUSTER_SPEC §14).
 //! DEF-039 adds anti-entropy inventory and integrity-based replica repair.
+//! DEF-040 adds multi-page find with authenticated continuation and
+//! deterministic merge independent of worker visit order.
 
 use crate::ack::ClusterWriteAck;
 use crate::config::{node_store_path, ClusterConfig, ClusterMeta};
 use crate::convergent::{body_content_hash, ReconcileReport, SubjectConflict, SubjectVariant};
-use crate::coverage::{Coverage, FindResult, GetResult, ScanOptions, ScanResult};
+use crate::coverage::{
+    Coverage, FindResult, GetResult, QueryContinuation, ScanOptions, ScanResult,
+    DEFAULT_FIND_PAGE_SIZE, MAX_FIND_PAGE_SIZE,
+};
 use crate::directory::PartitionDirectory;
 use crate::error::ClusterError;
 use crate::id::{ClusterId, LogPosition, NodeId, PartitionId, PlacementEpoch, Term};
@@ -1147,28 +1152,102 @@ impl Cluster {
         })
     }
 
-    /// Distributed scan/find with coverage (CLUSTER_SPEC §17, Stage 8e).
+    /// Distributed scan/find with coverage (CLUSTER_SPEC §17, Stage 8e, DEF-040).
     ///
     /// Returns matching subjects from completed partitions only. Always attach
     /// honest coverage: unavailable partitions are listed, never treated as
     /// empty success. Resource budgets set `coverage.resource_limit_reached`.
+    ///
+    /// **Paging (DEF-040):** set [`ScanOptions::page_size`] and/or
+    /// [`ScanOptions::continuation`]. Every page carries full coverage plus an
+    /// authenticated continuation so a replacement coordinator can resume
+    /// without silent duplicates or omissions. Merge order is always
+    /// subject-ascending and independent of partition visit / worker order.
     pub fn scan_with(&mut self, options: ScanOptions) -> Result<FindResult, ClusterError> {
-        let requested: Vec<PartitionId> = match &options.partitions {
-            Some(p) => {
-                let mut v = p.clone();
-                v.sort();
-                v.dedup();
-                v
-            }
-            None => self.partition_map.all_partitions().collect(),
+        // Resolve continuation first so scope / read mode / budgets resume.
+        let cont = if let Some(ref tok) = options.continuation {
+            Some(QueryContinuation::decode(self.cluster_id, tok)?)
+        } else {
+            None
         };
-        let query_id =
-            FindResult::make_query_id(&requested, options.subject_prefix.as_deref(), options.limit);
+
+        let read_mode = cont
+            .as_ref()
+            .map(|c| c.read_mode)
+            .unwrap_or(options.read_mode);
+
+        let subject_prefix = cont
+            .as_ref()
+            .and_then(|c| c.prefix.clone())
+            .or_else(|| options.subject_prefix.clone());
+
+        let after_subject = cont
+            .as_ref()
+            .map(|c| c.after_subject.clone())
+            .or_else(|| options.after_subject.clone());
+
+        let page_size = cont
+            .as_ref()
+            .map(|c| c.page_size)
+            .or(options.page_size)
+            .map(|n| n.clamp(1, MAX_FIND_PAGE_SIZE));
+
+        let limit = cont
+            .as_ref()
+            .and_then(|c| c.remaining_limit)
+            .or(options.limit);
+        let max_docs = cont
+            .as_ref()
+            .and_then(|c| c.remaining_max_docs)
+            .or(options.max_docs_scanned);
+
+        let requested: Vec<PartitionId> = if let Some(ref c) = cont {
+            c.partitions.clone()
+        } else {
+            match &options.partitions {
+                Some(p) => {
+                    let mut v = p.clone();
+                    v.sort();
+                    v.dedup();
+                    v
+                }
+                None => self.partition_map.all_partitions().collect(),
+            }
+        };
+
+        let query_id = if let Some(ref c) = cont {
+            c.query_id.clone()
+        } else {
+            FindResult::make_query_id(&requested, subject_prefix.as_deref(), limit)
+        };
+
+        // Visit order affects only contact sequencing; merge is always by subject.
+        let visit: Vec<PartitionId> = if let Some(ref order) = options.visit_order {
+            // Validate permutation of scope.
+            let mut sorted_order: Vec<PartitionId> = order.clone();
+            sorted_order.sort();
+            sorted_order.dedup();
+            if sorted_order != requested {
+                return Err(ClusterError::ConsistencyViolation(
+                    "visit_order must be a permutation of the partition scope".into(),
+                ));
+            }
+            order.clone()
+        } else {
+            requested.clone()
+        };
 
         let mut coverage = Coverage::for_partitions(requested.iter().copied());
-        coverage.with_read_mode(options.read_mode);
+        coverage.with_read_mode(read_mode);
+        coverage.use_index("primary-scan");
+        coverage.search_tier("hot");
         if !self.replicated_durability_available() {
             coverage.note("development profile: replicated durability unavailable");
+        }
+        if cont.is_some() {
+            coverage.note(format!(
+                "resumed via authenticated continuation (query_id={query_id})"
+            ));
         }
 
         let mut entries: Vec<(String, Vec<u8>)> = Vec::new();
@@ -1176,7 +1255,7 @@ impl Cluster {
         let mut docs_scanned = 0usize;
         let mut budget_stopped = false;
 
-        for partition in requested {
+        for partition in visit {
             if budget_stopped {
                 // Remaining requested partitions are incomplete due to budget.
                 if !coverage.completed.contains(&partition)
@@ -1199,12 +1278,13 @@ impl Cluster {
             let served = match self.contact_partition(
                 partition,
                 &assignment,
-                options.read_mode,
+                read_mode,
                 &mut batch,
                 &mut seen_subjects,
-                options.subject_prefix.as_deref(),
+                subject_prefix.as_deref(),
+                after_subject.as_deref(),
                 &mut docs_scanned,
-                options.max_docs_scanned,
+                max_docs,
             )? {
                 ContactOutcome::Served { term, pos, node } => {
                     coverage.mark_completed(partition, term, pos, Some(node.index()));
@@ -1228,13 +1308,55 @@ impl Cluster {
             }
         }
 
+        // Deterministic merge: subject ascending, never worker completion order.
         entries.sort_by(|a, b| a.0.cmp(&b.0));
+
         let mut truncated = false;
-        if let Some(limit) = options.limit {
-            if entries.len() > limit {
-                entries.truncate(limit);
+        let mut has_more = false;
+        let mut continuation = None;
+
+        if let Some(ps) = page_size {
+            // Paged mode (DEF-040): emit at most `ps` rows (also bound by remaining limit).
+            let cap = match limit {
+                Some(l) => l.min(ps),
+                None => ps,
+            };
+            if entries.len() > cap {
+                has_more = true;
                 truncated = true;
-                coverage.note(format!("result truncated to limit {limit}"));
+                entries.truncate(cap);
+                coverage.note(format!("page truncated to {cap} (page_size={ps})"));
+            }
+
+            if has_more {
+                if let Some(last) = entries.last() {
+                    let remaining_limit = limit.map(|l| l.saturating_sub(entries.len()));
+                    // Exhausted overall limit → no further pages.
+                    if remaining_limit == Some(0) {
+                        has_more = false;
+                    } else {
+                        let remaining_max_docs =
+                            max_docs.map(|m| m.saturating_sub(docs_scanned));
+                        let next = QueryContinuation {
+                            query_id: query_id.clone(),
+                            after_subject: last.0.clone(),
+                            page_size: ps,
+                            prefix: subject_prefix.clone(),
+                            partitions: requested.clone(),
+                            read_mode,
+                            remaining_limit,
+                            remaining_max_docs,
+                        };
+                        continuation = Some(next.encode(self.cluster_id)?);
+                    }
+                }
+            }
+        } else if let Some(lim) = limit {
+            // One-shot mode with limit (Stage 8e).
+            if entries.len() > lim {
+                entries.truncate(lim);
+                truncated = true;
+                coverage.note(format!("result truncated to limit {lim}"));
             }
         }
 
@@ -1243,11 +1365,27 @@ impl Cluster {
             coverage,
             query_id,
             truncated,
+            has_more,
+            continuation,
         })
     }
 
     /// Convenience find: subjects matching optional prefix under scan options.
     pub fn find(&mut self, options: ScanOptions) -> Result<FindResult, ClusterError> {
+        self.scan_with(options)
+    }
+
+    /// Fetch one page of a distributed find, starting or resuming (DEF-040).
+    ///
+    /// Equivalent to [`Self::scan_with`] with [`ScanOptions::page_size`] set
+    /// (default [`DEFAULT_FIND_PAGE_SIZE`] when neither page size nor
+    /// continuation provides one).
+    pub fn scan_page(&mut self, mut options: ScanOptions) -> Result<FindResult, ClusterError> {
+        if options.page_size.is_none() && options.continuation.is_none() {
+            options.page_size = Some(DEFAULT_FIND_PAGE_SIZE);
+        } else if options.page_size.is_none() {
+            // Continuation carries page_size; leave unset so decode supplies it.
+        }
         self.scan_with(options)
     }
 
@@ -1602,6 +1740,7 @@ impl Cluster {
         entries: &mut Vec<(String, Vec<u8>)>,
         seen: &mut HashSet<String>,
         prefix: Option<&str>,
+        after_subject: Option<&str>,
         docs_scanned: &mut usize,
         max_docs: Option<usize>,
     ) -> Result<ContactOutcome, ClusterError> {
@@ -1617,6 +1756,7 @@ impl Cluster {
                         entries,
                         seen,
                         prefix,
+                        after_subject,
                         docs_scanned,
                         max_docs,
                     )?;
@@ -1653,6 +1793,7 @@ impl Cluster {
                     entries,
                     seen,
                     prefix,
+                    after_subject,
                     docs_scanned,
                     max_docs,
                 )?;
@@ -1687,6 +1828,9 @@ impl Cluster {
     }
 
     /// Collect live entries for one partition. Returns true if a docs budget stopped early.
+    ///
+    /// When `after_subject` is set, only subjects strictly greater than that
+    /// value are returned (DEF-040 page resume).
     fn collect_partition_entries(
         &self,
         store: &Store,
@@ -1694,6 +1838,7 @@ impl Cluster {
         entries: &mut Vec<(String, Vec<u8>)>,
         seen: &mut HashSet<String>,
         prefix: Option<&str>,
+        after_subject: Option<&str>,
         docs_scanned: &mut usize,
         max_docs: Option<usize>,
     ) -> Result<bool, ClusterError> {
@@ -1706,6 +1851,11 @@ impl Cluster {
             }
             if let Some(p) = prefix {
                 if !subject.starts_with(p) {
+                    continue;
+                }
+            }
+            if let Some(after) = after_subject {
+                if subject.as_bytes() <= after.as_bytes() {
                     continue;
                 }
             }
