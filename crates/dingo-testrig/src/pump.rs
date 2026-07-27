@@ -116,6 +116,10 @@ pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         "elapsed_ms": manifest.pump_elapsed_ms,
         "ops_per_sec": ops_per_sec,
         "mb_per_sec": mb_per_sec,
+        // Honest concurrency disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
+        // Pump is a single exclusive writer over one active segment today.
+        "concurrency": 1,
+        "writer_model": "single_active_segment",
         "manifest": cfg.manifest_path.display().to_string(),
         "store": cfg.store.display().to_string(),
     });

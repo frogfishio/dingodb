@@ -630,14 +630,15 @@ optional seal work off the put acknowledgement path (background / batch
 lifecycle) so p99 is not coupled to lifecycle spikes. Preferred shape: dual (or
 more) active segment slots with O(1) foreground rotate; finalize seal, BLAKE3
 completion, and index checkpoints off the writer thread; bound pending seals
-with backpressure only when workers lag.
+with backpressure only when workers lag. **Tracked as DEF-096 Axis A**; full
+multi-core / sharded-writer sequencing in `doc/PARALLEL_INGEST.md`.
 
 **Maximum-point note (2026-07-27 self-check):** ordinary in-memory index
 insertion on the steady-state put path is past the asymptotic cliff — further
 index micro-optimization is diminishing returns relative to lifecycle spikes.
 The next high-leverage write-path work is the async lifecycle follow-on above,
 not a new primary index structure. See `doc/BENCHMARK_DISCLOSURE.md`
-(“Maximum point self-check”).
+(“Maximum point self-check”) and DEF-096 (post–10 GiB M4 CPU-headroom observation).
 
 Acceptance:
 
@@ -937,6 +938,50 @@ Acceptance:
 (`--seed 2`, 8 KiB payloads, buffered) **PASS**; peak RSS ~0.92 GiB (vs ~10 GiB
 pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 `doc/WORK_HORIZON.md` (memory-eat self-check).
+
+### DEF-096 — Parallel ingest: multi-core write path (async lifecycle → sharded writers)
+
+Priority: P1  
+Dependencies: DEF-023 (follow-on), DEF-020, DEF-095  
+Status: **open (design)** — see `doc/PARALLEL_INGEST.md` (2026-07-27)
+
+Problem:
+
+After DEF-095, a 10 GiB buffered pump on Apple M4 keeps RSS ~0.92 GiB and does
+not thrash, but process CPU sits mostly in the ~50% range with peaks near one
+full core (~97%). Memory and SSD headroom are unused. The store is still a
+**single exclusive writer** over **one active segment**, with `seal_active` and
+rate-limited `persist_index_cache` on the put acknowledgement path. Hydra/Chimera
+compile runs synchronously at seal. Product doctrine already requires parallel
+ingestion (OVERVIEW §1 / §12, USP “sharded writers”); the implementation does
+not yet use the spare cores.
+
+Work (sequenced — do **not** multi-thread one `Store::put` first):
+
+1. **Axis A — Async lifecycle (first cut):** dual (or more) active segment slots;
+   O(1) foreground rotate; background seal (rewrite, BLAKE3, Hydra, Chimera,
+   tier/catalog); background derived checkpoints; backpressure when workers lag.
+2. **Axis B — Sharded writers:** N active segments by subject hash; per-shard
+   append + seal pipeline; sharded or mergeable PrimaryIndex; concurrent clients.
+3. **Axis C — Horizontal:** multi-store / partition / cluster (already partially
+   present) — capacity path, not single-node efficiency.
+4. **Harness:** testrig disclosure of `concurrency` / writer model; optional
+   multi-store pump for media upper-bound; process CPU samples after Axis A.
+
+Anti-goals:
+
+- Rayon over a single active segment / exclusive lock.
+- PrimaryIndex micro-opts as a substitute for lifecycle offload.
+- Publishing multi-core claims without BENCHMARK_DISCLOSURE concurrency fields.
+
+Acceptance:
+
+- Design doc `doc/PARALLEL_INGEST.md` is the sequencing authority until cuts land.
+- Axis A: put p99 not coupled to seal/checkpoint duration; crash matrix preserved;
+  1 GiB and 10 GiB testrig re-runs show higher sustained throughput and multi-core
+  process CPU% while RSS stays O(keys).
+- Axis B: documented only after Axis A measurement shows one append core saturated
+  with idle media.
 
 ---
 

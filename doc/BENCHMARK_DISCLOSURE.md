@@ -150,6 +150,22 @@ Second local campaign after locator-first PrimaryIndex (**DEF-095**):
 | Chaos | 64 offline punches; salvage reports 128 holes; live subjects retained |
 | Post-chaos gets | All 128 samples ok; p50 **19 µs** / p95 **152 µs** / p99 **279 µs** |
 | Result | **PASS** — pump target, baseline healthy, chaos landed, salvage still speaks |
+| Concurrency | **1** writer thread / single active segment (not multi-core ingest) |
+| Host resource note | On Apple M4 (10 cores), process CPU mostly ~50% with peaks ~97% of **one** core; RSS ~0.92 GiB; SSD not saturated — headroom for DEF-096 parallel ingest |
+
+#### Multi-core write path (design, not yet measured)
+
+After DEF-095, single-node pumps are no longer memory-bound. Remaining scale is
+**serial write architecture**, not media. Sequencing authority:
+[`PARALLEL_INGEST.md`](PARALLEL_INGEST.md) / **DEF-096**:
+
+1. Async lifecycle (dual active slots, background seal/checkpoint) — first cut.
+2. Sharded writers — after one append core saturates.
+3. Multi-store / cluster — horizontal capacity.
+
+Do **not** report multi-core or “maxed out the M4” claims until concurrency > 1
+or process CPU samples show multi-core seal workers, with the disclosure table
+above filled in.
 
 #### Read-path failure that was fixed (Chimera-before-index)
 

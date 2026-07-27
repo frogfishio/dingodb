@@ -91,6 +91,7 @@ Summary JSON: `<work>/testrig-summary.v1.json`.
 
 - **Chaos is offline filesystem damage**, same family as `scripts/demos/02_punch_a_hole.sh`. It does not hold the store writer lock; run it only when the store is closed.
 - **Pump** defaults to `buffered` durability for throughput; pass `--durability durable` when you want fsync-honest campaigns.
+- **Pump concurrency is 1** today (`writer_model: single_active_segment` in JSON). Parallel multi-core ingest is **DEF-096** / [`doc/PARALLEL_INGEST.md`](../../doc/PARALLEL_INGEST.md) — not a missing pump flag over one `Store`.
 - **Monitor** reports p50/p95/p99 get latency, salvage frame/hole counts, and optional scrub failures. Not a replacement for DEF-093 disclosed benchmarks.
 - Manifest: `testrig-manifest.v1.json` next to the store (or under `--work`) so monitor can sample keys the pump wrote.
 

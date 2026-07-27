@@ -58,6 +58,7 @@ partially cut:
 
 | ID | Gap |
 |----|-----|
+| **DEF-096** | Parallel ingest after DEF-095 freed memory: async lifecycle (dual active slots) then sharded writers — design in `PARALLEL_INGEST.md`. Single-node cores still idle on 10 GiB pumps. |
 | **DEF-039 / 040 network** | Anti-entropy repair and query paging still in-process only. |
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
@@ -162,6 +163,24 @@ Peak process RSS while pumping ~**0.92 GiB** (2 s samples via `ps`), not ~10
 ~643k keys / 10.05 GiB on disk; baseline get p50 **18 µs**; post-chaos get p50
 **19 µs** with 128 salvage holes; pump ~7.4k ops/s. Summary:
 `/var/tmp/dingo-testrig-10g/testrig-summary.v1.json`. Diagnostic only.
+
+### Multi-core / parallel ingest self-check (2026-07-27)
+
+User observation on M4 during the fixed 10 GiB run: CPU mostly ~50% with peaks
+~97%, memory flat, SSD not the limit — “we’re running a single-CPU game; how do
+we parallelize and max out all the cores?”
+
+| Claim | Verdict |
+|-------|---------|
+| Observation correct? | **Yes.** One exclusive writer, one active segment, lifecycle on put ack. Process CPU% ≈ one core. |
+| Memory/disk the limiter? | **No** after DEF-095. |
+| Multi-thread `Store::put` first? | **No** — thrash without model change. |
+| Next high-leverage cut? | **DEF-096 Axis A** — async lifecycle (dual slots, background seal/Hydra/Chimera/checkpoint). |
+| True multi-core append? | **Axis B** sharded writers — after A saturates one append core. |
+| Spec already requires this? | **Yes** — OVERVIEW parallel ingest, USP sharded writers. |
+
+Design authority: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md). Do not spend the
+next tranche on PrimaryIndex micro-opts or pump rayon against one store.
 
 ### “Is this a big flex?” self-check (2026-07-27)
 
