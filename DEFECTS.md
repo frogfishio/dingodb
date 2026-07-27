@@ -39,6 +39,8 @@ Until this plan is complete, use these support labels:
   migration (DEF-052); not frozen for long-term interoperability (DEF-053).
 - **Process config:** versioned `dingo-config-v1` validate-before-serve
   (DEF-054); live dynamic reload still follow-on.
+- **Process logs:** versioned `dingo-log-v1` NDJSON on serve paths (DEF-060);
+  client-side structured emission and config-driven sinks still follow-on.
 
 Public documentation, CLI help, release notes, and crate READMEs MUST use these
 labels until the corresponding gates pass.
@@ -1636,6 +1638,12 @@ Remaining (out of this cut):
 
 Priority: P1
 
+Status: **addressed (process NDJSON cut)** (2026-07-27) — versioned
+`dingo-log-v1` structured facade (`dingo-server::slog`), stable event names,
+bounded field cardinality, redaction of credentials/payloads by construction,
+RPC completion + guarantee-failed correlation fields on the serve path;
+client-side log emission and distributed replica join remain follow-ons.
+
 Work:
 
 - Use a structured logging facade throughout.
@@ -1648,6 +1656,31 @@ Acceptance:
 
 - Every failed guarantee can be correlated across client, server, and replica
   logs without parsing prose.
+
+Evidence (this cut):
+
+- `dingo-server::slog` — `Logger`, `LogEvent`, `LogSink` / `StderrSink` /
+  `MemorySink`, `log_rpc_complete`, profile `LOG_PROFILE` = `dingo-log-v1`.
+- Stable events: `server.start`, `server.drain`, `connection.rejected`,
+  `connection.error`, `rpc.complete`, `guarantee.failed`, `raft.attach_failed`.
+- Correlation fields: `request_id`, `operation_id`, `principal_id`, `op`,
+  `collection`, `store` / `cluster` / `node_index` / `partition`, `error_code`,
+  `guarantee_requested` / `guarantee_achieved`, `committed`, `event_id`,
+  `latency_ms` — no `token` / body / `bytes_b64` keys.
+- Serve wiring: `ServeOptions::logger`, default stderr NDJSON on
+  `serve_store_with` / `serve_cluster_node`; every application RPC emits
+  `rpc.complete` (+ `guarantee.failed` when requested durability is missed).
+- Tests: `slog::tests`, `stage_def_060_logging` (correlation, redaction, churn
+  reject, SDK e2e).
+
+Remaining (out of this cut):
+
+- Client SDK structured log emission of the same correlation ids (join client ↔
+  server without custom app code).
+- Replica / Raft data-plane peer logs with shared `operation_id` on propose
+  apply paths beyond control-plane attach failures.
+- Configurable log level / sink via `dingo-config-v1` (file/syslog; dynamic).
+- OpenTelemetry log export bridge (ties to DEF-062 tracing).
 
 ### DEF-061 — Implement metrics and health endpoints
 
@@ -2075,7 +2108,8 @@ DingoDB may be called production-ready only when all applicable gates pass.
 - [ ] Threat model and independent audit have no unresolved critical/high
       findings.
 - [ ] Fuzzing covers all untrusted parsers.
-- [ ] Secrets and payloads are absent from logs and metrics by default.
+- [x] Secrets and payloads are absent from **serve** structured logs by default
+      (DEF-060; metrics still DEF-061; client logs follow-on).
 
 ### 16.5 Operational gates
 

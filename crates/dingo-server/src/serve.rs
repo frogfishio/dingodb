@@ -13,7 +13,7 @@ use crate::raft_server;
 use crate::runtime::{
     is_mutating_op, ConnectionGuard, MutationGuard, ServerLimits, ServerRuntime, SERVER_PROFILE,
 };
-use crate::slog::{self, events as log_events, log_rpc_complete, Logger, LOG_PROFILE};
+use crate::slog::{events as log_events, log_rpc_complete, Logger, LOG_PROFILE};
 use dingo_sdk::{
     collection_prefix, create_index_on_store, decode_bytes, decode_json, decode_subject,
     encode_bytes, encode_json, encode_subject, find_on_store, mark_indexes_stale,
@@ -845,6 +845,27 @@ pub fn serve_cluster_node(
         .node_index(node_index)
         .cluster_root(root);
 
+    let store_path = dingo_cluster::node_store_path(root, node_index);
+    if !store_path.join("store-info").is_dir() {
+        return Err(Error::Internal(format!(
+            "node store missing at {} (expected store-info/)",
+            store_path.display()
+        )));
+    }
+
+    // Install structured logger before Raft attach so attach-failed events carry
+    // cluster/store/node context (DEF-060 correlation).
+    if opts.logger.is_none() {
+        opts.logger = Some(
+            Logger::stderr()
+                .store(store_path.display().to_string())
+                .cluster(root.display().to_string())
+                .node_index(node_index)
+                .mode("serve-cluster")
+                .shared(),
+        );
+    }
+
     // Attach durable network Raft control plane when the caller did not inject one.
     if opts.raft.is_none() {
         match raft_server::shared_raft_state(root, node_index, opts.auth_token.clone()) {
@@ -869,25 +890,6 @@ pub fn serve_cluster_node(
                     .emit();
             }
         }
-    }
-
-    let store_path = dingo_cluster::node_store_path(root, node_index);
-    if !store_path.join("store-info").is_dir() {
-        return Err(Error::Internal(format!(
-            "node store missing at {} (expected store-info/)",
-            store_path.display()
-        )));
-    }
-
-    if opts.logger.is_none() {
-        opts.logger = Some(
-            Logger::stderr()
-                .store(store_path.display().to_string())
-                .cluster(root.display().to_string())
-                .node_index(node_index)
-                .mode("serve-cluster")
-                .shared(),
-        );
     }
 
     if !opts.suppress_startup_report {

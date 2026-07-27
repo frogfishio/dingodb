@@ -161,7 +161,9 @@ packages (DEF-050; distinct from salvage). `dingo scrub` runs bounded integrity
 verification with durable findings (DEF-051). `dingo migrate` runs phased
 format migration into a new store without rewriting the source (DEF-052).
 `dingo config validate|show` checks versioned `dingo-config-v1` documents;
-`dingo serve --config` applies them before bind (DEF-054).
+`dingo serve --config` applies them before bind (DEF-054). Serve paths emit
+structured `dingo-log-v1` NDJSON (DEF-060) with correlation fields and no
+payloads/secrets by default.
 
 [SDA](SDA_SPEC.md), the Structured Data Algebra, provides deterministic
 filtering and transformation over both normal structured values and recovered

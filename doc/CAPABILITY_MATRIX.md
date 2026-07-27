@@ -66,6 +66,7 @@ with the acceptance evidence expected before a stronger label.
 | `SCRUB_PROFILE` | `dingo-scrub-v1` | Bounded integrity scrub + findings quarantine (DEF-051) |
 | `MIGRATE_PROFILE` | `dingo-migrate-v1` | Phased format migration + version matrix (DEF-052) |
 | `CONFIG_PROFILE` | `dingo-config-v1` | Versioned process config + validate-before-serve (DEF-054) |
+| `LOG_PROFILE` | `dingo-log-v1` | Structured NDJSON process logs + correlation fields (DEF-060) |
 
 ## Raft persistence (DEF-035)
 

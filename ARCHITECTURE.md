@@ -83,6 +83,7 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 | SDA packaging | `sda-lib` (lib) + `sda` (CLI binary); no storage IO inside SDA core |
 | Wire format versioning | Draft `1.0-draft`; reader/writer matrix + migrate phases (DEF-052); freeze is DEF-053 |
 | Process configuration | Versioned `dingo-config-v1` validate-before-serve (DEF-054); live reload follow-on |
+| Process logging | Versioned `dingo-log-v1` NDJSON with stable events + correlation fields (DEF-060); metrics/health DEF-061 |
 | License | Multi-tier: MIT / MPL-2.0 / AGPL-3.0-or-later (see `doc/LICENSING.md`) |
 
 ## SDA import convention

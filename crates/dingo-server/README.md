@@ -72,13 +72,14 @@ let mut db = Dingo::connect_with(
 |-----|------|
 | `serve_store` / `serve_store_with` | Single-node TCP serve over a store directory |
 | `serve_cluster_node` | Multi-node node process (experimental network cluster) |
-| `ServeOptions` | Auth token, TLS, bind policy, admission, Raft, shutdown |
+| `ServeOptions` | Auth token, TLS, bind policy, admission, Raft, logger, shutdown |
 | `handle_connection` / `handle_connection_with` | Per-connection RPC dispatch |
 | `ServerRuntime` / `ServerLimits` | Connection caps, idle timeout, drain |
 | `AdmissionController` / `AdmissionLimits` | Rate limits, auth lockout, replay window |
 | `AuthzPolicy` / `Principal` / `Privilege` | Principal privileges + audit chain |
 | `validate_bind` / `ServeStartupReport` | Loopback-default bind policy (DEF-002) |
 | `load_and_validate` / `DingoConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `dingo-config-v1`) |
+| `Logger` / `LogEvent` / `MemorySink` / `log_rpc_complete` | Structured NDJSON process logs (DEF-060, `dingo-log-v1`) |
 | `RaftServerState` / `TcpRaftTransport` | Network Raft RPC (vote / append / snapshot / read-index) |
 
 ## Process configuration (DEF-054)
@@ -105,6 +106,26 @@ JSON documents use profile `dingo-config-v1`. Put only secret *references*
 (`serve.token_env`, `serve.token_secret_ref` as `env:NAME` or `file:PATH`) in
 the file — never token values. Validation refuses unsafe combinations such as
 `cluster.claim_replication=true` with fewer than three expected nodes.
+
+## Structured logging (DEF-060)
+
+Serve paths emit versioned NDJSON (`profile: dingo-log-v1`) on stderr by
+default. Events use stable names (`rpc.complete`, `guarantee.failed`,
+`connection.rejected`, …) and bounded correlation fields (`request_id`,
+`operation_id`, `principal_id`, requested/achieved guarantees, latency).
+Credentials and request/response bodies are never logged.
+
+```rust
+use dingo_server::{log_events, Logger, MemorySink, ServeOptions};
+use std::sync::Arc;
+
+// Tests: capture lines without touching stderr.
+let sink = Arc::new(MemorySink::new(64));
+let log = Logger::with_sink(sink).store("/data/store").mode("serve").shared();
+let opts = ServeOptions::new().logger(log);
+// Production: omit `.logger(...)` — serve installs stderr NDJSON automatically.
+# let _ = opts;
+```
 
 ## Serve options (highlights)
 
