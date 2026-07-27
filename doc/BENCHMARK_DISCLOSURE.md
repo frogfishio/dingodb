@@ -98,6 +98,28 @@ cargo run -p dingo-store --release --example write_latency_breakdown
 cargo run -p dingo-store --release --example write_scale_curve
 ```
 
+#### Maximum point self-check (diminishing returns)
+
+**Question:** Have we reached the maximum useful point on write-path *index*
+optimization — beyond which further work is diminishing returns?
+
+| Claim | Verdict |
+|-------|---------|
+| Asymptotic indexing failure fixed? | **Yes.** Amortized put work no longer grows with retained history; late/early ≳ 0.7. |
+| Steady-state put path healthy? | **Yes.** ~µs-class buffered puts; dual-index is a minority share on mid-size values. |
+| Further primary-index micro-opts on the put path? | **Diminishing returns.** Shaving dual-index from ~40% → ~20% of a 20 µs put is low leverage vs **tens of ms** lifecycle spikes. |
+| Fancy read indexes (PGM++/Hydra proposal)? | **Different axis** — not a write-path steady-state win; evaluate under read benchmarks, not this cliff. |
+| Write-path performance work finished? | **No.** Next high-leverage move is **async lifecycle**: dual active segments, O(1) rotate, background seal/checkpoint so p99 is not coupled to `seal_active` / `persist_index_cache`. |
+
+**Plain answer:** For *ordinary index insertion on the steady-state write path*,
+yes — we are past the cliff and further index-structure thrash is polish. For
+*write-path p99 / sustained pump throughput*, no — the maximum point is not
+async seal/checkpoint yet; that follow-on still has large returns.
+
+Do **not** spend the next labor tranche on SwissTable/PGM/micro-opts of
+`PrimaryIndex` apply unless a new measurement shows index re-dominating after
+lifecycle is off the ack path.
+
 ## Marketing language
 
 - Prefer “hot-path p99 under durable ack on NVMe” over unqualified “Redis-fast”.

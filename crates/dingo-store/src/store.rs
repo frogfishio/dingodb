@@ -1796,11 +1796,82 @@ impl Store {
         let _ = self.persist_tier_state();
         let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
 
+        // Hydra: adaptive per-segment index (derived only; failure is non-fatal).
+        let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment()?;
         self.persist_active(DurabilityMode::Durable)?;
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
+    }
+
+    /// Compile and persist a Hydra index for one sealed segment (derived only).
+    ///
+    /// Selection is adaptive: tiny → Eytzinger, ordered numeric → PGM/RadixSpline,
+    /// strings → compressed radix, with optional point-only MPHF via rebuild APIs.
+    fn write_hydra_for_sealed(
+        &self,
+        segment_id: [u8; 16],
+        bytes: &[u8],
+    ) -> Result<(), StoreError> {
+        let records = crate::hydra::records_from_segment_bytes(bytes, self.limits);
+        if records.is_empty() {
+            return Ok(());
+        }
+        let index = crate::hydra::build(&records, &crate::hydra::HydraBuildOptions::default());
+        let path = crate::hydra::hydra_index_path(&self.paths, &segment_id);
+        crate::hydra::write_hydra_index(&path, self.store_id, segment_id, &index)
+    }
+
+    /// Rebuild Hydra indexes for all available sealed segments (multithread).
+    ///
+    /// Derived only — safe after catalog wipe. Returns how many indexes were written.
+    pub fn rebuild_hydra_indexes(
+        &self,
+        opts: &crate::hydra::HydraBuildOptions,
+    ) -> Result<usize, StoreError> {
+        let paths = crate::tier::available_sealed_paths(&self.paths, &self.tier_placement)?;
+        if paths.is_empty() {
+            return Ok(0);
+        }
+        let mut batches = Vec::with_capacity(paths.len());
+        let mut seg_ids = Vec::with_capacity(paths.len());
+        for path in &paths {
+            let Some(seg_id) = crate::layout::segment_id_from_filename(path) else {
+                continue;
+            };
+            let bytes = match fs::read(path) {
+                Ok(b) => b,
+                Err(_) => continue,
+            };
+            let records = crate::hydra::records_from_segment_bytes(&bytes, self.limits);
+            if records.is_empty() {
+                continue;
+            }
+            batches.push(records);
+            seg_ids.push(seg_id);
+        }
+        if batches.is_empty() {
+            return Ok(0);
+        }
+        let indexes = crate::hydra::build_many(&batches, opts);
+        let mut written = 0usize;
+        for (seg_id, index) in seg_ids.into_iter().zip(indexes.into_iter()) {
+            let path = crate::hydra::hydra_index_path(&self.paths, &seg_id);
+            crate::hydra::write_hydra_index(&path, self.store_id, seg_id, &index)?;
+            written += 1;
+        }
+        Ok(written)
+    }
+
+    /// Load the Hydra sidecar for a sealed segment when present and valid.
+    pub fn load_hydra_index(
+        &self,
+        segment_id: [u8; 16],
+    ) -> Result<Option<crate::hydra::HydraIndex>, StoreError> {
+        let path = crate::hydra::hydra_index_path(&self.paths, &segment_id);
+        crate::hydra::try_load_hydra_index(&path, self.store_id, segment_id)
     }
 
     /// Paths used for derived state (safe to delete for salvage tests).

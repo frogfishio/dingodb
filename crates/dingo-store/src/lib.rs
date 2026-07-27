@@ -6,6 +6,10 @@
 //! Stage 6 adds rebuildable catalogs, secondary index files, subject history,
 //! chunked payloads with partial maps, live-state compaction, and checkpoints.
 //!
+//! Hydra adds adaptive **per-segment** read indexes at seal time (Eytzinger,
+//! PGM/RadixSpline, compressed radix, MPHF+fingerprint) with multithreaded
+//! rebuild — derived only under `indexes/seg/`.
+//!
 //! Stage 9 adds storage tiers (hot/warm/cold/archive), segment move/copy with
 //! stable identities, hierarchical segment catalogs, offline-tier coverage
 //! honesty, and multi-generation format classification (byte preservation).
@@ -30,6 +34,7 @@ mod erasure;
 mod error;
 mod failpoint;
 mod history;
+mod hydra;
 mod ids;
 mod index;
 mod index_cache;
@@ -96,6 +101,12 @@ pub use failpoint::{
     hit as hit_failpoint, short_write_len as failpoint_short_write_len, Action as FailpointAction,
 };
 pub use history::{HistoryEvent, SubjectHistory};
+pub use hydra::{
+    build as build_hydra_index, build_many as build_hydra_indexes, classify_keys,
+    delete_hydra_index, hydra_dir, hydra_index_path, records_from_segment_bytes, select_index_kind,
+    try_load_hydra_index, write_hydra_index, HydraBuildOptions, HydraIndex, IndexKind, KeyShape,
+    SegmentRecord, DEFAULT_TINY_THRESHOLD,
+};
 pub use ids::{
     fill_random, hex16 as id_hex16, mint_sortable_segment_id, random_id, segment_seq_from_id,
     subject_item_id, ID_LEN, ID_PROFILE,

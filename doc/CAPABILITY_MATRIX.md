@@ -392,6 +392,7 @@ collection catalogs are built from segment-derived durable state only.
 | Open acceleration | shipped | Matching sealed frontier → apply active tail only; else rebuild from segments |
 | Rate-limited checkpoints | shipped | Index cache **and** collection catalog share one high rate limit (`DERIVED_CHECKPOINT_EVERY_OPS`); **not** forced on seal (seal is O(segment) incremental catalog + placement only); explicit `persist_index_cache` still checkpoints. Avoids O(N) full-index rewrite on the write scale path |
 | Steady-state vs lifecycle attribution | shipped | Measured: ordinary put is data+dual-index µs-class; remaining spikes are synchronous `persist_index_cache` / `seal_active` (see `doc/BENCHMARK_DISCLOSURE.md`, examples `write_latency_breakdown` / `write_scale_curve`) |
+| Index-path maximum point | documented | Steady-state index insertion past cliff (diminishing returns); next write-path leverage is async lifecycle, not new primary-index structure (`BENCHMARK_DISCLOSURE` maximum-point self-check) |
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 

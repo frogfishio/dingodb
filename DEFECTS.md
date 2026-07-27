@@ -627,7 +627,17 @@ and examples `write_latency_breakdown` / `write_scale_curve`):
 
 Follow-on (not blocking DEF-023 acceptance): move rate-limited checkpoints and
 optional seal work off the put acknowledgement path (background / batch
-lifecycle) so p99 is not coupled to lifecycle spikes.
+lifecycle) so p99 is not coupled to lifecycle spikes. Preferred shape: dual (or
+more) active segment slots with O(1) foreground rotate; finalize seal, BLAKE3
+completion, and index checkpoints off the writer thread; bound pending seals
+with backpressure only when workers lag.
+
+**Maximum-point note (2026-07-27 self-check):** ordinary in-memory index
+insertion on the steady-state put path is past the asymptotic cliff — further
+index micro-optimization is diminishing returns relative to lifecycle spikes.
+The next high-leverage write-path work is the async lifecycle follow-on above,
+not a new primary index structure. See `doc/BENCHMARK_DISCLOSURE.md`
+(“Maximum point self-check”).
 
 Acceptance:
 
