@@ -25,7 +25,7 @@ that build (see `doc/LICENSING.md` §4).
 How to use this tree
 --------------------
 
-- **SDA only** (`sda-lib`, `sda`): MIT — see `LICENSE-MIT`.
+- **SDA+ENR1 hybrid** (`dingo-sda`, `dingo-sda-cli`): MIT — see `LICENSE-MIT`.
 - **Wire format / thin client** (`dingo-format`, `dingo-client`): MIT — see
   `LICENSE-MIT`.
 - **Embedded store / examine / SDK** (`dingo-store`, `dingo-examine`,

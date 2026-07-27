@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn sda_bin() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_sda"))
+    Command::new(env!("CARGO_BIN_EXE_dingo-sda"))
 }
 
 fn unique_temp_path(name: &str) -> PathBuf {
@@ -36,7 +36,7 @@ fn version_reports_root_version_and_build() {
     let output = sda_bin()
         .arg("--version")
         .output()
-        .expect("run sda --version");
+        .expect("run dingo-sda --version");
 
     assert!(
         output.status.success(),
@@ -54,7 +54,7 @@ fn license_prints_notice() {
     let output = sda_bin()
         .arg("--license")
         .output()
-        .expect("run sda --license");
+        .expect("run dingo-sda --license");
 
     assert!(
         output.status.success(),
@@ -68,7 +68,7 @@ fn license_prints_notice() {
 
 #[test]
 fn help_mentions_core_workflows() {
-    let output = sda_bin().arg("--help").output().expect("run sda --help");
+    let output = sda_bin().arg("--help").output().expect("run dingo-sda --help");
 
     assert!(
         output.status.success(),
@@ -76,11 +76,11 @@ fn help_mentions_core_workflows() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Structured Data Algebra command-line interface"));
-    assert!(stdout.contains("sda eval -e 'values(input)' < event.json"));
+    assert!(stdout.contains("DingoDB SDA+ENR1 hybrid command-line interface"));
+    assert!(stdout.contains("dingo-sda eval -e 'values(input)' < event.json"));
     assert!(stdout.contains("--license"));
     assert!(stdout.contains("--version"));
-    assert!(stdout.contains("sda fmt --stdin-filepath extract.sda < extract.sda"));
+    assert!(stdout.contains("dingo-sda fmt --stdin-filepath extract.sda < extract.sda"));
 }
 
 #[test]

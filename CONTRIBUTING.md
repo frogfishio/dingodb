@@ -30,10 +30,10 @@ first.
 cargo test --workspace
 
 # SDA library (Stage 1 freeze)
-cargo test -p sda-lib
+cargo test -p dingo-sda
 
 # SDA CLI
-cargo test -p sda
+cargo test -p dingo-sda-cli
 
 # Wire format / frame codec
 cargo test -p dingo-format
@@ -54,8 +54,8 @@ cargo test -p dingo
 cargo test -p dingo-cluster
 
 # Quick SDA eval
-cargo run -p sda --bin sda -- eval -e '1 + 2'
-echo '{"name":"Ada"}' | cargo run -p sda --bin sda -- eval -e 'input<"name">!'
+cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e '1 + 2'
+echo '{"name":"Ada"}' | cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e 'input<"name">!'
 
 # CLI help
 cargo run -p dingo --bin dingo -- --help
@@ -111,7 +111,7 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 
 | Area | Crate | Notes |
 |------|-------|--------|
-| SDA | `sda-lib` / `sda` | Conformance-locked `sda-standalone-v1.0` |
+| SDA+ENR1 | `dingo-sda` / `dingo-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
 | Wire | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` |
 | Store | `dingo-store` | Authority + tiers + media mirrors (early-access) |
 | SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` |
@@ -137,7 +137,7 @@ Freeze labels (product API/profile labels, **not** crate semver):
 - `SDK_API_VERSION` (`dingo-sdk`) = `1.0` — collection API surface
 - `CLUSTER_PROFILE_VERSION` (`dingo-cluster`) = `v1` — in-process cluster only
 - `WIRE_PROFILE_LABEL` (`dingo-format`) = `1.0-draft` — draft wire bytes
-- `CONFORMANCE_CORPUS_TAG` (`sda-lib`) = `sda-standalone-v1.0`
+- `CONFORMANCE_CORPUS_TAG` (`dingo-sda`) = `sda-standalone-v1.0`
 
 ## License
 

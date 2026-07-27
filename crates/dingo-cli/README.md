@@ -17,7 +17,7 @@ Binary name: **`dingo`**. Package name on crates.io: **`dingo-cli`**.
 |-----------|-----|
 | Shell / ops: put, get, doctor, salvage, backup, restore, scrub, migrate, serve | **`dingo`** (this binary) |
 | Embed collections in a Rust app | [`dingo-sdk`](https://crates.io/crates/dingo-sdk) |
-| Pure SDA language CLI | [`sda`](https://crates.io/crates/sda) |
+| SDA+ENR1 hybrid language CLI | [`dingo-sda-cli`](https://crates.io/crates/dingo-sda-cli) (`dingo-sda` binary) |
 
 ## Install
 

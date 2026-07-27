@@ -5,9 +5,9 @@ This is the short version of SDA for day-to-day use.
 ## Core idea
 
 - `input` is the incoming JSON value
-- `sda eval` runs SDA code
-- `sda check` validates SDA code
-- `sda fmt` formats SDA code
+- `dingo-sda eval` runs SDA code
+- `dingo-sda check` validates SDA code
+- `dingo-sda fmt` formats SDA code
 - **SDA (+ ENR1) is the mathematical language**; JSON/Mongo filters and SQL-ish
   strings are optional **dialects** that compile into pure SDA — not a hybrid of
   peer languages (see [DIALECTS.md](DIALECTS.md))
@@ -17,13 +17,13 @@ This is the short version of SDA for day-to-day use.
 ## Most useful commands
 
 ```sh
-sda eval -e 'values(input)'
-sda eval -f program.sda -i input.json
-sda check -f program.sda
-sda fmt -f program.sda --write
-sda fmt -f program.sda --check
-sda --version
-sda --license
+dingo-sda eval -e 'values(input)'
+dingo-sda eval -f program.sda -i input.json
+dingo-sda check -f program.sda
+dingo-sda fmt -f program.sda --write
+dingo-sda fmt -f program.sda --check
+dingo-sda --version
+dingo-sda --license
 ```
 
 ## Read values
@@ -93,9 +93,9 @@ Typical output shapes in JSON:
 ## Best beginner workflow
 
 ```sh
-sda check -f program.sda
-sda fmt -f program.sda --write
-sda eval -f program.sda -i input.json
+dingo-sda check -f program.sda
+dingo-sda fmt -f program.sda --write
+dingo-sda eval -f program.sda -i input.json
 ```
 
 ## If something feels confusing

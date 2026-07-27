@@ -98,10 +98,10 @@ ingest/hot-get. Pure CPU, no disk; claims must not be mixed with store SLOs.
 
 ```bash
 # Diagnostic phase breakdown (release)
-cargo run -p sda-lib --release --example sda_latency_breakdown
+cargo run -p dingo-sda --release --example sda_latency_breakdown
 
 # CI skeleton (no performance gate — absurdity bounds only)
-cargo test -p sda-lib --test sda_bench_skeleton
+cargo test -p dingo-sda --test sda_bench_skeleton
 ```
 
 Numbers are **diagnostic only**. See

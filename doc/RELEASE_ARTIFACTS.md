@@ -15,8 +15,8 @@ by each crate’s `include` list in `Cargo.toml`.
 
 | Directory | Package name | Binary | Notes |
 |-----------|--------------|--------|-------|
-| `crates/sda-core` | `sda-lib` | — | Pure SDA library |
-| `crates/sda-cli` | `sda` | `sda` | SDA CLI |
+| `crates/sda-core` | `dingo-sda` | — | SDA+ENR1 hybrid pure evaluator (not bare `sda`/`sda-lib`) |
+| `crates/sda-cli` | `dingo-sda-cli` | `dingo-sda` | Hybrid evaluator CLI |
 | `crates/dingo-format` | `dingo-format` | — | Wire format / salvage scan |
 | `crates/dingo-store` | `dingo-store` | — | Includes `crash_matrix.v1.json` |
 | `crates/dingo-sdk` | `dingo-sdk` | — | Collection API |
@@ -102,11 +102,13 @@ The script:
 
 **Why not `cargo package` verify against crates.io?** Internal path
 dependencies are versioned so packaging *can* rewrite them later, but members
-are not yet published. Full crates.io verify would resolve foreign packages
-(and `sda-lib` already collides with an unrelated crates.io name). The
-workspace release gate therefore validates tarball *content completeness* via
-`--list` + rebuild, which is the monorepo equivalent of “builds from the
-packaged tree.” Independent crates.io publish remains a later packaging task.
+are not yet the primary distribution channel. Full crates.io verify would
+resolve foreign packages. **Do not republish under bare `sda` / `sda-lib`** —
+those names were misused for this hybrid surface; new publishes use
+`dingo-sda` / `dingo-sda-cli` only (yank any mistaken prior `0.1.0` under the
+old names when credentials allow). The workspace release gate validates
+tarball *content completeness* via `--list` + rebuild, which is the monorepo
+equivalent of “builds from the packaged tree.”
 
 Main CI runs the script on every PR/push. Nightly continues to run heavier
 corpora via `scripts/nightly.sh`.

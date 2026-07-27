@@ -1,14 +1,14 @@
 [package]
-name = "sda-lib"
+name = "dingo-sda"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
-description = "Structured Data Algebra as a pure Rust library for validating, formatting, and transforming structured data."
+description = "DingoDB hybrid evaluator for Structured Data Algebra (SDA) plus additive ENR1 enrichment — pure Rust, no storage IO."
 readme = "README.md"
 repository.workspace = true
-keywords = ["sda", "json", "transformation", "algebra", "validation"]
+keywords = ["dingodb", "sda", "enr", "json", "transformation"]
 categories = ["data-structures", "parser-implementations", "text-processing"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**", "examples/**"]
 

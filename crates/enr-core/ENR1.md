@@ -2,7 +2,7 @@ Yes.
 
 Start from the kernel and do not lose it.
 
-**Implementation (2026):** ENR1 minimal subset is implemented **inside `sda-lib`**
+**Implementation (2026):** ENR1 minimal subset is implemented **inside `dingo-sda`**
 (same lexer/parser/eval as SDA — compile once). Profile tag `sda-enr1-v0.1`.
 See [README.md](README.md) and `crates/sda-core/tests/enr1_kernel.rs`. ENR2 remains
 spec-only.

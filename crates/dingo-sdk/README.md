@@ -39,7 +39,7 @@ Or: `cargo add dingo-sdk`
 
 | Feature set | Effective license of your dependency graph |
 |-------------|--------------------------------------------|
-| Default (embedded + remote client) | **MPL-2.0** (+ MIT `dingo-client` / `dingo-format` / `sda-lib`) |
+| Default (embedded + remote client) | **MPL-2.0** (+ MIT `dingo-client` / `dingo-format` / `dingo-sda`) |
 | `features = ["cluster"]` | Adds **AGPL-3.0-or-later** `dingo-cluster` |
 
 Network **serve** is a separate AGPL crate (`dingo-server`), not a default

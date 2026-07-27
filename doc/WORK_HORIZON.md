@@ -63,7 +63,7 @@ partially cut:
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
 | **DEF-080–084** | SDK MVP gaps, operator CLI depth, executable journeys, distribution, compatibility policy. |
-| **ENR1 (in `sda-lib`)** | Match-bag kernel shipped as additive SDA profile (`sda-enr1-v0.1`: `one?`/`one!`/`merge`/`+` attach/`asBag`). Specs under `crates/enr-core/`; **do not open ENR2 yet**. Hosts still prefer hash join engines for scale; ENR1 is the portable pure surface. **Text path first-class:** `Collection::sda` / `Dingo::sda_query` so people write ENR+SDA source (not only fluent joins). Layering: [enr-core/README.md](../crates/enr-core/README.md). |
+| **ENR1 (in `dingo-sda`)** | Match-bag kernel shipped as additive SDA profile (`sda-enr1-v0.1`: `one?`/`one!`/`merge`/`+` attach/`asBag`). Specs under `crates/enr-core/`; **do not open ENR2 yet**. Hosts still prefer hash join engines for scale; ENR1 is the portable pure surface. **Text path first-class:** `Collection::sda` / `Dingo::sda_query` so people write ENR+SDA source (not only fluent joins). Layering: [enr-core/README.md](../crates/enr-core/README.md). |
 
 ### Engineering quality bar (release blockers, not vanity)
 
@@ -490,9 +490,9 @@ Started: pure-SDA path is a separate performance class from store ingest/hot-get
 
 | Hook | Role |
 |------|------|
-| `sda-lib` `Program::parse` + `run_json` / `eval` | Compile-once host API |
-| `sda-lib` example `sda_latency_breakdown` | Phase attribution (diagnostic) |
-| `sda-lib` `sda_bench_skeleton` | CI absurdity bounds |
+| `dingo-sda` `Program::parse` + `run_json` / `eval` | Compile-once host API |
+| `dingo-sda` example `sda_latency_breakdown` | Phase attribution (diagnostic) |
+| `dingo-sda` `sda_bench_skeleton` | CI absurdity bounds |
 | SDK `Filter::compile_sda` / `matches_compiled_sda` | Multi-doc filter parity without re-parse |
 
 Strategies: [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md) § SDA.

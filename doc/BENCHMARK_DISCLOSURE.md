@@ -44,8 +44,8 @@ durability conditions.
 | `dingo-store` example `write_scale_curve` | buffered scale curve (early vs late windows) |
 | `dingo-store` example `read_latency_breakdown` | open-once vs reopen-per-get; PrimaryIndex gets vs Chimera sidecar probe |
 | `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
-| `sda-lib` example `sda_latency_breakdown` | pure-SDA phase split: parse / from_json / eval / to_json / reparse vs compile-once |
-| `sda-lib` `sda_bench_skeleton` | pure-SDA CI skeleton (absurdity bounds only) |
+| `dingo-sda` example `sda_latency_breakdown` | pure-SDA phase split: parse / from_json / eval / to_json / reparse vs compile-once |
+| `dingo-sda` `sda_bench_skeleton` | pure-SDA CI skeleton (absurdity bounds only) |
 | `dingo-sdk` `multi_collection_sda_join_perf` | nested-SDA multi-collection join (viability / anti-pattern cliff) |
 | `dingo-sdk` `multi_query_join_perf` | host hash equijoin + SDA normalise (product multi-query path) |
 
@@ -255,7 +255,7 @@ PrimaryIndex structure work without a new measured bottleneck.
 ## SDA pure-eval diagnostic snapshot (not a published SLO)
 
 Separate performance class from store hot/ingest/archive. First harness cut
-(2026-07-27): `cargo run -p sda-lib --release --example sda_latency_breakdown`
+(2026-07-27): `cargo run -p dingo-sda --release --example sda_latency_breakdown`
 on Apple M4-class developer hardware. **Diagnostic only.**
 
 | Case | parse p50 | eval p50 | run_json_once p50 | run (re-parse) p50 | Compile-once vs reparse |

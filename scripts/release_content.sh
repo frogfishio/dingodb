@@ -14,8 +14,8 @@ export RUSTFLAGS="${RUSTFLAGS:--D warnings}"
 
 # package_name|member_path (directory under repo root)
 MEMBERS=(
-  "sda-lib|crates/sda-core"
-  "sda|crates/sda-cli"
+  "dingo-sda|crates/sda-core"
+  "dingo-sda-cli|crates/sda-cli"
   "dingo-format|crates/dingo-format"
   "dingo-store|crates/dingo-store"
   "dingo-client|crates/dingo-client"

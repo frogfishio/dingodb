@@ -131,7 +131,7 @@ especially §1–§12 and §14.
   `section_14_must_lock` + golden `tests/sda/section14_must.json`.
 - Minimal suite in §14.1 fully automated. **Met**.
 - Determinism: same program + input ⇒ same value or stable `Fail`.
-- Public surface: library API + optional `sda` CLI (`eval`, `check`).
+- Public surface: library API (`dingo-sda`) + optional `dingo-sda` CLI (`eval`, `check`).
 - **No** DingoDB types, segments, or host IO inside the SDA core.
 - Standalone freeze tag: `sda-standalone-v1.0` (`CONFORMANCE_CORPUS_TAG`).
 
@@ -586,7 +586,7 @@ These are narrative checkpoints for users and sponsors, not separate engineering
 tracks. Living scripts (where checked in) live under `scripts/demos/`.
 
 1. **“Algebra works”** — Stage 1: paste JSON, run SDA, get deterministic tree.
-   (`cargo run -p sda --bin sda -- eval -e '1 + 2'`)
+   (`cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e '1 + 2'`)
 2. **“Punch a hole”** — Stage 2: corrupt a segment file; scanner lists islands
    and holes. → [`scripts/demos/02_punch_a_hole.sh`](scripts/demos/02_punch_a_hole.sh)
 3. **“Database that survives”** — Stage 3–4: app puts data; wipe indexes;
@@ -612,7 +612,7 @@ Record answers in-repo; they block packaging, not the stage order:
 | 3 | Default durability mode for embedded open | **As implemented (Stage 3–4):** SDK default is `DurabilityMode::Durable` (`WriteOptions::default`, remote/server fallback). DX “safe by default” holds. |
 | 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
 | 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `dingo-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
-| 6 | Whether `sda` ships inside `dingo` or separate | **Resolved for now:** separate `sda` binary (Stage 1). Stage 7 `dingo` coexists without removing `sda`. |
+| 6 | Whether SDA CLI ships inside `dingo` or separate | **Resolved for now:** separate `dingo-sda` binary via `dingo-sda-cli` (Stage 1). Stage 7 `dingo` coexists. |
 
 ## 10. Work apportionment (streams)
 
@@ -656,7 +656,7 @@ the cited conformance suites as required checks—not optional polish.
    `crates/sda-core/tests/sda/section14_must.json`; `∪`/`∩`/`\` spellings;
    `bindOpt`/`bindRes` enforce Opt/Res return contracts (§11.3).
 4. ~~Freeze SDA standalone behind a versioned conformance corpus tag.~~ **Done** —
-   `sda_lib::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
+   `dingo_sda::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
    `tests/sda/VERSION`). Semantic changes require a new tag.
 5. ~~Open Stage 2 format work (`dingo-format` frame codec).~~ **Done (2a)** —
    `crates/dingo-format` encodes/decodes FORMAT_SPEC frames with CRC32C +

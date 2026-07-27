@@ -79,7 +79,7 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │  MIT — protocol, pure algebra, wire format, pure clients    │
-│  sda-lib · sda · dingo-format · dingo-client                │
+│  dingo-sda · dingo-sda-cli · dingo-format · dingo-client                │
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
@@ -98,8 +98,8 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 
 | Crate (dir → package) | SPDX today | Notes |
 |----------------------|------------|-------|
-| `sda-core` → `sda-lib` | **MIT** | |
-| `sda-cli` → `sda` | **MIT** | |
+| `sda-core` → `dingo-sda` | **MIT** | SDA+ENR1 hybrid; not bare `sda`/`sda-lib` |
+| `sda-cli` → `dingo-sda-cli` | **MIT** | Binary `dingo-sda` |
 | `dingo-format` | **MIT** | |
 | `dingo-client` | **MIT** | Wire framing + handshake |
 | `dingo-store` | **MPL-2.0** | |
@@ -150,12 +150,12 @@ the AGPL dependency. Serve path lives only in `dingo-server`.
 | `dingo-format` | unchanged | MIT | — |
 | `dingo-client` | wire framing + handshake | MIT | — |
 | `dingo-store` | unchanged | MPL-2.0 | format |
-| `dingo-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, sda-lib; optional cluster |
-| `dingo-examine` | unchanged | MPL-2.0 | store, format, sda-lib |
+| `dingo-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, dingo-sda; optional cluster |
+| `dingo-examine` | unchanged | MPL-2.0 | store, format, dingo-sda |
 | `dingo-cluster` | unchanged | AGPL-3.0-or-later | store |
 | `dingo-server` | accept loop, authz, admission, raft RPC glue | AGPL-3.0-or-later | sdk+cluster, store |
 | `dingo-cli` | CLI + doctor/salvage/serve | AGPL-3.0-or-later | server, sdk+cluster, examine |
-| `sda-lib` / `sda` | unchanged | MIT | — |
+| `dingo-sda` / `dingo-sda-cli` | SDA+ENR1 hybrid | MIT | — |
 
 ### 4.3 Remaining optional polish
 
@@ -170,7 +170,7 @@ the AGPL dependency. Serve path lives only in `dingo-server`.
 ## 5. GPL-track matrix (adopted)
 
 ```text
-MIT                → sda-lib, sda, dingo-format, dingo-client
+MIT                → dingo-sda, dingo-sda-cli, dingo-format, dingo-client
 MPL-2.0            → dingo-store, dingo-examine, dingo-sdk (default features)
 AGPL-3.0-or-later  → dingo-cluster, dingo-server, dingo-cli
                      (+ dingo-sdk when features = ["cluster"])
@@ -187,7 +187,7 @@ store remains an optional business track; keep pure client and format MIT.
 1. **Per-crate `license` in Cargo.toml** — done (no uniform workspace MIT).
 2. **LICENSE files** — root multi-license tree (done).
 3. **README + CONTRIBUTING** — multi-license notice; inbound = outbound (done).
-4. **CLI `--license`** — `sda` MIT; `dingo` AGPL (done).
+4. **CLI `--license`** — `dingo-sda` MIT; `dingo` AGPL (done).
 5. **Publish `dingo-sdk` as MPL-2.0** with default features only (no
    `dingo-cluster`). Document that `features = ["cluster"]` pulls AGPL.
 6. **`cargo deny` / license policies** — optional hardening before crates.io.

@@ -1,4 +1,4 @@
-use sda_lib::{run, run_with_input_binding, SdaError};
+use dingo_sda::{run, run_with_input_binding, SdaError};
 
 fn run_json(expr: &str) -> serde_json::Value {
     run(expr, serde_json::Value::Null).expect("run failed")
@@ -855,7 +855,7 @@ mod section_14_1_minimal_suite {
 ///
 /// Each test maps to one of the 13 normative MUST bullets. Together with the
 /// golden corpus under `tests/sda/` this freezes standalone behavior under
-/// [`sda_lib::CONFORMANCE_CORPUS_TAG`].
+/// [`dingo_sda::CONFORMANCE_CORPUS_TAG`].
 mod section_14_must_lock {
     use super::*;
 
@@ -1090,13 +1090,13 @@ mod section_14_must_lock {
 
     #[test]
     fn frozen_corpus_tag_is_stable() {
-        assert_eq!(sda_lib::CONFORMANCE_CORPUS_TAG, "sda-standalone-v1.0");
+        assert_eq!(dingo_sda::CONFORMANCE_CORPUS_TAG, "sda-standalone-v1.0");
         assert_eq!(
-            sda_lib::SdaRuntime::conformance_corpus_tag(),
+            dingo_sda::SdaRuntime::conformance_corpus_tag(),
             "sda-standalone-v1.0"
         );
         let version_file = include_str!("sda/VERSION").trim();
-        assert_eq!(version_file, sda_lib::CONFORMANCE_CORPUS_TAG);
+        assert_eq!(version_file, dingo_sda::CONFORMANCE_CORPUS_TAG);
     }
 }
 
@@ -1112,7 +1112,7 @@ mod section_14_golden_corpus {
         let tag = corpus["tag"].as_str().expect("corpus.tag string");
         assert_eq!(
             tag,
-            sda_lib::CONFORMANCE_CORPUS_TAG,
+            dingo_sda::CONFORMANCE_CORPUS_TAG,
             "golden corpus tag must match CONFORMANCE_CORPUS_TAG"
         );
         let cases = corpus["cases"].as_array().expect("corpus.cases array");

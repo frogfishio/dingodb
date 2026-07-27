@@ -10,31 +10,31 @@ The point is that SDA can already act as a precise JSON transformation filter wh
 Evaluate an inline expression over stdin:
 
 ```sh
-echo '{"a":1,"b":2}' | cargo run -q -p sda -- eval -e 'values(input)'
+echo '{"a":1,"b":2}' | cargo run -q -p dingo-sda-cli -- eval -e 'values(input)'
 ```
 
 Check source without evaluating it:
 
 ```sh
-cargo run -q -p sda -- check -e 'values(input)'
+cargo run -q -p dingo-sda-cli -- check -e 'values(input)'
 ```
 
 Read the program from a file and the JSON from stdin:
 
 ```sh
-cargo run -q -p sda -- eval -f extract.sda < event.json
+cargo run -q -p dingo-sda-cli -- eval -f extract.sda < event.json
 ```
 
 Read the program and input from files:
 
 ```sh
-cargo run -q -p sda -- eval -f extract.sda -i event.json
+cargo run -q -p dingo-sda-cli -- eval -f extract.sda -i event.json
 ```
 
 Compact output for shell pipelines:
 
 ```sh
-echo '[1,2,3]' | cargo run -q -p sda -- eval -e 'input ++ Seq[4]' --compact
+echo '[1,2,3]' | cargo run -q -p dingo-sda-cli -- eval -e 'input ++ Seq[4]' --compact
 ```
 
 ## 2. Filter a sequence of records
@@ -58,7 +58,7 @@ Program, using wrapped `Prod` records so total field access stays total:
 Command:
 
 ```sh
-cargo run -q -p sda -- eval -e '{ a in input | a<name> = "steve" and a<city> in Set{"la", "ny"} }' -i records.json
+cargo run -q -p dingo-sda-cli -- eval -e '{ a in input | a<name> = "steve" and a<city> in Set{"la", "ny"} }' -i records.json
 ```
 
 This is the closest current jq-style story:
@@ -93,7 +93,7 @@ input
 Command:
 
 ```sh
-cargo run -q -p sda -- eval -f header_lookup.sda -i headers.json
+cargo run -q -p dingo-sda-cli -- eval -f header_lookup.sda -i headers.json
 ```
 
 This shows what jq does not naturally emphasize:
@@ -133,7 +133,7 @@ bindRes(
 Command:
 
 ```sh
-echo '{"user":{"id":7,"name":"Ada"}}' | cargo run -q -p sda -- eval -e 'bindRes(input<"user">!, user => bindRes(user<"id">!, id => bindRes(user<"name">!, name => Ok(Map{"id" -> id, "display" -> name}))))'
+echo '{"user":{"id":7,"name":"Ada"}}' | cargo run -q -p dingo-sda-cli -- eval -e 'bindRes(input<"user">!, user => bindRes(user<"id">!, id => bindRes(user<"name">!, name => Ok(Map{"id" -> id, "display" -> name}))))'
 ```
 
 The output is an `Ok(...)` wrapper because the extraction path is required and explicit.

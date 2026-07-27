@@ -1,24 +1,28 @@
-# sda
+# dingo-sda-cli
 
-`sda` is the command-line interface for **Structured Data Algebra (SDA)**.
+`dingo-sda-cli` ships the **`dingo-sda`** binary — the command-line interface for
+DingoDB's **SDA+ENR1 hybrid** evaluator.
 
-It evaluates SDA programs over JSON input, validates source without executing
-it, and emits canonical SDA formatting for editor and CI workflows.
+It evaluates programs over JSON input, validates source without executing it,
+and emits canonical formatting for editor and CI workflows.
+
+> **Naming:** package `dingo-sda-cli`, binary `dingo-sda`. Do **not** publish or
+> install under the bare crates.io name `sda` (that identity must not be reused).
 
 ## When to use this package
 
 | You want… | Use |
 |-----------|-----|
-| Shell / CI: evaluate, check, format SDA | **`sda`** (this binary) |
-| Embed SDA in a Rust program | [`sda-lib`](https://crates.io/crates/sda-lib) |
+| Shell / CI: evaluate, check, format SDA+ENR1 | **`dingo-sda`** (this binary) |
+| Embed evaluation in a Rust program | [`dingo-sda`](https://crates.io/crates/dingo-sda) |
 | DingoDB recovery examination | [`dingo-examine`](https://crates.io/crates/dingo-examine) or `dingo doctor` |
 
 ## Install
 
-From crates.io:
+From crates.io (once published under the new name):
 
 ```sh
-cargo install sda
+cargo install dingo-sda-cli
 ```
 
 From a local checkout of the monorepo:
@@ -31,18 +35,18 @@ cargo install --path crates/sda-cli
 
 ```sh
 # Evaluate a program (expression or file) over JSON stdin / -i file
-sda eval -e 'values(input)' < event.json
-sda eval -f extract.sda -i event.json --compact
+dingo-sda eval -e 'values(input)' < event.json
+dingo-sda eval -f extract.sda -i event.json --compact
 
 # Validate source without running it
-sda check -f extract.sda
+dingo-sda check -f extract.sda
 
 # Canonical format (check or write)
-sda fmt -f extract.sda --check
-sda fmt -f extract.sda --write
+dingo-sda fmt -f extract.sda --check
+dingo-sda fmt -f extract.sda --write
 
-sda --version
-sda --license
+dingo-sda --version
+dingo-sda --license
 ```
 
 ## Exit behavior
@@ -56,30 +60,30 @@ sda --license
 
 ## Status
 
-**Shipped.** Library freeze tag `sda-standalone-v1.0` lives in
-[`sda-lib`](https://crates.io/crates/sda-lib); this binary is the shell
-front-end (`eval`, `check`, `fmt`).
+**Shipped.** Library freeze tag `sda-standalone-v1.0` (plus additive ENR1
+`sda-enr1-v0.1`) lives in [`dingo-sda`](https://crates.io/crates/dingo-sda);
+this binary is the shell front-end (`eval`, `check`, `fmt`).
 
 ## Library
 
-Embed SDA in a Rust program with the `sda-lib` crate, not by shelling out to
-this binary.
+Embed evaluation in a Rust program with the `dingo-sda` crate, not by shelling
+out to this binary.
 
 ```toml
 [dependencies]
-sda-lib = "0.1"
+dingo-sda = "0.1"
 ```
 
 ```rust
-let out = sda_lib::run("input<\"x\">!", serde_json::json!({"x": 1}))?;
-# Ok::<(), sda_lib::SdaError>(())
+let out = dingo_sda::run("input<\"x\">!", serde_json::json!({"x": 1}))?;
+# Ok::<(), dingo_sda::SdaError>(())
 ```
 
 ## Documentation
 
 - Spec: [SDA_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/SDA_SPEC.md)
 - User docs: [doc/SDA/](https://github.com/frogfishio/dingodb/tree/main/doc/SDA)
-- Library: [`sda-lib`](https://crates.io/crates/sda-lib)
+- Library: [`dingo-sda`](https://crates.io/crates/dingo-sda)
 
 ## License
 

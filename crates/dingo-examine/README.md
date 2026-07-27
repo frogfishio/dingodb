@@ -6,14 +6,14 @@ salvage, and evaluate pure SDA programs over them.
 
 Storage damage remains examination **data** (status tags, holes, uncertainty).
 SDA language errors remain `Fail`. Pure SDA evaluation lives in
-[`sda-lib`](https://crates.io/crates/sda-lib); this crate is the host that
+[`dingo-sda`](https://crates.io/crates/dingo-sda); this crate is the host that
 projects store evidence into SDA values.
 
 ## When to use this crate
 
 | You want… | Use |
 |-----------|-----|
-| Pure SDA over arbitrary JSON | [`sda-lib`](https://crates.io/crates/sda-lib) |
+| Pure SDA over arbitrary JSON | [`dingo-sda`](https://crates.io/crates/dingo-sda) |
 | Examine a DingoDB store / salvage stream | **`dingo-examine`** (this crate) |
 | CLI health report | `dingo doctor` ([`dingo-cli`](https://crates.io/crates/dingo-cli)) |
 
@@ -92,7 +92,7 @@ a silent empty success.
 
 | Crate | License | Role |
 |-------|---------|------|
-| [`sda-lib`](https://crates.io/crates/sda-lib) | MIT | Pure SDA language runtime |
+| [`dingo-sda`](https://crates.io/crates/dingo-sda) | MIT | Pure SDA language runtime |
 | [`dingo-store`](https://crates.io/crates/dingo-store) | MPL-2.0 | Store salvage sources |
 | [`dingo-format`](https://crates.io/crates/dingo-format) | MIT | Frame verification under salvage |
 | [`dingo-cli`](https://crates.io/crates/dingo-cli) | AGPL-3.0-or-later | `dingo doctor` |

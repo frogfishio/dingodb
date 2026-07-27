@@ -19,7 +19,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
 | Query dialects (json/mongo/sql/… → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
 | SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
-| Enrichment algebra (ENR1 kernel in `sda-lib`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
+| Enrichment algebra (ENR1 kernel in `dingo-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](CLUSTER_SPEC.md) |
 | Product framing | [USP.md](USP.md) |
 | Staged delivery and exit criteria | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) |
@@ -48,9 +48,9 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 ```text
 dingodb/
   crates/
-    sda-core/       # package name sda-lib; pure SDA (Stage 1) — MIT
-    sda-cli/        # package name sda; `sda` binary (Stage 1) — MIT
-    enr-core/       # ENR1/ENR2 specs; ENR1 runtime lives in sda-lib (one compile path)
+    sda-core/       # package name dingo-sda; SDA+ENR1 hybrid pure eval (Stage 1) — MIT
+    sda-cli/        # package name dingo-sda-cli; `dingo-sda` binary (Stage 1) — MIT
+    enr-core/       # ENR1/ENR2 specs; ENR1 runtime lives in dingo-sda (one compile path)
     dingo-format/   # frames, CBOR envelopes, seal, scan, §13 corpus (Stage 2a–2d) — MIT
     dingo-client/   # framed RPC + handshake only — MIT
     dingo-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to) — MPL-2.0
@@ -82,8 +82,8 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 |--------|----------|
 | Core implementation language | **Rust** |
 | First embedded surface | Rust library API; TypeScript-like examples in DX_SPEC remain the product shape |
-| First CLI | `sda` (Stage 1) + `dingo` (Stage 7) |
-| SDA packaging | `sda-lib` (lib) + `sda` (CLI binary); no storage IO inside SDA core |
+| First CLI | `dingo-sda` (Stage 1) + `dingo` (Stage 7) |
+| SDA packaging | `dingo-sda` (lib) + `dingo-sda-cli` (`dingo-sda` binary); SDA+ENR1 hybrid; no storage IO |
 | Wire format versioning | Draft `1.0-draft`; reader/writer matrix + migrate phases (DEF-052); freeze is DEF-053 |
 | Process configuration | Versioned `dingo-config-v1` validate-before-serve (DEF-054); live reload follow-on |
 | Process logging | Versioned `dingo-log-v1` NDJSON with stable events + correlation fields (DEF-060) |
@@ -92,9 +92,11 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 
 ## SDA import convention
 
-- Package name on crates.io path: `sda-lib`
-- Workspace dependency key: `sda-core` → Rust path `sda_core::…` (CLI)
-- Integration tests of the library use `sda_lib::…`
+- Package name on crates.io: **`dingo-sda`** (never bare `sda` / `sda-lib`)
+- CLI package: **`dingo-sda-cli`**, binary **`dingo-sda`**
+- Workspace dependency key: `sda-core` → Rust path `sda_core::…` (dependents)
+- Inside the library package / its integration tests: `dingo_sda::…`
+- Product shape: SDA + additive ENR1 hybrid for DingoDB, not a generic pure-SDA claim
 
 ## Product follow-ons (in-tree v0.23 — not production)
 

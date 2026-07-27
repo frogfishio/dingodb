@@ -245,7 +245,7 @@ The workspace is split along those responsibilities:
 - `dingo-examine` — recovered evidence projected into SDA values;
 - `dingo-cli` — everyday and operator commands;
 - `dingo-cluster` — partition, coverage, consensus, and rebalance model;
-- `sda-lib` / `sda` — the pure SDA library and CLI.
+- `dingo-sda` / `dingo-sda-cli` — SDA+ENR1 hybrid pure evaluator and CLI (not bare crates.io `sda`).
 
 ## Current maturity
 
@@ -297,7 +297,7 @@ Run the workspace:
 
 ```sh
 cargo test --workspace
-cargo run -p sda --bin sda -- eval -e '1 + 2'
+cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e '1 + 2'
 cargo run -p dingo --bin dingo -- --help
 ```
 
@@ -308,7 +308,7 @@ during project setup. Adopted policy: [doc/LICENSING.md](doc/LICENSING.md).
 
 | Tier | SPDX | Crates (today) |
 |------|------|----------------|
-| Permissive | MIT | `sda-lib`, `sda`, `dingo-format` |
+| Permissive | MIT | `dingo-sda`, `dingo-sda-cli`, `dingo-format`, `dingo-client` |
 | Weak copyleft | MPL-2.0 | `dingo-store`, `dingo-examine`, `dingo-sdk` (default; optional `cluster` feature pulls AGPL) |
 | Network copyleft | AGPL-3.0-or-later | `dingo-cluster`, `dingo-server`, `dingo-cli` |
 

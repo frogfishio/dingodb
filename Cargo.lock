@@ -301,8 +301,8 @@ name = "dingo-examine"
 version = "0.1.0"
 dependencies = [
  "dingo-format",
+ "dingo-sda",
  "dingo-store",
- "sda-lib",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -319,19 +319,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "dingo-sda"
+version = "0.1.0"
+dependencies = [
+ "num-bigint",
+ "num-rational",
+ "num-traits",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "dingo-sda-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dingo-sda",
+ "serde_json",
+]
+
+[[package]]
 name = "dingo-sdk"
 version = "0.1.0"
 dependencies = [
  "blake3",
  "dingo-client",
  "dingo-cluster",
+ "dingo-sda",
  "dingo-server",
  "dingo-store",
  "rcgen",
  "rustls",
  "rustls-pemfile",
  "rustls-pki-types",
- "sda-lib",
  "serde",
  "serde_json",
  "tempfile",
@@ -812,26 +832,6 @@ dependencies = [
  "quick-error",
  "tempfile",
  "wait-timeout",
-]
-
-[[package]]
-name = "sda"
-version = "0.1.0"
-dependencies = [
- "clap",
- "sda-lib",
- "serde_json",
-]
-
-[[package]]
-name = "sda-lib"
-version = "0.1.0"
-dependencies = [
- "num-bigint",
- "num-rational",
- "num-traits",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]

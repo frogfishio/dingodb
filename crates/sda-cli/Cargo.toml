@@ -1,19 +1,19 @@
 [package]
-name = "sda"
+name = "dingo-sda-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
-description = "Structured Data Algebra command-line interface for evaluating, checking, and formatting SDA programs over JSON input."
+description = "CLI for DingoDB's SDA+ENR1 hybrid evaluator: eval, check, and format programs over JSON."
 readme = "README.md"
 repository.workspace = true
-keywords = ["sda", "json", "cli", "transformation", "validation"]
+keywords = ["dingodb", "sda", "enr", "cli", "json"]
 categories = ["command-line-utilities", "parser-implementations", "text-processing"]
 include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
 
 [[bin]]
-name = "sda"
+name = "dingo-sda"
 path = "src/main.rs"
 
 [dependencies]
