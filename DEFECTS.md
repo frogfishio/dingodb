@@ -32,7 +32,7 @@ Until this plan is complete, use these support labels:
   data-plane commit DEF-037, durable rebalance DEF-038, in-process anti-entropy
   repair DEF-039 when attached, distributed query paging DEF-040, seeded
   in-process verification DEF-041); not production-ready (DEF-041 multi-process
-  follow-ons + DEF-050 incremental/cluster/encryption follow-ons + §16).
+  follow-ons + DEF-050/051 follow-ons + §16).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -1474,7 +1474,11 @@ Remaining (out of this cut):
 
 ### DEF-051 — Add integrity scrub and media-health automation
 
-Priority: P1
+Priority: P1  
+Status: **addressed (single-node cut)** (2026-07-27) — bounded scrub with
+durable frontier/findings, placement hash checks, frame-hole detection,
+quarantine-without-hide, pause/resume, CLI `dingo scrub`. Background daemon
+scheduling, cluster repair hook-in, and media SMART/health remain follow-ons.
 
 Work:
 
@@ -1488,6 +1492,27 @@ Acceptance:
 
 - Injected corruption is detected within the configured scrub interval.
 - Scrub can pause/resume and does not starve foreground work.
+
+Evidence (this cut):
+
+- `crates/dingo-store/src/scrub.rs` — `SCRUB_PROFILE` = `dingo-scrub-v1`,
+  `scrub_once` / pause / resume / status, plan over sealed + active + chunks,
+  BLAKE3 + placement `content_hash` + `scan_forward` holes.
+- Durable state: `recovery/scrub/state.v1.json`, `findings.v1.json`,
+  `quarantine/` (copy only; original retained).
+- `Store::scrub_once`, `scrub_to_completion`, `scrub_status`, `pause_scrub`,
+  `resume_scrub`, `list_scrub_findings`.
+- CLI: `dingo scrub STORE [--once|--status|--pause|--resume] [--max-files]
+  [--max-bytes] [--no-quarantine]`.
+- Tests: `stage_def_051_scrub.rs`, module unit tests, CLI
+  `scrub_clean_store_and_status`.
+
+Remaining (out of this cut):
+
+- Automatic interval scheduler / background worker process.
+- Hook scrub findings into DEF-039 replica repair when redundancy exists.
+- Native media-health (SMART, cloud object integrity APIs).
+- Multi-volume / offline-tier scrub scheduling policies.
 
 ### DEF-052 — Define format and protocol migration
 

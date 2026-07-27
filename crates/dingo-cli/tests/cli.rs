@@ -273,6 +273,33 @@ fn restore_reassign_identity_clone() {
 }
 
 #[test]
+fn scrub_clean_store_and_status() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join("app.dingo");
+    let store_s = store.to_str().unwrap();
+
+    run_ok(&["put", store_s, "users/a", "--json", r#"{"n":1}"#]);
+    run_ok(&["put", store_s, "users/b", "--json", r#"{"n":2}"#]);
+
+    let report = run_ok(&["scrub", store_s]);
+    assert!(report.contains("scrub"), "report={report}");
+    assert!(
+        report.contains("cycle_completed: true") || report.contains("coverage_ratio: 1"),
+        "report={report}"
+    );
+    assert!(report.contains("open_findings: 0"), "report={report}");
+
+    let status = run_ok(&["scrub", store_s, "--status"]);
+    assert!(status.contains("scrub_status"), "status={status}");
+    assert!(status.contains("bytes_verified_total:"), "status={status}");
+
+    let paused = run_ok(&["scrub", store_s, "--pause"]);
+    assert!(paused.contains("paused: true"), "paused={paused}");
+    let resumed = run_ok(&["scrub", store_s, "--resume"]);
+    assert!(resumed.contains("paused: false"), "resumed={resumed}");
+}
+
+#[test]
 fn serve_and_sdk_connect_parity() {
     let dir = tempdir().unwrap();
     let store = dir.path().join("app.dingo");

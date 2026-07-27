@@ -63,6 +63,7 @@ with the acceptance evidence expected before a stronger label.
 | `REBALANCE_CONTROL_PROFILE` | `dingo-rebalance-control-v1` | Durable rebalance jobs + joint membership (DEF-038) |
 | `ANTI_ENTROPY_PROFILE` | `dingo-anti-entropy-v1` | Hierarchical inventory + integrity-based repair (DEF-039) |
 | `BACKUP_PROFILE` | `dingo-backup-v1` | Full single-node backup package + verified restore (DEF-050) |
+| `SCRUB_PROFILE` | `dingo-scrub-v1` | Bounded integrity scrub + findings quarantine (DEF-051) |
 
 ## Raft persistence (DEF-035)
 
@@ -179,6 +180,25 @@ Evidence: `stage_def_040_query` (7 tests), `dingo_cluster::coverage` continuatio
 
 Evidence: `stage_def_050_backup`, `dingo_store::backup` unit tests, CLI
 `backup_and_restore_roundtrip`.
+
+## Integrity scrub (DEF-051)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Profile | `dingo-scrub-v1` under `recovery/scrub/` | **shipped** (single-node) |
+| Bounded steps | `max_files` / `max_bytes` per `scrub_once` | **shipped** |
+| Content integrity | Full-file BLAKE3 vs placement `content_hash` | **shipped** |
+| Frame verification | Forward scan holes on sealed/active segments | **shipped** |
+| Findings persistence | `findings.v1.json` open findings | **shipped** |
+| Quarantine | Copy corrupt targets; never delete originals | **shipped** |
+| Pause / resume | Durable `paused` flag on state | **shipped** |
+| Operator metrics | coverage, bytes verified, failures, scrub age | **shipped** |
+| CLI | `dingo scrub` / `--status` / `--pause` / `--resume` | **shipped** |
+| Background interval daemon | — | **not yet** |
+| Cluster repair integration | — | **not yet** (DEF-039 follow-on) |
+
+Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
+`scrub_clean_store_and_status`.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

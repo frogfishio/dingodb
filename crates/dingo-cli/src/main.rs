@@ -4,7 +4,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use dingo_examine::{examine_store, ExaminationUnit, ExamineLimits};
 use dingo_sdk::{Dingo, TlsServerOptions, DEFAULT_PORT};
 use dingo_server::{serve_cluster_node, serve_store_with, ServeOptions};
-use dingo_store::{restore_full_backup, RestoreOptions, Store};
+use dingo_store::{restore_full_backup, RestoreOptions, ScrubOptions, Store};
 use serde_json::{json as sjson, Value as JsonValue};
 use std::fs;
 use std::io::{self, Write};
@@ -13,7 +13,7 @@ use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
+const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
 const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`dingo`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
 
 #[derive(Parser)]
@@ -126,6 +126,38 @@ enum Command {
         /// Mint a new store identity (clone) instead of preserving the original.
         #[arg(long = "reassign-identity", action = ArgAction::SetTrue)]
         reassign_identity: bool,
+    },
+    /// Bounded integrity scrub of segments and chunks (DEF-051).
+    ///
+    /// Hashes files, compares placement content hashes when known, and frame-
+    /// scans segments. Persists frontier and findings under `recovery/scrub/`.
+    /// Corrupt evidence may be quarantined without removing the original.
+    /// Default runs to completion under per-step bounds; use `--once` for a
+    /// single bounded step, `--status` for a read-only snapshot.
+    Scrub {
+        /// Store directory.
+        store: PathBuf,
+        /// Print durable scrub status only (no progress).
+        #[arg(long = "status", action = ArgAction::SetTrue)]
+        status_only: bool,
+        /// Run a single bounded step instead of scrubbing to completion.
+        #[arg(long = "once", action = ArgAction::SetTrue)]
+        once: bool,
+        /// Pause scrub so further steps no-op until `--resume`.
+        #[arg(long = "pause", action = ArgAction::SetTrue)]
+        pause: bool,
+        /// Resume a paused scrub.
+        #[arg(long = "resume", action = ArgAction::SetTrue)]
+        resume: bool,
+        /// Max files verified per step (default 32).
+        #[arg(long = "max-files", default_value_t = 32)]
+        max_files: usize,
+        /// Max bytes hashed/scanned per step (default 67108864).
+        #[arg(long = "max-bytes", default_value_t = 67_108_864)]
+        max_bytes: u64,
+        /// Skip quarantining corrupt evidence copies.
+        #[arg(long = "no-quarantine", action = ArgAction::SetTrue)]
+        no_quarantine: bool,
     },
     /// Serve the store over TCP for `Dingo::connect("dingo://...")` (development).
     ///
@@ -253,6 +285,26 @@ fn run() -> Result<(), String> {
             output,
             reassign_identity,
         } => cmd_restore(&backup, &output, reassign_identity, json_out),
+        Command::Scrub {
+            store,
+            status_only,
+            once,
+            pause,
+            resume,
+            max_files,
+            max_bytes,
+            no_quarantine,
+        } => cmd_scrub(
+            &store,
+            status_only,
+            once,
+            pause,
+            resume,
+            max_files,
+            max_bytes,
+            no_quarantine,
+            json_out,
+        ),
         Command::Serve {
             store,
             bind,
@@ -782,6 +834,159 @@ fn cmd_restore(
         println!("  identity_reassigned: {}", report.identity_reassigned);
         println!("  files_restored: {}", report.files_restored);
         println!("  live_subjects: {}", report.live_subjects);
+    }
+    Ok(())
+}
+
+fn cmd_scrub(
+    store: &Path,
+    status_only: bool,
+    once: bool,
+    pause: bool,
+    resume: bool,
+    max_files: usize,
+    max_bytes: u64,
+    no_quarantine: bool,
+    json_out: bool,
+) -> Result<(), String> {
+    if pause && resume {
+        return Err("use either --pause or --resume, not both".into());
+    }
+    // Inspect is enough: scrub only writes under recovery/scrub/.
+    let inspect = Store::open_inspect(store).map_err(|e| e.to_string())?;
+
+    if pause {
+        let st = inspect.pause_scrub().map_err(|e| e.to_string())?;
+        return emit_scrub_status("scrub_paused", store, &st, &inspect, json_out);
+    }
+    if resume {
+        let st = inspect.resume_scrub().map_err(|e| e.to_string())?;
+        return emit_scrub_status("scrub_resumed", store, &st, &inspect, json_out);
+    }
+    if status_only {
+        let st = inspect.scrub_status().map_err(|e| e.to_string())?;
+        return emit_scrub_status("scrub_status", store, &st, &inspect, json_out);
+    }
+
+    let opts = ScrubOptions {
+        max_files,
+        max_bytes,
+        quarantine: !no_quarantine,
+        ..ScrubOptions::default()
+    };
+    let report = if once {
+        inspect.scrub_once(opts).map_err(|e| e.to_string())?
+    } else {
+        inspect
+            .scrub_to_completion(opts)
+            .map_err(|e| e.to_string())?
+    };
+
+    let findings = inspect.list_scrub_findings().map_err(|e| e.to_string())?;
+    let finding_summaries: Vec<JsonValue> = findings
+        .iter()
+        .map(|f| {
+            sjson!({
+                "finding_id": f.finding_id,
+                "kind": f.finding.as_str(),
+                "target_kind": f.kind.as_str(),
+                "path": f.relative_path,
+                "detail": f.detail,
+                "quarantine_path": f.quarantine_path,
+            })
+        })
+        .collect();
+
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "mode": if once { "scrub_once" } else { "scrub" },
+            "store": store.display().to_string(),
+            "store_id_hex": hex16(&inspect.store_id()),
+            "targets_processed": report.targets_processed,
+            "bytes_processed": report.bytes_processed,
+            "failures_this_call": report.failures_this_call,
+            "cycle_completed": report.cycle_completed,
+            "paused": report.paused,
+            "coverage_ratio": report.status.coverage_ratio,
+            "bytes_verified_total": report.status.bytes_verified_total,
+            "failures_total": report.status.failures_total,
+            "open_findings": report.status.open_findings,
+            "last_complete_cycle_ns": report.status.last_complete_cycle_ns,
+            "last_complete_age_ns": report.status.last_complete_age_ns,
+            "findings": finding_summaries,
+        }))?;
+    } else {
+        println!("{}", if once { "scrub_once" } else { "scrub" });
+        println!("  store: {}", store.display());
+        println!("  store_id: {}", hex16(&inspect.store_id()));
+        println!("  targets_processed: {}", report.targets_processed);
+        println!("  bytes_processed: {}", report.bytes_processed);
+        println!("  failures_this_call: {}", report.failures_this_call);
+        println!("  cycle_completed: {}", report.cycle_completed);
+        println!("  paused: {}", report.paused);
+        println!("  coverage_ratio: {:.4}", report.status.coverage_ratio);
+        println!(
+            "  bytes_verified_total: {}",
+            report.status.bytes_verified_total
+        );
+        println!("  failures_total: {}", report.status.failures_total);
+        println!("  open_findings: {}", report.status.open_findings);
+        if let Some(age) = report.status.last_complete_age_ns {
+            println!("  last_complete_age_ns: {age}");
+        }
+        for f in &findings {
+            println!(
+                "  finding: {} {} {}",
+                f.finding.as_str(),
+                f.relative_path,
+                f.detail
+            );
+        }
+    }
+    Ok(())
+}
+
+fn emit_scrub_status(
+    mode: &str,
+    store: &Path,
+    st: &dingo_store::ScrubStatus,
+    inspect: &Store,
+    json_out: bool,
+) -> Result<(), String> {
+    let findings = inspect.list_scrub_findings().map_err(|e| e.to_string())?;
+    if json_out {
+        emit_json(sjson!({
+            "ok": true,
+            "mode": mode,
+            "store": store.display().to_string(),
+            "store_id_hex": hex16(&inspect.store_id()),
+            "paused": st.paused,
+            "cycle_id": st.cycle_id,
+            "coverage_ratio": st.coverage_ratio,
+            "bytes_verified_total": st.bytes_verified_total,
+            "failures_total": st.failures_total,
+            "open_findings": st.open_findings,
+            "targets_remaining": st.targets_remaining,
+            "targets_in_cycle": st.targets_in_cycle,
+            "last_complete_cycle_ns": st.last_complete_cycle_ns,
+            "last_complete_age_ns": st.last_complete_age_ns,
+            "finding_count": findings.len(),
+        }))?;
+    } else {
+        println!("{mode}");
+        println!("  store: {}", store.display());
+        println!("  store_id: {}", hex16(&inspect.store_id()));
+        println!("  paused: {}", st.paused);
+        println!("  cycle_id: {}", st.cycle_id);
+        println!("  coverage_ratio: {:.4}", st.coverage_ratio);
+        println!("  bytes_verified_total: {}", st.bytes_verified_total);
+        println!("  failures_total: {}", st.failures_total);
+        println!("  open_findings: {}", st.open_findings);
+        println!("  targets_remaining: {}", st.targets_remaining);
+        if let Some(age) = st.last_complete_age_ns {
+            println!("  last_complete_age_ns: {age}");
+        }
     }
     Ok(())
 }

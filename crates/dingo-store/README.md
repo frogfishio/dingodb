@@ -57,7 +57,7 @@ assert!(store.get("user-42")?.is_none());
 | Recovery | rebuildable primary index, salvage after catalog wipe, evidence-preserving `salvage_to` |
 | Derived | collection catalog, secondary indexes, subject history, checkpoints |
 | Chunks | chunked payloads with partial maps; phased live compaction |
-| Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050) |
+| Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050), `scrub_once` / `scrub_status` (DEF-051) |
 | Tiering | segment move/copy with stable identities; offline-tier coverage holes |
 | Honesty | fail-closed logical scans; absence only proven when coverage is complete |
 
@@ -72,8 +72,29 @@ store/
   catalogs/       # derived only (rebuildable)
   indexes/        # derived only (rebuildable)
   snapshots/      # derived checkpoints
-  recovery/       # operator scratch + compaction jobs
+  recovery/       # operator scratch + compaction jobs + scrub state
 ```
+
+## Integrity scrub (DEF-051)
+
+Bounded verification of segments and chunks:
+
+```rust
+use dingo_store::{DurabilityMode, ScrubOptions, Store};
+
+# let dir = tempfile::tempdir().unwrap();
+# let root = dir.path().join("s");
+let mut store = Store::create(&root)?;
+store.put("k", b"v", DurabilityMode::Durable)?;
+let report = store.scrub_to_completion(ScrubOptions::default())?;
+assert!(report.cycle_completed);
+assert_eq!(report.status.open_findings, 0);
+# Ok::<(), dingo_store::StoreError>(())
+```
+
+State lives under `recovery/scrub/` (`state.v1.json`, `findings.v1.json`,
+optional `quarantine/` copies). Scrub never deletes or rewrites authoritative
+segment bytes. Pause with `pause_scrub` / resume with `resume_scrub`.
 
 ## Backup and restore (DEF-050)
 
@@ -121,6 +142,8 @@ tier media.
 | `rebuild_index` / `salvage` | Catalog-free scan of all segment files |
 | `salvage_to` | Evidence-preserving frame copy + recovery manifest |
 | `export_live_state` | Live-only re-put materialization (new lineage) |
+| `backup_to` / `restore_full_backup` | Content-hashed full backup package (DEF-050) |
+| `scrub_once` / `scrub_to_completion` / `scrub_status` | Bounded integrity scrub + findings (DEF-051) |
 | `compact_live` / compact job helpers | Phased live projection; reclaim only with `allow_history_loss` |
 | `scan_live_page` | Bounded page + continuation token |
 | `transfer_segment_to_tier` | Copy/move sealed segment (stable id) |

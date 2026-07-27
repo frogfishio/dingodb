@@ -1486,6 +1486,64 @@ impl Store {
         )
     }
 
+    /// Run a bounded integrity scrub step (DEF-051).
+    ///
+    /// Verifies sealed segments (and optionally active/chunks) with full-file
+    /// BLAKE3 and forward frame scan. Compares against placement `content_hash`
+    /// when known. Findings are persisted under `recovery/scrub/`; corrupt
+    /// evidence may be copied to quarantine without removing the original.
+    ///
+    /// Work is bounded by [`crate::ScrubOptions::max_files`] /
+    /// [`crate::ScrubOptions::max_bytes`] so scrub never starves foreground
+    /// callers that schedule multiple steps.
+    pub fn scrub_once(
+        &self,
+        opts: crate::ScrubOptions,
+    ) -> Result<crate::ScrubReport, StoreError> {
+        crate::scrub::scrub_once(&self.paths, self.store_id, &self.tier_placement, &opts)
+    }
+
+    /// Scrub status: age, coverage, bytes verified, failures, pause flag.
+    pub fn scrub_status(&self) -> Result<crate::ScrubStatus, StoreError> {
+        crate::scrub::scrub_status(&self.paths, self.store_id)
+    }
+
+    /// Pause scrub so subsequent [`Self::scrub_once`] calls no-op until resume.
+    pub fn pause_scrub(&self) -> Result<crate::ScrubStatus, StoreError> {
+        crate::scrub::pause_scrub(&self.paths, self.store_id)
+    }
+
+    /// Resume a paused scrub.
+    pub fn resume_scrub(&self) -> Result<crate::ScrubStatus, StoreError> {
+        crate::scrub::resume_scrub(&self.paths, self.store_id)
+    }
+
+    /// Open scrub findings (hash mismatch, holes, missing media).
+    pub fn list_scrub_findings(&self) -> Result<Vec<crate::ScrubFinding>, StoreError> {
+        crate::scrub::list_scrub_findings(&self.paths, self.store_id)
+    }
+
+    /// Run scrub to completion under the given per-step bounds (loop).
+    ///
+    /// Stops early if paused or if a single step makes no progress while
+    /// targets remain (safety).
+    pub fn scrub_to_completion(
+        &self,
+        opts: crate::ScrubOptions,
+    ) -> Result<crate::ScrubReport, StoreError> {
+        let mut last = self.scrub_once(opts.clone())?;
+        let mut guard = 0u32;
+        while !last.cycle_completed && !last.paused && guard < 10_000 {
+            guard += 1;
+            let next = self.scrub_once(opts.clone())?;
+            if next.targets_processed == 0 && !next.cycle_completed {
+                break;
+            }
+            last = next;
+        }
+        Ok(last)
+    }
+
     /// Evidence-preserving salvage into a **new** store directory (DX_SPEC §13.4, DEF-011).
     ///
     /// The source store is never mutated. Destination must not already be a

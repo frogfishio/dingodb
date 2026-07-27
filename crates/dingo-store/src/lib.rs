@@ -34,6 +34,7 @@ mod layout;
 mod lifecycle;
 mod media;
 mod recovery;
+mod scrub;
 mod secondary;
 mod segment_catalog;
 mod store;
@@ -115,6 +116,15 @@ pub use segment_catalog::{
 pub use recovery::{
     salvage_manifest_path, try_load_recovery_manifest, FrameEvidence, HoleEvidence,
     LimitsSnapshot, RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
+};
+pub use scrub::{
+    list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,
+    plan_scrub_targets, resume_scrub, scrub_dir, scrub_findings_path, scrub_once, scrub_state_path,
+    scrub_status, status_from_state, verify_scrub_target, write_scrub_findings, write_scrub_state,
+    ScrubFinding, ScrubFindingKind, ScrubFindingsDoc, ScrubOptions, ScrubReport, ScrubState,
+    ScrubStatus, ScrubTarget, ScrubTargetKind, ScrubTargetResult, DEFAULT_SCRUB_MAX_BYTES,
+    DEFAULT_SCRUB_MAX_FILES, SCRUB_DIR, SCRUB_FINDINGS_FILE, SCRUB_PROFILE, SCRUB_QUARANTINE_DIR,
+    SCRUB_STATE_FILE,
 };
 pub use store::{
     IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan, SalvageCopyReport,
