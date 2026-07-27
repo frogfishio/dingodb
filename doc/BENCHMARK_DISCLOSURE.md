@@ -40,7 +40,63 @@ durability conditions.
 |-------|------------|
 | `dingo-store` `stage6_bench_skeleton` | hot-path skeleton |
 | `dingo-store` `stage_def_023_write_path` | hot-path write amplification / fsync-ack disclosure (DEF-023) |
+| `dingo-store` example `write_latency_breakdown` | hot-path phase split: memory index vs buffered data vs full `persist_index_cache` vs seal |
+| `dingo-store` example `write_scale_curve` | buffered scale curve (early vs late windows) |
 | `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
+
+### Write latency: data vs indexing (measured attribution)
+
+**Verdict (DEF-023 after seal / checkpoint decoupling):** the asymptotic
+indexing failure is fixed. Steady-state put cost is healthy; remaining
+window-level slowdowns come from **synchronous lifecycle work**
+(`persist_index_cache`, `seal_active`), not from ordinary in-memory index
+insertion.
+
+#### Steady-state buffered puts (no checkpoint, no seal in the sample window)
+
+Illustrative release-mode run on developer hardware (`write_latency_breakdown`,
+n=2000 after warmup; absolute µs vary by machine/storage):
+
+| Surface | Mean (approx.) | Notes |
+|---------|----------------|-------|
+| 4-byte buffered put | **~9 µs** | dual-index + encode/append/`write_all` |
+| 8 KiB buffered put | **~20 µs** | data path grows with payload |
+| Memory-mode index only (4 B) | **~3 µs** | one `PrimaryIndex` apply, no segment I/O |
+| Memory-mode index only (8 KiB) | **~4 µs** | body clone into index entry |
+
+A dual-index model (memory mode ≈ one apply; buffered ≈ two applies + I/O)
+attributes roughly **35–46%** of mean put time to dual in-memory index publish
+on mid-size payloads, with **data encoding, append, and OS write** dominating
+larger values. Tiny payloads lean more index-heavy (often **~50–65%** dual-index
+share) because the data path is so short.
+
+#### Lifecycle spikes (still synchronous when they run)
+
+| Surface | Order of cost | Scaling |
+|---------|---------------|---------|
+| `persist_index_cache` | **tens of ms** once thousands of live keys hold bodies | O(live subjects × body size) serialize + atomic fsync |
+| `seal_active` (~4 MiB segment) | **tens of ms** | O(segment) rewrite + BLAKE3 + fsync; **not** a full `primary.idx` rewrite |
+
+These are the remaining bottlenecks on a long pump: rate-limited derived
+checkpoints (`DERIVED_CHECKPOINT_EVERY_OPS` = 65_536) and auto-seal at the
+segment threshold still run **on the put acknowledgement path** when they fire.
+They no longer grow with total retained history the way pre-DEF-023 full
+rescans / full-index-on-seal did.
+
+#### Scale curve (asymptotic check)
+
+`write_scale_curve` (~128 MiB buffered 8 KiB puts, 4 MiB seal threshold) now
+keeps late-window throughput in the same order as early-window throughput
+(typically late/early **≳ 0.7** on quiet hardware). The historic collapse was
+**~87%** loss (late/early **~0.13**) when full index rewrites sat on seal or
+every few puts.
+
+Run:
+
+```bash
+cargo run -p dingo-store --release --example write_latency_breakdown
+cargo run -p dingo-store --release --example write_scale_curve
+```
 
 ## Marketing language
 

@@ -612,6 +612,23 @@ Implementation notes:
 - Wipe of `indexes/` / `catalogs/` / `snapshots/` still rebuilds identical
   logical state from segments.
 
+Measured confirmation (developer hardware; see `doc/BENCHMARK_DISCLOSURE.md`
+and examples `write_latency_breakdown` / `write_scale_curve`):
+
+- Steady-state buffered puts: ~9 µs (4 B) / ~20 µs (8 KiB); dual-index publish
+  roughly **35–46%** on mid-size values, data encode/append/write dominating
+  larger payloads.
+- Scale curve late/early throughput typically **≳ 0.7** (was ~0.13 with the
+  full-index-on-seal collapse).
+- Remaining cost is **synchronous lifecycle** when it runs: `persist_index_cache`
+  (O(live×body), tens of ms) and `seal_active` (O(segment), tens of ms) still
+  sit on the put path at their rate limits / thresholds — not ordinary index
+  insertion.
+
+Follow-on (not blocking DEF-023 acceptance): move rate-limited checkpoints and
+optional seal work off the put acknowledgement path (background / batch
+lifecycle) so p99 is not coupled to lifecycle spikes.
+
 Acceptance:
 
 - Amortized write work is independent of total retained data.
