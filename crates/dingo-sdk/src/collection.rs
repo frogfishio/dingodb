@@ -9,6 +9,7 @@ use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::resource::{
     check_json_depth, check_payload_len, check_result_bytes, estimate_row_bytes, host_limits,
 };
+use crate::sda_query::eval_sda_program;
 use crate::subject::{collection_prefix, decode_subject, encode_subject};
 use crate::value::{decode_bytes, decode_json, encode_bytes, encode_json};
 use dingo_store::{PayloadResult, Store};
@@ -377,6 +378,82 @@ impl<'a> Collection<'a> {
     /// Fluent query builder (DX_SPEC §7.2).
     pub fn query(&mut self) -> QueryBuilder<'_, 'a> {
         QueryBuilder::new(self)
+    }
+
+    /// Evaluate pure SDA / ENR1 **text** over this collection (DX_SPEC §7.6).
+    ///
+    /// Scans live JSON documents (stable key order), binds them as a JSON array
+    /// under `input`, and runs `program` with the standalone SDA evaluator
+    /// (including the ENR1 kernel: `one?` / `one!` / `merge` / `+` / `asBag`).
+    ///
+    /// Portable [`Filter`] builders remain the everyday path; this is the
+    /// advanced surface for people who prefer to write SDA/ENR as text.
+    ///
+    /// ```ignore
+    /// let active = users.sda(r#"{
+    ///   yield u | u in input
+    ///     | getPath(u, Seq["status"]) = Some("active")
+    /// }"#)?;
+    /// ```
+    ///
+    /// The host performs the scan; SDA remains pure (no collection IO inside
+    /// the program). Prefer [`Self::sda_with`] when a limit or budget is needed.
+    pub fn sda(&mut self, program: &str) -> Result<JsonValue, Error> {
+        self.sda_with(program, QueryOptions::default())
+    }
+
+    /// Like [`Self::sda`] with scan options (limit / budget / force_scan / …).
+    pub fn sda_with(
+        &mut self,
+        program: &str,
+        options: QueryOptions,
+    ) -> Result<JsonValue, Error> {
+        let rows = self.find_with(&Filter::Always, options)?;
+        let docs: Vec<JsonValue> = rows.into_iter().map(|(_, v)| v).collect();
+        eval_sda_program(program, JsonValue::Array(docs))
+    }
+
+    /// Keep live JSON rows whose pure SDA/ENR **text** predicate is `true`.
+    ///
+    /// `predicate` is evaluated once per document with that document bound as
+    /// `input`. Non-boolean results (including SDA `Fail`) are non-matches.
+    /// Prefer [`Filter`] + [`Self::find`] for the portable vocabulary; use this
+    /// when the predicate needs full SDA/ENR surface.
+    ///
+    /// ```ignore
+    /// let rows = users.filter_sda(
+    ///     r#"getPath(input, Seq["status"]) = Some("active")"#,
+    /// )?;
+    /// ```
+    pub fn filter_sda(&mut self, predicate: &str) -> Result<Vec<(String, JsonValue)>, Error> {
+        self.filter_sda_with(predicate, QueryOptions::default())
+    }
+
+    /// Like [`Self::filter_sda`] with scan options.
+    pub fn filter_sda_with(
+        &mut self,
+        predicate: &str,
+        options: QueryOptions,
+    ) -> Result<Vec<(String, JsonValue)>, Error> {
+        let prog = sda_core::Program::parse(predicate).map_err(|e| {
+            Error::QueryInvalid(format!(
+                "filter_sda parse failed: {e}; src={predicate}"
+            ))
+        })?;
+        let candidates = self.find_with(&Filter::Always, options)?;
+        let mut out = Vec::new();
+        for (key, doc) in candidates {
+            match prog.run_json("input", doc.clone()) {
+                Ok(JsonValue::Bool(true)) => out.push((key, doc)),
+                Ok(JsonValue::Bool(false)) | Ok(_) => {}
+                Err(e) => {
+                    return Err(Error::QueryInvalid(format!(
+                        "filter_sda eval failed: {e}; src={predicate}"
+                    )));
+                }
+            }
+        }
+        Ok(out)
     }
 
     /// List indexes on this collection (convenience). Embedded and remote.

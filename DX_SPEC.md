@@ -445,19 +445,55 @@ semantics.
 
 ### 7.6 Raw SDA
 
-Advanced users can evaluate SDA explicitly:
+Advanced users can evaluate SDA (including the ENR1 enrichment kernel) as
+**text**. Fluent filters and multi-collection equijoins do not replace this path.
 
 ```ts
 const result = users.sda(`
-  { u in input |
-      u<status>? = Some("active")
+  { yield u | u in input
+      | getPath(u, Seq["status"]) = Some("active")
     }
 `);
 ```
 
-The host supplies bounded streams or pages. SDA remains pure.
+Multi-collection programs bind named collections under `input` as a map of
+document arrays **and** as free names (host scan first; pure eval second).
+Preferred enrichment surface uses ENR1 `Match` + `enrich` pipe sugar:
 
-Raw SDA is an advanced capability, not the only query interface.
+```ts
+const attached = db.enrQuery()
+  .bind("orders")
+  .bind("customers")
+  .run(`
+    orders
+    |> enrich {
+        customer:
+          one!(
+            Match(
+              l,
+              customers,
+              getPath(l, Seq["customer_id"]),
+              getPath(r, Seq["id"])
+            )
+          )
+      }
+    |> sda {
+        yield o + Map{
+          "customer_name" -> getPath(o, Seq["customer", "name"])
+        }
+        | o in _
+      }
+  `);
+```
+
+`Match(l, R, kL, kR)` is the ENR1 primitive match bag (returns `Bag`).
+`enrich { field: E }` attaches evaluated fields to each left row (`l` bound).
+`sda { … }` is readability sugar for a bare SDA comprehension over the pipe `_`.
+
+Verbose comprehensions (`bindOpt` / `{ yield o + Map{…} | o in orders }`) remain
+valid. The host supplies bounded streams or pages. SDA remains pure.
+
+Raw SDA/ENR text is an advanced capability, not the only query interface.
 
 ### 7.7 Explain
 

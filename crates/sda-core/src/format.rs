@@ -112,6 +112,14 @@ fn format_expr(expr: &Expr, min_prec: u8) -> String {
             );
             wrap_if_needed(rendered, prec, min_prec)
         }
+        Expr::Enrich(fields) => {
+            let items = fields
+                .iter()
+                .map(|(name, value)| format!("{name}: {}", format_expr(value, 0)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("enrich {{{items}}}")
+        }
         Expr::Select(target, selector, mode) => {
             let prec = precedence(expr);
             let suffix = match mode {

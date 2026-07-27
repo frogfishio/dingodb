@@ -25,6 +25,11 @@ pub enum Expr {
     Lambda(String, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
     Select(Box<Expr>, String, SelectMode),
+    /// ENR1 attach sugar: `enrich { field: expr, ... }` (usually after `|>`).
+    ///
+    /// Evaluates against the pipe placeholder `_` as left carrier; each row is
+    /// bound as `l` while field expressions run, then attached via Map/`+`.
+    Enrich(Vec<(String, Expr)>),
     Comprehension {
         yield_expr: Option<Box<Expr>>,
         binding: String,

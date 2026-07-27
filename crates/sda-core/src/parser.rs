@@ -290,6 +290,26 @@ impl Parser {
                 }
                 self.expect(TokenKind::RParen)?;
                 expr = Expr::Call(Box::new(Expr::Ident(enr_name.to_string())), args);
+            } else if name == "enrich" && *self.peek() == TokenKind::LBrace {
+                // enrich { field: expr, ... } — ENR1 attach sugar over pipe `_`.
+                self.advance(); // {
+                let mut fields = Vec::new();
+                if *self.peek() != TokenKind::RBrace {
+                    fields.push(self.parse_prod_field()?);
+                    while *self.peek() == TokenKind::Comma {
+                        self.advance();
+                        if *self.peek() == TokenKind::RBrace {
+                            break;
+                        }
+                        fields.push(self.parse_prod_field()?);
+                    }
+                }
+                self.expect(TokenKind::RBrace)?;
+                expr = Expr::Enrich(fields);
+            } else if name == "sda" && *self.peek() == TokenKind::LBrace {
+                // sda { ... } — readability sugar for a bare SDA comprehension.
+                self.advance(); // {
+                expr = self.parse_comprehension()?;
             }
         }
         loop {

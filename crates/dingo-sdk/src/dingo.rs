@@ -6,6 +6,7 @@ use crate::collection::Collection;
 use crate::error::Error;
 use crate::multi_query::MultiQuery;
 use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
+use crate::sda_query::SdaTextQuery;
 use crate::subject::validate_collection_name;
 #[cfg(feature = "cluster")]
 use dingo_cluster::ClusterConfig;
@@ -204,6 +205,10 @@ impl Dingo {
     /// equijoin on `X = Y`, then either return the rough joined bag or pass it
     /// through pure SDA for projection/normalisation.
     ///
+    /// For people who prefer to **write ENR + SDA as text** (match bags, `one!`,
+    /// attach/`+`, full comprehensions) instead of fluent equijoins, use
+    /// [`Self::sda_query`] / [`Collection::sda`].
+    ///
     /// ```ignore
     /// let bag = db
     ///     .query()
@@ -224,6 +229,72 @@ impl Dingo {
     /// with per-source filters / budgets when collections are large.
     pub fn query(&mut self) -> MultiQuery<'_> {
         MultiQuery::new(self)
+    }
+
+    /// Multi-collection **SDA/ENR text** query axis (DX_SPEC §7.6 companion).
+    ///
+    /// Bind named collections under `input` as a map of document arrays **and**
+    /// as top-level free names, then run pure SDA — including the ENR1 kernel
+    /// (`Match`, `enrich`, `one?` / `one!`, `merge` / `+` attach, `asBag`).
+    /// Complementary to [`Self::query`]:
+    ///
+    /// | Axis | Surface | Join policy |
+    /// |------|---------|-------------|
+    /// | [`Self::query`] | Fluent `from` / `join` / `on` | Host hash equijoin |
+    /// | [`Self::sda_query`] / [`Self::enr_query`] | Text program | ENR1 match + attach |
+    ///
+    /// Preferred surface (ENR1 `Match` + `enrich` pipe):
+    ///
+    /// ```ignore
+    /// let out = db
+    ///     .enr_query()
+    ///     .bind("orders")
+    ///     .bind("customers")
+    ///     .run(r#"
+    ///       orders
+    ///       |> enrich {
+    ///           customer:
+    ///             one!(
+    ///               Match(
+    ///                 l,
+    ///                 customers,
+    ///                 getPath(l, Seq["customer_id"]),
+    ///                 getPath(r, Seq["id"])
+    ///               )
+    ///             )
+    ///         }
+    ///       |> sda {
+    ///           yield o + Map{
+    ///             "customer_name" -> getPath(o, Seq["customer", "name"])
+    ///           }
+    ///           | o in _
+    ///         }
+    ///     "#)?;
+    /// ```
+    ///
+    /// Verbose form (`bindOpt` + comprehension) still works for full SDA control.
+    pub fn sda_query(&mut self) -> SdaTextQuery<'_> {
+        SdaTextQuery::new(self)
+    }
+
+    /// Alias of [`Self::sda_query`] — multi-collection ENR1/SDA text path.
+    ///
+    /// Prefer this name when the program is enrichment-shaped (`Match` /
+    /// `enrich` / `one!`) rather than pure SDA projection.
+    pub fn enr_query(&mut self) -> SdaTextQuery<'_> {
+        self.sda_query()
+    }
+
+    /// Convenience: bind each collection name under `input.<name>` (and as a
+    /// free name) and run pure SDA/ENR1 text (no per-source filters).
+    ///
+    /// Equivalent to chaining [`SdaTextQuery::bind`] then [`SdaTextQuery::run`].
+    pub fn sda(&mut self, collections: &[&str], program: &str) -> Result<serde_json::Value, Error> {
+        let mut q = self.sda_query();
+        for name in collections {
+            q = q.bind(*name);
+        }
+        q.run(program)
     }
 
     /// Number of live subjects across all collections (embedded).

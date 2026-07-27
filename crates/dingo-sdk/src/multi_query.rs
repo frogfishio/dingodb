@@ -1,11 +1,16 @@
 //! Multi-collection join query axis (Dingo-level).
 //!
-//! Complementary to single-collection [`crate::QueryBuilder`]:
+//! Complementary to single-collection [`crate::QueryBuilder`] and to the raw
+//! **SDA/ENR text** axis ([`crate::SdaTextQuery`] / [`crate::Dingo::sda_query`]):
 //!
 //! 1. **Join axis** — `FROM` + equijoin `ON left = right` over named collections
 //!    (SQL / Mongo-ish), producing a rough bag of joined JSON objects.
 //! 2. **SDA axis** — optional pure SDA program over that bag for projection /
 //!    normalisation (SDA never opens collections).
+//!
+//! When users want to write match bags, `one!` / `one?`, and attach/`+` **as
+//! source text** rather than fluent equijoins, use [`crate::Dingo::sda_query`]
+//! instead of this builder.
 //!
 //! ```ignore
 //! let rows = db

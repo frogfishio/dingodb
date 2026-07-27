@@ -3,8 +3,9 @@
 //! Ordinary application surface: open a store directory, connect to a server,
 //! or (with the `cluster` feature) open a multi-node cluster; name a collection;
 //! put/get/delete JSON or bytes; filter JSON documents; multi-collection equijoin
-//! queries ([`Dingo::query`]) with optional SDA normalisation; manage secondary
-//! indexes; inspect per-key history — without learning SDA for common paths.
+//! queries ([`Dingo::query`]) with optional SDA normalisation; raw SDA/ENR1 text
+//! queries ([`Dingo::sda_query`], [`Collection::sda`]); manage secondary indexes;
+//! inspect per-key history — without learning SDA for common paths.
 //!
 //! **License:** MPL-2.0 for the default embedded + remote surface. The optional
 //! `cluster` feature depends on AGPL `dingo-cluster` (in-process multi-node).
@@ -39,6 +40,7 @@ mod multi_query;
 mod receipt;
 mod remote;
 mod resource;
+mod sda_query;
 mod subject;
 mod tls;
 mod value;
@@ -60,6 +62,7 @@ pub use filter::{
     QUERY_PLAN_PROFILE,
 };
 pub use multi_query::{map_joined_sda, JoinBuilder, MultiQuery, MULTI_QUERY_PROFILE};
+pub use sda_query::{eval_sda_program, SdaTextQuery, SDA_QUERY_PROFILE};
 pub use history::{KeyHistory, Version};
 pub use indexes::{create_index_on_store, mark_indexes_stale, IndexInfo, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};

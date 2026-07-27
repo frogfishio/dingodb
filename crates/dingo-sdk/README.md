@@ -121,6 +121,7 @@ let mut db = Dingo::create_cluster(
 | Embedded | `Dingo::open`, JSON/bytes put/get/delete, scan + streaming iter |
 | Filters | SDK-native `Filter` / `find` / `query`, secondary field indexes, budgets |
 | Multi-collection join | `Dingo::query().from(..).join(..).on(X,Y).collect()`; `.map_sda(..)` normalises |
+| SDA/ENR text queries | `Collection::sda` / `filter_sda` (DX §7.6); multi-collection `Dingo::enr_query().bind(..).run` (`Match`/`enrich`) or `Dingo::sda(&[…], program)` |
 | History | Per-key immutable event stream |
 | Chunks | Completeness-aware `get_payload` for large bodies |
 | Remote | `Dingo::connect("dingo://host:port")` framed `dingo-rpc-v1` TCP; auth token, deadline, retry |
@@ -143,11 +144,14 @@ Application developers do not need to know about frames or segments.
 | `Collection::scan_keys` / `scan_json` / `scan_json_iter` / `scan_json_page` | Live scan |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration |
 | `Dingo::query` | Multi-collection equijoin (`from` / `join` / `on`) + optional SDA map |
+| `Collection::sda` / `filter_sda` | Raw SDA/ENR1 text over one collection (DX §7.6) |
+| `Dingo::enr_query` / `sda_query` / `sda` | Bind collections → free names + pure SDA/ENR1 text (`Match`/`enrich`) |
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list secondary indexes |
 | `Collection::history` | Immutable event stream for one key |
 | `Filter` / `QueryOptions` / `QueryBudget` | Predicates + limit/order/budget |
 | `MultiQuery` / `map_joined_sda` | Join bag then pure SDA normalisation |
+| `SdaTextQuery` / `eval_sda_program` | Text-program axis (ENR1 match bags + cardinality) |
 | `WriteReceipt` / `DeleteReceipt` | Event identity + achieved durability |
 | `Error::code` / `ErrorCode` | Stable machine codes |
 | `SDK_API_VERSION` | Product freeze label |

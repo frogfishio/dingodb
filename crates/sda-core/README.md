@@ -58,7 +58,7 @@ Bind host input under a name other than `input` with
 | `format_source` | Emit canonical SDA formatting |
 | `from_json` / `to_json` | Bridge between JSON and SDA values |
 | `CONFORMANCE_CORPUS_TAG` | Freeze identity for standalone semantics (`sda-standalone-v1.0`) |
-| `ENR1_PROFILE_TAG` | Additive enrichment kernel (`sda-enr1-v0.1`: match bag + `one?`/`one!`/`merge`) |
+| `ENR1_PROFILE_TAG` | Additive enrichment kernel (`sda-enr1-v0.1`: `Match`/`enrich`/`one?`/`one!`/`merge`) |
 
 Hosts that apply one program to many documents should use `Program::parse` once
 and `run_json` / `eval` per document — not `run` in a loop (re-parses every call).
@@ -70,9 +70,13 @@ as a second parser. Spec: [`crates/enr-core/`](../enr-core/README.md). Example:
 
 ```rust
 let prog = sda_lib::Program::parse(
-    r#"{ yield o + Map{"customer" -> one!({ c | c in customers
-          | getPath(c, Seq["id"]) = getPath(o, Seq["customer_id"]) })}
-        | o in orders }"#,
+    r#"orders
+       |> enrich {
+            customer:
+              one!(Match(l, customers,
+                getPath(l, Seq["customer_id"]),
+                getPath(r, Seq["id"])))
+          }"#,
 )?;
 # let _ = prog;
 # Ok::<(), sda_lib::SdaError>(())

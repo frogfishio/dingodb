@@ -48,10 +48,11 @@ pub const CONFORMANCE_CORPUS_TAG: &str = "sda-standalone-v1.0";
 
 /// ENR1 enrichment kernel profile identity (additive to standalone SDA).
 ///
-/// Match-bag cardinality (`one?` / `one!` / `only` / `first` / `last`),
-/// `merge` / `+` attach, and `asBag` / `matchBag` share [`Program::parse`] with
-/// core SDA — one compile path. Spec: `crates/enr-core/ENR1.md`. ENR2 is not
-/// implemented. See `tests/enr1_kernel.rs`.
+/// Match-bag kernel: `Match(l,R,kL,kR)`, `enrich {…}` pipe attach, cardinality
+/// (`one?` / `one!` / `only` / `first` / `last`), `merge` / `+` attach, and
+/// `asBag` / `matchBag` share [`Program::parse`] with core SDA — one compile
+/// path. Spec: `crates/enr-core/ENR1.md`. ENR2 is not implemented. See
+/// `tests/enr1_kernel.rs`.
 pub const ENR1_PROFILE_TAG: &str = "sda-enr1-v0.1";
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
@@ -232,8 +233,21 @@ impl Program {
     /// Skips JSON bridge cost. Returns the last expression value, or
     /// [`Value::Null`] when the program ends on a `let` with no trailing expr.
     pub fn eval(&self, binding_name: &str, input: Value) -> Result<Value, SdaError> {
+        self.eval_bindings([(binding_name.to_string(), input)])
+    }
+
+    /// Evaluate with multiple top-level bindings (host multi-collection ENR path).
+    ///
+    /// Used when bound collection aliases (`orders`, `customers`, …) should be
+    /// free names in the program, not only nested under `input`.
+    pub fn eval_bindings<I>(&self, bindings: I) -> Result<Value, SdaError>
+    where
+        I: IntoIterator<Item = (String, Value)>,
+    {
         let mut env = Env::new();
-        env.insert(binding_name.to_string(), input);
+        for (name, value) in bindings {
+            env.insert(name, value);
+        }
         let result = eval::eval_program(&self.inner, &mut env)?;
         Ok(result.unwrap_or(Value::Null))
     }
@@ -245,6 +259,22 @@ impl Program {
         input: serde_json::Value,
     ) -> Result<serde_json::Value, SdaError> {
         let result = self.eval(binding_name, from_json(input))?;
+        Ok(to_json(result))
+    }
+
+    /// Evaluate with JSON bindings: each value is converted via [`from_json`].
+    ///
+    /// When the host supplies a multi-collection map, pass both `input` and
+    /// each collection alias so programs can write `orders |> enrich { … }`.
+    pub fn run_json_bindings(
+        &self,
+        bindings: impl IntoIterator<Item = (String, serde_json::Value)>,
+    ) -> Result<serde_json::Value, SdaError> {
+        let converted: Vec<(String, Value)> = bindings
+            .into_iter()
+            .map(|(k, v)| (k, from_json(v)))
+            .collect();
+        let result = self.eval_bindings(converted)?;
         Ok(to_json(result))
     }
 

@@ -171,6 +171,14 @@ pub fn eval_expr(expr: &Expr, env: &Env) -> Result<Value, EvalError> {
             Box::new(env.clone()),
         )),
         Expr::Call(func_expr, args) => {
+            // ENR1 Match(l, R, kL, kR) is a special form: kL/kR close over l and r
+            // and must not be evaluated eagerly (see crates/enr-core/ENR1.md §01).
+            if let Expr::Ident(name) = func_expr.as_ref() {
+                if name == "Match" {
+                    return eval_enr_match(args, env);
+                }
+            }
+
             let arg_vals: Result<Vec<Value>, EvalError> =
                 args.iter().map(|arg| eval_expr(arg, env)).collect();
             let arg_vals = arg_vals?;
@@ -193,6 +201,7 @@ pub fn eval_expr(expr: &Expr, env: &Env) -> Result<Value, EvalError> {
             let func = eval_expr(func_expr, env)?;
             apply_lambda(func, arg_vals)
         }
+        Expr::Enrich(fields) => eval_enr_enrich(fields, env),
         Expr::Pipe(lhs, rhs) => {
             let lhs_value = eval_expr(lhs, env)?;
             let mut child_env = env.clone();
@@ -288,6 +297,99 @@ pub fn eval_expr(expr: &Expr, env: &Env) -> Result<Value, EvalError> {
             }
         }
     }
+}
+
+/// `Match(l, R, kL, kR) = { r ∈ R | kR(r) = kL(l) }` as Bag (ENR1 primitive).
+///
+/// `kL` and `kR` are expressions evaluated with `l` bound to the left value and
+/// `r` bound to each right-side candidate (not ordinary eager call args).
+fn eval_enr_match(args: &[Expr], env: &Env) -> Result<Value, EvalError> {
+    if args.len() != 4 {
+        return Ok(arity_mismatch_value());
+    }
+    let left = eval_expr(&args[0], env)?;
+    let right_coll = eval_expr(&args[1], env)?;
+    let items = match right_coll {
+        Value::Seq(items) | Value::Bag(items) | Value::Set(items) => items,
+        _ => return Ok(enr_wrong_shape_value()),
+    };
+    let mut matched = Vec::new();
+    for r in items {
+        let mut child = env.clone();
+        child.insert("l".to_string(), left.clone());
+        child.insert("r".to_string(), r.clone());
+        let k_l = eval_expr(&args[2], &child)?;
+        let k_r = eval_expr(&args[3], &child)?;
+        if ensure_comparable(&k_l).is_err() || ensure_comparable(&k_r).is_err() {
+            return Ok(wrong_shape_value());
+        }
+        if values_equal(&k_l, &k_r) {
+            matched.push(r);
+        }
+    }
+    Ok(Value::Bag(matched))
+}
+
+/// `enrich { field: expr, ... }` over pipe `_`: attach evaluated fields to each left row.
+///
+/// Each left row is bound as `l` while field expressions evaluate. Result carrier
+/// follows the left (Seq/Bag/Set). Attach uses Map keys (JSON-friendly) via `+`.
+fn eval_enr_enrich(fields: &[(String, Expr)], env: &Env) -> Result<Value, EvalError> {
+    let left = match env.get("_") {
+        Some(v) => v.clone(),
+        None => {
+            return Ok(Value::Fail_(
+                "t_sda_unbound_placeholder".to_string(),
+                "unbound placeholder".to_string(),
+            ))
+        }
+    };
+    enum Carrier {
+        Seq,
+        Set,
+        Bag,
+    }
+    let (items, carrier) = match left {
+        Value::Seq(items) => (items, Carrier::Seq),
+        Value::Set(items) => (items, Carrier::Set),
+        Value::Bag(items) => (items, Carrier::Bag),
+        _ => return Ok(enr_wrong_shape_value()),
+    };
+    let mut results = Vec::new();
+    for item in items {
+        let mut child = env.clone();
+        child.insert("l".to_string(), item.clone());
+        let mut attach = Vec::new();
+        for (name, expr) in fields {
+            attach.push((name.clone(), eval_expr(expr, &child)?));
+        }
+        let attached = match item {
+            Value::Map(entries) => merge_record_fields(entries, attach, RecordKind::Map),
+            Value::Prod(entries) => merge_record_fields(entries, attach, RecordKind::Prod),
+            _ => enr_wrong_shape_value(),
+        };
+        results.push(attached);
+    }
+    match carrier {
+        Carrier::Seq => Ok(Value::Seq(results)),
+        Carrier::Bag => Ok(Value::Bag(results)),
+        Carrier::Set => {
+            let mut dedup = Vec::new();
+            for value in results {
+                if ensure_comparable(&value).is_err() {
+                    return Ok(wrong_shape_value());
+                }
+                if !dedup.iter().any(|existing| values_equal(existing, &value)) {
+                    dedup.push(value);
+                }
+            }
+            Ok(Value::Set(dedup))
+        }
+    }
+}
+
+fn enr_wrong_shape_value() -> Value {
+    Value::Fail_("t_enr_wrong_shape".to_string(), "wrong shape".to_string())
 }
 
 fn eval_select(obj: Value, field: &str, mode: &SelectMode) -> Result<Value, EvalError> {
