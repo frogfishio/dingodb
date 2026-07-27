@@ -1,6 +1,6 @@
 # Parallel ingest: multi-core write path
 
-Status: **Axis A + Axis B + Axis C harness implemented; testrig `--writer-shards` / `--stores` + 10 GiB Axis B re-measure done (2026-07-27)**  
+Status: **Axis A + Axis B + Axis C harness implemented; testrig `--writer-shards` / `--stores` + 10 GiB Axis B + 1 GiB Axis C comparative + clean multi-store 10 GiB done (2026-07-27)**  
 Date: 2026-07-27  
 Trigger: 10 GiB `dingo-testrig` on MacBook Air M4 after DEF-095  
 Companion: DEF-023 follow-on, DEF-096, `doc/BENCHMARK_DISCLOSURE.md`, OVERVIEW §12
@@ -128,9 +128,10 @@ Implementation shape:
 
 ### Axis C — Horizontal / multi-process (harness landed)
 
-**Status: testrig multi-store harness landed** (`--stores N` → N child processes).
+**Status: testrig multi-store harness landed + measured** (`--stores N` → N child processes; clean 10 GiB Axis C PASS 2026-07-27).
 
 - **Harness:** `dingo-testrig pump|run --stores N` (N>1) creates `store-00`… under the parent/work dir, spawns N child `pump` processes (true multi-process), splits `target-bytes` across stores, aggregates wall-clock ops/s + summed child RSS/CPU%, discloses `store_count` / `concurrency = stores × writer_shards` / `writer_model: multi_process_stores[_sharded]`.
+- **10 GiB free-disk campaign:** `--stores 4 --target-bytes 10G` → ~17.7k ops/s wall, CPU% sum ~376, RSS sum ~2.49 GiB, integrity **PASS** (see `doc/BENCHMARK_DISCLOSURE.md`).
 - Multiple independent stores (manual N pumps under N dirs still works).
 - Cluster partitions with independent leaders (dingo-cluster) remain the **product** multi-node path.
 - This is **capacity**, not single-node efficiency. The multi-store pump is a media upper-bound bench — **not** product sharding.
@@ -199,8 +200,9 @@ Multi-store pump is a **harness** parallelization for Axis C upper-bound media b
 3. ~~Wire testrig `--writer-shards N` / multi-core pump disclosure fields.~~ **Done** (2026-07-27).
 4. ~~Re-run 10 GiB testrig with writer shards; compare ops/s, p99, process CPU%, RSS.~~ See `doc/BENCHMARK_DISCLOSURE.md` (sharded 10 GiB snapshot).
 5. ~~Multi-store harness mode (`--stores N`).~~ **Done** (2026-07-27) — multi-process child pumps + disclosure.
-6. Optional: large multi-store 10 GiB re-measure + disclose in `BENCHMARK_DISCLOSURE.md` (diagnostic only).
-7. Product cluster capacity remains dingo-cluster partitions / multi-node (not this harness).
+6. ~~1 GiB Axis C comparative + 256 MiB multi-store integrity.~~ **Done** (2026-07-27) — see `doc/BENCHMARK_DISCLOSURE.md` (peak CPU% sum ~316 on 4 stores; wall ops/s not linear; integrity PASS).
+7. ~~Optional: large multi-store 10 GiB re-measure when host has ≥15 GiB free.~~ **Done** (2026-07-27) — clean Axis C 10 GiB with ~32 GiB free pre-pump: **~17.7k ops/s wall**, peak CPU% sum ~376, RSS sum ~2.49 GiB, **PASS** all four roots. See `doc/BENCHMARK_DISCLOSURE.md` (Multi-store 10 GiB).
+8. Product cluster capacity remains dingo-cluster partitions / multi-node (not this harness).
 
 **Do not:**
 

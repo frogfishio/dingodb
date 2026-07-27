@@ -945,9 +945,11 @@ pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 
 Priority: P1  
 Dependencies: DEF-023 (follow-on), DEF-020, DEF-095  
-Status: **Axis A + Axis B + Axis C harness addressed** (async lifecycle + sharded
-writers + multi-store multi-process testrig 2026-07-27) — see
-`doc/PARALLEL_INGEST.md`. Product multi-node cluster capacity remains separate.
+Status: **Axis A + Axis B + Axis C harness addressed and measured** (async lifecycle +
+sharded writers + multi-store multi-process testrig; 1 GiB comparative + 256 MiB
+integrity + **clean multi-store 10 GiB PASS** 2026-07-27, ~17.7k ops/s wall /
+CPU% sum ~376 with free disk) — see `doc/PARALLEL_INGEST.md` /
+`doc/BENCHMARK_DISCLOSURE.md`. Product multi-node cluster capacity remains separate.
 
 Problem:
 

@@ -173,13 +173,65 @@ Third local campaign after Axis A+B + testrig harness (2026-07-27):
 
 Compare to single-shard 10 GiB snapshot above (~7.4k ops/s, concurrency 1, peak RSS ~0.92 GiB). Axis B raises disclosed concurrency and early-window throughput; wall-average lift is modest while serial PrimaryIndex publish + seal pipeline still bound multi-core CPU%. **Do not** claim “maxed out the M4.” Axis C multi-store harness (`--stores N`) is the multi-process capacity path — see [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md).
 
+### 1 GiB comparative pumps (Axis A/B/C, not a published SLO)
+
+Same-session release pumps on Apple M4 (2026-07-27), buffered, 8 KiB payloads,
+target 1 GiB each (diagnostic only; host had free SSD headroom at this size):
+
+| Config | Command flags | Wall ops/s | Wall MB/s | Peak RSS | Peak CPU% | Concurrency | Writer model |
+|--------|---------------|------------|-----------|----------|-----------|-------------|--------------|
+| Single | `--writer-shards 1` | **~6.5k** | ~104 | ~645 MiB | ~96 | 1 | `single_active_segment` |
+| Axis B | `--writer-shards 4` | **~5.3k** | ~84 | ~758 MiB | ~85 | 4 | `sharded_active_segments` |
+| Axis C | `--stores 4` | **~6.0k** | ~96 | ~1.95 GiB (sum of children) | **~316** (sum) | 4 | `multi_process_stores` |
+
+Notes (honest):
+
+- **Axis B wall average can lose** at 1 GiB: more on-disk overshoot (1.50 GiB vs 1.15 GiB) and serial PrimaryIndex publish after `put_many` still dominate. Early windows remain higher (~13k ops/s class). Matches the 10 GiB sharded story (modest wall lift, concurrency disclosure works).
+- **Axis C is the first path that actually multiplies process CPU%** (sum ~316% ≈ multi-core; macOS 100% ≈ one core). Wall ops/s does **not** scale linearly — spawn + media contention + slowest-child wall clock. This is a **capacity harness**, not product sharding.
+- Multi-store integrity: `dingo-testrig run --target-bytes 256M --stores 4` → **PASS** on all four roots (pump, baseline, chaos, post-chaos salvage).
+- A 4 GiB Axis C pump completed (~3.1k ops/s wall) while the volume was near full; single-store 4 GiB control hit **ENOSPC**. Treat 4 GiB multi-store numbers as disk-pressure contaminated; free space before large campaigns.
+
+### Multi-store 10 GiB (Axis C, not a published SLO)
+
+Clean re-measure with free SSD headroom (2026-07-27): host had **~32 GiB free**
+before pump (prior stacked 10 GiB trees already removed). Command:
+`dingo-testrig run --work /var/tmp/dingo-testrig-10g-stores --target-bytes 10G
+--payload-size 8192 --durability buffered --chaos-hits 64 --sample-keys 128
+--stores 4 --seed 3` (release binary). Summary:
+`/var/tmp/dingo-testrig-10g-stores/testrig-summary.v1.json`. **Diagnostic only.**
+
+| Phase | Signal (order of magnitude) |
+|-------|-----------------------------|
+| Pump | Target met (~668k keys / **10.43 GiB** on disk across 4 roots); wall **~17.7k ops/s / ~284 MB/s** in **~37.6 s** (`per_store_target` 2.50 GiB each) |
+| Process samples (child `ps`) | Peak RSS **sum** ~**2.49 GiB**; peak CPU% **sum** ~**376** (macOS: 100% ≈ one core — multi-core capacity) |
+| Baseline gets (128/store) | All ok on all four roots; p50 ~**19–23 µs** / p99 ~**33–59 µs** (hot `PrimaryIndex`) |
+| Chaos | 64 punches × 4 stores (256 total); salvage reports holes; live subjects retained |
+| Post-chaos gets | 3/4 stores 128/128 ok; store-01 127/128 (1 missing after chaos — expected); p50 ~**18–20 µs** |
+| Result | **PASS** on all four roots |
+| Concurrency | **4** (`store_count: 4`, `writer_shards: 1`, `writer_model: multi_process_stores`) |
+
+Compare (same machine class, diagnostic):
+
+| Config | Wall ops/s | Peak CPU% | Concurrency | Notes |
+|--------|------------|-----------|-------------|-------|
+| Single 10 GiB | ~7.4k | ~97 (one core) | 1 | O(keys) RSS ~0.92 GiB |
+| Axis B 10 GiB (`--writer-shards 4`) | ~8.1k | ~95 | 4 | modest wall lift; serial index publish |
+| Axis C 10 GiB (`--stores 4`, free disk) | **~17.7k** | **~376** (sum) | 4 | capacity path; not product sharding |
+| Axis C 4 GiB (near-full volume) | ~3.1k | — | 4 | **disk-pressure contaminated** — do not use |
+
+Honest notes:
+
+- Free disk matters: near-full volume crushed the 4 GiB Axis C wall rate; with ≥15 GiB free the 10 GiB multi-store pump is the first disclosed Axis C number that clearly beats single-store wall ops/s.
+- Still a **harness**, not multi-tenant product sharding. Product capacity remains dingo-cluster.
+- Per-process efficiency is not 4× linear vs single-store 10 GiB (~7.4k → ~17.7k ≈ 2.4× wall), but CPU% sum proves multi-core media utilization.
+
 #### Multi-core write path status
 
 After DEF-095 + DEF-096 Axis A+B+C harness:
 
 1. Async lifecycle — **shipped**.
 2. Sharded writers + testrig `--writer-shards N` disclosure — **shipped** (measured above).
-3. Multi-store multi-process harness (`--stores N`) — **shipped** (smoke-covered; optional large-campaign disclose follow-on).
+3. Multi-store multi-process harness (`--stores N`) — **shipped** (smoke + 1 GiB comparative + 256 MiB integrity + **10 GiB multi-store PASS** with free disk).
 4. Product multi-node cluster capacity — remains dingo-cluster (not this harness).
 
 #### Read-path failure that was fixed (Chimera-before-index)

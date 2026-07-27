@@ -183,8 +183,8 @@ we parallelize and max out all the cores?”
 | Observation correct? | **Yes.** One exclusive writer, one active segment, lifecycle on put ack. Process CPU% ≈ one core. |
 | Memory/disk the limiter? | **No** after DEF-095. |
 | Multi-thread `Store::put` first? | **No** — thrash without model change. |
-| Next high-leverage cut? | DEF-096 Axes A–C **harness complete**; next is optional multi-store 10 GiB disclose, product cluster capacity, or open gates (Jepsen/fuzz/wire freeze). Sharded 10 GiB re-measure done (~8.1k ops/s wall, concurrency 4). |
-| True multi-core append? | **Axis B shipped** + testrig `--writer-shards N`; peak `ps` CPU still ~1-core class — serial index publish after `put_many` remains a limiter. **Axis C harness:** `--stores N` multi-process. |
+| Next high-leverage cut? | DEF-096 Axes A–C **measured end-to-end** (incl. clean multi-store 10 GiB ~17.7k ops/s wall, CPU% sum ~376). Next is product cluster capacity or open gates (Jepsen/fuzz/wire freeze). Sharded 10 GiB ~8.1k ops/s; multi-store 10 GiB disclosed. |
+| True multi-core append? | **Axis B shipped** + testrig `--writer-shards N`; peak `ps` CPU still ~1-core class — serial index publish after `put_many` remains a limiter. **Axis C measured:** `--stores 4` 10 GiB with free disk multiplies CPU% and wall ops/s (capacity harness, not product sharding). |
 | Spec already requires this? | **Yes** — OVERVIEW parallel ingest, USP sharded writers. |
 
 Design authority: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md). Do not spend the
