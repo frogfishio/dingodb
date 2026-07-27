@@ -22,6 +22,8 @@
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
 //! - Durable rebalance jobs + joint membership restore (DEF-038 /
 //!   `dingo-rebalance-control-v1`)
+//! - Anti-entropy inventory + replica repair (DEF-039 /
+//!   `dingo-anti-entropy-v1`)
 //! - Node-local salvage without cluster software
 //! - Network advertise path: [`endpoints`] + `dingo serve-cluster`
 //!
@@ -52,6 +54,7 @@ pub mod raft;
 pub mod raft_persist;
 pub mod raft_rpc;
 mod rebalance;
+mod repair;
 
 pub use ack::ClusterWriteAck;
 pub use cluster::{Cluster, ClusterHealth};
@@ -89,6 +92,12 @@ pub use raft_rpc::{
 pub use rebalance::{
     RebalanceJob, RebalanceJobsFile, RebalancePhase, RebalanceReport, REBALANCE_CONTROL_PROFILE,
     REBALANCE_JOBS_FILE,
+};
+pub use repair::{
+    hash_hex, select_repair_source, ClusterInventory, NodeSubjectView, PartitionInventory,
+    RepairActionKind, RepairAuditEntry, RepairAuditFile, RepairOptions, RepairReport,
+    ReplicaObservation, SourceSelectError, SubjectInventory, ANTI_ENTROPY_PROFILE,
+    REPAIR_AUDIT_FILE,
 };
 
 /// Re-export durability modes used on cluster acks.

@@ -29,8 +29,8 @@ Until this plan is complete, use these support labels:
 - **Single-node TCP server:** development only.
 - **In-process cluster:** deterministic integration-test harness.
 - **`serve-cluster`:** experimental multi-process Raft (control plane DEF-036,
-  data-plane commit DEF-037, durable rebalance control plane DEF-038 when
-  attached); not production-ready (DEF-039+).
+  data-plane commit DEF-037, durable rebalance DEF-038, in-process anti-entropy
+  repair DEF-039 when attached); not production-ready (DEF-040+ / §16).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -140,7 +140,7 @@ Work:
   durability, replication, and store-lock status.
 - Make network cluster mode require an explicit experimental flag until
   DEF-030 through DEF-038 are complete (rebalance durability is in-process
-  experimental; network production still gated by DEF-039–041 / §16).
+  experimental; network production still gated by DEF-040–041 / §16).
 
 Acceptance:
 
@@ -1238,7 +1238,8 @@ Evidence:
 Remaining (out of DEF-037 cut; DEF-038 addressed separately):
 
 - ~~Durable rebalance / joint consensus across restarts (DEF-038)~~ — **addressed**.
-- Anti-entropy / repair (DEF-039), distributed query pages (DEF-040).
+- ~~Anti-entropy / repair (DEF-039)~~ — **addressed** (in-process).
+- Distributed query pages (DEF-040).
 - Full multi-process Jepsen-style partition histories (DEF-041).
 - Formal/safety review before freezing network Raft as production-only path.
 
@@ -1296,7 +1297,10 @@ Evidence:
 ### DEF-039 — Implement anti-entropy and replica repair
 
 Priority: P1  
-Dependencies: DEF-036
+Dependencies: DEF-036  
+Status: **addressed** (2026-07-27) — hierarchical inventory, integrity-based
+source selection (never mtime), verified copy + audit, rate-limited passes;
+see `stage_def_039_repair`, `ANTI_ENTROPY_PROFILE`, `doc/CAPABILITY_MATRIX.md`
 
 Work:
 
@@ -1309,11 +1313,35 @@ Work:
 - Preserve conflicts and audit every repair.
 - Rate-limit repair and isolate it from foreground latency.
 
+Implementation notes:
+
+- Profile tag `ANTI_ENTROPY_PROFILE = "dingo-anti-entropy-v1"`.
+- `Cluster::inventory_partition` / `inventory_cluster` collect per-replica
+  subject content hashes, Raft log frontier, and store segment fingerprints.
+- `select_repair_source` tallies only readable (healthy) bodies; corrupt
+  observations never vote; strict majority wins; equal splits are explicit
+  conflicts; leader preferred only when on the majority hash.
+- `Cluster::repair_partition` / `repair_cluster` / `anti_entropy_once` copy
+  verified bodies, re-hash destination after put, and append
+  checksummed `repair_audit.json` (atomic + `.prev`).
+- `RepairOptions::{max_subjects,max_bytes,dry_run}` bounds a pass so repair
+  stays operator-invoked and isolated from the foreground put path.
+- Local inject helpers (`store_put_local` / `store_delete_local`) support fault
+  injection without claiming quorum commitment.
+
 Acceptance:
 
 - Corrupt/newer-mtime replicas never overwrite healthy evidence.
 - Random deletion/corruption converges to policy while preserving explicit
   irrecoverable holes.
+
+Evidence:
+
+- `crates/dingo-cluster/tests/stage_def_039_repair.rs` — missing replica
+  converges; divergent newer body loses to majority; 1-1 conflict preserved;
+  rate limit; audit survives restart; segment fingerprints in inventory.
+- Unit: `select_repair_source` majority / corrupt / conflict / irrecoverable;
+  `RepairAuditFile` roundtrip.
 
 ### DEF-040 — Complete distributed query semantics
 

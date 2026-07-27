@@ -13,6 +13,7 @@
 //! merges by subject + content hash and reports conflicts explicitly.
 //! Stage 8e adds distributed find with coverage honesty on partial queries.
 //! Stage 8f adds interruptible partition rebalance (CLUSTER_SPEC §14).
+//! DEF-039 adds anti-entropy inventory and integrity-based replica repair.
 
 use crate::ack::ClusterWriteAck;
 use crate::config::{node_store_path, ClusterConfig, ClusterMeta};
@@ -27,6 +28,11 @@ use crate::raft::{ElectError, LogCommand, PartitionRaft, ProposeError};
 use crate::raft_persist::RaftPeerStore;
 use crate::rebalance::{
     RebalanceJob, RebalanceJobsFile, RebalancePhase, RebalanceReport, REBALANCE_CONTROL_PROFILE,
+};
+use crate::repair::{
+    hash_hex, select_repair_source, ClusterInventory, NodeSubjectView, PartitionInventory,
+    RepairActionKind, RepairAuditEntry, RepairAuditFile, RepairOptions, RepairReport,
+    ReplicaObservation, SourceSelectError, SubjectInventory, ANTI_ENTROPY_PROFILE,
 };
 use dingo_store::{DurabilityMode, SalvageReport, Store};
 use std::collections::{HashMap, HashSet};
@@ -386,6 +392,83 @@ impl Cluster {
         node_store_path(&self.root, node.index())
     }
 
+    /// Read a subject directly from one online node's store (no Raft / coverage).
+    ///
+    /// Used by anti-entropy diagnostics and tests that inject per-replica faults.
+    pub fn store_get_local(
+        &self,
+        node: NodeId,
+        subject: &str,
+    ) -> Result<Option<Vec<u8>>, ClusterError> {
+        let store = self
+            .nodes
+            .get(&node.index())
+            .ok_or(ClusterError::PartitionUnavailable {
+                partition: 0,
+                reason: "node offline for local get",
+            })?;
+        Ok(store.get(subject)?)
+    }
+
+    /// Write a subject directly to one online node's store (bypasses quorum).
+    ///
+    /// For repair inject tests and operator-controlled single-replica writes.
+    /// Does **not** update Raft logs — subsequent anti-entropy may repair peers.
+    pub fn store_put_local(
+        &mut self,
+        node: NodeId,
+        subject: &str,
+        value: &[u8],
+        mode: DurabilityMode,
+    ) -> Result<(), ClusterError> {
+        let store = self
+            .nodes
+            .get_mut(&node.index())
+            .ok_or(ClusterError::PartitionUnavailable {
+                partition: 0,
+                reason: "node offline for local put",
+            })?;
+        store.put(subject, value, mode)?;
+        Ok(())
+    }
+
+    /// Delete a subject on one online node's store (bypasses quorum).
+    pub fn store_delete_local(
+        &mut self,
+        node: NodeId,
+        subject: &str,
+        mode: DurabilityMode,
+    ) -> Result<(), ClusterError> {
+        let store = self
+            .nodes
+            .get_mut(&node.index())
+            .ok_or(ClusterError::PartitionUnavailable {
+                partition: 0,
+                reason: "node offline for local delete",
+            })?;
+        store.delete(subject, mode)?;
+        Ok(())
+    }
+
+    /// List live subject keys on one online node (UTF-8 subjects only).
+    pub fn store_live_subjects_local(&self, node: NodeId) -> Result<Vec<String>, ClusterError> {
+        let store = self
+            .nodes
+            .get(&node.index())
+            .ok_or(ClusterError::PartitionUnavailable {
+                partition: 0,
+                reason: "node offline for local list",
+            })?;
+        let mut out = Vec::new();
+        for (k, _) in store.live_entries() {
+            if let Ok(s) = std::str::from_utf8(k) {
+                out.push(s.to_string());
+            }
+        }
+        out.sort();
+        Ok(out)
+    }
+
     /// Mark a node offline (simulates failure; CLUSTER_SPEC §15 tests).
     pub fn mark_offline(&mut self, node: NodeId) -> Result<(), ClusterError> {
         let idx = node.index();
@@ -456,6 +539,11 @@ impl Cluster {
     /// Profile tag for durable rebalance control plane (DEF-038).
     pub fn rebalance_control_profile() -> &'static str {
         REBALANCE_CONTROL_PROFILE
+    }
+
+    /// Profile tag for anti-entropy / repair (DEF-039).
+    pub fn anti_entropy_profile() -> &'static str {
+        ANTI_ENTROPY_PROFILE
     }
 
     /// Resolve the virtual partition for a subject (default partition key).
@@ -1659,6 +1747,525 @@ impl Cluster {
                 reason: "leader handle missing",
             })?;
         Ok(store.history(subject)?)
+    }
+
+    // ── DEF-039 anti-entropy / repair ─────────────────────────────────────
+
+    /// Build a verified hierarchical inventory for one partition.
+    ///
+    /// Collects per-replica subject digests (content hash), log frontier, and
+    /// store segment fingerprints. Source selection uses integrity + majority
+    /// (never mtime). See [`select_repair_source`].
+    pub fn inventory_partition(
+        &mut self,
+        partition: PartitionId,
+    ) -> Result<PartitionInventory, ClusterError> {
+        let assignment = self
+            .directory
+            .get(partition)
+            .cloned()
+            .ok_or(ClusterError::NoLeader(partition.get()))?;
+
+        let online_replicas: Vec<NodeId> = assignment
+            .replicas
+            .iter()
+            .copied()
+            .filter(|n| self.is_online(*n))
+            .collect();
+
+        let leader = self
+            .raft
+            .get(&partition.get())
+            .and_then(|g| g.current_leader().map(|(n, _)| n));
+        let log_frontier = self
+            .raft
+            .get(&partition.get())
+            .map(|g| LogPosition(g.max_commit_index()))
+            .unwrap_or(LogPosition(0));
+
+        // Segment fingerprints per online replica (hierarchical inventory).
+        let mut segment_fingerprints = Vec::new();
+        for n in &online_replicas {
+            if let Some(store) = self.nodes.get(&n.index()) {
+                match store.segment_fingerprint() {
+                    Ok(fp) => segment_fingerprints.push((*n, hash_hex(&fp))),
+                    Err(_) => segment_fingerprints.push((*n, String::new())),
+                }
+            }
+        }
+
+        // Union of subjects observed on any online replica for this partition.
+        let mut subject_set: HashSet<String> = HashSet::new();
+        for n in &online_replicas {
+            let store = match self.nodes.get(&n.index()) {
+                Some(s) => s,
+                None => continue,
+            };
+            for (subj_bytes, _) in store.live_entries() {
+                let Ok(subject) = std::str::from_utf8(subj_bytes) else {
+                    continue;
+                };
+                if self.partition_for_subject(subject) != partition {
+                    continue;
+                }
+                subject_set.insert(subject.to_string());
+            }
+        }
+
+        let mut subjects: Vec<SubjectInventory> = Vec::new();
+        let mut needs_repair = 0u64;
+        let mut irrecoverable = 0u64;
+        let mut conflicts = 0u64;
+
+        let mut subject_list: Vec<String> = subject_set.into_iter().collect();
+        subject_list.sort();
+
+        for subject in subject_list {
+            let mut views = Vec::new();
+            for n in &online_replicas {
+                let store = match self.nodes.get(&n.index()) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                let view = match store.get(&subject) {
+                    Ok(Some(body)) => {
+                        let h = body_content_hash(&body);
+                        NodeSubjectView {
+                            node: *n,
+                            observation: ReplicaObservation::Healthy,
+                            content_hash_hex: hash_hex(&h),
+                            body: Some(body),
+                        }
+                    }
+                    Ok(None) => NodeSubjectView {
+                        node: *n,
+                        observation: ReplicaObservation::Missing,
+                        content_hash_hex: String::new(),
+                        body: None,
+                    },
+                    Err(dingo_store::StoreError::PayloadPartial)
+                    | Err(dingo_store::StoreError::PayloadConflict) => NodeSubjectView {
+                        node: *n,
+                        observation: ReplicaObservation::Corrupt,
+                        content_hash_hex: String::new(),
+                        body: None,
+                    },
+                    Err(e) => return Err(e.into()),
+                };
+                views.push(view);
+            }
+
+            let mut inv = SubjectInventory {
+                subject: subject.clone(),
+                partition,
+                views: views.clone(),
+                target_hash_hex: None,
+                source_node: None,
+                conflicting: false,
+                irrecoverable: false,
+            };
+
+            match select_repair_source(&views, leader) {
+                Ok((hash, src)) => {
+                    let target_hex = hash_hex(&hash);
+                    inv.target_hash_hex = Some(target_hex.clone());
+                    inv.source_node = Some(src);
+                    // Mark divergent vs target; count repair need.
+                    let mut subject_needs = false;
+                    for v in &mut inv.views {
+                        match v.observation {
+                            ReplicaObservation::Healthy | ReplicaObservation::Divergent => {
+                                if v.content_hash_hex != target_hex {
+                                    v.observation = ReplicaObservation::Divergent;
+                                    subject_needs = true;
+                                }
+                            }
+                            ReplicaObservation::Missing | ReplicaObservation::Corrupt => {
+                                subject_needs = true;
+                            }
+                        }
+                    }
+                    if subject_needs {
+                        needs_repair += 1;
+                    }
+                }
+                Err(SourceSelectError::Conflict) => {
+                    inv.conflicting = true;
+                    conflicts += 1;
+                    needs_repair += 1;
+                }
+                Err(SourceSelectError::Irrecoverable) => {
+                    inv.irrecoverable = true;
+                    irrecoverable += 1;
+                    needs_repair += 1;
+                }
+                Err(SourceSelectError::AllMissing) => {
+                    // Should not happen if subject came from live_entries.
+                }
+            }
+            subjects.push(inv);
+        }
+
+        Ok(PartitionInventory {
+            partition,
+            replicas: assignment.replicas,
+            online_replicas,
+            log_frontier,
+            leader,
+            segment_fingerprints,
+            subjects,
+            needs_repair,
+            irrecoverable,
+            conflicts,
+        })
+    }
+
+    /// Inventory every partition in the placement directory.
+    pub fn inventory_cluster(&mut self) -> Result<ClusterInventory, ClusterError> {
+        let partitions: Vec<PartitionId> = self
+            .directory
+            .assignments
+            .iter()
+            .map(|a| a.partition)
+            .collect();
+        let mut out = ClusterInventory::default();
+        for p in partitions {
+            let inv = self.inventory_partition(p)?;
+            out.needs_repair += inv.needs_repair;
+            out.irrecoverable += inv.irrecoverable;
+            out.conflicts += inv.conflicts;
+            out.partitions.push(inv);
+        }
+        Ok(out)
+    }
+
+    /// Run anti-entropy repair for one partition (DEF-039).
+    ///
+    /// Copies verified bodies from integrity-selected sources onto lagging or
+    /// divergent online replicas. Corrupt observations are audited and never
+    /// used as sources. Conflicts and irrecoverable holes stay explicit.
+    /// Rate limits isolate repair from unbounded foreground impact.
+    pub fn repair_partition(
+        &mut self,
+        partition: PartitionId,
+        options: RepairOptions,
+    ) -> Result<RepairReport, ClusterError> {
+        let inv = self.inventory_partition(partition)?;
+        let report = self.apply_repair_from_inventory(&inv, &options)?;
+        if !report.audit.is_empty() && !options.dry_run {
+            RepairAuditFile::append_and_save(&self.root, &report.audit)?;
+        }
+        Ok(report)
+    }
+
+    /// Run anti-entropy repair across all partitions (bounded by options).
+    pub fn repair_cluster(&mut self, options: RepairOptions) -> Result<RepairReport, ClusterError> {
+        let inv = self.inventory_cluster()?;
+        let mut report = RepairReport {
+            needs_repair_before: inv.needs_repair,
+            ..RepairReport::default()
+        };
+        // Track remaining byte budget across partitions.
+        let mut bytes_remaining = options.max_bytes;
+        let mut subjects_remaining = options.max_subjects;
+        for part in &inv.partitions {
+            if report.budget_exhausted {
+                report.budget_remaining_subjects = report
+                    .budget_remaining_subjects
+                    .saturating_add(part.needs_repair);
+                continue;
+            }
+            let part_opts = RepairOptions {
+                max_subjects: subjects_remaining,
+                max_bytes: bytes_remaining,
+                dry_run: options.dry_run,
+            };
+            let sub = self.apply_repair_from_inventory(part, &part_opts)?;
+            report.subjects_repaired += sub.subjects_repaired;
+            report.copies_written += sub.copies_written;
+            report.corrupt_quarantined += sub.corrupt_quarantined;
+            report.conflicts_preserved += sub.conflicts_preserved;
+            report.irrecoverable_holes += sub.irrecoverable_holes;
+            report.audit.extend(sub.audit);
+            if sub.budget_exhausted {
+                report.budget_exhausted = true;
+                report.budget_remaining_subjects += sub.budget_remaining_subjects;
+            }
+            if let Some(max) = subjects_remaining {
+                subjects_remaining = Some(max.saturating_sub(sub.subjects_repaired as usize));
+                if subjects_remaining == Some(0) {
+                    report.budget_exhausted = true;
+                }
+            }
+            // Coarse byte accounting: reduce by copies when max_bytes set.
+            if let Some(ref mut rem) = bytes_remaining {
+                // apply_repair enforces the cap; clear remaining when exhausted.
+                if sub.budget_exhausted && options.max_bytes.is_some() {
+                    *rem = 0;
+                }
+            }
+        }
+        if !report.audit.is_empty() && !options.dry_run {
+            RepairAuditFile::append_and_save(&self.root, &report.audit)?;
+        }
+        Ok(report)
+    }
+
+    /// One-shot cluster anti-entropy: inventory + repair with default options.
+    pub fn anti_entropy_once(&mut self) -> Result<RepairReport, ClusterError> {
+        self.repair_cluster(RepairOptions::unlimited())
+    }
+
+    /// Load durable repair audit log (DEF-039).
+    pub fn repair_audit(&self) -> Result<RepairAuditFile, ClusterError> {
+        RepairAuditFile::load(&self.root)
+    }
+
+    fn apply_repair_from_inventory(
+        &mut self,
+        inv: &PartitionInventory,
+        options: &RepairOptions,
+    ) -> Result<RepairReport, ClusterError> {
+        let mut report = RepairReport {
+            needs_repair_before: inv.needs_repair,
+            ..RepairReport::default()
+        };
+        let mut subjects_used = 0usize;
+        let mut bytes_used = 0u64;
+        let mut remaining_after_budget = 0u64;
+
+        for subj in &inv.subjects {
+            // Count corrupt observations for quarantine audit.
+            for v in &subj.views {
+                if v.observation == ReplicaObservation::Corrupt {
+                    report.corrupt_quarantined += 1;
+                    report.audit.push(RepairAuditEntry {
+                        seq: 0,
+                        subject: subj.subject.clone(),
+                        partition: inv.partition,
+                        action: RepairActionKind::QuarantinedCorrupt,
+                        source: None,
+                        destination: Some(v.node),
+                        content_hash_hex: String::new(),
+                        reason: "payload unreadable; never used as repair source".into(),
+                    });
+                }
+            }
+
+            if subj.conflicting {
+                report.conflicts_preserved += 1;
+                report.audit.push(RepairAuditEntry {
+                    seq: 0,
+                    subject: subj.subject.clone(),
+                    partition: inv.partition,
+                    action: RepairActionKind::PreservedConflict,
+                    source: None,
+                    destination: None,
+                    content_hash_hex: String::new(),
+                    reason: "equal-vote content split; no mtime winner".into(),
+                });
+                continue;
+            }
+
+            if subj.irrecoverable {
+                report.irrecoverable_holes += 1;
+                report.audit.push(RepairAuditEntry {
+                    seq: 0,
+                    subject: subj.subject.clone(),
+                    partition: inv.partition,
+                    action: RepairActionKind::IrrecoverableHole,
+                    source: None,
+                    destination: None,
+                    content_hash_hex: String::new(),
+                    reason: "no healthy replica holds a verified body".into(),
+                });
+                continue;
+            }
+
+            let (Some(target_hex), Some(source_node)) =
+                (subj.target_hash_hex.as_ref(), subj.source_node)
+            else {
+                continue;
+            };
+
+            // Destinations that need the target body.
+            let mut dests: Vec<NodeId> = Vec::new();
+            for v in &subj.views {
+                match v.observation {
+                    ReplicaObservation::Missing | ReplicaObservation::Corrupt => {
+                        dests.push(v.node);
+                    }
+                    ReplicaObservation::Divergent => dests.push(v.node),
+                    ReplicaObservation::Healthy => {
+                        if &v.content_hash_hex != target_hex {
+                            dests.push(v.node);
+                        }
+                    }
+                }
+            }
+            dests.retain(|d| *d != source_node);
+            if dests.is_empty() {
+                continue;
+            }
+
+            // Rate limit: subject budget.
+            if let Some(max) = options.max_subjects {
+                if subjects_used >= max {
+                    remaining_after_budget += 1;
+                    report.budget_exhausted = true;
+                    continue;
+                }
+            }
+
+            // Obtain source body (prefer in-memory view; re-read if needed).
+            let body = {
+                let from_view = subj
+                    .views
+                    .iter()
+                    .find(|v| v.node == source_node)
+                    .and_then(|v| v.body.clone());
+                if let Some(b) = from_view {
+                    b
+                } else if let Some(store) = self.nodes.get(&source_node.index()) {
+                    match store.get(&subj.subject)? {
+                        Some(b) => b,
+                        None => {
+                            // Source lost the body between inventory and repair.
+                            report.irrecoverable_holes += 1;
+                            report.audit.push(RepairAuditEntry {
+                                seq: 0,
+                                subject: subj.subject.clone(),
+                                partition: inv.partition,
+                                action: RepairActionKind::IrrecoverableHole,
+                                source: Some(source_node),
+                                destination: None,
+                                content_hash_hex: target_hex.clone(),
+                                reason: "source lost body after inventory".into(),
+                            });
+                            continue;
+                        }
+                    }
+                } else {
+                    continue;
+                }
+            };
+
+            // Verify source body still matches selected hash (integrity).
+            let actual = hash_hex(&body_content_hash(&body));
+            if &actual != target_hex {
+                report.audit.push(RepairAuditEntry {
+                    seq: 0,
+                    subject: subj.subject.clone(),
+                    partition: inv.partition,
+                    action: RepairActionKind::QuarantinedCorrupt,
+                    source: Some(source_node),
+                    destination: None,
+                    content_hash_hex: actual,
+                    reason: "source body hash drifted after inventory; skipped".into(),
+                });
+                report.corrupt_quarantined += 1;
+                continue;
+            }
+
+            let body_len = body.len() as u64;
+            if let Some(max_b) = options.max_bytes {
+                if bytes_used.saturating_add(body_len.saturating_mul(dests.len() as u64)) > max_b
+                    && bytes_used > 0
+                {
+                    remaining_after_budget += 1;
+                    report.budget_exhausted = true;
+                    continue;
+                }
+            }
+
+            if options.dry_run {
+                subjects_used += 1;
+                report.subjects_repaired += 1;
+                for d in &dests {
+                    report.copies_written += 1;
+                    report.audit.push(RepairAuditEntry {
+                        seq: 0,
+                        subject: subj.subject.clone(),
+                        partition: inv.partition,
+                        action: RepairActionKind::Copied,
+                        source: Some(source_node),
+                        destination: Some(*d),
+                        content_hash_hex: target_hex.clone(),
+                        reason: "dry-run majority/integrity source".into(),
+                    });
+                }
+                continue;
+            }
+
+            let mut wrote_any = false;
+            for d in &dests {
+                if !self.is_online(*d) {
+                    continue;
+                }
+                // Byte budget per write.
+                if let Some(max_b) = options.max_bytes {
+                    if bytes_used.saturating_add(body_len) > max_b && bytes_used > 0 {
+                        remaining_after_budget += 1;
+                        report.budget_exhausted = true;
+                        break;
+                    }
+                }
+                let store = match self.nodes.get_mut(&d.index()) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                // Skip if destination already matches (race).
+                if let Ok(Some(cur)) = store.get(&subj.subject) {
+                    if hash_hex(&body_content_hash(&cur)) == *target_hex {
+                        report.audit.push(RepairAuditEntry {
+                            seq: 0,
+                            subject: subj.subject.clone(),
+                            partition: inv.partition,
+                            action: RepairActionKind::AlreadyMatched,
+                            source: Some(source_node),
+                            destination: Some(*d),
+                            content_hash_hex: target_hex.clone(),
+                            reason: "destination already matched target".into(),
+                        });
+                        continue;
+                    }
+                }
+                store.put(&subj.subject, &body, DurabilityMode::Durable)?;
+                // Verify destination after copy (DEF-039).
+                let verify = store.get(&subj.subject)?;
+                let ok = verify
+                    .as_ref()
+                    .map(|b| hash_hex(&body_content_hash(b)) == *target_hex)
+                    .unwrap_or(false);
+                if !ok {
+                    return Err(ClusterError::ReplicationRejected(format!(
+                        "repair verify failed for subject {} on node {}",
+                        subj.subject,
+                        d.index()
+                    )));
+                }
+                bytes_used = bytes_used.saturating_add(body_len);
+                report.copies_written += 1;
+                wrote_any = true;
+                report.audit.push(RepairAuditEntry {
+                    seq: 0,
+                    subject: subj.subject.clone(),
+                    partition: inv.partition,
+                    action: RepairActionKind::Copied,
+                    source: Some(source_node),
+                    destination: Some(*d),
+                    content_hash_hex: target_hex.clone(),
+                    reason: "majority/integrity source; verified after put".into(),
+                });
+            }
+            if wrote_any {
+                subjects_used += 1;
+                report.subjects_repaired += 1;
+            }
+        }
+
+        report.budget_remaining_subjects = remaining_after_budget;
+        Ok(report)
     }
 
     /// Run ordinary store salvage on one node without using cluster metadata.

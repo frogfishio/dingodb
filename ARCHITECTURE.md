@@ -112,9 +112,10 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
    [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).
 
-Network Raft control plane, data-plane commit, and durable rebalance jobs are
-in-tree on the experimental path (DEF-035–038). Production local-cluster gates
-(repair, distributed query, Jepsen program) remain DEF-039–041. Operator path today:
+Network Raft control plane, data-plane commit, durable rebalance jobs, and
+in-process anti-entropy repair are in-tree on the experimental path
+(DEF-035–039). Production local-cluster gates (distributed query, Jepsen
+program) remain DEF-040–041. Operator path today:
 development `dingo serve`, experimental `serve-cluster` with Raft when attached,
 and offline node salvage. Maturity labels:
 [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md), [DEFECTS.md](DEFECTS.md).

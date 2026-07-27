@@ -25,8 +25,8 @@ with the acceptance evidence expected before a stronger label.
    acks report `committed` only after quorum + local apply (DEF-037). If Raft
    attach fails, the process falls back to **directory-only** routing and
    single-node apply — still not a release claim. Production gates remain
-   DEF-039–041 and §16 (durable rebalance control plane DEF-038 is shipped
-   for in-process cluster; network chaos/repair still open).
+   DEF-040–041 and §16 (durable rebalance DEF-038 and in-process anti-entropy
+   repair DEF-039 are shipped; network chaos / distributed query still open).
 2. **In-process quorum ≠ production network cluster.** Prefer
    `Dingo::open_cluster` for deterministic multi-replica tests; use
    `serve-cluster` + DEF-037 suite for multi-process data-plane checks.
@@ -60,6 +60,7 @@ with the acceptance evidence expected before a stronger label.
 | `CLUSTER_COMMIT_PROFILE` | `dingo-cluster-commit-v1` | Data-plane put/get via network Raft propose (DEF-037) |
 | `FEATURE_CLUSTER_COMMIT_V1` | `cluster-commit-v1` | Feature token for quorum-committed collection ops |
 | `REBALANCE_CONTROL_PROFILE` | `dingo-rebalance-control-v1` | Durable rebalance jobs + joint membership (DEF-038) |
+| `ANTI_ENTROPY_PROFILE` | `dingo-anti-entropy-v1` | Hierarchical inventory + integrity-based repair (DEF-039) |
 
 ## Raft persistence (DEF-035)
 
@@ -73,6 +74,7 @@ with the acceptance evidence expected before a stronger label.
 | Restart | `Cluster::open` restores peers as Followers; re-elect on demand | **in-process cluster** shipped |
 | Evidence classes | `committed` / `prepared` / `conflicting` / `unknown_commit` | **in-process cluster** shipped |
 | Durable rebalance jobs / joint membership | DEF-038 `rebalance_jobs.json` + joint `membership.json` | **in-process cluster** shipped |
+| Anti-entropy inventory + replica repair | DEF-039 majority/integrity source select; `repair_audit.json` | **in-process cluster** shipped |
 | Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
 | Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
 | Jepsen-style partition histories | DEF-041 | **not yet** |
@@ -124,6 +126,21 @@ kill seed after commit, op identity, solo serve).
 | Endpoint registration | Atomic upsert; optional `registration_token_hash` + authenticated path | **in-process / serve-cluster** shipped |
 
 Evidence: `stage_def_038_control_plane` (6 tests), Stage 8f rebalance suite.
+
+## Anti-entropy and replica repair (DEF-039)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Hierarchical inventory | Per-partition subject digests, log frontier, segment fingerprints | **in-process cluster** shipped |
+| Source selection | Majority of healthy content hashes; corrupt never votes; no mtime | **in-process cluster** shipped |
+| Missing / divergent repair | Verified body copy + post-put hash check | **in-process cluster** shipped |
+| Conflicts | Equal-vote splits preserved (no wall-clock winner) | **in-process cluster** shipped |
+| Irrecoverable holes | Explicit when no healthy readable body remains | **in-process cluster** shipped |
+| Audit | Checksummed `repair_audit.json` (atomic + `.prev`) | **in-process cluster** shipped |
+| Rate limit | `RepairOptions::{max_subjects,max_bytes,dry_run}` | **in-process cluster** shipped |
+| Network multi-process repair RPC | Background peer exchange over `serve-cluster` | **not yet** (inventory/repair is in-process) |
+
+Evidence: `stage_def_039_repair` (8 tests), `dingo_cluster::repair` unit tests.
 
 ## Network bind policy (DEF-002 / DEF-032)
 

@@ -50,6 +50,7 @@ Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 | Convergent-append | Dual-accept across splits; reconcile by content hash |
 | Find / scan | `find` + `FindResult` query id + resource-budget honesty |
 | Rebalance | Interruptible step machine; joint config; epoch activation |
+| Anti-entropy / repair | Hierarchical inventory; majority/integrity source select (never mtime); audited, rate-limited copies (`dingo-anti-entropy-v1`) |
 
 Each node directory remains an ordinary `dingo-store` and can be salvaged
 without cluster software.
