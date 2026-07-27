@@ -247,14 +247,16 @@ implementation and that standard.
 - **Embedded single-node:** experimental / early access; strongest current path
 - **Single-node TCP server:** development only
 - **In-process cluster:** deterministic integration-test harness
-- **Network `serve-cluster`:** routing prototype; no network quorum replication
+- **Network `serve-cluster`:** experimental multi-process Raft (control plane
+  DEF-036 + data-plane commit DEF-037); still not production-ready
 - **S3/GCS:** filesystem-mirror adapter, not native cloud I/O
 - **Lifecycle and erasure coding:** scaffolds
 - **Wire format:** `1.0-draft`, not frozen
 
-Do not treat multiple `serve-cluster` processes as replicated durability.
-Persistent network consensus, TLS, production observability, and other release
-gates remain active work.
+Network quorum commit exists on the experimental path when Raft attaches, but
+do **not** treat it as a production release: rebalance durability, repair,
+distributed query completeness, Jepsen-style verification, and other §16 gates
+remain open (DEF-038+).
 
 Progress is tracked openly:
 

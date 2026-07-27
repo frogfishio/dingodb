@@ -97,21 +97,26 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 1. **S3/GCS filesystem mirrors** — `MediaLocator` + `CloudMirrorConfig`
    (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`); `object:local:` stand-in unchanged.
    These are **mirrors**, not native cloud backends.
-2. **Network multi-hop routing prototype** — `dingo serve-cluster` + live
-   `endpoints.json` reload; `RemoteClient` routes keyed ops and refreshes on
-   transport failure; demo `scripts/demos/08_kill_a_node.sh`.
-   **Writes still apply to one node’s store.** Requires
-   `--experimental-network-cluster`. Quorum replication remains
-   **in-process only** (`Dingo::open_cluster`).
+2. **Network multi-hop routing + experimental Raft** — `dingo serve-cluster` +
+   live `endpoints.json` reload; `RemoteClient` routes keyed ops and refreshes
+   on transport failure; demo `scripts/demos/08_kill_a_node.sh`. Requires
+   `--experimental-network-cluster`. When Raft attaches (default), collection
+   put/delete use partition propose (DEF-037) and control-plane `raft_*` RPCs
+   (DEF-036); acks report `committed` only after quorum + local apply.
+   Directory-only fallback if attach fails. Deterministic multi-replica tests
+   still prefer in-process `Dingo::open_cluster`.
 3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
    `CLUSTER_PROFILE_VERSION` (`v1` in-process), `WIRE_PROFILE_LABEL`
-   (`1.0-draft`). Distinct from crate semver `0.1.0`.
+   (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`dingo-cluster-commit-v1`).
+   Distinct from crate semver `0.1.0`.
 4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
    [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).
 
-Network Raft log shipping / quorum over TCP remains future work (DEF-030+).
-Operator path today: development `dingo serve`, experimental `serve-cluster`
-routing, and offline node salvage. Maturity labels:
+Network Raft control plane and data-plane commit are in-tree on the experimental
+path (DEF-035–037). Production local-cluster gates (durable rebalance, repair,
+distributed query, Jepsen program) remain DEF-038–041. Operator path today:
+development `dingo serve`, experimental `serve-cluster` with Raft when attached,
+and offline node salvage. Maturity labels:
 [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md), [DEFECTS.md](DEFECTS.md).
 
 ## Stage 9 (landed)

@@ -34,6 +34,10 @@ webpki-roots = "0.26"
 x509-parser = "0.16"
 
 [dev-dependencies]
+# Path/workspace only: dingo-server → dingo-sdk is a real dep, so a crates.io
+# version cycle fails `cargo publish`. For publish, temporarily comment this
+# line (integration tests stay workspace-local). Restore after both are live
+# if a published test path is needed.
 dingo-server = { workspace = true }
 dingo-cluster = { workspace = true }
 tempfile.workspace = true

@@ -28,8 +28,8 @@ Until this plan is complete, use these support labels:
 - **Embedded single-node:** experimental/early-access.
 - **Single-node TCP server:** development only.
 - **In-process cluster:** deterministic integration-test harness.
-- **`serve-cluster`:** routing and endpoint-advertisement prototype; it does
-  not provide network quorum replication.
+- **`serve-cluster`:** experimental multi-process Raft (control plane DEF-036,
+  data-plane commit DEF-037 when attached); not production-ready (DEF-038+).
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft`; not frozen for long-term interoperability.
@@ -1177,9 +1177,8 @@ Evidence:
 
 Remaining (out of this cut; tracked by DEF-037 / DEF-041):
 
-- Data-plane collection put/get routed through network Raft propose
-  (DEF-037) — control-plane quorum is live; client writes still need the
-  propose path on served nodes.
+- ~~Data-plane collection put/get routed through network Raft propose
+  (DEF-037)~~ — **addressed** (see DEF-037).
 - Full multi-process Jepsen-style partition histories (DEF-041).
 - Independent formal/safety review (or proven Raft library) before freezing
   network Raft as the only production path.
@@ -1187,7 +1186,12 @@ Remaining (out of this cut; tracked by DEF-037 / DEF-041):
 ### DEF-037 — Make cluster SDK requests actually use cluster commitment
 
 Priority: P0  
-Dependencies: DEF-036
+Dependencies: DEF-036  
+Status: **addressed** (2026-07-27) — network put/delete go through partition
+Raft propose when `serve-cluster` attaches Raft; `committed=true` only after
+quorum + local apply; linearizable get via read-index barrier; see
+`stage_def_037_cluster_commit`, `RaftServerState::propose_and_apply`,
+`doc/CAPABILITY_MATRIX.md`
 
 Work:
 
@@ -1200,12 +1204,41 @@ Work:
 - Preserve operation IDs across redirects.
 - Verify every endpoint belongs to the expected cluster.
 
+Implementation notes:
+
+- Profile tag `CLUSTER_COMMIT_PROFILE = "dingo-cluster-commit-v1"` and
+  feature token `FEATURE_CLUSTER_COMMIT_V1 = "cluster-commit-v1"`.
+- `serve_cluster_node` attaches `RaftServerState` by default (best-effort;
+  directory-only fallback if attach fails).
+- Data-plane put/delete call `propose_and_apply` on the subject's partition;
+  followers apply committed log entries after AppendEntries / InstallSnapshot.
+- Reads use `linearizable_read_barrier` (read-index) when Raft is attached.
+- Plain `serve_store` without Raft keeps single-node local-commit semantics.
+- Still requires `--experimental-network-cluster` (DEF-002); not a production
+  release claim.
+
 Acceptance:
 
 - Network and in-process cluster conformance suites share the same logical
   tests.
 - Killing the contacted node after commit does not lose an acknowledged write.
 - A routing-only acknowledgement is never labeled replicated.
+
+Evidence:
+
+- `crates/dingo-sdk/tests/stage_def_037_cluster_commit.rs` — feature/profile
+  labels; in-process and network share commit semantics; kill contacted seed
+  after committed puts (survivor reads + new commit); distinct operation
+  events; single-node serve without Raft still local-commits.
+- Server path: `dingo_server::raft_server::RaftServerState::propose_and_apply`,
+  `serve.rs` mutate + linearizable read barrier.
+
+Remaining (out of this cut; tracked by DEF-038+ / DEF-041):
+
+- Durable rebalance / joint consensus across restarts (DEF-038).
+- Anti-entropy / repair (DEF-039), distributed query pages (DEF-040).
+- Full multi-process Jepsen-style partition histories (DEF-041).
+- Formal/safety review before freezing network Raft as production-only path.
 
 ### DEF-038 — Persist control-plane and rebalance workflows
 

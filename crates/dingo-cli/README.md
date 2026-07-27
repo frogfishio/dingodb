@@ -4,8 +4,8 @@ Operator and everyday command-line interface for DingoDB.
 
 Put and get JSON or bytes, list collections, inspect history, run read-only
 `doctor`, evidence-preserving `salvage`, and start a development TCP server
-(`serve`). Experimental multi-node `serve-cluster` is available for routing
-demos.
+(`serve`). Experimental multi-node `serve-cluster` is available when Raft
+attaches (control plane + data-plane commit); not production-ready.
 
 Binary name: **`dingo`**. Package name on crates.io: **`dingo-cli`**.
 
@@ -92,10 +92,12 @@ dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-netw
 dingo serve-cluster ./cluster --node 1 --bind 127.0.0.1:7435 --experimental-network-cluster
 ```
 
-**Not network quorum by default.** Writes apply according to the attached
-serve path; three processes are not automatically replicated durability.
-In-process quorum remains `Dingo::open_cluster` in the SDK. Prefer the monorepo
-demo `scripts/demos/08_kill_a_node.sh` when exploring multi-node behavior.
+**Experimental only.** When Raft attaches, put/delete use partition propose and
+acks report `committed` only after quorum (DEF-037). If attach fails, writes
+apply to the contacted node alone. Still not a production release claim.
+In-process multi-replica tests remain `Dingo::open_cluster` in the SDK. Prefer
+the monorepo demo `scripts/demos/08_kill_a_node.sh` when exploring multi-node
+behavior.
 
 ## Global flags
 

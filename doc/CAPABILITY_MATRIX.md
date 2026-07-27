@@ -14,17 +14,21 @@ with the acceptance evidence expected before a stronger label.
 | Embedded single-node | `Dingo::open(path)` | Local store durability modes (`memory` / `buffered` / `durable`) | experimental / early-access | `dingo-store` / `dingo-sdk` stage suites |
 | Single-node TCP | `dingo serve` (default `127.0.0.1`) | Local store only; **no** network quorum | development only | CLI `serve_*` tests; remote parity suite |
 | In-process cluster | `Dingo::open_cluster` / `create_cluster` | Partition-local quorum **in one process** | integration-test harness | `dingo-cluster` stage8a–8f tests |
-| Network multi-node | `dingo serve-cluster` + multi-seed connect | **Routing/advertise only**; each write hits the **serving node’s store** | experimental prototype (requires `--experimental-network-cluster`) | CLI bind/experimental gates; `stage8d_routing` |
+| Network multi-node | `dingo serve-cluster` + multi-seed connect | Partition Raft propose when control plane attaches (DEF-036/037); directory-only if Raft attach fails | experimental (requires `--experimental-network-cluster`) | `stage_def_036_raft_rpc`, `stage_def_037_cluster_commit`; CLI bind gates |
 | S3/GCS placement | `MediaLocator` + mirror env roots | Filesystem mirror of segments, not native cloud I/O SDK | experimental mirror | store tier / media tests |
 | Erasure / lifecycle | scaffold APIs | Not production protection | scaffold | types/docs only until codecs land |
 
 ## Critical honesty rules
 
-1. **Three `serve-cluster` processes do not provide replicated durability.**
-   They advertise placement and endpoints; mutating RPCs still apply to the
-   node that receives them unless/until network Raft (DEF-030+) lands.
-2. **In-process quorum ≠ network cluster.** Prefer `Dingo::open_cluster` for
-   tests that need partition-linearizable multi-replica behavior.
+1. **Experimental network cluster is not production.** With Raft attached
+   (default for `serve-cluster`), put/delete go through partition propose and
+   acks report `committed` only after quorum + local apply (DEF-037). If Raft
+   attach fails, the process falls back to **directory-only** routing and
+   single-node apply — still not a release claim. Production gates remain
+   DEF-038–041 and §16.
+2. **In-process quorum ≠ production network cluster.** Prefer
+   `Dingo::open_cluster` for deterministic multi-replica tests; use
+   `serve-cluster` + DEF-037 suite for multi-process data-plane checks.
 3. **Mirrors ≠ native cloud backends.** `s3://` / `gs://` parse and mirror
    paths are not a substitute for a production object-store connector.
 4. **Draft wire.** `WIRE_PROFILE_LABEL = 1.0-draft` is not an interoperability
@@ -52,6 +56,8 @@ with the acceptance evidence expected before a stronger label.
 | `RAFT_PERSIST_PROFILE` | `dingo-raft-persist-v1` | Durable Raft hard state, log, membership, snapshots (DEF-035) |
 | `RAFT_RPC_PROFILE` | `dingo-raft-rpc-v1` | Network Raft control-plane RPCs (DEF-036) |
 | `FEATURE_RAFT_RPC_V1` | `raft-rpc-v1` | Handshake feature when server serves `raft_*` ops |
+| `CLUSTER_COMMIT_PROFILE` | `dingo-cluster-commit-v1` | Data-plane put/get via network Raft propose (DEF-037) |
+| `FEATURE_CLUSTER_COMMIT_V1` | `cluster-commit-v1` | Feature token for quorum-committed collection ops |
 
 ## Raft persistence (DEF-035)
 
@@ -65,7 +71,7 @@ with the acceptance evidence expected before a stronger label.
 | Restart | `Cluster::open` restores peers as Followers; re-elect on demand | **in-process cluster** shipped |
 | Evidence classes | `committed` / `prepared` / `conflicting` / `unknown_commit` | **in-process cluster** shipped |
 | Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
-| Data-plane client writes via network Raft | DEF-037 | **not yet** |
+| Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
 | Jepsen-style partition histories | DEF-041 | **not yet** |
 
 Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
@@ -85,9 +91,23 @@ Evidence: `stage_def_035_raft_persist`, `dingo_cluster::raft_persist` unit tests
 | Auth | Shared token / authz on peer connections when configured | **shipped** |
 | Authority | Endpoints = routing only; epoch/cluster/term/membership fence writes | **shipped** |
 | Retry identity | `operation_id` dedup → same log index | **shipped** |
-| Client put/get via Raft propose | DEF-037 | **not yet** |
+| Client put/get via Raft propose | DEF-037 `propose_and_apply` + read-index barrier | **shipped (experimental)** |
 
 Evidence: `stage_def_036_raft_rpc` (cluster + SDK), `dingo_cluster::raft_rpc` unit tests.
+
+## Network data-plane commit (DEF-037)
+
+| Concern | How | Maturity |
+|---------|-----|----------|
+| Put / delete path | Leader `propose_and_apply` on subject partition | **experimental** (`--experimental-network-cluster`) |
+| Commit ack | `committed=true` only after quorum log commit + local apply | **experimental** |
+| Linearizable get | Read-index barrier before local store read when Raft attached | **experimental** |
+| Follower apply | After AppendEntries / InstallSnapshot, apply committed entries | **experimental** |
+| Single-node serve | No Raft → local store commit (unchanged) | **development** |
+| Directory-only fallback | If Raft attach fails, routing/advertise without quorum writes | **not quorum** |
+
+Evidence: `stage_def_037_cluster_commit` (5 tests: labels, shared semantics,
+kill seed after commit, op identity, solo serve).
 
 ## Network bind policy (DEF-002 / DEF-032)
 

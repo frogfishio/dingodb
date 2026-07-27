@@ -97,11 +97,11 @@ let opts = ServeOptions::default()
 requires `allow_insecure_bind(true)`. Prefer TLS (`ServeOptions::tls`) for
 public binds.
 
-**`serve_cluster_node`:** experimental multi-process routing/advertise. Requires
-`experimental_network_cluster(true)`. Do not treat multi-process serve as a
-substitute for in-process quorum (`Dingo::open_cluster` in `dingo-sdk` with
-the `cluster` feature) unless Raft state is attached and you understand the
-current commit path.
+**`serve_cluster_node`:** experimental multi-process cluster serve. Requires
+`experimental_network_cluster(true)`. When Raft attaches, data-plane put/delete
+use partition propose (DEF-037) and control-plane `raft_*` RPCs (DEF-036).
+Directory-only fallback if attach fails. Not production-ready; durable
+rebalance, repair, and Jepsen gates remain open (DEF-038+).
 
 ## Related crates
 

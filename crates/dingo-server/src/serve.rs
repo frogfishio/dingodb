@@ -224,7 +224,8 @@ impl ServeOptions {
         self
     }
 
-    /// Opt into experimental network cluster serve (routing/advertise only).
+    /// Opt into experimental network cluster serve (Raft control + data plane
+    /// when attach succeeds; directory-only routing if attach fails).
     pub fn experimental_network_cluster(mut self, enabled: bool) -> Self {
         self.experimental_network_cluster = enabled;
         self

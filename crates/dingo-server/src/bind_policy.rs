@@ -171,7 +171,7 @@ impl ServeStartupReport {
         }
     }
 
-    /// Network `dingo serve-cluster` defaults (routing prototype, not quorum).
+    /// Network `dingo serve-cluster` defaults (experimental; Raft when attached).
     pub fn cluster_node(
         path: impl Into<String>,
         bind: impl Into<String>,
@@ -207,8 +207,8 @@ impl ServeStartupReport {
             auth_enabled,
             tls_enabled,
             mtls_required,
-            durability: "this-node-store-only (routing advertise; not quorum commit)",
-            replication: "none over network (in-process quorum only via Dingo::open_cluster)",
+            durability: "partition Raft commit when control plane attaches (DEF-037 experimental)",
+            replication: "network quorum via raft propose when attached; else this-node-only",
             store_lock: "exclusive-writer per node store (DEF-020)",
             node_index: Some(node_index),
             allow_insecure_bind,
@@ -252,9 +252,10 @@ impl ServeStartupReport {
         }
         if self.mode == "serve-cluster" {
             lines.push(
-                "  warning: serve-cluster is experimental routing/advertise only; \
-                 writes apply to this node alone. Quorum replication exists only \
-                 in the in-process harness (Dingo::open_cluster)."
+                "  warning: serve-cluster is experimental (DEF-002). When Raft \
+                 attaches, put/delete use partition propose and commit only after \
+                 quorum (DEF-037). If attach fails, directory-only routing applies \
+                 writes to this node alone. Not a production release claim."
                     .into(),
             );
         }
@@ -322,8 +323,12 @@ mod tests {
         let r = ServeStartupReport::cluster_node("./c", "127.0.0.1:1", false, false, 0);
         let s = r.format_lines();
         assert!(s.contains("experimental"));
-        assert!(s.contains("this-node-store-only"));
+        assert!(s.contains("DEF-037") || s.contains("raft propose"));
         assert!(!s.to_lowercase().contains("replicated durability"));
-        assert!(s.contains("replication: none over network"));
+        assert!(
+            s.contains("Not a production release claim")
+                || s.contains("not a production release claim")
+                || s.contains("directory-only")
+        );
     }
 }

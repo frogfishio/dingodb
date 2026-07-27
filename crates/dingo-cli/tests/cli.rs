@@ -493,9 +493,11 @@ fn capability_matrix_document_present() {
     let matrix = root.join("doc/CAPABILITY_MATRIX.md");
     let text = fs::read_to_string(&matrix).expect("doc/CAPABILITY_MATRIX.md must exist");
     assert!(
-        text.contains("Three `serve-cluster` processes do not provide replicated durability")
-            || text.contains("do not provide replicated durability"),
-        "matrix must forbid multi-process replicated-durability inference"
+        text.contains("Experimental network cluster is not production")
+            || text.contains("not a production release claim")
+            || text.contains("do not provide replicated durability")
+            || text.contains("Three `serve-cluster` processes do not provide replicated durability"),
+        "matrix must keep honest maturity labels for network multi-node"
     );
     assert!(text.contains("DEF-002") || text.contains("allow-insecure-bind"));
     let readme = fs::read_to_string(root.join("README.md")).expect("README");
