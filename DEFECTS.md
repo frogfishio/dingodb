@@ -945,9 +945,9 @@ pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 
 Priority: P1  
 Dependencies: DEF-023 (follow-on), DEF-020, DEF-095  
-Status: **Axis A + Axis B addressed** (async lifecycle + sharded writers 2026-07-27);
-Axis C (horizontal multi-process) remains the capacity path — see
-`doc/PARALLEL_INGEST.md`
+Status: **Axis A + Axis B + Axis C harness addressed** (async lifecycle + sharded
+writers + multi-store multi-process testrig 2026-07-27) — see
+`doc/PARALLEL_INGEST.md`. Product multi-node cluster capacity remains separate.
 
 Problem:
 
@@ -971,13 +971,15 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
 2. **Axis B — Sharded writers (done):** N active segments by subject hash
    (`create_with_shards`); per-shard append + auto-seal; shared PrimaryIndex;
    `put_many` parallel appends; tests `stage_def_096_sharded_writers`.
-3. **Axis C — Horizontal:** multi-store / partition / cluster (already partially
-   present) — capacity path, not single-node efficiency.
-4. **Harness (done for Axis B):** testrig `--writer-shards N` creates with
-   `create_with_shards`, pumps via `put_many` when N>1, and discloses
-   `concurrency` / `writer_shards` / `writer_model` plus peak RSS / process
-   CPU% (`ps` samples). Optional multi-store pump for Axis C media upper-bound
-   remains open.
+3. **Axis C — Horizontal (harness done):** testrig `--stores N` spawns N child
+   pump processes under independent store roots (`store-00`…), splits target
+   bytes, aggregates wall-clock ops/s + summed child RSS/CPU%, discloses
+   `store_count` / multi-process `writer_model`. Product multi-node remains
+   dingo-cluster partitions / leaders — capacity path, not single-node efficiency.
+4. **Harness (done for Axis B + C):** testrig `--writer-shards N` creates with
+   `create_with_shards`, pumps via `put_many` when N>1; `--stores N` multi-process
+   capacity; discloses `concurrency` / `writer_shards` / `store_count` /
+   `writer_model` plus peak RSS / process CPU% (`ps` samples).
 
 Anti-goals:
 

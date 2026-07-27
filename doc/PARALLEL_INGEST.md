@@ -1,6 +1,6 @@
 # Parallel ingest: multi-core write path
 
-Status: **Axis A + Axis B implemented; testrig `--writer-shards` + 10 GiB re-measure done (2026-07-27); Axis C remains multi-process / cluster**  
+Status: **Axis A + Axis B + Axis C harness implemented; testrig `--writer-shards` / `--stores` + 10 GiB Axis B re-measure done (2026-07-27)**  
 Date: 2026-07-27  
 Trigger: 10 GiB `dingo-testrig` on MacBook Air M4 after DEF-095  
 Companion: DEF-023 follow-on, DEF-096, `doc/BENCHMARK_DISCLOSURE.md`, OVERVIEW §12
@@ -126,11 +126,14 @@ Implementation shape:
 
 **When to use:** create with `Store::create_with_shards(path, n)` when one append core saturates and media still has headroom. Default `create` remains single-shard for compatibility.
 
-### Axis C — Horizontal / multi-process (already partially built)
+### Axis C — Horizontal / multi-process (harness landed)
 
-- Multiple independent stores (testrig can already run N pumps under N dirs).
-- Cluster partitions with independent leaders (dingo-cluster).
-- This is **capacity**, not single-node efficiency. Keep it as the multi-machine path; do not confuse it with fixing single-node core waste.
+**Status: testrig multi-store harness landed** (`--stores N` → N child processes).
+
+- **Harness:** `dingo-testrig pump|run --stores N` (N>1) creates `store-00`… under the parent/work dir, spawns N child `pump` processes (true multi-process), splits `target-bytes` across stores, aggregates wall-clock ops/s + summed child RSS/CPU%, discloses `store_count` / `concurrency = stores × writer_shards` / `writer_model: multi_process_stores[_sharded]`.
+- Multiple independent stores (manual N pumps under N dirs still works).
+- Cluster partitions with independent leaders (dingo-cluster) remain the **product** multi-node path.
+- This is **capacity**, not single-node efficiency. The multi-store pump is a media upper-bound bench — **not** product sharding.
 
 ## 5. Where the cores go (target pipeline)
 
@@ -162,7 +165,7 @@ Hydra `build_many` already knows how to fan out; seal workers should call the sa
 | Report `concurrency` / `writer_model` / `writer_shards` in pump + run JSON | **Done** — honest disclosure (BENCHMARK_DISCLOSURE “Concurrency”). |
 | Per-interval ops/s + peak RSS / process CPU% via `ps` | **Done** in pump progress + summary. |
 | `--writer-shards N` on `pump` / `run` | **Done** — creates with `create_with_shards(N)`; N>1 pumps via `put_many`. |
-| Optional multi-store pump mode (`--stores N` → N store roots) | **Axis C harness** — still optional; multi-process capacity path. |
+| Multi-store pump mode (`--stores N` → N store roots) | **Done** — multi-process child pumps; Axis C capacity harness. |
 
 ```sh
 # Multi-core Axis B campaign (diagnostic only)
@@ -172,9 +175,17 @@ dingo-testrig run \
   --payload-size 8192 \
   --writer-shards 4 \
   --seed 2
+
+# Multi-process Axis C campaign (diagnostic only; N independent stores)
+dingo-testrig run \
+  --work /var/tmp/dingo-testrig-10g-stores \
+  --target-bytes 10G \
+  --payload-size 8192 \
+  --stores 4 \
+  --seed 3
 ```
 
-Multi-store pump remains a **harness** parallelization for Axis C upper-bound media benches — not product sharding.
+Multi-store pump is a **harness** parallelization for Axis C upper-bound media benches — not product sharding.
 
 ## 7. Sequencing and anti-goals
 
@@ -187,13 +198,16 @@ Multi-store pump remains a **harness** parallelization for Axis C upper-bound me
 
 3. ~~Wire testrig `--writer-shards N` / multi-core pump disclosure fields.~~ **Done** (2026-07-27).
 4. ~~Re-run 10 GiB testrig with writer shards; compare ops/s, p99, process CPU%, RSS.~~ See `doc/BENCHMARK_DISCLOSURE.md` (sharded 10 GiB snapshot).
-5. Multi-store harness mode if needed for upper-bound media bench (Axis C remains).
+5. ~~Multi-store harness mode (`--stores N`).~~ **Done** (2026-07-27) — multi-process child pumps + disclosure.
+6. Optional: large multi-store 10 GiB re-measure + disclose in `BENCHMARK_DISCLOSURE.md` (diagnostic only).
+7. Product cluster capacity remains dingo-cluster partitions / multi-node (not this harness).
 
 **Do not:**
 
 - Rewrite PrimaryIndex for write throughput.
 - Put Chimera/Hydra on the hot get path as a “parallelization” project.
 - Claim multi-core ingest until disclosure fields show concurrency > 1 or multi-core CPU samples.
+- Treat `--stores N` as product multi-tenant sharding.
 
 ## 8. Expected outcomes (honest)
 
@@ -202,7 +216,8 @@ Multi-store pump remains a **harness** parallelization for Axis C upper-bound me
 | Today | ~1 (part-time) | ~7–20k ops/s depending on size / seal rate |
 | After Axis A | 1 append + K seal workers | Higher sustained ops/s; p99 flatter; process CPU% multi-core |
 | After Axis B | N append + K seals | Near-linear until media or memory bandwidth |
-| After Axis C | multi-process / multi-node | Cluster capacity |
+| After Axis C harness | multi-process N stores | Media upper-bound capacity (testrig) |
+| Product multi-node | cluster partitions / leaders | Deployment capacity |
 
 No SLO claims until measured with full `doc/BENCHMARK_DISCLOSURE.md` fields.
 

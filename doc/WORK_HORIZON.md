@@ -58,7 +58,7 @@ partially cut:
 
 | ID | Gap |
 |----|-----|
-| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B landed** (async lifecycle + `create_with_shards` / `put_many`). Testrig `--writer-shards N` + multi-core disclosure shipped. Axis C multi-process / cluster capacity remains. |
+| **DEF-096** | Parallel ingest after DEF-095: **Axis A + B + C harness landed** (async lifecycle + `create_with_shards` / `put_many` + testrig `--stores N` multi-process). Product multi-node cluster capacity remains separate. |
 | **DEF-039 / 040 network** | Anti-entropy repair and query paging still in-process only. |
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
@@ -183,8 +183,8 @@ we parallelize and max out all the cores?”
 | Observation correct? | **Yes.** One exclusive writer, one active segment, lifecycle on put ack. Process CPU% ≈ one core. |
 | Memory/disk the limiter? | **No** after DEF-095. |
 | Multi-thread `Store::put` first? | **No** — thrash without model change. |
-| Next high-leverage cut? | **Axis C** multi-process / cluster capacity (optional multi-store harness). Sharded 10 GiB re-measure done (~8.1k ops/s wall, concurrency 4). |
-| True multi-core append? | **Axis B shipped** + testrig `--writer-shards N`; peak `ps` CPU still ~1-core class — serial index publish after `put_many` remains a limiter. |
+| Next high-leverage cut? | DEF-096 Axes A–C **harness complete**; next is optional multi-store 10 GiB disclose, product cluster capacity, or open gates (Jepsen/fuzz/wire freeze). Sharded 10 GiB re-measure done (~8.1k ops/s wall, concurrency 4). |
+| True multi-core append? | **Axis B shipped** + testrig `--writer-shards N`; peak `ps` CPU still ~1-core class — serial index publish after `put_many` remains a limiter. **Axis C harness:** `--stores N` multi-process. |
 | Spec already requires this? | **Yes** — OVERVIEW parallel ingest, USP sharded writers. |
 
 Design authority: [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md). Do not spend the

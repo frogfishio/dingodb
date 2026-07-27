@@ -15,10 +15,12 @@ mod size;
 
 use chaos::{run_chaos, ChaosConfig};
 use clap::{Parser, Subcommand};
-use manifest::manifest_path_for_store;
+use manifest::{
+    manifest_path_for_store, per_store_manifest_path, store_path_for, MAX_STORES,
+};
 use monitor::{evaluate_run, run_monitor, MonitorConfig};
 use pump::{ensure_parent, parse_durability, run_pump, PumpConfig};
-use serde_json::json;
+use serde_json::{json, Value};
 use size::{format_bytes, parse_size};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -74,6 +76,10 @@ enum Command {
         /// active segment; N>1 uses create_with_shards + put_many. Fixed at create.
         #[arg(long, default_value_t = 1)]
         writer_shards: usize,
+        /// Independent store roots (DEF-096 Axis C). 1 = single process; N>1 spawns
+        /// N child pumps under `<store>/store-00` … (multi-process capacity harness).
+        #[arg(long, default_value_t = 1)]
+        stores: usize,
         /// Machine-readable JSON on stdout.
         #[arg(long)]
         json_out: bool,
@@ -156,6 +162,10 @@ enum Command {
         /// segment; N>1 creates with N shards and pumps via put_many.
         #[arg(long, default_value_t = 1)]
         writer_shards: usize,
+        /// Independent store roots (DEF-096 Axis C). 1 = `<work>/store`; N>1 spawns
+        /// N child pumps at `<work>/store-00` … (multi-process capacity harness).
+        #[arg(long, default_value_t = 1)]
+        stores: usize,
         #[arg(long)]
         json_out: bool,
     },
@@ -174,6 +184,7 @@ fn main() -> ExitCode {
             key_prefix,
             manifest,
             writer_shards,
+            stores,
             json_out,
         } => cmd_pump(
             store,
@@ -185,6 +196,7 @@ fn main() -> ExitCode {
             key_prefix,
             manifest,
             writer_shards,
+            stores,
             json_out,
         ),
         Command::Chaos {
@@ -235,6 +247,7 @@ fn main() -> ExitCode {
             sample_keys,
             brutal,
             writer_shards,
+            stores,
             json_out,
         } => cmd_run(
             work,
@@ -248,6 +261,7 @@ fn main() -> ExitCode {
             sample_keys,
             brutal,
             writer_shards,
+            stores,
             json_out,
         ),
     };
@@ -281,14 +295,23 @@ fn cmd_pump(
     key_prefix: String,
     manifest: Option<PathBuf>,
     writer_shards: usize,
+    stores: usize,
     json_out: bool,
 ) -> Result<(), String> {
+    validate_stores(stores)?;
     ensure_parent(&store).map_err(|e| format!("create parent: {e}"))?;
     let target = parse_size(&target_bytes)?;
     let seal = parse_size(&seal_threshold)?;
     let seed = resolve_seed(seed);
     let durability = parse_durability(&durability)?;
-    let manifest_path = manifest.unwrap_or_else(|| manifest_path_for_store(&store));
+    // Single-store: manifest sibling of store. Multi-store: aggregate under parent.
+    let manifest_path = manifest.unwrap_or_else(|| {
+        if stores > 1 {
+            store.join(manifest::MANIFEST_FILE)
+        } else {
+            manifest_path_for_store(&store)
+        }
+    });
     run_pump(&PumpConfig {
         store,
         target_bytes: target,
@@ -300,8 +323,19 @@ fn cmd_pump(
         manifest_path,
         json_out,
         writer_shards,
+        store_count: stores,
     })
     .map(|_| ())
+}
+
+fn validate_stores(stores: usize) -> Result<(), String> {
+    if stores == 0 {
+        return Err("stores must be >= 1".into());
+    }
+    if stores > MAX_STORES {
+        return Err(format!("stores must be <= {MAX_STORES} (got {stores})"));
+    }
+    Ok(())
 }
 
 fn cmd_chaos(
@@ -365,21 +399,37 @@ fn cmd_run(
     sample_keys: usize,
     brutal: bool,
     writer_shards: usize,
+    stores: usize,
     json_out: bool,
 ) -> Result<(), String> {
+    validate_stores(stores)?;
     std::fs::create_dir_all(&work).map_err(|e| format!("create work dir: {e}"))?;
-    let store = work.join("store");
-    let manifest_path = work.join(manifest::MANIFEST_FILE);
     let target = parse_size(&target_bytes)?;
     let seal = parse_size(&seal_threshold)?;
     let seed = resolve_seed(seed);
     let durability = parse_durability(&durability)?;
 
+    // Layout: single-store keeps `work/store` for backward compatibility.
+    // Multi-store (Axis C): parent is `work`; children at `work/store-00` …
+    let pump_root = if stores > 1 {
+        work.clone()
+    } else {
+        work.join("store")
+    };
+    let manifest_path = work.join(manifest::MANIFEST_FILE);
+    let store_paths: Vec<PathBuf> = (0..stores)
+        .map(|i| store_path_for(&pump_root, i, stores))
+        .collect();
+
     if !json_out {
         println!(
-            "=== testrig run ===\nwork={}\nstore={}\ntarget={}\npayload={} durability={:?} writer_shards={writer_shards} seed={seed}",
+            "=== testrig run ===\nwork={}\nstores={stores} roots={}\ntarget={}\npayload={} durability={:?} writer_shards={writer_shards} seed={seed}",
             work.display(),
-            store.display(),
+            if stores > 1 {
+                format!("{}…{}", store_paths[0].display(), store_paths[stores - 1].display())
+            } else {
+                store_paths[0].display().to_string()
+            },
             format_bytes(target),
             payload_size,
             durability
@@ -388,7 +438,7 @@ fn cmd_run(
     }
 
     let pump_manifest = run_pump(&PumpConfig {
-        store: store.clone(),
+        store: pump_root.clone(),
         target_bytes: target,
         payload_size,
         durability,
@@ -398,74 +448,126 @@ fn cmd_run(
         manifest_path: manifest_path.clone(),
         json_out: false, // orchestrator owns final JSON
         writer_shards,
+        store_count: stores,
     })?;
 
-    if !json_out {
-        println!("\n--- prong 3a: baseline monitor ---");
+    // Per-store monitor + chaos (each root is independent).
+    let mut baseline_reports: Vec<Value> = Vec::with_capacity(stores);
+    let mut post_reports: Vec<Value> = Vec::with_capacity(stores);
+    let mut chaos_hits_total = 0u32;
+    let mut chaos_reports: Vec<Value> = Vec::with_capacity(stores);
+    let mut all_reasons: Vec<String> = Vec::new();
+    let mut pass = true;
+
+    for i in 0..stores {
+        let store = &store_paths[i];
+        let per_manifest = if stores > 1 {
+            per_store_manifest_path(&work, i, stores)
+        } else {
+            manifest_path.clone()
+        };
+
+        if !json_out {
+            if stores > 1 {
+                println!("\n--- prong 3a: baseline monitor [store-{i:02}] ---");
+            } else {
+                println!("\n--- prong 3a: baseline monitor ---");
+            }
+        }
+        let baseline = run_monitor(&MonitorConfig {
+            store: store.clone(),
+            manifest_path: Some(per_manifest.clone()),
+            sample_keys,
+            put_samples: 16,
+            phase: "baseline".into(),
+            json_out: false,
+            inspect_only: false,
+        })?;
+        baseline_reports.push(baseline.report.clone());
+
+        if !json_out {
+            if stores > 1 {
+                println!("\n--- prong 2: chaos [store-{i:02}] ---");
+            } else {
+                println!("\n--- prong 2: chaos ---");
+            }
+        }
+        // Store must be closed — monitors already dropped their handles.
+        let chaos = run_chaos(&ChaosConfig {
+            store: store.clone(),
+            hits: chaos_hits,
+            bytes_per_hit: chaos_bytes,
+            seed: seed ^ 0xC4A0_5 ^ (i as u64).wrapping_mul(0xA5A5_A5A5),
+            protect_head: 4096,
+            protect_tail: 64,
+            brutal,
+            json_out: false,
+        })?;
+        chaos_hits_total = chaos_hits_total.saturating_add(chaos.hits_applied);
+        chaos_reports.push(json!({
+            "store": store.display().to_string(),
+            "hits_applied": chaos.hits_applied,
+            "hits_requested": chaos.hits_requested,
+            "candidate_files": chaos.candidate_files,
+        }));
+
+        if !json_out {
+            if stores > 1 {
+                println!("\n--- prong 3b: post-chaos monitor [store-{i:02}] ---");
+            } else {
+                println!("\n--- prong 3b: post-chaos monitor ---");
+            }
+        }
+        let post = run_monitor(&MonitorConfig {
+            store: store.clone(),
+            manifest_path: Some(per_manifest),
+            sample_keys,
+            // After chaos, avoid writer puts that might seal over damage mid-bench.
+            put_samples: 0,
+            phase: "post-chaos".into(),
+            json_out: false,
+            inspect_only: true,
+        })?;
+        post_reports.push(post.report.clone());
+
+        let (store_pass, store_reasons) = evaluate_run(&baseline, chaos.hits_applied, &post);
+        if !store_pass {
+            pass = false;
+        }
+        for r in store_reasons {
+            if stores > 1 {
+                all_reasons.push(format!("store-{i:02}: {r}"));
+            } else {
+                all_reasons.push(r);
+            }
+        }
     }
-    let baseline = run_monitor(&MonitorConfig {
-        store: store.clone(),
-        manifest_path: Some(manifest_path.clone()),
-        sample_keys,
-        put_samples: 16,
-        phase: "baseline".into(),
-        json_out: false,
-        inspect_only: false,
-    })?;
-
-    if !json_out {
-        println!("\n--- prong 2: chaos ---");
-    }
-    // Store must be closed — monitors already dropped their handles.
-    let chaos = run_chaos(&ChaosConfig {
-        store: store.clone(),
-        hits: chaos_hits,
-        bytes_per_hit: chaos_bytes,
-        seed: seed ^ 0xC4A0_5,
-        protect_head: 4096,
-        protect_tail: 64,
-        brutal,
-        json_out: false,
-    })?;
-
-    if !json_out {
-        println!("\n--- prong 3b: post-chaos monitor ---");
-    }
-    let post = run_monitor(&MonitorConfig {
-        store: store.clone(),
-        manifest_path: Some(manifest_path.clone()),
-        sample_keys,
-        // After chaos, avoid writer puts that might seal over damage mid-bench.
-        put_samples: 0,
-        phase: "post-chaos".into(),
-        json_out: false,
-        inspect_only: true,
-    })?;
-
-    let (pass, reasons) = evaluate_run(&baseline, chaos.hits_applied, &post);
 
     let summary = json!({
         "prong": "run",
         "ok": pass,
         "work": work.display().to_string(),
-        "store": store.display().to_string(),
+        "store": store_paths[0].display().to_string(),
+        "store_count": stores,
+        "store_paths": store_paths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
         "target_bytes": target,
         "bytes_on_disk": pump_manifest.bytes_on_disk,
         "keys_written": pump_manifest.keys_written,
         "pump_ops_per_sec": pump_manifest.pump_ops_per_sec,
         "pump_mb_per_sec": pump_manifest.pump_mb_per_sec,
         "pump_elapsed_ms": pump_manifest.pump_elapsed_ms,
-        // Multi-core / Axis B disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
+        // Multi-core / multi-process disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
         "concurrency": pump_manifest.concurrency,
         "writer_shards": pump_manifest.writer_shards,
         "writer_model": pump_manifest.writer_model,
         "peak_rss_bytes": pump_manifest.peak_rss_bytes,
         "peak_cpu_pct": pump_manifest.peak_cpu_pct,
-        "chaos_hits": chaos.hits_applied,
-        "baseline": baseline.report,
-        "post_chaos": post.report,
-        "reasons": reasons,
-        "ladder_hint": "If ok at 1G, re-run with --target-bytes 10G (then larger). For multi-core append: --writer-shards N (e.g. 4 or 8).",
+        "chaos_hits": chaos_hits_total,
+        "chaos_by_store": chaos_reports,
+        "baseline": if stores == 1 { baseline_reports[0].clone() } else { json!(baseline_reports) },
+        "post_chaos": if stores == 1 { post_reports[0].clone() } else { json!(post_reports) },
+        "reasons": all_reasons,
+        "ladder_hint": "If ok at 1G, re-run with --target-bytes 10G (then larger). Axis B: --writer-shards N. Axis C: --stores N (multi-process).",
         "disclosure": "Diagnostic only — not a published SLO (doc/BENCHMARK_DISCLOSURE.md).",
     });
 
@@ -480,12 +582,12 @@ fn cmd_run(
         println!("{}", serde_json::to_string_pretty(&summary).unwrap());
     } else {
         println!("\n=== result: {} ===", if pass { "PASS" } else { "FAIL" });
-        for r in &reasons {
+        for r in &all_reasons {
             println!("  - {r}");
         }
         println!("summary: {}", summary_path.display());
         println!(
-            "ladder: pass here, then retry with --target-bytes 10G (then more)"
+            "ladder: pass here, then retry with --target-bytes 10G (then more); Axis C: --stores N"
         );
     }
 

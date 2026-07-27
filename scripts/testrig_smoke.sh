@@ -41,4 +41,20 @@ echo "== dingo-testrig smoke (8 MiB target, --writer-shards 4) =="
   --seed 1 \
   --writer-shards 4
 
-echo "smoke PASS (single-shard + 4-shard; summaries cleaned on exit)"
+STORES_WORKDIR="${TMPDIR:-/tmp}/dingo-testrig-smoke-stores-$$"
+mkdir -p "$STORES_WORKDIR"
+trap 'rm -rf "$WORKDIR" "$SHARDS_WORKDIR" "$STORES_WORKDIR"' EXIT
+
+echo "== dingo-testrig smoke (8 MiB target, --stores 2 multi-process Axis C) =="
+"$BIN" run \
+  --work "$STORES_WORKDIR" \
+  --target-bytes 8M \
+  --payload-size 2048 \
+  --seal-threshold 1M \
+  --chaos-hits 4 \
+  --chaos-bytes 64 \
+  --sample-keys 16 \
+  --seed 1 \
+  --stores 2
+
+echo "smoke PASS (single-shard + 4-shard + 2-store multi-process; summaries cleaned on exit)"

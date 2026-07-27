@@ -171,15 +171,16 @@ Third local campaign after Axis A+B + testrig harness (2026-07-27):
 | Result | **PASS** |
 | Concurrency | **4** (`writer_shards: 4`, `writer_model: sharded_active_segments`, pump via `put_many`) |
 
-Compare to single-shard 10 GiB snapshot above (~7.4k ops/s, concurrency 1, peak RSS ~0.92 GiB). Axis B raises disclosed concurrency and early-window throughput; wall-average lift is modest while serial PrimaryIndex publish + seal pipeline still bound multi-core CPU%. **Do not** claim “maxed out the M4.” Axis C (multi-process / cluster) remains the capacity path — see [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md).
+Compare to single-shard 10 GiB snapshot above (~7.4k ops/s, concurrency 1, peak RSS ~0.92 GiB). Axis B raises disclosed concurrency and early-window throughput; wall-average lift is modest while serial PrimaryIndex publish + seal pipeline still bound multi-core CPU%. **Do not** claim “maxed out the M4.” Axis C multi-store harness (`--stores N`) is the multi-process capacity path — see [`PARALLEL_INGEST.md`](PARALLEL_INGEST.md).
 
 #### Multi-core write path status
 
-After DEF-095 + DEF-096 Axis A+B:
+After DEF-095 + DEF-096 Axis A+B+C harness:
 
 1. Async lifecycle — **shipped**.
 2. Sharded writers + testrig `--writer-shards N` disclosure — **shipped** (measured above).
-3. Multi-store / cluster — **Axis C remains** (horizontal capacity).
+3. Multi-store multi-process harness (`--stores N`) — **shipped** (smoke-covered; optional large-campaign disclose follow-on).
+4. Product multi-node cluster capacity — remains dingo-cluster (not this harness).
 
 #### Read-path failure that was fixed (Chimera-before-index)
 
