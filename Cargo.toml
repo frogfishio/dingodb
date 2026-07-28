@@ -15,7 +15,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 # DEF-090 MSRV: keep in sync with .github/workflows/ci.yml `msrv` job and
 # CONTRIBUTING.md. Bump deliberately when a dependency or language feature
@@ -31,14 +31,14 @@ repository = "https://github.com/frogfishio/dingodb"
 # `sda` / `sda-lib` — those crates.io names must not be reused). Dependents that
 # use the workspace key import as `sda_core`. Inside the package, the crate path
 # is `dingo_sda`. `version` is required so `cargo package` can rewrite path deps.
-sda-core = { package = "dingo-sda", path = "crates/sda-core", version = "0.1.0" }
-dingo-format = { path = "crates/dingo-format", version = "0.1.0" }
-dingo-store = { path = "crates/dingo-store", version = "0.1.0" }
-dingo-client = { path = "crates/dingo-client", version = "0.1.0" }
-dingo-sdk = { path = "crates/dingo-sdk", version = "0.1.0" }
-dingo-server = { path = "crates/dingo-server", version = "0.1.0" }
-dingo-examine = { path = "crates/dingo-examine", version = "0.1.0" }
-dingo-cluster = { path = "crates/dingo-cluster", version = "0.1.0" }
+sda-core = { package = "dingo-sda", path = "crates/sda-core", version = "0.2.0" }
+dingo-format = { path = "crates/dingo-format", version = "0.2.0" }
+dingo-store = { path = "crates/dingo-store", version = "0.2.0" }
+dingo-client = { path = "crates/dingo-client", version = "0.2.0" }
+dingo-sdk = { path = "crates/dingo-sdk", version = "0.2.0" }
+dingo-server = { path = "crates/dingo-server", version = "0.2.0" }
+dingo-examine = { path = "crates/dingo-examine", version = "0.2.0" }
+dingo-cluster = { path = "crates/dingo-cluster", version = "0.2.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"

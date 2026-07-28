@@ -264,7 +264,7 @@ checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 
 [[package]]
 name = "dingo-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "dingo-examine",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-cluster"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "blake3",
  "dingo-store",
@@ -298,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-examine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "dingo-format",
  "dingo-sda",
@@ -310,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-format"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "blake3",
  "crc32c",
@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-sda"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "num-bigint",
  "num-rational",
@@ -331,7 +331,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-sda-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "dingo-sda",
@@ -340,7 +340,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-sdk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "blake3",
  "dingo-client",
@@ -362,7 +362,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "dingo-cluster",
  "dingo-sdk",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "blake3",
  "dingo-format",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "dingo-testrig"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "dingo-store",

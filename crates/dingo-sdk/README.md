@@ -5,7 +5,8 @@
 Open a local store, connect to a remote server, or (optionally) open an
 in-process multi-node cluster. Name a collection; put/get/delete JSON or bytes;
 filter JSON documents; use pluggable query dialects that compile to pure SDA
-(`json` / `mongo` / `sql` mimicry / raw `sda`); manage secondary indexes;
+(`dql` official human surface — [USER_GUIDE](../../doc/DQL/USER_GUIDE.md); also
+`json` / `mongo` / `sql` mimicry / raw `sda`); manage secondary indexes;
 inspect per-key history — without learning frames or segments for common paths.
 
 Freeze label: `SDK_API_VERSION` = `1.0`.
@@ -24,13 +25,13 @@ Freeze label: `SDK_API_VERSION` = `1.0`.
 
 ```toml
 [dependencies]
-dingo-sdk = "0.1"   # MPL-2.0: embedded + remote
+dingo-sdk = "0.2"   # MPL-2.0: embedded + remote (index + engine + DQL cut)
 ```
 
 Optional in-process multi-node cluster (pulls AGPL `dingo-cluster`):
 
 ```toml
-dingo-sdk = { version = "0.1", features = ["cluster"] }
+dingo-sdk = { version = "0.2", features = ["cluster"] }
 ```
 
 Or: `cargo add dingo-sdk`

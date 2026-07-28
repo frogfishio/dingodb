@@ -505,7 +505,8 @@ hybrid of co-equal languages.
 
 **DQL (Dingo Query Language) is the official human dialect** — co-designed with
 ENR for readable enrichment and nested projection. It is not SQL; foreign
-SQL/Mongo/GraphQL surfaces remain optional comfort with known holes. Design:
+SQL/Mongo/GraphQL surfaces remain optional comfort with known holes. How to
+write queries: [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md). Design:
 [DQL_SPEC.md](DQL_SPEC.md).
 
 **Null vs absence is the hard case.** SQL `NULL` and Mongo-style filters cannot

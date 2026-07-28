@@ -17,7 +17,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](FORMAT_SPEC.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
-| Dingo Query Language (official human dialect → ENR+SDA; v0.1) | [DQL_SPEC.md](DQL_SPEC.md) |
+| Dingo Query Language (official human dialect → ENR+SDA; v0.1) | [DQL_SPEC.md](DQL_SPEC.md), user guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
 | SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
 | Enrichment algebra (ENR1 kernel in `dingo-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
@@ -117,7 +117,7 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
    `CLUSTER_PROFILE_VERSION` (`v1` in-process), `WIRE_PROFILE_LABEL`
    (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`dingo-cluster-commit-v1`).
-   Distinct from crate semver `0.1.0`.
+   Distinct from crate semver `0.2.0`.
 4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
    [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).
 

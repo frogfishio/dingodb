@@ -42,7 +42,7 @@ with the acceptance evidence expected before a stronger label.
 
 | Constant | Value (current) | Scope |
 |----------|-----------------|--------|
-| Crate / workspace semver | `0.1.0` | Packaging only |
+| Crate / workspace semver | `0.2.0` | Packaging only (0.2 = index + engine + QL cut) |
 | `SDK_API_VERSION` | `1.0` | Collection API surface freeze label |
 | `CLUSTER_PROFILE_VERSION` | `v1` | In-process cluster profile |
 | `WIRE_PROFILE_LABEL` | `1.0-draft` | On-disk/network frame draft |

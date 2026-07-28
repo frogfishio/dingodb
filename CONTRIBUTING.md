@@ -127,7 +127,7 @@ Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
 
 ## Version and BUILD numbers
 
-- `VERSION` / crate semver (`0.1.0`) — packaging only; **not** a maturity claim
+- `VERSION` / crate semver (`0.2.0`) — packaging only; **not** a maturity claim
 - `BUILD` — integer build stamp used by CLI `--version` output
 - `crates/sda-cli/BUILD` and `crates/dingo-cli/BUILD` — keep in sync with root
   `BUILD` when CLI version tests require it

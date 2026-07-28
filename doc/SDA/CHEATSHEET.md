@@ -9,7 +9,7 @@ This is the short version of SDA for day-to-day use.
 - `dingo-sda check` validates SDA code
 - `dingo-sda fmt` formats SDA code
 - **SDA (+ ENR1) is the mathematical language**; **DQL** is the official human
-  dialect ([DQL_SPEC.md](../../DQL_SPEC.md)); JSON/Mongo filters and SQL-ish
+  dialect ([USER_GUIDE.md](../DQL/USER_GUIDE.md), [DQL_SPEC.md](../../DQL_SPEC.md)); JSON/Mongo filters and SQL-ish
   strings are foreign **dialects** that compile into pure SDA — not a hybrid of
   peer languages (see [DIALECTS.md](DIALECTS.md))
 - **Null ≠ absence.** Stored `null` is `Some(null)`; missing key is `None`. If you

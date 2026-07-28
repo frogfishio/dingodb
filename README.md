@@ -20,23 +20,20 @@ the result.
 
 ## See it work
 
-DingoDB currently ships as a Rust workspace. Its embedded single-node path is
-the strongest and simplest product surface.
+**Install from crates.io** (customer path — no monorepo required):
 
 ```sh
-git clone https://github.com/frogfishio/dingodb
-cd dingodb
-cargo install --path crates/dingo-cli
-
-dingo put ./demo.dingo users/user-42 \
-  --json '{"name":"Alice","status":"active"}'
-
-dingo get ./demo.dingo users/user-42
-dingo history ./demo.dingo users/user-42
-dingo doctor ./demo.dingo
+cargo add dingo-sdk        # 0.2 — embedded/remote SDK (MPL-2.0)
+cargo install dingo-cli    # `dingo` operator binary (AGPL)
 ```
 
-The Rust SDK uses the same ordinary collection model:
+```toml
+# Cargo.toml
+[dependencies]
+dingo-sdk = "0.2"
+```
+
+Embedded single-node is the strongest and simplest product surface:
 
 ```rust
 use dingo_sdk::{json, Dingo, Filter};
@@ -57,6 +54,19 @@ fn main() -> Result<(), dingo_sdk::Error> {
     Ok(())
 }
 ```
+
+CLI (after `cargo install dingo-cli`):
+
+```sh
+dingo put ./demo.dingo users/user-42 \
+  --json '{"name":"Alice","status":"active"}'
+
+dingo get ./demo.dingo users/user-42
+dingo history ./demo.dingo users/user-42
+dingo doctor ./demo.dingo
+```
+
+From a git checkout (contributors): `cargo install --path crates/dingo-cli`.
 
 Collections are schemaless by default. JSON and raw bytes are first-class.
 Keys, filters, indexes, streaming, and history are available without requiring
