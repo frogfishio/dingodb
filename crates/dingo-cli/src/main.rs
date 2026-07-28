@@ -15,6 +15,7 @@ use serde_json::{json as sjson, Value as JsonValue};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+mod console;
 use std::process::ExitCode;
 
 const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
@@ -79,6 +80,13 @@ enum Command {
     },
     /// Show event history for a key (embedded).
     History { store: PathBuf, target: String },
+    /// Minimal interactive console.
+    ///
+    /// Invocation: `dingo console ./store`
+    Console {
+        /// Store directory.
+        store: PathBuf,
+    },
     /// Read-only store health report (DX_SPEC §13.3).
     Doctor { store: PathBuf },
     /// Evidence-preserving salvage to a new path (DX_SPEC §13.4, DEF-011).
@@ -348,6 +356,7 @@ fn run() -> Result<(), String> {
         Command::Get { store, target } => cmd_get(&store, &target, json_out),
         Command::Delete { store, target } => cmd_delete(&store, &target, json_out),
         Command::List { store, collection } => cmd_list(&store, collection.as_deref(), json_out),
+        Command::Console { store } => console::run_console(&store),
         Command::PutBytes {
             store,
             target,
