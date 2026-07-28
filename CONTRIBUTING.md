@@ -120,8 +120,10 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 | Cluster | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
 Immediate priorities: production-readiness work in [DEFECTS.md](DEFECTS.md)
-(containment done first: truthful claims + bind gates). Network Raft quorum,
-native cloud SDKs, and erasure codecs remain future.
+(containment done first: truthful claims + bind gates). Product wedge and
+labor order: [doc/PRIME_TIME_PLAN.md](doc/PRIME_TIME_PLAN.md) (embedded first;
+cluster/archive deferred). Network Raft quorum, native cloud SDKs, and erasure
+codecs remain future.
 
 Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
 

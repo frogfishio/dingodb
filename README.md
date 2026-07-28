@@ -1,39 +1,154 @@
 # DingoDB
 
+DingoDB is a deterministic relational document engine that lets developers build nested application artefacts directly from relational data, using explicit enrichment semantics instead of hidden joins and ORM hydration.
+
+DingoDB is not trying to be another SQL replacement or another document database. It is built around a different idea:
+
+- **ENR** relates artefacts without hiding multiplicity.
+- **SDA** transforms artefacts with deterministic semantics.
+- The storage engine preserves data long enough for those artefacts to remain useful.
+
+The result is a database designed for applications that need both relational correctness and document-shaped output.
+
+---
+
+## The problem
+
+Modern applications usually choose between two compromises.
+
+Relational databases provide:
+
+- strong relationships;
+- mature indexing;
+- transactional semantics.
+
+But application developers often rebuild the final shape through:
+
+```
+database rows
+    ↓
+SQL joins
+    ↓
+ORM hydration
+    ↓
+application objects
+    ↓
+API JSON
+```
+
+Document databases provide convenient shapes, but relationships often move into application code.
+
+DingoDB treats relationship formation and document construction as first-class database operations.
+
+---
+
+## See the model
+
+Example:
+
+```text
+enrich customer using customers
+  matching customer_id = id
+  expect exactly_one
+
+enrich items using items
+  matching id = order_id
+  expect many
+
+enrich product using products
+  matching product_id = id
+  expect exactly_one
+
+project {
+  order_id,
+  customer.name,
+  items {
+    quantity,
+    product.name
+  }
+}
+```
+
+This is not a hidden join.
+
+Each relationship declares:
+
+- what is being added;
+- what source provides it;
+- how records relate;
+- what multiplicity is valid.
+
+The engine can reason about:
+
+```
+customer_id → customer
+        exactly one
+
+order_id → items
+        many
+
+product_id → product
+        exactly one
+```
+
+Ambiguity is not silently converted into a result.
+
+---
+
+## ENR + SDA
+
+DingoDB separates two operations.
+
+### ENR: relationship formation
+
+ENR answers:
+
+> How does this artefact relate to another artefact?
+
+The primitive operation is:
+
+```
+Match(l, R, kL, kR)
+=
+{ r ∈ R | kR(r) = kL(l) }
+```
+
+The result is always a match bag.
+
+Multiplicity is preserved until explicitly interpreted:
+
+```
+expect exactly_one
+expect optional
+expect many
+```
+
+ENR does not perform acquisition, orchestration, authentication, or transport.
+
+Those belong outside the language boundary.
+
+### SDA: deterministic transformation
+
+SDA answers:
+
+> How should this artefact be reshaped?
+
+SDA provides deterministic projection, normalization, filtering, and transformation over structured values.
+
+See:
+
+- [SDA specification](SDA_SPEC.md)
+- [DingoDB SDA profile](SDA_PROFILE.md)
+
+---
+
 ## Simple enough for a side project. Built for data that cannot be replaced.
 
-DingoDB is an embedded-first database for projects that want to start small
-without treating their data as disposable.
+DingoDB is embedded-first.
 
-Open a file. Create a collection. Store JSON or bytes. There is no server to
-provision and no schema ceremony before the first write. If the project grows,
-the same data model is designed to gain history, indexes, storage tiers,
-replication, jurisdiction controls, and forensic recovery without first being
-exported into an entirely different kind of system.
+Open a file. Create a collection. Store JSON or bytes.
 
-Most side projects disappear. Some become businesses. A few create data that
-matters long after the original application is gone. You should not need to
-predict which one you are building before choosing a database that respects
-the result.
-
-> Start with one file. Keep the data for as long as it matters.
-
-## See it work
-
-**Install from crates.io** (customer path — no monorepo required):
-
-```sh
-cargo add dingo-sdk        # 0.2 — embedded/remote SDK (MPL-2.0)
-cargo install dingo-cli    # `dingo` operator binary (AGPL)
-```
-
-```toml
-# Cargo.toml
-[dependencies]
-dingo-sdk = "0.2"
-```
-
-Embedded single-node is the strongest and simplest product surface:
+No server is required before the first write.
 
 ```rust
 use dingo_sdk::{json, Dingo, Filter};
@@ -49,13 +164,21 @@ fn main() -> Result<(), dingo_sdk::Error> {
 
     let alice = users.get("user-42")?;
     let active = users.find(&Filter::field("status").eq("active"))?;
+
     println!("{alice:?} {active:?}");
 
     Ok(())
 }
 ```
 
-CLI (after `cargo install dingo-cli`):
+Install:
+
+```sh
+cargo add dingo-sdk
+cargo install dingo-cli
+```
+
+CLI:
 
 ```sh
 dingo put ./demo.dingo users/user-42 \
@@ -66,232 +189,208 @@ dingo history ./demo.dingo users/user-42
 dingo doctor ./demo.dingo
 ```
 
-From a git checkout (contributors): `cargo install --path crates/dingo-cli`.
+Collections are schemaless by default.
 
-Collections are schemaless by default. JSON and raw bytes are first-class.
-Keys, filters, indexes, streaming, and history are available without requiring
-an operator—or requiring the application to understand DingoDB's storage
-format.
+JSON and raw bytes are first-class.
+
+---
 
 ## The doctrine
 
-The tagline is not a choice between simplicity and serious storage. It is the
-design constraint that connects them.
+DingoDB is built around one principle:
 
-### Simplicity is the default, not the ceiling
+> The importance of data is not measured by the size of the team holding it.
 
-A small application should be able to use DingoDB as a local file with a
-collection API. Distribution, tiering, recovery tools, and policy controls
-should appear only when the data or workload earns that complexity.
+A solo developer may hold the only copy of a valuable dataset.
 
-### The importance of data is not measured by team size
+A large company may hold disposable cache entries.
 
-A solo developer can hold the only copy of an irreplaceable dataset. A large
-company can hold disposable cache entries. DingoDB is built around the value
-and lifetime of the data, not the size of the organization operating it.
+DingoDB separates:
 
-### Durable truth must not depend on replaceable machinery
+- application convenience;
+- storage durability;
+- interpretation;
+- recovery.
 
-Indexes, catalogs, summaries, and placement maps make access fast, but they are
-not the data's sole authority. They are designed to be rebuilt from immutable,
-independently framed segments.
+---
 
-### Preserve first; interpret continuously
+## Preserve first. Interpret continuously.
 
-DingoDB can retain opaque or unfamiliar bytes without demanding a complete
-schema or decoder up front. New software, indexes, and interpretations can be
-added later without rewriting the original material.
+Indexes, catalogs, summaries, and placement information accelerate access.
 
-### Failure must be reported honestly
+They are not the sole authority of the data.
 
-DingoDB distinguishes complete values, partial evidence, missing extents,
-unsupported formats, unavailable keys, and conflicting evidence. It does not
-turn uncertainty into silent success, nor one damaged region into total loss.
+The design goal:
 
-### The data should outlive the stack
-
-Applications, schemas, indexes, storage hardware, cloud providers, clusters,
-and teams all change. DingoDB's job is to keep the data usable across those
-changes.
-
-## One data lifecycle
-
-Conventional databases optimize for active use. Archives optimize for cheap
-retention. DingoDB is designed so a project does not have to abandon one model
-for the other as its data ages.
-
-```text
-one write
-    │
-    ├── use now ─────── collections · keys · filters · indexes · history
-    │
-    ├── retain ──────── hot · warm · cold · archive
-    │
-    ├── reinterpret ─── new decoders · new indexes · SDA examination
-    │
-    └── recover ─────── verified data islands · explicit holes · provenance
+```
+immutable data
+      |
+      +-- rebuild indexes
+      |
+      +-- add new interpretations
+      |
+      +-- inspect with SDA
+      |
+      +-- recover surviving evidence
 ```
 
-Immutable segments keep their identity as they move through storage tiers.
-Physical placement can change while the logical data remains the same. An
-object store can keep bytes; DingoDB is designed to keep those bytes
-**database-usable**.
+A dataset should not become unusable because the original application disappeared.
 
-This is useful for projects of any size that accumulate data which may become
-impossible, expensive, or unethical to reproduce: event histories, scientific
-and device output, documents and media, AI datasets and artifacts, long-lived
-application state, compliance evidence, and records whose future value is not
-yet known.
+---
 
 ## Recovery is a consequence of the promise
 
-Damage recovery is not the product category. It is one of the proofs that
-DingoDB takes irreplaceable data seriously.
+Recovery is not the product category.
 
-A corrupt record, missing chunk, truncated segment, or lost catalog should not
-invalidate unrelated healthy material. DingoDB scans for every surviving,
-verified island and reports the gaps.
+It is a demonstration of the storage philosophy.
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│ DATA │ DATA │ █ HOLE █ │ DATA │ SCRATCH │ DATA │ DATA │
-│  ✓   │  ✓   │    ✗     │  ✓   │    ✗    │  ✓   │  ✓   │
-└─────────────────────────────────────────────────────────┘
+A damaged region should not invalidate unrelated healthy data.
+
+```
+DATA | DATA | HOLE | DATA | SCRATCH | DATA
+ ✓      ✓      ✗      ✓       ✗        ✓
 ```
 
-The rule is deliberately unsentimental:
+DingoDB reports what exists and what does not.
 
-> What is gone is gone. What remains still lives.
+It does not convert uncertainty into success.
 
-`dingo doctor` inspects without modifying the source. `dingo salvage` writes
-verified recovery evidence to a separate destination. `dingo export-live`
-materializes only current complete state when that is what the operator wants.
-`dingo backup` / `dingo restore` produce and consume content-hashed full backup
-packages (DEF-050; distinct from salvage). `dingo scrub` runs bounded integrity
-verification with durable findings (DEF-051). `dingo migrate` runs phased
-format migration into a new store without rewriting the source (DEF-052).
-`dingo config validate|show` checks versioned `dingo-config-v1` documents;
-`dingo serve --config` applies them before bind (DEF-054). Serve paths emit
-structured `dingo-log-v1` NDJSON (DEF-060) with correlation fields and no
-payloads/secrets by default. Serve also exposes `dingo-health-v1` probes
-(`health_live` / `health_ready` / `health`) and a bounded `dingo-metrics-v1`
-scrape (`metrics` RPC) for operators (DEF-061).
+Tools:
 
-[SDA](SDA_SPEC.md), the Structured Data Algebra, provides deterministic
-filtering and transformation over both normal structured values and recovered
-evidence:
+- `dingo doctor`
+- `dingo salvage`
+- `dingo export-live`
+- `dingo backup`
+- `dingo restore`
+- `dingo scrub`
+- `dingo migrate`
 
-> If DingoDB can recover it, SDA can examine it.
+See:
 
-## Grow only as far as the project needs
+- DEF-050
+- DEF-051
+- DEF-052
+- DEF-054
+- DEF-060
+- DEF-061
 
-DingoDB's intended progression is additive:
+---
 
-```text
-embedded file
-    └── remote service
-          └── partitioned cluster
-                ├── hot / warm / cold / archive tiers
-                ├── scoped transactions
-                └── jurisdiction-aware placement
+## One data lifecycle
+
+```
+one write
+    |
+    +-- use now
+    |      collections · keys · filters · indexes · history
+    |
+    +-- retain
+    |      hot · warm · cold · archive
+    |
+    +-- reinterpret
+    |      new indexes · new decoders · SDA examination
+    |
+    +-- recover
+           verified data islands · provenance · explicit holes
 ```
 
-The beginning should remain recognizable at every stage: collections, keys,
-JSON, bytes, filters, indexes, and history. Operational machinery grows around
-the data model instead of replacing it.
+Physical placement can change while logical identity remains.
 
-Transactions are deliberately scoped rather than presented as universal
-distributed ACID. Jurisdiction is designed as enforceable placement and
-movement policy rather than descriptive metadata. Both are currently design
-proposals, not completed product claims:
-
-- [Scoped transaction proposal](TRANSACTIONS.md)
-- [Jurisdiction and sovereign placement proposal](JURISDICTION_PROPOSAL.md)
+---
 
 ## Where DingoDB fits
 
-DingoDB does not try to replace every database.
+Use a relational database when:
 
-- Use a relational database when joins, relational constraints, and general
-  multi-table transactions define the workload.
-- Use an in-memory cache when the data is intentionally ephemeral.
-- Use a plain object store when preserving independent objects is sufficient.
-- Use a warehouse when curated analytical tables are the product.
-- Use DingoDB when starting simply matters, but losing the accumulated data
-  would eventually be unacceptable.
+- relational constraints define the workload;
+- SQL is the primary interface;
+- flat relational output is acceptable.
 
-The concise answer is:
+Use a document database when:
 
-> We use DingoDB because the project was easy to start, and the data became too
-> important to lose.
+- isolated document retrieval dominates.
 
-## How the design supports the doctrine
+Use an object store when:
 
-DingoDB separates the interface an application needs from the machinery that
-keeps its data viable:
+- preserving independent objects is enough.
 
-```text
+Use DingoDB when:
+
+- applications need nested artefacts;
+- relationships matter;
+- ambiguity must be explicit;
+- data must remain usable over time.
+
+The concise answer:
+
+> DingoDB is for projects that start simple but cannot afford their data becoming disposable.
+
+---
+
+## Architecture
+
+DingoDB separates application interfaces from storage machinery:
+
+```
 application
-    │
-    ▼
-collection SDK ───── JSON · bytes · filters · history
-    │
-    ▼
-append store ─────── active segment · durability receipt
-    │
-    ▼
-immutable segments ─ independently framed · verified · movable
-    │
-    ├── indexes and catalogs ─ rebuildable
-    ├── SDA examination ───── deterministic
-    └── storage tiers ─────── hot · warm · cold · archive
+    |
+    v
+collection SDK
+    |
+    v
+append store
+    |
+    v
+immutable segments
+    |
+    +-- rebuildable indexes
+    +-- SDA examination
+    +-- storage tiers
+    +-- recovery tooling
 ```
 
-The workspace is split along those responsibilities:
+Workspace responsibilities:
 
-- `dingo-format` — survival wire format, integrity, and salvage scanning;
-- `dingo-store` — single-node append store, history, chunks, and tiers;
+- `dingo-format` — survival wire format, integrity, salvage scanning;
+- `dingo-store` — single-node append store, history, chunks, tiers;
 - `dingo-sdk` — collection API for embedded, remote, and cluster backends;
 - `dingo-examine` — recovered evidence projected into SDA values;
 - `dingo-cli` — everyday and operator commands;
 - `dingo-cluster` — partition, coverage, consensus, and rebalance model;
-- `dingo-sda` / `dingo-sda-cli` — SDA+ENR1 hybrid pure evaluator and CLI (not bare crates.io `sda`).
+- `dingo-sda` / `dingo-sda-cli` — SDA + ENR evaluator.
+
+---
 
 ## Current maturity
 
-DingoDB is under active development. It is **not yet production-ready** as a
-network database or distributed storage system. The doctrine describes the
-design standard; it does not erase the distance between the current
-implementation and that standard.
+DingoDB is under active development.
+
+It is not yet production-ready as a distributed database.
+
+Current status:
 
 - **Embedded single-node:** experimental / early access; strongest current path
 - **Single-node TCP server:** development only
-- **In-process cluster:** deterministic integration-test harness
-- **Network `serve-cluster`:** experimental multi-process Raft (control plane
-  DEF-036 + data-plane commit DEF-037); still not production-ready
-- **S3/GCS:** filesystem-mirror adapter, not native cloud I/O
-- **Lifecycle and erasure coding:** scaffolds
+- **In-process cluster:** deterministic integration harness
+- **Network cluster:** experimental
+- **Cloud adapters:** filesystem-mirror adapters
 - **Wire format:** `1.0-draft`, not frozen
 
-Network quorum commit exists on the experimental path when Raft attaches, but
-do **not** treat it as a production release: multi-process Jepsen-style soak and
-other §16 gates remain open (DEF-041 follow-ons + DEF-050+; in-process seeded
-verification is DEF-041 `dingo-cluster-verify-v1`; durable rebalance DEF-038;
-anti-entropy repair DEF-039; distributed query paging DEF-040).
-
-Progress is tracked openly:
+Progress:
 
 - [Capability matrix](doc/CAPABILITY_MATRIX.md)
 - [Production-readiness work](DEFECTS.md)
-- [Work horizon self-check](doc/WORK_HORIZON.md) (stages done vs remaining gates)
-- [Release artifacts (DEF-003)](doc/RELEASE_ARTIFACTS.md)
-- [Benchmark disclosure requirements](doc/BENCHMARK_DISCLOSURE.md)
+- [Prime-time plan](doc/PRIME_TIME_PLAN.md)
+- [Work horizon](doc/WORK_HORIZON.md)
+- [Release artifacts](doc/RELEASE_ARTIFACTS.md)
+- [Benchmark disclosure](doc/BENCHMARK_DISCLOSURE.md)
 - [Delivery plan](DELIVERY_PLAN.md)
 
-## Specifications and development
+---
 
-The implementation is backed by public specifications so that durable data
-does not depend on private institutional memory:
+## Specifications
+
+The design is backed by public specifications:
 
 - [System architecture](OVERVIEW.md)
 - [Survival wire format](FORMAT_SPEC.md)
@@ -303,7 +402,7 @@ does not depend on private institutional memory:
 - [Contributing](CONTRIBUTING.md)
 - [Human demos](scripts/demos/)
 
-Run the workspace:
+Run:
 
 ```sh
 cargo test --workspace
@@ -311,20 +410,19 @@ cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e '1 + 2'
 cargo run -p dingo --bin dingo -- --help
 ```
 
+---
+
 ## License
 
-DingoDB is **multi-licensed** (not uniform MIT). MIT was temporary scaffolding
-during project setup. Adopted policy: [doc/LICENSING.md](doc/LICENSING.md).
+DingoDB is multi-licensed.
 
-| Tier | SPDX | Crates (today) |
-|------|------|----------------|
-| Permissive | MIT | `dingo-sda`, `dingo-sda-cli`, `dingo-format`, `dingo-client` |
-| Weak copyleft | MPL-2.0 | `dingo-store`, `dingo-examine`, `dingo-sdk` (default; optional `cluster` feature pulls AGPL) |
-| Network copyleft | AGPL-3.0-or-later | `dingo-cluster`, `dingo-server`, `dingo-cli` |
+See:
 
-Full texts: [LICENSE-MIT](LICENSE-MIT), [LICENSE-MPL-2.0](LICENSE-MPL-2.0),
-[LICENSE-AGPL-3.0](LICENSE-AGPL-3.0). Overview: [LICENSE](LICENSE).
+- [LICENSE-MIT](LICENSE-MIT)
+- [LICENSE-MPL-2.0](LICENSE-MPL-2.0)
+- [LICENSE-AGPL-3.0](LICENSE-AGPL-3.0)
+- [Licensing overview](doc/LICENSING.md)
 
-The storage formats and specifications are intended to remain open, documented,
-and implementable without a proprietary service. Data that cannot be replaced
-should not be held hostage by the software that first wrote it.
+The storage formats and specifications are intended to remain open, documented, and implementable without a proprietary service.
+
+Data that cannot be replaced should not be held hostage by the software that first wrote it.

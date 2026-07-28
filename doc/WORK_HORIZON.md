@@ -3,7 +3,8 @@
 Status: snapshot as of 2026-07-27  
 Audience: operators of the engineering program (humans + agents)  
 Companion: [DELIVERY_PLAN.md](../DELIVERY_PLAN.md), [DEFECTS.md](../DEFECTS.md),
-[CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md)
+[CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md),
+[PRIME_TIME_PLAN.md](PRIME_TIME_PLAN.md) (wedge + path to prime time)
 
 ## Question
 
