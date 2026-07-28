@@ -4,6 +4,12 @@ DingoDB is a deterministic relational document engine that lets developers build
 
 ---
 
+## Production maturity
+
+Not production-ready yet (features are still iterating; see DEF notes in startup output).
+
+---
+
 ## Console / CLI
 
 DingoDB includes a small CLI binary named `dingo`.
@@ -83,6 +89,3 @@ project {
 ```
 
 This is not a hidden join.
-
----
-

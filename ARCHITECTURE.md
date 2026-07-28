@@ -24,6 +24,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Enrichment algebra (ENR1 kernel in `dingo-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](CLUSTER_SPEC.md) |
 | Product framing | [USP.md](USP.md) |
+| Three-stage competitive goals and exit gates | [COMPETITIVE_GOALS.md](COMPETITIVE_GOALS.md) |
 | Staged delivery and exit criteria | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) |
 | Doctrine implementation gap map | [doc/DOCTRINE_GAPS.md](doc/DOCTRINE_GAPS.md) |
 

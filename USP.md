@@ -207,6 +207,11 @@ Category:
 
 > Damage-tolerant universal data store
 
+The staged competitive strategy is defined in
+[COMPETITIVE_GOALS.md](COMPETITIVE_GOALS.md): first SQLite plus loose files,
+then Couchbase for edge data, then MongoDB for long-lived operational document
+data.
+
 One-sentence pitch:
 
 > DingoDB is an extremely fast database for arbitrary, massive, long-lived
