@@ -152,6 +152,38 @@ impl Constraints {
         }
         true
     }
+
+    /// Whether a stream is permitted.
+    pub fn allows_stream(&self, id: StreamId) -> bool {
+        for c in &self.inner {
+            if let Constraint::StreamAllowlist(ids) = c {
+                if !ids.contains(&id) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Maximum query work units when constrained; `None` means unbounded by certificate.
+    pub fn max_query_work(&self) -> Option<u64> {
+        for c in &self.inner {
+            if let Constraint::MaxQueryWork(max) = c {
+                return Some(*max);
+            }
+        }
+        None
+    }
+
+    /// Maximum result bytes when constrained.
+    pub fn max_result_bytes(&self) -> Option<u64> {
+        for c in &self.inner {
+            if let Constraint::MaxResultBytes(max) = c {
+                return Some(*max);
+            }
+        }
+        None
+    }
 }
 
 fn merge_pair(a: &Constraint, b: &Constraint) -> Result<Constraint, HeapError> {

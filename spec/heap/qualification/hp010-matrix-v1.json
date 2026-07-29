@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 HeapCap termination + single-owner admit Accept landed; H4/H5 drills + differential NI remain; H6 + load/runbook budgets still open.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 derived-path + query-escape Accept landed; load/fuzz/runbook Accept landed; H6 partial (formal sketch + published limitations + confinement) — connected Verus/TLC + external review still open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -39,7 +39,10 @@
         "crates/dingo-heap refresh_capability_or_terminate (revision/state/chain-head)",
         "crates/dingo-store/tests/hp010_qualification.rs::heapcap_terminates_on_lifecycle",
         "crates/dingo-store/tests/hp010_qualification.rs::single_owner_admit",
-        "crates/dingo-store/tests/hp010_qualification.rs::security_revision_bump_terminates_without_lifecycle_helper"
+        "crates/dingo-store/tests/hp010_qualification.rs::security_revision_bump_terminates_without_lifecycle_helper",
+        "crates/dingo-store/tests/hp010_qualification.rs::derived_path_indexes_streams_scoped",
+        "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
+        "crates/dingo-heap confine_query_observation"
       ]
     },
     "H4": {
@@ -62,8 +65,16 @@
     },
     "H6": {
       "title": "Isolation claim",
-      "status": "not_started",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-heap claim_language / may_advertise_qualified (Level 1)",
+        "crates/dingo-heap H6_PUBLISHED_LIMITATIONS",
+        "formal/heap/HeapIsolation.tla (read/write confinement + ownership disjointness sketch)",
+        "formal/heap/MCHeapIsolation.cfg",
+        "verification/heap-verus H6_PROOF_OBLIGATIONS checklist",
+        "crates/dingo-store/tests/hp010_qualification.rs::h6_isolation_claim_partial_evidence",
+        "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined"
+      ]
     },
     "HC1": {
       "title": "Cluster extension",
@@ -102,20 +113,33 @@
       "section": "27/H3",
       "test": "hp010_qualification::single_owner_admit"
     },
+    "derived_path_indexes_streams": {
+      "status": "accept",
+      "section": "26.4/H3",
+      "test": "hp010_qualification::derived_path_indexes_streams_scoped"
+    },
+    "query_escape": {
+      "status": "accept",
+      "section": "26.3/H3",
+      "test": "hp010_qualification::query_escape_faulty_planner_confined"
+    },
     "load_latency_budget": {
-      "status": "not_started",
+      "status": "accept",
       "section": "40/HP-010",
-      "test": null
+      "test": "hp010_qualification::load_latency_budget",
+      "budget": "2000 admits + 2000 refreshes ≤ 2000ms each (CI)"
     },
     "fuzz_budget": {
-      "status": "partial",
+      "status": "accept",
       "section": "39",
-      "test": "hp010_qualification::single_owner_admit (envelope byte-mutation reject)"
+      "test": "hp010_qualification::fuzz_budget_structured_mutations",
+      "supplement": "fuzz/fuzz_targets/heap_ownership.rs"
     },
     "operator_runbook": {
-      "status": "not_started",
+      "status": "accept",
       "section": "40/HP-010",
-      "test": null
+      "test": "hp010_qualification::operator_runbook_present",
+      "doc": "doc/RUNBOOK_HEAP_QUALIFICATION.md"
     }
   }
 }

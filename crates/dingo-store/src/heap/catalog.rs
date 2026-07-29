@@ -202,6 +202,13 @@ impl HeapMetaLayout {
         self.heap_dir(heap_id).join(STREAMS_CATALOG_FILE)
     }
 
+    /// Heap-scoped derived index directory (`indexes/{heap_hex}/`).
+    ///
+    /// Derived indexes MUST never be shared across heaps (Gate H3 / §26.4).
+    pub fn heap_index_dir(&self, heap_id: &[u8; 16]) -> PathBuf {
+        self.data_root.join("indexes").join(hex16(heap_id))
+    }
+
     /// Object descriptor root (collections or streams).
     pub fn object_dir(&self, heap_id: &[u8; 16], kind: ObjectKind, object_id: &[u8; 16]) -> PathBuf {
         let sub = match kind {
@@ -1207,7 +1214,7 @@ pub fn delete_rebuildable_catalogs(layout: &HeapMetaLayout) -> Result<(), StoreE
                 }
             }
         }
-        let index_dir = layout.data_root.join("indexes").join(hex16(&heap_id));
+        let index_dir = layout.heap_index_dir(&heap_id);
         if index_dir.is_dir() {
             fs::remove_dir_all(index_dir)?;
         }

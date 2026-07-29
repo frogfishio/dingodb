@@ -1,0 +1,115 @@
+# Heap qualification operator runbook (HP-010)
+
+Status: operational draft for single-node `dingo-heap-v1` qualification evidence  
+Normative anchors: [HEAP_SPEC.md](../HEAP_SPEC.md) §26–§27 / §39–§40 (HP-010),
+matrix `spec/heap/qualification/hp010-matrix-v1.json`.
+
+This runbook tells operators how to execute the drills that the qualification
+matrix records, how to interpret `qualified=false`, and what the isolation claim
+does **not** cover. It does not authorize advertising a qualified profile.
+
+## 1. Claim honesty
+
+Until every mandatory gate/drill in the HP-010 matrix is `accept` **and** Gate H6
+passes external review, product language remains Level 1:
+
+> DingoDB provides named heap namespaces; strong access-isolation qualification
+> is in progress.
+
+Machine check:
+
+```bash
+./scripts/verify-heap.sh
+# asserts may_advertise_qualified() == false and matrix.qualified == false
+```
+
+Do **not** flip `QUALIFIED_CLAIM` or matrix `qualified` in a release branch without
+complete evidence.
+
+## 2. Pre-flight
+
+1. Build with the same toolchain CI uses.
+2. Confirm `spec/heap/qualification/hp010-matrix-v1.json` is present and
+   `qualified` is `false`.
+3. Run `./scripts/verify-heap.sh quick` — must exit 0.
+4. Optionally run `./scripts/verify-heap.sh full` before a release candidate.
+
+## 3. Mandatory drills (operator checklist)
+
+| Drill | How to re-run | Pass means |
+|-------|---------------|------------|
+| Differential NI | `cargo test -p dingo-store --test hp010_qualification differential_ni_labelled_units` | Target-heap observation unchanged under other-heap mutation |
+| Key-loss | `… key_loss_drill` | Destroyed key material is inert; second destroy fails closed |
+| Restore payload-only | `… restore_drills_payload_and_retain_id` | Payload restore grants no access |
+| DR retain-ID | same test | Ceremony fences old deployment; old credentials invalid |
+| HeapCap lifecycle | `… heapcap_terminates_on_lifecycle` | Suspend/retire terminates prior caps |
+| Single-owner admit | `… single_owner_admit` | Known owner only; mutations never admit under wrong heap |
+| Derived paths | `… derived_path_indexes_streams_scoped` | Indexes/streams catalogs stay heap-scoped |
+| Query escape | `… query_escape_faulty_planner_confined` | Faulty unconstrained planner cannot escape bound heap |
+| Load/latency | `… load_latency_budget` | Admit/decide/refresh meet recorded budget |
+| Fuzz budget | `… fuzz_budget_structured_mutations` | Structured adversarial corpus rejects escape |
+| Retention / incomplete purge | `… retention_and_incomplete_purge_still_retired` | Unavailable domain stays retired |
+
+## 4. Day-2 operations tied to qualification
+
+### 4.1 Key loss
+
+1. Stop writers for the heap.
+2. Invoke data-key destruction (in-process `destroy_data_key` or operator CLI when shipped).
+3. Confirm destruction receipt fingerprint is non-zero and material is unreadable.
+4. Attempt restore of ciphertext without the new key — must fail closed.
+
+### 4.2 Payload restore vs DR retain-ID
+
+- **Payload-only** restore always creates a **new** heap id and must not mint
+  ordinary access.
+- **Retain-ID** disaster recovery requires an explicit ceremony that fences the
+  old `DeploymentId` and advances authority epoch. Refuse concurrent live
+  authority without ceremony.
+
+### 4.3 Incomplete purge
+
+If any media domain (tier / replica) is unavailable, abort incomplete purge and
+leave the heap **retired** with a permanent identity tombstone. Do not treat
+partial wipe as purged.
+
+### 4.4 Derived catalogs / indexes
+
+Derived indexes live under `indexes/{heap_hex}/`. Wiping rebuildable catalogs
+must not mix objects across heaps. After wipe, rebuild from descriptor chains
+only (`rebuild_and_persist_all_catalogs`).
+
+## 5. Load / latency and fuzz budgets
+
+Recorded budgets (single-node CI, debug-friendly):
+
+| Surface | Budget |
+|---------|--------|
+| 2 000 `admit_frame_to_heap` calls | ≤ 2 000 ms wall |
+| 2 000 `decide` + `refresh_capability_or_terminate` | ≤ 2 000 ms wall |
+| Structured fuzz corpus (envelope + stream/collection bind + concat) | 100% reject or same-heap Known only |
+
+Raise budgets only by matrix amendment — never by silently skipping the drill.
+
+LibFuzzer target `fuzz/fuzz_targets/heap_ownership.rs` supplements CI; overnight
+fuzz is recommended before claiming H6.
+
+## 6. Gate H6 limitations (published)
+
+Logical heap isolation does **not** protect against:
+
+- privileged administrators with local recovery / authority ceremony access;
+- physical access to durable media or process memory;
+- shared-resource side channels (timing, cache, scheduler contention);
+- compromise of the serving-process TCB.
+
+External security review and connected Verus/TLA evidence remain required before
+any Level-2 claim language.
+
+## 7. When something fails
+
+1. Leave `qualified=false`.
+2. File the failing drill name + matrix path in the release notes.
+3. Do not ship marketing language that implies cryptographic isolation.
+4. Re-run `./scripts/verify-heap.sh` after the fix; update matrix evidence paths
+   only when the Accept test is green.
