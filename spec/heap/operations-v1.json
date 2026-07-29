@@ -1,0 +1,1275 @@
+{
+  "profile": "dingo-heap-v1",
+  "spec_section": "32.3",
+  "rights": [
+    {
+      "name": "Read",
+      "bit": 0,
+      "mask": 1
+    },
+    {
+      "name": "ReadHistory",
+      "bit": 1,
+      "mask": 2
+    },
+    {
+      "name": "Write",
+      "bit": 2,
+      "mask": 4
+    },
+    {
+      "name": "IndexAdmin",
+      "bit": 3,
+      "mask": 8
+    },
+    {
+      "name": "Export",
+      "bit": 4,
+      "mask": 16
+    },
+    {
+      "name": "Backup",
+      "bit": 5,
+      "mask": 32
+    },
+    {
+      "name": "Restore",
+      "bit": 6,
+      "mask": 64
+    },
+    {
+      "name": "AuditRead",
+      "bit": 7,
+      "mask": 128
+    },
+    {
+      "name": "PolicyAdmin",
+      "bit": 8,
+      "mask": 256
+    },
+    {
+      "name": "LifecycleAdmin",
+      "bit": 9,
+      "mask": 512
+    },
+    {
+      "name": "HoldAdmin",
+      "bit": 10,
+      "mask": 1024
+    },
+    {
+      "name": "Recover",
+      "bit": 11,
+      "mask": 2048
+    },
+    {
+      "name": "HeapAdmin",
+      "bit": 12,
+      "mask": 4096
+    },
+    {
+      "name": "Retire",
+      "bit": 13,
+      "mask": 8192
+    },
+    {
+      "name": "Purge",
+      "bit": 14,
+      "mask": 16384
+    },
+    {
+      "name": "DataKeyAdmin",
+      "bit": 15,
+      "mask": 32768
+    },
+    {
+      "name": "PlacementAdmin",
+      "bit": 16,
+      "mask": 65536
+    }
+  ],
+  "state_admission": {
+    "active": [
+      100,
+      101,
+      105,
+      106,
+      107,
+      108,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      130,
+      131,
+      132,
+      133,
+      140,
+      141,
+      142,
+      143,
+      150,
+      151,
+      152,
+      153,
+      154,
+      155,
+      156,
+      160,
+      161,
+      163,
+      165,
+      167,
+      170,
+      171,
+      172,
+      173,
+      180,
+      181,
+      190,
+      191,
+      192,
+      193,
+      194,
+      195,
+      196,
+      200
+    ],
+    "read_only": [
+      100,
+      101,
+      105,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      130,
+      140,
+      141,
+      143,
+      150,
+      151,
+      152,
+      153,
+      154,
+      155,
+      156,
+      160,
+      161,
+      162,
+      163,
+      164,
+      166,
+      167,
+      170,
+      171,
+      172,
+      173,
+      180,
+      181,
+      190,
+      195,
+      196,
+      200
+    ],
+    "suspended": [
+      100,
+      141,
+      143,
+      150,
+      151,
+      152,
+      153,
+      154,
+      155,
+      156,
+      160,
+      162,
+      163,
+      167,
+      170,
+      171,
+      172,
+      173,
+      180
+    ],
+    "retired": [
+      100,
+      141,
+      143,
+      150,
+      151,
+      152,
+      153,
+      154,
+      155,
+      164,
+      167,
+      170,
+      171,
+      180
+    ],
+    "purging": [
+      100,
+      141,
+      143,
+      150,
+      153,
+      154,
+      155,
+      164,
+      167,
+      170,
+      180
+    ],
+    "purged": [
+      100,
+      143,
+      164,
+      167,
+      180
+    ]
+  },
+  "operations": [
+    {
+      "id": 1,
+      "wire_name": "ping",
+      "status": "active",
+      "surface": "public",
+      "rights_mask": 0,
+      "request_schema": "rpc-v1/ping.request.json",
+      "response_schema": "rpc-v1/ping.response.json",
+      "allowed_states": [],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": false,
+      "authorization_checkpoint": "none"
+    },
+    {
+      "id": 2,
+      "wire_name": "health_live",
+      "status": "active",
+      "surface": "public",
+      "rights_mask": 0,
+      "request_schema": "rpc-v1/health_live.request.json",
+      "response_schema": "rpc-v1/health_live.response.json",
+      "allowed_states": [],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": false,
+      "authorization_checkpoint": "none"
+    },
+    {
+      "id": 3,
+      "wire_name": "health_ready",
+      "status": "active",
+      "surface": "public",
+      "rights_mask": 0,
+      "request_schema": "rpc-v1/health_ready.request.json",
+      "response_schema": "rpc-v1/health_ready.response.json",
+      "allowed_states": [],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": false,
+      "authorization_checkpoint": "none"
+    },
+    {
+      "id": 100,
+      "wire_name": "heap_describe",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging",
+        "purged"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 101,
+      "wire_name": "heap_directory",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 105,
+      "wire_name": "collection_open",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 106,
+      "wire_name": "collection_create",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 107,
+      "wire_name": "collection_rename",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 108,
+      "wire_name": "collection_retire",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 110,
+      "wire_name": "list_collections",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 111,
+      "wire_name": "get",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 112,
+      "wire_name": "get_bytes",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 113,
+      "wire_name": "get_payload",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 114,
+      "wire_name": "list_keys",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 115,
+      "wire_name": "scan_json",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 116,
+      "wire_name": "find",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 117,
+      "wire_name": "history",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 2,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 118,
+      "wire_name": "dql_query",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 119,
+      "wire_name": "sda_query",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 120,
+      "wire_name": "put",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 121,
+      "wire_name": "put_bytes",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 122,
+      "wire_name": "delete",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 130,
+      "wire_name": "index_list",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 131,
+      "wire_name": "index_create",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 8,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 132,
+      "wire_name": "index_drop",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 8,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 133,
+      "wire_name": "index_rebuild",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 8,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 140,
+      "wire_name": "export",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 16,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 141,
+      "wire_name": "backup_create",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 32,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 142,
+      "wire_name": "restore_import",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 64,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 143,
+      "wire_name": "audit_read",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 128,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging",
+        "purged"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 150,
+      "wire_name": "policy_get",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 151,
+      "wire_name": "policy_set",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 256,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 152,
+      "wire_name": "lifecycle_set",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 512,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 153,
+      "wire_name": "hold_place",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1024,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 154,
+      "wire_name": "hold_release",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1024,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 155,
+      "wire_name": "recover_examine",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 2048,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 156,
+      "wire_name": "tier_move",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 512,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 160,
+      "wire_name": "heap_rename",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 161,
+      "wire_name": "heap_suspend",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 162,
+      "wire_name": "heap_resume",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "read_only",
+        "suspended"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 163,
+      "wire_name": "heap_retire",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 8192,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended"
+      ],
+      "high_impact_confirmation": "RETIRE <canonical HeapId>",
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 164,
+      "wire_name": "heap_purge",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 16384,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "read_only",
+        "retired",
+        "purging",
+        "purged"
+      ],
+      "high_impact_confirmation": "PURGE <canonical HeapId>",
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 165,
+      "wire_name": "heap_set_read_only",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 166,
+      "wire_name": "heap_set_active",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 167,
+      "wire_name": "heap_alias_release",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging",
+        "purged"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 170,
+      "wire_name": "data_key_status",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 32768,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 171,
+      "wire_name": "data_key_rotate",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 32768,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 172,
+      "wire_name": "placement_get",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 173,
+      "wire_name": "placement_set",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 65536,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 180,
+      "wire_name": "heap_metrics",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only",
+        "suspended",
+        "retired",
+        "purging",
+        "purged"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 181,
+      "wire_name": "heap_health",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 190,
+      "wire_name": "stream_open",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 191,
+      "wire_name": "stream_create",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 192,
+      "wire_name": "stream_rename",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 193,
+      "wire_name": "stream_retire",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4096,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 194,
+      "wire_name": "stream_append",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 4,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": false,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    },
+    {
+      "id": 195,
+      "wire_name": "stream_read",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 1,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 196,
+      "wire_name": "stream_history",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 2,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": false,
+      "authorization_checkpoint": "before_read"
+    },
+    {
+      "id": 200,
+      "wire_name": "batch",
+      "status": "reserved",
+      "surface": "heap",
+      "rights_mask": 0,
+      "request_schema": null,
+      "response_schema": null,
+      "allowed_states": [
+        "active",
+        "read_only"
+      ],
+      "high_impact_confirmation": null,
+      "returns_data": true,
+      "mutates_data": true,
+      "authorization_checkpoint": "before_effect"
+    }
+  ]
+}

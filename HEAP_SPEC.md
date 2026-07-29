@@ -100,6 +100,41 @@ separate `dingo-authority` binary. Do not begin HP-008 network activation until
 HP-005 Accept criteria for local ceremony are met or explicitly waived for an
 unqualified profile.
 
+#### Remaining delivery sequence
+
+Dependency order from §40 (do not invent a parallel path). Landed work stays
+above the line; everything below is still open.
+
+```text
+DONE   HP-000 contract → HP-001 kernel → HP-002 ownership → HP-003 façades → HP-004 catalogs
+NEXT   HP-005 authority + local ceremony (+ dingo-authority binary)
+         │
+         ├─► HP-006 legacy migration          (needs HP-004 + HP-005)
+         ├─► HP-007 SDK Heap / typed handles  (needs HP-003 + HP-004; can start
+         │                                      after HP-004, but ship after or
+         │                                      alongside HP-005 for usable caps)
+         ├─► HP-009 lifecycle / backup / DR   (needs HP-004 + HP-005)
+         │
+         └─► HP-008 qualified network         (needs HP-005 + HP-007)
+                   │
+                   └─► HP-010 single-node qualification  (needs HP-005…HP-009)
+                             │                              first dingo-heap-v1 claim
+                             └─► HP-011 cluster control
+                                       └─► HP-012 cluster qualification
+```
+
+**Critical path to a qualified single-node claim:**  
+HP-005 → (HP-007 ∥ HP-009 ∥ HP-006) → HP-008 → HP-010.
+
+**Parallelism after HP-005:** HP-006, HP-007, and HP-009 may proceed in
+parallel once HP-005 Accept is met. HP-008 waits on both HP-005 and HP-007.
+HP-010 waits on HP-005 through HP-009. Cluster (HP-011/012) starts only after
+HP-010.
+
+**Explicitly deferred off this path (do not block HP-005):**  
+HP-000 authority/RPC vector remainder (lands with HP-005/HP-008), HP-001
+Verus/Kani scaffolds. Do not open HP-011 before HP-010 Accept.
+
 ## 1. Purpose
 
 A DingoDB deployment may serve more than one independent body of application

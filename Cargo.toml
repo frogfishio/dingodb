@@ -4,6 +4,7 @@ members = [
   "crates/sda-cli",
   "crates/dingo-format",
   "crates/dingo-heap",
+  "crates/dingo-authority",
   "crates/dingo-store",
   "crates/dingo-client",
   "crates/dingo-sdk",
@@ -35,6 +36,7 @@ repository = "https://github.com/frogfishio/dingodb"
 sda-core = { package = "dingo-sda", path = "crates/sda-core", version = "0.2.0" }
 dingo-format = { path = "crates/dingo-format", version = "0.2.0" }
 dingo-heap = { path = "crates/dingo-heap", version = "0.2.0" }
+dingo-authority = { path = "crates/dingo-authority", version = "0.2.0" }
 dingo-store = { path = "crates/dingo-store", version = "0.2.0" }
 dingo-client = { path = "crates/dingo-client", version = "0.2.0" }
 dingo-sdk = { path = "crates/dingo-sdk", version = "0.2.0" }

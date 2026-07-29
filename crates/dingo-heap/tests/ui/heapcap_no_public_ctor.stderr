@@ -1,0 +1,17 @@
+warning: unreachable call
+ --> tests/ui/heapcap_no_public_ctor.rs:3:16
+  |
+3 |         inner: std::sync::Arc::new(loop {}),
+  |                ^^^^^^^^^^^^^^^^^^^ ------- any code following this expression is unreachable
+  |                |
+  |                unreachable call
+  |
+  = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: field `inner` of struct `HeapCap` is private
+ --> tests/ui/heapcap_no_public_ctor.rs:3:9
+  |
+2 |     let _cap = dingo_heap::HeapCap {
+  |                ------------------- in this type
+3 |         inner: std::sync::Arc::new(loop {}),
+  |         ^^^^^ private field

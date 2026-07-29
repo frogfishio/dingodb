@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "live"
+  ],
+  "properties": {
+    "live": {
+      "const": true
+    }
+  }
+}

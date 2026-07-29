@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rpc-v1.schema.json",
+  "title": "dingo-heap-v1 RPC envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "op",
+    "ok"
+  ],
+  "properties": {
+    "op": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "args": {
+      "type": "object"
+    },
+    "result": {
+      "type": "object"
+    },
+    "error": {
+      "type": "string",
+      "enum": [
+        "heap_unavailable",
+        "unknown_operation",
+        "invalid_args",
+        "not_ready"
+      ]
+    }
+  }
+}

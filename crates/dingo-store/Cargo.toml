@@ -17,6 +17,9 @@ default = ["legacy-raw-store"]
 # Public unscoped [`Store`] for Stages 3–9 callers. Disable for the qualified
 # heap isolation surface (`StoreHost` / `HeapStore` façades only).
 legacy-raw-store = []
+# Local-only staged genesis / publish used by `dingo-authority` (HP-005).
+# MUST NOT be enabled in the qualified data-service target.
+authority-provisioning = []
 
 [dependencies]
 dingo-format.workspace = true
