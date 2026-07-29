@@ -127,6 +127,10 @@ pub enum StoreError {
     /// Heap capability check failed (HP-003 façades).
     #[error("heap capability: {0}")]
     HeapCapability(String),
+
+    /// One-heap admission rejected the frame (HP-002).
+    #[error("heap admit: {0}")]
+    HeapAdmit(String),
 }
 
 impl StoreError {

@@ -17,9 +17,11 @@
 /// manifests and benchmark disclosure (OVERVIEW §12.2).
 pub const WIRE_PROFILE_LABEL: &str = "1.0-draft";
 
+mod admit;
 mod cbor_envelope;
 mod chunks;
 mod compat;
+mod descriptors;
 mod events;
 mod frame;
 mod integrity;
@@ -53,6 +55,12 @@ pub use frame::{
 pub use integrity::{body_hash, prefix_crc32c, suffix_crc32c, BODY_HASH_LEN};
 pub use kinds::{FrameFlags, FrameKind};
 pub use limits::SafetyLimits;
+pub use admit::{admit_frame_to_heap, salvage_admit_frame, AdmitDecision, AdmitError};
+pub use descriptors::{
+    decode_heap_descriptor, decode_object_descriptor, descriptor_hash, encode_heap_descriptor,
+    encode_object_descriptor, DescriptorError, HeapDescriptor, HeapDescriptorState,
+    ObjectDescriptor, ObjectDescriptorState, HEAP_DESCRIPTOR_PROFILE,
+};
 pub use ownership::{
     agree_ownership, encode_heap_binding_envelope, parse_ownership_envelope, OwnershipError,
     OwnershipEvidence, ENV_COLLECTION_ID, ENV_HEAP_ID, ENV_OWNERSHIP_PROFILE, ENV_SOURCE_HEAP_ID,

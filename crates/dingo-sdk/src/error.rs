@@ -300,6 +300,7 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::CursorInvalid(_) => ErrorCode::QueryInvalid,
         StoreError::CursorStale(_) => ErrorCode::ConsistencyViolation,
         StoreError::HeapCapability(_) => ErrorCode::PermissionDenied,
+        StoreError::HeapAdmit(_) => ErrorCode::PermissionDenied,
     }
 }
 

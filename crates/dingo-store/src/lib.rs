@@ -124,9 +124,13 @@ pub use failpoint::{
     consume_short_write as consume_failpoint_short_write, disarm as disarm_failpoint,
     hit as hit_failpoint, short_write_len as failpoint_short_write_len, Action as FailpointAction,
 };
-/// Capability-gated heap façades (HP-003). Prefer these over raw [`Store`] for
-/// qualified heap isolation; [`Store`] remains the legacy single-namespace API.
-pub use heap::{HeapStore, MaintenanceStore, RecoveryStore, ReplicaStore, StoreHost};
+/// Capability-gated heap façades (HP-003). Prefer these over the legacy raw store
+/// for qualified heap isolation; the unscoped store remains available behind the
+/// default `legacy-raw-store` feature.
+pub use heap::{
+    heap_binding_envelope, require_admit, HeapStore, MaintenanceStore, RecoveryStore, ReplicaStore,
+    StoreHost,
+};
 pub use history::{HistoryEvent, SubjectHistory};
 pub use hydra::{
     build as build_hydra_index, build_many as build_hydra_indexes, classify_keys,
@@ -181,8 +185,12 @@ pub use segment_catalog::{
 };
 pub use store::{
     subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,
-    SalvageCopyReport, SalvageReport, Store, WriteReceipt, MAX_WRITER_SHARDS,
+    SalvageCopyReport, SalvageReport, WriteReceipt, MAX_WRITER_SHARDS,
 };
+/// Legacy unscoped store API. Prefer [`StoreHost`] / [`HeapStore`] on the
+/// qualified heap path (`--no-default-features` hides this export).
+#[cfg(feature = "legacy-raw-store")]
+pub use store::Store;
 pub use tier::{
     classify_segment_bytes, tier_placement_path, FormatClassification, MigrationEvidence,
     SegmentPlacement, TierAwareGet, TierClass, TierCoverage, TierMoveMode, TierPlacement,

@@ -12,6 +12,12 @@ keywords = ["dingodb", "store", "append-only", "salvage", "durability"]
 categories = ["database-implementations", "filesystem"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**", "crash_matrix.v1.json"]
 
+[features]
+default = ["legacy-raw-store"]
+# Public unscoped [`Store`] for Stages 3–9 callers. Disable for the qualified
+# heap isolation surface (`StoreHost` / `HeapStore` façades only).
+legacy-raw-store = []
+
 [dependencies]
 dingo-format.workspace = true
 dingo-heap.workspace = true
@@ -29,3 +35,4 @@ tempfile.workspace = true
 name = "dingo-store-crash-child"
 path = "src/bin/crash_child.rs"
 doc = false
+required-features = ["legacy-raw-store"]

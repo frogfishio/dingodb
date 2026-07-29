@@ -48,10 +48,10 @@ Before Gate H6, product language remains:
 
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
-| **HP-000** | Machine-readable contract | **Landed (gaps)** | `spec/heap/operations-v1.json`, `cbor-v1.json`, schemas/fixtures for active ops **1–3** only; `dingo-heap` `build.rs` generates registry; `scripts/check_heap_architecture.sh` + CI step. Bootstrap cert/proof vectors verify with two decoders; negative mutations reject. **Gap:** full §38.1 corpus beyond bootstrap is still scaffolded in `vectors-v1.json`. |
+| **HP-000** | Machine-readable contract | **Landed (format closed; authority deferred)** | Ops/schemas/fixtures for **1–3**; bootstrap cert/proof + expanded negative mutations; **`format_vectors`** for SubjectV2 subtypes, heap/object descriptors, §34.7 hashes, and admit accept/reject. Authority/RPC remainder of §38.1 explicitly deferred to HP-005/HP-008 (`corpus_status`). |
 | **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/dingo-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
-| **HP-002** | Durable ownership | **Partial** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree; `ActiveSegment::create_with_descriptor_envelope`; fuzz target `heap_ownership`. **Gap:** full descriptor body schemas (§34.5), store-level one-heap segment enforcement, and the adversarial admit-wrong-heap corpus are not complete. |
-| **HP-003** | Store compilation firewall | **Partial** | `kernel::PhysicalStore` alias; `StoreHost`, `HeapStore`, `MaintenanceStore`, `ReplicaStore`, `RecoveryStore`; architecture checker. **Gap:** public `dingo_store::Store` remains exported for legacy callers; Rustdoc still exposes unscoped put/get/scan. Full consumer cutover and “no public raw store” accept criterion are open. |
+| **HP-002** | Durable ownership | **Landed (Accept corpus)** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree (merge); descriptor encode/decode + `descriptor_hash`; `admit_frame_to_heap` / salvage; store `require_admit` + `HeapStore` SubjectV2 heap check; adversarial unit/corpus rejects wrong-heap. |
+| **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind default feature `legacy-raw-store`; `--no-default-features` is façades-only and CI-checked. Legacy Stages 3–9 callers keep default features until HP-006/HP-007 cutover. |
 | HP-004 | Heap and object catalogs | Not started | Next handoff after HP-003 gaps close or are explicitly deferred. |
 | HP-005 | Authority and local ceremony | Not started | Includes `dingo-authority` binary. |
 | HP-006 | Legacy migration | Not started | §36. |
@@ -78,11 +78,12 @@ Before Gate H6, product language remains:
 #### Primary tree map (current)
 
 ```text
-spec/heap/                     # HP-000 contract artifacts
+spec/heap/                     # HP-000 contract + format_vectors
 crates/dingo-heap/             # HP-001 kernel (MIT)
-crates/dingo-format/           # HP-002 ownership + SubjectV2 (+ kinds 10–13)
-crates/dingo-store/src/kernel/ # PhysicalStore alias (crate-private intent)
-crates/dingo-store/src/heap/   # HP-003 façades (legacy Store still public)
+crates/dingo-format/           # HP-002 ownership, SubjectV2, descriptors, admit
+crates/dingo-store/src/kernel/ # PhysicalStore alias (crate-private)
+crates/dingo-store/src/heap/   # HP-003 façades (+ one_heap admit)
+                               # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
 formal/heap/                   # TLA+ scaffold
@@ -92,10 +93,10 @@ fuzz/fuzz_targets/heap_ownership.rs
 
 #### Next recommended package
 
-Close HP-002/HP-003 accept gaps **or** start **HP-004** (heap/object catalogs)
-only with an explicit deferral note for remaining HP-003 raw-`Store` cutover.
-Do not begin HP-005 network/authority ceremony until HP-000 vector corpus and
-HP-001 proof scaffolds are on the critical path or formally deferred.
+**HP-004** (heap/object catalogs) is the next product package. HP-000 authority/RPC
+vector remainder and HP-001 Verus/Kani remain open but are explicitly deferred
+off the HP-004 critical path. Do not begin HP-005 network/authority ceremony
+until those deferred items are scheduled or waived for an unqualified profile.
 
 ## 1. Purpose
 
@@ -6162,10 +6163,9 @@ merge into the qualified path before its dependencies.
 
 ### HP-000 — Machine-readable contract
 
-**Implementation status (2026-07-29):** landed with gaps — see Implementation
-progress. Artifacts under `spec/heap/`; registry generation in `dingo-heap`;
-checker `scripts/check_heap_architecture.sh`. Outstanding for full Accept:
-complete §38.1 vector corpus.
+**Implementation status (2026-07-29):** landed for active ops + format vectors;
+authority/RPC §38.1 remainder deferred to HP-005/HP-008. See Implementation
+progress.
 
 Deliver:
 
@@ -6197,9 +6197,8 @@ property-tested, and the pure kernel passes Verus/Kani targets.
 
 ### HP-002 — Durable ownership
 
-**Implementation status (2026-07-29):** partial — format fields, SubjectV2,
-ownership helpers, and envelope-bound segment create exist; full one-heap
-admit corpus and descriptor schemas incomplete. See Implementation progress.
+**Implementation status (2026-07-29):** landed Accept corpus for ownership,
+descriptors, and admit — see Implementation progress.
 
 Depends on HP-001. Deliver frame fields 31–36, descriptor frames, subject v2,
 one-heap segment enforcement, recovery agreement checks, and fuzz targets.
@@ -6209,9 +6208,9 @@ and concatenated segments never admits a frame into the wrong heap.
 
 ### HP-003 — Store compilation firewall
 
-**Implementation status (2026-07-29):** partial — façades and architecture
-checker exist; public legacy `Store` still exported. See Implementation
-progress.
+**Implementation status (2026-07-29):** landed qualified path — façades +
+`legacy-raw-store` feature gate; `--no-default-features` hides public `Store`.
+See Implementation progress.
 
 Depends on HP-002. Make `PhysicalStore` crate-private; introduce `StoreHost`,
 `HeapStore`, `MaintenanceStore`, `ReplicaStore`, and `RecoveryStore`; add the
