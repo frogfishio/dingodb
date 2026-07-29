@@ -62,7 +62,8 @@ pub use descriptors::{
     ObjectDescriptor, ObjectDescriptorState, HEAP_DESCRIPTOR_PROFILE,
 };
 pub use ownership::{
-    agree_ownership, encode_heap_binding_envelope, parse_ownership_envelope, OwnershipError,
+    agree_ownership, encode_collection_binding_envelope, encode_heap_binding_envelope,
+    encode_stream_binding_envelope, parse_ownership_envelope, OwnershipError,
     OwnershipEvidence, ENV_COLLECTION_ID, ENV_HEAP_ID, ENV_OWNERSHIP_PROFILE, ENV_SOURCE_HEAP_ID,
     ENV_SOURCE_OBJECT_ID, ENV_STREAM_ID, OWNERSHIP_PROFILE_V1,
 };

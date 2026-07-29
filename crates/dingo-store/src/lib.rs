@@ -128,8 +128,14 @@ pub use failpoint::{
 /// for qualified heap isolation; the unscoped store remains available behind the
 /// default `legacy-raw-store` feature.
 pub use heap::{
-    heap_binding_envelope, require_admit, HeapStore, MaintenanceStore, RecoveryStore, ReplicaStore,
-    StoreHost,
+    create_object, delete_rebuildable_catalogs, heap_binding_envelope, load_staged_genesis,
+    publish_staged_genesis, rebuild_and_persist_all_catalogs, rebuild_heap_entry_from_chain,
+    rebuild_object_entry_from_chain, rename_heap, rename_object, require_admit, retire_heap,
+    retire_object, stage_heap_genesis, staging_is_non_discoverable, try_load_collections_catalog,
+    try_load_heap_catalog, try_load_streams_catalog, AdminReceipt, HeapCatalogEntry, HeapMetaLayout,
+    HeapStore, MaintenanceStore, ObjectCatalogEntry, ObjectKind, RecoveryStore, ReplicaStore,
+    StagedGenesis, StoreHost, COLLECTIONS_CATALOG_FILE as HEAP_COLLECTIONS_CATALOG_FILE,
+    HEAP_CATALOG_FILE, STREAMS_CATALOG_FILE as HEAP_STREAMS_CATALOG_FILE,
 };
 pub use history::{HistoryEvent, SubjectHistory};
 pub use hydra::{

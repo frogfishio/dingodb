@@ -1,8 +1,8 @@
 # DingoDB Heap Specification
 
 Status: Developer-ready implementation contract v0.9  
-Capability status: **Partial** — HP-000…HP-003 landed in-tree (with listed
-gaps); HP-004…HP-012 and Gates H1–H6 not started. No `dingo-heap-v1`
+Capability status: **Partial** — HP-000…HP-004 landed in-tree (with listed
+gaps); HP-005…HP-012 and Gates H1–H6 not started. No `dingo-heap-v1`
 qualified claim. See **Implementation progress** below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
@@ -36,7 +36,8 @@ criteria in §40.
 | Isolation kernel crate (`crates/dingo-heap`) | Present; HP-001 mostly landed |
 | Durable ownership in `dingo-format` | Present; HP-002 partial |
 | Store façades / architecture check | Present; HP-003 partial |
-| Catalogs, authority binary, SDK heap API, network, lifecycle, qualification | **Not started** (HP-004+) |
+| Heap/object catalogs (HP-004) | Present; staged genesis + rebuild Accept |
+| Authority binary, SDK heap API, network, lifecycle, qualification | **Not started** (HP-005+) |
 | Product claim level (§1.4 / Gate H6) | Still **Level 1 language only** — named namespaces / isolation in progress |
 
 Before Gate H6, product language remains:
@@ -52,7 +53,7 @@ Before Gate H6, product language remains:
 | **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/dingo-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
 | **HP-002** | Durable ownership | **Landed (Accept corpus)** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree (merge); descriptor encode/decode + `descriptor_hash`; `admit_frame_to_heap` / salvage; store `require_admit` + `HeapStore` SubjectV2 heap check; adversarial unit/corpus rejects wrong-heap. |
 | **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind default feature `legacy-raw-store`; `--no-default-features` is façades-only and CI-checked. Legacy Stages 3–9 callers keep default features until HP-006/HP-007 cutover. |
-| HP-004 | Heap and object catalogs | Not started | Next handoff after HP-003 gaps close or are explicitly deferred. |
+| **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `dingo-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
 | HP-005 | Authority and local ceremony | Not started | Includes `dingo-authority` binary. |
 | HP-006 | Legacy migration | Not started | §36. |
 | HP-007 | SDK capability surface | Not started | |
@@ -82,7 +83,7 @@ spec/heap/                     # HP-000 contract + format_vectors
 crates/dingo-heap/             # HP-001 kernel (MIT)
 crates/dingo-format/           # HP-002 ownership, SubjectV2, descriptors, admit
 crates/dingo-store/src/kernel/ # PhysicalStore alias (crate-private)
-crates/dingo-store/src/heap/   # HP-003 façades (+ one_heap admit)
+crates/dingo-store/src/heap/   # HP-003 façades + HP-004 catalog
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
@@ -93,10 +94,11 @@ fuzz/fuzz_targets/heap_ownership.rs
 
 #### Next recommended package
 
-**HP-004** (heap/object catalogs) is the next product package. HP-000 authority/RPC
-vector remainder and HP-001 Verus/Kani remain open but are explicitly deferred
-off the HP-004 critical path. Do not begin HP-005 network/authority ceremony
-until those deferred items are scheduled or waived for an unqualified profile.
+**HP-005** (authority and local ceremony) is the next product package. It binds
+staged genesis hashes to rollback-resistant authority and introduces the
+separate `dingo-authority` binary. Do not begin HP-008 network activation until
+HP-005 Accept criteria for local ceremony are met or explicitly waived for an
+unqualified profile.
 
 ## 1. Purpose
 
@@ -6222,6 +6224,8 @@ after obtaining a capability.
 
 ### HP-004 — Heap and object catalogs
 
+**Status:** landed in-tree (Accept rebuild). See Implementation progress.
+
 Depends on HP-003. Deliver non-discoverable staged heap-storage genesis,
 immutable collection/stream IDs, rename/retire, catalog rebuild, descriptor
 history, and local administrative receipts. This package cannot activate a
@@ -6317,10 +6321,10 @@ package is experimental and MUST report `qualified=false`.
 ## 41. Definition of ready for implementation
 
 This v0.9 document authorized HP-000 to begin immediately. As of the
-Implementation progress date above, HP-000…HP-003 have in-tree deliveries with
+Implementation progress date above, HP-000…HP-004 have in-tree deliveries with
 the gaps recorded there; the next ordered package that has **not** started is
-HP-004 (unless HP-002/HP-003 Accept gaps are closed first). Later packages
-still MUST NOT merge into the qualified path before their dependencies.
+HP-005. Later packages still MUST NOT merge into the qualified path before
+their dependencies.
 
 No developer is authorized to invent a different wire field, right bit,
 identifier rule, durable owner, authority transition, migration shortcut,
