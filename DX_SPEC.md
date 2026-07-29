@@ -621,31 +621,34 @@ the collection's partitioning and consistency mode.
 
 It MUST NOT present best-effort duplicate detection as a unique constraint.
 
-## 9. Batches and transactions
+## 9. Batches and Atomics
 
 ### 9.1 Single-key atomicity
 
 Single-key writes and version checks are atomic within their partition.
 
-This is the baseline transaction guarantee.
+This is the baseline `Key` Atomic guarantee.
 
-### 9.2 Partition batch
+### 9.2 Scoped Atomic batch
 
 ```ts
-await db.batch({ partitionKey: "account-42" }, batch => {
+await heap.atomic({ partitionKey: "account-42" }, batch => {
   batch.put(accounts, "account-42", nextAccount);
   batch.add(entries, ledgerEntry);
 });
 ```
 
-A partition batch commits atomically when every operation resolves to the same
-partition and the selected profile supports it.
+A batch becomes one `LocalHeap` or `Partition` Atomic only when every operation
+resolves inside the declared scope and the selected profile supports it.
 
-The SDK validates the partition scope before submission when possible.
+The SDK validates scope before submission when possible. The server validates
+it again. A transaction-shaped SDK method is permitted only as the compatibility
+adapter defined by `TRANSACTIONS.md`; it compiles to the same Atomic plan and
+cannot widen the guarantee.
 
 ### 9.3 Cross-partition workflow
 
-The initial profile does not expose a misleading general transaction API.
+The initial profile does not expose an unbounded general transaction API.
 
 Cross-partition work uses idempotent events, sagas, or explicit workflow
 records.
@@ -877,29 +880,55 @@ Errors MUST NOT require parsing English text.
 Internal frame, checksum, consensus, or codec details appear in structured
 causes and diagnostics, not as the only top-level explanation.
 
-## 16. Schema experience
+## 16. Data Rules and schema experience
 
 Collections are schemaless by default.
 
-Optional schemas provide:
+Optional Data Rules provide:
 
 - write validation;
+- conditional field presence;
+- before/after transition constraints;
+- uniqueness;
+- referential integrity;
+- bounded cardinality;
 - generated SDK types;
 - documentation;
 - index suggestions;
-- structured decoding;
 - evolution rules.
 
-Attaching a schema does not rewrite old payloads automatically.
+The official declaration surface is line-oriented and visually compatible
+with DQL:
 
-A schema declares how it treats historical values that predate it:
+```text
+rules for orders
+
+require customer_id as key
+
+reference customer using customers
+  matching customer_id = _key
+  expect exactly_one
+  on delete restrict
+```
+
+Data Rules compile to the formal, bounded invariant model in
+`DATA_RULES_PROPOSAL.md`. They are not scripts, callbacks, arbitrary DQL
+queries, or an application hook.
+
+Attaching a rule does not rewrite old payloads automatically. A rule becomes
+active only after existing in-scope state has been validated at an explicit
+frontier and activation commits atomically.
+
+Typed SDK projections may separately declare how they treat historical values
+that predate a rule:
 
 - accept as legacy;
 - validate on read;
 - migrate lazily;
 - reject from typed projections while preserving bytes.
 
-Schema failure never destroys the stored original.
+Rule failure rejects the proposed Atomic transition. It never destroys stored
+originals or surviving recovery material.
 
 ## 17. Import and export
 

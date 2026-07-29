@@ -14,6 +14,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Concern | Document |
 |---------|----------|
 | Database identity, trust, security, encryption, lifecycle, ownership | [DATABASE_DOCTRINE.md](DATABASE_DOCTRINE.md) |
+| Logical heap identity, containment, and access isolation | [HEAP_SPEC.md](HEAP_SPEC.md) |
 | System architecture, storage model, recovery, quality bars | [OVERVIEW.md](OVERVIEW.md) |
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](FORMAT_SPEC.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |

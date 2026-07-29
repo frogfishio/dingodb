@@ -1,35 +1,58 @@
-# DingoDB transaction extension proposal
+# DingoDB scoped transaction compatibility profile
 
-Status: proposal  
-Target: post-embedded-foundation transaction profile  
-Normative impact: `OVERVIEW.md`, `FORMAT_SPEC.md`, `DX_SPEC.md`,
-`CLUSTER_SPEC.md`, and SDK compatibility policy
+Status: compatibility draft v0.2; subordinate to `ATOMICS_PROPOSAL.md`
+
+Target: familiar transaction API over qualified LocalHeap and Partition
+Atomics
+
+Normative impact: SDK compatibility policy and transaction terminology;
+Atomic semantics and evidence belong to `ATOMICS_PROPOSAL.md`
 
 ## 1. Summary
 
-DingoDB should add transactions deliberately, without presenting an
-unbounded “ACID everywhere” API that the storage and cluster models cannot
-honestly support.
+DingoDB should expose familiar transaction terminology only as a compatibility
+interpretation of bounded Atomics. It must not present an unbounded “ACID
+everywhere” API that the storage and cluster models cannot honestly support.
 
-The proposed model is:
+The compatibility mapping is:
 
-1. **single-key atomicity** on every backend;
-2. **serializable local transactions** within one embedded or single-server
-   store;
-3. **serializable partition transactions** within one cluster partition;
-4. **explicit workflows and sagas** across partitions;
-5. no arbitrary distributed transaction claim in the initial profile.
+1. **Key Atomic** — single-key conditional operations on every backend;
+2. **LocalHeap Atomic** — serializable transaction compatibility inside one
+   embedded or single-server heap;
+3. **Partition Atomic** — serializable transaction compatibility inside one
+   cluster partition;
+4. **Workflow** — explicit durable steps and compensation across scopes;
+5. no arbitrary distributed transaction claim.
 
-The defining DingoDB behavior is that transaction evidence remains examinable
-after damage. Physically surviving prepared members are preserved even when
-commit cannot be proven, but they do not silently enter committed logical
-state.
+`AtomicId`, scope, logical outcomes, two-dimensional truth, retry identity,
+prepare/member/decision evidence, and recovery classification are governed by
+`ATOMICS_PROPOSAL.md`. This document may provide transaction-shaped names, but
+it cannot broaden or weaken those semantics.
 
-This gives ordinary applications useful transactional guarantees while
+This gives ordinary applications familiar transactional ergonomics while
 preserving DingoDB’s larger promise:
 
 > Most databases manage the current state of an application. DingoDB manages
 > the lifetime of the data itself.
+
+### 1.1 Terminology rule
+
+In this document:
+
+```text
+TransactionId      = AtomicId
+transaction commit = Atomic committed decision
+transaction abort  = Atomic not-committed outcome
+local transaction  = LocalHeap Atomic compatibility
+partition transaction = Partition Atomic compatibility
+```
+
+“Rollback” means no Atomic members became logically visible. It never means
+erasing immutable evidence or reversing external effects. Compensation is a
+new workflow step.
+
+If this document conflicts with `ATOMICS_PROPOSAL.md`, the Atomic contract
+wins.
 
 ## 2. Motivation
 
@@ -38,7 +61,7 @@ receipts, history, partition-local ordering, and wire kinds for batch prepare
 and batch commit. The specifications also describe version-conditional writes
 and partition batches.
 
-What is missing is one coherent transaction contract covering:
+What the compatibility surface must translate coherently is:
 
 - scope;
 - isolation;
@@ -51,12 +74,12 @@ What is missing is one coherent transaction contract covering:
 - cluster commitment;
 - operator examination.
 
-Without that contract, adding a generic `transaction()` method would create
+Without that mapping, adding a generic `transaction()` method would create
 false expectations. Callers may assume arbitrary cross-collection,
 cross-partition serializability, while the implementation may only provide a
 best-effort batch.
 
-The extension should therefore make the coordination boundary visible and
+The adapter must therefore make the Atomic coordination boundary visible and
 enforceable.
 
 ## 3. Goals
@@ -65,7 +88,8 @@ The initial transaction profile MUST provide:
 
 - atomic create, put, replace, and delete for one key;
 - optimistic concurrency through stable versions;
-- atomic multi-key transactions in an embedded/single-server store;
+- atomic multi-key transaction compatibility in one embedded/single-server
+  heap;
 - atomic multi-key transactions when every clustered key maps to one
   partition;
 - serializable execution within the declared scope;
@@ -101,13 +125,13 @@ not weaken independent recovery or hide uncertain outcomes.
 Every transaction declares its coordination scope before mutation:
 
 - one key;
-- one local store;
+- one local heap;
 - one cluster partition.
 
 If an operation falls outside the scope, DingoDB fails before recording any
 member. It never silently weakens atomicity or splits the transaction.
 
-### 5.2 Explicit transactions are serializable within scope
+### 5.2 Transaction compatibility is serializable within scope
 
 The first profile exposes one isolation level for read-write transactions:
 `serializable`.
@@ -138,17 +162,18 @@ The API returns one of:
 - conflict before commit;
 - outcome unknown, with a stable transaction ID and resolution handle.
 
-### 5.5 Retry identity is durable
+### 5.5 Retry identity is the Atomic identity
 
-Every transaction has a caller-stable `transaction_id`. Retrying the same ID
-and content returns the original outcome. Reusing the ID with different
-content is a consistency violation.
+Every transaction-shaped handle carries the governing caller-stable
+`AtomicId`, exposed compatibly as `transaction_id`. Retrying the same ID and
+content returns the original outcome. Reusing the ID with different content
+is `AtomicIdConflict`.
 
-### 5.6 Authority remains in transaction evidence
+### 5.6 Authority remains in Atomic evidence
 
 Indexes, catalogs, lock tables, and transaction-status caches are derived.
-The authoritative outcome is reconstructed from verified prepare/member/
-decision evidence and, for clusters, durable consensus evidence.
+The authoritative outcome is reconstructed from verified Atomic
+prepare/member/decision evidence and, for clusters, durable consensus evidence.
 
 ### 5.7 Transactions are bounded
 
@@ -165,7 +190,7 @@ The server enforces limits for:
 Limits fail before commit with typed errors. A transaction is never allowed to
 grow until it destabilizes the process.
 
-## 6. Transaction scopes
+## 6. Transaction compatibility scopes
 
 ### 6.1 Single-key atomic operation
 
@@ -194,15 +219,15 @@ users.replace(
 )?;
 ```
 
-### 6.2 Local transaction
+### 6.2 LocalHeap transaction compatibility
 
-A local transaction may touch multiple keys and collections within one
-embedded or single-server store.
+A local transaction adapter may touch multiple keys and collections within one
+embedded or single-server heap.
 
 Properties:
 
 - serializable isolation;
-- one store generation;
+- one heap identity, authority epoch, and serving generation;
 - one durable transaction ID;
 - one atomic logical commit;
 - no dependency on a cluster partition map;
@@ -213,7 +238,7 @@ This is the ordinary transaction profile for embedded applications.
 Example shape:
 
 ```rust
-let mut tx = db.transaction(TransactionOptions::serializable())?;
+let mut tx = heap.transaction(TransactionOptions::serializable())?;
 
 let account = tx.collection("accounts")?.get("account-42")?;
 tx.collection("accounts")?.replace(
@@ -226,7 +251,7 @@ tx.collection("ledger")?.create("entry-901", &entry)?;
 let receipt = tx.commit()?;
 ```
 
-### 6.3 Partition transaction
+### 6.3 Partition transaction compatibility
 
 A partition transaction may touch multiple keys and collections only when
 every operation maps to the same cluster partition.
@@ -235,7 +260,7 @@ The caller declares a partition key or receives a transaction handle already
 bound to a partition:
 
 ```rust
-let mut tx = db.partition_transaction(
+let mut tx = heap.partition_transaction(
     "account-42",
     TransactionOptions::serializable(),
 )?;
@@ -276,7 +301,7 @@ The helper is not named `transaction` and does not claim atomic rollback.
 Example shape:
 
 ```rust
-let workflow = db.workflow("transfer-901")?;
+let workflow = heap.workflow("transfer-901")?;
 workflow.step("debit", debit_command)?;
 workflow.step("credit", credit_command)?;
 workflow.compensation("refund", refund_command)?;
@@ -307,7 +332,7 @@ Snapshot isolation permits write skew and requires users to understand which
 invariants are safe. DingoDB should not advertise an ordinary transaction API
 while leaving common multi-key invariants vulnerable by default.
 
-Because the initial coordination scopes are one local store or one partition,
+Because the initial coordination scopes are one local heap or one partition,
 a serializable commit sequencer is practical. Concurrency can be recovered
 through sharded partitions and optimistic execution rather than weaker
 semantics.
@@ -333,17 +358,26 @@ Deadlock detection is unnecessary if the implementation uses one ordered
 commit sequencer per scope and does not hold user locks during transaction
 construction.
 
+For an embedded closure API, “construction” is entirely client-side buffering:
+the closure returns, the SDK freezes one immutable Atomic plan, and that plan
+is submitted once. The remote API accepts only a complete plan. No server-side
+transaction session remains open across arbitrary network pauses.
+
 ## 8. API model
+
+This API is an adapter over Atomics, not a second execution engine. Implementors
+MUST compile every transaction request to the corresponding Atomic plan and
+return a projection of the Atomic outcome.
 
 ### 8.1 Core types
 
 Conceptual API:
 
 ```rust
-pub struct TransactionId([u8; 16]);
+pub type TransactionId = AtomicId;
 
 pub enum TransactionScope {
-    LocalStore,
+    LocalHeap,
     Partition {
         partition_key: Vec<u8>,
     },
@@ -365,19 +399,14 @@ pub struct TransactionOptions {
 
 pub struct TransactionReceipt {
     pub transaction_id: TransactionId,
-    pub scope: TransactionScopeReceipt,
-    pub isolation: IsolationLevel,
-    pub operation_count: u32,
-    pub commit_position: CommitPosition,
-    pub requested_durability: DurabilityMode,
-    pub achieved_durability: DurabilityMode,
-    pub committed: bool,
-    pub commit_evidence: Option<CommitEvidence>,
+    pub atomic_receipt: AtomicReceipt,
 }
 ```
 
-Exact public Rust types require an API review. The semantic fields are
-normative.
+The SDK may provide convenience accessors for scope, isolation, operation
+count, commit position, durability, and evidence, but their sole source is
+`atomic_receipt`; it must not maintain a second receipt truth. Exact public
+Rust types require an API review.
 
 ### 8.2 Transaction operations
 
@@ -419,10 +448,10 @@ must preserve the distinction from unknown outcome.
 
 ### 8.4 Status resolution
 
-Every backend supports:
+Every backend supports a compatibility projection of Atomic status:
 
 ```rust
-db.transaction_status(transaction_id)?
+heap.transaction_status(transaction_id)?
 ```
 
 Possible states:
@@ -446,13 +475,16 @@ complete coverage.
 - `5` — batch prepare;
 - `6` — batch commit.
 
-The transaction extension freezes their envelope and body semantics.
+Those historical names may remain as format aliases, but the frames encode
+`AtomicPrepare` and `AtomicDecision` evidence governed by
+`ATOMICS_PROPOSAL.md`. This compatibility profile does not independently
+freeze wire semantics.
 
 ### 9.1 Transaction identity
 
-Every transaction frame and member carries or derives:
+Every Atomic evidence frame and member carries or derives:
 
-- transaction ID;
+- Atomic ID, exposed here as transaction ID;
 - store and segment identity;
 - scope kind;
 - partition ID when clustered;
@@ -467,9 +499,9 @@ Wall-clock time never establishes ordering or commitment.
 
 ### 9.2 Prepare frame
 
-The prepare frame contains a deterministic manifest:
+The Atomic prepare frame contains a deterministic manifest:
 
-- transaction ID;
+- Atomic ID;
 - protocol/profile version;
 - scope;
 - expected member count;
@@ -487,25 +519,26 @@ The prepare frame does not make members visible.
 
 ### 9.3 Member frames
 
-Transaction members use ordinary item-event and payload-chunk frames tagged
+Atomic members use ordinary item-event and payload-chunk frames tagged
 with:
 
-- transaction ID;
+- Atomic ID;
 - operation ordinal;
 - member event ID;
 - item identity;
 - content hash.
 
-They remain independently verifiable and salvageable.
+They remain independently verifiable and salvageable. Transaction-shaped
+readers MAY project the Atomic ID as `transaction_id`.
 
-An item event carrying a transaction ID is never applied to ordinary current
-state unless the complete transaction decision validates.
+An item event carrying an Atomic ID is never applied to ordinary current state
+unless the complete Atomic decision validates.
 
 ### 9.4 Commit frame
 
-The commit frame contains:
+The Atomic committed-decision frame contains:
 
-- transaction ID;
+- Atomic ID;
 - hash of the prepare frame;
 - hash/root covering the ordered member set;
 - member count;
@@ -514,7 +547,7 @@ The commit frame contains:
 - partition term/position and placement epoch when clustered;
 - portable commit evidence when available.
 
-A commit is valid only when:
+A committed decision is valid only when:
 
 1. prepare verifies;
 2. every required member verifies;
@@ -527,14 +560,15 @@ A commit is valid only when:
 
 An abort does not require a durable frame when no prepared data was written.
 
-If prepared members were persisted, an optional abort decision frame should be
-defined in a later compatible core kind or transaction-decision extension.
+If prepared members were persisted, an optional not-committed decision frame
+should be defined in a later compatible core kind or Atomic-decision
+extension.
 Absence of commit alone means “not proven committed,” not necessarily a proven
 explicit abort.
 
 ### 9.6 Recovery classification
 
-Recovery groups frames by transaction ID and classifies:
+Recovery groups frames by Atomic ID and classifies:
 
 - `verified-committed`;
 - `verified-aborted`;
@@ -551,16 +585,17 @@ All other verified material remains available to examination and salvage.
 
 ## 10. Local commit protocol
 
-Recommended append sequence:
+The normative state machine is the LocalHeap Atomic protocol in
+`ATOMICS_PROPOSAL.md`. Its initial transaction-compatible append sequence is:
 
 ```text
 validate read/write set
     ↓
-append BatchPrepare
+append AtomicPrepare
     ↓
-append transaction member frames
+append AtomicMember frames
     ↓
-append BatchCommit
+append AtomicDecision(committed)
     ↓
 persist to requested durability
     ↓
@@ -578,7 +613,7 @@ Rules:
   durability.
 - A memory-mode transaction may be visible in process but must not enter any
   persisted derived artifact before authoritative bytes are flushed.
-- Index/catalog publication must install one transaction delta atomically.
+- Index/catalog publication must install one Atomic delta indivisibly.
 - A crash before valid commit leaves prepared evidence but no committed
   logical mutation.
 - A crash after durable commit but before response resolves to the same receipt
@@ -588,8 +623,9 @@ Rules:
 
 ### 11.1 Partition-linearizable mode
 
-One partition transaction is one deterministic Raft state-machine command
-containing or referencing the complete operation manifest.
+One Partition Atomic, exposed compatibly as a partition transaction, is one
+deterministic Raft state-machine command containing or referencing the complete
+operation manifest.
 
 Sequence:
 
@@ -598,8 +634,8 @@ Sequence:
 2. Leader verifies scope and limits.
 3. Leader proposes the transaction command through Raft.
 4. A quorum persists the log entry under the consensus durability contract.
-5. After commitment, each replica applies the transaction by writing local
-   transaction frames idempotently.
+5. After commitment, each replica applies the Atomic by writing local Atomic
+   evidence idempotently.
 6. The leader returns a receipt with term, position, placement epoch, replica
    acknowledgements, and commit evidence.
 
@@ -621,7 +657,7 @@ has durable evidence sufficient for recovery.
 
 Mutable multi-key transactions are not supported in convergent-append mode.
 
-An append group may preserve a shared transaction/workflow identity, but it
+An append group may preserve a shared workflow identity, but it
 does not claim atomic visibility across split sides. The API must name this a
 group or workflow, not a transaction.
 
@@ -726,7 +762,8 @@ current payloads are complete under the requested export policy.
 
 ## 15. Errors
 
-Add or freeze stable codes:
+The Atomic layer owns the canonical failure taxonomy. Transaction-shaped SDKs
+MAY expose these stable compatibility aliases:
 
 - `version_conflict`;
 - `transaction_conflict`;
@@ -742,7 +779,8 @@ Add or freeze stable codes:
 - `coverage_incomplete`;
 - `protocol_violation`.
 
-Every error states:
+Each alias maps one-to-one to a documented Atomic outcome or error; it may not
+collapse `unknown` into `not committed`. Every error states:
 
 - transaction ID when assigned;
 - whether any authoritative evidence may exist;
@@ -758,16 +796,17 @@ Required controls:
 
 - authenticate before allocating transaction buffers;
 - authorize every collection and operation;
-- cap concurrent open transactions per principal and store;
+- cap concurrent transaction builders per capability and heap;
 - cap members, bytes, duration, read set, and response size;
 - avoid logging values or secrets;
 - audit administrative overrides;
-- bind transaction IDs to authenticated identity where policy requires;
+- bind Atomic IDs to the authenticated heap capability where policy requires;
 - reject malformed manifests before expensive payload work.
 
 ## 17. Observability
 
-Metrics:
+Core telemetry uses Atomic names and identity. The compatibility layer MAY
+project these transaction-shaped metrics:
 
 - begun, committed, aborted, conflicted, expired, and unknown transactions;
 - commit latency by durability and scope;
@@ -779,26 +818,31 @@ Metrics:
 - partition transaction quorum and apply latency;
 - index lag from transaction commit frontier.
 
-Logs and traces include transaction ID, scope, partition, term/position,
+Logs and traces include Atomic ID (projected as transaction ID), scope,
+partition, term/position,
 requested/achieved durability, and stable error code. Payloads are excluded by
 default.
 
-## 18. Implementation phases
+## 18. Compatibility implementation phases
 
-### Phase T0 — Freeze semantics and fixtures
+These phases deliver the transaction-shaped API. They depend on, and cannot
+replace, the corresponding `A0`–`A5` Atomic phases in
+`ATOMICS_PROPOSAL.md`.
 
-- Amend normative specifications.
-- Freeze transaction IDs, versions, errors, and recovery states.
-- Define deterministic prepare/member/commit encodings.
-- Add golden wire fixtures and malformed corpora.
+### Phase T0 — Compatibility naming and fixtures
+
+- Complete Atomic Phase A0 first.
+- Freeze transaction-to-Atomic names, projections, and error aliases.
+- Reuse the Atomic ID, outcome, recovery, and wire fixtures.
+- Add adapter conformance fixtures.
 
 Exit:
 
-- Independent reviewers can determine commitment using only the specification
-  and frames.
+- Every transaction-visible result maps unambiguously to one Atomic result.
 
 ### Phase T1 — Single-key preconditions
 
+- Depend on Atomic Phase A1.
 - Implement create-if-absent and replace-if-version.
 - Make remote retries idempotent by stable operation ID.
 - Add committed/not-committed/unknown outcomes.
@@ -809,8 +853,9 @@ Exit:
 
 ### Phase T2 — Local write-only batches
 
+- Depend on Atomic Phase A2.
 - Implement bounded create/put/replace/delete batches.
-- Write prepare, members, and commit.
+- Compile each batch to one LocalHeap Atomic plan.
 - Rebuild indexes transaction-aware.
 - Preserve evidence through salvage.
 
@@ -820,6 +865,7 @@ Exit:
 
 ### Phase T3 — Serializable local transactions
 
+- Depend on Atomic Phase A3.
 - Add snapshot/read sets and optimistic validation.
 - Add read-your-writes.
 - Add deterministic conflict handling.
@@ -831,7 +877,8 @@ Exit:
 
 ### Phase T4 — Remote transaction protocol
 
-- Add versioned RPC operations and bounded transaction requests.
+- Depend on Atomic Phase A4.
+- Add a versioned RPC adapter that submits one complete bounded Atomic plan.
 - Preserve transaction ID through timeout and reconnect.
 - Add transaction-status resolution.
 
@@ -841,6 +888,7 @@ Exit:
 
 ### Phase T5 — Partition transactions
 
+- Depend on Atomic Phase A5.
 - Encode one batch as one Raft command.
 - Persist consensus and state-machine evidence.
 - Add leader failure, retry, fencing, and quorum tests.
@@ -902,7 +950,7 @@ Expected: observed histories are serializable within scope.
 
 ### 19.4 Scope
 
-- two collections in one local store;
+- two collections in one local heap;
 - all keys in one partition;
 - accidental second partition;
 - stale partition map;
@@ -916,13 +964,13 @@ Expected: observed histories are serializable within scope.
 - control-plane loss;
 - salvage without catalogs;
 - partial payload after historical commit;
-- unsupported future transaction profile.
+- unsupported future Atomic profile.
 
 ### 19.6 Backend parity
 
 Run the same logical corpus against:
 
-- embedded local store;
+- embedded local heap;
 - single-node remote server;
 - in-process partition harness;
 - multi-process network cluster.
@@ -951,66 +999,63 @@ count, bytes, contention, abort rate, replication, and hardware.
 
 ## 21. Compatibility and versioning
 
-Transaction semantics require independent versions for:
+Atomics own the semantic, wire, recovery, and cluster profile versions.
+Transaction compatibility independently versions only:
 
 - SDK transaction API;
-- RPC transaction protocol;
-- wire transaction profile;
-- cluster transaction profile;
-- examination projection.
+- RPC adapter surface;
+- transaction-shaped examination projection.
 
-Readers must preserve unknown future transaction frames losslessly. They must
-not apply an unsupported transaction profile as committed state.
+Readers must preserve unknown future Atomic evidence losslessly. They must not
+apply an unsupported Atomic profile as committed state.
 
-The wire profile must remain draft until crash, damage, retry, and
+The Atomic wire profile must remain draft until crash, damage, retry, and
 interoperability suites pass.
 
 ## 22. Required specification changes
 
 If this proposal is accepted:
 
-1. Amend `OVERVIEW.md` §7.3 with the transaction invariants and recovery
+1. Ratify the governing Atomic contract in `ATOMICS_PROPOSAL.md`.
+2. Amend `OVERVIEW.md` §7.3 with Atomic invariants and recovery
    classification.
-2. Freeze `FORMAT_SPEC.md` batch prepare/commit envelopes and manifests.
-3. Replace the short `DX_SPEC.md` §9 text with the scoped API and outcome
-   model.
-4. Amend `CLUSTER_SPEC.md` with partition transaction Raft and durability
-   rules.
-5. Add transaction cases to destructive and cluster conformance sections.
-6. Add implementation tasks and release gates to `DEFECTS.md`.
-7. Do not increment stable API/profile labels until compatibility review.
+3. Freeze `FORMAT_SPEC.md` Atomic prepare/member/decision envelopes.
+4. Align `DX_SPEC.md` §9 with Atomic scopes and this compatibility API.
+5. Amend `CLUSTER_SPEC.md` with Partition Atomic Raft and durability rules.
+6. Add Atomic and adapter cases to destructive and cluster conformance suites.
+7. Add implementation tasks and release gates to `DEFECTS.md`.
+8. Do not increment stable API/profile labels until compatibility review.
 
 ## 23. Open decisions
 
-These require explicit resolution before Phase T0 closes:
+Core identity, evidence, limits, retention, durability, and recovery decisions
+belong to `ATOMICS_PROPOSAL.md` §31. This compatibility profile must resolve
+only:
 
-1. Exact transaction ID width and generation profile.
-2. Whether commit and abort share a general decision frame in a future wire
-   minor.
-3. Maximum initial member count and encoded bytes.
-4. How long deduplication evidence must survive after compaction.
-5. Exact local commit position representation.
-6. Whether read-only snapshots are part of the first stable transaction API.
-7. Whether secondary index maintenance is synchronous or frontier-based.
-8. The durability boundary between committed Raft log entries and Dingo
-   segment application.
-9. How portable cluster commit evidence is encoded.
-10. Whether transaction status has a separate retention policy.
+1. Whether the embedded API exposes a closure, an explicit builder, or both.
+2. Exact transaction-shaped names for Atomic outcomes and stable error aliases.
+3. Whether read-only snapshots appear under this API or a separate snapshot
+   API.
+4. Whether `transaction_status` is retained as an alias for `atomic_status`.
+5. Which ecosystem adapters may use transaction terminology.
 
 ## 24. Recommendation
 
 Adopt this scoped model rather than a generic distributed transaction API.
 
-The first customer-meaningful target should be:
+The first customer-meaningful compatibility target should be:
 
-> Serializable transactions across collections in one embedded store, and the
-> same semantics for keys colocated in one cluster partition.
+> Serializable transaction ergonomics across collections in one embedded
+> heap, and the same ergonomics for keys colocated in one cluster partition.
 
 That is enough for account-and-ledger, metadata-and-object, state-and-outbox,
 and other ordinary application invariants. It avoids claiming a global
 transaction system before one exists.
 
-Most importantly, it extends DingoDB’s core distinction:
+The implementation remains one system: Atomic is the primitive; transaction is
+an adapter that neither widens the scope nor invents a stronger outcome.
+
+Most importantly, it preserves DingoDB’s core distinction:
 
 > A transaction can lose evidence without DingoDB lying about its outcome.
 > Whatever survives remains independently verifiable and examinable.

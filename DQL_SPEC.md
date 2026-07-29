@@ -3,7 +3,8 @@
 Status: **Design + implementation v0.1** (official dialect `dql` lowers to ENR1+SDA)  
 Audience: language designers, SDK authors, optimizer authors, advanced users  
 Normative companions: [SDA_SPEC.md](SDA_SPEC.md), [crates/enr-core/](crates/enr-core/),
-[doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [DX_SPEC.md](DX_SPEC.md) §7
+[doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [DX_SPEC.md](DX_SPEC.md) §7,
+and [DATA_RULES_PROPOSAL.md](DATA_RULES_PROPOSAL.md)
 
 ## 1. Why this exists
 
@@ -455,6 +456,7 @@ Next concrete work:
 ## 13. See also
 
 - [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) — **how to write and run DQL** (application developers)  
+- [DATA_RULES_PROPOSAL.md](DATA_RULES_PROPOSAL.md) — the visually compatible declaration language for enforceable invariants
 - [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) — dialect stack and foreign comfort rules  
 - [doc/SDA/DOCTRINE.md](doc/SDA/DOCTRINE.md) — certainty kernel vs comfort  
 - [DX_SPEC.md](DX_SPEC.md) §7 — everyday query experience  

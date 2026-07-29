@@ -444,10 +444,11 @@ A single frame is the minimum atomic storage unit.
 An interrupted frame MUST be reported as incomplete or corrupt and MUST NOT
 invalidate earlier or later complete frames.
 
-Multi-item atomic batches MAY be implemented using independently recoverable
-prepare and commit frames. Batch members that survive without a verified
-commit remain physically recoverable but MUST NOT be exposed as committed
-logical state.
+Multi-item Atomics MAY be implemented using independently recoverable
+prepare, member, and decision frames. Members that survive without a verified
+committed decision remain physically recoverable but MUST NOT be exposed as
+committed logical state. Every multi-item Atomic declares and remains inside
+one qualified coordination scope.
 
 ### 7.4 Concurrency
 

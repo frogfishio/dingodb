@@ -667,8 +667,10 @@ Applications use:
 - one partition key for data requiring atomic ordering;
 - explicit batch workflows whose partial state remains examinable.
 
-A future transaction profile may add atomic commitment. It MUST preserve
-physical salvage of prepared and partially replicated frames.
+A qualified `Partition` Atomic profile may add indivisible commitment inside
+one partition. A transaction-shaped API is only a compatibility projection of
+that profile. Neither profile permits cross-partition atomicity, and both MUST
+preserve physical salvage of prepared and partially replicated frames.
 
 ## 20. Performance strategy
 
