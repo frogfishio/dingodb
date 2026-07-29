@@ -20,7 +20,7 @@ const {
 const site = 'https://dingodb.org';
 const canonical = new URL(path, site).href;
 const fullTitle = title.includes('DingoDB') ? title : `${title} · DingoDB`;
-const ogImage = new URL('/og-image.svg', site).href;
+const ogImage = new URL('/og-mathematical-database.png', site).href;
 const isPreview = import.meta.env.PUBLIC_PREVIEW === 'true';
 const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
 ---
@@ -40,7 +40,10 @@ const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={ogImage} />
-<meta property="og:image:alt" content="DingoDB — a database built to survive damage" />
+<meta
+  property="og:image:alt"
+  content="DingoDB — Flexible documents. Mathematical guarantees. Serious speed."
+/>
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={fullTitle} />
@@ -57,7 +60,7 @@ const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
   '@context': 'https://schema.org',
   '@type': 'SoftwareSourceCode',
   name: 'DingoDB',
-  description: 'Experimental, embedded-first storage for irreplaceable local data with explicit damage reporting.',
+  description: 'A document database built around a deterministic mathematical kernel, fast indexed storage, and damage-local recovery.',
   codeRepository: release.github,
   programmingLanguage: 'Rust',
   runtimePlatform: 'Rust',

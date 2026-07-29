@@ -11,10 +11,10 @@
   "github": "https://github.com/frogfishio/dingodb",
   "githubSecurity": "https://github.com/frogfishio/dingodb/security",
   "githubReleases": "https://github.com/frogfishio/dingodb/releases",
-  "sourceRevision": "94b04f4",
-  "dingoSourceRevision": "94b04f4",
+  "sourceRevision": "b43ae0d",
+  "dingoSourceRevision": "b43ae0d",
   "contentSchemaVersion": "1.0",
-  "lastVerified": "2026-07-29",
-  "generatedAt": "2026-07-29",
+  "lastVerified": "2026-07-30",
+  "generatedAt": "2026-07-30",
   "benchmarksPublished": false
 }

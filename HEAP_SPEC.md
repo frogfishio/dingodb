@@ -3,9 +3,10 @@
 Status: Developer-ready implementation contract v0.9  
 Capability status: **Partial** — HP-000…HP-009 landed in-tree (with listed
 gaps); HP-010 evidence advanced: **H3 Accept**, H0–H2/H4–H5 partial, H6 partial
-with complete-path review + external-review brief + pure proof bundle
-(`qualified=false`); HP-011…HP-012 not started. HC1 not started. No
-`dingo-heap-v1` qualified claim. See **Implementation progress** below.  
+with complete-path review + external-review brief + pure proof bundle + §32.4
+remote data/list/scan cut (`qualified=false`); HP-011…HP-012 not started. HC1
+not started. No `dingo-heap-v1` qualified claim. See **Implementation progress**
+below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
 Audience: SDK, server, cluster, storage, security, recovery, CLI, and test-rig
@@ -25,7 +26,7 @@ normative.
 
 ### Implementation progress
 
-Last updated: 2026-07-29. This subsection is **status only**; it does not
+Last updated: 2026-07-30. This subsection is **status only**; it does not
 change normative requirements. Package acceptance still means the Accept
 criteria in §40.
 
@@ -56,17 +57,17 @@ Before Gate H6, product language remains:
 
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
-| **HP-000** | Machine-readable contract | **Landed (format closed; authority deferred)** | Ops/schemas/fixtures for **1–3**; bootstrap cert/proof + expanded negative mutations; **`format_vectors`** for SubjectV2 subtypes, heap/object descriptors, §34.7 hashes, and admit accept/reject. Authority/RPC remainder of §38.1 explicitly deferred to HP-005/HP-008 (`corpus_status`). |
+| **HP-000** | Machine-readable contract | **Landed (format closed; ops expanding under §32.4)** | Baseline process ops **1–3** + data/list/scan cut **105/110–112/114–115/120–122** with schemas/fixtures; bootstrap cert/proof + **`format_vectors`**. Authority/RPC remainder of §38.1 still partial; **47** ops remain `reserved`. |
 | **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/dingo-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
 | **HP-002** | Durable ownership | **Landed (Accept corpus)** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree (merge); descriptor encode/decode + `descriptor_hash`; `admit_frame_to_heap` / salvage; store `require_admit` + `HeapStore` SubjectV2 heap check; adversarial unit/corpus rejects wrong-heap. |
 | **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind default feature `legacy-raw-store`; `--no-default-features` is façades-only and CI-checked. Legacy Stages 3–9 callers keep default features until HP-006/HP-007 cutover. |
 | **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `dingo-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
-| **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap + CPR-001 opt-in)** | Heap APIs + SubjectV2 data + `connect_heap` process ops. **CPR-001:** feature `legacy-flat-sdk` (default **on** for Stages 3–9) gates flat `Dingo::open`/`collection`/`store()`; `--no-default-features` is heap-only (`open_deployment` / `connect_heap`). Claim labels + `open_compatibility` spelling. Accept: isolation, SubjectV2, connect_heap, `cpr001_legacy_opt_in`. **Gaps:** remote collection data ops (§32.4); flip `legacy-flat-sdk` default off after cutover. |
-| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active:** 105 open, 110 list_collections, 111/112 get, 114 list_keys, 115 scan_json, 120/121 put, 122 delete — schemas + fixtures + `HeapStore` binary SubjectV2 scan. Accept: connect_heap put/get/delete + list/scan. **Gaps:** find/index/lifecycle reserved, default qualified listener, RPC corpus expansion. |
+| **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap data + CPR-001 opt-in)** | Heap APIs + SubjectV2 put/get + `connect_heap` with remote put/get/delete/list/scan. **CPR-001:** `legacy-flat-sdk` default **on**; heap-only via `--no-default-features`. Accept: isolation, SubjectV2, connect_heap data+list/scan, `cpr001_legacy_opt_in`. **Gaps:** remote find/index/history; flip `legacy-flat-sdk` default off after cutover. |
+| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (12 ops):** process 1–3 + 105/110/111/112/114/115/120/121/122. Accept: connect_heap put/get/delete + list/scan. **Gaps:** find/index/lifecycle still reserved, default qualified listener, RPC corpus expansion. |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
-| HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept** (derived/ops + profiles + metadata-hardened). Complete-path review + external security review brief + `pure_proofs` bundle landed. **H1 advanced:** SubjectV2 put/get + remote `connect_heap` process-ops Accept. H0/H1/H2/H4/H5 still partial (legacy flat SDK / CPR-001, remote data ops, reserved ops, recovery residuals). H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close. |
+| HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept**. **H1 advanced** (SubjectV2 + remote data/list/scan + CPR-001 opt-in). H0/H1/H2/H4/H5 still partial. H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close (default flat SDK). |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
 
@@ -75,8 +76,8 @@ Before Gate H6, product language remains:
 | Gate | Status |
 |------|--------|
 | H0 Vocabulary and identity | **In progress** — types/registry + CPR-001 claim labels; flat still default-on. |
-| H1 Heap-bound SDK | **In progress** — HP-007 + SubjectV2 + `connect_heap` data ops + CPR-001 opt-in (default still on); more remote ops reserved. |
-| H2 HeapKey authority | **In progress** — HP-005/008 + §32.4 first data cut active; remaining reserved ops open. |
+| H1 Heap-bound SDK | **In progress** — HP-007 + SubjectV2 + `connect_heap` put/get/list/scan Accept + CPR-001 opt-in (default still on); find/index remote reserved. |
+| H2 HeapKey authority | **In progress** — HP-005/008 + §32.4 data/list/scan cut (12 active ops); 47 ops still reserved. |
 | H3 Derived / operational coverage | **Accept** (single-node reference) — Derived paths, query escape, ops/health/bundle confinement, **named isolation profiles + closed declassification registry + metadata-hardened operational confinement**. Resource/physical profiles declared, not qualified. |
 | H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone + media-domain incomplete purge + retention scheduler Accept; live filesystem tier wipe / HSM adapters still open. |
 | H5 Single-node lifecycle | **In progress** — HP-009 transitions + HP-010 key-loss / incomplete-purge / retention + **lifecycle crash-matrix** (peer unaffected) Accept; broader destructive crash cells still open. |
@@ -118,20 +119,30 @@ verification/heap-verus/       # Verus scaffold + H6 obligation checklist
 fuzz/fuzz_targets/heap_ownership.rs
 ```
 
+#### Self-check: are we “done with HEAP_SPEC”?
+
+| Question | Answer |
+|----------|--------|
+| Is the **spec prose** a usable implementation contract? | **Yes** — §§30–41 are frozen developer-ready text (v0.9). |
+| Is **implementation** of the full package tree complete? | **No** — HP-010 incomplete; HP-011/012 not started. |
+| May we advertise `dingo-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
+| Is the **hot data path** good enough for heap-bound apps? | **Mostly yes** for embedded + qualified remote put/get/list/scan; find/index/history/lifecycle RPC still reserved. |
+
+**Bottom line:** we are **not done** with the *program* HEAP_SPEC describes. We **are** done writing the core *contract document*; remaining work is residual implementation + honest qualification evidence.
+
 #### Next recommended package
 
 Continue **HP-010** critical path: close H0/H1/H2/H4/H5 residuals → machine-checked
 Verus/Kani → signed external review disposing CPR findings → only then consider
-`qualified=true`. In parallel: HP-006 physical rewrite, HP-008 §32.4 / default
-qualified listener, HP-009 live filesystem tier wipe / HSM adapters, rebind or
-opt-in legacy flat SDK (CPR-001).
+`qualified=true`. In parallel: more §32.4 (find/index), default qualified listener,
+HP-009 FS tier wipe / HSM, flip CPR-001 defaults after cutover, HP-006 physical rewrite.
 
 #### Remaining delivery sequence
 
 ```text
-DONE   HP-000 → … → HP-008 → HP-006(core) → HP-009(core+DR/key+media/retention)
-NEXT   HP-010 single-node qualification  (profiles + AuthorityModel + §39 gen/blacklist landed; Verus/review open)
-  or   residual closers (HP-006 physical / HP-008 §32.4 / HP-009 FS wipe/HSM)
+DONE   HP-000 → … → HP-008 (core + §32.4 data/list/scan) → HP-006(core) → HP-009(core+DR/key+media/retention)
+NEXT   HP-010 single-node qualification  (H3 Accept; H6 partial; Verus + signed review open)
+  or   residual closers (find/index §32.4, FS wipe/HSM, CPR-001 default flip)
 LATER  HP-011 → HP-012 cluster
 ```
 
