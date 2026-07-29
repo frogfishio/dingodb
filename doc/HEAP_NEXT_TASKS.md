@@ -54,7 +54,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
 | D1 | Connect **Verus or Kani** to pure decide / isolation Inv in CI | CPR-004 | **Done partial (2026-07-30)** — `KANI_HARNESSES_CONNECTED=true`; harnesses in `pure_proofs` + CI job `kani-heap` + `scripts/check_kani_heap.sh`. **Verus still open** (`VERUS_PROOFS_CONNECTED=false`) |
-| D2 | Commission **signed external security review** (brief already on file) | CPR-005 | Report under `doc/` + open findings dispositioned |
+| D2 | Commission **signed external security review** (brief already on file) | CPR-005 | Report under `doc/` + findings dispositioned. **Requires independent third party** — see [HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md). Cannot close by in-tree self-review. |
 | D3 | Re-run complete-path review; close CPR-001…006 as honestly possible | H6 exit | [HEAP_COMPLETE_PATH_REVIEW.md](HEAP_COMPLETE_PATH_REVIEW.md) updated |
 | D4 | Only then: flip matrix `qualified=true` + `may_advertise_qualified` | Product claim | `verify-heap.sh` enforces true; Level-2 language allowed |
 
@@ -83,9 +83,11 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 ## Suggested next 3 labor packages (concrete)
 
-1. **D2 — signed external security review** (CPR-005; still blocks `qualified=true`).  
-2. **D1 residual — Verus machine-checked proofs** (optional alongside Kani).  
-3. **E1 — qualified HeapKey listener as default remote profile**.
+1. **D2 — procure external reviewer** (CPR-005). Not a code package: engage
+   independent firm/researcher using [HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md);
+   disposition in [HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md).  
+2. **D1 residual — Verus proofs** (optional; **in-house**, no third party).  
+3. **E1 — qualified HeapKey listener as default remote profile** (code).
 
 ## Machine checks (today)
 

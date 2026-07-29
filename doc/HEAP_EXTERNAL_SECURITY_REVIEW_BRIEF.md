@@ -89,8 +89,8 @@ Key Accept drills (see matrix `drills`):
 |----|----------|----------------------|
 | CPR-001 | Flat SDK / legacy raw store still default-adjacent | Exclude from claim or rebind |
 | CPR-002 | Reserved ops not fully activated (§32.4) | Confirm matrix incomplete ≠ bypass |
-| CPR-004 | Verus/Kani not yet proving pure kernel | Treat formal stack as incomplete |
-| CPR-005 | This external review itself | Produce signed report |
+| CPR-004 | Kani harnesses connected in CI; Verus still optional residual | Treat Verus as incomplete if claimed; Kani covers pure-lemma path |
+| CPR-005 | This external review itself | Produce **signed independent** report (not self-review) |
 | HP-009 | Live FS tier wipe / HSM adapters | Ops residual; document |
 
 ## 7. Acceptance of review (product rule)

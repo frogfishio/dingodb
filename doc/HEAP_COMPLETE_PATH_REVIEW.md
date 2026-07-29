@@ -78,7 +78,7 @@ re-bound through heap APIs.
 | CPR-002 | Many reserved heap ops remain; §32.4 data + list/scan/find/history/indexes cut activated with IndexAdmin + equality find acceleration (lifecycle/export still reserved) | Medium | H2 |
 | CPR-003 | Live multi-tier FS wipe + HSM scaffold (refuses until configured) + mixed-heap salvage classification Accept | Low (live KMS backend open) | H4 residual / HP-009 |
 | CPR-004 | Kani harnesses connected in CI (`kani-heap`); executable pure lemmas green; **Verus** still not machine-checked | Medium for H6 (Verus residual) | H6 |
-| CPR-005 | No independent external security review receipt on file | High for H6 | H6 |
+| CPR-005 | No independent external security review receipt on file — **requires third party**; brief ready ([HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md)) | High for H6 | H6 |
 | CPR-006 | Resource/physical isolation profiles declared, not qualified | Low (out of reference) | H3 profile extension |
 
 No **unknown** bypass through the reviewed heap-bound derived paths was found in
@@ -100,6 +100,7 @@ Re-run this review and mark findings closed only when:
 1. Default single-node profile requires heap-bound APIs (or legacy is opt-in and
    clearly non-qualified).
 2. Connected Verus/Kani (or equivalent) proofs cover pure decide + isolation Inv.
+   (Kani connected today; Verus optional in-house. External review is separate.)
 3. External review report is filed with open findings dispositioned.
 4. HP-010 matrix H0–H5 are `accept` honestly and H6 prerequisites in §27 are met.
 
