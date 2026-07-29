@@ -612,11 +612,11 @@
     {
       "id": 130,
       "wire_name": "index_list",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/index_list.request.json",
+      "response_schema": "rpc-v1/index_list.response.json",
       "allowed_states": [
         "active",
         "read_only"
@@ -629,11 +629,11 @@
     {
       "id": 131,
       "wire_name": "index_create",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
-      "rights_mask": 8,
-      "request_schema": null,
-      "response_schema": null,
+      "rights_mask": 4,
+      "request_schema": "rpc-v1/index_create.request.json",
+      "response_schema": "rpc-v1/index_create.response.json",
       "allowed_states": [
         "active"
       ],
@@ -645,11 +645,11 @@
     {
       "id": 132,
       "wire_name": "index_drop",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
-      "rights_mask": 8,
-      "request_schema": null,
-      "response_schema": null,
+      "rights_mask": 4,
+      "request_schema": "rpc-v1/index_drop.request.json",
+      "response_schema": "rpc-v1/index_drop.response.json",
       "allowed_states": [
         "active"
       ],
@@ -661,11 +661,11 @@
     {
       "id": 133,
       "wire_name": "index_rebuild",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
-      "rights_mask": 8,
-      "request_schema": null,
-      "response_schema": null,
+      "rights_mask": 4,
+      "request_schema": "rpc-v1/index_rebuild.request.json",
+      "response_schema": "rpc-v1/index_rebuild.response.json",
       "allowed_states": [
         "active"
       ],

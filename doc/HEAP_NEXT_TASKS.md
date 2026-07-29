@@ -34,7 +34,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 |---|------|-----|-----------|
 | B1 | Activate **find** (116) + minimal filter args | Query is the everyday path | **Done (2026-07-30)** — schemas/fixtures + scan+Filter dispatch + `RemoteHeap::find` + `connect_heap_find_filter` |
 | B2 | Activate **history** (117) | Spec + DX parity | **Done (2026-07-30)** — schemas/fixtures + SubjectV2 history + `RemoteHeap::history` + `connect_heap_history` (rights first-cut = Read) |
-| B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | Same §32.4 bar |
+| B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | **Done (2026-07-30)** — schemas/fixtures + heap-scoped SecondaryIndex + dispatch + `RemoteHeap` index APIs + `connect_heap_indexes` (rights first-cut = Read list / Write mutate; not IndexAdmin yet) |
 | B4 | Activate **collection_create** (106) (needs rights story) | Provisioning without offline catalog | Ceremony/rights + Accept |
 | B5 | Remaining reserved ops only as needed for drills (lifecycle RPC, export, …) | Avoid activation thrash | Matrix-driven only |
 
@@ -81,7 +81,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 ## Suggested next 3 labor packages (concrete)
 
-1. **B3 — indexes §32.4 (130–133)** or **A1–A2 CPR-001 default flip**.  
+1. **A1–A2 CPR-001 default flip** (legacy-flat-sdk off after Stages 3–9 migrate).  
 2. **C1 — live multi-tier media wipe** (H4).  
 3. **D1 — Verus/Kani connection** (H6 engineering gate).
 

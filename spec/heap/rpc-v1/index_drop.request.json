@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 256 }
+  },
+  "required": ["name"]
+}

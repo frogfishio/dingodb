@@ -1,0 +1,6 @@
+{
+  "op": 133,
+  "ok": false,
+  "args": { "name": "missing" },
+  "error": { "code": "heap_unavailable", "retryable": false }
+}

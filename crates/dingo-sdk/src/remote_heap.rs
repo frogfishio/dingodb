@@ -2,9 +2,8 @@
 //!
 //! `Dingo::connect_heap` performs TLS 1.3 + HeapKey handshake
 //! (`hello` → `heap_challenge` → `heap_auth` → `welcome`) and returns a
-//! [`RemoteHeap`] session bound to one `HeapId`. Active process ops 1–3
-//! (ping / live / ready) are available; collection data ops remain reserved
-//! until §32.4 activation.
+//! [`RemoteHeap`] session bound to one `HeapId`. Active process ops 1–3 plus
+//! §32.4 data (105/110–112/114–117/120–122) and secondary indexes (130–133).
 
 use crate::error::Error;
 use crate::remote::{parse_dingo_url, DEFAULT_PORT};
@@ -492,6 +491,68 @@ impl RemoteHeap {
             out.push((key, json));
         }
         Ok(out)
+    }
+
+    /// List secondary indexes on a collection (op_id = 130).
+    pub fn index_list(&mut self, collection_id: &str) -> Result<Vec<Value>, Error> {
+        let result = self.call_args(130, Some(collection_id), serde_json::json!({}))?;
+        let arr = result
+            .get("indexes")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .ok_or_else(|| Error::ProtocolViolation("index_list missing indexes".into()))?;
+        Ok(arr)
+    }
+
+    /// Create a secondary field index (op_id = 131). Full rebuild, first cut.
+    ///
+    /// Rights first-cut: Write (IndexAdmin may be reasserted when certs grant it).
+    pub fn index_create(
+        &mut self,
+        collection_id: &str,
+        name: &str,
+        fields: &[&str],
+    ) -> Result<Value, Error> {
+        let fields: Vec<Value> = fields.iter().map(|f| Value::String((*f).into())).collect();
+        let result = self.call_args(
+            131,
+            Some(collection_id),
+            serde_json::json!({ "name": name, "fields": fields }),
+        )?;
+        if result.get("name").and_then(|v| v.as_str()) != Some(name) {
+            return Err(Error::ProtocolViolation(
+                "index_create response missing metadata".into(),
+            ));
+        }
+        Ok(result)
+    }
+
+    /// Drop a secondary index by name (op_id = 132).
+    pub fn index_drop(&mut self, collection_id: &str, name: &str) -> Result<bool, Error> {
+        let result = self.call_args(
+            132,
+            Some(collection_id),
+            serde_json::json!({ "name": name }),
+        )?;
+        Ok(result
+            .get("dropped")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
+    }
+
+    /// Rebuild an existing secondary index from a full collection scan (op_id = 133).
+    pub fn index_rebuild(&mut self, collection_id: &str, name: &str) -> Result<Value, Error> {
+        let result = self.call_args(
+            133,
+            Some(collection_id),
+            serde_json::json!({ "name": name }),
+        )?;
+        if result.get("name").and_then(|v| v.as_str()) != Some(name) {
+            return Err(Error::ProtocolViolation(
+                "index_rebuild response missing metadata".into(),
+            ));
+        }
+        Ok(result)
     }
 
     /// Scan JSON rows in a collection (op_id = 115).

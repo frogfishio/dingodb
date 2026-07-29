@@ -36,12 +36,14 @@ fn registry_unique_and_hp000_active_set() {
         .map(|o| o.id)
         .collect();
     assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
-    for id in [105u16, 110, 111, 112, 114, 115, 116, 117, 120, 121, 122] {
+    for id in [
+        105u16, 110, 111, 112, 114, 115, 116, 117, 120, 121, 122, 130, 131, 132, 133,
+    ] {
         assert!(active.contains(&id), "§32.4 data op {id} must be active");
         assert!(Operation::is_callable(id), "data op {id} must be callable");
     }
-    // Still-reserved example (index_list).
-    assert!(!Operation::is_callable(130));
+    // Still-reserved example (export).
+    assert!(!Operation::is_callable(140));
 }
 
 #[test]
@@ -66,6 +68,10 @@ fn artifacts_present_and_schemas_for_active_ops() {
         "put",
         "put_bytes",
         "delete",
+        "index_list",
+        "index_create",
+        "index_drop",
+        "index_rebuild",
     ] {
         assert!(root.join(format!("rpc-v1/{name}.request.json")).is_file());
         assert!(root.join(format!("rpc-v1/{name}.response.json")).is_file());
@@ -179,7 +185,7 @@ fn decide_allows_ping_and_denies_reserved() {
         ),
         AuthorizationDecision::Allow
     );
-    // §32.4 data get / find are active and allowed under Read rights.
+    // §32.4 data get / find / index_list are active and allowed under Read rights.
     assert_eq!(
         decide(
             &snap,
@@ -216,13 +222,38 @@ fn decide_allows_ping_and_denies_reserved() {
         ),
         AuthorizationDecision::Allow
     );
-    // Reserved ops still deny (e.g. index_list = 130).
-    assert!(matches!(
+    assert_eq!(
         decide(
             &snap,
             &cert,
             &OperationDescriptor {
                 operation_id: 130,
+                request_bytes: 0
+            },
+            now
+        ),
+        AuthorizationDecision::Allow
+    );
+    // index_create requires Write; bootstrap cert rights_mask includes Write (5).
+    assert_eq!(
+        decide(
+            &snap,
+            &cert,
+            &OperationDescriptor {
+                operation_id: 131,
+                request_bytes: 0
+            },
+            now
+        ),
+        AuthorizationDecision::Allow
+    );
+    // Reserved ops still deny (e.g. export = 140).
+    assert!(matches!(
+        decide(
+            &snap,
+            &cert,
+            &OperationDescriptor {
+                operation_id: 140,
                 request_bytes: 0
             },
             now

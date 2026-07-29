@@ -3,10 +3,14 @@
 use crate::durability::DurabilityMode;
 use crate::error::StoreError;
 use crate::history::SubjectHistory;
+use crate::ids::random_id;
 use crate::kernel::PhysicalStore;
+use crate::layout::hex16;
+use crate::secondary::SecondaryIndex;
 use crate::store::WriteReceipt;
-use dingo_format::{decode_subject_v2, SubjectObjectKind};
+use dingo_format::{decode_subject_v2, encode_subject_v2, SubjectObjectKind};
 use dingo_heap::{refresh_capability_or_terminate, HeapCap, Rights};
+use serde_json::Value as JsonValue;
 use std::sync::{Arc, Mutex};
 
 /// Capability-gated heap store. All methods re-check capability liveness.
@@ -242,6 +246,156 @@ impl HeapStore {
         Ok(out)
     }
 
+    /// Stable secondary-index path key: unique per heap + collection id.
+    ///
+    /// Avoids cross-heap collision when two heaps share a human collection name.
+    pub fn index_scope_key(&self, collection_id: &[u8; 16]) -> String {
+        format!(
+            "h{}-c{}",
+            hex16(self.cap.heap_id().as_bytes()),
+            hex16(collection_id)
+        )
+    }
+
+    /// List secondary indexes for a collection (metadata only).
+    pub fn list_indexes(
+        &self,
+        collection_id: &[u8; 16],
+    ) -> Result<Vec<SecondaryIndex>, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::READ)?;
+        let scope = self.index_scope_key(collection_id);
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        guard.list_secondary_indexes(&scope)
+    }
+
+    /// Create (or rebuild definition) a field index over JSON documents.
+    ///
+    /// First cut: full rebuild from a SubjectV2 collection scan (no resume).
+    /// Requires Write (IndexAdmin may be reasserted later when certs grant it).
+    pub fn create_index(
+        &self,
+        collection_id: &[u8; 16],
+        name: &str,
+        fields: &[&str],
+    ) -> Result<SecondaryIndex, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::WRITE)?;
+        if name.is_empty() || name.len() > 256 {
+            return Err(StoreError::HeapAdmit("index name invalid".into()));
+        }
+        if fields.is_empty() || fields.len() > 16 {
+            return Err(StoreError::HeapAdmit("index fields invalid".into()));
+        }
+        let field_owned: Vec<String> = fields.iter().map(|s| (*s).to_string()).collect();
+        let scope = self.index_scope_key(collection_id);
+        let mut idx = SecondaryIndex::new_building(&scope, name, field_owned);
+        let build_id = random_id()?;
+        let fp = {
+            let guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+            guard.segment_fingerprint()?
+        };
+        idx.begin_build(build_id, fp, false);
+        self.fill_index_from_collection(collection_id, &mut idx)?;
+        let fp_final = {
+            let guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+            guard.segment_fingerprint()?
+        };
+        if fp_final == idx.meta.source_frontier {
+            idx.mark_ready(fp_final);
+        } else {
+            idx.mark_partial(fp_final, "source frontier drifted during build");
+        }
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        guard.write_secondary_index(&idx)?;
+        Ok(idx)
+    }
+
+    /// Drop a secondary index by name.
+    pub fn drop_index(&self, collection_id: &[u8; 16], name: &str) -> Result<(), StoreError> {
+        self.gate()?;
+        self.require_right(Rights::WRITE)?;
+        let scope = self.index_scope_key(collection_id);
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        guard.delete_secondary_index(&scope, name)
+    }
+
+    /// Rebuild an existing index definition from a full collection scan.
+    pub fn rebuild_index(
+        &self,
+        collection_id: &[u8; 16],
+        name: &str,
+    ) -> Result<SecondaryIndex, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::WRITE)?;
+        let scope = self.index_scope_key(collection_id);
+        let existing = {
+            let guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+            guard.load_secondary_index(&scope, name)?
+        }
+        .ok_or_else(|| StoreError::HeapAdmit("index not found".into()))?;
+        let fields: Vec<String> = existing.meta.fields.clone();
+        let field_refs: Vec<&str> = fields.iter().map(|s| s.as_str()).collect();
+        // Drop then recreate with same fields.
+        self.drop_index(collection_id, name)?;
+        self.create_index(collection_id, name, &field_refs)
+    }
+
+    fn fill_index_from_collection(
+        &self,
+        collection_id: &[u8; 16],
+        idx: &mut SecondaryIndex,
+    ) -> Result<(), StoreError> {
+        let mut after: Option<Vec<u8>> = None;
+        loop {
+            let page = self.scan_collection(collection_id, 4096, after.as_deref())?;
+            if page.is_empty() {
+                break;
+            }
+            for (key, body) in &page {
+                let subject = encode_subject_v2(
+                    self.cap.heap_id().as_bytes(),
+                    SubjectObjectKind::Collection,
+                    collection_id,
+                    key,
+                )
+                .map_err(|e| StoreError::HeapAdmit(format!("subject v2: {e}")))?;
+                if body.first() != Some(&0x01) {
+                    continue;
+                }
+                let Ok(doc) = serde_json::from_slice::<JsonValue>(&body[1..]) else {
+                    continue;
+                };
+                if let Some(ik) = index_key_from_doc(&doc, &idx.meta.fields) {
+                    idx.insert(ik, subject);
+                }
+            }
+            after = page.last().map(|(k, _)| k.clone());
+            if page.len() < 4096 {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     /// Scan live (key, body) pairs in a collection under this heap.
     ///
     /// Bodies are raw store payloads (typed SDK tags when written via SDK).
@@ -297,4 +451,30 @@ impl HeapStore {
         }
         Ok(out)
     }
+}
+
+/// Build opaque index key bytes from ordered field values (JSON text).
+fn index_key_from_doc(doc: &JsonValue, fields: &[String]) -> Option<Vec<u8>> {
+    let mut parts = Vec::new();
+    for f in fields {
+        let v = resolve_json_path(doc, f)?;
+        let enc = serde_json::to_vec(v).ok()?;
+        parts.push(enc);
+    }
+    let mut out = Vec::new();
+    for (i, p) in parts.iter().enumerate() {
+        if i > 0 {
+            out.push(0x1f);
+        }
+        out.extend_from_slice(p);
+    }
+    Some(out)
+}
+
+fn resolve_json_path<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    let mut cur = doc;
+    for seg in path.split('.') {
+        cur = cur.as_object()?.get(seg)?;
+    }
+    Some(cur)
 }

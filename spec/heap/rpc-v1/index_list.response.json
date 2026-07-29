@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "indexes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "fields": { "type": "array", "items": { "type": "string" } },
+          "state": { "type": "string" },
+          "entry_count": { "type": "integer", "minimum": 0 },
+          "complete_coverage": { "type": "boolean" }
+        },
+        "required": ["name", "fields", "state", "entry_count", "complete_coverage"]
+      }
+    }
+  },
+  "required": ["indexes"]
+}

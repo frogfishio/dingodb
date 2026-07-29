@@ -2,7 +2,7 @@
 //!
 //! Under `heap-key-v1`, heap identity comes solely from the channel [`HeapCap`].
 //! Token/RBAC fields are rejected. Active ops: process 1–3 plus collection data
-//! 105 / 111 / 112 / 120 / 121 / 122.
+//! 105 / 110–112 / 114–117 / 120–122 and secondary indexes 130–133.
 
 use dingo_client::b64u_decode;
 use dingo_heap::{
@@ -182,10 +182,11 @@ pub fn dispatch_heap_request_with(
     }
 
     // Rights gate for data ops.
+    // IndexAdmin is not yet granted by bootstrap certs; 131–133 first-cut use Write.
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
-        105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 => Rights::READ,
-        120 | 121 | 122 => Rights::WRITE,
+        105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 | 130 => Rights::READ,
+        120 | 121 | 122 | 131 | 132 | 133 => Rights::WRITE,
         _ => return unavailable(req.id),
     };
     if required_rights != Rights::EMPTY && !cap.rights().contains(required_rights) {
@@ -238,6 +239,22 @@ pub fn dispatch_heap_request_with(
         },
         122 => match data {
             Some(ctx) => dispatch_delete(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        130 => match data {
+            Some(ctx) => dispatch_index_list(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        131 => match data {
+            Some(ctx) => dispatch_index_create(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        132 => match data {
+            Some(ctx) => dispatch_index_drop(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        133 => match data {
+            Some(ctx) => dispatch_index_rebuild(req.id, &req, ctx),
             None => unavailable(req.id),
         },
         _ => unavailable(req.id),
@@ -737,6 +754,130 @@ fn dispatch_delete(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapD
             }
             ok_id(id, result)
         }
+        Err(_) => unavailable_id(id),
+    }
+}
+
+fn index_meta_json(idx: &dingo_store::SecondaryIndex) -> Value {
+    serde_json::json!({
+        "name": idx.meta.name,
+        "fields": idx.meta.fields,
+        "state": idx.meta.state.as_str(),
+        "entry_count": idx.meta.entry_count,
+        "complete_coverage": idx.meta.complete_coverage,
+    })
+}
+
+fn require_known_collection<'a>(
+    req: &'a HeapRpcRequest,
+    ctx: &HeapDataCtx<'_>,
+) -> Option<CollectionId> {
+    let cid_s = req.collection_id.as_deref()?;
+    let coll = parse_collection_id(cid_s)?;
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    if rebuild_object_entry_from_chain(ctx.layout, &heap_id, ObjectKind::Collection, coll.as_bytes())
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        return None;
+    }
+    Some(coll)
+}
+
+fn dispatch_index_list(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    if !req.args.is_empty() {
+        return unavailable_id(id);
+    }
+    let coll = match require_known_collection(req, &ctx) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    match ctx.store.list_indexes(coll.as_bytes()) {
+        Ok(indexes) => {
+            let indexes: Vec<Value> = indexes.iter().map(index_meta_json).collect();
+            ok_id(id, serde_json::json!({ "indexes": indexes }))
+        }
+        Err(_) => unavailable_id(id),
+    }
+}
+
+fn dispatch_index_create(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let name = match require_string_arg(&req.args, "name") {
+        Some(n) if !n.is_empty() && n.len() <= 256 => n,
+        _ => return unavailable_id(id),
+    };
+    let fields: Vec<String> = match req.args.get("fields") {
+        Some(Value::Array(arr)) if (1..=16).contains(&arr.len()) => {
+            let mut out = Vec::with_capacity(arr.len());
+            for v in arr {
+                let Some(s) = v.as_str() else {
+                    return unavailable_id(id);
+                };
+                if s.is_empty() || s.len() > 256 {
+                    return unavailable_id(id);
+                }
+                out.push(s.to_string());
+            }
+            out
+        }
+        _ => return unavailable_id(id),
+    };
+    for k in req.args.keys() {
+        if k != "name" && k != "fields" {
+            return unavailable_id(id);
+        }
+    }
+    let coll = match require_known_collection(req, &ctx) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    let field_refs: Vec<&str> = fields.iter().map(|s| s.as_str()).collect();
+    match ctx
+        .store
+        .create_index(coll.as_bytes(), &name, &field_refs)
+    {
+        Ok(idx) => ok_id(id, index_meta_json(&idx)),
+        Err(_) => unavailable_id(id),
+    }
+}
+
+fn dispatch_index_drop(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let name = match require_string_arg(&req.args, "name") {
+        Some(n) if !n.is_empty() && n.len() <= 256 => n,
+        _ => return unavailable_id(id),
+    };
+    if req.args.keys().any(|k| k != "name") {
+        return unavailable_id(id);
+    }
+    let coll = match require_known_collection(req, &ctx) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    match ctx.store.drop_index(coll.as_bytes(), &name) {
+        Ok(()) => ok_id(id, serde_json::json!({ "dropped": true })),
+        Err(_) => unavailable_id(id),
+    }
+}
+
+fn dispatch_index_rebuild(
+    id: u64,
+    req: &HeapRpcRequest,
+    ctx: HeapDataCtx<'_>,
+) -> HeapDispatchResult {
+    let name = match require_string_arg(&req.args, "name") {
+        Some(n) if !n.is_empty() && n.len() <= 256 => n,
+        _ => return unavailable_id(id),
+    };
+    if req.args.keys().any(|k| k != "name") {
+        return unavailable_id(id);
+    }
+    let coll = match require_known_collection(req, &ctx) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    match ctx.store.rebuild_index(coll.as_bytes(), &name) {
+        Ok(idx) => ok_id(id, index_meta_json(&idx)),
         Err(_) => unavailable_id(id),
     }
 }

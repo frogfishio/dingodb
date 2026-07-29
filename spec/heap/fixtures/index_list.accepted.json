@@ -1,0 +1,17 @@
+{
+  "op": 130,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-000000000001",
+  "args": {},
+  "result": {
+    "indexes": [
+      {
+        "name": "by-status",
+        "fields": ["status"],
+        "state": "ready",
+        "entry_count": 2,
+        "complete_coverage": true
+      }
+    ]
+  }
+}
