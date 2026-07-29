@@ -90,7 +90,8 @@ pub use remote::{
 pub use tls::{
     build_client_config, client_connect, cluster_urn, constant_time_eq, constant_time_str_eq,
     load_certs, load_private_key, node_urn, redact_secret, IoStream, PeerIdentity, TlsClientOptions,
-    TlsServerOptions, TlsServerState, CLUSTER_URN_PREFIX, NODE_URN_PREFIX, TLS_PROFILE,
+    TlsServerOptions, TlsServerState, CHANNEL_BINDING_EXPORTER_LABEL, CLUSTER_URN_PREFIX,
+    NODE_URN_PREFIX, TLS_PROFILE,
 };
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,

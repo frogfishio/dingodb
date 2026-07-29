@@ -40,7 +40,7 @@ criteria in §40.
 | Heap/object catalogs (HP-004) | Present; staged genesis + rebuild Accept |
 | Authority + local ceremony (HP-005) | Present; two-slot store + `dingo-authority` |
 | SDK heap API (HP-007) | Present; typed handles + isolation Accept |
-| Qualified network (HP-008) | Present; challenge/auth/welcome + uniform reject |
+| Qualified network (HP-008) | Present; handshake session + audit + exporter API |
 | Lifecycle, migration, qualification | **Not started** (HP-006/HP-009+) |
 | Product claim level (§1.4 / Gate H6) | Still **Level 1 language only** — named namespaces / isolation in progress |
 
@@ -61,7 +61,7 @@ Before Gate H6, product language remains:
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | HP-006 | Legacy migration | Not started | §36. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation)** | `dingo-sdk::heap`: `DingoDeployment`, `Heap`, `HeapCollection`/`HeapStream`, heap-bound pool, `SignedCursor`, batch membership checks. Accept: identical collection names across heaps cannot exchange handles/cursors/batch members/pooled connections. **Gaps:** remote `connect_heap`, SubjectV2 put/get path, `dangerous-key-export` holder signer. |
-| **HP-008** | Qualified network protocol | **Landed (Accept core)** | `dingo-client::heap_handshake` wire types; `dingo-server` `heap_registry` / `heap_auth` / `heap_dispatch`: resident-slot challenge→proof→welcome, uniform `heap_unavailable` reject, single-use nonce, request registry for ops 1–3, token forbidden on qualified path. Accept: indistinguishable reject causes, proof replay fails, hot path sources omit authority store. **Gaps:** live TLS 1.3 exporter wiring in accept loop, full §32.4 activation for reserved ops, audit diagnostics sink, removal of legacy token listener, RPC vector corpus. |
+| **HP-008** | Qualified network protocol | **Landed (Accept core + session)** | Wire types + resident registry/auth/dispatch; **follow-on:** `heap_session` (`hello`→challenge→auth→welcome\|reject), `heap_audit` sink, `IoStream::export_channel_binding` (RFC 9266), `negotiate_qualified_features`, ServeOptions qualified listener gates (TLS required; token/line protocol forbidden). Accept: uniform wire reject, replay, audit-only causes, plaintext exporter fail-closed. **Gaps:** accept-loop integration that derives exporter on live TLS connections, full §32.4 reserved-op activation, RPC vector corpus, retire legacy token listener by default. |
 | HP-009 | Lifecycle, backup, recovery | Not started | |
 | HP-010 | Single-node qualification | Not started | First release allowed to advertise qualified `dingo-heap-v1`. |
 | HP-011 | Cluster control and placement | Not started | |
@@ -73,7 +73,7 @@ Before Gate H6, product language remains:
 |------|--------|
 | H0 Vocabulary and identity | **In progress** — types and registry exist in `dingo-heap`; public APIs still largely flat-store. |
 | H1 Heap-bound SDK | **In progress** — HP-007 typed handles landed; remote `connect_heap` still open. |
-| H2 HeapKey authority | **In progress** — HP-005 issue + HP-008 handshake core; live TLS listener not wired. |
+| H2 HeapKey authority | **In progress** — HP-005 issue + HP-008 session/exporter; live accept-loop still open. |
 | H3 Derived / operational coverage | Not started. |
 | H4 Backup and recovery | Not started. |
 | H5 Single-node lifecycle | Not started. |
@@ -91,7 +91,7 @@ crates/dingo-store/src/heap/   # HP-003 façades + HP-004 catalog
 crates/dingo-authority/        # HP-005 local ceremony (AGPL; not linked by server)
 crates/dingo-sdk/src/heap.rs   # HP-007 Heap / typed handles
 crates/dingo-client/src/heap_handshake.rs  # HP-008 wire types
-crates/dingo-server/src/heap_{registry,auth,dispatch}.rs  # HP-008
+crates/dingo-server/src/heap_{registry,auth,dispatch,session,audit}.rs  # HP-008
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
@@ -103,8 +103,9 @@ fuzz/fuzz_targets/heap_ownership.rs
 #### Next recommended package
 
 **HP-006** (legacy migration) or **HP-009** (lifecycle) may proceed in
-parallel. Remaining HP-008 gaps (TLS accept-loop wiring, reserved-op §32.4
-activation) can land as follow-ons before HP-010.
+parallel. Remaining HP-008 gaps (live accept-loop exporter wiring, reserved-op
+§32.4 activation, default retirement of token listener) can land as follow-ons
+before HP-010.
 
 #### Remaining delivery sequence
 

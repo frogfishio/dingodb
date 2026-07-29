@@ -108,7 +108,7 @@ cargo check -p dingo-server --quiet \
   || fail "dingo-server must build without dingo-authority"
 
 # HP-008: qualified hot path must not reference the authority store.
-for f in heap_auth.rs heap_dispatch.rs heap_registry.rs; do
+for f in heap_auth.rs heap_dispatch.rs heap_registry.rs heap_session.rs heap_audit.rs; do
   p="crates/dingo-server/src/$f"
   [[ -f "$p" ]] || fail "missing HP-008 module $p"
   if rg -n 'dingo_authority|MasterAuthorityStore|authority-provisioning' "$p"; then

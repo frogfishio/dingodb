@@ -540,6 +540,7 @@ dependencies = [
  "dingo-sdk",
  "dingo-store",
  "ed25519-dalek",
+ "getrandom 0.3.4",
  "hex",
  "rustls",
  "rustls-pemfile",

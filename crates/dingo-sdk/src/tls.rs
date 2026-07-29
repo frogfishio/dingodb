@@ -680,6 +680,9 @@ fn map_tls_io(e: io::Error) -> Error {
     }
 }
 
+/// RFC 9266 exporter label for HeapKey channel binding (`HEAP_SPEC` §33.3).
+pub const CHANNEL_BINDING_EXPORTER_LABEL: &[u8] = b"EXPORTER-Channel-Binding";
+
 /// Byte-stream transport: plaintext TCP or TLS-wrapped TCP.
 pub enum IoStream {
     /// Unencrypted TCP (loopback / insecure-bind only).
@@ -717,6 +720,32 @@ impl IoStream {
     /// Whether this stream is TLS-protected.
     pub fn is_tls(&self) -> bool {
         !matches!(self, Self::Plain(_))
+    }
+
+    /// Derive the 32-byte RFC 9266 channel-binding exporter for HeapKey proofs.
+    ///
+    /// Label: `EXPORTER-Channel-Binding`; empty context. Plaintext streams fail
+    /// closed — the qualified profile requires TLS 1.3.
+    pub fn export_channel_binding(&self) -> Result<[u8; 32], Error> {
+        let mut out = [0u8; 32];
+        match self {
+            Self::Plain(_) => {
+                return Err(Error::ProtocolViolation(
+                    "channel binding requires TLS 1.3".into(),
+                ));
+            }
+            Self::TlsClient(s) => {
+                s.conn
+                    .export_keying_material(&mut out, CHANNEL_BINDING_EXPORTER_LABEL, None)
+                    .map_err(|e| Error::Internal(format!("tls exporter: {e}")))?;
+            }
+            Self::TlsServer(s) => {
+                s.conn
+                    .export_keying_material(&mut out, CHANNEL_BINDING_EXPORTER_LABEL, None)
+                    .map_err(|e| Error::Internal(format!("tls exporter: {e}")))?;
+            }
+        }
+        Ok(out)
     }
 }
 

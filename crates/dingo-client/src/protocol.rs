@@ -358,6 +358,37 @@ pub fn negotiate_features(client_features: &[String]) -> Result<Vec<String>, Err
     Ok(granted)
 }
 
+/// Negotiate required features, then grant optional features the client offers.
+pub fn negotiate_features_with_optional(
+    client_features: &[String],
+    optional: &[&str],
+) -> Result<Vec<String>, Error> {
+    let mut granted = negotiate_features(client_features)?;
+    for opt in optional {
+        if client_features.iter().any(|f| f == *opt) && !granted.iter().any(|g| g == *opt) {
+            granted.push((*opt).to_string());
+        }
+    }
+    Ok(granted)
+}
+
+/// Feature set for the qualified remote profile (`HEAP_SPEC` §33.2).
+///
+/// Requires the base RPC features plus `heap-key-v1`.
+pub fn negotiate_qualified_features(client_features: &[String]) -> Result<Vec<String>, Error> {
+    negotiate_features_with_optional(client_features, &[crate::FEATURE_HEAP_KEY_V1])
+        .and_then(|granted| {
+            if granted.iter().any(|f| f == crate::FEATURE_HEAP_KEY_V1) {
+                Ok(granted)
+            } else {
+                Err(Error::ProtocolViolation(format!(
+                    "client hello missing required feature `{}`",
+                    crate::FEATURE_HEAP_KEY_V1
+                )))
+            }
+        })
+}
+
 /// Negotiate max frame: min(client offer, DEFAULT).
 pub fn negotiate_max_frame(client_offer: Option<u32>) -> usize {
     let client = client_offer

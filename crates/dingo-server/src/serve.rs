@@ -124,6 +124,17 @@ pub struct ServeOptions {
     /// Tests may inject a prebuilt runtime; production `serve_store_with` sets
     /// this after constructing the accept-loop runtime.
     pub runtime: Option<Arc<ServerRuntime>>,
+    /// When true, connections use the qualified heap-key-v1 sequence (§33.2).
+    ///
+    /// Requires TLS, a resident heap registry, and `deployment_id`. Forbids
+    /// shared `auth_token` and diagnostic line protocol.
+    pub qualified_heap_key: bool,
+    /// Resident heap slots for qualified auth (HP-008).
+    pub heap_registry: Option<Arc<crate::ResidentHeapRegistry>>,
+    /// Canonical deployment UUID for heap challenges.
+    pub deployment_id: Option<String>,
+    /// Optional heap-auth audit sink (never on the wire).
+    pub heap_auth_audit: Option<Arc<crate::HeapAuthAuditLog>>,
 }
 
 impl Default for ServeOptions {
@@ -149,6 +160,10 @@ impl Default for ServeOptions {
             logger: None,
             metrics: None,
             runtime: None,
+            qualified_heap_key: false,
+            heap_registry: None,
+            deployment_id: None,
+            heap_auth_audit: None,
         }
     }
 }
@@ -213,6 +228,30 @@ impl ServeOptions {
     /// Attach a server runtime for health/metrics observation (DEF-061).
     pub fn runtime(mut self, runtime: Arc<ServerRuntime>) -> Self {
         self.runtime = Some(runtime);
+        self
+    }
+
+    /// Enable the qualified heap-key-v1 listener (`HEAP_SPEC` §33).
+    pub fn qualified_heap_key(mut self, enabled: bool) -> Self {
+        self.qualified_heap_key = enabled;
+        self
+    }
+
+    /// Install the resident heap registry used by qualified auth.
+    pub fn heap_registry(mut self, registry: Arc<crate::ResidentHeapRegistry>) -> Self {
+        self.heap_registry = Some(registry);
+        self
+    }
+
+    /// Set the deployment id echoed in heap challenges.
+    pub fn deployment_id(mut self, id: impl Into<String>) -> Self {
+        self.deployment_id = Some(id.into());
+        self
+    }
+
+    /// Attach a heap-auth audit sink (HP-008 diagnostics).
+    pub fn heap_auth_audit(mut self, audit: Arc<crate::HeapAuthAuditLog>) -> Self {
+        self.heap_auth_audit = Some(audit);
         self
     }
 
@@ -508,6 +547,15 @@ pub fn serve_store_with(
     options: ServeOptions,
 ) -> Result<(), Error> {
     let tls_enabled = options.tls.is_some();
+    if options.qualified_heap_key {
+        crate::validate_qualified_listener(
+            tls_enabled,
+            options.auth_token.as_deref(),
+            options.diagnostic_line_protocol,
+            options.heap_registry.as_ref(),
+            options.deployment_id.as_deref(),
+        )?;
+    }
     bind_policy::validate_bind(bind, options.allow_insecure_bind, tls_enabled)?;
     let path = store_path.as_ref().to_path_buf();
     let tls_state = match options.tls.clone() {

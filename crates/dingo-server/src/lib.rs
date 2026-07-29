@@ -10,9 +10,11 @@ mod admission;
 mod authz;
 mod bind_policy;
 mod config;
+mod heap_audit;
 mod heap_auth;
 mod heap_dispatch;
 mod heap_registry;
+mod heap_session;
 mod metrics;
 mod raft_server;
 mod runtime;
@@ -42,6 +44,7 @@ pub use config::{
     SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
     CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
 };
+pub use heap_audit::{HeapAuthAuditEvent, HeapAuthAuditLog, DEFAULT_HEAP_AUDIT_CAPACITY};
 pub use heap_auth::{
     authenticate_heap_auth, build_challenge, wire_reject, HeapAuthInternalCause, HeapAuthOutcome,
     PendingChallenge, NONCE_TTL,
@@ -51,6 +54,10 @@ pub use heap_dispatch::{
     HeapRpcRequest, HeapRpcResponse, HEAP_UNAVAILABLE,
 };
 pub use heap_registry::{ResidentHeap, ResidentHeapRegistry};
+pub use heap_session::{
+    run_qualified_handshake, validate_qualified_listener, QualifiedHandshakeParams,
+    QualifiedHandshakeResult, QualifiedSession,
+};
 pub use metrics::{
     evaluate_health, is_public_probe_op, AdmissionStatsWire, EdgeMetrics, GuaranteeMetrics,
     HealthEvalInput, HealthReport, HealthStatus, HistogramBucket, MetricsRegistry, MetricsSnapshot,
