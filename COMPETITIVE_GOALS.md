@@ -469,7 +469,8 @@ large mixed payloads, historical examination, and bounded-loss recovery matter.
 - JSON, bytes, chunks, and large objects;
 - expressive filters, projections, sorting, pagination, and aggregation;
 - exact ranked direct access that does not silently enumerate and discard a
-  large result prefix;
+  large result prefix, including filter-conditioned order navigation through
+  [Dingo Order Wavelets](ORDER_WAVELET_SPEC.md);
 - online index creation, rebuild, validation, and removal;
 - unique and compound index semantics where declared;
 - schema-optional operation with enforceable validation when requested;

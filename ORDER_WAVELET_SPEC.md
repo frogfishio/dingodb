@@ -116,6 +116,50 @@ for every valid one-based rank:
 1 \le k \le |Q|
 \]
 
+### 3.1 Why an ordinary ordered index is insufficient
+
+An ordinary order tree may know the total population of subtree `R`:
+
+\[
+N_R=|R|
+\]
+
+The filtered selection algorithm needs:
+
+\[
+N_R(P)
+=
+\left|
+\{d\in R\mid P(d)=1\}
+\right|
+\]
+
+`N_R` does not determine `N_R(P)`. Two admissible datasets can have identical
+tree shape and subtree population but put every predicate match in opposite
+branches.
+
+Scanning ordered leaves and testing `P` computes the answer but can require:
+
+\[
+\Theta(k)
+\]
+
+matching-prefix enumeration.
+
+A compound index can precompute `N_R(P)` for one fixed predicate shape, but
+doing so for every combination of filter fields and sort fields creates an
+unbounded index-product problem.
+
+DOW instead computes conditioned counts:
+
+\[
+N_R(P)=|M_P\cap R|_1
+\]
+
+from one exact predicate bitmap and one reusable order decision structure.
+This separates filter indexing from order indexing while retaining exact
+joint counts at query time.
+
 ## 4. Terms
 
 **Source order**
@@ -745,6 +789,84 @@ The algorithm returns:
 \{d\mid P(d)=1\}
 \right)[k-1]
 \]
+
+### 10.5 Worked example
+
+Eight documents in source-ID order have dense price symbols:
+
+```text
+source ordinal i   0 1 2 3 4 5 6 7
+price symbol       2 0 3 1 2 1 0 3
+matches P          1 0 1 1 0 1 1 0
+```
+
+The filtered order oracle is:
+
+```text
+(symbol 0, id 6)
+(symbol 1, id 3)
+(symbol 1, id 5)
+(symbol 2, id 0)
+(symbol 3, id 2)
+```
+
+Request one-based rank:
+
+\[
+k=4
+\]
+
+so:
+
+\[
+r=3
+\]
+
+With two-bit symbols, the root most-significant-bit bitmap is:
+
+```text
+Broot = 1 0 1 0 1 0 0 1
+Mroot = 1 0 1 1 0 1 1 0
+```
+
+Matching zero-branch count:
+
+\[
+|M_{\mathrm{root}}\cap\neg B_{\mathrm{root}}|_1=3
+\]
+
+Since:
+
+\[
+r=3\not<3
+\]
+
+choose the one branch and update:
+
+\[
+r:=3-3=0
+\]
+
+Stable descent into root-one positions `(0,2,4,7)` gives:
+
+```text
+symbols = 2 3 2 3
+C       = 1 1 0 0
+Bnext   = 0 1 0 1
+```
+
+The conditioned zero count is one. Since `r=0`, choose zero, reaching symbol
+`2`. The selected set bit is its first matching occurrence. Inverse select
+mapping returns source ordinal `0`.
+
+Thus DOW returns:
+
+```text
+(symbol 2, id 0)
+```
+
+which is exactly the fourth filtered document in `(price,id)` order. It never
+enumerated the first three results.
 
 ## 11. Correctness proof
 
@@ -1429,6 +1551,71 @@ The planner refuses direct DOW when:
 - the direct work exceeds budget.
 
 It may offer `access build` or explicit `access sequential`.
+
+DOW is not mandatory for every sortable field. For high-cardinality,
+rarely-sorted, or write-dominant fields, its `n·h` pre-compression bit budget
+may cost more than its benefit. The planner/index advisor compares it with a
+composite index, ordinary ordered scan, or query-specific build and discloses
+the choice.
+
+### 21.5 Security and isolation
+
+Authorization is checked before dictionary lookup, conditioned counting, rank
+disclosure, or artifact reuse.
+
+Every durable or cached key includes at least:
+
+```text
+heap_id
+collection_id
+order_definition_id/version
+dictionary/wavelet generation
+read_view
+predicate/rank-map identity where query-specific
+```
+
+Two Heaps MUST NOT share logical:
+
+- order dictionaries;
+- branch bitmaps;
+- value-frequency or conditioned-count statistics;
+- global value directories;
+- traversal or selected-result caches.
+
+Cross-Heap statistics can disclose value presence and cardinality even when no
+foreign document is returned. Explain and exact total counts therefore require
+the corresponding query/explain capability.
+
+Physical block deduplication, if supported, occurs below Heap-scoped identity,
+encryption, authorization, and cache namespaces. It cannot permit one Heap to
+address or infer another Heap's order structure.
+
+Encryption at rest and key lifecycle follow Heap/database doctrine. Derived
+order indexes receive the same or stronger confidentiality classification as
+the indexed fields.
+
+### 21.6 Resource budgets
+
+DOW admission accounts separately for:
+
+```text
+dictionary bytes read
+branch bitmap bytes read
+rank/select directory bytes read
+conditioned projection CPU
+temporary candidate bitmap bytes
+forest members and global-directory probes
+archive blocks staged
+authoritative result rows fetched
+```
+
+A `DIRECT` plan may fail its resource budget even though its work is
+independent of rank. It MUST report `dow_budget_exhausted`; it MUST NOT
+silently switch to comparison sort or sequential prefix enumeration.
+
+Long bitmap, forest, build, and archive operations MUST check cooperative
+cancellation at bounded intervals. A cancelled partial count or projection is
+never cached or certified as complete.
 
 ## 22. Explain and API
 

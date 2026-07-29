@@ -943,16 +943,17 @@ order ordinal -> document identity
 document identity -> order ordinal
 ```
 
-A DDA predicate bitmap MUST be aligned to the selected order domain. A bitmap
-aligned to document-key order cannot be interpreted as price order merely
-because it contains the same number of bits.
+A directly selected DDA predicate bitmap MUST be aligned to the selected order
+domain. A bitmap aligned to document-key order cannot be interpreted as price
+order merely because it contains the same number of bits.
 
 The normative Dingo structure for combining an exact source-order predicate
 bitmap with a different scalar result order is
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md). It transports the predicate
 bitmap through stable wavelet partitions, uses exact conditioned branch
 counts to select the result tuple, and preserves immutable document-ID order
-for ties.
+for ties. That transport is a proved coordinate transformation, not
+reinterpretation of source-order bit positions as sorted-order positions.
 
 ### 12.4 Composite direct indexes
 
