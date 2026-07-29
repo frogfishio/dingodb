@@ -10,6 +10,9 @@ mod admission;
 mod authz;
 mod bind_policy;
 mod config;
+mod heap_auth;
+mod heap_dispatch;
+mod heap_registry;
 mod metrics;
 mod raft_server;
 mod runtime;
@@ -39,6 +42,15 @@ pub use config::{
     SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
     CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
 };
+pub use heap_auth::{
+    authenticate_heap_auth, build_challenge, wire_reject, HeapAuthInternalCause, HeapAuthOutcome,
+    PendingChallenge, NONCE_TTL,
+};
+pub use heap_dispatch::{
+    dispatch_heap_request, request_registry_allows, HeapDispatchResult, HeapRpcError,
+    HeapRpcRequest, HeapRpcResponse, HEAP_UNAVAILABLE,
+};
+pub use heap_registry::{ResidentHeap, ResidentHeapRegistry};
 pub use metrics::{
     evaluate_health, is_public_probe_op, AdmissionStatsWire, EdgeMetrics, GuaranteeMetrics,
     HealthEvalInput, HealthReport, HealthStatus, HistogramBucket, MetricsRegistry, MetricsSnapshot,

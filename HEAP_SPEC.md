@@ -1,9 +1,10 @@
 # DingoDB Heap Specification
 
 Status: Developer-ready implementation contract v0.9  
-Capability status: **Partial** — HP-000…HP-005 and HP-007 landed in-tree (with
-listed gaps); HP-006/HP-008…HP-012 and Gates H2–H6 not started. No
-`dingo-heap-v1` qualified claim. See **Implementation progress** below.  
+Capability status: **Partial** — HP-000…HP-005, HP-007, and HP-008 (core
+handshake/dispatch) landed in-tree (with listed gaps); HP-006/HP-009…HP-012 and
+Gates H2–H6 not started. No `dingo-heap-v1` qualified claim. See
+**Implementation progress** below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
 Audience: SDK, server, cluster, storage, security, recovery, CLI, and test-rig
@@ -39,7 +40,8 @@ criteria in §40.
 | Heap/object catalogs (HP-004) | Present; staged genesis + rebuild Accept |
 | Authority + local ceremony (HP-005) | Present; two-slot store + `dingo-authority` |
 | SDK heap API (HP-007) | Present; typed handles + isolation Accept |
-| Network, lifecycle, migration, qualification | **Not started** (HP-006/HP-008+) |
+| Qualified network (HP-008) | Present; challenge/auth/welcome + uniform reject |
+| Lifecycle, migration, qualification | **Not started** (HP-006/HP-009+) |
 | Product claim level (§1.4 / Gate H6) | Still **Level 1 language only** — named namespaces / isolation in progress |
 
 Before Gate H6, product language remains:
@@ -59,7 +61,7 @@ Before Gate H6, product language remains:
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | HP-006 | Legacy migration | Not started | §36. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation)** | `dingo-sdk::heap`: `DingoDeployment`, `Heap`, `HeapCollection`/`HeapStream`, heap-bound pool, `SignedCursor`, batch membership checks. Accept: identical collection names across heaps cannot exchange handles/cursors/batch members/pooled connections. **Gaps:** remote `connect_heap`, SubjectV2 put/get path, `dangerous-key-export` holder signer. |
-| HP-008 | Qualified network protocol | Not started | |
+| **HP-008** | Qualified network protocol | **Landed (Accept core)** | `dingo-client::heap_handshake` wire types; `dingo-server` `heap_registry` / `heap_auth` / `heap_dispatch`: resident-slot challenge→proof→welcome, uniform `heap_unavailable` reject, single-use nonce, request registry for ops 1–3, token forbidden on qualified path. Accept: indistinguishable reject causes, proof replay fails, hot path sources omit authority store. **Gaps:** live TLS 1.3 exporter wiring in accept loop, full §32.4 activation for reserved ops, audit diagnostics sink, removal of legacy token listener, RPC vector corpus. |
 | HP-009 | Lifecycle, backup, recovery | Not started | |
 | HP-010 | Single-node qualification | Not started | First release allowed to advertise qualified `dingo-heap-v1`. |
 | HP-011 | Cluster control and placement | Not started | |
@@ -70,8 +72,8 @@ Before Gate H6, product language remains:
 | Gate | Status |
 |------|--------|
 | H0 Vocabulary and identity | **In progress** — types and registry exist in `dingo-heap`; public APIs still largely flat-store. |
-| H1 Heap-bound SDK | **In progress** — HP-007 typed handles landed; remote `connect_heap` deferred to HP-008. |
-| H2 HeapKey authority | Not started (HP-005/HP-008). |
+| H1 Heap-bound SDK | **In progress** — HP-007 typed handles landed; remote `connect_heap` still open. |
+| H2 HeapKey authority | **In progress** — HP-005 issue + HP-008 handshake core; live TLS listener not wired. |
 | H3 Derived / operational coverage | Not started. |
 | H4 Backup and recovery | Not started. |
 | H5 Single-node lifecycle | Not started. |
@@ -88,6 +90,8 @@ crates/dingo-store/src/kernel/ # PhysicalStore alias (crate-private)
 crates/dingo-store/src/heap/   # HP-003 façades + HP-004 catalog
 crates/dingo-authority/        # HP-005 local ceremony (AGPL; not linked by server)
 crates/dingo-sdk/src/heap.rs   # HP-007 Heap / typed handles
+crates/dingo-client/src/heap_handshake.rs  # HP-008 wire types
+crates/dingo-server/src/heap_{registry,auth,dispatch}.rs  # HP-008
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
@@ -98,26 +102,27 @@ fuzz/fuzz_targets/heap_ownership.rs
 
 #### Next recommended package
 
-**HP-008** (qualified network) is unblocked on the SDK side now that HP-007
-Accept isolation is in-tree; it still needs HP-005. In parallel, **HP-006**
-(legacy migration) and **HP-009** (lifecycle) may proceed.
+**HP-006** (legacy migration) or **HP-009** (lifecycle) may proceed in
+parallel. Remaining HP-008 gaps (TLS accept-loop wiring, reserved-op §32.4
+activation) can land as follow-ons before HP-010.
 
 #### Remaining delivery sequence
 
 ```text
-DONE   HP-000 → HP-001 → HP-002 → HP-003 → HP-004 → HP-005 → HP-007
-NEXT   HP-008 qualified network          (needs HP-005 + HP-007)
-  or   HP-006 legacy migration           (needs HP-004 + HP-005)
+DONE   HP-000 → HP-001 → HP-002 → HP-003 → HP-004 → HP-005 → HP-007 → HP-008(core)
+NEXT   HP-006 legacy migration           (needs HP-004 + HP-005)
   or   HP-009 lifecycle / backup / DR    (needs HP-004 + HP-005)
+  or   HP-008 follow-ons (TLS / §32.4)
 THEN   HP-010 single-node qualification  (needs HP-005…HP-009)
 LATER  HP-011 → HP-012 cluster
 ```
 
 **Critical path to a qualified single-node claim:**  
-(HP-006 ∥ HP-009) → HP-008 → HP-010.
+(HP-006 ∥ HP-009) → HP-008 follow-ons → HP-010.
 
 **Explicitly deferred:** HP-005 transition/mutation COSE corpus; HP-007 remote
-`connect_heap` (with HP-008); HP-000 authority/RPC vectors; HP-001 Verus/Kani.
+`connect_heap` TLS path; HP-008 live exporter/accept-loop + reserved-op schemas;
+HP-000 authority/RPC vectors; HP-001 Verus/Kani.
 
 ## 1. Purpose
 
@@ -6344,9 +6349,10 @@ package is experimental and MUST report `qualified=false`.
 ## 41. Definition of ready for implementation
 
 This v0.9 document authorized HP-000 to begin immediately. As of the
-Implementation progress date above, HP-000…HP-005 and HP-007 have in-tree
-deliveries with the gaps recorded there; HP-006 / HP-008 / HP-009 remain open
-(HP-008 is on the critical path). Later packages still MUST NOT merge into the
+Implementation progress date above, HP-000…HP-005, HP-007, and HP-008 (core)
+have in-tree deliveries with the gaps recorded there; HP-006 / HP-009 remain
+open (with HP-008 TLS/§32.4 follow-ons still required before qualification).
+Later packages still MUST NOT merge into the
 qualified path before their dependencies.
 
 No developer is authorized to invent a different wire field, right bit,

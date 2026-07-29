@@ -533,14 +533,20 @@ dependencies = [
 name = "dingo-server"
 version = "0.2.0"
 dependencies = [
+ "dingo-client",
  "dingo-cluster",
+ "dingo-format",
+ "dingo-heap",
  "dingo-sdk",
  "dingo-store",
+ "ed25519-dalek",
+ "hex",
  "rustls",
  "rustls-pemfile",
  "rustls-pki-types",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
 ]

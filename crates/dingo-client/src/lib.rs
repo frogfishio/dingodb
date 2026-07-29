@@ -6,9 +6,14 @@
 #![deny(missing_docs)]
 
 mod error;
+mod heap_handshake;
 mod protocol;
 
 pub use error::{Error, ErrorCode};
+pub use heap_handshake::{
+    b64u_decode, b64u_encode, HeapAuth, HeapChallenge, HeapReject, HeapWelcome, FEATURE_HEAP_KEY_V1,
+    HEAP_AUDIENCE_DATA_V1, HEAP_AUTH_MAX_BYTES,
+};
 pub use protocol::{
     client_handshake, encode_frame, negotiate_features, negotiate_max_frame, parse_handshake,
     read_frame, read_frame_or_detect_legacy, server_handshake, write_frame, write_json_frame,
