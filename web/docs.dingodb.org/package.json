@@ -1,0 +1,25 @@
+{
+  "name": "docs.dingodb.org",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DingoDB documentation website (docs.dingodb.org)",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "sync-release": "node scripts/sync-release.mjs",
+    "validate": "node scripts/validate-docs.mjs",
+    "build": "npm run validate && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.0",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "astro": "^7.1.6",
+    "marked": "^17.0.1"
+  }
+}

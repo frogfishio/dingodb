@@ -1,0 +1,33 @@
+---
+last_verified: 2026-07-30
+claim_ids:
+title: Remote development
+description: Connect to a development-only single-node server.
+class: how-to
+status: experimental
+section: guides
+order: 12
+applies_to:
+  product: 0.2
+  surface: single-node-tcp
+source:
+  path: crates/dingo-sdk/README.md
+owners:
+  - sdk
+keywords:
+  - remote
+  - development
+---
+
+## Maturity
+
+Single-node TCP (`dingo serve`) is **development only**. It is not a production deployment claim.
+
+```rust
+use dingo_sdk::{ConnectOptions, Dingo};
+let mut db = Dingo::connect("dingo://127.0.0.1:7434/app")?;
+```
+
+Prefer loopback binds. Public plaintext binds are refused without explicit insecure override. TLS/mTLS paths exist—see [security operations](/operations/security/).
+
+Cluster multi-node: [Clustering](/operations/clustering/) (**experimental, not production**).

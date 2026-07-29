@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "key": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "json": {}
+  },
+  "required": ["key", "json"]
+}

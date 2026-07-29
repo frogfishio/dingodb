@@ -276,14 +276,136 @@ impl RemoteHeap {
         Ok(result.get("ready") == Some(&Value::Bool(true)))
     }
 
+    /// Open a collection by canonical name (op_id = 105). Returns collection UUID string.
+    pub fn collection_open(&mut self, name: &str) -> Result<String, Error> {
+        let result = self.call_args(105, None, serde_json::json!({ "name": name }))?;
+        result
+            .get("collection_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| Error::ProtocolViolation("collection_open missing collection_id".into()))
+    }
+
+    /// Put JSON under `key` in `collection_id` (op_id = 120).
+    pub fn put_json(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+        json: &Value,
+    ) -> Result<(String, String), Error> {
+        let result = self.call_args(
+            120,
+            Some(collection_id),
+            serde_json::json!({ "key": key, "json": json }),
+        )?;
+        let event_id = result
+            .get("event_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("put missing event_id".into()))?
+            .to_string();
+        let version = result
+            .get("version")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("put missing version".into()))?
+            .to_string();
+        Ok((event_id, version))
+    }
+
+    /// Put opaque bytes under `key` (op_id = 121).
+    pub fn put_bytes(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+        bytes: &[u8],
+    ) -> Result<(String, String), Error> {
+        let result = self.call_args(
+            121,
+            Some(collection_id),
+            serde_json::json!({
+                "key": key,
+                "bytes_b64": dingo_client::b64u_encode(bytes),
+            }),
+        )?;
+        let event_id = result
+            .get("event_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("put_bytes missing event_id".into()))?
+            .to_string();
+        let version = result
+            .get("version")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("put_bytes missing version".into()))?
+            .to_string();
+        Ok((event_id, version))
+    }
+
+    /// Get JSON for `key` (op_id = 111). `None` when not found.
+    pub fn get_json(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+    ) -> Result<Option<Value>, Error> {
+        let result =
+            self.call_args(111, Some(collection_id), serde_json::json!({ "key": key }))?;
+        match result.get("found") {
+            Some(Value::Bool(false)) => Ok(None),
+            Some(Value::Bool(true)) => Ok(result.get("json").cloned()),
+            _ => Err(Error::ProtocolViolation("get missing found".into())),
+        }
+    }
+
+    /// Get opaque bytes for `key` (op_id = 112).
+    pub fn get_bytes(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+    ) -> Result<Option<Vec<u8>>, Error> {
+        let result =
+            self.call_args(112, Some(collection_id), serde_json::json!({ "key": key }))?;
+        match result.get("found") {
+            Some(Value::Bool(false)) => Ok(None),
+            Some(Value::Bool(true)) => {
+                let b64 = result
+                    .get("bytes_b64")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| Error::ProtocolViolation("get_bytes missing bytes_b64".into()))?;
+                dingo_client::b64u_decode(b64)
+                    .map(Some)
+                    .map_err(|e| Error::ProtocolViolation(format!("bytes_b64: {e}")))
+            }
+            _ => Err(Error::ProtocolViolation("get_bytes missing found".into())),
+        }
+    }
+
+    /// Delete `key` (op_id = 122). Returns whether a value was present.
+    pub fn delete(&mut self, collection_id: &str, key: &str) -> Result<bool, Error> {
+        let result =
+            self.call_args(122, Some(collection_id), serde_json::json!({ "key": key }))?;
+        Ok(result.get("removed") == Some(&Value::Bool(true)))
+    }
+
     fn call_process(&mut self, op_id: u16) -> Result<Value, Error> {
+        self.call_args(op_id, None, serde_json::json!({}))
+    }
+
+    fn call_args(
+        &mut self,
+        op_id: u16,
+        collection_id: Option<&str>,
+        args: Value,
+    ) -> Result<Value, Error> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        let req = serde_json::json!({
+        let mut req = serde_json::json!({
             "v": 1,
             "id": id,
             "op_id": op_id,
-            "args": {},
+            "args": args,
         });
+        if let Some(cid) = collection_id {
+            req.as_object_mut()
+                .unwrap()
+                .insert("collection_id".into(), Value::String(cid.into()));
+        }
         write_json_frame(&mut self.stream, &req).map_err(Error::from)?;
         let resp_bytes = read_frame(&mut self.stream, self.max_frame)
             .map_err(Error::from)?

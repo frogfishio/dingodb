@@ -1,0 +1,7 @@
+{
+  "op": 112,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-000000000001",
+  "args": { "key": "blob-1" },
+  "result": { "found": true, "bytes_b64": "AQID" }
+}

@@ -35,8 +35,13 @@ fn registry_unique_and_hp000_active_set() {
         .filter(|o| o.status == "active")
         .map(|o| o.id)
         .collect();
-    assert_eq!(active, vec![1, 2, 3]);
-    assert!(!Operation::is_callable(111));
+    assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
+    for id in [105u16, 111, 112, 120, 121, 122] {
+        assert!(active.contains(&id), "§32.4 data op {id} must be active");
+        assert!(Operation::is_callable(id), "data op {id} must be callable");
+    }
+    // Still-reserved example (find).
+    assert!(!Operation::is_callable(116));
 }
 
 #[test]
@@ -46,7 +51,17 @@ fn artifacts_present_and_schemas_for_active_ops() {
     assert!(root.join("cbor-v1.json").is_file());
     assert!(root.join("vectors-v1.json").is_file());
     assert!(root.join("rpc-v1.schema.json").is_file());
-    for name in ["ping", "health_live", "health_ready"] {
+    for name in [
+        "ping",
+        "health_live",
+        "health_ready",
+        "collection_open",
+        "get",
+        "get_bytes",
+        "put",
+        "put_bytes",
+        "delete",
+    ] {
         assert!(root.join(format!("rpc-v1/{name}.request.json")).is_file());
         assert!(root.join(format!("rpc-v1/{name}.response.json")).is_file());
         assert!(root
@@ -159,12 +174,26 @@ fn decide_allows_ping_and_denies_reserved() {
         ),
         AuthorizationDecision::Allow
     );
-    assert!(matches!(
+    // §32.4 data get is active and should be allowed under Read rights.
+    assert_eq!(
         decide(
             &snap,
             &cert,
             &OperationDescriptor {
                 operation_id: 111,
+                request_bytes: 0
+            },
+            now
+        ),
+        AuthorizationDecision::Allow
+    );
+    // Reserved ops still deny (e.g. find = 116).
+    assert!(matches!(
+        decide(
+            &snap,
+            &cert,
+            &OperationDescriptor {
+                operation_id: 116,
                 request_bytes: 0
             },
             now

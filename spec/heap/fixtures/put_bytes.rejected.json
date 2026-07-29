@@ -1,0 +1,6 @@
+{
+  "op": 121,
+  "ok": false,
+  "args": { "key": "blob-1", "bytes_b64": "" },
+  "error": { "code": "heap_unavailable", "retryable": false }
+}

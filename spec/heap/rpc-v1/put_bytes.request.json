@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "key": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "bytes_b64": { "type": "string", "minLength": 1 }
+  },
+  "required": ["key", "bytes_b64"]
+}

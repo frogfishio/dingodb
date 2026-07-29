@@ -1,0 +1,6 @@
+{
+  "op": 120,
+  "ok": false,
+  "args": { "key": "user-1" },
+  "error": { "code": "heap_unavailable", "retryable": false }
+}

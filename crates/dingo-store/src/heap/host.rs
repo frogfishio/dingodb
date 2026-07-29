@@ -33,9 +33,25 @@ impl StoreHost {
         })
     }
 
+    /// Share an already-opened physical store (e.g. server exclusive writer).
+    ///
+    /// Used by the qualified serve path so HeapKey sessions and legacy token
+    /// paths do not double-open the writer lock.
+    pub fn from_shared(physical: Arc<Mutex<PhysicalStore>>, root: impl Into<PathBuf>) -> Self {
+        Self {
+            physical,
+            root: root.into(),
+        }
+    }
+
     /// Bind a validated [`HeapCap`] into a heap-scoped façade.
     pub fn open_heap(&self, cap: HeapCap) -> HeapStore {
         HeapStore::from_host(Arc::clone(&self.physical), cap)
+    }
+
+    /// Shared physical store handle (for process-local host reuse).
+    pub fn physical(&self) -> Arc<Mutex<PhysicalStore>> {
+        Arc::clone(&self.physical)
     }
 
     /// Store root path (operational metadata only).

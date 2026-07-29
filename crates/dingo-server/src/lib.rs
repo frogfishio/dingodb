@@ -50,13 +50,15 @@ pub use heap_auth::{
     PendingChallenge, NONCE_TTL,
 };
 pub use heap_dispatch::{
-    dispatch_heap_request, request_registry_allows, HeapDispatchResult, HeapRpcError,
+    dispatch_heap_request, dispatch_heap_request_with, layout_for_root, request_registry_allows,
+    HeapDataCtx, HeapDispatchResult, HeapRpcError,
     HeapRpcRequest, HeapRpcResponse, HEAP_UNAVAILABLE,
 };
 pub use heap_registry::{ResidentHeap, ResidentHeapRegistry};
 pub use heap_session::{
     run_qualified_handshake, run_qualified_handshake_buffered, serve_qualified_requests,
-    validate_qualified_listener, QualifiedHandshakeParams, QualifiedHandshakeResult,
+    serve_qualified_requests_with_host, validate_qualified_listener, QualifiedHandshakeParams,
+    QualifiedHandshakeResult,
     QualifiedSession,
 };
 pub use metrics::{

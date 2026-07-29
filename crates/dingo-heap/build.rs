@@ -66,11 +66,18 @@ fn main() {
         .operations
         .iter()
         .filter(|o| o.status == "active")
+        .map(|o| o.id)
         .collect();
-    assert_eq!(
-        active.iter().map(|o| o.id).collect::<Vec<_>>(),
-        vec![1, 2, 3],
-        "HP-000 permits only operations 1–3 as active"
+    // HP-000 baseline: 1–3 always active. Later packages may activate more via §32.4.
+    for required in [1u16, 2, 3] {
+        assert!(
+            active.contains(&required),
+            "active set must include process op {required}, got {active:?}"
+        );
+    }
+    assert!(
+        active.windows(2).all(|w| w[0] < w[1]),
+        "active operation ids must be sorted unique: {active:?}"
     );
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -114,7 +121,12 @@ fn main() {
     gen.push_str("}\n\n");
 
     gen.push_str("pub fn active_operation_ids() -> &'static [u16] {\n");
-    gen.push_str("    &[1, 2, 3]\n");
+    let active_lit = active
+        .iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    gen.push_str(&format!("    &[{active_lit}]\n"));
     gen.push_str("}\n");
 
     // State admission table

@@ -1,0 +1,66 @@
+{
+  "source": "doc/CAPABILITY_MATRIX.md",
+  "verified_for": "0.2.0",
+  "last_verified": "2026-07-30",
+  "deploymentProfiles": [
+    {
+      "id": "embedded-single-node",
+      "name": "Embedded single-node",
+      "how": "Dingo::open(path)",
+      "status": "experimental",
+      "note": "Strongest current path; early access"
+    },
+    {
+      "id": "single-node-tcp",
+      "name": "Single-node TCP",
+      "how": "dingo serve (default 127.0.0.1)",
+      "status": "development-only",
+      "note": "Development and evaluation only"
+    },
+    {
+      "id": "in-process-cluster",
+      "name": "In-process cluster",
+      "how": "Dingo::open_cluster / create_cluster",
+      "status": "development-only",
+      "note": "Integration-test harness"
+    },
+    {
+      "id": "network-multi-node",
+      "name": "Network multi-node",
+      "how": "dingo serve-cluster + multi-seed connect",
+      "status": "experimental",
+      "note": "Not production; requires --experimental-network-cluster"
+    },
+    {
+      "id": "s3-gcs-placement",
+      "name": "S3/GCS placement",
+      "how": "MediaLocator + mirror env roots",
+      "status": "experimental",
+      "note": "Filesystem mirror, not native cloud I/O"
+    },
+    {
+      "id": "erasure-lifecycle",
+      "name": "Erasure / lifecycle",
+      "how": "Scaffold APIs",
+      "status": "scaffold",
+      "note": "Not production protection"
+    }
+  ],
+  "limitations": [
+    "DingoDB is experimental software. No production-supported release line is claimed.",
+    "Experimental network cluster is not a production deployment path.",
+    "S3/GCS locators are filesystem mirrors, not native cloud object-store connectors.",
+    "WIRE_PROFILE_LABEL = 1.0-draft is not an interoperability freeze.",
+    "No public comparative performance result is currently claimed.",
+    "Continuation-token authentication (DEF-097) remains open; do not claim authenticated continuation tokens.",
+    "Damage tolerance reduces blast radius; missing or overwritten bytes are not recoverable."
+  ],
+  "compatibility": [
+    { "label": "Crate / workspace semver", "value": "0.2.0" },
+    { "label": "SDK_API_VERSION", "value": "1.0" },
+    { "label": "WIRE_PROFILE_LABEL", "value": "1.0-draft" },
+    { "label": "RPC_WIRE_LABEL", "value": "1.0-draft" },
+    { "label": "BACKUP_PROFILE", "value": "dingo-backup-v1" },
+    { "label": "SCRUB_PROFILE", "value": "dingo-scrub-v1" }
+  ]
+}

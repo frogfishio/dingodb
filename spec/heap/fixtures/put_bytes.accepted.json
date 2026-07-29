@@ -1,0 +1,10 @@
+{
+  "op": 121,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-000000000001",
+  "args": { "key": "blob-1", "bytes_b64": "AQID" },
+  "result": {
+    "event_id": "cccccccccccccccccccccccccccccccc",
+    "version": "dddddddddddddddddddddddddddddddd"
+  }
+}

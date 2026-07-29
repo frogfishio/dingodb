@@ -329,11 +329,11 @@
     {
       "id": 105,
       "wire_name": "collection_open",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/collection_open.request.json",
+      "response_schema": "rpc-v1/collection_open.response.json",
       "allowed_states": [
         "active",
         "read_only"
@@ -411,11 +411,11 @@
     {
       "id": 111,
       "wire_name": "get",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/get.request.json",
+      "response_schema": "rpc-v1/get.response.json",
       "allowed_states": [
         "active",
         "read_only"
@@ -428,11 +428,11 @@
     {
       "id": 112,
       "wire_name": "get_bytes",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/get_bytes.request.json",
+      "response_schema": "rpc-v1/get_bytes.response.json",
       "allowed_states": [
         "active",
         "read_only"
@@ -564,11 +564,11 @@
     {
       "id": 120,
       "wire_name": "put",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 4,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/put.request.json",
+      "response_schema": "rpc-v1/put.response.json",
       "allowed_states": [
         "active"
       ],
@@ -580,11 +580,11 @@
     {
       "id": 121,
       "wire_name": "put_bytes",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 4,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/put_bytes.request.json",
+      "response_schema": "rpc-v1/put_bytes.response.json",
       "allowed_states": [
         "active"
       ],
@@ -596,11 +596,11 @@
     {
       "id": 122,
       "wire_name": "delete",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 4,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/delete.request.json",
+      "response_schema": "rpc-v1/delete.response.json",
       "allowed_states": [
         "active"
       ],

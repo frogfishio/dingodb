@@ -8,7 +8,7 @@ use crate::admission::{
 use crate::authz::{check_rpc, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM};
 use crate::bind_policy;
 use crate::heap_session::{
-    run_qualified_handshake_buffered, serve_qualified_requests, QualifiedHandshakeParams,
+    run_qualified_handshake_buffered, serve_qualified_requests_with_host, QualifiedHandshakeParams,
     QualifiedHandshakeResult,
 };
 use crate::metrics::{
@@ -818,8 +818,14 @@ fn wrap_server_stream(tcp: TcpStream, tls: Option<&TlsServerState>) -> Result<Io
 
 /// Qualified heap-key path: TLS exporter → challenge/auth → HeapCap request loop.
 ///
-/// Token/RBAC and the shared store mutex are not used on this path (HP-008).
-fn qualified_connection_shared(stream: IoStream, options: &ServeOptions) -> Result<(), Error> {
+/// Token/RBAC is not consulted (HP-008). The shared store owner is reused via
+/// [`dingo_store::StoreHost`] so §32.4 data ops stay capability-gated.
+fn qualified_connection_shared(
+    stream: IoStream,
+    options: &ServeOptions,
+    store: &std::sync::Arc<std::sync::Mutex<dingo_store::Store>>,
+    store_path: &std::path::Path,
+) -> Result<(), Error> {
     let tls_exporter = stream.export_channel_binding()?;
     let mut reader = BufReader::new(stream);
     let registry = options.heap_registry.as_ref().ok_or_else(|| {
@@ -842,9 +848,10 @@ fn qualified_connection_shared(stream: IoStream, options: &ServeOptions) -> Resu
         audit: options.heap_auth_audit.as_deref(),
         server_nonce: None,
     };
+    let host = dingo_store::StoreHost::from_shared(std::sync::Arc::clone(store), store_path);
     match run_qualified_handshake_buffered(&mut reader, params)? {
         QualifiedHandshakeResult::Established(session) => {
-            serve_qualified_requests(&mut reader, &session)
+            serve_qualified_requests_with_host(&mut reader, &session, Some(&host))
         }
         QualifiedHandshakeResult::Rejected { .. } => Ok(()),
     }
@@ -1111,7 +1118,12 @@ pub fn handle_connection_shared(
         .map_err(Error::from_io)?;
 
     if options.qualified_heap_key {
-        return qualified_connection_shared(stream, &options);
+        let store_path = store
+            .lock()
+            .map_err(|_| Error::Internal("store lock poisoned".into()))?
+            .path()
+            .to_path_buf();
+        return qualified_connection_shared(stream, &options, &store, &store_path);
     }
 
     let mut reader = BufReader::new(stream);
@@ -1273,7 +1285,12 @@ fn connection_loop(
         .map_err(Error::from_io)?;
 
     if options.qualified_heap_key {
-        return qualified_connection_shared(stream, options);
+        // Qualified data ops need a shared Arc store owner (StoreHost). The
+        // exclusive single-connection test path does not share; use
+        // `handle_connection_shared` / `serve_store_with` instead.
+        return Err(Error::ValidationMsg(
+            "qualified heap-key requires shared store owner (handle_connection_shared)".into(),
+        ));
     }
 
     let mut reader = BufReader::new(stream);

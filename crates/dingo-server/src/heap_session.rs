@@ -293,19 +293,47 @@ pub fn run_qualified_handshake_buffered<S: Read + Write>(
 ///
 /// Does **not** consult token/RBAC or an authority store. Returns when the
 /// peer closes or an idle/fatal transport error occurs.
+///
+/// When `host` is provided, §32.4 data ops (collection open / get / put / delete)
+/// are dispatched through a capability-gated [`dingo_store::HeapStore`].
 pub fn serve_qualified_requests<S: Read + Write>(
     reader: &mut BufReader<S>,
     session: &QualifiedSession,
 ) -> Result<(), Error> {
-    use crate::heap_dispatch::{dispatch_heap_request, HeapDispatchResult};
+    serve_qualified_requests_with_host(reader, session, None)
+}
+
+/// Like [`serve_qualified_requests`], with optional store host for data ops.
+pub fn serve_qualified_requests_with_host<S: Read + Write>(
+    reader: &mut BufReader<S>,
+    session: &QualifiedSession,
+    host: Option<&dingo_store::StoreHost>,
+) -> Result<(), Error> {
+    use crate::heap_dispatch::{
+        dispatch_heap_request, dispatch_heap_request_with, layout_for_root, HeapDataCtx,
+        HeapDispatchResult,
+    };
     use dingo_client::write_json_frame;
+
+    let heap_store = host.map(|h| h.open_heap(session.cap.clone()));
+    let layout = host.map(|h| layout_for_root(h.root()));
 
     loop {
         let raw = match read_frame(reader, session.max_frame).map_err(Error::from)? {
             Some(p) => p,
             None => break,
         };
-        match dispatch_heap_request(&session.cap, &raw) {
+        let outcome = match (heap_store.as_ref(), layout.as_ref()) {
+            (Some(store), Some(layout)) => {
+                dispatch_heap_request_with(
+                    &session.cap,
+                    &raw,
+                    Some(HeapDataCtx { store, layout }),
+                )
+            }
+            _ => dispatch_heap_request(&session.cap, &raw),
+        };
+        match outcome {
             HeapDispatchResult::Response(resp) => {
                 write_json_frame(reader.get_mut(), &resp).map_err(Error::from)?;
             }

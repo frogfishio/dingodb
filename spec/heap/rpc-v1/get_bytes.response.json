@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "found": { "type": "boolean" },
+    "bytes_b64": { "type": "string" }
+  },
+  "required": ["found"]
+}

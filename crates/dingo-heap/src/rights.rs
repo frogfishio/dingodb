@@ -182,13 +182,18 @@ mod tests {
             .filter(|o| o.status == "active")
             .map(|o| o.id)
             .collect();
-        assert_eq!(active, vec![1, 2, 3]);
+        assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
+        // §32.4 data cut (get/put/delete + collection_open).
+        for id in [105u16, 111, 112, 120, 121, 122] {
+            assert!(active.contains(&id), "missing active data op {id}");
+        }
     }
 
     #[test]
     fn reserved_not_callable() {
-        assert!(!Operation::is_callable(111));
         assert!(Operation::is_callable(1));
+        assert!(Operation::is_callable(111)); // §32.4 data cut
+        assert!(!Operation::is_callable(116)); // still reserved
     }
 
     proptest! {

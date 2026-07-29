@@ -25,8 +25,15 @@ names = [o["wire_name"] for o in ops["operations"]]
 if len(names) != len(set(names)):
     sys.exit("duplicate wire names")
 active = [o["id"] for o in ops["operations"] if o["status"]=="active"]
-if active != [1,2,3]:
-    sys.exit(f"HP-000 active set must be [1,2,3], got {active}")
+for required in (1, 2, 3):
+    if required not in active:
+        sys.exit(f"active set must include process op {required}, got {active}")
+if active != sorted(active) or len(active) != len(set(active)):
+    sys.exit(f"active set must be sorted unique, got {active}")
+# §32.4 first data cut: collection open + get/put/delete.
+for required in (105, 111, 112, 120, 121, 122):
+    if required not in active:
+        sys.exit(f"§32.4 data cut requires active op {required}, got {active}")
 for o in ops["operations"]:
     if o["status"]=="active":
         for key in ("request_schema","response_schema"):

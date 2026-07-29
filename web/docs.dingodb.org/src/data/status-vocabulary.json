@@ -1,0 +1,61 @@
+{
+  "labels": {
+    "available": {
+      "display": "Available",
+      "meaning": "Implemented in the named release and supported on the stated surface."
+    },
+    "experimental": {
+      "display": "Experimental",
+      "meaning": "Implemented and testable, but interfaces, formats, or guarantees may change."
+    },
+    "development-only": {
+      "display": "Development only",
+      "meaning": "Exists for development or evaluation and is not a supported deployment claim."
+    },
+    "scaffold": {
+      "display": "Scaffold",
+      "meaning": "Types or partial machinery exist, but the capability is not operationally complete."
+    },
+    "design": {
+      "display": "Design",
+      "meaning": "Specified or proposed but not implemented. Use future tense."
+    },
+    "deferred": {
+      "display": "Deferred",
+      "meaning": "Intentionally not on the active delivery path."
+    }
+  },
+  "allowed": [
+    "available",
+    "experimental",
+    "development-only",
+    "scaffold",
+    "design",
+    "deferred"
+  ],
+  "surfaces": [
+    "embedded-single-node",
+    "single-node-tcp",
+    "in-process-cluster",
+    "network-multi-node",
+    "s3-gcs-placement",
+    "erasure-lifecycle",
+    "all-profiles",
+    "design-only"
+  ],
+  "docClasses": [
+    "tutorial",
+    "how-to",
+    "concept",
+    "reference",
+    "operation",
+    "specification",
+    "status"
+  ],
+  "specStates": {
+    "normative": "Defines a conformance contract for its stated version",
+    "draft": "Intended to become normative; still changeable",
+    "exploratory": "Records a proposal or research direction",
+    "historical": "Retained for reference; not current"
+  }
+}
