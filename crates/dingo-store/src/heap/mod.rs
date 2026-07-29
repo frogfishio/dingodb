@@ -3,6 +3,8 @@
 mod catalog;
 mod heap_store;
 mod host;
+#[cfg(feature = "aws-kms")]
+mod kms_aws;
 mod lifecycle;
 mod maintenance_store;
 mod migration;
@@ -38,6 +40,8 @@ pub use lifecycle::{
     INCOMPLETE_PURGE_DOMAIN, LIFECYCLE_DIR, PURGE_COVERAGE_DOMAIN, RETENTION_POLICY_DOMAIN,
     TOMBSTONE_DOMAIN,
 };
+#[cfg(feature = "aws-kms")]
+pub use kms_aws::{AwsKmsDataKeyProvider, SharedAwsKmsDataKeyProvider};
 pub use migration::{
     CutoverGate, HeapMigrationJob, InventoryFrame, InventorySegment, MigrationPhase,
     MigrationStateV1, SourceInventory, ADMITTED_FILE, ASSIGNMENTS_FILE, ASSIGNMENTS_HASH_DOMAIN,

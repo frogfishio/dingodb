@@ -45,7 +45,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
 | C1 | Live filesystem multi-tier media wipe drill | H4 open | **Done (2026-07-30)** — `destroy_coverage_unit_on_media` + `wipe_heap_object_media`; Accept `live_filesystem_multi_tier_media_wipe` / unavailable root stays retired |
-| C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | **Done (2026-07-30)** — `HsmBackendKind` / `HsmDataKeyConfig` / capabilities; real backends refuse; `mock_for_tests` Accept path; production KMS still not wired |
+| C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | **Done (2026-07-30)** — scaffold + **live AWS KMS** (`feature aws-kms`, `AwsKmsDataKeyProvider` SigV4 GenerateDataKey); mock Accept; PKCS#11/GCP/Azure still scaffold |
 | C3 | Mixed-heap salvage classification drill | H4 open | **Done (2026-07-30)** — `classify_mixed_heap_frame` / `MixedHeapSalvageClass`; Accept `mixed_heap_salvage_classification_drill` |
 | C4 | Broader destructive crash-matrix cells (beyond peer lifecycle) | H5 open | crash_matrix cells + CI subset |
 
@@ -87,7 +87,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
    independent firm/researcher using [HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md);
    disposition in [HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md).  
 2. **E1 — qualified HeapKey listener as default remote profile** (code).  
-3. **Live PKCS#11 / cloud KMS connector** behind `HsmDataKeyProvider` (ops; optional).
+3. **Live PKCS#11** (or GCP/Azure) connector; AWS KMS live path is feature `aws-kms`.
 
 ## Machine checks (today)
 

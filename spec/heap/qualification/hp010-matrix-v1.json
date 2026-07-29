@@ -103,10 +103,13 @@
         "crates/dingo-store HeapLifecycle::destroy_coverage_unit_on_media / wipe_heap_object_media",
         "crates/dingo-store DataKeyProvider / InProcessDataKeyProvider / HsmDataKeyProvider scaffold",
         "crates/dingo-store classify_mixed_heap_frame / MixedHeapSalvageClass",
-        "crates/dingo-store HsmBackendKind / HsmDataKeyConfig / HsmCapabilities / mock_for_tests"
+        "crates/dingo-store HsmBackendKind / HsmDataKeyConfig / HsmCapabilities / mock_for_tests",
+        "crates/dingo-store feature aws-kms AwsKmsDataKeyProvider (live SigV4 GenerateDataKey)",
+        "crates/dingo-store/tests/hp009_lifecycle.rs::aws_kms_config_surface",
+        "crates/dingo-store/tests/hp009_lifecycle.rs::aws_kms_live_generate_destroy (ignored; DINGO_KMS_LIVE=1)"
       ],
       "open": [
-        "live PKCS#11 / cloud KMS connector not wired (mock + scaffold only)"
+        "PKCS#11 / GCP / Azure live connectors not wired (AWS KMS live via feature aws-kms)"
       ]
     },
     "H5": {

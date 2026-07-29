@@ -21,6 +21,10 @@ legacy-raw-store = []
 # Local-only staged genesis / publish used by `dingo-authority` (HP-005).
 # MUST NOT be enabled in the qualified data-service target.
 authority-provisioning = []
+# Live AWS KMS data-key connector ([`AwsKmsDataKeyProvider`]). Not default:
+# pulls ureq + SigV4 helpers. Uses real KMS HTTPS (or LocalStack endpoint).
+# PKCS#11 remains scaffold-only in this cut.
+aws-kms = ["dep:ureq", "dep:hmac", "dep:sha2", "dep:hex"]
 
 [dependencies]
 dingo-format.workspace = true
@@ -30,6 +34,10 @@ blake3.workspace = true
 getrandom.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
+ureq = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -141,4 +149,3 @@ required-features = ["legacy-raw-store"]
 [[example]]
 name = "read_latency_breakdown"
 required-features = ["legacy-raw-store"]
-

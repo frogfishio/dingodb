@@ -76,7 +76,7 @@ re-bound through heap APIs.
 |----|---------|----------|--------|
 | CPR-001 | Flat SDK opt-in; package **default is heap-only**; store **façades-only default** (`legacy-raw-store` opt-in) | Closed for defaults | H0, H1 |
 | CPR-002 | Many reserved heap ops remain; §32.4 data + list/scan/find/history/indexes cut activated with IndexAdmin + equality find acceleration (lifecycle/export still reserved) | Medium | H2 |
-| CPR-003 | Live multi-tier FS wipe + HSM scaffold (refuses until configured) + mixed-heap salvage classification Accept | Low (live KMS backend open) | H4 residual / HP-009 |
+| CPR-003 | Live multi-tier FS wipe + AWS KMS live connector (`aws-kms`) + HSM scaffold for other backends + mixed-heap salvage | Low (PKCS#11/GCP/Azure open) | H4 residual / HP-009 |
 | CPR-004 | Kani + **Verus** pure-kernel connected in CI (`kani-heap`, `verus-heap`); pure_kernel 8 verified | Low for formal path (external review still CPR-005) | H6 |
 | CPR-005 | No independent external security review receipt on file — **requires third party**; brief ready ([HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md)) | High for H6 | H6 |
 | CPR-006 | Resource/physical isolation profiles declared, not qualified | Low (out of reference) | H3 profile extension |

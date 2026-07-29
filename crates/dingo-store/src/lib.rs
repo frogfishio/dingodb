@@ -163,6 +163,8 @@ pub use heap::{
     STATE_FILE as HEAP_MIGRATE_STATE_FILE, STREAMS_CATALOG_FILE as HEAP_STREAMS_CATALOG_FILE,
     TOMBSTONE_DOMAIN as HEAP_TOMBSTONE_DOMAIN,
 };
+#[cfg(feature = "aws-kms")]
+pub use heap::{AwsKmsDataKeyProvider, SharedAwsKmsDataKeyProvider};
 pub use history::{HistoryEvent, SubjectHistory};
 pub use hydra::{
     build as build_hydra_index, build_many as build_hydra_indexes, classify_keys,

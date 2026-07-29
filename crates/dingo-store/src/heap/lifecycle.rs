@@ -284,15 +284,22 @@ pub struct IdentityTombstone {
     pub created_at: u64,
 }
 
-/// In-process data-encryption key material for one heap (HP-009).
+/// Data-encryption key handle for one heap (HP-009 / H4 KMS).
 ///
-/// Not an HSM adapter; models destruction semantics for Accept tests.
+/// In-process and KMS envelope paths share this type. Plaintext material is
+/// wiped on destroy; KMS-backed handles may also carry ciphertext + CMK id.
 #[derive(Clone)]
 pub struct DataKeyHandle {
     heap_id: [u8; 16],
     key_id: [u8; 16],
     /// Secret bytes; cleared on destroy.
     material: Option<Vec<u8>>,
+    /// KMS GenerateDataKey ciphertext blob (envelope DEK), if any.
+    ciphertext_blob: Option<Vec<u8>>,
+    /// External key id (CMK ARN / alias) when minted via cloud KMS.
+    external_key_id: Option<String>,
+    /// Provider id that minted this handle (`in-process`, `aws-kms`, …).
+    provider_id: Option<String>,
 }
 
 impl std::fmt::Debug for DataKeyHandle {
@@ -301,12 +308,15 @@ impl std::fmt::Debug for DataKeyHandle {
             .field("heap_id", &hex16(&self.heap_id))
             .field("key_id", &hex16(&self.key_id))
             .field("destroyed", &self.material.is_none())
+            .field("has_ciphertext", &self.ciphertext_blob.is_some())
+            .field("external_key_id", &self.external_key_id)
+            .field("provider_id", &self.provider_id)
             .finish()
     }
 }
 
 impl DataKeyHandle {
-    /// Mint a new data key for `heap_id`.
+    /// Mint a new data key for `heap_id` (local secret material).
     pub fn generate(heap_id: [u8; 16], secret: &[u8]) -> Result<Self, StoreError> {
         if secret.is_empty() {
             return Err(StoreError::HeapAdmit("empty data key".into()));
@@ -315,6 +325,33 @@ impl DataKeyHandle {
             heap_id,
             key_id: random_id()?,
             material: Some(secret.to_vec()),
+            ciphertext_blob: None,
+            external_key_id: None,
+            provider_id: Some("in-process".into()),
+        })
+    }
+
+    /// Mint an envelope-encrypted data key (plaintext + KMS ciphertext under CMK).
+    pub fn generate_envelope(
+        heap_id: [u8; 16],
+        plaintext: &[u8],
+        ciphertext_blob: Vec<u8>,
+        external_key_id: impl Into<String>,
+        provider_id: impl Into<String>,
+    ) -> Result<Self, StoreError> {
+        if plaintext.is_empty() {
+            return Err(StoreError::HeapAdmit("empty data key plaintext".into()));
+        }
+        if ciphertext_blob.is_empty() {
+            return Err(StoreError::HeapAdmit("empty ciphertext blob".into()));
+        }
+        Ok(Self {
+            heap_id,
+            key_id: random_id()?,
+            material: Some(plaintext.to_vec()),
+            ciphertext_blob: Some(ciphertext_blob),
+            external_key_id: Some(external_key_id.into()),
+            provider_id: Some(provider_id.into()),
         })
     }
 
@@ -336,6 +373,26 @@ impl DataKeyHandle {
     /// Borrow secret material if still live.
     pub fn material(&self) -> Option<&[u8]> {
         self.material.as_deref()
+    }
+
+    /// KMS ciphertext blob if this is an envelope key.
+    pub fn ciphertext_blob(&self) -> Option<&[u8]> {
+        self.ciphertext_blob.as_deref()
+    }
+
+    /// External CMK / key id when KMS-backed.
+    pub fn external_key_id(&self) -> Option<&str> {
+        self.external_key_id.as_deref()
+    }
+
+    /// Provider that minted the handle.
+    pub fn provider_id(&self) -> Option<&str> {
+        self.provider_id.as_deref()
+    }
+
+    /// Whether this handle was minted via envelope encryption (cloud KMS).
+    pub fn is_envelope(&self) -> bool {
+        self.ciphertext_blob.is_some()
     }
 }
 
@@ -386,11 +443,12 @@ impl DataKeyProvider for InProcessDataKeyProvider {
     }
 }
 
-/// Named external key backends (H4 / CPR-003 scaffolding).
+/// Named external key backends (H4 / CPR-003).
 ///
-/// Production PKCS#11 / cloud KMS implementations are **not** shipped yet.
-/// [`HsmBackendKind::MockInProcess`] is a deterministic Accept/dev stand-in that
-/// never claims to be a real HSM.
+/// - [`HsmBackendKind::AwsKms`]: live HTTPS connector via feature `aws-kms`
+///   ([`crate::AwsKmsDataKeyProvider`]).
+/// - PKCS#11 / GCP / Azure: scaffold refuse until wired.
+/// - [`HsmBackendKind::MockInProcess`]: Accept/dev stand-in only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HsmBackendKind {
     /// PKCS#11 shared library (SoftHSM / hardware token).
@@ -457,9 +515,47 @@ impl HsmDataKeyConfig {
         }
     }
 
-    /// Whether this config can perform key ops today.
+    /// Whether this config can perform key ops today (mock path only here).
+    ///
+    /// Live AWS KMS uses [`AwsKmsDataKeyProvider`] (feature `aws-kms`) rather than
+    /// this boolean alone.
     pub fn is_operational(&self) -> bool {
         matches!(self.backend, HsmBackendKind::MockInProcess) && self.mock_enabled
+    }
+
+    /// AWS KMS configuration: region + CMK id/ARN; optional custom endpoint (LocalStack).
+    pub fn aws_kms(
+        region: impl Into<String>,
+        key_id_or_arn: impl Into<String>,
+        endpoint: Option<String>,
+    ) -> Self {
+        Self {
+            backend: HsmBackendKind::AwsKms,
+            library_or_endpoint: endpoint,
+            slot_or_region: Some(region.into()),
+            key_label: Some(key_id_or_arn.into()),
+            mock_enabled: false,
+        }
+    }
+
+    /// Load AWS KMS config from environment when set.
+    ///
+    /// - `DINGO_AWS_KMS_KEY_ID` or `DINGO_KMS_KEY_ARN` — CMK id/ARN (required)
+    /// - `AWS_REGION` or `DINGO_AWS_REGION` — region (default `us-east-1`)
+    /// - `DINGO_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` — optional override (LocalStack)
+    pub fn aws_kms_from_env() -> Option<Self> {
+        let key = std::env::var("DINGO_AWS_KMS_KEY_ID")
+            .or_else(|_| std::env::var("DINGO_KMS_KEY_ARN"))
+            .ok()
+            .filter(|s| !s.is_empty())?;
+        let region = std::env::var("DINGO_AWS_REGION")
+            .or_else(|_| std::env::var("AWS_REGION"))
+            .unwrap_or_else(|_| "us-east-1".into());
+        let endpoint = std::env::var("DINGO_AWS_ENDPOINT_URL")
+            .or_else(|_| std::env::var("AWS_ENDPOINT_URL"))
+            .ok()
+            .filter(|s| !s.is_empty());
+        Some(Self::aws_kms(region, key, endpoint))
     }
 }
 
@@ -1238,13 +1334,22 @@ pub fn destroy_data_key(
     fingerprint_body.extend_from_slice(&handle.heap_id);
     fingerprint_body.extend_from_slice(&handle.key_id);
     fingerprint_body.extend_from_slice(&material);
+    if let Some(ext) = handle.external_key_id.as_deref() {
+        fingerprint_body.extend_from_slice(ext.as_bytes());
+    }
     let destroyed_fingerprint = domain_hash(DATA_KEY_DESTROY_DOMAIN, &fingerprint_body);
-    // Best-effort wipe before drop.
+    // Best-effort wipe plaintext + envelope ciphertext before drop.
     let mut wiped = material;
     for b in &mut wiped {
         *b = 0;
     }
     drop(wiped);
+    if let Some(mut ct) = handle.ciphertext_blob.take() {
+        for b in &mut ct {
+            *b = 0;
+        }
+        drop(ct);
+    }
 
     let receipt = DataKeyDestructionReceipt {
         receipt_id: random_id()?,
