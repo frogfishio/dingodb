@@ -184,7 +184,7 @@ pub fn dispatch_heap_request_with(
     // Rights gate for data ops.
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
-        105 | 110 | 111 | 112 | 114 | 115 | 116 => Rights::READ,
+        105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 => Rights::READ,
         120 | 121 | 122 => Rights::WRITE,
         _ => return unavailable(req.id),
     };
@@ -222,6 +222,10 @@ pub fn dispatch_heap_request_with(
         },
         116 => match data {
             Some(ctx) => dispatch_find(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        117 => match data {
+            Some(ctx) => dispatch_history(req.id, &req, ctx),
             None => unavailable(req.id),
         },
         120 => match data {
@@ -400,6 +404,69 @@ fn dispatch_list_keys(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         }
         Err(_) => unavailable_id(id),
     }
+}
+
+fn dispatch_history(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let key = match require_string_arg(&req.args, "key") {
+        Some(k) if !k.is_empty() && k.len() <= 2048 => k,
+        _ => return unavailable_id(id),
+    };
+    if req.args.keys().any(|k| k != "key") {
+        return unavailable_id(id);
+    }
+    let cid_s = match req.collection_id.as_deref() {
+        Some(s) => s,
+        None => return unavailable_id(id),
+    };
+    let coll = match parse_collection_id(cid_s) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    if rebuild_object_entry_from_chain(ctx.layout, &heap_id, ObjectKind::Collection, coll.as_bytes())
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        return unavailable_id(id);
+    }
+    let hist = match ctx
+        .store
+        .history_collection(coll.as_bytes(), key.as_bytes())
+    {
+        Ok(h) => h,
+        Err(_) => return unavailable_id(id),
+    };
+    let mut versions = Vec::new();
+    for ev in hist.events {
+        let kind = match ev.kind {
+            dingo_store::EventKind::Put => "put",
+            dingo_store::EventKind::Delete => "delete",
+        };
+        let mut obj = serde_json::Map::new();
+        obj.insert("kind".into(), Value::String(kind.into()));
+        obj.insert("event_id".into(), Value::String(hex16(&ev.event_id)));
+        obj.insert("item_id".into(), Value::String(hex16(&ev.item_id)));
+        obj.insert("segment_id".into(), Value::String(hex16(&ev.segment_id)));
+        obj.insert(
+            "known_gap_before".into(),
+            Value::Bool(ev.known_gap_before),
+        );
+        if ev.kind == dingo_store::EventKind::Put && ev.body.first() == Some(&0x01) {
+            if let Ok(json) = serde_json::from_slice::<Value>(&ev.body[1..]) {
+                obj.insert("json".into(), json);
+            }
+        }
+        versions.push(Value::Object(obj));
+    }
+    ok_id(
+        id,
+        serde_json::json!({
+            "key": key,
+            "has_known_holes": hist.has_known_holes,
+            "versions": versions,
+        }),
+    )
 }
 
 fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {

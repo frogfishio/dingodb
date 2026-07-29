@@ -513,11 +513,11 @@
     {
       "id": 117,
       "wire_name": "history",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
-      "rights_mask": 2,
-      "request_schema": null,
-      "response_schema": null,
+      "rights_mask": 1,
+      "request_schema": "rpc-v1/history.request.json",
+      "response_schema": "rpc-v1/history.response.json",
       "allowed_states": [
         "active",
         "read_only"

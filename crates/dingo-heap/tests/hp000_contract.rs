@@ -36,12 +36,12 @@ fn registry_unique_and_hp000_active_set() {
         .map(|o| o.id)
         .collect();
     assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
-    for id in [105u16, 110, 111, 112, 114, 115, 116, 120, 121, 122] {
+    for id in [105u16, 110, 111, 112, 114, 115, 116, 117, 120, 121, 122] {
         assert!(active.contains(&id), "§32.4 data op {id} must be active");
         assert!(Operation::is_callable(id), "data op {id} must be callable");
     }
-    // Still-reserved example (history).
-    assert!(!Operation::is_callable(117));
+    // Still-reserved example (index_list).
+    assert!(!Operation::is_callable(130));
 }
 
 #[test]
@@ -62,6 +62,7 @@ fn artifacts_present_and_schemas_for_active_ops() {
         "list_keys",
         "scan_json",
         "find",
+        "history",
         "put",
         "put_bytes",
         "delete",
@@ -203,13 +204,25 @@ fn decide_allows_ping_and_denies_reserved() {
         ),
         AuthorizationDecision::Allow
     );
-    // Reserved ops still deny (e.g. history = 117).
-    assert!(matches!(
+    assert_eq!(
         decide(
             &snap,
             &cert,
             &OperationDescriptor {
                 operation_id: 117,
+                request_bytes: 0
+            },
+            now
+        ),
+        AuthorizationDecision::Allow
+    );
+    // Reserved ops still deny (e.g. index_list = 130).
+    assert!(matches!(
+        decide(
+            &snap,
+            &cert,
+            &OperationDescriptor {
+                operation_id: 130,
                 request_bytes: 0
             },
             now

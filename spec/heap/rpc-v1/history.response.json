@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "key": { "type": "string" },
+    "has_known_holes": { "type": "boolean" },
+    "versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "type": "string", "enum": ["put", "delete"] },
+          "event_id": { "type": "string", "minLength": 32, "maxLength": 32 },
+          "item_id": { "type": "string", "minLength": 32, "maxLength": 32 },
+          "segment_id": { "type": "string", "minLength": 32, "maxLength": 32 },
+          "json": {},
+          "known_gap_before": { "type": "boolean" }
+        },
+        "required": ["kind", "event_id", "item_id", "segment_id", "known_gap_before"]
+      }
+    }
+  },
+  "required": ["key", "has_known_holes", "versions"]
+}

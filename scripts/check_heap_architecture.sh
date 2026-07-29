@@ -30,8 +30,8 @@ for required in (1, 2, 3):
         sys.exit(f"active set must include process op {required}, got {active}")
 if active != sorted(active) or len(active) != len(set(active)):
     sys.exit(f"active set must be sorted unique, got {active}")
-# §32.4 data cuts: open/list + get/put/delete + list_keys/scan_json + find.
-for required in (105, 110, 111, 112, 114, 115, 116, 120, 121, 122):
+# §32.4 data cuts: open/list + get/put/delete + list_keys/scan/find/history.
+for required in (105, 110, 111, 112, 114, 115, 116, 117, 120, 121, 122):
     if required not in active:
         sys.exit(f"§32.4 data cut requires active op {required}, got {active}")
 for o in ops["operations"]:

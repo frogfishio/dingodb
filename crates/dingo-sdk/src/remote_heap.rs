@@ -435,6 +435,29 @@ impl RemoteHeap {
             .collect())
     }
 
+    /// Per-key event history (op_id = 117), oldest first.
+    ///
+    /// Each version is a JSON object with `kind`, `event_id`, `item_id`,
+    /// `segment_id`, `known_gap_before`, and optional `json` for put events.
+    pub fn history(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+    ) -> Result<(Vec<Value>, bool), Error> {
+        let result =
+            self.call_args(117, Some(collection_id), serde_json::json!({ "key": key }))?;
+        let holes = result
+            .get("has_known_holes")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let versions = result
+            .get("versions")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .ok_or_else(|| Error::ProtocolViolation("history missing versions".into()))?;
+        Ok((versions, holes))
+    }
+
     /// Find JSON rows matching a Mongo-style filter object (op_id = 116).
     ///
     /// Filter vocabulary matches [`crate::Filter::from_json`]. First cut scans

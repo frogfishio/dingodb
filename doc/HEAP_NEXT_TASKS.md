@@ -33,7 +33,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
 | B1 | Activate **find** (116) + minimal filter args | Query is the everyday path | **Done (2026-07-30)** — schemas/fixtures + scan+Filter dispatch + `RemoteHeap::find` + `connect_heap_find_filter` |
-| B2 | Activate **history** (117) | Spec + DX parity | Same §32.4 bar |
+| B2 | Activate **history** (117) | Spec + DX parity | **Done (2026-07-30)** — schemas/fixtures + SubjectV2 history + `RemoteHeap::history` + `connect_heap_history` (rights first-cut = Read) |
 | B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | Same §32.4 bar |
 | B4 | Activate **collection_create** (106) (needs rights story) | Provisioning without offline catalog | Ceremony/rights + Accept |
 | B5 | Remaining reserved ops only as needed for drills (lifecycle RPC, export, …) | Avoid activation thrash | Matrix-driven only |
@@ -81,9 +81,9 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 ## Suggested next 3 labor packages (concrete)
 
-1. **B2 — `history` §32.4** or **B3 indexes** (next everyday surface after find).  
-2. **A1–A2 — CPR-001 default flip** (claim honesty; do after or with a migration slice).  
-3. **D1 — Verus/Kani connection** (only gate that is pure engineering for H6; external review is human process).
+1. **B3 — indexes §32.4 (130–133)** or **A1–A2 CPR-001 default flip**.  
+2. **C1 — live multi-tier media wipe** (H4).  
+3. **D1 — Verus/Kani connection** (H6 engineering gate).
 
 ## Machine checks (today)
 

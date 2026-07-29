@@ -1151,10 +1151,15 @@ impl Store {
 
     /// Event history for a subject key (oldest first; DX_SPEC §10.1).
     pub fn history(&self, subject: &str) -> Result<SubjectHistory, StoreError> {
+        self.history_subject_bytes(subject.as_bytes())
+    }
+
+    /// Event history for a **binary** subject (SubjectV2-capable).
+    pub fn history_subject_bytes(&self, subject: &[u8]) -> Result<SubjectHistory, StoreError> {
         subject_history_tiered(
             &self.paths,
             self.limits,
-            subject.as_bytes(),
+            subject,
             Some(&self.tier_placement),
         )
     }

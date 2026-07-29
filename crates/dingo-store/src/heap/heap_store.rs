@@ -2,6 +2,7 @@
 
 use crate::durability::DurabilityMode;
 use crate::error::StoreError;
+use crate::history::SubjectHistory;
 use crate::kernel::PhysicalStore;
 use crate::store::WriteReceipt;
 use dingo_format::{decode_subject_v2, SubjectObjectKind};
@@ -152,6 +153,30 @@ impl HeapStore {
         )
         .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
         self.delete(&subject)
+    }
+
+    /// Event history for a collection key (SubjectV2), oldest first.
+    pub fn history_collection(
+        &self,
+        collection_id: &[u8; 16],
+        key: &[u8],
+    ) -> Result<SubjectHistory, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::READ)?;
+        // Prefer ReadHistory when present; Read alone is accepted for the first cut.
+        let subject = dingo_format::encode_subject_v2(
+            self.cap.heap_id().as_bytes(),
+            SubjectObjectKind::Collection,
+            collection_id,
+            key,
+        )
+        .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
+        self.require_subject_v2(&subject, Some(SubjectObjectKind::Collection), Some(collection_id))?;
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        guard.history_subject_bytes(&subject)
     }
 
     /// Subject-byte prefix for all keys in one collection under this heap.

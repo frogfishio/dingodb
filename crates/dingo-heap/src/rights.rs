@@ -183,8 +183,8 @@ mod tests {
             .map(|o| o.id)
             .collect();
         assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
-        // §32.4 data cuts (open/list + get/put/delete + keys/scan/find).
-        for id in [105u16, 110, 111, 112, 114, 115, 116, 120, 121, 122] {
+        // §32.4 data cuts (open/list + get/put/delete + keys/scan/find/history).
+        for id in [105u16, 110, 111, 112, 114, 115, 116, 117, 120, 121, 122] {
             assert!(active.contains(&id), "missing active data op {id}");
         }
     }
@@ -194,7 +194,8 @@ mod tests {
         assert!(Operation::is_callable(1));
         assert!(Operation::is_callable(111)); // §32.4 data cut
         assert!(Operation::is_callable(116)); // find
-        assert!(!Operation::is_callable(117)); // history still reserved
+        assert!(Operation::is_callable(117)); // history
+        assert!(!Operation::is_callable(130)); // index_list still reserved
     }
 
     proptest! {

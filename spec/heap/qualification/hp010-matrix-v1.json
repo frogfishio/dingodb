@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced: SubjectV2 + connect_heap + \u00a732.4 data/list/scan/find (105/110\u2013112/114\u2013116/120\u2013122) Accept + CPR-001 opt-in. H0/H2/H4/H5 still partial (index/history/lifecycle reserved, recovery residuals). H6 partial \u2014 Verus/Kani + signed external review open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced: SubjectV2 + connect_heap + \u00a732.4 data/list/scan/find/history (105/110\u2013112/114\u2013117/120\u2013122) Accept + CPR-001 opt-in. H0/H2/H4/H5 still partial (indexes/lifecycle reserved, recovery residuals). H6 partial \u2014 Verus/Kani + signed external review open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -30,9 +30,10 @@
         "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_put_get_delete_subject_v2",
         "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_list_and_scan_json",
         "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_find_filter",
+        "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_history",
         "crates/dingo-sdk/tests/cpr001_legacy_opt_in.rs",
         "crates/dingo-sdk HeapCollection put/get/delete (SubjectV2)",
-        "crates/dingo-sdk Dingo::connect_heap + RemoteHeap process + data + list/scan/find",
+        "crates/dingo-sdk Dingo::connect_heap + RemoteHeap process + data + list/scan/find/history",
         "crates/dingo-sdk Dingo::open_deployment / open_compatibility (CPR-001)",
         "crates/dingo-sdk feature legacy-flat-sdk (default on; --no-default-features = heap-only)",
         "crates/dingo-sdk HeapCredential / HolderSigner / RemoteHeapOptions",
@@ -43,7 +44,7 @@
         "scripts/check_heap_architecture.sh"
       ],
       "open": [
-        "remote index/history ops still reserved",
+        "remote index ops still reserved",
         "CPR-001 residual: flip default off after Stages 3\u20139 callers migrate to heap APIs"
       ]
     },
@@ -54,13 +55,13 @@
         "crates/dingo-authority/tests/hp005_accept.rs",
         "crates/dingo-server/tests/hp008_heap_handshake.rs",
         "crates/dingo-server/tests/hp008_accept_loop.rs",
-        "spec/heap/operations-v1.json active 1\u20133 + 105/110\u2013112/114\u2013116/120\u2013122",
-        "spec/heap/rpc-v1 + fixtures for \u00a732.4 data + list/scan/find cut",
-        "crates/dingo-server heap_dispatch data plane via HeapStore (incl. find)",
-        "crates/dingo-store HeapStore list_collection_keys / scan_collection"
+        "spec/heap/operations-v1.json active 1\u20133 + 105/110\u2013112/114\u2013117/120\u2013122",
+        "spec/heap/rpc-v1 + fixtures for \u00a732.4 data + list/scan/find/history cut",
+        "crates/dingo-server heap_dispatch data plane via HeapStore (incl. find/history)",
+        "crates/dingo-store HeapStore list_collection_keys / scan_collection / history_collection"
       ],
       "open": [
-        "remaining reserved ops (indexes, history, lifecycle, \u2026)",
+        "remaining reserved ops (indexes, lifecycle, \u2026)",
         "threshold recovery / peer-cred barrier residuals (HP-005)"
       ]
     },

@@ -506,6 +506,134 @@ fn connect_heap_list_and_scan_json() {
 }
 
 #[test]
+fn connect_heap_history() {
+    use dingo_store::{
+        create_object, publish_staged_genesis, stage_heap_genesis, HeapMetaLayout, ObjectKind,
+    };
+
+    let doc = vectors();
+    let inputs = &doc["inputs"];
+    let master_pk: [u8; 32] = hex(inputs["master_public_key"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let holder_seed: [u8; 32] = hex(inputs["holder_seed"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let cose = hex(doc["accepted"][0]["cose_sign1"].as_str().unwrap());
+    let verified = verify_certificate(&cose, &master_pk).unwrap();
+    let now_unix = verified.not_before + 10;
+
+    let snap = HeapSecuritySnapshot {
+        deployment_id: verified.deployment_id,
+        heap_id: verified.heap_id,
+        authority_epoch: verified.authority_epoch,
+        authority_generation: verified.authority_generation,
+        previous_generation: None,
+        grace_deadline_unix_s: None,
+        master_public_key: master_pk,
+        previous_master_public_key: None,
+        security_revision: SecurityRevision::new(1).unwrap(),
+        authority_chain_head_hash: [1u8; 32],
+        administrative_state: HeapAdministrativeState::Active,
+        blacklist: vec![],
+        policy_rights_ceiling: None,
+    };
+    let registry = Arc::new(ResidentHeapRegistry::new());
+    registry.insert(
+        verified.heap_id,
+        ResidentHeap {
+            slot: Arc::new(HeapSlot::new(snap)),
+            display_name: Some("accounts".into()),
+        },
+    );
+
+    let tmp = TempDir::new().unwrap();
+    let store_path = tmp.path().join("app.dingo");
+    Store::open(&store_path).unwrap();
+    let layout = HeapMetaLayout::new(&store_path);
+    let dep = *verified.deployment_id.as_bytes();
+    let heap_b = *verified.heap_id.as_bytes();
+    let coll = *dingo_heap::CollectionId::new_random().unwrap().as_bytes();
+    let staged = stage_heap_genesis(&layout, dep, heap_b, [9u8; 16], "accounts").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+    create_object(
+        &layout,
+        &heap_b,
+        ObjectKind::Collection,
+        coll,
+        [8u8; 16],
+        "users",
+    )
+    .unwrap();
+
+    let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
+    let port = free_port();
+    let bind = format!("127.0.0.1:{port}");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&shutdown);
+    let opts = ServeOptions::new()
+        .tls(TlsServerOptions::new(&cert_path, &key_path))
+        .qualified_heap_key(true)
+        .heap_registry(Arc::clone(&registry))
+        .deployment_id(verified.deployment_id.to_string())
+        .security_now_unix_s(now_unix)
+        .shutdown_flag(Arc::clone(&shutdown));
+    let store_c = store_path.clone();
+    let bind_c = bind.clone();
+    thread::spawn(move || {
+        let _ = serve_store_with(store_c, &bind_c, opts);
+    });
+    wait_for_server(&bind);
+
+    let holder = Arc::new(InMemoryHolderKey::from_seed(holder_seed));
+    let credential = HeapCredential::new(&cose, holder).unwrap();
+    let options = RemoteHeapOptions::new(
+        TlsClientOptions::new("localhost").ca_path(ca_path),
+        credential,
+    )
+    .expected_heap_name("accounts")
+    .now_unix_s(now_unix);
+
+    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+        .expect("connect_heap");
+    let cid = remote.collection_open("users").unwrap();
+    remote
+        .put_json(&cid, "k1", &serde_json::json!({"v": 1}))
+        .unwrap();
+    remote
+        .put_json(&cid, "k1", &serde_json::json!({"v": 2}))
+        .unwrap();
+    assert!(remote.delete(&cid, "k1").unwrap());
+    remote
+        .put_json(&cid, "k1", &serde_json::json!({"v": 3}))
+        .unwrap();
+
+    let (versions, holes) = remote.history(&cid, "k1").expect("history");
+    assert!(!holes);
+    assert!(
+        versions.len() >= 3,
+        "expected put/put/delete/put style stream, got {}",
+        versions.len()
+    );
+    let kinds: Vec<&str> = versions
+        .iter()
+        .filter_map(|v| v.get("kind").and_then(|k| k.as_str()))
+        .collect();
+    assert!(kinds.iter().any(|k| *k == "put"));
+    assert!(kinds.iter().any(|k| *k == "delete"));
+    let last_put = versions
+        .iter()
+        .rev()
+        .find(|v| v.get("kind").and_then(|k| k.as_str()) == Some("put"))
+        .expect("last put");
+    assert_eq!(last_put.get("json").and_then(|j| j.get("v")).unwrap(), 3);
+
+    drop(remote);
+    flag.store(true, Ordering::SeqCst);
+    thread::sleep(Duration::from_millis(50));
+}
+
+#[test]
 fn connect_heap_find_filter() {
     use dingo_store::{
         create_object, publish_staged_genesis, stage_heap_genesis, HeapMetaLayout, ObjectKind,

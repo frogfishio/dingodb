@@ -1,0 +1,20 @@
+{
+  "op": 117,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-000000000001",
+  "args": { "key": "user-1" },
+  "result": {
+    "key": "user-1",
+    "has_known_holes": false,
+    "versions": [
+      {
+        "kind": "put",
+        "event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "item_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "segment_id": "cccccccccccccccccccccccccccccccc",
+        "json": { "name": "Alice" },
+        "known_gap_before": false
+      }
+    ]
+  }
+}
