@@ -97,3 +97,26 @@ jobs:
         with:
           command: check
           arguments: --all-features
+
+  # Gate H6 / CPR-004 — Kani harnesses for pure heap lemmas (dingo-heap).
+  kani-heap:
+    name: kani heap pure lemmas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Kani
+        run: |
+          cargo install --locked kani-verifier
+          cargo kani setup
+
+      - name: Kani pure proof harnesses + executable bundle
+        run: ./scripts/check_kani_heap.sh
+        env:
+          DINGO_REQUIRE_KANI: "1"

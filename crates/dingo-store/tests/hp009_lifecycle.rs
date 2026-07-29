@@ -7,14 +7,15 @@ use dingo_heap::{
     DeploymentId, HeapAdministrativeState, HeapId, HeapSlot, SecurityRevision,
 };
 use dingo_store::{
-    active_snapshot, build_backup_manifest, decode_purge_receipt, destroy_data_key,
-    disaster_recovery_restore_retaining_id, encode_purge_receipt, heap_label_envelope,
-    heap_object_media_dir, labelled_unit_readable, load_identity_tombstone,
-    old_deployment_credential_invalid, refuse_access_from_payload_restore,
+    active_snapshot, build_backup_manifest, classify_mixed_heap_frame, decode_purge_receipt,
+    destroy_data_key, disaster_recovery_restore_retaining_id, encode_purge_receipt,
+    heap_binding_envelope, heap_label_envelope, heap_object_media_dir, labelled_unit_readable,
+    load_identity_tombstone, old_deployment_credential_invalid, refuse_access_from_payload_restore,
     refuse_clear_tombstone_via_payload_restore, refuse_retain_id_without_ceremony,
-    restore_payload_to_new_heap, verify_purge_receipt, DataKeyHandle, DisasterRecoveryCeremony,
-    DisasterRecoveryPackage, HeapLifecycle, HeapRetentionPolicy, MediaDomain, PurgeCoverageUnit,
-    TierClass, TombstoneKind,
+    restore_payload_to_new_heap, verify_purge_receipt, DataKeyHandle, DataKeyProvider,
+    DisasterRecoveryCeremony, DisasterRecoveryPackage, HeapLifecycle, HeapRetentionPolicy,
+    HsmDataKeyProvider, InProcessDataKeyProvider, MediaDomain, MixedHeapSalvageClass,
+    PurgeCoverageUnit, TierClass, TombstoneKind,
 };
 use std::fs;
 use std::sync::Arc;
@@ -476,6 +477,75 @@ fn live_filesystem_multi_tier_media_wipe() {
         &units.iter().map(|u| u.object_id).collect::<Vec<_>>(),
     )
     .unwrap();
+}
+
+/// H4 / C2: HSM scaffold refuses until configured; in-process provider works.
+#[test]
+fn data_key_provider_hsm_scaffold_and_in_process() {
+    let tmp = TempDir::new().unwrap();
+    let heap = uuidish(0xd0);
+    let hsm = HsmDataKeyProvider::new("pkcs11");
+    assert_eq!(hsm.provider_id(), "hsm-scaffold");
+    let err = hsm.generate(heap).unwrap_err();
+    assert!(err.to_string().contains("not configured"), "{err}");
+
+    let proc = InProcessDataKeyProvider;
+    assert_eq!(proc.provider_id(), "in-process");
+    let mut handle = proc.generate(heap).unwrap();
+    assert!(!handle.is_destroyed());
+    let receipt = proc.destroy(tmp.path(), &mut handle).unwrap();
+    assert!(handle.is_destroyed());
+    assert_eq!(receipt.heap_id, heap);
+    // Second destroy refuses.
+    assert!(proc.destroy(tmp.path(), &mut handle).is_err());
+}
+
+/// H4 / C3: mixed multi-heap media classification for salvage (no reassignment).
+#[test]
+fn mixed_heap_salvage_classification_drill() {
+    let heap_a = uuidish(0xe1);
+    let heap_b = uuidish(0xe2);
+    let env_a = heap_binding_envelope(&heap_a).unwrap();
+    let env_b = heap_binding_envelope(&heap_b).unwrap();
+
+    // Simulated volume inventory: frames labelled for A, B, cross-conflict, garbage.
+    let empty: &[u8] = &[];
+    let inventory: Vec<(&str, &[u8], &[u8])> = vec![
+        ("a1", env_a.as_slice(), env_a.as_slice()),
+        ("b1", env_b.as_slice(), env_b.as_slice()),
+        ("a2", env_a.as_slice(), env_a.as_slice()),
+        ("cross", env_a.as_slice(), env_b.as_slice()),
+        ("empty", empty, empty),
+    ];
+
+    let mut for_a = Vec::new();
+    let mut foreign = Vec::new();
+    let mut conflict = Vec::new();
+    let mut other = Vec::new();
+    for (tag, seg, frame) in inventory {
+        match classify_mixed_heap_frame(&heap_a, seg, frame, None) {
+            MixedHeapSalvageClass::BelongingToBound => for_a.push(tag),
+            MixedHeapSalvageClass::Foreign { claimed } => {
+                assert_eq!(claimed, heap_b);
+                foreign.push(tag);
+            }
+            MixedHeapSalvageClass::Conflict => conflict.push(tag),
+            MixedHeapSalvageClass::Unknown | MixedHeapSalvageClass::Malformed => other.push(tag),
+        }
+    }
+    assert_eq!(for_a, vec!["a1", "a2"]);
+    assert_eq!(foreign, vec!["b1"]);
+    assert_eq!(conflict, vec!["cross"]);
+    assert_eq!(other, vec!["empty"]);
+    // Bound-B salvage sees B frames and treats A as foreign.
+    assert_eq!(
+        classify_mixed_heap_frame(&heap_b, &env_b, &env_b, None),
+        MixedHeapSalvageClass::BelongingToBound
+    );
+    assert_eq!(
+        classify_mixed_heap_frame(&heap_b, &env_a, &env_a, None),
+        MixedHeapSalvageClass::Foreign { claimed: heap_a }
+    );
 }
 
 /// Unmounted tier root refuses live wipe; incomplete purge stays retired.

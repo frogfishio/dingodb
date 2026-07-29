@@ -1265,7 +1265,7 @@ fn h6_heap_authority_model() {
 
 #[test]
 fn h6_pure_proof_bundle_connected() {
-    // Verus-oriented pure lemmas (executable). Machine-checked Verus still open.
+    // Executable pure lemmas + Kani harnesses (CPR-004 partial). Verus still open.
     assert!(
         connected_pure_proof_bundle(),
         "pure proof bundle must hold for Gate H6 connected evidence"
@@ -1273,11 +1273,25 @@ fn h6_pure_proof_bundle_connected() {
     let verus = fs::read_to_string(workspace_root().join("verification/heap-verus/src/lib.rs"))
         .unwrap();
     assert!(verus.contains("VERUS_PROOFS_CONNECTED"));
+    assert!(verus.contains("KANI_HARNESSES_CONNECTED"));
     assert!(verus.contains("connected_pure_proof_bundle"));
     assert!(
         verus.contains("VERUS_PROOFS_CONNECTED: bool = false")
             || verus.contains("const VERUS_PROOFS_CONNECTED: bool = false"),
         "scaffold must stay honest that Verus is not yet connected"
+    );
+    assert!(
+        verus.contains("KANI_HARNESSES_CONNECTED: bool = true")
+            || verus.contains("const KANI_HARNESSES_CONNECTED: bool = true"),
+        "Kani harnesses must be marked connected"
+    );
+    let pure = fs::read_to_string(
+        workspace_root().join("crates/dingo-heap/src/pure_proofs.rs"),
+    )
+    .unwrap();
+    assert!(
+        pure.contains("fn kani_connected_pure_proof_bundle"),
+        "Kani harness kani_connected_pure_proof_bundle must exist"
     );
 }
 

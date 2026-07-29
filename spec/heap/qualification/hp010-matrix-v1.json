@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced: SubjectV2 + connect_heap + \u00a732.4 data/list/scan/find/history/indexes + stale maintain + CPR-001 heap-only default. H0/H2/H4/H5 still partial (lifecycle reserved, HSM/salvage residuals). H6 partial \u2014 Verus/Kani + signed external review open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced; CPR-001/A3 heap-only defaults; H4 live wipe + HSM scaffold + mixed-heap salvage Accept. H6 partial \u2014 Kani harnesses connected; Verus + signed external review open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -13,10 +13,11 @@
         "spec/heap/operations-v1.json + cbor-v1.json",
         "scripts/check_heap_architecture.sh",
         "crates/dingo-sdk claim.rs FLAT_COLLECTION_SURFACE_LABEL / legacy_flat_sdk_enabled / heap_only_embedded_profile",
-        "crates/dingo-sdk Cargo.toml default=[] (CPR-001 heap-only default)"
+        "crates/dingo-sdk Cargo.toml default=[] (CPR-001 heap-only default)",
+        "crates/dingo-store Cargo.toml default=[] (A3 façades-only; legacy-raw-store opt-in)"
       ],
       "open": [
-        "legacy-raw-store still default-on in dingo-store (A3 residual)"
+        "lifecycle RPC still reserved; corpus residuals"
       ]
     },
     "H1": {
@@ -96,12 +97,15 @@
         "crates/dingo-store/tests/hp009_lifecycle.rs",
         "crates/dingo-store/tests/hp009_lifecycle.rs::live_filesystem_multi_tier_media_wipe",
         "crates/dingo-store/tests/hp009_lifecycle.rs::live_media_wipe_unavailable_tier_root_stays_retired",
+        "crates/dingo-store/tests/hp009_lifecycle.rs::data_key_provider_hsm_scaffold_and_in_process",
+        "crates/dingo-store/tests/hp009_lifecycle.rs::mixed_heap_salvage_classification_drill",
         "crates/dingo-store/tests/hp010_qualification.rs::restore_drills_payload_and_retain_id",
-        "crates/dingo-store HeapLifecycle::destroy_coverage_unit_on_media / wipe_heap_object_media"
+        "crates/dingo-store HeapLifecycle::destroy_coverage_unit_on_media / wipe_heap_object_media",
+        "crates/dingo-store DataKeyProvider / InProcessDataKeyProvider / HsmDataKeyProvider scaffold",
+        "crates/dingo-store classify_mixed_heap_frame / MixedHeapSalvageClass"
       ],
       "open": [
-        "HSM/provider data-key adapters",
-        "mixed-heap salvage classification drill not yet matrixed"
+        "live HSM/PKCS#11/cloud KMS backend not wired (scaffold refuses honestly)"
       ]
     },
     "H5": {
@@ -138,17 +142,17 @@
         "crates/dingo-store/tests/hp010_qualification.rs::h6_decide_obligations_connected",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_heap_authority_model",
         "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
-        "crates/dingo-heap pure_proofs / connected_pure_proof_bundle (Verus-oriented pure lemmas)",
-        "verification/heap-verus VERUS_PROOFS_CONNECTED=false honesty + expanded H6_PROOF_OBLIGATIONS",
+        "crates/dingo-heap pure_proofs / connected_pure_proof_bundle + #[cfg(kani)] harnesses",
+        "verification/heap-verus KANI_HARNESSES_CONNECTED=true; VERUS_PROOFS_CONNECTED=false",
+        "scripts/check_kani_heap.sh + CI job kani-heap (DINGO_REQUIRE_KANI=1)",
         "doc/HEAP_COMPLETE_PATH_REVIEW.md (complete-path review; CPR findings)",
         "doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md (external review package; report open)",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_pure_proof_bundle_connected",
         "crates/dingo-store/tests/hp010_qualification.rs::complete_path_and_external_review_artifacts"
       ],
       "open": [
-        "CPR-004: machine-checked Verus/Kani proofs not connected in CI",
+        "CPR-004 residual: machine-checked Verus still open (Kani harnesses connected)",
         "CPR-005: signed external security review report not on file",
-        "CPR-001 residual: legacy-flat-sdk still default-on (heap-only via --no-default-features)",
         "H0\u2013H2, H4\u2013H5 not all accept yet"
       ]
     },

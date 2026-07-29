@@ -54,6 +54,7 @@ fn snap(
 }
 
 fn cert_for(s: &HeapSecuritySnapshot, heap: HeapId) -> VerifiedCertificate {
+    // Deterministic IDs (no getrandom) so Kani harnesses stay pure.
     VerifiedCertificate {
         cose_bytes: vec![0x01],
         fingerprint: [3u8; 32],
@@ -61,7 +62,7 @@ fn cert_for(s: &HeapSecuritySnapshot, heap: HeapId) -> VerifiedCertificate {
         heap_id: heap,
         authority_epoch: s.authority_epoch,
         authority_generation: s.authority_generation,
-        certificate_id: CertificateId::new_random().unwrap(),
+        certificate_id: CertificateId::from_bytes(uuidish(0x30)).unwrap(),
         holder_public_key: [4u8; 32],
         rights: Rights::from_bits_certificate(0x5).unwrap(),
         constraints: Constraints::empty(),
@@ -203,5 +204,71 @@ mod tests {
     #[test]
     fn pure_proof_lemmas_hold() {
         assert!(connected_pure_proof_bundle());
+    }
+}
+
+/// Kani harnesses for pure §39 lemmas (Gate H6 / CPR-004).
+///
+/// Run: `cargo kani -p dingo-heap --harness kani_connected_pure_proof_bundle`
+/// (requires `kani-verifier` + `cargo kani setup`). CI job `kani-heap` runs these.
+#[cfg(kani)]
+#[allow(dead_code)]
+mod kani_harnesses {
+    use super::*;
+
+    #[kani::proof]
+    fn kani_binding_rejects_foreign_heap() {
+        kani::assert(
+            lemma_binding_rejects_foreign_heap(),
+            "foreign heap must fail authority binding",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_generation_grace_window() {
+        kani::assert(
+            lemma_generation_grace_window(),
+            "previous generation only inside grace",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_blacklist_hits_certificate_hash() {
+        kani::assert(
+            lemma_blacklist_hits_certificate_hash(),
+            "blacklist must hit certificate fingerprint",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_non_serving_refuses_admission() {
+        kani::assert(
+            lemma_non_serving_refuses_admission(),
+            "non-serving states refuse admission",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_isolation_model_inv_walk() {
+        kani::assert(
+            lemma_isolation_model_inv_walk(),
+            "IsolationModel Inv preserved under walk",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_authority_model_inv_walk() {
+        kani::assert(
+            lemma_authority_model_inv_walk(),
+            "AuthorityModel Inv preserved under walk",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_connected_pure_proof_bundle() {
+        kani::assert(
+            connected_pure_proof_bundle(),
+            "full pure proof bundle must hold",
+        );
     }
 }

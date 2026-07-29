@@ -83,12 +83,15 @@ if rg -n 'dingo-store|dingo-sdk|dingo-server|dingo-cluster' crates/dingo-heap/Ca
   fail "dingo-heap dependency firewall violated"
 fi
 
-# HP-003: legacy Store export is feature-gated.
+# HP-003 / A3: legacy Store export is feature-gated; package default is façades-only.
 if ! rg -n 'cfg\(feature = "legacy-raw-store"\)' crates/dingo-store/src/lib.rs >/dev/null; then
   fail "Store must be gated behind legacy-raw-store feature"
 fi
 if ! rg -n 'legacy-raw-store' crates/dingo-store/Cargo.toml >/dev/null; then
   fail "dingo-store must declare legacy-raw-store feature"
+fi
+if ! rg -n 'default = \[\]' crates/dingo-store/Cargo.toml >/dev/null; then
+  fail "dingo-store default features must be empty (A3 façades-only default)"
 fi
 
 # Qualified data service must never depend on dingo-authority or enable
@@ -108,8 +111,10 @@ if ! rg -n 'AGPL-3.0-or-later' crates/dingo-authority/Cargo.toml >/dev/null; the
 fi
 
 # Qualified feature surface builds without public raw Store.
-cargo check -p dingo-store --no-default-features --quiet \
-  || fail "dingo-store --no-default-features must build"
+cargo check -p dingo-store --quiet \
+  || fail "dingo-store default (façades-only) must build"
+cargo check -p dingo-store --features legacy-raw-store --quiet \
+  || fail "dingo-store --features legacy-raw-store must build"
 # CPR-001: package default is heap-only; legacy flat is opt-in.
 if ! rg -n 'legacy-flat-sdk' crates/dingo-sdk/Cargo.toml >/dev/null; then
   fail "dingo-sdk must declare legacy-flat-sdk feature (CPR-001)"

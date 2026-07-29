@@ -26,7 +26,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 |---|------|-----|-----------|
 | A1 | Migrate high-traffic demos/tests to `open_deployment` + `HeapCap` | Unblocks default flip | **Done (partial)** — heap Accept paths use connect_heap / open_deployment; Stages 3–9 tests opt into `legacy-flat-sdk` |
 | A2 | Flip **`legacy-flat-sdk` default off** (keep feature for Stages 3–9) | Closes CPR-001 residual for claim honesty | **Done (2026-07-30)** — `default = []`; stage tests `required-features = ["legacy-flat-sdk"]`; claim + arch check updated |
-| A3 | Flip or document **`legacy-raw-store`** default consistently with A2 | HP-003 cutover | Open — dingo-store still defaults `legacy-raw-store` on |
+| A3 | Flip or document **`legacy-raw-store`** default consistently with A2 | HP-003 cutover | **Done (2026-07-30)** — `dingo-store` `default = []`; Stages 3–9 tests/examples `required-features = ["legacy-raw-store"]`; arch check updated |
 
 ### Wave B — §32.4 surface completeness (H1–H2)
 
@@ -45,15 +45,15 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
 | C1 | Live filesystem multi-tier media wipe drill | H4 open | **Done (2026-07-30)** — `destroy_coverage_unit_on_media` + `wipe_heap_object_media`; Accept `live_filesystem_multi_tier_media_wipe` / unavailable root stays retired |
-| C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | Adapter or matrix note disposing residual |
-| C3 | Mixed-heap salvage classification drill | H4 open | Matrixed drill Accept |
+| C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | **Done (2026-07-30)** — `DataKeyProvider` trait + `InProcessDataKeyProvider` + `HsmDataKeyProvider` scaffold (refuses until configured); Accept `data_key_provider_hsm_scaffold_and_in_process` |
+| C3 | Mixed-heap salvage classification drill | H4 open | **Done (2026-07-30)** — `classify_mixed_heap_frame` / `MixedHeapSalvageClass`; Accept `mixed_heap_salvage_classification_drill` |
 | C4 | Broader destructive crash-matrix cells (beyond peer lifecycle) | H5 open | crash_matrix cells + CI subset |
 
 ### Wave D — Gate H6 claim (blocks `qualified=true`)
 
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
-| D1 | Connect **Verus or Kani** to pure decide / isolation Inv in CI | CPR-004 | `VERUS_PROOFS_CONNECTED=true` (or Kani) + green job |
+| D1 | Connect **Verus or Kani** to pure decide / isolation Inv in CI | CPR-004 | **Done partial (2026-07-30)** — `KANI_HARNESSES_CONNECTED=true`; harnesses in `pure_proofs` + CI job `kani-heap` + `scripts/check_kani_heap.sh`. **Verus still open** (`VERUS_PROOFS_CONNECTED=false`) |
 | D2 | Commission **signed external security review** (brief already on file) | CPR-005 | Report under `doc/` + open findings dispositioned |
 | D3 | Re-run complete-path review; close CPR-001…006 as honestly possible | H6 exit | [HEAP_COMPLETE_PATH_REVIEW.md](HEAP_COMPLETE_PATH_REVIEW.md) updated |
 | D4 | Only then: flip matrix `qualified=true` + `may_advertise_qualified` | Product claim | `verify-heap.sh` enforces true; Level-2 language allowed |
@@ -83,9 +83,9 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 ## Suggested next 3 labor packages (concrete)
 
-1. **D1 — Verus/Kani connection** (H6 engineering gate; still blocks `qualified=true`).  
-2. **A3 — flip `legacy-raw-store` default** consistently with CPR-001.  
-3. **C2/C3 — HSM adapter disposition + mixed-heap salvage** (H4 residuals).
+1. **D2 — signed external security review** (CPR-005; still blocks `qualified=true`).  
+2. **D1 residual — Verus machine-checked proofs** (optional alongside Kani).  
+3. **E1 — qualified HeapKey listener as default remote profile**.
 
 ## Machine checks (today)
 

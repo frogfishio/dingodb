@@ -339,6 +339,94 @@ impl DataKeyHandle {
     }
 }
 
+/// Provider surface for heap data-encryption keys (H4 / CPR-003 residual).
+///
+/// Product path today: [`InProcessDataKeyProvider`]. External HSM / cloud KMS
+/// adapters implement this trait; until commissioned they return
+/// [`StoreError::HeapAdmit`] with an honest "not configured" reason.
+pub trait DataKeyProvider: Send + Sync {
+    /// Stable provider id for operator logs (e.g. `in-process`, `hsm-pkcs11`).
+    fn provider_id(&self) -> &'static str;
+
+    /// Mint a data key handle for `heap_id`.
+    fn generate(&self, heap_id: [u8; 16]) -> Result<DataKeyHandle, StoreError>;
+
+    /// Destroy key material and emit a durable receipt under `data_root`.
+    fn destroy(
+        &self,
+        data_root: &Path,
+        handle: &mut DataKeyHandle,
+    ) -> Result<DataKeyDestructionReceipt, StoreError>;
+}
+
+/// Default in-process provider (Accept / single-node; not an HSM).
+#[derive(Debug, Default, Clone, Copy)]
+pub struct InProcessDataKeyProvider;
+
+impl DataKeyProvider for InProcessDataKeyProvider {
+    fn provider_id(&self) -> &'static str {
+        "in-process"
+    }
+
+    fn generate(&self, heap_id: [u8; 16]) -> Result<DataKeyHandle, StoreError> {
+        // 32-byte secret from OS entropy (not HSM-backed).
+        let mut secret = [0u8; 32];
+        getrandom::fill(&mut secret).map_err(|e| {
+            StoreError::HeapAdmit(format!("entropy: {e}"))
+        })?;
+        DataKeyHandle::generate(heap_id, &secret)
+    }
+
+    fn destroy(
+        &self,
+        data_root: &Path,
+        handle: &mut DataKeyHandle,
+    ) -> Result<DataKeyDestructionReceipt, StoreError> {
+        destroy_data_key(data_root, handle)
+    }
+}
+
+/// Scaffold for external HSM / PKCS#11 / cloud KMS adapters.
+///
+/// Explicitly **not configured** until an operator wires a backend. Keeps the
+/// residual visible in matrix evidence without pretending HSM support exists.
+#[derive(Debug, Clone, Copy)]
+pub struct HsmDataKeyProvider {
+    /// Operator-facing backend label (e.g. `pkcs11`, `aws-kms`).
+    pub backend: &'static str,
+}
+
+impl HsmDataKeyProvider {
+    /// Named backend that is not yet wired.
+    pub const fn new(backend: &'static str) -> Self {
+        Self { backend }
+    }
+}
+
+impl DataKeyProvider for HsmDataKeyProvider {
+    fn provider_id(&self) -> &'static str {
+        "hsm-scaffold"
+    }
+
+    fn generate(&self, _heap_id: [u8; 16]) -> Result<DataKeyHandle, StoreError> {
+        Err(StoreError::HeapAdmit(format!(
+            "HSM data-key backend {:?} not configured (scaffold only; use InProcessDataKeyProvider)",
+            self.backend
+        )))
+    }
+
+    fn destroy(
+        &self,
+        _data_root: &Path,
+        _handle: &mut DataKeyHandle,
+    ) -> Result<DataKeyDestructionReceipt, StoreError> {
+        Err(StoreError::HeapAdmit(format!(
+            "HSM data-key backend {:?} not configured (scaffold only)",
+            self.backend
+        )))
+    }
+}
+
 /// Receipt that a data key was destroyed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataKeyDestructionReceipt {

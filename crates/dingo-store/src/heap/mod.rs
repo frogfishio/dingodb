@@ -28,9 +28,10 @@ pub use lifecycle::{
     old_deployment_credential_invalid, refuse_access_from_payload_restore,
     refuse_clear_tombstone_via_payload_restore, refuse_retain_id_without_ceremony,
     restore_payload_to_new_heap, verify_purge_receipt, wipe_heap_object_media,
-    write_identity_tombstone, DataKeyDestructionReceipt, DataKeyHandle, DisasterRecoveryCeremony,
-    DisasterRecoveryPackage, DisasterRecoveryTakeoverResult, HeapBackupManifest, HeapLifecycle,
-    HeapRetentionPolicy, IdentityTombstone, IncompletePurgeResult, MediaDomain, PayloadOnlyRestore,
+    write_identity_tombstone, DataKeyDestructionReceipt, DataKeyHandle, DataKeyProvider,
+    DisasterRecoveryCeremony, DisasterRecoveryPackage, DisasterRecoveryTakeoverResult,
+    HeapBackupManifest, HeapLifecycle, HeapRetentionPolicy, HsmDataKeyProvider, IdentityTombstone,
+    InProcessDataKeyProvider, IncompletePurgeResult, MediaDomain, PayloadOnlyRestore,
     PurgeCoverageUnit, PurgePlan, PurgeReceipt, RetentionScheduler, TombstoneKind,
     BACKUP_MANIFEST_DOMAIN, DATA_KEY_DESTROY_DOMAIN, HEAP_LIFECYCLE_PROFILE,
     INCOMPLETE_PURGE_DOMAIN, LIFECYCLE_DIR, PURGE_COVERAGE_DOMAIN, RETENTION_POLICY_DOMAIN,
@@ -41,6 +42,8 @@ pub use migration::{
     MigrationStateV1, SourceInventory, ADMITTED_FILE, ASSIGNMENTS_FILE, ASSIGNMENTS_HASH_DOMAIN,
     HEAP_MIGRATE_DIR, HEAP_MIGRATE_PROFILE, INVENTORY_HASH_DOMAIN, STATE_FILE,
 };
-pub use one_heap::{heap_binding_envelope, require_admit};
+pub use one_heap::{
+    classify_mixed_heap_frame, heap_binding_envelope, require_admit, MixedHeapSalvageClass,
+};
 pub use recovery_store::RecoveryStore;
 pub use replica_store::ReplicaCapStore as ReplicaStore;

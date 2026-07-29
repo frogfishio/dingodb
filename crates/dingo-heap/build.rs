@@ -31,6 +31,10 @@ struct OpEntry {
 }
 
 fn main() {
+    // Allow `#[cfg(kani)]` harnesses without unexpected_cfgs warnings under cargo test.
+    println!("cargo::rustc-check-cfg=cfg(kani)");
+    println!("cargo:rustc-check-cfg=cfg(kani)");
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let workspace_root = manifest_dir
         .parent()

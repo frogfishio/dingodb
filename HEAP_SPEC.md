@@ -60,7 +60,7 @@ Before Gate H6, product language remains:
 | **HP-000** | Machine-readable contract | **Landed (format closed; ops expanding under §32.4)** | Baseline process ops **1–3** + data/list/scan/find/history/indexes cut **105/110–112/114–117/120–122/130–133** with schemas/fixtures; bootstrap cert/proof + **`format_vectors`**. Authority/RPC remainder of §38.1 still partial; remaining ops stay `reserved`. |
 | **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/dingo-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
 | **HP-002** | Durable ownership | **Landed (Accept corpus)** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree (merge); descriptor encode/decode + `descriptor_hash`; `admit_frame_to_heap` / salvage; store `require_admit` + `HeapStore` SubjectV2 heap check; adversarial unit/corpus rejects wrong-heap. |
-| **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind default feature `legacy-raw-store`; `--no-default-features` is façades-only and CI-checked. Legacy Stages 3–9 callers keep default features until HP-006/HP-007 cutover. |
+| **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind **opt-in** feature `legacy-raw-store`; package **default is façades-only** (A3). Stages 3–9 enable the feature explicitly. |
 | **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `dingo-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
@@ -82,7 +82,7 @@ Before Gate H6, product language remains:
 | H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone + media-domain incomplete purge + retention + **live multi-tier FS wipe** Accept; HSM adapters / mixed-heap salvage still open. |
 | H5 Single-node lifecycle | **In progress** — HP-009 transitions + HP-010 key-loss / incomplete-purge / retention + **lifecycle crash-matrix** (peer unaffected) Accept; broader destructive crash cells still open. |
 | HC1 Cluster extension | Not started. |
-| H6 Isolation claim | **Partial** — Level 1 language; published limitations; TLA + connected models; executable §39 + `pure_proofs`; complete-path review + external review **brief** on file. Machine-checked Verus/Kani + **signed** external report still open — `may_advertise_qualified() == false`. |
+| H6 Isolation claim | **Partial** — Level 1 language; published limitations; TLA + connected models; executable §39 + `pure_proofs`; **Kani harnesses connected** (CI `kani-heap`); complete-path review + external review **brief** on file. Machine-checked **Verus** + **signed** external report still open — `may_advertise_qualified() == false`. |
 
 #### Primary tree map (current)
 
@@ -170,7 +170,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 | Authority transition/mutation COSE corpus, threshold recovery, peer-cred barrier | HP-005 |
 | Incremental secondary-index maintain after writes on SubjectV2 | HP-007 residual (equality find acceleration Accept landed) |
 | Authority/RPC vector remainder in `spec/heap` | HP-000 |
-| Verus/Kani connected proofs | HP-001 |
+| Verus machine-checked proofs (Kani harnesses connected) | HP-001 residual |
 | Flip default off for `legacy-raw-store` (SDK flat already opt-in) | HP-003 / A3 residual |
 
 **After single-node qualification:** HP-011 → HP-012. Until then cluster remains

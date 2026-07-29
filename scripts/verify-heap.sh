@@ -20,10 +20,12 @@ cargo test -p dingo-store --test hp010_qualification
 cargo test -p dingo-heap --lib qualification::
 
 if [[ "$MODE" == "full" ]]; then
-  if command -v kani >/dev/null 2>&1; then
-    echo "kani available — run bounded targets when added"
+  # CPR-004: Kani harnesses + pure lemmas (install kani for full machine check).
+  if command -v cargo >/dev/null 2>&1 && cargo kani --version >/dev/null 2>&1; then
+    DINGO_REQUIRE_KANI=1 ./scripts/check_kani_heap.sh
   else
-    echo "kani not installed; property tests cover rights intersection"
+    ./scripts/check_kani_heap.sh
+    echo "kani not installed; harness sources + executable lemmas verified"
   fi
   if command -v tlc >/dev/null 2>&1; then
     echo "tlc available — model-checking formal/heap/HeapIsolation.tla + HeapAuthority.tla"

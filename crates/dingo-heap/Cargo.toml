@@ -34,3 +34,7 @@ ciborium = "0.2"
 [build-dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+
+# Kani harnesses use `#[cfg(kani)]` (set by cargo-kani, not cargo test).
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
