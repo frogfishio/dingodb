@@ -98,6 +98,11 @@ pub fn confine_operational_observation_under(
                         HeapUnavailableCause::ConstraintDenied,
                     ));
                 }
+                // Metadata-hardened (and tighter) profiles enforce the closed authenticated
+                // heap-local allowlist; data-isolated remains looser for residual metrics.
+                if profile != IsolationProfileId::HeapDataIsolated {
+                    profile_view.authenticated_allows_heap_local(&ev.field)?;
+                }
                 out.push(ev.clone());
             }
             Some(_) => {
@@ -236,7 +241,7 @@ pub struct ConfinedSupportBundle {
     pub entries: Vec<SupportBundleEntry>,
 }
 
-/// Confine a support bundle to the live capability.
+/// Confine a support bundle to the live capability (reference profile).
 ///
 /// Secret-bearing entries are always denied. Foreign-heap entries are dropped.
 /// Undeclared deployment-wide kinds (not in the base registry) are denied.
@@ -244,8 +249,21 @@ pub fn confine_support_bundle(
     cap: &HeapCap,
     entries: &[SupportBundleEntry],
 ) -> Result<ConfinedSupportBundle, HeapError> {
+    confine_support_bundle_under(cap, entries, REFERENCE_ISOLATION_PROFILE)
+}
+
+/// Profile-aware support-bundle confinement (`HEAP_SPEC` §13 / Gate H3).
+///
+/// Under metadata-hardened (and tighter) profiles, heap-local entry kinds must
+/// appear on the authenticated heap-local allowlist (or be unauthenticated base).
+pub fn confine_support_bundle_under(
+    cap: &HeapCap,
+    entries: &[SupportBundleEntry],
+    profile: IsolationProfileId,
+) -> Result<ConfinedSupportBundle, HeapError> {
     refresh_capability_or_terminate(cap)?;
     let bound = cap.heap_id();
+    let profile_view = load_isolation_profiles()?.get(profile)?;
     let mut out = Vec::with_capacity(entries.len());
     for e in entries {
         if e.contains_secrets {
@@ -254,13 +272,22 @@ pub fn confine_support_bundle(
             ));
         }
         match e.heap_id {
-            Some(h) if h == bound => out.push(e.clone()),
+            Some(h) if h == bound => {
+                if profile_view.is_always_confidential(&e.kind) {
+                    return Err(HeapError::unavailable(
+                        HeapUnavailableCause::ConstraintDenied,
+                    ));
+                }
+                if profile != IsolationProfileId::HeapDataIsolated {
+                    // Treat kind as a field name against the closed authenticated allowlist.
+                    profile_view.authenticated_allows_heap_local(&e.kind)?;
+                }
+                out.push(e.clone());
+            }
             Some(_) => {}
             None => {
                 // Deployment-wide bundle artifacts must be explicitly allowlisted.
-                if matches!(e.kind.as_str(), "build_id" | "protocol_versions" | "live" | "ready")
-                    || unauthenticated_field_allowed(&e.kind)
-                {
+                if unauthenticated_field_allowed_under(profile, &e.kind) {
                     out.push(e.clone());
                 } else {
                     return Err(HeapError::unavailable(
@@ -423,6 +450,30 @@ mod tests {
         )
         .unwrap();
         assert_eq!(ok.events.len(), 1);
+
+        // Closed authenticated allowlist: undeclared bound-heap field fails closed.
+        assert!(confine_operational_observation_under(
+            &cap,
+            &[OperationalEvent {
+                heap_id: Some(cap.heap_id()),
+                field: "usage_bytes".into(),
+                value: "9".into(),
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .is_err());
+        // Declared heap-local field still passes.
+        let local = confine_operational_observation_under(
+            &cap,
+            &[OperationalEvent {
+                heap_id: Some(cap.heap_id()),
+                field: "usage".into(),
+                value: "9".into(),
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .unwrap();
+        assert_eq!(local.events.len(), 1);
     }
 
     #[test]
@@ -516,5 +567,30 @@ mod tests {
             }]
         )
         .is_err());
+
+        // Metadata-hardened: undeclared bound-heap kind fails; allowlisted kind passes.
+        assert!(confine_support_bundle_under(
+            &cap,
+            &[SupportBundleEntry {
+                heap_id: Some(cap.heap_id()),
+                kind: "not_in_registry".into(),
+                label: "x".into(),
+                contains_secrets: false,
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .is_err());
+        let hard = confine_support_bundle_under(
+            &cap,
+            &[SupportBundleEntry {
+                heap_id: Some(cap.heap_id()),
+                kind: "receipts".into(),
+                label: "purge".into(),
+                contains_secrets: false,
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .unwrap();
+        assert_eq!(hard.entries.len(), 1);
     }
 }

@@ -9,7 +9,7 @@ use crate::generated_registry::admitted_ops_for_state;
 use crate::ids::{CapabilityId, SecurityRevision};
 use crate::rights::{Operation, OperationStatus};
 use crate::security_time::{TimeDecision, TrustedInstant};
-use crate::snapshot::{HeapAdministrativeState, HeapSecuritySnapshot, HeapSlot};
+use crate::snapshot::{HeapSecuritySnapshot, HeapSlot};
 use std::sync::Arc;
 
 /// Operation request descriptor for admission.
@@ -59,6 +59,9 @@ pub fn generation_accepted(
 }
 
 /// Whether the certificate is hit by a same-generation blacklist entry.
+///
+/// Matches `HeapAuthority` `NotBlacklisted` / `BlacklistAdd` and HEAP_SPEC §8.11
+/// typed entries (`CertificateFingerprint` / `HolderFingerprint`).
 #[must_use]
 pub fn certificate_blacklisted(
     snapshot: &HeapSecuritySnapshot,
@@ -79,6 +82,41 @@ pub fn certificate_blacklisted(
         }
     }
     false
+}
+
+/// Combined authority admission predicate (HeapAuthority `AdmissionOK` stand-in
+/// over a resident snapshot). Does not check rights, constraints, or op status.
+///
+/// Used by HP-010 Gate H6 obligations to connect `generation_accepted` /
+/// `certificate_blacklisted` / administrative serving to the formal model.
+#[must_use]
+pub fn authority_admission_ok(
+    snapshot: &HeapSecuritySnapshot,
+    certificate: &VerifiedCertificate,
+    now: TrustedInstant,
+) -> bool {
+    if !authority_binding_holds(snapshot, certificate) {
+        return false;
+    }
+    if !snapshot.administrative_state.is_serving() || snapshot.administrative_state.is_terminal() {
+        return false;
+    }
+    if !generation_accepted(snapshot, certificate, now) {
+        return false;
+    }
+    if certificate_blacklisted(snapshot, certificate) {
+        return false;
+    }
+    // Issuer must match the generation's master key (current or previous during grace).
+    let expected_master = if certificate.authority_generation == snapshot.authority_generation {
+        Some(snapshot.master_public_key)
+    } else {
+        snapshot.previous_master_public_key
+    };
+    match expected_master {
+        Some(pk) if certificate.issuer_master_key_id == sha256(&pk) => true,
+        _ => false,
+    }
 }
 
 /// Pure decision: no I/O, no ambient clock.
@@ -213,9 +251,16 @@ pub fn mint_capability(
     if certificate.heap_id != snap.heap_id {
         return Err(HeapError::unavailable(HeapUnavailableCause::StaleAuthority));
     }
-    let deadline = certificate
-        .expires_at
-        .min(snap.grace_deadline_unix_s.unwrap_or(certificate.expires_at));
+    // Grace deadline bounds *previous-generation* certificates only (§8.11).
+    // Current-generation certs use their own expires_at (hard cycle has no grace).
+    let deadline = if snap.previous_generation == Some(certificate.authority_generation) {
+        match snap.grace_deadline_unix_s {
+            Some(g) => certificate.expires_at.min(g),
+            None => certificate.expires_at,
+        }
+    } else {
+        certificate.expires_at
+    };
     if now.unix_s >= deadline {
         return Err(HeapError::unavailable(
             HeapUnavailableCause::NotYetValidOrExpired,
@@ -250,16 +295,12 @@ pub fn mint_capability(
 /// (`HEAP_SPEC` §8.7 / Gate H3).
 pub fn refresh_capability_or_terminate(cap: &HeapCap) -> Result<(), HeapError> {
     let snap = cap.slot().load();
-    let serving = matches!(
-        snap.administrative_state,
-        HeapAdministrativeState::Active | HeapAdministrativeState::ReadOnly
-    );
     if snap.heap_id != cap.heap_id()
         || snap.deployment_id != cap.deployment_id()
         || snap.authority_epoch != cap.inner.authority_epoch
         || snap.security_revision != cap.security_revision()
         || snap.authority_chain_head_hash != cap.inner.validated_authority_chain_head_hash
-        || !serving
+        || !snap.administrative_state.is_serving()
     {
         return Err(HeapError::unavailable(HeapUnavailableCause::StaleAuthority));
     }
@@ -271,6 +312,7 @@ pub fn refresh_capability_or_terminate(cap: &HeapCap) -> Result<(), HeapError> {
 mod tests {
     use super::*;
     use crate::certificate::VerifiedCertificate;
+    use crate::snapshot::HeapAdministrativeState;
     use crate::constraints::Constraints;
     use crate::ids::{
         AuthorityEpoch, AuthorityGeneration, CertificateId, DeploymentId, HeapId, SecurityRevision,

@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 named isolation profiles + metadata-hardened operational confinement Accept; H6 partial with HeapIsolation + HeapAuthority sketches, connected AuthorityModel, and §39 generation/blacklist obligations. External review + full Verus still open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 named isolation profiles + metadata-hardened closed authenticated allowlist Accept; H6 partial with HeapIsolation + HeapAuthority sketches, connected AuthorityModel, authority_admission_ok (AdmissionOK), §39 generation/blacklist/grace mint obligations. External review + full Verus still open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -82,7 +82,7 @@
         "formal/heap/MCHeapAuthority.cfg",
         "crates/dingo-heap IsolationModel connected to TLA Inv",
         "crates/dingo-heap AuthorityModel connected to HeapAuthority Inv",
-        "crates/dingo-heap authority_binding_holds / generation_accepted / certificate_blacklisted + h6_decide_obligations (§39 executable stand-in)",
+        "crates/dingo-heap authority_binding_holds / generation_accepted / certificate_blacklisted / authority_admission_ok + h6_decide_obligations (§39 executable stand-in)",
         "verification/heap-verus H6_PROOF_OBLIGATIONS checklist",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_isolation_claim_partial_evidence",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_connected_model",

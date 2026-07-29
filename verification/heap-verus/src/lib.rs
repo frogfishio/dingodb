@@ -4,7 +4,7 @@
 //! - isolation observation helpers (`confine_query_observation`, health/support);
 //! - connected Rust models (`IsolationModel`, `AuthorityModel`) mirroring TLA Inv;
 //! - executable §39 obligations (`dingo_heap::h6_decide_obligations`) including
-//!   `generation_accepted` and `certificate_blacklisted`.
+//!   `generation_accepted` and `certificate_blacklisted / authority_admission_ok`.
 //! Full Verus proofs remain open — `qualified` stays false.
 
 #![allow(dead_code)]
@@ -24,6 +24,8 @@ pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "epoch/generation acceptance follows the frozen grace rule",
     "generation_accepted encodes GenOK (current or previous-within-grace)",
     "certificate_blacklisted encodes NotBlacklisted / BlacklistAdd",
+    "authority_admission_ok encodes AdmissionOK over resident snapshot",
+    "mint grace deadline binds only previous-generation certificates",
     "confine_query_observation never returns a foreign heap_id",
     "IsolationModel invariants match HeapIsolation.tla Inv",
     "AuthorityModel invariants match HeapAuthority.tla Inv",

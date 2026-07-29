@@ -32,8 +32,9 @@ pub use capability::{HeapCap, HeapMaintenanceCap, RecoveryCap, ReplicaCap};
 pub use certificate::{sig_structure_for, verify_certificate, VerifiedCertificate};
 pub use constraints::{Constraint, Constraints, SourceNetwork};
 pub use decide::{
-    authority_binding_holds, certificate_blacklisted, decide, generation_accepted,
-    mint_capability, refresh_capability_or_terminate, AuthorizationDecision, OperationDescriptor,
+    authority_admission_ok, authority_binding_holds, certificate_blacklisted, decide,
+    generation_accepted, mint_capability, refresh_capability_or_terminate,
+    AuthorizationDecision, OperationDescriptor,
 };
 pub use decide_obligations::obligations as h6_decide_obligations;
 pub use error::{HeapError, HeapUnavailableCause};
@@ -54,10 +55,10 @@ pub use isolation_profile::{
 };
 pub use operational::{
     confine_export_heaps, confine_health_detail, confine_operational_observation,
-    confine_operational_observation_under, confine_support_bundle, unauthenticated_field_allowed,
-    unauthenticated_field_allowed_under, ConfinedHealthDetail, ConfinedOperationalObservation,
-    ConfinedSupportBundle, HealthDetailInput, OperationalEvent, SupportBundleEntry,
-    UNAUTHENTICATED_DECLASSIFIED_FIELDS,
+    confine_operational_observation_under, confine_support_bundle, confine_support_bundle_under,
+    unauthenticated_field_allowed, unauthenticated_field_allowed_under, ConfinedHealthDetail,
+    ConfinedOperationalObservation, ConfinedSupportBundle, HealthDetailInput, OperationalEvent,
+    SupportBundleEntry, UNAUTHENTICATED_DECLASSIFIED_FIELDS,
 };
 pub use qualification::{
     claim_language, may_advertise_qualified, HP010_MATRIX_REL, PRE_QUALIFICATION_LANGUAGE,

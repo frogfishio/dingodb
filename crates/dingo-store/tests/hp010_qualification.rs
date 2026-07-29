@@ -1091,6 +1091,8 @@ fn h6_decide_obligations_connected() {
     assert!(h6_decide_obligations::epoch_mismatch_fails_binding());
     assert!(h6_decide_obligations::generation_grace_acceptance());
     assert!(h6_decide_obligations::blacklist_refuses_admit());
+    assert!(h6_decide_obligations::authority_admission_bundle());
+    assert!(h6_decide_obligations::mint_grace_only_previous_generation());
 
     let verus = fs::read_to_string(workspace_root().join("verification/heap-verus/src/lib.rs"))
         .unwrap();
@@ -1099,6 +1101,7 @@ fn h6_decide_obligations_connected() {
     assert!(verus.contains("confine_support_bundle"));
     assert!(verus.contains("generation_accepted"));
     assert!(verus.contains("certificate_blacklisted"));
+    assert!(verus.contains("authority_admission_ok"));
     assert!(verus.contains("AuthorityModel"));
 }
 
@@ -1187,6 +1190,18 @@ fn metadata_hardened_operational_confinement() {
             heap_id: Some(cap.heap_id()),
             field: "physical_paths".into(),
             value: "/data".into(),
+        }],
+        IsolationProfileId::HeapMetadataHardened,
+    )
+    .is_err());
+
+    // Undeclared bound-heap field fails under closed authenticated allowlist.
+    assert!(confine_operational_observation_under(
+        &cap,
+        &[OperationalEvent {
+            heap_id: Some(cap.heap_id()),
+            field: "usage_bytes".into(),
+            value: "64".into(),
         }],
         IsolationProfileId::HeapMetadataHardened,
     )

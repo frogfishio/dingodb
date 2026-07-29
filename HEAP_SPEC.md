@@ -65,7 +65,7 @@ Before Gate H6, product language remains:
 | **HP-007** | SDK capability surface | **Landed (Accept isolation)** | `dingo-sdk::heap`: `DingoDeployment`, `Heap`, `HeapCollection`/`HeapStream`, heap-bound pool, `SignedCursor`, batch membership checks. Accept: identical collection names across heaps cannot exchange handles/cursors/batch members/pooled connections. **Gaps:** remote `connect_heap`, SubjectV2 put/get path, `dangerous-key-export` holder signer. |
 | **HP-008** | Qualified network protocol | **Landed (Accept live TLS loop)** | Session/audit/exporter API plus **accept-loop wiring**: `qualified_heap_key` serve path derives RFC 9266 exporter, runs `heap_session`, dispatches via `HeapCap` (`serve_qualified_requests`) with **no token/RBAC**. Accept: live TLS ping without token; token field → uniform `heap_unavailable`. **Gaps:** §32.4 reserved-op activation, RPC vector corpus, make qualified listener the default remote profile (legacy token still available when `qualified_heap_key=false`). |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
-| HP-010 | Single-node qualification | **In progress (H3–H6 partial)** | Matrix stays `qualified=false`; Accept adds **named isolation profiles**, **metadata-hardened operational confinement**, **HeapAuthority.tla** + connected **AuthorityModel**, and §39 generation/blacklist obligations. H6 still needs full Verus + external review. |
+| HP-010 | Single-node qualification | **In progress (H3–H6 partial)** | Matrix stays `qualified=false`; Accept adds **named isolation profiles**, **metadata-hardened closed allowlist**, **HeapAuthority.tla** + connected **AuthorityModel** + `authority_admission_ok`, and §39 generation/blacklist/grace mint obligations. H6 still needs full Verus + external review. |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
 
@@ -6365,7 +6365,7 @@ runbook; lifecycle crash-matrix (peer heaps unaffected); named isolation
 profiles + closed declassification registry (`isolation-profiles-v1.json`) +
 metadata-hardened operational confinement; `HeapIsolation.tla` +
 `HeapAuthority.tla` + connected Rust `IsolationModel` + `AuthorityModel`;
-executable §39 decide obligations (`authority_binding_holds` /
+executable §39 decide obligations (`authority_admission_ok` / `authority_binding_holds` /
 `generation_accepted` / `certificate_blacklisted` /
 `h6_decide_obligations`). Full Verus proofs and external security review remain
 open.

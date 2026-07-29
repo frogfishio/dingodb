@@ -59,6 +59,14 @@ impl HeapAdministrativeState {
     pub fn is_terminal(self) -> bool {
         matches!(self, Self::Purged)
     }
+
+    /// Whether ordinary data service is available (`HeapAuthority` `Serving`).
+    ///
+    /// Active and ReadOnly are serving; Suspended/Retired/Purging/Purged are not.
+    #[must_use]
+    pub fn is_serving(self) -> bool {
+        matches!(self, Self::Active | Self::ReadOnly)
+    }
 }
 
 /// Resident heap security snapshot used by the hot path.

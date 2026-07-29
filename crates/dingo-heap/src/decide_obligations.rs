@@ -4,11 +4,12 @@
 //! predicates over [`crate::decide`]. They do **not** flip `qualified=true`.
 
 use crate::authority::{BlacklistEntry, BlacklistKind};
+use crate::capability::sha256;
 use crate::certificate::VerifiedCertificate;
 use crate::constraints::{Constraint, Constraints};
 use crate::decide::{
-    authority_binding_holds, certificate_blacklisted, generation_accepted, mint_capability,
-    refresh_capability_or_terminate,
+    authority_admission_ok, authority_binding_holds, certificate_blacklisted, generation_accepted,
+    mint_capability, refresh_capability_or_terminate,
 };
 use crate::ids::{
     AuthorityEpoch, AuthorityGeneration, CertificateId, CollectionId, DeploymentId, HeapId,
@@ -50,7 +51,6 @@ fn snap(
 }
 
 fn cert_for(snap: &HeapSecuritySnapshot, heap: HeapId) -> VerifiedCertificate {
-    use crate::capability::sha256;
     VerifiedCertificate {
         cose_bytes: vec![0x01],
         fingerprint: [3u8; 32],
@@ -200,6 +200,102 @@ pub mod obligations {
         });
         certificate_blacklisted(&snapshot, &cert)
     }
+
+    /// O8: `authority_admission_ok` bundles GenOK / NotBlacklisted / Serving / issuer
+    /// (HeapAuthority `AdmissionOK` over a resident snapshot).
+    pub fn authority_admission_bundle() -> bool {
+        let dep = DeploymentId::from_bytes(uuidish(0x01)).unwrap();
+        let heap = HeapId::from_bytes(uuidish(0xf9)).unwrap();
+        let master = [0x66u8; 32];
+        let now = TrustedInstant {
+            unix_s: 1_700_000_050,
+        };
+
+        let mut snapshot = snap(heap, dep, master, HeapAdministrativeState::Active);
+        let cert = cert_for(&snapshot, heap);
+        if !authority_admission_ok(&snapshot, &cert, now) {
+            return false;
+        }
+
+        // Previous generation during grace with previous master key.
+        snapshot.authority_generation = AuthorityGeneration::new(2).unwrap();
+        snapshot.previous_generation = Some(AuthorityGeneration::new(1).unwrap());
+        snapshot.grace_deadline_unix_s = Some(1_700_000_100);
+        snapshot.previous_master_public_key = Some(master);
+        snapshot.master_public_key = [0x77u8; 32];
+        let mut prev = cert_for(&snapshot, heap);
+        prev.authority_generation = AuthorityGeneration::new(1).unwrap();
+        prev.issuer_master_key_id = sha256(&master);
+        if !authority_admission_ok(&snapshot, &prev, now) {
+            return false;
+        }
+        // After grace deadline.
+        if authority_admission_ok(
+            &snapshot,
+            &prev,
+            TrustedInstant {
+                unix_s: 1_700_000_200,
+            },
+        ) {
+            return false;
+        }
+
+        // Blacklist refuses admission.
+        let mut blacklisted = snap(heap, dep, master, HeapAdministrativeState::Active);
+        let cert2 = cert_for(&blacklisted, heap);
+        blacklisted.blacklist.push(BlacklistEntry {
+            kind: BlacklistKind::CertificateHash,
+            generation: cert2.authority_generation.get(),
+            fingerprint: cert2.fingerprint,
+        });
+        if authority_admission_ok(&blacklisted, &cert2, now) {
+            return false;
+        }
+
+        // Non-serving refuses admission.
+        let suspended = snap(heap, dep, master, HeapAdministrativeState::Suspended);
+        let cert3 = cert_for(&suspended, heap);
+        if authority_admission_ok(&suspended, &cert3, now) {
+            return false;
+        }
+
+        true
+    }
+
+    /// O9: mint grace deadline binds only previous-generation certificates (§8.11).
+    pub fn mint_grace_only_previous_generation() -> bool {
+        let dep = DeploymentId::from_bytes(uuidish(0x01)).unwrap();
+        let heap = HeapId::from_bytes(uuidish(0xfa)).unwrap();
+        let master_prev = [0x88u8; 32];
+        let master_cur = [0x99u8; 32];
+
+        // Current generation past an unrelated grace deadline must still mint.
+        let mut snapshot = snap(heap, dep, master_cur, HeapAdministrativeState::Active);
+        snapshot.authority_generation = AuthorityGeneration::new(2).unwrap();
+        snapshot.previous_generation = Some(AuthorityGeneration::new(1).unwrap());
+        snapshot.grace_deadline_unix_s = Some(1_700_000_000); // already expired
+        snapshot.previous_master_public_key = Some(master_prev);
+        let slot = Arc::new(HeapSlot::new(snapshot.clone()));
+        let mut current = cert_for(&snapshot, heap);
+        current.authority_generation = AuthorityGeneration::new(2).unwrap();
+        current.issuer_master_key_id = sha256(&master_cur);
+        let now_past_grace = TrustedInstant {
+            unix_s: 1_700_000_050,
+        };
+        if mint_capability(Arc::clone(&slot), &current, now_past_grace).is_err() {
+            return false;
+        }
+
+        // Previous generation after grace deadline must refuse mint.
+        let mut prev = cert_for(&snapshot, heap);
+        prev.authority_generation = AuthorityGeneration::new(1).unwrap();
+        prev.issuer_master_key_id = sha256(&master_prev);
+        if mint_capability(slot, &prev, now_past_grace).is_ok() {
+            return false;
+        }
+
+        true
+    }
 }
 
 #[cfg(test)]
@@ -214,5 +310,7 @@ mod tests {
         assert!(obligations::epoch_mismatch_fails_binding());
         assert!(obligations::generation_grace_acceptance());
         assert!(obligations::blacklist_refuses_admit());
+        assert!(obligations::authority_admission_bundle());
+        assert!(obligations::mint_grace_only_previous_generation());
     }
 }

@@ -139,7 +139,7 @@ CI Accept:
 - `hp010_qualification::isolation_profile_registry_closed`
 - `hp010_qualification::metadata_hardened_operational_confinement`
 
-## 5.4 Connected H6 models (partial)
+## 5.4 Connected H6 models (partial — includes `authority_admission_ok` / grace mint)
 
 | Artifact | Connected Rust stand-in |
 |----------|-------------------------|
