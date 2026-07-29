@@ -1,0 +1,7 @@
+{
+  "op": 114,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-000000000001",
+  "args": { "limit": 100 },
+  "result": { "keys": ["user-1", "user-2"] }
+}

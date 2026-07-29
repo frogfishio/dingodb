@@ -1,0 +1,22 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import ExternalLink from '../components/ExternalLink.astro';
+import release from '../data/release.json';
+---
+
+<DocsLayout
+  title="Page not found"
+  description="The requested documentation page was not found."
+  path="/404/"
+  noindex={true}
+  showSidebar={false}
+>
+  <p class="lead">That path is a hole. Healthy documentation remains readable.</p>
+  <div class="btn-row">
+    <a class="btn btn-primary" href="/">Docs home</a>
+    <a class="btn btn-secondary" href="/status/">Status</a>
+    <a class="btn btn-secondary" href="/getting-started/rust/">Rust quickstart</a>
+    <ExternalLink href={release.github} class="btn btn-secondary">GitHub</ExternalLink>
+  </div>
+  <p>Try search (⌘K) or the section navigation from the home page.</p>
+</DocsLayout>

@@ -1,0 +1,16 @@
+---
+import { assertStatus, statusDisplay } from '../lib/status';
+
+interface Props {
+  status: string;
+}
+
+const { status } = Astro.props;
+const id = assertStatus(status);
+const label = statusDisplay(id);
+---
+
+<span class:list={['status-badge', `status-${id}`]} data-status={id}>
+  <span class="status-mark" aria-hidden="true"></span>
+  <span>{label}</span>
+</span>

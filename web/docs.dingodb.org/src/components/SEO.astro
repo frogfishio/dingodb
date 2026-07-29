@@ -1,0 +1,46 @@
+---
+import release from '../data/release.json';
+
+interface Props {
+  title: string;
+  description: string;
+  path?: string;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  path = '/',
+  noindex = false,
+} = Astro.props;
+
+const site = 'https://docs.dingodb.org';
+const canonical = new URL(path.endsWith('/') || path.endsWith('.html') ? path : path + '/', site).href;
+const fullTitle = title.includes('DingoDB') ? title : `${title} · DingoDB Docs`;
+const isPreview = import.meta.env.PUBLIC_PREVIEW === 'true';
+const isNext = path.startsWith('/next');
+const robots = noindex || isPreview || isNext ? 'noindex, nofollow' : 'index, follow';
+const ogImage = new URL('/og-image.svg', site).href;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={isNext ? site + '/' : canonical} />
+<meta name="robots" content={robots} />
+<meta name="generator" content={Astro.generator} />
+<meta name="theme-color" content="#f3f0e7" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="DingoDB Docs" />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImage} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="dingodb:product-version" content={release.productVersion} />
+<meta name="dingodb:docs-revision" content={release.sourceRevision} />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />

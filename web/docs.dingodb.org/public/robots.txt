@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /next/
+
+Sitemap: https://docs.dingodb.org/sitemap-index.xml

@@ -1,0 +1,42 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import { getAllDocs, getPrevNext } from '../lib/content';
+import { renderMarkdown } from '../lib/markdown';
+
+export function getStaticPaths() {
+  return getAllDocs().map((doc) => ({
+    params: { slug: doc.slug },
+    props: { doc },
+  }));
+}
+
+const { doc } = Astro.props;
+const { prev, next } = getPrevNext(doc.slug);
+const html = renderMarkdown(doc.body);
+const parts = doc.slug.split('/');
+const breadcrumbs = parts.map((part, i) => {
+  const href = '/' + parts.slice(0, i + 1).join('/') + '/';
+  const label =
+    i === parts.length - 1
+      ? doc.data.title
+      : part
+          .split('-')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+  return { label, href };
+});
+---
+
+<DocsLayout
+  title={doc.data.title}
+  description={doc.data.description}
+  path={doc.href}
+  data={doc.data}
+  slug={doc.slug}
+  headings={doc.headings}
+  prev={prev}
+  next={next}
+  breadcrumbs={breadcrumbs}
+>
+  <div class="doc-body" set:html={html} />
+</DocsLayout>

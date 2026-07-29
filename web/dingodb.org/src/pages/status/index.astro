@@ -148,22 +148,34 @@ import { statusLabels } from '../../lib/status';
     </table>
   </div>
 
-  <h2 id="benchmarks">Benchmark status</h2>
+  <h2 id="benchmarks">Performance evidence</h2>
+  <Callout title="Current local engineering signal" variant="verified">
+    <p>
+      An owner-observed development run reports approximately
+      <strong>350 MB/s indexed ingest</strong> for 4 KiB writes across four
+      workers on a MacBook Air M4 while the chaos agent punches holes into
+      stored data. This is a local diagnostic—not a cross-system benchmark,
+      supported performance envelope, or SLO.
+    </p>
+  </Callout>
   {release.benchmarksPublished ? (
     <p>
       Public benchmark packages are published. See
       <a href="/benchmarks/">benchmarks</a>.
     </p>
   ) : (
-    <Callout title="No public comparative result" variant="warning">
+    <Callout title="Comparative benchmark not yet published" variant="warning">
       <p>
-        No public comparative benchmark result is currently claimed. Methodology
-        requirements live in
+        DingoDB does not currently claim a published comparison against Redis,
+        MongoDB, PostgreSQL, or another system. The local signal above still
+        needs its complete revision, durability, dataset, latency, verification,
+        and raw-artifact manifest before it becomes a formal result.
+        Methodology requirements live in
         <ExternalLink href={release.github + '/blob/main/doc/BENCHMARK_DISCLOSURE.md'}>
           doc/BENCHMARK_DISCLOSURE.md
         </ExternalLink>.
-        Performance language on this site describes design intent only, not a
-        measured cross-system ranking.
+        Nothing on this site turns that diagnostic into a measured cross-system
+        ranking.
       </p>
     </Callout>
   )}

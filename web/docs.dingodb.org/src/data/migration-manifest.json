@@ -1,0 +1,114 @@
+[
+  {
+    "source": "README.md",
+    "destination": "/",
+    "mode": "summarize",
+    "owner": "docs",
+    "status": "active"
+  },
+  {
+    "source": "crates/dingo-sdk/README.md",
+    "destination": "/getting-started/rust/",
+    "mode": "transform",
+    "owner": "sdk",
+    "status": "active"
+  },
+  {
+    "source": "doc/DQL/USER_GUIDE.md",
+    "destination": "/guides/dql/",
+    "mode": "summarize",
+    "owner": "sdk",
+    "status": "active"
+  },
+  {
+    "source": "doc/CAPABILITY_MATRIX.md",
+    "destination": "/status/capabilities/",
+    "mode": "summarize",
+    "owner": "release",
+    "status": "active"
+  },
+  {
+    "source": "doc/BENCHMARK_DISCLOSURE.md",
+    "destination": "/status/benchmark-disclosure/",
+    "mode": "summarize",
+    "owner": "release",
+    "status": "active"
+  },
+  {
+    "source": "FORMAT_SPEC.md",
+    "destination": "/specifications/format/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "HEAP_SPEC.md",
+    "destination": "/specifications/heaps/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "CLUSTER_SPEC.md",
+    "destination": "/specifications/cluster/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "DQL_SPEC.md",
+    "destination": "/specifications/dql/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "DRE_SPEC.md",
+    "destination": "/specifications/dre/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "ATOMICS_PROPOSAL.md",
+    "destination": "/specifications/atomics/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "DIRECT_ACCESS_SPEC.md",
+    "destination": "/specifications/direct-access/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "ORDER_WAVELET_SPEC.md",
+    "destination": "/specifications/order-wavelets/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "doc/SDA/SDA_SPEC.md",
+    "destination": "/specifications/sda/",
+    "mode": "summarize",
+    "owner": "specs",
+    "status": "active"
+  },
+  {
+    "source": "CONTRIBUTING.md",
+    "destination": "/contributing/",
+    "mode": "summarize",
+    "owner": "maintainers",
+    "status": "active"
+  },
+  {
+    "source": "FUTURE_ROADMAP.md",
+    "destination": "/status/roadmap/",
+    "mode": "summarize",
+    "owner": "product",
+    "status": "active"
+  }
+]

@@ -60,6 +60,22 @@
   ],
   "worksToday": [
     {
+      "id": "sda-kernel",
+      "name": "Deterministic SDA / ENR kernel",
+      "description": "Pure filtering, projection, normalization, enrichment, and examination share exact value and predicate semantics.",
+      "scope": "Language and examination",
+      "status": "available",
+      "claim_id": "claim.kernel.deterministic"
+    },
+    {
+      "id": "dql-dialects",
+      "name": "DQL and query dialects",
+      "description": "Human DQL plus SQL, Mongo-style, JSON, and raw SDA entry surfaces compile toward the same execution kernel within their declared subsets.",
+      "scope": "SDK query surface",
+      "status": "experimental",
+      "claim_id": "claim.dql.one-kernel"
+    },
+    {
       "id": "open-create",
       "name": "Embedded open / create",
       "description": "Open or create a local store with Dingo::open.",
@@ -82,6 +98,14 @@
       "scope": "Embedded single-node",
       "status": "experimental",
       "claim_id": "claim.indexes.derived-accelerators"
+    },
+    {
+      "id": "bounded-cursors",
+      "name": "Bounded cursor paging",
+      "description": "Resume-key cursors page live subjects in stable subject order without retaining an unbounded server result set.",
+      "scope": "Single-node store",
+      "status": "available",
+      "claim_id": "claim.cursors.bounded"
     },
     {
       "id": "per-key-history",
@@ -151,35 +175,35 @@
     },
     {
       "id": "dre",
-      "name": "DRE (data rules)",
-      "description": "Formal data rules engine.",
-      "scope": "Research / design",
+      "name": "DRE — Data Rules",
+      "description": "Finite declarative invariants that give flexible documents database-owned, formally specified truth.",
+      "scope": "Normative design",
       "status": "design",
-      "claim_id": null
+      "claim_id": "claim.dre.document-truth"
     },
     {
       "id": "atomics",
       "name": "Atomics",
-      "description": "Atomic multi-subject operations beyond current paths.",
-      "scope": "Research / design",
+      "description": "Mathematically admitted state transitions that enforce DRE and relationship invariants without pretending to be arbitrary distributed SQL transactions.",
+      "scope": "Exploratory design",
       "status": "design",
       "claim_id": null
     },
     {
       "id": "dda",
       "name": "Direct Access (DDA)",
-      "description": "Direct access surface for external tooling.",
-      "scope": "Research / design",
+      "description": "Exact access to result rank k without silently enumerating the preceding k − 1 matches.",
+      "scope": "Normative design",
       "status": "design",
-      "claim_id": null
+      "claim_id": "claim.dda.exact-rank"
     },
     {
       "id": "order-wavelets",
       "name": "Order Wavelets",
-      "description": "Order-preserving index research.",
-      "scope": "Research / design",
+      "description": "Filtered ordering compiled into rank/select decision structures so the engine navigates exact conditional counts instead of sorting matches at query time.",
+      "scope": "Normative design",
       "status": "design",
-      "claim_id": null
+      "claim_id": "claim.dow.counted-order"
     }
   ],
   "limitations": [

@@ -5,28 +5,29 @@ import Callout from '../../components/Callout.astro';
 
 <PageLayout
   title="Use cases"
-  description="Where DingoDB is a good fit to evaluate today, where to be careful, and what is not yet appropriate."
+  description="Where DingoDB’s document-native model, deterministic mathematical kernel, indexed speed, and explicit damage semantics create unusual leverage."
   path="/use-cases/"
   eyebrow="Fit"
-  lead="Choose DingoDB for workload fit—not as a generic replacement for mature SQL or document ecosystems."
+  lead="Choose DingoDB when flexible documents, formal truth, direct query mechanics, speed, and survival belong in one system."
 >
   <h2>Good fit to evaluate now</h2>
   <ul>
     <li>
-      <strong>Embedded Rust applications</strong> that need a local store with
-      an explicit damage model
+      <strong>Document-native Rust applications</strong> that want an ordinary
+      collection API over deterministic query and examination semantics
     </li>
     <li>
-      <strong>Irreplaceable local records and blobs</strong> where partial
-      survival is more valuable than all-or-nothing failure
+      <strong>High-ingest local systems</strong> that need live indexes,
+      explicit durability modes, history, and bounded resource behavior
     </li>
     <li>
-      <strong>Systems that value inspectable partial recovery</strong>—holes,
-      salvage evidence, and catalog-independent examination
+      <strong>Systems that cannot lie about partial data</strong>—coverage,
+      holes, conflicts, and recovery evidence must remain visible
     </li>
     <li>
-      <strong>Experimental and research workloads</strong> exploring formal
-      examination (SDA), recovery, or embedded durability design
+      <strong>Teams exploring mathematical document integrity</strong> through
+      DRE, Atomics, direct rank access, and counted ordering as those profiles
+      move from specification to implementation
     </li>
   </ul>
 
@@ -41,7 +42,8 @@ import Callout from '../../components/Callout.astro';
   <h2>Evaluate carefully</h2>
   <ul>
     <li>Applications that may need a network path soon but can start embedded</li>
-    <li>Teams comparing with SQLite for local documents plus salvage requirements</li>
+    <li>Teams comparing with SQLite for local documents, richer query semantics, and salvage</li>
+    <li>Teams comparing with MongoDB that can adopt DingoDB incrementally as the rule and direct-access profiles land</li>
     <li>Operators exploring single-node TCP for development only</li>
     <li>Workloads that need long-term retention design before native archive tiers exist</li>
   </ul>
@@ -49,7 +51,7 @@ import Callout from '../../components/Callout.astro';
   <h2>Not yet</h2>
   <ul>
     <li>A drop-in mature SQL database</li>
-    <li>A production MongoDB replacement</li>
+    <li>A production drop-in MongoDB replacement</li>
     <li>A public multi-tenant service requiring mature network operations</li>
     <li>A production multi-node cluster</li>
     <li>A native object-store archive platform</li>
@@ -66,8 +68,12 @@ import Callout from '../../components/Callout.astro';
       </thead>
       <tbody>
         <tr>
-          <td>Local embedded store with damage honesty</td>
-          <td>Evaluate DingoDB (experimental)</td>
+          <td>Flexible documents + deterministic kernel + damage honesty</td>
+          <td>Evaluate DingoDB embedded (experimental)</td>
+        </tr>
+        <tr>
+          <td>Database-enforced document rules, exact from/to rank, or wavelet ordering</td>
+          <td>Follow DingoDB’s normative designs; implementation is not complete</td>
         </tr>
         <tr>
           <td>Mature SQL + ecosystem</td>

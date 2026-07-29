@@ -1,0 +1,27 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Next (unreleased) documentation"
+  description="Placeholder for documentation built from the main development branch."
+  path="/next/"
+  channel="next"
+  noindex={true}
+  showSidebar={true}
+>
+  <div class="maturity-banner callout-warning" role="status">
+    <strong>Unreleased.</strong>
+    This channel will track the main development branch. It is <code>noindex</code> and
+    must not be confused with the current release docs.
+  </div>
+  <p>
+    Until a separate Next build is published, use the repository main branch and
+    the current docs at <a href="/">docs.dingodb.org</a> with explicit experimental labels.
+  </p>
+  <ul>
+    <li><a href="/getting-started/rust/">Rust quickstart (current)</a></li>
+    <li><a href="/status/">Status (current)</a></li>
+    <li><a href="/versions/0.2/">Version 0.2 line</a></li>
+  </ul>
+</DocsLayout>

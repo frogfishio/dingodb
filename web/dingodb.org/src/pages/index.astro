@@ -3,32 +3,37 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SurvivalDiagram from '../components/SurvivalDiagram.astro';
 import CapabilityCard from '../components/CapabilityCard.astro';
 import CodeExample from '../components/CodeExample.astro';
-import ComparisonTable from '../components/ComparisonTable.astro';
 import Callout from '../components/Callout.astro';
-import Claim from '../components/Claim.astro';
 import ReleaseBanner from '../components/ReleaseBanner.astro';
 import StatusBadge from '../components/StatusBadge.astro';
 import ExternalLink from '../components/ExternalLink.astro';
 import capabilities from '../data/capabilities.json';
 import release from '../data/release.json';
 
-const comparisonRows = [
+const systemLayers = [
   {
-    need: 'Mature SQL transactions, constraints, and broad tooling',
-    direction: 'Use PostgreSQL or SQLite',
+    marker: '01',
+    status: 'available',
+    title: 'One deterministic kernel',
+    body: 'SDA and ENR give filters, projections, enrichment, examination, and recovery evidence one exact meaning. DQL and familiar dialects compile toward that kernel.',
   },
   {
-    need: 'Mature general-purpose document database and operational ecosystem',
-    direction: 'Use MongoDB',
+    marker: '02',
+    status: 'design',
+    title: 'Documents with database-owned truth',
+    body: 'DRE declares finite, non-Turing-complete invariants. Atomics enforce admitted state transitions. Flexible shape no longer has to mean “the application might remember.”',
   },
   {
-    need: "Embedded arbitrary data with DingoDB’s explicit damage/salvage model",
-    direction: 'Evaluate DingoDB',
-    highlight: true,
+    marker: '03',
+    status: 'design',
+    title: 'Position is a rank query',
+    body: 'Dingo Direct Access specifies exact access to result k without silently walking past the preceding k − 1 matches.',
   },
   {
-    need: 'Production network cluster today',
-    direction: 'Do not choose DingoDB yet',
+    marker: '04',
+    status: 'design',
+    title: 'Sorting becomes navigation',
+    body: 'Order Wavelets compile order into rank/select decision structures, so a filtered kth result is reached through exact conditional counts—not a query-time sort.',
   },
 ];
 
@@ -38,87 +43,200 @@ const designCards = capabilities.beingBuilt.filter((c) =>
 ---
 
 <BaseLayout
-  title="DingoDB — a database built to survive damage"
-  description="Experimental, embedded-first storage for irreplaceable local data. DingoDB stores documents and bytes as independently verifiable data islands, so damage becomes explicit holes."
+  title="DingoDB — flexible documents, mathematical guarantees, serious speed"
+  description="DingoDB is a document database built on a deterministic mathematical kernel: exact query semantics, declarative invariants, direct ranked access, mathematically defined ordering, fast indexed ingestion, and damage-local recovery."
   path="/"
 >
   <section class="hero section">
-    <div class="wrap">
-      <p class="eyebrow">
-        <span>Experimental</span>
-        <span>Rust-first</span>
-        <span>Embedded-first</span>
-      </p>
-      <h1>A database built to survive damage.</h1>
-      <p class="lead">
-        DingoDB stores documents and bytes as independently verifiable data
-        islands, so damage becomes explicit holes—not the death of everything
-        around them.
-      </p>
-      <div class="btn-row">
-        <ExternalLink href={release.docsQuickstart} class="btn btn-primary">
-          Get started
-        </ExternalLink>
-        <a href="/survival/" class="btn btn-secondary">See the survival model</a>
-      </div>
-      <ReleaseBanner />
-    </div>
-  </section>
-
-  <section class="section section-tight" aria-labelledby="survival-heading">
-    <div class="wrap">
-      <h2 id="survival-heading" class="section-title">Independent survival</h2>
-      <Claim id="claim.damage.explicit-holes" class="lead claim-lead" showBadge={false} />
-      <SurvivalDiagram />
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="promises-heading">
-    <div class="wrap">
-      <h2 id="promises-heading" class="section-title">Three promises</h2>
-      <div class="card-grid">
-        <article class="card">
-          <h3>Healthy pieces survive</h3>
-          <p>
-            Local corruption is contained by independently verifiable storage
-            units. Missing material is reported as a hole; unrelated healthy
-            material stays readable.
-          </p>
-        </article>
-        <article class="card">
-          <h3>The hot path stays lean</h3>
-          <p>
-            Append-oriented writes, memory-resident indexes, and derived
-            accelerators are designed for speed.
-            <a href="/status/#benchmarks">No comparative result is published without evidence.</a>
-          </p>
-        </article>
-        <article class="card">
-          <h3>The remains are examinable</h3>
-          <p>
-            SDA provides a deterministic examination algebra for surviving and
-            partial material—so recovery is not a black box.
-          </p>
-        </article>
-      </div>
-      <Callout title="Retention without pretending">
-        <p>
-          Keep arbitrary material now. Preserve enough structure to investigate
-          what remains years later. This does not imply that native cloud archive
-          tiers or a fifteen-year compatibility guarantee are available today.
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">
+          <span>Document-native</span>
+          <span>Mathematical core</span>
+          <span>Damage-tolerant</span>
         </p>
-      </Callout>
+        <h1>Flexible documents.<br />Mathematical guarantees.<br /><em>Serious speed.</em></h1>
+        <p class="lead hero-lead">
+          DingoDB is a document database built around a deterministic
+          mathematical kernel—exact query semantics, database-owned invariants,
+          direct ranked access, and ordering by counted structure rather than
+          offset scans and hope.
+        </p>
+        <div class="btn-row">
+          <a href="/how-it-works/" class="btn btn-primary">Explore the system</a>
+          <ExternalLink href={release.docsQuickstart} class="btn btn-secondary">
+            Run the Rust quickstart
+          </ExternalLink>
+        </div>
+        <ReleaseBanner />
+      </div>
+
+      <aside class="proof-console" aria-label="Latest DingoDB engineering signals">
+        <div class="console-head">
+          <span>LOCAL DIAGNOSTIC</span>
+          <span class="live-dot">CHAOS ACTIVE</span>
+        </div>
+        <div class="throughput">
+          <strong>≈350</strong>
+          <span>MB/s</span>
+        </div>
+        <p>indexed ingest · 4 KiB writes · four workers · MacBook Air M4</p>
+        <div class="console-rule"></div>
+        <dl>
+          <div>
+            <dt>indexes</dt>
+            <dd>live</dd>
+          </div>
+          <div>
+            <dt>chaos punches</dt>
+            <dd>running</dd>
+          </div>
+          <div>
+            <dt>unhit data</dt>
+            <dd>verified</dd>
+          </div>
+        </dl>
+        <small>
+          Owner-observed development run; not a cross-system benchmark or SLO.
+          Full benchmark disclosure remains required for publication.
+        </small>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section thesis" aria-labelledby="quadrant-heading">
+    <div class="wrap">
+      <p class="kicker">The new quadrant</p>
+      <h2 id="quadrant-heading" class="statement">
+        PostgreSQL made the database responsible for truth.<br />
+        MongoDB made data shape flexible.<br />
+        <span>DingoDB is designed to do both.</span>
+      </h2>
+      <p class="lead">
+        Not SQL wearing JSON. Not a document store that delegates every
+        invariant, relationship, and multi-record transition to application
+        code. DingoDB’s model is document-native, but its rules reduce to finite,
+        inspectable mathematics.
+      </p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="system-heading">
+    <div class="wrap">
+      <div class="section-head split-head">
+        <div>
+          <p class="kicker">The mathematical system</p>
+          <h2 id="system-heading" class="section-title">More than a storage engine.</h2>
+        </div>
+        <p>
+          The storage and SDA kernel run today. DRE, Atomics, Direct Access,
+          and Order Wavelets are normative designs under implementation—not
+          features quietly advertised ahead of their evidence.
+        </p>
+      </div>
+
+      <div class="system-grid">
+        {systemLayers.map((item) => (
+          <article class="system-card">
+            <header>
+              <span class="system-marker">{item.marker}</span>
+              <StatusBadge status={item.status} />
+            </header>
+            <h3>{item.title}</h3>
+            <p>{item.body}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="kernel-flow" aria-label="DingoDB language and execution flow">
+        <div>
+          <span>SQL-ish · Mongo-ish · DQL · raw SDA</span>
+          <small>human and compatibility surfaces</small>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div class="kernel-core">
+          <span>Deterministic mathematical kernel</span>
+          <small>total predicates · exact values · bounded execution</small>
+        </div>
+        <b aria-hidden="true">→</b>
+        <div>
+          <span>Indexed data + explicit evidence</span>
+          <small>results · coverage · holes · provenance</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section performance" aria-labelledby="performance-heading">
+    <div class="wrap performance-grid">
+      <div>
+        <p class="kicker">Measured engine</p>
+        <h2 id="performance-heading" class="performance-title">
+          Fast with the indexes on.<br />
+          Fast with the damage landing.
+        </h2>
+        <p class="lead">
+          The useful number is not a toy memory write with integrity switched
+          off. The current local diagnostic moves roughly 350 MB/s of 4 KiB
+          indexed writes across four workers on an M4 MacBook Air while the
+          chaos agent punches holes into stored data.
+        </p>
+        <p>
+          That is a development signal, not a universal benchmark. Durability
+          mode, dataset, concurrency, verification, and raw artifacts will be
+          disclosed before DingoDB makes a comparative performance claim.
+        </p>
+        <ExternalLink
+          href={release.github + '/blob/main/doc/BENCHMARK_DISCLOSURE.md'}
+          class="text-link"
+        >
+          Read the benchmark disclosure contract →
+        </ExternalLink>
+      </div>
+      <div class="metric-stack" aria-label="Performance test context">
+        <div><strong>≈350 MB/s</strong><span>observed indexed ingest</span></div>
+        <div><strong>4 KiB</strong><span>write size</span></div>
+        <div><strong>4 workers</strong><span>Apple M4 local diagnostic</span></div>
+        <div><strong>chaos on</strong><span>holes remain explicit</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section resilience" aria-labelledby="resilience-heading">
+    <div class="wrap">
+      <div class="section-head split-head">
+        <div>
+          <p class="kicker">Survival is a system property</p>
+          <h2 id="resilience-heading" class="section-title">
+            Damage does not get to redefine truth.
+          </h2>
+        </div>
+        <p>
+          DingoDB is not merely “the resilient database.” It is a database whose
+          mathematical and query model remains honest when storage is no longer
+          perfect. Missing regions become holes. Healthy regions on either side
+          remain independently verifiable and examinable.
+        </p>
+      </div>
+      <SurvivalDiagram />
+      <div class="resilience-links">
+        <a href="/survival/">See the survival model →</a>
+        <a href="/how-it-works/">See how evidence flows through the kernel →</a>
+      </div>
     </div>
   </section>
 
   <section class="section" aria-labelledby="today-heading">
     <div class="wrap">
-      <div class="section-head">
-        <h2 id="today-heading" class="section-title">What works today</h2>
-        <p class="lead">
-          Capability data is checked against
-          <code>doc/CAPABILITY_MATRIX.md</code>. Every item shows deployment
-          scope and maturity.
+      <div class="section-head split-head">
+        <div>
+          <p class="kicker">Evidence, not theatre</p>
+          <h2 id="today-heading" class="section-title">What runs today.</h2>
+        </div>
+        <p>
+          DingoDB is still early software. The mathematical ambition is large;
+          the status labels stay literal. This is the implemented surface in
+          release {release.productVersion}.
         </p>
       </div>
       <div class="card-grid">
@@ -134,41 +252,29 @@ const designCards = capabilities.beingBuilt.filter((c) =>
       </div>
       <p class="meta-line">
         <StatusBadge status="experimental" />
-        Embedded single-node is the strongest current path.
-        <a href="/status/">Full status matrix →</a>
+        Embedded single-node is the strongest current deployment profile.
+        <a href="/status/">Inspect every maturity boundary →</a>
       </p>
-
-      <h3 id="building-heading">What is being built</h3>
-      <div class="card-grid">
-        {capabilities.beingBuilt
-          .filter((item) => !['heaps', 'dre', 'atomics', 'dda', 'order-wavelets'].includes(item.id))
-          .map((item) => (
-            <CapabilityCard
-              name={item.name}
-              description={item.description}
-              scope={item.scope}
-              status={item.status}
-              claimId={item.claim_id}
-            />
-          ))}
-      </div>
     </div>
   </section>
 
   <section class="section" aria-labelledby="quickstart-heading">
-    <div class="wrap">
-      <h2 id="quickstart-heading" class="section-title">Real quickstart</h2>
-      <p class="lead">
-        Executable Rust based on <code>crates/dingo-sdk/README.md</code>—not
-        illustrative pseudocode.
-      </p>
-
-      <CodeExample title="Cargo dependency" language="toml" filename="Cargo.toml" copyId="dep-toml">
-{`[dependencies]
-dingo-sdk = "${release.sdkSemverRange}"`}
-      </CodeExample>
-
-      <CodeExample title="Embedded put and find" language="rust" filename="main.rs" copyId="quick-rust">
+    <div class="wrap quickstart-grid">
+      <div>
+        <p class="kicker">Ordinary developer experience</p>
+        <h2 id="quickstart-heading" class="section-title">
+          The mathematics stays underneath.
+        </h2>
+        <p class="lead">
+          Open a store, use collections, put documents, and query them. The
+          application surface is intentionally uneventful.
+        </p>
+        <ExternalLink href={release.docsQuickstart} class="btn btn-primary">
+          Complete the quickstart
+        </ExternalLink>
+      </div>
+      <div>
+        <CodeExample title="Embedded Rust" language="rust" filename="main.rs" copyId="quick-rust">
 {`use dingo_sdk::{json, Dingo, Filter};
 
 let mut db = Dingo::open("./app.dingo")?;
@@ -179,58 +285,28 @@ users.put("user-42", &json!({
     "status": "active"
 }))?;
 
-let active = users.find(&Filter::field("status").eq("active"))?;`}
-      </CodeExample>
-
-      <Callout title="Expected result" variant="verified">
-        <p>
-          Opens (or creates) a local store at <code>./app.dingo</code>, writes
-          one JSON document under collection <code>users</code>, and returns
-          matching rows for <code>status == "active"</code>.
-        </p>
-      </Callout>
-
-      <div class="stack">
-        <p><strong>Cleanup:</strong> remove the store directory when finished:</p>
-        <CodeExample language="bash" copyId="cleanup-bash">
-{`rm -rf ./app.dingo`}
+let active =
+    users.find(&Filter::field("status").eq("active"))?;`}
         </CodeExample>
+      </div>
+    </div>
+  </section>
+
+  <section class="section direction" aria-labelledby="direction-heading">
+    <div class="wrap">
+      <div class="section-head split-head">
+        <div>
+          <p class="kicker">Where this goes</p>
+          <h2 id="direction-heading" class="section-title">
+            A document database that owns its guarantees.
+          </h2>
+        </div>
         <p>
-          Full walkthrough:
-          <ExternalLink href={release.docsQuickstart}>embedded quickstart on docs.dingodb.org</ExternalLink>.
+          These are not decorative roadmap acronyms. Together they define a
+          database where isolation, validity, transitions, position, and order
+          all have explicit mathematical contracts.
         </p>
       </div>
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="differs-heading">
-    <div class="wrap">
-      <h2 id="differs-heading" class="section-title">How Dingo differs</h2>
-      <p class="lead">
-        A factual decision table—not a winner-takes-all comparison.
-      </p>
-      <ComparisonTable rows={comparisonRows} />
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="arch-heading">
-    <div class="wrap">
-      <h2 id="arch-heading" class="section-title">Architecture teaser</h2>
-      <div class="arch-model card">
-        <pre class="arch-pre">{`Application API / DQL
-          ↓
-Authoritative self-verifying records
-          ↓
-Derived, rebuildable catalogs and indexes
-          ↓
-SDA examination and recovery evidence`}</pre>
-      </div>
-      <p>
-        Indexes and catalogs are derived accelerators, not the only route back
-        to surviving data. <a href="/how-it-works/">How it works →</a>
-      </p>
-
-      <h3>Research and design surfaces</h3>
       <div class="card-grid">
         {designCards.map((item) => (
           <CapabilityCard
@@ -247,15 +323,22 @@ SDA examination and recovery evidence`}</pre>
 
   <section class="section final-cta" aria-labelledby="final-heading">
     <div class="wrap">
-      <h2 id="final-heading" class="section-title">Put something important in DingoDB.</h2>
+      <p class="kicker">The proposition</p>
+      <h2 id="final-heading" class="final-title">
+        Mongo’s freedom.<br />
+        Relational-grade truth.<br />
+        Dingo’s speed and survival.
+      </h2>
       <p class="lead">
-        Start with one local file and a Rust application.
+        The complete system is still being built. The engine, mathematical
+        kernel, indexed storage, recovery evidence, and Rust surface are here
+        now.
       </p>
       <div class="btn-row">
         <ExternalLink href={release.docsQuickstart} class="btn btn-primary">
-          Run the quickstart
+          Build with DingoDB
         </ExternalLink>
-        <a href="/how-it-works/" class="btn btn-secondary">Read the architecture</a>
+        <a href="/roadmap/" class="btn btn-secondary">See the delivery path</a>
       </div>
     </div>
   </section>
@@ -263,38 +346,351 @@ SDA examination and recovery evidence`}</pre>
 
 <style>
   .hero {
-    padding-top: var(--space-7);
-    padding-bottom: var(--space-6);
+    padding-block: clamp(4rem, 9vw, 8rem);
     border-bottom: 1px solid var(--line);
+    background:
+      linear-gradient(90deg, transparent 49.9%, color-mix(in srgb, var(--line) 32%, transparent) 50%, transparent 50.1%),
+      linear-gradient(color-mix(in srgb, var(--line) 18%, transparent) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 3.5rem;
   }
 
-  .claim-lead {
-    margin-bottom: var(--space-5);
+  .hero-grid,
+  .performance-grid,
+  .quickstart-grid {
+    display: grid;
+    gap: var(--space-7);
+    align-items: center;
   }
 
-  .section-head {
-    margin-bottom: var(--space-5);
+  .hero h1 {
+    max-width: 12ch;
+    font-size: clamp(3rem, 7vw, 6.4rem);
+    line-height: 0.95;
+    letter-spacing: -0.055em;
   }
 
-  .section-head .section-title {
-    margin-bottom: var(--space-3);
+  .hero h1 em {
+    color: var(--signal);
+    font-style: normal;
   }
 
-  .arch-model {
-    padding: 0;
-    overflow: hidden;
-    margin-bottom: var(--space-4);
+  .hero-lead {
+    max-width: 60ch;
+    font-size: clamp(1.15rem, 2vw, 1.45rem);
   }
 
-  .arch-pre {
-    margin: 0;
-    background: var(--code-bg);
+  .proof-console {
+    padding: var(--space-5);
     color: var(--code-ink);
-    border-radius: 0;
+    background: var(--code-bg);
+    border: 1px solid color-mix(in srgb, var(--verified) 65%, #fff);
+    border-radius: var(--radius-lg);
+    box-shadow: 12px 12px 0 color-mix(in srgb, var(--verified) 18%, transparent);
+    font-family: var(--font-mono);
+  }
+
+  .console-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: color-mix(in srgb, var(--code-ink) 66%, transparent);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .live-dot {
+    color: #76dc9c;
+  }
+
+  .live-dot::before {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .throughput {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: var(--space-5);
+  }
+
+  .throughput strong {
+    font-size: clamp(4rem, 10vw, 7.5rem);
+    line-height: 0.8;
+    letter-spacing: -0.08em;
+    color: #fff;
+  }
+
+  .throughput span {
+    color: #76dc9c;
+    font-weight: 600;
+  }
+
+  .proof-console > p {
+    margin-top: var(--space-4);
+    color: color-mix(in srgb, var(--code-ink) 78%, transparent);
+    font-size: 0.84rem;
+  }
+
+  .console-rule {
+    height: 1px;
+    margin: var(--space-5) 0;
+    background: color-mix(in srgb, var(--code-ink) 20%, transparent);
+  }
+
+  .proof-console dl {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0 0 var(--space-5);
+  }
+
+  .proof-console dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .proof-console dt {
+    color: color-mix(in srgb, var(--code-ink) 55%, transparent);
+  }
+
+  .proof-console dd {
+    margin: 0;
+    color: #76dc9c;
+  }
+
+  .proof-console small {
+    display: block;
+    color: color-mix(in srgb, var(--code-ink) 52%, transparent);
+    line-height: 1.5;
+  }
+
+  .kicker {
+    margin: 0 0 var(--space-3);
+    color: var(--signal);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .thesis {
+    padding-block: clamp(4rem, 9vw, 8rem);
+  }
+
+  .statement {
+    max-width: 22ch;
+    margin: 0 0 var(--space-5);
+    font-size: clamp(2rem, 5vw, 4.4rem);
+    letter-spacing: -0.045em;
+  }
+
+  .statement span {
+    color: var(--signal);
+  }
+
+  .split-head {
+    display: grid;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .split-head h2 {
+    margin: 0;
+  }
+
+  .split-head > p:last-child {
+    max-width: 52ch;
+    color: var(--ink-muted);
+  }
+
+  .system-grid {
+    display: grid;
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--line);
+  }
+
+  .system-card {
+    min-height: 17rem;
+    padding: var(--space-5);
+    background: var(--paper-raised);
+  }
+
+  .system-card header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .system-marker {
+    color: var(--signal);
+    font-family: var(--font-mono);
+  }
+
+  .system-card h3 {
+    margin-top: var(--space-7);
+    font-size: 1.45rem;
+  }
+
+  .system-card p {
+    color: var(--ink-muted);
+  }
+
+  .kernel-flow {
+    display: grid;
+    gap: var(--space-3);
+    align-items: center;
+    margin-top: var(--space-5);
+    padding: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+
+  .kernel-flow div {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .kernel-flow small {
+    color: var(--ink-muted);
+  }
+
+  .kernel-flow b {
+    color: var(--signal);
+    font-size: 1.5rem;
+  }
+
+  .kernel-core {
+    padding: var(--space-4);
+    color: var(--code-ink);
+    background: var(--code-bg);
+    border-radius: var(--radius);
+  }
+
+  .kernel-core small {
+    color: color-mix(in srgb, var(--code-ink) 65%, transparent);
+  }
+
+  .performance {
+    color: var(--code-ink);
+    background: var(--code-bg);
+  }
+
+  .performance-title {
+    margin-top: 0;
+    max-width: 16ch;
+    color: #fff;
+    font-size: clamp(2.25rem, 5vw, 4.8rem);
+    letter-spacing: -0.05em;
+  }
+
+  .performance .lead,
+  .performance p {
+    color: color-mix(in srgb, var(--code-ink) 72%, transparent);
+  }
+
+  .performance a {
+    color: #76dc9c;
+  }
+
+  .metric-stack {
+    border-top: 1px solid color-mix(in srgb, var(--code-ink) 20%, transparent);
+  }
+
+  .metric-stack div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--code-ink) 20%, transparent);
+  }
+
+  .metric-stack strong {
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: clamp(1.4rem, 3vw, 2.2rem);
+  }
+
+  .metric-stack span {
+    color: color-mix(in srgb, var(--code-ink) 55%, transparent);
+    text-align: right;
+  }
+
+  .resilience {
+    background: color-mix(in srgb, var(--verified) 5%, var(--paper));
+  }
+
+  .resilience-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    margin-top: var(--space-5);
+  }
+
+  .quickstart-grid {
+    align-items: start;
+  }
+
+  .quickstart-grid h2 {
+    max-width: 14ch;
+  }
+
+  .direction {
+    border-top: 1px solid var(--line);
   }
 
   .final-cta {
+    padding-block: clamp(4rem, 10vw, 8rem);
     border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--signal) 6%, var(--paper));
+    background: color-mix(in srgb, var(--signal) 7%, var(--paper));
+  }
+
+  .final-title {
+    max-width: 17ch;
+    margin-top: 0;
+    font-size: clamp(2.5rem, 6vw, 5.8rem);
+    letter-spacing: -0.055em;
+  }
+
+  @media (min-width: 760px) {
+    .split-head {
+      grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+      align-items: end;
+    }
+
+    .system-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kernel-flow {
+      grid-template-columns: 1fr auto 1.2fr auto 1fr;
+    }
+  }
+
+  @media (min-width: 960px) {
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.65fr);
+    }
+
+    .performance-grid,
+    .quickstart-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .system-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 </style>

@@ -183,7 +183,7 @@ pub fn dispatch_heap_request_with(
     // Rights gate for data ops.
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
-        105 | 111 | 112 => Rights::READ,
+        105 | 110 | 111 | 112 | 114 | 115 => Rights::READ,
         120 | 121 | 122 => Rights::WRITE,
         _ => return unavailable(req.id),
     };
@@ -199,12 +199,24 @@ pub fn dispatch_heap_request_with(
             Some(ctx) => dispatch_collection_open(req.id, &req.args, ctx),
             None => unavailable(req.id),
         },
+        110 => match data {
+            Some(ctx) => dispatch_list_collections(req.id, &req.args, ctx),
+            None => unavailable(req.id),
+        },
         111 => match data {
             Some(ctx) => dispatch_get(req.id, &req, ctx, false),
             None => unavailable(req.id),
         },
         112 => match data {
             Some(ctx) => dispatch_get(req.id, &req, ctx, true),
+            None => unavailable(req.id),
+        },
+        114 => match data {
+            Some(ctx) => dispatch_list_keys(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        115 => match data {
+            Some(ctx) => dispatch_scan_json(req.id, &req, ctx),
             None => unavailable(req.id),
         },
         120 => match data {
@@ -301,6 +313,144 @@ fn dispatch_collection_open(
             "name": tip_name,
         }),
     )
+}
+
+fn dispatch_list_collections(
+    id: u64,
+    args: &Map<String, Value>,
+    ctx: HeapDataCtx<'_>,
+) -> HeapDispatchResult {
+    if !args.is_empty() {
+        return unavailable_id(id);
+    }
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    let entries = match try_load_collections_catalog(ctx.layout, &heap_id) {
+        Ok(Some(c)) => c,
+        Ok(None) => Vec::new(),
+        Err(_) => return unavailable_id(id),
+    };
+    let mut collections = Vec::new();
+    for entry in entries {
+        let Ok(coll) = CollectionId::from_bytes_unchecked_nonzero(entry.object_id) else {
+            continue;
+        };
+        collections.push(serde_json::json!({
+            "collection_id": coll.to_string(),
+            "name": entry.name,
+        }));
+    }
+    ok_id(id, serde_json::json!({ "collections": collections }))
+}
+
+fn limit_arg(args: &Map<String, Value>) -> Option<usize> {
+    match args.get("limit") {
+        None => Some(64),
+        Some(Value::Number(n)) => n.as_u64().map(|u| u as usize).filter(|&u| (1..=4096).contains(&u)),
+        _ => None,
+    }
+}
+
+fn dispatch_list_keys(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let limit = match limit_arg(&req.args) {
+        Some(l) => l,
+        None => return unavailable_id(id),
+    };
+    let after = match req.args.get("after_key") {
+        None => None,
+        Some(Value::String(s)) if s.len() <= 2048 => Some(s.as_str()),
+        _ => return unavailable_id(id),
+    };
+    for k in req.args.keys() {
+        if k != "limit" && k != "after_key" {
+            return unavailable_id(id);
+        }
+    }
+    let cid_s = match req.collection_id.as_deref() {
+        Some(s) => s,
+        None => return unavailable_id(id),
+    };
+    let coll = match parse_collection_id(cid_s) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    if rebuild_object_entry_from_chain(ctx.layout, &heap_id, ObjectKind::Collection, coll.as_bytes())
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        return unavailable_id(id);
+    }
+    match ctx.store.list_collection_keys(
+        coll.as_bytes(),
+        limit,
+        after.map(|s| s.as_bytes()),
+    ) {
+        Ok(keys) => {
+            let keys: Vec<String> = keys
+                .into_iter()
+                .filter_map(|k| String::from_utf8(k).ok())
+                .collect();
+            ok_id(id, serde_json::json!({ "keys": keys }))
+        }
+        Err(_) => unavailable_id(id),
+    }
+}
+
+fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let limit = match limit_arg(&req.args) {
+        Some(l) => l,
+        None => return unavailable_id(id),
+    };
+    let after = match req.args.get("after_key") {
+        None => None,
+        Some(Value::String(s)) if s.len() <= 2048 => Some(s.as_str()),
+        _ => return unavailable_id(id),
+    };
+    for k in req.args.keys() {
+        if k != "limit" && k != "after_key" {
+            return unavailable_id(id);
+        }
+    }
+    let cid_s = match req.collection_id.as_deref() {
+        Some(s) => s,
+        None => return unavailable_id(id),
+    };
+    let coll = match parse_collection_id(cid_s) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    if rebuild_object_entry_from_chain(ctx.layout, &heap_id, ObjectKind::Collection, coll.as_bytes())
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        return unavailable_id(id);
+    }
+    match ctx
+        .store
+        .scan_collection(coll.as_bytes(), limit, after.map(|s| s.as_bytes()))
+    {
+        Ok(rows) => {
+            let mut out = Vec::new();
+            for (key, body) in rows {
+                let Ok(key_s) = String::from_utf8(key) else {
+                    continue;
+                };
+                // Typed JSON only (tag 0x01).
+                if body.first() != Some(&0x01) {
+                    continue;
+                }
+                let Ok(json) = serde_json::from_slice::<Value>(&body[1..]) else {
+                    continue;
+                };
+                out.push(serde_json::json!({ "key": key_s, "json": json }));
+            }
+            ok_id(id, serde_json::json!({ "rows": out }))
+        }
+        Err(_) => unavailable_id(id),
+    }
 }
 
 fn dispatch_get(

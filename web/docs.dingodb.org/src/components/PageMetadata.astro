@@ -1,0 +1,72 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import SurfaceBadge from './SurfaceBadge.astro';
+import SpecState from './SpecState.astro';
+import release from '../data/release.json';
+import ExternalLink from './ExternalLink.astro';
+
+const { data, slug } = Astro.props;
+const sourceUrl = data.source.path
+  ? `${release.github}/blob/${release.dingoSourceRevision}/${data.source.path}`
+  : release.github;
+const editUrl = data.source.path
+  ? `${release.github}/edit/main/${data.source.path}`
+  : `${release.github}`;
+const issueTitle = encodeURIComponent(`[docs] ${data.title} (${slug})`);
+const issueBody = encodeURIComponent(
+  [
+    `Page: https://docs.dingodb.org/${slug}/`,
+    `Version: ${data.applies_to.product}`,
+    `Docs revision: ${release.sourceRevision}`,
+    '',
+    'Issue:',
+    '',
+  ].join('\n'),
+);
+const issueUrl = `${release.githubIssues}?title=${issueTitle}&body=${issueBody}`;
+const pageClass = data.class;
+---
+
+<div class="page-meta">
+  <div class="meta-badges">
+    <StatusBadge status={data.status} />
+    <SurfaceBadge surface={data.applies_to.surface} />
+    {data.spec_state && <SpecState state={data.spec_state} />}
+    <span class="meta-line">Applies to {data.applies_to.product}</span>
+    <span class="meta-line">Verified {data.last_verified}</span>
+    <span class="meta-line">Class: {pageClass}</span>
+  </div>
+  <div class="meta-links meta-line">
+    <ExternalLink href={editUrl}>Edit this page</ExternalLink>
+    <span aria-hidden="true">·</span>
+    <ExternalLink href={issueUrl}>Report a docs issue</ExternalLink>
+    <span aria-hidden="true">·</span>
+    <ExternalLink href={sourceUrl}>Source</ExternalLink>
+    <span aria-hidden="true">·</span>
+    <span>rev {release.sourceRevision}</span>
+  </div>
+</div>
+
+<style>
+  .page-meta {
+    display: grid;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .meta-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.65rem;
+    align-items: center;
+  }
+
+  .meta-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+    align-items: center;
+  }
+</style>

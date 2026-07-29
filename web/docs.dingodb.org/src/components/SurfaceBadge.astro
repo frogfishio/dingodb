@@ -1,0 +1,10 @@
+---
+interface Props {
+  surface: string;
+}
+
+const { surface } = Astro.props;
+const label = surface.replace(/-/g, ' ');
+---
+
+<span class="surface-badge" title="Deployment surface">{label}</span>

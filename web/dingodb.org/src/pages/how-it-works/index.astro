@@ -8,10 +8,10 @@ import release from '../../data/release.json';
 
 <PageLayout
   title="How it works"
-  description="Evaluator overview of DingoDB: collections, self-verifying storage, derived indexes, query surfaces, durability, and recovery evidence."
+  description="How DingoDB combines a mathematical query kernel, document-native data, exact ranked access designs, high-throughput indexed storage, and damage-local recovery."
   path="/how-it-works/"
-  eyebrow="Architecture"
-  lead="A concise evaluator overview—not a copy of the normative specifications."
+  eyebrow="Mathematical architecture"
+  lead="One exact semantic core beneath familiar developer surfaces, fast indexed storage, formal data rules, and recovery evidence."
 >
   <Callout>
     <p>
@@ -21,7 +21,26 @@ import release from '../../data/release.json';
     </p>
   </Callout>
 
-  <h2>Collection and key model</h2>
+  <h2>The center: one deterministic kernel</h2>
+  <p>
+    DingoDB does not let each API, query dialect, rule engine, and recovery tool
+    invent a slightly different meaning for values and predicates. DQL, its
+    declared compatibility dialects, DRE, and examination reduce toward the
+    SDA / ENR mathematical kernels.
+  </p>
+  <pre>{`SQL-ish / Mongo-ish / DQL        DRE rules
+             \\                    /
+              deterministic predicate + value semantics
+                              ↓
+                  indexed documents + evidence
+                              ↓
+             results / coverage / holes / provenance`}</pre>
+  <p>
+    The implemented DQL surface is currently a subset of the full v1 design.
+    Raw SDA remains available when callers need the exact kernel directly.
+  </p>
+
+  <h2>Document-native application model</h2>
   <p>
     Applications open a store, name a collection, and put/get/delete values by
     string key (subject). The ordinary surface is the Rust
@@ -35,14 +54,75 @@ import release from '../../data/release.json';
     </ExternalLink>
   </p>
 
-  <h2>JSON and opaque bytes</h2>
+  <h2>Flexible documents without application-owned truth</h2>
   <p>
     Values may be JSON documents or opaque byte payloads. JSON gains filters,
     secondary indexes, and dialect query surfaces. Bytes remain first-class
     durable material without forced document interpretation.
   </p>
+  <p>
+    DRE is the normative design for finite, declarative document and transition
+    invariants. Atomics is the enforcement model. Together they target a
+    document database where the database—not an optional callback in application
+    code—owns declared truth.
+  </p>
+  <p>
+    <StatusBadge status="design" /> DRE and Atomics are specified direction,
+    not release {release.productVersion} capabilities.
+  </p>
 
-  <h2>Immutable, self-verifying storage units</h2>
+  <h2>Direct rank instead of offset walking</h2>
+  <p>
+    Today, bounded resume-key cursors page subjects in stable order. Dingo
+    Direct Access goes further: its normative design treats numeric position as
+    an exact rank query. When admitted indexes contain enough counting
+    information, the engine reaches result <code>k</code> without silently
+    enumerating the preceding <code>k − 1</code> matches.
+  </p>
+  <p>
+    <StatusBadge status="design" />
+    <ExternalLink href={release.github + '/blob/main/DIRECT_ACCESS_SPEC.md'}>
+      Dingo Direct Access specification
+    </ExternalLink>
+  </p>
+
+  <h2>Sorting compiled into counted structure</h2>
+  <p>
+    Dingo Order Wavelets specify a derived rank/select structure for ordered
+    fields. A filtered query transports its exact match bitmap through that
+    structure and navigates conditional counts to the kth ordered answer. It
+    avoids comparison-sorting every matching document at query time.
+  </p>
+  <pre>{`exact match bitmap
+        +
+versioned order wavelet
+        +
+rank/select branch counts
+        =
+exact kth filtered document in DQL order`}</pre>
+  <p>
+    <StatusBadge status="design" />
+    <ExternalLink href={release.github + '/blob/main/ORDER_WAVELET_SPEC.md'}>
+      Order Wavelet specification
+    </ExternalLink>
+  </p>
+
+  <h2>A measured indexed engine</h2>
+  <p>
+    A current owner-observed local development run reports roughly
+    <strong>350 MB/s</strong> of indexed ingest for 4 KiB writes across four
+    workers on a MacBook Air M4 while the chaos agent punches storage holes.
+    This is a diagnostic signal, not a cross-system benchmark or SLO.
+  </p>
+  <p>
+    Comparative publication requires the full durability, dataset, verification,
+    concurrency, revision, latency, and raw-artifact disclosure contract.
+    <ExternalLink href={release.github + '/blob/main/doc/BENCHMARK_DISCLOSURE.md'}>
+      Benchmark disclosure
+    </ExternalLink>
+  </p>
+
+  <h2>Self-verifying storage units</h2>
   <p>
     Authoritative records are written as append-oriented, integrity-checked
     storage units. Verification is local to the unit: damage becomes an
@@ -68,7 +148,7 @@ import release from '../../data/release.json';
     for what is preserved versus reclaimed.
   </p>
 
-  <h2>Query surfaces</h2>
+  <h2>Query surfaces over the same semantics</h2>
   <div class="table-wrap" role="region" aria-label="Query surfaces" tabindex="0">
     <table>
       <thead>
@@ -126,10 +206,12 @@ import release from '../../data/release.json';
     <ExternalLink href={release.docsRecovery}>Recovery guide</ExternalLink>
   </p>
 
-  <h2>Current deployment profiles</h2>
+  <h2>The important maturity boundary</h2>
   <p>
     <StatusBadge status="experimental" /> Embedded single-node is the strongest
-    path today. Network multi-node remains experimental; single-node TCP is
+    deployment path today. The language/storage kernel, recovery tools, and
+    bounded cursors exist; DRE, full Direct Access, and Order Wavelets remain
+    design work. Network multi-node remains experimental; single-node TCP is
     development-only. Details:
     <a href="/status/">status matrix</a>.
   </p>

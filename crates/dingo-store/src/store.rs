@@ -1031,6 +1031,22 @@ impl Store {
         save_write_dedup(&write_dedup_path(&self.paths), &self.write_dedup)
     }
 
+    /// Live subjects after `after` with optional byte prefix (heap SubjectV2 scans).
+    ///
+    /// Returns owned subject keys only (bodies fetched separately via
+    /// [`Self::get_subject_bytes`]). Used by capability-gated heap façades that
+    /// cannot use the UTF-8 [`Self::scan_live_page`] path.
+    pub fn index_live_after(
+        &self,
+        after: Option<&[u8]>,
+        prefix: Option<&[u8]>,
+    ) -> Vec<Vec<u8>> {
+        self.index
+            .live_entries_after(after, prefix)
+            .map(|(s, _)| s.clone())
+            .collect()
+    }
+
     /// Get current live value for `subject`, if any.
     ///
     /// For chunked values this reassembles chunks and returns the complete body

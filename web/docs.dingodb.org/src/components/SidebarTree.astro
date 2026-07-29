@@ -1,0 +1,93 @@
+---
+import navigation from '../data/navigation.json';
+
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+function isActive(href: string) {
+  return currentPath === href || currentPath === href.slice(0, -1);
+}
+
+function isSectionOpen(href: string, items: { href: string }[]) {
+  if (isActive(href)) return true;
+  return items.some((i) => currentPath.startsWith(i.href.replace(/\/$/, '')) || isActive(i.href));
+}
+---
+
+<nav class="sidebar" aria-label="Section">
+  {
+    navigation.sidebar.map((section) => (
+      <details class="side-section" open={isSectionOpen(section.href, section.items)}>
+        <summary>
+          <a href={section.href} class:list={[isActive(section.href) && 'is-current']}>
+            {section.label}
+          </a>
+        </summary>
+        <ul>
+          {section.items.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                class:list={[isActive(item.href) && 'is-current']}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    ))
+  }
+</nav>
+
+<style>
+  .sidebar {
+    font-size: 0.92rem;
+  }
+
+  .side-section {
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    padding: 0.35rem 0;
+  }
+
+  .side-section summary {
+    list-style: none;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.35rem 0;
+  }
+
+  .side-section summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .side-section summary a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .side-section ul {
+    list-style: none;
+    margin: 0 0 0.35rem;
+    padding: 0 0 0 0.5rem;
+  }
+
+  .side-section li a {
+    display: block;
+    padding: 0.35rem 0.4rem;
+    color: var(--ink-muted);
+    text-decoration: none;
+    border-radius: var(--radius);
+    min-height: 2.1rem;
+  }
+
+  .side-section li a:hover,
+  .side-section a.is-current {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--line) 35%, transparent);
+  }
+</style>

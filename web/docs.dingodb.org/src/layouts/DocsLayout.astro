@@ -1,0 +1,248 @@
+---
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-sans/700.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
+import '@fontsource/ibm-plex-mono/600.css';
+import '../styles/global.css';
+import SEO from '../components/SEO.astro';
+import DocsHeader from '../components/DocsHeader.astro';
+import DocsFooter from '../components/DocsFooter.astro';
+import SidebarTree from '../components/SidebarTree.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import PageMetadata from '../components/PageMetadata.astro';
+import MaturityBanner from '../components/MaturityBanner.astro';
+import RelatedPages from '../components/RelatedPages.astro';
+import type { DocFrontmatter } from '../lib/frontmatter';
+import type { DocPage } from '../lib/frontmatter';
+
+interface Props {
+  title: string;
+  description: string;
+  path?: string;
+  noindex?: boolean;
+  channel?: 'current' | 'next';
+  data?: DocFrontmatter;
+  slug?: string;
+  headings?: { depth: number; slug: string; text: string }[];
+  prev?: DocPage;
+  next?: DocPage;
+  showSidebar?: boolean;
+  breadcrumbs?: { label: string; href?: string }[];
+}
+
+const {
+  title,
+  description,
+  path = Astro.url.pathname,
+  noindex = false,
+  channel = 'current',
+  data,
+  slug,
+  headings = [],
+  prev,
+  next,
+  showSidebar = true,
+  breadcrumbs = [],
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <SEO title={title} description={description} path={path} noindex={noindex} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <DocsHeader channel={channel} />
+    <div class:list={['docs-shell', !showSidebar && 'no-sidebar']}>
+      {
+        showSidebar && (
+          <aside class="docs-sidebar wrap-side">
+            <details class="mobile-side">
+              <summary>Documentation navigation</summary>
+              <SidebarTree currentPath={path} />
+            </details>
+            <div class="desktop-side">
+              <SidebarTree currentPath={path} />
+            </div>
+          </aside>
+        )
+      }
+      <div class="docs-center">
+        <main id="main" class="docs-main">
+          {
+            breadcrumbs.length > 0 && (
+              <nav class="breadcrumbs" aria-label="Breadcrumb">
+                <ol>
+                  <li>
+                    <a href="/">Docs</a>
+                  </li>
+                  {breadcrumbs.map((b, i) => (
+                    <li>
+                      {b.href && i < breadcrumbs.length - 1 ? (
+                        <a href={b.href}>{b.label}</a>
+                      ) : (
+                        <span aria-current={i === breadcrumbs.length - 1 ? 'page' : undefined}>
+                          {b.label}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            )
+          }
+          {data && <MaturityBanner status={data.status} surface={data.applies_to.surface} />}
+          <article class="prose">
+            <h1>{title}</h1>
+            {description && <p class="lead">{description}</p>}
+            {data && slug && <PageMetadata data={data} slug={slug} />}
+            <slot />
+          </article>
+          {(prev || next) && <RelatedPages prev={prev} next={next} />}
+        </main>
+        {
+          headings.length > 0 && (
+            <aside class="docs-toc">
+              <TableOfContents headings={headings} />
+            </aside>
+          )
+        }
+      </div>
+    </div>
+    <DocsFooter />
+    <script>
+      function bindCopy() {
+        document.querySelectorAll<HTMLButtonElement>('.copy-btn[data-copy-target]').forEach((btn) => {
+          if (btn.dataset.bound === '1') return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', async () => {
+            const el = document.getElementById(btn.dataset.copyTarget || '');
+            try {
+              await navigator.clipboard.writeText(el?.textContent ?? '');
+              const prev = btn.textContent;
+              btn.textContent = 'Copied';
+              setTimeout(() => {
+                btn.textContent = prev;
+              }, 1500);
+            } catch {
+              btn.textContent = 'Failed';
+            }
+          });
+        });
+      }
+      bindCopy();
+    </script>
+  </body>
+</html>
+
+<style>
+  .docs-shell {
+    width: min(100% - 1.5rem, var(--content));
+    margin: 0 auto;
+    display: grid;
+    gap: 1.5rem;
+    padding: 1.25rem 0 2rem;
+  }
+
+  .docs-sidebar {
+    min-width: 0;
+  }
+
+  .desktop-side {
+    display: none;
+  }
+
+  .mobile-side {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    background: var(--paper-raised);
+  }
+
+  .mobile-side summary {
+    cursor: pointer;
+    font-weight: 600;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .docs-center {
+    min-width: 0;
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .docs-main {
+    min-width: 0;
+  }
+
+  .docs-toc {
+    min-width: 0;
+  }
+
+  .breadcrumbs ol {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+  }
+
+  .breadcrumbs li:not(:last-child)::after {
+    content: '/';
+    margin-left: 0.35rem;
+    color: var(--line);
+  }
+
+  .breadcrumbs a {
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+
+  .breadcrumbs a:hover {
+    color: var(--signal);
+  }
+
+  :global(.heading-anchor) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :global(.heading-anchor:hover) {
+    color: var(--signal);
+  }
+
+  @media (min-width: 960px) {
+    .docs-shell:not(.no-sidebar) {
+      grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .desktop-side {
+      display: block;
+      position: sticky;
+      top: calc(var(--header-h) + 1rem);
+      max-height: calc(100vh - var(--header-h) - 2rem);
+      overflow: auto;
+    }
+
+    .mobile-side {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .docs-center {
+      grid-template-columns: minmax(0, 1fr) var(--toc-w);
+      align-items: start;
+    }
+  }
+</style>

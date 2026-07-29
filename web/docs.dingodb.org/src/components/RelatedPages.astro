@@ -1,0 +1,94 @@
+---
+import type { DocPage } from '../lib/frontmatter';
+
+interface Props {
+  prev?: DocPage;
+  next?: DocPage;
+  related?: DocPage[];
+}
+
+const { prev, next, related = [] } = Astro.props;
+---
+
+<nav class="related" aria-label="Page navigation">
+  <div class="prev-next">
+    {
+      prev ? (
+        <a class="pn prev" href={prev.href}>
+          <span class="pn-label">Previous</span>
+          <span class="pn-title">{prev.data.title}</span>
+        </a>
+      ) : (
+        <span />
+      )
+    }
+    {
+      next ? (
+        <a class="pn next" href={next.href}>
+          <span class="pn-label">Next</span>
+          <span class="pn-title">{next.data.title}</span>
+        </a>
+      ) : (
+        <span />
+      )
+    }
+  </div>
+  {
+    related.length > 0 && (
+      <div class="related-list">
+        <p class="meta-line">Related</p>
+        <ul>
+          {related.map((r) => (
+            <li>
+              <a href={r.href}>{r.data.title}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+</nav>
+
+<style>
+  .related {
+    margin-top: var(--space-7);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--line);
+  }
+
+  .prev-next {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pn {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .pn.next {
+    text-align: right;
+  }
+
+  .pn-label {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+  }
+
+  .pn-title {
+    font-weight: 600;
+    color: var(--signal);
+  }
+
+  .related-list ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+  }
+</style>

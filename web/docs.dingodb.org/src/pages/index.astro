@@ -1,17 +1,115 @@
 ---
-
+import DocsLayout from '../layouts/DocsLayout.astro';
+import StatusBadge from '../components/StatusBadge.astro';
+import ExternalLink from '../components/ExternalLink.astro';
+import release from '../data/release.json';
+import capabilities from '../data/capabilities.json';
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<DocsLayout
+  title="DingoDB documentation"
+  description="Learn, operate, and inspect DingoDB — experimental embedded-first storage with explicit damage reporting."
+  path="/"
+  showSidebar={true}
+>
+  <div class="home-notice maturity-banner" role="status">
+    <StatusBadge status="experimental" />
+    <strong>
+      Experimental / early access. Embedded single-node is the strongest path.
+      Network multi-node is not production.
+    </strong>
+    <a href="/status/known-limitations/">Known limitations</a>
+  </div>
+
+  <h2 id="start-here">Start here</h2>
+  <div class="card-grid">
+    <article class="card">
+      <a class="card-link" href="/getting-started/rust/">
+        <h3>Rust embedded</h3>
+        <p>Open a local store, put JSON, filter, reopen. Canonical quickstart.</p>
+      </a>
+    </article>
+    <article class="card">
+      <a class="card-link" href="/getting-started/cli/">
+        <h3>CLI</h3>
+        <p>Versioned install, put/get, doctor, safe cleanup.</p>
+      </a>
+    </article>
+  </div>
+
+  <h2 id="i-need-to">I need to…</h2>
+  <div class="card-grid task-grid">
+    <a class="card card-link" href="/guides/json-and-bytes/">Store JSON or bytes</a>
+    <a class="card card-link" href="/guides/filtering/">Find and page documents</a>
+    <a class="card card-link" href="/concepts/durability-and-receipts/">Understand durability</a>
+    <a class="card card-link" href="/guides/backup-and-restore/">Back up or restore</a>
+    <a class="card card-link" href="/guides/scrub-and-salvage/">Inspect damage and salvage</a>
+    <a class="card card-link" href="/operations/clustering/">Evaluate remote or cluster</a>
+  </div>
+
+  <h2 id="release">Current release</h2>
+  <p class="meta-line">
+    Product <strong>{release.productVersion}</strong>
+    · Docs revision <code>{release.sourceRevision}</code>
+    · SDK API <code>{release.sdkApiVersion}</code>
+    · Wire <code>{release.wireProfile}</code>
+  </p>
+
+  <h2 id="profiles">Deployment profiles</h2>
+  <div class="table-wrap" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Profile</th>
+          <th scope="col">Status</th>
+          <th scope="col">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          capabilities.deploymentProfiles.map((p) => (
+            <tr>
+              <td>{p.name}</td>
+              <td>
+                <StatusBadge status={p.status} />
+              </td>
+              <td>{p.note}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="deeper">Concepts and specifications</h2>
+  <ul>
+    <li><a href="/concepts/">Concepts</a> — authority, holes, receipts, SDA</li>
+    <li><a href="/specifications/">Specifications</a> — source-backed stable URLs</li>
+    <li>
+      <ExternalLink href={release.mainSite}>Product site</ExternalLink> — survival thesis
+    </li>
+  </ul>
+
+  <p class="limitations-call">
+    <a class="btn btn-primary" href="/status/known-limitations/">Known limitations</a>
+    <a class="btn btn-secondary" href="/status/capabilities/">Full capability status</a>
+  </p>
+</DocsLayout>
+
+<style>
+  .home-notice {
+    margin-top: 0;
+  }
+
+  .task-grid a {
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .limitations-call {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+</style>

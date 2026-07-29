@@ -36,7 +36,7 @@ fn registry_unique_and_hp000_active_set() {
         .map(|o| o.id)
         .collect();
     assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
-    for id in [105u16, 111, 112, 120, 121, 122] {
+    for id in [105u16, 110, 111, 112, 114, 115, 120, 121, 122] {
         assert!(active.contains(&id), "§32.4 data op {id} must be active");
         assert!(Operation::is_callable(id), "data op {id} must be callable");
     }
@@ -56,8 +56,11 @@ fn artifacts_present_and_schemas_for_active_ops() {
         "health_live",
         "health_ready",
         "collection_open",
+        "list_collections",
         "get",
         "get_bytes",
+        "list_keys",
+        "scan_json",
         "put",
         "put_bytes",
         "delete",

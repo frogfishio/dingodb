@@ -153,4 +153,123 @@ impl HeapStore {
         .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
         self.delete(&subject)
     }
+
+    /// Subject-byte prefix for all keys in one collection under this heap.
+    ///
+    /// Layout: `0x02 || heap_id || 0x01 || collection_id` (without key length/key).
+    pub fn collection_subject_prefix(&self, collection_id: &[u8; 16]) -> Vec<u8> {
+        let mut p = Vec::with_capacity(1 + 16 + 1 + 16);
+        p.push(0x02);
+        p.extend_from_slice(self.cap.heap_id().as_bytes());
+        p.push(SubjectObjectKind::Collection as u8);
+        p.extend_from_slice(collection_id);
+        p
+    }
+
+    /// List application keys in a collection (SubjectV2), ordered by subject.
+    ///
+    /// `after_key` resumes after that application key (not a continuation token).
+    /// At most `limit` keys are returned (clamped 1..=4096).
+    pub fn list_collection_keys(
+        &self,
+        collection_id: &[u8; 16],
+        limit: usize,
+        after_key: Option<&[u8]>,
+    ) -> Result<Vec<Vec<u8>>, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::READ)?;
+        let limit = limit.clamp(1, 4096);
+        let prefix = self.collection_subject_prefix(collection_id);
+        let after_subject = match after_key {
+            Some(k) => Some(
+                dingo_format::encode_subject_v2(
+                    self.cap.heap_id().as_bytes(),
+                    SubjectObjectKind::Collection,
+                    collection_id,
+                    k,
+                )
+                .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?,
+            ),
+            None => None,
+        };
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        let subjects = guard.index_live_after(after_subject.as_deref(), Some(&prefix));
+        drop(guard);
+        let mut out = Vec::new();
+        for subject in subjects {
+            if out.len() >= limit {
+                break;
+            }
+            match decode_subject_v2(&subject) {
+                Ok(sv2)
+                    if sv2.heap_id == self.cap.heap_id().as_bytes()
+                        && sv2.object_kind == SubjectObjectKind::Collection
+                        && sv2.object_id == collection_id =>
+                {
+                    out.push(sv2.key.to_vec());
+                }
+                _ => continue,
+            }
+        }
+        Ok(out)
+    }
+
+    /// Scan live (key, body) pairs in a collection under this heap.
+    ///
+    /// Bodies are raw store payloads (typed SDK tags when written via SDK).
+    /// At most `limit` complete rows (clamped 1..=4096).
+    pub fn scan_collection(
+        &self,
+        collection_id: &[u8; 16],
+        limit: usize,
+        after_key: Option<&[u8]>,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::READ)?;
+        let limit = limit.clamp(1, 4096);
+        let prefix = self.collection_subject_prefix(collection_id);
+        let after_subject = match after_key {
+            Some(k) => Some(
+                dingo_format::encode_subject_v2(
+                    self.cap.heap_id().as_bytes(),
+                    SubjectObjectKind::Collection,
+                    collection_id,
+                    k,
+                )
+                .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?,
+            ),
+            None => None,
+        };
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        let subjects = guard.index_live_after(after_subject.as_deref(), Some(&prefix));
+        drop(guard);
+        let mut out = Vec::new();
+        for subject in subjects {
+            if out.len() >= limit {
+                break;
+            }
+            let sv2 = match decode_subject_v2(&subject) {
+                Ok(s)
+                    if s.heap_id == self.cap.heap_id().as_bytes()
+                        && s.object_kind == SubjectObjectKind::Collection
+                        && s.object_id == collection_id =>
+                {
+                    s
+                }
+                _ => continue,
+            };
+            let key = sv2.key.to_vec();
+            match self.get(&subject)? {
+                Some(body) => out.push((key, body)),
+                None => continue,
+            }
+        }
+        Ok(out)
+    }
 }

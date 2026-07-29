@@ -11,18 +11,26 @@ Product truth sources: [README.md](README.md),
 
 `dingodb.org` is the product and project website for DingoDB.
 
-Its job is to make a technically serious visitor understand the defining idea
+Its job is to make a technically serious visitor understand DingoDB's category
 in less than ten seconds, trust the project in less than two minutes, and reach
-a working embedded Rust example without having to interpret the architecture
-repository.
+a working Rust example without having to reconstruct the product from its
+architecture repository.
 
-The defining message is:
+The category message is:
+
+> Flexible documents. Mathematical guarantees. Serious speed.
+
+The complete proposition is:
+
+> A document-native database with database-owned mathematical truth, exact
+> query mechanics, high-throughput indexed storage, and damage-local recovery.
+
+The governing recovery rule remains:
 
 > Put anything in. Damage it. Keep what survives.
 
-The first product wedge is:
-
-> Experimental, embedded-first storage for irreplaceable local data.
+Recovery is a foundation and stress property of the wider system. It MUST NOT
+be presented as DingoDB's entire category.
 
 The site MUST be compelling about the architecture and exact about maturity.
 It MUST NOT present designs, scaffolds, or performance targets as shipped
@@ -39,15 +47,21 @@ claim that DingoDB itself is production-ready.
 
 The main site MUST:
 
-1. explain damage tolerance using a concrete visual model;
-2. state what DingoDB is and who should use it today;
-3. lead developers to a tested embedded quickstart;
-4. expose capability maturity before a visitor makes a technical decision;
-5. provide paths to documentation, source, security information, licensing,
+1. establish DingoDB as a mathematical document database rather than a niche
+   salvage store;
+2. explain the implemented SDA/ENR kernel and the DRE, Atomics, Direct Access,
+   and Order Wavelet architecture with exact maturity labels;
+3. demonstrate the engine's measured speed without disguising a diagnostic as
+   a universal benchmark;
+4. explain damage tolerance using a concrete visual model;
+5. state what DingoDB is and who should use it today;
+6. lead developers to a tested embedded quickstart;
+7. expose capability maturity before a visitor makes a technical decision;
+8. provide paths to documentation, source, security information, licensing,
    and project status;
-6. establish DingoDB as a technically rigorous project rather than a generic
+9. establish DingoDB as a technically rigorous project rather than a generic
    database landing page;
-7. make long-term product direction discoverable without confusing it with
+10. make long-term product direction discoverable without confusing it with
    the current release.
 
 The main site is not:
@@ -82,6 +96,7 @@ The main site is not:
 After the home page, a visitor SHOULD be able to answer:
 
 - What is DingoDB?
+- What makes its document and query model mathematically different?
 - What is different about its failure model?
 - What can I use today?
 - What is still experimental or only designed?
@@ -144,6 +159,14 @@ This table MUST be generated from, or checked against,
 
 Approved launch language:
 
+- “Flexible documents. Mathematical guarantees. Serious speed.”
+- “A document database built around a deterministic mathematical kernel.”
+- “PostgreSQL made the database responsible for truth. MongoDB made data shape
+  flexible. DingoDB is designed to do both.”
+- “DDA specifies exact access to result rank k without enumerating the
+  preceding k − 1 matches,” when labelled Design.
+- “Order Wavelets specify filtered ordering through exact conditional
+  rank/select counts,” when labelled Design.
 - “A database built to survive damage.”
 - “DingoDB preserves independently verifiable data islands.”
 - “Damage is reported as explicit holes rather than silently invalidating
@@ -157,6 +180,10 @@ Approved launch language:
   result.
 - “Targets memory-store-class performance,” only on a roadmap or benchmark
   methodology page and explicitly as a target.
+- An owner-observed numeric diagnostic MAY appear before a full artifact only
+  when it is labelled “local diagnostic,” names the known hardware,
+  concurrency, and record size, explicitly says that the full artifact is
+  pending, and states that it is neither a benchmark nor an SLO.
 
 Prohibited launch language until the corresponding release gate changes:
 
@@ -169,7 +196,8 @@ Prohibited launch language until the corresponding release gate changes:
   security claim that confuses a formal model with an implementation proof;
 - “authenticated continuation tokens” while DEF-097 remains open;
 - a numeric reliability, retention, latency, throughput, or scale claim without
-  a linked reproducible evidence artifact.
+  a linked reproducible evidence artifact, except the explicitly provisional
+  diagnostic form permitted above.
 
 ### 5.5 Claim record
 
@@ -246,33 +274,77 @@ The footer MUST include:
 
 ## 7. Home page content specification
 
-The home page MUST follow this narrative order.
+The home page MUST follow this narrative order:
+
+1. mathematical document-database category;
+2. current engineering performance signal;
+3. implemented kernel versus normative designs;
+4. survival as a cross-cutting system property;
+5. current capability and maturity;
+6. ordinary Rust developer experience;
+7. delivery direction.
 
 ### 7.1 Hero
 
 Recommended launch copy:
 
 ```text
-EXPERIMENTAL · RUST-FIRST · EMBEDDED-FIRST
+DOCUMENT-NATIVE · MATHEMATICAL CORE · DAMAGE-TOLERANT
 
-A database built to survive damage.
+Flexible documents.
+Mathematical guarantees.
+Serious speed.
 
-DingoDB stores documents and bytes as independently verifiable data islands,
-so damage becomes explicit holes—not the death of everything around them.
+DingoDB is a document database built around a deterministic mathematical
+kernel—exact query semantics, database-owned invariants, direct ranked access,
+and ordering by counted structure rather than offset scans and hope.
 
-[Get started] [See the survival model]
+[Explore the system] [Run the Rust quickstart]
 ```
 
-Below the actions:
+The hero MUST contain an adjacent engineering signal:
 
 ```text
-Current release: 0.2.0 · Embedded single-node: early access
+≈350 MB/s
+indexed ingest · 4 KiB writes · four workers · MacBook Air M4
+chaos active
+
+Owner-observed local diagnostic; not a cross-system benchmark or SLO.
 ```
 
-The release value MUST come from workspace or release metadata, not hard-coded
-page copy.
+The numeric signal MUST be removed or replaced if its full qualification is
+found inaccurate. The release value MUST come from workspace or release
+metadata, not hard-coded page copy.
 
-### 7.2 Survival visual
+### 7.2 Product quadrant and mathematical system
+
+The next section MUST establish:
+
+```text
+PostgreSQL made the database responsible for truth.
+MongoDB made data shape flexible.
+DingoDB is designed to do both.
+```
+
+It MUST then distinguish:
+
+- SDA/ENR deterministic kernel — Available;
+- shipped DQL subset and dialect compilation — Experimental;
+- bounded resume-key cursors — Available;
+- DRE and Atomics — Design;
+- Dingo Direct Access — Design;
+- Dingo Order Wavelets — Design.
+
+The full DQL/DRE/DDA/DOW architecture MAY lead the product story even when some
+profiles are designs, provided the status appears adjacent to each proposition.
+
+### 7.3 Performance evidence
+
+The home page MUST explain that the measured value includes live indexing and
+coexists with chaos punches. It MUST also state that a comparative result
+requires the complete benchmark disclosure contract.
+
+### 7.4 Survival visual
 
 The primary visual is the “damaged CD-ROM” model supplied by the product
 owner:
@@ -293,21 +365,23 @@ Required accessible description:
 > A storage surface with several missing regions. Missing regions are reported
 > as holes; intact regions on both sides remain independently readable.
 
-### 7.3 Three promises
+### 7.5 System promises
 
-Use three cards:
+The system promises are:
 
-1. **Healthy pieces survive**  
-   Local corruption is contained by independently verifiable storage units.
+1. **One deterministic kernel**  
+   Query, rule, examination, and evidence surfaces share exact semantics.
 
-2. **The hot path stays lean**  
-   Append-oriented writes, memory-resident indexes, and derived accelerators
-   are designed for speed. Link to benchmark disclosure; do not publish a
-   comparative result without evidence.
+2. **Documents with database-owned truth**  
+   DRE and Atomics specify finite invariants and admitted transitions without
+   forcing document shape into relational tables.
 
-3. **The remains are examinable**  
-   SDA provides a deterministic examination algebra for surviving and partial
-   material.
+3. **Position and order are mathematical operations**  
+   DDA and Order Wavelets specify direct ranks and counted ordering.
+
+4. **Healthy pieces survive**  
+   Local corruption is contained by independently verifiable storage units;
+   SDA can examine the resulting evidence.
 
 Massive retention appears as a supporting proposition under these cards:
 
@@ -317,12 +391,15 @@ Massive retention appears as a supporting proposition under these cards:
 This MUST NOT imply that native cloud archive tiers or a fifteen-year
 compatibility guarantee are available today.
 
-### 7.4 What works today
+### 7.6 What works today
 
 This section MUST be fed by structured capability data and show:
 
 - embedded open/create;
 - JSON and byte put/get/delete;
+- deterministic SDA/ENR execution;
+- shipped DQL subset and dialect compilation;
+- bounded cursor paging;
 - filters and secondary indexes;
 - per-key history;
 - backup, verified restore, scrub, and salvage/examination surfaces;
@@ -334,7 +411,7 @@ under a separate “What is being built” heading.
 Each item MUST display its deployment scope and status badge. The section MUST
 link to `/status/`.
 
-### 7.5 Real quickstart
+### 7.7 Real quickstart
 
 The page MUST show an executable Rust example based on
 `crates/dingo-sdk/README.md`, not illustrative pseudocode.
@@ -365,7 +442,7 @@ The site MUST provide copy controls, expected result, cleanup instructions, and
 a link to the complete quickstart. Snippet lines MAY be adjusted to keep them
 executable; the repository test is authoritative.
 
-### 7.6 How Dingo differs
+### 7.8 How Dingo differs
 
 Use a factual decision table, not a winner-takes-all comparison:
 
@@ -378,7 +455,7 @@ Use a factual decision table, not a winner-takes-all comparison:
 
 Comparisons MUST describe workload fit, not attack other products.
 
-### 7.7 Architecture teaser
+### 7.9 Architecture teaser
 
 Show this compact model:
 
@@ -395,7 +472,7 @@ SDA examination and recovery evidence
 Heaps, DRE, Atomics, Direct Access, and Order Wavelets MAY appear as linked
 research/design cards. Each MUST carry its current public status.
 
-### 7.8 Final action
+### 7.10 Final action
 
 ```text
 Put something important in DingoDB.
@@ -843,7 +920,8 @@ Not required for launch:
 The main website is ready when:
 
 1. a first-time visitor can identify DingoDB’s survival proposition in a
-   five-second comprehension test;
+  five-second comprehension test as a mathematical document database rather
+  than only a resilient embedded store;
 2. the visitor can identify “experimental / early access” without opening a
    secondary page;
 3. every capability shown on the home page has a valid status and evidence
@@ -874,4 +952,3 @@ The developers MUST obtain or confirm:
 
 Missing inputs MUST use an explicit “not yet published” state. Developers MUST
 not invent them.
-

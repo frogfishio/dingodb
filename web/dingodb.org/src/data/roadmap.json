@@ -57,15 +57,15 @@
     },
     {
       "id": "design-work",
-      "title": "Design work",
+      "title": "Mathematical document database",
       "status": "design",
-      "description": "Specified or proposed surfaces that are not claimed as implemented product features.",
+      "description": "Move the formal architecture from specifications into one coherent product: database-owned document truth, admitted transitions, exact ranked access, and counted ordering.",
       "items": [
-        "Heaps (authority and isolation)",
-        "DRE (data rules)",
-        "Atomics",
-        "Direct Access (DDA)",
-        "Order Wavelets"
+        "Heaps — non-crossing authority and isolation",
+        "DRE — finite document and transition invariants",
+        "Atomics — indivisible admitted state changes",
+        "Direct Access — exact from/to result ranks",
+        "Order Wavelets — filtered sorting by rank/select navigation"
       ]
     }
   ]

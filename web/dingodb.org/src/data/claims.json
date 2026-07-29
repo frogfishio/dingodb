@@ -105,5 +105,87 @@
     ],
     "verified_for": "0.2.0",
     "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.kernel.deterministic",
+    "text": "SDA and ENR provide deterministic mathematical kernels for filtering, projection, enrichment, and examination.",
+    "status": "available",
+    "scope": "language and examination",
+    "source": [
+      "SDA_SPEC.md",
+      "crates/enr-core/ENR1.md",
+      "doc/SDA/DIALECTS.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.dql.one-kernel",
+    "text": "DQL and declared compatibility dialect subsets compile toward the SDA / ENR mathematical kernel.",
+    "status": "experimental",
+    "scope": "SDK query surface",
+    "source": [
+      "DQL_SPEC.md",
+      "doc/DQL/USER_GUIDE.md",
+      "doc/SDA/DIALECTS.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.cursors.bounded",
+    "text": "The single-node store ships bounded resume-key cursor paging in stable subject order.",
+    "status": "available",
+    "scope": "single-node store",
+    "source": [
+      "doc/CAPABILITY_MATRIX.md#bounded-memory-cursors-def-026"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.dre.document-truth",
+    "text": "DRE specifies finite, non-Turing-complete invariants for database-owned document truth.",
+    "status": "design",
+    "scope": "normative design",
+    "source": [
+      "DRE_SPEC.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.dda.exact-rank",
+    "text": "DDA specifies exact access to result rank k without work proportional to the numeric rank.",
+    "status": "design",
+    "scope": "normative design",
+    "source": [
+      "DIRECT_ACCESS_SPEC.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.dow.counted-order",
+    "text": "Order Wavelets specify filtered ordering through exact conditional rank/select counts rather than query-time sorting of every match.",
+    "status": "design",
+    "scope": "normative design",
+    "source": [
+      "ORDER_WAVELET_SPEC.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.performance.local-350",
+    "text": "An owner-observed local development run reached approximately 350 MB/s of indexed 4 KiB ingest across four workers on a MacBook Air M4 while chaos punches were active.",
+    "status": "experimental",
+    "scope": "local diagnostic; not a benchmark or SLO",
+    "source": [
+      "Product-owner observation 2026-07-30; complete run artifact pending",
+      "doc/BENCHMARK_DISCLOSURE.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
   }
 ]

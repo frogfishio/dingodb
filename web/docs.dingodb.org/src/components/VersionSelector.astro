@@ -1,0 +1,40 @@
+---
+import release from '../data/release.json';
+
+interface Props {
+  channel?: 'current' | 'next';
+}
+
+const { channel = 'current' } = Astro.props;
+---
+
+<label class="version-selector">
+  <span class="sr-only">Documentation version</span>
+  <select id="version-select" data-channel={channel} aria-label="Documentation version">
+    <option value="/" selected={channel === 'current'}>
+      {release.productLine} (current release)
+    </option>
+    <option value="/next/" selected={channel === 'next'}>Next (unreleased)</option>
+    <option value="/versions/0.2/">Archived: 0.2</option>
+  </select>
+</label>
+
+<script>
+  const sel = document.getElementById('version-select') as HTMLSelectElement | null;
+  sel?.addEventListener('change', () => {
+    if (sel.value) window.location.href = sel.value;
+  });
+</script>
+
+<style>
+  .version-selector select {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+</style>

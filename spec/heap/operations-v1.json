@@ -394,11 +394,11 @@
     {
       "id": 110,
       "wire_name": "list_collections",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/list_collections.request.json",
+      "response_schema": "rpc-v1/list_collections.response.json",
       "allowed_states": [
         "active",
         "read_only"
@@ -462,11 +462,11 @@
     {
       "id": 114,
       "wire_name": "list_keys",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/list_keys.request.json",
+      "response_schema": "rpc-v1/list_keys.response.json",
       "allowed_states": [
         "active",
         "read_only"
@@ -479,11 +479,11 @@
     {
       "id": 115,
       "wire_name": "scan_json",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/scan_json.request.json",
+      "response_schema": "rpc-v1/scan_json.response.json",
       "allowed_states": [
         "active",
         "read_only"

@@ -1,0 +1,13 @@
+---
+import { specStates } from '../lib/status';
+
+interface Props {
+  state: string;
+}
+
+const { state } = Astro.props;
+const meaning = specStates[state] ?? state;
+const label = state.charAt(0).toUpperCase() + state.slice(1);
+---
+
+<span class="spec-state" title={meaning}>Document: {label}</span>

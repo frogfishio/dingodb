@@ -384,6 +384,94 @@ impl RemoteHeap {
         Ok(result.get("removed") == Some(&Value::Bool(true)))
     }
 
+    /// List collections in the bound heap (op_id = 110).
+    ///
+    /// Each item is `(collection_id, name)`.
+    pub fn list_collections(&mut self) -> Result<Vec<(String, String)>, Error> {
+        let result = self.call_args(110, None, serde_json::json!({}))?;
+        let arr = result
+            .get("collections")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| Error::ProtocolViolation("list_collections missing array".into()))?;
+        let mut out = Vec::new();
+        for item in arr {
+            let id = item
+                .get("collection_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| Error::ProtocolViolation("collection_id missing".into()))?
+                .to_string();
+            let name = item
+                .get("name")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| Error::ProtocolViolation("name missing".into()))?
+                .to_string();
+            out.push((id, name));
+        }
+        Ok(out)
+    }
+
+    /// List keys in a collection (op_id = 114).
+    pub fn list_keys(
+        &mut self,
+        collection_id: &str,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        let mut args = serde_json::Map::new();
+        if let Some(l) = limit {
+            args.insert("limit".into(), Value::from(l as u64));
+        }
+        if let Some(a) = after_key {
+            args.insert("after_key".into(), Value::String(a.into()));
+        }
+        let result = self.call_args(114, Some(collection_id), Value::Object(args))?;
+        let arr = result
+            .get("keys")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| Error::ProtocolViolation("list_keys missing keys".into()))?;
+        Ok(arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect())
+    }
+
+    /// Scan JSON rows in a collection (op_id = 115).
+    ///
+    /// Each item is `(key, json)`.
+    pub fn scan_json(
+        &mut self,
+        collection_id: &str,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<(String, Value)>, Error> {
+        let mut args = serde_json::Map::new();
+        if let Some(l) = limit {
+            args.insert("limit".into(), Value::from(l as u64));
+        }
+        if let Some(a) = after_key {
+            args.insert("after_key".into(), Value::String(a.into()));
+        }
+        let result = self.call_args(115, Some(collection_id), Value::Object(args))?;
+        let arr = result
+            .get("rows")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| Error::ProtocolViolation("scan_json missing rows".into()))?;
+        let mut out = Vec::new();
+        for row in arr {
+            let key = row
+                .get("key")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| Error::ProtocolViolation("scan row key missing".into()))?
+                .to_string();
+            let json = row
+                .get("json")
+                .cloned()
+                .ok_or_else(|| Error::ProtocolViolation("scan row json missing".into()))?;
+            out.push((key, json));
+        }
+        Ok(out)
+    }
+
     fn call_process(&mut self, op_id: u16) -> Result<Value, Error> {
         self.call_args(op_id, None, serde_json::json!({}))
     }

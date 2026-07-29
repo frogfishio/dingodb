@@ -1,0 +1,103 @@
+---
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+const items = headings.filter((h) => h.depth <= 3);
+---
+
+{
+  items.length > 0 && (
+    <>
+      <nav class="toc desktop-toc" aria-label="On this page">
+        <p class="toc-title">On this page</p>
+        <ul>
+          {items.map((h) => (
+            <li class={`depth-${h.depth}`}>
+              <a href={`#${h.slug}`}>{h.text}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <details class="toc mobile-toc">
+        <summary>On this page</summary>
+        <ul>
+          {items.map((h) => (
+            <li class={`depth-${h.depth}`}>
+              <a href={`#${h.slug}`}>{h.text}</a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </>
+  )
+}
+
+<style>
+  .toc-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+  }
+
+  .toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .toc a {
+    display: block;
+    padding: 0.25rem 0;
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 0.88rem;
+  }
+
+  .toc a:hover {
+    color: var(--ink);
+  }
+
+  .depth-3 {
+    padding-left: 0.75rem;
+  }
+
+  .desktop-toc {
+    display: none;
+  }
+
+  .mobile-toc {
+    margin-bottom: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    background: var(--paper-raised);
+  }
+
+  .mobile-toc summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  @media (min-width: 1200px) {
+    .desktop-toc {
+      display: block;
+      position: sticky;
+      top: calc(var(--header-h) + 1rem);
+    }
+
+    .mobile-toc {
+      display: none;
+    }
+  }
+</style>

@@ -183,8 +183,8 @@ mod tests {
             .map(|o| o.id)
             .collect();
         assert!(active.contains(&1) && active.contains(&2) && active.contains(&3));
-        // §32.4 data cut (get/put/delete + collection_open).
-        for id in [105u16, 111, 112, 120, 121, 122] {
+        // §32.4 data cuts (open/list + get/put/delete + keys/scan).
+        for id in [105u16, 110, 111, 112, 114, 115, 120, 121, 122] {
             assert!(active.contains(&id), "missing active data op {id}");
         }
     }

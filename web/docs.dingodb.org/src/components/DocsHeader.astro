@@ -1,0 +1,234 @@
+---
+import navigation from '../data/navigation.json';
+import release from '../data/release.json';
+import ExternalLink from './ExternalLink.astro';
+import VersionSelector from './VersionSelector.astro';
+import SearchDialog from './SearchDialog.astro';
+
+interface Props {
+  channel?: 'current' | 'next';
+}
+
+const { channel = 'current' } = Astro.props;
+const path = Astro.url.pathname;
+
+function current(href: string) {
+  if (href === '/') return path === '/';
+  return path === href || path.startsWith(href);
+}
+---
+
+<header class="docs-header">
+  <div class="wrap header-row">
+    <div class="brand-block">
+      <a class="brand" href="/" aria-label="DingoDB Docs home">
+        <span class="brand-mark" aria-hidden="true">◈</span>
+        <span>DingoDB Docs</span>
+      </a>
+      <ExternalLink href={release.mainSite} class="main-site-link">dingodb.org</ExternalLink>
+    </div>
+
+    <nav class="top-nav" aria-label="Primary">
+      <ul>
+        {
+          navigation.top.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                class:list={['top-link', current(item.href) && 'is-current']}
+                aria-current={current(item.href) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="header-tools">
+      <VersionSelector channel={channel} />
+      <SearchDialog />
+      <ExternalLink href={release.github} class="btn btn-secondary gh-btn">GitHub</ExternalLink>
+    </div>
+
+    <details class="mobile-nav">
+      <summary class="menu-toggle">Menu</summary>
+      <div class="mobile-panel">
+        <VersionSelector channel={channel} />
+        <ul>
+          {
+            navigation.top.map((item) => (
+              <li>
+                <a href={item.href}>{item.label}</a>
+              </li>
+            ))
+          }
+          <li><ExternalLink href={release.github}>GitHub</ExternalLink></li>
+          <li><ExternalLink href={release.mainSite}>Product site</ExternalLink></li>
+        </ul>
+      </div>
+    </details>
+  </div>
+  {
+    channel === 'next' && (
+      <div class="next-banner" role="status">
+        You are viewing <strong>Next (unreleased)</strong> documentation. APIs may change.
+        <a href="/">Switch to current release docs</a>
+      </div>
+    )
+  }
+</header>
+
+<style>
+  .docs-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: var(--header-h);
+    flex-wrap: wrap;
+  }
+
+  .brand-block {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .brand-mark {
+    color: var(--signal);
+  }
+
+  .main-site-link {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+
+  .top-nav {
+    display: none;
+    flex: 1;
+  }
+
+  .top-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.15rem;
+  }
+
+  .top-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.35rem 0.55rem;
+    text-decoration: none;
+    color: var(--ink-muted);
+    font-weight: 500;
+    border-radius: var(--radius);
+    font-size: 0.92rem;
+  }
+
+  .top-link:hover,
+  .top-link.is-current {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--line) 35%, transparent);
+  }
+
+  .header-tools {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .mobile-nav {
+    margin-left: auto;
+  }
+
+  .menu-toggle {
+    list-style: none;
+    min-height: var(--touch);
+    padding: 0 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .menu-toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-panel {
+    position: absolute;
+    right: 1rem;
+    top: calc(var(--header-h) + 0.25rem);
+    width: min(20rem, calc(100vw - 2rem));
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 0.75rem;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .mobile-panel ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .mobile-panel a {
+    display: flex;
+    min-height: 2.5rem;
+    align-items: center;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .next-banner {
+    background: color-mix(in srgb, var(--warning) 15%, var(--paper));
+    border-top: 1px solid var(--line);
+    padding: 0.45rem 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+
+  @media (min-width: 1100px) {
+    .top-nav,
+    .header-tools {
+      display: flex;
+    }
+
+    .mobile-nav {
+      display: none;
+    }
+  }
+</style>

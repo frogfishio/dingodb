@@ -1,0 +1,31 @@
+---
+import StatusBadge from './StatusBadge.astro';
+
+interface Props {
+  status: string;
+  surface?: string;
+  extra?: string;
+}
+
+const { status, surface, extra } = Astro.props;
+---
+
+<div class="maturity-banner" role="status">
+  <StatusBadge status={status} />
+  {surface && <span class="meta-line">Surface: {surface}</span>}
+  <strong>
+    {
+      status === 'experimental'
+        ? 'Experimental / early access — interfaces may change.'
+        : status === 'development-only'
+          ? 'Development only — not a supported production path.'
+          : status === 'design'
+            ? 'Design — not implemented as a product capability.'
+            : status === 'scaffold'
+              ? 'Scaffold — not operationally complete.'
+              : 'Check status and limitations before deploying.'
+    }
+  </strong>
+  {extra && <span>{extra}</span>}
+  <a href="/status/known-limitations/">Known limitations</a>
+</div>

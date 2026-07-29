@@ -64,7 +64,7 @@ Before Gate H6, product language remains:
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap + CPR-001 opt-in)** | Heap APIs + SubjectV2 data + `connect_heap` process ops. **CPR-001:** feature `legacy-flat-sdk` (default **on** for Stages 3–9) gates flat `Dingo::open`/`collection`/`store()`; `--no-default-features` is heap-only (`open_deployment` / `connect_heap`). Claim labels + `open_compatibility` spelling. Accept: isolation, SubjectV2, connect_heap, `cpr001_legacy_opt_in`. **Gaps:** remote collection data ops (§32.4); flip `legacy-flat-sdk` default off after cutover. |
-| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data cut)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 first data cut active:** ops 105 `collection_open`, 111/112 get, 120/121 put, 122 delete — schemas + fixtures + `HeapStore` dispatch on shared store owner. Accept: connect_heap put/get/delete round-trip. **Gaps:** remaining reserved ops, RPC vector corpus expansion, make qualified listener the default remote profile. |
+| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active:** 105 open, 110 list_collections, 111/112 get, 114 list_keys, 115 scan_json, 120/121 put, 122 delete — schemas + fixtures + `HeapStore` binary SubjectV2 scan. Accept: connect_heap put/get/delete + list/scan. **Gaps:** find/index/lifecycle reserved, default qualified listener, RPC corpus expansion. |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
 | HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept** (derived/ops + profiles + metadata-hardened). Complete-path review + external security review brief + `pure_proofs` bundle landed. **H1 advanced:** SubjectV2 put/get + remote `connect_heap` process-ops Accept. H0/H1/H2/H4/H5 still partial (legacy flat SDK / CPR-001, remote data ops, reserved ops, recovery residuals). H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close. |
 | HP-011 | Cluster control and placement | Not started | |
@@ -146,7 +146,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 |------|---------|------------------------------|
 | Full H-gate matrices, load/fuzz/restore/key-loss evidence | HP-010 | Profiles + AuthorityModel + §39 gen/blacklist Accept landed; H6 full Verus + external review still block `qualified=true` |
 | Physical segment rewrite + operator migration tooling | HP-006 residual | Live-store rewrite still open |
-| Activate remaining reserved heap ops (§32.4 schemas first) | HP-008 residual | First data cut 105/111/112/120–122 landed |
+| Activate remaining reserved heap ops (§32.4 schemas first) | HP-008 residual | Data + list/scan cut landed; find/index/lifecycle still reserved |
 | Make qualified listener the default remote profile | HP-008 residual | Legacy token path still default-off |
 | Live media purge across tiers/replicas / retention scheduler | HP-009 residual | Media-domain incomplete purge + retention scheduler Accept landed; live filesystem tier wipe / HSM adapters still open |
 
@@ -155,7 +155,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 | Item | Package |
 |------|---------|
 | Authority transition/mutation COSE corpus, threshold recovery, peer-cred barrier | HP-005 |
-| Remote list/scan/find/index on `RemoteHeap` | HP-007 residual (put/get/delete Accept landed) |
+| Remote find/index/history on `RemoteHeap` | HP-007 residual (put/get/delete + list/scan Accept landed) |
 | Authority/RPC vector remainder in `spec/heap` | HP-000 |
 | Verus/Kani connected proofs | HP-001 |
 | Flip default off for `legacy-flat-sdk` / `legacy-raw-store` after cutover | HP-003 / CPR-001 residual |
@@ -5031,11 +5031,12 @@ These objects reject additional fields. `health_live` returns success with
 application response exists. `health_ready` always returns an `ok:true`
 envelope with only the Boolean result and never a reason.
 
-**§32.4 first data cut (post HP-000):** operations **105, 111, 112, 120, 121,
-122** (`collection_open`, `get`, `get_bytes`, `put`, `put_bytes`, `delete`) are
-active with committed `rpc-v1` schemas and fixtures. Activation of any further
-operation still requires the exact table/schema amendment, dispatch
-exhaustiveness, fixtures, and public error mapping in the same change.
+**§32.4 data plane cuts (post HP-000):** active heap data ops are **105, 110,
+111, 112, 114, 115, 120, 121, 122** (`collection_open`, `list_collections`,
+`get`/`get_bytes`, `list_keys`, `scan_json`, `put`/`put_bytes`, `delete`) with
+committed `rpc-v1` schemas and fixtures. Activation of any further operation
+still requires the exact table/schema amendment, dispatch exhaustiveness,
+fixtures, and public error mapping in the same change.
 
 High-impact confirmation values are:
 

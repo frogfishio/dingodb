@@ -1,0 +1,271 @@
+---
+/** Local static search. Index loads on first open (Cmd/Ctrl+K or /). */
+---
+
+<button type="button" class="search-open btn btn-secondary" id="search-open" aria-haspopup="dialog">
+  Search
+  <kbd class="search-kbd">⌘K</kbd>
+</button>
+
+<dialog id="search-dialog" class="search-dialog" aria-label="Search documentation">
+  <form method="dialog" class="search-form">
+    <label class="sr-only" for="search-input">Search</label>
+    <input
+      id="search-input"
+      type="search"
+      placeholder="Search docs…"
+      autocomplete="off"
+      enterkeyhint="search"
+    />
+    <button type="button" class="btn btn-secondary" id="search-close">Close</button>
+  </form>
+  <p id="search-status" class="meta-line" role="status" aria-live="polite"></p>
+  <ul id="search-results" class="search-results"></ul>
+  <p class="meta-line search-help">
+    Local index only — queries never leave your browser. Zero results?
+    <a href="/status/known-limitations/">Limitations</a>
+    ·
+    <a href="https://github.com/frogfishio/dingodb/issues/new" target="_blank" rel="noopener noreferrer">GitHub issue</a>
+  </p>
+</dialog>
+
+<script is:inline>
+  (function () {
+    var index = null;
+    var loading = null;
+
+    function loadIndex() {
+      if (index) return Promise.resolve();
+      if (!loading) {
+        loading = fetch('/search-index.json')
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            index = data;
+          })
+          .catch(function () {
+            index = [];
+          });
+      }
+      return loading;
+    }
+
+    function score(item, q) {
+      var terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      if (!terms.length) return 0;
+      var hay = [
+        item.title,
+        item.description,
+        (item.keywords || []).join(' '),
+        item.section || '',
+        item.status,
+        item.surface,
+        item.body || '',
+      ]
+        .join('\n')
+        .toLowerCase();
+      var s = 0;
+      for (var i = 0; i < terms.length; i++) {
+        var t = terms[i];
+        if (item.title.toLowerCase().indexOf(t) !== -1) s += 8;
+        if ((item.keywords || []).some(function (k) { return String(k).toLowerCase().indexOf(t) !== -1; })) s += 5;
+        if (item.description.toLowerCase().indexOf(t) !== -1) s += 3;
+        if (hay.indexOf(t) !== -1) s += 1;
+        else return 0;
+      }
+      return s;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function render(q) {
+      var list = document.getElementById('search-results');
+      var status = document.getElementById('search-status');
+      if (!list || !status || !index) return;
+      if (!q.trim()) {
+        list.innerHTML = '';
+        status.textContent = 'Type to search this documentation set.';
+        return;
+      }
+      var hits = index
+        .map(function (item) {
+          return { item: item, s: score(item, q) };
+        })
+        .filter(function (x) {
+          return x.s > 0;
+        })
+        .sort(function (a, b) {
+          return b.s - a.s;
+        })
+        .slice(0, 20);
+      status.textContent = hits.length
+        ? hits.length + ' result' + (hits.length === 1 ? '' : 's')
+        : 'No results. Try terminology, status pages, or open a GitHub issue.';
+      list.innerHTML = hits
+        .map(function (h) {
+          var item = h.item;
+          return (
+            '<li><a href="' +
+            item.href +
+            '"><span class="sr-title">' +
+            escapeHtml(item.title) +
+            '</span><span class="sr-meta">' +
+            escapeHtml(item.status) +
+            ' · ' +
+            escapeHtml(item.product) +
+            ' · ' +
+            escapeHtml(item.surface) +
+            '</span><span class="sr-desc">' +
+            escapeHtml(item.description) +
+            '</span></a></li>'
+          );
+        })
+        .join('');
+    }
+
+    var dialog = document.getElementById('search-dialog');
+    var input = document.getElementById('search-input');
+    var openBtn = document.getElementById('search-open');
+    var closeBtn = document.getElementById('search-close');
+    var form = dialog && dialog.querySelector('form');
+
+    function openSearch() {
+      loadIndex().then(function () {
+        if (dialog && dialog.showModal) dialog.showModal();
+        if (input) {
+          input.focus();
+          render(input.value || '');
+        }
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+      });
+    }
+    if (openBtn) openBtn.addEventListener('click', openSearch);
+    if (closeBtn)
+      closeBtn.addEventListener('click', function () {
+        if (dialog) dialog.close();
+      });
+    if (input)
+      input.addEventListener('input', function () {
+        render(input.value);
+      });
+
+    document.addEventListener('keydown', function (e) {
+      var target = e.target;
+      var tag = target && target.tagName;
+      var typing =
+        tag === 'INPUT' || tag === 'TEXTAREA' || (target && target.isContentEditable);
+
+      if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
+        e.preventDefault();
+        openSearch();
+        return;
+      }
+      if (e.key === '/' && !typing) {
+        e.preventDefault();
+        openSearch();
+      }
+      if (e.key === 'Escape' && dialog) dialog.close();
+    });
+  })();
+</script>
+
+<style>
+  .search-open {
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .search-kbd {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    opacity: 0.7;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05rem 0.3rem;
+  }
+
+  .search-dialog {
+    width: min(36rem, calc(100vw - 2rem));
+    max-height: min(80vh, 40rem);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    background: var(--paper-raised);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  .search-dialog::backdrop {
+    background: rgb(18 20 16 / 35%);
+  }
+
+  .search-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .search-form input {
+    flex: 1;
+    min-height: var(--touch);
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    background: var(--paper);
+  }
+
+  .search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 20rem;
+    overflow: auto;
+  }
+
+  .search-results a {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.65rem 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    border-radius: var(--radius);
+  }
+
+  .search-results a:hover,
+  .search-results a:focus-visible {
+    background: color-mix(in srgb, var(--line) 35%, transparent);
+  }
+
+  .sr-title {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .sr-meta {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+  }
+
+  .sr-desc {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+  }
+
+  .search-help {
+    margin: 0.75rem 0 0;
+  }
+</style>
