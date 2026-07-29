@@ -12,6 +12,7 @@
     "sync-release": "node scripts/sync-release.mjs",
     "validate": "node scripts/validate-content.mjs",
     "build": "npm run validate && astro build",
+    "build:sites": "npm run build && node scripts/prepare-sites.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
