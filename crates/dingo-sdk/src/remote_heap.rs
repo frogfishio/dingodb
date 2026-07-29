@@ -435,6 +435,42 @@ impl RemoteHeap {
             .collect())
     }
 
+    /// Find JSON rows matching a Mongo-style filter object (op_id = 116).
+    ///
+    /// Filter vocabulary matches [`crate::Filter::from_json`]. First cut scans
+    /// the bound collection (no secondary-index acceleration on SubjectV2).
+    pub fn find(
+        &mut self,
+        collection_id: &str,
+        filter: &Value,
+        limit: Option<usize>,
+    ) -> Result<Vec<(String, Value)>, Error> {
+        let mut args = serde_json::Map::new();
+        args.insert("filter".into(), filter.clone());
+        if let Some(l) = limit {
+            args.insert("limit".into(), Value::from(l as u64));
+        }
+        let result = self.call_args(116, Some(collection_id), Value::Object(args))?;
+        let arr = result
+            .get("rows")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| Error::ProtocolViolation("find missing rows".into()))?;
+        let mut out = Vec::new();
+        for row in arr {
+            let key = row
+                .get("key")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| Error::ProtocolViolation("find row key missing".into()))?
+                .to_string();
+            let json = row
+                .get("json")
+                .cloned()
+                .ok_or_else(|| Error::ProtocolViolation("find row json missing".into()))?;
+            out.push((key, json));
+        }
+        Ok(out)
+    }
+
     /// Scan JSON rows in a collection (op_id = 115).
     ///
     /// Each item is `(key, json)`.

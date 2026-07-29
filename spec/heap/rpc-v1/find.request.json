@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "filter": { "type": "object" },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 4096 }
+  },
+  "required": ["filter"]
+}

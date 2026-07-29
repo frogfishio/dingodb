@@ -1,0 +1,14 @@
+{
+  "op": 116,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-000000000001",
+  "args": {
+    "filter": { "status": "active" },
+    "limit": 100
+  },
+  "result": {
+    "rows": [
+      { "key": "user-1", "json": { "status": "active", "name": "Alice" } }
+    ]
+  }
+}

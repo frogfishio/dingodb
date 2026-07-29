@@ -65,7 +65,7 @@ Before Gate H6, product language remains:
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap data + CPR-001 opt-in)** | Heap APIs + SubjectV2 put/get + `connect_heap` with remote put/get/delete/list/scan. **CPR-001:** `legacy-flat-sdk` default **on**; heap-only via `--no-default-features`. Accept: isolation, SubjectV2, connect_heap data+list/scan, `cpr001_legacy_opt_in`. **Gaps:** remote find/index/history; flip `legacy-flat-sdk` default off after cutover. |
-| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (12 ops):** process 1–3 + 105/110/111/112/114/115/120/121/122. Accept: connect_heap put/get/delete + list/scan. **Gaps:** find/index/lifecycle still reserved, default qualified listener, RPC corpus expansion. |
+| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan/find)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (13 ops):** process 1–3 + 105/110–112/114–116/120–122 (incl. **find**). Accept: connect_heap put/get/delete + list/scan/find. **Gaps:** index/history/lifecycle still reserved, default qualified listener, RPC corpus expansion. |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
 | HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept**. **H1 advanced** (SubjectV2 + remote data/list/scan + CPR-001 opt-in). H0/H1/H2/H4/H5 still partial. H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close (default flat SDK). |
 | HP-011 | Cluster control and placement | Not started | |
@@ -5045,11 +5045,13 @@ application response exists. `health_ready` always returns an `ok:true`
 envelope with only the Boolean result and never a reason.
 
 **§32.4 data plane cuts (post HP-000):** active heap data ops are **105, 110,
-111, 112, 114, 115, 120, 121, 122** (`collection_open`, `list_collections`,
-`get`/`get_bytes`, `list_keys`, `scan_json`, `put`/`put_bytes`, `delete`) with
-committed `rpc-v1` schemas and fixtures. Activation of any further operation
-still requires the exact table/schema amendment, dispatch exhaustiveness,
-fixtures, and public error mapping in the same change.
+111, 112, 114, 115, 116, 120, 121, 122** (`collection_open`, `list_collections`,
+`get`/`get_bytes`, `list_keys`, `scan_json`, **`find`**, `put`/`put_bytes`,
+`delete`) with committed `rpc-v1` schemas and fixtures. Find first cut scans the
+collection and evaluates Mongo-style filters (`Filter::from_json`); SubjectV2
+secondary-index acceleration is not yet required. Activation of any further
+operation still requires the exact table/schema amendment, dispatch
+exhaustiveness, fixtures, and public error mapping in the same change.
 
 High-impact confirmation values are:
 
@@ -6063,5 +6065,3 @@ the control leader only by rereading the locally anchored event named by an
 authenticated `apply_committed_head`; the local-control request never carries
 the event bytes. Both types have private constructors. Their deserializers are
 compiled only into the mutually authenticated cluster-peer protocol and
-revalidate canonical encoding, signatures where applicable, expected version,
-previous hash, and exact heap/deployment identity before Raft admission. They

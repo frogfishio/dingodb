@@ -9,6 +9,7 @@ use dingo_heap::{
     active_operation_ids, refresh_capability_or_terminate, CollectionId, HeapCap, Operation,
     OperationStatus, Rights,
 };
+use dingo_sdk::Filter;
 use dingo_store::{
     hex16, rebuild_object_entry_from_chain, try_load_collections_catalog, HeapMetaLayout, HeapStore,
     ObjectKind, WriteReceipt,
@@ -183,7 +184,7 @@ pub fn dispatch_heap_request_with(
     // Rights gate for data ops.
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
-        105 | 110 | 111 | 112 | 114 | 115 => Rights::READ,
+        105 | 110 | 111 | 112 | 114 | 115 | 116 => Rights::READ,
         120 | 121 | 122 => Rights::WRITE,
         _ => return unavailable(req.id),
     };
@@ -217,6 +218,10 @@ pub fn dispatch_heap_request_with(
         },
         115 => match data {
             Some(ctx) => dispatch_scan_json(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        116 => match data {
+            Some(ctx) => dispatch_find(req.id, &req, ctx),
             None => unavailable(req.id),
         },
         120 => match data {
@@ -395,6 +400,69 @@ fn dispatch_list_keys(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         }
         Err(_) => unavailable_id(id),
     }
+}
+
+fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let filter_json = match req.args.get("filter") {
+        Some(v) if v.is_object() => v,
+        _ => return unavailable_id(id),
+    };
+    let filter = match Filter::from_json(filter_json) {
+        Ok(f) => f,
+        Err(_) => return unavailable_id(id),
+    };
+    let limit = match limit_arg(&req.args) {
+        Some(l) => l,
+        None => return unavailable_id(id), // invalid limit value
+    };
+    // Only filter + limit allowed in args.
+    for k in req.args.keys() {
+        if k != "filter" && k != "limit" {
+            return unavailable_id(id);
+        }
+    }
+    let cid_s = match req.collection_id.as_deref() {
+        Some(s) => s,
+        None => return unavailable_id(id),
+    };
+    let coll = match parse_collection_id(cid_s) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    if rebuild_object_entry_from_chain(ctx.layout, &heap_id, ObjectKind::Collection, coll.as_bytes())
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        return unavailable_id(id);
+    }
+    // Scan more rows than limit so filters that hit sparsely still return results.
+    let scan_cap = limit.saturating_mul(8).clamp(limit, 4096);
+    let scanned = match ctx.store.scan_collection(coll.as_bytes(), scan_cap, None) {
+        Ok(rows) => rows,
+        Err(_) => return unavailable_id(id),
+    };
+    let mut out = Vec::new();
+    for (key, body) in scanned {
+        if out.len() >= limit {
+            break;
+        }
+        let Ok(key_s) = String::from_utf8(key) else {
+            continue;
+        };
+        if body.first() != Some(&0x01) {
+            continue;
+        }
+        let Ok(json) = serde_json::from_slice::<Value>(&body[1..]) else {
+            continue;
+        };
+        if !filter.matches(&json) {
+            continue;
+        }
+        out.push(serde_json::json!({ "key": key_s, "json": json }));
+    }
+    ok_id(id, serde_json::json!({ "rows": out }))
 }
 
 fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {

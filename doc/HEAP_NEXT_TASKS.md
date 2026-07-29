@@ -32,7 +32,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
-| B1 | Activate **find** (116) + minimal filter args | Query is the everyday path | Schemas/fixtures + dispatch + RemoteHeap + Accept |
+| B1 | Activate **find** (116) + minimal filter args | Query is the everyday path | **Done (2026-07-30)** — schemas/fixtures + scan+Filter dispatch + `RemoteHeap::find` + `connect_heap_find_filter` |
 | B2 | Activate **history** (117) | Spec + DX parity | Same §32.4 bar |
 | B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | Same §32.4 bar |
 | B4 | Activate **collection_create** (106) (needs rights story) | Provisioning without offline catalog | Ceremony/rights + Accept |
@@ -81,7 +81,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 ## Suggested next 3 labor packages (concrete)
 
-1. **B1 — `find` §32.4** (highest product leverage on remote heap after list/scan).  
+1. **B2 — `history` §32.4** or **B3 indexes** (next everyday surface after find).  
 2. **A1–A2 — CPR-001 default flip** (claim honesty; do after or with a migration slice).  
 3. **D1 — Verus/Kani connection** (only gate that is pure engineering for H6; external review is human process).
 

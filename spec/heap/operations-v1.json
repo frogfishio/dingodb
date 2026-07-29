@@ -496,11 +496,11 @@
     {
       "id": 116,
       "wire_name": "find",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/find.request.json",
+      "response_schema": "rpc-v1/find.response.json",
       "allowed_states": [
         "active",
         "read_only"

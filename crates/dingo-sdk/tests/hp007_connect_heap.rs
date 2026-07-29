@@ -506,6 +506,126 @@ fn connect_heap_list_and_scan_json() {
 }
 
 #[test]
+fn connect_heap_find_filter() {
+    use dingo_store::{
+        create_object, publish_staged_genesis, stage_heap_genesis, HeapMetaLayout, ObjectKind,
+    };
+
+    let doc = vectors();
+    let inputs = &doc["inputs"];
+    let master_pk: [u8; 32] = hex(inputs["master_public_key"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let holder_seed: [u8; 32] = hex(inputs["holder_seed"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let cose = hex(doc["accepted"][0]["cose_sign1"].as_str().unwrap());
+    let verified = verify_certificate(&cose, &master_pk).unwrap();
+    let now_unix = verified.not_before + 10;
+
+    let snap = HeapSecuritySnapshot {
+        deployment_id: verified.deployment_id,
+        heap_id: verified.heap_id,
+        authority_epoch: verified.authority_epoch,
+        authority_generation: verified.authority_generation,
+        previous_generation: None,
+        grace_deadline_unix_s: None,
+        master_public_key: master_pk,
+        previous_master_public_key: None,
+        security_revision: SecurityRevision::new(1).unwrap(),
+        authority_chain_head_hash: [1u8; 32],
+        administrative_state: HeapAdministrativeState::Active,
+        blacklist: vec![],
+        policy_rights_ceiling: None,
+    };
+    let registry = Arc::new(ResidentHeapRegistry::new());
+    registry.insert(
+        verified.heap_id,
+        ResidentHeap {
+            slot: Arc::new(HeapSlot::new(snap)),
+            display_name: Some("accounts".into()),
+        },
+    );
+
+    let tmp = TempDir::new().unwrap();
+    let store_path = tmp.path().join("app.dingo");
+    Store::open(&store_path).unwrap();
+    let layout = HeapMetaLayout::new(&store_path);
+    let dep = *verified.deployment_id.as_bytes();
+    let heap_b = *verified.heap_id.as_bytes();
+    let coll = *dingo_heap::CollectionId::new_random().unwrap().as_bytes();
+    let staged = stage_heap_genesis(&layout, dep, heap_b, [9u8; 16], "accounts").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+    create_object(
+        &layout,
+        &heap_b,
+        ObjectKind::Collection,
+        coll,
+        [8u8; 16],
+        "users",
+    )
+    .unwrap();
+
+    let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
+    let port = free_port();
+    let bind = format!("127.0.0.1:{port}");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&shutdown);
+    let opts = ServeOptions::new()
+        .tls(TlsServerOptions::new(&cert_path, &key_path))
+        .qualified_heap_key(true)
+        .heap_registry(Arc::clone(&registry))
+        .deployment_id(verified.deployment_id.to_string())
+        .security_now_unix_s(now_unix)
+        .shutdown_flag(Arc::clone(&shutdown));
+    let store_c = store_path.clone();
+    let bind_c = bind.clone();
+    thread::spawn(move || {
+        let _ = serve_store_with(store_c, &bind_c, opts);
+    });
+    wait_for_server(&bind);
+
+    let holder = Arc::new(InMemoryHolderKey::from_seed(holder_seed));
+    let credential = HeapCredential::new(&cose, holder).unwrap();
+    let options = RemoteHeapOptions::new(
+        TlsClientOptions::new("localhost").ca_path(ca_path),
+        credential,
+    )
+    .expected_heap_name("accounts")
+    .now_unix_s(now_unix);
+
+    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+        .expect("connect_heap");
+    let cid = remote.collection_open("users").unwrap();
+    remote
+        .put_json(&cid, "a", &serde_json::json!({"status": "active", "n": 1}))
+        .unwrap();
+    remote
+        .put_json(&cid, "b", &serde_json::json!({"status": "paused", "n": 2}))
+        .unwrap();
+    remote
+        .put_json(&cid, "c", &serde_json::json!({"status": "active", "n": 3}))
+        .unwrap();
+
+    let hits = remote
+        .find(&cid, &serde_json::json!({"status": "active"}), Some(10))
+        .expect("find");
+    assert_eq!(hits.len(), 2);
+    assert!(hits.iter().any(|(k, _)| k == "a"));
+    assert!(hits.iter().any(|(k, _)| k == "c"));
+    assert!(!hits.iter().any(|(k, _)| k == "b"));
+
+    let gte = remote
+        .find(&cid, &serde_json::json!({"n": {"$gte": 2}}), Some(10))
+        .expect("find gte");
+    assert_eq!(gte.len(), 2);
+
+    drop(remote);
+    flag.store(true, Ordering::SeqCst);
+    thread::sleep(Duration::from_millis(50));
+}
+
+#[test]
 fn credential_rejects_holder_mismatch() {
     let doc = vectors();
     let cose = hex(doc["accepted"][0]["cose_sign1"].as_str().unwrap());
