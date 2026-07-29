@@ -74,9 +74,9 @@ re-bound through heap APIs.
 
 | ID | Finding | Severity | Blocks |
 |----|---------|----------|--------|
-| CPR-001 | Flat SDK is feature-gated (`legacy-flat-sdk`, **still default on** for Stages 3–9); heap-only via `--no-default-features`; labelled non-qualified | High until default flips | H0, H1, H6 |
+| CPR-001 | Flat SDK opt-in (`legacy-flat-sdk`); package **default is heap-only**; residual: dingo-store `legacy-raw-store` still default-on | Low (A3 residual) | H0, H1 |
 | CPR-002 | Many reserved heap ops remain; §32.4 data + list/scan/find/history/indexes cut activated with IndexAdmin + equality find acceleration (lifecycle/export still reserved) | Medium | H2 |
-| CPR-003 | Live filesystem multi-tier media wipe / HSM adapters incomplete | Medium (ops) | H4 residual / HP-009 |
+| CPR-003 | Live multi-tier FS wipe Accept landed; HSM/provider adapters still incomplete | Medium (ops) | H4 residual / HP-009 |
 | CPR-004 | Formal models are connected sketches + executable obligations, not Verus-checked proofs | High for H6 | H6 |
 | CPR-005 | No independent external security review receipt on file | High for H6 | H6 |
 | CPR-006 | Resource/physical isolation profiles declared, not qualified | Low (out of reference) | H3 profile extension |
@@ -89,8 +89,8 @@ this pass; known escapes are the **documented legacy/default surfaces** above.
 | Question | Answer |
 |----------|--------|
 | Unscoped surface on **qualified heap path**? | No known bypass in CI Accept drills |
-| Unscoped surface on **default product path**? | **Yes** — `legacy-flat-sdk` still default-on (CPR-001 residual); heap-only profile exists |
-| Ready for Gate H6 claim? | **No** — CPR-001 residual (default), CPR-004, CPR-005 remain |
+| Unscoped surface on **default product path**? | **No for SDK** — heap-only default; flat is opt-in. Store still defaults `legacy-raw-store` (A3) |
+| Ready for Gate H6 claim? | **No** — CPR-004 (Verus/Kani), CPR-005 (signed review) remain |
 | Matrix `qualified` | **Must stay `qualified=false`** |
 
 ## 6. Exit criteria for re-review

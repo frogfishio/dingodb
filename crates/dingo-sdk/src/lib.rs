@@ -4,13 +4,12 @@
 //!
 //! | Surface | Feature | Qualified claim |
 //! |---------|---------|-----------------|
-//! | Flat `Dingo::open` / `collection(name)` | `legacy-flat-sdk` (**default on**) | **No** (CPR-001) |
-//! | `Dingo::open_deployment` + `Heap` / SubjectV2 | always | Path for HP-010 / H1 |
+//! | Flat `Dingo::open` / `collection(name)` | `legacy-flat-sdk` (**opt-in**) | **No** (not H6) |
+//! | `Dingo::open_deployment` + `Heap` / SubjectV2 | always (package default) | Path for HP-010 / H1 |
 //! | `Dingo::connect_heap` | always | HeapKey remote process ops |
 //!
-//! Stages 3–9 product demos use the default feature set. Gate H6 / `dingo-heap-v1`
-//! qualification never covers the flat collection path — use heap-bound APIs.
-//! Heap-only profile: `cargo check -p dingo-sdk --no-default-features`.
+//! Package default is heap-only (CPR-001). Stages 3–9 demos enable `legacy-flat-sdk`
+//! or `cluster` explicitly. Gate H6 / `dingo-heap-v1` never covers the flat path.
 //!
 //! **License:** MPL-2.0 for the default embedded + remote surface. The optional
 //! `cluster` feature depends on AGPL `dingo-cluster` (in-process multi-node).

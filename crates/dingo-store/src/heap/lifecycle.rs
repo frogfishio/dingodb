@@ -669,6 +669,29 @@ impl HeapLifecycle {
     /// Refuses objects whose plan unit is marked unavailable — those domains
     /// must be recovered or the purge aborted as incomplete.
     pub fn destroy_coverage_unit(&mut self, object_id: [u8; 16]) -> Result<(), StoreError> {
+        self.destroy_coverage_unit_inner(object_id, None)
+    }
+
+    /// Destroy a coverage unit **and wipe live filesystem media** under `media_root`.
+    ///
+    /// Layout (drill / Accept): `{media_root}/{heap_hex}/{object_hex}/…`.
+    /// The entire object directory is removed when present. Missing paths are
+    /// treated as already wiped (idempotent). The domain must be available.
+    ///
+    /// This is the live multi-tier media wipe path for H4 (CPR-003 residual).
+    pub fn destroy_coverage_unit_on_media(
+        &mut self,
+        object_id: [u8; 16],
+        media_root: &Path,
+    ) -> Result<(), StoreError> {
+        self.destroy_coverage_unit_inner(object_id, Some(media_root))
+    }
+
+    fn destroy_coverage_unit_inner(
+        &mut self,
+        object_id: [u8; 16],
+        media_root: Option<&Path>,
+    ) -> Result<(), StoreError> {
         let plan = self
             .purge_plan
             .as_ref()
@@ -691,6 +714,9 @@ impl HeapLifecycle {
                     hex16(&object_id)
                 )));
             }
+        }
+        if let Some(root) = media_root {
+            wipe_heap_object_media(root, &plan.heap_id, &object_id)?;
         }
         self.destroyed.insert(object_id);
         failpoint::hit("heap_lifecycle.after_coverage_destroy")?;
@@ -919,6 +945,43 @@ pub fn refuse_access_from_payload_restore(
     Err(StoreError::HeapAdmit(
         "payload-only restore cannot grant access".into(),
     ))
+}
+
+/// Live filesystem layout for heap object media under a tier/replica root.
+///
+/// `{media_root}/{heap_id_hex}/{object_id_hex}/`
+pub fn heap_object_media_dir(media_root: &Path, heap_id: &[u8; 16], object_id: &[u8; 16]) -> PathBuf {
+    media_root
+        .join(hex16(heap_id))
+        .join(hex16(object_id))
+}
+
+/// Remove heap-scoped object media on a live filesystem root (idempotent).
+pub fn wipe_heap_object_media(
+    media_root: &Path,
+    heap_id: &[u8; 16],
+    object_id: &[u8; 16],
+) -> Result<(), StoreError> {
+    if !media_root.is_dir() {
+        return Err(StoreError::HeapAdmit(format!(
+            "media root unavailable: {}",
+            media_root.display()
+        )));
+    }
+    let target = heap_object_media_dir(media_root, heap_id, object_id);
+    if target.exists() {
+        if target.is_dir() {
+            fs::remove_dir_all(&target)?;
+        } else {
+            fs::remove_file(&target)?;
+        }
+    }
+    // Best-effort: drop empty heap directory when last object is gone.
+    let heap_dir = media_root.join(hex16(heap_id));
+    if heap_dir.is_dir() && fs::read_dir(&heap_dir)?.next().is_none() {
+        let _ = fs::remove_dir(&heap_dir);
+    }
+    Ok(())
 }
 
 /// Destroy data-key material and emit a durable receipt.

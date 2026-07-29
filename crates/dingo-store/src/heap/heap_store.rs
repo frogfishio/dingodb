@@ -79,11 +79,20 @@ impl HeapStore {
         self.gate()?;
         self.require_right(Rights::WRITE)?;
         self.require_subject_v2(subject, None, None)?;
-        let mut guard = self
-            .physical
-            .lock()
-            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
-        guard.put_subject_bytes(subject, value, DurabilityMode::Durable)
+        let receipt = {
+            let mut guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+            guard.put_subject_bytes(subject, value, DurabilityMode::Durable)?
+        };
+        // Collection writes invalidate derived secondary indexes (DEF-027).
+        if let Ok(sv2) = decode_subject_v2(subject) {
+            if sv2.object_kind == SubjectObjectKind::Collection {
+                self.mark_indexes_stale(sv2.object_id)?;
+            }
+        }
+        Ok(receipt)
     }
 
     /// Get by SubjectV2 key within the bound heap.
@@ -103,11 +112,19 @@ impl HeapStore {
         self.gate()?;
         self.require_right(Rights::WRITE)?;
         self.require_subject_v2(subject, None, None)?;
-        let mut guard = self
-            .physical
-            .lock()
-            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
-        guard.delete_subject_bytes(subject, DurabilityMode::Durable)
+        let receipt = {
+            let mut guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+            guard.delete_subject_bytes(subject, DurabilityMode::Durable)?
+        };
+        if let Ok(sv2) = decode_subject_v2(subject) {
+            if sv2.object_kind == SubjectObjectKind::Collection {
+                self.mark_indexes_stale(sv2.object_id)?;
+            }
+        }
+        Ok(receipt)
     }
 
     /// Put under a collection-scoped SubjectV2 (object id + key must match).
@@ -157,6 +174,31 @@ impl HeapStore {
         )
         .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
         self.delete(&subject)
+    }
+
+    /// Mark usable secondary indexes for a collection as stale after a write.
+    ///
+    /// Ready/Partial → Stale (absence proofs disabled). Building/Rebuilding keep
+    /// their state but lose complete_coverage. Failures are returned (DEF-027).
+    pub fn mark_indexes_stale(&self, collection_id: &[u8; 16]) -> Result<(), StoreError> {
+        self.gate()?;
+        // Write right already required by caller put/delete; re-check for direct calls.
+        self.require_right(Rights::WRITE)?;
+        let scope = self.index_scope_key(collection_id);
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        let indexes = guard.list_secondary_indexes(&scope)?;
+        for mut idx in indexes {
+            let before_state = idx.meta.state;
+            let before_cov = idx.meta.complete_coverage;
+            idx.mark_stale();
+            if idx.meta.state != before_state || idx.meta.complete_coverage != before_cov {
+                guard.write_secondary_index(&idx)?;
+            }
+        }
+        Ok(())
     }
 
     /// Event history for a collection key (SubjectV2), oldest first.

@@ -24,9 +24,9 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
-| A1 | Migrate high-traffic demos/tests to `open_deployment` + `HeapCap` | Unblocks default flip | Named demos + at least core SDK tests run heap-bound |
-| A2 | Flip **`legacy-flat-sdk` default off** (keep feature for Stages 3–9) | Closes CPR-001 residual for claim honesty | `--no-default-features` is default profile; matrix H0/H1 open bullets updated |
-| A3 | Flip or document **`legacy-raw-store`** default consistently with A2 | HP-003 cutover | Architecture script + dependents green |
+| A1 | Migrate high-traffic demos/tests to `open_deployment` + `HeapCap` | Unblocks default flip | **Done (partial)** — heap Accept paths use connect_heap / open_deployment; Stages 3–9 tests opt into `legacy-flat-sdk` |
+| A2 | Flip **`legacy-flat-sdk` default off** (keep feature for Stages 3–9) | Closes CPR-001 residual for claim honesty | **Done (2026-07-30)** — `default = []`; stage tests `required-features = ["legacy-flat-sdk"]`; claim + arch check updated |
+| A3 | Flip or document **`legacy-raw-store`** default consistently with A2 | HP-003 cutover | Open — dingo-store still defaults `legacy-raw-store` on |
 
 ### Wave B — §32.4 surface completeness (H1–H2)
 
@@ -36,6 +36,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 | B2 | Activate **history** (117) | Spec + DX parity | **Done (2026-07-30)** — schemas/fixtures + SubjectV2 history + `RemoteHeap::history` + `connect_heap_history` (rights first-cut = Read) |
 | B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | **Done (2026-07-30)** — schemas/fixtures + heap-scoped SecondaryIndex + dispatch + `RemoteHeap` index APIs + `connect_heap_indexes` |
 | B3b | IndexAdmin rights + find acceleration | Close B3 residuals | **Done (2026-07-30)** — ops 131–133 require IndexAdmin; bootstrap cert rights_mask=13; equality `find` uses ready indexes (`connect_heap_find_via_index`) |
+| B3c | Index stale maintain after SubjectV2 writes | Index honesty after put/delete | **Done (2026-07-30)** — `HeapStore::mark_indexes_stale` on put/delete; Accept in `connect_heap_find_via_index` |
 | B4 | Activate **collection_create** (106) (needs rights story) | Provisioning without offline catalog | Ceremony/rights + Accept |
 | B5 | Remaining reserved ops only as needed for drills (lifecycle RPC, export, …) | Avoid activation thrash | Matrix-driven only |
 
@@ -43,7 +44,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
-| C1 | Live filesystem multi-tier media wipe drill | H4 open | Matrix evidence path + Accept test |
+| C1 | Live filesystem multi-tier media wipe drill | H4 open | **Done (2026-07-30)** — `destroy_coverage_unit_on_media` + `wipe_heap_object_media`; Accept `live_filesystem_multi_tier_media_wipe` / unavailable root stays retired |
 | C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | Adapter or matrix note disposing residual |
 | C3 | Mixed-heap salvage classification drill | H4 open | Matrixed drill Accept |
 | C4 | Broader destructive crash-matrix cells (beyond peer lifecycle) | H5 open | crash_matrix cells + CI subset |
@@ -82,9 +83,9 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 ## Suggested next 3 labor packages (concrete)
 
-1. **A1–A2 CPR-001 default flip** (legacy-flat-sdk off after Stages 3–9 migrate).  
-2. **C1 — live multi-tier media wipe** (H4).  
-3. **D1 — Verus/Kani connection** (H6 engineering gate).
+1. **D1 — Verus/Kani connection** (H6 engineering gate; still blocks `qualified=true`).  
+2. **A3 — flip `legacy-raw-store` default** consistently with CPR-001.  
+3. **C2/C3 — HSM adapter disposition + mixed-heap salvage** (H4 residuals).
 
 ## Machine checks (today)
 

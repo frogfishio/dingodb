@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced: SubjectV2 + connect_heap + \u00a732.4 data/list/scan/find/history/indexes (105/110\u2013112/114\u2013117/120\u2013122/130\u2013133) Accept + CPR-001 opt-in. H0/H2/H4/H5 still partial (lifecycle reserved, recovery residuals). H6 partial \u2014 Verus/Kani + signed external review open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced: SubjectV2 + connect_heap + \u00a732.4 data/list/scan/find/history/indexes + stale maintain + CPR-001 heap-only default. H0/H2/H4/H5 still partial (lifecycle reserved, HSM/salvage residuals). H6 partial \u2014 Verus/Kani + signed external review open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -12,10 +12,11 @@
         "crates/dingo-heap (HeapId/CollectionId/StreamId/DeploymentId/AuthorityEpoch)",
         "spec/heap/operations-v1.json + cbor-v1.json",
         "scripts/check_heap_architecture.sh",
-        "crates/dingo-sdk claim.rs FLAT_COLLECTION_SURFACE_LABEL / legacy_flat_sdk_enabled"
+        "crates/dingo-sdk claim.rs FLAT_COLLECTION_SURFACE_LABEL / legacy_flat_sdk_enabled / heap_only_embedded_profile",
+        "crates/dingo-sdk Cargo.toml default=[] (CPR-001 heap-only default)"
       ],
       "open": [
-        "CPR-001 residual: legacy-flat-sdk still default-on for Stages 3\u20139 (flip default after cutover)"
+        "legacy-raw-store still default-on in dingo-store (A3 residual)"
       ]
     },
     "H1": {
@@ -36,10 +37,10 @@
         "crates/dingo-sdk/tests/cpr001_legacy_opt_in.rs",
         "crates/dingo-sdk HeapCollection put/get/delete (SubjectV2)",
         "crates/dingo-sdk Dingo::connect_heap + RemoteHeap process + data + list/scan/find/history/indexes",
-        "crates/dingo-sdk Dingo::open_deployment / open_compatibility (CPR-001)",
-        "crates/dingo-sdk feature legacy-flat-sdk (default on; --no-default-features = heap-only)",
+        "crates/dingo-sdk Dingo::open_deployment / open_compatibility",
+        "crates/dingo-sdk feature legacy-flat-sdk opt-in (package default heap-only)",
         "crates/dingo-sdk HeapCredential / HolderSigner / RemoteHeapOptions",
-        "crates/dingo-store HeapStore put/get/delete SubjectV2-only + rights gate",
+        "crates/dingo-store HeapStore put/get/delete SubjectV2-only + rights gate + mark_indexes_stale",
         "crates/dingo-store HeapStore lookup_index_keys equality acceleration",
         "crates/dingo-store Store::put_subject_bytes/get_subject_bytes/delete_subject_bytes",
         "crates/dingo-heap inspect_certificate + build_holder_proof",
@@ -47,8 +48,7 @@
         "scripts/check_heap_architecture.sh"
       ],
       "open": [
-        "index maintenance after writes (stale marking / incremental maintain) not yet on SubjectV2 path",
-        "CPR-001 residual: flip default off after Stages 3\u20139 callers migrate to heap APIs"
+        "incremental index rebuild (not only full rebuild after stale) still first-cut"
       ]
     },
     "H2": {
@@ -94,10 +94,12 @@
       "status": "partial",
       "evidence": [
         "crates/dingo-store/tests/hp009_lifecycle.rs",
-        "crates/dingo-store/tests/hp010_qualification.rs::restore_drills_payload_and_retain_id"
+        "crates/dingo-store/tests/hp009_lifecycle.rs::live_filesystem_multi_tier_media_wipe",
+        "crates/dingo-store/tests/hp009_lifecycle.rs::live_media_wipe_unavailable_tier_root_stays_retired",
+        "crates/dingo-store/tests/hp010_qualification.rs::restore_drills_payload_and_retain_id",
+        "crates/dingo-store HeapLifecycle::destroy_coverage_unit_on_media / wipe_heap_object_media"
       ],
       "open": [
-        "live filesystem multi-tier media wipe",
         "HSM/provider data-key adapters",
         "mixed-heap salvage classification drill not yet matrixed"
       ]

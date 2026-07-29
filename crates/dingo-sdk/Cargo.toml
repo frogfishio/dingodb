@@ -15,10 +15,10 @@ categories = ["database", "api-bindings"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
 [features]
-# CPR-001: default includes the legacy flat collection surface (Stages 3–9).
-# Qualified heap-only profile: `cargo check -p dingo-sdk --no-default-features`
-# (deployment + HeapCap + connect_heap; no Dingo::collection by name).
-default = ["legacy-flat-sdk"]
+# CPR-001 closed for default product profile: package default is **heap-only**
+# (deployment + HeapCap + connect_heap). Stages 3–9 flat surface is opt-in via
+# `legacy-flat-sdk` (or `cluster`, which implies it).
+default = []
 # Flat `Dingo::open` / `collection(name)` / token remote / raw Store access.
 # Pulls public `dingo-store` `legacy-raw-store`. Not part of Gate H6 claims.
 legacy-flat-sdk = ["dingo-store/legacy-raw-store"]
@@ -117,4 +117,41 @@ required-features = ["dangerous-key-export"]
 
 [[test]]
 name = "cpr001_legacy_opt_in"
-# Runs with package defaults (legacy-flat-sdk on) and asserts claim honesty.
+# Flat surface opt-in (default package profile is heap-only after CPR-001 flip).
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "stage4_collection"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "stage6_indexes_history"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "stage_def_027_index_lifecycle"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "stage_def_028_filter_sda"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "stage_def_029_resource_governance"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "dialects_query"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "multi_collection_sda_join"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "multi_query_join_sda"
+required-features = ["legacy-flat-sdk"]
+
+[[test]]
+name = "sda_enr_text_query"
+required-features = ["legacy-flat-sdk"]

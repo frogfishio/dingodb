@@ -1,6 +1,7 @@
 //! HP-009 Accept: purge receipt, payload-only restore, damage isolation,
 //! data-key destruction, tombstones, DR retain-ID takeover,
-//! incomplete media-domain purge, retention scheduler.
+//! incomplete media-domain purge, retention scheduler,
+//! live filesystem multi-tier media wipe.
 
 use dingo_heap::{
     DeploymentId, HeapAdministrativeState, HeapId, HeapSlot, SecurityRevision,
@@ -8,12 +9,14 @@ use dingo_heap::{
 use dingo_store::{
     active_snapshot, build_backup_manifest, decode_purge_receipt, destroy_data_key,
     disaster_recovery_restore_retaining_id, encode_purge_receipt, heap_label_envelope,
-    labelled_unit_readable, load_identity_tombstone, old_deployment_credential_invalid,
-    refuse_access_from_payload_restore, refuse_clear_tombstone_via_payload_restore,
-    refuse_retain_id_without_ceremony, restore_payload_to_new_heap, verify_purge_receipt,
-    DataKeyHandle, DisasterRecoveryCeremony, DisasterRecoveryPackage, HeapLifecycle,
-    HeapRetentionPolicy, MediaDomain, PurgeCoverageUnit, TierClass, TombstoneKind,
+    heap_object_media_dir, labelled_unit_readable, load_identity_tombstone,
+    old_deployment_credential_invalid, refuse_access_from_payload_restore,
+    refuse_clear_tombstone_via_payload_restore, refuse_retain_id_without_ceremony,
+    restore_payload_to_new_heap, verify_purge_receipt, DataKeyHandle, DisasterRecoveryCeremony,
+    DisasterRecoveryPackage, HeapLifecycle, HeapRetentionPolicy, MediaDomain, PurgeCoverageUnit,
+    TierClass, TombstoneKind,
 };
+use std::fs;
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -398,4 +401,131 @@ fn retention_scheduler_blocks_purge_until_window_elapses() {
     let mut sched = dingo_store::RetentionScheduler::new();
     let loaded = sched.load_policy(tmp.path(), &heap).unwrap().unwrap();
     assert_eq!(loaded.minimum_retain_until_unix_s, retain_until);
+}
+
+/// H4 / CPR-003: live multi-tier filesystem wipe under real media roots.
+#[test]
+fn live_filesystem_multi_tier_media_wipe() {
+    let tmp = TempDir::new().unwrap();
+    let slot = slot_for(0xb0);
+    let heap = slot.load().heap_id.to_bytes();
+    let mut life = HeapLifecycle::open(tmp.path(), Arc::clone(&slot));
+    life.retire(op(0xb1)).unwrap();
+
+    // Three live tier roots on the filesystem (hot / warm / cold).
+    let hot_root = tmp.path().join("media").join("hot");
+    let warm_root = tmp.path().join("media").join("warm");
+    let cold_root = tmp.path().join("media").join("cold");
+    for r in [&hot_root, &warm_root, &cold_root] {
+        fs::create_dir_all(r).unwrap();
+    }
+
+    let hot_obj = uuidish(0xb2);
+    let warm_obj = uuidish(0xb3);
+    let cold_obj = uuidish(0xb4);
+
+    // Plant heap-scoped object media on each tier.
+    for (root, oid, payload) in [
+        (&hot_root, hot_obj, b"hot-copy" as &[u8]),
+        (&warm_root, warm_obj, b"warm-copy"),
+        (&cold_root, cold_obj, b"cold-copy"),
+    ] {
+        let dir = heap_object_media_dir(root, &heap, &oid);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("seg.dingo"), payload).unwrap();
+        assert!(dir.join("seg.dingo").is_file());
+    }
+
+    let units = vec![
+        PurgeCoverageUnit {
+            object_id: hot_obj,
+            domain: MediaDomain::Tier(TierClass::Hot),
+            available: true,
+        },
+        PurgeCoverageUnit {
+            object_id: warm_obj,
+            domain: MediaDomain::Tier(TierClass::Warm),
+            available: true,
+        },
+        PurgeCoverageUnit {
+            object_id: cold_obj,
+            domain: MediaDomain::Tier(TierClass::Cold),
+            available: true,
+        },
+    ];
+    let plan = life
+        .begin_purge_media(op(0xb5), units.clone(), 1_700_000_000)
+        .unwrap();
+
+    life.destroy_coverage_unit_on_media(hot_obj, &hot_root)
+        .unwrap();
+    life.destroy_coverage_unit_on_media(warm_obj, &warm_root)
+        .unwrap();
+    life.destroy_coverage_unit_on_media(cold_obj, &cold_root)
+        .unwrap();
+
+    // Filesystem media gone.
+    assert!(!heap_object_media_dir(&hot_root, &heap, &hot_obj).exists());
+    assert!(!heap_object_media_dir(&warm_root, &heap, &warm_obj).exists());
+    assert!(!heap_object_media_dir(&cold_root, &heap, &cold_obj).exists());
+
+    let receipt = life.complete_purge(plan.operation_id).unwrap();
+    assert_eq!(life.state(), HeapAdministrativeState::Purged);
+    verify_purge_receipt(
+        &receipt,
+        &units.iter().map(|u| u.object_id).collect::<Vec<_>>(),
+    )
+    .unwrap();
+}
+
+/// Unmounted tier root refuses live wipe; incomplete purge stays retired.
+#[test]
+fn live_media_wipe_unavailable_tier_root_stays_retired() {
+    let tmp = TempDir::new().unwrap();
+    let slot = slot_for(0xc0);
+    let heap = slot.load().heap_id.to_bytes();
+    let mut life = HeapLifecycle::open(tmp.path(), Arc::clone(&slot));
+    life.retire(op(0xc1)).unwrap();
+
+    let hot_root = tmp.path().join("media").join("hot");
+    fs::create_dir_all(&hot_root).unwrap();
+    // cold root intentionally missing (unmounted).
+    let cold_root = tmp.path().join("media").join("cold-unmounted");
+
+    let hot_obj = uuidish(0xc2);
+    let cold_obj = uuidish(0xc3);
+    let dir = heap_object_media_dir(&hot_root, &heap, &hot_obj);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("seg.dingo"), b"hot").unwrap();
+
+    let units = vec![
+        PurgeCoverageUnit {
+            object_id: hot_obj,
+            domain: MediaDomain::Tier(TierClass::Hot),
+            available: true,
+        },
+        PurgeCoverageUnit {
+            object_id: cold_obj,
+            domain: MediaDomain::Tier(TierClass::Cold),
+            available: false, // domain flagged unavailable
+        },
+    ];
+    let plan = life
+        .begin_purge_media(op(0xc4), units, 1_700_000_000)
+        .unwrap();
+
+    life.destroy_coverage_unit_on_media(hot_obj, &hot_root)
+        .unwrap();
+    assert!(!heap_object_media_dir(&hot_root, &heap, &hot_obj).exists());
+
+    // Unavailable domain cannot be wiped even if we point at a path.
+    let err = life
+        .destroy_coverage_unit_on_media(cold_obj, &cold_root)
+        .unwrap_err();
+    assert!(err.to_string().contains("unavailable"), "{err}");
+
+    let incomplete = life.abort_incomplete_purge(plan.operation_id).unwrap();
+    assert_eq!(life.state(), HeapAdministrativeState::Retired);
+    assert_eq!(incomplete.destroyed_ids, vec![hot_obj]);
+    assert!(incomplete.remaining_ids.contains(&cold_obj));
 }

@@ -1018,6 +1018,28 @@ fn connect_heap_find_via_index() {
         .expect("find gte scan");
     assert_eq!(gte.len(), 2);
 
+    // Write after index → stale; equality miss cannot prove absence via index.
+    remote
+        .put_json(&cid, "d", &serde_json::json!({"status": "active", "n": 4}))
+        .unwrap();
+    let listed = remote.index_list(&cid).expect("index_list after write");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(
+        listed[0].get("state").and_then(|v| v.as_str()),
+        Some("stale"),
+        "post-write index must be stale: {:?}",
+        listed[0]
+    );
+    // Rebuild restores ready + complete coverage.
+    let rebuilt = remote
+        .index_rebuild(&cid, "by-status")
+        .expect("rebuild after stale");
+    assert_eq!(rebuilt.get("state").and_then(|v| v.as_str()), Some("ready"));
+    let hits2 = remote
+        .find(&cid, &serde_json::json!({"status": "active"}), Some(10))
+        .expect("find after rebuild");
+    assert_eq!(hits2.len(), 3);
+
     drop(remote);
     flag.store(true, Ordering::SeqCst);
     thread::sleep(Duration::from_millis(50));

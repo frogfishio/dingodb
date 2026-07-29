@@ -110,15 +110,20 @@ fi
 # Qualified feature surface builds without public raw Store.
 cargo check -p dingo-store --no-default-features --quiet \
   || fail "dingo-store --no-default-features must build"
-# CPR-001: heap-only SDK profile (no flat collection) must compile.
+# CPR-001: package default is heap-only; legacy flat is opt-in.
 if ! rg -n 'legacy-flat-sdk' crates/dingo-sdk/Cargo.toml >/dev/null; then
   fail "dingo-sdk must declare legacy-flat-sdk feature (CPR-001)"
+fi
+if ! rg -n 'default = \[\]' crates/dingo-sdk/Cargo.toml >/dev/null; then
+  fail "dingo-sdk default features must be empty (CPR-001 heap-only default)"
 fi
 if ! rg -n 'legacy_flat_sdk_enabled|FLAT_COLLECTION_SURFACE_LABEL' crates/dingo-sdk/src/claim.rs >/dev/null; then
   fail "dingo-sdk claim honesty surface missing (CPR-001)"
 fi
-cargo check -p dingo-sdk --no-default-features --quiet \
-  || fail "dingo-sdk --no-default-features (heap-only) must build"
+cargo check -p dingo-sdk --quiet \
+  || fail "dingo-sdk default (heap-only) must build"
+cargo check -p dingo-sdk --features legacy-flat-sdk --quiet \
+  || fail "dingo-sdk --features legacy-flat-sdk must build"
 # Data-service check still builds without linking authority.
 cargo check -p dingo-server --quiet \
   || fail "dingo-server must build without dingo-authority"
