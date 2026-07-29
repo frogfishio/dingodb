@@ -79,22 +79,22 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │  MIT — protocol, pure algebra, wire format, pure clients    │
-│  dingo-sda · dingo-sda-cli · dingo-format · dingo-client                │
+│  dingo-sda · dingo-sda-cli · dingo-format · dingo-client · dingo-heap   │
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
 │  MPL-2.0 — linkable embedded engine + collection SDK        │
-│  dingo-store · dingo-examine · dingo-sdk (default features) │
+│  dingo-store · dingo-examine · dingo-sdk · dingo-testrig    │
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
 │  AGPL-3.0-or-later — networked product                      │
-│  dingo-cluster · dingo-server · dingo-cli                   │
+│  dingo-cluster · dingo-server · dingo-cli · dingo-authority │
 │  (+ dingo-sdk when built with features = ["cluster"])       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.1 Per-crate SPDX (current tree)
+### 3.1 Per-crate SPDX (current and adopted planned crates)
 
 | Crate (dir → package) | SPDX today | Notes |
 |----------------------|------------|-------|
@@ -102,12 +102,15 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 | `sda-cli` → `dingo-sda-cli` | **MIT** | Binary `dingo-sda` |
 | `dingo-format` | **MIT** | |
 | `dingo-client` | **MIT** | Wire framing + handshake |
+| `dingo-heap` | **MIT** | Planned heap identity, certificate, capability, and pure decision kernel |
 | `dingo-store` | **MPL-2.0** | |
 | `dingo-examine` | **MPL-2.0** | |
 | `dingo-sdk` | **MPL-2.0** | Default: embedded + remote; optional `cluster` → AGPL dep |
+| `dingo-testrig` | **MPL-2.0** | Unpublished store stress/chaos tool |
 | `dingo-cluster` | **AGPL-3.0-or-later** | |
 | `dingo-server` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
 | `dingo-cli` → `dingo` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
+| `dingo-authority` | **AGPL-3.0-or-later** | Planned separate local-only heap authority executable; never linked by data server |
 
 ### 3.2 License files
 
@@ -149,12 +152,15 @@ the AGPL dependency. Serve path lives only in `dingo-server`.
 |---------|----------|---------|------------|
 | `dingo-format` | unchanged | MIT | — |
 | `dingo-client` | wire framing + handshake | MIT | — |
+| `dingo-heap` | heap identity, credentials, capability and pure decision kernel | MIT | format |
 | `dingo-store` | unchanged | MPL-2.0 | format |
 | `dingo-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, dingo-sda; optional cluster |
+| `dingo-testrig` | unpublished store stress, chaos, and performance rig | MPL-2.0 | store |
 | `dingo-examine` | unchanged | MPL-2.0 | store, format, dingo-sda |
 | `dingo-cluster` | unchanged | AGPL-3.0-or-later | store |
 | `dingo-server` | accept loop, authz, admission, raft RPC glue | AGPL-3.0-or-later | sdk+cluster, store |
 | `dingo-cli` | CLI + doctor/salvage/serve | AGPL-3.0-or-later | server, sdk+cluster, examine |
+| `dingo-authority` | separate local authority mutation and genesis executable | AGPL-3.0-or-later | heap, format, store (`authority-provisioning`) |
 | `dingo-sda` / `dingo-sda-cli` | SDA+ENR1 hybrid | MIT | — |
 
 ### 4.3 Remaining optional polish
@@ -170,9 +176,11 @@ the AGPL dependency. Serve path lives only in `dingo-server`.
 ## 5. GPL-track matrix (adopted)
 
 ```text
-MIT                → dingo-sda, dingo-sda-cli, dingo-format, dingo-client
-MPL-2.0            → dingo-store, dingo-examine, dingo-sdk (default features)
-AGPL-3.0-or-later  → dingo-cluster, dingo-server, dingo-cli
+MIT                → dingo-sda, dingo-sda-cli, dingo-format, dingo-client,
+                     dingo-heap
+MPL-2.0            → dingo-store, dingo-examine, dingo-sdk (default features),
+                     dingo-testrig
+AGPL-3.0-or-later  → dingo-cluster, dingo-server, dingo-cli, dingo-authority
                      (+ dingo-sdk when features = ["cluster"])
 ```
 
@@ -184,10 +192,12 @@ store remains an optional business track; keep pure client and format MIT.
 
 ## 6. Release checklist
 
-1. **Per-crate `license` in Cargo.toml** — done (no uniform workspace MIT).
+1. **Per-crate `license` in Cargo.toml** — done for existing crates; HP-001
+   adds `dingo-heap` as MIT and HP-005 adds `dingo-authority` as AGPL.
 2. **LICENSE files** — root multi-license tree (done).
 3. **README + CONTRIBUTING** — multi-license notice; inbound = outbound (done).
-4. **CLI `--license`** — `dingo-sda` MIT; `dingo` AGPL (done).
+4. **CLI `--license`** — `dingo-sda` MIT and `dingo` AGPL are done;
+   `dingo-authority` MUST report AGPL when HP-005 creates it.
 5. **Publish `dingo-sdk` as MPL-2.0** with default features only (no
    `dingo-cluster`). Document that `features = ["cluster"]` pulls AGPL.
 6. **`cargo deny` / license policies** — optional hardening before crates.io.
@@ -206,6 +216,7 @@ dingo-sdk      → dingo-client, dingo-store, sda-core  (+ optional dingo-cluste
 dingo-client   → (none of store/cluster)                                       (MIT)
 dingo-cluster  → dingo-store                                                   (AGPL)
 dingo-examine  → dingo-format, dingo-store, sda-core                           (MPL)
+dingo-testrig  → dingo-store                                                   (MPL)
 dingo-store    → dingo-format                                                  (MPL)
 sda-cli        → sda-core                                                      (MIT)
 ```
