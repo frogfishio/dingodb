@@ -132,6 +132,8 @@ fuzz/fuzz_targets/heap_ownership.rs
 
 #### Next recommended package
 
+Living task queue: **[doc/HEAP_NEXT_TASKS.md](doc/HEAP_NEXT_TASKS.md)**.
+
 Continue **HP-010** critical path: close H0/H1/H2/H4/H5 residuals → machine-checked
 Verus/Kani → signed external review disposing CPR findings → only then consider
 `qualified=true`. In parallel: more §32.4 (find/index), default qualified listener,
@@ -6063,10 +6065,3 @@ the event bytes. Both types have private constructors. Their deserializers are
 compiled only into the mutually authenticated cluster-peer protocol and
 revalidate canonical encoding, signatures where applicable, expected version,
 previous hash, and exact heap/deployment identity before Raft admission. They
-are not request types in the client data listener.
-
-In the cluster profile, `apply_committed_head` does not acknowledge merely
-because the leader's local authority files changed. It proposes the matching
-`CommitMasterAuthorityEvent`, waits for quorum commit and local application,
-and returns the committed index and term. A crash after the local anchor
-advance but before quorum commit leaves the heap unavailable; retry with the
