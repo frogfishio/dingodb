@@ -4,6 +4,7 @@ mod catalog;
 mod heap_store;
 mod host;
 mod maintenance_store;
+mod migration;
 mod one_heap;
 mod recovery_store;
 mod replica_store;
@@ -19,6 +20,11 @@ pub use catalog::{
 pub use heap_store::HeapStore;
 pub use host::StoreHost;
 pub use maintenance_store::MaintenanceStore;
+pub use migration::{
+    CutoverGate, HeapMigrationJob, InventoryFrame, InventorySegment, MigrationPhase,
+    MigrationStateV1, SourceInventory, ADMITTED_FILE, ASSIGNMENTS_FILE, ASSIGNMENTS_HASH_DOMAIN,
+    HEAP_MIGRATE_DIR, HEAP_MIGRATE_PROFILE, INVENTORY_HASH_DOMAIN, STATE_FILE,
+};
 pub use one_heap::{heap_binding_envelope, require_admit};
 pub use recovery_store::RecoveryStore;
 pub use replica_store::ReplicaCapStore as ReplicaStore;

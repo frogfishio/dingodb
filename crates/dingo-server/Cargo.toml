@@ -29,6 +29,7 @@ rustls-pki-types = "1"
 [dev-dependencies]
 tempfile.workspace = true
 dingo-format.workspace = true
+dingo-store.workspace = true
 ed25519-dalek = { version = "2.1.1", default-features = false, features = [
   "alloc",
   "fast",
@@ -36,3 +37,4 @@ ed25519-dalek = { version = "2.1.1", default-features = false, features = [
 ] }
 hex = "0.4"
 sha2 = "0.10"
+rcgen = "0.13"

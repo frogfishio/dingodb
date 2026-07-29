@@ -132,10 +132,15 @@ pub use heap::{
     publish_staged_genesis, rebuild_and_persist_all_catalogs, rebuild_heap_entry_from_chain,
     rebuild_object_entry_from_chain, rename_heap, rename_object, require_admit, retire_heap,
     retire_object, stage_heap_genesis, staging_is_non_discoverable, try_load_collections_catalog,
-    try_load_heap_catalog, try_load_streams_catalog, AdminReceipt, HeapCatalogEntry, HeapMetaLayout,
-    HeapStore, MaintenanceStore, ObjectCatalogEntry, ObjectKind, RecoveryStore, ReplicaStore,
-    StagedGenesis, StoreHost, COLLECTIONS_CATALOG_FILE as HEAP_COLLECTIONS_CATALOG_FILE,
-    HEAP_CATALOG_FILE, STREAMS_CATALOG_FILE as HEAP_STREAMS_CATALOG_FILE,
+    try_load_heap_catalog, try_load_streams_catalog, AdminReceipt, CutoverGate, HeapCatalogEntry,
+    HeapMetaLayout, HeapMigrationJob, HeapStore, InventoryFrame, InventorySegment, MaintenanceStore,
+    MigrationPhase, MigrationStateV1, ObjectCatalogEntry, ObjectKind, RecoveryStore, ReplicaStore,
+    SourceInventory, StagedGenesis, StoreHost, ADMITTED_FILE as HEAP_MIGRATE_ADMITTED_FILE,
+    ASSIGNMENTS_FILE as HEAP_MIGRATE_ASSIGNMENTS_FILE,
+    ASSIGNMENTS_HASH_DOMAIN as HEAP_MIGRATE_ASSIGNMENTS_HASH_DOMAIN,
+    COLLECTIONS_CATALOG_FILE as HEAP_COLLECTIONS_CATALOG_FILE, HEAP_CATALOG_FILE, HEAP_MIGRATE_DIR,
+    HEAP_MIGRATE_PROFILE, INVENTORY_HASH_DOMAIN as HEAP_MIGRATE_INVENTORY_HASH_DOMAIN,
+    STATE_FILE as HEAP_MIGRATE_STATE_FILE, STREAMS_CATALOG_FILE as HEAP_STREAMS_CATALOG_FILE,
 };
 pub use history::{HistoryEvent, SubjectHistory};
 pub use hydra::{

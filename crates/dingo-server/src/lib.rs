@@ -55,8 +55,9 @@ pub use heap_dispatch::{
 };
 pub use heap_registry::{ResidentHeap, ResidentHeapRegistry};
 pub use heap_session::{
-    run_qualified_handshake, validate_qualified_listener, QualifiedHandshakeParams,
-    QualifiedHandshakeResult, QualifiedSession,
+    run_qualified_handshake, run_qualified_handshake_buffered, serve_qualified_requests,
+    validate_qualified_listener, QualifiedHandshakeParams, QualifiedHandshakeResult,
+    QualifiedSession,
 };
 pub use metrics::{
     evaluate_health, is_public_probe_op, AdmissionStatsWire, EdgeMetrics, GuaranteeMetrics,

@@ -7,6 +7,10 @@ use crate::admission::{
 };
 use crate::authz::{check_rpc, AuditLog, AuthzPolicy, FORCE_RECONFIG_CONFIRM, PURGE_CONFIRM};
 use crate::bind_policy;
+use crate::heap_session::{
+    run_qualified_handshake_buffered, serve_qualified_requests, QualifiedHandshakeParams,
+    QualifiedHandshakeResult,
+};
 use crate::metrics::{
     evaluate_health, is_public_probe_op, HealthEvalInput, MetricsRegistry, HEALTH_PROFILE,
     METRICS_PROFILE,
@@ -35,7 +39,7 @@ use std::str;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
 #[derive(Debug, Clone)]
@@ -135,6 +139,9 @@ pub struct ServeOptions {
     pub deployment_id: Option<String>,
     /// Optional heap-auth audit sink (never on the wire).
     pub heap_auth_audit: Option<Arc<crate::HeapAuthAuditLog>>,
+    /// Override trusted unix seconds for HeapKey windows (tests). When unset,
+    /// the accept path uses wall-clock unix time.
+    pub security_now_unix_s: Option<u64>,
 }
 
 impl Default for ServeOptions {
@@ -164,6 +171,7 @@ impl Default for ServeOptions {
             heap_registry: None,
             deployment_id: None,
             heap_auth_audit: None,
+            security_now_unix_s: None,
         }
     }
 }
@@ -252,6 +260,12 @@ impl ServeOptions {
     /// Attach a heap-auth audit sink (HP-008 diagnostics).
     pub fn heap_auth_audit(mut self, audit: Arc<crate::HeapAuthAuditLog>) -> Self {
         self.heap_auth_audit = Some(audit);
+        self
+    }
+
+    /// Override security time for HeapKey certificate windows (tests).
+    pub fn security_now_unix_s(mut self, unix_s: u64) -> Self {
+        self.security_now_unix_s = Some(unix_s);
         self
     }
 
@@ -802,6 +816,40 @@ fn wrap_server_stream(tcp: TcpStream, tls: Option<&TlsServerState>) -> Result<Io
     }
 }
 
+/// Qualified heap-key path: TLS exporter → challenge/auth → HeapCap request loop.
+///
+/// Token/RBAC and the shared store mutex are not used on this path (HP-008).
+fn qualified_connection_shared(stream: IoStream, options: &ServeOptions) -> Result<(), Error> {
+    let tls_exporter = stream.export_channel_binding()?;
+    let mut reader = BufReader::new(stream);
+    let registry = options.heap_registry.as_ref().ok_or_else(|| {
+        Error::ValidationMsg("qualified listener missing heap_registry".into())
+    })?;
+    let deployment_id = options.deployment_id.as_deref().ok_or_else(|| {
+        Error::ValidationMsg("qualified listener missing deployment_id".into())
+    })?;
+    let now_unix_s = options.security_now_unix_s.unwrap_or_else(|| {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    });
+    let params = QualifiedHandshakeParams {
+        registry,
+        deployment_id,
+        tls_exporter: &tls_exporter,
+        now_unix_s,
+        audit: options.heap_auth_audit.as_deref(),
+        server_nonce: None,
+    };
+    match run_qualified_handshake_buffered(&mut reader, params)? {
+        QualifiedHandshakeResult::Established(session) => {
+            serve_qualified_requests(&mut reader, &session)
+        }
+        QualifiedHandshakeResult::Rejected { .. } => Ok(()),
+    }
+}
+
 /// Server handshake over a buffered duplex stream (single ownership).
 fn server_handshake_buffered(reader: &mut BufReader<IoStream>) -> Result<NegotiatedSession, Error> {
     // server_handshake needs separate Read/Write; use BufReader + get_mut.
@@ -1061,6 +1109,11 @@ pub fn handle_connection_shared(
     stream
         .set_write_timeout(Some(idle))
         .map_err(Error::from_io)?;
+
+    if options.qualified_heap_key {
+        return qualified_connection_shared(stream, &options);
+    }
+
     let mut reader = BufReader::new(stream);
 
     let max_frame = if options.diagnostic_line_protocol {
@@ -1218,6 +1271,11 @@ fn connection_loop(
     stream
         .set_write_timeout(Some(idle))
         .map_err(Error::from_io)?;
+
+    if options.qualified_heap_key {
+        return qualified_connection_shared(stream, options);
+    }
+
     let mut reader = BufReader::new(stream);
     let admission = options.effective_admission();
     let logger = options.effective_logger();
