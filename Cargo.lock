@@ -512,6 +512,8 @@ dependencies = [
  "blake3",
  "dingo-client",
  "dingo-cluster",
+ "dingo-format",
+ "dingo-heap",
  "dingo-sda",
  "dingo-server",
  "dingo-store",

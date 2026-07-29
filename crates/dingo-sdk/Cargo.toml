@@ -22,6 +22,8 @@ cluster = ["dep:dingo-cluster"]
 [dependencies]
 dingo-client.workspace = true
 dingo-store.workspace = true
+dingo-heap.workspace = true
+dingo-format.workspace = true
 dingo-cluster = { workspace = true, optional = true }
 sda-core.workspace = true
 serde.workspace = true

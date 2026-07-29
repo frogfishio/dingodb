@@ -37,6 +37,7 @@ mod dialects;
 mod directory_cache;
 mod error;
 mod filter;
+mod heap;
 mod history;
 mod indexes;
 mod multi_query;
@@ -67,6 +68,9 @@ pub use dialects::{
 pub use filter::{
     FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, QueryPlan, SortOrder,
     QUERY_PLAN_PROFILE,
+};
+pub use heap::{
+    DingoDeployment, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream, SignedCursor,
 };
 pub use multi_query::{map_joined_sda, JoinBuilder, MultiQuery, MULTI_QUERY_PROFILE};
 pub use sda_query::{eval_sda_program, SdaTextQuery, SDA_QUERY_PROFILE};
