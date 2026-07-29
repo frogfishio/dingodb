@@ -206,3 +206,14 @@ pub use write_dedup::{
     content_identity, write_dedup_path, DedupRecord, WriteDedupTable, WRITE_DEDUP_FILE,
 };
 pub use writer_lock::{WriterLock, WRITER_LOCK_FILE};
+
+/// Local-only staged genesis / publish used by `dingo-authority` (HP-005).
+/// MUST NOT be enabled in the qualified data-service target.
+#[cfg(feature = "authority-provisioning")]
+pub mod authority_provisioning {
+    //! Re-exports catalog ceremony helpers for the authority tool.
+    pub use crate::heap::{
+        load_staged_genesis, publish_staged_genesis, stage_heap_genesis, HeapMetaLayout,
+        StagedGenesis,
+    };
+}

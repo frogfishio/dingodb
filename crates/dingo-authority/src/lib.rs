@@ -23,3 +23,9 @@ pub use reload::{
     apply_reload_request, notify_reload, peek_reload_request, ReloadNotify, ReloadRequest,
 };
 pub use store::{AuthorityPaths, MasterAuthorityStore};
+
+/// Test helper: wrap a payload in a §35 slot file.
+#[doc(hidden)]
+pub fn slot_encode_for_test(payload: &[u8]) -> Vec<u8> {
+    slot::encode_slot_file(payload).expect("slot encode")
+}

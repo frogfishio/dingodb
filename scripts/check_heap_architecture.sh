@@ -84,8 +84,27 @@ if ! rg -n 'legacy-raw-store' crates/dingo-store/Cargo.toml >/dev/null; then
   fail "dingo-store must declare legacy-raw-store feature"
 fi
 
+# Qualified data service must never depend on dingo-authority or enable
+# authority-provisioning (HP-005 firewall).
+if rg -n 'dingo-authority|authority-provisioning' crates/dingo-server/Cargo.toml; then
+  fail "dingo-server must not depend on dingo-authority or authority-provisioning"
+fi
+if rg -n 'dingo-authority' crates/dingo-sdk/Cargo.toml crates/dingo-client/Cargo.toml 2>/dev/null; then
+  fail "sdk/client must not depend on dingo-authority"
+fi
+# dingo-authority must exist and be AGPL.
+if [[ ! -f crates/dingo-authority/Cargo.toml ]]; then
+  fail "dingo-authority crate missing (HP-005)"
+fi
+if ! rg -n 'AGPL-3.0-or-later' crates/dingo-authority/Cargo.toml >/dev/null; then
+  fail "dingo-authority must be AGPL-3.0-or-later"
+fi
+
 # Qualified feature surface builds without public raw Store.
 cargo check -p dingo-store --no-default-features --quiet \
   || fail "dingo-store --no-default-features must build"
+# Data-service check still builds without linking authority.
+cargo check -p dingo-server --quiet \
+  || fail "dingo-server must build without dingo-authority"
 
 echo "check_heap_architecture: OK"

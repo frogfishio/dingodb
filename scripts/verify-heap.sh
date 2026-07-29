@@ -10,6 +10,7 @@ cargo test -p dingo-heap --lib --tests
 cargo test -p dingo-format --lib
 cargo test -p dingo-store --lib heap::catalog
 cargo test -p dingo-store --test hp004_catalog_rebuild
+cargo test -p dingo-authority --test hp005_accept
 
 if [[ "$MODE" == "full" ]]; then
   if command -v kani >/dev/null 2>&1; then
