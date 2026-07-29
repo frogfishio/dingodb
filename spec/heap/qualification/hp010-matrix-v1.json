@@ -1,0 +1,121 @@
+{
+  "profile": "dingo-heap-v1",
+  "package": "HP-010",
+  "format": "dingo-heap-qualification-matrix-v1",
+  "qualified": false,
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 HeapCap termination + single-owner admit Accept landed; H4/H5 drills + differential NI remain; H6 + load/runbook budgets still open.",
+  "gates": {
+    "H0": {
+      "title": "Vocabulary and identity",
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-heap (HeapId/CollectionId/StreamId/DeploymentId/AuthorityEpoch)",
+        "spec/heap/operations-v1.json + cbor-v1.json",
+        "scripts/check_heap_architecture.sh"
+      ]
+    },
+    "H1": {
+      "title": "Heap-bound SDK",
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-sdk/tests/hp007_heap_isolation.rs",
+        "crates/dingo-heap HeapCap trybuild",
+        "scripts/check_heap_architecture.sh"
+      ]
+    },
+    "H2": {
+      "title": "HeapKey authority",
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-authority/tests/hp005_accept.rs",
+        "crates/dingo-server/tests/hp008_heap_handshake.rs",
+        "crates/dingo-server/tests/hp008_accept_loop.rs"
+      ]
+    },
+    "H3": {
+      "title": "Derived and operational coverage",
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-heap refresh_capability_or_terminate (revision/state/chain-head)",
+        "crates/dingo-store/tests/hp010_qualification.rs::heapcap_terminates_on_lifecycle",
+        "crates/dingo-store/tests/hp010_qualification.rs::single_owner_admit",
+        "crates/dingo-store/tests/hp010_qualification.rs::security_revision_bump_terminates_without_lifecycle_helper"
+      ]
+    },
+    "H4": {
+      "title": "Backup and recovery",
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-store/tests/hp009_lifecycle.rs",
+        "crates/dingo-store/tests/hp010_qualification.rs::restore_drills_payload_and_retain_id"
+      ]
+    },
+    "H5": {
+      "title": "Single-node lifecycle",
+      "status": "partial",
+      "evidence": [
+        "crates/dingo-store/tests/hp009_lifecycle.rs",
+        "crates/dingo-store/tests/hp006_heap_migration.rs",
+        "crates/dingo-store/tests/hp010_qualification.rs::key_loss_drill",
+        "crates/dingo-store/tests/hp010_qualification.rs::retention_and_incomplete_purge_still_retired"
+      ]
+    },
+    "H6": {
+      "title": "Isolation claim",
+      "status": "not_started",
+      "evidence": []
+    },
+    "HC1": {
+      "title": "Cluster extension",
+      "status": "not_applicable_single_node",
+      "evidence": []
+    }
+  },
+  "drills": {
+    "differential_ni_labelled_units": {
+      "status": "accept",
+      "section": "26.2.1",
+      "test": "hp010_qualification::differential_ni_labelled_units"
+    },
+    "key_loss": {
+      "status": "accept",
+      "section": "27/H5",
+      "test": "hp010_qualification::key_loss_drill"
+    },
+    "restore_payload_only": {
+      "status": "accept",
+      "section": "26.8",
+      "test": "hp010_qualification::restore_drills_payload_and_retain_id"
+    },
+    "restore_dr_retain_id": {
+      "status": "accept",
+      "section": "26.8",
+      "test": "hp010_qualification::restore_drills_payload_and_retain_id"
+    },
+    "heapcap_terminates_on_lifecycle": {
+      "status": "accept",
+      "section": "27/H3",
+      "test": "hp010_qualification::heapcap_terminates_on_lifecycle"
+    },
+    "single_owner_admit": {
+      "status": "accept",
+      "section": "27/H3",
+      "test": "hp010_qualification::single_owner_admit"
+    },
+    "load_latency_budget": {
+      "status": "not_started",
+      "section": "40/HP-010",
+      "test": null
+    },
+    "fuzz_budget": {
+      "status": "partial",
+      "section": "39",
+      "test": "hp010_qualification::single_owner_admit (envelope byte-mutation reject)"
+    },
+    "operator_runbook": {
+      "status": "not_started",
+      "section": "40/HP-010",
+      "test": null
+    }
+  }
+}

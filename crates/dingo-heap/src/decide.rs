@@ -213,11 +213,22 @@ pub fn mint_capability(
 }
 
 /// Ensure a capability is still live against its slot.
+///
+/// Frozen v1: any mismatch of heap/deployment/epoch, security revision, authority
+/// chain head, or a non-serving administrative state terminates the instance
+/// (`HEAP_SPEC` §8.7 / Gate H3).
 pub fn refresh_capability_or_terminate(cap: &HeapCap) -> Result<(), HeapError> {
     let snap = cap.slot().load();
-    if snap.security_revision != cap.security_revision()
+    let serving = matches!(
+        snap.administrative_state,
+        HeapAdministrativeState::Active | HeapAdministrativeState::ReadOnly
+    );
+    if snap.heap_id != cap.heap_id()
+        || snap.deployment_id != cap.deployment_id()
+        || snap.authority_epoch != cap.inner.authority_epoch
+        || snap.security_revision != cap.security_revision()
         || snap.authority_chain_head_hash != cap.inner.validated_authority_chain_head_hash
-        || snap.administrative_state == HeapAdministrativeState::Purged
+        || !serving
     {
         return Err(HeapError::unavailable(HeapUnavailableCause::StaleAuthority));
     }
@@ -228,7 +239,12 @@ pub fn refresh_capability_or_terminate(cap: &HeapCap) -> Result<(), HeapError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{AuthorityEpoch, AuthorityGeneration, DeploymentId, HeapId, SecurityRevision};
+    use crate::certificate::VerifiedCertificate;
+    use crate::constraints::Constraints;
+    use crate::ids::{
+        AuthorityEpoch, AuthorityGeneration, CertificateId, DeploymentId, HeapId, SecurityRevision,
+    };
+    use crate::rights::Rights;
 
     fn sample_snap(heap: HeapId, dep: DeploymentId, master: [u8; 32]) -> HeapSecuritySnapshot {
         HeapSecuritySnapshot {
@@ -248,19 +264,78 @@ mod tests {
         }
     }
 
+    fn mint_test_cap(slot: Arc<HeapSlot>) -> HeapCap {
+        let snap = slot.load();
+        let cert = VerifiedCertificate {
+            cose_bytes: vec![0x01],
+            fingerprint: [3u8; 32],
+            deployment_id: snap.deployment_id,
+            heap_id: snap.heap_id,
+            authority_epoch: snap.authority_epoch,
+            authority_generation: snap.authority_generation,
+            certificate_id: CertificateId::new_random().unwrap(),
+            holder_public_key: [4u8; 32],
+            rights: Rights::from_bits_certificate(0x5).unwrap(),
+            constraints: Constraints::empty(),
+            not_before: 1,
+            expires_at: 4_000_000_000,
+            issuer_master_key_id: [5u8; 32],
+        };
+        mint_capability(slot, &cert, TrustedInstant { unix_s: 1_700_000_000 }).unwrap()
+    }
+
     #[test]
     fn public_ping_always_allow_when_active() {
         let heap = HeapId::new_random().unwrap();
         let dep = DeploymentId::new_random().unwrap();
         let snap = sample_snap(heap, dep, [1u8; 32]);
-        // Minimal fake cert — decide for public ops does not read cert fields.
-        // We still need a VerifiedCertificate value; construct via bootstrap in integration tests.
         let _ = snap;
         let op = OperationDescriptor {
             operation_id: 1,
             request_bytes: 0,
         };
-        // decide requires certificate; use a stub by verifying bootstrap in integration test.
         let _ = op;
+    }
+
+    #[test]
+    fn refresh_terminates_on_security_revision_or_non_serving_state() {
+        let heap = HeapId::new_random().unwrap();
+        let dep = DeploymentId::new_random().unwrap();
+        let slot = Arc::new(HeapSlot::new(sample_snap(heap, dep, [7u8; 32])));
+        let cap = mint_test_cap(Arc::clone(&slot));
+        assert!(refresh_capability_or_terminate(&cap).is_ok());
+
+        // Security revision bump (state/policy change) terminates.
+        let mut next = (*slot.load()).clone();
+        next.security_revision = SecurityRevision::new(2).unwrap();
+        slot.store(next);
+        assert!(refresh_capability_or_terminate(&cap).is_err());
+
+        // Fresh mint on new revision is live again.
+        let cap2 = mint_test_cap(Arc::clone(&slot));
+        assert!(refresh_capability_or_terminate(&cap2).is_ok());
+
+        // Suspended is non-serving even if we also bump revision.
+        let mut suspended = (*slot.load()).clone();
+        suspended.administrative_state = HeapAdministrativeState::Suspended;
+        suspended.security_revision = SecurityRevision::new(3).unwrap();
+        slot.store(suspended);
+        let cap3 = mint_test_cap(Arc::clone(&slot));
+        // Mint succeeds from snapshot bytes, but refresh refuses non-serving state.
+        assert!(refresh_capability_or_terminate(&cap3).is_err());
+
+        // Chain-head change terminates.
+        let mut active = (*slot.load()).clone();
+        active.administrative_state = HeapAdministrativeState::Active;
+        active.security_revision = SecurityRevision::new(4).unwrap();
+        active.authority_chain_head_hash = [0xab; 32];
+        slot.store(active);
+        let cap4 = mint_test_cap(Arc::clone(&slot));
+        assert!(refresh_capability_or_terminate(&cap4).is_ok());
+        let mut rotated = (*slot.load()).clone();
+        rotated.authority_chain_head_hash = [0xcd; 32];
+        // Intentionally leave revision unchanged — chain head alone must terminate.
+        slot.store(rotated);
+        assert!(refresh_capability_or_terminate(&cap4).is_err());
     }
 }

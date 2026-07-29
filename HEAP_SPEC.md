@@ -2,7 +2,8 @@
 
 Status: Developer-ready implementation contract v0.9  
 Capability status: **Partial** — HP-000…HP-009 landed in-tree (with listed
-gaps); HP-010…HP-012 not started. Gates H0–H2 / H4–H5 in progress; H3 / H6 /
+gaps); HP-010 evidence harness + H4/H5 drills started (`qualified=false`);
+HP-011…HP-012 not started. Gates H0–H2 / H4–H5 in progress; H3 / H6 /
 HC1 not started. No `dingo-heap-v1` qualified claim. See **Implementation
 progress** below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
@@ -43,7 +44,7 @@ criteria in §40.
 | Qualified network (HP-008) | Present; live TLS accept-loop + HeapKey session |
 | Legacy migration (HP-006) | Present; durable job engine + phase-6 gate Accept |
 | Lifecycle / backup / DR (HP-009) | Present; purge + payload-restore + DR retain-ID + key destroy + media-domain incomplete purge + retention scheduler Accept |
-| Single-node / cluster qualification | **Not started** (HP-010+) |
+| Single-node / cluster qualification | **In progress** (HP-010 evidence harness; `qualified=false`) |
 | Product claim level (§1.4 / Gate H6) | Still **Level 1 language only** — named namespaces / isolation in progress |
 
 Before Gate H6, product language remains:
@@ -65,7 +66,7 @@ Before Gate H6, product language remains:
 | **HP-007** | SDK capability surface | **Landed (Accept isolation)** | `dingo-sdk::heap`: `DingoDeployment`, `Heap`, `HeapCollection`/`HeapStream`, heap-bound pool, `SignedCursor`, batch membership checks. Accept: identical collection names across heaps cannot exchange handles/cursors/batch members/pooled connections. **Gaps:** remote `connect_heap`, SubjectV2 put/get path, `dangerous-key-export` holder signer. |
 | **HP-008** | Qualified network protocol | **Landed (Accept live TLS loop)** | Session/audit/exporter API plus **accept-loop wiring**: `qualified_heap_key` serve path derives RFC 9266 exporter, runs `heap_session`, dispatches via `HeapCap` (`serve_qualified_requests`) with **no token/RBAC**. Accept: live TLS ping without token; token field → uniform `heap_unavailable`. **Gaps:** §32.4 reserved-op activation, RPC vector corpus, make qualified listener the default remote profile (legacy token still available when `qualified_heap_key=false`). |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
-| HP-010 | Single-node qualification | Not started | First release allowed to advertise qualified `dingo-heap-v1`. |
+| HP-010 | Single-node qualification | **In progress (H3–H5 drills)** | Matrix `spec/heap/qualification/hp010-matrix-v1.json`; claim surface stays `qualified=false`; Accept: differential NI, key-loss, payload/DR restore, retention/incomplete-purge, **HeapCap termination on lifecycle/revision**, **single-owner admit** + envelope mutation reject. **Gaps:** H6, full load/latency + fuzz budgets, operator runbooks, connected Verus/TLA evidence. |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
 
@@ -76,11 +77,11 @@ Before Gate H6, product language remains:
 | H0 Vocabulary and identity | **In progress** — types and registry exist in `dingo-heap`; public APIs still largely flat-store. |
 | H1 Heap-bound SDK | **In progress** — HP-007 typed handles landed; remote `connect_heap` still open. |
 | H2 HeapKey authority | **In progress** — HP-005 issue + HP-008 live TLS accept-loop; reserved-op §32.4 still open. |
-| H3 Derived / operational coverage | Not started. |
+| H3 Derived / operational coverage | **In progress** — HeapCap terminates on revision/state/chain-head; single-owner admit Accept; indexes/streams/query escape matrices still open. |
 | H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone + media-domain incomplete purge + retention scheduler Accept; live filesystem tier wipe / HSM adapters still open. |
-| H5 Single-node lifecycle | **In progress** — HP-009 suspend/retire/purge transitions; full matrices deferred to HP-010. |
+| H5 Single-node lifecycle | **In progress** — HP-009 transitions + HP-010 key-loss / incomplete-purge / retention drills; full crash/key-loss matrices still open. |
 | HC1 Cluster extension | Not started. |
-| H6 Isolation claim | Not started — no qualified claim. |
+| H6 Isolation claim | Not started — `may_advertise_qualified() == false`. |
 
 #### Primary tree map (current)
 
@@ -96,6 +97,8 @@ crates/dingo-client/src/heap_handshake.rs  # HP-008 wire types
 crates/dingo-server/src/heap_{registry,auth,dispatch,session,audit}.rs  # HP-008
 crates/dingo-store/src/heap/migration.rs  # HP-006 job engine + phase-6 gate
 crates/dingo-store/src/heap/lifecycle.rs  # HP-009 purge/backup/restore gates
+spec/heap/qualification/                 # HP-010 evidence matrix
+crates/dingo-heap/src/qualification.rs   # claim surface (qualified=false)
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
@@ -106,17 +109,16 @@ fuzz/fuzz_targets/heap_ownership.rs
 
 #### Next recommended package
 
-**HP-010** (single-node qualification) is unblocked on package dependencies
-once remaining HP-006/008 residuals required by the qualification matrices are
-closed or explicitly waived in evidence. In parallel: HP-006 physical rewrite,
-HP-008 §32.4 / default qualified listener, HP-009 live filesystem tier wipe /
-HSM adapters.
+Continue **HP-010** (close remaining H3 derived-path matrices, H6, load/fuzz
+budgets, runbooks) until `qualified=true` is honest. In parallel: HP-006 physical
+rewrite, HP-008 §32.4 / default qualified listener, HP-009 live filesystem tier
+wipe / HSM adapters.
 
 #### Remaining delivery sequence
 
 ```text
-DONE   HP-000 → … → HP-008 → HP-006(core) → HP-009(core+DR/key)
-NEXT   HP-010 single-node qualification  (needs HP-005…HP-009 + evidence)
+DONE   HP-000 → … → HP-008 → HP-006(core) → HP-009(core+DR/key+media/retention)
+NEXT   HP-010 single-node qualification  (H3–H5 drills landed; H6 + budgets open)
   or   residual closers (HP-006 physical / HP-008 §32.4 / HP-009 FS wipe/HSM)
 LATER  HP-011 → HP-012 cluster
 ```
@@ -130,7 +132,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 
 | Item | Package | Why it blocks qualification |
 |------|---------|------------------------------|
-| Full H-gate matrices, load/fuzz/restore/key-loss evidence | HP-010 | First allowed `dingo-heap-v1` advertisement |
+| Full H-gate matrices, load/fuzz/restore/key-loss evidence | HP-010 | H3–H5 Accept drills landed; H6 + load/runbook + full fuzz still open — blocks `qualified=true` |
 | Physical segment rewrite + operator migration tooling | HP-006 residual | Live-store rewrite still open |
 | §32.4 schemas/fixtures before activating reserved heap ops | HP-008 residual | Spec forbids activating ops from code alone |
 | Make qualified listener the default remote profile | HP-008 residual | Legacy token path still default-off |
@@ -149,7 +151,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 **After single-node qualification:** HP-011 → HP-012. Until then cluster remains
 `qualified=false`.
 
-**Verify today:** `./scripts/verify-heap.sh` (includes HP-006 + HP-009 Accept).
+**Verify today:** `./scripts/verify-heap.sh` (includes HP-006 + HP-009 + HP-010 matrix/drills).
 Product language stays Level 1 until Gate H6.
 
 ## 1. Purpose
@@ -6347,6 +6349,11 @@ receipt, and damage tests demonstrate that healthy independently owned units
 remain readable.
 
 ### HP-010 — Single-node qualification
+
+**Implementation status (2026-07-29):** evidence harness + H3–H5 Accept drills —
+matrix + claim surface (`qualified=false`); differential NI; HeapCap termination;
+single-owner admit; key-loss; restore; retention/incomplete-purge. H6, full
+load/fuzz budgets, and runbooks remain open.
 
 Depends on HP-005 through HP-009. Execute every H-gate, load/latency tests,
 fuzzing budget, restore drills, key-loss drills, and operator runbooks.

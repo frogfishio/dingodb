@@ -12,6 +12,7 @@ mod decide;
 mod error;
 mod holder_proof;
 mod ids;
+mod qualification;
 mod rights;
 mod security_time;
 mod snapshot;
@@ -30,6 +31,10 @@ pub use holder_proof::{verify_holder_proof, VerifiedHolderProof};
 pub use ids::{
     AuthorityEpoch, AuthorityGeneration, CapabilityId, CertificateId, CollectionId, DeploymentId,
     HeapId, SecurityRevision, StreamId,
+};
+pub use qualification::{
+    claim_language, may_advertise_qualified, HP010_MATRIX_REL, PRE_QUALIFICATION_LANGUAGE,
+    QUALIFIED_CLAIM, QUALIFIED_PROFILE,
 };
 pub use rights::{Operation, OperationStatus, Rights};
 pub use security_time::{SecurityTimeFloor, TimeDecision, TrustedInstant};

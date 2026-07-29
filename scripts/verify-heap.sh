@@ -16,6 +16,8 @@ cargo test -p dingo-server --test hp008_heap_handshake
 cargo test -p dingo-server --test hp008_accept_loop
 cargo test -p dingo-store --test hp006_heap_migration -- --test-threads=1
 cargo test -p dingo-store --test hp009_lifecycle
+cargo test -p dingo-store --test hp010_qualification
+cargo test -p dingo-heap --lib qualification::
 
 if [[ "$MODE" == "full" ]]; then
   if command -v kani >/dev/null 2>&1; then
