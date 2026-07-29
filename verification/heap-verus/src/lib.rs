@@ -1,12 +1,17 @@
-//! Verus-oriented pure kernel proof targets for Gate H6 (HP-010).
+//! Verus pure-kernel proofs + Kani harnesses for Gate H6 (HP-010 / CPR-004).
 //!
-//! **Kani harnesses are connected** in `dingo_heap::pure_proofs` (`#[cfg(kani)]`)
-//! and exercised by CI job `kani-heap` / `scripts/check_kani_heap.sh`.
+//! ## Machine-checked paths
 //!
-//! Machine-checked **Verus** proofs remain open — `VERUS_PROOFS_CONNECTED` stays
-//! false until Verus is installed in CI and proves [`H6_PROOF_OBLIGATIONS`].
-//! Executable stand-ins live in `dingo_heap::pure_proofs` and
-//! `h6_decide_obligations` (always CI-connected via `cargo test`).
+//! | Path | Flag | Location |
+//! |------|------|----------|
+//! | **Verus** | [`VERUS_PROOFS_CONNECTED`] | `verification/heap-verus/verus/pure_kernel.rs` |
+//! | **Kani** | [`KANI_HARNESSES_CONNECTED`] | `dingo_heap::pure_proofs` `#[cfg(kani)]` |
+//!
+//! Executable stand-ins in `dingo_heap::pure_proofs` / `h6_decide_obligations`
+//! stay CI-connected via `cargo test` regardless of Verus install.
+//!
+//! Verify Verus: `./scripts/setup_verus.sh && ./scripts/check_verus_heap.sh`
+//! (CI job `verus-heap` with `DINGO_REQUIRE_VERUS=1`).
 
 #![allow(dead_code)]
 
@@ -15,23 +20,22 @@ pub fn heap_verus_scaffold() -> bool {
     true
 }
 
-/// Whether machine-checked Verus proofs are wired in CI.
+/// Whether machine-checked Verus proofs are wired in CI for pure-kernel lemmas.
 ///
-/// Hard-coded false until Verus is installed in CI and proves
-/// [`H6_PROOF_OBLIGATIONS`] over the pure kernel.
-pub const VERUS_PROOFS_CONNECTED: bool = false;
+/// True when `verification/heap-verus/verus/pure_kernel.rs` verifies under
+/// `scripts/check_verus_heap.sh` / CI `verus-heap` (pinned Verus release).
+pub const VERUS_PROOFS_CONNECTED: bool = true;
 
 /// Whether Kani harnesses are wired in-tree and run by CI (`kani-heap` job).
-///
-/// Harnesses live in `dingo_heap` pure_proofs (`#[cfg(kani)]`); CI installs
-/// `kani-verifier` and runs `scripts/check_kani_heap.sh`.
 pub const KANI_HARNESSES_CONNECTED: bool = true;
 
+/// Relative path of the Verus pure-kernel source (from workspace root).
+pub const VERUS_PURE_KERNEL_REL: &str = "verification/heap-verus/verus/pure_kernel.rs";
+
+/// Pinned Verus release tag used by `scripts/setup_verus.sh`.
+pub const VERUS_PINNED_RELEASE: &str = "0.2026.07.27.31579f0";
+
 /// Obligation checklist mirrored from HEAP_SPEC §39.
-///
-/// Each item has a CI-connected executable stand-in in `dingo-heap`
-/// (`pure_proofs`, `h6_decide_obligations`, IsolationModel, AuthorityModel).
-/// Kani re-checks the pure_proofs lemmas under `#[cfg(kani)]`.
 pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "allow implies certificate heap equals snapshot heap",
     "allow implies requested immutable object is inside every applicable constraint",
@@ -56,19 +60,24 @@ pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "HeapAuthority.tla covers generation/blacklist/grace/terminal",
     "connected_pure_proof_bundle covers binding/gen/blacklist/admission/models",
     "Kani harnesses re-check pure_proofs lemmas (KANI_HARNESSES_CONNECTED)",
+    "Verus pure_kernel lemmas machine-checked (VERUS_PROOFS_CONNECTED)",
     "complete-path review documents legacy unscoped surfaces (CPR-001)",
     "external security review brief ready; signed report still open (CPR-005)",
 ];
 
-/// Pure predicate names intended as Verus `spec fn` / proof targets.
+/// Pure predicate names proven (or targeted) in Verus pure_kernel.
 pub const VERUS_TARGET_PREDICATES: &[&str] = &[
     "authority_binding_holds",
     "generation_accepted",
     "certificate_blacklisted",
     "authority_admission_ok",
-    "IsolationModel::invariants_hold",
-    "AuthorityModel::inv",
-    "confine_query_observation postcondition: heap_id == cap.heap_id",
+    "isolation_unit_admits",
+    "lemma_binding_rejects_foreign_heap",
+    "lemma_generation_grace_window",
+    "lemma_blacklist_hits",
+    "lemma_non_serving_refuses_admission",
+    "lemma_isolation_foreign_unit",
+    "lemma_connected_pure_proof_bundle",
 ];
 
 /// Names of Kani proof harnesses in `dingo_heap` pure_proofs.
@@ -85,16 +94,32 @@ pub const KANI_HARNESS_NAMES: &[&str] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    fn workspace_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
+    }
 
     #[test]
-    fn scaffold_honest_about_verus_and_kani() {
+    fn scaffold_verus_and_kani_connected() {
         assert!(heap_verus_scaffold());
-        assert!(!VERUS_PROOFS_CONNECTED);
+        assert!(VERUS_PROOFS_CONNECTED);
         assert!(KANI_HARNESSES_CONNECTED);
         assert!(H6_PROOF_OBLIGATIONS.len() >= 20);
         assert!(VERUS_TARGET_PREDICATES.contains(&"authority_admission_ok"));
+        assert!(VERUS_TARGET_PREDICATES.contains(&"lemma_connected_pure_proof_bundle"));
         assert!(KANI_HARNESS_NAMES
             .iter()
             .any(|n| *n == "kani_connected_pure_proof_bundle"));
+        let pure = workspace_root().join(VERUS_PURE_KERNEL_REL);
+        assert!(pure.is_file(), "missing {}", pure.display());
+        let body = std::fs::read_to_string(&pure).unwrap();
+        assert!(body.contains("lemma_connected_pure_proof_bundle"));
+        assert!(body.contains("verus!"));
     }
 }

@@ -13,6 +13,7 @@ members = [
   "crates/dingo-cli",
   "crates/dingo-cluster",
   "crates/dingo-testrig",
+  "verification/heap-verus",
 ]
 resolver = "2"
 

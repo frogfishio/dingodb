@@ -4,8 +4,9 @@
 //! executable stand-ins that a future Verus (or Kani) harness should prove over the
 //! same pure functions in [`crate::decide`] and the model machines.
 //!
-//! **Does not** flip [`crate::may_advertise_qualified`]. Full machine-checked proofs
-//! remain open (CPR-004).
+//! **Does not** flip [`crate::may_advertise_qualified`]. Machine-checked paths:
+//! Kani harnesses here (`#[cfg(kani)]`) and Verus `verification/heap-verus/verus/pure_kernel.rs`
+//! (`VERUS_PROOFS_CONNECTED`). CPR-005 external review remains open.
 
 use crate::authority::{BlacklistEntry, BlacklistKind};
 use crate::capability::sha256;

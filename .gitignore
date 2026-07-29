@@ -19,6 +19,11 @@ node_modules/
 .tinker/
 .DS_Store
 
+# Local Verus toolchain (downloaded by scripts/check_verus_heap.sh; not release content)
+tools/verus/
+tools/verus.zip
+tools/verus-*.zip
+
 # cargo-fuzz artifacts (DEF-091); keep checked-in seed corpora if added under
 # fuzz/corpus/ intentionally.
 fuzz/target/

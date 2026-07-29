@@ -1265,7 +1265,7 @@ fn h6_heap_authority_model() {
 
 #[test]
 fn h6_pure_proof_bundle_connected() {
-    // Executable pure lemmas + Kani harnesses (CPR-004 partial). Verus still open.
+    // Executable pure lemmas + Kani + Verus pure_kernel (CPR-004).
     assert!(
         connected_pure_proof_bundle(),
         "pure proof bundle must hold for Gate H6 connected evidence"
@@ -1276,9 +1276,9 @@ fn h6_pure_proof_bundle_connected() {
     assert!(verus.contains("KANI_HARNESSES_CONNECTED"));
     assert!(verus.contains("connected_pure_proof_bundle"));
     assert!(
-        verus.contains("VERUS_PROOFS_CONNECTED: bool = false")
-            || verus.contains("const VERUS_PROOFS_CONNECTED: bool = false"),
-        "scaffold must stay honest that Verus is not yet connected"
+        verus.contains("VERUS_PROOFS_CONNECTED: bool = true")
+            || verus.contains("const VERUS_PROOFS_CONNECTED: bool = true"),
+        "Verus pure_kernel must be marked connected"
     );
     assert!(
         verus.contains("KANI_HARNESSES_CONNECTED: bool = true")
@@ -1293,6 +1293,15 @@ fn h6_pure_proof_bundle_connected() {
         pure.contains("fn kani_connected_pure_proof_bundle"),
         "Kani harness kani_connected_pure_proof_bundle must exist"
     );
+    let verus_src = fs::read_to_string(
+        workspace_root().join("verification/heap-verus/verus/pure_kernel.rs"),
+    )
+    .unwrap();
+    assert!(
+        verus_src.contains("lemma_connected_pure_proof_bundle"),
+        "Verus pure_kernel lemma_connected_pure_proof_bundle must exist"
+    );
+    assert!(verus_src.contains("verus!"));
 }
 
 #[test]

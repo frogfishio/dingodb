@@ -386,43 +386,194 @@ impl DataKeyProvider for InProcessDataKeyProvider {
     }
 }
 
+/// Named external key backends (H4 / CPR-003 scaffolding).
+///
+/// Production PKCS#11 / cloud KMS implementations are **not** shipped yet.
+/// [`HsmBackendKind::MockInProcess`] is a deterministic Accept/dev stand-in that
+/// never claims to be a real HSM.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HsmBackendKind {
+    /// PKCS#11 shared library (SoftHSM / hardware token).
+    Pkcs11,
+    /// AWS KMS.
+    AwsKms,
+    /// Google Cloud KMS.
+    GcpKms,
+    /// Azure Key Vault.
+    AzureKeyVault,
+    /// In-process mock for tests only — **not** production HSM.
+    MockInProcess,
+}
+
+impl HsmBackendKind {
+    /// Stable wire / log label.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pkcs11 => "pkcs11",
+            Self::AwsKms => "aws-kms",
+            Self::GcpKms => "gcp-kms",
+            Self::AzureKeyVault => "azure-key-vault",
+            Self::MockInProcess => "hsm-mock-in-process",
+        }
+    }
+}
+
+/// Operator configuration for an HSM / KMS data-key provider.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HsmDataKeyConfig {
+    /// Backend family.
+    pub backend: HsmBackendKind,
+    /// PKCS#11 library path, KMS endpoint URL, or vault URI.
+    pub library_or_endpoint: Option<String>,
+    /// Slot / region / vault name when applicable.
+    pub slot_or_region: Option<String>,
+    /// Key label / alias inside the backend.
+    pub key_label: Option<String>,
+    /// When true and backend is [`HsmBackendKind::MockInProcess`], generate/destroy
+    /// use OS entropy locally (Accept/dev only).
+    pub mock_enabled: bool,
+}
+
+impl HsmDataKeyConfig {
+    /// Unconfigured real backend (always refuses generate/destroy).
+    pub fn unconfigured(backend: HsmBackendKind) -> Self {
+        Self {
+            backend,
+            library_or_endpoint: None,
+            slot_or_region: None,
+            key_label: None,
+            mock_enabled: false,
+        }
+    }
+
+    /// Mock backend enabled for Accept tests.
+    pub fn mock_in_process() -> Self {
+        Self {
+            backend: HsmBackendKind::MockInProcess,
+            library_or_endpoint: Some("mock://local".into()),
+            slot_or_region: Some("0".into()),
+            key_label: Some("dingo-heap-test".into()),
+            mock_enabled: true,
+        }
+    }
+
+    /// Whether this config can perform key ops today.
+    pub fn is_operational(&self) -> bool {
+        matches!(self.backend, HsmBackendKind::MockInProcess) && self.mock_enabled
+    }
+}
+
+/// Declared capabilities of a data-key backend (honest advertising).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HsmCapabilities {
+    /// Can mint heap data keys.
+    pub generate: bool,
+    /// Can destroy / schedule destroy of keys.
+    pub destroy: bool,
+    /// Must never return long-lived plaintext key material to callers.
+    pub never_export_plaintext: bool,
+    /// Whether this is a production external HSM/KMS (false for mock).
+    pub production_hsm: bool,
+}
+
 /// Scaffold for external HSM / PKCS#11 / cloud KMS adapters.
 ///
-/// Explicitly **not configured** until an operator wires a backend. Keeps the
-/// residual visible in matrix evidence without pretending HSM support exists.
-#[derive(Debug, Clone, Copy)]
+/// - Real backends (`Pkcs11`, `AwsKms`, …): **refuse** until a live connector is wired.
+/// - [`HsmBackendKind::MockInProcess`] with `mock_enabled`: Accept/dev path only.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HsmDataKeyProvider {
-    /// Operator-facing backend label (e.g. `pkcs11`, `aws-kms`).
-    pub backend: &'static str,
+    config: HsmDataKeyConfig,
 }
 
 impl HsmDataKeyProvider {
-    /// Named backend that is not yet wired.
-    pub const fn new(backend: &'static str) -> Self {
-        Self { backend }
+    /// Named backend that is not yet wired (historical constructor).
+    pub fn new(backend: &'static str) -> Self {
+        let kind = match backend {
+            "pkcs11" => HsmBackendKind::Pkcs11,
+            "aws-kms" => HsmBackendKind::AwsKms,
+            "gcp-kms" => HsmBackendKind::GcpKms,
+            "azure-key-vault" => HsmBackendKind::AzureKeyVault,
+            "hsm-mock-in-process" | "mock" => HsmBackendKind::MockInProcess,
+            _ => HsmBackendKind::Pkcs11,
+        };
+        Self {
+            config: HsmDataKeyConfig::unconfigured(kind),
+        }
+    }
+
+    /// Build from full config.
+    pub fn from_config(config: HsmDataKeyConfig) -> Self {
+        Self { config }
+    }
+
+    /// Mock provider for Accept / unit tests.
+    pub fn mock_for_tests() -> Self {
+        Self::from_config(HsmDataKeyConfig::mock_in_process())
+    }
+
+    /// Backend configuration.
+    pub fn config(&self) -> &HsmDataKeyConfig {
+        &self.config
+    }
+
+    /// Whether generate/destroy will succeed for this process.
+    pub fn is_configured(&self) -> bool {
+        self.config.is_operational()
+    }
+
+    /// Capability advertisement (never over-claims production HSM).
+    pub fn capabilities(&self) -> HsmCapabilities {
+        if self.config.is_operational() {
+            HsmCapabilities {
+                generate: true,
+                destroy: true,
+                never_export_plaintext: false, // mock holds material in process
+                production_hsm: false,
+            }
+        } else {
+            HsmCapabilities {
+                generate: false,
+                destroy: false,
+                never_export_plaintext: true,
+                production_hsm: !matches!(self.config.backend, HsmBackendKind::MockInProcess),
+            }
+        }
     }
 }
 
 impl DataKeyProvider for HsmDataKeyProvider {
     fn provider_id(&self) -> &'static str {
-        "hsm-scaffold"
+        if self.config.is_operational() {
+            "hsm-mock-in-process"
+        } else {
+            "hsm-scaffold"
+        }
     }
 
-    fn generate(&self, _heap_id: [u8; 16]) -> Result<DataKeyHandle, StoreError> {
+    fn generate(&self, heap_id: [u8; 16]) -> Result<DataKeyHandle, StoreError> {
+        if self.config.is_operational() {
+            // Mock path only — production backends never reach here until wired.
+            return InProcessDataKeyProvider.generate(heap_id);
+        }
         Err(StoreError::HeapAdmit(format!(
-            "HSM data-key backend {:?} not configured (scaffold only; use InProcessDataKeyProvider)",
-            self.backend
+            "HSM data-key backend {:?} not configured (library/endpoint={:?} label={:?}); use InProcessDataKeyProvider or HsmDataKeyProvider::mock_for_tests()",
+            self.config.backend.as_str(),
+            self.config.library_or_endpoint,
+            self.config.key_label
         )))
     }
 
     fn destroy(
         &self,
-        _data_root: &Path,
-        _handle: &mut DataKeyHandle,
+        data_root: &Path,
+        handle: &mut DataKeyHandle,
     ) -> Result<DataKeyDestructionReceipt, StoreError> {
+        if self.config.is_operational() {
+            return InProcessDataKeyProvider.destroy(data_root, handle);
+        }
         Err(StoreError::HeapAdmit(format!(
             "HSM data-key backend {:?} not configured (scaffold only)",
-            self.backend
+            self.config.backend.as_str()
         )))
     }
 }

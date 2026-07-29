@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced; CPR-001/A3 heap-only defaults; H4 live wipe + HSM scaffold + mixed-heap salvage Accept. H6 partial \u2014 Kani harnesses connected; Verus + signed external review open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced; CPR-001/A3 heap-only defaults; H4 live wipe + HSM scaffold + mixed-heap salvage. H6 partial \u2014 Kani+Verus pure-kernel connected; signed external review (CPR-005) open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -14,7 +14,7 @@
         "scripts/check_heap_architecture.sh",
         "crates/dingo-sdk claim.rs FLAT_COLLECTION_SURFACE_LABEL / legacy_flat_sdk_enabled / heap_only_embedded_profile",
         "crates/dingo-sdk Cargo.toml default=[] (CPR-001 heap-only default)",
-        "crates/dingo-store Cargo.toml default=[] (A3 façades-only; legacy-raw-store opt-in)"
+        "crates/dingo-store Cargo.toml default=[] (A3 fa\u00e7ades-only; legacy-raw-store opt-in)"
       ],
       "open": [
         "lifecycle RPC still reserved; corpus residuals"
@@ -102,10 +102,11 @@
         "crates/dingo-store/tests/hp010_qualification.rs::restore_drills_payload_and_retain_id",
         "crates/dingo-store HeapLifecycle::destroy_coverage_unit_on_media / wipe_heap_object_media",
         "crates/dingo-store DataKeyProvider / InProcessDataKeyProvider / HsmDataKeyProvider scaffold",
-        "crates/dingo-store classify_mixed_heap_frame / MixedHeapSalvageClass"
+        "crates/dingo-store classify_mixed_heap_frame / MixedHeapSalvageClass",
+        "crates/dingo-store HsmBackendKind / HsmDataKeyConfig / HsmCapabilities / mock_for_tests"
       ],
       "open": [
-        "live HSM/PKCS#11/cloud KMS backend not wired (scaffold refuses honestly)"
+        "live PKCS#11 / cloud KMS connector not wired (mock + scaffold only)"
       ]
     },
     "H5": {
@@ -143,15 +144,16 @@
         "crates/dingo-store/tests/hp010_qualification.rs::h6_heap_authority_model",
         "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
         "crates/dingo-heap pure_proofs / connected_pure_proof_bundle + #[cfg(kani)] harnesses",
-        "verification/heap-verus KANI_HARNESSES_CONNECTED=true; VERUS_PROOFS_CONNECTED=false",
         "scripts/check_kani_heap.sh + CI job kani-heap (DINGO_REQUIRE_KANI=1)",
         "doc/HEAP_COMPLETE_PATH_REVIEW.md (complete-path review; CPR findings)",
         "doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md (external review package; report open)",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_pure_proof_bundle_connected",
-        "crates/dingo-store/tests/hp010_qualification.rs::complete_path_and_external_review_artifacts"
+        "crates/dingo-store/tests/hp010_qualification.rs::complete_path_and_external_review_artifacts",
+        "verification/heap-verus VERUS_PROOFS_CONNECTED=true + verus/pure_kernel.rs",
+        "scripts/check_verus_heap.sh + CI job verus-heap (DINGO_REQUIRE_VERUS=1)",
+        "scripts/setup_verus.sh pinned Verus release"
       ],
       "open": [
-        "CPR-004 residual: machine-checked Verus still open (Kani harnesses connected)",
         "CPR-005: signed external security review report not on file",
         "H0\u2013H2, H4\u2013H5 not all accept yet"
       ]

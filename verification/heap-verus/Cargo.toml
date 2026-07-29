@@ -1,0 +1,12 @@
+[package]
+name = "dingo-heap-verus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license = "MIT"
+description = "H6 Verus/Kani proof connection markers and pure-kernel obligation registry."
+publish = false
+
+[dependencies]

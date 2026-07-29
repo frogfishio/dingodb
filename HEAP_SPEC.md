@@ -82,7 +82,7 @@ Before Gate H6, product language remains:
 | H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone + media-domain incomplete purge + retention + **live multi-tier FS wipe** Accept; HSM adapters / mixed-heap salvage still open. |
 | H5 Single-node lifecycle | **In progress** — HP-009 transitions + HP-010 key-loss / incomplete-purge / retention + **lifecycle crash-matrix** (peer unaffected) Accept; broader destructive crash cells still open. |
 | HC1 Cluster extension | Not started. |
-| H6 Isolation claim | **Partial** — Level 1 language; published limitations; TLA + connected models; executable §39 + `pure_proofs`; **Kani harnesses connected** (CI `kani-heap`); complete-path review + external review **brief** on file. Machine-checked **Verus** + **signed** external report still open — `may_advertise_qualified() == false`. |
+| H6 Isolation claim | **Partial** — Level 1 language; published limitations; TLA + connected models; executable §39 + `pure_proofs`; **Kani + Verus pure-kernel connected** (CI `kani-heap` / `verus-heap`); complete-path review + external review **brief** on file. **Signed** external report (CPR-005) still open — `may_advertise_qualified() == false`. |
 
 #### Primary tree map (current)
 
@@ -170,7 +170,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 | Authority transition/mutation COSE corpus, threshold recovery, peer-cred barrier | HP-005 |
 | Incremental secondary-index maintain after writes on SubjectV2 | HP-007 residual (equality find acceleration Accept landed) |
 | Authority/RPC vector remainder in `spec/heap` | HP-000 |
-| Verus machine-checked proofs (Kani harnesses connected) | HP-001 residual |
+| Signed external security review (CPR-005) | HP-010 / H6 |
 | Flip default off for `legacy-raw-store` (SDK flat already opt-in) | HP-003 / A3 residual |
 
 **After single-node qualification:** HP-011 → HP-012. Until then cluster remains

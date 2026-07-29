@@ -12,7 +12,7 @@ conversation as “1 & 2”:
 | # | Residual | Blocks Level-2 claim? | Needs third party? |
 |---|----------|----------------------|--------------------|
 | **1** | **CPR-005** — signed **external** security review | **Yes** | **Yes** — by definition |
-| **2** | **Verus** machine-checked proofs (`VERUS_PROOFS_CONNECTED`) | **No** (optional if Kani already covers the pure kernel obligations) | **No** — in-house toolchain + proof engineering |
+| **2** | **Verus** machine-checked proofs (`VERUS_PROOFS_CONNECTED`) | **Landed** — pure-kernel lemmas verified under CI `verus-heap` | **No** — in-house (done) |
 
 (Item **3** from the last queue note — live HSM/KMS backend — is an H4 ops
 residual, not an H6 claim gate; scaffold is honest “not configured”.)
@@ -52,46 +52,26 @@ What “external” means for this product:
 There is no in-tree labor package that produces a signed external receipt by
 coding alone.
 
-## 2. Verus — machine-checked proofs
+## 2. Verus — machine-checked proofs (**landed**)
 
 ### Can we finish this without a third party?
 
-**Yes.** Verus is an open-source Rust verification toolchain. Running it and
-landing proofs is **first-party engineering**, same class as Kani (already
-connected).
-
-| Piece | In-house? | Third party? |
-|-------|-----------|--------------|
-| Install Verus in CI | Yes | No |
-| Write `spec fn` / proof over pure decide + models | Yes | No |
-| Flip `VERUS_PROOFS_CONNECTED=true` when CI is green | Yes | No |
-| External auditor “blesses” the proofs | Optional | Nice-to-have, not required for the flag |
-
-### Relationship to Kani (already landed)
-
-Gate D1 was: connect **Verus *or* Kani** to pure decide / isolation Inv in CI.
+**Yes — and it is done in-tree.** Verus is an open-source toolchain; proofs are
+first-party engineering.
 
 | Flag | Today | Meaning |
 |------|-------|---------|
-| `KANI_HARNESSES_CONNECTED` | **true** | Harnesses in `dingo_heap` pure_proofs; CI job `kani-heap` |
-| `VERUS_PROOFS_CONNECTED` | **false** | Verus project still a scaffold |
+| `KANI_HARNESSES_CONNECTED` | **true** | `dingo_heap` pure_proofs; CI `kani-heap` |
+| `VERUS_PROOFS_CONNECTED` | **true** | `verification/heap-verus/verus/pure_kernel.rs`; CI `verus-heap` |
 
-So **CPR-004 is partially satisfied by Kani**. Verus is a **stronger / alternate**
-machine-checked path over the same pure predicates, not a hard second dependency
-for “or Kani”. Keeping Verus open is honest engineering debt, not a vendor
-blocker.
+| How to re-run locally | Command |
+|----------------------|---------|
+| Install pinned Verus | `./scripts/setup_verus.sh` |
+| Verify pure_kernel | `./scripts/check_verus_heap.sh` (or `DINGO_REQUIRE_VERUS=1`) |
 
-### How to get Verus (if we still want it)
-
-1. Install Verus (and keep versions pinned in CI docs).
-2. Port pure targets listed in `verification/heap-verus` /
-   `VERUS_TARGET_PREDICATES` to verified modules (or prove the existing pure
-   functions via a Verus-friendly boundary).
-3. Add CI job analogous to `kani-heap`.
-4. Only then set `VERUS_PROOFS_CONNECTED = true` and update
-   `h6_pure_proof_bundle_connected` honesty asserts.
-
-Until then: **do not** set the flag, and **do not** claim Verus-checked isolation.
+Scope honesty: pure_kernel models §39 binding / gen-grace / blacklist /
+admission / isolation with integer stand-ins (not full COSE crypto). Executable
+Rust lemmas in `dingo_heap::pure_proofs` remain the product-code stand-ins.
 
 ## 3. What still blocks `qualified=true`
 

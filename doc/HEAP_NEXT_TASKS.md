@@ -45,7 +45,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
 | C1 | Live filesystem multi-tier media wipe drill | H4 open | **Done (2026-07-30)** — `destroy_coverage_unit_on_media` + `wipe_heap_object_media`; Accept `live_filesystem_multi_tier_media_wipe` / unavailable root stays retired |
-| C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | **Done (2026-07-30)** — `DataKeyProvider` trait + `InProcessDataKeyProvider` + `HsmDataKeyProvider` scaffold (refuses until configured); Accept `data_key_provider_hsm_scaffold_and_in_process` |
+| C2 | HSM / provider data-key adapter scaffold or explicit out-of-scope | H4 open | **Done (2026-07-30)** — `HsmBackendKind` / `HsmDataKeyConfig` / capabilities; real backends refuse; `mock_for_tests` Accept path; production KMS still not wired |
 | C3 | Mixed-heap salvage classification drill | H4 open | **Done (2026-07-30)** — `classify_mixed_heap_frame` / `MixedHeapSalvageClass`; Accept `mixed_heap_salvage_classification_drill` |
 | C4 | Broader destructive crash-matrix cells (beyond peer lifecycle) | H5 open | crash_matrix cells + CI subset |
 
@@ -53,7 +53,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 
 | # | Task | Why | Done when |
 |---|------|-----|-----------|
-| D1 | Connect **Verus or Kani** to pure decide / isolation Inv in CI | CPR-004 | **Done partial (2026-07-30)** — `KANI_HARNESSES_CONNECTED=true`; harnesses in `pure_proofs` + CI job `kani-heap` + `scripts/check_kani_heap.sh`. **Verus still open** (`VERUS_PROOFS_CONNECTED=false`) |
+| D1 | Connect **Verus or Kani** to pure decide / isolation Inv in CI | CPR-004 | **Done (2026-07-30)** — Kani + **Verus** connected: `VERUS_PROOFS_CONNECTED=true`, `pure_kernel.rs` (8 verified), `scripts/setup_verus.sh` + `check_verus_heap.sh`, CI `verus-heap` / `kani-heap` |
 | D2 | Commission **signed external security review** (brief already on file) | CPR-005 | Report under `doc/` + findings dispositioned. **Requires independent third party** — see [HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md). Cannot close by in-tree self-review. |
 | D3 | Re-run complete-path review; close CPR-001…006 as honestly possible | H6 exit | [HEAP_COMPLETE_PATH_REVIEW.md](HEAP_COMPLETE_PATH_REVIEW.md) updated |
 | D4 | Only then: flip matrix `qualified=true` + `may_advertise_qualified` | Product claim | `verify-heap.sh` enforces true; Level-2 language allowed |
@@ -86,8 +86,8 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 1. **D2 — procure external reviewer** (CPR-005). Not a code package: engage
    independent firm/researcher using [HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md);
    disposition in [HEAP_H6_RESIDUAL_DISPOSITION.md](HEAP_H6_RESIDUAL_DISPOSITION.md).  
-2. **D1 residual — Verus proofs** (optional; **in-house**, no third party).  
-3. **E1 — qualified HeapKey listener as default remote profile** (code).
+2. **E1 — qualified HeapKey listener as default remote profile** (code).  
+3. **Live PKCS#11 / cloud KMS connector** behind `HsmDataKeyProvider` (ops; optional).
 
 ## Machine checks (today)
 

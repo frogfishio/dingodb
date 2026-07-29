@@ -14,7 +14,8 @@ use dingo_store::{
     refuse_clear_tombstone_via_payload_restore, refuse_retain_id_without_ceremony,
     restore_payload_to_new_heap, verify_purge_receipt, DataKeyHandle, DataKeyProvider,
     DisasterRecoveryCeremony, DisasterRecoveryPackage, HeapLifecycle, HeapRetentionPolicy,
-    HsmDataKeyProvider, InProcessDataKeyProvider, MediaDomain, MixedHeapSalvageClass,
+    HsmDataKeyConfig, HsmDataKeyProvider, InProcessDataKeyProvider, MediaDomain,
+    MixedHeapSalvageClass,
     PurgeCoverageUnit, TierClass, TombstoneKind,
 };
 use std::fs;
@@ -479,16 +480,39 @@ fn live_filesystem_multi_tier_media_wipe() {
     .unwrap();
 }
 
-/// H4 / C2: HSM scaffold refuses until configured; in-process provider works.
+/// H4 / C2: HSM scaffold refuses until configured; mock + in-process work.
 #[test]
 fn data_key_provider_hsm_scaffold_and_in_process() {
     let tmp = TempDir::new().unwrap();
     let heap = uuidish(0xd0);
+
+    // Real backends refuse until a live connector is wired.
     let hsm = HsmDataKeyProvider::new("pkcs11");
     assert_eq!(hsm.provider_id(), "hsm-scaffold");
+    assert!(!hsm.is_configured());
+    assert!(!hsm.capabilities().generate);
+    assert!(hsm.capabilities().production_hsm);
     let err = hsm.generate(heap).unwrap_err();
     assert!(err.to_string().contains("not configured"), "{err}");
 
+    let aws = HsmDataKeyProvider::from_config(HsmDataKeyConfig::unconfigured(
+        dingo_store::HsmBackendKind::AwsKms,
+    ));
+    assert!(aws.generate(heap).is_err());
+
+    // Mock HSM path for Accept: operational but not production_hsm.
+    let mock = HsmDataKeyProvider::mock_for_tests();
+    assert!(mock.is_configured());
+    assert_eq!(mock.provider_id(), "hsm-mock-in-process");
+    let caps = mock.capabilities();
+    assert!(caps.generate && caps.destroy);
+    assert!(!caps.production_hsm);
+    let mut mh = mock.generate(heap).unwrap();
+    let mrec = mock.destroy(tmp.path(), &mut mh).unwrap();
+    assert!(mh.is_destroyed());
+    assert_eq!(mrec.heap_id, heap);
+
+    // Plain in-process product path.
     let proc = InProcessDataKeyProvider;
     assert_eq!(proc.provider_id(), "in-process");
     let mut handle = proc.generate(heap).unwrap();
