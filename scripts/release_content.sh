@@ -17,6 +17,7 @@ MEMBERS=(
   "dingo-sda|crates/sda-core"
   "dingo-sda-cli|crates/sda-cli"
   "dingo-format|crates/dingo-format"
+  "dingo-heap|crates/dingo-heap"
   "dingo-store|crates/dingo-store"
   "dingo-client|crates/dingo-client"
   "dingo-sdk|crates/dingo-sdk"

@@ -40,3 +40,10 @@ path = "fuzz_targets/scan_reverse.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "heap_ownership"
+path = "fuzz_targets/heap_ownership.rs"
+test = false
+doc = false
+bench = false

@@ -25,21 +25,23 @@ mod frame;
 mod integrity;
 mod kinds;
 mod limits;
+mod ownership;
 mod scan;
 mod segment;
+mod subject_v2;
 
 pub use cbor_envelope::{
     decode_deterministic_uint_map, encode_deterministic_uint_map,
     validate_deterministic_cbor_envelope, CborEnvelopeError, CborValue, EMPTY_ENVELOPE,
 };
+pub use chunks::{
+    decode_chunk_body, encode_chunk_body, reassemble_chunks, ChunkPiece, LogicalExtent,
+    ReassemblyState, CHUNK_BODY_HEADER_LEN,
+};
 pub use compat::{
     wire_compat_matrix, wire_reader_supports, wire_support_for, wire_support_summary,
     wire_writer_emits, WireSupportEntry, WireSupportStatus, SUPPORTED_READER_MAJORS,
     WRITER_WIRE_MAJOR, WRITER_WIRE_MINOR,
-};
-pub use chunks::{
-    decode_chunk_body, encode_chunk_body, reassemble_chunks, ChunkPiece, LogicalExtent,
-    ReassemblyState, CHUNK_BODY_HEADER_LEN,
 };
 pub use events::{group_by_event_id, EventIdOutcome};
 pub use frame::{
@@ -51,6 +53,11 @@ pub use frame::{
 pub use integrity::{body_hash, prefix_crc32c, suffix_crc32c, BODY_HASH_LEN};
 pub use kinds::{FrameFlags, FrameKind};
 pub use limits::SafetyLimits;
+pub use ownership::{
+    agree_ownership, encode_heap_binding_envelope, parse_ownership_envelope, OwnershipError,
+    OwnershipEvidence, ENV_COLLECTION_ID, ENV_HEAP_ID, ENV_OWNERSHIP_PROFILE, ENV_SOURCE_HEAP_ID,
+    ENV_SOURCE_OBJECT_ID, ENV_STREAM_ID, OWNERSHIP_PROFILE_V1,
+};
 pub use scan::{
     find_end_magic_rightmost, find_start_magic, scan_forward, scan_reverse, ByteRange, HoleReason,
     ScanRegion, ScanReport,
@@ -60,4 +67,7 @@ pub use segment::{
     encode_descriptor_body, encode_store_descriptor_body, encode_store_descriptor_frame,
     encode_summary_body, ActiveSegment, SealedSegment, SegmentError, SegmentId,
     DESCRIPTOR_BODY_LEN, STORE_DESCRIPTOR_BODY_LEN, STORE_DESCRIPTOR_FORMAT_TAG, SUMMARY_BODY_LEN,
+};
+pub use subject_v2::{
+    decode_subject_v2, encode_subject_v2, SubjectObjectKind, SubjectV2, SubjectV2Error,
 };

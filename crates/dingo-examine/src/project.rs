@@ -351,6 +351,10 @@ fn frame_kind_name(kind: FrameKind) -> &'static str {
         FrameKind::SegmentSummary => "segment-summary",
         FrameKind::PurgeAttestation => "purge-attestation",
         FrameKind::Padding => "padding",
+        FrameKind::HeapDescriptor => "heap-descriptor",
+        FrameKind::CollectionDescriptor => "collection-descriptor",
+        FrameKind::StreamDescriptor => "stream-descriptor",
+        FrameKind::HeapMigrationEvidence => "heap-migration-evidence",
     }
 }
 

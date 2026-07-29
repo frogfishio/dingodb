@@ -36,6 +36,9 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
+      - name: Heap architecture / HP-000 contract
+        run: ./scripts/check_heap_architecture.sh
+
       - name: Clippy (strict)
         run: cargo clippy --workspace --all-targets -- -D warnings
 

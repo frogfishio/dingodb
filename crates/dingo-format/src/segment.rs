@@ -60,6 +60,9 @@ pub enum SegmentError {
     /// Caller tried to append a kind reserved for the writer lifecycle.
     #[error("kind {0} is reserved for segment lifecycle frames")]
     ReservedKind(u8),
+    /// Descriptor envelope failed deterministic CBOR validation.
+    #[error("invalid descriptor envelope")]
+    InvalidEnvelope,
 }
 
 /// In-memory active append segment (FORMAT_SPEC §6.3 until sealed).
@@ -85,6 +88,21 @@ impl ActiveSegment {
         limits: SafetyLimits,
         created_ns: u64,
     ) -> Result<Self, SegmentError> {
+        Self::create_with_descriptor_envelope(ids, limits, created_ns, EMPTY_ENVELOPE)
+    }
+
+    /// Create a segment with an explicit descriptor envelope (heap binding).
+    ///
+    /// `envelope` must be deterministic CBOR. Qualified heap writers supply
+    /// `{31: heap_id, 34: 1}`; legacy writers may pass [`EMPTY_ENVELOPE`].
+    pub fn create_with_descriptor_envelope(
+        ids: SegmentId,
+        limits: SafetyLimits,
+        created_ns: u64,
+        envelope: &[u8],
+    ) -> Result<Self, SegmentError> {
+        crate::cbor_envelope::validate_deterministic_cbor_envelope(envelope)
+            .map_err(|_| SegmentError::InvalidEnvelope)?;
         let mut seg = Self {
             ids,
             limits,
@@ -97,12 +115,7 @@ impl ActiveSegment {
         let body = encode_descriptor_body(&ids, created_ns, limits);
         let mut event_id = [0u8; 16];
         event_id.copy_from_slice(&ids.segment_id);
-        seg.append_raw(
-            FrameKind::SegmentDescriptor,
-            EMPTY_ENVELOPE,
-            &body,
-            event_id,
-        )?;
+        seg.append_raw(FrameKind::SegmentDescriptor, envelope, &body, event_id)?;
         Ok(seg)
     }
 
@@ -551,5 +564,26 @@ mod tests {
         assert_eq!(id, store_id);
         assert_eq!(ns, 42);
         assert_eq!(tag, STORE_DESCRIPTOR_FORMAT_TAG);
+    }
+
+    #[test]
+    fn create_with_heap_binding_envelope() {
+        let heap = [0x7eu8; 16];
+        let env = crate::ownership::encode_heap_binding_envelope(&heap).unwrap();
+        let active = ActiveSegment::create_with_descriptor_envelope(
+            sample_ids(),
+            SafetyLimits::default(),
+            0,
+            &env,
+        )
+        .unwrap();
+        assert_eq!(active.frame_count(), 1);
+        let bad = ActiveSegment::create_with_descriptor_envelope(
+            sample_ids(),
+            SafetyLimits::default(),
+            0,
+            b"not-cbor",
+        );
+        assert!(matches!(bad, Err(SegmentError::InvalidEnvelope)));
     }
 }

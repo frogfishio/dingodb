@@ -123,6 +123,10 @@ pub enum StoreError {
     /// restart the scan from the first page.
     #[error("stale scan cursor: {0}")]
     CursorStale(String),
+
+    /// Heap capability check failed (HP-003 façades).
+    #[error("heap capability: {0}")]
+    HeapCapability(String),
 }
 
 impl StoreError {

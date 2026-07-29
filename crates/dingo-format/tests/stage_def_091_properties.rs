@@ -32,12 +32,12 @@ proptest! {
     /// Well-formed frames round-trip under draft wire major.
     #[test]
     fn encode_decode_roundtrip(
-        kind_byte in 1u8..=9u8,
+        kind_byte in 1u8..=13u8,
         body in prop::collection::vec(any::<u8>(), 0..256),
         writer_sequence in any::<u64>(),
         seed in any::<u64>(),
     ) {
-        let kind = FrameKind::from_u8(kind_byte).expect("1..=9 are assigned kinds");
+        let kind = FrameKind::from_u8(kind_byte).expect("1..=13 are assigned kinds");
         let envelope = EMPTY_ENVELOPE.to_vec();
         let parts = FrameParts {
             header: FrameHeader {

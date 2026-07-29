@@ -42,11 +42,13 @@ mod envelope;
 mod erasure;
 mod error;
 mod failpoint;
+mod heap;
 mod history;
 mod hydra;
 mod ids;
 mod index;
 mod index_cache;
+mod kernel;
 mod layout;
 mod lifecycle;
 mod media;
@@ -96,16 +98,17 @@ pub use compact::{
     CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport, COMPACTION_JOB_DIR,
     COMPACTION_JOB_SUFFIX,
 };
+pub use crash_matrix::{
+    all_cells, ci_subset_cells, load_embedded as load_crash_matrix,
+    validate as validate_crash_matrix, CrashMatrix, ExpectedReopen, MatrixFailpoint,
+    MatrixOperation, CRASH_MATRIX_JSON,
+};
 pub use cursor::{
     scan_generation, LiveScanPage, LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
 };
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};
-pub use crash_matrix::{
-    all_cells, ci_subset_cells, load_embedded as load_crash_matrix, validate as validate_crash_matrix,
-    CrashMatrix, ExpectedReopen, MatrixFailpoint, MatrixOperation, CRASH_MATRIX_JSON,
-};
 pub use durability::DurabilityMode;
 pub use envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
@@ -121,6 +124,9 @@ pub use failpoint::{
     consume_short_write as consume_failpoint_short_write, disarm as disarm_failpoint,
     hit as hit_failpoint, short_write_len as failpoint_short_write_len, Action as FailpointAction,
 };
+/// Capability-gated heap façades (HP-003). Prefer these over raw [`Store`] for
+/// qualified heap isolation; [`Store`] remains the legacy single-namespace API.
+pub use heap::{HeapStore, MaintenanceStore, RecoveryStore, ReplicaStore, StoreHost};
 pub use history::{HistoryEvent, SubjectHistory};
 pub use hydra::{
     build as build_hydra_index, build_many as build_hydra_indexes, classify_keys,
@@ -149,20 +155,9 @@ pub use migrate::{
     MIGRATE_DIR, MIGRATE_JOB_FILE, MIGRATE_PROFILE, PROTOCOL_MAJOR_DECLARED,
     PROTOCOL_MINOR_DECLARED, PROTOCOL_PROFILE_DECLARED, RPC_WIRE_LABEL_DECLARED,
 };
-pub use secondary::{
-    delete_secondary_index, list_secondary_index_paths, secondary_index_path,
-    try_load_secondary_index, write_secondary_index, IndexState, SecondaryIndex,
-    SecondaryIndexMeta, INDEX_LIFECYCLE_PROFILE,
-};
-pub use segment_catalog::{
-    segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
-};
 pub use recovery::{
-    salvage_manifest_path, try_load_recovery_manifest, FrameEvidence, HoleEvidence,
-    LimitsSnapshot, RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
-};
-pub use seal_pipeline::{
-    list_pending_paths, recover_all_pending, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
+    salvage_manifest_path, try_load_recovery_manifest, FrameEvidence, HoleEvidence, LimitsSnapshot,
+    RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
 };
 pub use scrub::{
     list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,
@@ -172,6 +167,17 @@ pub use scrub::{
     ScrubStatus, ScrubTarget, ScrubTargetKind, ScrubTargetResult, DEFAULT_SCRUB_MAX_BYTES,
     DEFAULT_SCRUB_MAX_FILES, SCRUB_DIR, SCRUB_FINDINGS_FILE, SCRUB_PROFILE, SCRUB_QUARANTINE_DIR,
     SCRUB_STATE_FILE,
+};
+pub use seal_pipeline::{
+    list_pending_paths, recover_all_pending, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
+};
+pub use secondary::{
+    delete_secondary_index, list_secondary_index_paths, secondary_index_path,
+    try_load_secondary_index, write_secondary_index, IndexState, SecondaryIndex,
+    SecondaryIndexMeta, INDEX_LIFECYCLE_PROFILE,
+};
+pub use segment_catalog::{
+    segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
 };
 pub use store::{
     subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,

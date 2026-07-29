@@ -1,7 +1,9 @@
 # DingoDB Heap Specification
 
 Status: Developer-ready implementation contract v0.9  
-Capability status: Not implemented; handoff begins with HP-000  
+Capability status: **Partial** — HP-000…HP-003 landed in-tree (with listed
+gaps); HP-004…HP-012 and Gates H1–H6 not started. No `dingo-heap-v1`
+qualified claim. See **Implementation progress** below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
 Audience: SDK, server, cluster, storage, security, recovery, CLI, and test-rig
@@ -18,6 +20,82 @@ interpreted as described by
 appear in all capitals. Text marked illustrative is non-normative; frozen
 tables, byte layouts, state transitions, and acceptance conditions are
 normative.
+
+### Implementation progress
+
+Last updated: 2026-07-29. This subsection is **status only**; it does not
+change normative requirements. Package acceptance still means the Accept
+criteria in §40.
+
+#### Summary
+
+| Layer | State |
+|-------|--------|
+| Spec contract (`dingo-heap-v1` prose §§30–41) | Frozen (this document) |
+| Machine-readable artifacts (`spec/heap/`) | Present; HP-000 mostly landed |
+| Isolation kernel crate (`crates/dingo-heap`) | Present; HP-001 mostly landed |
+| Durable ownership in `dingo-format` | Present; HP-002 partial |
+| Store façades / architecture check | Present; HP-003 partial |
+| Catalogs, authority binary, SDK heap API, network, lifecycle, qualification | **Not started** (HP-004+) |
+| Product claim level (§1.4 / Gate H6) | Still **Level 1 language only** — named namespaces / isolation in progress |
+
+Before Gate H6, product language remains:
+
+> DingoDB provides named heap namespaces; strong access-isolation qualification
+> is in progress.
+
+#### Work packages (§40)
+
+| ID | Title | Status | Notes |
+|----|-------|--------|-------|
+| **HP-000** | Machine-readable contract | **Landed (gaps)** | `spec/heap/operations-v1.json`, `cbor-v1.json`, schemas/fixtures for active ops **1–3** only; `dingo-heap` `build.rs` generates registry; `scripts/check_heap_architecture.sh` + CI step. Bootstrap cert/proof vectors verify with two decoders; negative mutations reject. **Gap:** full §38.1 corpus beyond bootstrap is still scaffolded in `vectors-v1.json`. |
+| **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/dingo-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
+| **HP-002** | Durable ownership | **Partial** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree; `ActiveSegment::create_with_descriptor_envelope`; fuzz target `heap_ownership`. **Gap:** full descriptor body schemas (§34.5), store-level one-heap segment enforcement, and the adversarial admit-wrong-heap corpus are not complete. |
+| **HP-003** | Store compilation firewall | **Partial** | `kernel::PhysicalStore` alias; `StoreHost`, `HeapStore`, `MaintenanceStore`, `ReplicaStore`, `RecoveryStore`; architecture checker. **Gap:** public `dingo_store::Store` remains exported for legacy callers; Rustdoc still exposes unscoped put/get/scan. Full consumer cutover and “no public raw store” accept criterion are open. |
+| HP-004 | Heap and object catalogs | Not started | Next handoff after HP-003 gaps close or are explicitly deferred. |
+| HP-005 | Authority and local ceremony | Not started | Includes `dingo-authority` binary. |
+| HP-006 | Legacy migration | Not started | §36. |
+| HP-007 | SDK capability surface | Not started | |
+| HP-008 | Qualified network protocol | Not started | |
+| HP-009 | Lifecycle, backup, recovery | Not started | |
+| HP-010 | Single-node qualification | Not started | First release allowed to advertise qualified `dingo-heap-v1`. |
+| HP-011 | Cluster control and placement | Not started | |
+| HP-012 | Cluster qualification | Not started | |
+
+#### Implementation gates (§27)
+
+| Gate | Status |
+|------|--------|
+| H0 Vocabulary and identity | **In progress** — types and registry exist in `dingo-heap`; public APIs still largely flat-store. |
+| H1 Heap-bound SDK | Not started (depends on HP-003/HP-007). |
+| H2 HeapKey authority | Not started (HP-005/HP-008). |
+| H3 Derived / operational coverage | Not started. |
+| H4 Backup and recovery | Not started. |
+| H5 Single-node lifecycle | Not started. |
+| HC1 Cluster extension | Not started. |
+| H6 Isolation claim | Not started — no qualified claim. |
+
+#### Primary tree map (current)
+
+```text
+spec/heap/                     # HP-000 contract artifacts
+crates/dingo-heap/             # HP-001 kernel (MIT)
+crates/dingo-format/           # HP-002 ownership + SubjectV2 (+ kinds 10–13)
+crates/dingo-store/src/kernel/ # PhysicalStore alias (crate-private intent)
+crates/dingo-store/src/heap/   # HP-003 façades (legacy Store still public)
+scripts/check_heap_architecture.sh
+scripts/verify-heap.sh
+formal/heap/                   # TLA+ scaffold
+verification/heap-verus/       # Verus scaffold
+fuzz/fuzz_targets/heap_ownership.rs
+```
+
+#### Next recommended package
+
+Close HP-002/HP-003 accept gaps **or** start **HP-004** (heap/object catalogs)
+only with an explicit deferral note for remaining HP-003 raw-`Store` cutover.
+Do not begin HP-005 network/authority ceremony until HP-000 vector corpus and
+HP-001 proof scaffolds are on the critical path or formally deferred.
 
 ## 1. Purpose
 
@@ -6084,6 +6162,11 @@ merge into the qualified path before its dependencies.
 
 ### HP-000 — Machine-readable contract
 
+**Implementation status (2026-07-29):** landed with gaps — see Implementation
+progress. Artifacts under `spec/heap/`; registry generation in `dingo-heap`;
+checker `scripts/check_heap_architecture.sh`. Outstanding for full Accept:
+complete §38.1 vector corpus.
+
 Deliver:
 
 - `spec/heap/operations-v1.json`;
@@ -6101,6 +6184,10 @@ byte-for-byte, and the negative corpus is rejected.
 
 ### HP-001 — Isolation kernel
 
+**Implementation status (2026-07-29):** landed with gaps — `crates/dingo-heap`
+kernel present; Verus/Kani not yet proving Accept. See Implementation
+progress.
+
 Depends on HP-000. Deliver `dingo-heap` IDs, rights, constraints, certificate
 verification, holder proof, snapshot, pure decision function, errors, and unit
 tests. No server integration.
@@ -6110,6 +6197,10 @@ property-tested, and the pure kernel passes Verus/Kani targets.
 
 ### HP-002 — Durable ownership
 
+**Implementation status (2026-07-29):** partial — format fields, SubjectV2,
+ownership helpers, and envelope-bound segment create exist; full one-heap
+admit corpus and descriptor schemas incomplete. See Implementation progress.
+
 Depends on HP-001. Deliver frame fields 31–36, descriptor frames, subject v2,
 one-heap segment enforcement, recovery agreement checks, and fuzz targets.
 
@@ -6117,6 +6208,10 @@ Accept when a corpus with holes, truncation, swapped paths, conflicting labels,
 and concatenated segments never admits a frame into the wrong heap.
 
 ### HP-003 — Store compilation firewall
+
+**Implementation status (2026-07-29):** partial — façades and architecture
+checker exist; public legacy `Store` still exported. See Implementation
+progress.
 
 Depends on HP-002. Make `PhysicalStore` crate-private; introduce `StoreHost`,
 `HeapStore`, `MaintenanceStore`, `ReplicaStore`, and `RecoveryStore`; add the
@@ -6222,10 +6317,11 @@ package is experimental and MUST report `qualified=false`.
 
 ## 41. Definition of ready for implementation
 
-This v0.9 document authorizes HP-000 to begin immediately. HP-000 is the first
-implementation package, not a prerequisite that must somehow already exist
-before development starts. HP-001 may merge only after HP-000 and its generated
-artifacts pass review.
+This v0.9 document authorized HP-000 to begin immediately. As of the
+Implementation progress date above, HP-000…HP-003 have in-tree deliveries with
+the gaps recorded there; the next ordered package that has **not** started is
+HP-004 (unless HP-002/HP-003 Accept gaps are closed first). Later packages
+still MUST NOT merge into the qualified path before their dependencies.
 
 No developer is authorized to invent a different wire field, right bit,
 identifier rule, durable owner, authority transition, migration shortcut,
@@ -6264,7 +6360,12 @@ evidence agree. Passing ordinary functional tests alone is not completion.
 
 ### 41.1 First handoff package
 
-The first developer handoff is exactly HP-000:
+The first developer handoff was exactly HP-000 (checklist below). That handoff
+is **in-tree as of the Implementation progress date**, with the §38.1 corpus
+gap still open. Subsequent handoffs follow §40 order (HP-001…); do not treat
+this subsection as the current tip of delivery — use Implementation progress.
+
+HP-000 checklist (historical / regression):
 
 1. create `spec/heap/`;
 2. transcribe §31 labels and limits into `cbor-v1.json`;

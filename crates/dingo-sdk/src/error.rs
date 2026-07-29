@@ -299,6 +299,7 @@ fn map_store(e: &StoreError) -> ErrorCode {
         // DEF-026: bad/tampered token → query invalid; generation fence → stale route class.
         StoreError::CursorInvalid(_) => ErrorCode::QueryInvalid,
         StoreError::CursorStale(_) => ErrorCode::ConsistencyViolation,
+        StoreError::HeapCapability(_) => ErrorCode::PermissionDenied,
     }
 }
 

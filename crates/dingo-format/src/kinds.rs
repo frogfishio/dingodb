@@ -24,6 +24,14 @@ pub enum FrameKind {
     PurgeAttestation = 8,
     /// Explicit padding.
     Padding = 9,
+    /// Heap descriptor (catalog / history evidence).
+    HeapDescriptor = 10,
+    /// Collection descriptor.
+    CollectionDescriptor = 11,
+    /// Stream descriptor.
+    StreamDescriptor = 12,
+    /// Heap migration evidence.
+    HeapMigrationEvidence = 13,
 }
 
 impl FrameKind {
@@ -40,6 +48,10 @@ impl FrameKind {
             7 => Ok(Self::SegmentSummary),
             8 => Ok(Self::PurgeAttestation),
             9 => Ok(Self::Padding),
+            10 => Ok(Self::HeapDescriptor),
+            11 => Ok(Self::CollectionDescriptor),
+            12 => Ok(Self::StreamDescriptor),
+            13 => Ok(Self::HeapMigrationEvidence),
             other => Err(other),
         }
     }
