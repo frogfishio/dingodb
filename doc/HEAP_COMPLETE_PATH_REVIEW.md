@@ -75,7 +75,7 @@ re-bound through heap APIs.
 | ID | Finding | Severity | Blocks |
 |----|---------|----------|--------|
 | CPR-001 | Flat SDK is feature-gated (`legacy-flat-sdk`, **still default on** for Stages 3–9); heap-only via `--no-default-features`; labelled non-qualified | High until default flips | H0, H1, H6 |
-| CPR-002 | Many reserved heap ops remain; §32.4 data + list/scan/find/history/indexes cut activated (lifecycle/export still reserved) | Medium | H2 |
+| CPR-002 | Many reserved heap ops remain; §32.4 data + list/scan/find/history/indexes cut activated with IndexAdmin + equality find acceleration (lifecycle/export still reserved) | Medium | H2 |
 | CPR-003 | Live filesystem multi-tier media wipe / HSM adapters incomplete | Medium (ops) | H4 residual / HP-009 |
 | CPR-004 | Formal models are connected sketches + executable obligations, not Verus-checked proofs | High for H6 | H6 |
 | CPR-005 | No independent external security review receipt on file | High for H6 | H6 |

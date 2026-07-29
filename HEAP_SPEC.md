@@ -64,8 +64,8 @@ Before Gate H6, product language remains:
 | **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `dingo-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
 | **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
 | **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
-| **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap data + CPR-001 opt-in)** | Heap APIs + SubjectV2 put/get + `connect_heap` with remote put/get/delete/list/scan/find/history/indexes. **CPR-001:** `legacy-flat-sdk` default **on**; heap-only via `--no-default-features`. Accept: isolation, SubjectV2, connect_heap data+list/scan/find/history/indexes, `cpr001_legacy_opt_in`. **Gaps:** find not yet index-accelerated; flip `legacy-flat-sdk` default off after cutover. |
-| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan/find/history/indexes)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (18 ops):** process 1–3 + 105/110–112/114–117/120–122 + **130–133** indexes. Accept: connect_heap put/get/delete + list/scan/find/history/indexes. **Gaps:** lifecycle still reserved, IndexAdmin not on bootstrap certs (Write first-cut), default qualified listener, RPC corpus expansion. |
+| **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap data + CPR-001 opt-in)** | Heap APIs + SubjectV2 put/get + `connect_heap` with remote put/get/delete/list/scan/find/history/indexes. Equality `find` accelerates via ready secondary indexes. **CPR-001:** `legacy-flat-sdk` default **on**; heap-only via `--no-default-features`. Accept: isolation, SubjectV2, connect_heap data+list/scan/find/history/indexes (+ find-via-index), `cpr001_legacy_opt_in`. **Gaps:** flip `legacy-flat-sdk` default off after cutover; incremental index maintain after writes. |
+| **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan/find/history/indexes)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (18 ops):** process 1–3 + 105/110–112/114–117/120–122 + **130–133** indexes (**IndexAdmin** on 131–133; bootstrap cert rights_mask includes IndexAdmin). Accept: connect_heap put/get/delete + list/scan/find/history/indexes. **Gaps:** lifecycle still reserved, default qualified listener, RPC corpus expansion. |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
 | HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept**. **H1 advanced** (SubjectV2 + remote data/list/scan/find/history/indexes + CPR-001 opt-in). H0/H1/H2/H4/H5 still partial. H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close (default flat SDK). |
 | HP-011 | Cluster control and placement | Not started | |
@@ -126,7 +126,7 @@ fuzz/fuzz_targets/heap_ownership.rs
 | Is the **spec prose** a usable implementation contract? | **Yes** — §§30–41 are frozen developer-ready text (v0.9). |
 | Is **implementation** of the full package tree complete? | **No** — HP-010 incomplete; HP-011/012 not started. |
 | May we advertise `dingo-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
-| Is the **hot data path** good enough for heap-bound apps? | **Mostly yes** for embedded + qualified remote put/get/list/scan/find/history/indexes; lifecycle RPC still reserved; find is scan-based (not yet index-accelerated). |
+| Is the **hot data path** good enough for heap-bound apps? | **Mostly yes** for embedded + qualified remote put/get/list/scan/find/history/indexes (equality find index-accelerated); lifecycle RPC still reserved. |
 
 **Bottom line:** we are **not done** with the *program* HEAP_SPEC describes. We **are** done writing the core *contract document*; remaining work is residual implementation + honest qualification evidence.
 
@@ -168,7 +168,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 | Item | Package |
 |------|---------|
 | Authority transition/mutation COSE corpus, threshold recovery, peer-cred barrier | HP-005 |
-| Find acceleration via secondary indexes on SubjectV2 | HP-007 residual (index CRUD Accept landed; find still scans) |
+| Incremental secondary-index maintain after writes on SubjectV2 | HP-007 residual (equality find acceleration Accept landed) |
 | Authority/RPC vector remainder in `spec/heap` | HP-000 |
 | Verus/Kani connected proofs | HP-001 |
 | Flip default off for `legacy-flat-sdk` / `legacy-raw-store` after cutover | HP-003 / CPR-001 residual |
@@ -6052,6 +6052,3 @@ pub enum SecurityControlEntry {
         node_id: NodeId,
         heap_id: HeapId,
         authority_epoch: AuthorityEpoch,
-        security_revision: SecurityRevision,
-        authority_chain_head_hash: [u8; 32],
-        term: u64,

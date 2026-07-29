@@ -631,7 +631,7 @@
       "wire_name": "index_create",
       "status": "active",
       "surface": "heap",
-      "rights_mask": 4,
+      "rights_mask": 8,
       "request_schema": "rpc-v1/index_create.request.json",
       "response_schema": "rpc-v1/index_create.response.json",
       "allowed_states": [
@@ -647,7 +647,7 @@
       "wire_name": "index_drop",
       "status": "active",
       "surface": "heap",
-      "rights_mask": 4,
+      "rights_mask": 8,
       "request_schema": "rpc-v1/index_drop.request.json",
       "response_schema": "rpc-v1/index_drop.response.json",
       "allowed_states": [
@@ -663,7 +663,7 @@
       "wire_name": "index_rebuild",
       "status": "active",
       "surface": "heap",
-      "rights_mask": 4,
+      "rights_mask": 8,
       "request_schema": "rpc-v1/index_rebuild.request.json",
       "response_schema": "rpc-v1/index_rebuild.response.json",
       "allowed_states": [

@@ -34,7 +34,8 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 |---|------|-----|-----------|
 | B1 | Activate **find** (116) + minimal filter args | Query is the everyday path | **Done (2026-07-30)** — schemas/fixtures + scan+Filter dispatch + `RemoteHeap::find` + `connect_heap_find_filter` |
 | B2 | Activate **history** (117) | Spec + DX parity | **Done (2026-07-30)** — schemas/fixtures + SubjectV2 history + `RemoteHeap::history` + `connect_heap_history` (rights first-cut = Read) |
-| B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | **Done (2026-07-30)** — schemas/fixtures + heap-scoped SecondaryIndex + dispatch + `RemoteHeap` index APIs + `connect_heap_indexes` (rights first-cut = Read list / Write mutate; not IndexAdmin yet) |
+| B3 | Activate **index_list / index_create / index_drop / index_rebuild** (130–133) | Find acceleration | **Done (2026-07-30)** — schemas/fixtures + heap-scoped SecondaryIndex + dispatch + `RemoteHeap` index APIs + `connect_heap_indexes` |
+| B3b | IndexAdmin rights + find acceleration | Close B3 residuals | **Done (2026-07-30)** — ops 131–133 require IndexAdmin; bootstrap cert rights_mask=13; equality `find` uses ready indexes (`connect_heap_find_via_index`) |
 | B4 | Activate **collection_create** (106) (needs rights story) | Provisioning without offline catalog | Ceremony/rights + Accept |
 | B5 | Remaining reserved ops only as needed for drills (lifecycle RPC, export, …) | Avoid activation thrash | Matrix-driven only |
 

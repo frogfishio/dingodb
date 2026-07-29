@@ -275,7 +275,7 @@ impl HeapStore {
     /// Create (or rebuild definition) a field index over JSON documents.
     ///
     /// First cut: full rebuild from a SubjectV2 collection scan (no resume).
-    /// Requires Write (IndexAdmin may be reasserted later when certs grant it).
+    /// Requires [`Rights::INDEX_ADMIN`]. Build scan also needs Read on the cap.
     pub fn create_index(
         &self,
         collection_id: &[u8; 16],
@@ -283,7 +283,7 @@ impl HeapStore {
         fields: &[&str],
     ) -> Result<SecondaryIndex, StoreError> {
         self.gate()?;
-        self.require_right(Rights::WRITE)?;
+        self.require_right(Rights::INDEX_ADMIN)?;
         if name.is_empty() || name.len() > 256 {
             return Err(StoreError::HeapAdmit("index name invalid".into()));
         }
@@ -326,7 +326,7 @@ impl HeapStore {
     /// Drop a secondary index by name.
     pub fn drop_index(&self, collection_id: &[u8; 16], name: &str) -> Result<(), StoreError> {
         self.gate()?;
-        self.require_right(Rights::WRITE)?;
+        self.require_right(Rights::INDEX_ADMIN)?;
         let scope = self.index_scope_key(collection_id);
         let guard = self
             .physical
@@ -342,7 +342,7 @@ impl HeapStore {
         name: &str,
     ) -> Result<SecondaryIndex, StoreError> {
         self.gate()?;
-        self.require_right(Rights::WRITE)?;
+        self.require_right(Rights::INDEX_ADMIN)?;
         let scope = self.index_scope_key(collection_id);
         let existing = {
             let guard = self
@@ -451,6 +451,94 @@ impl HeapStore {
         }
         Ok(out)
     }
+
+    /// Lookup candidate collection keys via a secondary index for equality filters.
+    ///
+    /// `equalities` is a list of (field path, JSON value) constraints (shallow AND
+    /// of equalities). Returns:
+    /// - `Ok(None)` — no usable index matches; caller must scan.
+    /// - `Ok(Some(keys))` — index path used; keys are application collection keys
+    ///   (may be empty when Ready+complete_coverage proves absence).
+    pub fn lookup_index_keys(
+        &self,
+        collection_id: &[u8; 16],
+        equalities: &[(String, JsonValue)],
+    ) -> Result<Option<Vec<Vec<u8>>>, StoreError> {
+        self.gate()?;
+        self.require_right(Rights::READ)?;
+        if equalities.is_empty() {
+            return Ok(None);
+        }
+        let scope = self.index_scope_key(collection_id);
+        let indexes = {
+            let guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+            guard.list_secondary_indexes(&scope)?
+        };
+        for idx in indexes {
+            if !idx.meta.may_accelerate_hits() || idx.meta.fields.is_empty() {
+                continue;
+            }
+            // All index fields must appear as equalities.
+            let mut values = Vec::new();
+            let mut ok = true;
+            for f in &idx.meta.fields {
+                match equalities.iter().find(|(path, _)| path == f) {
+                    Some((_, v)) => values.push(v.clone()),
+                    None => {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+            if !ok {
+                continue;
+            }
+            let key = match index_key_from_values(&values) {
+                Some(k) => k,
+                None => continue,
+            };
+            let subjects = idx.lookup(&key).to_vec();
+            // Empty miss is authoritative only when Ready + complete_coverage.
+            if subjects.is_empty() && !idx.meta.may_prove_absence() {
+                continue;
+            }
+            let mut keys = Vec::new();
+            for subject in subjects {
+                let sv2 = match decode_subject_v2(&subject) {
+                    Ok(s)
+                        if s.heap_id == self.cap.heap_id().as_bytes()
+                            && s.object_kind == SubjectObjectKind::Collection
+                            && s.object_id == collection_id =>
+                    {
+                        s
+                    }
+                    _ => continue,
+                };
+                keys.push(sv2.key.to_vec());
+            }
+            return Ok(Some(keys));
+        }
+        Ok(None)
+    }
+}
+
+/// Build opaque index key from ordered JSON field values (same encoding as build).
+fn index_key_from_values(values: &[JsonValue]) -> Option<Vec<u8>> {
+    let mut parts = Vec::new();
+    for v in values {
+        parts.push(serde_json::to_vec(v).ok()?);
+    }
+    let mut out = Vec::new();
+    for (i, p) in parts.iter().enumerate() {
+        if i > 0 {
+            out.push(0x1f);
+        }
+        out.extend_from_slice(p);
+    }
+    Some(out)
 }
 
 /// Build opaque index key bytes from ordered field values (JSON text).

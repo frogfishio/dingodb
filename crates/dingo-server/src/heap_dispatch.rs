@@ -9,7 +9,7 @@ use dingo_heap::{
     active_operation_ids, refresh_capability_or_terminate, CollectionId, HeapCap, Operation,
     OperationStatus, Rights,
 };
-use dingo_sdk::Filter;
+use dingo_sdk::{Filter, Pred};
 use dingo_store::{
     hex16, rebuild_object_entry_from_chain, try_load_collections_catalog, HeapMetaLayout, HeapStore,
     ObjectKind, WriteReceipt,
@@ -182,11 +182,12 @@ pub fn dispatch_heap_request_with(
     }
 
     // Rights gate for data ops.
-    // IndexAdmin is not yet granted by bootstrap certs; 131–133 first-cut use Write.
+    // 131–133 require IndexAdmin (bootstrap cert includes bit 3).
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
         105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 | 130 => Rights::READ,
-        120 | 121 | 122 | 131 | 132 | 133 => Rights::WRITE,
+        120 | 121 | 122 => Rights::WRITE,
+        131 | 132 | 133 => Rights::INDEX_ADMIN,
         _ => return unavailable(req.id),
     };
     if required_rights != Rights::EMPTY && !cap.rights().contains(required_rights) {
@@ -521,7 +522,44 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
     {
         return unavailable_id(id);
     }
-    // Scan more rows than limit so filters that hit sparsely still return results.
+
+    // Prefer secondary-index candidates for equality / AND-of-equalities.
+    let eqs = equality_fields(&filter);
+    if !eqs.is_empty() {
+        match ctx.store.lookup_index_keys(coll.as_bytes(), &eqs) {
+            Ok(Some(keys)) => {
+                let mut out = Vec::new();
+                for key in keys {
+                    if out.len() >= limit {
+                        break;
+                    }
+                    let Ok(key_s) = String::from_utf8(key.clone()) else {
+                        continue;
+                    };
+                    let body = match ctx.store.get_collection(coll.as_bytes(), &key) {
+                        Ok(Some(b)) => b,
+                        Ok(None) => continue,
+                        Err(_) => return unavailable_id(id),
+                    };
+                    if body.first() != Some(&0x01) {
+                        continue;
+                    }
+                    let Ok(json) = serde_json::from_slice::<Value>(&body[1..]) else {
+                        continue;
+                    };
+                    if !filter.matches(&json) {
+                        continue;
+                    }
+                    out.push(serde_json::json!({ "key": key_s, "json": json }));
+                }
+                return ok_id(id, serde_json::json!({ "rows": out }));
+            }
+            Ok(None) => {} // fall through to scan
+            Err(_) => return unavailable_id(id),
+        }
+    }
+
+    // Scan fallback (non-equality filters, or no usable index).
     let scan_cap = limit.saturating_mul(8).clamp(limit, 4096);
     let scanned = match ctx.store.scan_collection(coll.as_bytes(), scan_cap, None) {
         Ok(rows) => rows,
@@ -547,6 +585,24 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
         out.push(serde_json::json!({ "key": key_s, "json": json }));
     }
     ok_id(id, serde_json::json!({ "rows": out }))
+}
+
+/// Shallow equality constraints for index acceleration (Eq + AND of Eq only).
+fn equality_fields(filter: &Filter) -> Vec<(String, Value)> {
+    match filter {
+        Filter::Field {
+            path,
+            pred: Pred::Eq(v),
+        } => vec![(path.clone(), v.clone())],
+        Filter::And(parts) => {
+            let mut out = Vec::new();
+            for p in parts {
+                out.extend(equality_fields(p));
+            }
+            out
+        }
+        _ => Vec::new(),
+    }
 }
 
 fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {

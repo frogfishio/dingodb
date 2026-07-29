@@ -506,7 +506,7 @@ impl RemoteHeap {
 
     /// Create a secondary field index (op_id = 131). Full rebuild, first cut.
     ///
-    /// Rights first-cut: Write (IndexAdmin may be reasserted when certs grant it).
+    /// Requires IndexAdmin on the session capability.
     pub fn index_create(
         &mut self,
         collection_id: &str,

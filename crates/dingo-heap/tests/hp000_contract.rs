@@ -234,7 +234,7 @@ fn decide_allows_ping_and_denies_reserved() {
         ),
         AuthorizationDecision::Allow
     );
-    // index_create requires Write; bootstrap cert rights_mask includes Write (5).
+    // index_create requires IndexAdmin; bootstrap cert rights_mask includes bit 3 (13).
     assert_eq!(
         decide(
             &snap,
@@ -247,6 +247,7 @@ fn decide_allows_ping_and_denies_reserved() {
         ),
         AuthorizationDecision::Allow
     );
+    assert!(cert.rights.contains(dingo_heap::Rights::INDEX_ADMIN));
     // Reserved ops still deny (e.g. export = 140).
     assert!(matches!(
         decide(

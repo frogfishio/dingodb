@@ -363,7 +363,9 @@ fn successful_auth_then_proof_replay_fails() {
         }
     }
     assert!(request_registry_allows(1));
-    assert!(!request_registry_allows(111));
+    assert!(request_registry_allows(111)); // §32.4 data active
+    assert!(request_registry_allows(131)); // index_create active
+    assert!(!request_registry_allows(140)); // export still reserved
 }
 
 #[test]
