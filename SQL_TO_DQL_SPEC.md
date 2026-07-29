@@ -1,12 +1,19 @@
-# SQL to DQL cross-compiler specification
+# SQL-ish+ and SQL to DQL cross-compiler specification
 
 Status: **Normative design v1.0-draft**
 
-Compiler profile: `dingo-sql-to-dql-v1`
+Product surface: **SQL-ish+**
+
+Canonical dialect identifier: `sql+`
+
+Portable alias: `sql-plus`
+
+Compiler profile: `dingo-sql-plus-to-dql-v1`
 
 Target profile: `dql-plan-v1`
 
-Audience: migration-tool, dialect, compiler, SDK, and conformance implementers
+Audience: query-surface, migration-tool, dialect, compiler, SDK, and
+conformance implementers
 
 Normative companions: [DQL_SPEC.md](DQL_SPEC.md),
 [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md), and
@@ -18,12 +25,19 @@ syntax outside this profile:
 
 ## 1. Purpose
 
-This compiler translates a deliberately bounded, read-only SQL `SELECT`
-profile into DQL.
+SQL-ish+ is a first-class optional query surface for people who already know
+SQL. It translates a deliberately bounded, read-only SQL `SELECT` profile into
+DQL and executes the resulting DQL plan.
 
-It exists for migration and developer comfort. It does not make DingoDB a SQL
-database and does not claim to implement PostgreSQL, ISO SQL, relational bags,
-SQL transactions, or a relational catalog.
+It serves three uses:
+
+- write SQL-ish+ and execute it directly;
+- inspect the generated DQL while learning DingoDB;
+- translate an existing supported SQL query into durable DQL source.
+
+It does not make DingoDB a SQL database and does not claim to implement
+PostgreSQL, ISO SQL, relational bags, SQL transactions, or a relational
+catalog.
 
 The compiler has one governing rule:
 
@@ -31,11 +45,12 @@ The compiler has one governing rule:
 > obligations, or refuse. Never guess.
 
 The existing `sql` dialect in `dingo-sdk` is a small SQL-ish-to-SDA filter
-frontend. It remains separate. This specification defines a new compiler
-surface:
+frontend. SQL-ish+ is its intended richer successor. This specification defines
+the new compiler surfaces:
 
 ```text
-sql-dql
+sql+
+sql-plus
 ```
 
 and a logical API:
@@ -43,7 +58,40 @@ and a logical API:
 ```text
 compile_sql_to_dql(sql, bindings, evidence, options)
     -> SqlToDqlResult
+
+execute_sql_plus(sql, bindings, evidence, options)
+    -> SqlPlusResultStream
 ```
+
+`sql+` and `sql-plus` are exact aliases. `sql+` is the product spelling;
+`sql-plus` exists for shells, URLs, configuration formats, and registries where
+`+` is inconvenient.
+
+## 1.1 Authority
+
+SQL-ish+ owns no execution semantics after compilation:
+
+```text
+SQL-ish+ source
+      ↓
+SQL-ish+ compiler
+      ↓
+canonical DQL source + DqlPlanV1 + mapping receipt
+      ↓
+ordinary DQL planner and executor
+```
+
+The DQL plan—not the SQL-ish+ source parser—is the runtime authority. Explain,
+coverage, consistency, budgets, continuation, Heap isolation, and SDA
+examination are the ordinary DQL mechanisms.
+
+`SqlPlusResultStream` is the ordinary DQL result stream passed through the
+documented SQL compatibility normalization in §11. It does not introduce a
+second query executor.
+
+Users may retain SQL-ish+ source, generated DQL, or both. Long-lived prepared
+queries store the canonical DQL plan plus the source/compiler provenance
+required to reproduce it.
 
 ## 2. Why translation is not mechanical syntax replacement
 
@@ -116,9 +164,14 @@ Conditional output is not executable by default. It becomes executable only
 when:
 
 - active DRE artifacts prove every obligation at the bound frontier; or
-- the caller explicitly accepts an assumption manifest for migration analysis.
+- the caller explicitly accepts an assumption manifest for offline migration
+  analysis.
 
 Assumptions are never converted into database guarantees.
+
+The interactive/runtime `sql+` surface executes only `Exact`, including a
+formerly conditional translation whose obligations have been discharged by
+active evidence. It never executes an unproven assumption manifest.
 
 ### 3.3 Refused
 
@@ -523,6 +576,18 @@ The mapping receipt lists:
 - all assumptions;
 - compiler/profile versions.
 
+Every directly executed SQL-ish+ query exposes this receipt through `explain`
+and SDA examination. A user can always ask:
+
+```text
+show dql
+show obligations
+show mapping
+```
+
+These are SDK/console actions over the compilation result, not additional SQL
+grammar.
+
 ## 13. Stable diagnostics
 
 ```text
@@ -612,6 +677,52 @@ The compiler is conforming only for queries classified `Exact` or correctly
 7. Add proven inner/left many-to-one joins.
 8. Emit canonical mapping receipts.
 9. Differentially test source evaluation against generated DQL.
-10. Expose `sql-dql` separately from the existing `sql` mimic dialect.
+10. Expose `sql+` and `sql-plus` as direct executable query dialects.
+11. Deprecate the legacy `sql` mimicry path under the migration policy in §18.
 
 No implementation step may silently widen the accepted SQL profile.
+
+## 18. Replacement and compatibility policy
+
+The legacy dialect and SQL-ish+ have different semantics and target types.
+The identifier `sql` must not silently change meaning inside one compatibility
+major.
+
+Migration phases:
+
+### Phase A — introduce
+
+```text
+sql            -> existing SQL-ish-to-SDA implementation
+sql-legacy-v1  -> explicit alias of existing implementation
+sql+           -> SQL-ish+ to DQL
+sql-plus       -> alias of sql+
+```
+
+The SDK warns that `sql` is legacy and recommends `sql+`.
+
+### Phase B — default transition
+
+In the next declared SDK/query compatibility major:
+
+```text
+sql            -> sql+
+sql-plus       -> sql+
+sql-legacy-v1  -> retained explicit legacy behavior
+```
+
+The compatibility-major boundary, release notes, and explain output make the
+change visible. Stored prepared queries retain their original explicit profile
+and never reinterpret automatically.
+
+### Phase C — eventual removal
+
+`sql-legacy-v1` may be removed only under the published compatibility policy.
+Its removal does not affect DQL plans previously generated by SQL-ish+.
+
+At the end state, users can:
+
+- use DQL directly;
+- use SQL-ish+ permanently;
+- inspect or export the DQL generated from SQL-ish+;
+- move from SQL-ish+ to DQL incrementally without changing execution meaning.

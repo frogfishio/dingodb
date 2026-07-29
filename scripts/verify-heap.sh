@@ -26,10 +26,11 @@ if [[ "$MODE" == "full" ]]; then
     echo "kani not installed; property tests cover rights intersection"
   fi
   if command -v tlc >/dev/null 2>&1; then
-    echo "tlc available — model-checking formal/heap/HeapIsolation.tla"
+    echo "tlc available — model-checking formal/heap/HeapIsolation.tla + HeapAuthority.tla"
     tlc -config formal/heap/MCHeapIsolation.cfg formal/heap/HeapIsolation.tla || true
+    tlc -config formal/heap/MCHeapAuthority.cfg formal/heap/HeapAuthority.tla || true
   else
-    echo "tlc not installed; HeapIsolation.tla sketch reviewed by hp010 h6 drill"
+    echo "tlc not installed; HeapIsolation/HeapAuthority sketches reviewed by hp010 drills"
   fi
 fi
 

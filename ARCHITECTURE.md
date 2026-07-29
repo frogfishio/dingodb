@@ -22,7 +22,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Dingo Query Language (v1 design; shipped parser is v0.1 subset) | [DQL_SPEC.md](DQL_SPEC.md), current-subset guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
 | Shared total predicate semantics for DQL and DRE | [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md) |
 | Dingo Rule Expression (DRE) constraint language and Invariant Core | [DRE_SPEC.md](DRE_SPEC.md) |
-| SQL compatibility import into DQL | [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md) |
+| SQL-ish+ executable surface and SQL→DQL compiler | [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md) |
 | JSON Schema Draft 2020-12 import into DRE | [JSON_SCHEMA_TO_DRE_SPEC.md](JSON_SCHEMA_TO_DRE_SPEC.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
 | SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |

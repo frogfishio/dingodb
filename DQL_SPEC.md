@@ -12,6 +12,9 @@ Normative companions: [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
 
 Compatibility importer: [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md)
 
+That companion also defines SQL-ish+ (`sql+` / `sql-plus`) as an optional
+directly executable frontend. DQL remains the compiled semantic authority.
+
 ## 1. Decision
 
 DQL is DingoDB's official human query language.

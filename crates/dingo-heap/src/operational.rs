@@ -8,17 +8,25 @@ use crate::capability::HeapCap;
 use crate::decide::refresh_capability_or_terminate;
 use crate::error::{HeapError, HeapUnavailableCause};
 use crate::ids::HeapId;
+use crate::isolation_profile::{load_isolation_profiles, REFERENCE_ISOLATION_PROFILE};
 
 /// Closed unauthenticated declassification registry (`HEAP_SPEC` §13.2).
+///
+/// Kept as a const alias of the reference profile allowlist; HP-010 verifies it
+/// matches `spec/heap/isolation-profiles-v1.json`.
 pub const UNAUTHENTICATED_DECLASSIFIED_FIELDS: &[&str] =
     &["protocol_versions", "live", "ready", "build_id"];
 
-/// Whether an unauthenticated caller may observe `field` under `heap-data-isolated`.
+/// Whether an unauthenticated caller may observe `field` under the reference profile.
 #[must_use]
 pub fn unauthenticated_field_allowed(field: &str) -> bool {
-    UNAUTHENTICATED_DECLASSIFIED_FIELDS
-        .iter()
-        .any(|f| *f == field)
+    load_isolation_profiles()
+        .ok()
+        .and_then(|r| r.get(REFERENCE_ISOLATION_PROFILE).ok())
+        .is_some_and(|p| p.unauthenticated_allows(field))
+        || UNAUTHENTICATED_DECLASSIFIED_FIELDS
+            .iter()
+            .any(|f| *f == field)
 }
 
 /// One operational log/metric/audit event offered to a capability-bound observer.

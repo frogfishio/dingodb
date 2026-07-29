@@ -40,10 +40,12 @@ fn main() {
     let ops_path = workspace_root.join("spec/heap/operations-v1.json");
     let cbor_path = workspace_root.join("spec/heap/cbor-v1.json");
     let vectors_path = workspace_root.join("spec/heap/vectors-v1.json");
+    let isolation_path = workspace_root.join("spec/heap/isolation-profiles-v1.json");
 
     println!("cargo:rerun-if-changed={}", ops_path.display());
     println!("cargo:rerun-if-changed={}", cbor_path.display());
     println!("cargo:rerun-if-changed={}", vectors_path.display());
+    println!("cargo:rerun-if-changed={}", isolation_path.display());
 
     let ops: OpsDoc =
         serde_json::from_str(&fs::read_to_string(&ops_path).expect("operations-v1.json"))

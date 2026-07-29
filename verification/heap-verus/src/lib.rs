@@ -28,4 +28,7 @@ pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "confine_health_detail strips paths/global counts for public and auth views",
     "confine_support_bundle drops foreign heaps and secret-bearing entries",
     "authority_binding_holds is required for every non-public decide path",
+    "IsolationProfileRegistry matches spec/heap/isolation-profiles-v1.json",
+    "heap-metadata-hardened denies aggregate_load and fine_timing_ms",
+    "HeapAuthority.tla covers generation/blacklist/grace/terminal",
 ];

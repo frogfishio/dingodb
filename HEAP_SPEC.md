@@ -65,7 +65,7 @@ Before Gate H6, product language remains:
 | **HP-007** | SDK capability surface | **Landed (Accept isolation)** | `dingo-sdk::heap`: `DingoDeployment`, `Heap`, `HeapCollection`/`HeapStream`, heap-bound pool, `SignedCursor`, batch membership checks. Accept: identical collection names across heaps cannot exchange handles/cursors/batch members/pooled connections. **Gaps:** remote `connect_heap`, SubjectV2 put/get path, `dangerous-key-export` holder signer. |
 | **HP-008** | Qualified network protocol | **Landed (Accept live TLS loop)** | Session/audit/exporter API plus **accept-loop wiring**: `qualified_heap_key` serve path derives RFC 9266 exporter, runs `heap_session`, dispatches via `HeapCap` (`serve_qualified_requests`) with **no token/RBAC**. Accept: live TLS ping without token; token field → uniform `heap_unavailable`. **Gaps:** §32.4 reserved-op activation, RPC vector corpus, make qualified listener the default remote profile (legacy token still available when `qualified_heap_key=false`). |
 | **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
-| HP-010 | Single-node qualification | **In progress (H3–H6 partial)** | Matrix stays `qualified=false`; Accept adds **support-bundle/health-detail confinement** and **executable §39 decide obligations**. H6 still needs full Verus + external review. |
+| HP-010 | Single-node qualification | **In progress (H3–H6 partial)** | Matrix stays `qualified=false`; Accept adds **named isolation profiles** (`isolation-profiles-v1.json`) and **HeapAuthority.tla**. H6 still needs full Verus + external review. |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
 
@@ -76,11 +76,11 @@ Before Gate H6, product language remains:
 | H0 Vocabulary and identity | **In progress** — types and registry exist in `dingo-heap`; public APIs still largely flat-store. |
 | H1 Heap-bound SDK | **In progress** — HP-007 typed handles landed; remote `connect_heap` still open. |
 | H2 HeapKey authority | **In progress** — HP-005 issue + HP-008 live TLS accept-loop; reserved-op §32.4 still open. |
-| H3 Derived / operational coverage | **In progress** — HeapCap termination; single-owner admit; indexes/streams + query-escape; metrics/logs/export + **support-bundle/health-detail** confinement Accept. Named isolation profile registry still open. |
+| H3 Derived / operational coverage | **In progress** — Derived paths, query escape, ops/health/bundle confinement, **named isolation profiles + closed declassification registry** Accept. Resource/physical profile qualification still open. |
 | H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone + media-domain incomplete purge + retention scheduler Accept; live filesystem tier wipe / HSM adapters still open. |
 | H5 Single-node lifecycle | **In progress** — HP-009 transitions + HP-010 key-loss / incomplete-purge / retention + **lifecycle crash-matrix** (peer unaffected) Accept; broader destructive crash cells still open. |
 | HC1 Cluster extension | Not started. |
-| H6 Isolation claim | **Partial** — Level 1 language; published limitations; TLA sketch + IsolationModel; **executable §39 decide obligations** (`authority_binding_holds`). Full Verus + external review still open — `may_advertise_qualified() == false`. |
+| H6 Isolation claim | **Partial** — Level 1 language; published limitations; HeapIsolation + **HeapAuthority** sketches; IsolationModel; executable §39 obligations. Full Verus + external review still open — `may_advertise_qualified() == false`. |
 
 #### Primary tree map (current)
 
@@ -101,7 +101,9 @@ crates/dingo-heap/src/qualification.rs   # claim surface (qualified=false)
 crates/dingo-heap/src/isolation.rs       # query-escape confinement (H3/H6)
 crates/dingo-heap/src/operational.rs     # metrics/logs/export/health/bundle (H3)
 crates/dingo-heap/src/isolation_model.rs # connected Rust ↔ TLA Inv (H6)
+crates/dingo-heap/src/isolation_profile.rs # §13 named profiles + registry
 crates/dingo-heap/src/decide_obligations.rs # executable §39 Verus stand-in (H6)
+spec/heap/isolation-profiles-v1.json         # closed declassification registry
 doc/RUNBOOK_HEAP_QUALIFICATION.md        # HP-010 operator runbook
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
@@ -113,16 +115,15 @@ fuzz/fuzz_targets/heap_ownership.rs
 
 #### Next recommended package
 
-Continue **HP-010** (close H6 full Verus + external review; named isolation
-profile / metadata-hardened registry) until `qualified=true` is honest. In
-parallel: HP-006 physical rewrite, HP-008 §32.4 / default qualified listener,
-HP-009 live filesystem tier wipe / HSM adapters.
+Continue **HP-010** (close H6 full Verus + external review) until
+`qualified=true` is honest. In parallel: HP-006 physical rewrite, HP-008 §32.4 /
+default qualified listener, HP-009 live filesystem tier wipe / HSM adapters.
 
 #### Remaining delivery sequence
 
 ```text
 DONE   HP-000 → … → HP-008 → HP-006(core) → HP-009(core+DR/key+media/retention)
-NEXT   HP-010 single-node qualification  (H3 ops/health/bundle + §39 obligations; Verus/review open)
+NEXT   HP-010 single-node qualification  (profiles + HeapAuthority landed; Verus/review open)
   or   residual closers (HP-006 physical / HP-008 §32.4 / HP-009 FS wipe/HSM)
 LATER  HP-011 → HP-012 cluster
 ```
@@ -136,7 +137,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 
 | Item | Package | Why it blocks qualification |
 |------|---------|------------------------------|
-| Full H-gate matrices, load/fuzz/restore/key-loss evidence | HP-010 | Support-bundle/health + §39 decide obligations Accept landed; H6 full Verus + external review still block `qualified=true` |
+| Full H-gate matrices, load/fuzz/restore/key-loss evidence | HP-010 | Isolation profiles + HeapAuthority Accept landed; H6 full Verus + external review still block `qualified=true` |
 | Physical segment rewrite + operator migration tooling | HP-006 residual | Live-store rewrite still open |
 | §32.4 schemas/fixtures before activating reserved heap ops | HP-008 residual | Spec forbids activating ops from code alone |
 | Make qualified listener the default remote profile | HP-008 residual | Legacy token path still default-off |
@@ -6359,10 +6360,12 @@ H6 partial — matrix + claim surface (`qualified=false`); differential NI; Heap
 termination; single-owner admit; key-loss; restore; retention/incomplete-purge;
 derived-path indexes/streams; query escape; metrics/logs/export + support-bundle
 + health-detail confinement; load/latency + structured fuzz budgets; operator
-runbook; lifecycle crash-matrix (peer heaps unaffected); `HeapIsolation.tla` +
-connected Rust `IsolationModel`; executable §39 decide obligations
-(`authority_binding_holds` / `h6_decide_obligations`). Full Verus proofs and
-external security review remain open.
+runbook; lifecycle crash-matrix (peer heaps unaffected); named isolation
+profiles + closed declassification registry (`isolation-profiles-v1.json`);
+`HeapIsolation.tla` + `HeapAuthority.tla` + connected Rust `IsolationModel`;
+executable §39 decide obligations (`authority_binding_holds` /
+`h6_decide_obligations`). Full Verus proofs and external security review remain
+open.
 
 Depends on HP-005 through HP-009. Execute every H-gate, load/latency tests,
 fuzzing budget, restore drills, key-loss drills, and operator runbooks.

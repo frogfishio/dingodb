@@ -15,6 +15,7 @@ mod holder_proof;
 mod ids;
 mod isolation;
 mod isolation_model;
+mod isolation_profile;
 mod operational;
 mod qualification;
 mod rights;
@@ -42,6 +43,11 @@ pub use isolation::{
     H6_PUBLISHED_LIMITATIONS,
 };
 pub use isolation_model::{connected_model_smoke, IsolationModel, ModelUnit};
+pub use isolation_profile::{
+    load_isolation_profiles, load_isolation_profiles_from, unauthenticated_field_allowed_for,
+    IsolationProfile, IsolationProfileId, IsolationProfileRegistry, H6_MINIMUM_PROFILE,
+    ISOLATION_PROFILES_JSON, ISOLATION_PROFILES_REL, REFERENCE_ISOLATION_PROFILE,
+};
 pub use operational::{
     confine_export_heaps, confine_health_detail, confine_operational_observation,
     confine_support_bundle, unauthenticated_field_allowed, ConfinedHealthDetail,

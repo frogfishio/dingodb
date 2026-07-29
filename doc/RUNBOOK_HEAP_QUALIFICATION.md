@@ -121,6 +121,22 @@ deny undeclared deployment-wide kinds.
 
 CI Accept: `hp010_qualification::support_bundle_health_detail_scoped`.
 
+## 5.3 Named isolation profiles
+
+Machine-readable registry: `spec/heap/isolation-profiles-v1.json`.
+
+| Profile | HP-010 role |
+|---------|-------------|
+| `heap-data-isolated` | Reference / H6 minimum |
+| `heap-metadata-hardened` | Closed registry + coarsened timing / no aggregate load |
+| `heap-resource-isolated` | Declared, not qualified in this package |
+| `heap-physical-isolated` | Declared, not qualified in this package |
+
+SHA-256 of the exact JSON bytes is recorded by `IsolationProfileRegistry` for
+qualification evidence. Deployment extensions start empty (`version: 0`).
+
+CI Accept: `hp010_qualification::isolation_profile_registry_closed`.
+
 ## 6. Gate H6 limitations (published)
 
 Logical heap isolation does **not** protect against:

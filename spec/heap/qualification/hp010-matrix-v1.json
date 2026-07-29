@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 support-bundle/health-detail + ops Accept; H5 lifecycle crash Accept; H6 partial with IsolationModel + executable §39 decide obligations. External review + full Verus still open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 named isolation profiles + closed declassification registry Accept; H6 partial with HeapIsolation + HeapAuthority sketches and §39 obligations. External review + full Verus still open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -44,7 +44,9 @@
         "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
         "crates/dingo-store/tests/hp010_qualification.rs::operational_metrics_logs_export_scoped",
         "crates/dingo-store/tests/hp010_qualification.rs::support_bundle_health_detail_scoped",
-        "crates/dingo-heap confine_query_observation / confine_operational_observation / confine_export_heaps / confine_health_detail / confine_support_bundle"
+        "crates/dingo-store/tests/hp010_qualification.rs::isolation_profile_registry_closed",
+        "spec/heap/isolation-profiles-v1.json",
+        "crates/dingo-heap confine_query_observation / confine_operational_observation / confine_export_heaps / confine_health_detail / confine_support_bundle / IsolationProfileRegistry"
       ]
     },
     "H4": {
@@ -74,13 +76,16 @@
         "crates/dingo-heap claim_language / may_advertise_qualified (Level 1)",
         "crates/dingo-heap H6_PUBLISHED_LIMITATIONS",
         "formal/heap/HeapIsolation.tla (read/write confinement + ownership disjointness sketch)",
+        "formal/heap/HeapAuthority.tla (generation/blacklist/grace/terminal sketch)",
         "formal/heap/MCHeapIsolation.cfg",
+        "formal/heap/MCHeapAuthority.cfg",
         "crates/dingo-heap IsolationModel connected to TLA Inv",
         "crates/dingo-heap authority_binding_holds + h6_decide_obligations (§39 executable stand-in)",
         "verification/heap-verus H6_PROOF_OBLIGATIONS checklist",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_isolation_claim_partial_evidence",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_connected_model",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_decide_obligations_connected",
+        "crates/dingo-store/tests/hp010_qualification.rs::h6_heap_authority_model",
         "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined"
       ]
     },
@@ -156,6 +161,18 @@
       "status": "accept",
       "section": "39/H6",
       "test": "hp010_qualification::h6_decide_obligations_connected"
+    },
+    "isolation_profile_registry": {
+      "status": "accept",
+      "section": "13/H3",
+      "test": "hp010_qualification::isolation_profile_registry_closed",
+      "artifact": "spec/heap/isolation-profiles-v1.json"
+    },
+    "h6_heap_authority_model": {
+      "status": "accept",
+      "section": "39/H6",
+      "test": "hp010_qualification::h6_heap_authority_model",
+      "artifact": "formal/heap/HeapAuthority.tla"
     },
     "load_latency_budget": {
       "status": "accept",

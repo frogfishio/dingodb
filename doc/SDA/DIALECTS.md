@@ -127,8 +127,8 @@ DQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 | **`dql`** | **Dingo Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [DQL_SPEC.md](../../DQL_SPEC.md) |
 | `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/dingo-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
-| `sql` | Tiny `SELECT` / `WHERE` mimicry | document predicate or projection program | **partial** — foreign comfort only (not DQL) |
-| `sql-dql` | Bounded SQL compatibility import | canonical DQL v1 plan | **specified, not implemented** — [SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md) |
+| `sql` | Tiny legacy `SELECT` / `WHERE` mimicry | document predicate or projection program | **implemented, deprecated when SQL-ish+ ships** |
+| `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical DQL v1 plan | **specified, not implemented** — [SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md) |
 | `graphql` | Reserved id | — | **scaffold** — not implemented |
 
 ### DQL (official)
@@ -188,10 +188,10 @@ stored null or only absence, use pure SDA (or the `json` dialect’s
 Out of scope (and refused or not recognized): joins, subqueries, aggregates,
 `ORDER BY` / `LIMIT` (use SDK `QueryOptions`), functions, `LIKE`, DDL/DML.
 
-This is not the SQL→DQL cross-compiler. The separately specified `sql-dql`
-profile translates a stricter SQL subset into DQL, models SQL three-valued
-predicates explicitly, and requires proof or declared obligations for hidden
-join cardinality. See
+This is not SQL-ish+. The separately specified `sql+` / `sql-plus` profile
+translates a richer SQL subset into DQL, models SQL three-valued predicates
+explicitly, and requires proof for hidden join cardinality before direct
+execution. It is the intended successor to this legacy path. See
 [SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md).
 
 ### GraphQL (`graphql`)
@@ -230,7 +230,8 @@ Application
     ├─ fluent Filter / QueryBuilder / enrich builder   (no dialect string)
     ├─ dialect "dql"                    (official human surface — design)
     ├─ find_json / dialect "json"       (Mongo-style object)
-    ├─ dialect "sql"                    (foreign mimicry)
+    ├─ dialect "sql+"                   (SQL-ish+ → canonical DQL)
+    ├─ dialect "sql"                    (legacy SQL mimicry)
     ├─ Collection::sda / sda_query      (pure ENR+SDA text)
     └─ dialect "sda"                    (same pure path, explicit id)
     │

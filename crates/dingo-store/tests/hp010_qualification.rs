@@ -11,13 +11,15 @@ use dingo_format::{
 use dingo_heap::{
     claim_language, confine_export_heaps, confine_health_detail, confine_operational_observation,
     confine_query_observation, confine_support_bundle, connected_model_smoke,
-    h6_decide_obligations, may_advertise_qualified, mint_capability,
-    refresh_capability_or_terminate, unauthenticated_field_allowed, AuthorityGeneration,
-    CertificateId, CollectionId, Constraint, Constraints, DeploymentId, HealthDetailInput,
-    HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, OperationalEvent,
-    QueryObservationRequest, Rights, SecurityRevision, StreamId, SupportBundleEntry,
-    TrustedInstant, VerifiedCertificate, H6_PUBLISHED_LIMITATIONS, PRE_QUALIFICATION_LANGUAGE,
-    QUALIFIED_CLAIM, QUALIFIED_PROFILE, UNAUTHENTICATED_DECLASSIFIED_FIELDS,
+    h6_decide_obligations, load_isolation_profiles, load_isolation_profiles_from,
+    may_advertise_qualified, mint_capability, refresh_capability_or_terminate,
+    unauthenticated_field_allowed, AuthorityGeneration, CertificateId, CollectionId, Constraint,
+    Constraints, DeploymentId, HealthDetailInput, HeapAdministrativeState, HeapId,
+    HeapSecuritySnapshot, HeapSlot, IsolationProfileId, OperationalEvent, QueryObservationRequest,
+    Rights, SecurityRevision, StreamId, SupportBundleEntry, TrustedInstant, VerifiedCertificate,
+    H6_MINIMUM_PROFILE, H6_PUBLISHED_LIMITATIONS, ISOLATION_PROFILES_JSON, ISOLATION_PROFILES_REL,
+    PRE_QUALIFICATION_LANGUAGE, QUALIFIED_CLAIM, QUALIFIED_PROFILE, REFERENCE_ISOLATION_PROFILE,
+    UNAUTHENTICATED_DECLASSIFIED_FIELDS,
 };
 use dingo_store::{
     active_snapshot, arm_failpoint_once, build_backup_manifest, clear_failpoints, create_object,
@@ -134,6 +136,8 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
         "h6_connected_model",
         "support_bundle_health_detail",
         "h6_decide_obligations",
+        "isolation_profile_registry",
+        "h6_heap_authority_model",
     ] {
         assert_eq!(
             doc.drills[drill].status, "accept",
@@ -828,6 +832,8 @@ fn h6_isolation_claim_partial_evidence() {
     assert!(verus_body.contains("H6_PROOF_OBLIGATIONS"));
     assert!(verus_body.contains("confine_query_observation"));
     assert!(verus_body.contains("IsolationModel"));
+    assert!(verus_body.contains("IsolationProfileRegistry"));
+    assert!(verus_body.contains("HeapAuthority.tla"));
 }
 
 #[test]
@@ -1087,6 +1093,63 @@ fn h6_decide_obligations_connected() {
     assert!(verus.contains("authority_binding_holds"));
     assert!(verus.contains("confine_health_detail"));
     assert!(verus.contains("confine_support_bundle"));
+}
+
+#[test]
+fn isolation_profile_registry_closed() {
+    // Gate H3 / §13: named profiles + closed declassification registry.
+    let on_disk = fs::read_to_string(workspace_root().join(ISOLATION_PROFILES_REL)).unwrap();
+    assert_eq!(
+        on_disk.trim(),
+        ISOLATION_PROFILES_JSON.trim(),
+        "embedded registry must match on-disk artifact"
+    );
+    let reg = load_isolation_profiles_from(&on_disk).unwrap();
+    let embedded = load_isolation_profiles().unwrap();
+    assert_eq!(reg.sha256_hex, embedded.sha256_hex);
+    assert_eq!(reg.h6_minimum_profile, H6_MINIMUM_PROFILE);
+    assert_eq!(REFERENCE_ISOLATION_PROFILE, IsolationProfileId::HeapDataIsolated);
+
+    let data = reg.get(IsolationProfileId::HeapDataIsolated).unwrap();
+    for f in UNAUTHENTICATED_DECLASSIFIED_FIELDS {
+        assert!(data.unauthenticated_allows(f), "{f}");
+        assert!(unauthenticated_field_allowed(f), "{f}");
+    }
+    assert!(!data.unauthenticated_allows("heap_count"));
+    assert!(data.expose_aggregate_load);
+
+    let hard = reg.get(IsolationProfileId::HeapMetadataHardened).unwrap();
+    assert!(hard.coarsen_public_timing);
+    assert!(!hard.expose_aggregate_load);
+    assert!(hard.is_always_confidential("aggregate_load"));
+    assert!(hard.is_always_confidential("fine_timing_ms"));
+    assert!(hard.authenticated_allows_heap_local("usage").is_ok());
+    assert!(hard.authenticated_allows_heap_local("physical_paths").is_err());
+
+    // Empty deployment extension — cannot invent fields at runtime.
+    assert_eq!(reg.extension_version, 0);
+    assert!(reg.extension_fields.is_empty());
+    assert_eq!(reg.sha256_hex.len(), 64);
+}
+
+#[test]
+fn h6_heap_authority_model() {
+    let tla = fs::read_to_string(workspace_root().join("formal/heap/HeapAuthority.tla")).unwrap();
+    for needle in [
+        "GenOK",
+        "NotBlacklisted",
+        "AdmissionOK",
+        "HardCycle",
+        "GraceCycle",
+        "BlacklistAdd",
+        "ExpireGrace",
+        "Terminal",
+    ] {
+        assert!(tla.contains(needle), "HeapAuthority.tla missing {needle}");
+    }
+    assert!(workspace_root()
+        .join("formal/heap/MCHeapAuthority.cfg")
+        .exists());
 }
 
 

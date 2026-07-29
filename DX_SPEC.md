@@ -1,6 +1,6 @@
 # DingoDB Developer Experience Specification
 
-Status: Draft v0.1  
+Status: Draft v0.1
 Scope: Everyday API, query surface, CLI, errors, defaults, administration, and
 progressive disclosure
 
@@ -528,6 +528,13 @@ await users.find({ status: "active", age: { $gte: 18 } });
 
 // Explicit dialect id (SDK: find_dialect / compile_dialect)
 await users.findDialect("sql", "SELECT * WHERE status = 'active' AND age >= 18");
+await db.queryDialect("sql+", `
+  SELECT o.id, c.name AS customer_name
+  FROM orders AS o
+  LEFT JOIN customers AS c ON o.customer_id = c.id
+  ORDER BY o.id ASC
+  LIMIT 100
+`);
 await users.findDialect("json", `{"status":"active"}`);
 ```
 
@@ -538,13 +545,19 @@ Builtin dialect ids:
 | `sda` | Pure SDA/ENR1 text (parse-checked) |
 | `dql` | **Official** Dingo Query Language → ENR1+SDA ([DQL_SPEC.md](DQL_SPEC.md); v0.1) |
 | `json` / `mongo` | DX portable filter object → document predicate |
-| `sql` | Partial `SELECT` / `WHERE` mimicry (foreign comfort; not DQL) |
+| `sql` | Legacy partial `SELECT` / `WHERE` mimicry; retained during migration |
+| `sql+` / `sql-plus` | SQL-ish+ → canonical DQL v1; specified, not yet implemented |
 | `graphql` | Reserved; not implemented |
 
 None of the *foreign* dialects is a complete encoding of SDA, SQL, MongoDB, or
 GraphQL. Mimicry is intentional: the product offers the pure language (hard),
 DQL as the official human surface, plus comfortable foreign options. Hosts MAY
 register additional dialects that compile to pure SDA / shared IR.
+
+SQL-ish+ is intentionally more substantial than the legacy `sql` filter
+dialect. It is an optional executable frontend for SQL-familiar users and
+compiles through DQL rather than introducing an SQL execution engine. See
+[SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md).
 
 Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [DQL_SPEC.md](DQL_SPEC.md).
 Rust surface: `dingo-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
