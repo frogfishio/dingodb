@@ -1,5 +1,11 @@
 # Hydra indexing strategy
 
+Query-order companion:
+[ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md). Hydra locates immutable
+records; Dingo Order Wavelets are a separate derived structure for exact
+filter-conditioned ranked ordering. Neither is required to impersonate the
+other.
+
 Status: **implemented (foundation)** in `dingo-store::hydra`  
 Companion: seal path writes `indexes/seg/{segment_hex}.hdx` sidecars (derived only).  
 Honesty: hot `Store::get` uses resident `PrimaryIndex` only. Hydra is seal/rebuild/load

@@ -10,6 +10,11 @@ Normative companions: [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
 [crates/enr-core/ENR1.md](crates/enr-core/ENR1.md), and
 [DX_SPEC.md](DX_SPEC.md)
 
+Ranked query access: [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md)
+
+Indexed filtered ordering:
+[ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md)
+
 Compatibility importer: [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md)
 
 That companion also defines SQL-ish+ (`sql+` / `sql-plus`) as an optional
@@ -89,7 +94,7 @@ DQL v1 supports:
 - nested enrichment inside a bounded attached bag/sequence;
 - nested projection;
 - deterministic scalar ordering;
-- limit and authenticated keyset continuation;
+- limit, authenticated continuation, and exact ranked direct access;
 - explicit coverage and consistency modes;
 - explicit scan/materialization budgets;
 - explain.
@@ -103,7 +108,7 @@ DQL v1 deliberately excludes:
 - implicit cross-Heap reads;
 - unbounded recursive traversal;
 - SQL-style flattening joins;
-- offset pagination;
+- SQL-style offset execution that silently enumerates and discards a prefix;
 - aggregation and grouping;
 - window functions;
 - arbitrary computed projection expressions;
@@ -137,11 +142,11 @@ written bare.
 Reserved words:
 
 ```text
-after allow and as asc available budget bytes complete consistency
-current desc documents enrich exact exactly_one explain false from
+access after allow and as asc at available budget build bytes complete
+consistency current desc direct documents enrich exact exactly_one explain false from
 in incomplete limit many matching missing not null nulls optional
-or order present project result_bytes true using where within
-expect first last
+or order page present project rank result_bytes sequential size survivors domain true using
+where within expect first last
 ```
 
 Reserved words may appear as bracketed field segments but not as bare aliases,
@@ -157,8 +162,12 @@ the parameter production below.
 query             = [ "explain" ], from-clause, { pipeline-step },
                     [ project-clause ],
                     [ order-clause ],
-                    [ after-clause ],
                     [ limit-clause ],
+                    [ page-clause ],
+                    [ rank-clause ],
+                    [ access-clause ],
+                    [ rank-domain-clause ],
+                    [ after-clause ],
                     [ consistency-clause ],
                     [ coverage-clause ],
                     [ budget-clause ] ;
@@ -194,8 +203,12 @@ order-term        = path, [ "asc" | "desc" ],
                     [ "nulls", "first" | "last" ],
                     [ "missing", "first" | "last" ] ;
 
-after-clause      = "after", string ;
 limit-clause      = "limit", unsigned ;
+page-clause       = "page", "size", unsigned ;
+rank-clause       = "at", "rank", unsigned ;
+access-clause     = "access", ( "direct" | "build" | "sequential" ) ;
+rank-domain-clause = "rank", "domain", ( "complete" | "survivors" ) ;
+after-clause      = "after", ( string | parameter ) ;
 
 consistency-clause = "consistency", ( "available" | "current" ) ;
 coverage-clause   = "coverage", ( "complete" | "allow", "incomplete" ) ;
@@ -212,7 +225,8 @@ parameter         = "$", identifier ;
 
 Clauses after `project` are terminal options and occur in the order shown.
 Every terminal clause appears at most once. Every budget key appears at most
-once.
+once. `at rank` and `after` are mutually exclusive. A rank is one-based and
+must be at least one.
 
 `from` is required. Empty projection blocks, zero limits, and zero budgets are
 legal and have their literal meanings.
@@ -460,6 +474,11 @@ Every explicit ordering appends immutable document key ascending as an
 unwritten final tie-breaker. A query therefore has a strict deterministic
 order suitable for continuation.
 
+An implementation MAY realize an indexed scalar order through a Dingo Order
+Wavelet. That structure compiles sorting into stable rank/select branch
+decisions over the exact filter bitmap; it does not alter the logical ordering
+defined here.
+
 V1 sort keys must be scalar:
 
 ```text
@@ -492,19 +511,103 @@ Absent placement is controlled independently:
 A product, sequence, bag, set, or map encountered as a sort key fails with
 `dql_sort_type`.
 
-## 11. Limit and continuation
+## 11. Limit, pages, ranked access, and continuation
 
-`limit n` caps returned root rows after filtering, enrichment, projection, and
-ordering. It does not weaken cardinality validation for rows actually
+`limit n` caps the total number of root rows belonging to this logical query
+across all pages. It does not weaken cardinality validation for rows actually
 considered.
 
-DQL uses keyset continuation:
+When `at rank k` is present, the logical result window begins at rank `k` and
+`limit n` caps rows returned from that position. It does not mean “consider
+only the first `n` matches and then seek to `k`.”
+
+`page size n` caps one response page. When omitted, the host's bounded default
+applies. Page size cannot exceed host policy.
+
+Example:
+
+```text
+from ABC
+order by _key asc
+limit 1000
+page size 100
+```
+
+This query can return at most ten pages of 100 rows. `limit` is not re-applied
+from zero on every continuation.
+
+DQL uses authenticated continuation:
 
 ```text
 after "<opaque authenticated token>"
 ```
 
-Offset pagination is not part of v1.
+SQL-style offset execution is not part of DQL v1: DingoDB does not interpret a
+numeric position as permission to enumerate and discard every preceding
+answer.
+
+DQL instead supports exact ranked access:
+
+```text
+at rank 100001
+access direct
+```
+
+`at rank` is one-based. Its complete semantics, mathematical model,
+admissibility proof, access classes, damage behavior, and complexity contract
+are defined by [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md).
+
+For a query containing `at rank`, omitted `access` defaults to `direct`.
+Therefore DingoDB either reaches the requested rank through exact counting and
+selection structures or refuses. It never silently performs work proportional
+to the requested rank.
+
+Explicit policies are:
+
+- `access direct` — use only a certified direct plan;
+- `access build` — permit a budgeted one-time exact selection-artifact build;
+- `access sequential` — explicitly permit scan/filter/discard compatibility
+  execution.
+
+`at rank` and `after` are mutually exclusive. A successful ranked page may
+return a continuation cursor for the immediately following page.
+
+The default is:
+
+```text
+rank domain complete
+```
+
+`rank domain survivors` is legal only with `coverage allow incomplete`. It
+computes positions solely within the explicitly covered surviving universe.
+It is never inferred automatically after damage. Complete and survivors rank
+semantics are defined by the DDA specification.
+
+Preferred SDK usage keeps the cursor outside source text:
+
+```text
+first = query.page_size(100).run()
+next  = query.page_size(100).after(first.next_cursor).run()
+```
+
+Textual `after $cursor` is equivalent. `$cursor` must be a bound string or
+bytes parameter containing an opaque token previously issued by DingoDB.
+
+The first request supplies no cursor. Every non-final page returns:
+
+```text
+QueryPage {
+  rows
+  next_cursor
+  complete
+  remaining_limit?
+  coverage
+  frontiers
+}
+```
+
+`next_cursor = None` and `complete = true` mean that no further page exists
+within the query's total limit and covered state.
 
 A continuation token binds at least:
 
@@ -516,11 +619,21 @@ A continuation token binds at least:
 - last emitted ordering tuple and immutable document key;
 - consistency and coverage modes;
 - relevant partition/index frontiers;
+- remaining total limit;
+- effective page size;
 - token format version and expiry policy;
 - an authenticity tag.
 
+For direct access it additionally binds the frozen read view, order-domain
+identity, rank-map or selection-artifact identity, rank domain, and next
+one-based rank required by `dingo-direct-cursor-v1`.
+
 A token from another query, Heap, principal, or incompatible frontier fails.
 It never restarts silently.
+
+The cursor is set only by passing the complete opaque token to the next
+request. Clients must not decode, edit, increment, concatenate, or manufacture
+one.
 
 `after` without an explicit or implicit deterministic ordering is impossible,
 because document key ordering is always present.
@@ -616,6 +729,7 @@ Structured explain includes:
 - scan and cardinality estimates with their evidence age;
 - pushdown decisions;
 - ordering and continuation plan;
+- direct-access classification, rank domain, proof obligations, and complexity;
 - source and index frontiers;
 - consistency and coverage requirements;
 - requested, policy, and effective budgets;
@@ -636,8 +750,12 @@ DqlPlanV1 {
   steps: Seq<Filter | Enrich | Within>
   projection: Optional<Project>
   order: Seq<OrderTerm>        // includes implicit key tie-break
+  start_rank: Optional<PositiveUInt> // one-based
+  access_policy: Ordinary | Direct | Build | Sequential
+  rank_domain: Complete | Survivors
   after: Optional<Token>
   limit: Optional<UInt>
+  page_size: UInt
   consistency: Available | Current
   coverage: Complete | AllowIncomplete
   budget: Optional<Budget>
@@ -714,7 +832,8 @@ consistency requirement is weakened.
 ## 17. Optimizer laws
 
 Physical plans may use scans, Hydra indexes, hash probes, batch probes, remote
-partition requests, caches, or future specialized indexes.
+partition requests, caches, rank/select maps, Dingo Order Wavelets, selection
+artifacts, or future specialized indexes.
 
 An optimization is legal only if it preserves:
 
@@ -731,6 +850,11 @@ An optimization is legal only if it preserves:
 Indexes are accelerators, not authorities. Every valid v1 filter has an
 authoritative scan interpretation. If a scan is unavailable under the budget,
 the query fails or reports incomplete coverage according to §12–§13.
+
+A plan labelled `DIRECT` additionally satisfies every proof obligation in
+[DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md). Scan/filter/discard is a valid
+semantic oracle or explicitly sequential compatibility plan, but it is never a
+direct-access implementation.
 
 ## 18. Stable errors
 
@@ -761,6 +885,9 @@ dql_coverage_incomplete
 dql_current_unavailable
 dql_continuation_invalid
 dql_continuation_expired
+dql_rank_invalid
+dql_direct_unavailable
+dql_rank_domain_mismatch
 dql_heap_mismatch
 dql_profile_unsupported
 dql_limit_exceeded
@@ -825,6 +952,11 @@ The v1 conformance suite must cover:
 ### 20.5 Paging, coverage, and budgets
 
 - no duplicates or omissions across unchanged paged state;
+- first, middle, last, and past-end direct ranks;
+- direct, buildable, sequential, and refused classifications;
+- no rank-proportional prefix enumeration in a direct plan;
+- direct plan, built rank map, sequential plan, and scan oracle equivalence;
+- complete versus survivors rank domains;
 - token tampering and query/Heap mismatch;
 - partition/index frontier changes;
 - complete versus allowed-incomplete behavior;
@@ -853,7 +985,7 @@ project { ... }
 
 It directly emits ENR1/SDA text. It does not yet implement the complete v1
 grammar, canonical host plan, filters, nested `within`, ordering, continuation,
-coverage, consistency, budgets, or explain.
+ranked direct access, coverage, consistency, budgets, or explain.
 
 Therefore:
 
@@ -873,9 +1005,10 @@ Implementation order:
 5. add nested `within`;
 6. freeze projection behavior;
 7. add deterministic order and limit;
-8. add continuation;
-9. add coverage, consistency, and budgets;
-10. add explain and full conformance.
+8. add page size and continuation;
+9. implement `dingo-direct-access-v1`, then add `at rank` and access policy;
+10. add coverage, consistency, and budgets;
+11. add explain and full conformance.
 
 ## 22. Example
 

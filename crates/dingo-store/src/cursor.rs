@@ -20,9 +20,10 @@
 //!
 //! # Tokens
 //!
-//! Continuation tokens are opaque bytes. Payload is MAC'd with a key derived
-//! from `store_id` so cross-store and tampered tokens fail closed
-//! ([`StoreError::CursorInvalid`]).
+//! Continuation tokens are opaque bytes. The payload has a keyed integrity tag
+//! derived from `store_id`, so accidental mutation and cross-store use fail
+//! closed ([`StoreError::CursorInvalid`]). Because `store_id` is not secret,
+//! this v1 tag is not attacker-resistant authentication; see DEF-097.
 
 use crate::error::StoreError;
 use crate::store::{IncompleteReason, LiveIncomplete, LiveLogicalScan};

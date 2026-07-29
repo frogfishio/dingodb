@@ -20,6 +20,8 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
 | Dingo Query Language (v1 design; shipped parser is v0.1 subset) | [DQL_SPEC.md](DQL_SPEC.md), current-subset guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
+| Exact ranked query access and rank/select substrate | [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md) |
+| Filter-conditioned sorting without prefix enumeration | [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md) |
 | Shared total predicate semantics for DQL and DRE | [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md) |
 | Dingo Rule Expression (DRE) constraint language and Invariant Core | [DRE_SPEC.md](DRE_SPEC.md) |
 | SQL-ish+ executable surface and SQL→DQL compiler | [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md) |

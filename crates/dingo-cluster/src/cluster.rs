@@ -14,8 +14,9 @@
 //! Stage 8e adds distributed find with coverage honesty on partial queries.
 //! Stage 8f adds interruptible partition rebalance (CLUSTER_SPEC §14).
 //! DEF-039 adds anti-entropy inventory and integrity-based replica repair.
-//! DEF-040 adds multi-page find with authenticated continuation and
-//! deterministic merge independent of worker visit order.
+//! DEF-040 adds multi-page find with integrity-tagged continuation and
+//! deterministic merge independent of worker visit order. Attacker-resistant
+//! token authentication remains DEF-097.
 
 use crate::ack::ClusterWriteAck;
 use crate::config::{node_store_path, ClusterConfig, ClusterMeta};
@@ -1228,7 +1229,7 @@ impl Cluster {
     ///
     /// **Paging (DEF-040):** set [`ScanOptions::page_size`] and/or
     /// [`ScanOptions::continuation`]. Every page carries full coverage plus an
-    /// authenticated continuation so a replacement coordinator can resume
+    /// continuation state so a replacement coordinator can resume
     /// without silent duplicates or omissions. Merge order is always
     /// subject-ascending and independent of partition visit / worker order.
     pub fn scan_with(&mut self, options: ScanOptions) -> Result<FindResult, ClusterError> {
@@ -1314,7 +1315,7 @@ impl Cluster {
         }
         if cont.is_some() {
             coverage.note(format!(
-                "resumed via authenticated continuation (query_id={query_id})"
+                "resumed via continuation (query_id={query_id})"
             ));
         }
 

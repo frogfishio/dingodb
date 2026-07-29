@@ -629,6 +629,25 @@ A replacement coordinator MAY resume from authenticated continuation state.
 It MUST not claim partitions already returned unless duplicate delivery is
 explicitly allowed by the query profile.
 
+### 17.5 Ranked direct access
+
+Exact access to the `k`th distributed query answer follows
+[DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md). Exact filtered navigation in a
+declared scalar order may use the distributed block/forest algorithms in
+[ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md).
+
+A cluster plan labelled `DIRECT` MUST use a globally ordered rank-block
+directory with exact covered match counts. It MUST NOT fetch and discard the
+preceding `k - 1` answers.
+
+An unavailable partition or derived order block prevents complete-domain rank
+whenever its match contribution is unknown. The coordinator may fail or serve
+the explicitly requested `survivors` rank domain; it MUST NOT silently
+renumber surviving answers as complete answers.
+
+A replacement coordinator resumes from the same frozen read view, order
+domain, rank map, next rank, and coverage evidence.
+
 ## 18. Tiered clustered storage
 
 Active replication and archival redundancy are separate policies.

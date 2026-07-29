@@ -104,7 +104,7 @@ SQL and DQL differ materially:
 | SQL NULL uses three-valued logic | Null and absence are distinct; predicates are total |
 | an inner join discards unmatched rows | `exactly_one` fails and `optional` preserves |
 | result order is absent without `ORDER BY` | DQL always has deterministic key order |
-| `OFFSET` selects by ordinal position | DQL uses authenticated keyset continuation |
+| `OFFSET` selects by ordinal position | DQL uses exact ranked direct access or authenticated continuation |
 | tables have catalogued columns/types | collections contain flexible documents |
 
 A trustworthy compiler must account for every difference.
@@ -189,6 +189,10 @@ select          = "SELECT", [ "ALL" ], select-list,
                   [ "WHERE", sql-predicate ],
                   [ order-clause ],
                   [ limit-clause ],
+                  [ offset-clause ],
+                  [ page-clause ],
+                  [ access-clause ],
+                  [ continue-clause ],
                   [ ";" ] ;
 
 select-list     = "*"
@@ -228,6 +232,10 @@ order-clause    = "ORDER", "BY", order-term, { ",", order-term } ;
 order-term      = column-ref, [ "ASC" | "DESC" ],
                   [ "NULLS", "FIRST" | "LAST" ] ;
 limit-clause    = "LIMIT", unsigned ;
+offset-clause   = "OFFSET", unsigned ;
+page-clause     = "PAGE", "SIZE", unsigned ;
+access-clause   = "ACCESS", ( "DIRECT" | "BUILD" | "SEQUENTIAL" ) ;
+continue-clause = "CONTINUE", ( parameter | sql-string ) ;
 ```
 
 Keywords are ASCII case-insensitive. Unquoted identifiers are folded to lower
@@ -505,8 +513,47 @@ DQL adds immutable document key as a final tie-breaker. This refines an SQL
 order that otherwise permits ties. It does not change the SQL multiset, but it
 does make `LIMIT` deterministic. The receipt records the refinement.
 
-`LIMIT n` lowers directly. `OFFSET`, `FETCH ... WITH TIES`, and `LIMIT ALL` are
-refused. Applications use the DQL continuation returned by execution.
+`LIMIT n` lowers to DQL's total logical result limit.
+
+SQL-ish+ adds explicit non-SQL pagination/access clauses:
+
+```sql
+PAGE SIZE 100
+CONTINUE :cursor
+ACCESS DIRECT
+```
+
+They lower to DQL `page size`, `after`, and `access`. `CONTINUE` is omitted on
+the first request. `ACCESS` accepts `DIRECT`, `BUILD`, or `SEQUENTIAL` with the
+semantics in [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md). The preferred SDK
+path supplies the returned cursor out-of-band:
+
+```text
+first = sql_plus(sql).page_size(100).run()
+next  = sql_plus(sql).page_size(100).after(first.next_cursor).run()
+```
+
+SQL `OFFSET n` is zero-based and lowers exactly to:
+
+```text
+at rank n + 1
+access direct
+```
+
+unless an explicit SQL-ish+ `ACCESS BUILD` or `ACCESS SEQUENTIAL` overrides
+the access policy. The compiler rejects arithmetic overflow.
+
+`OFFSET` requires an explicit `ORDER BY`; without one, the source language
+does not identify which row occupies the requested position, so trustworthy
+cross-compilation refuses it. `OFFSET` and `CONTINUE` are mutually exclusive.
+
+This is a semantic translation, not PostgreSQL-style skip/discard. Runtime
+admission may refuse when no exact direct structure exists. Sequential work is
+performed only when the source explicitly says `ACCESS SEQUENTIAL`.
+
+`FETCH ... WITH TIES` and `LIMIT ALL` are refused. A cursor is opaque,
+authenticated, and accepted only for the same compiled query, Heap, bindings,
+ordering, limits, rank domain, read view, coverage, and compatible frontier.
 
 Without SQL `ORDER BY`, the generated DQL uses its defined key order and the
 receipt records:
@@ -607,6 +654,7 @@ sql_dql_null_order_unspecified
 sql_dql_parameter_unbound
 sql_dql_dql_target_unsupported
 sql_dql_limit_exceeded
+sql_dql_offset_order_required
 ```
 
 Diagnostics include SQL source spans and never emit partial executable DQL
@@ -626,7 +674,7 @@ V1 refuses:
 - implicit type coercion;
 - locking clauses;
 - tablesample;
-- OFFSET and positional ordering;
+- positional `ORDER BY` expressions;
 - any trailing or second statement.
 
 Refusal is a successful safety outcome.

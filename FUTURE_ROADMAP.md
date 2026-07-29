@@ -8,6 +8,7 @@ Audience: product designers, spec authors, and future implementers
 Companions: [OVERVIEW.md](OVERVIEW.md),
 [INDEXING_STRATEGY_PROPOSAL.md](INDEXING_STRATEGY_PROPOSAL.md),
 [ATOMICS_PROPOSAL.md](ATOMICS_PROPOSAL.md), [DQL_SPEC.md](DQL_SPEC.md),
+[DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [SDA_PROFILE.md](SDA_PROFILE.md), and [HEAP_SPEC.md](HEAP_SPEC.md)
 
 ## 1. Purpose
@@ -80,6 +81,12 @@ The substrate owns:
 - authoritative revision validation;
 - SDA examination and provenance;
 - common lifecycle, metrics, and operator tooling.
+- exact bitmap/rank-select integration where the retrieval family defines an
+  exact membership set and deterministic order.
+
+The shared lifecycle may reuse Dingo Direct Access rank blocks, frozen read
+views, and selection artifacts. Approximate vector results MUST NOT inherit an
+exact DDA certificate.
 
 A conceptual origin record is:
 

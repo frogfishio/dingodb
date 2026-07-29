@@ -214,9 +214,9 @@ pub struct ScanResult {
 /// Partial results remain valid data. Callers MUST inspect [`Coverage::is_complete`]
 /// before treating absence of matches as proof that no matching subjects exist.
 ///
-/// Multi-page scans attach coverage and an authenticated continuation on **every**
-/// page so a replacement coordinator can resume without silent duplicates or
-/// omissions (§17.4).
+/// Multi-page scans attach coverage and continuation state on **every** page so
+/// a replacement coordinator can resume without silent duplicates or omissions
+/// (§17.4). Attacker-resistant token authentication remains DEF-097.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FindResult {
     /// Matching `(subject, body)` pairs from completed partitions only.
@@ -232,7 +232,7 @@ pub struct FindResult {
     pub truncated: bool,
     /// True when a further page is available via [`Self::continuation`].
     pub has_more: bool,
-    /// Authenticated continuation for the next page (`None` when done).
+    /// Integrity-tagged continuation for the next page (`None` when done).
     pub continuation: Option<Vec<u8>>,
 }
 
@@ -254,7 +254,7 @@ impl FindResult {
     }
 }
 
-/// Decoded authenticated continuation for multi-page distributed find (DEF-040).
+/// Decoded continuation for multi-page distributed find (DEF-040).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QueryContinuation {
     /// Query identity that must match across pages.
@@ -543,7 +543,7 @@ pub struct ScanOptions {
     ///
     /// Merge order remains subject-ascending regardless of worker visit order.
     pub page_size: Option<usize>,
-    /// Opaque authenticated continuation from a previous page.
+    /// Opaque integrity-tagged continuation from a previous page.
     pub continuation: Option<Vec<u8>>,
     /// Optional partition visit order (tests / worker simulation).
     ///
@@ -596,7 +596,7 @@ impl ScanOptions {
         self
     }
 
-    /// Resume from a prior authenticated continuation token.
+    /// Resume from a prior continuation token.
     pub fn continuation(mut self, token: impl Into<Vec<u8>>) -> Self {
         self.continuation = Some(token.into());
         self

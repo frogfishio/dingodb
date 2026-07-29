@@ -750,8 +750,9 @@ Implementation notes:
   most one page of complete bodies (default 64, cap 4096). Incomplete subjects
   are reported per page and still advance the cursor.
 - Continuation tokens encode store_id, scan generation, prefix, after-subject,
-  and page_size; MAC'd with a key derived from `store_id` (tamper / cross-store
-  → `StoreError::CursorInvalid`).
+  and page_size. The current keyed tag is derived from public `store_id`; it
+  detects accidental mutation and cross-store use but is forgeable by a
+  malicious client (DEF-097).
 - Scan generation = BLAKE3(store_id ‖ segment_fingerprint ‖ live_count).
   Concurrent mutations that change the fence → `StoreError::CursorStale`.
   Declared model: read-committed paging with generation fencing (not MVCC).
@@ -1543,8 +1544,9 @@ Evidence:
 
 Priority: P1  
 Dependencies: DEF-026, DEF-037  
-Status: **addressed** (2026-07-27) — multi-page distributed find with
-authenticated continuation (`dingo-query-continuation-v1`), deterministic
+Status: **addressed except token authentication DEF-097** (2026-07-27) —
+multi-page distributed find with integrity-tagged continuation
+(`dingo-query-continuation-v1`), deterministic
 subject merge independent of visit/worker order, coverage on every page
 including frontiers / read mode / indexes / tiers / resource limits;
 coordinator resume without silent dup/omit
@@ -1554,7 +1556,8 @@ Work:
 - Attach coverage to every distributed page.
 - Define deterministic merge order independent of worker completion.
 - Preserve per-partition frontiers and read modes.
-- Resume coordinator failure using authenticated continuation state.
+- Resume coordinator failure using continuation state; qualify cryptographic
+  authentication through DEF-097.
 - Carry index/tier/resource limitations end to end.
 
 Acceptance:
@@ -1565,7 +1568,8 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/src/coverage.rs` — `QueryContinuation` MAC'd tokens;
+- `crates/dingo-cluster/src/coverage.rs` — `QueryContinuation` keyed tags
+  whose public key derivation remains DEF-097;
   `Coverage` indexes/tiers fields; `FindResult.has_more` / `continuation`.
 - `Cluster::scan_with` / `scan_page` — paged merge by subject order;
   `ScanOptions::{page_size, continuation, visit_order, after_subject}`.
@@ -2336,6 +2340,48 @@ Acceptance:
 
 - A release candidate completes the full production qualification in §16.
 
+### DEF-097 — Replace publicly derivable continuation-token keys
+
+Priority: P0
+Dependencies: DEF-032, DEF-054
+Status: **open**
+
+Finding:
+
+Both `dingo-store::cursor` and
+`dingo-cluster::coverage::QueryContinuation` currently derive their keyed
+BLAKE3 keys solely from the store ID or cluster ID, while that public ID is
+included in the token. A client can therefore derive the same key and forge a
+token. The current tag detects accidental corruption and cross-store/cluster
+use; it is not cryptographic authentication against a malicious client.
+
+Work:
+
+- Generate continuation-token keys from at least 256 bits of secret entropy.
+- Distribute current key generations only through the protected cluster
+  control plane.
+- Bind Heap, authority generation, query/parameters, read view, ordering,
+  coverage, limits, expiry, and token-key generation.
+- Add rotation, grace, retirement, zeroization, and restore behavior.
+- Encrypt token contents when exposed metadata is sensitive.
+- Replace every “authenticated continuation” claim until the qualified
+  profile is active.
+- Align ordinary query continuation with
+  [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md) §19.
+
+Acceptance:
+
+- Knowledge of cluster ID, token bytes, public keys, source, and wire profile
+  is insufficient to create or modify a valid token.
+- Cross-Heap, cross-query, cross-generation, expired, enlarged-page, and
+  bit-flipped tokens fail before query execution.
+- Rotation invalidates the retired generation according to the declared grace
+  policy.
+- Restart and coordinator replacement preserve only explicitly retained key
+  generations.
+- Secret material never appears in logs, diagnostics, SDA projections, or
+  unwrapped backups.
+
 ---
 
 ## 16. Production release gates
@@ -2383,6 +2429,9 @@ DingoDB may be called production-ready only when all applicable gates pass.
       (DEF-033; full salvage/tier/purge engines still scaffolded).
 - [x] Protocol admission control bounds rate, auth failures, connection churn,
       expensive ops, and operation-id replay (DEF-034).
+- [ ] Every continuation token is authenticated by a non-public rotating
+      secret or an equally strong issuer signature; public deployment/cluster
+      identifiers are never token keys (DEF-097).
 - [ ] Threat model and independent audit have no unresolved critical/high
       findings. *(threat-model first cut: `doc/THREAT_MODEL.md`; audit open)*
 - [ ] Fuzzing covers all untrusted parsers. *(format first cut: DEF-091 properties

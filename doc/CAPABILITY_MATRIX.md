@@ -161,7 +161,7 @@ Evidence: `stage_def_039_repair` (8 tests), `dingo_cluster::repair` unit tests.
 | Coverage on every page | `FindResult.coverage` always attached (`scan_page` / `scan_with`) | **in-process cluster** shipped |
 | Deterministic merge | Subject-ascending order; independent of `visit_order` / worker completion | **in-process cluster** shipped |
 | Per-partition frontiers | `Coverage.frontiers` + `read_mode` on each page | **in-process cluster** shipped |
-| Coordinator resume | MAC'd `QueryContinuation` (`dingo-query-continuation-v1`) bound to `cluster_id` | **in-process cluster** shipped |
+| Coordinator resume | Integrity-tagged `QueryContinuation` (`dingo-query-continuation-v1`) bound to `cluster_id` | **in-process cluster** shipped; attacker authentication open (DEF-097) |
 | Index / tier / resource fields | `indexes_used`, `tiers_searched`/`tiers_excluded`, `resource_limit_reached` | **in-process cluster** shipped |
 | Partial partition honesty | Unavailable partitions never look like empty complete success | **in-process cluster** shipped |
 | Network multi-process page RPC | Remote worker page protocol over `serve-cluster` | **not yet** (coordinator is in-process) |
@@ -430,9 +430,9 @@ collection catalogs are built from segment-derived durable state only.
 |---------|--------|----------|
 | Profile tag | shipped | `dingo_store::CURSOR_PROFILE = "dingo-cursor-v1"` |
 | Paged store scan | shipped | `Store::scan_live_page` — subject order, bounded bodies per page |
-| Continuation tokens | shipped | MAC'd opaque tokens (store_id + generation + prefix + after) |
+| Continuation tokens | shipped with security limitation | Opaque integrity-tagged tokens (store_id + generation + prefix + after); public key derivation is forgeable (DEF-097) |
 | Generation fence | shipped | BLAKE3(store_id ‖ segment_fp ‖ live_count); stale → `CursorStale` |
-| Tamper / cross-store | shipped | `StoreError::CursorInvalid` |
+| Accidental mutation / cross-store | shipped | `StoreError::CursorInvalid`; malicious forgery remains DEF-097 |
 | SDK streaming | shipped | `scan_json_page`, `scan_json_iter` / `scan_json_iter_paged` (embedded) |
 | Find scan path | shipped | Embedded filter scan pages instead of full materialization |
 | Remote page RPC | not yet | Follow-on; remote still uses list/find materialization |

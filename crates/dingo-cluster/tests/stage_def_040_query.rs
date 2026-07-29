@@ -5,7 +5,7 @@
 //! - Coordinator failover neither silently duplicates nor omits rows.
 //! - Partial partitions are never represented as empty complete partitions.
 //!
-//! Also: coverage on every page; authenticated continuation; per-partition
+//! Also: coverage on every page; integrity-tagged continuation; per-partition
 //! frontiers + read mode; index/tier/resource fields end-to-end.
 
 use dingo_cluster::{

@@ -428,10 +428,96 @@ configured result limit.
 
 Pagination uses opaque authenticated continuation tokens.
 
-Offset pagination MAY be offered for small stable result sets but is not the
-default for massive data.
+Numeric start is supported as **ranked direct access**, not as permission to
+scan and discard a prefix. Its normative contract is
+[DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md).
+
+When a caller asks for result 100,001, DingoDB either:
+
+- uses exact rank/select and counting structures;
+- performs an explicitly budgeted one-time selection-artifact build;
+- performs sequential compatibility work only after explicit permission; or
+- refuses with an explanation.
+
+It MUST NOT silently process the first 100,000 matches and describe the
+operation as direct.
 
 Continuation results retain query identity, order, scope, and coverage.
+
+The portable page contract is:
+
+```ts
+const first = await users
+  .query()
+  .orderBy("_key", "asc")
+  .pageSize(100)
+  .page();
+
+if (first.nextCursor) {
+  const second = await users
+    .query()
+    .orderBy("_key", "asc")
+    .pageSize(100)
+    .after(first.nextCursor)
+    .page();
+}
+```
+
+`after` accepts only the complete opaque cursor returned by a prior page. The
+SDK sends it in a dedicated request field; callers do not splice it into a
+filter or decode it.
+
+Every page returns:
+
+```text
+rows
+nextCursor?
+complete
+coverage
+frontiers
+```
+
+`limit(n)` is the total logical result cap. `pageSize(n)` is the maximum rows
+in one response. They are deliberately separate.
+
+Portable random ranked access is:
+
+```ts
+const page = await products
+  .query()
+  .where("category").eq("book")
+  .orderBy("price", "asc")
+  .pageSize(100)
+  .atRank(100001)       // one-based
+  .access("direct")
+  .page();
+```
+
+Every ranked page discloses:
+
+```text
+firstRank
+nextRank?
+accessClass
+rankDomain
+readView
+coverage
+work
+```
+
+`access("direct")` never performs rank-proportional prefix enumeration.
+`access("build")` permits an explicit budgeted build. `access("sequential")`
+is the opt-in compatibility escape hatch.
+
+When the filter bitmap and declared scalar order are indexed, the planner may
+use a [Dingo Order Wavelet](ORDER_WAVELET_SPEC.md) to navigate exact
+filter-conditioned branch counts. This removes query-time sorting as well as
+prefix enumeration. Explain identifies that choice; applications do not use a
+separate query API.
+
+An HTTP adapter MAY map `?start=100001&limit=100` to one-based
+`atRank(100001).pageSize(100).access("direct")`. It MUST document its base and
+must not silently translate it to skip/discard.
 
 ### 7.5 Sorting
 
@@ -1099,8 +1185,10 @@ The DX release gate includes:
 14. salvage defaults to a separate destination;
 15. SDA and common-filter results agree on shared semantics;
 16. query coverage survives pagination and distributed execution;
-17. SDK examples compile and run;
-18. destructive administrative commands require explicit targets and intent.
+17. direct ranked access does not examine a prefix proportional to rank;
+18. direct, built, sequential, and oracle query results are equivalent;
+19. SDK examples compile and run;
+20. destructive administrative commands require explicit targets and intent.
 
 Usability testing SHOULD measure:
 
