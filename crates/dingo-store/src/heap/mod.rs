@@ -3,6 +3,7 @@
 mod catalog;
 mod heap_store;
 mod host;
+mod lifecycle;
 mod maintenance_store;
 mod migration;
 mod one_heap;
@@ -20,6 +21,19 @@ pub use catalog::{
 pub use heap_store::HeapStore;
 pub use host::StoreHost;
 pub use maintenance_store::MaintenanceStore;
+pub use lifecycle::{
+    active_snapshot, build_backup_manifest, decode_purge_receipt,
+    destroy_data_key, disaster_recovery_restore_retaining_id, encode_purge_receipt,
+    heap_label_envelope, labelled_unit_readable, load_identity_tombstone,
+    old_deployment_credential_invalid, refuse_access_from_payload_restore,
+    refuse_clear_tombstone_via_payload_restore, refuse_retain_id_without_ceremony,
+    restore_payload_to_new_heap, verify_purge_receipt, write_identity_tombstone,
+    DataKeyDestructionReceipt, DataKeyHandle, DisasterRecoveryCeremony,
+    DisasterRecoveryPackage, DisasterRecoveryTakeoverResult, HeapBackupManifest, HeapLifecycle,
+    IdentityTombstone, PayloadOnlyRestore, PurgePlan, PurgeReceipt, TombstoneKind,
+    BACKUP_MANIFEST_DOMAIN, DATA_KEY_DESTROY_DOMAIN, HEAP_LIFECYCLE_PROFILE, LIFECYCLE_DIR,
+    PURGE_COVERAGE_DOMAIN, TOMBSTONE_DOMAIN,
+};
 pub use migration::{
     CutoverGate, HeapMigrationJob, InventoryFrame, InventorySegment, MigrationPhase,
     MigrationStateV1, SourceInventory, ADMITTED_FILE, ASSIGNMENTS_FILE, ASSIGNMENTS_HASH_DOMAIN,
