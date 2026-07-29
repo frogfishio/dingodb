@@ -18,6 +18,7 @@ mod isolation;
 mod isolation_model;
 mod isolation_profile;
 mod operational;
+mod pure_proofs;
 mod qualification;
 mod rights;
 mod security_time;
@@ -37,6 +38,12 @@ pub use decide::{
     AuthorizationDecision, OperationDescriptor,
 };
 pub use decide_obligations::obligations as h6_decide_obligations;
+pub use pure_proofs::{
+    connected_pure_proof_bundle, lemma_authority_model_inv_walk,
+    lemma_binding_rejects_foreign_heap, lemma_blacklist_hits_certificate_hash,
+    lemma_generation_grace_window, lemma_isolation_model_inv_walk,
+    lemma_non_serving_refuses_admission,
+};
 pub use error::{HeapError, HeapUnavailableCause};
 pub use holder_proof::{verify_holder_proof, VerifiedHolderProof};
 pub use ids::{

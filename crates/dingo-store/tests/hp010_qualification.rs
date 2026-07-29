@@ -11,14 +11,15 @@ use dingo_format::{
 use dingo_heap::{
     claim_language, confine_export_heaps, confine_health_detail, confine_operational_observation,
     confine_operational_observation_under, confine_query_observation, confine_support_bundle,
-    connected_authority_model_smoke, connected_model_smoke, h6_decide_obligations,
-    load_isolation_profiles, load_isolation_profiles_from, may_advertise_qualified,
-    mint_capability, refresh_capability_or_terminate, unauthenticated_field_allowed,
-    unauthenticated_field_allowed_under, AuthorityGeneration, CertificateId, CollectionId,
-    Constraint, Constraints, DeploymentId, HealthDetailInput, HeapAdministrativeState, HeapId,
-    HeapSecuritySnapshot, HeapSlot, IsolationProfileId, OperationalEvent, QueryObservationRequest,
-    Rights, SecurityRevision, StreamId, SupportBundleEntry, TrustedInstant, VerifiedCertificate,
-    H6_MINIMUM_PROFILE, H6_PUBLISHED_LIMITATIONS, ISOLATION_PROFILES_JSON, ISOLATION_PROFILES_REL,
+    connected_authority_model_smoke, connected_model_smoke, connected_pure_proof_bundle,
+    h6_decide_obligations, load_isolation_profiles, load_isolation_profiles_from,
+    may_advertise_qualified, mint_capability, refresh_capability_or_terminate,
+    unauthenticated_field_allowed, unauthenticated_field_allowed_under, AuthorityGeneration,
+    CertificateId, CollectionId, Constraint, Constraints, DeploymentId, HealthDetailInput,
+    HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, IsolationProfileId,
+    OperationalEvent, QueryObservationRequest, Rights, SecurityRevision, StreamId,
+    SupportBundleEntry, TrustedInstant, VerifiedCertificate, H6_MINIMUM_PROFILE,
+    H6_PUBLISHED_LIMITATIONS, ISOLATION_PROFILES_JSON, ISOLATION_PROFILES_REL,
     PRE_QUALIFICATION_LANGUAGE, QUALIFIED_CLAIM, QUALIFIED_PROFILE, REFERENCE_ISOLATION_PROFILE,
     UNAUTHENTICATED_DECLASSIFIED_FIELDS,
 };
@@ -114,10 +115,18 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
     for gate in ["H0", "H1", "H2", "H3", "H4", "H5", "H6", "HC1"] {
         assert!(doc.gates.contains_key(gate), "missing gate {gate}");
     }
-    assert_eq!(doc.gates["H3"].status, "partial");
+    // H3 has full Accept drill coverage for single-node reference profiles.
+    assert_eq!(doc.gates["H3"].status, "accept");
     assert!(!doc.gates["H3"].evidence.is_empty());
+    // H6 remains partial until Verus + signed external review + residual CPR close.
     assert_eq!(doc.gates["H6"].status, "partial");
     assert!(!doc.gates["H6"].evidence.is_empty());
+    for still_partial in ["H0", "H1", "H2", "H4", "H5"] {
+        assert_eq!(
+            doc.gates[still_partial].status, "partial",
+            "{still_partial} must stay partial until residuals close honestly"
+        );
+    }
 
     // Accept drills in this slice must be marked accept in the matrix.
     for drill in [
@@ -140,6 +149,9 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
         "isolation_profile_registry",
         "h6_heap_authority_model",
         "metadata_hardened_operational_confinement",
+        "h6_pure_proof_bundle",
+        "complete_path_review",
+        "external_security_review_brief",
     ] {
         assert_eq!(
             doc.drills[drill].status, "accept",
@@ -1251,4 +1263,56 @@ fn h6_heap_authority_model() {
         .exists());
 }
 
+#[test]
+fn h6_pure_proof_bundle_connected() {
+    // Verus-oriented pure lemmas (executable). Machine-checked Verus still open.
+    assert!(
+        connected_pure_proof_bundle(),
+        "pure proof bundle must hold for Gate H6 connected evidence"
+    );
+    let verus = fs::read_to_string(workspace_root().join("verification/heap-verus/src/lib.rs"))
+        .unwrap();
+    assert!(verus.contains("VERUS_PROOFS_CONNECTED"));
+    assert!(verus.contains("connected_pure_proof_bundle"));
+    assert!(
+        verus.contains("VERUS_PROOFS_CONNECTED: bool = false")
+            || verus.contains("const VERUS_PROOFS_CONNECTED: bool = false"),
+        "scaffold must stay honest that Verus is not yet connected"
+    );
+}
 
+#[test]
+fn complete_path_and_external_review_artifacts() {
+    // Gate H6 complete-path + external review package (brief only; report open).
+    let root = workspace_root();
+    let cpr = fs::read_to_string(root.join("doc/HEAP_COMPLETE_PATH_REVIEW.md")).unwrap();
+    for needle in [
+        "CPR-001",
+        "CPR-004",
+        "CPR-005",
+        "unscoped",
+        "qualified=false",
+        "legacy",
+        "Dingo::collection",
+    ] {
+        assert!(cpr.contains(needle), "complete-path review missing {needle}");
+    }
+
+    let brief = fs::read_to_string(root.join("doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md")).unwrap();
+    for needle in [
+        "External security review",
+        "TCB",
+        "verify-heap",
+        "signed",
+        "qualified=false",
+        "HeapCap",
+    ] {
+        assert!(brief.contains(needle), "external review brief missing {needle}");
+    }
+
+    // Matrix must index both artifacts under H6 without claiming qualified.
+    let raw = fs::read_to_string(root.join("spec/heap/qualification/hp010-matrix-v1.json")).unwrap();
+    assert!(raw.contains("HEAP_COMPLETE_PATH_REVIEW.md"));
+    assert!(raw.contains("HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md"));
+    assert!(raw.contains("\"qualified\": false") || raw.contains("\"qualified\":false"));
+}

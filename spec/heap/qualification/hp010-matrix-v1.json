@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 named isolation profiles + metadata-hardened closed authenticated allowlist Accept; H6 partial with HeapIsolation + HeapAuthority sketches, connected AuthorityModel, authority_admission_ok (AdmissionOK), §39 generation/blacklist/grace mint obligations. External review + full Verus still open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept (derived/ops + profiles + metadata-hardened closed allowlist). H0/H1/H2/H4/H5 still partial (legacy flat SDK, reserved ops, recovery/lifecycle residuals). H6 partial \u2014 connected pure proofs + complete-path review + external review brief landed; full Verus/Kani machine proofs and signed external review still open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -12,6 +12,9 @@
         "crates/dingo-heap (HeapId/CollectionId/StreamId/DeploymentId/AuthorityEpoch)",
         "spec/heap/operations-v1.json + cbor-v1.json",
         "scripts/check_heap_architecture.sh"
+      ],
+      "open": [
+        "CPR-001: default flat Dingo::collection still treats names as deployment-global"
       ]
     },
     "H1": {
@@ -21,6 +24,10 @@
         "crates/dingo-sdk/tests/hp007_heap_isolation.rs",
         "crates/dingo-heap HeapCap trybuild",
         "scripts/check_heap_architecture.sh"
+      ],
+      "open": [
+        "remote connect_heap open",
+        "legacy raw Store / Dingo::store() not heap-bound"
       ]
     },
     "H2": {
@@ -30,11 +37,15 @@
         "crates/dingo-authority/tests/hp005_accept.rs",
         "crates/dingo-server/tests/hp008_heap_handshake.rs",
         "crates/dingo-server/tests/hp008_accept_loop.rs"
+      ],
+      "open": [
+        "\u00a732.4 reserved-op activation incomplete",
+        "threshold recovery / peer-cred barrier residuals (HP-005)"
       ]
     },
     "H3": {
       "title": "Derived and operational coverage",
-      "status": "partial",
+      "status": "accept",
       "evidence": [
         "crates/dingo-heap refresh_capability_or_terminate (revision/state/chain-head)",
         "crates/dingo-store/tests/hp010_qualification.rs::heapcap_terminates_on_lifecycle",
@@ -47,8 +58,11 @@
         "crates/dingo-store/tests/hp010_qualification.rs::isolation_profile_registry_closed",
         "crates/dingo-store/tests/hp010_qualification.rs::metadata_hardened_operational_confinement",
         "spec/heap/isolation-profiles-v1.json",
-        "crates/dingo-heap confine_query_observation / confine_operational_observation(_under) / confine_export_heaps / confine_health_detail / confine_support_bundle / IsolationProfileRegistry"
-      ]
+        "crates/dingo-heap confine_query_observation / confine_operational_observation(_under) / confine_export_heaps / confine_health_detail / confine_support_bundle / IsolationProfileRegistry",
+        "doc/HEAP_COMPLETE_PATH_REVIEW.md \u00a74.1 heap-bound surfaces",
+        "crates/dingo-heap pure_proofs connected_pure_proof_bundle (isolation lemmas)"
+      ],
+      "scope": "single-node heap-data-isolated + heap-metadata-hardened operational surface; resource/physical profiles declared_not_qualified"
     },
     "H4": {
       "title": "Backup and recovery",
@@ -56,6 +70,11 @@
       "evidence": [
         "crates/dingo-store/tests/hp009_lifecycle.rs",
         "crates/dingo-store/tests/hp010_qualification.rs::restore_drills_payload_and_retain_id"
+      ],
+      "open": [
+        "live filesystem multi-tier media wipe",
+        "HSM/provider data-key adapters",
+        "mixed-heap salvage classification drill not yet matrixed"
       ]
     },
     "H5": {
@@ -68,6 +87,9 @@
         "crates/dingo-store/tests/hp010_qualification.rs::retention_and_incomplete_purge_still_retired",
         "crates/dingo-store/tests/hp010_qualification.rs::lifecycle_crash_matrix_peer_heaps_unaffected",
         "crates/dingo-store/crash_matrix.v1.json heap_lifecycle operation"
+      ],
+      "open": [
+        "broader destructive crash-matrix cells beyond heap_lifecycle peer isolation"
       ]
     },
     "H6": {
@@ -82,13 +104,25 @@
         "formal/heap/MCHeapAuthority.cfg",
         "crates/dingo-heap IsolationModel connected to TLA Inv",
         "crates/dingo-heap AuthorityModel connected to HeapAuthority Inv",
-        "crates/dingo-heap authority_binding_holds / generation_accepted / certificate_blacklisted / authority_admission_ok + h6_decide_obligations (§39 executable stand-in)",
+        "crates/dingo-heap authority_binding_holds / generation_accepted / certificate_blacklisted / authority_admission_ok + h6_decide_obligations (\u00a739 executable stand-in)",
         "verification/heap-verus H6_PROOF_OBLIGATIONS checklist",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_isolation_claim_partial_evidence",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_connected_model",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_decide_obligations_connected",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_heap_authority_model",
-        "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined"
+        "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
+        "crates/dingo-heap pure_proofs / connected_pure_proof_bundle (Verus-oriented pure lemmas)",
+        "verification/heap-verus VERUS_PROOFS_CONNECTED=false honesty + expanded H6_PROOF_OBLIGATIONS",
+        "doc/HEAP_COMPLETE_PATH_REVIEW.md (complete-path review; CPR findings)",
+        "doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md (external review package; report open)",
+        "crates/dingo-store/tests/hp010_qualification.rs::h6_pure_proof_bundle_connected",
+        "crates/dingo-store/tests/hp010_qualification.rs::complete_path_and_external_review_artifacts"
+      ],
+      "open": [
+        "CPR-004: machine-checked Verus/Kani proofs not connected in CI",
+        "CPR-005: signed external security review report not on file",
+        "CPR-001: default product path still flat-store (claim confusion risk)",
+        "H0\u2013H2, H4\u2013H5 not all accept yet"
       ]
     },
     "HC1": {
@@ -186,7 +220,7 @@
       "status": "accept",
       "section": "40/HP-010",
       "test": "hp010_qualification::load_latency_budget",
-      "budget": "2000 admits + 2000 refreshes ≤ 2000ms each (CI)"
+      "budget": "2000 admits + 2000 refreshes \u2264 2000ms each (CI)"
     },
     "fuzz_budget": {
       "status": "accept",
@@ -199,6 +233,26 @@
       "section": "40/HP-010",
       "test": "hp010_qualification::operator_runbook_present",
       "doc": "doc/RUNBOOK_HEAP_QUALIFICATION.md"
+    },
+    "h6_pure_proof_bundle": {
+      "status": "accept",
+      "section": "39/H6",
+      "test": "hp010_qualification::h6_pure_proof_bundle_connected",
+      "notes": "Executable pure lemmas; not machine-checked Verus"
+    },
+    "complete_path_review": {
+      "status": "accept",
+      "section": "27/H6",
+      "test": "hp010_qualification::complete_path_and_external_review_artifacts",
+      "doc": "doc/HEAP_COMPLETE_PATH_REVIEW.md",
+      "notes": "Review present with open CPR findings; does not clear H6"
+    },
+    "external_security_review_brief": {
+      "status": "accept",
+      "section": "27/H6",
+      "test": "hp010_qualification::complete_path_and_external_review_artifacts",
+      "doc": "doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md",
+      "notes": "Brief ready; signed external report still open (drill accepts brief presence only)"
     }
   }
 }

@@ -149,6 +149,17 @@ CI Accept:
 
 These are CI-connected sketches, **not** full Verus proofs. Claim stays Level 1.
 
+## 5.5 Complete-path review and external review pack
+
+| Artifact | Role |
+|----------|------|
+| [HEAP_COMPLETE_PATH_REVIEW.md](HEAP_COMPLETE_PATH_REVIEW.md) | Complete-path inventory; CPR-001…CPR-006 open findings |
+| [HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md) | Engagement pack for independent review (report still open) |
+| `dingo_heap::connected_pure_proof_bundle` | Executable pure lemmas (not machine-checked Verus) |
+
+These advance H6 **evidence packaging**. They do **not** by themselves authorize
+`qualified=true`.
+
 ## 6. Gate H6 limitations (published)
 
 Logical heap isolation does **not** protect against:

@@ -1,11 +1,10 @@
-//! Verus placeholder — pure kernel proofs land with Gate H6.
+//! Verus-oriented pure kernel proof targets for Gate H6 (HP-010).
 //!
-//! HP-001 delivers the executable Rust decision function; HP-010 records:
-//! - isolation observation helpers (`confine_query_observation`, health/support);
-//! - connected Rust models (`IsolationModel`, `AuthorityModel`) mirroring TLA Inv;
-//! - executable §39 obligations (`dingo_heap::h6_decide_obligations`) including
-//!   `generation_accepted` and `certificate_blacklisted / authority_admission_ok`.
-//! Full Verus proofs remain open — `qualified` stays false.
+//! This crate is a **scaffold**: it records the obligation checklist and pure
+//! predicate documentation that Verus/Kani should eventually check. Executable
+//! proofs today live in `dingo_heap::pure_proofs` and `h6_decide_obligations`
+//! (CI-connected). Machine-checked Verus proofs remain **open** — `qualified`
+//! stays false (CPR-004).
 
 #![allow(dead_code)]
 
@@ -14,8 +13,19 @@ pub fn heap_verus_scaffold() -> bool {
     true
 }
 
-/// Obligation checklist mirrored from HEAP_SPEC §39 (documentation only until
-/// Verus is wired in CI). Each item has a CI-connected executable stand-in.
+/// Whether machine-checked Verus proofs are wired in CI.
+///
+/// Hard-coded false until Verus is installed in CI and proves
+/// [`H6_PROOF_OBLIGATIONS`] over the pure kernel.
+pub const VERUS_PROOFS_CONNECTED: bool = false;
+
+/// Whether Kani harnesses are wired in CI.
+pub const KANI_HARNESSES_CONNECTED: bool = false;
+
+/// Obligation checklist mirrored from HEAP_SPEC §39.
+///
+/// Each item has a CI-connected executable stand-in in `dingo-heap`
+/// (`pure_proofs`, `h6_decide_obligations`, IsolationModel, AuthorityModel).
 pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "allow implies certificate heap equals snapshot heap",
     "allow implies requested immutable object is inside every applicable constraint",
@@ -38,4 +48,32 @@ pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "IsolationProfileRegistry matches spec/heap/isolation-profiles-v1.json",
     "heap-metadata-hardened denies aggregate_load and fine_timing_ms",
     "HeapAuthority.tla covers generation/blacklist/grace/terminal",
+    "connected_pure_proof_bundle covers binding/gen/blacklist/admission/models",
+    "complete-path review documents legacy unscoped surfaces (CPR-001)",
+    "external security review brief ready; signed report still open (CPR-005)",
 ];
+
+/// Pure predicate names intended as Verus `spec fn` / proof targets.
+pub const VERUS_TARGET_PREDICATES: &[&str] = &[
+    "authority_binding_holds",
+    "generation_accepted",
+    "certificate_blacklisted",
+    "authority_admission_ok",
+    "IsolationModel::invariants_hold",
+    "AuthorityModel::inv",
+    "confine_query_observation postcondition: heap_id == cap.heap_id",
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scaffold_honest_about_missing_machine_proofs() {
+        assert!(heap_verus_scaffold());
+        assert!(!VERUS_PROOFS_CONNECTED);
+        assert!(!KANI_HARNESSES_CONNECTED);
+        assert!(H6_PROOF_OBLIGATIONS.len() >= 20);
+        assert!(VERUS_TARGET_PREDICATES.contains(&"authority_admission_ok"));
+    }
+}
