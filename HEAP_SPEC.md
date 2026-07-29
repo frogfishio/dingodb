@@ -42,7 +42,7 @@ criteria in §40.
 | SDK heap API (HP-007) | Present; typed handles + isolation Accept |
 | Qualified network (HP-008) | Present; live TLS accept-loop + HeapKey session |
 | Legacy migration (HP-006) | Present; durable job engine + phase-6 gate Accept |
-| Lifecycle / backup / DR (HP-009) | Present; purge + payload-restore + DR retain-ID + key destroy Accept |
+| Lifecycle / backup / DR (HP-009) | Present; purge + payload-restore + DR retain-ID + key destroy + media-domain incomplete purge + retention scheduler Accept |
 | Single-node / cluster qualification | **Not started** (HP-010+) |
 | Product claim level (§1.4 / Gate H6) | Still **Level 1 language only** — named namespaces / isolation in progress |
 
@@ -64,7 +64,7 @@ Before Gate H6, product language remains:
 | **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation)** | `dingo-sdk::heap`: `DingoDeployment`, `Heap`, `HeapCollection`/`HeapStream`, heap-bound pool, `SignedCursor`, batch membership checks. Accept: identical collection names across heaps cannot exchange handles/cursors/batch members/pooled connections. **Gaps:** remote `connect_heap`, SubjectV2 put/get path, `dangerous-key-export` holder signer. |
 | **HP-008** | Qualified network protocol | **Landed (Accept live TLS loop)** | Session/audit/exporter API plus **accept-loop wiring**: `qualified_heap_key` serve path derives RFC 9266 exporter, runs `heap_session`, dispatches via `HeapCap` (`serve_qualified_requests`) with **no token/RBAC**. Accept: live TLS ping without token; token field → uniform `heap_unavailable`. **Gaps:** §32.4 reserved-op activation, RPC vector corpus, make qualified listener the default remote profile (legacy token still available when `qualified_heap_key=false`). |
-| **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id). Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment. **Gaps:** full retention scheduler, HSM/provider data-key adapters, live media purge across tiers/replicas, operator CLI. |
+| **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media/retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover (fence old `DeploymentId`, advance epoch, refuse concurrent live authority without ceremony, refuse revive of purged id), media-domain purge plans (`MediaDomain` tier/replica) with unavailable-domain incomplete result that **stays `retired`**, `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID fences old deployment; unavailable replica/tier incomplete purge; retention blocks then allows purge. **Gaps:** HSM/provider data-key adapters, live filesystem media wipe across mounted tiers, operator CLI. |
 | HP-010 | Single-node qualification | Not started | First release allowed to advertise qualified `dingo-heap-v1`. |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
@@ -77,7 +77,7 @@ Before Gate H6, product language remains:
 | H1 Heap-bound SDK | **In progress** — HP-007 typed handles landed; remote `connect_heap` still open. |
 | H2 HeapKey authority | **In progress** — HP-005 issue + HP-008 live TLS accept-loop; reserved-op §32.4 still open. |
 | H3 Derived / operational coverage | Not started. |
-| H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone Accept; media-tier purge still open. |
+| H4 Backup and recovery | **In progress** — HP-009 payload-restore + DR retain-ID + purge/tombstone + media-domain incomplete purge + retention scheduler Accept; live filesystem tier wipe / HSM adapters still open. |
 | H5 Single-node lifecycle | **In progress** — HP-009 suspend/retire/purge transitions; full matrices deferred to HP-010. |
 | HC1 Cluster extension | Not started. |
 | H6 Isolation claim | Not started — no qualified claim. |
@@ -109,14 +109,15 @@ fuzz/fuzz_targets/heap_ownership.rs
 **HP-010** (single-node qualification) is unblocked on package dependencies
 once remaining HP-006/008 residuals required by the qualification matrices are
 closed or explicitly waived in evidence. In parallel: HP-006 physical rewrite,
-HP-008 §32.4 / default qualified listener, HP-009 tier purge / retention scheduler.
+HP-008 §32.4 / default qualified listener, HP-009 live filesystem tier wipe /
+HSM adapters.
 
 #### Remaining delivery sequence
 
 ```text
 DONE   HP-000 → … → HP-008 → HP-006(core) → HP-009(core+DR/key)
 NEXT   HP-010 single-node qualification  (needs HP-005…HP-009 + evidence)
-  or   residual closers (HP-006 physical / HP-008 §32.4 / HP-009 tier purge)
+  or   residual closers (HP-006 physical / HP-008 §32.4 / HP-009 FS wipe/HSM)
 LATER  HP-011 → HP-012 cluster
 ```
 
@@ -133,7 +134,7 @@ close qualification residuals as required → **HP-010** evidence matrices.
 | Physical segment rewrite + operator migration tooling | HP-006 residual | Live-store rewrite still open |
 | §32.4 schemas/fixtures before activating reserved heap ops | HP-008 residual | Spec forbids activating ops from code alone |
 | Make qualified listener the default remote profile | HP-008 residual | Legacy token path still default-off |
-| Live media purge across tiers/replicas / retention scheduler | HP-009 residual | DR retain-ID + key destroy Accept landed; media surface open |
+| Live media purge across tiers/replicas / retention scheduler | HP-009 residual | Media-domain incomplete purge + retention scheduler Accept landed; live filesystem tier wipe / HSM adapters still open |
 
 **Landed but still gapped:**
 

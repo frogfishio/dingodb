@@ -30,9 +30,11 @@ pub use lifecycle::{
     restore_payload_to_new_heap, verify_purge_receipt, write_identity_tombstone,
     DataKeyDestructionReceipt, DataKeyHandle, DisasterRecoveryCeremony,
     DisasterRecoveryPackage, DisasterRecoveryTakeoverResult, HeapBackupManifest, HeapLifecycle,
-    IdentityTombstone, PayloadOnlyRestore, PurgePlan, PurgeReceipt, TombstoneKind,
-    BACKUP_MANIFEST_DOMAIN, DATA_KEY_DESTROY_DOMAIN, HEAP_LIFECYCLE_PROFILE, LIFECYCLE_DIR,
-    PURGE_COVERAGE_DOMAIN, TOMBSTONE_DOMAIN,
+    HeapRetentionPolicy, IdentityTombstone, IncompletePurgeResult, MediaDomain, PayloadOnlyRestore,
+    PurgeCoverageUnit, PurgePlan, PurgeReceipt, RetentionScheduler, TombstoneKind,
+    BACKUP_MANIFEST_DOMAIN, DATA_KEY_DESTROY_DOMAIN, HEAP_LIFECYCLE_PROFILE,
+    INCOMPLETE_PURGE_DOMAIN, LIFECYCLE_DIR, PURGE_COVERAGE_DOMAIN, RETENTION_POLICY_DOMAIN,
+    TOMBSTONE_DOMAIN,
 };
 pub use migration::{
     CutoverGate, HeapMigrationJob, InventoryFrame, InventorySegment, MigrationPhase,
