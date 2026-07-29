@@ -46,6 +46,7 @@ complete evidence.
 | Single-owner admit | `… single_owner_admit` | Known owner only; mutations never admit under wrong heap |
 | Derived paths | `… derived_path_indexes_streams_scoped` | Indexes/streams catalogs stay heap-scoped |
 | SubjectV2 data plane | `cargo test -p dingo-sdk --test hp007_heap_isolation` | Same app keys on two heaps stay isolated; foreign SubjectV2 rejected |
+| Remote connect_heap | `cargo test -p dingo-sdk --features dangerous-key-export --test hp007_connect_heap` | Welcome + ping/live/ready; wrong name → heap_unavailable |
 | Query escape | `… query_escape_faulty_planner_confined` | Faulty unconstrained planner cannot escape bound heap |
 | Load/latency | `… load_latency_budget` | Admit/decide/refresh meet recorded budget |
 | Fuzz budget | `… fuzz_budget_structured_mutations` | Structured adversarial corpus rejects escape |

@@ -30,7 +30,9 @@ pub use authority_model::{
     connected_authority_model_smoke, AuthorityModel, ModelAdminState, ModelCert,
 };
 pub use capability::{HeapCap, HeapMaintenanceCap, RecoveryCap, ReplicaCap};
-pub use certificate::{sig_structure_for, verify_certificate, VerifiedCertificate};
+pub use certificate::{
+    inspect_certificate, sig_structure_for, verify_certificate, VerifiedCertificate,
+};
 pub use constraints::{Constraint, Constraints, SourceNetwork};
 pub use decide::{
     authority_admission_ok, authority_binding_holds, certificate_blacklisted, decide,
@@ -45,7 +47,7 @@ pub use pure_proofs::{
     lemma_non_serving_refuses_admission,
 };
 pub use error::{HeapError, HeapUnavailableCause};
-pub use holder_proof::{verify_holder_proof, VerifiedHolderProof};
+pub use holder_proof::{build_holder_proof, verify_holder_proof, VerifiedHolderProof};
 pub use ids::{
     AuthorityEpoch, AuthorityGeneration, CapabilityId, CertificateId, CollectionId, DeploymentId,
     HeapId, SecurityRevision, StreamId,

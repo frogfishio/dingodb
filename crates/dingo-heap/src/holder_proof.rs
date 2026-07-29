@@ -1,4 +1,5 @@
-//! Channel-bound holder proof verification (`HEAP_SPEC` §31.3).
+//! Channel-bound holder proof verification and client-side construction
+//! (`HEAP_SPEC` §31.3).
 
 use crate::certificate::sig_structure_for;
 use crate::certificate::VerifiedCertificate;
@@ -8,7 +9,7 @@ use crate::wire::{
     AUDIENCE_DATA_V1, CONTENT_TYPE_HOLDER_PROOF, EXTERNAL_AAD_HOLDER_PROOF, PROFILE_VERSION,
     PROOF_MAX_BYTES,
 };
-use dingo_format::{decode_deterministic_uint_map, CborValue};
+use dingo_format::{decode_deterministic_uint_map, encode_deterministic_uint_map, CborValue};
 use ed25519_dalek::{Signature, VerifyingKey};
 
 /// Verified holder proof claims.
@@ -24,6 +25,95 @@ pub struct VerifiedHolderProof {
     pub server_nonce: [u8; 32],
     /// TLS exporter.
     pub tls_exporter: [u8; 32],
+}
+
+/// Build an untagged COSE Sign1 holder proof for the HeapKey handshake.
+///
+/// `sign` receives the COSE `Sig_structure` bytes and must return a 64-byte
+/// Ed25519 signature. The SDK's `HolderSigner` supplies this without exporting
+/// private key material.
+pub fn build_holder_proof(
+    certificate: &VerifiedCertificate,
+    server_nonce: &[u8; 32],
+    tls_exporter: &[u8; 32],
+    proof_id: [u8; 16],
+    created_at: u64,
+    sign: impl FnOnce(&[u8]) -> Result<[u8; 64], HeapError>,
+) -> Result<Vec<u8>, HeapError> {
+    let payload = encode_deterministic_uint_map(&[
+        (1u64, CborValue::Uint(PROFILE_VERSION)),
+        (2, CborValue::Bytes(proof_id.to_vec())),
+        (3, CborValue::Uint(created_at)),
+        (4, CborValue::Bytes(certificate.fingerprint.to_vec())),
+        (5, CborValue::Bytes(certificate.deployment_id.as_bytes().to_vec())),
+        (6, CborValue::Bytes(certificate.heap_id.as_bytes().to_vec())),
+        (7, CborValue::Uint(certificate.authority_epoch.get())),
+        (8, CborValue::Text(AUDIENCE_DATA_V1.into())),
+        (9, CborValue::Bytes(server_nonce.to_vec())),
+        (10, CborValue::Bytes(tls_exporter.to_vec())),
+        (
+            11,
+            CborValue::Array(vec![
+                CborValue::Uint(1),
+                CborValue::Uint(1),
+                CborValue::Uint(0),
+            ]),
+        ),
+    ])
+    .map_err(|_| HeapError::unavailable(HeapUnavailableCause::MalformedOrBadSignature))?;
+
+    // protected: {1: -8, 3: "application/dingo-heap-holder-proof-v1"}
+    let mut protected = Vec::new();
+    protected.push(0xa2);
+    protected.push(0x01);
+    protected.push(0x27); // -8 as CBOR nint
+    protected.push(0x03);
+    write_text(&mut protected, CONTENT_TYPE_HOLDER_PROOF);
+
+    let sig_structure = sig_structure_for(&protected, EXTERNAL_AAD_HOLDER_PROOF, &payload);
+    let signature = sign(&sig_structure)?;
+    if signature.len() != 64 {
+        return Err(HeapError::unavailable(
+            HeapUnavailableCause::MalformedOrBadSignature,
+        ));
+    }
+
+    let mut cose = Vec::new();
+    cose.push(0x84);
+    write_bstr(&mut cose, &protected);
+    cose.push(0xa0);
+    write_bstr(&mut cose, &payload);
+    write_bstr(&mut cose, &signature);
+    if cose.len() > PROOF_MAX_BYTES {
+        return Err(HeapError::unavailable(
+            HeapUnavailableCause::MalformedOrBadSignature,
+        ));
+    }
+    Ok(cose)
+}
+
+fn write_text(out: &mut Vec<u8>, s: &str) {
+    let b = s.as_bytes();
+    if b.len() <= 23 {
+        out.push(0x60 | (b.len() as u8));
+    } else {
+        out.push(0x78);
+        out.push(b.len() as u8);
+    }
+    out.extend_from_slice(b);
+}
+
+fn write_bstr(out: &mut Vec<u8>, b: &[u8]) {
+    if b.len() <= 23 {
+        out.push(0x40 | (b.len() as u8));
+    } else if b.len() <= 255 {
+        out.push(0x58);
+        out.push(b.len() as u8);
+    } else {
+        out.push(0x59);
+        out.extend_from_slice(&(b.len() as u16).to_be_bytes());
+    }
+    out.extend_from_slice(b);
 }
 
 /// Verify a holder proof against a previously verified certificate and channel binding.

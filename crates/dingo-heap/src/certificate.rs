@@ -43,6 +43,55 @@ pub struct VerifiedCertificate {
     pub issuer_master_key_id: [u8; 32],
 }
 
+/// Structurally inspect a certificate COSE without verifying the master signature.
+///
+/// Used by local [`HeapCredential`] construction to bind a holder signer to the
+/// certificate's claimed public key. The **server** still performs full
+/// [`verify_certificate`] against the resident master key; this function alone
+/// is not authority.
+pub fn inspect_certificate(cose: &[u8]) -> Result<VerifiedCertificate, HeapError> {
+    if cose.len() > CERT_MAX_BYTES || cose.is_empty() {
+        return Err(HeapError::unavailable(
+            HeapUnavailableCause::MalformedOrBadSignature,
+        ));
+    }
+    let parts = decode_cose_sign1(cose)?;
+    if !parts.unprotected_empty {
+        return Err(HeapError::unavailable(
+            HeapUnavailableCause::MalformedOrBadSignature,
+        ));
+    }
+    let (alg, content_type) = decode_protected_header(&parts.protected)?;
+    if alg != COSE_ALG_EDDSA || content_type != CONTENT_TYPE_CERTIFICATE {
+        return Err(HeapError::unavailable(
+            HeapUnavailableCause::MalformedOrBadSignature,
+        ));
+    }
+    if parts.signature.len() != 64 {
+        return Err(HeapError::unavailable(
+            HeapUnavailableCause::MalformedOrBadSignature,
+        ));
+    }
+    let claims = decode_certificate_payload(&parts.payload)?;
+    let mut fingerprint = [0u8; 32];
+    fingerprint.copy_from_slice(&Sha256::digest(cose));
+    Ok(VerifiedCertificate {
+        cose_bytes: cose.to_vec(),
+        fingerprint,
+        deployment_id: claims.deployment_id,
+        heap_id: claims.heap_id,
+        authority_epoch: claims.authority_epoch,
+        authority_generation: claims.authority_generation,
+        certificate_id: claims.certificate_id,
+        holder_public_key: claims.holder_public_key,
+        rights: claims.rights,
+        constraints: claims.constraints,
+        not_before: claims.not_before,
+        expires_at: claims.expires_at,
+        issuer_master_key_id: claims.issuer_master_key_id,
+    })
+}
+
 /// Verify an untagged COSE Sign1 HeapKey certificate against a master public key.
 pub fn verify_certificate(
     cose: &[u8],

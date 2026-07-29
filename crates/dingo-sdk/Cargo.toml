@@ -18,6 +18,9 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 default = []
 # In-process multi-node (`Dingo::open_cluster` / `create_cluster`) via AGPL dingo-cluster.
 cluster = ["dep:dingo-cluster"]
+# Reference in-memory Ed25519 holder key for tests/dev only (`HEAP_SPEC` §30.9).
+# Does not enable secret-export APIs beyond construction from a seed.
+dangerous-key-export = ["dep:ed25519-dalek"]
 
 [dependencies]
 dingo-client.workspace = true
@@ -30,6 +33,12 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 blake3.workspace = true
+getrandom.workspace = true
+ed25519-dalek = { version = "2.1.1", optional = true, default-features = false, features = [
+  "alloc",
+  "fast",
+  "zeroize",
+] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pemfile = "2"
 rustls-pki-types = "1"
@@ -45,6 +54,12 @@ dingo-server = { workspace = true }
 dingo-cluster = { workspace = true }
 tempfile.workspace = true
 rcgen = "0.13"
+ed25519-dalek = { version = "2.1.1", default-features = false, features = [
+  "alloc",
+  "fast",
+  "zeroize",
+] }
+hex = "0.4"
 
 # Integration tests that exercise in-process / network cluster require the
 # AGPL `cluster` feature (pulled by dingo-server in those tests too).
@@ -87,3 +102,7 @@ required-features = ["cluster"]
 [[test]]
 name = "stage_def_031_protocol"
 required-features = ["cluster"]
+
+[[test]]
+name = "hp007_connect_heap"
+required-features = ["dangerous-key-export"]

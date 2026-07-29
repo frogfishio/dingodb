@@ -91,12 +91,29 @@ impl Dingo {
         Self::connect_with(url, ConnectOptions::default())
     }
 
+    /// Connect a **qualified** remote heap via HeapKey (`HEAP_SPEC` §7.1 / HP-007).
+    ///
+    /// Performs TLS 1.3 + `heap-key-v1` handshake and returns a [`crate::RemoteHeap`]
+    /// bound to the certificate's `HeapId`. Unlike [`Self::connect`], this path
+    /// never sends a shared token and cannot select the legacy listener.
+    ///
+    /// Active remote surface today: process ops 1–3 (ping / live / ready).
+    /// Collection data ops remain reserved until §32.4 activation.
+    pub fn connect_heap(
+        url: impl AsRef<str>,
+        options: crate::RemoteHeapOptions,
+    ) -> Result<crate::RemoteHeap, Error> {
+        crate::remote_heap::connect_heap(url, options)
+    }
+
     /// Connect with explicit connection options (authn, deadlines, retry).
     ///
     /// Application put/get APIs stay the same; only the transport policy changes
     /// (DX_SPEC §4.2). Multi-seed URLs (`dingo://h1:p1,h2:p2/app`) try seeds in
     /// order and use the first that accepts a connection; the client may then
     /// fetch a `directory` snapshot for route caching (Stage 8d).
+    ///
+    /// **Legacy** relative to [`Self::connect_heap`]: token/RBAC path only.
     pub fn connect_with(url: impl AsRef<str>, options: ConnectOptions) -> Result<Self, Error> {
         let url = url.as_ref();
         let parsed = parse_dingo_url(url)?;

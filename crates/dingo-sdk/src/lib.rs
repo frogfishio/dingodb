@@ -43,6 +43,7 @@ mod indexes;
 mod multi_query;
 mod receipt;
 mod remote;
+mod remote_heap;
 mod resource;
 mod sda_query;
 mod subject;
@@ -72,6 +73,11 @@ pub use filter::{
 pub use heap::{
     DingoDeployment, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream, SignedCursor,
 };
+pub use remote_heap::{
+    connect_heap, CredentialError, HeapCredential, HolderSigner, RemoteHeap, RemoteHeapOptions,
+};
+#[cfg(feature = "dangerous-key-export")]
+pub use remote_heap::InMemoryHolderKey;
 pub use multi_query::{map_joined_sda, JoinBuilder, MultiQuery, MULTI_QUERY_PROFILE};
 pub use sda_query::{eval_sda_program, SdaTextQuery, SDA_QUERY_PROFILE};
 pub use history::{KeyHistory, Version};

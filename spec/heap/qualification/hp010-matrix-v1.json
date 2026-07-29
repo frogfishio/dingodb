@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept (derived/ops + profiles + metadata-hardened closed allowlist). H1 advanced: SubjectV2 put/get Accept on HeapCollection/HeapStore (still partial \u2014 remote connect_heap + CPR-001 flat default). H0/H2/H4/H5 still partial (legacy flat SDK, reserved ops, recovery/lifecycle residuals). H6 partial \u2014 connected pure proofs + complete-path review + external review brief landed; full Verus/Kani machine proofs and signed external review still open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept (derived/ops + profiles + metadata-hardened closed allowlist). H1 advanced: SubjectV2 put/get + remote connect_heap process-ops Accept (still partial \u2014 CPR-001 flat default + remote data ops \u00a732.4). H0/H2/H4/H5 still partial (legacy flat SDK, reserved ops, recovery/lifecycle residuals). H6 partial \u2014 connected pure proofs + complete-path review + external review brief landed; full Verus/Kani machine proofs and signed external review still open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -24,16 +24,20 @@
         "crates/dingo-sdk/tests/hp007_heap_isolation.rs",
         "crates/dingo-sdk/tests/hp007_heap_isolation.rs::subject_v2_put_get_isolated_across_heaps",
         "crates/dingo-sdk/tests/hp007_heap_isolation.rs::heap_store_rejects_foreign_subject_v2",
+        "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_welcome_and_process_ops",
+        "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_wrong_name_rejects",
         "crates/dingo-sdk HeapCollection put/get/delete (SubjectV2)",
+        "crates/dingo-sdk Dingo::connect_heap + RemoteHeap process ops 1\u20133",
+        "crates/dingo-sdk HeapCredential / HolderSigner / RemoteHeapOptions",
         "crates/dingo-store HeapStore put/get/delete SubjectV2-only + rights gate",
         "crates/dingo-store Store::put_subject_bytes/get_subject_bytes/delete_subject_bytes",
+        "crates/dingo-heap inspect_certificate + build_holder_proof",
         "crates/dingo-heap HeapCap trybuild",
         "scripts/check_heap_architecture.sh"
       ],
       "open": [
-        "remote connect_heap open",
-        "legacy raw Store / Dingo::collection flat path still default (CPR-001)",
-        "dangerous-key-export holder signer residual"
+        "remote collection data ops (reserved until \u00a732.4)",
+        "legacy raw Store / Dingo::collection flat path still default (CPR-001)"
       ]
     },
     "H2": {
