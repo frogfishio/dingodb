@@ -9,22 +9,25 @@ use dingo_format::{
     AdmitDecision, OwnershipEvidence,
 };
 use dingo_heap::{
-    claim_language, confine_query_observation, may_advertise_qualified, mint_capability,
-    refresh_capability_or_terminate, AuthorityGeneration, CertificateId, CollectionId, Constraints,
-    Constraint, DeploymentId, HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot,
-    QueryObservationRequest, Rights, SecurityRevision, StreamId, TrustedInstant,
-    VerifiedCertificate, H6_PUBLISHED_LIMITATIONS, PRE_QUALIFICATION_LANGUAGE, QUALIFIED_CLAIM,
-    QUALIFIED_PROFILE,
+    claim_language, confine_export_heaps, confine_operational_observation,
+    confine_query_observation, connected_model_smoke, may_advertise_qualified, mint_capability,
+    refresh_capability_or_terminate, unauthenticated_field_allowed, AuthorityGeneration,
+    CertificateId, CollectionId, Constraint, Constraints, DeploymentId, HeapAdministrativeState,
+    HeapId, HeapSecuritySnapshot, HeapSlot, OperationalEvent, QueryObservationRequest, Rights,
+    SecurityRevision, StreamId, TrustedInstant, VerifiedCertificate, H6_PUBLISHED_LIMITATIONS,
+    PRE_QUALIFICATION_LANGUAGE, QUALIFIED_CLAIM, QUALIFIED_PROFILE,
+    UNAUTHENTICATED_DECLASSIFIED_FIELDS,
 };
 use dingo_store::{
-    active_snapshot, create_object, delete_rebuildable_catalogs, destroy_data_key,
-    disaster_recovery_restore_retaining_id, heap_binding_envelope, heap_label_envelope,
-    labelled_unit_readable, load_identity_tombstone, old_deployment_credential_invalid,
-    publish_staged_genesis, rebuild_and_persist_all_catalogs, refuse_access_from_payload_restore,
+    active_snapshot, arm_failpoint_once, build_backup_manifest, clear_failpoints, create_object,
+    delete_rebuildable_catalogs, destroy_data_key, disaster_recovery_restore_retaining_id,
+    heap_binding_envelope, heap_label_envelope, labelled_unit_readable, load_crash_matrix,
+    load_identity_tombstone, old_deployment_credential_invalid, publish_staged_genesis,
+    rebuild_and_persist_all_catalogs, refuse_access_from_payload_restore,
     refuse_retain_id_without_ceremony, require_admit, restore_payload_to_new_heap,
     stage_heap_genesis, try_load_streams_catalog, DataKeyHandle, DisasterRecoveryCeremony,
-    DisasterRecoveryPackage, HeapLifecycle, HeapMetaLayout, HeapRetentionPolicy, MediaDomain,
-    ObjectKind, PurgeCoverageUnit, TierClass, TombstoneKind,
+    DisasterRecoveryPackage, FailpointAction, HeapLifecycle, HeapMetaLayout, HeapRetentionPolicy,
+    MediaDomain, ObjectKind, PurgeCoverageUnit, TierClass, TombstoneKind,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -118,6 +121,9 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
         "load_latency_budget",
         "fuzz_budget",
         "operator_runbook",
+        "operational_metrics_logs_export",
+        "lifecycle_crash_matrix",
+        "h6_connected_model",
     ] {
         assert_eq!(
             doc.drills[drill].status, "accept",
@@ -806,5 +812,176 @@ fn h6_isolation_claim_partial_evidence() {
     let verus_body = fs::read_to_string(&verus).unwrap();
     assert!(verus_body.contains("H6_PROOF_OBLIGATIONS"));
     assert!(verus_body.contains("confine_query_observation"));
+    assert!(verus_body.contains("IsolationModel"));
 }
+
+#[test]
+fn operational_metrics_logs_export_scoped() {
+    // Gate H3 / §9.5–§9.6: metrics/logs/audit/export stay heap-scoped.
+    let slot = slot_for(0xa0);
+    let cap = mint_cap(Arc::clone(&slot));
+    let foreign = HeapId::from_bytes(uuidish(0xa1)).unwrap();
+
+    assert!(unauthenticated_field_allowed("live"));
+    assert!(!unauthenticated_field_allowed("heap_count"));
+    assert_eq!(UNAUTHENTICATED_DECLASSIFIED_FIELDS.len(), 4);
+
+    let events = vec![
+        OperationalEvent {
+            heap_id: None,
+            field: "ready".into(),
+            value: "1".into(),
+        },
+        OperationalEvent {
+            heap_id: Some(cap.heap_id()),
+            field: "usage_bytes".into(),
+            value: "10".into(),
+        },
+        OperationalEvent {
+            heap_id: Some(foreign),
+            field: "usage_bytes".into(),
+            value: "999".into(),
+        },
+        OperationalEvent {
+            heap_id: Some(foreign),
+            field: "export_path".into(),
+            value: "/secret/b".into(),
+        },
+    ];
+    let obs = confine_operational_observation(&cap, &events).unwrap();
+    assert_eq!(obs.heap_id, cap.heap_id());
+    assert_eq!(obs.events.len(), 2);
+    assert!(obs
+        .events
+        .iter()
+        .all(|e| e.heap_id.is_none() || e.heap_id == Some(cap.heap_id())));
+    assert!(confine_operational_observation(
+        &cap,
+        &[OperationalEvent {
+            heap_id: None,
+            field: "other_heap_names".into(),
+            value: "leak".into(),
+        }]
+    )
+    .is_err());
+
+    assert_eq!(
+        confine_export_heaps(&cap, &[]).unwrap(),
+        vec![cap.heap_id()]
+    );
+    assert!(confine_export_heaps(&cap, &[foreign]).is_err());
+
+    // Durable backup manifest enumerates only requested heaps — ordinary export
+    // confinement refuses mixing foreign ids before the manifest is built.
+    let only = confine_export_heaps(&cap, &[cap.heap_id()]).unwrap();
+    let dep = uuidish(0x01);
+    let manifest = build_backup_manifest(dep, &only.iter().map(|h| h.to_bytes()).collect::<Vec<_>>())
+        .unwrap();
+    assert_eq!(manifest.heap_ids, vec![cap.heap_id().to_bytes()]);
+    assert!(!manifest.heap_ids.contains(&foreign.to_bytes()));
+}
+
+#[test]
+fn lifecycle_crash_matrix_peer_heaps_unaffected() {
+    // Gate H5: crash mid-lifecycle on A must not change B's observation.
+    clear_failpoints();
+    let tmp = TempDir::new().unwrap();
+    let slot_a = slot_for(0xb0);
+    let slot_b = slot_for(0xb1);
+    let heap_a = slot_a.load().heap_id.to_bytes();
+    let heap_b = slot_b.load().heap_id.to_bytes();
+    let env_b = heap_label_envelope(&heap_b).unwrap();
+    assert!(labelled_unit_readable(&heap_b, &env_b, &env_b));
+
+    let mut life_a = HeapLifecycle::open(tmp.path().join("a"), Arc::clone(&slot_a));
+    let life_b = HeapLifecycle::open(tmp.path().join("b"), Arc::clone(&slot_b));
+    let before_b = life_b.state();
+    let cap_a = mint_cap(Arc::clone(&slot_a));
+    let cap_b = mint_cap(Arc::clone(&slot_b));
+    assert!(refresh_capability_or_terminate(&cap_a).is_ok());
+    assert!(refresh_capability_or_terminate(&cap_b).is_ok());
+
+    // Crash after state store during suspend: slot advanced; receipt may be missing.
+    arm_failpoint_once(
+        "heap_lifecycle.after_state_store",
+        FailpointAction::Error,
+    );
+    let err = life_a.suspend(op(0xb2)).unwrap_err();
+    assert!(
+        err.to_string().contains("failpoint") || err.to_string().contains("Failpoint"),
+        "{err}"
+    );
+    clear_failpoints();
+    assert_eq!(life_a.state(), HeapAdministrativeState::Suspended);
+    assert!(refresh_capability_or_terminate(&cap_a).is_err());
+    assert_eq!(life_b.state(), before_b);
+    assert!(refresh_capability_or_terminate(&cap_b).is_ok());
+    assert!(labelled_unit_readable(&heap_b, &env_b, &env_b));
+
+    // Resume A to continue matrix (mint fresh after revision).
+    life_a.resume(op(0xb3)).unwrap();
+    life_a.retire(op(0xb4)).unwrap();
+    let tomb = load_identity_tombstone(&tmp.path().join("a"), &heap_a).unwrap();
+    assert_eq!(tomb.kind, TombstoneKind::Retired);
+
+    // Crash after purge plan: A is Purging; B unchanged.
+    arm_failpoint_once(
+        "heap_lifecycle.after_purge_plan",
+        FailpointAction::Error,
+    );
+    let err = life_a
+        .begin_purge_media(
+            op(0xb5),
+            vec![PurgeCoverageUnit {
+                object_id: uuidish(0xb6),
+                domain: MediaDomain::Tier(TierClass::Hot),
+                available: true,
+            }],
+            2_000_000_000,
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("failpoint") || err.to_string().contains("Failpoint"));
+    clear_failpoints();
+    assert_eq!(life_a.state(), HeapAdministrativeState::Purging);
+    assert_eq!(life_b.state(), before_b);
+    assert!(labelled_unit_readable(&heap_b, &env_b, &env_b));
+
+    // Matrix document records heap_lifecycle operation.
+    let matrix = load_crash_matrix().expect("crash matrix");
+    assert!(
+        matrix.operations.iter().any(|o| o.id == "heap_lifecycle"),
+        "crash_matrix must include heap_lifecycle"
+    );
+    let life_op = matrix
+        .operations
+        .iter()
+        .find(|o| o.id == "heap_lifecycle")
+        .unwrap();
+    assert!(life_op
+        .failpoints
+        .iter()
+        .any(|f| f.name == "heap_lifecycle.after_purge_plan"));
+}
+
+#[test]
+fn h6_connected_model() {
+    // Connected Rust model ↔ HeapIsolation.tla invariants (still not Verus-complete).
+    let a = HeapId::from_bytes(uuidish(0xe0)).unwrap();
+    let b = HeapId::from_bytes(uuidish(0xe1)).unwrap();
+    connected_model_smoke(a, b);
+
+    let tla = fs::read_to_string(workspace_root().join("formal/heap/HeapIsolation.tla")).unwrap();
+    for needle in [
+        "ReadConfinement",
+        "WriteConfinement",
+        "OwnershipDisjoint",
+        "RevocationClosed",
+        "Rebind",
+        "Admit",
+        "Damage",
+    ] {
+        assert!(tla.contains(needle), "TLA missing {needle}");
+    }
+}
+
 

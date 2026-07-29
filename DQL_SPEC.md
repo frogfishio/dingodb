@@ -1,464 +1,923 @@
 # Dingo Query Language (DQL)
 
-Status: **Design + implementation v0.1** (official dialect `dql` lowers to ENR1+SDA)  
-Audience: language designers, SDK authors, optimizer authors, advanced users  
-Normative companions: [SDA_SPEC.md](SDA_SPEC.md), [crates/enr-core/](crates/enr-core/),
-[doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [DX_SPEC.md](DX_SPEC.md) §7,
-and [DATA_RULES_PROPOSAL.md](DATA_RULES_PROPOSAL.md)
+Status: **Normative design v1.0-draft; shipped implementation is v0.1 subset**
 
-## 1. Why this exists
+Dialect identifier: `dql`
 
-**ENR + SDA are exact mathematical representations of the product query model.**
-Nobody disputes that the pure surface is hard to look at and hard to write for
-everyday application work. That is intentional: the algebra fixes value kinds,
-carriers, Null vs absence, match bags, cardinality, and failure tags.
+Audience: language, SDK, planner, server, and conformance implementers
+Normative companions: [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
+[SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
+[crates/enr-core/ENR1.md](crates/enr-core/ENR1.md), and
+[DX_SPEC.md](DX_SPEC.md)
 
-Some people will still prefer the pure notation: data scientists,
-mathematicians, set theorists, academics. That group is small and very loud.
-They get the pure path forever — `Collection::sda`, `Dingo::enr_query`, dialect
-id `sda`.
+## 1. Decision
 
-**DQL (Dingo Query Language) is the official human surface on top of ENR+SDA.**
-It is designed to be nice to read and write. It *looks* a little like SQL in
-places, but it is **not** SQL: cardinality is explicit, joins are enrichment
-with named outputs, and projection is nested SDA-shaped shape, not a flat
-SELECT list pretending multiplicity does not exist.
+DQL is DingoDB's official human query language.
 
-DQL is the product’s preferred text dialect. Foreign comfort dialects
-(SQL-ish, Mongo-ish, GraphQL-ish, …) and fluent host APIs remain welcome —
-every one of them **lowers to the same ENR+SDA IR / bytecode** that the pure
-compiler produces. They never redefine the algebra.
+It is:
+
+- document-native;
+- Heap-bound;
+- read-only;
+- deterministic;
+- explicit about relationship cardinality;
+- explicit about order, continuation, coverage, consistency, and budgets;
+- compiled into a serializable query plan whose value operations lower to
+  ENR and SDA.
+
+DQL is not SQL, a write language, a constraint language, or a second
+mathematical kernel.
+
+DRE is the separate language for stored invariants. DQL and DRE share
+`dingo-predicate-v1`, but they have different authority:
 
 ```text
-  Pure ENR + SDA text ──┐
-  DQL (official) ───────┤
-  SQL-ish ──────────────┤
-  Mongo / JSON filter ──┼── compile ──► [ENR + SDA IR / bytecode] ──► execute
-  GraphQL-ish ──────────┤
-  Fluent / builder API ─┤
-  (your plugin) ────────┘
+DQL          asks what data to read and how to shape it
+DRE          decides whether a proposed committed state is legal
 ```
 
-Compile is the expensive, semantic step. Execution is shared.
+A query cannot create, activate, weaken, or bypass a rule.
 
-| Layer | Role | Audience |
-|-------|------|----------|
-| **ENR + SDA** | Mathematical kernel; truth model; IR | Spec authors, pure-path users, optimizers |
-| **DQL** | Official human dialect → same IR | Application developers, product docs, demos |
-| **Foreign dialects** | Comfort / familiarity; admit holes | Migration, habits, partial coverage |
-| **Fluent API** | Host-native builder; same IR | SDK callers who prefer code over strings |
+## 2. Language stack
 
-Rule: **comfort never redefines truth.** If a dialect cannot express a
-distinction (Null vs absence, exact cardinality failures, match bags), use
-pure ENR+SDA — or extend DQL only when the lowering stays faithful.
+```text
+DQL source
+    |
+    v
+canonical DqlPlanV1
+    |
+    +-- acquisition / indexes / frontiers / pages ---> query host
+    |
+    +-- match bags / cardinality / attach -----------> ENR
+    |
+    +-- predicates / projection ---------------------> SDA
+```
 
-## 2. Product position
+The earlier v0.1 compiler lowers its supported `from` / `enrich` / `project`
+subset directly to ENR+SDA text. That remains a valid implementation strategy
+for the subset.
 
-| Id | Surface | Status |
-|----|---------|--------|
-| `sda` | Pure SDA / ENR1 source | **implemented** (identity / parse-checked) |
-| **`dql`** | **Official Dingo Query Language** | **implemented** v0.1 (`from` / `enrich` / `expect` / `project` → ENR1) |
-| `json` / `mongo` | Portable filter objects | implemented (predicate subset) |
-| `sql` | Tiny SELECT/WHERE mimicry | partial comfort only |
-| `graphql` | Reserved | scaffold |
+The complete language does **not** pretend that source acquisition, index
+selection, budgets, coverage, sorting, or continuation are pure SDA. Those
+operations belong to the host plan. The semantic expressions inside them
+still lower to the same ENR/SDA kernels.
 
-DQL is **not** another foreign mimicry dialect. It is co-designed with ENR so
-that:
+Comfort never redefines truth:
 
-1. everyday multi-collection enrichment is readable;
-2. every construct has a total lowering into ENR Core IR;
-3. the optimizer sees relationships and cardinality, not opaque strings.
+| Layer | Role |
+|---|---|
+| SDA | value, absence, carrier, and reduction semantics |
+| ENR | match bags, cardinality, attach, and nested expansion |
+| Dingo Predicate Profile | shared total predicate surface |
+| DQL | official query surface and serializable host plan |
+| foreign dialects | partial migration surfaces with declared holes |
 
-See [DIALECTS.md](doc/SDA/DIALECTS.md) for the general dialect contract.
-Foreign dialects remain imperfect frontends. DQL aims for **faithful**
-coverage of the ENR1 enrichment + SDA projection story (not of full SQL).
+## 3. V1 scope
 
-## 3. Motivating example
+DQL v1 supports:
 
-Human surface (DQL):
+- one root collection;
+- zero or more root filters;
+- named enrichment from other collections;
+- explicit `exactly_one`, `optional`, or `many` cardinality;
+- filters on enrichment candidates;
+- nested enrichment inside a bounded attached bag/sequence;
+- nested projection;
+- deterministic scalar ordering;
+- limit and authenticated keyset continuation;
+- explicit coverage and consistency modes;
+- explicit scan/materialization budgets;
+- explain.
+
+DQL v1 deliberately excludes:
+
+- writes and DDL;
+- rule declarations;
+- arbitrary user functions;
+- callbacks, recursion, and loops;
+- implicit cross-Heap reads;
+- unbounded recursive traversal;
+- SQL-style flattening joins;
+- offset pagination;
+- aggregation and grouping;
+- window functions;
+- arbitrary computed projection expressions;
+- text, vector, and geospatial clauses until their dedicated specifications
+  are promoted from [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md).
+
+Excluded features are not parser accidents. They are outside the v1 language.
+Pure SDA/ENR remains available where its host profile can safely express a
+more advanced transformation.
+
+## 4. Lexical rules
+
+Source is UTF-8. Invalid UTF-8 is rejected.
+
+ASCII keywords are case-insensitive. Identifiers and quoted field names are
+case-sensitive.
+
+```ebnf
+identifier      = ( ALPHA | "_" ), { ALPHA | DIGIT | "_" } ;
+unsigned        = DIGIT, { DIGIT } ;
+string          = JSON string literal ;
+comment         = "--", { any character except line ending } ;
+```
+
+Whitespace and comments separate tokens and otherwise have no meaning.
+
+Bare identifiers are restricted to the grammar above. A field path may use
+the bracket notation defined by `dingo-predicate-v1` for names that cannot be
+written bare.
+
+Reserved words:
+
+```text
+after allow and as asc available budget bytes complete consistency
+current desc documents enrich exact exactly_one explain false from
+in incomplete limit many matching missing not null nulls optional
+or order present project result_bytes true using where within
+expect first last
+```
+
+Reserved words may appear as bracketed field segments but not as bare aliases,
+collection names, or output names.
+
+## 5. Grammar
+
+The following EBNF is normative. `predicate`, `path`, and `literal` are imported
+from `dingo-predicate-v1`. Within DQL predicates, `operand` is extended with
+the parameter production below.
+
+```ebnf
+query             = [ "explain" ], from-clause, { pipeline-step },
+                    [ project-clause ],
+                    [ order-clause ],
+                    [ after-clause ],
+                    [ limit-clause ],
+                    [ consistency-clause ],
+                    [ coverage-clause ],
+                    [ budget-clause ] ;
+
+from-clause       = "from", source-ref, [ "as", identifier ] ;
+source-ref        = identifier | string ;
+
+pipeline-step     = where-clause | enrich-clause | within-clause ;
+where-clause      = "where", predicate ;
+
+enrich-clause     = "enrich", identifier,
+                    "using", source-ref, [ "as", identifier ],
+                    "matching", path, "=", path,
+                    [ "where", predicate ],
+                    "expect", cardinality ;
+
+cardinality       = "exactly_one" | "optional" | "many" ;
+
+within-clause     = "within", path, [ "as", identifier ], "{",
+                      { nested-step },
+                    "}" ;
+nested-step       = where-clause | enrich-clause | within-clause ;
+
+project-clause    = "project", "{", [ project-item,
+                    { [ "," ], project-item }, [ "," ] ], "}" ;
+project-item      = path
+                  | identifier, ":", path
+                  | identifier, "{", [ project-item,
+                    { [ "," ], project-item }, [ "," ] ], "}" ;
+
+order-clause      = "order", "by", order-term, { ",", order-term } ;
+order-term        = path, [ "asc" | "desc" ],
+                    [ "nulls", "first" | "last" ],
+                    [ "missing", "first" | "last" ] ;
+
+after-clause      = "after", string ;
+limit-clause      = "limit", unsigned ;
+
+consistency-clause = "consistency", ( "available" | "current" ) ;
+coverage-clause   = "coverage", ( "complete" | "allow", "incomplete" ) ;
+
+budget-clause     = "budget", "{",
+                      budget-entry, { [ "," ], budget-entry }, [ "," ],
+                    "}" ;
+budget-entry      = "documents", ":", unsigned
+                  | "bytes", ":", unsigned
+                  | "result_bytes", ":", unsigned ;
+
+parameter         = "$", identifier ;
+```
+
+Clauses after `project` are terminal options and occur in the order shown.
+Every terminal clause appears at most once. Every budget key appears at most
+once.
+
+`from` is required. Empty projection blocks, zero limits, and zero budgets are
+legal and have their literal meanings.
+
+## 6. Bindings and scope
+
+### 6.1 Heap
+
+A DQL query executes under exactly one authenticated `HeapId`. Every
+collection binding resolves inside that Heap. Quoted source references permit
+any valid collection name, for example `from "2026/imports" as imports`.
+
+DQL has no syntax for another Heap. A host that attempts to bind a source from
+another Heap must fail before execution with `dql_heap_mismatch`.
+
+### 6.2 Root scope
+
+```text
+from orders as order
+```
+
+binds:
+
+- source name `orders`;
+- current row alias `order`;
+- implicit current row for unqualified paths.
+
+Without `as`, the singular alias is not guessed. Only unqualified current-row
+paths are available.
+
+In a root predicate:
+
+```text
+where status = "paid"
+```
+
+`status` means the current root row's `status`.
+
+### 6.3 Enrichment scope
+
+```text
+enrich customer using customers as candidate
+  matching customer_id = candidate.id
+  where candidate.active = true
+  expect exactly_one
+```
+
+binds:
+
+- `customer` as the output field;
+- `customers` as the source collection;
+- `candidate` as one candidate row;
+- the current left row unchanged.
+
+The left match path is resolved against the current row. The right match path
+is resolved against the candidate row. A qualified candidate path MUST begin
+with the declared candidate alias. An unqualified right path is also resolved
+against the candidate for compatibility with v0.1.
+
+An enrichment `where` predicate is evaluated against each candidate. Paths
+qualified by the candidate alias refer to that candidate. Paths qualified by a
+visible outer alias refer to the corresponding outer row.
+
+An output name must not already exist on the current row. Replacement requires
+an explicit future construct; v1 fails with `dql_output_conflict`.
+
+### 6.4 Nested scope
+
+```text
+within items as item {
+  enrich product using products as candidate
+    matching item.product_id = candidate.id
+    expect exactly_one
+}
+```
+
+`within` requires its path to resolve to a sequence or bag. Each element becomes
+the current row for the nested block. The block preserves carrier kind and
+multiplicity, enriches each element independently, and replaces the field with
+the resulting carrier.
+
+Outer aliases remain readable. The element alias shadows no existing alias.
+Nested depth is bounded by the host and recorded in the plan profile.
+
+`within` over an absent path, Null, or a non-carrier value is a runtime
+`dql_within_type` error. It is never interpreted as an empty bag.
+
+### 6.5 Parameters
+
+DQL permits a parameter wherever the shared predicate grammar permits an
+operand:
+
+```text
+where age >= $minimum_age and country = $country
+```
+
+Parameters are supplied through a separate typed binding map before planning
+or execution. They are values, never source fragments.
+
+- every referenced parameter must be bound exactly once;
+- unused bindings are rejected by default and may be permitted only by an
+  explicit host compatibility option;
+- v1 parameters are Null, Boolean, integer, decimal, string, or bytes;
+- parameter names are case-sensitive;
+- source text cannot interpolate collection names, aliases, paths, keywords,
+  ordering, limits, budgets, or clauses through parameters;
+- parameter values are included in execution and continuation identity;
+- explain redacts parameter values by default and reports their types.
+
+A missing binding is `dql_parameter_unbound`. A carrier or product parameter is
+`dql_parameter_type`.
+
+## 7. Root filtering
+
+A root `where` keeps the current row exactly when the imported
+`dingo-predicate-v1` predicate evaluates to `true`.
+
+Pipeline order is semantic:
 
 ```text
 from orders
+where status = "paid"
+enrich customer ...
+where customer.country = "TH"
+```
 
-enrich customer using customers
-  matching customer_id = id
-  expect exactly_one
+The first predicate runs before enrichment. The second runs after `customer`
+has been attached.
 
-enrich items using items
-  matching id = order_id
-  expect many
+The optimizer may reorder a predicate only after proving:
 
-enrich product using products
-  matching product_id = id
-  expect exactly_one
+- all referenced bindings exist at the new position;
+- cardinality failures and stable errors remain identical;
+- coverage and resource behavior are not weakened;
+- result ordering and multiplicity are unchanged.
 
+## 8. Matching and cardinality
+
+For current row `l`, candidate source `R`, candidate filter `F`, left path
+`pL`, and right path `pR`:
+
+```text
+Match(l, R, pL, pR, F)
+  = Bag{ r ∈ R |
+      F(r, l)
+      ∧ present(l.pL)
+      ∧ present(r.pR)
+      ∧ value(l.pL) =SDA value(r.pR)
+    }
+```
+
+Properties:
+
+- the primitive result is always a bag;
+- source duplicates are preserved;
+- absent keys never match, including absent-to-absent;
+- explicit Null is present and therefore matches explicit Null;
+- equality is SDA structural equality;
+- encounter order has no meaning unless the source has a declared order.
+
+Cardinality interpretation is mandatory:
+
+| Surface | Match count | Result |
+|---|---:|---|
+| `exactly_one` | 0 | `Fail(t_enr_missing)` |
+| | 1 | the value |
+| | >1 | `Fail(t_enr_duplicate)` |
+| `optional` | 0 | `None` |
+| | 1 | `Some(value)` |
+| | >1 | `Fail(t_enr_duplicate)` |
+| `many` | any | original match bag |
+
+A cardinality failure fails the query page; it does not silently discard the
+root row. The error identifies the enrichment path and root key but excludes
+document bodies by default.
+
+An `optional` attachment logically stores an SDA optional carrier. A lossless
+Dingo result preserves `None` versus `Some(Null)`. A JSON compatibility bridge
+omits a field for `None` and emits JSON null for `Some(Null)`.
+
+## 9. Projection
+
+Without `project`, the result is the complete current artefact after all
+pipeline steps.
+
+Projection creates a new product for every current row.
+
+```text
 project {
-  order_id,
-  customer.name,
+  id,
+  customer {
+    name,
+    region: address.region
+  },
   items {
-    quantity,
-    product.name
+    sku,
+    quantity
   }
 }
 ```
 
-Same program as pure ENR + SDA (illustrative; exact sugar evolves with
-`dingo-sda`):
+Rules:
+
+- `id` copies the current row's `id` under `id`;
+- `region: address.region` copies a path under output name `region`;
+- `customer { ... }` projects a product or optional product;
+- `items { ... }` maps projection over a sequence or bag while preserving its
+  carrier and multiplicity;
+- source order of output fields is preserved;
+- duplicate output names are static errors;
+- a leaf and a block cannot claim the same output path;
+- projection never changes cardinality.
+
+If a leaf path is absent, the projected field is absent. If it contains Null,
+the output contains Null.
+
+A block over an absent value is absent. A block over Null remains Null. A block
+over a product projects that product. A block over an optional maps through the
+optional. A block over a sequence or bag maps over its members. Any other value
+fails with `dql_project_type`.
+
+Arbitrary calculated fields are outside v1. Use a subsequent SDA reduction
+when required.
+
+## 10. Ordering
+
+Without `order by`, root results use ascending immutable document key order.
+Filesystem order, worker completion order, hash iteration order, and physical
+segment order are never observable.
+
+Every explicit ordering appends immutable document key ascending as an
+unwritten final tie-breaker. A query therefore has a strict deterministic
+order suitable for continuation.
+
+V1 sort keys must be scalar:
 
 ```text
-orders
-|> enrich {
-     customer:
-       one!(Match(l, customers,
-         getPath(l, Seq["customer_id"]),
-         getPath(r, Seq["id"])))
-   }
-|> enrich {
-     items:
-       Match(l, items,
-         getPath(l, Seq["id"]),
-         getPath(r, Seq["order_id"]))
-   }
-|> /* nest product attach under each item — ForEach(items, …) */
-|> project …
+Bool | Integer | Decimal | String | Bytes | Null | Absent
 ```
 
-Same semantics via a fluent host API (optional parallel surface; not DQL text):
-
-```ts
-const result = await dingo
-  .from(orders)
-  .enrich("customer")
-    .with(customers)
-    .match("customer_id", "id")
-    .expect("exactly_one")
-  .enrich("items")
-    .with(items)
-    .match("id", "order_id")
-    .expect("many")
-  .enrich("product")
-    .with(products)
-    .match("items.product_id", "id")
-    .expect("exactly_one")
-  .project({
-    order_id: true,
-    customer: { name: true },
-    items: {
-      quantity: true,
-      product: { name: true },
-    },
-  });
-```
-
-All three paths MUST lower to the same IR primitives (§5–§7).
-
-## 4. Program shape
+Integer and decimal share one exact numeric family. Present non-null values
+sort by this family rank:
 
 ```text
-Program
- ├── FromStep?          // root artefact / collection binding
- ├── EnrichStep*
- └── ProjectStep?
+Bool < Number < String < Bytes
 ```
 
-Normative sketch:
+Within families:
 
-- A program starts from a bound collection or free name (`from orders`, or a
-  host-supplied root).
-- Zero or more `enrich` steps attach related artefacts under **output field
-  names**.
-- An optional `project` shapes the final artefact (SDA-style nested shape).
+- `false < true`;
+- numbers use exact mathematical order;
+- strings use Unicode scalar/code-point lexicographic order;
+- bytes use unsigned lexicographic order.
 
-### 4.1 Namespaces
+`asc` or `desc` reverses only the present non-null value ordering. Null and
+Absent placement is controlled independently:
 
-In:
+- default `nulls last`;
+- default `missing last`;
+- if both occupy the same end, Null precedes Absent;
+- explicit `first`/`last` moves that category to the selected end;
+- incompatible duplicate placement directives are a static error.
+
+A product, sequence, bag, set, or map encountered as a sort key fails with
+`dql_sort_type`.
+
+## 11. Limit and continuation
+
+`limit n` caps returned root rows after filtering, enrichment, projection, and
+ordering. It does not weaken cardinality validation for rows actually
+considered.
+
+DQL uses keyset continuation:
 
 ```text
-enrich customer using customers
-  matching customer_id = id
-  expect exactly_one
+after "<opaque authenticated token>"
 ```
 
-| Name | Namespace | Meaning |
-|------|-----------|---------|
-| `customer` | **output field** | Field attached on the current artefact |
-| `customers` | **source artefact** | Right-hand dataset / collection binding |
-| `customer_id` | left key path | On the current (left) row |
-| `id` | right key path | On each right-hand row |
+Offset pagination is not part of v1.
 
-`customer` and `customers` are different namespaces. Confusing them is a
-static error when both are in scope without qualification.
+A continuation token binds at least:
 
-## 5. Enrich AST → Match + Cardinality + Attach
+- Heap ID;
+- canonical plan hash excluding `after`;
+- parameter hash;
+- source identities;
+- effective ordering;
+- last emitted ordering tuple and immutable document key;
+- consistency and coverage modes;
+- relevant partition/index frontiers;
+- token format version and expiry policy;
+- an authenticity tag.
 
-### 5.1 Surface
+A token from another query, Heap, principal, or incompatible frontier fails.
+It never restarts silently.
+
+`after` without an explicit or implicit deterministic ordering is impossible,
+because document key ordering is always present.
+
+## 12. Consistency and coverage
+
+Defaults:
 
 ```text
-enrich <output_name> using <source>
-  matching <left_key> = <right_key>
-  expect <cardinality>
+consistency available
+coverage complete
 ```
 
-Cardinality keywords (v0.1):
+### 12.1 Consistency
 
-| Surface | IR constructor | Semantics |
-|---------|----------------|-----------|
-| `exactly_one` | `One(Match(…))` | 0 → `Fail(t_enr_missing)`; 1 → value; >1 → `Fail(t_enr_duplicate)` |
-| `optional` | `Optional(Match(…))` | 0 → `None`; 1 → `Some(value)`; >1 → `Fail(t_enr_duplicate)` |
-| `many` | `Many(Match(…))` | Always `Bag` (duplicates preserved) |
+`available` reads the currently published authoritative/index frontiers and
+reports them.
 
-`expect` is not documentation-only. It is a **lowering instruction**: it
-chooses the cardinality operator over the match bag.
+`current` binds a required frontier at query admission and waits until every
+participating source and required derived index has observed it, or fails with
+a timeout/cancellation error. It does not mean linearizability outside the
+query's qualified scope.
 
-### 5.2 Match algebra IR
+### 12.2 Coverage
 
-Every enrich lowers through the same primitive:
+`coverage complete` fails when missing partitions, offline required tiers,
+known holes, budget exhaustion, or damaged required index state could change
+membership or order.
+
+`coverage allow incomplete` permits results with structured coverage evidence.
+It never converts the evidence into a claim of completeness.
+
+Every result page carries:
 
 ```text
-Match(left, right, left_key, right_key)
+query_id
+plan_hash
+heap_id
+source_frontiers
+index_frontiers
+coverage
+known_holes
+consistency
+ordering
+continuation?
 ```
 
-Result of bare match is always a **bag** of right rows (never a silent single
-value). Cardinality operators interpret the bag.
+An empty result under incomplete coverage is not evidence that no matching
+document exists.
+
+## 13. Budgets
 
 Example:
 
 ```text
-enrich items using items
-  matching id = order_id
-  expect many
-```
-
-becomes:
-
-```text
-Many(
-  Match(current_order, items, order.id, item.order_id)
-)
-```
-
-### 5.3 Attach IR
-
-The enrich step itself becomes:
-
-```text
-Attach {
-  field: customer,
-  value: One(Match(...))
+budget {
+  documents: 100000,
+  bytes: 67108864,
+  result_bytes: 16777216
 }
 ```
 
-Before:
+Meanings:
+
+- `documents`: maximum authoritative documents/candidates examined;
+- `bytes`: maximum source payload bytes read;
+- `result_bytes`: maximum memory/output bytes materialized for sorting and
+  result construction.
+
+Budgets are hard upper bounds. Reaching a bound:
+
+- fails with `dql_budget_exhausted` under `coverage complete`;
+- returns explicit incomplete coverage under `coverage allow incomplete`.
+
+A server may impose tighter policy ceilings. It must report the effective
+budget in explain and result evidence.
+
+No budget authorizes silent truncation.
+
+## 14. Explain
+
+`explain` compiles and plans the query but does not enumerate result documents.
+
+Structured explain includes:
+
+- dialect and semantic profile versions;
+- canonical source hash and plan hash;
+- source and alias bindings;
+- canonical predicate ASTs and SDA lowering;
+- ENR match/cardinality/attach lowering;
+- inferred Heap scope;
+- chosen and rejected indexes;
+- scan and cardinality estimates with their evidence age;
+- pushdown decisions;
+- ordering and continuation plan;
+- source and index frontiers;
+- consistency and coverage requirements;
+- requested, policy, and effective budgets;
+- unsupported or fallback operations;
+- whether absence and completeness can be proven.
+
+Human explain is a presentation of the same structured artifact.
+
+## 15. Canonical plan
+
+Compilation produces `DqlPlanV1`:
 
 ```text
-Order
-```
-
-After:
-
-```text
-Order {
-  customer: Customer   // or Bag / Optional per expect
+DqlPlanV1 {
+  profile: "dql-plan-v1"
+  heap_binding
+  root: Source
+  steps: Seq<Filter | Enrich | Within>
+  projection: Optional<Project>
+  order: Seq<OrderTerm>        // includes implicit key tie-break
+  after: Optional<Token>
+  limit: Optional<UInt>
+  consistency: Available | Current
+  coverage: Complete | AllowIncomplete
+  budget: Optional<Budget>
+  explain: Bool
+  predicate_profile: "dingo-predicate-v1"
+  enr_profile
+  sda_profile
 }
 ```
 
-Nested enrichment under a bag field (e.g. product under items) lowers with an
-explicit `ForEach` over that field so left keys evaluate in the child row’s
-scope.
-
-## 6. Project AST
-
-Surface:
+Every `Enrich` contains:
 
 ```text
-project {
-  order_id,
-  customer.name,
-  items {
-    quantity,
-    product.name
-  }
+Enrich {
+  output_path
+  source_identity
+  candidate_alias?
+  left_path
+  right_path
+  candidate_predicate
+  cardinality
 }
 ```
 
-Lowers to nested projection IR (SDA-shaped):
+The canonical encoding:
+
+- uses immutable collection identities after binding, not mutable display
+  names;
+- preserves semantic step order;
+- stores normalized predicates and paths;
+- inserts all defaults;
+- includes the implicit key tie-break;
+- excludes comments and insignificant source formatting;
+- is deterministically serialized;
+- is hashed with a domain-separated cryptographic hash.
+
+The logical plan above is normative. This language specification does not
+assign persistent binary field numbers. No implementation may persist,
+exchange, or authenticate a purported `dql-plan-v1` until a companion plan
+encoding profile fixes its canonical bytes. Compiler and executor development
+may use an ephemeral in-process representation in the meantime.
+
+Two sources with the same canonical plan have the same DQL semantics under the
+same bindings, parameters, profile versions, and input state.
+
+## 16. Compilation
+
+A conforming compiler:
+
+1. validates UTF-8 and resource ceilings;
+2. lexes and parses the complete source;
+3. resolves keywords, aliases, paths, and output namespaces;
+4. imports and normalizes `dingo-predicate-v1` predicates;
+5. checks clause order and uniqueness;
+6. checks nested scopes and projection conflicts;
+7. binds source names to immutable identities in the authenticated Heap;
+8. inserts defaults and the key-order tie-break;
+9. lowers filters/projection to SDA forms;
+10. lowers match/cardinality/attach/within to ENR forms;
+11. emits and validates canonical `DqlPlanV1`;
+12. plans physical execution without changing logical meaning.
+
+Compilation is total:
 
 ```text
-Project {
-  fields: [
-    order_id,
-    Path(customer, name),
-    Nested(items, [
-      quantity,
-      Path(product, name)
-    ])
-  ]
-}
+Compile(source, bindings, profiles)
+    = Plan
+    | finite ordered diagnostics
 ```
 
-Project does not invent new relation semantics; it reduces the enriched
-artefact. That reduction is **SDA’s job** after ENR expansion.
+No unsupported syntax is ignored. No cardinality, coverage, budget, or
+consistency requirement is weakened.
 
-## 7. Complete lowering example
+## 17. Optimizer laws
 
-Program:
+Physical plans may use scans, Hydra indexes, hash probes, batch probes, remote
+partition requests, caches, or future specialized indexes.
+
+An optimization is legal only if it preserves:
+
+- result values;
+- multiplicity and carriers;
+- cardinality failures;
+- deterministic order;
+- coverage evidence;
+- consistency;
+- resource-bound semantics;
+- Heap noninterference;
+- stable error class where the specification requires one.
+
+Indexes are accelerators, not authorities. Every valid v1 filter has an
+authoritative scan interpretation. If a scan is unavailable under the budget,
+the query fails or reports incomplete coverage according to §12–§13.
+
+## 18. Stable errors
+
+Initial stable families:
 
 ```text
-from orders
+dql_lex_error
+dql_parse_error
+dql_reserved_identifier
+dql_duplicate_clause
+dql_clause_order
+dql_source_unknown
+dql_alias_conflict
+dql_path_invalid
+dql_output_conflict
+dql_projection_conflict
+dql_predicate_invalid
+dql_parameter_unbound
+dql_parameter_type
+dql_cardinality_missing
+dql_cardinality_duplicate
+dql_within_type
+dql_project_type
+dql_sort_type
+dql_budget_invalid
+dql_budget_exhausted
+dql_coverage_incomplete
+dql_current_unavailable
+dql_continuation_invalid
+dql_continuation_expired
+dql_heap_mismatch
+dql_profile_unsupported
+dql_limit_exceeded
+```
 
-enrich customer using customers
-  matching customer_id = id
+Compile errors carry source spans. Runtime errors carry plan hash, safe
+operator path, and safe bounded witnesses. Document bodies and secret values
+are excluded by default.
+
+## 19. Security
+
+- All bindings are authorized before acquisition.
+- The compiler cannot synthesize a cross-Heap binding.
+- Query text and parameters are separate; parameters cannot inject syntax.
+- Continuation tokens are opaque and authenticated.
+- Explain is capability-gated because index names, estimates, and plan details
+  may reveal metadata.
+- Diagnostics redact values by default.
+- Budgets and cancellation apply across local, remote, nested, and fallback
+  work.
+- User-defined executable code is absent from v1.
+
+## 20. Conformance
+
+The v1 conformance suite must cover:
+
+### 20.1 Parsing and canonicalization
+
+- every production and reserved word;
+- comments and whitespace;
+- malformed UTF-8 and escapes;
+- clause order and duplicates;
+- canonical plan equality across formatting variants;
+- parser resource ceilings.
+
+### 20.2 Predicate equivalence
+
+- all `dingo-predicate-v1` cases;
+- native, SDA-lowered, indexed, and scanned equivalence;
+- Null and absence;
+- heterogeneous documents.
+
+### 20.3 Enrichment
+
+- missing, one, and duplicate matches for every cardinality;
+- absent-to-absent does not match;
+- explicit Null-to-Null does match;
+- duplicate preservation for `many`;
+- candidate filters and outer aliases;
+- nested `within` with sequence and bag carriers;
+- output conflicts.
+
+### 20.4 Projection and ordering
+
+- absent, Null, optional, product, sequence, and bag projection;
+- deterministic field order;
+- every scalar sort family;
+- mixed families;
+- Null and missing placement;
+- immutable-key tie-breaking.
+
+### 20.5 Paging, coverage, and budgets
+
+- no duplicates or omissions across unchanged paged state;
+- token tampering and query/Heap mismatch;
+- partition/index frontier changes;
+- complete versus allowed-incomplete behavior;
+- budget exhaustion at every boundary;
+- cancellation;
+- empty results under incomplete coverage.
+
+### 20.6 Equivalence and failure injection
+
+- v0.1 subset equals direct ENR+SDA programs;
+- scan and every applicable index produce equivalent logical results;
+- crash/retry does not mutate data;
+- damaged indexes fall back or report holes;
+- unavailable sources never become empty sources;
+- cross-Heap binding attempts fail before execution.
+
+## 21. Implementation status and migration
+
+The shipped `dql` compiler currently supports:
+
+```text
+from
+enrich ... using ... matching ... expect ...
+project { ... }
+```
+
+It directly emits ENR1/SDA text. It does not yet implement the complete v1
+grammar, canonical host plan, filters, nested `within`, ordering, continuation,
+coverage, consistency, budgets, or explain.
+
+Therefore:
+
+- current binaries identify their accepted surface as `dql-source-v0.1`;
+- the future complete plan identifies itself as `dql-plan-v1`;
+- accepting a v1-only construct on a v0.1 runtime fails closed;
+- the v0.1 parser must not be described as complete DQL;
+- existing v0.1 programs are intended to remain valid v1 programs, except that
+  ambiguous alias behavior must be rejected rather than guessed.
+
+Implementation order:
+
+1. freeze canonical AST and shared predicate parser;
+2. add root `where`;
+3. introduce `DqlPlanV1` host execution;
+4. add candidate filters and strict alias resolution;
+5. add nested `within`;
+6. freeze projection behavior;
+7. add deterministic order and limit;
+8. add continuation;
+9. add coverage, consistency, and budgets;
+10. add explain and full conformance.
+
+## 22. Example
+
+```text
+from orders as order
+
+where order.status = "paid"
+  and present(order.customer_id)
+
+enrich customer using customers as candidate
+  matching order.customer_id = candidate.id
+  where candidate.active = true
   expect exactly_one
 
-enrich items using items
-  matching id = order_id
+enrich items using order_items as candidate
+  matching order.id = candidate.order_id
   expect many
 
-enrich product using products
-  matching product_id = id
-  expect exactly_one
+within items as item {
+  enrich product using products as candidate
+    matching item.product_id = candidate.id
+    expect exactly_one
+}
 
 project {
-  order_id,
-  customer.name,
+  id,
+  created_at,
+  customer {
+    name
+  },
   items {
     quantity,
-    product.name
+    product {
+      name
+    }
   }
 }
-```
 
-Target IR sketch:
-
-```text
-Pipeline {
-  root: Orders,
-
-  Attach(
-    customer,
-    One(Match(Order, Customers, Order.customer_id, Customer.id))
-  ),
-
-  Attach(
-    items,
-    Many(Match(Order, Items, Order.id, Item.order_id))
-  ),
-
-  ForEach(items,
-    Attach(
-      product,
-      One(Match(Item, Products, Item.product_id, Product.id))
-    )
-  ),
-
-  Project(...)
+order by created_at desc nulls last missing last
+limit 100
+consistency available
+coverage complete
+budget {
+  documents: 100000,
+  bytes: 67108864,
+  result_bytes: 16777216
 }
 ```
 
-## 8. Why the IR matters (optimizer)
+Its meaning is:
 
-Once lowered, the engine does not see “run a query string.” It sees:
+1. acquire live `orders` within the authenticated Heap;
+2. retain paid orders with a present customer ID;
+3. attach exactly one active customer or fail;
+4. attach the bag of matching items;
+5. attach exactly one product to every item or fail;
+6. produce the declared nested shape;
+7. sort deterministically with immutable key tie-breaking;
+8. return at most 100 rows;
+9. refuse to present incomplete coverage as complete;
+10. obey the declared and server-effective resource bounds.
 
-```text
-Relationship:  Order.customer_id → Customer.id
-Cardinality:   exactly one
-Physical options:
-  - hash lookup
-  - Hydra index
-  - remote index
-  - cached pointer
-  - batch probe
-```
-
-For `expect many`:
-
-```text
-Need:     Bag<T>
-Allowed:  multi-index, range lookup, batch gather
-```
-
-The surface stays readable. The IR stays powerful. Storage and distribution
-get explicit cardinality and key relationships.
-
-## 9. ENR Core IR freeze (target)
-
-DQL (and pure ENR text, and fluent builders) SHOULD lower into these
-primitives — and no more — for the enrichment kernel:
-
-```text
-Match
-Cardinality   // One / Optional / Many (and ordered policies later)
-Attach
-Merge
-Project
-ForEach       // nested attach under bag fields
-```
-
-Everything else is sugar or host binding. That keeps ENR from becoming another
-giant query language. Detailed pure algebra: [ENR_CORE.md](crates/enr-core/ENR_CORE.md),
-[ENR1.md](crates/enr-core/ENR1.md).
-
-## 10. DQL is not SQL
-
-They can look similar at a glance. They are not the same language.
-
-| Concern | Typical SQL | DQL |
-|---------|-------------|-----|
-| Join shape | `JOIN … ON` flattens or multiplies rows | `enrich` **attaches** a named field |
-| Multiplicity | Often implicit / DISTINCT later | `expect exactly_one \| optional \| many` is required |
-| Nested result | Awkward / JSON functions / ORM | Nested `project { items { … } }` is first-class |
-| Null model | Three-valued SQL NULL | SDA Null **vs** absence (carriers) |
-| Failure | Runtime errors / wrong row counts | Stable ENR tags (`t_enr_missing`, `t_enr_duplicate`, …) |
-| Truth model | SQL semantics | ENR + SDA algebra |
-
-SQL mimicry (`dialect "sql"`) remains a **foreign comfort** dialect with known
-holes. It is not DQL and must not be documented as the official language.
-
-## 11. Compilation contract
-
-A conforming DQL implementation MUST:
-
-1. Parse DQL source into the Program AST (§4).
-2. Lower totally into ENR Core IR + SDA project forms (§5–§7).
-3. Emit the **same IR class** that pure ENR+SDA compilation produces (shared
-   bytecode / interpreter / plan entry).
-4. Refuse unmappable constructs with a clear static error (no silent weakening
-   of cardinality or Null/absence).
-5. Preserve ENR failure tags when cardinality operators fail.
-
-Host concerns (collection binding, indexes, budgets, coverage, pages) stay
-**outside** DQL meaning — same split as pure SDA hosts ([SDA_PROFILE.md](SDA_PROFILE.md)).
-
-## 12. Implementation status
-
-| Piece | Status |
-|-------|--------|
-| Pure SDA + ENR1 in `dingo-sda` | **shipped** |
-| Host text path (`sda` / `enr_query`) | **shipped** |
-| Foreign dialects `json` / `mongo` / `sql` | **shipped** (partial for sql) |
-| DQL grammar + compiler | **shipped** v0.1 — `dingo_sdk::dialects` id `dql` → pure ENR1/SDA text |
-| Conformance: DQL ≡ pure ENR | **shipped** — `dialects_query::dql_equals_pure_enr1_on_enrich` + unit tests |
-| Fluent enrich builder → same IR | **design** (API sketch only) |
-| Nested bag-scoped enrich (ForEach) | **partial** — top-level enrich chain in v0.1; nested scope next |
-| Shared bytecode / plan IR freeze | **design** — align with ENR Core IR v0.1 |
-
-Code entry points:
-
-- Compiler: `crates/dingo-sdk/src/dialects/dql.rs` (`compile_dialect("dql", …)`)
-- Proof tests: `crates/dingo-sdk/tests/dialects_query.rs`, `dialects::dql` unit tests
-
-Next concrete work:
-
-1. Nested enrich under `expect many` fields (ForEach attach).
-2. Richer `project` sugar and path ergonomics.
-3. Freeze ENR Core IR v0.1 primitives for optimizer/plan compile.
-
-## 13. See also
-
-- [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) — **how to write and run DQL** (application developers)  
-- [DATA_RULES_PROPOSAL.md](DATA_RULES_PROPOSAL.md) — the visually compatible declaration language for enforceable invariants
-- [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) — dialect stack and foreign comfort rules  
-- [doc/SDA/DOCTRINE.md](doc/SDA/DOCTRINE.md) — certainty kernel vs comfort  
-- [DX_SPEC.md](DX_SPEC.md) §7 — everyday query experience  
-- [crates/enr-core/README.md](crates/enr-core/README.md) — ENR1 surface and design authority  
-- [SDA_SPEC.md](SDA_SPEC.md) — pure algebra  
+That is the DQL v1 contract.

@@ -5,7 +5,7 @@ Status: Exploratory umbrella draft v0.2
 Scope: Bounded indivisible state transitions, integrity invariants, commit
 evidence, and transaction compatibility
 
-Companions: `DATA_RULES_PROPOSAL.md`, `HEAP_SPEC.md`, `DX_SPEC.md`,
+Companions: `DRE_SPEC.md`, `HEAP_SPEC.md`, `DX_SPEC.md`,
 `TRANSACTIONS.md`, `CLUSTER_SPEC.md`, and `DATABASE_DOCTRINE.md`
 
 ## 1. The idea
@@ -457,7 +457,7 @@ is a new forward effect, not erasure or rollback of history.
 
 ## 15. First invariant: relationship profile
 
-`DATA_RULES_PROPOSAL.md` governs the human declaration, formal predicate,
+`DRE_SPEC.md` governs the human declaration, formal predicate,
 compilation proof obligations, lifecycle, and product position. This section
 defines the first relationship enforcement profile built on the Atomic
 primitive.

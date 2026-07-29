@@ -912,7 +912,7 @@ reference customer using customers
 ```
 
 Data Rules compile to the formal, bounded invariant model in
-`DATA_RULES_PROPOSAL.md`. They are not scripts, callbacks, arbitrary DQL
+`DRE_SPEC.md`. They are not scripts, callbacks, arbitrary DQL
 queries, or an application hook.
 
 Attaching a rule does not rewrite old payloads automatically. A rule becomes

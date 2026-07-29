@@ -12,6 +12,7 @@
 
 use crate::atomic_file::write_atomic;
 use crate::error::StoreError;
+use crate::failpoint;
 use crate::ids::random_id;
 use crate::layout::hex16;
 use crate::tier::TierClass;
@@ -603,6 +604,7 @@ impl HeapLifecycle {
         self.destroyed.clear();
         self.transition(HeapAdministrativeState::Purging, operation_id, "begin_purge")?;
         self.persist_plan(&plan)?;
+        failpoint::hit("heap_lifecycle.after_purge_plan")?;
         Ok(plan)
     }
 
@@ -644,6 +646,7 @@ impl HeapLifecycle {
         self.destroyed.clear();
         self.transition(HeapAdministrativeState::Purging, operation_id, "begin_purge")?;
         self.persist_plan(&plan)?;
+        failpoint::hit("heap_lifecycle.after_purge_plan")?;
         Ok(plan)
     }
 
@@ -690,6 +693,7 @@ impl HeapLifecycle {
             }
         }
         self.destroyed.insert(object_id);
+        failpoint::hit("heap_lifecycle.after_coverage_destroy")?;
         Ok(())
     }
 
@@ -1255,7 +1259,9 @@ impl HeapLifecycle {
         next.security_revision = SecurityRevision::new(prev_rev + 1)
             .map_err(|e| StoreError::HeapAdmit(e.to_string()))?;
         self.slot.store(next);
+        failpoint::hit("heap_lifecycle.after_state_store")?;
         self.persist_transition_receipt(operation_id, op, to)?;
+        failpoint::hit("heap_lifecycle.after_transition_receipt")?;
         Ok(())
     }
 

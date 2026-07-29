@@ -19,7 +19,9 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](FORMAT_SPEC.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
-| Dingo Query Language (official human dialect → ENR+SDA; v0.1) | [DQL_SPEC.md](DQL_SPEC.md), user guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
+| Dingo Query Language (v1 design; shipped parser is v0.1 subset) | [DQL_SPEC.md](DQL_SPEC.md), current-subset guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
+| Shared total predicate semantics for DQL and DRE | [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md) |
+| Dingo Rule Expression (DRE) constraint language and Invariant Core | [DRE_SPEC.md](DRE_SPEC.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
 | SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
 | Enrichment algebra (ENR1 kernel in `dingo-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |

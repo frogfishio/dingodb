@@ -1,9 +1,9 @@
 //! Verus placeholder — pure kernel proofs land with Gate H6.
 //!
 //! HP-001 delivers the executable Rust decision function; HP-010 records the
-//! isolation observation helpers (`confine_query_observation`) as differential
-//! evidence. Full Verus proofs connecting `decide` / confinement to
-//! `HeapIsolation.tla` remain open — `qualified` stays false.
+//! isolation observation helpers (`confine_query_observation`) and the connected
+//! Rust model (`dingo_heap::IsolationModel`) mirroring `HeapIsolation.tla`.
+//! Full Verus proofs remain open — `qualified` stays false.
 
 #![allow(dead_code)]
 
@@ -21,4 +21,7 @@ pub const H6_PROOF_OBLIGATIONS: &[&str] = &[
     "a terminal state cannot allow",
     "epoch/generation acceptance follows the frozen grace rule",
     "confine_query_observation never returns a foreign heap_id",
+    "IsolationModel invariants match HeapIsolation.tla Inv",
+    "confine_operational_observation drops foreign-heap metrics/logs",
+    "confine_export_heaps refuses foreign heap ids",
 ];

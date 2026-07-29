@@ -94,6 +94,19 @@ Raise budgets only by matrix amendment — never by silently skipping the drill.
 LibFuzzer target `fuzz/fuzz_targets/heap_ownership.rs` supplements CI; overnight
 fuzz is recommended before claiming H6.
 
+## 5.1 Lifecycle crash cells
+
+`crates/dingo-store/crash_matrix.v1.json` operation `heap_lifecycle` records
+failpoints:
+
+- `heap_lifecycle.after_state_store`
+- `heap_lifecycle.after_transition_receipt`
+- `heap_lifecycle.after_purge_plan`
+- `heap_lifecycle.after_coverage_destroy`
+
+CI Accept: `hp010_qualification::lifecycle_crash_matrix_peer_heaps_unaffected`
+(peer heap labelled units remain readable; caps on the crashed heap terminate).
+
 ## 6. Gate H6 limitations (published)
 
 Logical heap isolation does **not** protect against:

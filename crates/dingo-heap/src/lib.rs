@@ -13,6 +13,8 @@ mod error;
 mod holder_proof;
 mod ids;
 mod isolation;
+mod isolation_model;
+mod operational;
 mod qualification;
 mod rights;
 mod security_time;
@@ -36,6 +38,11 @@ pub use ids::{
 pub use isolation::{
     confine_query_observation, ConfinedObservation, QueryObservationRequest,
     H6_PUBLISHED_LIMITATIONS,
+};
+pub use isolation_model::{connected_model_smoke, IsolationModel, ModelUnit};
+pub use operational::{
+    confine_export_heaps, confine_operational_observation, unauthenticated_field_allowed,
+    ConfinedOperationalObservation, OperationalEvent, UNAUTHENTICATED_DECLASSIFIED_FIELDS,
 };
 pub use qualification::{
     claim_language, may_advertise_qualified, HP010_MATRIX_REL, PRE_QUALIFICATION_LANGUAGE,
