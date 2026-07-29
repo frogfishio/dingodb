@@ -101,6 +101,141 @@ pub fn confine_export_heaps(
     Ok(vec![bound])
 }
 
+/// Health / probe fields offered for confinement (§9.5 / §13.2).
+///
+/// Mirrors the server `HealthReport` surface without depending on `dingo-server`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HealthDetailInput {
+    /// Process liveness.
+    pub live: bool,
+    /// Process readiness.
+    pub ready: bool,
+    /// Human reasons when not ready (must already be secret-free).
+    pub reasons: Vec<String>,
+    /// Physical store path (confidential under §13.2).
+    pub store_path: Option<String>,
+    /// Global live object count (confidential — not heap-local).
+    pub live_count: Option<usize>,
+    /// Placement / node index (confidential topology).
+    pub node_index: Option<u32>,
+    /// Whether draining.
+    pub draining: bool,
+    /// Heap-local usage for the bound heap (permitted for authenticated observers).
+    pub bound_heap_usage_bytes: Option<u64>,
+    /// Foreign-heap usage sneak (must never survive confinement).
+    pub foreign_heap_usage_bytes: Option<u64>,
+}
+
+/// Confined health observation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfinedHealthDetail {
+    /// Always present for public probes and authenticated observers.
+    pub live: bool,
+    /// Always present for public probes and authenticated observers.
+    pub ready: bool,
+    /// Present only for authenticated heap-bound detail.
+    pub reasons: Vec<String>,
+    /// Present only when authenticated; never a physical path.
+    pub draining: Option<bool>,
+    /// Heap-local usage for the bound heap only.
+    pub bound_heap_usage_bytes: Option<u64>,
+}
+
+/// Confine a health report.
+///
+/// - `cap == None` → public probe: only `live` / `ready` (base registry).
+/// - `cap == Some` → authenticated detail: adds draining + bound-heap usage;
+///   strips physical paths, global live counts, node topology, and foreign usage.
+pub fn confine_health_detail(
+    cap: Option<&HeapCap>,
+    input: &HealthDetailInput,
+) -> Result<ConfinedHealthDetail, HeapError> {
+    match cap {
+        None => Ok(ConfinedHealthDetail {
+            live: input.live,
+            ready: input.ready,
+            reasons: Vec::new(),
+            draining: None,
+            bound_heap_usage_bytes: None,
+        }),
+        Some(cap) => {
+            refresh_capability_or_terminate(cap)?;
+            // Foreign usage is dropped; physical/global fields never appear.
+            let _ = (&input.store_path, &input.live_count, &input.node_index);
+            let _ = &input.foreign_heap_usage_bytes;
+            Ok(ConfinedHealthDetail {
+                live: input.live,
+                ready: input.ready,
+                reasons: input.reasons.clone(),
+                draining: Some(input.draining),
+                bound_heap_usage_bytes: input.bound_heap_usage_bytes,
+            })
+        }
+    }
+}
+
+/// One support-bundle artifact candidate (§9.5).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SupportBundleEntry {
+    /// Owning heap when heap-local; `None` = deployment-wide artifact.
+    pub heap_id: Option<HeapId>,
+    /// Stable kind (`log`, `metrics`, `receipt`, `config`, …).
+    pub kind: String,
+    /// Path label (never absolute secret-bearing paths in confined output).
+    pub label: String,
+    /// Whether the entry contains credential / key material (must be refused).
+    pub contains_secrets: bool,
+}
+
+/// Confined support-bundle membership.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfinedSupportBundle {
+    /// Bound heap.
+    pub heap_id: HeapId,
+    /// Entries that survived confinement.
+    pub entries: Vec<SupportBundleEntry>,
+}
+
+/// Confine a support bundle to the live capability.
+///
+/// Secret-bearing entries are always denied. Foreign-heap entries are dropped.
+/// Undeclared deployment-wide kinds (not in the base registry) are denied.
+pub fn confine_support_bundle(
+    cap: &HeapCap,
+    entries: &[SupportBundleEntry],
+) -> Result<ConfinedSupportBundle, HeapError> {
+    refresh_capability_or_terminate(cap)?;
+    let bound = cap.heap_id();
+    let mut out = Vec::with_capacity(entries.len());
+    for e in entries {
+        if e.contains_secrets {
+            return Err(HeapError::unavailable(
+                HeapUnavailableCause::ConstraintDenied,
+            ));
+        }
+        match e.heap_id {
+            Some(h) if h == bound => out.push(e.clone()),
+            Some(_) => {}
+            None => {
+                // Deployment-wide bundle artifacts must be explicitly allowlisted.
+                if matches!(e.kind.as_str(), "build_id" | "protocol_versions" | "live" | "ready")
+                    || unauthenticated_field_allowed(&e.kind)
+                {
+                    out.push(e.clone());
+                } else {
+                    return Err(HeapError::unavailable(
+                        HeapUnavailableCause::ConstraintDenied,
+                    ));
+                }
+            }
+        }
+    }
+    Ok(ConfinedSupportBundle {
+        heap_id: bound,
+        entries: out,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,5 +344,82 @@ mod tests {
         );
         assert!(confine_export_heaps(&cap, &[foreign]).is_err());
         assert!(confine_export_heaps(&cap, &[cap.heap_id(), foreign]).is_err());
+    }
+
+    #[test]
+    fn health_detail_and_support_bundle_confined() {
+        let cap = mint();
+        let foreign = HeapId::from_bytes(uuidish(0xc3)).unwrap();
+        let input = HealthDetailInput {
+            live: true,
+            ready: true,
+            reasons: vec!["ok".into()],
+            store_path: Some("/var/lib/dingo/secret".into()),
+            live_count: Some(999),
+            node_index: Some(3),
+            draining: false,
+            bound_heap_usage_bytes: Some(42),
+            foreign_heap_usage_bytes: Some(777),
+        };
+        let public = confine_health_detail(None, &input).unwrap();
+        assert!(public.live && public.ready);
+        assert!(public.reasons.is_empty());
+        assert!(public.draining.is_none());
+        assert!(public.bound_heap_usage_bytes.is_none());
+
+        let auth = confine_health_detail(Some(&cap), &input).unwrap();
+        assert_eq!(auth.bound_heap_usage_bytes, Some(42));
+        assert_eq!(auth.draining, Some(false));
+        assert!(!auth.reasons.is_empty());
+
+        let bundle = confine_support_bundle(
+            &cap,
+            &[
+                SupportBundleEntry {
+                    heap_id: Some(cap.heap_id()),
+                    kind: "receipt".into(),
+                    label: "purge".into(),
+                    contains_secrets: false,
+                },
+                SupportBundleEntry {
+                    heap_id: Some(foreign),
+                    kind: "log".into(),
+                    label: "other".into(),
+                    contains_secrets: false,
+                },
+                SupportBundleEntry {
+                    heap_id: None,
+                    kind: "live".into(),
+                    label: "probe".into(),
+                    contains_secrets: false,
+                },
+            ],
+        )
+        .unwrap();
+        assert_eq!(bundle.entries.len(), 2);
+        assert!(bundle
+            .entries
+            .iter()
+            .all(|e| e.heap_id.is_none() || e.heap_id == Some(cap.heap_id())));
+        assert!(confine_support_bundle(
+            &cap,
+            &[SupportBundleEntry {
+                heap_id: Some(cap.heap_id()),
+                kind: "key".into(),
+                label: "master".into(),
+                contains_secrets: true,
+            }]
+        )
+        .is_err());
+        assert!(confine_support_bundle(
+            &cap,
+            &[SupportBundleEntry {
+                heap_id: None,
+                kind: "heap_inventory".into(),
+                label: "all".into(),
+                contains_secrets: false,
+            }]
+        )
+        .is_err());
     }
 }

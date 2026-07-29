@@ -1,7 +1,8 @@
 # Query Dialects
 
-Status: Draft v0.4  
-Audience: SDK authors, host integrators, advanced query users  
+Status: Draft v0.4
+
+Audience: SDK authors, host integrators, advanced query users
 Normative companions: [SDA_SPEC.md](../../SDA_SPEC.md), [DX_SPEC.md](../../DX_SPEC.md) §7
 
 ## Thesis
@@ -127,6 +128,7 @@ DQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 | `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/dingo-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
 | `sql` | Tiny `SELECT` / `WHERE` mimicry | document predicate or projection program | **partial** — foreign comfort only (not DQL) |
+| `sql-dql` | Bounded SQL compatibility import | canonical DQL v1 plan | **specified, not implemented** — [SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md) |
 | `graphql` | Reserved id | — | **scaffold** — not implemented |
 
 ### DQL (official)
@@ -185,6 +187,12 @@ stored null or only absence, use pure SDA (or the `json` dialect’s
 
 Out of scope (and refused or not recognized): joins, subqueries, aggregates,
 `ORDER BY` / `LIMIT` (use SDK `QueryOptions`), functions, `LIKE`, DDL/DML.
+
+This is not the SQL→DQL cross-compiler. The separately specified `sql-dql`
+profile translates a stricter SQL subset into DQL, models SQL three-valued
+predicates explicitly, and requires proof or declared obligations for hidden
+join cardinality. See
+[SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md).
 
 ### GraphQL (`graphql`)
 

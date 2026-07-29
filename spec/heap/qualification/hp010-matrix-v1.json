@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 operational metrics/logs/export + derived/query Accept; H5 lifecycle crash-matrix Accept; H6 partial with connected Rust IsolationModel ↔ TLA Inv. External review + full Verus still open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010 in progress: H3 support-bundle/health-detail + ops Accept; H5 lifecycle crash Accept; H6 partial with IsolationModel + executable §39 decide obligations. External review + full Verus still open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -43,7 +43,8 @@
         "crates/dingo-store/tests/hp010_qualification.rs::derived_path_indexes_streams_scoped",
         "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
         "crates/dingo-store/tests/hp010_qualification.rs::operational_metrics_logs_export_scoped",
-        "crates/dingo-heap confine_query_observation / confine_operational_observation / confine_export_heaps"
+        "crates/dingo-store/tests/hp010_qualification.rs::support_bundle_health_detail_scoped",
+        "crates/dingo-heap confine_query_observation / confine_operational_observation / confine_export_heaps / confine_health_detail / confine_support_bundle"
       ]
     },
     "H4": {
@@ -75,9 +76,11 @@
         "formal/heap/HeapIsolation.tla (read/write confinement + ownership disjointness sketch)",
         "formal/heap/MCHeapIsolation.cfg",
         "crates/dingo-heap IsolationModel connected to TLA Inv",
+        "crates/dingo-heap authority_binding_holds + h6_decide_obligations (§39 executable stand-in)",
         "verification/heap-verus H6_PROOF_OBLIGATIONS checklist",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_isolation_claim_partial_evidence",
         "crates/dingo-store/tests/hp010_qualification.rs::h6_connected_model",
+        "crates/dingo-store/tests/hp010_qualification.rs::h6_decide_obligations_connected",
         "crates/dingo-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined"
       ]
     },
@@ -133,6 +136,11 @@
       "section": "9.5/9.6/H3",
       "test": "hp010_qualification::operational_metrics_logs_export_scoped"
     },
+    "support_bundle_health_detail": {
+      "status": "accept",
+      "section": "9.5/13.2/H3",
+      "test": "hp010_qualification::support_bundle_health_detail_scoped"
+    },
     "lifecycle_crash_matrix": {
       "status": "accept",
       "section": "27/H5",
@@ -143,6 +151,11 @@
       "status": "accept",
       "section": "39/H6",
       "test": "hp010_qualification::h6_connected_model"
+    },
+    "h6_decide_obligations": {
+      "status": "accept",
+      "section": "39/H6",
+      "test": "hp010_qualification::h6_decide_obligations_connected"
     },
     "load_latency_budget": {
       "status": "accept",

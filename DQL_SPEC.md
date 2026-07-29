@@ -10,6 +10,8 @@ Normative companions: [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
 [crates/enr-core/ENR1.md](crates/enr-core/ENR1.md), and
 [DX_SPEC.md](DX_SPEC.md)
 
+Compatibility importer: [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md)
+
 ## 1. Decision
 
 DQL is DingoDB's official human query language.
@@ -387,6 +389,19 @@ document bodies by default.
 An `optional` attachment logically stores an SDA optional carrier. A lossless
 Dingo result preserves `None` versus `Some(Null)`. A JSON compatibility bridge
 omits a field for `None` and emits JSON null for `Some(Null)`.
+
+For paths that traverse a DQL-created optional attachment, DQL uses lifted
+resolution:
+
+```text
+resolve(Some(v), remaining_path) = resolve(v, remaining_path)
+resolve(None, remaining_path)    = Absent
+```
+
+This lifting applies only to optional carriers introduced by the typed DQL
+plan; it does not reinterpret stored document values. It makes predicates and
+projection such as `customer.name` meaningful after `expect optional` while
+preserving `None` versus `Some(Null)` in the logical result.
 
 ## 9. Projection
 

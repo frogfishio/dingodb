@@ -30,6 +30,19 @@ pub enum AuthorizationDecision {
     Deny(HeapUnavailableCause),
 }
 
+/// Pure authority-binding check used by [`decide`] for every non-public op.
+///
+/// Verus obligation O1: allow implies this returns true.
+#[must_use]
+pub fn authority_binding_holds(
+    snapshot: &HeapSecuritySnapshot,
+    certificate: &VerifiedCertificate,
+) -> bool {
+    certificate.heap_id == snapshot.heap_id
+        && certificate.deployment_id == snapshot.deployment_id
+        && certificate.authority_epoch == snapshot.authority_epoch
+}
+
 /// Pure decision: no I/O, no ambient clock.
 pub fn decide(
     snapshot: &HeapSecuritySnapshot,
@@ -66,10 +79,7 @@ fn decide_inner(
         ));
     }
 
-    if certificate.heap_id != snapshot.heap_id
-        || certificate.deployment_id != snapshot.deployment_id
-        || certificate.authority_epoch != snapshot.authority_epoch
-    {
+    if !authority_binding_holds(snapshot, certificate) {
         return Err(HeapError::unavailable(HeapUnavailableCause::StaleAuthority));
     }
 

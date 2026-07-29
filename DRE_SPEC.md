@@ -16,6 +16,8 @@ formal semantics, proof obligations, and Atomic enforcement
 Normative companions: `ATOMICS_PROPOSAL.md`, `HEAP_SPEC.md`, `DQL_SPEC.md`,
 `DINGO_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`, and `DX_SPEC.md`
 
+Compatibility importer: `JSON_SCHEMA_TO_DRE_SPEC.md`
+
 ## 1. Decision
 
 DingoDB provides a small, declarative, non-Turing-complete language for
@@ -41,7 +43,7 @@ DREs are not:
 - arbitrary DQL queries;
 - application code that DingoDB promises to remember to call.
 
-A Data Rule denotes a finite mathematical predicate. Compilation determines
+A DRE denotes a finite mathematical predicate. Compilation determines
 its complete dependency set, required Atomic scope, execution bound, canonical
 Invariant Core IR, semantic version, and verification evidence.
 
@@ -257,6 +259,7 @@ ruleset          = "rules", "for", source-ref,
                    { declaration } ;
 
 declaration      = require-rule
+                 | document-rule
                  | optional-rule
                  | forbid-rule
                  | constrain-rule
@@ -265,6 +268,7 @@ declaration      = require-rule
                  | allow-rule
                  | reference-rule ;
 
+document-rule    = "document", "as", type ;
 require-rule     = "require", path, [ "as", type ],
                    [ "when", predicate ] ;
 optional-rule    = "optional", path, "as", type ;
@@ -295,7 +299,9 @@ type             = "any"
                  | "boolean"
                  | "integer"
                  | "decimal"
-                 | "string"
+                 | "number"
+                 | "integral"
+                 | string-type
                  | "bytes"
                  | "key"
                  | "enum", "(", literal, { ",", literal }, ")"
@@ -307,8 +313,12 @@ type             = "any"
                      [ ",", "min", unsigned ],
                      ",", "max", unsigned,
                    ")" ;
-field-type       = [ "optional" ], identifier, ":", type ;
+field-type       = [ "optional" ], field-name, ":", type ;
+field-name       = identifier | string ;
 source-ref       = identifier | string ;
+string-type      = "string", [ "(", length-entry,
+                     { ",", length-entry }, ")" ] ;
+length-entry     = "min", unsigned | "max", unsigned ;
 unsigned         = DIGIT, { DIGIT } ;
 ```
 
@@ -340,7 +350,10 @@ Types denote finite predicates:
 | `boolean` | Boolean |
 | `integer` | mathematical integer |
 | `decimal` | exact base-10 decimal; integers are not silently promoted for type checking |
+| `number` | integer or exact base-10 decimal |
+| `integral` | integer or exact decimal with no fractional value |
 | `string` | Unicode string |
+| `string(min n)` / `string(max n)` | Unicode string constrained by scalar-value count |
 | `bytes` | byte string |
 | `key` | a value accepted by the frozen Heap key profile |
 | `enum(...)` | one listed value by SDA equality |
@@ -352,11 +365,16 @@ Types denote finite predicates:
 `max` is mandatory for sequences. `min` defaults to zero. `min > max` is a
 static error.
 
+String `min` and `max` may each appear at most once; either may be omitted.
+Length is the number of Unicode scalar values after JSON decoding, with no
+normalization or grapheme clustering. `min > max` is a static error.
+
 Inside a product, an ordinary field is required and non-null unless its type
 admits Null. `optional field: T` permits absence and validates `T` when present.
 
 Top-level declarations mean:
 
+- `document as T` — the complete proposed document satisfies `T`;
 - `require p` — `p` is present and, when a type is supplied, satisfies it;
 - `optional p as T` — `p` may be absent and must satisfy `T` when present;
 - `forbid p` — `p` must be absent;
@@ -626,6 +644,9 @@ Let `resolve(d, p)` have the exact meaning in `dingo-predicate-v1` and let
 `Conforms(v, T)` be the recursive type predicate from §5.2.
 
 ```text
+⟦document as T⟧(d)
+    ≜ Conforms(d,T)
+
 ⟦require p⟧(d)
     ≜ resolve(d,p) = Present(v) ∧ v ≠ Null
 
@@ -820,11 +841,13 @@ canonical Invariant Core IR
 verification artifact
 ```
 
-Conceptual artifact:
+Compilation emits one artifact per declaration and one manifest for the
+ruleset:
 
 ```text
-InvariantArtifact {
+DreArtifact {
     heap_id
+    ruleset_id
     rule_id
     revision
     source
@@ -840,10 +863,39 @@ InvariantArtifact {
     artifact_hash
     verification_record
 }
+
+DreRulesetManifest {
+    heap_id
+    collection_id
+    ruleset_id
+    revision
+    source_hash
+    ordered_artifact_hashes
+    aggregate_dependency_set
+    required_scope
+    profile
+    manifest_hash
+}
 ```
 
 Rule revisions and artifacts are immutable. A changed declaration creates a
 new revision and activation protocol.
+
+Each top-level declaration is one DRE. Its stable ID is:
+
+```text
+rule_id = Hash(
+  "dingo-dre-rule-id-v1"
+  || ruleset_id
+  || canonical_declaration_ordinal
+  || canonical_declaration_bytes
+)
+```
+
+The ordinal is the declaration's zero-based position in canonical source
+order. Reformatting does not change an ID; semantic reordering or editing
+creates new IDs in the new ruleset revision. Activation and retirement operate
+on the complete manifest, never an accidental mixture of revisions.
 
 ### 7.1 Compiler-correctness obligation
 
@@ -930,6 +982,7 @@ The v1 profile ceilings are:
 | dependencies per ruleset | 4,096 |
 | members in one enum | 4,096 |
 | maximum declared sequence length | 4,096 |
+| maximum declared string scalar length | 1,048,576 |
 | canonical artifact | 1,048,576 bytes |
 | evaluator instructions per affected document | 1,000,000 |
 | emitted violations per attempted Atomic | 1,024 |
@@ -1561,7 +1614,7 @@ These are boundaries required for truth, boundedness, and speed.
 
 ### D1 — Document rules
 
-- shape, type, required, optional, forbid, range, enum;
+- document/product shape, type, required, optional, forbid, range, enum;
 - conditional presence;
 - immutable revisions and artifacts;
 - reference evaluator and conformance corpus.
@@ -1616,8 +1669,8 @@ The exploratory questions are resolved as follows:
 4. Boolean syntax and semantics are those in the shared predicate profile.
 5. V1 includes open/closed products and statically bounded sequences.
 6. Violation ordering is fixed by §6.7.
-7. V1 uses canonical Invariant Core IR plus a reconstruction verification record, not
-   an unearned “proof certificate” claim.
+7. V1 uses canonical Invariant Core IR plus a reconstruction verification
+   record, not an unearned “proof certificate” claim.
 8. The verifier recompiles retained source independently and checks canonical
    identity.
 9. Resource ceilings are fixed by §7.3; Heap policy may only lower them.

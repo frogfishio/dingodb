@@ -9,14 +9,15 @@ use dingo_format::{
     AdmitDecision, OwnershipEvidence,
 };
 use dingo_heap::{
-    claim_language, confine_export_heaps, confine_operational_observation,
-    confine_query_observation, connected_model_smoke, may_advertise_qualified, mint_capability,
+    claim_language, confine_export_heaps, confine_health_detail, confine_operational_observation,
+    confine_query_observation, confine_support_bundle, connected_model_smoke,
+    h6_decide_obligations, may_advertise_qualified, mint_capability,
     refresh_capability_or_terminate, unauthenticated_field_allowed, AuthorityGeneration,
-    CertificateId, CollectionId, Constraint, Constraints, DeploymentId, HeapAdministrativeState,
-    HeapId, HeapSecuritySnapshot, HeapSlot, OperationalEvent, QueryObservationRequest, Rights,
-    SecurityRevision, StreamId, TrustedInstant, VerifiedCertificate, H6_PUBLISHED_LIMITATIONS,
-    PRE_QUALIFICATION_LANGUAGE, QUALIFIED_CLAIM, QUALIFIED_PROFILE,
-    UNAUTHENTICATED_DECLASSIFIED_FIELDS,
+    CertificateId, CollectionId, Constraint, Constraints, DeploymentId, HealthDetailInput,
+    HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, OperationalEvent,
+    QueryObservationRequest, Rights, SecurityRevision, StreamId, SupportBundleEntry,
+    TrustedInstant, VerifiedCertificate, H6_PUBLISHED_LIMITATIONS, PRE_QUALIFICATION_LANGUAGE,
+    QUALIFIED_CLAIM, QUALIFIED_PROFILE, UNAUTHENTICATED_DECLASSIFIED_FIELDS,
 };
 use dingo_store::{
     active_snapshot, arm_failpoint_once, build_backup_manifest, clear_failpoints, create_object,
@@ -33,9 +34,16 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 use tempfile::TempDir;
+
+fn failpoint_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -124,6 +132,8 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
         "operational_metrics_logs_export",
         "lifecycle_crash_matrix",
         "h6_connected_model",
+        "support_bundle_health_detail",
+        "h6_decide_obligations",
     ] {
         assert_eq!(
             doc.drills[drill].status, "accept",
@@ -241,6 +251,8 @@ fn restore_drills_payload_and_retain_id() {
 #[test]
 fn retention_and_incomplete_purge_still_retired() {
     // H5 destructive-operation qualification: unavailable domain → retired, not purged.
+    let _guard = failpoint_lock();
+    clear_failpoints();
     let tmp = TempDir::new().unwrap();
     let slot = slot_for(0xe0);
     let heap = slot.load().heap_id.to_bytes();
@@ -293,6 +305,7 @@ fn retention_and_incomplete_purge_still_retired() {
     assert!(!incomplete.unavailable_domains.is_empty());
     let ts = load_identity_tombstone(tmp.path(), &heap).unwrap();
     assert_eq!(ts.kind, TombstoneKind::Retired);
+    clear_failpoints();
 }
 
 fn mint_cap(slot: Arc<HeapSlot>) -> dingo_heap::HeapCap {
@@ -318,6 +331,8 @@ fn mint_cap(slot: Arc<HeapSlot>) -> dingo_heap::HeapCap {
 #[test]
 fn heapcap_terminates_on_lifecycle() {
     // Gate H3: established HeapCaps terminate after state / security-revision change.
+    let _guard = failpoint_lock();
+    clear_failpoints();
     let tmp = TempDir::new().unwrap();
     let slot = slot_for(0xf0);
     let cap = mint_cap(Arc::clone(&slot));
@@ -884,6 +899,7 @@ fn operational_metrics_logs_export_scoped() {
 #[test]
 fn lifecycle_crash_matrix_peer_heaps_unaffected() {
     // Gate H5: crash mid-lifecycle on A must not change B's observation.
+    let _guard = failpoint_lock();
     clear_failpoints();
     let tmp = TempDir::new().unwrap();
     let slot_a = slot_for(0xb0);
@@ -961,6 +977,7 @@ fn lifecycle_crash_matrix_peer_heaps_unaffected() {
         .failpoints
         .iter()
         .any(|f| f.name == "heap_lifecycle.after_purge_plan"));
+    clear_failpoints();
 }
 
 #[test]
@@ -982,6 +999,94 @@ fn h6_connected_model() {
     ] {
         assert!(tla.contains(needle), "TLA missing {needle}");
     }
+}
+
+#[test]
+fn support_bundle_health_detail_scoped() {
+    // Gate H3 / §9.5: health detail + support bundles respect declassification.
+    let slot = slot_for(0xa2);
+    let cap = mint_cap(Arc::clone(&slot));
+    let foreign = HeapId::from_bytes(uuidish(0xa3)).unwrap();
+
+    let input = HealthDetailInput {
+        live: true,
+        ready: false,
+        reasons: vec!["store not open".into()],
+        store_path: Some("/data/dingo".into()),
+        live_count: Some(12_345),
+        node_index: Some(1),
+        draining: true,
+        bound_heap_usage_bytes: Some(64),
+        foreign_heap_usage_bytes: Some(999_999),
+    };
+    let public = confine_health_detail(None, &input).unwrap();
+    assert!(public.live);
+    assert!(!public.ready);
+    assert!(public.reasons.is_empty());
+    assert!(public.draining.is_none());
+    assert!(public.bound_heap_usage_bytes.is_none());
+
+    let detail = confine_health_detail(Some(&cap), &input).unwrap();
+    assert_eq!(detail.draining, Some(true));
+    assert_eq!(detail.bound_heap_usage_bytes, Some(64));
+    assert!(detail.reasons.iter().any(|r| r.contains("store")));
+    // Physical path / global count / foreign usage never appear on the struct.
+
+    let confined = confine_support_bundle(
+        &cap,
+        &[
+            SupportBundleEntry {
+                heap_id: Some(cap.heap_id()),
+                kind: "receipt".into(),
+                label: "lifecycle".into(),
+                contains_secrets: false,
+            },
+            SupportBundleEntry {
+                heap_id: Some(foreign),
+                kind: "log".into(),
+                label: "peer".into(),
+                contains_secrets: false,
+            },
+            SupportBundleEntry {
+                heap_id: None,
+                kind: "build_id".into(),
+                label: "binary".into(),
+                contains_secrets: false,
+            },
+        ],
+    )
+    .unwrap();
+    assert_eq!(confined.heap_id, cap.heap_id());
+    assert_eq!(confined.entries.len(), 2);
+    assert!(confined
+        .entries
+        .iter()
+        .all(|e| e.heap_id.is_none() || e.heap_id == Some(cap.heap_id())));
+    assert!(confine_support_bundle(
+        &cap,
+        &[SupportBundleEntry {
+            heap_id: Some(cap.heap_id()),
+            kind: "keystore".into(),
+            label: "master".into(),
+            contains_secrets: true,
+        }]
+    )
+    .is_err());
+}
+
+#[test]
+fn h6_decide_obligations_connected() {
+    // Executable §39 obligations (Verus stand-in until proofs land).
+    assert!(h6_decide_obligations::allow_implies_authority_binding());
+    assert!(h6_decide_obligations::unknown_constraints_cannot_allow_foreign());
+    assert!(h6_decide_obligations::terminal_or_non_serving_refuses_refresh());
+    assert!(h6_decide_obligations::epoch_mismatch_fails_binding());
+
+    let verus = fs::read_to_string(workspace_root().join("verification/heap-verus/src/lib.rs"))
+        .unwrap();
+    assert!(verus.contains("authority_binding_holds"));
+    assert!(verus.contains("confine_health_detail"));
+    assert!(verus.contains("confine_support_bundle"));
 }
 
 

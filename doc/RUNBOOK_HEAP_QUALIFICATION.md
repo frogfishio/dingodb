@@ -107,6 +107,20 @@ failpoints:
 CI Accept: `hp010_qualification::lifecycle_crash_matrix_peer_heaps_unaffected`
 (peer heap labelled units remain readable; caps on the crashed heap terminate).
 
+## 5.2 Health detail and support bundles
+
+Public probes (`health_live` / `health_ready`) may observe only `live` and
+`ready` from the closed §13.2 registry.
+
+Authenticated heap-bound health detail may add draining + bound-heap usage and
+must strip physical store paths, global live counts, node topology, and any
+foreign-heap usage.
+
+Support bundles drop foreign-heap artifacts, refuse secret-bearing entries, and
+deny undeclared deployment-wide kinds.
+
+CI Accept: `hp010_qualification::support_bundle_health_detail_scoped`.
+
 ## 6. Gate H6 limitations (published)
 
 Logical heap isolation does **not** protect against:

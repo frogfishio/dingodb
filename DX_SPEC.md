@@ -880,11 +880,11 @@ Errors MUST NOT require parsing English text.
 Internal frame, checksum, consensus, or codec details appear in structured
 causes and diagnostics, not as the only top-level explanation.
 
-## 16. Data Rules and schema experience
+## 16. Data Rules (DRE) and schema experience
 
 Collections are schemaless by default.
 
-Optional Data Rules provide:
+Optional Data Rules, declared with Dingo Rule Expressions (DRE), provide:
 
 - write validation;
 - conditional field presence;
@@ -911,7 +911,7 @@ reference customer using customers
   on delete restrict
 ```
 
-Data Rules compile to the formal, bounded invariant model in
+The `dre` dialect compiles to the formal, bounded invariant model in
 `DRE_SPEC.md`. They are not scripts, callbacks, arbitrary DQL
 queries, or an application hook.
 
