@@ -43,6 +43,44 @@ pub fn authority_binding_holds(
         && certificate.authority_epoch == snapshot.authority_epoch
 }
 
+/// Generation acceptance (`HeapAuthority` `GenOK` / §39): current generation, or
+/// previous generation while trusted time is within the grace deadline.
+#[must_use]
+pub fn generation_accepted(
+    snapshot: &HeapSecuritySnapshot,
+    certificate: &VerifiedCertificate,
+    now: TrustedInstant,
+) -> bool {
+    certificate.authority_generation == snapshot.authority_generation
+        || snapshot.previous_generation == Some(certificate.authority_generation)
+            && snapshot
+                .grace_deadline_unix_s
+                .is_some_and(|d| now.unix_s <= d)
+}
+
+/// Whether the certificate is hit by a same-generation blacklist entry.
+#[must_use]
+pub fn certificate_blacklisted(
+    snapshot: &HeapSecuritySnapshot,
+    certificate: &VerifiedCertificate,
+) -> bool {
+    let cert_fp = certificate.fingerprint;
+    let holder_fp = sha256(&certificate.holder_public_key);
+    for entry in &snapshot.blacklist {
+        if entry.generation != certificate.authority_generation.get() {
+            continue;
+        }
+        let hit = match entry.kind {
+            BlacklistKind::CertificateHash => entry.fingerprint == cert_fp,
+            BlacklistKind::HolderPublicKeyHash => entry.fingerprint == holder_fp,
+        };
+        if hit {
+            return true;
+        }
+    }
+    false
+}
+
 /// Pure decision: no I/O, no ambient clock.
 pub fn decide(
     snapshot: &HeapSecuritySnapshot,
@@ -93,12 +131,7 @@ fn decide_inner(
     }
 
     // Generation acceptance: current, or previous during grace.
-    let gen_ok = certificate.authority_generation == snapshot.authority_generation
-        || snapshot.previous_generation == Some(certificate.authority_generation)
-            && snapshot
-                .grace_deadline_unix_s
-                .is_some_and(|d| now.unix_s <= d);
-    if !gen_ok {
+    if !generation_accepted(snapshot, certificate, now) {
         return Err(HeapError::unavailable(HeapUnavailableCause::StaleAuthority));
     }
 
@@ -115,20 +148,8 @@ fn decide_inner(
         return Err(HeapError::unavailable(HeapUnavailableCause::StaleAuthority));
     }
 
-    // Blacklist
-    let cert_fp = certificate.fingerprint;
-    let holder_fp = sha256(&certificate.holder_public_key);
-    for entry in &snapshot.blacklist {
-        if entry.generation != certificate.authority_generation.get() {
-            continue;
-        }
-        let hit = match entry.kind {
-            BlacklistKind::CertificateHash => entry.fingerprint == cert_fp,
-            BlacklistKind::HolderPublicKeyHash => entry.fingerprint == holder_fp,
-        };
-        if hit {
-            return Err(HeapError::unavailable(HeapUnavailableCause::Blacklisted));
-        }
+    if certificate_blacklisted(snapshot, certificate) {
+        return Err(HeapError::unavailable(HeapUnavailableCause::Blacklisted));
     }
 
     if snapshot.administrative_state.is_terminal() {

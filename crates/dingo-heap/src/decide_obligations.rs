@@ -3,10 +3,12 @@
 //! These property tests are the CI-connected stand-in until Verus proves the same
 //! predicates over [`crate::decide`]. They do **not** flip `qualified=true`.
 
+use crate::authority::{BlacklistEntry, BlacklistKind};
 use crate::certificate::VerifiedCertificate;
 use crate::constraints::{Constraint, Constraints};
 use crate::decide::{
-    authority_binding_holds, mint_capability, refresh_capability_or_terminate,
+    authority_binding_holds, certificate_blacklisted, generation_accepted, mint_capability,
+    refresh_capability_or_terminate,
 };
 use crate::ids::{
     AuthorityEpoch, AuthorityGeneration, CertificateId, CollectionId, DeploymentId, HeapId,
@@ -140,6 +142,64 @@ pub mod obligations {
                 authority_binding_holds(&snapshot, &cert)
             }
     }
+
+    /// O6: previous generation accepted during grace; refused after deadline
+    /// (HeapAuthority `GenOK` / `ExpireGrace` connection via [`generation_accepted`]).
+    pub fn generation_grace_acceptance() -> bool {
+        let dep = DeploymentId::from_bytes(uuidish(0x01)).unwrap();
+        let heap = HeapId::from_bytes(uuidish(0xf7)).unwrap();
+        let master = [0x44u8; 32];
+        let mut snapshot = snap(heap, dep, master, HeapAdministrativeState::Active);
+        snapshot.authority_generation = AuthorityGeneration::new(2).unwrap();
+        snapshot.previous_generation = Some(AuthorityGeneration::new(1).unwrap());
+        snapshot.grace_deadline_unix_s = Some(1_700_000_100);
+
+        let mut cert = cert_for(&snapshot, heap);
+        cert.authority_generation = AuthorityGeneration::new(1).unwrap();
+
+        let during = generation_accepted(
+            &snapshot,
+            &cert,
+            TrustedInstant {
+                unix_s: 1_700_000_050,
+            },
+        );
+        let after = generation_accepted(
+            &snapshot,
+            &cert,
+            TrustedInstant {
+                unix_s: 1_700_000_200,
+            },
+        );
+        let current_ok = {
+            cert.authority_generation = AuthorityGeneration::new(2).unwrap();
+            generation_accepted(
+                &snapshot,
+                &cert,
+                TrustedInstant {
+                    unix_s: 1_700_000_200,
+                },
+            )
+        };
+        during && !after && current_ok
+    }
+
+    /// O7: blacklisted certificate is detected (HeapAuthority `NotBlacklisted`
+    /// via [`certificate_blacklisted`]).
+    pub fn blacklist_refuses_admit() -> bool {
+        let dep = DeploymentId::from_bytes(uuidish(0x01)).unwrap();
+        let heap = HeapId::from_bytes(uuidish(0xf8)).unwrap();
+        let master = [0x55u8; 32];
+        let mut snapshot = snap(heap, dep, master, HeapAdministrativeState::Active);
+        let cert = cert_for(&snapshot, heap);
+        assert!(!certificate_blacklisted(&snapshot, &cert));
+        snapshot.blacklist.push(BlacklistEntry {
+            kind: BlacklistKind::CertificateHash,
+            generation: cert.authority_generation.get(),
+            fingerprint: cert.fingerprint,
+        });
+        certificate_blacklisted(&snapshot, &cert)
+    }
 }
 
 #[cfg(test)]
@@ -152,5 +212,7 @@ mod tests {
         assert!(obligations::unknown_constraints_cannot_allow_foreign());
         assert!(obligations::terminal_or_non_serving_refuses_refresh());
         assert!(obligations::epoch_mismatch_fails_binding());
+        assert!(obligations::generation_grace_acceptance());
+        assert!(obligations::blacklist_refuses_admit());
     }
 }

@@ -8,7 +8,9 @@ use crate::capability::HeapCap;
 use crate::decide::refresh_capability_or_terminate;
 use crate::error::{HeapError, HeapUnavailableCause};
 use crate::ids::HeapId;
-use crate::isolation_profile::{load_isolation_profiles, REFERENCE_ISOLATION_PROFILE};
+use crate::isolation_profile::{
+    load_isolation_profiles, IsolationProfileId, REFERENCE_ISOLATION_PROFILE,
+};
 
 /// Closed unauthenticated declassification registry (`HEAP_SPEC` §13.2).
 ///
@@ -20,13 +22,19 @@ pub const UNAUTHENTICATED_DECLASSIFIED_FIELDS: &[&str] =
 /// Whether an unauthenticated caller may observe `field` under the reference profile.
 #[must_use]
 pub fn unauthenticated_field_allowed(field: &str) -> bool {
+    unauthenticated_field_allowed_under(REFERENCE_ISOLATION_PROFILE, field)
+}
+
+/// Whether an unauthenticated caller may observe `field` under a named profile.
+///
+/// `heap-metadata-hardened` additionally denies `aggregate_load` and
+/// `fine_timing_ms` even when a looser profile would allow them.
+#[must_use]
+pub fn unauthenticated_field_allowed_under(profile: IsolationProfileId, field: &str) -> bool {
     load_isolation_profiles()
         .ok()
-        .and_then(|r| r.get(REFERENCE_ISOLATION_PROFILE).ok())
+        .and_then(|r| r.get(profile).ok())
         .is_some_and(|p| p.unauthenticated_allows(field))
-        || UNAUTHENTICATED_DECLASSIFIED_FIELDS
-            .iter()
-            .any(|f| *f == field)
 }
 
 /// One operational log/metric/audit event offered to a capability-bound observer.
@@ -51,28 +59,52 @@ pub struct ConfinedOperationalObservation {
 
 /// Confine metrics/logs/audit events to the live capability (§9.5).
 ///
+/// Uses the reference isolation profile (`heap-data-isolated`).
+///
 /// Rules:
 /// - capability must refresh;
 /// - unauthenticated-class fields may pass without a heap tag;
 /// - heap-tagged events must equal the capability heap;
 /// - foreign-heap events are dropped (not disclosed);
 /// - fields outside the closed registry that claim to be deployment-wide
-///   (`heap_id == None` and not in the base table) are denied.
+///   (`heap_id == None` and not in the base table) are denied;
+/// - always-confidential fields on the bound heap are denied (not dropped).
 pub fn confine_operational_observation(
     cap: &HeapCap,
     events: &[OperationalEvent],
 ) -> Result<ConfinedOperationalObservation, HeapError> {
+    confine_operational_observation_under(cap, events, REFERENCE_ISOLATION_PROFILE)
+}
+
+/// Profile-aware operational confinement (`HEAP_SPEC` §13 / Gate H3).
+///
+/// Under `heap-metadata-hardened`, deployment-wide `aggregate_load` and
+/// `fine_timing_ms` are refused, and heap-local confidential fields fail closed.
+pub fn confine_operational_observation_under(
+    cap: &HeapCap,
+    events: &[OperationalEvent],
+    profile: IsolationProfileId,
+) -> Result<ConfinedOperationalObservation, HeapError> {
     refresh_capability_or_terminate(cap)?;
     let bound = cap.heap_id();
+    let profile_view = load_isolation_profiles()?.get(profile)?;
     let mut out = Vec::with_capacity(events.len());
     for ev in events {
         match ev.heap_id {
-            Some(h) if h == bound => out.push(ev.clone()),
+            Some(h) if h == bound => {
+                // Bound-heap events may carry local metrics, but never always-confidential names.
+                if profile_view.is_always_confidential(&ev.field) {
+                    return Err(HeapError::unavailable(
+                        HeapUnavailableCause::ConstraintDenied,
+                    ));
+                }
+                out.push(ev.clone());
+            }
             Some(_) => {
                 // Foreign heap — drop silently (no existence leak via error shape).
             }
             None => {
-                if unauthenticated_field_allowed(&ev.field) {
+                if unauthenticated_field_allowed_under(profile, &ev.field) {
                     out.push(ev.clone());
                 } else {
                     return Err(HeapError::unavailable(
@@ -253,6 +285,7 @@ mod tests {
     use crate::ids::{
         AuthorityEpoch, AuthorityGeneration, CertificateId, DeploymentId, SecurityRevision,
     };
+    use crate::isolation_profile::{load_isolation_profiles, IsolationProfileId};
     use crate::rights::Rights;
     use crate::security_time::TrustedInstant;
     use crate::snapshot::{HeapAdministrativeState, HeapSecuritySnapshot, HeapSlot};
@@ -336,6 +369,60 @@ mod tests {
             }]
         )
         .is_err());
+    }
+
+    #[test]
+    fn metadata_hardened_denies_aggregate_load_and_fine_timing() {
+        let cap = mint();
+        assert!(!unauthenticated_field_allowed_under(
+            IsolationProfileId::HeapMetadataHardened,
+            "aggregate_load"
+        ));
+        assert!(!unauthenticated_field_allowed_under(
+            IsolationProfileId::HeapMetadataHardened,
+            "fine_timing_ms"
+        ));
+        // Reference data-isolated still permits aggregate_load as leakage class.
+        assert!(
+            load_isolation_profiles()
+                .unwrap()
+                .get(IsolationProfileId::HeapDataIsolated)
+                .unwrap()
+                .expose_aggregate_load
+        );
+
+        assert!(confine_operational_observation_under(
+            &cap,
+            &[OperationalEvent {
+                heap_id: None,
+                field: "aggregate_load".into(),
+                value: "0.9".into(),
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .is_err());
+        assert!(confine_operational_observation_under(
+            &cap,
+            &[OperationalEvent {
+                heap_id: None,
+                field: "fine_timing_ms".into(),
+                value: "12".into(),
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .is_err());
+        // Base unauthenticated fields still pass under hardened.
+        let ok = confine_operational_observation_under(
+            &cap,
+            &[OperationalEvent {
+                heap_id: None,
+                field: "ready".into(),
+                value: "1".into(),
+            }],
+            IsolationProfileId::HeapMetadataHardened,
+        )
+        .unwrap();
+        assert_eq!(ok.events.len(), 1);
     }
 
     #[test]

@@ -10,11 +10,12 @@ use dingo_format::{
 };
 use dingo_heap::{
     claim_language, confine_export_heaps, confine_health_detail, confine_operational_observation,
-    confine_query_observation, confine_support_bundle, connected_model_smoke,
-    h6_decide_obligations, load_isolation_profiles, load_isolation_profiles_from,
-    may_advertise_qualified, mint_capability, refresh_capability_or_terminate,
-    unauthenticated_field_allowed, AuthorityGeneration, CertificateId, CollectionId, Constraint,
-    Constraints, DeploymentId, HealthDetailInput, HeapAdministrativeState, HeapId,
+    confine_operational_observation_under, confine_query_observation, confine_support_bundle,
+    connected_authority_model_smoke, connected_model_smoke, h6_decide_obligations,
+    load_isolation_profiles, load_isolation_profiles_from, may_advertise_qualified,
+    mint_capability, refresh_capability_or_terminate, unauthenticated_field_allowed,
+    unauthenticated_field_allowed_under, AuthorityGeneration, CertificateId, CollectionId,
+    Constraint, Constraints, DeploymentId, HealthDetailInput, HeapAdministrativeState, HeapId,
     HeapSecuritySnapshot, HeapSlot, IsolationProfileId, OperationalEvent, QueryObservationRequest,
     Rights, SecurityRevision, StreamId, SupportBundleEntry, TrustedInstant, VerifiedCertificate,
     H6_MINIMUM_PROFILE, H6_PUBLISHED_LIMITATIONS, ISOLATION_PROFILES_JSON, ISOLATION_PROFILES_REL,
@@ -138,6 +139,7 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
         "h6_decide_obligations",
         "isolation_profile_registry",
         "h6_heap_authority_model",
+        "metadata_hardened_operational_confinement",
     ] {
         assert_eq!(
             doc.drills[drill].status, "accept",
@@ -1087,12 +1089,17 @@ fn h6_decide_obligations_connected() {
     assert!(h6_decide_obligations::unknown_constraints_cannot_allow_foreign());
     assert!(h6_decide_obligations::terminal_or_non_serving_refuses_refresh());
     assert!(h6_decide_obligations::epoch_mismatch_fails_binding());
+    assert!(h6_decide_obligations::generation_grace_acceptance());
+    assert!(h6_decide_obligations::blacklist_refuses_admit());
 
     let verus = fs::read_to_string(workspace_root().join("verification/heap-verus/src/lib.rs"))
         .unwrap();
     assert!(verus.contains("authority_binding_holds"));
     assert!(verus.contains("confine_health_detail"));
     assert!(verus.contains("confine_support_bundle"));
+    assert!(verus.contains("generation_accepted"));
+    assert!(verus.contains("certificate_blacklisted"));
+    assert!(verus.contains("AuthorityModel"));
 }
 
 #[test]
@@ -1133,7 +1140,83 @@ fn isolation_profile_registry_closed() {
 }
 
 #[test]
+fn metadata_hardened_operational_confinement() {
+    // Gate H3 / §13.2: metadata-hardened profile hardens operational Obs.
+    let slot = slot_for(0xa4);
+    let cap = mint_cap(Arc::clone(&slot));
+
+    assert!(!unauthenticated_field_allowed_under(
+        IsolationProfileId::HeapMetadataHardened,
+        "aggregate_load"
+    ));
+    assert!(!unauthenticated_field_allowed_under(
+        IsolationProfileId::HeapMetadataHardened,
+        "fine_timing_ms"
+    ));
+    assert!(unauthenticated_field_allowed("live"));
+    assert!(unauthenticated_field_allowed_under(
+        IsolationProfileId::HeapMetadataHardened,
+        "live"
+    ));
+
+    assert!(confine_operational_observation_under(
+        &cap,
+        &[OperationalEvent {
+            heap_id: None,
+            field: "aggregate_load".into(),
+            value: "1".into(),
+        }],
+        IsolationProfileId::HeapMetadataHardened,
+    )
+    .is_err());
+    assert!(confine_operational_observation_under(
+        &cap,
+        &[OperationalEvent {
+            heap_id: None,
+            field: "fine_timing_ms".into(),
+            value: "3".into(),
+        }],
+        IsolationProfileId::HeapMetadataHardened,
+    )
+    .is_err());
+
+    // Always-confidential names fail closed even when tagged to the bound heap.
+    assert!(confine_operational_observation_under(
+        &cap,
+        &[OperationalEvent {
+            heap_id: Some(cap.heap_id()),
+            field: "physical_paths".into(),
+            value: "/data".into(),
+        }],
+        IsolationProfileId::HeapMetadataHardened,
+    )
+    .is_err());
+
+    let ok = confine_operational_observation_under(
+        &cap,
+        &[
+            OperationalEvent {
+                heap_id: None,
+                field: "ready".into(),
+                value: "1".into(),
+            },
+            OperationalEvent {
+                heap_id: Some(cap.heap_id()),
+                field: "usage".into(),
+                value: "64".into(),
+            },
+        ],
+        IsolationProfileId::HeapMetadataHardened,
+    )
+    .unwrap();
+    assert_eq!(ok.events.len(), 2);
+}
+
+#[test]
 fn h6_heap_authority_model() {
+    // Connected Rust model ↔ HeapAuthority.tla (generation/blacklist/grace/terminal).
+    connected_authority_model_smoke();
+
     let tla = fs::read_to_string(workspace_root().join("formal/heap/HeapAuthority.tla")).unwrap();
     for needle in [
         "GenOK",
@@ -1144,6 +1227,7 @@ fn h6_heap_authority_model() {
         "BlacklistAdd",
         "ExpireGrace",
         "Terminal",
+        "Inv",
     ] {
         assert!(tla.contains(needle), "HeapAuthority.tla missing {needle}");
     }

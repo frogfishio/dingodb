@@ -128,14 +128,26 @@ Machine-readable registry: `spec/heap/isolation-profiles-v1.json`.
 | Profile | HP-010 role |
 |---------|-------------|
 | `heap-data-isolated` | Reference / H6 minimum |
-| `heap-metadata-hardened` | Closed registry + coarsened timing / no aggregate load |
+| `heap-metadata-hardened` | Closed registry + coarsened timing / no aggregate load; operational confinement via `confine_operational_observation_under` |
 | `heap-resource-isolated` | Declared, not qualified in this package |
 | `heap-physical-isolated` | Declared, not qualified in this package |
 
 SHA-256 of the exact JSON bytes is recorded by `IsolationProfileRegistry` for
 qualification evidence. Deployment extensions start empty (`version: 0`).
 
-CI Accept: `hp010_qualification::isolation_profile_registry_closed`.
+CI Accept:
+- `hp010_qualification::isolation_profile_registry_closed`
+- `hp010_qualification::metadata_hardened_operational_confinement`
+
+## 5.4 Connected H6 models (partial)
+
+| Artifact | Connected Rust stand-in |
+|----------|-------------------------|
+| `formal/heap/HeapIsolation.tla` | `dingo_heap::IsolationModel` |
+| `formal/heap/HeapAuthority.tla` | `dingo_heap::AuthorityModel` |
+| §39 GenOK / blacklist | `generation_accepted` / `certificate_blacklisted` |
+
+These are CI-connected sketches, **not** full Verus proofs. Claim stays Level 1.
 
 ## 6. Gate H6 limitations (published)
 
