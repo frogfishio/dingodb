@@ -14,7 +14,7 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
 [dependencies]
 dingo-format.workspace = true
-dingo-store.workspace = true
+dingo-store = { workspace = true, features = ["legacy-raw-store"] }
 sda-core.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

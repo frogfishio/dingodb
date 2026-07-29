@@ -1,0 +1,39 @@
+---
+interface Row {
+  need: string;
+  direction: string;
+  highlight?: boolean;
+}
+
+interface Props {
+  rows: Row[];
+}
+
+const { rows } = Astro.props;
+---
+
+<div class="table-wrap" role="region" aria-label="Workload fit comparison" tabindex="0">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Need</th>
+        <th scope="col">Recommended direction</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row) => (
+        <tr class:list={[row.highlight && 'is-highlight']}>
+          <td>{row.need}</td>
+          <td>{row.direction}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .is-highlight td {
+    background: color-mix(in srgb, var(--signal) 8%, var(--paper-raised));
+    font-weight: 500;
+  }
+</style>

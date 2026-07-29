@@ -1,0 +1,6 @@
+# Apex is canonical; configure www → apex at the DNS/CDN layer as a 301.
+# HTTP → HTTPS is handled by the host.
+
+# Legacy or alternate paths (extend as routes change)
+/docs/*  https://docs.dingodb.org/:splat  302
+/get-started/*  https://docs.dingodb.org/guides/quickstart/  302

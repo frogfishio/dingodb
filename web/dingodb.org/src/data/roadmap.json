@@ -1,0 +1,72 @@
+{
+  "tracks": [
+    {
+      "id": "embedded-hardening",
+      "title": "Embedded early-access hardening",
+      "status": "experimental",
+      "description": "Harden the strongest current path: embedded single-node open, put/get, indexes, history, backup, scrub, and salvage under real application load.",
+      "items": [
+        "API stability within the 0.2 SDK surface",
+        "Crash consistency and recovery evidence",
+        "Operator tooling maturity (doctor, scrub, backup)"
+      ]
+    },
+    {
+      "id": "single-node-server",
+      "title": "Single-node server maturity",
+      "status": "development-only",
+      "description": "Move TCP serve from development-only evaluation toward a clearer single-node networked path with honest receipts and admission control.",
+      "items": [
+        "Bounded server admission and health",
+        "TLS and authorization posture",
+        "Remote parity with embedded collection API"
+      ]
+    },
+    {
+      "id": "cluster-qualification",
+      "title": "Cluster qualification",
+      "status": "experimental",
+      "description": "Qualify multi-node network cluster beyond experimental flags: repair, rebalance, long soak, and multi-process verification.",
+      "items": [
+        "Multi-process Jepsen-style partition histories",
+        "Long-duration soak and rolling restart",
+        "Network multi-process repair RPC"
+      ]
+    },
+    {
+      "id": "archive-object-store",
+      "title": "Archive and native object-store work",
+      "status": "design",
+      "description": "Move from filesystem mirrors of S3/GCS paths toward native object-store connectors and archive-tier economics.",
+      "items": [
+        "Native S3/GCS I/O",
+        "Tier lifecycle beyond scaffold",
+        "Erasure coding operationalization"
+      ]
+    },
+    {
+      "id": "future-search",
+      "title": "Future search surfaces",
+      "status": "design",
+      "description": "Text, vector, and geospatial search as derived accelerators that remain rebuildable from surviving segments.",
+      "items": [
+        "Text search",
+        "Vector search",
+        "Geospatial indexes"
+      ]
+    },
+    {
+      "id": "design-work",
+      "title": "Design work",
+      "status": "design",
+      "description": "Specified or proposed surfaces that are not claimed as implemented product features.",
+      "items": [
+        "Heaps (authority and isolation)",
+        "DRE (data rules)",
+        "Atomics",
+        "Direct Access (DDA)",
+        "Order Wavelets"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import Callout from '../../components/Callout.astro';
+---
+
+<PageLayout
+  title="Use cases"
+  description="Where DingoDB is a good fit to evaluate today, where to be careful, and what is not yet appropriate."
+  path="/use-cases/"
+  eyebrow="Fit"
+  lead="Choose DingoDB for workload fit—not as a generic replacement for mature SQL or document ecosystems."
+>
+  <h2>Good fit to evaluate now</h2>
+  <ul>
+    <li>
+      <strong>Embedded Rust applications</strong> that need a local store with
+      an explicit damage model
+    </li>
+    <li>
+      <strong>Irreplaceable local records and blobs</strong> where partial
+      survival is more valuable than all-or-nothing failure
+    </li>
+    <li>
+      <strong>Systems that value inspectable partial recovery</strong>—holes,
+      salvage evidence, and catalog-independent examination
+    </li>
+    <li>
+      <strong>Experimental and research workloads</strong> exploring formal
+      examination (SDA), recovery, or embedded durability design
+    </li>
+  </ul>
+
+  <Callout title="Experimental / early access" variant="warning">
+    <p>
+      Even good-fit workloads should treat embedded single-node as early access.
+      Interfaces, formats, and guarantees may change. See
+      <a href="/status/">status</a>.
+    </p>
+  </Callout>
+
+  <h2>Evaluate carefully</h2>
+  <ul>
+    <li>Applications that may need a network path soon but can start embedded</li>
+    <li>Teams comparing with SQLite for local documents plus salvage requirements</li>
+    <li>Operators exploring single-node TCP for development only</li>
+    <li>Workloads that need long-term retention design before native archive tiers exist</li>
+  </ul>
+
+  <h2>Not yet</h2>
+  <ul>
+    <li>A drop-in mature SQL database</li>
+    <li>A production MongoDB replacement</li>
+    <li>A public multi-tenant service requiring mature network operations</li>
+    <li>A production multi-node cluster</li>
+    <li>A native object-store archive platform</li>
+  </ul>
+
+  <h2>Decision shortcuts</h2>
+  <div class="table-wrap" role="region" aria-label="Decision shortcuts" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">If you need…</th>
+          <th scope="col">Today</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Local embedded store with damage honesty</td>
+          <td>Evaluate DingoDB (experimental)</td>
+        </tr>
+        <tr>
+          <td>Mature SQL + ecosystem</td>
+          <td>PostgreSQL or SQLite</td>
+        </tr>
+        <tr>
+          <td>Mature document DB operations</td>
+          <td>MongoDB or similar</td>
+        </tr>
+        <tr>
+          <td>Production network cluster</td>
+          <td>Do not choose DingoDB yet</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="btn-row">
+    <a href="/status/" class="btn btn-primary">Evaluate against status</a>
+    <a href="/" class="btn btn-secondary">Back to home</a>
+  </div>
+</PageLayout>

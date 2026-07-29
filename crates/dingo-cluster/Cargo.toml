@@ -13,7 +13,7 @@ categories = ["database", "database-implementations"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
 [dependencies]
-dingo-store.workspace = true
+dingo-store = { workspace = true, features = ["legacy-raw-store"] }
 blake3.workspace = true
 thiserror.workspace = true
 serde = { workspace = true }

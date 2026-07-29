@@ -1,0 +1,53 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import { getClaim } from '../lib/claims';
+
+interface Props {
+  name: string;
+  description: string;
+  scope: string;
+  status: string;
+  claimId?: string | null;
+}
+
+const { name, description, scope, status, claimId } = Astro.props;
+const claim = claimId ? getClaim(claimId) : null;
+---
+
+<article class="card capability-card">
+  <header class="cap-head">
+    <h3>{name}</h3>
+    <StatusBadge status={status} />
+  </header>
+  <p>{description}</p>
+  <p class="meta-line">Scope: {scope}</p>
+  {claim && (
+    <p class="claim-ref meta-line" data-claim-id={claim.id}>
+      Evidence claim: {claim.id}
+    </p>
+  )}
+</article>
+
+<style>
+  .cap-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .cap-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .capability-card p {
+    margin: 0 0 0.5rem;
+  }
+
+  .capability-card p:last-child {
+    margin-bottom: 0;
+  }
+</style>

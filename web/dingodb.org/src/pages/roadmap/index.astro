@@ -1,0 +1,69 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import Callout from '../../components/Callout.astro';
+import roadmap from '../../data/roadmap.json';
+---
+
+<PageLayout
+  title="Roadmap"
+  description="DingoDB product direction organized by maturity gates—not committed calendar dates."
+  path="/roadmap/"
+  eyebrow="Direction"
+  lead="What the project is hardening next, clearly separated from release truth on the status page."
+>
+  <Callout title="Roadmap is not availability" variant="warning">
+    <p>
+      Roadmap cards never use the “Available” badge. For what works today, see
+      <a href="/status/">status</a>. Direction here may change as evidence and
+      defects accumulate.
+    </p>
+  </Callout>
+
+  <div class="roadmap-grid">
+    {roadmap.tracks.map((track) => (
+      <article class="card track">
+        <header class="track-head">
+          <h2>{track.title}</h2>
+          <StatusBadge status={track.status} />
+        </header>
+        <p>{track.description}</p>
+        <ul>
+          {track.items.map((item) => (
+            <li>{item}</li>
+          ))}
+        </ul>
+      </article>
+    ))}
+  </div>
+
+  <p>
+    Status and known limitations remain authoritative for present capability:
+    <a href="/status/">/status/</a>.
+  </p>
+</PageLayout>
+
+<style>
+  .roadmap-grid {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .track h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .track-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .track ul {
+    margin-bottom: 0;
+  }
+</style>

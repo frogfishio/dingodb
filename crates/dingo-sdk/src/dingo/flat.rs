@@ -1,9 +1,14 @@
-//! Database handle: `Dingo::open` / `Dingo::connect` / `Dingo::open_cluster` (DX_SPEC §4).
+//! Legacy flat database handle (`legacy-flat-sdk` feature / CPR-001).
+//!
+//! This surface uses deployment-global collection names and is **not**
+//! `dingo-heap-v1` qualified. Prefer [`crate::Dingo::open_deployment`] +
+//! [`crate::Heap`] for isolation claims.
 
 #[cfg(feature = "cluster")]
 use crate::cluster_backend::ClusterBackend;
 use crate::collection::Collection;
 use crate::error::Error;
+use crate::heap::DingoDeployment;
 use crate::multi_query::MultiQuery;
 use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
 use crate::sda_query::SdaTextQuery;
@@ -14,6 +19,8 @@ use dingo_store::Store;
 use std::path::{Path, PathBuf};
 
 /// Embedded, remote, or (with `cluster` feature) clustered DingoDB handle.
+///
+/// **Claim:** legacy flat surface (`FLAT_COLLECTION_SURFACE_LABEL`); not Gate H6.
 ///
 /// ```ignore
 /// let mut db = Dingo::open("./app.dingo")?;
@@ -55,17 +62,35 @@ pub(crate) enum Backend {
 impl Dingo {
     /// Open an existing store at `path`, or create one with safe defaults.
     ///
-    /// If the path does not exist, it is created. If it exists as a DingoDB
-    /// store, it is opened (using the optional index cache when valid).
+    /// **Legacy flat surface (CPR-001):** collection names are deployment-global
+    /// and not bound by `HeapCap`. Prefer [`Self::open_deployment`] for heap work.
+    /// Alias: [`Self::open_compatibility`].
     ///
     /// Writer opens take an exclusive store lock (DEF-020). A second writer —
     /// including `dingo serve` while an embedded handle is open — fails until
     /// the first handle is dropped. Use [`Self::open_inspect`] for concurrent
     /// read-only doctor/parity checks.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
+        Self::open_compatibility(path)
+    }
+
+    /// Explicit spelling of the legacy flat open (`HEAP_SPEC` §30.9).
+    ///
+    /// Same as [`Self::open`]. Name emphasises non-qualified compatibility use.
+    pub fn open_compatibility(path: impl AsRef<Path>) -> Result<Self, Error> {
         Ok(Self {
             backend: Backend::Local(Store::open(path)?),
         })
+    }
+
+    /// Open a store directory as a **deployment host** (heap-bound; no flat data API).
+    pub fn open_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
+        DingoDeployment::open(path)
+    }
+
+    /// Create a new store directory as a deployment host.
+    pub fn create_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
+        DingoDeployment::create(path)
     }
 
     /// Open an **existing** store for read-only inspection (no writer lock).
@@ -205,7 +230,10 @@ impl Dingo {
         }
     }
 
-    /// Borrow a named collection handle.
+    /// Borrow a named collection handle (legacy flat namespace).
+    ///
+    /// Names are **deployment-global** — not heap-scoped. For isolation use
+    /// [`crate::Heap::collection`] under a `HeapCap`.
     ///
     /// Collection access is lazy: no disk mutation occurs until the first write
     /// (embedded). Remote sends RPCs on each method call.
@@ -388,7 +416,9 @@ impl Dingo {
         }
     }
 
-    /// Access the underlying store (embedded only).
+    /// Access the underlying raw store (embedded only).
+    ///
+    /// **Bypasses heap façades** — not part of the Gate H6 claim surface (CPR-001).
     pub fn store(&self) -> Result<&Store, Error> {
         match &self.backend {
             Backend::Local(s) => Ok(s),
@@ -398,7 +428,9 @@ impl Dingo {
         }
     }
 
-    /// Mutable access to the underlying store (embedded only).
+    /// Mutable access to the underlying raw store (embedded only).
+    ///
+    /// **Bypasses heap façades** — not part of the Gate H6 claim surface (CPR-001).
     pub fn store_mut(&mut self) -> Result<&mut Store, Error> {
         match &mut self.backend {
             Backend::Local(s) => Ok(s),

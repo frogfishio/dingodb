@@ -1,0 +1,300 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SurvivalDiagram from '../components/SurvivalDiagram.astro';
+import CapabilityCard from '../components/CapabilityCard.astro';
+import CodeExample from '../components/CodeExample.astro';
+import ComparisonTable from '../components/ComparisonTable.astro';
+import Callout from '../components/Callout.astro';
+import Claim from '../components/Claim.astro';
+import ReleaseBanner from '../components/ReleaseBanner.astro';
+import StatusBadge from '../components/StatusBadge.astro';
+import ExternalLink from '../components/ExternalLink.astro';
+import capabilities from '../data/capabilities.json';
+import release from '../data/release.json';
+
+const comparisonRows = [
+  {
+    need: 'Mature SQL transactions, constraints, and broad tooling',
+    direction: 'Use PostgreSQL or SQLite',
+  },
+  {
+    need: 'Mature general-purpose document database and operational ecosystem',
+    direction: 'Use MongoDB',
+  },
+  {
+    need: "Embedded arbitrary data with DingoDB’s explicit damage/salvage model",
+    direction: 'Evaluate DingoDB',
+    highlight: true,
+  },
+  {
+    need: 'Production network cluster today',
+    direction: 'Do not choose DingoDB yet',
+  },
+];
+
+const designCards = capabilities.beingBuilt.filter((c) =>
+  ['heaps', 'dre', 'atomics', 'dda', 'order-wavelets'].includes(c.id),
+);
+---
+
+<BaseLayout
+  title="DingoDB — a database built to survive damage"
+  description="Experimental, embedded-first storage for irreplaceable local data. DingoDB stores documents and bytes as independently verifiable data islands, so damage becomes explicit holes."
+  path="/"
+>
+  <section class="hero section">
+    <div class="wrap">
+      <p class="eyebrow">
+        <span>Experimental</span>
+        <span>Rust-first</span>
+        <span>Embedded-first</span>
+      </p>
+      <h1>A database built to survive damage.</h1>
+      <p class="lead">
+        DingoDB stores documents and bytes as independently verifiable data
+        islands, so damage becomes explicit holes—not the death of everything
+        around them.
+      </p>
+      <div class="btn-row">
+        <ExternalLink href={release.docsQuickstart} class="btn btn-primary">
+          Get started
+        </ExternalLink>
+        <a href="/survival/" class="btn btn-secondary">See the survival model</a>
+      </div>
+      <ReleaseBanner />
+    </div>
+  </section>
+
+  <section class="section section-tight" aria-labelledby="survival-heading">
+    <div class="wrap">
+      <h2 id="survival-heading" class="section-title">Independent survival</h2>
+      <Claim id="claim.damage.explicit-holes" class="lead claim-lead" showBadge={false} />
+      <SurvivalDiagram />
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="promises-heading">
+    <div class="wrap">
+      <h2 id="promises-heading" class="section-title">Three promises</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>Healthy pieces survive</h3>
+          <p>
+            Local corruption is contained by independently verifiable storage
+            units. Missing material is reported as a hole; unrelated healthy
+            material stays readable.
+          </p>
+        </article>
+        <article class="card">
+          <h3>The hot path stays lean</h3>
+          <p>
+            Append-oriented writes, memory-resident indexes, and derived
+            accelerators are designed for speed.
+            <a href="/status/#benchmarks">No comparative result is published without evidence.</a>
+          </p>
+        </article>
+        <article class="card">
+          <h3>The remains are examinable</h3>
+          <p>
+            SDA provides a deterministic examination algebra for surviving and
+            partial material—so recovery is not a black box.
+          </p>
+        </article>
+      </div>
+      <Callout title="Retention without pretending">
+        <p>
+          Keep arbitrary material now. Preserve enough structure to investigate
+          what remains years later. This does not imply that native cloud archive
+          tiers or a fifteen-year compatibility guarantee are available today.
+        </p>
+      </Callout>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="today-heading">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="today-heading" class="section-title">What works today</h2>
+        <p class="lead">
+          Capability data is checked against
+          <code>doc/CAPABILITY_MATRIX.md</code>. Every item shows deployment
+          scope and maturity.
+        </p>
+      </div>
+      <div class="card-grid">
+        {capabilities.worksToday.map((item) => (
+          <CapabilityCard
+            name={item.name}
+            description={item.description}
+            scope={item.scope}
+            status={item.status}
+            claimId={item.claim_id}
+          />
+        ))}
+      </div>
+      <p class="meta-line">
+        <StatusBadge status="experimental" />
+        Embedded single-node is the strongest current path.
+        <a href="/status/">Full status matrix →</a>
+      </p>
+
+      <h3 id="building-heading">What is being built</h3>
+      <div class="card-grid">
+        {capabilities.beingBuilt
+          .filter((item) => !['heaps', 'dre', 'atomics', 'dda', 'order-wavelets'].includes(item.id))
+          .map((item) => (
+            <CapabilityCard
+              name={item.name}
+              description={item.description}
+              scope={item.scope}
+              status={item.status}
+              claimId={item.claim_id}
+            />
+          ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="quickstart-heading">
+    <div class="wrap">
+      <h2 id="quickstart-heading" class="section-title">Real quickstart</h2>
+      <p class="lead">
+        Executable Rust based on <code>crates/dingo-sdk/README.md</code>—not
+        illustrative pseudocode.
+      </p>
+
+      <CodeExample title="Cargo dependency" language="toml" filename="Cargo.toml" copyId="dep-toml">
+{`[dependencies]
+dingo-sdk = "${release.sdkSemverRange}"`}
+      </CodeExample>
+
+      <CodeExample title="Embedded put and find" language="rust" filename="main.rs" copyId="quick-rust">
+{`use dingo_sdk::{json, Dingo, Filter};
+
+let mut db = Dingo::open("./app.dingo")?;
+let mut users = db.collection("users")?;
+
+users.put("user-42", &json!({
+    "name": "Alice",
+    "status": "active"
+}))?;
+
+let active = users.find(&Filter::field("status").eq("active"))?;`}
+      </CodeExample>
+
+      <Callout title="Expected result" variant="verified">
+        <p>
+          Opens (or creates) a local store at <code>./app.dingo</code>, writes
+          one JSON document under collection <code>users</code>, and returns
+          matching rows for <code>status == "active"</code>.
+        </p>
+      </Callout>
+
+      <div class="stack">
+        <p><strong>Cleanup:</strong> remove the store directory when finished:</p>
+        <CodeExample language="bash" copyId="cleanup-bash">
+{`rm -rf ./app.dingo`}
+        </CodeExample>
+        <p>
+          Full walkthrough:
+          <ExternalLink href={release.docsQuickstart}>embedded quickstart on docs.dingodb.org</ExternalLink>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="differs-heading">
+    <div class="wrap">
+      <h2 id="differs-heading" class="section-title">How Dingo differs</h2>
+      <p class="lead">
+        A factual decision table—not a winner-takes-all comparison.
+      </p>
+      <ComparisonTable rows={comparisonRows} />
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="arch-heading">
+    <div class="wrap">
+      <h2 id="arch-heading" class="section-title">Architecture teaser</h2>
+      <div class="arch-model card">
+        <pre class="arch-pre">{`Application API / DQL
+          ↓
+Authoritative self-verifying records
+          ↓
+Derived, rebuildable catalogs and indexes
+          ↓
+SDA examination and recovery evidence`}</pre>
+      </div>
+      <p>
+        Indexes and catalogs are derived accelerators, not the only route back
+        to surviving data. <a href="/how-it-works/">How it works →</a>
+      </p>
+
+      <h3>Research and design surfaces</h3>
+      <div class="card-grid">
+        {designCards.map((item) => (
+          <CapabilityCard
+            name={item.name}
+            description={item.description}
+            scope={item.scope}
+            status={item.status}
+            claimId={item.claim_id}
+          />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section final-cta" aria-labelledby="final-heading">
+    <div class="wrap">
+      <h2 id="final-heading" class="section-title">Put something important in DingoDB.</h2>
+      <p class="lead">
+        Start with one local file and a Rust application.
+      </p>
+      <div class="btn-row">
+        <ExternalLink href={release.docsQuickstart} class="btn btn-primary">
+          Run the quickstart
+        </ExternalLink>
+        <a href="/how-it-works/" class="btn btn-secondary">Read the architecture</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    padding-top: var(--space-7);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .claim-lead {
+    margin-bottom: var(--space-5);
+  }
+
+  .section-head {
+    margin-bottom: var(--space-5);
+  }
+
+  .section-head .section-title {
+    margin-bottom: var(--space-3);
+  }
+
+  .arch-model {
+    padding: 0;
+    overflow: hidden;
+    margin-bottom: var(--space-4);
+  }
+
+  .arch-pre {
+    margin: 0;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: 0;
+  }
+
+  .final-cta {
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--signal) 6%, var(--paper));
+  }
+</style>

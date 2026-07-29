@@ -1,0 +1,78 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import Callout from '../../components/Callout.astro';
+---
+
+<PageLayout
+  title="Privacy"
+  description="Privacy statement for dingodb.org: no analytics at launch, no non-essential cookies, and accurate description of the deployed configuration."
+  path="/privacy/"
+  eyebrow="Privacy"
+  lead="This statement describes the main product website at dingodb.org."
+>
+  <Callout title="Launch configuration" variant="verified">
+    <p>
+      The preferred launch configuration is <strong>no analytics</strong> and
+      <strong>no non-essential cookies</strong>. This site does not display a
+      cookie-consent banner because it does not set non-essential cookies or
+      use local storage for tracking.
+    </p>
+  </Callout>
+
+  <h2>What this site collects</h2>
+  <p>
+    Under the current static deployment intent:
+  </p>
+  <ul>
+    <li>No first-party analytics scripts are shipped with the site build.</li>
+    <li>No advertising pixels are loaded.</li>
+    <li>No fingerprints or cross-site identity graphs are constructed by site JavaScript.</li>
+    <li>
+      Optional “copy code” controls use the browser clipboard API locally; they
+      do not send code contents to DingoDB servers.
+    </li>
+  </ul>
+
+  <h2>Hosting and transport logs</h2>
+  <p>
+    The operator of whatever host serves these static files (CDN, object
+    storage, or reverse proxy) may retain ordinary request logs such as IP
+    address, user agent, and URL path for security and reliability. That
+    logging is controlled by the host configuration, not by client-side
+    tracking on this site. When a production host is designated, operators
+    SHOULD document retention there.
+  </p>
+
+  <h2>External links</h2>
+  <p>
+    Links to <code>docs.dingodb.org</code>, GitHub, and other external sites are
+    subject to those sites’ own privacy practices. External links are marked
+    and open in a new browsing context where applicable.
+  </p>
+
+  <h2>If measurement is added later</h2>
+  <p>
+    If product measurement becomes required, the project prefers a self-hosted
+    or privacy-preserving, cookieless system limited to:
+  </p>
+  <ul>
+    <li>page view</li>
+    <li>get-started click</li>
+    <li>documentation click</li>
+    <li>source/release click</li>
+    <li>code-copy success</li>
+    <li>survival-demo completion</li>
+  </ul>
+  <p>
+    Typed search queries, IP-derived profiles, fingerprints, and advertising
+    pixels remain out of scope. This page MUST be updated before any such
+    system is enabled.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    Privacy questions about this website can be raised through the project’s
+    public repository channels:
+    <a href="/project/">project page</a>.
+  </p>
+</PageLayout>

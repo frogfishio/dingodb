@@ -1,0 +1,20 @@
+---
+import release from '../data/release.json';
+---
+
+<p class="release-banner meta-line" role="status">
+  Current release: <strong>{release.productVersion}</strong>
+  · Embedded single-node: {release.embeddedLabel}
+  · <a href="/status/">See status and limitations</a>
+</p>
+
+<style>
+  .release-banner {
+    margin: 0;
+  }
+
+  .release-banner strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+</style>

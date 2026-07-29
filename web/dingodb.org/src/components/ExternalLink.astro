@@ -1,0 +1,25 @@
+---
+interface Props {
+  href: string;
+  class?: string;
+  ariaLabel?: string;
+}
+
+const { href, class: className, ariaLabel } = Astro.props;
+const isExternal = /^https?:\/\//.test(href);
+---
+
+<a
+  href={href}
+  class={className}
+  aria-label={ariaLabel}
+  {...(isExternal
+    ? { target: '_blank', rel: 'noopener noreferrer' }
+    : {})}
+>
+  <slot />
+  {isExternal && (
+    <span class="ext-indicator" aria-hidden="true" title="Opens in a new tab">↗</span>
+    <span class="sr-only"> (opens in a new tab)</span>
+  )}
+</a>

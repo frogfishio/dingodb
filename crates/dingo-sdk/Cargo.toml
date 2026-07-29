@@ -15,16 +15,24 @@ categories = ["database", "api-bindings"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
 [features]
-default = []
+# CPR-001: default includes the legacy flat collection surface (Stages 3–9).
+# Qualified heap-only profile: `cargo check -p dingo-sdk --no-default-features`
+# (deployment + HeapCap + connect_heap; no Dingo::collection by name).
+default = ["legacy-flat-sdk"]
+# Flat `Dingo::open` / `collection(name)` / token remote / raw Store access.
+# Pulls public `dingo-store` `legacy-raw-store`. Not part of Gate H6 claims.
+legacy-flat-sdk = ["dingo-store/legacy-raw-store"]
 # In-process multi-node (`Dingo::open_cluster` / `create_cluster`) via AGPL dingo-cluster.
-cluster = ["dep:dingo-cluster"]
+# Implies the flat SDK (cluster routing uses the same collection surface).
+cluster = ["dep:dingo-cluster", "legacy-flat-sdk"]
 # Reference in-memory Ed25519 holder key for tests/dev only (`HEAP_SPEC` §30.9).
 # Does not enable secret-export APIs beyond construction from a seed.
 dangerous-key-export = ["dep:ed25519-dalek"]
 
 [dependencies]
 dingo-client.workspace = true
-dingo-store.workspace = true
+# Public `Store` only with `legacy-flat-sdk` → `dingo-store/legacy-raw-store` (CPR-001 / HP-003).
+dingo-store = { workspace = true }
 dingo-heap.workspace = true
 dingo-format.workspace = true
 dingo-cluster = { workspace = true, optional = true }
@@ -106,3 +114,7 @@ required-features = ["cluster"]
 [[test]]
 name = "hp007_connect_heap"
 required-features = ["dangerous-key-export"]
+
+[[test]]
+name = "cpr001_legacy_opt_in"
+# Runs with package defaults (legacy-flat-sdk on) and asserts claim honesty.

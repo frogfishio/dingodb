@@ -1,0 +1,40 @@
+---
+import { getClaim } from '../lib/claims';
+import StatusBadge from './StatusBadge.astro';
+
+interface Props {
+  id: string;
+  showBadge?: boolean;
+  as?: 'p' | 'span' | 'div';
+  class?: string;
+}
+
+const { id, showBadge = true, as: Tag = 'p', class: className } = Astro.props;
+const claim = getClaim(id);
+---
+
+<Tag class:list={['claim', className]} data-claim-id={claim.id}>
+  <slot>{claim.text}</slot>
+  {showBadge && (
+    <span class="claim-meta">
+      <StatusBadge status={claim.status} />
+      <span class="claim-scope">{claim.scope}</span>
+    </span>
+  )}
+</Tag>
+
+<style>
+  .claim-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+  }
+
+  .claim-scope {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+  }
+</style>

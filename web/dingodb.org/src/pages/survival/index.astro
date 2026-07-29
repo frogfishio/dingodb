@@ -1,0 +1,131 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import SurvivalDiagram from '../../components/SurvivalDiagram.astro';
+import Callout from '../../components/Callout.astro';
+import Claim from '../../components/Claim.astro';
+import ExternalLink from '../../components/ExternalLink.astro';
+import release from '../../data/release.json';
+---
+
+<PageLayout
+  title="Why Dingo: independent survival"
+  description="How DingoDB reports damage as explicit holes, preserves independently verifiable data islands, and recovers surviving material without catalogs."
+  path="/survival/"
+  eyebrow="Why Dingo"
+  lead="Ordinary databases ask whether the whole machine can be reconstructed. DingoDB first asks which pieces can still be proved intact."
+>
+  <h2>The ordinary failure model</h2>
+  <p>
+    Most databases behave as a single logical machine. When critical metadata,
+    file structure, or engine state is damaged, healthy bytes may still exist
+    but become inaccessible. Recovery commonly means restoring an intact
+    replica, accepting a valid prefix, or reconstructing the database as a
+    whole.
+  </p>
+  <p>
+    That model is all-or-nothing at the wrong layer: local corruption can make
+    unrelated healthy material unreachable.
+  </p>
+
+  <h2>Independent survival units</h2>
+  <Claim id="claim.damage.independent-islands" showBadge={true} />
+  <p>
+    DingoDB treats a store as a fabric of independently survivable data
+    islands—not one all-or-nothing object. Each unit carries enough structure
+    to verify itself. Destruction of one unit does not silently poison its
+    neighbors.
+  </p>
+
+  <div class="diagram-block">
+    <SurvivalDiagram />
+  </div>
+
+  <h2>Verification and explicit holes</h2>
+  <Claim id="claim.damage.explicit-holes" showBadge={true} />
+  <p>
+    Missing or unreadable material is reported as a <strong>hole</strong>. Holes
+    are part of the recovery report. They are not allowed to disappear, and they
+    are not allowed to invalidate unrelated verified material.
+  </p>
+  <Callout title="What damage tolerance does not do" variant="warning">
+    <p>
+      Damage tolerance reduces blast radius. It does <strong>not</strong> make
+      missing or overwritten bytes recoverable. If the only copy of a payload
+      is gone, DingoDB reports the hole—it does not invent content.
+    </p>
+  </Callout>
+
+  <h2>Authoritative versus derived state</h2>
+  <Claim id="claim.indexes.derived-accelerators" showBadge={true} />
+  <p>
+    Authoritative records live in self-verifying storage units. Catalogs and
+    indexes are derived accelerators: rebuildable maps that speed access. If
+    they are lost or stale, surviving segments remain the source of truth.
+  </p>
+
+  <h2>Catalog-independent salvage</h2>
+  <Claim id="claim.salvage.catalog-independent" showBadge={true} />
+  <p>
+    Salvage walks surviving frames and produces evidence of what verified,
+    what was partial, and what is missing—without depending on catalogs or
+    secondary indexes as the only map back to the data.
+  </p>
+
+  <h2>What cannot be recovered</h2>
+  <ul>
+    <li>Bytes that were never written or were overwritten</li>
+    <li>Material destroyed on every remaining copy</li>
+    <li>Secrets that only lived in volatile memory</li>
+    <li>Application meaning that was never recorded in the envelope</li>
+  </ul>
+
+  <h2>Replication, backup, and salvage</h2>
+  <div class="table-wrap" role="region" aria-label="Recovery modes" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Mode</th>
+          <th scope="col">What it is for</th>
+          <th scope="col">What it is not</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Replication</td>
+          <td>Keep additional live copies under a cluster/replica policy</td>
+          <td>A substitute for salvage when every copy is damaged the same way</td>
+        </tr>
+        <tr>
+          <td>Backup</td>
+          <td>Intentional package of a store for restore</td>
+          <td>Damage recovery of a corrupted live root</td>
+        </tr>
+        <tr>
+          <td>Salvage</td>
+          <td>Evidence recovery of verified frames from damaged media</td>
+          <td>A full logical export of only live latest values</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Demonstration</h2>
+  <p>
+    When the repository documents a stable operator journey for “damage then
+    examine,” that walkthrough lives on the documentation site. Start with the
+    recovery guide and the capability matrix for current salvage and scrub
+    surfaces.
+  </p>
+  <div class="btn-row">
+    <ExternalLink href={release.docsRecovery} class="btn btn-primary">
+      Read recovery guide
+    </ExternalLink>
+    <a href="/status/" class="btn btn-secondary">Status and limitations</a>
+  </div>
+</PageLayout>
+
+<style>
+  .diagram-block {
+    margin: var(--space-6) 0;
+  }
+</style>

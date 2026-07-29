@@ -1,13 +1,16 @@
-//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d–8e + product freezes).
+//! DingoDB collection SDK (Stages 4 + 6 + 7 + 8d–8e + heap qualification).
 //!
-//! Ordinary application surface: open a store directory, connect to a server,
-//! or (with the `cluster` feature) open a multi-node cluster; name a collection;
-//! put/get/delete JSON or bytes; filter JSON documents; multi-collection equijoin
-//! queries ([`Dingo::query`]) with optional SDA normalisation; raw SDA/ENR1 text
-//! queries ([`Dingo::sda_query`], [`Collection::sda`]); pluggable query
-//! [dialects](dialects) that compile into pure SDA (`json`/`mongo`/`sql`/…);
-//! manage secondary indexes; inspect per-key history — without learning SDA for
-//! common paths.
+//! ## Surfaces
+//!
+//! | Surface | Feature | Qualified claim |
+//! |---------|---------|-----------------|
+//! | Flat `Dingo::open` / `collection(name)` | `legacy-flat-sdk` (**default on**) | **No** (CPR-001) |
+//! | `Dingo::open_deployment` + `Heap` / SubjectV2 | always | Path for HP-010 / H1 |
+//! | `Dingo::connect_heap` | always | HeapKey remote process ops |
+//!
+//! Stages 3–9 product demos use the default feature set. Gate H6 / `dingo-heap-v1`
+//! qualification never covers the flat collection path — use heap-bound APIs.
+//! Heap-only profile: `cargo check -p dingo-sdk --no-default-features`.
 //!
 //! **License:** MPL-2.0 for the default embedded + remote surface. The optional
 //! `cluster` feature depends on AGPL `dingo-cluster` (in-process multi-node).
@@ -15,22 +18,25 @@
 //! `dingo-client` (re-exported here for compatibility).
 //!
 //! Normative: DX_SPEC §§1–10, §14; DELIVERY_PLAN Stages 4, 6, 7, and 8d–8e;
-//! CLUSTER_SPEC §13 (client routing / directory cache), §17 (query coverage).
+//! CLUSTER_SPEC §13 (client routing / directory cache), §17 (query coverage);
+//! HEAP_SPEC §7.1 / §30.9 (CPR-001).
 //!
-//! **Product freeze:** [`SDK_API_VERSION`] labels the collection API surface
-//! after Stage 4 + 7 embedded/server parity (DELIVERY_PLAN §7).
+//! **Product freeze:** [`SDK_API_VERSION`] labels the **flat** collection API
+//! surface after Stage 4 + 7 embedded/server parity (DELIVERY_PLAN §7).
 
 #![deny(missing_docs)]
 
 /// Collection SDK API freeze label (DELIVERY_PLAN §7: Collection SDK 1.0).
 ///
-/// Stages 4 + 7 parity are met: embedded, `dingo serve`, and cluster handles
-/// share put/get/delete/scan/find/history/indexes. Patch releases may fix bugs;
-/// breaking collection API changes require a major bump of this label.
+/// Stages 4 + 7 parity are met for the **legacy flat** surface: embedded,
+/// `dingo serve`, and cluster handles share put/get/delete/scan/find/history/
+/// indexes. This label does **not** authorize `dingo-heap-v1` qualification.
 pub const SDK_API_VERSION: &str = "1.0";
 
+mod claim;
 #[cfg(feature = "cluster")]
 mod cluster_backend;
+#[cfg(feature = "legacy-flat-sdk")]
 mod collection;
 mod dingo;
 mod dialects;
@@ -40,18 +46,26 @@ mod filter;
 mod heap;
 mod history;
 mod indexes;
+#[cfg(feature = "legacy-flat-sdk")]
 mod multi_query;
 mod receipt;
 mod remote;
 mod remote_heap;
 mod resource;
+#[cfg(feature = "legacy-flat-sdk")]
 mod sda_query;
 mod subject;
 mod tls;
 mod value;
 
+pub use claim::{
+    flat_collection_claim_language, heap_only_embedded_profile, legacy_flat_sdk_enabled,
+    product_claim_language, product_may_advertise_qualified_heap, FLAT_COLLECTION_SURFACE_LABEL,
+    LEGACY_FLAT_SDK_FEATURE,
+};
 #[cfg(feature = "cluster")]
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
+#[cfg(feature = "legacy-flat-sdk")]
 pub use collection::{find_on_store, Collection, JsonScanIter, JsonScanPage};
 pub use dingo::Dingo;
 /// Re-export cluster coverage / scan types when the `cluster` feature is on.
@@ -67,9 +81,10 @@ pub use dialects::{
     DialectInfo, DialectInfoOwned, DialectRegistry, QueryDialect, SdaShape, DIALECT_PROFILE,
 };
 pub use filter::{
-    FieldBuilder, Filter, Pred, QueryBudget, QueryBuilder, QueryOptions, QueryPlan, SortOrder,
-    QUERY_PLAN_PROFILE,
+    FieldBuilder, Filter, Pred, QueryBudget, QueryOptions, QueryPlan, SortOrder, QUERY_PLAN_PROFILE,
 };
+#[cfg(feature = "legacy-flat-sdk")]
+pub use filter::QueryBuilder;
 pub use heap::{
     DingoDeployment, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream, SignedCursor,
 };
@@ -78,10 +93,14 @@ pub use remote_heap::{
 };
 #[cfg(feature = "dangerous-key-export")]
 pub use remote_heap::InMemoryHolderKey;
+#[cfg(feature = "legacy-flat-sdk")]
 pub use multi_query::{map_joined_sda, JoinBuilder, MultiQuery, MULTI_QUERY_PROFILE};
+#[cfg(feature = "legacy-flat-sdk")]
 pub use sda_query::{eval_sda_program, SdaTextQuery, SDA_QUERY_PROFILE};
 pub use history::{KeyHistory, Version};
-pub use indexes::{create_index_on_store, mark_indexes_stale, IndexInfo, Indexes};
+pub use indexes::IndexInfo;
+#[cfg(feature = "legacy-flat-sdk")]
+pub use indexes::{create_index_on_store, mark_indexes_stale, Indexes};
 pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 pub use resource::{
     check_json_depth, check_payload_len, check_rpc_line_len, estimate_json_bytes, estimate_row_bytes,

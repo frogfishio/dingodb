@@ -1,0 +1,15 @@
+---
+interface Props {
+  title?: string;
+  variant?: 'default' | 'warning' | 'verified';
+}
+
+const { title, variant = 'default' } = Astro.props;
+---
+
+<aside class:list={['callout', variant !== 'default' && `callout-${variant}`]} role="note">
+  {title && <p class="callout-title">{title}</p>}
+  <div class="callout-body">
+    <slot />
+  </div>
+</aside>

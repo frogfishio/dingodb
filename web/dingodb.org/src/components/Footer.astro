@@ -1,0 +1,115 @@
+---
+import navigation from '../data/navigation.json';
+import release from '../data/release.json';
+import ExternalLink from './ExternalLink.astro';
+---
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <p class="footer-title">DingoDB</p>
+      <p class="footer-tagline">
+        Put anything in. Damage it. Keep what survives.
+      </p>
+      <p class="footer-warning">
+        DingoDB is experimental software.
+      </p>
+    </div>
+
+    <nav aria-label="Footer">
+      <ul class="footer-links">
+        {navigation.footer.map((item) => (
+          <li>
+            {item.external ? (
+              <ExternalLink href={item.href}>{item.label}</ExternalLink>
+            ) : (
+              <a href={item.href}>{item.label}</a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="footer-meta meta-line">
+      <p>
+        Website revision: <code>{release.sourceRevision}</code>
+      </p>
+      <p>
+        Documented DingoDB release: <code>{release.productVersion}</code>
+      </p>
+      <p>
+        Content schema: <code>{release.contentSchemaVersion}</code>
+        {' · '}Generated: <code>{release.generatedAt}</code>
+      </p>
+      <p>
+        Source: <ExternalLink href={release.github}>github.com/frogfishio/dingodb</ExternalLink>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--space-8);
+    padding: var(--space-7) 0 var(--space-6);
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--line) 18%, var(--paper));
+  }
+
+  .footer-inner {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .footer-title {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .footer-tagline {
+    margin: 0 0 0.75rem;
+    color: var(--ink-muted);
+    max-width: 28ch;
+  }
+
+  .footer-warning {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--warning);
+    font-weight: 600;
+  }
+
+  .footer-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .footer-links a {
+    color: var(--ink);
+    text-decoration: none;
+    min-height: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .footer-links a:hover {
+    color: var(--signal);
+    text-decoration: underline;
+  }
+
+  .footer-meta p {
+    margin: 0 0 0.35rem;
+  }
+
+  @media (min-width: 768px) {
+    .footer-inner {
+      grid-template-columns: 1.2fr 1fr 1.2fr;
+      align-items: start;
+    }
+  }
+</style>

@@ -1,0 +1,21 @@
+---
+import ExternalLink from './ExternalLink.astro';
+
+interface Props {
+  href: string;
+  label?: string;
+}
+
+const { href, label = 'Evidence' } = Astro.props;
+---
+
+<span class="evidence-link">
+  <ExternalLink href={href}>{label}</ExternalLink>
+</span>
+
+<style>
+  .evidence-link {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+</style>

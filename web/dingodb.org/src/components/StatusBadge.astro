@@ -1,0 +1,68 @@
+---
+import { assertStatus, statusDisplay } from '../lib/status';
+
+interface Props {
+  status: string;
+  class?: string;
+}
+
+const { status, class: className } = Astro.props;
+const id = assertStatus(status);
+const label = statusDisplay(id);
+---
+
+<span class:list={['status-badge', `status-${id}`, className]} data-status={id}>
+  <span class="status-mark" aria-hidden="true"></span>
+  <span class="status-text">{label}</span>
+</span>
+
+<style>
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper-raised);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+
+  .status-mark {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--hole);
+    flex-shrink: 0;
+  }
+
+  .status-available .status-mark {
+    background: var(--verified);
+  }
+
+  .status-experimental .status-mark {
+    background: var(--signal);
+  }
+
+  .status-development-only .status-mark {
+    background: var(--warning);
+  }
+
+  .status-scaffold .status-mark {
+    background: var(--hole);
+  }
+
+  .status-design .status-mark {
+    background: var(--ink-muted);
+  }
+
+  .status-deferred .status-mark {
+    background: var(--line);
+  }
+</style>

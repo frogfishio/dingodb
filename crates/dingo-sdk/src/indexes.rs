@@ -14,12 +14,18 @@
 //! Absence is never proven from a stale, partial, building, rebuilding, or
 //! failed index — only `ready` with `complete_coverage`.
 
+#[cfg(feature = "legacy-flat-sdk")]
 use crate::dingo::Backend;
 use crate::error::Error;
+#[cfg(feature = "legacy-flat-sdk")]
 use crate::filter::{resolve_path_value, Filter, Pred};
+#[cfg(feature = "legacy-flat-sdk")]
 use crate::subject::collection_prefix;
+#[cfg(feature = "legacy-flat-sdk")]
 use crate::value::decode_json;
-use dingo_store::{IndexState, SecondaryIndex, Store};
+use dingo_store::IndexState;
+#[cfg(feature = "legacy-flat-sdk")]
+use dingo_store::{SecondaryIndex, Store};
 use serde_json::Value as JsonValue;
 
 /// Subjects processed between durable checkpoints during an index build.
@@ -54,6 +60,7 @@ pub struct IndexInfo {
     pub build_id_hex: String,
 }
 
+#[cfg(feature = "legacy-flat-sdk")]
 impl IndexInfo {
     /// Project a store secondary index record into the SDK view.
     pub fn from_store(idx: &SecondaryIndex) -> Self {
@@ -71,11 +78,13 @@ impl IndexInfo {
 }
 
 /// Handle for managing indexes on a collection (embedded or remote).
+#[cfg(feature = "legacy-flat-sdk")]
 pub struct Indexes<'a> {
     pub(crate) backend: &'a mut Backend,
     pub(crate) collection: String,
 }
 
+#[cfg(feature = "legacy-flat-sdk")]
 impl<'a> Indexes<'a> {
     /// Create (or rebuild) a field index. Online: builds from current live docs.
     ///
@@ -184,6 +193,7 @@ impl<'a> Indexes<'a> {
 }
 
 /// Build (or rebuild) a secondary field index on an open store.
+#[cfg(feature = "legacy-flat-sdk")]
 pub fn create_index_on_store(
     store: &mut Store,
     collection: &str,
@@ -193,6 +203,7 @@ pub fn create_index_on_store(
     create_index_on_store_inner(store, collection, name, fields, false)
 }
 
+#[cfg(feature = "legacy-flat-sdk")]
 fn create_index_on_store_inner(
     store: &mut Store,
     collection: &str,
@@ -255,6 +266,7 @@ fn create_index_on_store_inner(
 }
 
 /// Snapshot walk + optional catch-up, then Ready / Partial (DEF-027).
+#[cfg(feature = "legacy-flat-sdk")]
 fn run_index_build(store: &mut Store, idx: &mut SecondaryIndex) -> Result<(), Error> {
     let collection = idx.meta.collection.clone();
     let fields = idx.meta.fields.clone();
@@ -294,6 +306,7 @@ fn run_index_build(store: &mut Store, idx: &mut SecondaryIndex) -> Result<(), Er
 }
 
 /// Walk live subjects and insert postings. Returns true if any payload was incomplete.
+#[cfg(feature = "legacy-flat-sdk")]
 fn fill_index_from_live(
     store: &mut Store,
     idx: &mut SecondaryIndex,
@@ -356,6 +369,7 @@ fn fill_index_from_live(
 ///
 /// Failures are returned to the caller (DEF-027: do not silently drop
 /// stale-marking errors — they affect health/diagnostics).
+#[cfg(feature = "legacy-flat-sdk")]
 pub fn mark_indexes_stale(store: &mut Store, collection: &str) -> Result<(), Error> {
     let indexes = store.list_secondary_indexes(collection)?;
     for mut idx in indexes {
@@ -370,6 +384,7 @@ pub fn mark_indexes_stale(store: &mut Store, collection: &str) -> Result<(), Err
 }
 
 /// Build opaque index key bytes from ordered field values (JSON text).
+#[cfg(feature = "legacy-flat-sdk")]
 pub(crate) fn index_key_for_doc(doc: &JsonValue, fields: &[String]) -> Option<Vec<u8>> {
     let mut parts = Vec::new();
     for f in fields {
@@ -390,10 +405,12 @@ pub(crate) fn index_key_for_doc(doc: &JsonValue, fields: &[String]) -> Option<Ve
 }
 
 /// Index acceleration candidates: metadata plus subject keys.
+#[cfg(feature = "legacy-flat-sdk")]
 pub(crate) type IndexLookupCandidates = (IndexInfo, Vec<Vec<u8>>);
 
 /// If the filter is a simple equality (or AND of equalities) on fields that
 /// match an index prefix, return candidate subjects from that index.
+#[cfg(feature = "legacy-flat-sdk")]
 pub(crate) fn try_index_lookup(
     store: &Store,
     collection: &str,
@@ -450,6 +467,7 @@ pub(crate) fn try_index_lookup(
 }
 
 /// Extract field equality constraints from a filter (shallow AND of Eq only).
+#[cfg(feature = "legacy-flat-sdk")]
 fn equality_fields(filter: &Filter) -> Vec<(String, JsonValue)> {
     match filter {
         Filter::Field {

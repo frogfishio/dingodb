@@ -1,0 +1,143 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import Callout from '../../components/Callout.astro';
+import ExternalLink from '../../components/ExternalLink.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import release from '../../data/release.json';
+---
+
+<PageLayout
+  title="How it works"
+  description="Evaluator overview of DingoDB: collections, self-verifying storage, derived indexes, query surfaces, durability, and recovery evidence."
+  path="/how-it-works/"
+  eyebrow="Architecture"
+  lead="A concise evaluator overview—not a copy of the normative specifications."
+>
+  <Callout>
+    <p>
+      Every section links to documentation or repository specifications for
+      normative detail. Maturity labels follow
+      <a href="/status/">the public status contract</a>.
+    </p>
+  </Callout>
+
+  <h2>Collection and key model</h2>
+  <p>
+    Applications open a store, name a collection, and put/get/delete values by
+    string key (subject). The ordinary surface is the Rust
+    <code>dingo-sdk</code> collection API—not frames or segments.
+  </p>
+  <p>
+    <ExternalLink href={`${release.docsBase}/`}>Docs home</ExternalLink>
+    ·
+    <ExternalLink href={release.github + '/blob/main/crates/dingo-sdk/README.md'}>
+      SDK README
+    </ExternalLink>
+  </p>
+
+  <h2>JSON and opaque bytes</h2>
+  <p>
+    Values may be JSON documents or opaque byte payloads. JSON gains filters,
+    secondary indexes, and dialect query surfaces. Bytes remain first-class
+    durable material without forced document interpretation.
+  </p>
+
+  <h2>Immutable, self-verifying storage units</h2>
+  <p>
+    Authoritative records are written as append-oriented, integrity-checked
+    storage units. Verification is local to the unit: damage becomes an
+    explicit hole rather than an invisible failure of the whole store.
+  </p>
+  <p>
+    <ExternalLink href={release.github + '/blob/main/FORMAT_SPEC.md'}>
+      FORMAT_SPEC.md
+    </ExternalLink>
+  </p>
+
+  <h2>Derived indexes and catalogs</h2>
+  <p>
+    Primary and secondary indexes, catalogs, and other accelerators are
+    rebuildable from authoritative segments. They speed reads and scans; they
+    are not the only route back to surviving data.
+  </p>
+
+  <h2>History</h2>
+  <p>
+    Per-key history surfaces prior versions for inspection. History retention
+    interacts with compaction and reclaim policies—see operator documentation
+    for what is preserved versus reclaimed.
+  </p>
+
+  <h2>Query surfaces</h2>
+  <div class="table-wrap" role="region" aria-label="Query surfaces" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Surface</th>
+          <th scope="col">Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Rust filters</td>
+          <td>Typed collection filters in the SDK</td>
+        </tr>
+        <tr>
+          <td>DQL</td>
+          <td>Official human query surface over collections</td>
+        </tr>
+        <tr>
+          <td>Dialects</td>
+          <td>Optional SQL / JSON / mongo-style mimicry compiled to SDA</td>
+        </tr>
+        <tr>
+          <td>Raw SDA</td>
+          <td>Deterministic examination algebra for filters and recovery evidence</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <ExternalLink href={release.github + '/blob/main/doc/SDA/INTRODUCTION.html'}>
+      SDA introduction
+    </ExternalLink>
+    ·
+    <ExternalLink href={release.github + '/blob/main/doc/DQL/USER_GUIDE.md'}>
+      DQL user guide
+    </ExternalLink>
+  </p>
+
+  <h2>Durability acknowledgement modes</h2>
+  <p>
+    Writes acknowledge under explicit modes such as memory, buffered, and
+    durable. Modes are not interchangeable in benchmarks or operational claims.
+    Remote receipts require server-proved commit fields.
+  </p>
+
+  <h2>Recovery evidence and coverage</h2>
+  <p>
+    Salvage, scrub, and examination produce explicit evidence: verified data,
+    partial data, holes, and coverage of what was searched. Incomplete tier or
+    partition coverage must not look like empty success.
+  </p>
+  <p>
+    <a href="/survival/">Survival model</a>
+    ·
+    <ExternalLink href={release.docsRecovery}>Recovery guide</ExternalLink>
+  </p>
+
+  <h2>Current deployment profiles</h2>
+  <p>
+    <StatusBadge status="experimental" /> Embedded single-node is the strongest
+    path today. Network multi-node remains experimental; single-node TCP is
+    development-only. Details:
+    <a href="/status/">status matrix</a>.
+  </p>
+
+  <div class="btn-row">
+    <ExternalLink href={release.docsArchitecture} class="btn btn-primary">
+      Explore specifications
+    </ExternalLink>
+    <a href="/status/" class="btn btn-secondary">See status</a>
+  </div>
+</PageLayout>

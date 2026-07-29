@@ -1,0 +1,67 @@
+---
+import release from '../data/release.json';
+
+interface Props {
+  title: string;
+  description: string;
+  path?: string;
+  noindex?: boolean;
+  ogType?: string;
+}
+
+const {
+  title,
+  description,
+  path = '/',
+  noindex = false,
+  ogType = 'website',
+} = Astro.props;
+
+const site = 'https://dingodb.org';
+const canonical = new URL(path, site).href;
+const fullTitle = title.includes('DingoDB') ? title : `${title} · DingoDB`;
+const ogImage = new URL('/og-image.svg', site).href;
+const isPreview = import.meta.env.PUBLIC_PREVIEW === 'true';
+const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+<meta name="robots" content={robots} />
+<meta name="generator" content={Astro.generator} />
+<meta name="theme-color" content="#f3f0e7" />
+
+<meta property="og:type" content={ogType} />
+<meta property="og:site_name" content="DingoDB" />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:alt" content="DingoDB — a database built to survive damage" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />
+
+<meta name="dingodb:product-version" content={release.productVersion} />
+<meta name="dingodb:site-revision" content={release.sourceRevision} />
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+
+<script type="application/ld+json" set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareSourceCode',
+  name: 'DingoDB',
+  description: 'Experimental, embedded-first storage for irreplaceable local data with explicit damage reporting.',
+  codeRepository: release.github,
+  programmingLanguage: 'Rust',
+  runtimePlatform: 'Rust',
+  version: release.productVersion,
+  license: 'https://github.com/frogfishio/dingodb/blob/main/LICENSE',
+  url: site,
+})} />

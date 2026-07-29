@@ -3,7 +3,7 @@
   "package": "HP-010",
   "format": "dingo-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept (derived/ops + profiles + metadata-hardened closed allowlist). H1 advanced: SubjectV2 put/get + remote connect_heap process-ops Accept (still partial \u2014 CPR-001 flat default + remote data ops \u00a732.4). H0/H2/H4/H5 still partial (legacy flat SDK, reserved ops, recovery/lifecycle residuals). H6 partial \u2014 connected pure proofs + complete-path review + external review brief landed; full Verus/Kani machine proofs and signed external review still open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced: SubjectV2 + connect_heap process-ops + CPR-001 legacy-flat-sdk opt-in feature (still default-on for Stages 3\u20139; heap-only via --no-default-features). H0/H2/H4/H5 still partial. H6 partial \u2014 Verus/Kani + signed external review open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",
@@ -11,10 +11,11 @@
       "evidence": [
         "crates/dingo-heap (HeapId/CollectionId/StreamId/DeploymentId/AuthorityEpoch)",
         "spec/heap/operations-v1.json + cbor-v1.json",
-        "scripts/check_heap_architecture.sh"
+        "scripts/check_heap_architecture.sh",
+        "crates/dingo-sdk claim.rs FLAT_COLLECTION_SURFACE_LABEL / legacy_flat_sdk_enabled"
       ],
       "open": [
-        "CPR-001: default flat Dingo::collection still treats names as deployment-global"
+        "CPR-001 residual: legacy-flat-sdk still default-on for Stages 3\u20139 (flip default after cutover)"
       ]
     },
     "H1": {
@@ -26,8 +27,11 @@
         "crates/dingo-sdk/tests/hp007_heap_isolation.rs::heap_store_rejects_foreign_subject_v2",
         "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_welcome_and_process_ops",
         "crates/dingo-sdk/tests/hp007_connect_heap.rs::connect_heap_wrong_name_rejects",
+        "crates/dingo-sdk/tests/cpr001_legacy_opt_in.rs",
         "crates/dingo-sdk HeapCollection put/get/delete (SubjectV2)",
         "crates/dingo-sdk Dingo::connect_heap + RemoteHeap process ops 1\u20133",
+        "crates/dingo-sdk Dingo::open_deployment / open_compatibility (CPR-001)",
+        "crates/dingo-sdk feature legacy-flat-sdk (default on; --no-default-features = heap-only)",
         "crates/dingo-sdk HeapCredential / HolderSigner / RemoteHeapOptions",
         "crates/dingo-store HeapStore put/get/delete SubjectV2-only + rights gate",
         "crates/dingo-store Store::put_subject_bytes/get_subject_bytes/delete_subject_bytes",
@@ -37,7 +41,7 @@
       ],
       "open": [
         "remote collection data ops (reserved until \u00a732.4)",
-        "legacy raw Store / Dingo::collection flat path still default (CPR-001)"
+        "CPR-001 residual: flip default off after Stages 3\u20139 callers migrate to heap APIs"
       ]
     },
     "H2": {
@@ -131,7 +135,7 @@
       "open": [
         "CPR-004: machine-checked Verus/Kani proofs not connected in CI",
         "CPR-005: signed external security review report not on file",
-        "CPR-001: default product path still flat-store (claim confusion risk)",
+        "CPR-001 residual: legacy-flat-sdk still default-on (heap-only via --no-default-features)",
         "H0\u2013H2, H4\u2013H5 not all accept yet"
       ]
     },

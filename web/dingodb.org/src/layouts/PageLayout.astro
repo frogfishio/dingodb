@@ -1,0 +1,42 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  path?: string;
+  eyebrow?: string;
+  lead?: string;
+}
+
+const { title, description, path, eyebrow, lead } = Astro.props;
+---
+
+<BaseLayout title={title} description={description} path={path}>
+  <header class="page-hero">
+    <div class="wrap">
+      {eyebrow && (
+        <p class="eyebrow">
+          <span>{eyebrow}</span>
+        </p>
+      )}
+      <h1>{title}</h1>
+      {lead && <p class="lead">{lead}</p>}
+    </div>
+  </header>
+  <div class="section">
+    <div class="wrap prose-page">
+      <slot />
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .prose-page {
+    max-width: 52rem;
+  }
+
+  .prose-page :global(.full-bleed) {
+    max-width: none;
+  }
+</style>

@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ExternalLink from '../components/ExternalLink.astro';
+import release from '../data/release.json';
+---
+
+<BaseLayout
+  title="Page not found"
+  description="The requested page was not found on dingodb.org."
+  path="/404/"
+  noindex={true}
+>
+  <section class="section">
+    <div class="wrap">
+      <p class="eyebrow"><span>404</span></p>
+      <h1>That path did not survive.</h1>
+      <p class="lead">
+        The page you requested is missing. Healthy routes are still readable.
+      </p>
+      <div class="btn-row">
+        <a href="/" class="btn btn-primary">Home</a>
+        <a href="/status/" class="btn btn-secondary">Status</a>
+        <ExternalLink href={release.docsBase + '/'} class="btn btn-secondary">
+          Docs
+        </ExternalLink>
+      </div>
+      <ul>
+        <li><a href="/survival/">Why Dingo / survival model</a></li>
+        <li><a href="/how-it-works/">How it works</a></li>
+        <li><a href="/project/">Source and project</a></li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

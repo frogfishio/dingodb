@@ -1,0 +1,62 @@
+{
+  "primary": [
+    {
+      "label": "Why Dingo",
+      "href": "/survival/"
+    },
+    {
+      "label": "How it works",
+      "href": "/how-it-works/"
+    },
+    {
+      "label": "Status",
+      "href": "/status/"
+    },
+    {
+      "label": "Docs",
+      "href": "https://docs.dingodb.org/",
+      "external": true
+    },
+    {
+      "label": "GitHub",
+      "href": "https://github.com/frogfishio/dingodb",
+      "external": true
+    }
+  ],
+  "cta": {
+    "label": "Get started",
+    "href": "https://docs.dingodb.org/guides/quickstart/",
+    "external": true
+  },
+  "footer": [
+    {
+      "label": "Docs",
+      "href": "https://docs.dingodb.org/",
+      "external": true
+    },
+    {
+      "label": "Status and known limitations",
+      "href": "/status/"
+    },
+    {
+      "label": "Roadmap",
+      "href": "/roadmap/"
+    },
+    {
+      "label": "Security",
+      "href": "/security/"
+    },
+    {
+      "label": "Source and contributing",
+      "href": "/project/"
+    },
+    {
+      "label": "Licensing",
+      "href": "/project/#licensing"
+    },
+    {
+      "label": "Privacy",
+      "href": "/privacy/"
+    }
+  ]
+}

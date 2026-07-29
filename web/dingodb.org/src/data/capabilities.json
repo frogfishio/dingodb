@@ -1,0 +1,241 @@
+{
+  "source": "doc/CAPABILITY_MATRIX.md",
+  "verified_for": "0.2.0",
+  "last_verified": "2026-07-30",
+  "deploymentProfiles": [
+    {
+      "id": "embedded-single-node",
+      "name": "Embedded single-node",
+      "how": "Dingo::open(path)",
+      "durability": "Local store durability modes (memory / buffered / durable)",
+      "status": "experimental",
+      "note": "Strongest current path; early access",
+      "evidence": "dingo-store / dingo-sdk stage suites"
+    },
+    {
+      "id": "single-node-tcp",
+      "name": "Single-node TCP",
+      "how": "dingo serve (default 127.0.0.1)",
+      "durability": "Local store only; no network quorum",
+      "status": "development-only",
+      "note": "Development and evaluation, not a production claim",
+      "evidence": "CLI serve_* tests; remote parity suite"
+    },
+    {
+      "id": "in-process-cluster",
+      "name": "In-process cluster",
+      "how": "Dingo::open_cluster / create_cluster",
+      "durability": "Partition-local quorum in one process",
+      "status": "development-only",
+      "note": "Integration-test harness",
+      "evidence": "dingo-cluster stage8a–8f tests"
+    },
+    {
+      "id": "network-multi-node",
+      "name": "Network multi-node",
+      "how": "dingo serve-cluster + multi-seed connect",
+      "durability": "Partition Raft propose when control plane attaches",
+      "status": "experimental",
+      "note": "Not production; requires --experimental-network-cluster",
+      "evidence": "stage_def_036_raft_rpc, stage_def_037_cluster_commit"
+    },
+    {
+      "id": "s3-gcs-placement",
+      "name": "S3/GCS placement",
+      "how": "MediaLocator + mirror env roots",
+      "durability": "Filesystem mirror of segments, not native cloud I/O SDK",
+      "status": "experimental",
+      "note": "Experimental filesystem mirror",
+      "evidence": "store tier / media tests"
+    },
+    {
+      "id": "erasure-lifecycle",
+      "name": "Erasure coding and lifecycle",
+      "how": "Scaffold APIs",
+      "durability": "Not production protection",
+      "status": "scaffold",
+      "note": "Types/docs only until codecs land",
+      "evidence": "types/docs only"
+    }
+  ],
+  "worksToday": [
+    {
+      "id": "open-create",
+      "name": "Embedded open / create",
+      "description": "Open or create a local store with Dingo::open.",
+      "scope": "Embedded single-node",
+      "status": "experimental",
+      "claim_id": "claim.embedded.strongest-path"
+    },
+    {
+      "id": "json-bytes",
+      "name": "JSON and byte put / get / delete",
+      "description": "Store JSON documents or opaque bytes through the Rust SDK.",
+      "scope": "Embedded single-node",
+      "status": "experimental",
+      "claim_id": "claim.sdk.json-and-bytes"
+    },
+    {
+      "id": "filters-indexes",
+      "name": "Filters and secondary indexes",
+      "description": "Field filters and secondary index lifecycle on JSON collections.",
+      "scope": "Embedded single-node",
+      "status": "experimental",
+      "claim_id": "claim.indexes.derived-accelerators"
+    },
+    {
+      "id": "per-key-history",
+      "name": "Per-key history",
+      "description": "Inspect revision history for a subject key.",
+      "scope": "Embedded single-node",
+      "status": "experimental",
+      "claim_id": null
+    },
+    {
+      "id": "backup-restore",
+      "name": "Backup and verified restore",
+      "description": "Full single-node backup package with content integrity.",
+      "scope": "Single-node",
+      "status": "available",
+      "claim_id": null
+    },
+    {
+      "id": "scrub",
+      "name": "Integrity scrub",
+      "description": "Bounded integrity scrub with findings quarantine.",
+      "scope": "Single-node",
+      "status": "available",
+      "claim_id": null
+    },
+    {
+      "id": "salvage",
+      "name": "Salvage and examination",
+      "description": "Catalog-independent salvage of verified frames; SDA examination of surviving material.",
+      "scope": "Single-node recovery",
+      "status": "available",
+      "claim_id": "claim.salvage.catalog-independent"
+    }
+  ],
+  "beingBuilt": [
+    {
+      "id": "network-cluster-prod",
+      "name": "Production network cluster",
+      "description": "Multi-process cluster with full qualification gates (Jepsen, long soak, durable ops).",
+      "scope": "Network multi-node",
+      "status": "experimental",
+      "claim_id": "claim.network.not-production"
+    },
+    {
+      "id": "native-object-store",
+      "name": "Native object-store archive tiers",
+      "description": "Native S3/GCS I/O rather than filesystem mirrors.",
+      "scope": "Archive placement",
+      "status": "design",
+      "claim_id": null
+    },
+    {
+      "id": "erasure-coding",
+      "name": "Erasure coding",
+      "description": "Operational erasure-coded protection beyond scaffold types.",
+      "scope": "Retention / lifecycle",
+      "status": "scaffold",
+      "claim_id": null
+    },
+    {
+      "id": "heaps",
+      "name": "Heaps",
+      "description": "Heap authority, isolation, and capability model.",
+      "scope": "Research / design",
+      "status": "design",
+      "claim_id": null
+    },
+    {
+      "id": "dre",
+      "name": "DRE (data rules)",
+      "description": "Formal data rules engine.",
+      "scope": "Research / design",
+      "status": "design",
+      "claim_id": null
+    },
+    {
+      "id": "atomics",
+      "name": "Atomics",
+      "description": "Atomic multi-subject operations beyond current paths.",
+      "scope": "Research / design",
+      "status": "design",
+      "claim_id": null
+    },
+    {
+      "id": "dda",
+      "name": "Direct Access (DDA)",
+      "description": "Direct access surface for external tooling.",
+      "scope": "Research / design",
+      "status": "design",
+      "claim_id": null
+    },
+    {
+      "id": "order-wavelets",
+      "name": "Order Wavelets",
+      "description": "Order-preserving index research.",
+      "scope": "Research / design",
+      "status": "design",
+      "claim_id": null
+    }
+  ],
+  "limitations": [
+    {
+      "id": "not-production-ready",
+      "text": "DingoDB is experimental software. No production-supported release line is claimed."
+    },
+    {
+      "id": "network-not-prod",
+      "text": "Experimental network cluster is not a production deployment path."
+    },
+    {
+      "id": "mirrors-not-native-cloud",
+      "text": "S3/GCS locators are filesystem mirrors, not native cloud object-store connectors."
+    },
+    {
+      "id": "wire-draft",
+      "text": "WIRE_PROFILE_LABEL = 1.0-draft is not an interoperability freeze."
+    },
+    {
+      "id": "no-public-benchmarks",
+      "text": "No public comparative performance result is currently claimed."
+    },
+    {
+      "id": "def-097",
+      "text": "Continuation-token authentication (DEF-097) remains open; do not claim authenticated continuation tokens."
+    },
+    {
+      "id": "damage-limits",
+      "text": "Damage tolerance reduces blast radius; missing or overwritten bytes are not recoverable."
+    }
+  ],
+  "compatibility": [
+    {
+      "label": "Crate / workspace semver",
+      "value": "0.2.0"
+    },
+    {
+      "label": "SDK_API_VERSION",
+      "value": "1.0"
+    },
+    {
+      "label": "WIRE_PROFILE_LABEL",
+      "value": "1.0-draft"
+    },
+    {
+      "label": "RPC_WIRE_LABEL",
+      "value": "1.0-draft"
+    },
+    {
+      "label": "BACKUP_PROFILE",
+      "value": "dingo-backup-v1"
+    },
+    {
+      "label": "SCRUB_PROFILE",
+      "value": "dingo-scrub-v1"
+    }
+  ]
+}

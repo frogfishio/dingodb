@@ -1,0 +1,188 @@
+---
+/**
+ * Damaged-surface visual model (not a literal optical-disc format).
+ * Static by default; progressive animation only when motion is allowed.
+ */
+const regions = [
+  { id: 'a', label: 'DATA', state: 'verified' },
+  { id: 'b', label: 'DATA', state: 'verified' },
+  { id: 'c', label: 'HOLE', state: 'hole' },
+  { id: 'd', label: 'DATA', state: 'verified' },
+  { id: 'e', label: 'HOLE', state: 'hole' },
+  { id: 'f', label: 'DATA', state: 'verified' },
+  { id: 'g', label: 'DATA', state: 'verified' },
+  { id: 'h', label: 'HOLE', state: 'hole' },
+  { id: 'i', label: 'DATA', state: 'verified' },
+  { id: 'j', label: 'DATA', state: 'verified' },
+  { id: 'k', label: 'DATA', state: 'verified' },
+  { id: 'l', label: 'HOLE', state: 'hole' },
+] as const;
+---
+
+<figure class="survival-diagram" aria-labelledby="survival-diagram-caption">
+  <div
+    class="surface"
+    role="img"
+    aria-label="A storage surface with several missing regions. Missing regions are reported as holes; intact regions on both sides remain independently readable."
+  >
+    <div class="surface-ring" aria-hidden="true">
+      {regions.map((r, i) => (
+        <div
+          class:list={['cell', r.state]}
+          style={`--i: ${i}`}
+          data-state={r.state}
+        >
+          <span class="cell-label">{r.label}</span>
+          {r.state === 'verified' && <span class="cell-check">VERIFIED</span>}
+        </div>
+      ))}
+    </div>
+    <div class="surface-hub" aria-hidden="true">
+      <span>ISLANDS</span>
+    </div>
+  </div>
+  <figcaption id="survival-diagram-caption" class="diagram-caption">
+    A storage surface with several missing regions. Missing regions are
+    reported as holes; intact regions on both sides remain independently
+    readable. This visual explains the failure model—not a literal optical-disc
+    storage format.
+  </figcaption>
+</figure>
+
+<style>
+  .survival-diagram {
+    margin: 0;
+  }
+
+  .surface {
+    position: relative;
+    aspect-ratio: 1.35 / 1;
+    max-width: 40rem;
+    margin: 0 auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(circle at 50% 50%, transparent 18%, color-mix(in srgb, var(--line) 40%, var(--paper)) 19%, var(--paper-raised) 20%),
+      repeating-linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--line) 35%, transparent) 0 1px,
+        transparent 1px 12px
+      ),
+      var(--paper-raised);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .surface-ring {
+    position: absolute;
+    inset: 8%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 0.45rem;
+  }
+
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: clamp(0.65rem, 1.6vw, 0.8rem);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    min-height: 2.5rem;
+  }
+
+  .cell.verified {
+    background: color-mix(in srgb, var(--verified) 14%, var(--paper-raised));
+    color: var(--verified);
+    border-color: color-mix(in srgb, var(--verified) 45%, var(--line));
+  }
+
+  .cell.hole {
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--hole) 25%, transparent) 0 4px,
+        transparent 4px 8px
+      ),
+      color-mix(in srgb, var(--ink) 8%, var(--paper));
+    color: var(--hole);
+    border-style: dashed;
+    border-color: var(--hole);
+  }
+
+  .cell-check {
+    font-size: 0.62em;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+  }
+
+  .surface-hub {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4.5rem;
+    height: 4.5rem;
+    margin: -2.25rem 0 0 -2.25rem;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    background: var(--paper);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    z-index: 1;
+  }
+
+  .diagram-caption {
+    margin-top: var(--space-4);
+    max-width: var(--measure);
+    margin-inline: auto;
+    font-size: 0.95rem;
+    color: var(--ink-muted);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cell {
+      animation: settle 0.7s ease both;
+      animation-delay: calc(var(--i) * 70ms);
+    }
+
+    .cell.hole {
+      animation-name: punch;
+    }
+
+    @keyframes settle {
+      from {
+        opacity: 0.35;
+        transform: scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes punch {
+      0% {
+        opacity: 0.2;
+        transform: scale(1.04);
+        filter: contrast(0.8);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: none;
+      }
+    }
+  }
+</style>

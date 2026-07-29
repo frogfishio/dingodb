@@ -19,7 +19,7 @@ path = "src/main.rs"
 [dependencies]
 dingo-sdk = { workspace = true, features = ["cluster"] }
 dingo-server.workspace = true
-dingo-store.workspace = true
+dingo-store = { workspace = true, features = ["legacy-raw-store"] }
 dingo-examine.workspace = true
 serde_json.workspace = true
 clap.workspace = true

@@ -16,7 +16,7 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 dingo-sdk = { workspace = true, features = ["cluster"] }
 dingo-client.workspace = true
 dingo-heap.workspace = true
-dingo-store.workspace = true
+dingo-store = { workspace = true, features = ["legacy-raw-store"] }
 dingo-cluster.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -29,7 +29,7 @@ rustls-pki-types = "1"
 [dev-dependencies]
 tempfile.workspace = true
 dingo-format.workspace = true
-dingo-store.workspace = true
+dingo-store = { workspace = true, features = ["legacy-raw-store"] }
 ed25519-dalek = { version = "2.1.1", default-features = false, features = [
   "alloc",
   "fast",

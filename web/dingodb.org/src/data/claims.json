@@ -1,0 +1,109 @@
+[
+  {
+    "id": "claim.damage.explicit-holes",
+    "text": "Damage is reported as explicit holes rather than silently invalidating unrelated healthy material.",
+    "status": "available",
+    "scope": "recovery examination",
+    "source": [
+      "USP.md#3-the-defining-difference",
+      "doc/CAPABILITY_MATRIX.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.damage.independent-islands",
+    "text": "DingoDB preserves independently verifiable data islands.",
+    "status": "available",
+    "scope": "storage model",
+    "source": [
+      "USP.md#2-the-dingodb-thesis",
+      "doc/CAPABILITY_MATRIX.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.sdk.json-and-bytes",
+    "text": "Store JSON documents or opaque bytes through the Rust SDK.",
+    "status": "experimental",
+    "scope": "embedded single-node",
+    "source": [
+      "crates/dingo-sdk/README.md",
+      "doc/CAPABILITY_MATRIX.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.embedded.strongest-path",
+    "text": "Embedded single-node is the strongest current path and remains experimental / early access.",
+    "status": "experimental",
+    "scope": "deployment profiles",
+    "source": [
+      "doc/CAPABILITY_MATRIX.md",
+      "WEBSITE_SPEC.md#53-current-launch-truth"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.indexes.derived-accelerators",
+    "text": "Indexes and catalogs are derived accelerators, not the only route back to surviving data.",
+    "status": "available",
+    "scope": "recovery architecture",
+    "source": [
+      "USP.md#5-why-massive-retention-matters",
+      "doc/CAPABILITY_MATRIX.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.hot-path.designed-fast",
+    "text": "Designed for a fast hot path (not a published comparative result).",
+    "status": "experimental",
+    "scope": "performance design",
+    "source": [
+      "USP.md#6-why-speed-matters",
+      "doc/BENCHMARK_DISCLOSURE.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.salvage.catalog-independent",
+    "text": "Catalog-independent salvage can recover verified frames when derived state is missing.",
+    "status": "available",
+    "scope": "recovery",
+    "source": [
+      "doc/CAPABILITY_MATRIX.md",
+      "USP.md#3-the-defining-difference"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.network.not-production",
+    "text": "Multi-process network cluster is experimental and not a production deployment path.",
+    "status": "experimental",
+    "scope": "network multi-node",
+    "source": [
+      "doc/CAPABILITY_MATRIX.md"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  },
+  {
+    "id": "claim.benchmarks.none-public",
+    "text": "No public comparative benchmark result is currently claimed.",
+    "status": "available",
+    "scope": "benchmarks",
+    "source": [
+      "doc/BENCHMARK_DISCLOSURE.md",
+      "WEBSITE_SPEC.md#85-benchmarks"
+    ],
+    "verified_for": "0.2.0",
+    "last_verified": "2026-07-30"
+  }
+]

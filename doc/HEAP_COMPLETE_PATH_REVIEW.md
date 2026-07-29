@@ -74,7 +74,7 @@ re-bound through heap APIs.
 
 | ID | Finding | Severity | Blocks |
 |----|---------|----------|--------|
-| CPR-001 | Default SDK surface is still flat-store (`collection` by name) | High for claim honesty | H0, H1, H6 |
+| CPR-001 | Flat SDK is feature-gated (`legacy-flat-sdk`, **still default on** for Stages 3–9); heap-only via `--no-default-features`; labelled non-qualified | High until default flips | H0, H1, H6 |
 | CPR-002 | Reserved heap ops (beyond 1–3) not activated with §32.4 fixtures | Medium | H2 |
 | CPR-003 | Live filesystem multi-tier media wipe / HSM adapters incomplete | Medium (ops) | H4 residual / HP-009 |
 | CPR-004 | Formal models are connected sketches + executable obligations, not Verus-checked proofs | High for H6 | H6 |
@@ -89,8 +89,8 @@ this pass; known escapes are the **documented legacy/default surfaces** above.
 | Question | Answer |
 |----------|--------|
 | Unscoped surface on **qualified heap path**? | No known bypass in CI Accept drills |
-| Unscoped surface on **default product path**? | **Yes** — flat SDK / legacy raw store (CPR-001) |
-| Ready for Gate H6 claim? | **No** — CPR-001, CPR-004, CPR-005 remain |
+| Unscoped surface on **default product path**? | **Yes** — `legacy-flat-sdk` still default-on (CPR-001 residual); heap-only profile exists |
+| Ready for Gate H6 claim? | **No** — CPR-001 residual (default), CPR-004, CPR-005 remain |
 | Matrix `qualified` | **Must stay `qualified=false`** |
 
 ## 6. Exit criteria for re-review

@@ -1,0 +1,184 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import Callout from '../../components/Callout.astro';
+import ExternalLink from '../../components/ExternalLink.astro';
+import capabilities from '../../data/capabilities.json';
+import release from '../../data/release.json';
+import { statusLabels } from '../../lib/status';
+---
+
+<PageLayout
+  title="Status and known limitations"
+  description="Current DingoDB capability maturity, deployment profiles, compatibility labels, and benchmark status derived from structured capability data."
+  path="/status/"
+  eyebrow="Truth"
+  lead="Present capability and maturity—not design docs presented as shipped product."
+>
+  <Callout title="Documented release">
+    <p>
+      Documented DingoDB release: <strong>{release.productVersion}</strong>
+      (verified {capabilities.last_verified}). Website revision:
+      <code>{release.sourceRevision}</code>. Source of truth:
+      <ExternalLink href={release.github + '/blob/main/doc/CAPABILITY_MATRIX.md'}>
+        doc/CAPABILITY_MATRIX.md
+      </ExternalLink>.
+    </p>
+  </Callout>
+
+  <h2>Maturity labels</h2>
+  <div class="table-wrap" role="region" aria-label="Maturity vocabulary" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Label</th>
+          <th scope="col">Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.entries(statusLabels).map(([id, meta]) => (
+          <tr>
+            <td><StatusBadge status={id} /></td>
+            <td>{meta.meaning}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Deployment profiles</h2>
+  <div class="table-wrap" role="region" aria-label="Deployment profiles" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Profile</th>
+          <th scope="col">How to run</th>
+          <th scope="col">Status</th>
+          <th scope="col">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {capabilities.deploymentProfiles.map((p) => (
+          <tr>
+            <td>{p.name}</td>
+            <td><code>{p.how}</code></td>
+            <td><StatusBadge status={p.status} /></td>
+            <td>{p.note}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Capability surfaces</h2>
+  <h3>Works today (with scope)</h3>
+  <div class="table-wrap" role="region" aria-label="Capabilities that work today" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Capability</th>
+          <th scope="col">Scope</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {capabilities.worksToday.map((c) => (
+          <tr>
+            <td>
+              <strong>{c.name}</strong>
+              <div class="cell-desc">{c.description}</div>
+            </td>
+            <td>{c.scope}</td>
+            <td><StatusBadge status={c.status} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Being built / design</h3>
+  <div class="table-wrap" role="region" aria-label="Capabilities being built" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Capability</th>
+          <th scope="col">Scope</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {capabilities.beingBuilt.map((c) => (
+          <tr>
+            <td>
+              <strong>{c.name}</strong>
+              <div class="cell-desc">{c.description}</div>
+            </td>
+            <td>{c.scope}</td>
+            <td><StatusBadge status={c.status} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Known material limitations</h2>
+  <ul>
+    {capabilities.limitations.map((l) => (
+      <li>{l.text}</li>
+    ))}
+  </ul>
+
+  <h2>Compatibility labels</h2>
+  <div class="table-wrap" role="region" aria-label="Compatibility labels" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Label</th>
+          <th scope="col">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {capabilities.compatibility.map((c) => (
+          <tr>
+            <td>{c.label}</td>
+            <td><code>{c.value}</code></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="benchmarks">Benchmark status</h2>
+  {release.benchmarksPublished ? (
+    <p>
+      Public benchmark packages are published. See
+      <a href="/benchmarks/">benchmarks</a>.
+    </p>
+  ) : (
+    <Callout title="No public comparative result" variant="warning">
+      <p>
+        No public comparative benchmark result is currently claimed. Methodology
+        requirements live in
+        <ExternalLink href={release.github + '/blob/main/doc/BENCHMARK_DISCLOSURE.md'}>
+          doc/BENCHMARK_DISCLOSURE.md
+        </ExternalLink>.
+        Performance language on this site describes design intent only, not a
+        measured cross-system ranking.
+      </p>
+    </Callout>
+  )}
+
+  <p class="meta-line">
+    Structured data: <code>src/data/capabilities.json</code> · Claims:
+    <code>src/data/claims.json</code> · Last verified for product{' '}
+    {capabilities.verified_for}.
+  </p>
+</PageLayout>
+
+<style>
+  .cell-desc {
+    margin-top: 0.25rem;
+    color: var(--ink-muted);
+    font-size: 0.92rem;
+  }
+</style>

@@ -1,0 +1,219 @@
+---
+import navigation from '../data/navigation.json';
+import release from '../data/release.json';
+import ExternalLink from './ExternalLink.astro';
+
+const path = Astro.url.pathname;
+const nav = navigation.primary;
+const cta = navigation.cta;
+
+function isCurrent(href: string): boolean {
+  if (href.startsWith('http')) return false;
+  if (href === '/') return path === '/' || path === '';
+  return path === href || path.startsWith(href);
+}
+---
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/" aria-label="DingoDB home">
+      <span class="brand-mark" aria-hidden="true">◉</span>
+      <span class="brand-text">DingoDB</span>
+      <span class="brand-version">{release.productVersion}</span>
+    </a>
+
+    <nav class="desktop-nav" aria-label="Primary">
+      <ul class="nav-list">
+        {nav.map((item) => (
+          <li>
+            {item.external ? (
+              <ExternalLink
+                href={item.href}
+                class={isCurrent(item.href) ? 'nav-link is-current' : 'nav-link'}
+              >
+                {item.label}
+              </ExternalLink>
+            ) : (
+              <a
+                href={item.href}
+                class:list={['nav-link', isCurrent(item.href) && 'is-current']}
+                aria-current={isCurrent(item.href) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+      <ExternalLink href={cta.href} class="btn btn-primary nav-cta">
+        {cta.label}
+      </ExternalLink>
+    </nav>
+
+    <details class="mobile-nav">
+      <summary class="menu-toggle">
+        <span class="menu-label">Menu</span>
+      </summary>
+      <nav aria-label="Mobile primary">
+        <ul class="mobile-list">
+          {nav.map((item) => (
+            <li>
+              {item.external ? (
+                <ExternalLink href={item.href} class="nav-link">
+                  {item.label}
+                </ExternalLink>
+              ) : (
+                <a
+                  href={item.href}
+                  class:list={['nav-link', isCurrent(item.href) && 'is-current']}
+                  aria-current={isCurrent(item.href) ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              )}
+            </li>
+          ))}
+          <li>
+            <ExternalLink href={cta.href} class="btn btn-primary">
+              {cta.label}
+            </ExternalLink>
+          </li>
+        </ul>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: var(--header-h);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-mark {
+    color: var(--signal);
+    font-size: 1.1rem;
+  }
+
+  .brand-version {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.1rem 0.4rem;
+  }
+
+  .desktop-nav {
+    display: none;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .nav-list {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.25rem;
+  }
+
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch);
+    padding: 0.4rem 0.65rem;
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-weight: 500;
+    border-radius: var(--radius);
+  }
+
+  .nav-link:hover,
+  .nav-link.is-current {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--line) 35%, transparent);
+  }
+
+  .nav-cta {
+    text-decoration: none;
+  }
+
+  .mobile-nav {
+    position: relative;
+  }
+
+  .menu-toggle {
+    list-style: none;
+    cursor: pointer;
+    min-height: var(--touch);
+    min-width: var(--touch);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    font-weight: 600;
+  }
+
+  .menu-toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-list {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    width: min(18rem, calc(100vw - 2rem));
+    list-style: none;
+    margin: 0;
+    padding: 0.75rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .mobile-list .nav-link,
+  .mobile-list .btn {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  @media (min-width: 900px) {
+    .desktop-nav {
+      display: flex;
+    }
+
+    .mobile-nav {
+      display: none;
+    }
+  }
+</style>

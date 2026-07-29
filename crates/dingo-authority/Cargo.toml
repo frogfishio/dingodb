@@ -19,7 +19,7 @@ path = "src/main.rs"
 [dependencies]
 dingo-heap.workspace = true
 dingo-format.workspace = true
-dingo-store = { workspace = true, features = ["authority-provisioning"] }
+dingo-store = { workspace = true, features = ["legacy-raw-store", "authority-provisioning"] }
 thiserror.workspace = true
 clap.workspace = true
 blake3.workspace = true

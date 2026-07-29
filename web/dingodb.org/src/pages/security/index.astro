@@ -1,0 +1,90 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import Callout from '../../components/Callout.astro';
+import ExternalLink from '../../components/ExternalLink.astro';
+import release from '../../data/release.json';
+---
+
+<PageLayout
+  title="Security"
+  description="DingoDB security posture, supported versions statement, vulnerability reporting path, and threat-model links."
+  path="/security/"
+  eyebrow="Security"
+  lead="Report vulnerabilities privately. Do not treat experimental software as production-hardened."
+>
+  <Callout title="Supported versions" variant="warning">
+    <p>
+      No production-supported release line is claimed at this time. DingoDB
+      {release.productVersion} is experimental / early access. Security fixes
+      land in the repository as the project iterates; there is no published LTS
+      policy yet.
+    </p>
+  </Callout>
+
+  <h2>Vulnerability reporting</h2>
+  <p>
+    Prefer the repository’s GitHub security advisory flow when available. Do
+    <strong>not</strong> submit vulnerability details through public issues.
+  </p>
+  <ul>
+    <li>
+      <ExternalLink href={release.githubSecurity}>
+        GitHub security page for frogfishio/dingodb
+      </ExternalLink>
+    </li>
+    <li>
+      If a private reporting route is not yet configured on GitHub, open a
+      minimal public issue that asks for a private contact channel—without
+      including exploit details—or contact maintainers through the project’s
+      published channels when they exist.
+    </li>
+  </ul>
+  <Callout title="Do not invent SLAs">
+    <p>
+      This website does not publish a response SLA or a security email address
+      that is not confirmed in the repository. When the project publishes a
+      security policy file, that document is authoritative.
+    </p>
+  </Callout>
+
+  <h2>Dependency and release posture</h2>
+  <ul>
+    <li>Rust workspace dependencies are reviewed through normal PR process and <code>deny.toml</code> policy in-repo.</li>
+    <li>Release packaging gates are documented under <code>doc/RELEASE_ARTIFACTS.md</code>.</li>
+    <li>Signed release artifact policy is “not yet published” until maintainers confirm it.</li>
+  </ul>
+
+  <h2>Threat model</h2>
+  <p>
+    A draft in-tree threat model exists for early security work. It is not a
+    substitute for independent review before production use.
+  </p>
+  <p>
+    <ExternalLink href={release.github + '/blob/main/doc/THREAT_MODEL.md'}>
+      doc/THREAT_MODEL.md
+    </ExternalLink>
+  </p>
+
+  <h2>Known security-adjacent limitations</h2>
+  <ul>
+    <li>
+      Continuation-token authentication (DEF-097) remains open—do not claim
+      authenticated continuation tokens.
+    </li>
+    <li>
+      Network multi-node remains experimental and is not a production security
+      boundary claim.
+    </li>
+    <li>
+      Formal models (for example Heap TLA+) are design/evidence work; they are
+      not implementation proofs of the full product surface.
+    </li>
+  </ul>
+
+  <div class="btn-row">
+    <ExternalLink href={release.github} class="btn btn-primary">
+      View source
+    </ExternalLink>
+    <a href="/status/" class="btn btn-secondary">Status and limitations</a>
+  </div>
+</PageLayout>

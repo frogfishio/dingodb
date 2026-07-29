@@ -37,7 +37,9 @@ sda-core = { package = "dingo-sda", path = "crates/sda-core", version = "0.2.0" 
 dingo-format = { path = "crates/dingo-format", version = "0.2.0" }
 dingo-heap = { path = "crates/dingo-heap", version = "0.2.0" }
 dingo-authority = { path = "crates/dingo-authority", version = "0.2.0" }
-dingo-store = { path = "crates/dingo-store", version = "0.2.0", default-features = true }
+# default-features false: public raw `Store` is opt-in via `legacy-raw-store`
+# (HP-003 / CPR-001). Dependents that need Stages 3–9 flat store enable the feature.
+dingo-store = { path = "crates/dingo-store", version = "0.2.0", default-features = false }
 dingo-client = { path = "crates/dingo-client", version = "0.2.0" }
 dingo-sdk = { path = "crates/dingo-sdk", version = "0.2.0" }
 dingo-server = { path = "crates/dingo-server", version = "0.2.0" }
@@ -54,4 +56,3 @@ blake3 = "1"
 crc32c = "0.6"
 getrandom = "0.3"
 tempfile = "3"
-

@@ -1,0 +1,124 @@
+---
+interface Props {
+  title?: string;
+  language?: string;
+  filename?: string;
+  copyId?: string;
+}
+
+const {
+  title,
+  language = 'rust',
+  filename,
+  copyId = `code-${Math.random().toString(36).slice(2, 9)}`,
+} = Astro.props;
+---
+
+<div class="code-example">
+  {(title || filename) && (
+    <div class="code-head">
+      <div>
+        {title && <p class="code-title">{title}</p>}
+        {filename && <p class="code-file">{filename}</p>}
+      </div>
+      <button
+        type="button"
+        class="copy-btn"
+        data-copy-target={copyId}
+        aria-label="Copy code to clipboard"
+      >
+        Copy
+      </button>
+    </div>
+  )}
+  <pre id={copyId} class={`language-${language}`} tabindex="0"><code><slot /></code></pre>
+</div>
+
+<script>
+  function bindCopyButtons() {
+    document.querySelectorAll<HTMLButtonElement>('.copy-btn[data-copy-target]').forEach((btn) => {
+      if (btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.copyTarget;
+        const el = id ? document.getElementById(id) : null;
+        const text = el?.textContent ?? '';
+        try {
+          await navigator.clipboard.writeText(text);
+          const prev = btn.textContent;
+          btn.textContent = 'Copied';
+          window.setTimeout(() => {
+            btn.textContent = prev;
+          }, 1600);
+        } catch {
+          btn.textContent = 'Copy failed';
+        }
+      });
+    });
+  }
+
+  bindCopyButtons();
+  document.addEventListener('astro:page-load', bindCopyButtons);
+</script>
+
+<style>
+  .code-example {
+    margin: 0 0 var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+
+  .code-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--code-ink) 12%, transparent);
+    background: color-mix(in srgb, #000 25%, var(--code-bg));
+  }
+
+  .code-title {
+    margin: 0;
+    color: var(--code-ink);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .code-file {
+    margin: 0;
+    color: color-mix(in srgb, var(--code-ink) 65%, transparent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .copy-btn {
+    min-height: 2.25rem;
+    min-width: 4.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--code-ink) 25%, transparent);
+    background: transparent;
+    color: var(--code-ink);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .copy-btn:hover {
+    background: color-mix(in srgb, var(--code-ink) 10%, transparent);
+  }
+
+  .code-example pre {
+    margin: 0;
+    border-radius: 0;
+    overflow-x: auto;
+  }
+
+  .code-example code {
+    font-family: var(--font-mono);
+  }
+</style>

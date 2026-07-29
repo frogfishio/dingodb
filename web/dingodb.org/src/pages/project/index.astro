@@ -1,0 +1,117 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import Callout from '../../components/Callout.astro';
+import ExternalLink from '../../components/ExternalLink.astro';
+import release from '../../data/release.json';
+---
+
+<PageLayout
+  title="Project"
+  description="DingoDB source, multi-tier licensing, contributing, releases, and project links."
+  path="/project/"
+  eyebrow="Project"
+  lead="Source of truth lives in the repository. This page points; it does not invent governance."
+>
+  <h2>Source</h2>
+  <ul>
+    <li>
+      Repository:
+      <ExternalLink href={release.github}>github.com/frogfishio/dingodb</ExternalLink>
+    </li>
+    <li>
+      Releases:
+      <ExternalLink href={release.githubReleases}>GitHub Releases</ExternalLink>
+      (artifact policy in-repo)
+    </li>
+    <li>
+      Documented product version: <code>{release.productVersion}</code>
+    </li>
+    <li>
+      Website revision: <code>{release.sourceRevision}</code>
+    </li>
+  </ul>
+
+  <h2>Contributing</h2>
+  <p>
+    Implementation work should map to named specification sections. Engineering
+    rules (SDA purity, authority before acceleration, damage honesty) are in
+    the contributing guide.
+  </p>
+  <p>
+    <ExternalLink href={release.github + '/blob/main/CONTRIBUTING.md'}>
+      CONTRIBUTING.md
+    </ExternalLink>
+  </p>
+  <Callout title="Code of conduct">
+    <p>
+      A standalone code of conduct is not yet published in the repository. When
+      one lands, it will be linked here.
+    </p>
+  </Callout>
+
+  <h2 id="licensing">Licensing</h2>
+  <p>
+    The workspace is <strong>not</strong> under a single uniform license. Crate
+    licenses differ by tier:
+  </p>
+  <div class="table-wrap" role="region" aria-label="License tiers" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Tier</th>
+          <th scope="col">SPDX</th>
+          <th scope="col">Covers (summary)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>SDA / wire / thin client</td>
+          <td>MIT</td>
+          <td>SDA language, format codec, thin client</td>
+        </tr>
+        <tr>
+          <td>Embedded store / examine / SDK default</td>
+          <td>MPL-2.0</td>
+          <td>Store, examination, collection SDK (default features)</td>
+        </tr>
+        <tr>
+          <td>Networked product</td>
+          <td>AGPL-3.0-or-later</td>
+          <td>Cluster, server, operator CLI; SDK <code>cluster</code> feature</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <ExternalLink href={release.github + '/blob/main/LICENSE'}>LICENSE</ExternalLink>
+    ·
+    <ExternalLink href={release.github + '/blob/main/doc/LICENSING.md'}>
+      doc/LICENSING.md
+    </ExternalLink>
+  </p>
+
+  <h2>Governance and maintainers</h2>
+  <p>
+    Public maintainer roster and formal governance documents are
+    <strong>not yet published</strong> beyond repository ownership and commit
+    history. Do not invent organizational claims.
+  </p>
+
+  <h2>Changelog</h2>
+  <p>
+    Prefer GitHub releases and repository history for change notes until a
+    dedicated changelog path is published.
+  </p>
+  <p>
+    <ExternalLink href={release.githubReleases}>Release notes</ExternalLink>
+  </p>
+
+  <div class="btn-row">
+    <ExternalLink href={release.github} class="btn btn-primary">
+      View source
+    </ExternalLink>
+    <ExternalLink href={release.docsBase + '/'} class="btn btn-secondary">
+      Documentation
+    </ExternalLink>
+  </div>
+</PageLayout>

@@ -697,12 +697,14 @@ fn options_from_json(value: &JsonValue) -> Result<QueryOptions, Error> {
 ///     .limit(100)
 ///     .collect()?;
 /// ```
+#[cfg(feature = "legacy-flat-sdk")]
 pub struct QueryBuilder<'c, 'a> {
     pub(crate) collection: &'c mut crate::collection::Collection<'a>,
     filters: Vec<Filter>,
     options: QueryOptions,
 }
 
+#[cfg(feature = "legacy-flat-sdk")]
 impl<'c, 'a> QueryBuilder<'c, 'a> {
     pub(crate) fn new(collection: &'c mut crate::collection::Collection<'a>) -> Self {
         Self {
