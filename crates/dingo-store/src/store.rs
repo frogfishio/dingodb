@@ -736,6 +736,19 @@ impl Store {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        self.put_subject_bytes(subject.as_bytes(), value, mode)
+    }
+
+    /// Put opaque bytes under a **binary** subject (SubjectV2 or legacy v1 bytes).
+    ///
+    /// Prefer this on the qualified heap path: SubjectV2 keys contain raw UUIDs
+    /// and are not valid UTF-8, so the string [`Self::put`] API cannot represent them.
+    pub fn put_subject_bytes(
+        &mut self,
+        subject: &[u8],
+        value: &[u8],
+        mode: DurabilityMode,
+    ) -> Result<WriteReceipt, StoreError> {
         // Memory mode is visibility-only: keep the full body in the index and
         // never append frames (avoids later durable flushes contaminating disk).
         if mode == DurabilityMode::Memory {
@@ -1024,7 +1037,12 @@ impl Store {
     /// only when every required chunk is present. Use [`Self::get_payload`] for
     /// partial maps.
     pub fn get(&self, subject: &str) -> Result<Option<Vec<u8>>, StoreError> {
-        match self.get_payload(subject)? {
+        self.get_subject_bytes(subject.as_bytes())
+    }
+
+    /// Get by binary subject (SubjectV2-capable).
+    pub fn get_subject_bytes(&self, subject: &[u8]) -> Result<Option<Vec<u8>>, StoreError> {
+        match self.get_payload_bytes(subject)? {
             None => Ok(None),
             Some(PayloadResult::Complete { body }) => Ok(Some(body)),
             Some(PayloadResult::Partial { .. })
@@ -1051,7 +1069,12 @@ impl Store {
     /// Chimera is a last-resort fallback when the index has neither a resident
     /// body nor a usable frame offset. See [`Self::get_via_chimera`].
     pub fn get_payload(&self, subject: &str) -> Result<Option<PayloadResult>, StoreError> {
-        let key = subject.as_bytes();
+        self.get_payload_bytes(subject.as_bytes())
+    }
+
+    /// Binary-subject payload lookup (SubjectV2-capable).
+    pub fn get_payload_bytes(&self, subject: &[u8]) -> Result<Option<PayloadResult>, StoreError> {
+        let key = subject;
         let Some(entry) = self.index.get(key) else {
             return Ok(None);
         };
@@ -1096,6 +1119,15 @@ impl Store {
     pub fn delete(
         &mut self,
         subject: &str,
+        mode: DurabilityMode,
+    ) -> Result<WriteReceipt, StoreError> {
+        self.delete_subject_bytes(subject.as_bytes(), mode)
+    }
+
+    /// Delete by binary subject (SubjectV2-capable).
+    pub fn delete_subject_bytes(
+        &mut self,
+        subject: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
         self.write_event(subject, EventKind::Delete, &[], mode)
@@ -3051,11 +3083,11 @@ impl Store {
 
     fn write_chunked_put(
         &mut self,
-        subject: &str,
+        subject: &[u8],
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
-        let subject_bytes = subject.as_bytes();
+        let subject_bytes = subject;
         if subject_bytes.len() > MAX_SUBJECT_LEN {
             return Err(StoreError::SubjectTooLong {
                 max: MAX_SUBJECT_LEN,
@@ -3223,12 +3255,12 @@ impl Store {
 
     fn write_event(
         &mut self,
-        subject: &str,
+        subject: &[u8],
         kind: EventKind,
         body: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
-        let subject_bytes = subject.as_bytes();
+        let subject_bytes = subject;
         if subject_bytes.len() > MAX_SUBJECT_LEN {
             return Err(StoreError::SubjectTooLong {
                 max: MAX_SUBJECT_LEN,

@@ -47,6 +47,7 @@ an honest qualified claim.
 |---------|-------------|----------|
 | `decide` / `authority_admission_ok` / mint / refresh | Generation, blacklist, serving, binding | `h6_decide_obligations`, unit tests |
 | `require_admit` / single-owner | Known owner only | `single_owner_admit` |
+| `HeapStore` / `HeapCollection` put/get/delete | SubjectV2 + bound `HeapCap` + rights | `subject_v2_put_get_isolated_across_heaps`, `heap_store_rejects_foreign_subject_v2` |
 | Query observation | Bound heap + allowlists | `query_escape_faulty_planner_confined` |
 | Indexes / streams catalogs | Heap-scoped paths | `derived_path_indexes_streams_scoped` |
 | Metrics / logs / export / health / support | Profile declassification registry | operational + metadata-hardened drills |

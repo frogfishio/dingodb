@@ -64,7 +64,7 @@ pub struct ItemEnvelope {
     pub event_kind: EventKind,
     /// Writer-supplied creation timestamp (nanoseconds); 0 if unknown.
     pub created_ns: u64,
-    /// Logical subject key bytes (UTF-8 for string APIs).
+    /// Logical subject key bytes (UTF-8 for Stage 4 string APIs; SubjectV2 binary on heap path).
     pub subject: Vec<u8>,
 }
 

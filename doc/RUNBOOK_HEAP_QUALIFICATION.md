@@ -45,6 +45,7 @@ complete evidence.
 | HeapCap lifecycle | `… heapcap_terminates_on_lifecycle` | Suspend/retire terminates prior caps |
 | Single-owner admit | `… single_owner_admit` | Known owner only; mutations never admit under wrong heap |
 | Derived paths | `… derived_path_indexes_streams_scoped` | Indexes/streams catalogs stay heap-scoped |
+| SubjectV2 data plane | `cargo test -p dingo-sdk --test hp007_heap_isolation` | Same app keys on two heaps stay isolated; foreign SubjectV2 rejected |
 | Query escape | `… query_escape_faulty_planner_confined` | Faulty unconstrained planner cannot escape bound heap |
 | Load/latency | `… load_latency_budget` | Admit/decide/refresh meet recorded budget |
 | Fuzz budget | `… fuzz_budget_structured_mutations` | Structured adversarial corpus rejects escape |

@@ -127,3 +127,116 @@ fn identical_collection_names_cannot_cross_heaps() {
     assert!(conn_a.require_heap(&ha).is_ok());
     assert!(conn_a.require_heap(&hb).is_err());
 }
+
+/// SubjectV2 put/get: same human key on two heaps stays isolated (HP-007 residual).
+#[test]
+fn subject_v2_put_get_isolated_across_heaps() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let deployment = DingoDeployment::create(root).unwrap();
+    let layout = HeapMetaLayout::new(root);
+
+    let dep = *DeploymentId::new_random().unwrap().as_bytes();
+    let heap_a = *HeapId::new_random().unwrap().as_bytes();
+    let heap_b = *HeapId::new_random().unwrap().as_bytes();
+    let coll_a = uuid();
+    let coll_b = uuid();
+
+    let sa = stage_heap_genesis(&layout, dep, heap_a, uuid(), "heap-a").unwrap();
+    let sb = stage_heap_genesis(&layout, dep, heap_b, uuid(), "heap-b").unwrap();
+    publish_staged_genesis(&layout, &sa.staging_id, &sa.descriptor_hash).unwrap();
+    publish_staged_genesis(&layout, &sb.staging_id, &sb.descriptor_hash).unwrap();
+
+    create_object(
+        &layout,
+        &heap_a,
+        ObjectKind::Collection,
+        coll_a,
+        uuid(),
+        "users",
+    )
+    .unwrap();
+    create_object(
+        &layout,
+        &heap_b,
+        ObjectKind::Collection,
+        coll_b,
+        uuid(),
+        "users",
+    )
+    .unwrap();
+
+    let cap_a = mint_cap_for(
+        HeapId::from_bytes_unchecked_nonzero(heap_a).unwrap(),
+        DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap(),
+    );
+    let cap_b = mint_cap_for(
+        HeapId::from_bytes_unchecked_nonzero(heap_b).unwrap(),
+        DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap(),
+    );
+
+    let ha = deployment.open_heap(cap_a);
+    let hb = deployment.open_heap(cap_b);
+    let ca = ha.collection("users").unwrap();
+    let cb = hb.collection("users").unwrap();
+
+    // Same application key, disjoint SubjectV2 addresses.
+    ca.put("user-1", &serde_json::json!({"heap": "a"})).unwrap();
+    cb.put("user-1", &serde_json::json!({"heap": "b"})).unwrap();
+
+    let va = ca.get("user-1").unwrap().expect("heap a value");
+    let vb = cb.get("user-1").unwrap().expect("heap b value");
+    assert_eq!(va["heap"], "a");
+    assert_eq!(vb["heap"], "b");
+
+    // Bytes path also isolates.
+    ca.put_bytes("blob-1", b"\x00\xff-a").unwrap();
+    cb.put_bytes("blob-1", b"\x00\xff-b").unwrap();
+    assert_eq!(ca.get_bytes("blob-1").unwrap().unwrap(), b"\x00\xff-a");
+    assert_eq!(cb.get_bytes("blob-1").unwrap().unwrap(), b"\x00\xff-b");
+
+    // Delete on A must not remove B.
+    ca.delete("user-1").unwrap();
+    assert!(ca.get("user-1").unwrap().is_none());
+    assert_eq!(cb.get("user-1").unwrap().unwrap()["heap"], "b");
+}
+
+/// HeapStore rejects SubjectV2 keys that name a foreign heap (direct façade).
+#[test]
+fn heap_store_rejects_foreign_subject_v2() {
+    use dingo_format::{encode_subject_v2, SubjectObjectKind};
+    use dingo_store::StoreHost;
+
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let host = StoreHost::create(root).unwrap();
+    let layout = HeapMetaLayout::new(root);
+
+    let dep = *DeploymentId::new_random().unwrap().as_bytes();
+    let heap_a = *HeapId::new_random().unwrap().as_bytes();
+    let heap_b = *HeapId::new_random().unwrap().as_bytes();
+    let coll = uuid();
+
+    let sa = stage_heap_genesis(&layout, dep, heap_a, uuid(), "heap-a").unwrap();
+    publish_staged_genesis(&layout, &sa.staging_id, &sa.descriptor_hash).unwrap();
+    create_object(&layout, &heap_a, ObjectKind::Collection, coll, uuid(), "users").unwrap();
+
+    let cap_a = mint_cap_for(
+        HeapId::from_bytes_unchecked_nonzero(heap_a).unwrap(),
+        DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap(),
+    );
+    let store_a = host.open_heap(cap_a);
+
+    // Subject encoding foreign heap_id must fail closed.
+    let foreign = encode_subject_v2(&heap_b, SubjectObjectKind::Collection, &coll, b"k").unwrap();
+    assert!(store_a.put(&foreign, b"x").is_err());
+    assert!(store_a.get(&foreign).is_err());
+
+    // Correct heap SubjectV2 works.
+    let own = encode_subject_v2(&heap_a, SubjectObjectKind::Collection, &coll, b"k").unwrap();
+    store_a.put(&own, b"ok").unwrap();
+    assert_eq!(store_a.get(&own).unwrap().unwrap(), b"ok");
+
+    // Legacy flat subjects (no 0x02) are rejected on the qualified path.
+    assert!(store_a.put(b"\x01not-v2", b"nope").is_err());
+}

@@ -5,12 +5,15 @@
 //! checkouts — composition requires pointer-identical capabilities.
 
 use crate::error::Error;
+use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
+use crate::subject::validate_key;
 use blake3::Hasher;
 use dingo_heap::{CollectionId, HeapCap, HeapId, StreamId};
 use dingo_store::{
     rebuild_object_entry_from_chain, try_load_collections_catalog, try_load_streams_catalog,
     HeapMetaLayout, HeapStore, ObjectKind, StoreHost,
 };
+use serde::Serialize;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -178,9 +181,12 @@ impl Heap {
 }
 
 /// Typed collection handle. Identity is immutable after open.
+///
+/// Data plane methods encode **SubjectV2** keys
+/// (`heap_id || collection || key`) so two heaps that share a human collection
+/// name still address disjoint store subjects (HP-007 residual).
 pub struct HeapCollection {
     cap: HeapCap,
-    #[allow(dead_code)] // Retained for put/get wiring in follow-on; isolation uses cap.
     store: Arc<HeapStore>,
     id: CollectionId,
     name_at_open: String,
@@ -210,6 +216,74 @@ impl HeapCollection {
     /// Whether this handle shares the same capability instance as `other`.
     pub fn same_heap_instance(&self, other: &HeapCollection) -> bool {
         self.cap.same_instance(&other.cap)
+    }
+
+    /// Put a JSON value under `key` (SubjectV2, durable).
+    pub fn put<T: Serialize>(&self, key: &str, value: &T) -> Result<WriteReceipt, Error> {
+        self.put_with(key, value, PutOptions::default())
+    }
+
+    /// Put JSON with durability options. Durability other than durable is
+    /// accepted for API parity; the heap façade currently always writes durable.
+    pub fn put_with<T: Serialize>(
+        &self,
+        key: &str,
+        value: &T,
+        _options: PutOptions,
+    ) -> Result<WriteReceipt, Error> {
+        let json = serde_json::to_value(value)?;
+        let body = crate::value::encode_json(&json)?;
+        self.put_raw_body(key, &body)
+    }
+
+    /// Put opaque typed-bytes body under `key` (SubjectV2, durable).
+    ///
+    /// Prefer [`Self::put_bytes`] which applies the SDK type tag.
+    pub fn put_bytes(&self, key: &str, bytes: &[u8]) -> Result<WriteReceipt, Error> {
+        let body = crate::value::encode_bytes(bytes);
+        self.put_raw_body(key, &body)
+    }
+
+    fn put_raw_body(&self, key: &str, body: &[u8]) -> Result<WriteReceipt, Error> {
+        validate_key(key)?;
+        let receipt = self
+            .store
+            .put_collection(self.id.as_bytes(), key.as_bytes(), body)?;
+        Ok(WriteReceipt::from_store(key.to_string(), receipt))
+    }
+
+    /// Get JSON for `key`.
+    pub fn get(&self, key: &str) -> Result<Option<serde_json::Value>, Error> {
+        match self.get_raw_body(key)? {
+            None => Ok(None),
+            Some(raw) => Ok(Some(crate::value::decode_json(&raw)?)),
+        }
+    }
+
+    /// Get opaque application bytes for `key` (strips type tag).
+    pub fn get_bytes(&self, key: &str) -> Result<Option<Vec<u8>>, Error> {
+        match self.get_raw_body(key)? {
+            None => Ok(None),
+            Some(raw) => Ok(Some(crate::value::decode_bytes(&raw)?)),
+        }
+    }
+
+    fn get_raw_body(&self, key: &str) -> Result<Option<Vec<u8>>, Error> {
+        validate_key(key)?;
+        Ok(self.store.get_collection(self.id.as_bytes(), key.as_bytes())?)
+    }
+
+    /// Delete `key` (SubjectV2, durable).
+    pub fn delete(&self, key: &str) -> Result<DeleteReceipt, Error> {
+        validate_key(key)?;
+        let existed = self
+            .store
+            .get_collection(self.id.as_bytes(), key.as_bytes())?
+            .is_some();
+        let receipt = self
+            .store
+            .delete_collection(self.id.as_bytes(), key.as_bytes())?;
+        Ok(DeleteReceipt::from_store(key.to_string(), existed, receipt))
     }
 
     /// Issue a signed cursor bound to this collection + capability instance.
