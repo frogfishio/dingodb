@@ -1,23 +1,23 @@
-# Technical proposal: migrate Tinker + Gremlin JSON/JSONL stores onto DingoDB
+# Technical proposal: migrate Tinker + Gremlin JSON/JSONL stores onto ResiduumDB
 
 **Status:** Design proposal (no behavior change)  
 **Date:** 2026-07-27  
-**Audience:** Frogfish / Koderra (DingoDB, Gremlin daemon, Tinker client)  
+**Audience:** Frogfish / Koderra (ResiduumDB, Gremlin daemon, Tinker client)  
 **Related:** [OVERVIEW.md](../OVERVIEW.md), [DX_SPEC.md](../DX_SPEC.md), [FORMAT_SPEC.md](../FORMAT_SPEC.md); Gremlin (sibling repo) `Koderra/gremlin/docs/{PROTOCOL,CONTROL_STATE_MIGRATION,DOGFOOD}.md`
 
 ---
 
 ## 0. Executive summary
 
-Tinker (client UI) and Gremlin (daemon / superagent) already treat **append-only JSON lines** as their durability surface, with **mutable JSON documents** as rebuildable projections. That is almost exactly DingoDB’s model: **streams for events**, **collections for current values with history**.
+Tinker (client UI) and Gremlin (daemon / superagent) already treat **append-only JSON lines** as their durability surface, with **mutable JSON documents** as rebuildable projections. That is almost exactly ResiduumDB’s model: **streams for events**, **collections for current values with history**.
 
-This proposal recommends a **phased migration** of both products’ on-disk state from ad hoc `.tinker` / `.gremlin` file trees into **one or more DingoDB stores**, without changing the Gremlin wire protocol or Tinker UX on day one. The file layout becomes a **compatibility façade** (and later an export/import profile), not the source of truth.
+This proposal recommends a **phased migration** of both products’ on-disk state from ad hoc `.tinker` / `.gremlin` file trees into **one or more ResiduumDB stores**, without changing the Gremlin wire protocol or Tinker UX on day one. The file layout becomes a **compatibility façade** (and later an export/import profile), not the source of truth.
 
 **Why now**
 
-1. **Dogfood DingoDB** on a real, continuously written workload (journals, indexes, telemetry) while the product is still small enough to migrate offline.
+1. **Dogfood ResiduumDB** on a real, continuously written workload (journals, indexes, telemetry) while the product is still small enough to migrate offline.
 2. **Collapse dual-home storage** (app-data + `~/.gremlin` + `{workspace}/.tinker` + `{workspace}/.gremlin`) that already needs control-state migration for sandbox safety.
-3. **Replace hand-rolled integrity** (hash chains, partial-tail salvage, last-wins JSONL indexes) with Dingo’s frame integrity, independent survival, and history APIs—keeping application-level hash chains only where they remain a product invariant.
+3. **Replace hand-rolled integrity** (hash chains, partial-tail salvage, last-wins JSONL indexes) with ResiduumDB’s frame integrity, independent survival, and history APIs—keeping application-level hash chains only where they remain a product invariant.
 4. **Unify query surfaces**: session timeline, conversation recents, usage/arena, brains/plans become collection/stream reads instead of bespoke scanners.
 
 **Done when (this doc):** inventory is accurate, target schema is specified, migration phases and cutover are detailed enough to implement.
@@ -217,7 +217,7 @@ User/assistant text plus optional `journalSeq`, `turnId`, route metadata, thumbs
 4. **Hand-rolled durability.** Hash chain + salvage is good, but reimplemented per product; no shared compaction, tiering, or independent-survival scan.
 5. **Cross-session / cross-project analytics** (usage, arena, “all my dingodb chats”) require ad hoc filesystem walks.
 6. **No typed import/export** beyond “copy the folder”; backup/restore is rsync folklore.
-7. **Scale cliff.** One dogfood journal is already multi‑MB with 5k+ tool events; multi-year retention wants segments, indexes, and tiering (Dingo’s job).
+7. **Scale cliff.** One dogfood journal is already multi‑MB with 5k+ tool events; multi-year retention wants segments, indexes, and tiering (ResiduumDB’s job).
 
 ---
 
@@ -230,26 +230,26 @@ User/assistant text plus optional `journalSeq`, `turnId`, route metadata, thumbs
 | G1 | Single **authoritative** store backend for Gremlin daemon session continuity (journals + derived projections). |
 | G2 | Single **authoritative** store backend for Tinker conversation/project catalogs and optional transcript cache. |
 | G3 | Preserve **wire protocol** and client UX; storage is an implementation detail behind existing RPCs / Tauri commands. |
-| G4 | Preserve journal **seq + hash chain** as an application invariant (product continuity / audit), even when physical integrity is provided by Dingo frames. |
+| G4 | Preserve journal **seq + hash chain** as an application invariant (product continuity / audit), even when physical integrity is provided by ResiduumDB frames. |
 | G5 | Align with control-state policy: **no trusted journals required under `{workspace}`** for sandbox guests; workspace may keep only opaque redirect markers if needed. |
 | G6 | Online dual-read migration with **verify-before-delete**; crash-safe; reversible for one release. |
-| G7 | Dogfood DingoDB streams/collections/history APIs on a real product path. |
+| G7 | Dogfood ResiduumDB streams/collections/history APIs on a real product path. |
 
 ### 2.2 Non-goals (v1 migration)
 
 - Replacing Gremlin’s live event ring, stream-join, or labor engines.
-- Storing secrets or provider tokens in Dingo (Keychain + `secrets-index` only).
+- Storing secrets or provider tokens in ResiduumDB (Keychain + `secrets-index` only).
 - Multi-tenant server deployment of personal chat history (local embedded store first).
 - Perfect schema freeze of every journal `kind` payload (store as JSON values; evolve app schema independently).
 - Migrating Grok Build / Cursor CLI home dirs (`~/.grok`, cursor-agent caches).
 
 ---
 
-## 3. Why DingoDB (reasons)
+## 3. Why ResiduumDB (reasons)
 
 ### 3.1 Semantic fit
 
-| Current pattern | Dingo primitive | Why |
+| Current pattern | ResiduumDB primitive | Why |
 |-----------------|-----------------|-----|
 | `journal.ndjson` append | **Stream** `gremlin.sessions.<sid>.journal` (or partitioned `gremlin.journal` with session key) | Append-oriented events; cursors; retention |
 | `ConversationMeta` / catalog last-wins | **Collection** `tinker.conversations` / `gremlin.sessions` | `put` = current value; **history** retains prior metas without JSONL bloat |
@@ -259,20 +259,20 @@ User/assistant text plus optional `journalSeq`, `turnId`, route metadata, thumbs
 | `manifest` / `snapshot` | Derived collections or in-process only | Rebuild from stream; optional materialize for restart speed |
 | Cross-cutting “list my sessions” | Secondary indexes / examination | Avoid catalog.ndjson special case |
 
-Dingo’s governing rule—**what remains still lives**—matches journal salvage better than a single fragile file: a torn segment tail is a **hole**, not a reason to discard earlier islands.
+ResiduumDB’s governing rule—**what remains still lives**—matches journal salvage better than a single fragile file: a torn segment tail is a **hole**, not a reason to discard earlier islands.
 
 ### 3.2 Product and engineering reasons
 
-1. **Dogfood loop.** Building Dingo while daily work generates continuous structured event traffic is the highest-signal test harness you can buy.
+1. **Dogfood loop.** Building ResiduumDB while daily work generates continuous structured event traffic is the highest-signal test harness you can buy.
 2. **One durability story.** Atomic meta, crash matrix, compaction, tiering, and recovery become shared infrastructure instead of three Rust modules.
 3. **History without bloat.** Conversation title/preview updates become versioned document history, not 247 index lines.
-4. **Examination.** SDA over session journals (“find all `turn_failed` with labor timeout”) is a first-class Dingo story, not a one-off Python script.
+4. **Examination.** SDA over session journals (“find all `turn_failed` with labor timeout”) is a first-class ResiduumDB story, not a one-off Python script.
 5. **Sandbox alignment.** Control store lives outside the workspace by construction (`~/.dingo/gremlin` or daemon data dir), completing CONTROL_STATE_MIGRATION with a stronger store than “move the NDJSON files.”
-6. **Future multi-device / backup.** Export is a Dingo store copy or segment pack, not a nest of redirect stubs.
+6. **Future multi-device / backup.** Export is a ResiduumDB store copy or segment pack, not a nest of redirect stubs.
 
 ### 3.3 Why not “just keep JSONL forever”
 
-JSONL is an excellent **interchange and debug** format (and Dingo already names JSONL as import/export/diagnostic). It is a weak **primary** store once you need concurrent writers, compaction, indexes, tiering, and damage isolation. Keep JSONL as:
+JSONL is an excellent **interchange and debug** format (and ResiduumDB already names JSONL as import/export/diagnostic). It is a weak **primary** store once you need concurrent writers, compaction, indexes, tiering, and damage isolation. Keep JSONL as:
 
 - migration source,
 - `dingo export --profile jsonl`,
@@ -336,13 +336,13 @@ Namespace prefix convention: `tinker.*` / `gremlin.*` (stable string keys).
 ┌─────────────────────────────────────────────┐
 │ Application: seq monotonic + prevHash/hash  │  ← product audit / reconnect
 ├─────────────────────────────────────────────┤
-│ DingoDB: frame CRC/BLAKE3, segments, holes  │  ← media survival
+│ ResiduumDB: frame CRC/BLAKE3, segments, holes  │  ← media survival
 └─────────────────────────────────────────────┘
 ```
 
 - On append: daemon still computes journal `hash` over the record bytes it considers canonical (define a **canonicalization profile** once—same as today’s serializer).
-- Dingo acknowledges durable put/stream append under the daemon’s durability mode.
-- On open: verify Dingo item health, then verify application hash chain over the stream projection; surface both in `session_journal_health`.
+- ResiduumDB acknowledges durable put/stream append under the daemon’s durability mode.
+- On open: verify ResiduumDB item health, then verify application hash chain over the stream projection; surface both in `session_journal_health`.
 
 Do **not** drop application hashes in v1: clients and operators already reason about them; dual integrity is cheap relative to trust.
 
@@ -362,11 +362,11 @@ After cutover, optional thin markers (not trusted data):
 
 Dual-read order during migration:
 
-1. Dingo session stream if present and healthy  
+1. ResiduumDB session stream if present and healthy  
 2. Else project `journal.ndjson`  
 3. Else `data_dir` journal  
 
-Write path after flag flip: **Dingo only** (with optional async JSONL export for debug).
+Write path after flag flip: **ResiduumDB only** (with optional async JSONL export for debug).
 
 ### 4.5 Process ownership (writers)
 
@@ -378,7 +378,7 @@ Write path after flag flip: **Dingo only** (with optional async JSONL export for
 | Projects / prefs | Tinker | Tinker |
 | Runtime | daemon | daemon, Tinker settings RPC |
 
-Eliminating Tinker writers on journals is a hard requirement for embedded Dingo single-writer simplicity.
+Eliminating Tinker writers on journals is a hard requirement for embedded ResiduumDB single-writer simplicity.
 
 ---
 
@@ -402,7 +402,7 @@ Eliminating Tinker writers on journals is a hard requirement for embedded Dingo 
 2. Stream-read NDJSON; skip torn tail (reuse existing salvage logic).  
 3. Verify hash chain; record `JournalHealth`.  
 4. If invalid prefix: import verified prefix only; mark session `imported_partial=true`.  
-5. Batch stream-append into Dingo with durability = same policy as `every_batch` for import (or bulk load API if available).  
+5. Batch stream-append into ResiduumDB with durability = same policy as `every_batch` for import (or bulk load API if available).  
 6. Put manifest + sessions catalog row.  
 7. Write migration receipt: `{ sessionId, source_path, source_bytes, records, head_hash, dingo_receipts… }`.  
 8. Only after verify job: mark source `migrated` and stop dual-write.
@@ -439,12 +439,12 @@ All UUIDs (**sessionId**, **conversationId**, **projectId**, **package_id**, **t
 
 ## 6. Migration procedure (how)
 
-### Phase 0 — Prerequisites (Dingo + Gremlin)
+### Phase 0 — Prerequisites (ResiduumDB + Gremlin)
 
 1. **Embedded open path** stable: `Dingo::open(path)` local store used by daemon tests.  
 2. **Stream append + cursor read** API usable from Rust (`dingo-sdk`).  
 3. **Collection put/get/history** usable.  
-4. **Durability modes** mapped: journal `every_batch` → Dingo durability that fsyncs segment; `terminal_only` → group mid-turn stream appends + fsync on terminal kinds.  
+4. **Durability modes** mapped: journal `every_batch` → ResiduumDB durability that fsyncs segment; `terminal_only` → group mid-turn stream appends + fsync on terminal kinds.  
 5. Feature flags:  
    - `GREMLIN_STORE=fs|dingo|dual`  
    - `TINKER_STORE=fs|dingo|dual`  
@@ -468,22 +468,22 @@ All UUIDs (**sessionId**, **conversationId**, **projectId**, **package_id**, **t
 
 ### Phase 2 — Dual-read / dual-write daemon
 
-1. On session open: prefer Dingo stream if session marked migrated; else FS.  
-2. On append: if `dual`, write **FS first** (legacy SoT), then Dingo; if Dingo fails, log and continue (degraded).  
+1. On session open: prefer ResiduumDB stream if session marked migrated; else FS.  
+2. On append: if `dual`, write **FS first** (legacy SoT), then ResiduumDB; if ResiduumDB fails, log and continue (degraded).  
 3. Background backfill worker migrates cold sessions.  
-4. `session_journal_health` includes both FS and Dingo counters during dual.
+4. `session_journal_health` includes both FS and ResiduumDB counters during dual.
 
 **Exit criteria:** 7 days dogfood; no hash mismatch; p99 append latency acceptable.
 
-### Phase 3 — Dingo becomes SoT for Gremlin
+### Phase 3 — ResiduumDB becomes SoT for Gremlin
 
 1. Flip `GREMLIN_STORE=dingo`.  
-2. Append path: Dingo only; optional debug JSONL mirror off by default.  
+2. Append path: ResiduumDB only; optional debug JSONL mirror off by default.  
 3. FS journals frozen; marker file `MIGRATED` in old session dirs.  
 4. Catalog/brains/runtime/arena/usage read-write via collections.  
 5. CONTROL_STATE_MIGRATION: stop creating project-tree journals; owner redirect only if needed for old tools.
 
-**Exit criteria:** restart recovery from Dingo only; FS journals unused for 14 days.
+**Exit criteria:** restart recovery from ResiduumDB only; FS journals unused for 14 days.
 
 ### Phase 4 — Tinker cutover
 
@@ -493,14 +493,14 @@ All UUIDs (**sessionId**, **conversationId**, **projectId**, **package_id**, **t
 4. Stop writing project `.tinker/conversations/index.jsonl` except optional mirror.  
 5. Transcript UI always pages via `session_messages` when `daemonSessionId` set; local transcript stream only for pre-daemon legacy chats.
 
-**Exit criteria:** delete empty project transcript files; Recents works fully from Dingo/daemon.
+**Exit criteria:** delete empty project transcript files; Recents works fully from ResiduumDB/daemon.
 
 ### Phase 5 — Cleanup
 
 1. Tool: `gremlin-migrate gc-fs --older-than 30d` moves FS trees to `~/Library/Archives/gremlin-fs-…` (not delete by default).  
 2. Shrink dual-read codepaths.  
 3. Document operator recovery: `dingo salvage`, export JSONL profile.  
-4. Update PROTOCOL.md durable storage section; mark CONTROL_STATE_MIGRATION complete via Dingo.
+4. Update PROTOCOL.md durable storage section; mark CONTROL_STATE_MIGRATION complete via ResiduumDB.
 
 ---
 
@@ -554,9 +554,9 @@ Merge app + project maps with project full meta winning over redirect.
 | Failure | Response |
 |---------|----------|
 | Hash break mid-file | Import verified prefix; flag session; do not delete FS |
-| Dingo full disk | Abort commit; keep FS SoT |
+| ResiduumDB full disk | Abort commit; keep FS SoT |
 | Concurrent daemon write during import | Require daemon stop **or** flock session dir; online dual-write only after Phase 2 |
-| Partial dual-write (FS ok, Dingo fail) | Session stays FS-canonical; retry backfill |
+| Partial dual-write (FS ok, ResiduumDB fail) | Session stays FS-canonical; retry backfill |
 | User edits FS by hand during dual | Detect mtime/size vs receipt; re-verify |
 
 ---
@@ -607,14 +607,14 @@ Tauri commands stay stable; repository swaps underneath.
 
 Gremlin `docs/CONTROL_STATE_MIGRATION.md` moves journals from `{workspace}/.gremlin` to `~/.gremlin` for sandbox exclusion. **This proposal subsumes that move:**
 
-| CONTROL_STATE step | Dingo migration equivalent |
+| CONTROL_STATE step | ResiduumDB migration equivalent |
 |--------------------|----------------------------|
 | Copy journal to data_dir | Import stream into `gremlin.dingo` under data_dir |
 | Owner pointer in project | Optional `.redirect` marker only |
-| Dual-read FS paths | Dual-read FS vs Dingo |
+| Dual-read FS paths | Dual-read FS vs ResiduumDB |
 | Drop project trusted writes | Never write journals into workspace |
 
-Do **not** do two sequential full migrations (FS→FS home, then FS→Dingo) on dogfood data if avoidable: **import project journals straight into Dingo** while writing control-home markers. One cutover, two wins (containment + store).
+Do **not** do two sequential full migrations (FS→FS home, then FS→ResiduumDB) on dogfood data if avoidable: **import project journals straight into ResiduumDB** while writing control-home markers. One cutover, two wins (containment + store).
 
 ---
 
@@ -630,14 +630,14 @@ Do **not** do two sequential full migrations (FS→FS home, then FS→Dingo) on 
 
 ## 11. Performance notes
 
-| Workload | FS today | Dingo expectation | Mitigation |
+| Workload | FS today | ResiduumDB expectation | Mitigation |
 |----------|----------|-------------------|------------|
 | Mid-turn tool_outcome flood | append + optional fsync | stream append | `terminal_only` grouping; batch append API |
 | Cold hydrate 50 MB journal | linear scan + hash | stream scan + index | keep message offset index in memory; optional snapshot collection |
 | Recents list | fold multi-100-line JSONL | collection scan / index on `updated_at` | secondary index when available |
 | Arena whole-doc rewrite | rewrite JSON file | put with history | cell-per-key if document grows |
 
-Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, dual-write only terminal kinds to Dingo until bulk backfill catches up.
+Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, dual-write only terminal kinds to ResiduumDB until bulk backfill catches up.
 
 ---
 
@@ -645,7 +645,7 @@ Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, du
 
 1. **Unit:** hash chain parity, torn-tail salvage parity, index fold golden files.  
 2. **Import fixtures:** copy anonymized micro journals into `dingo-store` tests.  
-3. **Crash matrix:** kill -9 mid dual-write; ensure FS or Dingo recoverable and no silent fork (receipt decides canonical).  
+3. **Crash matrix:** kill -9 mid dual-write; ensure FS or ResiduumDB recoverable and no silent fork (receipt decides canonical).  
 4. **Dogfood:** migrate gremlin repo sessions (~50 MB) on a branch daemon; run one day of real work.  
 5. **Tinker Recents:** redirect + project meta + archived/deleted flags.  
 6. **Protocol:** existing `persist_restart` tests retargeted at `DingoSessionStore`.
@@ -663,7 +663,7 @@ gremlin migrate verify --session <uuid>
 gremlin migrate set-canonical dingo
 ```
 
-Tinker: Settings → Advanced → “Conversation storage: File / Dingo / Daemon” (default Daemon when daemon ≥ version X).
+Tinker: Settings → Advanced → “Conversation storage: File / ResiduumDB / Daemon” (default Daemon when daemon ≥ version X).
 
 ---
 
@@ -673,7 +673,7 @@ Tinker: Settings → Advanced → “Conversation storage: File / Dingo / Daemon
 |-----------------|---------|----------------|
 | One store vs two | `personal.dingo` vs split tinker/gremlin | Split by process; merge later if needed |
 | Per-session stream vs global | isolation vs simplicity | Per-session stream |
-| Keep app hash chain | yes / rely on Dingo only | **Keep** in v1 |
+| Keep app hash chain | yes / rely on ResiduumDB only | **Keep** in v1 |
 | Transcript duplication | import / ignore / derive | Derive from journal; import legacy only |
 | Online vs offline import | daemon stopped / flock | Offline for Phase 1; dual for Phase 2 |
 | Windows/Linux app data paths | only macOS Application Support observed | Use existing Tinker app-data helper |
@@ -687,7 +687,7 @@ Tinker: Settings → Advanced → “Conversation storage: File / Dingo / Daemon
 2. **Containment:** zero new trusted journal bytes under `{workspace}/.gremlin/sessions/**` after Phase 3.  
 3. **UX:** Tinker Recents + reconnect + stream-join unchanged.  
 4. **Ops:** single-command backup = copy `gremlin.dingo` (+ WAL if any).  
-5. **Dogfood:** ≥1 week of principal labor traffic on Dingo SoT without FS fallback.
+5. **Dogfood:** ≥1 week of principal labor traffic on ResiduumDB SoT without FS fallback.
 
 ---
 
@@ -734,8 +734,8 @@ Migrating only Gremlin leaves Tinker’s last-wins indexes and redirect graph as
 
 ## 19. Conclusion
 
-Tinker and Gremlin already speak Dingo’s language: **append events, project current state, salvage damage, ignore catalogs when needed**. The file trees under `.tinker` and `.gremlin` were the right MVP; they are the wrong long-term primary store for a durability-centric stack that is itself shipping DingoDB.
+Tinker and Gremlin already speak ResiduumDB’s language: **append events, project current state, salvage damage, ignore catalogs when needed**. The file trees under `.tinker` and `.gremlin` were the right MVP; they are the wrong long-term primary store for a durability-centric stack that is itself shipping ResiduumDB.
 
-**Migrate journals and catalogs into Dingo collections/streams under the daemon data dir; keep JSONL as import/export; finish control-state containment in the same stroke; let Tinker become a pure client of session history.**
+**Migrate journals and catalogs into ResiduumDB collections/streams under the daemon data dir; keep JSONL as import/export; finish control-state containment in the same stroke; let Tinker become a pure client of session history.**
 
 That is the smallest migration that pays for itself in dogfood signal, operational simplicity, and architectural honesty.

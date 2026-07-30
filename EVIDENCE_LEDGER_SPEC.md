@@ -1,4 +1,4 @@
-# Dingo Evidence Ledger v1 specification
+# Residuum Evidence Ledger v1 specification
 
 Status: normative design v1.0-draft; implementation not yet qualified
 
@@ -19,19 +19,19 @@ Normative companions:
 
 ## 1. Decision
 
-The **Dingo Evidence Ledger** (DEL) is DingoDB's durable, append-only,
+The **Residuum Evidence Ledger** (DEL) is ResiduumDB's durable, append-only,
 cryptographically verifiable record of security-sensitive and
 administratively significant facts.
 
 The ledger is not a log destination, telemetry transport, application event
 stream, change-data-capture stream, or replacement for document history.
 
-DingoDB has two deliberately separate operational channels:
+ResiduumDB has two deliberately separate operational channels:
 
 | Channel | Contract |
 |---|---|
 | Ratatouille telemetry | bounded, asynchronous, high-volume, best effort, disposable |
-| Dingo Evidence Ledger | selective, durable, integrity-protected, independently examinable |
+| Residuum Evidence Ledger | selective, durable, integrity-protected, independently examinable |
 
 Telemetry failure MUST NOT change a database result. Failure to record evidence
 classified as `required_atomic` MUST prevent the protected operation from
@@ -39,8 +39,8 @@ committing.
 
 The product statement is:
 
-> Ratatouille reports what DingoDB appears to be doing. The Dingo Evidence
-> Ledger proves what DingoDB accepted, rejected, or changed within its declared
+> Ratatouille reports what ResiduumDB appears to be doing. The Residuum Evidence
+> Ledger proves what ResiduumDB accepted, rejected, or changed within its declared
 > evidence coverage.
 
 ## 2. Requirement language
@@ -79,7 +79,7 @@ V1 does not claim that:
   to it; or
 - a retained hash can reconstruct content that retention or damage removed.
 
-The ledger proves that a named DingoDB evidence signer committed a canonical
+The ledger proves that a named ResiduumDB evidence signer committed a canonical
 assertion. The strength of rollback and deletion detection is stated by the
 active anchoring profile.
 
@@ -295,7 +295,7 @@ coverage field is `bounded_aggregate`, not `complete`.
 Ordinary successful reads are not ledgered by default. A Heap MAY enable a
 closed enhanced-audit policy for selected operations or collections.
 
-When policy makes a read `required_before_reply`, DingoDB MUST durably append
+When policy makes a read `required_before_reply`, ResiduumDB MUST durably append
 the evidence before releasing the result. This cost is explicit and MUST NOT
 be enabled through an unbounded request-supplied flag.
 
@@ -939,12 +939,12 @@ V1 defaults to `retain_forever`. A shorter policy requires an explicit
 Evidence policies classify event kinds independently. A policy cannot shorten
 retention below an active legal hold, recovery dependency, signer-certificate
 dependency, unexpired backup contract, or the minimum required by another
-normative Dingo profile.
+normative ResiduumDB profile.
 
 ### 13.2 Retention cut
 
 Physical removal is not an ordinary delete. Before removing an eligible closed
-range, DingoDB commits a kind-5 `ledger_retention_cut` record and a structural
+range, ResiduumDB commits a kind-5 `ledger_retention_cut` record and a structural
 cut frame:
 
 | Key | Field |
@@ -1145,7 +1145,7 @@ The ledger MUST NOT contain by default:
 - raw collection keys;
 - HeapKey certificates or holder public keys;
 - secrets, passwords, tokens, TLS exporters, private keys, or key plaintext;
-- complete DQL/SDA text;
+- complete RQL/SDA text;
 - unrestricted client strings;
 - network addresses without an explicit privacy policy; or
 - telemetry measurements.
@@ -1329,7 +1329,7 @@ A profile cannot claim `dingo-evidence-ledger-v1` until all pass:
 15. evidence-key destruction with ciphertext verification;
 16. backup/restore-to-new-ID and same-ID takeover;
 17. bounded denial flood with honest dropped/aggregate coverage;
-18. offline export verification with no running DingoDB;
+18. offline export verification with no running ResiduumDB;
 19. concurrency/sequence linearizability;
 20. cluster leader change and stale-leader rejection for any cluster claim;
 21. fuzzing of record, checkpoint, cut, certificate, cursor, and manifest
@@ -1385,7 +1385,7 @@ evidence_profile = none
 ```
 
 It MUST NOT describe in-memory diagnostics, structured logs, Ratatouille
-events, history frames, or Atomic evidence as the Dingo Evidence Ledger.
+events, history frames, or Atomic evidence as the Residuum Evidence Ledger.
 
 ## 24. Completion definition
 

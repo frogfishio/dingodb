@@ -1,4 +1,4 @@
-# DingoDB architecture map
+# ResiduumDB architecture map
 
 This file points implementers at the **normative specs** and the **crate layout**.
 It is not a second architecture document.
@@ -19,25 +19,25 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](FORMAT_SPEC.md) |
 | Core storage invariants, failure model, and qualification suite | [CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md), [implementation plan](doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
-| First Heap-bound Rust application API and DQL delivery package | [doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) |
+| First Heap-bound Rust application API and RQL delivery package | [doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) |
 | Missing application APIs and product-capability closure | [PRODUCT_DEFICIENCIES.md](PRODUCT_DEFICIENCIES.md) |
 | Immediate post-qualification application baseline packages | [MUST_ADD.md](MUST_ADD.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
-| Dingo Query Language (v1 design; shipped parser is v0.1 subset) | [DQL_SPEC.md](DQL_SPEC.md), current-subset guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
+| Residuum Query Language (v1 design; shipped parser is v0.1 subset) | [RQL_SPEC.md](RQL_SPEC.md), current-subset guide [doc/RQL/USER_GUIDE.md](doc/RQL/USER_GUIDE.md) |
 | Exact ranked query access and rank/select substrate | [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md) |
 | Filter-conditioned sorting without prefix enumeration | [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md) |
-| Shared total predicate semantics for DQL and DRE | [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md) |
-| Dingo Rule Expression (DRE) constraint language and Invariant Core | [DRE_SPEC.md](DRE_SPEC.md) |
+| Shared total predicate semantics for RQL and RRE | [RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md) |
+| Residuum Rule Expression (RRE) constraint language and Invariant Core | [RRE_SPEC.md](RRE_SPEC.md) |
 | Collection-owned behaviour and default scope confinement | [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md) |
 | Bounded serializable state transitions and relationship integrity | [ATOMICS_SPEC.md](ATOMICS_SPEC.md) |
 | Durable security and administrative evidence | [EVIDENCE_LEDGER_SPEC.md](EVIDENCE_LEDGER_SPEC.md) |
 | Operational telemetry collection and Ratatouille export | [TELEMETRY_SPEC.md](TELEMETRY_SPEC.md) |
 | First-party desktop database IDE | [STUDIO_SPEC.md](STUDIO_SPEC.md), [implementation plan](doc/STUDIO_IMPLEMENTATION_PLAN.md) |
 | Testing, assurance levels, claim evidence, and release verification | [TESTING_STRATEGY.md](TESTING_STRATEGY.md), [implementation plan](doc/VERIFICATION_IMPLEMENTATION_PLAN.md), [status](doc/VERIFICATION_STATUS.md) |
-| SQL-ish+ executable surface and SQL→DQL compiler | [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md) |
-| JSON Schema Draft 2020-12 import into DRE | [JSON_SCHEMA_TO_DRE_SPEC.md](JSON_SCHEMA_TO_DRE_SPEC.md) |
+| SQL-ish+ executable surface and SQL→RQL compiler | [SQL_TO_RQL_SPEC.md](SQL_TO_RQL_SPEC.md) |
+| JSON Schema Draft 2020-12 import into RRE | [JSON_SCHEMA_TO_RRE_SPEC.md](JSON_SCHEMA_TO_RRE_SPEC.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
-| SDA examination of recovered DingoDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
+| SDA examination of recovered ResiduumDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
 | Enrichment algebra (ENR1 kernel in `dingo-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](CLUSTER_SPEC.md) |
 | Product framing | [USP.md](USP.md) |
@@ -112,7 +112,7 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 | Wire format versioning | Draft `1.0-draft`; reader/writer matrix + migrate phases (DEF-052); freeze is DEF-053 |
 | Process configuration | Versioned `dingo-config-v1` validate-before-serve (DEF-054); live reload follow-on |
 | Operational telemetry | [Ratatouille-only bounded firehose](TELEMETRY_SPEC.md); no request-path file/stdout logging |
-| Formal audit | Dingo Evidence Ledger; durable, Heap-confined, independently verifiable |
+| Formal audit | Residuum Evidence Ledger; durable, Heap-confined, independently verifiable |
 | Metrics / health | Versioned `dingo-metrics-v1` scrape + `dingo-health-v1` live/ready/detail RPCs (DEF-061); store/cluster gauges follow-on |
 | License | Multi-tier: MIT / MPL-2.0 / AGPL-3.0-or-later (see `doc/LICENSING.md`) |
 
@@ -122,7 +122,7 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 - CLI package: **`dingo-sda-cli`**, binary **`dingo-sda`**
 - Workspace dependency key: `sda-core` → Rust path `sda_core::…` (dependents)
 - Inside the library package / its integration tests: `dingo_sda::…`
-- Product shape: SDA + additive ENR1 hybrid for DingoDB, not a generic pure-SDA claim
+- Product shape: SDA + additive ENR1 hybrid for ResiduumDB, not a generic pure-SDA claim
 
 ## Product follow-ons (in-tree v0.23 — not production)
 

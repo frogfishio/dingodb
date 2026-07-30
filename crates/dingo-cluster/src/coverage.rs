@@ -1,6 +1,8 @@
 //! Coverage records for distributed results (CLUSTER_SPEC §6.7, §17).
 //!
-//! DEF-040 extends Stage 8e with authenticated multi-page continuation,
+//! DEF-040 extends Stage 8e with multi-page continuation; DEF-097 binds the
+//! integrity tag to **cluster-local secret key material** (not the public
+//! cluster id alone).
 //! deterministic merge independent of worker visit order, and end-to-end
 //! index/tier/resource limitation fields on every page.
 
@@ -11,10 +13,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-/// Profile tag for distributed query continuation tokens (DEF-040).
-pub const QUERY_CONTINUATION_PROFILE: &str = "dingo-query-continuation-v1";
+/// Profile tag for distributed query continuation tokens (DEF-040 + DEF-097).
+pub const QUERY_CONTINUATION_PROFILE: &str = "dingo-query-continuation-v2";
 
-const TOKEN_MAGIC: &[u8; 8] = b"DQRY0001";
+/// Domain separation for cluster continuation MAC keys (DEF-097).
+const MAC_DOMAIN: &[u8] = b"dingo-query-continuation-v2-mac\0";
+
+const TOKEN_MAGIC: &[u8; 8] = b"DQRY0002";
 const MAC_LEN: usize = 16;
 const MAX_TOKEN_BYTES: usize = 16_384;
 const MAX_SUBJECT_IN_TOKEN: usize = 4096;
@@ -276,8 +281,12 @@ pub struct QueryContinuation {
 }
 
 impl QueryContinuation {
-    /// Encode and MAC a continuation for `cluster_id`.
-    pub fn encode(&self, cluster_id: ClusterId) -> Result<Vec<u8>, ClusterError> {
+    /// Encode and MAC a continuation for `cluster_id` using the secret keyring.
+    pub fn encode(
+        &self,
+        cluster_id: ClusterId,
+        keyring: &dingo_store::ContinuationKeyring,
+    ) -> Result<Vec<u8>, ClusterError> {
         if self.after_subject.len() > MAX_SUBJECT_IN_TOKEN {
             return Err(ClusterError::ContinuationInvalid(
                 "after_subject exceeds token budget".into(),
@@ -297,9 +306,11 @@ impl QueryContinuation {
         let qid = self.query_id.as_bytes();
         let after = self.after_subject.as_bytes();
         let pfx = prefix.as_bytes();
+        let key_gen = keyring.active_generation_id();
 
         let mut body = Vec::with_capacity(
             8 + 16
+                + 4
                 + 4
                 + qid.len()
                 + 4
@@ -315,6 +326,7 @@ impl QueryContinuation {
         );
         body.extend_from_slice(TOKEN_MAGIC);
         body.extend_from_slice(&cluster_id.0);
+        body.extend_from_slice(&key_gen.to_le_bytes());
         body.extend_from_slice(&(qid.len() as u32).to_le_bytes());
         body.extend_from_slice(qid);
         body.extend_from_slice(&(after.len() as u32).to_le_bytes());
@@ -335,15 +347,19 @@ impl QueryContinuation {
                 "continuation token would exceed size budget".into(),
             ));
         }
-        let key = mac_key(&cluster_id.0);
+        let key = keyring.active_mac_key(MAC_DOMAIN, &cluster_id.0);
         let tag = blake3::keyed_hash(&key, &body);
         body.extend_from_slice(&tag.as_bytes()[..MAC_LEN]);
         Ok(body)
     }
 
-    /// Decode and authenticate a continuation token for `cluster_id`.
-    pub fn decode(cluster_id: ClusterId, token: &[u8]) -> Result<Self, ClusterError> {
-        if token.len() < 8 + 16 + 4 + 4 + 4 + 4 + 1 + 8 + 8 + MAC_LEN
+    /// Decode and authenticate a continuation token for `cluster_id` + keyring.
+    pub fn decode(
+        cluster_id: ClusterId,
+        keyring: &dingo_store::ContinuationKeyring,
+        token: &[u8],
+    ) -> Result<Self, ClusterError> {
+        if token.len() < 8 + 16 + 4 + 4 + 4 + 4 + 4 + 1 + 8 + 8 + MAC_LEN
             || token.len() > MAX_TOKEN_BYTES
         {
             return Err(ClusterError::ContinuationInvalid(
@@ -353,14 +369,8 @@ impl QueryContinuation {
         let (payload, mac) = token.split_at(token.len() - MAC_LEN);
         if &payload[..8] != TOKEN_MAGIC.as_slice() {
             return Err(ClusterError::ContinuationInvalid(
-                "continuation token magic/version mismatch".into(),
-            ));
-        }
-        let key = mac_key(&cluster_id.0);
-        let expected = blake3::keyed_hash(&key, payload);
-        if !constant_time_eq(mac, &expected.as_bytes()[..MAC_LEN]) {
-            return Err(ClusterError::ContinuationInvalid(
-                "continuation token MAC mismatch (tampered or wrong cluster)".into(),
+                "continuation token magic/version mismatch (need dingo-query-continuation-v2)"
+                    .into(),
             ));
         }
         if &payload[8..24] != cluster_id.0.as_slice() {
@@ -368,7 +378,19 @@ impl QueryContinuation {
                 "continuation token cluster_id mismatch".into(),
             ));
         }
-        let mut o = 24usize;
+        let key_gen = u32::from_le_bytes(payload[24..28].try_into().unwrap());
+        let Some(key) = keyring.mac_key_for(key_gen, MAC_DOMAIN, &cluster_id.0) else {
+            return Err(ClusterError::ContinuationInvalid(
+                "continuation token key generation retired or unknown".into(),
+            ));
+        };
+        let expected = blake3::keyed_hash(&key, payload);
+        if !constant_time_eq(mac, &expected.as_bytes()[..MAC_LEN]) {
+            return Err(ClusterError::ContinuationInvalid(
+                "continuation token MAC mismatch (tampered, forged, or wrong cluster)".into(),
+            ));
+        }
+        let mut o = 28usize;
         let qlen = read_u32(payload, &mut o)? as usize;
         if o + qlen > payload.len() {
             return Err(ClusterError::ContinuationInvalid(
@@ -453,13 +475,6 @@ impl QueryContinuation {
             remaining_max_docs,
         })
     }
-}
-
-fn mac_key(cluster_id: &[u8; 16]) -> [u8; 32] {
-    let mut h = blake3::Hasher::new();
-    h.update(b"dingo-query-continuation-v1-mac\0");
-    h.update(cluster_id);
-    *h.finalize().as_bytes()
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
@@ -670,6 +685,7 @@ mod tests {
     #[test]
     fn continuation_roundtrip() {
         let cid = ClusterId::from_seed(b"test-cluster");
+        let ring = dingo_store::ContinuationKeyring::mint_new().unwrap();
         let cont = QueryContinuation {
             query_id: "q-abc".into(),
             after_subject: "users/alice".into(),
@@ -680,8 +696,8 @@ mod tests {
             remaining_limit: Some(100),
             remaining_max_docs: None,
         };
-        let tok = cont.encode(cid).unwrap();
-        let back = QueryContinuation::decode(cid, &tok).unwrap();
+        let tok = cont.encode(cid, &ring).unwrap();
+        let back = QueryContinuation::decode(cid, &ring, &tok).unwrap();
         assert_eq!(back, cont);
     }
 
@@ -689,6 +705,7 @@ mod tests {
     fn continuation_rejects_wrong_cluster() {
         let a = ClusterId::from_seed(b"cluster-a");
         let b = ClusterId::from_seed(b"cluster-b");
+        let ring = dingo_store::ContinuationKeyring::mint_new().unwrap();
         let cont = QueryContinuation {
             query_id: "q-1".into(),
             after_subject: "k".into(),
@@ -699,13 +716,14 @@ mod tests {
             remaining_limit: None,
             remaining_max_docs: None,
         };
-        let tok = cont.encode(a).unwrap();
-        assert!(QueryContinuation::decode(b, &tok).is_err());
+        let tok = cont.encode(a, &ring).unwrap();
+        assert!(QueryContinuation::decode(b, &ring, &tok).is_err());
     }
 
     #[test]
     fn continuation_rejects_tamper() {
         let cid = ClusterId::from_seed(b"t");
+        let ring = dingo_store::ContinuationKeyring::mint_new().unwrap();
         let cont = QueryContinuation {
             query_id: "q-1".into(),
             after_subject: "k".into(),
@@ -716,9 +734,28 @@ mod tests {
             remaining_limit: None,
             remaining_max_docs: None,
         };
-        let mut tok = cont.encode(cid).unwrap();
+        let mut tok = cont.encode(cid, &ring).unwrap();
         let mid = tok.len() / 2;
         tok[mid] ^= 0xff;
-        assert!(QueryContinuation::decode(cid, &tok).is_err());
+        assert!(QueryContinuation::decode(cid, &ring, &tok).is_err());
+    }
+
+    #[test]
+    fn continuation_rejects_foreign_keyring() {
+        let cid = ClusterId::from_seed(b"c");
+        let ring = dingo_store::ContinuationKeyring::mint_new().unwrap();
+        let cont = QueryContinuation {
+            query_id: "q-1".into(),
+            after_subject: "k".into(),
+            page_size: 8,
+            prefix: None,
+            partitions: vec![PartitionId::new(0)],
+            read_mode: ReadMode::Available,
+            remaining_limit: None,
+            remaining_max_docs: None,
+        };
+        let tok = cont.encode(cid, &ring).unwrap();
+        let attacker = dingo_store::ContinuationKeyring::mint_new().unwrap();
+        assert!(QueryContinuation::decode(cid, &attacker, &tok).is_err());
     }
 }

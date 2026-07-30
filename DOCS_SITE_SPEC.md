@@ -1,14 +1,14 @@
-# DingoDB documentation website specification
+# ResiduumDB documentation website specification
 
 Status: developer-ready product specification v1.0  
-Target: `https://docs.dingodb.org`  
+Target: `https://docs.residuumdb.org`
 Companion and shared contract: [WEBSITE_SPEC.md](WEBSITE_SPEC.md)  
 Source repository: `https://github.com/frogfishio/dingodb`
 
 ## 1. Decision
 
-`docs.dingodb.org` is the canonical user, operator, reference, and
-specification website for DingoDB.
+`docs.residuumdb.org` is the canonical user, operator, reference, and
+specification website for ResiduumDB.
 
 Its primary job is successful task completion. Its secondary job is to make
 the project’s unusual guarantees and maturity independently inspectable.
@@ -16,9 +16,9 @@ the project’s unusual guarantees and maturity independently inspectable.
 The documentation MUST provide two clearly separated experiences:
 
 1. **Learn and operate** — concise, task-oriented documentation for people
-   using DingoDB;
+   using ResiduumDB;
 2. **Specifications** — normative and exploratory source documents for people
-   implementing, reviewing, or researching DingoDB.
+   implementing, reviewing, or researching ResiduumDB.
 
 A new user MUST NOT need to learn frames, segments, Raft, or SDA internals to
 store and query a local document. A reviewer MUST still be able to reach the
@@ -48,7 +48,7 @@ specification wins.
 
 Must be able to:
 
-1. determine whether DingoDB is appropriate;
+1. determine whether ResiduumDB is appropriate;
 2. install the released Rust SDK;
 3. open a local store;
 4. create a collection;
@@ -115,12 +115,12 @@ Must be able to:
 Top navigation:
 
 ```text
-DingoDB Docs | Learn | Guides | Operations | Reference | Specifications |
+ResiduumDB Docs | Learn | Guides | Operations | Reference | Specifications |
 Status | [Version] | Search | GitHub
 ```
 
-`DingoDB Docs` returns to the docs home. A separate wordmark link or footer
-link returns to `dingodb.org`.
+`ResiduumDB Docs` returns to the docs home. A separate wordmark link or footer
+link returns to `residuumdb.org`.
 
 ### 5.2 Canonical route tree
 
@@ -240,7 +240,7 @@ Every indexed page MUST validate this schema:
 
 ```yaml
 title: Open a local store
-description: Create and reopen an embedded DingoDB store from Rust.
+description: Create and reopen an embedded ResiduumDB store from Rust.
 class: tutorial
 status: experimental
 applies_to:
@@ -349,13 +349,13 @@ code, not prompts or diff markers.
 The site MUST distinguish:
 
 - Rust `Filter` and query builder;
-- DQL human query language;
+- RQL human query language;
 - SQL/Mongo/JSON dialect input where supported;
 - raw SDA examination;
 - multi-collection enrichment/join surfaces;
 - design-only DDA and Order Wavelet behavior.
 
-Documentation MUST NOT imply that the DQL v1 design is fully implemented when
+Documentation MUST NOT imply that the RQL v1 design is fully implemented when
 the current user guide describes a smaller surface.
 
 Pagination and ordering documentation MUST explain:
@@ -417,7 +417,7 @@ Reference pages SHOULD be generated where possible:
 - configuration keys from the configuration schema;
 - stable error codes from source definitions;
 - profile/version constants from code;
-- DQL/SDA grammar from their authoritative grammar or conformance source.
+- RQL/SDA grammar from their authoritative grammar or conformance source.
 
 Hand-written explanation MAY surround generated reference but MUST NOT silently
 duplicate generated tables.
@@ -492,7 +492,7 @@ The build MUST support:
 
 - server-rendered KaTeX (preferred) for mathematical notation;
 - fenced Mermaid or repository diagram sources rendered to safe static SVG;
-- syntax highlighting for DQL, DRE, SDA, Rust, JSON, TOML, and shell;
+- syntax highlighting for RQL, RRE, SDA, Rust, JSON, TOML, and shell;
 - accessible text descriptions for diagrams;
 - horizontal overflow for large formulas and tables without page overflow.
 
@@ -507,8 +507,8 @@ The launch migration MUST use a reviewed manifest. Initial mapping:
 | `README.md` | Docs home summary and getting-started entry points |
 | `crates/dingo-sdk/README.md` | Rust SDK quickstart/reference source |
 | `DX_SPEC.md` | Concepts plus specification |
-| `doc/DQL/USER_GUIDE.md` | `/guides/dql/` |
-| DQL/SDA grammar and manuals | `/reference/dql/`, `/reference/sda/`, related guides |
+| `doc/RQL/USER_GUIDE.md` | `/guides/dql/` |
+| RQL/SDA grammar and manuals | `/reference/dql/`, `/reference/sda/`, related guides |
 | `doc/CAPABILITY_MATRIX.md` | `/status/capabilities/` |
 | `doc/BENCHMARK_DISCLOSURE.md` | `/status/benchmark-disclosure/` |
 | backup/scrub/migration/runbook documents | `/operations/` |
@@ -538,7 +538,7 @@ status:
 
 ### 11.1 URL policy
 
-`https://docs.dingodb.org/` serves documentation for the latest published
+`https://docs.residuumdb.org/` serves documentation for the latest published
 release line.
 
 - `/next/` serves documentation built from the main development branch.
@@ -594,7 +594,7 @@ Zero-result pages MUST offer terminology, status, and GitHub issue links.
 
 ## 13. Design and components
 
-The docs site MUST use the shared DingoDB colors, typography, status vocabulary,
+The docs site MUST use the shared ResiduumDB colors, typography, status vocabulary,
 header primitives, footer, and code style from `WEBSITE_SPEC.md`.
 
 Documentation-specific components:
@@ -707,7 +707,7 @@ CI MUST fail when:
 - a destructive operation lacks risk and target safeguards;
 - a current-release page references an unreleased API without a badge;
 - a code block marked `tested` is not registered in the test harness;
-- an unknown status, surface, version, DQL/DRE/SDA language tag, or claim ID is
+- an unknown status, surface, version, RQL/RRE/SDA language tag, or claim ID is
   used;
 - “transaction” is used for Atomics without explaining the semantic boundary;
 - “database” is used for Heap where the product terminology requires Heap;
@@ -720,7 +720,7 @@ rather than a named individual.
 
 Release process:
 
-1. freeze the DingoDB source revision;
+1. freeze the ResiduumDB source revision;
 2. generate release/API/capability data;
 3. run snippets against release artifacts;
 4. resolve stale critical pages;
@@ -749,7 +749,7 @@ Required:
 - core data guides for JSON, bytes, filters, indexes, pagination, and history;
 - durability, backup/restore, scrub, and salvage operations;
 - deployment-profile, capability, compatibility, and limitations pages;
-- Rust SDK, CLI, configuration, errors, DQL, and SDA reference entry points;
+- Rust SDK, CLI, configuration, errors, RQL, and SDA reference entry points;
 - rendered specification index and stable source-backed spec pages;
 - version selector with current and Next;
 - local search;
@@ -780,7 +780,7 @@ The documentation site is ready when:
    instructions;
 4. a user evaluating a network cluster sees “not production” before deployment
    steps;
-5. a user can distinguish DQL, raw SDA, DRE, and Atomics and see what is
+5. a user can distinguish RQL, raw SDA, RRE, and Atomics and see what is
    implemented;
 6. a user can complete backup, restore, scrub, and safe salvage journeys with
    pre-flight and verification steps;
@@ -813,4 +813,3 @@ The docs site MUST NOT:
 - present formal designs as “mathematically proven software” without proof
   artifacts and implementation conformance evidence;
 - use a conversational assistant as the only way to find documentation.
-

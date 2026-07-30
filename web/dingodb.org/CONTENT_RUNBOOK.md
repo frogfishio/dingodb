@@ -1,4 +1,4 @@
-# Content runbook (dingodb.org)
+# Content runbook (residuumdb.org)
 
 For release owners updating version and maturity without editing the same fact in multiple pages.
 
@@ -19,7 +19,7 @@ Canonical product maturity evidence remains `doc/CAPABILITY_MATRIX.md` in the mo
 ## Release bump procedure
 
 1. Confirm `VERSION` and capability matrix in the monorepo.
-2. From `web/dingodb.org`:
+2. From `web/residuumdb.org`:
    ```sh
    npm run sync-release
    ```

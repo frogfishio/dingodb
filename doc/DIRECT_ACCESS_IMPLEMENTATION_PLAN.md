@@ -102,7 +102,7 @@ let page = heap
     .await?;
 ```
 
-Equivalent DQL:
+Equivalent RQL:
 
 ```text
 from products
@@ -200,7 +200,7 @@ security precedents and MUST NOT be reused for this profile.
 
 Entry:
 
-- DRE predicate semantics are frozen for the supported subset;
+- RRE predicate semantics are frozen for the supported subset;
 - HeapId and immutable read-view identities exist.
 
 Deliver:
@@ -290,7 +290,7 @@ Tests:
 
 - three-valued missing/null/type fixtures;
 - Boolean algebra properties where their preconditions hold;
-- differential comparison to DQL evaluation;
+- differential comparison to RQL evaluation;
 - mixed Heap/view/ruleset/coverage bitmap rejection;
 - damaged member index cannot yield `complete`.
 
@@ -332,7 +332,7 @@ Deliver:
 
 - bounded exact selection-artifact build and lease;
 - authenticated/encrypted cursor issuance and verification;
-- SDK, DQL, CLI, and protocol surfaces;
+- SDK, RQL, CLI, and protocol surfaces;
 - explain output with access class, proof obligations, effective budgets,
   coverage, examined work, and refusal reason;
 - expiry, key rotation, authority-generation invalidation, and artifact

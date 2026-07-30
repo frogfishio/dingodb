@@ -1,4 +1,4 @@
-# DingoDB prime-time plan
+# ResiduumDB prime-time plan
 
 Status: living strategy snapshot (captured 2026-07-28)  
 Audience: product + engineering program operators (humans + agents)  
@@ -11,7 +11,7 @@ Companions: [DEFECTS.md](../DEFECTS.md) (execution defects + §16 gates),
 Current integrated delivery order:
 [MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md). This document
 continues to govern maturity claims and prime-time gates; the integrated
-roadmap governs how those gates interleave with Heap, DRE, Atomics, Evidence,
+roadmap governs how those gates interleave with Heap, RRE, Atomics, Evidence,
 Telemetry, and Studio delivery.
 
 ## 1. Purpose
@@ -49,7 +49,7 @@ can put under a real business without reading DEFECTS.
    close to the everyday promise.
 4. **Ops foundation for a server** — config profile, NDJSON logs, health/metrics,
    backup/scrub/migrate as real profiles, not vapor.
-5. **SDA / DQL / ENR** — a serious examination story, not a bolted-on query toy.
+5. **SDA / RQL / ENR** — a serious examination story, not a bolted-on query toy.
 6. **Engineering discipline** — crash matrix, testrig, fuzz hooks, release
    packaging discipline. Rare at this age.
 
@@ -150,7 +150,7 @@ These are not always P0 in DEFECTS, but they decide adoption:
 3. **Unique constraints / multi-doc transactions** — TRANSACTIONS.md is proposal;
    either ship a **scoped** transaction MVP or keep marketing strictly
    single-key/receipt-level.
-4. **Query ergonomics** — DQL/SDA are powerful; everyday `Filter` must stay the
+4. **Query ergonomics** — RQL/SDA are powerful; everyday `Filter` must stay the
    default path so SDA stays progressive disclosure, not homework.
 5. **Hydra/Chimera as product, not research** — impressive engineering; hot path
    still PrimaryIndex. Don’t market adaptive indexes until they own `get` with

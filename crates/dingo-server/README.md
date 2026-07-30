@@ -1,10 +1,10 @@
 # dingo-server
 
-**AGPL-3.0-or-later** networked serve path for DingoDB: bounded accept loop,
+**AGPL-3.0-or-later** networked serve path for ResiduumDB: bounded accept loop,
 authorization, protocol admission, TLS bind policy, and network Raft control /
 data-plane glue.
 
-Use this crate when you embed a DingoDB TCP server in a Rust binary (the
+Use this crate when you embed a ResiduumDB TCP server in a Rust binary (the
 `dingo` CLI does exactly that). Application collection APIs and remote clients
 live in [`dingo-sdk`](https://crates.io/crates/dingo-sdk). Wire framing is MIT
 [`dingo-client`](https://crates.io/crates/dingo-client).
@@ -189,5 +189,5 @@ rebalance, repair, and Jepsen gates remain open (DEF-038+).
 
 AGPL-3.0-or-later.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
 [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).

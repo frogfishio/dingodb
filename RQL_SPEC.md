@@ -1,11 +1,11 @@
-# Dingo Query Language (DQL)
+# Residuum Query Language (RQL)
 
 Status: **Normative design v1.0-draft; shipped implementation is v0.1 subset**
 
 Dialect identifier: `dql`
 
 Audience: language, SDK, planner, server, and conformance implementers
-Normative companions: [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
+Normative companions: [RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
 [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [crates/enr-core/ENR1.md](crates/enr-core/ENR1.md), and
@@ -16,14 +16,14 @@ Ranked query access: [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md)
 Indexed filtered ordering:
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md)
 
-Compatibility importer: [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md)
+Compatibility importer: [SQL_TO_RQL_SPEC.md](SQL_TO_RQL_SPEC.md)
 
 That companion also defines SQL-ish+ (`sql+` / `sql-plus`) as an optional
-directly executable frontend. DQL remains the compiled semantic authority.
+directly executable frontend. RQL remains the compiled semantic authority.
 
 ## 1. Decision
 
-DQL is DingoDB's official human query language.
+RQL is ResiduumDB's official human query language.
 
 It is:
 
@@ -36,15 +36,15 @@ It is:
 - compiled into a serializable query plan whose value operations lower to
   ENR and SDA.
 
-DQL is not SQL, a write language, a constraint language, or a second
+RQL is not SQL, a write language, a constraint language, or a second
 mathematical kernel.
 
-DRE is the separate language for stored invariants. DQL and DRE share
+RRE is the separate language for stored invariants. RQL and RRE share
 `dingo-predicate-v1`, but they have different authority:
 
 ```text
-DQL          asks what data to read and how to shape it
-DRE          decides whether a proposed committed state is legal
+RQL          asks what data to read and how to shape it
+RRE          decides whether a proposed committed state is legal
 ```
 
 A query cannot create, activate, weaken, or bypass a rule.
@@ -52,10 +52,10 @@ A query cannot create, activate, weaken, or bypass a rule.
 ## 2. Language stack
 
 ```text
-DQL source
+RQL source
     |
     v
-canonical DqlPlanV1
+canonical RqlPlanV1
     |
     +-- acquisition / indexes / frontiers / pages ---> query host
     |
@@ -79,13 +79,13 @@ Comfort never redefines truth:
 |---|---|
 | SDA | value, absence, carrier, and reduction semantics |
 | ENR | match bags, cardinality, attach, and nested expansion |
-| Dingo Predicate Profile | shared total predicate surface |
-| DQL | official query surface and serializable host plan |
+| Residuum Predicate Profile | shared total predicate surface |
+| RQL | official query surface and serializable host plan |
 | foreign dialects | partial migration surfaces with declared holes |
 
 ## 3. V1 scope
 
-DQL v1 supports:
+RQL v1 supports:
 
 - one root collection;
 - zero or more root filters;
@@ -100,7 +100,7 @@ DQL v1 supports:
 - explicit scan/materialization budgets;
 - explain.
 
-DQL v1 deliberately excludes:
+RQL v1 deliberately excludes:
 
 - writes and DDL;
 - rule declarations;
@@ -140,8 +140,8 @@ Its grammar is the v1 grammar with `enrich`, `within`, `at rank`, `access`, and
 constructs fail with `QueryInvalid` and diagnostic code
 `dql_feature_unavailable`; they are never ignored or weakened.
 
-Both DQL source and the Rust query builder compile to the same canonical
-`DqlPlanV1`. The source conformance identifier and logical-plan identifier are
+Both RQL source and the Rust query builder compile to the same canonical
+`RqlPlanV1`. The source conformance identifier and logical-plan identifier are
 reported separately:
 
 ```text
@@ -190,7 +190,7 @@ collection names, or output names.
 ## 5. Grammar
 
 The following EBNF is normative. `predicate`, `path`, and `literal` are imported
-from `dingo-predicate-v1`. Within DQL predicates, `operand` is extended with
+from `dingo-predicate-v1`. Within RQL predicates, `operand` is extended with
 the parameter production below.
 
 ```ebnf
@@ -270,11 +270,11 @@ legal and have their literal meanings.
 
 ### 6.1 Heap
 
-A DQL query executes under exactly one authenticated `HeapId`. Every
+A RQL query executes under exactly one authenticated `HeapId`. Every
 collection binding resolves inside that Heap. Quoted source references permit
 any valid collection name, for example `from "2026/imports" as imports`.
 
-DQL has no syntax for another Heap. A host that attempts to bind a source from
+RQL has no syntax for another Heap. A host that attempts to bind a source from
 another Heap must fail before execution with `dql_heap_mismatch`.
 
 ### 6.2 Root scope
@@ -351,7 +351,7 @@ Nested depth is bounded by the host and recorded in the plan profile.
 
 ### 6.5 Parameters
 
-DQL permits a parameter wherever the shared predicate grammar permits an
+RQL permits a parameter wherever the shared predicate grammar permits an
 operand:
 
 ```text
@@ -439,10 +439,10 @@ root row. The error identifies the enrichment path and root key but excludes
 document bodies by default.
 
 An `optional` attachment logically stores an SDA optional carrier. A lossless
-Dingo result preserves `None` versus `Some(Null)`. A JSON compatibility bridge
+ResiduumDB result preserves `None` versus `Some(Null)`. A JSON compatibility bridge
 omits a field for `None` and emits JSON null for `Some(Null)`.
 
-For paths that traverse a DQL-created optional attachment, DQL uses lifted
+For paths that traverse a RQL-created optional attachment, RQL uses lifted
 resolution:
 
 ```text
@@ -450,7 +450,7 @@ resolve(Some(v), remaining_path) = resolve(v, remaining_path)
 resolve(None, remaining_path)    = Absent
 ```
 
-This lifting applies only to optional carriers introduced by the typed DQL
+This lifting applies only to optional carriers introduced by the typed RQL
 plan; it does not reinterpret stored document values. It makes predicates and
 projection such as `customer.name` meaningful after `expect optional` while
 preserving `None` versus `Some(Null)` in the logical result.
@@ -509,7 +509,7 @@ Every explicit ordering appends immutable document key ascending as an
 unwritten final tie-breaker. A query therefore has a strict deterministic
 order suitable for continuation.
 
-An implementation MAY realize an indexed scalar order through a Dingo Order
+An implementation MAY realize an indexed scalar order through a Residuum Order
 Wavelet. That structure compiles sorting into stable rank/select branch
 decisions over the exact filter bitmap; it does not alter the logical ordering
 defined here.
@@ -571,17 +571,17 @@ page size 100
 This query can return at most ten pages of 100 rows. `limit` is not re-applied
 from zero on every continuation.
 
-DQL uses authenticated continuation:
+RQL uses authenticated continuation:
 
 ```text
 after "<opaque authenticated token>"
 ```
 
-SQL-style offset execution is not part of DQL v1: DingoDB does not interpret a
+SQL-style offset execution is not part of RQL v1: ResiduumDB does not interpret a
 numeric position as permission to enumerate and discard every preceding
 answer.
 
-DQL instead supports exact ranked access:
+RQL instead supports exact ranked access:
 
 ```text
 at rank 100001
@@ -593,7 +593,7 @@ admissibility proof, access classes, damage behavior, and complexity contract
 are defined by [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md).
 
 For a query containing `at rank`, omitted `access` defaults to `direct`.
-Therefore DingoDB either reaches the requested rank through exact counting and
+Therefore ResiduumDB either reaches the requested rank through exact counting and
 selection structures or refuses. It never silently performs work proportional
 to the requested rank.
 
@@ -626,7 +626,7 @@ next  = query.page_size(100).after(first.next_cursor).run()
 ```
 
 Textual `after $cursor` is equivalent. `$cursor` must be a bound string or
-bytes parameter containing an opaque token previously issued by DingoDB.
+bytes parameter containing an opaque token previously issued by ResiduumDB.
 
 The first request supplies no cursor. Every non-final page returns:
 
@@ -775,10 +775,10 @@ Human explain is a presentation of the same structured artifact.
 
 ## 15. Canonical plan
 
-Compilation produces `DqlPlanV1`:
+Compilation produces `RqlPlanV1`:
 
 ```text
-DqlPlanV1 {
+RqlPlanV1 {
   profile: "dql-plan-v1"
   heap_binding
   root: Source
@@ -833,7 +833,7 @@ exchange, or authenticate a purported `dql-plan-v1` until a companion plan
 encoding profile fixes its canonical bytes. Compiler and executor development
 may use an ephemeral in-process representation in the meantime.
 
-Two sources with the same canonical plan have the same DQL semantics under the
+Two sources with the same canonical plan have the same RQL semantics under the
 same bindings, parameters, profile versions, and input state.
 
 ## 16. Compilation
@@ -850,7 +850,7 @@ A conforming compiler:
 8. inserts defaults and the key-order tie-break;
 9. lowers filters/projection to SDA forms;
 10. lowers match/cardinality/attach/within to ENR forms;
-11. emits and validates canonical `DqlPlanV1`;
+11. emits and validates canonical `RqlPlanV1`;
 12. plans physical execution without changing logical meaning.
 
 Compilation is total:
@@ -867,7 +867,7 @@ consistency requirement is weakened.
 ## 17. Optimizer laws
 
 Physical plans may use scans, Hydra indexes, hash probes, batch probes, remote
-partition requests, caches, rank/select maps, Dingo Order Wavelets, selection
+partition requests, caches, rank/select maps, Residuum Order Wavelets, selection
 artifacts, or future specialized indexes.
 
 An optimization is legal only if it preserves:
@@ -1027,7 +1027,7 @@ Therefore:
 - current binaries identify their accepted surface as `dql-source-v0.1`;
 - the future complete plan identifies itself as `dql-plan-v1`;
 - accepting a v1-only construct on a v0.1 runtime fails closed;
-- the v0.1 parser must not be described as complete DQL;
+- the v0.1 parser must not be described as complete RQL;
 - existing v0.1 programs are intended to remain valid v1 programs, except that
   ambiguous alias behavior must be rejected rather than guessed.
 
@@ -1035,7 +1035,7 @@ Implementation order:
 
 1. freeze canonical AST and shared predicate parser;
 2. add root `where`;
-3. introduce `DqlPlanV1` host execution;
+3. introduce `RqlPlanV1` host execution;
 4. add candidate filters and strict alias resolution;
 5. add nested `within`;
 6. freeze projection behavior;
@@ -1106,4 +1106,4 @@ Its meaning is:
 9. refuse to present incomplete coverage as complete;
 10. obey the declared and server-effective resource bounds.
 
-That is the DQL v1 contract.
+That is the RQL v1 contract.

@@ -24,7 +24,7 @@ Common commands (see `dingo --help` for flags):
 
 | Command | Purpose |
 |---------|---------|
-| `console` | Interactive/scripted DQL-ish console |
+| `console` | Interactive/scripted RQL-ish console |
 | `serve` | Single-node TCP (development only) |
 | `serve-cluster` | Experimental multi-node |
 | `backup` / `restore` | Package backup |

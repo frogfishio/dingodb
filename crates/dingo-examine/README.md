@@ -1,6 +1,6 @@
 # dingo-examine
 
-**SDA examination host** for DingoDB: map recovered frames, items, and holes to
+**SDA examination host** for ResiduumDB: map recovered frames, items, and holes to
 normative ExaminationUnit values, stream them deterministically from store
 salvage, and evaluate pure SDA programs over them.
 
@@ -14,7 +14,7 @@ projects store evidence into SDA values.
 | You want… | Use |
 |-----------|-----|
 | Pure SDA over arbitrary JSON | [`dingo-sda`](https://crates.io/crates/dingo-sda) |
-| Examine a DingoDB store / salvage stream | **`dingo-examine`** (this crate) |
+| Examine a ResiduumDB store / salvage stream | **`dingo-examine`** (this crate) |
 | CLI health report | `dingo doctor` ([`dingo-cli`](https://crates.io/crates/dingo-cli)) |
 
 ## Install
@@ -34,7 +34,7 @@ SDA filter/map over units, and bounded pages with explicit incomplete results.
 
 Rule:
 
-> If DingoDB can recover it, SDA can examine it.
+> If ResiduumDB can recover it, SDA can examine it.
 
 SDA remains pure. Storage access, decoding, and resource control happen in this
 host before evaluation. The `dingo doctor` CLI uses this crate for recovery
@@ -107,5 +107,5 @@ a silent empty success.
 
 MPL-2.0.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
 [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).

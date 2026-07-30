@@ -13,7 +13,7 @@ does **not** cover. It does not authorize advertising a qualified profile.
 Until every mandatory gate/drill in the HP-010 matrix is `accept` **and** Gate H6
 passes external review, product language remains Level 1:
 
-> DingoDB provides named heap namespaces; strong access-isolation qualification
+> ResiduumDB provides named heap namespaces; strong access-isolation qualification
 > is in progress.
 
 Machine check:

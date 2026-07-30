@@ -1,4 +1,4 @@
-# DingoDB Collection Contracts specification
+# ResiduumDB Collection Contracts specification
 
 Status: **Normative design v1.0-draft; not yet implemented**
 
@@ -18,14 +18,14 @@ dingo-collection-scope-grant-v1
 dingo-collection-contract-evidence-v1
 ```
 
-Audience: collection, Heap authority, DQL, DRE, SDK, server, Atomics, index,
+Audience: collection, Heap authority, RQL, RRE, SDK, server, Atomics, index,
 examination, recovery, and conformance implementers
 
 Normative companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
-[DRE_SPEC.md](DRE_SPEC.md),
-[DQL_SPEC.md](DQL_SPEC.md),
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
+[RRE_SPEC.md](RRE_SPEC.md),
+[RQL_SPEC.md](RQL_SPEC.md),
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md),
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md),
@@ -34,7 +34,7 @@ Normative companions:
 
 ## 1. Decision
 
-DingoDB SHALL support a versioned **Collection Contract** attached to exactly
+ResiduumDB SHALL support a versioned **Collection Contract** attached to exactly
 one collection.
 
 A Collection Contract declares how that collection behaves through every
@@ -43,7 +43,7 @@ wrapper.
 
 The governing product statement is:
 
-> Define what a collection is once. DingoDB enforces it everywhere.
+> Define what a collection is once. ResiduumDB enforces it everywhere.
 
 The first fully specified contract facility is **Collection Scoping**:
 
@@ -105,9 +105,9 @@ Collection Contracts are not:
 - Turing-complete policy code;
 - textual query rewriting performed by an SDK;
 - a promise to eliminate all application vulnerabilities;
-- protection against compromise of the DingoDB process or a key legitimately
+- protection against compromise of the ResiduumDB process or a key legitimately
   carrying cross-scope grants;
-- a way to weaken DRE, Atomic, retention, damage, or coverage requirements.
+- a way to weaken RRE, Atomic, retention, damage, or coverage requirements.
 
 Collection Scoping reduces the logical data-exposure surface of ordinary
 application paths. It does not inherit the stronger non-crossing claim made
@@ -204,8 +204,8 @@ The modules have separate semantics:
 | Module | Purpose |
 |---|---|
 | Scope policy | Which record scopes each operation may address |
-| State rules | Valid document states, expressed by DRE |
-| Transition rules | Valid before/after transitions, expressed by DRE |
+| State rules | Valid document states, expressed by RRE |
+| Transition rules | Valid before/after transitions, expressed by RRE |
 | System fields | Database-generated, application-immutable metadata |
 | Lifecycle | Finite states such as live/deleted/archived |
 | Disclosure | Which fields may be returned under a capability |
@@ -254,8 +254,8 @@ collection independently.
 
 ## 8. Contract source
 
-The initial human surface is declarative and visually compatible with DQL and
-DRE:
+The initial human surface is declarative and visually compatible with RQL and
+RRE:
 
 ```text
 contract yellow_pages_v1 for listings {
@@ -343,7 +343,7 @@ ContractRevision
 source hash
 semantic profile versions
 canonical module IR
-DRE artifact identities
+RRE artifact identities
 required Atomic scope
 required rights-registry version
 dependency set
@@ -399,7 +399,7 @@ Every authoritative create, replacement, tombstone, version, recovery
 projection, derived index member, and Atomic member carries or inherits the
 same scope key.
 
-DQL and SDA expose it as system metadata:
+RQL and SDA expose it as system metadata:
 
 ```text
 @scope
@@ -561,7 +561,7 @@ The scope operation classes refine, but do not replace, Heap rights:
 | Collection operation | Scope class | Minimum Heap right |
 |---|---|---|
 | create/add/create-if-absent | `C` | `Write` |
-| get/find/count/scan/DQL/ordinary inspect | `R` | `Read` |
+| get/find/count/scan/RQL/ordinary inspect | `R` | `Read` |
 | history read | `R` | `ReadHistory` |
 | replace/update/restore-existing | `U` | `Write` |
 | logical delete | `D` | `Write` |
@@ -584,8 +584,8 @@ constraint. `ContractAdmin` grants no C/R/U/D, ordinary read, history read,
 backup, recovery, or key issuance.
 
 A contract operation also requires every module-specific administration right
-named by its companions. For example, attaching or replacing DRE rules
-requires both `ContractAdmin` and the qualified DRE rule-administration right.
+named by its companions. For example, attaching or replacing RRE rules
+requires both `ContractAdmin` and the qualified RRE rule-administration right.
 The union is checked before validation reads or publication.
 
 The existing rights bitmap and operation registry remain frozen until their
@@ -712,7 +712,7 @@ The effective scope predicate is an engine-owned plan node:
 \operatorname{ScopeKey}(d)\in D
 \]
 
-It is not inserted into caller-controlled DQL source and cannot be removed,
+It is not inserted into caller-controlled RQL source and cannot be removed,
 negated, shadowed, renamed, projected away, or replaced by the caller.
 
 ## 14. CRUD semantics
@@ -742,10 +742,10 @@ Heap Write right
 contract create policy = bound
 capability create grant = bound
 requested/effective selector = Bound(grant.bound_scope_key)
-valid payload and DRE rules
+valid payload and RRE rules
 ```
 
-DingoDB assigns the scope envelope metadata. The payload cannot supply,
+ResiduumDB assigns the scope envelope metadata. The payload cannot supply,
 override, or infer it.
 
 A HeapKey issuance request containing `create:any` is rejected. An SDK type,
@@ -769,7 +769,7 @@ This applies to:
 - find;
 - count;
 - scan;
-- DQL and supported SDA data queries;
+- RQL and supported SDA data queries;
 - history;
 - aggregation;
 - Direct Access;
@@ -884,7 +884,7 @@ R: any
 This is ordinary application work. No administrative identity or mutable role
 is involved.
 
-## 16. DQL surface
+## 16. RQL surface
 
 ### 16.1 Default bound query
 
@@ -922,7 +922,7 @@ The source spelling:
 scope bound
 ```
 
-means the capability's bound scope. V1 DQL does not permit an arbitrary scope
+means the capability's bound scope. V1 RQL does not permit an arbitrary scope
 literal to replace the authenticated bound value.
 
 ### 16.4 Parameters and plan identity
@@ -940,7 +940,7 @@ selector kind
 bound ScopeKey hash when bound
 operation class
 authority generation
-ordinary DQL plan and parameter hashes
+ordinary RQL plan and parameter hashes
 coverage/read view
 ```
 
@@ -1062,9 +1062,9 @@ content hash
 This includes indexes, predicate bitmaps, rank maps, Order Wavelets, caches,
 prepared queries, cursors, and selection artifacts.
 
-## 19. DRE composition
+## 19. RRE composition
 
-DRE answers:
+RRE answers:
 
 > Is this document state or transition valid?
 
@@ -1088,11 +1088,11 @@ For a proposed transition:
 \operatorname{LifecycleValid}
 \]
 
-DRE rules cannot read mutable user/role state. They may read the canonical
+RRE rules cannot read mutable user/role state. They may read the canonical
 operation scope and authenticated capability claims only through explicitly
 typed, finite contract inputs.
 
-A DRE rule cannot widen scope. A scope clause cannot waive a DRE violation.
+A RRE rule cannot widen scope. A scope clause cannot waive a RRE violation.
 
 ## 20. Atomics composition
 
@@ -1118,7 +1118,7 @@ At the serialization point it revalidates:
 - capability and scope grant;
 - existence-dependent C/U branch;
 - current record ScopeKey;
-- DRE and lifecycle rules;
+- RRE and lifecycle rules;
 - all ordinary Atomic witnesses.
 
 A LocalHeap Atomic MAY update or delete records from several Collection Scopes
@@ -1146,7 +1146,7 @@ A bound cursor cannot continue as `Any`; an `Any` cursor cannot continue as
 bound. Cursor authentication binds the scope domain and ContractRevision.
 
 Damage to scope membership evidence causes explicit incomplete/refused
-coverage. DingoDB never treats unknown scope as matching the caller.
+coverage. ResiduumDB never treats unknown scope as matching the caller.
 
 ## 22. Contract activation and replacement
 
@@ -1307,7 +1307,7 @@ Silent stripping is not part of v1.
 
 ## 24. Damage and coverage
 
-Collection Contracts obey DingoDB's governing recovery rule:
+Collection Contracts obey ResiduumDB's governing recovery rule:
 
 > What is gone is gone. What remains still lives.
 
@@ -1495,7 +1495,7 @@ Qualified v1 freezes at least:
 maximum canonical contract source bytes
 maximum Contract IR bytes
 maximum modules per contract
-maximum DRE artifacts per contract
+maximum RRE artifacts per contract
 maximum scope key bytes = 256
 maximum collection scope grants per HeapKey
 maximum contract revisions retained without external policy
@@ -1536,7 +1536,7 @@ cross-scope bulk mutation has an explicit work/member budget.
 
 ### CS-3 — Policy closure
 
-- DQL, count, scan, history, aggregation, nested sources, and every qualified
+- RQL, count, scan, history, aggregation, nested sources, and every qualified
   SDK path preserve scope;
 - an unknown source-producing operator is refused;
 - prepared plan, cache, cursor, DDA, and DOW artifacts reject scope mismatch;
@@ -1659,7 +1659,7 @@ early error prevention, not the security or correctness boundary.
 
 ### CCT-3 — Query policy closure
 
-- DQL scope node;
+- RQL scope node;
 - scans/counts/history;
 - aggregate/nested source propagation;
 - index/cache/cursor bindings;

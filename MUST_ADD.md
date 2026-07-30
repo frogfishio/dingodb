@@ -1,4 +1,4 @@
-# DingoDB immediate Must-Add program
+# ResiduumDB immediate Must-Add program
 
 Status: **normative execution list v1.0-draft — developer ready**
 
@@ -22,11 +22,11 @@ DEF-098…DEF-104 accepted
 → CSQ-0…CSQ-12 accepted
 ```
 
-DingoDB executes this Must-Add program.
+ResiduumDB executes this Must-Add program.
 
 Its purpose is narrow:
 
-> Close the missing ordinary application APIs before DRE, Atomics, Direct
+> Close the missing ordinary application APIs before RRE, Atomics, Direct
 > Access, search, archive, or cluster expansion becomes the principal product
 > program.
 
@@ -49,7 +49,7 @@ and
 dingo-application-baseline-v1 verifies locally and remotely
 ```
 
-Until exit, DingoDB may claim qualified core storage but not a complete
+Until exit, ResiduumDB may claim qualified core storage but not a complete
 ordinary document-database application surface.
 
 ## 3. The Must-Add list
@@ -63,7 +63,7 @@ ordinary document-database application surface.
 | 4 | `APB-4` | Document-path lookup and atomic single-document mutation | PD-003 |
 | 5 | `APB-5` | Bounded streaming bulk mutation with per-item truth | PD-005 |
 | 6 | `APB-6` | Stable bounded read views | PD-008 |
-| 7 | `APB-7` | DQL Application Core, builder, explain, paging, and remote parity | PD-009 |
+| 7 | `APB-7` | RQL Application Core, builder, explain, paging, and remote parity | PD-009 |
 | 8 | `APB-8` | Coverage-aware exists/count/distinct/group/numeric aggregates | PD-010 |
 | 9 | `APB-9` | Resumable at-least-once change feed | PD-012 |
 | 10 | `APB-10` | Streaming resumable import/export | PD-013 |
@@ -212,7 +212,7 @@ Rules:
 - optional `if_version` prevents lost updates;
 - arithmetic and path traversal are bounded and checked;
 - binary documents reject JSON mutation;
-- the future DRE hook validates the proposed final value;
+- the future RRE hook validates the proposed final value;
 - physical full-document rewrite is initially allowed; client-side
   read/modify/write is not required; and
 - receipt reports old/new versions and per-operation results.
@@ -290,7 +290,7 @@ Rules:
 Exit: mutation-between-pages, compaction, tier movement, expiry, resource, and
 reopen tests pass.
 
-## 11. APB-7 — DQL Application Core
+## 11. APB-7 — RQL Application Core
 
 Depends: `APB-1`, `APB-6`, existing APP-4/APP-5 compiler work
 
@@ -312,7 +312,7 @@ Required:
 - authenticated Heap/collection/view/plan/parameter-bound cursors; and
 - embedded/remote parity.
 
-Exit: builder and DQL compile to the same plan and all pages reconcile with the
+Exit: builder and RQL compile to the same plan and all pages reconcile with the
 independent complete-scan oracle.
 
 ## 12. APB-8 — Aggregate baseline
@@ -483,7 +483,7 @@ one final baseline qualification.
 The following remain mandatory later, but do not expand APB:
 
 ```text
-DRE document rules
+RRE document rules
 LocalHeap Atomics
 referential integrity
 constraint-grade unique indexes
@@ -515,6 +515,6 @@ collection deletion rituals
 backend-specific branches
 ```
 
-That is the exact point at which DingoDB stops being an exceptional storage
+That is the exact point at which ResiduumDB stops being an exceptional storage
 engine with a promising API and becomes a complete ordinary document database
 ready for its mathematical extensions.

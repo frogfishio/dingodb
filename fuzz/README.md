@@ -1,4 +1,4 @@
-# DingoDB fuzz targets (DEF-091)
+# ResiduumDB fuzz targets (DEF-091)
 
 Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 **not** a workspace member; build it with [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz).

@@ -27,6 +27,6 @@ Roadmap is **not** availability. Status page remains authoritative for present c
 3. **Cluster qualification** (beyond experimental)
 4. **Archive / native object-store**
 5. **Future search** (text, vector, geo) as derived accelerators
-6. **Design work**: Heaps, DRE, Atomics, DDA, Order Wavelets
+6. **Design work**: Heaps, RRE, Atomics, DDA, Order Wavelets
 
-Sources: `FUTURE_ROADMAP.md`, `doc/PRIME_TIME_PLAN.md`. Product page: [dingodb.org/roadmap](https://dingodb.org/roadmap/)
+Sources: `FUTURE_ROADMAP.md`, `doc/PRIME_TIME_PLAN.md`. Product page: [residuumdb.org/roadmap](https://residuumdb.org/roadmap/)

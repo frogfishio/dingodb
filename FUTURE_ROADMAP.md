@@ -1,4 +1,4 @@
-# DingoDB future retrieval roadmap
+# ResiduumDB future retrieval roadmap
 
 Status: **deferred product direction — not an active delivery priority**
 
@@ -7,7 +7,7 @@ Scope: deterministic text search, vector search, and geospatial search
 Audience: product designers, spec authors, and future implementers
 Companions: [OVERVIEW.md](OVERVIEW.md),
 [INDEXING_STRATEGY_PROPOSAL.md](INDEXING_STRATEGY_PROPOSAL.md),
-[ATOMICS_SPEC.md](ATOMICS_SPEC.md), [DQL_SPEC.md](DQL_SPEC.md),
+[ATOMICS_SPEC.md](ATOMICS_SPEC.md), [RQL_SPEC.md](RQL_SPEC.md),
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [SDA_PROFILE.md](SDA_PROFILE.md), and [HEAP_SPEC.md](HEAP_SPEC.md)
 
@@ -20,7 +20,7 @@ capabilities without promoting them into the current implementation program:
 2. vector search;
 3. geospatial search.
 
-These capabilities matter to DingoDB's eventual position as a serious
+These capabilities matter to ResiduumDB's eventual position as a serious
 general-purpose document database. They are deliberately deferred while the
 core product, Heap isolation, operational qualification, Atomics, and the
 generic index lifecycle mature.
@@ -31,7 +31,7 @@ promise until promoted into a dedicated specification.
 
 ## 2. Governing decision
 
-DingoDB should drive all three retrieval families from:
+ResiduumDB should drive all three retrieval families from:
 
 > **One authoritative document store, one common derived-index substrate, and
 > several mathematically appropriate index engines.**
@@ -61,7 +61,7 @@ and failure semantics should not.
 ## 3. Prerequisite: the common derived-index substrate
 
 No retrieval family should be implemented as an isolated subsystem. Before
-product work begins, DingoDB needs a generic index substrate that all three can
+product work begins, ResiduumDB needs a generic index substrate that all three can
 reuse.
 
 The substrate owns:
@@ -84,7 +84,7 @@ The substrate owns:
 - exact bitmap/rank-select integration where the retrieval family defines an
   exact membership set and deterministic order.
 
-The shared lifecycle may reuse Dingo Direct Access rank blocks, frozen read
+The shared lifecycle may reuse Residuum Direct Access rank blocks, frozen read
 views, and selection artifacts. Approximate vector results MUST NOT inherit an
 exact DDA certificate.
 
@@ -122,7 +122,7 @@ For every retrieval family:
 - rebuilding an index MUST NOT rewrite historical authority.
 
 For externally generated vectors, the vector stored by the application is
-authoritative data. An ANN structure built from it is derived. DingoDB should
+authoritative data. An ANN structure built from it is derived. ResiduumDB should
 not initially call an embedding service during indexing.
 
 ### 4.2 Heap isolation
@@ -194,7 +194,7 @@ index_frontier: 9182771
 damaged_segments: [41, 77]
 ```
 
-When an exact fallback is requested and practical, DingoDB may scan surviving
+When an exact fallback is requested and practical, ResiduumDB may scan surviving
 authoritative data. If resource limits prevent completion, the result remains
 explicitly incomplete.
 
@@ -325,13 +325,13 @@ existence or prevalence of terms in another Heap.
 The inverted index should use independently recoverable immutable segments.
 Loss of one segment must leave other postings usable.
 
-If exact text search is requested, DingoDB may tokenize and scan surviving
+If exact text search is requested, ResiduumDB may tokenize and scan surviving
 source documents to fill index holes, subject to an explicit resource bound.
 The response states whether the fallback completed.
 
-### 6.5 Candidate DQL shape
+### 6.5 Candidate RQL shape
 
-The final syntax must remain visually compatible with DQL. An illustrative
+The final syntax must remain visually compatible with RQL. An illustrative
 surface is:
 
 ```text
@@ -361,7 +361,7 @@ search:
 - fixed Unicode normalization;
 - exact tokens;
 - AND/OR terms;
-- field restriction and ordinary DQL filtering;
+- field restriction and ordinary RQL filtering;
 - stable deterministic ordering;
 - frontier and coverage disclosure.
 
@@ -403,7 +403,7 @@ Vector search enables:
 - retrieval-augmented generation;
 - hybrid lexical and semantic search.
 
-DingoDB should store vectors and retrieve them. It should not initially generate
+ResiduumDB should store vectors and retrieve them. It should not initially generate
 embeddings. Model execution introduces external availability, nondeterminism,
 cost, and hidden model-version semantics that do not belong in the first
 database implementation.
@@ -465,7 +465,7 @@ specification and adversarial damage tests.
 - frozen distance metrics;
 - exact top-k scan;
 - deterministic ties;
-- ordinary DQL filters;
+- ordinary RQL filters;
 - SDA distance explanation.
 
 **Vector 1 — segmented ANN**
@@ -499,7 +499,7 @@ Hybrid retrieval belongs after useful text search and vector search exist
 independently.
 
 Lexical score and vector similarity are not naturally interchangeable numbers.
-DingoDB MUST NOT silently add them together. A hybrid profile freezes:
+ResiduumDB MUST NOT silently add them together. A hybrid profile freezes:
 
 - the lexical and vector index versions;
 - candidate counts and filtering order;
@@ -569,7 +569,7 @@ must not silently define database behavior.
 - radius queries;
 - exact distance verification;
 - nearest-point search;
-- ordinary DQL filters;
+- ordinary RQL filters;
 - SDA display of normalized coordinates and distance calculation.
 
 **Geo 1 — bounded shapes**
@@ -599,7 +599,7 @@ Initially excluded:
 
 ## 10. Common query composition
 
-Text, vector, and geospatial predicates should compose with ordinary DQL
+Text, vector, and geospatial predicates should compose with ordinary RQL
 filters. They should not create three parallel query languages.
 
 The common planner eventually needs to express:
@@ -656,7 +656,7 @@ when:
 5. damage cannot silently become “zero matches”;
 6. exact, approximate, incomplete, stale, and bounded outcomes are distinct;
 7. the interpretation profile is immutable and versioned;
-8. DQL composition is designed;
+8. RQL composition is designed;
 9. SDA examination is designed;
 10. destructive, concurrency, and compatibility tests are specified before the
     implementation is accepted.
@@ -666,7 +666,7 @@ when:
 These capabilities are not the current priority, but they are strategically
 important. Together with Heaps, capability-based access, Atomics, Data Rules,
 referential integrity, damage tolerance, long retention, and SDA examination,
-they move DingoDB beyond “raw storage” or “a fast document store.”
+they move ResiduumDB beyond “raw storage” or “a fast document store.”
 
 The intended long-term proposition is:
 

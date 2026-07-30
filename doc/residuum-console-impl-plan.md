@@ -6,7 +6,7 @@ Add an interactive text console to the existing `dingo` CLI.
 - Invocation: `dingo console ./app.dingo`
 - Mixed mode UX:
   - **Console/meta commands** (help, collections listing, session controls) are shell-like.
-  - **Data operations** are **DQL-first**.
+  - **Data operations** are **RQL-first**.
 - Delete semantics: **no confirmation** for routine deletes.
 
 ## Non-goals (v1)
@@ -20,12 +20,12 @@ Add an interactive text console to the existing `dingo` CLI.
 - `.help` — show help.
 - `.exit` / `.quit` — leave console.
 - `.collections` — list collections.
-- `.use <collection>` — set active collection for subsequent DQL.
+- `.use <collection>` — set active collection for subsequent RQL.
 - `.status` — show store path + active collection.
 - `.examples` — print short examples.
 
-### Data operations (DQL-first)
-Console accepts one-line DQL statements.
+### Data operations (RQL-first)
+Console accepts one-line RQL statements.
 
 - `SELECT <key>` (or `GET <key>`) — read JSON/document for the active collection.
 - `PUT <key> <json>` — write JSON for the active collection.
@@ -35,7 +35,7 @@ Console accepts one-line DQL statements.
 Additionally, support optional fully-qualified targets:
 - `... FOR <collection>.<key>` or `... <collection>/<key>`.
 
-> Note: final exact DQL syntax will be aligned to what the existing DQL parser/evaluator supports in this repo.
+> Note: final exact RQL syntax will be aligned to what the existing RQL parser/evaluator supports in this repo.
 
 ## Implementation steps
 
@@ -58,7 +58,7 @@ Loop:
 2. Read a line.
 3. If empty: continue.
 4. If line starts with `.`, route to meta handlers.
-5. Else: treat as DQL statement and evaluate.
+5. Else: treat as RQL statement and evaluate.
 6. Print results or errors.
 
 ### 3) Wire meta commands to existing CLI functionality
@@ -70,21 +70,21 @@ Re-use existing operations in `main.rs`:
 
 To avoid duplicating logic, refactor existing `cmd_list/cmd_get/...` into internal helpers that can be called both from one-shot CLI and from console (recommended).
 
-### 4) DQL evaluation integration
-- Find DQL entry points in the repo (search for `dql`, `Dql`, `query`, `parse` packages) and integrate them.
+### 4) RQL evaluation integration
+- Find RQL entry points in the repo (search for `dql`, `Dql`, `query`, `parse` packages) and integrate them.
 - Provide an evaluator that can:
   - parse a statement
   - execute it against the open store
   - return structured results for display
 
-If DQL does not support the full v1 data operations:
-- Extend DQL to include the missing primitives (minimal set):
+If RQL does not support the full v1 data operations:
+- Extend RQL to include the missing primitives (minimal set):
   - SELECT/GET by key
   - PUT/INSERT by key with JSON payload
   - DELETE by key
   - HISTORY by key
 
-> Implementation choice: if DQL already maps to the existing store APIs (`db.collection(&coll).put/get/delete/...`), keep v1 aligned with that.
+> Implementation choice: if RQL already maps to the existing store APIs (`db.collection(&coll).put/get/delete/...`), keep v1 aligned with that.
 
 ### 5) Display formatting
 - For SELECT/GET/HISTORY results:
@@ -111,10 +111,10 @@ Cases:
 - `cargo test` passes.
 - `cargo build` passes.
 - Manual smoke test:
-  - `dingo console ./app.dingo`, `.help`, `.collections`, `.use`, and DQL data ops work.
+  - `dingo console ./app.dingo`, `.help`, `.collections`, `.use`, and RQL data ops work.
 - Routine deletes require no extra confirmation.
 
 ## Open questions (to resolve before coding)
-1. What exact DQL syntax does the repo support for GET/PUT/DELETE/HISTORY?
-2. Is the DQL engine embedded and callable from the CLI crate (or via an existing client module)?
-3. Should DQL require explicit collection qualification or can it use `active_collection` by default?
+1. What exact RQL syntax does the repo support for GET/PUT/DELETE/HISTORY?
+2. Is the RQL engine embedded and callable from the CLI crate (or via an existing client module)?
+3. Should RQL require explicit collection qualification or can it use `active_collection` by default?

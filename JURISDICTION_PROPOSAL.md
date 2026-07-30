@@ -1,14 +1,14 @@
-# DingoDB jurisdiction, residency, and sovereign placement proposal
+# ResiduumDB jurisdiction, residency, and sovereign placement proposal
 
 Status: implementation-ready proposal  
-Target profile: jurisdiction-aware DingoDB  
+Target profile: jurisdiction-aware ResiduumDB
 Normative impact: `OVERVIEW.md`, `FORMAT_SPEC.md`, `DX_SPEC.md`,
 `CLUSTER_SPEC.md`, `TRANSACTIONS.md`, SDK compatibility policy, operator CLI,
 and production release gates
 
 ## 1. Purpose
 
-This proposal defines how DingoDB binds data to enforceable residency,
+This proposal defines how ResiduumDB binds data to enforceable residency,
 processing, movement, retention, and recovery policies.
 
 The objective is not to attach geographic labels to partitions. The objective
@@ -17,9 +17,9 @@ deriving, backing up, repairing, exporting, or destroying governed data is
 evaluated against a versioned policy and fails closed when compliance cannot
 be established.
 
-The model extends DingoDB’s long-horizon promise:
+The model extends ResiduumDB’s long-horizon promise:
 
-> DingoDB manages data across time, place, and failure.
+> ResiduumDB manages data across time, place, and failure.
 
 - **Time:** data remains usable beyond the applications and systems that
   created it.
@@ -158,7 +158,7 @@ Storage permission does not automatically imply processing permission.
 
 ### 6.4 Residency domain
 
-A stable DingoDB identifier for an operator-defined set of trusted placement
+A stable ResiduumDB identifier for an operator-defined set of trusted placement
 and processing attributes.
 
 Examples:
@@ -198,7 +198,7 @@ recorded with data and evidence.
 An operator-defined classification such as `public`, `internal`,
 `confidential`, `health`, `financial`, or `export-controlled`.
 
-DingoDB treats data-class values as policy inputs. It does not infer them.
+ResiduumDB treats data-class values as policy inputs. It does not infer them.
 
 ### 6.9 Placement claim
 
@@ -236,7 +236,7 @@ Changing a catalog field is not a policy transition.
 
 ### 7.1 Fail closed
 
-If DingoDB cannot establish that an authoritative action is permitted, it MUST
+If ResiduumDB cannot establish that an authoritative action is permitted, it MUST
 deny the action.
 
 Examples:
@@ -733,7 +733,7 @@ This is easier to explain and safer to implement.
 
 ### 11.4 No accidental weakening
 
-When multiple policies apply, DingoDB retains the contributing policy IDs and
+When multiple policies apply, ResiduumDB retains the contributing policy IDs and
 decision evidence. It does not emit a simplified policy that loses a source
 restriction.
 
@@ -1298,7 +1298,7 @@ pub struct ExportAuthorization {
 
 ### 22.3 Declassification
 
-DingoDB never infers that hashing, aggregation, tokenization, encryption, or
+ResiduumDB never infers that hashing, aggregation, tokenization, encryption, or
 redaction removes governance.
 
 Only a named approved transformation profile may assign a less restrictive
@@ -1384,7 +1384,7 @@ exist.
 
 ### 23.6 Damage evidence versus erasure rights
 
-DingoDB’s conflict-preservation rule does not override authorized legal purge.
+ResiduumDB’s conflict-preservation rule does not override authorized legal purge.
 The system preserves conflict evidence until an authorized purge explicitly
 requires removal.
 
@@ -2259,7 +2259,7 @@ If accepted:
 
 ## 40. Production release gates
 
-DingoDB may claim the jurisdiction-aware profile only when:
+ResiduumDB may claim the jurisdiction-aware profile only when:
 
 - [ ] Every authoritative and derived copy path is inventoried.
 - [ ] Every authoritative frame retains independent policy identity.
@@ -2322,6 +2322,6 @@ onto.
 
 The defining guarantee should be:
 
-> DingoDB never moves, processes, repairs, backs up, or recovers governed data
+> ResiduumDB never moves, processes, repairs, backs up, or recovers governed data
 > outside its declared policy without an explicit, authorized, auditable
 > transition—and it never calls missing evidence compliant.

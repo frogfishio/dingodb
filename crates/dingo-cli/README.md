@@ -1,6 +1,6 @@
 # dingo (CLI)
 
-Operator and everyday command-line interface for DingoDB.
+Operator and everyday command-line interface for ResiduumDB.
 
 Put and get JSON or bytes, list collections, inspect history, run read-only
 `doctor`, evidence-preserving `salvage`, full `backup` / verified `restore`
@@ -177,4 +177,4 @@ Secrets belong in the environment or secret files (`serve.token_env`,
 
 AGPL-3.0-or-later.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb).
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb).

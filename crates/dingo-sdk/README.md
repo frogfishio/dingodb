@@ -1,11 +1,11 @@
 # dingo-sdk
 
-**Collection SDK** for DingoDB: the ordinary application surface.
+**Collection SDK** for ResiduumDB: the ordinary application surface.
 
 Open a local store, connect to a remote server, or (optionally) open an
 in-process multi-node cluster. Name a collection; put/get/delete JSON or bytes;
 filter JSON documents; use pluggable query dialects that compile to pure SDA
-(`dql` official human surface — [USER_GUIDE](../../doc/DQL/USER_GUIDE.md); also
+(`dql` official human surface — [USER_GUIDE](../../doc/RQL/USER_GUIDE.md); also
 `json` / `mongo` / `sql` mimicry / raw `sda`); manage secondary indexes;
 inspect per-key history — without learning frames or segments for common paths.
 
@@ -25,7 +25,7 @@ Freeze label: `SDK_API_VERSION` = `1.0`.
 
 ```toml
 [dependencies]
-dingo-sdk = "0.2"   # MPL-2.0: embedded + remote (index + engine + DQL cut)
+dingo-sdk = "0.2"   # MPL-2.0: embedded + remote (index + engine + RQL cut)
 ```
 
 Optional in-process multi-node cluster (pulls AGPL `dingo-cluster`):
@@ -209,4 +209,4 @@ data only when every chunk verifies.
 MPL-2.0 for this crate's sources (default features). Enabling `cluster` adds
 AGPL dependencies — see the install section above.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb).
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb).

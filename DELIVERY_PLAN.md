@@ -1,4 +1,4 @@
-# DingoDB staged delivery plan
+# ResiduumDB staged delivery plan
 
 Status: Draft v0.23 (Stages 0–9 done; Doc P2 aligned; product follow-ons 1–4 landed)  
 Audience: implementers  
@@ -9,10 +9,10 @@ Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 
 ## 1. Purpose
 
-Specs are ahead of code. SDA is already specified; the rest of DingoDB is
+Specs are ahead of code. SDA is already specified; the rest of ResiduumDB is
 specified as architecture, wire format, DX, and clustering.
 
-This plan answers: **how do we ship DingoDB in stages** so each stage is
+This plan answers: **how do we ship ResiduumDB in stages** so each stage is
 demoable, testable, and aligned with the product thesis, without waiting for
 the full system.
 
@@ -132,7 +132,7 @@ especially §1–§12 and §14.
 - Minimal suite in §14.1 fully automated. **Met**.
 - Determinism: same program + input ⇒ same value or stable `Fail`.
 - Public surface: library API (`dingo-sda`) + optional `dingo-sda` CLI (`eval`, `check`).
-- **No** DingoDB types, segments, or host IO inside the SDA core.
+- **No** ResiduumDB types, segments, or host IO inside the SDA core.
 - Standalone freeze tag: `sda-standalone-v1.0` (`CONFORMANCE_CORPUS_TAG`).
 
 **Why first**
@@ -293,7 +293,7 @@ SDA programs examine verified items, partial payloads, and holes.
 
 **Exit criteria**
 
-- “If DingoDB can recover it, SDA can examine it” holds for Stage 2–3 salvage
+- “If ResiduumDB can recover it, SDA can examine it” holds for Stage 2–3 salvage
   outputs.
 - Profile field set matches SDA_PROFILE (unknown future tags preserved).
 - Golden tests: damaged segment → examination stream → SDA filter finds only

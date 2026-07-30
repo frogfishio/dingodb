@@ -1,4 +1,4 @@
-# DingoDB threat model (DEF-063 first cut)
+# ResiduumDB threat model (DEF-063 first cut)
 
 Status: **draft / in-tree first cut** (2026-07-27)  
 Scope: surfaces required by DEF-063 Work list  

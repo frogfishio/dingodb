@@ -1,8 +1,8 @@
 ---
 last_verified: 2026-07-30
 claim_ids:
-title: DQL reference
-description: DQL syntax entry point.
+title: RQL reference
+description: RQL syntax entry point.
 class: reference
 status: experimental
 section: reference
@@ -18,6 +18,6 @@ keywords:
   - dql
 ---
 
-Authoritative user-facing syntax: `doc/DQL/USER_GUIDE.md`.
+Authoritative user-facing syntax: `doc/RQL/USER_GUIDE.md`.
 
 Grammar/design materials may exceed the implemented surface—badge experimental and verify against tests.

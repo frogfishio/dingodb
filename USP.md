@@ -1,4 +1,4 @@
-# DingoDB Product Thesis
+# ResiduumDB Product Thesis
 
 Status: Draft v0.1
 
@@ -23,16 +23,16 @@ That division creates fragile handoffs and long-term dependencies. Fifteen
 years later, the original application, schema, catalog, or vendor service may
 be gone even though most of the underlying content survives.
 
-## 2. The DingoDB thesis
+## 2. The ResiduumDB thesis
 
-DingoDB treats a database as a fabric of independently survivable data islands,
+ResiduumDB treats a database as a fabric of independently survivable data islands,
 not one all-or-nothing object.
 
 Its product promise is:
 
 > Put anything in. Keep it at scale. Damage it. Find what survived.
 
-DingoDB combines:
+ResiduumDB combines:
 
 - a memory-store-class hot path;
 - append-oriented durable ingestion;
@@ -48,7 +48,7 @@ Other databases primarily ask:
 
 > Can I reconstruct the database?
 
-DingoDB first asks:
+ResiduumDB first asks:
 
 > Which pieces can I still prove are intact?
 
@@ -57,7 +57,7 @@ ordinary failure model
 
 critical damage → database unavailable
 
-DingoDB failure model
+ResiduumDB failure model
 
 DATA │ DATA │ HOLE │ DATA │ HOLE │ DATA
   ✓      ✓      ✗      ✓      ✗      ✓
@@ -81,7 +81,7 @@ Valuable future data often looks worthless in the present:
 - data whose schema has been lost;
 - data no one knows how to interpret yet.
 
-DingoDB preserves the bytes and a small self-describing envelope first.
+ResiduumDB preserves the bytes and a small self-describing envelope first.
 Understanding may be added later.
 
 The database does not require every payload to become a document, row, fact,
@@ -92,7 +92,7 @@ or vector before it deserves durable storage.
 “Store everything” is useful only if storage remains economical and retrieval
 remains possible.
 
-DingoDB separates one logical namespace from physical location. Immutable
+ResiduumDB separates one logical namespace from physical location. Immutable
 segments move between hot, warm, cold, and archival tiers without changing
 their identities.
 
@@ -110,7 +110,7 @@ This supports two very different questions:
 
 Dependability is not an excuse for a slow hot path.
 
-DingoDB is built around:
+ResiduumDB is built around:
 
 - sequential appends;
 - sharded writers;
@@ -132,7 +132,7 @@ acknowledgement are not presented as the same benchmark.
 
 Storage without a durable examination model merely moves the black box.
 
-SDA gives DingoDB a small, deterministic algebra for filtering, projecting,
+SDA gives ResiduumDB a small, deterministic algebra for filtering, projecting,
 normalizing, validating, and transforming recovered material.
 
 SDA can operate over streams and indexed candidates without loading the whole
@@ -158,38 +158,38 @@ salvage of arbitrary surviving byte islands.
 
 ### Document databases
 
-Document databases handle flexible structured objects. DingoDB additionally
+Document databases handle flexible structured objects. ResiduumDB additionally
 targets opaque data, independent physical survival, multi-decade tiering, and
 explicit recovery evidence.
 
 ### Object storage
 
-Object storage handles large scale and durable objects. DingoDB adds an
+Object storage handles large scale and durable objects. ResiduumDB adds an
 embedded hot path, event history, local recovery semantics, derived indexes,
 and SDA examination across objects and holes.
 
 ### Redis
 
-Redis is the performance reference for the hot working set. DingoDB adds a
+Redis is the performance reference for the hot working set. ResiduumDB adds a
 storage format and recovery model intended for massive, damaged, long-lived
 data. It does not claim archive reads have memory latency.
 
 ### Git
 
-Git preserves versioned content and history. DingoDB is optimized for
+Git preserves versioned content and history. ResiduumDB is optimized for
 high-volume ingestion, arbitrary payloads, indexed access, tiered retention,
 partial physical recovery, and streaming examination.
 
 ### Backup systems
 
-Backups restore known copies. DingoDB also salvages independently valid
+Backups restore known copies. ResiduumDB also salvages independently valid
 material when no intact copy or catalog remains.
 
 ## 9. Honest limits
 
 No system can recover data after every copy of its bytes has been destroyed.
 
-DingoDB's “database that refuses to die” claim means:
+ResiduumDB's “database that refuses to die” claim means:
 
 - damage containment;
 - independent verification;
@@ -214,7 +214,7 @@ data.
 
 One-sentence pitch:
 
-> DingoDB is an extremely fast database for arbitrary, massive, long-lived
+> ResiduumDB is an extremely fast database for arbitrary, massive, long-lived
 > data that recovers every intact piece after partial destruction and exposes
 > the result through SDA.
 
@@ -224,7 +224,7 @@ Short form:
 
 ## 11. Clustering story
 
-DingoDB does not turn a cluster into one larger fragile database.
+ResiduumDB does not turn a cluster into one larger fragile database.
 
 It distributes independently meaningful partitions and immutable segments.
 Consensus decides which node may order strong writes for a partition, while
@@ -251,9 +251,9 @@ The clustering principle is:
 ## 12. Everyday product
 
 Damage tolerance earns trust, but it is not the only reason to install
-DingoDB.
+ResiduumDB.
 
-For ordinary work, DingoDB is a zero-configuration database for JSON, bytes,
+For ordinary work, ResiduumDB is a zero-configuration database for JSON, bytes,
 events, and large retained datasets:
 
 ```text

@@ -3,7 +3,7 @@
 Status: living policy for workspace release content  
 Companion: [DEFECTS.md](../DEFECTS.md) DEF-003, [CONTRIBUTING.md](../CONTRIBUTING.md)
 
-This document defines what ships in a DingoDB **workspace release** (the git
+This document defines what ships in a ResiduumDB **workspace release** (the git
 tree and CI package gates). Independent crates.io publication of every member
 is a later concern (path deps are versioned so packaging is possible; they are
 not yet the primary distribution channel).

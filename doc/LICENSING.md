@@ -4,7 +4,7 @@ Status: **adopted**
 Audience: copyright holder + contributors + release packaging  
 Companion: [RELEASE_ARTIFACTS.md](RELEASE_ARTIFACTS.md), crate layout in [ARCHITECTURE.md](../ARCHITECTURE.md)
 
-This note is the **adopted** per-crate license map for DingoDB along a
+This note is the **adopted** per-crate license map for ResiduumDB along a
 GPL-family track with **AGPL-3.0-or-later** for networked product bits. It is
 product/engineering guidance, not legal advice. Confirm with counsel for your
 distribution or SaaS model.
@@ -112,7 +112,7 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 | `dingo-cli` → `dingo` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
 | `dingo-authority` | **AGPL-3.0-or-later** | Planned separate local-only heap authority executable; never linked by data server |
 | `dingo-studio-core` | **AGPL-3.0-or-later** | Planned Studio orchestration and remote-management core |
-| `apps/dingo-studio` | **AGPL-3.0-or-later** | Planned Dingo Studio desktop product |
+| `apps/dingo-studio` | **AGPL-3.0-or-later** | Planned Residuum Studio desktop product |
 
 ### 3.2 License files
 

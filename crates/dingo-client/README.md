@@ -1,10 +1,10 @@
 # dingo-client
 
-Thin **MIT** network primitives for DingoDB: length-prefixed framed JSON RPC
+Thin **MIT** network primitives for ResiduumDB: length-prefixed framed JSON RPC
 (`dingo-rpc-v1`), hello/welcome handshake, and feature negotiation.
 
 This crate has **no** dependency on the store, cluster, or server. Use it when
-you need to speak the DingoDB wire protocol from another language runtime,
+you need to speak the ResiduumDB wire protocol from another language runtime,
 a proxy, a test harness, or a custom client. Application collection APIs live
 in [`dingo-sdk`](https://crates.io/crates/dingo-sdk); TCP serve lives in
 [`dingo-server`](https://crates.io/crates/dingo-server).
@@ -105,5 +105,5 @@ assert_eq!(RPC_WIRE_LABEL, "1.0-draft");
 MIT. Independent of the AGPL server and cluster crates so closed and open apps
 can speak the wire protocol without taking server copyleft.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
 [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).

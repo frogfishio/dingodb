@@ -33,7 +33,7 @@ additive (new names + `+` on Prod/Map).
 
 Shared laws (do not break when implementing any layer):
 
-- Pure: no acquisition, HTTP, retries, auth, or file IO (Axiom / Dingo host).
+- Pure: no acquisition, HTTP, retries, auth, or file IO (Axiom / ResiduumDB host).
 - Null ≠ absence; no match means empty bag / `NoMatch`, not `Null`.
 - No implicit uniqueness or silent row drop.
 - Duplicates preserved until an explicit operator resolves them.
@@ -100,17 +100,17 @@ explicit cardinality, not candidate ranking. See
 
 ENR + SDA are the **exact mathematical surface** — often atrocious DX, loved by
 a small loud technical audience. Everyday product text is intended to be
-**DQL** (Dingo Query Language): the official human dialect that lowers into the
-same ENR+SDA IR. User guide: [doc/DQL/USER_GUIDE.md](../../doc/DQL/USER_GUIDE.md).
-Design: [DQL_SPEC.md](../../DQL_SPEC.md).
+**RQL** (Residuum Query Language): the official human dialect that lowers into the
+same ENR+SDA IR. User guide: [doc/RQL/USER_GUIDE.md](../../doc/RQL/USER_GUIDE.md).
+Design: [RQL_SPEC.md](../../RQL_SPEC.md).
 
-**DQL** (`dialect "dql"`) is the official human surface and lowers into the same
+**RQL** (`dialect "dql"`) is the official human surface and lowers into the same
 ENR1+SDA programs (`Match` / `enrich` / cardinality). Fluent filters, equijoins,
 pure ENR text, and **foreign query dialects** (`json` / `mongo` / `sql` → pure
 SDA) remain everyday DX frontends, not hybrid peer languages: pure notation
 remains the only lossless path for distinctions foreign surfaces cannot express
 (notably **Null vs absence**). See [doc/SDA/DIALECTS.md](../../doc/SDA/DIALECTS.md)
-and [DQL_SPEC.md](../../DQL_SPEC.md).
+and [RQL_SPEC.md](../../RQL_SPEC.md).
 
 Users who prefer the algebra write programs as **text**:
 
@@ -163,7 +163,7 @@ surface.
 | `only` vs `one!` | Both reserved on the ENR2 surface; ENR1 minimal subset prefers `one!` / `one?`. |
 | `first` / `last` on Bag | ENR2 `resolveFirst` / `resolveBest` require defined order (or fail `t_enr_unordered_policy`) and record rejected alternatives. ENR1 states the same order rule more thinly (Seq only). |
 | Multi-generator expand vs SDA v1 (one generator) | Enrichment owns expand semantics; nest match bags inside yield for one-to-many until multi-generator lands. |
-| Attach/merge want `Prod`; Dingo JSON is `Map` | Both `Map` and `Prod` work with `merge` / `+`. |
+| Attach/merge want `Prod`; ResiduumDB JSON is `Map` | Both `Map` and `Prod` work with `merge` / `+`. |
 | Multi-source / fallback / explain | ENR2. Explicitly out of ENR1 minimal subset. |
 | Relation to `Dingo::query` | Host join is an **engine**. ENR1 is the portable program surface those engines can evaluate or compile from. |
 
@@ -207,7 +207,7 @@ macro systems where the language *already* licenses user-defined surface
 (Lisp). That is not the normal path for SQL, Ada, or a mathematical query
 kernel.
 
-### What that means for ENR1 / Dingo
+### What that means for ENR1 / ResiduumDB
 
 | Layer | Design authority | How it evolves |
 |-------|------------------|----------------|

@@ -1,7 +1,7 @@
 # dingo-sda
 
-`dingo-sda` is **DingoDB's hybrid pure evaluator** for Structured Data Algebra
-(SDA) plus the additive **ENR1** enrichment kernel. It is a DingoDB monorepo
+`dingo-sda` is **ResiduumDB's hybrid pure evaluator** for Structured Data Algebra
+(SDA) plus the additive **ENR1** enrichment kernel. It is a ResiduumDB monorepo
 package — not a claim on the bare crates.io names `sda` / `sda-lib`.
 
 It provides a small host-facing API for parsing, validating, formatting, and
@@ -17,7 +17,7 @@ in this crate.
 Earlier publish under the bare names collided with (and must not reuse) those
 crates.io package identities. This crate is also **not pure standalone SDA
 only**: ENR1 (`Match` / `enrich` / `one?` / `one!` / `merge`, …) shares the same
-compile path. Treat it as DingoDB's SDA+ENR1 hybrid surface.
+compile path. Treat it as ResiduumDB's SDA+ENR1 hybrid surface.
 
 ## When to use this crate
 
@@ -25,7 +25,7 @@ compile path. Treat it as DingoDB's SDA+ENR1 hybrid surface.
 |-----------|-----|
 | Embed SDA+ENR1 evaluation in a Rust program | **`dingo-sda`** (this crate) |
 | Shell CLI (`eval` / `check` / `fmt`) | [`dingo-sda-cli`](https://crates.io/crates/dingo-sda-cli) (`dingo-sda` binary) |
-| DingoDB recovery examination units | [`dingo-examine`](https://crates.io/crates/dingo-examine) |
+| ResiduumDB recovery examination units | [`dingo-examine`](https://crates.io/crates/dingo-examine) |
 
 ## Install
 
@@ -97,7 +97,7 @@ ENR2 (candidates, ranking, explain) is **not** implemented.
 `dingo_sda::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
 require a new corpus tag. ENR1 is additive under `ENR1_PROFILE_TAG`.
 
-DingoDB recovery examination (ExaminationUnit projection) lives in
+ResiduumDB recovery examination (ExaminationUnit projection) lives in
 [`dingo-examine`](https://crates.io/crates/dingo-examine), not here — this crate
 stays pure.
 
@@ -125,4 +125,4 @@ cargo test -p dingo-sda --test sda_bench_skeleton
 
 MIT.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb).
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb).

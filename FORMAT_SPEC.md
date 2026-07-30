@@ -1,4 +1,4 @@
-# DingoDB Survival Format
+# ResiduumDB Survival Format
 
 Status: Draft wire profile v0.1  
 Wire major version: 1  
@@ -6,7 +6,7 @@ Byte order: little-endian
 
 ## 1. Scope
 
-This document defines the first concrete physical profile for DingoDB frames,
+This document defines the first concrete physical profile for ResiduumDB frames,
 segments, and salvage scanning.
 
 Its purpose is not merely to serialize data. Its purpose is to ensure that a

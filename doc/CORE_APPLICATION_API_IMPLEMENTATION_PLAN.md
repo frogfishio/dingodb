@@ -1,4 +1,4 @@
-# Core Application API and DQL implementation plan
+# Core Application API and RQL implementation plan
 
 Status: **developer-ready v1.0**
 
@@ -17,8 +17,8 @@ implementers
 Normative companions:
 
 - [HEAP_SPEC.md](../HEAP_SPEC.md)
-- [DQL_SPEC.md](../DQL_SPEC.md)
-- [DINGO_PREDICATE_SPEC.md](../DINGO_PREDICATE_SPEC.md)
+- [RQL_SPEC.md](../RQL_SPEC.md)
+- [RESIDUUM_PREDICATE_SPEC.md](../RESIDUUM_PREDICATE_SPEC.md)
 - [DX_SPEC.md](../DX_SPEC.md)
 - [COLLECTION_CONTRACT_SPEC.md](../COLLECTION_CONTRACT_SPEC.md)
 - [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
@@ -37,7 +37,7 @@ At acceptance, an application developer can:
    collection identifiers;
 3. put, get, delete, inspect history, and manage field indexes through one
    coherent Rust API;
-4. query documents using either a typed builder or the DQL Application Core;
+4. query documents using either a typed builder or the RQL Application Core;
 5. page deterministically with opaque authenticated cursors;
 6. receive typed receipts, coverage, budgets, and stable errors; and
 7. obtain the same observable semantics from embedded and qualified remote
@@ -45,7 +45,7 @@ At acceptance, an application developer can:
 
 The release is successful when an ordinary Rust application can complete this
 journey without importing legacy unqualified storage types, constructing wire
-JSON, handling collection identifiers as strings, or understanding DingoDB's
+JSON, handling collection identifiers as strings, or understanding ResiduumDB's
 directory structure.
 
 ## 2. Product decision
@@ -62,7 +62,7 @@ authenticated Heap session
                 +-- typed data operations
                 +-- history
                 +-- indexes
-                +-- query builder / DQL
+                +-- query builder / RQL
 ```
 
 Embedded and remote are transport choices, not different database products.
@@ -85,7 +85,7 @@ Cross-Heap composition remains impossible by construction as specified by
 - field-index list/create/drop/rebuild;
 - shared canonical predicate AST;
 - typed query builder;
-- DQL Application Core parsing and compilation;
+- RQL Application Core parsing and compilation;
 - deterministic ordering, limits, bounded pages, and continuation;
 - complete-by-default coverage;
 - scan/materialization budgets and cancellation;
@@ -99,12 +99,12 @@ These items were excluded from the original APP slice. Items admitted by
 MUST NOT be treated as product-level deferrals.
 
 - Node.js, TypeScript, Python, Java, and other language clients;
-- writes or DDL inside DQL;
-- DRE, collection contracts, referential integrity, and Atomics;
-- SQL-ish+ and SQL-to-DQL compilation;
-- enrichment, nested `within`, and cross-collection DQL execution in this
+- writes or DDL inside RQL;
+- RRE, collection contracts, referential integrity, and Atomics;
+- SQL-ish+ and SQL-to-RQL compilation;
+- enrichment, nested `within`, and cross-collection RQL execution in this
   delivery package;
-- exact ranked access and Dingo Order Wavelets;
+- exact ranked access and Residuum Order Wavelets;
 - offset pagination;
 - aggregation, watches, change streams, and bulk mutation;
 - text, vector, and geospatial retrieval;
@@ -122,17 +122,17 @@ This package freezes the following identifiers:
 | Profile | Meaning |
 |---|---|
 | `dingo-rust-app-v1` | public Rust application API |
-| `dql-app-core-v1` | accepted DQL Application Core source surface |
-| `dql-plan-v1` | canonical logical plan shape defined by `DQL_SPEC.md` |
+| `dql-app-core-v1` | accepted RQL Application Core source surface |
+| `dql-plan-v1` | canonical logical plan shape defined by `RQL_SPEC.md` |
 | `dingo-predicate-v1` | shared total predicate semantics |
 | `dingo-cursor-v1` | authenticated query continuation |
 | `rpc-v1` | qualified Heap wire envelope |
 
-`dql-app-core-v1` is a conformance level of DQL v1, not a competing language.
+`dql-app-core-v1` is a conformance level of RQL v1, not a competing language.
 Its accepted grammar is the subset in section 9. A runtime MUST report the
 source and plan profiles separately.
 
-Unsupported DQL v1 syntax MUST fail with `QueryInvalid` and diagnostic code
+Unsupported RQL v1 syntax MUST fail with `QueryInvalid` and diagnostic code
 `dql_feature_unavailable`. It MUST NOT be ignored, weakened, or executed using
 an accidental fallback.
 
@@ -452,7 +452,7 @@ result when allowed, or a typed failure. It never causes a false empty result.
 Index names and paths are validated before effect. Index administration rights
 are distinct from ordinary CRUD rights.
 
-## 9. DQL Application Core
+## 9. RQL Application Core
 
 The accepted source grammar is:
 
@@ -470,11 +470,11 @@ query              = [ "explain" ], from-clause,
 ```
 
 All productions have the meanings and exact grammar defined in
-`DQL_SPEC.md`. The Application Core adds no alternative syntax.
+`RQL_SPEC.md`. The Application Core adds no alternative syntax.
 
 For `CollectionClient::dql`, the `from` source MUST resolve to that handle's
 immutable collection id. A different source name or identity fails before
-execution. This redundancy keeps copied DQL readable while preventing a caller
+execution. This redundancy keeps copied RQL readable while preventing a caller
 from smuggling another collection into the handle.
 
 Included features:
@@ -496,7 +496,7 @@ Excluded clauses fail with `dql_feature_unavailable`, including `enrich`,
 
 ### 9.1 One semantic plan
 
-DQL text and `QueryBuilder` compile into the same validated `DqlPlanV1`.
+RQL text and `QueryBuilder` compile into the same validated `RqlPlanV1`.
 Neither executes its own predicate semantics.
 
 ```rust
@@ -517,7 +517,7 @@ identities. The compiler inserts every default and the immutable-key
 tie-breaker before hashing.
 
 Persistent, exchanged, or cursor-bound plans require the canonical byte
-encoding profile demanded by `DQL_SPEC.md` section 15. An ephemeral Rust AST is
+encoding profile demanded by `RQL_SPEC.md` section 15. An ephemeral Rust AST is
 not sufficient for protocol or cursor identity.
 
 ### 9.2 Defaults and ceilings
@@ -542,7 +542,7 @@ The Application Core parser/decoder hard ceilings are:
 
 | Input | Ceiling |
 |---|---:|
-| UTF-8 DQL source | 1 MiB |
+| UTF-8 RQL source | 1 MiB |
 | JSON/parameter nesting | 64 |
 | bound parameters | 1,024 |
 | encoded parameters | 16 MiB total |
@@ -598,7 +598,7 @@ sort_tuple(row) =
 ```
 
 All supported scalar families, missing, and null have total ordering rules from
-`DQL_SPEC.md`. Unsupported or mixed values produce specified ordering or a
+`RQL_SPEC.md`. Unsupported or mixed values produce specified ordering or a
 typed error; they are never ordered by incidental JSON serialization.
 
 ## 11. Continuation security and consistency
@@ -647,7 +647,7 @@ For the first profile, pagination is generation-fenced:
 Snapshot pagination is a future extension and requires its own retention
 contract.
 
-Raw `after_key` is not part of the public DQL API. It may remain an internal
+Raw `after_key` is not part of the public RQL API. It may remain an internal
 primitive beneath authenticated continuation.
 
 ## 12. Error and retry contract
@@ -659,7 +659,7 @@ and remote failures to the same code:
 |---|---|
 | collection/key absent where absence is exceptional | `NotFound` |
 | duplicate collection/index name | `AlreadyExists` |
-| malformed DQL, predicate, path, key, or name | `QueryInvalid` or `ValidationFailed` |
+| malformed RQL, predicate, path, key, or name | `QueryInvalid` or `ValidationFailed` |
 | unsupported Application Core feature | `QueryInvalid` + `dql_feature_unavailable` |
 | insufficient authority | `PermissionDenied` |
 | invalid credential | `AuthenticationFailed` |
@@ -705,7 +705,7 @@ second explain operation is introduced. Every active operation in
 `operations-v1.json` MUST reference a checked-in request and response schema.
 
 The remote request transports a canonical plan, parameters, options, and
-continuation as separate fields. DQL source may be accepted for convenience,
+continuation as separate fields. RQL source may be accepted for convenience,
 but the server recompiles and validates it; it never trusts a client-declared
 plan hash.
 
@@ -727,7 +727,7 @@ Depends: `HAR-0` (principal may parallel; labor order is principal board)
 
 Deliver:
 
-- this plan and the DQL Application Core conformance section;
+- this plan and the RQL Application Core conformance section;
 - public Rust compile fixtures;
 - wire request/response golden fixtures;
 - stable error mapping table;
@@ -823,7 +823,7 @@ Depends: `APP-0`
 Deliver:
 
 - one `dingo-predicate-v1` AST/parser/evaluator;
-- `DqlPlanV1` logical structures;
+- `RqlPlanV1` logical structures;
 - canonical encoding and domain-separated plan hash;
 - name-to-immutable-id binding;
 - builder-to-plan compilation;
@@ -831,10 +831,10 @@ Deliver:
 
 Exit:
 
-- builder and DQL predicate fixtures compile to identical canonical plans;
+- builder and RQL predicate fixtures compile to identical canonical plans;
 - scan and indexed evaluation agree with the model oracle.
 
-### APP-5 — DQL Application Core compiler
+### APP-5 — RQL Application Core compiler
 
 Depends: `APP-4`
 
@@ -844,7 +844,7 @@ Deliver:
 - parameters, projection, order, limit, page, coverage, consistency, budgets,
   and explain;
 - ordered diagnostics;
-- explicit rejection for non-Core DQL v1 constructs;
+- explicit rejection for non-Core RQL v1 constructs;
 - `dql-app-core-v1` conformance corpus.
 
 Exit:
@@ -900,7 +900,7 @@ Implements the API/query part of `HAR-6` and supports `HAR-7`.
 Deliver:
 
 - one copyable Rust quickstart;
-- API reference and DQL Application Core guide;
+- API reference and RQL Application Core guide;
 - migration table from existing SDK methods;
 - end-to-end local and remote example;
 - benchmark disclosure for the added façade/query path;
@@ -912,7 +912,7 @@ Exit:
 - the M1 critical journey can create, query, page, inspect history, and manage
   an index through this API;
 - all required evidence is reproducible in CI;
-- capability documentation says exactly which DQL conformance level shipped.
+- capability documentation says exactly which RQL conformance level shipped.
 
 ## 15. Dependency graph and permitted parallel work
 
@@ -960,7 +960,7 @@ The release suite contains:
 - golden canonical plan/cursor/protocol vectors;
 - differential embedded/remote tests;
 - fault-injection and crash/reopen tests;
-- fuzz targets for DQL, predicate, plan, cursor, and wire decoders;
+- fuzz targets for RQL, predicate, plan, cursor, and wire decoders;
 - one long-running concurrent application journey.
 
 No test may call two implementations that share the same evaluator and label
@@ -976,8 +976,8 @@ The package is accepted only when every item is true:
 - [ ] public results use typed ids, receipts, history, indexes, pages, and
       errors;
 - [ ] unsupported durability is rejected or honestly upgraded and reported;
-- [ ] DQL and builder compile to one canonical plan;
-- [ ] the shipped language advertises `dql-app-core-v1`, not complete DQL v1;
+- [ ] RQL and builder compile to one canonical plan;
+- [ ] the shipped language advertises `dql-app-core-v1`, not complete RQL v1;
 - [ ] pagination is bounded, authenticated, Heap/plan/parameter-bound, and
       mutation-fenced;
 - [ ] complete coverage is the default and false empty results are impossible;
@@ -993,11 +993,11 @@ The following require later, explicit specifications:
 
 - async Rust shape and executor independence;
 - Node.js packaging and Promise/stream conventions;
-- multi-collection DQL host execution;
+- multi-collection RQL host execution;
 - persistent snapshots across mutations;
 - bulk write and transactional/Atomic batches;
 - exact ranked access;
-- arbitrary scale ordering through Dingo Order Wavelets;
+- arbitrary scale ordering through Residuum Order Wavelets;
 - query-plan compatibility across a breaking semantic profile.
 
 Developers MUST NOT fill these gaps inside this package.

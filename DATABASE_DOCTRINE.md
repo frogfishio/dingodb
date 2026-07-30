@@ -1,14 +1,14 @@
-# DingoDB Database Doctrine
+# ResiduumDB Database Doctrine
 
 Status: Draft doctrine v0.1  
 Scope: Product identity, trust, security, encryption, ownership, lifecycle,
 retention, deletion, backup, recovery, tenancy, and operational responsibility  
 Audience: Implementers, operators, SDK authors, reviewers, and users deciding
-whether DingoDB is suitable for their data
+whether ResiduumDB is suitable for their data
 
-## 1. What DingoDB is
+## 1. What ResiduumDB is
 
-DingoDB is an embedded-first, history-preserving relational document database.
+ResiduumDB is an embedded-first, history-preserving relational document database.
 
 It combines:
 
@@ -19,7 +19,7 @@ It combines:
 - rebuildable indexes and projections;
 - evidence-preserving recovery.
 
-DingoDB is not merely a bag of durable bytes. A database is a contract about:
+ResiduumDB is not merely a bag of durable bytes. A database is a contract about:
 
 - who may act;
 - what an acknowledgement means;
@@ -37,7 +37,7 @@ The doctrine is:
 
 ## 2. The three planes
 
-DingoDB separates three planes.
+ResiduumDB separates three planes.
 
 ### 2.1 Data plane
 
@@ -96,7 +96,7 @@ prove durability. A surviving frame does not prove logical commitment.
 
 ### 3.1 Evidence before convenience
 
-When convenience and truth conflict, DingoDB reports the inconvenient truth.
+When convenience and truth conflict, ResiduumDB reports the inconvenient truth.
 
 ### 3.2 Safe silence is not acceptable
 
@@ -131,7 +131,7 @@ capacity pressure, or ordinary administrator preference.
 
 ### 3.8 Capacity pressure never invents consent
 
-DingoDB MUST NOT delete authoritative data merely because storage is full.
+ResiduumDB MUST NOT delete authoritative data merely because storage is full.
 
 ### 3.9 Derived structures inherit sensitivity
 
@@ -145,7 +145,7 @@ recovery evidence without a proprietary service.
 
 ## 4. Deployment and trust profiles
 
-Security is deployment-specific. DingoDB defines four profiles.
+Security is deployment-specific. ResiduumDB defines four profiles.
 
 ### 4.1 Embedded trusted-process
 
@@ -162,7 +162,7 @@ Properties:
 
 - no network listener is required;
 - filesystem permissions provide the primary access boundary;
-- DingoDB does not isolate mutually hostile libraries inside one process;
+- ResiduumDB does not isolate mutually hostile libraries inside one process;
 - an attacker with application-process memory access can normally see
   plaintext and active data keys;
 - full-disk encryption protects powered-off media but not a mounted,
@@ -202,8 +202,8 @@ The server operator is not trusted with selected plaintext.
 
 Properties:
 
-- sensitive fields or payloads are encrypted before DingoDB receives them;
-- DingoDB preserves ciphertext and declared metadata;
+- sensitive fields or payloads are encrypted before ResiduumDB receives them;
+- ResiduumDB preserves ciphertext and declared metadata;
 - server-side filtering, indexing, ENR, and SDA are limited to information
   deliberately exposed by the client encryption profile;
 - this profile provides confidentiality from the database server at the cost
@@ -250,9 +250,9 @@ The key custodian controls:
 
 The operator and key custodian MAY be different parties.
 
-### 5.4 DingoDB
+### 5.4 ResiduumDB
 
-DingoDB is responsible for:
+ResiduumDB is responsible for:
 
 - enforcing declared policy within its supported boundary;
 - exposing achieved guarantees;
@@ -262,7 +262,7 @@ DingoDB is responsible for:
 
 ### 5.5 Shared responsibility
 
-DingoDB cannot:
+ResiduumDB cannot:
 
 - recover keys destroyed outside it;
 - delete unknown copies outside its managed domains;
@@ -274,7 +274,7 @@ DingoDB cannot:
 
 ## 6. Data classification
 
-DingoDB defines portable classification labels:
+ResiduumDB defines portable classification labels:
 
 - `public`;
 - `internal`;
@@ -304,7 +304,7 @@ restrictive applicable policy.
 
 ### 7.1 Database subjects are systems
 
-DingoDB authorizes systems, not human accounts.
+ResiduumDB authorizes systems, not human accounts.
 
 Every remote heap operation is associated with:
 
@@ -313,9 +313,9 @@ Every remote heap operation is associated with:
 - proof that the caller holds the private key named by that certificate; and
 - a transport channel bound to the validated heap capability.
 
-DingoDB does not maintain human users, groups, roles, memberships, or
+ResiduumDB does not maintain human users, groups, roles, memberships, or
 principal-to-permission grants for heap access. Applications MAY implement
-RBAC, ABAC, ACLs, or another human authorization model above DingoDB and decide
+RBAC, ABAC, ACLs, or another human authorization model above ResiduumDB and decide
 which process receives which HeapKey.
 
 Shared anonymous identity is permitted only in explicitly declared local
@@ -328,7 +328,7 @@ to that heap. The master private key:
 
 - has no data read or write rights;
 - issues restricted HeapKeys for systems;
-- is never accepted by the DingoDB network protocol; and
+- is never accepted by the ResiduumDB network protocol; and
 - is used only through a local, operating-system-protected authority tool.
 
 HeapKey claims include the heap, authority generation, holder public key,
@@ -430,7 +430,7 @@ boundary.
 
 ### 8.4 Side channels
 
-DingoDB does not claim complete tenant isolation while shared structures leak:
+ResiduumDB does not claim complete tenant isolation while shared structures leak:
 
 - key existence;
 - value size;
@@ -446,7 +446,7 @@ Profiles that share these structures MUST document the leakage.
 
 ### 9.1 Encryption goals
 
-DingoDB distinguishes:
+ResiduumDB distinguishes:
 
 1. transport encryption;
 2. native encryption at rest;
@@ -487,7 +487,7 @@ It does not protect against:
 
 ### 9.4 Native at-rest encryption
 
-Native encryption protects authoritative DingoDB objects independently of
+Native encryption protects authoritative ResiduumDB objects independently of
 their containing filesystem.
 
 The native format MUST preserve independent recovery:
@@ -501,7 +501,7 @@ The native format MUST preserve independent recovery:
 
 ### 9.5 Envelope encryption
 
-DingoDB native encryption uses envelope encryption:
+ResiduumDB native encryption uses envelope encryption:
 
 - data-encryption keys (DEKs) encrypt bounded data units;
 - key-encryption keys (KEKs) wrap DEKs;
@@ -573,7 +573,7 @@ tradeoff must be explicit.
 
 ### 9.9 Memory
 
-DingoDB decrypts only for an authorized operation.
+ResiduumDB decrypts only for an authorized operation.
 
 Implementations SHOULD:
 
@@ -584,7 +584,7 @@ Implementations SHOULD:
 - exclude keys and payloads from diagnostics;
 - isolate KMS credentials from ordinary data-plane code.
 
-DingoDB does not claim protection from an attacker with arbitrary read access
+ResiduumDB does not claim protection from an attacker with arbitrary read access
 to process memory.
 
 ## 10. Key management
@@ -652,7 +652,7 @@ Core states are:
 
 ### 10.5 Availability
 
-Before acknowledging an encrypted write, DingoDB proves that the required DEK
+Before acknowledging an encrypted write, ResiduumDB proves that the required DEK
 is durably recoverable under the declared key policy.
 
 A healthy readiness check reports:
@@ -683,7 +683,7 @@ Rotating a KEK does not repair compromise of a DEK.
 
 Key destruction is a destructive data-lifecycle action.
 
-Before destruction, DingoDB MUST produce a dependency inventory covering:
+Before destruction, ResiduumDB MUST produce a dependency inventory covering:
 
 - live data;
 - retained history;
@@ -831,12 +831,12 @@ A purge result states:
 - key actions;
 - completion and uncertainty.
 
-If an archive is offline or an external backup is outside DingoDB's control,
+If an archive is offline or an external backup is outside ResiduumDB's control,
 the result is `purge-incomplete`, not success.
 
 ### 11.9 Secure erasure
 
-DingoDB does not promise that overwriting a logical file securely erases
+ResiduumDB does not promise that overwriting a logical file securely erases
 physical flash, remapped sectors, snapshots, replicas, or external backups.
 
 Supported erasure claims are:
@@ -873,7 +873,7 @@ Retention is a versioned policy containing:
 
 ### 12.2 Governance and compliance modes
 
-DingoDB distinguishes:
+ResiduumDB distinguishes:
 
 **Governance retention**  
 Ordinary principals cannot shorten or bypass retention. A separately
@@ -881,7 +881,7 @@ authorized override may do so with explicit intent and audit.
 
 **Compliance retention**  
 The configured policy cannot be shortened or bypassed through ordinary
-DingoDB administration before its deadline.
+ResiduumDB administration before its deadline.
 
 Compliance mode is a product mechanism, not a legal certification.
 
@@ -911,7 +911,7 @@ effective time.
 
 Wall clocks are evidence, not perfect order.
 
-DingoDB records:
+ResiduumDB records:
 
 - supplied event time;
 - ingestion time;
@@ -951,7 +951,7 @@ A backup manifest records:
 
 ### 14.3 Backup classes
 
-DingoDB distinguishes:
+ResiduumDB distinguishes:
 
 - full physical backup;
 - incremental physical backup;
@@ -1040,7 +1040,7 @@ Those require history, backup, holds, and independent key policy.
 
 ## 16. Integrity, authenticity, and provenance
 
-DingoDB reports separate states for:
+ResiduumDB reports separate states for:
 
 - structurally framed;
 - checksum verified;
@@ -1069,7 +1069,7 @@ Derived data:
 - cannot prove absence beyond its coverage;
 - is invalidated or rebuilt after policy changes that affect visibility.
 
-Sensitive query plans, spilled intermediate results, DQL/ENR materializations,
+Sensitive query plans, spilled intermediate results, RQL/ENR materializations,
 semantic indexes, and full-text terms are data for security purposes.
 
 ## 18. Logging, metrics, tracing, and audit
@@ -1111,7 +1111,7 @@ Audit has independent retention and integrity policy.
 Audit is not the same as application event history.
 
 The normative durable audit design is the
-[Dingo Evidence Ledger](EVIDENCE_LEDGER_SPEC.md). Required evidence is
+[Residuum Evidence Ledger](EVIDENCE_LEDGER_SPEC.md). Required evidence is
 atomically coupled to its protected operation and is never substituted by
 telemetry, stdout/stderr, or file logging.
 
@@ -1142,7 +1142,7 @@ Every deployment defines budgets for:
 - lifecycle work;
 - KMS requests.
 
-When authoritative storage approaches exhaustion, DingoDB:
+When authoritative storage approaches exhaustion, ResiduumDB:
 
 1. reports pressure;
 2. throttles background work where safe;
@@ -1177,12 +1177,12 @@ Unsafe combinations fail closed. Examples include:
 
 ## 21. Upgrade and compatibility doctrine
 
-DingoDB distinguishes:
+ResiduumDB distinguishes:
 
 - storage wire version;
 - network protocol version;
 - SDA version and profile;
-- DQL/ENR dialect version;
+- RQL/ENR dialect version;
 - SDK API version;
 - policy document version;
 - encryption profile version.
@@ -1221,7 +1221,7 @@ KEK rotation alone is insufficient.
 
 ## 23. Compliance doctrine
 
-DingoDB provides mechanisms that may support compliance:
+ResiduumDB provides mechanisms that may support compliance:
 
 - encryption;
 - access control;
@@ -1233,7 +1233,7 @@ DingoDB provides mechanisms that may support compliance:
 - data locality;
 - key separation.
 
-DingoDB does not declare a deployment compliant merely because a mechanism is
+ResiduumDB does not declare a deployment compliant merely because a mechanism is
 enabled.
 
 Compliance depends on:
@@ -1307,7 +1307,7 @@ assessed.
 - format-reader preservation;
 - periodic restore and migration rehearsal.
 
-## 25. Operator questions DingoDB must always answer
+## 25. Operator questions ResiduumDB must always answer
 
 For any store:
 
@@ -1330,7 +1330,7 @@ For any store:
 17. Which indexes or tiers are incomplete?
 18. Which versions can still read the store?
 19. What is logged and audited?
-20. What claim is DingoDB unwilling to make?
+20. What claim is ResiduumDB unwilling to make?
 
 If the product cannot answer one of these, that is a capability gap, not
 operator trivia.
@@ -1367,7 +1367,7 @@ This doctrine follows mature, documented patterns:
 - PostgreSQL backup/PITR combines a base with retained write-ahead history
   rather than treating an arbitrary live file copy as sufficient.
 - PostgreSQL row-security documentation warns that filtered visibility can
-  silently damage backup completeness; DingoDB therefore separates physical
+  silently damage backup completeness; ResiduumDB therefore separates physical
   backup scope from ordinary query authorization.
 - MongoDB uses envelope encryption with externally managed master keys and
   internal database keys.
@@ -1405,7 +1405,7 @@ Primary references:
 
 ## 28. Final identity
 
-DingoDB is not “raw storage with queries.”
+ResiduumDB is not “raw storage with queries.”
 
 It is a policy-bearing database:
 
@@ -1418,5 +1418,5 @@ It is a policy-bearing database:
 - backup is restore-tested;
 - operations expose achieved truth.
 
-> DingoDB remembers the data, the meaning applied to it, and the rules governing
+> ResiduumDB remembers the data, the meaning applied to it, and the rules governing
 > what may happen to it.

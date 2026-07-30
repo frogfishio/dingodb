@@ -29,7 +29,7 @@ keywords:
 ## Local site
 
 ```bash
-cd web/docs.dingodb.org
+cd web/docs.residuumdb.org
 npm install
 npm run dev
 npm run validate && npm run build
@@ -41,4 +41,4 @@ Every page declares class, status, applies_to, source.path, last_verified, owner
 
 ## Release
 
-See [CONTENT_RUNBOOK.md](https://github.com/frogfishio/dingodb/blob/main/web/docs.dingodb.org/CONTENT_RUNBOOK.md) in this package after publish.
+See [CONTENT_RUNBOOK.md](https://github.com/frogfishio/dingodb/blob/main/web/docs.residuumdb.org/CONTENT_RUNBOOK.md) in this package after publish.

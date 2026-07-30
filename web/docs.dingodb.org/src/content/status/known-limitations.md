@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Known limitations
-description: Material user-visible limitations for DingoDB 0.2.
+description: Material user-visible limitations for ResiduumDB 0.2.
 class: status
 status: experimental
 section: status
@@ -18,7 +18,7 @@ keywords:
   - limitations
 ---
 
-- DingoDB is experimental software. No production-supported release line is claimed.
+- ResiduumDB is experimental software. No production-supported release line is claimed.
 - Experimental network cluster is not a production deployment path.
 - S3/GCS locators are filesystem mirrors, not native cloud object-store connectors.
 - `WIRE_PROFILE_LABEL = 1.0-draft` is not an interoperability freeze.

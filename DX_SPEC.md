@@ -1,4 +1,4 @@
-# DingoDB Developer Experience Specification
+# ResiduumDB Developer Experience Specification
 
 First-party visual development and operations experience:
 [STUDIO_SPEC.md](STUDIO_SPEC.md).
@@ -9,11 +9,11 @@ progressive disclosure
 
 ## 1. Product requirement
 
-DingoDB's unusual storage and recovery machinery MUST produce an ordinary,
+ResiduumDB's unusual storage and recovery machinery MUST produce an ordinary,
 pleasant database experience.
 
 A developer who does not care about physical damage, archival formats,
-consensus, or SDA should still choose DingoDB because it is an easy and fast
+consensus, or SDA should still choose ResiduumDB because it is an easy and fast
 place to put JSON and bytes.
 
 The everyday promise is:
@@ -22,7 +22,7 @@ The everyday promise is:
 
 The advanced promise remains:
 
-> When ordinary assumptions fail, DingoDB tells you exactly what survived.
+> When ordinary assumptions fail, ResiduumDB tells you exactly what survived.
 
 ## 2. DX success criteria
 
@@ -89,7 +89,7 @@ data semantics.
 
 ### 3.6 No silent uncertainty
 
-An ordinary result is ordinary only when DingoDB can support the claim it
+An ordinary result is ordinary only when ResiduumDB can support the claim it
 makes.
 
 A missing key, unavailable partition, stale incomplete index, damaged payload,
@@ -99,7 +99,7 @@ and resource-limited search are different outcomes.
 
 A missing secondary index MUST NOT make a valid query illegal.
 
-DingoDB may scan, ask for an explicit budget, or report that required tiers are
+ResiduumDB may scan, ask for an explicit budget, or report that required tiers are
 offline. It MUST NOT return a knowingly incomplete empty result.
 
 ## 4. Deployment model
@@ -114,7 +114,7 @@ const db = await Dingo.open("./app.dingo");
 
 If the path does not exist, it is created with safe defaults.
 
-If it exists, DingoDB discovers the format and opens it without requiring a
+If it exists, ResiduumDB discovers the format and opens it without requiring a
 separate manifest database.
 
 Opening MUST NOT perform an unbounded full-store scan on the latency-sensitive
@@ -311,7 +311,7 @@ const item = await users.inspect("user-42");
 ```
 
 `inspect` returns the item, integrity state, provenance, holes, coverage, and
-uncertainty according to the DingoDB SDA profile.
+uncertainty according to the ResiduumDB SDA profile.
 
 It is the escape hatch when `get` cannot honestly return one ordinary value.
 
@@ -435,7 +435,7 @@ Numeric start is supported as **ranked direct access**, not as permission to
 scan and discard a prefix. Its normative contract is
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md).
 
-When a caller asks for result 100,001, DingoDB either:
+When a caller asks for result 100,001, ResiduumDB either:
 
 - uses exact rank/select and counting structures;
 - performs an explicitly budgeted one-time selection-artifact build;
@@ -513,7 +513,7 @@ work
 is the opt-in compatibility escape hatch.
 
 When the filter bitmap and declared scalar order are indexed, the planner may
-use a [Dingo Order Wavelet](ORDER_WAVELET_SPEC.md) to navigate exact
+use a [Residuum Order Wavelet](ORDER_WAVELET_SPEC.md) to navigate exact
 filter-conditioned branch counts. This removes query-time sorting as well as
 prefix enumeration. Explain identifies that choice; applications do not use a
 separate query API.
@@ -592,16 +592,16 @@ will prefer it. Everyone else uses **dialects**: frontends that compile into
 the same ENR+SDA IR and never redefine algebra semantics. This is **not** a
 hybrid of co-equal languages.
 
-**DQL (Dingo Query Language) is the official human dialect** — co-designed with
+**RQL (Residuum Query Language) is the official human dialect** — co-designed with
 ENR for readable enrichment and nested projection. It is not SQL; foreign
 SQL/Mongo/GraphQL surfaces remain optional comfort with known holes. How to
-write queries: [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md). Design:
-[DQL_SPEC.md](DQL_SPEC.md).
+write queries: [doc/RQL/USER_GUIDE.md](doc/RQL/USER_GUIDE.md). Design:
+[RQL_SPEC.md](RQL_SPEC.md).
 
 **Null vs absence is the hard case.** SQL `NULL` and Mongo-style filters cannot
 losslessly encode SDA’s distinction between a stored `null` and a missing key
 (SDA_SPEC §4.0.1). If callers must separate those, they write pure SDA (or ENR
-text), or DQL once it covers that construct faithfully. Foreign dialects may
+text), or RQL once it covers that construct faithfully. Foreign dialects may
 approximate and MUST attach notes or refuse rather than quietly redefine the
 algebra.
 
@@ -632,23 +632,23 @@ Builtin dialect ids:
 | Id | Role |
 |----|------|
 | `sda` | Pure SDA/ENR1 text (parse-checked) |
-| `dql` | **Official** Dingo Query Language → ENR1+SDA ([DQL_SPEC.md](DQL_SPEC.md); v0.1) |
+| `dql` | **Official** Residuum Query Language → ENR1+SDA ([RQL_SPEC.md](RQL_SPEC.md); v0.1) |
 | `json` / `mongo` | DX portable filter object → document predicate |
 | `sql` | Legacy partial `SELECT` / `WHERE` mimicry; retained during migration |
-| `sql+` / `sql-plus` | SQL-ish+ → canonical DQL v1; specified, not yet implemented |
+| `sql+` / `sql-plus` | SQL-ish+ → canonical RQL v1; specified, not yet implemented |
 | `graphql` | Reserved; not implemented |
 
 None of the *foreign* dialects is a complete encoding of SDA, SQL, MongoDB, or
 GraphQL. Mimicry is intentional: the product offers the pure language (hard),
-DQL as the official human surface, plus comfortable foreign options. Hosts MAY
+RQL as the official human surface, plus comfortable foreign options. Hosts MAY
 register additional dialects that compile to pure SDA / shared IR.
 
 SQL-ish+ is intentionally more substantial than the legacy `sql` filter
 dialect. It is an optional executable frontend for SQL-familiar users and
-compiles through DQL rather than introducing an SQL execution engine. See
-[SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md).
+compiles through RQL rather than introducing an SQL execution engine. See
+[SQL_TO_RQL_SPEC.md](SQL_TO_RQL_SPEC.md).
 
-Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [DQL_SPEC.md](DQL_SPEC.md).
+Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [RQL_SPEC.md](RQL_SPEC.md).
 Rust surface: `dingo-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
 `QueryDialect`).
 
@@ -701,7 +701,7 @@ The index exposes `building`, `ready`, `stale`, `partial`, `failed`, and
 
 The query planner uses applicable indexes automatically.
 
-DingoDB SHOULD recommend indexes using observed query patterns and estimated
+ResiduumDB SHOULD recommend indexes using observed query patterns and estimated
 benefit. It MUST NOT silently create unbounded durable indexes by default.
 
 Development mode MAY offer explicitly enabled automatic indexes with a clear
@@ -982,11 +982,11 @@ Errors MUST NOT require parsing English text.
 Internal frame, checksum, consensus, or codec details appear in structured
 causes and diagnostics, not as the only top-level explanation.
 
-## 16. Data Rules (DRE) and schema experience
+## 16. Data Rules (RRE) and schema experience
 
 Collections are schemaless by default.
 
-Optional Data Rules, declared with Dingo Rule Expressions (DRE), provide:
+Optional Data Rules, declared with Residuum Rule Expressions (RRE), provide:
 
 - write validation;
 - conditional field presence;
@@ -1000,7 +1000,7 @@ Optional Data Rules, declared with Dingo Rule Expressions (DRE), provide:
 - evolution rules.
 
 The official declaration surface is line-oriented and visually compatible
-with DQL:
+with RQL:
 
 ```text
 rules for orders
@@ -1014,7 +1014,7 @@ reference customer using customers
 ```
 
 The `dre` dialect compiles to the formal, bounded invariant model in
-`DRE_SPEC.md`. They are not scripts, callbacks, arbitrary DQL
+`RRE_SPEC.md`. They are not scripts, callbacks, arbitrary RQL
 queries, or an application hook.
 
 Attaching a rule does not rewrite old payloads automatically. A rule becomes
@@ -1040,7 +1040,7 @@ First-class import formats SHOULD include:
 - JSONL;
 - raw files and directory trees;
 - CSV through an explicit mapping;
-- DingoDB diagnostic and survival formats.
+- ResiduumDB diagnostic and survival formats.
 
 Export SHOULD include:
 
@@ -1225,7 +1225,7 @@ SDKs may follow without changing the everyday logical model.
 
 ## 25. Governing principle
 
-The user should encounter DingoDB's complexity only when that complexity
+The user should encounter ResiduumDB's complexity only when that complexity
 protects them from a lie.
 
 > Extraordinary internals. Ordinary database experience.

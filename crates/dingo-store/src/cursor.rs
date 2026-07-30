@@ -18,19 +18,26 @@
 //! that never sees `CursorStale` yields each live subject at most once and
 //! omits no subject that remained live for the whole scan.
 //!
-//! # Tokens
+//! # Tokens (DEF-097)
 //!
-//! Continuation tokens are opaque bytes. The payload has a keyed integrity tag
-//! derived from `store_id`, so accidental mutation and cross-store use fail
-//! closed ([`StoreError::CursorInvalid`]). Because `store_id` is not secret,
-//! this v1 tag is not attacker-resistant authentication; see DEF-097.
+//! Continuation tokens are opaque bytes. Integrity is a BLAKE3 keyed MAC whose
+//! key is derived from **store-local secret entropy** ([`ContinuationKeyring`]),
+//! not from the public `store_id` alone. Knowledge of store id + token bytes is
+//! insufficient to forge or modify a valid token.
+//!
+//! Wire profile: `dingo-cursor-v2` (magic `DCSR0002`) embeds `key_generation_id`
+//! so rotation can accept the previous generation during grace.
 
 use crate::error::StoreError;
 use crate::store::{IncompleteReason, LiveIncomplete, LiveLogicalScan};
+use crate::token_keys::ContinuationKeyring;
 use blake3::Hasher;
 
-/// Profile tag for cursor / continuation token encoding.
-pub const CURSOR_PROFILE: &str = "dingo-cursor-v1";
+/// Profile tag for cursor / continuation token encoding (DEF-097 secret keys).
+pub const CURSOR_PROFILE: &str = "dingo-cursor-v2";
+
+/// Domain separation for store cursor MAC keys.
+const MAC_DOMAIN: &[u8] = b"dingo-cursor-v2-mac\0";
 
 /// Default page size when the caller does not specify one.
 pub const DEFAULT_PAGE_SIZE: usize = 64;
@@ -41,7 +48,7 @@ pub const MAX_PAGE_SIZE: usize = 4096;
 /// Hard cap on token size (prefix + after subject + headers + MAC).
 pub const MAX_TOKEN_BYTES: usize = 8192;
 
-const TOKEN_MAGIC: &[u8; 8] = b"DCSR0001";
+const TOKEN_MAGIC: &[u8; 8] = b"DCSR0002";
 const MAC_LEN: usize = 16;
 const GEN_LEN: usize = 32;
 
@@ -212,15 +219,12 @@ pub fn scan_generation(
     *h.finalize().as_bytes()
 }
 
-fn mac_key(store_id: &[u8; 16]) -> [u8; 32] {
-    let mut h = Hasher::new();
-    h.update(b"dingo-cursor-v1-mac\0");
-    h.update(store_id);
-    *h.finalize().as_bytes()
-}
-
-/// Encode a continuation token for `store_id`.
-pub fn encode_token(store_id: &[u8; 16], state: &CursorState) -> Result<Vec<u8>, StoreError> {
+/// Encode a continuation token for `store_id` using the active key generation.
+pub fn encode_token(
+    store_id: &[u8; 16],
+    keyring: &ContinuationKeyring,
+    state: &CursorState,
+) -> Result<Vec<u8>, StoreError> {
     let prefix = state.prefix.as_deref().unwrap_or(&[]);
     let after = state.after.as_deref().unwrap_or(&[]);
     if prefix.len() > MAX_TOKEN_BYTES || after.len() > MAX_TOKEN_BYTES {
@@ -228,9 +232,12 @@ pub fn encode_token(store_id: &[u8; 16], state: &CursorState) -> Result<Vec<u8>,
             "prefix or after subject exceeds token size budget".into(),
         ));
     }
-    let mut body = Vec::with_capacity(8 + 16 + GEN_LEN + 4 + 4 + 4 + prefix.len() + after.len());
+    let key_gen = keyring.active_generation_id();
+    let mut body =
+        Vec::with_capacity(8 + 16 + 4 + GEN_LEN + 4 + 4 + 4 + prefix.len() + after.len());
     body.extend_from_slice(TOKEN_MAGIC);
     body.extend_from_slice(store_id);
+    body.extend_from_slice(&key_gen.to_le_bytes());
     body.extend_from_slice(&state.generation);
     body.extend_from_slice(&(state.page_size as u32).to_le_bytes());
     body.extend_from_slice(&(prefix.len() as u32).to_le_bytes());
@@ -242,15 +249,19 @@ pub fn encode_token(store_id: &[u8; 16], state: &CursorState) -> Result<Vec<u8>,
             "continuation token would exceed size budget".into(),
         ));
     }
-    let key = mac_key(store_id);
+    let key = keyring.active_mac_key(MAC_DOMAIN, store_id);
     let tag = blake3::keyed_hash(&key, &body);
     body.extend_from_slice(&tag.as_bytes()[..MAC_LEN]);
     Ok(body)
 }
 
-/// Decode and authenticate a continuation token.
-pub fn decode_token(store_id: &[u8; 16], token: &[u8]) -> Result<CursorState, StoreError> {
-    if token.len() < 8 + 16 + GEN_LEN + 4 + 4 + 4 + MAC_LEN || token.len() > MAX_TOKEN_BYTES {
+/// Decode and authenticate a continuation token with the store keyring.
+pub fn decode_token(
+    store_id: &[u8; 16],
+    keyring: &ContinuationKeyring,
+    token: &[u8],
+) -> Result<CursorState, StoreError> {
+    if token.len() < 8 + 16 + 4 + GEN_LEN + 4 + 4 + 4 + MAC_LEN || token.len() > MAX_TOKEN_BYTES {
         return Err(StoreError::CursorInvalid(
             "continuation token length out of range".into(),
         ));
@@ -258,14 +269,7 @@ pub fn decode_token(store_id: &[u8; 16], token: &[u8]) -> Result<CursorState, St
     let (payload, mac) = token.split_at(token.len() - MAC_LEN);
     if &payload[..8] != TOKEN_MAGIC.as_slice() {
         return Err(StoreError::CursorInvalid(
-            "continuation token magic/version mismatch".into(),
-        ));
-    }
-    let key = mac_key(store_id);
-    let expected = blake3::keyed_hash(&key, payload);
-    if !constant_time_eq(mac, &expected.as_bytes()[..MAC_LEN]) {
-        return Err(StoreError::CursorInvalid(
-            "continuation token MAC mismatch (tampered or wrong store)".into(),
+            "continuation token magic/version mismatch (need dingo-cursor-v2)".into(),
         ));
     }
     let tok_store = &payload[8..24];
@@ -274,9 +278,21 @@ pub fn decode_token(store_id: &[u8; 16], token: &[u8]) -> Result<CursorState, St
             "continuation token store_id mismatch".into(),
         ));
     }
+    let key_gen = u32::from_le_bytes(payload[24..28].try_into().unwrap());
+    let Some(key) = keyring.mac_key_for(key_gen, MAC_DOMAIN, store_id) else {
+        return Err(StoreError::CursorInvalid(
+            "continuation token key generation retired or unknown".into(),
+        ));
+    };
+    let expected = blake3::keyed_hash(&key, payload);
+    if !constant_time_eq(mac, &expected.as_bytes()[..MAC_LEN]) {
+        return Err(StoreError::CursorInvalid(
+            "continuation token MAC mismatch (tampered, wrong store, or forged)".into(),
+        ));
+    }
     let mut generation = [0u8; GEN_LEN];
-    generation.copy_from_slice(&payload[24..24 + GEN_LEN]);
-    let mut o = 24 + GEN_LEN;
+    generation.copy_from_slice(&payload[28..28 + GEN_LEN]);
+    let mut o = 28 + GEN_LEN;
     let page_size = u32::from_le_bytes(payload[o..o + 4].try_into().unwrap()) as usize;
     o += 4;
     if page_size == 0 || page_size > MAX_PAGE_SIZE {
@@ -336,18 +352,20 @@ pub(crate) fn incomplete(subject: Vec<u8>, reason: IncompleteReason) -> LiveInco
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::token_keys::ContinuationKeyring;
 
     #[test]
     fn token_roundtrip_and_mac() {
         let store_id = [7u8; 16];
+        let keyring = ContinuationKeyring::mint_new().unwrap();
         let state = CursorState {
             generation: [9u8; 32],
             prefix: Some(b"coll/".to_vec()),
             after: Some(b"coll/key-10".to_vec()),
             page_size: 32,
         };
-        let tok = encode_token(&store_id, &state).unwrap();
-        let dec = decode_token(&store_id, &tok).unwrap();
+        let tok = encode_token(&store_id, &keyring, &state).unwrap();
+        let dec = decode_token(&store_id, &keyring, &tok).unwrap();
         assert_eq!(dec.generation, state.generation);
         assert_eq!(dec.prefix, state.prefix);
         assert_eq!(dec.after, state.after);
@@ -358,16 +376,62 @@ mod tests {
         let last = bad.len() - 1;
         bad[last] ^= 0xff;
         assert!(matches!(
-            decode_token(&store_id, &bad),
+            decode_token(&store_id, &keyring, &bad),
             Err(StoreError::CursorInvalid(_))
         ));
 
-        // Wrong store
+        // Wrong store id (same keyring material would still fail store_id check
+        // after MAC if we swapped — use different keyring for forge attempt).
         let other = [8u8; 16];
         assert!(matches!(
-            decode_token(&other, &tok),
+            decode_token(&other, &keyring, &tok),
             Err(StoreError::CursorInvalid(_))
         ));
+    }
+
+    #[test]
+    fn public_store_id_cannot_forge_mac() {
+        // Attacker knows store_id and can re-derive the OLD public-only key
+        // scheme; with secret keyring, that material must not verify.
+        let store_id = [3u8; 16];
+        let keyring = ContinuationKeyring::mint_new().unwrap();
+        let state = CursorState {
+            generation: [1u8; 32],
+            prefix: None,
+            after: Some(b"k".to_vec()),
+            page_size: 8,
+        };
+        let tok = encode_token(&store_id, &keyring, &state).unwrap();
+        // Second independent keyring (attacker cannot mint store secret).
+        let attacker = ContinuationKeyring::mint_new().unwrap();
+        assert!(matches!(
+            decode_token(&store_id, &attacker, &tok),
+            Err(StoreError::CursorInvalid(_))
+        ));
+    }
+
+    #[test]
+    fn rotation_grace_then_retire() {
+        let store_id = [1u8; 16];
+        let mut keyring = ContinuationKeyring::mint_new().unwrap();
+        let state = CursorState {
+            generation: [2u8; 32],
+            prefix: None,
+            after: Some(b"a".to_vec()),
+            page_size: 4,
+        };
+        let tok_old = encode_token(&store_id, &keyring, &state).unwrap();
+        keyring.rotate().unwrap();
+        // Previous generation still verifies during grace.
+        decode_token(&store_id, &keyring, &tok_old).unwrap();
+        let tok_new = encode_token(&store_id, &keyring, &state).unwrap();
+        decode_token(&store_id, &keyring, &tok_new).unwrap();
+        keyring.retire_previous();
+        assert!(matches!(
+            decode_token(&store_id, &keyring, &tok_old),
+            Err(StoreError::CursorInvalid(_))
+        ));
+        decode_token(&store_id, &keyring, &tok_new).unwrap();
     }
 
     #[test]

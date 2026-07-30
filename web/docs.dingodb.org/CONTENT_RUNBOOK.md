@@ -2,8 +2,8 @@
 
 ## Freeze and generate
 
-1. Freeze DingoDB source revision (git tag or SHA).
-2. From `web/docs.dingodb.org`:
+1. Freeze ResiduumDB source revision (git tag or SHA).
+2. From `web/docs.residuumdb.org`:
    ```sh
    npm run sync-release
    ```
@@ -19,7 +19,7 @@
 
 | Channel | URL | Notes |
 |---------|-----|-------|
-| Current | `https://docs.dingodb.org/` | Latest published minor line |
+| Current | `https://docs.residuumdb.org/` | Latest published minor line |
 | Next | `/next/` | Unreleased; `noindex` |
 | Archive | `/versions/<major.minor>/` | Frozen line |
 

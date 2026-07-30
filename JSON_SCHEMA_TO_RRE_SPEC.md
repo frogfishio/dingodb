@@ -1,4 +1,4 @@
-# JSON Schema to DRE cross-compiler specification
+# JSON Schema to RRE cross-compiler specification
 
 Status: **Normative design v1.0-draft**
 
@@ -10,8 +10,8 @@ Target dialect: `dre`
 
 Audience: migration-tool, schema, compiler, SDK, and conformance implementers
 
-Normative companions: [DRE_SPEC.md](DRE_SPEC.md),
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md), and
+Normative companions: [RRE_SPEC.md](RRE_SPEC.md),
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md), and
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md)
 
 Authoritative source specifications:
@@ -22,16 +22,16 @@ Authoritative source specifications:
 ## 1. Purpose
 
 This compiler translates a precisely supported subset of JSON Schema Draft
-2020-12 into Dingo Rule Expressions.
+2020-12 into Residuum Rule Expressions.
 
-It is an importer, not a claim that DRE implements all JSON Schema
+It is an importer, not a claim that RRE implements all JSON Schema
 vocabularies. JSON Schema contains applicators, dynamic references, regular
 expressions, annotations, content vocabularies, and open extension mechanisms
-that DRE v1 intentionally does not reproduce.
+that RRE v1 intentionally does not reproduce.
 
 The compiler rule is:
 
-> Preserve validation equivalence for every admissible Dingo document, or
+> Preserve validation equivalence for every admissible ResiduumDB document, or
 > refuse the schema.
 
 Unsupported keywords are never ignored merely because some JSON Schema
@@ -39,8 +39,8 @@ validators treat unknown extension keywords as annotations.
 
 ## 2. Equivalence
 
-For accepted source schema `J`, emitted DRE ruleset `R`, bound collection `C`,
-and every admissible Dingo JSON document `d`:
+For accepted source schema `J`, emitted RRE ruleset `R`, bound collection `C`,
+and every admissible ResiduumDB JSON document `d`:
 
 ```text
 ValidateJsonSchema202012(J, d)
@@ -114,11 +114,11 @@ writeOnly
 $comment
 ```
 
-They are preserved in the receipt and do not affect DRE.
+They are preserved in the receipt and do not affect RRE.
 
 `format` is accepted only under the Draft 2020-12 format-annotation vocabulary
 and is recorded as non-enforcing metadata. If the format-assertion vocabulary
-is required, compilation is refused because DRE v1 has no matching format
+is required, compilation is refused because RRE v1 has no matching format
 types.
 
 Content metadata keywords are refused in v1 rather than silently discarded.
@@ -160,7 +160,7 @@ errors.
 
 Supported JSON Schema types map as follows:
 
-| JSON Schema | DRE |
+| JSON Schema | RRE |
 |---|---|
 | `"null"` | `null` |
 | `"boolean"` | `boolean` |
@@ -171,7 +171,7 @@ Supported JSON Schema types map as follows:
 | `"array"` | bounded `sequence` |
 
 JSON Schema `integer` accepts a numeric value with no fractional part. That is
-why it maps to DRE `integral`, not representation-specific `integer`.
+why it maps to RRE `integral`, not representation-specific `integer`.
 
 A type array is supported only when it contains:
 
@@ -220,7 +220,7 @@ Rules:
   required field of type `any`;
 - required means present, not non-null by itself;
 - Null is valid only if the property's translated type admits Null;
-- property names use canonical bracket path segments when not DRE identifiers.
+- property names use canonical bracket path segments when not RRE identifiers.
 
 This preserves JSON Schema's distinction between a missing required property
 and a present property whose value is Null.
@@ -295,7 +295,7 @@ sequence(string, min 1, max 20)
 Rules:
 
 - `items` must be one supported schema;
-- `maxItems` is mandatory and must be at most the DRE profile ceiling;
+- `maxItems` is mandatory and must be at most the RRE profile ceiling;
 - `minItems` defaults to zero;
 - `minItems <= maxItems`;
 - every element must satisfy the translated item type.
@@ -330,7 +330,7 @@ string(min 1, max 100)
 Both JSON Schema and the target count Unicode scalar/code points, not UTF-8
 bytes or grapheme clusters.
 
-Either bound may appear independently. Bounds must fit the DRE profile.
+Either bound may appear independently. Bounds must fit the RRE profile.
 
 V1 refuses:
 
@@ -365,7 +365,7 @@ guard. When its type admits Null, the guard also includes `price is null`.
 
 Mappings:
 
-| JSON Schema | DRE predicate |
+| JSON Schema | RRE predicate |
 |---|---|
 | `minimum: n` | `p >= n` |
 | `maximum: n` | `p <= n` |
@@ -375,12 +375,12 @@ Mappings:
 Bounds are exact decimals. NaN and infinities are not JSON numbers and cannot
 enter the source profile.
 
-`multipleOf` is refused in v1 because the DRE predicate profile has no exact
+`multipleOf` is refused in v1 because the RRE predicate profile has no exact
 divisibility operator.
 
 ## 11. Enum and const
 
-`enum` maps to DRE `enum(...)` only when every member is a unique scalar from:
+`enum` maps to RRE `enum(...)` only when every member is a unique scalar from:
 
 ```text
 Null | Boolean | String
@@ -389,7 +389,7 @@ Null | Boolean | String
 `const` maps to a singleton enum under the same restriction.
 
 Numeric, array, and object enum members are refused in v1 because JSON Schema
-numeric equality and DRE/SDA representation equality have not yet been given a
+numeric equality and RRE/SDA representation equality have not yet been given a
 shared canonical mapping.
 
 An enum combined with a type must have every member conform to the translated
@@ -399,7 +399,7 @@ type; otherwise the schema is statically unsatisfiable and refused.
 
 Schema `true` is accepted only as a property/items subschema and maps to `any`.
 
-Schema `false` is refused. DRE v1 activation rejects unsatisfiable rulesets and
+Schema `false` is refused. RRE v1 activation rejects unsatisfiable rulesets and
 does not use an impossible schema as executable configuration.
 
 V1 refuses all general schema combinators:
@@ -412,10 +412,10 @@ V1 refuses all general schema combinators:
 
 It also refuses applicator behavior not explicitly supported in §§7–8.
 
-These can be added only when a future DRE profile can preserve their exact
+These can be added only when a future RRE profile can preserve their exact
 validation algebra and dependency bounds.
 
-## 13. Generated DRE
+## 13. Generated RRE
 
 Input:
 
@@ -487,7 +487,7 @@ JsonSchemaToDreExact {
 The receipt records:
 
 - every source JSON Pointer;
-- the generated DRE declaration/IR node;
+- the generated RRE declaration/IR node;
 - type and constraint mapping;
 - required/optional status;
 - open/closed object decision;
@@ -496,8 +496,8 @@ The receipt records:
 - profile ceilings;
 - compiler version.
 
-The output is a **proposed** DRE revision. Translation never activates it.
-Normal DRE compilation, independent artifact verification, existing-data
+The output is a **proposed** RRE revision. Translation never activates it.
+Normal RRE compilation, independent artifact verification, existing-data
 validation, coverage proof, and Atomic activation still apply.
 
 ## 15. Stable diagnostics
@@ -544,10 +544,10 @@ V1 ceilings:
 | `$ref` depth | 64 |
 | object properties at one level | 4,096 |
 | total generated declarations | 1,024 |
-| path segments | DRE profile maximum |
-| string/array bounds | DRE profile maximum |
-| generated DRE source | 262,144 bytes |
-| generated canonical IR | DRE artifact maximum |
+| path segments | RRE profile maximum |
+| string/array bounds | RRE profile maximum |
+| generated RRE source | 262,144 bytes |
+| generated canonical IR | RRE artifact maximum |
 
 The target Heap may impose lower limits. Exceeding a limit refuses compilation;
 the compiler never truncates a schema.
@@ -559,7 +559,7 @@ the compiler never truncates a schema.
 - Duplicate JSON object keys are rejected.
 - Target collection identity is bound inside exactly one Heap.
 - Schema text grants no capability.
-- Translation cannot activate or replace a DRE.
+- Translation cannot activate or replace a RRE.
 - Annotation strings are data and never executable.
 - Regex, scripts, code generation hooks, and custom runtime functions are
   absent.
@@ -581,7 +581,7 @@ Conformance requires:
 - every explicit refusal;
 - unknown and required-vocabulary refusal;
 - duplicate-key and reference-bomb cases;
-- generated DRE parse, canonicalization, and independent verification;
+- generated RRE parse, canonicalization, and independent verification;
 - property-based equivalence:
 
 ```text
@@ -601,10 +601,10 @@ for generated supported schemas and admissible documents.
 5. Translate primitive and object types.
 6. Translate bounded arrays and string lengths.
 7. Translate exact numeric bounds and dependent-required.
-8. Emit canonical DRE source and IR.
+8. Emit canonical RRE source and IR.
 9. Emit translation receipts.
 10. Differentially test against a conforming Draft 2020-12 reference
     validator.
-11. Submit the result through ordinary DRE verification and activation.
+11. Submit the result through ordinary RRE verification and activation.
 
 No step may silently ignore an assertion keyword.

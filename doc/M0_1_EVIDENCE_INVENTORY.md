@@ -101,7 +101,7 @@ Legend: `accept` / `partial` / `missing` / `not_run` — about **product package
 1. **VFY-0** registries under `spec/verification/`
 2. **HAR-1 / APP-1** — activate collection create (106)
 3. **HAR-4** — default HeapKey remote posture
-4. **APP-2…APP-7** — application API + DQL Application Core + authenticated cursors
+4. **APP-2…APP-7** — application API + RQL Application Core + authenticated cursors
 5. **CPR-005** external review for H6
 6. **VFY-1** evidence runner with disk preflight and infrastructure classification
 7. Broader crash-matrix / multi-process / Windows / coverage lanes (see `VERIFICATION_STATUS.md`)
@@ -115,7 +115,7 @@ Allowed (Level 1 / self-assessed):
 Forbidden:
 
 - `qualified=true` / “strong isolation qualified”
-- “complete DQL v1” (only planned `dql-app-core-v1`)
+- “complete RQL v1” (only planned `dql-app-core-v1`)
 - Inferring HAR package `accept` from partial code presence
 
 ## 9. Exit criteria for M0-1

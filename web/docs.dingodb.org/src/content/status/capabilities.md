@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Capabilities
-description: User-oriented capability matrix for DingoDB 0.2.
+description: User-oriented capability matrix for ResiduumDB 0.2.
 class: status
 status: experimental
 section: status
@@ -44,6 +44,6 @@ Generated from structured docs data checked against `doc/CAPABILITY_MATRIX.md`.
 
 ## Design-only
 
-Heaps, DRE, Atomics, DDA, Order Wavelets — **Design** unless the matrix gains implementation evidence.
+Heaps, RRE, Atomics, DDA, Order Wavelets — **Design** unless the matrix gains implementation evidence.
 
 Full repository matrix: https://github.com/frogfishio/dingodb/blob/main/doc/CAPABILITY_MATRIX.md

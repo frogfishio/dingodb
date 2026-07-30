@@ -1,10 +1,10 @@
-# DingoDB master delivery plan
+# ResiduumDB master delivery plan
 
 Status: **definitive execution plan v1.1**
 
 Effective: 2026-07-30
 
-Owner: DingoDB product and engineering program
+Owner: ResiduumDB product and engineering program
 
 Testing authority:
 [TESTING_STRATEGY.md](TESTING_STRATEGY.md),
@@ -14,7 +14,7 @@ and
 
 ## 1. Authority
 
-This is the controlling document for **what DingoDB builds next and in what
+This is the controlling document for **what ResiduumDB builds next and in what
 order**.
 
 Other documents retain their narrower authority:
@@ -43,8 +43,8 @@ The first product target is:
 > A self-assessed, Heap-confined single-node database that an ordinary
 > developer can safely choose instead of SQLite plus loose files.
 
-That first adoption gate is reached at `M2`. DRE, Atomics, and exact navigation
-then create the product-defining DingoDB proposition at `M3`–`M5`. `M6`
+That first adoption gate is reached at `M2`. RRE, Atomics, and exact navigation
+then create the product-defining ResiduumDB proposition at `M3`–`M5`. `M6`
 qualifies the combined operational product.
 
 Cluster, vector search, geospatial search, and broad archive expansion are not
@@ -277,7 +277,7 @@ Immediate Must-Add program:
 Normative package plan:
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md).
 
-The ordinary Rust API, collection provisioning, and DQL Application Core
+The ordinary Rust API, collection provisioning, and RQL Application Core
 vertical slice is governed by
 [doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
 Its `APP-1` implements `HAR-1`; `APP-2` through `APP-8` supply the application
@@ -369,12 +369,12 @@ M1 exit:
 Release outcome:
 
 > A careful outsider can replace SQLite plus loose JSON/blob files with
-> DingoDB, then survive crash, damage, backup/restore, encryption-key
-> operation, and upgrade without reading DingoDB internals.
+> ResiduumDB, then survive crash, damage, backup/restore, encryption-key
+> operation, and upgrade without reading ResiduumDB internals.
 
 M2 has one blocking product gate and three parallel enabling lanes. Evidence,
 Telemetry, and Studio are important, but their complete feature sets do not
-all block DRE. Only the minimum portions named below are M2 blockers.
+all block RRE. Only the minimum portions named below are M2 blockers.
 
 ### M2-A — Evidence foundation
 
@@ -408,7 +408,7 @@ Parallel/non-blocking until required by their consumer:
 
 M2-A exit:
 
-- the durable evidence substrate exists for later DRE/Atomic decisions;
+- the durable evidence substrate exists for later RRE/Atomic decisions;
 - its pure verifier and damage behavior pass; and
 - it is Heap-confined.
 
@@ -430,7 +430,7 @@ Required result:
 - disconnect/full collector cannot block database work.
 
 `TEL-3`, `TEL-4`, and `TEL-8` continue in parallel during M2–M5 and become M6
-gates. Instrumentation for DRE, Atomics, Direct Access, and Order Wavelets lands
+gates. Instrumentation for RRE, Atomics, Direct Access, and Order Wavelets lands
 with its subsystem rather than in advance.
 
 M2-B exit:
@@ -530,13 +530,13 @@ continue in parallel but do not hold the mathematical engine idle.
 
 Release outcome:
 
-> Every committed document under an active DRE ruleset satisfies a finite,
+> Every committed document under an active RRE ruleset satisfies a finite,
 > canonical, independently examinable invariant.
 
 Priority: `P1-PATH`
 
 Normative plan:
-[doc/DRE_IMPLEMENTATION_PLAN.md](doc/DRE_IMPLEMENTATION_PLAN.md).
+[doc/RRE_IMPLEMENTATION_PLAN.md](doc/RRE_IMPLEMENTATION_PLAN.md).
 
 Order:
 
@@ -550,11 +550,11 @@ Order:
 
 Mandatory integrations:
 
-- shared predicate semantics with DQL;
-- JSON Schema → DRE translation;
-- SQL-ish → DQL translation against the frozen DQL grammar;
+- shared predicate semantics with RQL;
+- JSON Schema → RRE translation;
+- SQL-ish → RQL translation against the frozen RQL grammar;
 - Evidence records for validate/activate/replace/reject;
-- `TEL-5` DRE collection points;
+- `TEL-5` RRE collection points;
 - Studio `DST-007`, plus the document-local subset of `DST-013`; and
 - exact impact preview before activation.
 
@@ -579,7 +579,7 @@ M3 exit:
 
 Release outcome:
 
-> Within one Heap, DingoDB commits bounded serializable changes with durable
+> Within one Heap, ResiduumDB commits bounded serializable changes with durable
 > decision evidence and enforces declared cross-document integrity.
 
 Priority: `P1-PATH`
@@ -626,7 +626,7 @@ M4 exit:
 - LocalHeap Atomic linearizability/model checks pass;
 - parent-exists, optional reference, restrict delete, uniqueness, and bounded
   cardinality pass their adversarial corpus;
-- transition/cross-document DRE equals its oracle; and
+- transition/cross-document RRE equals its oracle; and
 - every completed decision remains independently examinable.
 
 ## 11. M5 — Exact Navigation at Scale
@@ -675,7 +675,7 @@ Exit:
 
 Mandatory integrations:
 
-- DQL query/profile identity;
+- RQL query/profile identity;
 - SDK and remote cursors;
 - Studio `DST-008`;
 - query/index telemetry; and
@@ -788,7 +788,7 @@ The following preparation may occur without changing release order:
 | When | Permitted |
 |---|---|
 | after `HAR-3` | `DEL-0`, `TEL-0`, `DST-000` drafting/scaffold |
-| after shared DRE predicate semantics freeze | `DDA-0` oracle work |
+| after shared RRE predicate semantics freeze | `DDA-0` oracle work |
 | after `DRE-2` | `ATM-0` oracle/profile work |
 | after `DDA-3` order identity freezes | `DOW-0` oracle work |
 | during M6 | E1 archive-adapter/profile specification and E2 common-index substrate specification only |
@@ -878,7 +878,7 @@ The next implementation task is **DEF-098**, followed by **DEF-099…104**,
 **CSQ-0…12**, then **APB-0**. Live
 scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
 
-No developer should start DRE, Atomics, Direct Access, Order Wavelets, search,
+No developer should start RRE, Atomics, Direct Access, Order Wavelets, search,
 or cluster product work from this queue.
 
 ## 18. Package handoff template
@@ -946,7 +946,7 @@ trustworthy SQLite-replacement core
 + Studio Explorer in parallel, not as an engine gate
 
 THEN:
-DRE document invariants
+RRE document invariants
 → LocalHeap Atomics and relationships
 → Direct Access
 → Order Wavelets

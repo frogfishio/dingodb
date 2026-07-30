@@ -61,6 +61,7 @@ mod secondary;
 mod segment_catalog;
 mod store;
 mod tier;
+mod token_keys;
 mod write_dedup;
 mod writer_lock;
 
@@ -107,6 +108,10 @@ pub use crash_matrix::{
 pub use cursor::{
     scan_generation, CoverageGap, CoverageGapKind, DocumentScanPage, KeyScanPage, LiveScanPage,
     LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
+};
+pub use token_keys::{
+    ContinuationKeyring, TokenKeyGeneration, CURSOR_TOKEN_KEYS_FILE, TOKEN_KEY_PROFILE,
+    TOKEN_SECRET_LEN,
 };
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};

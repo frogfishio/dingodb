@@ -1,7 +1,7 @@
 ---
 last_verified: 2026-07-30
 claim_ids:
-title: DQL guide
+title: RQL guide
 description: Human query language surface for collections.
 class: how-to
 status: experimental
@@ -18,9 +18,9 @@ keywords:
   - dql
 ---
 
-Source: `doc/DQL/USER_GUIDE.md`.
+Source: `doc/RQL/USER_GUIDE.md`.
 
-DQL is the official human query surface. The **implemented** surface may be smaller than the full DQL v1 design document—do not assume every design clause is available.
+RQL is the official human query surface. The **implemented** surface may be smaller than the full RQL v1 design document—do not assume every design clause is available.
 
 ## Orientation
 
@@ -28,4 +28,4 @@ DQL is the official human query surface. The **implemented** surface may be smal
 - For enrichment/join designs, check capability status before coding
 - Raw SDA remains available for deterministic examination
 
-References: [DQL concept](/concepts/dql/) · [DQL reference](/reference/dql/) · [DQL specification](/specifications/dql/)
+References: [RQL concept](/concepts/dql/) · [RQL reference](/reference/dql/) · [RQL specification](/specifications/dql/)

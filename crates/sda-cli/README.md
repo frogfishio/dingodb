@@ -1,7 +1,7 @@
 # dingo-sda-cli
 
 `dingo-sda-cli` ships the **`dingo-sda`** binary — the command-line interface for
-DingoDB's **SDA+ENR1 hybrid** evaluator.
+ResiduumDB's **SDA+ENR1 hybrid** evaluator.
 
 It evaluates programs over JSON input, validates source without executing it,
 and emits canonical formatting for editor and CI workflows.
@@ -15,7 +15,7 @@ and emits canonical formatting for editor and CI workflows.
 |-----------|-----|
 | Shell / CI: evaluate, check, format SDA+ENR1 | **`dingo-sda`** (this binary) |
 | Embed evaluation in a Rust program | [`dingo-sda`](https://crates.io/crates/dingo-sda) |
-| DingoDB recovery examination | [`dingo-examine`](https://crates.io/crates/dingo-examine) or `dingo doctor` |
+| ResiduumDB recovery examination | [`dingo-examine`](https://crates.io/crates/dingo-examine) or `dingo doctor` |
 
 ## Install
 
@@ -89,4 +89,4 @@ let out = dingo_sda::run("input<\"x\">!", serde_json::json!({"x": 1}))?;
 
 MIT.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb).
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb).

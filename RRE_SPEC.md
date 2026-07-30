@@ -1,8 +1,8 @@
-# Dingo Rule Expression (DRE) specification
+# Residuum Rule Expression (RRE) specification
 
 Status: **Normative design v1.0-draft**
 
-Language name: **Dingo Rule Expression (DRE)**
+Language name: **Residuum Rule Expression (RRE)**
 
 Product capability: **Data Rules**
 
@@ -13,28 +13,28 @@ Artifact profile: `dingo-dre-artifact-v1`
 Scope: Declarative document rules, transition rules, referential integrity,
 formal semantics, proof obligations, and Atomic enforcement
 
-Normative companions: `ATOMICS_SPEC.md`, `HEAP_SPEC.md`, `DQL_SPEC.md`,
-`DINGO_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`,
-`COLLECTION_CONTRACT_SPEC.md`, `doc/DRE_IMPLEMENTATION_PLAN.md`, and
+Normative companions: `ATOMICS_SPEC.md`, `HEAP_SPEC.md`, `RQL_SPEC.md`,
+`RESIDUUM_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`,
+`COLLECTION_CONTRACT_SPEC.md`, `doc/RRE_IMPLEMENTATION_PLAN.md`, and
 `DX_SPEC.md`
 
-Compatibility importer: `JSON_SCHEMA_TO_DRE_SPEC.md`
+Compatibility importer: `JSON_SCHEMA_TO_RRE_SPEC.md`
 
 ## 1. Decision
 
-DingoDB provides a small, declarative, non-Turing-complete language for
+ResiduumDB provides a small, declarative, non-Turing-complete language for
 describing valid stored state and valid state transitions.
 
-The language is named **Dingo Rule Expression**, abbreviated **DRE**. One DRE
-denotes one invariant; a DRE ruleset is the immutable deployment container.
+The language is named **Residuum Rule Expression**, abbreviated **RRE**. One RRE
+denotes one invariant; a RRE ruleset is the immutable deployment container.
 “Data Rules” remains the plain-English name of the product capability. Its
 source dialect identifier is `dre`.
 
-Its human surface is visually compatible with DQL and imports the exact
+Its human surface is visually compatible with RQL and imports the exact
 `dingo-predicate-v1` predicate profile. Its meaning is nevertheless a separate,
 stricter mathematical invariant kernel.
 
-DREs are not:
+RREs are not:
 
 - callbacks;
 - stored procedures;
@@ -42,10 +42,10 @@ DREs are not:
 - JavaScript;
 - user-defined runtime functions;
 - arbitrary SDA programs;
-- arbitrary DQL queries;
-- application code that DingoDB promises to remember to call.
+- arbitrary RQL queries;
+- application code that ResiduumDB promises to remember to call.
 
-A DRE denotes a finite mathematical predicate. Compilation determines
+A RRE denotes a finite mathematical predicate. Compilation determines
 its complete dependency set, required Atomic scope, execution bound, canonical
 Invariant Core IR, semantic version, and verification evidence.
 
@@ -55,13 +55,13 @@ the Atomic serialization point.
 The architectural boundary is final:
 
 ```text
-DQL          read, relate, order, and shape data
-DRE          declares legal stored states and transitions
+RQL          read, relate, order, and shape data
+RRE          declares legal stored states and transitions
 SDA / ENR    provide the shared mathematical kernels
 Atomics      enforce one admitted transition indivisibly
 ```
 
-DRE is **not a clause of DQL**. A DQL query is caller-controlled,
+RRE is **not a clause of RQL**. A RQL query is caller-controlled,
 ephemeral, may be incomplete, and may use resource-bounded retrieval. An active
 rule is administrator-controlled, immutable, mandatory, and evaluated at the
 commit gate over a proven complete dependency scope. Combining those authority
@@ -78,9 +78,9 @@ The market is commonly divided along two independent axes:
 | | Truth maintained by applications | Truth maintained by the database |
 |---|---|---|
 | Fixed or relational shape | loosely governed relational use | relational constraints and foreign keys |
-| Flexible or document shape | conventional document-store practice | **DingoDB Data Rules** |
+| Flexible or document shape | conventional document-store practice | **ResiduumDB Data Rules** |
 
-DingoDB's intended quadrant is:
+ResiduumDB's intended quadrant is:
 
 ```text
 document-native shape
@@ -103,7 +103,7 @@ SDA              examines rules, decisions, data, and holes
 bounded execution keeps the path fast
 ```
 
-DingoDB is not claiming to reproduce PostgreSQL, SQL, joins, or arbitrary
+ResiduumDB is not claiming to reproduce PostgreSQL, SQL, joins, or arbitrary
 distributed ACID. It is extracting a central value of a mature relational
 database—the database owns declared integrity—without forcing documents into
 one universal row shape.
@@ -180,7 +180,7 @@ if sex is F:
 
 ### 4.2 Comfort never redefines truth
 
-The relationship between the layers mirrors DQL and SDA:
+The relationship between the layers mirrors RQL and SDA:
 
 | Layer | Role |
 |---|---|
@@ -194,7 +194,7 @@ stable. If a surface construct cannot lower faithfully, compilation fails.
 
 ### 4.3 Absence and `null` are different
 
-Data Rules preserve DingoDB's value distinctions:
+Data Rules preserve ResiduumDB's value distinctions:
 
 ```text
 absent       the path is not present
@@ -221,7 +221,7 @@ does not impose a universal schema on unrelated collections.
 
 ### 4.5 No silent weakening
 
-DingoDB rejects a declaration when it cannot prove:
+ResiduumDB rejects a declaration when it cannot prove:
 
 - total lowering;
 - finite evaluation;
@@ -234,14 +234,14 @@ It never converts a strong rule into a warning, an eventual check, an
 application responsibility, or a best-effort background task without an
 explicitly different declaration and name.
 
-## 5. DQL-compatible human surface
+## 5. RQL-compatible human surface
 
 The surface is declarative, uses lower-case keywords in documentation, uses
-the shared canonical paths, and borrows DQL's `using`, `matching`, and `expect`
+the shared canonical paths, and borrows RQL's `using`, `matching`, and `expect`
 vocabulary. ASCII keywords are case-insensitive. Identifiers remain
 case-sensitive.
 
-Visual compatibility does not make Data Rules part of DQL. DQL reads and
+Visual compatibility does not make Data Rules part of RQL. RQL reads and
 enriches artefacts. Data Rules constrain states and transitions.
 
 ### 5.1 Lexical rules and normative grammar
@@ -441,7 +441,7 @@ forbid bra_size
 
 ### 5.4 Referential integrity
 
-The declaration deliberately resembles DQL enrichment:
+The declaration deliberately resembles RQL enrichment:
 
 ```text
 rules for orders
@@ -454,7 +454,7 @@ reference customer using customers
   on delete restrict
 ```
 
-Compare the read-side DQL:
+Compare the read-side RQL:
 
 ```text
 from orders
@@ -507,7 +507,7 @@ not accepted.
 The parent path must be either:
 
 - the collection's immutable `_key`; or
-- covered by an active DRE unique declaration with the identical
+- covered by an active RRE unique declaration with the identical
   type, normalization, and comparison profile.
 
 The compiler rejects any other parent path. Child and parent key types and
@@ -830,7 +830,7 @@ Execution and short-circuit order are never observable.
 Compilation is the expensive semantic step. Execution is shared and bounded.
 
 ```text
-DRE source
+RRE source
         ↓ parse
 canonical AST
         ↓ normalize
@@ -847,7 +847,7 @@ Compilation emits one artifact per declaration and one manifest for the
 ruleset:
 
 ```text
-DreArtifact {
+RreArtifact {
     heap_id
     ruleset_id
     rule_id
@@ -866,7 +866,7 @@ DreArtifact {
     verification_record
 }
 
-DreRulesetManifest {
+RreRulesetManifest {
     heap_id
     collection_id
     ruleset_id
@@ -883,7 +883,7 @@ DreRulesetManifest {
 Rule revisions and artifacts are immutable. A changed declaration creates a
 new revision and activation protocol.
 
-Each top-level declaration is one DRE. Its stable ID is:
+Each top-level declaration is one RRE. Its stable ID is:
 
 ```text
 rule_id = Hash(
@@ -1147,7 +1147,7 @@ The proof obligation is:
 Dependencies(r) ⊆ AtomicScope(o)
 ```
 
-Before prepare, DingoDB closes the Atomic plan over:
+Before prepare, ResiduumDB closes the Atomic plan over:
 
 - caller mutations;
 - rule reads;
@@ -1287,7 +1287,7 @@ requirements permit it.
 
 ## 12. Damage, recovery, and truth
 
-Data Rules preserve DingoDB's two-dimensional truth.
+Data Rules preserve ResiduumDB's two-dimensional truth.
 
 An event may be:
 
@@ -1328,7 +1328,7 @@ Rule artifacts are historical evidence and must be:
 SDA does not become the rule authority. It examines the evidence supplied by
 the host.
 
-The DingoDB SDA profile should expose:
+The ResiduumDB SDA profile should expose:
 
 ```text
 rule source
@@ -1503,7 +1503,7 @@ declared runtime and hardware assumptions
 The goal is to keep this base small, auditable, fuzzable, and progressively
 verifiable.
 
-DingoDB must not use “formally verified database” as a product claim until the
+ResiduumDB must not use “formally verified database” as a product claim until the
 relevant implementation has actually reached that standard.
 
 Defensible staged claims include:
@@ -1529,7 +1529,7 @@ Tests derive from the formal obligations.
 - Data Rules and direct Invariant Core forms produce equivalent artifacts;
 - unsupported constructs fail rather than lower approximately;
 - keyword case does not change meaning;
-- DQL-like visual constructs retain their documented direction and
+- RQL-like visual constructs retain their documented direction and
   cardinality.
 
 ### 18.2 Value semantics
@@ -1663,7 +1663,7 @@ These are boundaries required for truth, boundedness, and speed.
 
 The exploratory questions are resolved as follows:
 
-1. The language is **Dingo Rule Expression (DRE)**; the product capability is
+1. The language is **Residuum Rule Expression (RRE)**; the product capability is
    **Data Rules**; the dialect identifier is `dre`.
 2. Paths and predicates use `dingo-predicate-v1`.
 3. Scalar and composite types are exactly those in §5.1–§5.2. Numeric
@@ -1686,9 +1686,9 @@ The exploratory questions are resolved as follows:
     violations.
 14. Invariant Core notation is normative documentation and an examination
     format in v1. It is not a remotely accepted rule-source dialect.
-15. DQL `enrich` and DRE `reference` share the same present-key match
-    bag and cardinality functions. DQL observes/interprets the bag for a read;
-    DRE requires the corresponding proposition at every relevant
+15. RQL `enrich` and RRE `reference` share the same present-key match
+    bag and cardinality functions. RQL observes/interprets the bag for a read;
+    RRE requires the corresponding proposition at every relevant
     serialization point.
 
 No open semantic choice in this list is delegated to an implementer. A change
@@ -1696,7 +1696,7 @@ requires a new profile or a normative amendment.
 
 ## 22. Development readiness
 
-DRE is ready to enter implementation planning when the companion
+RRE is ready to enter implementation planning when the companion
 Atomic scope named by a rule is itself implemented and qualified.
 
 Developers may implement document-local rules before cross-document scope
@@ -1721,7 +1721,7 @@ Proceed with Data Rules as the unified declarative layer above Atomics.
 
 The governing statement is:
 
-> DingoDB does not execute user programs. It enforces finite declarations
+> ResiduumDB does not execute user programs. It enforces finite declarations
 > about valid data and valid state transitions.
 
 The central mathematical claim is:
@@ -1739,7 +1739,7 @@ it solves a familiar document-database pain and exercises the complete
 architecture: dependency inference, supporting indexes, concurrency,
 activation, recovery, damage, and examination.
 
-The surface should feel like DQL:
+The surface should feel like RQL:
 
 ```text
 from orders

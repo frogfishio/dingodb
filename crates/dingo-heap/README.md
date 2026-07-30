@@ -1,6 +1,6 @@
 # dingo-heap
 
-Heap identity, capability, and authority kernel for DingoDB (`dingo-heap-v1`).
+Heap identity, capability, and authority kernel for ResiduumDB (`dingo-heap-v1`).
 
 This crate is pure with respect to storage and network: no filesystem or TCP
 runtime. Normative contract: [`HEAP_SPEC.md`](../../HEAP_SPEC.md) §§30–32, 38–41.

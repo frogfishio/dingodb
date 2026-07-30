@@ -1,4 +1,4 @@
-# Contributing to DingoDB
+# Contributing to ResiduumDB
 
 ## Spec before behavior
 
@@ -152,7 +152,7 @@ Freeze labels (product API/profile labels, **not** crate semver):
 
 ## License
 
-DingoDB is multi-licensed (MIT / MPL-2.0 / AGPL-3.0-or-later by crate). See
+ResiduumDB is multi-licensed (MIT / MPL-2.0 / AGPL-3.0-or-later by crate). See
 [LICENSE](LICENSE) and [doc/LICENSING.md](doc/LICENSING.md).
 
 **Inbound = outbound:** by contributing, you license your contribution under

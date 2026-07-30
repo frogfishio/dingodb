@@ -1,16 +1,16 @@
-# DRE implementation plan
+# RRE implementation plan
 
 Status: developer-ready v1.0
 
 Program release: P2, with cross-document continuation in P3
 
-Normative source: [DRE_SPEC.md](../DRE_SPEC.md)
+Normative source: [RRE_SPEC.md](../RRE_SPEC.md)
 
 Atomic companion: [ATOMICS_SPEC.md](../ATOMICS_SPEC.md)
 
 ## 1. Decision
 
-DRE implementation begins with document-local rules only.
+RRE implementation begins with document-local rules only.
 
 The first shipped profile MUST compile finite declarative source into canonical
 Invariant Core, independently verify the artifact, and enforce it on every
@@ -72,7 +72,7 @@ dingo-cli      compile/check/install/status/examine
 
 ## 3. Artifact boundary
 
-Before `DRE-3`, `DRE_SPEC.md` MUST receive a canonical encoding amendment for:
+Before `DRE-3`, `RRE_SPEC.md` MUST receive a canonical encoding amendment for:
 
 ```text
 dingo-dre-source-v1
@@ -106,7 +106,7 @@ Work:
 - create crate and profile constants;
 - import `dingo-predicate-v1` semantics without copying them;
 - implement a deliberately slow reference evaluator;
-- translate DRE_SPEC examples/counterexamples into fixtures;
+- translate RRE_SPEC examples/counterexamples into fixtures;
 - create JSON corpus schema for source, input, expected normalized form,
   violations, and required scope.
 
@@ -288,7 +288,7 @@ cannot be bypassed by remote, import, or recovery paths.
 Entry: `REL-0` through `REL-4` accepted.
 
 The enforcement machinery is delivered by `REL-*` in the Atomic
-implementation plan. This package closes the DRE language integration:
+implementation plan. This package closes the RRE language integration:
 
 - compile reference, uniqueness, and bounded-cardinality declarations to the
   exact qualified relationship artifact;
@@ -298,7 +298,7 @@ implementation plan. This package closes the DRE language integration:
   evidence refer to the same ruleset and Heap;
 - run source-to-artifact-to-enforcement conformance journeys.
 
-Exit: each advertised cross-document DRE has one canonical relationship
+Exit: each advertised cross-document RRE has one canonical relationship
 meaning, is enforced at the LocalHeap Atomic serialization point, and cannot
 be bypassed by any mutation surface.
 
@@ -309,7 +309,7 @@ Evidence: Differential, Isolation, Crash, Damage, Journey.
 Target Rust administration:
 
 ```rust
-let source = DreSource::parse(include_str!("customer.dre"))?;
+let source = RreSource::parse(include_str!("customer.dre"))?;
 let compiled = heap.rules().compile(source)?;
 let report = heap.rules().validate(&compiled)?;
 let revision = heap.rules().activate(compiled, report)?;

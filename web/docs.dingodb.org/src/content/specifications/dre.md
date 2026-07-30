@@ -1,7 +1,7 @@
 ---
 last_verified: 2026-07-30
 claim_ids:
-title: DRE specification
+title: RRE specification
 description: Data rules engine design.
 class: specification
 status: design
@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: DRE_SPEC.md
+  path: RRE_SPEC.md
 owners:
   - specs
 keywords:
@@ -29,4 +29,4 @@ spec_state: draft
 
 ## Source
 
-https://github.com/frogfishio/dingodb/blob/main/DRE_SPEC.md
+https://github.com/frogfishio/dingodb/blob/main/RRE_SPEC.md

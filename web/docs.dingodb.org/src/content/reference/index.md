@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Reference
-description: API, CLI, config, errors, DQL, SDA, wire, and compatibility entry points.
+description: API, CLI, config, errors, RQL, SDA, wire, and compatibility entry points.
 class: reference
 status: experimental
 section: reference
@@ -23,7 +23,7 @@ keywords:
 - [Configuration](/reference/configuration/)
 - [Errors](/reference/errors/)
 - [Receipts and evidence](/reference/receipts-and-evidence/)
-- [DQL](/reference/dql/)
+- [RQL](/reference/dql/)
 - [SDA](/reference/sda/)
 - [Wire](/reference/wire/)
 - [Compatibility](/reference/compatibility/)

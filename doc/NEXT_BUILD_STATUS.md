@@ -72,7 +72,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
 | APB-6 | not_started | — | APB-1, APB-3 | — | stable read views absent | read consistency |
-| APB-7 | not_started | — | APB-1, APB-6, APP-4, APP-5 | — | DQL application runtime absent | query baseline |
+| APB-7 | not_started | — | APB-1, APB-6, APP-4, APP-5 | — | RQL application runtime absent | query baseline |
 | APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
 | APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
 | APB-10 | not_started | — | APB-3, APB-5, APB-6 | — | resumable import/export absent | data movement |
@@ -91,7 +91,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
 | APP-4 | not_started | — | APP-0 | filter/SDA/dialect precursors | no single `dingo-predicate-v1` accept | canonical predicates/plans |
-| APP-5 | not_started | — | APP-4 | — | dql-app-core-v1 compiler not accept | DQL Application Core |
+| APP-5 | not_started | — | APP-4 | — | dql-app-core-v1 compiler not accept | RQL Application Core |
 | APP-6 | not_started | — | APP-3, APP-5, HAR-4 | — | authenticated cursor not product | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `dql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
@@ -116,7 +116,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | REL-2 | not_started | — | REL-1 | — | — | uniqueness |
 | REL-3 | not_started | — | REL-2 | — | — | activation/validation |
 | REL-4 | not_started | — | REL-3 | — | — | P3 release gate |
-| DDA-0 | not_started | — | DRE predicate freeze | — | profile amendment required | rank oracle |
+| DDA-0 | not_started | — | RRE predicate freeze | — | profile amendment required | rank oracle |
 | DDA-1 | not_started | — | DDA-0 | — | — | natural direct rank |
 | DDA-2 | not_started | — | DDA-1 | — | — | filtered direct rank |
 | DDA-3 | not_started | — | DDA-2 | — | — | ordered admission seam |

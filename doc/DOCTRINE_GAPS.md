@@ -1,4 +1,4 @@
-# DingoDB Doctrine Gap Analysis
+# ResiduumDB Doctrine Gap Analysis
 
 Status: Current-state assessment  
 Date: 2026-07-28  
@@ -8,7 +8,7 @@ Truth source for shipped capability:
 
 ## 1. Purpose
 
-The doctrine defines what DingoDB intends to mean as a database. This document
+The doctrine defines what ResiduumDB intends to mean as a database. This document
 states which parts exist today, which are partial, and which are absent.
 
 It prevents a doctrine document from being mistaken for a shipped capability
@@ -27,7 +27,7 @@ Status labels:
 
 ## 2. Executive assessment
 
-DingoDB already has an unusually strong integrity and recovery substrate.
+ResiduumDB already has an unusually strong integrity and recovery substrate.
 
 The largest doctrine gap is confidentiality and lifecycle authority:
 
@@ -70,7 +70,7 @@ The correct near-term program is not “add encryption” in isolation. It is:
 | Tier lifecycle | Pure `LifecyclePolicy` evaluator and explicit transfers | **scaffold** | Durable scheduler, resumable jobs, plan/apply, holds and copy-safety |
 | Retention | Compaction has retention-hold state and recorded horizons | **partial** | Store/collection/item policy hierarchy and enforcement |
 | Governance retention | No immutable policy enforcement | **absent** | Separately authorized override model and audit |
-| Compliance retention | No non-bypassable DingoDB profile | **absent** | Frozen policy semantics, enforcement, qualification; no compliance claim before audit |
+| Compliance retention | No non-bypassable ResiduumDB profile | **absent** | Frozen policy semantics, enforcement, qualification; no compliance claim before audit |
 | Legal/investigation holds | No general hold registry | **absent** | Stable hold identity, scope, authority, propagation across lifecycle and backup |
 | Purge | Privilege and confirmation scaffolding; no complete purge engine | **scaffold** | Managed-domain inventory, replicas/tiers/backups coverage, purge attestation |
 | Secure erasure | None | **absent** | Honest managed-copy/crypto-erasure profiles; never claim overwrite-based flash erasure |
@@ -98,13 +98,13 @@ The correct near-term program is not “add encryption” in isolation. It is:
 
 ## 4. Important current truths
 
-### 4.1 Data is not encrypted at rest by DingoDB today
+### 4.1 Data is not encrypted at rest by ResiduumDB today
 
 The encrypted frame flag is format vocabulary, not an implemented
 confidentiality feature.
 
 Operators requiring at-rest protection today must use filesystem/volume
-encryption or encrypt payloads before DingoDB receives them.
+encryption or encrypt payloads before ResiduumDB receives them.
 
 Indexes, catalogs, logs, backups, and temporary files must be included in that
 external protection boundary.
@@ -144,7 +144,7 @@ They do not yet establish hostile-tenant isolation through every history,
 query, index, ENR, SDA, export, recovery, and diagnostic path.
 
 They are not the target heap security model. The target is the self-contained
-per-heap authority defined in `HEAP_SPEC.md`: DingoDB authorizes cryptographic
+per-heap authority defined in `HEAP_SPEC.md`: ResiduumDB authorizes cryptographic
 system keys, while applications authorize people above it.
 
 Separate stores and operating-system/process boundaries remain the honest
@@ -273,7 +273,7 @@ Implement:
 - per-tenant quotas;
 - complete-path authorization tests;
 - separate key domains;
-- external identity integration above DingoDB where applications require it.
+- external identity integration above ResiduumDB where applications require it.
 
 Exit condition:
 

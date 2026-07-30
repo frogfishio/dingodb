@@ -8,7 +8,7 @@ class from the hot path (OVERVIEW §12.1).
 
 | Field | Example / notes |
 |-------|-----------------|
-| DingoDB version | `VERSION` + git SHA; wire [`WIRE_PROFILE_LABEL`](../crates/dingo-format/src/lib.rs) |
+| ResiduumDB version | `VERSION` + git SHA; wire [`WIRE_PROFILE_LABEL`](../crates/dingo-format/src/lib.rs) |
 | SDK / cluster labels | `SDK_API_VERSION`, `CLUSTER_PROFILE_VERSION` |
 | Durability mode | `memory` / `buffered` / `durable` / `replicated` |
 | Verification mode | frame CRC + BLAKE3 body hash on/off for the workload |

@@ -1,4 +1,4 @@
-# DingoDB product deficiency and missing-API register
+# ResiduumDB product deficiency and missing-API register
 
 Status: **normative product-gap inventory v1.0-draft**
 
@@ -13,8 +13,8 @@ Companions:
 - [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md)
 - [DEFECTS.md](DEFECTS.md)
 - [doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md)
-- [DQL_SPEC.md](DQL_SPEC.md)
-- [DRE_SPEC.md](DRE_SPEC.md)
+- [RQL_SPEC.md](RQL_SPEC.md)
+- [RRE_SPEC.md](RRE_SPEC.md)
 - [ATOMICS_SPEC.md](ATOMICS_SPEC.md)
 - [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md)
 
@@ -23,13 +23,13 @@ Companions:
 A defect means an implemented or promised contract is wrong.
 
 A product deficiency means a reasonable application needs an operation,
-contract, or supported journey that DingoDB does not presently provide as a
+contract, or supported journey that ResiduumDB does not presently provide as a
 coherent public product—even when lower-level pieces exist.
 
 This register answers:
 
 > If storage qualification passed tomorrow, what would still prevent an
-> ordinary developer from choosing DingoDB and building a complete application
+> ordinary developer from choosing ResiduumDB and building a complete application
 > without inventing a database wrapper?
 
 The answer is not “implement everything MongoDB, PostgreSQL, or Couchbase
@@ -37,7 +37,7 @@ implements.” Each missing capability is classified as:
 
 ```text
 CORE       ordinary dependable document-database contract
-DEFINING   required for DingoDB's mathematical product proposition
+DEFINING   required for ResiduumDB's mathematical product proposition
 OPERABLE   required to run and evolve the product safely
 ECOSYSTEM  required for adoption beyond a Rust-first niche
 EXPANSION  valuable, but must not displace the above
@@ -93,11 +93,11 @@ External calibration:
   [NOTIFY](https://www.postgresql.org/docs/current/sql-notify.html).
 
 These examples establish recurring application needs. They do not dictate
-DingoDB's syntax, implementation, or guarantees.
+ResiduumDB's syntax, implementation, or guarantees.
 
 ## 3. Product baseline
 
-Before DRE, Atomics, Direct Access, search, or cluster breadth becomes the
+Before RRE, Atomics, Direct Access, search, or cluster breadth becomes the
 principal product program, a developer must be able to:
 
 ```text
@@ -130,7 +130,7 @@ This baseline is called `dingo-application-baseline-v1`.
 | `PD-006` | Exact historical and last-complete reads | History exists; historical chunk bodies and recovery selection are incomplete | CORE | `C0`, DEF-099 |
 | `PD-007` | Coverage-aware key/document enumeration | Lower partial-aware pieces exist; ordinary Collection/backend parity is absent | CORE | `C0`, DEF-100 |
 | `PD-008` | Stable snapshot/read-view API | Cursors are generation-fenced; no durable read view for long scan/export/query composition | CORE | `C0` |
-| `PD-009` | Complete DQL Application Core execution | Specification exists; public compiler/executor/remote parity remain APP scaffolds | CORE | `C0` |
+| `PD-009` | Complete RQL Application Core execution | Specification exists; public compiler/executor/remote parity remain APP scaffolds | CORE | `C0` |
 | `PD-010` | Exists/count/distinct and bounded aggregation baseline | Applications must materialize or hand-roll scans | CORE | `C1` |
 | `PD-011` | Collection lifecycle | Create/list/open exist or are planned; describe/rename/retire/drop/purge contracts are incomplete | CORE/OPERABLE | `C0` |
 | `PD-012` | Resumable change feed/watch | History is pull-by-key; no collection/Heap committed-event subscription | CORE | `C1` |
@@ -141,8 +141,8 @@ This baseline is called `dingo-application-baseline-v1`.
 | ID | Missing product contract | Current truth | Class | Priority |
 |---|---|---|---|---|
 | `PD-014` | Scoped Atomics | Fully specified; not implemented as application operations | DEFINING | `C1` |
-| `PD-015` | DRE document rules | Fully specified; compiler/runtime/activation absent | DEFINING | `C1` |
-| `PD-016` | Referential integrity and cross-document DRE | Specified after document rules/Atomics; absent | DEFINING | `C1` |
+| `PD-015` | RRE document rules | Fully specified; compiler/runtime/activation absent | DEFINING | `C1` |
+| `PD-016` | Referential integrity and cross-document RRE | Specified after document rules/Atomics; absent | DEFINING | `C1` |
 | `PD-017` | Unique, compound, partial, and sparse index contracts | Basic field indexes exist; constraint-grade index semantics are incomplete | CORE/DEFINING | `C1` |
 | `PD-018` | Rule/index/Atomic examination through SDA | Designs exist; one stable application and Studio inspection API is absent | DEFINING | `C1` |
 | `PD-019` | Collection-level jurisdiction/default scoping | Proposal exists; no qualified public definition/enforcement surface | DEFINING | `C2` |
@@ -166,10 +166,10 @@ This baseline is called `dingo-application-baseline-v1`.
 |---|---|---|---|---|
 | `PD-027` | Async Rust client and bounded connection pool | Current intended v1 façade is synchronous | ECOSYSTEM | `C1` |
 | `PD-028` | Node.js/TypeScript client | Intentionally deferred until Rust/wire contracts stabilize | ECOSYSTEM | `C2` |
-| `PD-029` | Stable language-neutral HTTP/JSON or equivalent gateway | Dingo RPC is internal/product-specific; no broad client bridge | ECOSYSTEM | `C2` |
+| `PD-029` | Stable language-neutral HTTP/JSON or equivalent gateway | ResiduumDB RPC is internal/product-specific; no broad client bridge | ECOSYSTEM | `C2` |
 | `PD-030` | Application test utilities | No complete temporary Heap, deterministic clock/fault, fixture, and assertion kit | ECOSYSTEM | `C1` |
 | `PD-031` | Migration adapters from JSON files, Mongo-style data, and SQL rows | Cross-compilers cover languages/rules, not operational data migration | ECOSYSTEM | `C2` |
-| `PD-032` | Stable SQL→DQL and JSON Schema→DRE product commands | Specifications exist; shipped compiler/CLI/library contracts are absent | ECOSYSTEM | `C2` |
+| `PD-032` | Stable SQL→RQL and JSON Schema→RRE product commands | Specifications exist; shipped compiler/CLI/library contracts are absent | ECOSYSTEM | `C2` |
 | `PD-040` | Prepared/registered query plans | Plans are designed; no stable prepare/bind/execute/invalidate lifecycle | CORE/ECOSYSTEM | `C2` |
 | `PD-041` | Bounded query-driven update/delete | Query and point mutation are separate; no safe planned multi-match mutation | CORE | `C2`, after Atomics |
 
@@ -263,10 +263,10 @@ Rules:
 - all lookup paths observe one document version and avoid returning unrelated
   document bytes where the storage/layout profile can do so;
 - all operations apply to one decoded document version or none apply;
-- paths and values use canonical DQL/DRE scalar semantics;
+- paths and values use canonical RQL/RRE scalar semantics;
 - arithmetic is checked;
 - binary values reject document mutation;
-- DRE validates the proposed final document;
+- RRE validates the proposed final document;
 - receipt includes prior/new version and per-operation result;
 - failure does not publish a partial document; and
 - implementation MAY rewrite the physical document initially, but the public
@@ -368,7 +368,7 @@ budget cannot be honored.
 Generation-fenced restart-on-mutation cursors remain useful; they are not a
 replacement for a consistent export or multi-query read.
 
-### 5.8 PD-009 — DQL Application Core
+### 5.8 PD-009 — RQL Application Core
 
 The existing APP-4–APP-7 plan remains correct but incomplete in implementation.
 The baseline needs:
@@ -379,7 +379,7 @@ collection.dql(source, parameters, options)
 collection.explain_dql(...)
 ```
 
-with identical builder/DQL plans, deterministic order, bounded pages,
+with identical builder/RQL plans, deterministic order, bounded pages,
 authenticated continuations, complete-by-default coverage, budgets,
 cancellation, and embedded/remote parity.
 
@@ -499,9 +499,9 @@ Key Atomic
 A `transaction` compatibility method may compile to the same plan, but cannot
 widen its scope or guarantee.
 
-### 6.2 PD-015/016 — DRE and relationships
+### 6.2 PD-015/016 — RRE and relationships
 
-Use [DRE_SPEC.md](DRE_SPEC.md). Document-local deterministic rules precede
+Use [RRE_SPEC.md](RRE_SPEC.md). Document-local deterministic rules precede
 referential integrity. Activation over existing data is a resumable validation
 job whose successful frontier is committed atomically.
 
@@ -568,7 +568,7 @@ durability/consistency modes
 logical payload/chunk/frame limits
 query/page/result budgets
 Atomic scopes
-DRE profiles
+RRE profiles
 index kinds
 watch retention
 backup/import/export formats
@@ -607,7 +607,7 @@ embedded/remote shared behavior runner
 ```
 
 An application should be able to test retry, damage, partial coverage, and
-version conflicts without copying DingoDB's internal test harness.
+version conflicts without copying ResiduumDB's internal test harness.
 
 ## 8. Explicitly deferred or rejected
 
@@ -644,13 +644,13 @@ Application Data Plane
   PD-003 document mutation
   → PD-005 bulk
   → PD-008 read views
-  → PD-009 DQL
+  → PD-009 RQL
   → PD-010 aggregate baseline
   → PD-012 watches
   → PD-013 import/export
 
 Mathematical Product
-  PD-015 document DRE
+  PD-015 document RRE
   → PD-014 LocalHeap Atomics
   → PD-016 relationships
   → PD-017 constraint-grade indexes
@@ -701,7 +701,7 @@ longer acceptable for `dingo-application-baseline-v1`.
 - bulk work is bounded and every input has a truthful outcome;
 - key/document scans distinguish empty from incomplete;
 - long scans and exports can bind one declared read view;
-- DQL, builder, index, and slow scan agree;
+- RQL, builder, index, and slow scan agree;
 - counts/aggregates carry coverage and bounds;
 - history and explicit prior-version recovery work;
 - collections can be retired and purged safely;
@@ -714,7 +714,7 @@ longer acceptable for `dingo-application-baseline-v1`.
 
 Only then is it reasonable to say:
 
-> DingoDB provides an ordinary document-database application experience.
+> ResiduumDB provides an ordinary document-database application experience.
 
-Atomics, DRE, Direct Access, search, archive, and cluster then extend a complete
+Atomics, RRE, Direct Access, search, archive, and cluster then extend a complete
 product rather than compensating for a missing baseline.

@@ -1,4 +1,4 @@
-# DingoDB Core Storage Qualification Specification
+# ResiduumDB Core Storage Qualification Specification
 
 Status: **normative design v1.0-draft — developer ready**
 
@@ -20,7 +20,7 @@ Normative companions:
 
 ## 1. Decision
 
-DingoDB's core proposition depends on one fact:
+ResiduumDB's core proposition depends on one fact:
 
 > Authoritative storage must tell the truth under ordinary operation, software
 > defects, interrupted persistence, resource exhaustion, media damage, and
@@ -84,7 +84,7 @@ This profile does not by itself qualify:
 - Heap cryptographic admission or cross-Heap security;
 - network protocols, TLS, remote retries, or server admission;
 - distributed consensus, replication, or repair;
-- DQL/DRE/Atomic semantics;
+- RQL/RRE/Atomic semantics;
 - native cloud object stores not used by the selected store profile; or
 - application-specific structured recovery from arbitrary partial encodings.
 
@@ -605,7 +605,7 @@ of assumptions. At minimum it names:
 - the number, independence, placement, and failure domains of durable copies;
 - the trusted computing base, including production code, independent oracles,
   proof tools, compilers, and test harnesses; and
-- excluded Byzantine behavior for components outside Dingo's control.
+- excluded Byzantine behavior for components outside ResiduumDB's control.
 
 The suite does not claim recovery when every information-bearing copy of a
 datum and its redundancy has been destroyed. It also cannot prove correctness
@@ -1064,7 +1064,7 @@ Attachments include minimized histories, corrupted fixtures, raw tool output,
 crash images where retainable, coverage, mutation reports, fuzz corpora, soak
 time series, and final reconciliation.
 
-The report is signed or placed in the Dingo Evidence Ledger when that subsystem
+The report is signed or placed in the Residuum Evidence Ledger when that subsystem
 is available. Until then it is deterministically encoded, hash-addressed, and
 verified by a separately built verifier.
 
@@ -1146,7 +1146,7 @@ Any reproducible violation of a P0 invariant:
 
 ## 24. Non-negotiable acceptance statement
 
-The suite is complete only when DingoDB can produce a verified bundle proving:
+The suite is complete only when ResiduumDB can produce a verified bundle proving:
 
 ```text
 for every registered core-storage invariant

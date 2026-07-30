@@ -1,4 +1,4 @@
-# DingoDB testing and verification strategy
+# ResiduumDB testing and verification strategy
 
 Status: normative engineering strategy v1.0-draft
 
@@ -18,7 +18,7 @@ and
 
 ## 1. Decision
 
-DingoDB does not use “the tests passed” as a product claim.
+ResiduumDB does not use “the tests passed” as a product claim.
 
 It uses a structured assurance case:
 
@@ -51,7 +51,7 @@ MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are normative.
 
 ### 3.1 Whole-system exhaustiveness is impossible
 
-DingoDB accepts unbounded operation sequences, data, thread schedules, process
+ResiduumDB accepts unbounded operation sequences, data, thread schedules, process
 timings, device failures, network histories, topologies, and version histories.
 The complete database state space cannot be enumerated. Documentation and
 marketing MUST NOT describe the whole test program as exhaustive.
@@ -118,7 +118,7 @@ specialized specification controls.
 | `A3` | release matrix, compatibility, soak, security and reproducible evidence pass | production candidate for named profile |
 | `A4` | A3 plus relevant independent review and finding disposition | independently assessed named claim |
 
-Levels attach to a capability/profile pair, never to “DingoDB” globally.
+Levels attach to a capability/profile pair, never to “ResiduumDB” globally.
 
 ## 6. Claim registry
 
@@ -210,7 +210,7 @@ A capability cannot leave design review with an unanswered question.
 
 ### 6A.2 Observation algebra
 
-Dingo distinguishes at least:
+ResiduumDB distinguishes at least:
 
 ```text
 VerifiedPresent(value)
@@ -316,7 +316,7 @@ Examples:
 
 - slow in-memory map/event-log model for collection state;
 - complete scan and sort for indexes and ranked access;
-- mathematical evaluator for DRE/Atomic plans;
+- mathematical evaluator for RRE/Atomic plans;
 - sequential specification for concurrent histories;
 - byte-level reference decoder for canonical vectors;
 - set-based replica model for repair/convergence; and
@@ -449,7 +449,7 @@ another target. Required surfaces include:
 - frame, segment, chunk and canonical CBOR;
 - forward/reverse scanner;
 - Heap certificates, authority metadata and ownership;
-- SDA/DQL/DRE source, artifacts and evaluation;
+- SDA/RQL/RRE source, artifacts and evaluation;
 - RPC, configuration and URLs;
 - indexes, catalogs, checkpoints and cursors;
 - backup, salvage, scrub, migration and Evidence manifests; and
@@ -734,4 +734,4 @@ A named profile reaches a named assurance level only when:
 10. required feature compositions and incident journeys pass; and
 11. the release verifier independently validates the bundle.
 
-That is how DingoDB knows what works—and what has not yet been proved.
+That is how ResiduumDB knows what works—and what has not yet been proved.

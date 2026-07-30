@@ -300,7 +300,7 @@ Exit: the CLI can reproduce the complete issue → use → blacklist/cycle journ
 
 ### HAR-4 — Qualified remote posture
 
-Purpose: make the HeapKey path the normal Dingo server.
+Purpose: make the HeapKey path the normal ResiduumDB server.
 
 Work:
 

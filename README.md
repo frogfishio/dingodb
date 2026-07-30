@@ -1,6 +1,6 @@
-# DingoDB
+# ResiduumDB
 
-DingoDB is a deterministic relational document engine that lets developers build nested application artefacts directly from relational data, using explicit enrichment semantics instead of hidden joins and ORM hydration.
+ResiduumDB is a deterministic relational document engine that lets developers build nested application artefacts directly from relational data, using explicit enrichment semantics instead of hidden joins and ORM hydration.
 
 ---
 
@@ -15,7 +15,7 @@ Definitive implementation sequence and current starting task:
 
 ## Console / CLI
 
-DingoDB includes a small CLI binary named `dingo`.
+ResiduumDB includes a small CLI binary named `dingo`.
 
 ### Run an interactive console
 
@@ -23,7 +23,7 @@ DingoDB includes a small CLI binary named `dingo`.
 dingo console ./path/to/store
 ```
 
-The console reads DQL commands from **stdin** (one command per line is typical) and executes them against the provided store directory.
+The console reads RQL commands from **stdin** (one command per line is typical) and executes them against the provided store directory.
 
 #### Example (piped)
 
@@ -64,7 +64,7 @@ API JSON
 
 Document databases provide convenient shapes, but relationships often move into application code.
 
-DingoDB treats relationship formation and document construction as first-class database operations.
+ResiduumDB treats relationship formation and document construction as first-class database operations.
 
 ---
 

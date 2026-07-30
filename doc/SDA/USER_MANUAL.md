@@ -916,7 +916,6 @@ If you want more after this guide:
 - [SDA for jq Users](FOR_JQ_USERS.md)
 - [SDA JSON Filter Demo](JSON_FILTER_DEMO.md)
 - [Query Dialects](DIALECTS.md) — pure SDA plus json/mongo/sql frontends
-- [Commands Overview](../COMMANDS.md)
 - [SDA Specification](SDA_SPEC.md)
 
 Use this manual first.

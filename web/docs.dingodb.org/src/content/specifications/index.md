@@ -26,8 +26,8 @@ Repository Markdown remains authoritative. These pages are **render/summary entr
 | [Format](/specifications/format/) | Draft | Available (wire draft labels) | FORMAT_SPEC.md |
 | [Heap](/specifications/heaps/) | Draft | Design | HEAP_SPEC.md |
 | [SDA](/specifications/sda/) | Normative materials | Experimental | doc/SDA/ |
-| [DQL](/specifications/dql/) | Draft/design mix | Experimental (subset) | DQL_SPEC.md |
-| [DRE](/specifications/dre/) | Draft | Design | DRE_SPEC.md |
+| [RQL](/specifications/dql/) | Draft/design mix | Experimental (subset) | RQL_SPEC.md |
+| [RRE](/specifications/dre/) | Draft | Design | RRE_SPEC.md |
 | [Atomics](/specifications/atomics/) | Draft | Design | ATOMICS_SPEC.md |
 | [Collection Contracts](/specifications/collection-contracts/) | Draft | Design | COLLECTION_CONTRACT_SPEC.md |
 | [Direct Access](/specifications/direct-access/) | Draft | Design | DIRECT_ACCESS_SPEC.md |

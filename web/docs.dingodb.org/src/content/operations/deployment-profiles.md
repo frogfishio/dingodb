@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Deployment profiles
-description: Supported ways to run DingoDB and their maturity.
+description: Supported ways to run ResiduumDB and their maturity.
 class: operation
 status: experimental
 section: operations

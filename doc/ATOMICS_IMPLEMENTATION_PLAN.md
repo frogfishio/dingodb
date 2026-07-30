@@ -98,7 +98,7 @@ Required tests:
 - crash matrix;
 - damaged evidence;
 - two Heaps same key/ID;
-- DRE document-local commit integration.
+- RRE document-local commit integration.
 
 Exit: one-key transitions match the oracle under randomized histories and
 return no ambiguous successful acknowledgement.
@@ -146,7 +146,7 @@ Deliver:
 - validation under sequencer;
 - phantom protection;
 - read-your-writes;
-- active DRE revision validation;
+- active RRE revision validation;
 - randomized history recorder and serializability checker.
 
 Required adversarial histories:
@@ -222,7 +222,7 @@ Deliver:
 - Heap-bound reverse-reference index;
 - build/drop/rebuild;
 - coverage/frontier status;
-- DRE compilation integration.
+- RRE compilation integration.
 
 The reverse index is derived and disposable.
 

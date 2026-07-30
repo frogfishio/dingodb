@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Rust quickstart
-description: Create an embedded DingoDB store, put JSON, filter, and reopen from a clean directory.
+description: Create an embedded ResiduumDB store, put JSON, filter, and reopen from a clean directory.
 class: tutorial
 status: experimental
 section: getting-started
@@ -44,7 +44,7 @@ cd dingodb-quickstart
 dingo-sdk = "0.2"
 ```
 
-**Licensing:** default features are **MPL-2.0** (embedded + remote client). Enabling `features = ["cluster"]` pulls **AGPL-3.0-or-later** `dingo-cluster`. See [project licensing](https://dingodb.org/project/#licensing).
+**Licensing:** default features are **MPL-2.0** (embedded + remote client). Enabling `features = ["cluster"]` pulls **AGPL-3.0-or-later** `dingo-cluster`. See [project licensing](https://residuumdb.org/project/#licensing).
 
 ## 3. Complete program
 

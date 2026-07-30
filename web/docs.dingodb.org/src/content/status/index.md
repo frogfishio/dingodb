@@ -18,7 +18,7 @@ keywords:
   - status
 ---
 
-Documented release **0.2.0**. DingoDB is **experimental software**.
+Documented release **0.2.0**. ResiduumDB is **experimental software**.
 
 - [Capabilities](/status/capabilities/)
 - [Known limitations](/status/known-limitations/)
@@ -26,4 +26,4 @@ Documented release **0.2.0**. DingoDB is **experimental software**.
 - [Benchmark disclosure](/status/benchmark-disclosure/)
 - [Roadmap](/status/roadmap/)
 
-Product mirror: [dingodb.org/status](https://dingodb.org/status/)
+Product mirror: [residuumdb.org/status](https://residuumdb.org/status/)

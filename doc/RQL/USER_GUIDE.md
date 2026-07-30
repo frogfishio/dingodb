@@ -1,18 +1,18 @@
-# DQL User Guide
+# RQL User Guide
 
-**Dingo Query Language (DQL)** is the official human way to write multi-collection
-queries in DingoDB. You write readable `from` / `enrich` / `project` text; the
+**Residuum Query Language (RQL)** is the official human way to write multi-collection
+queries in ResiduumDB. You write readable `from` / `enrich` / `project` text; the
 engine compiles it into the same ENR + SDA programs that pure algebra users write
 by hand.
 
 This guide is for application developers. It teaches what to type, how cardinality
 works, and how to run a program from the Rust SDK. It is **not** the design
-authority — that is [DQL_SPEC.md](../../DQL_SPEC.md).
+authority — that is [RQL_SPEC.md](../../RQL_SPEC.md).
 
 | Document | Role |
 |----------|------|
-| **This guide** | How to express and run DQL |
-| [DQL_SPEC.md](../../DQL_SPEC.md) | Normative design, lowering, IR |
+| **This guide** | How to express and run RQL |
+| [RQL_SPEC.md](../../RQL_SPEC.md) | Normative design, lowering, IR |
 | [DIALECTS.md](../SDA/DIALECTS.md) | How dialects sit on pure SDA |
 | [SDA USER_MANUAL.md](../SDA/USER_MANUAL.md) | Pure SDA when you need full control |
 
@@ -21,9 +21,9 @@ see [Limitations](#12-limitations-v01).
 
 ---
 
-## 1. When to use DQL
+## 1. When to use RQL
 
-Use DQL when you want to:
+Use RQL when you want to:
 
 - start from one collection of documents
 - **attach** related data from other collections under named fields
@@ -39,14 +39,14 @@ Prefer something else when:
 | Fluent host equijoin without text | `db.query()` multi-collection API |
 | Full algebraic control | Pure ENR1 text via `db.enr_query()` |
 
-DQL is **not SQL**. It looks a little like SQL in places, but joins do not flatten
+RQL is **not SQL**. It looks a little like SQL in places, but joins do not flatten
 rows — they **attach** named fields — and multiplicity is always explicit.
 
 ---
 
 ## 2. Ten-minute mental model
 
-A DQL program has three kinds of steps, in order:
+A RQL program has three kinds of steps, in order:
 
 ```text
 from <root_collection>          -- required in v0.1
@@ -99,7 +99,7 @@ That is different from a SQL `JOIN`, which multiplies rows into a flat table.
 ]
 ```
 
-### DQL
+### RQL
 
 ```text
 from orders
@@ -150,9 +150,9 @@ Line comments start with `--` and run to end of line.
 
 ---
 
-## 4. How to run DQL (Rust SDK)
+## 4. How to run RQL (Rust SDK)
 
-DQL compiles to pure ENR1/SDA text. You then bind the named collections and
+RQL compiles to pure ENR1/SDA text. You then bind the named collections and
 execute that program.
 
 ```rust
@@ -180,7 +180,7 @@ fn main() -> Result<(), dingo_sdk::Error> {
         }
     "#;
 
-    // 1) Compile DQL → pure SDA program text
+    // 1) Compile RQL → pure SDA program text
     let compiled = compile_dialect("dql", dql)?;
     // compiled.dialect == "dql"
     // compiled.sda     == ENR1/SDA source the engine actually runs
@@ -200,11 +200,11 @@ fn main() -> Result<(), dingo_sdk::Error> {
 ### Rules of thumb
 
 1. **`from` and every `using` name must be bound** (same string as the collection
-   name, or use `.bind_as("real_name", "alias")` and put the alias in DQL).
+   name, or use `.bind_as("real_name", "alias")` and put the alias in RQL).
 2. Binding materialises live JSON documents for each source; optional
    `.filter(...)` / `.source_limit(n)` apply **per source before** the program runs.
 3. `compile_dialect("dql", …)` and `BuiltinDialect::Dql.compile(…)` are equivalent.
-   Alias id `dingo-ql` also selects DQL.
+   Alias id `dingo-ql` also selects RQL.
 
 You can inspect the lowered program anytime:
 
@@ -228,7 +228,7 @@ orders
 ```
 
 Conformance tests require that this result matches hand-written ENR1 on the same
-bindings — DQL does not invent a second evaluator.
+bindings — RQL does not invent a second evaluator.
 
 ---
 
@@ -389,7 +389,7 @@ enrich lines using order_lines
 
 ### Failure style
 
-DQL inherits ENR failure tags. When `exactly_one` finds zero or two+ matches,
+RQL inherits ENR failure tags. When `exactly_one` finds zero or two+ matches,
 the program fails with a stable tag rather than inventing a row or silently
 picking one. That is intentional: **honest cardinality over convenient guesses**.
 
@@ -524,9 +524,9 @@ cardinality stays visible.
 
 ---
 
-## 11. DQL vs SQL (quick contrast)
+## 11. RQL vs SQL (quick contrast)
 
-| Concern | SQL habit | DQL |
+| Concern | SQL habit | RQL |
 |---------|-----------|-----|
 | Join | `JOIN t ON …` flattens / multiplies rows | `enrich` **attaches** a named field |
 | Multiplicity | Often implicit | `expect exactly_one \| optional \| many` **required** |
@@ -535,7 +535,7 @@ cardinality stays visible.
 | Wrong match count | Wrong row counts / runtime surprise | Stable ENR fail tags |
 
 The foreign dialect id `sql` is a **comfort** frontend for simple `WHERE` filters
-on one collection. It is **not** DQL and must not be used as the product’s
+on one collection. It is **not** RQL and must not be used as the product’s
 official multi-collection language.
 
 ---
@@ -552,11 +552,11 @@ Honest list of what v0.1 does and does not cover:
 | Line comments `--` | **Supported** |
 | Nested enrich **under** an `expect many` bag (ForEach scope) | **Partial / next** — prefer top-level enriches or pure ENR for now |
 | Fluent enrich builder → same IR | Design only |
-| Filters / `where` inside DQL text | **Not in DQL** — filter on the host binding (`.filter` / `.where_eq`) |
-| Aggregates, `ORDER BY`, pagination | **Host / other APIs** — not DQL meaning |
+| Filters / `where` inside RQL text | **Not in RQL** — filter on the host binding (`.filter` / `.where_eq`) |
+| Aggregates, `ORDER BY`, pagination | **Host / other APIs** — not RQL meaning |
 | DDL / writes | Out of scope (use collection put/delete) |
 
-When DQL cannot say what you need without weakening meaning, write pure ENR1/SDA
+When RQL cannot say what you need without weakening meaning, write pure ENR1/SDA
 and run it with `enr_query` — same engine, full kernel.
 
 ---
@@ -616,7 +616,7 @@ let v = db.enr_query()
 
 ## 15. See also
 
-- [DQL_SPEC.md](../../DQL_SPEC.md) — full design and lowering contract  
+- [RQL_SPEC.md](../../RQL_SPEC.md) — full design and lowering contract  
 - [doc/SDA/DIALECTS.md](../SDA/DIALECTS.md) — dialect stack and foreign comfort rules  
 - [doc/SDA/USER_MANUAL.md](../SDA/USER_MANUAL.md) — pure SDA everyday use  
 - [DX_SPEC.md](../../DX_SPEC.md) §7 — everyday query experience  

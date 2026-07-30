@@ -41,4 +41,4 @@ Public plaintext bind refused without override; TLS handshakes succeed with expe
 
 DEF-032–034, `doc/THREAT_MODEL.md` (draft)
 
-Product page: [dingodb.org/security](https://dingodb.org/security/)
+Product page: [residuumdb.org/security](https://residuumdb.org/security/)

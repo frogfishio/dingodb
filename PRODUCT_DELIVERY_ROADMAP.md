@@ -1,4 +1,4 @@
-# DingoDB critical product delivery roadmap
+# ResiduumDB critical product delivery roadmap
 
 Status: strategic summary; execution order governed by
 [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md)
@@ -24,7 +24,7 @@ Companions:
 
 ## 1. Decision
 
-DingoDB has one engine critical path and two supporting delivery lanes:
+ResiduumDB has one engine critical path and two supporting delivery lanes:
 
 ```text
 ENGINE
@@ -34,11 +34,11 @@ Application Baseline
         ↓
 Trustworthy SQLite-replacement core
         ↓
-document-local DRE
+document-local RRE
         ↓
 LocalHeap Atomics
         ↓
-relationships + cross-document DRE
+relationships + cross-document RRE
         ↓
 Direct Access
         ↓
@@ -148,7 +148,7 @@ The practical order is:
 Why this is first:
 
 - every later artifact must be bound to one `HeapId`;
-- DRE activation, Atomic decisions, evidence, telemetry disclosure, cursors,
+- RRE activation, Atomic decisions, evidence, telemetry disclosure, cursors,
   indexes, and Studio sessions all depend on the Heap boundary;
 - implementing around incomplete creation/key/operation paths would create
   compatibility debt at the most security-sensitive boundary.
@@ -183,7 +183,7 @@ Purpose:
 > diagnose without reading the source tree.
 
 Three enabling slices run in parallel after the R1 protocol and authority
-shapes freeze. They do not all block the DRE engine path; the exact blocking
+shapes freeze. They do not all block the RRE engine path; the exact blocking
 minimum is defined by `MASTER_DELIVERY_PLAN.md`.
 
 #### R2-A — Evidence foundation
@@ -208,7 +208,7 @@ This provides:
 `DEL-5` mandatory Atomic coupling waits for R4. `DEL-8` lifecycle depth,
 `DEL-9` offline UX, and final qualification continue in later releases.
 
-Evidence lands before DRE and Atomics so their activations and decisions do
+Evidence lands before RRE and Atomics so their activations and decisions do
 not need an audit story retrofitted later.
 
 #### R2-B — Telemetry foundation
@@ -251,7 +251,7 @@ This provides:
 
 Studio is not engine authority. It is the first-class way to see the authority,
 damage, uncertainty, and evidence that the engine already exposes. Studio S1
-is a parallel DX release, not a prerequisite for beginning DRE.
+is a parallel DX release, not a prerequisite for beginning RRE.
 
 #### R2-D — Early-access trust gate
 
@@ -268,7 +268,7 @@ Required alongside A–C:
 
 R2 exit:
 
-> A careful outsider can install DingoDB, create a Heap, store data, kill it,
+> A careful outsider can install ResiduumDB, create a Heap, store data, kill it,
 > reopen it, see damage honestly, inspect operational health, and restore data
 > without understanding the repository architecture.
 
@@ -284,15 +284,15 @@ DRE-0 → DRE-1 → DRE-2 → DRE-3 → DRE-4
 
 Deliver:
 
-- one frozen predicate semantics shared by DQL and DRE;
-- the declarative, non-Turing-complete DRE language;
+- one frozen predicate semantics shared by RQL and RRE;
+- the declarative, non-Turing-complete RRE language;
 - canonical Invariant Core;
 - independently verifiable compiled artifacts;
 - document-local activation and enforcement;
-- JSON Schema → DRE translation;
-- stable DQL grammar and SQL-ish → DQL translation;
+- JSON Schema → RRE translation;
+- stable RQL grammar and SQL-ish → RQL translation;
 - evidence for ruleset activation and rejection; and
-- Studio DQL/DRE editing, validation, impact preview, and activation UI.
+- Studio RQL/RRE editing, validation, impact preview, and activation UI.
 
 R3 intentionally excludes:
 
@@ -336,7 +336,7 @@ Deliver:
 - parent-exists and `on delete restrict`;
 - uniqueness and bounded cardinality;
 - online activation/validation;
-- transition and cross-document DRE;
+- transition and cross-document RRE;
 - mandatory Evidence Ledger coupling; and
 - Studio preview, evidence, recovery, relationship, and conflict views.
 
@@ -352,7 +352,7 @@ one serializable decision
 
 R4 exit:
 
-> DingoDB provides document flexibility with database-owned, mathematically
+> ResiduumDB provides document flexibility with database-owned, mathematically
 > specified cross-document integrity.
 
 This is the release that creates the new competitive quadrant.
@@ -380,7 +380,7 @@ Deliver:
 - counted order blocks and bounded mutation maintenance;
 - explicit coverage, damage, and refusal;
 - no hidden offset emulation;
-- DQL integration; and
+- RQL integration; and
 - Studio advanced query, rank, cursor, sort, and explain UX.
 
 R5 exit:
@@ -459,7 +459,7 @@ engineering foundations, not a production release claim.
 The order between E1 and E3 may be reconsidered only through an explicit
 market decision: choose archive-first for the fifteen-year retention market,
 or cluster-first for the Couchbase/distributed-document market. The default
-decision is **archive-first** because it is closer to DingoDB's core survival
+decision is **archive-first** because it is closer to ResiduumDB's core survival
 thesis.
 
 ### E4 — Exact vector, then ANN/hybrid
@@ -491,7 +491,7 @@ The next work queue is:
 | 8 | Evidence `DEL-0`–`DEL-4`, then `DEL-7` | C0 | later integrity decisions need durable evidence |
 | 9 | Telemetry `TEL-0`–`TEL-4`, `TEL-8` | C0 | performance and operation need bounded truth |
 | 10 | Studio `DST-000`–`DST-006` | C0 DX | killer DX over the qualified Heap path |
-| 11 | DRE `DRE-0`–`DRE-4` | C1 | first mathematical application invariant |
+| 11 | RRE `DRE-0`–`DRE-4` | C1 | first mathematical application invariant |
 | 12 | Atomics + relationships + `DEL-5` | C1 | cross-document integrity differentiator |
 | 13 | Direct Access | C1 | exact non-linear pagination |
 | 14 | Order Wavelets | C1 | exact scalable filtered sorting |
@@ -526,11 +526,11 @@ Safe parallel work:
 
 - Evidence pure formats/verifier may start while final Heap journeys close,
   once Heap identity and authority certificate shapes are frozen.
-- Telemetry registries and bounded emitter may start independently of DRE.
+- Telemetry registries and bounded emitter may start independently of RRE.
 - Studio shell/security/IPC may start while R1 finishes; live Heap Explorer
   activation waits for the qualified APIs.
-- DRE semantic oracle may start while R2 product work proceeds.
-- Atomic oracle work may start after the DRE invariant core and Heap object
+- RRE semantic oracle may start while R2 product work proceeds.
+- Atomic oracle work may start after the RRE invariant core and Heap object
   identity are frozen.
 - Direct Access oracle work may start after shared predicate semantics freeze.
 
@@ -590,7 +590,7 @@ finish Heaps
 → close the trustworthy SQLite-replacement core
 → install the minimum Evidence and bounded Telemetry substrates
   while Studio Explorer proceeds in parallel
-→ ship document-local DRE
+→ ship document-local RRE
 → ship Atomics and relationships
 → ship exact direct navigation and counted order
 → qualify one single-node production candidate
@@ -599,5 +599,5 @@ finish Heaps
 
 The important correction is that **boring product trust sits between Heaps and
 the mathematical feature program**, while Studio is a parallel product lane.
-DingoDB should neither accumulate brilliant backend capabilities that cannot
+ResiduumDB should neither accumulate brilliant backend capabilities that cannot
 be operated nor hold those capabilities behind completion of a graphical tool.

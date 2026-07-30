@@ -1,7 +1,7 @@
-# DingoDB production-readiness defects and execution plan
+# ResiduumDB production-readiness defects and execution plan
 
 Status: active remediation plan  
-Scope: the complete DingoDB workspace  
+Scope: the complete ResiduumDB workspace
 Primary inputs: repository review performed 2026-07-25, `OVERVIEW.md`,
 `FORMAT_SPEC.md`, `DX_SPEC.md`, `CLUSTER_SPEC.md`, and current implementation
 
@@ -10,7 +10,7 @@ Primary inputs: repository review performed 2026-07-25, `OVERVIEW.md`,
 This document turns the current product-review findings into an ordered,
 testable engineering program.
 
-DingoDB already has a credible damage-tolerant format, salvage scanner,
+ResiduumDB already has a credible damage-tolerant format, salvage scanner,
 single-node store, Rust SDK, and unusually strong conformance tests. It is not
 yet production-ready as a network database or distributed storage system.
 Production readiness requires more than implementing missing APIs: acknowledged
@@ -2355,43 +2355,52 @@ Acceptance:
 
 Priority: P0
 Dependencies: DEF-032, DEF-054
-Status: **open**
+Status: **partial — secret keyrings + v2 tokens shipped (labor in_review);
+token-payload encryption, full Heap binding, and control-plane key
+distribution beyond local cluster root remain residual**
 
 Finding:
 
 Both `dingo-store::cursor` and
-`dingo-cluster::coverage::QueryContinuation` currently derive their keyed
+`dingo-cluster::coverage::QueryContinuation` previously derived their keyed
 BLAKE3 keys solely from the store ID or cluster ID, while that public ID is
-included in the token. A client can therefore derive the same key and forge a
-token. The current tag detects accidental corruption and cross-store/cluster
-use; it is not cryptographic authentication against a malicious client.
+included in the token. A client could therefore derive the same key and forge a
+token. The tag detected accidental corruption and cross-store/cluster
+use; it was not cryptographic authentication against a malicious client.
 
-Work:
+#### Labor shipped (dingo-token-key-v1 / cursor-v2 / query-continuation-v2)
 
-- Generate continuation-token keys from at least 256 bits of secret entropy.
-- Distribute current key generations only through the protected cluster
-  control plane.
-- Bind Heap, authority generation, query/parameters, read view, ordering,
-  coverage, limits, expiry, and token-key generation.
-- Add rotation, grace, retirement, zeroization, and restore behavior.
-- Encrypt token contents when exposed metadata is sensitive.
-- Replace every “authenticated continuation” claim until the qualified
-  profile is active.
-- Align ordinary query continuation with
-  [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md) §19.
+- Store-local secret keyring (≥256-bit CSPRNG) at
+  `store-info/cursor_token_keys.v1`; minted on create; load-or-mint on open.
+- Cluster control-plane keyring at `{cluster_root}/cluster_token_keys.v1`.
+- MAC domain separation includes secret + public id + generation id; public id
+  alone is insufficient to forge.
+- Wire profiles: `dingo-cursor-v2` (`DCSR0002`), `dingo-query-continuation-v2`
+  (`DQRY0002`) embed `key_generation_id`.
+- Rotation + one-generation grace + explicit retire; zeroize on drop; Debug
+  redacts secrets.
+- APIs: `Store::rotate_continuation_keys` / `retire_previous_continuation_key`,
+  `Cluster::rotate_continuation_keys` / `continuation_keyring`.
+- Tests: unit keyring/cursor, `stage_def_097_token_keys`, updated
+  `stage_def_026_cursors` / `stage_def_040_query`.
 
-Acceptance:
+#### Residual
 
-- Knowledge of cluster ID, token bytes, public keys, source, and wire profile
-  is insufficient to create or modify a valid token.
-- Cross-Heap, cross-query, cross-generation, expired, enlarged-page, and
-  bit-flipped tokens fail before query execution.
-- Rotation invalidates the retired generation according to the declared grace
-  policy.
-- Restart and coordinator replacement preserve only explicitly retained key
-  generations.
-- Secret material never appears in logs, diagnostics, SDA projections, or
-  unwrapped backups.
+- Encrypt token body when subject/metadata is sensitive.
+- Richer binding (Heap authority gen, expiry, multi-gen grace policy config).
+- Fleet key distribution beyond single cluster root file.
+- Re-qualify marketing/spec “authenticated continuation” language against
+  qualified profile (DIRECT_ACCESS_SPEC §19).
+
+Acceptance (labor):
+
+- Knowledge of store/cluster ID + token bytes is insufficient to forge a valid
+  token without the secret keyring.
+- Cross-store/cluster, bit-flip, and retired-generation tokens fail before
+  scan/query execution.
+- Rotation keeps previous gen during grace; retire invalidates it.
+- Restart reloads retained generations from durable keyring files.
+- Secret material is redacted from Debug and not returned from doctor fields.
 
 ### DEF-098 — Make chunked values generation-exact, bounded, and directly addressable
 
@@ -2517,7 +2526,7 @@ A monolithic transcript may therefore retain most physical bytes while losing
 all ordinary document-level readability after one missing chunk.
 
 This does not violate the byte-survival format rule: `get_payload` can expose
-verified surviving extents. It does mean DingoDB must not imply that chunking
+verified surviving extents. It does mean ResiduumDB must not imply that chunking
 alone makes every field or array element independently examinable.
 
 #### Immediate containment
@@ -2769,7 +2778,7 @@ Conflicting   -> DataDamaged with damage_kind=payload_conflict
 
 If changing the public error shape requires a compatibility phase, add
 structured detail first and retain the old broad code temporarily. Telemetry,
-doctor, scrub, and Dingo Studio show the exact class, missing slot count,
+doctor, scrub, and Residuum Studio show the exact class, missing slot count,
 conflict slot, expected event IDs, and affected tier—never payload bytes.
 
 Repair may fetch an exact missing `chunk_event_id` from an authenticated replica
@@ -2796,7 +2805,7 @@ transcript/{id}/turn/{monotonic-id}
 transcript/{id}/timeline/{bounded-block-id}
 ```
 
-Each turn/block is an independently meaningful Dingo value. Optional aggregate
+Each turn/block is an independently meaningful ResiduumDB value. Optional aggregate
 snapshots are derived and replaceable. Losing one unit does not make surviving
 units unqueryable.
 
@@ -3176,7 +3185,7 @@ or instruct operators to delete a harmless file.
 
 - Only successful OS/in-process ownership establishes writer authority.
 - Diagnostic PID/text is advisory and never grants, retains, or breaks a lock.
-- Dingo MUST NOT delete a lock file or kill a process to acquire ownership.
+- ResiduumDB MUST NOT delete a lock file or kill a process to acquire ownership.
 - Writer-lock failure is never database absence.
 - Read-only inspection uses `open_inspect` and cannot mutate derived state.
 - Waiting is bounded, cancellable, observable, and defaults to the existing
@@ -3491,7 +3500,7 @@ and suite IDs.
 
 ## 16. Production release gates
 
-DingoDB may be called production-ready only when all applicable gates pass.
+ResiduumDB may be called production-ready only when all applicable gates pass.
 
 ### 16.1 Data-safety gates
 

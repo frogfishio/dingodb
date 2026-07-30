@@ -36,6 +36,7 @@ use crate::index_cache::{
     PrimaryCacheDiag,
 };
 use crate::layout::{list_dingo_files, StorePaths};
+use crate::token_keys::ContinuationKeyring;
 use crate::seal_pipeline::{
     list_pending_paths, recover_all_pending, LifecycleJob, LifecycleResult, SealPipeline,
     DEFAULT_MAX_PENDING_SEALS,
@@ -296,6 +297,8 @@ pub struct Store {
     /// Ordinary chunked get uses these for bounded preads; absence falls back to
     /// a generation-filtered segment scan (never mixes generations by item_id).
     chunk_locators: HashMap<[u8; 16], Vec<ChunkFrameLocator>>,
+    /// Secret continuation-token keyring (DEF-097). Never logged or exported.
+    token_keyring: ContinuationKeyring,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -370,6 +373,9 @@ impl Store {
         write_writer_shards_file(&paths, writer_shards)?;
         crate::failpoint::hit("store.create.after_meta")?;
         write_store_descriptor_file(&paths, store_id, created_ns)?;
+        // DEF-097: mint store-local continuation secrets (≥256-bit entropy).
+        let token_keyring = ContinuationKeyring::mint_new()?;
+        token_keyring.save_store(&paths)?;
         // Ensure parent dir entry is durable for create.
         sync_dir(&paths.root)?;
 
@@ -396,6 +402,7 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
             chunk_locators: HashMap::new(),
+            token_keyring,
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -455,6 +462,8 @@ impl Store {
         // Mismatch with store_id is corrupt; absence is tolerated for older trees.
         verify_store_descriptor_if_present(&paths, store_id)?;
         let writer_shards = read_writer_shards(&paths)?;
+        // DEF-097: load or mint keyring (upgrade older trees).
+        let token_keyring = ContinuationKeyring::load_or_mint_store(&paths)?;
 
         let mut store = Self {
             paths,
@@ -479,6 +488,7 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
             chunk_locators: HashMap::new(),
+            token_keyring,
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -522,6 +532,39 @@ impl Store {
         Ok(WriterLock::observe(&paths))
     }
 
+    /// Active continuation-token key generation id (DEF-097). No secret material.
+    pub fn continuation_key_generation(&self) -> u32 {
+        self.token_keyring.active_generation_id()
+    }
+
+    /// Rotate the continuation-token secret (DEF-097).
+    ///
+    /// Previous generation remains accepted for verify until
+    /// [`Self::retire_previous_continuation_key`] or a second rotate. Requires
+    /// writer ownership so the keyring file can be persisted.
+    pub fn rotate_continuation_keys(&mut self) -> Result<u32, StoreError> {
+        if self.writer_lock.is_none() {
+            return Err(StoreError::CorruptMeta(
+                "continuation key rotate requires writer open",
+            ));
+        }
+        let id = self.token_keyring.rotate()?;
+        self.token_keyring.save_store(&self.paths)?;
+        Ok(id)
+    }
+
+    /// Drop previous continuation key generation (end grace). Writer only.
+    pub fn retire_previous_continuation_key(&mut self) -> Result<(), StoreError> {
+        if self.writer_lock.is_none() {
+            return Err(StoreError::CorruptMeta(
+                "continuation key retire requires writer open",
+            ));
+        }
+        self.token_keyring.retire_previous();
+        self.token_keyring.save_store(&self.paths)?;
+        Ok(())
+    }
+
     /// Open an **existing** store for read-only inspection (Stage 7 doctor).
     ///
     /// Never creates a store, never opens the active segment for append, and
@@ -544,6 +587,7 @@ impl Store {
         verify_store_descriptor_if_present(&paths, store_id)?;
 
         let writer_shards = read_writer_shards(&paths)?;
+        let token_keyring = ContinuationKeyring::load_or_mint_store(&paths)?;
         let mut store = Self {
             paths,
             store_id,
@@ -567,6 +611,7 @@ impl Store {
             seal_pipeline: None,
             async_lifecycle: false,
             chunk_locators: HashMap::new(),
+            token_keyring,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -734,7 +779,7 @@ impl Store {
         let generation = scan_generation(&self.store_id, &seg_fp, live_count);
 
         let (prefix, after, token_page_size) = if let Some(ref tok) = options.continuation {
-            let state = decode_token(&self.store_id, tok)?;
+            let state = decode_token(&self.store_id, &self.token_keyring, tok)?;
             if state.generation != generation {
                 return Err(StoreError::CursorStale(
                     "scan generation changed (live set or segment fingerprint); restart scan"
@@ -823,7 +868,7 @@ impl Store {
                 after: last_subject,
                 page_size,
             };
-            Some(encode_token(&self.store_id, &state)?)
+            Some(encode_token(&self.store_id, &self.token_keyring, &state)?)
         } else {
             None
         };
@@ -867,7 +912,7 @@ impl Store {
         let generation = scan_generation(&self.store_id, &seg_fp, live_count);
 
         let (prefix, after, token_page_size) = if let Some(ref tok) = options.continuation {
-            let state = decode_token(&self.store_id, tok)?;
+            let state = decode_token(&self.store_id, &self.token_keyring, tok)?;
             if state.generation != generation {
                 return Err(StoreError::CursorStale(
                     "scan generation changed (live set or segment fingerprint); restart scan"
@@ -932,7 +977,7 @@ impl Store {
                 after: last_subject,
                 page_size,
             };
-            Some(encode_token(&self.store_id, &state)?)
+            Some(encode_token(&self.store_id, &self.token_keyring, &state)?)
         } else {
             None
         };

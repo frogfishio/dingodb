@@ -1,4 +1,4 @@
-# DingoDB verification implementation plan
+# ResiduumDB verification implementation plan
 
 Status: developer-ready work-package plan v1.0-draft
 
@@ -15,7 +15,7 @@ Program authority:
 
 ## 1. Outcome
 
-The program exits when DingoDB can run:
+The program exits when ResiduumDB can run:
 
 ```text
 dingo verify --profile embedded-heap --level A2
@@ -155,7 +155,7 @@ Scope:
 
 - SDA;
 - Heap admission/isolation;
-- DQL/DRE predicate kernel when implemented;
+- RQL/RRE predicate kernel when implemented;
 - Atomic decision kernel when implemented;
 - cursor/rank mathematics; and
 - Evidence verification.
@@ -281,7 +281,7 @@ Deliver:
 - partial-aware results versus legacy fail-closed projections;
 - resource truncation;
 - token forgery/binding/expiry; and
-- future DRE/DDA/DOW adapters.
+- future RRE/DDA/DOW adapters.
 
 Exit:
 

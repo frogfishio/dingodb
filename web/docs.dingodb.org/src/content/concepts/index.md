@@ -24,5 +24,5 @@ These pages explain design decisions. For tasks, use [guides](/guides/). For con
 - [Authoritative and derived](/concepts/authoritative-and-derived/)
 - [Damage, holes, and coverage](/concepts/damage-holes-and-coverage/)
 - [Durability and receipts](/concepts/durability-and-receipts/)
-- [SDA](/concepts/sda/) · [DQL](/concepts/dql/)
-- Design-only: [Heaps](/concepts/heaps/) · [DRE](/concepts/dre/) · [Atomics](/concepts/atomics/)
+- [SDA](/concepts/sda/) · [RQL](/concepts/dql/)
+- Design-only: [Heaps](/concepts/heaps/) · [RRE](/concepts/dre/) · [Atomics](/concepts/atomics/)

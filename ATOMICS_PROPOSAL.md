@@ -1,4 +1,4 @@
-# DingoDB Atomics proposal
+# ResiduumDB Atomics proposal
 
 Status: Historical exploratory source; superseded for implementation by
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md)
@@ -6,7 +6,7 @@ Status: Historical exploratory source; superseded for implementation by
 Scope: Bounded indivisible state transitions, integrity invariants, commit
 evidence, and transaction compatibility
 
-Companions: `ATOMICS_SPEC.md`, `DRE_SPEC.md`, `HEAP_SPEC.md`, `DX_SPEC.md`,
+Companions: `ATOMICS_SPEC.md`, `RRE_SPEC.md`, `HEAP_SPEC.md`, `DX_SPEC.md`,
 `TRANSACTIONS.md`, `CLUSTER_SPEC.md`, and `DATABASE_DOCTRINE.md`
 
 This document preserves the product reasoning and research space. Developers
@@ -16,13 +16,13 @@ wins.
 
 ## 1. The idea
 
-An **Atomic** is DingoDB's fundamental unit of indivisible logical change:
+An **Atomic** is ResiduumDB's fundamental unit of indivisible logical change:
 
 > Within one declared coordination scope, validate one closed set of
 > preconditions and invariants, then make one bounded set of effects logically
 > visible together—or make none of them visible.
 
-Atomics may be used internally by DingoDB or submitted explicitly by an
+Atomics may be used internally by ResiduumDB or submitted explicitly by an
 application. Referential integrity is the first proposed invariant built on
 the primitive; scoped transaction compatibility is one external
 interpretation of it.
@@ -33,7 +33,7 @@ The ordinary experience remains:
 
 The optional experience becomes:
 
-> For the parts that must agree, tell DingoDB once instead of defending the
+> For the parts that must agree, tell ResiduumDB once instead of defending the
 > invariant in every service forever.
 
 Ordinary single-record operations are already degenerate one-member Atomics.
@@ -133,7 +133,7 @@ turning the rest of the heap into a relational schema.
 
 The intended position is:
 
-> DingoDB remains an easygoing document store, but it does not make
+> ResiduumDB remains an easygoing document store, but it does not make
 > applications repeatedly solve integrity problems the database can solve
 > once.
 
@@ -230,7 +230,7 @@ set.
 
 ## 8. Two-dimensional truth
 
-DingoDB separates logical decision from present physical material.
+ResiduumDB separates logical decision from present physical material.
 
 Logical decision:
 
@@ -267,7 +267,7 @@ unknown_commit + complete
 means all known members survived, but sufficient decision evidence did not.
 The members remain examinable and do not silently enter current state.
 
-This distinction is a defining DingoDB property rather than an exceptional
+This distinction is a defining ResiduumDB property rather than an exceptional
 recovery footnote.
 
 ## 9. Coordination scopes
@@ -463,7 +463,7 @@ is a new forward effect, not erasure or rollback of history.
 
 ## 15. First invariant: relationship profile
 
-`DRE_SPEC.md` governs the human declaration, formal predicate,
+`RRE_SPEC.md` governs the human declaration, formal predicate,
 compilation proof obligations, lifecycle, and product position. This section
 defines the first relationship enforcement profile built on the Atomic
 primitive.
@@ -502,7 +502,7 @@ Rules:
 - deleting and recreating a collection does not retarget it;
 - one child field participates in at most one active reference rule in v1.
 
-Document field-path syntax should reuse the frozen DingoDB query/path grammar.
+Document field-path syntax should reuse the frozen ResiduumDB query/path grammar.
 It must not execute SDA or arbitrary application logic during admission.
 
 ## 16. Declarative and Rust experience
@@ -780,7 +780,7 @@ unchanged.
 
 Physical survival and logical integrity are separate claims.
 
-If a parent frame is destroyed while child frames survive, DingoDB preserves
+If a parent frame is destroyed while child frames survive, ResiduumDB preserves
 the healthy children. It does not delete them to make the relationship appear
 valid.
 
@@ -821,7 +821,7 @@ No choice happens silently.
 V1 atomics protect the current live state.
 
 Historical versions may legitimately refer to a parent that was live at their
-commit time but is no longer live. DingoDB does not rewrite retained history
+commit time but is no longer live. ResiduumDB does not rewrite retained history
 when a relationship changes.
 
 Claims such as:
@@ -1005,7 +1005,7 @@ The design should be rejected or narrowed if implementation requires:
 - unrelated writes paying global constraint costs;
 - trusting a damaged or incomplete reverse index to prove absence;
 - cascading destructive work without bounded Atomic semantics;
-- weakening DingoDB's survival rule by deleting healthy orphaned data.
+- weakening ResiduumDB's survival rule by deleting healthy orphaned data.
 
 ## 30. Proposed delivery sequence
 
@@ -1097,13 +1097,13 @@ The next draft must decide:
 Proceed with Atomics as the primitive and keep every initial promise
 deliberately scoped:
 
-> Within one declared Key, LocalHeap, or qualified Partition scope, DingoDB
+> Within one declared Key, LocalHeap, or qualified Partition scope, ResiduumDB
 > can commit one bounded serializable state transition with durable identity
 > and independently examinable outcome evidence.
 
 Use that primitive for the first optional invariant:
 
-> Within one heap, DingoDB can enforce that a scalar child reference names a
+> Within one heap, ResiduumDB can enforce that a scalar child reference names a
 > live parent and can atomically prevent deletion of a referenced parent.
 
 Transaction APIs may adapt LocalHeap and Partition Atomics, but do not define
@@ -1114,5 +1114,5 @@ imposing a relational model on users who do not want one.
 
 The difficult work is not evaluating `parent_exists`. It is preserving the
 invariant through races, crashes, backfill, clustering, restoration, and
-damage. Those are exactly the areas in which DingoDB should prefer a narrow
+damage. Those are exactly the areas in which ResiduumDB should prefer a narrow
 truthful guarantee over a broad convenient approximation.

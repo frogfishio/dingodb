@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Guides
-description: Task-oriented how-to guides for DingoDB application developers.
+description: Task-oriented how-to guides for ResiduumDB application developers.
 class: how-to
 status: experimental
 section: guides
@@ -25,7 +25,7 @@ How-to guides complete a specific real task. Prefer [getting started](/getting-s
 - [Collections](/guides/collections/)
 - [JSON and bytes](/guides/json-and-bytes/)
 - [Filtering](/guides/filtering/)
-- [DQL](/guides/dql/)
+- [RQL](/guides/dql/)
 - [Raw SDA](/guides/raw-sda/)
 - [Indexes](/guides/indexes/)
 - [Pagination and ordering](/guides/pagination-and-ordering/)

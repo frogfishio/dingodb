@@ -1,6 +1,6 @@
 # dingo-cluster
 
-**Cluster federation** for DingoDB: partition routing, coverage records,
+**Cluster federation** for ResiduumDB: partition routing, coverage records,
 placement directory, multi-node stores built on ordinary
 [`dingo-store`](https://crates.io/crates/dingo-store) nodes, per-partition
 Raft-equivalent consensus, convergent-append, distributed find with coverage
@@ -159,4 +159,4 @@ dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-netw
 
 AGPL-3.0-or-later.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb).
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb).

@@ -1,4 +1,4 @@
-# Dingo Order Wavelet (DOW) specification
+# Residuum Order Wavelet (DOW) specification
 
 Status: **Normative design v1.0-draft; not yet implemented**
 
@@ -16,8 +16,8 @@ conformance implementers
 
 Normative companions:
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
-[DQL_SPEC.md](DQL_SPEC.md),
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
+[RQL_SPEC.md](RQL_SPEC.md),
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [CLUSTER_SPEC.md](CLUSTER_SPEC.md),
@@ -29,20 +29,20 @@ Implementation plan:
 
 ## 1. Decision
 
-DingoDB SHALL support exact ranked navigation through a filtered result in a
-declared DQL order without sorting the matching documents at query time and
+ResiduumDB SHALL support exact ranked navigation through a filtered result in a
+declared RQL order without sorting the matching documents at query time and
 without enumerating the preceding matches.
 
-The semantic structure is the **Dingo Order Wavelet**:
+The semantic structure is the **Residuum Order Wavelet**:
 
 ```text
-exact DQL match bitmap
+exact RQL match bitmap
         +
 versioned wavelet order index
         +
 rank/select branch counts
         =
-exact kth filtered document in DQL order
+exact kth filtered document in RQL order
 ```
 
 The governing rule is:
@@ -68,7 +68,7 @@ with positioning work independent of the numeric magnitude of `k`, subject to
 the admitted bitmap and order-index costs defined here.
 
 DOW is a physical implementation of the logical ordering and direct-selection
-requirements in `dingo-direct-access-v1`. It does not change DQL semantics.
+requirements in `dingo-direct-access-v1`. It does not change RQL semantics.
 
 ## 2. Requirement language
 
@@ -86,8 +86,8 @@ Let:
 - `V` be one frozen read view;
 - `D = (d_0,\ldots,d_{n-1})` be the live documents in ascending immutable
   document-ID order;
-- `P(d)` be one total DQL predicate;
-- `K(d)` be the explicit DQL sort tuple excluding the implicit document-ID
+- `P(d)` be one total RQL predicate;
+- `K(d)` be the explicit RQL sort tuple excluding the implicit document-ID
   tie-breaker.
 
 The desired order is:
@@ -96,7 +96,7 @@ The desired order is:
 \kappa(d)=(K(d),id(d))
 \]
 
-using DQL's exact scalar, Null, Absent, direction, and collation rules.
+using RQL's exact scalar, Null, Absent, direction, and collation rules.
 
 Define the matching set:
 
@@ -171,7 +171,7 @@ joint counts at query time.
   the order wavelet.
 
 **User sort tuple**
-: The explicit DQL `order by` tuple before the implicit document-ID
+: The explicit RQL `order by` tuple before the implicit document-ID
   tie-breaker.
 
 **Order symbol**
@@ -180,7 +180,7 @@ joint counts at query time.
 
 **Order dictionary**
 : An immutable bijection between distinct user sort tuples and dense symbols
-  preserving DQL order.
+  preserving RQL order.
 
 **Wavelet node**
 : One prefix decision over order-symbol bits, containing the stable sequence
@@ -191,7 +191,7 @@ joint counts at query time.
   takes the zero or one child.
 
 **Candidate bitmap**
-: An exact DQL match bitmap transported into a wavelet node's local sequence.
+: An exact RQL match bitmap transported into a wavelet node's local sequence.
   “Candidate” here means candidate for ordered selection, not an approximate
   index result.
 
@@ -213,11 +213,11 @@ joint counts at query time.
 : An exact ordered union of sort tuples represented by a wavelet forest, used
   when members do not share one dense symbol dictionary.
 
-## 5. DQL order domain
+## 5. RQL order domain
 
 ### 5.1 User tuple
 
-For DQL order terms:
+For RQL order terms:
 
 ```text
 order by
@@ -249,11 +249,11 @@ where each `ord_i` incorporates:
 - byte ordering;
 - semantic profile version.
 
-Products, sequences, bags, sets, and maps remain invalid DQL v1 sort keys.
+Products, sequences, bags, sets, and maps remain invalid RQL v1 sort keys.
 
 ### 5.2 Strict total order
 
-The user tuple may contain ties. DQL appends immutable document identity:
+The user tuple may contain ties. RQL appends immutable document identity:
 
 \[
 \kappa(d)=(K(d),id(d))
@@ -288,19 +288,19 @@ x <_{\mathrm{desc}} y
 y < x
 \]
 
-The order dictionary is constructed using the resulting DQL comparator.
+The order dictionary is constructed using the resulting RQL comparator.
 
 ### 5.4 Null and Absent
 
-Null and Absent are distinct values. Their placement follows DQL exactly.
+Null and Absent are distinct values. Their placement follows RQL exactly.
 
-If both occupy the same end, DQL's specified relative order remains:
+If both occupy the same end, RQL's specified relative order remains:
 
 \[
 \mathrm{Null}<\mathrm{Absent}
 \]
 
-within that placement category unless the DQL profile is later versioned.
+within that placement category unless the RQL profile is later versioned.
 
 An order index that collapses Null and Absent cannot certify DOW.
 
@@ -318,7 +318,7 @@ Let:
 
 be the finite set of distinct user sort tuples in the frozen view.
 
-Sort its members using the exact DQL comparator:
+Sort its members using the exact RQL comparator:
 
 \[
 a_0 <_K a_1 <_K \cdots <_K a_{\sigma-1}
@@ -779,7 +779,7 @@ selects the correct tie-broken document.
 
 ### 10.4 Product rank
 
-For one-based DQL rank `k`:
+For one-based RQL rank `k`:
 
 \[
 r=k-1
@@ -970,7 +970,7 @@ A[\min(k-1+l,m)-1]
 ]
 \]
 
-where `A` is the complete DQL-ordered match sequence.
+where `A` is the complete RQL-ordered match sequence.
 
 ### 12.4 Continuation
 
@@ -991,7 +991,7 @@ implementation-specific stack.
 
 ### 13.1 Tuple symbols
 
-Multiple DQL order terms form one user tuple:
+Multiple RQL order terms form one user tuple:
 
 \[
 K(d)=(K_1(d),\ldots,K_t(d))
@@ -1078,7 +1078,7 @@ escape proof is not sufficient for arbitrary bytes.
 
 ### 14.4 Collation
 
-The DQL v1 string order is Unicode scalar/code-point lexicographic order.
+The RQL v1 string order is Unicode scalar/code-point lexicographic order.
 Locale collation, normalization, case folding, and ICU version behavior are
 not silently imported.
 
@@ -1223,7 +1223,7 @@ forest members.
 `G` binds:
 
 - every participating dictionary/generation;
-- the exact DQL comparator;
+- the exact RQL comparator;
 - source and index frontiers;
 - coverage and holes.
 
@@ -1497,7 +1497,7 @@ surviving authority.
 
 ### 21.1 DOW eligibility
 
-A DQL plan may use DOW only when:
+A RQL plan may use DOW only when:
 
 \[
 \mathrm{ExactPredicateBitmap}
@@ -1539,7 +1539,7 @@ when exact bitmap projection/intersection is performed at query setup.
 
 ### 21.3 Build classification
 
-If DingoDB must scan authoritative documents or comparison-sort a new tuple
+If ResiduumDB must scan authoritative documents or comparison-sort a new tuple
 dictionary/result mapping, the plan is `BUILDABLE`, not `DIRECT`, until the
 artifact is verified and atomically published.
 
@@ -1877,7 +1877,7 @@ The reference oracle:
 
 1. freezes the same live document view;
 2. evaluates `P` authoritatively;
-3. comparison-sorts matches by exact DQL `(K,id)`;
+3. comparison-sorts matches by exact RQL `(K,id)`;
 4. returns the requested rank/page.
 
 Every DOW representation and execution mode MUST equal it.
@@ -2012,7 +2012,7 @@ statistics.
 SDA MUST project every surviving:
 
 - order-index definition;
-- exact DQL order profile;
+- exact RQL order profile;
 - dictionary header and bounded entries;
 - source-ID interval;
 - wavelet shape;
@@ -2109,7 +2109,7 @@ remains honest under holes.
 
 DOW v1 is release-ready only when:
 
-1. DQL scalar and tuple comparison profiles are frozen;
+1. RQL scalar and tuple comparison profiles are frozen;
 2. dictionary bytes and identities are canonical;
 3. every physical representation passes the semantic-tree oracle;
 4. arbitrary predicate-bitmap transport is proved and exhaustively tested on
@@ -2151,9 +2151,9 @@ DOW builds on:
   [Engineering Compact Data Structures for Rank and Select Queries on Bit
   Vectors](https://arxiv.org/abs/2206.01149).
 
-The specific Dingo composition is:
+The specific ResiduumDB composition is:
 
-- exact DQL predicate bitmap as an arbitrary conditioned subset;
+- exact RQL predicate bitmap as an arbitrary conditioned subset;
 - stable wavelet projection of that subset;
 - document-ID tie preservation;
 - immutable damage-localized order blocks;
@@ -2161,4 +2161,4 @@ The specific Dingo composition is:
 - DDA certificates, frozen views, Heap isolation, and survivors-domain
   honesty.
 
-That composition is the Dingo Order Wavelet proposition.
+That composition is the Residuum Order Wavelet proposition.

@@ -1,4 +1,4 @@
-# Dingo Studio implementation plan
+# Residuum Studio implementation plan
 
 Status: developer-ready work-package plan v1.0-draft
 
@@ -13,7 +13,7 @@ Companions:
 [TELEMETRY_SPEC.md](../TELEMETRY_SPEC.md),
 [EVIDENCE_LEDGER_SPEC.md](../EVIDENCE_LEDGER_SPEC.md),
 [HEAP_SPEC.md](../HEAP_SPEC.md),
-[DQL_SPEC.md](../DQL_SPEC.md), and
+[RQL_SPEC.md](../RQL_SPEC.md), and
 [DX_SPEC.md](../DX_SPEC.md).
 
 ## 1. Delivery rule
@@ -27,7 +27,7 @@ Each package exits with one real end-to-end path through:
 Angular view
 Tauri IPC
 Rust Studio core
-Dingo/telemetry/evidence source
+ResiduumDB/telemetry/evidence source
 honest result state
 ```
 
@@ -55,7 +55,7 @@ Ownership:
 | Machine IPC/topic/view schemas | `spec/studio/` |
 | Framework shell | `apps/dingo-studio/` |
 | Reusable Rust orchestration | `crates/dingo-studio-core/` |
-| Dingo protocol semantics | existing Dingo crates/specs |
+| ResiduumDB protocol semantics | existing legacy `dingo-*` crates/specs |
 | CI qualification | `scripts/verify-studio.sh` |
 
 ## 3. Frozen baseline
@@ -86,13 +86,13 @@ updates follow `STUDIO_SPEC.md` §34.4.
 | DST-004 | immutable Heap workspace | S1 |
 | DST-005 | collection and record explorer | S1 |
 | DST-006 | document/bytes/history/damage inspector | S1 |
-| DST-007 | DQL editor and execution | S2 |
+| DST-007 | RQL editor and execution | S2 |
 | DST-008 | cursor, direct-rank, explain, SQL import, SDA lab | S2 |
 | DST-009 | Ratatouille ingestion and telemetry dashboard | S3 |
 | DST-010 | Evidence Ledger live/offline workspace | S3 |
 | DST-011 | index and operational jobs | S3 |
 | DST-012 | lifecycle and high-impact confirmation | S3 |
-| DST-013 | DRE, contracts, relationships, Atomics | S4 |
+| DST-013 | RRE, contracts, relationships, Atomics | S4 |
 | DST-014 | cluster workspace | S5 |
 | DST-015 | packaging, update, accessibility, qualification | release |
 
@@ -277,7 +277,7 @@ DST-004 and active list/open/get/scan/find operations.
 - bound/any scope visualization;
 - local authorized-list filtering;
 - typed search builder;
-- generated DQL preview;
+- generated RQL preview;
 - page cancellation; and
 - bounded page cache.
 
@@ -315,7 +315,7 @@ bounded memory and honest coverage.
 
 - JSON, bytes, invalid UTF-8, large chunked, partial and unknown codec;
 - optimistic conflict;
-- DRE rejection;
+- RRE rejection;
 - durability mismatch;
 - tombstone/history holes;
 - no HTML/script execution from values;
@@ -326,7 +326,7 @@ bounded memory and honest coverage.
 
 S1 is eligible to close when DST-003–006 and their combined e2e suite pass.
 
-## 12. DST-007 — DQL workbench
+## 12. DST-007 — RQL workbench
 
 ### Deliverables
 
@@ -344,7 +344,7 @@ S1 is eligible to close when DST-003–006 and their combined e2e suite pass.
 ### Tests
 
 - parameter injection attempts;
-- DQL subset mismatch;
+- RQL subset mismatch;
 - missing versus null;
 - cancellation/deadline;
 - budget exhaustion;
@@ -356,7 +356,7 @@ S1 is eligible to close when DST-003–006 and their combined e2e suite pass.
 
 ### Exit
 
-Canonical DQL executes without values concatenated into source and always
+Canonical RQL executes without values concatenated into source and always
 displays coverage.
 
 ## 13. DST-008 — Advanced query and SDA
@@ -367,7 +367,7 @@ displays coverage.
 - previous locally retained page;
 - Direct Access exact-rank control;
 - explain;
-- SQL-ish → DQL import/diff;
+- SQL-ish → RQL import/diff;
 - raw SDA laboratory;
 - live/offline examination-unit picker;
 - deterministic rerun; and
@@ -382,7 +382,7 @@ displays coverage.
 - SDA `None`/`Null`/`Fail`;
 - evaluator limits;
 - offline holes/coverage; and
-- generated DQL approval/execution identity.
+- generated RQL approval/execution identity.
 
 ### Exit
 
@@ -399,7 +399,7 @@ maximum page/tab budget.
 
 - loopback TCP/HTTP-compatible Ratatouille receiver;
 - qualified collector/gateway adapter;
-- outer envelope and Dingo message validator;
+- outer envelope and ResiduumDB message validator;
 - bounded memory ring;
 - source/boot/sequence/gap tracking;
 - topic store;
@@ -425,7 +425,7 @@ maximum page/tab budget.
 ### Exit
 
 Studio displays current telemetry and explicit gaps without using stdout logs,
-files, or the Dingo metrics RPC.
+files, or the ResiduumDB metrics RPC.
 
 ## 15. DST-010 — Evidence
 
@@ -524,7 +524,7 @@ S3 closes when DST-009–012 pass for every operation Studio advertises.
 
 ### Deliverables
 
-- DRE editor/AST/math view;
+- RRE editor/AST/math view;
 - example evaluator;
 - JSON Schema import;
 - activation impact;
@@ -538,7 +538,7 @@ S3 closes when DST-009–012 pass for every operation Studio advertises.
 
 - editor/runtime semantic golden corpus;
 - no script/Turing-complete escape;
-- DRE revision conflict;
+- RRE revision conflict;
 - activation with invalid existing data;
 - scope `Any` cannot create;
 - relationship restrict;

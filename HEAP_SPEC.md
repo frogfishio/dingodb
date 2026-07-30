@@ -1,4 +1,4 @@
-# DingoDB Heap Specification
+# ResiduumDB Heap Specification
 
 Status: Developer-ready implementation contract v0.9  
 Capability status: **Partial** — HP-000…HP-009 landed in-tree (with listed
@@ -11,7 +11,7 @@ Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
 Audience: SDK, server, cluster, storage, security, recovery, CLI, and test-rig
 implementers
-Companion contracts: `ATOMICS_SPEC.md`, `DRE_SPEC.md`,
+Companion contracts: `ATOMICS_SPEC.md`, `RRE_SPEC.md`,
 `COLLECTION_CONTRACT_SPEC.md`, `DX_SPEC.md`, `CLUSTER_SPEC.md`,
 `doc/HEAP_APPLICATION_READY_PLAN.md`, and `doc/LICENSING.md`
 
@@ -51,7 +51,7 @@ criteria in §40.
 
 Before Gate H6, product language remains:
 
-> DingoDB provides named heap namespaces; strong access-isolation qualification
+> ResiduumDB provides named heap namespaces; strong access-isolation qualification
 > is in progress.
 
 #### Work packages (§40)
@@ -182,10 +182,10 @@ Product language stays Level 1 until Gate H6.
 
 ## 1. Purpose
 
-A DingoDB deployment may serve more than one independent body of application
+A ResiduumDB deployment may serve more than one independent body of application
 data.
 
-DingoDB calls each such body a **heap**.
+ResiduumDB calls each such body a **heap**.
 
 ```text
 Deployment
@@ -221,15 +221,15 @@ any particular way.
 
 ## 1.1 Defining property: heaps cannot meet
 
-The defining property of a DingoDB heap is not that queries normally include a
+The defining property of a ResiduumDB heap is not that queries normally include a
 heap filter.
 
 It is:
 
 > **Heaps are not filtered apart. They are incapable of meeting inside a
-> DingoDB data operation.**
+> ResiduumDB data operation.**
 
-Heap separation MUST NOT depend on DQL, SDA, ENR, an optimizer, an index,
+Heap separation MUST NOT depend on RQL, SDA, ENR, an optimizer, an index,
 an SDK, or an RPC handler remembering to append:
 
 ```text
@@ -245,7 +245,7 @@ universe already contains exactly one heap:
 ```text
 Untrusted and evolving database machinery
 ─────────────────────────────────────────
-DQL / SDA / ENR / query planner / optimizer
+RQL / SDA / ENR / query planner / optimizer
 indexes / SDK / server / cluster / tooling
 ─────────────────────────────────────────
         formally specified boundary
@@ -340,7 +340,7 @@ assumes only the declared trusted computing base in §3.12.
 
 ## 1.4 Claim ladder
 
-DingoDB distinguishes three maturity levels.
+ResiduumDB distinguishes three maturity levels.
 
 ### Level 1 — Heap namespaces
 
@@ -348,7 +348,7 @@ The API names heaps and scopes collections beneath them.
 
 Permitted claim:
 
-> DingoDB provides named logical heap namespaces.
+> ResiduumDB provides named logical heap namespaces.
 
 This is organisation, not qualified security isolation.
 
@@ -360,7 +360,7 @@ finds no bypass.
 
 Permitted claim:
 
-> DingoDB enforces logical access isolation between cryptographically
+> ResiduumDB enforces logical access isolation between cryptographically
 > authorized heaps for the qualified deployment profile.
 
 This remains an implementation assurance supported by architecture and tests.
@@ -374,7 +374,7 @@ and an independent security review is complete.
 
 Permitted claim:
 
-> DingoDB provides formally verified non-interference between heap-bound data
+> ResiduumDB provides formally verified non-interference between heap-bound data
 > operations for the qualified deployment profile.
 
 No release may use a higher-level claim based solely on the existence of APIs,
@@ -384,7 +384,7 @@ tests, types, a model, or an unconnected implementation proof.
 
 To preserve the defining property:
 
-- no DingoDB data-plane operation spans two heaps;
+- no ResiduumDB data-plane operation spans two heaps;
 - no cross-heap join or transaction will be added later;
 - no query layer receives a global data iterator;
 - no caller-provided `HeapId` is treated as authority;
@@ -437,12 +437,12 @@ identify user
     -> execute
 ```
 
-DingoDB stores no human RBAC state for heap access. Applications may implement
-RBAC or any other human access model above DingoDB.
+ResiduumDB stores no human RBAC state for heap access. Applications may implement
+RBAC or any other human access model above ResiduumDB.
 
 The governing rule is:
 
-> **A HeapKey carries cryptographic proof of authority. DingoDB does not ask an
+> **A HeapKey carries cryptographic proof of authority. ResiduumDB does not ask an
 > authorization database whether that authority exists.**
 
 The certificate is validated when establishing a channel. With an unchanged
@@ -483,8 +483,8 @@ A named append-oriented sequence within one heap.
 An application, service, worker, agent, pipeline, or administrative tool that
 holds a cryptographic keypair and presents a `HeapKey`.
 
-DingoDB authorizes systems. Human users, organisational roles, groups, and
-business policy belong to the application above DingoDB.
+ResiduumDB authorizes systems. Human users, organisational roles, groups, and
+business policy belong to the application above ResiduumDB.
 
 ### 2.6 Heap master key
 
@@ -576,23 +576,23 @@ Authorization is evaluated against resolved immutable identity.
 
 ### 3.5.1 Systems are the database subjects
 
-DingoDB does not maintain human users, groups, roles, role inheritance, or
+ResiduumDB does not maintain human users, groups, roles, role inheritance, or
 principal-to-permission grants.
 
 Applications MAY implement RBAC, ABAC, ACLs, relationship policy, subscription
-policy, or any other human authorization model above DingoDB. The resulting
-application operation reaches DingoDB through the application's HeapKey.
+policy, or any other human authorization model above ResiduumDB. The resulting
+application operation reaches ResiduumDB through the application's HeapKey.
 
 The governing separation is:
 
-> DingoDB authorizes systems. Systems authorize people.
+> ResiduumDB authorizes systems. Systems authorize people.
 
 ### 3.5.2 Authority travels with the channel
 
 The authorization decision is encoded and cryptographically authenticated
 inside the presented HeapKey.
 
-DingoDB MUST NOT perform a user, role, group, grant, permission, or revocation
+ResiduumDB MUST NOT perform a user, role, group, grant, permission, or revocation
 database lookup on the request path.
 
 After channel establishment, ordinary operations use an in-memory
@@ -600,7 +600,7 @@ After channel establishment, ordinary operations use an in-memory
 
 ### 3.6 Logical isolation is not physical isolation
 
-Heap authorization protects against systems using DingoDB interfaces.
+Heap authorization protects against systems using ResiduumDB interfaces.
 
 It does not by itself protect against:
 
@@ -613,7 +613,7 @@ It does not by itself protect against:
 
 A system legitimately issued separate HeapKeys for two heaps can read them
 through two separate handles and combine the results in application memory.
-DingoDB prevents one heap-bound operation from doing so; it cannot control
+ResiduumDB prevents one heap-bound operation from doing so; it cannot control
 what an authorized caller does after separate results leave the database.
 
 Deployments requiring protection against those threats need separate stores,
@@ -769,7 +769,7 @@ The checked state-machine model MUST include:
 ### 3.10 Isolation kernel
 
 The mathematical contract is enforced by a small **heap isolation kernel**
-below DQL, SDA, ENR, query planning, indexes, and ordinary SDK logic.
+below RQL, SDA, ENR, query planning, indexes, and ordinary SDK logic.
 
 The kernel is the only component permitted to convert a validated HeapKey,
 holder proof, resident heap security snapshot, and durable heap identity into a
@@ -867,7 +867,7 @@ No software can mathematically guarantee behavior in the presence of an
 arbitrary defect in the compiler, kernel, hardware, cryptography, or the code
 that implements the proved model.
 
-DingoDB's guarantee is therefore precise:
+ResiduumDB's guarantee is therefore precise:
 
 > Assuming the heap isolation kernel, cryptographic primitives, compiler,
 > runtime, and operating system behave according to their specified models, a
@@ -1227,7 +1227,7 @@ An embedded heap handle provides namespace correctness but does not isolate
 mutually hostile code within the same process.
 
 Applications requiring in-process human authorization implement it above the
-heap handle. DingoDB MUST NOT describe HeapKeys as protection from arbitrary
+heap handle. ResiduumDB MUST NOT describe HeapKeys as protection from arbitrary
 code already running with the same process authority and access to holder key
 material.
 
@@ -1246,7 +1246,7 @@ Heap H
 
 The corresponding `MasterPrivateKey` is generated and retained by the heap
 owner, HSM, or protected key provider and MUST NOT be stored in plaintext by
-DingoDB. The preferred ceremony never places it in DingoDB memory.
+ResiduumDB. The preferred ceremony never places it in ResiduumDB memory.
 
 The master key is not a database login. It has no read, write, query, backup,
 recovery, administration, or data-encryption permission.
@@ -1259,14 +1259,14 @@ It exists only to:
 
 ### 8.2 First-level and second-level access
 
-DingoDB's first-level access subjects are systems holding HeapKeys.
+ResiduumDB's first-level access subjects are systems holding HeapKeys.
 
 ```text
 application / worker / agent / admin tool
                     │
                     │ HeapKey
                     ▼
-                 DingoDB
+                 ResiduumDB
 ```
 
 Human access control is second-level application policy:
@@ -1281,10 +1281,10 @@ application
 application HeapKey
   │
   ▼
-DingoDB
+ResiduumDB
 ```
 
-DingoDB MUST NOT implement human RBAC as part of heap authorization. An
+ResiduumDB MUST NOT implement human RBAC as part of heap authorization. An
 external identity or role system MAY decide which system receives a HeapKey,
 but it has no place in channel verification or the isolation kernel.
 
@@ -1499,7 +1499,7 @@ database. A retry on another node obtains and signs a fresh nonce.
 
 The qualified network profile requires authenticated TLS 1.3 server identity.
 TLS termination, proxying, resumption, and transport migration are conforming
-only when the DingoDB endpoint that verifies the proof has access to the
+only when the ResiduumDB endpoint that verifies the proof has access to the
 correct exporter value for that exact logical channel. Otherwise the proof
 exchange occurs inside a separately end-to-end protected channel.
 
@@ -1628,7 +1628,7 @@ can prove grace has not ended.
 
 ### 8.8 No master key over the network
 
-The DingoDB network protocol MUST NOT define an operation for:
+The ResiduumDB network protocol MUST NOT define an operation for:
 
 - presenting a master private key;
 - issuing a HeapKey;
@@ -1645,7 +1645,7 @@ A network `admin` HeapKey cannot issue keys or cycle authority.
 
 The precise guarantee is:
 
-> The DingoDB data-service executable has no protocol operation,
+> The ResiduumDB data-service executable has no protocol operation,
 > client/local-control parser for master-authority event bytes, concrete
 > master-key provider, or linked local-authority implementation capable of
 > accepting a master key or originating a change to the master generation,
@@ -1681,7 +1681,7 @@ dingo-authority authority blacklist <heap> <certificate-or-holder-fingerprint>
 ```
 
 Use through SSH is still network use at the operating-system layer. It is not
-use through the DingoDB network protocol.
+use through the ResiduumDB network protocol.
 
 “Local-only issuance” is an implementation and custody boundary, not a claim
 that a signature reveals where it was created. Anyone who steals a current
@@ -1690,7 +1690,7 @@ host until the owner completes a hard cycle. The design prevents use of the
 master itself as a network credential; it cannot make stolen signing power
 harmless.
 
-The executable has no TCP, UDP, HTTP, Dingo RPC, or other inbound listener. It
+The executable has no TCP, UDP, HTTP, ResiduumDB RPC, or other inbound listener. It
 accepts authority inputs only from its local terminal and protected local
 files. As a client, it may connect to the qualified data server's local
 barrier/reload Unix-domain endpoint. That endpoint accepts only these fixed
@@ -1861,7 +1861,7 @@ authority-root event bytes from a request.
 
 The holder generates its own keypair. The authority tool receives only the
 holder public key and a fresh proof of possession, then displays or records its
-fingerprint for operator confirmation. DingoDB does not generate or deliver
+fingerprint for operator confirmation. ResiduumDB does not generate or deliver
 holder private keys.
 
 Issuance receipts are append-only forensic evidence, not an authorization
@@ -1872,7 +1872,7 @@ use of each certificate is also audited.
 ### 8.9.1 Heap creation ceremony
 
 The preferred ceremony has the owner or HSM generate the generation-1 master
-key outside DingoDB. Only its public key and proof of possession enter the
+key outside ResiduumDB. Only its public key and proof of possession enter the
 local tool.
 
 Creation is a recoverable state machine:
@@ -2186,7 +2186,7 @@ only then mark heap ready
 Missing, corrupt, ambiguous, rolled-back, or unavailable authority state keeps
 the heap unavailable.
 
-DingoDB MUST NOT become ready with an empty default blacklist, permissive
+ResiduumDB MUST NOT become ready with an empty default blacklist, permissive
 policy, active administrative state, expired lease, earlier epoch, or earlier
 root as a fallback.
 
@@ -2342,7 +2342,7 @@ The following operations MUST be heap-scoped and authorized.
 
 ### 9.2 Query and interpretation
 
-- DQL;
+- RQL;
 - raw SDA;
 - ENR;
 - dialect compilation and execution;
@@ -2439,7 +2439,7 @@ This is a permanent isolation invariant, not a v1 feature omission.
 ### 10.2 References
 
 Applications MAY store opaque identifiers referring to another heap, but
-DingoDB does not resolve or enforce those references in v1.
+ResiduumDB does not resolve or enforce those references in v1.
 
 ### 10.3 Data movement
 
@@ -2487,7 +2487,7 @@ genesis protocol has established:
 - permanent identity tombstone;
 - creation audit record.
 
-The preferred ceremony never delivers a master private key through DingoDB.
+The preferred ceremony never delivers a master private key through ResiduumDB.
 Failure MUST NOT leave a discoverable heap without authoritative policy or
 leave an active heap whose master private key has not been proved controlled
 and recoverable under the selected profile.
@@ -2495,7 +2495,7 @@ and recoverable under the selected profile.
 ### 11.2 List
 
 There is no ordinary network operation that enumerates heaps available to a
-human identity, because DingoDB stores no human-to-heap grants.
+human identity, because ResiduumDB stores no human-to-heap grants.
 
 A system already holding a HeapKey may describe only that key's heap.
 
@@ -2692,7 +2692,7 @@ add a field without restarting and loading a newly qualified registry.
 
 ### 14.1 Atomic scope
 
-DingoDB Atomics are heap-local in v1. A transaction-shaped compatibility API
+ResiduumDB Atomics are heap-local in v1. A transaction-shaped compatibility API
 is one possible client surface over Atomics; it does not weaken or replace the
 `ATOMICS_SPEC.md` execution and recovery model.
 
@@ -2760,7 +2760,7 @@ An acknowledgement for Heap A says nothing about Heap B.
 
 ### 15.1 Heap-local bindings
 
-DQL, SDA, ENR, and fluent query bindings opened through one heap handle may
+RQL, SDA, ENR, and fluent query bindings opened through one heap handle may
 bind only collections from that heap.
 
 Collection names in query text never select a heap.
@@ -3050,7 +3050,7 @@ Shared keys weaken blast-radius isolation and MUST be visible in policy.
 
 ## 21. Audit
 
-The durable audit subsystem is named the **Dingo Evidence Ledger** and is
+The durable audit subsystem is named the **Residuum Evidence Ledger** and is
 specified normatively by
 [EVIDENCE_LEDGER_SPEC.md](EVIDENCE_LEDGER_SPEC.md). This section defines the
 Heap-facing obligations; where it is less specific, the Evidence Ledger
@@ -3157,11 +3157,11 @@ without an application error because the capability instance has terminated.
 The local authority CLI may report `issuance_request_consumed`; it is not a
 network code.
 
-## 23. Compatibility with current DingoDB
+## 23. Compatibility with current ResiduumDB
 
 ### 23.1 Current state
 
-Before this specification, DingoDB has:
+Before this specification, ResiduumDB has:
 
 - one physical/logical store per embedded path or server process;
 - a flat collection namespace within that store;
@@ -3274,7 +3274,7 @@ For the HeapKey server profile, heap isolation protects against:
 Heap authorization alone does not protect against:
 
 - server process compromise;
-- DingoDB binary compromise;
+- ResiduumDB binary compromise;
 - kernel or hypervisor compromise;
 - storage administrator access;
 - memory inspection;
@@ -3283,7 +3283,7 @@ Heap authorization alone does not protect against:
 - compromise of the local master private key;
 - compromise of the local authority tool or rollback-resistant authority head;
 - an application explicitly holding HeapKeys for two heaps combining separately
-  obtained results outside DingoDB.
+  obtained results outside ResiduumDB.
 
 Those require other doctrine controls.
 
@@ -3332,7 +3332,7 @@ A conforming implementation maintains all of the following:
     operation.
 20. Query and interpretation engines cannot access a deployment-global data
     iterator.
-21. DingoDB stores no human user, group, role, membership, grant, or
+21. ResiduumDB stores no human user, group, role, membership, grant, or
     permission database for heap access.
 22. The network protocol cannot accept a master/recovery secret, issue
     HeapKeys, mutate grace/blacklist, recover a master, or cycle authority.
@@ -3445,7 +3445,7 @@ relax the prohibition on data or metadata disclosure.
 ### 26.3 Query escape tests
 
 - collection names containing separators and prefix-like material;
-- DQL/SDA/ENR attempts to bind another heap;
+- RQL/SDA/ENR attempts to bind another heap;
 - prepared plan compiled under A and executed under B;
 - query-cache collision between equal collection/query text in A and B;
 - nested and multi-collection queries;
@@ -3736,7 +3736,7 @@ This gate is required only for the `cluster` deployment profile:
 
 ### Gate H6 — Isolation claim
 
-DingoDB may claim for a named isolation and deployment profile:
+ResiduumDB may claim for a named isolation and deployment profile:
 
 > Cryptographically authorized systems are logically isolated between heaps.
 
@@ -3759,7 +3759,7 @@ only after:
 
 Before H6, product language is:
 
-> DingoDB provides named heap namespaces; strong access-isolation qualification
+> ResiduumDB provides named heap namespaces; strong access-isolation qualification
 > is in progress.
 
 ## 28. Deployment profile selections
@@ -3813,7 +3813,7 @@ It is complete for a declared profile when:
   recoverable unit has integrity-protected ownership;
 - every operation is heap-bound;
 - HeapKey authorization is self-contained, default-deny, and complete-path;
-- DingoDB has no human RBAC or permission database for heap access;
+- ResiduumDB has no human RBAC or permission database for heap access;
 - the network protocol cannot exercise the master key;
 - the resident heap security snapshot is complete before readiness;
 - administrative state and access policy participate in one resident security
@@ -3908,7 +3908,7 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "DingoDB heap identity, capability, and authority kernel."
+description = "ResiduumDB heap identity, capability, and authority kernel."
 
 [dependencies]
 dingo-format.workspace = true
@@ -3943,7 +3943,7 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Local-only DingoDB heap authority controller."
+description = "Local-only ResiduumDB heap authority controller."
 
 [dependencies]
 dingo-heap.workspace = true
@@ -3989,11 +3989,11 @@ dingo-heap
 ```
 
 `dingo-heap` MUST NOT depend on `dingo-store`, `dingo-sdk`, `dingo-server`,
-`dingo-cluster`, SDA, DQL, ENR, a filesystem abstraction, or a network
+`dingo-cluster`, SDA, RQL, ENR, a filesystem abstraction, or a network
 runtime.
 
 `dingo-authority` MUST NOT depend on `dingo-server`, `dingo-sdk`,
-`dingo-client`, `dingo-cluster`, SDA, DQL, ENR, or a TCP/HTTP runtime. Its
+`dingo-client`, `dingo-cluster`, SDA, RQL, ENR, or a TCP/HTTP runtime. Its
 only IPC client is the bounded local barrier/reload protocol defined in §8.9.
 The `dingo-store/authority-provisioning` feature exposes only
 non-discoverable staged genesis writes and offline publication under the
@@ -5742,7 +5742,7 @@ Head validation additionally requires:
 - label 26 equals root-event label 19 at an epoch root; creation requires
   labels 18 and 19 to match, and within the epoch label 26 changes only
   through a valid §31.5.1 event whose label 16 equals the new value.
-- labels 27 and 28 are both null before Dingo Evidence Ledger activation and
+- labels 27 and 28 are both null before Residuum Evidence Ledger activation and
   both non-null afterward; activation and every later change is a valid
   authority event atomically bound to the corresponding ledger evidence.
 

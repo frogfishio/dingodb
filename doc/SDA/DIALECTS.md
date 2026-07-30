@@ -18,7 +18,7 @@ execution is shared.
 
 ```text
   Pure ENR+SDA ──┐
-  DQL (official) ┤
+  RQL (official) ┤
   JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► dingo-sda eval
   SQL mimicry ───┤
   GraphQL / … ───┤
@@ -28,20 +28,20 @@ execution is shared.
 | Kind | Role |
 |------|------|
 | **Pure ENR + SDA** | Mathematical kernel; always available; only lossless path for full algebra |
-| **DQL** | **Official** human dialect of DingoDB — co-designed with ENR; faithful lowering ([DQL_SPEC.md](../../DQL_SPEC.md)) |
+| **RQL** | **Official** human dialect of ResiduumDB — co-designed with ENR; faithful lowering ([RQL_SPEC.md](../../RQL_SPEC.md)) |
 | **Foreign dialects** | Comfort / familiarity (SQL-ish, Mongo-ish, …); admit holes and notes |
 | **Fluent / builder API** | Host-native code surface; same IR target |
 
 Rule:
 
 - **Pure SDA / ENR1** is always available and always correct relative to the corpus.
-- **DQL** is the preferred product text surface for enrichment + projection once implemented.
+- **RQL** is the preferred product text surface for enrichment + projection once implemented.
 - **A dialect** MUST compile to pure SDA / shared IR (or refuse with a clear error).
 - **No foreign dialect** may claim to be a complete encoding of SDA, SQL, MongoDB, or
   GraphQL. Mimicry is intentional and documented.
 - Hosts MAY register additional dialects. Builtin dialects are conveniences,
   not a closed set.
-- **If the distinction matters and a dialect cannot say it, use pure SDA (or DQL when it covers that construct).**
+- **If the distinction matters and a dialect cannot say it, use pure SDA (or RQL when it covers that construct).**
 
 ## Why dialects, not hybrid
 
@@ -111,37 +111,37 @@ impossible without changing one of the models.
 So we do not bend the algebra toward familiarity. We provide:
 
 1. the **pure language** (hard, complete, mathematical — including ENR1);
-2. **DQL** — the official human dialect co-designed to lower faithfully into ENR IR;
+2. **RQL** — the official human dialect co-designed to lower faithfully into ENR IR;
 3. a **bunch of foreign comfortable options** that cover common journeys and admit
    their limits.
 
 Example: SQL `NULL` three-valued logic is not SDA absence/`Null`/`Fail`. The
 SQL dialect maps a useful subset and emits notes when the mapping is shallow.
-DQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
+RQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 
 ## Builtin dialects
 
 | Id | Surface | Compiles to | Maturity |
 |----|---------|-------------|----------|
 | `sda` | Pure SDA / ENR1 source | identity (parse-checked) | **complete** for standalone + ENR1 |
-| **`dql`** | **Dingo Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [DQL_SPEC.md](../../DQL_SPEC.md) |
+| **`dql`** | **Residuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../../RQL_SPEC.md) |
 | `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/dingo-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
 | `sql` | Tiny legacy `SELECT` / `WHERE` mimicry | document predicate or projection program | **implemented, deprecated when SQL-ish+ ships** |
-| `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical DQL v1 plan | **specified, not implemented** — [SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md) |
+| `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical RQL v1 plan | **specified, not implemented** — [SQL_TO_RQL_SPEC.md](../../SQL_TO_RQL_SPEC.md) |
 | `graphql` | Reserved id | — | **scaffold** — not implemented |
 
-### DQL (official)
+### RQL (official)
 
-DQL is the product’s preferred text dialect for multi-collection enrichment and
+RQL is the product’s preferred text dialect for multi-collection enrichment and
 nested projection. It looks a little like SQL in places but is **not** SQL:
 `enrich` attaches named fields, `expect` states cardinality, and `project` is
-nested. How to write and run it: [USER_GUIDE.md](../DQL/USER_GUIDE.md). Full
-design: [DQL_SPEC.md](../../DQL_SPEC.md).
+nested. How to write and run it: [USER_GUIDE.md](../RQL/USER_GUIDE.md). Full
+design: [RQL_SPEC.md](../../RQL_SPEC.md).
 
 **v0.1:** `compile_dialect("dql", …)` / `BuiltinDialect::Dql` lowers
 `from` + `enrich … matching … expect …` (+ optional `project`) into the same
-ENR1 programs pure text uses. Conformance tests prove DQL ≡ pure ENR on shared
+ENR1 programs pure text uses. Conformance tests prove RQL ≡ pure ENR on shared
 bindings. Nested bag-scoped enrich (ForEach) is next.
 
 ### JSON / Mongo filter (`json`, `mongo`)
@@ -189,10 +189,10 @@ Out of scope (and refused or not recognized): joins, subqueries, aggregates,
 `ORDER BY` / `LIMIT` (use SDK `QueryOptions`), functions, `LIKE`, DDL/DML.
 
 This is not SQL-ish+. The separately specified `sql+` / `sql-plus` profile
-translates a richer SQL subset into DQL, models SQL three-valued predicates
+translates a richer SQL subset into RQL, models SQL three-valued predicates
 explicitly, and requires proof for hidden join cardinality before direct
 execution. It is the intended successor to this legacy path. See
-[SQL_TO_DQL_SPEC.md](../../SQL_TO_DQL_SPEC.md).
+[SQL_TO_RQL_SPEC.md](../../SQL_TO_RQL_SPEC.md).
 
 ### GraphQL (`graphql`)
 
@@ -230,7 +230,7 @@ Application
     ├─ fluent Filter / QueryBuilder / enrich builder   (no dialect string)
     ├─ dialect "dql"                    (official human surface — design)
     ├─ find_json / dialect "json"       (Mongo-style object)
-    ├─ dialect "sql+"                   (SQL-ish+ → canonical DQL)
+    ├─ dialect "sql+"                   (SQL-ish+ → canonical RQL)
     ├─ dialect "sql"                    (legacy SQL mimicry)
     ├─ Collection::sda / sda_query      (pure ENR+SDA text)
     └─ dialect "sda"                    (same pure path, explicit id)
@@ -252,8 +252,8 @@ not open collections and do not change examination profiles.
 
 ## See also
 
-- [DQL USER_GUIDE.md](../DQL/USER_GUIDE.md) — how to express and run DQL
-- [DQL_SPEC.md](../../DQL_SPEC.md) — official Dingo Query Language (design authority)
+- [RQL USER_GUIDE.md](../RQL/USER_GUIDE.md) — how to express and run RQL
+- [RQL_SPEC.md](../../RQL_SPEC.md) — official Residuum Query Language (design authority)
 - [JSON_FILTER_DEMO.md](JSON_FILTER_DEMO.md) — SDA as a jq-like filter
 - [FOR_JQ_USERS.md](FOR_JQ_USERS.md) — notation contrast for jq users
 - [DOCTRINE.md](DOCTRINE.md) — why certainty beats convenience

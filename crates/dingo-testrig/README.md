@@ -1,6 +1,6 @@
 # dingo-testrig
 
-**Non-product** three-prong store stress / integrity rig for DingoDB.
+**Non-product** three-prong store stress / integrity rig for ResiduumDB.
 
 | Prong | Command | What it does |
 |-------|---------|----------------|

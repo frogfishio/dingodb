@@ -1,4 +1,4 @@
-# Dingo Direct Access (DDA) specification
+# Residuum Direct Access (DDA) specification
 
 Status: **Normative design v1.0-draft; not yet implemented**
 
@@ -11,13 +11,13 @@ dingo-selection-artifact-v1
 dingo-direct-cursor-v1
 ```
 
-Audience: storage, index, DQL, SDK, server, cluster, examination, security,
+Audience: storage, index, RQL, SDK, server, cluster, examination, security,
 and conformance implementers
 
 Normative companions:
-[DQL_SPEC.md](DQL_SPEC.md),
+[RQL_SPEC.md](RQL_SPEC.md),
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md),
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [CLUSTER_SPEC.md](CLUSTER_SPEC.md),
@@ -30,18 +30,18 @@ Implementation plan:
 
 ## 1. Decision
 
-DingoDB SHALL support **direct access to ranked query answers**.
+ResiduumDB SHALL support **direct access to ranked query answers**.
 
 Given:
 
 - one authenticated Heap;
 - a frozen read view;
-- a total DQL predicate;
+- a total RQL predicate;
 - a strict deterministic result order;
 - a one-based result rank `k`; and
 - a requested page size `l`;
 
-DingoDB may return results `k` through `k + l - 1` without enumerating the
+ResiduumDB may return results `k` through `k + l - 1` without enumerating the
 preceding `k - 1` matching documents when the admitted physical plan possesses
 enough exact counting information.
 
@@ -54,7 +54,7 @@ An implementation MUST NOT implement a direct-access request by silently
 scanning, decoding, filtering, sorting, or discarding work proportional to the
 requested rank.
 
-When exact direct access is unavailable, DingoDB MUST do one of:
+When exact direct access is unavailable, ResiduumDB MUST do one of:
 
 1. build an exact derived selection artifact under an explicit build policy
    and resource budget;
@@ -75,7 +75,7 @@ and index families it declares and passes in the conformance suite.
 
 Version 1 specifies:
 
-- exact ranked access over one root DQL result sequence;
+- exact ranked access over one root RQL result sequence;
 - filtered and deterministically ordered document results;
 - natural immutable-document-key order;
 - declared scalar secondary orders;
@@ -98,7 +98,7 @@ Version 1 does not promise direct access for:
 - ranking functions without a frozen deterministic specification;
 - arbitrary computed sort expressions;
 - unbounded recursive traversal;
-- every possible DQL enrichment shape;
+- every possible RQL enrichment shape;
 - every possible Boolean predicate without an applicable index or build;
 - exact global rank through an unknown data hole.
 
@@ -212,9 +212,9 @@ P: U_{H,V} \rightarrow \{0,1\}
 
 be the normalized root predicate under `dingo-predicate-v1`.
 
-Dingo predicates are total and two-valued. Null, absence, numeric comparison,
+Residuum predicates are total and two-valued. Null, absence, numeric comparison,
 type mismatch, and path traversal therefore have the meanings fixed by
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md); an index MUST NOT import
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md); an index MUST NOT import
 SQL three-valued truth accidentally.
 
 ### 5.3 Strict order
@@ -227,7 +227,7 @@ Let:
 \]
 
 be the canonical sort tuple. `id(d)` is the immutable document identity added
-as the final tie-breaker by DQL.
+as the final tie-breaker by RQL.
 
 The comparison profile for every `k_i`, including Null and Absent placement,
 is part of the order-domain identity. Since `id` is unique:
@@ -421,7 +421,7 @@ Every planned ranked query MUST be classified as exactly one of:
   scan and no prefix enumeration is required.
 
 **BUILDABLE**
-: DingoDB can construct an exact selection artifact under the supplied build
+: ResiduumDB can construct an exact selection artifact under the supplied build
   policy and budget. Construction may examine authoritative documents, but
   subsequent ranked accesses use the artifact.
 
@@ -691,8 +691,8 @@ Numeric or ordered-scalar ranges MAY use:
 Approximate bins MAY prune candidates but MUST verify boundary bins before
 creating an exact rank map.
 
-String comparison MUST bind the exact DQL collation/version. A dictionary
-whose order differs from DQL code-point order cannot certify DQL ordering.
+String comparison MUST bind the exact RQL collation/version. A dictionary
+whose order differs from RQL code-point order cannot certify RQL ordering.
 
 For a non-negative fixed-width bit-sliced value with slice `X_i` denoting that
 bit `i` is one, exact `x < c` may be constructed from most significant bit to
@@ -742,7 +742,7 @@ outcome MAY be persisted as a selection artifact and then certified.
 ### 9.7 Nested and multivalued paths
 
 An index over arrays, bags, maps, or nested products MUST preserve the carrier
-and same-element semantics required by the DQL predicate.
+and same-element semantics required by the RQL predicate.
 
 Flattened postings that cannot distinguish:
 
@@ -910,8 +910,8 @@ the beginning for every row.
 
 ### 12.1 Natural order
 
-When DQL has no explicit order, the order domain is ascending immutable
-document key as defined by DQL.
+When RQL has no explicit order, the order domain is ascending immutable
+document key as defined by RQL.
 
 Natural-order direct access requires an ordered identity mapping. A point-only
 MPHF that cannot enumerate order is insufficient by itself.
@@ -951,7 +951,7 @@ A directly selected DDA predicate bitmap MUST be aligned to the selected order
 domain. A bitmap aligned to document-key order cannot be interpreted as price
 order merely because it contains the same number of bits.
 
-The normative Dingo structure for combining an exact source-order predicate
+The normative ResiduumDB structure for combining an exact source-order predicate
 bitmap with a different scalar result order is
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md). It transports the predicate
 bitmap through stable wavelet partitions, uses exact conditioned branch
@@ -974,7 +974,7 @@ without constructing a full query-specific bitmap.
 
 ### 12.5 Arbitrary ordering
 
-If no exact order-addressable index exists, DingoDB may:
+If no exact order-addressable index exists, ResiduumDB may:
 
 1. build a query-specific selection artifact in requested order;
 2. use a proved direct-selection algorithm for the admitted query/order class;
@@ -995,13 +995,13 @@ or introduce an observable query-level failure for a skipped root.
 
 An `exactly_one` or other fallible cardinality obligation must therefore be:
 
-- discharged for the frozen view by an active DRE/referential-integrity or
+- discharged for the frozen view by an active RRE/referential-integrity or
   exact-index proof;
 - incorporated into the exact selection artifact; or
 - evaluated before direct selection, making the plan buildable/sequential.
 
 Projection and enrichment after selection must be total for the selected
-roots. The direct plan, build plan, and full DQL semantic oracle MUST expose
+roots. The direct plan, build plan, and full RQL semantic oracle MUST expose
 the same result or stable failure.
 
 ### 12.7 Tiered authority
@@ -1220,7 +1220,7 @@ Let:
 M
 \]
 
-be a missing order interval. If DingoDB cannot prove:
+be a missing order interval. If ResiduumDB cannot prove:
 
 \[
 \sum_{i \in M} B[i] = 0
@@ -1418,11 +1418,11 @@ Parallel completion order MUST NOT affect:
 - page contents;
 - error ordering where stable ordering is specified.
 
-## 17. DQL surface
+## 17. RQL surface
 
 ### 17.1 Syntax
 
-DQL adds three terminal clauses:
+RQL adds three terminal clauses:
 
 ```ebnf
 rank-clause       = "at", "rank", unsigned ;
@@ -1508,7 +1508,7 @@ verified, or discarded by a plan labelled `DIRECT`.
 
 ### 17.5 Canonical plan
 
-`DqlPlanV1` gains:
+`RqlPlanV1` gains:
 
 ```text
 start_rank: Optional<PositiveUInt>  // one-based
@@ -1675,7 +1675,7 @@ generation MUST fail.
 
 A cursor referencing a selection artifact is cryptographically stateless as
 authorization evidence but still requires the named derived artifact to
-exist. If it has expired or been collected, DingoDB returns:
+exist. If it has expired or been collected, ResiduumDB returns:
 
 ```text
 dda_artifact_expired
@@ -1727,7 +1727,7 @@ If false, admission fails before returning rows.
 
 ### 20.3 Build admission
 
-Before `access build`, DingoDB estimates:
+Before `access build`, ResiduumDB estimates:
 
 - documents and bytes examined;
 - tiers mounted;
@@ -1754,7 +1754,7 @@ confirmation beyond it.
 
 ## 21. Explain
 
-Structured DQL explain gains:
+Structured RQL explain gains:
 
 ```text
 direct_access {
@@ -1789,7 +1789,7 @@ direct_access {
 
 Human explain MUST clearly answer:
 
-1. Will DingoDB examine preceding documents?
+1. Will ResiduumDB examine preceding documents?
 2. Is positioning cost dependent on the requested rank?
 3. Is a selection artifact being built?
 4. Which exact indexes establish membership and order?
@@ -2263,7 +2263,7 @@ Exit: declared scalar filter/order combinations support direct random rank.
 
 - `access build`;
 - artifact quotas, leases, atomic publication, reuse, and GC;
-- DQL grammar and plan encoding;
+- RQL grammar and plan encoding;
 - Rust SDK;
 - remote wire profile;
 - HTTP adapter contract.
@@ -2348,10 +2348,10 @@ The design is grounded in established and current research:
   [Stochastic Database
   Cracking](https://arxiv.org/abs/1203.0055).
 
-DingoDB's contribution is not the invention of rank/select. It is the proposed
+ResiduumDB's contribution is not the invention of rank/select. It is the proposed
 combination of:
 
-- document-native DQL predicate semantics;
+- document-native RQL predicate semantics;
 - immutable damage-localized storage;
 - exact bitmap algebra;
 - direct ranked access;
@@ -2407,7 +2407,7 @@ crates/dingo-store/
   order_wavelet/
     tree.rs          semantic reference tree
     matrix.rs        optimized levelwise representation
-    dictionary.rs    exact DQL tuple order dictionary
+    dictionary.rs    exact RQL tuple order dictionary
     forest.rs        base/delta global value selection
 
 crates/dingo-sdk/

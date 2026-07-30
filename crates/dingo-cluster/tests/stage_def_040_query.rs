@@ -106,8 +106,13 @@ fn multi_page_coverage_and_deterministic_sequence() {
             break;
         }
         let tok = page.continuation.expect("has_more implies continuation");
-        // Token must authenticate for this cluster.
-        let decoded = QueryContinuation::decode(cluster.cluster_id(), &tok).unwrap();
+        // Token must authenticate for this cluster with secret keyring (DEF-097).
+        let decoded = QueryContinuation::decode(
+            cluster.cluster_id(),
+            cluster.continuation_keyring(),
+            &tok,
+        )
+        .unwrap();
         assert_eq!(&decoded.query_id, query_id.as_ref().unwrap());
         opts = ScanOptions::new().continuation(tok);
         assert!(pages < 20, "page loop must terminate");

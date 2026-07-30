@@ -1,4 +1,4 @@
-# DingoDB Atomics v1 specification
+# ResiduumDB Atomics v1 specification
 
 Status: normative design v1.0-draft; implementation not yet qualified
 
@@ -15,9 +15,9 @@ Source proposal: [ATOMICS_PROPOSAL.md](ATOMICS_PROPOSAL.md)
 
 Normative companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
-[DRE_SPEC.md](DRE_SPEC.md),
+[RRE_SPEC.md](RRE_SPEC.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), and
 [doc/ATOMICS_IMPLEMENTATION_PLAN.md](doc/ATOMICS_IMPLEMENTATION_PLAN.md)
 
@@ -41,7 +41,7 @@ or transaction-shaped syntax.
 
 The product statement is:
 
-> Within one Key, LocalHeap, or qualified Partition scope, DingoDB can commit
+> Within one Key, LocalHeap, or qualified Partition scope, ResiduumDB can commit
 > one bounded serializable transition with durable identity and independently
 > examinable outcome evidence.
 
@@ -58,7 +58,7 @@ V1 defines:
 - Partition Atomics only after a partition profile passes its separate gate;
 - create-if-absent, compare-version replace/delete, and bounded mutation plans;
 - serializable read/write and absence predicates;
-- DRE enforcement;
+- RRE enforcement;
 - uniqueness and scalar relationships;
 - exact outcomes and recovery evidence;
 - remote submit/status without interactive server-held transactions.
@@ -95,7 +95,7 @@ Before prepare, the engine MUST close the plan over:
 - caller mutations;
 - read versions;
 - absence/range predicates;
-- active DRE revisions;
+- active RRE revisions;
 - relationship/unique consequences;
 - history events;
 - index invalidation/publication consequences;
@@ -180,7 +180,7 @@ exact decimal canonical coefficient + scale
 Boolean, Null, products, sequences, and floating point are not relationship or
 ordered-lock keys in v1.
 
-Paths use the exact canonical DRE path profile. No host-language path syntax is
+Paths use the exact canonical RRE path profile. No host-language path syntax is
 accepted after compilation.
 
 ## 7. Predicates and reads
@@ -390,7 +390,7 @@ Detailed prepare/member/violation evidence is retained for at least:
 ```text
 max(
   Heap history retention,
-  active/retained DRE evidence requirement,
+  active/retained RRE evidence requirement,
   configured Atomic detail retention
 )
 ```
@@ -437,7 +437,7 @@ RuleAdmin
 AtomicAdmin
 ```
 
-- `RuleAdmin`: create, validate, activate, replace, retire DRE rulesets.
+- `RuleAdmin`: create, validate, activate, replace, retire RRE rulesets.
 - `AtomicAdmin`: create/change/validate/retire relationship, uniqueness, and
   other cross-document Atomic definitions.
 
@@ -480,11 +480,11 @@ resolves using evidence and explicit coverage.
 
 Read-only snapshot sessions are deferred from v1.
 
-## 16. DRE integration
+## 16. RRE integration
 
 At the serialization point:
 
-1. load the exact active DRE revisions named by Heap state;
+1. load the exact active RRE revisions named by Heap state;
 2. verify the plan's recorded revision root;
 3. compute the complete affected projection;
 4. evaluate every applicable invariant;
@@ -507,7 +507,7 @@ V1 relationships support:
 - parent exists;
 - `on delete restrict`;
 - same-collection references;
-- bounded sequence references when DRE declares a maximum;
+- bounded sequence references when RRE declares a maximum;
 - exact scalar key equality.
 
 V1 permits relationship cycles because it has no cascade. Self-reference is
@@ -551,7 +551,7 @@ relationship completeness and need not carry the full status payload.
 
 Unique values use:
 
-- DRE canonical path;
+- RRE canonical path;
 - frozen normalization/comparison profile;
 - Heap-bound exact reverse map;
 - absence predicate at the Atomic frontier;
@@ -646,7 +646,7 @@ V1 requires:
 - crash at every §11 failpoint;
 - two-Heap noninterference;
 - rights matrix;
-- DRE enforcement;
+- RRE enforcement;
 - parent insert/update/delete races;
 - relationship activation with concurrent mutation;
 - unique contention;

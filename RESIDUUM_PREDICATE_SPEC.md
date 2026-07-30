@@ -1,19 +1,19 @@
-# Dingo Predicate Profile
+# Residuum Predicate Profile
 
 Status: **Normative design v1.0-draft**
 
 Profile identifier: `dingo-predicate-v1`
 
-Audience: DQL, DRE, SDK, compiler, and conformance implementers
+Audience: RQL, RRE, SDK, compiler, and conformance implementers
 Normative companions: [SDA_SPEC.md](SDA_SPEC.md) and
 [SDA_PROFILE.md](SDA_PROFILE.md)
 
 ## 1. Purpose
 
-DQL and DRE are separate languages:
+RQL and RRE are separate languages:
 
-- DQL retrieves and shapes data.
-- DRE decides whether a proposed committed state is legal.
+- RQL retrieves and shapes data.
+- RRE decides whether a proposed committed state is legal.
 
 They deliberately share this small predicate profile so that equality,
 comparison, presence, Boolean composition, paths, and literals do not acquire
@@ -24,7 +24,7 @@ not a general expression language and is not Turing-complete.
 
 ## 2. Values
 
-The predicate domain preserves Dingo/SDA distinctions:
+The predicate domain preserves ResiduumDB/SDA distinctions:
 
 ```text
 Absent  ≠  Null  ≠  value
@@ -76,7 +76,7 @@ profile["postal-code"]
 
 A bracket segment denotes one literal map key. V1 paths never traverse every
 member of a sequence implicitly. Languages using this profile must introduce
-an explicit bounded construct such as DRE `each`.
+an explicit bounded construct such as RRE `each`.
 
 Canonical paths encode every segment as its decoded string value. Therefore:
 
@@ -258,9 +258,9 @@ If it does:
 - parameters are data, never source fragments;
 - absent parameters are a bind error, not `Absent`;
 - parameter serialization is included in query identity;
-- DRE v1 MUST NOT accept runtime parameters in active rules.
+- RRE v1 MUST NOT accept runtime parameters in active rules.
 
-Parameter surface syntax is reserved for DQL. It is not otherwise defined by
+Parameter surface syntax is reserved for RQL. It is not otherwise defined by
 this profile.
 
 ## 8. Canonical AST

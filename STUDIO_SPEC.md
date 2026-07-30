@@ -1,9 +1,9 @@
-# Dingo Studio v1 specification
+# Residuum Studio v1 specification
 
 Status: normative product and architecture design v1.0-draft; implementation
 not yet qualified
 
-Product name: **Dingo Studio**
+Product name: **Residuum Studio**
 
 Profiles:
 
@@ -22,7 +22,7 @@ Implementation baseline:
 - [Angular 22](https://angular.dev/reference/releases);
 - TypeScript version supported by Angular 22;
 - SCSS using the current supported Dart Sass toolchain; and
-- DingoDB protocols and SDKs from the same repository revision.
+- ResiduumDB protocols and SDKs from the same repository revision.
 
 Dependency versions are exactly pinned in release builds. Updating Tauri,
 Angular, the webview/runtime, or any security-sensitive plugin requires the
@@ -31,10 +31,10 @@ qualification subset in §34.4.
 Normative companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [DX_SPEC.md](DX_SPEC.md),
-[DQL_SPEC.md](DQL_SPEC.md),
+[RQL_SPEC.md](RQL_SPEC.md),
 [SDA_PROFILE.md](SDA_PROFILE.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
-[DRE_SPEC.md](DRE_SPEC.md),
+[RRE_SPEC.md](RRE_SPEC.md),
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md),
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [TELEMETRY_SPEC.md](TELEMETRY_SPEC.md),
@@ -43,24 +43,24 @@ Normative companions:
 
 ## 1. Decision
 
-Dingo Studio is the first-party desktop environment for developing,
-examining, operating, and understanding DingoDB.
+Residuum Studio is the first-party desktop environment for developing,
+examining, operating, and understanding ResiduumDB.
 
 It is not a web admin page wrapped in a desktop shell. It is a capability-bound
 database IDE with:
 
 - Heap-confined live data workspaces;
-- DQL, SQL-ish import, and SDA examination;
+- RQL, SQL-ish import, and SDA examination;
 - document, bytes, history, damage, and coverage views;
-- DRE, collection-contract, relationship, and Atomic tooling;
+- RRE, collection-contract, relationship, and Atomic tooling;
 - Ratatouille telemetry dashboards and live tail;
-- Dingo Evidence Ledger inspection and offline verification;
+- Residuum Evidence Ledger inspection and offline verification;
 - index, scrub, backup, retention, tier, and lifecycle operations; and
 - cluster topology after the cluster management profile is qualified.
 
 The product promise is:
 
-> Every DingoDB guarantee should be visible, every uncertainty should remain
+> Every ResiduumDB guarantee should be visible, every uncertainty should remain
 > visible, and no convenience feature may create an authority path that the
 > database itself forbids.
 
@@ -75,8 +75,8 @@ MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are normative.
 Studio keeps four logically independent channels:
 
 ```text
-Dingo Studio
-    ├── Heap data/control ─── Dingo qualified RPC + HeapKey
+Residuum Studio
+    ├── Heap data/control ─── ResiduumDB qualified RPC + HeapKey
     ├── telemetry ─────────── Ratatouille collector/gateway
     ├── evidence ──────────── Heap-bound AuditRead or offline export
     └── examination ───────── read-only store/package/SDA sources
@@ -141,7 +141,7 @@ same SDK/protocol and language contracts.
 
 Studio MUST assume that every external input is hostile, including:
 
-- documents, field names, collection names, DQL results, and error text;
+- documents, field names, collection names, RQL results, and error text;
 - telemetry dimensions, trace identifiers, and diagnostic messages;
 - Evidence Ledger entries and offline evidence packages;
 - SDA bytes, damaged segments, manifests, and repair reports;
@@ -192,7 +192,7 @@ authority-epoch mismatch MUST fail closed. Studio MUST never offer a
 
 ### 4.1 Live Heap mode
 
-Primary mode. Studio connects through the qualified Dingo RPC protocol using a
+Primary mode. Studio connects through the qualified ResiduumDB RPC protocol using a
 HeapKey and holder proof.
 
 Permitted features are derived from actual rights, constraints, collection
@@ -205,20 +205,20 @@ Studio consumes Ratatouille NDJSON through:
 1. a local loopback Ratatouille-compatible receiver owned by Studio; or
 2. an authenticated collector/gateway tail API qualified for the deployment.
 
-Studio does not scrape DingoDB's legacy `metrics` RPC in a qualified profile.
+Studio does not scrape ResiduumDB's legacy `metrics` RPC in a qualified profile.
 The local receiver is memory-bounded and writes no telemetry files.
 
-Ratatouille's Rust relay is plain TCP/HTTP. A remote Dingo server therefore
+Ratatouille's Rust relay is plain TCP/HTTP. A remote ResiduumDB server therefore
 sends to its protected local sidecar; Studio reaches the collector through an
 authenticated encrypted gateway. Studio MUST NOT encourage plain remote relay
 traffic.
 
 ### 4.3 Offline evidence mode
 
-Studio opens an immutable Dingo Evidence Ledger export package and invokes the
+Studio opens an immutable Residuum Evidence Ledger export package and invokes the
 same Rust verification kernel as `dingo evidence verify`.
 
-No live DingoDB or credential is required. The UI preserves the independent
+No live ResiduumDB or credential is required. The UI preserves the independent
 verification axes:
 
 ```text
@@ -248,7 +248,7 @@ to make the UI look complete, or suppress unsupported/damaged units.
 
 ### 4.5 Local development mode
 
-A later qualified development profile MAY launch a disposable loopback Dingo
+A later qualified development profile MAY launch a disposable loopback ResiduumDB
 server with a newly generated development Heap. It:
 
 - uses an explicit user-selected directory;
@@ -309,13 +309,13 @@ dingo-studio-core
     └── Evidence and telemetry adapters
 ```
 
-Angular MUST NOT speak the Dingo wire protocol, open telemetry sockets, parse
+Angular MUST NOT speak the ResiduumDB wire protocol, open telemetry sockets, parse
 private keys, read evidence packages directly, or access the filesystem
 outside closed Tauri commands.
 
 ### 5.3 Licensing
 
-Dingo Studio is an AGPL-3.0-or-later networked product. Pure protocol,
+Residuum Studio is an AGPL-3.0-or-later networked product. Pure protocol,
 examination, and SDK dependencies retain their existing repository licenses.
 No Studio dependency may reverse the repository's permissive → MPL → AGPL
 dependency direction.
@@ -337,7 +337,7 @@ Release builds:
 - open external documentation links through an explicit, validated command.
 
 The UI never renders untrusted document content as HTML. JSON, strings, error
-details, DQL/SDA, and telemetry are text nodes or escaped editor models.
+details, RQL/SDA, and telemetry are text nodes or escaped editor models.
 
 ### 6.2 Plugins
 
@@ -453,7 +453,7 @@ The closed v1 command registry is:
 | Heap | `heap.summary`, `heap.capabilities`, `heap.health` |
 | collections | `collection.list`, `collection.describe`, `collection.stats` |
 | records | `record.page.open`, `record.page.next`, `record.page.close`, `record.get`, `record.put`, `record.delete`, `record.history`, `record.damage` |
-| DQL | `dql.validate`, `dql.explain`, `dql.run`, `dql.rank`, `dql.cancel` |
+| RQL | `dql.validate`, `dql.explain`, `dql.run`, `dql.rank`, `dql.cancel` |
 | translators | `sqlish.translate`, `jsonschema.translate` |
 | SDA | `sda.open`, `sda.inspect`, `sda.evaluate`, `sda.close` |
 | rules | `dre.list`, `dre.validate`, `dre.impact`, `dre.activate` |
@@ -754,7 +754,7 @@ capability. It supports:
 
 - name and immutable `CollectionId`;
 - contract/scope indicator;
-- DRE revision;
+- RRE revision;
 - index status summary;
 - collection state; and
 - local text filtering of the already authorized list.
@@ -794,9 +794,9 @@ have R/U/D authority but cannot create without a bound scope.
 
 ### 12.4 Search
 
-Explorer filters compile to typed DQL or supported SDK filters. Studio shows:
+Explorer filters compile to typed RQL or supported SDK filters. Studio shows:
 
-- generated DQL;
+- generated RQL;
 - parameters separately from text;
 - consistency;
 - coverage policy;
@@ -837,7 +837,7 @@ CollectionId
 record identity
 before version/content hash
 contract revision
-DRE revision
+RRE revision
 scope
 representation
 ```
@@ -847,7 +847,7 @@ a three-way comparison; Studio does not overwrite silently.
 
 ### 13.3 Validation
 
-Before submission Studio MAY perform local syntax and DRE previews, but labels
+Before submission Studio MAY perform local syntax and RRE previews, but labels
 them `preview`. Only the server's admitted result is authoritative.
 
 The save result displays:
@@ -901,11 +901,11 @@ encrypted unavailable locked
 
 Color is never the sole indicator.
 
-## 15. DQL workbench
+## 15. RQL workbench
 
 ### 15.1 Editor
 
-The DQL editor provides:
+The RQL editor provides:
 
 - syntax highlighting from the frozen grammar;
 - diagnostics with exact spans;
@@ -917,7 +917,7 @@ The DQL editor provides:
 - history stored locally only when enabled; and
 - snippets containing no credentials or result data by default.
 
-The editor labels the shipped language subset honestly. Unsupported future DQL
+The editor labels the shipped language subset honestly. Unsupported future RQL
 syntax is not silently sent through another semantics.
 
 ### 15.2 Execution
@@ -985,7 +985,7 @@ Studio offers SQL/SQL-ish+ as an import editor:
 ```text
 SQL-ish input
     ↓ compile
-canonical DQL
+canonical RQL
     ↓ inspect/approve
 execute
 ```
@@ -993,7 +993,7 @@ execute
 It displays unsupported or lossy constructs explicitly. It never presents the
 importer as a SQL engine.
 
-Generated DQL is editable and becomes the executed source of record.
+Generated RQL is editable and becomes the executed source of record.
 
 ## 17. SDA laboratory
 
@@ -1016,9 +1016,9 @@ The lab can inspect offline packages without a live Heap.
 
 ## 18. Rules, contracts, and relationships
 
-### 18.1 DRE
+### 18.1 RRE
 
-The DRE editor provides:
+The RRE editor provides:
 
 - grammar-aware source editing;
 - typed AST/normalized form;
@@ -1077,7 +1077,7 @@ Heap and coordination scope
 read set
 predicates
 members
-DRE/relationship consequences
+RRE/relationship consequences
 limits
 prepare root
 decision
@@ -1109,9 +1109,9 @@ protocol.
 It validates:
 
 - Ratatouille outer envelope;
-- fixed Dingo topic;
+- fixed ResiduumDB topic;
 - one string argument;
-- Dingo telemetry message schema;
+- ResiduumDB telemetry message schema;
 - source deployment reference;
 - boot/sample/topic sequence;
 - cardinality;
@@ -1148,7 +1148,7 @@ Required dashboard groups:
 - indexes and cache;
 - damage/scrub/salvage/repair;
 - backup/retention/tiering/purge;
-- DRE/Atomics;
+- RRE/Atomics;
 - Evidence Ledger;
 - cluster; and
 - telemetry's own drops/queue/connectivity.
@@ -1178,7 +1178,7 @@ may contain gaps
 not audit evidence
 ```
 
-Filters run locally over fixed fields. They do not alter Dingo's producer
+Filters run locally over fixed fields. They do not alter ResiduumDB's producer
 filter or request retransmission.
 
 ### 20.5 Alerts
@@ -1246,7 +1246,7 @@ Studio supports:
 - ready/stale/partial/failed state;
 - lag and coverage;
 - drop;
-- linked DQL usage; and
+- linked RQL usage; and
 - receipts/evidence.
 
 Index names and definitions come only from the current Heap. A stale index is
@@ -1401,7 +1401,7 @@ Studio may persist:
 - endpoint display profiles;
 - credential references, never credentials;
 - telemetry collector profiles without inline secrets;
-- saved DQL/SDA snippets when enabled;
+- saved RQL/SDA snippets when enabled;
 - recent non-secret package paths;
 - workspace layout; and
 - UI feature preferences.
@@ -1436,7 +1436,7 @@ The visual system is:
 - explicit about danger and uncertainty;
 - keyboard-first;
 - accessible without sacrificing professional density; and
-- recognizably Dingo rather than a generic component-library theme.
+- recognizably ResiduumDB rather than a generic component-library theme.
 
 ### 28.2 Structure
 
@@ -1628,7 +1628,7 @@ Release packages:
 - use a signed update manifest;
 - never accept invalid update TLS/certificates;
 - do not update while a high-impact operation is awaiting confirmation; and
-- display installed Studio and Dingo protocol versions.
+- display installed Studio and ResiduumDB protocol versions.
 
 Auto-update is opt-in until the updater threat model and rollback policy are
 qualified.
@@ -1638,7 +1638,7 @@ passes the same security/IPC/credential-vault suite.
 
 ## 33. Telemetry about Studio
 
-Studio does not silently send product analytics to DingoDB, Frogfish, or any
+Studio does not silently send product analytics to ResiduumDB, Frogfish, or any
 third party.
 
 An optional future Studio-self telemetry profile requires separate explicit
@@ -1657,10 +1657,10 @@ not written as rolling log files.
 3. browse JSON, bytes, malformed, partial, encrypted-unavailable, and damaged
    records;
 4. edit with compare-version conflict handling;
-5. execute DQL with parameters, coverage, cursor, cancellation, and explain;
-6. import SQL-ish into visible DQL;
+5. execute RQL with parameters, coverage, cursor, cancellation, and explain;
+6. import SQL-ish into visible RQL;
 7. evaluate SDA over live and offline examination units;
-8. inspect DRE/contracts/relationships/Atomics without semantics drift;
+8. inspect RRE/contracts/relationships/Atomics without semantics drift;
 9. ingest and render every telemetry topic with gaps/resets/drops;
 10. read and offline-verify Evidence Ledger material;
 11. operate each implemented job through retry/unknown/partial outcomes; and
@@ -1687,7 +1687,7 @@ not written as rolling log files.
 1. million-row logical result through cursor/virtualization without loading it;
 2. 100,000-message telemetry ring at maximum byte bound;
 3. collector disconnect/reconnect and malformed flood;
-4. slow/dead Dingo server with responsive cancellation/UI;
+4. slow/dead ResiduumDB server with responsive cancellation/UI;
 5. large offline evidence package with holes;
 6. memory stability across 24-hour telemetry/query session;
 7. 32 tabs and multiple Heap workspaces;
@@ -1721,7 +1721,7 @@ Outcome:
 
 Outcome:
 
-> Write and execute DQL, inspect generated plans/SDA, navigate by cursors and
+> Write and execute RQL, inspect generated plans/SDA, navigate by cursors and
 > exact rank, and edit documents with conflict-safe receipts.
 
 ### Studio S3 — Operations
@@ -1735,18 +1735,18 @@ Outcome:
 
 Outcome:
 
-> Design and inspect DRE, collection contracts, relationships, and Atomic plans
+> Design and inspect RRE, collection contracts, relationships, and Atomic plans
 > through their canonical mathematical contracts.
 
 ### Studio S5 — Cluster
 
 Outcome:
 
-> Operate a qualified Dingo cluster without weakening Heap data isolation.
+> Operate a qualified ResiduumDB cluster without weakening Heap data isolation.
 
 ## 36. Completion definition
 
-Dingo Studio v1 is complete only when:
+Residuum Studio v1 is complete only when:
 
 - S1 through S4 exit their implementation gates;
 - the Tauri/Angular/Rust boundary passes §34;

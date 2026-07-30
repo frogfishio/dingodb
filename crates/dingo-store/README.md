@@ -1,6 +1,6 @@
 # dingo-store
 
-Single-node **authoritative store** for DingoDB: filesystem-backed append-only
+Single-node **authoritative store** for ResiduumDB: filesystem-backed append-only
 segments, put/get/delete by subject, durability modes, catalog-independent
 recovery, derived state (catalogs, secondary indexes, chunks, history,
 compaction, checkpoints), inspect/salvage helpers, and tiering
@@ -220,5 +220,5 @@ designed to be rebuilt from immutable, independently framed segments
 MPL-2.0 (file-level weak copyleft). Proprietary applications may embed the
 store; modifications to MPL-covered files must be disclosed.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb). Multi-tier license map:
 [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).

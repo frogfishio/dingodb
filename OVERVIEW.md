@@ -1,11 +1,11 @@
-# DingoDB Architecture Specification
+# ResiduumDB Architecture Specification
 
 Status: Draft v0.1
 Scope: Storage, recovery, retention, examination, and performance architecture
 
 ## 1. Purpose
 
-DingoDB is a damage-tolerant, high-performance, long-retention database for
+ResiduumDB is a damage-tolerant, high-performance, long-retention database for
 arbitrary digital material.
 
 It is designed around four promises:
@@ -19,7 +19,7 @@ It is designed around four promises:
 4. **SDA examination** — every recoverable item and every reported hole has a
    deterministic representation that SDA can examine.
 
-DingoDB stores structured records, events, logs, documents, binary objects,
+ResiduumDB stores structured records, events, logs, documents, binary objects,
 application state, unknown formats, malformed input, and uninterpreted bytes.
 It does not require a payload to be understood before preserving it.
 
@@ -38,7 +38,7 @@ MUST and MUST NOT requirement applicable to the features it implements.
 ## 3. Terms
 
 **Store**
-A logical DingoDB namespace containing items, segments, chunks, derived
+A logical ResiduumDB namespace containing items, segments, chunks, derived
 structures, and recovery evidence.
 
 **Item**
@@ -50,7 +50,7 @@ Self-describing metadata sufficient to identify, frame, verify, and interpret
 an item without consulting a global catalog.
 
 **Payload**
-Structured data or opaque bytes preserved by DingoDB.
+Structured data or opaque bytes preserved by ResiduumDB.
 
 **Frame**
 The independently delimited and verified physical representation of one
@@ -83,7 +83,7 @@ All dependencies required for the claimed logical interpretation are present
 and verified.
 
 **Uncertain**
-Physical data survives, but DingoDB cannot prove that the derived logical
+Physical data survives, but ResiduumDB cannot prove that the derived logical
 interpretation is complete.
 
 **Authoritative data**
@@ -98,7 +98,7 @@ can be regenerated from authoritative data.
 
 ### 4.1 Independent Survival Invariant
 
-DingoDB MUST recover every independently verifiable frame or segment that
+ResiduumDB MUST recover every independently verifiable frame or segment that
 remains physically available.
 
 A missing, corrupt, overwritten, or undecodable region MUST NOT prevent
@@ -118,7 +118,7 @@ salvage scan of surviving authoritative data.
 
 ### 4.3 Explicit Hole Invariant
 
-DingoDB MUST report discovered discontinuities as holes. It MUST NOT silently
+ResiduumDB MUST report discovered discontinuities as holes. It MUST NOT silently
 join data on opposite sides of a hole and claim continuity.
 
 The recovery interface MUST expose, when known:
@@ -133,11 +133,11 @@ The recovery interface MUST expose, when known:
 Physical survival and semantic completeness are separate claims.
 
 An intact update event after a hole is physically valid even when an earlier
-event required to reconstruct current state may be missing. DingoDB MUST return
+event required to reconstruct current state may be missing. ResiduumDB MUST return
 the surviving event. A state projection that depends on the missing event MUST
 be marked incomplete or uncertain.
 
-DingoDB MUST NOT discard verified data merely because its full semantic
+ResiduumDB MUST NOT discard verified data merely because its full semantic
 context is unavailable.
 
 ### 4.5 No Essential Derived State
@@ -149,7 +149,7 @@ irreplaceable index or manifest to interpret an authoritative frame.
 
 ### 4.6 Payload Neutrality
 
-DingoDB MUST be able to preserve opaque bytes without understanding their
+ResiduumDB MUST be able to preserve opaque bytes without understanding their
 media type, schema, encoding, or application semantics.
 
 Failure to decode a payload MUST NOT invalidate a verified envelope or the
@@ -219,11 +219,11 @@ The core storage model recognizes:
 - external references, when explicitly requested by the caller.
 
 An external reference is not preserved content. APIs and examination results
-MUST distinguish stored payloads from references to content outside DingoDB.
+MUST distinguish stored payloads from references to content outside ResiduumDB.
 
 ### 5.4 Events and state
 
-DingoDB records immutable storage events. Core event kinds are:
+ResiduumDB records immutable storage events. Core event kinds are:
 
 - `put` — associate a payload and envelope with a logical subject;
 - `delete` — record a logical deletion;
@@ -293,7 +293,7 @@ linking them to their sources.
 
 Each segment MUST contain enough local information to:
 
-- identify it as a DingoDB segment;
+- identify it as a ResiduumDB segment;
 - determine its format version;
 - determine the integrity algorithms in use;
 - locate candidate frame boundaries;
@@ -373,7 +373,7 @@ Each chunk MUST have:
 
 A chunk manifest MUST identify every required chunk and its logical order.
 
-If some chunks are missing, DingoDB MUST return the surviving chunks and an
+If some chunks are missing, ResiduumDB MUST return the surviving chunks and an
 explicit completeness map. It MUST NOT present a partial payload as complete.
 
 Content-addressed chunks MAY be deduplicated. Reference counts are derived
@@ -536,7 +536,7 @@ authoritative bytes as a prerequisite to examination.
 
 ### 9.1 Segment fabric
 
-A DingoDB store is logically a segment fabric. Segments may reside:
+A ResiduumDB store is logically a segment fabric. Segments may reside:
 
 - in memory;
 - on local solid-state or rotating media;
@@ -688,9 +688,9 @@ Full scans MUST stream and MUST NOT require the store to fit in memory.
 
 ### 11.1 Examination boundary
 
-SDA is DingoDB's deterministic examination and transformation algebra.
+SDA is ResiduumDB's deterministic examination and transformation algebra.
 
-DingoDB MUST expose an SDA value for:
+ResiduumDB MUST expose an SDA value for:
 
 - every verified envelope;
 - every decodable structured payload;
@@ -703,7 +703,7 @@ Opaque bytes remain bytes. SDA is not required to infer a structure.
 
 ### 11.2 Examination record
 
-The standalone DingoDB SDA profile exposes examination units with fixed fields
+The standalone ResiduumDB SDA profile exposes examination units with fixed fields
 for identity, physical location, integrity, payload availability, holes,
 provenance, and uncertainty. A minimal complete item is equivalent to:
 
@@ -747,7 +747,7 @@ Prod{
 Hole units use the same outer product shape and carry their scope, reason,
 certainty, and effects in the envelope. Exact field names and status tags are
 defined by the
-[DingoDB SDA examination profile](SDA_PROFILE.md).
+[ResiduumDB SDA examination profile](SDA_PROFILE.md).
 
 ### 11.3 Determinism
 
@@ -769,7 +769,7 @@ absence or a complete empty result.
 
 ### 12.1 Performance classes
 
-DingoDB defines three distinct performance classes:
+ResiduumDB defines three distinct performance classes:
 
 **Hot path**
 Indexed reads over memory-resident working sets, targeting the performance
@@ -789,7 +789,7 @@ No single latency claim may be used for all three classes.
 
 Published benchmarks MUST disclose:
 
-- DingoDB version and format;
+- ResiduumDB version and format;
 - durability mode;
 - verification mode;
 - hardware and storage;
@@ -927,7 +927,7 @@ software installation.
 
 ## 17. Non-goals
 
-DingoDB does not promise:
+ResiduumDB does not promise:
 
 - survival after every physical copy of data has been destroyed;
 - semantic understanding of every payload;
@@ -939,7 +939,7 @@ DingoDB does not promise:
 
 ## 18. Design principle
 
-DingoDB does not ask:
+ResiduumDB does not ask:
 
 > Is the database intact?
 
@@ -955,7 +955,7 @@ island that remains.
 
 ## 19. Clustering
 
-A DingoDB cluster federates independently recoverable partitions and segments.
+A ResiduumDB cluster federates independently recoverable partitions and segments.
 
 The cluster control plane coordinates membership, placement, policy, and
 partition leadership through replicated consensus. It is not authoritative
@@ -979,7 +979,7 @@ and distributed SDA rules are defined in
 The storage, recovery, and cluster machinery is not the ordinary application
 interface.
 
-DingoDB exposes a collection-oriented API for JSON and bytes with familiar
+ResiduumDB exposes a collection-oriented API for JSON and bytes with familiar
 put, get, delete, append, filter, index, history, batch, and watch operations.
 Common filters compile to SDA; applications do not need to write SDA for
 ordinary queries.

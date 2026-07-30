@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Damage, holes, and coverage
-description: How DingoDB reports damage without invalidating healthy neighbors.
+description: How ResiduumDB reports damage without invalidating healthy neighbors.
 class: concept
 status: available
 section: concepts
@@ -22,7 +22,7 @@ keywords:
 
 Critical damage → whole database unavailable even if healthy bytes remain.
 
-## DingoDB model
+## ResiduumDB model
 
 Missing or unreadable material becomes an explicit **hole**. Neighbors can still verify.
 
@@ -34,4 +34,4 @@ Query and scan results should report what was searched. Incomplete tier/partitio
 
 Damage tolerance reduces blast radius. It does **not** recover overwritten or never-written bytes.
 
-Product narrative: [dingodb.org/survival](https://dingodb.org/survival/).
+Product narrative: [residuumdb.org/survival](https://residuumdb.org/survival/).

@@ -1,4 +1,4 @@
-# DingoDB capability matrix
+# ResiduumDB capability matrix
 
 Status: living document for DEF-001 containment  
 Audience: operators, reviewers, release notes  
@@ -500,19 +500,22 @@ collection catalogs are built from segment-derived durable state only.
 | Content item ids | shipped | `blake3(subject)[..16]` (stable, not random) |
 | Tests | shipped | `stage_def_025_identifiers` + `ids` unit tests |
 
-## Bounded-memory cursors (DEF-026)
+## Bounded-memory cursors (DEF-026) + secret token keys (DEF-097)
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Profile tag | shipped | `dingo_store::CURSOR_PROFILE = "dingo-cursor-v1"` |
+| Profile tag | shipped | `CURSOR_PROFILE = "dingo-cursor-v2"`; query `dingo-query-continuation-v2` |
 | Paged store scan | shipped | `Store::scan_live_page` — subject order, bounded bodies per page |
-| Continuation tokens | shipped with security limitation | Opaque integrity-tagged tokens (store_id + generation + prefix + after); public key derivation is forgeable (DEF-097) |
+| Secret MAC keys | **shipped (labor)** | `ContinuationKeyring` ≥256-bit secrets; store file `cursor_token_keys.v1`; cluster `cluster_token_keys.v1` |
+| Continuation tokens | **shipped (labor)** | Opaque MAC with secret key + key_generation_id; public store/cluster id insufficient to forge |
+| Rotation / grace | **shipped (labor)** | Active + previous gen; `rotate_*` / `retire_previous_*` |
 | Generation fence | shipped | BLAKE3(store_id ‖ segment_fp ‖ live_count); stale → `CursorStale` |
-| Accidental mutation / cross-store | shipped | `StoreError::CursorInvalid`; malicious forgery remains DEF-097 |
+| Tamper / cross-store / foreign keyring | shipped | `CursorInvalid` / `ContinuationInvalid` before execution |
+| Token body encryption | residual | MAC-only v2; encrypt sensitive metadata residual |
 | SDK streaming | shipped | `scan_json_page`, `scan_json_iter` / `scan_json_iter_paged` (embedded) |
 | Find scan path | shipped | Embedded filter scan pages instead of full materialization |
 | Remote page RPC | not yet | Follow-on; remote still uses list/find materialization |
-| Tests | shipped | `stage_def_026_cursors` + cursor unit tests |
+| Tests | shipped | `stage_def_026_cursors`, `stage_def_097_token_keys`, `stage_def_040_query` |
 
 ## Secondary index lifecycle (DEF-027)
 

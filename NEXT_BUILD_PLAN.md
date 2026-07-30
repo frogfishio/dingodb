@@ -1,4 +1,4 @@
-# DingoDB post-Heap build plan
+# ResiduumDB post-Heap build plan
 
 Status: developer-ready program plan v1.0
 
@@ -16,8 +16,8 @@ Evidence, Telemetry, Studio, and production-readiness gates.
 Companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md),
-[DRE_SPEC.md](DRE_SPEC.md),
-[doc/DRE_IMPLEMENTATION_PLAN.md](doc/DRE_IMPLEMENTATION_PLAN.md),
+[RRE_SPEC.md](RRE_SPEC.md),
+[doc/RRE_IMPLEMENTATION_PLAN.md](doc/RRE_IMPLEMENTATION_PLAN.md),
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md),
 [doc/ATOMICS_IMPLEMENTATION_PLAN.md](doc/ATOMICS_IMPLEMENTATION_PLAN.md),
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
@@ -45,7 +45,7 @@ Order Wavelets
 
 This order is normative for the single-node product program.
 
-Heaps establish the non-crossing authority domain. DRE gives that domain
+Heaps establish the non-crossing authority domain. RRE gives that domain
 database-owned truth. Atomics enforce truth across more than one document.
 Direct Access gives exact ranked positioning. Order Wavelets give exact
 filtered positioning in declared order.
@@ -92,7 +92,7 @@ Product status after exit:
 
 Outcome:
 
-> One Heap can activate a finite DRE ruleset and every subsequent committed
+> One Heap can activate a finite RRE ruleset and every subsequent committed
 > document satisfies its active document-local rules.
 
 Packages: `DRE-0` through `DRE-4`.
@@ -112,7 +112,7 @@ unavailable and MUST be rejected by activation until their Atomic scope ships.
 
 Outcome:
 
-> Within one Heap, DingoDB commits one bounded serializable transition with a
+> Within one Heap, ResiduumDB commits one bounded serializable transition with a
 > stable identity and independently examinable decision evidence.
 
 Packages: `ATM-0` through `ATM-5`, `DRE-5`, `REL-0` through `REL-4`, then
@@ -171,7 +171,7 @@ Allowed parallelism:
 
 - `DRE-0` reference semantics MAY begin while `HAR-4`–`HAR-7` finish.
 - `ATM-0` encoding design MAY begin after `HAR-2` freezes Heap object identity.
-- `DDA-0` oracle work MAY begin after DRE shared predicate semantics freeze.
+- `DDA-0` oracle work MAY begin after RRE shared predicate semantics freeze.
 - `DOW-0` mathematical reference MAY begin after DDA order-domain identity
   freezes.
 
@@ -191,7 +191,7 @@ integrity/authentication tag where applicable
 
 This includes:
 
-- DRE source, artifacts, activations, and decisions;
+- RRE source, artifacts, activations, and decisions;
 - Atomic IDs, prepares, members, decisions, and deduplication;
 - predicate bitmaps and rank blocks;
 - DDA selection artifacts and cursors;
@@ -242,7 +242,7 @@ Each exit gate names the evidence classes it requires.
 
 - “Machine-checked Heap kernel” is allowed because Kani and Verus are connected.
 - “Independently reviewed Heap isolation” is prohibited until CPR-005 closes.
-- Document-local DRE MUST NOT be described as referential integrity.
+- Document-local RRE MUST NOT be described as referential integrity.
 - Key Atomic MUST NOT be described as a general transaction.
 - LocalHeap Atomic MUST NOT imply cross-Heap or cross-partition Atomicity.
 - Cursor paging MUST NOT be described as direct ranked access.
@@ -279,7 +279,7 @@ specifications.
 Work stops and returns to specification when:
 
 - an Atomic implementation requires an unresolved semantic choice;
-- DRE compilation cannot derive a finite dependency or cost bound;
+- RRE compilation cannot derive a finite dependency or cost bound;
 - a direct query cannot prove exact membership/count/order;
 - damage can change an answer while coverage still reports complete;
 - an artifact can be reused across Heaps, views, rules, or plans;

@@ -37,7 +37,7 @@ reserved ops (118).
 | Profile | Meaning |
 |---|---|
 | `dingo-rust-app-v1` | Public Rust application façade names |
-| `dql-app-core-v1` | Accepted DQL Application Core source subset |
+| `dql-app-core-v1` | Accepted RQL Application Core source subset |
 | `dql-plan-v1` | Logical plan shape |
 | `dingo-predicate-v1` | Shared predicate semantics |
 | `dingo-cursor-v1` | Authenticated continuation |

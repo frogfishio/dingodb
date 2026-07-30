@@ -1,6 +1,6 @@
 # dingo-format
 
-**Survival wire format** for DingoDB: frame encode/decode, structural integrity
+**Survival wire format** for ResiduumDB: frame encode/decode, structural integrity
 (CRC32C + BLAKE3-256), deterministic CBOR envelopes, in-memory active segments
 and seal, forward and reverse salvage scanning, event-id conflict analysis, and
 chunk reassembly helpers.
@@ -104,4 +104,4 @@ holes; surviving verified islands remain recoverable without a global catalog.
 
 MIT.
 
-Part of [DingoDB](https://github.com/frogfishio/dingodb).
+Part of [ResiduumDB](https://github.com/frogfishio/dingodb).

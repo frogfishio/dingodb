@@ -1,4 +1,4 @@
-# SQL-ish+ and SQL to DQL cross-compiler specification
+# SQL-ish+ and SQL to RQL cross-compiler specification
 
 Status: **Normative design v1.0-draft**
 
@@ -15,9 +15,9 @@ Target profile: `dql-plan-v1`
 Audience: query-surface, migration-tool, dialect, compiler, SDK, and
 conformance implementers
 
-Normative companions: [DQL_SPEC.md](DQL_SPEC.md),
-[DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md), and
-[DRE_SPEC.md](DRE_SPEC.md)
+Normative companions: [RQL_SPEC.md](RQL_SPEC.md),
+[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md), and
+[RRE_SPEC.md](RRE_SPEC.md)
 
 Reference syntax: PostgreSQL 18 `SELECT`, used only to identify and refuse
 syntax outside this profile:
@@ -27,21 +27,21 @@ syntax outside this profile:
 
 SQL-ish+ is a first-class optional query surface for people who already know
 SQL. It translates a deliberately bounded, read-only SQL `SELECT` profile into
-DQL and executes the resulting DQL plan.
+RQL and executes the resulting RQL plan.
 
 It serves three uses:
 
 - write SQL-ish+ and execute it directly;
-- inspect the generated DQL while learning DingoDB;
-- translate an existing supported SQL query into durable DQL source.
+- inspect the generated RQL while learning ResiduumDB;
+- translate an existing supported SQL query into durable RQL source.
 
-It does not make DingoDB a SQL database and does not claim to implement
+It does not make ResiduumDB a SQL database and does not claim to implement
 PostgreSQL, ISO SQL, relational bags, SQL transactions, or a relational
 catalog.
 
 The compiler has one governing rule:
 
-> Emit equivalent DQL, emit a conditional translation with explicit
+> Emit equivalent RQL, emit a conditional translation with explicit
 > obligations, or refuse. Never guess.
 
 The existing `sql` dialect in `dingo-sdk` is a small SQL-ish-to-SDA filter
@@ -76,35 +76,35 @@ SQL-ish+ source
       ↓
 SQL-ish+ compiler
       ↓
-canonical DQL source + DqlPlanV1 + mapping receipt
+canonical RQL source + RqlPlanV1 + mapping receipt
       ↓
-ordinary DQL planner and executor
+ordinary RQL planner and executor
 ```
 
-The DQL plan—not the SQL-ish+ source parser—is the runtime authority. Explain,
+The RQL plan—not the SQL-ish+ source parser—is the runtime authority. Explain,
 coverage, consistency, budgets, continuation, Heap isolation, and SDA
-examination are the ordinary DQL mechanisms.
+examination are the ordinary RQL mechanisms.
 
-`SqlPlusResultStream` is the ordinary DQL result stream passed through the
+`SqlPlusResultStream` is the ordinary RQL result stream passed through the
 documented SQL compatibility normalization in §11. It does not introduce a
 second query executor.
 
-Users may retain SQL-ish+ source, generated DQL, or both. Long-lived prepared
-queries store the canonical DQL plan plus the source/compiler provenance
+Users may retain SQL-ish+ source, generated RQL, or both. Long-lived prepared
+queries store the canonical RQL plan plus the source/compiler provenance
 required to reproduce it.
 
 ## 2. Why translation is not mechanical syntax replacement
 
-SQL and DQL differ materially:
+SQL and RQL differ materially:
 
-| SQL | DQL |
+| SQL | RQL |
 |---|---|
 | joins multiply and flatten rows | enrichment attaches named values/bags |
 | join cardinality is implicit | cardinality is mandatory |
 | SQL NULL uses three-valued logic | Null and absence are distinct; predicates are total |
 | an inner join discards unmatched rows | `exactly_one` fails and `optional` preserves |
-| result order is absent without `ORDER BY` | DQL always has deterministic key order |
-| `OFFSET` selects by ordinal position | DQL uses exact ranked direct access or authenticated continuation |
+| result order is absent without `ORDER BY` | RQL always has deterministic key order |
+| `OFFSET` selects by ordinal position | RQL uses exact ranked direct access or authenticated continuation |
 | tables have catalogued columns/types | collections contain flexible documents |
 
 A trustworthy compiler must account for every difference.
@@ -121,7 +121,7 @@ Refused
 
 ### 3.1 Exact
 
-For source SQL query `q`, target DQL plan `d`, source bindings `B`, and
+For source SQL query `q`, target RQL plan `d`, source bindings `B`, and
 admissible Heap state `S`:
 
 ```text
@@ -163,7 +163,7 @@ NormalizeDqlRows(EvaluateDql(d, B, S))
 Conditional output is not executable by default. It becomes executable only
 when:
 
-- active DRE artifacts prove every obligation at the bound frontier; or
+- active RRE artifacts prove every obligation at the bound frontier; or
 - the caller explicitly accepts an assumption manifest for offline migration
   analysis.
 
@@ -273,8 +273,8 @@ SqlToDqlOptions {
 }
 ```
 
-SQL table and column names are never interpolated into DQL without binding.
-All names resolve to immutable Heap-local identities and canonical Dingo
+SQL table and column names are never interpolated into RQL without binding.
+All names resolve to immutable Heap-local identities and canonical ResiduumDB
 paths.
 
 The compiler has no network resolver and does not consult an ambient SQL
@@ -282,13 +282,13 @@ catalog.
 
 ## 6. SQL document view
 
-The source semantics are defined over a logical SQL view of Dingo documents:
+The source semantics are defined over a logical SQL view of ResiduumDB documents:
 
 - one live document is one SQL row;
 - `_key` is a non-null key column;
 - a present scalar field is the corresponding SQL scalar;
 - a missing field becomes SQL NULL;
-- stored Dingo Null becomes SQL NULL;
+- stored ResiduumDB Null becomes SQL NULL;
 - products, bags, sequences, sets, maps, and bytes are not SQL scalars in v1;
 - decimal/integer values remain exact;
 - no implicit text/number/Boolean conversion occurs.
@@ -300,7 +300,7 @@ round-trip that distinction. The translation receipt records:
 null_model: missing_and_null_collapse
 ```
 
-A caller requiring the distinction must use DQL directly.
+A caller requiring the distinction must use RQL directly.
 
 ## 7. Three-valued predicate translation
 
@@ -310,9 +310,9 @@ SQL predicates evaluate to:
 TRUE | FALSE | UNKNOWN
 ```
 
-`WHERE` retains only TRUE. DQL predicates are total Booleans. Therefore the
+`WHERE` retains only TRUE. RQL predicates are total Booleans. Therefore the
 compiler does not translate `NOT`, `AND`, or `OR` textually. It computes two
-Boolean DQL predicates for each SQL predicate `p`:
+Boolean RQL predicates for each SQL predicate `p`:
 
 ```text
 T(p)  -- SQL p is TRUE
@@ -359,10 +359,10 @@ F(p OR q)  ≜ F(p) and F(q)
 ```
 
 `IN` is expanded according to SQL three-valued equality. `NOT IN` is translated
-as `NOT(IN(...))`, not as a DQL `not in` shortcut. In particular, a NULL member
+as `NOT(IN(...))`, not as a RQL `not in` shortcut. In particular, a NULL member
 can make a non-matching `IN` result UNKNOWN.
 
-The generated DQL `where` uses only `T(source_predicate)`.
+The generated RQL `where` uses only `T(source_predicate)`.
 
 ## 8. FROM and joins
 
@@ -382,7 +382,7 @@ The SQL query must contain exactly one root table.
 
 ### 8.2 Join evidence
 
-SQL does not state whether a join yields zero, one, or many right rows. DQL
+SQL does not state whether a join yields zero, one, or many right rows. RQL
 requires that fact. Every join therefore needs:
 
 ```text
@@ -394,7 +394,7 @@ JoinEvidence {
 }
 ```
 
-Evidence may come from active DRE references/uniqueness or an assumption
+Evidence may come from active RRE references/uniqueness or an assumption
 manifest. The compiler never infers uniqueness from observed data, an index
 that is not a constraint, naming conventions, or sampled statistics.
 
@@ -417,10 +417,10 @@ where present(c.id)
 ```
 
 This preserves SQL's behavior of dropping unmatched left rows while rejecting
-duplicate right matches. DQL's lifted optional-path resolution makes `c.id`
+duplicate right matches. RQL's lifted optional-path resolution makes `c.id`
 absent for `None` and present for `Some(customer)`.
 
-If an active DRE proves a total exactly-one reference, the compiler may instead
+If an active RRE proves a total exactly-one reference, the compiler may instead
 emit `expect exactly_one` and omit the presence filter; the receipt records the
 proof artifact.
 
@@ -448,7 +448,7 @@ projected right columns.
 V1 refuses:
 
 - a right side not proven or declared unique;
-- one-to-many or many-to-many joins, because SQL flattens/multiplies while DQL
+- one-to-many or many-to-many joins, because SQL flattens/multiplies while RQL
   attaches a bag;
 - RIGHT, FULL, CROSS, NATURAL, LATERAL, and comma joins;
 - `USING`;
@@ -457,11 +457,11 @@ V1 refuses:
 - joins that escape the authenticated Heap.
 
 A future shape-migration tool may deliberately convert one-to-many flat rows
-into nested DQL bags, but that is not an equivalence-preserving compiler.
+into nested RQL bags, but that is not an equivalence-preserving compiler.
 
 ## 9. Projection
 
-Single-root `SELECT *` omits DQL `project`.
+Single-root `SELECT *` omits RQL `project`.
 
 `SELECT *` with any join is refused because SQL column collision and flattening
 cannot be inferred safely.
@@ -490,17 +490,17 @@ Rules:
 - expressions, functions, arithmetic, casts, row constructors, and wildcard
   qualifiers are refused;
 - optional right-side values normalize to SQL NULL in the compatibility
-  result, while native DQL retains absence.
+  result, while native RQL retains absence.
 
 ## 10. Ordering and limit
 
-SQL `ORDER BY` scalar column references lower to DQL `order by`.
+SQL `ORDER BY` scalar column references lower to RQL `order by`.
 
 Because SQL dialects disagree about default Null placement, a nullable order
 term must state `NULLS FIRST` or `NULLS LAST`. Otherwise compilation is
 conditional on a supplied source-dialect default.
 
-The generated DQL applies the same placement to Dingo Null and missing values
+The generated RQL applies the same placement to ResiduumDB Null and missing values
 because both are SQL NULL in the compatibility view:
 
 ```text
@@ -509,11 +509,11 @@ ORDER BY x ASC NULLS LAST
 order by x asc nulls last missing last
 ```
 
-DQL adds immutable document key as a final tie-breaker. This refines an SQL
+RQL adds immutable document key as a final tie-breaker. This refines an SQL
 order that otherwise permits ties. It does not change the SQL multiset, but it
 does make `LIMIT` deterministic. The receipt records the refinement.
 
-`LIMIT n` lowers to DQL's total logical result limit.
+`LIMIT n` lowers to RQL's total logical result limit.
 
 SQL-ish+ adds explicit non-SQL pagination/access clauses:
 
@@ -523,7 +523,7 @@ CONTINUE :cursor
 ACCESS DIRECT
 ```
 
-They lower to DQL `page size`, `after`, and `access`. `CONTINUE` is omitted on
+They lower to RQL `page size`, `after`, and `access`. `CONTINUE` is omitted on
 the first request. `ACCESS` accepts `DIRECT`, `BUILD`, or `SEQUENTIAL` with the
 semantics in [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md). The preferred SDK
 path supplies the returned cursor out-of-band:
@@ -555,7 +555,7 @@ performed only when the source explicitly says `ACCESS SEQUENTIAL`.
 authenticated, and accepted only for the same compiled query, Heap, bindings,
 ordering, limits, rank domain, read view, coverage, and compatible frontier.
 
-Without SQL `ORDER BY`, the generated DQL uses its defined key order and the
+Without SQL `ORDER BY`, the generated RQL uses its defined key order and the
 receipt records:
 
 ```text
@@ -657,7 +657,7 @@ sql_dql_limit_exceeded
 sql_dql_offset_order_required
 ```
 
-Diagnostics include SQL source spans and never emit partial executable DQL
+Diagnostics include SQL source spans and never emit partial executable RQL
 after a refusal.
 
 ## 14. Explicit refusals
@@ -683,8 +683,8 @@ Refusal is a successful safety outcome.
 
 - The compiler is pure after bindings/evidence are supplied.
 - It performs no network, filesystem, catalog, or service lookup.
-- Every source collection and DRE artifact is bound to the same Heap.
-- SQL parameters remain separate values and become DQL parameters.
+- Every source collection and RRE artifact is bound to the same Heap.
+- SQL parameters remain separate values and become RQL parameters.
 - Source text cannot supply capabilities.
 - Mapping receipts exclude secret values.
 - Limits apply to source bytes, tokens, AST nodes, joins, projection items,
@@ -702,12 +702,12 @@ Conformance requires:
 - `IN`/`NOT IN` with NULL members;
 - single-table projection/filter/order/limit equivalence;
 - inner and left many-to-one joins with missing and duplicate candidates;
-- DRE-proven and assumption-only obligations;
+- RRE-proven and assumption-only obligations;
 - one-to-many refusal;
 - ordering and tie refinement;
 - malformed/tampered evidence;
 - cross-Heap refusal;
-- generated DQL parse and canonical-plan validation;
+- generated RQL parse and canonical-plan validation;
 - differential execution against a reference evaluator for the defined SQL
   document view.
 
@@ -724,7 +724,7 @@ The compiler is conforming only for queries classified `Exact` or correctly
 6. Add evidence verification.
 7. Add proven inner/left many-to-one joins.
 8. Emit canonical mapping receipts.
-9. Differentially test source evaluation against generated DQL.
+9. Differentially test source evaluation against generated RQL.
 10. Expose `sql+` and `sql-plus` as direct executable query dialects.
 11. Deprecate the legacy `sql` mimicry path under the migration policy in §18.
 
@@ -743,7 +743,7 @@ Migration phases:
 ```text
 sql            -> existing SQL-ish-to-SDA implementation
 sql-legacy-v1  -> explicit alias of existing implementation
-sql+           -> SQL-ish+ to DQL
+sql+           -> SQL-ish+ to RQL
 sql-plus       -> alias of sql+
 ```
 
@@ -766,11 +766,11 @@ and never reinterpret automatically.
 ### Phase C — eventual removal
 
 `sql-legacy-v1` may be removed only under the published compatibility policy.
-Its removal does not affect DQL plans previously generated by SQL-ish+.
+Its removal does not affect RQL plans previously generated by SQL-ish+.
 
 At the end state, users can:
 
-- use DQL directly;
+- use RQL directly;
 - use SQL-ish+ permanently;
-- inspect or export the DQL generated from SQL-ish+;
-- move from SQL-ish+ to DQL incrementally without changing execution meaning.
+- inspect or export the RQL generated from SQL-ish+;
+- move from SQL-ish+ to RQL incrementally without changing execution meaning.

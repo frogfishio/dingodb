@@ -2,7 +2,7 @@
 
 Query-order companion:
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md). Hydra locates immutable
-records; Dingo Order Wavelets are a separate derived structure for exact
+records; Residuum Order Wavelets are a separate derived structure for exact
 filter-conditioned ranked ordering. Neither is required to impersonate the
 other.
 

@@ -7,7 +7,7 @@
 Unicode spellings like `⟨ ⟩`, `∈`, `∧`, `∨`, `¬`, `≠`, `≤`, `≥`, `→`, `↦`, `∣`, `⊎`, `⊖` now tokenize correctly.
 
 Root cause was not the lexer; it was pack JSON loading: JSON string parsing was corrupting raw UTF-8 bytes in token literals.
-That’s fixed in [src/common/json_min.c](src/common/json_min.c).
+That was fixed in the original `src/common/json_min.c` implementation.
 
 2) **Selector access `<selector>` needs lexer-level disambiguation**
 

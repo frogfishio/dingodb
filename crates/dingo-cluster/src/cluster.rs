@@ -67,6 +67,8 @@ pub struct Cluster {
     convergent_pos: HashMap<u32, u64>,
     /// In-flight rebalance jobs keyed by partition id (Stage 8f / DEF-038).
     rebalance_jobs: HashMap<u32, RebalanceJob>,
+    /// Secret continuation-token keyring (DEF-097). Control-plane only.
+    token_keyring: dingo_store::ContinuationKeyring,
 }
 
 /// Explicit health / degraded-state snapshot after open or during operation (DEF-038).
@@ -128,6 +130,13 @@ impl Cluster {
 
         // Empty durable rebalance control plane at create.
         RebalanceJobsFile::new().save(&root)?;
+        // DEF-097: mint cluster continuation secrets (control plane).
+        let token_keyring = dingo_store::ContinuationKeyring::mint_new().map_err(|e| {
+            ClusterError::Io(std::io::Error::other(format!("token keyring mint: {e}")))
+        })?;
+        token_keyring.save_cluster(&root).map_err(|e| {
+            ClusterError::Io(std::io::Error::other(format!("token keyring save: {e}")))
+        })?;
 
         Ok(Self {
             root,
@@ -143,6 +152,7 @@ impl Cluster {
             raft,
             convergent_pos: HashMap::new(),
             rebalance_jobs: HashMap::new(),
+            token_keyring,
         })
     }
 
@@ -210,6 +220,11 @@ impl Cluster {
         Self::attach_and_restore_raft_stores(&root, &directory, &mut raft)?;
         Self::restore_rebalance_raft_state(&root, &rebalance_jobs, &mut raft)?;
 
+        let token_keyring = dingo_store::ContinuationKeyring::load_or_mint_cluster(&root)
+            .map_err(|e| {
+                ClusterError::Io(std::io::Error::other(format!("token keyring load: {e}")))
+            })?;
+
         Ok(Self {
             root,
             cluster_id,
@@ -224,6 +239,7 @@ impl Cluster {
             raft,
             convergent_pos: HashMap::new(),
             rebalance_jobs,
+            token_keyring,
         })
     }
 
@@ -344,6 +360,24 @@ impl Cluster {
     /// Cluster identifier.
     pub fn cluster_id(&self) -> ClusterId {
         self.cluster_id
+    }
+
+    /// Secret continuation keyring for this cluster (DEF-097).
+    ///
+    /// Not for logging; used by control-plane token encode/decode and tests.
+    pub fn continuation_keyring(&self) -> &dingo_store::ContinuationKeyring {
+        &self.token_keyring
+    }
+
+    /// Rotate cluster continuation-token secrets (DEF-097).
+    pub fn rotate_continuation_keys(&mut self) -> Result<u32, ClusterError> {
+        let id = self.token_keyring.rotate().map_err(|e| {
+            ClusterError::Io(std::io::Error::other(format!("token keyring rotate: {e}")))
+        })?;
+        self.token_keyring.save_cluster(&self.root).map_err(|e| {
+            ClusterError::Io(std::io::Error::other(format!("token keyring save: {e}")))
+        })?;
+        Ok(id)
     }
 
     /// Deployment profile.
@@ -1235,7 +1269,11 @@ impl Cluster {
     pub fn scan_with(&mut self, options: ScanOptions) -> Result<FindResult, ClusterError> {
         // Resolve continuation first so scope / read mode / budgets resume.
         let cont = if let Some(ref tok) = options.continuation {
-            Some(QueryContinuation::decode(self.cluster_id, tok)?)
+            Some(QueryContinuation::decode(
+                self.cluster_id,
+                &self.token_keyring,
+                tok,
+            )?)
         } else {
             None
         };
@@ -1415,7 +1453,8 @@ impl Cluster {
                             remaining_limit,
                             remaining_max_docs,
                         };
-                        continuation = Some(next.encode(self.cluster_id)?);
+                        continuation =
+                            Some(next.encode(self.cluster_id, &self.token_keyring)?);
                     }
                 }
             }

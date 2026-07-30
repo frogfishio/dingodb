@@ -1,4 +1,4 @@
-# Dingo Order Wavelet implementation plan
+# Residuum Order Wavelet implementation plan
 
 Status: developer-ready v1.0
 
@@ -122,7 +122,7 @@ Tests:
 - dictionary order preservation:
 
 \[
-x <_{\mathrm{DQL}} y
+x <_{\mathrm{RQL}} y
 \iff
 \operatorname{code}(x)<\operatorname{code}(y)
 \]
@@ -306,6 +306,6 @@ P5 requires:
 
 The allowed claim is:
 
-> For a qualified DOW plan, DingoDB selects the kth exact filtered result in a
+> For a qualified DOW plan, ResiduumDB selects the kth exact filtered result in a
 > declared scalar order by navigating exact conditional counts, without
 > enumerating or sorting the preceding matches at query time.

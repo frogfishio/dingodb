@@ -341,9 +341,9 @@ that familiar foreign query surfaces cannot encode losslessly. If the job
 needs those distinctions, the pure path is mandatory. Comfort never redefines
 the algebra.
 
-**DQL** is the official human dialect co-designed to lower *faithfully* into
+**RQL** is the official human dialect co-designed to lower *faithfully* into
 that algebra (not SQL mimicry). Foreign dialects remain imperfect comfort.
-See [DIALECTS.md](DIALECTS.md) and [DQL_SPEC.md](../../DQL_SPEC.md).
+See [DIALECTS.md](DIALECTS.md) and [RQL_SPEC.md](../../RQL_SPEC.md).
 
 ## Language Design Authority (Top-Down Kernel)
 
