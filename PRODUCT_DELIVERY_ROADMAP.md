@@ -28,7 +28,7 @@ DingoDB has one engine critical path and two supporting delivery lanes:
 ENGINE
 Heap Application Ready
         ↓
-Evidence foundation
+Trustworthy SQLite-replacement core
         ↓
 document-local DRE
         ↓
@@ -40,17 +40,17 @@ Direct Access
         ↓
 Order Wavelets
 
-TRUST                         PRODUCT / DX
-crash + fuzz + recovery      Rust SDK + CLI journey
-telemetry                    Studio foundation
-compatibility                Studio Explorer
-release evidence             Studio Workbench
-security qualification       Studio Integrity + Operations
+TRUST                              PRODUCT / DX
+minimum Evidence substrate        Rust SDK + CLI journey
+bounded Telemetry path            Studio foundation
+crash + fuzz + recovery           Studio Explorer
+compatibility + release evidence  Studio Workbench
+security qualification            Studio Integrity + Operations
 ```
 
-The three lanes advance together, but the engine arrows are hard dependencies.
-A supporting lane may begin early; it may not represent a backend capability
-as available before that capability's own gate passes.
+The three lanes advance together, but only the engine arrows and the minimum
+trust cuts named by the master plan are hard dependencies. Studio and broader
+observability may begin early; they do not hold the engine idle.
 
 The first strategic target is:
 
@@ -59,7 +59,8 @@ The first strategic target is:
 > sets without offset walking, and exposes its evidence and uncertainty.
 
 Cluster, text/vector/geospatial retrieval, and native archive scale are not on
-this immediate critical path.
+the R0–R6 engine path. Massive retention is the first expansion program
+because it is part of the founding proposition.
 
 ## 2. Why the previous plans need this document
 
@@ -177,7 +178,9 @@ Purpose:
 > Turn the Heap engine into something a developer can operate, inspect, and
 > diagnose without reading the source tree.
 
-Three slices run in parallel after the R1 protocol and authority shapes freeze.
+Three enabling slices run in parallel after the R1 protocol and authority
+shapes freeze. They do not all block the DRE engine path; the exact blocking
+minimum is defined by `MASTER_DELIVERY_PLAN.md`.
 
 #### R2-A — Evidence foundation
 
@@ -243,7 +246,8 @@ This provides:
 - no master-key or wildcard data path.
 
 Studio is not engine authority. It is the first-class way to see the authority,
-damage, uncertainty, and evidence that the engine already exposes.
+damage, uncertainty, and evidence that the engine already exposes. Studio S1
+is a parallel DX release, not a prerequisite for beginning DRE.
 
 #### R2-D — Early-access trust gate
 
@@ -412,16 +416,7 @@ R6 exit:
 
 These are ordered programs, not part of the immediate critical path.
 
-### E1 — Deterministic text retrieval
-
-Criticality: **C3**
-
-First build the common Heap-bound derived-index substrate, then deterministic
-text search. Text precedes vector and geospatial search because it has the
-broadest everyday utility and forces the shared index lifecycle to become
-real.
-
-### E2 — Massive-retention product
+### E1 — Massive-retention product
 
 Criticality: **C3**
 
@@ -429,7 +424,15 @@ Deliver native object storage, encryption/KMS operation, lifecycle scheduling,
 media refresh, restore drills, and long-retention evidence. Existing
 filesystem mirrors and scaffolds do not satisfy this release.
 
-Text retrieval may share the derived-index substrate, but archived authority
+### E2 — Deterministic text retrieval
+
+Criticality: **C3**
+
+Build the common Heap-bound derived-index substrate, then deterministic text
+search. It follows the archive product so retained material gains an ordinary
+rediscovery path and forces the shared index lifecycle to become real.
+
+Text retrieval shares the derived-index substrate, but archived authority
 must remain independently salvageable without any search index.
 
 ### E3 — Cluster product
@@ -449,7 +452,7 @@ Cluster work becomes a product only after:
 In-process consensus depth and experimental network Raft remain valuable
 engineering foundations, not a production release claim.
 
-The order between E2 and E3 may be reconsidered only through an explicit
+The order between E1 and E3 may be reconsidered only through an explicit
 market decision: choose archive-first for the fifteen-year retention market,
 or cluster-first for the Couchbase/distributed-document market. The default
 decision is **archive-first** because it is closer to DingoDB's core survival
@@ -580,16 +583,17 @@ The immediate sequence is:
 
 ```text
 finish Heaps
-→ install evidence and telemetry foundations
-→ ship Studio Explorer
+→ close the trustworthy SQLite-replacement core
+→ install the minimum Evidence and bounded Telemetry substrates
+  while Studio Explorer proceeds in parallel
 → ship document-local DRE
 → ship Atomics and relationships
 → ship exact direct navigation and counted order
 → qualify one single-node production candidate
-→ expand into text, archive, cluster, vector, and geospatial product work
+→ expand into archive, text, cluster, vector, and geospatial product work
 ```
 
-The important correction is that **operability and DX sit between Heaps and
-the mathematical feature program**. DingoDB should not accumulate brilliant
-backend capabilities that cannot yet be safely operated, examined, or used by
-an ordinary developer.
+The important correction is that **boring product trust sits between Heaps and
+the mathematical feature program**, while Studio is a parallel product lane.
+DingoDB should neither accumulate brilliant backend capabilities that cannot
+be operated nor hold those capabilities behind completion of a graphical tool.

@@ -1,6 +1,6 @@
 # DingoDB master delivery plan
 
-Status: **definitive execution plan v1.0**
+Status: **definitive execution plan v1.1**
 
 Effective: 2026-07-30
 
@@ -32,14 +32,14 @@ this plan.
 
 ## 2. Product target
 
-The immediate product target is:
+The first product target is:
 
-> A self-assessed, single-node, Heap-confined document database that is easy to
-> operate, mathematically enforces declared document and cross-document
-> integrity, provides exact scalable navigation, survives local damage
-> honestly, and exposes its evidence and uncertainty through first-class tools.
+> A self-assessed, Heap-confined single-node database that an ordinary
+> developer can safely choose instead of SQLite plus loose files.
 
-This target is reached through releases `M0`–`M6`.
+That first adoption gate is reached at `M2`. DRE, Atomics, and exact navigation
+then create the product-defining DingoDB proposition at `M3`–`M5`. `M6`
+qualifies the combined operational product.
 
 Cluster, vector search, geospatial search, and broad archive expansion are not
 part of the immediate target.
@@ -100,7 +100,7 @@ M0  Program Truth
  ↓
 M1  Heap Application Ready
  ↓
-M2  Operable Early Access
+M2  Trustworthy Core Early Access
  ↓
 M3  Mathematical Documents
  ↓
@@ -263,14 +263,17 @@ M1 exit:
 - `qualified` and public wording match the qualification matrix; and
 - M2 foundation packages become `ready`.
 
-## 8. M2 — Operable Early Access
+## 8. M2 — Trustworthy Core Early Access
 
 Release outcome:
 
-> A careful outsider can install DingoDB, use a Heap, inspect its state and
-> damage, diagnose it, and recover it without reading DingoDB internals.
+> A careful outsider can replace SQLite plus loose JSON/blob files with
+> DingoDB, then survive crash, damage, backup/restore, encryption-key
+> operation, and upgrade without reading DingoDB internals.
 
-M2 has four coordinated tracks.
+M2 has one blocking product gate and three parallel enabling lanes. Evidence,
+Telemetry, and Studio are important, but their complete feature sets do not
+all block DRE. Only the minimum portions named below are M2 blockers.
 
 ### M2-A — Evidence foundation
 
@@ -284,7 +287,7 @@ DEL-0 → DEL-1 → DEL-2 → DEL-3
 DEL-3 + DEL-4 ─────────→ DEL-7
 ```
 
-Required in M2:
+Required before M3 rule activation:
 
 | Package | Result |
 |---|---|
@@ -292,52 +295,51 @@ Required in M2:
 | `DEL-1` | pure types, canonicalizer, verifier |
 | `DEL-2` | survival format and SDA examination |
 | `DEL-3` | per-Heap durable store, recovery, head |
-| `DEL-4` | signer certificate and rotation |
-| `DEL-7` | Heap-confined read, cursor, and export |
 
-Deferred within Evidence:
+Parallel/non-blocking until required by their consumer:
 
+- `DEL-4` must exit before signed evidence is advertised;
+- `DEL-7` must exit before Studio Evidence or public audit browsing is
+  advertised;
 - `DEL-5` enters M4 because it requires Atomics;
 - `DEL-6`, `DEL-8`, `DEL-9`, and applicable `DEL-11` close in M6;
 - `DEL-10` enters the cluster program.
 
 M2-A exit:
 
-- security and lifecycle events required by the M2 profile survive crash and
-  damage;
-- offline pure verification works; and
-- another Heap cannot observe existence, counts, timing class, cursor state,
-  or records.
+- the durable evidence substrate exists for later DRE/Atomic decisions;
+- its pure verifier and damage behavior pass; and
+- it is Heap-confined.
 
 ### M2-B — Telemetry foundation
 
 Priority: `P1-TRUST`
 
-Order:
+Minimum M2 order:
 
 ```text
-TEL-0 → TEL-1 → TEL-2 → TEL-3 → TEL-4 → TEL-8
+TEL-0 → TEL-1 → TEL-2
 ```
 
 Required result:
 
 - closed bounded registries;
 - Ratatouille is the qualified telemetry path;
-- request, admission, process, transport, read/write, and health sources;
 - no payloads, credentials, raw queries, or arbitrary error text;
-- disconnect/full collector cannot block database work;
-- console output is limited to the developer-console profile; and
-- old production stdout/file telemetry is disabled or explicitly legacy.
+- disconnect/full collector cannot block database work.
+
+`TEL-3`, `TEL-4`, and `TEL-8` continue in parallel during M2–M5 and become M6
+gates. Instrumentation for DRE, Atomics, Direct Access, and Order Wavelets lands
+with its subsystem rather than in advance.
 
 M2-B exit:
 
-- telemetry overhead and drop behavior pass the M2 budget;
-- each enabled field has one named collection point; and
-- health reports telemetry availability without treating it as authority.
+- the bounded emission path and its overhead/drop behavior pass; and
+- later subsystems have one safe telemetry mechanism to integrate with.
 
 ### M2-C — Studio Explorer
 
-Priority: `P1-DX`
+Priority: `P1-DX`, **parallel product lane; not an M2 engine gate**
 
 Order:
 
@@ -357,11 +359,14 @@ Required result:
 - no master-key, raw network escape, wildcard Heap, shell, file, or HTTP
   command.
 
-M2-C exit:
+M2-C release:
 
 - a hostile document/package/server corpus cannot escape the renderer
   boundary; and
 - the M1 critical journey can be observed through Studio without weakening it.
+
+Failure to complete Studio S1 does not block M3. It blocks the Studio S1
+release and remains visible as a DX gap.
 
 ### M2-D — Early-access trust and distribution
 
@@ -379,6 +384,18 @@ Required existing work:
 | hostile parser fuzzing | `DEF-091` |
 | coverage/model evidence | `DEF-092` |
 | reproducible benchmarks | `DEF-093` |
+
+Additional mandatory product work:
+
+- qualified encryption at rest for JSON, bytes, metadata, indexes, backup, and
+  Evidence material in the supported profile;
+- protected local key-provider operation, rotation, backup, and loss behavior;
+- disk-full and read-only recovery;
+- compaction and interrupted-maintenance recovery;
+- bounded streaming larger than RAM;
+- ordinary stable errors and durability receipts;
+- a five-minute Rust journey with zero mandatory service/configuration; and
+- explicit “when SQLite is still the better choice” documentation.
 
 Required release drill:
 
@@ -398,10 +415,14 @@ install
 
 M2 exit:
 
-- M2-A through M2-D pass;
-- Studio S1 Explorer is usable;
+- M2-D passes;
+- `DEL-0`–`DEL-3` pass before M3 rule activation;
+- `TEL-0`–`TEL-2` pass before new performance claims;
 - Rust and CLI quickstarts use the same qualified path; and
 - the release label is no stronger than the passed evidence.
+
+Studio S1, richer Evidence browsing, and full telemetry instrumentation
+continue in parallel but do not hold the mathematical engine idle.
 
 ## 9. M3 — Mathematical Documents
 
@@ -581,13 +602,13 @@ Required completion:
 ### Evidence
 
 ```text
-DEL-6 → DEL-8 → DEL-9 → applicable DEL-11
+DEL-4 → DEL-6 → DEL-7 → DEL-8 → DEL-9 → applicable DEL-11
 ```
 
 ### Telemetry
 
 ```text
-TEL-5 → TEL-6 → TEL-9 → TEL-10
+TEL-3 → TEL-4 → TEL-5 → TEL-6 → TEL-8 → TEL-9 → TEL-10
 ```
 
 ### Studio
@@ -644,18 +665,19 @@ Default order:
 
 | Order | Program | Reason |
 |---:|---|---|
-| `E1` | deterministic text search | broadest missing everyday retrieval |
-| `E2` | massive-retention product | core fifteen-year survival proposition |
+| `E1` | massive-retention product | core fifteen-year survival proposition |
+| `E2` | deterministic text search | rediscover retained material through a general derived-index substrate |
 | `E3` | cluster product | Couchbase/distributed-document competitive tier |
 | `E4` | exact vector, then segmented ANN/hybrid | semantics before approximation |
 | `E5` | geospatial | narrower general workload |
 
-`E2` and `E3` may swap only through an explicit choice:
+`E1` and `E3` may swap only through an explicit choice:
 
 - archive-first targets the long-retention market;
 - cluster-first targets the distributed-document market.
 
-Archive-first is the default.
+Archive-first is the default. Text follows immediately because “remember it
+for fifteen years” is incomplete without a practical way to rediscover it.
 
 ## 14. Permitted preparation
 
@@ -667,7 +689,7 @@ The following preparation may occur without changing release order:
 | after shared DRE predicate semantics freeze | `DDA-0` oracle work |
 | after `DRE-2` | `ATM-0` oracle/profile work |
 | after `DDA-3` order identity freezes | `DOW-0` oracle work |
-| during M6 | E1 common-index substrate specification only |
+| during M6 | E1 archive-adapter/profile specification and E2 common-index substrate specification only |
 
 Preparation means pure models, corpora, schemas, and design validation. It
 does not mean publishing APIs, starting migrations, or claiming capability.
@@ -703,10 +725,11 @@ Until M1 exits:
 During M2:
 
 ```text
-35%  Evidence foundation
-25%  Telemetry foundation
-25%  Studio Explorer
-15%  crash, fuzz, packaging, compatibility, outsider journey
+55%  trustworthy embedded/Heap release gate
+15%  minimum Evidence foundation
+10%  minimum Telemetry foundation
+10%  Studio Explorer parallel lane
+10%  crash/fuzz evidence beyond the active gate
 ```
 
 During M3–M5:
@@ -814,11 +837,11 @@ M0-1 evidence inventory
 → M0-3 enforcement
 → HAR-0…HAR-7
 
-THEN, IN COORDINATED TRACKS:
-Evidence foundation
-+ Telemetry foundation
-+ Studio Explorer
-+ early-access trust gate
+THEN:
+trustworthy SQLite-replacement core
++ minimum Evidence substrate
++ minimum bounded Telemetry path
++ Studio Explorer in parallel, not as an engine gate
 
 THEN:
 DRE document invariants
@@ -828,8 +851,8 @@ DRE document invariants
 → single-node production-candidate qualification
 
 ONLY AFTER THAT:
-text
-→ massive retention
+massive retention
+→ text
 → cluster product
 → vector
 → geospatial

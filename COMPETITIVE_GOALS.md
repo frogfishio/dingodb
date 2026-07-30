@@ -1,10 +1,17 @@
 # DingoDB Competitive Goals
 
-Status: Product strategy v0.1  
+Status: Product strategy v0.1; target checklists retained, execution order
+superseded by [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md)
 Scope: The three competitive stages from embedded database to survivable data
 platform  
 Audience: Product, architecture, implementation, benchmarking, documentation,
 and release engineering
+
+The stage descriptions below remain useful competitor-specific acceptance
+checklists. Their historical numbering is **not** the current implementation
+queue. DingoDB now delivers the trustworthy SQLite-replacement core first,
+then the Mongo-facing mathematical single-node proposition, and only later the
+Couchbase-facing distributed product. `MASTER_DELIVERY_PLAN.md` governs.
 
 ## 1. Purpose
 
