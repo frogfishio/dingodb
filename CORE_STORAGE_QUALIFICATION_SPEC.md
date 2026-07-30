@@ -120,6 +120,10 @@ spec/verification/core-storage/failure-combinations-v1.json
 spec/verification/core-storage/assumptions-v1.json
 spec/verification/core-storage/oracles-v1.json
 spec/verification/core-storage/proofs-v1.json
+spec/verification/core-storage/outcomes-v1.json
+spec/verification/core-storage/projections-v1.json
+spec/verification/core-storage/compositions-v1.json
+spec/verification/core-storage/incidents-v1.json
 spec/verification/core-storage/suites-v1.json
 spec/verification/core-storage/platforms-v1.json
 spec/verification/core-storage/mutations-v1.json
@@ -363,6 +367,22 @@ it not applicable.
 | `CSQ-CON-004` | Async lifecycle completion is fenced before shutdown/reopen claims completion. |
 | `CSQ-CON-005` | No panic, poison, deadlock, livelock, use-after-free, or data race becomes a successful storage result. |
 
+### 7.9 Observation and public projection
+
+These invariants apply to every public surface included by the selected
+profile. Higher profiles repeat them across their additional RPC, cluster, and
+user-interface projections.
+
+| ID | Invariant |
+|---|---|
+| `CSQ-OBS-001` | Every reachable engine outcome has one registered public projection; unknown mappings fail closed. |
+| `CSQ-OBS-002` | Partial, unavailable, conflicting, unsupported, resource-stopped, and incomplete-coverage outcomes cannot become absence, empty success, or a complete result. |
+| `CSQ-OBS-003` | Ownership contention cannot become missing-store discovery, creation, initialization, or an empty logical store. |
+| `CSQ-OBS-004` | Historical/recovered values remain explicitly non-current and recovery reads do not mutate or promote authority. |
+| `CSQ-OBS-005` | Key coverage and body completeness remain separate through paging, filtering, decoding, and convenience APIs. |
+| `CSQ-OBS-006` | Error code, structured detail, retryability, provenance, and achieved durability remain semantically compatible across projections. |
+| `CSQ-OBS-007` | Every critical forbidden-collapse mutant is rejected by at least one independent oracle and public journey. |
+
 ## 8. Operation transition domain
 
 Generated histories draw from:
@@ -387,6 +407,19 @@ writer-contender
 crash/abort/reopen
 inject-damage/inject-resource-fault
 ```
+
+Each generated history is observed through every applicable path:
+
+```text
+independent byte reader
+production Store
+embedded Collection/Heap projection
+packaged CLI/reference application adapter
+```
+
+The outcome comparison includes value, current/historical status, coverage,
+completeness, durability, ownership, retryability, provenance, and resource
+termination.
 
 State generation MUST include:
 
@@ -737,6 +770,28 @@ damage_derived(S)                         preserves authority
 damage_unrelated_unit(S,U)                preserves healthy unit U
 ```
 
+### 12.3 Cross-layer semantic-collapse campaign
+
+For every registered lower outcome, inject or construct it beneath each public
+projection and compare with `outcomes-v1.json` and `projections-v1.json`.
+
+Mandatory negative adapters deliberately implement:
+
+```text
+Err(_)                    -> None
+CoverageIncomplete       -> []
+PayloadPartial           -> empty body
+WriterLockHeld           -> create/open empty
+historical recovered     -> current
+cache absent/corrupt     -> key absent
+timeout/resource stop    -> complete prefix
+```
+
+The suite passes only when each adapter is killed. It additionally exercises
+every named incident composition in `incidents-v1.json`, including
+DEF-098–DEF-104, through the lowest responsible layer and the highest public
+surface in the profile.
+
 ## 13. Limits, allocation, and progress
 
 Test the Cartesian boundary set:
@@ -993,6 +1048,7 @@ CPU/memory/disk/inode/FD/time budgets
 suite IDs and exact commands
 operation/invariant/failure/boundary coverage matrices
 failure-combination coverage and infeasibility constraints
+outcome/projection/forbidden-collapse/composition coverage
 model bounds and explored state/transition counts
 proof obligations, bounds, assumptions, checker versions, and results
 seeds, generator versions, corpora, mutation set
@@ -1052,6 +1108,9 @@ normative profile amendment and explicit capability downgrade.
 - all mandatory composed-failure cells pass;
 - exhaustive bounded kernels pass with disclosed bounds;
 - all mandatory machine-checked obligations pass with live negative controls;
+- every reachable outcome has a total registered projection through every
+  public surface in the profile;
+- every critical forbidden-collapse adapter/mutant is killed;
 - canonical corruption/survival campaigns pass;
 - generated state-machine coverage reaches every registered transition class;
 - P0 mutation catalog is fully killed;

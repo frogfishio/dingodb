@@ -282,6 +282,13 @@ portion of `HAR-6` and its release evidence. This does not alter the HAR gate
 order: work may be prepared in parallel only where the APP plan and this
 master plan both permit it.
 
+The product-gap authority is
+[PRODUCT_DEFICIENCIES.md](PRODUCT_DEFICIENCIES.md). Before `APP-2` begins, the
+APP plan MUST be amended with exact packages for the Application Foundation
+subset: `PD-001`, `PD-002`, `PD-004`, `PD-006`, `PD-007`, `PD-009`, `PD-011`,
+and `PD-023`. Existing APP-0 fixtures remain evidence; they do not freeze the
+known omissions as the final baseline.
+
 ### Required order
 
 | Order | Package | Deliverable | Hard exit |
@@ -343,6 +350,7 @@ it, the release is explicitly:
 M1 exit:
 
 - all applicable HAR packages are `accept`;
+- the Application Foundation deficiency subset named above is accepted;
 - the critical journey passes locally and in CI;
 - `qualified` and public wording match the qualification matrix; and
 - M2 foundation packages become `ready`.
@@ -471,6 +479,8 @@ Required existing work:
 
 Additional mandatory product work:
 
+- close `PD-003`, `PD-005`, `PD-008`, `PD-010`, `PD-012`, and `PD-013` so the
+  complete `dingo-application-baseline-v1` accepts;
 - qualified encryption at rest for JSON, bytes, metadata, indexes, backup, and
   Evidence material in the supported profile;
 - protected local key-provider operation, rotation, backup, and loss behavior;
@@ -500,6 +510,7 @@ install
 M2 exit:
 
 - M2-D passes;
+- `dingo-application-baseline-v1` passes;
 - `DEL-0`–`DEL-3` pass before M3 rule activation;
 - `TEL-0`–`TEL-2` pass before new performance claims;
 - Rust and CLI quickstarts use the same qualified path; and

@@ -53,13 +53,19 @@ Deliver:
 spec/verification/claims-v1.json
 spec/verification/suites-v1.json
 spec/verification/profiles-v1.json
+spec/verification/outcomes-v1.json
+spec/verification/projections-v1.json
+spec/verification/compositions-v1.json
+spec/verification/incidents-v1.json
 spec/verification/report-v1.schema.json
 spec/verification/vectors/
 ```
 
-Define claim, invariant, oracle and suite IDs; profiles; assurance levels;
-result states; platform/resources; attachments/hashes; skips; infrastructure
-failure; and compatibility rules.
+Define claim, invariant, oracle and suite IDs; profiles; semantic outcomes;
+total public-surface projections; forbidden collapses; required feature
+compositions; incident regressions; assurance levels; result states;
+platform/resources; attachments/hashes; skips; infrastructure failure; and
+compatibility rules.
 
 Tests:
 
@@ -67,12 +73,15 @@ Tests:
 - duplicate/unknown ID rejection;
 - dependency-cycle rejection;
 - missing oracle/suite rejection;
+- non-total projection and forbidden-collapse rejection;
+- unowned composition/incident rejection;
 - canonical report encoding; and
 - report tampering.
 
 Exit:
 
 - every currently advertised capability is registered at its honest level;
+- every stable public operation has a total outcome mapping;
 - no public claim is inferred; and
 - Rust and JSON validators agree.
 
@@ -125,6 +134,11 @@ Work:
 6. identify targets absent from CI;
 7. update `VERIFICATION_STATUS.md`; and
 8. update master-plan readiness from evidence.
+
+Additionally enumerate every stable Store/SDK/RPC/CLI operation and compare its
+reachable lower outcomes with the states its public type can express. Any
+unrepresentable uncertainty, coverage, ownership, or historical/current
+distinction becomes a defect or an explicit fail-closed mapping.
 
 Exit:
 
@@ -204,6 +218,8 @@ verification system.
 Deliver:
 
 - independent sequential event/store model;
+- observation algebra and forbidden-collapse oracle;
+- Store → Collection projection differential;
 - generated operation histories;
 - failpoint registry for every durable boundary;
 - old/new/unknown crash oracle;
@@ -212,13 +228,16 @@ Deliver:
 - derived-state rebuild differential checks; and
 - near-full disk campaign.
 
-Operations include create/open, put/delete/chunk, seal/checkpoint/compact,
-indexes, backup/restore, scrub, migrate, and tier movement.
+Operations include create/open/lock/inspect, put/delete/chunk, current and exact
+historical reads, key/partial document scans, seal/checkpoint/compact, indexes,
+backup/restore, scrub, migrate, and tier movement.
 
 Exit:
 
 - no publication boundary lacks a failpoint or justification;
 - generated histories match the model;
+- every DEF-098…DEF-104 incident invariant and projection has a permanent
+  regression and deliberately broken fixture;
 - the full matrix cannot silently skip; and
 - V2 A2 evidence is reproducible.
 
@@ -258,6 +277,8 @@ Deliver:
 - embedded versus remote;
 - page concatenation versus frozen result;
 - damaged/offline/incomplete coverage;
+- key coverage versus body completeness;
+- partial-aware results versus legacy fail-closed projections;
 - resource truncation;
 - token forgery/binding/expiry; and
 - future DRE/DDA/DOW adapters.
@@ -266,6 +287,7 @@ Exit:
 
 - every accelerator has differential evidence;
 - incomplete coverage never proves absence;
+- verified keys remain visible when only their bodies are incomplete;
 - paging neither duplicates nor loses rows;
 - forged/cross-view cursors reject before execution; and
 - query work remains bounded.
@@ -277,6 +299,7 @@ Depends: `VFY-2`, `VFY-5`–`VFY-7`
 Deliver:
 
 - framed protocol state-machine generator;
+- generated semantic-outcome parity across embedded and remote operations;
 - malformed/oversized/slow-client corpus;
 - connection churn/overload;
 - TLS/mTLS/certificate matrix;
@@ -289,7 +312,9 @@ Exit:
 
 - hostile load remains bounded;
 - ambiguous failure cannot duplicate a mutation;
-- every active RPC has golden/adversarial vectors; and
+- every active RPC has golden/adversarial vectors;
+- no RPC/SDK mapping collapses uncertainty, coverage, ownership, or history;
+  and
 - V4 reaches its declared level.
 
 ## 12. VFY-9 — Fuzz, sanitizer and concurrency
@@ -305,7 +330,8 @@ Deliver:
 - continuous fuzz integration;
 - Miri/sanitizer jobs;
 - Loom/Shuttle models;
-- mutation testing of critical decisions; and
+- mutation testing of critical decisions;
+- mandatory mutants for every registered forbidden semantic collapse; and
 - coverage publication.
 
 Exit:
@@ -327,8 +353,10 @@ Deliver:
 - backup/evidence/migration fixtures;
 - CLI/config/protocol golden outputs;
 - install/upgrade/rollback journeys;
-- OS/filesystem matrix; and
-- clean packaged-artifact harness.
+- OS/filesystem matrix;
+- clean packaged-artifact harness; and
+- reference application adapters that visibly distinguish empty, incomplete,
+  locked, damaged, and historical states.
 
 Exit:
 

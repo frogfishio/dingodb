@@ -287,6 +287,24 @@ incident artifact
 
 The incident is not closed merely because the symptom disappears.
 
+### 6A.5 Semantic-width gate
+
+A P0/P1 capability cannot enter implementation or qualification until:
+
+- the reachable-state and public-outcome sets are enumerated;
+- every format → engine → SDK → protocol projection is total;
+- forbidden collapses are registered;
+- every compatible P0-domain pair has a test/proof disposition;
+- at least one deliberately broken fixture proves each critical oracle is
+  capable of failing;
+- a reviewer other than the implementation author performs the invariant
+  discovery checklist; and
+- unresolved questions become named defects, exclusions, or rejected claims.
+
+The gate records candidate invariants considered and rejected, with reasons.
+This prevents “we did not think of it” from being indistinguishable from “not
+applicable.”
+
 ## 7. Oracle doctrine
 
 ### 7.1 Independent oracles
@@ -712,6 +730,8 @@ A named profile reaches a named assurance level only when:
 6. evidence binds exact source and artifacts;
 7. exclusions are compatible with the claim;
 8. capability documentation matches; and
-9. the release verifier independently validates the bundle.
+9. every public projection is total and every forbidden collapse is killed;
+10. required feature compositions and incident journeys pass; and
+11. the release verifier independently validates the bundle.
 
 That is how DingoDB knows what works—and what has not yet been proved.

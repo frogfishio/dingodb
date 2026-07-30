@@ -20,6 +20,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Core storage invariants, failure model, and qualification suite | [CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md), [implementation plan](doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | First Heap-bound Rust application API and DQL delivery package | [doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) |
+| Missing application APIs and product-capability closure | [PRODUCT_DEFICIENCIES.md](PRODUCT_DEFICIENCIES.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |
 | Dingo Query Language (v1 design; shipped parser is v0.1 subset) | [DQL_SPEC.md](DQL_SPEC.md), current-subset guide [doc/DQL/USER_GUIDE.md](doc/DQL/USER_GUIDE.md) |
 | Exact ranked query access and rank/select substrate | [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md) |

@@ -83,8 +83,9 @@ Work:
 - implement the minimum common `VFY-0` registry framework needed to import the
   core-storage namespace; do not create a second incompatible registry;
 - encode every invariant, operation, failure class, boundary, oracle, suite,
-  failure combination, assumption, proof, platform, mutation, and dependency
-  from the specification;
+  failure combination, assumption, proof, semantic outcome, projection,
+  forbidden collapse, composition, incident, platform, mutation, and
+  dependency from the specification;
 - import/replace the hand-maintained `crash_matrix.v1.json` without losing
   historical IDs;
 - define canonical result/evidence encoding;
@@ -99,6 +100,8 @@ Exit:
 - no production store operation or error is unregistered;
 - every claim has invariant/oracle/suite paths;
 - every proof obligation and failure-combination cell has an executable owner;
+- every reachable lower outcome has a total public projection and every
+  forbidden collapse has an owned mutant;
 - Rust and JSON validators agree;
 - dependency cycles and dishonest `not applicable` entries reject.
 
@@ -187,6 +190,7 @@ Deliver:
 - exact historical reads, bounded last-complete searches, and tombstone/gap
   policies;
 - coverage-aware key/document scan model comparisons;
+- Store → Collection/reference-adapter semantic projection differential;
 - model comparison after every step;
 - reopen/rebuild/continue transformations;
 - coverage report for every transition class; and
@@ -196,6 +200,7 @@ Exit:
 
 - every registered ordinary state transition is reached;
 - `CSQ-ID-*`, `ACK-*`, `PUB-*`, `GEN-*`, `HIST-*`, and `ABS-*` pass;
+- all applicable `CSQ-OBS-*` pass;
 - every minimized failure is exactly replayable.
 
 ## 9. CSQ-5 — Crash, process, filesystem, and device faults

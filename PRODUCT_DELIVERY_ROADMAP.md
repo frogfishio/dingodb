@@ -16,6 +16,7 @@ Companions:
 [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md),
 [doc/PRIME_TIME_PLAN.md](doc/PRIME_TIME_PLAN.md),
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md),
+[PRODUCT_DEFICIENCIES.md](PRODUCT_DEFICIENCIES.md),
 [EVIDENCE_LEDGER_SPEC.md](EVIDENCE_LEDGER_SPEC.md),
 [TELEMETRY_SPEC.md](TELEMETRY_SPEC.md), and
 [doc/STUDIO_IMPLEMENTATION_PLAN.md](doc/STUDIO_IMPLEMENTATION_PLAN.md).
@@ -27,6 +28,8 @@ DingoDB has one engine critical path and two supporting delivery lanes:
 ```text
 ENGINE
 Heap Application Ready
+        ↓
+Application Baseline
         ↓
 Trustworthy SQLite-replacement core
         ↓
