@@ -2393,6 +2393,501 @@ Acceptance:
 - Secret material never appears in logs, diagnostics, SDA projections, or
   unwrapped backups.
 
+### DEF-098 — Make chunked values generation-exact, bounded, and directly addressable
+
+Priority: **P0**
+Dependencies: none for correctness containment; DEF-022 for crash evidence;
+DEF-029 for resource-profile integration; DEF-095 for locator-cache conventions
+Status: **open — high severity**
+
+Release impact:
+
+- blocks embedded early access and every later production milestone;
+- blocks any claim that an acknowledged large value remains ordinarily readable
+  until actual damage is observed;
+- requires immediate application guidance for append-heavy documents such as
+  transcripts.
+
+#### Finding
+
+Large logical values are split into independently verified payload-chunk frames
+and one item-event manifest. The current manifest correctly records, in order:
+
+```text
+content_hash
+logical_total_len
+chunk_count
+for each logical slot:
+    chunk_event_id
+    logical_len
+```
+
+The current read path does not use that generation identity. It calls
+`collect_chunk_pieces(item_id)`, scans every segment, and collects every
+payload chunk with the subject's stable item-lineage ID. The item ID is retained
+when the same key is replaced. Consequently, two chunked writes to the same key
+may contribute different verified bodies for the same chunk index.
+
+The generic reassembler correctly classifies those bodies as conflicting.
+Ordinary `get` then collapses partial, unavailable, and conflicting results to
+`PayloadPartial`. Thus a later, fully durable value can become unreadable even
+when:
+
+- every chunk of the current value is present and verifies;
+- the current manifest is present and verifies;
+- no storage byte was lost or corrupted; and
+- the only additional evidence is an older valid version of the same key.
+
+This is a correctness defect, not merely a poor large-document recommendation.
+The manifest already contains the information required to select the correct
+generation, but the read algorithm discards it.
+
+The exact regression shape is:
+
+```text
+put(K, large A, durable) -> acknowledged
+put(K, large B, durable) -> acknowledged
+get(K)                   -> PayloadPartial/Conflicting
+expected                 -> exactly B
+```
+
+The risk is especially high for transcripts, timelines, snapshots, and other
+documents repeatedly replaced under one stable key after crossing the chunk
+threshold.
+
+#### Adjacent defects exposed by the same incident
+
+##### A. No coherent logical-value size contract
+
+Current effective boundaries differ by surface:
+
+- direct `dingo-store` chunks values above the soft threshold without first
+  applying one declared logical-value ceiling;
+- the ordinary SDK applies a 16 MiB payload ceiling;
+- remote use is also bounded by payload and negotiated RPC-frame limits;
+- frame scanners default to a 16 MiB stored-body ceiling;
+- a chunk manifest grows by 24 bytes per chunk in addition to its fixed
+  header;
+- chunk splitting, frame construction, and complete reassembly allocate memory
+  proportional to the logical value.
+
+“Limited by available disk” is therefore not a valid contract. In particular,
+the low-level chunk writer uses the parts append path and can construct values
+whose manifest or memory requirement is outside the normal scanner/resource
+profile. A writer must never acknowledge an object that the same supported
+profile cannot subsequently scan and reconstruct.
+
+##### B. Chunked point reads are proportional to the store
+
+`collect_chunk_pieces` reads every candidate segment file and scans every
+verified frame for each chunked `get`. Its effective cost is:
+
+```text
+O(total physical segment bytes + logical payload bytes)
+```
+
+The required hot-path cost is:
+
+```text
+O(manifest chunk count + logical payload bytes)
+```
+
+This is a severe scale defect. A single transcript open must not rescan a
+multi-terabyte store.
+
+##### C. Ordinary errors erase the distinction between damage classes
+
+The completeness-aware path distinguishes:
+
+- partial;
+- unavailable; and
+- conflicting.
+
+Ordinary `get` maps all three to `PayloadPartial`. This hides the difference
+between missing media and contradictory verified evidence, impeding correct
+repair, incident diagnosis, and application policy.
+
+##### D. Byte survival is not structured-document survival
+
+Arbitrary 16 KiB byte chunks are independently recoverable, but arbitrary
+surviving fragments of a JSON encoding are not necessarily parseable JSON.
+A monolithic transcript may therefore retain most physical bytes while losing
+all ordinary document-level readability after one missing chunk.
+
+This does not violate the byte-survival format rule: `get_payload` can expose
+verified surviving extents. It does mean DingoDB must not imply that chunking
+alone makes every field or array element independently examinable.
+
+#### Immediate containment
+
+Until this defect closes:
+
+1. document that repeatedly replaced chunked values are unsafe for ordinary
+   reads;
+2. do not diagnose `PayloadPartial` as physical chunk loss without inspecting
+   the completeness-aware result;
+3. do not silently overwrite a partial/conflicting value with an empty or
+   reconstructed default;
+4. store append-heavy transcripts as independently addressed turns or bounded
+   blocks rather than one ever-growing JSON document;
+5. keep the large-value profile experimental and exclude it from performance
+   claims; and
+6. add telemetry counters for `partial`, `unavailable`, and `conflicting`
+   without logging subjects, values, chunk bodies, or secret Heap material.
+
+The 64 KiB threshold is a storage-layout switch, not a supported-document-size
+promise. With the current strict comparison, an encoded body is chunked only
+when `len > DEFAULT_CHUNK_THRESHOLD`; exactly 64 KiB remains inline under
+defaults.
+
+#### Normative invariants
+
+For manifest `M`, let:
+
+```text
+M.slots[i] = (event_id_i, logical_len_i)
+Current(M) = the verified chunk frame whose frame event ID is event_id_i
+             and whose decoded slot is exactly i
+```
+
+A conforming read MUST satisfy:
+
+```text
+Selected(M) =
+  [ Current(M)[0], Current(M)[1], ..., Current(M)[n-1] ]
+```
+
+It MUST NOT select a chunk merely because its `item_id`, subject, index, total,
+segment, or content resembles a required chunk.
+
+For every selected slot `i`, validate all of:
+
+```text
+frame.kind              = PayloadChunk
+frame.event_id          = M.slots[i].event_id
+piece.item_id           = current manifest item_id
+piece.index             = i
+piece.total             = M.slots.len
+piece.logical_len       = M.slots[i].logical_len
+piece.logical_len       = decoded payload length
+```
+
+For the manifest, validate:
+
+```text
+M.logical_total_len = sum(M.slots[*].logical_len)
+M.slots.len         fits the declared chunk-count profile
+encoded_len(M)      fits max_body_len
+reassembled length  = M.logical_total_len
+hash(reassembled)   = M.content_hash
+```
+
+Failure classification is exact:
+
+| Evidence | Result |
+|---|---|
+| every exact required event verifies and full hash agrees | `Complete` |
+| some exact required events verify and some are absent/unavailable | `Partial` |
+| no exact required event is available | `Unavailable` |
+| one required event ID has contradictory verified frames, or its decoded metadata disagrees with its slot | `Conflicting` |
+| unrelated older/newer chunks exist | ignored for current read; retained for history/salvage |
+
+No fallback may substitute a same-index chunk from another generation.
+
+#### Exact implementation
+
+##### 1. Make manifest membership part of the reassembly type
+
+Replace the unqualified store call:
+
+```text
+collect_chunk_pieces(item_id)
+```
+
+with a manifest-qualified operation:
+
+```text
+resolve_manifest_chunks(current_item_id, manifest, read_budget)
+```
+
+The resolved input to reassembly must retain both identities:
+
+```text
+ResolvedChunk {
+    frame_event_id
+    segment_id
+    frame_offset
+    piece
+    verified_body_hash
+}
+```
+
+Change `reassemble_with_manifest` to accept resolved chunks containing frame
+event IDs. It validates membership and slot metadata itself. Do not depend only
+on callers to pre-filter correctly.
+
+Build a bounded expected map from the manifest:
+
+```text
+chunk_event_id -> expected slot index and logical length
+```
+
+Reject duplicate event IDs in one manifest. While reading frames, ignore event
+IDs absent from this map. For an expected event ID, preserve all physically
+distinct verified candidates long enough to detect identical duplicates versus
+conflicting evidence.
+
+The existing on-disk manifest already contains event IDs, so the correctness
+fix requires no wire-major or frame-format migration.
+
+##### 2. Add a derived chunk locator
+
+Introduce a rebuildable locator:
+
+```text
+ChunkEventId ->
+    one or more {
+        segment_id,
+        media/tier identity,
+        frame_offset,
+        frame_len,
+        item_id,
+        chunk_index,
+        chunk_total,
+        logical_len,
+        verified_body_hash
+    }
+```
+
+Rules:
+
+- build it during the same authoritative scan that rebuilds the primary index;
+- update it after a chunk append becomes durably visible;
+- fingerprint/fence persisted locator caches using the same source-generation
+  discipline as other derived indexes;
+- update or rebuild it after compaction, tier movement, restore, and salvage;
+- retain multiple locators for physical duplicates;
+- retain a conflict marker when one event ID has differing verified content;
+- never make the locator authoritative;
+- never infer absence from a stale or incomplete locator.
+
+The ordinary read path:
+
+1. resolves the current item-event manifest;
+2. performs one locator lookup for each manifest event ID;
+3. uses bounded frame preads for the located frames;
+4. independently verifies every frame and slot;
+5. returns the exact completeness class.
+
+If the locator cannot prove coverage, the read returns explicit incomplete
+coverage or uses a separately budgeted diagnostic rebuild. It MUST NOT perform
+an unbounded full-store scan invisibly on the point-read hot path.
+
+##### 3. Enforce logical-value admission before effect
+
+Add `max_logical_payload_bytes` to the store/resource profile.
+
+For the stable v1 application profile:
+
+```text
+default max logical encoded payload = 16 MiB
+default chunk threshold             = 64 KiB
+default chunk payload size          = 16 KiB
+```
+
+The logical ceiling includes the SDK JSON/bytes type tag. The same effective
+ceiling applies to embedded Heap, ordinary SDK, qualified remote server, and
+cluster admission. The effective limit is the minimum of client, server,
+store, and negotiated transport policy and is reported in diagnostics.
+
+Before minting event IDs, starting/rotating a segment, allocating all pieces,
+or appending a frame:
+
+1. checked-convert the logical length;
+2. reject `logical_len > max_logical_payload_bytes`;
+3. checked-compute `ceil(logical_len / chunk_size)`;
+4. require a non-zero valid chunk size;
+5. require the chunk count to fit the manifest and `u32`;
+6. checked-compute manifest encoded length;
+7. require every chunk frame and the manifest frame to satisfy the active
+   `SafetyLimits`;
+8. require estimated peak write/reassembly memory to fit the host operation
+   budget; and
+9. return `PayloadTooLarge`/`ResourceLimit` with zero durable effect on failure.
+
+Low-level deployments that explicitly raise the 16 MiB default use a labelled
+experimental large-value profile. The raised value is still bounded by all
+checked manifest, frame, allocation, and address-space constraints. Raising an
+RPC limit alone does not raise the store limit.
+
+Existing readable values above a newly configured admission ceiling remain
+readable and salvageable. The ceiling governs new/replacement writes. Opening
+an existing store MUST NOT discard a large value merely because current write
+policy is tighter.
+
+##### 4. Preserve atomic publication and make it exhaustive
+
+For `Durable`:
+
+```text
+append all exact chunk frames
+append their manifest item event
+write complete pending tail
+fsync the containing durability domain
+publish current primary-index event
+return receipt
+```
+
+No durable success receipt is returned before every current-generation chunk
+and the manifest cross the same documented durability boundary.
+
+Recovery rules:
+
+- chunks without a complete published manifest are orphan evidence, not a
+  current value;
+- a torn/absent unacknowledged manifest leaves the prior current value visible;
+- a complete manifest with missing current-generation chunks is explicit
+  partial evidence;
+- old-generation chunks cannot complete a new manifest;
+- a durable acknowledged rewrite reopens as exactly the new value.
+
+`Buffered` and `Memory` retain their weaker documented failure boundaries and
+must never be described as durable.
+
+##### 5. Expose exact damage semantics
+
+Keep the completeness-aware API as the recovery authority. Ordinary `get`
+maps:
+
+```text
+Partial       -> PayloadPartial
+Unavailable   -> PayloadPartial with completeness=unavailable
+Conflicting   -> DataDamaged with damage_kind=payload_conflict
+```
+
+If changing the public error shape requires a compatibility phase, add
+structured detail first and retain the old broad code temporarily. Telemetry,
+doctor, scrub, and Dingo Studio show the exact class, missing slot count,
+conflict slot, expected event IDs, and affected tier—never payload bytes.
+
+Repair may fetch an exact missing `chunk_event_id` from an authenticated replica
+or backup. It MUST NOT repair using “same item and index” alone.
+
+##### 6. Define the structured-survival boundary
+
+Documentation and APIs distinguish:
+
+```text
+physical chunk survival
+    verified byte extents can survive independently
+
+structured document usability
+    requires a complete valid encoding unless a separate structured-segment
+    profile defines independently decodable components
+```
+
+For transcripts and append-heavy timelines, the supported pattern is:
+
+```text
+transcript/{id}/meta
+transcript/{id}/turn/{monotonic-id}
+transcript/{id}/timeline/{bounded-block-id}
+```
+
+Each turn/block is an independently meaningful Dingo value. Optional aggregate
+snapshots are derived and replaceable. Losing one unit does not make surviving
+units unqueryable.
+
+A future structured-segment format may make top-level fields or array blocks
+independently decodable, but it requires a normative format and must not be
+invented inside this defect. Arbitrary byte chunks are not relabelled as
+structured fragments.
+
+#### Required tests
+
+Correctness:
+
+- inline → chunked replacement;
+- chunked A → different chunked B under the same key;
+- same-size, larger, and smaller chunked replacements;
+- replacement where only one chunk changes;
+- identical replacement and physical duplicate frames;
+- chunked → inline → chunked history;
+- many consecutive chunked generations;
+- old conflicting chunks present while the current generation is complete;
+- current event ID duplicated identically;
+- current event ID duplicated with different verified content;
+- wrong item ID, index, total, length, or event ID;
+- malformed/duplicate manifest event IDs;
+- full body present but content hash mismatch;
+- missing first, middle, last, many, and all current chunks.
+
+Crash/fault injection:
+
+- before and after every chunk append;
+- before and after manifest append;
+- partial tail write in chunks and manifest;
+- before and after flush/fsync;
+- before and after primary-index publication;
+- crash during replacement with a prior inline value;
+- crash during replacement with a prior chunked value;
+- reopen, index-cache deletion, full rebuild, compaction, and tier move after
+  every acknowledged/unacknowledged outcome.
+
+Limits:
+
+- threshold minus one, exactly threshold, and threshold plus one;
+- logical limit minus one, exactly limit, and limit plus one;
+- manifest length exactly at and one byte beyond frame limits;
+- zero/tiny/oversized chunk-size configuration;
+- checked arithmetic near integer boundaries without allocating the claimed
+  size;
+- client/server/store limit mismatch uses the tightest value;
+- rejection produces no chunk, manifest, receipt, catalog, or index effect;
+- pre-existing above-policy values remain readable.
+
+Performance and boundedness:
+
+- point-read bytes examined are bounded by manifest plus referenced frames;
+- point-read work is invariant when unrelated store size grows;
+- no full segment `fs::read` occurs on the ordinary chunked-get path;
+- peak memory stays within the declared operation budget;
+- cold/offline tier locators produce honest partial coverage;
+- locator deletion/corruption rebuilds without changing logical results;
+- compaction and restore update/rebuild locators correctly.
+
+Application journey:
+
+- repeatedly append a long transcript using independent turn records;
+- inject damage into one turn;
+- all unaffected turns remain queryable and ordered;
+- aggregate snapshot failure does not become transcript absence;
+- no recovery path overwrites partial evidence with an empty document.
+
+#### Acceptance
+
+DEF-098 is accepted only when:
+
+- the deterministic chunked-overwrite regression returns exactly the latest
+  value before and after reopen;
+- current-manifest event IDs are enforced by the reassembler, not merely by one
+  caller;
+- old generations cannot cause current partial/conflict results;
+- every supported write surface reports and enforces one effective logical
+  payload limit before effect;
+- a supported writer cannot acknowledge a value outside its reader/scanner
+  profile;
+- ordinary chunked point reads use exact locators and do not scan the dataset;
+- partial, unavailable, and conflicting evidence remain distinguishable;
+- crash/rebuild/compaction/tier tests preserve the same result;
+- transcript guidance and an executable survival journey are published;
+- the chunked payload benchmark reports p50/p95/p99 latency, bytes read, frames
+  verified, peak RSS, payload size/chunk count, durability, and unrelated
+  dataset size; and
+- the incident cause is recorded as generation conflict, real missing chunks,
+  weaker durability, or another evidenced class—never guessed from the broad
+  `PayloadPartial` error alone.
+
 ---
 
 ## 16. Production release gates
@@ -2409,12 +2904,21 @@ DingoDB may be called production-ready only when all applicable gates pass.
 - [ ] Ordinary reads and queries never convert incomplete coverage into absence.
 - [ ] Derived state never gets ahead of authoritative durable state.
 - [ ] Exclusive writer ownership is enforced.
+- [ ] Replacing a chunked value selects only the exact chunk event IDs named by
+      its current manifest; old generations cannot create false partials or
+      conflicts (DEF-098).
+- [ ] Every write surface rejects an over-limit logical payload before durable
+      effect, and no supported writer can emit a value its reader profile
+      rejects (DEF-098).
 
 ### 16.2 Single-node gates
 
 - [ ] Crash matrix passes for create, append, chunk, delete, seal, compact,
       checkpoint, tier transfer, and metadata update.
 - [ ] True bounded-memory scans pass datasets larger than RAM.
+- [ ] Chunked point reads are proportional to the referenced payload, not total
+      store size, and preserve exact partial/unavailable/conflicting evidence
+      (DEF-098).
 - [ ] Concurrent server load remains bounded and graceful under overload.
 - [ ] Backup, restore, scrub, and format migration are exercised from released
       artifacts.
@@ -2473,7 +2977,7 @@ DingoDB may be called production-ready only when all applicable gates pass.
 ### Milestone A — Truthful embedded early access
 
 Required: DEF-001, DEF-003, DEF-010–014, DEF-020–026, DEF-029, DEF-050,
-DEF-060, DEF-061, and DEF-090–092.
+DEF-060, DEF-061, DEF-090–092, and DEF-098.
 
 Outcome: a supportable embedded store with explicit early-access limits.
 
