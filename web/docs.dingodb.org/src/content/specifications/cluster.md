@@ -6,7 +6,7 @@ description: Cluster federation and Raft-related contracts.
 class: specification
 status: experimental
 section: specifications
-order: 9
+order: 10
 applies_to:
   product: 0.2
   surface: network-multi-node

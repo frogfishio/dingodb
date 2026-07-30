@@ -13,8 +13,10 @@ Artifact profile: `dingo-dre-artifact-v1`
 Scope: Declarative document rules, transition rules, referential integrity,
 formal semantics, proof obligations, and Atomic enforcement
 
-Normative companions: `ATOMICS_PROPOSAL.md`, `HEAP_SPEC.md`, `DQL_SPEC.md`,
-`DINGO_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`, and `DX_SPEC.md`
+Normative companions: `ATOMICS_SPEC.md`, `HEAP_SPEC.md`, `DQL_SPEC.md`,
+`DINGO_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`,
+`COLLECTION_CONTRACT_SPEC.md`, `doc/DRE_IMPLEMENTATION_PLAN.md`, and
+`DX_SPEC.md`
 
 Compatibility importer: `JSON_SCHEMA_TO_DRE_SPEC.md`
 

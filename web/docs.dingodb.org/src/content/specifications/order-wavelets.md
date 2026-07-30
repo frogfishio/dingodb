@@ -6,7 +6,7 @@ description: Order-preserving index research design.
 class: specification
 status: design
 section: specifications
-order: 8
+order: 9
 applies_to:
   product: 0.2
   surface: design-only

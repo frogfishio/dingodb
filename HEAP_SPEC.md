@@ -11,8 +11,9 @@ Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
 Audience: SDK, server, cluster, storage, security, recovery, CLI, and test-rig
 implementers
-Companion contracts: `ATOMICS_PROPOSAL.md`, `DRE_SPEC.md`,
-`DX_SPEC.md`, `CLUSTER_SPEC.md`, and `doc/LICENSING.md`
+Companion contracts: `ATOMICS_SPEC.md`, `DRE_SPEC.md`,
+`COLLECTION_CONTRACT_SPEC.md`, `DX_SPEC.md`, `CLUSTER_SPEC.md`,
+`doc/HEAP_APPLICATION_READY_PLAN.md`, and `doc/LICENSING.md`
 
 ### Normative language
 
@@ -2693,7 +2694,7 @@ add a field without restarting and loading a newly qualified registry.
 
 DingoDB Atomics are heap-local in v1. A transaction-shaped compatibility API
 is one possible client surface over Atomics; it does not weaken or replace the
-`ATOMICS_PROPOSAL.md` execution and recovery model.
+`ATOMICS_SPEC.md` execution and recovery model.
 
 Every atomic unit binds one `HeapId` at creation. Attempts to use collections
 from another heap fail before mutation.

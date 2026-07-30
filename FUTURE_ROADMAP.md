@@ -7,7 +7,7 @@ Scope: deterministic text search, vector search, and geospatial search
 Audience: product designers, spec authors, and future implementers
 Companions: [OVERVIEW.md](OVERVIEW.md),
 [INDEXING_STRATEGY_PROPOSAL.md](INDEXING_STRATEGY_PROPOSAL.md),
-[ATOMICS_PROPOSAL.md](ATOMICS_PROPOSAL.md), [DQL_SPEC.md](DQL_SPEC.md),
+[ATOMICS_SPEC.md](ATOMICS_SPEC.md), [DQL_SPEC.md](DQL_SPEC.md),
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [SDA_PROFILE.md](SDA_PROFILE.md), and [HEAP_SPEC.md](HEAP_SPEC.md)
 

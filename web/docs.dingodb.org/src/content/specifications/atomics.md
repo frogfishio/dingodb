@@ -1,8 +1,8 @@
 ---
 last_verified: 2026-07-30
 claim_ids:
-title: Atomics proposal
-description: Atomic multi-subject operations proposal.
+title: Atomics
+description: Bounded serializable state transitions and relationship integrity.
 class: specification
 status: design
 section: specifications
@@ -11,17 +11,17 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: ATOMICS_PROPOSAL.md
+  path: ATOMICS_SPEC.md
 owners:
   - specs
 keywords:
   - atomics
-spec_state: exploratory
+spec_state: draft
 ---
 
 ## Document state
 
-**Exploratory**.
+**Normative design draft**.
 
 ## Product capability
 
@@ -29,4 +29,4 @@ spec_state: exploratory
 
 ## Source
 
-https://github.com/frogfishio/dingodb/blob/main/ATOMICS_PROPOSAL.md
+https://github.com/frogfishio/dingodb/blob/main/ATOMICS_SPEC.md

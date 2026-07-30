@@ -24,6 +24,8 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Filter-conditioned sorting without prefix enumeration | [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md) |
 | Shared total predicate semantics for DQL and DRE | [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md) |
 | Dingo Rule Expression (DRE) constraint language and Invariant Core | [DRE_SPEC.md](DRE_SPEC.md) |
+| Collection-owned behaviour and default scope confinement | [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md) |
+| Bounded serializable state transitions and relationship integrity | [ATOMICS_SPEC.md](ATOMICS_SPEC.md) |
 | SQL-ish+ executable surface and SQL→DQL compiler | [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md) |
 | JSON Schema Draft 2020-12 import into DRE | [JSON_SCHEMA_TO_DRE_SPEC.md](JSON_SCHEMA_TO_DRE_SPEC.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
@@ -36,6 +38,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Three-stage competitive goals and exit gates | [COMPETITIVE_GOALS.md](COMPETITIVE_GOALS.md) |
 | Staged delivery and exit criteria | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) |
 | Doctrine implementation gap map | [doc/DOCTRINE_GAPS.md](doc/DOCTRINE_GAPS.md) |
+| Post-Heap implementation sequence and package gates | [NEXT_BUILD_PLAN.md](NEXT_BUILD_PLAN.md), [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md) |
 
 Prefer amending a named section of a normative doc before inventing new behavior.
 

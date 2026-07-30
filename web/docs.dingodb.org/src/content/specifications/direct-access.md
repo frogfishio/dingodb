@@ -6,7 +6,7 @@ description: DDA design for external tooling access.
 class: specification
 status: design
 section: specifications
-order: 7
+order: 8
 applies_to:
   product: 0.2
   surface: design-only

@@ -12,7 +12,7 @@ Audience: migration-tool, schema, compiler, SDK, and conformance implementers
 
 Normative companions: [DRE_SPEC.md](DRE_SPEC.md),
 [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md), and
-[ATOMICS_PROPOSAL.md](ATOMICS_PROPOSAL.md)
+[ATOMICS_SPEC.md](ATOMICS_SPEC.md)
 
 Authoritative source specifications:
 

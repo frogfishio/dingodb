@@ -1,12 +1,18 @@
 # DingoDB Atomics proposal
 
-Status: Exploratory umbrella draft v0.2
+Status: Historical exploratory source; superseded for implementation by
+[ATOMICS_SPEC.md](ATOMICS_SPEC.md)
 
 Scope: Bounded indivisible state transitions, integrity invariants, commit
 evidence, and transaction compatibility
 
-Companions: `DRE_SPEC.md`, `HEAP_SPEC.md`, `DX_SPEC.md`,
+Companions: `ATOMICS_SPEC.md`, `DRE_SPEC.md`, `HEAP_SPEC.md`, `DX_SPEC.md`,
 `TRANSACTIONS.md`, `CLUSTER_SPEC.md`, and `DATABASE_DOCTRINE.md`
+
+This document preserves the product reasoning and research space. Developers
+MUST use `ATOMICS_SPEC.md` and `doc/ATOMICS_IMPLEMENTATION_PLAN.md` for v1
+behavior. If this proposal conflicts with either, the normative specification
+wins.
 
 ## 1. The idea
 

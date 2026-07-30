@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Alexander R. Croft
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "k2db"
+version = "0.1.1"
+edition = "2024"
+license = "MIT"
+description = "Rust rewrite foundation for the k2db policy-enforcing MongoDB library"
+readme = "README.md"
+repository = "https://github.com/frogfishio/k2db.git"
+homepage = "https://github.com/frogfishio/k2db"
+documentation = "https://docs.rs/k2db"
+
+[lib]
+name = "k2db"
+path = "src/lib.rs"
+
+[dependencies]
+aes-gcm = "0.10"
+base64 = "0.22"
+futures-util = "0.3"
+jsonschema = "0.18"
+mongodb = "3"
+rand = "0.8"
+ratatouille = "0.1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["sync", "time"] }
+urlencoding = "2"
+uuid = { version = "1", features = ["v7"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "process", "rt-multi-thread", "sync", "time"] }

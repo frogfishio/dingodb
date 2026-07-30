@@ -28,7 +28,8 @@ Repository Markdown remains authoritative. These pages are **render/summary entr
 | [SDA](/specifications/sda/) | Normative materials | Experimental | doc/SDA/ |
 | [DQL](/specifications/dql/) | Draft/design mix | Experimental (subset) | DQL_SPEC.md |
 | [DRE](/specifications/dre/) | Draft | Design | DRE_SPEC.md |
-| [Atomics](/specifications/atomics/) | Exploratory | Design | ATOMICS_PROPOSAL.md |
+| [Atomics](/specifications/atomics/) | Draft | Design | ATOMICS_SPEC.md |
+| [Collection Contracts](/specifications/collection-contracts/) | Draft | Design | COLLECTION_CONTRACT_SPEC.md |
 | [Direct Access](/specifications/direct-access/) | Draft | Design | DIRECT_ACCESS_SPEC.md |
 | [Order Wavelets](/specifications/order-wavelets/) | Draft | Design | ORDER_WAVELET_SPEC.md |
 | [Cluster](/specifications/cluster/) | Draft | Experimental (not production) | CLUSTER_SPEC.md |

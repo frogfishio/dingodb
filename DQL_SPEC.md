@@ -7,6 +7,7 @@ Dialect identifier: `dql`
 Audience: language, SDK, planner, server, and conformance implementers
 Normative companions: [DINGO_PREDICATE_SPEC.md](DINGO_PREDICATE_SPEC.md),
 [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
+[COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [crates/enr-core/ENR1.md](crates/enr-core/ENR1.md), and
 [DX_SPEC.md](DX_SPEC.md)
 

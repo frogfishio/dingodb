@@ -1,12 +1,12 @@
 # DingoDB scoped transaction compatibility profile
 
-Status: compatibility draft v0.2; subordinate to `ATOMICS_PROPOSAL.md`
+Status: compatibility draft v0.2; subordinate to `ATOMICS_SPEC.md`
 
 Target: familiar transaction API over qualified LocalHeap and Partition
 Atomics
 
 Normative impact: SDK compatibility policy and transaction terminology;
-Atomic semantics and evidence belong to `ATOMICS_PROPOSAL.md`
+Atomic semantics and evidence belong to `ATOMICS_SPEC.md`
 
 ## 1. Summary
 
@@ -26,7 +26,7 @@ The compatibility mapping is:
 
 `AtomicId`, scope, logical outcomes, two-dimensional truth, retry identity,
 prepare/member/decision evidence, and recovery classification are governed by
-`ATOMICS_PROPOSAL.md`. This document may provide transaction-shaped names, but
+`ATOMICS_SPEC.md`. This document may provide transaction-shaped names, but
 it cannot broaden or weaken those semantics.
 
 This gives ordinary applications familiar transactional ergonomics while
@@ -51,7 +51,7 @@ partition transaction = Partition Atomic compatibility
 erasing immutable evidence or reversing external effects. Compensation is a
 new workflow step.
 
-If this document conflicts with `ATOMICS_PROPOSAL.md`, the Atomic contract
+If this document conflicts with `ATOMICS_SPEC.md`, the Atomic contract
 wins.
 
 ## 2. Motivation
@@ -477,7 +477,7 @@ complete coverage.
 
 Those historical names may remain as format aliases, but the frames encode
 `AtomicPrepare` and `AtomicDecision` evidence governed by
-`ATOMICS_PROPOSAL.md`. This compatibility profile does not independently
+`ATOMICS_SPEC.md`. This compatibility profile does not independently
 freeze wire semantics.
 
 ### 9.1 Transaction identity
@@ -586,7 +586,7 @@ All other verified material remains available to examination and salvage.
 ## 10. Local commit protocol
 
 The normative state machine is the LocalHeap Atomic protocol in
-`ATOMICS_PROPOSAL.md`. Its initial transaction-compatible append sequence is:
+`ATOMICS_SPEC.md`. Its initial transaction-compatible append sequence is:
 
 ```text
 validate read/write set
@@ -827,7 +827,7 @@ default.
 
 These phases deliver the transaction-shaped API. They depend on, and cannot
 replace, the corresponding `A0`–`A5` Atomic phases in
-`ATOMICS_PROPOSAL.md`.
+`ATOMICS_SPEC.md`.
 
 ### Phase T0 — Compatibility naming and fixtures
 
@@ -1016,7 +1016,7 @@ interoperability suites pass.
 
 If this proposal is accepted:
 
-1. Ratify the governing Atomic contract in `ATOMICS_PROPOSAL.md`.
+1. Implement and qualify the governing Atomic contract in `ATOMICS_SPEC.md`.
 2. Amend `OVERVIEW.md` §7.3 with Atomic invariants and recovery
    classification.
 3. Freeze `FORMAT_SPEC.md` Atomic prepare/member/decision envelopes.
@@ -1029,7 +1029,7 @@ If this proposal is accepted:
 ## 23. Open decisions
 
 Core identity, evidence, limits, retention, durability, and recovery decisions
-belong to `ATOMICS_PROPOSAL.md` §31. This compatibility profile must resolve
+belong to `ATOMICS_SPEC.md`. This compatibility profile must resolve
 only:
 
 1. Whether the embedded API exposes a closure, an explicit builder, or both.
