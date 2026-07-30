@@ -215,6 +215,14 @@ Priority: `P1-PATH`
 Normative package plan:
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md).
 
+The ordinary Rust API, collection provisioning, and DQL Application Core
+vertical slice is governed by
+[doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
+Its `APP-1` implements `HAR-1`; `APP-2` through `APP-8` supply the application
+portion of `HAR-6` and its release evidence. This does not alter the HAR gate
+order: work may be prepared in parallel only where the APP plan and this
+master plan both permit it.
+
 ### Required order
 
 | Order | Package | Deliverable | Hard exit |

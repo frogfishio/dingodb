@@ -120,6 +120,40 @@ Excluded features are not parser accidents. They are outside the v1 language.
 Pure SDA/ENR remains available where its host profile can safely express a
 more advanced transformation.
 
+### 3.1 Application Core conformance level
+
+The first ordinary application release implements the monotonic
+`dql-app-core-v1` conformance level. It accepts:
+
+- one root collection;
+- root `where` predicates and named parameters;
+- projection;
+- deterministic scalar ordering with the immutable-key tie-break;
+- total limit, bounded page size, and authenticated continuation;
+- available/current consistency;
+- complete or explicitly allowed-incomplete coverage;
+- document, byte, and result-memory budgets; and
+- explain.
+
+Its grammar is the v1 grammar with `enrich`, `within`, `at rank`, `access`, and
+`rank domain` removed. It adds no syntax and changes no semantics. Those
+constructs fail with `QueryInvalid` and diagnostic code
+`dql_feature_unavailable`; they are never ignored or weakened.
+
+Both DQL source and the Rust query builder compile to the same canonical
+`DqlPlanV1`. The source conformance identifier and logical-plan identifier are
+reported separately:
+
+```text
+source profile: dql-app-core-v1
+plan profile:   dql-plan-v1
+```
+
+The implementation and acceptance contract is
+[doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
+The existing `dql-source-v0.1` enrichment compiler remains a separate
+compatibility surface until the corresponding v1 host execution is delivered.
+
 ## 4. Lexical rules
 
 Source is UTF-8. Invalid UTF-8 is rejected.
