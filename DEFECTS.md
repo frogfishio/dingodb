@@ -2918,7 +2918,8 @@ Force-quit timing and the broad `PayloadPartial` code are not causal proof.
 
 Priority: **P1**
 Dependencies: DEF-098 exact manifest resolution and chunk locator
-Status: **open — recovery API gap**
+Status: **partial — embedded historical get / last-complete shipped (labor in_review);
+remote/cluster/CLI/Studio parity and full required-test matrix residual**
 
 #### Finding
 

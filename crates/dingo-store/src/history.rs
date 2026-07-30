@@ -2,7 +2,11 @@
 //!
 //! History is rebuilt from authoritative segment scans. Derived indexes never
 //! invent events that do not exist as verified frames.
+//!
+//! DEF-099 adds exact historical payload reconstruction and last-complete
+//! recovery search types (used by [`crate::Store`] recovery methods).
 
+use crate::chunk_payload::PayloadResult;
 use crate::envelope::EventKind;
 use crate::error::StoreError;
 use crate::layout::StorePaths;
@@ -10,6 +14,115 @@ use crate::store::{cmp_disk_events_pub, collect_item_events_for_history, DiskEve
 use crate::tier::TierPlacement;
 use dingo_format::SafetyLimits;
 use std::collections::HashSet;
+
+/// Bounds on historical reconstruction work (DEF-099).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReadBudget {
+    /// Maximum history events examined during a search (0 = unlimited).
+    pub max_events_examined: usize,
+    /// Soft byte budget for reconstructed body bytes counted (0 = unlimited).
+    pub max_bytes_examined: u64,
+}
+
+impl Default for ReadBudget {
+    fn default() -> Self {
+        Self {
+            max_events_examined: 4096,
+            max_bytes_examined: 64 * 1024 * 1024,
+        }
+    }
+}
+
+impl ReadBudget {
+    /// Unbounded search budget (still deterministic and read-only).
+    pub fn unlimited() -> Self {
+        Self {
+            max_events_examined: 0,
+            max_bytes_examined: 0,
+        }
+    }
+}
+
+/// Upper bound for last-complete search (exclusive of the bound event).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BeforeEvent {
+    /// Search predecessors of the current primary-index event (if any).
+    Current,
+    /// Search events strictly older than this `event_id` in recovery order.
+    EventId([u8; 16]),
+}
+
+/// Options for [`crate::Store::find_last_complete_version`] (DEF-099).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoveryReadOptions {
+    /// When true, continue past a delete tombstone (forensic; result labelled).
+    pub cross_tombstone: bool,
+    /// Work budget for the search.
+    pub budget: ReadBudget,
+}
+
+impl Default for RecoveryReadOptions {
+    fn default() -> Self {
+        Self {
+            cross_tombstone: false,
+            budget: ReadBudget::default(),
+        }
+    }
+}
+
+/// Exact historical (or current) payload projection (DEF-099).
+///
+/// Never mutates store authority. `selected` is `None` for tombstone deletes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VersionedPayloadResult {
+    /// Subject key bytes.
+    pub subject: Vec<u8>,
+    /// Selected historical event id.
+    pub selected_event_id: [u8; 16],
+    /// Item lineage of the selected event.
+    pub selected_item_id: [u8; 16],
+    /// Segment of the selected event frame.
+    pub selected_segment_id: [u8; 16],
+    /// Put or delete.
+    pub selected_kind: EventKind,
+    /// Current primary-index event id when the subject is live or deleted.
+    pub current_event_id: Option<[u8; 16]>,
+    /// Current payload completeness label when live (`complete` / `partial` / …).
+    pub current_completeness: Option<&'static str>,
+    /// Reconstructed payload for puts; `None` for deletes (tombstone).
+    pub selected: Option<PayloadResult>,
+    /// True when the selected event is a delete.
+    pub is_tombstone: bool,
+    /// History stream reported a gap before this event.
+    pub known_gap_before: bool,
+    /// True when subject history reported no salvage holes.
+    pub history_coverage_complete: bool,
+    /// True when the search path crossed a delete boundary (forensic only).
+    pub tombstone_crossed: bool,
+    /// Events examined to produce this result.
+    pub events_examined: usize,
+    /// Body bytes counted toward the read budget.
+    pub bytes_examined: u64,
+}
+
+/// Result of a last-complete historical search (DEF-099).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoricalSearchResult {
+    /// Newest permitted complete put, if any.
+    pub found: Option<VersionedPayloadResult>,
+    /// Incomplete/conflicting puts examined before finding a complete one.
+    pub incomplete_candidates: usize,
+    /// Search stopped at a delete because `cross_tombstone` was false.
+    pub tombstone_stopped: bool,
+    /// Search stopped because the read budget was exhausted.
+    pub budget_exhausted: bool,
+    /// History stream has known holes.
+    pub history_coverage_complete: bool,
+    /// Total events examined.
+    pub events_examined: usize,
+    /// Total body bytes counted.
+    pub bytes_examined: u64,
+}
 
 /// One immutable storage event for a subject key.
 #[derive(Debug, Clone, PartialEq, Eq)]

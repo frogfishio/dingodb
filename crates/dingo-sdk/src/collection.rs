@@ -230,6 +230,49 @@ impl<'a> Collection<'a> {
         }
     }
 
+    /// Reconstruct the logical value of one exact historical event (DEF-099).
+    ///
+    /// `event_id` is the 16-byte authoritative event id (not a history index).
+    /// Chunked puts reassemble via DEF-098. Ordinary [`Self::get`] never falls
+    /// back to this path. Embedded only.
+    pub fn get_version(
+        &mut self,
+        key: &str,
+        event_id: &[u8; 16],
+    ) -> Result<dingo_store::VersionedPayloadResult, Error> {
+        let subject = encode_subject(&self.name, key)?;
+        let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
+        let store = self
+            .local_store()
+            .map_err(|_| Error::RemoteUnsupported("get_version (embedded only)"))?;
+        Ok(store.get_payload_version(
+            subject_str,
+            event_id,
+            dingo_store::ReadBudget::default(),
+        )?)
+    }
+
+    /// Find the newest complete put strictly before the current generation (DEF-099).
+    ///
+    /// Default: stops at the first delete tombstone. Pass `cross_tombstone: true`
+    /// for forensic search across deletes. Embedded only. Read-only.
+    pub fn find_last_complete(
+        &mut self,
+        key: &str,
+        options: dingo_store::RecoveryReadOptions,
+    ) -> Result<dingo_store::HistoricalSearchResult, Error> {
+        let subject = encode_subject(&self.name, key)?;
+        let subject_str = str::from_utf8(&subject).expect("stage 4 subject is UTF-8");
+        let store = self
+            .local_store()
+            .map_err(|_| Error::RemoteUnsupported("find_last_complete (embedded only)"))?;
+        Ok(store.find_last_complete_version(
+            subject_str,
+            dingo_store::BeforeEvent::Current,
+            options,
+        )?)
+    }
+
     /// Scan live keys in this collection (deterministic key order).
     ///
     /// Returns application keys only. Payload access is via get / get_bytes.

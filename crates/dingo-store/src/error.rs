@@ -68,6 +68,10 @@ pub enum StoreError {
     #[error("conflicting chunk content")]
     PayloadConflict,
 
+    /// Requested historical `event_id` is not present in subject history (DEF-099).
+    #[error("history event not found")]
+    HistoryEventNotFound,
+
     /// Requested sealed segment is not registered or not on disk.
     #[error("segment not found")]
     SegmentNotFound,

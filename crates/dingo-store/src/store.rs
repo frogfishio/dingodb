@@ -21,7 +21,10 @@ use crate::envelope::{
     decode_item_envelope, encode_item_envelope, EventKind, ItemEnvelope, MAX_SUBJECT_LEN,
 };
 use crate::error::StoreError;
-use crate::history::{subject_history_tiered, SubjectHistory};
+use crate::history::{
+    subject_history_tiered, BeforeEvent, HistoricalSearchResult, HistoryEvent, ReadBudget,
+    RecoveryReadOptions, SubjectHistory, VersionedPayloadResult,
+};
 use crate::ids::{mint_sortable_segment_id, random_id, segment_seq_from_id, subject_item_id};
 use crate::index::{slim_put_body_for_index, PrimaryIndex};
 use crate::index_cache::{
@@ -1333,6 +1336,237 @@ impl Store {
             subject,
             Some(&self.tier_placement),
         )
+    }
+
+    /// Reconstruct the logical payload of one exact historical event (DEF-099).
+    ///
+    /// Selection is by authoritative `event_id` only. Chunked puts use the
+    /// DEF-098 generation-exact manifest path. Ordinary [`Self::get`] is
+    /// unchanged and never falls back here. Read-only: no index or segment writes.
+    pub fn get_payload_version(
+        &self,
+        subject: &str,
+        event_id: &[u8; 16],
+        budget: ReadBudget,
+    ) -> Result<VersionedPayloadResult, StoreError> {
+        self.get_payload_version_bytes(subject.as_bytes(), event_id, budget)
+    }
+
+    /// Binary-subject form of [`Self::get_payload_version`].
+    pub fn get_payload_version_bytes(
+        &self,
+        subject: &[u8],
+        event_id: &[u8; 16],
+        budget: ReadBudget,
+    ) -> Result<VersionedPayloadResult, StoreError> {
+        let hist = self.history_subject_bytes(subject)?;
+        let ev = hist
+            .events
+            .iter()
+            .find(|e| e.event_id == *event_id)
+            .ok_or(StoreError::HistoryEventNotFound)?;
+        self.project_history_event(subject, &hist, ev, false, budget, 1)
+    }
+
+    /// Find the newest complete put strictly before `before` (DEF-099).
+    ///
+    /// Default options stop at the first delete tombstone so deleted values
+    /// are not resurrected. Set `cross_tombstone` for labelled forensic search.
+    pub fn find_last_complete_version(
+        &self,
+        subject: &str,
+        before: BeforeEvent,
+        options: RecoveryReadOptions,
+    ) -> Result<HistoricalSearchResult, StoreError> {
+        self.find_last_complete_version_bytes(subject.as_bytes(), before, options)
+    }
+
+    /// Binary-subject form of [`Self::find_last_complete_version`].
+    pub fn find_last_complete_version_bytes(
+        &self,
+        subject: &[u8],
+        before: BeforeEvent,
+        options: RecoveryReadOptions,
+    ) -> Result<HistoricalSearchResult, StoreError> {
+        let hist = self.history_subject_bytes(subject)?;
+        let history_coverage_complete = !hist.has_known_holes;
+
+        let bound_id = match before {
+            BeforeEvent::Current => self.index.get(subject).map(|e| match e {
+                crate::index::IndexEntry::Live(lv) => lv.event_id,
+                crate::index::IndexEntry::Deleted { event_id, .. } => *event_id,
+            }),
+            BeforeEvent::EventId(id) => Some(id),
+        };
+
+        // Recovery order is oldest-first; walk newest-first among permitted events.
+        let mut end = hist.events.len();
+        if let Some(bid) = bound_id {
+            if let Some(pos) = hist.events.iter().position(|e| e.event_id == bid) {
+                end = pos; // exclusive
+            }
+            // If bound not found and BeforeEvent::EventId, still search all older
+            // by recovery order only among events that appear before first match;
+            // when missing, treat as "search entire history" for Current-like use.
+        }
+
+        let mut events_examined = 0usize;
+        let mut bytes_examined = 0u64;
+        let mut incomplete_candidates = 0usize;
+        let mut tombstone_stopped = false;
+        let mut budget_exhausted = false;
+        let mut tombstone_crossed = false;
+
+        for ev in hist.events[..end].iter().rev() {
+            events_examined = events_examined.saturating_add(1);
+            if options.budget.max_events_examined > 0
+                && events_examined > options.budget.max_events_examined
+            {
+                budget_exhausted = true;
+                break;
+            }
+
+            match ev.kind {
+                EventKind::Delete => {
+                    if options.cross_tombstone {
+                        tombstone_crossed = true;
+                        continue;
+                    }
+                    tombstone_stopped = true;
+                    break;
+                }
+                EventKind::Put => {
+                    let projected = self.project_history_event(
+                        subject,
+                        &hist,
+                        ev,
+                        tombstone_crossed,
+                        options.budget,
+                        events_examined,
+                    )?;
+                    bytes_examined = bytes_examined.saturating_add(projected.bytes_examined);
+                    if options.budget.max_bytes_examined > 0
+                        && bytes_examined > options.budget.max_bytes_examined
+                    {
+                        budget_exhausted = true;
+                        break;
+                    }
+                    match &projected.selected {
+                        Some(PayloadResult::Complete { .. }) => {
+                            return Ok(HistoricalSearchResult {
+                                found: Some(projected),
+                                incomplete_candidates,
+                                tombstone_stopped: false,
+                                budget_exhausted: false,
+                                history_coverage_complete,
+                                events_examined,
+                                bytes_examined,
+                            });
+                        }
+                        Some(_) | None => {
+                            incomplete_candidates = incomplete_candidates.saturating_add(1);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(HistoricalSearchResult {
+            found: None,
+            incomplete_candidates,
+            tombstone_stopped,
+            budget_exhausted,
+            history_coverage_complete,
+            events_examined,
+            bytes_examined,
+        })
+    }
+
+    /// Project one history event into a versioned payload (DEF-099 helper).
+    fn project_history_event(
+        &self,
+        subject: &[u8],
+        hist: &SubjectHistory,
+        ev: &HistoryEvent,
+        tombstone_crossed: bool,
+        _budget: ReadBudget,
+        events_examined: usize,
+    ) -> Result<VersionedPayloadResult, StoreError> {
+        let (current_event_id, current_completeness) = match self.index.get(subject) {
+            Some(crate::index::IndexEntry::Live(lv)) => {
+                let completeness = match self.get_payload_bytes(subject)? {
+                    Some(p) => Some(p.completeness()),
+                    None => None,
+                };
+                (Some(lv.event_id), completeness)
+            }
+            Some(crate::index::IndexEntry::Deleted { event_id, .. }) => {
+                (Some(*event_id), Some("tombstone"))
+            }
+            None => (None, None),
+        };
+
+        let history_coverage_complete = !hist.has_known_holes;
+
+        match ev.kind {
+            EventKind::Delete => Ok(VersionedPayloadResult {
+                subject: subject.to_vec(),
+                selected_event_id: ev.event_id,
+                selected_item_id: ev.item_id,
+                selected_segment_id: ev.segment_id,
+                selected_kind: EventKind::Delete,
+                current_event_id,
+                current_completeness,
+                selected: None,
+                is_tombstone: true,
+                known_gap_before: ev.known_gap_before,
+                history_coverage_complete,
+                tombstone_crossed,
+                events_examined,
+                bytes_examined: 0,
+            }),
+            EventKind::Put => {
+                let (payload, bytes_examined) = if is_chunk_manifest(&ev.body) {
+                    let Some(manifest) = decode_chunk_manifest(&ev.body) else {
+                        return Err(StoreError::CorruptMeta("invalid historical chunk manifest"));
+                    };
+                    let resolved = self.resolve_manifest_chunks(ev.item_id, &manifest)?;
+                    let payload = reassemble_with_manifest(ev.item_id, &manifest, &resolved);
+                    let bytes = match &payload {
+                        PayloadResult::Complete { body } => body.len() as u64,
+                        PayloadResult::Partial {
+                            present_bodies, ..
+                        } => present_bodies.iter().map(|(_, b)| b.len() as u64).sum(),
+                        _ => 0,
+                    };
+                    (payload, bytes)
+                } else {
+                    let bytes = ev.body.len() as u64;
+                    (
+                        PayloadResult::Complete {
+                            body: ev.body.clone(),
+                        },
+                        bytes,
+                    )
+                };
+                Ok(VersionedPayloadResult {
+                    subject: subject.to_vec(),
+                    selected_event_id: ev.event_id,
+                    selected_item_id: ev.item_id,
+                    selected_segment_id: ev.segment_id,
+                    selected_kind: EventKind::Put,
+                    current_event_id,
+                    current_completeness,
+                    selected: Some(payload),
+                    is_tombstone: false,
+                    known_gap_before: ev.known_gap_before,
+                    history_coverage_complete,
+                    tombstone_crossed,
+                    events_examined,
+                    bytes_examined,
+                })
+            }
+        }
     }
 
     /// Rebuild the primary index by scanning all segment files (no catalog trust).

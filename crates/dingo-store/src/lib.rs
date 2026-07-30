@@ -167,7 +167,10 @@ pub use heap::{
 };
 #[cfg(feature = "aws-kms")]
 pub use heap::{AwsKmsDataKeyProvider, SharedAwsKmsDataKeyProvider};
-pub use history::{HistoryEvent, SubjectHistory};
+pub use history::{
+    BeforeEvent, HistoricalSearchResult, HistoryEvent, ReadBudget, RecoveryReadOptions,
+    SubjectHistory, VersionedPayloadResult,
+};
 pub use hydra::{
     build as build_hydra_index, build_many as build_hydra_indexes, classify_keys,
     delete_hydra_index, hydra_dir, hydra_index_path, records_from_segment_bytes, select_index_kind,

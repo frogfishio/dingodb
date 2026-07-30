@@ -348,6 +348,16 @@ live payload is partial **or** tier coverage is incomplete (offline media). Use
 partial maps. Secondary-index misses are authoritative only when the index
 claims `complete_coverage`.
 
+## Historical value recovery (DEF-099)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| Exact event payload reconstruction | **shipped (labor, embedded)** | `Store::get_payload_version` / `Collection::get_version` — by authoritative `event_id`; chunked uses DEF-098 manifest path. |
+| Last-complete prior generation | **shipped (labor, embedded)** | `Store::find_last_complete_version` / `Collection::find_last_complete` — stops at tombstone by default; forensic `cross_tombstone` labelled. |
+| Ordinary `get` auto-fallback | **forbidden** | Current-generation fail-closed unchanged; recovery is explicit. |
+| Promote/restore write path | **open** | Read-only recovery only. |
+| Remote / cluster / CLI / Studio parity | **open** | Embedded first. |
+
 ## Coverage-aware key / document scans (DEF-100)
 
 | Claim | Status | Notes |
