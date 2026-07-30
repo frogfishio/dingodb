@@ -31,8 +31,9 @@ use crate::history::{
 use crate::ids::{mint_sortable_segment_id, random_id, segment_seq_from_id, subject_item_id};
 use crate::index::{slim_put_body_for_index, PrimaryIndex};
 use crate::index_cache::{
-    primary_cache_path, segment_fingerprint, try_load_primary_index,
-    try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier,
+    diagnose_primary_cache, primary_cache_path, segment_fingerprint, try_load_primary_index,
+    try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier, LifecycleDiag,
+    PrimaryCacheDiag,
 };
 use crate::layout::{list_dingo_files, StorePaths};
 use crate::seal_pipeline::{
@@ -1727,6 +1728,68 @@ impl Store {
     /// Effective large-value policy for this store handle (DEF-103).
     pub fn large_value_policy(&self) -> &LargeValuePolicy {
         &self.large_value_policy
+    }
+
+    /// Diagnose the derived primary index cache (DEF-102).
+    ///
+    /// `primary.idx` is never authority. A tiny cache with a large `active/` log
+    /// is a normal healthy shape. Diagnostics never change logical results.
+    pub fn primary_cache_diag(&self) -> Result<PrimaryCacheDiag, StoreError> {
+        let sealed = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?;
+        let sealed_fp = segment_fingerprint(&sealed)?;
+        let active_actual = if self.writer_shards() <= 1 {
+            let p = self.paths.active_segment_for_shard(0, 1);
+            if p.is_file() {
+                Some(fs::metadata(&p).map(|m| m.len()).unwrap_or(0))
+            } else {
+                Some(0)
+            }
+        } else {
+            // Multi-shard: sum active shard lengths for a coarse replay estimate.
+            let n = self.writer_shards();
+            let mut sum = 0u64;
+            for shard in 0..n {
+                let p = self.paths.active_segment_for_shard(shard, n);
+                if p.is_file() {
+                    sum = sum.saturating_add(fs::metadata(&p).map(|m| m.len()).unwrap_or(0));
+                }
+            }
+            Some(sum)
+        };
+        Ok(diagnose_primary_cache(
+            &primary_cache_path(&self.paths.indexes_dir()),
+            self.store_id,
+            Some(sealed_fp),
+            active_actual,
+        ))
+    }
+
+    /// Lifecycle snapshot for active log + derived checkpoints (DEF-102).
+    pub fn lifecycle_diag(&self) -> Result<LifecycleDiag, StoreError> {
+        let pending = list_pending_paths(&self.paths)?.len();
+        let sealed = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?.len();
+        Ok(LifecycleDiag {
+            active_shards: self.writer_shards(),
+            pending_seals: pending,
+            sealed_segments: sealed,
+            checkpoint_reason: if self.derived_ops_since_checkpoint == 0 {
+                "checkpoint_current_or_none".into()
+            } else {
+                format!(
+                    "ops_since_checkpoint={}",
+                    self.derived_ops_since_checkpoint
+                )
+            },
+            derived_ops_since_checkpoint: self.derived_ops_since_checkpoint,
+            primary_cache_authoritative: false,
+            detail: format!(
+                "active_shards={} pending_seals={} sealed_segments={}; primary.idx is derived only \
+                 (authoritative data lives in active/ + segments/)",
+                self.writer_shards(),
+                pending,
+                sealed
+            ),
+        })
     }
 
     /// Replace the large-value policy after validation (DEF-103).

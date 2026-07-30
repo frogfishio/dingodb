@@ -169,6 +169,10 @@ fn doctor_is_read_only_on_healthy_store() {
     let out = run_ok(&["doctor", store_s]);
     assert!(out.contains("read_only: true"));
     assert!(out.contains("healthy: true"));
+    // DEF-102: primary.idx is derived; doctor classifies without size-as-health.
+    assert!(out.contains("primary_cache:"), "doctor should report primary_cache");
+    assert!(out.contains("authoritative=false"));
+    assert!(out.contains("lifecycle:"), "doctor should report lifecycle");
 
     let after = fs::metadata(&active).unwrap().modified().unwrap();
     assert_eq!(before, after, "doctor must not rewrite active segment");

@@ -847,9 +847,17 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
     let catalog_present = catalogs_dir.join("collections.cat").is_file();
     // DEF-101: lock-status is diagnostic only; OS lock is authoritative.
     let lock_status = Store::writer_lock_status(store).ok();
+    // DEF-102: primary.idx is derived only — never authority / never size-as-health.
+    let primary_cache = inspect.primary_cache_diag().ok();
+    let lifecycle = inspect.lifecycle_diag().ok();
 
     let healthy = salvage.holes == 0 && summary.damaged == 0 && summary.holes == 0;
-    let recommendations = doctor_recommendations(&salvage, &summary, index_cache_present);
+    let recommendations = doctor_recommendations(
+        &salvage,
+        &summary,
+        index_cache_present,
+        primary_cache.as_ref(),
+    );
 
     if json_out {
         let lock_json = lock_status.as_ref().map(|obs| {
@@ -862,6 +870,34 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
                 "retryable": obs.retryable,
                 "detail": obs.detail,
                 "guidance": "never delete writer.lock to force unlock; OS exclusive lock is authoritative",
+            })
+        });
+        let primary_cache_json = primary_cache.as_ref().map(|d| {
+            sjson!({
+                "present": d.present,
+                "format_version": d.format_version,
+                "byte_len": d.byte_len,
+                "validation": d.validation.as_str(),
+                "sealed_fingerprint": d.sealed_fingerprint.as_ref().map(|fp| hex_bytes(fp)),
+                "active_segment_id": d.active_segment_id.as_ref().map(|id| hex16(id)),
+                "active_covered_len": d.active_covered_len,
+                "active_actual_len": d.active_actual_len,
+                "replay_bytes": d.replay_bytes,
+                "resident_entries": d.resident_entries,
+                "resident_body_bytes": d.resident_body_bytes,
+                "authoritative": d.authoritative,
+                "detail": d.detail,
+            })
+        });
+        let lifecycle_json = lifecycle.as_ref().map(|d| {
+            sjson!({
+                "active_shards": d.active_shards,
+                "pending_seals": d.pending_seals,
+                "sealed_segments": d.sealed_segments,
+                "checkpoint_reason": d.checkpoint_reason,
+                "derived_ops_since_checkpoint": d.derived_ops_since_checkpoint,
+                "primary_cache_authoritative": d.primary_cache_authoritative,
+                "detail": d.detail,
             })
         });
         emit_json(sjson!({
@@ -888,6 +924,8 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
                 "index_cache_present": index_cache_present,
                 "catalog_present": catalog_present,
             },
+            "primary_cache": primary_cache_json,
+            "lifecycle": lifecycle_json,
             "writer_lock": lock_json,
             "recommendations": recommendations,
         }))?;
@@ -932,6 +970,29 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
             "  derived: index_cache={} catalog={}",
             index_cache_present, catalog_present
         );
+        if let Some(d) = &primary_cache {
+            println!(
+                "  primary_cache: present={} validation={} byte_len={} format_version={:?} \
+                 authoritative={} (size is not stored-data size)",
+                d.present,
+                d.validation.as_str(),
+                d.byte_len,
+                d.format_version,
+                d.authoritative
+            );
+            println!(
+                "    covered_len={:?} active_actual_len={:?} replay_bytes={:?} resident_entries={:?}",
+                d.active_covered_len, d.active_actual_len, d.replay_bytes, d.resident_entries
+            );
+            println!("    detail: {}", d.detail);
+        }
+        if let Some(d) = &lifecycle {
+            println!(
+                "  lifecycle: active_shards={} pending_seals={} sealed_segments={} checkpoint={}",
+                d.active_shards, d.pending_seals, d.sealed_segments, d.checkpoint_reason
+            );
+            println!("    detail: {}", d.detail);
+        }
         if !recommendations.is_empty() {
             println!("  recommendations:");
             for r in &recommendations {
@@ -1498,6 +1559,7 @@ fn doctor_recommendations(
     salvage: &dingo_store::SalvageReport,
     summary: &UnitSummary,
     index_cache: bool,
+    primary_cache: Option<&dingo_store::PrimaryCacheDiag>,
 ) -> Vec<String> {
     let mut out = Vec::new();
     if salvage.holes > 0 || summary.holes > 0 {
@@ -1510,8 +1572,47 @@ fn doctor_recommendations(
     }
     if !index_cache {
         out.push(
-            "primary index cache missing (derived only; open/rebuild will rescan segments)".into(),
+            "primary index cache missing (derived only; open/rebuild will rescan segments; \
+             byte size of primary.idx is never stored-data size)"
+                .into(),
         );
+    } else if let Some(d) = primary_cache {
+        use dingo_store::PrimaryCacheValidation;
+        match d.validation {
+            PrimaryCacheValidation::Accepted => {
+                // Healthy minimal cache with a large active/ is normal.
+            }
+            PrimaryCacheValidation::Absent => {
+                out.push(
+                    "primary.idx absent (derived only; open rebuilds from active/ + segments/)"
+                        .into(),
+                );
+            }
+            PrimaryCacheValidation::Stale => {
+                out.push(format!(
+                    "primary.idx stale — open will replay/rebuild; cache is not authority ({})",
+                    d.detail
+                ));
+            }
+            PrimaryCacheValidation::Corrupt => {
+                out.push(format!(
+                    "primary.idx corrupt/ahead/truncated — rebuild from segments ({})",
+                    d.detail
+                ));
+            }
+            PrimaryCacheValidation::Foreign => {
+                out.push(format!(
+                    "primary.idx foreign store_id — ignore and rebuild ({})",
+                    d.detail
+                ));
+            }
+            PrimaryCacheValidation::Unsupported => {
+                out.push(format!(
+                    "primary.idx unsupported format — rebuild preferred ({})",
+                    d.detail
+                ));
+            }
+        }
     }
     if salvage.live_subjects == 0 && salvage.item_events > 0 {
         out.push("item events found but no live subjects (all deleted or incomplete)".into());
@@ -1530,8 +1631,12 @@ fn emit_json(v: JsonValue) -> Result<(), String> {
 }
 
 fn hex16(id: &[u8; 16]) -> String {
-    let mut s = String::with_capacity(32);
-    for b in id {
+    hex_bytes(id)
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
         s.push_str(&format!("{b:02x}"));
     }
     s

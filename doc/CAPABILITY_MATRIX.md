@@ -452,6 +452,19 @@ collection catalogs are built from segment-derived durable state only.
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 
+## Derived-index lifecycle diagnostics (DEF-102)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| `primary.idx` is never authority | **shipped (labor)** | `PrimaryCacheDiag.authoritative` always `false`; lifecycle same. |
+| Byte size ≠ health / stored-data size | **shipped (labor)** | Doctor prints validation class + replay; size alone never health. |
+| Validation classes | **shipped (labor)** | `accepted \| absent \| stale \| corrupt \| foreign \| unsupported` (+ ahead → corrupt). |
+| Store APIs | **shipped (labor)** | `Store::primary_cache_diag`, `Store::lifecycle_diag`, `diagnose_primary_cache`. |
+| Doctor surfaces | **shipped (labor)** | Text + `--json-out` include `primary_cache` and `lifecycle` blocks. |
+| Delete derived is logically neutral | **shipped** | Rebuild from `active/` + `segments/`; see DEF-023 + `stage_def_102_*`. |
+| Studio UI for same fields | **open** | Store/doctor first. |
+| Tests | **shipped (labor)** | `stage_def_102_primary_cache_diag` |
+
 ## Compaction reclaim (DEF-024)
 
 | Surface | Status | Evidence |

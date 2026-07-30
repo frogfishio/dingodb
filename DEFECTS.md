@@ -3246,7 +3246,7 @@ store. SDK/server errors preserve the class and retryability.
 
 Priority: **P2**
 Dependencies: DEF-023 frontier cache; DEF-095 locator-only primary index
-Status: **open — diagnostic and documentation gap**
+Status: **partial — Store + doctor diagnostics shipped (labor in_review); Studio UI residual**
 
 #### Finding
 

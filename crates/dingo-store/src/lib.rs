@@ -187,7 +187,10 @@ pub use large_value::{
     LARGE_VALUE_PROFILE_ID,
 };
 pub use index::{IndexEntry, LiveValue};
-pub use index_cache::{IndexFrontier, PRIMARY_CACHE_FILE};
+pub use index_cache::{
+    diagnose_primary_cache, IndexFrontier, LifecycleDiag, PrimaryCacheDiag, PrimaryCacheValidation,
+    PRIMARY_CACHE_FILE,
+};
 pub use layout::{hex16, list_dingo_files, segment_id_from_filename, unhex16, StorePaths};
 pub use lifecycle::{policy_path, LifecyclePolicy, LifecycleRule, LIFECYCLE_POLICY_FILE};
 pub use media::{

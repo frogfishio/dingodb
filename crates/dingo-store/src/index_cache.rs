@@ -174,6 +174,376 @@ pub fn write_primary_index_frontier(
     Ok(())
 }
 
+/// Why a primary index cache is accepted or rejected (DEF-102).
+///
+/// `primary.idx` is **never** authority. Byte size alone is never a health signal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrimaryCacheValidation {
+    /// Cache present and matches store + sealed frontier.
+    Accepted,
+    /// No cache file on disk.
+    Absent,
+    /// Sealed fingerprint does not match current sealed set.
+    Stale,
+    /// Truncated / hash-mismatch / undecodable payload.
+    Corrupt,
+    /// Store id in file does not match this store.
+    Foreign,
+    /// Magic/version not recognized by this build.
+    Unsupported,
+}
+
+impl PrimaryCacheValidation {
+    /// Stable snake_case label.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Absent => "absent",
+            Self::Stale => "stale",
+            Self::Corrupt => "corrupt",
+            Self::Foreign => "foreign",
+            Self::Unsupported => "unsupported",
+        }
+    }
+}
+
+/// Diagnostic view of the derived primary index cache (DEF-102).
+///
+/// Always reports `authoritative: false`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrimaryCacheDiag {
+    /// Cache file exists.
+    pub present: bool,
+    /// Detected format version (1/2/3) when parseable.
+    pub format_version: Option<u32>,
+    /// On-disk byte length (0 when absent).
+    pub byte_len: u64,
+    /// Acceptance class.
+    pub validation: PrimaryCacheValidation,
+    /// Sealed fingerprint recorded in the cache (if decoded).
+    pub sealed_fingerprint: Option<[u8; 32]>,
+    /// Current sealed fingerprint of the store (if provided).
+    pub current_sealed_fingerprint: Option<[u8; 32]>,
+    /// Active segment id from frontier.
+    pub active_segment_id: Option<[u8; 16]>,
+    /// Active covered length from frontier.
+    pub active_covered_len: Option<u64>,
+    /// Current active file length when known (for replay sizing).
+    pub active_actual_len: Option<u64>,
+    /// Bytes still to replay from active tail (`max(0, actual - covered)`).
+    pub replay_bytes: Option<u64>,
+    /// Resident entries if cache loaded successfully into a throwaway index.
+    pub resident_entries: Option<usize>,
+    /// Resident body bytes if loaded.
+    pub resident_body_bytes: Option<u64>,
+    /// Always false — cache is derived only.
+    pub authoritative: bool,
+    /// Operator-safe detail.
+    pub detail: String,
+}
+
+/// Classify the on-disk primary cache without elevating it to authority (DEF-102).
+///
+/// `expected_sealed_fp` and `active_actual_len` are optional context from the open store.
+pub fn diagnose_primary_cache(
+    path: &Path,
+    store_id: [u8; 16],
+    expected_sealed_fp: Option<[u8; 32]>,
+    active_actual_len: Option<u64>,
+) -> PrimaryCacheDiag {
+    let absent = PrimaryCacheDiag {
+        present: false,
+        format_version: None,
+        byte_len: 0,
+        validation: PrimaryCacheValidation::Absent,
+        sealed_fingerprint: None,
+        current_sealed_fingerprint: expected_sealed_fp,
+        active_segment_id: None,
+        active_covered_len: None,
+        active_actual_len,
+        replay_bytes: active_actual_len,
+        resident_entries: None,
+        resident_body_bytes: None,
+        authoritative: false,
+        detail: "primary.idx absent — store recovers from authoritative segments".into(),
+    };
+    if !path.is_file() {
+        return absent;
+    }
+    let byte_len = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    let bytes = match fs::read(path) {
+        Ok(b) => b,
+        Err(_) => {
+            return PrimaryCacheDiag {
+                present: true,
+                format_version: None,
+                byte_len,
+                validation: PrimaryCacheValidation::Corrupt,
+                sealed_fingerprint: None,
+                current_sealed_fingerprint: expected_sealed_fp,
+                active_segment_id: None,
+                active_covered_len: None,
+                active_actual_len,
+                replay_bytes: None,
+                resident_entries: None,
+                resident_body_bytes: None,
+                authoritative: false,
+                detail: "primary.idx unreadable — rebuild from segments".into(),
+            };
+        }
+    };
+    if bytes.len() < 12 {
+        return PrimaryCacheDiag {
+            present: true,
+            format_version: None,
+            byte_len,
+            validation: PrimaryCacheValidation::Corrupt,
+            sealed_fingerprint: None,
+            current_sealed_fingerprint: expected_sealed_fp,
+            active_segment_id: None,
+            active_covered_len: None,
+            active_actual_len,
+            replay_bytes: None,
+            resident_entries: None,
+            resident_body_bytes: None,
+            authoritative: false,
+            detail: format!(
+                "primary.idx truncated ({byte_len} bytes) — not a health signal; rebuild from segments"
+            ),
+        };
+    }
+    let magic = &bytes[..8];
+    let version = u32::from_le_bytes(bytes[8..12].try_into().unwrap_or([0; 4]));
+
+    if magic == MAGIC_V3.as_slice() {
+        return classify_frontier_cache(
+            &bytes,
+            store_id,
+            expected_sealed_fp,
+            active_actual_len,
+            byte_len,
+            VERSION_V3,
+            decode_cache_v3,
+        );
+    }
+    if magic == MAGIC_V2.as_slice() {
+        return classify_frontier_cache(
+            &bytes,
+            store_id,
+            expected_sealed_fp,
+            active_actual_len,
+            byte_len,
+            VERSION_V2,
+            decode_cache_v2,
+        );
+    }
+    if magic == MAGIC_V1.as_slice() {
+        // v1 has full fingerprint, not sealed-only frontier.
+        if bytes.len() < 8 + 4 + 16 + 32 {
+            return PrimaryCacheDiag {
+                present: true,
+                format_version: Some(VERSION_V1),
+                byte_len,
+                validation: PrimaryCacheValidation::Corrupt,
+                sealed_fingerprint: None,
+                current_sealed_fingerprint: expected_sealed_fp,
+                active_segment_id: None,
+                active_covered_len: None,
+                active_actual_len,
+                replay_bytes: None,
+                resident_entries: None,
+                resident_body_bytes: None,
+                authoritative: false,
+                detail: "primary.idx v1 truncated".into(),
+            };
+        }
+        let file_store: [u8; 16] = bytes[12..28].try_into().unwrap_or([0; 16]);
+        if file_store != store_id {
+            return PrimaryCacheDiag {
+                present: true,
+                format_version: Some(VERSION_V1),
+                byte_len,
+                validation: PrimaryCacheValidation::Foreign,
+                sealed_fingerprint: None,
+                current_sealed_fingerprint: expected_sealed_fp,
+                active_segment_id: None,
+                active_covered_len: None,
+                active_actual_len,
+                replay_bytes: None,
+                resident_entries: None,
+                resident_body_bytes: None,
+                authoritative: false,
+                detail: "primary.idx store_id mismatch (foreign cache)".into(),
+            };
+        }
+        return PrimaryCacheDiag {
+            present: true,
+            format_version: Some(VERSION_V1),
+            byte_len,
+            validation: PrimaryCacheValidation::Unsupported,
+            sealed_fingerprint: None,
+            current_sealed_fingerprint: expected_sealed_fp,
+            active_segment_id: None,
+            active_covered_len: None,
+            active_actual_len,
+            replay_bytes: None,
+            resident_entries: None,
+            resident_body_bytes: None,
+            authoritative: false,
+            detail: format!(
+                "primary.idx v1 present ({byte_len} bytes) — derived only; open prefers v3 frontier \
+                 and rebuilds if needed (size is not stored-data size)"
+            ),
+        };
+    }
+
+    PrimaryCacheDiag {
+        present: true,
+        format_version: Some(version),
+        byte_len,
+        validation: PrimaryCacheValidation::Unsupported,
+        sealed_fingerprint: None,
+        current_sealed_fingerprint: expected_sealed_fp,
+        active_segment_id: None,
+        active_covered_len: None,
+        active_actual_len,
+        replay_bytes: None,
+        resident_entries: None,
+        resident_body_bytes: None,
+        authoritative: false,
+        detail: format!("primary.idx unrecognized magic/version (byte_len={byte_len})"),
+    }
+}
+
+fn classify_frontier_cache(
+    bytes: &[u8],
+    store_id: [u8; 16],
+    expected_sealed_fp: Option<[u8; 32]>,
+    active_actual_len: Option<u64>,
+    byte_len: u64,
+    version: u32,
+    decode: fn(&[u8], [u8; 16]) -> Option<(PrimaryIndex, IndexFrontier)>,
+) -> PrimaryCacheDiag {
+    // Peek store id before full decode for foreign classification.
+    if bytes.len() >= 28 {
+        let file_store: [u8; 16] = bytes[12..28].try_into().unwrap_or([0; 16]);
+        if file_store != store_id {
+            return PrimaryCacheDiag {
+                present: true,
+                format_version: Some(version),
+                byte_len,
+                validation: PrimaryCacheValidation::Foreign,
+                sealed_fingerprint: None,
+                current_sealed_fingerprint: expected_sealed_fp,
+                active_segment_id: None,
+                active_covered_len: None,
+                active_actual_len,
+                replay_bytes: None,
+                resident_entries: None,
+                resident_body_bytes: None,
+                authoritative: false,
+                detail: "primary.idx store_id mismatch (foreign cache)".into(),
+            };
+        }
+    }
+    match decode(bytes, store_id) {
+        None => PrimaryCacheDiag {
+            present: true,
+            format_version: Some(version),
+            byte_len,
+            validation: PrimaryCacheValidation::Corrupt,
+            sealed_fingerprint: None,
+            current_sealed_fingerprint: expected_sealed_fp,
+            active_segment_id: None,
+            active_covered_len: None,
+            active_actual_len,
+            replay_bytes: None,
+            resident_entries: None,
+            resident_body_bytes: None,
+            authoritative: false,
+            detail: format!(
+                "primary.idx v{version} corrupt or fat-legacy refused ({byte_len} bytes) — \
+                 rebuild from segments; size is not a health signal"
+            ),
+        },
+        Some((index, frontier)) => {
+            let stale = expected_sealed_fp
+                .map(|fp| fp != frontier.sealed_fingerprint)
+                .unwrap_or(false);
+            // Covered length past the active file is an ahead/invalid frontier.
+            let ahead = active_actual_len
+                .map(|actual| frontier.active_covered_len > actual)
+                .unwrap_or(false);
+            let replay = active_actual_len.map(|actual| {
+                actual.saturating_sub(frontier.active_covered_len)
+            });
+            let (validation, detail) = if ahead {
+                (
+                    PrimaryCacheValidation::Corrupt,
+                    format!(
+                        "primary.idx v{version} frontier ahead of active file \
+                         (covered={} actual={:?}, {byte_len} bytes) — rebuild from segments; \
+                         cache is not authority",
+                        frontier.active_covered_len, active_actual_len
+                    ),
+                )
+            } else if stale {
+                (
+                    PrimaryCacheValidation::Stale,
+                    format!(
+                        "primary.idx v{version} frontier sealed fingerprint stale ({byte_len} bytes) — \
+                         open replays/rebuilds; cache is not authority"
+                    ),
+                )
+            } else {
+                (
+                    PrimaryCacheValidation::Accepted,
+                    format!(
+                        "primary.idx v{version} accepted as derived checkpoint ({byte_len} bytes, \
+                         {} resident entries) — not authority; active tail replay_bytes={replay:?}",
+                        index.len()
+                    ),
+                )
+            };
+            PrimaryCacheDiag {
+                present: true,
+                format_version: Some(version),
+                byte_len,
+                validation,
+                sealed_fingerprint: Some(frontier.sealed_fingerprint),
+                current_sealed_fingerprint: expected_sealed_fp,
+                active_segment_id: Some(frontier.active_segment_id),
+                active_covered_len: Some(frontier.active_covered_len),
+                active_actual_len,
+                replay_bytes: replay,
+                resident_entries: Some(index.len()),
+                resident_body_bytes: Some(index.resident_body_bytes()),
+                authoritative: false,
+                detail,
+            }
+        }
+    }
+}
+
+/// Lifecycle snapshot for active log + derived checkpoints (DEF-102).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LifecycleDiag {
+    /// Writer shard count.
+    pub active_shards: usize,
+    /// Pending seal files awaiting finalize.
+    pub pending_seals: usize,
+    /// Sealed segment file count (available paths).
+    pub sealed_segments: usize,
+    /// Why the last derived checkpoint was written (best-effort label).
+    pub checkpoint_reason: String,
+    /// Ops since last derived checkpoint on this handle (0 if unknown).
+    pub derived_ops_since_checkpoint: u64,
+    /// Always false for any derived artifact.
+    pub primary_cache_authoritative: bool,
+    /// Operator-safe narrative.
+    pub detail: String,
+}
+
 fn encode_entries_v2(out: &mut Vec<u8>, index: &PrimaryIndex) {
     // Legacy layout without frame_offset (body embedded).
     out.extend_from_slice(&(index.len() as u64).to_le_bytes());
