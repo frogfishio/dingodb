@@ -9,6 +9,9 @@ use crate::chunk_payload::{
     is_chunk_manifest, manifest_from_pieces, reassemble_with_manifest, resolve_piece,
     split_into_pieces, PayloadResult, ResolvedChunk, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
+use crate::large_value::{
+    AdmitDecision, LargeValuePolicy, PayloadLayout, LARGE_VALUE_PROFILE_ID,
+};
 use crate::compact::{
     estimate_compact_bytes, new_planned_job, pread_item_body_if_segment, reclaim_source_segments,
     reclaimable_source_ids, report_from_job, try_load_checkpoint, try_load_compact_job,
@@ -53,7 +56,7 @@ use crate::tier::{
 use crate::write_dedup::{
     load_write_dedup, save_write_dedup, write_dedup_path, DedupRecord, WriteDedupTable,
 };
-use crate::writer_lock::WriterLock;
+use crate::writer_lock::{StoreOpenOptions, WriterLock, WriterLockObservation};
 use dingo_format::{
     decode_store_descriptor_body, encode_store_descriptor_frame, scan_forward, ActiveSegment,
     FrameFlags, FrameHeader, FrameKind, FrameParts, SafetyLimits, SegmentId,
@@ -158,6 +161,48 @@ pub struct WriteReceipt {
     pub durability: DurabilityMode,
     /// Byte offset of the frame within the segment file.
     pub offset: u64,
+    /// Storage layout chosen for this put (DEF-103); default inline for deletes.
+    pub layout: PayloadLayout,
+    /// Logical payload bytes for puts (0 for deletes).
+    pub logical_len: u64,
+    /// Chunk count when layout is chunked (0 when inline/delete).
+    pub chunk_count: u32,
+    /// Effective large-value profile id at write time (DEF-103).
+    pub profile_id: String,
+}
+
+impl WriteReceipt {
+    fn base(
+        store_id: [u8; 16],
+        segment_id: [u8; 16],
+        item_id: [u8; 16],
+        event_id: [u8; 16],
+        event_kind: EventKind,
+        durability: DurabilityMode,
+        offset: u64,
+    ) -> Self {
+        Self {
+            store_id,
+            segment_id,
+            item_id,
+            event_id,
+            event_kind,
+            durability,
+            offset,
+            layout: PayloadLayout::Inline,
+            logical_len: 0,
+            chunk_count: 0,
+            profile_id: LARGE_VALUE_PROFILE_ID.to_string(),
+        }
+    }
+
+    fn with_layout(mut self, admit: AdmitDecision, profile_id: &str) -> Self {
+        self.layout = admit.layout;
+        self.logical_len = admit.logical_len;
+        self.chunk_count = admit.chunk_count;
+        self.profile_id = profile_id.to_string();
+        self
+    }
 }
 
 /// Summary of a catalog-free salvage pass over all segment files.
@@ -220,9 +265,13 @@ pub struct Store {
     /// Seal active segment when it reaches this many bytes.
     seal_threshold: u64,
     /// Bodies larger than this are written as chunked payloads (Stage 6).
+    ///
+    /// Mirrored from [`Self::large_value_policy`]; keep in sync via policy setters.
     chunk_threshold: usize,
     /// Max logical bytes per payload-chunk frame.
     chunk_size: usize,
+    /// Validated large-value admission / layout policy (DEF-103).
+    large_value_policy: LargeValuePolicy,
     /// Derived collection catalog (rebuildable). Includes memory-mode names.
     collection_catalog: CollectionCatalog,
     /// Durable-only collection names (segment-backed); used for on-disk catalog.
@@ -336,6 +385,7 @@ impl Store {
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
+            large_value_policy: LargeValuePolicy::application_v1(),
             collection_catalog: CollectionCatalog::new(),
             durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
@@ -361,7 +411,22 @@ impl Store {
     }
 
     /// Open an existing store, or create if the path does not exist yet.
+    ///
+    /// Non-blocking writer lock (DEF-020). Prefer [`Self::open_with_options`]
+    /// for bounded wait / cancel (DEF-101).
     pub fn open(path: impl AsRef<Path>) -> Result<Self, StoreError> {
+        Self::open_with_options(path, StoreOpenOptions::default())
+    }
+
+    /// Open (or create) with writer-lock wait options (DEF-101).
+    ///
+    /// Writer-lock failure is never database absence. Use [`Self::open_inspect`]
+    /// for read-only access while a writer is live. Never delete `writer.lock`
+    /// to force unlock — the OS exclusive lock is authoritative.
+    pub fn open_with_options(
+        path: impl AsRef<Path>,
+        options: StoreOpenOptions,
+    ) -> Result<Self, StoreError> {
         let root = path.as_ref();
         let paths = StorePaths::new(root);
         if !paths.looks_like_store() {
@@ -378,8 +443,8 @@ impl Store {
             return Self::create(root);
         }
 
-        // Exclusive ownership before opening the active segment (DEF-020).
-        let writer_lock = WriterLock::acquire(&paths)?;
+        // Exclusive ownership before opening the active segment (DEF-020 / DEF-101).
+        let writer_lock = WriterLock::acquire_with_options(&paths, &options)?;
         let store_id = read_store_id(&paths)?;
         let meta = fs::read_to_string(paths.meta_file()).unwrap_or_default();
         if !meta.starts_with("dingo-store-") {
@@ -403,6 +468,7 @@ impl Store {
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
+            large_value_policy: LargeValuePolicy::application_v1(),
             collection_catalog: CollectionCatalog::new(),
             durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
@@ -427,6 +493,32 @@ impl Store {
         // Finish or cancel incomplete compaction jobs (DEF-024).
         let _ = store.recover_compact_jobs()?;
         Ok(store)
+    }
+
+    /// Non-blocking open of an **existing** store (never creates).
+    ///
+    /// Returns [`StoreError::NotAStore`] when the path is not a store, and
+    /// structured [`StoreError::WriterLockHeld`] on contention (DEF-101).
+    pub fn try_open(path: impl AsRef<Path>) -> Result<Self, StoreError> {
+        let root = path.as_ref();
+        let paths = StorePaths::new(root);
+        if !paths.looks_like_store() {
+            return Err(StoreError::NotAStore(root.to_path_buf()));
+        }
+        Self::open_with_options(root, StoreOpenOptions::non_blocking())
+    }
+
+    /// Observe writer-lock status without opening the store (DEF-101).
+    ///
+    /// Diagnostic only. Free OS lock may still show stale PID text — that text
+    /// is advisory and does not hold the lock.
+    pub fn writer_lock_status(path: impl AsRef<Path>) -> Result<WriterLockObservation, StoreError> {
+        let root = path.as_ref();
+        let paths = StorePaths::new(root);
+        if !paths.looks_like_store() {
+            return Err(StoreError::NotAStore(root.to_path_buf()));
+        }
+        Ok(WriterLock::observe(&paths))
     }
 
     /// Open an **existing** store for read-only inspection (Stage 7 doctor).
@@ -464,6 +556,7 @@ impl Store {
             seal_threshold: DEFAULT_SEAL_THRESHOLD,
             chunk_threshold: DEFAULT_CHUNK_THRESHOLD,
             chunk_size: DEFAULT_CHUNK_SIZE,
+            large_value_policy: LargeValuePolicy::application_v1(),
             collection_catalog: CollectionCatalog::new(),
             durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
@@ -699,19 +792,25 @@ impl Store {
                     continue;
                 }
             };
-            match self.get_payload(subject_str)? {
-                None => {}
-                Some(PayloadResult::Complete { body }) => entries.push((subject, body)),
-                Some(PayloadResult::Partial { .. }) => {
+            match self.get_payload(subject_str) {
+                Ok(None) => {}
+                Ok(Some(PayloadResult::Complete { body })) => entries.push((subject, body)),
+                Ok(Some(PayloadResult::Partial { .. })) => {
                     incomplete_list.push(incomplete(subject, IncompleteReason::PayloadPartial));
                 }
-                Some(PayloadResult::Unavailable { .. }) => {
+                Ok(Some(PayloadResult::Unavailable { .. })) => {
                     incomplete_list
                         .push(incomplete(subject, IncompleteReason::PayloadUnavailable));
                 }
-                Some(PayloadResult::Conflicting { .. }) => {
+                Ok(Some(PayloadResult::Conflicting { .. })) => {
                     incomplete_list.push(incomplete(subject, IncompleteReason::PayloadConflict));
                 }
+                // Missing media/segments: fail-closed as incomplete, not a hard scan abort.
+                Err(StoreError::SegmentNotFound) | Err(StoreError::TierOffline(_)) => {
+                    incomplete_list
+                        .push(incomplete(subject, IncompleteReason::PayloadUnavailable));
+                }
+                Err(e) => return Err(e),
             }
         }
 
@@ -919,16 +1018,28 @@ impl Store {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        // DEF-103: admit against the effective profile before any event mint /
+        // append / derived effect. Also respect scanner body ceiling.
+        let effective_max = self
+            .large_value_policy
+            .effective_with(self.limits.max_body_len);
+        if value.len() as u64 > effective_max {
+            return Err(StoreError::PayloadTooLarge);
+        }
+        let admit = self.large_value_policy.admit(value.len())?;
         // Memory mode is visibility-only: keep the full body in the index and
         // never append frames (avoids later durable flushes contaminating disk).
         if mode == DurabilityMode::Memory {
-            return self.write_event(subject, EventKind::Put, value, mode);
+            return Ok(self
+                .write_event(subject, EventKind::Put, value, mode)?
+                .with_layout(admit, &self.large_value_policy.profile_id));
         }
-        if value.len() > self.chunk_threshold {
-            self.write_chunked_put(subject, value, mode)
+        let receipt = if admit.layout == PayloadLayout::Chunked {
+            self.write_chunked_put(subject, value, mode)?
         } else {
-            self.write_event(subject, EventKind::Put, value, mode)
-        }
+            self.write_event(subject, EventKind::Put, value, mode)?
+        };
+        Ok(receipt.with_layout(admit, &self.large_value_policy.profile_id))
     }
 
     /// Put many items, partitioning by subject hash across writer shards.
@@ -944,6 +1055,16 @@ impl Store {
     ) -> Result<Vec<WriteReceipt>, StoreError> {
         if items.is_empty() {
             return Ok(Vec::new());
+        }
+        // DEF-103: fail closed before any parallel work if any item is over limit.
+        let effective_max = self
+            .large_value_policy
+            .effective_with(self.limits.max_body_len);
+        for (_, value) in items {
+            if value.len() as u64 > effective_max {
+                return Err(StoreError::PayloadTooLarge);
+            }
+            let _ = self.large_value_policy.admit(value.len())?;
         }
         let parallel_ok = self.writer_shards() > 1
             && mode != DurabilityMode::Memory
@@ -1123,15 +1244,25 @@ impl Store {
                     offset,
                 );
                 self.note_collection_for_subject(&subject);
-                receipts[item_idx] = Some(WriteReceipt {
-                    store_id,
-                    segment_id,
-                    item_id,
-                    event_id,
-                    event_kind: EventKind::Put,
-                    durability: mode,
-                    offset,
-                });
+                let admit = LargeValuePolicy::application_v1()
+                    .admit(items[item_idx].1.len())
+                    .unwrap_or(AdmitDecision {
+                        layout: PayloadLayout::Inline,
+                        logical_len: items[item_idx].1.len() as u64,
+                        chunk_count: 0,
+                    });
+                receipts[item_idx] = Some(
+                    WriteReceipt::base(
+                        store_id,
+                        segment_id,
+                        item_id,
+                        event_id,
+                        EventKind::Put,
+                        mode,
+                        offset,
+                    )
+                    .with_layout(admit, LARGE_VALUE_PROFILE_ID),
+                );
             }
         }
         let _ = self.note_durable_derived();
@@ -1161,15 +1292,15 @@ impl Store {
     ) -> Result<Option<WriteReceipt>, StoreError> {
         match self.write_dedup.get(operation_id) {
             None => Ok(None),
-            Some(rec) if &rec.content_hash == content_hash => Ok(Some(WriteReceipt {
-                store_id: rec.store_id,
-                segment_id: rec.segment_id,
-                item_id: rec.item_id,
-                event_id: rec.event_id,
-                event_kind: rec.event_kind,
-                durability: rec.durability,
-                offset: rec.offset,
-            })),
+            Some(rec) if &rec.content_hash == content_hash => Ok(Some(WriteReceipt::base(
+                rec.store_id,
+                rec.segment_id,
+                rec.item_id,
+                rec.event_id,
+                rec.event_kind,
+                rec.durability,
+                rec.offset,
+            ))),
             Some(_) => Err(StoreError::ConsistencyViolation(
                 "operation_id reused with different content identity".into(),
             )),
@@ -1593,15 +1724,54 @@ impl Store {
             .collect()
     }
 
+    /// Effective large-value policy for this store handle (DEF-103).
+    pub fn large_value_policy(&self) -> &LargeValuePolicy {
+        &self.large_value_policy
+    }
+
+    /// Replace the large-value policy after validation (DEF-103).
+    ///
+    /// Tightening limits does **not** make existing above-policy values
+    /// unreadable; it only governs new/replacement writes.
+    pub fn set_large_value_policy(&mut self, policy: LargeValuePolicy) -> Result<(), StoreError> {
+        policy.validate()?;
+        self.chunk_threshold = policy.chunk_threshold_bytes;
+        self.chunk_size = policy.chunk_payload_bytes;
+        self.large_value_policy = policy;
+        Ok(())
+    }
+
     /// Override the chunk size threshold (primarily for tests).
+    ///
+    /// Updates the active policy; invalidates only layout choice, not max size.
     pub fn set_chunk_threshold(&mut self, threshold: usize) {
+        if threshold == 0 {
+            return;
+        }
         self.chunk_threshold = threshold;
+        self.large_value_policy.chunk_threshold_bytes = threshold;
+        self.relax_manifest_budget_for_tests();
     }
 
     /// Override per-chunk payload size (primarily for tests).
     pub fn set_chunk_size(&mut self, size: usize) {
         if size > 0 {
             self.chunk_size = size;
+            self.large_value_policy.chunk_payload_bytes = size;
+            self.relax_manifest_budget_for_tests();
+        }
+    }
+
+    /// Ensure worst-case manifest for current max logical / chunk size fits budget.
+    fn relax_manifest_budget_for_tests(&mut self) {
+        let max_chunks = self
+            .large_value_policy
+            .max_logical_payload_bytes
+            .div_ceil(self.large_value_policy.chunk_payload_bytes as u64)
+            .max(1);
+        let need = 8 + 32 + 4 + 8 + max_chunks.saturating_mul(24);
+        if self.large_value_policy.max_manifest_bytes < need {
+            self.large_value_policy.max_manifest_bytes = need;
         }
     }
 
@@ -3664,15 +3834,15 @@ impl Store {
             let _ = self.note_durable_derived();
         }
 
-        Ok(WriteReceipt {
-            store_id: self.store_id,
+        Ok(WriteReceipt::base(
+            self.store_id,
             segment_id,
             item_id,
             event_id,
-            event_kind: EventKind::Put,
-            durability: mode,
+            EventKind::Put,
+            mode,
             offset,
-        })
+        ))
     }
 
     /// Resolve only the chunk frames listed in `manifest` (DEF-098).
@@ -3893,15 +4063,15 @@ impl Store {
             if let Some(name) = crate::catalog::collection_name_from_subject(subject_bytes) {
                 self.collection_catalog.insert(name);
             }
-            return Ok(WriteReceipt {
-                store_id: self.store_id,
+            return Ok(WriteReceipt::base(
+                self.store_id,
                 segment_id,
                 item_id,
                 event_id,
-                event_kind: kind,
-                durability: DurabilityMode::Memory,
-                offset: 0,
-            });
+                kind,
+                DurabilityMode::Memory,
+                0,
+            ));
         }
 
         self.ensure_active(shard)?;
@@ -3960,15 +4130,15 @@ impl Store {
 
         let _ = self.note_durable_derived();
 
-        Ok(WriteReceipt {
-            store_id: self.store_id,
+        Ok(WriteReceipt::base(
+            self.store_id,
             segment_id,
             item_id,
             event_id,
-            event_kind: kind,
-            durability: mode,
+            kind,
+            mode,
             offset,
-        })
+        ))
     }
 
     fn write_segment_tail(

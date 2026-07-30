@@ -3153,7 +3153,8 @@ do not leak Heap identifiers or subjects to unauthorized callers.
 
 Priority: **P1**
 Dependencies: DEF-020 exclusive writer ownership
-Status: **open — operational/DX gap**
+Status: **partial — structured observation + open_with_options/try_open/doctor
+lock-status shipped (labor in_review); multi-process SIGKILL soak residual**
 
 #### Finding
 
@@ -3326,7 +3327,8 @@ which are disposable/rebuildable.
 
 Priority: **P1**
 Dependencies: DEF-029 resource profiles; DEF-098 logical-size admission
-Status: **open — configuration and workload footgun**
+Status: **partial — LargeValuePolicy + admit-before-effect + rewrite_heavy helpers
+shipped (labor in_review); cross-layer negotiation / full perf matrix residual**
 
 #### Finding
 

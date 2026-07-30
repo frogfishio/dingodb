@@ -348,6 +348,28 @@ live payload is partial **or** tier coverage is incomplete (offline media). Use
 partial maps. Secondary-index misses are authoritative only when the index
 claims `complete_coverage`.
 
+## Large-value policy (DEF-103)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| Versioned `LargeValuePolicy` | **shipped (labor)** | `dingo-large-value-v1`: 16 MiB max logical, 64 KiB threshold, 16 KiB chunks. |
+| Admit before effect | **shipped (labor)** | `PayloadTooLarge` before event mint/append; zero derived effect on reject. |
+| Receipt layout facts | **shipped (labor)** | `WriteReceipt.layout`, `logical_len`, `chunk_count`, `profile_id`. |
+| Existing above-policy reads | **shipped (labor)** | Tighter policy does not drop old values. |
+| Rewrite-heavy key model | **shipped (labor)** | `rewrite_heavy::*` helpers + [LARGE_VALUE_AND_REWRITE_HEAVY.md](LARGE_VALUE_AND_REWRITE_HEAVY.md). |
+| Client/server negotiation of policy | **open** | Store-local policy first; cross-layer negotiation residual. |
+
+## Writer lock diagnostics (DEF-101)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| OS lock authoritative | **shipped** | `flock` + in-process registry; diagnostic PID text never grants/breaks lock. |
+| Structured `WriterLockHeld` | **shipped (labor)** | `WriterLockObservation` with class, PID liveness, retryable, waited. |
+| `open_with_options` / `try_open` | **shipped (labor)** | Bounded wait + cancel; `try_open` never creates. |
+| `writer_lock_status` / doctor | **shipped (labor)** | Observe without writer ownership; doctor prints lock-status. |
+| Stale PID blocks free lock | **forbidden** | Stale `writer.lock` text must not prevent acquire when OS lock free. |
+| Delete `writer.lock` guidance | **forbidden** | Errors/docs never recommend deleting the lock file to force unlock. |
+
 ## Historical value recovery (DEF-099)
 
 | Claim | Status | Notes |

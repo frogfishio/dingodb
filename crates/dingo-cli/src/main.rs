@@ -845,11 +845,25 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
     let catalogs_dir = store.join("catalogs");
     let index_cache_present = indexes_dir.join("primary.idx").is_file();
     let catalog_present = catalogs_dir.join("collections.cat").is_file();
+    // DEF-101: lock-status is diagnostic only; OS lock is authoritative.
+    let lock_status = Store::writer_lock_status(store).ok();
 
     let healthy = salvage.holes == 0 && summary.damaged == 0 && summary.holes == 0;
     let recommendations = doctor_recommendations(&salvage, &summary, index_cache_present);
 
     if json_out {
+        let lock_json = lock_status.as_ref().map(|obs| {
+            sjson!({
+                "class": obs.class.as_str(),
+                "diagnostic_pid": obs.diagnostic_pid,
+                "diagnostic_pid_liveness": obs.diagnostic_pid_liveness.as_str(),
+                "diagnostic_acquired_ns": obs.diagnostic_acquired_ns.map(|n| n.to_string()),
+                "os_lock_authoritative": obs.os_lock_authoritative,
+                "retryable": obs.retryable,
+                "detail": obs.detail,
+                "guidance": "never delete writer.lock to force unlock; OS exclusive lock is authoritative",
+            })
+        });
         emit_json(sjson!({
             "ok": true,
             "store": store.display().to_string(),
@@ -874,6 +888,7 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
                 "index_cache_present": index_cache_present,
                 "catalog_present": catalog_present,
             },
+            "writer_lock": lock_json,
             "recommendations": recommendations,
         }))?;
     } else {
@@ -881,6 +896,16 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
         println!("  read_only: true");
         println!("  healthy: {healthy}");
         println!("  store_id: {}", hex16(&inspect.store_id()));
+        if let Some(obs) = &lock_status {
+            println!(
+                "  writer_lock: class={} pid={:?} liveness={} retryable={} (OS lock authoritative; do not delete writer.lock)",
+                obs.class.as_str(),
+                obs.diagnostic_pid,
+                obs.diagnostic_pid_liveness.as_str(),
+                obs.retryable
+            );
+            println!("    detail: {}", obs.detail);
+        }
         println!("  live_subjects: {}", salvage.live_subjects);
         println!(
             "  segments: files={} verified_frames={} item_events={} holes={}",

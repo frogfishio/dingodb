@@ -49,6 +49,7 @@ mod ids;
 mod index;
 mod index_cache;
 mod kernel;
+mod large_value;
 mod layout;
 mod lifecycle;
 mod media;
@@ -181,6 +182,10 @@ pub use ids::{
     fill_random, hex16 as id_hex16, mint_sortable_segment_id, random_id, segment_seq_from_id,
     subject_item_id, ID_LEN, ID_PROFILE,
 };
+pub use large_value::{
+    rewrite_heavy, AdmitDecision, LargeValuePolicy, PayloadLayout, DEFAULT_MAX_LOGICAL_PAYLOAD_BYTES,
+    LARGE_VALUE_PROFILE_ID,
+};
 pub use index::{IndexEntry, LiveValue};
 pub use index_cache::{IndexFrontier, PRIMARY_CACHE_FILE};
 pub use layout::{hex16, list_dingo_files, segment_id_from_filename, unhex16, StorePaths};
@@ -238,7 +243,10 @@ pub use tier::{
 pub use write_dedup::{
     content_identity, write_dedup_path, DedupRecord, WriteDedupTable, WRITE_DEDUP_FILE,
 };
-pub use writer_lock::{WriterLock, WRITER_LOCK_FILE};
+pub use writer_lock::{
+    PidLiveness, StoreOpenOptions, WriterLock, WriterLockClass, WriterLockObservation,
+    WRITER_LOCK_FILE,
+};
 
 /// Local-only staged genesis / publish used by `dingo-authority` (HP-005).
 /// MUST NOT be enabled in the qualified data-service target.

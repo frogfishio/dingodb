@@ -94,9 +94,13 @@ pub enum StoreError {
     #[error("media backend unsupported: {0}")]
     MediaUnsupported(String),
 
-    /// Another process or handle already holds the exclusive writer lock (DEF-020).
+    /// Another process or handle already holds the exclusive writer lock (DEF-020 / DEF-101).
+    ///
+    /// Carries a structured [`crate::writer_lock::WriterLockObservation`]. This is
+    /// never database absence — do not treat it as an empty store, and do not
+    /// delete `writer.lock` to force unlock.
     #[error("store writer lock held: {0}")]
-    WriterLockHeld(String),
+    WriterLockHeld(Box<crate::writer_lock::WriterLockObservation>),
 
     /// Scan/get coverage is incomplete; ordinary complete results are refused (DEF-012).
     #[error("coverage incomplete: {0}")]

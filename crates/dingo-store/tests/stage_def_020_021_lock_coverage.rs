@@ -14,7 +14,7 @@ fn second_writer_handle_fails_before_touching_segments() {
         Ok(_) => panic!("second writer open must fail while first holds the lock"),
         Err(err) => assert!(
             matches!(err, StoreError::WriterLockHeld(_)),
-            "expected WriterLockHeld, got {err:?}"
+            "expected WriterLockHeld, got {err:?} (not empty store / NotAStore)"
         ),
     }
 }
