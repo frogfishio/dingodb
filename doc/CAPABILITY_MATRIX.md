@@ -348,6 +348,16 @@ live payload is partial **or** tier coverage is incomplete (offline media). Use
 partial maps. Secondary-index misses are authoritative only when the index
 claims `complete_coverage`.
 
+## Coverage-aware key / document scans (DEF-100)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| Key-only paged scan | **shipped (labor)** | `Store::scan_live_keys_page`, `Collection::scan_keys_page` — no body reassembly; body damage cannot suppress keys. |
+| Legacy `scan_keys()` | **shipped (labor, embedded)** | Drains pages; returns `CoverageIncomplete` when key coverage is incomplete (never silent partial `[]`). Remote/cluster still use prior list paths (residual). |
+| Partial document page | **shipped (labor, embedded)** | `Store::scan_live_documents_page`, `Collection::scan_json_partial_page` — healthy rows + incomplete/undecodable per key. |
+| Fail-closed `scan_json` / `scan_json_page` | **kept** | Compatibility behavior unchanged (abort on incomplete bodies). |
+| Remote / cluster parity for new page APIs | **open** | Embedded first; remote list/scan parity residual. |
+
 ## Chunked values / large-body get (DEF-098)
 
 | Claim | Status | Notes |

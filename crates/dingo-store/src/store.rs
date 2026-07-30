@@ -738,6 +738,152 @@ impl Store {
         })
     }
 
+    /// One bounded page of live **subject keys** without body reassembly (DEF-100).
+    ///
+    /// Uses the same generation-fenced continuation tokens as
+    /// [`Self::scan_live_page`]. Never resolves payloads — a missing chunk cannot
+    /// suppress a verified key. `coverage_complete` is false when offline tiers
+    /// (or other key-bearing authority gaps) prevent proving the key set is full.
+    pub fn scan_live_keys_page(
+        &self,
+        options: &crate::cursor::LiveScanPageOptions,
+    ) -> Result<crate::cursor::KeyScanPage, StoreError> {
+        use crate::cursor::{
+            decode_token, encode_token, scan_generation, CoverageGap, CoverageGapKind, CursorState,
+            KeyScanPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+        };
+
+        let page_size = if options.page_size == 0 {
+            DEFAULT_PAGE_SIZE
+        } else {
+            options.page_size.min(MAX_PAGE_SIZE)
+        };
+
+        let seg_fp = self.segment_fingerprint()?;
+        let live_count = self.index.live_len() as u64;
+        let generation = scan_generation(&self.store_id, &seg_fp, live_count);
+
+        let (prefix, after, token_page_size) = if let Some(ref tok) = options.continuation {
+            let state = decode_token(&self.store_id, tok)?;
+            if state.generation != generation {
+                return Err(StoreError::CursorStale(
+                    "scan generation changed (live set or segment fingerprint); restart scan"
+                        .into(),
+                ));
+            }
+            if let (Some(ref want), Some(ref got)) = (&options.prefix, &state.prefix) {
+                if want != got {
+                    return Err(StoreError::CursorInvalid(
+                        "continuation prefix does not match request".into(),
+                    ));
+                }
+            }
+            let prefix = state.prefix.clone().or_else(|| options.prefix.clone());
+            (prefix, state.after, state.page_size.clamp(1, MAX_PAGE_SIZE))
+        } else {
+            (options.prefix.clone(), None, page_size)
+        };
+
+        let page_size = if options.continuation.is_some() {
+            token_page_size
+        } else {
+            page_size
+        };
+
+        let mut keys = Vec::new();
+        let mut examined = 0usize;
+        let mut last_subject: Option<Vec<u8>> = after.clone();
+        let mut saw_more = false;
+
+        let mut iter = self
+            .index
+            .live_entries_after(after.as_deref(), prefix.as_deref());
+
+        loop {
+            if keys.len() >= page_size {
+                saw_more = iter.next().is_some();
+                break;
+            }
+            let Some((subject_ref, _)) = iter.next() else {
+                break;
+            };
+            let subject = subject_ref.clone();
+            examined += 1;
+            last_subject = Some(subject.clone());
+            keys.push(subject);
+        }
+
+        let tier_coverage_incomplete = self.tier_coverage().is_incomplete();
+        let mut coverage_gaps = Vec::new();
+        if tier_coverage_incomplete {
+            coverage_gaps.push(CoverageGap {
+                kind: CoverageGapKind::TierUnavailable,
+                detail: "one or more storage tiers offline or unavailable".into(),
+            });
+        }
+
+        let continuation = if saw_more {
+            let state = CursorState {
+                generation,
+                prefix: prefix.clone(),
+                after: last_subject,
+                page_size,
+            };
+            Some(encode_token(&self.store_id, &state)?)
+        } else {
+            None
+        };
+
+        let coverage_complete = !saw_more && coverage_gaps.is_empty();
+        Ok(KeyScanPage {
+            keys,
+            continuation,
+            has_more: saw_more,
+            coverage_complete,
+            coverage_gaps,
+            examined,
+            tier_coverage_incomplete,
+        })
+    }
+
+    /// One bounded page of live documents with per-key body outcomes (DEF-100).
+    ///
+    /// Complete bodies appear in `rows`; verified keys with damaged bodies appear
+    /// in `incomplete`. Key coverage is independent of body completeness.
+    pub fn scan_live_documents_page(
+        &self,
+        options: &crate::cursor::LiveScanPageOptions,
+    ) -> Result<crate::cursor::DocumentScanPage, StoreError> {
+        use crate::cursor::{CoverageGap, CoverageGapKind, DocumentScanPage};
+
+        let page = self.scan_live_page(options)?;
+        let mut coverage_gaps = Vec::new();
+        if page.tier_coverage_incomplete {
+            coverage_gaps.push(CoverageGap {
+                kind: CoverageGapKind::TierUnavailable,
+                detail: "one or more storage tiers offline or unavailable".into(),
+            });
+        }
+        let bytes_examined = page
+            .entries
+            .iter()
+            .map(|(_, b)| b.len() as u64)
+            .fold(0u64, u64::saturating_add);
+        // Key coverage ignores body incompletes; only authority gaps matter.
+        let key_coverage_complete = !page.has_more && coverage_gaps.is_empty();
+        Ok(DocumentScanPage {
+            rows: page.entries,
+            incomplete: page.incomplete,
+            key_coverage_complete,
+            coverage_gaps,
+            tier_coverage_incomplete: page.tier_coverage_incomplete,
+            has_more: page.has_more,
+            continuation: page.continuation,
+            examined: page.examined,
+            bytes_examined,
+        })
+    }
+
     /// Whether this handle holds exclusive writer ownership (DEF-020).
     pub fn holds_writer_lock(&self) -> bool {
         self.writer_lock.is_some()

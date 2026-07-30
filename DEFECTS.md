@@ -3031,7 +3031,8 @@ Implementation:
 
 Priority: **P0**
 Dependencies: DEF-012 coverage truth; DEF-026 cursor paging
-Status: **open — false-completeness risk**
+Status: **partial — embedded key/document coverage pages shipped (labor in_review);
+remote/cluster page parity and full required-test matrix residual**
 
 #### Finding
 

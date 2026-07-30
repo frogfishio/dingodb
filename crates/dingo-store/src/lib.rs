@@ -104,8 +104,8 @@ pub use crash_matrix::{
     MatrixOperation, CRASH_MATRIX_JSON,
 };
 pub use cursor::{
-    scan_generation, LiveScanPage, LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
+    scan_generation, CoverageGap, CoverageGapKind, DocumentScanPage, KeyScanPage, LiveScanPage,
+    LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
 };
 /// Extent map types used by [`PayloadResult::Partial`] (FORMAT_SPEC §8).
 pub use dingo_format::{ByteRange, LogicalExtent};

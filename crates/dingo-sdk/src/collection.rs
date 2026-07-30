@@ -233,26 +233,68 @@ impl<'a> Collection<'a> {
     /// Scan live keys in this collection (deterministic key order).
     ///
     /// Returns application keys only. Payload access is via get / get_bytes.
+    ///
+    /// **DEF-100:** drains [`Self::scan_keys_page`] and returns a complete list
+    /// only when key-bearing coverage is complete. Incomplete coverage yields
+    /// [`Error::CoverageIncomplete`] (never a silent partial `[]`).
     pub fn scan_keys(&mut self) -> Result<Vec<String>, Error> {
         match self.backend {
-            Backend::Local(store) => {
-                let prefix = collection_prefix(&self.name)?;
+            Backend::Local(_) => {
                 let mut keys = Vec::new();
-                for (subject, _body) in store.live_entries() {
-                    if !subject.starts_with(&prefix) {
-                        continue;
+                let mut cont: Option<Vec<u8>> = None;
+                let page_size = dingo_store::DEFAULT_PAGE_SIZE;
+                loop {
+                    let page = self.scan_keys_page(page_size, cont.as_deref())?;
+                    keys.extend(page.keys);
+                    if !page.has_more {
+                        if !page.coverage_complete {
+                            return Err(Error::CoverageIncomplete(format!(
+                                "key coverage incomplete after scan ({} gap(s)); use scan_keys_page for partial key lists",
+                                page.coverage_gaps.len()
+                            )));
+                        }
+                        return Ok(keys);
                     }
-                    match decode_subject(subject) {
-                        Some((coll, key)) if coll == self.name => keys.push(key.to_string()),
-                        _ => continue,
-                    }
+                    cont = page.continuation;
                 }
-                Ok(keys)
             }
             Backend::Remote(client) => client.list_keys(&self.name),
             #[cfg(feature = "cluster")]
             Backend::Cluster(c) => c.scan_keys(&self.name),
         }
+    }
+
+    /// One page of live keys with explicit coverage (DEF-100). Embedded only.
+    ///
+    /// Does **not** resolve document bodies. Body damage cannot suppress a key.
+    pub fn scan_keys_page(
+        &mut self,
+        page_size: usize,
+        continuation: Option<&[u8]>,
+    ) -> Result<KeyScanPage, Error> {
+        let prefix = collection_prefix(&self.name)?;
+        let name = self.name.clone();
+        let store = self
+            .local_store()
+            .map_err(|_| Error::RemoteUnsupported("scan_keys_page (embedded only)"))?;
+        scan_keys_page_on_store(store, &name, &prefix, page_size, continuation)
+    }
+
+    /// One page of live JSON documents with per-key incompleteness (DEF-100).
+    ///
+    /// Healthy rows stream alongside damaged/undecodable keys. Prefer this over
+    /// [`Self::scan_json_page`] when partial results are useful. Embedded only.
+    pub fn scan_json_partial_page(
+        &mut self,
+        page_size: usize,
+        continuation: Option<&[u8]>,
+    ) -> Result<DocumentScanPage, Error> {
+        let prefix = collection_prefix(&self.name)?;
+        let name = self.name.clone();
+        let store = self
+            .local_store()
+            .map_err(|_| Error::RemoteUnsupported("scan_json_partial_page (embedded only)"))?;
+        scan_json_partial_page_on_store(store, &name, &prefix, page_size, continuation)
     }
 
     /// Scan live JSON entries `(key, value)` in this collection.
@@ -717,6 +759,66 @@ pub struct JsonScanPage {
     pub bytes_examined: u64,
 }
 
+/// One page of collection keys with coverage honesty (DEF-100).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyScanPage {
+    /// Application keys in stable order for this page.
+    pub keys: Vec<String>,
+    /// Opaque continuation for the next page (`None` when `has_more` is false).
+    pub continuation: Option<Vec<u8>>,
+    /// True when a further page may be fetched.
+    pub has_more: bool,
+    /// True only on the final page when key-bearing coverage is complete.
+    pub coverage_complete: bool,
+    /// Typed coverage gaps (empty when complete).
+    pub coverage_gaps: Vec<String>,
+    /// Subjects examined on this page.
+    pub examined: usize,
+}
+
+/// A verified key whose body could not be fully read (DEF-100).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncompleteDocument {
+    /// Application key.
+    pub key: String,
+    /// Completeness class: `partial`, `unavailable`, or `conflicting`.
+    pub completeness: String,
+    /// Stable detail label.
+    pub detail: String,
+}
+
+/// A verified key whose body could not be decoded as the requested type (DEF-100).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UndecodableDocument {
+    /// Application key.
+    pub key: String,
+    /// Error class (e.g. `type_mismatch`, `invalid_json`).
+    pub error_class: String,
+}
+
+/// Partial-aware document page (DEF-100).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DocumentScanPage {
+    /// Healthy JSON rows in stable key order.
+    pub rows: Vec<(String, JsonValue)>,
+    /// Verified keys with incomplete payloads.
+    pub incomplete: Vec<IncompleteDocument>,
+    /// Verified keys with undecodable bodies (still listed, not aborted).
+    pub undecodable: Vec<UndecodableDocument>,
+    /// Opaque continuation for the next page.
+    pub continuation: Option<Vec<u8>>,
+    /// True when a further page may be fetched.
+    pub has_more: bool,
+    /// True only on the final page when key-bearing coverage is complete.
+    pub key_coverage_complete: bool,
+    /// Typed coverage gaps.
+    pub coverage_gaps: Vec<String>,
+    /// Subjects examined on this page.
+    pub examined: usize,
+    /// Raw body bytes examined for complete rows.
+    pub bytes_examined: u64,
+}
+
 /// Streaming JSON scan over the embedded store (DEF-026).
 ///
 /// Fetches bounded pages on demand; peak buffer is one page of decoded rows.
@@ -794,7 +896,7 @@ fn scan_json_page_on_store(
     let page = store.scan_live_page(&opts)?;
     if !page.incomplete.is_empty() {
         return Err(Error::CoverageIncomplete(format!(
-            "{} live subject(s) incomplete during paged scan; use store.scan_live_page for partial maps",
+            "{} live subject(s) incomplete during paged scan; use scan_json_partial_page or store.scan_live_documents_page for partial maps",
             page.incomplete.len()
         )));
     }
@@ -816,6 +918,134 @@ fn scan_json_page_on_store(
         rows,
         continuation: page.continuation,
         complete: !page.has_more,
+        examined: page.examined,
+        bytes_examined,
+    })
+}
+
+fn scan_keys_page_on_store(
+    store: &Store,
+    collection: &str,
+    prefix: &[u8],
+    page_size: usize,
+    continuation: Option<&[u8]>,
+) -> Result<KeyScanPage, Error> {
+    use dingo_store::LiveScanPageOptions;
+
+    let mut opts = LiveScanPageOptions::new(page_size).prefix(prefix.to_vec());
+    if let Some(tok) = continuation {
+        opts = opts.continuation(tok.to_vec());
+    }
+    let page = store.scan_live_keys_page(&opts)?;
+    let mut keys = Vec::with_capacity(page.keys.len());
+    for subject in &page.keys {
+        if !subject.starts_with(prefix) {
+            continue;
+        }
+        match decode_subject(subject) {
+            Some((coll, key)) if coll == collection => keys.push(key.to_string()),
+            _ => continue,
+        }
+    }
+    let coverage_gaps: Vec<String> = page
+        .coverage_gaps
+        .iter()
+        .map(|g| format!("{:?}: {}", g.kind, g.detail))
+        .collect();
+    Ok(KeyScanPage {
+        keys,
+        continuation: page.continuation,
+        has_more: page.has_more,
+        coverage_complete: page.coverage_complete,
+        coverage_gaps,
+        examined: page.examined,
+    })
+}
+
+fn scan_json_partial_page_on_store(
+    store: &Store,
+    collection: &str,
+    prefix: &[u8],
+    page_size: usize,
+    continuation: Option<&[u8]>,
+) -> Result<DocumentScanPage, Error> {
+    use dingo_store::{IncompleteReason, LiveScanPageOptions};
+
+    let mut opts = LiveScanPageOptions::new(page_size).prefix(prefix.to_vec());
+    if let Some(tok) = continuation {
+        opts = opts.continuation(tok.to_vec());
+    }
+    let page = store.scan_live_documents_page(&opts)?;
+    let mut rows = Vec::new();
+    let mut undecodable = Vec::new();
+    let mut bytes_examined = 0u64;
+
+    for (subject, body) in page.rows {
+        if !subject.starts_with(prefix) {
+            continue;
+        }
+        match decode_subject(&subject) {
+            Some((coll, key)) if coll == collection => {
+                bytes_examined = bytes_examined.saturating_add(body.len() as u64);
+                match decode_json(&body) {
+                    Ok(v) => rows.push((key.to_string(), v)),
+                    Err(e) => {
+                        let error_class = match &e {
+                            Error::TypeMismatch { .. } => "type_mismatch",
+                            _ => "invalid_json",
+                        };
+                        undecodable.push(UndecodableDocument {
+                            key: key.to_string(),
+                            error_class: error_class.into(),
+                        });
+                    }
+                }
+            }
+            _ => continue,
+        }
+    }
+
+    let mut incomplete = Vec::new();
+    for item in page.incomplete {
+        if !item.subject.starts_with(prefix) {
+            continue;
+        }
+        match decode_subject(&item.subject) {
+            Some((coll, key)) if coll == collection => {
+                let (completeness, detail) = match item.reason {
+                    IncompleteReason::PayloadPartial => ("partial", "payload only partially available"),
+                    IncompleteReason::PayloadUnavailable => {
+                        ("unavailable", "payload chunks unavailable")
+                    }
+                    IncompleteReason::PayloadConflict => {
+                        ("conflicting", "conflicting chunk content")
+                    }
+                    IncompleteReason::NonUtf8Subject => ("unavailable", "non-utf8 subject"),
+                };
+                incomplete.push(IncompleteDocument {
+                    key: key.to_string(),
+                    completeness: completeness.into(),
+                    detail: detail.into(),
+                });
+            }
+            _ => continue,
+        }
+    }
+
+    let coverage_gaps: Vec<String> = page
+        .coverage_gaps
+        .iter()
+        .map(|g| format!("{:?}: {}", g.kind, g.detail))
+        .collect();
+
+    Ok(DocumentScanPage {
+        rows,
+        incomplete,
+        undecodable,
+        continuation: page.continuation,
+        has_more: page.has_more,
+        key_coverage_complete: page.key_coverage_complete,
+        coverage_gaps,
         examined: page.examined,
         bytes_examined,
     })

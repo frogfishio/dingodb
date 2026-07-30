@@ -112,6 +112,71 @@ pub struct LiveScanPage {
     pub examined: usize,
 }
 
+/// Why key-bearing coverage cannot be proven complete (DEF-100).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CoverageGapKind {
+    /// Offline / unmounted tier or unavailable segment media.
+    TierUnavailable,
+}
+
+/// One typed coverage gap (no Heap secrets or unauthorized subjects).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoverageGap {
+    /// Stable gap class.
+    pub kind: CoverageGapKind,
+    /// Operator-safe diagnostic detail.
+    pub detail: String,
+}
+
+/// One page of live **keys only** — no body reassembly (DEF-100).
+///
+/// Body damage never suppresses a verified key. `coverage_complete` is true
+/// only when key-bearing authority is fully available for the scan range.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyScanPage {
+    /// Live subject keys in ascending order (at most `page_size`).
+    pub keys: Vec<Vec<u8>>,
+    /// Opaque token for the next page (`None` when `has_more` is false).
+    pub continuation: Option<Vec<u8>>,
+    /// True when a further page may be fetched with `continuation`.
+    pub has_more: bool,
+    /// True only when no further pages remain **and** key coverage has no gaps.
+    pub coverage_complete: bool,
+    /// Typed reasons key coverage is incomplete (empty when complete).
+    pub coverage_gaps: Vec<CoverageGap>,
+    /// Subjects examined on this page (equals `keys.len()` for key-only path).
+    pub examined: usize,
+    /// Offline / unmounted tiers or unavailable segments.
+    pub tier_coverage_incomplete: bool,
+}
+
+/// One page of live documents with per-key body outcomes (DEF-100).
+///
+/// Healthy rows stream alongside incomplete/undecodable keys; a single bad body
+/// does not abort the page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentScanPage {
+    /// Fully reassembled (subject, body) pairs.
+    pub rows: Vec<(Vec<u8>, Vec<u8>)>,
+    /// Verified keys whose body is partial/unavailable/conflicting.
+    pub incomplete: Vec<LiveIncomplete>,
+    /// True when no further pages remain **and** key coverage has no gaps
+    /// (body incompletes do not alone falsify key coverage).
+    pub key_coverage_complete: bool,
+    /// Typed key-coverage gaps.
+    pub coverage_gaps: Vec<CoverageGap>,
+    /// Offline / unmounted tiers.
+    pub tier_coverage_incomplete: bool,
+    /// True when a further page may be fetched with `continuation`.
+    pub has_more: bool,
+    /// Opaque token for the next page.
+    pub continuation: Option<Vec<u8>>,
+    /// Subjects examined (rows + incomplete).
+    pub examined: usize,
+    /// Body bytes examined for complete rows on this page.
+    pub bytes_examined: u64,
+}
+
 impl LiveScanPage {
     /// Convert a single full-set page into the legacy full-scan envelope shape.
     pub fn into_full_scan(self) -> LiveLogicalScan {

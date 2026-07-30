@@ -80,7 +80,10 @@ pub use claim::{
 #[cfg(feature = "cluster")]
 pub use cluster_backend::{ClusterBackend, ClusterFindResult};
 #[cfg(feature = "legacy-flat-sdk")]
-pub use collection::{find_on_store, Collection, JsonScanIter, JsonScanPage};
+pub use collection::{
+    find_on_store, Collection, DocumentScanPage, IncompleteDocument, JsonScanIter, JsonScanPage,
+    KeyScanPage, UndecodableDocument,
+};
 pub use dingo::Dingo;
 /// Re-export cluster coverage / scan types when the `cluster` feature is on.
 #[cfg(feature = "cluster")]
