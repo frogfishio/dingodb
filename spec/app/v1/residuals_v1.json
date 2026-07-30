@@ -28,10 +28,11 @@
     },
     {
       "id": "APP0-R4",
-      "item": "ops 106/118 still reserved in operations-v1.json",
-      "status": "intentional",
+      "item": "ops 106/118 status in operations-v1.json",
+      "status": "partial",
       "blocks_implementer": false,
-      "resolved_by": "APP-1 (106) and APP-7 (118) activation"
+      "note": "106 collection_create active with schemas (APP-1). 118 dql_query remains reserved until APP-7.",
+      "resolved_by": "APP-1 (106 done); APP-7 (118)"
     },
     {
       "id": "APP1-R1",
@@ -44,9 +45,10 @@
     {
       "id": "APP1-R2",
       "item": "op 106 active + server dispatch + remote method",
-      "status": "open",
+      "status": "done",
       "blocks_implementer": false,
-      "resolved_by": "APP-1 remainder"
+      "note": "operations-v1 106 active + schemas; heap_dispatch op 106 + HeapAdmin; RemoteHeap::create_collection; create_collection_idempotent shared store path",
+      "resolved_by": "APP-1 2026-07-30 labor"
     },
     {
       "id": "APP1-R3",

@@ -61,7 +61,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | HAR-6 | not_started | — | HAR-5, APP-8 | precursor: RemoteHeap CRUD/find/history/indexes | no ordinary `HeapClient` journey accept | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
 | APP-0 | active | 2026-07-30 | — | plan: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §14; [spec/app/v1/](../spec/app/v1/) + residuals; wire staged schemas/fixtures; `dingo_sdk::app_v1`; `verify-app0-contract.sh` + `app0_contract_lock` (verify PASS; contract_lock 6/6); **board `in_review`** (labor handoff) | owner sign-off still open (APP0-R3; principal → `done`); plan_hash/mac placeholders (APP0-R1/R2) | application contract |
-| APP-1 | active | 2026-07-30 | — | embedded: `Heap::create_collection` / `list_collections`; durable `(H,O)` admin_op_dedup (APP1-R1); tests `app1_collection_create` (4 pass) | op 106 still reserved; no server dispatch/remote (APP1-R2); HeapClient façade (APP1-R3/APP-2) | qualified collection create |
+| APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
 | APP-4 | not_started | — | APP-0 | filter/SDA/dialect precursors | no single `dingo-predicate-v1` accept | canonical predicates/plans |
@@ -106,8 +106,8 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 
 ## Principal labor track (board SoT)
 
-**Active labor:** **APP-1** — embedded collection create first cut.
-**Handoff:** **APP-0** is `in_review` (labor done; principal owns accept).
+**Active labor:** none on APP track (principal may pull APP-2 or APP-4).
+**Handoff:** **APP-0**, **APP-1** are `in_review` (labor done; principal owns accept).
 
 Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
 `done` — principal moves `done` after accept):
@@ -115,8 +115,8 @@ Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
 | Stage | Cards |
 |---|---|
 | done | M0-1, M0-2, M0-3 |
-| in_review | **APP-0** (contract freeze handoff; APP0-R3 sign-off) |
-| doing | **APP-1** (embedded create first cut) |
+| in_review | **APP-0** (contract freeze; APP0-R3), **APP-1** (create/dedup/op 106) |
+| doing | — |
 | backlog | HAR-0…HAR-7, APP-2…APP-8, DEL-0, TEL-0, DST-000 |
 
 Do **not** pull HAR/M2 cards into `todo` while APP/CORE is the principal track.
@@ -127,9 +127,9 @@ labor order override.
 
 Labor order for this principal (not “everything that is ready”):
 
-1. **APP-0** — freeze application contract (CORE plan §14) — **in_review** (labor handoff).
-2. **APP-1** (≡ product HAR-1 capability) — **doing** (embedded first cut; residuals open).
-3. **APP-4** — may parallel APP-1 after APP-0 (predicates/plan).
+1. **APP-0** — freeze application contract (CORE plan §14) — **in_review**.
+2. **APP-1** (≡ product HAR-1 capability) — **in_review** (op 106 active; façade APP-2).
+3. **APP-4** — may parallel after APP-0 (predicates/plan).
 4. **HAR-0** residual — ready on scoreboard but **board backlog** until principal re-queues it.
 5. **DEL-0 / TEL-0 / DST-000** — after HAR-3 only; board backlog.
 

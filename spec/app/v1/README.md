@@ -23,13 +23,14 @@ must not contradict without amending the CORE plan.
 
 ## Operation activation policy
 
-Ops **106** (`collection_create`) and **118** (`dql_query`) remain
-`reserved` in [`spec/heap/operations-v1.json`](../../heap/operations-v1.json)
-with **null** schema pointers until APP-1 / APP-7 activate them.
+Op **106** (`collection_create`) is **active** (APP-1) with schema pointers in
+[`spec/heap/operations-v1.json`](../../heap/operations-v1.json).
+Op **118** (`dql_query`) remains `reserved` with **null** schema pointers until
+APP-7.
 
-APP-0 still freezes the **on-disk** request/response schemas and goldens so
-implementers share one contract. `scripts/check_heap_architecture.sh` forbids
-non-null schema refs on reserved ops — that is intentional.
+APP-0 froze the **on-disk** request/response schemas and goldens; APP-1 wired
+106. `scripts/check_heap_architecture.sh` still forbids non-null schema refs on
+reserved ops (118).
 
 ## Profiles
 

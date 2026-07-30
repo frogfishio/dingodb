@@ -3,7 +3,7 @@
 //! `Dingo::connect_heap` performs TLS 1.3 + HeapKey handshake
 //! (`hello` → `heap_challenge` → `heap_auth` → `welcome`) and returns a
 //! [`RemoteHeap`] session bound to one `HeapId`. Active process ops 1–3 plus
-//! §32.4 data (105/110–112/114–117/120–122) and secondary indexes (130–133).
+//! §32.4 data (105–106/110–112/114–117/120–122) and secondary indexes (130–133).
 
 use crate::error::Error;
 use crate::remote::{parse_dingo_url, DEFAULT_PORT};
@@ -283,6 +283,59 @@ impl RemoteHeap {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .ok_or_else(|| Error::ProtocolViolation("collection_open missing collection_id".into()))
+    }
+
+    /// Create a collection by canonical name (op_id = 106). Requires `HeapAdmin`.
+    ///
+    /// When `operation_id` is `None`, the client mints a random 16-byte id.
+    /// Returns `(collection_id_uuid, descriptor_hash_hex, replayed)`.
+    pub fn create_collection(
+        &mut self,
+        name: &str,
+        operation_id: Option<[u8; 16]>,
+    ) -> Result<RemoteCreatedCollection, Error> {
+        let op = operation_id.unwrap_or_else(|| {
+            let mut b = [0u8; 16];
+            // Prefer OS entropy; fall back to correlation-ish bytes only if unavailable.
+            if getrandom::fill(&mut b).is_err() {
+                let n = self.next_id.load(Ordering::Relaxed);
+                b[..8].copy_from_slice(&n.to_le_bytes());
+            }
+            b
+        });
+        let op_hex: String = op.iter().map(|x| format!("{x:02x}")).collect();
+        let result = self.call_mutation(
+            106,
+            &op_hex,
+            None,
+            serde_json::json!({ "canonical_name": name }),
+        )?;
+        let collection_id = result
+            .get("collection_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("collection_create missing collection_id".into()))?
+            .to_string();
+        let descriptor_hash = result
+            .get("descriptor_hash")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                Error::ProtocolViolation("collection_create missing descriptor_hash".into())
+            })?
+            .to_string();
+        let replayed = result.get("replayed").and_then(|v| v.as_bool()).unwrap_or(false);
+        let receipt_id = result
+            .pointer("/receipt/receipt_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        Ok(RemoteCreatedCollection {
+            collection_id,
+            canonical_name: name.to_string(),
+            descriptor_hash,
+            receipt_id,
+            operation_id: op,
+            replayed,
+        })
     }
 
     /// Put JSON under `key` in `collection_id` (op_id = 120).
@@ -602,6 +655,26 @@ impl RemoteHeap {
         collection_id: Option<&str>,
         args: Value,
     ) -> Result<Value, Error> {
+        self.call_envelope(op_id, None, collection_id, args)
+    }
+
+    fn call_mutation(
+        &mut self,
+        op_id: u16,
+        operation_id_hex: &str,
+        collection_id: Option<&str>,
+        args: Value,
+    ) -> Result<Value, Error> {
+        self.call_envelope(op_id, Some(operation_id_hex), collection_id, args)
+    }
+
+    fn call_envelope(
+        &mut self,
+        op_id: u16,
+        operation_id_hex: Option<&str>,
+        collection_id: Option<&str>,
+        args: Value,
+    ) -> Result<Value, Error> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let mut req = serde_json::json!({
             "v": 1,
@@ -609,6 +682,11 @@ impl RemoteHeap {
             "op_id": op_id,
             "args": args,
         });
+        if let Some(oid) = operation_id_hex {
+            req.as_object_mut()
+                .unwrap()
+                .insert("operation_id".into(), Value::String(oid.into()));
+        }
         if let Some(cid) = collection_id {
             req.as_object_mut()
                 .unwrap()
@@ -635,6 +713,23 @@ impl RemoteHeap {
             .cloned()
             .unwrap_or(Value::Object(Map::new())))
     }
+}
+
+/// Result of [`RemoteHeap::create_collection`] (op 106).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteCreatedCollection {
+    /// Immutable collection id as canonical UUID string.
+    pub collection_id: String,
+    /// Canonical name.
+    pub canonical_name: String,
+    /// Descriptor hash as 64 lowercase hex characters.
+    pub descriptor_hash: String,
+    /// Admin receipt id as 32 lowercase hex characters (empty if omitted).
+    pub receipt_id: String,
+    /// Client operation id used for this attempt.
+    pub operation_id: [u8; 16],
+    /// True when the server returned a dedup replay.
+    pub replayed: bool,
 }
 
 /// Connect to a qualified heap listener (`dingo://host:port[/label]`).

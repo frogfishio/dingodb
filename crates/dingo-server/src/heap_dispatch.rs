@@ -2,17 +2,17 @@
 //!
 //! Under `heap-key-v1`, heap identity comes solely from the channel [`HeapCap`].
 //! Token/RBAC fields are rejected. Active ops: process 1–3 plus collection data
-//! 105 / 110–112 / 114–117 / 120–122 and secondary indexes 130–133.
+//! 105–106 / 110–112 / 114–117 / 120–122 and secondary indexes 130–133.
 
 use dingo_client::b64u_decode;
 use dingo_heap::{
-    active_operation_ids, refresh_capability_or_terminate, CollectionId, HeapCap, Operation,
+    active_operation_ids, refresh_capability_or_terminate, CollectionId, HeapCap, HeapId, Operation,
     OperationStatus, Rights,
 };
 use dingo_sdk::{Filter, Pred};
 use dingo_store::{
-    hex16, rebuild_object_entry_from_chain, try_load_collections_catalog, HeapMetaLayout, HeapStore,
-    ObjectKind, WriteReceipt,
+    create_collection_idempotent, hex16, rebuild_object_entry_from_chain,
+    try_load_collections_catalog, HeapMetaLayout, HeapStore, ObjectKind, StoreError, WriteReceipt,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -183,9 +183,11 @@ pub fn dispatch_heap_request_with(
 
     // Rights gate for data ops.
     // 131–133 require IndexAdmin (bootstrap cert includes bit 3).
+    // 106 requires HeapAdmin (CORE plan §6.3).
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
         105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 | 130 => Rights::READ,
+        106 => Rights::HEAP_ADMIN,
         120 | 121 | 122 => Rights::WRITE,
         131 | 132 | 133 => Rights::INDEX_ADMIN,
         _ => return unavailable(req.id),
@@ -200,6 +202,10 @@ pub fn dispatch_heap_request_with(
         3 => ok(req.id, serde_json::json!({ "ready": true })),
         105 => match data {
             Some(ctx) => dispatch_collection_open(req.id, &req.args, ctx),
+            None => unavailable(req.id),
+        },
+        106 => match data {
+            Some(ctx) => dispatch_collection_create(req.id, &req, ctx),
             None => unavailable(req.id),
         },
         110 => match data {
@@ -285,8 +291,103 @@ fn ok_id(id: u64, result: Value) -> HeapDispatchResult {
     })
 }
 
+fn err_code(id: u64, code: &str) -> HeapDispatchResult {
+    HeapDispatchResult::Response(HeapRpcResponse {
+        v: 1,
+        id,
+        ok: false,
+        result: None,
+        error: Some(HeapRpcError {
+            code: code.into(),
+            retryable: false,
+        }),
+    })
+}
+
 fn require_string_arg(args: &Map<String, Value>, key: &str) -> Option<String> {
     args.get(key).and_then(|v| v.as_str()).map(|s| s.to_string())
+}
+
+fn parse_operation_id_hex(s: &str) -> Option<[u8; 16]> {
+    if s.len() != 32 {
+        return None;
+    }
+    let mut out = [0u8; 16];
+    for i in 0..16 {
+        out[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
+
+fn hex32(h: &[u8; 32]) -> String {
+    h.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn dispatch_collection_create(
+    id: u64,
+    req: &HeapRpcRequest,
+    ctx: HeapDataCtx<'_>,
+) -> HeapDispatchResult {
+    // Mutation requires envelope operation_id (CORE plan §6.1).
+    let op_hex = match req.operation_id.as_deref() {
+        Some(s) => s,
+        None => return err_code(id, "validation_failed"),
+    };
+    let operation_id = match parse_operation_id_hex(op_hex) {
+        Some(o) => o,
+        None => return err_code(id, "validation_failed"),
+    };
+    let name = match require_string_arg(&req.args, "canonical_name") {
+        Some(n) if !n.is_empty() && n.len() <= 256 => n,
+        _ => return err_code(id, "validation_failed"),
+    };
+    if req.args.keys().any(|k| k != "canonical_name") {
+        return err_code(id, "validation_failed");
+    }
+    if req.collection_id.is_some() || req.stream_id.is_some() {
+        return err_code(id, "validation_failed");
+    }
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    match create_collection_idempotent(ctx.layout, &heap_id, operation_id, &name) {
+        Ok(created) => {
+            let coll = match CollectionId::from_bytes_unchecked_nonzero(created.object_id) {
+                Ok(c) => c,
+                Err(_) => return unavailable_id(id),
+            };
+            let heap = match HeapId::from_bytes_unchecked_nonzero(heap_id) {
+                Ok(h) => h,
+                Err(_) => return unavailable_id(id),
+            };
+            let desc = hex32(&created.descriptor_hash);
+            ok_id(
+                id,
+                serde_json::json!({
+                    "collection_id": coll.to_string(),
+                    "canonical_name": created.name,
+                    "descriptor_hash": desc,
+                    "receipt": {
+                        "receipt_id": hex16(&created.receipt_id),
+                        "operation": "create_collection",
+                        "heap_id": heap.to_string(),
+                        "object_id": coll.to_string(),
+                        "descriptor_hash": desc,
+                        "created_at": created.created_at,
+                    },
+                    "replayed": created.replayed,
+                }),
+            )
+        }
+        Err(StoreError::ConsistencyViolation(_)) => err_code(id, "consistency_violation"),
+        Err(StoreError::HeapAdmit(ref msg))
+            if msg.contains("name/alias conflict") || msg.contains("object id already exists") =>
+        {
+            err_code(id, "already_exists")
+        }
+        Err(StoreError::HeapAdmit(ref msg)) if msg.contains("empty") || msg.contains("too long") || msg.contains("NUL") => {
+            err_code(id, "validation_failed")
+        }
+        Err(_) => unavailable_id(id),
+    }
 }
 
 fn parse_collection_id(s: &str) -> Option<CollectionId> {

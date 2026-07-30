@@ -104,7 +104,8 @@ pub use heap::{
     ListedCollection, SignedCursor,
 };
 pub use remote_heap::{
-    connect_heap, CredentialError, HeapCredential, HolderSigner, RemoteHeap, RemoteHeapOptions,
+    connect_heap, CredentialError, HeapCredential, HolderSigner, RemoteCreatedCollection,
+    RemoteHeap, RemoteHeapOptions,
 };
 #[cfg(feature = "dangerous-key-export")]
 pub use remote_heap::InMemoryHolderKey;

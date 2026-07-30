@@ -160,6 +160,92 @@ pub fn record_admin_op_dedup(
     save_admin_op_dedup(&path, &table)
 }
 
+/// Outcome of an idempotent collection create (APP-1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatedCollectionAdmin {
+    /// Immutable collection object id.
+    pub object_id: [u8; 16],
+    /// Canonical name.
+    pub name: String,
+    /// Admin receipt id (original on replay).
+    pub receipt_id: [u8; 16],
+    /// Descriptor hash at first acceptance.
+    pub descriptor_hash: [u8; 32],
+    /// Create timestamp (unix seconds; original on replay).
+    pub created_at: u64,
+    /// Client operation id.
+    pub operation_id: [u8; 16],
+    /// True when this result was served from the durable dedup table.
+    pub replayed: bool,
+}
+
+/// Create a collection with durable `(HeapId, operation_id)` fingerprint/replay.
+///
+/// Shared by embedded SDK and qualified wire op 106.
+pub fn create_collection_idempotent(
+    layout: &HeapMetaLayout,
+    heap_id: &[u8; 16],
+    operation_id: [u8; 16],
+    name: &str,
+) -> Result<CreatedCollectionAdmin, StoreError> {
+    if name.is_empty() {
+        return Err(StoreError::HeapAdmit("empty collection name".into()));
+    }
+    if name.len() > 256 {
+        return Err(StoreError::HeapAdmit("collection name too long".into()));
+    }
+    if name.as_bytes().contains(&0) {
+        return Err(StoreError::HeapAdmit("collection name contains NUL".into()));
+    }
+    let binding = collection_create_binding(name);
+    if let Some(prior) = resolve_admin_op_dedup(layout, heap_id, &operation_id, &binding)? {
+        return Ok(CreatedCollectionAdmin {
+            object_id: prior.object_id,
+            name: prior.name,
+            receipt_id: prior.receipt_id,
+            descriptor_hash: prior.descriptor_hash,
+            created_at: prior.created_at,
+            operation_id,
+            replayed: true,
+        });
+    }
+    let object_id = crate::ids::random_id()?;
+    let admin = super::catalog::create_object(
+        layout,
+        heap_id,
+        super::catalog::ObjectKind::Collection,
+        object_id,
+        operation_id,
+        name,
+    )?;
+    let object_id = admin
+        .object_id
+        .ok_or_else(|| StoreError::HeapAdmit("create_object omitted object_id".into()))?;
+    record_admin_op_dedup(
+        layout,
+        heap_id,
+        operation_id,
+        AdminOpDedupRecord {
+            request_binding: binding,
+            object_id,
+            receipt_id: admin.receipt_id,
+            descriptor_hash: admin.descriptor_hash,
+            created_at: admin.created_at,
+            name: name.to_string(),
+            operation: COLLECTION_CREATE_OP.into(),
+        },
+    )?;
+    Ok(CreatedCollectionAdmin {
+        object_id,
+        name: name.to_string(),
+        receipt_id: admin.receipt_id,
+        descriptor_hash: admin.descriptor_hash,
+        created_at: admin.created_at,
+        operation_id,
+        replayed: false,
+    })
+}
+
 fn encode_table(table: &AdminOpDedupTable) -> Vec<u8> {
     let mut out = Vec::with_capacity(8 + 4 + 4 + table.len() * 160);
     out.extend_from_slice(MAGIC);

@@ -58,16 +58,25 @@ for p in [
 
 ops = load("spec/heap/operations-v1.json")
 by_id = {o["id"]: o for o in ops["operations"]}
-for oid, name in ((106, "collection_create"), (118, "dql_query")):
-    o = by_id.get(oid)
-    if not o:
-        sys.exit(f"missing operation {oid}")
-    if o.get("wire_name") != name:
-        sys.exit(f"op {oid} wire_name expected {name}, got {o.get('wire_name')}")
-    if o.get("status") != "reserved":
-        sys.exit(f"op {oid} must remain reserved during APP-0 (got {o.get('status')})")
-    if o.get("request_schema") is not None or o.get("response_schema") is not None:
-        sys.exit(f"reserved op {oid} must keep null schema pointers (architecture rule)")
+# APP-1 activates collection_create (106). dql_query (118) stays reserved until APP-7.
+o106 = by_id.get(106)
+if not o106:
+    sys.exit("missing operation 106")
+if o106.get("wire_name") != "collection_create":
+    sys.exit(f"op 106 wire_name expected collection_create, got {o106.get('wire_name')}")
+if o106.get("status") != "active":
+    sys.exit(f"op 106 must be active after APP-1 (got {o106.get('status')})")
+if not o106.get("request_schema") or not o106.get("response_schema"):
+    sys.exit("active op 106 must have non-null schema pointers")
+o118 = by_id.get(118)
+if not o118:
+    sys.exit("missing operation 118")
+if o118.get("wire_name") != "dql_query":
+    sys.exit(f"op 118 wire_name expected dql_query, got {o118.get('wire_name')}")
+if o118.get("status") != "reserved":
+    sys.exit(f"op 118 must remain reserved until APP-7 (got {o118.get('status')})")
+if o118.get("request_schema") is not None or o118.get("response_schema") is not None:
+    sys.exit("reserved op 118 must keep null schema pointers (architecture rule)")
 
 em = load("spec/app/v1/error_mapping_v1.json")
 if not em.get("required_error_codes"):

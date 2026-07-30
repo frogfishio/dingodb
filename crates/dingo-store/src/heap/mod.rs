@@ -14,9 +14,10 @@ mod recovery_store;
 mod replica_store;
 
 pub use admin_op_dedup::{
-    admin_op_binding, admin_op_dedup_path, collection_create_binding, load_admin_op_dedup,
-    record_admin_op_dedup, resolve_admin_op_dedup, save_admin_op_dedup, AdminOpDedupRecord,
-    AdminOpDedupTable, ADMIN_OP_DEDUP_FILE, COLLECTION_CREATE_OP,
+    admin_op_binding, admin_op_dedup_path, collection_create_binding, create_collection_idempotent,
+    load_admin_op_dedup, record_admin_op_dedup, resolve_admin_op_dedup, save_admin_op_dedup,
+    AdminOpDedupRecord, AdminOpDedupTable, CreatedCollectionAdmin, ADMIN_OP_DEDUP_FILE,
+    COLLECTION_CREATE_OP,
 };
 pub use catalog::{
     create_object, delete_rebuildable_catalogs, load_staged_genesis, publish_staged_genesis,

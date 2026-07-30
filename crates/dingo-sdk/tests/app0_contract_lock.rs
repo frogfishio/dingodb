@@ -54,28 +54,31 @@ fn app0_wire_artifacts_present() {
 }
 
 #[test]
-fn app0_ops_106_118_remain_reserved_without_schema_ptrs() {
+fn app0_ops_106_active_118_reserved() {
     let ops = read_json("spec/heap/operations-v1.json");
     let list = ops["operations"].as_array().expect("operations array");
-    for want_id in [106u64, 118u64] {
-        let op = list
-            .iter()
-            .find(|o| o["id"].as_u64() == Some(want_id))
-            .unwrap_or_else(|| panic!("missing op {want_id}"));
-        assert_eq!(
-            op["status"].as_str(),
-            Some("reserved"),
-            "op {want_id} must stay reserved until APP-1/APP-7"
-        );
-        assert!(
-            op["request_schema"].is_null(),
-            "reserved op {want_id} request_schema must be null (architecture rule)"
-        );
-        assert!(
-            op["response_schema"].is_null(),
-            "reserved op {want_id} response_schema must be null (architecture rule)"
-        );
-    }
+    let op106 = list
+        .iter()
+        .find(|o| o["id"].as_u64() == Some(106))
+        .expect("missing op 106");
+    assert_eq!(op106["status"].as_str(), Some("active"), "APP-1 activates 106");
+    assert!(
+        op106["request_schema"].is_string() && op106["response_schema"].is_string(),
+        "active op 106 must have schema pointers"
+    );
+    let op118 = list
+        .iter()
+        .find(|o| o["id"].as_u64() == Some(118))
+        .expect("missing op 118");
+    assert_eq!(
+        op118["status"].as_str(),
+        Some("reserved"),
+        "op 118 stays reserved until APP-7"
+    );
+    assert!(
+        op118["request_schema"].is_null() && op118["response_schema"].is_null(),
+        "reserved op 118 must keep null schema pointers"
+    );
 }
 
 #[test]

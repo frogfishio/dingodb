@@ -346,16 +346,16 @@
     {
       "id": 106,
       "wire_name": "collection_create",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 4096,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/collection_create.request.json",
+      "response_schema": "rpc-v1/collection_create.response.json",
       "allowed_states": [
         "active"
       ],
       "high_impact_confirmation": null,
-      "returns_data": false,
+      "returns_data": true,
       "mutates_data": true,
       "authorization_checkpoint": "before_effect"
     },
