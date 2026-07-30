@@ -224,7 +224,13 @@ Implementation plan:
 Required order:
 
 ```text
-remediate active P0 core-storage defects, beginning DEF-098
+DEF-098 exact chunk generations/publication
+→ DEF-099 exact historical recovery
+→ DEF-100 coverage-aware scans
+→ DEF-101 writer-lock contract
+→ DEF-102 derived-index lifecycle diagnostics
+→ DEF-103 large-value profile
+→ DEF-104 executable crash/recovery contract
 → CSQ-0 registries
 → CSQ-1 independent oracles
 → CSQ-2 boundary/failure instrumentation
@@ -246,7 +252,8 @@ Any P0 storage-invariant violation discovered during C0:
 
 C0 exit:
 
-- DEF-098 and every other applicable P0 core-storage defect are accepted;
+- DEF-098 through DEF-104 and every other applicable P0 core-storage defect are
+  accepted;
 - `CSQ-0` through `CSQ-12` are accepted;
 - `dingo-core-storage-v1 / A2` independently verifies;
 - no mandatory cell is skipped, flaky, infrastructure-blocked, or
@@ -844,12 +851,13 @@ This is the current executable queue:
 | 2 | `M0-2` | `accept` | scoreboard reconciled |
 | 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
 | 4 | `APP-0` / `APP-1` | `in_review` on board | complete review only; preserve work already produced |
-| 5 | `DEF-098` | `open P0` | **principal track:** generation-exact, bounded, directly addressable chunks |
-| 6 | `CSQ-0`…`CSQ-12` | `not_started` | execute Core Storage Qualification immediately after P0 remediation |
+| 5 | `DEF-098`…`DEF-104` | `open P0/P1/P2` | **principal track:** close the complete observed storage/recovery contract |
+| 6 | `CSQ-0`…`CSQ-12` | `not_started` | execute Core Storage Qualification immediately after DEF-098…104 |
 | 7 | `HAR-0` | `ready` | truth-only residual may continue without preempting C0 |
 | 8 | `APP-2+` / `HAR-1+` | interlocked | no new feature labor before `CSQ-12` accept |
 
-The next implementation task is **DEF-098**, followed by **CSQ-0**. Live
+The next implementation task is **DEF-098**, followed by **DEF-099…104**, then
+**CSQ-0**. Live
 scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
 
 No developer should start DRE, Atomics, Direct Access, Order Wavelets, search,
@@ -907,7 +915,7 @@ change the plan.
 
 ```text
 NOW:
-DEF-098 P0 remediation
+DEF-098…DEF-104 incident defect family
 → CSQ-0…CSQ-12
 → verified dingo-core-storage-v1 / A2
 → HAR-0…HAR-7 and APP-2+

@@ -31,8 +31,9 @@ regression and mutation to this suite.
 
 ## 2. Entry and interlock
 
-Qualification implementation starts immediately after the active P0
-core-storage defect set, including DEF-098, is remediated.
+Qualification implementation starts immediately after the observed
+core-storage/recovery defect family DEF-098 through DEF-104 and any additional
+active P0 core-storage defects are remediated.
 
 Until `CSQ-12` accepts:
 
@@ -175,12 +176,17 @@ Exit:
 
 Depends: `CSQ-1`, `CSQ-2`
 
+Regression authorities: `DEF-099`, `DEF-100`
+
 Deliver:
 
 - exhaustive publication kernel;
 - machine-checked publication, parser-progress, range-safety, and recovery
   idempotence obligations with deliberately false harness controls;
 - generated command/state histories;
+- exact historical reads, bounded last-complete searches, and tombstone/gap
+  policies;
+- coverage-aware key/document scan model comparisons;
 - model comparison after every step;
 - reopen/rebuild/continue transformations;
 - coverage report for every transition class; and
@@ -196,6 +202,8 @@ Exit:
 
 Depends: `CSQ-2`, `CSQ-4`
 
+Regression authority: `DEF-101`
+
 Deliver:
 
 - every-boundary error/abort/short-write matrix;
@@ -204,6 +212,7 @@ Deliver:
 - ENOSPC/quota/inode/permission/EIO campaigns;
 - memory-buffer corruption, clock discontinuity, path-alias, and mount
   substitution campaigns;
+- stale/adversarial writer-lock diagnostics and bounded acquisition campaigns;
 - Linux loopback/device-mapper lane;
 - supported-platform abrupt-termination lanes;
 - filesystem/mount evidence capture; and
@@ -221,7 +230,7 @@ Exit:
 
 Depends: `CSQ-3`–`CSQ-5`
 
-Primary regression authority: `DEF-098`
+Primary regression authorities: `DEF-098`, `DEF-103`
 
 Deliver:
 
@@ -262,6 +271,8 @@ Exit:
 ## 12. CSQ-8 — Derived state, maintenance, backup, and migration
 
 Depends: `CSQ-4`, `CSQ-5`, `CSQ-7`
+
+Regression authority: `DEF-102`
 
 Deliver:
 
@@ -323,6 +334,8 @@ Exit:
 ## 15. CSQ-11 — Compatibility, packaged journey, scale, and soak
 
 Depends: `CSQ-5`–`CSQ-10`
+
+Regression authority: `DEF-104`
 
 Deliver:
 

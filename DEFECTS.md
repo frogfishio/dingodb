@@ -2888,6 +2888,598 @@ DEF-098 is accepted only when:
   weaker durability, or another evidenced class—never guessed from the broad
   `PayloadPartial` error alone.
 
+#### Incident evidence: rewrite-heavy desktop transcript
+
+A real embedded desktop workload reported a force-quit followed by
+`PayloadPartial`/`CoverageIncomplete` while opening a repeatedly replaced
+200–500 KiB transcript. The key and metadata remained visible and application
+code converted the read/list failure into an apparently empty UI.
+
+This incident is a permanent DEF-098 regression input, but its physical cause
+MUST remain `unclassified` until exact manifest event IDs, chunk observations,
+durability mode, receipt outcome, and store bytes identify one of:
+
+```text
+cross-generation conflict
+missing current-generation chunk
+unavailable tier
+torn or corrupt bytes
+unacknowledged weaker-durability loss
+another evidenced class
+```
+
+Force-quit timing and the broad `PayloadPartial` code are not causal proof.
+
+---
+
+### DEF-099 — Add exact historical-value reads and explicit last-complete recovery
+
+Priority: **P1**
+Dependencies: DEF-098 exact manifest resolution and chunk locator
+Status: **open — recovery API gap**
+
+#### Finding
+
+Per-key history exposes verified item events, but a historical chunked put is
+currently projected as its manifest body rather than its reconstructed logical
+value. An application faced with a partial current generation therefore has no
+safe high-level way to:
+
+- read one exact historical event;
+- locate the newest earlier generation that is independently complete;
+- distinguish a deliberately selected historical value from the current value;
+  or
+- preserve current damage evidence while exporting a usable prior version.
+
+Applications will otherwise invent unsafe recovery by treating manifests as
+documents, choosing physical encounter order, crossing tombstones, or writing
+the recovered value over damaged evidence.
+
+#### Normative rules
+
+- Ordinary `get` remains current-generation and fail-closed. It MUST NOT
+  silently fall back.
+- Historical selection is by exact authoritative `event_id`, not array index,
+  timestamp, segment order, or `item_id`.
+- Chunked historical reconstruction uses only chunk event IDs named by that
+  historical manifest.
+- Returned results disclose current event, selected event, completeness,
+  history gaps, and whether a tombstone boundary was crossed.
+- A read-only recovery call never mutates, repairs, promotes, or hides current
+  authority.
+- “Last complete” is bounded and deterministic. Its default search stops at the
+  first tombstone so a deleted value is never accidentally resurrected.
+- Searching across a tombstone requires an explicit forensic option and the
+  result is labelled non-current historical evidence.
+
+#### Exact implementation
+
+Store API:
+
+```text
+get_payload_version(subject, event_id, ReadBudget)
+  -> VersionedPayloadResult
+
+find_last_complete_version(subject, BeforeEvent, RecoveryReadOptions)
+  -> HistoricalSearchResult
+```
+
+SDK/API projection:
+
+```text
+Collection::get_version(key, event_id)
+Collection::find_last_complete(key, options)
+```
+
+`VersionedPayloadResult` contains:
+
+```text
+subject identity
+selected event_id / item_id / segment_id
+selected event kind
+current event_id and current completeness
+selected PayloadResult
+known_gap_before / history_coverage_complete
+tombstone_crossed
+provenance and bytes examined
+```
+
+Implementation:
+
+1. resolve the exact item event through history/event locators;
+2. verify its frame independently;
+3. return delete events as tombstones, never empty values;
+4. for inline puts, return the verified logical body;
+5. for chunked puts, decode that event's manifest and invoke the DEF-098
+   manifest-qualified resolver;
+6. enforce caller read budgets and return an explicit bounded-search result;
+7. retain partial/unavailable/conflicting candidates in the search report;
+8. never update the primary index or write recovered bytes; and
+9. expose a separate, explicitly authorized restore/copy operation later if
+   promotion is desired.
+
+#### Required tests
+
+- exact inline and chunked event reads across many replacements;
+- current partial with previous complete;
+- several previous partial/conflicting generations before a complete one;
+- delete boundary before an older complete put;
+- explicit forensic crossing of the delete boundary;
+- duplicated physical event, conflicting same event ID, and history holes;
+- unavailable tier and strict read-budget exhaustion;
+- rebuild, compaction, backup/restore, and migration preserve selection;
+- ordinary `get` still fails on the current partial and never auto-falls back;
+- recovery calls leave every source byte and current index entry unchanged; and
+- embedded, remote, cluster, CLI, and Studio projections preserve the same
+  provenance.
+
+#### Acceptance
+
+- exact event reads reconstruct the same value as when that event was current;
+- `find_last_complete` returns the newest provably complete permitted event;
+- tombstones and history gaps are never silently crossed;
+- no recovery read mutates or promotes authority;
+- runtime work obeys the declared budget; and
+- the transcript incident can display/export an evidenced prior value without
+  representing it as the current value.
+
+---
+
+### DEF-100 — Make key enumeration and document scans coverage-aware
+
+Priority: **P0**
+Dependencies: DEF-012 coverage truth; DEF-026 cursor paging
+Status: **open — false-completeness risk**
+
+#### Finding
+
+`Collection::scan_keys` avoids payload reassembly, which is correct for a
+partially available body. However, its plain `Vec<String>` result cannot state
+whether unavailable/damaged authoritative regions may contain additional
+keys. It can therefore present an incomplete set as a complete key list.
+
+Conversely, `Collection::scan_json` and `scan_json_page` fail the entire
+logical scan when one body's payload is incomplete. The lower store layer
+already has partial-aware pages, but the ordinary Collection, remote, and
+cluster surfaces do not expose the useful result.
+
+The required distinction is:
+
+```text
+body incomplete, key event verified
+    key remains listable; document appears in incomplete[]
+
+key-bearing authority unavailable or damaged
+    known keys remain listable; key coverage is explicitly incomplete
+```
+
+#### Normative rules
+
+- Value-body damage MUST NOT suppress an independently verified key.
+- Unknown key coverage MUST NOT be represented as a complete empty or partial
+  vector.
+- A malformed/partial document cannot abort enumeration of unrelated healthy
+  documents in the partial-aware API.
+- Legacy fail-closed methods may return `CoverageIncomplete`; they may not
+  silently discard rows or gaps.
+- Continuations bind store, Heap, collection, scan generation, prefix, page
+  size, and coverage frontier.
+- No API may infer the identity of a key whose key-bearing bytes were destroyed.
+
+#### Exact implementation
+
+Add common response types:
+
+```text
+KeyScanPage {
+    keys,
+    continuation,
+    has_more,
+    coverage_complete,
+    coverage_gaps,
+    examined
+}
+
+DocumentScanPage<T> {
+    rows,
+    incomplete: [{ key, completeness, detail }],
+    undecodable: [{ key, error_class }],
+    continuation,
+    has_more,
+    key_coverage_complete,
+    coverage_gaps,
+    examined,
+    bytes_examined
+}
+```
+
+Add:
+
+```text
+Store::scan_live_keys_page
+Collection::scan_keys_page
+Collection::scan_json_partial_page
+remote list_keys_page / scan_json_partial_page
+cluster parity for both operations
+```
+
+Rules for existing methods:
+
+- `scan_keys()` drains `scan_keys_page` only when coverage is complete;
+  otherwise it returns `CoverageIncomplete` with a resumable diagnostic.
+- `scan_json()` remains fail-closed compatibility behavior.
+- `scan_json_partial_page()` returns all healthy rows and per-key failures.
+- neither method materializes the entire dataset internally;
+- body resolution is never performed by key-only scanning; and
+- all backends use the same response and error vocabulary.
+
+Coverage gaps use stable typed causes and conservative authority ranges. They
+do not leak Heap identifiers or subjects to unauthorized callers.
+
+#### Required tests
+
+- one missing chunk does not remove its key or unrelated documents;
+- missing first/middle/last body chunks and conflicting chunks;
+- corrupt JSON with a verified key;
+- damaged key-bearing item event;
+- unavailable tier containing zero, one, or many possible key events;
+- corrupt/missing/stale primary index and collection catalog;
+- empty collection with complete coverage versus zero known keys with
+  incomplete coverage;
+- pagination through pages containing only incomplete documents;
+- cursor tamper, stale generation, cross-store/Heap/collection reuse;
+- bounded work with long runs of incomplete entries;
+- remote and cluster parity; and
+- application regression: no error or incomplete result can become `[]`
+  without an explicit caller policy.
+
+#### Acceptance
+
+- verified keys survive body failure;
+- complete key lists are claimed only with complete key-bearing coverage;
+- healthy documents remain streamable around damaged documents;
+- all omissions appear in typed per-key or coverage evidence;
+- legacy APIs fail closed; and
+- the incident's sidebar can list the affected chat while showing its body as
+  unavailable rather than making the database appear empty.
+
+---
+
+### DEF-101 — Define a truthful writer-lock acquisition and diagnostic contract
+
+Priority: **P1**
+Dependencies: DEF-020 exclusive writer ownership
+Status: **open — operational/DX gap**
+
+#### Finding
+
+The OS advisory lock is authoritative and the text in
+`store-info/writer.lock` is diagnostic only. Process death releases the OS
+lock; stale text cannot legitimately keep the store locked. Current errors do
+not provide enough structured information to distinguish:
+
+- another handle in the same process;
+- a live external OS-lock holder;
+- an acquisition race;
+- an unsupported filesystem/locking failure; or
+- stale diagnostic text while the OS lock is actually free.
+
+Applications may consequently treat a retryable open failure as an empty store
+or instruct operators to delete a harmless file.
+
+#### Normative rules
+
+- Only successful OS/in-process ownership establishes writer authority.
+- Diagnostic PID/text is advisory and never grants, retains, or breaks a lock.
+- Dingo MUST NOT delete a lock file or kill a process to acquire ownership.
+- Writer-lock failure is never database absence.
+- Read-only inspection uses `open_inspect` and cannot mutate derived state.
+- Waiting is bounded, cancellable, observable, and defaults to the existing
+  non-blocking behavior unless explicitly requested.
+
+#### Exact implementation
+
+Add:
+
+```text
+OpenOptions {
+    writer_lock_wait,
+    writer_lock_poll_interval,
+    cancellation
+}
+
+WriterLockObservation {
+    class: in_process | external_holder | unsupported | io_failure
+    diagnostic_pid
+    diagnostic_pid_liveness: alive | dead | unknown
+    diagnostic_acquired_time
+    os_lock_authoritative
+    waited
+    retryable
+}
+```
+
+Expose:
+
+```text
+Store::open_with_options
+Store::try_open
+Store::open_inspect
+dingo doctor lock-status
+```
+
+On contention, reread advisory metadata for diagnostics but do not trust it.
+PID liveness is reported as advisory because PID reuse and permissions make it
+racy. Timeout returns structured `WriterLockHeld`, not `NotFound` or an empty
+store. SDK/server errors preserve the class and retryability.
+
+#### Required tests
+
+- two handles in one process;
+- live holder in another process;
+- SIGKILL/abort/normal exit releases the OS lock;
+- deliberately stale/dead/reused PID text with OS lock free;
+- text naming a live PID that does not hold the OS lock;
+- contention disappears during bounded wait;
+- timeout and cancellation create no store effect;
+- read-only inspect while a writer is live;
+- unsupported/network filesystem behavior; and
+- application regression forbidding `WriterLockHeld -> empty database`.
+
+#### Acceptance
+
+- stale diagnostics never block a free authoritative lock;
+- a real holder cannot be bypassed;
+- callers can choose immediate, bounded-wait, or inspect behavior;
+- all failure classes remain distinguishable and retryable as appropriate; and
+- operator guidance never recommends deleting `writer.lock` as a lock-breaking
+  mechanism.
+
+---
+
+### DEF-102 — Explain and expose the derived-index/active-log lifecycle
+
+Priority: **P2**
+Dependencies: DEF-023 frontier cache; DEF-095 locator-only primary index
+Status: **open — diagnostic and documentation gap**
+
+#### Finding
+
+A live store may contain megabytes in `active/`, empty `segments/` and
+`chunks/`, and a very small `indexes/primary.idx`. This can be correct:
+authoritative events remain in the active log while `primary.idx` is only a
+derived, checksummed checkpoint/frontier cache.
+
+The current product surface does not make that interpretation obvious.
+Operators cannot readily distinguish a healthy minimal cache from a stale,
+rejected, truncated, or insufficient cache.
+
+#### Normative rules
+
+- `primary.idx` is never authority.
+- Its byte size alone is never a health signal.
+- Missing, stale, foreign, unsupported, or corrupt cache state is rejected and
+  rebuilt/replayed from authoritative coverage.
+- Store diagnostics report both authority coverage and derived-cache status.
+- “Index healthy” cannot mean only “file exists.”
+
+#### Exact implementation
+
+Extend `StoreInfo`, doctor output, and Studio with:
+
+```text
+primary_cache {
+    present
+    format_version
+    byte_len
+    validation: accepted | absent | stale | corrupt | foreign | unsupported
+    sealed_fingerprint
+    active_segment_id
+    active_covered_len
+    active_actual_len
+    replay_bytes
+    resident_entries
+    resident_body_bytes
+    authoritative: false
+}
+
+lifecycle {
+    active_shards
+    pending_seals
+    sealed_segments
+    checkpoint_reason
+    last_checkpoint_time
+}
+```
+
+Document create → active append → checkpoint/frontier → rotate/pending seal →
+sealed segment → compaction, including which artifacts are authoritative and
+which are disposable/rebuildable.
+
+#### Required tests
+
+- minimal/empty cache with a non-empty active log;
+- cache absent, truncated, hash-corrupt, stale frontier, ahead frontier,
+  foreign store ID, and unsupported version;
+- active tail before/after the recorded frontier;
+- delete all derived directories and obtain identical logical state;
+- seal/async seal/compaction lifecycle transitions;
+- doctor output matches independently measured files/frontiers; and
+- no diagnostic state changes ordinary logical results.
+
+#### Acceptance
+
+- the observed 124-byte-cache scenario is classified unambiguously;
+- every rejected cache reports why and what replay/rebuild occurred;
+- deleting the cache is demonstrated as logically neutral;
+- documentation prevents cache size from being interpreted as stored-data
+  size; and
+- diagnostics never elevate cache presence to authoritative health.
+
+---
+
+### DEF-103 — Define one large-value profile and safe rewrite-heavy workload contract
+
+Priority: **P1**
+Dependencies: DEF-029 resource profiles; DEF-098 logical-size admission
+Status: **open — configuration and workload footgun**
+
+#### Finding
+
+The 64 KiB threshold and 16 KiB chunk size are storage-layout defaults, not a
+document-size promise. Transcript, agent, timeline, and snapshot workloads
+cross the threshold routinely and repeatedly replace the same logical key.
+Configuration is currently test-oriented and the effective client/server/store
+limits and layout choice are not obvious to application developers.
+
+Simply raising the threshold is not a correctness solution: it trades more
+chunks for larger individual frames, allocations, and damage blast radius.
+
+#### Normative rules
+
+- One versioned store/resource profile defines maximum logical payload, chunk
+  threshold, chunk size, frame limits, memory budget, and transport limit.
+- The effective write ceiling is the minimum across all participating layers.
+- Admission occurs before event IDs, allocation, append, rotation, or derived
+  effect.
+- Threshold changes layout only; they do not weaken atomicity or verification.
+- Existing above-policy values remain readable and salvageable.
+- Defaults are changed only with crash, damage, memory, and performance
+  evidence—not workload anecdotes.
+- Rewrite-heavy compound documents receive a first-class recommended data
+  model of independently meaningful records plus optional derived snapshots.
+
+#### Exact implementation
+
+Add a validated, persisted/profile-bound configuration:
+
+```text
+LargeValuePolicy {
+    max_logical_payload_bytes
+    chunk_threshold_bytes
+    chunk_payload_bytes
+    max_manifest_bytes
+    max_reassembly_bytes
+    max_write_peak_memory
+}
+```
+
+Expose effective policy through store information, SDK connection information,
+server negotiation, CLI, Studio, and write errors. `PutOptions` may request
+stricter per-operation bounds but cannot raise the effective profile.
+
+Write receipts/diagnostics expose non-secret layout facts:
+
+```text
+inline | chunked
+logical bytes
+chunk count
+effective limit/profile id
+```
+
+Publish the supported transcript pattern:
+
+```text
+transcript/{id}/meta
+transcript/{id}/turn/{monotonic-id}
+transcript/{id}/timeline/{bounded-block-id}
+transcript/{id}/snapshot/{generation}   # derived/rebuildable
+```
+
+#### Required tests
+
+- every threshold and maximum at `-1`, exact, and `+1`;
+- incompatible client/server/store/RPC limits choose the tightest;
+- invalid zero/oversized chunk and manifest settings reject before effect;
+- policy change does not make old data unreadable;
+- inline versus chunked crash/damage matrices;
+- peak allocation and bytes examined remain within policy;
+- large repeated replacement benchmark with unrelated dataset growth;
+- transcript survival journey with one damaged turn/block; and
+- no configuration or telemetry leaks subjects or bodies.
+
+#### Acceptance
+
+- every write surface reports the same effective policy;
+- over-limit rejection has zero authoritative or derived effect;
+- profile values are inspectable before an application writes;
+- the default threshold is retained or changed only by recorded evidence; and
+- the recommended rewrite-heavy model is executable in SDK examples and
+  qualification journeys.
+
+---
+
+### DEF-104 — Publish one executable crash-and-recovery contract
+
+Priority: **P1**
+Dependencies: DEF-098 through DEF-103
+Status: **open — fragmented product contract**
+
+#### Finding
+
+Chunk format, store behavior, scan completeness, history, lock ownership,
+derived indexes, and application guidance currently live in separate sources.
+An application developer cannot consult one normative page to determine:
+
+- what a returned durability receipt proves;
+- what may happen when termination occurs before a receipt;
+- how current partial/conflicting evidence is represented;
+- how to enumerate surviving keys and documents;
+- how to select historical evidence safely;
+- which files are authoritative or rebuildable; and
+- which application reactions are forbidden.
+
+Fragmented documentation is a safety defect when the predictable fallback is
+`error -> []`, empty overwrite, guessed repair, or deletion of diagnostic files.
+
+#### Exact implementation
+
+Create one normative, versioned page:
+
+```text
+doc/CRASH_AND_RECOVERY_CONTRACT.md
+contract id: dingo-crash-recovery-v1
+```
+
+It contains:
+
+1. durability-mode acknowledgement table;
+2. inline and chunked publication state diagrams;
+3. old/new/unknown/partial/unavailable/conflicting decision table;
+4. exact Collection and Store recovery APIs;
+5. key coverage versus body completeness;
+6. historical-version selection and tombstone rules;
+7. writer-lock recovery and inspect pattern;
+8. authority-versus-derived artifact map;
+9. large/rewrite-heavy document modelling guidance;
+10. operator decision tree and forbidden actions; and
+11. capability limitations and assumption ledger.
+
+Every example is compiled or executed in CI. The page links exact error codes,
+receipts, response schemas, CLI commands, and the corresponding CSQ invariant
+and suite IDs.
+
+#### Required journeys
+
+- durable put acknowledged then kill/reopen;
+- kill at every unacknowledged chunk publication phase;
+- current partial with explicit prior-version export;
+- key list and partial document scan around one damaged value;
+- force-killed writer followed by immediate/bounded/inspect reopen;
+- missing/corrupt derived cache with authoritative replay;
+- transcript stored as independent turns with one damaged unit; and
+- deliberately unsafe sample reactions rejected by lint/test fixtures.
+
+#### Acceptance
+
+- no normative statement conflicts with implementation, DEF-098–103, or the
+  core qualification profile;
+- every code example runs against packaged artifacts;
+- every outcome maps to a typed application decision;
+- no example converts uncertainty/damage/lock failure to absence; and
+- the original incident can be diagnosed and recovered using only this page
+  and stable public APIs.
+
 ---
 
 ## 16. Production release gates
@@ -2910,6 +3502,10 @@ DingoDB may be called production-ready only when all applicable gates pass.
 - [ ] Every write surface rejects an over-limit logical payload before durable
       effect, and no supported writer can emit a value its reader profile
       rejects (DEF-098).
+- [ ] Exact historical reads and last-complete recovery preserve current damage,
+      tombstones, history gaps, and provenance without mutation (DEF-099).
+- [ ] Key enumeration never represents incomplete key-bearing coverage as a
+      complete list, and body damage does not hide a surviving key (DEF-100).
 
 ### 16.2 Single-node gates
 
@@ -2919,6 +3515,8 @@ DingoDB may be called production-ready only when all applicable gates pass.
 - [ ] Chunked point reads are proportional to the referenced payload, not total
       store size, and preserve exact partial/unavailable/conflicting evidence
       (DEF-098).
+- [ ] Partial-aware Collection scans return healthy rows plus typed incomplete
+      evidence with backend parity (DEF-100).
 - [ ] Concurrent server load remains bounded and graceful under overload.
 - [ ] Backup, restore, scrub, and format migration are exercised from released
       artifacts.
@@ -2959,6 +3557,10 @@ DingoDB may be called production-ready only when all applicable gates pass.
 ### 16.5 Operational gates
 
 - [ ] Stable logs, metrics, traces, health, dashboards, and alerts exist.
+- [ ] Writer-lock contention, timeout, stale diagnostics, and read-only inspect
+      have structured, tested operator behavior (DEF-101).
+- [ ] Store diagnostics distinguish authoritative active/log coverage from
+      disposable primary-cache lifecycle state (DEF-102).
 - [ ] Signed packages, SBOMs, containers, and deployment examples are tested.
 - [ ] Rolling upgrade, rollback, backup restore, and disaster drills pass.
 - [ ] SLOs and capacity limits are published for supported profiles.
@@ -2970,6 +3572,10 @@ DingoDB may be called production-ready only when all applicable gates pass.
 - [ ] Backend parity suite passes embedded, server, and network cluster.
 - [ ] Wire, RPC, SDK, config, and CLI JSON compatibility policies are published.
 - [ ] Performance claims link to disclosed reproducible evidence.
+- [ ] One effective large-value policy is inspectable and consistent across
+      store, SDK, server, and transport surfaces (DEF-103).
+- [ ] The executable crash-and-recovery contract matches packaged behavior
+      (DEF-104).
 - [ ] No release documentation overstates scaffolded capability.
 
 ## 17. Suggested milestone cut lines
@@ -2977,7 +3583,7 @@ DingoDB may be called production-ready only when all applicable gates pass.
 ### Milestone A — Truthful embedded early access
 
 Required: DEF-001, DEF-003, DEF-010–014, DEF-020–026, DEF-029, DEF-050,
-DEF-060, DEF-061, DEF-090–092, and DEF-098.
+DEF-060, DEF-061, DEF-090–092, and DEF-098–104.
 
 Qualification gate:
 `dingo-core-storage-v1 / A2` under

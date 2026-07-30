@@ -255,6 +255,7 @@ it not applicable.
 | `CSQ-ID-006` | Binary SubjectV2 identities remain byte-exact; UTF-8 convenience paths cannot alias them. |
 | `CSQ-ID-007` | Writer-shard routing is deterministic and does not change logical identity. |
 | `CSQ-ID-008` | One process holds exclusive writer authority; rejected contenders create no durable effect. |
+| `CSQ-ID-009` | Diagnostic lock-file contents never grant, retain, or break writer authority; OS/in-process ownership remains decisive. |
 
 ### 7.2 Acknowledgement and publication
 
@@ -283,7 +284,10 @@ it not applicable.
 | `CSQ-HIST-002` | Tombstones establish logical absence only at their valid position; missing data never becomes a tombstone. |
 | `CSQ-HIST-003` | Known gaps before/between history events remain explicit. |
 | `CSQ-HIST-004` | Compaction may change physical representation but cannot invent, reorder, or silently discard history promised by its profile. |
+| `CSQ-HIST-005` | An exact historical-value read resolves only the requested event and labels it non-current when applicable. |
+| `CSQ-HIST-006` | Last-complete recovery is bounded, preserves partial candidates and gaps, and never crosses a tombstone without explicit forensic policy. |
 | `CSQ-ABS-001` | `None` means authoritative absence; damage, unavailability, unsupported format, resource stop, and conflict are not absence. |
+| `CSQ-ABS-002` | Key/document scans claim completeness only when key-bearing authority coverage is complete; body damage cannot hide an independently surviving key. |
 
 ### 7.4 Frames, chunks, and structured damage
 
@@ -366,9 +370,9 @@ Generated histories draw from:
 ```text
 create/open/open_inspect/close/reopen
 put-inline/put-chunked/put-many
-get/get-payload/get-via-derived
+get/get-payload/get-via-derived/get-version/find-last-complete
 delete/history
-scan/page/resume
+scan-keys-page/scan-partial-page/scan/page/resume
 seal/start-active
 checkpoint/load/delete-cache/rebuild
 secondary-index create/rebuild/use/drop

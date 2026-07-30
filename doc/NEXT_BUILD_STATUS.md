@@ -52,7 +52,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | VFY-0 | not_started | — | — | — | missing `spec/verification/` registries | claim registry |
 | VFY-1 | not_started | — | VFY-0 | — | no preflight/infra-classified runner | evidence runner |
 | VFY-2 | not_started | — | VFY-0 | Heap matrix is ad-hoc VFY-2 partial only | no whole-DB claim map | oracle mapping |
-| CSQ-0 | not_started | — | DEF-098 | [CORE_STORAGE_QUALIFICATION_SPEC.md](../CORE_STORAGE_QUALIFICATION_SPEC.md) | registries not implemented | core-storage contract |
+| CSQ-0 | not_started | — | DEF-098…DEF-104 | [CORE_STORAGE_QUALIFICATION_SPEC.md](../CORE_STORAGE_QUALIFICATION_SPEC.md) | incident defect family and registries not accepted | core-storage contract |
 | CSQ-1 | not_started | — | CSQ-0 | — | independent model/reader absent | storage oracles |
 | CSQ-2 | not_started | — | CSQ-0 | — | boundary census/instrumentation incomplete | failure injection |
 | CSQ-3 | not_started | — | CSQ-1, CSQ-2 | — | exhaustive format corpus absent | format qualification |
@@ -119,7 +119,8 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 
 ## Principal labor track (board SoT)
 
-**Active labor:** DEF-098 remediation, then CSQ. Do not pull APP-2 or APP-4.
+**Active labor:** DEF-098…DEF-104 remediation, then CSQ. Do not pull APP-2 or
+APP-4.
 **Handoff:** **APP-0**, **APP-1** are `in_review` (labor done; principal owns accept).
 
 Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
@@ -130,7 +131,7 @@ Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
 | done | M0-1, M0-2, M0-3 |
 | in_review | **APP-0** (contract freeze; APP0-R3), **APP-1** (create/dedup/op 106) |
 | doing | — |
-| backlog | DEF-098, CSQ-0…CSQ-12, HAR-0…HAR-7, APP-2…APP-8, DEL-0, TEL-0, DST-000 |
+| backlog | DEF-098…DEF-104, CSQ-0…CSQ-12, HAR-0…HAR-7, APP-2…APP-8, DEL-0, TEL-0, DST-000 |
 
 Do **not** pull new HAR/APP feature cards into `todo` before `CSQ-12` accepts.
 Scoreboard may still list HAR-0 as `ready` (dependency honesty); that is not a
@@ -141,8 +142,8 @@ labor order override.
 Labor order for this principal (not “everything that is ready”):
 
 1. Complete **APP-0/APP-1 review** only; no new feature expansion.
-2. Remediate **DEF-098** and any associated P0 storage defects.
-3. Execute **CSQ-0…CSQ-12**.
+2. Remediate **DEF-098…DEF-104** in dependency order.
+3. Execute **CSQ-0…CSQ-12** after the incident defect family accepts.
 4. Resume **APP-2/APP-4** only after `CSQ-12` accepts.
 5. **HAR-0** truth residual may proceed when it does not preempt P0/C0.
 

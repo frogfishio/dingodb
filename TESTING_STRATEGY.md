@@ -2,7 +2,7 @@
 
 Status: normative engineering strategy v1.0-draft
 
-Date: 2026-07-30
+Date: 2026-07-31
 
 Audience: implementers, reviewers, release engineers, security engineers
 
@@ -136,6 +136,10 @@ profile
 capability
 claim_text
 invariants[]
+public_surfaces[]
+observable_outcomes[]
+forbidden_collapses[]
+required_compositions[]
 oracles[]
 required_suites[]
 required_platforms[]
@@ -165,6 +169,123 @@ QUERY-COVERAGE-001
 A release verifier MUST fail when a public claim lacks a registry entry, an
 invariant lacks an oracle, a required suite lacks current passing evidence,
 evidence comes from another revision, or exclusions contradict the claim.
+
+## 6A. Invariant discovery and semantic width
+
+### 6A.1 A registry cannot contain what nobody thought to name
+
+Closed registries prevent known obligations from disappearing; they do not
+prove the obligation set is complete. Before a capability is registered, its
+design review MUST perform an invariant-discovery pass over:
+
+```text
+authority       what bytes/state decide truth?
+identity        what must never alias, merge, or cross scope?
+time            what can be current, historical, stale, or reordered?
+atomicity       what partial publication states can exist?
+completeness    what is known, missing, unavailable, conflicting, or unknown?
+derivation      what may be deleted/rebuilt and must never become authority?
+projection      what meaning can be lost between format/store/SDK/RPC/UI?
+composition     what fails only when two correct-looking features interact?
+resources       what happens at every size/count/time/memory/disk boundary?
+concurrency     what interleavings change visibility or ownership?
+configuration   which layer supplies the effective policy and tightest limit?
+compatibility   how do old/new/unsupported artifacts behave?
+operations      which errors can be misread and which actions destroy evidence?
+security        what crosses Heap, path, process, channel, or privilege scope?
+recovery        what survives, who may select it, and can selection mutate it?
+```
+
+For every public method, reviewers answer:
+
+1. What distinct physical/logical states can reach this method?
+2. Can its return type represent every materially different state?
+3. If not, does it fail closed without fabricating a stronger conclusion?
+4. Can a convenience wrapper turn error, uncertainty, or partial coverage into
+   `None`, `false`, zero, an empty collection, or a default value?
+5. What prior state, second fault, or adjacent feature changes the answer?
+6. Which independent oracle would detect an incorrect collapse?
+
+A capability cannot leave design review with an unanswered question.
+
+### 6A.2 Observation algebra
+
+Dingo distinguishes at least:
+
+```text
+VerifiedPresent(value)
+VerifiedAbsent
+VerifiedDeleted(tombstone)
+Partial(surviving evidence)
+Unavailable(known authority)
+Conflicting(verified alternatives)
+CoverageIncomplete(gaps)
+Unsupported(version or kind)
+ResourceStopped(bound)
+PermissionDenied
+OwnershipContended
+UnknownOutcome
+```
+
+These values form an information/safety ordering, not a list of interchangeable
+errors. Only `VerifiedAbsent` or a valid current tombstone can become ordinary
+absence. A projection MAY remove detail only when the result remains no
+stronger than its input and the loss is explicit.
+
+Forbidden semantic collapses include:
+
+```text
+Partial/Unavailable/Conflicting       -> None or empty value
+CoverageIncomplete                   -> empty or complete list
+ResourceStopped/timeout/cancellation  -> complete result
+OwnershipContended                   -> missing/new empty store
+Unsupported                          -> corrupt, absent, or best-effort mutation
+historical value                     -> current value
+derived-cache miss                   -> authoritative absence
+failed/unacknowledged write           -> acknowledged durable state
+```
+
+Every public projection registers its total mapping over reachable lower-layer
+outcomes. An unregistered mapping or an unreachable/unhandled lower outcome
+fails architecture CI.
+
+### 6A.3 Compositional closure
+
+Testing each component alone is insufficient. Registries identify feature
+compositions that require direct histories, including:
+
+```text
+chunking × replacement × crash × history
+partial body × key enumeration × pagination
+coverage gap × filtering × limit/order/cursor
+writer lock × force-quit × retry × application open
+active log × stale/missing cache × reopen
+large-value policy × SDK/server/RPC limit negotiation
+compaction/tiering × chunk locator × historical read
+damage × recovery selection × subsequent healthy write
+```
+
+All compatible pairs of P0 invariant domains receive a bounded composition
+test or a reviewed proof of independence. Named incident compositions are
+mandatory permanent journeys.
+
+### 6A.4 Incident-driven expansion
+
+Every field incident produces:
+
+```text
+incident artifact
+→ classified or explicitly unclassified physical cause
+→ missing/violated invariant
+→ smallest reproducer
+→ forbidden-collapse case
+→ permanent regression
+→ mandatory mutant or deliberately broken fixture
+→ affected composition cells
+→ capability revocation and rerun set
+```
+
+The incident is not closed merely because the symptom disappears.
 
 ## 7. Oracle doctrine
 
@@ -404,19 +525,62 @@ Required:
 - dependency/advisory/license checks; and
 - external review for independently assessed claims.
 
+### 8.16 Cross-layer contract and forbidden-collapse testing
+
+For every stable operation, generate the same logical scenarios through every
+applicable surface:
+
+```text
+format/reference reader
+→ Store
+→ embedded Collection/Heap SDK
+→ server RPC
+→ remote SDK
+→ cluster projection
+→ CLI/Studio/reference application adapter
+```
+
+Assertions compare semantic outcome, identity, completeness, durability,
+coverage, provenance, retryability, and bounds—not merely error strings.
+
+Mandatory adversarial fixtures force each lower-layer outcome and prove that
+every upper layer either preserves it or performs one registered safe
+projection. Each layer has deliberately broken adapters that convert outcomes
+to `None`, `[]`, defaults, success, or current state; the suite MUST kill them.
+
+Reference application journeys additionally assert that:
+
+- open/list/read errors do not initialize or overwrite an existing store;
+- an incomplete list is visibly different from an empty complete list;
+- a historical recovery result is visibly different from current state;
+- read-only inspection cannot acquire writer authority;
+- recovery/export never mutates source evidence; and
+- a subsequent healthy write does not erase unresolved damage evidence.
+
 ## 9. Coverage model
 
 Line and branch coverage are diagnostic. The authoritative matrix is:
 
 ```text
-claim × profile × invariant × failure class × oracle × platform × version
+claim
+× profile
+× invariant
+× prior state
+× operation
+× failure class/composition
+× public surface/projection
+× observable outcome
+× oracle
+× platform
+× version/configuration
 ```
 
 Source coverage cannot close an invariant gap.
 
-Mutation testing SHOULD target integrity verification, coverage/absence,
+Mutation testing MUST target integrity verification, coverage/absence,
 authorization, durability receipts, cursor binding, error classification and
-recovery selection. A surviving critical mutation is a finding.
+recovery selection. It also targets every registered forbidden collapse. A
+surviving critical mutation is a finding.
 
 ## 10. Platform matrix
 
