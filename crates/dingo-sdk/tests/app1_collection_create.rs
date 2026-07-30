@@ -127,6 +127,68 @@ fn two_heaps_same_name_distinct_ids() {
 }
 
 #[test]
+fn operation_id_exact_retry_replays_and_conflict() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let deployment = DingoDeployment::create(root).unwrap();
+    let layout = HeapMetaLayout::new(root);
+    let dep = *DeploymentId::new_random().unwrap().as_bytes();
+    let heap_bytes = *HeapId::new_random().unwrap().as_bytes();
+    let staged = stage_heap_genesis(&layout, dep, heap_bytes, uuid(), "heap-app1-r1").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+
+    let heap_id = HeapId::from_bytes_unchecked_nonzero(heap_bytes).unwrap();
+    let dep_id = DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap();
+    let heap = deployment.open_heap(mint_cap_for(heap_id, dep_id));
+
+    let op = uuid();
+    let first = heap
+        .create_collection_with("orders", Some(op))
+        .expect("first create");
+    assert!(!first.replayed);
+    assert_eq!(first.operation_id, op);
+
+    let again = heap
+        .create_collection_with("orders", Some(op))
+        .expect("exact retry");
+    assert!(again.replayed);
+    assert_eq!(again.collection.id(), first.collection.id());
+    assert_eq!(again.receipt_id, first.receipt_id);
+    assert_eq!(again.descriptor_hash, first.descriptor_hash);
+    assert_eq!(again.created_at_unix_s, first.created_at_unix_s);
+    assert_eq!(again.operation_id, op);
+
+    // Same operation id, different name → consistency violation (fingerprint conflict).
+    match heap.create_collection_with("users", Some(op)) {
+        Ok(_) => panic!("conflicting operation_id reuse must fail"),
+        Err(err) => assert_eq!(err.code(), ErrorCode::ConsistencyViolation),
+    }
+
+    // Different operation id, same name → already exists.
+    match heap.create_collection_with("orders", Some(uuid())) {
+        Ok(_) => panic!("duplicate name under new op must fail"),
+        Err(err) => assert_eq!(err.code(), ErrorCode::AlreadyExists),
+    }
+
+    // Dedup survives process-style reopen (release first writer lock).
+    let first_id = first.collection.id();
+    let first_receipt = first.receipt_id;
+    drop(first);
+    drop(again);
+    drop(heap);
+    drop(deployment);
+
+    let deployment2 = DingoDeployment::open(root).unwrap();
+    let heap2 = deployment2.open_heap(mint_cap_for(heap_id, dep_id));
+    let after_reopen = heap2
+        .create_collection_with("orders", Some(op))
+        .expect("retry after reopen");
+    assert!(after_reopen.replayed);
+    assert_eq!(after_reopen.collection.id(), first_id);
+    assert_eq!(after_reopen.receipt_id, first_receipt);
+}
+
+#[test]
 fn empty_name_rejected() {
     let dir = tempdir().unwrap();
     let root = dir.path();

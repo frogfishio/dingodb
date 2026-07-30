@@ -10,8 +10,10 @@ use crate::subject::{validate_collection_name, validate_key};
 use blake3::Hasher;
 use dingo_heap::{CollectionId, HeapCap, HeapId, StreamId};
 use dingo_store::{
-    create_object, rebuild_object_entry_from_chain, try_load_collections_catalog,
-    try_load_streams_catalog, HeapMetaLayout, HeapStore, ObjectKind, StoreError, StoreHost,
+    collection_create_binding, create_object, record_admin_op_dedup, rebuild_object_entry_from_chain,
+    resolve_admin_op_dedup, try_load_collections_catalog, try_load_streams_catalog,
+    AdminOpDedupRecord, COLLECTION_CREATE_OP, HeapMetaLayout, HeapStore, ObjectKind, StoreError,
+    StoreHost,
 };
 use serde::Serialize;
 use std::collections::VecDeque;
@@ -181,14 +183,19 @@ impl Heap {
 
     /// Create a collection by canonical name (APP-1 / CORE plan §6; wire op 106 path).
     ///
-    /// Embedded first cut: durable [`create_object`] + catalog rebuild. Full
-    /// operation-id fingerprint/replay and remote op 106 activation remain APP-1
-    /// residuals. Optional `operation_id` becomes the creation event id.
+    /// Embedded path: durable [`create_object`] + catalog rebuild, with
+    /// `(HeapId, operation_id)` fingerprint/replay (APP1-R1). Remote op 106
+    /// activation remains APP1-R2. Optional `operation_id` is the client
+    /// idempotency key (also stored as creation event id on first acceptance).
     pub fn create_collection(&self, name: &str) -> Result<CreatedCollection, Error> {
         self.create_collection_with(name, None)
     }
 
-    /// Create a collection; `operation_id` is the 16-byte creation event id when set.
+    /// Create a collection; `operation_id` is the 16-byte client operation id when set.
+    ///
+    /// Identical `(heap, operation_id, name)` retries return the original receipt and
+    /// collection id. Reuse of the same `operation_id` with a different name is
+    /// [`ErrorCode::ConsistencyViolation`].
     pub fn create_collection_with(
         &self,
         name: &str,
@@ -196,7 +203,6 @@ impl Heap {
     ) -> Result<CreatedCollection, Error> {
         validate_collection_name(name)?;
         let heap_id = *self.cap.heap_id().as_bytes();
-        let object_id = CollectionId::new_random().map_err(|e| Error::Internal(e.to_string()))?;
         let creation_event_id = match operation_id {
             Some(id) => id,
             None => {
@@ -205,6 +211,16 @@ impl Heap {
                 *eid.as_bytes()
             }
         };
+        let binding = collection_create_binding(name);
+
+        if let Some(prior) =
+            resolve_admin_op_dedup(&self.layout, &heap_id, &creation_event_id, &binding)
+                .map_err(map_create_object_err)?
+        {
+            return self.replay_created_collection(name, creation_event_id, &prior);
+        }
+
+        let object_id = CollectionId::new_random().map_err(|e| Error::Internal(e.to_string()))?;
         let admin = create_object(
             &self.layout,
             &heap_id,
@@ -222,6 +238,22 @@ impl Heap {
         )
         .map_err(|e| Error::Internal(e.to_string()))?;
 
+        record_admin_op_dedup(
+            &self.layout,
+            &heap_id,
+            creation_event_id,
+            AdminOpDedupRecord {
+                request_binding: binding,
+                object_id: *collection_id.as_bytes(),
+                receipt_id: admin.receipt_id,
+                descriptor_hash: admin.descriptor_hash,
+                created_at: admin.created_at,
+                name: name.to_string(),
+                operation: COLLECTION_CREATE_OP.into(),
+            },
+        )
+        .map_err(map_create_object_err)?;
+
         let collection = HeapCollection {
             cap: self.cap.clone(),
             store: Arc::clone(&self.store),
@@ -234,6 +266,45 @@ impl Heap {
             descriptor_hash: admin.descriptor_hash,
             created_at_unix_s: admin.created_at,
             operation_id: creation_event_id,
+            replayed: false,
+        })
+    }
+
+    fn replay_created_collection(
+        &self,
+        name: &str,
+        operation_id: [u8; 16],
+        prior: &AdminOpDedupRecord,
+    ) -> Result<CreatedCollection, Error> {
+        let collection_id = CollectionId::from_bytes_unchecked_nonzero(prior.object_id)
+            .map_err(|e| Error::Internal(e.to_string()))?;
+        // Prefer catalog/chain tip name; fall back to bound name.
+        let tip_name = rebuild_object_entry_from_chain(
+            &self.layout,
+            self.cap.heap_id().as_bytes(),
+            ObjectKind::Collection,
+            collection_id.as_bytes(),
+        )?
+        .map(|e| e.name)
+        .unwrap_or_else(|| prior.name.clone());
+        if tip_name != name && prior.name != name {
+            return Err(Error::ConsistencyViolation(
+                "operation_id replay name mismatch".into(),
+            ));
+        }
+        let collection = HeapCollection {
+            cap: self.cap.clone(),
+            store: Arc::clone(&self.store),
+            id: collection_id,
+            name_at_open: tip_name,
+        };
+        Ok(CreatedCollection {
+            collection,
+            receipt_id: prior.receipt_id,
+            descriptor_hash: prior.descriptor_hash,
+            created_at_unix_s: prior.created_at,
+            operation_id,
+            replayed: true,
         })
     }
 
@@ -264,14 +335,16 @@ impl Heap {
 pub struct CreatedCollection {
     /// Open handle for the new collection.
     pub collection: HeapCollection,
-    /// Admin receipt id.
+    /// Admin receipt id (original on replay).
     pub receipt_id: [u8; 16],
-    /// Tip descriptor hash.
+    /// Tip descriptor hash at first acceptance (original on replay).
     pub descriptor_hash: [u8; 32],
-    /// Create timestamp (unix seconds).
+    /// Create timestamp (unix seconds; original on replay).
     pub created_at_unix_s: u64,
-    /// Creation event / operation id used for this attempt.
+    /// Client operation id used for this attempt (idempotency key).
     pub operation_id: [u8; 16],
+    /// True when this result came from `(HeapId, operation_id)` dedup replay.
+    pub replayed: bool,
 }
 
 /// One row from [`Heap::list_collections`].

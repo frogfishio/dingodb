@@ -36,10 +36,10 @@
     {
       "id": "APP1-R1",
       "item": "operation-id fingerprint/replay durable index",
-      "status": "open",
+      "status": "embedded_done",
       "blocks_implementer": false,
-      "note": "Heap::create_collection accepts operation_id as creation_event_id; full (H,principal,O) replay not yet durable",
-      "resolved_by": "APP-1 residual"
+      "note": "Embedded: meta/heaps/<H>/admin_op_dedup.v1 keys (H,O); exact name retry replays receipt; conflicting fingerprint → consistency_violation. Principal dimension deferred to remote/auth path.",
+      "resolved_by": "APP-1 2026-07-30 labor (embedded); remote path in APP1-R2"
     },
     {
       "id": "APP1-R2",
