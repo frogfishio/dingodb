@@ -129,9 +129,9 @@ an accidental fallback.
 
 ## 5. Public Rust API
 
-Names below are normative unless an accepted API review records a source-level
-conflict. Field types may use existing strongly typed Dingo identifiers instead
-of the illustrative spellings.
+Names and signatures below are normative. Definitions may live in existing
+modules, but an implementation change to their observable shape requires an
+amendment to this plan before code review.
 
 ```rust
 pub struct HeapClient { /* sealed backend + Heap binding */ }
@@ -148,17 +148,31 @@ pub struct CreateCollectionOptions {
     pub operation_id: Option<OperationId>,
 }
 
+pub struct CreateCollectionResult {
+    pub collection: CollectionClient,
+    pub receipt: CollectionCreateReceipt,
+}
+
+pub struct CollectionCreateReceipt {
+    pub receipt_id: ReceiptId,
+    pub operation: AdminOperation, // CreateCollection
+    pub heap_id: HeapId,
+    pub collection_id: CollectionId,
+    pub descriptor_hash: [u8; 32],
+    pub created_at: SystemTime,
+}
+
 impl HeapClient {
     pub fn id(&self) -> HeapId;
     pub fn create_collection(
         &mut self,
         name: &str,
-    ) -> Result<CollectionClient, Error>;
+    ) -> Result<CreateCollectionResult, Error>;
     pub fn create_collection_with(
         &mut self,
         name: &str,
         options: CreateCollectionOptions,
-    ) -> Result<CollectionClient, Error>;
+    ) -> Result<CreateCollectionResult, Error>;
     pub fn open_collection(
         &mut self,
         name: &str,
@@ -279,15 +293,23 @@ Wire operation `106`, `collection_create`, is promoted from `reserved` to
 
 ### 6.1 Request
 
+The operation id belongs to the qualified RPC envelope, not the operation
+arguments:
+
 ```json
 {
-  "name": "orders",
-  "operation_id": "00112233445566778899aabbccddeeff"
+  "v": 1,
+  "id": 42,
+  "operation_id": "00112233445566778899aabbccddeeff",
+  "op_id": 106,
+  "args": {
+    "canonical_name": "orders"
+  }
 }
 ```
 
-- `name` is validated and canonicalized using the existing Heap object-name
-  profile before any mutation.
+- `canonical_name` is validated and normalized once using the existing Heap
+  object-name profile before any mutation.
 - `operation_id` is exactly 16 random bytes encoded as 32 lowercase hex
   characters.
 - the SDK generates an operation id once per logical call unless the caller
@@ -301,13 +323,22 @@ Wire operation `106`, `collection_create`, is promoted from `reserved` to
 ```json
 {
   "collection_id": "immutable-id-encoding",
-  "name": "orders",
+  "canonical_name": "orders",
   "descriptor_hash": "32-byte-hash-encoding",
-  "created": true
+  "receipt": {
+    "receipt_id": "32-lowercase-hex-characters",
+    "operation": "create_collection",
+    "heap_id": "immutable-id-encoding",
+    "object_id": "immutable-id-encoding",
+    "descriptor_hash": "32-byte-hash-encoding",
+    "created_at": 1785360000
+  }
 }
 ```
 
-The SDK decodes identifiers into typed values before returning.
+The SDK decodes identifiers and receipt fields into typed values before
+returning. The receipt returned for an idempotent replay is the original
+receipt, including its original `receipt_id` and `created_at`.
 
 ### 6.3 Semantics
 
@@ -498,15 +529,41 @@ pages. `page size` caps one response.
 Unbounded scans may be rejected by server policy with
 `QueryBudgetRequired`. No default or budget permits silent truncation.
 
+The Application Core parser/decoder hard ceilings are:
+
+| Input | Ceiling |
+|---|---:|
+| UTF-8 DQL source | 1 MiB |
+| JSON/parameter nesting | 64 |
+| bound parameters | 1,024 |
+| encoded parameters | 16 MiB total |
+| normalized predicate nodes | 4,096 |
+| path segments in one path | 64 |
+| projected output items | 1,024 |
+| order terms before key tie-break | 16 |
+| continuation token | 64 KiB |
+| complete RPC frame | negotiated, at most current 16 MiB default |
+
+A server may configure tighter values and reports them in explain. Raising a
+ceiling beyond this table requires a new resource profile; clients cannot raise
+it through query budgets.
+
 ## 10. Query result contract
 
 ```rust
 pub struct QueryPage {
+    pub query_id: QueryId,
+    pub plan_hash: [u8; 32],
+    pub heap_id: HeapId,
+    pub collection_id: CollectionId,
     pub rows: Vec<QueryRow>,
     pub next: Option<Continuation>,
-    pub complete: bool,
+    pub exhausted: bool,
     pub coverage: CoverageEvidence,
     pub frontiers: Vec<SourceFrontier>,
+    pub known_holes: Vec<HoleEvidence>,
+    pub consistency: ConsistencyEvidence,
+    pub ordering: Vec<NormalizedOrderTerm>,
     pub remaining_limit: Option<u64>,
     pub stats: QueryStats,
 }
@@ -517,9 +574,9 @@ pub struct QueryRow {
 }
 ```
 
-`complete` means the requested logical result has complete source coverage up
-to the returned frontier. It does not mean there is no next page; `next` is
-the authority on further rows.
+`coverage.complete` means the requested logical result has complete source
+coverage up to the returned frontier. `exhausted` means no logical row remains
+after this page. `next` is present if and only if `exhausted` is false.
 
 An empty page with incomplete coverage is not equivalent to “no matches.”
 Coverage and frontier evidence are returned even for empty pages.
@@ -555,6 +612,17 @@ The token is authenticated with a non-public rotating cursor key. The key MUST
 not be derived only from public identifiers, a capability id, or token fields.
 Servers retain the current key and a bounded verification window for previous
 keys. Embedded mode stores the secret in Heap-confined protected metadata.
+
+Tokens expire 15 minutes after issue. Every successful next page receives a
+new token and therefore a new 15-minute window. Servers accept at most two
+minutes of clock skew and never accept a token more than 17 minutes after its
+recorded issue time.
+
+The routine cursor key rotates every 24 hours. The immediately previous key is
+retained for 17 minutes, then erased. Authority cycling or explicit emergency
+cursor-key rotation invalidates all prior keys immediately; this is an
+intentional security fence, not a pagination error. Cursor key material is
+never logged, exported in telemetry, or returned by an API.
 
 Verification is constant-time after bounded parsing. Before execution it
 checks profile, MAC, Heap, collection, authority fence, plan, parameters,
@@ -614,17 +682,18 @@ Required protocol artifacts:
 ```text
 spec/heap/rpc-v1/collection_create.request.json
 spec/heap/rpc-v1/collection_create.response.json
-spec/heap/rpc-v1/query.request.json
-spec/heap/rpc-v1/query.response.json
-spec/heap/rpc-v1/explain.request.json
-spec/heap/rpc-v1/explain.response.json
-spec/heap/rpc-v1/history.response.json
-spec/heap/rpc-v1/index_*.response.json
+spec/heap/rpc-v1/dql_query.request.json
+spec/heap/rpc-v1/dql_query.response.json
+spec/heap/fixtures/collection_create.accepted.json
+spec/heap/fixtures/collection_create.rejected.json
+spec/heap/fixtures/dql_query.accepted.json
+spec/heap/fixtures/dql_query.rejected.json
 ```
 
-Exact filenames may follow the existing schema directory convention, but every
-active operation in `operations-v1.json` MUST reference a checked-in request
-and response schema.
+Operation `118`, `dql_query`, carries both execution and explain; `explain:
+true` returns the structured explanation and does not enumerate rows. No
+second explain operation is introduced. Every active operation in
+`operations-v1.json` MUST reference a checked-in request and response schema.
 
 The remote request transports a canonical plan, parameters, options, and
 continuation as separate fields. DQL source may be accepted for convenience,
@@ -669,6 +738,7 @@ Implements `HAR-1`:
 - authoritative create transition;
 - operation-id fingerprint and replay result;
 - catalog publication/rebuild;
+- operation 106 registry metadata (`active`, `returns_data: true`, schemas);
 - embedded method;
 - operation 106 server dispatch and schemas;
 - qualified remote method;
@@ -700,7 +770,7 @@ Exit:
 
 ### APP-3 — Data, history, and index parity
 
-Depends: `APP-2`
+Depends: `APP-2`, `HAR-4`
 
 Deliver:
 
@@ -756,7 +826,7 @@ Exit:
 
 ### APP-6 — Query execution and continuation
 
-Depends: `APP-3`, `APP-5`
+Depends: `APP-3`, `APP-5`, `HAR-4`
 
 Deliver:
 
@@ -818,16 +888,17 @@ Exit:
 ## 15. Dependency graph and permitted parallel work
 
 ```text
-APP-0
- ├── APP-1 ── APP-2 ── APP-3 ──────────┐
- └── APP-4 ── APP-5 ── APP-6 ── APP-7 ├── APP-8
-                         ▲              │
-                         └──── APP-3 ───┘
+APP-0 ── APP-1 ── APP-2 ── APP-3 ──┐
+   └──── APP-4 ── APP-5 ────────────┼── APP-6 ── APP-7 ── APP-8
+HAR-4 ───────────────────────────────┘
 ```
 
-`APP-1` and `APP-4` may run in parallel after `APP-0`. `APP-6` does not begin
-until the public data types and compiler are both stable. Node.js work does not
-begin before `APP-8` acceptance and a separately admitted binding plan.
+`APP-1` and pure compiler work in `APP-4` may run in parallel after `APP-0`,
+under the explicit M1 preparation allowance. `APP-3` and `APP-6` cannot be
+accepted until the qualified HeapKey posture in `HAR-4` is accepted. `APP-6`
+does not begin until the public data types and compiler are both stable.
+Node.js work does not begin before `APP-8` acceptance and a separately admitted
+binding plan.
 
 ## 16. Verification matrix
 

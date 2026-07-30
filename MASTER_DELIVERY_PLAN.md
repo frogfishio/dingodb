@@ -258,6 +258,13 @@ retire A
 
 ### M1 parallel allowance
 
+After `HAR-0` and `APP-0` freeze the application contract:
+
+- `APP-4` canonical predicate/plan work and `APP-5` pure compiler work may
+  proceed alongside `HAR-1` through `HAR-3`;
+- they may not publish a remote query surface or claim Application Core
+  conformance before their APP dependencies and M1 security gates accept.
+
 After `HAR-3` freezes certificate, authority epoch, and identity shapes:
 
 - `DEL-0` registry drafting may begin;

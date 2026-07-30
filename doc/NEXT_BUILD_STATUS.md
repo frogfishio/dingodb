@@ -2,7 +2,8 @@
 
 Status: program scoreboard
 
-Source: [NEXT_BUILD_PLAN.md](../NEXT_BUILD_PLAN.md)
+Sources: [MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md),
+[NEXT_BUILD_PLAN.md](../NEXT_BUILD_PLAN.md), and active package plans.
 
 Updated: 2026-07-30
 
@@ -24,6 +25,15 @@ not_started | active | blocked | accept | deferred
 | HAR-5 | not_started | unassigned | — | — | — | Heap operations |
 | HAR-6 | not_started | unassigned | — | — | — | SDK/CLI journey |
 | HAR-7 | not_started | unassigned | — | — | — | P1 release gate |
+| APP-0 | not_started | unassigned | — | — | depends HAR-0 | application contract and fixtures |
+| APP-1 | not_started | unassigned | — | — | depends APP-0 | qualified collection creation |
+| APP-2 | not_started | unassigned | — | — | depends APP-1 | backend-neutral Rust API |
+| APP-3 | not_started | unassigned | — | — | depends APP-2, HAR-4 | typed data/history/index parity |
+| APP-4 | not_started | unassigned | — | — | depends APP-0 | canonical predicates and plans |
+| APP-5 | not_started | unassigned | — | — | depends APP-4 | DQL Application Core compiler |
+| APP-6 | not_started | unassigned | — | — | depends APP-3, APP-5, HAR-4 | query execution and continuation |
+| APP-7 | not_started | unassigned | — | — | depends APP-6, HAR-4 | qualified remote query parity |
+| APP-8 | not_started | unassigned | — | — | depends APP-1…APP-7 | application release evidence |
 | DRE-0 | not_started | unassigned | — | — | — | semantic oracle |
 | DRE-1 | not_started | unassigned | — | — | — | source language |
 | DRE-2 | not_started | unassigned | — | — | — | canonical invariant core |
