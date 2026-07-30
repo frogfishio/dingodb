@@ -1,6 +1,8 @@
 # M0-1 — Whole-database evidence inventory
 
-Status: **first inventory complete (local)** — 2026-07-30
+Status: **accept (local inventory)** — 2026-07-30
+
+Scoreboard: M0-1 `accept` in [NEXT_BUILD_STATUS.md](NEXT_BUILD_STATUS.md) after M0-2 reconciliation.
 
 Package: `M0-1` (P0-GATE)
 
@@ -135,6 +137,6 @@ M0-1 is **ready to close** once this report is accepted and M0-2 reconciles the 
 
 1. Close **M0-1** on the board (done/review) after human glance.
 2. **M0-2** — update `doc/NEXT_BUILD_STATUS.md` states from this table (do not mark HAR-1 accept).
-3. **M0-3** — `scripts/verify-delivery-status.sh`.
+3. **M0-3** — `scripts/verify-delivery-status.sh` + CI/quality wire-up (**accept** on scoreboard 2026-07-30).
 4. **HAR-0** residual — ensure CI kani-heap job agrees with fixed script.
 5. Then **APP-0** + **APP-1/HAR-1** on the critical path.

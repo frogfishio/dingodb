@@ -33,6 +33,10 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
+      # M0-3 — program delivery scoreboard (fast fail; bash + python3 only).
+      - name: Delivery scoreboard (M0-3)
+        run: bash ./scripts/verify-delivery-status.sh
+
       - name: Format
         run: cargo fmt --all -- --check
 

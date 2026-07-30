@@ -788,11 +788,11 @@ This is the current executable queue:
 
 | Queue | Package | State now | Action |
 |---:|---|---|---|
-| 1 | `M0-1` | `ready` | inventory actual Heap evidence |
-| 2 | `M0-2` | `not_started` | reconcile/expand scoreboard |
-| 3 | `M0-3` | `not_started` | add status verifier and CI |
-| 4 | `HAR-0` | `not_started` in scoreboard; verify | accept or name residual |
-| 5 | `HAR-1` | `not_started` | collection creation |
+| 1 | `M0-1` | `accept` | evidence inventory done |
+| 2 | `M0-2` | `accept` | scoreboard reconciled |
+| 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
+| 4 | `HAR-0` | `ready` | residual truth/CI agreement |
+| 5 | `HAR-1` | `not_started` | collection creation (blocked: HAR-0, APP-0) |
 | 6 | `HAR-2` | `not_started` | local Heap ceremony |
 | 7 | `HAR-3` | `not_started` | complete application-key lifecycle |
 | 8 | `HAR-4` | `not_started` | qualified HeapKey default |
@@ -800,7 +800,7 @@ This is the current executable queue:
 | 10 | `HAR-6` | `not_started` | ordinary journeys |
 | 11 | `HAR-7` | `not_started` | M1 release gate |
 
-The next task is unambiguously `M0-1`.
+The next task is `HAR-0` (M0 complete). Live scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
 
 No developer should start DRE, Atomics, Direct Access, Order Wavelets, search,
 or cluster product work from this queue.
