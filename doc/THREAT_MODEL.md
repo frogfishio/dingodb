@@ -91,25 +91,34 @@ Aligned with DEF-091 targets and DEF-063 “hostile-input surfaces”:
 ## 6. Open risks (not closed by this document)
 
 1. **No independent audit** — DEF-063 acceptance requires external review and
-   zero unresolved critical/high findings.
-2. **Fuzz coverage incomplete** — continuous service + full target list still open
-   (DEF-091 acceptance).
+   zero unresolved critical/high findings on the claimed surface.
+2. **Long-run fuzz residual** — scheduled nightly smoke + PR property bar exist
+   (DEF-091-F labor); OSS-Fuzz / multi-hour accumulation still open.
 3. **Network multi-node still experimental** — serve-cluster is not production;
-   multi-process Jepsen histories remain DEF-041 follow-ons.
+   multi-process Jepsen histories remain DEF-041-N.
 4. **Wire still `1.0-draft`** — freeze needs soak, fuzz, external review (DEF-053).
 5. **Native S3/GCS / erasure / encryption** — archive path is mirror/scaffold;
    hostile cloud I/O not yet in scope of production claims.
-6. **Vulnerability disclosure + supported-version policy** — process not published.
-7. **Client-side logging** — redaction parity is a follow-on to DEF-060.
+6. **Client-side logging** — redaction parity is a follow-on to DEF-060.
+
+### Process risks closed by DEF-063-A labor (still need audit execution)
+
+| Item | Location |
+|------|----------|
+| Vulnerability disclosure process | [SECURITY.md](../SECURITY.md) |
+| Supported-version policy | [SUPPORTED_VERSIONS.md](SUPPORTED_VERSIONS.md) |
+| Auditor evidence package | [SECURITY_AUDIT_PACKAGE.md](SECURITY_AUDIT_PACKAGE.md) |
+
+These do **not** close “no independent audit.” They remove the “process not
+published” gap and package evidence for engagement.
 
 ## 7. Recommended next security labor
 
-1. Expand fuzz targets to SDA, RPC, and store decoders; land minimized corpora
-   for any crash.
-2. Commission independent review once Milestone B surfaces are stable.
-3. Publish vulnerability disclosure and supported-version policy (DEF-063 / DEF-094).
-4. Multi-process partition + long soak evidence (DEF-041) before any
+1. Commission independent review using [SECURITY_AUDIT_PACKAGE.md](SECURITY_AUDIT_PACKAGE.md).
+2. Remediate critical/high findings; update this model’s residual list.
+3. Multi-process partition + long soak evidence (DEF-041-N) before any
    “production cluster” language.
+4. Wire freeze (DEF-053) before stable wire claims.
 
 ## 8. Document control
 

@@ -452,6 +452,17 @@ collection catalogs are built from segment-derived durable state only.
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 
+## Security process (DEF-063 / DEF-063-A)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| In-tree threat model | **shipped (draft)** | [THREAT_MODEL.md](THREAT_MODEL.md) `dingo-threat-model-v0` |
+| Vulnerability disclosure policy | **shipped (labor)** | [SECURITY.md](../SECURITY.md) |
+| Supported-version policy | **shipped (labor)** | [SUPPORTED_VERSIONS.md](SUPPORTED_VERSIONS.md) |
+| Auditor evidence package | **shipped (labor)** | [SECURITY_AUDIT_PACKAGE.md](SECURITY_AUDIT_PACKAGE.md) |
+| Independent external audit complete | **open** | Process/docs ready; engagement residual |
+| Production security maturity claim | **forbidden until audit residuals clear** | Do not elevate CAPABILITY without report |
+
 ## Property testing and continuous fuzz (DEF-091 / DEF-091-F)
 
 | Claim | Status | Notes |

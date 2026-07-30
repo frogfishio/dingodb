@@ -11,6 +11,19 @@ Not production-ready yet (features are still iterating; see DEF notes in startup
 Definitive implementation sequence and current starting task:
 [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md).
 
+### Security
+
+| Document | Purpose |
+|----------|---------|
+| [SECURITY.md](SECURITY.md) | Vulnerability disclosure process (DEF-063-A) |
+| [doc/SUPPORTED_VERSIONS.md](doc/SUPPORTED_VERSIONS.md) | Supported-version policy |
+| [doc/THREAT_MODEL.md](doc/THREAT_MODEL.md) | In-tree threat model (draft) |
+| [doc/SECURITY_AUDIT_PACKAGE.md](doc/SECURITY_AUDIT_PACKAGE.md) | Evidence pack for independent auditors |
+
+**Do not open public issues for exploit details.** Prefer private forge
+reporting as described in `SECURITY.md`. Independent external audit is
+still required before production security claims.
+
 ---
 
 ## Console / CLI

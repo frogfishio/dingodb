@@ -26,6 +26,9 @@ bash ./scripts/verify-crash-recovery-contract.sh
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 DINGO_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
 
+echo "== security process docs (DEF-063-A) =="
+bash ./scripts/verify-security-process.sh
+
 echo "== fmt =="
 cargo fmt --all -- --check
 

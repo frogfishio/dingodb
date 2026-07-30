@@ -1966,11 +1966,9 @@ Acceptance:
 Priority: P0  
 Dependencies: DEF-032 through DEF-034
 
-Status: **addressed (threat-model first cut)** (2026-07-27) — in-tree
-`doc/THREAT_MODEL.md` (`dingo-threat-model-v0` draft) covering assets, trust
-boundaries, adversaries, hostile-input surfaces, and open risks. Independent
-security audit, vulnerability disclosure policy, and full fuzz coverage remain
-required for acceptance.
+Status: **partial** — threat-model first cut (2026-07-27) + **disclosure /
+supported-version / audit package labor (DEF-063-A, 2026-07-31)**. Independent
+external audit + remediation of critical/high findings remain for acceptance.
 
 Work:
 
@@ -1985,16 +1983,22 @@ Acceptance:
 - No unresolved critical/high security finding remains at release.
 - Fuzz targets cover every untrusted decoder and protocol parser.
 
-Evidence (this cut):
+Evidence:
 
-- `doc/THREAT_MODEL.md` — structured first-cut model aligned with DEF-091
-  surfaces and DEF-032–034 controls already in tree.
+- `doc/THREAT_MODEL.md` — structured first-cut model (`dingo-threat-model-v0`).
+- `SECURITY.md` — public vulnerability disclosure process.
+- `doc/SUPPORTED_VERSIONS.md` — supported-version policy
+  (`dingo-supported-versions-v1`).
+- `doc/SECURITY_AUDIT_PACKAGE.md` — auditor evidence pack linking fuzz,
+  threat model, and CI entrypoints.
+- README security section links the above.
+- Fuzz expansion/schedule: DEF-091 / DEF-091-F.
 
-Remaining (out of this cut):
+Remaining:
 
-- Independent external audit + remediation of critical/high findings.
-- Published vulnerability disclosure and supported-version policy.
-- Full continuous fuzz coverage of every untrusted decoder (DEF-091).
+- Independent **external** audit engagement + signed report.
+- Remediation of critical/high findings from that audit (or published residual).
+- Production maturity claims still blocked until residual list is clear.
 
 ---
 
