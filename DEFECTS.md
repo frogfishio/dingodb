@@ -3419,7 +3419,8 @@ transcript/{id}/snapshot/{generation}   # derived/rebuildable
 
 Priority: **P1**
 Dependencies: DEF-098 through DEF-103
-Status: **open — fragmented product contract**
+Status: **partial — contract page + executable journeys shipped (labor in_review);
+remote/Studio/policy-negotiation residuals tracked under 098–103**
 
 #### Finding
 

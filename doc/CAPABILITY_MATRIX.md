@@ -452,6 +452,16 @@ collection catalogs are built from segment-derived durable state only.
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 
+## Crash-and-recovery contract (DEF-104)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| Single normative page | **shipped (labor)** | [CRASH_AND_RECOVERY_CONTRACT.md](CRASH_AND_RECOVERY_CONTRACT.md) — `dingo-crash-recovery-v1` |
+| Executable CI journeys | **shipped (labor)** | `stage_def_104_crash_recovery_contract` + `scripts/verify-crash-recovery-contract.sh` |
+| Unifies DEF-098–103 surfaces | **shipped (labor)** | Ack table, publication, decision table, recovery APIs, coverage, history, lock, derived map, rewrite-heavy, forbidden reactions |
+| No uncertainty→absence examples | **shipped (labor)** | Forbidden fixtures reject lock-as-empty, silent historical fallback, oversize zero-effect |
+| Remote/cluster full parity | **residual** | Embedded public APIs first; see per-DEF rows |
+
 ## Derived-index lifecycle diagnostics (DEF-102)
 
 | Claim | Status | Notes |

@@ -20,6 +20,9 @@ bash ./scripts/verify-delivery-status.sh
 echo "== APP-0 application contract lock =="
 bash ./scripts/verify-app0-contract.sh
 
+echo "== crash-and-recovery contract (DEF-104) =="
+bash ./scripts/verify-crash-recovery-contract.sh
+
 echo "== fmt =="
 cargo fmt --all -- --check
 
