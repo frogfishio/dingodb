@@ -130,6 +130,9 @@ pub fn encode_chunk_manifest(manifest: &ChunkManifest) -> Vec<u8> {
 }
 
 /// Decode a chunk manifest body.
+///
+/// Hostile `chunk_count` values must not allocate before length checks
+/// (DEF-091-F). Capacity is bounded by remaining body bytes / slot size.
 pub fn decode_chunk_manifest(body: &[u8]) -> Option<ChunkManifest> {
     if !is_chunk_manifest(body) {
         return None;
@@ -146,9 +149,17 @@ pub fn decode_chunk_manifest(body: &[u8]) -> Option<ChunkManifest> {
             .ok()?,
     );
     let mut cursor = 8 + BODY_HASH_LEN + 4 + 8;
+    // Each slot is 16-byte event_id + 8-byte len. Exact remaining body must match
+    // declared total; never allocate from a hostile `chunk_count` (DEF-091-F).
+    const SLOT: usize = 16 + 8;
+    let remaining = body.len().saturating_sub(cursor);
+    let need = total.checked_mul(SLOT)?;
+    if need != remaining {
+        return None;
+    }
     let mut chunks = Vec::with_capacity(total);
     for _ in 0..total {
-        if cursor + 16 + 8 > body.len() {
+        if cursor + SLOT > body.len() {
             return None;
         }
         let chunk_event_id: [u8; 16] = body[cursor..cursor + 16].try_into().ok()?;
@@ -407,6 +418,19 @@ mod tests {
         let resolved = resolved_for(&pieces, &ids);
         let result = reassemble_with_manifest(item, &man, &resolved);
         assert_eq!(result.complete_body(), Some(payload.as_slice()));
+    }
+
+    /// DEF-091-F: hostile chunk_count must not allocate multi-GiB before length checks.
+    #[test]
+    fn hostile_chunk_count_does_not_allocate() {
+        // Magic + hash + total=u32::MAX + logical_len, no slots.
+        let mut body = Vec::new();
+        body.extend_from_slice(b"DCHM0001");
+        body.extend_from_slice(&[0u8; BODY_HASH_LEN]);
+        body.extend_from_slice(&u32::MAX.to_le_bytes());
+        body.extend_from_slice(&0u64.to_le_bytes());
+        // Must return None without OOM (previously with_capacity(u32::MAX)).
+        assert!(decode_chunk_manifest(&body).is_none());
     }
 
     #[test]

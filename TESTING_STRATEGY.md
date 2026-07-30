@@ -713,7 +713,9 @@ attachments.
 The repository already has SDA conformance, format corruption/scanner corpora,
 store crash/I/O-fault matrices, Heap isolation plus Kani/Verus, server
 protocol/TLS/admission tests, deterministic cluster histories,
-backup/scrub/migration suites, five fuzz targets, and a scale/chaos rig.
+backup/scrub/migration suites, eleven cargo-fuzz targets (format + SDA + RPC +
+store control decoders) under scheduled smoke (`scripts/fuzz-smoke.sh` /
+nightly `fuzz_smoke`), and a scale/chaos rig.
 
 It does not yet satisfy this strategy. See
 [doc/VERIFICATION_STATUS.md](doc/VERIFICATION_STATUS.md).

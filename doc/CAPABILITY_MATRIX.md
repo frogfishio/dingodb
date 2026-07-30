@@ -452,6 +452,19 @@ collection catalogs are built from segment-derived durable state only.
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 
+## Property testing and continuous fuzz (DEF-091 / DEF-091-F)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| Format proptest in PR CI | **shipped** | `stage_def_091_properties` |
+| Format cargo-fuzz targets | **shipped** | `decode_frame`, `cbor_envelope`, `scan_forward/reverse`, `heap_ownership` |
+| Expanded untrusted decoders | **shipped (labor)** | SDA parse, RPC frame, chunk manifest, item envelope, backup JSON, cursor token |
+| Continuous policy entrypoint | **shipped (labor)** | `scripts/fuzz-smoke.sh` + nightly `fuzz_smoke` job (30s×N) |
+| Property bar on PR quality | **shipped (labor)** | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1` in `quality.sh` |
+| Hostile chunk_count no OOM | **shipped (labor)** | `decode_chunk_manifest` capacity bound + unit test |
+| OSS-Fuzz / multi-hour accumulation | **residual** | Nightly smoke is continuous schedule, not hosted long-run |
+| Raft wire / full migration job fuzz | **residual** | Named follow-on |
+
 ## Crash-and-recovery contract (DEF-104)
 
 | Claim | Status | Notes |

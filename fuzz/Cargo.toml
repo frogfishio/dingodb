@@ -3,15 +3,20 @@ name = "dingo-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2021"
-# DEF-091 — cargo-fuzz targets for untrusted parsers. Not a workspace member;
-# build with: cargo +nightly fuzz run <target>  (requires cargo-fuzz installed).
+# DEF-091 / DEF-091-F — cargo-fuzz targets for untrusted parsers.
+# Not a workspace member; build with:
+#   cargo +nightly fuzz run <target>  (requires cargo-fuzz installed).
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+serde_json = "1"
 dingo-format = { path = "../crates/dingo-format" }
+dingo-sda = { path = "../crates/sda-core" }
+dingo-client = { path = "../crates/dingo-client" }
+dingo-store = { path = "../crates/dingo-store", features = ["legacy-raw-store"] }
 
 [[bin]]
 name = "decode_frame"
@@ -44,6 +49,48 @@ bench = false
 [[bin]]
 name = "heap_ownership"
 path = "fuzz_targets/heap_ownership.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sda_parse"
+path = "fuzz_targets/sda_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rpc_frame"
+path = "fuzz_targets/rpc_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "chunk_manifest"
+path = "fuzz_targets/chunk_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "item_envelope"
+path = "fuzz_targets/item_envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "backup_manifest"
+path = "fuzz_targets/backup_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cursor_token"
+path = "fuzz_targets/cursor_token.rs"
 test = false
 doc = false
 bench = false

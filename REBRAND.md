@@ -1,14 +1,24 @@
-# ResiduumDB documentation identity
+# ResiduumDB rebrand plan
 
-Status: normative for Markdown documentation  
-Scope: documentation-only rebrand  
-Canonical product name: **ResiduumDB**  
+Status: **active, phased migration; Phase 1 complete; implementation migration
+blocked on defect completion**
+
+Scope: product identity, documentation, implementation identifiers,
+compatibility, release notes, and websites
+
+Canonical product name: **ResiduumDB**
+
 Canonical short name: **Residuum**
 
 ## 1. Purpose
 
-This document controls the documentation transition from the former DingoDB
-working name to ResiduumDB. It does not rename Rust packages, source symbols,
+This document is the authoritative plan for the transition from the former
+DingoDB working name to ResiduumDB.
+
+The migration is deliberately phased. A completed phase does not authorize the
+next phase, and a documentation rename does not imply that an implementation
+identifier has shipped. Until the implementation phase is explicitly started,
+this document does not authorize renaming Rust packages, source symbols,
 executables, environment variables, URI schemes, persistent files, wire
 profiles, cryptographic domains, test vectors, or repository directories.
 
@@ -88,7 +98,7 @@ manifests and belongs to the later website migration.
 
 ## 6. Completion rule
 
-The Markdown phase is complete when:
+Phase 1, the Markdown phase, is complete when:
 
 1. normative prose uses the canonical terminology;
 2. normative Markdown specification names and visible link labels use RQL,
@@ -98,3 +108,206 @@ The Markdown phase is complete when:
    historical statement, local path, or explicit compatibility note; and
 5. no Rust or non-Markdown implementation artifact has been changed by this
    phase.
+
+Phase 1 met this rule on 2026-07-31. Existing implementation names remain
+intentionally visible where documentation must describe reality.
+
+## 7. Migration sequence and ownership
+
+The required order is:
+
+| Phase | Owner | State | Work |
+|---|---|---|---|
+| 0. Defect stabilization | active defect developers | **in progress** | Complete and accept the current storage-defect work without rebrand churn |
+| 1. Documentation identity | Codex | **complete** | Establish ResiduumDB, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
+| 2. Wholesale repository naming | Codex, after explicit instruction | **blocked on Phase 0** | Rename implementation-facing product identifiers and write the migration changelog |
+| 3. Rust realignment | principal | not started | Resolve, compile, and semantically realign Rust after the mechanical identity change |
+| 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
+| 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
+
+No Phase 2 work may begin merely because a legacy identifier is discovered.
+The principal must state that the defect work is complete and authorize the
+wholesale migration.
+
+## 8. Phase 2 change surface
+
+Phase 2 is repository-wide, not a blind search-and-replace. It includes:
+
+- Rust public types and constructors such as `Dingo` and `Dingo::open`;
+- Cargo package, crate, feature, and import names such as `dingo-sdk` and
+  `dingo_sdk`;
+- executables and commands such as `dingo` and `dingo-sda`;
+- the `dingo://` URI scheme;
+- `DINGO_*` environment variables;
+- product-owned configuration keys, service names, telemetry names, fixtures,
+  examples, scripts, and generated-package metadata;
+- internal repository directories whose names are not being reserved for the
+  website phase;
+- RQL/RRE implementation symbols still carrying DQL/DRE names; and
+- every affected Markdown example and reference after the implementation
+  spelling becomes true.
+
+Phase 2 must also create a user-facing migration changelog. That changelog must
+state every breaking rename, compatibility alias, removal schedule, store or
+protocol implication, and concrete before/after command or code example.
+
+## 9. Compatibility classes
+
+Every candidate rename MUST be classified before it is changed.
+
+### 9.1 Class A — source-local identity
+
+Private modules, variables, comments, test names, and non-persisted internal
+symbols may normally be renamed directly, followed by compilation and tests.
+
+### 9.2 Class B — public interface identity
+
+Public Rust APIs, crates, executables, command names, environment variables,
+configuration keys, and URI schemes are breaking interfaces. Each needs an
+explicit choice:
+
+1. hard break;
+2. temporary alias with a removal version; or
+3. permanent compatibility spelling.
+
+The choice and its test obligation MUST appear in the changelog.
+
+### 9.3 Class C — persisted, wire, or cryptographic identity
+
+The following are protocol facts, not cosmetic branding:
+
+- `.dingo` paths or file conventions;
+- `dingo-*-v1` persistence and wire profile identifiers;
+- `DINGOFRM` magic bytes;
+- `DINGODB-*` cryptographic domain separators;
+- serialized enum names, capability identifiers, token claims, and proof
+  fixtures; and
+- accepted golden vectors or historical evidence derived from those values.
+
+Class C identifiers MUST NOT be mechanically overwritten. Each requires one of:
+
+- retention as a legacy compatibility identifier;
+- a new versioned identifier plus a reader/negotiation path for the old value;
+- an explicit one-way migration with rollback and recovery behavior; or
+- a deliberate compatibility break recorded in the format/protocol
+  specification and changelog.
+
+Cryptographic domain separators are especially sensitive: changing one creates
+a new cryptographic domain and may invalidate existing keys, signatures,
+proofs, fixtures, or stored authority. That effect must be designed, not
+discovered during compilation.
+
+### 9.4 Class D — immutable history
+
+Released version tags, accepted evidence, archived benchmark output, historical
+repository references, old package coordinates, and quotations remain
+unchanged. Current documentation may annotate them as former names, but must
+not rewrite history.
+
+## 10. Provisional public-name map
+
+These are the intended targets for Phase 2. “Provisional” means implementation
+work must confirm collisions and compatibility behavior before adoption.
+
+| Current implementation name | Intended name |
+|---|---|
+| `Dingo` | `Residuum` |
+| `Dingo::open` | `Residuum::open` |
+| `dingo-*` package/binary prefix | `residuum-*` |
+| `dingo_*` Rust crate/module prefix | `residuum_*` |
+| `dingo` CLI | `residuum` |
+| `dingo://` | `residuum://` |
+| `DINGO_*` | `RESIDUUM_*` |
+| DQL implementation names | RQL equivalents |
+| DRE implementation names | RRE equivalents |
+
+This table does not authorize changing Class C identifiers. Store suffixes,
+wire-profile strings, magic bytes, and cryptographic domains require separate
+decisions during the Phase 2 inventory.
+
+## 11. Phase gates
+
+### 11.1 Entry gate for Phase 2
+
+All of the following are required:
+
+1. the active defect set is complete or deliberately parked;
+2. its evidence has been accepted;
+3. no defect branch or agent is still writing the files to be renamed;
+4. the baseline builds and its required qualification tests pass;
+5. the working tree state is recorded so unrelated user changes can be
+   preserved; and
+6. the principal explicitly authorizes Phase 2.
+
+### 11.2 Exit gate for Phase 2
+
+Phase 2 is ready for Rust realignment only when:
+
+1. the full rename inventory has a disposition for every occurrence;
+2. all intended Class A and Class B names have moved;
+3. every Class C name has an explicit keep, version, migrate, or break decision;
+4. no accidental mixed-brand public surface remains;
+5. generated metadata and lockfile consequences are identified;
+6. the migration changelog exists; and
+7. known compilation failures caused by the mechanical rename are recorded for
+   Phase 3 rather than concealed.
+
+### 11.3 Exit gate for the complete rebrand
+
+The rebrand is complete only after:
+
+- Rust builds and the required storage, Heap, protocol, security, and
+  qualification suites pass;
+- old aliases behave exactly as documented;
+- new stores and supported old stores open according to policy;
+- wire negotiation and credentials behave according to the Class C decisions;
+- package metadata and published names are coherent;
+- website routes, canonical URLs, navigation, search metadata, code samples,
+  and redirects use ResiduumDB;
+- repository-wide stale-name searches contain only approved legacy or
+  historical occurrences; and
+- the final review records no unexplained Dingo, DQL, or DRE identity.
+
+## 12. Required migration changelog
+
+Phase 2 creates `REBRAND_CHANGELOG.md`. At minimum it must contain:
+
+1. the reason for the rename and the effective release;
+2. a complete old-to-new public-name table;
+3. Rust dependency and import migration;
+4. API/type migration;
+5. CLI and executable migration;
+6. URI, environment, and configuration migration;
+7. RQL and RRE naming migration;
+8. storage-format and on-disk compatibility;
+9. wire-protocol and cluster compatibility;
+10. HeapKey, token, proof, and cryptographic-domain consequences;
+11. compatibility aliases and their removal policy;
+12. operational upgrade and rollback procedure;
+13. website/domain changes and redirects; and
+14. known intentionally retained legacy identifiers.
+
+The changelog must describe shipped behavior, not anticipated behavior. It may
+be drafted during Phase 2, but it becomes normative only after Phase 3 and the
+relevant compatibility tests are complete.
+
+## 13. Final audit method
+
+The Phase 5 review must examine:
+
+- filenames, directory names, source symbols, package manifests, lockfiles,
+  scripts, CI, release automation, fixtures, examples, and generated metadata;
+- human prose separately from literal implementation identifiers;
+- case, separator, and abbreviation variants of DingoDB, Dingo, DQL, and DRE;
+- public API and package usability from a clean consumer project;
+- old and new command, URI, environment, and configuration behavior;
+- new-store, old-store, mixed-version, backup, restore, and rollback journeys;
+- wire and cluster interoperability where promised;
+- credentials, signatures, golden vectors, and formal-verification evidence;
+- both websites, their redirects, canonical metadata, search indexes, social
+  metadata, and downloadable examples; and
+- the final changelog against the behavior actually demonstrated by tests.
+
+The audit result must classify every remaining former-name occurrence as
+approved compatibility, immutable history, or a defect. “Probably harmless”
+is not a valid disposition.

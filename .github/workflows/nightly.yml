@@ -84,11 +84,18 @@ jobs:
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
 
-      - name: Fuzz smoke (30s per target)
+      - name: Fuzz property bar (PR-safe surfaces)
+        run: DINGO_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
+
+      - name: Fuzz smoke cargo-fuzz (30s per target, DEF-091-F)
         working-directory: fuzz
         run: |
           set -euo pipefail
-          for t in decode_frame cbor_envelope scan_forward scan_reverse; do
+          # Continuous scheduled policy: every registered untrusted decoder target.
+          for t in \
+            decode_frame cbor_envelope scan_forward scan_reverse heap_ownership \
+            sda_parse rpc_frame chunk_manifest item_envelope backup_manifest cursor_token
+          do
             echo "== fuzz $t =="
             cargo +nightly fuzz run "$t" -- -max_total_time=30 -timeout=5
           done

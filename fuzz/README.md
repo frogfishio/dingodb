@@ -1,35 +1,46 @@
-# ResiduumDB fuzz targets (DEF-091)
+# DingoDB fuzz targets (DEF-091 / DEF-091-F)
 
 Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 **not** a workspace member; build it with [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz).
 
+## Continuous policy
+
+| Layer | When | Command |
+|-------|------|---------|
+| Property / hostile unit tests | Every PR (`quality.sh`) | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
+| cargo-fuzz smoke | Nightly + `scripts/nightly.sh` | `./scripts/fuzz-smoke.sh` (30s/target in CI) |
+| Deep / OSS-Fuzz | Residual | Longer budgets; land crashes under `fuzz/corpus/<target>/` |
+
 ## Targets
 
-| Binary | Surface |
-|--------|---------|
-| `decode_frame` | `decode_frame` / `verify_frame_at` |
-| `cbor_envelope` | `validate_deterministic_cbor_envelope` |
-| `scan_forward` | forward salvage scan |
-| `scan_reverse` | reverse salvage scan |
+| Binary | Surface | Package |
+|--------|---------|---------|
+| `decode_frame` | frame decode/verify | dingo-format |
+| `cbor_envelope` | deterministic CBOR envelope | dingo-format |
+| `scan_forward` / `scan_reverse` | salvage scanners | dingo-format |
+| `heap_ownership` | subject/ownership/heap descriptors | dingo-format |
+| `sda_parse` | SDA program lex/parse | dingo-sda |
+| `rpc_frame` | length-prefixed RPC framing | dingo-client |
+| `chunk_manifest` | chunked-value manifest decode | dingo-store |
+| `item_envelope` | item event envelope CBOR | dingo-store |
+| `backup_manifest` | backup control JSON | dingo-store |
+| `cursor_token` | continuation-token MAC decode | dingo-store |
 
 ## Local run
 
 ```bash
 cargo install cargo-fuzz
 # cargo-fuzz currently wants a nightly toolchain for the fuzz profile
+./scripts/fuzz-smoke.sh
+# or one target:
 cargo +nightly fuzz run decode_frame -- -max_total_time=30
-cargo +nightly fuzz run cbor_envelope -- -max_total_time=30
-cargo +nightly fuzz run scan_forward -- -max_total_time=30
-cargo +nightly fuzz run scan_reverse -- -max_total_time=30
 ```
-
-## CI / nightly
-
-Property tests in `crates/dingo-format/tests/stage_def_091_properties.rs` run on
-every PR (`cargo test`). Nightly runs a short smoke pass over these targets when
-`cargo-fuzz` is available (see `.github/workflows/nightly.yml`).
 
 ## Corpus policy
 
 Crashes must be minimized and landed under `fuzz/corpus/<target>/` (or as a
-regression unit test in `dingo-format`) before the finding is closed.
+regression unit test next to the decoder) before the finding is closed. Seed
+files under `fuzz/corpus/` are optional starters for coverage.
+
+Ownership: store/format/client/SDA maintainers for their decoder crates; CI
+ownership is the `fuzz_smoke` nightly job + `scripts/fuzz-smoke.sh`.

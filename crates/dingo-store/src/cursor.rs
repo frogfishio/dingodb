@@ -220,7 +220,7 @@ pub fn scan_generation(
 }
 
 /// Encode a continuation token for `store_id` using the active key generation.
-pub fn encode_token(
+pub(crate) fn encode_token(
     store_id: &[u8; 16],
     keyring: &ContinuationKeyring,
     state: &CursorState,
@@ -255,8 +255,19 @@ pub fn encode_token(
     Ok(body)
 }
 
+/// Authenticate a continuation token and discard internal state (DEF-091-F fuzz).
+///
+/// Returns `Ok(())` when the MAC and shape verify for this store keyring.
+pub fn verify_continuation_token(
+    store_id: &[u8; 16],
+    keyring: &ContinuationKeyring,
+    token: &[u8],
+) -> Result<(), StoreError> {
+    decode_token(store_id, keyring, token).map(|_| ())
+}
+
 /// Decode and authenticate a continuation token with the store keyring.
-pub fn decode_token(
+pub(crate) fn decode_token(
     store_id: &[u8; 16],
     keyring: &ContinuationKeyring,
     token: &[u8],

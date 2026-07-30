@@ -35,4 +35,9 @@ DINGO_CRASH_MATRIX_FULL=1 cargo test -p dingo-store --test stage_def_022_crash_m
 echo "== Stage 7 CLI =="
 cargo test -p dingo-cli --test cli -- --nocapture
 
+echo "== DEF-091-F fuzz smoke (property bar + optional cargo-fuzz) =="
+# Property tests always; cargo-fuzz when nightly+cargo-fuzz installed.
+# CI nightly workflow runs the full 30s×N cargo-fuzz list.
+DINGO_FUZZ_SECONDS="${DINGO_FUZZ_SECONDS:-5}" bash ./scripts/fuzz-smoke.sh
+
 echo "nightly packaging OK"

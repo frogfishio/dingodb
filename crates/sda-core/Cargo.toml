@@ -19,6 +19,10 @@ num-bigint.workspace = true
 num-rational.workspace = true
 num-traits.workspace = true
 
+[dev-dependencies]
+# DEF-091-F — no-panic property tests for untrusted SDA program text.
+proptest = "1.6"
+
 # Diagnostic SDA phase breakdown (not a published SLO).
 [[example]]
 name = "sda_latency_breakdown"

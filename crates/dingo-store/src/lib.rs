@@ -106,8 +106,9 @@ pub use crash_matrix::{
     MatrixOperation, CRASH_MATRIX_JSON,
 };
 pub use cursor::{
-    scan_generation, CoverageGap, CoverageGapKind, DocumentScanPage, KeyScanPage, LiveScanPage,
-    LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
+    scan_generation, verify_continuation_token, CoverageGap, CoverageGapKind, DocumentScanPage,
+    KeyScanPage, LiveScanPage, LiveScanPageOptions, CURSOR_PROFILE, DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE, MAX_TOKEN_BYTES,
 };
 pub use token_keys::{
     ContinuationKeyring, TokenKeyGeneration, CURSOR_TOKEN_KEYS_FILE, TOKEN_KEY_PROFILE,

@@ -497,6 +497,7 @@ dependencies = [
  "num-bigint",
  "num-rational",
  "num-traits",
+ "proptest",
  "serde_json",
  "thiserror",
 ]

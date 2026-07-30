@@ -2248,12 +2248,11 @@ Remaining (out of this cut):
 
 Priority: P0
 
-Status: **addressed (dingo-format first cut)** (2026-07-27) — proptest property
-tests for frame encode/decode roundtrip, adversarial no-panic decode, CBOR
-envelope validate, forward/reverse salvage scan + embedded-frame recovery;
-`fuzz/` cargo-fuzz targets (`decode_frame`, `cbor_envelope`, `scan_forward`,
-`scan_reverse`); nightly 30s smoke job; permanent corpus policy documented.
-Broader surfaces (SDA, RPC, store decoders, continuous service) remain.
+Status: **partial — format cut addressed; continuous expansion (DEF-091-F)
+shipped labor (2026-07-31)** — proptest + cargo-fuzz for format, SDA, RPC
+framing, chunk manifest, item envelope, backup JSON, cursor tokens; scheduled
+`fuzz_smoke` + `scripts/fuzz-smoke.sh` continuous policy. OSS-Fuzz / multi-hour
+accumulation residual.
 
 Targets:
 
@@ -2282,11 +2281,12 @@ Evidence (this cut):
 - Hostile CBOR map/array length bound + regression
   `hostile_map_len_does_not_allocate_or_panic` (OOM class found by proptest).
 
-Remaining (out of this cut):
+Remaining / DEF-091-F residual after continuous expansion cut:
 
-- Fuzz SDA, RPC/URL, store index/catalog/checkpoint, salvage/migration manifests.
-- Continuous fuzzing service (OSS-Fuzz or equivalent) beyond nightly smoke.
-- Seed corpora and minimized regression fixtures for any future crashes.
+- OSS-Fuzz (or equivalent long-running hosted service) beyond nightly 30s smoke.
+- Raft wire bodies / full migration job JSON as dedicated targets (backup
+  manifest + RPC framing covered; cluster Raft residual).
+- Accumulated multi-hour corpora on release gates.
 
 ### DEF-092 — Add coverage, sanitizers, and model checking
 
