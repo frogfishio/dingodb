@@ -16,6 +16,10 @@ Work selection and package order are governed by
 feature from `DELIVERY_PLAN.md`, `DEFECTS.md`, or an individual subsystem plan
 without checking the master starting queue and stage gate first.
 
+All new claims and stable capabilities require the assurance chain in
+[TESTING_STRATEGY.md](TESTING_STRATEGY.md). Example-based tests alone do not
+qualify persistence, isolation, concurrency, or recovery claims.
+
 ## Engineering rules
 
 1. **SDA stays pure.** No file, network, or ambient IO in `crates/sda-core`.

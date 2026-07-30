@@ -6,6 +6,12 @@ Effective: 2026-07-30
 
 Owner: DingoDB product and engineering program
 
+Testing authority:
+[TESTING_STRATEGY.md](TESTING_STRATEGY.md),
+[doc/VERIFICATION_IMPLEMENTATION_PLAN.md](doc/VERIFICATION_IMPLEMENTATION_PLAN.md),
+and
+[doc/VERIFICATION_STATUS.md](doc/VERIFICATION_STATUS.md).
+
 ## 1. Authority
 
 This is the controlling document for **what DingoDB builds next and in what
@@ -125,29 +131,33 @@ Release outcome:
 
 Priority: `P0-GATE`
 
-### M0-1 — Evidence inventory
+### M0-1 — Whole-database evidence inventory
 
 State: **ready — first task**
 
 Work:
 
-1. run the quick and full Heap verification surfaces;
-2. inspect `hp010-matrix-v1.json`;
-3. map repository evidence to `HAR-0` through `HAR-7`;
-4. mark each requirement `accept`, `partial`, or `missing`;
-5. link the exact test, proof, fixture, or source revision; and
-6. do not infer acceptance from documentation prose.
+1. establish the `VFY-0` claim/suite/profile identifiers;
+2. inventory every test, proof, fuzzer, chaos rig and CI lane;
+3. run the quick and full Heap surfaces where infrastructure permits;
+4. inspect `hp010-matrix-v1.json`;
+5. map evidence to product claims and `HAR-0` through `HAR-7`;
+6. mark each requirement `accept`, `partial`, `missing`, or `not_run`;
+7. link the oracle, test, proof, fixture and source revision; and
+8. do not infer acceptance from counts or documentation prose.
 
 Required outputs:
 
 - updated Heap qualification matrix;
-- a short evidence report under `doc/`;
+- updated `doc/VERIFICATION_STATUS.md`;
+- claim/suite gap report;
 - list of genuinely missing work; and
 - discrepancies raised as named defects.
 
 Exit:
 
-- Kani, Verus, architecture checks, tests, and the matrix tell the same story.
+- Kani, Verus, architecture checks, tests, verification status, and the matrix
+  tell the same story.
 
 ### M0-2 — Scoreboard reconciliation
 

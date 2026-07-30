@@ -29,6 +29,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Durable security and administrative evidence | [EVIDENCE_LEDGER_SPEC.md](EVIDENCE_LEDGER_SPEC.md) |
 | Operational telemetry collection and Ratatouille export | [TELEMETRY_SPEC.md](TELEMETRY_SPEC.md) |
 | First-party desktop database IDE | [STUDIO_SPEC.md](STUDIO_SPEC.md), [implementation plan](doc/STUDIO_IMPLEMENTATION_PLAN.md) |
+| Testing, assurance levels, claim evidence, and release verification | [TESTING_STRATEGY.md](TESTING_STRATEGY.md), [implementation plan](doc/VERIFICATION_IMPLEMENTATION_PLAN.md), [status](doc/VERIFICATION_STATUS.md) |
 | SQL-ish+ executable surface and SQL→DQL compiler | [SQL_TO_DQL_SPEC.md](SQL_TO_DQL_SPEC.md) |
 | JSON Schema Draft 2020-12 import into DRE | [JSON_SCHEMA_TO_DRE_SPEC.md](JSON_SCHEMA_TO_DRE_SPEC.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
