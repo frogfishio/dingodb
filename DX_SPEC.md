@@ -1,5 +1,8 @@
 # DingoDB Developer Experience Specification
 
+First-party visual development and operations experience:
+[STUDIO_SPEC.md](STUDIO_SPEC.md).
+
 Status: Draft v0.1
 Scope: Everyday API, query surface, CLI, errors, defaults, administration, and
 progressive disclosure

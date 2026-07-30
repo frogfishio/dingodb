@@ -148,7 +148,14 @@ Wire version 1 assigns:
 | 7 | segment summary |
 | 8 | purge attestation |
 | 9 | padding |
-| 10–127 | reserved for core versions |
+| 10 | heap descriptor (`dingo-heap-v1`) |
+| 11 | collection descriptor (`dingo-heap-v1`) |
+| 12 | stream descriptor (`dingo-heap-v1`) |
+| 13 | heap migration evidence (`dingo-heap-v1`) |
+| 14 | evidence record (`dingo-evidence-ledger-v1`) |
+| 15 | evidence checkpoint (`dingo-evidence-ledger-v1`) |
+| 16 | evidence retention cut (`dingo-evidence-ledger-v1`) |
+| 17–127 | reserved for core versions |
 | 128–255 | application/profile extension |
 
 An unknown kind remains recoverable as an opaque verified frame.

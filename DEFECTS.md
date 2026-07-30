@@ -1837,6 +1837,12 @@ bounded field cardinality, redaction of credentials/payloads by construction,
 RPC completion + guarantee-failed correlation fields on the serve path;
 client-side log emission and distributed replica join remain follow-ons.
 
+**Superseded target (2026-07-30):** the synchronous per-RPC stderr design is a
+legacy implementation only. [TELEMETRY_SPEC.md](TELEMETRY_SPEC.md) replaces it
+with aggregate in-memory measurement and bounded Ratatouille-only export. File,
+stdout/stderr, syslog, and direct synchronous network sinks are not production
+targets.
+
 Work:
 
 - Use a structured logging facade throughout.
@@ -1884,6 +1890,11 @@ Status: **addressed (process metrics + health cut)** (2026-07-27) — versioned
 public liveness/readiness RPCs, authenticated detail/metrics scrapes, bounded
 op labels + latency histograms + guarantee/admission counters. Store-tier
 bytes, index lag, scrub/backup series, and dashboard packages remain follow-ons.
+
+**Superseded export target (2026-07-30):** the in-memory registry remains a
+measurement source, but Ratatouille periodic snapshots are the production
+export. The metrics RPC is compatibility/test-only in the qualified profile;
+health probes and authenticated health detail remain.
 
 Required metrics:
 

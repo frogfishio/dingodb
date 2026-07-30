@@ -3050,6 +3050,12 @@ Shared keys weaken blast-radius isolation and MUST be visible in policy.
 
 ## 21. Audit
 
+The durable audit subsystem is named the **Dingo Evidence Ledger** and is
+specified normatively by
+[EVIDENCE_LEDGER_SPEC.md](EVIDENCE_LEDGER_SPEC.md). This section defines the
+Heap-facing obligations; where it is less specific, the Evidence Ledger
+specification controls.
+
 Security-sensitive audit records include:
 
 - HeapKey certificate ID and fingerprint;
@@ -5409,6 +5415,9 @@ The following `dingo-format` values are frozen:
 | 11 | `CollectionDescriptor` |
 | 12 | `StreamDescriptor` |
 | 13 | `HeapMigrationEvidence` |
+| 14 | `EvidenceRecord` |
+| 15 | `EvidenceCheckpoint` |
+| 16 | `EvidenceRetentionCut` |
 
 Envelope map keys 1–30 retain their current meanings. The following keys are
 allocated:
@@ -5418,9 +5427,10 @@ allocated:
 | 31 | `heap_id` | 16-byte byte string | every heap-aware frame |
 | 32 | `collection_id` | 16-byte byte string | collection data and indexes |
 | 33 | `stream_id` | 16-byte byte string | stream data and indexes |
-| 34 | `ownership_profile` | unsigned integer, value `1` | every heap-aware frame |
+| 34 | `ownership_profile` | unsigned integer | `1` for every heap-aware frame; `2` only for protected deployment evidence |
 | 35 | `source_heap_id` | 16-byte byte string | import provenance only |
 | 36 | `source_object_id` | byte string, 1–64 bytes | import provenance only |
+| 37 | `deployment_id` | 16-byte byte string | deployment evidence only; forbidden in a Heap-owned frame |
 
 Every envelope key unknown to profile v1 rejects the frame; v1 defines no
 non-critical extension mechanism. Writers emit map keys in numeric order. UUID
@@ -5454,9 +5464,14 @@ nor 33, requires the all-zero object ID, and permits exactly:
 ```text
 HeapDescriptor:       key = 0x01 || descriptor_sequence_u64_be
 HeapMigrationEvidence key = 0x02 || migration_job_uuid_bytes
+EvidenceRecord:       key = 0x03 || evidence_sequence_u64_be
+EvidenceCheckpoint:   key = 0x04 || checkpoint_end_sequence_u64_be
+EvidenceRetentionCut: key = 0x05 || first_retained_sequence_u64_be
 ```
 
-No other heap-metadata subtype is valid in v1. Segment lifecycle descriptor
+No other heap-metadata subtype is valid in v1. Deployment-owned evidence uses
+the SubjectV3 profile defined only by `EVIDENCE_LEDGER_SPEC.md` and is rejected
+by `HeapStore`. Segment lifecycle descriptor
 and summary frames retain their existing subjects; their heap binding is
 envelope key 31 plus segment context, and they never carry application data.
 For kind-11 `CollectionDescriptor` and kind-12 `StreamDescriptor`, key bytes
@@ -5689,6 +5704,8 @@ The head payload is:
 | 24 | remembered resume state: 1 active, 2 read-only, or null |
 | 25 | immutable storage genesis descriptor hash, BLAKE3-256 bstr(32) |
 | 26 | current heap-descriptor hash, BLAKE3-256 bstr(32) |
+| 27 | active EvidencePolicy root, BLAKE3-256 bstr(32), or null before DEL activation |
+| 28 | active evidence-signer certificate hash, BLAKE3-256 bstr(32), or null before DEL activation |
 
 The access-policy map is:
 
@@ -5725,6 +5742,9 @@ Head validation additionally requires:
 - label 26 equals root-event label 19 at an epoch root; creation requires
   labels 18 and 19 to match, and within the epoch label 26 changes only
   through a valid §31.5.1 event whose label 16 equals the new value.
+- labels 27 and 28 are both null before Dingo Evidence Ledger activation and
+  both non-null afterward; activation and every later change is a valid
+  authority event atomically bound to the corresponding ledger evidence.
 
 Except for the terminal failed-creation case in §31.5 kind 4, the exact
 descriptor frame named by label 26 MUST exist and validate before readiness.

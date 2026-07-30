@@ -1081,6 +1081,15 @@ unbounded user-controlled labels by default.
 
 Identifiers are minimized or pseudonymized according to profile.
 
+Ratatouille is the operational telemetry channel. Telemetry is bounded,
+asynchronous, best effort, and non-authoritative. It does not become audit
+evidence because it was retained by an external collector, and telemetry
+failure cannot change a database result.
+
+The normative collection points, schemas, cardinality limits, Ratatouille
+delivery profile, and failure semantics are defined by
+[TELEMETRY_SPEC.md](TELEMETRY_SPEC.md).
+
 ### 18.2 Audit
 
 Audit records:
@@ -1100,6 +1109,11 @@ Audit records:
 Audit has independent retention and integrity policy.
 
 Audit is not the same as application event history.
+
+The normative durable audit design is the
+[Dingo Evidence Ledger](EVIDENCE_LEDGER_SPEC.md). Required evidence is
+atomically coupled to its protected operation and is never substituted by
+telemetry, stdout/stderr, or file logging.
 
 ### 18.3 Support bundles
 
