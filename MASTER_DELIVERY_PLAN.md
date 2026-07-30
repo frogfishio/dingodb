@@ -791,16 +791,12 @@ This is the current executable queue:
 | 1 | `M0-1` | `accept` | evidence inventory done |
 | 2 | `M0-2` | `accept` | scoreboard reconciled |
 | 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
-| 4 | `HAR-0` | `ready` | residual truth/CI agreement |
-| 5 | `HAR-1` | `not_started` | collection creation (blocked: HAR-0, APP-0) |
-| 6 | `HAR-2` | `not_started` | local Heap ceremony |
-| 7 | `HAR-3` | `not_started` | complete application-key lifecycle |
-| 8 | `HAR-4` | `not_started` | qualified HeapKey default |
-| 9 | `HAR-5` | `not_started` | Heap operations |
-| 10 | `HAR-6` | `not_started` | ordinary journeys |
-| 11 | `HAR-7` | `not_started` | M1 release gate |
+| 4 | `APP-0` | `active` | **principal track:** CORE_APPLICATION_API contract freeze |
+| 5 | `APP-1` | board backlog | after APP-0; implements collection create (HAR-1 capability) |
+| 6 | `HAR-0` | `ready` (board backlog) | residual; do not steal labor from APP-0 |
+| 7 | `HAR-2`…`HAR-7` | board backlog | re-queue after principal APP track needs them |
 
-The next task is `HAR-0` (M0 complete). Live scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
+The next task is **`APP-0`** (CORE plan). Live scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
 
 No developer should start DRE, Atomics, Direct Access, Order Wavelets, search,
 or cluster product work from this queue.

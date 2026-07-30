@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Args for op 106 collection_create (CORE plan §6.1). Envelope operation_id is outside args.",
+  "properties": {
+    "canonical_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Heap object-name profile; validated and normalized before mutation."
+    }
+  },
+  "required": ["canonical_name"]
+}

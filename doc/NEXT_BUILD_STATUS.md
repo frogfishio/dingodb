@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-07-30 (M0-3 CI wire-up)
+Updated: 2026-07-30 (principal course-correct: APP/CORE track active; HAR/M2 board backlog)
 
 This file records delivery state. It does not change normative semantics.
 
@@ -52,7 +52,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | VFY-0 | not_started | — | — | — | missing `spec/verification/` registries | claim registry |
 | VFY-1 | not_started | — | VFY-0 | — | no preflight/infra-classified runner | evidence runner |
 | VFY-2 | not_started | — | VFY-0 | Heap matrix is ad-hoc VFY-2 partial only | no whole-DB claim map | oracle mapping |
-| HAR-0 | ready | 2026-07-30 | — | matrix; Verus/Kani flags aligned (M0-DISC-001 fixed); architecture OK; M0 complete | residual: confirm CI kani-heap job; HAR-0 plan checklist | truth cleanup residual |
+| HAR-0 | ready | 2026-07-30 | — | matrix; Verus/Kani flags aligned (M0-DISC-001 fixed); architecture OK; M0 complete | residual: confirm CI kani-heap job; HAR-0 plan checklist; **board stage backlog** (principal: APP/CORE first) | truth cleanup residual |
 | HAR-1 | not_started | — | HAR-0, APP-0 | op **106** `collection_create` **reserved**, schemas null | product create missing | collection creation |
 | HAR-2 | not_started | — | HAR-1 | precursor: `hp005_accept`, authority genesis | CLI ceremony package not accept | local Heap ceremony |
 | HAR-3 | not_started | — | HAR-2 | precursor: certs, handshake | full key lifecycle journey open | application-key lifecycle |
@@ -60,7 +60,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | HAR-5 | not_started | — | HAR-4 | precursor: wipe/restore/key-loss/DR drills (hp009/hp010) | broader crash cells; non-AWS KMS live | Heap operations |
 | HAR-6 | not_started | — | HAR-5, APP-8 | precursor: RemoteHeap CRUD/find/history/indexes | no ordinary `HeapClient` journey accept | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
-| APP-0 | not_started | — | HAR-0 | plan exists: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) | contract fixtures not frozen | application contract |
+| APP-0 | active | 2026-07-30 | — | plan: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §14; [spec/app/v1/](../spec/app/v1/); wire staged `collection_create`/`dql_query` schemas+fixtures; `dingo_sdk::app_v1`; `verify-app0-contract.sh` + `app0_contract_lock` tests | owner sign-off (SDK/server/store/query) still open; plan_hash/mac placeholders until APP-4/APP-6 | application contract |
 | APP-1 | not_started | — | APP-0 | implements HAR-1 | op 106 reserved | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
@@ -104,14 +104,32 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | DOW-4 | not_started | — | DOW-3 | — | — | mutable order path |
 | DOW-5 | deferred | — | cluster profile | — | cluster profile unavailable | distributed order |
 
+## Principal labor track (board SoT)
+
+**Active:** **APP-0** — contract/fixture lock from
+[CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
+
+Board stages (principal 2026-07-30 course-correct):
+
+| Stage | Cards |
+|---|---|
+| done | M0-1, M0-2, M0-3 |
+| doing | **APP-0** only |
+| backlog | HAR-0…HAR-7, APP-1…APP-8, DEL-0, TEL-0, DST-000 |
+
+Do **not** pull HAR/M2 cards into `todo` while APP/CORE is the principal track.
+Scoreboard may still list HAR-0 as `ready` (dependency honesty); that is not a
+labor order override.
+
 ## Ready queue (honest)
 
-Packages that may start once their `blocked_by` is cleared:
+Labor order for this principal (not “everything that is ready”):
 
-1. **HAR-0** residual cleanup — M0 complete; first M1 package.
-2. **APP-0** — after HAR-0 ready/accept (contract freeze).
-3. **HAR-1 / APP-1** — after APP-0 (collection create); missing predecessors named on scoreboard.
-4. **DEL-0 / TEL-0 / DST-000** drafting — after HAR-3 only; no live product surface before M1.
+1. **APP-0** — freeze application contract (CORE plan §14) — **active**.
+2. **APP-1** (≡ product HAR-1 capability) — after APP-0; still board backlog until APP-0 exits.
+3. **APP-4** — may parallel APP-1 after APP-0 (predicates/plan).
+4. **HAR-0** residual — ready on scoreboard but **board backlog** until principal re-queues it.
+5. **DEL-0 / TEL-0 / DST-000** — after HAR-3 only; board backlog.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 
@@ -137,6 +155,7 @@ Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 
 | Order | Package | Note |
 |---:|---|---|
-| 1 | HAR-0 | residual truth/CI agreement |
-| 2 | APP-0 | freeze application contract |
-| 3 | APP-1 ≡ HAR-1 | collection_create 106 |
+| 1 | **APP-0** | CORE plan — contract and fixture lock (**doing**) |
+| 2 | APP-1 ≡ HAR-1 capability | collection_create 106 after APP-0 |
+| 3 | APP-4 | predicates/plan; may parallel APP-1 after APP-0 |
+| — | HAR-0 residual | board **backlog** until principal re-queues |

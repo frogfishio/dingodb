@@ -17,6 +17,9 @@ export RUSTDOCFLAGS="${RUSTDOCFLAGS:--D warnings}"
 echo "== delivery scoreboard (M0-3) =="
 bash ./scripts/verify-delivery-status.sh
 
+echo "== APP-0 application contract lock =="
+bash ./scripts/verify-app0-contract.sh
+
 echo "== fmt =="
 cargo fmt --all -- --check
 

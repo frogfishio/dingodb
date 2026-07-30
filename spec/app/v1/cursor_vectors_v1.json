@@ -1,0 +1,76 @@
+{
+  "profile": "dingo-cursor-v1",
+  "normative": "doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §11",
+  "ttl_seconds": 900,
+  "skew_seconds": 120,
+  "max_accept_age_seconds": 1020,
+  "key_rotation_hours": 24,
+  "previous_key_retain_seconds": 1020,
+  "fields_required": [
+    "cursor_profile",
+    "key_id",
+    "heap_id",
+    "collection_id",
+    "authority_epoch",
+    "plan_hash",
+    "parameter_hash",
+    "order_normalized",
+    "last_sort_tuple",
+    "source_frontier",
+    "remaining_limit",
+    "page_size",
+    "coverage_mode",
+    "consistency_mode",
+    "issued_at",
+    "expires_at",
+    "mac"
+  ],
+  "vectors": [
+    {
+      "id": "cursor-page1-valid-shape",
+      "description": "Logical binding for first continuation after page 1.",
+      "token_logical": {
+        "cursor_profile": "dingo-cursor-v1",
+        "key_id": "ck-0001",
+        "heap_id": "00000000-0000-4000-8000-0000000000b1",
+        "collection_id": "00000000-0000-4000-8000-0000000000a1",
+        "authority_epoch": 1,
+        "plan_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "parameter_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "order_normalized": [
+          { "path": ["created_at"], "dir": "desc" },
+          { "path": ["$key"], "dir": "asc", "tie_break": true }
+        ],
+        "last_sort_tuple": [1785360000, "ord-1"],
+        "source_frontier": { "generation": 7, "segment_id": "dddddddddddddddddddddddddddddddd" },
+        "remaining_limit": 900,
+        "page_size": 100,
+        "coverage_mode": "complete",
+        "consistency_mode": "available",
+        "issued_at": 1785360100,
+        "expires_at": 1785361000,
+        "mac": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "mac_status": "placeholder_until_cursor_key_material_profile",
+      "expect_verify": "shape_only"
+    },
+    {
+      "id": "cursor-heap-mismatch",
+      "description": "Token for another Heap must fail ConsistencyViolation.",
+      "mutation": { "heap_id": "00000000-0000-4000-8000-0000000000ff" },
+      "expect": {
+        "code": "consistency_violation",
+        "retryable": false
+      }
+    },
+    {
+      "id": "cursor-expired",
+      "description": "Token older than max_accept_age_seconds fails.",
+      "mutation": { "issued_at": 0, "expires_at": 1 },
+      "expect": {
+        "code": "consistency_violation",
+        "retryable": false
+      }
+    }
+  ]
+}

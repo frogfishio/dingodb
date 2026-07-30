@@ -1,0 +1,13 @@
+{
+  "op": 106,
+  "ok": false,
+  "operation_id": "00112233445566778899aabbccddeeff",
+  "args": {
+    "canonical_name": ""
+  },
+  "error": {
+    "code": "validation_failed",
+    "retryable": false,
+    "detail": "canonical_name empty after validation"
+  }
+}

@@ -32,6 +32,12 @@
 /// indexes. This label does **not** authorize `dingo-heap-v1` qualification.
 pub const SDK_API_VERSION: &str = "1.0";
 
+/// APP-0 frozen public application façade (`dingo-rust-app-v1`).
+///
+/// Prefer these types for new application work. Legacy find/filter budgets still
+/// use [`filter::QueryBudget`]; Application Core budgets are
+/// [`app_v1::QueryBudget`].
+pub mod app_v1;
 mod claim;
 #[cfg(feature = "cluster")]
 mod cluster_backend;
@@ -57,6 +63,15 @@ mod subject;
 mod tls;
 mod value;
 
+pub use app_v1::{
+    AdminOperation, CollectionClient, CollectionCreateReceipt, CollectionInfo, ConsistencyEvidence,
+    ConsistencyMode, Continuation, CoverageEvidence, CoveragePolicy, CreateCollectionOptions,
+    CreateCollectionResult, HeapClient, HoleEvidence, Parameters, QueryExplanation, QueryId,
+    QueryPage, QueryRow, QueryRunOptions, CURSOR_PROFILE, DQL_APP_CORE_PROFILE, DQL_PLAN_PROFILE,
+    PREDICATE_PROFILE, RUST_APP_PROFILE,
+};
+/// Application Core query budget (APP-0). Distinct from legacy [`filter::QueryBudget`].
+pub use app_v1::QueryBudget as AppQueryBudget;
 pub use claim::{
     flat_collection_claim_language, heap_only_embedded_profile, legacy_flat_sdk_enabled,
     product_claim_language, product_may_advertise_qualified_heap, FLAT_COLLECTION_SURFACE_LABEL,

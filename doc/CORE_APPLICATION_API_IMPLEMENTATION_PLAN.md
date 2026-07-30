@@ -714,7 +714,7 @@ Protocol decoders:
 
 ### APP-0 — Contract and fixture lock
 
-Depends: `HAR-0`
+Depends: `HAR-0` (principal may parallel; labor order is principal board)
 
 Deliver:
 
@@ -723,6 +723,26 @@ Deliver:
 - wire request/response golden fixtures;
 - stable error mapping table;
 - canonical plan and cursor test vectors.
+
+**Artifact locations (2026-07-30 start):**
+
+| Deliverable | Location |
+|---|---|
+| Contract index | `spec/app/v1/README.md` |
+| Error mapping | `spec/app/v1/error_mapping_v1.json` |
+| Plan vectors | `spec/app/v1/plan_vectors_v1.json` |
+| Cursor vectors | `spec/app/v1/cursor_vectors_v1.json` |
+| Rust compile surface | `crates/dingo-sdk/src/app_v1.rs` (`dingo-rust-app-v1`) |
+| Contract tests | `crates/dingo-sdk/tests/app0_contract_lock.rs` |
+| Verify script | `scripts/verify-app0-contract.sh` |
+| Wire schemas (staged) | `spec/heap/rpc-v1/collection_create.*`, `dql_query.*` |
+| Wire fixtures (staged) | `spec/heap/fixtures/collection_create.*`, `dql_query.*` |
+
+Ops **106** / **118** stay `reserved` with null schema pointers in
+`operations-v1.json` until APP-1 / APP-7; on-disk schemas are frozen for
+implementers. Plan/cursor MAC bytes may remain labeled placeholders until
+encoding profiles land in APP-4 / APP-6 — that is an explicit residual, not a
+silent invent.
 
 Exit:
 

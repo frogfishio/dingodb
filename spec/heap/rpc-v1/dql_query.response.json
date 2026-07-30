@@ -1,0 +1,92 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Result for op 118 dql_query (CORE plan §10).",
+  "properties": {
+    "query_id": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 32
+    },
+    "plan_hash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "heap_id": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 36
+    },
+    "collection_id": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 36
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string" },
+          "value": {}
+        },
+        "required": ["key", "value"]
+      }
+    },
+    "next": {
+      "type": ["string", "null"],
+      "maxLength": 65536
+    },
+    "exhausted": { "type": "boolean" },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "complete": { "type": "boolean" },
+        "mode": {
+          "type": "string",
+          "enum": ["complete", "incomplete_allowed"]
+        }
+      },
+      "required": ["complete", "mode"]
+    },
+    "consistency": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["available", "current"]
+        }
+      },
+      "required": ["mode"]
+    },
+    "remaining_limit": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "known_holes": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "explain": {
+      "type": "object",
+      "description": "Present when request.explain is true; rows empty."
+    },
+    "stats": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "query_id",
+    "plan_hash",
+    "heap_id",
+    "collection_id",
+    "rows",
+    "exhausted",
+    "coverage",
+    "consistency"
+  ]
+}

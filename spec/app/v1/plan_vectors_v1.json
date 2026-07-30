@@ -1,0 +1,70 @@
+{
+  "profile": "dql-plan-v1",
+  "source_profile": "dql-app-core-v1",
+  "predicate_profile": "dingo-predicate-v1",
+  "encoding_note": "Persistent/exchanged plan bytes require the companion encoding profile from DQL_SPEC §15. These vectors freeze logical shape and domain-separated hash labels for APP-0.",
+  "hash_domain": "dingo:dql-plan-v1:logical-v0",
+  "vectors": [
+    {
+      "id": "plan-orders-status-open-page",
+      "description": "Builder and DQL Application Core must compile to identical logical plans.",
+      "source_dql": "from orders where status = $status project id, status order by created_at desc limit 1000 page size 100",
+      "parameters": { "status": "open" },
+      "logical_plan": {
+        "profile": "dql-plan-v1",
+        "from": {
+          "source_name": "orders",
+          "collection_id_bound": "00000000-0000-4000-8000-0000000000a1"
+        },
+        "where": {
+          "op": "eq",
+          "path": ["status"],
+          "param": "status"
+        },
+        "project": ["id", "status"],
+        "order": [
+          { "path": ["created_at"], "dir": "desc", "nulls": "last" },
+          { "path": ["$key"], "dir": "asc", "nulls": "last", "tie_break": true }
+        ],
+        "limit": 1000,
+        "page_size": 100,
+        "coverage": "complete",
+        "consistency": "available"
+      },
+      "plan_hash_hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "plan_hash_status": "placeholder_sha256_empty_until_encoding_profile",
+      "notes": "Replace plan_hash_hex when APP-4 freezes canonical encoding; shape is normative now."
+    },
+    {
+      "id": "plan-feature-unavailable-enrich",
+      "description": "Non-Core construct must fail before execution.",
+      "source_dql": "from orders enrich other",
+      "expect": {
+        "compile": "reject",
+        "code": "query_invalid",
+        "diagnostic": "dql_feature_unavailable"
+      }
+    },
+    {
+      "id": "plan-defaults-only",
+      "description": "Bare from applies default page size 64, complete coverage, available consistency, key order.",
+      "source_dql": "from orders",
+      "logical_plan": {
+        "profile": "dql-plan-v1",
+        "from": {
+          "source_name": "orders",
+          "collection_id_bound": "00000000-0000-4000-8000-0000000000a1"
+        },
+        "where": null,
+        "project": null,
+        "order": [
+          { "path": ["$key"], "dir": "asc", "nulls": "last", "tie_break": true }
+        ],
+        "limit": null,
+        "page_size": 64,
+        "coverage": "complete",
+        "consistency": "available"
+      }
+    }
+  ]
+}

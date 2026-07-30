@@ -1,0 +1,21 @@
+{
+  "op": 106,
+  "ok": true,
+  "operation_id": "00112233445566778899aabbccddeeff",
+  "args": {
+    "canonical_name": "orders"
+  },
+  "result": {
+    "collection_id": "00000000-0000-4000-8000-0000000000a1",
+    "canonical_name": "orders",
+    "descriptor_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "receipt": {
+      "receipt_id": "fedcba9876543210fedcba9876543210",
+      "operation": "create_collection",
+      "heap_id": "00000000-0000-4000-8000-0000000000b1",
+      "object_id": "00000000-0000-4000-8000-0000000000a1",
+      "descriptor_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "created_at": 1785360000
+    }
+  }
+}

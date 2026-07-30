@@ -1,0 +1,32 @@
+{
+  "op": 118,
+  "ok": true,
+  "collection_id": "00000000-0000-4000-8000-0000000000a1",
+  "args": {
+    "source": "from orders where status = $status project id, status order by created_at desc limit 1000 page size 100",
+    "parameters": { "status": "open" },
+    "explain": false,
+    "page_size": 100,
+    "coverage": "complete",
+    "consistency": "available"
+  },
+  "result": {
+    "query_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "plan_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "heap_id": "00000000-0000-4000-8000-0000000000b1",
+    "collection_id": "00000000-0000-4000-8000-0000000000a1",
+    "rows": [
+      {
+        "key": "ord-1",
+        "value": { "id": "ord-1", "status": "open", "created_at": 1785360000 }
+      }
+    ],
+    "next": null,
+    "exhausted": true,
+    "coverage": { "complete": true, "mode": "complete" },
+    "consistency": { "mode": "available" },
+    "remaining_limit": 999,
+    "known_holes": [],
+    "stats": { "documents_scanned": 1, "rows_returned": 1 }
+  }
+}

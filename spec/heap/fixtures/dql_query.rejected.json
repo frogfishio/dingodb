@@ -1,0 +1,15 @@
+{
+  "op": 118,
+  "ok": false,
+  "collection_id": "00000000-0000-4000-8000-0000000000a1",
+  "args": {
+    "source": "from orders enrich other",
+    "parameters": {}
+  },
+  "error": {
+    "code": "query_invalid",
+    "diagnostic": "dql_feature_unavailable",
+    "retryable": false,
+    "detail": "enrich is outside dql-app-core-v1"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Args for op 118 dql_query (execution + explain). Server recompiles any source and never trusts a client plan_hash.",
+  "properties": {
+    "source": {
+      "type": "string",
+      "maxLength": 1048576,
+      "description": "Optional DQL Application Core source (UTF-8). When present, server recompiles."
+    },
+    "plan": {
+      "type": "object",
+      "description": "Optional logical DqlPlanV1 object for builders; server validates or recompiles."
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Named parameter map (JSON values)."
+    },
+    "explain": {
+      "type": "boolean",
+      "description": "When true, return structured explanation and do not enumerate rows."
+    },
+    "page_size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4096
+    },
+    "coverage": {
+      "type": "string",
+      "enum": ["complete", "incomplete_allowed"]
+    },
+    "consistency": {
+      "type": "string",
+      "enum": ["available", "current"]
+    },
+    "continuation": {
+      "type": "string",
+      "maxLength": 65536,
+      "description": "Opaque dingo-cursor-v1 token from a prior page."
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_documents": { "type": "integer", "minimum": 1 },
+        "max_bytes": { "type": "integer", "minimum": 1 },
+        "max_result_bytes": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "anyOf": [
+    { "required": ["source"] },
+    { "required": ["plan"] },
+    { "required": ["continuation"] }
+  ]
+}

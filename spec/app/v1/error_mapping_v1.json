@@ -1,0 +1,128 @@
+{
+  "profile": "dingo-app-error-map-v1",
+  "normative": "doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §12",
+  "authority": "crates/dingo-sdk/src/error.rs ErrorCode",
+  "retry_policy": {
+    "allowed_when_all": [
+      "error classified retryable",
+      "operation is read-only or carries stable operation_id",
+      "deadline permits another attempt",
+      "same Heap, collection, request fingerprint, and authority remain bound"
+    ],
+    "never_retry": [
+      "authorization",
+      "validation",
+      "damage",
+      "cursor_mismatch"
+    ]
+  },
+  "mappings": [
+    {
+      "condition": "collection/key absent where absence is exceptional",
+      "code": "not_found",
+      "retryable": false
+    },
+    {
+      "condition": "duplicate collection/index name",
+      "code": "already_exists",
+      "retryable": false
+    },
+    {
+      "condition": "malformed DQL, predicate, path, key, or name",
+      "code": ["query_invalid", "validation_failed"],
+      "retryable": false
+    },
+    {
+      "condition": "unsupported Application Core feature",
+      "code": "query_invalid",
+      "diagnostic": "dql_feature_unavailable",
+      "retryable": false
+    },
+    {
+      "condition": "insufficient authority",
+      "code": "permission_denied",
+      "retryable": false
+    },
+    {
+      "condition": "invalid credential",
+      "code": "authentication_failed",
+      "retryable": false
+    },
+    {
+      "condition": "stale/tampered/mismatched cursor",
+      "code": "consistency_violation",
+      "retryable": false
+    },
+    {
+      "condition": "complete result cannot be proven",
+      "code": "coverage_incomplete",
+      "retryable": false
+    },
+    {
+      "condition": "explicit budget required",
+      "code": "query_budget_required",
+      "retryable": false
+    },
+    {
+      "condition": "hard ceiling reached",
+      "code": "resource_limit",
+      "retryable": false
+    },
+    {
+      "condition": "requested durability unavailable",
+      "code": "durability_unavailable",
+      "retryable": false
+    },
+    {
+      "condition": "damaged authoritative data",
+      "code": ["data_damaged", "payload_partial"],
+      "retryable": false
+    },
+    {
+      "condition": "protocol shape impossible under the profile",
+      "code": "protocol_violation",
+      "retryable": false
+    },
+    {
+      "condition": "cancellation/deadline",
+      "code": "deadline_exceeded",
+      "retryable": true
+    },
+    {
+      "condition": "identical (H, principal, O) with different request fingerprint",
+      "code": "consistency_violation",
+      "retryable": false,
+      "notes": "collection_create operation-id conflict"
+    },
+    {
+      "condition": "JSON vs bytes type mismatch",
+      "code": "type_mismatch",
+      "retryable": false
+    }
+  ],
+  "required_error_codes": [
+    "already_exists",
+    "not_found",
+    "version_conflict",
+    "validation_failed",
+    "query_invalid",
+    "query_budget_required",
+    "resource_limit",
+    "coverage_incomplete",
+    "partition_unavailable",
+    "stale_route",
+    "consistency_violation",
+    "durability_unavailable",
+    "data_damaged",
+    "payload_partial",
+    "format_unsupported",
+    "type_mismatch",
+    "authentication_failed",
+    "permission_denied",
+    "deadline_exceeded",
+    "io",
+    "protocol_violation",
+    "writer_lock_held",
+    "internal"
+  ]
+}
