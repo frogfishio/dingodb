@@ -93,7 +93,7 @@ The correct near-term program is not “add encryption” in isolation. It is:
 | Logging | Structured NDJSON with redaction | **present/partial** | Client parity, audit separation, support-bundle policy |
 | Metrics/health | Liveness/readiness/detail and process metrics | **partial** | Key, encryption, retention, hold, backup, purge, tier and capacity metrics |
 | Migration | Phased wire migration with evidence | **present** for single-node cut | Encryption-profile migration and mixed-key/version qualification |
-| Long-term compatibility | Draft wire and runbook | **partial** | Wire freeze, golden archives, retained readers, periodic clean-room tests |
+| Long-term compatibility | Draft wire; freeze checklist + compat policy published (DEF-053 partial) | **partial** | Close freeze residuals, golden archives, retained readers, clean-room tests — [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md) |
 | Incident process | Threat model first cut | **partial** | Published vulnerability policy, external audit, incident runbook and exercises |
 
 ## 4. Important current truths

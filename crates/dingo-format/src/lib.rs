@@ -41,9 +41,11 @@ pub use chunks::{
     ReassemblyState, CHUNK_BODY_HEADER_LEN,
 };
 pub use compat::{
-    wire_compat_matrix, wire_reader_supports, wire_support_for, wire_support_summary,
-    wire_writer_emits, WireSupportEntry, WireSupportStatus, SUPPORTED_READER_MAJORS,
-    WRITER_WIRE_MAJOR, WRITER_WIRE_MINOR,
+    wire_compat_matrix, wire_freeze_criteria, wire_freeze_criteria_all_met, wire_freeze_readiness,
+    wire_freeze_summary, wire_is_frozen, wire_reader_supports, wire_support_for,
+    wire_support_summary, wire_writer_emits, WireFreezeCriterion, WireFreezeCriterionStatus,
+    WireFreezeReadiness, WireSupportEntry, WireSupportStatus, SUPPORTED_READER_MAJORS,
+    WIRE_FREEZE_POLICY_ID, WRITER_WIRE_MAJOR, WRITER_WIRE_MINOR,
 };
 pub use events::{group_by_event_id, EventIdOutcome};
 pub use frame::{

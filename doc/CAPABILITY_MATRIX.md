@@ -34,7 +34,9 @@ with the acceptance evidence expected before a stronger label.
 3. **Mirrors ≠ native cloud backends.** `s3://` / `gs://` parse and mirror
    paths are not a substitute for a production object-store connector.
 4. **Draft wire.** `WIRE_PROFILE_LABEL = 1.0-draft` is not an interoperability
-   freeze.
+   freeze. Freeze criteria, gaps, and relabel procedure live in
+   [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md) (DEF-053). Do not treat draft
+   media as decade-stable until that document records a freeze declaration.
 5. **Performance.** No Redis-class claim without
    [BENCHMARK_DISCLOSURE.md](BENCHMARK_DISCLOSURE.md) artifacts.
 
@@ -45,7 +47,7 @@ with the acceptance evidence expected before a stronger label.
 | Crate / workspace semver | `0.2.0` | Packaging only (0.2 = index + engine + QL cut) |
 | `SDK_API_VERSION` | `1.0` | Collection API surface freeze label |
 | `CLUSTER_PROFILE_VERSION` | `v1` | In-process cluster profile |
-| `WIRE_PROFILE_LABEL` | `1.0-draft` | On-disk/network frame draft |
+| `WIRE_PROFILE_LABEL` | `1.0-draft` | On-disk/network frame draft (freeze checklist: WIRE_MAJOR1_FREEZE) |
 | `CONFORMANCE_CORPUS_TAG` | `sda-standalone-v1.0` | SDA §14 corpus |
 | `QUERY_PLAN_PROFILE` | `dingo-query-plan-v1` | Serializable filter/query plans (DEF-028) |
 | `RESOURCE_PROFILE` | `dingo-resource-v1` | Query budgets + host resource limits (DEF-029) |
@@ -87,9 +89,10 @@ with the acceptance evidence expected before a stronger label.
 | Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
 | Seeded in-process fault sim + lincheck | DEF-041 `dingo-cluster-verify-v1` | **shipped** (network Raft in-process) |
 | CLUSTER_SPEC §22 core matrix (network Raft) | DEF-041 | **shipped** (§22.1–.8 + chaos) |
-| In-process soak put/get after chaos | DEF-041 | **shipped** (`run_soak`; multi-process still follow-on) |
-| Multi-process Jepsen-style partition histories | DEF-041 follow-on | **not yet** |
-| Long-duration soak / rolling restart | DEF-041 follow-on | **not yet** |
+| In-process soak put/get after chaos | DEF-041 | **shipped** (`run_soak`) |
+| Multi-process OS chaos + short soak | DEF-041-N `dingo-cluster-multiproc-v1` | **shipped (labor)** — rolling restart, abort-after-ack, cross-process writer lock, seed+history dumps (`stage_def_041n_multiproc`) |
+| Multi-process Jepsen PORC vs live `serve-cluster` TCP | DEF-041-N residual | **not yet** — serve-cluster stays experimental |
+| Multi-hour soak | DEF-041-N residual | **not yet** (optional env `DINGO_MULTIPROC_LONG_SOAK=1` expands short soak) |
 
 Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
 ordinary `dingo-store` segments (salvage independent of Raft control plane).
@@ -217,11 +220,14 @@ Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
 | Unsupported / unreadable segments | Preserve opaque bytes + plan notes | **shipped** |
 | Failed migration | Source remains fully readable | **shipped** |
 | CLI | `dingo migrate` / `--preflight` / `--plan-only` / `--status` / `--rollback` | **shipped** |
-| Second wire major dual-read + rewrite | — | **not yet** (DEF-053) |
+| Second wire major dual-read + rewrite | — | **not yet** (DEF-053 residual) |
 | Rolling mixed-cluster upgrade drills | — | **not yet** |
+| Wire major-1 freeze declaration | Checklist + policy published; label still draft | **not yet** (DEF-053 partial) |
 
 Evidence: `stage_def_052_migrate`, `dingo_format::compat` / `dingo_store::migrate`
-unit tests, CLI `migrate_roundtrip_and_status`.
+unit tests, CLI `migrate_roundtrip_and_status`. Freeze inventory:
+[WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md); `wire_is_frozen()` /
+`wire_freeze_summary()`.
 
 ## Process configuration (DEF-054)
 
@@ -303,7 +309,8 @@ Evidence: `stage_def_054_config`, `dingo_server::config` unit tests, CLI
 - `max_frame` is checked **before** allocating the payload buffer.
 - Legacy bare-line clients against a production server fail with
   `protocol_violation` (clear error; no silent dual-mode).
-- `RPC_WIRE_LABEL = 1.0-draft` is not an interoperability freeze (DEF-053).
+- `RPC_WIRE_LABEL = 1.0-draft` is not an interoperability freeze (separate from
+  survival-frame freeze; see DEF-053 / [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)).
 - Golden fixtures: `crates/dingo-sdk/tests/fixtures/protocol/`.
 
 ## Writer ownership (DEF-020)

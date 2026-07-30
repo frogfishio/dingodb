@@ -15,7 +15,7 @@ and what “supported” means before production maturity is claimed.
 |-------|--------|
 | Production-ready | **No** — do not deploy as a sole system of record without accepting residual risk |
 | Semantic version in tree | See root [`VERSION`](../VERSION) (crate workspace version) |
-| Wire profile | `WIRE_PROFILE_LABEL = "1.0-draft"` until DEF-053 freeze |
+| Wire profile | `WIRE_PROFILE_LABEL = "1.0-draft"` until DEF-053 freeze ([WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)) |
 
 ## Support classes
 
@@ -38,7 +38,9 @@ Until a production maturity announcement:
 
 - **Crate/workspace version:** monorepo `VERSION` / Cargo package versions.
 - **Wire profile:** `dingo_format::WIRE_PROFILE_LABEL` — independent of crate
-  version; remains draft until DEF-053 freeze criteria pass.
+  version; remains draft until DEF-053 freeze criteria pass (checklist and
+  compatibility policy: [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md);
+  runtime: `wire_is_frozen()` / `wire_freeze_summary()`).
 - **Store on-disk:** store meta / descriptor generations; upgrade/migration
   rules are per DEF-052 and capability matrix — not all historical media are
   forever writable by new majors.
@@ -62,7 +64,8 @@ For **unsupported** versions:
 2. Run `dingo doctor` / salvage / backup procedures on upgrade paths as
    documented.
 3. Do not assume `1.0-draft` wire will remain binary-compatible without reading
-   migration notes after DEF-053 freeze.
+   migration notes after DEF-053 freeze (see [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)
+   §4 relabel procedure).
 4. Treat experimental multi-node paths as non-production until DEF-041-N (and
    related) evidence is accepted.
 

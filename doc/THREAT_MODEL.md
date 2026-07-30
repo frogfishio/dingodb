@@ -95,8 +95,11 @@ Aligned with DEF-091 targets and DEF-063 “hostile-input surfaces”:
 2. **Long-run fuzz residual** — scheduled nightly smoke + PR property bar exist
    (DEF-091-F labor); OSS-Fuzz / multi-hour accumulation still open.
 3. **Network multi-node still experimental** — serve-cluster is not production;
-   multi-process Jepsen histories remain DEF-041-N.
-4. **Wire still `1.0-draft`** — freeze needs soak, fuzz, external review (DEF-053).
+   multiproc OS short soak/rolling restart exists (DEF-041-N labor); full Jepsen
+   PORC vs live TCP + multi-hour soak remain.
+4. **Wire still `1.0-draft`** — freeze checklist published
+   ([WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)); residual soak, long fuzz,
+   external review still block stable label (DEF-053).
 5. **Native S3/GCS / erasure / encryption** — archive path is mirror/scaffold;
    hostile cloud I/O not yet in scope of production claims.
 6. **Client-side logging** — redaction parity is a follow-on to DEF-060.
@@ -118,7 +121,9 @@ published” gap and package evidence for engagement.
 2. Remediate critical/high findings; update this model’s residual list.
 3. Multi-process partition + long soak evidence (DEF-041-N) before any
    “production cluster” language.
-4. Wire freeze (DEF-053) before stable wire claims.
+4. Close DEF-053 residual gates (audit, long fuzz, soak, clean-room fixtures)
+   then freeze wire before stable wire claims
+   ([WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)).
 
 ## 8. Document control
 

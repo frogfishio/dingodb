@@ -42,7 +42,8 @@ Until this plan is complete, use these support labels:
 - **S3/GCS:** filesystem-mirror integration, not a native cloud backend.
 - **Erasure coding and lifecycle automation:** scaffolds only.
 - **Wire format:** `1.0-draft` with declared reader/writer matrix and phased
-  migration (DEF-052); not frozen for long-term interoperability (DEF-053).
+  migration (DEF-052); freeze checklist + policy published, not frozen
+  (DEF-053 partial — `doc/WIRE_MAJOR1_FREEZE.md`).
 - **Process config:** versioned `dingo-config-v1` validate-before-serve
   (DEF-054); live dynamic reload still follow-on.
 - **Process logs:** versioned `dingo-log-v1` NDJSON on serve paths (DEF-060);
@@ -1582,12 +1583,9 @@ Evidence:
 ### DEF-041 — Build a distributed-system verification program
 
 Priority: P0  
-Status: **addressed (in-process cut)** (2026-07-27) — seeded simulation harness
-`dingo-cluster-verify-v1` with fault model (crash, directed partition, RPC drop/
-duplicate), client history + partition-linearizable checker, convergent
-variant preservation checker, and CLUSTER_SPEC §22 core cases against network
-Raft (§22.1–.8 in-process; put/get soak); multi-process OS chaos / long soak
-remain follow-ons
+Status: **partial** — in-process cut (2026-07-27) + **multiproc OS chaos / short
+soak labor (DEF-041-N, 2026-07-31)**. Full Jepsen PORC against live
+`serve-cluster` TCP + multi-hour soak remain for production multi-node claims.
 
 Work:
 
@@ -1613,8 +1611,14 @@ Evidence:
   `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
 - Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.8, chaos + soak
   linearizability, dump retains seed); module unit tests under `sim::tests`.
-- Remaining (out of this cut): multi-process Jepsen-style partition histories,
-  long-duration soak / rolling restart, full §22.9–.20 network surface.
+- **DEF-041-N labor (2026-07-31):** multiproc OS harness
+  `dingo-cluster-multiproc-v1` (`multiproc` module + `dingo-cluster-multiproc-child`
+  binary + `stage_def_041n_multiproc`): rolling restart, abort-after-ack, cross-
+  process writer lock, short soak, seed+history JSON dumps. Long soak via
+  `DINGO_MULTIPROC_LONG_SOAK=1`.
+- Remaining: full Jepsen PORC against live `serve-cluster` TCP partitions,
+  multi-hour soak, CLUSTER_SPEC §22.9–.20 network surface; serve-cluster stays
+  experimental until those pass.
 
 ---
 
@@ -1762,6 +1766,16 @@ Remaining (out of this cut):
 Priority: P0  
 Dependencies: DEF-010 through DEF-014, DEF-022, DEF-052
 
+Status: **partial — freeze gap inventory + policy cut** (2026-07-31) — freeze
+**not** declared; `WIRE_PROFILE_LABEL` remains `1.0-draft`. Published
+`doc/WIRE_MAJOR1_FREEZE.md` (criteria F1–F16, canonical encodings inventory,
+compatibility / relabel procedure), `dingo-format::compat` freeze readiness API
+(`wire_freeze_criteria`, `wire_is_frozen`, `wire_freeze_summary`) with DEF-053
+guard test preventing silent stable relabel. Implemented Met rows: framing,
+integrity, limits, CBOR, conflict, salvage §13, encodings inventory, compat
+policy. Residual Open/Partial: external review, long fuzz, production soak,
+clean-room multi-impl, multi-window golden upgrade/downgrade, stable label.
+
 Work:
 
 - Complete external review of framing, integrity, limits, chunk manifests,
@@ -1775,6 +1789,22 @@ Acceptance:
 
 - `WIRE_PROFILE_LABEL` becomes stable only after all freeze criteria pass.
 - Every historical corpus remains readable by the promised support window.
+
+Evidence (this cut):
+
+- `doc/WIRE_MAJOR1_FREEZE.md` — policy id `dingo-wire-major1-freeze-v1`.
+- `dingo-format::compat` — freeze criteria table + `wire_is_frozen() == false`
+  guard while draft.
+- Tests: `compat::tests::def_053_wire_remains_draft_until_freeze`.
+
+Remaining (blocks freeze declaration):
+
+- External review of wire surfaces (ties DEF-063 independent audit).
+- OSS-Fuzz / multi-hour fuzz accumulation (DEF-091-F residual).
+- Production-scale soak + long corruption campaigns (DEF-041-N residual).
+- Second clean-room implementation of golden vectors.
+- Multi-major dual-read + golden upgrade/downgrade suite (DEF-052 remaining).
+- Principal freeze declaration and stable `WIRE_PROFILE_LABEL` (only when all Met).
 
 ### DEF-054 — Provide safe configuration management
 

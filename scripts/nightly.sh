@@ -40,4 +40,7 @@ echo "== DEF-091-F fuzz smoke (property bar + optional cargo-fuzz) =="
 # CI nightly workflow runs the full 30s×N cargo-fuzz list.
 DINGO_FUZZ_SECONDS="${DINGO_FUZZ_SECONDS:-5}" bash ./scripts/fuzz-smoke.sh
 
+echo "== DEF-041-N multiproc OS chaos (short soak) =="
+cargo test -p dingo-cluster --test stage_def_041n_multiproc -- --nocapture
+
 echo "nightly packaging OK"

@@ -1,11 +1,13 @@
-//! Wire format reader/writer compatibility matrix (DEF-052 / FORMAT_SPEC §12).
+//! Wire format reader/writer compatibility matrix (DEF-052 / FORMAT_SPEC §12)
+//! and major-1 freeze readiness (DEF-053 / `doc/WIRE_MAJOR1_FREEZE.md`).
 //!
 //! Major versions may change framing semantics. Minor versions may add kinds,
 //! flags, or envelope fields while preserving the ability of an older
 //! same-major reader to locate, bound, verify, and retain unknown frames.
 //!
 //! This module is the **declared support window** for the current build. It
-//! does not freeze the draft wire (`WIRE_PROFILE_LABEL`); freeze remains DEF-053.
+//! does not freeze the draft wire (`WIRE_PROFILE_LABEL`); freeze remains DEF-053
+//! until every criterion is Met and a principal freeze declaration is recorded.
 
 use crate::frame::{WIRE_MAJOR, WIRE_MINOR};
 use crate::WIRE_PROFILE_LABEL;
@@ -52,6 +54,44 @@ pub const WRITER_WIRE_MAJOR: u8 = WIRE_MAJOR;
 /// Wire minor this build writes on encode.
 pub const WRITER_WIRE_MINOR: u8 = WIRE_MINOR;
 
+/// Policy id for the freeze checklist document (DEF-053 labor cut).
+pub const WIRE_FREEZE_POLICY_ID: &str = "dingo-wire-major1-freeze-v1";
+
+/// Status of one freeze criterion (see `doc/WIRE_MAJOR1_FREEZE.md` §2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WireFreezeCriterionStatus {
+    /// Implemented evidence exists and is accepted for this criterion.
+    Met,
+    /// Some evidence shipped; residual still blocks freeze.
+    Partial,
+    /// Not satisfied; freeze blocked.
+    Open,
+}
+
+/// One freeze criterion entry for diagnostics and honesty checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WireFreezeCriterion {
+    /// Stable id (`F1` … `F16`).
+    pub id: &'static str,
+    /// Short title.
+    pub title: &'static str,
+    /// Current readiness.
+    pub status: WireFreezeCriterionStatus,
+}
+
+/// Snapshot of freeze readiness for packaging / doctor / release notes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WireFreezeReadiness {
+    /// Current profile label (`1.0-draft` until freeze).
+    pub profile_label: &'static str,
+    /// Policy document id.
+    pub policy_id: &'static str,
+    /// Whether a freeze has been declared for this build.
+    pub is_frozen: bool,
+    /// Freeze criteria table (static).
+    pub criteria: &'static [WireFreezeCriterion],
+}
+
 /// Declared reader/writer matrix for this build.
 ///
 /// Today only major `1` (draft) is current. When a future major is introduced,
@@ -97,6 +137,140 @@ pub fn wire_support_summary() -> String {
     )
 }
 
+/// Freeze criteria for wire major 1 (DEF-053). Keep in sync with
+/// `doc/WIRE_MAJOR1_FREEZE.md` §2. Do **not** mark every row Met without
+/// evidence and a principal freeze declaration.
+pub fn wire_freeze_criteria() -> &'static [WireFreezeCriterion] {
+    const CRITERIA: &[WireFreezeCriterion] = &[
+        WireFreezeCriterion {
+            id: "F1",
+            title: "Framing layout + magics",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F2",
+            title: "CRC32C + BLAKE3-256 integrity",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F3",
+            title: "Safety limits / checked lengths",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F4",
+            title: "Deterministic CBOR envelopes",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F5",
+            title: "Chunk manifests / generation-exact path",
+            status: WireFreezeCriterionStatus::Partial,
+        },
+        WireFreezeCriterion {
+            id: "F6",
+            title: "Conflict identity (event_id)",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F7",
+            title: "Recovery ordering / salvage",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F8",
+            title: "FORMAT_SPEC §13 automated corpus",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F9",
+            title: "Fuzzing schedule (long residual)",
+            status: WireFreezeCriterionStatus::Partial,
+        },
+        WireFreezeCriterion {
+            id: "F10",
+            title: "Multi-implementation fixtures",
+            status: WireFreezeCriterionStatus::Partial,
+        },
+        WireFreezeCriterion {
+            id: "F11",
+            title: "Production soak + long corruption",
+            status: WireFreezeCriterionStatus::Open,
+        },
+        WireFreezeCriterion {
+            id: "F12",
+            title: "External review of wire surfaces",
+            status: WireFreezeCriterionStatus::Open,
+        },
+        WireFreezeCriterion {
+            id: "F13",
+            title: "Canonical encodings inventory",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F14",
+            title: "Compatibility policy published",
+            status: WireFreezeCriterionStatus::Met,
+        },
+        WireFreezeCriterion {
+            id: "F15",
+            title: "Golden multi-window upgrade/downgrade",
+            status: WireFreezeCriterionStatus::Open,
+        },
+        WireFreezeCriterion {
+            id: "F16",
+            title: "Stable WIRE_PROFILE_LABEL declaration",
+            status: WireFreezeCriterionStatus::Open,
+        },
+    ];
+    CRITERIA
+}
+
+/// Whether every freeze criterion is [`WireFreezeCriterionStatus::Met`].
+pub fn wire_freeze_criteria_all_met() -> bool {
+    wire_freeze_criteria()
+        .iter()
+        .all(|c| c.status == WireFreezeCriterionStatus::Met)
+}
+
+/// Whether this build has declared a frozen wire profile.
+///
+/// Guard: while the profile label contains `draft`, freeze is **false** even
+/// if criteria are later marked Met — principal must remove the draft suffix
+/// and set F16 Met together.
+pub fn wire_is_frozen() -> bool {
+    !WIRE_PROFILE_LABEL.contains("draft") && wire_freeze_criteria_all_met()
+}
+
+/// Full freeze readiness snapshot (diagnostics / release honesty).
+pub fn wire_freeze_readiness() -> WireFreezeReadiness {
+    WireFreezeReadiness {
+        profile_label: WIRE_PROFILE_LABEL,
+        policy_id: WIRE_FREEZE_POLICY_ID,
+        is_frozen: wire_is_frozen(),
+        criteria: wire_freeze_criteria(),
+    }
+}
+
+/// Human-readable freeze readiness line for doctor / packaging.
+pub fn wire_freeze_summary() -> String {
+    let r = wire_freeze_readiness();
+    let mut met = 0usize;
+    let mut partial = 0usize;
+    let mut open = 0usize;
+    for c in r.criteria {
+        match c.status {
+            WireFreezeCriterionStatus::Met => met += 1,
+            WireFreezeCriterionStatus::Partial => partial += 1,
+            WireFreezeCriterionStatus::Open => open += 1,
+        }
+    }
+    format!(
+        "profile={}; policy={}; frozen={}; criteria met={} partial={} open={}",
+        r.profile_label, r.policy_id, r.is_frozen, met, partial, open
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,5 +296,30 @@ mod tests {
         let s = wire_support_summary();
         assert!(s.contains(WIRE_PROFILE_LABEL));
         assert!(s.contains("writer="));
+    }
+
+    /// DEF-053 guard: do not ship a stable wire label while freeze is incomplete.
+    #[test]
+    fn def_053_wire_remains_draft_until_freeze() {
+        assert_eq!(WIRE_PROFILE_LABEL, "1.0-draft");
+        assert!(
+            WIRE_PROFILE_LABEL.contains("draft"),
+            "relabel only after freeze declaration"
+        );
+        assert!(!wire_is_frozen());
+        assert!(!wire_freeze_criteria_all_met());
+        let r = wire_freeze_readiness();
+        assert_eq!(r.policy_id, WIRE_FREEZE_POLICY_ID);
+        assert_eq!(r.profile_label, WIRE_PROFILE_LABEL);
+        assert!(!r.is_frozen);
+        assert_eq!(r.criteria.len(), 16);
+        // At least one Open residual must remain while draft.
+        assert!(r
+            .criteria
+            .iter()
+            .any(|c| c.status == WireFreezeCriterionStatus::Open));
+        let s = wire_freeze_summary();
+        assert!(s.contains("frozen=false"));
+        assert!(s.contains("1.0-draft"));
     }
 }

@@ -21,3 +21,9 @@ serde_json.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+
+# Multi-process OS chaos child (DEF-041-N). Invoked by stage_def_041n_multiproc.
+[[bin]]
+name = "dingo-cluster-multiproc-child"
+path = "src/bin/multiproc_child.rs"
+doc = false

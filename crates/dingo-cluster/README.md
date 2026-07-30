@@ -52,6 +52,7 @@ Freeze label `CLUSTER_PROFILE_VERSION` = `v1`.
 | Rebalance | Interruptible step machine; joint config; epoch activation |
 | Anti-entropy / repair | Hierarchical inventory; majority/integrity source select (never mtime); audited, rate-limited copies (`dingo-anti-entropy-v1`) |
 | Verification (DEF-041) | Seeded fault sim, put/get history, linearizability + convergent checkers (`dingo-cluster-verify-v1`); §22.1–.8 matrix + soak in-process |
+| Multiproc OS chaos (DEF-041-N) | `dingo-cluster-multiproc-v1` child binary + history dumps; rolling restart / abort-after-ack / writer lock; short soak in CI (`stage_def_041n_multiproc`). Full Jepsen vs live `serve-cluster` residual |
 
 Each node directory remains an ordinary `dingo-store` and can be salvaged
 without cluster software.

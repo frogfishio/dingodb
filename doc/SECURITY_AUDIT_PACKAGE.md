@@ -74,7 +74,8 @@ accumulation.
 ## 5. Known open security program residuals
 
 1. **Independent external audit not completed** (this package prepares it).
-2. **Wire still `1.0-draft`** (DEF-053).
+2. **Wire still `1.0-draft`** (DEF-053) — freeze checklist:
+   [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md).
 3. **Multi-process Jepsen / long soak** residual (DEF-041-N).
 4. **OSS-Fuzz / long fuzz budgets** residual (DEF-091-F residual).
 5. **Experimental cluster** maturity labels must stay experimental.

@@ -30,9 +30,10 @@ Or: `cargo add dingo-format`
 ## Status
 
 **Shipped** for Stage 2. Wire profile label `WIRE_PROFILE_LABEL` = `1.0-draft`
-(`wire_major = 1`, `wire_minor = 0`). Not frozen as production wire major 1
-until the project declares a soak freeze; a breaking on-disk change would
-require a major bump and dual-read support.
+(`wire_major = 1`, `wire_minor = 0`). Not frozen as production wire major 1 —
+freeze criteria and gaps: [WIRE_MAJOR1_FREEZE.md](../../doc/WIRE_MAJOR1_FREEZE.md)
+(DEF-053). Runtime honesty: `wire_is_frozen()` / `wire_freeze_summary()`. A
+breaking on-disk change requires a major bump and dual-read support.
 
 Implemented: frames, segment seal, scanners, the FORMAT_SPEC §13 destructive
 corpus, and deterministic CBOR envelope validation.

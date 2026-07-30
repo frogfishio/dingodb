@@ -61,6 +61,9 @@ jobs:
       - name: Stage 7 CLI doctor / salvage / serve
         run: cargo test -p dingo-cli --test cli -- --nocapture
 
+      - name: DEF-041-N multiproc OS chaos (short soak)
+        run: cargo test -p dingo-cluster --test stage_def_041n_multiproc -- --nocapture
+
       - name: Release content (DEF-003)
         run: ./scripts/release_content.sh
 

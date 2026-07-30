@@ -121,7 +121,7 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 | Area | Crate | Notes |
 |------|-------|--------|
 | SDA+ENR1 | `dingo-sda` / `dingo-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
-| Wire | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` |
+| Wire | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/WIRE_MAJOR1_FREEZE.md`) |
 | Store | `dingo-store` | Authority + tiers + media mirrors (early-access) |
 | SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` |
 | Examination | `dingo-examine` | Profile over salvage |
@@ -147,7 +147,8 @@ Freeze labels (product API/profile labels, **not** crate semver):
 
 - `SDK_API_VERSION` (`dingo-sdk`) = `1.0` — collection API surface
 - `CLUSTER_PROFILE_VERSION` (`dingo-cluster`) = `v1` — in-process cluster only
-- `WIRE_PROFILE_LABEL` (`dingo-format`) = `1.0-draft` — draft wire bytes
+- `WIRE_PROFILE_LABEL` (`dingo-format`) = `1.0-draft` — draft wire bytes;
+  freeze checklist `doc/WIRE_MAJOR1_FREEZE.md` (DEF-053; not frozen)
 - `CONFORMANCE_CORPUS_TAG` (`dingo-sda`) = `sda-standalone-v1.0`
 
 ## License

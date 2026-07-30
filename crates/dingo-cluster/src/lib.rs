@@ -28,6 +28,8 @@
 //!   `dingo-anti-entropy-v1`)
 //! - Deterministic verification harness: seeded faults, history, linearizability
 //!   ([`sim`]; DEF-041 / `dingo-cluster-verify-v1`)
+//! - Multi-process OS chaos + short soak history dumps
+//!   ([`multiproc`]; DEF-041-N / `dingo-cluster-multiproc-v1`)
 //! - Multi-partition batch put ([`Cluster::put_many`]; product capacity path /
 //!   WORK_HORIZON S3 — independent partition leaders, honest acks)
 //! - Node-local salvage without cluster software
@@ -61,6 +63,7 @@ pub mod raft_persist;
 pub mod raft_rpc;
 mod rebalance;
 mod repair;
+pub mod multiproc;
 pub mod sim;
 
 pub use ack::ClusterWriteAck;
@@ -108,6 +111,9 @@ pub use repair::{
     RepairActionKind, RepairAuditEntry, RepairAuditFile, RepairOptions, RepairReport,
     ReplicaObservation, SourceSelectError, SubjectInventory, ANTI_ENTROPY_PROFILE,
     REPAIR_AUDIT_FILE,
+};
+pub use multiproc::{
+    hex16 as multiproc_hex16, MultiprocHistory, MultiprocOp, MULTIPROC_PROFILE,
 };
 pub use sim::{
     check_convergent_preserved, check_partition_linearizable, run_conformance_matrix, CaseReport,
