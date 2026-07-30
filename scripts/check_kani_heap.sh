@@ -24,12 +24,12 @@ do
   rg -n "fn $h" "$PURE" >/dev/null || fail "missing Kani harness $h in pure_proofs.rs"
 done
 
-# Scaffold must advertise Kani connected, Verus still open.
+# Scaffold must advertise Kani + Verus connected (both pure-kernel paths landed).
 VERUS="$ROOT/verification/heap-verus/src/lib.rs"
 rg -n 'KANI_HARNESSES_CONNECTED: bool = true' "$VERUS" >/dev/null \
   || fail "KANI_HARNESSES_CONNECTED must be true"
-rg -n 'VERUS_PROOFS_CONNECTED: bool = false' "$VERUS" >/dev/null \
-  || fail "VERUS_PROOFS_CONNECTED must stay false until Verus CI"
+rg -n 'VERUS_PROOFS_CONNECTED: bool = true' "$VERUS" >/dev/null \
+  || fail "VERUS_PROOFS_CONNECTED must be true (pure_kernel connected; see check_verus_heap.sh)"
 
 # Executable lemmas always green in CI (no Kani required for this step).
 cargo test -p dingo-heap pure_proof --quiet \

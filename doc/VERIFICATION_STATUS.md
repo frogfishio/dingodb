@@ -2,13 +2,17 @@
 
 Status: living evidence-gap snapshot
 
-Updated: 2026-07-30
+Updated: 2026-07-30 (M0-1 inventory pass)
 
 Normative strategy:
 [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
 
 Implementation plan:
 [VERIFICATION_IMPLEMENTATION_PLAN.md](VERIFICATION_IMPLEMENTATION_PLAN.md)
+
+M0-1 inventory report:
+[M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md)
+(source revision inventoried: `1d75199428d2f386ff5b8c87a2bddf9a728d9ee9`).
 
 This document records current evidence. It does not upgrade capability claims.
 
@@ -102,7 +106,37 @@ Not currently invoked:
 - multi-process network histories; and
 - long soak.
 
-## 5. Latest local full-suite attempt
+## 5. Latest local verification attempts
+
+### 5.1 Heap quick surface (M0-1)
+
+Command:
+
+```text
+bash ./scripts/verify-heap.sh quick
+```
+
+Result at revision `1d75199428d2f386ff5b8c87a2bddf9a728d9ee9`:
+
+```text
+pass
+architecture: OK
+dingo-heap / dingo-format / authority / isolation / handshake / lifecycle /
+hp010_qualification (24 tests): all green
+qualified claim remains false
+```
+
+Verus pure_kernel (local `tools/verus/verus`):
+
+```text
+verification results:: 8 verified, 0 errors
+```
+
+Discrepancy fixed during inventory: `scripts/check_kani_heap.sh` had required
+`VERUS_PROOFS_CONNECTED=false` while the scaffold and Verus path already used
+`true`. Script updated to require `true`.
+
+### 5.2 Full workspace suite
 
 Command:
 
@@ -110,14 +144,14 @@ Command:
 cargo test --workspace
 ```
 
-Result:
+Result (prior and still honest at low free disk):
 
 ```text
 infrastructure_failure
-reason: ENOSPC while compiling/linking test targets
-available disk at observation: approximately 200 MiB
+reason: ENOSPC while compiling/linking test targets (historical)
+available disk at M0-1 observation: approximately 1.2 GiB free
 repository target directory: approximately 7.2 GiB
-tests reached: compilation only; complete suite result unavailable
+complete workspace suite: not re-run under constrained disk
 ```
 
 This is not a DingoDB functional failure. It is also not a pass.

@@ -5,7 +5,7 @@ Status: program scoreboard
 Sources: [MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../NEXT_BUILD_PLAN.md), and active package plans.
 
-Updated: 2026-07-30
+Updated: 2026-07-30 (M0-1 inventory started)
 
 This file records delivery state. It does not change normative semantics.
 
@@ -15,10 +15,17 @@ Allowed states:
 not_started | active | blocked | accept | deferred
 ```
 
+M0 inventory evidence:
+[M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md).
+M0-2 must finish reconciling every row below against that report.
+
 | Package | State | Owner | Source revision | Evidence | Open defects | Capability impact |
 |---|---|---|---|---|---|---|
-| HAR-0 | not_started | unassigned | — | — | stale Heap qualification truth/check | none |
-| HAR-1 | not_started | unassigned | — | — | — | collection creation |
+| M0-1 | active | unassigned | 1d75199428d2 | [M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md); `verify-heap.sh quick` pass | full workspace not_run (disk); CPR-005 open | program truth |
+| M0-2 | not_started | unassigned | — | depends M0-1 | — | scoreboard honesty |
+| M0-3 | not_started | unassigned | — | depends M0-2 | — | CI status gate |
+| HAR-0 | not_started | unassigned | — | matrix + proofs exist; kani/verus flag check aligned | residual HAR-0 exit (CI agreement) | none until accept |
+| HAR-1 | not_started | unassigned | — | — | op 106 collection_create reserved | collection creation |
 | HAR-2 | not_started | unassigned | — | — | — | local Heap ceremony |
 | HAR-3 | not_started | unassigned | — | — | — | application-key lifecycle |
 | HAR-4 | not_started | unassigned | — | — | — | qualified remote Heap path |
