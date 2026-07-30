@@ -11,6 +11,7 @@ Companions:
 [FORMAT_SPEC.md](FORMAT_SPEC.md),
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [DEFECTS.md](DEFECTS.md),
+[CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md),
 [doc/VERIFICATION_IMPLEMENTATION_PLAN.md](doc/VERIFICATION_IMPLEMENTATION_PLAN.md),
 and
 [doc/VERIFICATION_STATUS.md](doc/VERIFICATION_STATUS.md).
@@ -100,6 +101,12 @@ Testing is profile-specific.
 
 Passing a lower profile does not qualify a higher one. Every result manifest
 identifies exactly one primary profile.
+
+The normative specialization for `V1` format plus `V2` embedded-store
+authority is
+[CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md).
+Where it is stricter than this general strategy for core storage, the
+specialized specification controls.
 
 ## 5. Assurance levels
 

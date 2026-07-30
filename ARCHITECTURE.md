@@ -17,6 +17,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Logical heap identity, containment, and access isolation | [HEAP_SPEC.md](HEAP_SPEC.md) |
 | System architecture, storage model, recovery, quality bars | [OVERVIEW.md](OVERVIEW.md) |
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](FORMAT_SPEC.md) |
+| Core storage invariants, failure model, and qualification suite | [CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md), [implementation plan](doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](DX_SPEC.md) |
 | First Heap-bound Rust application API and DQL delivery package | [doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](SDA_SPEC.md) |

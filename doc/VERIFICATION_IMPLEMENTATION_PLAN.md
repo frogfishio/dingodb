@@ -194,6 +194,13 @@ Exit:
 
 Depends: `VFY-2`, `VFY-4`
 
+Normative specialization:
+[CORE_STORAGE_QUALIFICATION_SPEC.md](../CORE_STORAGE_QUALIFICATION_SPEC.md)
+and packages `CSQ-0` through `CSQ-12`. CSQ supplies the strict core-storage
+implementation of this lane and integrates with the common VFY registries,
+runner, report envelope, and qualification truth; it is not a parallel
+verification system.
+
 Deliver:
 
 - independent sequential event/store model;

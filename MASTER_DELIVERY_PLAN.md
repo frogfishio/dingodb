@@ -104,6 +104,8 @@ the same change that changes a package state.
 ```text
 M0  Program Truth
  ↓
+C0  Core Storage Qualification
+ ↓
 M1  Heap Application Ready
  ↓
 M2  Trustworthy Core Early Access
@@ -203,6 +205,54 @@ M0 exit:
 - `verify-delivery-status.sh` passes in CI; and
 - `HAR-1` is either `ready` or a more exact missing predecessor is named.
 
+## 6A. C0 — Core Storage Qualification
+
+Release outcome:
+
+> The authoritative format/store kernel has passed a closed invariant ×
+> operation × prior-state × persistence-boundary × failure-class ×
+> recovery-oracle qualification, with independently verifiable evidence.
+
+Priority: `P0-GATE`
+
+Normative specification:
+[CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md).
+
+Implementation plan:
+[doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md](doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md).
+
+Required order:
+
+```text
+remediate active P0 core-storage defects, beginning DEF-098
+→ CSQ-0 registries
+→ CSQ-1 independent oracles
+→ CSQ-2 boundary/failure instrumentation
+→ CSQ-3…CSQ-11 qualification lanes
+→ CSQ-12 verified A2 evidence bundle
+```
+
+Existing APP-0/APP-1 work may complete review because its implementation
+preceded this interlock. No new APP-2+ or HAR-1+ feature labor starts until
+`CSQ-12` is `accept`. HAR-0 truth-only reconciliation may continue.
+
+Any P0 storage-invariant violation discovered during C0:
+
+1. interrupts the qualification lane;
+2. is remediated as a named defect;
+3. adds a permanent regression and mandatory mutation;
+4. reruns every affected CSQ matrix cell; and
+5. prevents restoration of the qualification label until evidence verifies.
+
+C0 exit:
+
+- DEF-098 and every other applicable P0 core-storage defect are accepted;
+- `CSQ-0` through `CSQ-12` are accepted;
+- `dingo-core-storage-v1 / A2` independently verifies;
+- no mandatory cell is skipped, flaky, infrastructure-blocked, or
+  implementation-oracled; and
+- core-storage capability language matches the evidence.
+
 ## 7. M1 — Heap Application Ready
 
 Release outcome:
@@ -211,6 +261,8 @@ Release outcome:
 > Heap without a global data path or manual fixture.
 
 Priority: `P1-PATH`
+
+Entry dependency: `C0` exit.
 
 Normative package plan:
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md).
@@ -791,12 +843,14 @@ This is the current executable queue:
 | 1 | `M0-1` | `accept` | evidence inventory done |
 | 2 | `M0-2` | `accept` | scoreboard reconciled |
 | 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
-| 4 | `APP-0` | `active` | **principal track:** CORE_APPLICATION_API contract freeze |
-| 5 | `APP-1` | board backlog | after APP-0; implements collection create (HAR-1 capability) |
-| 6 | `HAR-0` | `ready` (board backlog) | residual; do not steal labor from APP-0 |
-| 7 | `HAR-2`…`HAR-7` | board backlog | re-queue after principal APP track needs them |
+| 4 | `APP-0` / `APP-1` | `in_review` on board | complete review only; preserve work already produced |
+| 5 | `DEF-098` | `open P0` | **principal track:** generation-exact, bounded, directly addressable chunks |
+| 6 | `CSQ-0`…`CSQ-12` | `not_started` | execute Core Storage Qualification immediately after P0 remediation |
+| 7 | `HAR-0` | `ready` | truth-only residual may continue without preempting C0 |
+| 8 | `APP-2+` / `HAR-1+` | interlocked | no new feature labor before `CSQ-12` accept |
 
-The next task is **`APP-0`** (CORE plan). Live scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
+The next implementation task is **DEF-098**, followed by **CSQ-0**. Live
+scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
 
 No developer should start DRE, Atomics, Direct Access, Order Wavelets, search,
 or cluster product work from this queue.
@@ -853,10 +907,10 @@ change the plan.
 
 ```text
 NOW:
-M0-1 evidence inventory
-→ M0-2 scoreboard
-→ M0-3 enforcement
-→ HAR-0…HAR-7
+DEF-098 P0 remediation
+→ CSQ-0…CSQ-12
+→ verified dingo-core-storage-v1 / A2
+→ HAR-0…HAR-7 and APP-2+
 
 THEN:
 trustworthy SQLite-replacement core

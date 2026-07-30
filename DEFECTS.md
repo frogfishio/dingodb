@@ -2979,6 +2979,10 @@ DingoDB may be called production-ready only when all applicable gates pass.
 Required: DEF-001, DEF-003, DEF-010–014, DEF-020–026, DEF-029, DEF-050,
 DEF-060, DEF-061, DEF-090–092, and DEF-098.
 
+Qualification gate:
+`dingo-core-storage-v1 / A2` under
+[CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md).
+
 Outcome: a supportable embedded store with explicit early-access limits.
 
 ### Milestone B — Production single-node server
