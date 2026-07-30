@@ -6,12 +6,12 @@
 
 use crate::error::Error;
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
-use crate::subject::validate_key;
+use crate::subject::{validate_collection_name, validate_key};
 use blake3::Hasher;
 use dingo_heap::{CollectionId, HeapCap, HeapId, StreamId};
 use dingo_store::{
-    rebuild_object_entry_from_chain, try_load_collections_catalog, try_load_streams_catalog,
-    HeapMetaLayout, HeapStore, ObjectKind, StoreHost,
+    create_object, rebuild_object_entry_from_chain, try_load_collections_catalog,
+    try_load_streams_catalog, HeapMetaLayout, HeapStore, ObjectKind, StoreError, StoreHost,
 };
 use serde::Serialize;
 use std::collections::VecDeque;
@@ -177,6 +177,127 @@ impl Heap {
             cap: self.cap.clone(),
             members: Vec::new(),
         }
+    }
+
+    /// Create a collection by canonical name (APP-1 / CORE plan §6; wire op 106 path).
+    ///
+    /// Embedded first cut: durable [`create_object`] + catalog rebuild. Full
+    /// operation-id fingerprint/replay and remote op 106 activation remain APP-1
+    /// residuals. Optional `operation_id` becomes the creation event id.
+    pub fn create_collection(&self, name: &str) -> Result<CreatedCollection, Error> {
+        self.create_collection_with(name, None)
+    }
+
+    /// Create a collection; `operation_id` is the 16-byte creation event id when set.
+    pub fn create_collection_with(
+        &self,
+        name: &str,
+        operation_id: Option<[u8; 16]>,
+    ) -> Result<CreatedCollection, Error> {
+        validate_collection_name(name)?;
+        let heap_id = *self.cap.heap_id().as_bytes();
+        let object_id = CollectionId::new_random().map_err(|e| Error::Internal(e.to_string()))?;
+        let creation_event_id = match operation_id {
+            Some(id) => id,
+            None => {
+                let eid =
+                    CollectionId::new_random().map_err(|e| Error::Internal(e.to_string()))?;
+                *eid.as_bytes()
+            }
+        };
+        let admin = create_object(
+            &self.layout,
+            &heap_id,
+            ObjectKind::Collection,
+            *object_id.as_bytes(),
+            creation_event_id,
+            name,
+        )
+        .map_err(map_create_object_err)?;
+
+        let collection_id = CollectionId::from_bytes_unchecked_nonzero(
+            admin
+                .object_id
+                .ok_or_else(|| Error::Internal("create_object omitted object_id".into()))?,
+        )
+        .map_err(|e| Error::Internal(e.to_string()))?;
+
+        let collection = HeapCollection {
+            cap: self.cap.clone(),
+            store: Arc::clone(&self.store),
+            id: collection_id,
+            name_at_open: name.to_string(),
+        };
+        Ok(CreatedCollection {
+            collection,
+            receipt_id: admin.receipt_id,
+            descriptor_hash: admin.descriptor_hash,
+            created_at_unix_s: admin.created_at,
+            operation_id: creation_event_id,
+        })
+    }
+
+    /// List active collections in this heap (catalog tip).
+    pub fn list_collections(&self) -> Result<Vec<ListedCollection>, Error> {
+        let heap_id = *self.cap.heap_id().as_bytes();
+        let entries = try_load_collections_catalog(&self.layout, &heap_id)?.unwrap_or_default();
+        let mut out = Vec::with_capacity(entries.len());
+        for e in entries {
+            if e.state == dingo_format::ObjectDescriptorState::Retired {
+                continue;
+            }
+            let collection_id = CollectionId::from_bytes_unchecked_nonzero(e.object_id)
+                .map_err(|err| Error::Internal(err.to_string()))?;
+            out.push(ListedCollection {
+                heap_id: self.cap.heap_id(),
+                collection_id,
+                name: e.name,
+                descriptor_hash: e.descriptor_hash,
+            });
+        }
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(out)
+    }
+}
+
+/// Result of [`Heap::create_collection`] (APP-1 embedded).
+pub struct CreatedCollection {
+    /// Open handle for the new collection.
+    pub collection: HeapCollection,
+    /// Admin receipt id.
+    pub receipt_id: [u8; 16],
+    /// Tip descriptor hash.
+    pub descriptor_hash: [u8; 32],
+    /// Create timestamp (unix seconds).
+    pub created_at_unix_s: u64,
+    /// Creation event / operation id used for this attempt.
+    pub operation_id: [u8; 16],
+}
+
+/// One row from [`Heap::list_collections`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListedCollection {
+    /// Owning heap.
+    pub heap_id: HeapId,
+    /// Immutable collection id.
+    pub collection_id: CollectionId,
+    /// Canonical name.
+    pub name: String,
+    /// Tip descriptor hash.
+    pub descriptor_hash: [u8; 32],
+}
+
+fn map_create_object_err(e: StoreError) -> Error {
+    match e {
+        StoreError::HeapAdmit(ref msg)
+            if msg.contains("name/alias conflict") || msg.contains("object id already exists") =>
+        {
+            Error::Remote {
+                code: "already_exists".into(),
+                message: msg.clone(),
+            }
+        }
+        other => Error::from(other),
     }
 }
 

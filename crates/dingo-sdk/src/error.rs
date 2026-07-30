@@ -323,6 +323,7 @@ fn remote_code(code: &str) -> ErrorCode {
         "writer_lock_held" => ErrorCode::WriterLockHeld,
         "coverage_incomplete" => ErrorCode::CoverageIncomplete,
         "payload_partial" => ErrorCode::PayloadPartial,
+        "already_exists" => ErrorCode::AlreadyExists,
         "io" => ErrorCode::Io,
         _ => ErrorCode::Internal,
     }

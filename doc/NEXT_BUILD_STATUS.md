@@ -60,8 +60,8 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | HAR-5 | not_started | — | HAR-4 | precursor: wipe/restore/key-loss/DR drills (hp009/hp010) | broader crash cells; non-AWS KMS live | Heap operations |
 | HAR-6 | not_started | — | HAR-5, APP-8 | precursor: RemoteHeap CRUD/find/history/indexes | no ordinary `HeapClient` journey accept | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
-| APP-0 | active | 2026-07-30 | — | plan: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §14; [spec/app/v1/](../spec/app/v1/); wire staged `collection_create`/`dql_query` schemas+fixtures; `dingo_sdk::app_v1`; `verify-app0-contract.sh` + `app0_contract_lock` tests | owner sign-off (SDK/server/store/query) still open; plan_hash/mac placeholders until APP-4/APP-6 | application contract |
-| APP-1 | not_started | — | APP-0 | implements HAR-1 | op 106 reserved | qualified collection create |
+| APP-0 | active | 2026-07-30 | — | plan: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §14; [spec/app/v1/](../spec/app/v1/) + residuals; wire staged schemas/fixtures; `dingo_sdk::app_v1`; `verify-app0-contract.sh` + `app0_contract_lock` | owner sign-off still open; plan_hash/mac placeholders (labeled APP0-R1/R2) | application contract |
+| APP-1 | active | 2026-07-30 | — | embedded: `Heap::create_collection` / `list_collections`; tests `app1_collection_create` (3 pass); schemas staged | op 106 still reserved; no server dispatch/remote; op-id replay not durable (APP1-R1/R2) | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
 | APP-4 | not_started | — | APP-0 | filter/SDA/dialect precursors | no single `dingo-predicate-v1` accept | canonical predicates/plans |
@@ -114,7 +114,7 @@ Board stages (principal 2026-07-30 course-correct):
 | Stage | Cards |
 |---|---|
 | done | M0-1, M0-2, M0-3 |
-| doing | **APP-0** only |
+| doing | **APP-0**, **APP-1** (embedded create first cut) |
 | backlog | HAR-0…HAR-7, APP-1…APP-8, DEL-0, TEL-0, DST-000 |
 
 Do **not** pull HAR/M2 cards into `todo` while APP/CORE is the principal track.

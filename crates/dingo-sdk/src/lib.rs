@@ -100,7 +100,8 @@ pub use filter::{
 #[cfg(feature = "legacy-flat-sdk")]
 pub use filter::QueryBuilder;
 pub use heap::{
-    DingoDeployment, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream, SignedCursor,
+    CreatedCollection, DingoDeployment, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream,
+    ListedCollection, SignedCursor,
 };
 pub use remote_heap::{
     connect_heap, CredentialError, HeapCredential, HolderSigner, RemoteHeap, RemoteHeapOptions,

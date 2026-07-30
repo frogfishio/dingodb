@@ -1,0 +1,60 @@
+{
+  "profile": "dingo-app-residuals-v1",
+  "package": "APP-0",
+  "updated": "2026-07-30",
+  "policy": "Every residual is named. None may silently invent product behavior.",
+  "residuals": [
+    {
+      "id": "APP0-R1",
+      "item": "plan_hash_hex in plan_vectors_v1",
+      "status": "placeholder_labeled",
+      "blocks_implementer": false,
+      "resolved_by": "APP-4 canonical encoding profile"
+    },
+    {
+      "id": "APP0-R2",
+      "item": "cursor mac bytes in cursor_vectors_v1",
+      "status": "placeholder_labeled",
+      "blocks_implementer": false,
+      "resolved_by": "APP-6 cursor key material profile"
+    },
+    {
+      "id": "APP0-R3",
+      "item": "owner sign-off (SDK/server/store/query)",
+      "status": "human",
+      "blocks_implementer": false,
+      "blocks_package_accept": true,
+      "resolved_by": "principal/owner review"
+    },
+    {
+      "id": "APP0-R4",
+      "item": "ops 106/118 still reserved in operations-v1.json",
+      "status": "intentional",
+      "blocks_implementer": false,
+      "resolved_by": "APP-1 (106) and APP-7 (118) activation"
+    },
+    {
+      "id": "APP1-R1",
+      "item": "operation-id fingerprint/replay durable index",
+      "status": "open",
+      "blocks_implementer": false,
+      "note": "Heap::create_collection accepts operation_id as creation_event_id; full (H,principal,O) replay not yet durable",
+      "resolved_by": "APP-1 residual"
+    },
+    {
+      "id": "APP1-R2",
+      "item": "op 106 active + server dispatch + remote method",
+      "status": "open",
+      "blocks_implementer": false,
+      "resolved_by": "APP-1 remainder"
+    },
+    {
+      "id": "APP1-R3",
+      "item": "HeapClient From<Heap> façade bind",
+      "status": "open",
+      "blocks_implementer": false,
+      "note": "Embedded create is on Heap; HeapClient remains contract surface until APP-2",
+      "resolved_by": "APP-2"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ must not contradict without amending the CORE plan.
 | Error mapping | [`error_mapping_v1.json`](error_mapping_v1.json) | Condition → `ErrorCode` + diagnostic |
 | Plan vectors | [`plan_vectors_v1.json`](plan_vectors_v1.json) | Canonical logical `dql-plan-v1` samples + hashes |
 | Cursor vectors | [`cursor_vectors_v1.json`](cursor_vectors_v1.json) | `dingo-cursor-v1` field binding examples |
+| Residuals | [`residuals_v1.json`](residuals_v1.json) | Named non-blocking placeholders / open APP-1 items |
 | Compile surface | `crates/dingo-sdk/src/app_v1.rs` | Public Rust types that **compile** |
 | Contract test | `crates/dingo-sdk/tests/app0_contract_lock.rs` | Loads vectors + checks codes |
 | Wire schemas (staged) | `spec/heap/rpc-v1/collection_create.*.json`, `dql_query.*.json` | Op 106 / 118 shapes |

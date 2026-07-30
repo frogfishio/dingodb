@@ -12,6 +12,7 @@ required=(
   spec/app/v1/error_mapping_v1.json
   spec/app/v1/plan_vectors_v1.json
   spec/app/v1/cursor_vectors_v1.json
+  spec/app/v1/residuals_v1.json
   spec/heap/rpc-v1/collection_create.request.json
   spec/heap/rpc-v1/collection_create.response.json
   spec/heap/rpc-v1/dql_query.request.json

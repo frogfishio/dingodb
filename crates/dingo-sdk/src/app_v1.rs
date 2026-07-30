@@ -260,12 +260,15 @@ impl HeapClient {
     }
 
     /// Create a collection (APP-1).
+    ///
+    /// Prefer [`crate::Heap::create_collection`] on an embedded heap until this
+    /// façade holds a backend (APP-2). Contract-only clients have no storage.
     pub fn create_collection(
         &mut self,
         _name: &str,
     ) -> Result<CreateCollectionResult, Error> {
         Err(Error::Internal(
-            "APP-0 contract surface: create_collection activates in APP-1".into(),
+            "HeapClient façade backend not bound; use Heap::create_collection (APP-1 embedded) or APP-2 From<Heap>".into(),
         ))
     }
 
@@ -276,21 +279,21 @@ impl HeapClient {
         _options: CreateCollectionOptions,
     ) -> Result<CreateCollectionResult, Error> {
         Err(Error::Internal(
-            "APP-0 contract surface: create_collection_with activates in APP-1".into(),
+            "HeapClient façade backend not bound; use Heap::create_collection_with (APP-1 embedded)".into(),
         ))
     }
 
-    /// Open by canonical name (may exist as Heap path today; façade APP-1/2).
+    /// Open by canonical name (APP-2 façade; embedded path is [`crate::Heap::collection`]).
     pub fn open_collection(&mut self, _name: &str) -> Result<CollectionClient, Error> {
         Err(Error::Internal(
-            "APP-0 contract surface: open_collection façade activates in APP-1/2".into(),
+            "HeapClient façade backend not bound; use Heap::collection".into(),
         ))
     }
 
-    /// List collections (APP-1/2).
+    /// List collections (APP-2 façade; embedded path is [`crate::Heap::list_collections`]).
     pub fn list_collections(&mut self) -> Result<Vec<CollectionInfo>, Error> {
         Err(Error::Internal(
-            "APP-0 contract surface: list_collections façade activates in APP-1/2".into(),
+            "HeapClient façade backend not bound; use Heap::list_collections".into(),
         ))
     }
 }
