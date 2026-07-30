@@ -6,6 +6,11 @@ Program: `APP`
 
 Priority: `P1-PATH`
 
+Baseline expansion authority:
+[MUST_ADD.md](../MUST_ADD.md). APP packages are retained and mapped into APB;
+their original exclusions do not define the final
+`dingo-application-baseline-v1`.
+
 Audience: SDK, server, store, query, protocol, test, and documentation
 implementers
 
@@ -88,6 +93,10 @@ Cross-Heap composition remains impossible by construction as specified by
 - protocol schemas, fixtures, compatibility tests, and user documentation.
 
 ### 3.2 Excluded
+
+These items were excluded from the original APP slice. Items admitted by
+[MUST_ADD.md](../MUST_ADD.md) are now required through their APB packages and
+MUST NOT be treated as product-level deferrals.
 
 - Node.js, TypeScript, Python, Java, and other language clients;
 - writes or DDL inside DQL;

@@ -81,6 +81,7 @@ for pkg, state, cells in rows:
 required = [
     "M0-1", "M0-2", "M0-3",
     *[f"CSQ-{i}" for i in range(0, 13)],
+    *[f"APB-{i}" for i in range(0, 13)],
     "HAR-0", "HAR-1", "HAR-2", "HAR-3", "HAR-4", "HAR-5", "HAR-6", "HAR-7",
     "APP-0", "APP-1", "APP-2", "APP-3", "APP-4", "APP-5", "APP-6", "APP-7", "APP-8",
     "DEL-0", "TEL-0", "DST-000",
@@ -114,6 +115,7 @@ if h3 != "accept":
 # Plan links
 for path in (
     "MASTER_DELIVERY_PLAN.md",
+    "MUST_ADD.md",
     "doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md",
     "doc/M0_1_EVIDENCE_INVENTORY.md",
 ):
@@ -130,9 +132,23 @@ if seen.get("APP-8") == "accept":
 # no later application/Heap feature package may become active/accept before
 # core storage A2 qualification.
 if seen.get("CSQ-12") != "accept":
-    for p in [f"APP-{i}" for i in range(2, 9)] + [f"HAR-{i}" for i in range(1, 8)]:
+    for p in (
+        [f"APP-{i}" for i in range(2, 9)]
+        + [f"APB-{i}" for i in range(0, 13)]
+        + [f"HAR-{i}" for i in range(1, 8)]
+    ):
         if seen.get(p) in ("active", "accept"):
             errors.append(f"{p} {seen.get(p)} before CSQ-12 core-storage qualification")
+
+# Application-baseline order and mathematical-stage interlock.
+if seen.get("APB-12") == "accept":
+    for p in [f"APB-{i}" for i in range(0, 12)]:
+        if seen.get(p) != "accept":
+            errors.append(f"APB-12 accept requires {p} accept")
+if seen.get("APB-12") != "accept":
+    for p, st in seen.items():
+        if p.startswith(("DRE-", "ATM-", "DDA-", "DOW-")) and st in ("active", "accept"):
+            errors.append(f"{p} {st} before APB-12 application-baseline qualification")
 
 # Engine stage honesty: no DRE accept while M0 incomplete
 m0_done = all(seen.get(p) == "accept" for p in ("M0-1", "M0-2", "M0-3"))

@@ -238,18 +238,129 @@ pub fn decode_piece_body(body: &[u8]) -> Option<ChunkPiece> {
     decode_chunk_body(body)
 }
 
-/// Reassemble using the manifest and discovered pieces (FORMAT_SPEC §8).
-pub fn reassemble_with_manifest(manifest: &ChunkManifest, pieces: &[ChunkPiece]) -> PayloadResult {
-    if pieces.is_empty() {
+/// One verified payload-chunk frame selected for reassembly (DEF-098).
+///
+/// The reassembler validates `frame_event_id` against the current manifest
+/// slot; unrelated same-`item_id` chunks from other generations are ignored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedChunk {
+    /// Frame event id (must equal the manifest slot's `chunk_event_id`).
+    pub frame_event_id: [u8; 16],
+    /// Segment that holds the frame (diagnostic / locator).
+    pub segment_id: [u8; 16],
+    /// Byte offset of the frame in `segment_id` (0 when unknown).
+    pub frame_offset: u64,
+    /// Decoded chunk piece from the verified frame body.
+    pub piece: ChunkPiece,
+    /// BLAKE3-256 of the chunk payload body (not the full frame body layout).
+    pub verified_body_hash: [u8; BODY_HASH_LEN],
+}
+
+/// Build a [`ResolvedChunk`] from a piece and its assigned frame event id.
+pub fn resolve_piece(
+    frame_event_id: [u8; 16],
+    piece: ChunkPiece,
+    segment_id: [u8; 16],
+    frame_offset: u64,
+) -> ResolvedChunk {
+    let verified_body_hash = body_hash(&piece.body);
+    ResolvedChunk {
+        frame_event_id,
+        segment_id,
+        frame_offset,
+        piece,
+        verified_body_hash,
+    }
+}
+
+/// Reassemble using the **current** manifest and generation-exact resolved chunks.
+///
+/// DEF-098: only frames whose `frame_event_id` appears in `manifest.chunks` are
+/// considered. Same-index pieces from other generations are ignored (not mixed).
+/// Slot metadata (`item_id`, index, total, logical_len) is enforced here.
+pub fn reassemble_with_manifest(
+    expected_item_id: [u8; 16],
+    manifest: &ChunkManifest,
+    resolved: &[ResolvedChunk],
+) -> PayloadResult {
+    let total = manifest.chunks.len() as u32;
+    if total == 0 {
         return PayloadResult::Unavailable {
             content_hash: manifest.content_hash,
-            total_chunks: manifest.chunks.len() as u32,
+            total_chunks: 0,
         };
     }
-    match reassemble_chunks(pieces, Some(manifest.content_hash)) {
+
+    // Manifest membership map: event_id → (slot index, logical_len).
+    // Duplicate event IDs in one manifest are conflicting evidence.
+    let mut expected: std::collections::BTreeMap<[u8; 16], (u32, u64)> =
+        std::collections::BTreeMap::new();
+    for (i, slot) in manifest.chunks.iter().enumerate() {
+        let idx = i as u32;
+        if expected
+            .insert(slot.chunk_event_id, (idx, slot.logical_len))
+            .is_some()
+        {
+            return PayloadResult::Conflicting { index: idx };
+        }
+    }
+
+    // Group candidates by expected event id; ignore foreign event ids.
+    let mut by_event: std::collections::BTreeMap<[u8; 16], Vec<&ResolvedChunk>> =
+        std::collections::BTreeMap::new();
+    for r in resolved {
+        if expected.contains_key(&r.frame_event_id) {
+            by_event.entry(r.frame_event_id).or_default().push(r);
+        }
+    }
+
+    let mut selected: Vec<ChunkPiece> = Vec::with_capacity(total as usize);
+    let mut missing: Vec<u32> = Vec::new();
+
+    for (i, slot) in manifest.chunks.iter().enumerate() {
+        let idx = i as u32;
+        let Some(group) = by_event.get(&slot.chunk_event_id) else {
+            missing.push(idx);
+            continue;
+        };
+
+        for r in group {
+            // Exact slot membership (DEF-098 normative invariants).
+            if r.frame_event_id != slot.chunk_event_id
+                || r.piece.item_id != expected_item_id
+                || r.piece.index != idx
+                || r.piece.total != total
+                || r.piece.logical_len != slot.logical_len
+                || r.piece.logical_len != r.piece.body.len() as u64
+            {
+                return PayloadResult::Conflicting { index: idx };
+            }
+        }
+
+        let first_hash = group[0].verified_body_hash;
+        if group
+            .iter()
+            .any(|r| r.verified_body_hash != first_hash || r.piece.body != group[0].piece.body)
+        {
+            return PayloadResult::Conflicting { index: idx };
+        }
+        selected.push(group[0].piece.clone());
+    }
+
+    if selected.is_empty() {
+        return PayloadResult::Unavailable {
+            content_hash: manifest.content_hash,
+            total_chunks: total,
+        };
+    }
+
+    match reassemble_chunks(&selected, Some(manifest.content_hash)) {
         ReassemblyState::Complete { body, .. } => PayloadResult::Complete { body },
         ReassemblyState::Partial { extents, missing } => {
-            let present_bodies: Vec<_> = pieces.iter().map(|p| (p.index, p.body.clone())).collect();
+            let present_bodies: Vec<_> = selected
+                .iter()
+                .map(|p| (p.index, p.body.clone()))
+                .collect();
             PayloadResult::Partial {
                 extents,
                 missing,
@@ -259,7 +370,7 @@ pub fn reassemble_with_manifest(manifest: &ChunkManifest, pieces: &[ChunkPiece])
         }
         ReassemblyState::Unavailable => PayloadResult::Unavailable {
             content_hash: manifest.content_hash,
-            total_chunks: manifest.chunks.len() as u32,
+            total_chunks: total,
         },
         ReassemblyState::Conflicting { index, .. } => PayloadResult::Conflicting { index },
     }
@@ -268,6 +379,14 @@ pub fn reassemble_with_manifest(manifest: &ChunkManifest, pieces: &[ChunkPiece])
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn resolved_for(pieces: &[ChunkPiece], ids: &[[u8; 16]]) -> Vec<ResolvedChunk> {
+        pieces
+            .iter()
+            .zip(ids.iter())
+            .map(|(p, id)| resolve_piece(*id, p.clone(), [0u8; 16], 0))
+            .collect()
+    }
 
     #[test]
     fn manifest_roundtrip() {
@@ -285,7 +404,8 @@ mod tests {
         let enc = encode_chunk_manifest(&man);
         let dec = decode_chunk_manifest(&enc).unwrap();
         assert_eq!(dec, man);
-        let result = reassemble_with_manifest(&man, &pieces);
+        let resolved = resolved_for(&pieces, &ids);
+        let result = reassemble_with_manifest(item, &man, &resolved);
         assert_eq!(result.complete_body(), Some(payload.as_slice()));
     }
 
@@ -299,7 +419,9 @@ mod tests {
         let man = manifest_from_pieces(&pieces, &ids, payload).unwrap();
         // Drop middle chunk.
         let surviving = vec![pieces[0].clone(), pieces[2].clone()];
-        match reassemble_with_manifest(&man, &surviving) {
+        let surviving_ids = [ids[0], ids[2]];
+        let resolved = resolved_for(&surviving, &surviving_ids);
+        match reassemble_with_manifest(item, &man, &resolved) {
             PayloadResult::Partial {
                 missing, extents, ..
             } => {
@@ -310,6 +432,44 @@ mod tests {
                 assert!(extents[2].present);
             }
             other => panic!("expected partial: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ignores_other_generation_same_index() {
+        // Current generation B complete; older generation A at same indexes must not conflict.
+        let item = [9u8; 16];
+        let payload_a = b"AAAAAAAA";
+        let payload_b = b"BBBBBBBB";
+        let pieces_a = split_into_pieces(item, payload_a, 4).unwrap();
+        let pieces_b = split_into_pieces(item, payload_b, 4).unwrap();
+        let ids_a = [[10u8; 16], [11u8; 16]];
+        let ids_b = [[20u8; 16], [21u8; 16]];
+        let man_b = manifest_from_pieces(&pieces_b, &ids_b, payload_b).unwrap();
+
+        let mut mixed = resolved_for(&pieces_b, &ids_b);
+        // Inject older generation pieces claiming the same indexes.
+        mixed.extend(resolved_for(&pieces_a, &ids_a));
+
+        let result = reassemble_with_manifest(item, &man_b, &mixed);
+        assert_eq!(result.complete_body(), Some(payload_b.as_slice()));
+    }
+
+    #[test]
+    fn wrong_event_id_for_slot_is_ignored_not_mixed() {
+        let item = [3u8; 16];
+        let payload = b"12345678";
+        let pieces = split_into_pieces(item, payload, 4).unwrap();
+        let ids = [[1u8; 16], [2u8; 16]];
+        let man = manifest_from_pieces(&pieces, &ids, payload).unwrap();
+        // Present piece 0 under wrong event id → treated as missing slot 0.
+        let resolved = vec![
+            resolve_piece([99u8; 16], pieces[0].clone(), [0u8; 16], 0),
+            resolve_piece(ids[1], pieces[1].clone(), [0u8; 16], 0),
+        ];
+        match reassemble_with_manifest(item, &man, &resolved) {
+            PayloadResult::Partial { missing, .. } => assert_eq!(missing, vec![0]),
+            other => panic!("expected partial missing 0: {other:?}"),
         }
     }
 }

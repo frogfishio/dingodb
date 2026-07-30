@@ -6,8 +6,8 @@ use crate::catalog::{
 };
 use crate::chunk_payload::{
     decode_chunk_manifest, decode_piece_body, encode_chunk_manifest, encode_piece_body,
-    is_chunk_manifest, manifest_from_pieces, reassemble_with_manifest, split_into_pieces,
-    PayloadResult, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
+    is_chunk_manifest, manifest_from_pieces, reassemble_with_manifest, resolve_piece,
+    split_into_pieces, PayloadResult, ResolvedChunk, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
 use crate::compact::{
     estimate_compact_bytes, new_planned_job, pread_item_body_if_segment, reclaim_source_segments,
@@ -56,7 +56,7 @@ use dingo_format::{
     FrameFlags, FrameHeader, FrameKind, FrameParts, SafetyLimits, SegmentId,
 };
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -237,6 +237,24 @@ pub struct Store {
     /// When true, auto-seal on threshold uses O(1) rotate + background finalize.
     /// Explicit [`Self::seal_active`] always drains and runs the synchronous path.
     async_lifecycle: bool,
+    /// Derived chunk_event_id → physical frame locators (DEF-098).
+    ///
+    /// Non-authoritative: rebuilt from segment scans and updated on chunk append.
+    /// Ordinary chunked get uses these for bounded preads; absence falls back to
+    /// a generation-filtered segment scan (never mixes generations by item_id).
+    chunk_locators: HashMap<[u8; 16], Vec<ChunkFrameLocator>>,
+}
+
+/// Physical location of one verified payload-chunk frame (DEF-098).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChunkFrameLocator {
+    segment_id: [u8; 16],
+    frame_offset: u64,
+    item_id: [u8; 16],
+    chunk_index: u32,
+    chunk_total: u32,
+    logical_len: u64,
+    verified_body_hash: [u8; 32],
 }
 
 struct ActiveWriter {
@@ -323,6 +341,7 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
+            chunk_locators: HashMap::new(),
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -389,6 +408,7 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
+            chunk_locators: HashMap::new(),
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -449,6 +469,7 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: None,
             async_lifecycle: false,
+            chunk_locators: HashMap::new(),
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -1061,12 +1082,12 @@ impl Store {
         match self.get_payload_bytes(subject)? {
             None => Ok(None),
             Some(PayloadResult::Complete { body }) => Ok(Some(body)),
-            Some(PayloadResult::Partial { .. })
-            | Some(PayloadResult::Unavailable { .. })
-            | Some(PayloadResult::Conflicting { .. }) => {
+            Some(PayloadResult::Partial { .. }) | Some(PayloadResult::Unavailable { .. }) => {
                 // Do not silently return incomplete data as a full get.
                 Err(StoreError::PayloadPartial)
             }
+            // DEF-098: contradictory verified evidence is damage, not mere partial.
+            Some(PayloadResult::Conflicting { .. }) => Err(StoreError::PayloadConflict),
         }
     }
 
@@ -1111,9 +1132,13 @@ impl Store {
         let Some(manifest) = decode_chunk_manifest(&body) else {
             return Err(StoreError::CorruptMeta("invalid chunk manifest"));
         };
-        let item_id = lv.item_id;
-        let pieces = self.collect_chunk_pieces(item_id)?;
-        Ok(Some(reassemble_with_manifest(&manifest, &pieces)))
+        // DEF-098: reassemble only the current generation's chunk_event_ids.
+        let resolved = self.resolve_manifest_chunks(lv.item_id, &manifest)?;
+        Ok(Some(reassemble_with_manifest(
+            lv.item_id,
+            &manifest,
+            &resolved,
+        )))
     }
 
     /// Resolve a subject exclusively through the Chimera layout for its live
@@ -1646,6 +1671,8 @@ impl Store {
     /// Load optional index cache via frontier (DEF-023) or v1 fingerprint; else rebuild.
     fn load_or_rebuild_index(&mut self) -> Result<(), StoreError> {
         if self.try_load_index_from_cache()? {
+            // Primary index cache does not carry chunk locators (DEF-098).
+            self.rebuild_chunk_locators_from_segments()?;
             return Ok(());
         }
         self.rebuild_index()
@@ -1654,6 +1681,7 @@ impl Store {
     /// Read-only open path: load cache or rebuild without writing derived files.
     fn load_or_rebuild_index_readonly(&mut self) -> Result<(), StoreError> {
         if self.try_load_index_from_cache()? {
+            self.rebuild_chunk_locators_from_segments()?;
             return Ok(());
         }
         self.rebuild_index_from_segments()
@@ -1750,6 +1778,7 @@ impl Store {
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
         self.derived_ops_since_checkpoint = 0;
+        self.rebuild_chunk_locators_from_segments()?;
         Ok(())
     }
 
@@ -2703,8 +2732,8 @@ impl Store {
         let Some(manifest) = decode_chunk_manifest(&body) else {
             return Ok(None);
         };
-        let pieces = self.collect_chunk_pieces(lv.item_id)?;
-        match reassemble_with_manifest(&manifest, &pieces) {
+        let resolved = self.resolve_manifest_chunks(lv.item_id, &manifest)?;
+        match reassemble_with_manifest(lv.item_id, &manifest, &resolved) {
             PayloadResult::Complete { body } => Ok(Some(body)),
             PayloadResult::Partial { .. }
             | PayloadResult::Unavailable { .. }
@@ -3152,6 +3181,10 @@ impl Store {
             .collect();
         let chunk_envelopes = chunk_envelopes?;
 
+        // Collect (event_id, offset, piece meta) then record locators after the
+        // writer borrow ends (DEF-098 generation-exact preads).
+        let mut new_chunk_locs: Vec<([u8; 16], u64, &dingo_format::ChunkPiece)> =
+            Vec::with_capacity(pieces.len());
         {
             let writer = self.active_mut(shard).expect("active segment");
             for (piece, (chunk_event_id, envelope)) in pieces
@@ -3170,12 +3203,28 @@ impl Store {
                     writer_sequence: 0,
                     event_id: *chunk_event_id,
                 };
-                writer.segment.append_parts(&FrameParts {
+                let offset = writer.segment.append_parts(&FrameParts {
                     header,
                     envelope: envelope.clone(),
                     body,
                 })?;
+                new_chunk_locs.push((*chunk_event_id, offset, piece));
             }
+        }
+        for (chunk_event_id, offset, piece) in new_chunk_locs {
+            let body_hash = *blake3::hash(&piece.body).as_bytes();
+            self.chunk_locators
+                .entry(chunk_event_id)
+                .or_default()
+                .push(ChunkFrameLocator {
+                    segment_id,
+                    frame_offset: offset,
+                    item_id,
+                    chunk_index: piece.index,
+                    chunk_total: piece.total,
+                    logical_len: piece.logical_len,
+                    verified_body_hash: body_hash,
+                });
         }
 
         let manifest = manifest_from_pieces(&pieces, &chunk_event_ids, value)?;
@@ -3246,32 +3295,172 @@ impl Store {
         })
     }
 
-    fn collect_chunk_pieces(
+    /// Resolve only the chunk frames listed in `manifest` (DEF-098).
+    ///
+    /// Prefer derived locators + bounded preads; when any expected event is
+    /// missing from the locator map, fall back to a generation-filtered segment
+    /// scan that never selects chunks solely by shared `item_id`.
+    fn resolve_manifest_chunks(
         &self,
-        item_id: [u8; 16],
-    ) -> Result<Vec<dingo_format::ChunkPiece>, StoreError> {
-        let mut pieces = Vec::new();
-        let mut seen_hashes: HashSet<([u8; 16], u32, [u8; 32])> = HashSet::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
+        expected_item_id: [u8; 16],
+        manifest: &crate::chunk_payload::ChunkManifest,
+    ) -> Result<Vec<ResolvedChunk>, StoreError> {
+        let expected: HashSet<[u8; 16]> = manifest
+            .chunks
+            .iter()
+            .map(|s| s.chunk_event_id)
+            .collect();
+        if expected.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let all_located = expected.iter().all(|id| self.chunk_locators.contains_key(id));
+        if all_located {
+            let mut out = Vec::new();
+            for eid in &expected {
+                let Some(locs) = self.chunk_locators.get(eid) else {
+                    continue;
+                };
+                for loc in locs {
+                    if let Ok(resolved) = self.pread_resolved_chunk(eid, loc) {
+                        // Retain all verified candidates; reassembler enforces slot meta.
+                        out.push(resolved);
+                    }
+                }
+            }
+            // If every expected event produced at least one verified frame, done.
+            let found: HashSet<_> = out.iter().map(|r| r.frame_event_id).collect();
+            if expected.iter().all(|e| found.contains(e)) {
+                return Ok(out);
+            }
+        }
+
+        // Fallback / conflict discovery: scan only frames whose event_id is expected.
+        let _ = expected_item_id;
+        self.scan_resolved_chunks_for_events(&expected)
+    }
+
+    fn pread_resolved_chunk(
+        &self,
+        expected_event_id: &[u8; 16],
+        loc: &ChunkFrameLocator,
+    ) -> Result<ResolvedChunk, StoreError> {
+        // Active in-memory segment first (just-written chunks).
+        if let Some(w) = self.find_active_by_segment(&loc.segment_id) {
+            let bytes = w.segment.as_bytes();
+            let off = loc.frame_offset as usize;
+            if off < bytes.len() {
+                if let Ok((header, _env, body, _hash, _len)) =
+                    dingo_format::verify_frame_at(&bytes[off..], self.limits)
+                {
+                    if header.event_id == *expected_event_id
+                        && header.known_kind() == Some(FrameKind::PayloadChunk)
+                    {
+                        if let Some(piece) = decode_piece_body(body) {
+                            return Ok(resolve_piece(
+                                header.event_id,
+                                piece,
+                                loc.segment_id,
+                                loc.frame_offset,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        let body = self.pread_frame_body_for_locator(&loc.segment_id, loc.frame_offset)?;
+        let Some(piece) = decode_piece_body(&body) else {
+            return Err(StoreError::CorruptMeta("chunk body decode failed at locator"));
+        };
+        Ok(resolve_piece(
+            *expected_event_id,
+            piece,
+            loc.segment_id,
+            loc.frame_offset,
+        ))
+    }
+
+    /// Pread raw verified frame body (any kind) at a locator.
+    fn pread_frame_body_for_locator(
+        &self,
+        segment_id: &[u8; 16],
+        frame_offset: u64,
+    ) -> Result<Vec<u8>, StoreError> {
+        // Reuse item pread helper: it verifies the full frame and returns body bytes.
+        // Envelope segment_id match still applies for payload chunks (same envelope shape).
+        self.pread_body_for_locator(segment_id, frame_offset)
+    }
+
+    fn scan_resolved_chunks_for_events(
+        &self,
+        expected_event_ids: &HashSet<[u8; 16]>,
+    ) -> Result<Vec<ResolvedChunk>, StoreError> {
+        let mut out = Vec::new();
+        let mut seen: HashSet<([u8; 16], [u8; 32])> = HashSet::new();
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?
+        {
             let bytes = fs::read(&path)?;
             let report = scan_forward(&bytes, self.limits);
-            for (_offset, frame) in report.verified_frames() {
+            for (offset, frame) in report.verified_frames() {
+                if frame.header.known_kind() != Some(FrameKind::PayloadChunk) {
+                    continue;
+                }
+                if !expected_event_ids.contains(&frame.header.event_id) {
+                    continue;
+                }
+                let Some(piece) = decode_piece_body(&frame.body) else {
+                    continue;
+                };
+                let h = *blake3::hash(&piece.body).as_bytes();
+                if !seen.insert((frame.header.event_id, h)) {
+                    continue;
+                }
+                let segment_id = decode_item_envelope(&frame.envelope)
+                    .map(|e| e.segment_id)
+                    .unwrap_or([0u8; 16]);
+                out.push(resolve_piece(
+                    frame.header.event_id,
+                    piece,
+                    segment_id,
+                    offset,
+                ));
+            }
+        }
+        Ok(out)
+    }
+
+    /// Rebuild the derived chunk_event_id locator map from all segments (DEF-098).
+    fn rebuild_chunk_locators_from_segments(&mut self) -> Result<(), StoreError> {
+        let mut map: HashMap<[u8; 16], Vec<ChunkFrameLocator>> = HashMap::new();
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?
+        {
+            let bytes = fs::read(&path)?;
+            let report = scan_forward(&bytes, self.limits);
+            for (offset, frame) in report.verified_frames() {
                 if frame.header.known_kind() != Some(FrameKind::PayloadChunk) {
                     continue;
                 }
                 let Some(piece) = decode_piece_body(&frame.body) else {
                     continue;
                 };
-                if piece.item_id != item_id {
-                    continue;
-                }
+                let segment_id = decode_item_envelope(&frame.envelope)
+                    .map(|e| e.segment_id)
+                    .unwrap_or([0u8; 16]);
                 let h = *blake3::hash(&piece.body).as_bytes();
-                if seen_hashes.insert((piece.item_id, piece.index, h)) {
-                    pieces.push(piece);
-                }
+                map.entry(frame.header.event_id).or_default().push(ChunkFrameLocator {
+                    segment_id,
+                    frame_offset: offset,
+                    item_id: piece.item_id,
+                    chunk_index: piece.index,
+                    chunk_total: piece.total,
+                    logical_len: piece.logical_len,
+                    verified_body_hash: h,
+                });
             }
         }
-        Ok(pieces)
+        self.chunk_locators = map;
+        Ok(())
     }
 
     fn write_event(

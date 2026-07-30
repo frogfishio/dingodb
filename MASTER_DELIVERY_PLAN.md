@@ -106,7 +106,7 @@ M0  Program Truth
  ↓
 C0  Core Storage Qualification
  ↓
-M1  Heap Application Ready
+M1  Heap Application Ready + Application Baseline
  ↓
 M2  Trustworthy Core Early Access
  ↓
@@ -239,8 +239,8 @@ DEF-098 exact chunk generations/publication
 ```
 
 Existing APP-0/APP-1 work may complete review because its implementation
-preceded this interlock. No new APP-2+ or HAR-1+ feature labor starts until
-`CSQ-12` is `accept`. HAR-0 truth-only reconciliation may continue.
+preceded this interlock. No new APP-2+, APB, or HAR-1+ feature labor starts
+until `CSQ-12` is `accept`. HAR-0 truth-only reconciliation may continue.
 
 Any P0 storage-invariant violation discovered during C0:
 
@@ -271,6 +271,9 @@ Priority: `P1-PATH`
 
 Entry dependency: `C0` exit.
 
+Immediate Must-Add program:
+[MUST_ADD.md](MUST_ADD.md), packages `APB-0` through `APB-12`.
+
 Normative package plan:
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md).
 
@@ -284,10 +287,10 @@ master plan both permit it.
 
 The product-gap authority is
 [PRODUCT_DEFICIENCIES.md](PRODUCT_DEFICIENCIES.md). Before `APP-2` begins, the
-APP plan MUST be amended with exact packages for the Application Foundation
-subset: `PD-001`, `PD-002`, `PD-004`, `PD-006`, `PD-007`, `PD-009`, `PD-011`,
-and `PD-023`. Existing APP-0 fixtures remain evidence; they do not freeze the
-known omissions as the final baseline.
+`APB-0` contract closure MUST reconcile and amend the existing APP plan.
+Existing APP-0 fixtures remain evidence; they do not freeze the known omissions
+as the final baseline. APP-2…APP-8 implementation is absorbed into the
+corresponding APB packages rather than duplicated.
 
 ### Required order
 
@@ -301,6 +304,11 @@ known omissions as the final baseline.
 | 6 | `HAR-5` | Heap operations | Heap-scoped backup/restore/retire/scrub |
 | 7 | `HAR-6` | ordinary SDK and CLI journey | no legacy imports or architecture knowledge |
 | 8 | `HAR-7` | release evidence | complete journey and honest label |
+
+The APB lane begins with `APB-0` immediately after C0 and interleaves with HAR
+only where [MUST_ADD.md](MUST_ADD.md) dependencies permit. `APB-12` additionally
+depends on the qualified remote Heap posture and therefore cannot accept before
+the applicable HAR packages.
 
 ### M1 critical journey
 
@@ -350,7 +358,8 @@ it, the release is explicitly:
 M1 exit:
 
 - all applicable HAR packages are `accept`;
-- the Application Foundation deficiency subset named above is accepted;
+- `APB-0` through `APB-12` are `accept`;
+- `dingo-application-baseline-v1 / A2` independently verifies;
 - the critical journey passes locally and in CI;
 - `qualified` and public wording match the qualification matrix; and
 - M2 foundation packages become `ready`.
@@ -479,8 +488,6 @@ Required existing work:
 
 Additional mandatory product work:
 
-- close `PD-003`, `PD-005`, `PD-008`, `PD-010`, `PD-012`, and `PD-013` so the
-  complete `dingo-application-baseline-v1` accepts;
 - qualified encryption at rest for JSON, bytes, metadata, indexes, backup, and
   Evidence material in the supported profile;
 - protected local key-provider operation, rotation, backup, and loss behavior;
@@ -510,7 +517,7 @@ install
 M2 exit:
 
 - M2-D passes;
-- `dingo-application-baseline-v1` passes;
+- `dingo-application-baseline-v1` remains green against packaged artifacts;
 - `DEL-0`–`DEL-3` pass before M3 rule activation;
 - `TEL-0`–`TEL-2` pass before new performance claims;
 - Rust and CLI quickstarts use the same qualified path; and
@@ -864,11 +871,11 @@ This is the current executable queue:
 | 4 | `APP-0` / `APP-1` | `in_review` on board | complete review only; preserve work already produced |
 | 5 | `DEF-098`…`DEF-104` | `open P0/P1/P2` | **principal track:** close the complete observed storage/recovery contract |
 | 6 | `CSQ-0`…`CSQ-12` | `not_started` | execute Core Storage Qualification immediately after DEF-098…104 |
-| 7 | `HAR-0` | `ready` | truth-only residual may continue without preempting C0 |
-| 8 | `APP-2+` / `HAR-1+` | interlocked | no new feature labor before `CSQ-12` accept |
+| 7 | `APB-0`…`APB-12` | `not_started` | immediate Must-Add program after `CSQ-12`; absorbs APP-2…APP-8 |
+| 8 | `HAR-0`…`HAR-7` | mixed | truth residual may continue; feature packages interleave only by APB/HAR dependencies |
 
-The next implementation task is **DEF-098**, followed by **DEF-099…104**, then
-**CSQ-0**. Live
+The next implementation task is **DEF-098**, followed by **DEF-099…104**,
+**CSQ-0…12**, then **APB-0**. Live
 scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
 
 No developer should start DRE, Atomics, Direct Access, Order Wavelets, search,
@@ -929,7 +936,8 @@ NOW:
 DEF-098…DEF-104 incident defect family
 → CSQ-0…CSQ-12
 → verified dingo-core-storage-v1 / A2
-→ HAR-0…HAR-7 and APP-2+
+→ APB-0…APB-12 with HAR dependencies
+→ verified dingo-application-baseline-v1 / A2
 
 THEN:
 trustworthy SQLite-replacement core

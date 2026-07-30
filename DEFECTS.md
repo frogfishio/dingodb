@@ -2398,7 +2398,9 @@ Acceptance:
 Priority: **P0**
 Dependencies: none for correctness containment; DEF-022 for crash evidence;
 DEF-029 for resource-profile integration; DEF-095 for locator-cache conventions
-Status: **open — high severity**
+Status: **partial — generation-exact current get shipped (labor in_review); remaining:
+bounded hot-path scan-free preads under all open paths, logical-value admission
+ceiling, full crash/performance/application journey acceptance, transcript guidance**
 
 Release impact:
 

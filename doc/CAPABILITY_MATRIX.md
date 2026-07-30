@@ -348,6 +348,17 @@ live payload is partial **or** tier coverage is incomplete (offline media). Use
 partial maps. Secondary-index misses are authoritative only when the index
 claims `complete_coverage`.
 
+## Chunked values / large-body get (DEF-098)
+
+| Claim | Status | Notes |
+|-------|--------|-------|
+| Generation-exact reassembly | **shipped (labor)** | Ordinary `get` / `get_payload` select chunks by current manifest `chunk_event_id`, not by shared `item_id`. Dual durable chunked overwrites return the latest complete value. Evidence: `stage_def_098_chunk_generation`. |
+| Cross-generation same-slot conflict | **fixed for current get** | Older generation chunks at the same index no longer make a complete current generation `PayloadPartial` / conflicting. |
+| Conflicting vs partial ordinary errors | **partial** | `get` maps `Conflicting` → `PayloadConflict`; `Partial`/`Unavailable` → `PayloadPartial`. Completeness-aware path remains `get_payload`. |
+| Bounded locator preads (no full-store scan) | **partial** | In-process + rebuildable chunk event locators preferred; incomplete locator coverage still falls back to a generation-filtered segment scan. Full CSQ-6 / DEF-098 performance acceptance still open. |
+| Logical-value admission ceiling (16 MiB profile) | **open** | Still under DEF-098 remaining work / DEF-103; not claimed closed by this row. |
+| Historical generation APIs | **open** | DEF-099. |
+
 ## Idempotent remote writes (DEF-010)
 
 Mutating remote RPCs carry a client `operation_id`. Exact retries return the

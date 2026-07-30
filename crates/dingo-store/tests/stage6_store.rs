@@ -58,7 +58,7 @@ fn subject_history_orders_puts_and_deletes() {
 #[test]
 fn chunked_put_get_and_partial_missing_middle() {
     use dingo_format::{decode_chunk_body, scan_forward, FrameKind, SafetyLimits};
-    use dingo_store::{decode_chunk_manifest, reassemble_with_manifest};
+    use dingo_store::{decode_chunk_manifest, reassemble_with_manifest, resolve_piece};
 
     let dir = tempdir().unwrap();
     let mut store = Store::create(dir.path().join("s")).unwrap();
@@ -87,27 +87,36 @@ fn chunked_put_get_and_partial_missing_middle() {
         other => panic!("expected complete: {other:?}"),
     }
 
-    // Collect verified chunk pieces, drop the middle index, reassemble.
+    // Collect verified chunk pieces with event ids, drop the middle index, reassemble.
     store.seal_active().unwrap();
-    let mut pieces = Vec::new();
+    let mut resolved = Vec::new();
     for path in fs::read_dir(store.path().join("segments")).unwrap() {
         let p = path.unwrap().path();
         let bytes = fs::read(&p).unwrap();
         let report = scan_forward(&bytes, SafetyLimits::default());
-        for (_off, frame) in report.verified_frames() {
+        for (off, frame) in report.verified_frames() {
             if frame.header.known_kind() != Some(FrameKind::PayloadChunk) {
                 continue;
             }
             if let Some(piece) = decode_chunk_body(&frame.body) {
-                pieces.push(piece);
+                resolved.push(resolve_piece(
+                    frame.header.event_id,
+                    piece,
+                    [0u8; 16],
+                    off,
+                ));
             }
         }
     }
-    assert!(pieces.len() >= 3);
-    pieces.sort_by_key(|p| p.index);
-    let middle = pieces[1].index;
-    let surviving: Vec<_> = pieces.into_iter().filter(|p| p.index != middle).collect();
-    match reassemble_with_manifest(&manifest, &surviving) {
+    assert!(resolved.len() >= 3);
+    resolved.sort_by_key(|r| r.piece.index);
+    let middle = resolved[1].piece.index;
+    let item_id = resolved[0].piece.item_id;
+    let surviving: Vec<_> = resolved
+        .into_iter()
+        .filter(|r| r.piece.index != middle)
+        .collect();
+    match reassemble_with_manifest(item_id, &manifest, &surviving) {
         PayloadResult::Partial {
             missing, extents, ..
         } => {
@@ -116,7 +125,7 @@ fn chunked_put_get_and_partial_missing_middle() {
             assert!(!extents[middle as usize].present);
             // Completeness never overstated: ordinary get would reject partial.
             assert!(!matches!(
-                reassemble_with_manifest(&manifest, &surviving),
+                reassemble_with_manifest(item_id, &manifest, &surviving),
                 PayloadResult::Complete { .. }
             ));
         }

@@ -90,8 +90,8 @@ pub use chimera::{
 };
 pub use chunk_payload::{
     decode_chunk_manifest, encode_chunk_manifest, is_chunk_manifest, reassemble_with_manifest,
-    ChunkManifest, ChunkSlot, PayloadResult, CHUNK_MANIFEST_MAGIC, DEFAULT_CHUNK_SIZE,
-    DEFAULT_CHUNK_THRESHOLD,
+    resolve_piece, ChunkManifest, ChunkSlot, PayloadResult, ResolvedChunk, CHUNK_MANIFEST_MAGIC,
+    DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
 pub use compact::{
     compaction_job_path, compaction_jobs_dir, list_compact_jobs, try_load_compact_job,

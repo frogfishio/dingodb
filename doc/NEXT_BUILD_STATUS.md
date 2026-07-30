@@ -65,13 +65,26 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | CSQ-10 | not_started | — | CSQ-3, CSQ-4, CSQ-6…CSQ-9 | — | mutation/fuzz thresholds absent | suite sensitivity |
 | CSQ-11 | not_started | — | CSQ-5…CSQ-10 | — | compatibility/scale/soak absent | release campaign |
 | CSQ-12 | not_started | — | CSQ-0…CSQ-11 | — | verified A2 bundle absent | core-storage qualification |
+| APB-0 | not_started | — | CSQ-12, APP-0, APP-1 | [MUST_ADD.md](../MUST_ADD.md) | complete baseline contract not frozen | application contract |
+| APB-1 | not_started | — | APB-0, HAR-1 | — | unified client absent | backend-neutral client |
+| APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
+| APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
+| APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
+| APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
+| APB-6 | not_started | — | APB-1, APB-3 | — | stable read views absent | read consistency |
+| APB-7 | not_started | — | APB-1, APB-6, APP-4, APP-5 | — | DQL application runtime absent | query baseline |
+| APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
+| APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
+| APB-10 | not_started | — | APB-3, APB-5, APB-6 | — | resumable import/export absent | data movement |
+| APB-11 | not_started | — | APB-1…APB-10 | — | public application test kit absent | consumer verification |
+| APB-12 | not_started | — | APB-0…APB-11, HAR-4 | — | baseline A2 bundle absent | application qualification |
 | HAR-0 | ready | 2026-07-30 | — | matrix; Verus/Kani flags aligned (M0-DISC-001 fixed); architecture OK; M0 complete | residual: confirm CI kani-heap job; HAR-0 plan checklist; **board stage backlog** (principal: APP/CORE first) | truth cleanup residual |
 | HAR-1 | not_started | — | HAR-0, APP-0 | op **106** `collection_create` **reserved**, schemas null | product create missing | collection creation |
 | HAR-2 | not_started | — | HAR-1 | precursor: `hp005_accept`, authority genesis | CLI ceremony package not accept | local Heap ceremony |
 | HAR-3 | not_started | — | HAR-2 | precursor: certs, handshake | full key lifecycle journey open | application-key lifecycle |
 | HAR-4 | not_started | — | HAR-3 | precursor: HeapKey handshake, TLS accept loop | HeapKey not proven default remote posture | qualified remote path |
 | HAR-5 | not_started | — | HAR-4 | precursor: wipe/restore/key-loss/DR drills (hp009/hp010) | broader crash cells; non-AWS KMS live | Heap operations |
-| HAR-6 | not_started | — | HAR-5, APP-8 | precursor: RemoteHeap CRUD/find/history/indexes | no ordinary `HeapClient` journey accept | SDK/CLI journey |
+| HAR-6 | not_started | — | HAR-5, APB-12 | precursor: RemoteHeap CRUD/find/history/indexes | no qualified application-baseline journey | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
 | APP-0 | active | 2026-07-30 | — | plan: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §14; [spec/app/v1/](../spec/app/v1/) + residuals; wire staged schemas/fixtures; `dingo_sdk::app_v1`; `verify-app0-contract.sh` + `app0_contract_lock` (verify PASS; contract_lock 6/6); **board `in_review`** (labor handoff) | owner sign-off still open (APP0-R3; principal → `done`); plan_hash/mac placeholders (APP0-R1/R2) | application contract |
 | APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
@@ -119,8 +132,8 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 
 ## Principal labor track (board SoT)
 
-**Active labor:** DEF-098…DEF-104 remediation, then CSQ. Do not pull APP-2 or
-APP-4.
+**Active labor:** DEF-098…DEF-104 remediation, then CSQ, then APB. Do not pull
+APP-2 or APP-4 outside their APB mapping.
 **Handoff:** **APP-0**, **APP-1** are `in_review` (labor done; principal owns accept).
 
 Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
@@ -131,9 +144,10 @@ Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
 | done | M0-1, M0-2, M0-3 |
 | in_review | **APP-0** (contract freeze; APP0-R3), **APP-1** (create/dedup/op 106) |
 | doing | — |
-| backlog | DEF-098…DEF-104, CSQ-0…CSQ-12, HAR-0…HAR-7, APP-2…APP-8, DEL-0, TEL-0, DST-000 |
+| backlog | DEF-098…DEF-104, CSQ-0…CSQ-12, APB-0…APB-12, HAR-0…HAR-7, APP-2…APP-8, DEL-0, TEL-0, DST-000 |
 
-Do **not** pull new HAR/APP feature cards into `todo` before `CSQ-12` accepts.
+Do **not** pull new HAR/APP/APB feature cards into `todo` before `CSQ-12`
+accepts.
 Scoreboard may still list HAR-0 as `ready` (dependency honesty); that is not a
 labor order override.
 
@@ -144,8 +158,9 @@ Labor order for this principal (not “everything that is ready”):
 1. Complete **APP-0/APP-1 review** only; no new feature expansion.
 2. Remediate **DEF-098…DEF-104** in dependency order.
 3. Execute **CSQ-0…CSQ-12** after the incident defect family accepts.
-4. Resume **APP-2/APP-4** only after `CSQ-12` accepts.
-5. **HAR-0** truth residual may proceed when it does not preempt P0/C0.
+4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
+   [MUST_ADD.md](../MUST_ADD.md).
+5. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 
