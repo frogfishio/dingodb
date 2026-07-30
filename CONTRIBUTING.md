@@ -11,6 +11,11 @@ If the change is not covered by an existing stage exit criterion, freeze label,
 or a named MUST in a spec, open a short design note or amend the relevant spec
 first.
 
+Work selection and package order are governed by
+[MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md). Do not select the next
+feature from `DELIVERY_PLAN.md`, `DEFECTS.md`, or an individual subsystem plan
+without checking the master starting queue and stage gate first.
+
 ## Engineering rules
 
 1. **SDA stays pure.** No file, network, or ambient IO in `crates/sda-core`.
@@ -119,11 +124,11 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 | CLI | `dingo` | doctor / salvage / development `serve` / experimental `serve-cluster` |
 | Cluster | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
-Immediate priorities: production-readiness work in [DEFECTS.md](DEFECTS.md)
-(containment done first: truthful claims + bind gates). Product wedge and
-labor order: [doc/PRIME_TIME_PLAN.md](doc/PRIME_TIME_PLAN.md) (embedded first;
-cluster/archive deferred). Network Raft quorum, native cloud SDKs, and erasure
-codecs remain future.
+Immediate package selection, priority, and release order:
+[MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md). Production-readiness defects
+remain in [DEFECTS.md](DEFECTS.md); product maturity rules remain in
+[doc/PRIME_TIME_PLAN.md](doc/PRIME_TIME_PLAN.md). Network Raft qualification,
+native cloud SDKs, and erasure codecs remain later programs.
 
 Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
 

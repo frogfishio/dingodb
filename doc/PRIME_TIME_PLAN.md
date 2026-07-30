@@ -8,6 +8,12 @@ Companions: [DEFECTS.md](../DEFECTS.md) (execution defects + §16 gates),
 [DELIVERY_PLAN.md](../DELIVERY_PLAN.md) (Stages 0–9 — **done**),
 [PERFORMANCE_STRATEGIES.md](PERFORMANCE_STRATEGIES.md) (write/read path only)
 
+Current integrated delivery order:
+[MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md). This document
+continues to govern maturity claims and prime-time gates; the integrated
+roadmap governs how those gates interleave with Heap, DRE, Atomics, Evidence,
+Telemetry, and Studio delivery.
+
 ## 1. Purpose
 
 Stages 0–9 are done. Doctrine is coherent. The repo is unusually honest about

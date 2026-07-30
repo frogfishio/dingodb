@@ -6,6 +6,13 @@ Date: 2026-07-30
 
 Scope: single-node product path after the Heap isolation kernel
 
+Integrated release ordering:
+[MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md).
+
+This document remains normative for the mathematical engine package sequence.
+The master plan places its packages alongside Heap completion,
+Evidence, Telemetry, Studio, and production-readiness gates.
+
 Companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md),

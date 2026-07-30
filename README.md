@@ -8,6 +8,9 @@ DingoDB is a deterministic relational document engine that lets developers build
 
 Not production-ready yet (features are still iterating; see DEF notes in startup output).
 
+Definitive implementation sequence and current starting task:
+[MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md).
+
 ---
 
 ## Console / CLI

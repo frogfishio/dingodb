@@ -39,6 +39,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Public product website | [WEBSITE_SPEC.md](WEBSITE_SPEC.md) |
 | Public documentation website | [DOCS_SITE_SPEC.md](DOCS_SITE_SPEC.md) |
 | Three-stage competitive goals and exit gates | [COMPETITIVE_GOALS.md](COMPETITIVE_GOALS.md) |
+| Definitive execution priority, stages, and current starting queue | [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md) |
 | Staged delivery and exit criteria | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) |
 | Doctrine implementation gap map | [doc/DOCTRINE_GAPS.md](doc/DOCTRINE_GAPS.md) |
 | Post-Heap implementation sequence and package gates | [NEXT_BUILD_PLAN.md](NEXT_BUILD_PLAN.md), [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md) |
