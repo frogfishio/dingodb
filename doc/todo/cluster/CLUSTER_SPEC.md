@@ -66,6 +66,124 @@ An early conformance profile may omit a capability operationally. It MUST NOT
 redefine that omission as a permanent product limitation or allow an
 incompatible local substitute.
 
+### 1.2 Autoconfiguration and operational simplicity law
+
+The normal cluster experience SHALL be deliberately small:
+
+```text
+provide local data storage
+provide one discovery method
+provide one-time bootstrap or join authority
+start the nodes
+```
+
+Residiuum SHALL discover, authenticate, configure and continuously balance the
+cluster without requiring operators to author or distribute configuration
+files. Process-local bootstrap values are supplied as command parameters,
+environment variables or protected inherited inputs. Durable cluster policy
+is authenticated, versioned, consensus-committed cluster state.
+
+An ordinary operator MUST NOT need to configure Raft groups, partition
+assignments, leaders, replica placement, node certificates, gossip topology,
+control-plane voters, rebalance plans or internal protocol timers.
+
+The architecture separates four authorities:
+
+```text
+discovery   = a node or endpoint appears to exist
+gossip      = authenticated reachability, capability and health suspicion
+admission   = cryptographic authority to enter this cluster
+consensus   = authoritative membership, placement, leadership and policy
+```
+
+Gossip MUST NOT establish membership, reduce quorum, remove a replica, fence a
+leader, authorize a write or destroy data. It supplies discovery and suspicion
+signals to the authoritative protocols.
+
+Supported discovery profiles SHALL include:
+
+- explicit seed IP addresses or DNS names;
+- DNS service discovery;
+- authenticated SWIM-style gossip after first contact;
+- local-development discovery where the network supports it;
+- orchestrator discovery such as a headless service; and
+- optional cloud-provider discovery by declared project/tag scope.
+
+No discovery mechanism grants admission. Private-network presence, an IP
+address, DNS membership or cloud metadata alone is not node identity.
+
+#### Founding ceremony
+
+Symmetrically started founding nodes SHALL be able to form a cluster without a
+preselected permanent master. They:
+
+1. generate persistent cryptographic node identities;
+2. discover the declared founding candidates;
+3. authenticate using one-time bootstrap authority;
+4. prove agreement on protocol compatibility and the founding set;
+5. construct one canonical genesis membership;
+6. consensus-commit and persist one immutable genesis record;
+7. establish the control-plane voters and cluster cryptographic domain;
+8. create the initial partition/placement policy;
+9. invalidate and erase the one-time bootstrap authority; and
+10. enter service only after the declared readiness policy passes.
+
+The genesis record includes cluster identity and generation, sorted founding
+node public identities, initial voter set, protocol profile, partition/hash
+profile, cryptographic domains, creation evidence and a canonical digest.
+Addresses are mutable discovery locations and MUST NOT be permanent identity.
+
+The default three-node founding ceremony requires all three declared founders.
+It SHALL fail closed rather than silently create a differently sized cluster.
+After genesis, ordinary quorum availability applies.
+
+A node with persisted genesis and identity MUST NOT create a new cluster when
+peers are unreachable. A machine using the same IP after losing its identity
+and data is a new node and requires admission.
+
+#### Safe automatic policy
+
+For three compatible founding storage nodes, the default policy is:
+
+```text
+control voters       = 3
+default replicas     = 3
+write quorum         = 2
+default node roles   = storage + ingest + query + control
+partition leadership = automatically balanced
+```
+
+Residiuum may infer only guarantees supported by authenticated evidence. Three
+distinct node identities prove node separation only. Host, rack and zone
+separation require a trusted, recorded topology source or explicit operator
+attestation.
+
+The governing behavior is:
+
+> Safe decisions are automatic. Dangerous ambiguity causes a precise refusal.
+
+Every automatic decision is recorded with its inputs, policy version and
+reason. The CLI, API and Studio SHALL expose cluster status, effective policy,
+policy history and an explanation of placement, replication and claimed
+failure tolerance.
+
+#### Joining and leaving
+
+After genesis, a new node needs one reachable seed and short-lived signed join
+authority. Authenticated gossip discovers the remaining topology. The node is
+admitted as non-voting, receives and verifies replicas, catches up, and is
+promoted only through consensus.
+
+Removal drains leadership and replicas, verifies the resulting durability and
+failure-domain policy, commits membership changes, and reports when shutdown
+is safe. Forced removal is a distinct recovery ceremony with durable Evidence
+Ledger records.
+
+Rolling restart of one node in a healthy unsealed cluster SHOULD require no
+human seal ceremony: the authenticated quorum provisions a short-lived
+encrypted operational-key envelope. A complete cold start follows the
+declared threshold, passphrase, TPM, KMS or HSM seal profile.
+
 ## 2. Requirement language
 
 The requirement words defined by the
