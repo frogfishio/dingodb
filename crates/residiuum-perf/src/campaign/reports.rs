@@ -214,7 +214,12 @@ fn rank_bottlenecks(result: &CampaignResult) -> Vec<RankedBottleneck> {
             .iter()
             .map(|r| r.report.throughput_bytes_per_sec_proxy)
             .collect();
-        let subject = run_evidence_from(reps[0], &samples);
+        // Pass campaign-measured observer overhead into attribution (never invent).
+        let measured_oh = result
+            .observer_overhead_report
+            .as_ref()
+            .map(|r| r.overhead_fraction);
+        let subject = run_evidence_from(reps[0], &samples, measured_oh);
         let attr = classify_bottleneck(&AttributionInput {
             subject,
             matched: None,
@@ -294,7 +299,13 @@ fn follow_ups(ranked: &[RankedBottleneck]) -> Vec<FollowUpCard> {
 ///
 /// Latency percentiles, residual, device util, queue depth, and CPU/OS fields
 /// stay `None`/zero unless a real probe provided them (campaign path does not).
-fn run_evidence_from(rep: &super::run::CellRepetition, samples: &[f64]) -> RunEvidence {
+/// `observer_overhead_fraction` is filled only from a campaign-measured
+/// `ObserverOverheadReport` (order-balanced probe-off/on), never invented.
+fn run_evidence_from(
+    rep: &super::run::CellRepetition,
+    samples: &[f64],
+    observer_overhead_fraction: Option<f64>,
+) -> RunEvidence {
     let stats = mean_mad(samples);
     let mean_t = stats
         .as_ref()
@@ -322,7 +333,7 @@ fn run_evidence_from(rep: &super::run::CellRepetition, samples: &[f64]) -> RunEv
         device_util: None,
         outstanding_depth: 0,
         sync_per_op: rep.report.durability == "durable",
-        observer_overhead_fraction: None,
+        observer_overhead_fraction,
         cpu_cores_busy: None,
         aggregate_cpu_idle: None,
         window_class: rep.report.window.clone(),

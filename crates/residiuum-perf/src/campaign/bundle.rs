@@ -86,6 +86,10 @@ pub fn write_evidence_bundle(
         )?;
         optional_hash_paths.push("environment_hash.json");
     }
+    if let Some(oh) = result.observer_overhead_report.as_ref() {
+        write_json(&campaign_dir.join("observer_overhead.json"), oh)?;
+        optional_hash_paths.push("observer_overhead.json");
+    }
 
     // Hash on-disk bytes (stable independent check — no re-serialize drift).
     let mut file_hashes = Vec::new();
@@ -254,5 +258,24 @@ mod tests {
             "environment must be bound into hashed evidence"
         );
         verify_bundle_hashes(&camp).unwrap();
+    }
+
+    /// Synthetic campaigns do not measure store probe overhead; report absent.
+    #[test]
+    fn synthetic_campaign_has_no_observer_overhead_artifact() {
+        let dir = tempfile::tempdir().unwrap();
+        let plan = campaign_plan_synthetic(17, 1);
+        let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
+        assert!(result.observer_overhead_report.is_none());
+        let reports = build_campaign_reports(&result);
+        let disclosure = build_disclosure(&result, &reports);
+        let camp = dir.path().join("campaign");
+        let bundle = write_evidence_bundle(&camp, &result, &reports, &disclosure).unwrap();
+        assert!(
+            bundle
+                .file_hashes
+                .iter()
+                .all(|f| f.relative_path != "observer_overhead.json")
+        );
     }
 }

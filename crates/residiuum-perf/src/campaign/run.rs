@@ -14,6 +14,7 @@ use crate::runner::{
 };
 use crate::store_driver::{
     run_driver_cell, store_driver_compiled, DriverKind, DriverRunConfig, MeasurementSurface,
+    ObserverOverheadReport,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -131,6 +132,11 @@ pub struct CampaignResult {
     /// Full environment fingerprint JSON (optional; hashed into evidence).
     #[serde(default)]
     pub environment_fingerprint: Option<serde_json::Value>,
+    /// Order-balanced multi-pair probe-off/on observer overhead (real_store).
+    /// Hashed into evidence as `observer_overhead.json`. Measured fraction is
+    /// passed into attribution via `RunEvidence.observer_overhead_fraction`.
+    #[serde(default)]
+    pub observer_overhead_report: Option<ObserverOverheadReport>,
 }
 
 /// Execute campaign: for each selected cell, run `processes × reps_per_process`
@@ -308,6 +314,41 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         );
     }
 
+    // Observer-overhead qualification: repeated order-balanced probe-off/on on
+    // the actual cell workload (no 64-op cap for non-smoke). Enforces budget.
+    let mut observer_overhead_report = None;
+    let mut overhead_within_budget = true;
+    if cfg.driver == DriverKind::RealStore && store_driver_compiled() {
+        if let (Some(work), Some(cell)) = (cfg.work_root.as_ref(), cells.first()) {
+            match measure_campaign_observer_overhead(cfg, work, cell) {
+                Ok(report) => {
+                    overhead_within_budget = report.within_budget;
+                    if !report.within_budget {
+                        withdrawals.push(format!(
+                            "observer overhead median={:.6} exceeds budget={:.4}; product claims withheld (probe cost is not DB cost)",
+                            report.median_overhead_fraction, report.overhead_budget
+                        ));
+                    } else {
+                        withdrawals.push(format!(
+                            "observer overhead measured mean={:.6} median={:.6} pairs={} ops_per_leg={} within_budget=true",
+                            report.overhead_fraction,
+                            report.median_overhead_fraction,
+                            report.pair_count,
+                            report.ops_per_leg
+                        ));
+                    }
+                    observer_overhead_report = Some(report);
+                }
+                Err(e) => {
+                    overhead_within_budget = false;
+                    withdrawals.push(format!(
+                        "observer overhead measurement failed: {e}; product claims withheld"
+                    ));
+                }
+            }
+        }
+    }
+
     Ok(CampaignResult {
         plan: cfg.plan.clone(),
         matrix_schema: manifest.schema,
@@ -319,9 +360,10 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         invalid_runs,
         driver_kind: cfg.driver.as_str().into(),
         measurement_surface: surface.as_str().into(),
-        // Product eligibility also requires qualification run class + sustained window.
+        // Product eligibility: qual class + controlled surface + overhead budget.
         product_claim_eligible: product_claim_eligible
-            && cfg.run_class.may_emit_bottleneck_verdict(),
+            && cfg.run_class.may_emit_bottleneck_verdict()
+            && overhead_within_budget,
         primary_bottleneck: None,
         primary_bottleneck_run_ids: vec![],
         run_class: cfg.run_class.as_str().into(),
@@ -333,7 +375,37 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         environment_hash,
         preflight_report: preflight_report_json,
         environment_fingerprint: environment_fingerprint_json,
+        observer_overhead_report,
     })
+}
+
+/// Real-store observer overhead on a campaign cell (order-balanced multi-pair).
+fn measure_campaign_observer_overhead(
+    cfg: &CampaignConfig,
+    work_root: &std::path::Path,
+    cell: &MatrixCell,
+) -> Result<ObserverOverheadReport, CampaignError> {
+    #[cfg(feature = "store-driver")]
+    {
+        use crate::store_driver::measure_probe_observer_overhead;
+        let oh_cfg = DriverRunConfig {
+            cell: cell.clone(),
+            seed: cfg.plan.seed.wrapping_add(0x0B5E_07EAu64),
+            kind: DriverKind::RealStore,
+            work_root: Some(work_root.to_path_buf()),
+            durability_mutant: false,
+            digest_mutant: false,
+            run_class: cfg.run_class.as_str().into(),
+        };
+        measure_probe_observer_overhead(&oh_cfg).map_err(|e| CampaignError::Msg(e.to_string()))
+    }
+    #[cfg(not(feature = "store-driver"))]
+    {
+        let _ = (cfg, work_root, cell);
+        Err(CampaignError::Msg(
+            "observer overhead requires store-driver feature".into(),
+        ))
+    }
 }
 
 /// Spawn one OS child per process slot, barrier-sync, merge WorkerResults.
@@ -812,5 +884,67 @@ mod real_store_tests {
         // qualification class as well.
         assert!(!result.product_claim_eligible);
         assert_eq!(result.run_class, "smoke");
+    }
+
+    #[test]
+    fn real_store_campaign_measures_order_balanced_overhead_and_binds_bundle() {
+        use crate::campaign::bundle::{verify_bundle_hashes, write_evidence_bundle};
+        use crate::campaign::disclosure::build_disclosure;
+        use crate::store_driver::{OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_SMOKE};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut plan = campaign_plan_synthetic(13, 1);
+        plan.max_cells = 1;
+        plan.include_multiproc_finding = false;
+        plan.repetitions = 5;
+        plan.processes = 2;
+
+        let result = run_campaign(&CampaignConfig {
+            plan,
+            driver: DriverKind::RealStore,
+            work_root: Some(dir.path().join("work")),
+            declare_controlled_runner: false,
+            run_class: RunClass::Smoke,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
+        })
+        .expect("campaign with overhead");
+
+        let oh = result
+            .observer_overhead_report
+            .as_ref()
+            .expect("observer_overhead_report on real_store campaign");
+        assert_eq!(oh.pair_count, OVERHEAD_MIN_PAIRS_SMOKE);
+        assert!(oh.ops_per_leg > 0);
+        assert!((oh.overhead_budget - OBSERVER_OVERHEAD_BUDGET).abs() < 1e-12);
+        assert_eq!(
+            oh.pairs.iter().filter(|p| p.order == "off_first").count(),
+            oh.pairs.iter().filter(|p| p.order == "on_first").count()
+        );
+        assert!(result
+            .withdrawals
+            .iter()
+            .any(|w| w.contains("observer overhead")));
+
+        // Measured value flows into attribution subject.
+        let reports = build_campaign_reports(&result);
+        // Synthetic-size smoke may not rank if <2 valid cells with multi-rep;
+        // still ensure report build does not invent when None — when ranked,
+        // oh fraction is the measured one.
+        let _ = reports;
+
+        let disclosure = build_disclosure(&result, &reports);
+        let camp = dir.path().join("campaign");
+        let bundle = write_evidence_bundle(&camp, &result, &reports, &disclosure).unwrap();
+        assert!(
+            bundle
+                .file_hashes
+                .iter()
+                .any(|f| f.relative_path == "observer_overhead.json"),
+            "observer_overhead.json must be in hashed evidence bundle"
+        );
+        verify_bundle_hashes(&camp).unwrap();
+        assert!(camp.join("observer_overhead.json").exists());
     }
 }

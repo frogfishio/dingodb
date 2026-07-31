@@ -348,36 +348,96 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     })
 }
 
-/// Matched probe-off / probe-on observer-overhead qualification (same seed/cell).
+/// Order-balanced multi-pair probe-off / probe-on observer-overhead qualification.
 ///
-/// Runs the cell twice under separate store roots: once without the boundary
-/// probe, once with it. Wall-time delta is the measured observer overhead.
+/// Uses the **actual cell workload** (op_count × payload), not a 64-op toy cap.
+/// Smoke may still apply the smoke op ceiling for CI speed. Non-smoke never
+/// caps ops for this measurement.
+///
+/// Pair order is ABAB/BABA: even pairs run off→on, odd pairs run on→off, so
+/// first-leg bias cancels. Budget is [`super::aggregates::OBSERVER_OVERHEAD_BUDGET`].
 pub fn measure_probe_observer_overhead(
     cfg: &DriverRunConfig,
 ) -> Result<ObserverOverheadReport, DriverError> {
+    use super::aggregates::{
+        OverheadPairSample, OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL,
+        OVERHEAD_MIN_PAIRS_SMOKE,
+    };
+
     let work_root = cfg
         .work_root
         .as_ref()
         .ok_or_else(|| DriverError::Msg("observer overhead requires work_root".into()))?;
 
-    let off = run_real_store_with_probe(cfg, work_root, false, "probe-off")?;
-    let on = run_real_store_with_probe(cfg, work_root, true, "probe-on")?;
-    Ok(ObserverOverheadReport::from_pair(
+    let run_class = cfg.run_class_parsed();
+    // Qualification workload: full cell op_count. Smoke only: SMOKE_MAX_OPS.
+    // **No 64-op qualification cap.**
+    let op_n = if run_class.allows_smoke_op_cap() {
+        cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1)
+    } else {
+        cfg.cell.op_count.max(1)
+    };
+    let plen = if run_class.allows_smoke_op_cap() {
+        cfg.cell.payload_size.min(64 * 1024).max(1)
+    } else {
+        cfg.cell.payload_size.max(1)
+    };
+    let pair_count = if run_class.allows_smoke_op_cap() {
+        OVERHEAD_MIN_PAIRS_SMOKE
+    } else {
+        OVERHEAD_MIN_PAIRS_QUAL
+    };
+
+    let mut pairs = Vec::with_capacity(pair_count as usize);
+    for i in 0..pair_count {
+        // Order-balance: even = off_first (AB), odd = on_first (BA).
+        let off_first = i % 2 == 0;
+        let order = if off_first { "off_first" } else { "on_first" };
+        let tag_base = format!("p{i}-s{:x}", cfg.seed);
+        let (off, on) = if off_first {
+            let off = run_real_store_with_probe(
+                cfg, work_root, false, &format!("{tag_base}-off"), op_n, plen,
+            )?;
+            let on = run_real_store_with_probe(
+                cfg, work_root, true, &format!("{tag_base}-on"), op_n, plen,
+            )?;
+            (off, on)
+        } else {
+            let on = run_real_store_with_probe(
+                cfg, work_root, true, &format!("{tag_base}-on"), op_n, plen,
+            )?;
+            let off = run_real_store_with_probe(
+                cfg, work_root, false, &format!("{tag_base}-off"), op_n, plen,
+            )?;
+            (off, on)
+        };
+        pairs.push(OverheadPairSample::from_times(
+            i, order, off.0, on.0, off.1, on.1,
+        ));
+    }
+
+    Ok(ObserverOverheadReport::from_pairs(
         &cfg.cell.cell_id,
         cfg.seed,
-        off.0,
-        on.0,
-        off.1,
-        on.1,
+        op_n,
+        plen,
+        run_class.as_str(),
+        OBSERVER_OVERHEAD_BUDGET,
+        pairs,
     ))
 }
 
-/// Minimal timed put loop with probe on/off; returns (e2e_ns, logical_bytes).
+/// Timed put loop with probe on/off; returns (e2e_ns, logical_bytes).
+///
+/// `op_n` / `plen` come from the caller so qualification uses the real cell
+/// workload size without a silent helper cap.
 fn run_real_store_with_probe(
     cfg: &DriverRunConfig,
     work_root: &std::path::Path,
     probe_on: bool,
     tag: &str,
+    op_n: u64,
+    plen: u64,
 ) -> Result<(u64, u64), DriverError> {
     let store_path = cell_store_path(work_root, &cfg.cell.cell_id, &format!("{tag}-s{:x}", cfg.seed));
     if store_path.exists() {
@@ -389,13 +449,6 @@ fn run_real_store_with_probe(
         store.enable_boundary_probe();
     }
     let store_dur = map_durability(cfg.cell.durability);
-    let run_class = cfg.run_class_parsed();
-    let op_n = if run_class.allows_smoke_op_cap() {
-        cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1)
-    } else {
-        cfg.cell.op_count.max(1).min(64) // bound overhead helper
-    };
-    let plen = cfg.cell.payload_size.min(64 * 1024).max(1);
     let body = vec![0xABu8; plen as usize];
     let t0 = Instant::now();
     let mut logical = 0u64;
@@ -521,6 +574,7 @@ mod tests {
 
     #[test]
     fn matched_probe_observer_overhead_runs() {
+        use crate::store_driver::{OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_SMOKE};
         let dir = tempfile::tempdir().unwrap();
         let cell = MatrixCell {
             cell_id: "L4-oh-s256-c1-o1-0".into(),
@@ -551,7 +605,58 @@ mod tests {
         assert!(report.probe_off_e2e_ns > 0);
         assert!(report.probe_on_e2e_ns > 0);
         assert_eq!(report.probe_off_logical_bytes, report.probe_on_logical_bytes);
-        assert!(report.notes.iter().any(|n| n.contains("probe-off")));
+        assert_eq!(report.pair_count, OVERHEAD_MIN_PAIRS_SMOKE);
+        assert_eq!(report.ops_per_leg, 8);
+        assert!((report.overhead_budget - OBSERVER_OVERHEAD_BUDGET).abs() < 1e-12);
+        assert_eq!(
+            report.pairs.iter().filter(|p| p.order == "off_first").count(),
+            report.pairs.iter().filter(|p| p.order == "on_first").count()
+        );
+        assert!(report.notes.iter().any(|n| n.contains("order-balanced")));
+    }
+
+    #[test]
+    fn qualification_overhead_uses_full_op_count_no_64_cap() {
+        use crate::store_driver::OVERHEAD_MIN_PAIRS_QUAL;
+        let dir = tempfile::tempdir().unwrap();
+        // op_count > 64: must not be silently capped for non-smoke.
+        let op_count = 80u64;
+        let cell = MatrixCell {
+            cell_id: "L4-oh-qual-s64-c1-o1-0".into(),
+            layer: LayerProfile::L4,
+            durability: MatrixDur::Buffered,
+            payload_size: 32,
+            distribution: None,
+            concurrency: 1,
+            outstanding: 1,
+            batch_size: 1,
+            shards: 1,
+            db_state: DatabaseState::Empty,
+            features: FeatureProfile::l4_minimal(),
+            interference: InterferenceProfile::absent(),
+            op_count,
+            order_rank: 0,
+        };
+        // Use diagnostic (not full 120s qualification floors) so unit test is
+        // multi-pair + full ops without time/byte floors of the main cell driver.
+        let report = measure_probe_observer_overhead(&DriverRunConfig {
+            cell,
+            seed: 3,
+            kind: DriverKind::RealStore,
+            work_root: Some(dir.path().to_path_buf()),
+            durability_mutant: false,
+            digest_mutant: false,
+            run_class: "diagnostic".into(),
+        })
+        .expect("qual-style overhead");
+        assert_eq!(report.ops_per_leg, op_count, "must not apply 64-op cap");
+        assert_eq!(report.pair_count, OVERHEAD_MIN_PAIRS_QUAL);
+        assert_eq!(report.run_class, "diagnostic");
+        assert!(
+            report.pairs.iter().any(|p| p.order == "off_first")
+                && report.pairs.iter().any(|p| p.order == "on_first"),
+            "order-balanced AB/BA required"
+        );
     }
 
     #[test]

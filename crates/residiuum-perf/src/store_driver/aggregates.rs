@@ -86,25 +86,77 @@ impl BoundaryAggregateSummary {
     }
 }
 
-/// Matched probe-off vs probe-on observer overhead (same cell work).
+/// Default observer overhead budget (fraction of probe-off wall time).
+/// Matches analyze narratives default (`observer_budget` 0.02).
+pub const OBSERVER_OVERHEAD_BUDGET: f64 = 0.02;
+
+/// Minimum order-balanced off/on pairs for non-smoke qualification overhead.
+pub const OVERHEAD_MIN_PAIRS_QUAL: u32 = 4;
+
+/// Minimum pairs for smoke/CI overhead (still order-balanced).
+pub const OVERHEAD_MIN_PAIRS_SMOKE: u32 = 2;
+
+/// One matched probe-off / probe-on sample (one leg order).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ObserverOverheadReport {
-    pub cell_id: String,
-    pub seed: u64,
+pub struct OverheadPairSample {
+    pub pair_index: u32,
+    /// `off_first` (AB) or `on_first` (BA) — order-balanced across pairs.
+    pub order: String,
     pub probe_off_e2e_ns: u64,
     pub probe_on_e2e_ns: u64,
     pub probe_off_logical_bytes: u64,
     pub probe_on_logical_bytes: u64,
     /// (on - off) / off when off > 0; else 0.
     pub overhead_fraction: f64,
+}
+
+/// Matched probe-off vs probe-on observer overhead (same cell work).
+///
+/// Qualification path: repeated, order-balanced pairs (ABAB / BABA) on the
+/// actual cell op_count/payload — not a 64-op toy helper.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ObserverOverheadReport {
+    pub cell_id: String,
+    pub seed: u64,
+    /// Ops executed per probe-off or probe-on leg.
+    #[serde(default)]
+    pub ops_per_leg: u64,
+    #[serde(default)]
+    pub payload_size: u64,
+    #[serde(default)]
+    pub run_class: String,
+    /// Mean of pair wall times (off legs).
+    pub probe_off_e2e_ns: u64,
+    /// Mean of pair wall times (on legs).
+    pub probe_on_e2e_ns: u64,
+    pub probe_off_logical_bytes: u64,
+    pub probe_on_logical_bytes: u64,
+    /// Mean (on - off) / off across pairs; primary measured value for attribution.
+    pub overhead_fraction: f64,
+    /// Median pair overhead (robust to single-leg noise).
+    #[serde(default)]
+    pub median_overhead_fraction: f64,
+    /// Budget used for `within_budget` (default [`OBSERVER_OVERHEAD_BUDGET`]).
+    #[serde(default = "default_overhead_budget")]
+    pub overhead_budget: f64,
+    /// True when median overhead ≤ budget.
+    #[serde(default)]
+    pub within_budget: bool,
+    #[serde(default)]
+    pub pair_count: u32,
+    #[serde(default)]
+    pub pairs: Vec<OverheadPairSample>,
     pub notes: Vec<String>,
 }
 
-impl ObserverOverheadReport {
-    /// Compute overhead fraction from paired wall times.
-    pub fn from_pair(
-        cell_id: &str,
-        seed: u64,
+fn default_overhead_budget() -> f64 {
+    OBSERVER_OVERHEAD_BUDGET
+}
+
+impl OverheadPairSample {
+    pub fn from_times(
+        pair_index: u32,
+        order: &str,
         off_e2e_ns: u64,
         on_e2e_ns: u64,
         off_bytes: u64,
@@ -115,27 +167,137 @@ impl ObserverOverheadReport {
         } else {
             0.0
         };
-        let mut notes = vec![
-            "matched probe-off / probe-on observer overhead (same seed/cell work)".into(),
-        ];
-        if off_bytes != on_bytes {
-            notes.push(format!(
-                "logical_bytes differ off={off_bytes} on={on_bytes}; overhead wall-time only"
-            ));
-        }
-        if overhead_fraction < 0.0 {
-            notes.push(
-                "probe-on faster than probe-off (noise); report negative overhead".into(),
-            );
-        }
         Self {
-            cell_id: cell_id.into(),
-            seed,
+            pair_index,
+            order: order.into(),
             probe_off_e2e_ns: off_e2e_ns,
             probe_on_e2e_ns: on_e2e_ns,
             probe_off_logical_bytes: off_bytes,
             probe_on_logical_bytes: on_bytes,
             overhead_fraction,
+        }
+    }
+}
+
+impl ObserverOverheadReport {
+    /// Single pair (smoke convenience / unit tests).
+    pub fn from_pair(
+        cell_id: &str,
+        seed: u64,
+        off_e2e_ns: u64,
+        on_e2e_ns: u64,
+        off_bytes: u64,
+        on_bytes: u64,
+    ) -> Self {
+        let pair = OverheadPairSample::from_times(0, "off_first", off_e2e_ns, on_e2e_ns, off_bytes, on_bytes);
+        Self::from_pairs(cell_id, seed, 0, 0, "smoke", OBSERVER_OVERHEAD_BUDGET, vec![pair])
+    }
+
+    /// Build report from order-balanced multi-pair samples; enforces budget.
+    pub fn from_pairs(
+        cell_id: &str,
+        seed: u64,
+        ops_per_leg: u64,
+        payload_size: u64,
+        run_class: &str,
+        overhead_budget: f64,
+        pairs: Vec<OverheadPairSample>,
+    ) -> Self {
+        let pair_count = pairs.len() as u32;
+        let mut notes = vec![
+            format!(
+                "order-balanced probe-off/on observer overhead: pairs={pair_count} ops_per_leg={ops_per_leg} run_class={run_class}"
+            ),
+        ];
+        if pairs.is_empty() {
+            notes.push("no pairs measured".into());
+            return Self {
+                cell_id: cell_id.into(),
+                seed,
+                ops_per_leg,
+                payload_size,
+                run_class: run_class.into(),
+                probe_off_e2e_ns: 0,
+                probe_on_e2e_ns: 0,
+                probe_off_logical_bytes: 0,
+                probe_on_logical_bytes: 0,
+                overhead_fraction: 0.0,
+                median_overhead_fraction: 0.0,
+                overhead_budget,
+                within_budget: false,
+                pair_count: 0,
+                pairs,
+                notes,
+            };
+        }
+
+        let n = pairs.len() as f64;
+        let sum_off: u128 = pairs.iter().map(|p| p.probe_off_e2e_ns as u128).sum();
+        let sum_on: u128 = pairs.iter().map(|p| p.probe_on_e2e_ns as u128).sum();
+        let mean_off = (sum_off / pairs.len() as u128) as u64;
+        let mean_on = (sum_on / pairs.len() as u128) as u64;
+        let mean_off_bytes = pairs.iter().map(|p| p.probe_off_logical_bytes).sum::<u64>()
+            / pairs.len() as u64;
+        let mean_on_bytes = pairs.iter().map(|p| p.probe_on_logical_bytes).sum::<u64>()
+            / pairs.len() as u64;
+
+        let mean_frac: f64 = pairs.iter().map(|p| p.overhead_fraction).sum::<f64>() / n;
+        let mut fracs: Vec<f64> = pairs.iter().map(|p| p.overhead_fraction).collect();
+        fracs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let median = if fracs.len() % 2 == 1 {
+            fracs[fracs.len() / 2]
+        } else {
+            (fracs[fracs.len() / 2 - 1] + fracs[fracs.len() / 2]) / 2.0
+        };
+
+        let within_budget = median <= overhead_budget;
+        notes.push(format!(
+            "mean_overhead={mean_frac:.6} median_overhead={median:.6} budget={overhead_budget:.4} within_budget={within_budget}"
+        ));
+        for p in &pairs {
+            notes.push(format!(
+                "pair[{}] order={} overhead={:.6}",
+                p.pair_index, p.order, p.overhead_fraction
+            ));
+        }
+        if mean_off_bytes != mean_on_bytes {
+            notes.push(format!(
+                "logical_bytes differ off={mean_off_bytes} on={mean_on_bytes}; overhead wall-time only"
+            ));
+        }
+        if mean_frac < 0.0 || median < 0.0 {
+            notes.push(
+                "probe-on faster than probe-off on average (noise); negative overhead reported".into(),
+            );
+        }
+        if !within_budget {
+            notes.push(format!(
+                "OVERHEAD_BUDGET_EXCEEDED: median {median:.6} > budget {overhead_budget:.4}; product claims must not treat probe cost as DB cost"
+            ));
+        }
+        // Order balance note
+        let off_first = pairs.iter().filter(|p| p.order == "off_first").count();
+        let on_first = pairs.iter().filter(|p| p.order == "on_first").count();
+        notes.push(format!(
+            "order_balance off_first={off_first} on_first={on_first}"
+        ));
+
+        Self {
+            cell_id: cell_id.into(),
+            seed,
+            ops_per_leg,
+            payload_size,
+            run_class: run_class.into(),
+            probe_off_e2e_ns: mean_off,
+            probe_on_e2e_ns: mean_on,
+            probe_off_logical_bytes: mean_off_bytes,
+            probe_on_logical_bytes: mean_on_bytes,
+            overhead_fraction: mean_frac,
+            median_overhead_fraction: median,
+            overhead_budget,
+            within_budget,
+            pair_count,
+            pairs,
             notes,
         }
     }
@@ -149,5 +311,54 @@ mod tests {
     fn overhead_fraction_basic() {
         let r = ObserverOverheadReport::from_pair("c1", 1, 1000, 1100, 100, 100);
         assert!((r.overhead_fraction - 0.1).abs() < 1e-9);
+        // 10% exceeds default 2% budget
+        assert!(!r.within_budget);
+        assert!((r.median_overhead_fraction - 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn multi_pair_order_balance_and_budget() {
+        let pairs = vec![
+            OverheadPairSample::from_times(0, "off_first", 1000, 1005, 100, 100),
+            OverheadPairSample::from_times(1, "on_first", 1000, 1008, 100, 100),
+            OverheadPairSample::from_times(2, "off_first", 1000, 1010, 100, 100),
+            OverheadPairSample::from_times(3, "on_first", 1000, 1006, 100, 100),
+        ];
+        let r = ObserverOverheadReport::from_pairs(
+            "c1",
+            1,
+            32,
+            256,
+            "qualification",
+            OBSERVER_OVERHEAD_BUDGET,
+            pairs,
+        );
+        assert_eq!(r.pair_count, 4);
+        assert!(r.median_overhead_fraction < 0.02);
+        assert!(r.within_budget);
+        assert_eq!(
+            r.pairs.iter().filter(|p| p.order == "off_first").count(),
+            2
+        );
+        assert_eq!(r.pairs.iter().filter(|p| p.order == "on_first").count(), 2);
+    }
+
+    #[test]
+    fn budget_exceeded_flag() {
+        let pairs = vec![
+            OverheadPairSample::from_times(0, "off_first", 1000, 1200, 50, 50),
+            OverheadPairSample::from_times(1, "on_first", 1000, 1250, 50, 50),
+        ];
+        let r = ObserverOverheadReport::from_pairs(
+            "c1",
+            2,
+            8,
+            64,
+            "smoke",
+            OBSERVER_OVERHEAD_BUDGET,
+            pairs,
+        );
+        assert!(!r.within_budget);
+        assert!(r.notes.iter().any(|n| n.contains("OVERHEAD_BUDGET_EXCEEDED")));
     }
 }

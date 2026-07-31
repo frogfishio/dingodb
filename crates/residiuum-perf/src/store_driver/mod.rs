@@ -15,7 +15,10 @@ mod synthetic;
 #[cfg(feature = "store-driver")]
 mod real;
 
-pub use aggregates::{BoundaryAggregateSummary, ObserverOverheadReport};
+pub use aggregates::{
+    BoundaryAggregateSummary, ObserverOverheadReport, OverheadPairSample,
+    OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL, OVERHEAD_MIN_PAIRS_SMOKE,
+};
 pub use emitter::{
     emit_plan_from_boundary_events, emit_plan_from_receipts, facts_from_boundary_events,
     StoreBoundaryEvent, StoreBoundaryKind, WriteReceiptFact, STORE_SEAM_EMITTER_FROM_RECEIPTS,
