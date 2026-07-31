@@ -35,10 +35,11 @@ the code or publishing system they document.
 DONE: emergency storage defects + Residiuum rebrand
   ↓
 TODO NOW: Core Storage Qualification (CSQ-0…CSQ-12)
-  ↓
-TODO NEXT: Application Baseline (APB-0…APB-12)
-  ↓
-Heap Application Ready completion
+  ├── TODO NEXT: Performance Qualification Harness (PQH-0…PQH-9)
+  │              first post-C0 measurement lane
+  └── Application Baseline (APB-0…APB-12), alongside PQH
+       ↓
+      Heap Application Ready completion
   ↓
 RRE → Atomics → relationships → Direct Access → Order Wavelets
 ```

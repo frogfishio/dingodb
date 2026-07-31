@@ -68,6 +68,16 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | CSQ-10 | not_started | — | CSQ-3, CSQ-4, CSQ-6…CSQ-9 | — | mutation/fuzz thresholds absent | suite sensitivity |
 | CSQ-11 | not_started | — | CSQ-5…CSQ-10 | — | compatibility/scale/soak absent | release campaign |
 | CSQ-12 | not_started | — | CSQ-0…CSQ-11 | — | verified A2 bundle absent | core-storage qualification |
+| PQH-0 | not_started | — | CSQ-12 | [specification](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md); [implementation plan](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md) | registries absent | performance measurement contract |
+| PQH-1 | not_started | — | PQH-0 | — | safe runner/platform fingerprint absent | safe controlled runner |
+| PQH-2 | not_started | — | PQH-0 | — | canonical deterministic workloads absent | workload oracle |
+| PQH-3 | not_started | — | PQH-0 | — | metric/result kernel absent | measurement integrity |
+| PQH-4 | not_started | — | PQH-1, PQH-2, PQH-3 | — | device-envelope ladder absent | filesystem/device ceiling |
+| PQH-5 | not_started | — | PQH-4 | — | shared PhysicalWritePlan/shadow writer absent | shaped-I/O ceiling |
+| PQH-6 | not_started | — | PQH-5 | — | CPU pipeline/stage probes absent | stage attribution |
+| PQH-7 | not_started | — | PQH-5, PQH-6 | — | additive/full database matrix absent | complete-path measurement |
+| PQH-8 | not_started | — | PQH-7 | — | causal analyzer/false-narrative suite absent | bottleneck verdicts |
+| PQH-9 | not_started | — | PQH-0…PQH-8 | — | controlled qualification campaign absent | performance qualification |
 | APB-0 | not_started | — | CSQ-12, APP-0, APP-1 | [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md) | complete baseline contract not frozen | application contract |
 | APB-1 | not_started | — | APB-0, HAR-1 | — | unified client absent | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
@@ -140,7 +150,7 @@ acceptance actions. This document deliberately does not reproduce its columns.
 The package state above records qualification and dependency truth only.
 
 The emergency DEF-098…DEF-104 family is accepted. The engine order is now CSQ,
-then APB. Do not
+then the PQH measurement lane alongside APB. Do not
 admit APP-2…APP-8 or HAR-1…HAR-7 as active product packages before `CSQ-12`
 accepts. Existing precursor code and Kanban review cards remain valid evidence;
 they do not override this package interlock.
@@ -151,9 +161,11 @@ Program order (Kanban determines the individual active cards):
 
 1. Execute **CSQ-0…CSQ-12**, beginning with the ready CSQ-0 contract
    registries.
-2. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
+2. Begin **PQH-0…PQH-9** as the first post-C0 measurement lane. It may run
+   alongside M1 but must precede speculative tuning or new performance claims.
+3. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
    [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md).
-3. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
+4. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 

@@ -7,8 +7,10 @@ priority come from [MASTER_DELIVERY_PLAN.md](../../MASTER_DELIVERY_PLAN.md).
 Immediate order:
 
 1. [Core Storage Qualification](core-storage/)
-2. [Application Baseline](application-baseline/)
-3. [Heap Application Ready](heap-application-ready/)
+2. [Performance Qualification Harness](performance-qualification/) — first
+   post-C0 measurement lane; may execute alongside M1
+3. [Application Baseline](application-baseline/)
+4. [Heap Application Ready](heap-application-ready/)
 
 Later programs:
 

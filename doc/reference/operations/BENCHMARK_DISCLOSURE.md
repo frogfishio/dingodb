@@ -4,6 +4,11 @@ Product follow-on: **do not** publish Redis-class or cross-tier latency claims
 without this disclosure. Archive and cold paths are a separate performance
 class from the hot path (OVERVIEW §12.1).
 
+The developer-ready causal measurement authority is the
+[Performance Qualification Harness](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md).
+Existing benchmark hooks below remain diagnostic until the PQH ladder can
+attribute their distance from the matched Residiuum-shaped I/O ceiling.
+
 ## Required fields for every published number
 
 | Field | Example / notes |

@@ -529,6 +529,12 @@ silently changed, incomplete coverage looked complete, errors disappeared from
 throughput, memory exceeded the claimed bound, or background completion was
 excluded without disclosure.
 
+Post-CSQ causal performance experiments additionally conform to the
+[Performance Qualification Harness](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md).
+Its device-envelope, shaped-I/O, CPU-pipeline and complete-database layers
+remain separate test surfaces; a result from one may not be relabeled as
+another.
+
 ### 8.15 Security testing
 
 Required:

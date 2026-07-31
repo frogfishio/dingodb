@@ -9,6 +9,12 @@ Narrative evidence lives in [`WORK_HORIZON.md`](../../done/programs/WORK_HORIZON
 [`PARALLEL_INGEST.md`](./PARALLEL_INGEST.md), and
 [`BENCHMARK_DISCLOSURE.md`](./BENCHMARK_DISCLOSURE.md).
 
+After Core Storage Qualification, measurement and bottleneck selection are
+governed by the
+[Performance Qualification Harness](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md).
+Its matched layer ladder supersedes informal selection from coarse testrig
+CPU/throughput observations.
+
 ---
 
 ## Principles (always)

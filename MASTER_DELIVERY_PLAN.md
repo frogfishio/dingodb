@@ -1,6 +1,6 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.2**
+Status: **definitive execution plan v1.3**
 
 Effective: 2026-07-31
 
@@ -109,9 +109,9 @@ the same change that changes a package state.
 M0  Program Truth
  ↓
 C0  Core Storage Qualification
- ↓
-M1  Heap Application Ready + Application Baseline
- ↓
+ ├── PQ0 Performance Qualification Harness (measurement lane)
+ └── M1  Heap Application Ready + Application Baseline
+      ↓
 M2  Trustworthy Core Early Access
  ↓
 M3  Mathematical Documents
@@ -264,6 +264,59 @@ C0 exit:
   implementation-oracled; and
 - core-storage capability language matches the evidence.
 
+## 6B. PQ0 — Performance Qualification Harness
+
+Release outcome:
+
+> Residiuum can account for throughput and latency from the target filesystem
+> envelope through Residiuum-shaped I/O, CPU transformation, queueing,
+> indexing, lifecycle, durability and acknowledgement, then select tuning work
+> from reproduced evidence.
+
+Priority: `P1-TRUST` immediately after `C0`
+
+Entry dependency: `CSQ-12 = accept`.
+
+Normative specification:
+[PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md](./doc/todo/performance-qualification/PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md).
+
+Implementation plan:
+[PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md](./doc/todo/performance-qualification/PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md).
+
+Required order:
+
+```text
+PQH-0 registries
+  → PQH-1 safe runner/environment
+  → PQH-2 deterministic workloads
+  → PQH-3 metrics/result kernel
+  → PQH-4 device envelope
+  → PQH-5 Residiuum-shaped shadow writer
+  → PQH-6 CPU pipeline/stage probes
+  → PQH-7 complete database matrix
+  → PQH-8 attribution analyzer
+  → PQH-9 qualification campaign
+```
+
+PQH is the first post-C0 measurement lane and may execute alongside M1. It
+does not delay correctness fixes. It blocks:
+
+- speculative performance optimization;
+- a new quantitative performance claim;
+- changing a tuning default on performance grounds without matched evidence;
+  and
+- describing multi-store capacity as single-store scaling.
+
+PQ0 exit:
+
+- `PQH-0` through `PQH-9` are accepted;
+- macOS and Linux controlled campaigns are reproducible;
+- correctness and durability interlocks remain green;
+- observer overhead and stage-accounting residual meet the specification;
+- the current 4 KiB/8 KiB underutilization observation has a registered,
+  evidence-backed verdict; and
+- subsequent tuning cards cite reproduced PQH run IDs.
+
 ## 7. M1 — Heap Application Ready
 
 Release outcome:
@@ -273,7 +326,9 @@ Release outcome:
 
 Priority: `P1-PATH`
 
-Entry dependency: `C0` exit.
+Entry dependency: `C0` exit. PQH begins first as the post-C0 measurement lane
+and then runs alongside M1; M1 does not require `PQH-9` unless it introduces or
+changes a quantitative performance claim.
 
 Immediate Must-Add program:
 [MUST_ADD.md](./doc/todo/application-baseline/MUST_ADD.md), packages `APB-0` through `APB-12`.
