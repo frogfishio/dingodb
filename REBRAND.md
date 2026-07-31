@@ -1,8 +1,8 @@
 # Residiuum rebrand plan
 
-Status: **active; Phase 0 and Phase 1 complete; Phase 2 handoff REB-0…REB-12
-labor-complete (board `done` or `in_review`, awaiting principal accept);
-website Phase 4 still open; Phase 5 final audit not started**
+Status: **non-website rebrand complete through REB-12; website Phase 4 is
+owner-managed and still open; Phase 5 is complete for non-web surfaces and
+awaits the websites**
 
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
@@ -130,17 +130,17 @@ The required order is:
 |---|---|---|---|
 | 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
 | 1. Documentation identity | Codex | **complete** | Establish Residiuum, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
-| 2. Wholesale repository naming | Codex | **labor complete through REB-12 (awaiting principal accept)** | Class A/B renames + Class C freeze + RQL surface + residual audit + docs + workspace verify; REB-0…7 `done`, REB-8…12 `in_review` |
-| 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and package suites green under residiuum names; principal owns any further semantic realignment beyond REB |
-| 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
-| 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
+| 2. Wholesale repository naming | Codex | **complete through REB-12** | Class A/B renames + Class C freeze + RQL surface + residual audit + docs + workspace verify |
+| 3. Rust realignment | principal | **complete for rebrand scope** | Workspace compiles and the full workspace suite is green under Residiuum names |
+| 4. Website and route migration | principal | owner-managed; open | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
+| 5. Final audit | Codex | **non-web complete; website remainder open** | Non-web repository is audited; repeat against both websites after Phase 4 |
 
 Phase 0 was declared complete and Phase 2 was authorized by the principal on
 2026-07-31. Phase 2 mechanical renames, RQL public-surface completion (REB-8),
-Class C re-audit (REB-9), and public-identity residual fixes (REB-10) are
-labor-complete under Feature REB. Principal still owns card accept → `done`,
-REB-12 workspace-wide verification evidence, and any Phase 3 residual beyond
-compile/test green. Website work remains Phase 4.
+Class C re-audit (REB-9), public-identity residual fixes (REB-10), and REB-12
+workspace verification are complete. The non-web rebrand is closed. Website
+work remains the independently managed Phase 4, followed by the website portion
+of the Phase 5 audit.
 
 ## 8. Phase 2 change surface
 

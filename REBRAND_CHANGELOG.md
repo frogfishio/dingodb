@@ -1,7 +1,7 @@
 # Residiuum rebrand changelog (Phase 2)
 
-Status: **Phase 2 implementation labor complete through REB-12 (2026-07-31);
-awaiting principal accept → `done` and any release tag**  
+Status: **Phase 2 implementation complete through REB-12 (2026-07-31);
+unreleased pending a release tag**  
 Normative plan: [REBRAND.md](REBRAND.md). Inventory: [doc/REBRAND_INVENTORY.md](doc/REBRAND_INVENTORY.md).  
 Class C freeze: [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md).
 
@@ -240,7 +240,7 @@ Also Class D: git history, release tags, remote `github.com/frogfishio/dingodb`
 | `cargo test -p residiuum-store` | exit 0 (default features) |
 | `cargo test -p residiuum-cluster` | exit 0 |
 | Class C greps (magics, profiles, URNs, domains) | retained |
-| Optional store tests with `legacy-raw-store` | 1 pre-existing DEF-013 failure; not Class C |
+| `stage_def_010_012_013` with `legacy-raw-store` | exit 0 (5/5; DEF-013 residual fixed) |
 
 ### REB-10 (public identity residual)
 

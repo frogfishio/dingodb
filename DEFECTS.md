@@ -5,6 +5,13 @@ Scope: the complete Residiuum workspace
 Primary inputs: repository review performed 2026-07-25, `OVERVIEW.md`,
 `FORMAT_SPEC.md`, `DX_SPEC.md`, `CLUSTER_SPEC.md`, and current implementation
 
+Execution note (2026-07-31): Kanban is the source of truth for live task stage,
+assignment, review, and acceptance. Status lines in this document describe
+capability completeness and remaining acceptance conditions; they are not a
+second task queue. A defect may therefore have implementation labor in review
+while remaining `partial` here until every documented acceptance condition is
+satisfied.
+
 ## 1. Purpose
 
 This document turns the current product-review findings into an ordered,
