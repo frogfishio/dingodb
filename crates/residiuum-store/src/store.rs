@@ -332,6 +332,13 @@ struct ActiveWriter {
     file: File,
     /// Bytes known durable on disk for this file (complete frames only).
     durable_len: u64,
+    /// Strongest durability **ack** applied to frames in this active segment.
+    ///
+    /// Seal/rotate flushes at least this strong so we never force `sync_all` on a
+    /// segment that only ever received `Buffered` puts (CSQ-ACK-004: Buffered does
+    /// not require fsync). Any `Durable` put upgrades the segment for the rest of
+    /// its life until sealed.
+    max_ack_durability: DurabilityMode,
 }
 
 /// Measured segment-tail file I/O at the actual boundary (write/sync).
@@ -1308,10 +1315,16 @@ impl Store {
         }
 
         // One seek+write_all (and optional sync) for the whole batch.
-        if let Some(writer) = self.active_mut(0) {
-            let tail = Self::write_segment_tail(writer, mode)?;
-            self.record_tail_probe(&tail, mode, 0)?;
-        }
+        let tail = {
+            let writer = self
+                .active_mut(0)
+                .expect("active segment after put_many batch");
+            if mode != DurabilityMode::Memory {
+                writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
+            }
+            Self::write_segment_tail(writer, mode)?
+        };
+        self.record_tail_probe(&tail, mode, 0)?;
         Ok(out)
     }
 
@@ -1500,6 +1513,17 @@ impl Store {
         for (shard, mu) in writers.into_iter().enumerate() {
             let w = mu.into_inner().unwrap_or_else(|e| e.into_inner());
             self.set_active(shard, w);
+        }
+        // Seal policy: any on-disk put_many upgrades max ack for shards that worked.
+        if mode != DurabilityMode::Memory {
+            for shard in 0..n {
+                if by_shard[shard].is_empty() {
+                    continue;
+                }
+                if let Some(w) = self.active_mut(shard) {
+                    w.max_ack_durability = stronger_durability(w.max_ack_durability, mode);
+                }
+            }
         }
 
         let mut receipts: Vec<Option<WriteReceipt>> = (0..items.len()).map(|_| None).collect();
@@ -3251,8 +3275,9 @@ impl Store {
         let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
-        // Ensure all buffered bytes are on the file before seal rewrite.
-        self.flush_active_file(&mut writer, DurabilityMode::Durable, shard as u32)?;
+        // Flush strength matches strongest put ack on this segment (not always Durable).
+        let flush_mode = seal_flush_mode(writer.max_ack_durability);
+        self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
 
         let sealed = writer.segment.seal()?;
         let bytes = sealed.as_bytes();
@@ -3270,10 +3295,14 @@ impl Store {
                 .truncate(true)
                 .open(&dest)?;
             out.write_all(bytes)?;
-            out.sync_all()?;
+            if flush_mode == DurabilityMode::Durable {
+                out.sync_all()?;
+            }
         }
         crate::failpoint::hit("store.seal.after_dest_sync")?;
-        sync_dir(&self.paths.segments_dir())?;
+        if flush_mode == DurabilityMode::Durable {
+            sync_dir(&self.paths.segments_dir())?;
+        }
 
         // Truncate/remove active.
         let sealed_id = writer.segment_id;
@@ -3283,7 +3312,9 @@ impl Store {
             fs::remove_file(&active_path)?;
         }
         crate::failpoint::hit("store.seal.after_active_remove")?;
-        sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
+        if flush_mode == DurabilityMode::Durable {
+            sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
+        }
 
         // Stage 9: register sealed segment on hot tier using the in-memory hash
         // (no second full-file read). Catalog upsert is O(this segment only).
@@ -3303,8 +3334,8 @@ impl Store {
         let _ = self.write_chimera_for_sealed(sealed_id);
 
         self.segment_seq = self.segment_seq.saturating_add(1);
-        self.start_active_segment(shard)?;
-        self.persist_active_shard(shard, DurabilityMode::Durable)?;
+        self.start_active_segment_with_mode(shard, flush_mode)?;
+        self.persist_active_shard(shard, flush_mode)?;
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
     }
@@ -3416,6 +3447,7 @@ impl Store {
                     &sealed,
                     self.limits,
                     &self.paths,
+                    true, // recovery: stable publish
                 ) {
                     Ok((content_hash, size, sealed_bytes)) => {
                         let _ = register_hot_segment_known(
@@ -3466,8 +3498,9 @@ impl Store {
         let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
-        // Durable flush so pending file is crash-safe before we open a new active.
-        self.flush_active_file(&mut writer, DurabilityMode::Durable, shard as u32)?;
+        // Match flush to strongest put ack on this segment (Buffered vs Durable).
+        let flush_mode = seal_flush_mode(writer.max_ack_durability);
+        self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
         let segment_id = writer.segment_id;
         drop(writer); // close file handle; bytes remain at active path
 
@@ -3476,6 +3509,7 @@ impl Store {
         let pending_dir = self.paths.pending_seal_dir();
         fs::create_dir_all(&pending_dir)?;
         let pending_path = self.paths.pending_segment(&segment_id);
+        let require_fsync = flush_mode == DurabilityMode::Durable;
         if pending_path.exists() {
             // Should not happen; recover old pending first.
             let sealed = self.paths.sealed_segment(&segment_id);
@@ -3486,15 +3520,18 @@ impl Store {
                 &sealed,
                 self.limits,
                 &self.paths,
+                true, // recovery: prefer stable publish
             );
         }
         fs::rename(&active_path, &pending_path)?;
-        sync_dir(&self.paths.active_shard_dir(shard, n))?;
-        let _ = sync_dir(&pending_dir);
+        if require_fsync {
+            sync_dir(&self.paths.active_shard_dir(shard, n))?;
+            let _ = sync_dir(&pending_dir);
+        }
 
         self.segment_seq = self.segment_seq.saturating_add(1);
-        self.start_active_segment(shard)?;
-        self.persist_active_shard(shard, DurabilityMode::Durable)?;
+        self.start_active_segment_with_mode(shard, flush_mode)?;
+        self.persist_active_shard(shard, flush_mode)?;
 
         if let Some(pipe) = self.seal_pipeline.as_mut() {
             pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
@@ -3509,6 +3546,7 @@ impl Store {
                 sealed_path: self.paths.sealed_segment(&segment_id),
                 limits: self.limits,
                 paths: self.paths.clone(),
+                require_fsync,
             })?;
         } else {
             // No worker — finalize synchronously.
@@ -3520,6 +3558,7 @@ impl Store {
                 &sealed,
                 self.limits,
                 &self.paths,
+                require_fsync,
             )?;
             let _ = register_hot_segment_known(
                 &self.paths,
@@ -4553,6 +4592,12 @@ impl Store {
             offset,
         );
         receipt.encoded_frame_len = encoded_frame_len;
+        // Track strongest ack for seal policy (Buffered-only ⇒ no seal fsync).
+        if mode != DurabilityMode::Memory {
+            if let Some(w) = self.active_mut(shard) {
+                w.max_ack_durability = stronger_durability(w.max_ack_durability, mode);
+            }
+        }
         Ok(receipt)
     }
 
@@ -4705,6 +4750,11 @@ impl Store {
             .open(&path)?;
         file.write_all(segment.as_bytes())?;
         let durable_len = segment.len();
+        // New active creation: Durable open paths still fsync the descriptor;
+        // Buffered-only workloads skip fsync (CSQ-ACK-004).
+        // Caller uses Durable when opening/resuming for crash-safe catalog; seal
+        // path that only ever saw Buffered acks may start the next active without
+        // fsync via `start_active_segment_with_mode`.
         file.sync_all()?;
         self.set_active(
             shard,
@@ -4713,6 +4763,44 @@ impl Store {
                 segment,
                 file,
                 durable_len,
+                max_ack_durability: DurabilityMode::Memory,
+            }),
+        );
+        Ok(())
+    }
+
+    /// Start a new active segment, fsyncing the descriptor only when `mode` is Durable.
+    fn start_active_segment_with_mode(
+        &mut self,
+        shard: usize,
+        mode: DurabilityMode,
+    ) -> Result<(), StoreError> {
+        let n = self.writer_shards();
+        let segment_id = self.next_segment_id();
+        let ids = SegmentId::new(self.store_id, segment_id);
+        let segment = ActiveSegment::create(ids, self.limits, now_ns())?;
+        let dir = self.paths.active_shard_dir(shard, n);
+        fs::create_dir_all(&dir)?;
+        let path = self.paths.active_segment_for_shard(shard, n);
+        let mut file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(true)
+            .open(&path)?;
+        file.write_all(segment.as_bytes())?;
+        let durable_len = segment.len();
+        if mode == DurabilityMode::Durable {
+            file.sync_all()?;
+        }
+        self.set_active(
+            shard,
+            Some(ActiveWriter {
+                segment_id,
+                segment,
+                file,
+                durable_len,
+                max_ack_durability: DurabilityMode::Memory,
             }),
         );
         Ok(())
@@ -4762,6 +4850,8 @@ impl Store {
                 segment: rebuilt,
                 file,
                 durable_len,
+                // Resumed bytes may include prior Durable frames; fail closed.
+                max_ack_durability: DurabilityMode::Durable,
             }),
         );
         Ok(())
@@ -5257,6 +5347,37 @@ fn read_store_id(paths: &StorePaths) -> Result<[u8; 16], StoreError> {
     let mut id = [0u8; 16];
     id.copy_from_slice(&raw);
     Ok(id)
+}
+
+/// Order durability modes by strength of the failure boundary (CSQ ack table).
+fn durability_rank(mode: DurabilityMode) -> u8 {
+    match mode {
+        DurabilityMode::Memory => 0,
+        DurabilityMode::Buffered => 1,
+        DurabilityMode::Durable => 2,
+    }
+}
+
+/// Stronger of two ack modes (for per-segment seal policy).
+fn stronger_durability(a: DurabilityMode, b: DurabilityMode) -> DurabilityMode {
+    if durability_rank(a) >= durability_rank(b) {
+        a
+    } else {
+        b
+    }
+}
+
+/// Seal/rotate flush strength for an active segment given its max put ack.
+///
+/// On-disk frames always need at least `Buffered` (bytes handed to the OS).
+/// `Durable` is required only if a Durable put was acked into this segment.
+fn seal_flush_mode(max_ack: DurabilityMode) -> DurabilityMode {
+    match max_ack {
+        DurabilityMode::Durable => DurabilityMode::Durable,
+        // Memory-only never appends frames; descriptor-only still goes through
+        // Buffered (write, no fsync) so we do not pay Durable for empty rotate.
+        DurabilityMode::Memory | DurabilityMode::Buffered => DurabilityMode::Buffered,
+    }
 }
 
 fn now_ns() -> u64 {

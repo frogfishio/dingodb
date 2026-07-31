@@ -49,6 +49,9 @@ pub enum LifecycleJob {
         limits: SafetyLimits,
         /// Store root paths (Hydra/Chimera layout).
         paths: StorePaths,
+        /// When true, `sync_all` sealed image + parent dir (Durable ack path).
+        /// When false, write+rename only (Buffered-only segments; CSQ-ACK-004).
+        require_fsync: bool,
     },
     /// Write a primary-index frontier checkpoint (derived only).
     Checkpoint {
@@ -189,6 +192,7 @@ fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult
                 sealed_path,
                 limits,
                 paths,
+                require_fsync,
             } => {
                 match finalize_seal(
                     store_id,
@@ -197,6 +201,7 @@ fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult
                     &sealed_path,
                     limits,
                     &paths,
+                    require_fsync,
                 ) {
                     Ok((content_hash, size, sealed_bytes)) => {
                         let _ = result_tx.send(LifecycleResult::SealDone {
@@ -236,6 +241,7 @@ pub fn finalize_seal(
     sealed_path: &std::path::Path,
     limits: SafetyLimits,
     paths: &StorePaths,
+    require_fsync: bool,
 ) -> Result<([u8; 32], u64, Vec<u8>), StoreError> {
     if !pending_path.is_file() {
         // Already finalized (retry / recover race).
@@ -267,17 +273,23 @@ pub fn finalize_seal(
             .truncate(true)
             .open(&tmp)?;
         out.write_all(&sealed_bytes)?;
-        out.sync_all()?;
+        if require_fsync {
+            out.sync_all()?;
+        }
     }
     fs::rename(&tmp, sealed_path)?;
-    if let Some(parent) = sealed_path.parent() {
-        let _ = crate::atomic_file::sync_dir(parent);
+    if require_fsync {
+        if let Some(parent) = sealed_path.parent() {
+            let _ = crate::atomic_file::sync_dir(parent);
+        }
     }
 
-    // Remove pending after sealed is durable.
+    // Remove pending after sealed is published (fsync only when Durable path).
     let _ = fs::remove_file(pending_path);
-    if let Some(parent) = pending_path.parent() {
-        let _ = crate::atomic_file::sync_dir(parent);
+    if require_fsync {
+        if let Some(parent) = pending_path.parent() {
+            let _ = crate::atomic_file::sync_dir(parent);
+        }
     }
 
     // Derived indexes (non-fatal).
@@ -307,6 +319,7 @@ pub fn recover_all_pending(paths: &StorePaths, store_id: [u8; 16], limits: Safet
             &sealed_path,
             limits,
             paths,
+            true, // open recovery: prefer stable sealed publish
         )?;
         n += 1;
     }
@@ -500,6 +513,7 @@ mod tests {
             &sealed,
             SafetyLimits::default(),
             &paths,
+            true,
         )
         .unwrap();
         assert!(sealed.is_file());

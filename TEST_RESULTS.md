@@ -268,6 +268,48 @@ ps %cpu ≈ 20→25 (of one core)
 Harness: `residiuum-testrig phase-bench -w /Volumes/Scratch/TEST/...`  
 Artifacts: `doc/wip/status/surveys/scratch-phase-bench-20260801/`
 
+### Strategy: fix seal cost without weakening CSQ durability
+
+**Problem:** Auto-seal was calling `flush_active_file(..., Durable)` + sealed-file `sync_all` even when **every put on that segment was only `Buffered`**. That is stronger than CSQ-ACK-004 requires and dominated wall time (probe: ~64% in `file_sync`).
+
+**Integrity-preserving rule (normative):**
+
+| Put acks on the active segment | Seal/rotate must |
+|--------------------------------|------------------|
+| Includes any **`Durable`** | Full stable path: `write` + `sync_all` + dir sync (unchanged) |
+| Only **`Buffered`** (or empty) | **`write` / rename only** — same failure domain as Buffered put (process kill usually OK via page cache; **no** power-loss claim) |
+| **`Memory` only** | No frames on disk; no upgrade to Durable |
+
+Never return a `Durable` receipt without a Durable boundary. Never relabel Buffered as something weaker.
+
+**Implemented (this slice):**
+
+1. Per-active-segment `max_ack_durability` (upgraded on each non-Memory put).
+2. `seal_flush_mode()` → seal/rotate flush + sealed publish + new-active create use that strength.
+3. `finalize_seal(..., require_fsync)` — fsync only when Durable path required.
+4. Open/recovery finalize still uses `require_fsync: true` (fail closed).
+
+**After fix (Scratch phase-bench, 20k × 8 KiB Buffered):**
+
+```text
+file_sync n=0  (was n=4, ~443 ms)
+Buffered put still ~31k ops/s  (was ~29–32k)
+```
+
+Fsync tax is gone for Buffered-only seals, but **rate barely moved**. Remaining wall is largely:
+
+- **Full sealed-image rewrite** (read/hash/write ~64 MiB per seal, × several seals)
+- Per-put encode/index (still present; Memory put remains ~600k ops/s)
+
+**Next strategies (ranked, still integrity-safe):**
+
+1. **Rename-based seal when pending already holds complete frames** — avoid second full rewrite of 64 MiB (big win; recovery must still verify).
+2. **Larger seal threshold for Buffered bulk** — fewer seals (operational knob; same ack table).
+3. **Keep Durable path strict** — any Durable put on a segment forces Durable seal forever for that segment.
+4. **Do not** skip frame BLAKE3 / weaken wire integrity for speed.
+
+**What we will not do:** silent “faster Buffered” that acks before OS write, or Durable without `sync_all`.
+
 ### Robustness / guarantees (principal Q: “would this affect our guarantees?”)
 
 **Normative SoT:** `doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md` (durability ack table). Performance work must not silently change those modes.
