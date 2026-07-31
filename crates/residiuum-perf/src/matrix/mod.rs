@@ -12,7 +12,9 @@ mod profiles;
 mod scheduler;
 
 pub use compare::{select_matched_pairs, CellResult, MatchedPair};
-pub use driver::{run_cell, DatabaseState, DurabilityMode, LayerProfile, RunCellConfig};
+pub use driver::{
+    run_cell, CellRunReport, DatabaseState, DurabilityMode, LayerProfile, RunCellConfig,
+};
 pub use ledger::{AckLedger, LedgerError};
 pub use profiles::{
     AdditiveFeature, BackgroundInterference, FeatureProfile, InterferenceProfile,

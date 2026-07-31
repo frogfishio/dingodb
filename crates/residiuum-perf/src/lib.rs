@@ -11,6 +11,7 @@
 //! - **PQH-6:** L3 CPU pipeline + stage probes (null/memory sink).
 //! - **PQH-7:** L4/L5/L6 matrix runner (ledger, profiles, scheduler).
 //! - **PQH-8:** attribution analyzer, bottleneck verdicts, false narratives.
+//! - **PQH-9:** qualification campaign, evidence bundle, disclosure.
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
@@ -18,6 +19,7 @@
 #![forbid(unsafe_code)]
 
 pub mod analyze;
+pub mod campaign;
 pub mod envelope;
 pub mod matrix;
 pub mod metrics;
