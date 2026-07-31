@@ -48,18 +48,15 @@ unqualified collection namespace in the abstract model.
 
 ## 3. Closed constructors
 
-### 3.1 Knowledge and observations
+### 3.1 Observations
 
 ```text
-Knowledge α :=
+Observation α :=
   | complete(value : α, evidence : EvidenceDigest)
   | absent_proved(evidence : EvidenceDigest)
   | partial(evidence : EvidenceDigest)
   | damaged(evidence : EvidenceDigest)
   | unknown(evidence : EvidenceDigest)
-
-Observation α :=
-  | known(knowledge : Knowledge α)
   | unauthorized
   | unavailable(evidence : EvidenceDigest)
 ```
@@ -209,7 +206,7 @@ current-Heap or current-collection variables.
 The transition relation is:
 
 ```text
-Step : State -> Input -> State -> Outcome Observation -> Prop
+Step : State -> Input -> State -> Outcome (Observation Value) -> Prop
 ```
 
 For read-only operations, `s' = s`. For rejected operations, `s' = s` unless

@@ -238,16 +238,20 @@ Observe:Principal\times Scope\times\Sigma\rightarrow Observation
 Observation distinguishes:
 
 ```text
-Complete(v)
-Absent
-Partial(evidence)
-Damaged(evidence)
-OutcomeUnknown(evidence)
-Unauthorized
-Unavailable
+complete(v, evidence)
+absent_proved(evidence)
+partial(evidence)
+damaged(evidence)
+unknown(evidence)
+unauthorized
+unavailable(evidence)
 ```
 
 These constructors never collapse without a registered safe projection.
+For readability, later formulae use `Complete(v)`, `Absent`, `Partial`,
+`Damaged`, `Unknown`, `Unauthorized` and `Unavailable` as notation for pattern
+matching the corresponding exact constructors above; `Absent` always means
+`absent_proved(evidence)`, never failed discovery.
 
 ### 7.2 Abstract/concrete connection
 

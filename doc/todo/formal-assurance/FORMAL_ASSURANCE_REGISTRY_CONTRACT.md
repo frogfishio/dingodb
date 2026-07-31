@@ -16,13 +16,19 @@ formal/registry/assumptions-v1.json
 formal/registry/tcb-v1.json
 formal/registry/claims-v1.json
 formal/registry/profiles-v1.json
+formal/registry/operations-v1.json
+formal/registry/negative-controls-v1.json
 formal/registry/toolchain-lock-v1.json
 formal/registry/schemas/theorems-v1.schema.json
 formal/registry/schemas/assumptions-v1.schema.json
 formal/registry/schemas/tcb-v1.schema.json
 formal/registry/schemas/claims-v1.schema.json
 formal/registry/schemas/profiles-v1.schema.json
+formal/registry/schemas/operations-v1.schema.json
+formal/registry/schemas/negative-controls-v1.schema.json
+formal/registry/schemas/toolchain-lock-v1.schema.json
 formal/registry/schemas/proof-result-v1.schema.json
+formal/registry/schemas/package-report-v1.schema.json
 formal/registry/schemas/proof-bundle-v1.schema.json
 formal/registry/fixtures/accepted/
 formal/registry/fixtures/rejected/
@@ -50,10 +56,11 @@ Other IDs:
 FAS-ASM-[A-Z0-9-]+-[0-9]{3}
 FAS-TCB-[A-Z0-9-]+-[0-9]{3}
 FAS-CLAIM-[A-Z0-9-]+-[0-9]{3}
-FAS-PROFILE-[A-Z0-9-]+-[0-9]{3}
 FAS-TOOL-[A-Z0-9-]+-[0-9]{3}
+FAS-OP-[A-Z0-9-]+-[0-9]{3}
 FAS-NEG-[A-Z0-9-]+-[0-9]{3}
 FAS-RESULT-[A-Z0-9-]+-[0-9]{3}
+residiuum-formal-(foundation|consistency|security|atomics|cluster)-v[1-9][0-9]*
 ```
 
 IDs are permanent. Renaming creates a new ID and records `supersedes`.
@@ -199,7 +206,7 @@ The initial assumption catalogue MUST include:
 | ID | Class | Required statement |
 |---|---|---|
 | `FAS-ASM-CLASSICAL-LOGIC-001` | mathematics | accepted logic foundations of selected proof kernels |
-| `FAS-ASM-CROSS-TOOL-MAP-001` | cross-tool | Lean/TLA+/Verus representations correspond where claimed |
+| `FAS-ASM-CROSS-TOOL-MAP-001` | cross_tool_bridge | Lean/TLA+/Verus representations correspond where claimed |
 | `FAS-ASM-RUST-COMPILER-001` | compiler | verified source meaning is preserved by the named Rust toolchain outside proved compiler scope |
 | `FAS-ASM-CRYPTO-PRIMITIVES-001` | cryptography | named primitives meet their standard security assumptions |
 | `FAS-ASM-FILESYSTEM-DURABILITY-001` | filesystem | qualified sync/persistence contract holds |
@@ -298,7 +305,187 @@ Rules:
 - output content is an attachment addressed by its hash; and
 - timestamps do not establish proof identity.
 
-## 9. Status derivation
+### 8.1 Common field constraints
+
+All registry roots require exactly `schema`, `version` and `items`. `version`
+is integer `1`; `items` is an array unique by `id`. Unless a field below is
+explicitly nullable, it is required and non-null.
+
+Across every object:
+
+- `version` is a positive integer;
+- SHA-256 values match `^sha256:[0-9a-f]{64}$`;
+- source revisions match `^[0-9a-f]{40}$`;
+- timestamps are RFC 3339 UTC values;
+- paths are normalized repository-relative POSIX paths, contain no `..`, and
+  are not absolute;
+- identifier arrays contain unique known IDs;
+- strings are nonempty after trimming; and
+- maps have lexically sorted keys in canonical bundle encoding.
+
+`null` is permitted only for `supersedes`, `dirty_tree_hash`, `bounds`,
+`counterexample_ref` and explicitly optional feature fields.
+
+## 9. Claim, profile and control objects
+
+### 9.1 Public claim
+
+`claims-v1.json` contains claim objects:
+
+```json
+{
+  "id": "FAS-CLAIM-CONSISTENCY-GENERATION-001",
+  "version": 1,
+  "public_text": "Generation-exact reconstruction is implementation-connected under the listed assumptions.",
+  "theorem_ids": ["FAS-CON-GENERATION-EXACT-001"],
+  "minimum_status": "implementation_connected",
+  "profile_ids": ["residiuum-formal-consistency-v1"],
+  "allowed_channels": ["cli", "documentation", "release_manifest"],
+  "forbidden_short_forms": ["the whole database is formally verified"],
+  "supersedes": null
+}
+```
+
+`allowed_channels` is closed to `cli | documentation | website |
+release_manifest`. Every theorem ID exists. A claim is publishable only when
+all named theorems meet `minimum_status` and none is revoked. Generated public
+text MUST include boundedness and material assumptions when applicable.
+
+### 9.2 Profile
+
+`profiles-v1.json` contains:
+
+```json
+{
+  "id": "residiuum-formal-consistency-v1",
+  "version": 1,
+  "mandatory_theorem_ids": ["FAS-FND-OBSERVATION-SEPARATION-001"],
+  "minimum_status_by_theorem": {
+    "FAS-FND-OBSERVATION-SEPARATION-001": "machine_proved"
+  },
+  "required_claim_ids": [],
+  "required_tcb_ids": [],
+  "required_tool_ids": [],
+  "required_qualification_suites": [],
+  "release_identity_required": true,
+  "supersedes": null
+}
+```
+
+The real consistency profile includes every foundation and consistency ID in
+§12. The key set of `minimum_status_by_theorem` equals
+`mandatory_theorem_ids`. Unknown, duplicate, omitted or extra theorem IDs
+fail. Profile inheritance is forbidden in v1; the full closed set is
+materialized so a verifier does not need implicit policy.
+
+### 9.3 Negative control
+
+Negative controls are items in `formal/registry/negative-controls-v1.json`:
+
+```json
+{
+  "id": "FAS-NEG-MIX-GENERATIONS-001",
+  "version": 1,
+  "theorem_ids": ["FAS-CON-GENERATION-EXACT-001"],
+  "fixture_path": "formal/registry/fixtures/rejected/mix-generations.json",
+  "expected_failure_code": "generation_mismatch",
+  "expected_stage": "proof_or_model",
+  "fixture_hash": "sha256:<hex>",
+  "mutant_source_ref": null
+}
+```
+
+`expected_stage` is `schema | registry | proof_or_model | refinement |
+qualification | bundle_verification`. A negative control passes only when the
+declared stage rejects it with the exact stable code. A crash, timeout or
+different rejection is failure.
+
+### 9.4 Operation contract
+
+`operations-v1.json` realizes every operation required by the formal kernel:
+
+```json
+{
+  "id": "FAS-OP-PUT-001",
+  "version": 1,
+  "input_type": "Residiuum.Input.put",
+  "precondition_symbol": "Residiuum.Operation.Put.precondition",
+  "transition_symbol": "Residiuum.Operation.Put.step",
+  "outcome_symbol": "Residiuum.Operation.Put.outcome",
+  "mode": "write",
+  "semantics": "relational",
+  "preserved_invariant_ids": ["WF_CollectionsQualified"],
+  "authorization_symbol": "Residiuum.Authority.canPut",
+  "crash_point_ids": [],
+  "rust_entrypoints": [],
+  "verus_symbols": [],
+  "tla_actions": [],
+  "supersedes": null
+}
+```
+
+`mode` is `read | write`; `semantics` is `deterministic | relational`. The
+initial registry has one or more entries covering every closed `Input`
+constructor in the kernel contract. A state-changing entry requires at least
+one preserved invariant. Every entry requires an authorization symbol. FAS-3
+fills Rust/Verus bindings; until then their arrays are empty and no connection
+can be claimed.
+
+### 9.5 Package report
+
+Each acceptance command emits one
+`residiuum-formal-package-report-v1` object:
+
+```json
+{
+  "schema": "residiuum-formal-package-report-v1",
+  "package": "FAS-2",
+  "source_tree_hash": "sha256:<hex>",
+  "toolchain_lock_hash": "sha256:<hex>",
+  "started_at": "<RFC3339>",
+  "finished_at": "<RFC3339>",
+  "result_refs": [],
+  "negative_control_result_refs": [],
+  "artifact_hashes": {},
+  "result": "pass"
+}
+```
+
+`package` is `FAS-0` through `FAS-9`. `result` uses the closed result enum.
+The report aggregates proof-result objects; it does not replace them. A
+declared `pass` is recomputed from all package-mandatory obligations.
+
+## 10. Proof bundle object
+
+`proof-bundle-v1.schema.json` requires a manifest with:
+
+```json
+{
+  "schema": "residiuum-formal-proof-bundle-v1",
+  "bundle_version": 1,
+  "profile_ids": ["residiuum-formal-foundation-v1"],
+  "source_revision": "<40 lowercase hex>",
+  "source_tree_hash": "sha256:<hex>",
+  "binary_hashes": {},
+  "registry_hashes": {},
+  "toolchain_lock_hash": "sha256:<hex>",
+  "result_paths": [],
+  "negative_control_result_paths": [],
+  "qualification_evidence_paths": [],
+  "attachment_hashes": {},
+  "created_at": "<RFC3339>",
+  "builder_identity": "residiuum-formal-bundle/v1",
+  "declared_result": "pass"
+}
+```
+
+Every listed path is content-addressed by a manifest hash. No unlisted file
+affects evaluation. The independent verifier ignores `declared_result`,
+recomputes it, rejects duplicate paths, symlinks, path traversal, hash
+mismatch, missing/extra required results, dirty release source and profile
+closure mismatch.
+
+## 11. Status derivation
 
 The evaluator derives status in this exact order:
 
@@ -330,20 +517,20 @@ proposed
 A theorem cannot skip a required level. Independent Lean and Verus results may
 both be presented, but one does not imply the other.
 
-## 10. Initial theorem catalogue
+## 12. Initial theorem catalogue
 
 FAS-0 MUST register these IDs. FAS-0 may add supporting lemmas, but may not
 rename or omit the mandatory claims.
 
-### 10.1 Foundation
+### 12.1 Foundation
 
 | ID | Required property |
 |---|---|
-| `FAS-FND-OBSERVATION-SEPARATION-001` | Complete, Absent, Partial, Damaged, Unknown, Unauthorized and Unavailable are distinct |
+| `FAS-FND-OBSERVATION-SEPARATION-001` | complete, absent-proved, partial, damaged, unknown, unauthorized and unavailable are distinct |
 | `FAS-FND-FORBIDDEN-COLLAPSE-001` | no registered public projection performs a forbidden collapse |
 | `FAS-FND-REFINEMENT-COMPOSITION-001` | valid refinements compose while preserving named invariants |
 
-### 10.2 Consistency
+### 12.2 Consistency
 
 | ID | Required property |
 |---|---|
@@ -356,7 +543,7 @@ rename or omit the mandatory claims.
 | `FAS-CON-DAMAGE-HONESTY-001` | insufficient evidence cannot become absence or completeness |
 | `FAS-CON-HEALTHY-ISLAND-001` | unaffected valid frames remain discoverable within scanner assumptions |
 
-### 10.3 Security
+### 12.3 Security
 
 | ID | Required property |
 |---|---|
@@ -368,7 +555,7 @@ rename or omit the mandatory claims.
 | `FAS-SEC-MASTER-NONSERVING-001` | master credentials cannot authorize network operations |
 | `FAS-SEC-SCOPE-GUARD-001` | scoped/wildcard RUD-no-create semantics preserve authority and noninterference |
 
-### 10.4 Atomics/isolation
+### 12.4 Atomics/isolation
 
 | ID | Required property |
 |---|---|
@@ -381,7 +568,7 @@ rename or omit the mandatory claims.
 | `FAS-ATM-ISOLATION-HISTORY-001` | concrete concurrent history refines the named isolation profile |
 | `FAS-ATM-RECOVERY-CONVERGENCE-001` | recovery is safe and conditionally reaches one final decision |
 
-### 10.5 Cluster
+### 12.5 Cluster
 
 | ID | Required property |
 |---|---|
@@ -395,7 +582,7 @@ rename or omit the mandatory claims.
 | `FAS-CLU-HEAP-CONFINEMENT-001` | distribution preserves Heap noninterference |
 | `FAS-CLU-MEMBERSHIP-SAFETY-001` | membership transitions preserve quorum safety and fencing |
 
-## 11. Required proof authority by family
+## 13. Required proof authority by family
 
 | Family | Primary theorem authority | Temporal authority | Rust connection | Physical evidence |
 |---|---|---|---|---|
@@ -408,7 +595,7 @@ rename or omit the mandatory claims.
 TLC results are bounded model evidence. TLAPS results are theorem evidence.
 Neither automatically establishes Rust connection.
 
-## 12. Cross-tool semantic bridge
+## 14. Cross-tool semantic bridge
 
 Lean, TLA+ and Verus do not verify one another. V1 therefore treats their
 semantic correspondence as an explicit TCB/assumption boundary rather than
@@ -436,7 +623,7 @@ proof. Their joint presentation remains subject to
 `FAS-ASM-CROSS-TOOL-MAP-001` until a future verified common-spec generator
 discharges it.
 
-## 13. Profiles and exact gates
+## 15. Profiles and exact gates
 
 | Profile | Mandatory theorem IDs | Minimum status |
 |---|---|---|
@@ -450,7 +637,7 @@ The foundation profile may accept an abstract theorem without a Rust
 entrypoint only when its theorem registry declares that no implementation
 surface exists. Every product-behavior theorem requires connection.
 
-## 14. Evaluator and verifier separation
+## 16. Evaluator and verifier separation
 
 The bundle builder and verifier MUST be separate implementations:
 
@@ -465,7 +652,7 @@ The bundle builder and verifier MUST be separate implementations:
 The verifier re-derives file hashes, dependency closure, status, profile gates
 and release identity. It never trusts a declared overall result.
 
-## 15. Minimum fixture catalogue
+## 17. Minimum fixture catalogue
 
 Rejected fixtures MUST include:
 
@@ -491,7 +678,7 @@ partial bundle and path traversal
 Accepted fixtures cover each assurance level independently and one complete
 foundation profile.
 
-## 16. FAS-0 acceptance command
+## 18. FAS-0 acceptance command
 
 FAS-0 is accepted only when this command exists and passes:
 
@@ -510,4 +697,3 @@ It SHALL:
 7. emit `target/formal-assurance/fas0-registry-report.json`.
 
 File existence, text search and item counts alone cannot satisfy FAS-0.
-

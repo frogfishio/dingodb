@@ -42,6 +42,8 @@ formal/
     tcb-v1.json
     claims-v1.json
     profiles-v1.json
+    operations-v1.json
+    negative-controls-v1.json
     toolchain-lock-v1.json
     schemas/
     fixtures/
@@ -138,9 +140,10 @@ infrastructure-failed mandatory work.
 | FAS-8 | `bash scripts/check-formal-cluster.sh` | `target/formal-assurance/fas8-cluster-report.json` |
 | FAS-9 | `bash scripts/build-proof-bundle.sh` then `bash scripts/verify-proof-bundle.sh --require-profile <PROFILE>` | `target/formal-assurance/fas9-bundle-report.json` |
 
-Every report uses the proof-result schema, names the package, source tree hash,
-toolchain-lock hash, start/end time, executed obligations, negative controls,
-result and artifact hashes. Human-readable output is diagnostic only.
+Every report uses the package-report schema and aggregates proof-result
+objects. It names the package, source tree hash, toolchain-lock hash, start/end
+time, executed obligations, negative controls, result and artifact hashes.
+Human-readable output is diagnostic only.
 
 ### 3.2 Package admission law
 
