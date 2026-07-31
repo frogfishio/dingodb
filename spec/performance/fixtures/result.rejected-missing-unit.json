@@ -1,0 +1,13 @@
+{
+  "format": "residiuum-pqh-result-v1",
+  "profile": "residiuum-performance-qualification-v1",
+  "run_id": "bad-unit",
+  "layer": "L0",
+  "validity": "valid",
+  "metrics": {
+    "ops_acknowledged": {
+      "status": "present",
+      "value": 10
+    }
+  }
+}

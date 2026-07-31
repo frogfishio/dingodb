@@ -1,0 +1,28 @@
+{
+  "schema": "residiuum-pqh-omission-reasons-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "impossible_on_platform",
+      "description": "Cell requires platform capability not present"
+    },
+    {
+      "id": "redundant_covered",
+      "description": "Covered by another committed matrix cell"
+    },
+    {
+      "id": "profile_pruned",
+      "description": "Outside selected profile byte/time budget"
+    },
+    {
+      "id": "unsafe_on_workstation",
+      "description": "Default workstation profile forbids large/soak"
+    },
+    {
+      "id": "architecture_blocked",
+      "description": "Store seam missing (e.g. PhysicalWritePlan) \u2014 architecture finding"
+    }
+  ]
+}

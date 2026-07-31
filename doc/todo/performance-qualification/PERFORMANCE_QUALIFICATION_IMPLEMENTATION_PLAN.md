@@ -1,6 +1,6 @@
 # Performance Qualification Harness implementation plan
 
-Status: **TODO — blocked by CSQ-12**
+Status: **ACTIVE — PQH-0 registries labor floor 2026-07-31; blocked on CSQ-12 accept for program entry honesty**
 
 Program: `PQH`
 
@@ -438,4 +438,3 @@ next smallest experiment:           ...
 
 Anything less is a benchmark collection, not the required performance
 qualification harness.
-

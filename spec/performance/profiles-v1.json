@@ -1,0 +1,107 @@
+{
+  "schema": "residiuum-pqh-profiles-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "residiuum-performance-qualification-v1",
+      "kind": "performance_qualification",
+      "product": "Residiuum",
+      "entry_dependency": "CSQ-12",
+      "safe_on_workstation_default": true,
+      "requires_explicit_budget_for": [
+        "large",
+        "soak"
+      ],
+      "layers": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        "L6"
+      ],
+      "stages": [
+        "queue",
+        "validation",
+        "encoding",
+        "chunking",
+        "indexing",
+        "io",
+        "publication",
+        "durability",
+        "residual"
+      ],
+      "verdicts": [
+        "generator_bound",
+        "cpu_transform_bound",
+        "io_bandwidth_bound",
+        "io_queue_underdriven",
+        "serialized_writer",
+        "durability_barrier_bound",
+        "lifecycle_bound",
+        "index_bound",
+        "memory_pressure_bound",
+        "telemetry_bound",
+        "mixed_or_unknown"
+      ],
+      "validity": [
+        "valid",
+        "invalid_preflight",
+        "invalid_budget",
+        "invalid_path",
+        "invalid_debug_build",
+        "invalid_correctness",
+        "invalid_steady_state",
+        "invalid_thermal",
+        "invalid_instrumentation",
+        "invalid_partial_cancelled",
+        "invalid_unavailable_required_metric"
+      ],
+      "metrics_required": [
+        "ops_attempted",
+        "ops_admitted",
+        "ops_acknowledged",
+        "ops_failed",
+        "logical_payload_bytes_ack",
+        "logical_key_bytes",
+        "latency_e2e_p50_ns",
+        "latency_e2e_p90_ns",
+        "latency_e2e_p95_ns",
+        "latency_e2e_p99_ns",
+        "latency_e2e_p999_ns",
+        "latency_e2e_max_ns",
+        "throughput_bytes_per_s",
+        "throughput_ops_per_s",
+        "queue_depth_active",
+        "queue_depth_max",
+        "batch_fill_size",
+        "outstanding_io",
+        "sync_count",
+        "sync_duration_total_ns",
+        "seal_count",
+        "checkpoint_count",
+        "cpu_process_time_ns",
+        "cpu_system_time_ns",
+        "cpu_utilization_normalized",
+        "core_count",
+        "rss_bytes",
+        "rss_peak_bytes",
+        "fs_bytes_requested",
+        "fs_bytes_completed",
+        "fs_free_bytes",
+        "write_amplification_requested",
+        "latency_residual_median_fraction"
+      ],
+      "command": "residiuum-perf run --profile residiuum-performance-qualification-v1",
+      "forbidden": [
+        "product_performance_claim_without_disclosure",
+        "ci_absolute_workstation_throughput_gate",
+        "merge_testrig_damage_schema",
+        "change_durability_semantics_for_benchmark"
+      ]
+    }
+  ]
+}

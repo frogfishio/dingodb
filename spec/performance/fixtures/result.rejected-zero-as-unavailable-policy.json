@@ -1,0 +1,20 @@
+{
+  "format": "residiuum-pqh-result-v1",
+  "profile": "residiuum-performance-qualification-v1",
+  "run_id": "bad-zero",
+  "layer": "L1",
+  "validity": "valid",
+  "metrics": {
+    "device_bytes_written": {
+      "status": "present",
+      "value": 0,
+      "unit": "bytes",
+      "note": "INVALID_POLICY: zero used for unavailable"
+    },
+    "ops_acknowledged": {
+      "status": "present",
+      "value": 1,
+      "unit": "count"
+    }
+  }
+}

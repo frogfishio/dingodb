@@ -1,0 +1,43 @@
+{
+  "schema": "residiuum-pqh-layers-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "L0",
+      "name": "generator_clock_calibration",
+      "description": "Measure generator/copy/clock/probe without storage"
+    },
+    {
+      "id": "L1",
+      "name": "filesystem_device_envelope",
+      "description": "Disposable-file FS/device envelope on target filesystem"
+    },
+    {
+      "id": "L2",
+      "name": "residiuum_shaped_shadow_writer",
+      "description": "Physical shape shadow writer via PhysicalWritePlan"
+    },
+    {
+      "id": "L3",
+      "name": "cpu_transform_pipeline",
+      "description": "CPU pipeline to null/memory sink; no FS in timed interval"
+    },
+    {
+      "id": "L4",
+      "name": "storage_pipeline_minimum",
+      "description": "Authoritative store minimum primary publication path"
+    },
+    {
+      "id": "L5",
+      "name": "additive_feature_ladder",
+      "description": "Enable feature families one-at-a-time then realistic set"
+    },
+    {
+      "id": "L6",
+      "name": "complete_database_path",
+      "description": "Full database path with durability/ack and independent reopen check"
+    }
+  ]
+}

@@ -1,0 +1,289 @@
+{
+  "schema": "residiuum-pqh-metrics-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "ops_attempted",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true,
+      "zero_means": "no_ops_attempted"
+    },
+    {
+      "id": "ops_admitted",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "ops_acknowledged",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "ops_failed",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "logical_payload_bytes_ack",
+      "unit": "bytes",
+      "kind": "bytes",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "logical_key_bytes",
+      "unit": "bytes",
+      "kind": "bytes",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_e2e_p50_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_e2e_p90_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_e2e_p95_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_e2e_p99_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_e2e_p999_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_e2e_max_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "throughput_bytes_per_s",
+      "unit": "B/s",
+      "kind": "rate",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "throughput_ops_per_s",
+      "unit": "1/s",
+      "kind": "rate",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "queue_depth_active",
+      "unit": "count",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "queue_depth_max",
+      "unit": "count",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "batch_fill_size",
+      "unit": "count",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "outstanding_io",
+      "unit": "count",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "sync_count",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "sync_duration_total_ns",
+      "unit": "ns",
+      "kind": "latency",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "seal_count",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "checkpoint_count",
+      "unit": "count",
+      "kind": "counter",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "cpu_process_time_ns",
+      "unit": "ns",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "cpu_system_time_ns",
+      "unit": "ns",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "cpu_utilization_normalized",
+      "unit": "ratio",
+      "kind": "ratio",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "core_count",
+      "unit": "count",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "context_switches",
+      "unit": "count",
+      "kind": "counter",
+      "required": false,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "rss_bytes",
+      "unit": "bytes",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "rss_peak_bytes",
+      "unit": "bytes",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "fs_bytes_requested",
+      "unit": "bytes",
+      "kind": "bytes",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "fs_bytes_completed",
+      "unit": "bytes",
+      "kind": "bytes",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "device_bytes_written",
+      "unit": "bytes",
+      "kind": "bytes",
+      "required": false,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "fs_free_bytes",
+      "unit": "bytes",
+      "kind": "gauge",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "write_amplification_requested",
+      "unit": "ratio",
+      "kind": "ratio",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "write_amplification_device",
+      "unit": "ratio",
+      "kind": "ratio",
+      "required": false,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "throughput_retention_R_i",
+      "unit": "ratio",
+      "kind": "ratio",
+      "required": false,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "shape_efficiency_E",
+      "unit": "ratio",
+      "kind": "ratio",
+      "required": false,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "latency_residual_median_fraction",
+      "unit": "ratio",
+      "kind": "ratio",
+      "required": true,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "stage_service_ns_p50",
+      "unit": "ns",
+      "kind": "latency",
+      "required": false,
+      "zero_is_not_unavailable": true
+    },
+    {
+      "id": "stage_queue_ns_p50",
+      "unit": "ns",
+      "kind": "latency",
+      "required": false,
+      "zero_is_not_unavailable": true
+    }
+  ]
+}

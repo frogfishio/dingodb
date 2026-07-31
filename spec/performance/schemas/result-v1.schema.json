@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-pqh-result-v1.json",
+  "title": "residiuum-pqh-result-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "profile",
+    "run_id",
+    "layer",
+    "validity",
+    "metrics"
+  ],
+  "properties": {
+    "format": {
+      "const": "residiuum-pqh-result-v1"
+    },
+    "profile": {
+      "const": "residiuum-performance-qualification-v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layer": {
+      "type": "string"
+    },
+    "cell_id": {
+      "type": "string"
+    },
+    "validity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verdict": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "present",
+              "unavailable"
+            ]
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unavailable_reason": {
+            "type": "string"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "present"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "value",
+                "unit"
+              ],
+              "properties": {
+                "value": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "unavailable"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "unavailable_reason"
+              ],
+              "properties": {
+                "value": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "artifact_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

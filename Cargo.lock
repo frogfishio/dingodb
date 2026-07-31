@@ -1090,6 +1090,16 @@ name = "residiuum-heap-verus"
 version = "0.2.0"
 
 [[package]]
+name = "residiuum-perf"
+version = "0.2.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "residiuum-sda"
 version = "0.2.0"
 dependencies = [

@@ -1,0 +1,13 @@
+{
+  "format": "residiuum-pqh-manifest-v1",
+  "profile": "residiuum-performance-qualification-v1",
+  "run_id": "run-fixture-accepted-001",
+  "layer": "L0",
+  "cell_id": "cell:L0:cal:default",
+  "seed": 1,
+  "source_revision": "test",
+  "work_root": "/tmp/residiuum-pqh-work",
+  "budget_bytes": 1048576,
+  "budget_seconds": 60,
+  "build_kind": "release"
+}

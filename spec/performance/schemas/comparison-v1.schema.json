@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-pqh-comparison-v1.json",
+  "title": "residiuum-pqh-comparison-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "profile",
+    "run_ids",
+    "verdict"
+  ],
+  "properties": {
+    "format": {
+      "const": "residiuum-pqh-comparison-v1"
+    },
+    "profile": {
+      "const": "residiuum-performance-qualification-v1"
+    },
+    "run_ids": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "verdict": {
+      "type": "string"
+    },
+    "effect_size": {
+      "type": "number"
+    },
+    "confidence_interval_95": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "contradicted_alternatives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "falsification_experiment": {
+      "type": "string"
+    }
+  }
+}

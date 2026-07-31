@@ -1,0 +1,63 @@
+{
+  "schema": "residiuum-pqh-validity-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "valid",
+      "is_success": true,
+      "description": "All protocol steps and steady-state rules satisfied"
+    },
+    {
+      "id": "invalid_preflight",
+      "is_success": false,
+      "description": "Preflight failed; no timed measurement"
+    },
+    {
+      "id": "invalid_budget",
+      "is_success": false,
+      "description": "Byte/time/free-space budget breached"
+    },
+    {
+      "id": "invalid_path",
+      "is_success": false,
+      "description": "Destructive or unowned path rejected"
+    },
+    {
+      "id": "invalid_debug_build",
+      "is_success": false,
+      "description": "Debug build used for qualification"
+    },
+    {
+      "id": "invalid_correctness",
+      "is_success": false,
+      "description": "Independent digest/reopen check failed"
+    },
+    {
+      "id": "invalid_steady_state",
+      "is_success": false,
+      "description": "Steady-state criteria not met"
+    },
+    {
+      "id": "invalid_thermal",
+      "is_success": false,
+      "description": "Thermal/power invalidation"
+    },
+    {
+      "id": "invalid_instrumentation",
+      "is_success": false,
+      "description": "Probe overhead exceeded budget or residual >5%"
+    },
+    {
+      "id": "invalid_partial_cancelled",
+      "is_success": false,
+      "description": "Cancelled/crashed; partial report retained"
+    },
+    {
+      "id": "invalid_unavailable_required_metric",
+      "is_success": false,
+      "description": "Required metric unavailable without reason, or zero used as unavailable"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ members = [
   "crates/residiuum-store",
   "crates/residiuum-store-model",
   "tools/core-storage-reference-reader",
+  "crates/residiuum-perf",
   "crates/residiuum-client",
   "crates/residiuum-sdk",
   "crates/residiuum-server",

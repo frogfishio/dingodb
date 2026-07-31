@@ -1,0 +1,9 @@
+{
+  "format": "residiuum-pqh-manifest-v1",
+  "profile": "dingo-performance-v1",
+  "run_id": "bad",
+  "layer": "L0",
+  "cell_id": "x",
+  "seed": 0,
+  "source_revision": "test"
+}

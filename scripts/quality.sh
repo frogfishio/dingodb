@@ -32,6 +32,9 @@ bash ./scripts/verify-crash-recovery-contract.sh
 # CSQ-0 core-storage registries (VFY-0 namespace)
 bash ./scripts/verify-core-storage-registry.sh
 
+# PQH-0 performance qualification registries
+bash ./scripts/verify-performance-registry.sh
+
 # CSQ-1 oracle dependency firewall
 bash ./scripts/verify-csq-oracle-firewall.sh
 

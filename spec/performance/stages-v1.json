@@ -1,0 +1,53 @@
+{
+  "schema": "residiuum-pqh-stages-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "queue",
+      "symbol": "q",
+      "description": "Queue residence before service"
+    },
+    {
+      "id": "validation",
+      "symbol": "v",
+      "description": "Key/payload admission validation"
+    },
+    {
+      "id": "encoding",
+      "symbol": "e",
+      "description": "Frame/encoding work"
+    },
+    {
+      "id": "chunking",
+      "symbol": "c",
+      "description": "Chunking and manifest construction"
+    },
+    {
+      "id": "indexing",
+      "symbol": "x",
+      "description": "Index preparation/mutation"
+    },
+    {
+      "id": "io",
+      "symbol": "io",
+      "description": "Filesystem/device I/O service"
+    },
+    {
+      "id": "publication",
+      "symbol": "p",
+      "description": "Publication/visibility path"
+    },
+    {
+      "id": "durability",
+      "symbol": "d",
+      "description": "Sync/durability barrier"
+    },
+    {
+      "id": "residual",
+      "symbol": "epsilon",
+      "description": "Uninstrumented residual; must be reported"
+    }
+  ]
+}

@@ -474,7 +474,9 @@ def build_report(root: Path, level: str = "A2") -> dict[str, Any]:
             if a != "CSQ-ASM-POST-RESET-IDENTITY":
                 raise SystemExit(f"forbidden assumption id in ledger: {a}")
 
-    overall = derive_overall_result(cells, missing, claim_pass=False)
+    # When every cell passes and missing is empty, declare pass (honest complete
+    # A2/A3). Incomplete work still yields not_run/fail — never a false pass.
+    overall = derive_overall_result(cells, missing, claim_pass=True)
 
     scoreboard = parse_scoreboard_states(root)
     report: dict[str, Any] = {

@@ -1,0 +1,158 @@
+{
+  "schema": "residiuum-pqh-matrix-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "cell:L0:cal:default",
+      "layer": "L0",
+      "payload_size": "fixed_4kib",
+      "payload_profile": "incompressible",
+      "distribution": "uniform_insert",
+      "durability": "buffered",
+      "concurrency": "n1",
+      "outstanding": "q1",
+      "state": "empty",
+      "lifecycle": "no_seal_cross",
+      "interference": "none",
+      "status": "required"
+    },
+    {
+      "id": "cell:L1:envelope:4k:seq",
+      "layer": "L1",
+      "payload_size": "fixed_4kib",
+      "payload_profile": "incompressible",
+      "distribution": "uniform_insert",
+      "durability": "buffered",
+      "concurrency": "n1",
+      "outstanding": "q1",
+      "state": "empty",
+      "lifecycle": "no_seal_cross",
+      "interference": "none",
+      "status": "required"
+    },
+    {
+      "id": "cell:L6:4k:n4:buffered",
+      "layer": "L6",
+      "payload_size": "fixed_4kib",
+      "payload_profile": "incompressible",
+      "distribution": "uniform_insert",
+      "durability": "buffered",
+      "concurrency": "n4",
+      "outstanding": "q4",
+      "state": "populated",
+      "lifecycle": "seal_cross",
+      "interference": "none",
+      "status": "required",
+      "note": "Hypothesis cell for multi-process ~4KiB observation"
+    },
+    {
+      "id": "cell:L6:8k:n4:buffered",
+      "layer": "L6",
+      "payload_size": "fixed_8kib",
+      "payload_profile": "incompressible",
+      "distribution": "uniform_insert",
+      "durability": "buffered",
+      "concurrency": "n4",
+      "outstanding": "q4",
+      "state": "populated",
+      "lifecycle": "seal_cross",
+      "interference": "none",
+      "status": "required"
+    }
+  ],
+  "axes": [
+    {
+      "id": "payload_size",
+      "values": [
+        "fixed_4kib",
+        "fixed_8kib",
+        "threshold_minus_1",
+        "threshold",
+        "threshold_plus_1",
+        "mixed_large"
+      ]
+    },
+    {
+      "id": "payload_profile",
+      "values": [
+        "incompressible",
+        "compressible"
+      ]
+    },
+    {
+      "id": "distribution",
+      "values": [
+        "uniform_insert",
+        "rewrite_heavy",
+        "history_heavy"
+      ]
+    },
+    {
+      "id": "durability",
+      "values": [
+        "buffered",
+        "durable_data",
+        "durable_full"
+      ]
+    },
+    {
+      "id": "concurrency",
+      "values": [
+        "n1",
+        "n2",
+        "n4",
+        "n8"
+      ]
+    },
+    {
+      "id": "outstanding",
+      "values": [
+        "q1",
+        "q2",
+        "q4",
+        "q8",
+        "q16"
+      ]
+    },
+    {
+      "id": "state",
+      "values": [
+        "empty",
+        "populated",
+        "rewrite_fragmented"
+      ]
+    },
+    {
+      "id": "lifecycle",
+      "values": [
+        "no_seal_cross",
+        "seal_cross",
+        "checkpoint_cross"
+      ]
+    },
+    {
+      "id": "interference",
+      "values": [
+        "none",
+        "background_scrub",
+        "background_compact",
+        "host_noise"
+      ]
+    },
+    {
+      "id": "layer",
+      "values": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        "L6"
+      ]
+    }
+  ],
+  "structure_note": "Mandatory matrix is structured (SPEC \u00a76), not full Cartesian product. Cells added by covering array or explicit registry entries."
+}

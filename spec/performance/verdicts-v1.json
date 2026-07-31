@@ -1,0 +1,52 @@
+{
+  "schema": "residiuum-pqh-verdicts-v1",
+  "namespace": "performance",
+  "profile_scope": "residiuum-performance-qualification-v1",
+  "generated_for": "PQH-0",
+  "items": [
+    {
+      "id": "generator_bound",
+      "required_evidence": "L0 dominant; changing storage layers does not explain loss"
+    },
+    {
+      "id": "cpu_transform_bound",
+      "required_evidence": "L3 saturates CPU and predicts L4/L6 ceiling"
+    },
+    {
+      "id": "io_bandwidth_bound",
+      "required_evidence": "device near L1/L2 envelope with outstanding work"
+    },
+    {
+      "id": "io_queue_underdriven",
+      "required_evidence": "below envelope, device idle, low outstanding I/O, rises with QD"
+    },
+    {
+      "id": "serialized_writer",
+      "required_evidence": "plateau with spare CPU/device; lock/single-stage dominates"
+    },
+    {
+      "id": "durability_barrier_bound",
+      "required_evidence": "sync duration/cadence explains loss; buffered match removes it"
+    },
+    {
+      "id": "lifecycle_bound",
+      "required_evidence": "seal/checkpoint/rotation windows explain tails/loss"
+    },
+    {
+      "id": "index_bound",
+      "required_evidence": "additive index layer/stage time explains matched loss"
+    },
+    {
+      "id": "memory_pressure_bound",
+      "required_evidence": "faults/reclaim/RSS/dirty align; memory change reproduces"
+    },
+    {
+      "id": "telemetry_bound",
+      "required_evidence": "telemetry on/off pair exceeds declared budget"
+    },
+    {
+      "id": "mixed_or_unknown",
+      "required_evidence": "cannot isolate one cause; no tuning advice"
+    }
+  ]
+}
