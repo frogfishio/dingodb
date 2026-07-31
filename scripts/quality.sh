@@ -53,6 +53,9 @@ bash ./scripts/verify-csq-chunk-large-value.sh
 # CSQ-7 damage / salvage / recovery
 bash ./scripts/verify-csq-damage-salvage.sh
 
+# CSQ-8 derived / maintenance / backup / migration
+bash ./scripts/verify-csq-derived-maintenance.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh

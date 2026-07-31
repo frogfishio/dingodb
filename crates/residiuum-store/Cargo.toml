@@ -206,6 +206,10 @@ required-features = ["legacy-raw-store"]
 name = "csq7_damage_salvage"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "csq8_derived_maintenance"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]
