@@ -21,6 +21,7 @@ mod admit;
 mod cbor_envelope;
 mod chunks;
 mod compat;
+mod csq_corpus;
 mod descriptors;
 mod events;
 mod frame;
@@ -31,6 +32,15 @@ mod ownership;
 mod scan;
 mod segment;
 mod subject_v2;
+
+pub use csq_corpus::{
+    apply_mutation, apply_pair, bit_flip_mutations, byte_replace_mutations, canonical_microframe,
+    canonical_microsegment, content_hash_hex, delete_mutations, frozen_artifacts, hole_mutations,
+    insert_mutations, pairwise_fault_covering, survivor_microframe, truncate_mutations,
+    unsupported_kind_microframe, FaultClass, FrozenArtifact, Mutation, PairFault, BYTE_REPLACEMENTS,
+    CANONICAL_BODY, CORPUS_GENERATOR, CORPUS_PROFILE, HOLE_MAX_LEN, HOLE_REGION_CAP,
+    INSERTION_ALPHABET, SURVIVOR_BODY,
+};
 
 pub use cbor_envelope::{
     decode_deterministic_uint_map, encode_deterministic_uint_map,

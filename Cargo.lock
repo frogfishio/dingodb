@@ -1061,6 +1061,7 @@ dependencies = [
  "blake3",
  "crc32c",
  "proptest",
+ "serde_json",
  "thiserror",
 ]
 

@@ -16,7 +16,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-ACK",
@@ -35,7 +35,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-BAK",
@@ -167,7 +167,8 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq3",
+      "description": "CSQ-3 format exhaustive corpus (hash-addressed mutations + islands)"
     },
     {
       "id": "CSQ-SUITE-GEN",
@@ -183,7 +184,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-HIST",
@@ -201,7 +202,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-ID",
@@ -222,7 +223,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-INSTRUMENT",
@@ -287,7 +288,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-PUB",
@@ -302,7 +303,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq4"
     },
     {
       "id": "CSQ-SUITE-REC",

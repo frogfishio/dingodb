@@ -1,10 +1,32 @@
-//! Sequential logical store model for CSQ-1 (SPEC §6).
+//! Sequential logical store model for CSQ-1 / CSQ-4 (SPEC §6–§7).
 //!
 //! Knows no segment layout, production scanner, or recovery algorithm.
 //! Authority is a pure event/state machine with explicit acknowledgement
-//! and uncertainty outcomes.
+//! and uncertainty outcomes. CSQ-4 adds the publication kernel, history
+//! APIs, coverage-aware scans, generated histories, and shrinker.
 
 #![deny(missing_docs)]
+
+mod false_harness;
+mod generator;
+mod history_api;
+mod scan_model;
+mod transition;
+
+pub use false_harness::{
+    detects_ack_upgrade_cheat, detects_hybrid_cheat, detects_orphan_receipt,
+    false_harness_suite_ok, known_bad_complete_scan_with_damage, known_bad_hybrid_interrupt,
+    known_bad_orphan_receipt, known_bad_upgrade_acks,
+};
+pub use generator::{
+    apply_command, check_invariants, generate_history, replay_exact, run_history, shrink_history,
+    Command, StepResult, XorShift64,
+};
+pub use history_api::{
+    is_authoritative_absence, HistoricalValue, HistoryEntry, HistoryGap, LastCompleteResult,
+};
+pub use scan_model::{ScanCompleteness, ScanKeyRow, ScanPage};
+pub use transition::{PublicationPhase, PublicationStep, TransitionClass, TransitionCoverage};
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -125,7 +147,7 @@ pub struct ObservationDto {
     pub incomplete_coverage: BTreeSet<String>,
 }
 
-/// Sequential model store (SPEC §6.3).
+/// Sequential model store (SPEC §6.3 / CSQ-4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelStore {
     /// Stable store identity.
@@ -142,6 +164,12 @@ pub struct ModelStore {
     pub known_damage: BTreeMap<String, String>,
     /// Subjects with unavailable coverage.
     pub unavailable_coverage: BTreeSet<String>,
+    /// Explicit history gaps (CSQ-HIST-003).
+    pub history_gaps: Vec<HistoryGap>,
+    /// How many compaction transforms ran (physical only).
+    pub compaction_generations: u64,
+    /// Exclusive writer holder (`None` = free).
+    pub writer_holder: Option<u64>,
     /// Next model sequence number.
     next_seq: u64,
 }
@@ -168,7 +196,67 @@ impl ModelStore {
             receipts: BTreeMap::new(),
             known_damage: BTreeMap::new(),
             unavailable_coverage: BTreeSet::new(),
+            history_gaps: Vec::new(),
+            compaction_generations: 0,
+            writer_holder: None,
             next_seq: 1,
+        }
+    }
+
+    /// Try to acquire exclusive writer authority (CSQ-ID-008).
+    ///
+    /// Returns `true` if `holder_id` now holds the lock. Rejected contenders
+    /// create no durable effect.
+    pub fn try_acquire_writer(&mut self, holder_id: u64) -> bool {
+        match self.writer_holder {
+            None => {
+                self.writer_holder = Some(holder_id);
+                true
+            }
+            Some(h) if h == holder_id => true,
+            Some(_) => false,
+        }
+    }
+
+    /// Release writer if `holder_id` owns it.
+    pub fn release_writer(&mut self, holder_id: u64) {
+        if self.writer_holder == Some(holder_id) {
+            self.writer_holder = None;
+        }
+    }
+
+    /// Put with explicit durability ack label (buffered/memory/durable).
+    pub fn put_with_ack(
+        &mut self,
+        subject: Vec<u8>,
+        value: Vec<u8>,
+        operation_id: String,
+        event_id: Id16,
+        durability: DurabilityAck,
+    ) -> Result<ModelReceipt, ModelError> {
+        self.apply_mutation(
+            subject,
+            EventKind::Put,
+            value,
+            operation_id,
+            event_id,
+            durability,
+        )
+    }
+
+    /// After reopen, drop memory/buffered effects (CSQ-ACK-004): weaker acks
+    /// never acquire Durable labels or durable visibility.
+    pub fn drop_nondurable_after_reopen(&mut self) {
+        self.events
+            .retain(|e| matches!(e.durability, DurabilityAck::Durable));
+        self.receipts
+            .retain(|_, r| matches!(r.durability, DurabilityAck::Durable));
+        // Rebuild generations from remaining durable history.
+        self.current_generation.clear();
+        for e in &self.events {
+            let sk = Self::subject_key(&e.subject);
+            let gen = self.current_generation.get(&sk).copied().unwrap_or(0) + 1;
+            self.current_generation.insert(sk, gen);
         }
     }
 
@@ -377,9 +465,8 @@ impl ModelStore {
     }
 }
 
-// tiny hex without extra dep — use blake3? we have hex in workspace but model only lists blake3.
-// Use manual hex to avoid new dep; or add hex workspace dep.
-mod hex {
+// tiny hex without extra dep.
+pub(crate) mod hex {
     pub fn encode(bytes: &[u8]) -> String {
         const H: &[u8; 16] = b"0123456789abcdef";
         let mut out = String::with_capacity(bytes.len() * 2);

@@ -38,6 +38,12 @@ bash ./scripts/verify-csq-oracle-firewall.sh
 # CSQ-2 boundary/failpoint instrumentation
 bash ./scripts/verify-csq-boundary-instrumentation.sh
 
+# CSQ-3 format exhaustive corpus
+bash ./scripts/verify-csq-format-corpus.sh
+
+# CSQ-4 store model / state machine
+bash ./scripts/verify-csq-state-machine.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh

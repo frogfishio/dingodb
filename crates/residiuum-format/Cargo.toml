@@ -20,3 +20,5 @@ thiserror.workspace = true
 [dev-dependencies]
 # DEF-091 — property tests for untrusted frame / envelope / scan surfaces.
 proptest = "1.6"
+# CSQ-3 frozen corpus manifest parsing.
+serde_json.workspace = true

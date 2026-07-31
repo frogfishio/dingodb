@@ -10,6 +10,10 @@ bash scripts/verify-csq-oracle-firewall.sh
 bash scripts/verify-csq-boundary-instrumentation.sh
 cargo test -p residiuum-store --test csq0_registry
 cargo test -p residiuum-store --features legacy-raw-store --test csq2_instrumentation
+bash scripts/verify-csq-format-corpus.sh
+cargo test -p residiuum-format --test csq3_format_corpus
+bash scripts/verify-csq-state-machine.sh
+cargo test -p residiuum-store-model --test csq4_state_machine
 ```
 
 CSQ-2 also exercises the DEF-022 crash matrix driver:

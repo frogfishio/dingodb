@@ -1,0 +1,27 @@
+{
+  "artifacts": [
+    {
+      "blake3": "216e290b89249e791931c42dbb4c85c4c9876625e0d4c9fbb62176615a8ffd61",
+      "len": 125,
+      "name": "canonical_microframe"
+    },
+    {
+      "blake3": "2d3d979c682d452d38f282f5604de605917a03217a83f6fcd9563182e1bee5ea",
+      "len": 136,
+      "name": "survivor_microframe"
+    },
+    {
+      "blake3": "614f4746426b7a0c0dd13fda1dc6855af56608866c54cc73c90074981d75e952",
+      "len": 261,
+      "name": "canonical_microsegment"
+    }
+  ],
+  "generator": "csq3-corpus-v1",
+  "identity": {
+    "end_magic": "RESIDEND",
+    "start_magic": "RESIDFRM",
+    "wire_major": 1
+  },
+  "profile": "residiuum-core-storage-v1",
+  "schema": "residiuum-csq3-canonical-manifest-v1"
+}

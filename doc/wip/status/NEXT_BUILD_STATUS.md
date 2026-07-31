@@ -58,8 +58,8 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | CSQ-0 | active | 2026-07-31 | — | [specification](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md); [implementation plan](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md); DEF-098…DEF-104 accepted | CSQ-0 registries materialised under `spec/verification/core-storage/`; `scripts/verify-core-storage-registry.sh` green; Rust `csq0_registry` tests agree | core-storage contract |
 | CSQ-1 | active | 2026-07-31 | CSQ-0 | — | independent model (`residiuum-store-model`) + reference-reader tool; firewall script green | storage oracles |
 | CSQ-2 | active | 2026-07-31 | CSQ-0 | — | hit-proof failpoints; boundary↔source CI; composed-failure schedule; crash controller; FS-image inventory (campaign CSQ-5) | failure injection |
-| CSQ-3 | not_started | — | CSQ-1, CSQ-2 | — | exhaustive format corpus absent | format qualification |
-| CSQ-4 | not_started | — | CSQ-1, CSQ-2 | — | generated store model suite absent | transition qualification |
+| CSQ-3 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | frozen Residiuum microframes; bit/byte/trunc/insert/delete + holes + pairwise multi-fault; FMT-001…005 tests green | format qualification |
+| CSQ-4 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | publication kernel + transition coverage; HIST/scan/gen/shrinker; false harnesses; DEF-099/100 linked | transition qualification |
 | CSQ-5 | not_started | — | CSQ-2, CSQ-4 | — | full crash/filesystem campaign absent | persistence qualification |
 | CSQ-6 | not_started | — | CSQ-3…CSQ-5 | DEF-098 regression authority | chunk/large-value suite absent | chunk qualification |
 | CSQ-7 | not_started | — | CSQ-3…CSQ-5 | — | damage/recovery differential absent | survival qualification |
