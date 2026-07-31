@@ -125,7 +125,7 @@ pub struct WorkloadContract {
     pub features: String,
     pub interference: String,
     pub layer: String,
-    /// Driver applies these the same way as the measured cell (serial puts today).
+    /// How matrix dimensions are applied as behaviour.
     pub application_note: String,
 }
 
@@ -166,7 +166,8 @@ impl WorkloadContract {
             interference: cell.interference.kind.as_str().into(),
             layer: cell.layer.as_str().into(),
             application_note:
-                "overhead legs share execute_workload_puts with measured real_store cell driver"
+                "shared execute_workload_puts: create_with_shards; concurrent workers; \
+                 outstanding-bounded put_many batches; same floors as measured cell"
                     .into(),
         }
     }
@@ -174,6 +175,25 @@ impl WorkloadContract {
     /// True when stop policy is floors (qualification/diagnostic/soak), not op_count.
     pub fn uses_duration_byte_floors(&self) -> bool {
         self.stop_policy == "duration_and_byte_floors"
+    }
+}
+
+/// How probe cost is derived for a pair.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverheadCostBasis {
+    /// Smoke/op-cap: (on_wall - off_wall) / off_wall.
+    WallTime,
+    /// Duration-floor legs: (tput_off - tput_on) / tput_off from sustained throughput.
+    SustainedThroughput,
+}
+
+impl OverheadCostBasis {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::WallTime => "wall_time",
+            Self::SustainedThroughput => "sustained_throughput",
+        }
     }
 }
 
@@ -192,8 +212,23 @@ pub struct OverheadPairSample {
     pub probe_off_ops: u64,
     #[serde(default)]
     pub probe_on_ops: u64,
-    /// (on - off) / off when off > 0; else 0.
+    /// Sustained throughput (bytes/s) for duration-controlled cost basis.
+    #[serde(default)]
+    pub probe_off_sustained_tput_bps: f64,
+    #[serde(default)]
+    pub probe_on_sustained_tput_bps: f64,
+    /// Cost basis used for `overhead_fraction`.
+    #[serde(default = "default_cost_basis")]
+    pub cost_basis: OverheadCostBasis,
+    /// Both legs met floors + validity for this pair.
+    #[serde(default)]
+    pub legs_valid: bool,
+    /// Probe cost fraction (see `cost_basis`).
     pub overhead_fraction: f64,
+}
+
+fn default_cost_basis() -> OverheadCostBasis {
+    OverheadCostBasis::WallTime
 }
 
 /// Matched probe-off vs probe-on observer overhead for **one** qualified cell.
@@ -251,7 +286,20 @@ impl OverheadPairSample {
         off_bytes: u64,
         on_bytes: u64,
     ) -> Self {
-        Self::from_leg_stats(pair_index, order, off_e2e_ns, on_e2e_ns, off_bytes, on_bytes, 0, 0)
+        Self::from_leg_stats(
+            pair_index,
+            order,
+            off_e2e_ns,
+            on_e2e_ns,
+            off_bytes,
+            on_bytes,
+            0,
+            0,
+            0.0,
+            0.0,
+            OverheadCostBasis::WallTime,
+            true,
+        )
     }
 
     pub fn from_leg_stats(
@@ -263,11 +311,27 @@ impl OverheadPairSample {
         on_bytes: u64,
         off_ops: u64,
         on_ops: u64,
+        off_tput_bps: f64,
+        on_tput_bps: f64,
+        cost_basis: OverheadCostBasis,
+        legs_valid: bool,
     ) -> Self {
-        let overhead_fraction = if off_e2e_ns > 0 {
-            (on_e2e_ns as f64 - off_e2e_ns as f64) / off_e2e_ns as f64
-        } else {
-            0.0
+        let overhead_fraction = match cost_basis {
+            OverheadCostBasis::WallTime => {
+                if off_e2e_ns > 0 {
+                    (on_e2e_ns as f64 - off_e2e_ns as f64) / off_e2e_ns as f64
+                } else {
+                    0.0
+                }
+            }
+            OverheadCostBasis::SustainedThroughput => {
+                // Relative throughput loss when probe is on (not wall-time delta).
+                if off_tput_bps > 0.0 && off_tput_bps.is_finite() {
+                    (off_tput_bps - on_tput_bps) / off_tput_bps
+                } else {
+                    0.0
+                }
+            }
         };
         Self {
             pair_index,
@@ -278,6 +342,10 @@ impl OverheadPairSample {
             probe_on_logical_bytes: on_bytes,
             probe_off_ops: off_ops,
             probe_on_ops: on_ops,
+            probe_off_sustained_tput_bps: off_tput_bps,
+            probe_on_sustained_tput_bps: on_tput_bps,
+            cost_basis,
+            legs_valid,
             overhead_fraction,
         }
     }
@@ -408,9 +476,29 @@ impl ObserverOverheadReport {
         ));
         for p in &pairs {
             notes.push(format!(
-                "pair[{}] order={} overhead={:.6} off_ops={} on_ops={}",
-                p.pair_index, p.order, p.overhead_fraction, p.probe_off_ops, p.probe_on_ops
+                "pair[{}] order={} basis={} overhead={:.6} off_ops={} on_ops={} off_tput={:.3} on_tput={:.3} valid={}",
+                p.pair_index,
+                p.order,
+                p.cost_basis.as_str(),
+                p.overhead_fraction,
+                p.probe_off_ops,
+                p.probe_on_ops,
+                p.probe_off_sustained_tput_bps,
+                p.probe_on_sustained_tput_bps,
+                p.legs_valid
             ));
+        }
+        if pairs.iter().any(|p| !p.legs_valid) {
+            notes.push("LEG_INVALID: at least one overhead leg failed floors/validity".into());
+        }
+        if pairs
+            .iter()
+            .any(|p| p.cost_basis == OverheadCostBasis::SustainedThroughput)
+        {
+            notes.push(
+                "duration-controlled pairs use sustained_throughput probe cost (not wall-time)"
+                    .into(),
+            );
         }
         if mean_off_bytes != mean_on_bytes {
             notes.push(format!(
@@ -467,6 +555,27 @@ mod tests {
         // 10% exceeds default 2% budget
         assert!(!r.within_budget);
         assert!((r.median_overhead_fraction - 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn sustained_throughput_cost_basis() {
+        // off 100 MB/s, on 95 MB/s → 5% overhead from throughput loss
+        let p = OverheadPairSample::from_leg_stats(
+            0,
+            "off_first",
+            10_000,
+            10_500, // wall times ignored for tput basis
+            1_000_000,
+            1_000_000,
+            100,
+            100,
+            100e6,
+            95e6,
+            OverheadCostBasis::SustainedThroughput,
+            true,
+        );
+        assert!((p.overhead_fraction - 0.05).abs() < 1e-9);
+        assert_eq!(p.cost_basis, OverheadCostBasis::SustainedThroughput);
     }
 
     #[test]

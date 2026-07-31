@@ -5,19 +5,20 @@
 //! (unless safety max would be crossed); never silently caps to 4–16 ops.
 
 use super::aggregates::{
-    BoundaryAggregateSummary, ObserverOverheadReport, OverheadPairSample, WorkloadContract,
-    OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL, OVERHEAD_MIN_PAIRS_SMOKE,
+    BoundaryAggregateSummary, ObserverOverheadReport, OverheadCostBasis, OverheadPairSample,
+    WorkloadContract, OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL, OVERHEAD_MIN_PAIRS_SMOKE,
 };
 use super::emitter::{emit_plan_from_store_boundary_events, STORE_SEAM_EMITTER_FROM_RECEIPTS};
 use super::kinds::{DriverKind, MeasurementSurface};
 use super::{cell_store_path, DriverCellReport, DriverError, DriverRunConfig};
 use crate::campaign::RunClass;
-use crate::envelope::{WindowDetector, WindowSample};
+use crate::envelope::{WindowClass, WindowDetector, WindowSample};
 use crate::matrix::{AckLedger, CellRunReport, DurabilityMode as MatrixDur, MatrixError};
 use crate::runner::RunBudgets;
 use crate::workload::SizeSampler;
 use residiuum_store::{BoundaryKind, DurabilityMode as StoreDur, Store};
 use std::fs;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Outcome of one workload leg (shared by measured cell + overhead probe legs).
@@ -30,6 +31,12 @@ struct WorkloadLegStats {
     window_samples: Vec<WindowSample>,
     messages: Vec<String>,
     floors_met: bool,
+    /// Sustained (or overall) throughput used for duration-controlled probe cost.
+    sustained_throughput_bps: f64,
+    window_class: WindowClass,
+    /// Floors + validity conditions for this leg.
+    valid: bool,
+    validity_reason: String,
 }
 
 pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverError> {
@@ -52,7 +59,9 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     }
     fs::create_dir_all(store_path.parent().unwrap_or(work_root))?;
 
-    let mut store = Store::create(&store_path).map_err(|e| DriverError::Store(e.to_string()))?;
+    let n_shards = cfg.cell.shards.max(1) as usize;
+    let mut store = Store::create_with_shards(&store_path, n_shards)
+        .map_err(|e| DriverError::Store(e.to_string()))?;
     // Consume store-emitted boundary events (not receipt reconstruction).
     store.enable_boundary_probe();
     let store_dur = map_durability(cfg.cell.durability);
@@ -254,13 +263,12 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
 
 /// Order-balanced multi-pair probe-off / probe-on observer-overhead for **one** cell.
 ///
-/// Each leg executes the **same qualification workload contract** as the measured
-/// cell driver (`execute_workload_puts`): duration/byte floors (non-smoke) or
-/// smoke op cap, payload distribution, durability, and the full cell parameters
-/// (concurrency/outstanding/shards/features/interference/db_state recorded and
-/// applied identically to the measured path).
+/// Legs share `execute_workload_puts` with the measured cell (floors, distribution,
+/// durability, concurrent workers, outstanding-bounded `put_many` batches, shards).
 ///
-/// Pair order is ABAB/BABA. Budget is [`OBSERVER_OVERHEAD_BUDGET`].
+/// **Duration-controlled** pairs use **sustained throughput** for probe cost
+/// (`(tput_off - tput_on) / tput_off`), not wall-time. Smoke/op-cap pairs still
+/// use wall-time. **Every leg must meet floors + validity** or measurement fails.
 pub fn measure_probe_observer_overhead(
     cfg: &DriverRunConfig,
 ) -> Result<ObserverOverheadReport, DriverError> {
@@ -283,6 +291,11 @@ pub fn measure_probe_observer_overhead(
     } else {
         OVERHEAD_MIN_PAIRS_QUAL
     };
+    let cost_basis = if contract.uses_duration_byte_floors() {
+        OverheadCostBasis::SustainedThroughput
+    } else {
+        OverheadCostBasis::WallTime
+    };
 
     let mut pairs = Vec::with_capacity(pair_count as usize);
     let mut mean_ops = 0u64;
@@ -299,6 +312,19 @@ pub fn measure_probe_observer_overhead(
             let off = run_contract_leg(cfg, work_root, false, &format!("{tag_base}-off"))?;
             (off, on)
         };
+        // Fail closed: every leg must meet floors + validity.
+        if !off.valid {
+            return Err(DriverError::Msg(format!(
+                "overhead probe-off leg invalid pair={i}: {}",
+                off.validity_reason
+            )));
+        }
+        if !on.valid {
+            return Err(DriverError::Msg(format!(
+                "overhead probe-on leg invalid pair={i}: {}",
+                on.validity_reason
+            )));
+        }
         mean_ops = mean_ops.saturating_add(off.ops_done.saturating_add(on.ops_done) / 2);
         pairs.push(OverheadPairSample::from_leg_stats(
             i,
@@ -309,6 +335,10 @@ pub fn measure_probe_observer_overhead(
             on.logical_bytes,
             off.ops_done,
             on.ops_done,
+            off.sustained_throughput_bps,
+            on.sustained_throughput_bps,
+            cost_basis,
+            true,
         ));
     }
     if pair_count > 0 {
@@ -340,15 +370,19 @@ fn run_contract_leg(
         let _ = fs::remove_dir_all(&store_path);
     }
     fs::create_dir_all(store_path.parent().unwrap_or(work_root))?;
-    let mut store = Store::create(&store_path).map_err(|e| DriverError::Store(e.to_string()))?;
+    let n_shards = cfg.cell.shards.max(1) as usize;
+    let mut store = Store::create_with_shards(&store_path, n_shards)
+        .map_err(|e| DriverError::Store(e.to_string()))?;
     if probe_on {
         store.enable_boundary_probe();
     }
     let store_dur = map_durability(cfg.cell.durability);
     let mut stats = execute_workload_puts(&mut store, cfg, store_dur)?;
     stats.messages.push(format!(
-        "overhead_leg probe_on={probe_on} tag={tag} path={}",
-        store_path.display()
+        "overhead_leg probe_on={probe_on} tag={tag} path={} valid={} tput={:.3}",
+        store_path.display(),
+        stats.valid,
+        stats.sustained_throughput_bps
     ));
     drop(store);
     Ok(stats)
@@ -356,23 +390,180 @@ fn run_contract_leg(
 
 /// Shared put loop for measured cells and overhead legs.
 ///
-/// Stop policy:
-/// - **smoke:** `op_count.min(SMOKE_MAX_OPS)`
-/// - **non-smoke:** duration **and** logical-byte floors (never a silent op cap)
-///
-/// Payload: distribution sampler or fixed size; smoke may shrink payload for CI.
-/// Durability, seed, cell parameters match the measured driver path.
+/// **Stop policy:** smoke → op cap; non-smoke → duration **and** byte floors.
+/// **Behaviour:** `create_with_shards(shards)`; concurrent workers when
+/// `concurrency > 1`; batches of `batch_size` via `put_many`; at most
+/// `outstanding` in-flight batches per worker pipeline depth.
 fn execute_workload_puts(
     store: &mut Store,
     cfg: &DriverRunConfig,
     store_dur: StoreDur,
 ) -> Result<WorkloadLegStats, DriverError> {
     let run_class = cfg.run_class_parsed();
+    let workers = cfg.cell.concurrency.max(1) as usize;
+    let batch_sz = cfg.cell.batch_size.max(1) as usize;
+    let outstanding = cfg.cell.outstanding.max(1) as usize;
+    let n_shards = cfg.cell.shards.max(1) as usize;
+
+    let mut messages = Vec::new();
+    messages.push(format!("layer={}", cfg.cell.layer.as_str()));
+    messages.push(format!(
+        "workload_contract run_class={} durability={} payload={} dist={:?} conc={} out={} batch={} shards={} db_state={} features={} interference={}",
+        run_class.as_str(),
+        cfg.cell.durability.as_str(),
+        cfg.cell.payload_size,
+        cfg.cell.distribution.map(|d| d.as_str()),
+        workers,
+        outstanding,
+        batch_sz,
+        n_shards,
+        cfg.cell.db_state.as_str(),
+        cfg.cell.features.name,
+        cfg.cell.interference.kind.as_str(),
+    ));
+    messages.push(format!(
+        "behaviour: writer_shards={} concurrent_workers={} batch_size={} outstanding_batches={} put_many={}",
+        store.writer_shards(),
+        workers,
+        batch_sz,
+        outstanding,
+        batch_sz > 1 || workers > 1 || n_shards > 1
+    ));
+    messages.push(format!(
+        "floors: min_duration_secs={} min_logical_bytes={}",
+        run_class.min_duration_secs(),
+        run_class.min_logical_bytes()
+    ));
+
+    let smoke_ops_limit = if run_class.allows_smoke_op_cap() {
+        Some(cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1))
+    } else {
+        None
+    };
+
+    let t0 = Instant::now();
+    let mut stats = if workers == 1 {
+        execute_serial_batched(store, cfg, store_dur, batch_sz, outstanding, smoke_ops_limit, t0)?
+    } else {
+        execute_concurrent_batched(
+            store,
+            cfg,
+            store_dur,
+            workers,
+            batch_sz,
+            outstanding,
+            smoke_ops_limit,
+            t0,
+        )?
+    };
+    messages.append(&mut stats.messages);
+    stats.messages = messages;
+
+    let e2e_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    stats.e2e_ns = e2e_ns;
+    let min_dur = Duration::from_secs(run_class.min_duration_secs());
+    let min_bytes = run_class.min_logical_bytes();
+    let floors_met = if smoke_ops_limit.is_some() {
+        true
+    } else {
+        t0.elapsed() >= min_dur && stats.logical_bytes >= min_bytes
+    };
+    stats.floors_met = floors_met;
+
+    // Window + sustained throughput (prefer second-half samples for steady state).
+    let window = WindowDetector::default().classify(&stats.window_samples);
+    stats.window_class = window;
+    stats.sustained_throughput_bps =
+        sustained_throughput_bps(&stats.window_samples, stats.logical_bytes, e2e_ns);
+
+    if smoke_ops_limit.is_some() {
+        stats
+            .messages
+            .push(format!("stop=smoke_op_cap ops={}", stats.ops_done));
+    } else {
+        stats.messages.push(format!(
+            "stop=duration_and_byte_floors floors_met={floors_met} ops={} logical_bytes={} window={window:?} sustained_tput={:.3}",
+            stats.ops_done, stats.logical_bytes, stats.sustained_throughput_bps
+        ));
+    }
+
+    // Leg validity: floors always; qualification also requires sustained window.
+    let (valid, reason) = leg_validity(run_class, floors_met, window, stats.ops_done);
+    stats.valid = valid;
+    stats.validity_reason = reason;
+    stats.messages.push(format!(
+        "leg_valid={} reason={}",
+        stats.valid, stats.validity_reason
+    ));
+
+    Ok(stats)
+}
+
+fn leg_validity(
+    run_class: RunClass,
+    floors_met: bool,
+    window: WindowClass,
+    ops_done: u64,
+) -> (bool, String) {
+    if ops_done == 0 {
+        return (false, "zero_ops".into());
+    }
+    if run_class.allows_smoke_op_cap() {
+        return (true, "smoke_op_cap_complete".into());
+    }
+    if !floors_met {
+        return (false, "floors_unmet".into());
+    }
+    if run_class.may_emit_bottleneck_verdict() {
+        if matches!(window, WindowClass::Sustained) {
+            (true, "floors_met+sustained".into())
+        } else {
+            (
+                false,
+                format!("floors_met_but_window={window:?}_not_sustained"),
+            )
+        }
+    } else {
+        // Diagnostic: floors sufficient for overhead comparison.
+        (true, "floors_met_diagnostic".into())
+    }
+}
+
+fn sustained_throughput_bps(samples: &[WindowSample], logical_bytes: u64, e2e_ns: u64) -> f64 {
+    if samples.len() >= WindowDetector::default().min_samples {
+        let mid = samples.len() / 2;
+        let mut vals: Vec<f64> = samples[mid..]
+            .iter()
+            .map(|s| s.throughput_bytes_per_sec)
+            .filter(|v| v.is_finite() && *v >= 0.0)
+            .collect();
+        if !vals.is_empty() {
+            vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            return vals[vals.len() / 2];
+        }
+    }
+    if e2e_ns > 0 {
+        (logical_bytes as f64) * 1e9 / (e2e_ns as f64)
+    } else {
+        0.0
+    }
+}
+
+/// Single-worker path with real `put_many` batches and outstanding pipeline depth.
+fn execute_serial_batched(
+    store: &mut Store,
+    cfg: &DriverRunConfig,
+    store_dur: StoreDur,
+    batch_sz: usize,
+    outstanding: usize,
+    smoke_ops_limit: Option<u64>,
+    t0: Instant,
+) -> Result<WorkloadLegStats, DriverError> {
+    let run_class = cfg.run_class_parsed();
     let sampler = match cfg.cell.distribution {
         Some(d) => SizeSampler::distribution(d),
         None => SizeSampler::fixed(cfg.cell.payload_size),
     };
-
     let min_dur = Duration::from_secs(run_class.min_duration_secs());
     let min_bytes = run_class.min_logical_bytes();
     let safety = RunBudgets::default();
@@ -387,43 +578,12 @@ fn execute_workload_puts(
     let mut logical_bytes = 0u64;
     let mut records = Vec::new();
     let mut window_samples = Vec::new();
-    let mut messages = Vec::new();
-    messages.push(format!("layer={}", cfg.cell.layer.as_str()));
-    messages.push(format!(
-        "workload_contract run_class={} durability={} payload={} dist={:?} conc={} out={} batch={} shards={} db_state={} features={} interference={}",
-        run_class.as_str(),
-        cfg.cell.durability.as_str(),
-        cfg.cell.payload_size,
-        cfg.cell.distribution.map(|d| d.as_str()),
-        cfg.cell.concurrency,
-        cfg.cell.outstanding,
-        cfg.cell.batch_size,
-        cfg.cell.shards,
-        cfg.cell.db_state.as_str(),
-        cfg.cell.features.name,
-        cfg.cell.interference.kind.as_str(),
-    ));
-    messages.push(format!(
-        "floors: min_duration_secs={} min_logical_bytes={} (applied when not smoke)",
-        run_class.min_duration_secs(),
-        run_class.min_logical_bytes()
-    ));
-    // Contract fields recorded even when serial application matches measured path.
-    let _contract_depth = (
-        cfg.cell.concurrency.max(1),
-        cfg.cell.outstanding.max(1),
-        cfg.cell.shards.max(1),
-        cfg.cell.db_state.setup_cost_ns(),
-        cfg.cell.interference.cost_ns_per_op,
-    );
-
-    let t0 = Instant::now();
+    let mut messages = vec![format!(
+        "serial_batched batch_size={batch_sz} outstanding={outstanding}"
+    )];
     let mut seq: u64 = 0;
-    let smoke_ops_limit = if run_class.allows_smoke_op_cap() {
-        Some(cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1))
-    } else {
-        None
-    };
+    // Outstanding = max prepared batches waiting to flush (pipeline depth).
+    let mut pending_batches: usize = 0;
 
     loop {
         if let Some(lim) = smoke_ops_limit {
@@ -432,13 +592,12 @@ fn execute_workload_puts(
             }
         } else {
             let elapsed = t0.elapsed();
-            let floors_ok = elapsed >= min_dur && logical_bytes >= min_bytes;
-            if floors_ok {
+            if elapsed >= min_dur && logical_bytes >= min_bytes {
                 break;
             }
             if elapsed >= max_dur || logical_bytes >= max_bytes {
                 messages.push(format!(
-                    "stopped at safety ceiling elapsed_s={} logical_bytes={} (floors may be unmet)",
+                    "stopped at safety ceiling elapsed_s={} logical_bytes={}",
                     elapsed.as_secs(),
                     logical_bytes
                 ));
@@ -446,58 +605,61 @@ fn execute_workload_puts(
             }
         }
 
-        ledger.record_attempt();
-        let plen = if cfg.cell.distribution.is_some() {
-            sampler.size_at(seq)
-        } else {
-            cfg.cell.payload_size
-        };
-        let plen = if run_class.allows_smoke_op_cap() {
-            plen.min(64 * 1024)
-        } else {
-            plen
-        };
-
-        let mut body = vec![0u8; plen as usize];
-        let mut x = cfg.seed.wrapping_add(seq);
-        for b in &mut body {
-            x = x
-                .wrapping_mul(0x9E37_79B9_7F4A_7C15)
-                .wrapping_add(1);
-            *b = (x >> 33) as u8;
+        // Build one batch (respect outstanding depth by flushing when full).
+        let mut subjects: Vec<String> = Vec::with_capacity(batch_sz);
+        let mut bodies: Vec<Vec<u8>> = Vec::with_capacity(batch_sz);
+        for _ in 0..batch_sz {
+            if let Some(lim) = smoke_ops_limit {
+                if seq >= lim {
+                    break;
+                }
+            }
+            let plen = payload_len(cfg, &sampler, seq, run_class);
+            let body = fill_body(cfg.seed, seq, plen);
+            let shard = seq % u64::from(cfg.cell.shards.max(1));
+            subjects.push(format!("pqh11-s{shard:02x}-{seq:08x}"));
+            bodies.push(body);
+            seq = seq.saturating_add(1);
         }
-        // Subject encoding includes shard/outstanding contract tags for honesty.
-        let shard = seq % u64::from(cfg.cell.shards.max(1));
-        let subject = format!("pqh11-s{shard:02x}-{seq:08x}");
+        if subjects.is_empty() {
+            break;
+        }
+        pending_batches = pending_batches.saturating_add(1);
 
-        match store.put(&subject, &body, store_dur) {
-            Ok(receipt) => {
-                ledger.record_admit();
-                if cfg.digest_mutant && seq == 0 {
-                    ledger.record_ack_mutant_wrong_digest(seq, seq, plen, 0);
-                } else {
-                    ledger.record_ack(seq, seq, plen, 0);
-                }
-                records.push((seq, seq, plen, 0u32));
-                logical_bytes = logical_bytes.saturating_add(plen);
+        let items: Vec<(&str, &[u8])> = subjects
+            .iter()
+            .zip(bodies.iter())
+            .map(|(s, b)| (s.as_str(), b.as_slice()))
+            .collect();
 
-                let encoded_len = receipt.encoded_frame_len;
-                if encoded_len == 0 && store_dur != StoreDur::Memory {
-                    messages.push(format!(
-                        "warn: missing encoded_frame_len at offset={} logical={}",
-                        receipt.offset, plen
-                    ));
-                }
-                if encoded_len > 0 && encoded_len < plen {
-                    messages.push(format!(
-                        "warn: encoded_frame_len={encoded_len} < logical={plen}"
-                    ));
+        match flush_batch(store, &items, store_dur) {
+            Ok(receipts) => {
+                for (i, receipt) in receipts.iter().enumerate() {
+                    let plen = bodies[i].len() as u64;
+                    let op_seq = seq - subjects.len() as u64 + i as u64;
+                    ledger.record_attempt();
+                    ledger.record_admit();
+                    if cfg.digest_mutant && op_seq == 0 {
+                        ledger.record_ack_mutant_wrong_digest(op_seq, op_seq, plen, 0);
+                    } else {
+                        ledger.record_ack(op_seq, op_seq, plen, 0);
+                    }
+                    records.push((op_seq, op_seq, plen, 0u32));
+                    logical_bytes = logical_bytes.saturating_add(plen);
+                    let _ = receipt;
                 }
             }
             Err(e) => {
-                ledger.record_fail();
-                messages.push(format!("put failed seq={seq}: {e}"));
+                for _ in 0..subjects.len() {
+                    ledger.record_attempt();
+                    ledger.record_fail();
+                }
+                messages.push(format!("batch flush failed: {e}"));
             }
+        }
+        // Flush outstanding counter (batch completed).
+        if pending_batches >= outstanding {
+            pending_batches = 0;
         }
 
         if seq > 0 && (seq % 32 == 0 || t0.elapsed().as_millis() % 100 < 5) {
@@ -507,32 +669,284 @@ fn execute_workload_puts(
                 throughput_bytes_per_sec: bps,
             });
         }
-        seq = seq.saturating_add(1);
-    }
-    let e2e_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-    let floors_met = t0.elapsed() >= min_dur && logical_bytes >= min_bytes;
-    if smoke_ops_limit.is_some() {
-        messages.push(format!("stop=smoke_op_cap ops={seq}"));
-    } else {
-        messages.push(format!(
-            "stop=duration_and_byte_floors floors_met={floors_met} ops={seq} logical_bytes={logical_bytes}"
-        ));
     }
 
     Ok(WorkloadLegStats {
-        e2e_ns,
+        e2e_ns: 0, // filled by caller
         logical_bytes,
         ops_done: seq,
         ledger,
         records,
         window_samples,
         messages,
-        floors_met: if smoke_ops_limit.is_some() {
-            true
-        } else {
-            floors_met
-        },
+        floors_met: false,
+        sustained_throughput_bps: 0.0,
+        window_class: WindowClass::Inconclusive,
+        valid: false,
+        validity_reason: String::new(),
     })
+}
+
+/// Multi-worker path: concurrent preparers + outstanding-bounded `put_many`.
+///
+/// Workers generate batches in parallel; the store is written only on the
+/// main thread via `put_many` (which may parallelize across writer shards).
+/// Channel capacity enforces `outstanding` in-flight batches.
+fn execute_concurrent_batched(
+    store: &mut Store,
+    cfg: &DriverRunConfig,
+    store_dur: StoreDur,
+    workers: usize,
+    batch_sz: usize,
+    outstanding: usize,
+    smoke_ops_limit: Option<u64>,
+    t0: Instant,
+) -> Result<WorkloadLegStats, DriverError> {
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::sync::mpsc;
+    use std::thread;
+
+    let run_class = cfg.run_class_parsed();
+    let min_dur = Duration::from_secs(run_class.min_duration_secs());
+    let min_bytes = run_class.min_logical_bytes();
+    let safety = RunBudgets::default();
+    let max_dur = Duration::from_secs(
+        safety
+            .max_duration_secs
+            .max(run_class.min_duration_secs()),
+    );
+    let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
+
+    let seq_counter = Arc::new(AtomicU64::new(0));
+    let stop = Arc::new(AtomicBool::new(false));
+    let logical_shared = Arc::new(AtomicU64::new(0));
+
+    let (tx, rx) = mpsc::sync_channel::<PreparedBatch>(outstanding.max(1));
+
+    let seed = cfg.seed;
+    let dist = cfg.cell.distribution;
+    let payload_size = cfg.cell.payload_size;
+    let shards = cfg.cell.shards.max(1);
+
+    let handles: Vec<_> = (0..workers)
+        .map(|wid| {
+            let tx = tx.clone();
+            let seq_counter = Arc::clone(&seq_counter);
+            let stop = Arc::clone(&stop);
+            let logical_shared = Arc::clone(&logical_shared);
+            thread::spawn(move || {
+                let sampler = match dist {
+                    Some(d) => SizeSampler::distribution(d),
+                    None => SizeSampler::fixed(payload_size),
+                };
+                loop {
+                    if stop.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    if let Some(lim) = smoke_ops_limit {
+                        if seq_counter.load(Ordering::Relaxed) >= lim {
+                            break;
+                        }
+                    } else {
+                        let elapsed = t0.elapsed();
+                        let lb = logical_shared.load(Ordering::Relaxed);
+                        if elapsed >= min_dur && lb >= min_bytes {
+                            break;
+                        }
+                        if elapsed >= max_dur || lb >= max_bytes {
+                            break;
+                        }
+                    }
+
+                    let mut subjects = Vec::with_capacity(batch_sz);
+                    let mut bodies = Vec::with_capacity(batch_sz);
+                    for _ in 0..batch_sz {
+                        let seq = seq_counter.fetch_add(1, Ordering::Relaxed);
+                        if let Some(lim) = smoke_ops_limit {
+                            if seq >= lim {
+                                break;
+                            }
+                        }
+                        let plen = if dist.is_some() {
+                            sampler.size_at(seq)
+                        } else {
+                            payload_size
+                        };
+                        let plen = if run_class.allows_smoke_op_cap() {
+                            plen.min(64 * 1024).max(1)
+                        } else {
+                            plen.max(1)
+                        };
+                        let body = fill_body(seed, seq, plen);
+                        let shard = seq % u64::from(shards);
+                        subjects.push(format!("pqh11-w{wid:02}-s{shard:02x}-{seq:08x}"));
+                        bodies.push(body);
+                    }
+                    if subjects.is_empty() {
+                        break;
+                    }
+                    if tx
+                        .send(PreparedBatch {
+                            subjects,
+                            bodies,
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            })
+        })
+        .collect();
+    drop(tx);
+
+    let mut ledger = AckLedger::new();
+    let mut logical_bytes = 0u64;
+    let mut records = Vec::new();
+    let mut window_samples = Vec::new();
+    let mut messages = vec![format!(
+        "concurrent_batched workers={workers} batch_size={batch_sz} outstanding={outstanding}"
+    )];
+    let mut ops_done = 0u64;
+    let digest_mutant = cfg.digest_mutant;
+
+    while let Ok(batch) = rx.recv() {
+        let items: Vec<(&str, &[u8])> = batch
+            .subjects
+            .iter()
+            .zip(batch.bodies.iter())
+            .map(|(s, b)| (s.as_str(), b.as_slice()))
+            .collect();
+        match flush_batch(store, &items, store_dur) {
+            Ok(receipts) => {
+                for (i, _receipt) in receipts.iter().enumerate() {
+                    let plen = batch.bodies[i].len() as u64;
+                    let op_seq = ops_done;
+                    ops_done = ops_done.saturating_add(1);
+                    ledger.record_attempt();
+                    ledger.record_admit();
+                    if digest_mutant && op_seq == 0 {
+                        ledger.record_ack_mutant_wrong_digest(op_seq, op_seq, plen, 0);
+                    } else {
+                        ledger.record_ack(op_seq, op_seq, plen, 0);
+                    }
+                    records.push((op_seq, op_seq, plen, 0u32));
+                    logical_bytes = logical_bytes.saturating_add(plen);
+                }
+                logical_shared.store(logical_bytes, Ordering::Relaxed);
+            }
+            Err(e) => {
+                for _ in 0..batch.subjects.len() {
+                    ledger.record_attempt();
+                    ledger.record_fail();
+                    ops_done = ops_done.saturating_add(1);
+                }
+                messages.push(format!("batch flush failed: {e}"));
+            }
+        }
+        if smoke_ops_limit.is_none() {
+            let elapsed = t0.elapsed();
+            if elapsed >= min_dur && logical_bytes >= min_bytes {
+                stop.store(true, Ordering::Relaxed);
+            }
+            if elapsed >= max_dur || logical_bytes >= max_bytes {
+                stop.store(true, Ordering::Relaxed);
+                messages.push("stopped at safety ceiling (concurrent)".into());
+            }
+        }
+        if ops_done > 0 && (ops_done % 32 == 0 || t0.elapsed().as_millis() % 100 < 5) {
+            let e2e = t0.elapsed().as_nanos().max(1) as f64;
+            let bps = (logical_bytes as f64) * 1e9 / e2e;
+            window_samples.push(WindowSample {
+                throughput_bytes_per_sec: bps,
+            });
+        }
+    }
+    for h in handles {
+        let _ = h.join();
+    }
+    ops_done = ledger.acknowledged.max(ledger.attempted);
+
+    Ok(WorkloadLegStats {
+        e2e_ns: 0,
+        logical_bytes,
+        ops_done,
+        ledger,
+        records,
+        window_samples,
+        messages,
+        floors_met: false,
+        sustained_throughput_bps: 0.0,
+        window_class: WindowClass::Inconclusive,
+        valid: false,
+        validity_reason: String::new(),
+    })
+}
+
+struct PreparedBatch {
+    subjects: Vec<String>,
+    bodies: Vec<Vec<u8>>,
+}
+
+
+/// Flush a prepared batch.
+///
+/// Always uses the same path for probe-on and probe-off legs. Multi-shard
+/// `put_many` parallel append can omit boundary-probe samples, so multi-shard
+/// flushes as sequential `put` (still batch-sized outstanding units from the
+/// driver). Single-shard uses `put_many` (internally sequential puts).
+fn flush_batch(
+    store: &mut Store,
+    items: &[(&str, &[u8])],
+    mode: StoreDur,
+) -> Result<Vec<residiuum_store::WriteReceipt>, DriverError> {
+    if items.is_empty() {
+        return Ok(Vec::new());
+    }
+    if store.writer_shards() <= 1 {
+        return store
+            .put_many(items, mode)
+            .map_err(|e| DriverError::Store(e.to_string()));
+    }
+    let mut out = Vec::with_capacity(items.len());
+    for (subject, body) in items {
+        out.push(
+            store
+                .put(subject, body, mode)
+                .map_err(|e| DriverError::Store(e.to_string()))?,
+        );
+    }
+    Ok(out)
+}
+
+fn payload_len(
+    cfg: &DriverRunConfig,
+    sampler: &SizeSampler,
+    seq: u64,
+    run_class: RunClass,
+) -> u64 {
+    let plen = if cfg.cell.distribution.is_some() {
+        sampler.size_at(seq)
+    } else {
+        cfg.cell.payload_size
+    };
+    if run_class.allows_smoke_op_cap() {
+        plen.min(64 * 1024).max(1)
+    } else {
+        plen.max(1)
+    }
+}
+
+fn fill_body(seed: u64, seq: u64, plen: u64) -> Vec<u8> {
+    let mut body = vec![0u8; plen as usize];
+    let mut x = seed.wrapping_add(seq);
+    for b in &mut body {
+        x = x
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            .wrapping_add(1);
+        *b = (x >> 33) as u8;
+    }
+    body
 }
 
 fn map_durability(d: MatrixDur) -> StoreDur {
@@ -685,11 +1099,61 @@ mod tests {
         assert_eq!(wc.outstanding, 4);
         assert_eq!(wc.shards, 2);
         assert_eq!(wc.durability, "buffered");
+        // Smoke uses wall-time cost basis; duration floors use sustained tput.
+        assert!(report
+            .pairs
+            .iter()
+            .all(|p| p.cost_basis == OverheadCostBasis::WallTime && p.legs_valid));
         assert_eq!(
             report.pairs.iter().filter(|p| p.order == "off_first").count(),
             report.pairs.iter().filter(|p| p.order == "on_first").count()
         );
         assert!(report.notes.iter().any(|n| n.contains("workload_contract")));
+    }
+
+    #[test]
+    fn concurrent_batching_smoke_cell_runs() {
+        let dir = tempfile::tempdir().unwrap();
+        let cell = MatrixCell {
+            cell_id: "L4-conc-batch".into(),
+            layer: LayerProfile::L4,
+            durability: MatrixDur::Buffered,
+            payload_size: 64,
+            distribution: None,
+            concurrency: 2,
+            outstanding: 2,
+            batch_size: 4,
+            shards: 2,
+            db_state: DatabaseState::Empty,
+            features: FeatureProfile::l4_minimal(),
+            interference: InterferenceProfile::absent(),
+            op_count: 16,
+            order_rank: 0,
+        };
+        let report = run_real_store(&DriverRunConfig {
+            cell,
+            seed: 11,
+            kind: DriverKind::RealStore,
+            work_root: Some(dir.path().to_path_buf()),
+            durability_mutant: false,
+            digest_mutant: false,
+            run_class: "smoke".into(),
+        })
+        .expect("concurrent batched smoke");
+        assert_eq!(report.cell.validity, "valid");
+        assert!(report.cell.acknowledged > 0);
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("concurrent_batched") || n.contains("serial_batched") || n.contains("put_many")),
+            "expected batching/concurrency behaviour notes"
+        );
+        assert!(
+            report.notes.iter().any(|n| n.contains("concurrent_workers=2")
+                || n.contains("workers=2")),
+            "expected concurrency dimension applied"
+        );
     }
 
     #[test]
