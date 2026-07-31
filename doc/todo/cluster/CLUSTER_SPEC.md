@@ -652,22 +652,124 @@ replacement control plane by:
 The reconstructed control plane MUST use a new recovery generation and MUST
 not claim continuity that the surviving evidence cannot prove.
 
-## 13. Routing
+## 13. Routing without a mandatory load balancer
 
-Clients MAY route through gateways or directly to partition leaders.
+The cluster MUST NOT require a load balancer, permanent router or coordinator
+for correctness, availability or ordinary operation. Every admitted data-plane
+node can receive a client request and resolve its authoritative destination.
+Load balancers and gateways remain optional deployment surfaces.
 
-The hot path SHOULD support:
+### 13.1 Client discovery and connection
 
-1. cache partition directory entries;
-2. route directly to the leader or selected replica;
-3. receive an explicit stale-epoch response on misrouting;
-4. refresh only the affected directory entry;
-5. retry using the same event identifier.
+A client receives multiple seed addresses directly or through DNS service
+discovery, for example:
 
-Retries MUST be idempotent by event identifier and content identity.
+```text
+residiuum://node-a,node-b,node-c/<heap>
+residiuum+srv://cluster.example.internal/<heap>
+```
 
-Directory caches MUST have bounded staleness or epoch validation. A stale
-route may cost a redirect; it MUST NOT authorize an obsolete writer.
+The SDK connects to any reachable seed, authenticates the cluster identity,
+learns the eligible data-plane topology and maintains more than one usable
+connection. Loss of the first-contact node MUST NOT strand the client.
+
+### 13.2 Any-node ingress and forwarding
+
+On receiving a request, a node resolves its Heap, partition, operation mode,
+placement epoch and required leader/replica. If it is an eligible destination,
+it executes locally. Otherwise it MAY forward the request once over an
+authenticated cluster channel and relay the result to the client.
+
+Forwarding is transparent to clients that do not implement direct routing. It
+does not transfer authority to the ingress node or make it a permanent
+coordinator.
+
+### 13.3 Direct-route learning
+
+Responses and stale-route errors MAY carry an authenticated route hint:
+
+```text
+cluster identity
+Heap and partition
+eligible destination identity/address
+partition term
+placement epoch
+read/operation eligibility
+expiry
+signature or authenticated channel binding
+```
+
+An SDK validates and caches the hint, then sends subsequent requests directly
+to the correct leader or eligible replica. The expected steady-state path is:
+
+```text
+client → cached partition route → partition leader/replica
+```
+
+The first request or a changed placement may cost one additional hop; ordinary
+traffic must not be forced permanently through its first-contact node.
+
+### 13.4 Stale routes and bounded forwarding
+
+A node receiving a stale term or placement epoch returns a typed stale-route
+outcome with the best authenticated current hint it can prove. The client
+refreshes only the affected directory entry and retries under the original
+request identity.
+
+Forwarding has a default maximum of one internal hop. A forwarding envelope
+carries its hop count and visited ingress identity. A node MUST return
+`route_uncertain`, `stale_route` or `unavailable` rather than create a routing
+loop, follow an unauthenticated hint or guess an authoritative destination.
+
+A stale route may cost a redirect or forward. It MUST NOT authorize an
+obsolete writer.
+
+### 13.5 Forwarded-request authority
+
+Every forwarded request carries:
+
+- the original request and idempotency identities;
+- the original Heap capability and requested operation;
+- Heap, partition, observed term and placement epoch;
+- ingress and forwarding node identities;
+- hop count and absolute deadline; and
+- an authenticated integrity envelope.
+
+The destination independently verifies the original capability, Heap binding,
+scope, operation, epoch and limits. “The ingress node approved it” is never
+sufficient authority. Forwarding MUST NOT turn a cluster node into a confused
+deputy.
+
+### 13.6 Ambiguous response and idempotent retry
+
+A destination may commit an operation after the ingress node fails but before
+the client receives the response. Every mutating request therefore has one
+stable canonical idempotency identity and content/operation binding.
+
+Retry through another node returns the original committed result or an honest
+indeterminate outcome; it MUST NOT apply the logical effect twice. Retries are
+idempotent by request/event identity and content identity.
+
+### 13.7 Temporary distributed coordinators
+
+The receiving node for a multi-partition query may act as a bounded temporary
+coordinator: it dispatches partition-local SDA work, merges results
+deterministically and returns coverage. It has no permanent authority.
+
+Coordinator state required for continuation is authenticated and portable. A
+replacement coordinator may resume from the same frozen view/frontiers and
+must not silently repeat or omit results.
+
+### 13.8 Optional gateways and load balancers
+
+Private applications may use any-node ingress directly. Public internet
+clients SHOULD use one of multiple replaceable Residiuum Gateways. Gateways use
+the same partition-routing protocol but hold no payload authority, consensus
+vote, master credential, repair authority or permanent coordinator role.
+
+DNS/SRV and SDK failover can discover gateways without a dedicated load
+balancer. An external L4/L7 load balancer MAY be used for edge protection or
+operational convenience, but is never part of the database correctness model.
 
 ## 14. Rebalancing
 
@@ -909,6 +1011,29 @@ that quorum replication across distant regions is free.
 
 ## 21. Security
 
+### 21.1 Network surfaces
+
+Residiuum is dark by default. It exposes no public listener unless an operator
+performs an explicit public-exposure operation. The default surfaces are:
+
+```text
+cluster plane        private/overlay; node gossip, consensus and replication
+application plane    private; capability-gated data operations
+administration plane local or isolated management network
+public plane         optional hardened gateways only
+```
+
+TLS protects transport; it does not itself authorize public database
+exposure. Cluster, membership, repair, seal, master-key and catastrophic
+recovery protocols MUST NOT share a public application listener.
+
+Public exposure of a storage node, when a declared profile permits it, is an
+explicit Evidence Ledger event and requires hostile-network limits, mutual
+authentication where supported, Heap capability validation, replay defense,
+request/connection quotas and removal of every administrative surface.
+
+### 21.2 Identity and authority
+
 Nodes have stable cryptographic identities.
 
 Control-plane membership changes, placement epochs, and leadership terms MUST
@@ -945,7 +1070,14 @@ A conforming cluster implementation MUST test:
 17. query-coordinator replacement;
 18. deletion of half the cluster's segment files;
 19. salvage of a node with no cluster software running;
-20. deterministic SDA results under randomized worker completion order.
+20. deterministic SDA results under randomized worker completion order;
+21. first-contact node loss with SDK seed failover;
+22. any-node forwarding followed by direct-route learning;
+23. stale route hints across term and placement changes;
+24. forwarding-loop and hop-limit rejection;
+25. destination rejection of ingress-approved but invalid authority;
+26. ingress loss after destination commitment followed by idempotent retry; and
+27. operation with every optional gateway and load balancer removed.
 
 Every test MUST verify physical survival, logical commitment, and query
 coverage as separate claims.
