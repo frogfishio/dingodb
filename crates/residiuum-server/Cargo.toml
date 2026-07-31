@@ -12,6 +12,11 @@ keywords = ["residiuum", "server", "raft", "rpc"]
 categories = ["database", "network-programming"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 
+[features]
+# Enables `InMemoryHolderKey` on the linked SDK for HP-007 style tests only.
+# Not required for ordinary serve; do not enable in product feature sets.
+dangerous-key-export = ["residiuum-sdk/dangerous-key-export"]
+
 [dependencies]
 residiuum-sdk = { workspace = true, features = ["cluster"] }
 residiuum-client.workspace = true
@@ -38,3 +43,7 @@ ed25519-dalek = { version = "2.1.1", default-features = false, features = [
 hex = "0.4"
 sha2 = "0.10"
 rcgen = "0.13"
+
+[[test]]
+name = "hp007_connect_heap"
+required-features = ["dangerous-key-export"]

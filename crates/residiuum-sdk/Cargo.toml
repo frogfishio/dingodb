@@ -54,11 +54,8 @@ webpki-roots = "0.26"
 x509-parser = "0.16"
 
 [dev-dependencies]
-# Path/workspace only: residiuum-server → residiuum-sdk is a real dep, so a crates.io
-# version cycle fails `cargo publish`. Before `cargo publish -p residiuum-sdk`,
-# temporarily comment the next line (integration tests stay monorepo-local).
-# Restore after publish so workspace `cargo test -p residiuum-sdk` keeps working.
-residiuum-server = { workspace = true }
+# No residiuum-server here: server → sdk is a normal dep, so a crates.io cycle
+# would block publish. TCP/serve integration tests live in `residiuum-server/tests/`.
 residiuum-cluster = { workspace = true }
 tempfile.workspace = true
 rcgen = "0.13"
@@ -69,51 +66,10 @@ ed25519-dalek = { version = "2.1.1", default-features = false, features = [
 ] }
 hex = "0.4"
 
-# Integration tests that exercise in-process / network cluster require the
-# AGPL `cluster` feature (pulled by residiuum-server in those tests too).
-[[test]]
-name = "stage8d_routing"
-required-features = ["cluster"]
-
+# In-process cluster tests (no TCP serve) need the AGPL `cluster` feature.
 [[test]]
 name = "stage8e_find_coverage"
 required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_036_raft_rpc"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_037_cluster_commit"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_030_bounded_server"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_032_tls"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_033_authz"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_034_admission"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage7_remote_parity"
-required-features = ["cluster"]
-
-[[test]]
-name = "stage_def_031_protocol"
-required-features = ["cluster"]
-
-[[test]]
-name = "hp007_connect_heap"
-required-features = ["dangerous-key-export"]
 
 [[test]]
 name = "cpr001_legacy_opt_in"
