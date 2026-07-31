@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn reports_have_slices_and_no_opt() {
         let plan = campaign_plan_synthetic(99, 4);
-        let result = run_campaign(&CampaignConfig { plan }).unwrap();
+        let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
         let reports = build_campaign_reports(&result);
         assert!(!reports.durability.is_empty() || result.valid_runs == 0);
         assert!(reports.notes.iter().any(|n| n.contains("No optimization")));

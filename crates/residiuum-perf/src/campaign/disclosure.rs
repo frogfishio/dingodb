@@ -37,17 +37,29 @@ pub fn build_disclosure(result: &CampaignResult, reports: &CampaignReports) -> D
         layers.insert(r.report.layer.clone());
     }
 
-    let allows = result.plan.platform.allows_product_baseline();
+    let allows = result.product_claim_eligible;
     let mut warnings = reports.notes.clone();
-    warnings.push(
-        "Default campaign matrix uses harness simulation; real residiuum-store driver is feature-gated (store-driver) and must be selected explicitly"
-            .into(),
-    );
+    warnings.push(format!(
+        "driver={} surface={} product_claim_eligible={}",
+        result.driver_kind, result.measurement_surface, result.product_claim_eligible
+    ));
+    if result.driver_kind == "synthetic" {
+        warnings.push(
+            "Synthetic/proxy driver — NON-PRODUCT; do not publish absolute throughput".into(),
+        );
+    }
     if !allows {
         warnings.push(
-            "Platform is not a controlled product baseline host — do not publish absolute throughput"
+            "Product baseline claim not eligible on this campaign (need real_store + controlled platform + --controlled)"
                 .into(),
         );
+    }
+    if let Some(v) = &result.primary_bottleneck {
+        warnings.push(format!(
+            "primary_bottleneck={} run_ids={}",
+            v,
+            result.primary_bottleneck_run_ids.join(",")
+        ));
     }
 
     let checklist = vec![
@@ -92,17 +104,36 @@ pub fn build_disclosure(result: &CampaignResult, reports: &CampaignReports) -> D
         ),
         item(
             "store_driver",
-            "available_feature_gated",
-            "real store via --features store-driver + --driver real_store; default synthetic is NON-PRODUCT",
+            if result.driver_kind == "real_store" {
+                "real_store_multi_rep"
+            } else {
+                "synthetic_non_product"
+            },
+            format!(
+                "driver={} (real_store needs --features store-driver)",
+                result.driver_kind
+            ),
         ),
         item(
             "absolute_throughput_claim",
             if allows {
-                "controlled_runner_required"
+                "eligible_if_disclosure_complete"
             } else {
-                "forbidden_on_synthetic"
+                "not_eligible"
             },
-            "PQH-9 does not auto-publish MB/s product claims",
+            "Product MB/s only when product_claim_eligible=true; no optimisations in PQH",
+        ),
+        item(
+            "primary_bottleneck",
+            if result.primary_bottleneck.is_some() {
+                "recorded"
+            } else {
+                "pending_or_mixed"
+            },
+            result
+                .primary_bottleneck
+                .clone()
+                .unwrap_or_else(|| "none".into()),
         ),
         item(
             "optimization",
@@ -224,7 +255,7 @@ mod tests {
     #[test]
     fn disclosure_forbids_synthetic_product_claim() {
         let plan = campaign_plan_synthetic(3, 2);
-        let result = run_campaign(&CampaignConfig { plan }).unwrap();
+        let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
         let reports = build_campaign_reports(&result);
         let d = build_disclosure(&result, &reports);
         assert!(!d.allows_product_baseline);

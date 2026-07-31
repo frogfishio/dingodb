@@ -26,7 +26,10 @@ pub use reports::{
     build_campaign_reports, CampaignReports, FollowUpCard, MultiprocFinding, RankedBottleneck,
     SliceRow,
 };
-pub use run::{run_campaign, CampaignConfig, CampaignResult, CellRepetition, ProcessSlot};
+pub use run::{
+    attach_primary_bottleneck, run_campaign, CampaignConfig, CampaignResult, CellRepetition,
+    ProcessSlot,
+};
 
 use thiserror::Error;
 

@@ -3,8 +3,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-echo "PQH-1…10: cargo test -p residiuum-perf --lib"
+echo "PQH-1…11: cargo test -p residiuum-perf --lib"
 cargo test -p residiuum-perf --lib --quiet
-echo "PQH-10 store-driver: cargo test -p residiuum-perf --features store-driver --lib"
+echo "PQH-10/11 store-driver: cargo test -p residiuum-perf --features store-driver --lib"
 cargo test -p residiuum-perf --features store-driver --lib --quiet
-echo "OK: residiuum-perf PQH-1…10 tests passed (default + store-driver)"
+echo "OK: residiuum-perf PQH-1…11 tests passed (default + store-driver)"

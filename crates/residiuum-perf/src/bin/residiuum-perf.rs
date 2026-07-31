@@ -12,9 +12,9 @@
 //! requires `--features store-driver` at build time. No optimisations applied.
 
 use residiuum_perf::campaign::{
-    build_campaign_reports, build_disclosure, campaign_plan_linux, campaign_plan_macos_apple_silicon,
-    campaign_plan_synthetic, run_campaign, verify_bundle_hashes, write_evidence_bundle,
-    CampaignConfig, PlatformClass,
+    attach_primary_bottleneck, build_campaign_reports, build_disclosure, campaign_plan_linux,
+    campaign_plan_macos_apple_silicon, campaign_plan_synthetic, run_campaign, verify_bundle_hashes,
+    write_evidence_bundle, CampaignConfig, PlatformClass,
 };
 use residiuum_perf::matrix::{build_matrix_cells, ScheduleSeed};
 use residiuum_perf::runner::{
@@ -62,14 +62,15 @@ store-driver compiled: {}
 Commands:
   preflight --work <dir> [--qualification]
   run --work <dir> [--driver synthetic|real_store] [--max-cells N] [--seed N]
-      [--platform synthetic|macos_as|linux]
+      [--platform synthetic|macos_as|linux] [--controlled]
   analyze --campaign <dir>
   verify --campaign <dir>
   driver-smoke --work <dir> [--driver synthetic|real_store]
 
 Honesty:
   synthetic/proxy results are NON-PRODUCT.
-  real_store requires build with --features store-driver.
+  real_store multi-rep campaign needs --features store-driver.
+  --controlled only when this host is a declared controlled runner.
   No optimisations are applied by this CLI.
 ",
         store_driver_compiled()
@@ -159,44 +160,50 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
         plan.notes
             .push("CLI run with synthetic driver — NON-PRODUCT".into());
     }
+    let controlled = has_flag(args, "--controlled");
+    if controlled && kind != DriverKind::RealStore {
+        return Err("--controlled requires --driver real_store".into());
+    }
 
-    let result = run_campaign(&CampaignConfig { plan: plan.clone() }).map_err(|e| e.to_string())?;
+    let mut result = run_campaign(&CampaignConfig {
+        plan: plan.clone(),
+        driver: kind,
+        work_root: Some(work.clone()),
+        declare_controlled_runner: controlled,
+    })
+    .map_err(|e| e.to_string())?;
+
     let mut reports = build_campaign_reports(&result);
-    if kind == DriverKind::Synthetic || matches!(plan.platform, PlatformClass::SyntheticHarness) {
+    attach_primary_bottleneck(&mut result, &reports.ranked_bottlenecks);
+
+    if kind == DriverKind::Synthetic {
         reports
             .notes
             .push("NON-PRODUCT: synthetic/proxy campaign; do not publish absolute MB/s".into());
         reports.multiproc_finding.overstates_product = false;
     }
-
     if kind == DriverKind::RealStore {
-        let manifest = build_matrix_cells(ScheduleSeed { seed });
-        if let Some(cell) = manifest.cells.first() {
-            let d = run_driver_cell(&DriverRunConfig {
-                cell: cell.clone(),
-                seed,
-                kind: DriverKind::RealStore,
-                work_root: Some(work.clone()),
-                durability_mutant: false,
-                digest_mutant: false,
-            })
-            .map_err(|e| e.to_string())?;
-            reports.notes.push(format!(
-                "real_store smoke cell={} acked={} product_claim_eligible={}",
-                d.cell.cell_id, d.cell.acknowledged, d.product_claim_eligible
-            ));
-            if let Some(p) = &d.plan {
-                let plan_path = work.join("real_store_plan.json");
-                std::fs::write(
-                    &plan_path,
-                    serde_json::to_string_pretty(p).map_err(|e| e.to_string())?,
-                )
-                .map_err(|e| e.to_string())?;
-                reports
-                    .notes
-                    .push(format!("wrote store-native plan {}", plan_path.display()));
-            }
+        reports.notes.push(format!(
+            "real_store multi-rep campaign valid_runs={} product_claim_eligible={} surface={}",
+            result.valid_runs, result.product_claim_eligible, result.measurement_surface
+        ));
+        if !result.product_claim_eligible {
+            reports.notes.push(
+                "real_store run is uncontrolled/non-baseline unless --controlled on a controlled platform"
+                    .into(),
+            );
         }
+        if let Some(v) = &result.primary_bottleneck {
+            reports.notes.push(format!(
+                "primary_bottleneck={} run_ids={}",
+                v,
+                result.primary_bottleneck_run_ids.join(",")
+            ));
+        }
+        reports.notes.push(
+            "NO optimisations applied; follow-up cards are stubs only".into(),
+        );
+        reports.multiproc_finding.overstates_product = false;
     }
 
     let disclosure = build_disclosure(&result, &reports);
@@ -211,11 +218,13 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
             "campaign_id": plan.campaign_id,
             "driver": kind.as_str(),
             "platform": plan.platform.as_str(),
-            "allows_product_baseline": plan.platform.allows_product_baseline()
-                && kind != DriverKind::Synthetic,
+            "measurement_surface": result.measurement_surface,
+            "product_claim_eligible": result.product_claim_eligible,
             "valid_runs": result.valid_runs,
+            "primary_bottleneck": result.primary_bottleneck,
+            "primary_bottleneck_run_ids": result.primary_bottleneck_run_ids,
             "content_hash": bundle.content_hash,
-            "non_product": kind == DriverKind::Synthetic,
+            "non_product": kind == DriverKind::Synthetic || !result.product_claim_eligible,
             "notes": reports.notes,
         })
     );

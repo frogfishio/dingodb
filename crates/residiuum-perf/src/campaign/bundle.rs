@@ -183,7 +183,7 @@ mod tests {
     fn bundle_roundtrip_verifies() {
         let dir = tempfile::tempdir().unwrap();
         let plan = campaign_plan_synthetic(7, 2);
-        let result = run_campaign(&CampaignConfig { plan }).unwrap();
+        let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
         let reports = build_campaign_reports(&result);
         let disclosure = build_disclosure(&result, &reports);
         let bundle = write_evidence_bundle(dir.path(), &result, &reports, &disclosure).unwrap();
