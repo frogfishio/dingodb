@@ -4,7 +4,7 @@
 //! **Qualification** runs until SPEC §6.4 duration **and** byte floors are met
 //! (unless safety max would be crossed); never silently caps to 4–16 ops.
 
-use super::emitter::{emit_plan_from_receipts, WriteReceiptFact, STORE_SEAM_EMITTER_FROM_RECEIPTS};
+use super::emitter::{emit_plan_from_store_boundary_events, STORE_SEAM_EMITTER_FROM_RECEIPTS};
 use super::kinds::{DriverKind, MeasurementSurface};
 use super::{cell_store_path, DriverCellReport, DriverError, DriverRunConfig};
 use crate::campaign::RunClass;
@@ -12,7 +12,7 @@ use crate::envelope::{WindowDetector, WindowSample};
 use crate::matrix::{AckLedger, CellRunReport, DurabilityMode as MatrixDur, MatrixError};
 use crate::runner::RunBudgets;
 use crate::workload::SizeSampler;
-use residiuum_store::{DurabilityMode as StoreDur, Store};
+use residiuum_store::{BoundaryKind, DurabilityMode as StoreDur, Store};
 use std::fs;
 use std::time::{Duration, Instant};
 
@@ -37,6 +37,8 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     fs::create_dir_all(store_path.parent().unwrap_or(work_root))?;
 
     let mut store = Store::create(&store_path).map_err(|e| DriverError::Store(e.to_string()))?;
+    // Consume store-emitted boundary events (not receipt reconstruction).
+    store.enable_boundary_probe();
     let store_dur = map_durability(cfg.cell.durability);
 
     let sampler = match cfg.cell.distribution {
@@ -57,10 +59,7 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
 
     let mut ledger = AckLedger::new();
-    let mut facts = Vec::new();
     let mut logical_bytes = 0u64;
-    let mut last_seg: Option<[u8; 16]> = None;
-    let mut seg_gen = 0u32;
     let mut records = Vec::new();
     let mut window_samples = Vec::new();
     let mut messages = Vec::new();
@@ -140,28 +139,18 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
                 records.push((seq, seq, plen, 0u32));
                 logical_bytes = logical_bytes.saturating_add(plen);
 
-                let rotate = match last_seg {
-                    Some(prev) => prev != receipt.segment_id,
-                    None => false,
-                };
-                if rotate {
-                    seg_gen = seg_gen.saturating_add(1);
+                // Cross-check receipt vs store probe policy only — do not rebuild events.
+                let encoded_len = receipt.encoded_frame_len;
+                if encoded_len == 0 && store_dur != StoreDur::Memory {
+                    messages.push(format!(
+                        "warn: missing encoded_frame_len at offset={} logical={}",
+                        receipt.offset, plen
+                    ));
                 }
-                last_seg = Some(receipt.segment_id);
-
-                let chunked = receipt.chunk_count > 0;
-                let physical_len = plen.saturating_add(96);
-                // Cap facts for plan emission size (still redacted).
-                if facts.len() < 4096 {
-                    facts.push(WriteReceiptFact {
-                        logical_len: receipt.logical_len.max(plen),
-                        physical_len,
-                        durability: receipt.durability.as_str().into(),
-                        segment_gen: seg_gen,
-                        segment_rotate: rotate,
-                        chunked,
-                        chunk_count: receipt.chunk_count,
-                    });
+                if encoded_len > 0 && encoded_len < plen {
+                    messages.push(format!(
+                        "warn: encoded_frame_len={encoded_len} < logical={plen}"
+                    ));
                 }
             }
             Err(e) => {
@@ -201,21 +190,61 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     }
     messages.push(format!("sample_get_ok={get_ok} ops_done={seq}"));
 
+    // Drain store-native boundary instrumentation (write/sync/rotate/publish/lifecycle).
+    let store_events = store.take_boundary_events();
+    messages.push(format!(
+        "store_emitted_boundary_events={} append={} file_write={} file_sync={} publish={} rotate={} lifecycle={}",
+        store_events.len(),
+        store_events
+            .iter()
+            .filter(|e| e.kind == BoundaryKind::AppendEncodedFrame)
+            .count(),
+        store_events
+            .iter()
+            .filter(|e| e.kind == BoundaryKind::FileWrite)
+            .count(),
+        store_events
+            .iter()
+            .filter(|e| e.kind == BoundaryKind::FileSync)
+            .count(),
+        store_events
+            .iter()
+            .filter(|e| e.kind == BoundaryKind::PublishVisibility)
+            .count(),
+        store_events
+            .iter()
+            .filter(|e| e.kind == BoundaryKind::SegmentRotate)
+            .count(),
+        store_events
+            .iter()
+            .filter(|e| e.kind == BoundaryKind::LifecycleSeal)
+            .count(),
+    ));
+    if store_events.is_empty() && seq > 0 {
+        return Err(DriverError::Msg(
+            "store boundary probe produced no events; refuse reconstructed receipt stream".into(),
+        ));
+    }
+
     drop(store);
     let reopen_store = Store::open(&store_path).map_err(|e| DriverError::Store(e.to_string()))?;
     let live = reopen_store.live_count();
     messages.push(format!("reopen_live_count={live}"));
     drop(reopen_store);
 
-    let plan = emit_plan_from_receipts(
+    let plan = emit_plan_from_store_boundary_events(
         &cfg.cell.cell_id,
-        &facts,
+        &store_events,
         32 * 1024,
         1024 * 1024,
         cfg.cell.batch_size.max(1),
     );
     plan.assert_redacted_json()
         .map_err(|e| DriverError::Msg(e))?;
+    messages.push(
+        "plan_source=store_boundary_probe (consumed store events; not receipt reconstruction)"
+            .into(),
+    );
 
     let tput = if e2e_ns == 0 {
         0.0
@@ -336,7 +365,40 @@ mod tests {
         assert!(report.cell.acknowledged > 0);
         assert!(report.cell.acknowledged <= RunClass::SMOKE_MAX_OPS);
         assert!(report.plan.is_some());
-        report.plan.as_ref().unwrap().assert_redacted_json().unwrap();
+        let plan = report.plan.as_ref().unwrap();
+        plan.assert_redacted_json().unwrap();
+        // Ops must come from store-boundary encoded frame lengths, not estimate.
+        assert!(
+            plan.planned_bytes > 0,
+            "expected measured encoded bytes from WriteReceipt.encoded_frame_len"
+        );
+        let logical_floor = 256u64; // cell.payload_size
+        assert!(
+            plan.planned_bytes >= logical_floor,
+            "planned_bytes={} < logical floor",
+            plan.planned_bytes
+        );
+        assert!(
+            !report
+                .notes
+                .iter()
+                .any(|n| n.contains("missing encoded_frame_len")),
+            "store must emit encoded_frame_len on durable/buffered puts"
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("store_emitted_boundary_events=")),
+            "real driver must consume store-emitted boundary events"
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("not receipt reconstruction")),
+            "must not reconstruct boundary stream from receipts"
+        );
         assert!(report.notes.iter().any(|n| n.contains("run_class=smoke")));
     }
 

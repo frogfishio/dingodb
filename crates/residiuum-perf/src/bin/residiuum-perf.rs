@@ -6,15 +6,18 @@
 //! residiuum-perf analyze --campaign <dir>
 //! residiuum-perf verify --campaign <dir>
 //! residiuum-perf driver-smoke --work <dir> [--driver synthetic|real_store]
+//! residiuum-perf worker --job <path> --out <path> --ready <path> --go <path>
 //! ```
 //!
 //! Synthetic/proxy results are always labelled non-product. Real-store driver
 //! requires `--features store-driver` at build time. No optimisations applied.
+//! Multi-process campaigns spawn genuine OS workers (barrier-synced).
 
 use residiuum_perf::campaign::{
     attach_primary_bottleneck, build_campaign_reports, build_disclosure, campaign_plan_linux,
-    campaign_plan_macos_apple_silicon, campaign_plan_synthetic, run_campaign, verify_bundle_hashes,
-    write_evidence_bundle, CampaignConfig, PlatformClass, RunClass,
+    campaign_plan_macos_apple_silicon, campaign_plan_synthetic, run_campaign, run_worker_job,
+    verify_bundle_hashes, write_evidence_bundle, CampaignConfig, PlatformClass, RunClass,
+    WorkerJob,
 };
 use residiuum_perf::matrix::{build_matrix_cells, ScheduleSeed};
 use residiuum_perf::runner::{
@@ -42,6 +45,7 @@ fn main() -> ExitCode {
         "analyze" => cmd_analyze(&args),
         "verify" => cmd_verify(&args),
         "driver-smoke" => cmd_driver_smoke(&args),
+        "worker" => cmd_worker(&args),
         other => Err(format!("unknown command {other}; see --help")),
     };
     match result {
@@ -63,14 +67,17 @@ Commands:
   preflight --work <dir> [--qualification]
   run --work <dir> [--driver synthetic|real_store] [--max-cells N] [--seed N]
       [--platform synthetic|macos_as|linux] [--class smoke|diagnostic|qualification|soak]
-      [--controlled]
+      [--controlled] [--spawn-workers|--no-spawn-workers]
   analyze --campaign <dir>
   verify --campaign <dir>
   driver-smoke --work <dir> [--driver synthetic|real_store]
+  worker --job <path> --out <path> --ready <path> --go <path>
+      (internal: barrier-synced process-slot child; do not invoke by hand)
 
 Honesty:
   Default --class is smoke (functional only; NO bottleneck verdicts).
   Qualification requires --class qualification (120s + 512MiB floors; no op caps).
+  Multi-process runs spawn genuine OS workers by default (barrier-synced).
   synthetic/proxy results are NON-PRODUCT.
   real_store needs --features store-driver.
   --controlled only on a declared controlled runner + qualification class.
@@ -174,12 +181,25 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
         return Err("--controlled requires --class qualification (or soak)".into());
     }
 
+    // Genuine multiproc: default spawn when processes > 1. Override with flags.
+    let spawn_workers = if has_flag(args, "--no-spawn-workers") {
+        false
+    } else if has_flag(args, "--spawn-workers") {
+        true
+    } else {
+        plan.processes > 1
+    };
+    let worker_bin = std::env::current_exe().ok();
+
     let mut result = run_campaign(&CampaignConfig {
         plan: plan.clone(),
         driver: kind,
         work_root: Some(work.clone()),
         declare_controlled_runner: controlled,
         run_class,
+        spawn_workers,
+        worker_bin,
+        require_qualification_preflight: run_class.may_emit_bottleneck_verdict(),
     })
     .map_err(|e| e.to_string())?;
 
@@ -195,11 +215,13 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
     }
     if kind == DriverKind::RealStore {
         reports.notes.push(format!(
-            "real_store multi-rep run_class={} valid_runs={} product_claim_eligible={} surface={}",
+            "real_store multi-rep run_class={} valid_runs={} product_claim_eligible={} surface={} workers_spawned={} worker_pids={:?}",
             result.run_class,
             result.valid_runs,
             result.product_claim_eligible,
-            result.measurement_surface
+            result.measurement_surface,
+            result.workers_spawned,
+            result.worker_pids,
         ));
         if run_class == RunClass::Smoke {
             reports.notes.push(
@@ -239,6 +261,8 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
             "measurement_surface": result.measurement_surface,
             "product_claim_eligible": result.product_claim_eligible,
             "valid_runs": result.valid_runs,
+            "workers_spawned": result.workers_spawned,
+            "worker_pids": result.worker_pids,
             "primary_bottleneck": result.primary_bottleneck,
             "primary_bottleneck_run_ids": result.primary_bottleneck_run_ids,
             "withdrawals": result.withdrawals,
@@ -250,6 +274,39 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
         })
     );
     Ok(())
+}
+
+/// Child entry for barrier-synced process slots (invoked by `run_spawned_workers`).
+fn cmd_worker(args: &[String]) -> Result<(), String> {
+    let job_path = PathBuf::from(flag_value(args, "--job").ok_or("--job required")?);
+    let out_path = PathBuf::from(flag_value(args, "--out").ok_or("--out required")?);
+    let ready_path = PathBuf::from(flag_value(args, "--ready").ok_or("--ready required")?);
+    let go_path = PathBuf::from(flag_value(args, "--go").ok_or("--go required")?);
+
+    let raw = std::fs::read_to_string(&job_path).map_err(|e| e.to_string())?;
+    let job: WorkerJob = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    match run_worker_job(&job, &ready_path, &go_path) {
+        Ok(result) => {
+            let json = serde_json::to_string_pretty(&result).map_err(|e| e.to_string())?;
+            std::fs::write(&out_path, json).map_err(|e| e.to_string())?;
+            Ok(())
+        }
+        Err(e) => {
+            // Still write a result with error so the parent can collect PIDs.
+            let err_result = residiuum_perf::campaign::WorkerResult {
+                process_id: job.process_id,
+                worker_pid: std::process::id(),
+                spawned: true,
+                repetitions: vec![],
+                error: Some(e.to_string()),
+            };
+            let _ = std::fs::write(
+                &out_path,
+                serde_json::to_string_pretty(&err_result).unwrap_or_default(),
+            );
+            Err(e.to_string())
+        }
+    }
 }
 
 fn cmd_analyze(args: &[String]) -> Result<(), String> {

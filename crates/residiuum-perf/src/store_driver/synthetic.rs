@@ -27,9 +27,11 @@ pub fn run_synthetic(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverEr
     let mut facts = Vec::new();
     let size = cfg.cell.payload_size.min(8192);
     for i in 0..ops {
+        // Synthetic proxy only: explicit encoded length (not payload+N invent).
+        // real_store uses WriteReceipt.encoded_frame_len from the store boundary.
         facts.push(WriteReceiptFact {
             logical_len: size,
-            physical_len: size.saturating_add(64),
+            encoded_frame_len: size.saturating_add(48), // synthetic frame proxy only
             durability: report.durability.clone(),
             segment_gen: (i / 8) as u32,
             segment_rotate: i > 0 && i % 8 == 0,

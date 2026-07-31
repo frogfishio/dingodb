@@ -161,10 +161,20 @@ pub fn build_campaign_reports(result: &CampaignResult) -> CampaignReports {
             result.plan.platform.as_str(),
             result.plan.platform.allows_product_baseline()
         ),
+        "attribution: no synthesized L1/L2/L3, stage, residual, queue, CPU, or OS inputs; missing evidence → mixed_or_unknown".into(),
     ];
     if !result.plan.platform.allows_product_baseline() {
         notes.push(
             "Synthetic/harness platform: do not publish absolute MB/s as product qualification"
+                .into(),
+        );
+    }
+    if ranked_bottlenecks
+        .iter()
+        .all(|b| b.verdict == "mixed_or_unknown")
+    {
+        notes.push(
+            "all ranked bottlenecks are mixed_or_unknown (expected without full ladder/stage/OS evidence)"
                 .into(),
         );
     }
@@ -184,6 +194,10 @@ pub fn build_campaign_reports(result: &CampaignResult) -> CampaignReports {
 
 fn rank_bottlenecks(result: &CampaignResult) -> Vec<RankedBottleneck> {
     // Group by cell_id; classify each accepted cell with aggregated samples.
+    //
+    // **Honesty:** never invent L0/L1/L2/L3 envelope throughputs, stage sums,
+    // residual fractions, queue depth, device util, or CPU/OS probes. Missing
+    // evidence forces `mixed_or_unknown` (no product bottleneck claim).
     let mut by_cell: BTreeMap<String, Vec<&super::run::CellRepetition>> = BTreeMap::new();
     for r in &result.repetitions {
         if r.report.validity == "valid" {
@@ -205,16 +219,15 @@ fn rank_bottlenecks(result: &CampaignResult) -> Vec<RankedBottleneck> {
             subject,
             matched: None,
             throughput_samples: samples,
+            // Envelope ladder: only pass when measured; never synthesize.
             t_l0: None,
-            t_l2: Some(
-                reps.iter()
-                    .map(|r| r.report.throughput_bytes_per_sec_proxy)
-                    .fold(0.0_f64, f64::max)
-                    * 1.05,
-            ),
+            t_l2: None,
             t_l3: None,
-            e2e_latency_ns: Some(reps[0].report.e2e_ns_proxy as f64),
-            stage_sum_ns: Some((reps[0].report.e2e_ns_proxy as f64) * 0.98),
+            // Stage residual: incomplete without real stage accounting.
+            e2e_latency_ns: None,
+            stage_sum_ns: None,
+            // OS/CPU/queue/lifecycle flags: false means "not observed true",
+            // not "probed false". Classifier requires positive evidence to fire.
             single_core_saturated: false,
             multi_store: false,
             page_cache_warm_only: false,
@@ -233,6 +246,9 @@ fn rank_bottlenecks(result: &CampaignResult) -> Vec<RankedBottleneck> {
             supporting_evidence: {
                 let mut s = attr.supporting_evidence;
                 s.push(format!("cell_id={cell_id}"));
+                s.push(
+                    "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs".into(),
+                );
                 s
             },
             falsification_ids: fals.into_iter().map(|f| f.id).collect(),
@@ -274,9 +290,16 @@ fn follow_ups(ranked: &[RankedBottleneck]) -> Vec<FollowUpCard> {
         .collect()
 }
 
+/// Build RunEvidence from campaign cell output only — no invented probes.
+///
+/// Latency percentiles, residual, device util, queue depth, and CPU/OS fields
+/// stay `None`/zero unless a real probe provided them (campaign path does not).
 fn run_evidence_from(rep: &super::run::CellRepetition, samples: &[f64]) -> RunEvidence {
     let stats = mean_mad(samples);
-    let mean_t = stats.as_ref().map(|s| s.mean).unwrap_or(rep.report.throughput_bytes_per_sec_proxy);
+    let mean_t = stats
+        .as_ref()
+        .map(|s| s.mean)
+        .unwrap_or(rep.report.throughput_bytes_per_sec_proxy);
     RunEvidence {
         run_id: rep.run_id.clone(),
         layer: rep.report.layer.clone(),
@@ -286,19 +309,22 @@ fn run_evidence_from(rep: &super::run::CellRepetition, samples: &[f64]) -> RunEv
         outstanding: 1,
         config_hash: format!("cell:{}", rep.cell_id),
         throughput_bytes_per_sec: mean_t,
-        p50_latency_ns: Some(rep.report.e2e_ns_proxy / rep.report.acknowledged.max(1)),
-        p99_latency_ns: Some(rep.report.e2e_ns_proxy / rep.report.acknowledged.max(1) * 3),
-        residual_fraction: Some(0.02),
+        // Not histogram-measured in campaign path.
+        p50_latency_ns: None,
+        p99_latency_ns: None,
+        // Stage residual not closed without L3 stage probes.
+        residual_fraction: None,
         validity: rep.report.validity.clone(),
         failed_ops: rep.report.failed,
         attempted_ops: rep.report.attempted,
         acknowledged_ops: rep.report.acknowledged,
-        device_util: Some(0.5),
-        outstanding_depth: 4,
+        // OS/device/queue probes absent → None/0 (not synthesized defaults).
+        device_util: None,
+        outstanding_depth: 0,
         sync_per_op: rep.report.durability == "durable",
-        observer_overhead_fraction: Some(0.005),
-        cpu_cores_busy: Some(0.4),
-        aggregate_cpu_idle: Some(0.5),
+        observer_overhead_fraction: None,
+        cpu_cores_busy: None,
+        aggregate_cpu_idle: None,
         window_class: rep.report.window.clone(),
         features: rep.report.features.clone(),
     }
@@ -370,5 +396,37 @@ mod tests {
             assert!(!c.related_run_ids.is_empty());
         }
         assert!(!reports.multiproc_finding.overstates_product);
+    }
+
+    #[test]
+    fn campaign_reports_refuse_synthesized_bottlenecks() {
+        // Without L1/L2/L3 ladder, stage residual, or OS probes, campaign path
+        // must not invent io_queue_underdriven (or any non-mixed primary).
+        let plan = campaign_plan_synthetic(77, 3);
+        let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
+        let reports = build_campaign_reports(&result);
+        assert!(
+            reports
+                .notes
+                .iter()
+                .any(|n| n.contains("no synthesized") || n.contains("mixed_or_unknown")),
+            "expected honesty note about synthesized attribution"
+        );
+        for b in &reports.ranked_bottlenecks {
+            assert_eq!(
+                b.verdict, "mixed_or_unknown",
+                "unexpected synthesized verdict {} run_ids={:?}",
+                b.verdict, b.run_ids
+            );
+            assert!(!b.allows_tuning_advice);
+        }
+        // No follow-up opt stubs from non-mixed verdicts.
+        assert!(
+            reports.follow_up_cards.is_empty()
+                || reports
+                    .follow_up_cards
+                    .iter()
+                    .all(|c| c.note.contains("Stub only"))
+        );
     }
 }

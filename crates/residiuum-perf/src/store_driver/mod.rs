@@ -15,8 +15,11 @@ mod synthetic;
 mod real;
 
 pub use emitter::{
-    emit_plan_from_receipts, WriteReceiptFact, STORE_SEAM_EMITTER_FROM_RECEIPTS,
+    emit_plan_from_boundary_events, emit_plan_from_receipts, facts_from_boundary_events,
+    StoreBoundaryEvent, StoreBoundaryKind, WriteReceiptFact, STORE_SEAM_EMITTER_FROM_RECEIPTS,
 };
+#[cfg(feature = "store-driver")]
+pub use emitter::{emit_plan_from_store_boundary_events, facts_from_store_boundary_events};
 pub use kinds::{DriverKind, MeasurementSurface, DRIVER_KIND_SYNTHETIC};
 
 use crate::matrix::{CellRunReport, DurabilityMode, MatrixCell, MatrixError};

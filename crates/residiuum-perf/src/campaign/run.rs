@@ -9,6 +9,9 @@ use super::plan::CampaignPlan;
 use super::run_class::RunClass;
 use super::CampaignError;
 use crate::matrix::{build_matrix_cells, MatrixCell, MatrixManifest, ScheduleSeed};
+use crate::runner::{
+    preflight_work_root, BuildMode, PreflightConfig, RunBudgets,
+};
 use crate::store_driver::{
     run_driver_cell, store_driver_compiled, DriverKind, DriverRunConfig, MeasurementSurface,
 };
@@ -58,10 +61,18 @@ pub struct CampaignConfig {
     pub declare_controlled_runner: bool,
     /// Smoke vs qualification (SPEC §6.4). Default smoke for unit/CI safety.
     pub run_class: RunClass,
+    /// When true (and work_root set), process slots are genuine OS children
+    /// barrier-synchronized via `residiuum-perf worker` — not sequential fakes.
+    pub spawn_workers: bool,
+    /// Path to worker binary (defaults to current_exe when spawn_workers).
+    pub worker_bin: Option<PathBuf>,
+    /// When true (default for qualification/soak), run fail-closed preflight
+    /// before any cells. Smoke unit tests leave this false.
+    pub require_qualification_preflight: bool,
 }
 
 impl CampaignConfig {
-    /// Synthetic **smoke** campaign (NON-PRODUCT; unit/CI).
+    /// Synthetic **smoke** campaign (NON-PRODUCT; unit/CI; sequential for speed).
     pub fn synthetic(plan: CampaignPlan) -> Self {
         Self {
             plan,
@@ -69,6 +80,9 @@ impl CampaignConfig {
             work_root: None,
             declare_controlled_runner: false,
             run_class: RunClass::Smoke,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
         }
     }
 }
@@ -98,10 +112,18 @@ pub struct CampaignResult {
     pub run_class: String,
     /// Explicit withdrawal notes (e.g. smoke bottleneck claims).
     pub withdrawals: Vec<String>,
+    /// True when process slots were genuine OS children.
+    pub workers_spawned: bool,
+    /// Worker PIDs observed (one per process slot when spawned).
+    pub worker_pids: Vec<u32>,
 }
 
 /// Execute campaign: for each selected cell, run `processes × reps_per_process`
 /// so total reps ≥ plan.repetitions across ≥ plan.processes process slots.
+///
+/// When `spawn_workers` is true (and `work_root` is set), process slots are
+/// genuine OS children barrier-synchronized via `residiuum-perf worker`.
+/// Unit tests keep sequential slots (`spawn_workers: false`) for speed.
 pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignError> {
     cfg.plan
         .validate()
@@ -117,6 +139,35 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
             return Err(CampaignError::Msg(
                 "real_store campaign requires work_root".into(),
             ));
+        }
+    }
+
+    if cfg.spawn_workers && cfg.work_root.is_none() {
+        return Err(CampaignError::Msg(
+            "spawn_workers requires work_root for job/sync paths".into(),
+        ));
+    }
+
+    // Fail-closed qualification preflight (SPEC §6.4 / plan §5).
+    // CLI sets require_qualification_preflight for qualification/soak; unit
+    // tests leave false so smoke/synthetic harness stays fast.
+    if cfg.require_qualification_preflight {
+        if !cfg.run_class.may_emit_bottleneck_verdict() {
+            return Err(CampaignError::Msg(
+                "require_qualification_preflight only applies to qualification/soak".into(),
+            ));
+        }
+        let work = cfg.work_root.as_ref().ok_or_else(|| {
+            CampaignError::Msg(
+                "qualification/soak requires work_root for fail-closed preflight".into(),
+            )
+        })?;
+        let report = run_qualification_preflight(work, &cfg.plan.campaign_id)?;
+        if !report.outcome.is_ready() {
+            return Err(CampaignError::Msg(format!(
+                "qualification preflight fail-closed: outcome={:?} reason={:?} messages={:?}",
+                report.outcome, report.reject_reason, report.messages
+            )));
         }
     }
 
@@ -147,54 +198,61 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         });
     }
 
-    let mut repetitions = Vec::new();
-    let mut valid_runs = 0usize;
-    let mut invalid_runs = 0usize;
-
-    let surface = campaign_surface(cfg);
-    let product_claim_eligible = product_eligible(cfg, surface);
-
-    for cell in &cells {
-        run_cell_reps(
-            cfg,
-            cell,
-            &process_slots,
-            reps_per_proc,
-            false,
-            surface,
-            &mut repetitions,
-            &mut valid_runs,
-            &mut invalid_runs,
-        )?;
-    }
-
-    if cfg.plan.include_multiproc_finding {
-        let finding_cells: Vec<_> = manifest
+    let multiproc_cells: Vec<MatrixCell> = if cfg.plan.include_multiproc_finding {
+        manifest
             .cells
             .iter()
             .filter(|c| {
                 (c.payload_size == 4096 || c.payload_size == 8192) && c.concurrency >= 2
             })
+            .filter(|c| !cells.iter().any(|x| x.cell_id == c.cell_id))
             .take(4)
             .cloned()
-            .collect();
-        for cell in finding_cells {
-            if cells.iter().any(|c| c.cell_id == cell.cell_id) {
-                continue;
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let surface = campaign_surface(cfg);
+    let product_claim_eligible = product_eligible(cfg, surface);
+
+    let (repetitions, valid_runs, invalid_runs, workers_spawned, worker_pids) =
+        if cfg.spawn_workers {
+            run_campaign_spawned(cfg, &cells, &multiproc_cells, &process_slots, reps_per_proc)?
+        } else {
+            let mut repetitions = Vec::new();
+            let mut valid_runs = 0usize;
+            let mut invalid_runs = 0usize;
+            for cell in &cells {
+                run_cell_reps(
+                    cfg,
+                    cell,
+                    &process_slots,
+                    reps_per_proc,
+                    false,
+                    surface,
+                    &mut repetitions,
+                    &mut valid_runs,
+                    &mut invalid_runs,
+                )?;
             }
-            run_cell_reps(
-                cfg,
-                &cell,
-                &process_slots,
-                reps_per_proc,
-                true,
-                surface,
-                &mut repetitions,
-                &mut valid_runs,
-                &mut invalid_runs,
-            )?;
-        }
-    }
+            if cfg.plan.include_multiproc_finding {
+                for cell in &multiproc_cells {
+                    run_cell_reps(
+                        cfg,
+                        cell,
+                        &process_slots,
+                        reps_per_proc,
+                        true,
+                        surface,
+                        &mut repetitions,
+                        &mut valid_runs,
+                        &mut invalid_runs,
+                    )?;
+                }
+            }
+            (repetitions, valid_runs, invalid_runs, false, Vec::new())
+        };
 
     let mut withdrawals = vec![
         "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence".into(),
@@ -202,6 +260,16 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
     if cfg.run_class == RunClass::Smoke {
         withdrawals.push(
             "run_class=smoke: functional harness only; no product bottleneck verdicts".into(),
+        );
+    }
+    if workers_spawned {
+        withdrawals.push(format!(
+            "process slots were genuine OS workers (pids={worker_pids:?}); not sequential in-process fakes"
+        ));
+    } else if procs > 1 {
+        withdrawals.push(
+            "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made"
+                .into(),
         );
     }
 
@@ -223,7 +291,85 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         primary_bottleneck_run_ids: vec![],
         run_class: cfg.run_class.as_str().into(),
         withdrawals,
+        workers_spawned,
+        worker_pids,
     })
+}
+
+/// Spawn one OS child per process slot, barrier-sync, merge WorkerResults.
+fn run_campaign_spawned(
+    cfg: &CampaignConfig,
+    cells: &[MatrixCell],
+    multiproc_cells: &[MatrixCell],
+    process_slots: &[ProcessSlot],
+    reps_per_proc: u32,
+) -> Result<(Vec<CellRepetition>, usize, usize, bool, Vec<u32>), CampaignError> {
+    let work_root = cfg
+        .work_root
+        .as_ref()
+        .ok_or_else(|| CampaignError::Msg("spawn_workers requires work_root".into()))?;
+    let worker_bin = match &cfg.worker_bin {
+        Some(p) => p.clone(),
+        None => super::multiproc::current_worker_bin()?,
+    };
+    let sync_root = work_root.join("worker_sync").join(&cfg.plan.campaign_id);
+    let jobs = super::multiproc::build_worker_jobs(
+        &cfg.plan.campaign_id,
+        cfg.plan.seed,
+        process_slots,
+        reps_per_proc,
+        cells,
+        multiproc_cells,
+        cfg.plan.include_multiproc_finding && !multiproc_cells.is_empty(),
+        cfg.driver,
+        cfg.run_class,
+        work_root,
+    );
+    let worker_results = super::multiproc::run_spawned_workers(&worker_bin, &jobs, &sync_root)?;
+
+    let mut repetitions = Vec::new();
+    let mut valid_runs = 0usize;
+    let mut invalid_runs = 0usize;
+    let mut worker_pids = Vec::new();
+    let mut any_error = None;
+
+    for wr in worker_results {
+        worker_pids.push(wr.worker_pid);
+        if let Some(err) = wr.error {
+            any_error = Some(err);
+            continue;
+        }
+        for rep in wr.repetitions {
+            if rep.report.validity == "valid" {
+                valid_runs += 1;
+            } else {
+                invalid_runs += 1;
+            }
+            repetitions.push(rep);
+        }
+    }
+    if let Some(err) = any_error {
+        return Err(CampaignError::Msg(err));
+    }
+    if worker_pids.len() != process_slots.len() {
+        return Err(CampaignError::Msg(format!(
+            "expected {} worker results, got {}",
+            process_slots.len(),
+            worker_pids.len()
+        )));
+    }
+    // Distinct PIDs prove genuine multi-process (not sequential same process).
+    if process_slots.len() > 1 {
+        let mut uniq = worker_pids.clone();
+        uniq.sort_unstable();
+        uniq.dedup();
+        if uniq.len() < process_slots.len() {
+            return Err(CampaignError::Msg(format!(
+                "worker PIDs not distinct across process slots: {worker_pids:?}"
+            )));
+        }
+    }
+    Ok((repetitions, valid_runs, invalid_runs, true, worker_pids))
 }
 
 /// Fill primary bottleneck fields from ranked reports (after `build_campaign_reports`).
@@ -379,6 +525,27 @@ fn run_cell_reps(
 
 const PROCESS_SEED_TAG: u64 = 0x5039_5052;
 
+/// Fail-closed preflight for qualification/soak campaigns.
+///
+/// Rejects debug builds (when enforced), invalid paths, budget floors, and
+/// foreign work roots. Callers must not start cells when this fails.
+pub fn run_qualification_preflight(
+    work_root: &std::path::Path,
+    campaign_id: &str,
+) -> Result<crate::runner::PreflightReport, CampaignError> {
+    std::fs::create_dir_all(work_root).map_err(|e| CampaignError::Io(e.to_string()))?;
+    let cfg = PreflightConfig {
+        work_root: work_root.to_path_buf(),
+        work_root_id: format!("pqh-qual-{}", campaign_id),
+        run_id: format!("preflight-{}", campaign_id),
+        repository_root: None,
+        budgets: RunBudgets::default(),
+        build_mode: BuildMode::Qualification,
+        enforce_release_for_qualification: true,
+    };
+    preflight_work_root(&cfg).map_err(|e| CampaignError::Msg(e.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -425,6 +592,9 @@ mod tests {
             work_root: None,
             declare_controlled_runner: false,
             run_class: RunClass::Smoke,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
         })
         .unwrap_err();
         let s = err.to_string();
@@ -458,6 +628,9 @@ mod tests {
             work_root: None,
             declare_controlled_runner: false,
             run_class: RunClass::Qualification,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
         };
         // Synthetic qualification still runs (no wall 120s in synthetic matrix driver),
         // but must not apply smoke op caps in campaign path.
@@ -467,6 +640,66 @@ mod tests {
             // Matrix synthetic may still internal-bound; campaign must not force 4–16.
             assert!(r.report.attempted == 0 || r.report.attempted >= 1);
         }
+    }
+
+    #[test]
+    fn qualification_preflight_fail_closed_without_work_root() {
+        let plan = campaign_plan_synthetic(1, 1);
+        let err = run_campaign(&CampaignConfig {
+            plan,
+            driver: DriverKind::Synthetic,
+            work_root: None,
+            declare_controlled_runner: false,
+            run_class: RunClass::Qualification,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: true,
+        })
+        .unwrap_err();
+        assert!(
+            err.to_string().contains("work_root") || err.to_string().contains("preflight"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[test]
+    fn qualification_preflight_rejects_debug_build() {
+        if !cfg!(debug_assertions) {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let plan = campaign_plan_synthetic(2, 1);
+        let err = run_campaign(&CampaignConfig {
+            plan,
+            driver: DriverKind::Synthetic,
+            work_root: Some(dir.path().to_path_buf()),
+            declare_controlled_runner: false,
+            run_class: RunClass::Qualification,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: true,
+        })
+        .unwrap_err();
+        let s = err.to_string();
+        assert!(
+            s.contains("fail-closed") || s.contains("debug") || s.contains("InvalidDebugBuild"),
+            "unexpected: {s}"
+        );
+    }
+
+    #[test]
+    fn sequential_multi_process_discloses_not_spawned() {
+        let mut plan = campaign_plan_synthetic(11, 1);
+        plan.processes = 2;
+        plan.repetitions = 5;
+        plan.include_multiproc_finding = false;
+        let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
+        assert!(!result.workers_spawned);
+        assert!(result.worker_pids.is_empty());
+        assert!(result
+            .withdrawals
+            .iter()
+            .any(|w| w.contains("sequential") || w.contains("spawn_workers=false")));
     }
 }
 
@@ -491,12 +724,17 @@ mod real_store_tests {
             work_root: Some(dir.path().to_path_buf()),
             declare_controlled_runner: false,
             run_class: RunClass::Smoke,
+            // Sequential in unit tests; genuine spawn covered by integration test.
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
         })
         .expect("real store multi-rep smoke campaign");
 
         assert_eq!(result.driver_kind, "real_store");
         assert_eq!(result.run_class, "smoke");
         assert!(!result.product_claim_eligible);
+        assert!(!result.workers_spawned);
         assert!(result.valid_runs >= 5);
         assert!(result.repetitions.iter().all(|r| r.driver_kind == "real_store"));
         assert!(result.repetitions.iter().all(|r| !r.run_id.is_empty()));
@@ -525,6 +763,9 @@ mod real_store_tests {
             work_root: Some(dir.path().to_path_buf()),
             declare_controlled_runner: true,
             run_class: RunClass::Smoke,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
         })
         .unwrap();
         // Surface may be controlled-eligible label, but product_claim requires

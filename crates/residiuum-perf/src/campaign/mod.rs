@@ -10,6 +10,7 @@
 
 mod bundle;
 mod disclosure;
+mod multiproc;
 mod plan;
 mod reports;
 mod run;
@@ -28,8 +29,12 @@ pub use reports::{
     SliceRow,
 };
 pub use run::{
-    attach_primary_bottleneck, run_campaign, CampaignConfig, CampaignResult, CellRepetition,
-    ProcessSlot,
+    attach_primary_bottleneck, run_campaign, run_qualification_preflight, CampaignConfig,
+    CampaignResult, CellRepetition, ProcessSlot,
+};
+pub use multiproc::{
+    build_worker_jobs, current_worker_bin, run_spawned_workers, run_worker_job, WorkerJob,
+    WorkerResult,
 };
 pub use run_class::RunClass;
 

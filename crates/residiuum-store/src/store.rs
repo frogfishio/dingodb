@@ -163,6 +163,15 @@ pub struct WriteReceipt {
     pub durability: DurabilityMode,
     /// Byte offset of the frame within the segment file.
     pub offset: u64,
+    /// Exact **encoded** on-segment frame byte length for this write (0 when no
+    /// durable/buffered frame was appended, e.g. memory-only paths that skip
+    /// frame accounting).
+    ///
+    /// Meaning: post-append length of the wire-encoded frame(s) for this
+    /// operation — `segment.as_bytes().len() - offset` after `append` (summed
+    /// across chunk frames + manifest for chunked puts). This is **not**:
+    /// host FS allocation size, logical payload alone, or a payload+N estimate.
+    pub encoded_frame_len: u64,
     /// Storage layout chosen for this put (DEF-103); default inline for deletes.
     pub layout: PayloadLayout,
     /// Logical payload bytes for puts (0 for deletes).
@@ -191,6 +200,7 @@ impl WriteReceipt {
             event_kind,
             durability,
             offset,
+            encoded_frame_len: 0,
             layout: PayloadLayout::Inline,
             logical_len: 0,
             chunk_count: 0,
@@ -299,6 +309,9 @@ pub struct Store {
     chunk_locators: HashMap<[u8; 16], Vec<ChunkFrameLocator>>,
     /// Secret continuation-token keyring (DEF-097). Never logged or exported.
     token_keyring: ContinuationKeyring,
+    /// Optional PQH boundary instrumentation (write/sync/rotate/publish/lifecycle).
+    /// Default disabled — zero cost on ordinary product paths.
+    boundary_probe: crate::boundary_probe::BoundaryProbe,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -403,6 +416,7 @@ impl Store {
             async_lifecycle: true,
             chunk_locators: HashMap::new(),
             token_keyring,
+            boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -489,6 +503,7 @@ impl Store {
             async_lifecycle: true,
             chunk_locators: HashMap::new(),
             token_keyring,
+            boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -612,6 +627,7 @@ impl Store {
             async_lifecycle: false,
             chunk_locators: HashMap::new(),
             token_keyring,
+            boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -629,6 +645,26 @@ impl Store {
         }
         // Intentionally no resume_or_start_active — no writer handle.
         Ok(store)
+    }
+
+    /// Enable store-boundary I/O instrumentation (PQH harness). Default off.
+    pub fn enable_boundary_probe(&mut self) {
+        self.boundary_probe.enable();
+    }
+
+    /// Whether boundary instrumentation is recording.
+    pub fn boundary_probe_enabled(&self) -> bool {
+        self.boundary_probe.is_enabled()
+    }
+
+    /// Borrow recorded boundary events (empty when disabled).
+    pub fn boundary_events(&self) -> &[crate::boundary_probe::BoundaryEvent] {
+        self.boundary_probe.events()
+    }
+
+    /// Drain recorded boundary events (probe stays enabled).
+    pub fn take_boundary_events(&mut self) -> Vec<crate::boundary_probe::BoundaryEvent> {
+        self.boundary_probe.take_events()
     }
 
     /// Number of writer shards (DEF-096 Axis B). Always ≥ 1.
@@ -1243,7 +1279,7 @@ impl Store {
                             p.event_id,
                         ) {
                             Ok(offset) => {
-                                if let Err(e) = Self::write_segment_tail(writer, mode) {
+                                if let Err(e) = Self::write_segment_tail(writer, mode).map(|_| ()) {
                                     *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
                                     return;
                                 }
@@ -3304,11 +3340,16 @@ impl Store {
         if !need {
             return Ok(());
         }
-        if self.async_lifecycle_enabled() {
+        self.boundary_probe.record_segment_rotate();
+        let r = if self.async_lifecycle_enabled() {
             self.rotate_active_async(shard)
         } else {
             self.seal_active_shard(shard)
+        };
+        if r.is_ok() {
+            self.boundary_probe.record_lifecycle_seal();
         }
+        r
     }
 
     /// Compile and persist a Hydra index for one sealed segment (derived only).
@@ -3847,6 +3888,7 @@ impl Store {
         // writer borrow ends (DEF-098 generation-exact preads).
         let mut new_chunk_locs: Vec<([u8; 16], u64, &residiuum_format::ChunkPiece)> =
             Vec::with_capacity(pieces.len());
+        let mut encoded_frame_len: u64 = 0;
         {
             let writer = self.active_mut(shard).expect("active segment");
             for (piece, (chunk_event_id, envelope)) in pieces
@@ -3870,6 +3912,9 @@ impl Store {
                     envelope: envelope.clone(),
                     body,
                 })?;
+                encoded_frame_len = encoded_frame_len.saturating_add(
+                    (writer.segment.as_bytes().len() as u64).saturating_sub(offset),
+                );
                 new_chunk_locs.push((*chunk_event_id, offset, piece));
             }
         }
@@ -3901,7 +3946,7 @@ impl Store {
         })
         .map_err(StoreError::BadEnvelope)?;
 
-        let offset = {
+        let (offset, wrote, synced) = {
             let writer = self.active_mut(shard).expect("active segment");
             let header = FrameHeader {
                 wire_major: residiuum_format::WIRE_MAJOR,
@@ -3919,14 +3964,29 @@ impl Store {
                 envelope: item_envelope,
                 body: manifest_body.clone(),
             })?;
-            match mode {
-                DurabilityMode::Memory => {}
+            encoded_frame_len = encoded_frame_len.saturating_add(
+                (writer.segment.as_bytes().len() as u64).saturating_sub(offset),
+            );
+            let (wrote, synced) = match mode {
+                DurabilityMode::Memory => (0u64, false),
                 DurabilityMode::Buffered | DurabilityMode::Durable => {
-                    Self::write_segment_tail(writer, mode)?;
+                    Self::write_segment_tail(writer, mode)?
                 }
-            }
-            offset
+            };
+            (offset, wrote, synced)
         };
+
+        // Boundary probe: actual append + file write/sync (not reconstructed by harness).
+        self.boundary_probe.record_append(
+            encoded_frame_len,
+            value.len() as u64,
+            offset,
+            mode,
+            false,
+            true,
+            0, // pieces already summed into encoded_frame_len
+        );
+        self.record_tail_probe(wrote, synced, mode);
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Chunk manifest is small and kept resident by slim_put_body_for_index.
@@ -3940,13 +4000,14 @@ impl Store {
             0,
             offset,
         );
+        self.boundary_probe.record_publish(offset, mode);
         self.note_collection_for_subject(subject_bytes);
 
         if mode != DurabilityMode::Memory {
             let _ = self.note_durable_derived();
         }
 
-        Ok(WriteReceipt::base(
+        let mut receipt = WriteReceipt::base(
             self.store_id,
             segment_id,
             item_id,
@@ -3954,7 +4015,9 @@ impl Store {
             EventKind::Put,
             mode,
             offset,
-        ))
+        );
+        receipt.encoded_frame_len = encoded_frame_len;
+        Ok(receipt)
     }
 
     /// Resolve only the chunk frames listed in `manifest` (DEF-098).
@@ -4219,12 +4282,28 @@ impl Store {
             return Err(StoreError::PayloadTooLarge);
         }
 
-        let writer = self.active_mut(shard).expect("active segment");
-        let offset = writer
-            .segment
-            .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
+        let (offset, encoded_frame_len, wrote, synced) = {
+            let writer = self.active_mut(shard).expect("active segment");
+            let offset = writer
+                .segment
+                .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
+            // Exact encoded frame length at store boundary (not logical+estimate).
+            let encoded_frame_len =
+                (writer.segment.as_bytes().len() as u64).saturating_sub(offset);
+            let (wrote, synced) = Self::write_segment_tail(writer, mode)?;
+            (offset, encoded_frame_len, wrote, synced)
+        };
 
-        Self::write_segment_tail(writer, mode)?;
+        self.boundary_probe.record_append(
+            encoded_frame_len,
+            body.len() as u64,
+            offset,
+            mode,
+            false,
+            false,
+            0,
+        );
+        self.record_tail_probe(wrote, synced, mode);
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Durable projection is locator-first (DEF-095): frame_offset + slim body.
@@ -4238,11 +4317,12 @@ impl Store {
             0, // writer_sequence already inside frame; not required for index
             offset,
         );
+        self.boundary_probe.record_publish(offset, mode);
         self.note_collection_for_subject(subject_bytes);
 
         let _ = self.note_durable_derived();
 
-        Ok(WriteReceipt::base(
+        let mut receipt = WriteReceipt::base(
             self.store_id,
             segment_id,
             item_id,
@@ -4250,19 +4330,23 @@ impl Store {
             kind,
             mode,
             offset,
-        ))
+        );
+        receipt.encoded_frame_len = encoded_frame_len;
+        Ok(receipt)
     }
 
+    /// Flush pending segment bytes to the file; returns bytes written + whether sync ran.
     fn write_segment_tail(
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
-    ) -> Result<(), StoreError> {
+    ) -> Result<(u64, bool), StoreError> {
         crate::failpoint::hit("store.active.write_tail.before")?;
         let bytes = writer.segment.as_bytes();
         let start = writer.durable_len as usize;
         if start > bytes.len() {
             return Err(StoreError::CorruptMeta("durable_len past segment"));
         }
+        let mut wrote = 0u64;
         if start < bytes.len() {
             let pending = &bytes[start..];
             writer.file.seek(SeekFrom::Start(writer.durable_len))?;
@@ -4281,22 +4365,36 @@ impl Store {
                 )));
             }
             writer.file.write_all(pending)?;
+            wrote = pending.len() as u64;
             writer.durable_len = bytes.len() as u64;
         }
         crate::failpoint::hit("store.active.write_tail.after_write")?;
+        let mut synced = false;
         if mode == DurabilityMode::Durable {
             writer.file.sync_all()?;
+            synced = true;
             crate::failpoint::hit("store.active.write_tail.after_sync")?;
         }
-        Ok(())
+        Ok((wrote, synced))
     }
 
     fn flush_active_file(
-        &self,
+        &mut self,
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
     ) -> Result<(), StoreError> {
-        Self::write_segment_tail(writer, mode)
+        let (wrote, synced) = Self::write_segment_tail(writer, mode)?;
+        self.record_tail_probe(wrote, synced, mode);
+        Ok(())
+    }
+
+    fn record_tail_probe(&mut self, wrote: u64, synced: bool, mode: DurabilityMode) {
+        if wrote > 0 {
+            self.boundary_probe.record_file_write(wrote, mode);
+        }
+        if synced {
+            self.boundary_probe.record_file_sync(mode);
+        }
     }
 
     fn persist_all_actives(&mut self, mode: DurabilityMode) -> Result<(), StoreError> {
@@ -4308,11 +4406,17 @@ impl Store {
     }
 
     fn persist_active_shard(&mut self, shard: usize, mode: DurabilityMode) -> Result<(), StoreError> {
-        if let Some(writer) = self.active_mut(shard) {
-            Self::write_segment_tail(writer, mode)?;
+        if self.active_mut(shard).is_some() {
+            // Split borrows: take stats from writer, then probe on self.
+            let (wrote, synced) = {
+                let writer = self.active_mut(shard).expect("active");
+                Self::write_segment_tail(writer, mode)?
+            };
+            self.record_tail_probe(wrote, synced, mode);
             if mode == DurabilityMode::Durable {
                 crate::failpoint::hit("store.active.dir_sync")?;
                 sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
+                self.boundary_probe.record_directory_sync();
             }
         }
         Ok(())

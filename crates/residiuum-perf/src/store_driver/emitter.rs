@@ -1,4 +1,4 @@
-//! Store-native PhysicalWritePlan emitter from redacted write facts.
+//! Store-native PhysicalWritePlan emitter from redacted write facts / boundary events.
 //!
 //! Emits plans at the store **boundary** from sizes, durability, and segment
 //! rotation signals — never from document payloads or keys.
@@ -12,13 +12,44 @@ use sha2::{Digest, Sha256};
 /// Seam id for receipt-stream emission (replaces pure ShapeConfig-only residual).
 pub const STORE_SEAM_EMITTER_FROM_RECEIPTS: &str = "store_boundary_emitter_from_receipts_v1";
 
+/// Kind of store-boundary observation (actual put path only — no estimates).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StoreBoundaryKind {
+    /// Wire-encoded frame(s) appended for a put (inline or chunked sum).
+    AppendEncodedFrame,
+    /// Durability barrier applied after the append (data-only or full-file).
+    DurabilityBarrier,
+}
+
+/// Redacted event observed at the store boundary after an actual write.
+///
+/// Built only from `WriteReceipt` fields and durability mode — never from
+/// payload contents or invented frame overhead.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StoreBoundaryEvent {
+    pub kind: StoreBoundaryKind,
+    /// Exact encoded on-segment frame length (`WriteReceipt.encoded_frame_len`).
+    /// Zero on barrier-only events or when no frame was measured.
+    pub encoded_frame_len: u64,
+    pub logical_len: u64,
+    pub durability: String,
+    pub segment_gen: u32,
+    pub segment_rotate: bool,
+    pub chunked: bool,
+    pub chunk_count: u32,
+    /// Segment byte offset of the frame (0 for barrier-only).
+    pub segment_offset: u64,
+}
+
 /// Redacted per-write fact (no payload, no subject, no heap id).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WriteReceiptFact {
     /// Logical payload length acknowledged.
     pub logical_len: u64,
-    /// Opaque physical frame/append length when known; else estimated.
-    pub physical_len: u64,
+    /// Exact encoded frame length from the store boundary when known.
+    /// Prefer measured `WriteReceipt.encoded_frame_len`; do not invent payload+N.
+    pub encoded_frame_len: u64,
     /// Durability mode name applied.
     pub durability: String,
     /// Segment generation / rotation counter (0-based).
@@ -29,6 +60,66 @@ pub struct WriteReceiptFact {
     pub chunked: bool,
     /// Chunk count when chunked.
     pub chunk_count: u32,
+}
+
+impl From<&StoreBoundaryEvent> for WriteReceiptFact {
+    fn from(e: &StoreBoundaryEvent) -> Self {
+        WriteReceiptFact {
+            logical_len: e.logical_len,
+            encoded_frame_len: e.encoded_frame_len,
+            durability: e.durability.clone(),
+            segment_gen: e.segment_gen,
+            segment_rotate: e.segment_rotate,
+            chunked: e.chunked,
+            chunk_count: e.chunk_count,
+        }
+    }
+}
+
+/// Build redacted facts from harness-local boundary events (append frames only).
+pub fn facts_from_boundary_events(events: &[StoreBoundaryEvent]) -> Vec<WriteReceiptFact> {
+    events
+        .iter()
+        .filter(|e| e.kind == StoreBoundaryKind::AppendEncodedFrame)
+        .map(WriteReceiptFact::from)
+        .collect()
+}
+
+/// Map **store-emitted** [`residiuum_store::BoundaryEvent`] records to plan facts.
+///
+/// Only `AppendEncodedFrame` contributes plan ops; sync/rotate/publish/lifecycle
+/// events are carried in notes/metrics by the driver and must not be invented here.
+#[cfg(feature = "store-driver")]
+pub fn facts_from_store_boundary_events(
+    events: &[residiuum_store::BoundaryEvent],
+) -> Vec<WriteReceiptFact> {
+    use residiuum_store::BoundaryKind;
+    events
+        .iter()
+        .filter(|e| e.kind == BoundaryKind::AppendEncodedFrame)
+        .map(|e| WriteReceiptFact {
+            logical_len: e.logical_len,
+            encoded_frame_len: e.encoded_bytes,
+            durability: e.durability.clone(),
+            segment_gen: e.segment_gen,
+            segment_rotate: e.segment_rotate,
+            chunked: e.chunked,
+            chunk_count: e.chunk_count,
+        })
+        .collect()
+}
+
+/// Emit plan from store-native boundary events (feature `store-driver`).
+#[cfg(feature = "store-driver")]
+pub fn emit_plan_from_store_boundary_events(
+    plan_id: &str,
+    events: &[residiuum_store::BoundaryEvent],
+    segment_threshold: u64,
+    chunk_threshold: u64,
+    batch_size: u32,
+) -> PhysicalWritePlan {
+    let facts = facts_from_store_boundary_events(events);
+    emit_plan_from_receipts(plan_id, &facts, segment_threshold, chunk_threshold, batch_size)
 }
 
 /// Emit a closed PhysicalWritePlan from a stream of redacted write facts.
@@ -65,11 +156,13 @@ pub fn emit_plan_from_receipts(
             planned_syncs = planned_syncs.saturating_add(1);
         }
 
-        let size = if f.physical_len > 0 {
-            f.physical_len
+        // Real_store path supplies measured encoded_frame_len. Synthetic may
+        // pass an explicit encoded length. Zero means "unknown" — use logical
+        // only (never invent a fixed overhead like payload+96).
+        let size = if f.encoded_frame_len > 0 {
+            f.encoded_frame_len
         } else {
-            // Conservative envelope estimate when store did not expose frame len.
-            f.logical_len.saturating_add(64)
+            f.logical_len
         };
         let sync_after = match f.durability.as_str() {
             "durable" => SyncBoundary::FullFile,
@@ -141,6 +234,18 @@ pub fn emit_plan_from_receipts(
     plan
 }
 
+/// Emit plan from actual store-boundary events (append + barrier stream).
+pub fn emit_plan_from_boundary_events(
+    plan_id: &str,
+    events: &[StoreBoundaryEvent],
+    segment_threshold: u64,
+    chunk_threshold: u64,
+    batch_size: u32,
+) -> PhysicalWritePlan {
+    let facts = facts_from_boundary_events(events);
+    emit_plan_from_receipts(plan_id, &facts, segment_threshold, chunk_threshold, batch_size)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,7 +255,7 @@ mod tests {
         let facts = vec![
             WriteReceiptFact {
                 logical_len: 100,
-                physical_len: 164,
+                encoded_frame_len: 164,
                 durability: "durable".into(),
                 segment_gen: 0,
                 segment_rotate: false,
@@ -159,7 +264,7 @@ mod tests {
             },
             WriteReceiptFact {
                 logical_len: 200,
-                physical_len: 264,
+                encoded_frame_len: 264,
                 durability: "durable".into(),
                 segment_gen: 1,
                 segment_rotate: true,
@@ -173,5 +278,36 @@ mod tests {
         assert!(plan.planned_rotations >= 1);
         assert!(!plan.ops.is_empty());
         assert_eq!(plan.schema, PLAN_SCHEMA);
+    }
+
+    #[test]
+    fn boundary_events_drive_encoded_lengths() {
+        let events = vec![
+            StoreBoundaryEvent {
+                kind: StoreBoundaryKind::AppendEncodedFrame,
+                encoded_frame_len: 200,
+                logical_len: 128,
+                durability: "buffered".into(),
+                segment_gen: 0,
+                segment_rotate: false,
+                chunked: false,
+                chunk_count: 0,
+                segment_offset: 0,
+            },
+            StoreBoundaryEvent {
+                kind: StoreBoundaryKind::DurabilityBarrier,
+                encoded_frame_len: 0,
+                logical_len: 128,
+                durability: "buffered".into(),
+                segment_gen: 0,
+                segment_rotate: false,
+                chunked: false,
+                chunk_count: 0,
+                segment_offset: 0,
+            },
+        ];
+        let plan = emit_plan_from_boundary_events("cell-b", &events, 32 * 1024, 1024 * 1024, 1);
+        assert_eq!(plan.planned_bytes, 200);
+        assert!(plan.planned_syncs >= 1);
     }
 }

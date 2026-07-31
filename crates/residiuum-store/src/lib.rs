@@ -31,6 +31,7 @@
 
 mod atomic_file;
 mod backup;
+mod boundary_probe;
 mod catalog;
 mod chimera;
 mod chunk_payload;
@@ -78,6 +79,7 @@ pub use backup::{
     BackupReport, RestoreOptions, RestoreReport, BACKUP_MANIFEST_FILE, BACKUP_PROFILE,
     BACKUP_STORE_DIR,
 };
+pub use boundary_probe::{BoundaryEvent, BoundaryKind, BoundaryProbe};
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, try_load_collection_catalog,
     CollectionCatalog, COLLECTIONS_CATALOG_FILE,
