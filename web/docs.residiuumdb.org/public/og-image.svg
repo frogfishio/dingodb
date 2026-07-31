@@ -2,7 +2,7 @@
   <rect width="1200" height="630" fill="#f3f0e7"/>
   <rect x="48" y="48" width="1104" height="534" rx="16" fill="#fffdf7" stroke="#c9c5b9"/>
   <text x="96" y="180" font-family="system-ui,sans-serif" font-size="36" fill="#555b52">DOCUMENTATION</text>
-  <text x="96" y="280" font-family="system-ui,sans-serif" font-size="72" font-weight="700" fill="#121410">DingoDB Docs</text>
+  <text x="96" y="280" font-family="system-ui,sans-serif" font-size="72" font-weight="700" fill="#121410">Residiuum Docs</text>
   <text x="96" y="360" font-family="system-ui,sans-serif" font-size="32" fill="#121410">Learn · Operate · Inspect maturity</text>
-  <text x="96" y="520" font-family="ui-monospace,monospace" font-size="24" fill="#d94f27">docs.dingodb.org · experimental</text>
+  <text x="96" y="520" font-family="ui-monospace,monospace" font-size="24" fill="#d94f27">docs.residiuumdb.org · experimental</text>
 </svg>

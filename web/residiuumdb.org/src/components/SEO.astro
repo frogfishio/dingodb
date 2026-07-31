@@ -19,7 +19,7 @@ const {
 
 const site = 'https://residiuumdb.org';
 const canonical = new URL(path, site).href;
-const fullTitle = title.includes('DingoDB') ? title : `${title} · DingoDB`;
+const fullTitle = title.includes('Residiuum') ? title : `${title} · Residiuum`;
 const ogImage = new URL('/og-mathematical-database.png', site).href;
 const isPreview = import.meta.env.PUBLIC_PREVIEW === 'true';
 const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
@@ -35,14 +35,14 @@ const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
 <meta name="theme-color" content="#f3f0e7" />
 
 <meta property="og:type" content={ogType} />
-<meta property="og:site_name" content="DingoDB" />
+<meta property="og:site_name" content="Residiuum" />
 <meta property="og:title" content={fullTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
 <meta property="og:image" content={ogImage} />
 <meta
   property="og:image:alt"
-  content="DingoDB — Flexible documents. Mathematical guarantees. Serious speed."
+  content="Residiuum — Flexible documents. Mathematical guarantees. Serious speed."
 />
 
 <meta name="twitter:card" content="summary_large_image" />
@@ -59,7 +59,7 @@ const robots = noindex || isPreview ? 'noindex, nofollow' : 'index, follow';
 <script type="application/ld+json" set:html={JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'SoftwareSourceCode',
-  name: 'DingoDB',
+  name: 'Residiuum',
   description: 'A document database built around a deterministic mathematical kernel, fast indexed storage, and damage-local recovery.',
   codeRepository: release.github,
   programmingLanguage: 'Rust',

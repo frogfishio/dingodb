@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Rust quickstart
-description: Create an embedded ResiduumDB store, put JSON, filter, and reopen from a clean directory.
+description: Create an embedded Residiuum store, put JSON, filter, and reopen from a clean directory.
 class: tutorial
 status: experimental
 section: getting-started
@@ -52,10 +52,10 @@ Replace `src/main.rs` with:
 
 ```rust
 // tested: repository SDK examples / stage suites exercise this surface
-use residiuum_sdk::{json, Residuum, Filter};
+use residiuum_sdk::{json, Residiuum, Filter};
 
 fn main() -> Result<(), residiuum_sdk::Error> {
-    let mut db = Residuum::open("./app.dingo")?;
+    let mut db = Residiuum::open("./app.dingo")?;
     {
         let mut users = db.collection("users")?;
         users.put(
@@ -70,7 +70,7 @@ fn main() -> Result<(), residiuum_sdk::Error> {
         }
     }
     // Dropping scopes releases the exclusive writer; reopen proves persistence.
-    let mut db2 = Residuum::open("./app.dingo")?;
+    let mut db2 = Residiuum::open("./app.dingo")?;
     let users = db2.collection("users")?;
     let again = users.get("user-42")?;
     println!("reopened user-42: {:?}", again);
@@ -92,7 +92,7 @@ Run `cargo run` again. The store directory already exists; the put overwrites th
 
 ## 6. Where the store lives
 
-The path passed to `Residuum::open` is a **directory** tree managed by `residiuum-store`. Do not hand-edit files inside it. For inspection, prefer CLI `doctor` / `scrub` / salvage tools.
+The path passed to `Residiuum::open` is a **directory** tree managed by `residiuum-store`. Do not hand-edit files inside it. For inspection, prefer CLI `doctor` / `scrub` / salvage tools.
 
 ## 7. Durability note
 

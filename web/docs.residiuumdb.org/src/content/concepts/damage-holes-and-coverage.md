@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Damage, holes, and coverage
-description: How ResiduumDB reports damage without invalidating healthy neighbors.
+description: How Residiuum reports damage without invalidating healthy neighbors.
 class: concept
 status: available
 section: concepts
@@ -22,7 +22,7 @@ keywords:
 
 Critical damage → whole database unavailable even if healthy bytes remain.
 
-## ResiduumDB model
+## Residiuum model
 
 Missing or unreadable material becomes an explicit **hole**. Neighbors can still verify.
 

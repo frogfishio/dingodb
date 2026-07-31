@@ -1,8 +1,8 @@
 ---
 last_verified: 2026-07-30
 claim_ids:
-title: Choose ResiduumDB
-description: When to evaluate ResiduumDB and when to pick a mature alternative.
+title: Choose Residiuum
+description: When to evaluate Residiuum and when to pick a mature alternative.
 class: tutorial
 status: experimental
 section: getting-started
@@ -40,7 +40,7 @@ keywords:
 |------|-----------|
 | Mature SQL + tooling | PostgreSQL or SQLite |
 | Mature document ecosystem | MongoDB or similar |
-| Embedded arbitrary data with explicit damage model | Evaluate ResiduumDB |
-| Production network cluster today | Do not choose ResiduumDB yet |
+| Embedded arbitrary data with explicit damage model | Evaluate Residiuum |
+| Production network cluster today | Do not choose Residiuum yet |
 
 Product homepage: [residuumdb.org](https://residuumdb.org/use-cases/).

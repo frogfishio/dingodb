@@ -17,7 +17,7 @@ const {
 
 const site = 'https://docs.residiuumdb.org';
 const canonical = new URL(path.endsWith('/') || path.endsWith('.html') ? path : path + '/', site).href;
-const fullTitle = title.includes('DingoDB') ? title : `${title} · DingoDB Docs`;
+const fullTitle = title.includes('Residiuum') ? title : `${title} · Residiuum Docs`;
 const isPreview = import.meta.env.PUBLIC_PREVIEW === 'true';
 const isNext = path.startsWith('/next');
 const robots = noindex || isPreview || isNext ? 'noindex, nofollow' : 'index, follow';
@@ -33,7 +33,7 @@ const ogImage = new URL('/og-image.svg', site).href;
 <meta name="generator" content={Astro.generator} />
 <meta name="theme-color" content="#f3f0e7" />
 <meta property="og:type" content="article" />
-<meta property="og:site_name" content="DingoDB Docs" />
+<meta property="og:site_name" content="Residiuum Docs" />
 <meta property="og:title" content={fullTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />

@@ -32,7 +32,7 @@ residiuum-sdk = "0.2"
 
 | Type | Role |
 |------|------|
-| `Residuum` | Open embedded / connect remote / optional cluster |
+| `Residiuum` | Open embedded / connect remote / optional cluster |
 | `Collection` | put/get/delete/find/history/indexes |
 | `Filter` | Typed JSON predicates |
 | `QueryOptions` | Coverage and query budgets |

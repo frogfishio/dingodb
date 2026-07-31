@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Deployment profiles
-description: Supported ways to run ResiduumDB and their maturity.
+description: Supported ways to run Residiuum and their maturity.
 class: operation
 status: experimental
 section: operations
@@ -35,7 +35,7 @@ Low (read-only evaluation of labels). Choosing network multi-node for production
 
 | Profile | How | Status |
 |---------|-----|--------|
-| Embedded single-node | `Residuum::open` | Experimental / early access |
+| Embedded single-node | `Residiuum::open` | Experimental / early access |
 | Single-node TCP | `residuum serve` | Development only |
 | In-process cluster | `open_cluster` | Integration-test harness |
 | Network multi-node | `serve-cluster` | Experimental — **not production** |

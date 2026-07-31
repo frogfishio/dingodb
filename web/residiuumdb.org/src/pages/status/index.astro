@@ -10,14 +10,14 @@ import { statusLabels } from '../../lib/status';
 
 <PageLayout
   title="Status and known limitations"
-  description="Current DingoDB capability maturity, deployment profiles, compatibility labels, and benchmark status derived from structured capability data."
+  description="Current Residiuum capability maturity, deployment profiles, compatibility labels, and benchmark status derived from structured capability data."
   path="/status/"
   eyebrow="Truth"
   lead="Present capability and maturity—not design docs presented as shipped product."
 >
   <Callout title="Documented release">
     <p>
-      Documented DingoDB release: <strong>{release.productVersion}</strong>
+      Documented Residiuum release: <strong>{release.productVersion}</strong>
       (verified {capabilities.last_verified}). Website revision:
       <code>{release.sourceRevision}</code>. Source of truth:
       <ExternalLink href={release.github + '/blob/main/doc/CAPABILITY_MATRIX.md'}>
@@ -166,7 +166,7 @@ import { statusLabels } from '../../lib/status';
   ) : (
     <Callout title="Comparative benchmark not yet published" variant="warning">
       <p>
-        DingoDB does not currently claim a published comparison against Redis,
+        Residiuum does not currently claim a published comparison against Redis,
         MongoDB, PostgreSQL, or another system. The local signal above still
         needs its complete revision, durability, dataset, latency, verification,
         and raw-artifact manifest before it becomes a formal result.

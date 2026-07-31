@@ -6,7 +6,7 @@
     {
       "id": "embedded-single-node",
       "name": "Embedded single-node",
-      "how": "Residuum::open(path)",
+      "how": "Residiuum::open(path)",
       "status": "experimental",
       "note": "Strongest current path; early access"
     },
@@ -20,7 +20,7 @@
     {
       "id": "in-process-cluster",
       "name": "In-process cluster",
-      "how": "Residuum::open_cluster / create_cluster",
+      "how": "Residiuum::open_cluster / create_cluster",
       "status": "development-only",
       "note": "Integration-test harness"
     },
@@ -47,7 +47,7 @@
     }
   ],
   "limitations": [
-    "DingoDB is experimental software. No production-supported release line is claimed.",
+    "Residiuum is experimental software. No production-supported release line is claimed.",
     "Experimental network cluster is not a production deployment path.",
     "S3/GCS locators are filesystem mirrors, not native cloud object-store connectors.",
     "WIRE_PROFILE_LABEL = 1.0-draft is not an interoperability freeze.",

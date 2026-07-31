@@ -18,7 +18,7 @@ keywords:
   - status
 ---
 
-Documented release **0.2.0**. ResiduumDB is **experimental software**.
+Documented release **0.2.0**. Residiuum is **experimental software**.
 
 - [Capabilities](/status/capabilities/)
 - [Known limitations](/status/known-limitations/)

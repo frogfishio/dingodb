@@ -8,11 +8,11 @@ import release from '../../data/release.json';
 ---
 
 <PageLayout
-  title="Why Dingo: independent survival"
-  description="How DingoDB reports damage as explicit holes, preserves independently verifiable data islands, and recovers surviving material without catalogs."
+  title="Why Residiuum: independent survival"
+  description="How Residiuum reports damage as explicit holes, preserves independently verifiable data islands, and recovers surviving material without catalogs."
   path="/survival/"
-  eyebrow="Why Dingo"
-  lead="Ordinary databases ask whether the whole machine can be reconstructed. DingoDB first asks which pieces can still be proved intact."
+  eyebrow="Why Residiuum"
+  lead="Ordinary databases ask whether the whole machine can be reconstructed. Residiuum first asks which pieces can still be proved intact."
 >
   <h2>The ordinary failure model</h2>
   <p>
@@ -30,7 +30,7 @@ import release from '../../data/release.json';
   <h2>Independent survival units</h2>
   <Claim id="claim.damage.independent-islands" showBadge={true} />
   <p>
-    DingoDB treats a store as a fabric of independently survivable data
+    Residiuum treats a store as a fabric of independently survivable data
     islands—not one all-or-nothing object. Each unit carries enough structure
     to verify itself. Destruction of one unit does not silently poison its
     neighbors.
@@ -51,7 +51,7 @@ import release from '../../data/release.json';
     <p>
       Damage tolerance reduces blast radius. It does <strong>not</strong> make
       missing or overwritten bytes recoverable. If the only copy of a payload
-      is gone, DingoDB reports the hole—it does not invent content.
+      is gone, Residiuum reports the hole—it does not invent content.
     </p>
   </Callout>
 

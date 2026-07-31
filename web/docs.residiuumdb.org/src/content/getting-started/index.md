@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Getting started
-description: "Choose a path into ResiduumDB: embedded Rust SDK or CLI."
+description: "Choose a path into Residiuum: embedded Rust SDK or CLI."
 class: tutorial
 status: experimental
 section: getting-started
@@ -23,7 +23,7 @@ Start with the strongest current path: **embedded single-node** via the Rust SDK
 
 ## Paths
 
-1. [Choose ResiduumDB](/getting-started/choose-dingodb/) — fit and honesty about what is not ready.
+1. [Choose Residiuum](/getting-started/choose-dingodb/) — fit and honesty about what is not ready.
 2. [Rust quickstart](/getting-started/rust/) — open, put, query, reopen.
 3. [CLI quickstart](/getting-started/cli/) — put/get and doctor without writing Rust.
 4. [First collection](/getting-started/first-collection/) — collections, keys, and values.

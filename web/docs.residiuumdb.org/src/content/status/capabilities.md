@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Capabilities
-description: User-oriented capability matrix for ResiduumDB 0.2.
+description: User-oriented capability matrix for Residiuum 0.2.
 class: status
 status: experimental
 section: status

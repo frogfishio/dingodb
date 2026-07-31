@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Guides
-description: Task-oriented how-to guides for ResiduumDB application developers.
+description: Task-oriented how-to guides for Residiuum application developers.
 class: how-to
 status: experimental
 section: guides

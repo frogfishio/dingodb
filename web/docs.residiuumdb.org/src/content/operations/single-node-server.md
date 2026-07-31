@@ -41,7 +41,7 @@ residuum serve ./app.dingo
 
 ## Verification
 
-SDK `Residuum::connect` put/get against loopback.
+SDK `Residiuum::connect` put/get against loopback.
 
 ## Rollback
 

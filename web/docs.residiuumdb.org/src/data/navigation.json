@@ -1,127 +1,349 @@
 {
   "top": [
-    { "label": "Learn", "href": "/getting-started/" },
-    { "label": "Guides", "href": "/guides/" },
-    { "label": "Operations", "href": "/operations/" },
-    { "label": "Reference", "href": "/reference/" },
-    { "label": "Specifications", "href": "/specifications/" },
-    { "label": "Status", "href": "/status/" }
+    {
+      "label": "Learn",
+      "href": "/getting-started/"
+    },
+    {
+      "label": "Guides",
+      "href": "/guides/"
+    },
+    {
+      "label": "Operations",
+      "href": "/operations/"
+    },
+    {
+      "label": "Reference",
+      "href": "/reference/"
+    },
+    {
+      "label": "Specifications",
+      "href": "/specifications/"
+    },
+    {
+      "label": "Status",
+      "href": "/status/"
+    }
   ],
   "sidebar": [
     {
       "label": "Getting started",
       "href": "/getting-started/",
       "items": [
-        { "label": "Overview", "href": "/getting-started/" },
-        { "label": "Choose DingoDB", "href": "/getting-started/choose-dingodb/" },
-        { "label": "Rust quickstart", "href": "/getting-started/rust/" },
-        { "label": "CLI quickstart", "href": "/getting-started/cli/" },
-        { "label": "First collection", "href": "/getting-started/first-collection/" },
-        { "label": "Next steps", "href": "/getting-started/next-steps/" }
+        {
+          "label": "Overview",
+          "href": "/getting-started/"
+        },
+        {
+          "label": "Choose Residiuum",
+          "href": "/getting-started/choose-dingodb/"
+        },
+        {
+          "label": "Rust quickstart",
+          "href": "/getting-started/rust/"
+        },
+        {
+          "label": "CLI quickstart",
+          "href": "/getting-started/cli/"
+        },
+        {
+          "label": "First collection",
+          "href": "/getting-started/first-collection/"
+        },
+        {
+          "label": "Next steps",
+          "href": "/getting-started/next-steps/"
+        }
       ]
     },
     {
       "label": "Guides",
       "href": "/guides/",
       "items": [
-        { "label": "Collections", "href": "/guides/collections/" },
-        { "label": "JSON and bytes", "href": "/guides/json-and-bytes/" },
-        { "label": "Filtering", "href": "/guides/filtering/" },
-        { "label": "DQL", "href": "/guides/dql/" },
-        { "label": "Raw SDA", "href": "/guides/raw-sda/" },
-        { "label": "Indexes", "href": "/guides/indexes/" },
-        { "label": "Pagination and ordering", "href": "/guides/pagination-and-ordering/" },
-        { "label": "History", "href": "/guides/history/" },
-        { "label": "Large payloads", "href": "/guides/large-payloads/" },
-        { "label": "Backup and restore", "href": "/guides/backup-and-restore/" },
-        { "label": "Scrub and salvage", "href": "/guides/scrub-and-salvage/" },
-        { "label": "Remote development", "href": "/guides/remote-development/" }
+        {
+          "label": "Collections",
+          "href": "/guides/collections/"
+        },
+        {
+          "label": "JSON and bytes",
+          "href": "/guides/json-and-bytes/"
+        },
+        {
+          "label": "Filtering",
+          "href": "/guides/filtering/"
+        },
+        {
+          "label": "RQL",
+          "href": "/guides/dql/"
+        },
+        {
+          "label": "Raw SDA",
+          "href": "/guides/raw-sda/"
+        },
+        {
+          "label": "Indexes",
+          "href": "/guides/indexes/"
+        },
+        {
+          "label": "Pagination and ordering",
+          "href": "/guides/pagination-and-ordering/"
+        },
+        {
+          "label": "History",
+          "href": "/guides/history/"
+        },
+        {
+          "label": "Large payloads",
+          "href": "/guides/large-payloads/"
+        },
+        {
+          "label": "Backup and restore",
+          "href": "/guides/backup-and-restore/"
+        },
+        {
+          "label": "Scrub and salvage",
+          "href": "/guides/scrub-and-salvage/"
+        },
+        {
+          "label": "Remote development",
+          "href": "/guides/remote-development/"
+        }
       ]
     },
     {
       "label": "Concepts",
       "href": "/concepts/",
       "items": [
-        { "label": "Data model", "href": "/concepts/data-model/" },
-        { "label": "Authoritative and derived", "href": "/concepts/authoritative-and-derived/" },
-        { "label": "Damage, holes, coverage", "href": "/concepts/damage-holes-and-coverage/" },
-        { "label": "Durability and receipts", "href": "/concepts/durability-and-receipts/" },
-        { "label": "Heaps", "href": "/concepts/heaps/" },
-        { "label": "SDA", "href": "/concepts/sda/" },
-        { "label": "DQL", "href": "/concepts/dql/" },
-        { "label": "DRE", "href": "/concepts/dre/" },
-        { "label": "Atomics", "href": "/concepts/atomics/" }
+        {
+          "label": "Data model",
+          "href": "/concepts/data-model/"
+        },
+        {
+          "label": "Authoritative and derived",
+          "href": "/concepts/authoritative-and-derived/"
+        },
+        {
+          "label": "Damage, holes, coverage",
+          "href": "/concepts/damage-holes-and-coverage/"
+        },
+        {
+          "label": "Durability and receipts",
+          "href": "/concepts/durability-and-receipts/"
+        },
+        {
+          "label": "Heaps",
+          "href": "/concepts/heaps/"
+        },
+        {
+          "label": "SDA",
+          "href": "/concepts/sda/"
+        },
+        {
+          "label": "RQL",
+          "href": "/concepts/dql/"
+        },
+        {
+          "label": "RRE",
+          "href": "/concepts/dre/"
+        },
+        {
+          "label": "Atomics",
+          "href": "/concepts/atomics/"
+        }
       ]
     },
     {
       "label": "Operations",
       "href": "/operations/",
       "items": [
-        { "label": "Deployment profiles", "href": "/operations/deployment-profiles/" },
-        { "label": "Configuration", "href": "/operations/configuration/" },
-        { "label": "Durability", "href": "/operations/durability/" },
-        { "label": "Backup and restore", "href": "/operations/backup-restore/" },
-        { "label": "Scrub", "href": "/operations/scrub/" },
-        { "label": "Salvage", "href": "/operations/salvage/" },
-        { "label": "Migration", "href": "/operations/migration/" },
-        { "label": "Logs", "href": "/operations/logs/" },
-        { "label": "Health and metrics", "href": "/operations/health-and-metrics/" },
-        { "label": "Security", "href": "/operations/security/" },
-        { "label": "Single-node server", "href": "/operations/single-node-server/" },
-        { "label": "Clustering", "href": "/operations/clustering/" }
+        {
+          "label": "Deployment profiles",
+          "href": "/operations/deployment-profiles/"
+        },
+        {
+          "label": "Configuration",
+          "href": "/operations/configuration/"
+        },
+        {
+          "label": "Durability",
+          "href": "/operations/durability/"
+        },
+        {
+          "label": "Backup and restore",
+          "href": "/operations/backup-restore/"
+        },
+        {
+          "label": "Scrub",
+          "href": "/operations/scrub/"
+        },
+        {
+          "label": "Salvage",
+          "href": "/operations/salvage/"
+        },
+        {
+          "label": "Migration",
+          "href": "/operations/migration/"
+        },
+        {
+          "label": "Logs",
+          "href": "/operations/logs/"
+        },
+        {
+          "label": "Health and metrics",
+          "href": "/operations/health-and-metrics/"
+        },
+        {
+          "label": "Security",
+          "href": "/operations/security/"
+        },
+        {
+          "label": "Single-node server",
+          "href": "/operations/single-node-server/"
+        },
+        {
+          "label": "Clustering",
+          "href": "/operations/clustering/"
+        }
       ]
     },
     {
       "label": "Reference",
       "href": "/reference/",
       "items": [
-        { "label": "Rust SDK", "href": "/reference/rust-sdk/" },
-        { "label": "CLI", "href": "/reference/cli/" },
-        { "label": "Configuration", "href": "/reference/configuration/" },
-        { "label": "Errors", "href": "/reference/errors/" },
-        { "label": "Receipts and evidence", "href": "/reference/receipts-and-evidence/" },
-        { "label": "DQL", "href": "/reference/dql/" },
-        { "label": "SDA", "href": "/reference/sda/" },
-        { "label": "Wire", "href": "/reference/wire/" },
-        { "label": "Compatibility", "href": "/reference/compatibility/" }
+        {
+          "label": "Rust SDK",
+          "href": "/reference/rust-sdk/"
+        },
+        {
+          "label": "CLI",
+          "href": "/reference/cli/"
+        },
+        {
+          "label": "Configuration",
+          "href": "/reference/configuration/"
+        },
+        {
+          "label": "Errors",
+          "href": "/reference/errors/"
+        },
+        {
+          "label": "Receipts and evidence",
+          "href": "/reference/receipts-and-evidence/"
+        },
+        {
+          "label": "RQL",
+          "href": "/reference/dql/"
+        },
+        {
+          "label": "SDA",
+          "href": "/reference/sda/"
+        },
+        {
+          "label": "Wire",
+          "href": "/reference/wire/"
+        },
+        {
+          "label": "Compatibility",
+          "href": "/reference/compatibility/"
+        }
       ]
     },
     {
       "label": "Specifications",
       "href": "/specifications/",
       "items": [
-        { "label": "Index", "href": "/specifications/" },
-        { "label": "Format", "href": "/specifications/format/" },
-        { "label": "Heap", "href": "/specifications/heaps/" },
-        { "label": "SDA", "href": "/specifications/sda/" },
-        { "label": "DQL", "href": "/specifications/dql/" },
-        { "label": "DRE", "href": "/specifications/dre/" },
-        { "label": "Atomics", "href": "/specifications/atomics/" },
-        { "label": "Direct Access", "href": "/specifications/direct-access/" },
-        { "label": "Order Wavelets", "href": "/specifications/order-wavelets/" },
-        { "label": "Cluster", "href": "/specifications/cluster/" }
+        {
+          "label": "Index",
+          "href": "/specifications/"
+        },
+        {
+          "label": "Format",
+          "href": "/specifications/format/"
+        },
+        {
+          "label": "Heap",
+          "href": "/specifications/heaps/"
+        },
+        {
+          "label": "SDA",
+          "href": "/specifications/sda/"
+        },
+        {
+          "label": "RQL",
+          "href": "/specifications/dql/"
+        },
+        {
+          "label": "RRE",
+          "href": "/specifications/dre/"
+        },
+        {
+          "label": "Atomics",
+          "href": "/specifications/atomics/"
+        },
+        {
+          "label": "Direct Access",
+          "href": "/specifications/direct-access/"
+        },
+        {
+          "label": "Order Wavelets",
+          "href": "/specifications/order-wavelets/"
+        },
+        {
+          "label": "Cluster",
+          "href": "/specifications/cluster/"
+        }
       ]
     },
     {
       "label": "Status",
       "href": "/status/",
       "items": [
-        { "label": "Overview", "href": "/status/" },
-        { "label": "Capabilities", "href": "/status/capabilities/" },
-        { "label": "Known limitations", "href": "/status/known-limitations/" },
-        { "label": "Compatibility", "href": "/status/compatibility/" },
-        { "label": "Benchmark disclosure", "href": "/status/benchmark-disclosure/" },
-        { "label": "Roadmap", "href": "/status/roadmap/" }
+        {
+          "label": "Overview",
+          "href": "/status/"
+        },
+        {
+          "label": "Capabilities",
+          "href": "/status/capabilities/"
+        },
+        {
+          "label": "Known limitations",
+          "href": "/status/known-limitations/"
+        },
+        {
+          "label": "Compatibility",
+          "href": "/status/compatibility/"
+        },
+        {
+          "label": "Benchmark disclosure",
+          "href": "/status/benchmark-disclosure/"
+        },
+        {
+          "label": "Roadmap",
+          "href": "/status/roadmap/"
+        }
       ]
     },
     {
       "label": "Contributing",
       "href": "/contributing/",
       "items": [
-        { "label": "Overview", "href": "/contributing/" },
-        { "label": "Documentation", "href": "/contributing/documentation/" },
-        { "label": "Development", "href": "/contributing/development/" },
-        { "label": "Conformance", "href": "/contributing/conformance/" }
+        {
+          "label": "Overview",
+          "href": "/contributing/"
+        },
+        {
+          "label": "Documentation",
+          "href": "/contributing/documentation/"
+        },
+        {
+          "label": "Development",
+          "href": "/contributing/development/"
+        },
+        {
+          "label": "Conformance",
+          "href": "/contributing/conformance/"
+        }
       ]
     }
   ]

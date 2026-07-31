@@ -6,7 +6,7 @@
     {
       "id": "embedded-single-node",
       "name": "Embedded single-node",
-      "how": "Residuum::open(path)",
+      "how": "Residiuum::open(path)",
       "durability": "Local store durability modes (memory / buffered / durable)",
       "status": "experimental",
       "note": "Strongest current path; early access",
@@ -24,7 +24,7 @@
     {
       "id": "in-process-cluster",
       "name": "In-process cluster",
-      "how": "Residuum::open_cluster / create_cluster",
+      "how": "Residiuum::open_cluster / create_cluster",
       "durability": "Partition-local quorum in one process",
       "status": "development-only",
       "note": "Integration-test harness",
@@ -78,7 +78,7 @@
     {
       "id": "open-create",
       "name": "Embedded open / create",
-      "description": "Open or create a local store with Residuum::open.",
+      "description": "Open or create a local store with Residiuum::open.",
       "scope": "Embedded single-node",
       "status": "experimental",
       "claim_id": "claim.embedded.strongest-path"
@@ -209,7 +209,7 @@
   "limitations": [
     {
       "id": "not-production-ready",
-      "text": "DingoDB is experimental software. No production-supported release line is claimed."
+      "text": "Residiuum is experimental software. No production-supported release line is claimed."
     },
     {
       "id": "network-not-prod",
