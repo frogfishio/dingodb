@@ -61,8 +61,8 @@ pub const HARNESS_CAPABILITIES: &[HarnessCapability] = &[
     HarnessCapability {
         kind: BarrierKind::FilesystemImage,
         owner_package: "CSQ-5",
-        ready: false,
-        notes: "loopback image / flakey device campaign reserved for CSQ-5",
+        ready: true,
+        notes: "portable tempfile FS image ready; Linux loopback/dm-flakey is explicit skip-with-reason",
     },
     HarnessCapability {
         kind: BarrierKind::SuiteOwnedLogical,
@@ -160,23 +160,23 @@ pub struct FilesystemImageHarness {
 }
 
 impl FilesystemImageHarness {
-    /// Construct the CSQ-2 inventory entry (not ready for execution).
+    /// Construct the inventory entry (portable image ready under CSQ-5).
     pub fn inventory() -> Self {
         Self {
             image_root: None,
-            ready: false,
+            ready: true,
         }
     }
 
-    /// CSQ-5 will implement mount/remount/quota; until then this returns Err.
-    pub fn run_campaign(&self) -> Result<(), String> {
+    /// Portable campaign: create a tempfile-backed image root.
+    pub fn run_portable_campaign(&mut self, parent: &std::path::Path) -> Result<std::path::PathBuf, String> {
         if !self.ready {
-            return Err(
-                "filesystem-image campaign reserved for CSQ-5 (capability registered in CSQ-2)"
-                    .into(),
-            );
+            return Err("filesystem-image harness not ready".into());
         }
-        Err("filesystem-image campaign not implemented".into())
+        let img = crate::csq5_campaign::PortableFsImage::create(parent)
+            .map_err(|e| e.to_string())?;
+        self.image_root = Some(img.root.clone());
+        Ok(img.store_path)
     }
 }
 
@@ -194,7 +194,7 @@ mod tests {
             .iter()
             .find(|c| c.kind == BarrierKind::FilesystemImage)
             .unwrap();
-        assert!(!fs.ready);
+        assert!(fs.ready, "CSQ-5 portable FS image is ready");
         assert_eq!(fs.owner_package, "CSQ-5");
     }
 

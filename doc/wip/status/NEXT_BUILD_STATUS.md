@@ -60,7 +60,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | CSQ-2 | active | 2026-07-31 | CSQ-0 | — | hit-proof failpoints; boundary↔source CI; composed-failure schedule; crash controller; FS-image inventory (campaign CSQ-5) | failure injection |
 | CSQ-3 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | frozen Residiuum microframes; bit/byte/trunc/insert/delete + holes + pairwise multi-fault; FMT-001…005 tests green | format qualification |
 | CSQ-4 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | publication kernel + transition coverage; HIST/scan/gen/shrinker; false harnesses; DEF-099/100 linked | transition qualification |
-| CSQ-5 | not_started | — | CSQ-2, CSQ-4 | — | full crash/filesystem campaign absent | persistence qualification |
+| CSQ-5 | active | 2026-07-31 | CSQ-2, CSQ-4 | — | matrix + composed pairs; reopen/continuation; ENOSPC/perm; writer-lock; portable FS image; outcome validator; no silent skips | persistence qualification |
 | CSQ-6 | not_started | — | CSQ-3…CSQ-5 | DEF-098 regression authority | chunk/large-value suite absent | chunk qualification |
 | CSQ-7 | not_started | — | CSQ-3…CSQ-5 | — | damage/recovery differential absent | survival qualification |
 | CSQ-8 | not_started | — | CSQ-4, CSQ-5, CSQ-7 | — | maintenance/backup/migration matrix absent | maintenance qualification |

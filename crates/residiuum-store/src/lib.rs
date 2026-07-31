@@ -37,6 +37,7 @@ mod chunk_payload;
 mod compact;
 mod composed_failure;
 mod crash_matrix;
+mod csq5_campaign;
 mod csq_harness;
 mod cursor;
 mod durability;
@@ -111,6 +112,11 @@ pub use crash_matrix::{
     all_cells, ci_subset_cells, load_embedded as load_crash_matrix,
     validate as validate_crash_matrix, CrashMatrix, ExpectedReopen, MatrixFailpoint,
     MatrixOperation, CRASH_MATRIX_JSON,
+};
+pub use csq5_campaign::{
+    action_for_failure_class, classify_outcome, composed_schedule, load_failure_combinations,
+    matrix_totals, probe_linux_loopback_lane, validate_reopen_expectation, CampaignReport,
+    CrashOutcomeClass, FilesystemEvidence, LaneStatus, PortableFsImage,
 };
 pub use csq_harness::{
     harness_is_approved, parse_harness, BarrierKind, BarrierPhase, CrashController,

@@ -117,7 +117,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq5"
     },
     {
       "id": "CSQ-SUITE-DER",

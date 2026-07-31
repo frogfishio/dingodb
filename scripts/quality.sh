@@ -44,6 +44,9 @@ bash ./scripts/verify-csq-format-corpus.sh
 # CSQ-4 store model / state machine
 bash ./scripts/verify-csq-state-machine.sh
 
+# CSQ-5 crash / filesystem campaign
+bash ./scripts/verify-csq-crash-campaign.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh

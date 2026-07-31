@@ -44,8 +44,8 @@ fn csq2_harness_inventory_ready_flags() {
             .any(|c| c.ready && c.owner_package == "CSQ-2")
     );
     let fs = FilesystemImageHarness::inventory();
-    assert!(!fs.ready);
-    assert!(fs.run_campaign().is_err());
+    // CSQ-5 marks portable FS image ready; privileged loopback remains skip-with-reason.
+    assert!(fs.ready);
 }
 
 #[test]
