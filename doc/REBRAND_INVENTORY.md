@@ -53,14 +53,17 @@ Rust import roots after rename: `dingo_format` → `residiuum_format`, etc.
 Also: `verification/heap-verus` package name `dingo-heap-verus` if present →
 `residiuum-heap-verus`.
 
-## 3. Public API surface (Class B — REB-3)
+## 3. Public API surface (Class B — REB-3 / REB-8 / REB-10)
 
-| Current | Intended | Notes |
-|---------|----------|--------|
-| `Dingo` type / `Dingo::open` | `Residiuum` / `Residiuum::open` | Hard break |
-| `dingo://` URI | `residiuum://` | Hard break |
-| `DINGO_*` env vars | `RESIDIUUM_*` | Hard break; inventory exact keys in REB-3 |
-| Feature flags naming product `dingo` | `residiuum` where Class B | Not Class C profiles |
+| Former | Implemented | Notes |
+|---------|-------------|--------|
+| `Dingo` type / `Dingo::open` | `Residiuum` / `Residiuum::open` | Hard break (REB-3) |
+| `DingoDeployment` | `ResidiuumDeployment` | Hard break (REB-10) |
+| `DingoConfigFile` | `ResidiuumConfigFile` | Hard break (REB-10) |
+| `dingo://` URI | `residiuum://` | Hard break (REB-3) |
+| `DINGO_*` env vars | `RESIDIUUM_*` | Hard break (REB-3); message strings fixed REB-10 |
+| Feature flags / Cargo keywords `dingodb` | `residiuum` | Class B packaging (REB-10 keywords) |
+| DQL public symbols (`Dql`, `compile_dql`, …) | RQL symbols (`Rql`, `compile_rql`, …) | REB-8; **serialized** profile values stay `dql-*` (Class C) |
 
 ## 4. Class C — keep legacy (REB-5 freeze; do not bulk-replace)
 
@@ -72,8 +75,13 @@ Also: `verification/heap-verus` package name `dingo-heap-verus` if present →
 | `urn:dingo:cluster:` / `urn:dingo:node:` | Identity URIs in TLS | **retain_legacy** or dual-read later (not this Feature hard break without REB-5 explicit exception) |
 | Golden vectors / fixtures encoding above | Evidence | **retain_legacy** |
 | `.dingo` store path conventions if any | On-disk | **retain_legacy** |
+| Frozen DQL wire profiles (`dql-app-core-v1`, `dql-plan-v1`, `dql-plan-encoding-v1`, `dingo:dql-plan-v1:canonical-v1`, `dql_query.*`, `dql_feature_unavailable`) | App-core / plan wire | **retain_legacy** (paired with RQL Rust symbols after REB-8) |
+| `dingo-store-*` / `dingo-store-9` store meta | On-disk store family | **retain_legacy** (readers still recognize family) |
 
-**Rule:** REB-2/3 must not rewrite Class C. If a string is both a package path reference and a profile id, change only the path/package form, not the profile constant value.
+**Rule:** Class A/B renames must not rewrite Class C. If a string is both a
+package path reference and a profile id, change only the path/package form, not
+the profile constant value. REB-8 exemplifies the correct pattern:
+`RQL_APP_CORE_PROFILE = "dql-app-core-v1"`.
 
 ## 5. Class D — immutable history
 
@@ -96,15 +104,29 @@ Not all rows; bulk is REB-2/3/4 grep-fix.
 
 ## 8. Task mapping
 
-| Task | Consumes this inventory |
-|------|-------------------------|
-| REB-2 | §1 dirs (crates), §2 packages |
-| REB-3 | §3 API/CLI/env/URI |
-| REB-4 | §6 scripts/CI |
-| REB-5 | §4 Class C freeze confirmation |
-| REB-6 | changelog from all sections |
-| REB-7 | residual search vs approved Class C/D |
+| Task | Consumes this inventory | Labor (2026-07-31) |
+|------|-------------------------|---------------------|
+| REB-2 | §1 dirs (crates), §2 packages | **done** |
+| REB-3 | §3 API/CLI/env/URI | **done** |
+| REB-4 | §6 scripts/CI | **done** |
+| REB-5 | §4 Class C freeze confirmation | **done** |
+| REB-6 | changelog from all sections | **done** |
+| REB-7 | residual search vs approved Class C/D | **done** |
+| REB-8 | RQL public symbols + frozen DQL wire values | **in_review** |
+| REB-9 | Class C re-audit after mechanical renames | **in_review** |
+| REB-10 | public identity residual (types, CLI, keywords) | **in_review** |
+| REB-11 | doc/changelog reconcile with reality | **this task** |
+| REB-12 | `cargo check/test --workspace` + final evidence | **todo** |
 
-## 9. REB-1 exit
+## 9. REB-1 exit (historical)
 
-Inventory complete for implementer handoff. No renames performed in REB-1 labor beyond this document.
+Inventory complete for implementer handoff. No renames performed in REB-1 labor
+beyond this document.
+
+## 10. Post–REB-10 inventory note (REB-11)
+
+Implemented Class B identity is Residiuum-named throughout crates (see §3).
+Website directories under `web/` remain deferred (Phase 4). Wrong intermediate
+spellings `Residuum` / `residuum-*` are documentation-only forbidden forms, not
+compatibility aliases. Observed test evidence lives in
+[REBRAND_CHANGELOG.md](../REBRAND_CHANGELOG.md) §15.

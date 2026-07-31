@@ -1,7 +1,8 @@
 # Residiuum rebrand plan
 
-Status: **active; Phase 0 and Phase 1 complete; Phase 2 implementation renames
-labor-complete (REB-0…REB-7 → in_review); website Phase 4 still open**
+Status: **active; Phase 0 and Phase 1 complete; Phase 2 handoff REB-0…REB-10
+labor-complete (board `done` or `in_review`); REB-11 docs reconciliation and
+REB-12 final verification remain; website Phase 4 still open**
 
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
@@ -129,15 +130,17 @@ The required order is:
 |---|---|---|---|
 | 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
 | 1. Documentation identity | Codex | **complete** | Establish Residiuum, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
-| 2. Wholesale repository naming | Codex | **labor complete (awaiting principal accept)** | Class A/B renames + changelog + Class C freeze; REB board in_review |
-| 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and core tests green under residiuum names; principal owns any further semantic realignment beyond REB |
+| 2. Wholesale repository naming | Codex | **labor complete through REB-10 (awaiting principal accept + REB-11/12)** | Class A/B renames + Class C freeze + RQL public surface + residual identity audit; REB-0…7 `done`, REB-8…10 `in_review` |
+| 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and package suites green under residiuum names; principal owns any further semantic realignment beyond REB |
 | 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
 | 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
 
 Phase 0 was declared complete and Phase 2 was authorized by the principal on
-2026-07-31. Phase 2 mechanical renames and compile evidence were completed under
-Feature REB the same day; principal still owns card accept → `done` and any
-Phase 3 residual beyond compile/test green.
+2026-07-31. Phase 2 mechanical renames, RQL public-surface completion (REB-8),
+Class C re-audit (REB-9), and public-identity residual fixes (REB-10) are
+labor-complete under Feature REB. Principal still owns card accept → `done`,
+REB-12 workspace-wide verification evidence, and any Phase 3 residual beyond
+compile/test green. Website work remains Phase 4.
 
 ## 8. Phase 2 change surface
 
@@ -345,18 +348,17 @@ unreleased intermediate names and have no compatibility status.
 
 ### 14.2 REB-8 — complete the interrupted RQL public-surface rename
 
-The working tree contains a partially completed DQL-to-RQL implementation
-rename. The next implementer MUST continue from the current state rather than
-restarting it.
+**Labor status (2026-07-31): complete → board `in_review`.** Implementers
+continued from the partial tree rather than restarting the rename.
 
-Known partial state:
+Prior interrupted state (now resolved):
 
-- `crates/residiuum-sdk/src/dialects/dql.rs` has been moved to `rql.rs`;
-- several `Dql` and `dql` public symbols have become `Rql` and `rql`;
-- some frozen profile values were accidentally changed to `rql-*` and must be
-  restored; and
-- `crates/residiuum-sdk/src/lib.rs` still exports the obsolete
-  `DQL_APP_CORE_PROFILE` symbol.
+- `crates/residiuum-sdk/src/dialects/dql.rs` had been moved to `rql.rs`;
+- several `Dql` / `dql` public symbols had become `Rql` / `rql`;
+- some frozen profile **values** had accidentally been changed to `rql-*`
+  (restored to `dql-*`); and
+- `crates/residiuum-sdk/src/lib.rs` exported the obsolete
+  `DQL_APP_CORE_PROFILE` symbol (now exports `RQL_APP_CORE_PROFILE` only).
 
 The following public names MUST become RQL names:
 
@@ -400,18 +402,25 @@ In `crates/residiuum-sdk/src/app_v1.rs`, restore the frozen values
 stale `DQL_APP_CORE_PROFILE` export. Tests must use the new Rust symbol names
 while continuing to expect the frozen serialized values.
 
-REB-8 acceptance:
+REB-8 acceptance (observed):
 
 ```text
-cargo check --workspace
-cargo test -p residiuum-sdk
-cargo test -p residiuum-cli --test console
+cargo check --workspace                    # exit 0
+cargo test -p residiuum-sdk                # exit 0
+cargo test -p residiuum-cli --test console # exit 0 (1/1)
 rg '\bDql\b|compile_dql|parse_dql|explain_dql|DQL_APP_CORE_PROFILE|DQL_PLAN_PROFILE' crates
+# empty
 ```
 
-The final search must be empty. Remaining lowercase `dql` occurrences must each
-be demonstrably frozen profiles, wire identifiers, fixtures, error identifiers,
-or historical compatibility statements.
+Shipped pattern:
+
+```rust
+pub const RQL_APP_CORE_PROFILE: &str = "dql-app-core-v1";
+pub const RQL_PLAN_PROFILE: &str = "dql-plan-v1";
+```
+
+Remaining lowercase `dql` occurrences are frozen profiles, wire identifiers,
+fixtures, error identifiers, or historical compatibility statements.
 
 ### 14.3 REB-9 — Class C compatibility audit
 
@@ -436,14 +445,25 @@ store, Heap, server, SDA, and cluster cases have been restored, including the
 store readers that recognize the `dingo-store-*` metadata family. REB-9 must
 prove that no additional Class C value escaped.
 
-REB-9 acceptance:
+**Labor status (2026-07-31): complete → board `in_review`.** Greps confirmed
+magics, `dingo-*-v1` profiles, `dingo-store-*`, URNs, `application/dingo.*`,
+`DINGODB-*` domains, `__dingo_snapshot_base__`, and frozen DQL profile strings
+remain. No Class C reverts required after REB-8 profile restore.
+
+REB-9 acceptance (observed):
 
 ```text
-cargo test -p residiuum-format
-cargo test -p residiuum-heap
-cargo test -p residiuum-store
-cargo test -p residiuum-cluster
+cargo test -p residiuum-format  # exit 0
+cargo test -p residiuum-heap    # exit 0
+cargo test -p residiuum-store   # exit 0 (default features)
+cargo test -p residiuum-cluster # exit 0
 ```
+
+Hygiene performed during REB-9: `residiuum-store` integration tests that import
+public `Store` were given `required-features = ["legacy-raw-store"]` so default
+`cargo test -p residiuum-store` compiles cleanly. Optional
+`--features legacy-raw-store` still surfaces one pre-existing DEF-013 catalog
+failure (not a Class C escape).
 
 ### 14.4 REB-10 — public identity residual audit
 
@@ -471,6 +491,20 @@ deferred website occurrence, or a defect.
 
 Do not modify `web/` during REB-10. Website migration remains Phase 4.
 
+**Labor status (2026-07-31): complete → board `in_review`.** Defects fixed
+without touching `web/`:
+
+| Former public identity | Now |
+|---|---|
+| `DingoDeployment` | `ResidiuumDeployment` |
+| `DingoConfigFile` | `ResidiuumConfigFile` |
+| CLI product strings / prompt `dingo` | `residiuum` |
+| Cargo `keywords = ["dingodb", …]` | `["residiuum", …]` |
+| Stale media error `DINGO_{}_ROOT` text | `RESIDIUUM_{}_ROOT` |
+
+Class C and history retained as above. Wrong intermediate spellings `Residuum` /
+`residuum-*` appear only as deliberate forbidden-form documentation.
+
 ### 14.5 REB-11 — documentation and changelog reconciliation
 
 Reconcile this document, [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md), and
@@ -487,6 +521,9 @@ They must record:
 - only test evidence that was actually observed.
 
 All local Markdown links must resolve after reconciliation.
+
+**Labor status:** this task (REB-11) performs the reconciliation. After exit,
+REB-12 remains for full `cargo test --workspace` evidence.
 
 ### 14.6 REB-12 — final verification
 
