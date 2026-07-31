@@ -1093,8 +1093,10 @@ version = "0.2.0"
 name = "residiuum-perf"
 version = "0.2.0"
 dependencies = [
+ "hex",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
 ]

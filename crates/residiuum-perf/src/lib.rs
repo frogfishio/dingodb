@@ -1,12 +1,15 @@
 //! Residiuum Performance Qualification Harness (`residiuum-perf`).
 //!
-//! PQH-0: contract registries loaded from `spec/performance/` and checked at
-//! compile/test time. Later packages add runner, workloads, and campaigns.
+//! - **PQH-0:** contract registries loaded from `spec/performance/`.
+//! - **PQH-1:** safe runner, path guard, preflight, platform fingerprint,
+//!   budgets, and classifiable cancel artifacts.
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
 
 #![forbid(unsafe_code)]
+
+pub mod runner;
 
 use serde::Deserialize;
 use std::collections::HashSet;

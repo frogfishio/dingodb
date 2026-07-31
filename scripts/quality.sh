@@ -35,6 +35,9 @@ bash ./scripts/verify-core-storage-registry.sh
 # PQH-0 performance qualification registries
 bash ./scripts/verify-performance-registry.sh
 
+# PQH-1 safe runner (path guard / preflight / cancel artifacts)
+bash ./scripts/verify-performance-runner.sh
+
 # CSQ-1 oracle dependency firewall
 bash ./scripts/verify-csq-oracle-firewall.sh
 
