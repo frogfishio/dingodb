@@ -122,7 +122,8 @@ Content files today → target filenames/paths:
 
 Also update: `navigation.json`, `migration-manifest.json`, internal markdown hrefs, any search index inputs.
 
-**Note:** Some content titles already say “RQL guide” / “Choose ResiduumDB” while paths remain dql/choose-dingodb — path rename still required.
+**Resolved:** RQL/RRE and `choose-residiuum` paths are canonical. The former
+DQL/DRE and `choose-dingodb` paths remain only as permanent redirect sources.
 
 Spec sources in migration-manifest still reference `DQL_SPEC.md` / `DRE_SPEC.md` if those root files remain; prefer `RQL_SPEC.md` / `RRE_SPEC.md` when they exist in the repo.
 
