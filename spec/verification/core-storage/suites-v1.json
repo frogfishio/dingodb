@@ -101,7 +101,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq9"
     },
     {
       "id": "CSQ-SUITE-CRASH",
@@ -354,7 +354,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq9"
     }
   ]
 }
