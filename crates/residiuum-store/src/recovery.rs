@@ -63,7 +63,7 @@ pub struct HoleEvidence {
 /// Per-source-file scan and mapping evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceFileEvidence {
-    /// Path relative to the source store root (`segments/….dingo`, `active/active.dingo`).
+    /// Path relative to the source store root (`segments/….residiuum`, `active/active.residiuum`).
     pub source_relative: String,
     /// Source file length in bytes.
     pub source_len: u64,
@@ -291,7 +291,7 @@ pub fn try_load_recovery_manifest(
 fn dest_segment_relative(source_relative: &str, frame_bytes: &[u8]) -> String {
     // Preserve sealed segment filenames so identity remains operator-visible.
     if let Some(name) = source_relative.strip_prefix("segments/") {
-        if name.ends_with(".dingo") && !name.contains('/') {
+        if name.ends_with(".residiuum") && !name.contains('/') {
             return format!("segments/{name}");
         }
     }
@@ -299,7 +299,7 @@ fn dest_segment_relative(source_relative: &str, frame_bytes: &[u8]) -> String {
     let hash = blake3::hash(frame_bytes);
     let mut id = [0u8; 16];
     id.copy_from_slice(&hash.as_bytes()[..16]);
-    format!("segments/{}.dingo", hex16(&id))
+    format!("segments/{}.residiuum", hex16(&id))
 }
 
 fn hole_reason_label(reason: &HoleReason) -> String {

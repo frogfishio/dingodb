@@ -8,7 +8,7 @@ use crate::chunk_payload::{DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD};
 use crate::error::StoreError;
 
 /// Profile identifier for the stable v1 application large-value policy.
-pub const LARGE_VALUE_PROFILE_ID: &str = "dingo-large-value-v1";
+pub const LARGE_VALUE_PROFILE_ID: &str = "residiuum-large-value-v1";
 
 /// Default max logical encoded payload (includes SDK type tags when present).
 ///

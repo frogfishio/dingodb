@@ -29,7 +29,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// Profile tag for network Raft RPC wire documents (DEF-036).
-pub const RAFT_RPC_PROFILE: &str = "dingo-raft-rpc-v1";
+pub const RAFT_RPC_PROFILE: &str = "residiuum-raft-rpc-v1";
 
 /// Default max entries per AppendEntries batch (bounded batching).
 pub const DEFAULT_MAX_APPEND_BATCH: usize = 64;
@@ -649,7 +649,7 @@ impl NetworkRaftNode {
                 term: last_included_term,
                 index: last_included_index,
                 command: LogCommand::Delete {
-                    subject: "__dingo_snapshot_base__".into(),
+                    subject: "__residiuum_snapshot_base__".into(),
                 },
             });
         }

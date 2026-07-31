@@ -150,7 +150,7 @@ There is no silent fallback between these policies.
 ### 3.4 Cursor profile
 
 Before DDA-4, the normative spec MUST receive a wire-profile amendment for
-`dingo-direct-cursor-v1`.
+`residiuum-direct-cursor-v1`.
 
 The profile MUST use:
 
@@ -172,7 +172,7 @@ The per-Heap token key is HKDF-SHA-256:
 PRK = HKDF-Extract(salt = HeapId, IKM = deployment_token_root)
 key = HKDF-Expand(
     PRK,
-    info = "dingo-direct-cursor-v1" || 0x00 || authority_generation_be,
+    info = "residiuum-direct-cursor-v1" || 0x00 || authority_generation_be,
     length = 32
 )
 ```
@@ -180,7 +180,7 @@ key = HKDF-Expand(
 The visible envelope is canonical:
 
 ```text
-profile = "dingo-direct-cursor-v1"
+profile = "residiuum-direct-cursor-v1"
 key_id
 nonce[24]
 ciphertext_and_tag
@@ -268,7 +268,7 @@ Exit:
 
 ### DDA-2 — Exact predicate bitmap algebra
 
-Entry: DDA-1 accepted; DRE-0 predicate truth table accepted.
+Entry: DDA-1 accepted; RRE-0 predicate truth table accepted.
 
 Deliver:
 

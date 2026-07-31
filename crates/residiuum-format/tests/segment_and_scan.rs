@@ -152,7 +152,7 @@ fn random_garbage_scan_finds_nothing_verified() {
     let garbage: Vec<u8> = (0u8..200)
         .map(|i| i.wrapping_mul(17).wrapping_add(3))
         .collect();
-    // Avoid accidental DINGOFRM.
+    // Avoid accidental RESIDFRM.
     let report = scan_forward(&garbage, SafetyLimits::default());
     assert_eq!(report.verified_count(), 0);
     if !garbage.is_empty() {

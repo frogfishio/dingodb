@@ -21,7 +21,7 @@ keywords:
 
 ## Maturity
 
-Single-node TCP (`residuum serve`) is **development only**. It is not a production deployment claim.
+Single-node TCP (`residiuum serve`) is **development only**. It is not a production deployment claim.
 
 ```rust
 use residiuum_sdk::{ConnectOptions, Residiuum};

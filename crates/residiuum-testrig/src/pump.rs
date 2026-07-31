@@ -619,7 +619,7 @@ fn fill_payload(buf: &mut [u8], seed: u64) {
         *b = ((state >> 33) as u8).wrapping_add((i & 0xff) as u8);
     }
     // Magic prefix so corrupted regions are obvious in hex dumps.
-    let magic = b"DINGO-TESTRIG-PAYLOAD-v1\n";
+    let magic = b"RESIDIUUM-TESTRIG-PAYLOAD-v1\n";
     let n = magic.len().min(buf.len());
     buf[..n].copy_from_slice(&magic[..n]);
 }

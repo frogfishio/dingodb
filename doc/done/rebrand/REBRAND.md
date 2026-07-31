@@ -15,15 +15,13 @@ Canonical short name: **Residiuum**
 This document is the authoritative plan for the transition from the former
 DingoDB working name to Residiuum.
 
-The migration is deliberately phased. A completed phase does not authorize the
-next phase, and a documentation rename does not imply that an implementation
-identifier has shipped. Phase 2 is now explicitly authorized. Its work remains
-subject to the compatibility classes and gates in this document; in particular,
-persisted, wire, cryptographic, and historical identifiers are not ordinary
-mechanical renames.
+The migration was deliberately phased. The final pre-release decision resets
+all product, persisted, wire, cryptographic, query, and rule identities. No
+compatibility promise exists for artifacts created under the former working
+name.
 
 Living Phase 2 inventory (REB-1): [doc/done/rebrand/REBRAND_INVENTORY.md](./REBRAND_INVENTORY.md).
-Class C freeze (REB-5): [doc/done/rebrand/REBRAND_CLASS_C_FREEZE.md](./REBRAND_CLASS_C_FREEZE.md).
+protocol identity reset (REB-5): [doc/done/rebrand/REBRAND_PROTOCOL_IDENTITY_RESET.md](./REBRAND_PROTOCOL_IDENTITY_RESET.md).
 User-facing migration draft (REB-6): [REBRAND_CHANGELOG.md](./REBRAND_CHANGELOG.md).
 
 Documentation MUST distinguish the product identity from literal technical
@@ -46,38 +44,16 @@ identifiers that still exist in the implementation.
 | `dingodb.org` | `residiuumdb.org` |
 | `docs.dingodb.org` | `docs.residiuumdb.org` |
 
-The RQL and RRE names describe the canonical language identities. Lowercase
-implementation spellings such as `dql`, `dql_query`, source filenames, work
-package identifiers, and compatibility profiles remain literal until their
-separate implementation migration is approved.
+RQL and RRE are the canonical language identities in prose, APIs, serialized
+profiles, wire operations, filenames, diagnostics, and work-package identifiers.
 
-## 3. Literal legacy identifiers
+## 3. Historical references
 
-Markdown MUST preserve a legacy identifier when changing it would make an
-example, command, path, protocol statement, compatibility claim, test vector,
-or source reference false. After Phase 2 Class A/B renames, **current**
-implementation identity is Residiuum-named; the remaining **literal legacy**
-identifiers include, without limitation:
-
-- Class C wire/on-disk facts: `.dingo` store files; `dingo-*-v1` profiles;
-  frame magics `DINGOFRM` / `DINGOEND`; `urn:dingo:…`;
-  `__dingo_snapshot_base__`; content-types such as `application/dingo.heap-*`;
-  frozen `dingo:` hash domains except where explicitly reset (see
-  [doc/done/rebrand/REBRAND_CLASS_C_FREEZE.md](./REBRAND_CLASS_C_FREEZE.md));
-- Class D history: git history, release tags, remote
-  `github.com/frogfishio/dingodb`, historical work-package ids;
-- Redirect and migration history for the former website hosts and routes;
-- Historical docs that deliberately show pre-Phase-2 names as migration
-  before/after examples (e.g. [REBRAND_CHANGELOG.md](./REBRAND_CHANGELOG.md)).
-
-**Current (post–Phase 2) Class B identity (do not reverse):** packages
-`residiuum-*`, type `Residiuum` / `Residiuum::open`, CLI `residiuum` /
-`residiuum-sda`, URI `residiuum://`, env `RESIDIUUM_*`.
-
-When readers could mistake a literal identifier for the current brand,
-documentation SHOULD label it **legacy technical identifier** on first relevant
-use. No document may claim that an implementation rename has shipped merely
-because its product terminology has changed.
+Former names may remain only in explicit rebrand history, the current
+repository URL/local checkout path, and website redirects. They MUST NOT remain
+as accepted product, protocol, storage, security, qualification, API, CLI, or
+language identities. See
+[REBRAND_PROTOCOL_IDENTITY_RESET.md](./REBRAND_PROTOCOL_IDENTITY_RESET.md).
 
 ## 4. Naming form
 
@@ -125,7 +101,7 @@ The required order is:
 |---|---|---|---|
 | 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
 | 1. Documentation identity | Codex | **complete** | Establish Residiuum, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
-| 2. Wholesale repository naming | Codex | **complete through REB-12** | Class A/B renames + Class C freeze + RQL surface + residual audit + docs + workspace verify |
+| 2. Wholesale repository naming | Codex | **complete through REB-12** | Class A/B renames + protocol identity reset + RQL surface + residual audit + docs + workspace verify |
 | 3. Rust realignment | principal | **complete for rebrand scope** | Workspace compiles and the full workspace suite is green under Residiuum names |
 | 4. Website and route migration | principal | **repository complete; DNS/custom-domain operations remain** | Sites under `web/residiuumdb.org` + `web/docs.residiuumdb.org`; package/astro hosts; Residiuum copy; RQL/RRE routes; redirects; hosting project_id frozen |
 | 5. Final audit | Codex | **repository complete** | Engine, documentation, both site sources, generated routes, compatibility identities, and site builds audited |
@@ -261,7 +237,7 @@ Phase 2 is ready for Rust realignment only when:
 
 1. the full rename inventory has a disposition for every occurrence;
 2. all intended Class A and Class B names have moved;
-3. every Class C name has an explicit keep, version, migrate, or break decision;
+3. every former Class C name is covered by the pre-release reset;
 4. no accidental mixed-brand public surface remains;
 5. generated metadata and lockfile consequences are identified;
 6. the migration changelog exists; and
@@ -425,33 +401,13 @@ pub const RQL_PLAN_PROFILE: &str = "dql-plan-v1";
 Remaining lowercase `dql` occurrences are frozen profiles, wire identifiers,
 fixtures, error identifiers, or historical compatibility statements.
 
-### 14.3 REB-9 — Class C compatibility audit
+### 14.3 REB-9 — Protocol identity reset
 
 Inspect every changed literal against
-[doc/done/rebrand/REBRAND_CLASS_C_FREEZE.md](./REBRAND_CLASS_C_FREEZE.md). In particular,
-preserve:
-
-- `DINGOFRM` and `DINGOEND`;
-- `dingo-*-v1` profiles;
-- `dingo-store-9`;
-- persisted cluster labels;
-- `urn:dingo:*`;
-- `application/dingo.*`;
-- `dingo:` hash domains;
-- `.dingo`;
-- `__dingo_snapshot_base__`; and
-- the frozen DQL profile and wire identifiers listed in REB-8.
-
-An earlier mechanical pass accidentally renamed some Class C values. The known
-store, Heap, server, SDA, and cluster cases have been restored, including the
-store readers that recognize the `dingo-store-*` metadata family. REB-9 must
-prove that no additional Class C value escaped.
-
-**Status (2026-07-31): complete.** Greps confirmed
-magics, `dingo-*-v1` profiles, `dingo-store-*`, URNs, `application/dingo.*`,
-`__dingo_snapshot_base__`, and frozen DQL profile strings remain. No Class C
-reverts required after REB-8 profile restore. The later principal-approved
-cryptographic reset replaces all `DINGODB-*` domains with `RESIDIUUM-*`.
+[doc/done/rebrand/REBRAND_PROTOCOL_IDENTITY_RESET.md](./REBRAND_PROTOCOL_IDENTITY_RESET.md).
+All former Class-C values are reset before CSQ-0. Readers intentionally do not
+recognize the former pre-release store family, profiles, magics, URNs,
+application identifiers, hash domains, or DQL/DRE wire surface.
 
 REB-9 acceptance (observed):
 
@@ -505,8 +461,9 @@ without touching `web/`:
 | Cargo `keywords = ["dingodb", …]` | `["residiuum", …]` |
 | Stale media error `DINGO_{}_ROOT` text | `RESIDIUUM_{}_ROOT` |
 
-Class C and history retained as above. Wrong intermediate spellings `Residuum` /
-`residuum-*` appear only as deliberate forbidden-form documentation.
+Historical references remain only in the permitted history/infrastructure
+locations. Wrong intermediate spellings `Residuum` / `residuum-*` appear only
+as deliberate forbidden-form documentation.
 
 ### 14.5 REB-11 — documentation and changelog reconciliation
 

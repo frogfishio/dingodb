@@ -11,7 +11,7 @@ use residiuum_format::{
 };
 
 /// Magic identifying a draft chunked-payload manifest in an item-event body.
-pub const CHUNK_MANIFEST_MAGIC: &[u8; 8] = b"DCHM0001";
+pub const CHUNK_MANIFEST_MAGIC: &[u8; 8] = b"RCHM0001";
 
 /// Default soft threshold: bodies larger than this MAY be written chunked.
 ///
@@ -24,7 +24,7 @@ pub const DEFAULT_CHUNK_SIZE: usize = 16 * 1024;
 /// Draft chunk manifest body layout (item-event body when chunked):
 ///
 /// ```text
-/// magic[8] = b"DCHM0001"
+/// magic[8] = b"RCHM0001"
 /// content_hash[32]
 /// total_chunks:u32 LE
 /// logical_total_len:u64 LE
@@ -425,7 +425,7 @@ mod tests {
     fn hostile_chunk_count_does_not_allocate() {
         // Magic + hash + total=u32::MAX + logical_len, no slots.
         let mut body = Vec::new();
-        body.extend_from_slice(b"DCHM0001");
+        body.extend_from_slice(b"RCHM0001");
         body.extend_from_slice(&[0u8; BODY_HASH_LEN]);
         body.extend_from_slice(&u32::MAX.to_le_bytes());
         body.extend_from_slice(&0u64.to_le_bytes());

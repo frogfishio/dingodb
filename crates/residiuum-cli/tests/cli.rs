@@ -13,7 +13,7 @@ use tempfile::tempdir;
 /// Wait until a residiuum serve process completes a framed handshake + ping.
 ///
 /// A bare TCP connect is not enough: production servers (DEF-031) require the
-/// `dingo-rpc-v1` hello/welcome exchange before application RPCs. Any framed
+/// `residiuum-rpc-v1` hello/welcome exchange before application RPCs. Any framed
 /// JSON response (including auth failure on a later store_info) means live.
 fn wait_for_residiuum_ping(bind: &str) {
     for _ in 0..100 {
@@ -106,7 +106,7 @@ fn version_and_help() {
 #[test]
 fn put_get_list_delete_roundtrip() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
 
     run_ok(&[
@@ -139,7 +139,7 @@ fn put_get_list_delete_roundtrip() {
 #[test]
 fn put_bytes_roundtrip() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     let bin = dir.path().join("blob.bin");
     fs::write(&bin, b"\x00\xffhello").unwrap();
@@ -158,12 +158,12 @@ fn put_bytes_roundtrip() {
 #[test]
 fn doctor_is_read_only_on_healthy_store() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     run_ok(&["put", store_s, "users/u1", "--json", r#"{"n":1}"#]);
 
     // Snapshot mtimes of authoritative paths.
-    let active = store.join("active").join("active.dingo");
+    let active = store.join("active").join("active.residiuum");
     let before = fs::metadata(&active).unwrap().modified().unwrap();
 
     let out = run_ok(&["doctor", store_s]);
@@ -181,8 +181,8 @@ fn doctor_is_read_only_on_healthy_store() {
 #[test]
 fn salvage_to_new_path_preserves_live_data() {
     let dir = tempdir().unwrap();
-    let src = dir.path().join("damaged.dingo");
-    let dst = dir.path().join("recovered.dingo");
+    let src = dir.path().join("damaged.residiuum");
+    let dst = dir.path().join("recovered.residiuum");
     let src_s = src.to_str().unwrap();
     let dst_s = dst.to_str().unwrap();
 
@@ -216,8 +216,8 @@ fn salvage_to_new_path_preserves_live_data() {
 #[test]
 fn export_live_is_distinct_from_salvage() {
     let dir = tempdir().unwrap();
-    let src = dir.path().join("src.dingo");
-    let dst = dir.path().join("export.dingo");
+    let src = dir.path().join("src.residiuum");
+    let dst = dir.path().join("export.residiuum");
     let src_s = src.to_str().unwrap();
     let dst_s = dst.to_str().unwrap();
 
@@ -232,9 +232,9 @@ fn export_live_is_distinct_from_salvage() {
 #[test]
 fn backup_and_restore_roundtrip() {
     let dir = tempdir().unwrap();
-    let src = dir.path().join("app.dingo");
+    let src = dir.path().join("app.residiuum");
     let bak = dir.path().join("app.bak");
-    let dst = dir.path().join("restored.dingo");
+    let dst = dir.path().join("restored.residiuum");
     let src_s = src.to_str().unwrap();
     let bak_s = bak.to_str().unwrap();
     let dst_s = dst.to_str().unwrap();
@@ -265,9 +265,9 @@ fn backup_and_restore_roundtrip() {
 #[test]
 fn restore_reassign_identity_clone() {
     let dir = tempdir().unwrap();
-    let src = dir.path().join("app.dingo");
+    let src = dir.path().join("app.residiuum");
     let bak = dir.path().join("app.bak");
-    let clone = dir.path().join("clone.dingo");
+    let clone = dir.path().join("clone.residiuum");
     let src_s = src.to_str().unwrap();
     let bak_s = bak.to_str().unwrap();
     let clone_s = clone.to_str().unwrap();
@@ -289,7 +289,7 @@ fn restore_reassign_identity_clone() {
 #[test]
 fn scrub_clean_store_and_status() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
 
     run_ok(&["put", store_s, "users/a", "--json", r#"{"n":1}"#]);
@@ -320,7 +320,7 @@ fn config_validate_show_and_unsafe_reject() {
     fs::write(
         &good,
         r#"{
-          "format": "dingo-config-v1",
+          "format": "residiuum-config-v1",
           "format_version": 1,
           "store": { "path": "/tmp/residiuum-store", "durability_default": "durable" },
           "serve": {
@@ -336,10 +336,10 @@ fn config_validate_show_and_unsafe_reject() {
 
     let out = run_ok(&["config", "validate", good_s, "--mode", "serve"]);
     assert!(out.contains("config ok"), "out={out}");
-    assert!(out.contains("dingo-config-v1") || out.contains("profile="), "out={out}");
+    assert!(out.contains("residiuum-config-v1") || out.contains("profile="), "out={out}");
 
     let show = run_ok(&["--json-out", "config", "show", good_s, "--mode", "serve"]);
-    assert!(show.contains("dingo-config-v1"), "show={show}");
+    assert!(show.contains("residiuum-config-v1"), "show={show}");
     assert!(show.contains("[redacted]") || show.contains("<unset>"), "show={show}");
     assert!(show.contains("serve.bind"), "show={show}");
 
@@ -347,7 +347,7 @@ fn config_validate_show_and_unsafe_reject() {
     fs::write(
         &bad,
         r#"{
-          "format": "dingo-config-v1",
+          "format": "residiuum-config-v1",
           "format_version": 1,
           "cluster": {
             "root": "/tmp/c",
@@ -377,8 +377,8 @@ fn config_validate_show_and_unsafe_reject() {
 #[test]
 fn migrate_roundtrip_and_status() {
     let dir = tempdir().unwrap();
-    let src = dir.path().join("app.dingo");
-    let dst = dir.path().join("migrated.dingo");
+    let src = dir.path().join("app.residiuum");
+    let dst = dir.path().join("migrated.residiuum");
     let src_s = src.to_str().unwrap();
     let dst_s = dst.to_str().unwrap();
 
@@ -411,7 +411,7 @@ fn migrate_roundtrip_and_status() {
 #[test]
 fn serve_and_sdk_connect_parity() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
 
     // Seed via CLI.
@@ -464,7 +464,7 @@ fn serve_and_sdk_connect_parity() {
 #[test]
 fn history_command() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     run_ok(&["put", store_s, "docs/k", "--json", r#"{"v":1}"#]);
     run_ok(&["put", store_s, "docs/k", "--json", r#"{"v":2}"#]);
@@ -478,7 +478,7 @@ fn serve_auth_token_required() {
     use residiuum_sdk::{ConnectOptions, ErrorCode};
 
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     run_ok(&["put", store_s, "users/seed", "--json", r#"{"from":"cli"}"#]);
 
@@ -622,7 +622,7 @@ fn serve_cluster_requires_experimental_flag() {
 #[test]
 fn serve_refuses_public_plaintext_bind_without_override() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     // Create a store first so failure is about bind policy, not missing path.
     run_ok(&[
@@ -649,7 +649,7 @@ fn serve_refuses_public_plaintext_bind_without_override() {
 #[test]
 fn serve_loopback_bind_is_allowed() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     run_ok(&["put", store_s, "t/k", "--json", r#"{"ok":true}"#]);
 
@@ -711,7 +711,7 @@ fn capability_matrix_document_present() {
 #[test]
 fn serve_public_bind_allowed_with_insecure_override() {
     let dir = tempdir().unwrap();
-    let store = dir.path().join("app.dingo");
+    let store = dir.path().join("app.residiuum");
     let store_s = store.to_str().unwrap();
     run_ok(&["put", store_s, "t/k", "--json", r#"{"ok":true}"#]);
 

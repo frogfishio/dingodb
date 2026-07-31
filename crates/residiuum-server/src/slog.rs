@@ -3,7 +3,7 @@
 //! Emits versioned NDJSON events with stable event names and bounded field
 //! cardinality. Credentials and request/response payloads are never logged.
 //!
-//! Profile: [`LOG_PROFILE`] = `dingo-log-v1`.
+//! Profile: [`LOG_PROFILE`] = `residiuum-log-v1`.
 //!
 //! Correlation fields (`operation_id`, `request_id`, `principal_id`,
 //! `error_code`, requested/achieved guarantees, latency) let operators join
@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Structured logging profile label (capability matrices / startup).
-pub const LOG_PROFILE: &str = "dingo-log-v1";
+pub const LOG_PROFILE: &str = "residiuum-log-v1";
 
 /// Maximum UTF-8 bytes retained for free-text fields (reason, error message).
 pub const MAX_FIELD_BYTES: usize = 256;
@@ -645,7 +645,7 @@ mod tests {
 
     #[test]
     fn profile_constant() {
-        assert_eq!(LOG_PROFILE, "dingo-log-v1");
+        assert_eq!(LOG_PROFILE, "residiuum-log-v1");
         assert_eq!(events::RPC_COMPLETE, "rpc.complete");
         assert_eq!(events::GUARANTEE_FAILED, "guarantee.failed");
     }
@@ -792,7 +792,7 @@ mod tests {
         };
         let line = ev.to_ndjson();
         let v: serde_json::Value = serde_json::from_str(&line).unwrap();
-        assert_eq!(v["profile"], "dingo-log-v1");
+        assert_eq!(v["profile"], "residiuum-log-v1");
         assert_eq!(v["event"], "server.start");
         assert_eq!(v["level"], "info");
     }

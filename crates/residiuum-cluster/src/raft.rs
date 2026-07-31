@@ -367,7 +367,7 @@ impl PartitionRaft {
                 term,
                 index: last_included_index,
                 command: LogCommand::Delete {
-                    subject: "__dingo_snapshot_base__".into(),
+                    subject: "__residiuum_snapshot_base__".into(),
                 },
             });
         }
@@ -383,7 +383,7 @@ impl PartitionRaft {
                 crate::raft_persist::snapshot_meta_for(last_included_index, term, blob, note);
             let disk_remaining: Vec<LogEntry> = remaining
                 .into_iter()
-                .filter(|e| e.command.subject() != "__dingo_snapshot_base__")
+                .filter(|e| e.command.subject() != "__residiuum_snapshot_base__")
                 .collect();
             store.install_snapshot(meta, blob, &disk_remaining)?;
             store.save_peer(peer)?;
@@ -1148,7 +1148,7 @@ impl PartitionRaft {
             let next = peer.last_applied + 1;
             if let Some(e) = peer.entry_at(next).cloned() {
                 peer.last_applied = next;
-                if e.command.subject() != "__dingo_snapshot_base__" {
+                if e.command.subject() != "__residiuum_snapshot_base__" {
                     out.push(e);
                 }
             } else {

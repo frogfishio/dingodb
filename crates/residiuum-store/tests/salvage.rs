@@ -53,10 +53,10 @@ fn incomplete_tail_does_not_poison_earlier_frames() {
     }
 
     // Corrupt the active segment with a truncated / garbage tail.
-    let active = path.join("active").join("active.dingo");
+    let active = path.join("active").join("active.residiuum");
     let mut f = OpenOptions::new().append(true).open(&active).unwrap();
     // Partial magic + noise (not a complete frame).
-    f.write_all(b"DINGOFRM").unwrap();
+    f.write_all(b"RESIDFRM").unwrap();
     f.write_all(&[0u8; 40]).unwrap();
     f.sync_all().unwrap();
 
@@ -86,7 +86,7 @@ fn salvage_to_new_path_is_non_destructive() {
         store.put("gone", b"x", DurabilityMode::Durable).unwrap();
         store.delete("gone", DurabilityMode::Durable).unwrap();
     }
-    let active_meta = fs::metadata(src.join("active").join("active.dingo"))
+    let active_meta = fs::metadata(src.join("active").join("active.residiuum"))
         .unwrap()
         .modified()
         .unwrap();
@@ -100,7 +100,7 @@ fn salvage_to_new_path_is_non_destructive() {
     assert!(report.manifest_path.is_some());
 
     // Source active segment mtime unchanged.
-    let after = fs::metadata(src.join("active").join("active.dingo"))
+    let after = fs::metadata(src.join("active").join("active.residiuum"))
         .unwrap()
         .modified()
         .unwrap();
@@ -150,7 +150,7 @@ fn middle_byte_corruption_still_finds_later_items_via_salvage() {
         .unwrap()
         .filter_map(|e| e.ok())
         .map(|e| e.path())
-        .find(|p| p.extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .find(|p| p.extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .expect("sealed segment");
     let mut bytes = fs::read(&seg_file).unwrap();
     if bytes.len() > 80 {

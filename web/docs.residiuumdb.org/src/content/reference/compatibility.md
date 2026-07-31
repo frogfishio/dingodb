@@ -23,7 +23,7 @@ keywords:
 | Workspace semver | 0.2.0 |
 | SDK_API_VERSION | 1.0 |
 | WIRE_PROFILE_LABEL | 1.0-draft |
-| BACKUP_PROFILE | dingo-backup-v1 |
-| SCRUB_PROFILE | dingo-scrub-v1 |
+| BACKUP_PROFILE | residiuum-backup-v1 |
+| SCRUB_PROFILE | residiuum-scrub-v1 |
 
 Full list: [status/compatibility](/status/compatibility/).

@@ -18,7 +18,7 @@ Program authority:
 The program exits when Residiuum can run:
 
 ```text
-dingo verify --profile embedded-heap --level A2
+residiuum verify --profile embedded-heap --level A2
 ```
 
 from a clean environment and produce a self-validating evidence bundle that
@@ -93,7 +93,7 @@ Deliver:
 
 ```text
 crates/residiuum-verify/
-scripts/dingo-verify.sh
+scripts/residiuum-verify.sh
 ```
 
 The Rust crate owns registry validation, dependency resolution, preflight,
@@ -450,7 +450,7 @@ verify-weekly-compat
 verify-release-candidate
 ```
 
-Each uploads `dingo-verification-report-v1` or a hash-addressed fragment merged
+Each uploads `residiuum-verification-report-v1` or a hash-addressed fragment merged
 by `VFY-12`.
 
 ## 19. Completion rule

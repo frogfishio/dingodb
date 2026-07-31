@@ -157,8 +157,8 @@ impl AwsKmsDataKeyProvider {
             "KeyId": self.cmk_key_id,
             "KeySpec": "AES_256",
             "EncryptionContext": {
-                "dingo-heap-id": heap_hex,
-                "dingo-profile": "dingo-heap-v1",
+                "residiuum-heap-id": heap_hex,
+                "residiuum-profile": "residiuum-heap-v1",
             }
         });
         let body_bytes = serde_json::to_vec(&body)

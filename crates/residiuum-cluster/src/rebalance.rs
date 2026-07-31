@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Profile tag for durable rebalance control-plane documents (DEF-038).
-pub const REBALANCE_CONTROL_PROFILE: &str = "dingo-rebalance-control-v1";
+pub const REBALANCE_CONTROL_PROFILE: &str = "residiuum-rebalance-control-v1";
 
 /// Filename under the cluster root for in-flight rebalance jobs.
 pub const REBALANCE_JOBS_FILE: &str = "rebalance_jobs.json";

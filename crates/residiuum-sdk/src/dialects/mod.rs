@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Profile / docs tag for the dialect compilation surface.
-pub const DIALECT_PROFILE: &str = "dingo-query-dialects-v0.1";
+pub const DIALECT_PROFILE: &str = "residiuum-query-dialects-v0.1";
 
 /// Shape of the compiled pure SDA artifact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -454,7 +454,7 @@ mod tests {
     }
 
     #[test]
-    fn dql_dialect_compiles_to_enr1() {
+    fn rql_dialect_compiles_to_enr1() {
         let c = compile_dialect(
             "rql",
             r#"

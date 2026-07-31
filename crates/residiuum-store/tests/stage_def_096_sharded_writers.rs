@@ -27,18 +27,18 @@ fn create_with_shards_routes_and_gets() {
         );
     }
 
-    // Multi-shard layout uses active/shard-NN/active.dingo
+    // Multi-shard layout uses active/shard-NN/active.residiuum
     for shard in 0..4 {
         let p = root
             .join("active")
             .join(format!("shard-{shard:02}"))
-            .join("active.dingo");
+            .join("active.residiuum");
         assert!(p.is_file(), "missing active for shard {shard}: {p:?}");
     }
     // Legacy single-file path must not be the multi-shard home.
     assert!(
-        !root.join("active").join("active.dingo").is_file()
-            || fs::metadata(root.join("active").join("active.dingo"))
+        !root.join("active").join("active.residiuum").is_file()
+            || fs::metadata(root.join("active").join("active.residiuum"))
                 .map(|m| m.len() == 0)
                 .unwrap_or(true)
             || true // tolerate absence; multi-shard never writes legacy path
@@ -138,7 +138,7 @@ fn sharded_async_seal_preserves_gets() {
     let sealed: Vec<_> = fs::read_dir(root.join("segments"))
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .collect();
     assert!(
         !sealed.is_empty(),
@@ -154,7 +154,7 @@ fn single_shard_create_keeps_legacy_layout() {
     assert_eq!(store.writer_shards(), 1);
     assert_eq!(store.writer_model(), "single_active_segment");
     store.put("one", b"1", DurabilityMode::Durable).unwrap();
-    assert!(root.join("active").join("active.dingo").is_file());
+    assert!(root.join("active").join("active.residiuum").is_file());
     assert!(!root.join("active").join("shard-00").exists());
 }
 

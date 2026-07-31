@@ -130,7 +130,7 @@ impl ScanReport {
 /// Forward salvage scan of a byte source (FORMAT_SPEC §7.2).
 ///
 /// Algorithm:
-/// 1. From position `p`, find the next `DINGOFRM` at `q`.
+/// 1. From position `p`, find the next `RESIDFRM` at `q`.
 /// 2. Bytes `[p, q)` are unclassified garbage (if non-empty).
 /// 3. Attempt full structural verification at `q`.
 /// 4. On success, emit a verified frame and set `p = q + frame_len`.
@@ -248,7 +248,7 @@ fn push_garbage(regions: &mut Vec<ScanRegion>, start: u64, end: u64) {
     });
 }
 
-/// Find the next `DINGOFRM` at or after `from`.
+/// Find the next `RESIDFRM` at or after `from`.
 pub fn find_start_magic(haystack: &[u8], from: usize) -> Option<usize> {
     if from >= haystack.len() || haystack.len() - from < START_MAGIC.len() {
         return None;
@@ -259,7 +259,7 @@ pub fn find_start_magic(haystack: &[u8], from: usize) -> Option<usize> {
         .map(|i| from + i)
 }
 
-/// Find the rightmost `DINGOEND` whose start is strictly less than `exclusive_end`.
+/// Find the rightmost `RESIDEND` whose start is strictly less than `exclusive_end`.
 pub fn find_end_magic_rightmost(haystack: &[u8], exclusive_end: usize) -> Option<usize> {
     if exclusive_end < END_MAGIC.len() || haystack.is_empty() {
         return None;
@@ -276,7 +276,7 @@ pub fn find_end_magic_rightmost(haystack: &[u8], exclusive_end: usize) -> Option
 /// Reverse salvage scan assisted by suffix magic and `frame_len` (FORMAT_SPEC §7.4).
 ///
 /// Algorithm (right-to-left):
-/// 1. From exclusive end `e`, find the rightmost `DINGOEND` at `s` with `s < e`.
+/// 1. From exclusive end `e`, find the rightmost `RESIDEND` at `s` with `s < e`.
 /// 2. Bytes `(s + claimed_frame_len, e)` that cannot be claimed become garbage.
 /// 3. Attempt full structural verification of the candidate ending at that suffix.
 /// 4. On success, emit a verified frame and set `e = frame_start`.

@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 /// Filename under `catalogs/` for the collection name set.
 pub const COLLECTIONS_CATALOG_FILE: &str = "collections.cat";
 
-const MAGIC: &[u8; 8] = b"DCAT0001";
+const MAGIC: &[u8; 8] = b"RCAT0001";
 const VERSION: u32 = 1;
 
 /// Derived catalog of collection names observed in live subjects.

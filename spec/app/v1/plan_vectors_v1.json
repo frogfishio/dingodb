@@ -1,19 +1,19 @@
 {
-  "profile": "dql-plan-v1",
-  "source_profile": "dql-app-core-v1",
-  "predicate_profile": "dingo-predicate-v1",
-  "encoding_profile": "dql-plan-encoding-v1",
+  "profile": "rql-plan-v1",
+  "source_profile": "rql-app-core-v1",
+  "predicate_profile": "residiuum-predicate-v1",
+  "encoding_profile": "rql-plan-encoding-v1",
   "encoding_note": "Canonical plan bytes are deterministic JSON (BTree key order) of RqlPlanV1. Plan hash is BLAKE3-256 over domain UTF-8 || 0x00 || canonical JSON UTF-8 (APP-4).",
-  "hash_domain": "dingo:dql-plan-v1:canonical-v1",
+  "hash_domain": "residiuum:rql-plan-v1:canonical-v1",
   "hash_algorithm": "blake3-256",
   "vectors": [
     {
       "id": "plan-orders-status-open-page",
-      "description": "Builder and DQL Application Core must compile to identical logical plans.",
-      "source_dql": "from orders where status = $status project id, status order by created_at desc limit 1000 page size 100",
+      "description": "Builder and RQL Application Core must compile to identical logical plans.",
+      "source_rql": "from orders where status = $status project id, status order by created_at desc limit 1000 page size 100",
       "parameters": { "status": "open" },
       "logical_plan": {
-        "profile": "dql-plan-v1",
+        "profile": "rql-plan-v1",
         "from": {
           "source_name": "orders",
           "collection_id_bound": "00000000-0000-4000-8000-0000000000a1"
@@ -33,26 +33,26 @@
         "coverage": "complete",
         "consistency": "available"
       },
-      "plan_hash_hex": "3efd561f280567e8bae659369c7f0ce8df86fc67b7bf31418cad8e95b5e454f4",
+      "plan_hash_hex": "2a0a78272d91833a231f5562a399c389c59b9013d065dfdeb04f4dba90a23597",
       "plan_hash_status": "canonical_v1",
-      "notes": "Hash from residiuum_sdk::plan_v1 builder + encoding profile; APP-5 must match from source_dql."
+      "notes": "Hash from residiuum_sdk::plan_v1 builder + encoding profile; APP-5 must match from source_rql."
     },
     {
       "id": "plan-feature-unavailable-enrich",
       "description": "Non-Core construct must fail before execution.",
-      "source_dql": "from orders enrich other",
+      "source_rql": "from orders enrich other",
       "expect": {
         "compile": "reject",
         "code": "query_invalid",
-        "diagnostic": "dql_feature_unavailable"
+        "diagnostic": "rql_feature_unavailable"
       }
     },
     {
       "id": "plan-defaults-only",
       "description": "Bare from applies default page size 64, complete coverage, available consistency, key order.",
-      "source_dql": "from orders",
+      "source_rql": "from orders",
       "logical_plan": {
-        "profile": "dql-plan-v1",
+        "profile": "rql-plan-v1",
         "from": {
           "source_name": "orders",
           "collection_id_bound": "00000000-0000-4000-8000-0000000000a1"
@@ -67,7 +67,7 @@
         "coverage": "complete",
         "consistency": "available"
       },
-      "plan_hash_hex": "3a5bd7c756db619f7eac1f648029376688438ebf9309fb9042b5a53f0775c65c",
+      "plan_hash_hex": "e43f1d8d86cb01835d8bc6c093cc70172e91398dafd959984aa77a41feee1051",
       "plan_hash_status": "canonical_v1"
     }
   ]

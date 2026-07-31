@@ -237,7 +237,7 @@ impl ServeStartupReport {
             "no"
         };
         let mut lines = vec![
-            format!("dingo {}: startup status", self.mode),
+            format!("residiuum {}: startup status", self.mode),
             format!("  path: {}", self.path),
             format!("  bind: {}", self.bind),
             format!("  transport_security: tls={tls}"),

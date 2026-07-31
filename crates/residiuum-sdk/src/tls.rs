@@ -4,8 +4,8 @@
 //! node-to-node (and optionally client) peers. Certificate SANs carry
 //! cluster/node identity as URIs:
 //!
-//! - `urn:dingo:cluster:{cluster_id}`
-//! - `urn:dingo:node:{node_id}`
+//! - `urn:residiuum:cluster:{cluster_id}`
+//! - `urn:residiuum:node:{node_id}`
 //!
 //! Plaintext remains loopback-only (or explicit `--allow-insecure-bind`).
 //! Shared application tokens use constant-time comparison and must not be
@@ -28,13 +28,13 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 /// Profile tag for the TLS transport surface (DEF-032).
-pub const TLS_PROFILE: &str = "dingo-tls-v1";
+pub const TLS_PROFILE: &str = "residiuum-tls-v1";
 
 /// URI scheme prefix for Residiuum cluster identity in certificate SANs.
-pub const CLUSTER_URN_PREFIX: &str = "urn:dingo:cluster:";
+pub const CLUSTER_URN_PREFIX: &str = "urn:residiuum:cluster:";
 
 /// URI scheme prefix for Residiuum node identity in certificate SANs.
-pub const NODE_URN_PREFIX: &str = "urn:dingo:node:";
+pub const NODE_URN_PREFIX: &str = "urn:residiuum:node:";
 
 /// Build a cluster identity URN for embedding in a certificate SAN.
 pub fn cluster_urn(cluster_id: &str) -> String {
@@ -229,9 +229,9 @@ pub struct PeerIdentity {
     pub dns_names: Vec<String>,
     /// URI SANs.
     pub uris: Vec<String>,
-    /// Cluster id from `urn:dingo:cluster:…` if present.
+    /// Cluster id from `urn:residiuum:cluster:…` if present.
     pub cluster_id: Option<String>,
-    /// Node id from `urn:dingo:node:…` if present.
+    /// Node id from `urn:residiuum:node:…` if present.
     pub node_id: Option<String>,
     /// Leaf serial number as lowercase hex.
     pub serial_hex: Option<String>,
@@ -469,7 +469,7 @@ impl TlsServerState {
 
         let mut config =
             builder.with_cert_resolver(Arc::clone(&resolver) as Arc<dyn ResolvesServerCert>);
-        config.alpn_protocols = vec![b"dingo-rpc-v1".to_vec()];
+        config.alpn_protocols = vec![b"residiuum-rpc-v1".to_vec()];
 
         Ok(Self {
             config: Arc::new(config),
@@ -622,7 +622,7 @@ pub fn build_client_config(options: &TlsClientOptions) -> Result<Arc<ClientConfi
     } else {
         builder.with_no_client_auth()
     };
-    config.alpn_protocols = vec![b"dingo-rpc-v1".to_vec()];
+    config.alpn_protocols = vec![b"residiuum-rpc-v1".to_vec()];
     Ok(Arc::new(config))
 }
 
@@ -792,12 +792,12 @@ mod tests {
 
     #[test]
     fn urn_helpers() {
-        assert_eq!(cluster_urn("c1"), "urn:dingo:cluster:c1");
+        assert_eq!(cluster_urn("c1"), "urn:residiuum:cluster:c1");
         assert_eq!(
-            parse_cluster_id_from_uri("urn:dingo:cluster:c1"),
+            parse_cluster_id_from_uri("urn:residiuum:cluster:c1"),
             Some("c1")
         );
-        assert_eq!(parse_node_id_from_uri("urn:dingo:node:n0"), Some("n0"));
+        assert_eq!(parse_node_id_from_uri("urn:residiuum:node:n0"), Some("n0"));
         assert!(parse_cluster_id_from_uri("https://example").is_none());
     }
 

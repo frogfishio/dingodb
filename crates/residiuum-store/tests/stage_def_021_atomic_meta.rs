@@ -59,7 +59,7 @@ fn store_meta_writes_survive_reopen() {
     // Identity files present.
     assert!(root.join("store-info").join("store_id").is_file());
     assert!(root.join("store-info").join("meta").is_file());
-    assert!(root.join("store-info").join("descriptor.dingo").is_file());
+    assert!(root.join("store-info").join("descriptor.residiuum").is_file());
 
     let store = Store::open(&root).unwrap();
     assert_eq!(store.get("k").unwrap().as_deref(), Some(b"v".as_slice()));

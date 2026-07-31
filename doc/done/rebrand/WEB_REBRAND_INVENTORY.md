@@ -1,11 +1,17 @@
 # WEB rebrand inventory (Phase 4)
 
-**Date:** 2026-07-31  
-**Feature:** WEB — Residiuum websites (Phase 4)  
-**Task:** WEB-0 — Inventory + constraints freeze  
+**Date:** 2026-07-31
+**Feature:** WEB — Residiuum websites (Phase 4)
+**Task:** WEB-0 — Inventory + constraints freeze
 **Scope:** `web/residiuumdb.org`, `web/docs.residiuumdb.org` (exclude `node_modules/`, `dist/`)
 
-SoT: `REBRAND.md` Phase 4, Feature WEB objective, `doc/done/rebrand/REBRAND_CLASS_C_FREEZE.md`.
+SoT: `REBRAND.md` Phase 4, Feature WEB objective, and
+`doc/done/rebrand/REBRAND_PROTOCOL_IDENTITY_RESET.md`.
+
+Final disposition: the later pre-release protocol identity reset supersedes
+the original Class-C retention notes below. Current site content uses
+Residiuum/RQL/RRE identities; obsolete route redirects remain historical web
+infrastructure only.
 
 ---
 
@@ -35,7 +41,7 @@ No `git mv` of site directories is required for Phase 4.
 
 **Docs hosting:** No in-repo OpenAI Sites binding for docs yet. Principal may add a separate `.openai/hosting.json` later; out of WEB scope unless authorized. Do not invent a project_id.
 
-### 2.2 Class C (retain_legacy on web)
+### 2.2 Former Class C (superseded)
 
 Do **not** rewrite these as “Residiuum” wire names. Product prose may say Residiuum while values stay frozen:
 
@@ -44,7 +50,9 @@ Do **not** rewrite these as “Residiuum” wire names. Product prose may say Re
 | Profile IDs | `dingo-backup-v1`, `dingo-scrub-v1`, `dingo-migrate-v1`, `dingo-config-v1`, `dingo-log-v1`, `dingo-rpc-v1` |
 | Files with Class C literals | `web/*/src/data/capabilities.json`; docs `reference/compatibility.md`, `wire.md`, `configuration.md`, `status/compatibility.md`, ops guides (`backup-restore`, `logs`, `migration`, …) |
 
-Full wire freeze remains in `doc/done/rebrand/REBRAND_CLASS_C_FREEZE.md` (crates). Web only **documents** those IDs.
+The final reset is recorded in
+`doc/done/rebrand/REBRAND_PROTOCOL_IDENTITY_RESET.md`; web content now documents
+only the Residiuum identities.
 
 ### 2.3 Class D / out of Feature
 
@@ -84,7 +92,7 @@ Approximate **file counts** (excluding `node_modules` / `dist` / lock noise wher
 | **choose-dingodb** | 2 (+ content file) | WEB-5 |
 | Old route hrefs (`/guides/dql` etc.) | 9 | WEB-5 |
 | Legacy API samples (`dingo_sdk` / `Dingo::`) | 2 | WEB-3 |
-| Class C profile literals | 11 | **retain** |
+| Former Class C profile literals | 11 | **reset to Residiuum identities** |
 
 ---
 
@@ -161,12 +169,12 @@ WEB-0 (this doc) → WEB-1 → (WEB-2 ∥ WEB-4) → WEB-3 → WEB-5 → WEB-6 �
 
 ## 9. Acceptance for WEB-0
 
-- [x] Residual brand buckets inventoried with file counts  
-- [x] Route rename table complete  
-- [x] Class C keep-list for web explicit  
-- [x] Hosting project_id freeze recorded; docs hosting absence noted  
-- [x] Dir state: no leftover `web/dingodb.org` paths  
-- [x] No package renames performed in this task  
+- [x] Residual brand buckets inventoried with file counts
+- [x] Route rename table complete
+- [x] Protocol identity reset reflected in web content
+- [x] Hosting project_id freeze recorded; docs hosting absence noted
+- [x] Dir state: no leftover `web/dingodb.org` paths
+- [x] No package renames performed in this task
 
 ---
 

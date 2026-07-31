@@ -47,7 +47,7 @@ Prod{
   event_id: Some("445566..."),
   event_kind: Some("put"),
   physical: Prod{
-    source: "segments/0001.dingo",
+    source: "segments/0001.residiuum",
     offset: Some(4096),
     encoded_length: Some(512),
     wire_major: Some(1),

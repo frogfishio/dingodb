@@ -559,7 +559,7 @@ fn write_diagnostic(file: &mut File) -> Result<(), StoreError> {
     file.set_len(0)?;
     writeln!(
         file,
-        "dingo-writer-lock\npid={pid}\nacquired_ns={ns}\nnote=diagnostic-only; OS exclusive lock is authoritative; never delete this file to force unlock\n"
+        "residiuum-writer-lock\npid={pid}\nacquired_ns={ns}\nnote=diagnostic-only; OS exclusive lock is authoritative; never delete this file to force unlock\n"
     )?;
     let _ = file.sync_all();
     Ok(())
@@ -649,7 +649,7 @@ mod tests {
         let lock_path = info.join(WRITER_LOCK_FILE);
         std::fs::write(
             &lock_path,
-            "dingo-writer-lock\npid=1\nacquired_ns=0\nnote=stale\n",
+            "residiuum-writer-lock\npid=1\nacquired_ns=0\nnote=stale\n",
         )
         .unwrap();
         let paths = StorePaths::new(&root);

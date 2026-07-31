@@ -95,7 +95,7 @@ Outcome:
 > One Heap can activate a finite RRE ruleset and every subsequent committed
 > document satisfies its active document-local rules.
 
-Packages: `DRE-0` through `DRE-4`.
+Packages: `RRE-0` through `RRE-4`.
 
 Initial rule classes:
 
@@ -115,8 +115,8 @@ Outcome:
 > Within one Heap, Residiuum commits one bounded serializable transition with a
 > stable identity and independently examinable decision evidence.
 
-Packages: `ATM-0` through `ATM-5`, `DRE-5`, `REL-0` through `REL-4`, then
-`DRE-6`.
+Packages: `ATM-0` through `ATM-5`, `RRE-5`, `REL-0` through `REL-4`, then
+`RRE-6`.
 
 First user-visible cross-document guarantees:
 
@@ -152,15 +152,15 @@ Distributed packages remain later qualification work.
 HAR-0 ─ HAR-1 ─ HAR-2 ─ HAR-3 ─ HAR-4 ─ HAR-5 ─ HAR-6 ─ HAR-7
                                                         │
                                                         ▼
-DRE-0 ─ DRE-1 ─ DRE-2 ─ DRE-3 ─ DRE-4
+RRE-0 ─ RRE-1 ─ RRE-2 ─ RRE-3 ─ RRE-4
           │                       │
           │                       ▼
           └──────────────► ATM-0 ─ ATM-1 ─ ATM-2 ─ ATM-3 ─ ATM-4 ─ ATM-5
                                       │                │
                                       ▼                ▼
-                                    DRE-5            REL-0 ─ REL-1 ─ REL-2 ─ REL-3 ─ REL-4 ─ DRE-6
+                                    RRE-5            REL-0 ─ REL-1 ─ REL-2 ─ REL-3 ─ REL-4 ─ RRE-6
 
-DRE-0 predicate semantics ───────────────┐
+RRE-0 predicate semantics ───────────────┐
 existing indexes + frozen views ────────┼─► DDA-0 ─ DDA-1 ─ DDA-2 ─ DDA-3 ─ DDA-4
 Heap cursor/key binding ────────────────┘                         │
                                                                  ▼
@@ -169,7 +169,7 @@ Heap cursor/key binding ────────────────┘     
 
 Allowed parallelism:
 
-- `DRE-0` reference semantics MAY begin while `HAR-4`–`HAR-7` finish.
+- `RRE-0` reference semantics MAY begin while `HAR-4`–`HAR-7` finish.
 - `ATM-0` encoding design MAY begin after `HAR-2` freezes Heap object identity.
 - `DDA-0` oracle work MAY begin after RRE shared predicate semantics freeze.
 - `DOW-0` mathematical reference MAY begin after DDA order-domain identity
@@ -300,8 +300,8 @@ The next executable queue is:
 6. `HAR-5` — Heap lifecycle/backup operational path;
 7. `HAR-6` — SDK/CLI journey;
 8. `HAR-7` — Heap Application Ready release evidence;
-9. `DRE-0` — crate and conformance harness;
-10. `DRE-1` — parser and canonical AST.
+9. `RRE-0` — crate and conformance harness;
+10. `RRE-1` — parser and canonical AST.
 
 External review remains a qualification opportunity. It is not a code-package
 dependency for P1–P5 while product language remains honest.

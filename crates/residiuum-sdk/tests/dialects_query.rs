@@ -12,7 +12,7 @@ use tempfile::tempdir;
 #[test]
 fn find_dialect_sql_and_json_on_collection() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("d.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("d.residiuum")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users
@@ -59,7 +59,7 @@ fn compile_dialect_profile_and_builtins() {
 
 /// RQL (official human dialect) lowers to the same ENR1 Match kernel as pure text.
 #[test]
-fn dql_equals_pure_enr1_on_enrich() {
+fn rql_equals_pure_enr1_on_enrich() {
     let rql = r#"
         from orders
         enrich customer using customers
@@ -96,7 +96,7 @@ fn dql_equals_pure_enr1_on_enrich() {
         ("orders".into(), input["orders"].clone()),
         ("customers".into(), input["customers"].clone()),
     ];
-    let from_dql = sda_core::Program::parse(&compiled.sda)
+    let from_rql = sda_core::Program::parse(&compiled.sda)
         .unwrap()
         .run_json_bindings(bindings.clone())
         .unwrap();
@@ -104,9 +104,9 @@ fn dql_equals_pure_enr1_on_enrich() {
         .unwrap()
         .run_json_bindings(bindings)
         .unwrap();
-    assert_eq!(from_dql, from_pure, "RQL must prove the same kernel as pure ENR1");
-    assert_eq!(from_dql.as_array().unwrap().len(), 2);
-    assert_eq!(from_dql[0]["customer"]["name"], json!("Ada"));
+    assert_eq!(from_rql, from_pure, "RQL must prove the same kernel as pure ENR1");
+    assert_eq!(from_rql.as_array().unwrap().len(), 2);
+    assert_eq!(from_rql[0]["customer"]["name"], json!("Ada"));
 }
 
 /// Pure SDA distinguishes stored null from missing key; SQL `IS NULL` cannot.
@@ -173,7 +173,7 @@ fn pure_sda_null_vs_absence_sql_is_null_collapses() {
 #[test]
 fn find_dialect_sql_is_null_on_collection() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("d.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("d.residiuum")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users

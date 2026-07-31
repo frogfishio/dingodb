@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Single-node server
-description: Run residuum serve for development.
+description: Run residiuum serve for development.
 class: operation
 status: development-only
 section: operations
@@ -35,7 +35,7 @@ Medium (network exposure).
 ## Procedure
 
 ```bash
-residuum serve ./app.dingo
+residiuum serve ./app.residiuum
 # optional: --token, TLS flags per CLI help
 ```
 

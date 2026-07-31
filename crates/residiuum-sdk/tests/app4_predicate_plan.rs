@@ -1,4 +1,4 @@
-//! APP-4: `dingo-predicate-v1` + `dql-plan-v1` canonical encoding/hash lock.
+//! APP-4: `residiuum-predicate-v1` + `rql-plan-v1` canonical encoding/hash lock.
 //!
 //! Normative: CORE plan §14 APP-4; `spec/app/v1/plan_vectors_v1.json`.
 
@@ -30,10 +30,10 @@ fn read_json(rel: &str) -> Value {
 
 #[test]
 fn app4_profiles_and_encoding_ids() {
-    assert_eq!(PLAN_PROFILE, "dql-plan-v1");
-    assert_eq!(PLAN_ENCODING_PROFILE, "dql-plan-encoding-v1");
-    assert_eq!(PLAN_HASH_DOMAIN, "dingo:dql-plan-v1:canonical-v1");
-    assert_eq!(PREDICATE_PROFILE, "dingo-predicate-v1");
+    assert_eq!(PLAN_PROFILE, "rql-plan-v1");
+    assert_eq!(PLAN_ENCODING_PROFILE, "rql-plan-encoding-v1");
+    assert_eq!(PLAN_HASH_DOMAIN, "residiuum:rql-plan-v1:canonical-v1");
+    assert_eq!(PREDICATE_PROFILE, "residiuum-predicate-v1");
 }
 
 #[test]

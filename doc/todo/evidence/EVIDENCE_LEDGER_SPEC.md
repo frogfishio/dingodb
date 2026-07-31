@@ -5,9 +5,9 @@ Status: normative design v1.0-draft; implementation not yet qualified
 Profiles:
 
 ```text
-dingo-evidence-ledger-v1
-dingo-evidence-record-cbor-v1
-dingo-evidence-export-v1
+residiuum-evidence-ledger-v1
+residiuum-evidence-record-cbor-v1
+residiuum-evidence-export-v1
 ```
 
 Normative companions:
@@ -386,7 +386,7 @@ interpreted as a known event.
 | 422 | `repair_result` | `required_atomic` |
 | 423 | `salvage_result` | `required_before_reply` |
 | 424 | `migration_result` | `required_atomic` |
-| 500 | `dre_revision_change` | `required_atomic` |
+| 500 | `rre_revision_change` | `required_atomic` |
 | 501 | `relationship_revision_change` | `required_atomic` |
 | 502 | `collection_contract_change` | `required_atomic` |
 | 503 | `index_definition_change` | `required_atomic` |
@@ -628,7 +628,7 @@ The certificate is deterministic CBOR:
 | 6 | Ed25519 public key bstr(32) |
 | 7 | valid-from sequence, nonzero uint |
 | 8 | valid-through sequence uint or null |
-| 9 | profile text = `dingo-evidence-ledger-v1` |
+| 9 | profile text = `residiuum-evidence-ledger-v1` |
 | 10 | issuer kind: 1 Heap master, 2 deployment evidence root |
 | 11 | issuer fingerprint bstr(32) |
 | 12 | signature algorithm = 1 |
@@ -1086,7 +1086,7 @@ identity, length, and BLAKE3-256 hash. It states:
 - export time evidence; and
 - exporter version/profile.
 
-`dingo evidence verify <package>` MUST operate offline and return independent
+`residiuum evidence verify <package>` MUST operate offline and return independent
 axes:
 
 ```text
@@ -1309,7 +1309,7 @@ the pure kernel does not prove filesystem or consensus behavior.
 
 ## 21. Qualification tests
 
-A profile cannot claim `dingo-evidence-ledger-v1` until all pass:
+A profile cannot claim `residiuum-evidence-ledger-v1` until all pass:
 
 1. golden canonical-CBOR and signature vectors;
 2. malformed/non-canonical/adversarial decoder corpus;
@@ -1341,7 +1341,7 @@ A profile cannot claim `dingo-evidence-ledger-v1` until all pass:
 | ID | Deliverable | Depends on | Exit evidence |
 |---|---|---|---|
 | DEL-0 | machine-readable registries, CBOR schemas, vectors | spec freeze | cross-language golden vectors |
-| DEL-1 | `dingo-evidence` pure types, canonicalizer, verifier | DEL-0 | property/fuzz tests |
+| DEL-1 | `residiuum-evidence` pure types, canonicalizer, verifier | DEL-0 | property/fuzz tests |
 | DEL-2 | EvidenceRecord/Checkpoint/Cut format support + SDA | DEL-1 | hole/salvage corpus |
 | DEL-3 | per-Heap store, head, reserve, recovery | DEL-2 | crash matrix |
 | DEL-4 | signer certificates, rotation, provider interface | DEL-1, authority | crypto vectors + ceremonies |

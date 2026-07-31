@@ -1,6 +1,6 @@
 //! Multi-process OS chaos + short soak harness (DEF-041-N).
 //!
-//! Complements the in-process [`crate::sim`] program (`dingo-cluster-verify-v1`).
+//! Complements the in-process [`crate::sim`] program (`residiuum-cluster-verify-v1`).
 //! This module defines the **history dump contract** shared by the multiproc
 //! child binary and integration tests so failures retain seed + ops for replay.
 //!
@@ -21,7 +21,7 @@ use std::io::{self, Write};
 use std::path::Path;
 
 /// Profile tag for multiproc verification (DEF-041-N).
-pub const MULTIPROC_PROFILE: &str = "dingo-cluster-multiproc-v1";
+pub const MULTIPROC_PROFILE: &str = "residiuum-cluster-multiproc-v1";
 
 /// One client operation recorded by the multiproc child (after durable ack).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

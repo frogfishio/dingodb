@@ -57,7 +57,7 @@ cargo test -p residiuum-sdk
 cargo test -p residiuum-examine
 
 # Operator CLI
-cargo test -p dingo
+cargo test -p residiuum
 
 # Cluster federation
 cargo test -p residiuum-cluster
@@ -67,7 +67,7 @@ cargo run -p residiuum-sda-cli --bin residiuum-sda -- eval -e '1 + 2'
 echo '{"name":"Ada"}' | cargo run -p residiuum-sda-cli --bin residiuum-sda -- eval -e 'input<"name">!'
 
 # CLI help
-cargo run -p dingo --bin residiuum -- --help
+cargo run -p residiuum --bin residiuum -- --help
 ```
 
 Aliases (see `.cargo/config.toml`):

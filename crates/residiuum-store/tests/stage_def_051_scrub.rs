@@ -72,7 +72,7 @@ fn injected_corruption_detected_and_quarantined() {
     let mut sealed: Vec<_> = fs::read_dir(&segments)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("dingo"))
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("residiuum"))
         .collect();
     sealed.sort();
     assert!(!sealed.is_empty(), "need a sealed segment to corrupt");
@@ -150,7 +150,7 @@ fn content_hash_mismatch_against_placement() {
     let sealed: Vec<_> = fs::read_dir(&segments)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("dingo"))
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("residiuum"))
         .collect();
     assert!(!sealed.is_empty());
     let victim = &sealed[0];
@@ -250,7 +250,7 @@ fn clean_rescrub_clears_resolved_findings() {
     let sealed: Vec<_> = fs::read_dir(&segments)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("dingo"))
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("residiuum"))
         .collect();
     let victim = sealed[0].clone();
     let good = fs::read(&victim).unwrap();

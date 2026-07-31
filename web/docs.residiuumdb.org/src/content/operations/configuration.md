@@ -20,7 +20,7 @@ keywords:
 
 ## Outcome
 
-Validate a `dingo-config-v1` document before serving.
+Validate a `residiuum-config-v1` document before serving.
 
 ## Applies to / maturity
 
@@ -32,14 +32,14 @@ Medium if mis-binding network interfaces.
 
 ## Prerequisites
 
-- Built `residuum` CLI
+- Built `residiuum` CLI
 - Config file under your control
 
 ## Pre-flight checks
 
 ```bash
-residuum config validate --config ./dingo.json
-residuum config show --config ./dingo.json
+residiuum config validate --config ./residiuum.json
+residiuum config show --config ./residiuum.json
 ```
 
 ## Procedure

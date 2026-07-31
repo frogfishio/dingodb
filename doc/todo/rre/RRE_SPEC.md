@@ -6,9 +6,9 @@ Language name: **Residiuum Rule Expression (RRE)**
 
 Product capability: **Data Rules**
 
-Dialect identifier: `dre`
+Dialect identifier: `rre`
 
-Artifact profile: `dingo-dre-artifact-v1`
+Artifact profile: `residiuum-rre-artifact-v1`
 
 Scope: Declarative document rules, transition rules, referential integrity,
 formal semantics, proof obligations, and Atomic enforcement
@@ -28,10 +28,10 @@ describing valid stored state and valid state transitions.
 The language is named **Residiuum Rule Expression**, abbreviated **RRE**. One RRE
 denotes one invariant; a RRE ruleset is the immutable deployment container.
 “Data Rules” remains the plain-English name of the product capability. Its
-source dialect identifier is `dre`.
+source dialect identifier is `rre`.
 
 Its human surface is visually compatible with RQL and imports the exact
-`dingo-predicate-v1` predicate profile. Its meaning is nevertheless a separate,
+`residiuum-predicate-v1` predicate profile. Its meaning is nevertheless a separate,
 stricter mathematical invariant kernel.
 
 RREs are not:
@@ -250,7 +250,7 @@ Source is UTF-8. Invalid UTF-8 is rejected. `--` begins a line comment.
 Whitespace and comments otherwise have no meaning.
 
 `identifier`, `path`, `literal`, and `predicate` are imported from
-`dingo-predicate-v1`. Active rules accept no runtime parameters.
+`residiuum-predicate-v1`. Active rules accept no runtime parameters.
 
 The following EBNF is normative:
 
@@ -642,7 +642,7 @@ I_R(S, S', o) ≜ ∧ r ∈ R • ⟦r⟧(S, S', o)
 
 ### 6.2 Document declaration semantics
 
-Let `resolve(d, p)` have the exact meaning in `dingo-predicate-v1` and let
+Let `resolve(d, p)` have the exact meaning in `residiuum-predicate-v1` and let
 `Conforms(v, T)` be the recursive type predicate from §5.2.
 
 ```text
@@ -887,7 +887,7 @@ Each top-level declaration is one RRE. Its stable ID is:
 
 ```text
 rule_id = Hash(
-  "dingo-dre-rule-id-v1"
+  "residiuum-rre-rule-id-v1"
   || ruleset_id
   || canonical_declaration_ordinal
   || canonical_declaration_bytes
@@ -939,7 +939,7 @@ checkable proof certificate under a new artifact version.
 
 The logical artifact fields are normative. V1 does not assign their persistent
 binary field numbers in this language document. No implementation may persist
-or exchange a purported `dingo-dre-artifact-v1` until a companion encoding
+or exchange a purported `residiuum-rre-artifact-v1` until a companion encoding
 profile fixes its canonical bytes. An implementation may begin with an
 ephemeral in-process representation.
 
@@ -1664,8 +1664,8 @@ These are boundaries required for truth, boundedness, and speed.
 The exploratory questions are resolved as follows:
 
 1. The language is **Residiuum Rule Expression (RRE)**; the product capability is
-   **Data Rules**; the dialect identifier is `dre`.
-2. Paths and predicates use `dingo-predicate-v1`.
+   **Data Rules**; the dialect identifier is `rre`.
+2. Paths and predicates use `residiuum-predicate-v1`.
 3. Scalar and composite types are exactly those in §5.1–§5.2. Numeric
    evaluation is integer/exact decimal; binary floating point is excluded.
 4. Boolean syntax and semantics are those in the shared predicate profile.

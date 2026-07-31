@@ -55,7 +55,7 @@ pub const WRITER_WIRE_MAJOR: u8 = WIRE_MAJOR;
 pub const WRITER_WIRE_MINOR: u8 = WIRE_MINOR;
 
 /// Policy id for the freeze checklist document (DEF-053 labor cut).
-pub const WIRE_FREEZE_POLICY_ID: &str = "dingo-wire-major1-freeze-v1";
+pub const WIRE_FREEZE_POLICY_ID: &str = "residiuum-wire-major1-freeze-v1";
 
 /// Status of one freeze criterion (see `doc/wip/format/WIRE_MAJOR1_FREEZE.md` §2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 //! Thin Residiuum network client primitives (MIT).
 //!
-//! Framed RPC protocol (`dingo-rpc-v1`) and handshake only. Collection APIs:
+//! Framed RPC protocol (`residiuum-rpc-v1`) and handshake only. Collection APIs:
 //! [`residiuum_sdk`](https://docs.rs/residiuum-sdk). TCP serve: `residiuum-server`.
 
 #![deny(missing_docs)]

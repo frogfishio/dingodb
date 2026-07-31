@@ -95,7 +95,7 @@ fn damaged_segment_sda_finds_islands_and_holes() {
         .unwrap()
         .filter_map(|e| e.ok())
         .map(|e| e.path())
-        .find(|p| p.extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .find(|p| p.extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .expect("sealed segment");
     let mut bytes = fs::read(&seg_file).unwrap();
     if bytes.len() > 80 {
@@ -160,16 +160,16 @@ fn incomplete_tail_still_examines_earlier_frames() {
     }
     // Append incomplete magic to the raw active file *without* reopening the
     // store (open would truncate the tail). Examine offline bytes.
-    let active = path.join("active").join("active.dingo");
+    let active = path.join("active").join("active.residiuum");
     let mut f = OpenOptions::new().append(true).open(&active).unwrap();
-    f.write_all(b"DINGOFRM").unwrap();
+    f.write_all(b"RESIDFRM").unwrap();
     f.write_all(&[0u8; 40]).unwrap();
     f.sync_all().unwrap();
     drop(f);
 
     let raw = fs::read(&active).unwrap();
     let page = examine_bytes(
-        "active/active.dingo",
+        "active/active.residiuum",
         &raw,
         SafetyLimits::default(),
         ExamineLimits::default(),
@@ -247,7 +247,7 @@ fn null_vs_absence_on_opt_identities() {
     // Pure garbage source (no open/truncate path).
     let garbage = b"not-a-frame-at-all!!!!";
     let page = examine_bytes(
-        "garbage.dingo",
+        "garbage.residiuum",
         garbage,
         SafetyLimits::default(),
         ExamineLimits::default(),

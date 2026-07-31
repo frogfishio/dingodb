@@ -133,7 +133,7 @@ fn reclaim_after_activate_measures_bytes_and_keeps_live() {
     let remaining: usize = fs::read_dir(&segs)
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .count();
     assert_eq!(remaining, 1, "only the compacted output segment should remain");
     assert_eq!(
@@ -251,7 +251,7 @@ fn cancel_before_activate_removes_output() {
 
     // Create writes the segment then hits after_create failpoint → Created.
     if job.phase == CompactPhase::Created {
-        let out_name = format!("{}.dingo", job.output_segment_id);
+        let out_name = format!("{}.residiuum", job.output_segment_id);
         let out_path = root.join("segments").join(&out_name);
         assert!(out_path.is_file(), "output segment should exist before cancel");
         let cancelled = store.cancel_compact_job(&job_id).unwrap();

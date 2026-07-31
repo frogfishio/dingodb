@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: CLI reference
-description: dingo operator CLI command map.
+description: residiuum operator CLI command map.
 class: reference
 status: experimental
 section: reference
@@ -18,9 +18,9 @@ keywords:
   - cli
 ---
 
-Binary: `residuum` (AGPL networked product tier for serve paths).
+Binary: `residiuum` (AGPL networked product tier for serve paths).
 
-Common commands (see `dingo --help` for flags):
+Common commands (see `residiuum --help` for flags):
 
 | Command | Purpose |
 |---------|---------|

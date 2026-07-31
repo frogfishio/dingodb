@@ -5,9 +5,9 @@ Status: normative design v1.0-draft; implementation not yet qualified
 Profiles:
 
 ```text
-dingo-telemetry-v1
-dingo-telemetry-ratatouille-v1
-dingo-health-v1
+residiuum-telemetry-v1
+residiuum-telemetry-ratatouille-v1
+residiuum-health-v1
 ```
 
 Normative companions:
@@ -203,7 +203,7 @@ Collectors may translate Ratatouille output into any downstream system.
 
 `health_live`, `health_ready`, and authenticated health detail are control
 status APIs, not telemetry transports. They remain available under
-`dingo-health-v1`.
+`residiuum-health-v1`.
 
 The legacy `metrics` RPC is not part of the Ratatouille-only qualified profile.
 During migration it MAY expose the same in-memory snapshot for tests and local
@@ -217,21 +217,21 @@ never construct a topic.
 
 | Topic | Content |
 |---|---|
-| `dingo:lifecycle` | bounded process/node start, ready, drain, stop, fatal state transitions |
-| `dingo:runtime` | process/runtime/resource snapshots |
-| `dingo:transport` | connection, TLS, byte, and network admission snapshots |
-| `dingo:rpc` | aggregate operation outcomes and latency histograms |
-| `dingo:rpc:exemplar` | sampled errors and slow operations |
-| `dingo:admission` | rate, concurrency, replay, and resource-control snapshots |
-| `dingo:storage` | append, read, sync, segment, byte, and amplification snapshots |
-| `dingo:query` | RQL/SDA work, coverage, cursor, scan, and result snapshots |
-| `dingo:index` | index state, lag, build, maintenance, and cache snapshots |
-| `dingo:integrity` | scrub, corruption, holes, partial material, salvage, and repair snapshots |
-| `dingo:atomic` | Atomic/RRE/relationship aggregate outcomes |
-| `dingo:lifecycle:data` | backup, restore, compaction, retention, tier, purge aggregates |
-| `dingo:cluster` | partition, leader, quorum, replica, repair, and rebalance snapshots |
-| `dingo:evidence` | redacted Evidence Ledger health and after-commit notifications |
-| `dingo:telemetry` | Ratatouille/logger/relay queue, filter, drop, and flush self-observation |
+| `residiuum:lifecycle` | bounded process/node start, ready, drain, stop, fatal state transitions |
+| `residiuum:runtime` | process/runtime/resource snapshots |
+| `residiuum:transport` | connection, TLS, byte, and network admission snapshots |
+| `residiuum:rpc` | aggregate operation outcomes and latency histograms |
+| `residiuum:rpc:exemplar` | sampled errors and slow operations |
+| `residiuum:admission` | rate, concurrency, replay, and resource-control snapshots |
+| `residiuum:storage` | append, read, sync, segment, byte, and amplification snapshots |
+| `residiuum:query` | RQL/SDA work, coverage, cursor, scan, and result snapshots |
+| `residiuum:index` | index state, lag, build, maintenance, and cache snapshots |
+| `residiuum:integrity` | scrub, corruption, holes, partial material, salvage, and repair snapshots |
+| `residiuum:atomic` | Atomic/RRE/relationship aggregate outcomes |
+| `residiuum:lifecycle:data` | backup, restore, compaction, retention, tier, purge aggregates |
+| `residiuum:cluster` | partition, leader, quorum, replica, repair, and rebalance snapshots |
+| `residiuum:evidence` | redacted Evidence Ledger health and after-commit notifications |
+| `residiuum:telemetry` | Ratatouille/logger/relay queue, filter, drop, and flush self-observation |
 
 No per-Heap, per-collection, per-key, per-client, per-query, per-partition, or
 per-error-code topic is permitted. Subclassification is a bounded field inside
@@ -251,7 +251,7 @@ Ratatouille owns the canonical outer NDJSON record:
 {
   "ts": "2026-03-11T12:34:56.789Z",
   "seq": 42,
-  "topic": "dingo:rpc",
+  "topic": "residiuum:rpc",
   "src": {
     "app": "residiuum",
     "where": "deployment-ref",
@@ -277,7 +277,7 @@ Every Residiuum message is:
 ```json
 {
   "v": 1,
-  "profile": "dingo-telemetry-v1",
+  "profile": "residiuum-telemetry-v1",
   "kind": "snapshot",
   "boot": "base32-128",
   "sample": 42,
@@ -294,7 +294,7 @@ Every Residiuum message is:
 Rules:
 
 - exactly the listed common keys are present;
-- `profile` is exactly `dingo-telemetry-v1`;
+- `profile` is exactly `residiuum-telemetry-v1`;
 - `kind` is `snapshot`, `transition`, or `exemplar`;
 - `boot` is a random process-incarnation ID, not a host identity;
 - `sample` is monotonically increasing per Residiuum topic and process;
@@ -798,9 +798,9 @@ and recovery resolution:
 
 | Signal | Type |
 |---|---|
-| `dre_evaluation_total{outcome}` | counter |
-| `dre_evaluation_latency_us` | histogram |
-| `dre_violation_total{rule_class}` | counter |
+| `rre_evaluation_total{outcome}` | counter |
+| `rre_evaluation_latency_us` | histogram |
+| `rre_violation_total{rule_class}` | counter |
 | `relationship_check_total{kind,outcome}` | counter |
 | `atomic_total{scope,outcome}` | counter |
 | `atomic_plan_members` | histogram |
@@ -932,7 +932,7 @@ construction, and flush:
 | `telemetry_snapshot_skipped_total{topic,reason}` | counter |
 
 These counters always exist in memory. They are emitted through
-`dingo:telemetry` when the channel works and appear in authenticated health
+`residiuum:telemetry` when the channel works and appear in authenticated health
 detail when it does not. They never fall back to console or files.
 
 ## 12. Snapshot composition
@@ -1267,14 +1267,14 @@ Migration:
 9. disable the `metrics` RPC in the qualified production profile;
 10. progressively connect storage, query, index, integrity, lifecycle,
     Atomics, Evidence Ledger, and cluster sources; and
-11. delete or test-only gate the old `dingo-log-v1` surface after compatibility
+11. delete or test-only gate the old `residiuum-log-v1` surface after compatibility
     expiry.
 
 No migration stage may introduce a file sink or synchronous network delivery.
 
 ## 22. Qualification
 
-A profile cannot claim `dingo-telemetry-v1` until all applicable tests pass:
+A profile cannot claim `residiuum-telemetry-v1` until all applicable tests pass:
 
 1. exact topic/message schema golden vectors;
 2. fixed-registry and unknown-to-`other` tests;

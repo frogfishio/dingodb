@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Profile tag for migration job documents (DEF-052).
-pub const MIGRATE_PROFILE: &str = "dingo-migrate-v1";
+pub const MIGRATE_PROFILE: &str = "residiuum-migrate-v1";
 
 /// Directory under `recovery/` for migration job control (source-side audit).
 pub const MIGRATE_DIR: &str = "migration";
@@ -63,7 +63,7 @@ pub const PROTOCOL_MAJOR_DECLARED: u16 = 1;
 pub const PROTOCOL_MINOR_DECLARED: u16 = 0;
 
 /// Declared RPC profile tag (mirrors `residiuum-client::PROTOCOL_PROFILE`).
-pub const PROTOCOL_PROFILE_DECLARED: &str = "dingo-rpc-v1";
+pub const PROTOCOL_PROFILE_DECLARED: &str = "residiuum-rpc-v1";
 
 /// Draft RPC interoperability label (mirrors `residiuum-client::RPC_WIRE_LABEL`).
 pub const RPC_WIRE_LABEL_DECLARED: &str = "1.0-draft";
@@ -858,8 +858,8 @@ fn classify_one(
     let size = fs::metadata(src_file)?.len();
     let source_blake3_hex = blake3_file_hex(src_file)?;
 
-    // Classify .dingo segment-like files under active/ and segments/.
-    let is_segmentish = rel_str.ends_with(".dingo")
+    // Classify .residiuum segment-like files under active/ and segments/.
+    let is_segmentish = rel_str.ends_with(".residiuum")
         && (rel_str.starts_with("active/")
             || rel_str.starts_with("segments/")
             || rel_str.starts_with("store-info/descriptor"));

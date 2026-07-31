@@ -147,16 +147,16 @@ if seen.get("APB-12") == "accept":
             errors.append(f"APB-12 accept requires {p} accept")
 if seen.get("APB-12") != "accept":
     for p, st in seen.items():
-        if p.startswith(("DRE-", "ATM-", "DDA-", "DOW-")) and st in ("active", "accept"):
+        if p.startswith(("RRE-", "ATM-", "DDA-", "DOW-")) and st in ("active", "accept"):
             errors.append(f"{p} {st} before APB-12 application-baseline qualification")
 
-# Engine stage honesty: no DRE accept while M0 incomplete
+# Engine stage honesty: no RRE accept while M0 incomplete
 m0_done = all(seen.get(p) == "accept" for p in ("M0-1", "M0-2", "M0-3"))
 if not m0_done:
     for p, st in seen.items():
-        if p.startswith("DRE-") and st == "accept":
+        if p.startswith("RRE-") and st == "accept":
             errors.append(f"{p} accept while M0 incomplete")
-        if p.startswith("DRE-") and st == "active":
+        if p.startswith("RRE-") and st == "active":
             errors.append(f"{p} active while M0 incomplete")
 
 for w in warnings:

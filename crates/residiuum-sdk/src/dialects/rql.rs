@@ -494,7 +494,7 @@ mod tests {
             ("orders".into(), input["orders"].clone()),
             ("customers".into(), input["customers"].clone()),
         ];
-        let from_dql = sda_core::Program::parse(&compiled.sda)
+        let from_rql = sda_core::Program::parse(&compiled.sda)
             .unwrap()
             .run_json_bindings(bindings.clone())
             .unwrap();
@@ -502,8 +502,8 @@ mod tests {
             .unwrap()
             .run_json_bindings(bindings)
             .unwrap();
-        assert_eq!(from_dql, from_pure);
-        assert_eq!(from_dql[0]["customer"]["name"], json!("Ada"));
+        assert_eq!(from_rql, from_pure);
+        assert_eq!(from_rql[0]["customer"]["name"], json!("Ada"));
     }
 
     #[test]

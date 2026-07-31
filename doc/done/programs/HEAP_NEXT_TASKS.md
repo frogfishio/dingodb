@@ -10,7 +10,7 @@ Companions: [HEAP_SPEC.md](../../wip/heap/HEAP_SPEC.md) (contract + progress),
 
 ## North star
 
-Close **single-node** `dingo-heap-v1` **honestly** (`qualified=true` only when the
+Close **single-node** `residiuum-heap-v1` **honestly** (`qualified=true` only when the
 matrix says so). Do **not** open HP-011/012 (cluster) until HP-010 is Accept or
 deliberately deferred with Level-1 product language.
 

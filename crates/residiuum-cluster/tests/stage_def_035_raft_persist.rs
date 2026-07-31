@@ -13,7 +13,7 @@ use std::io::Write;
 
 #[test]
 fn profile_label_is_stable() {
-    assert_eq!(RAFT_PERSIST_PROFILE, "dingo-raft-persist-v1");
+    assert_eq!(RAFT_PERSIST_PROFILE, "residiuum-raft-persist-v1");
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn snapshot_compact_then_recover() {
     assert!(leader_peer
         .log
         .iter()
-        .filter(|e| e.command.subject() != "__dingo_snapshot_base__")
+        .filter(|e| e.command.subject() != "__residiuum_snapshot_base__")
         .all(|e| e.index > 3));
 
     // Recover from disk.

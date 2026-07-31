@@ -1,5 +1,5 @@
 {
-  "profile": "dingo-heap-v1",
+  "profile": "residiuum-heap-v1",
   "spec_section": "32.3",
   "rights": [
     {
@@ -529,7 +529,7 @@
     },
     {
       "id": 118,
-      "wire_name": "dql_query",
+      "wire_name": "rql_query",
       "status": "reserved",
       "surface": "heap",
       "rights_mask": 1,

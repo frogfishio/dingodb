@@ -1,6 +1,6 @@
 # Large-value policy and rewrite-heavy workloads (DEF-103)
 
-Contract id: `dingo-large-value-v1`
+Contract id: `residiuum-large-value-v1`
 
 ## What the 64 KiB threshold is
 

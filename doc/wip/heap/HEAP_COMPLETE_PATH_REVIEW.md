@@ -1,8 +1,8 @@
 # Heap complete-path review (HP-010 / Gate H6)
 
-**Status:** living review for single-node `dingo-heap-v1` qualification  
-**Date:** 2026-07-29  
-**Claim impact:** does **not** authorize `qualified=true`  
+**Status:** living review for single-node `residiuum-heap-v1` qualification
+**Date:** 2026-07-29
+**Claim impact:** does **not** authorize `qualified=true`
 **Normative anchors:** HEAP_SPEC §3.4 (complete-path enforcement), §27 Gate H6,
 §39–§40 (HP-010)
 

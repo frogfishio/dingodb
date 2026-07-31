@@ -1,4 +1,4 @@
-//! Shared total predicate profile (`dingo-predicate-v1`) — APP-4.
+//! Shared total predicate profile (`residiuum-predicate-v1`) — APP-4.
 //!
 //! Normative: [RESIDIUUM_PREDICATE_SPEC.md](../../../RESIDIUUM_PREDICATE_SPEC.md).
 //! Distinct from the legacy DX Mongo-style [`crate::filter::Filter`]:
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 /// Profile identifier (same string as [`crate::PREDICATE_PROFILE`]).
-pub const PREDICATE_PROFILE_V1: &str = "dingo-predicate-v1";
+pub const PREDICATE_PROFILE_V1: &str = "residiuum-predicate-v1";
 
 /// Maximum normalized predicate AST nodes (CORE plan §9.2).
 pub const MAX_PREDICATE_NODES: usize = 4_096;
@@ -120,7 +120,7 @@ pub enum CompareOp {
     Gte,
 }
 
-/// Total boolean AST for `dingo-predicate-v1`.
+/// Total boolean AST for `residiuum-predicate-v1`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Predicate {

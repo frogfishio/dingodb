@@ -8,9 +8,9 @@ Canonical dialect identifier: `sql+`
 
 Portable alias: `sql-plus`
 
-Compiler profile: `dingo-sql-plus-to-dql-v1`
+Compiler profile: `residiuum-sql-plus-to-rql-v1`
 
-Target profile: `dql-plan-v1`
+Target profile: `rql-plan-v1`
 
 Audience: query-surface, migration-tool, dialect, compiler, SDK, and
 conformance implementers
@@ -56,8 +56,8 @@ sql-plus
 and a logical API:
 
 ```text
-compile_sql_to_dql(sql, bindings, evidence, options)
-    -> SqlToDqlResult
+compile_sql_to_rql(sql, bindings, evidence, options)
+    -> SqlToRqlResult
 
 execute_sql_plus(sql, bindings, evidence, options)
     -> SqlPlusResultStream
@@ -129,7 +129,7 @@ Class = Exact
     ⇒
 NormalizeSqlRows(EvaluateSqlProfile(q, B, S))
       =
-NormalizeDqlRows(EvaluateDql(d, B, S))
+NormalizeRqlRows(EvaluateRql(d, B, S))
 ```
 
 The normalizations in §11 account only for the declared SQL document view,
@@ -157,7 +157,7 @@ All(Obligations, S)
     ⇒
 NormalizeSqlRows(EvaluateSqlProfile(q, B, S))
       =
-NormalizeDqlRows(EvaluateDql(d, B, S))
+NormalizeRqlRows(EvaluateRql(d, B, S))
 ```
 
 Conditional output is not executable by default. It becomes executable only
@@ -254,18 +254,18 @@ Compilation receives:
 SqlBindings {
   heap_id
   tables: Map<SqlName, CollectionIdentity>
-  columns: Map<TableAlias, Map<SqlColumn, DingoPath>>
-  document_view: "dingo-sql-document-view-v1"
+  columns: Map<TableAlias, Map<SqlColumn, ResidiuumPath>>
+  document_view: "residiuum-sql-document-view-v1"
 }
 
 TranslationEvidence {
-  active_dre_artifacts
+  active_rre_artifacts
   collection_key_profiles
   unique_indexes_with_guarantee_scope
   source_frontiers
 }
 
-SqlToDqlOptions {
+SqlToRqlOptions {
   mode: prove | emit_conditional
   coverage
   consistency
@@ -575,7 +575,7 @@ NormalizeSqlRows
 - converts SQL NULL to a distinguished compatibility Null.
 
 ```text
-NormalizeDqlRows
+NormalizeRqlRows
 ```
 
 - converts a missing projected field or `None` optional right row to
@@ -590,19 +590,19 @@ No normalization flattens an attached bag or discards duplicate rows.
 ## 12. Canonical output
 
 ```text
-SqlToDqlResult =
+SqlToRqlResult =
   Exact {
     source_profile
     source_hash
-    dql_source
-    canonical_dql_plan
+    rql_source
+    canonical_rql_plan
     binding_hash
     evidence_hashes
     mapping_receipt
   }
 | Conditional {
-    dql_source
-    canonical_dql_plan
+    rql_source
+    canonical_rql_plan
     obligations
     mapping_receipt
   }
@@ -627,7 +627,7 @@ Every directly executed SQL-ish+ query exposes this receipt through `explain`
 and SDA examination. A user can always ask:
 
 ```text
-show dql
+show rql
 show obligations
 show mapping
 ```
@@ -638,23 +638,23 @@ grammar.
 ## 13. Stable diagnostics
 
 ```text
-sql_dql_lex_error
-sql_dql_parse_error
-sql_dql_statement_unsupported
-sql_dql_construct_unsupported
-sql_dql_identifier_unbound
-sql_dql_column_ambiguous
-sql_dql_column_non_scalar
-sql_dql_projection_conflict
-sql_dql_expression_unsupported
-sql_dql_join_shape_unsupported
-sql_dql_join_uniqueness_unproven
-sql_dql_join_scope_invalid
-sql_dql_null_order_unspecified
-sql_dql_parameter_unbound
-sql_dql_dql_target_unsupported
-sql_dql_limit_exceeded
-sql_dql_offset_order_required
+sql_rql_lex_error
+sql_rql_parse_error
+sql_rql_statement_unsupported
+sql_rql_construct_unsupported
+sql_rql_identifier_unbound
+sql_rql_column_ambiguous
+sql_rql_column_non_scalar
+sql_rql_projection_conflict
+sql_rql_expression_unsupported
+sql_rql_join_shape_unsupported
+sql_rql_join_uniqueness_unproven
+sql_rql_join_scope_invalid
+sql_rql_null_order_unspecified
+sql_rql_parameter_unbound
+sql_rql_rql_target_unsupported
+sql_rql_limit_exceeded
+sql_rql_offset_order_required
 ```
 
 Diagnostics include SQL source spans and never emit partial executable RQL

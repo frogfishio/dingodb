@@ -101,6 +101,6 @@ accumulation.
 
 | Field | Value |
 |-------|--------|
-| Package id | `dingo-security-audit-package-v1` |
+| Package id | `residiuum-security-audit-package-v1` |
 | Labor | DEF-063-A process cut |
 | External audit | **Not complete** |

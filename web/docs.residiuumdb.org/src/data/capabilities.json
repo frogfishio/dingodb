@@ -13,7 +13,7 @@
     {
       "id": "single-node-tcp",
       "name": "Single-node TCP",
-      "how": "residuum serve (default 127.0.0.1)",
+      "how": "residiuum serve (default 127.0.0.1)",
       "status": "development-only",
       "note": "Development and evaluation only"
     },
@@ -27,7 +27,7 @@
     {
       "id": "network-multi-node",
       "name": "Network multi-node",
-      "how": "residuum serve-cluster + multi-seed connect",
+      "how": "residiuum serve-cluster + multi-seed connect",
       "status": "experimental",
       "note": "Not production; requires --experimental-network-cluster"
     },
@@ -60,7 +60,7 @@
     { "label": "SDK_API_VERSION", "value": "1.0" },
     { "label": "WIRE_PROFILE_LABEL", "value": "1.0-draft" },
     { "label": "RPC_WIRE_LABEL", "value": "1.0-draft" },
-    { "label": "BACKUP_PROFILE", "value": "dingo-backup-v1" },
-    { "label": "SCRUB_PROFILE", "value": "dingo-scrub-v1" }
+    { "label": "BACKUP_PROFILE", "value": "residiuum-backup-v1" },
+    { "label": "SCRUB_PROFILE", "value": "residiuum-scrub-v1" }
   ]
 }

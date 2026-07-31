@@ -62,7 +62,7 @@ pub fn build_holder_proof(
     ])
     .map_err(|_| HeapError::unavailable(HeapUnavailableCause::MalformedOrBadSignature))?;
 
-    // protected: {1: -8, 3: "application/dingo-heap-holder-proof-v1"}
+    // protected: {1: -8, 3: "application/residiuum-heap-holder-proof-v1"}
     let mut protected = Vec::new();
     protected.push(0xa2);
     protected.push(0x01);

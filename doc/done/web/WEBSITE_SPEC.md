@@ -426,7 +426,7 @@ residiuum-sdk = "0.2"
 ```rust
 use residiuum_sdk::{json, Residiuum, Filter};
 
-let mut db = Residiuum::open("./app.dingo")?;
+let mut db = Residiuum::open("./app.residiuum")?;
 let mut users = db.collection("users")?;
 
 users.put("user-42", &json!({

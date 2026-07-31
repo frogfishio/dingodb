@@ -224,7 +224,7 @@ chunks as needed for inline-only first.
 
 | 3a | Open/create, put/get/delete, durability modes, rebuildable index, catalog wipe salvage | **done** — `residiuum-store` |
 | 3b | Broader OVERVIEW §16 store-level suite (middle segment loss, reorder, etc.) | **done** — `tests/section16_store.rs` (cases 1–10) |
-| 3c | Store descriptor frame + optional index cache on disk | **done** — `store-info/descriptor.dingo` + `indexes/primary.idx` |
+| 3c | Store descriptor frame + optional index cache on disk | **done** — `store-info/descriptor.residiuum` + `indexes/primary.idx` |
 
 **Explicit non-goals for Stage 3**
 
@@ -238,7 +238,7 @@ chunks as needed for inline-only first.
 **Goal:** The boring happy path from [DX_SPEC.md](../../reference/product/DX_SPEC.md) and README:
 
 ```ts
-const db = await Residiuum.open("./app.dingo");
+const db = await Residiuum.open("./app.residiuum");
 await db.collection("users").put("user-42", { name: "Alice" });
 ```
 
@@ -343,7 +343,7 @@ manifests.
 | 6a | Collection catalog + wipe/rebuild parity | **done** — `catalogs/collections.cat`; `rebuild_catalogs` / `list_collections` |
 | 6b | Secondary indexes + states + scan budget | **done** — `indexes/sec/…/*.six`; SDK `indexes().create/drop/rebuild`; `QueryBudget` |
 | 6c | Subject / key history | **done** — `Store::history`, SDK `Collection::history` |
-| 6d | Chunked payloads + partial maps | **done** — threshold chunking, `PayloadResult`, manifest `DCHM0001` |
+| 6d | Chunked payloads + partial maps | **done** — threshold chunking, `PayloadResult`, manifest `RCHM0001` |
 | 6e | Compaction + checkpoints | **done** — `compact_live` (sources retained), `checkpoint` under `snapshots/` |
 | 6f | Bench skeleton | **done** — `tests/stage6_bench_skeleton.rs` |
 
@@ -361,7 +361,7 @@ operator tooling and same-API remote access.
 
 1. CLI mirroring logical API: put/get/list basics. **done** — `crates/residiuum-cli` (`residiuum` binary)
 2. `residiuum doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
-3. `dingo salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
+3. `residiuum salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
 4. Server process + `Residiuum.connect("residiuum://...")` with the same collection API
    as embedded. **done** — `residiuum serve` + line-delimited JSON RPC; remote put/get/delete/scan
 5. Authn/deadline/retry as connection options only (no app-level API split). **done** — `ConnectOptions` / `ServeOptions` / `Residiuum::connect_with`; `residiuum serve --token`; DX codes `authentication_failed` / `deadline_exceeded`
@@ -378,7 +378,7 @@ operator tooling and same-API remote access.
 
 | 7a | `residiuum` CLI put/get/list/delete/put-bytes | **done** |
 | 7b | `residiuum doctor` read-only | **done** |
-| 7c | `dingo salvage --output` | **done** |
+| 7c | `residiuum salvage --output` | **done** |
 | 7d | `residiuum serve` + `Residiuum::connect` | **done** |
 | 7e | Authn/deadline/retry connection options | **done** |
 | 7f | Nightly corruption/perf packaging polish | **done** |
@@ -609,7 +609,7 @@ Record answers in-repo; they block packaging, not the stage order:
 | # | Decision | Status |
 |---|----------|--------|
 | 1 | Implementation language(s) for core vs SDK | **Resolved (Stage 0):** Rust core; first SDK is Rust lib API; DX TypeScript-like samples remain the product shape (other language SDKs later). See [ARCHITECTURE.md](../../../ARCHITECTURE.md). |
-| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `DINGOFRM` / `DINGOEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `residiuum-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
+| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `RESIDFRM` / `RESIDEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `residiuum-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
 | 3 | Default durability mode for embedded open | **As implemented (Stage 3–4):** SDK default is `DurabilityMode::Durable` (`WriteOptions::default`, remote/server fallback). DX “safe by default” holds. |
 | 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
 | 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `residiuum-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |

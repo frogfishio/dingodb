@@ -102,7 +102,7 @@ fn seed_shop(db: &mut Residiuum) {
 #[test]
 fn multi_query_join_bag_then_sda_normalise() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("shop.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("shop.residiuum")).unwrap();
     seed_shop(&mut db);
 
     // --- axis 1: multi-collection equijoin (rough pile) --------------------
@@ -177,7 +177,7 @@ fn multi_query_join_bag_then_sda_normalise() {
 #[test]
 fn multi_query_map_sda_one_shot() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("shop2.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("shop2.residiuum")).unwrap();
     seed_shop(&mut db);
 
     let out = db
@@ -205,7 +205,7 @@ fn multi_query_map_sda_one_shot() {
 #[test]
 fn multi_query_include_keys_and_limit() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("k.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("k.residiuum")).unwrap();
     seed_shop(&mut db);
 
     let rows = db
@@ -226,7 +226,7 @@ fn multi_query_include_keys_and_limit() {
 #[test]
 fn multi_query_on_from_explicit_left() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("e.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("e.residiuum")).unwrap();
     {
         let mut o = db.collection("orders").unwrap();
         o.put("o1", &json!({"id": "o1", "customer_id": "c1", "product_id": "p1"}))
@@ -259,7 +259,7 @@ fn multi_query_on_from_explicit_left() {
 #[test]
 fn multi_query_requires_from() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("empty.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("empty.residiuum")).unwrap();
     let err = db.query().collect().unwrap_err();
     assert_eq!(err.code(), residiuum_sdk::ErrorCode::QueryInvalid);
 }
@@ -402,7 +402,7 @@ fn run_multi_query_scale(
     join_iters: usize,
 ) {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join(format!("mq_{label}.dingo"))).unwrap();
+    let mut db = Residiuum::open(dir.path().join(format!("mq_{label}.residiuum"))).unwrap();
     let blob = garbage_blob();
     let body_bytes = {
         let sample = json!({"id": "x", "garbage": blob});

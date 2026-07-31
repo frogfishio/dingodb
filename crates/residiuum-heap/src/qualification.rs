@@ -1,13 +1,13 @@
 //! Single-node qualification claim surface (`HEAP_SPEC` §27 / HP-010).
 //!
-//! The product MAY advertise the qualified `dingo-heap-v1` profile only when
+//! The product MAY advertise the qualified `residiuum-heap-v1` profile only when
 //! [`may_advertise_qualified`] returns `true`. Until every mandatory HP-010
 //! matrix gate and drill is `accept`, this remains `false`.
 
 /// Machine-readable matrix path relative to the workspace root.
 pub const HP010_MATRIX_REL: &str = "spec/heap/qualification/hp010-matrix-v1.json";
 
-/// Whether this build may advertise a qualified `dingo-heap-v1` claim.
+/// Whether this build may advertise a qualified `residiuum-heap-v1` claim.
 ///
 /// Hard-coded false until HP-010 records complete, reproducible evidence and
 /// Gate H6 passes. Flipping this without matrix completion is a claim-level
@@ -15,7 +15,7 @@ pub const HP010_MATRIX_REL: &str = "spec/heap/qualification/hp010-matrix-v1.json
 pub const QUALIFIED_CLAIM: bool = false;
 
 /// Profile label that may be advertised only when [`QUALIFIED_CLAIM`] is true.
-pub const QUALIFIED_PROFILE: &str = "dingo-heap-v1";
+pub const QUALIFIED_PROFILE: &str = "residiuum-heap-v1";
 
 /// Product language required before Gate H6 (§27).
 pub const PRE_QUALIFICATION_LANGUAGE: &str = concat!(

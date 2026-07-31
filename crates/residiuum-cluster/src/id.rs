@@ -1,7 +1,7 @@
 //! Cluster identity types (CLUSTER_SPEC §5, §8.3).
 //!
 //! Random cluster ids use the shared OS CSPRNG path (`residiuum_store::random_id`,
-//! DEF-025 / `dingo-id-v1`). Deterministic seed derivation is for tests only.
+//! DEF-025 / `residiuum-id-v1`). Deterministic seed derivation is for tests only.
 
 use residiuum_store::{random_id, StoreError};
 use serde::{Deserialize, Serialize};

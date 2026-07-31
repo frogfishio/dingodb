@@ -1,5 +1,5 @@
 {
-  "profile": "dingo-cursor-v1",
+  "profile": "residiuum-cursor-v1",
   "normative": "doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §11",
   "ttl_seconds": 900,
   "skew_seconds": 120,
@@ -30,7 +30,7 @@
       "id": "cursor-page1-valid-shape",
       "description": "Logical binding for first continuation after page 1.",
       "token_logical": {
-        "cursor_profile": "dingo-cursor-v1",
+        "cursor_profile": "residiuum-cursor-v1",
         "key_id": "ck-0001",
         "heap_id": "00000000-0000-4000-8000-0000000000b1",
         "collection_id": "00000000-0000-4000-8000-0000000000a1",

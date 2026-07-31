@@ -36,7 +36,7 @@ pub const FEATURE_CLUSTER_COMMIT_V1: &str = "cluster-commit-v1";
 pub use residiuum_cluster::RAFT_RPC_PROFILE as SDK_RAFT_RPC_PROFILE;
 
 /// Profile tag for data-plane cluster commitment over network Raft (DEF-037).
-pub const CLUSTER_COMMIT_PROFILE: &str = "dingo-cluster-commit-v1";
+pub const CLUSTER_COMMIT_PROFILE: &str = "residiuum-cluster-commit-v1";
 
 /// Per-process Raft control-plane state for one cluster node.
 #[derive(Debug)]

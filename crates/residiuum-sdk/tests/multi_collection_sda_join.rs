@@ -111,7 +111,7 @@ bindOpt(getPath(input, Seq["products"]), products =>
 #[test]
 fn three_collections_sda_query_combine_join_filter() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("shop.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("shop.residiuum")).unwrap();
     let blob = garbage_blob();
 
     // --- seed ---------------------------------------------------------------
@@ -490,7 +490,7 @@ fn run_scale(
     join_iters: usize,
 ) {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join(format!("shop_{label}.dingo"))).unwrap();
+    let mut db = Residiuum::open(dir.path().join(format!("shop_{label}.residiuum"))).unwrap();
     let blob = garbage_blob();
     let body_bytes = {
         let sample = json!({"id":"x","garbage": blob});

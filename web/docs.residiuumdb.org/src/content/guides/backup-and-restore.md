@@ -34,11 +34,11 @@ keywords:
 Operate only on a **temporary** store you create for practice:
 
 ```bash
-WORKDIR="$(mktemp -d /tmp/dingo-bak-XXXXXX)"
+WORKDIR="$(mktemp -d /tmp/residiuum-bak-XXXXXX)"
 # ... populate store ...
-dingo backup "$WORKDIR" --output "$WORKDIR/backup-out"
-dingo restore "$WORKDIR/backup-out" --output "$WORKDIR/restored"
+residiuum backup "$WORKDIR" --output "$WORKDIR/backup-out"
+residiuum restore "$WORKDIR/backup-out" --output "$WORKDIR/restored"
 rm -rf "$WORKDIR"
 ```
 
-Profile: `dingo-backup-v1`. Full operator procedure: [operations/backup-restore](/operations/backup-restore/).
+Profile: `residiuum-backup-v1`. Full operator procedure: [operations/backup-restore](/operations/backup-restore/).

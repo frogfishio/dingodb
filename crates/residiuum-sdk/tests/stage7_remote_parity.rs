@@ -39,7 +39,7 @@ fn spawn_server(path: std::path::PathBuf, bind: &str) {
 #[test]
 fn remote_history_matches_embedded() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         let mut docs = db.collection("docs").unwrap();
@@ -70,7 +70,7 @@ fn remote_history_matches_embedded() {
 #[test]
 fn remote_indexes_create_list_stale_rebuild_drop() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         let mut users = db.collection("users").unwrap();
@@ -143,7 +143,7 @@ fn remote_indexes_create_list_stale_rebuild_drop() {
 #[test]
 fn remote_get_payload_complete_and_absent() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     let data: Vec<u8> = (0u8..100).collect();
     {
         let mut db = Residiuum::open(&path).unwrap();
@@ -191,7 +191,7 @@ fn remote_get_payload_complete_and_absent() {
 #[test]
 fn remote_find_index_accelerated_under_budget() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         let mut docs = db.collection("docs").unwrap();
@@ -243,7 +243,7 @@ fn remote_put_is_idempotent_with_operation_id() {
     use std::net::{TcpListener, TcpStream};
 
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Store::create(&path).unwrap();
     }

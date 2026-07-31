@@ -37,7 +37,7 @@ fn async_auto_seal_preserves_gets_and_writes_hydra() {
     let sealed: Vec<_> = fs::read_dir(root.join("segments"))
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .collect();
     assert!(
         !sealed.is_empty(),
@@ -65,7 +65,7 @@ fn explicit_seal_active_still_sync_and_drains() {
     let sealed: Vec<_> = fs::read_dir(root.join("segments"))
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .collect();
     assert_eq!(sealed.len(), 1);
 }

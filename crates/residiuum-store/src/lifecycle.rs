@@ -59,7 +59,7 @@ pub struct LifecyclePolicy {
 }
 
 fn default_format() -> String {
-    "dingo-lifecycle-1".into()
+    "residiuum-lifecycle-1".into()
 }
 
 impl LifecyclePolicy {

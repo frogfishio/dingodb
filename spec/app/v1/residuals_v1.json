@@ -1,5 +1,5 @@
 {
-  "profile": "dingo-app-residuals-v1",
+  "profile": "residiuum-app-residuals-v1",
   "package": "APP-0",
   "updated": "2026-07-30",
   "policy": "Every residual is named. None may silently invent product behavior.",
@@ -9,7 +9,7 @@
       "item": "plan_hash_hex in plan_vectors_v1",
       "status": "done",
       "blocks_implementer": false,
-      "note": "dql-plan-encoding-v1 + domain dingo:dql-plan-v1:canonical-v1; BLAKE3 hashes locked in plan_vectors; residiuum_sdk::plan_v1",
+      "note": "rql-plan-encoding-v1 + domain residiuum:rql-plan-v1:canonical-v1; BLAKE3 hashes locked in plan_vectors; residiuum_sdk::plan_v1",
       "resolved_by": "APP-4 2026-07-31 labor"
     },
     {
@@ -32,7 +32,7 @@
       "item": "ops 106/118 status in operations-v1.json",
       "status": "partial",
       "blocks_implementer": false,
-      "note": "106 collection_create active with schemas (APP-1). 118 dql_query remains reserved until APP-7.",
+      "note": "106 collection_create active with schemas (APP-1). 118 rql_query remains reserved until APP-7.",
       "resolved_by": "APP-1 (106 done); APP-7 (118)"
     },
     {

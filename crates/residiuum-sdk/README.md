@@ -5,7 +5,7 @@
 Open a local store, connect to a remote server, or (optionally) open an
 in-process multi-node cluster. Name a collection; put/get/delete JSON or bytes;
 filter JSON documents; use pluggable query dialects that compile to pure SDA
-(`dql` official human surface — [USER_GUIDE](../../doc/RQL/USER_GUIDE.md); also
+(`rql` official human surface — [USER_GUIDE](../../doc/RQL/USER_GUIDE.md); also
 `json` / `mongo` / `sql` mimicry / raw `sda`); manage secondary indexes;
 inspect per-key history — without learning frames or segments for common paths.
 
@@ -54,7 +54,7 @@ dependency of this SDK.
 use residiuum_sdk::{json, Residiuum, Filter};
 
 # let dir = tempfile::tempdir().unwrap();
-# let path = dir.path().join("app.dingo");
+# let path = dir.path().join("app.residiuum");
 let mut db = Residiuum::open(&path)?;
 {
     let mut users = db.collection("users")?;
@@ -78,7 +78,7 @@ let mut db = Residiuum::open(&path)?;
 
 ### Remote
 
-Requires a running server (`residiuum serve ./app.dingo` or `residiuum serve --token SECRET`):
+Requires a running server (`residiuum serve ./app.residiuum` or `residiuum serve --token SECRET`):
 
 ```rust
 use residiuum_sdk::{json, ConnectOptions, Residiuum};
@@ -131,7 +131,7 @@ let mut db = Residiuum::create_cluster(
 | SDA/ENR text queries | `Collection::sda` / `filter_sda` (DX §7.6); multi-collection `Residiuum::enr_query().bind(..).run` (`Match`/`enrich`) or `Residiuum::sda(&[…], program)` |
 | History | Per-key immutable event stream |
 | Chunks | Completeness-aware `get_payload` for large bodies |
-| Remote | `Residiuum::connect("residiuum://host:port")` framed `dingo-rpc-v1` TCP; auth token, deadline, retry |
+| Remote | `Residiuum::connect("residiuum://host:port")` framed `residiuum-rpc-v1` TCP; auth token, deadline, retry |
 | Parity | Remote put/get/delete/scan, history, indexes, `get_payload`, server-side find, `directory` |
 | Cluster | Feature `cluster`: `create_cluster` / `open_cluster`, directory cache, `find_with_coverage` |
 

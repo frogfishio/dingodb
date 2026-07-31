@@ -45,7 +45,7 @@ fn start_server(
     dir: &TempDir,
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
-    let store_path = dir.path().join("log.dingo");
+    let store_path = dir.path().join("log.residiuum");
     drop(Residiuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
@@ -109,8 +109,8 @@ fn assert_no_secrets(v: &serde_json::Value) {
 
 #[test]
 fn profiles_stable() {
-    assert_eq!(METRICS_PROFILE, "dingo-metrics-v1");
-    assert_eq!(HEALTH_PROFILE, "dingo-health-v1");
+    assert_eq!(METRICS_PROFILE, "residiuum-metrics-v1");
+    assert_eq!(HEALTH_PROFILE, "residiuum-health-v1");
 }
 
 #[test]
@@ -265,7 +265,7 @@ fn put_traffic_increments_metrics_with_bounded_labels() {
 #[test]
 fn readiness_fails_when_runtime_draining() {
     let dir = TempDir::new().unwrap();
-    let store_path = dir.path().join("log.dingo");
+    let store_path = dir.path().join("log.residiuum");
     drop(Residiuum::open(&store_path).unwrap());
 
     // Inject a pre-draining runtime so health_ready fails closed without waiting

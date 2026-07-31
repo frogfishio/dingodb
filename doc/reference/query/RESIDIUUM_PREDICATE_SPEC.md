@@ -2,7 +2,7 @@
 
 Status: **Normative design v1.0-draft**
 
-Profile identifier: `dingo-predicate-v1`
+Profile identifier: `residiuum-predicate-v1`
 
 Audience: RQL, RRE, SDK, compiler, and conformance implementers
 Normative companions: [SDA_SPEC.md](./SDA_SPEC.md) and
@@ -368,5 +368,5 @@ A conforming implementation supplies golden tests for:
 - architecture-independent results;
 - configured resource ceilings.
 
-The conformance corpus is versioned by `dingo-predicate-v1`. A semantic change
+The conformance corpus is versioned by `residiuum-predicate-v1`. A semantic change
 requires a new profile identifier.

@@ -2,11 +2,11 @@
 
 Status: **Normative design v1.0-draft**
 
-Compiler profile: `json-schema-2020-12-to-dre-v1`
+Compiler profile: `json-schema-2020-12-to-rre-v1`
 
 Source dialect: JSON Schema Draft 2020-12
 
-Target dialect: `dre`
+Target dialect: `rre`
 
 Audience: migration-tool, schema, compiler, SDK, and conformance implementers
 
@@ -45,7 +45,7 @@ and every admissible Residiuum JSON document `d`:
 ```text
 ValidateJsonSchema202012(J, d)
     =
-EvaluateDre(R, d)
+EvaluateRre(R, d)
 ```
 
 The comparison concerns validation only. JSON Schema annotations such as
@@ -55,7 +55,7 @@ annotations are retained in the translation receipt but do not become rules.
 Compilation returns:
 
 ```text
-JsonSchemaToDreResult =
+JsonSchemaToRreResult =
     Exact
   | Refused
 ```
@@ -466,7 +466,7 @@ them.
 ## 14. Canonical translation result
 
 ```text
-JsonSchemaToDreExact {
+JsonSchemaToRreExact {
   compiler_profile
   source_dialect
   source_id?
@@ -476,8 +476,8 @@ JsonSchemaToDreExact {
   target_collection_id
   ruleset_id
   revision
-  dre_source
-  canonical_dre_ir
+  rre_source
+  canonical_rre_ir
   dependency_set
   required_atomic_scope
   translation_receipt
@@ -527,7 +527,7 @@ json_schema_combinator_unsupported
 json_schema_unsatisfiable
 json_schema_profile_limit
 json_schema_target_scope_invalid
-json_schema_generated_dre_invalid
+json_schema_generated_rre_invalid
 ```
 
 Diagnostics contain the source JSON Pointer, bounded explanation, and source
@@ -587,7 +587,7 @@ Conformance requires:
 ```text
 ValidateJsonSchema202012(J, d)
     =
-EvaluateDre(Compile(J), d)
+EvaluateRre(Compile(J), d)
 ```
 
 for generated supported schemas and admissible documents.

@@ -36,7 +36,7 @@ pub fn chimera_layout_path(paths: &StorePaths, segment_id: &[u8; 16]) -> PathBuf
     chimera_dir(paths).join(format!("{}.cmr", hex16(segment_id)))
 }
 
-const MAGIC: &[u8; 8] = b"DCHIMR01";
+const MAGIC: &[u8; 8] = b"RCHIMR01";
 const VERSION: u32 = 1;
 
 const TAG_INLINE: u8 = 1;

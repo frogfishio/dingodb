@@ -35,7 +35,7 @@ use crate::index_cache::{
     try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier, LifecycleDiag,
     PrimaryCacheDiag,
 };
-use crate::layout::{list_dingo_files, StorePaths};
+use crate::layout::{list_residiuum_files, StorePaths};
 use crate::token_keys::ContinuationKeyring;
 use crate::seal_pipeline::{
     list_pending_paths, recover_all_pending, LifecycleJob, LifecycleResult, SealPipeline,
@@ -71,7 +71,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Draft meta format version written under `store-info/meta`.
-const META_VERSION: &str = "dingo-store-9\n";
+const META_VERSION: &str = "residiuum-store-9\n";
 
 /// Soft max size of the active segment before auto-seal (bytes).
 const DEFAULT_SEAL_THRESHOLD: u64 = 4 * 1024 * 1024;
@@ -258,7 +258,7 @@ pub struct Store {
     derived_ops_since_checkpoint: u64,
     /// Active segment per writer shard (DEF-096 Axis B). Length == `writer_shards`.
     ///
-    /// Shard 0 with `writer_shards == 1` uses the legacy `active/active.dingo` path.
+    /// Shard 0 with `writer_shards == 1` uses the legacy `active/active.residiuum` path.
     actives: Vec<Option<ActiveWriter>>,
     /// Number of concurrent append shards (subject-hash routing). Always ≥ 1.
     writer_shards: usize,
@@ -455,7 +455,7 @@ impl Store {
         let writer_lock = WriterLock::acquire_with_options(&paths, &options)?;
         let store_id = read_store_id(&paths)?;
         let meta = fs::read_to_string(paths.meta_file()).unwrap_or_default();
-        if !meta.starts_with("dingo-store-") {
+        if !meta.starts_with("residiuum-store-") {
             return Err(StoreError::CorruptMeta("unexpected meta version"));
         }
         // Store descriptor is framed evidence, not the sole identity map.
@@ -581,7 +581,7 @@ impl Store {
 
         let store_id = read_store_id(&paths)?;
         let meta = fs::read_to_string(paths.meta_file()).unwrap_or_default();
-        if !meta.starts_with("dingo-store-") {
+        if !meta.starts_with("residiuum-store-") {
             return Err(StoreError::CorruptMeta("unexpected meta version"));
         }
         verify_store_descriptor_if_present(&paths, store_id)?;
@@ -2417,7 +2417,7 @@ impl Store {
         self.index = index.clone();
         self.durable_index = index;
         self.recompute_collection_catalogs_from_index();
-        let sealed = list_dingo_files(&self.paths.segments_dir())?;
+        let sealed = list_residiuum_files(&self.paths.segments_dir())?;
         self.segment_seq = max_segment_seq_from_paths(all_paths).max(sealed.len() as u64);
         self.derived_ops_since_checkpoint = 0;
         Ok(())
@@ -2432,7 +2432,7 @@ impl Store {
         )?;
         self.durable_index = self.index.clone();
         self.recompute_collection_catalogs_from_index();
-        let sealed = list_dingo_files(&self.paths.segments_dir())?;
+        let sealed = list_residiuum_files(&self.paths.segments_dir())?;
         let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
         self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
         self.derived_ops_since_checkpoint = 0;
@@ -2963,8 +2963,8 @@ impl Store {
     /// Stable scan-report names and raw bytes for every authoritative segment
     /// object (sealed + active), ordered for deterministic examination.
     ///
-    /// Source strings are relative to the store root (`segments/….dingo`,
-    /// `active/active.dingo`). Does not mutate disk. Used by Stage 5
+    /// Source strings are relative to the store root (`segments/….residiuum`,
+    /// `active/active.residiuum`). Does not mutate disk. Used by Stage 5
     /// (`residiuum-examine`) to project [`residiuum_format`] salvage regions into
     /// examination units without depending on catalogs or indexes.
     pub fn examination_sources(&self) -> Result<Vec<(String, Vec<u8>)>, StoreError> {
@@ -4641,7 +4641,7 @@ fn sealed_segment_paths(
         crate::tier::available_sealed_paths(paths, p)
     } else {
         // Hot sealed only (legacy callers without placement).
-        Ok(list_dingo_files(&paths.segments_dir())?)
+        Ok(list_residiuum_files(&paths.segments_dir())?)
     }
 }
 
@@ -4712,7 +4712,7 @@ fn examination_source_name(root: &Path, path: &Path) -> String {
         .unwrap_or_else(|_| {
             path.file_name()
                 .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "unknown.dingo".into())
+                .unwrap_or_else(|| "unknown.residiuum".into())
         })
 }
 

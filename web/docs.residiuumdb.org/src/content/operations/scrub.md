@@ -33,7 +33,7 @@ Store path you control (prefer temp).
 ## Procedure
 
 ```bash
-residuum scrub "$STORE" --status
+residiuum scrub "$STORE" --status
 # scrub_once / pause / resume per CLI help
 ```
 

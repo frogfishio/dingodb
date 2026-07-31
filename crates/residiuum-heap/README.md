@@ -1,6 +1,6 @@
 # residiuum-heap
 
-Heap identity, capability, and authority kernel for Residiuum (`dingo-heap-v1`).
+Heap identity, capability, and authority kernel for Residiuum (`residiuum-heap-v1`).
 
 This crate is pure with respect to storage and network: no filesystem or TCP
 runtime. Normative contract: [`HEAP_SPEC.md`](../../doc/wip/heap/HEAP_SPEC.md) §§30–32, 38–41.

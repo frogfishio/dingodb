@@ -1,4 +1,4 @@
-//! APP-0 public Rust application surface (`dingo-rust-app-v1`).
+//! APP-0 public Rust application surface (`residiuum-rust-app-v1`).
 //!
 //! These types freeze the **names and fields** from
 //! `doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md` §5 / §10.
@@ -6,7 +6,7 @@
 //! this module must compile so implementers share one contract.
 //!
 //! Normative companions: `spec/app/v1/`, `spec/heap/rpc-v1/collection_create.*`,
-//! `spec/heap/rpc-v1/dql_query.*`.
+//! `spec/heap/rpc-v1/rql_query.*`.
 
 use crate::error::Error;
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
@@ -16,19 +16,19 @@ use std::collections::BTreeMap;
 use std::time::SystemTime;
 
 /// Profile label for the public Rust application façade.
-pub const RUST_APP_PROFILE: &str = "dingo-rust-app-v1";
+pub const RUST_APP_PROFILE: &str = "residiuum-rust-app-v1";
 
 /// RQL Application Core source profile (serialized value is frozen Class C).
-pub const RQL_APP_CORE_PROFILE: &str = "dql-app-core-v1";
+pub const RQL_APP_CORE_PROFILE: &str = "rql-app-core-v1";
 
 /// Canonical logical plan profile (serialized value is frozen Class C).
-pub const RQL_PLAN_PROFILE: &str = "dql-plan-v1";
+pub const RQL_PLAN_PROFILE: &str = "rql-plan-v1";
 
 /// Authenticated continuation profile.
-pub const CURSOR_PROFILE: &str = "dingo-cursor-v1";
+pub const CURSOR_PROFILE: &str = "residiuum-cursor-v1";
 
 /// Shared predicate profile.
-pub const PREDICATE_PROFILE: &str = "dingo-predicate-v1";
+pub const PREDICATE_PROFILE: &str = "residiuum-predicate-v1";
 
 /// Catalog listing entry for one collection in a Heap.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -197,7 +197,7 @@ pub struct QueryRow {
     pub value: serde_json::Value,
 }
 
-/// Opaque authenticated continuation (`dingo-cursor-v1`).
+/// Opaque authenticated continuation (`residiuum-cursor-v1`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Continuation {
     /// Opaque token bytes (never log).
@@ -417,11 +417,11 @@ mod tests {
 
     #[test]
     fn profiles_are_stable() {
-        assert_eq!(RUST_APP_PROFILE, "dingo-rust-app-v1");
-        assert_eq!(RQL_APP_CORE_PROFILE, "dql-app-core-v1");
-        assert_eq!(RQL_PLAN_PROFILE, "dql-plan-v1");
-        assert_eq!(CURSOR_PROFILE, "dingo-cursor-v1");
-        assert_eq!(PREDICATE_PROFILE, "dingo-predicate-v1");
+        assert_eq!(RUST_APP_PROFILE, "residiuum-rust-app-v1");
+        assert_eq!(RQL_APP_CORE_PROFILE, "rql-app-core-v1");
+        assert_eq!(RQL_PLAN_PROFILE, "rql-plan-v1");
+        assert_eq!(CURSOR_PROFILE, "residiuum-cursor-v1");
+        assert_eq!(PREDICATE_PROFILE, "residiuum-predicate-v1");
     }
 
     fn v4(seed: u8) -> [u8; 16] {

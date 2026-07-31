@@ -15,7 +15,7 @@ use std::fs;
 
 #[test]
 fn profile_label_is_stable() {
-    assert_eq!(REBALANCE_CONTROL_PROFILE, "dingo-rebalance-control-v1");
+    assert_eq!(REBALANCE_CONTROL_PROFILE, "residiuum-rebalance-control-v1");
     assert_eq!(REBALANCE_JOBS_FILE, "rebalance_jobs.json");
 }
 

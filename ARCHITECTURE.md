@@ -39,7 +39,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Testing, assurance levels, claim evidence, and release verification | [TESTING_STRATEGY.md](./doc/reference/engineering/TESTING_STRATEGY.md), [implementation plan](./doc/todo/verification/VERIFICATION_IMPLEMENTATION_PLAN.md), [status](./doc/wip/status/VERIFICATION_STATUS.md) |
 | SQL-ish+ executable surface and SQL→RQL compiler | [SQL_TO_RQL_SPEC.md](./doc/todo/rql/SQL_TO_RQL_SPEC.md) |
 | JSON Schema Draft 2020-12 import into RRE | [JSON_SCHEMA_TO_RRE_SPEC.md](./doc/todo/rre/JSON_SCHEMA_TO_RRE_SPEC.md) |
-| Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](./doc/SDA/DIALECTS.md) |
+| Query dialects (rql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](./doc/SDA/DIALECTS.md) |
 | SDA examination of recovered Residiuum units | [SDA_PROFILE.md](./doc/reference/query/SDA_PROFILE.md) |
 | Enrichment algebra (ENR1 kernel in `residiuum-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](./crates/enr-core/README.md), [ENR1.md](./crates/enr-core/ENR1.md), [ENR2.md](./crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](./doc/todo/cluster/CLUSTER_SPEC.md) |
@@ -94,7 +94,7 @@ Crate ownership:
 | Stage | Crate | Role |
 |-------|-------|------|
 | 2 | `residiuum-format` | **Present** — frames, deterministic CBOR envelopes, seal, scanner, §13 corpus (2a–2d) |
-| — | `residiuum-client` | **Present** — MIT wire framing + handshake (`dingo-rpc-v1`) |
+| — | `residiuum-client` | **Present** — MIT wire framing + handshake (`residiuum-rpc-v1`) |
 | 3+6+7 | `residiuum-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, backup_to/restore (DEF-050), scrub (DEF-051), migrate (DEF-052), catalogs, chunks, history, compact |
 | 4+6+7+8d–8e | `residiuum-sdk` | **Present** — collections, filters, indexes, history, remote RPC; `cluster` feature for open_cluster |
 | 5 | `residiuum-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
@@ -113,10 +113,10 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 | First CLI | `residiuum-sda` (Stage 1) + `residiuum` (Stage 7) |
 | SDA packaging | `residiuum-sda` (lib) + `residiuum-sda-cli` (`residiuum-sda` binary); SDA+ENR1 hybrid; no storage IO |
 | Wire format versioning | Draft `1.0-draft`; reader/writer matrix + migrate phases (DEF-052); freeze is DEF-053 |
-| Process configuration | Versioned `dingo-config-v1` validate-before-serve (DEF-054); live reload follow-on |
+| Process configuration | Versioned `residiuum-config-v1` validate-before-serve (DEF-054); live reload follow-on |
 | Operational telemetry | [Ratatouille-only bounded firehose](./doc/todo/telemetry/TELEMETRY_SPEC.md); no request-path file/stdout logging |
 | Formal audit | Residiuum Evidence Ledger; durable, Heap-confined, independently verifiable |
-| Metrics / health | Versioned `dingo-metrics-v1` scrape + `dingo-health-v1` live/ready/detail RPCs (DEF-061); store/cluster gauges follow-on |
+| Metrics / health | Versioned `residiuum-metrics-v1` scrape + `residiuum-health-v1` live/ready/detail RPCs (DEF-061); store/cluster gauges follow-on |
 | License | Multi-tier: MIT / MPL-2.0 / AGPL-3.0-or-later (see `doc/reference/operations/LICENSING.md`) |
 
 ## SDA import convention
@@ -144,7 +144,7 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
    still prefer in-process `Residiuum::open_cluster`.
 3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
    `CLUSTER_PROFILE_VERSION` (`v1` in-process), `WIRE_PROFILE_LABEL`
-   (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`dingo-cluster-commit-v1`).
+   (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`residiuum-cluster-commit-v1`).
    Distinct from crate semver `0.2.0`.
 4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
    [doc/reference/operations/BENCHMARK_DISCLOSURE.md](./doc/reference/operations/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).

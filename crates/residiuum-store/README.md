@@ -71,7 +71,7 @@ assert!(store.get("user-42")?.is_none());
 store/
   store-info/     # store_id + meta + descriptor + writer.lock
   active/         # open append segment (at most one live file)
-    active.dingo
+    active.residiuum
     pending/      # rotated segments awaiting background seal finalize (DEF-096)
   segments/       # sealed hot segments
   tiers/          # warm/cold/archive media
@@ -128,7 +128,7 @@ Full backups are **packages**, not live stores:
 
 ```text
 backup-package/
-  backup-manifest.v1.json   # profile dingo-backup-v1 + blake3 of files
+  backup-manifest.v1.json   # profile residiuum-backup-v1 + blake3 of files
   store/                    # authoritative trees only (no lock files)
 ```
 
@@ -149,7 +149,7 @@ assert_eq!(report.live_subjects, 1);
 ```
 
 Salvage remains the damage-recovery path; export-live re-materializes current
-values with new lineage. Neither produces a `dingo-backup-v1` package.
+values with new lineage. Neither produces a `residiuum-backup-v1` package.
 
 Deleting `catalogs/`, `indexes/`, and `snapshots/` must not prevent recovery:
 the store rebuilds current state by scanning `active/`, `segments/`, and online

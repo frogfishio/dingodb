@@ -16,7 +16,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Profile tag for token-key material (DEF-097).
-pub const TOKEN_KEY_PROFILE: &str = "dingo-token-key-v1";
+pub const TOKEN_KEY_PROFILE: &str = "residiuum-token-key-v1";
 
 /// On-disk filename under `store-info/`.
 pub const CURSOR_TOKEN_KEYS_FILE: &str = "cursor_token_keys.v1";
@@ -24,7 +24,7 @@ pub const CURSOR_TOKEN_KEYS_FILE: &str = "cursor_token_keys.v1";
 /// Secret size (256 bits).
 pub const TOKEN_SECRET_LEN: usize = 32;
 
-const FILE_MAGIC: &[u8; 8] = b"DTK00001";
+const FILE_MAGIC: &[u8; 8] = b"RTK00001";
 const FILE_VERSION: u32 = 1;
 
 /// One generation of MAC secret material.

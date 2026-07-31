@@ -31,7 +31,7 @@ crates/residiuum-atomics/
     hostile.rs
 ```
 
-`dingo-atomics` owns pure identities, plans, canonical encoding, evidence
+`residiuum-atomics` owns pure identities, plans, canonical encoding, evidence
 types, outcome derivation, and slow semantic oracles.
 
 Host implementation:
@@ -215,7 +215,7 @@ It MUST NOT imply cross-Heap or cluster transaction support.
 
 Deliver:
 
-- `dingo-relationship-v1` canonical definition;
+- `residiuum-relationship-v1` canonical definition;
 - `AtomicAdmin` registry amendment;
 - required/optional scalar references;
 - same-collection support;

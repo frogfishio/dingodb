@@ -33,7 +33,7 @@ fn three_peers(partition: PartitionId) -> (MemoryRaftNetwork, ClusterId, Vec<Nod
 
 #[test]
 fn profile_tag_is_stable() {
-    assert_eq!(RAFT_RPC_PROFILE, "dingo-raft-rpc-v1");
+    assert_eq!(RAFT_RPC_PROFILE, "residiuum-raft-rpc-v1");
 }
 
 #[test]

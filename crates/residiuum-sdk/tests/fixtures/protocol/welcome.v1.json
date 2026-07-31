@@ -17,7 +17,7 @@
     "store_id",
     "segment_id"
   ],
-  "server_profile": "dingo-server-v1",
-  "protocol_profile": "dingo-rpc-v1",
+  "server_profile": "residiuum-server-v1",
+  "protocol_profile": "residiuum-rpc-v1",
   "wire_label": "1.0-draft"
 }

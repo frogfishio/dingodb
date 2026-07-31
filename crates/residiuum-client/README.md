@@ -1,7 +1,7 @@
 # residiuum-client
 
 Thin **MIT** network primitives for Residiuum: length-prefixed framed JSON RPC
-(`dingo-rpc-v1`), hello/welcome handshake, and feature negotiation.
+(`residiuum-rpc-v1`), hello/welcome handshake, and feature negotiation.
 
 This crate has **no** dependency on the store, cluster, or server. Use it when
 you need to speak the Residiuum wire protocol from another language runtime,
@@ -13,7 +13,7 @@ in [`residiuum-sdk`](https://crates.io/crates/residiuum-sdk); TCP serve lives in
 
 | You want… | Use |
 |-----------|-----|
-| Open a local `.dingo` store and put/get JSON | [`residiuum-sdk`](https://crates.io/crates/residiuum-sdk) |
+| Open a local `.residiuum` store and put/get JSON | [`residiuum-sdk`](https://crates.io/crates/residiuum-sdk) |
 | Connect over the network with the full collection API | [`residiuum-sdk`](https://crates.io/crates/residiuum-sdk) (`Residiuum::connect`) |
 | Only framing + handshake (interop, tools, other languages) | **`residiuum-client`** (this crate) |
 | Accept TCP connections and dispatch RPCs | [`residiuum-server`](https://crates.io/crates/residiuum-server) |
@@ -37,7 +37,7 @@ Transport and application encoding are separate:
 3. **Application** — JSON RPC request/response objects ride inside frames
    (defined by the server/SDK layer, not this crate).
 
-Profile tag: `PROTOCOL_PROFILE` = `dingo-rpc-v1`. Draft interoperability label:
+Profile tag: `PROTOCOL_PROFILE` = `residiuum-rpc-v1`. Draft interoperability label:
 `RPC_WIRE_LABEL` = `1.0-draft`.
 
 Required features for a successful handshake:
@@ -73,7 +73,7 @@ assert_eq!(got.as_deref(), Some(body.as_slice()));
 
 // Handshake helpers (client side) negotiate features against a live server.
 // See `client_handshake` / `server_handshake` in the API docs.
-assert_eq!(PROTOCOL_PROFILE, "dingo-rpc-v1");
+assert_eq!(PROTOCOL_PROFILE, "residiuum-rpc-v1");
 assert_eq!(RPC_WIRE_LABEL, "1.0-draft");
 # Ok::<(), residiuum_client::Error>(())
 ```

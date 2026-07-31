@@ -87,14 +87,14 @@ pub struct ClusterMeta {
 }
 
 impl ClusterMeta {
-    pub(crate) const FORMAT: &'static str = "dingo-cluster-8f";
+    pub(crate) const FORMAT: &'static str = "residiuum-cluster-8f";
     /// Formats accepted on open (8a–8f).
     pub(crate) const FORMAT_COMPAT: &'static [&'static str] = &[
-        "dingo-cluster-8f",
-        "dingo-cluster-8e",
-        "dingo-cluster-8c",
-        "dingo-cluster-8b",
-        "dingo-cluster-8a",
+        "residiuum-cluster-8f",
+        "residiuum-cluster-8e",
+        "residiuum-cluster-8c",
+        "residiuum-cluster-8b",
+        "residiuum-cluster-8a",
     ];
 
     pub(crate) fn from_config(cfg: &ClusterConfig, cluster_id: ClusterId) -> Self {

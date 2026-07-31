@@ -1,7 +1,7 @@
 # Crash-and-recovery contract (DEF-104)
 
 ```text
-contract id: dingo-crash-recovery-v1
+contract id: residiuum-crash-recovery-v1
 status: labor shipped (executable journeys + this page)
 audience: application developers, operators, implementers
 ```
@@ -62,7 +62,7 @@ If the call does **not** return a receipt (error, kill mid-call, client drop):
 
 Never a hybrid fabricated event (CSQ-ACK-003).
 
-CLI: `dingo put` / `dingo get` for smoke; crash cells via
+CLI: `residiuum put` / `residiuum get` for smoke; crash cells via
 `RESIDIUUM_CRASH_*` harness (see CRASH_CONSISTENCY).
 
 ---
@@ -241,8 +241,8 @@ CLI: `residiuum doctor` prints `writer_lock` class + guidance.
 
 | Path | Role |
 |------|------|
-| `active/*.dingo` | **Authority** (writer tail) |
-| `segments/*.dingo` | **Authority** (sealed) |
+| `active/*.residiuum` | **Authority** (writer tail) |
+| `segments/*.residiuum` | **Authority** (sealed) |
 | `chunks/` | **Authority** (chunk frames when used) |
 | `indexes/primary.idx` | **Derived** frontier/cache — never health-by-size |
 | `catalogs/*`, `indexes/seg/*`, `snapshots/` | **Derived** / rebuildable |
@@ -260,7 +260,7 @@ state (DEF-023 / DEF-102).
 
 - Chunk threshold is a **layout** switch, not a product max-document claim.
 - Application profile admits up to **16 MiB** logical payload by default
-  (`dingo-large-value-v1`); effective ceiling is min(store, client, transport).
+  (`residiuum-large-value-v1`); effective ceiling is min(store, client, transport).
 - Admission is **before** event mint / append; reject → zero effect.
 - Rewrite-heavy workloads (transcripts, agents, timelines): **independent keys
   per turn/block**, not one ever-growing document under one key.
@@ -355,6 +355,6 @@ Verify script (doc sections + suite): `scripts/verify-crash-recovery-contract.sh
 
 ## Versioning
 
-- Contract id: **`dingo-crash-recovery-v1`**
+- Contract id: **`residiuum-crash-recovery-v1`**
 - Breaking changes to normative tables or forbidden reactions require a new
   contract id and CAPABILITY_MATRIX honesty.

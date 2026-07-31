@@ -54,7 +54,7 @@ Shipped today:
 
 1. **Adaptive per-segment Hydra** at seal time (and `Store::rebuild_hydra_indexes`).
 2. **Multithreaded** multi-segment build (`build_many` / rebuild API).
-3. **Derived-only** sidecar codec (`DHYDRA01`); loss never blocks salvage.
+3. **Derived-only** sidecar codec (`RHYDRA01`); loss never blocks salvage.
 
 Still proposed (not required for this foundation cut):
 

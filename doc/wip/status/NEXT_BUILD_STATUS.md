@@ -33,7 +33,7 @@ Rules (from master plan):
 
 | Claim | Value | Source |
 |---|---|---|
-| Heap profile | `dingo-heap-v1` | `spec/heap/qualification/hp010-matrix-v1.json` |
+| Heap profile | `residiuum-heap-v1` | `spec/heap/qualification/hp010-matrix-v1.json` |
 | `qualified` | **false** | same |
 | Gate H3 | accept | same |
 | Gates H0,H1,H2,H4,H5,H6 | partial | same |
@@ -93,21 +93,21 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
-| APP-4 | blocked | 2026-07-31 | CSQ-12, APP-0 | precursor implemented: `residiuum_sdk::predicate` + `plan_v1` (`dql-plan-encoding-v1`); plan vectors locked; `app4_predicate_plan` passes; live review stage is Kanban-owned | package admission waits for core-storage qualification; full RQL source parser is APP-5 | canonical predicates/plans |
-| APP-5 | not_started | — | APP-4 | — | dql-app-core-v1 compiler not accept | RQL Application Core |
+| APP-4 | blocked | 2026-07-31 | CSQ-12, APP-0 | precursor implemented: `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); plan vectors locked; `app4_predicate_plan` passes; live review stage is Kanban-owned | package admission waits for core-storage qualification; full RQL source parser is APP-5 | canonical predicates/plans |
+| APP-5 | not_started | — | APP-4 | — | rql-app-core-v1 compiler not accept | RQL Application Core |
 | APP-6 | not_started | — | APP-3, APP-5, HAR-4 | — | authenticated cursor not product | query execution |
-| APP-7 | not_started | — | APP-6, HAR-4 | op 118 `dql_query` reserved | remote query parity missing | remote query |
+| APP-7 | not_started | — | APP-6, HAR-4 | op 118 `rql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
 | TEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1 | Telemetry registries |
 | DST-000 | not_started | — | HAR-3 (drafting may start after) | — | not M2 engine gate | Studio scaffolding |
-| DRE-0 | not_started | — | M1 exit | — | — | semantic oracle |
-| DRE-1 | not_started | — | DRE-0 | — | — | source language |
-| DRE-2 | not_started | — | DRE-1 | — | — | canonical invariant core |
-| DRE-3 | not_started | — | DRE-2 | — | encoding amendment required | verified artifact |
-| DRE-4 | not_started | — | DRE-3 | — | — | document-local enforcement |
-| DRE-5 | not_started | — | DRE-4, ATM path | — | — | operational lifecycle |
-| DRE-6 | not_started | — | DRE-5, REL | — | — | P2 release gate |
+| RRE-0 | not_started | — | M1 exit | — | — | semantic oracle |
+| RRE-1 | not_started | — | RRE-0 | — | — | source language |
+| RRE-2 | not_started | — | RRE-1 | — | — | canonical invariant core |
+| RRE-3 | not_started | — | RRE-2 | — | encoding amendment required | verified artifact |
+| RRE-4 | not_started | — | RRE-3 | — | — | document-local enforcement |
+| RRE-5 | not_started | — | RRE-4, ATM path | — | — | operational lifecycle |
+| RRE-6 | not_started | — | RRE-5, REL | — | — | P2 release gate |
 | ATM-0 | not_started | — | HAR-2 freeze identity | — | — | semantic oracle |
 | ATM-1 | not_started | — | ATM-0 | — | — | canonical plans |
 | ATM-2 | not_started | — | ATM-1 | — | — | prepare/member evidence |

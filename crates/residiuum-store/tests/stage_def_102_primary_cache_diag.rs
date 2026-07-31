@@ -85,7 +85,7 @@ fn truncated_cache_is_corrupt() {
     let path = cache_path(&root);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     // Classic tiny / truncated blob — byte_len is NOT a health signal.
-    fs::write(&path, b"DIDX0003\x03\x00").unwrap();
+    fs::write(&path, b"RIDX0003\x03\x00").unwrap();
     let diag = diagnose_primary_cache(&path, store.store_id(), None, Some(4096));
     assert!(diag.present);
     assert_eq!(diag.validation, PrimaryCacheValidation::Corrupt);
@@ -149,7 +149,7 @@ fn unsupported_magic_classified() {
     let store = Store::create(&root).unwrap();
     let path = cache_path(&root);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
-    let mut blob = b"DIDX9999".to_vec();
+    let mut blob = b"RIDX9999".to_vec();
     blob.extend_from_slice(&4u32.to_le_bytes());
     blob.extend_from_slice(&[0u8; 64]);
     fs::write(&path, &blob).unwrap();

@@ -12,10 +12,10 @@ First qualified facility: **Collection Scoping**
 Profiles:
 
 ```text
-dingo-collection-contract-v1
-dingo-collection-scope-v1
-dingo-collection-scope-grant-v1
-dingo-collection-contract-evidence-v1
+residiuum-collection-contract-v1
+residiuum-collection-scope-v1
+residiuum-collection-scope-grant-v1
+residiuum-collection-contract-evidence-v1
 ```
 
 Audience: collection, Heap authority, RQL, RRE, SDK, server, Atomics, index,
@@ -213,10 +213,10 @@ The modules have separate semantics:
 | History | Version visibility and retention policy |
 | Query effects | Finite admission and resource limits |
 
-`dingo-collection-contract-v1` qualifies the container, identity, activation,
+`residiuum-collection-contract-v1` qualifies the container, identity, activation,
 and enforcement seam.
 
-`dingo-collection-scope-v1` qualifies the complete scoping semantics in this
+`residiuum-collection-scope-v1` qualifies the complete scoping semantics in this
 document.
 
 The remaining modules are typed composition slots. Where a normative companion
@@ -531,7 +531,7 @@ Rules:
 9. grants sort by immutable CollectionId;
 10. unknown modes or fields fail closed.
 
-The existing `dingo-heap-v1` constraint registry is frozen and does not
+The existing `residiuum-heap-v1` constraint registry is frozen and does not
 contain this constraint. Remote qualification therefore requires a versioned
 HeapKey constraint-registry amendment or successor profile. Implementations
 MUST NOT reinterpret an existing v1 constraint kind.
@@ -1081,7 +1081,7 @@ For a proposed transition:
 \land
 \operatorname{ScopeAdmitted}
 \land
-\operatorname{DREValid}
+\operatorname{RREValid}
 \land
 \operatorname{AtomicValid}
 \land

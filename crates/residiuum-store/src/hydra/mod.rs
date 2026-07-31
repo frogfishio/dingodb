@@ -185,7 +185,7 @@ pub fn hydra_index_path(paths: &StorePaths, segment_id: &[u8; 16]) -> PathBuf {
     hydra_dir(paths).join(format!("{}.hdx", hex16(segment_id)))
 }
 
-const MAGIC: &[u8; 8] = b"DHYDRA01";
+const MAGIC: &[u8; 8] = b"RHYDRA01";
 const VERSION: u32 = 1;
 
 /// Persist a hydra index (atomic durable replace). Derived only.

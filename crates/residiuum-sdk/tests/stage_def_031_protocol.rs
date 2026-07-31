@@ -60,10 +60,10 @@ fn spawn_server(path: PathBuf, bind: &str, options: ServeOptions) -> Arc<AtomicB
 
 #[test]
 fn protocol_profile_constants() {
-    assert_eq!(PROTOCOL_PROFILE, "dingo-rpc-v1");
+    assert_eq!(PROTOCOL_PROFILE, "residiuum-rpc-v1");
     assert_eq!(RPC_WIRE_LABEL, "1.0-draft");
     assert_eq!(PROTOCOL_MAJOR, 1);
-    assert_eq!(SERVER_PROFILE, "dingo-server-v1");
+    assert_eq!(SERVER_PROFILE, "residiuum-server-v1");
     assert!(REQUIRED_FEATURES.contains(&FEATURE_JSON_RPC_V1));
     assert!(REQUIRED_WRITE_RECEIPT_FIELDS.contains(&"event_id"));
     assert!(REQUIRED_WRITE_RECEIPT_FIELDS.contains(&"committed"));
@@ -118,7 +118,7 @@ fn golden_fixtures_parse_and_frame() {
 #[test]
 fn framed_handshake_and_ping_over_serve() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -156,7 +156,7 @@ fn framed_handshake_and_ping_over_serve() {
 #[test]
 fn legacy_line_client_fails_clearly() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -207,7 +207,7 @@ fn legacy_line_client_fails_clearly() {
 #[test]
 fn unsupported_protocol_major_rejected() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -240,7 +240,7 @@ fn unsupported_protocol_major_rejected() {
 #[test]
 fn oversized_frame_refused_without_full_read() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -286,7 +286,7 @@ fn oversized_frame_refused_without_full_read() {
 #[test]
 fn diagnostic_line_protocol_opt_in() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }

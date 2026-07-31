@@ -48,7 +48,7 @@ use crate::subject::validate_collection_name;
 use serde_json::{json, Map, Value as JsonValue};
 
 /// Profile tag for raw SDA/ENR text query plans (serialisable later).
-pub const SDA_QUERY_PROFILE: &str = "dingo-sda-query-v1";
+pub const SDA_QUERY_PROFILE: &str = "residiuum-sda-query-v1";
 
 /// Parse and evaluate a pure SDA/ENR1 program with `input` bound to `value`.
 ///
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn multi_bind_enr1_attach_text() {
         let dir = tempdir().unwrap();
-        let mut db = Residiuum::open(dir.path().join("enr-text.dingo")).unwrap();
+        let mut db = Residiuum::open(dir.path().join("enr-text.residiuum")).unwrap();
         {
             let mut orders = db.collection("orders").unwrap();
             orders
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn describe_requires_no_io() {
         let dir = tempdir().unwrap();
-        let mut db = Residiuum::open(dir.path().join("d.dingo")).unwrap();
+        let mut db = Residiuum::open(dir.path().join("d.residiuum")).unwrap();
         let plan = db
             .sda_query()
             .bind("orders")

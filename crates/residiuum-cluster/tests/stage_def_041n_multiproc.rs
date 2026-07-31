@@ -48,7 +48,7 @@ fn run_child(
 
 #[test]
 fn multiproc_profile_stable() {
-    assert_eq!(MULTIPROC_PROFILE, "dingo-cluster-multiproc-v1");
+    assert_eq!(MULTIPROC_PROFILE, "residiuum-cluster-multiproc-v1");
 }
 
 #[test]

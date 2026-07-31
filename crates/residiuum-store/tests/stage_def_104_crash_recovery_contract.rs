@@ -1,5 +1,5 @@
 //! DEF-104 — executable journeys for `doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md`
-//! (`dingo-crash-recovery-v1`).
+//! (`residiuum-crash-recovery-v1`).
 //!
 //! These tests are the compiled/CI examples for the normative page. Deeper
 //! failpoint cells live in `stage_def_022_crash_matrix`; generation/history/
@@ -382,7 +382,7 @@ fn contract_document_present() {
         .join("../..")
         .join("doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md");
     let text = fs::read_to_string(&root).expect("CRASH_AND_RECOVERY_CONTRACT.md must exist");
-    assert!(text.contains("dingo-crash-recovery-v1"));
+    assert!(text.contains("residiuum-crash-recovery-v1"));
     for needle in [
         "Durability-mode acknowledgement",
         "Inline and chunked publication",

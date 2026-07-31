@@ -12,7 +12,7 @@ external review with accepted residual disposition does.
 
 ## 1. Review objective
 
-Assess whether the **single-node** `dingo-heap-v1` isolation kernel and authority
+Assess whether the **single-node** `residiuum-heap-v1` isolation kernel and authority
 path prevent cross-heap data observation/mutation for cryptographically authorized
 holders, under the published limitations (admin, physical access, side channels).
 

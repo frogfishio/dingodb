@@ -8,11 +8,11 @@ Product name: **Residiuum Studio**
 Profiles:
 
 ```text
-dingo-studio-v1
-dingo-studio-ipc-v1
-dingo-studio-workspace-v1
-dingo-studio-telemetry-v1
-dingo-studio-evidence-v1
+residiuum-studio-v1
+residiuum-studio-ipc-v1
+residiuum-studio-workspace-v1
+residiuum-studio-telemetry-v1
+residiuum-studio-evidence-v1
 ```
 
 Implementation baseline:
@@ -133,7 +133,7 @@ cursors, history, evidence, or exports.
 
 ### 3.4 Existing CLI
 
-The interactive `dingo console` remains a terminal product. Studio does not
+The interactive `residiuum console` remains a terminal product. Studio does not
 replace or embed its line-oriented implementation. Both products reuse the
 same SDK/protocol and language contracts.
 
@@ -216,7 +216,7 @@ traffic.
 ### 4.3 Offline evidence mode
 
 Studio opens an immutable Residiuum Evidence Ledger export package and invokes the
-same Rust verification kernel as `dingo evidence verify`.
+same Rust verification kernel as `residiuum evidence verify`.
 
 No live Residiuum or credential is required. The UI preserves the independent
 verification axes:
@@ -265,7 +265,7 @@ This mode is not required for Studio v1 initial release.
 ### 5.1 Repository shape
 
 ```text
-apps/dingo-studio/
+apps/residiuum-studio/
     package.json
     angular.json
     src/
@@ -289,20 +289,20 @@ Recommended Rust crate boundary:
 
 ```text
 crates/residiuum-studio-core/     # session, query, telemetry, evidence, settings
-apps/dingo-studio/src-tauri/  # Tauri application and IPC adapter
+apps/residiuum-studio/src-tauri/  # Tauri application and IPC adapter
 ```
 
-`dingo-studio-core` contains no webview types. The Tauri crate contains no
+`residiuum-studio-core` contains no webview types. The Tauri crate contains no
 database semantics.
 
 ### 5.2 Dependency direction
 
 ```text
 Angular UI
-    ↓ closed dingo-studio-ipc-v1
+    ↓ closed residiuum-studio-ipc-v1
 Tauri IPC adapter
     ↓
-dingo-studio-core
+residiuum-studio-core
     ├── residiuum-sdk / residiuum-client
     ├── residiuum-examine / residiuum-format / residiuum-sda
     ├── residiuum-heap
@@ -364,7 +364,7 @@ Each enabled plugin has:
 ### 6.3 IPC
 
 The IPC surface is a closed numeric/string registry under
-`dingo-studio-ipc-v1`. There is no generic:
+`residiuum-studio-ipc-v1`. There is no generic:
 
 ```text
 execute
@@ -453,10 +453,10 @@ The closed v1 command registry is:
 | Heap | `heap.summary`, `heap.capabilities`, `heap.health` |
 | collections | `collection.list`, `collection.describe`, `collection.stats` |
 | records | `record.page.open`, `record.page.next`, `record.page.close`, `record.get`, `record.put`, `record.delete`, `record.history`, `record.damage` |
-| RQL | `dql.validate`, `dql.explain`, `dql.run`, `dql.rank`, `dql.cancel` |
+| RQL | `rql.validate`, `rql.explain`, `rql.run`, `rql.rank`, `rql.cancel` |
 | translators | `sqlish.translate`, `jsonschema.translate` |
 | SDA | `sda.open`, `sda.inspect`, `sda.evaluate`, `sda.close` |
-| rules | `dre.list`, `dre.validate`, `dre.impact`, `dre.activate` |
+| rules | `rre.list`, `rre.validate`, `rre.impact`, `rre.activate` |
 | contracts | `contract.list`, `contract.describe`, `contract.preview`, `contract.activate` |
 | Atomics | `atomic.preview`, `atomic.submit`, `atomic.status`, `atomic.cancel` |
 | telemetry | `telemetry.source.open`, `telemetry.source.describe`, `telemetry.batch.next`, `telemetry.dashboard.snapshot`, `telemetry.source.close` |
@@ -1102,7 +1102,7 @@ Atomics.
 
 ### 20.1 Source
 
-Telemetry comes exclusively from the `dingo-telemetry-v1` Ratatouille stream
+Telemetry comes exclusively from the `residiuum-telemetry-v1` Ratatouille stream
 or a qualified collector view. Studio does not create a parallel metrics/log
 protocol.
 
@@ -1457,17 +1457,17 @@ src/styles/
 Components consume semantic CSS custom properties generated from SCSS:
 
 ```text
---dingo-surface-*
---dingo-text-*
---dingo-border-*
---dingo-accent-*
---dingo-state-complete
---dingo-state-partial
---dingo-state-uncertain
---dingo-state-conflicting
---dingo-state-danger
---dingo-focus
---dingo-density-*
+--residiuum-surface-*
+--residiuum-text-*
+--residiuum-border-*
+--residiuum-accent-*
+--residiuum-state-complete
+--residiuum-state-partial
+--residiuum-state-uncertain
+--residiuum-state-conflicting
+--residiuum-state-danger
+--residiuum-focus
+--residiuum-density-*
 ```
 
 No component hard-codes semantic state colors.

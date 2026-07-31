@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: CLI quickstart
-description: Install dingo CLI, put/get a document, and run doctor on a temporary store.
+description: Install residiuum CLI, put/get a document, and run doctor on a temporary store.
 class: tutorial
 status: experimental
 section: getting-started
@@ -28,7 +28,7 @@ From a clone of the monorepo:
 
 ```bash
 cargo install --path crates/residiuum-cli --locked
-dingo --version
+residiuum --version
 ```
 
 Do **not** pipe an unauthenticated network installer into a shell unless the project deliberately publishes and documents that mechanism (none is advertised here).
@@ -47,13 +47,13 @@ printf '%s\n' \
   "PUT $WORKDIR users/user-1 {\"name\":\"hello\",\"status\":\"active\"}" \
   "GET $WORKDIR users/user-1" \
   "QUIT" \
-| dingo console "$WORKDIR"
+| residiuum console "$WORKDIR"
 ```
 
 ## Doctor / inspection
 
 ```bash
-residuum doctor "$WORKDIR"
+residiuum doctor "$WORKDIR"
 ```
 
 ## Cleanup

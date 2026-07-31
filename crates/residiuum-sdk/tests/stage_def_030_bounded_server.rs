@@ -81,14 +81,14 @@ fn rpc_frame(stream: &mut TcpStream, reader: &mut BufReader<TcpStream>, json_bod
 
 #[test]
 fn server_profile_constant() {
-    assert_eq!(SERVER_PROFILE, "dingo-server-v1");
+    assert_eq!(SERVER_PROFILE, "residiuum-server-v1");
     assert_eq!(DEFAULT_MAX_CONNECTIONS, 64);
 }
 
 #[test]
 fn concurrent_clients_progress_independently() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         db.collection("docs")
@@ -132,7 +132,7 @@ fn concurrent_clients_progress_independently() {
 #[test]
 fn connection_limit_returns_resource_limit() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -198,7 +198,7 @@ fn connection_limit_returns_resource_limit() {
 #[test]
 fn graceful_shutdown_drains_and_stops_accept() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -278,7 +278,7 @@ fn single_store_owner_survives_many_clients() {
     // Opening Store::open per connection would fail with WriterLockHeld under
     // concurrency. This test hammers concurrent puts to ensure one owner works.
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }
@@ -325,7 +325,7 @@ fn idle_timeout_is_configurable_on_options() {
 #[test]
 fn raw_ping_while_peer_idle() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }

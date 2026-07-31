@@ -14,7 +14,7 @@ use residiuum_cluster::{
 
 #[test]
 fn profile_label_is_stable() {
-    assert_eq!(ANTI_ENTROPY_PROFILE, "dingo-anti-entropy-v1");
+    assert_eq!(ANTI_ENTROPY_PROFILE, "residiuum-anti-entropy-v1");
     assert_eq!(REPAIR_AUDIT_FILE, "repair_audit.json");
     assert_eq!(Cluster::anti_entropy_profile(), ANTI_ENTROPY_PROFILE);
 }

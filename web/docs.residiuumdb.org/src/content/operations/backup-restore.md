@@ -21,7 +21,7 @@ keywords:
 
 ## Outcome
 
-Produce a `dingo-backup-v1` package and restore it.
+Produce a `residiuum-backup-v1` package and restore it.
 
 ## Risk level
 
@@ -35,7 +35,7 @@ Medium — restore can overwrite a destination root.
 ## Pre-flight checks
 
 ```bash
-WORKDIR="$(mktemp -d /tmp/dingo-br-XXXXXX)"
+WORKDIR="$(mktemp -d /tmp/residiuum-br-XXXXXX)"
 # ensure WORKDIR is the temp path printed above before continuing
 ```
 
@@ -43,8 +43,8 @@ WORKDIR="$(mktemp -d /tmp/dingo-br-XXXXXX)"
 
 ```bash
 # After creating data under $WORKDIR/store ...
-dingo backup "$WORKDIR/store" --output "$WORKDIR/backup"
-dingo restore "$WORKDIR/backup" --output "$WORKDIR/restored"
+residiuum backup "$WORKDIR/store" --output "$WORKDIR/backup"
+residiuum restore "$WORKDIR/backup" --output "$WORKDIR/restored"
 ```
 
 Identity-preserving restore is default; clone restore uses reassign-identity options in CLI help.

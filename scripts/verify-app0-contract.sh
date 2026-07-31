@@ -15,12 +15,12 @@ required=(
   spec/app/v1/residuals_v1.json
   spec/heap/rpc-v1/collection_create.request.json
   spec/heap/rpc-v1/collection_create.response.json
-  spec/heap/rpc-v1/dql_query.request.json
-  spec/heap/rpc-v1/dql_query.response.json
+  spec/heap/rpc-v1/rql_query.request.json
+  spec/heap/rpc-v1/rql_query.response.json
   spec/heap/fixtures/collection_create.accepted.json
   spec/heap/fixtures/collection_create.rejected.json
-  spec/heap/fixtures/dql_query.accepted.json
-  spec/heap/fixtures/dql_query.rejected.json
+  spec/heap/fixtures/rql_query.accepted.json
+  spec/heap/fixtures/rql_query.rejected.json
   crates/residiuum-sdk/src/app_v1.rs
   crates/residiuum-sdk/tests/app0_contract_lock.rs
   doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md
@@ -47,18 +47,18 @@ for p in [
     "spec/app/v1/cursor_vectors_v1.json",
     "spec/heap/rpc-v1/collection_create.request.json",
     "spec/heap/rpc-v1/collection_create.response.json",
-    "spec/heap/rpc-v1/dql_query.request.json",
-    "spec/heap/rpc-v1/dql_query.response.json",
+    "spec/heap/rpc-v1/rql_query.request.json",
+    "spec/heap/rpc-v1/rql_query.response.json",
     "spec/heap/fixtures/collection_create.accepted.json",
     "spec/heap/fixtures/collection_create.rejected.json",
-    "spec/heap/fixtures/dql_query.accepted.json",
-    "spec/heap/fixtures/dql_query.rejected.json",
+    "spec/heap/fixtures/rql_query.accepted.json",
+    "spec/heap/fixtures/rql_query.rejected.json",
 ]:
     load(p)
 
 ops = load("spec/heap/operations-v1.json")
 by_id = {o["id"]: o for o in ops["operations"]}
-# APP-1 activates collection_create (106). dql_query (118) stays reserved until APP-7.
+# APP-1 activates collection_create (106). rql_query (118) stays reserved until APP-7.
 o106 = by_id.get(106)
 if not o106:
     sys.exit("missing operation 106")
@@ -71,8 +71,8 @@ if not o106.get("request_schema") or not o106.get("response_schema"):
 o118 = by_id.get(118)
 if not o118:
     sys.exit("missing operation 118")
-if o118.get("wire_name") != "dql_query":
-    sys.exit(f"op 118 wire_name expected dql_query, got {o118.get('wire_name')}")
+if o118.get("wire_name") != "rql_query":
+    sys.exit(f"op 118 wire_name expected rql_query, got {o118.get('wire_name')}")
 if o118.get("status") != "reserved":
     sys.exit(f"op 118 must remain reserved until APP-7 (got {o118.get('status')})")
 if o118.get("request_schema") is not None or o118.get("response_schema") is not None:
@@ -85,14 +85,14 @@ if not em.get("mappings"):
     sys.exit("error_mapping missing mappings")
 
 plans = load("spec/app/v1/plan_vectors_v1.json")
-if plans.get("profile") != "dql-plan-v1":
-    sys.exit("plan profile must be dql-plan-v1")
+if plans.get("profile") != "rql-plan-v1":
+    sys.exit("plan profile must be rql-plan-v1")
 if len(plans.get("vectors") or []) < 3:
     sys.exit("need ≥3 plan vectors")
 
 cursors = load("spec/app/v1/cursor_vectors_v1.json")
-if cursors.get("profile") != "dingo-cursor-v1":
-    sys.exit("cursor profile must be dingo-cursor-v1")
+if cursors.get("profile") != "residiuum-cursor-v1":
+    sys.exit("cursor profile must be residiuum-cursor-v1")
 fields = set(cursors.get("fields_required") or [])
 for req in ("plan_hash", "mac", "heap_id", "collection_id"):
     if req not in fields:
@@ -101,17 +101,17 @@ for req in ("plan_hash", "mac", "heap_id", "collection_id"):
 create = load("spec/heap/fixtures/collection_create.accepted.json")
 if create.get("op") != 106 or create.get("ok") is not True:
     sys.exit("collection_create.accepted malformed")
-dql = load("spec/heap/fixtures/dql_query.accepted.json")
-if dql.get("op") != 118 or dql.get("ok") is not True:
-    sys.exit("dql_query.accepted malformed")
+rql = load("spec/heap/fixtures/rql_query.accepted.json")
+if rql.get("op") != 118 or rql.get("ok") is not True:
+    sys.exit("rql_query.accepted malformed")
 
 src = Path("crates/residiuum-sdk/src/app_v1.rs").read_text(encoding="utf-8")
 for needle in (
     "pub struct HeapClient",
     "pub struct CollectionClient",
     "pub struct QueryPage",
-    "dingo-rust-app-v1",
-    "dql-app-core-v1",
+    "residiuum-rust-app-v1",
+    "rql-app-core-v1",
 ):
     if needle not in src:
         sys.exit(f"app_v1.rs missing {needle!r}")

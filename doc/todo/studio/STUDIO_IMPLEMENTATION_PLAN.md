@@ -40,7 +40,7 @@ backend.
 Planned paths:
 
 ```text
-apps/dingo-studio/
+apps/residiuum-studio/
 crates/residiuum-studio-core/
 spec/studio/
 scripts/verify-studio.sh
@@ -53,9 +53,9 @@ Ownership:
 | Product/security contract | `STUDIO_SPEC.md` |
 | Work packages/status | `doc/todo/studio/STUDIO_IMPLEMENTATION_PLAN.md` |
 | Machine IPC/topic/view schemas | `spec/studio/` |
-| Framework shell | `apps/dingo-studio/` |
+| Framework shell | `apps/residiuum-studio/` |
 | Reusable Rust orchestration | `crates/residiuum-studio-core/` |
-| Residiuum protocol semantics | existing legacy `dingo-*` crates/specs |
+| Residiuum protocol semantics | existing legacy `residiuum-*` crates/specs |
 | CI qualification | `scripts/verify-studio.sh` |
 
 ## 3. Frozen baseline
@@ -105,7 +105,7 @@ updates follow `STUDIO_SPEC.md` §34.4.
 
 ### Deliverables
 
-- `apps/dingo-studio` Tauri + Angular + SCSS skeleton;
+- `apps/residiuum-studio` Tauri + Angular + SCSS skeleton;
 - `crates/residiuum-studio-core`;
 - `spec/studio/ipc-v1.json`;
 - `spec/studio/commands-v1.json`;
@@ -616,7 +616,7 @@ studio-angular
 studio-tauri
 studio-ipc-security
 studio-e2e-fake
-studio-e2e-dingo
+studio-e2e-residiuum
 studio-telemetry-corpus
 studio-evidence-corpus
 studio-accessibility

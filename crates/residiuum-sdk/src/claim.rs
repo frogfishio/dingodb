@@ -25,15 +25,15 @@ pub const fn heap_only_embedded_profile() -> bool {
 
 /// Machine-readable label for the flat collection surface.
 ///
-/// Never implies `dingo-heap-v1` qualification.
+/// Never implies `residiuum-heap-v1` qualification.
 pub const FLAT_COLLECTION_SURFACE_LABEL: &str =
-    "legacy-flat-sdk; not dingo-heap-v1 qualified; CPR-001";
+    "legacy-flat-sdk; not residiuum-heap-v1 qualified; CPR-001";
 
 /// Human claim language for the flat collection surface.
 pub fn flat_collection_claim_language() -> &'static str {
     "Residiuum provides a legacy flat collection API for compatibility; strong \
      access-isolation qualification applies only to heap-bound APIs under \
-     dingo-heap-v1 after HP-010 gates accept."
+     residiuum-heap-v1 after HP-010 gates accept."
 }
 
 /// Combined product claim check for operators (always Level 1 until matrix flips).

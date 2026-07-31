@@ -80,7 +80,7 @@ pub struct ServeOptions {
     /// Accept legacy newline-delimited JSON without handshake (DEF-031 diagnostic).
     ///
     /// Defaults to `false`. Production servers require the framed
-    /// `dingo-rpc-v1` hello/welcome exchange. Enable only for local debugging.
+    /// `residiuum-rpc-v1` hello/welcome exchange. Enable only for local debugging.
     pub diagnostic_line_protocol: bool,
     /// Optional TLS server configuration (DEF-032).
     ///
@@ -719,7 +719,7 @@ fn serve_accept_loop(
                 // Detach worker: accept loop must not wait on client I/O.
                 // On spawn failure the ConnectionGuard drops here and releases the slot.
                 thread::Builder::new()
-                    .name("dingo-serve-conn".into())
+                    .name("residiuum-serve-conn".into())
                     .spawn(move || {
                         let _guard = guard;
                         if let Err(e) =

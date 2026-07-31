@@ -50,9 +50,9 @@ Until this plan is complete, use these support labels:
 - **Wire format:** `1.0-draft` with declared reader/writer matrix and phased
   migration (DEF-052); freeze checklist + policy published, not frozen
   (DEF-053 partial — `doc/wip/format/WIRE_MAJOR1_FREEZE.md`).
-- **Process config:** versioned `dingo-config-v1` validate-before-serve
+- **Process config:** versioned `residiuum-config-v1` validate-before-serve
   (DEF-054); live dynamic reload still follow-on.
-- **Process logs:** versioned `dingo-log-v1` NDJSON on serve paths (DEF-060);
+- **Process logs:** versioned `residiuum-log-v1` NDJSON on serve paths (DEF-060);
   client-side structured emission and config-driven sinks still follow-on.
 
 Public documentation, CLI help, release notes, and crate READMEs MUST use these
@@ -273,7 +273,7 @@ Work:
 
 - Rename the current behavior to an explicit operation such as
   `export_live_state`.
-- Implement evidence-preserving salvage as the default `dingo salvage`.
+- Implement evidence-preserving salvage as the default `residiuum salvage`.
 - Copy verified frames without re-encoding whenever possible.
 - Produce a signed or hashed recovery manifest containing:
   - source identity and scan parameters;
@@ -307,7 +307,7 @@ In-tree so far:
   survive).
 - `Store::export_live_state` keeps the old re-put materialization path with new
   lineage.
-- CLI: `dingo salvage` = evidence mode; `dingo export-live` = live-state export;
+- CLI: `residiuum salvage` = evidence mode; `residiuum export-live` = live-state export;
   JSON reports `mode`, `frames_copied`, `holes_recorded`, `manifest_path`.
 - Tests: `stage_def_011_salvage`, updated `salvage` suite.
 
@@ -697,7 +697,7 @@ Acceptance:
 ### DEF-025 — Strengthen identifier generation
 
 Priority: P1
-Status: **addressed** (`dingo-id-v1` + `getrandom`; see
+Status: **addressed** (`residiuum-id-v1` + `getrandom`; see
 `stage_def_025_identifiers`, `doc/wip/status/CAPABILITY_MATRIX.md`)
 
 Work:
@@ -710,7 +710,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `ID_PROFILE = "dingo-id-v1"` in `residiuum_store::ids`.
+- Profile tag `ID_PROFILE = "residiuum-id-v1"` in `residiuum_store::ids`.
 - Random identities (`event_id`, `store_id`, job/checkpoint/operation ids,
   cluster id) use `getrandom` via `random_id()`; `StoreError::RandomUnavailable`
   on failure (no wall-clock/hash fallback).
@@ -752,7 +752,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `CURSOR_PROFILE = "dingo-cursor-v1"` in `residiuum_store::cursor`.
+- Profile tag `CURSOR_PROFILE = "residiuum-cursor-v1"` in `residiuum_store::cursor`.
 - `Store::scan_live_page` walks the primary index in subject order, loading at
   most one page of complete bodies (default 64, cap 4096). Incomplete subjects
   are reported per page and still advance the cursor.
@@ -793,7 +793,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `INDEX_LIFECYCLE_PROFILE = "dingo-index-lifecycle-v1"`.
+- Profile tag `INDEX_LIFECYCLE_PROFILE = "residiuum-index-lifecycle-v1"`.
 - `.six` format v2 records `build_id`, `source_frontier`, `resume_after_subject`,
   and `failure_reason` (v1 files still load).
 - Create persists `building`/`rebuilding` before the live walk; checkpoints every
@@ -829,7 +829,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `QUERY_PLAN_PROFILE = "dingo-query-plan-v1"` for serializable
+- Profile tag `QUERY_PLAN_PROFILE = "residiuum-query-plan-v1"` for serializable
   [`QueryPlan`] (filter + options JSON).
 - `Filter::to_sda` / `matches_sda` compile the portable vocabulary to boolean
   SDA over `input`, using host helpers `getPath`, `startsWith`, `strContains`.
@@ -863,7 +863,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `RESOURCE_PROFILE = "dingo-resource-v1"`.
+- Profile tag `RESOURCE_PROFILE = "residiuum-resource-v1"`.
 - Explicit [`QueryBudget`]: `max_docs_scanned`, `max_bytes_scanned`,
   `max_result_bytes` — exceed → `QueryBudgetRequired` unless
   `allow_partial_coverage` returns matches collected so far.
@@ -923,7 +923,7 @@ Work:
 - Keep resident only: memory-mode publishes, chunk **manifests** (small).
 - `Store::get` / `get_payload`: map lookup → resident body **or** bounded frame
   pread at `frame_offset` (active segment bytes first, then disk).
-- Primary cache **v3** (`DIDX0003`): frontier + offsets + slim bodies only.
+- Primary cache **v3** (`RIDX0003`): frontier + offsets + slim bodies only.
 - Refuse to load legacy fat v1/v2 caches above a 64 MiB resident-body budget
   (force slim rebuild instead of re-inflating multi-GB RSS).
 - Compaction / checkpoint / Chimera pair builders resolve bodies via locator.
@@ -1049,7 +1049,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `SERVER_PROFILE = "dingo-server-v1"`.
+- Profile tag `SERVER_PROFILE = "residiuum-server-v1"`.
 - `serve_store_with` opens **one** `Store` (exclusive writer), wraps it in
   `Arc<Mutex<Store>>`, and admits up to `ServerLimits::max_connections`
   (default 64) worker threads. Accept loop is non-blocking and never runs
@@ -1081,7 +1081,7 @@ Evidence:
 ### DEF-031 — Version and frame the network protocol
 
 Priority: P1
-Status: **addressed** (framed `dingo-rpc-v1` handshake; see
+Status: **addressed** (framed `residiuum-rpc-v1` handshake; see
 `stage_def_031_protocol`, `tests/fixtures/protocol/`, `doc/wip/status/CAPABILITY_MATRIX.md`)
 
 Work:
@@ -1096,7 +1096,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `PROTOCOL_PROFILE = "dingo-rpc-v1"`; draft label
+- Profile tag `PROTOCOL_PROFILE = "residiuum-rpc-v1"`; draft label
   `RPC_WIRE_LABEL = "1.0-draft"`.
 - Transport frame: big-endian `u32` length + UTF-8 JSON payload. Application
   bodies remain `RpcRequest` / `RpcResponse` (encoding separate from framing).
@@ -1142,11 +1142,11 @@ Work:
 
 Implementation notes:
 
-- Profile tag `TLS_PROFILE = "dingo-tls-v1"` (rustls, TLS 1.3 only).
+- Profile tag `TLS_PROFILE = "residiuum-tls-v1"` (rustls, TLS 1.3 only).
 - `ServeOptions::tls` / `ConnectOptions::tls` with PEM cert/key/CA paths;
   CLI `--tls-cert` / `--tls-key` / `--tls-client-ca` / `--tls-cluster-id`.
 - Peer identity via certificate SAN URIs:
-  `urn:dingo:cluster:{id}` and `urn:dingo:node:{id}`.
+  `urn:residiuum:cluster:{id}` and `urn:residiuum:node:{id}`.
 - Hot reload: `TlsServerState::reload()` re-reads PEM paths; new handshakes
   use rotated material without process restart (`tls_state_slot` for callers).
 - Shared application tokens use constant-time compare; `redact_secret` for
@@ -1186,7 +1186,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `AUTHZ_PROFILE = "dingo-authz-v1"`.
+- Profile tag `AUTHZ_PROFILE = "residiuum-authz-v1"`.
 - `Privilege` / `PrivilegeSet` roles: reader, writer, dba, operator, superuser.
 - `AuthzPolicy` maps shared tokens → principals (public id + privilege set);
   constant-time token compare; never stores tokens in audit.
@@ -1228,7 +1228,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `ADMISSION_PROFILE = "dingo-admission-v1"`.
+- Profile tag `ADMISSION_PROFILE = "residiuum-admission-v1"`.
 - `AdmissionLimits` / `AdmissionController` shared process-wide via
   `ServeOptions::admission` (built from `admission_limits` at serve start).
 - Fixed 1s windows for global and per-principal RPC rates; overload →
@@ -1288,7 +1288,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `RAFT_PERSIST_PROFILE = "dingo-raft-persist-v1"`.
+- Profile tag `RAFT_PERSIST_PROFILE = "residiuum-raft-persist-v1"`.
 - On-disk layout: `{cluster_root}/raft/node-{n}/p{partition}/` with
   checksummed `hard_state.json`, `membership.json`, append-only
   length-prefixed `log.ndjson`, and optional `snapshot.meta.json` +
@@ -1349,7 +1349,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `RAFT_RPC_PROFILE = "dingo-raft-rpc-v1"` (SDK feature
+- Profile tag `RAFT_RPC_PROFILE = "residiuum-raft-rpc-v1"` (SDK feature
   `FEATURE_RAFT_RPC_V1 = "raft-rpc-v1"`).
 - `NetworkRaftNode` — single-peer Raft actor over a `RaftTransport`;
   `MemoryRaftNetwork` for in-process multi-peer tests; `TcpRaftTransport`
@@ -1412,7 +1412,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `CLUSTER_COMMIT_PROFILE = "dingo-cluster-commit-v1"` and
+- Profile tag `CLUSTER_COMMIT_PROFILE = "residiuum-cluster-commit-v1"` and
   feature token `FEATURE_CLUSTER_COMMIT_V1 = "cluster-commit-v1"`.
 - `serve_cluster_node` attaches `RaftServerState` by default (best-effort;
   directory-only fallback if attach fails).
@@ -1470,7 +1470,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `REBALANCE_CONTROL_PROFILE = "dingo-rebalance-control-v1"`.
+- Profile tag `REBALANCE_CONTROL_PROFILE = "residiuum-rebalance-control-v1"`.
 - In-flight jobs persisted as checksummed `rebalance_jobs.json` (atomic +
   `.prev`) after every `begin_rebalance` / `advance_rebalance`.
 - `MembershipState` records joint flag + outgoing/incoming voter sets;
@@ -1519,7 +1519,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `ANTI_ENTROPY_PROFILE = "dingo-anti-entropy-v1"`.
+- Profile tag `ANTI_ENTROPY_PROFILE = "residiuum-anti-entropy-v1"`.
 - `Cluster::inventory_partition` / `inventory_cluster` collect per-replica
   subject content hashes, Raft log frontier, and store segment fingerprints.
 - `select_repair_source` tallies only readable (healthy) bodies; corrupt
@@ -1553,7 +1553,7 @@ Priority: P1
 Dependencies: DEF-026, DEF-037
 Status: **addressed except token authentication DEF-097** (2026-07-27) —
 multi-page distributed find with integrity-tagged continuation
-(`dingo-query-continuation-v1`), deterministic
+(`residiuum-query-continuation-v1`), deterministic
 subject merge independent of visit/worker order, coverage on every page
 including frontiers / read mode / indexes / tiers / resource limits;
 coordinator resume without silent dup/omit
@@ -1614,11 +1614,11 @@ Evidence:
   `SimWorld` (`client_put` / `client_get` / `run_chaos` / `run_soak` /
   `campaign_with_epoch`), `check_partition_linearizable`,
   `check_convergent_preserved`, `run_conformance_matrix`, profile
-  `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
+  `VERIFY_PROFILE` = `residiuum-cluster-verify-v1`.
 - Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.8, chaos + soak
   linearizability, dump retains seed); module unit tests under `sim::tests`.
 - **DEF-041-N labor (2026-07-31):** multiproc OS harness
-  `dingo-cluster-multiproc-v1` (`multiproc` module + `residiuum-cluster-multiproc-child`
+  `residiuum-cluster-multiproc-v1` (`multiproc` module + `residiuum-cluster-multiproc-child`
   binary + `stage_def_041n_multiproc`): rolling restart, abort-after-ack, cross-
   process writer lock, short soak, seed+history JSON dumps. Long soak via
   `RESIDIUUM_MULTIPROC_LONG_SOAK=1`.
@@ -1634,9 +1634,9 @@ Evidence:
 
 Priority: P1
 Status: **addressed (single-node full cut)** (2026-07-27) — content-hashed
-full backup package (`dingo-backup-v1`), exclusive-flush and inspect
+full backup package (`residiuum-backup-v1`), exclusive-flush and inspect
 consistencies, verified restore with optional identity reassignment; CLI
-`dingo backup` / `dingo restore`. Incremental, encrypted, remote-target,
+`residiuum backup` / `residiuum restore`. Incremental, encrypted, remote-target,
 cluster, and tiered multi-volume remain follow-ons.
 
 Work:
@@ -1658,7 +1658,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/residiuum-store/src/backup.rs` — `BACKUP_PROFILE` = `dingo-backup-v1`,
+- `crates/residiuum-store/src/backup.rs` — `BACKUP_PROFILE` = `residiuum-backup-v1`,
   `write_full_backup` / `restore_full_backup`, manifest + per-file blake3,
   `BackupConsistency::{FlushedExclusive,OnDiskInspect}`.
 - `Store::backup_to` flushes durable active under exclusive writer; inspect
@@ -1666,7 +1666,7 @@ Evidence (this cut):
 - Restore verifies manifest hash and every file; optional
   `RestoreOptions::reassign_identity` for clones (new `store_id`, wipe keyed
   derived state).
-- CLI: `dingo backup STORE -o PKG`, `dingo restore PKG -o STORE
+- CLI: `residiuum backup STORE -o PKG`, `residiuum restore PKG -o STORE
   [--reassign-identity]`.
 - Tests: `stage_def_050_backup.rs`, module unit tests, CLI
   `backup_and_restore_roundtrip` / `restore_reassign_identity_clone`.
@@ -1703,7 +1703,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/residiuum-store/src/scrub.rs` — `SCRUB_PROFILE` = `dingo-scrub-v1`,
+- `crates/residiuum-store/src/scrub.rs` — `SCRUB_PROFILE` = `residiuum-scrub-v1`,
   `scrub_once` / pause / resume / status, plan over sealed + active + chunks,
   BLAKE3 + placement `content_hash` + `scan_forward` holes.
 - Durable state: `recovery/scrub/state.v1.json`, `findings.v1.json`,
@@ -1728,7 +1728,7 @@ Priority: P0
 
 Status: **addressed (single-generation cut)** (2026-07-27) — declared wire
 reader/writer matrix (`residiuum-format::compat`), protocol policy snapshot,
-phased store migration `dingo-migrate-v1` (preflight / plan / apply / verify /
+phased store migration `residiuum-migrate-v1` (preflight / plan / apply / verify /
 rollback), evidence-preserving copy (never in-place rewrite), unsupported and
 unreadable segment bytes preserved as opaque evidence, durable job under
 `recovery/migration/`, CLI `residiuum migrate`; multi-major dual-read writers and
@@ -1798,7 +1798,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `doc/wip/format/WIRE_MAJOR1_FREEZE.md` — policy id `dingo-wire-major1-freeze-v1`.
+- `doc/wip/format/WIRE_MAJOR1_FREEZE.md` — policy id `residiuum-wire-major1-freeze-v1`.
 - `residiuum-format::compat` — freeze criteria table + `wire_is_frozen() == false`
   guard while draft.
 - Tests: `compat::tests::def_053_wire_remains_draft_until_freeze`.
@@ -1817,7 +1817,7 @@ Remaining (blocks freeze declaration):
 Priority: P1
 
 Status: **addressed (process config cut)** (2026-07-27) — versioned
-`dingo-config-v1` JSON schema, load/validate before serve bind, static vs
+`residiuum-config-v1` JSON schema, load/validate before serve bind, static vs
 restart-required vs dynamic setting classes, secret refs (`env:` / `file:`)
 with redacted effective reports, unsafe-combination gates (replication claim
 with one local copy, public plaintext bind, serve-cluster without experimental
@@ -1843,7 +1843,7 @@ Evidence (this cut):
 - `residiuum-server::config` — `ResidiuumConfigFile`, `load_and_validate`,
   `validate_document`, `ConfigOverrides`, `ValidatedConfig`,
   `EffectiveConfigReport`, `resolve_secret_ref`, `redact_json_value`,
-  `setting_class`; profile `CONFIG_PROFILE` = `dingo-config-v1`.
+  `setting_class`; profile `CONFIG_PROFILE` = `residiuum-config-v1`.
 - Typed errors: `ConfigError::Validation` / `Unsafe` / `UnsupportedFormat` /
   `Secret` with stable `code` strings.
 - CLI: `residiuum config validate|show [--mode serve|serve-cluster|validate]`,
@@ -1868,7 +1868,7 @@ Remaining (out of this cut):
 Priority: P1
 
 Status: **addressed (process NDJSON cut)** (2026-07-27) — versioned
-`dingo-log-v1` structured facade (`residiuum-server::slog`), stable event names,
+`residiuum-log-v1` structured facade (`residiuum-server::slog`), stable event names,
 bounded field cardinality, redaction of credentials/payloads by construction,
 RPC completion + guarantee-failed correlation fields on the serve path;
 client-side log emission and distributed replica join remain follow-ons.
@@ -1895,7 +1895,7 @@ Acceptance:
 Evidence (this cut):
 
 - `residiuum-server::slog` — `Logger`, `LogEvent`, `LogSink` / `StderrSink` /
-  `MemorySink`, `log_rpc_complete`, profile `LOG_PROFILE` = `dingo-log-v1`.
+  `MemorySink`, `log_rpc_complete`, profile `LOG_PROFILE` = `residiuum-log-v1`.
 - Stable events: `server.start`, `server.drain`, `connection.rejected`,
   `connection.error`, `rpc.complete`, `guarantee.failed`, `raft.attach_failed`.
 - Correlation fields: `request_id`, `operation_id`, `principal_id`, `op`,
@@ -1914,7 +1914,7 @@ Remaining (out of this cut):
   server without custom app code).
 - Replica / Raft data-plane peer logs with shared `operation_id` on propose
   apply paths beyond control-plane attach failures.
-- Configurable log level / sink via `dingo-config-v1` (file/syslog; dynamic).
+- Configurable log level / sink via `residiuum-config-v1` (file/syslog; dynamic).
 - OpenTelemetry log export bridge (ties to DEF-062 tracing).
 
 ### DEF-061 — Implement metrics and health endpoints
@@ -1922,7 +1922,7 @@ Remaining (out of this cut):
 Priority: P1
 
 Status: **addressed (process metrics + health cut)** (2026-07-27) — versioned
-`dingo-metrics-v1` registry and `dingo-health-v1` probes on the serve path;
+`residiuum-metrics-v1` registry and `residiuum-health-v1` probes on the serve path;
 public liveness/readiness RPCs, authenticated detail/metrics scrapes, bounded
 op labels + latency histograms + guarantee/admission counters. Store-tier
 bytes, index lag, scrub/backup series, and dashboard packages remain follow-ons.
@@ -2021,10 +2021,10 @@ Acceptance:
 
 Evidence:
 
-- `doc/wip/security/THREAT_MODEL.md` — structured first-cut model (`dingo-threat-model-v0`).
+- `doc/wip/security/THREAT_MODEL.md` — structured first-cut model (`residiuum-threat-model-v0`).
 - `SECURITY.md` — public vulnerability disclosure process.
 - `doc/reference/operations/SUPPORTED_VERSIONS.md` — supported-version policy
-  (`dingo-supported-versions-v1`).
+  (`residiuum-supported-versions-v1`).
 - `doc/wip/security/SECURITY_AUDIT_PACKAGE.md` — auditor evidence pack linking fuzz,
   threat model, and CI entrypoints.
 - README security section links the above.
@@ -2408,15 +2408,15 @@ included in the token. A client could therefore derive the same key and forge a
 token. The tag detected accidental corruption and cross-store/cluster
 use; it was not cryptographic authentication against a malicious client.
 
-#### Labor shipped (dingo-token-key-v1 / cursor-v2 / query-continuation-v2)
+#### Labor shipped (residiuum-token-key-v1 / cursor-v2 / query-continuation-v2)
 
 - Store-local secret keyring (≥256-bit CSPRNG) at
   `store-info/cursor_token_keys.v1`; minted on create; load-or-mint on open.
 - Cluster control-plane keyring at `{cluster_root}/cluster_token_keys.v1`.
 - MAC domain separation includes secret + public id + generation id; public id
   alone is insufficient to forge.
-- Wire profiles: `dingo-cursor-v2` (`DCSR0002`), `dingo-query-continuation-v2`
-  (`DQRY0002`) embed `key_generation_id`.
+- Wire profiles: `residiuum-cursor-v2` (`RCSR0002`), `residiuum-query-continuation-v2`
+  (`RQRY0002`) embed `key_generation_id`.
 - Rotation + one-generation grace + explicit retire; zeroize on drop; Debug
   redacts secrets.
 - APIs: `Store::rotate_continuation_keys` / `retire_previous_continuation_key`,
@@ -3494,7 +3494,7 @@ Create one normative, versioned page:
 
 ```text
 doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md
-contract id: dingo-crash-recovery-v1
+contract id: residiuum-crash-recovery-v1
 ```
 
 It contains:
@@ -3642,7 +3642,7 @@ Required: DEF-001, DEF-003, DEF-010–014, DEF-020–026, DEF-029, DEF-050,
 DEF-060, DEF-061, DEF-090–092, and DEF-098–104.
 
 Qualification gate:
-`dingo-core-storage-v1 / A2` under
+`residiuum-core-storage-v1 / A2` under
 [CORE_STORAGE_QUALIFICATION_SPEC.md](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md).
 
 Outcome: a supportable embedded store with explicit early-access limits.

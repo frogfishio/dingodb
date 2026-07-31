@@ -34,7 +34,6 @@ const today = new Date().toISOString().slice(0, 10);
 
 release.productVersion = productVersion;
 release.sourceRevision = sourceRevision;
-delete release.dingoSourceRevision;
 release.generatedAt = today;
 release.lastVerified = today;
 

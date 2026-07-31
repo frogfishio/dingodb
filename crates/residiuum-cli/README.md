@@ -39,55 +39,55 @@ cargo install --path crates/residiuum-cli
 ## Everyday data path
 
 ```sh
-residiuum put ./app.dingo users/user-42 --json '{"name":"Alice","status":"active"}'
-residiuum get ./app.dingo users/user-42
-residiuum delete ./app.dingo users/user-42
-residiuum list ./app.dingo
-residiuum list ./app.dingo users
-residiuum collections ./app.dingo
-residiuum put-bytes ./app.dingo artifacts/build-19 ./build.bin
-residiuum history ./app.dingo users/user-42
+residiuum put ./app.residiuum users/user-42 --json '{"name":"Alice","status":"active"}'
+residiuum get ./app.residiuum users/user-42
+residiuum delete ./app.residiuum users/user-42
+residiuum list ./app.residiuum
+residiuum list ./app.residiuum users
+residiuum collections ./app.residiuum
+residiuum put-bytes ./app.residiuum artifacts/build-19 ./build.bin
+residiuum history ./app.residiuum users/user-42
 ```
 
 ## Operator path
 
 ```sh
 # Read-only health report (no repairs, no catalog writes)
-residiuum doctor ./app.dingo
+residiuum doctor ./app.residiuum
 
 # Evidence-preserving salvage: never mutates the source
-residiuum salvage ./damaged.dingo --output ./recovered.dingo
+residiuum salvage ./damaged.residiuum --output ./recovered.residiuum
 
 # Live-state only materialization (new lineage; prefer salvage when history matters)
-residiuum export-live ./damaged.dingo --output ./live-only.dingo
+residiuum export-live ./damaged.residiuum --output ./live-only.residiuum
 
 # Full backup package (content-hashed; distinct from salvage)
-residiuum backup ./app.dingo --output ./app.bak
-residiuum restore ./app.bak --output ./restored.dingo
+residiuum backup ./app.residiuum --output ./app.bak
+residiuum restore ./app.bak --output ./restored.residiuum
 # Clone with a new store identity:
-residiuum restore ./app.bak --output ./clone.dingo --reassign-identity
+residiuum restore ./app.bak --output ./clone.residiuum --reassign-identity
 
 # Integrity scrub (bounded verification; findings under recovery/scrub/)
-residiuum scrub ./app.dingo
-residiuum scrub ./app.dingo --status
-residiuum scrub ./app.dingo --once --max-files 4
-residiuum scrub ./app.dingo --pause
-residiuum scrub ./app.dingo --resume
+residiuum scrub ./app.residiuum
+residiuum scrub ./app.residiuum --status
+residiuum scrub ./app.residiuum --once --max-files 4
+residiuum scrub ./app.residiuum --pause
+residiuum scrub ./app.residiuum --resume
 
 # Format migration (source preserved; new destination store)
-residiuum migrate ./app.dingo --output ./migrated.dingo --preflight
-residiuum migrate ./app.dingo --output ./migrated.dingo
-residiuum migrate ./app.dingo --status
+residiuum migrate ./app.residiuum --output ./migrated.residiuum --preflight
+residiuum migrate ./app.residiuum --output ./migrated.residiuum
+residiuum migrate ./app.residiuum --status
 # Abandon incomplete apply (refuses completed migrations):
-# residiuum migrate ./app.dingo --rollback
+# residiuum migrate ./app.residiuum --rollback
 ```
 
 ## Serve (development)
 
 ```sh
 # Single-node TCP server (default bind is loopback)
-residiuum serve ./app.dingo --bind 127.0.0.1:7434
-residiuum serve ./app.dingo --bind 127.0.0.1:7434 --token SECRET
+residiuum serve ./app.residiuum --bind 127.0.0.1:7434
+residiuum serve ./app.residiuum --bind 127.0.0.1:7434 --token SECRET
 
 # TLS: --tls-cert / --tls-key (optional mTLS via --tls-client-ca)
 # Non-loopback plaintext requires --allow-insecure-bind
@@ -126,7 +126,7 @@ behavior.
 ```sh
 residiuum --version
 residiuum --license
-residiuum --json-out doctor ./app.dingo   # stable machine-readable output
+residiuum --json-out doctor ./app.residiuum   # stable machine-readable output
 ```
 
 Auth token for serve: `--token` or environment variable `RESIDIUUM_TOKEN`.
@@ -134,12 +134,12 @@ Auth token for serve: `--token` or environment variable `RESIDIUUM_TOKEN`.
 ### Configuration (DEF-054)
 
 ```sh
-# Validate a versioned dingo-config-v1 document before deploy
-residiuum config validate ./dingo.json --mode serve
-residiuum --json-out config show ./dingo.json --mode serve
+# Validate a versioned residiuum-config-v1 document before deploy
+residiuum config validate ./residiuum.json --mode serve
+residiuum --json-out config show ./residiuum.json --mode serve
 
 # Apply config at serve time (CLI flags still override the file)
-residiuum serve ./app.dingo --config ./dingo.json --bind 127.0.0.1:7434
+residiuum serve ./app.residiuum --config ./residiuum.json --bind 127.0.0.1:7434
 ```
 
 Secrets belong in the environment or secret files (`serve.token_env`,

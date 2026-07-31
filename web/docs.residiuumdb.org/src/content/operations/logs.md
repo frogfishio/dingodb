@@ -20,7 +20,7 @@ keywords:
 
 ## Outcome
 
-Locate and read structured process logs (`dingo-log-v1`).
+Locate and read structured process logs (`residiuum-log-v1`).
 
 ## Risk level
 

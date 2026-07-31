@@ -1,7 +1,7 @@
 //! Framed, versioned JSON RPC for `residiuum://` remote access (Stages 7 + 8d, DEF-031).
 //!
 //! Server and client share the same request/response shapes. Transport is TCP.
-//! **Production profile** (`dingo-rpc-v1`):
+//! **Production profile** (`residiuum-rpc-v1`):
 //! 1. length-prefixed frames (`u32` BE + UTF-8 JSON payload);
 //! 2. explicit hello/welcome handshake with feature negotiation;
 //! 3. application [`RpcRequest`] / [`RpcResponse`] only after session setup.
@@ -62,7 +62,7 @@ pub struct ConnectOptions {
     ///
     /// Requires the server to also enable
     /// `residiuum_server::ServeOptions::diagnostic_line_protocol`. Production clients leave
-    /// this `false` and perform the framed `dingo-rpc-v1` handshake.
+    /// this `false` and perform the framed `residiuum-rpc-v1` handshake.
     pub diagnostic_line_protocol: bool,
     /// Optional TLS client configuration (DEF-032).
     ///

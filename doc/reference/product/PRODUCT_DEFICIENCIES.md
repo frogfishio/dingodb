@@ -114,7 +114,7 @@ open a Heap
 → operate the same semantics locally and remotely
 ```
 
-This baseline is called `dingo-application-baseline-v1`.
+This baseline is called `residiuum-application-baseline-v1`.
 
 ## 4. Definitive deficiency register
 
@@ -375,8 +375,8 @@ The baseline needs:
 
 ```rust
 collection.query()
-collection.dql(source, parameters, options)
-collection.explain_dql(...)
+collection.rql(source, parameters, options)
+collection.explain_rql(...)
 ```
 
 with identical builder/RQL plans, deterministic order, bounded pages,
@@ -690,11 +690,11 @@ The existing APP plan supplies much of APB but must be amended: its current
 scope deliberately excludes conditional create/replace/delete, document-path
 mutation, generated-key add, bulk mutation, stable read views, aggregates,
 watches, collection retirement, and import/export. Those omissions are no
-longer acceptable for `dingo-application-baseline-v1`.
+longer acceptable for `residiuum-application-baseline-v1`.
 
 ## 11. Baseline acceptance
 
-`dingo-application-baseline-v1` accepts only when:
+`residiuum-application-baseline-v1` accepts only when:
 
 - one Heap-bound client works locally and remotely;
 - create/add/get/inspect/replace/mutate/delete expose exact version semantics;

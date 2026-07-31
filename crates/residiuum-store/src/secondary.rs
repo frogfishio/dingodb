@@ -82,14 +82,14 @@ impl IndexState {
     }
 }
 
-const MAGIC: &[u8; 8] = b"DSIX0001";
+const MAGIC: &[u8; 8] = b"RSIX0001";
 /// On-disk secondary index format version (v2 adds build lifecycle fields, DEF-027).
 const VERSION: u32 = 2;
 /// Legacy readers still decode this version (no build_id / resume / failure fields).
 const VERSION_V1: u32 = 1;
 
 /// Profile tag for secondary index lifecycle (DEF-027).
-pub const INDEX_LIFECYCLE_PROFILE: &str = "dingo-index-lifecycle-v1";
+pub const INDEX_LIFECYCLE_PROFILE: &str = "residiuum-index-lifecycle-v1";
 
 /// Metadata for one secondary index definition + build state.
 #[derive(Debug, Clone, PartialEq, Eq)]

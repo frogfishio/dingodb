@@ -24,10 +24,10 @@ use std::io::{Read, Write};
 pub const DEFAULT_MAX_RPC_LINE_BYTES: usize = 16 * 1024 * 1024;
 
 /// Profile tag for the framed RPC protocol (DEF-031).
-pub const PROTOCOL_PROFILE: &str = "dingo-rpc-v1";
+pub const PROTOCOL_PROFILE: &str = "residiuum-rpc-v1";
 
 /// Server runtime profile advertised on welcome (wire-stable string).
-pub const DEFAULT_SERVER_PROFILE: &str = "dingo-server-v1";
+pub const DEFAULT_SERVER_PROFILE: &str = "residiuum-server-v1";
 
 /// Draft network RPC interoperability label (not a freeze).
 pub const RPC_WIRE_LABEL: &str = "1.0-draft";
@@ -310,7 +310,7 @@ pub fn read_frame_or_detect_legacy<R: Read>(
         let _ = r.read(&mut discard);
         return Err(Error::ProtocolViolation(
             "legacy line-delimited JSON is not accepted on the production profile; \
-             send a framed hello (dingo-rpc-v1) or enable diagnostic_line_protocol \
+             send a framed hello (residiuum-rpc-v1) or enable diagnostic_line_protocol \
              on both client and server"
                 .into(),
         ));
@@ -519,7 +519,7 @@ mod tests {
 
     #[test]
     fn protocol_constants() {
-        assert_eq!(PROTOCOL_PROFILE, "dingo-rpc-v1");
+        assert_eq!(PROTOCOL_PROFILE, "residiuum-rpc-v1");
         assert_eq!(RPC_WIRE_LABEL, "1.0-draft");
         assert_eq!(PROTOCOL_MAJOR, 1);
         assert!(REQUIRED_FEATURES.contains(&FEATURE_JSON_RPC_V1));

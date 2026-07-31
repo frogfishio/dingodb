@@ -2,7 +2,7 @@
 
 Status: **normative design v1.0-draft — developer ready**
 
-Profile identifier: `dingo-core-storage-v1`
+Profile identifier: `residiuum-core-storage-v1`
 
 Program identifier: `CSQ`
 
@@ -62,7 +62,7 @@ Only `pass` satisfies a gate. Retry-to-green does not erase earlier attempts.
 
 ### 3.1 Included authority
 
-`dingo-core-storage-v1` covers:
+`residiuum-core-storage-v1` covers:
 
 - frame and segment encoding, verification, forward/reverse scanning;
 - subjects, event identity, logical lineage, current state, and history;
@@ -92,7 +92,7 @@ Those profiles may reuse this evidence but require their own claims.
 
 ## 4. Qualification claim
 
-A release may claim `dingo-core-storage-v1 / A2` only when:
+A release may claim `residiuum-core-storage-v1 / A2` only when:
 
 > For every operation and failure class inside the registered profile, the
 > implementation returns the exact acknowledged state, a permitted prior/new
@@ -168,8 +168,8 @@ obligations in the same change.
 These files are a namespaced specialization of the general `VFY-0` registries,
 not a competing evidence system. `claims-v1.json`, `suites-v1.json`, and
 `profiles-v1.json` import/reference the core-storage records; the common
-`dingo-verification-report-v1` envelope carries the
-`dingo-core-storage-report-v1` attachment. One runner and one qualification
+`residiuum-verification-report-v1` envelope carries the
+`residiuum-core-storage-report-v1` attachment. One runner and one qualification
 truth remain authoritative.
 
 ## 6. Independent oracle architecture
@@ -1034,7 +1034,7 @@ Required:
 
 ## 20. Evidence bundle
 
-Every run emits a canonical `dingo-core-storage-report-v1` containing:
+Every run emits a canonical `residiuum-core-storage-report-v1` containing:
 
 ```text
 run_id

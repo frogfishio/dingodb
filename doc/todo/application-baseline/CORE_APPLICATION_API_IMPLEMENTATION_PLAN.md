@@ -9,7 +9,7 @@ Priority: `P1-PATH`
 Baseline expansion authority:
 [MUST_ADD.md](./MUST_ADD.md). APP packages are retained and mapped into APB;
 their original exclusions do not define the final
-`dingo-application-baseline-v1`.
+`residiuum-application-baseline-v1`.
 
 Audience: SDK, server, store, query, protocol, test, and documentation
 implementers
@@ -111,9 +111,9 @@ MUST NOT be treated as product-level deferrals.
 - an async Rust API;
 - a new cluster protocol or new storage format.
 
-The existing `dql-source-v0.1` enrichment compiler remains supported as a
+The existing `rql-source-v0.1` enrichment compiler remains supported as a
 separate compatibility surface. This package does not claim that it has become
-the complete `dql-plan-v1` runtime.
+the complete `rql-plan-v1` runtime.
 
 ## 4. Conformance profiles
 
@@ -121,19 +121,19 @@ This package freezes the following identifiers:
 
 | Profile | Meaning |
 |---|---|
-| `dingo-rust-app-v1` | public Rust application API |
-| `dql-app-core-v1` | accepted RQL Application Core source surface |
-| `dql-plan-v1` | canonical logical plan shape defined by `RQL_SPEC.md` |
-| `dingo-predicate-v1` | shared total predicate semantics |
-| `dingo-cursor-v1` | authenticated query continuation |
+| `residiuum-rust-app-v1` | public Rust application API |
+| `rql-app-core-v1` | accepted RQL Application Core source surface |
+| `rql-plan-v1` | canonical logical plan shape defined by `RQL_SPEC.md` |
+| `residiuum-predicate-v1` | shared total predicate semantics |
+| `residiuum-cursor-v1` | authenticated query continuation |
 | `rpc-v1` | qualified Heap wire envelope |
 
-`dql-app-core-v1` is a conformance level of RQL v1, not a competing language.
+`rql-app-core-v1` is a conformance level of RQL v1, not a competing language.
 Its accepted grammar is the subset in section 9. A runtime MUST report the
 source and plan profiles separately.
 
 Unsupported RQL v1 syntax MUST fail with `QueryInvalid` and diagnostic code
-`dql_feature_unavailable`. It MUST NOT be ignored, weakened, or executed using
+`rql_feature_unavailable`. It MUST NOT be ignored, weakened, or executed using
 an accidental fallback.
 
 ## 5. Public Rust API
@@ -222,13 +222,13 @@ impl CollectionClient {
     pub fn indexes(&mut self) -> IndexManager<'_>;
 
     pub fn query(&mut self) -> QueryBuilder<'_>;
-    pub fn dql(
+    pub fn rql(
         &mut self,
         source: &str,
         parameters: &Parameters,
         options: QueryRunOptions,
     ) -> Result<QueryPage, Error>;
-    pub fn explain_dql(
+    pub fn explain_rql(
         &mut self,
         source: &str,
         parameters: &Parameters,
@@ -472,14 +472,14 @@ query              = [ "explain" ], from-clause,
 All productions have the meanings and exact grammar defined in
 `RQL_SPEC.md`. The Application Core adds no alternative syntax.
 
-For `CollectionClient::dql`, the `from` source MUST resolve to that handle's
+For `CollectionClient::rql`, the `from` source MUST resolve to that handle's
 immutable collection id. A different source name or identity fails before
 execution. This redundancy keeps copied RQL readable while preventing a caller
 from smuggling another collection into the handle.
 
 Included features:
 
-- root predicates from `dingo-predicate-v1`;
+- root predicates from `residiuum-predicate-v1`;
 - named parameters;
 - projection;
 - scalar ordering with explicit null/missing placement;
@@ -491,7 +491,7 @@ Included features:
 - document, byte, and result-memory budgets;
 - explain.
 
-Excluded clauses fail with `dql_feature_unavailable`, including `enrich`,
+Excluded clauses fail with `rql_feature_unavailable`, including `enrich`,
 `within`, `at rank`, and direct/build/sequential access policy.
 
 ### 9.1 One semantic plan
@@ -603,7 +603,7 @@ typed error; they are never ordered by incidental JSON serialization.
 
 ## 11. Continuation security and consistency
 
-A `dingo-cursor-v1` token contains or commits to:
+A `residiuum-cursor-v1` token contains or commits to:
 
 - cursor profile and key id;
 - Heap id and immutable collection id;
@@ -660,7 +660,7 @@ and remote failures to the same code:
 | collection/key absent where absence is exceptional | `NotFound` |
 | duplicate collection/index name | `AlreadyExists` |
 | malformed RQL, predicate, path, key, or name | `QueryInvalid` or `ValidationFailed` |
-| unsupported Application Core feature | `QueryInvalid` + `dql_feature_unavailable` |
+| unsupported Application Core feature | `QueryInvalid` + `rql_feature_unavailable` |
 | insufficient authority | `PermissionDenied` |
 | invalid credential | `AuthenticationFailed` |
 | stale/tampered/mismatched cursor | `ConsistencyViolation` |
@@ -691,15 +691,15 @@ Required protocol artifacts:
 ```text
 spec/heap/rpc-v1/collection_create.request.json
 spec/heap/rpc-v1/collection_create.response.json
-spec/heap/rpc-v1/dql_query.request.json
-spec/heap/rpc-v1/dql_query.response.json
+spec/heap/rpc-v1/rql_query.request.json
+spec/heap/rpc-v1/rql_query.response.json
 spec/heap/fixtures/collection_create.accepted.json
 spec/heap/fixtures/collection_create.rejected.json
-spec/heap/fixtures/dql_query.accepted.json
-spec/heap/fixtures/dql_query.rejected.json
+spec/heap/fixtures/rql_query.accepted.json
+spec/heap/fixtures/rql_query.rejected.json
 ```
 
-Operation `118`, `dql_query`, carries both execution and explain; `explain:
+Operation `118`, `rql_query`, carries both execution and explain; `explain:
 true` returns the structured explanation and does not enumerate rows. No
 second explain operation is introduced. Every active operation in
 `operations-v1.json` MUST reference a checked-in request and response schema.
@@ -741,11 +741,11 @@ Deliver:
 | Error mapping | `spec/app/v1/error_mapping_v1.json` |
 | Plan vectors | `spec/app/v1/plan_vectors_v1.json` |
 | Cursor vectors | `spec/app/v1/cursor_vectors_v1.json` |
-| Rust compile surface | `crates/residiuum-sdk/src/app_v1.rs` (`dingo-rust-app-v1`) |
+| Rust compile surface | `crates/residiuum-sdk/src/app_v1.rs` (`residiuum-rust-app-v1`) |
 | Contract tests | `crates/residiuum-sdk/tests/app0_contract_lock.rs` |
 | Verify script | `scripts/verify-app0-contract.sh` |
-| Wire schemas (staged) | `spec/heap/rpc-v1/collection_create.*`, `dql_query.*` |
-| Wire fixtures (staged) | `spec/heap/fixtures/collection_create.*`, `dql_query.*` |
+| Wire schemas (staged) | `spec/heap/rpc-v1/collection_create.*`, `rql_query.*` |
+| Wire fixtures (staged) | `spec/heap/fixtures/collection_create.*`, `rql_query.*` |
 
 Ops **106** / **118** stay `reserved` with null schema pointers in
 `operations-v1.json` until APP-1 / APP-7; on-disk schemas are frozen for
@@ -822,7 +822,7 @@ Depends: `APP-0`
 
 Deliver:
 
-- one `dingo-predicate-v1` AST/parser/evaluator;
+- one `residiuum-predicate-v1` AST/parser/evaluator;
 - `RqlPlanV1` logical structures;
 - canonical encoding and domain-separated plan hash;
 - name-to-immutable-id binding;
@@ -830,8 +830,8 @@ Deliver:
 - model and property tests for predicate totality.
 
 **Labor cut (2026-07-31):** `residiuum_sdk::predicate` (total Residiuum eval),
-`residiuum_sdk::plan_v1` (`dql-plan-encoding-v1`, BLAKE3 domain
-`dingo:dql-plan-v1:canonical-v1`), `PlanBuilder` + name binding,
+`residiuum_sdk::plan_v1` (`rql-plan-encoding-v1`, BLAKE3 domain
+`residiuum:rql-plan-v1:canonical-v1`), `PlanBuilder` + name binding,
 `spec/app/v1/plan_vectors_v1.json` hashes locked, tests
 `app4_predicate_plan`. Full RQL source parsing remains APP-5; scan/index
 oracle parity residual.
@@ -852,7 +852,7 @@ Deliver:
   and explain;
 - ordered diagnostics;
 - explicit rejection for non-Core RQL v1 constructs;
-- `dql-app-core-v1` conformance corpus.
+- `rql-app-core-v1` conformance corpus.
 
 Exit:
 
@@ -984,7 +984,7 @@ The package is accepted only when every item is true:
       errors;
 - [ ] unsupported durability is rejected or honestly upgraded and reported;
 - [ ] RQL and builder compile to one canonical plan;
-- [ ] the shipped language advertises `dql-app-core-v1`, not complete RQL v1;
+- [ ] the shipped language advertises `rql-app-core-v1`, not complete RQL v1;
 - [ ] pagination is bounded, authenticated, Heap/plan/parameter-bound, and
       mutation-fenced;
 - [ ] complete coverage is the default and false empty results are impossible;

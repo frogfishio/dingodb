@@ -14,22 +14,22 @@
 //! - Per-partition Raft-equivalent elections, log matching, and commit evidence
 //!   ([`raft`] module; CLUSTER_SPEC §10)
 //! - Durable Raft hard state / log / membership / snapshots
-//!   ([`raft_persist`]; DEF-035 / `dingo-raft-persist-v1`)
+//!   ([`raft_persist`]; DEF-035 / `residiuum-raft-persist-v1`)
 //! - Network Raft RPC types + single-peer node over a transport
-//!   ([`raft_rpc`]; DEF-036 / `dingo-raft-rpc-v1`)
+//!   ([`raft_rpc`]; DEF-036 / `residiuum-raft-rpc-v1`)
 //! - Convergent-append dual-accept + reconcile ([`convergent`]; CLUSTER_SPEC §9.2)
 //! - Distributed find/scan with coverage honesty (Stage 8e; CLUSTER_SPEC §17)
 //! - Multi-page distributed query continuation + deterministic merge
 //!   ([`QUERY_CONTINUATION_PROFILE`]; DEF-040 / CLUSTER_SPEC §17.3–§17.4)
 //! - Interruptible partition rebalance (Stage 8f; CLUSTER_SPEC §14)
 //! - Durable rebalance jobs + joint membership restore (DEF-038 /
-//!   `dingo-rebalance-control-v1`)
+//!   `residiuum-rebalance-control-v1`)
 //! - Anti-entropy inventory + replica repair (DEF-039 /
-//!   `dingo-anti-entropy-v1`)
+//!   `residiuum-anti-entropy-v1`)
 //! - Deterministic verification harness: seeded faults, history, linearizability
-//!   ([`sim`]; DEF-041 / `dingo-cluster-verify-v1`)
+//!   ([`sim`]; DEF-041 / `residiuum-cluster-verify-v1`)
 //! - Multi-process OS chaos + short soak history dumps
-//!   ([`multiproc`]; DEF-041-N / `dingo-cluster-multiproc-v1`)
+//!   ([`multiproc`]; DEF-041-N / `residiuum-cluster-multiproc-v1`)
 //! - Multi-partition batch put ([`Cluster::put_many`]; product capacity path /
 //!   WORK_HORIZON S3 — independent partition leaders, honest acks)
 //! - Node-local salvage without cluster software

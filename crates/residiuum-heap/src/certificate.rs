@@ -513,18 +513,20 @@ mod tests {
 
     #[test]
     fn bootstrap_certificate_verifies() {
-        let master_pk: [u8; 32] =
-            hex("712651f450ba05b63898b99ef5f7ba45632e8e2527f7f715cd671ec4024cc51e")
-                .try_into()
-                .unwrap();
-        let cose = hex(
-            "845825a2012703781f6170706c69636174696f6e2f64696e676f2e686561702d6b65792b63626f72a058a2ad01010250000102030405460788090a0b0c0d0e0f0350101112131415461798191a1b1c1d1e1f0401050106502021222324254627a8292a2b2c2d2e2f07582003a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8080d09800a1a6553f1000b1a6553ff100c6d64696e676f3a646174613a76310d5820141ddf2e77d4f690748cf74ecd390d44687d477b31b8931fa37abd02c35dbaba58409adfb56b10bc4db5114d082633009cd27b917fd300184ca4ea4672ffed3f0658e51e89196f38184b8e31a41e6dd4998ec33813a56e639f40c46127c60df31308",
-        );
+        let vectors: serde_json::Value =
+            serde_json::from_str(include_str!("../../../spec/heap/vectors-v1.json")).unwrap();
+        let master_pk: [u8; 32] = hex(vectors["inputs"]["master_public_key"].as_str().unwrap())
+            .try_into()
+            .unwrap();
+        let cert = vectors["accepted"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == "cert-bootstrap-v1")
+            .unwrap();
+        let cose = hex(cert["cose_sign1"].as_str().unwrap());
         let v = verify_certificate(&cose, &master_pk).expect("verify");
-        assert_eq!(
-            hex::encode(v.fingerprint),
-            "a20439c4d685f8a516d13d2d43f744dde7be2c481da012353687ffa79e040672"
-        );
+        assert_eq!(hex::encode(v.fingerprint), cert["sha256"].as_str().unwrap());
         assert_eq!(v.rights.bits(), 13);
     }
 }

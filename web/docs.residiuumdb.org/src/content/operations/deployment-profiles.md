@@ -36,7 +36,7 @@ Low (read-only evaluation of labels). Choosing network multi-node for production
 | Profile | How | Status |
 |---------|-----|--------|
 | Embedded single-node | `Residiuum::open` | Experimental / early access |
-| Single-node TCP | `residuum serve` | Development only |
+| Single-node TCP | `residiuum serve` | Development only |
 | In-process cluster | `open_cluster` | Integration-test harness |
 | Network multi-node | `serve-cluster` | Experimental — **not production** |
 | S3/GCS placement | Mirror roots | Experimental mirror |

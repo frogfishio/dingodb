@@ -102,9 +102,9 @@ impl ObjectMediaUri {
         }
     }
 
-    /// Object key for a sealed segment id (hex + `.dingo`).
+    /// Object key for a sealed segment id (hex + `.residiuum`).
     pub fn segment_key(&self, segment_hex: &str) -> String {
-        let file = format!("{segment_hex}.dingo");
+        let file = format!("{segment_hex}.residiuum");
         if self.key_prefix.is_empty() {
             file
         } else {
@@ -277,7 +277,7 @@ impl MediaBackend for FilesystemMedia {
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)?;
         }
-        let tmp = dest.with_extension("dingo.tmp");
+        let tmp = dest.with_extension("residiuum.tmp");
         {
             let mut out = OpenOptions::new()
                 .create(true)
@@ -614,7 +614,7 @@ mod tests {
                 assert_eq!(u.scheme, ObjectScheme::Local);
                 assert_eq!(u.local_root.as_deref(), Some(Path::new("/tmp/obj")));
                 assert_eq!(u.key_prefix, "archive");
-                assert_eq!(u.segment_key("abcd"), "archive/abcd.dingo");
+                assert_eq!(u.segment_key("abcd"), "archive/abcd.residiuum");
             }
             _ => panic!("expected object"),
         }
@@ -656,11 +656,11 @@ mod tests {
         let root = dir.path().join("objects");
         let loc = MediaLocator::parse(&format!("object:local:{}", root.display())).unwrap();
         let media = open_media(&loc).unwrap();
-        media.put_object("seg/aa.dingo", b"hello-object").unwrap();
-        assert!(media.object_exists("seg/aa.dingo").unwrap());
-        assert_eq!(media.get_object("seg/aa.dingo").unwrap(), b"hello-object");
-        media.delete_object("seg/aa.dingo").unwrap();
-        assert!(!media.object_exists("seg/aa.dingo").unwrap());
+        media.put_object("seg/aa.residiuum", b"hello-object").unwrap();
+        assert!(media.object_exists("seg/aa.residiuum").unwrap());
+        assert_eq!(media.get_object("seg/aa.residiuum").unwrap(), b"hello-object");
+        media.delete_object("seg/aa.residiuum").unwrap();
+        assert!(!media.object_exists("seg/aa.residiuum").unwrap());
     }
 
     #[test]
@@ -668,7 +668,7 @@ mod tests {
         let loc = MediaLocator::parse("s3://bucket/p").unwrap();
         let media = open_media_with(&loc, &CloudMirrorConfig::new()).unwrap();
         assert!(!media.is_available());
-        let err = media.put_object("x.dingo", b"nope").unwrap_err();
+        let err = media.put_object("x.residiuum", b"nope").unwrap_err();
         assert!(matches!(err, StoreError::MediaUnsupported(_)));
     }
 
@@ -682,18 +682,18 @@ mod tests {
         let loc = MediaLocator::parse("s3://my-bucket/archive").unwrap();
         let media = open_media_with(&loc, &mirror).unwrap();
         assert!(media.is_available());
-        media.put_object("seg01.dingo", b"cloud-bytes").unwrap();
-        assert!(media.object_exists("seg01.dingo").unwrap());
-        assert_eq!(media.get_object("seg01.dingo").unwrap(), b"cloud-bytes");
+        media.put_object("seg01.residiuum", b"cloud-bytes").unwrap();
+        assert!(media.object_exists("seg01.residiuum").unwrap());
+        assert_eq!(media.get_object("seg01.residiuum").unwrap(), b"cloud-bytes");
         // On-disk layout: {root}/{bucket}/{prefix}/{key}
         let on_disk = dir
             .path()
             .join("my-bucket")
             .join("archive")
-            .join("seg01.dingo");
+            .join("seg01.residiuum");
         assert!(on_disk.is_file());
-        media.delete_object("seg01.dingo").unwrap();
-        assert!(!media.object_exists("seg01.dingo").unwrap());
+        media.delete_object("seg01.residiuum").unwrap();
+        assert!(!media.object_exists("seg01.residiuum").unwrap());
     }
 
     #[test]

@@ -133,7 +133,7 @@ proptest! {
         let mut prefix = prefix;
         let mut i = 0;
         while i + 8 <= prefix.len() {
-            if &prefix[i..i + 8] == b"DINGOFRM" {
+            if &prefix[i..i + 8] == b"RESIDFRM" {
                 prefix[i] = 0;
             }
             i += 1;

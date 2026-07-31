@@ -20,7 +20,7 @@ fn legacy_flat_feature_is_opt_in_and_labelled() {
     );
     assert!(!heap_only_embedded_profile());
     assert!(FLAT_COLLECTION_SURFACE_LABEL.contains("CPR-001"));
-    assert!(FLAT_COLLECTION_SURFACE_LABEL.contains("not dingo-heap-v1"));
+    assert!(FLAT_COLLECTION_SURFACE_LABEL.contains("not residiuum-heap-v1"));
     assert!(!flat_collection_claim_language().is_empty());
     assert_eq!(SDK_API_VERSION, "1.0");
     // HP-010 claim must stay Level 1 until matrix flips.
@@ -30,8 +30,8 @@ fn legacy_flat_feature_is_opt_in_and_labelled() {
 #[test]
 fn flat_open_and_deployment_host_both_available() {
     let dir = tempdir().unwrap();
-    let flat_path = dir.path().join("flat.dingo");
-    let dep_path = dir.path().join("dep.dingo");
+    let flat_path = dir.path().join("flat.residiuum");
+    let dep_path = dir.path().join("dep.residiuum");
 
     {
         let mut db = Residiuum::open(&flat_path).expect("legacy open");
@@ -44,7 +44,7 @@ fn flat_open_and_deployment_host_both_available() {
 
     let deployment = Residiuum::open_deployment(&dep_path).expect("open_deployment");
     assert_eq!(deployment.root(), dep_path.as_path());
-    let dep2_path = dir.path().join("dep2.dingo");
+    let dep2_path = dir.path().join("dep2.residiuum");
     let _ = Residiuum::create_deployment(&dep2_path).expect("create_deployment");
     let _ = ResidiuumDeployment::open(&dep2_path).expect("reopen deployment");
 }
@@ -52,7 +52,7 @@ fn flat_open_and_deployment_host_both_available() {
 #[test]
 fn raw_store_access_documented_as_non_qualified() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("raw.dingo");
+    let path = dir.path().join("raw.residiuum");
     let db = Residiuum::open(&path).unwrap();
     let store = db.store().expect("legacy store()");
     let _ = store.store_id();

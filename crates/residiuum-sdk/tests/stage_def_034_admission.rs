@@ -39,7 +39,7 @@ fn start_server(
     dir: &TempDir,
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, Arc<AdmissionController>, thread::JoinHandle<()>) {
-    let store_path = dir.path().join("admission.dingo");
+    let store_path = dir.path().join("admission.residiuum");
     drop(Residiuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
@@ -108,7 +108,7 @@ fn rpc_once(bind: &str, token: Option<&str>, op: &str, extra: serde_json::Value)
 
 #[test]
 fn profile_tag_and_defaults() {
-    assert_eq!(ADMISSION_PROFILE, "dingo-admission-v1");
+    assert_eq!(ADMISSION_PROFILE, "residiuum-admission-v1");
     let d = AdmissionLimits::draft_defaults();
     assert!(d.global_max_rps >= 1);
     assert!(d.per_principal_max_rps >= 1);
@@ -271,7 +271,7 @@ fn expensive_op_concurrency_budget() {
     let dir = TempDir::new().unwrap();
     // Seed some data so find has work.
     {
-        let path = dir.path().join("admission.dingo");
+        let path = dir.path().join("admission.residiuum");
         let mut db = Residiuum::open(&path).unwrap();
         let mut c = db.collection("docs").unwrap();
         for i in 0..20 {

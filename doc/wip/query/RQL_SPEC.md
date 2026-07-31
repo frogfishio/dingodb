@@ -2,7 +2,7 @@
 
 Status: **Normative design v1.0-draft; shipped implementation is v0.1 subset**
 
-Dialect identifier: `dql`
+Dialect identifier: `rql`
 
 Audience: language, SDK, planner, server, and conformance implementers
 Normative companions: [RESIDIUUM_PREDICATE_SPEC.md](../../reference/query/RESIDIUUM_PREDICATE_SPEC.md),
@@ -40,7 +40,7 @@ RQL is not SQL, a write language, a constraint language, or a second
 mathematical kernel.
 
 RRE is the separate language for stored invariants. RQL and RRE share
-`dingo-predicate-v1`, but they have different authority:
+`residiuum-predicate-v1`, but they have different authority:
 
 ```text
 RQL          asks what data to read and how to shape it
@@ -123,7 +123,7 @@ more advanced transformation.
 ### 3.1 Application Core conformance level
 
 The first ordinary application release implements the monotonic
-`dql-app-core-v1` conformance level. It accepts:
+`rql-app-core-v1` conformance level. It accepts:
 
 - one root collection;
 - root `where` predicates and named parameters;
@@ -138,20 +138,20 @@ The first ordinary application release implements the monotonic
 Its grammar is the v1 grammar with `enrich`, `within`, `at rank`, `access`, and
 `rank domain` removed. It adds no syntax and changes no semantics. Those
 constructs fail with `QueryInvalid` and diagnostic code
-`dql_feature_unavailable`; they are never ignored or weakened.
+`rql_feature_unavailable`; they are never ignored or weakened.
 
 Both RQL source and the Rust query builder compile to the same canonical
 `RqlPlanV1`. The source conformance identifier and logical-plan identifier are
 reported separately:
 
 ```text
-source profile: dql-app-core-v1
-plan profile:   dql-plan-v1
+source profile: rql-app-core-v1
+plan profile:   rql-plan-v1
 ```
 
 The implementation and acceptance contract is
 [doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](../../todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
-The existing `dql-source-v0.1` enrichment compiler remains a separate
+The existing `rql-source-v0.1` enrichment compiler remains a separate
 compatibility surface until the corresponding v1 host execution is delivered.
 
 ## 4. Lexical rules
@@ -171,7 +171,7 @@ comment         = "--", { any character except line ending } ;
 Whitespace and comments separate tokens and otherwise have no meaning.
 
 Bare identifiers are restricted to the grammar above. A field path may use
-the bracket notation defined by `dingo-predicate-v1` for names that cannot be
+the bracket notation defined by `residiuum-predicate-v1` for names that cannot be
 written bare.
 
 Reserved words:
@@ -190,7 +190,7 @@ collection names, or output names.
 ## 5. Grammar
 
 The following EBNF is normative. `predicate`, `path`, and `literal` are imported
-from `dingo-predicate-v1`. Within RQL predicates, `operand` is extended with
+from `residiuum-predicate-v1`. Within RQL predicates, `operand` is extended with
 the parameter production below.
 
 ```ebnf
@@ -275,7 +275,7 @@ collection binding resolves inside that Heap. Quoted source references permit
 any valid collection name, for example `from "2026/imports" as imports`.
 
 RQL has no syntax for another Heap. A host that attempts to bind a source from
-another Heap must fail before execution with `dql_heap_mismatch`.
+another Heap must fail before execution with `rql_heap_mismatch`.
 
 ### 6.2 Root scope
 
@@ -326,7 +326,7 @@ qualified by the candidate alias refer to that candidate. Paths qualified by a
 visible outer alias refer to the corresponding outer row.
 
 An output name must not already exist on the current row. Replacement requires
-an explicit future construct; v1 fails with `dql_output_conflict`.
+an explicit future construct; v1 fails with `rql_output_conflict`.
 
 ### 6.4 Nested scope
 
@@ -347,7 +347,7 @@ Outer aliases remain readable. The element alias shadows no existing alias.
 Nested depth is bounded by the host and recorded in the plan profile.
 
 `within` over an absent path, Null, or a non-carrier value is a runtime
-`dql_within_type` error. It is never interpreted as an empty bag.
+`rql_within_type` error. It is never interpreted as an empty bag.
 
 ### 6.5 Parameters
 
@@ -371,13 +371,13 @@ or execution. They are values, never source fragments.
 - parameter values are included in execution and continuation identity;
 - explain redacts parameter values by default and reports their types.
 
-A missing binding is `dql_parameter_unbound`. A carrier or product parameter is
-`dql_parameter_type`.
+A missing binding is `rql_parameter_unbound`. A carrier or product parameter is
+`rql_parameter_type`.
 
 ## 7. Root filtering
 
 A root `where` keeps the current row exactly when the imported
-`dingo-predicate-v1` predicate evaluates to `true`.
+`residiuum-predicate-v1` predicate evaluates to `true`.
 
 Pipeline order is semantic:
 
@@ -494,7 +494,7 @@ the output contains Null.
 A block over an absent value is absent. A block over Null remains Null. A block
 over a product projects that product. A block over an optional maps through the
 optional. A block over a sequence or bag maps over its members. Any other value
-fails with `dql_project_type`.
+fails with `rql_project_type`.
 
 Arbitrary calculated fields are outside v1. Use a subsequent SDA reduction
 when required.
@@ -544,7 +544,7 @@ Absent placement is controlled independently:
 - incompatible duplicate placement directives are a static error.
 
 A product, sequence, bag, set, or map encountered as a sort key fails with
-`dql_sort_type`.
+`rql_sort_type`.
 
 ## 11. Limit, pages, ranked access, and continuation
 
@@ -661,7 +661,7 @@ A continuation token binds at least:
 
 For direct access it additionally binds the frozen read view, order-domain
 identity, rank-map or selection-artifact identity, rank domain, and next
-one-based rank required by `dingo-direct-cursor-v1`.
+one-based rank required by `residiuum-direct-cursor-v1`.
 
 A token from another query, Heap, principal, or incompatible frontier fails.
 It never restarts silently.
@@ -740,7 +740,7 @@ Meanings:
 
 Budgets are hard upper bounds. Reaching a bound:
 
-- fails with `dql_budget_exhausted` under `coverage complete`;
+- fails with `rql_budget_exhausted` under `coverage complete`;
 - returns explicit incomplete coverage under `coverage allow incomplete`.
 
 A server may impose tighter policy ceilings. It must report the effective
@@ -779,7 +779,7 @@ Compilation produces `RqlPlanV1`:
 
 ```text
 RqlPlanV1 {
-  profile: "dql-plan-v1"
+  profile: "rql-plan-v1"
   heap_binding
   root: Source
   steps: Seq<Filter | Enrich | Within>
@@ -795,7 +795,7 @@ RqlPlanV1 {
   coverage: Complete | AllowIncomplete
   budget: Optional<Budget>
   explain: Bool
-  predicate_profile: "dingo-predicate-v1"
+  predicate_profile: "residiuum-predicate-v1"
   enr_profile
   sda_profile
 }
@@ -829,7 +829,7 @@ The canonical encoding:
 
 The logical plan above is normative. This language specification does not
 assign persistent binary field numbers. No implementation may persist,
-exchange, or authenticate a purported `dql-plan-v1` until a companion plan
+exchange, or authenticate a purported `rql-plan-v1` until a companion plan
 encoding profile fixes its canonical bytes. Compiler and executor development
 may use an ephemeral in-process representation in the meantime.
 
@@ -843,7 +843,7 @@ A conforming compiler:
 1. validates UTF-8 and resource ceilings;
 2. lexes and parses the complete source;
 3. resolves keywords, aliases, paths, and output namespaces;
-4. imports and normalizes `dingo-predicate-v1` predicates;
+4. imports and normalizes `residiuum-predicate-v1` predicates;
 5. checks clause order and uniqueness;
 6. checks nested scopes and projection conflicts;
 7. binds source names to immutable identities in the authenticated Heap;
@@ -896,36 +896,36 @@ direct-access implementation.
 Initial stable families:
 
 ```text
-dql_lex_error
-dql_parse_error
-dql_reserved_identifier
-dql_duplicate_clause
-dql_clause_order
-dql_source_unknown
-dql_alias_conflict
-dql_path_invalid
-dql_output_conflict
-dql_projection_conflict
-dql_predicate_invalid
-dql_parameter_unbound
-dql_parameter_type
-dql_cardinality_missing
-dql_cardinality_duplicate
-dql_within_type
-dql_project_type
-dql_sort_type
-dql_budget_invalid
-dql_budget_exhausted
-dql_coverage_incomplete
-dql_current_unavailable
-dql_continuation_invalid
-dql_continuation_expired
-dql_rank_invalid
-dql_direct_unavailable
-dql_rank_domain_mismatch
-dql_heap_mismatch
-dql_profile_unsupported
-dql_limit_exceeded
+rql_lex_error
+rql_parse_error
+rql_reserved_identifier
+rql_duplicate_clause
+rql_clause_order
+rql_source_unknown
+rql_alias_conflict
+rql_path_invalid
+rql_output_conflict
+rql_projection_conflict
+rql_predicate_invalid
+rql_parameter_unbound
+rql_parameter_type
+rql_cardinality_missing
+rql_cardinality_duplicate
+rql_within_type
+rql_project_type
+rql_sort_type
+rql_budget_invalid
+rql_budget_exhausted
+rql_coverage_incomplete
+rql_current_unavailable
+rql_continuation_invalid
+rql_continuation_expired
+rql_rank_invalid
+rql_direct_unavailable
+rql_rank_domain_mismatch
+rql_heap_mismatch
+rql_profile_unsupported
+rql_limit_exceeded
 ```
 
 Compile errors carry source spans. Runtime errors carry plan hash, safe
@@ -960,7 +960,7 @@ The v1 conformance suite must cover:
 
 ### 20.2 Predicate equivalence
 
-- all `dingo-predicate-v1` cases;
+- all `residiuum-predicate-v1` cases;
 - native, SDA-lowered, indexed, and scanned equivalence;
 - Null and absence;
 - heterogeneous documents.
@@ -1010,7 +1010,7 @@ The v1 conformance suite must cover:
 
 ## 21. Implementation status and migration
 
-The shipped `dql` compiler currently supports:
+The shipped `rql` compiler currently supports:
 
 ```text
 from
@@ -1024,8 +1024,8 @@ ranked direct access, coverage, consistency, budgets, or explain.
 
 Therefore:
 
-- current binaries identify their accepted surface as `dql-source-v0.1`;
-- the future complete plan identifies itself as `dql-plan-v1`;
+- current binaries identify their accepted surface as `rql-source-v0.1`;
+- the future complete plan identifies itself as `rql-plan-v1`;
 - accepting a v1-only construct on a v0.1 runtime fails closed;
 - the v0.1 parser must not be described as complete RQL;
 - existing v0.1 programs are intended to remain valid v1 programs, except that
@@ -1041,7 +1041,7 @@ Implementation order:
 6. freeze projection behavior;
 7. add deterministic order and limit;
 8. add page size and continuation;
-9. implement `dingo-direct-access-v1`, then add `at rank` and access policy;
+9. implement `residiuum-direct-access-v1`, then add `at rank` and access policy;
 10. add coverage, consistency, and budgets;
 11. add explain and full conformance.
 

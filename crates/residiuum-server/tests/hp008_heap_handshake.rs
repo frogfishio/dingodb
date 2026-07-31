@@ -288,7 +288,7 @@ fn successful_auth_then_proof_replay_fails() {
     let mut pending = PendingChallenge::issue(nonce, Instant::now());
     let challenge = build_challenge(verified.deployment_id.to_string(), &nonce);
     assert_eq!(challenge.msg, "heap_challenge");
-    assert_eq!(challenge.audience, "dingo:data:v1");
+    assert_eq!(challenge.audience, "residiuum:data:v1");
 
     let first = authenticate_heap_auth(
         &reg,
@@ -304,7 +304,7 @@ fn successful_auth_then_proof_replay_fails() {
             assert_eq!(welcome.heap_id, verified.heap_id.to_string());
             assert_eq!(welcome.session_id.len(), 32);
             assert!(welcome.session_id.chars().all(|c| c.is_ascii_hexdigit()));
-            assert_eq!(welcome.heap_profile, "dingo-heap-v1");
+            assert_eq!(welcome.heap_profile, "residiuum-heap-v1");
             cap
         }
         HeapAuthOutcome::Reject { cause, .. } => panic!("expected welcome, got {cause:?}"),
@@ -367,7 +367,7 @@ fn successful_auth_then_proof_replay_fails() {
     assert!(request_registry_allows(106)); // APP-1 collection_create active
     assert!(request_registry_allows(131)); // index_create active
     assert!(!request_registry_allows(140)); // export still reserved
-    assert!(!request_registry_allows(118)); // dql_query still reserved
+    assert!(!request_registry_allows(118)); // rql_query still reserved
 }
 
 #[test]

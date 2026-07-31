@@ -25,7 +25,7 @@ fn put_n(store: &mut Store, n: usize, prefix: &str) {
 
 #[test]
 fn cursor_profile_tag() {
-    assert_eq!(CURSOR_PROFILE, "dingo-cursor-v2");
+    assert_eq!(CURSOR_PROFILE, "residiuum-cursor-v2");
 }
 
 #[test]

@@ -24,9 +24,9 @@ use std::path::{Path, PathBuf};
 /// Filename under `indexes/` for the primary current-state cache.
 pub const PRIMARY_CACHE_FILE: &str = "primary.idx";
 
-const MAGIC_V1: &[u8; 8] = b"DIDX0001";
-const MAGIC_V2: &[u8; 8] = b"DIDX0002";
-const MAGIC_V3: &[u8; 8] = b"DIDX0003";
+const MAGIC_V1: &[u8; 8] = b"RIDX0001";
+const MAGIC_V2: &[u8; 8] = b"RIDX0002";
+const MAGIC_V3: &[u8; 8] = b"RIDX0003";
 const VERSION_V1: u32 = 1;
 const VERSION_V2: u32 = 2;
 const VERSION_V3: u32 = 3;

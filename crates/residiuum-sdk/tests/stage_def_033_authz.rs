@@ -36,7 +36,7 @@ fn start_server(
     dir: &TempDir,
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
-    let store_path = dir.path().join("authz.dingo");
+    let store_path = dir.path().join("authz.residiuum");
     // Create the store (open creates on missing path), then drop so serve can lock.
     drop(Residiuum::open(&store_path).unwrap());
     let port = free_port();
@@ -120,7 +120,7 @@ fn writer_policy() -> (AuthzPolicy, Arc<AuditLog>) {
 
 #[test]
 fn authz_profile_tag() {
-    assert_eq!(AUTHZ_PROFILE, "dingo-authz-v1");
+    assert_eq!(AUTHZ_PROFILE, "residiuum-authz-v1");
     assert!(PrivilegeSet::writer().contains(Privilege::Write));
     assert!(!PrivilegeSet::writer().contains(Privilege::Purge));
     assert!(!PrivilegeSet::writer().contains(Privilege::Admin));

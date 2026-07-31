@@ -14,7 +14,7 @@ python3 - <<'PY' || exit 1
 from pathlib import Path
 text = Path("doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md").read_text(encoding="utf-8")
 needles = [
-    "dingo-crash-recovery-v1",
+    "residiuum-crash-recovery-v1",
     "Durability-mode acknowledgement",
     "Inline and chunked publication",
     "Read outcome decision table",

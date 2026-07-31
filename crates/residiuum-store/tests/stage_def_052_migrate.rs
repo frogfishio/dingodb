@@ -24,7 +24,7 @@ fn wire_and_protocol_matrix_declared() {
     assert!(!wire.is_empty());
     assert!(wire.iter().any(|r| r.can_write && r.status == "current"));
     let proto = snapshot_protocol_compat();
-    assert_eq!(proto.profile, "dingo-rpc-v1");
+    assert_eq!(proto.profile, "residiuum-rpc-v1");
     assert!(proto.mixed_major_requires_policy);
     assert_eq!(proto.rpc_wire_label, "1.0-draft");
 }
@@ -78,7 +78,7 @@ fn full_migration_roundtrip_preserves_source() {
     assert_eq!(job.profile, MIGRATE_PROFILE);
     assert_eq!(job.phase, MigratePhase::Done);
     assert!(!job.wire_matrix.is_empty());
-    assert_eq!(job.protocol.profile, "dingo-rpc-v1");
+    assert_eq!(job.protocol.profile, "residiuum-rpc-v1");
 }
 
 #[test]

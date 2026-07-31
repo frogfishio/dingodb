@@ -9,7 +9,7 @@
 //!
 //! ```text
 //! for each record:
-//!   magic[4] = b"DVL1"
+//!   magic[4] = b"RVL1"
 //!   generation:u32 LE
 //!   flags:u32 LE
 //!   value_len:u64 LE
@@ -21,7 +21,7 @@ use crate::error::StoreError;
 use std::io;
 
 /// Per-record magic.
-pub const VALUE_LOG_MAGIC: &[u8; 4] = b"DVL1";
+pub const VALUE_LOG_MAGIC: &[u8; 4] = b"RVL1";
 /// Header size before value bytes.
 pub const VALUE_LOG_HEADER_LEN: usize = 4 + 4 + 4 + 8 + 4;
 

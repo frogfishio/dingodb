@@ -54,7 +54,7 @@ fn stale_pid_text_does_not_block_free_lock() {
     let lock = path.join("store-info").join("writer.lock");
     std::fs::write(
         &lock,
-        "dingo-writer-lock\npid=1\nacquired_ns=0\nnote=stale-dead\n",
+        "residiuum-writer-lock\npid=1\nacquired_ns=0\nnote=stale-dead\n",
     )
     .unwrap();
     let reopened = Store::open(&path).unwrap();

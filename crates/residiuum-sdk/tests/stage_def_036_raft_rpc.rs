@@ -71,7 +71,7 @@ fn start_peer(
 #[test]
 fn feature_and_profile_labels() {
     assert_eq!(FEATURE_RAFT_RPC_V1, "raft-rpc-v1");
-    assert_eq!(SDK_RAFT_RPC_PROFILE, "dingo-raft-rpc-v1");
+    assert_eq!(SDK_RAFT_RPC_PROFILE, "residiuum-raft-rpc-v1");
 }
 
 #[test]

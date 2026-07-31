@@ -63,7 +63,7 @@ or explicit seal) so the segment is immutable.
 API (Rust): `Store::transfer_segment_to_tier(segment_id, tier, TierMoveMode::{Copy,Move})`.
 
 Each transfer writes migration evidence under `recovery/migrations/` with
-source/dest BLAKE3 hashes and `tool_version=dingo-store-9`.
+source/dest BLAKE3 hashes and `tool_version=residiuum-store-9`.
 
 ### 3.3 Mark a tier offline
 

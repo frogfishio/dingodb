@@ -31,7 +31,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Profile for heap lifecycle control documents.
-pub const HEAP_LIFECYCLE_PROFILE: &str = "dingo-heap-lifecycle-v1";
+pub const HEAP_LIFECYCLE_PROFILE: &str = "residiuum-heap-lifecycle-v1";
 
 /// Directory under `meta/` for lifecycle receipts and purge plans.
 pub const LIFECYCLE_DIR: &str = "lifecycle";

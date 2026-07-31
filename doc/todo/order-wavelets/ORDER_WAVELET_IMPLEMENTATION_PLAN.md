@@ -194,7 +194,7 @@ Deliver:
 - multi-block exact conditional-count navigation;
 - bounded page/cache policy keyed by all universal binding fields;
 - DDA planner admission and `order_domain_id`;
-- `dingo-direct-cursor-v1` continuation for ordered pages;
+- `residiuum-direct-cursor-v1` continuation for ordered pages;
 - explain/SDA evidence for visited levels, counts, coverage, and cache state;
 - explicit build/refuse behavior for absent artifacts.
 

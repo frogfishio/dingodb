@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Authorization profile label for capability matrices and startup reports.
-pub const AUTHZ_PROFILE: &str = "dingo-authz-v1";
+pub const AUTHZ_PROFILE: &str = "residiuum-authz-v1";
 
 /// Maximum length for principal ids and other audit labels (bytes).
 pub const MAX_AUDIT_LABEL_LEN: usize = 128;

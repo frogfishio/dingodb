@@ -5,10 +5,10 @@ Status: **Normative design v1.0-draft; not yet implemented**
 Profiles:
 
 ```text
-dingo-order-wavelet-v1
-dingo-order-dictionary-v1
-dingo-order-wavelet-block-v1
-dingo-order-wavelet-cursor-v1
+residiuum-order-wavelet-v1
+residiuum-order-dictionary-v1
+residiuum-order-wavelet-block-v1
+residiuum-order-wavelet-cursor-v1
 ```
 
 Audience: query planner, index, storage, SDK, cluster, examination, and
@@ -68,7 +68,7 @@ with positioning work independent of the numeric magnitude of `k`, subject to
 the admitted bitmap and order-index costs defined here.
 
 DOW is a physical implementation of the logical ordering and direct-selection
-requirements in `dingo-direct-access-v1`. It does not change RQL semantics.
+requirements in `residiuum-direct-access-v1`. It does not change RQL semantics.
 
 ## 2. Requirement language
 
@@ -588,7 +588,7 @@ M_0[i]
 \end{cases}
 \]
 
-`M₀` MUST be exact under `dingo-predicate-v1` and aligned to:
+`M₀` MUST be exact under `residiuum-predicate-v1` and aligned to:
 
 - the same Heap;
 - the same frozen read view;
@@ -974,7 +974,7 @@ where `A` is the complete RQL-ordered match sequence.
 
 ### 12.4 Continuation
 
-The external continuation remains `dingo-direct-cursor-v1`. It binds:
+The external continuation remains `residiuum-direct-cursor-v1`. It binds:
 
 - order-wavelet generation;
 - order dictionary;
@@ -1093,7 +1093,7 @@ An order-wavelet block contains:
 
 ```text
 OrderWaveletBlockV1 {
-  profile: "dingo-order-wavelet-block-v1"
+  profile: "residiuum-order-wavelet-block-v1"
   heap_id
   collection_id
   block_id
@@ -1627,7 +1627,7 @@ never cached or certified as complete.
 
 ```text
 order_wavelet {
-  profile: "dingo-order-wavelet-v1"
+  profile: "residiuum-order-wavelet-v1"
   order_definition
   order_dictionary_ids
   order_wavelet_blocks

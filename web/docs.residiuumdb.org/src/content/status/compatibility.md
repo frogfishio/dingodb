@@ -26,8 +26,8 @@ keywords:
 | WIRE_PROFILE_LABEL | 1.0-draft |
 | RPC_WIRE_LABEL | 1.0-draft |
 | CLUSTER_PROFILE_VERSION | v1 |
-| BACKUP_PROFILE | dingo-backup-v1 |
-| SCRUB_PROFILE | dingo-scrub-v1 |
-| MIGRATE_PROFILE | dingo-migrate-v1 |
+| BACKUP_PROFILE | residiuum-backup-v1 |
+| SCRUB_PROFILE | residiuum-scrub-v1 |
+| MIGRATE_PROFILE | residiuum-migrate-v1 |
 
 These labels measure different things. Do not collapse them into a single “version” claim.

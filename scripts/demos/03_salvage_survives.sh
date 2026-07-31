@@ -15,8 +15,8 @@ fi
 
 WORKDIR="${TMPDIR:-/tmp}/residiuum-demo-salvage-$$"
 mkdir -p "$WORKDIR"
-SRC="$WORKDIR/src.dingo"
-DST="$WORKDIR/dst.dingo"
+SRC="$WORKDIR/src.residiuum"
+DST="$WORKDIR/dst.residiuum"
 trap 'rm -rf "$WORKDIR"' EXIT
 
 echo "== seed store =="

@@ -3,7 +3,7 @@
 //! Layout (FINAL DESIGN §2):
 //!
 //! ```text
-//! magic[8] = b"DMPC0001"
+//! magic[8] = b"RMPC0001"
 //! version:u32 LE
 //! generation:u32 LE
 //! record_count:u32 LE
@@ -25,7 +25,7 @@ use crate::error::StoreError;
 use std::io;
 
 /// Magic for micro-page point containers.
-pub const CONTAINER_MAGIC: &[u8; 8] = b"DMPC0001";
+pub const CONTAINER_MAGIC: &[u8; 8] = b"RMPC0001";
 /// Codec version.
 pub const CONTAINER_VERSION: u32 = 1;
 /// Value stored raw (no compression).

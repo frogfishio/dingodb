@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// Admission-control profile label (capability matrices / startup logs).
-pub const ADMISSION_PROFILE: &str = "dingo-admission-v1";
+pub const ADMISSION_PROFILE: &str = "residiuum-admission-v1";
 
 /// Default global RPC rate (requests per second, process-wide).
 pub const DEFAULT_GLOBAL_MAX_RPS: u32 = 10_000;
@@ -728,6 +728,6 @@ mod tests {
 
     #[test]
     fn profile_tag() {
-        assert_eq!(ADMISSION_PROFILE, "dingo-admission-v1");
+        assert_eq!(ADMISSION_PROFILE, "residiuum-admission-v1");
     }
 }

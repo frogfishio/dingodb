@@ -9,7 +9,7 @@
 //! | `Residiuum::connect_heap` | always | HeapKey remote process ops |
 //!
 //! Package default is heap-only (CPR-001). Stages 3–9 demos enable `legacy-flat-sdk`
-//! or `cluster` explicitly. Gate H6 / `dingo-heap-v1` never covers the flat path.
+//! or `cluster` explicitly. Gate H6 / `residiuum-heap-v1` never covers the flat path.
 //!
 //! **License:** MPL-2.0 for the default embedded + remote surface. The optional
 //! `cluster` feature depends on AGPL `residiuum-cluster` (in-process multi-node).
@@ -29,17 +29,17 @@
 ///
 /// Stages 4 + 7 parity are met for the **legacy flat** surface: embedded,
 /// `residiuum serve`, and cluster handles share put/get/delete/scan/find/history/
-/// indexes. This label does **not** authorize `dingo-heap-v1` qualification.
+/// indexes. This label does **not** authorize `residiuum-heap-v1` qualification.
 pub const SDK_API_VERSION: &str = "1.0";
 
-/// APP-0 frozen public application façade (`dingo-rust-app-v1`).
+/// APP-0 frozen public application façade (`residiuum-rust-app-v1`).
 ///
 /// Prefer these types for new application work. Legacy find/filter budgets still
 /// use [`filter::QueryBudget`]; Application Core budgets are
 /// [`app_v1::QueryBudget`].
 pub mod app_v1;
 mod claim;
-// APP-4: shared predicates + canonical dql-plan-v1 (public modules).
+// APP-4: shared predicates + canonical rql-plan-v1 (public modules).
 #[cfg(feature = "cluster")]
 mod cluster_backend;
 #[cfg(feature = "legacy-flat-sdk")]
@@ -50,9 +50,9 @@ mod directory_cache;
 mod error;
 mod filter;
 mod heap;
-/// Shared total predicate profile (`dingo-predicate-v1`).
+/// Shared total predicate profile (`residiuum-predicate-v1`).
 pub mod predicate;
-/// Canonical Application Core logical plan (`dql-plan-v1`) + plan hash.
+/// Canonical Application Core logical plan (`rql-plan-v1`) + plan hash.
 pub mod plan_v1;
 mod history;
 mod indexes;

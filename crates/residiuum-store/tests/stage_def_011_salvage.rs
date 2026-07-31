@@ -74,7 +74,7 @@ fn salvage_copies_verified_frames_byte_identical() {
         store.put("k", b"payload-bytes", DurabilityMode::Durable).unwrap();
     }
 
-    let src_bytes = fs::read(src.join("active").join("active.dingo")).unwrap();
+    let src_bytes = fs::read(src.join("active").join("active.residiuum")).unwrap();
     let src_report = scan_forward(&src_bytes, SafetyLimits::default());
     let mut src_frame_slices = Vec::new();
     for region in &src_report.regions {
@@ -94,7 +94,7 @@ fn salvage_copies_verified_frames_byte_identical() {
     let mut dest_pool = Vec::new();
     for entry in fs::read_dir(&segs).unwrap() {
         let path = entry.unwrap().path();
-        if path.extension().and_then(|e| e.to_str()) == Some("dingo") {
+        if path.extension().and_then(|e| e.to_str()) == Some("residiuum") {
             dest_pool.extend_from_slice(&fs::read(&path).unwrap());
         }
     }
@@ -124,7 +124,7 @@ fn salvage_records_holes_and_still_recovers_survivors() {
         .unwrap()
         .filter_map(|e| e.ok())
         .map(|e| e.path())
-        .find(|p| p.extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .find(|p| p.extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .expect("sealed segment");
     let mut bytes = fs::read(&seg_file).unwrap();
     if bytes.len() > 80 {
@@ -212,7 +212,7 @@ fn re_salvage_is_deterministic_on_frame_bytes() {
                 .unwrap()
                 .filter_map(|e| e.ok())
                 .map(|e| e.path())
-                .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("dingo"))
+                .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("residiuum"))
                 .collect();
             files.sort();
             for f in files {
@@ -244,9 +244,9 @@ fn incomplete_tail_does_not_poison_salvage_to() {
             .put("keep", b"alive", DurabilityMode::Durable)
             .unwrap();
     }
-    let active = path.join("active").join("active.dingo");
+    let active = path.join("active").join("active.residiuum");
     let mut f = OpenOptions::new().append(true).open(&active).unwrap();
-    f.write_all(b"DINGOFRM").unwrap();
+    f.write_all(b"RESIDFRM").unwrap();
     f.write_all(&[0u8; 40]).unwrap();
     f.sync_all().unwrap();
 

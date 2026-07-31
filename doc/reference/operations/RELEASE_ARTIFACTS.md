@@ -20,7 +20,7 @@ by each crate’s `include` list in `Cargo.toml`.
 | `crates/residiuum-format` | `residiuum-format` | — | Wire format / salvage scan |
 | `crates/residiuum-store` | `residiuum-store` | — | Includes `crash_matrix.v1.json` |
 | `crates/residiuum-client` | `residiuum-client` | — | Wire framing / client protocol |
-| `crates/residiuum-sdk` | `residiuum-sdk` | — | Collection API + dialects (incl. official `dql`) |
+| `crates/residiuum-sdk` | `residiuum-sdk` | — | Collection API + dialects (incl. official `rql`) |
 | `crates/residiuum-server` | `residiuum-server` | — | Network serve runtime |
 | `crates/residiuum-examine` | `residiuum-examine` | — | Examination host |
 | `crates/residiuum-cli` | `residiuum-cli` | `residiuum` | Operator CLI |

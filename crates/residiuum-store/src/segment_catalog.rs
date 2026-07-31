@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 /// Filename under `catalogs/` for the segment summary hierarchy.
 pub const SEGMENT_CATALOG_FILE: &str = "segments.cat";
 
-const MAGIC: &[u8; 8] = b"DSEGC001";
+const MAGIC: &[u8; 8] = b"RSEGC001";
 const VERSION: u32 = 1;
 
 /// Summary of one sealed segment for cold search / hierarchy pruning.

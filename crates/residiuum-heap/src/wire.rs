@@ -6,13 +6,13 @@
 pub const PROFILE_VERSION: u64 = 1;
 
 /// Qualified data-plane audience.
-pub const AUDIENCE_DATA_V1: &str = "dingo:data:v1";
+pub const AUDIENCE_DATA_V1: &str = "residiuum:data:v1";
 
 /// COSE content type for HeapKey certificates.
-pub const CONTENT_TYPE_CERTIFICATE: &str = "application/dingo.heap-key+cbor";
+pub const CONTENT_TYPE_CERTIFICATE: &str = "application/residiuum.heap-key+cbor";
 
 /// COSE content type for holder proofs.
-pub const CONTENT_TYPE_HOLDER_PROOF: &str = "application/dingo.heap-proof+cbor";
+pub const CONTENT_TYPE_HOLDER_PROOF: &str = "application/residiuum.heap-proof+cbor";
 
 /// External AAD for certificate Sig_structure.
 pub const EXTERNAL_AAD_CERTIFICATE: &[u8] = b"RESIDIUUM-HEAPKEY-CERTIFICATE-V1";
@@ -36,7 +36,7 @@ pub const ENV_SOURCE_HEAP_ID: u64 = 35;
 /// Envelope key: source_object_id.
 pub const ENV_SOURCE_OBJECT_ID: u64 = 36;
 
-/// Ownership profile value for `dingo-heap-v1`.
+/// Ownership profile value for `residiuum-heap-v1`.
 pub const OWNERSHIP_PROFILE_V1: u64 = 1;
 
 /// Maximum certificate lifetime (seconds).

@@ -51,7 +51,7 @@ impl Pki {
         let mut params = CertificateParams::new(Vec::<String>::new()).unwrap();
         params
             .distinguished_name
-            .push(DnType::CommonName, "dingo-test-ca");
+            .push(DnType::CommonName, "residiuum-test-ca");
         params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         params.key_usages = vec![
             KeyUsagePurpose::KeyCertSign,
@@ -131,7 +131,7 @@ impl Pki {
 }
 
 fn open_store(dir: &Path) -> PathBuf {
-    let path = dir.join("app.dingo");
+    let path = dir.join("app.residiuum");
     {
         let _ = Residiuum::open(&path).unwrap();
     }

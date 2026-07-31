@@ -124,7 +124,7 @@ RQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 | Id | Surface | Compiles to | Maturity |
 |----|---------|-------------|----------|
 | `sda` | Pure SDA / ENR1 source | identity (parse-checked) | **complete** for standalone + ENR1 |
-| **`dql`** | **Residiuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../wip/query/RQL_SPEC.md) |
+| **`rql`** | **Residiuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../wip/query/RQL_SPEC.md) |
 | `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/residiuum-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
 | `sql` | Tiny legacy `SELECT` / `WHERE` mimicry | document predicate or projection program | **implemented, deprecated when SQL-ish+ ships** |
@@ -139,7 +139,7 @@ nested projection. It looks a little like SQL in places but is **not** SQL:
 nested. How to write and run it: [USER_GUIDE.md](../RQL/USER_GUIDE.md). Full
 design: [RQL_SPEC.md](../wip/query/RQL_SPEC.md).
 
-**v0.1:** `compile_dialect("dql", …)` / `BuiltinDialect::Dql` lowers
+**v0.1:** `compile_dialect("rql", …)` / `BuiltinDialect::Rql` lowers
 `from` + `enrich … matching … expect …` (+ optional `project`) into the same
 ENR1 programs pure text uses. Conformance tests prove RQL ≡ pure ENR on shared
 bindings. Nested bag-scoped enrich (ForEach) is next.
@@ -228,7 +228,7 @@ Custom dialects implement `QueryDialect` and register by id. They SHOULD:
 Application
     │
     ├─ fluent Filter / QueryBuilder / enrich builder   (no dialect string)
-    ├─ dialect "dql"                    (official human surface — design)
+    ├─ dialect "rql"                    (official human surface — design)
     ├─ find_json / dialect "json"       (Mongo-style object)
     ├─ dialect "sql+"                   (SQL-ish+ → canonical RQL)
     ├─ dialect "sql"                    (legacy SQL mimicry)

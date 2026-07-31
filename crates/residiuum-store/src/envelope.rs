@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn rejects_non_cbor() {
-        assert!(decode_item_envelope(b"DENV0001notcbor").is_none());
+        assert!(decode_item_envelope(b"RENV0001notcbor").is_none());
     }
 
     #[test]

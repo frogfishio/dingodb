@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Profile tag for anti-entropy / repair documents (DEF-039).
-pub const ANTI_ENTROPY_PROFILE: &str = "dingo-anti-entropy-v1";
+pub const ANTI_ENTROPY_PROFILE: &str = "residiuum-anti-entropy-v1";
 
 /// Filename under the cluster root for durable repair audit log.
 pub const REPAIR_AUDIT_FILE: &str = "repair_audit.json";

@@ -146,7 +146,7 @@ fn parse_doc(raw: &str) -> Result<(ProfilesDoc, String), HeapError> {
     let doc: ProfilesDoc = serde_json::from_str(raw).map_err(|_| {
         HeapError::InvalidArgument("isolation-profiles-v1.json parse failed")
     })?;
-    if doc.format != "dingo-heap-isolation-profiles-v1" {
+    if doc.format != "residiuum-heap-isolation-profiles-v1" {
         return Err(HeapError::InvalidArgument(
             "unexpected isolation profiles format",
         ));

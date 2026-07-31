@@ -91,7 +91,7 @@ fn seal_moves_active_to_segments() {
     let sealed: Vec<_> = std::fs::read_dir(&segments)
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .collect();
     assert!(
         !sealed.is_empty(),

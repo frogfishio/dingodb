@@ -13,10 +13,10 @@ use thiserror::Error;
 pub const FRAME_PREFIX_LEN: usize = 64;
 /// Fixed suffix length in bytes.
 pub const FRAME_SUFFIX_LEN: usize = 56;
-/// Start magic: ASCII `DINGOFRM`.
-pub const START_MAGIC: &[u8; 8] = b"DINGOFRM";
-/// End magic: ASCII `DINGOEND`.
-pub const END_MAGIC: &[u8; 8] = b"DINGOEND";
+/// Start magic: ASCII `RESIDFRM`.
+pub const START_MAGIC: &[u8; 8] = b"RESIDFRM";
+/// End magic: ASCII `RESIDEND`.
+pub const END_MAGIC: &[u8; 8] = b"RESIDEND";
 /// Wire major for this draft profile.
 pub const WIRE_MAJOR: u8 = 1;
 /// Wire minor for this draft profile.

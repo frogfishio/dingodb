@@ -1,6 +1,6 @@
 # Supported versions policy (DEF-063-A)
 
-Policy id: `dingo-supported-versions-v1`  
+Policy id: `residiuum-supported-versions-v1`
 Companion: [SECURITY.md](../../../SECURITY.md), [VERSION](../../../VERSION),
 [doc/wip/status/CAPABILITY_MATRIX.md](../../wip/status/CAPABILITY_MATRIX.md)
 

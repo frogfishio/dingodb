@@ -1,9 +1,9 @@
-# dingo console v1 — implementation plan (mixed mode)
+# residiuum console v1 — implementation plan (mixed mode)
 
 ## Goal
 Add an interactive text console to the existing `residiuum` CLI.
 
-- Invocation: `dingo console ./app.dingo`
+- Invocation: `residiuum console ./app.residiuum`
 - Mixed mode UX:
   - **Console/meta commands** (help, collections listing, session controls) are shell-like.
   - **Data operations** are **RQL-first**.
@@ -54,7 +54,7 @@ Additionally, support optional fully-qualified targets:
   - `json_out_pretty: bool` (optional)
 
 Loop:
-1. Print prompt: `dingo> ` or `dingo[<collection>]> `.
+1. Print prompt: `residiuum> ` or `residiuum[<collection>]> `.
 2. Read a line.
 3. If empty: continue.
 4. If line starts with `.`, route to meta handlers.
@@ -71,7 +71,7 @@ Re-use existing operations in `main.rs`:
 To avoid duplicating logic, refactor existing `cmd_list/cmd_get/...` into internal helpers that can be called both from one-shot CLI and from console (recommended).
 
 ### 4) RQL evaluation integration
-- Find RQL entry points in the repo (search for `dql`, `Dql`, `query`, `parse` packages) and integrate them.
+- Find RQL entry points in the repo (search for `rql`, `Rql`, `query`, `parse` packages) and integrate them.
 - Provide an evaluator that can:
   - parse a statement
   - execute it against the open store
@@ -95,7 +95,7 @@ If RQL does not support the full v1 data operations:
 ### 6) Tests
 - Extend `crates/residiuum-cli/tests/cli.rs` or add new integration test `tests/console.rs`.
 - Test strategy:
-  - Spawn `dingo console ./tmp_store` with stdin piping scripted lines.
+  - Spawn `residiuum console ./tmp_store` with stdin piping scripted lines.
   - Assert stdout contains expected prompts and outputs.
 
 Cases:
@@ -104,14 +104,14 @@ Cases:
 3. `DELETE user-1` removes the key (subsequent GET errors or returns null).
 
 ### 7) Documentation
-- Update `crates/residiuum-cli/README.md` with a `dingo console` section + examples.
+- Update `crates/residiuum-cli/README.md` with a `residiuum console` section + examples.
 - Mention mixed mode and delete semantics.
 
 ## Acceptance criteria
 - `cargo test` passes.
 - `cargo build` passes.
 - Manual smoke test:
-  - `dingo console ./app.dingo`, `.help`, `.collections`, `.use`, and RQL data ops work.
+  - `residiuum console ./app.residiuum`, `.help`, `.collections`, `.use`, and RQL data ops work.
 - Routine deletes require no extra confirmation.
 
 ## Open questions (to resolve before coding)

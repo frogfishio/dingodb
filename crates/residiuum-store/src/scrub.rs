@@ -15,7 +15,7 @@
 
 use crate::error::StoreError;
 use crate::ids::hex16;
-use crate::layout::{list_dingo_files, segment_id_from_filename, StorePaths};
+use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
 use crate::tier::{hash_file, available_sealed_paths, TierPlacement};
 use residiuum_format::{scan_forward, SafetyLimits};
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Profile tag for the scrub control documents (DEF-051).
-pub const SCRUB_PROFILE: &str = "dingo-scrub-v1";
+pub const SCRUB_PROFILE: &str = "residiuum-scrub-v1";
 
 /// Directory under `recovery/` for scrub control + quarantine.
 pub const SCRUB_DIR: &str = "scrub";
@@ -54,7 +54,7 @@ const DOC_VERSION: u32 = 1;
 pub enum ScrubTargetKind {
     /// Sealed segment (hot or tier media).
     SealedSegment,
-    /// Active append segment (`active/active.dingo`).
+    /// Active append segment (`active/active.residiuum`).
     ActiveSegment,
     /// Chunk payload piece under `chunks/`.
     ChunkFile,
@@ -451,7 +451,7 @@ pub fn plan_scrub_targets(
     }
 
     if opts.include_chunks {
-        let chunk_files = list_dingo_files(&paths.chunks_dir())?;
+        let chunk_files = list_residiuum_files(&paths.chunks_dir())?;
         for path in chunk_files {
             let rel = relative_to_root(&paths.root, &path);
             targets.push(ScrubTarget {

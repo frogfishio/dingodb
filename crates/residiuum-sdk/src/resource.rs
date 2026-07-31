@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 /// Profile tag for resource-governance defaults and diagnostics (DEF-029).
-pub const RESOURCE_PROFILE: &str = "dingo-resource-v1";
+pub const RESOURCE_PROFILE: &str = "residiuum-resource-v1";
 
 /// Default maximum nesting depth for JSON documents on put/decode paths.
 pub const DEFAULT_MAX_JSON_DEPTH: usize = 64;

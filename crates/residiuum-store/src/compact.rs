@@ -225,7 +225,7 @@ pub struct CheckpointMeta {
     pub created_ns: u64,
 }
 
-const CHECKPOINT_MAGIC: &[u8; 8] = b"DCHKPT01";
+const CHECKPOINT_MAGIC: &[u8; 8] = b"RCHKPT01";
 const JOB_VERSION: u32 = 1;
 
 /// Directory for compaction job records.
@@ -326,7 +326,7 @@ pub fn estimate_compact_bytes(
 
 /// Resolve payload bytes for a live index entry (resident or frame at offset).
 ///
-/// Tries canonical sealed path, active path, then every `*.dingo` under the
+/// Tries canonical sealed path, active path, then every `*.residiuum` under the
 /// store (salvage may hash-rename active → sealed while envelopes keep the
 /// original `segment_id`).
 pub fn resolve_live_body(
@@ -353,7 +353,7 @@ pub fn resolve_live_body(
     if let Ok(entries) = fs::read_dir(paths.segments_dir()) {
         for ent in entries.flatten() {
             let p = ent.path();
-            if p.extension().and_then(|e| e.to_str()) == Some("dingo") {
+            if p.extension().and_then(|e| e.to_str()) == Some("residiuum") {
                 if !candidates.iter().any(|c| c == &p) {
                     candidates.push(p);
                 }

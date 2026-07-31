@@ -1,5 +1,5 @@
 {
-  "profile": "dingo-app-error-map-v1",
+  "profile": "residiuum-app-error-map-v1",
   "normative": "doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §12",
   "authority": "crates/residiuum-sdk/src/error.rs ErrorCode",
   "retry_policy": {
@@ -28,14 +28,14 @@
       "retryable": false
     },
     {
-      "condition": "malformed DQL, predicate, path, key, or name",
+      "condition": "malformed RQL, predicate, path, key, or name",
       "code": ["query_invalid", "validation_failed"],
       "retryable": false
     },
     {
       "condition": "unsupported Application Core feature",
       "code": "query_invalid",
-      "diagnostic": "dql_feature_unavailable",
+      "diagnostic": "rql_feature_unavailable",
       "retryable": false
     },
     {

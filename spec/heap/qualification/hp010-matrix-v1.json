@@ -1,9 +1,9 @@
 {
-  "profile": "dingo-heap-v1",
+  "profile": "residiuum-heap-v1",
   "package": "HP-010",
-  "format": "dingo-heap-qualification-matrix-v1",
+  "format": "residiuum-heap-qualification-matrix-v1",
   "qualified": false,
-  "notes": "First release may advertise qualified dingo-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced; CPR-001/A3 heap-only defaults; H4 live wipe + HSM scaffold + mixed-heap salvage. H6 partial \u2014 Kani+Verus pure-kernel connected; signed external review (CPR-005) open. Claim stays qualified=false.",
+  "notes": "First release may advertise qualified residiuum-heap-v1 only when qualified=true and every mandatory gate/drill is accept. HP-010: H3 Accept. H1 advanced; CPR-001/A3 heap-only defaults; H4 live wipe + HSM scaffold + mixed-heap salvage. H6 partial \u2014 Kani+Verus pure-kernel connected; signed external review (CPR-005) open. Claim stays qualified=false.",
   "gates": {
     "H0": {
       "title": "Vocabulary and identity",

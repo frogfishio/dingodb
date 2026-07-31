@@ -38,7 +38,7 @@ const systemLayers = [
 ];
 
 const designCards = capabilities.beingBuilt.filter((c) =>
-  ['heaps', 'dre', 'atomics', 'dda', 'order-wavelets'].includes(c.id),
+  ['heaps', 'rre', 'atomics', 'dda', 'order-wavelets'].includes(c.id),
 );
 ---
 
@@ -277,7 +277,7 @@ const designCards = capabilities.beingBuilt.filter((c) =>
         <CodeExample title="Embedded Rust" language="rust" filename="main.rs" copyId="quick-rust">
 {`use residiuum_sdk::{json, Residiuum, Filter};
 
-let mut db = Residiuum::open("./app.dingo")?;
+let mut db = Residiuum::open("./app.residiuum")?;
 let mut users = db.collection("users")?;
 
 users.put("user-42", &json!({

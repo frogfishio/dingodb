@@ -1,7 +1,7 @@
 //! DEF-060: structured process logging.
 //!
 //! Proves:
-//! - stable event names + `dingo-log-v1` profile
+//! - stable event names + `residiuum-log-v1` profile
 //! - RPC completion logs carry correlation fields (operation_id, request id,
 //!   principal, guarantees, latency, error code)
 //! - credentials and request/response payloads never appear in NDJSON
@@ -46,7 +46,7 @@ fn start_server(
     logger: Arc<Logger>,
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
-    let store_path = dir.path().join("log.dingo");
+    let store_path = dir.path().join("log.residiuum");
     drop(Residiuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
@@ -127,7 +127,7 @@ fn assert_no_payload_or_secret_keys(v: &serde_json::Value) {
 
 #[test]
 fn profile_and_stable_event_names() {
-    assert_eq!(LOG_PROFILE, "dingo-log-v1");
+    assert_eq!(LOG_PROFILE, "residiuum-log-v1");
     assert_eq!(log_events::RPC_COMPLETE, "rpc.complete");
     assert_eq!(log_events::GUARANTEE_FAILED, "guarantee.failed");
     assert_eq!(log_events::SERVER_START, "server.start");
@@ -139,7 +139,7 @@ fn put_rpc_emits_correlated_ndjson_without_payloads() {
     let dir = TempDir::new().unwrap();
     let sink = Arc::new(MemorySink::new(64));
     let logger = Logger::with_sink(Arc::clone(&sink) as Arc<dyn LogSink>)
-        .store(dir.path().join("log.dingo").display().to_string())
+        .store(dir.path().join("log.residiuum").display().to_string())
         .mode("serve")
         .shared();
 
@@ -245,7 +245,7 @@ fn connection_churn_reject_emits_connection_rejected() {
     limits.connect_window = Duration::from_secs(60);
     let admission = AdmissionController::new(limits);
 
-    let store_path = dir.path().join("log.dingo");
+    let store_path = dir.path().join("log.residiuum");
     drop(Residiuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");

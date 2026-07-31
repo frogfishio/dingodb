@@ -1,7 +1,7 @@
 //! Legacy flat database handle (`legacy-flat-sdk` feature / CPR-001).
 //!
 //! This surface uses deployment-global collection names and is **not**
-//! `dingo-heap-v1` qualified. Prefer [`crate::Residiuum::open_deployment`] +
+//! `residiuum-heap-v1` qualified. Prefer [`crate::Residiuum::open_deployment`] +
 //! [`crate::Heap`] for isolation claims.
 
 #[cfg(feature = "cluster")]
@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 /// **Claim:** legacy flat surface (`FLAT_COLLECTION_SURFACE_LABEL`); not Gate H6.
 ///
 /// ```ignore
-/// let mut db = Residiuum::open("./app.dingo")?;
+/// let mut db = Residiuum::open("./app.residiuum")?;
 /// let mut users = db.collection("users")?;
 /// users.put("user-42", &serde_json::json!({"name": "Alice"}))?;
 /// ```
@@ -111,7 +111,7 @@ impl Residiuum {
     ///
     /// The optional path label is informational only for Stage 7 (the server
     /// process already binds a store directory). Transport is TCP framed
-    /// `dingo-rpc-v1` JSON (or diagnostic line mode when configured).
+    /// `residiuum-rpc-v1` JSON (or diagnostic line mode when configured).
     pub fn connect(url: impl AsRef<str>) -> Result<Self, Error> {
         Self::connect_with(url, ConnectOptions::default())
     }

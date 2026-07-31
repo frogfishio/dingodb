@@ -78,8 +78,8 @@ let mut db = Residiuum::connect_with(
 | `AdmissionController` / `AdmissionLimits` | Rate limits, auth lockout, replay window |
 | `AuthzPolicy` / `Principal` / `Privilege` | Principal privileges + audit chain |
 | `validate_bind` / `ServeStartupReport` | Loopback-default bind policy (DEF-002) |
-| `load_and_validate` / `ResidiuumConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `dingo-config-v1`) |
-| `Logger` / `LogEvent` / `MemorySink` / `log_rpc_complete` | Structured NDJSON process logs (DEF-060, `dingo-log-v1`) |
+| `load_and_validate` / `ResidiuumConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `residiuum-config-v1`) |
+| `Logger` / `LogEvent` / `MemorySink` / `log_rpc_complete` | Structured NDJSON process logs (DEF-060, `residiuum-log-v1`) |
 | `MetricsRegistry` / `HealthReport` / `evaluate_health` | Process metrics + health probes (DEF-061) |
 | `RaftServerState` / `TcpRaftTransport` | Network Raft RPC (vote / append / snapshot / read-index) |
 
@@ -90,7 +90,7 @@ use residiuum_server::{load_and_validate, ConfigMode, ConfigOverrides, ServeOpti
 use std::path::Path;
 
 let validated = load_and_validate(
-    Some(Path::new("dingo.json")),
+    Some(Path::new("residiuum.json")),
     ConfigMode::Serve,
     ConfigOverrides {
         store_path: Some(Path::new("/data/store").into()),
@@ -103,14 +103,14 @@ let opts: ServeOptions = validated.apply_to_serve_options(ServeOptions::new());
 # Ok::<(), residiuum_server::ConfigError>(())
 ```
 
-JSON documents use profile `dingo-config-v1`. Put only secret *references*
+JSON documents use profile `residiuum-config-v1`. Put only secret *references*
 (`serve.token_env`, `serve.token_secret_ref` as `env:NAME` or `file:PATH`) in
 the file — never token values. Validation refuses unsafe combinations such as
 `cluster.claim_replication=true` with fewer than three expected nodes.
 
 ## Structured logging (DEF-060)
 
-Serve paths emit versioned NDJSON (`profile: dingo-log-v1`) on stderr by
+Serve paths emit versioned NDJSON (`profile: residiuum-log-v1`) on stderr by
 default. Events use stable names (`rpc.complete`, `guarantee.failed`,
 `connection.rejected`, …) and bounded correlation fields (`request_id`,
 `operation_id`, `principal_id`, requested/achieved guarantees, latency).
@@ -130,14 +130,14 @@ let opts = ServeOptions::new().logger(log);
 
 ## Metrics and health (DEF-061)
 
-Serve installs an in-process `MetricsRegistry` (`profile: dingo-metrics-v1`)
+Serve installs an in-process `MetricsRegistry` (`profile: residiuum-metrics-v1`)
 and answers:
 
 | RPC | Auth | Role |
 |-----|------|------|
 | `health_live` | public | Liveness — process is handling RPCs |
 | `health_ready` | public | Readiness — fails when draining, store unavailable, or replication claimed without Raft |
-| `health` | Read | Detailed operator health (`dingo-health-v1`) |
+| `health` | Read | Detailed operator health (`residiuum-health-v1`) |
 | `metrics` | Admin | Bounded scrape: per-op counters + latency histograms, guarantee/admission edges |
 
 Op labels are a fixed known set plus `other` (no collection/key/token labels).

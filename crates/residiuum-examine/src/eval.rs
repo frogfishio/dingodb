@@ -108,7 +108,7 @@ mod tests {
             event_id: Some("bb".into()),
             event_kind: None,
             physical: PhysicalLocation {
-                source: "s.dingo".into(),
+                source: "s.residiuum".into(),
                 offset: Some(0),
                 encoded_length: Some(1),
                 wire_major: Some(1),

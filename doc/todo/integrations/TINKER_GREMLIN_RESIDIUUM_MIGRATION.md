@@ -1,8 +1,8 @@
 # Technical proposal: migrate Tinker + Gremlin JSON/JSONL stores onto Residiuum
 
-**Status:** Design proposal (no behavior change)  
-**Date:** 2026-07-27  
-**Audience:** Frogfish / Koderra (Residiuum, Gremlin daemon, Tinker client)  
+**Status:** Design proposal (no behavior change)
+**Date:** 2026-07-27
+**Audience:** Frogfish / Koderra (Residiuum, Gremlin daemon, Tinker client)
 **Related:** [OVERVIEW.md](../../reference/product/OVERVIEW.md), [DX_SPEC.md](../../reference/product/DX_SPEC.md), [FORMAT_SPEC.md](../../reference/storage/FORMAT_SPEC.md); Gremlin (sibling repo) `Koderra/gremlin/docs/{PROTOCOL,CONTROL_STATE_MIGRATION,DOGFOOD}.md`
 
 ---
@@ -267,7 +267,7 @@ Residiuum’s governing rule—**what remains still lives**—matches journal sa
 2. **One durability story.** Atomic meta, crash matrix, compaction, tiering, and recovery become shared infrastructure instead of three Rust modules.
 3. **History without bloat.** Conversation title/preview updates become versioned document history, not 247 index lines.
 4. **Examination.** SDA over session journals (“find all `turn_failed` with labor timeout”) is a first-class Residiuum story, not a one-off Python script.
-5. **Sandbox alignment.** Control store lives outside the workspace by construction (`~/.dingo/gremlin` or daemon data dir), completing CONTROL_STATE_MIGRATION with a stronger store than “move the NDJSON files.”
+5. **Sandbox alignment.** Control store lives outside the workspace by construction (`~/.residiuum/gremlin` or daemon data dir), completing CONTROL_STATE_MIGRATION with a stronger store than “move the NDJSON files.”
 6. **Future multi-device / backup.** Export is a Residiuum store copy or segment pack, not a nest of redirect stubs.
 
 ### 3.3 Why not “just keep JSONL forever”
@@ -275,7 +275,7 @@ Residiuum’s governing rule—**what remains still lives**—matches journal sa
 JSONL is an excellent **interchange and debug** format (and Residiuum already names JSONL as import/export/diagnostic). It is a weak **primary** store once you need concurrent writers, compaction, indexes, tiering, and damage isolation. Keep JSONL as:
 
 - migration source,
-- `dingo export --profile jsonl`,
+- `residiuum export --profile jsonl`,
 - operator forensics.
 
 ---
@@ -285,18 +285,18 @@ JSONL is an excellent **interchange and debug** format (and Residiuum already na
 ### 4.1 Store topology
 
 ```text
-~/.dingo/                                    # or GREMLIN_DATA_DIR / TINKER_DATA_DIR override
-  gremlin.dingo                              # daemon control + sessions + telemetry + brains
-  tinker.dingo                               # optional: client-only UI state
-  # Alternative v1: single personal.dingo with namespaced collection prefixes
+~/.residiuum/                                    # or GREMLIN_DATA_DIR / TINKER_DATA_DIR override
+  gremlin.residiuum                              # daemon control + sessions + telemetry + brains
+  tinker.residiuum                               # optional: client-only UI state
+  # Alternative v1: single personal.residiuum with namespaced collection prefixes
 ```
 
 **Recommendation:** **one store per process trust domain** for v1:
 
 | Process | Store | Rationale |
 |---------|-------|-----------|
-| `gremlin-daemon` | `gremlin.dingo` under `data_dir` | Principal control plane; journals; arena; runtime |
-| Tinker (Tauri) | `tinker.dingo` under app data **or** RPC-only into daemon | Avoid two writers to the same session journal |
+| `gremlin-daemon` | `gremlin.residiuum` under `data_dir` | Principal control plane; journals; arena; runtime |
+| Tinker (Tauri) | `tinker.residiuum` under app data **or** RPC-only into daemon | Avoid two writers to the same session journal |
 
 **Preferred end state:** Tinker does **not** own session history. Tinker stores only UI prefs + project list + thin conversation **cards** (title, preview, pins) and always loads message history via daemon `session_messages`. That deletes the dual transcript problem. Migration can still import existing transcript files as a one-shot cache seed.
 
@@ -352,19 +352,19 @@ After cutover, optional thin markers (not trusted data):
 
 ```text
 {workspace}/.gremlin/sessions/<uuid>.redirect.json
-  → { "v": 1, "kind": "dingo", "store": "gremlin", "sessionId": "…" }
+  → { "v": 1, "kind": "residiuum", "store": "gremlin", "sessionId": "…" }
 
 {workspace}/.tinker/conversations/README or marker
-  → "canonical store: tinker.dingo / daemon"
+  → "canonical store: tinker.residiuum / daemon"
 
-~/.gremlin/FORMAT → "dingo" or remain "1" with runtime feature flag
+~/.gremlin/FORMAT → "residiuum" or remain "1" with runtime feature flag
 ```
 
 Dual-read order during migration:
 
-1. Residiuum session stream if present and healthy  
-2. Else project `journal.ndjson`  
-3. Else `data_dir` journal  
+1. Residiuum session stream if present and healthy
+2. Else project `journal.ndjson`
+3. Else `data_dir` journal
 
 Write path after flag flip: **Residiuum only** (with optional async JSONL export for debug).
 
@@ -398,13 +398,13 @@ Eliminating Tinker writers on journals is a hard requirement for embedded Residi
 
 **Import algorithm (per session)**
 
-1. Locate winning journal path (project if journal exists and owner workspace matches; else data_dir).  
-2. Stream-read NDJSON; skip torn tail (reuse existing salvage logic).  
-3. Verify hash chain; record `JournalHealth`.  
-4. If invalid prefix: import verified prefix only; mark session `imported_partial=true`.  
-5. Batch stream-append into Residiuum with durability = same policy as `every_batch` for import (or bulk load API if available).  
-6. Put manifest + sessions catalog row.  
-7. Write migration receipt: `{ sessionId, source_path, source_bytes, records, head_hash, dingo_receipts… }`.  
+1. Locate winning journal path (project if journal exists and owner workspace matches; else data_dir).
+2. Stream-read NDJSON; skip torn tail (reuse existing salvage logic).
+3. Verify hash chain; record `JournalHealth`.
+4. If invalid prefix: import verified prefix only; mark session `imported_partial=true`.
+5. Batch stream-append into Residiuum with durability = same policy as `every_batch` for import (or bulk load API if available).
+6. Put manifest + sessions catalog row.
+7. Write migration receipt: `{ sessionId, source_path, source_bytes, records, head_hash, residiuum_receipts… }`.
 8. Only after verify job: mark source `migrated` and stop dual-write.
 
 ### 5.2 Tinker conversations
@@ -441,65 +441,65 @@ All UUIDs (**sessionId**, **conversationId**, **projectId**, **package_id**, **t
 
 ### Phase 0 — Prerequisites (Residiuum + Gremlin)
 
-1. **Embedded open path** stable: `Residiuum::open(path)` local store used by daemon tests.  
-2. **Stream append + cursor read** API usable from Rust (`residiuum-sdk`).  
-3. **Collection put/get/history** usable.  
-4. **Durability modes** mapped: journal `every_batch` → Residiuum durability that fsyncs segment; `terminal_only` → group mid-turn stream appends + fsync on terminal kinds.  
-5. Feature flags:  
-   - `GREMLIN_STORE=fs|dingo|dual`  
-   - `TINKER_STORE=fs|dingo|dual`  
-6. Migration tool binary: `gremlin-migrate` (or `dingo-tool import-gremlin`) with `--dry-run`, `--verify`, `--commit`.
+1. **Embedded open path** stable: `Residiuum::open(path)` local store used by daemon tests.
+2. **Stream append + cursor read** API usable from Rust (`residiuum-sdk`).
+3. **Collection put/get/history** usable.
+4. **Durability modes** mapped: journal `every_batch` → Residiuum durability that fsyncs segment; `terminal_only` → group mid-turn stream appends + fsync on terminal kinds.
+5. Feature flags:
+   - `GREMLIN_STORE=fs|residiuum|dual`
+   - `TINKER_STORE=fs|residiuum|dual`
+6. Migration tool binary: `gremlin-migrate` (or `residiuum-tool import-gremlin`) with `--dry-run`, `--verify`, `--commit`.
 
 **Exit criteria:** synthetic journal of 10k events round-trips with identical hash head.
 
 ### Phase 1 — Offline importer (no cutover)
 
-1. Implement FS inventory walker (all of §1 homes).  
-2. Import into a **side** store path `~/.dingo/gremlin.migrate-tmp.dingo`.  
-3. Verification suite:  
-   - record count per session  
-   - first/last seq, head hash  
-   - sample kind histogram  
-   - conversation meta equality after fold  
-4. Emit human report (JSON + markdown).  
+1. Implement FS inventory walker (all of §1 homes).
+2. Import into a **side** store path `~/.residiuum/gremlin.migrate-tmp.residiuum`.
+3. Verification suite:
+   - record count per session
+   - first/last seq, head hash
+   - sample kind histogram
+   - conversation meta equality after fold
+4. Emit human report (JSON + markdown).
 5. Keep FS as sole live writer.
 
 **Exit criteria:** dry-run on dogfood machine green; report reviewed.
 
 ### Phase 2 — Dual-read / dual-write daemon
 
-1. On session open: prefer Residiuum stream if session marked migrated; else FS.  
-2. On append: if `dual`, write **FS first** (legacy SoT), then Residiuum; if Residiuum fails, log and continue (degraded).  
-3. Background backfill worker migrates cold sessions.  
+1. On session open: prefer Residiuum stream if session marked migrated; else FS.
+2. On append: if `dual`, write **FS first** (legacy SoT), then Residiuum; if Residiuum fails, log and continue (degraded).
+3. Background backfill worker migrates cold sessions.
 4. `session_journal_health` includes both FS and Residiuum counters during dual.
 
 **Exit criteria:** 7 days dogfood; no hash mismatch; p99 append latency acceptable.
 
 ### Phase 3 — Residiuum becomes SoT for Gremlin
 
-1. Flip `GREMLIN_STORE=dingo`.  
-2. Append path: Residiuum only; optional debug JSONL mirror off by default.  
-3. FS journals frozen; marker file `MIGRATED` in old session dirs.  
-4. Catalog/brains/runtime/arena/usage read-write via collections.  
+1. Flip `GREMLIN_STORE=residiuum`.
+2. Append path: Residiuum only; optional debug JSONL mirror off by default.
+3. FS journals frozen; marker file `MIGRATED` in old session dirs.
+4. Catalog/brains/runtime/arena/usage read-write via collections.
 5. CONTROL_STATE_MIGRATION: stop creating project-tree journals; owner redirect only if needed for old tools.
 
 **Exit criteria:** restart recovery from Residiuum only; FS journals unused for 14 days.
 
 ### Phase 4 — Tinker cutover
 
-1. ConversationStore backend trait: `FsConversationStore` | `DingoConversationStore` | `DaemonBackedConversationStore`.  
-2. Prefer **daemon-backed** cards: metadata updates already flow as `session_metadata_updated` with `conversationId`.  
-3. Import remaining app-data chats.  
-4. Stop writing project `.tinker/conversations/index.jsonl` except optional mirror.  
+1. ConversationStore backend trait: `FsConversationStore` | `ResidiuumConversationStore` | `DaemonBackedConversationStore`.
+2. Prefer **daemon-backed** cards: metadata updates already flow as `session_metadata_updated` with `conversationId`.
+3. Import remaining app-data chats.
+4. Stop writing project `.tinker/conversations/index.jsonl` except optional mirror.
 5. Transcript UI always pages via `session_messages` when `daemonSessionId` set; local transcript stream only for pre-daemon legacy chats.
 
 **Exit criteria:** delete empty project transcript files; Recents works fully from Residiuum/daemon.
 
 ### Phase 5 — Cleanup
 
-1. Tool: `gremlin-migrate gc-fs --older-than 30d` moves FS trees to `~/Library/Archives/gremlin-fs-…` (not delete by default).  
-2. Shrink dual-read codepaths.  
-3. Document operator recovery: `dingo salvage`, export JSONL profile.  
+1. Tool: `gremlin-migrate gc-fs --older-than 30d` moves FS trees to `~/Library/Archives/gremlin-fs-…` (not delete by default).
+2. Shrink dual-read codepaths.
+3. Document operator recovery: `residiuum salvage`, export JSONL profile.
 4. Update PROTOCOL.md durable storage section; mark CONTROL_STATE_MIGRATION complete via Residiuum.
 
 ---
@@ -519,7 +519,7 @@ function import_journal(path, session_id):
     assert verify_hash(r, prev_hash)
     prev_hash = r.hash
     expected_seq += 1
-  stream = dingo.stream("gremlin.journal." + session_id)
+  stream = residiuum.stream("gremlin.journal." + session_id)
   for r in records:
     stream.append(id=str(r.seq), value=r, metadata={ kind: r.kind, turnId: r.turnId })
   residiuum.collection("gremlin.session_manifest").put(session_id, {
@@ -545,8 +545,8 @@ Merge app + project maps with project full meta winning over redirect.
 
 ### 7.3 Idempotency
 
-- Migration receipt collection `gremlin.migration_receipts` keyed by `sha256(source_path + size + mtime)`.  
-- Re-run skips completed receipts unless `--force`.  
+- Migration receipt collection `gremlin.migration_receipts` keyed by `sha256(source_path + size + mtime)`.
+- Re-run skips completed receipts unless `--force`.
 - Stream append with caller ids = `seq` makes re-import naturally idempotent if the SDK rejects duplicate ids or if importer checks `manifest.next_seq` first.
 
 ### 7.4 Failure modes
@@ -575,11 +575,11 @@ trait SessionStore {
 
 struct FsSessionStore { ... }       // today’s journal_store.rs
 struct ResidiuumSessionStore { residiuum: Residiuum }
-struct DualSessionStore { fs, dingo, mode }
+struct DualSessionStore { fs, residiuum, mode }
 ```
 
-- `SessionJournalStore::session_dir` gains a placement policy: `ControlHome` vs `Workspace` (CONTROL_STATE already designed).  
-- Replace direct `OpenOptions::append` with `SessionStore::append_batch`.  
+- `SessionJournalStore::session_dir` gains a placement policy: `ControlHome` vs `Workspace` (CONTROL_STATE already designed).
+- Replace direct `OpenOptions::append` with `SessionStore::append_batch`.
 - Snapshot/manifest writers become collection puts.
 
 ### 8.2 Tinker
@@ -598,8 +598,8 @@ Tauri commands stay stable; repository swaps underneath.
 
 ### 8.3 Dependency
 
-- Daemon: `residiuum-sdk` / `residiuum-store` path dependency or crates.io once published.  
-- Feature `store-dingo` to keep default builds FS-only until ready.
+- Daemon: `residiuum-sdk` / `residiuum-store` path dependency or crates.io once published.
+- Feature `store-residiuum` to keep default builds FS-only until ready.
 
 ---
 
@@ -609,7 +609,7 @@ Gremlin `docs/CONTROL_STATE_MIGRATION.md` moves journals from `{workspace}/.grem
 
 | CONTROL_STATE step | Residiuum migration equivalent |
 |--------------------|----------------------------|
-| Copy journal to data_dir | Import stream into `gremlin.dingo` under data_dir |
+| Copy journal to data_dir | Import stream into `gremlin.residiuum` under data_dir |
 | Owner pointer in project | Optional `.redirect` marker only |
 | Dual-read FS paths | Dual-read FS vs Residiuum |
 | Drop project trusted writes | Never write journals into workspace |
@@ -620,10 +620,10 @@ Do **not** do two sequential full migrations (FS→FS home, then FS→Residiuum)
 
 ## 10. Security, privacy, sandbox
 
-1. **Store path** always under daemon `data_dir` / app data — never inside a project sandbox view.  
-2. Materializer exclusion list gains `**/*.dingo`, `**/.dingo/**` if any workspace-adjacent debug copies exist.  
-3. Secrets: unchanged (Keychain); refuse to import any historical file that looks like raw API keys into collections.  
-4. Telemetry/journals may contain source code snippets and paths — backup encryption is an operator concern (future: encrypted segment tier).  
+1. **Store path** always under daemon `data_dir` / app data — never inside a project sandbox view.
+2. Materializer exclusion list gains `**/*.residiuum`, `**/.residiuum/**` if any workspace-adjacent debug copies exist.
+3. Secrets: unchanged (Keychain); refuse to import any historical file that looks like raw API keys into collections.
+4. Telemetry/journals may contain source code snippets and paths — backup encryption is an operator concern (future: encrypted segment tier).
 5. Multi-user machine: file modes `0700` on store directory (same as `~/.gremlin` expectation).
 
 ---
@@ -643,11 +643,11 @@ Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, du
 
 ## 12. Testing plan
 
-1. **Unit:** hash chain parity, torn-tail salvage parity, index fold golden files.  
-2. **Import fixtures:** copy anonymized micro journals into `residiuum-store` tests.  
-3. **Crash matrix:** kill -9 mid dual-write; ensure FS or Residiuum recoverable and no silent fork (receipt decides canonical).  
-4. **Dogfood:** migrate gremlin repo sessions (~50 MB) on a branch daemon; run one day of real work.  
-5. **Tinker Recents:** redirect + project meta + archived/deleted flags.  
+1. **Unit:** hash chain parity, torn-tail salvage parity, index fold golden files.
+2. **Import fixtures:** copy anonymized micro journals into `residiuum-store` tests.
+3. **Crash matrix:** kill -9 mid dual-write; ensure FS or Residiuum recoverable and no silent fork (receipt decides canonical).
+4. **Dogfood:** migrate gremlin repo sessions (~50 MB) on a branch daemon; run one day of real work.
+5. **Tinker Recents:** redirect + project meta + archived/deleted flags.
 6. **Protocol:** existing `persist_restart` tests retargeted at `ResidiuumSessionStore`.
 
 ---
@@ -655,12 +655,12 @@ Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, du
 ## 13. Rollout flags and operator UX
 
 ```text
-gremlin start --store dingo --data-dir ~/.gremlin
+gremlin start --store residiuum --data-dir ~/.gremlin
 gremlin migrate inventory
 gremlin migrate import --dry-run
 gremlin migrate import --commit
 gremlin migrate verify --session <uuid>
-gremlin migrate set-canonical dingo
+gremlin migrate set-canonical residiuum
 ```
 
 Tinker: Settings → Advanced → “Conversation storage: File / Residiuum / Daemon” (default Daemon when daemon ≥ version X).
@@ -671,22 +671,22 @@ Tinker: Settings → Advanced → “Conversation storage: File / Residiuum / Da
 
 | Risk / decision | Options | Recommendation |
 |-----------------|---------|----------------|
-| One store vs two | `personal.dingo` vs split tinker/gremlin | Split by process; merge later if needed |
+| One store vs two | `personal.residiuum` vs split tinker/gremlin | Split by process; merge later if needed |
 | Per-session stream vs global | isolation vs simplicity | Per-session stream |
 | Keep app hash chain | yes / rely on Residiuum only | **Keep** in v1 |
 | Transcript duplication | import / ignore / derive | Derive from journal; import legacy only |
 | Online vs offline import | daemon stopped / flock | Offline for Phase 1; dual for Phase 2 |
 | Windows/Linux app data paths | only macOS Application Support observed | Use existing Tinker app-data helper |
-| crates.io coupling | path dep vs versioned | Path/workspace until dingo 0.1 publish |
+| crates.io coupling | path dep vs versioned | Path/workspace until residiuum 0.1 publish |
 
 ---
 
 ## 15. Success metrics
 
-1. **Correctness:** 100% of sessions with healthy FS journals import with identical `head_hash` and `next_seq`.  
-2. **Containment:** zero new trusted journal bytes under `{workspace}/.gremlin/sessions/**` after Phase 3.  
-3. **UX:** Tinker Recents + reconnect + stream-join unchanged.  
-4. **Ops:** single-command backup = copy `gremlin.dingo` (+ WAL if any).  
+1. **Correctness:** 100% of sessions with healthy FS journals import with identical `head_hash` and `next_seq`.
+2. **Containment:** zero new trusted journal bytes under `{workspace}/.gremlin/sessions/**` after Phase 3.
+3. **UX:** Tinker Recents + reconnect + stream-join unchanged.
+4. **Ops:** single-command backup = copy `gremlin.residiuum` (+ WAL if any).
 5. **Dogfood:** ≥1 week of principal labor traffic on Residiuum SoT without FS fallback.
 
 ---

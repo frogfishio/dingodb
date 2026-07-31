@@ -1,6 +1,6 @@
 //! Versioned process configuration (DEF-054).
 //!
-//! Operators load a JSON document (`dingo-config-v1`), optionally override via
+//! Operators load a JSON document (`residiuum-config-v1`), optionally override via
 //! environment and CLI flags, then **validate before** opening writers or
 //! binding sockets. Secrets are never stored in the file: only environment
 //! variable *names* (or external provider refs) appear in the document.
@@ -21,7 +21,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 /// Configuration schema / profile label (DEF-054).
-pub const CONFIG_PROFILE: &str = "dingo-config-v1";
+pub const CONFIG_PROFILE: &str = "residiuum-config-v1";
 
 /// Current document `format_version` accepted by this build.
 pub const CONFIG_FORMAT_VERSION: u32 = 1;
@@ -148,7 +148,7 @@ pub struct TlsConfigSection {
     /// Optional client CA bundle for mTLS.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_ca_path: Option<PathBuf>,
-    /// Expected peer cluster id SAN (`urn:dingo:cluster:…`).
+    /// Expected peer cluster id SAN (`urn:residiuum:cluster:…`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_cluster_id: Option<String>,
 }
@@ -1228,9 +1228,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let path = write_cfg(
             dir.path(),
-            "dingo.json",
+            "residiuum.json",
             r#"{
-              "format": "dingo-config-v1",
+              "format": "residiuum-config-v1",
               "format_version": 1,
               "store": { "path": "/data/store", "durability_default": "durable" },
               "serve": {

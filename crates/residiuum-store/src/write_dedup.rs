@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 /// Filename under `store-info/` for the write dedup table.
 pub const WRITE_DEDUP_FILE: &str = "write_dedup.v1";
 
-const MAGIC: &[u8; 8] = b"DDED0001";
+const MAGIC: &[u8; 8] = b"RDED0001";
 const VERSION: u32 = 1;
 
 /// One accepted client operation and the receipt it produced.

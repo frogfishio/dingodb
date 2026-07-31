@@ -25,7 +25,7 @@ LocalHeap Atomic packages pass.
 Create:
 
 ```text
-crates/residiuum-dre/
+crates/residiuum-rre/
   src/
     lib.rs
     token.rs
@@ -49,7 +49,7 @@ crates/residiuum-dre/
     hostile.rs
 ```
 
-`dingo-dre` is a pure, deterministic kernel:
+`residiuum-rre` is a pure, deterministic kernel:
 
 - no filesystem;
 - no clock;
@@ -72,14 +72,14 @@ residiuum-cli      compile/check/install/status/examine
 
 ## 3. Artifact boundary
 
-Before `DRE-3`, `RRE_SPEC.md` MUST receive a canonical encoding amendment for:
+Before `RRE-3`, `RRE_SPEC.md` MUST receive a canonical encoding amendment for:
 
 ```text
-dingo-dre-source-v1
-dingo-dre-artifact-v1
-dingo-dre-ruleset-v1
-dingo-dre-verification-v1
-dingo-dre-decision-v1
+residiuum-rre-source-v1
+residiuum-rre-artifact-v1
+residiuum-rre-ruleset-v1
+residiuum-rre-verification-v1
+residiuum-rre-decision-v1
 ```
 
 The encoding MUST define:
@@ -99,12 +99,12 @@ No persistent artifact may ship with implementation-defined serialization.
 
 ## 4. Work packages
 
-### DRE-0 — Semantic oracle and corpus
+### RRE-0 — Semantic oracle and corpus
 
 Work:
 
 - create crate and profile constants;
-- import `dingo-predicate-v1` semantics without copying them;
+- import `residiuum-predicate-v1` semantics without copying them;
 - implement a deliberately slow reference evaluator;
 - translate RRE_SPEC examples/counterexamples into fixtures;
 - create JSON corpus schema for source, input, expected normalized form,
@@ -129,7 +129,7 @@ Exit:
 
 Evidence: Unit, Property.
 
-### DRE-1 — Parser and canonical AST
+### RRE-1 — Parser and canonical AST
 
 Work:
 
@@ -161,7 +161,7 @@ Exit: every valid source has one AST; invalid source has no artifact.
 
 Evidence: Unit, Property.
 
-### DRE-2 — Normalization and Invariant Core
+### RRE-2 — Normalization and Invariant Core
 
 Work:
 
@@ -188,7 +188,7 @@ Exit: corpus source and direct Invariant Core fixtures agree.
 
 Evidence: Property, Differential, Model where useful.
 
-### DRE-3 — Artifact encoding and independent verifier
+### RRE-3 — Artifact encoding and independent verifier
 
 Work:
 
@@ -197,7 +197,7 @@ Work:
 - implement verifier through an independent reconstruction path;
 - reject altered source/artifact/profile/dependency/bound;
 - retain verification record;
-- provide `dingo dre compile` and `dingo dre verify`.
+- provide `residiuum rre compile` and `residiuum rre verify`.
 
 The verifier MUST NOT trust cached evaluator state. It recompiles retained
 source and compares canonical components.
@@ -211,7 +211,7 @@ Exit:
 
 Evidence: Differential, Damage.
 
-### DRE-4 — Document-local activation and enforcement
+### RRE-4 — Document-local activation and enforcement
 
 Work:
 
@@ -268,7 +268,7 @@ Exit:
 
 Evidence: Isolation, Crash, Damage, Journey.
 
-### DRE-5 — Transition rules
+### RRE-5 — Transition rules
 
 Entry: `ATM-1` Key Atomic accepted.
 
@@ -283,7 +283,7 @@ Work:
 Exit: transition evaluation occurs at the Key Atomic serialization point and
 cannot be bypassed by remote, import, or recovery paths.
 
-### DRE-6 — Cross-document rules
+### RRE-6 — Cross-document rules
 
 Entry: `REL-0` through `REL-4` accepted.
 
@@ -309,7 +309,7 @@ Evidence: Differential, Isolation, Crash, Damage, Journey.
 Target Rust administration:
 
 ```rust
-let source = RreSource::parse(include_str!("customer.dre"))?;
+let source = RreSource::parse(include_str!("customer.rre"))?;
 let compiled = heap.rules().compile(source)?;
 let report = heap.rules().validate(&compiled)?;
 let revision = heap.rules().activate(compiled, report)?;
@@ -327,13 +327,13 @@ Ordinary writes do not receive a `skip_rules` option.
 CLI:
 
 ```text
-dingo dre check FILE
-dingo dre compile FILE --out ARTIFACT
-dingo heap rules validate STORE --heap H --key KEY FILE
-dingo heap rules activate STORE --heap H --key KEY FILE
-dingo heap rules status STORE --heap H --key KEY
-dingo heap rules violations STORE --heap H --key KEY
-dingo heap rules retire STORE --heap H --key KEY REVISION
+residiuum rre check FILE
+residiuum rre compile FILE --out ARTIFACT
+residiuum heap rules validate STORE --heap H --key KEY FILE
+residiuum heap rules activate STORE --heap H --key KEY FILE
+residiuum heap rules status STORE --heap H --key KEY
+residiuum heap rules violations STORE --heap H --key KEY
+residiuum heap rules retire STORE --heap H --key KEY REVISION
 ```
 
 Rule administration requires a deliberately added `RuleAdmin` right before

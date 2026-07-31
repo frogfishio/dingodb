@@ -129,6 +129,6 @@ published” gap and package evidence for engagement.
 
 | Field | Value |
 |-------|--------|
-| Profile | `dingo-threat-model-v0` (draft) |
+| Profile | `residiuum-threat-model-v0` (draft) |
 | Freeze | Not frozen; revises with each major surface landing |
 | Owners | Engineering program (DEF-063) |

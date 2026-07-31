@@ -1,6 +1,6 @@
 # Heap qualification operator runbook (HP-010)
 
-Status: operational draft for single-node `dingo-heap-v1` qualification evidence  
+Status: operational draft for single-node `residiuum-heap-v1` qualification evidence
 Normative anchors: [HEAP_SPEC.md](./HEAP_SPEC.md) §26–§27 / §39–§40 (HP-010),
 matrix `spec/heap/qualification/hp010-matrix-v1.json`.
 

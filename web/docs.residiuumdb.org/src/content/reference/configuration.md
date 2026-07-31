@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Configuration reference
-description: dingo-config-v1 process configuration.
+description: residiuum-config-v1 process configuration.
 class: reference
 status: experimental
 section: reference
@@ -18,7 +18,7 @@ keywords:
   - configuration
 ---
 
-Profile: `dingo-config-v1`.
+Profile: `residiuum-config-v1`.
 
 - Layering: defaults < file < env secrets < CLI
 - Setting classes: static / restart-required / dynamic

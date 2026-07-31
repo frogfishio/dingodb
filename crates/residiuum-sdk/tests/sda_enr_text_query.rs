@@ -13,7 +13,7 @@ use tempfile::tempdir;
 #[test]
 fn collection_sda_filters_active_users() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("col-sda.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("col-sda.residiuum")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users
@@ -48,7 +48,7 @@ fn collection_sda_filters_active_users() {
 #[test]
 fn collection_filter_sda_keeps_keys() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("filter-sda.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("filter-sda.residiuum")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users.put("a", &json!({"status": "active", "n": 1})).unwrap();
@@ -67,7 +67,7 @@ fn collection_filter_sda_keeps_keys() {
 #[test]
 fn collection_sda_with_limit() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("lim.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("lim.residiuum")).unwrap();
     {
         let mut c = db.collection("items").unwrap();
         for i in 0..10 {
@@ -89,7 +89,7 @@ fn collection_sda_with_limit() {
 #[test]
 fn multi_collection_enr1_text_attach() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("enr-multi.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("enr-multi.residiuum")).unwrap();
     {
         let mut orders = db.collection("orders").unwrap();
         orders
@@ -182,7 +182,7 @@ fn multi_collection_enr1_text_attach() {
 #[test]
 fn enr1_missing_match_surfaces_as_fail() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("enr-miss.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("enr-miss.residiuum")).unwrap();
     {
         let mut orders = db.collection("orders").unwrap();
         orders
@@ -227,7 +227,7 @@ fn enr1_missing_match_surfaces_as_fail() {
 fn fluent_join_and_text_enr_are_both_available() {
     // Regression lock: text path does not replace MultiQuery; both ship.
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("both.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("both.residiuum")).unwrap();
     {
         let mut a = db.collection("a").unwrap();
         a.put("1", &json!({"id": 1})).unwrap();
@@ -276,7 +276,7 @@ fn fluent_join_and_text_enr_are_both_available() {
 fn enr_query_match_enrich_refine_pipeline() {
     // Preferred ENR surface: free collection names + Match + enrich + refine pipe.
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("enr-pipe.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("enr-pipe.residiuum")).unwrap();
     {
         let mut orders = db.collection("orders").unwrap();
         orders

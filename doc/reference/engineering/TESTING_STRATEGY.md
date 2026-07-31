@@ -638,10 +638,10 @@ artifacts and produces one evidence bundle. It cannot silently skip.
 Canonical entry point:
 
 ```text
-dingo verify --profile <V0..V6> --level <A0..A4>
+residiuum verify --profile <V0..V6> --level <A0..A4>
 ```
 
-Until the binary exists, `scripts/dingo-verify.sh` MAY implement the contract.
+Until the binary exists, `scripts/residiuum-verify.sh` MAY implement the contract.
 
 ### 12.1 Preflight
 
@@ -666,7 +666,7 @@ Qualification requires `pass`. Retries retain all attempts.
 
 ### 12.3 Evidence manifest
 
-Every run emits `dingo-verification-report-v1.json` containing:
+Every run emits `residiuum-verification-report-v1.json` containing:
 
 ```text
 run_id

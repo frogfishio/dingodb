@@ -81,8 +81,8 @@ Axis C — Horizontal scale    (N stores / partitions / nodes — cluster path)
 Implementation shape:
 
 1. **Dual-slot bound** — `DEFAULT_MAX_PENDING_SEALS = 2` (live active + pending finalize).
-2. **O(1) rotate** — on auto-seal threshold: durable flush, `rename` `active/active.dingo` → `active/pending/{hex}.dingo`, start new active. Put does **not** wait for BLAKE3/Hydra/Chimera.
-3. **Background worker** (`dingo-seal-pipeline` thread) finalizes: offset-preserving summary seal, sealed image write, BLAKE3, Hydra, Chimera, then catalog apply on the writer thread via `poll`/`drain`.
+2. **O(1) rotate** — on auto-seal threshold: durable flush, `rename` `active/active.residiuum` → `active/pending/{hex}.residiuum`, start new active. Put does **not** wait for BLAKE3/Hydra/Chimera.
+3. **Background worker** (`residiuum-seal-pipeline` thread) finalizes: offset-preserving summary seal, sealed image write, BLAKE3, Hydra, Chimera, then catalog apply on the writer thread via `poll`/`drain`.
 4. **Background checkpoint** — rate-limited `persist_index_cache` clones locator-first durable index and writes on the worker.
 5. **Backpressure** when `inflight_seals >= max` — put waits for one completion.
 6. **Explicit `seal_active`** remains synchronous (drains pipeline first) for tests/failpoints.
@@ -111,7 +111,7 @@ Why this matches the M4 observation:
 Implementation shape:
 
 1. **Shard by subject hash** (`subject_writer_shard` / first 8 LE bytes of `subject_item_id`) into **N active segments** (`1..=MAX_WRITER_SHARDS`).
-2. Each shard: own file handle + append offset under `active/shard-NN/active.dingo` (N=1 keeps legacy `active/active.dingo`).
+2. Each shard: own file handle + append offset under `active/shard-NN/active.residiuum` (N=1 keeps legacy `active/active.residiuum`).
 3. Shared process-wide writer lock (DEF-020); seal lifecycle is per-shard auto-rotate with a shared pending dir + worker pool (backpressure scales with N).
 4. Single primary index (latest-wins); subject → one home shard so concurrent multi-subject puts never race the same key across writers.
 5. **`put_many`** partitions by shard and runs shard appends in parallel (`std::thread::scope`), then publishes the index serially.

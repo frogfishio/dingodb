@@ -23,7 +23,7 @@ use crate::error::Error;
 use serde_json::Value as JsonValue;
 
 /// Version tag for serialized SDK query plans (DEF-028).
-pub const QUERY_PLAN_PROFILE: &str = "dingo-query-plan-v1";
+pub const QUERY_PLAN_PROFILE: &str = "residiuum-query-plan-v1";
 
 /// Sort direction for ordered queries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -503,7 +503,7 @@ impl FieldBuilder {
 /// profile tag [`QUERY_PLAN_PROFILE`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueryPlan {
-    /// Profile / schema version (`dingo-query-plan-v1`).
+    /// Profile / schema version (`residiuum-query-plan-v1`).
     pub profile: String,
     /// Filter expression.
     pub filter: Filter,

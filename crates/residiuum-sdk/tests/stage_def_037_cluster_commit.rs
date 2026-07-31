@@ -106,7 +106,7 @@ fn stop_nodes(stops: &[Arc<AtomicBool>], handles: Vec<thread::JoinHandle<()>>) {
 #[test]
 fn feature_and_profile_labels() {
     assert_eq!(FEATURE_CLUSTER_COMMIT_V1, "cluster-commit-v1");
-    assert_eq!(CLUSTER_COMMIT_PROFILE, "dingo-cluster-commit-v1");
+    assert_eq!(CLUSTER_COMMIT_PROFILE, "residiuum-cluster-commit-v1");
     assert_eq!(FEATURE_RAFT_RPC_V1, "raft-rpc-v1");
 }
 

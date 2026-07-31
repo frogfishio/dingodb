@@ -22,7 +22,7 @@ fn seal_writes_hydra_sidecar() {
         .unwrap()
         .filter_map(|e| e.ok())
         .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("dingo"))
+        .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("residiuum"))
         .collect();
     assert_eq!(segs.len(), 1);
     let seg_id = segment_id_from_filename(&segs[0]).expect("segment id");

@@ -55,7 +55,7 @@ Replace `src/main.rs` with:
 use residiuum_sdk::{json, Residiuum, Filter};
 
 fn main() -> Result<(), residiuum_sdk::Error> {
-    let mut db = Residiuum::open("./app.dingo")?;
+    let mut db = Residiuum::open("./app.residiuum")?;
     {
         let mut users = db.collection("users")?;
         users.put(
@@ -70,7 +70,7 @@ fn main() -> Result<(), residiuum_sdk::Error> {
         }
     }
     // Dropping scopes releases the exclusive writer; reopen proves persistence.
-    let mut db2 = Residiuum::open("./app.dingo")?;
+    let mut db2 = Residiuum::open("./app.residiuum")?;
     let users = db2.collection("users")?;
     let again = users.get("user-42")?;
     println!("reopened user-42: {:?}", again);
@@ -88,7 +88,7 @@ cargo run
 
 ## 5. Second run
 
-Run `cargo run` again. The store directory already exists; the put overwrites the same key and find still returns active rows. Persistence is under `./app.dingo/` (segment files and control metadata).
+Run `cargo run` again. The store directory already exists; the put overwrites the same key and find still returns active rows. Persistence is under `./app.residiuum/` (segment files and control metadata).
 
 ## 6. Where the store lives
 
@@ -103,7 +103,7 @@ Default durability mode depends on open options. For production-shaped experimen
 Only after you no longer need the data:
 
 ```bash
-rm -rf ./app.dingo
+rm -rf ./app.residiuum
 ```
 
 ## Next

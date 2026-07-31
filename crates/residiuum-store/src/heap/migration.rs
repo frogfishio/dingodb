@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Profile label for heap migration jobs.
-pub const HEAP_MIGRATE_PROFILE: &str = "dingo-heap-migrate-v1";
+pub const HEAP_MIGRATE_PROFILE: &str = "residiuum-heap-migrate-v1";
 
 /// Directory under a store root for heap migration jobs.
 pub const HEAP_MIGRATE_DIR: &str = "migration";

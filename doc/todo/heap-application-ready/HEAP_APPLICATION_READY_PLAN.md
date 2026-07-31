@@ -71,22 +71,22 @@ the existing `residiuum-authority` types, but MUST preserve the separation:
 Target commands:
 
 ```text
-dingo heap create STORE --name acme --master-key-out FILE
-dingo heap list STORE
-dingo heap inspect STORE --heap acme
+residiuum heap create STORE --name acme --master-key-out FILE
+residiuum heap list STORE
+residiuum heap inspect STORE --heap acme
 
-dingo heap key issue STORE --heap acme --master-key FILE \
+residiuum heap key issue STORE --heap acme --master-key FILE \
   --rights read,write --out FILE
-dingo heap key inspect FILE
-dingo heap key blacklist STORE --heap acme --master-key FILE \
+residiuum heap key inspect FILE
+residiuum heap key blacklist STORE --heap acme --master-key FILE \
   --certificate FILE
-dingo heap key cycle STORE --heap acme --master-key FILE \
+residiuum heap key cycle STORE --heap acme --master-key FILE \
   --new-master-key-out FILE [--grace 48h]
 
-dingo heap collection create STORE --heap acme --key FILE users
-dingo heap backup STORE --heap acme --key FILE --output PACKAGE
-dingo heap restore PACKAGE --store STORE --new-name recovered-acme
-dingo heap retire STORE --heap acme --master-key FILE
+residiuum heap collection create STORE --heap acme --key FILE users
+residiuum heap backup STORE --heap acme --key FILE --output PACKAGE
+residiuum heap restore PACKAGE --store STORE --new-name recovered-acme
+residiuum heap retire STORE --heap acme --master-key FILE
 ```
 
 Command spelling MAY change once, during `HAR-2`. Command meaning may not.

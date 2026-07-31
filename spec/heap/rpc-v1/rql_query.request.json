@@ -1,16 +1,16 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "description": "Args for op 118 dql_query (execution + explain). Server recompiles any source and never trusts a client plan_hash.",
+  "description": "Args for op 118 rql_query (execution + explain). Server recompiles any source and never trusts a client plan_hash.",
   "properties": {
     "source": {
       "type": "string",
       "maxLength": 1048576,
-      "description": "Optional DQL Application Core source (UTF-8). When present, server recompiles."
+      "description": "Optional RQL Application Core source (UTF-8). When present, server recompiles."
     },
     "plan": {
       "type": "object",
-      "description": "Optional logical DqlPlanV1 object for builders; server validates or recompiles."
+      "description": "Optional logical RqlPlanV1 object for builders; server validates or recompiles."
     },
     "parameters": {
       "type": "object",
@@ -36,7 +36,7 @@
     "continuation": {
       "type": "string",
       "maxLength": 65536,
-      "description": "Opaque dingo-cursor-v1 token from a prior page."
+      "description": "Opaque residiuum-cursor-v1 token from a prior page."
     },
     "budget": {
       "type": "object",

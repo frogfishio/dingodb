@@ -109,7 +109,7 @@ offline. It MUST NOT return a knowingly incomplete empty result.
 Canonical shape:
 
 ```ts
-const db = await Residiuum.open("./app.dingo");
+const db = await Residiuum.open("./app.residiuum");
 ```
 
 If the path does not exist, it is created with safe defaults.
@@ -610,7 +610,7 @@ algebra.
 await users.sda(`{ yield u | u in input | getPath(u, Seq["status"]) = Some("active") }`);
 
 // Official human dialect (design; compile → same IR as pure ENR+SDA)
-// await db.queryDialect("dql", `from orders\nenrich customer using customers …`);
+// await db.queryDialect("rql", `from orders\nenrich customer using customers …`);
 
 // JSON / Mongo-style filter dialect (already the portable §7.1 object)
 await users.find({ status: "active", age: { $gte: 18 } });
@@ -632,7 +632,7 @@ Builtin dialect ids:
 | Id | Role |
 |----|------|
 | `sda` | Pure SDA/ENR1 text (parse-checked) |
-| `dql` | **Official** Residiuum Query Language → ENR1+SDA ([RQL_SPEC.md](../../wip/query/RQL_SPEC.md); v0.1) |
+| `rql` | **Official** Residiuum Query Language → ENR1+SDA ([RQL_SPEC.md](../../wip/query/RQL_SPEC.md); v0.1) |
 | `json` / `mongo` | DX portable filter object → document predicate |
 | `sql` | Legacy partial `SELECT` / `WHERE` mimicry; retained during migration |
 | `sql+` / `sql-plus` | SQL-ish+ → canonical RQL v1; specified, not yet implemented |
@@ -882,7 +882,7 @@ result is complete.
 ### 13.3 Doctor
 
 ```text
-residiuum doctor ./app.dingo
+residiuum doctor ./app.residiuum
 ```
 
 `doctor` is read-only by default.
@@ -896,7 +896,7 @@ command.
 ### 13.4 Salvage
 
 ```text
-dingo salvage damaged.dingo --output recovered.dingo
+residiuum salvage damaged.residiuum --output recovered.residiuum
 ```
 
 Salvage writes to a different destination by default.
@@ -917,16 +917,16 @@ In-place destructive recovery requires an explicit high-friction option.
 The CLI mirrors the logical API:
 
 ```text
-dingo open ./app.dingo
-dingo put ./app.dingo users/user-42 --json '{"name":"Alice"}'
-dingo get ./app.dingo users/user-42
-dingo find ./app.dingo users --where 'status = "active"'
-dingo put-bytes ./app.dingo artifacts/build-19 ./build.bin
-dingo history ./app.dingo users/user-42
-dingo inspect ./app.dingo users/user-42
-dingo index create ./app.dingo users by-email --field email
-residiuum doctor ./app.dingo
-residiuum serve ./app.dingo
+residiuum open ./app.residiuum
+residiuum put ./app.residiuum users/user-42 --json '{"name":"Alice"}'
+residiuum get ./app.residiuum users/user-42
+residiuum find ./app.residiuum users --where 'status = "active"'
+residiuum put-bytes ./app.residiuum artifacts/build-19 ./build.bin
+residiuum history ./app.residiuum users/user-42
+residiuum inspect ./app.residiuum users/user-42
+residiuum index create ./app.residiuum users by-email --field email
+residiuum doctor ./app.residiuum
+residiuum serve ./app.residiuum
 ```
 
 Exact command grammar will be frozen with the first CLI implementation.
@@ -1013,7 +1013,7 @@ reference customer using customers
   on delete restrict
 ```
 
-The `dre` dialect compiles to the formal, bounded invariant model in
+The `rre` dialect compiles to the formal, bounded invariant model in
 `RRE_SPEC.md`. They are not scripts, callbacks, arbitrary RQL
 queries, or an application hook.
 

@@ -1,6 +1,6 @@
 # Protocol golden fixtures (DEF-031)
 
-Compatibility fixtures for the framed `dingo-rpc-v1` network protocol.
+Compatibility fixtures for the framed `residiuum-rpc-v1` network protocol.
 
 ## Framing
 

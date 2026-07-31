@@ -142,7 +142,7 @@ pub fn hit(name: &'static str) -> Result<(), StoreError> {
         return Ok(());
     };
     match action {
-        Action::Panic => panic!("dingo failpoint: {name}"),
+        Action::Panic => panic!("residiuum failpoint: {name}"),
         Action::Abort => {
             // True process death — not catchable with catch_unwind.
             std::process::abort();

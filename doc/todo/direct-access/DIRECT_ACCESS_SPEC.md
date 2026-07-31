@@ -5,10 +5,10 @@ Status: **Normative design v1.0-draft; not yet implemented**
 Profiles:
 
 ```text
-dingo-direct-access-v1
-dingo-rank-map-v1
-dingo-selection-artifact-v1
-dingo-direct-cursor-v1
+residiuum-direct-access-v1
+residiuum-rank-map-v1
+residiuum-selection-artifact-v1
+residiuum-direct-cursor-v1
 ```
 
 Audience: storage, index, RQL, SDK, server, cluster, examination, security,
@@ -210,7 +210,7 @@ Let:
 P: U_{H,V} \rightarrow \{0,1\}
 \]
 
-be the normalized root predicate under `dingo-predicate-v1`.
+be the normalized root predicate under `residiuum-predicate-v1`.
 
 Residiuum predicates are total and two-valued. Null, absence, numeric comparison,
 type mismatch, and path traversal therefore have the meanings fixed by
@@ -455,7 +455,7 @@ Before a query is labelled `DIRECT`, the planner MUST produce a
 
 ```text
 DirectAccessCertificateV1 {
-  profile: "dingo-direct-access-v1"
+  profile: "residiuum-direct-access-v1"
   heap_id
   canonical_plan_hash
   parameter_hash
@@ -587,7 +587,7 @@ and its characteristic bitmap:
 \]
 
 An exact atomic index MUST have the same semantics as authoritative
-`dingo-predicate-v1` evaluation.
+`residiuum-predicate-v1` evaluation.
 
 At minimum, index families MUST distinguish where relevant:
 
@@ -1033,7 +1033,7 @@ A `BUILDABLE` plan may produce an immutable query-specific selection artifact:
 
 ```text
 SelectionArtifactV1 {
-  profile: "dingo-selection-artifact-v1"
+  profile: "residiuum-selection-artifact-v1"
   artifact_id
   heap_id
   canonical_plan_hash
@@ -1617,7 +1617,7 @@ semantics.
 
 ### 19.1 Contents
 
-A `dingo-direct-cursor-v1` token binds at least:
+A `residiuum-direct-cursor-v1` token binds at least:
 
 ```text
 heap_id
@@ -2251,7 +2251,7 @@ oracle.
 ### DDA-3 — scalar range and secondary order domains
 
 - bit-sliced/range or wavelet structures;
-- `dingo-order-wavelet-v1` conditioned ordered selection;
+- `residiuum-order-wavelet-v1` conditioned ordered selection;
 - secondary order mappings;
 - Null/Absent/collation profiles;
 - composite direct indexes;
@@ -2388,7 +2388,7 @@ Until the relevant DDA stage passes:
 - HTTP `start` remains an adapter concern and MUST NOT be advertised as
   efficient random access;
 - existing continuation capability is labelled raw sequential paging;
-- `dql-source-v0.1` remains unchanged.
+- `rql-source-v0.1` remains unchanged.
 
 ## 32. Initial implementation ownership
 

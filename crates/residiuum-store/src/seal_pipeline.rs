@@ -19,7 +19,7 @@ use crate::hydra::{
 };
 use crate::index::PrimaryIndex;
 use crate::index_cache::{write_primary_index_frontier, IndexFrontier};
-use crate::layout::{list_dingo_files, segment_id_from_filename, StorePaths};
+use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
 use residiuum_format::{
     decode_descriptor_body, scan_forward, ActiveSegment, FrameKind, SafetyLimits, SegmentId,
 };
@@ -110,7 +110,7 @@ impl SealPipeline {
         let (job_tx, job_rx) = mpsc::channel::<LifecycleJob>();
         let (result_tx, result_rx) = mpsc::channel::<LifecycleResult>();
         let join = thread::Builder::new()
-            .name("dingo-seal-pipeline".into())
+            .name("residiuum-seal-pipeline".into())
             .spawn(move || worker_loop(job_rx, result_tx))
             .expect("spawn seal pipeline worker");
         Self {
@@ -259,7 +259,7 @@ pub fn finalize_seal(
     if let Some(parent) = sealed_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let tmp = sealed_path.with_extension("dingo.tmp");
+    let tmp = sealed_path.with_extension("residiuum.tmp");
     {
         let mut out = OpenOptions::new()
             .create(true)
@@ -293,7 +293,7 @@ pub fn recover_all_pending(paths: &StorePaths, store_id: [u8; 16], limits: Safet
     if !dir.is_dir() {
         return Ok(0);
     }
-    let files = list_dingo_files(&dir)?;
+    let files = list_residiuum_files(&dir)?;
     let mut n = 0;
     for pending_path in files {
         let Some(segment_id) = segment_id_from_filename(&pending_path) else {
@@ -315,7 +315,7 @@ pub fn recover_all_pending(paths: &StorePaths, store_id: [u8; 16], limits: Safet
 
 /// List pending seal segment paths (for pread / all_segment_paths).
 pub fn list_pending_paths(paths: &StorePaths) -> Result<Vec<PathBuf>, StoreError> {
-    list_dingo_files(&paths.pending_seal_dir()).map_err(StoreError::from)
+    list_residiuum_files(&paths.pending_seal_dir()).map_err(StoreError::from)
 }
 
 fn seal_pending_bytes(

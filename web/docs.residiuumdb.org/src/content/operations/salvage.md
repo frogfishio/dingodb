@@ -36,15 +36,15 @@ Medium — wrong paths waste time; never salvage “in place” over the only co
 Print and confirm absolute paths:
 
 ```bash
-SRC="$(mktemp -d /tmp/dingo-src-XXXXXX)"
-DST="$(mktemp -d /tmp/dingo-dst-XXXXXX)"
+SRC="$(mktemp -d /tmp/residiuum-src-XXXXXX)"
+DST="$(mktemp -d /tmp/residiuum-dst-XXXXXX)"
 echo "SRC=$SRC DST=$DST"
 ```
 
 ## Procedure
 
 ```bash
-dingo salvage "$SRC" --output "$DST"
+residiuum salvage "$SRC" --output "$DST"
 ```
 
 ## Verification

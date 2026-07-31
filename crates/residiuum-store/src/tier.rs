@@ -8,7 +8,7 @@
 //! (OVERVIEW §9.2, CLUSTER_SPEC §18).
 
 use crate::error::StoreError;
-use crate::layout::{hex16, list_dingo_files, segment_id_from_filename, StorePaths};
+use crate::layout::{hex16, list_residiuum_files, segment_id_from_filename, StorePaths};
 use blake3::Hasher;
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
@@ -22,7 +22,7 @@ pub const TIER_PLACEMENT_FILE: &str = "tier-placement.cat";
 /// Filename of tier availability / external roots under `tiers/`.
 pub const TIER_ROOTS_FILE: &str = "roots.txt";
 
-const PLACEMENT_MAGIC: &[u8; 8] = b"DTIER001";
+const PLACEMENT_MAGIC: &[u8; 8] = b"RTIER001";
 const PLACEMENT_VERSION: u32 = 1;
 
 /// Storage performance / retention class (OVERVIEW §9.2).
@@ -338,7 +338,7 @@ pub fn segment_path_on_tier(
     tier: TierClass,
     segment_id: &[u8; 16],
 ) -> PathBuf {
-    tier_media_dir(paths, placement, tier).join(format!("{}.dingo", hex16(segment_id)))
+    tier_media_dir(paths, placement, tier).join(format!("{}.residiuum", hex16(segment_id)))
 }
 
 /// Relative path string stored in the placement catalog.
@@ -377,7 +377,7 @@ fn copy_verified(src: &Path, dest: &Path) -> Result<([u8; 32], u64), StoreError>
     let hash = *hasher.finalize().as_bytes();
     let size = bytes.len() as u64;
 
-    let tmp = dest.with_extension("dingo.tmp");
+    let tmp = dest.with_extension("residiuum.tmp");
     {
         let mut out = OpenOptions::new()
             .create(true)
@@ -432,7 +432,7 @@ pub fn write_migration_evidence(
         TierMoveMode::Move => "move",
     };
     let body = format!(
-        "dingo-migration-v1\n\
+        "residiuum-migration-v1\n\
          segment_id={}\n\
          from_tier={}\n\
          to_tier={}\n\
@@ -501,7 +501,7 @@ pub fn transfer_segment(
             source_hash: hash,
             dest_hash: hash,
             size,
-            tool_version: "dingo-store-9".into(),
+            tool_version: "residiuum-store-9".into(),
             migrated_ns: now_ns(),
         });
     }
@@ -515,7 +515,7 @@ pub fn transfer_segment(
         source_hash: hash,
         dest_hash: hash,
         size,
-        tool_version: "dingo-store-9".into(),
+        tool_version: "residiuum-store-9".into(),
         migrated_ns: now_ns(),
     };
     write_migration_evidence(paths, &evidence)?;
@@ -578,7 +578,7 @@ pub fn discover_placements(
             if !placement.is_tier_available(tier) {
                 return Ok(());
             }
-            for path in list_dingo_files(dir)? {
+            for path in list_residiuum_files(dir)? {
                 let Some(id) = segment_id_from_filename(&path) else {
                     continue;
                 };
@@ -679,7 +679,7 @@ pub fn available_sealed_paths(
 
     // Also pick up any hot sealed files not yet in placement (fresh seal).
     if placement.is_tier_available(TierClass::Hot) {
-        for path in list_dingo_files(&paths.segments_dir())? {
+        for path in list_residiuum_files(&paths.segments_dir())? {
             let key = path.to_string_lossy().into_owned();
             if seen_paths.insert(key) {
                 out.push(path);
@@ -874,7 +874,7 @@ pub fn write_tier_roots_file(
 ) -> Result<(), StoreError> {
     let path = paths.tiers_dir().join(TIER_ROOTS_FILE);
     fs::create_dir_all(paths.tiers_dir())?;
-    let mut body = String::from("# dingo tier roots v1 — derived; edit with care\n");
+    let mut body = String::from("# residiuum tier roots v1 — derived; edit with care\n");
     for tier in [
         TierClass::Hot,
         TierClass::Warm,
@@ -1115,7 +1115,7 @@ mod tests {
         p.upsert(SegmentPlacement {
             segment_id: [2u8; 16],
             tier: TierClass::Archive,
-            relative_path: "tiers/archive/x.dingo".into(),
+            relative_path: "tiers/archive/x.residiuum".into(),
             content_hash: [0u8; 32],
             size: 1,
             available: false,
@@ -1133,7 +1133,7 @@ mod tests {
         paths.create_dirs().unwrap();
         let seg_id = [3u8; 16];
         let hot = paths.sealed_segment(&seg_id);
-        fs::write(&hot, b"DINGO-fake-segment-bytes-for-hash").unwrap();
+        fs::write(&hot, b"RESIDIUUM-fake-segment-bytes-for-hash").unwrap();
 
         let mut placement = TierPlacement::new();
         register_hot_segment(&paths, &mut placement, seg_id).unwrap();

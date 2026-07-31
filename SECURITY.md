@@ -8,7 +8,7 @@ Related:
 | Document | Role |
 |----------|------|
 | [doc/reference/operations/SUPPORTED_VERSIONS.md](./doc/reference/operations/SUPPORTED_VERSIONS.md) | Support windows and upgrade expectations |
-| [doc/wip/security/THREAT_MODEL.md](./doc/wip/security/THREAT_MODEL.md) | In-tree threat model (`dingo-threat-model-v0`) |
+| [doc/wip/security/THREAT_MODEL.md](./doc/wip/security/THREAT_MODEL.md) | In-tree threat model (`residiuum-threat-model-v0`) |
 | [doc/wip/security/SECURITY_AUDIT_PACKAGE.md](./doc/wip/security/SECURITY_AUDIT_PACKAGE.md) | Evidence pack for independent auditors |
 | [doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](./doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md) | Heap isolation review brief (H6) |
 | [fuzz/README.md](./fuzz/README.md) | Continuous fuzz policy (DEF-091 / DEF-091-F) |

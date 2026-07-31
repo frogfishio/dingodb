@@ -208,12 +208,12 @@ enum Command {
     ///
     /// Defaults to loopback. Non-loopback plaintext binds require
     /// `--allow-insecure-bind`. Non-loopback binds with `--tls-cert`/`--tls-key`
-    /// are allowed (DEF-032). Optional `--config` loads a `dingo-config-v1`
+    /// are allowed (DEF-032). Optional `--config` loads a `residiuum-config-v1`
     /// document; CLI flags override the file (DEF-054).
     Serve {
         /// Store directory path (overrides `store.path` from `--config`).
         store: PathBuf,
-        /// Optional versioned config file (`dingo-config-v1`, DEF-054).
+        /// Optional versioned config file (`residiuum-config-v1`, DEF-054).
         #[arg(long = "config", short = 'c')]
         config: Option<PathBuf>,
         /// Bind address (default `127.0.0.1:7434`, or `serve.bind` from config).
@@ -238,7 +238,7 @@ enum Command {
         /// PEM CA bundle to verify client certificates (mTLS).
         #[arg(long = "tls-client-ca")]
         tls_client_ca: Option<PathBuf>,
-        /// Expected peer cluster id (`urn:dingo:cluster:…` SAN).
+        /// Expected peer cluster id (`urn:residiuum:cluster:…` SAN).
         #[arg(long = "tls-cluster-id")]
         tls_cluster_id: Option<String>,
     },
@@ -250,14 +250,14 @@ enum Command {
     /// applies writes to this node alone. Not production-ready. Prefer
     /// in-process `Residiuum::open_cluster` for deterministic multi-replica tests.
     ///
-    /// Optional `--config` loads a `dingo-config-v1` document (DEF-054).
+    /// Optional `--config` loads a `residiuum-config-v1` document (DEF-054).
     ///
     /// Example:
     /// `residiuum serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster`
     ServeCluster {
         /// Cluster root (contains cluster.json, placement.json, nodes/).
         cluster: PathBuf,
-        /// Optional versioned config file (`dingo-config-v1`, DEF-054).
+        /// Optional versioned config file (`residiuum-config-v1`, DEF-054).
         #[arg(long = "config", short = 'c')]
         config: Option<PathBuf>,
         /// Dense node index to serve (`nodes/node-N`).
@@ -284,13 +284,13 @@ enum Command {
         /// PEM CA bundle to verify client certificates (mTLS).
         #[arg(long = "tls-client-ca")]
         tls_client_ca: Option<PathBuf>,
-        /// Expected peer cluster id (`urn:dingo:cluster:…` SAN).
+        /// Expected peer cluster id (`urn:residiuum:cluster:…` SAN).
         #[arg(long = "tls-cluster-id")]
         tls_cluster_id: Option<String>,
     },
     /// Validate or show a versioned configuration document (DEF-054).
     ///
-    /// Config files use profile `dingo-config-v1`. Secrets must never appear
+    /// Config files use profile `residiuum-config-v1`. Secrets must never appear
     /// inline: use `serve.token_env` / `serve.token_secret_ref` (env: or file:).
     /// `validate` fails on unsafe combinations (e.g. replication claim with one
     /// local copy). `show` prints a redacted effective report.
@@ -307,7 +307,7 @@ enum Command {
 enum ConfigAction {
     /// Validate a config file (schema, ranges, unsafe combinations).
     Validate {
-        /// Path to a `dingo-config-v1` JSON document.
+        /// Path to a `residiuum-config-v1` JSON document.
         file: PathBuf,
         /// Validation mode: `serve`, `serve-cluster`, or `validate` (default).
         #[arg(long = "mode", default_value = "validate")]
@@ -315,7 +315,7 @@ enum ConfigAction {
     },
     /// Print the redacted effective configuration report.
     Show {
-        /// Path to a `dingo-config-v1` JSON document.
+        /// Path to a `residiuum-config-v1` JSON document.
         file: PathBuf,
         /// Mode used when resolving required paths (`serve` / `serve-cluster` / `validate`).
         #[arg(long = "mode", default_value = "validate")]

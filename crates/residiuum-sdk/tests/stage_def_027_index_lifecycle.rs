@@ -42,7 +42,7 @@ fn with_failpoints<R>(f: impl FnOnce() -> R) -> R {
 #[test]
 fn create_reaches_ready_with_build_id() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut users = db.collection("users").unwrap();
     users.put("u1", &json!({"email": "a@x.com"})).unwrap();
     users.put("u2", &json!({"email": "b@x.com"})).unwrap();
@@ -63,7 +63,7 @@ fn create_reaches_ready_with_build_id() {
 #[test]
 fn write_marks_ready_stale_and_miss_falls_back_to_scan() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut users = db.collection("users").unwrap();
     users.put("u1", &json!({"email": "a@x.com"})).unwrap();
     users
@@ -88,7 +88,7 @@ fn write_marks_ready_stale_and_miss_falls_back_to_scan() {
 fn resume_after_plan_failpoint() {
     with_failpoints(|| {
         let dir = tempdir().unwrap();
-        let path = dir.path().join("app.dingo");
+        let path = dir.path().join("app.residiuum");
         {
             let mut db = Residiuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
@@ -126,7 +126,7 @@ fn resume_after_plan_failpoint() {
 fn resume_after_mid_build_failpoint() {
     with_failpoints(|| {
         let dir = tempdir().unwrap();
-        let path = dir.path().join("app.dingo");
+        let path = dir.path().join("app.residiuum");
         {
             let mut db = Residiuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
@@ -159,7 +159,7 @@ fn resume_after_mid_build_failpoint() {
 fn resume_after_before_ready_failpoint() {
     with_failpoints(|| {
         let dir = tempdir().unwrap();
-        let path = dir.path().join("app.dingo");
+        let path = dir.path().join("app.residiuum");
         {
             let mut db = Residiuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
@@ -192,7 +192,7 @@ fn resume_after_before_ready_failpoint() {
 fn panic_failpoint_leaves_building_and_resume_works() {
     with_failpoints(|| {
         let dir = tempdir().unwrap();
-        let path = dir.path().join("app.dingo");
+        let path = dir.path().join("app.residiuum");
         {
             let mut db = Residiuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
@@ -226,7 +226,7 @@ fn panic_failpoint_leaves_building_and_resume_works() {
 #[test]
 fn partial_index_never_proves_absence() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         let mut c = db.collection("users").unwrap();
@@ -265,7 +265,7 @@ fn partial_index_never_proves_absence() {
 #[test]
 fn drop_all_indexes_preserves_query_correctness() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..20 {
         c.put(
@@ -296,7 +296,7 @@ fn drop_all_indexes_preserves_query_correctness() {
 #[test]
 fn indexed_matches_force_scan() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut c = db.collection("docs").unwrap();
     for i in 0..30 {
         c.put(
@@ -326,7 +326,7 @@ fn indexed_matches_force_scan() {
 #[test]
 fn rebuild_uses_rebuilding_then_ready() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut c = db.collection("users").unwrap();
     c.put("u1", &json!({"email": "a@x.com"})).unwrap();
     c.indexes()
@@ -346,7 +346,7 @@ fn rebuild_uses_rebuilding_then_ready() {
 fn concurrent_writes_during_build_do_not_block() {
     with_failpoints(|| {
         let dir = tempdir().unwrap();
-        let path = dir.path().join("app.dingo");
+        let path = dir.path().join("app.residiuum");
         {
             let mut db = Residiuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();

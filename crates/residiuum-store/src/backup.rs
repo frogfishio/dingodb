@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Profile tag for the backup package format (DEF-050).
-pub const BACKUP_PROFILE: &str = "dingo-backup-v1";
+pub const BACKUP_PROFILE: &str = "residiuum-backup-v1";
 
 /// Filename of the hashed backup manifest at the package root.
 pub const BACKUP_MANIFEST_FILE: &str = "backup-manifest.v1.json";
@@ -644,7 +644,7 @@ mod tests {
 
     #[test]
     fn backup_profile_constant() {
-        assert_eq!(BACKUP_PROFILE, "dingo-backup-v1");
+        assert_eq!(BACKUP_PROFILE, "residiuum-backup-v1");
     }
 
     #[test]
@@ -734,7 +734,7 @@ mod tests {
         let store_tree = backup_store_path(&bak);
         let mut corrupted = false;
         for entry in walkdir_files(&store_tree) {
-            if entry.extension().and_then(|s| s.to_str()) == Some("dingo") {
+            if entry.extension().and_then(|s| s.to_str()) == Some("residiuum") {
                 let mut bytes = fs::read(&entry).unwrap();
                 if !bytes.is_empty() {
                     let last = bytes.len() - 1;

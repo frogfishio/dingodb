@@ -41,7 +41,7 @@ pub struct EndpointsFile {
 }
 
 fn default_format() -> String {
-    "dingo-cluster-endpoints-1".into()
+    "residiuum-cluster-endpoints-1".into()
 }
 
 fn process_lock() -> &'static Mutex<()> {
@@ -102,7 +102,7 @@ impl EndpointsFile {
     pub fn validate(&self) -> Result<(), ClusterError> {
         if self.format != default_format() && !self.format.is_empty() {
             // Accept only the known format tag when set.
-            if self.format != "dingo-cluster-endpoints-1" {
+            if self.format != "residiuum-cluster-endpoints-1" {
                 return Err(ClusterError::CorruptMeta("unsupported endpoints format"));
             }
         }

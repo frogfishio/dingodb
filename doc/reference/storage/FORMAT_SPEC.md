@@ -87,7 +87,7 @@ The fixed prefix is exactly 64 bytes:
 `start_magic` is the eight ASCII bytes:
 
 ```text
-DINGOFRM
+RESIDFRM
 ```
 
 `wire_major` is `1` for this profile.
@@ -148,13 +148,13 @@ Wire version 1 assigns:
 | 7 | segment summary |
 | 8 | purge attestation |
 | 9 | padding |
-| 10 | heap descriptor (`dingo-heap-v1`) |
-| 11 | collection descriptor (`dingo-heap-v1`) |
-| 12 | stream descriptor (`dingo-heap-v1`) |
-| 13 | heap migration evidence (`dingo-heap-v1`) |
-| 14 | evidence record (`dingo-evidence-ledger-v1`) |
-| 15 | evidence checkpoint (`dingo-evidence-ledger-v1`) |
-| 16 | evidence retention cut (`dingo-evidence-ledger-v1`) |
+| 10 | heap descriptor (`residiuum-heap-v1`) |
+| 11 | collection descriptor (`residiuum-heap-v1`) |
+| 12 | stream descriptor (`residiuum-heap-v1`) |
+| 13 | heap migration evidence (`residiuum-heap-v1`) |
+| 14 | evidence record (`residiuum-evidence-ledger-v1`) |
+| 15 | evidence checkpoint (`residiuum-evidence-ledger-v1`) |
+| 16 | evidence retention cut (`residiuum-evidence-ledger-v1`) |
 | 17–127 | reserved for core versions |
 | 128–255 | application/profile extension |
 
@@ -247,7 +247,7 @@ The fixed suffix is exactly 56 bytes:
 `end_magic` is the eight ASCII bytes:
 
 ```text
-DINGOEND
+RESIDEND
 ```
 
 `frame_len` MUST equal `64 + envelope_len + body_len + 56`.
@@ -359,7 +359,7 @@ For a byte source of length `N`, the scanner performs:
 ```text
 p := 0
 while p + 64 <= N:
-    q := find_next("DINGOFRM", p)
+    q := find_next("RESIDFRM", p)
     if no q:
         emit hole for remaining unclassified bytes, when applicable
         stop

@@ -20,7 +20,7 @@ keywords:
 
 ## Outcome
 
-Run preflight/plan/apply/verify for `dingo-migrate-v1` on a **copy**.
+Run preflight/plan/apply/verify for `residiuum-migrate-v1` on a **copy**.
 
 ## Risk level
 
@@ -29,8 +29,8 @@ High if pointed at production without backup.
 ## Procedure
 
 ```bash
-residuum migrate "$STORE" --preflight
-residuum migrate "$STORE" --plan-only
+residiuum migrate "$STORE" --preflight
+residiuum migrate "$STORE" --plan-only
 # apply only after reviewing plan on non-production data
 ```
 

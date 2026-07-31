@@ -1,7 +1,7 @@
 # AWS KMS data-key provider (live)
 
-**Status:** connected (feature-gated)  
-**Crate:** `residiuum-store` feature `aws-kms`  
+**Status:** connected (feature-gated)
+**Crate:** `residiuum-store` feature `aws-kms`
 **Type:** [`AwsKmsDataKeyProvider`](../../../crates/residiuum-store/src/heap/kms_aws.rs)
 
 ## What it does
@@ -13,8 +13,8 @@
 
 Encryption context on generate:
 
-- `dingo-heap-id` — hex heap id  
-- `dingo-profile` — `dingo-heap-v1`
+- `residiuum-heap-id` — hex heap id
+- `residiuum-profile` — `residiuum-heap-v1`
 
 ## Build
 

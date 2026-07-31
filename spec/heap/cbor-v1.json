@@ -1,5 +1,5 @@
 {
-  "profile": "dingo-heap-v1",
+  "profile": "residiuum-heap-v1",
   "spec_section": "31",
   "cose": {
     "alg": -8,
@@ -10,11 +10,11 @@
     "public_key_len": 32
   },
   "content_types": {
-    "certificate": "application/dingo.heap-key+cbor",
-    "holder_proof": "application/dingo.heap-proof+cbor",
-    "authority_transition": "application/dingo.heap-authority-transition+cbor",
-    "authority_mutation": "application/dingo.heap-authority-mutation+cbor",
-    "issuance_request": "application/dingo.heap-issuance-request+cbor"
+    "certificate": "application/residiuum.heap-key+cbor",
+    "holder_proof": "application/residiuum.heap-proof+cbor",
+    "authority_transition": "application/residiuum.heap-authority-transition+cbor",
+    "authority_mutation": "application/residiuum.heap-authority-mutation+cbor",
+    "issuance_request": "application/residiuum.heap-issuance-request+cbor"
   },
   "external_aad": {
     "certificate": "RESIDIUUM-HEAPKEY-CERTIFICATE-V1",
@@ -84,7 +84,7 @@
     "12": {
       "field": "audience",
       "type": "text",
-      "rule": "exactly dingo:data:v1"
+      "rule": "exactly residiuum:data:v1"
     },
     "13": {
       "field": "issuer_master_key_id",
@@ -182,5 +182,5 @@
     "text_max_utf8": 128,
     "certificate_max_lifetime_s": 7776000
   },
-  "audience": "dingo:data:v1"
+  "audience": "residiuum:data:v1"
 }

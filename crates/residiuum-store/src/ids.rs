@@ -24,7 +24,7 @@
 use crate::error::StoreError;
 
 /// Generation profile tag for diagnostics and capability matrix.
-pub const ID_PROFILE: &str = "dingo-id-v1";
+pub const ID_PROFILE: &str = "residiuum-id-v1";
 
 /// Fixed width of random and segment identities on the wire (FORMAT_SPEC).
 pub const ID_LEN: usize = 16;
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn id_profile_is_stable() {
-        assert_eq!(ID_PROFILE, "dingo-id-v1");
+        assert_eq!(ID_PROFILE, "residiuum-id-v1");
         assert_eq!(ID_LEN, 16);
     }
 

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Profile tag for the bounded single-node server (DEF-030).
-pub const SERVER_PROFILE: &str = "dingo-server-v1";
+pub const SERVER_PROFILE: &str = "residiuum-server-v1";
 
 /// Default maximum simultaneous client connections.
 pub const DEFAULT_MAX_CONNECTIONS: usize = 64;

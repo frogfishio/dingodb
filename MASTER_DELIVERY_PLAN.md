@@ -259,7 +259,7 @@ C0 exit:
 - DEF-098 through DEF-104 and every other applicable P0 core-storage defect are
   accepted;
 - `CSQ-0` through `CSQ-12` are accepted;
-- `dingo-core-storage-v1 / A2` independently verifies;
+- `residiuum-core-storage-v1 / A2` independently verifies;
 - no mandatory cell is skipped, flaky, infrastructure-blocked, or
   implementation-oracled; and
 - core-storage capability language matches the evidence.
@@ -363,7 +363,7 @@ M1 exit:
 
 - all applicable HAR packages are `accept`;
 - `APB-0` through `APB-12` are `accept`;
-- `dingo-application-baseline-v1 / A2` independently verifies;
+- `residiuum-application-baseline-v1 / A2` independently verifies;
 - the critical journey passes locally and in CI;
 - `qualified` and public wording match the qualification matrix; and
 - M2 foundation packages become `ready`.
@@ -521,7 +521,7 @@ install
 M2 exit:
 
 - M2-D passes;
-- `dingo-application-baseline-v1` remains green against packaged artifacts;
+- `residiuum-application-baseline-v1` remains green against packaged artifacts;
 - `DEL-0`–`DEL-3` pass before M3 rule activation;
 - `TEL-0`–`TEL-2` pass before new performance claims;
 - Rust and CLI quickstarts use the same qualified path; and
@@ -546,11 +546,11 @@ Order:
 
 | Order | Package | Result |
 |---:|---|---|
-| 1 | `DRE-0` | semantic oracle and executable corpus |
-| 2 | `DRE-1` | parser and canonical AST |
-| 3 | `DRE-2` | normalization and Invariant Core |
-| 4 | `DRE-3` | canonical artifact and independent verifier |
-| 5 | `DRE-4` | document-local activation and enforcement |
+| 1 | `RRE-0` | semantic oracle and executable corpus |
+| 2 | `RRE-1` | parser and canonical AST |
+| 3 | `RRE-2` | normalization and Invariant Core |
+| 4 | `RRE-3` | canonical artifact and independent verifier |
+| 5 | `RRE-4` | document-local activation and enforcement |
 
 Mandatory integrations:
 
@@ -598,7 +598,7 @@ ATM-0 → ATM-1 → ATM-2 → ATM-3 → ATM-4 → ATM-5
                           |
                           +→ REL-0 → REL-1 → REL-2 → REL-3 → REL-4
                           |
-                          +→ DRE-5 → DRE-6
+                          +→ RRE-5 → RRE-6
                           |
                           +→ DEL-5
 ```
@@ -793,7 +793,7 @@ The following preparation may occur without changing release order:
 |---|---|
 | after `HAR-3` | `DEL-0`, `TEL-0`, `DST-000` drafting/scaffold |
 | after shared RRE predicate semantics freeze | `DDA-0` oracle work |
-| after `DRE-2` | `ATM-0` oracle/profile work |
+| after `RRE-2` | `ATM-0` oracle/profile work |
 | after `DDA-3` order identity freezes | `DOW-0` oracle work |
 | during M6 | E1 archive-adapter/profile specification and E2 common-index substrate specification only |
 
@@ -939,9 +939,9 @@ change the plan.
 NOW:
 DEF-098…DEF-104 incident defect family
 → CSQ-0…CSQ-12
-→ verified dingo-core-storage-v1 / A2
+→ verified residiuum-core-storage-v1 / A2
 → APB-0…APB-12 with HAR dependencies
-→ verified dingo-application-baseline-v1 / A2
+→ verified residiuum-application-baseline-v1 / A2
 
 THEN:
 trustworthy SQLite-replacement core

@@ -140,7 +140,7 @@ fn wait_for(bind: &str) {
 #[test]
 fn remote_directory_op_and_cache() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         db.collection("c")

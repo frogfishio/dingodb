@@ -45,7 +45,7 @@ use serde_json::{json, Map, Value as JsonValue};
 use std::collections::HashMap;
 
 /// Profile tag for multi-collection join plans (serialisable later).
-pub const MULTI_QUERY_PROFILE: &str = "dingo-multi-query-v1";
+pub const MULTI_QUERY_PROFILE: &str = "residiuum-multi-query-v1";
 
 /// One collection source in a multi-collection query.
 #[derive(Debug, Clone)]
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn equijoin_two_collections() {
         let dir = tempdir().unwrap();
-        let mut db = Residiuum::open(dir.path().join("q.dingo")).unwrap();
+        let mut db = Residiuum::open(dir.path().join("q.residiuum")).unwrap();
         {
             let mut a = db.collection("a").unwrap();
             a.put("1", &json!({"id": 1, "x": "aa"})).unwrap();
@@ -577,7 +577,7 @@ mod tests {
     #[test]
     fn describe_plan_shape() {
         let dir = tempdir().unwrap();
-        let mut db = Residiuum::open(dir.path().join("d.dingo")).unwrap();
+        let mut db = Residiuum::open(dir.path().join("d.residiuum")).unwrap();
         let plan = db
             .query()
             .from("orders")

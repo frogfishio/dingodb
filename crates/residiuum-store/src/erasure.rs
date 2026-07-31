@@ -10,7 +10,7 @@
 //!
 //! - Logical segment id is unchanged (stable identity across tiers).
 //! - Each shard is an opaque object key under archive media:
-//!   `{segment_hex}.s{index:02}.dingo` with a parity manifest
+//!   `{segment_hex}.s{index:02}.residiuum` with a parity manifest
 //!   `{segment_hex}.erasure.json`.
 //! - Reconstruction requires any *k* of *k+m* shards; missing shards are
 //!   coverage holes, never silent zeros.
@@ -74,10 +74,10 @@ impl ErasureManifest {
         let n = profile.total_shards() as usize;
         let mut shard_keys = Vec::with_capacity(n);
         for i in 0..n {
-            shard_keys.push(format!("{segment_id_hex}.s{i:02}.dingo"));
+            shard_keys.push(format!("{segment_id_hex}.s{i:02}.residiuum"));
         }
         Self {
-            format: "dingo-erasure-1".into(),
+            format: "residiuum-erasure-1".into(),
             segment_id_hex: segment_id_hex.to_string(),
             profile,
             shard_keys,
@@ -115,8 +115,8 @@ pub fn decode_shards(
 
 /// Whether a path looks like an erasure shard object (naming only).
 pub fn is_shard_key(name: &str) -> bool {
-    // e.g. abcd.s00.dingo
-    let Some(stem) = name.strip_suffix(".dingo") else {
+    // e.g. abcd.s00.residiuum
+    let Some(stem) = name.strip_suffix(".residiuum") else {
         return false;
     };
     let Some((left, idx)) = stem.rsplit_once(".s") else {
@@ -127,7 +127,7 @@ pub fn is_shard_key(name: &str) -> bool {
 
 /// Placeholder path helper for future on-disk shard trees.
 pub fn shard_layout_note(_media_root: &Path) -> &'static str {
-    "erasure shards use {segment}.sNN.dingo keys under archive media; codec follow-on"
+    "erasure shards use {segment}.sNN.residiuum keys under archive media; codec follow-on"
 }
 
 #[cfg(test)]
@@ -138,8 +138,8 @@ mod tests {
     fn manifest_shard_keys() {
         let m = ErasureManifest::for_segment("deadbeef", ErasureProfile::rs_4_2());
         assert_eq!(m.shard_keys.len(), 6);
-        assert_eq!(m.shard_keys[0], "deadbeef.s00.dingo");
-        assert_eq!(m.shard_keys[5], "deadbeef.s05.dingo");
+        assert_eq!(m.shard_keys[0], "deadbeef.s00.residiuum");
+        assert_eq!(m.shard_keys[5], "deadbeef.s05.residiuum");
         assert_eq!(
             ErasureManifest::manifest_key("deadbeef"),
             "deadbeef.erasure.json"
@@ -154,8 +154,8 @@ mod tests {
 
     #[test]
     fn shard_key_naming() {
-        assert!(is_shard_key("abcd.s00.dingo"));
-        assert!(!is_shard_key("abcd.dingo"));
-        assert!(!is_shard_key("abcd.s0.dingo"));
+        assert!(is_shard_key("abcd.s00.residiuum"));
+        assert!(!is_shard_key("abcd.residiuum"));
+        assert!(!is_shard_key("abcd.s0.residiuum"));
     }
 }

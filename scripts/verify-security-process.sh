@@ -28,13 +28,13 @@ checks = [
         "Do not open a public GitHub issue",
     ]),
     ("doc/reference/operations/SUPPORTED_VERSIONS.md", [
-        "dingo-supported-versions-v1",
+        "residiuum-supported-versions-v1",
         "Development tip",
         "WIRE_PROFILE_LABEL",
         "1.0-draft",
     ]),
     ("doc/wip/security/SECURITY_AUDIT_PACKAGE.md", [
-        "dingo-security-audit-package-v1",
+        "residiuum-security-audit-package-v1",
         "fuzz-smoke",
         "THREAT_MODEL",
         "Not complete",

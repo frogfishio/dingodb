@@ -102,14 +102,14 @@ fn matrix_records_unqualified_claim_and_mandatory_structure() {
     assert!(!may_advertise_qualified());
     assert!(!QUALIFIED_CLAIM);
     assert_eq!(claim_language(), PRE_QUALIFICATION_LANGUAGE);
-    assert_eq!(QUALIFIED_PROFILE, "dingo-heap-v1");
+    assert_eq!(QUALIFIED_PROFILE, "residiuum-heap-v1");
 
     let path = workspace_root().join("spec/heap/qualification/hp010-matrix-v1.json");
     let raw = fs::read_to_string(&path).expect("hp010 matrix present");
     let doc: MatrixDoc = serde_json::from_str(&raw).expect("parse hp010 matrix");
-    assert_eq!(doc.format, "dingo-heap-qualification-matrix-v1");
+    assert_eq!(doc.format, "residiuum-heap-qualification-matrix-v1");
     assert_eq!(doc.package, "HP-010");
-    assert_eq!(doc.profile, "dingo-heap-v1");
+    assert_eq!(doc.profile, "residiuum-heap-v1");
     assert!(!doc.qualified, "matrix must not claim qualified yet");
 
     for gate in ["H0", "H1", "H2", "H3", "H4", "H5", "H6", "HC1"] {

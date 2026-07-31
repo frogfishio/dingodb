@@ -388,7 +388,7 @@ mod tests {
         };
         let bytes = encode_frame(&parts).unwrap();
         let units = project_bytes(
-            "seg.dingo",
+            "seg.residiuum",
             &bytes,
             SafetyLimits::default(),
             &ProjectOptions {
@@ -412,7 +412,7 @@ mod tests {
         bytes.extend_from_slice(START_MAGIC);
         bytes.extend_from_slice(&[0u8; 20]);
         let units = project_bytes(
-            "bad.dingo",
+            "bad.residiuum",
             &bytes,
             SafetyLimits::default(),
             &ProjectOptions::default(),

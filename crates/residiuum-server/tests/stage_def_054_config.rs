@@ -1,7 +1,7 @@
 //! DEF-054 — safe configuration management.
 //!
 //! Covers:
-//! - versioned `dingo-config-v1` schema load
+//! - versioned `residiuum-config-v1` schema load
 //! - validation before serve (missing paths, bad ranges)
 //! - unsafe combination: replication claim with insufficient nodes
 //! - unsafe combination: public plaintext bind without opt-in
@@ -20,7 +20,7 @@ use tempfile::tempdir;
 
 #[test]
 fn profile_and_setting_classes() {
-    assert_eq!(CONFIG_PROFILE, "dingo-config-v1");
+    assert_eq!(CONFIG_PROFILE, "residiuum-config-v1");
     assert_eq!(setting_class("store.path"), Some(SettingClass::Static));
     assert_eq!(
         setting_class("serve.max_connections"),
@@ -39,7 +39,7 @@ fn load_validate_apply_roundtrip() {
     fs::write(
         &path,
         r#"{
-          "format": "dingo-config-v1",
+          "format": "residiuum-config-v1",
           "format_version": 1,
           "comment": "stage_def_054 fixture",
           "store": { "path": "/data/store", "durability_default": "durable" },

@@ -40,7 +40,7 @@ What “external” means for this product:
 1. **Ship the pack** (already in-tree): brief, matrix, complete-path review,
    `./scripts/verify-heap.sh quick|full`, Accept drills named in the matrix.
 2. **Engage reviewer** with the brief §5 attack questions; fix time-box and
-   TCB boundary (single-node `dingo-heap-v1`, not cluster).
+   TCB boundary (single-node `residiuum-heap-v1`, not cluster).
 3. **Receive signed report** (PDF + hash + signer identity / firm letterhead).
 4. **File artifacts**:
    - `doc/HEAP_EXTERNAL_SECURITY_REVIEW_REPORT.md` (summary + link/hash to PDF),

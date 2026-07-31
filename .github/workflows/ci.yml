@@ -37,6 +37,9 @@ jobs:
       - name: Delivery scoreboard (M0-3)
         run: bash ./scripts/verify-delivery-status.sh
 
+      - name: Residiuum protocol identity reset
+        run: node ./scripts/check-residiuum-identity.mjs
+
       - name: Format
         run: cargo fmt --all -- --check
 

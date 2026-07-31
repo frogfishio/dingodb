@@ -16,7 +16,7 @@ fn deep_json(depth: usize) -> JsonValue {
 
 #[test]
 fn resource_profile_tag() {
-    assert_eq!(RESOURCE_PROFILE, "dingo-resource-v1");
+    assert_eq!(RESOURCE_PROFILE, "residiuum-resource-v1");
     assert_eq!(
         ResourceLimits::draft_defaults().max_json_depth,
         DEFAULT_MAX_JSON_DEPTH
@@ -26,7 +26,7 @@ fn resource_profile_tag() {
 #[test]
 fn put_rejects_over_deep_json() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("deep.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("deep.residiuum")).unwrap();
     let mut c = db.collection("docs").unwrap();
     // Root depth = 1; wrap DEFAULT_MAX_JSON_DEPTH times → depth = DEFAULT+1.
     let bad = deep_json(DEFAULT_MAX_JSON_DEPTH + 1);
@@ -40,7 +40,7 @@ fn put_rejects_over_deep_json() {
 #[test]
 fn scan_budget_max_docs_force_scan() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("docs.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("docs.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..20 {
         c.put(&format!("k{i:02}"), &json!({"i": i, "tag": "x"}))
@@ -60,7 +60,7 @@ fn scan_budget_max_docs_force_scan() {
 #[test]
 fn scan_budget_max_bytes() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("bytes.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("bytes.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     // Large-ish bodies so a few docs exceed a tight byte budget.
     let body = json!({"blob": "x".repeat(2_000), "tag": "x"});
@@ -81,7 +81,7 @@ fn scan_budget_max_bytes() {
 #[test]
 fn budget_partial_returns_matches() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("partial.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("partial.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..20 {
         c.put(&format!("k{i:02}"), &json!({"i": i, "tag": "x"}))
@@ -106,7 +106,7 @@ fn budget_partial_returns_matches() {
 #[test]
 fn result_bytes_budget_fails_closed() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("result.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("result.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..8 {
         c.put(
@@ -129,7 +129,7 @@ fn result_bytes_budget_fails_closed() {
 #[test]
 fn cancel_token_stops_find() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("cancel.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("cancel.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..30 {
         c.put(&format!("k{i:02}"), &json!({"tag": "x", "i": i}))
@@ -174,7 +174,7 @@ fn query_plan_serializes_extended_budget() {
 #[test]
 fn index_path_respects_doc_budget() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("idx.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("idx.residiuum")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..15 {
         c.put(&format!("k{i:02}"), &json!({"tag": "x", "i": i}))

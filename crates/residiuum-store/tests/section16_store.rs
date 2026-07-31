@@ -20,7 +20,7 @@ fn sealed_segments(root: &Path) -> Vec<PathBuf> {
     }
     for e in fs::read_dir(dir).unwrap() {
         let p = e.unwrap().path();
-        if p.extension().and_then(|x| x.to_str()) == Some("dingo") {
+        if p.extension().and_then(|x| x.to_str()) == Some("residiuum") {
             out.push(p);
         }
     }
@@ -29,7 +29,7 @@ fn sealed_segments(root: &Path) -> Vec<PathBuf> {
 }
 
 fn active_path(root: &Path) -> PathBuf {
-    root.join("active").join("active.dingo")
+    root.join("active").join("active.residiuum")
 }
 
 fn write_three_sealed_plus_active(root: &Path) {
@@ -398,7 +398,7 @@ fn case10_reorder_and_duplicate_segments() {
     // Duplicate the first sealed segment under a new name (copy).
     let dup = root
         .join("segments")
-        .join("ffffffffffffffffffffffffffffffff.dingo");
+        .join("ffffffffffffffffffffffffffffffff.residiuum");
     fs::copy(&segs[0], &dup).unwrap();
     // Swap two sealed filenames so directory sort order changes.
     let a = &segs[0];
@@ -429,7 +429,7 @@ fn store_descriptor_written_and_readable() {
     let path = store.store_descriptor_path();
     assert!(
         path.is_file(),
-        "create must write store-info/descriptor.dingo"
+        "create must write store-info/descriptor.residiuum"
     );
     let bytes = fs::read(&path).unwrap();
     let report = residiuum_format::scan_forward(&bytes, residiuum_format::SafetyLimits::default());

@@ -1,4 +1,4 @@
-//! Residiuum heap identity, capability, and authority kernel (`dingo-heap-v1`).
+//! Residiuum heap identity, capability, and authority kernel (`residiuum-heap-v1`).
 //!
 //! Normative: `doc/wip/heap/HEAP_SPEC.md` §§30–32. Contract artifacts: `spec/heap/`.
 
@@ -92,7 +92,7 @@ pub use generated_registry::{
 };
 
 /// Profile label for the frozen heap isolation contract.
-pub const HEAP_PROFILE: &str = "dingo-heap-v1";
+pub const HEAP_PROFILE: &str = "residiuum-heap-v1";
 
 /// Spec artifact lengths recorded at build time (drift detection).
 pub mod artifacts {

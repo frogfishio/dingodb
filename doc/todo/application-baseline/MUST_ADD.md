@@ -46,7 +46,7 @@ Exit:
 ```text
 APB-0…APB-12 = accept
 and
-dingo-application-baseline-v1 verifies locally and remotely
+residiuum-application-baseline-v1 verifies locally and remotely
 ```
 
 Until exit, Residiuum may claim qualified core storage but not a complete
@@ -298,8 +298,8 @@ Deliver:
 
 ```rust
 collection.query()
-collection.dql(source, parameters, options)
-collection.explain_dql(...)
+collection.rql(source, parameters, options)
+collection.explain_rql(...)
 ```
 
 Required:
@@ -415,7 +415,7 @@ posture
 Deliver:
 
 ```text
-dingo verify --profile dingo-application-baseline-v1 --level A2
+residiuum verify --profile residiuum-application-baseline-v1 --level A2
 ```
 
 Mandatory packaged journey:

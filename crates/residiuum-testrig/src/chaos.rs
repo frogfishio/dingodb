@@ -59,7 +59,7 @@ pub fn run_chaos(cfg: &ChaosConfig) -> Result<ChaosReport, String> {
 
     let candidates = collect_residiuum_files(&cfg.store).map_err(|e| format!("scan segments: {e}"))?;
     if candidates.is_empty() {
-        return Err("no .dingo segment files found under store (run pump first?)".into());
+        return Err("no .residiuum segment files found under store (run pump first?)".into());
     }
 
     let candidate_bytes: u64 = candidates.iter().map(|c| c.size).sum();
@@ -199,17 +199,17 @@ fn collect_residiuum_files(store: &Path) -> std::io::Result<Vec<Cand>> {
     ];
     for root in roots {
         if root.is_dir() {
-            walk_dingo(&root, &mut out)?;
+            walk_residiuum(&root, &mut out)?;
         }
     }
-    // Fallback: any .dingo under store root.
+    // Fallback: any .residiuum under store root.
     if out.is_empty() {
-        walk_dingo(store, &mut out)?;
+        walk_residiuum(store, &mut out)?;
     }
     Ok(out)
 }
 
-fn walk_dingo(dir: &Path, out: &mut Vec<Cand>) -> std::io::Result<()> {
+fn walk_residiuum(dir: &Path, out: &mut Vec<Cand>) -> std::io::Result<()> {
     let mut stack = vec![dir.to_path_buf()];
     while let Some(d) = stack.pop() {
         for ent in fs::read_dir(&d)? {
@@ -219,7 +219,7 @@ fn walk_dingo(dir: &Path, out: &mut Vec<Cand>) -> std::io::Result<()> {
             if ft.is_dir() {
                 stack.push(path);
             } else if ft.is_file() {
-                if path.extension().and_then(|e| e.to_str()) == Some("dingo") {
+                if path.extension().and_then(|e| e.to_str()) == Some("residiuum") {
                     let size = ent.metadata()?.len();
                     if size > 0 {
                         out.push(Cand { path, size });

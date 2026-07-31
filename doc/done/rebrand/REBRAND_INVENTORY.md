@@ -3,8 +3,9 @@
 Date: 2026-07-31
 Feature: REB (`da4cc5c7-0952-4fa7-9378-4b38b2089080`)
 Normative: [REBRAND.md](./REBRAND.md) §9 classes, §10 map
-Principal decisions: Class B hard break; Class C keep except for the explicit
-`DINGODB-*` cryptographic-domain reset; repo rename out of scope
+Final principal decision: all pre-release product, protocol, wire, on-disk,
+query, rule, and cryptographic identities hard-reset to Residiuum; repository
+rename remains out of scope.
 
 Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 
@@ -64,26 +65,23 @@ Also: `verification/heap-verus` package name `dingo-heap-verus` if present →
 | `dingo://` URI | `residiuum://` | Hard break (REB-3) |
 | `DINGO_*` env vars | `RESIDIUUM_*` | Hard break (REB-3); message strings fixed REB-10 |
 | Feature flags / Cargo keywords `dingodb` | `residiuum` | Class B packaging (REB-10 keywords) |
-| DQL public symbols (`Dql`, `compile_dql`, …) | RQL symbols (`Rql`, `compile_rql`, …) | REB-8; **serialized** profile values stay `dql-*` (Class C) |
+| DQL public and serialized identities | RQL symbols and `rql-*` values | Pre-release hard reset |
 
-## 4. Class C — keep legacy (REB-5 freeze; do not bulk-replace)
+## 4. Former Class C — pre-release hard reset
 
 | Identifier | Role | Disposition |
 |------------|------|-------------|
-| `DINGOFRM` / `DINGOEND` | Frame magics | **retain_legacy** |
-| `dingo-*-v1` wire/persist profiles (e.g. `dingo-heap-v1`, `dingo-cursor-v1`, `dingo-rpc-v1`, `dingo-config-v1`, …) | Protocol/profile strings | **retain_legacy** unless proven purely cosmetic packaging labels in REB-5 audit |
-| Crypto domain separators formerly containing `DINGODB-*` | Crypto | **hard reset to `RESIDIUUM-*`; invalidate pre-release artifacts** |
-| Other frozen `dingo:` hash domains that bind plans/proofs | Crypto | **retain_legacy** |
-| `urn:dingo:cluster:` / `urn:dingo:node:` | Identity URIs in TLS | **retain_legacy** or dual-read later (not this Feature hard break without REB-5 explicit exception) |
-| Golden vectors / fixtures encoding above | Evidence | **retain_legacy** |
-| `.dingo` store path conventions if any | On-disk | **retain_legacy** |
-| Frozen DQL wire profiles (`dql-app-core-v1`, `dql-plan-v1`, `dql-plan-encoding-v1`, `dingo:dql-plan-v1:canonical-v1`, `dql_query.*`, `dql_feature_unavailable`) | App-core / plan wire | **retain_legacy** (paired with RQL Rust symbols after REB-8) |
-| `dingo-store-*` / `dingo-store-9` store meta | On-disk store family | **retain_legacy** (readers still recognize family) |
+| Former frame and component magics | On-disk identity | **reset; no old reader** |
+| Former `dingo-*-v1` profiles | Protocol/profile strings | **reset to `residiuum-*-v1`** |
+| Former cryptographic and hash domains | Crypto | **reset; regenerate vectors** |
+| Former Dingo URNs | TLS identity | **reset to Residiuum URNs** |
+| Golden vectors / fixtures encoding above | Evidence | **regenerate** |
+| Former `.dingo` path convention | Media examples | **reset to `.residiuum`** |
+| Former DQL/DRE wire identities | Query/rule protocols | **reset to RQL/RRE** |
+| Former `dingo-store-*` metadata | On-disk store family | **reset; no old reader** |
 
-**Rule:** Class A/B renames must not rewrite Class C. If a string is both a
-package path reference and a profile id, change only the path/package form, not
-the profile constant value. REB-8 exemplifies the correct pattern:
-`RQL_APP_CORE_PROFILE = "dql-app-core-v1"`.
+The complete decision and invalidation statement is
+[REBRAND_PROTOCOL_IDENTITY_RESET.md](./REBRAND_PROTOCOL_IDENTITY_RESET.md).
 
 ## 5. Class D — immutable history
 
@@ -111,7 +109,7 @@ Not all rows; bulk is REB-2/3/4 grep-fix.
 | REB-2 | §1 dirs (crates), §2 packages | **done** |
 | REB-3 | §3 API/CLI/env/URI | **done** |
 | REB-4 | §6 scripts/CI | **done** |
-| REB-5 | §4 Class C freeze confirmation | **done** |
+| REB-5 | §4 protocol identity reset confirmation | **done** |
 | REB-6 | changelog from all sections | **done** |
 | REB-7 | residual search vs approved Class C/D | **done** |
 | REB-8 | RQL public symbols + frozen DQL wire values | **done** |

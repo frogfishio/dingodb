@@ -1,8 +1,8 @@
 # Wire major-1 freeze qualification (DEF-053)
 
-Policy id: `dingo-wire-major1-freeze-v1`  
-Date: 2026-07-31  
-Status: **freeze NOT declared** — `WIRE_PROFILE_LABEL` remains `1.0-draft`  
+Policy id: `residiuum-wire-major1-freeze-v1`
+Date: 2026-07-31
+Status: **freeze NOT declared** — `WIRE_PROFILE_LABEL` remains `1.0-draft`
 Companion: [FORMAT_SPEC.md](../../reference/storage/FORMAT_SPEC.md), [DEFECTS.md](../../done/incidents/DEFECTS.md) §DEF-053,
 [CAPABILITY_MATRIX.md](../status/CAPABILITY_MATRIX.md), [SUPPORTED_VERSIONS.md](../../reference/operations/SUPPORTED_VERSIONS.md),
 `residiuum-format::compat`
@@ -26,7 +26,7 @@ every gate in §2 is **Met** and a principal freeze declaration is recorded here
 | Core frame kinds 0–13 assignments | **Yes** (candidate) | `FrameKind` in `residiuum-format` |
 | Chunk body layout helpers | **Yes** (candidate helpers) | store owns full manifests |
 | Reader/writer support matrix | Policy under freeze | `residiuum-format::compat` |
-| Network RPC (`dingo-rpc-v1`) | **Separate** | `RPC_WIRE_LABEL = 1.0-draft` |
+| Network RPC (`residiuum-rpc-v1`) | **Separate** | `RPC_WIRE_LABEL = 1.0-draft` |
 | Collection SDK API | **Separate** | `SDK_API_VERSION = 1.0` |
 | Crate / workspace semver | **Separate** | monorepo `VERSION` |
 
@@ -74,8 +74,8 @@ as a long-term interoperability promise.
 
 | Name | Value | Source |
 |------|-------|--------|
-| `START_MAGIC` | ASCII `DINGOFRM` (8 B) | `residiuum-format::START_MAGIC` |
-| `END_MAGIC` | ASCII `DINGOEND` (8 B) | `residiuum-format::END_MAGIC` |
+| `START_MAGIC` | ASCII `RESIDFRM` (8 B) | `residiuum-format::START_MAGIC` |
+| `END_MAGIC` | ASCII `RESIDEND` (8 B) | `residiuum-format::END_MAGIC` |
 | Prefix length | 64 B | `FRAME_PREFIX_LEN` |
 | Suffix length | 56 B | `FRAME_SUFFIX_LEN` |
 | Byte order | little-endian for multi-byte integers | FORMAT_SPEC §2 |
@@ -183,7 +183,7 @@ row for major-1 before any major-2 writer ships.
 
 ### 4.3 Migration
 
-- Profile: `dingo-migrate-v1` (DEF-052 single-generation cut).
+- Profile: `residiuum-migrate-v1` (DEF-052 single-generation cut).
 - Phases: preflight → plan → apply → verify; rollback of incomplete.
 - Evidence-preserving copy only; never in-place blind rewrite.
 - Residual: multi-major dual-read rewrite jobs; rolling mixed-cluster upgrades.
@@ -242,7 +242,7 @@ Only after §2 is all Met and principal accept:
 
 | Field | Value |
 |-------|--------|
-| Policy id | `dingo-wire-major1-freeze-v1` |
+| Policy id | `residiuum-wire-major1-freeze-v1` |
 | Labor cut | DEF-053 freeze gap inventory + policy (2026-07-31) |
 | Freeze declared | **No** |
 | Stable label | not assigned (`1.0-draft` retained) |

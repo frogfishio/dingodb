@@ -15,7 +15,7 @@ fi
 
 WORKDIR="${TMPDIR:-/tmp}/residiuum-demo-punch-$$"
 mkdir -p "$WORKDIR"
-STORE="$WORKDIR/app.dingo"
+STORE="$WORKDIR/app.residiuum"
 trap 'rm -rf "$WORKDIR"' EXIT
 
 echo "== put two documents =="
@@ -28,11 +28,11 @@ if "$BIN" --help 2>/dev/null | grep -q compact; then
   "$BIN" compact "$STORE" 2>/dev/null || true
 fi
 
-# Find a sealed .dingo under segments/ (or active if only one file).
-SEG=$(find "$STORE/segments" -name '*.dingo' -type f 2>/dev/null | head -1 || true)
+# Find a sealed .residiuum under segments/ (or active if only one file).
+SEG=$(find "$STORE/segments" -name '*.residiuum' -type f 2>/dev/null | head -1 || true)
 if [[ -z "$SEG" ]]; then
   # Fall back: corrupt active journal if nothing sealed yet.
-  SEG=$(find "$STORE" -name '*.dingo' -type f | head -1)
+  SEG=$(find "$STORE" -name '*.residiuum' -type f | head -1)
 fi
 echo "target segment: $SEG"
 SIZE=$(wc -c <"$SEG" | tr -d ' ')
@@ -54,7 +54,7 @@ echo "== get survivors (some keys may still be readable depending on damage) =="
 "$BIN" get "$STORE" users/bob || echo "(bob unreadable — expected if its frames were hit)"
 
 echo "== salvage to a new path (source never mutated by salvage) =="
-OUT="$WORKDIR/recovered.dingo"
+OUT="$WORKDIR/recovered.residiuum"
 "$BIN" salvage "$STORE" --output "$OUT"
 "$BIN" list "$OUT" || true
 echo "demo complete: workdir was $WORKDIR (cleaned on exit)"

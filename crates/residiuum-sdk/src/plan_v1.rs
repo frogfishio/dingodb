@@ -1,4 +1,4 @@
-//! Canonical logical plan (`dql-plan-v1`) + encoding/hash (APP-4).
+//! Canonical logical plan (`rql-plan-v1`) + encoding/hash (APP-4).
 //!
 //! Normative companions:
 //! - [doc/wip/query/RQL_SPEC.md](../../../doc/wip/query/RQL_SPEC.md) §15–§16
@@ -18,13 +18,13 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 
 /// Logical plan profile (same as [`crate::RQL_PLAN_PROFILE`]).
-pub const PLAN_PROFILE: &str = "dql-plan-v1";
+pub const PLAN_PROFILE: &str = "rql-plan-v1";
 
 /// Companion encoding profile for persistent / exchanged plan bytes.
-pub const PLAN_ENCODING_PROFILE: &str = "dql-plan-encoding-v1";
+pub const PLAN_ENCODING_PROFILE: &str = "rql-plan-encoding-v1";
 
 /// Domain separation tag for plan hashes (BLAKE3 over domain || 0x00 || body).
-pub const PLAN_HASH_DOMAIN: &str = "dingo:dql-plan-v1:canonical-v1";
+pub const PLAN_HASH_DOMAIN: &str = "residiuum:rql-plan-v1:canonical-v1";
 
 /// Implicit key tie-break path used in Application Core order.
 pub const KEY_TIE_BREAK_PATH: &str = "$key";

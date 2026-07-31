@@ -20,10 +20,10 @@ pub const TIERS: &str = "tiers";
 pub const STORE_ID_FILE: &str = "store_id";
 pub const META_FILE: &str = "meta";
 /// Single-frame store descriptor under `store-info/` (Stage 3c).
-pub const STORE_DESCRIPTOR_FILE: &str = "descriptor.dingo";
+pub const STORE_DESCRIPTOR_FILE: &str = "descriptor.residiuum";
 
 /// Active segment filename (single active writer in Stage 3 / Axis B shard-0 legacy).
-pub const ACTIVE_SEGMENT_FILE: &str = "active.dingo";
+pub const ACTIVE_SEGMENT_FILE: &str = "active.residiuum";
 
 /// Subdirectory under `active/` for rotated segments awaiting background seal
 /// finalize (DEF-096 Axis A dual-slot / async lifecycle). Shared across shards
@@ -65,7 +65,7 @@ impl StorePaths {
         self.store_info().join(META_FILE)
     }
 
-    /// `store-info/descriptor.dingo` — framed store descriptor (Stage 3c).
+    /// `store-info/descriptor.residiuum` — framed store descriptor (Stage 3c).
     pub fn store_descriptor_file(&self) -> PathBuf {
         self.store_info().join(STORE_DESCRIPTOR_FILE)
     }
@@ -75,7 +75,7 @@ impl StorePaths {
         self.root.join(ACTIVE)
     }
 
-    /// `active/active.dingo` — legacy single-writer path (writer_shards == 1).
+    /// `active/active.residiuum` — legacy single-writer path (writer_shards == 1).
     pub fn active_segment(&self) -> PathBuf {
         self.active_dir().join(ACTIVE_SEGMENT_FILE)
     }
@@ -107,7 +107,7 @@ impl StorePaths {
     /// Path for a pending (rotated, not yet finalized) segment by id.
     pub fn pending_segment(&self, segment_id: &[u8; 16]) -> PathBuf {
         self.pending_seal_dir()
-            .join(format!("{}.dingo", hex16(segment_id)))
+            .join(format!("{}.residiuum", hex16(segment_id)))
     }
 
     /// `store-info/writer_shards` — Axis B shard count (ASCII decimal + newline).
@@ -125,7 +125,7 @@ impl StorePaths {
                 out.push(p);
             }
         }
-        // Legacy: multi-shard config but only root active.dingo exists (upgrade).
+        // Legacy: multi-shard config but only root active.residiuum exists (upgrade).
         if out.is_empty() {
             let legacy = self.active_segment();
             if legacy.is_file() {
@@ -143,7 +143,7 @@ impl StorePaths {
     /// Path for a sealed segment file by hex segment id.
     pub fn sealed_segment(&self, segment_id: &[u8; 16]) -> PathBuf {
         self.segments_dir()
-            .join(format!("{}.dingo", hex16(segment_id)))
+            .join(format!("{}.residiuum", hex16(segment_id)))
     }
 
     /// `chunks/`
@@ -226,14 +226,14 @@ pub fn unhex16(s: &str) -> Option<[u8; 16]> {
     Some(out)
 }
 
-/// Parse a sealed segment filename `{hex32}.dingo` into a segment id.
+/// Parse a sealed segment filename `{hex32}.residiuum` into a segment id.
 pub fn segment_id_from_filename(path: &Path) -> Option<[u8; 16]> {
     let stem = path.file_stem()?.to_str()?;
     unhex16(stem)
 }
 
-/// List `*.dingo` files under a directory (sorted by name for determinism).
-pub fn list_dingo_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
+/// List `*.residiuum` files under a directory (sorted by name for determinism).
+pub fn list_residiuum_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
     if !dir.exists() {
         return Ok(Vec::new());
     }
@@ -241,7 +241,7 @@ pub fn list_dingo_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) == Some("dingo") && path.is_file() {
+        if path.extension().and_then(|e| e.to_str()) == Some("residiuum") && path.is_file() {
             out.push(path);
         }
     }
@@ -259,7 +259,7 @@ mod tests {
         let h = hex16(&id);
         assert_eq!(h.len(), 32);
         assert_eq!(unhex16(&h), Some(id));
-        let path = PathBuf::from(format!("{h}.dingo"));
+        let path = PathBuf::from(format!("{h}.residiuum"));
         assert_eq!(segment_id_from_filename(&path), Some(id));
     }
 }

@@ -411,7 +411,7 @@ mod tests {
             event_id: Some("dd".into()),
             event_kind: Some("put".into()),
             physical: PhysicalLocation {
-                source: "segments/x.dingo".into(),
+                source: "segments/x.residiuum".into(),
                 offset: Some(0),
                 encoded_length: Some(100),
                 wire_major: Some(1),

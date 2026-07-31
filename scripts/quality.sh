@@ -20,6 +20,9 @@ bash ./scripts/verify-delivery-status.sh
 echo "== documentation structure and links =="
 node ./scripts/check-doc-links.mjs
 
+echo "== Residiuum protocol identity reset =="
+node ./scripts/check-residiuum-identity.mjs
+
 echo "== APP-0 application contract lock =="
 bash ./scripts/verify-app0-contract.sh
 

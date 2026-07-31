@@ -43,7 +43,7 @@ fn move_segment_to_cold_preserves_identity_and_data() {
         .paths()
         .tiers_dir()
         .join("cold")
-        .join(format!("{}.dingo", residiuum_store::hex16(&seg)));
+        .join(format!("{}.residiuum", residiuum_store::hex16(&seg)));
     assert!(cold.is_file());
 
     // Placement primary is cold; data still readable.
@@ -99,7 +99,7 @@ fn copy_then_offline_archive_is_coverage_hole_not_empty_success() {
         .paths()
         .tiers_dir()
         .join("archive")
-        .join(format!("{}.dingo", residiuum_store::hex16(&seg)));
+        .join(format!("{}.residiuum", residiuum_store::hex16(&seg)));
     assert!(!hot.is_file(), "move must remove hot copy");
     assert!(arch.is_file(), "archive must hold the segment");
 
@@ -190,7 +190,7 @@ fn cold_search_summaries_list_archive_tier() {
 #[test]
 fn format_classification_preserves_unsupported_identity() {
     // Garbage bytes: unreadable but classified without rewrite.
-    let junk = b"not a dingo frame at all................";
+    let junk = b"not a residiuum frame at all................";
     let c = classify_segment_bytes(junk);
     match c {
         FormatClassification::Unreadable {
@@ -239,8 +239,8 @@ fn migration_evidence_written() {
     let entries: Vec<_> = fs::read_dir(&mig).unwrap().collect();
     assert!(!entries.is_empty());
     let text = fs::read_to_string(entries[0].as_ref().unwrap().path()).unwrap();
-    assert!(text.contains("dingo-migration-v1"));
-    assert!(text.contains("tool_version=dingo-store-9"));
+    assert!(text.contains("residiuum-migration-v1"));
+    assert!(text.contains("tool_version=residiuum-store-9"));
     assert!(text.contains(&residiuum_store::hex16(&seg)));
 }
 

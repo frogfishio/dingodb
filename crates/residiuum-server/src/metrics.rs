@@ -1,7 +1,7 @@
 //! Process metrics and health probes (DEF-061).
 //!
-//! Exports a versioned metrics snapshot (`dingo-metrics-v1`) with **bounded
-//! label cardinality** and process health reports (`dingo-health-v1`):
+//! Exports a versioned metrics snapshot (`residiuum-metrics-v1`) with **bounded
+//! label cardinality** and process health reports (`residiuum-health-v1`):
 //!
 //! - **Liveness** (`health_live`): process accept path is up.
 //! - **Readiness** (`health_ready`): node can provide advertised guarantees
@@ -20,10 +20,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Metrics export profile label (capability matrices / scrape payload).
-pub const METRICS_PROFILE: &str = "dingo-metrics-v1";
+pub const METRICS_PROFILE: &str = "residiuum-metrics-v1";
 
 /// Health report profile label.
-pub const HEALTH_PROFILE: &str = "dingo-health-v1";
+pub const HEALTH_PROFILE: &str = "residiuum-health-v1";
 
 /// Maximum distinct `op` label values retained (known ops + overflow bucket).
 pub const MAX_OP_LABELS: usize = 32;
@@ -680,8 +680,8 @@ mod tests {
 
     #[test]
     fn profiles_stable() {
-        assert_eq!(METRICS_PROFILE, "dingo-metrics-v1");
-        assert_eq!(HEALTH_PROFILE, "dingo-health-v1");
+        assert_eq!(METRICS_PROFILE, "residiuum-metrics-v1");
+        assert_eq!(HEALTH_PROFILE, "residiuum-health-v1");
         assert_eq!(KNOWN_OPS.len(), KNOWN_OPS_LEN);
         assert_eq!(LATENCY_BUCKET_MS.len() + 1, LATENCY_BUCKET_COUNT);
     }
@@ -741,7 +741,7 @@ mod tests {
             raft_attached: false,
             claims_replication: false,
             active_connections: Some(0),
-            log_profile: "dingo-log-v1",
+            log_profile: "residiuum-log-v1",
         });
         assert!(r.live);
         assert!(!r.ready);
@@ -762,7 +762,7 @@ mod tests {
             raft_attached: false,
             claims_replication: true,
             active_connections: Some(1),
-            log_profile: "dingo-log-v1",
+            log_profile: "residiuum-log-v1",
         });
         assert!(!r.ready);
         assert!(r.reasons.iter().any(|x| x.contains("replication claimed")));
@@ -781,7 +781,7 @@ mod tests {
             raft_attached: false,
             claims_replication: false,
             active_connections: Some(1),
-            log_profile: "dingo-log-v1",
+            log_profile: "residiuum-log-v1",
         });
         assert!(r.live && r.ready);
         assert_eq!(r.status, HealthStatus::Ready);

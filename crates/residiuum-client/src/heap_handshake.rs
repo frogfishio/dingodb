@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub const FEATURE_HEAP_KEY_V1: &str = "heap-key-v1";
 
 /// Audience constant echoed in challenges.
-pub const HEAP_AUDIENCE_DATA_V1: &str = "dingo:data:v1";
+pub const HEAP_AUDIENCE_DATA_V1: &str = "residiuum:data:v1";
 
 /// Maximum complete framed `heap_auth` JSON bytes (§33.8).
 pub const HEAP_AUTH_MAX_BYTES: usize = 32_768;
@@ -22,7 +22,7 @@ pub struct HeapChallenge {
     pub msg: String,
     /// Canonical lowercase hyphenated deployment UUID.
     pub deployment_id: String,
-    /// Exactly `dingo:data:v1`.
+    /// Exactly `residiuum:data:v1`.
     pub audience: String,
     /// Unpadded base64url of 32-byte nonce.
     pub server_nonce_b64u: String,

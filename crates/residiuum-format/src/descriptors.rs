@@ -6,7 +6,7 @@ use crate::cbor_envelope::{
 use thiserror::Error;
 
 /// Profile string embedded in heap descriptors.
-pub const HEAP_DESCRIPTOR_PROFILE: &str = "dingo-heap-v1";
+pub const HEAP_DESCRIPTOR_PROFILE: &str = "residiuum-heap-v1";
 
 /// Descriptor codec errors.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]

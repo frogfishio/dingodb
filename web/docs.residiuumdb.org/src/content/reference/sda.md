@@ -19,7 +19,7 @@ keywords:
 ---
 
 - `doc/SDA/SDA_SPEC.md`, grammar, cheatsheet
-- CLI: `residuum-sda` / `sda-cli` eval
+- CLI: `residiuum-sda` / `sda-cli` eval
 - Conformance corpus: SDA §14
 
 Pure evaluation only in core.

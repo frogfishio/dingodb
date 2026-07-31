@@ -15,7 +15,7 @@
     {
       "id": "single-node-tcp",
       "name": "Single-node TCP",
-      "how": "residuum serve (default 127.0.0.1)",
+      "how": "residiuum serve (default 127.0.0.1)",
       "durability": "Local store only; no network quorum",
       "status": "development-only",
       "note": "Development and evaluation, not a production claim",
@@ -33,7 +33,7 @@
     {
       "id": "network-multi-node",
       "name": "Network multi-node",
-      "how": "residuum serve-cluster + multi-seed connect",
+      "how": "residiuum serve-cluster + multi-seed connect",
       "durability": "Partition Raft propose when control plane attaches",
       "status": "experimental",
       "note": "Not production; requires --experimental-network-cluster",
@@ -68,12 +68,12 @@
       "claim_id": "claim.kernel.deterministic"
     },
     {
-      "id": "dql-dialects",
+      "id": "rql-dialects",
       "name": "RQL and query dialects",
       "description": "Human RQL plus SQL, Mongo-style, JSON, and raw SDA entry surfaces compile toward the same execution kernel within their declared subsets.",
       "scope": "SDK query surface",
       "status": "experimental",
-      "claim_id": "claim.dql.one-kernel"
+      "claim_id": "claim.rql.one-kernel"
     },
     {
       "id": "open-create",
@@ -174,12 +174,12 @@
       "claim_id": null
     },
     {
-      "id": "dre",
+      "id": "rre",
       "name": "RRE — Data Rules",
       "description": "Finite declarative invariants that give flexible documents database-owned, formally specified truth.",
       "scope": "Normative design",
       "status": "design",
-      "claim_id": "claim.dre.document-truth"
+      "claim_id": "claim.rre.document-truth"
     },
     {
       "id": "atomics",
@@ -255,11 +255,11 @@
     },
     {
       "label": "BACKUP_PROFILE",
-      "value": "dingo-backup-v1"
+      "value": "residiuum-backup-v1"
     },
     {
       "label": "SCRUB_PROFILE",
-      "value": "dingo-scrub-v1"
+      "value": "residiuum-scrub-v1"
     }
   ]
 }

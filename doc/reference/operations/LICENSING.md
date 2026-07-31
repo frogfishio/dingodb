@@ -111,8 +111,8 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 | `residiuum-server` | **AGPL-3.0-or-later** | Enables `residiuum-sdk/cluster` |
 | `residiuum-cli` → `residiuum` | **AGPL-3.0-or-later** | Enables `residiuum-sdk/cluster` |
 | `residiuum-authority` | **AGPL-3.0-or-later** | Planned separate local-only heap authority executable; never linked by data server |
-| `dingo-studio-core` | **AGPL-3.0-or-later** | Planned Studio orchestration and remote-management core |
-| `apps/dingo-studio` | **AGPL-3.0-or-later** | Planned Residiuum Studio desktop product |
+| `residiuum-studio-core` | **AGPL-3.0-or-later** | Planned Studio orchestration and remote-management core |
+| `apps/residiuum-studio` | **AGPL-3.0-or-later** | Planned Residiuum Studio desktop product |
 
 ### 3.2 License files
 

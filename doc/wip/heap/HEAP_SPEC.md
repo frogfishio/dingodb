@@ -1,14 +1,14 @@
 # Residiuum Heap Specification
 
-Status: Developer-ready implementation contract v0.9  
+Status: Developer-ready implementation contract v0.9
 Capability status: **Partial** — HP-000…HP-009 landed in-tree (with listed
 gaps); HP-010 evidence advanced: **H3 Accept**, H0–H2/H4–H5 partial, H6 partial
 with complete-path review + external-review brief + pure proof bundle + §32.4
 remote data/list/scan cut (`qualified=false`); HP-011…HP-012 not started. HC1
-not started. No `dingo-heap-v1` qualified claim. See **Implementation progress**
-below.  
+not started. No `residiuum-heap-v1` qualified claim. See **Implementation progress**
+below.
 Scope: Logical heap identity, collection containment, authorization, isolation,
-administration, recovery, and compatibility  
+administration, recovery, and compatibility
 Audience: SDK, server, cluster, storage, security, recovery, CLI, and test-rig
 implementers
 Companion contracts: `ATOMICS_SPEC.md`, `RRE_SPEC.md`,
@@ -35,7 +35,7 @@ criteria in §40.
 
 | Layer | State |
 |-------|--------|
-| Spec contract (`dingo-heap-v1` prose §§30–41) | Frozen (this document) |
+| Spec contract (`residiuum-heap-v1` prose §§30–41) | Frozen (this document) |
 | Machine-readable artifacts (`spec/heap/`) | Present; HP-000 mostly landed |
 | Isolation kernel crate (`crates/residiuum-heap`) | Present; HP-001 mostly landed |
 | Durable ownership in `residiuum-format` | Present; HP-002 partial |
@@ -126,7 +126,7 @@ fuzz/fuzz_targets/heap_ownership.rs
 |----------|--------|
 | Is the **spec prose** a usable implementation contract? | **Yes** — §§30–41 are frozen developer-ready text (v0.9). |
 | Is **implementation** of the full package tree complete? | **No** — HP-010 incomplete; HP-011/012 not started. |
-| May we advertise `dingo-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
+| May we advertise `residiuum-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
 | Is the **hot data path** good enough for heap-bound apps? | **Mostly yes** for embedded + qualified remote put/get/list/scan/find/history/indexes (equality find index-accelerated); lifecycle RPC still reserved. |
 
 **Bottom line:** we are **not done** with the *program* HEAP_SPEC describes. We **are** done writing the core *contract document*; remaining work is residual implementation + honest qualification evidence.
@@ -149,7 +149,7 @@ NEXT   HP-010 single-node qualification  (H3 Accept; H6 partial; Verus + signed 
 LATER  HP-011 → HP-012 cluster
 ```
 
-**Critical path to a qualified single-node claim (`dingo-heap-v1`):**  
+**Critical path to a qualified single-node claim (`residiuum-heap-v1`):**
 close qualification residuals as required → **HP-010** evidence matrices.
 
 #### What's left (operator checklist)
@@ -976,7 +976,7 @@ The reserved names are:
 - `system`;
 - `admin`;
 - `default`;
-- any name beginning with `_dingo`.
+- any name beginning with `_residiuum`.
 
 `default` is reserved for compatibility use and MUST NOT be created as an
 ordinary user heap.
@@ -1147,7 +1147,7 @@ let users = heap.collection("users")?;
 Trusted embedded multi-heap Rust:
 
 ```rust
-let deployment = Residiuum::open_deployment("./app.dingo")?;
+let deployment = Residiuum::open_deployment("./app.residiuum")?;
 let heap = deployment.heap("accounts")?;
 let users = heap.collection("users")?;
 ```
@@ -1371,7 +1371,7 @@ confirm the expected pinned key; attacker-controlled identifiers never select
 an alternate verification key.
 
 For the qualified data service, `audience` is the fixed protocol value
-`dingo:data:v1`; `DeploymentId` and `AuthorityEpoch` provide installation and
+`residiuum:data:v1`; `DeploymentId` and `AuthorityEpoch` provide installation and
 incarnation binding. Individual node hostnames are not certificate audiences,
 so ordinary failover within the same valid cluster does not require
 reissuance. A certificate for another deployment, restored incarnation,
@@ -3216,7 +3216,7 @@ linked into the qualified multi-heap data plane.
 Migration assigns the legacy store one `HeapId` and records it in authoritative
 heap/store identity metadata.
 
-The frozen `dingo-heap-v1` profile rewrites every admitted legacy frame as
+The frozen `residiuum-heap-v1` profile rewrites every admitted legacy frame as
 specified in §36. A future named profile may avoid rewriting only if it proves
 all of the following with equally strong surviving ownership evidence:
 
@@ -3229,7 +3229,7 @@ all of the following with equally strong surviving ownership evidence:
   profile.
 
 Such a future profile is not wire- or recovery-compatible with
-`dingo-heap-v1` unless this specification explicitly says so.
+`residiuum-heap-v1` unless this specification explicitly says so.
 
 ### 23.5 SDK transition
 
@@ -3866,7 +3866,7 @@ profile.
 The implementation profile label is:
 
 ```text
-dingo-heap-v1
+residiuum-heap-v1
 ```
 
 The profile targets the existing Rust 1.88 workspace and existing draft frame
@@ -4091,7 +4091,7 @@ During H1:
 - remove `Store` re-exports from `residiuum-store::lib`;
 - update embedded, SDK, server, and cluster code to use the correct façade;
 - keep any legacy raw wrapper in a separate legacy-only crate or binary that
-  cannot be linked into `residiuum-server` with `dingo-heap-v1`.
+  cannot be linked into `residiuum-server` with `residiuum-heap-v1`.
 
 CI adds `scripts/check_heap_architecture.sh`. It fails when:
 
@@ -4432,7 +4432,7 @@ critical fields, and non-deterministic encodings are rejected.
 Content type:
 
 ```text
-application/dingo.heap-key+cbor
+application/residiuum.heap-key+cbor
 ```
 
 External AAD:
@@ -4456,7 +4456,7 @@ Payload labels:
 | 9 | `constraints` | array | canonical §32.2 entries |
 | 10 | `not_before` | uint | Unix seconds |
 | 11 | `expires_at` | uint | Unix seconds; greater than label 10 |
-| 12 | `audience` | text | exactly `dingo:data:v1` |
+| 12 | `audience` | text | exactly `residiuum:data:v1` |
 | 13 | `issuer_master_key_id` | bstr(32) | SHA-256 of raw master public key |
 
 Every label is required, appears once, and no other label is accepted in v1.
@@ -4467,7 +4467,7 @@ Certificate lifetime is at most 7,776,000 seconds.
 Content type:
 
 ```text
-application/dingo.heap-proof+cbor
+application/residiuum.heap-proof+cbor
 ```
 
 External AAD:
@@ -4487,7 +4487,7 @@ Payload labels:
 | 5 | `deployment_id` | bstr(16) | equals certificate |
 | 6 | `heap_id` | bstr(16) | equals certificate |
 | 7 | `authority_epoch` | uint | equals certificate and snapshot |
-| 8 | `audience` | text | exactly `dingo:data:v1` |
+| 8 | `audience` | text | exactly `residiuum:data:v1` |
 | 9 | `server_nonce` | bstr(32) | challenge bytes |
 | 10 | `tls_exporter` | bstr(32) | RFC 9266 value for this TLS channel |
 | 11 | `protocol` | array(3) | `[heap_profile=1, rpc_major=1, rpc_minor=0]` |
@@ -4500,7 +4500,7 @@ the holder key in the referenced certificate.
 Content type:
 
 ```text
-application/dingo.heap-authority-transition+cbor
+application/residiuum.heap-authority-transition+cbor
 ```
 
 External AAD:
@@ -4608,7 +4608,7 @@ invalidates every earlier certificate.
 Authority mutation content type:
 
 ```text
-application/dingo.heap-authority-mutation+cbor
+application/residiuum.heap-authority-mutation+cbor
 ```
 
 External AAD:
@@ -4765,7 +4765,7 @@ Semantic decoders then require the exact field set.
 
 The holder creates its own key and sends the owner a self-signed issuance
 request. It is an untagged COSE Sign1 with empty unprotected map, protected
-content type `application/dingo.heap-issuance-request+cbor`, and external AAD:
+content type `application/residiuum.heap-issuance-request+cbor`, and external AAD:
 
 ```text
 RESIDIUUM-HEAPKEY-ISSUANCE-REQUEST-V1
@@ -4904,7 +4904,7 @@ Heap data and metadata operations:
 | 115 | `scan_json` | `Read` |
 | 116 | `find` | `Read` |
 | 117 | `history` | `ReadHistory` |
-| 118 | `dql_query` | `Read` |
+| 118 | `rql_query` | `Read` |
 | 119 | `sda_query` | `Read` |
 | 120 | `put` | `Write` |
 | 121 | `put_bytes` | `Write` |
@@ -5080,7 +5080,7 @@ right and immutable target identity.
 The qualified remote profile is:
 
 ```text
-dingo-rpc-v1 + heap-key-v1 + TLS 1.3
+residiuum-rpc-v1 + heap-key-v1 + TLS 1.3
 ```
 
 It disables:
@@ -5126,7 +5126,7 @@ JSON fields:
   "v": 1,
   "msg": "heap_challenge",
   "deployment_id": "canonical-uuid",
-  "audience": "dingo:data:v1",
+  "audience": "residiuum:data:v1",
   "server_nonce_b64u": "unpadded-base64url-32-bytes",
   "heap_profile": 1,
   "protocol_major": 1,
@@ -5194,7 +5194,7 @@ Additional JSON fields:
   "authority_generation": 1,
   "security_revision": 1,
   "capability_expires_at": 1700003600,
-  "heap_profile": "dingo-heap-v1"
+  "heap_profile": "residiuum-heap-v1"
 }
 ```
 
@@ -5313,7 +5313,7 @@ or detailed denial logging after the applicable budget is exhausted.
 
 ## 34. Frozen durable-storage profile
 
-This section is normative for `dingo-heap-v1`. A different layout is permitted
+This section is normative for `residiuum-heap-v1`. A different layout is permitted
 only under a new profile name and after requalification.
 
 ### 34.1 One heap per segment
@@ -5385,10 +5385,10 @@ The reference server uses:
       descriptor-chain/<20-digit-sequence>-<descriptor-hash-hex>.frame
       collections.v1.cbor
       streams.v1.cbor
-  active/<heap-id-hex>/<shard-id>.dingo
-  segments/<heap-id-hex>/<segment-id>.dingo
-  chunks/<heap-id-hex>/<chunk-id>.dingo
-  indexes/<heap-id-hex>/<collection-id-hex>/<index-id>.dingo
+  active/<heap-id-hex>/<shard-id>.residiuum
+  segments/<heap-id-hex>/<segment-id>.residiuum
+  chunks/<heap-id-hex>/<chunk-id>.residiuum
+  indexes/<heap-id-hex>/<collection-id-hex>/<index-id>.residiuum
   migration/<job-id>/state.v1.cbor
   quarantine/<reason>/<opaque-file-name>
 ```
@@ -5493,7 +5493,7 @@ Descriptors are deterministic CBOR maps embedded as frame bodies.
 | 3 | heap ID | bstr(16) |
 | 4 | creation event ID | bstr(16) |
 | 5 | created at | Unix seconds |
-| 6 | profile | `"dingo-heap-v1"` |
+| 6 | profile | `"residiuum-heap-v1"` |
 | 7 | predecessor descriptor hash | bstr(32) or null |
 | 8 | descriptor sequence | uint, starting at 1 |
 | 9 | state | 1 active, 2 read-only, 3 suspended, 4 retired, 5 purging, 6 purged |

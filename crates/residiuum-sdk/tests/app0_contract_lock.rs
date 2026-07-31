@@ -35,12 +35,12 @@ fn app0_wire_artifacts_present() {
     for rel in [
         "spec/heap/rpc-v1/collection_create.request.json",
         "spec/heap/rpc-v1/collection_create.response.json",
-        "spec/heap/rpc-v1/dql_query.request.json",
-        "spec/heap/rpc-v1/dql_query.response.json",
+        "spec/heap/rpc-v1/rql_query.request.json",
+        "spec/heap/rpc-v1/rql_query.response.json",
         "spec/heap/fixtures/collection_create.accepted.json",
         "spec/heap/fixtures/collection_create.rejected.json",
-        "spec/heap/fixtures/dql_query.accepted.json",
-        "spec/heap/fixtures/dql_query.rejected.json",
+        "spec/heap/fixtures/rql_query.accepted.json",
+        "spec/heap/fixtures/rql_query.rejected.json",
         "spec/app/v1/error_mapping_v1.json",
         "spec/app/v1/plan_vectors_v1.json",
         "spec/app/v1/cursor_vectors_v1.json",
@@ -128,23 +128,23 @@ fn app0_error_mapping_codes_are_sdk_codes() {
     let mappings = map["mappings"].as_array().expect("mappings");
     let mut found_feature = false;
     for m in mappings {
-        if m["diagnostic"].as_str() == Some("dql_feature_unavailable") {
+        if m["diagnostic"].as_str() == Some("rql_feature_unavailable") {
             found_feature = true;
             assert_eq!(m["code"].as_str(), Some("query_invalid"));
         }
     }
-    assert!(found_feature, "must map unsupported RQL feature → query_invalid + dql_feature_unavailable");
+    assert!(found_feature, "must map unsupported RQL feature → query_invalid + rql_feature_unavailable");
 }
 
 #[test]
 fn app0_plan_and_cursor_vectors_shaped() {
     let plans = read_json("spec/app/v1/plan_vectors_v1.json");
-    assert_eq!(plans["profile"].as_str(), Some("dql-plan-v1"));
+    assert_eq!(plans["profile"].as_str(), Some("rql-plan-v1"));
     let vectors = plans["vectors"].as_array().expect("plan vectors");
     assert!(vectors.len() >= 3, "need at least three plan vectors");
 
     let cursors = read_json("spec/app/v1/cursor_vectors_v1.json");
-    assert_eq!(cursors["profile"].as_str(), Some("dingo-cursor-v1"));
+    assert_eq!(cursors["profile"].as_str(), Some("residiuum-cursor-v1"));
     let fields = cursors["fields_required"].as_array().expect("fields");
     assert!(fields.iter().any(|f| f.as_str() == Some("plan_hash")));
     assert!(fields.iter().any(|f| f.as_str() == Some("mac")));
@@ -163,13 +163,13 @@ fn app0_fixtures_match_op_ids() {
     assert_eq!(create_rej["op"].as_u64(), Some(106));
     assert_eq!(create_rej["ok"].as_bool(), Some(false));
 
-    let rql = read_json("spec/heap/fixtures/dql_query.accepted.json");
+    let rql = read_json("spec/heap/fixtures/rql_query.accepted.json");
     assert_eq!(rql["op"].as_u64(), Some(118));
     assert_eq!(rql["ok"].as_bool(), Some(true));
     assert!(rql["result"]["exhausted"].as_bool().is_some());
 
-    let dql_rej = read_json("spec/heap/fixtures/dql_query.rejected.json");
-    assert_eq!(dql_rej["error"]["diagnostic"].as_str(), Some("dql_feature_unavailable"));
+    let rql_rej = read_json("spec/heap/fixtures/rql_query.rejected.json");
+    assert_eq!(rql_rej["error"]["diagnostic"].as_str(), Some("rql_feature_unavailable"));
 }
 
 fn v4(seed: u8) -> [u8; 16] {
@@ -181,11 +181,11 @@ fn v4(seed: u8) -> [u8; 16] {
 
 #[test]
 fn app0_rust_compile_surface() {
-    assert_eq!(RUST_APP_PROFILE, "dingo-rust-app-v1");
-    assert_eq!(RQL_APP_CORE_PROFILE, "dql-app-core-v1");
-    assert_eq!(RQL_PLAN_PROFILE, "dql-plan-v1");
-    assert_eq!(CURSOR_PROFILE, "dingo-cursor-v1");
-    assert_eq!(PREDICATE_PROFILE, "dingo-predicate-v1");
+    assert_eq!(RUST_APP_PROFILE, "residiuum-rust-app-v1");
+    assert_eq!(RQL_APP_CORE_PROFILE, "rql-app-core-v1");
+    assert_eq!(RQL_PLAN_PROFILE, "rql-plan-v1");
+    assert_eq!(CURSOR_PROFILE, "residiuum-cursor-v1");
+    assert_eq!(PREDICATE_PROFILE, "residiuum-predicate-v1");
 
     let hid = HeapId::from_bytes(v4(0x11)).unwrap();
     let cid = CollectionId::from_bytes(v4(0x22)).unwrap();

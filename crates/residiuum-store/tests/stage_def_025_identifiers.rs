@@ -1,7 +1,7 @@
 //! DEF-025 — strengthen identifier generation.
 //!
 //! Guarantees under test:
-//! - Random identities use OS CSPRNG (`dingo-id-v1`) with no time-hash fallback.
+//! - Random identities use OS CSPRNG (`residiuum-id-v1`) with no time-hash fallback.
 //! - Store / event ids are non-zero and unique across create, restart, and concurrent mints.
 //! - Sortable segment ids recover sequence after reopen (monotonic counter only).
 //! - Content-derived item ids stay stable for a subject; event ids differ per put.
@@ -15,7 +15,7 @@ use tempfile::tempdir;
 
 #[test]
 fn id_profile_tag() {
-    assert_eq!(ID_PROFILE, "dingo-id-v1");
+    assert_eq!(ID_PROFILE, "residiuum-id-v1");
 }
 
 #[test]

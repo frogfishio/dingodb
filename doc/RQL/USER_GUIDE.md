@@ -16,7 +16,7 @@ authority — that is [RQL_SPEC.md](../wip/query/RQL_SPEC.md).
 | [DIALECTS.md](../SDA/DIALECTS.md) | How dialects sit on pure SDA |
 | [SDA USER_MANUAL.md](../SDA/USER_MANUAL.md) | Pure SDA when you need full control |
 
-Status: **v0.1** (dialect id `dql`). Nested bag-scoped enrich is still partial;
+Status: **v0.1** (dialect id `rql`). Nested bag-scoped enrich is still partial;
 see [Limitations](#12-limitations-v01).
 
 ---
@@ -159,7 +159,7 @@ execute that program.
 use residiuum_sdk::{compile_dialect, json, Residiuum};
 
 fn main() -> Result<(), residiuum_sdk::Error> {
-    let mut db = Residiuum::open("./app.dingo")?;
+    let mut db = Residiuum::open("./app.residiuum")?;
 
     // Load sample data (abbreviated).
     {
@@ -169,7 +169,7 @@ fn main() -> Result<(), residiuum_sdk::Error> {
         customers.put("c1", &json!({"id": "c1", "name": "Ada"}))?;
     }
 
-    let dql = r#"
+    let rql = r#"
         from orders
         enrich customer using customers
           matching customer_id = id
@@ -181,8 +181,8 @@ fn main() -> Result<(), residiuum_sdk::Error> {
     "#;
 
     // 1) Compile RQL → pure SDA program text
-    let compiled = compile_dialect("dql", dql)?;
-    // compiled.dialect == "dql"
+    let compiled = compile_dialect("rql", rql)?;
+    // compiled.dialect == "rql"
     // compiled.sda     == ENR1/SDA source the engine actually runs
 
     // 2) Bind every free name the program uses, then run
@@ -203,13 +203,13 @@ fn main() -> Result<(), residiuum_sdk::Error> {
    name, or use `.bind_as("real_name", "alias")` and put the alias in RQL).
 2. Binding materialises live JSON documents for each source; optional
    `.filter(...)` / `.source_limit(n)` apply **per source before** the program runs.
-3. `compile_dialect("dql", …)` and `BuiltinDialect::Dql.compile(…)` are equivalent.
-   Alias id `dingo-ql` also selects RQL.
+3. `compile_dialect("rql", …)` and `BuiltinDialect::Rql.compile(…)` are equivalent.
+   Alias id `residiuum-ql` also selects RQL.
 
 You can inspect the lowered program anytime:
 
 ```rust
-let compiled = compile_dialect("dql", dql)?;
+let compiled = compile_dialect("rql", rql)?;
 eprintln!("{}", compiled.sda);
 ```
 
@@ -308,9 +308,9 @@ enrich customer using customers
   expect exactly_one
 ```
 
-- `customer` → new field on the order  
-- `customers` → collection binding  
-- `customer_id` → field on the order (left)  
+- `customer` → new field on the order
+- `customers` → collection binding
+- `customer_id` → field on the order (left)
 - `id` → field on each customer (right)
 
 `customer` and `customers` are different names on purpose.
@@ -563,7 +563,7 @@ and run it with `enr_query` — same engine, full kernel.
 
 ## 13. Errors you will see
 
-Compilation fails closed with messages prefixed `dialect 'dql': …`.
+Compilation fails closed with messages prefixed `dialect 'rql': …`.
 
 | Situation | Typical message theme |
 |-----------|------------------------|
@@ -599,7 +599,7 @@ project {
 ```
 
 ```rust
-let c = compile_dialect("dql", dql)?;
+let c = compile_dialect("rql", rql)?;
 let v = db.enr_query()
     .bind("orders")
     .bind("customers")
@@ -617,9 +617,9 @@ let v = db.enr_query()
 ## 15. See also
 
 - [RQL_SPEC.md](../wip/query/RQL_SPEC.md) — full design and lowering contract
-- [doc/SDA/DIALECTS.md](../SDA/DIALECTS.md) — dialect stack and foreign comfort rules  
-- [doc/SDA/USER_MANUAL.md](../SDA/USER_MANUAL.md) — pure SDA everyday use  
+- [doc/SDA/DIALECTS.md](../SDA/DIALECTS.md) — dialect stack and foreign comfort rules
+- [doc/SDA/USER_MANUAL.md](../SDA/USER_MANUAL.md) — pure SDA everyday use
 - [DX_SPEC.md](../reference/product/DX_SPEC.md) §7 — everyday query experience
-- [crates/enr-core/README.md](../../crates/enr-core/README.md) — ENR1 kernel surface  
-- Implementation: `crates/residiuum-sdk/src/dialects/dql.rs`  
+- [crates/enr-core/README.md](../../crates/enr-core/README.md) — ENR1 kernel surface
+- Implementation: `crates/residiuum-sdk/src/dialects/rql.rs`
 - Proof tests: `crates/residiuum-sdk/tests/dialects_query.rs`

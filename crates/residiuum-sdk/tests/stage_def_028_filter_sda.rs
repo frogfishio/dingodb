@@ -249,7 +249,7 @@ fn native_and_sda_agree_on_corpus() {
 #[test]
 fn embedded_find_agrees_with_filter_matches() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut col = db.collection("docs").unwrap();
 
     let docs = [
@@ -323,7 +323,7 @@ fn query_plan_profile_roundtrip_and_reject_unknown() {
     assert_eq!(back.options.limit, Some(5));
     assert!(back.filter.matches(&json!({"status": "active"})));
 
-    let bad = json!({"profile": "dingo-query-plan-v0", "filter": {}});
+    let bad = json!({"profile": "residiuum-query-plan-v0", "filter": {}});
     let err = QueryPlan::from_json(&bad).unwrap_err();
     assert!(err.to_string().contains("unsupported query plan profile"));
 }

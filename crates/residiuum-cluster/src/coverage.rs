@@ -14,12 +14,12 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 /// Profile tag for distributed query continuation tokens (DEF-040 + DEF-097).
-pub const QUERY_CONTINUATION_PROFILE: &str = "dingo-query-continuation-v2";
+pub const QUERY_CONTINUATION_PROFILE: &str = "residiuum-query-continuation-v2";
 
 /// Domain separation for cluster continuation MAC keys (DEF-097).
-const MAC_DOMAIN: &[u8] = b"dingo-query-continuation-v2-mac\0";
+const MAC_DOMAIN: &[u8] = b"residiuum-query-continuation-v2-mac\0";
 
-const TOKEN_MAGIC: &[u8; 8] = b"DQRY0002";
+const TOKEN_MAGIC: &[u8; 8] = b"RQRY0002";
 const MAC_LEN: usize = 16;
 const MAX_TOKEN_BYTES: usize = 16_384;
 const MAX_SUBJECT_IN_TOKEN: usize = 4096;
@@ -249,7 +249,7 @@ impl FindResult {
         limit: Option<usize>,
     ) -> String {
         let mut h = DefaultHasher::new();
-        "dingo-find-v1".hash(&mut h);
+        "residiuum-find-v1".hash(&mut h);
         for p in scope_partitions {
             p.get().hash(&mut h);
         }
@@ -369,7 +369,7 @@ impl QueryContinuation {
         let (payload, mac) = token.split_at(token.len() - MAC_LEN);
         if &payload[..8] != TOKEN_MAGIC.as_slice() {
             return Err(ClusterError::ContinuationInvalid(
-                "continuation token magic/version mismatch (need dingo-query-continuation-v2)"
+                "continuation token magic/version mismatch (need residiuum-query-continuation-v2)"
                     .into(),
             ));
         }

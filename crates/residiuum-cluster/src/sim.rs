@@ -27,7 +27,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 
 /// Profile tag for the distributed verification harness (DEF-041).
-pub const VERIFY_PROFILE: &str = "dingo-cluster-verify-v1";
+pub const VERIFY_PROFILE: &str = "residiuum-cluster-verify-v1";
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (xorshift64*) — no external deps; deterministic across platforms
@@ -1813,7 +1813,7 @@ mod tests {
 
     #[test]
     fn profile_tag_stable() {
-        assert_eq!(VERIFY_PROFILE, "dingo-cluster-verify-v1");
+        assert_eq!(VERIFY_PROFILE, "residiuum-cluster-verify-v1");
     }
 
     #[test]

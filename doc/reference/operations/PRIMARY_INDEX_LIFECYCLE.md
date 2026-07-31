@@ -10,8 +10,8 @@ signal.
 
 | Artifact | Role |
 |----------|------|
-| `active/*.dingo` | **Authoritative** append log (live writer tail). |
-| `segments/*.dingo` | **Authoritative** sealed segments. |
+| `active/*.residiuum` | **Authoritative** append log (live writer tail). |
+| `segments/*.residiuum` | **Authoritative** sealed segments. |
 | `chunks/` | **Authoritative** large-value chunk frames (when used). |
 | `indexes/primary.idx` | **Disposable** derived frontier + slim locator index. |
 | `catalogs/*` | **Disposable** derived catalogs. |

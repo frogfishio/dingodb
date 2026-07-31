@@ -34,7 +34,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// Profile tag for on-disk Raft peer documents (DEF-035).
-pub const RAFT_PERSIST_PROFILE: &str = "dingo-raft-persist-v1";
+pub const RAFT_PERSIST_PROFILE: &str = "residiuum-raft-persist-v1";
 
 const HARD_STATE_FILE: &str = "hard_state.json";
 const MEMBERSHIP_FILE: &str = "membership.json";
@@ -327,7 +327,7 @@ impl RaftPeerStore {
                     term: Term(s.meta.last_included_term),
                     index: base,
                     command: LogCommand::Delete {
-                        subject: "__dingo_snapshot_base__".into(),
+                        subject: "__residiuum_snapshot_base__".into(),
                     },
                 });
             }
@@ -374,7 +374,7 @@ impl RaftPeerStore {
                 if let Some(ref s) = snap {
                     e.index > s.meta.last_included_index
                 } else {
-                    e.command.subject() != "__dingo_snapshot_base__"
+                    e.command.subject() != "__residiuum_snapshot_base__"
                 }
             })
             .cloned()

@@ -434,8 +434,8 @@ fn live_filesystem_multi_tier_media_wipe() {
     ] {
         let dir = heap_object_media_dir(root, &heap, &oid);
         fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("seg.dingo"), payload).unwrap();
-        assert!(dir.join("seg.dingo").is_file());
+        fs::write(dir.join("seg.residiuum"), payload).unwrap();
+        assert!(dir.join("seg.residiuum").is_file());
     }
 
     let units = vec![
@@ -615,7 +615,7 @@ fn live_media_wipe_unavailable_tier_root_stays_retired() {
     let cold_obj = uuidish(0xc3);
     let dir = heap_object_media_dir(&hot_root, &heap, &hot_obj);
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("seg.dingo"), b"hot").unwrap();
+    fs::write(dir.join("seg.residiuum"), b"hot").unwrap();
 
     let units = vec![
         PurgeCoverageUnit {

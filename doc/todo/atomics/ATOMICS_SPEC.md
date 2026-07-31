@@ -5,10 +5,10 @@ Status: normative design v1.0-draft; implementation not yet qualified
 Profiles:
 
 ```text
-dingo-atomic-v1
-dingo-atomic-plan-v1
-dingo-atomic-evidence-v1
-dingo-relationship-v1
+residiuum-atomic-v1
+residiuum-atomic-plan-v1
+residiuum-atomic-evidence-v1
+residiuum-relationship-v1
 ```
 
 Source proposal: [ATOMICS_PROPOSAL.md](../../done/proposals/ATOMICS_PROPOSAL.md)

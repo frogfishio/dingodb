@@ -22,6 +22,6 @@ keywords:
 |-------|-------|------|
 | WIRE_PROFILE_LABEL | 1.0-draft | Not interoperability freeze |
 | RPC_WIRE_LABEL | 1.0-draft | Network RPC draft |
-| Protocol | dingo-rpc-v1 | Framed length + JSON |
+| Protocol | residiuum-rpc-v1 | Framed length + JSON |
 
 See FORMAT_SPEC and protocol fixtures under `crates/residiuum-sdk/tests/fixtures`.

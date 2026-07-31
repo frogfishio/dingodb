@@ -129,7 +129,7 @@ fn connect_heap_welcome_and_process_ops() {
     let audit = Arc::new(HeapAuthAuditLog::default());
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
 
@@ -225,7 +225,7 @@ fn connect_heap_wrong_name_rejects() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
 
@@ -315,7 +315,7 @@ fn connect_heap_put_get_delete_subject_v2() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     // Heap meta + collection on the same store root the server opens.
     let layout = HeapMetaLayout::new(&store_path);
@@ -425,7 +425,7 @@ fn connect_heap_list_and_scan_json() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let layout = HeapMetaLayout::new(&store_path);
     let dep = *verified.deployment_id.as_bytes();
@@ -548,7 +548,7 @@ fn connect_heap_history() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let layout = HeapMetaLayout::new(&store_path);
     let dep = *verified.deployment_id.as_bytes();
@@ -676,7 +676,7 @@ fn connect_heap_find_filter() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let layout = HeapMetaLayout::new(&store_path);
     let dep = *verified.deployment_id.as_bytes();
@@ -796,7 +796,7 @@ fn connect_heap_indexes() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let layout = HeapMetaLayout::new(&store_path);
     let dep = *verified.deployment_id.as_bytes();
@@ -936,7 +936,7 @@ fn connect_heap_find_via_index() {
     );
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let layout = HeapMetaLayout::new(&store_path);
     let dep = *verified.deployment_id.as_bytes();

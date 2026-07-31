@@ -56,7 +56,7 @@ fn document_page_keeps_key_when_body_partial() {
         let mut found = None;
         for e in std::fs::read_dir(store.path().join("segments")).unwrap() {
             let p = e.unwrap().path();
-            if p.extension().and_then(|x| x.to_str()) == Some("dingo") || p.is_file() {
+            if p.extension().and_then(|x| x.to_str()) == Some("residiuum") || p.is_file() {
                 found = Some(p);
                 break;
             }

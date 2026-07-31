@@ -92,7 +92,7 @@ fn live_logical_entries_fails_closed_when_chunks_missing() {
     let segments_dir = store.path().join("segments");
     for entry in fs::read_dir(&segments_dir).unwrap() {
         let p = entry.unwrap().path();
-        if p.extension().and_then(|e| e.to_str()) == Some("dingo") {
+        if p.extension().and_then(|e| e.to_str()) == Some("residiuum") {
             fs::remove_file(&p).unwrap();
         }
     }

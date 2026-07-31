@@ -16,7 +16,7 @@ pub const ENV_SOURCE_HEAP_ID: u64 = 35;
 /// Envelope key: source_object_id.
 pub const ENV_SOURCE_OBJECT_ID: u64 = 36;
 
-/// `dingo-heap-v1` ownership profile value.
+/// `residiuum-heap-v1` ownership profile value.
 pub const OWNERSHIP_PROFILE_V1: u64 = 1;
 
 /// Ownership evidence extracted from an envelope.

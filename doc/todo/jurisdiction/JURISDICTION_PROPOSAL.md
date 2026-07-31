@@ -1582,7 +1582,7 @@ No status may collapse missing evidence into compliant.
 Illustrative policy YAML:
 
 ```yaml
-apiVersion: dingo.io/jurisdiction/v1alpha1
+apiVersion: residiuum.io/jurisdiction/v1alpha1
 kind: JurisdictionPolicy
 metadata:
   id: health-eu
@@ -1633,7 +1633,7 @@ recovery:
 Illustrative domain YAML:
 
 ```yaml
-apiVersion: dingo.io/jurisdiction/v1alpha1
+apiVersion: residiuum.io/jurisdiction/v1alpha1
 kind: ResidencyDomain
 metadata:
   id: eu-health-primary
@@ -1668,31 +1668,31 @@ Actual serialization must be canonicalized independently of YAML formatting.
 Required commands:
 
 ```text
-dingo policy validate FILE
-dingo policy create FILE
-dingo policy show POLICY[@EPOCH]
-dingo policy diff OLD NEW
-dingo policy assign COLLECTION --policy POLICY --domain DOMAIN
-dingo policy plan-transition TARGET --to POLICY
-dingo policy apply-transition PLAN
+residiuum policy validate FILE
+residiuum policy create FILE
+residiuum policy show POLICY[@EPOCH]
+residiuum policy diff OLD NEW
+residiuum policy assign COLLECTION --policy POLICY --domain DOMAIN
+residiuum policy plan-transition TARGET --to POLICY
+residiuum policy apply-transition PLAN
 
-dingo domain register FILE
-dingo domain attest DOMAIN
-dingo domain revoke DOMAIN
-dingo domain status DOMAIN
+residiuum domain register FILE
+residiuum domain attest DOMAIN
+residiuum domain revoke DOMAIN
+residiuum domain status DOMAIN
 
-dingo jurisdiction status STORE|CLUSTER
-dingo jurisdiction explain DECISION_ID
-dingo jurisdiction violations
-dingo jurisdiction quarantine TARGET
+residiuum jurisdiction status STORE|CLUSTER
+residiuum jurisdiction explain DECISION_ID
+residiuum jurisdiction violations
+residiuum jurisdiction quarantine TARGET
 
-dingo export plan ...
-dingo export apply PLAN
+residiuum export plan ...
+residiuum export apply PLAN
 
-dingo hold create ...
-dingo hold release ...
-dingo purge plan ...
-dingo purge apply PLAN
+residiuum hold create ...
+residiuum hold release ...
+residiuum purge plan ...
+residiuum purge apply PLAN
 ```
 
 Rules:
@@ -1734,7 +1734,7 @@ context. Every advanced result includes jurisdiction coverage.
 
 ## 31. Implementation architecture
 
-### 31.1 New `dingo-policy` crate
+### 31.1 New `residiuum-policy` crate
 
 Create a pure Rust crate with no storage or network I/O:
 
@@ -2143,7 +2143,7 @@ Exit:
 
 Deliver:
 
-- `dingo-policy` crate;
+- `residiuum-policy` crate;
 - canonical encoding and hashing;
 - policy/domain types;
 - evaluator and reason codes;

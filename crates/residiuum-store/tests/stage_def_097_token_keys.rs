@@ -9,8 +9,8 @@ use tempfile::tempdir;
 
 #[test]
 fn profiles_and_secret_size() {
-    assert_eq!(CURSOR_PROFILE, "dingo-cursor-v2");
-    assert_eq!(TOKEN_KEY_PROFILE, "dingo-token-key-v1");
+    assert_eq!(CURSOR_PROFILE, "residiuum-cursor-v2");
+    assert_eq!(TOKEN_KEY_PROFILE, "residiuum-token-key-v1");
     assert_eq!(TOKEN_SECRET_LEN, 32);
 }
 

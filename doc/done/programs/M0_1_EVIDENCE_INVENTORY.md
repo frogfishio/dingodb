@@ -18,8 +18,8 @@ This document is evidence mapping. It does **not** upgrade capability claims.
 | `VFY-0` | claim/suite/profile/report registries | **missing** — no `spec/verification/` yet |
 | `VFY-1` | preflight + evidence-producing runner | **missing** — disk/infra failures not classified in CI runner |
 | `VFY-2` | map tests/proofs to claims/oracles | **partial** — Heap has `hp010-matrix-v1.json`; rest ad hoc |
-| Profile | `dingo-heap-v1` (HP-010) | matrix present; **not** qualified |
-| Profile | `dingo-rust-app-v1` / `dql-app-core-v1` | planned under APP; not verified product claims |
+| Profile | `residiuum-heap-v1` (HP-010) | matrix present; **not** qualified |
+| Profile | `residiuum-rust-app-v1` / `rql-app-core-v1` | planned under APP; not verified product claims |
 
 ## 2. Verification surfaces run this session
 
@@ -115,7 +115,7 @@ Allowed (Level 1 / self-assessed):
 Forbidden:
 
 - `qualified=true` / “strong isolation qualified”
-- “complete RQL v1” (only planned `dql-app-core-v1`)
+- “complete RQL v1” (only planned `rql-app-core-v1`)
 - Inferring HAR package `accept` from partial code presence
 
 ## 9. Exit criteria for M0-1

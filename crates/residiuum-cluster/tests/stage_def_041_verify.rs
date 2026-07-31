@@ -20,7 +20,7 @@ use residiuum_cluster::{ElectError, NodeId};
 
 #[test]
 fn profile_tag_is_stable() {
-    assert_eq!(VERIFY_PROFILE, "dingo-cluster-verify-v1");
+    assert_eq!(VERIFY_PROFILE, "residiuum-cluster-verify-v1");
 }
 
 #[test]

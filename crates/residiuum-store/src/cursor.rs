@@ -1,6 +1,6 @@
 //! Bounded-memory live scan cursors (DEF-026).
 //!
-//! # Consistency model (`dingo-cursor-v1`)
+//! # Consistency model (`residiuum-cursor-v1`)
 //!
 //! Pages are ordered by **subject bytes ascending**. A cursor is bound to a
 //! **scan generation** computed at first page open:
@@ -25,7 +25,7 @@
 //! not from the public `store_id` alone. Knowledge of store id + token bytes is
 //! insufficient to forge or modify a valid token.
 //!
-//! Wire profile: `dingo-cursor-v2` (magic `DCSR0002`) embeds `key_generation_id`
+//! Wire profile: `residiuum-cursor-v2` (magic `RCSR0002`) embeds `key_generation_id`
 //! so rotation can accept the previous generation during grace.
 
 use crate::error::StoreError;
@@ -34,10 +34,10 @@ use crate::token_keys::ContinuationKeyring;
 use blake3::Hasher;
 
 /// Profile tag for cursor / continuation token encoding (DEF-097 secret keys).
-pub const CURSOR_PROFILE: &str = "dingo-cursor-v2";
+pub const CURSOR_PROFILE: &str = "residiuum-cursor-v2";
 
 /// Domain separation for store cursor MAC keys.
-const MAC_DOMAIN: &[u8] = b"dingo-cursor-v2-mac\0";
+const MAC_DOMAIN: &[u8] = b"residiuum-cursor-v2-mac\0";
 
 /// Default page size when the caller does not specify one.
 pub const DEFAULT_PAGE_SIZE: usize = 64;
@@ -48,7 +48,7 @@ pub const MAX_PAGE_SIZE: usize = 4096;
 /// Hard cap on token size (prefix + after subject + headers + MAC).
 pub const MAX_TOKEN_BYTES: usize = 8192;
 
-const TOKEN_MAGIC: &[u8; 8] = b"DCSR0002";
+const TOKEN_MAGIC: &[u8; 8] = b"RCSR0002";
 const MAC_LEN: usize = 16;
 const GEN_LEN: usize = 32;
 
@@ -212,7 +212,7 @@ pub fn scan_generation(
     live_count: u64,
 ) -> [u8; GEN_LEN] {
     let mut h = Hasher::new();
-    h.update(b"dingo-cursor-v1-gen\0");
+    h.update(b"residiuum-cursor-v1-gen\0");
     h.update(store_id);
     h.update(segment_fingerprint);
     h.update(&live_count.to_le_bytes());
@@ -280,7 +280,7 @@ pub(crate) fn decode_token(
     let (payload, mac) = token.split_at(token.len() - MAC_LEN);
     if &payload[..8] != TOKEN_MAGIC.as_slice() {
         return Err(StoreError::CursorInvalid(
-            "continuation token magic/version mismatch (need dingo-cursor-v2)".into(),
+            "continuation token magic/version mismatch (need residiuum-cursor-v2)".into(),
         ));
     }
     let tok_store = &payload[8..24];

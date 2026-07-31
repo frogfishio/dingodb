@@ -281,7 +281,7 @@ Criticality: **C1**
 Packages:
 
 ```text
-DRE-0 → DRE-1 → DRE-2 → DRE-3 → DRE-4
+RRE-0 → RRE-1 → RRE-2 → RRE-3 → RRE-4
 ```
 
 Deliver:
@@ -323,7 +323,7 @@ ATM-0 → ATM-1 → ATM-2 → ATM-3 → ATM-4 → ATM-5
                           |
                           +→ REL-0 → REL-1 → REL-2 → REL-3 → REL-4
                           |
-                          +→ DRE-5 → DRE-6
+                          +→ RRE-5 → RRE-6
                           |
                           +→ DEL-5
 ```
@@ -493,7 +493,7 @@ The next work queue is:
 | 8 | Evidence `DEL-0`–`DEL-4`, then `DEL-7` | C0 | later integrity decisions need durable evidence |
 | 9 | Telemetry `TEL-0`–`TEL-4`, `TEL-8` | C0 | performance and operation need bounded truth |
 | 10 | Studio `DST-000`–`DST-006` | C0 DX | killer DX over the qualified Heap path |
-| 11 | RRE `DRE-0`–`DRE-4` | C1 | first mathematical application invariant |
+| 11 | RRE `RRE-0`–`RRE-4` | C1 | first mathematical application invariant |
 | 12 | Atomics + relationships + `DEL-5` | C1 | cross-document integrity differentiator |
 | 13 | Direct Access | C1 | exact non-linear pagination |
 | 14 | Order Wavelets | C1 | exact scalable filtered sorting |

@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "description": "Result for op 118 dql_query (CORE plan §10).",
+  "description": "Result for op 118 rql_query (CORE plan §10).",
   "properties": {
     "query_id": {
       "type": "string",

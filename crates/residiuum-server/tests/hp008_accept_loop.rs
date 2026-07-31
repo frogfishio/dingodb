@@ -211,7 +211,7 @@ fn live_tls_accept_loop_heap_key_ping_without_token() {
     let audit = Arc::new(HeapAuthAuditLog::default());
 
     let tmp = TempDir::new().unwrap();
-    let store_path = tmp.path().join("app.dingo");
+    let store_path = tmp.path().join("app.residiuum");
     Store::open(&store_path).unwrap();
     let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
 

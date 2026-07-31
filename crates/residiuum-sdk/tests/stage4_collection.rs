@@ -9,7 +9,7 @@ use tempfile::tempdir;
 #[test]
 fn open_put_get_delete_json() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     let mut db = Residiuum::open(&path).unwrap();
     let store_id = db.store_id();
     {
@@ -38,7 +38,7 @@ fn open_put_get_delete_json() {
 #[test]
 fn create_or_open_and_reopen_persists() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         db.collection("users")
@@ -54,7 +54,7 @@ fn create_or_open_and_reopen_persists() {
 #[test]
 fn collections_are_isolated() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     db.collection("a")
         .unwrap()
         .put("k", &json!("from-a"))
@@ -76,7 +76,7 @@ fn collections_are_isolated() {
 #[test]
 fn overwrite_updates_current_value() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut c = db.collection("docs").unwrap();
     c.put("x", &json!(1)).unwrap();
     c.put("x", &json!(2)).unwrap();
@@ -92,7 +92,7 @@ fn get_as_typed_struct() {
     }
 
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut users = db.collection("users").unwrap();
     users
         .put("ada", &json!({"name": "Ada", "age": 36}))
@@ -110,7 +110,7 @@ fn get_as_typed_struct() {
 #[test]
 fn bytes_roundtrip() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut arts = db.collection("artifacts").unwrap();
     let payload = b"\x00hello\xff".as_slice();
     arts.put_bytes("build-19", payload).unwrap();
@@ -129,7 +129,7 @@ fn bytes_roundtrip() {
 #[test]
 fn scan_keys_and_json() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users.put("b", &json!({"i": 2})).unwrap();
@@ -155,7 +155,7 @@ fn scan_keys_and_json() {
 #[test]
 fn memory_mode_not_visible_after_reopen() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join("app.dingo");
+    let path = dir.path().join("app.residiuum");
     {
         let mut db = Residiuum::open(&path).unwrap();
         let mut c = db.collection("t").unwrap();
@@ -173,7 +173,7 @@ fn memory_mode_not_visible_after_reopen() {
 #[test]
 fn rejects_empty_collection_and_key() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     assert!(db.collection("").is_err());
     let mut c = db.collection("ok").unwrap();
     assert!(c.put("", &json!(1)).is_err());
@@ -183,7 +183,7 @@ fn rejects_empty_collection_and_key() {
 fn readme_happy_path() {
     // DX_SPEC / README journey: open + store JSON in under one minute.
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let mut users = db.collection("users").unwrap();
     users
         .put(
@@ -201,7 +201,7 @@ fn readme_happy_path() {
 #[test]
 fn find_object_filter_and_builder() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users
@@ -282,7 +282,7 @@ fn find_object_filter_and_builder() {
 #[test]
 fn scan_json_iter_streams() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     {
         let mut c = db.collection("docs").unwrap();
         for i in 0..20 {
@@ -303,7 +303,7 @@ fn scan_json_iter_streams() {
 #[test]
 fn error_codes_are_stable() {
     let dir = tempdir().unwrap();
-    let mut db = Residiuum::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residiuum::open(dir.path().join("app.residiuum")).unwrap();
     let err = match db.collection("") {
         Ok(_) => panic!("expected validation error"),
         Err(e) => e,

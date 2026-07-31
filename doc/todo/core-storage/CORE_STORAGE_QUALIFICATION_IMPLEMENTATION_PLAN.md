@@ -12,10 +12,10 @@ Program authority:
 
 ## 1. Outcome
 
-Implement the suite required to qualify `dingo-core-storage-v1`, then produce:
+Implement the suite required to qualify `residiuum-core-storage-v1`, then produce:
 
 ```text
-dingo verify --profile dingo-core-storage-v1 --level A2
+residiuum verify --profile residiuum-core-storage-v1 --level A2
 ```
 
 The command returns either:
@@ -365,7 +365,7 @@ Depends: every mandatory `CSQ-0`–`CSQ-11` package
 
 Deliver:
 
-- `dingo verify --profile dingo-core-storage-v1`;
+- `residiuum verify --profile residiuum-core-storage-v1`;
 - canonical evidence-bundle builder;
 - versioned assumption/impossibility ledger in the bundle;
 - independent bundle verifier;

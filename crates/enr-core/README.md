@@ -104,7 +104,7 @@ a small loud technical audience. Everyday product text is intended to be
 same ENR+SDA IR. User guide: [doc/RQL/USER_GUIDE.md](../../doc/RQL/USER_GUIDE.md).
 Design: [RQL_SPEC.md](../../doc/wip/query/RQL_SPEC.md).
 
-**RQL** (`dialect "dql"`) is the official human surface and lowers into the same
+**RQL** (`dialect "rql"`) is the official human surface and lowers into the same
 ENR1+SDA programs (`Match` / `enrich` / cardinality). Fluent filters, equijoins,
 pure ENR text, and **foreign query dialects** (`json` / `mongo` / `sql` → pure
 SDA) remain everyday DX frontends, not hybrid peer languages: pure notation
