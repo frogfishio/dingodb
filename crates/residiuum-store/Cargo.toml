@@ -214,6 +214,14 @@ required-features = ["legacy-raw-store"]
 name = "csq9_concurrency_resources"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "csq10_mutation_fuzz"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "csq11_compat_scale_soak"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]

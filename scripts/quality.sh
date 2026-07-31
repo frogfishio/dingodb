@@ -59,6 +59,12 @@ bash ./scripts/verify-csq-derived-maintenance.sh
 # CSQ-9 concurrency / resources
 bash ./scripts/verify-csq-concurrency-resources.sh
 
+# CSQ-10 mutation / fuzz ownership (includes DEF-091-F property bar)
+bash ./scripts/verify-csq-mutation-fuzz.sh
+
+# CSQ-11 compatibility / packaged journey / PR-safe scale+soak seed
+bash ./scripts/verify-csq-compat-scale-soak.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh

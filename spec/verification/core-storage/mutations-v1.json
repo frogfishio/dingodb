@@ -11,7 +11,10 @@
         "CSQ-ORACLE-MODEL",
         "CSQ-ORACLE-READER"
       ],
-      "severity": true
+      "severity": true,
+      "forbidden": true,
+      "mandatory": true,
+      "package_owner": "CSQ-10"
     },
     {
       "id": "CSQ-MUT-RECEIPT-WITHOUT-DURABILITY",
@@ -20,7 +23,9 @@
         "CSQ-ORACLE-IMPL",
         "CSQ-SUITE-CRASH"
       ],
-      "forbidden": true
+      "forbidden": true,
+      "mandatory": true,
+      "package_owner": "CSQ-10"
     },
     {
       "id": "CSQ-MUT-FABRICATE-COMMIT",
@@ -29,7 +34,9 @@
         "CSQ-ORACLE-MODEL",
         "CSQ-SUITE-CRASH"
       ],
-      "forbidden": true
+      "forbidden": true,
+      "mandatory": true,
+      "package_owner": "CSQ-10"
     },
     {
       "id": "CSQ-MUT-HYBRID-EVENT",
@@ -38,7 +45,9 @@
         "CSQ-ORACLE-MODEL",
         "CSQ-SUITE-CRASH"
       ],
-      "forbidden": true
+      "forbidden": true,
+      "mandatory": true,
+      "package_owner": "CSQ-10"
     },
     {
       "id": "CSQ-MUT-DERIVED-AS-AUTHORITY",
@@ -47,7 +56,9 @@
         "CSQ-ORACLE-READER",
         "CSQ-SUITE-DER"
       ],
-      "forbidden": true
+      "forbidden": true,
+      "mandatory": true,
+      "package_owner": "CSQ-10"
     }
   ]
 }

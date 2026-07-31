@@ -84,7 +84,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq11"
     },
     {
       "id": "CSQ-SUITE-CON",
@@ -355,6 +355,24 @@
         "CSQ-ORACLE-IMPL"
       ],
       "status": "active_csq9"
+    },
+    {
+      "id": "CSQ-SUITE-MUT",
+      "package_owner": "CSQ-10",
+      "invariants": [],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "mutations": [
+        "CSQ-MUT-ABSENCE-FROM-DAMAGE",
+        "CSQ-MUT-RECEIPT-WITHOUT-DURABILITY",
+        "CSQ-MUT-FABRICATE-COMMIT",
+        "CSQ-MUT-HYBRID-EVENT",
+        "CSQ-MUT-DERIVED-AS-AUTHORITY"
+      ],
+      "status": "active_csq10"
     }
   ]
 }
