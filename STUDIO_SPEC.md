@@ -1,9 +1,9 @@
-# Residuum Studio v1 specification
+# Residiuum Studio v1 specification
 
 Status: normative product and architecture design v1.0-draft; implementation
 not yet qualified
 
-Product name: **Residuum Studio**
+Product name: **Residiuum Studio**
 
 Profiles:
 
@@ -22,7 +22,7 @@ Implementation baseline:
 - [Angular 22](https://angular.dev/reference/releases);
 - TypeScript version supported by Angular 22;
 - SCSS using the current supported Dart Sass toolchain; and
-- ResiduumDB protocols and SDKs from the same repository revision.
+- Residiuum protocols and SDKs from the same repository revision.
 
 Dependency versions are exactly pinned in release builds. Updating Tauri,
 Angular, the webview/runtime, or any security-sensitive plugin requires the
@@ -43,8 +43,8 @@ Normative companions:
 
 ## 1. Decision
 
-Residuum Studio is the first-party desktop environment for developing,
-examining, operating, and understanding ResiduumDB.
+Residiuum Studio is the first-party desktop environment for developing,
+examining, operating, and understanding Residiuum.
 
 It is not a web admin page wrapped in a desktop shell. It is a capability-bound
 database IDE with:
@@ -54,13 +54,13 @@ database IDE with:
 - document, bytes, history, damage, and coverage views;
 - RRE, collection-contract, relationship, and Atomic tooling;
 - Ratatouille telemetry dashboards and live tail;
-- Residuum Evidence Ledger inspection and offline verification;
+- Residiuum Evidence Ledger inspection and offline verification;
 - index, scrub, backup, retention, tier, and lifecycle operations; and
 - cluster topology after the cluster management profile is qualified.
 
 The product promise is:
 
-> Every ResiduumDB guarantee should be visible, every uncertainty should remain
+> Every Residiuum guarantee should be visible, every uncertainty should remain
 > visible, and no convenience feature may create an authority path that the
 > database itself forbids.
 
@@ -75,8 +75,8 @@ MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are normative.
 Studio keeps four logically independent channels:
 
 ```text
-Residuum Studio
-    ├── Heap data/control ─── ResiduumDB qualified RPC + HeapKey
+Residiuum Studio
+    ├── Heap data/control ─── Residiuum qualified RPC + HeapKey
     ├── telemetry ─────────── Ratatouille collector/gateway
     ├── evidence ──────────── Heap-bound AuditRead or offline export
     └── examination ───────── read-only store/package/SDA sources
@@ -192,7 +192,7 @@ authority-epoch mismatch MUST fail closed. Studio MUST never offer a
 
 ### 4.1 Live Heap mode
 
-Primary mode. Studio connects through the qualified ResiduumDB RPC protocol using a
+Primary mode. Studio connects through the qualified Residiuum RPC protocol using a
 HeapKey and holder proof.
 
 Permitted features are derived from actual rights, constraints, collection
@@ -205,20 +205,20 @@ Studio consumes Ratatouille NDJSON through:
 1. a local loopback Ratatouille-compatible receiver owned by Studio; or
 2. an authenticated collector/gateway tail API qualified for the deployment.
 
-Studio does not scrape ResiduumDB's legacy `metrics` RPC in a qualified profile.
+Studio does not scrape Residiuum's legacy `metrics` RPC in a qualified profile.
 The local receiver is memory-bounded and writes no telemetry files.
 
-Ratatouille's Rust relay is plain TCP/HTTP. A remote ResiduumDB server therefore
+Ratatouille's Rust relay is plain TCP/HTTP. A remote Residiuum server therefore
 sends to its protected local sidecar; Studio reaches the collector through an
 authenticated encrypted gateway. Studio MUST NOT encourage plain remote relay
 traffic.
 
 ### 4.3 Offline evidence mode
 
-Studio opens an immutable Residuum Evidence Ledger export package and invokes the
+Studio opens an immutable Residiuum Evidence Ledger export package and invokes the
 same Rust verification kernel as `dingo evidence verify`.
 
-No live ResiduumDB or credential is required. The UI preserves the independent
+No live Residiuum or credential is required. The UI preserves the independent
 verification axes:
 
 ```text
@@ -242,13 +242,13 @@ Studio may examine:
 - SDA examination units; and
 - damage/coverage reports.
 
-Offline examination uses `residuum-examine` and `residuum-format`. It MUST NOT open a
+Offline examination uses `residiuum-examine` and `residiuum-format`. It MUST NOT open a
 live store as a second writer, repair media implicitly, rebuild catalogs merely
 to make the UI look complete, or suppress unsupported/damaged units.
 
 ### 4.5 Local development mode
 
-A later qualified development profile MAY launch a disposable loopback ResiduumDB
+A later qualified development profile MAY launch a disposable loopback Residiuum
 server with a newly generated development Heap. It:
 
 - uses an explicit user-selected directory;
@@ -288,7 +288,7 @@ apps/dingo-studio/
 Recommended Rust crate boundary:
 
 ```text
-crates/residuum-studio-core/     # session, query, telemetry, evidence, settings
+crates/residiuum-studio-core/     # session, query, telemetry, evidence, settings
 apps/dingo-studio/src-tauri/  # Tauri application and IPC adapter
 ```
 
@@ -303,19 +303,19 @@ Angular UI
 Tauri IPC adapter
     ↓
 dingo-studio-core
-    ├── residuum-sdk / residuum-client
-    ├── residuum-examine / residuum-format / residuum-sda
-    ├── residuum-heap
+    ├── residiuum-sdk / residiuum-client
+    ├── residiuum-examine / residiuum-format / residiuum-sda
+    ├── residiuum-heap
     └── Evidence and telemetry adapters
 ```
 
-Angular MUST NOT speak the ResiduumDB wire protocol, open telemetry sockets, parse
+Angular MUST NOT speak the Residiuum wire protocol, open telemetry sockets, parse
 private keys, read evidence packages directly, or access the filesystem
 outside closed Tauri commands.
 
 ### 5.3 Licensing
 
-Residuum Studio is an AGPL-3.0-or-later networked product. Pure protocol,
+Residiuum Studio is an AGPL-3.0-or-later networked product. Pure protocol,
 examination, and SDK dependencies retain their existing repository licenses.
 No Studio dependency may reverse the repository's permissive → MPL → AGPL
 dependency direction.
@@ -1109,9 +1109,9 @@ protocol.
 It validates:
 
 - Ratatouille outer envelope;
-- fixed ResiduumDB topic;
+- fixed Residiuum topic;
 - one string argument;
-- ResiduumDB telemetry message schema;
+- Residiuum telemetry message schema;
 - source deployment reference;
 - boot/sample/topic sequence;
 - cardinality;
@@ -1178,7 +1178,7 @@ may contain gaps
 not audit evidence
 ```
 
-Filters run locally over fixed fields. They do not alter ResiduumDB's producer
+Filters run locally over fixed fields. They do not alter Residiuum's producer
 filter or request retransmission.
 
 ### 20.5 Alerts
@@ -1436,7 +1436,7 @@ The visual system is:
 - explicit about danger and uncertainty;
 - keyboard-first;
 - accessible without sacrificing professional density; and
-- recognizably ResiduumDB rather than a generic component-library theme.
+- recognizably Residiuum rather than a generic component-library theme.
 
 ### 28.2 Structure
 
@@ -1628,7 +1628,7 @@ Release packages:
 - use a signed update manifest;
 - never accept invalid update TLS/certificates;
 - do not update while a high-impact operation is awaiting confirmation; and
-- display installed Studio and ResiduumDB protocol versions.
+- display installed Studio and Residiuum protocol versions.
 
 Auto-update is opt-in until the updater threat model and rollback policy are
 qualified.
@@ -1638,7 +1638,7 @@ passes the same security/IPC/credential-vault suite.
 
 ## 33. Telemetry about Studio
 
-Studio does not silently send product analytics to ResiduumDB, Frogfish, or any
+Studio does not silently send product analytics to Residiuum, Frogfish, or any
 third party.
 
 An optional future Studio-self telemetry profile requires separate explicit
@@ -1687,7 +1687,7 @@ not written as rolling log files.
 1. million-row logical result through cursor/virtualization without loading it;
 2. 100,000-message telemetry ring at maximum byte bound;
 3. collector disconnect/reconnect and malformed flood;
-4. slow/dead ResiduumDB server with responsive cancellation/UI;
+4. slow/dead Residiuum server with responsive cancellation/UI;
 5. large offline evidence package with holes;
 6. memory stability across 24-hour telemetry/query session;
 7. 32 tabs and multiple Heap workspaces;
@@ -1742,11 +1742,11 @@ Outcome:
 
 Outcome:
 
-> Operate a qualified ResiduumDB cluster without weakening Heap data isolation.
+> Operate a qualified Residiuum cluster without weakening Heap data isolation.
 
 ## 36. Completion definition
 
-Residuum Studio v1 is complete only when:
+Residiuum Studio v1 is complete only when:
 
 - S1 through S4 exit their implementation gates;
 - the Tauri/Angular/Rust boundary passes §34;

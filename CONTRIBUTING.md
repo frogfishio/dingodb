@@ -1,4 +1,4 @@
-# Contributing to ResiduumDB
+# Contributing to Residiuum
 
 ## Spec before behavior
 
@@ -30,7 +30,7 @@ qualify persistence, isolation, concurrency, or recovery claims.
 4. **Conformance is the gate.** Prefer golden and destructive tests over API
    surface alone.
 5. **Cluster does not own the bytes.** Node directories remain ordinary
-   `residuum-store` salvage targets without cluster software.
+   `residiuum-store` salvage targets without cluster software.
 
 ## Workspace commands
 
@@ -39,35 +39,35 @@ qualify persistence, isolation, concurrency, or recovery claims.
 cargo test --workspace
 
 # SDA library (Stage 1 freeze)
-cargo test -p residuum-sda
+cargo test -p residiuum-sda
 
 # SDA CLI
-cargo test -p residuum-sda-cli
+cargo test -p residiuum-sda-cli
 
 # Wire format / frame codec
-cargo test -p residuum-format
+cargo test -p residiuum-format
 
 # Single-node store (+ Stage 6 / 9 suites)
-cargo test -p residuum-store
+cargo test -p residiuum-store
 
 # Collection SDK (+ remote / cluster routing tests)
-cargo test -p residuum-sdk
+cargo test -p residiuum-sdk
 
 # SDA examination
-cargo test -p residuum-examine
+cargo test -p residiuum-examine
 
 # Operator CLI
 cargo test -p dingo
 
 # Cluster federation
-cargo test -p residuum-cluster
+cargo test -p residiuum-cluster
 
 # Quick SDA eval
-cargo run -p residuum-sda-cli --bin residuum-sda -- eval -e '1 + 2'
-echo '{"name":"Ada"}' | cargo run -p residuum-sda-cli --bin residuum-sda -- eval -e 'input<"name">!'
+cargo run -p residiuum-sda-cli --bin residiuum-sda -- eval -e '1 + 2'
+echo '{"name":"Ada"}' | cargo run -p residiuum-sda-cli --bin residiuum-sda -- eval -e 'input<"name">!'
 
 # CLI help
-cargo run -p dingo --bin residuum -- --help
+cargo run -p dingo --bin residiuum -- --help
 ```
 
 Aliases (see `.cargo/config.toml`):
@@ -98,7 +98,7 @@ crate must package completely:
 
 What counts as a release artifact (crates, specs, demos) is defined in
 [doc/RELEASE_ARTIFACTS.md](doc/RELEASE_ARTIFACTS.md). Local dry-runs on a dirty
-tree: `RESIDUUM_RELEASE_ALLOW_DIRTY=1 ./scripts/release_content.sh`.
+tree: `RESIDIUUM_RELEASE_ALLOW_DIRTY=1 ./scripts/release_content.sh`.
 
 ### Nightly packaging
 
@@ -120,13 +120,13 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 
 | Area | Crate | Notes |
 |------|-------|--------|
-| SDA+ENR1 | `residuum-sda` / `residuum-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
-| Wire | `residuum-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/WIRE_MAJOR1_FREEZE.md`) |
-| Store | `residuum-store` | Authority + tiers + media mirrors (early-access) |
-| SDK | `residuum-sdk` | `SDK_API_VERSION` = `1.0` |
-| Examination | `residuum-examine` | Profile over salvage |
-| CLI | `residuum` | doctor / salvage / development `serve` / experimental `serve-cluster` |
-| Cluster | `residuum-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
+| SDA+ENR1 | `residiuum-sda` / `residiuum-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
+| Wire | `residiuum-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/WIRE_MAJOR1_FREEZE.md`) |
+| Store | `residiuum-store` | Authority + tiers + media mirrors (early-access) |
+| SDK | `residiuum-sdk` | `SDK_API_VERSION` = `1.0` |
+| Examination | `residiuum-examine` | Profile over salvage |
+| CLI | `residiuum` | doctor / salvage / development `serve` / experimental `serve-cluster` |
+| Cluster | `residiuum-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
 Immediate package selection, priority, and release order:
 [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md). Production-readiness defects
@@ -140,20 +140,20 @@ Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
 
 - `VERSION` / crate semver (`0.2.0`) — packaging only; **not** a maturity claim
 - `BUILD` — integer build stamp used by CLI `--version` output
-- `crates/sda-cli/BUILD` and `crates/residuum-cli/BUILD` — keep in sync with root
+- `crates/sda-cli/BUILD` and `crates/residiuum-cli/BUILD` — keep in sync with root
   `BUILD` when CLI version tests require it
 
 Freeze labels (product API/profile labels, **not** crate semver):
 
-- `SDK_API_VERSION` (`residuum-sdk`) = `1.0` — collection API surface
-- `CLUSTER_PROFILE_VERSION` (`residuum-cluster`) = `v1` — in-process cluster only
-- `WIRE_PROFILE_LABEL` (`residuum-format`) = `1.0-draft` — draft wire bytes;
+- `SDK_API_VERSION` (`residiuum-sdk`) = `1.0` — collection API surface
+- `CLUSTER_PROFILE_VERSION` (`residiuum-cluster`) = `v1` — in-process cluster only
+- `WIRE_PROFILE_LABEL` (`residiuum-format`) = `1.0-draft` — draft wire bytes;
   freeze checklist `doc/WIRE_MAJOR1_FREEZE.md` (DEF-053; not frozen)
-- `CONFORMANCE_CORPUS_TAG` (`residuum-sda`) = `sda-standalone-v1.0`
+- `CONFORMANCE_CORPUS_TAG` (`residiuum-sda`) = `sda-standalone-v1.0`
 
 ## License
 
-ResiduumDB is multi-licensed (MIT / MPL-2.0 / AGPL-3.0-or-later by crate). See
+Residiuum is multi-licensed (MIT / MPL-2.0 / AGPL-3.0-or-later by crate). See
 [LICENSE](LICENSE) and [doc/LICENSING.md](doc/LICENSING.md).
 
 **Inbound = outbound:** by contributing, you license your contribution under

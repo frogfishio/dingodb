@@ -19,7 +19,7 @@ execution is shared.
 ```text
   Pure ENR+SDA ──┐
   RQL (official) ┤
-  JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► residuum-sda eval
+  JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► residiuum-sda eval
   SQL mimicry ───┤
   GraphQL / … ───┤
   Fluent API ────┘
@@ -28,7 +28,7 @@ execution is shared.
 | Kind | Role |
 |------|------|
 | **Pure ENR + SDA** | Mathematical kernel; always available; only lossless path for full algebra |
-| **RQL** | **Official** human dialect of ResiduumDB — co-designed with ENR; faithful lowering ([RQL_SPEC.md](../../RQL_SPEC.md)) |
+| **RQL** | **Official** human dialect of Residiuum — co-designed with ENR; faithful lowering ([RQL_SPEC.md](../../RQL_SPEC.md)) |
 | **Foreign dialects** | Comfort / familiarity (SQL-ish, Mongo-ish, …); admit holes and notes |
 | **Fluent / builder API** | Host-native code surface; same IR target |
 
@@ -124,8 +124,8 @@ RQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 | Id | Surface | Compiles to | Maturity |
 |----|---------|-------------|----------|
 | `sda` | Pure SDA / ENR1 source | identity (parse-checked) | **complete** for standalone + ENR1 |
-| **`dql`** | **Residuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../../RQL_SPEC.md) |
-| `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/residuum-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
+| **`dql`** | **Residiuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../../RQL_SPEC.md) |
+| `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/residiuum-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
 | `sql` | Tiny legacy `SELECT` / `WHERE` mimicry | document predicate or projection program | **implemented, deprecated when SQL-ish+ ships** |
 | `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical RQL v1 plan | **specified, not implemented** — [SQL_TO_RQL_SPEC.md](../../SQL_TO_RQL_SPEC.md) |
@@ -207,7 +207,7 @@ than comfort.
 
 ## Pluggable model (SDK)
 
-Rust surface lives in `residuum-sdk::dialects`:
+Rust surface lives in `residiuum-sdk::dialects`:
 
 - [`QueryDialect`] — trait for a frontend that compiles source → pure SDA.
 - [`BuiltinDialect`] — builtin ids above.
@@ -236,7 +236,7 @@ Application
     └─ dialect "sda"                    (same pure path, explicit id)
     │
     ▼
-Compiled pure SDA / shared IR  →  residuum-sda  →  value / Fail
+Compiled pure SDA / shared IR  →  residiuum-sda  →  value / Fail
 ```
 
 Storage, indexes, budgets, and coverage remain **host** concerns. Dialects do
@@ -253,7 +253,7 @@ not open collections and do not change examination profiles.
 ## See also
 
 - [RQL USER_GUIDE.md](../RQL/USER_GUIDE.md) — how to express and run RQL
-- [RQL_SPEC.md](../../RQL_SPEC.md) — official Residuum Query Language (design authority)
+- [RQL_SPEC.md](../../RQL_SPEC.md) — official Residiuum Query Language (design authority)
 - [JSON_FILTER_DEMO.md](JSON_FILTER_DEMO.md) — SDA as a jq-like filter
 - [FOR_JQ_USERS.md](FOR_JQ_USERS.md) — notation contrast for jq users
 - [DOCTRINE.md](DOCTRINE.md) — why certainty beats convenience

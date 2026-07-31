@@ -1,4 +1,4 @@
-# ResiduumDB Competitive Goals
+# Residiuum Competitive Goals
 
 Status: Product strategy v0.1; target checklists retained, execution order
 superseded by [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md)
@@ -9,19 +9,19 @@ and release engineering
 
 The stage descriptions below remain useful competitor-specific acceptance
 checklists. Their historical numbering is **not** the current implementation
-queue. ResiduumDB now delivers the trustworthy SQLite-replacement core first,
+queue. Residiuum now delivers the trustworthy SQLite-replacement core first,
 then the Mongo-facing mathematical single-node proposition, and only later the
 Couchbase-facing distributed product. `MASTER_DELIVERY_PLAN.md` governs.
 
 ## 1. Purpose
 
-ResiduumDB does not win by becoming a feature-complete copy of every database.
+Residiuum does not win by becoming a feature-complete copy of every database.
 
 It wins a sequence of increasingly demanding decisions:
 
-1. choose ResiduumDB instead of SQLite plus loose files;
-2. choose ResiduumDB instead of Couchbase for embedded and edge document data;
-3. choose ResiduumDB instead of MongoDB for operational document data that must
+1. choose Residiuum instead of SQLite plus loose files;
+2. choose Residiuum instead of Couchbase for embedded and edge document data;
+3. choose Residiuum instead of MongoDB for operational document data that must
    remain recoverable and useful for a very long time.
 
 Each stage establishes the credibility needed for the next. Skipping a stage
@@ -46,10 +46,10 @@ architectural alternative. They are not the three opening product contests.
 
 “Beat” never means “is universally better.”
 
-ResiduumDB beats an incumbent at a stage when a defined customer can make a
+Residiuum beats an incumbent at a stage when a defined customer can make a
 rational choice based on evidence:
 
-> For this workload, ResiduumDB is at least as easy to adopt and operate, satisfies
+> For this workload, Residiuum is at least as easy to adopt and operate, satisfies
 > every mandatory requirement, and provides materially better survival and
 > long-term data ownership.
 
@@ -58,7 +58,7 @@ A stage is won only when all five dimensions pass:
 ### 2.1 Fitness
 
 The target workload works without requiring users to build missing database
-machinery around ResiduumDB.
+machinery around Residiuum.
 
 ### 2.2 Dependability
 
@@ -77,7 +77,7 @@ support the claim.
 
 ### 2.5 Distinctive victory
 
-ResiduumDB demonstrates a recovery or longevity outcome the incumbent does not
+Residiuum demonstrates a recovery or longevity outcome the incumbent does not
 normally provide: independently verified surviving data, explicit holes, and
 continued examination after partial destruction.
 
@@ -163,12 +163,12 @@ distributed scale.
 
 ### 4.2 The decision to win
 
-> Why should I embed ResiduumDB instead of SQLite and put the awkward binary data
+> Why should I embed Residiuum instead of SQLite and put the awkward binary data
 > beside it?
 
 The answer:
 
-> Because ResiduumDB makes JSON, bytes, events, and retained history easy in one
+> Because Residiuum makes JSON, bytes, events, and retained history easy in one
 > store—and damage to one region does not make every healthy region
 > inaccessible.
 
@@ -205,7 +205,7 @@ compatibility.
 - explicit disk-full and read-only recovery behavior;
 - stable migration across supported releases;
 - full backup with verified restore to a new destination;
-- export that does not require ResiduumDB to recover the user's content.
+- export that does not require Residiuum to recover the user's content.
 
 #### D. Local security
 
@@ -270,7 +270,7 @@ Stage 1 is complete when:
 - the published evidence pack is reproducible outside the development tree;
 - at least three independent applications have operated through a release
   upgrade and a restore drill;
-- users select ResiduumDB specifically for mixed data and bounded-loss recovery,
+- users select Residiuum specifically for mixed data and bounded-loss recovery,
   not merely because the project author requested it.
 
 ### 4.6 What not to build for Stage 1
@@ -305,19 +305,19 @@ The Stage 2 customer operates data outside a continuously connected datacenter:
 They need an embedded document database plus secure synchronization to a
 central service.
 
-The initial ResiduumDB target is industrial, agent, desktop, and edge-node
+The initial Residiuum target is industrial, agent, desktop, and edge-node
 deployment. A broad consumer-mobile contest additionally requires supported
 Swift and Kotlin products and is not implied by Stage 2 unless those SDKs are
 qualified.
 
 ### 5.2 The decision to win
 
-> Why should I choose ResiduumDB instead of Couchbase Lite, Sync Gateway, and
+> Why should I choose Residiuum instead of Couchbase Lite, Sync Gateway, and
 > Couchbase Server?
 
 The answer:
 
-> Because ResiduumDB keeps the local-first document experience and dependable
+> Because Residiuum keeps the local-first document experience and dependable
 > synchronization, while making local damage, missing history, and conflict
 > resolution explicitly recoverable and examinable.
 
@@ -455,11 +455,11 @@ operational product merely to gain a superior disaster story.
 
 ### 6.2 The decision to win
 
-> Why should I run ResiduumDB instead of MongoDB?
+> Why should I run Residiuum instead of MongoDB?
 
 The answer:
 
-> Because ResiduumDB provides the document experience, dependable operations, and
+> Because Residiuum provides the document experience, dependable operations, and
 > horizontal scale required by the application, while preserving independently
 > verifiable data, explicit history, governed lifecycle, and useful recovery
 > after partial destruction.
@@ -477,7 +477,7 @@ large mixed payloads, historical examination, and bounded-loss recovery matter.
 - expressive filters, projections, sorting, pagination, and aggregation;
 - exact ranked direct access that does not silently enumerate and discard a
   large result prefix, including filter-conditioned order navigation through
-  [Residuum Order Wavelets](ORDER_WAVELET_SPEC.md);
+  [Residiuum Order Wavelets](ORDER_WAVELET_SPEC.md);
 - online index creation, rebuild, validation, and removal;
 - unique and compound index semantics where declared;
 - schema-optional operation with enforceable validation when requested;
@@ -519,7 +519,7 @@ large mixed payloads, historical examination, and bounded-loss recovery matter.
 - local-only master-key issuance and cycling;
 - hard-generation invalidation plus optional bounded grace and resident
   blacklist;
-- application-owned human authorization above ResiduumDB rather than database
+- application-owned human authorization above Residiuum rather than database
   RBAC;
 - auditable high-impact operations;
 - native envelope encryption and pluggable key providers;
@@ -603,14 +603,14 @@ Stage 3 requires a production qualification program, not a launch benchmark:
 11. an external security assessment and published remediation status;
 12. independent production references with declared workload envelopes.
 
-ResiduumDB MUST publish both wins and losses. A benchmark suite designed only to
+Residiuum MUST publish both wins and losses. A benchmark suite designed only to
 produce a victory is not competitive evidence.
 
 ### 6.5 Stage 3 exit gate
 
 Stage 3 is complete for a named workload profile when:
 
-- a normal application can choose ResiduumDB without accepting inferior everyday
+- a normal application can choose Residiuum without accepting inferior everyday
   database behavior;
 - the supported cluster tolerates its declared failures without violating
   acknowledged-write or consistency contracts;
@@ -627,14 +627,14 @@ Stage 3 is complete for a named workload profile when:
   useful data and an honest coverage map after damage that prevents ordinary
   whole-database recovery.
 
-Only then may ResiduumDB make the focused claim:
+Only then may Residiuum make the focused claim:
 
 > For long-lived document and event workloads where partial data survival
-> matters, ResiduumDB is a credible alternative to MongoDB.
+> matters, Residiuum is a credible alternative to MongoDB.
 
 ### 6.6 What not to build for Stage 3
 
-ResiduumDB does not need:
+Residiuum does not need:
 
 - MongoDB wire compatibility unless migration evidence shows it is decisive;
 - every MongoDB query operator;
@@ -698,17 +698,17 @@ The three stages tell one continuous story:
 
 ### Stage 1
 
-> ResiduumDB is easier and safer than assembling a local database plus loose
+> Residiuum is easier and safer than assembling a local database plus loose
 > files when mixed data must survive damage.
 
 ### Stage 2
 
-> ResiduumDB carries that safety from one intermittently connected device into a
+> Residiuum carries that safety from one intermittently connected device into a
 > synchronized fleet without hiding conflicts or holes.
 
 ### Stage 3
 
-> ResiduumDB carries that same evidence model into a production document cluster
+> Residiuum carries that same evidence model into a production document cluster
 > and across decades of retained data.
 
 The strategy in one sentence:
@@ -718,7 +718,7 @@ The strategy in one sentence:
 
 ## 10. Market references
 
-These sources establish the incumbent capabilities ResiduumDB must respect:
+These sources establish the incumbent capabilities Residiuum must respect:
 
 - [SQLite appropriate uses](https://www.sqlite.org/whentouse.html) — embedded,
   local, simple, reliable, zero-administration storage;
@@ -736,4 +736,4 @@ These sources establish the incumbent capabilities ResiduumDB must respect:
   — backup, PITR, retention, maintenance, and disaster-recovery expectations.
 
 These references define credible incumbent baselines. They do not establish
-ResiduumDB capability; only ResiduumDB's own qualification evidence can do that.
+Residiuum capability; only Residiuum's own qualification evidence can do that.

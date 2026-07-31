@@ -1,4 +1,4 @@
-# ResiduumDB immediate Must-Add program
+# Residiuum immediate Must-Add program
 
 Status: **normative execution list v1.0-draft — developer ready**
 
@@ -22,7 +22,7 @@ DEF-098…DEF-104 accepted
 → CSQ-0…CSQ-12 accepted
 ```
 
-ResiduumDB executes this Must-Add program.
+Residiuum executes this Must-Add program.
 
 Its purpose is narrow:
 
@@ -49,7 +49,7 @@ and
 dingo-application-baseline-v1 verifies locally and remotely
 ```
 
-Until exit, ResiduumDB may claim qualified core storage but not a complete
+Until exit, Residiuum may claim qualified core storage but not a complete
 ordinary document-database application surface.
 
 ## 3. The Must-Add list
@@ -515,6 +515,6 @@ collection deletion rituals
 backend-specific branches
 ```
 
-That is the exact point at which ResiduumDB stops being an exceptional storage
+That is the exact point at which Residiuum stops being an exceptional storage
 engine with a promising API and becomes a complete ordinary document database
 ready for its mathematical extensions.

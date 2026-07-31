@@ -11,7 +11,7 @@ Target dialect: `dre`
 Audience: migration-tool, schema, compiler, SDK, and conformance implementers
 
 Normative companions: [RRE_SPEC.md](RRE_SPEC.md),
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md), and
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md), and
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md)
 
 Authoritative source specifications:
@@ -22,7 +22,7 @@ Authoritative source specifications:
 ## 1. Purpose
 
 This compiler translates a precisely supported subset of JSON Schema Draft
-2020-12 into Residuum Rule Expressions.
+2020-12 into Residiuum Rule Expressions.
 
 It is an importer, not a claim that RRE implements all JSON Schema
 vocabularies. JSON Schema contains applicators, dynamic references, regular
@@ -31,7 +31,7 @@ that RRE v1 intentionally does not reproduce.
 
 The compiler rule is:
 
-> Preserve validation equivalence for every admissible ResiduumDB document, or
+> Preserve validation equivalence for every admissible Residiuum document, or
 > refuse the schema.
 
 Unsupported keywords are never ignored merely because some JSON Schema
@@ -40,7 +40,7 @@ validators treat unknown extension keywords as annotations.
 ## 2. Equivalence
 
 For accepted source schema `J`, emitted RRE ruleset `R`, bound collection `C`,
-and every admissible ResiduumDB JSON document `d`:
+and every admissible Residiuum JSON document `d`:
 
 ```text
 ValidateJsonSchema202012(J, d)

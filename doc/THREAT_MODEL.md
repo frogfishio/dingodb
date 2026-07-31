@@ -1,4 +1,4 @@
-# ResiduumDB threat model (DEF-063 first cut)
+# Residiuum threat model (DEF-063 first cut)
 
 Status: **draft / in-tree first cut** (2026-07-27)  
 Scope: surfaces required by DEF-063 Work list  
@@ -26,7 +26,7 @@ Companion: [DEFECTS.md](../DEFECTS.md) DEF-063, [FORMAT_SPEC.md](../FORMAT_SPEC.
 [untrusted client / network]
         |  TLS / authz / admission (DEF-032–034)
         v
-[residuum serve / serve-cluster process]
+[residiuum serve / serve-cluster process]
         |  local FS paths, flock writer ownership
         v
 [store root: segments, meta, derived]
@@ -63,16 +63,16 @@ Aligned with DEF-091 targets and DEF-063 “hostile-input surfaces”:
 
 | Surface | Primary crate | Status (this cut) |
 |---------|---------------|-------------------|
-| Frame decode / verify | `residuum-format` | Property tests + fuzz target `decode_frame` |
-| Forward / reverse salvage scan | `residuum-format` | Property tests + fuzz targets |
-| Deterministic CBOR envelopes | `residuum-format` | Property tests + fuzz target `cbor_envelope` |
-| Segment descriptor / trailer | `residuum-format` | Unit / corpus tests; fuzz follow-on |
-| Chunk manifest reassembly | `residuum-format` | Unit tests; fuzz follow-on |
-| Store envelopes / indexes / catalogs | `residuum-store` | Integration tests; fuzz follow-on |
+| Frame decode / verify | `residiuum-format` | Property tests + fuzz target `decode_frame` |
+| Forward / reverse salvage scan | `residiuum-format` | Property tests + fuzz targets |
+| Deterministic CBOR envelopes | `residiuum-format` | Property tests + fuzz target `cbor_envelope` |
+| Segment descriptor / trailer | `residiuum-format` | Unit / corpus tests; fuzz follow-on |
+| Chunk manifest reassembly | `residiuum-format` | Unit tests; fuzz follow-on |
+| Store envelopes / indexes / catalogs | `residiuum-store` | Integration tests; fuzz follow-on |
 | SDA lexer / parser / eval | `sda-core` | Conformance JSON; property/fuzz follow-on |
-| RPC / URL / protocol parsers | `residuum-client` / server | Protocol fixtures; fuzz follow-on |
-| Cluster control metadata | `residuum-cluster` | Stage tests; fuzz follow-on |
-| Salvage / migration / backup manifests | `residuum-store` | DEF-050–052 tests; fuzz follow-on |
+| RPC / URL / protocol parsers | `residiuum-client` / server | Protocol fixtures; fuzz follow-on |
+| Cluster control metadata | `residiuum-cluster` | Stage tests; fuzz follow-on |
+| Salvage / migration / backup manifests | `residiuum-store` | DEF-050–052 tests; fuzz follow-on |
 
 ## 5. Security controls already in tree (partial)
 

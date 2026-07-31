@@ -23,7 +23,7 @@ Companions (depth, not substitutes):
 | Primary cache lifecycle | [PRIMARY_INDEX_LIFECYCLE.md](PRIMARY_INDEX_LIFECYCLE.md), `stage_def_102_primary_cache_diag` |
 | Large / rewrite-heavy | [LARGE_VALUE_AND_REWRITE_HEAVY.md](LARGE_VALUE_AND_REWRITE_HEAVY.md), `stage_def_103_large_value_policy` |
 | CSQ invariants | [CORE_STORAGE_QUALIFICATION_SPEC.md](../CORE_STORAGE_QUALIFICATION_SPEC.md) |
-| Executable contract suite | `crates/residuum-store/tests/stage_def_104_crash_recovery_contract.rs` |
+| Executable contract suite | `crates/residiuum-store/tests/stage_def_104_crash_recovery_contract.rs` |
 
 ---
 
@@ -63,7 +63,7 @@ If the call does **not** return a receipt (error, kill mid-call, client drop):
 Never a hybrid fabricated event (CSQ-ACK-003).
 
 CLI: `dingo put` / `dingo get` for smoke; crash cells via
-`RESIDUUM_CRASH_*` harness (see CRASH_CONSISTENCY).
+`RESIDIUUM_CRASH_*` harness (see CRASH_CONSISTENCY).
 
 ---
 
@@ -233,7 +233,7 @@ Body incomplete + key event verified → **key listable**, document in
 **Forbidden:** delete `writer.lock` to force unlock; treat `WriterLockHeld` as
 empty database; kill peer processes as the product “unlock” path.
 
-CLI: `residuum doctor` prints `writer_lock` class + guidance.
+CLI: `residiuum doctor` prints `writer_lock` class + guidance.
 
 ---
 
@@ -249,7 +249,7 @@ CLI: `residuum doctor` prints `writer_lock` class + guidance.
 
 Healthy shape: large `active/`, sparse `segments/`, tiny `primary.idx` is
 **normal**. Classify with `primary_cache_diag` /
-`lifecycle_diag` / `residuum doctor` (`primary_cache`, `lifecycle` JSON).
+`lifecycle_diag` / `residiuum doctor` (`primary_cache`, `lifecycle` JSON).
 
 Deleting all derived dirs and reopening must reconstruct the same logical live
 state (DEF-023 / DEF-102).
@@ -272,7 +272,7 @@ transcript/{id}/timeline/{bounded-block-id}
 transcript/{id}/snapshot/{generation}   # derived only
 ```
 
-Helpers: `residuum_store::rewrite_heavy::*`. Detail:
+Helpers: `residiuum_store::rewrite_heavy::*`. Detail:
 [LARGE_VALUE_AND_REWRITE_HEAVY.md](LARGE_VALUE_AND_REWRITE_HEAVY.md).
 
 ---
@@ -286,7 +286,7 @@ Helpers: `residuum_store::rewrite_heavy::*`. Detail:
    ├─ WriterLockHeld → writer_lock_status / open_inspect; wait or find holder
    │                    NEVER delete writer.lock
    └─ NotAStore → wrong path; do not create over unknown data without intent
-2. residuum doctor --json-out PATH
+2. residiuum doctor --json-out PATH
    ├─ healthy + primary_cache.validation → interpret per DEF-102 (size ≠ data)
    └─ holes/damaged → salvage / examine; preserve source
 3. Application read fails?
@@ -335,7 +335,7 @@ documented in CRASH_CONSISTENCY / CSQ).
 
 ## Executable journeys (CI)
 
-Suite: `cargo test -p residuum-store --features legacy-raw-store --test stage_def_104_crash_recovery_contract`
+Suite: `cargo test -p residiuum-store --features legacy-raw-store --test stage_def_104_crash_recovery_contract`
 
 | Journey | Test / linked suite | CSQ / DEF |
 |---------|---------------------|-----------|

@@ -1,4 +1,4 @@
-# ResiduumDB Cluster Architecture
+# Residiuum Cluster Architecture
 
 Status: Draft v0.1  
 Scope: Partitioning, replication, consistency, placement, failover, repair, and
@@ -6,7 +6,7 @@ distributed SDA examination
 
 ## 1. Purpose
 
-A ResiduumDB cluster scales ingestion, hot access, retention, and examination
+A Residiuum cluster scales ingestion, hot access, retention, and examination
 across multiple machines and failure domains without converting the cluster
 control plane into a new single point of data loss.
 
@@ -115,7 +115,7 @@ participated in an operation.
 ### 6.1 Independent Node Salvage
 
 Every storage node MUST remain salvageable as a collection of ordinary
-ResiduumDB segments if removed from the cluster.
+Residiuum segments if removed from the cluster.
 
 Node-local authoritative data MUST NOT require a live control plane, remote
 metadata service, or other node merely to identify and verify its frames.
@@ -614,7 +614,7 @@ not be represented as a complete result.
 ### 17.3 Deterministic merge
 
 Unless a query declares another total ordering, cluster merge order follows
-the ResiduumDB SDA profile using stable partition and unit identity, never worker
+the Residiuum SDA profile using stable partition and unit identity, never worker
 completion order.
 
 Set and Bag results retain their SDA extensional semantics. Sequence results

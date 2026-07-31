@@ -7,13 +7,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-BIN="${RESIDUUM_BIN:-}"
+BIN="${RESIDIUUM_BIN:-}"
 if [[ -z "$BIN" ]]; then
-  cargo build -q -p residuum-cli --bin residuum
-  BIN="$ROOT/target/debug/residuum"
+  cargo build -q -p residiuum-cli --bin residiuum
+  BIN="$ROOT/target/debug/residiuum"
 fi
 
-WORKDIR="${TMPDIR:-/tmp}/residuum-demo-salvage-$$"
+WORKDIR="${TMPDIR:-/tmp}/residiuum-demo-salvage-$$"
 mkdir -p "$WORKDIR"
 SRC="$WORKDIR/src.dingo"
 DST="$WORKDIR/dst.dingo"

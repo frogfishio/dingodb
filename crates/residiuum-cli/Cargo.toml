@@ -1,0 +1,28 @@
+[package]
+name = "residiuum-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "AGPL-3.0-or-later"
+authors.workspace = true
+description = "Residiuum command-line interface: put/get, doctor, salvage, backup/restore, and serve (Stage 7)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "cli", "doctor", "salvage", "database"]
+categories = ["command-line-utilities", "database"]
+include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
+
+[[bin]]
+name = "residiuum"
+path = "src/main.rs"
+
+[dependencies]
+residiuum-sdk = { workspace = true, features = ["cluster"] }
+residiuum-server.workspace = true
+residiuum-store = { workspace = true, features = ["legacy-raw-store"] }
+residiuum-examine.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

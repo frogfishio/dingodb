@@ -1,4 +1,4 @@
-# ResiduumDB testing and verification strategy
+# Residiuum testing and verification strategy
 
 Status: normative engineering strategy v1.0-draft
 
@@ -18,7 +18,7 @@ and
 
 ## 1. Decision
 
-ResiduumDB does not use “the tests passed” as a product claim.
+Residiuum does not use “the tests passed” as a product claim.
 
 It uses a structured assurance case:
 
@@ -51,7 +51,7 @@ MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are normative.
 
 ### 3.1 Whole-system exhaustiveness is impossible
 
-ResiduumDB accepts unbounded operation sequences, data, thread schedules, process
+Residiuum accepts unbounded operation sequences, data, thread schedules, process
 timings, device failures, network histories, topologies, and version histories.
 The complete database state space cannot be enumerated. Documentation and
 marketing MUST NOT describe the whole test program as exhaustive.
@@ -118,7 +118,7 @@ specialized specification controls.
 | `A3` | release matrix, compatibility, soak, security and reproducible evidence pass | production candidate for named profile |
 | `A4` | A3 plus relevant independent review and finding disposition | independently assessed named claim |
 
-Levels attach to a capability/profile pair, never to “ResiduumDB” globally.
+Levels attach to a capability/profile pair, never to “Residiuum” globally.
 
 ## 6. Claim registry
 
@@ -210,7 +210,7 @@ A capability cannot leave design review with an unanswered question.
 
 ### 6A.2 Observation algebra
 
-ResiduumDB distinguishes at least:
+Residiuum distinguishes at least:
 
 ```text
 VerifiedPresent(value)
@@ -736,4 +736,4 @@ A named profile reaches a named assurance level only when:
 10. required feature compositions and incident journeys pass; and
 11. the release verifier independently validates the bundle.
 
-That is how ResiduumDB knows what works—and what has not yet been proved.
+That is how Residiuum knows what works—and what has not yet been proved.

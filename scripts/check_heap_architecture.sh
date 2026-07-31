@@ -68,76 +68,76 @@ if "format_subject_descriptor_admit" not in status:
 print("spec/heap contract OK")
 PY
 
-# No capability Serialize/Deserialize outside residuum-heap (quick grep).
-if rg -n 'impl\s+(Serialize|Deserialize).*HeapCap|HeapCap\s*\{' crates --glob '!residuum-heap/**' 2>/dev/null | rg 'Serialize|Deserialize'; then
+# No capability Serialize/Deserialize outside residiuum-heap (quick grep).
+if rg -n 'impl\s+(Serialize|Deserialize).*HeapCap|HeapCap\s*\{' crates --glob '!residiuum-heap/**' 2>/dev/null | rg 'Serialize|Deserialize'; then
   fail "HeapCap must not implement Serialize/Deserialize outside kernel"
 fi
 
 # Qualified upper layers must not import kernel::PhysicalStore.
-if rg -n 'kernel::PhysicalStore|use crate::kernel' crates/residuum-sdk crates/residuum-server crates/residuum-client crates/residuum-cli 2>/dev/null; then
+if rg -n 'kernel::PhysicalStore|use crate::kernel' crates/residiuum-sdk crates/residiuum-server crates/residiuum-client crates/residiuum-cli 2>/dev/null; then
   fail "upper layers must not import PhysicalStore/kernel"
 fi
 
-# residuum-heap must not depend on store/sdk/server.
-if rg -n 'residuum-store|residuum-sdk|residuum-server|residuum-cluster' crates/residuum-heap/Cargo.toml; then
-  fail "residuum-heap dependency firewall violated"
+# residiuum-heap must not depend on store/sdk/server.
+if rg -n 'residiuum-store|residiuum-sdk|residiuum-server|residiuum-cluster' crates/residiuum-heap/Cargo.toml; then
+  fail "residiuum-heap dependency firewall violated"
 fi
 
 # HP-003 / A3: legacy Store export is feature-gated; package default is façades-only.
-if ! rg -n 'cfg\(feature = "legacy-raw-store"\)' crates/residuum-store/src/lib.rs >/dev/null; then
+if ! rg -n 'cfg\(feature = "legacy-raw-store"\)' crates/residiuum-store/src/lib.rs >/dev/null; then
   fail "Store must be gated behind legacy-raw-store feature"
 fi
-if ! rg -n 'legacy-raw-store' crates/residuum-store/Cargo.toml >/dev/null; then
-  fail "residuum-store must declare legacy-raw-store feature"
+if ! rg -n 'legacy-raw-store' crates/residiuum-store/Cargo.toml >/dev/null; then
+  fail "residiuum-store must declare legacy-raw-store feature"
 fi
-if ! rg -n 'default = \[\]' crates/residuum-store/Cargo.toml >/dev/null; then
-  fail "residuum-store default features must be empty (A3 façades-only default)"
+if ! rg -n 'default = \[\]' crates/residiuum-store/Cargo.toml >/dev/null; then
+  fail "residiuum-store default features must be empty (A3 façades-only default)"
 fi
 
-# Qualified data service must never depend on residuum-authority or enable
+# Qualified data service must never depend on residiuum-authority or enable
 # authority-provisioning (HP-005 firewall).
-if rg -n 'residuum-authority|authority-provisioning' crates/residuum-server/Cargo.toml; then
-  fail "residuum-server must not depend on residuum-authority or authority-provisioning"
+if rg -n 'residiuum-authority|authority-provisioning' crates/residiuum-server/Cargo.toml; then
+  fail "residiuum-server must not depend on residiuum-authority or authority-provisioning"
 fi
-if rg -n 'residuum-authority' crates/residuum-sdk/Cargo.toml crates/residuum-client/Cargo.toml 2>/dev/null; then
-  fail "sdk/client must not depend on residuum-authority"
+if rg -n 'residiuum-authority' crates/residiuum-sdk/Cargo.toml crates/residiuum-client/Cargo.toml 2>/dev/null; then
+  fail "sdk/client must not depend on residiuum-authority"
 fi
-# residuum-authority must exist and be AGPL.
-if [[ ! -f crates/residuum-authority/Cargo.toml ]]; then
-  fail "residuum-authority crate missing (HP-005)"
+# residiuum-authority must exist and be AGPL.
+if [[ ! -f crates/residiuum-authority/Cargo.toml ]]; then
+  fail "residiuum-authority crate missing (HP-005)"
 fi
-if ! rg -n 'AGPL-3.0-or-later' crates/residuum-authority/Cargo.toml >/dev/null; then
-  fail "residuum-authority must be AGPL-3.0-or-later"
+if ! rg -n 'AGPL-3.0-or-later' crates/residiuum-authority/Cargo.toml >/dev/null; then
+  fail "residiuum-authority must be AGPL-3.0-or-later"
 fi
 
 # Qualified feature surface builds without public raw Store.
-cargo check -p residuum-store --quiet \
-  || fail "residuum-store default (façades-only) must build"
-cargo check -p residuum-store --features legacy-raw-store --quiet \
-  || fail "residuum-store --features legacy-raw-store must build"
+cargo check -p residiuum-store --quiet \
+  || fail "residiuum-store default (façades-only) must build"
+cargo check -p residiuum-store --features legacy-raw-store --quiet \
+  || fail "residiuum-store --features legacy-raw-store must build"
 # CPR-001: package default is heap-only; legacy flat is opt-in.
-if ! rg -n 'legacy-flat-sdk' crates/residuum-sdk/Cargo.toml >/dev/null; then
-  fail "residuum-sdk must declare legacy-flat-sdk feature (CPR-001)"
+if ! rg -n 'legacy-flat-sdk' crates/residiuum-sdk/Cargo.toml >/dev/null; then
+  fail "residiuum-sdk must declare legacy-flat-sdk feature (CPR-001)"
 fi
-if ! rg -n 'default = \[\]' crates/residuum-sdk/Cargo.toml >/dev/null; then
-  fail "residuum-sdk default features must be empty (CPR-001 heap-only default)"
+if ! rg -n 'default = \[\]' crates/residiuum-sdk/Cargo.toml >/dev/null; then
+  fail "residiuum-sdk default features must be empty (CPR-001 heap-only default)"
 fi
-if ! rg -n 'legacy_flat_sdk_enabled|FLAT_COLLECTION_SURFACE_LABEL' crates/residuum-sdk/src/claim.rs >/dev/null; then
-  fail "residuum-sdk claim honesty surface missing (CPR-001)"
+if ! rg -n 'legacy_flat_sdk_enabled|FLAT_COLLECTION_SURFACE_LABEL' crates/residiuum-sdk/src/claim.rs >/dev/null; then
+  fail "residiuum-sdk claim honesty surface missing (CPR-001)"
 fi
-cargo check -p residuum-sdk --quiet \
-  || fail "residuum-sdk default (heap-only) must build"
-cargo check -p residuum-sdk --features legacy-flat-sdk --quiet \
-  || fail "residuum-sdk --features legacy-flat-sdk must build"
+cargo check -p residiuum-sdk --quiet \
+  || fail "residiuum-sdk default (heap-only) must build"
+cargo check -p residiuum-sdk --features legacy-flat-sdk --quiet \
+  || fail "residiuum-sdk --features legacy-flat-sdk must build"
 # Data-service check still builds without linking authority.
-cargo check -p residuum-server --quiet \
-  || fail "residuum-server must build without residuum-authority"
+cargo check -p residiuum-server --quiet \
+  || fail "residiuum-server must build without residiuum-authority"
 
 # HP-008: qualified hot path must not reference the authority store.
 for f in heap_auth.rs heap_dispatch.rs heap_registry.rs heap_session.rs heap_audit.rs; do
-  p="crates/residuum-server/src/$f"
+  p="crates/residiuum-server/src/$f"
   [[ -f "$p" ]] || fail "missing HP-008 module $p"
-  if rg -n 'residuum_authority|MasterAuthorityStore|authority-provisioning' "$p"; then
+  if rg -n 'residiuum_authority|MasterAuthorityStore|authority-provisioning' "$p"; then
     fail "$f must not touch authority store (HP-008 hot path)"
   fi
 done

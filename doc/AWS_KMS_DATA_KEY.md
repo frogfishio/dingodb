@@ -1,8 +1,8 @@
 # AWS KMS data-key provider (live)
 
 **Status:** connected (feature-gated)  
-**Crate:** `residuum-store` feature `aws-kms`  
-**Type:** [`AwsKmsDataKeyProvider`](../crates/residuum-store/src/heap/kms_aws.rs)
+**Crate:** `residiuum-store` feature `aws-kms`  
+**Type:** [`AwsKmsDataKeyProvider`](../crates/residiuum-store/src/heap/kms_aws.rs)
 
 ## What it does
 
@@ -13,13 +13,13 @@
 
 Encryption context on generate:
 
-- `residuum-heap-id` — hex heap id  
-- `dingo-profile` — `residuum-heap-v1`
+- `dingo-heap-id` — hex heap id  
+- `dingo-profile` — `dingo-heap-v1`
 
 ## Build
 
 ```bash
-cargo check -p residuum-store --features aws-kms
+cargo check -p residiuum-store --features aws-kms
 ```
 
 Default store builds do **not** pull HTTP/SigV4 deps.
@@ -28,14 +28,14 @@ Default store builds do **not** pull HTTP/SigV4 deps.
 
 | Variable | Role |
 |----------|------|
-| `RESIDUUM_AWS_KMS_KEY_ID` or `RESIDUUM_KMS_KEY_ARN` | CMK id, alias, or ARN (**required**) |
-| `AWS_REGION` or `RESIDUUM_AWS_REGION` | Region (default `us-east-1`) |
+| `RESIDIUUM_AWS_KMS_KEY_ID` or `RESIDIUUM_KMS_KEY_ARN` | CMK id, alias, or ARN (**required**) |
+| `AWS_REGION` or `RESIDIUUM_AWS_REGION` | Region (default `us-east-1`) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credentials (**required** for live calls) |
 | `AWS_SESSION_TOKEN` | Optional session token |
-| `RESIDUUM_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` | Optional (LocalStack / VPC endpoint) |
+| `RESIDIUUM_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` | Optional (LocalStack / VPC endpoint) |
 
 ```rust
-use residuum_store::{AwsKmsDataKeyProvider, DataKeyProvider, HsmDataKeyConfig};
+use residiuum_store::{AwsKmsDataKeyProvider, DataKeyProvider, HsmDataKeyConfig};
 
 // From env
 let p = AwsKmsDataKeyProvider::from_env()?;
@@ -43,7 +43,7 @@ let p = AwsKmsDataKeyProvider::from_env()?;
 // Or explicit
 let cfg = HsmDataKeyConfig::aws_kms(
     "us-east-1",
-    "alias/residuum-heap",
+    "alias/residiuum-heap",
     None, // or Some("http://localhost:4566".into()) for LocalStack
 );
 let p = AwsKmsDataKeyProvider::from_config(&cfg)?;
@@ -54,12 +54,12 @@ p.destroy(data_root, &mut h)?;
 ## Live Accept test
 
 ```bash
-export RESIDUUM_KMS_LIVE=1
-export RESIDUUM_AWS_KMS_KEY_ID=alias/your-cmk
+export RESIDIUUM_KMS_LIVE=1
+export RESIDIUUM_AWS_KMS_KEY_ID=alias/your-cmk
 export AWS_REGION=us-east-1
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
-cargo test -p residuum-store --features aws-kms aws_kms_live_generate_destroy -- --ignored --nocapture
+cargo test -p residiuum-store --features aws-kms aws_kms_live_generate_destroy -- --ignored --nocapture
 ```
 
 ## Honesty

@@ -1,6 +1,6 @@
 # Heap complete-path review (HP-010 / Gate H6)
 
-**Status:** living review for single-node `residuum-heap-v1` qualification  
+**Status:** living review for single-node `dingo-heap-v1` qualification  
 **Date:** 2026-07-29  
 **Claim impact:** does **not** authorize `qualified=true`  
 **Normative anchors:** HEAP_SPEC §3.4 (complete-path enforcement), §27 Gate H6,
@@ -31,12 +31,12 @@ an honest qualified claim.
 
 | Layer | In TCB for logical isolation | Notes |
 |-------|------------------------------|-------|
-| `residuum-heap` pure decide / caps | Yes | Unforgeable `HeapCap`, trybuild |
-| `residuum-format` admit / SubjectV2 | Yes | Wrong-heap frames rejected |
-| `residuum-store` heap façades / lifecycle | Yes | Catalog + purge/restore |
-| `residuum-authority` (local ceremony) | Yes (ceremony only) | Not linked by server |
-| `residuum-server` qualified HeapKey path | Yes (when enabled) | TLS exporter + session |
-| Legacy `Residuum::collection` / raw `Store` | **Out of qualified profile** | Flat-store compatibility |
+| `residiuum-heap` pure decide / caps | Yes | Unforgeable `HeapCap`, trybuild |
+| `residiuum-format` admit / SubjectV2 | Yes | Wrong-heap frames rejected |
+| `residiuum-store` heap façades / lifecycle | Yes | Catalog + purge/restore |
+| `residiuum-authority` (local ceremony) | Yes (ceremony only) | Not linked by server |
+| `residiuum-server` qualified HeapKey path | Yes (when enabled) | TLS exporter + session |
+| Legacy `Residiuum::collection` / raw `Store` | **Out of qualified profile** | Flat-store compatibility |
 | Cluster routing / Raft | **Out of single-node profile** | HC1 / HP-011+ |
 
 ## 4. Surfaces reviewed
@@ -48,7 +48,7 @@ an honest qualified claim.
 | `decide` / `authority_admission_ok` / mint / refresh | Generation, blacklist, serving, binding | `h6_decide_obligations`, unit tests |
 | `require_admit` / single-owner | Known owner only | `single_owner_admit` |
 | `HeapStore` / `HeapCollection` put/get/delete | SubjectV2 + bound `HeapCap` + rights | `subject_v2_put_get_isolated_across_heaps`, `heap_store_rejects_foreign_subject_v2` |
-| `Residuum::connect_heap` / `RemoteHeap` | TLS + HeapKey credential; no token/RBAC | `connect_heap_welcome_and_process_ops`, `connect_heap_wrong_name_rejects` |
+| `Residiuum::connect_heap` / `RemoteHeap` | TLS + HeapKey credential; no token/RBAC | `connect_heap_welcome_and_process_ops`, `connect_heap_wrong_name_rejects` |
 | Query observation | Bound heap + allowlists | `query_escape_faulty_planner_confined` |
 | Indexes / streams catalogs | Heap-scoped paths | `derived_path_indexes_streams_scoped` |
 | Metrics / logs / export / health / support | Profile declassification registry | operational + metadata-hardened drills |
@@ -60,8 +60,8 @@ an honest qualified claim.
 
 | Surface | Why out of qualified claim | Residual gate |
 |---------|---------------------------|---------------|
-| `Residuum::open` + `collection(name)` flat store | Deployment-global collection names; no `HeapCap` | H0 / H1 |
-| `Residuum::store()` raw `Store` access | Bypasses heap façade | H1 / HP-003 |
+| `Residiuum::open` + `collection(name)` flat store | Deployment-global collection names; no `HeapCap` | H0 / H1 |
+| `Residiuum::store()` raw `Store` access | Bypasses heap façade | H1 / HP-003 |
 | Default feature `legacy-raw-store` | Public raw store still default for Stages 3–9 | HP-003 residual |
 | Token-auth serve path (`qualified_heap_key=false`) | Pre-HeapKey remote profile | H2 / HP-008 residual |
 | Cluster `open_cluster` / multi-node | Not single-node profile | HC1 |

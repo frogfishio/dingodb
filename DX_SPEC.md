@@ -1,4 +1,4 @@
-# ResiduumDB Developer Experience Specification
+# Residiuum Developer Experience Specification
 
 First-party visual development and operations experience:
 [STUDIO_SPEC.md](STUDIO_SPEC.md).
@@ -9,11 +9,11 @@ progressive disclosure
 
 ## 1. Product requirement
 
-ResiduumDB's unusual storage and recovery machinery MUST produce an ordinary,
+Residiuum's unusual storage and recovery machinery MUST produce an ordinary,
 pleasant database experience.
 
 A developer who does not care about physical damage, archival formats,
-consensus, or SDA should still choose ResiduumDB because it is an easy and fast
+consensus, or SDA should still choose Residiuum because it is an easy and fast
 place to put JSON and bytes.
 
 The everyday promise is:
@@ -22,7 +22,7 @@ The everyday promise is:
 
 The advanced promise remains:
 
-> When ordinary assumptions fail, ResiduumDB tells you exactly what survived.
+> When ordinary assumptions fail, Residiuum tells you exactly what survived.
 
 ## 2. DX success criteria
 
@@ -89,7 +89,7 @@ data semantics.
 
 ### 3.6 No silent uncertainty
 
-An ordinary result is ordinary only when ResiduumDB can support the claim it
+An ordinary result is ordinary only when Residiuum can support the claim it
 makes.
 
 A missing key, unavailable partition, stale incomplete index, damaged payload,
@@ -99,7 +99,7 @@ and resource-limited search are different outcomes.
 
 A missing secondary index MUST NOT make a valid query illegal.
 
-ResiduumDB may scan, ask for an explicit budget, or report that required tiers are
+Residiuum may scan, ask for an explicit budget, or report that required tiers are
 offline. It MUST NOT return a knowingly incomplete empty result.
 
 ## 4. Deployment model
@@ -109,12 +109,12 @@ offline. It MUST NOT return a knowingly incomplete empty result.
 Canonical shape:
 
 ```ts
-const db = await Residuum.open("./app.dingo");
+const db = await Residiuum.open("./app.dingo");
 ```
 
 If the path does not exist, it is created with safe defaults.
 
-If it exists, ResiduumDB discovers the format and opens it without requiring a
+If it exists, Residiuum discovers the format and opens it without requiring a
 separate manifest database.
 
 Opening MUST NOT perform an unbounded full-store scan on the latency-sensitive
@@ -125,7 +125,7 @@ path when valid acceleration metadata exists.
 Canonical shape:
 
 ```ts
-const db = await Residuum.connect("residuum://localhost:7434/app");
+const db = await Residiuum.connect("residiuum://localhost:7434/app");
 ```
 
 The logical API is the same as embedded use. Network-only concerns such as
@@ -136,7 +136,7 @@ authentication, deadlines, and retry policy are connection options.
 Canonical shape:
 
 ```ts
-const db = await Residuum.connect("residuum://db.example.com/app");
+const db = await Residiuum.connect("residiuum://db.example.com/app");
 ```
 
 Clients discover and cache partition routes automatically.
@@ -311,7 +311,7 @@ const item = await users.inspect("user-42");
 ```
 
 `inspect` returns the item, integrity state, provenance, holes, coverage, and
-uncertainty according to the ResiduumDB SDA profile.
+uncertainty according to the Residiuum SDA profile.
 
 It is the escape hatch when `get` cannot honestly return one ordinary value.
 
@@ -435,7 +435,7 @@ Numeric start is supported as **ranked direct access**, not as permission to
 scan and discard a prefix. Its normative contract is
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md).
 
-When a caller asks for result 100,001, ResiduumDB either:
+When a caller asks for result 100,001, Residiuum either:
 
 - uses exact rank/select and counting structures;
 - performs an explicitly budgeted one-time selection-artifact build;
@@ -513,7 +513,7 @@ work
 is the opt-in compatibility escape hatch.
 
 When the filter bitmap and declared scalar order are indexed, the planner may
-use a [Residuum Order Wavelet](ORDER_WAVELET_SPEC.md) to navigate exact
+use a [Residiuum Order Wavelet](ORDER_WAVELET_SPEC.md) to navigate exact
 filter-conditioned branch counts. This removes query-time sorting as well as
 prefix enumeration. Explain identifies that choice; applications do not use a
 separate query API.
@@ -592,7 +592,7 @@ will prefer it. Everyone else uses **dialects**: frontends that compile into
 the same ENR+SDA IR and never redefine algebra semantics. This is **not** a
 hybrid of co-equal languages.
 
-**RQL (Residuum Query Language) is the official human dialect** — co-designed with
+**RQL (Residiuum Query Language) is the official human dialect** — co-designed with
 ENR for readable enrichment and nested projection. It is not SQL; foreign
 SQL/Mongo/GraphQL surfaces remain optional comfort with known holes. How to
 write queries: [doc/RQL/USER_GUIDE.md](doc/RQL/USER_GUIDE.md). Design:
@@ -632,7 +632,7 @@ Builtin dialect ids:
 | Id | Role |
 |----|------|
 | `sda` | Pure SDA/ENR1 text (parse-checked) |
-| `dql` | **Official** Residuum Query Language → ENR1+SDA ([RQL_SPEC.md](RQL_SPEC.md); v0.1) |
+| `dql` | **Official** Residiuum Query Language → ENR1+SDA ([RQL_SPEC.md](RQL_SPEC.md); v0.1) |
 | `json` / `mongo` | DX portable filter object → document predicate |
 | `sql` | Legacy partial `SELECT` / `WHERE` mimicry; retained during migration |
 | `sql+` / `sql-plus` | SQL-ish+ → canonical RQL v1; specified, not yet implemented |
@@ -649,7 +649,7 @@ compiles through RQL rather than introducing an SQL execution engine. See
 [SQL_TO_RQL_SPEC.md](SQL_TO_RQL_SPEC.md).
 
 Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [RQL_SPEC.md](RQL_SPEC.md).
-Rust surface: `residuum-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
+Rust surface: `residiuum-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
 `QueryDialect`).
 
 ### 7.8 Explain
@@ -701,7 +701,7 @@ The index exposes `building`, `ready`, `stale`, `partial`, `failed`, and
 
 The query planner uses applicable indexes automatically.
 
-ResiduumDB SHOULD recommend indexes using observed query patterns and estimated
+Residiuum SHOULD recommend indexes using observed query patterns and estimated
 benefit. It MUST NOT silently create unbounded durable indexes by default.
 
 Development mode MAY offer explicitly enabled automatic indexes with a clear
@@ -882,7 +882,7 @@ result is complete.
 ### 13.3 Doctor
 
 ```text
-residuum doctor ./app.dingo
+residiuum doctor ./app.dingo
 ```
 
 `doctor` is read-only by default.
@@ -925,8 +925,8 @@ dingo put-bytes ./app.dingo artifacts/build-19 ./build.bin
 dingo history ./app.dingo users/user-42
 dingo inspect ./app.dingo users/user-42
 dingo index create ./app.dingo users by-email --field email
-residuum doctor ./app.dingo
-residuum serve ./app.dingo
+residiuum doctor ./app.dingo
+residiuum serve ./app.dingo
 ```
 
 Exact command grammar will be frozen with the first CLI implementation.
@@ -986,7 +986,7 @@ causes and diagnostics, not as the only top-level explanation.
 
 Collections are schemaless by default.
 
-Optional Data Rules, declared with Residuum Rule Expressions (RRE), provide:
+Optional Data Rules, declared with Residiuum Rule Expressions (RRE), provide:
 
 - write validation;
 - conditional field presence;
@@ -1040,7 +1040,7 @@ First-class import formats SHOULD include:
 - JSONL;
 - raw files and directory trees;
 - CSV through an explicit mapping;
-- ResiduumDB diagnostic and survival formats.
+- Residiuum diagnostic and survival formats.
 
 Export SHOULD include:
 
@@ -1225,7 +1225,7 @@ SDKs may follow without changing the everyday logical model.
 
 ## 25. Governing principle
 
-The user should encounter ResiduumDB's complexity only when that complexity
+The user should encounter Residiuum's complexity only when that complexity
 protects them from a lie.
 
 > Extraordinary internals. Ordinary database experience.

@@ -1,15 +1,15 @@
-# residuum-sda
+# residiuum-sda
 
-`residuum-sda` is **ResiduumDB's hybrid pure evaluator** for Structured Data Algebra
-(SDA) plus the additive **ENR1** enrichment kernel. It is a ResiduumDB monorepo
+`residiuum-sda` is **Residiuum's hybrid pure evaluator** for Structured Data Algebra
+(SDA) plus the additive **ENR1** enrichment kernel. It is a Residiuum monorepo
 package — not a claim on the bare crates.io names `sda` / `sda-lib`.
 
 It provides a small host-facing API for parsing, validating, formatting, and
 evaluating programs over JSON. Evaluation is pure: no file or network IO lives
 in this crate.
 
-> **Package name:** publish and depend as **`residuum-sda`**. Source lives under
-> `crates/sda-core`. Inside this package the Rust path is `residuum_sda`; workspace
+> **Package name:** publish and depend as **`residiuum-sda`**. Source lives under
+> `crates/sda-core`. Inside this package the Rust path is `residiuum_sda`; workspace
 > dependents that use the `sda-core` key import as `sda_core`.
 
 ## Why not `sda` / `sda-lib`?
@@ -17,29 +17,29 @@ in this crate.
 Earlier publish under the bare names collided with (and must not reuse) those
 crates.io package identities. This crate is also **not pure standalone SDA
 only**: ENR1 (`Match` / `enrich` / `one?` / `one!` / `merge`, …) shares the same
-compile path. Treat it as ResiduumDB's SDA+ENR1 hybrid surface.
+compile path. Treat it as Residiuum's SDA+ENR1 hybrid surface.
 
 ## When to use this crate
 
 | You want… | Use |
 |-----------|-----|
-| Embed SDA+ENR1 evaluation in a Rust program | **`residuum-sda`** (this crate) |
-| Shell CLI (`eval` / `check` / `fmt`) | [`residuum-sda-cli`](https://crates.io/crates/residuum-sda-cli) (`residuum-sda` binary) |
-| ResiduumDB recovery examination units | [`residuum-examine`](https://crates.io/crates/residuum-examine) |
+| Embed SDA+ENR1 evaluation in a Rust program | **`residiuum-sda`** (this crate) |
+| Shell CLI (`eval` / `check` / `fmt`) | [`residiuum-sda-cli`](https://crates.io/crates/residiuum-sda-cli) (`residiuum-sda` binary) |
+| Residiuum recovery examination units | [`residiuum-examine`](https://crates.io/crates/residiuum-examine) |
 
 ## Install
 
 ```toml
 [dependencies]
-residuum-sda = "0.1"
+residiuum-sda = "0.1"
 ```
 
-Or: `cargo add residuum-sda`
+Or: `cargo add residiuum-sda`
 
 ## Quick example
 
 ```rust
-let output = residuum_sda::run(
+let output = residiuum_sda::run(
     r#"input<"name">!"#,
     serde_json::json!({"name": "Ada"}),
 )?;
@@ -47,7 +47,7 @@ assert_eq!(
     output,
     serde_json::json!({"$type": "ok", "$value": "Ada"})
 );
-# Ok::<(), residuum_sda::SdaError>(())
+# Ok::<(), residiuum_sda::SdaError>(())
 ```
 
 Bind host input under a name other than `input` with
@@ -76,7 +76,7 @@ ENR1 (match bag + explicit cardinality) is implemented **inside this crate**, no
 as a second parser. Spec: [`crates/enr-core/`](../enr-core/README.md). Example:
 
 ```rust
-let prog = residuum_sda::Program::parse(
+let prog = residiuum_sda::Program::parse(
     r#"orders
        |> enrich {
             customer:
@@ -86,7 +86,7 @@ let prog = residuum_sda::Program::parse(
           }"#,
 )?;
 # let _ = prog;
-# Ok::<(), residuum_sda::SdaError>(())
+# Ok::<(), residiuum_sda::SdaError>(())
 ```
 
 ENR2 (candidates, ranking, explain) is **not** implemented.
@@ -94,24 +94,24 @@ ENR2 (candidates, ranking, explain) is **not** implemented.
 ## Status
 
 **Shipped.** Standalone behavior is frozen under
-`residuum_sda::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
+`residiuum_sda::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
 require a new corpus tag. ENR1 is additive under `ENR1_PROFILE_TAG`.
 
-ResiduumDB recovery examination (ExaminationUnit projection) lives in
-[`residuum-examine`](https://crates.io/crates/residuum-examine), not here — this crate
+Residiuum recovery examination (ExaminationUnit projection) lives in
+[`residiuum-examine`](https://crates.io/crates/residiuum-examine), not here — this crate
 stays pure.
 
 ## Conformance
 
 ```sh
-cargo test -p residuum-sda
+cargo test -p residiuum-sda
 ```
 
 ## Latency / phase breakdown (diagnostic)
 
 ```sh
-cargo run -p residuum-sda --release --example sda_latency_breakdown
-cargo test -p residuum-sda --test sda_bench_skeleton
+cargo run -p residiuum-sda --release --example sda_latency_breakdown
+cargo test -p residiuum-sda --test sda_bench_skeleton
 ```
 
 ## Documentation
@@ -119,10 +119,10 @@ cargo test -p residuum-sda --test sda_bench_skeleton
 - Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
 - User docs: [doc/SDA/](../../doc/SDA/)
 - ENR: [crates/enr-core/](../enr-core/README.md)
-- CLI package: [`residuum-sda-cli`](https://crates.io/crates/residuum-sda-cli)
+- CLI package: [`residiuum-sda-cli`](https://crates.io/crates/residiuum-sda-cli)
 
 ## License
 
 MIT.
 
-Part of [ResiduumDB](https://github.com/frogfishio/dingodb).
+Part of [Residiuum](https://github.com/frogfishio/dingodb).

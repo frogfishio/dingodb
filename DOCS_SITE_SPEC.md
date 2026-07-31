@@ -1,14 +1,14 @@
-# ResiduumDB documentation website specification
+# Residiuum documentation website specification
 
 Status: developer-ready product specification v1.0  
-Target: `https://docs.residuumdb.org`
+Target: `https://docs.residiuumdb.org`
 Companion and shared contract: [WEBSITE_SPEC.md](WEBSITE_SPEC.md)  
 Source repository: `https://github.com/frogfishio/dingodb`
 
 ## 1. Decision
 
-`docs.residuumdb.org` is the canonical user, operator, reference, and
-specification website for ResiduumDB.
+`docs.residiuumdb.org` is the canonical user, operator, reference, and
+specification website for Residiuum.
 
 Its primary job is successful task completion. Its secondary job is to make
 the project’s unusual guarantees and maturity independently inspectable.
@@ -16,9 +16,9 @@ the project’s unusual guarantees and maturity independently inspectable.
 The documentation MUST provide two clearly separated experiences:
 
 1. **Learn and operate** — concise, task-oriented documentation for people
-   using ResiduumDB;
+   using Residiuum;
 2. **Specifications** — normative and exploratory source documents for people
-   implementing, reviewing, or researching ResiduumDB.
+   implementing, reviewing, or researching Residiuum.
 
 A new user MUST NOT need to learn frames, segments, Raft, or SDA internals to
 store and query a local document. A reviewer MUST still be able to reach the
@@ -48,7 +48,7 @@ specification wins.
 
 Must be able to:
 
-1. determine whether ResiduumDB is appropriate;
+1. determine whether Residiuum is appropriate;
 2. install the released Rust SDK;
 3. open a local store;
 4. create a collection;
@@ -115,12 +115,12 @@ Must be able to:
 Top navigation:
 
 ```text
-ResiduumDB Docs | Learn | Guides | Operations | Reference | Specifications |
+Residiuum Docs | Learn | Guides | Operations | Reference | Specifications |
 Status | [Version] | Search | GitHub
 ```
 
-`ResiduumDB Docs` returns to the docs home. A separate wordmark link or footer
-link returns to `residuumdb.org`.
+`Residiuum Docs` returns to the docs home. A separate wordmark link or footer
+link returns to `residiuumdb.org`.
 
 ### 5.2 Canonical route tree
 
@@ -240,14 +240,14 @@ Every indexed page MUST validate this schema:
 
 ```yaml
 title: Open a local store
-description: Create and reopen an embedded ResiduumDB store from Rust.
+description: Create and reopen an embedded Residiuum store from Rust.
 class: tutorial
 status: experimental
 applies_to:
   product: "0.2"
   surface: embedded-single-node
 source:
-  path: crates/residuum-sdk/README.md
+  path: crates/residiuum-sdk/README.md
   revision: generated
 last_verified: 2026-07-30
 owners:
@@ -298,7 +298,7 @@ The canonical quickstart MUST start from an empty directory and include:
 
 1. prerequisites and supported Rust version;
 2. project creation;
-3. `residuum-sdk` dependency;
+3. `residiuum-sdk` dependency;
 4. complete compilable source;
 5. first run and expected output;
 6. second run proving reopen/persistence;
@@ -505,7 +505,7 @@ The launch migration MUST use a reviewed manifest. Initial mapping:
 | Repository source | Docs destination |
 |---|---|
 | `README.md` | Docs home summary and getting-started entry points |
-| `crates/residuum-sdk/README.md` | Rust SDK quickstart/reference source |
+| `crates/residiuum-sdk/README.md` | Rust SDK quickstart/reference source |
 | `DX_SPEC.md` | Concepts plus specification |
 | `doc/RQL/USER_GUIDE.md` | `/guides/dql/` |
 | RQL/SDA grammar and manuals | `/reference/dql/`, `/reference/sda/`, related guides |
@@ -538,7 +538,7 @@ status:
 
 ### 11.1 URL policy
 
-`https://docs.residuumdb.org/` serves documentation for the latest published
+`https://docs.residiuumdb.org/` serves documentation for the latest published
 release line.
 
 - `/next/` serves documentation built from the main development branch.
@@ -594,7 +594,7 @@ Zero-result pages MUST offer terminology, status, and GitHub issue links.
 
 ## 13. Design and components
 
-The docs site MUST use the shared ResiduumDB colors, typography, status vocabulary,
+The docs site MUST use the shared Residiuum colors, typography, status vocabulary,
 header primitives, footer, and code style from `WEBSITE_SPEC.md`.
 
 Documentation-specific components:
@@ -720,7 +720,7 @@ rather than a named individual.
 
 Release process:
 
-1. freeze the ResiduumDB source revision;
+1. freeze the Residiuum source revision;
 2. generate release/API/capability data;
 3. run snippets against release artifacts;
 4. resolve stale critical pages;

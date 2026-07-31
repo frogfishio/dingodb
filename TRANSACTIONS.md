@@ -1,4 +1,4 @@
-# ResiduumDB scoped transaction compatibility profile
+# Residiuum scoped transaction compatibility profile
 
 Status: compatibility draft v0.2; subordinate to `ATOMICS_SPEC.md`
 
@@ -10,7 +10,7 @@ Atomic semantics and evidence belong to `ATOMICS_SPEC.md`
 
 ## 1. Summary
 
-ResiduumDB should expose familiar transaction terminology only as a compatibility
+Residiuum should expose familiar transaction terminology only as a compatibility
 interpretation of bounded Atomics. It must not present an unbounded “ACID
 everywhere” API that the storage and cluster models cannot honestly support.
 
@@ -30,9 +30,9 @@ prepare/member/decision evidence, and recovery classification are governed by
 it cannot broaden or weaken those semantics.
 
 This gives ordinary applications familiar transactional ergonomics while
-preserving ResiduumDB’s larger promise:
+preserving Residiuum’s larger promise:
 
-> Most databases manage the current state of an application. ResiduumDB manages
+> Most databases manage the current state of an application. Residiuum manages
 > the lifetime of the data itself.
 
 ### 1.1 Terminology rule
@@ -56,7 +56,7 @@ wins.
 
 ## 2. Motivation
 
-ResiduumDB already provides immutable events, single-key writes, durability
+Residiuum already provides immutable events, single-key writes, durability
 receipts, history, partition-local ordering, and wire kinds for batch prepare
 and batch commit. The specifications also describe version-conditional writes
 and partition batches.
@@ -128,7 +128,7 @@ Every transaction declares its coordination scope before mutation:
 - one local heap;
 - one cluster partition.
 
-If an operation falls outside the scope, ResiduumDB fails before recording any
+If an operation falls outside the scope, Residiuum fails before recording any
 member. It never silently weakens atomicity or splits the transaction.
 
 ### 5.2 Transaction compatibility is serializable within scope
@@ -287,7 +287,7 @@ Properties:
 Cross-partition work uses explicit workflow records, idempotent steps, and
 compensation.
 
-ResiduumDB may provide a saga helper, but it must expose:
+Residiuum may provide a saga helper, but it must expose:
 
 - workflow identity;
 - completed and pending steps;
@@ -329,7 +329,7 @@ If validation fails, no member becomes committed and the caller receives
 ### 7.2 Why serializable rather than snapshot isolation
 
 Snapshot isolation permits write skew and requires users to understand which
-invariants are safe. ResiduumDB should not advertise an ordinary transaction API
+invariants are safe. Residiuum should not advertise an ordinary transaction API
 while leaving common multi-key invariants vulnerable by default.
 
 Because the initial coordination scopes are one local heap or one partition,
@@ -639,7 +639,7 @@ Sequence:
 6. The leader returns a receipt with term, position, placement epoch, replica
    acknowledgements, and commit evidence.
 
-The exact boundary between Raft-log persistence and ResiduumDB segment persistence
+The exact boundary between Raft-log persistence and Residiuum segment persistence
 must be specified before implementation. A “replicated durable”
 acknowledgement cannot be returned unless the configured number of replicas
 has durable evidence sufficient for recovery.
@@ -713,7 +713,7 @@ Chunked transaction members remain invisible until:
 - the complete transaction commits.
 
 If a commit survives but a chunk is later destroyed, the transaction remains
-historically committed while the current payload becomes partial. ResiduumDB must
+historically committed while the current payload becomes partial. Residiuum must
 distinguish:
 
 - commitment of the logical event;
@@ -1055,7 +1055,7 @@ transaction system before one exists.
 The implementation remains one system: Atomic is the primitive; transaction is
 an adapter that neither widens the scope nor invents a stronger outcome.
 
-Most importantly, it preserves ResiduumDB’s core distinction:
+Most importantly, it preserves Residiuum’s core distinction:
 
-> A transaction can lose evidence without ResiduumDB lying about its outcome.
+> A transaction can lose evidence without Residiuum lying about its outcome.
 > Whatever survives remains independently verifiable and examinable.

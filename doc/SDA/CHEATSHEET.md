@@ -5,9 +5,9 @@ This is the short version of SDA for day-to-day use.
 ## Core idea
 
 - `input` is the incoming JSON value
-- `residuum-sda eval` runs SDA code
-- `residuum-sda check` validates SDA code
-- `residuum-sda fmt` formats SDA code
+- `residiuum-sda eval` runs SDA code
+- `residiuum-sda check` validates SDA code
+- `residiuum-sda fmt` formats SDA code
 - **SDA (+ ENR1) is the mathematical language**; **RQL** is the official human
   dialect ([USER_GUIDE.md](../RQL/USER_GUIDE.md), [RQL_SPEC.md](../../RQL_SPEC.md)); JSON/Mongo filters and SQL-ish
   strings are foreign **dialects** that compile into pure SDA — not a hybrid of
@@ -18,13 +18,13 @@ This is the short version of SDA for day-to-day use.
 ## Most useful commands
 
 ```sh
-residuum-sda eval -e 'values(input)'
-residuum-sda eval -f program.sda -i input.json
-residuum-sda check -f program.sda
-residuum-sda fmt -f program.sda --write
-residuum-sda fmt -f program.sda --check
-residuum-sda --version
-residuum-sda --license
+residiuum-sda eval -e 'values(input)'
+residiuum-sda eval -f program.sda -i input.json
+residiuum-sda check -f program.sda
+residiuum-sda fmt -f program.sda --write
+residiuum-sda fmt -f program.sda --check
+residiuum-sda --version
+residiuum-sda --license
 ```
 
 ## Read values
@@ -94,9 +94,9 @@ Typical output shapes in JSON:
 ## Best beginner workflow
 
 ```sh
-residuum-sda check -f program.sda
-residuum-sda fmt -f program.sda --write
-residuum-sda eval -f program.sda -i input.json
+residiuum-sda check -f program.sda
+residiuum-sda fmt -f program.sda --write
+residiuum-sda eval -f program.sda -i input.json
 ```
 
 ## If something feels confusing

@@ -1,4 +1,4 @@
-# ResiduumDB critical product delivery roadmap
+# Residiuum critical product delivery roadmap
 
 Status: strategic summary; execution order governed by
 [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md)
@@ -24,7 +24,7 @@ Companions:
 
 ## 1. Decision
 
-ResiduumDB has one engine critical path and two supporting delivery lanes:
+Residiuum has one engine critical path and two supporting delivery lanes:
 
 ```text
 ENGINE
@@ -268,7 +268,7 @@ Required alongside A–C:
 
 R2 exit:
 
-> A careful outsider can install ResiduumDB, create a Heap, store data, kill it,
+> A careful outsider can install Residiuum, create a Heap, store data, kill it,
 > reopen it, see damage honestly, inspect operational health, and restore data
 > without understanding the repository architecture.
 
@@ -352,7 +352,7 @@ one serializable decision
 
 R4 exit:
 
-> ResiduumDB provides document flexibility with database-owned, mathematically
+> Residiuum provides document flexibility with database-owned, mathematically
 > specified cross-document integrity.
 
 This is the release that creates the new competitive quadrant.
@@ -459,7 +459,7 @@ engineering foundations, not a production release claim.
 The order between E1 and E3 may be reconsidered only through an explicit
 market decision: choose archive-first for the fifteen-year retention market,
 or cluster-first for the Couchbase/distributed-document market. The default
-decision is **archive-first** because it is closer to ResiduumDB's core survival
+decision is **archive-first** because it is closer to Residiuum's core survival
 thesis.
 
 ### E4 — Exact vector, then ANN/hybrid
@@ -599,5 +599,5 @@ finish Heaps
 
 The important correction is that **boring product trust sits between Heaps and
 the mathematical feature program**, while Studio is a parallel product lane.
-ResiduumDB should neither accumulate brilliant backend capabilities that cannot
+Residiuum should neither accumulate brilliant backend capabilities that cannot
 be operated nor hold those capabilities behind completion of a graphical tool.

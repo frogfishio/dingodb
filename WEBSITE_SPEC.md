@@ -1,7 +1,7 @@
-# ResiduumDB main website specification
+# Residiuum main website specification
 
 Status: developer-ready product specification v1.0  
-Target: `https://residuumdb.org`
+Target: `https://residiuumdb.org`
 Companion: [DOCS_SITE_SPEC.md](DOCS_SITE_SPEC.md)  
 Product truth sources: [README.md](README.md),
 [USP.md](USP.md), [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md),
@@ -9,9 +9,9 @@ Product truth sources: [README.md](README.md),
 
 ## 1. Decision
 
-`residuumdb.org` is the product and project website for ResiduumDB.
+`residiuumdb.org` is the product and project website for Residiuum.
 
-Its job is to make a technically serious visitor understand ResiduumDB's category
+Its job is to make a technically serious visitor understand Residiuum's category
 in less than ten seconds, trust the project in less than two minutes, and reach
 a working Rust example without having to reconstruct the product from its
 architecture repository.
@@ -30,7 +30,7 @@ The governing recovery rule remains:
 > Put anything in. Damage it. Keep what survives.
 
 Recovery is a foundation and stress property of the wider system. It MUST NOT
-be presented as ResiduumDB's entire category.
+be presented as Residiuum's entire category.
 
 The site MUST be compelling about the architecture and exact about maturity.
 It MUST NOT present designs, scaffolds, or performance targets as shipped
@@ -41,25 +41,25 @@ capabilities.
 The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are normative.
 
 “Launch” means the first public production deployment of the website, not a
-claim that ResiduumDB itself is production-ready.
+claim that Residiuum itself is production-ready.
 
 ## 3. Website responsibilities
 
 The main site MUST:
 
-1. establish ResiduumDB as a mathematical document database rather than a niche
+1. establish Residiuum as a mathematical document database rather than a niche
    salvage store;
 2. explain the implemented SDA/ENR kernel and the RRE, Atomics, Direct Access,
    and Order Wavelet architecture with exact maturity labels;
 3. demonstrate the engine's measured speed without disguising a diagnostic as
    a universal benchmark;
 4. explain damage tolerance using a concrete visual model;
-5. state what ResiduumDB is and who should use it today;
+5. state what Residiuum is and who should use it today;
 6. lead developers to a tested embedded quickstart;
 7. expose capability maturity before a visitor makes a technical decision;
 8. provide paths to documentation, source, security information, licensing,
    and project status;
-9. establish ResiduumDB as a technically rigorous project rather than a generic
+9. establish Residiuum as a technically rigorous project rather than a generic
    database landing page;
 10. make long-term product direction discoverable without confusing it with
    the current release.
@@ -88,14 +88,14 @@ The main site is not:
 - contributors and researchers interested in recovery, formal data rules,
   examination, indexing, and distributed storage;
 - application teams considering a future network deployment;
-- people comparing ResiduumDB with SQLite, document stores, or embedded key-value
+- people comparing Residiuum with SQLite, document stores, or embedded key-value
   stores.
 
 ### 4.3 Required outcomes
 
 After the home page, a visitor SHOULD be able to answer:
 
-- What is ResiduumDB?
+- What is Residiuum?
 - What makes its document and query model mathematically different?
 - What is different about its failure model?
 - What can I use today?
@@ -105,7 +105,7 @@ After the home page, a visitor SHOULD be able to answer:
 
 ## 5. Shared truth and status contract
 
-This section is normative for both ResiduumDB websites.
+This section is normative for both Residiuum websites.
 
 ### 5.1 Source hierarchy
 
@@ -162,13 +162,13 @@ Approved launch language:
 - “Flexible documents. Mathematical guarantees. Serious speed.”
 - “A document database built around a deterministic mathematical kernel.”
 - “PostgreSQL made the database responsible for truth. MongoDB made data shape
-  flexible. ResiduumDB is designed to do both.”
+  flexible. Residiuum is designed to do both.”
 - “DDA specifies exact access to result rank k without enumerating the
   preceding k − 1 matches,” when labelled Design.
 - “Order Wavelets specify filtered ordering through exact conditional
   rank/select counts,” when labelled Design.
 - “A database built to survive damage.”
-- “ResiduumDB preserves independently verifiable data islands.”
+- “Residiuum preserves independently verifiable data islands.”
 - “Damage is reported as explicit holes rather than silently invalidating
   unrelated healthy material.”
 - “Store JSON documents or opaque bytes through the Rust SDK.”
@@ -246,12 +246,12 @@ on `/status/` that says no public comparative result is currently claimed.
 Desktop:
 
 ```text
-ResiduumDB | Why ResiduumDB | How it works | Status | Docs | GitHub | Get started
+Residiuum | Why Residiuum | How it works | Status | Docs | GitHub | Get started
 ```
 
 Mobile MUST expose the same destinations in a keyboard-operable menu.
 
-`Why ResiduumDB` links to `/survival/`. `Docs` opens `docs.residuumdb.org`. `GitHub`
+`Why Residiuum` links to `/survival/`. `Docs` opens `docs.residiuumdb.org`. `GitHub`
 links to `https://github.com/frogfishio/dingodb`. `Get started` links to the
 current embedded quickstart on the documentation site.
 
@@ -269,8 +269,8 @@ The footer MUST include:
 - licensing;
 - privacy;
 - current website build revision;
-- current documented ResiduumDB release;
-- “ResiduumDB is experimental software” at launch.
+- current documented Residiuum release;
+- “Residiuum is experimental software” at launch.
 
 ## 7. Home page content specification
 
@@ -295,7 +295,7 @@ Flexible documents.
 Mathematical guarantees.
 Serious speed.
 
-ResiduumDB is a document database built around a deterministic mathematical
+Residiuum is a document database built around a deterministic mathematical
 kernel—exact query semantics, database-owned invariants, direct ranked access,
 and ordering by counted structure rather than offset scans and hope.
 
@@ -323,7 +323,7 @@ The next section MUST establish:
 ```text
 PostgreSQL made the database responsible for truth.
 MongoDB made data shape flexible.
-ResiduumDB is designed to do both.
+Residiuum is designed to do both.
 ```
 
 It MUST then distinguish:
@@ -332,8 +332,8 @@ It MUST then distinguish:
 - shipped RQL subset and dialect compilation — Experimental;
 - bounded resume-key cursors — Available;
 - RRE and Atomics — Design;
-- Residuum Direct Access — Design;
-- Residuum Order Wavelets — Design.
+- Residiuum Direct Access — Design;
+- Residiuum Order Wavelets — Design.
 
 The full RQL/RRE/DDA/DOW architecture MAY lead the product story even when some
 profiles are designs, provided the status appears adjacent to each proposition.
@@ -414,19 +414,19 @@ link to `/status/`.
 ### 7.7 Real quickstart
 
 The page MUST show an executable Rust example based on
-`crates/residuum-sdk/README.md`, not illustrative pseudocode.
+`crates/residiuum-sdk/README.md`, not illustrative pseudocode.
 
 Minimum example:
 
 ```toml
 [dependencies]
-residuum-sdk = "0.2"
+residiuum-sdk = "0.2"
 ```
 
 ```rust
-use residuum_sdk::{json, Residuum, Filter};
+use residiuum_sdk::{json, Residiuum, Filter};
 
-let mut db = Residuum::open("./app.dingo")?;
+let mut db = Residiuum::open("./app.dingo")?;
 let mut users = db.collection("users")?;
 
 users.put("user-42", &json!({
@@ -442,7 +442,7 @@ The site MUST provide copy controls, expected result, cleanup instructions, and
 a link to the complete quickstart. Snippet lines MAY be adjusted to keep them
 executable; the repository test is authoritative.
 
-### 7.8 How ResiduumDB differs
+### 7.8 How Residiuum differs
 
 Use a factual decision table, not a winner-takes-all comparison:
 
@@ -450,8 +450,8 @@ Use a factual decision table, not a winner-takes-all comparison:
 |---|---|
 | Mature SQL transactions, constraints, and broad tooling | Use PostgreSQL or SQLite |
 | Mature general-purpose document database and operational ecosystem | Use MongoDB |
-| Embedded arbitrary data with ResiduumDB’s explicit damage/salvage model | Evaluate ResiduumDB |
-| Production network cluster today | Do not choose ResiduumDB yet |
+| Embedded arbitrary data with Residiuum’s explicit damage/salvage model | Evaluate Residiuum |
+| Production network cluster today | Do not choose Residiuum yet |
 
 Comparisons MUST describe workload fit, not attack other products.
 
@@ -475,7 +475,7 @@ research/design cards. Each MUST carry its current public status.
 ### 7.10 Final action
 
 ```text
-Put something important in ResiduumDB.
+Put something important in Residiuum.
 
 Start with one local file and a Rust application.
 
@@ -740,7 +740,7 @@ website/
 ```
 
 The website MAY live in a separate repository. If so, its build MUST pin the
-ResiduumDB source revision used for capability data, snippets, and release
+Residiuum source revision used for capability data, snippets, and release
 metadata.
 
 ### 11.3 Content data
@@ -760,10 +760,10 @@ claim_ids: []
 
 ### 11.4 Domains
 
-- `https://residuumdb.org` is canonical.
-- `https://www.residuumdb.org/*` MUST permanently redirect to the same path on
-  `https://residuumdb.org`.
-- `https://docs.residuumdb.org` hosts documentation.
+- `https://residiuumdb.org` is canonical.
+- `https://www.residiuumdb.org/*` MUST permanently redirect to the same path on
+  `https://residiuumdb.org`.
+- `https://docs.residiuumdb.org` hosts documentation.
 - HTTP MUST redirect to HTTPS.
 - Preview deployments MUST be `noindex`.
 
@@ -874,7 +874,7 @@ Every pull request MUST run:
 6. HTML validation;
 7. accessibility automation;
 8. Lighthouse budget checks on representative pages;
-9. spelling with a ResiduumDB terminology allowlist;
+9. spelling with a Residiuum terminology allowlist;
 10. screenshot regression at desktop and mobile breakpoints.
 
 Each pull request SHOULD receive a temporary preview URL. Preview pages MUST
@@ -883,8 +883,8 @@ not be indexed.
 A website release MUST record:
 
 - website source revision;
-- ResiduumDB source revision;
-- documented ResiduumDB version;
+- Residiuum source revision;
+- documented Residiuum version;
 - generation time;
 - content schema version.
 
@@ -919,7 +919,7 @@ Not required for launch:
 
 The main website is ready when:
 
-1. a first-time visitor can identify ResiduumDB’s survival proposition in a
+1. a first-time visitor can identify Residiuum’s survival proposition in a
   five-second comprehension test as a mathematical document database rather
   than only a resilient embedded store;
 2. the visitor can identify “experimental / early access” without opening a

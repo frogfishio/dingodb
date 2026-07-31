@@ -1,4 +1,4 @@
-# ResiduumDB Telemetry v1 specification
+# Residiuum Telemetry v1 specification
 
 Status: normative design v1.0-draft; implementation not yet qualified
 
@@ -24,9 +24,9 @@ performance requalification.
 
 ## 1. Decision
 
-Ratatouille is ResiduumDB's exclusive operational telemetry export channel.
+Ratatouille is Residiuum's exclusive operational telemetry export channel.
 
-ResiduumDB:
+Residiuum:
 
 - collects cheap measurements at named instrumentation points;
 - aggregates routine activity in bounded process memory;
@@ -41,8 +41,8 @@ ResiduumDB:
 Ratatouille describes itself as a best-effort telemetry firehose with bounded
 topic state. Its logger filters topics, assigns per-topic sequences, formats
 text or NDJSON, and forwards to a sink. Its bounded TCP and HTTP relays and
-explicit flush model are the only qualified ResiduumDB sink class. Direct network
-sinks and `StdoutSink` are not qualified for ResiduumDB's hot path.
+explicit flush model are the only qualified Residiuum sink class. Direct network
+sinks and `StdoutSink` are not qualified for Residiuum's hot path.
 
 The product statement is:
 
@@ -57,13 +57,13 @@ MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are normative.
 
 Telemetry and evidence have different truth contracts:
 
-| Property | Telemetry | Residuum Evidence Ledger |
+| Property | Telemetry | Residiuum Evidence Ledger |
 |---|---|---|
 | Purpose | performance and operational understanding | proof of accepted security/administrative facts |
 | Volume | high | selective |
 | Delivery | best effort | durable according to obligation |
 | Backpressure | drop | fail closed for required evidence |
-| Retention | external collector policy | explicit ResiduumDB evidence policy |
+| Retention | external collector policy | explicit Residiuum evidence policy |
 | Ordering | Ratatouille topic sequence and sample sequence | signed ledger sequence |
 | Integrity | transport/collector concern | canonical signatures and checkpoints |
 | Database effect | none | atomically coupled where required |
@@ -110,8 +110,8 @@ Telemetry is not:
 
 V1 covers:
 
-- the ResiduumDB single-node server;
-- each ResiduumDB cluster-node process;
+- the Residiuum single-node server;
+- each Residiuum cluster-node process;
 - the embedded engine when its host explicitly supplies a Ratatouille relay;
   and
 - maintenance processes such as scrub, salvage, backup, and migration when
@@ -182,7 +182,7 @@ The exporter passes already bounded messages to a Ratatouille `Logger`
 configured with:
 
 - `Format::Ndjson`;
-- fixed ResiduumDB topic names only;
+- fixed Residiuum topic names only;
 - a bounded TCP or HTTP relay;
 - a source identity defined in §8;
 - a queue-overflow policy that preserves the most recent telemetry; and
@@ -195,7 +195,7 @@ ring; the exporter drains those rings, encodes the closed message, and offers
 it to Ratatouille. A contended/full ring drops immediately and increments its
 fixed suppression counter.
 
-No ResiduumDB qualified profile uses `StdoutSink`, a direct synchronous
+No Residiuum qualified profile uses `StdoutSink`, a direct synchronous
 `TcpSink`/`HttpSink`, a file adapter, syslog, journald, or a second exporter.
 Collectors may translate Ratatouille output into any downstream system.
 
@@ -258,21 +258,21 @@ Ratatouille owns the canonical outer NDJSON record:
     "instance": "boot-id"
   },
   "meta": null,
-  "args": ["<ResiduumDB message JSON>"],
+  "args": ["<Residiuum message JSON>"],
   "env": null
 }
 ```
 
-ResiduumDB does not fork or replace that format. The ResiduumDB message passed to
+Residiuum does not fork or replace that format. The Residiuum message passed to
 `Logger::log(topic, message)` is one minified JSON object encoded as UTF-8.
 The pinned Rust profile emits exactly one string in `args`; `meta` and `env`
 are null/absent according to Ratatouille's pinned output vector. A collector
 parses the outer NDJSON record, requires exactly one string argument, then
 parses `args[0]` according to this specification.
 
-### 7.2 Common ResiduumDB message
+### 7.2 Common Residiuum message
 
-Every ResiduumDB message is:
+Every Residiuum message is:
 
 ```json
 {
@@ -297,7 +297,7 @@ Rules:
 - `profile` is exactly `dingo-telemetry-v1`;
 - `kind` is `snapshot`, `transition`, or `exemplar`;
 - `boot` is a random process-incarnation ID, not a host identity;
-- `sample` is monotonically increasing per ResiduumDB topic and process;
+- `sample` is monotonically increasing per Residiuum topic and process;
 - `epoch` changes only when cumulative counters are deliberately reset;
 - `unix_ns` is nullable;
 - `interval_ms` is null for transitions/exemplars;
@@ -305,10 +305,10 @@ Rules:
 - `data` is the closed topic/kind schema;
 - integers outside their schema range reject local emission;
 - non-finite numbers are forbidden;
-- the encoded ResiduumDB message is at most 64 KiB; and
+- the encoded Residiuum message is at most 64 KiB; and
 - user strings are never inserted into `data`.
 
-Ratatouille's topic sequence and ResiduumDB's sample sequence are independent.
+Ratatouille's topic sequence and Residiuum's sample sequence are independent.
 Both are exported so logger reconfiguration and collector gaps are visible.
 
 ### 7.3 Snapshots
@@ -367,7 +367,7 @@ heap_ref?
 correlation_ref?
 ```
 
-`correlation_ref` is a random or keyed digest usable to join approved ResiduumDB
+`correlation_ref` is a random or keyed digest usable to join approved Residiuum
 telemetry events. It is never a bearer token, raw operation ID, Evidence ID,
 document key, or client-supplied trace string.
 
@@ -409,7 +409,7 @@ Source identity MUST NOT include:
 - customer or tenant name; or
 - process command line.
 
-Collectors add deployment inventory metadata outside ResiduumDB when required.
+Collectors add deployment inventory metadata outside Residiuum when required.
 
 ## 9. Cardinality doctrine
 
@@ -1053,7 +1053,7 @@ relay queue entries      8192
 maximum queue entries    65536
 relay queue bytes        32 MiB
 maximum queue bytes      256 MiB
-maximum ResiduumDB message    65536 bytes
+maximum Residiuum message    65536 bytes
 overflow                 preserve newest / discard oldest
 snapshot interval        10 seconds
 shutdown flush deadline  250 ms
@@ -1062,7 +1062,7 @@ maximum flush deadline   2 seconds
 
 If the installed Ratatouille version cannot provide bounded non-blocking offer
 and preserve-newest overflow semantics, that version is not qualified. If its
-native relay bound counts only entries, the ResiduumDB adapter additionally tracks
+native relay bound counts only entries, the Residiuum adapter additionally tracks
 encoded queued bytes and refuses/evicts offers before the byte bound is
 exceeded.
 
@@ -1083,7 +1083,7 @@ Telemetry unavailability alone MUST NOT change `health_ready`.
 
 ### 16.2.1 Transport security
 
-Ratatouille provides delivery mechanics, not ResiduumDB authorization. A
+Ratatouille provides delivery mechanics, not Residiuum authorization. A
 qualified endpoint is either:
 
 - a loopback/local sidecar endpoint protected by host isolation; or
@@ -1144,9 +1144,9 @@ Rules:
 - no file/stdout sink value exists;
 - heap-detail expiry cannot exceed 24 hours;
 - queue and timing bounds obey §16; and
-- configuration changes are Residuum Evidence Ledger events.
+- configuration changes are Residiuum Evidence Ledger events.
 
-Ratatouille itself enables no topics by default, so ResiduumDB MUST install an
+Ratatouille itself enables no topics by default, so Residiuum MUST install an
 explicit validated filter rather than depend on library defaults.
 
 ## 18. Developer console
@@ -1157,7 +1157,7 @@ interactive surface.
 Permitted normal messages:
 
 ```text
-ResiduumDB <version> starting
+Residiuum <version> starting
 Listening on <local bind description>
 Ready
 Draining
@@ -1212,8 +1212,8 @@ Required downstream alert conditions are defined semantically:
 - repair/rebalance backlog growth; and
 - telemetry disconnected or dropping.
 
-ResiduumDB emits the signals. Dashboard and alert products are collector-side
-packages and do not add an exporter to ResiduumDB.
+Residiuum emits the signals. Dashboard and alert products are collector-side
+packages and do not add an exporter to Residiuum.
 
 ## 20. Rust boundary
 
@@ -1251,7 +1251,7 @@ semantics. There is no production file or console emitter.
 
 ## 21. Migration from current implementation
 
-The current `residuum-server::slog` and default `StderrSink` are legacy
+The current `residiuum-server::slog` and default `StderrSink` are legacy
 DEF-060 implementation, not the target architecture.
 
 Migration:
@@ -1299,7 +1299,7 @@ A profile cannot claim `dingo-telemetry-v1` until all applicable tests pass:
 20. load tests at supported maximum RPS;
 21. benchmark comparison with telemetry disabled, collector healthy, collector
     disconnected, and queue continuously full; and
-22. fuzzing of ResiduumDB message encoder, configuration, filters, and collector
+22. fuzzing of Residiuum message encoder, configuration, filters, and collector
     fixture parser.
 
 Performance qualification requires:

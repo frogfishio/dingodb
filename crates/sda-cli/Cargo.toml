@@ -1,11 +1,11 @@
 [package]
-name = "residuum-sda-cli"
+name = "residiuum-sda-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
-description = "CLI for DingoDB's SDA+ENR1 hybrid evaluator: eval, check, and format programs over JSON."
+description = "CLI for Residiuum's SDA+ENR1 hybrid evaluator: eval, check, and format programs over JSON."
 readme = "README.md"
 repository.workspace = true
 keywords = ["dingodb", "sda", "enr", "cli", "json"]
@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "parser-implementations", "text-processi
 include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
 
 [[bin]]
-name = "residuum-sda"
+name = "residiuum-sda"
 path = "src/main.rs"
 
 [dependencies]

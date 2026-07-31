@@ -18,7 +18,7 @@ This document is evidence mapping. It does **not** upgrade capability claims.
 | `VFY-0` | claim/suite/profile/report registries | **missing** — no `spec/verification/` yet |
 | `VFY-1` | preflight + evidence-producing runner | **missing** — disk/infra failures not classified in CI runner |
 | `VFY-2` | map tests/proofs to claims/oracles | **partial** — Heap has `hp010-matrix-v1.json`; rest ad hoc |
-| Profile | `residuum-heap-v1` (HP-010) | matrix present; **not** qualified |
+| Profile | `dingo-heap-v1` (HP-010) | matrix present; **not** qualified |
 | Profile | `dingo-rust-app-v1` / `dql-app-core-v1` | planned under APP; not verified product claims |
 
 ## 2. Verification surfaces run this session
@@ -34,13 +34,13 @@ This document is evidence mapping. It does **not** upgrade capability claims.
 
 ### 2.1 verify-heap quick contents (all passed)
 
-- `residuum-heap` lib + tests (incl. trybuild HeapCap)
-- `residuum-format` lib
-- `residuum-store` catalog unit + `hp004_catalog_rebuild`
-- `residuum-authority` `hp005_accept`
-- `residuum-sdk` `hp007_heap_isolation`
-- `residuum-server` `hp008_heap_handshake`, `hp008_accept_loop`
-- `residuum-store` `hp006_heap_migration`, `hp009_lifecycle`, `hp010_qualification` (24 tests)
+- `residiuum-heap` lib + tests (incl. trybuild HeapCap)
+- `residiuum-format` lib
+- `residiuum-store` catalog unit + `hp004_catalog_rebuild`
+- `residiuum-authority` `hp005_accept`
+- `residiuum-sdk` `hp007_heap_isolation`
+- `residiuum-server` `hp008_heap_handshake`, `hp008_accept_loop`
+- `residiuum-store` `hp006_heap_migration`, `hp009_lifecycle`, `hp010_qualification` (24 tests)
 - `qualification::qualified_claim_remains_false_until_hp010_complete`
 
 ## 3. HP-010 matrix snapshot

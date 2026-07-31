@@ -9,7 +9,7 @@
       "item": "plan_hash_hex in plan_vectors_v1",
       "status": "done",
       "blocks_implementer": false,
-      "note": "dql-plan-encoding-v1 + domain dingo:dql-plan-v1:canonical-v1; BLAKE3 hashes locked in plan_vectors; residuum_sdk::plan_v1",
+      "note": "dql-plan-encoding-v1 + domain dingo:dql-plan-v1:canonical-v1; BLAKE3 hashes locked in plan_vectors; residiuum_sdk::plan_v1",
       "resolved_by": "APP-4 2026-07-31 labor"
     },
     {

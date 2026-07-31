@@ -1,4 +1,4 @@
-# Residuum Direct Access (DDA) specification
+# Residiuum Direct Access (DDA) specification
 
 Status: **Normative design v1.0-draft; not yet implemented**
 
@@ -17,7 +17,7 @@ and conformance implementers
 Normative companions:
 [RQL_SPEC.md](RQL_SPEC.md),
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md),
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [CLUSTER_SPEC.md](CLUSTER_SPEC.md),
@@ -30,7 +30,7 @@ Implementation plan:
 
 ## 1. Decision
 
-ResiduumDB SHALL support **direct access to ranked query answers**.
+Residiuum SHALL support **direct access to ranked query answers**.
 
 Given:
 
@@ -41,7 +41,7 @@ Given:
 - a one-based result rank `k`; and
 - a requested page size `l`;
 
-ResiduumDB may return results `k` through `k + l - 1` without enumerating the
+Residiuum may return results `k` through `k + l - 1` without enumerating the
 preceding `k - 1` matching documents when the admitted physical plan possesses
 enough exact counting information.
 
@@ -54,7 +54,7 @@ An implementation MUST NOT implement a direct-access request by silently
 scanning, decoding, filtering, sorting, or discarding work proportional to the
 requested rank.
 
-When exact direct access is unavailable, ResiduumDB MUST do one of:
+When exact direct access is unavailable, Residiuum MUST do one of:
 
 1. build an exact derived selection artifact under an explicit build policy
    and resource budget;
@@ -212,9 +212,9 @@ P: U_{H,V} \rightarrow \{0,1\}
 
 be the normalized root predicate under `dingo-predicate-v1`.
 
-Residuum predicates are total and two-valued. Null, absence, numeric comparison,
+Residiuum predicates are total and two-valued. Null, absence, numeric comparison,
 type mismatch, and path traversal therefore have the meanings fixed by
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md); an index MUST NOT import
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md); an index MUST NOT import
 SQL three-valued truth accidentally.
 
 ### 5.3 Strict order
@@ -421,7 +421,7 @@ Every planned ranked query MUST be classified as exactly one of:
   scan and no prefix enumeration is required.
 
 **BUILDABLE**
-: ResiduumDB can construct an exact selection artifact under the supplied build
+: Residiuum can construct an exact selection artifact under the supplied build
   policy and budget. Construction may examine authoritative documents, but
   subsequent ranked accesses use the artifact.
 
@@ -951,7 +951,7 @@ A directly selected DDA predicate bitmap MUST be aligned to the selected order
 domain. A bitmap aligned to document-key order cannot be interpreted as price
 order merely because it contains the same number of bits.
 
-The normative ResiduumDB structure for combining an exact source-order predicate
+The normative Residiuum structure for combining an exact source-order predicate
 bitmap with a different scalar result order is
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md). It transports the predicate
 bitmap through stable wavelet partitions, uses exact conditioned branch
@@ -974,7 +974,7 @@ without constructing a full query-specific bitmap.
 
 ### 12.5 Arbitrary ordering
 
-If no exact order-addressable index exists, ResiduumDB may:
+If no exact order-addressable index exists, Residiuum may:
 
 1. build a query-specific selection artifact in requested order;
 2. use a proved direct-selection algorithm for the admitted query/order class;
@@ -1220,7 +1220,7 @@ Let:
 M
 \]
 
-be a missing order interval. If ResiduumDB cannot prove:
+be a missing order interval. If Residiuum cannot prove:
 
 \[
 \sum_{i \in M} B[i] = 0
@@ -1675,7 +1675,7 @@ generation MUST fail.
 
 A cursor referencing a selection artifact is cryptographically stateless as
 authorization evidence but still requires the named derived artifact to
-exist. If it has expired or been collected, ResiduumDB returns:
+exist. If it has expired or been collected, Residiuum returns:
 
 ```text
 dda_artifact_expired
@@ -1727,7 +1727,7 @@ If false, admission fails before returning rows.
 
 ### 20.3 Build admission
 
-Before `access build`, ResiduumDB estimates:
+Before `access build`, Residiuum estimates:
 
 - documents and bytes examined;
 - tiers mounted;
@@ -1789,7 +1789,7 @@ direct_access {
 
 Human explain MUST clearly answer:
 
-1. Will ResiduumDB examine preceding documents?
+1. Will Residiuum examine preceding documents?
 2. Is positioning cost dependent on the requested rank?
 3. Is a selection artifact being built?
 4. Which exact indexes establish membership and order?
@@ -2348,7 +2348,7 @@ The design is grounded in established and current research:
   [Stochastic Database
   Cracking](https://arxiv.org/abs/1203.0055).
 
-ResiduumDB's contribution is not the invention of rank/select. It is the proposed
+Residiuum's contribution is not the invention of rank/select. It is the proposed
 combination of:
 
 - document-native RQL predicate semantics;
@@ -2369,12 +2369,12 @@ was written.
 
 The shipped paths are not DDA:
 
-- `residuum-store::cursor` pages raw live subjects in subject order with a
+- `residiuum-store::cursor` pages raw live subjects in subject order with a
   generation fence;
 - `Collection::scan_json_page` exposes that embedded raw scan;
 - `Collection::find_with` supports filters, ordering, and a result limit but
   does not expose a unified filtered rank page;
-- `residuum-cluster::Cluster::scan_with` pages prefix-filtered subjects using one
+- `residiuum-cluster::Cluster::scan_with` pages prefix-filtered subjects using one
   `after_subject` frontier and deterministic merge;
 - no shipped path builds an exact predicate rank map, order domain, selection
   artifact, frozen DDA read view, or direct-access certificate;
@@ -2396,7 +2396,7 @@ The first implementation SHOULD remain a vertical slice across existing
 crates rather than creating an empty subsystem tree:
 
 ```text
-crates/residuum-store/
+crates/residiuum-store/
   rank/
     bitvec.rs        abstract bitmap + plain rank/select reference
     block.rs         RankBlockV1 and document mapping
@@ -2410,18 +2410,18 @@ crates/residuum-store/
     dictionary.rs    exact RQL tuple order dictionary
     forest.rs        base/delta global value selection
 
-crates/residuum-sdk/
+crates/residiuum-sdk/
   direct.rs          Rank, AccessPolicy, DirectQueryPage, query builder
   filter.rs          exact/candidate index capability declarations
 
-crates/residuum-cluster/
+crates/residiuum-cluster/
   direct.rs          distributed read view and global rank directory
 
-crates/residuum-server/
+crates/residiuum-server/
   direct.rs          admission, artifact leases, cursor issuance
   token_keys.rs      secret generation, rotation, and protected distribution
 
-crates/residuum-examine/
+crates/residiuum-examine/
   direct.rs          SDA projection of blocks, maps, views, and holes
 ```
 

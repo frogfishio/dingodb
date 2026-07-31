@@ -7,22 +7,22 @@ Principal decisions: Class B hard break; Class C keep; repo rename out of scope
 
 Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 
-## 1. Paths with `residuum` in the name
+## 1. Paths with the former `dingo` name
 
 | Kind | Path | Class | Disposition |
 |------|------|-------|-------------|
-| dir | `crates/residuum-authority` | B | → `crates/residuum-authority` (REB-2) |
-| dir | `crates/residuum-cli` | B | → `crates/residuum-cli` |
-| dir | `crates/residuum-client` | B | → `crates/residuum-client` |
-| dir | `crates/residuum-cluster` | B | → `crates/residuum-cluster` |
-| dir | `crates/residuum-examine` | B | → `crates/residuum-examine` |
-| dir | `crates/residuum-format` | B | → `crates/residuum-format` |
-| dir | `crates/residuum-heap` | B | → `crates/residuum-heap` |
-| dir | `crates/residuum-sdk` | B | → `crates/residuum-sdk` |
-| dir | `crates/residuum-sdk/src/residuum` | B | → `crates/residuum-sdk/src/residuum` |
-| dir | `crates/residuum-server` | B | → `crates/residuum-server` |
-| dir | `crates/residuum-store` | B | → `crates/residuum-store` |
-| dir | `crates/residuum-testrig` | B | → `crates/residuum-testrig` |
+| dir | `crates/dingo-authority` | B | → `crates/residiuum-authority` (REB-2) |
+| dir | `crates/dingo-cli` | B | → `crates/residiuum-cli` |
+| dir | `crates/dingo-client` | B | → `crates/residiuum-client` |
+| dir | `crates/dingo-cluster` | B | → `crates/residiuum-cluster` |
+| dir | `crates/dingo-examine` | B | → `crates/residiuum-examine` |
+| dir | `crates/dingo-format` | B | → `crates/residiuum-format` |
+| dir | `crates/dingo-heap` | B | → `crates/residiuum-heap` |
+| dir | `crates/dingo-sdk` | B | → `crates/residiuum-sdk` |
+| dir | `crates/dingo-sdk/src/dingo` | B | → `crates/residiuum-sdk/src/residiuum` |
+| dir | `crates/dingo-server` | B | → `crates/residiuum-server` |
+| dir | `crates/dingo-store` | B | → `crates/residiuum-store` |
+| dir | `crates/dingo-testrig` | B | → `crates/residiuum-testrig` |
 | dir | `web/dingodb.org` | B* | Website Phase 4 preferred; path rename deferred unless forced |
 | dir | `web/docs.dingodb.org` | B* | Website Phase 4 preferred; deferred |
 | file | `web/docs.dingodb.org/.../choose-dingodb.md` | B* | Route rename Phase 4; deferred with web dirs |
@@ -33,39 +33,41 @@ Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 
 | Package (`name =`) | Dir | Intended package | Notable bins |
 |--------------------|-----|------------------|--------------|
-| `residuum-format` | `crates/residuum-format` | `residuum-format` | lib |
-| `residuum-heap` | `crates/residuum-heap` | `residuum-heap` | lib |
-| `residuum-authority` | `crates/residuum-authority` | `residuum-authority` | `residuum-authority` → `residuum-authority` |
-| `residuum-store` | `crates/residuum-store` | `residuum-store` | `residuum-store-crash-child` → `residuum-store-crash-child` |
-| `residuum-client` | `crates/residuum-client` | `residuum-client` | lib |
-| `residuum-sdk` | `crates/residuum-sdk` | `residuum-sdk` | lib |
-| `residuum-server` | `crates/residuum-server` | `residuum-server` | lib |
-| `residuum-examine` | `crates/residuum-examine` | `residuum-examine` | lib |
-| `residuum-cli` | `crates/residuum-cli` | `residuum-cli` | **`residuum` → `residuum`** |
-| `residuum-cluster` | `crates/residuum-cluster` | `residuum-cluster` | `residuum-cluster-multiproc-child` → `residuum-…` |
-| `residuum-testrig` | `crates/residuum-testrig` | `residuum-testrig` | `residuum-testrig` → `residuum-testrig` |
-| `residuum-sda` | `crates/sda-core` | `residuum-sda` | lib (dir name may stay `sda-core`) |
-| `residuum-sda-cli` | `crates/sda-cli` | `residuum-sda-cli` | **`residuum-sda` → `residuum-sda`** |
+| `dingo-format` | `crates/dingo-format` | `residiuum-format` | lib |
+| `dingo-heap` | `crates/dingo-heap` | `residiuum-heap` | lib |
+| `dingo-authority` | `crates/dingo-authority` | `residiuum-authority` | `dingo-authority` → `residiuum-authority` |
+| `dingo-store` | `crates/dingo-store` | `residiuum-store` | `dingo-store-crash-child` → `residiuum-store-crash-child` |
+| `dingo-client` | `crates/dingo-client` | `residiuum-client` | lib |
+| `dingo-sdk` | `crates/dingo-sdk` | `residiuum-sdk` | lib |
+| `dingo-server` | `crates/dingo-server` | `residiuum-server` | lib |
+| `dingo-examine` | `crates/dingo-examine` | `residiuum-examine` | lib |
+| `dingo-cli` | `crates/dingo-cli` | `residiuum-cli` | **`dingo` → `residiuum`** |
+| `dingo-cluster` | `crates/dingo-cluster` | `residiuum-cluster` | `dingo-cluster-multiproc-child` → `residiuum-…` |
+| `dingo-testrig` | `crates/dingo-testrig` | `residiuum-testrig` | `dingo-testrig` → `residiuum-testrig` |
+| `dingo-sda` | `crates/sda-core` | `residiuum-sda` | lib (dir name may stay `sda-core`) |
+| `dingo-sda-cli` | `crates/sda-cli` | `residiuum-sda-cli` | **`dingo-sda` → `residiuum-sda`** |
 
-Rust import roots after rename: `residuum_format` → `residuum_format`, etc. (REB-2 compile loop).
+Rust import roots after rename: `dingo_format` → `residiuum_format`, etc.
+(REB-2 compile loop).
 
-Also: `verification/heap-verus` package name `residuum-heap-verus` if present → `residuum-heap-verus`.
+Also: `verification/heap-verus` package name `dingo-heap-verus` if present →
+`residiuum-heap-verus`.
 
 ## 3. Public API surface (Class B — REB-3)
 
 | Current | Intended | Notes |
 |---------|----------|--------|
-| `Residuum` type / `Residuum::open` | `Residuum` / `Residuum::open` | Hard break |
-| `residuum://` URI | `residuum://` | Hard break |
-| `DINGO_*` env vars | `RESIDUUM_*` | Hard break; inventory exact keys in REB-3 |
-| Feature flags naming product `residuum` | `residuum` where Class B | Not Class C profiles |
+| `Dingo` type / `Dingo::open` | `Residiuum` / `Residiuum::open` | Hard break |
+| `dingo://` URI | `residiuum://` | Hard break |
+| `DINGO_*` env vars | `RESIDIUUM_*` | Hard break; inventory exact keys in REB-3 |
+| Feature flags naming product `dingo` | `residiuum` where Class B | Not Class C profiles |
 
 ## 4. Class C — keep legacy (REB-5 freeze; do not bulk-replace)
 
 | Identifier | Role | Disposition |
 |------------|------|-------------|
 | `DINGOFRM` / `DINGOEND` | Frame magics | **retain_legacy** |
-| `dingo-*-v1` wire/persist profiles (e.g. `residuum-heap-v1`, `dingo-cursor-v1`, `dingo-rpc-v1`, `dingo-config-v1`, …) | Protocol/profile strings | **retain_legacy** unless proven purely cosmetic packaging labels in REB-5 audit |
+| `dingo-*-v1` wire/persist profiles (e.g. `dingo-heap-v1`, `dingo-cursor-v1`, `dingo-rpc-v1`, `dingo-config-v1`, …) | Protocol/profile strings | **retain_legacy** unless proven purely cosmetic packaging labels in REB-5 audit |
 | Crypto domain separators containing `DINGODB` / `dingo:` in hash domains that bind keys/proofs | Crypto | **retain_legacy** |
 | `urn:dingo:cluster:` / `urn:dingo:node:` | Identity URIs in TLS | **retain_legacy** or dual-read later (not this Feature hard break without REB-5 explicit exception) |
 | Golden vectors / fixtures encoding above | Evidence | **retain_legacy** |
@@ -84,11 +86,13 @@ Also: `verification/heap-verus` package name `residuum-heap-verus` if present �
 
 ## 6. Scripts / CI (Class B path updates — REB-4)
 
-Update after package renames: `scripts/*`, `.github/workflows/*`, demos that `cargo -p dingo-*` or `target/debug/residuum`.
+Update after package renames: `scripts/*`, `.github/workflows/*`, demos that
+use `cargo -p dingo-*` or `target/debug/dingo`.
 
 ## 7. Content hit scale (pre-REB-2)
 
-Approx (excl `target` / `node_modules`): ~495 files / ~4k matches for `residuum`. Not all rows; bulk is REB-2/3/4 grep-fix.
+Approx (excl `target` / `node_modules`): ~495 files / ~4k matches for `dingo`.
+Not all rows; bulk is REB-2/3/4 grep-fix.
 
 ## 8. Task mapping
 

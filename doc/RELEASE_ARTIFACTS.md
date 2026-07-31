@@ -3,7 +3,7 @@
 Status: living policy for workspace release content  
 Companion: [DEFECTS.md](../DEFECTS.md) DEF-003, [CONTRIBUTING.md](../CONTRIBUTING.md)
 
-This document defines what ships in a ResiduumDB **workspace release** (the git
+This document defines what ships in a Residiuum **workspace release** (the git
 tree and CI package gates). Independent crates.io publication of every member
 is a later concern (path deps are versioned so packaging is possible; they are
 not yet the primary distribution channel).
@@ -15,17 +15,17 @@ by each crate’s `include` list in `Cargo.toml`.
 
 | Directory | Package name | Binary | Notes |
 |-----------|--------------|--------|-------|
-| `crates/sda-core` | `residuum-sda` | — | SDA+ENR1 hybrid pure evaluator (not bare `sda`/`sda-lib`) |
-| `crates/sda-cli` | `residuum-sda-cli` | `residuum-sda` | Hybrid evaluator CLI |
-| `crates/residuum-format` | `residuum-format` | — | Wire format / salvage scan |
-| `crates/residuum-store` | `residuum-store` | — | Includes `crash_matrix.v1.json` |
-| `crates/residuum-client` | `residuum-client` | — | Wire framing / client protocol |
-| `crates/residuum-sdk` | `residuum-sdk` | — | Collection API + dialects (incl. official `dql`) |
-| `crates/residuum-server` | `residuum-server` | — | Network serve runtime |
-| `crates/residuum-examine` | `residuum-examine` | — | Examination host |
-| `crates/residuum-cli` | `residuum-cli` | `residuum` | Operator CLI |
-| `crates/residuum-cluster` | `residuum-cluster` | — | In-process federation |
-| `crates/residuum-testrig` | `residuum-testrig` | `residuum-testrig` | Stress rig (`publish = false`; workspace release only) |
+| `crates/sda-core` | `residiuum-sda` | — | SDA+ENR1 hybrid pure evaluator (not bare `sda`/`sda-lib`) |
+| `crates/sda-cli` | `residiuum-sda-cli` | `residiuum-sda` | Hybrid evaluator CLI |
+| `crates/residiuum-format` | `residiuum-format` | — | Wire format / salvage scan |
+| `crates/residiuum-store` | `residiuum-store` | — | Includes `crash_matrix.v1.json` |
+| `crates/residiuum-client` | `residiuum-client` | — | Wire framing / client protocol |
+| `crates/residiuum-sdk` | `residiuum-sdk` | — | Collection API + dialects (incl. official `dql`) |
+| `crates/residiuum-server` | `residiuum-server` | — | Network serve runtime |
+| `crates/residiuum-examine` | `residiuum-examine` | — | Examination host |
+| `crates/residiuum-cli` | `residiuum-cli` | `residiuum` | Operator CLI |
+| `crates/residiuum-cluster` | `residiuum-cluster` | — | In-process federation |
+| `crates/residiuum-testrig` | `residiuum-testrig` | `residiuum-testrig` | Stress rig (`publish = false`; workspace release only) |
 
 **Package rules**
 
@@ -69,7 +69,7 @@ Living scripts under `scripts/demos/`:
 | `README.md` | Index and run instructions |
 
 Demos are release artifacts: they must remain runnable from a clean checkout
-with a built `residuum` binary (or `RESIDUUM_BIN`). They are not crates.io content.
+with a built `residiuum` binary (or `RESIDIUUM_BIN`). They are not crates.io content.
 
 ### Tooling
 
@@ -108,7 +108,7 @@ dependencies are versioned so packaging *can* rewrite them later, but members
 are not yet the primary distribution channel. Full crates.io verify would
 resolve foreign packages. **Do not republish under bare `sda` / `sda-lib`** —
 those names were misused for this hybrid surface; new publishes use
-`residuum-sda` / `residuum-sda-cli` only. Mistaken hybrid `0.1.0` under the old
+`residiuum-sda` / `residiuum-sda-cli` only. Mistaken hybrid `0.1.0` under the old
 names was yanked on crates.io (2026-07-28); pre-existing pure-SDA `1.0.x`
 under those names is out of scope for this monorepo. The workspace release
 gate validates tarball *content completeness* via `--list` + rebuild, which

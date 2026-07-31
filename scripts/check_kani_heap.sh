@@ -10,7 +10,7 @@ cd "$ROOT"
 fail() { echo "check_kani_heap: $*" >&2; exit 1; }
 
 # Honesty: harness symbols exist in pure_proofs source.
-PURE="$ROOT/crates/residuum-heap/src/pure_proofs.rs"
+PURE="$ROOT/crates/residiuum-heap/src/pure_proofs.rs"
 [[ -f "$PURE" ]] || fail "missing $PURE"
 for h in \
   kani_binding_rejects_foreign_heap \
@@ -32,24 +32,24 @@ rg -n 'VERUS_PROOFS_CONNECTED: bool = true' "$VERUS" >/dev/null \
   || fail "VERUS_PROOFS_CONNECTED must be true (pure_kernel connected; see check_verus_heap.sh)"
 
 # Executable lemmas always green in CI (no Kani required for this step).
-cargo test -p residuum-heap pure_proof --quiet \
-  || fail "residuum-heap pure_proof tests failed"
-cargo test -p residuum-store --test hp010_qualification h6_pure_proof_bundle --quiet \
+cargo test -p residiuum-heap pure_proof --quiet \
+  || fail "residiuum-heap pure_proof tests failed"
+cargo test -p residiuum-store --test hp010_qualification h6_pure_proof_bundle --quiet \
   || fail "hp010 pure proof bundle Accept failed"
 
 if command -v cargo >/dev/null 2>&1 && cargo kani --version >/dev/null 2>&1; then
-  echo "check_kani_heap: running cargo kani on residuum-heap pure harnesses"
+  echo "check_kani_heap: running cargo kani on residiuum-heap pure harnesses"
   # Bounded unwind; lemmas are concrete (no symbolic input).
-  cargo kani -p residuum-heap \
+  cargo kani -p residiuum-heap \
     --harness kani_connected_pure_proof_bundle \
     --default-unwind 16 \
     || fail "cargo kani pure proof bundle failed"
 else
-  if [[ "${RESIDUUM_REQUIRE_KANI:-}" == "1" ]]; then
-    fail "cargo kani required (RESIDUUM_REQUIRE_KANI=1) but not installed"
+  if [[ "${RESIDIUUM_REQUIRE_KANI:-}" == "1" ]]; then
+    fail "cargo kani required (RESIDIUUM_REQUIRE_KANI=1) but not installed"
   fi
   echo "check_kani_heap: cargo kani not installed — harness sources + executable lemmas OK"
-  echo "  (CI kani-heap job installs kani-verifier and sets RESIDUUM_REQUIRE_KANI=1)"
+  echo "  (CI kani-heap job installs kani-verifier and sets RESIDIUUM_REQUIRE_KANI=1)"
 fi
 
 echo "check_kani_heap: OK"

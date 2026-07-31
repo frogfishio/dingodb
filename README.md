@@ -1,6 +1,6 @@
-# ResiduumDB
+# Residiuum
 
-ResiduumDB is a deterministic relational document engine that lets developers build nested application artefacts directly from relational data, using explicit enrichment semantics instead of hidden joins and ORM hydration.
+Residiuum is a deterministic relational document engine that lets developers build nested application artefacts directly from relational data, using explicit enrichment semantics instead of hidden joins and ORM hydration.
 
 ---
 
@@ -28,7 +28,7 @@ still required before production security claims.
 
 ## Console / CLI
 
-ResiduumDB includes a small CLI binary named `residuum`.
+Residiuum includes a small CLI binary named `residiuum`.
 
 ### Run an interactive console
 
@@ -77,7 +77,7 @@ API JSON
 
 Document databases provide convenient shapes, but relationships often move into application code.
 
-ResiduumDB treats relationship formation and document construction as first-class database operations.
+Residiuum treats relationship formation and document construction as first-class database operations.
 
 ---
 

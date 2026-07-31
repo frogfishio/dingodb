@@ -1,5 +1,5 @@
 {
-  "format": "residuum-heap-isolation-profiles-v1",
+  "format": "dingo-heap-isolation-profiles-v1",
   "spec_section": "13",
   "h6_minimum_profile": "heap-data-isolated",
   "reference_profile": "heap-data-isolated",

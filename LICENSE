@@ -1,4 +1,4 @@
-DingoDB multi-license notice
+Residiuum multi-license notice
 ============================
 
 Copyright (c) 2026 Alexander R. Croft
@@ -19,19 +19,19 @@ License text files (full terms)
 | `LICENSE-AGPL-3.0` | AGPL-3.0-or-later | Cluster, server/serve path, operator CLI |
 
 Per-crate SPDX identifiers are declared in each package’s `Cargo.toml`. Enabling
-the optional `cluster` feature on `residuum-sdk` pulls AGPL `residuum-cluster` into
+the optional `cluster` feature on `residiuum-sdk` pulls AGPL `residiuum-cluster` into
 that build (see `doc/LICENSING.md` §4).
 
 How to use this tree
 --------------------
 
-- **SDA+ENR1 hybrid** (`residuum-sda`, `residuum-sda-cli`): MIT — see `LICENSE-MIT`.
-- **Wire format / thin client** (`residuum-format`, `residuum-client`): MIT — see
+- **SDA+ENR1 hybrid** (`residiuum-sda`, `residiuum-sda-cli`): MIT — see `LICENSE-MIT`.
+- **Wire format / thin client** (`residiuum-format`, `residiuum-client`): MIT — see
   `LICENSE-MIT`.
-- **Embedded store / examine / SDK** (`residuum-store`, `residuum-examine`,
-  `residuum-sdk` default): MPL-2.0 — see `LICENSE-MPL-2.0`.
-- **Networked product** (`residuum-cluster`, `residuum-server`, `residuum-cli`, and
-  `residuum-sdk` when built with `features = ["cluster"]`): AGPL-3.0-or-later —
+- **Embedded store / examine / SDK** (`residiuum-store`, `residiuum-examine`,
+  `residiuum-sdk` default): MPL-2.0 — see `LICENSE-MPL-2.0`.
+- **Networked product** (`residiuum-cluster`, `residiuum-server`, `residiuum-cli`, and
+  `residiuum-sdk` when built with `features = ["cluster"]`): AGPL-3.0-or-later —
   see `LICENSE-AGPL-3.0`.
 
 Contributions

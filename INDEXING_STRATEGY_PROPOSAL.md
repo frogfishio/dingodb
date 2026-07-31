@@ -2,11 +2,11 @@
 
 Query-order companion:
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md). Hydra locates immutable
-records; Residuum Order Wavelets are a separate derived structure for exact
+records; Residiuum Order Wavelets are a separate derived structure for exact
 filter-conditioned ranked ordering. Neither is required to impersonate the
 other.
 
-Status: **implemented (foundation)** in `residuum-store::hydra`  
+Status: **implemented (foundation)** in `residiuum-store::hydra`  
 Companion: seal path writes `indexes/seg/{segment_hex}.hdx` sidecars (derived only).  
 Honesty: hot `Store::get` uses resident `PrimaryIndex` only. Hydra is seal/rebuild/load
 API today; Chimera layouts are seal/compact derived sidecars probed via
@@ -15,7 +15,7 @@ API today; Chimera layouts are seal/compact derived sidecars probed via
 ~250 ms sample gets on 1 GiB testrig runs.
 
 **Chimera** (FINAL DESIGN below): **foundation + seal/compaction wire-up** in
-`residuum-store::chimera` — locator types, value-class selection, micro-page
+`residiuum-store::chimera` — locator types, value-class selection, micro-page
 containers, large-value log codec, adaptive I/O path selection, background-compiler
 plans, and `indexes/chimera/*.cmr` layouts written at seal/compact. Put still writes
 segment frames (authoritative). Sequencing: do **not** flip put to omit frame bodies
@@ -62,15 +62,15 @@ Still proposed (not required for this foundation cut):
 - Binary-fuse filter on every immutable segment.
 - Hot-key TinyLFU accelerator in front of Hydra.
 
-## API surface (`residuum-store`)
+## API surface (`residiuum-store`)
 
 ```rust
 // Build one segment
-let idx = residuum_store::build_hydra_index(&records, &HydraBuildOptions::default());
+let idx = residiuum_store::build_hydra_index(&records, &HydraBuildOptions::default());
 assert!(idx.get(b"key").is_some());
 
 // Parallel build of many segments
-let many = residuum_store::build_hydra_indexes(&batches, &HydraBuildOptions { threads: 4, ..Default::default() });
+let many = residiuum_store::build_hydra_indexes(&batches, &HydraBuildOptions { threads: 4, ..Default::default() });
 
 // Store integration
 store.seal_active()?;                    // writes indexes/seg/{id}.hdx
@@ -97,7 +97,7 @@ store.load_hydra_index(segment_id)?;     // Option<HydraIndex>
 ## Implementation map
 
 ```text
-crates/residuum-store/src/hydra/
+crates/residiuum-store/src/hydra/
   mod.rs       # HydraIndex enum, build / build_many, codec, seal helpers
   select.rs    # KeyShape + IndexKind selection
   eytzinger.rs # tiny
@@ -231,7 +231,7 @@ Traditional engines ask, “Which global storage format should we use?” Yours 
 ## Implementation map (Chimera foundation)
 
 ```text
-crates/residuum-store/src/chimera/
+crates/residiuum-store/src/chimera/
   mod.rs        # ValueLocator, resolve API, module root
   classify.rs   # ValueClass + temperature/lifetime selection
   container.rs  # point micro-page containers (independent slots)

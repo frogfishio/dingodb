@@ -1,5 +1,5 @@
 [package]
-name = "residuum-fuzz"
+name = "residiuum-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2021"
@@ -13,10 +13,10 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 serde_json = "1"
-residuum-format = { path = "../crates/residuum-format" }
-residuum-sda = { path = "../crates/sda-core" }
-residuum-client = { path = "../crates/residuum-client" }
-residuum-store = { path = "../crates/residuum-store", features = ["legacy-raw-store"] }
+residiuum-format = { path = "../crates/residiuum-format" }
+residiuum-sda = { path = "../crates/sda-core" }
+residiuum-client = { path = "../crates/residiuum-client" }
+residiuum-store = { path = "../crates/residiuum-store", features = ["legacy-raw-store"] }
 
 [[bin]]
 name = "decode_frame"

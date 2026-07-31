@@ -1,6 +1,6 @@
 # enr-core — Enrichment algebra (ENR1 in SDA; ENR2 design only)
 
-Status: **ENR1 kernel implemented inside `residuum-sda`** (same parser/evaluator).  
+Status: **ENR1 kernel implemented inside `residiuum-sda`** (same parser/evaluator).  
 **ENR2** remains design notes only — do not implement yet.
 
 Companion specs: [ENR1.md](ENR1.md), [ENR2.md](ENR2.md), [SDA_SPEC.md](../../SDA_SPEC.md), [doc/SDA/DOCTRINE.md](../../doc/SDA/DOCTRINE.md).
@@ -12,12 +12,12 @@ parser would mean two languages and two compiles. Instead:
 
 | Choice | Rationale |
 |--------|-----------|
-| **Add ENR1 to SDA** (`residuum-sda` / `crates/sda-core`) | One `Program::parse`, one AST, pure eval |
+| **Add ENR1 to SDA** (`residiuum-sda` / `crates/sda-core`) | One `Program::parse`, one AST, pure eval |
 | Match bag = SDA comprehension + `asBag` / `matchBag` when carrier must be Bag | Reuse existing `{ r \| r in R \| pred }` form |
 | Cardinality / merge as stdlib + sugar | `one?` / `one!` parse sugar; `only`, `first`, `last`, `merge`, `+` attach |
 | ENR2 stays out | Candidate ranking / multi-source / explain = cottage industry |
 
-Profile tag: `residuum_sda::ENR1_PROFILE_TAG` (`sda-enr1-v0.1`).  
+Profile tag: `residiuum_sda::ENR1_PROFILE_TAG` (`sda-enr1-v0.1`).  
 Tests: `crates/sda-core/tests/enr1_kernel.rs`.
 
 Standalone SDA conformance (`sda-standalone-v1.0`) is **unchanged**; ENR1 is
@@ -27,13 +27,13 @@ additive (new names + `+` on Prod/Map).
 
 | Layer | Primitive | Job | Code today |
 |-------|-----------|-----|------------|
-| **SDA** | Values, carriers, pure transforms | Tree/algebra on values the host supplies | `residuum-sda` |
-| **ENR1** | Match bag | Relate left value ↔ right dataset; explicit cardinality + attach/merge/expand | **in `residuum-sda`** |
+| **SDA** | Values, carriers, pure transforms | Tree/algebra on values the host supplies | `residiuum-sda` |
+| **ENR1** | Match bag | Relate left value ↔ right dataset; explicit cardinality + attach/merge/expand | **in `residiuum-sda`** |
 | **ENR2** | Candidate bag → resolve → combine → explain | Multi-source, refine, rank, ambiguity, provenance | specs only |
 
 Shared laws (do not break when implementing any layer):
 
-- Pure: no acquisition, HTTP, retries, auth, or file IO (Axiom / ResiduumDB host).
+- Pure: no acquisition, HTTP, retries, auth, or file IO (Axiom / Residiuum host).
 - Null ≠ absence; no match means empty bag / `NoMatch`, not `Null`.
 - No implicit uniqueness or silent row drop.
 - Duplicates preserved until an explicit operator resolves them.
@@ -83,9 +83,9 @@ Hosts that apply one program to many bags should `Program::parse` once and
 
 | Now | Later |
 |-----|--------|
-| **ENR1 in `residuum-sda`** (this cut) | **ENR2** candidates / ranking / explain — not yet |
-| Host engines (`Residuum::query`, hash Index) remain valid stand-ins | Optionally compile host joins from ENR1 programs |
-| **Text path** — `Collection::sda` / `Residuum::sda_query` run ENR1+SDA source | Pushdown / plan compile of ENR1 text (optional) |
+| **ENR1 in `residiuum-sda`** (this cut) | **ENR2** candidates / ranking / explain — not yet |
+| Host engines (`Residiuum::query`, hash Index) remain valid stand-ins | Optionally compile host joins from ENR1 programs |
+| **Text path** — `Collection::sda` / `Residiuum::sda_query` run ENR1+SDA source | Pushdown / plan compile of ENR1 text (optional) |
 
 **Do not implement ENR2 yet.** Read it only to understand that ENR1 is the
 *kernel* of a larger, co-designed surface—not a dead-end sketch.
@@ -94,13 +94,13 @@ Evidence that ENR1 is the right *first* cut: multi-collection join measurements
 (nested pure SDA vs host hash equijoin) show the semantic gap is match +
 explicit cardinality, not candidate ranking. See
 `doc/PERFORMANCE_STRATEGIES.md` and the multi-collection SDA join tests under
-`residuum-sdk`.
+`residiuum-sdk`.
 
 ## Host text path (people still write ENR + SDA)
 
 ENR + SDA are the **exact mathematical surface** — often atrocious DX, loved by
 a small loud technical audience. Everyday product text is intended to be
-**RQL** (Residuum Query Language): the official human dialect that lowers into the
+**RQL** (Residiuum Query Language): the official human dialect that lowers into the
 same ENR+SDA IR. User guide: [doc/RQL/USER_GUIDE.md](../../doc/RQL/USER_GUIDE.md).
 Design: [RQL_SPEC.md](../../RQL_SPEC.md).
 
@@ -118,9 +118,9 @@ Users who prefer the algebra write programs as **text**:
 |-----|------|
 | `Collection::sda(program)` | Scan one collection → `input` = doc array → pure SDA/ENR1 (DX §7.6) |
 | `Collection::filter_sda(pred)` | Per-doc boolean SDA/ENR text predicate; keeps keys |
-| `Residuum::enr_query().bind(..).run(program)` | Multi-collection ENR surface (`Match` / `enrich`); aliases free |
-| `Residuum::sda_query()` | Same builder (alias of `enr_query`) |
-| `Residuum::sda(&["orders","customers"], program)` | Convenience multi-bind + run |
+| `Residiuum::enr_query().bind(..).run(program)` | Multi-collection ENR surface (`Match` / `enrich`); aliases free |
+| `Residiuum::sda_query()` | Same builder (alias of `enr_query`) |
+| `Residiuum::sda(&["orders","customers"], program)` | Convenience multi-bind + run |
 | `eval_sda_program(program, input)` | Host already has the JSON value (object keys → free names) |
 
 Example (preferred `Match` + `enrich` pipe against live collections):
@@ -163,9 +163,9 @@ surface.
 | `only` vs `one!` | Both reserved on the ENR2 surface; ENR1 minimal subset prefers `one!` / `one?`. |
 | `first` / `last` on Bag | ENR2 `resolveFirst` / `resolveBest` require defined order (or fail `t_enr_unordered_policy`) and record rejected alternatives. ENR1 states the same order rule more thinly (Seq only). |
 | Multi-generator expand vs SDA v1 (one generator) | Enrichment owns expand semantics; nest match bags inside yield for one-to-many until multi-generator lands. |
-| Attach/merge want `Prod`; ResiduumDB JSON is `Map` | Both `Map` and `Prod` work with `merge` / `+`. |
+| Attach/merge want `Prod`; Residiuum JSON is `Map` | Both `Map` and `Prod` work with `merge` / `+`. |
 | Multi-source / fallback / explain | ENR2. Explicitly out of ENR1 minimal subset. |
-| Relation to `Residuum::query` | Host join is an **engine**. ENR1 is the portable program surface those engines can evaluate or compile from. |
+| Relation to `Residiuum::query` | Host join is an **engine**. ENR1 is the portable program surface those engines can evaluate or compile from. |
 
 ## How this language is designed (not “Bob called Oracle”)
 
@@ -207,7 +207,7 @@ macro systems where the language *already* licenses user-defined surface
 (Lisp). That is not the normal path for SQL, Ada, or a mathematical query
 kernel.
 
-### What that means for ENR1 / ResiduumDB
+### What that means for ENR1 / Residiuum
 
 | Layer | Design authority | How it evolves |
 |-------|------------------|----------------|
@@ -260,18 +260,18 @@ control flow.
 4. **Dialects** absorb familiarity. Pure notation stays mathematical even
    when ugly.
 
-When coding any remaining ENR1 piece: keep one compile path in `residuum-sda`,
+When coding any remaining ENR1 piece: keep one compile path in `residiuum-sda`,
 preserve match-bag reduction law, do not invent a second parser.
 
 ## Reading order
 
 1. [ENR1.md](ENR1.md) — match-bag kernel (normative intent).
-2. Code: `residuum-sda` stdlib ENR ops + `tests/enr1_kernel.rs`.
+2. Code: `residiuum-sda` stdlib ENR ops + `tests/enr1_kernel.rs`.
 3. [ENR2.md](ENR2.md) — **read for orientation only until needed**.
 4. [SDA_SPEC.md](../../SDA_SPEC.md) + [DOCTRINE.md](../../doc/SDA/DOCTRINE.md) — value laws ENR must not weaken.
 
 ## Crate intent
 
-This directory holds **specs**. Runtime enrichment is in **`residuum-sda`** so SDA
+This directory holds **specs**. Runtime enrichment is in **`residiuum-sda`** so SDA
 and ENR1 compile once. A future split into a thin `enr-lib` wrapper is optional
 and must not fork the parser.

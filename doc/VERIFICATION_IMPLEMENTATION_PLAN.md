@@ -1,4 +1,4 @@
-# ResiduumDB verification implementation plan
+# Residiuum verification implementation plan
 
 Status: developer-ready work-package plan v1.0-draft
 
@@ -15,7 +15,7 @@ Program authority:
 
 ## 1. Outcome
 
-The program exits when ResiduumDB can run:
+The program exits when Residiuum can run:
 
 ```text
 dingo verify --profile embedded-heap --level A2
@@ -92,7 +92,7 @@ Depends: `VFY-0`
 Deliver:
 
 ```text
-crates/residuum-verify/
+crates/residiuum-verify/
 scripts/dingo-verify.sh
 ```
 

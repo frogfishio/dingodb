@@ -16,7 +16,7 @@ Audience: query-surface, migration-tool, dialect, compiler, SDK, and
 conformance implementers
 
 Normative companions: [RQL_SPEC.md](RQL_SPEC.md),
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md), and
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md), and
 [RRE_SPEC.md](RRE_SPEC.md)
 
 Reference syntax: PostgreSQL 18 `SELECT`, used only to identify and refuse
@@ -32,10 +32,10 @@ RQL and executes the resulting RQL plan.
 It serves three uses:
 
 - write SQL-ish+ and execute it directly;
-- inspect the generated RQL while learning ResiduumDB;
+- inspect the generated RQL while learning Residiuum;
 - translate an existing supported SQL query into durable RQL source.
 
-It does not make ResiduumDB a SQL database and does not claim to implement
+It does not make Residiuum a SQL database and does not claim to implement
 PostgreSQL, ISO SQL, relational bags, SQL transactions, or a relational
 catalog.
 
@@ -44,7 +44,7 @@ The compiler has one governing rule:
 > Emit equivalent RQL, emit a conditional translation with explicit
 > obligations, or refuse. Never guess.
 
-The existing `sql` dialect in `residuum-sdk` is a small SQL-ish-to-SDA filter
+The existing `sql` dialect in `residiuum-sdk` is a small SQL-ish-to-SDA filter
 frontend. SQL-ish+ is its intended richer successor. This specification defines
 the new compiler surfaces:
 
@@ -274,7 +274,7 @@ SqlToDqlOptions {
 ```
 
 SQL table and column names are never interpolated into RQL without binding.
-All names resolve to immutable Heap-local identities and canonical ResiduumDB
+All names resolve to immutable Heap-local identities and canonical Residiuum
 paths.
 
 The compiler has no network resolver and does not consult an ambient SQL
@@ -282,13 +282,13 @@ catalog.
 
 ## 6. SQL document view
 
-The source semantics are defined over a logical SQL view of ResiduumDB documents:
+The source semantics are defined over a logical SQL view of Residiuum documents:
 
 - one live document is one SQL row;
 - `_key` is a non-null key column;
 - a present scalar field is the corresponding SQL scalar;
 - a missing field becomes SQL NULL;
-- stored ResiduumDB Null becomes SQL NULL;
+- stored Residiuum Null becomes SQL NULL;
 - products, bags, sequences, sets, maps, and bytes are not SQL scalars in v1;
 - decimal/integer values remain exact;
 - no implicit text/number/Boolean conversion occurs.
@@ -500,7 +500,7 @@ Because SQL dialects disagree about default Null placement, a nullable order
 term must state `NULLS FIRST` or `NULLS LAST`. Otherwise compilation is
 conditional on a supplied source-dialect default.
 
-The generated RQL applies the same placement to ResiduumDB Null and missing values
+The generated RQL applies the same placement to Residiuum Null and missing values
 because both are SQL NULL in the compatibility view:
 
 ```text

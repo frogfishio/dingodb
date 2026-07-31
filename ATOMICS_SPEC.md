@@ -1,4 +1,4 @@
-# ResiduumDB Atomics v1 specification
+# Residiuum Atomics v1 specification
 
 Status: normative design v1.0-draft; implementation not yet qualified
 
@@ -17,7 +17,7 @@ Normative companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [RRE_SPEC.md](RRE_SPEC.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md),
 [FORMAT_SPEC.md](FORMAT_SPEC.md), and
 [doc/ATOMICS_IMPLEMENTATION_PLAN.md](doc/ATOMICS_IMPLEMENTATION_PLAN.md)
 
@@ -41,7 +41,7 @@ or transaction-shaped syntax.
 
 The product statement is:
 
-> Within one Key, LocalHeap, or qualified Partition scope, ResiduumDB can commit
+> Within one Key, LocalHeap, or qualified Partition scope, Residiuum can commit
 > one bounded serializable transition with durable identity and independently
 > examinable outcome evidence.
 

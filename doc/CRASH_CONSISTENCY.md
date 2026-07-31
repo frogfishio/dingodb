@@ -3,7 +3,7 @@
 Status: **hardened beyond skeleton** (failpoints + matrix + multi-process abort +
 I/O fault injection)  
 Audience: store implementers, reviewers, CI  
-Companion: [`crates/residuum-store/crash_matrix.v1.json`](../crates/residuum-store/crash_matrix.v1.json),
+Companion: [`crates/residiuum-store/crash_matrix.v1.json`](../crates/residiuum-store/crash_matrix.v1.json),
 [DEFECTS.md](../DEFECTS.md) DEF-022
 
 ## Goal
@@ -18,7 +18,7 @@ authoritative segment bytes.
 The source of truth for operation → failpoint → expected reopen state is:
 
 ```text
-crates/residuum-store/crash_matrix.v1.json
+crates/residiuum-store/crash_matrix.v1.json
 ```
 
 It is embedded in the crate (`CRASH_MATRIX_JSON` / `load_crash_matrix`) and
@@ -34,7 +34,7 @@ validated on every CI run. Each operation lists:
 ## Failpoint framework
 
 ```rust
-use residuum_store::{arm_failpoint_once, clear_failpoints, FailpointAction};
+use residiuum_store::{arm_failpoint_once, clear_failpoints, FailpointAction};
 
 arm_failpoint_once("store.active.write_tail.before", FailpointAction::Error);
 // ... drive put/delete/seal ...
@@ -63,13 +63,13 @@ code paths.
 
 ## Multi-process abort harness
 
-Integration tests spawn the helper binary `residuum-store-crash-child`:
+Integration tests spawn the helper binary `residiuum-store-crash-child`:
 
 ```text
-RESIDUUM_CRASH_STORE=<path>
-RESIDUUM_CRASH_OP=put_durable|delete_durable|seed_prior
-RESIDUUM_CRASH_FP=<failpoint name>   # armed with Abort
-RESIDUUM_CRASH_KEY / RESIDUUM_CRASH_VAL
+RESIDIUUM_CRASH_STORE=<path>
+RESIDIUUM_CRASH_OP=put_durable|delete_durable|seed_prior
+RESIDIUUM_CRASH_FP=<failpoint name>   # armed with Abort
+RESIDIUUM_CRASH_KEY / RESIDIUUM_CRASH_VAL
 ```
 
 Parent seeds durable prior state, child aborts mid-op, parent reopens and
@@ -80,8 +80,8 @@ cells for durable put.
 
 | Mode | How | Coverage |
 |------|-----|----------|
-| PR / default CI | `cargo test -p residuum-store --test stage_def_022_crash_matrix` | Document validation + `ci_subset` cells + I/O suite + multi-process abort |
-| Nightly / full | `RESIDUUM_CRASH_MATRIX_FULL=1 cargo test -p residuum-store --test stage_def_022_crash_matrix` | Every matrix cell |
+| PR / default CI | `cargo test -p residiuum-store --test stage_def_022_crash_matrix` | Document validation + `ci_subset` cells + I/O suite + multi-process abort |
+| Nightly / full | `RESIDIUUM_CRASH_MATRIX_FULL=1 cargo test -p residiuum-store --test stage_def_022_crash_matrix` | Every matrix cell |
 
 `scripts/nightly.sh` and `.github/workflows/nightly.yml` set the full env.
 

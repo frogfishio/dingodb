@@ -1,0 +1,40 @@
+[package]
+name = "residiuum-heap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license = "MIT"
+description = "Residiuum heap identity, capability, and authority kernel."
+readme = "README.md"
+
+[dependencies]
+residiuum-format.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror.workspace = true
+getrandom.workspace = true
+sha2 = "0.10"
+ed25519-dalek = { version = "2.1.1", default-features = false, features = [
+  "alloc",
+  "fast",
+  "zeroize",
+] }
+arc-swap = "1.7"
+zeroize = { version = "1.8", features = ["derive"] }
+hex = "0.4"
+
+[dev-dependencies]
+tempfile.workspace = true
+trybuild = "1.0"
+proptest = "1.5"
+ciborium = "0.2"
+
+[build-dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+# Kani harnesses use `#[cfg(kani)]` (set by cargo-kani, not cargo test).
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

@@ -1,4 +1,4 @@
-# Residuum Studio implementation plan
+# Residiuum Studio implementation plan
 
 Status: developer-ready work-package plan v1.0-draft
 
@@ -27,7 +27,7 @@ Each package exits with one real end-to-end path through:
 Angular view
 Tauri IPC
 Rust Studio core
-ResiduumDB/telemetry/evidence source
+Residiuum/telemetry/evidence source
 honest result state
 ```
 
@@ -41,7 +41,7 @@ Planned paths:
 
 ```text
 apps/dingo-studio/
-crates/residuum-studio-core/
+crates/residiuum-studio-core/
 spec/studio/
 scripts/verify-studio.sh
 ```
@@ -54,8 +54,8 @@ Ownership:
 | Work packages/status | `doc/STUDIO_IMPLEMENTATION_PLAN.md` |
 | Machine IPC/topic/view schemas | `spec/studio/` |
 | Framework shell | `apps/dingo-studio/` |
-| Reusable Rust orchestration | `crates/residuum-studio-core/` |
-| ResiduumDB protocol semantics | existing legacy `dingo-*` crates/specs |
+| Reusable Rust orchestration | `crates/residiuum-studio-core/` |
+| Residiuum protocol semantics | existing legacy `dingo-*` crates/specs |
 | CI qualification | `scripts/verify-studio.sh` |
 
 ## 3. Frozen baseline
@@ -106,7 +106,7 @@ updates follow `STUDIO_SPEC.md` §34.4.
 ### Deliverables
 
 - `apps/dingo-studio` Tauri + Angular + SCSS skeleton;
-- `crates/residuum-studio-core`;
+- `crates/residiuum-studio-core`;
 - `spec/studio/ipc-v1.json`;
 - `spec/studio/commands-v1.json`;
 - `spec/studio/errors-v1.json`;
@@ -399,7 +399,7 @@ maximum page/tab budget.
 
 - loopback TCP/HTTP-compatible Ratatouille receiver;
 - qualified collector/gateway adapter;
-- outer envelope and ResiduumDB message validator;
+- outer envelope and Residiuum message validator;
 - bounded memory ring;
 - source/boot/sequence/gap tracking;
 - topic store;
@@ -425,7 +425,7 @@ maximum page/tab budget.
 ### Exit
 
 Studio displays current telemetry and explicit gaps without using stdout logs,
-files, or the ResiduumDB metrics RPC.
+files, or the Residiuum metrics RPC.
 
 ## 15. DST-010 — Evidence
 

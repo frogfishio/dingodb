@@ -4,7 +4,7 @@
 
 #![no_main]
 
-use residuum_client::read_frame;
+use residiuum_client::read_frame;
 use libfuzzer_sys::fuzz_target;
 use std::io::Cursor;
 
@@ -15,5 +15,5 @@ fuzz_target!(|data: &[u8]| {
     let _ = read_frame(&mut cur, max_frame);
     // Second pass with legacy detection when any bytes remain.
     let mut cur2 = Cursor::new(data);
-    let _ = residuum_client::read_frame_or_detect_legacy(&mut cur2, max_frame);
+    let _ = residiuum_client::read_frame_or_detect_legacy(&mut cur2, max_frame);
 });

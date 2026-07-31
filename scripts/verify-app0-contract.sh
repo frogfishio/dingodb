@@ -21,8 +21,8 @@ required=(
   spec/heap/fixtures/collection_create.rejected.json
   spec/heap/fixtures/dql_query.accepted.json
   spec/heap/fixtures/dql_query.rejected.json
-  crates/residuum-sdk/src/app_v1.rs
-  crates/residuum-sdk/tests/app0_contract_lock.rs
+  crates/residiuum-sdk/src/app_v1.rs
+  crates/residiuum-sdk/tests/app0_contract_lock.rs
   doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md
 )
 
@@ -105,7 +105,7 @@ dql = load("spec/heap/fixtures/dql_query.accepted.json")
 if dql.get("op") != 118 or dql.get("ok") is not True:
     sys.exit("dql_query.accepted malformed")
 
-src = Path("crates/residuum-sdk/src/app_v1.rs").read_text(encoding="utf-8")
+src = Path("crates/residiuum-sdk/src/app_v1.rs").read_text(encoding="utf-8")
 for needle in (
     "pub struct HeapClient",
     "pub struct CollectionClient",

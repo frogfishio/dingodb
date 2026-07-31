@@ -63,7 +63,7 @@ or explicit seal) so the segment is immutable.
 API (Rust): `Store::transfer_segment_to_tier(segment_id, tier, TierMoveMode::{Copy,Move})`.
 
 Each transfer writes migration evidence under `recovery/migrations/` with
-source/dest BLAKE3 hashes and `tool_version=residuum-store-9`.
+source/dest BLAKE3 hashes and `tool_version=dingo-store-9`.
 
 ### 3.3 Mark a tier offline
 
@@ -112,7 +112,7 @@ summary metadata when placement still records them.
 | Policy | Operator action |
 |--------|-----------------|
 | Format-version support | Prefer readers that preserve unsupported majors; upgrade software before deleting old binaries |
-| Integrity scrub | `residuum scrub STORE` / `Store::scrub_to_completion` (DEF-051): hash sealed segments, compare placement `content_hash`, frame-scan holes; pause/resume; findings under `recovery/scrub/` |
+| Integrity scrub | `residiuum scrub STORE` / `Store::scrub_to_completion` (DEF-051): hash sealed segments, compare placement `content_hash`, frame-scan holes; pause/resume; findings under `recovery/scrub/` |
 | Replica / EC | Out of band for single-node Stage 9; cluster profiles add redundancy |
 | Media refresh | Copy segment to new media (`Copy` then verify), then `Move` off dying media |
 | Encryption keys | Not yet in Stage 9 wire; retain keys outside the store if payloads are encrypted at rest by the host |
@@ -147,25 +147,25 @@ The third column of `tiers/roots.txt` is a **media root spec**:
 |------|---------|
 | path / `file:///path` | Filesystem directory (Stage 9 baseline) |
 | `object:local:/path` | Local object layout (in-tree stand-in; optional `#prefix`) |
-| `s3://bucket/prefix` | Amazon S3 — live via `RESIDUUM_S3_ROOT` mirror |
-| `gs://bucket/prefix` | GCS — live via `RESIDUUM_GS_ROOT` mirror |
+| `s3://bucket/prefix` | Amazon S3 — live via `RESIDIUUM_S3_ROOT` mirror |
+| `gs://bucket/prefix` | GCS — live via `RESIDIUUM_GS_ROOT` mirror |
 
-Rust: `residuum_store::MediaLocator::parse`, `open_media` / `open_media_with`,
+Rust: `residiuum_store::MediaLocator::parse`, `open_media` / `open_media_with`,
 `CloudMirrorConfig`, `MirroredCloudMedia`, `FilesystemMedia`, `LocalObjectMedia`.
 
 ### Live cloud mirrors
 
 | Env | Layout |
 |-----|--------|
-| `RESIDUUM_S3_ROOT` | `{root}/{bucket}/{prefix}/…` object keys as files |
-| `RESIDUUM_GS_ROOT` | same for `gs://` |
+| `RESIDIUUM_S3_ROOT` | `{root}/{bucket}/{prefix}/…` object keys as files |
+| `RESIDIUUM_GS_ROOT` | same for `gs://` |
 
 Point these at an rclone/s3fs mount, MinIO disk tree, or offline copy. Without
 a mirror, cloud roots stay **offline** for coverage honesty (`MediaUnsupported`
 on put/get).
 
 Lifecycle policy (declarative): `tiers/lifecycle.json` via
-`residuum_store::LifecyclePolicy` — evaluation is pure; transfers remain explicit.
+`residiuum_store::LifecyclePolicy` — evaluation is pure; transfers remain explicit.
 Erasure-coded archive shards are scaffolded (`ErasureManifest`) but codecs are
 not shipped. Latency claims: see [BENCHMARK_DISCLOSURE.md](BENCHMARK_DISCLOSURE.md).
 

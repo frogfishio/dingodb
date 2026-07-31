@@ -14,31 +14,31 @@ export RUSTFLAGS="${RUSTFLAGS:--D warnings}"
 
 # package_name|member_path (directory under repo root)
 MEMBERS=(
-  "residuum-sda|crates/sda-core"
-  "residuum-sda-cli|crates/sda-cli"
-  "residuum-format|crates/residuum-format"
-  "residuum-heap|crates/residuum-heap"
-  "residuum-store|crates/residuum-store"
-  "residuum-client|crates/residuum-client"
-  "residuum-sdk|crates/residuum-sdk"
-  "residuum-server|crates/residuum-server"
-  "residuum-examine|crates/residuum-examine"
-  "residuum-cli|crates/residuum-cli"
-  "residuum-cluster|crates/residuum-cluster"
+  "residiuum-sda|crates/sda-core"
+  "residiuum-sda-cli|crates/sda-cli"
+  "residiuum-format|crates/residiuum-format"
+  "residiuum-heap|crates/residiuum-heap"
+  "residiuum-store|crates/residiuum-store"
+  "residiuum-client|crates/residiuum-client"
+  "residiuum-sdk|crates/residiuum-sdk"
+  "residiuum-server|crates/residiuum-server"
+  "residiuum-examine|crates/residiuum-examine"
+  "residiuum-cli|crates/residiuum-cli"
+  "residiuum-cluster|crates/residiuum-cluster"
   # Workspace member (publish = false); still required for staged rebuild from package lists.
-  "residuum-testrig|crates/residuum-testrig"
+  "residiuum-testrig|crates/residiuum-testrig"
 )
 
-ALLOW_DIRTY="${RESIDUUM_RELEASE_ALLOW_DIRTY:-0}"
+ALLOW_DIRTY="${RESIDIUUM_RELEASE_ALLOW_DIRTY:-0}"
 
 echo "== git status (must be clean) =="
 if [[ -n "$(git status --short)" ]]; then
   git status --short
   if [[ "$ALLOW_DIRTY" == "1" ]]; then
-    echo "warning: dirty work tree allowed via RESIDUUM_RELEASE_ALLOW_DIRTY=1"
+    echo "warning: dirty work tree allowed via RESIDIUUM_RELEASE_ALLOW_DIRTY=1"
   else
     echo "error: git work tree is not clean (DEF-003). Commit or stash first," >&2
-    echo "       or set RESIDUUM_RELEASE_ALLOW_DIRTY=1 for a local dry-run." >&2
+    echo "       or set RESIDIUUM_RELEASE_ALLOW_DIRTY=1 for a local dry-run." >&2
     exit 1
   fi
 else
@@ -69,10 +69,10 @@ for entry in "${MEMBERS[@]}"; do
     echo "error: $pkg package list has no src/ files" >&2
     exit 1
   fi
-  # residuum-store ships the crash matrix as package data.
-  if [[ "$pkg" == "residuum-store" ]]; then
+  # residiuum-store ships the crash matrix as package data.
+  if [[ "$pkg" == "residiuum-store" ]]; then
     if ! printf '%s\n' "$list" | grep -qx "crash_matrix.v1.json"; then
-      echo "error: residuum-store package list missing crash_matrix.v1.json" >&2
+      echo "error: residiuum-store package list missing crash_matrix.v1.json" >&2
       exit 1
     fi
   fi
@@ -80,7 +80,7 @@ done
 
 echo
 echo "== build from packaged file lists =="
-STAGE="$(mktemp -d "${TMPDIR:-/tmp}/residuum-release-content.XXXXXX")"
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/residiuum-release-content.XXXXXX")"
 cleanup() {
   rm -rf "$STAGE"
 }

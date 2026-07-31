@@ -5,7 +5,7 @@
 //! targets. See `doc/PERFORMANCE_STRATEGIES.md` and
 //! `doc/BENCHMARK_DISCLOSURE.md` before any public comparison.
 
-use residuum_sda::{from_json, Program};
+use residiuum_sda::{from_json, Program};
 use std::time::Instant;
 
 #[test]
@@ -60,7 +60,7 @@ fn sda_bench_skeleton_parse_eval_classes() {
 
         let t0 = Instant::now();
         for _ in 0..n {
-            let _ = residuum_sda::run(source, input.clone())
+            let _ = residiuum_sda::run(source, input.clone())
                 .unwrap_or_else(|e| panic!("{name}: run failed: {e}"));
         }
         let reparse_loop = t0.elapsed();
@@ -89,7 +89,7 @@ fn sda_bench_skeleton_parse_eval_classes() {
 fn program_parse_once_agrees_with_run() {
     let source = r#"input<"name">!"#;
     let input = serde_json::json!({"name": "Ada"});
-    let via_run = residuum_sda::run(source, input.clone()).unwrap();
+    let via_run = residiuum_sda::run(source, input.clone()).unwrap();
     let via_once = Program::parse(source)
         .unwrap()
         .run_json("input", input)

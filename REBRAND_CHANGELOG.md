@@ -1,4 +1,4 @@
-# ResiduumDB rebrand changelog (Phase 2)
+# Residiuum rebrand changelog (Phase 2)
 
 Status: **implemented (REB-2…REB-6 labor complete, 2026-07-31)**  
 Becomes normative after REB-7 quality evidence and principal accept.  
@@ -7,8 +7,13 @@ Class C freeze: [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md).
 
 ## 1. Reason and effective release
 
-**Why:** The working name DingoDB collides with an existing product. Canonical
-product identity is **ResiduumDB** / **Residuum** (docs Phase 1 already complete).
+**Why:** The working name DingoDB collides with an existing product. The
+canonical product identity is **Residiuum**.
+
+**Pre-release spelling correction:** An internal rebrand pass briefly used
+`Residuum` / `residuum-*`. Those names were never released and have no
+compatibility status. The canonical spelling contains the second `i`:
+`Residiuum` / `residiuum-*`.
 
 **What this cut does:** Implementation identity hard-break for crates, public
 Rust API entry type, CLI, URI scheme, and process environment variables.
@@ -23,16 +28,16 @@ from a pre-Phase-2 tree.
 
 | Former | New |
 |--------|-----|
-| Cargo packages `dingo-*` | `residuum-*` |
-| Crate dirs `crates/dingo-*` | `crates/residuum-*` |
-| Published `dingo-sda` (dir `crates/sda-core`) | `residuum-sda` |
-| `dingo-sda-cli` / bin `dingo-sda` | `residuum-sda-cli` / bin `residuum-sda` |
-| Type `Dingo` | `Residuum` |
-| `Dingo::open` / `connect` / `open_deployment` / … | `Residuum::…` |
-| CLI binary `dingo` | `residuum` |
-| URI `dingo://host:port[/label]` | `residuum://host:port[/label]` |
-| Env `DINGO_*` (token, fuzz, quality, crash matrix, …) | `RESIDUUM_*` |
-| `parse_dingo_url` / `ParsedDingoUrl` | `parse_residuum_url` / `ParsedResiduumUrl` |
+| Cargo packages `dingo-*` | `residiuum-*` |
+| Crate dirs `crates/dingo-*` | `crates/residiuum-*` |
+| Published `dingo-sda` (dir `crates/sda-core`) | `residiuum-sda` |
+| `dingo-sda-cli` / bin `dingo-sda` | `residiuum-sda-cli` / bin `residiuum-sda` |
+| Type `Dingo` | `Residiuum` |
+| `Dingo::open` / `connect` / `open_deployment` / … | `Residiuum::…` |
+| CLI binary `dingo` | `residiuum` |
+| URI `dingo://host:port[/label]` | `residiuum://host:port[/label]` |
+| Env `DINGO_*` (token, fuzz, quality, crash matrix, …) | `RESIDIUUM_*` |
+| `parse_dingo_url` / `ParsedDingoUrl` | `parse_residiuum_url` / `ParsedResidiuumUrl` |
 
 **Compatibility aliases:** none in this cut.
 
@@ -47,9 +52,9 @@ dingo-sdk = { path = "path/to/crates/dingo-sdk" }
 dingo-sdk = { version = "0.2.0", ... }
 
 # after
-residuum-sdk = { path = "path/to/crates/residuum-sdk" }
+residiuum-sdk = { path = "path/to/crates/residiuum-sdk" }
 # or
-residuum-sdk = { version = "0.2.0", ... }
+residiuum-sdk = { version = "0.2.0", ... }
 ```
 
 **Rust imports:**
@@ -59,48 +64,48 @@ residuum-sdk = { version = "0.2.0", ... }
 use dingo_sdk::{Dingo, Filter, json};
 
 // after
-use residuum_sdk::{Residuum, Filter, json};
+use residiuum_sdk::{Residiuum, Filter, json};
 ```
 
-Workspace members and `[workspace.dependencies]` use `residuum-*` paths.
+Workspace members and `[workspace.dependencies]` use `residiuum-*` paths.
 
 ## 4. API / type migration
 
 | Before | After |
 |--------|-------|
-| `Dingo::open(path)` | `Residuum::open(path)` |
-| `Dingo::connect(url)` | `Residuum::connect(url)` |
-| `Dingo::open_deployment` / `create_deployment` | same methods on `Residuum` |
-| `Dingo::connect_heap` | `Residuum::connect_heap` |
+| `Dingo::open(path)` | `Residiuum::open(path)` |
+| `Dingo::connect(url)` | `Residiuum::connect(url)` |
+| `Dingo::open_deployment` / `create_deployment` | same methods on `Residiuum` |
+| `Dingo::connect_heap` | `Residiuum::connect_heap` |
 
-Module path `dingo_sdk::dingo` → `residuum_sdk::residuum` (usually use crate root re-export).
+Module path `dingo_sdk::dingo` → `residiuum_sdk::residiuum` (usually use crate root re-export).
 
 ## 5. CLI and executables
 
 | Before | After |
 |--------|-------|
-| `dingo serve` | `residuum serve` |
-| `dingo serve-cluster` | `residuum serve-cluster` |
-| `dingo doctor` / `config` / `migrate` / `scrub` / … | `residuum …` |
-| `dingo-sda` | `residuum-sda` |
-| `dingo-testrig` | `residuum-testrig` |
-| `dingo-authority` | `residuum-authority` |
-| `dingo-cluster-multiproc-child` | `residuum-cluster-multiproc-child` |
-| `dingo-store-crash-child` | `residuum-store-crash-child` |
+| `dingo serve` | `residiuum serve` |
+| `dingo serve-cluster` | `residiuum serve-cluster` |
+| `dingo doctor` / `config` / `migrate` / `scrub` / … | `residiuum …` |
+| `dingo-sda` | `residiuum-sda` |
+| `dingo-testrig` | `residiuum-testrig` |
+| `dingo-authority` | `residiuum-authority` |
+| `dingo-cluster-multiproc-child` | `residiuum-cluster-multiproc-child` |
+| `dingo-store-crash-child` | `residiuum-store-crash-child` |
 
-Build: `cargo build -p residuum-cli --bin residuum`.
+Build: `cargo build -p residiuum-cli --bin residiuum`.
 
 ## 6. URI, environment, configuration
 
 | Before | After |
 |--------|-------|
-| `dingo://127.0.0.1:7434/app` | `residuum://127.0.0.1:7434/app` |
-| `DINGO_TOKEN` | `RESIDUUM_TOKEN` (`DEFAULT_TOKEN_ENV`) |
-| `DINGO_FUZZ_*`, `DINGO_QUALITY_*`, `DINGO_CRASH_MATRIX_FULL`, … | `RESIDUUM_*` equivalents |
-| `DINGO_MP_*` (multiproc child harness) | `RESIDUUM_MP_*` |
-| `DINGO_CRASH_*` (crash-matrix child) | `RESIDUUM_CRASH_*` |
-| `DINGO_S3_ROOT` / `DINGO_GS_ROOT` / `DINGO_AWS_*` / `DINGO_KMS_*` | `RESIDUUM_*` equivalents |
-| `env:DINGO_TOKEN` secret refs | `env:RESIDUUM_TOKEN` |
+| `dingo://127.0.0.1:7434/app` | `residiuum://127.0.0.1:7434/app` |
+| `DINGO_TOKEN` | `RESIDIUUM_TOKEN` (`DEFAULT_TOKEN_ENV`) |
+| `DINGO_FUZZ_*`, `DINGO_QUALITY_*`, `DINGO_CRASH_MATRIX_FULL`, … | `RESIDIUUM_*` equivalents |
+| `DINGO_MP_*` (multiproc child harness) | `RESIDIUUM_MP_*` |
+| `DINGO_CRASH_*` (crash-matrix child) | `RESIDIUUM_CRASH_*` |
+| `DINGO_S3_ROOT` / `DINGO_GS_ROOT` / `DINGO_AWS_*` / `DINGO_KMS_*` | `RESIDIUUM_*` equivalents |
+| `env:DINGO_TOKEN` secret refs | `env:RESIDIUUM_TOKEN` |
 
 Config files that referenced old env names must be updated.
 
@@ -128,14 +133,14 @@ No on-disk rewrite is required solely for the package rename.
 | RPC profile strings `dingo-rpc-v1` | **Unchanged** |
 | Cluster/node URNs `urn:dingo:…` | **Unchanged** |
 | Raft snapshot sentinel `__dingo_snapshot_base__` | **Unchanged** |
-| Client multi-seed URL scheme | Now `residuum://` only (hard break) |
+| Client multi-seed URL scheme | Now `residiuum://` only (hard break) |
 
 ## 10. HeapKey, tokens, crypto domains
 
 | Item | Policy |
 |------|--------|
 | Domain separators containing historical `DINGODB` / frozen domains | **Unchanged** |
-| Process auth token env name | Renamed to `RESIDUUM_TOKEN` (operators must re-export secrets) |
+| Process auth token env name | Renamed to `RESIDIUUM_TOKEN` (operators must re-export secrets) |
 | Wire profiles for heap | String ids remain `dingo-heap-v1` etc. |
 
 ## 11. Aliases and removal policy
@@ -147,9 +152,9 @@ No temporary `dingo` crate or CLI aliases. Removal N/A.
 **Upgrade**
 
 1. Rebuild from tree after Phase 2.
-2. Replace `dingo` binary with `residuum` on PATH.
-3. Update service unit env: `DINGO_TOKEN` → `RESIDUUM_TOKEN`.
-4. Update client URLs: `dingo://` → `residuum://`.
+2. Replace `dingo` binary with `residiuum` on PATH.
+3. Update service unit env: `DINGO_TOKEN` → `RESIDIUUM_TOKEN`.
+4. Update client URLs: `dingo://` → `residiuum://`.
 5. Update Cargo dependencies / imports as in §3–4.
 6. Do **not** rewrite store segment bytes for branding.
 
@@ -163,8 +168,8 @@ No temporary `dingo` crate or CLI aliases. Removal N/A.
 ## 13. Website / domain
 
 Deferred to **Phase 4**. Local dirs `web/dingodb.org` and marketing copy still
-contain “Dingo” strings. Canonical public hosts remain `residuumdb.org` /
-`docs.residuumdb.org` per REBRAND.md.
+contain “Dingo” strings. Canonical public hosts remain `residiuumdb.org` /
+`docs.residiuumdb.org` per REBRAND.md.
 
 ## 14. Intentionally retained legacy identifiers
 
@@ -178,19 +183,19 @@ Also Class D: git history, release tags, remote `github.com/frogfishio/dingodb`
 | Check | Result |
 |-------|--------|
 | `cargo check --workspace` | exit 0 (2026-07-31, post REB-7 residual fixes) |
-| `cargo test -p residuum-format --lib` | 58/58 (REB-2) |
-| `cargo test -p residuum-sdk --lib` | 64/64 (REB-2) |
+| `cargo test -p residiuum-format --lib` | 58/58 (REB-2) |
+| `cargo test -p residiuum-sdk --lib` | 64/64 (REB-2) |
 | multiproc residual (DEF-041-N) | 6/6 earlier same day |
 | Magics `DINGOFRM`/`DINGOEND` present | yes (Class C) |
-| Fuzz package name | `residuum-fuzz` (was `dingo-fuzz`) |
+| Fuzz package name | `residiuum-fuzz` (was `dingo-fuzz`) |
 
 ### Residual classification summary (REB-7)
 
 | Class | Disposition | Examples |
 |-------|-------------|---------|
-| Class A/B | Renamed | crates, packages, `Residuum`, CLI, `residuum://`, `RESIDUUM_*` |
+| Class A/B | Renamed | crates, packages, `Residiuum`, CLI, `residiuum://`, `RESIDIUUM_*` |
 | Class C | **retain_legacy** | profiles `dingo-*-v1`, magics, URNs, crypto domains, `application/dingo.heap-*`, `.dingo` media |
 | Class D | history / Phase 4 | `web/dingodb.org`, marketing strings, git remote `dingodb` |
-| Cosmetic residual fixed in REB-7 | example paths | `/var/lib/residuum`, `alias/residuum-test`, fuzz package |
+| Cosmetic residual fixed in REB-7 | example paths | `/var/lib/residiuum`, `alias/residiuum-test`, fuzz package |
 
 Full freeze list: [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md).

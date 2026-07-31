@@ -16,7 +16,7 @@ versioned dual-read; that is out of REB scope.
 | `DINGOFRM` | Start-of-frame magic (8 ASCII bytes) | **retain_legacy** |
 | `DINGOEND` | End-of-frame magic (8 ASCII bytes) | **retain_legacy** |
 
-Evidence: `crates/residuum-format/src/frame.rs` (`START_MAGIC` / `END_MAGIC`).
+Evidence: `crates/residiuum-format/src/frame.rs` (`START_MAGIC` / `END_MAGIC`).
 
 ## 2. Profile / policy string IDs (`dingo-*-v1` family)
 
@@ -36,7 +36,7 @@ Examples still live in tree (non-exhaustive; ~360 matches of `dingo-…-v1`):
 | `dingo-wire-major1-freeze-v1` | Wire freeze policy id | **retain_legacy** |
 | Plan hash domains containing historical `dingo:` labels where already frozen | Crypto domain sep | **retain_legacy** (do not rewrite frozen vectors) |
 
-**Rule:** Package/crate names use `residuum-*`; **profile constant string values**
+**Rule:** Package/crate names use `residiuum-*`; **profile constant string values**
 keep `dingo-…` until a versioned migration Feature lands.
 
 ## 3. Identity URIs
@@ -73,11 +73,11 @@ invalidate keys, tokens, or proofs. Not in REB Phase 2.
 
 | Former | New | Notes |
 |--------|-----|--------|
-| Crates `dingo-*` | `residuum-*` | Package identity |
-| Type `Dingo` | `Residuum` | Public API |
-| URI `dingo://` | `residuum://` | Client URL scheme |
-| Env `DINGO_*` | `RESIDUUM_*` | Process config |
-| CLI bin `dingo` | `residuum` | Operator command |
+| Crates `dingo-*` | `residiuum-*` | Package identity |
+| Type `Dingo` | `Residiuum` | Public API |
+| URI `dingo://` | `residiuum://` | Client URL scheme |
+| Env `DINGO_*` | `RESIDIUUM_*` | Process config |
+| CLI bin `dingo` | `residiuum` | Operator command |
 
 ## 8. Verification (REB-5 exit)
 
@@ -85,11 +85,11 @@ After REB-2/3, confirm:
 
 ```bash
 # Magics still present
-rg -n 'DINGOFRM|DINGOEND' crates/residuum-format/src/frame.rs
+rg -n 'DINGOFRM|DINGOEND' crates/residiuum-format/src/frame.rs
 # Profiles still string-valued dingo-*
-rg -n 'dingo-cursor-v1|dingo-rust-app-v1' crates/residuum-sdk/src
+rg -n 'dingo-cursor-v1|dingo-rust-app-v1' crates/residiuum-sdk/src
 # No accidental magic rewrite
-rg -n 'RESIDUUMFRM|RESIDUUMEND' crates || true  # should be empty
+rg -n 'RESIDIUUMFRM|RESIDIUUMEND' crates || true  # should be empty
 ```
 
 Accidental Class C rewrites found during audit → **revert immediately** and

@@ -1,7 +1,7 @@
 # RQL User Guide
 
-**Residuum Query Language (RQL)** is the official human way to write multi-collection
-queries in ResiduumDB. You write readable `from` / `enrich` / `project` text; the
+**Residiuum Query Language (RQL)** is the official human way to write multi-collection
+queries in Residiuum. You write readable `from` / `enrich` / `project` text; the
 engine compiles it into the same ENR + SDA programs that pure algebra users write
 by hand.
 
@@ -156,10 +156,10 @@ RQL compiles to pure ENR1/SDA text. You then bind the named collections and
 execute that program.
 
 ```rust
-use residuum_sdk::{compile_dialect, json, Residuum};
+use residiuum_sdk::{compile_dialect, json, Residiuum};
 
-fn main() -> Result<(), residuum_sdk::Error> {
-    let mut db = Residuum::open("./app.dingo")?;
+fn main() -> Result<(), residiuum_sdk::Error> {
+    let mut db = Residiuum::open("./app.dingo")?;
 
     // Load sample data (abbreviated).
     {
@@ -621,5 +621,5 @@ let v = db.enr_query()
 - [doc/SDA/USER_MANUAL.md](../SDA/USER_MANUAL.md) — pure SDA everyday use  
 - [DX_SPEC.md](../../DX_SPEC.md) §7 — everyday query experience  
 - [crates/enr-core/README.md](../../crates/enr-core/README.md) — ENR1 kernel surface  
-- Implementation: `crates/residuum-sdk/src/dialects/dql.rs`  
-- Proof tests: `crates/residuum-sdk/tests/dialects_query.rs`
+- Implementation: `crates/residiuum-sdk/src/dialects/dql.rs`  
+- Proof tests: `crates/residiuum-sdk/tests/dialects_query.rs`

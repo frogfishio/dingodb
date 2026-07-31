@@ -1,4 +1,4 @@
-# ResiduumDB Core Storage Qualification Specification
+# Residiuum Core Storage Qualification Specification
 
 Status: **normative design v1.0-draft — developer ready**
 
@@ -20,7 +20,7 @@ Normative companions:
 
 ## 1. Decision
 
-ResiduumDB's core proposition depends on one fact:
+Residiuum's core proposition depends on one fact:
 
 > Authoritative storage must tell the truth under ordinary operation, software
 > defects, interrupted persistence, resource exhaustion, media damage, and
@@ -181,7 +181,7 @@ P0 storage claims require three structurally different observations:
 1. **Sequential logical model** — a small event/state machine that knows no
    segment, cache, production scanner, or production recovery algorithm.
 2. **Independent format/recovery reader** — reads bytes without importing
-   `residuum-store`; it does not call production frame scan or index code.
+   `residiuum-store`; it does not call production frame scan or index code.
 3. **Production implementation** — live, reopen, rebuild, inspect, salvage,
    compact, backup/restore, and migration observations.
 
@@ -192,7 +192,7 @@ Disagreement is a failing minimized artifact, never resolved by majority vote.
 
 The reference model MUST NOT depend on:
 
-- `residuum-store`;
+- `residiuum-store`;
 - store index, chunk, compaction, recovery, or catalog modules;
 - production test helpers that calculate expected state; or
 - production code hidden behind a test feature.
@@ -605,7 +605,7 @@ of assumptions. At minimum it names:
 - the number, independence, placement, and failure domains of durable copies;
 - the trusted computing base, including production code, independent oracles,
   proof tools, compilers, and test harnesses; and
-- excluded Byzantine behavior for components outside ResiduumDB's control.
+- excluded Byzantine behavior for components outside Residiuum's control.
 
 The suite does not claim recovery when every information-bearing copy of a
 datum and its redundancy has been destroyed. It also cannot prove correctness
@@ -1064,7 +1064,7 @@ Attachments include minimized histories, corrupted fixtures, raw tool output,
 crash images where retainable, coverage, mutation reports, fuzz corpora, soak
 time series, and final reconciliation.
 
-The report is signed or placed in the Residuum Evidence Ledger when that subsystem
+The report is signed or placed in the Residiuum Evidence Ledger when that subsystem
 is available. Until then it is deterministically encoded, hash-addressed, and
 verified by a separately built verifier.
 
@@ -1146,7 +1146,7 @@ Any reproducible violation of a P0 invariant:
 
 ## 24. Non-negotiable acceptance statement
 
-The suite is complete only when ResiduumDB can produce a verified bundle proving:
+The suite is complete only when Residiuum can produce a verified bundle proving:
 
 ```text
 for every registered core-storage invariant

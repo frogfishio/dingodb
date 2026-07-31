@@ -6,29 +6,29 @@ MODE="${1:-quick}"
 cd "$ROOT"
 
 ./scripts/check_heap_architecture.sh
-cargo test -p residuum-heap --lib --tests
-cargo test -p residuum-format --lib
-cargo test -p residuum-store --lib heap::catalog
-cargo test -p residuum-store --test hp004_catalog_rebuild
-cargo test -p residuum-authority --test hp005_accept
-cargo test -p residuum-sdk --test hp007_heap_isolation
-cargo test -p residuum-server --test hp008_heap_handshake
-cargo test -p residuum-server --test hp008_accept_loop
-cargo test -p residuum-store --test hp006_heap_migration -- --test-threads=1
-cargo test -p residuum-store --test hp009_lifecycle
-cargo test -p residuum-store --test hp010_qualification
-cargo test -p residuum-heap --lib qualification::
+cargo test -p residiuum-heap --lib --tests
+cargo test -p residiuum-format --lib
+cargo test -p residiuum-store --lib heap::catalog
+cargo test -p residiuum-store --test hp004_catalog_rebuild
+cargo test -p residiuum-authority --test hp005_accept
+cargo test -p residiuum-sdk --test hp007_heap_isolation
+cargo test -p residiuum-server --test hp008_heap_handshake
+cargo test -p residiuum-server --test hp008_accept_loop
+cargo test -p residiuum-store --test hp006_heap_migration -- --test-threads=1
+cargo test -p residiuum-store --test hp009_lifecycle
+cargo test -p residiuum-store --test hp010_qualification
+cargo test -p residiuum-heap --lib qualification::
 
 if [[ "$MODE" == "full" ]]; then
   # CPR-004: Kani + Verus pure-kernel (install tools for full machine check).
   if command -v cargo >/dev/null 2>&1 && cargo kani --version >/dev/null 2>&1; then
-    RESIDUUM_REQUIRE_KANI=1 ./scripts/check_kani_heap.sh
+    RESIDIUUM_REQUIRE_KANI=1 ./scripts/check_kani_heap.sh
   else
     ./scripts/check_kani_heap.sh
     echo "kani not installed; harness sources + executable lemmas verified"
   fi
   if [[ -x "$ROOT/tools/verus/verus" ]] || command -v verus >/dev/null 2>&1; then
-    RESIDUUM_REQUIRE_VERUS=1 ./scripts/check_verus_heap.sh
+    RESIDIUUM_REQUIRE_VERUS=1 ./scripts/check_verus_heap.sh
   else
     ./scripts/check_verus_heap.sh
     echo "verus not installed; pure_kernel source + executable lemmas verified"

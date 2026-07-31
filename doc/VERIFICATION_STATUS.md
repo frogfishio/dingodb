@@ -1,4 +1,4 @@
-# ResiduumDB verification status
+# Residiuum verification status
 
 Status: living evidence-gap snapshot
 
@@ -18,7 +18,7 @@ This document records current evidence. It does not upgrade capability claims.
 
 ## 1. Current verdict
 
-ResiduumDB has a substantial test foundation, but no profile currently has the
+Residiuum has a substantial test foundation, but no profile currently has the
 complete claim/invariant/oracle/evidence bundle required by the new strategy.
 
 The repository MUST NOT describe whole-system testing as exhaustive.
@@ -121,7 +121,7 @@ Result at revision `1d75199428d2f386ff5b8c87a2bddf9a728d9ee9`:
 ```text
 pass
 architecture: OK
-residuum-heap / residuum-format / authority / isolation / handshake / lifecycle /
+residiuum-heap / residiuum-format / authority / isolation / handshake / lifecycle /
 hp010_qualification (24 tests): all green
 qualified claim remains false
 ```
@@ -154,7 +154,7 @@ repository target directory: approximately 7.2 GiB
 complete workspace suite: not re-run under constrained disk
 ```
 
-This is not a ResiduumDB functional failure. It is also not a pass.
+This is not a Residiuum functional failure. It is also not a pass.
 
 Requirements created for `VFY-1`:
 

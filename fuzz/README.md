@@ -1,4 +1,4 @@
-# ResiduumDB fuzz targets (DEF-091 / DEF-091-F)
+# Residiuum fuzz targets (DEF-091 / DEF-091-F)
 
 Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 **not** a workspace member; build it with [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz).
@@ -7,7 +7,7 @@ Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 
 | Layer | When | Command |
 |-------|------|---------|
-| Property / hostile unit tests | Every PR (`quality.sh`) | `RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
+| Property / hostile unit tests | Every PR (`quality.sh`) | `RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
 | cargo-fuzz smoke | Nightly + `scripts/nightly.sh` | `./scripts/fuzz-smoke.sh` (30s/target in CI) |
 | Deep / OSS-Fuzz | Residual | Longer budgets; land crashes under `fuzz/corpus/<target>/` |
 
@@ -15,16 +15,16 @@ Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 
 | Binary | Surface | Package |
 |--------|---------|---------|
-| `decode_frame` | frame decode/verify | residuum-format |
-| `cbor_envelope` | deterministic CBOR envelope | residuum-format |
-| `scan_forward` / `scan_reverse` | salvage scanners | residuum-format |
-| `heap_ownership` | subject/ownership/heap descriptors | residuum-format |
-| `sda_parse` | SDA program lex/parse | residuum-sda |
-| `rpc_frame` | length-prefixed RPC framing | residuum-client |
-| `chunk_manifest` | chunked-value manifest decode | residuum-store |
-| `item_envelope` | item event envelope CBOR | residuum-store |
-| `backup_manifest` | backup control JSON | residuum-store |
-| `cursor_token` | continuation-token MAC decode | residuum-store |
+| `decode_frame` | frame decode/verify | residiuum-format |
+| `cbor_envelope` | deterministic CBOR envelope | residiuum-format |
+| `scan_forward` / `scan_reverse` | salvage scanners | residiuum-format |
+| `heap_ownership` | subject/ownership/heap descriptors | residiuum-format |
+| `sda_parse` | SDA program lex/parse | residiuum-sda |
+| `rpc_frame` | length-prefixed RPC framing | residiuum-client |
+| `chunk_manifest` | chunked-value manifest decode | residiuum-store |
+| `item_envelope` | item event envelope CBOR | residiuum-store |
+| `backup_manifest` | backup control JSON | residiuum-store |
+| `cursor_token` | continuation-token MAC decode | residiuum-store |
 
 ## Local run
 

@@ -2,7 +2,7 @@
 
 #![no_main]
 
-use residuum_format::validate_deterministic_cbor_envelope;
+use residiuum_format::validate_deterministic_cbor_envelope;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

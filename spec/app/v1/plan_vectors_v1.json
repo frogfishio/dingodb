@@ -35,7 +35,7 @@
       },
       "plan_hash_hex": "3efd561f280567e8bae659369c7f0ce8df86fc67b7bf31418cad8e95b5e454f4",
       "plan_hash_status": "canonical_v1",
-      "notes": "Hash from residuum_sdk::plan_v1 builder + encoding profile; APP-5 must match from source_dql."
+      "notes": "Hash from residiuum_sdk::plan_v1 builder + encoding profile; APP-5 must match from source_dql."
     },
     {
       "id": "plan-feature-unavailable-enrich",

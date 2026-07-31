@@ -1,4 +1,4 @@
-# ResiduumDB product deficiency and missing-API register
+# Residiuum product deficiency and missing-API register
 
 Status: **normative product-gap inventory v1.0-draft**
 
@@ -23,13 +23,13 @@ Companions:
 A defect means an implemented or promised contract is wrong.
 
 A product deficiency means a reasonable application needs an operation,
-contract, or supported journey that ResiduumDB does not presently provide as a
+contract, or supported journey that Residiuum does not presently provide as a
 coherent public product—even when lower-level pieces exist.
 
 This register answers:
 
 > If storage qualification passed tomorrow, what would still prevent an
-> ordinary developer from choosing ResiduumDB and building a complete application
+> ordinary developer from choosing Residiuum and building a complete application
 > without inventing a database wrapper?
 
 The answer is not “implement everything MongoDB, PostgreSQL, or Couchbase
@@ -37,7 +37,7 @@ implements.” Each missing capability is classified as:
 
 ```text
 CORE       ordinary dependable document-database contract
-DEFINING   required for ResiduumDB's mathematical product proposition
+DEFINING   required for Residiuum's mathematical product proposition
 OPERABLE   required to run and evolve the product safely
 ECOSYSTEM  required for adoption beyond a Rust-first niche
 EXPANSION  valuable, but must not displace the above
@@ -65,7 +65,7 @@ embedded-only method does not establish backend parity.
 
 The audit uses:
 
-- actual public Rust methods in `residuum-store` and `residuum-sdk`;
+- actual public Rust methods in `residiuum-store` and `residiuum-sdk`;
 - reserved/scaffolded methods in `app_v1`;
 - active server/Heap RPC dispatch;
 - capability and delivery status documents;
@@ -93,7 +93,7 @@ External calibration:
   [NOTIFY](https://www.postgresql.org/docs/current/sql-notify.html).
 
 These examples establish recurring application needs. They do not dictate
-ResiduumDB's syntax, implementation, or guarantees.
+Residiuum's syntax, implementation, or guarantees.
 
 ## 3. Product baseline
 
@@ -166,7 +166,7 @@ This baseline is called `dingo-application-baseline-v1`.
 |---|---|---|---|---|
 | `PD-027` | Async Rust client and bounded connection pool | Current intended v1 façade is synchronous | ECOSYSTEM | `C1` |
 | `PD-028` | Node.js/TypeScript client | Intentionally deferred until Rust/wire contracts stabilize | ECOSYSTEM | `C2` |
-| `PD-029` | Stable language-neutral HTTP/JSON or equivalent gateway | ResiduumDB RPC is internal/product-specific; no broad client bridge | ECOSYSTEM | `C2` |
+| `PD-029` | Stable language-neutral HTTP/JSON or equivalent gateway | Residiuum RPC is internal/product-specific; no broad client bridge | ECOSYSTEM | `C2` |
 | `PD-030` | Application test utilities | No complete temporary Heap, deterministic clock/fault, fixture, and assertion kit | ECOSYSTEM | `C1` |
 | `PD-031` | Migration adapters from JSON files, Mongo-style data, and SQL rows | Cross-compilers cover languages/rules, not operational data migration | ECOSYSTEM | `C2` |
 | `PD-032` | Stable SQL→RQL and JSON Schema→RRE product commands | Specifications exist; shipped compiler/CLI/library contracts are absent | ECOSYSTEM | `C2` |
@@ -607,7 +607,7 @@ embedded/remote shared behavior runner
 ```
 
 An application should be able to test retry, damage, partial coverage, and
-version conflicts without copying ResiduumDB's internal test harness.
+version conflicts without copying Residiuum's internal test harness.
 
 ## 8. Explicitly deferred or rejected
 
@@ -714,7 +714,7 @@ longer acceptable for `dingo-application-baseline-v1`.
 
 Only then is it reasonable to say:
 
-> ResiduumDB provides an ordinary document-database application experience.
+> Residiuum provides an ordinary document-database application experience.
 
 Atomics, RRE, Direct Access, search, archive, and cluster then extend a complete
 product rather than compensating for a missing baseline.

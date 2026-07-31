@@ -1,6 +1,6 @@
 # Heap qualification operator runbook (HP-010)
 
-Status: operational draft for single-node `residuum-heap-v1` qualification evidence  
+Status: operational draft for single-node `dingo-heap-v1` qualification evidence  
 Normative anchors: [HEAP_SPEC.md](../HEAP_SPEC.md) §26–§27 / §39–§40 (HP-010),
 matrix `spec/heap/qualification/hp010-matrix-v1.json`.
 
@@ -13,7 +13,7 @@ does **not** cover. It does not authorize advertising a qualified profile.
 Until every mandatory gate/drill in the HP-010 matrix is `accept` **and** Gate H6
 passes external review, product language remains Level 1:
 
-> ResiduumDB provides named heap namespaces; strong access-isolation qualification
+> Residiuum provides named heap namespaces; strong access-isolation qualification
 > is in progress.
 
 Machine check:
@@ -38,16 +38,16 @@ complete evidence.
 
 | Drill | How to re-run | Pass means |
 |-------|---------------|------------|
-| Differential NI | `cargo test -p residuum-store --test hp010_qualification differential_ni_labelled_units` | Target-heap observation unchanged under other-heap mutation |
+| Differential NI | `cargo test -p residiuum-store --test hp010_qualification differential_ni_labelled_units` | Target-heap observation unchanged under other-heap mutation |
 | Key-loss | `… key_loss_drill` | Destroyed key material is inert; second destroy fails closed |
 | Restore payload-only | `… restore_drills_payload_and_retain_id` | Payload restore grants no access |
 | DR retain-ID | same test | Ceremony fences old deployment; old credentials invalid |
 | HeapCap lifecycle | `… heapcap_terminates_on_lifecycle` | Suspend/retire terminates prior caps |
 | Single-owner admit | `… single_owner_admit` | Known owner only; mutations never admit under wrong heap |
 | Derived paths | `… derived_path_indexes_streams_scoped` | Indexes/streams catalogs stay heap-scoped |
-| SubjectV2 data plane | `cargo test -p residuum-sdk --test hp007_heap_isolation` | Same app keys on two heaps stay isolated; foreign SubjectV2 rejected |
-| Remote connect_heap | `cargo test -p residuum-sdk --features dangerous-key-export --test hp007_connect_heap` | Welcome + ping; put/get/delete; list/scan/find/history; wrong name rejects |
-| CPR-001 legacy opt-in | `cargo test -p residuum-sdk --test cpr001_legacy_opt_in` + `cargo check -p residuum-sdk --no-default-features` | Flat labelled non-qualified; heap-only profile builds |
+| SubjectV2 data plane | `cargo test -p residiuum-sdk --test hp007_heap_isolation` | Same app keys on two heaps stay isolated; foreign SubjectV2 rejected |
+| Remote connect_heap | `cargo test -p residiuum-sdk --features dangerous-key-export --test hp007_connect_heap` | Welcome + ping; put/get/delete; list/scan/find/history; wrong name rejects |
+| CPR-001 legacy opt-in | `cargo test -p residiuum-sdk --test cpr001_legacy_opt_in` + `cargo check -p residiuum-sdk --no-default-features` | Flat labelled non-qualified; heap-only profile builds |
 | Query escape | `… query_escape_faulty_planner_confined` | Faulty unconstrained planner cannot escape bound heap |
 | Load/latency | `… load_latency_budget` | Admit/decide/refresh meet recorded budget |
 | Fuzz budget | `… fuzz_budget_structured_mutations` | Structured adversarial corpus rejects escape |
@@ -99,7 +99,7 @@ fuzz is recommended before claiming H6.
 
 ## 5.1 Lifecycle crash cells
 
-`crates/residuum-store/crash_matrix.v1.json` operation `heap_lifecycle` records
+`crates/residiuum-store/crash_matrix.v1.json` operation `heap_lifecycle` records
 failpoints:
 
 - `heap_lifecycle.after_state_store`
@@ -146,8 +146,8 @@ CI Accept:
 
 | Artifact | Connected Rust stand-in |
 |----------|-------------------------|
-| `formal/heap/HeapIsolation.tla` | `residuum_heap::IsolationModel` |
-| `formal/heap/HeapAuthority.tla` | `residuum_heap::AuthorityModel` |
+| `formal/heap/HeapIsolation.tla` | `residiuum_heap::IsolationModel` |
+| `formal/heap/HeapAuthority.tla` | `residiuum_heap::AuthorityModel` |
 | §39 GenOK / blacklist | `generation_accepted` / `certificate_blacklisted` |
 
 These are CI-connected sketches, **not** full Verus proofs. Claim stays Level 1.
@@ -158,7 +158,7 @@ These are CI-connected sketches, **not** full Verus proofs. Claim stays Level 1.
 |----------|------|
 | [HEAP_COMPLETE_PATH_REVIEW.md](HEAP_COMPLETE_PATH_REVIEW.md) | Complete-path inventory; CPR-001…CPR-006 open findings |
 | [HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md) | Engagement pack for independent review (report still open) |
-| `residuum_heap::connected_pure_proof_bundle` | Executable pure lemmas (not machine-checked Verus) |
+| `residiuum_heap::connected_pure_proof_bundle` | Executable pure lemmas (not machine-checked Verus) |
 
 These advance H6 **evidence packaging**. They do **not** by themselves authorize
 `qualified=true`.

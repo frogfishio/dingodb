@@ -10,12 +10,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-echo "== multi-hop route + kill-node (residuum-sdk integration) =="
-cargo test -p residuum-sdk --features cluster --test stage8d_routing \
+echo "== multi-hop route + kill-node (residiuum-sdk integration) =="
+cargo test -p residiuum-sdk --features cluster --test stage8d_routing \
   multi_hop_and_kill_node_survivor -- --nocapture
 
 echo
 echo "Also available (experimental routing only; not network quorum):"
-echo "  residuum serve-cluster CLUSTER --node N --bind 127.0.0.1:PORT --experimental-network-cluster"
-echo "Offline salvage of a dead node: residuum doctor / residuum salvage on nodes/node-N"
+echo "  residiuum serve-cluster CLUSTER --node N --bind 127.0.0.1:PORT --experimental-network-cluster"
+echo "Offline salvage of a dead node: residiuum doctor / residiuum salvage on nodes/node-N"
 echo "demo complete"

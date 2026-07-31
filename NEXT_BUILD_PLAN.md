@@ -1,4 +1,4 @@
-# ResiduumDB post-Heap build plan
+# Residiuum post-Heap build plan
 
 Status: developer-ready program plan v1.0
 
@@ -112,7 +112,7 @@ unavailable and MUST be rejected by activation until their Atomic scope ships.
 
 Outcome:
 
-> Within one Heap, ResiduumDB commits one bounded serializable transition with a
+> Within one Heap, Residiuum commits one bounded serializable transition with a
 > stable identity and independently examinable decision evidence.
 
 Packages: `ATM-0` through `ATM-5`, `DRE-5`, `REL-0` through `REL-4`, then

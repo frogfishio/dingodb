@@ -11,7 +11,7 @@ Normative source: [ATOMICS_SPEC.md](../ATOMICS_SPEC.md)
 Create:
 
 ```text
-crates/residuum-atomics/
+crates/residiuum-atomics/
   src/
     lib.rs
     id.rs
@@ -37,11 +37,11 @@ types, outcome derivation, and slow semantic oracles.
 Host implementation:
 
 ```text
-residuum-store::atomics       LocalHeap sequencer, journal, publication, recovery
-residuum-sdk::atomics         builders, submit, status, receipts
-residuum-server::atomics      Heap-bound one-shot RPC
-residuum-examine::atomics     SDA evidence projection
-residuum-cluster::atomics     later Partition profile
+residiuum-store::atomics       LocalHeap sequencer, journal, publication, recovery
+residiuum-sdk::atomics         builders, submit, status, receipts
+residiuum-server::atomics      Heap-bound one-shot RPC
+residiuum-examine::atomics     SDA evidence projection
+residiuum-cluster::atomics     later Partition profile
 ```
 
 The pure crate MUST NOT import store/server/cluster code.

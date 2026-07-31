@@ -1,4 +1,4 @@
-# ResiduumDB Collection Contracts specification
+# Residiuum Collection Contracts specification
 
 Status: **Normative design v1.0-draft; not yet implemented**
 
@@ -25,7 +25,7 @@ Normative companions:
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [RRE_SPEC.md](RRE_SPEC.md),
 [RQL_SPEC.md](RQL_SPEC.md),
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md),
 [ATOMICS_SPEC.md](ATOMICS_SPEC.md),
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [ORDER_WAVELET_SPEC.md](ORDER_WAVELET_SPEC.md),
@@ -34,7 +34,7 @@ Normative companions:
 
 ## 1. Decision
 
-ResiduumDB SHALL support a versioned **Collection Contract** attached to exactly
+Residiuum SHALL support a versioned **Collection Contract** attached to exactly
 one collection.
 
 A Collection Contract declares how that collection behaves through every
@@ -43,7 +43,7 @@ wrapper.
 
 The governing product statement is:
 
-> Define what a collection is once. ResiduumDB enforces it everywhere.
+> Define what a collection is once. Residiuum enforces it everywhere.
 
 The first fully specified contract facility is **Collection Scoping**:
 
@@ -105,7 +105,7 @@ Collection Contracts are not:
 - Turing-complete policy code;
 - textual query rewriting performed by an SDK;
 - a promise to eliminate all application vulnerabilities;
-- protection against compromise of the ResiduumDB process or a key legitimately
+- protection against compromise of the Residiuum process or a key legitimately
   carrying cross-scope grants;
 - a way to weaken RRE, Atomic, retention, damage, or coverage requirements.
 
@@ -531,7 +531,7 @@ Rules:
 9. grants sort by immutable CollectionId;
 10. unknown modes or fields fail closed.
 
-The existing `residuum-heap-v1` constraint registry is frozen and does not
+The existing `dingo-heap-v1` constraint registry is frozen and does not
 contain this constraint. Remote qualification therefore requires a versioned
 HeapKey constraint-registry amendment or successor profile. Implementations
 MUST NOT reinterpret an existing v1 constraint kind.
@@ -745,7 +745,7 @@ requested/effective selector = Bound(grant.bound_scope_key)
 valid payload and RRE rules
 ```
 
-ResiduumDB assigns the scope envelope metadata. The payload cannot supply,
+Residiuum assigns the scope envelope metadata. The payload cannot supply,
 override, or infer it.
 
 A HeapKey issuance request containing `create:any` is rejected. An SDK type,
@@ -1146,7 +1146,7 @@ A bound cursor cannot continue as `Any`; an `Any` cursor cannot continue as
 bound. Cursor authentication binds the scope domain and ContractRevision.
 
 Damage to scope membership evidence causes explicit incomplete/refused
-coverage. ResiduumDB never treats unknown scope as matching the caller.
+coverage. Residiuum never treats unknown scope as matching the caller.
 
 ## 22. Contract activation and replacement
 
@@ -1307,7 +1307,7 @@ Silent stripping is not part of v1.
 
 ## 24. Damage and coverage
 
-Collection Contracts obey ResiduumDB's governing recovery rule:
+Collection Contracts obey Residiuum's governing recovery rule:
 
 > What is gone is gone. What remains still lives.
 
@@ -1594,7 +1594,7 @@ examine contract, scopes, and evidence through SDA
 Recommended vertical slice:
 
 ```text
-crates/residuum-contract/
+crates/residiuum-contract/
   source.rs
   ast.rs
   canonical.rs
@@ -1606,23 +1606,23 @@ crates/residuum-contract/
   limits.rs
   oracle.rs
 
-crates/residuum-heap/
+crates/residiuum-heap/
   collection_scope_constraint.rs
 
-crates/residuum-store/
+crates/residiuum-store/
   contract_catalog.rs
   scoped_record.rs
   contract_activation.rs
 
-crates/residuum-sdk/
+crates/residiuum-sdk/
   contract.rs
   scoped_collection.rs
 
-crates/residuum-server/
+crates/residiuum-server/
   contract.rs
   scope_admission.rs
 
-crates/residuum-examine/
+crates/residiuum-examine/
   contract.rs
 ```
 

@@ -3,7 +3,7 @@ Yes.
 Start from the kernel and do not lose it.
 
 **Implementation (2026):** ENR1 **kernel + designed surface** is implemented
-**inside `residuum-sda`** (same lexer/parser/eval as SDA — compile once). Profile tag
+**inside `residiuum-sda`** (same lexer/parser/eval as SDA — compile once). Profile tag
 `sda-enr1-v0.1`. See [README.md](README.md) and `crates/sda-core/tests/enr1_kernel.rs`.
 
 **Still open within ENR1 design:** multi-generator expand (blocked on SDA

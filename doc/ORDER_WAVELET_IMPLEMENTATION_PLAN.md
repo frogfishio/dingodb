@@ -1,4 +1,4 @@
-# Residuum Order Wavelet implementation plan
+# Residiuum Order Wavelet implementation plan
 
 Status: developer-ready v1.0
 
@@ -39,7 +39,7 @@ selection, and adaptive codecs are not part of P5.
 Implement inside the existing vertical slice:
 
 ```text
-crates/residuum-store/src/order_wavelet/
+crates/residiuum-store/src/order_wavelet/
   tree.rs
   matrix.rs
   dictionary.rs
@@ -49,9 +49,9 @@ crates/residuum-store/src/order_wavelet/
   build.rs
   verify.rs
 
-crates/residuum-sdk/src/direct.rs
-crates/residuum-server/src/direct.rs
-crates/residuum-examine/src/direct.rs
+crates/residiuum-sdk/src/direct.rs
+crates/residiuum-server/src/direct.rs
+crates/residiuum-examine/src/direct.rs
 ```
 
 `tree.rs` is the simple executable oracle. `matrix.rs` is allowed to be fast
@@ -306,6 +306,6 @@ P5 requires:
 
 The allowed claim is:
 
-> For a qualified DOW plan, ResiduumDB selects the kth exact filtered result in a
+> For a qualified DOW plan, Residiuum selects the kth exact filtered result in a
 > declared scalar order by navigating exact conditional counts, without
 > enumerating or sorting the preceding matches at query time.

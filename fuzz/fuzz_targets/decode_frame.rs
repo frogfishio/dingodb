@@ -4,7 +4,7 @@
 
 #![no_main]
 
-use residuum_format::{decode_frame, verify_frame_at, SafetyLimits};
+use residiuum_format::{decode_frame, verify_frame_at, SafetyLimits};
 use libfuzzer_sys::fuzz_target;
 
 fn limits() -> SafetyLimits {

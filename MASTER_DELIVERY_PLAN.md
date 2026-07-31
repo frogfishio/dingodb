@@ -1,10 +1,10 @@
-# ResiduumDB master delivery plan
+# Residiuum master delivery plan
 
 Status: **definitive execution plan v1.1**
 
 Effective: 2026-07-30
 
-Owner: ResiduumDB product and engineering program
+Owner: Residiuum product and engineering program
 
 Testing authority:
 [TESTING_STRATEGY.md](TESTING_STRATEGY.md),
@@ -14,7 +14,7 @@ and
 
 ## 1. Authority
 
-This is the controlling document for **what ResiduumDB builds next and in what
+This is the controlling document for **what Residiuum builds next and in what
 order**.
 
 Other documents retain their narrower authority:
@@ -44,7 +44,7 @@ The first product target is:
 > developer can safely choose instead of SQLite plus loose files.
 
 That first adoption gate is reached at `M2`. RRE, Atomics, and exact navigation
-then create the product-defining ResiduumDB proposition at `M3`–`M5`. `M6`
+then create the product-defining Residiuum proposition at `M3`–`M5`. `M6`
 qualifies the combined operational product.
 
 Cluster, vector search, geospatial search, and broad archive expansion are not
@@ -369,8 +369,8 @@ M1 exit:
 Release outcome:
 
 > A careful outsider can replace SQLite plus loose JSON/blob files with
-> ResiduumDB, then survive crash, damage, backup/restore, encryption-key
-> operation, and upgrade without reading ResiduumDB internals.
+> Residiuum, then survive crash, damage, backup/restore, encryption-key
+> operation, and upgrade without reading Residiuum internals.
 
 M2 has one blocking product gate and three parallel enabling lanes. Evidence,
 Telemetry, and Studio are important, but their complete feature sets do not
@@ -579,7 +579,7 @@ M3 exit:
 
 Release outcome:
 
-> Within one Heap, ResiduumDB commits bounded serializable changes with durable
+> Within one Heap, Residiuum commits bounded serializable changes with durable
 > decision evidence and enforces declared cross-document integrity.
 
 Priority: `P1-PATH`

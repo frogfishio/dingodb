@@ -2,14 +2,14 @@ use clap::{ArgAction, Args, Parser, Subcommand};
 use std::io::{IsTerminal, Read};
 
 const APP_VERSION: &str = concat!(env!("SDA_VERSION"), "-build ", env!("SDA_BUILD"));
-const CLI_ABOUT: &str = "DingoDB SDA+ENR1 hybrid command-line interface";
-const CLI_LONG_ABOUT: &str = "DingoDB SDA+ENR1 hybrid command-line interface\n\nEvaluate, validate, and format SDA programs (including additive ENR1) against JSON input.\n\nThe shipped binary is `residuum-sda` (package `residuum-sda-cli`): use `residuum-sda eval` to run filters, `residuum-sda check` to validate source, and `residuum-sda fmt` to emit canonical source for editor and CI workflows.\n\nThis is DingoDB's hybrid surface, not a claim on the bare crates.io name `sda`.";
-const CLI_AFTER_HELP: &str = "Examples:\n  residuum-sda eval -e 'values(input)' < event.json\n  residuum-sda eval -f extract.sda -i event.json --compact\n  residuum-sda check -f extract.sda\n  residuum-sda fmt -f extract.sda --check\n  residuum-sda fmt --stdin-filepath extract.sda < extract.sda\n  residuum-sda --license";
-const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nMIT License\n\nThis program (`residuum-sda`) is offered under the MIT License.\nSee LICENSE-MIT and doc/LICENSING.md in the repository for full terms.";
+const CLI_ABOUT: &str = "Residiuum SDA+ENR1 hybrid command-line interface";
+const CLI_LONG_ABOUT: &str = "Residiuum SDA+ENR1 hybrid command-line interface\n\nEvaluate, validate, and format SDA programs (including additive ENR1) against JSON input.\n\nThe shipped binary is `residiuum-sda` (package `residiuum-sda-cli`): use `residiuum-sda eval` to run filters, `residiuum-sda check` to validate source, and `residiuum-sda fmt` to emit canonical source for editor and CI workflows.\n\nThis is Residiuum's hybrid surface, not a claim on the bare crates.io name `sda`.";
+const CLI_AFTER_HELP: &str = "Examples:\n  residiuum-sda eval -e 'values(input)' < event.json\n  residiuum-sda eval -f extract.sda -i event.json --compact\n  residiuum-sda check -f extract.sda\n  residiuum-sda fmt -f extract.sda --check\n  residiuum-sda fmt --stdin-filepath extract.sda < extract.sda\n  residiuum-sda --license";
+const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nMIT License\n\nThis program (`residiuum-sda`) is offered under the MIT License.\nSee LICENSE-MIT and doc/LICENSING.md in the repository for full terms.";
 
 #[derive(Parser)]
 #[command(
-    name = "residuum-sda",
+    name = "residiuum-sda",
     version = APP_VERSION,
     about = CLI_ABOUT,
     long_about = CLI_LONG_ABOUT,
@@ -66,7 +66,7 @@ struct SourceArgs {
 #[derive(Args)]
 #[command(
     next_line_help = true,
-    after_help = "Examples:\n  residuum-sda eval -e 'values(input)' < event.json\n  residuum-sda eval -f extract.sda -i event.json --compact\n  residuum-sda eval -e 'root<\"name\">!' --bind root < event.json"
+    after_help = "Examples:\n  residiuum-sda eval -e 'values(input)' < event.json\n  residiuum-sda eval -f extract.sda -i event.json --compact\n  residiuum-sda eval -e 'root<\"name\">!' --bind root < event.json"
 )]
 struct EvalArgs {
     /// Inline SDA expression.
@@ -93,7 +93,7 @@ struct EvalArgs {
 #[derive(Args)]
 #[command(
     next_line_help = true,
-    after_help = "Examples:\n  residuum-sda fmt -f extract.sda\n  residuum-sda fmt -f extract.sda --check\n  residuum-sda fmt -f extract.sda --write\n  residuum-sda fmt --stdin-filepath extract.sda < extract.sda"
+    after_help = "Examples:\n  residiuum-sda fmt -f extract.sda\n  residiuum-sda fmt -f extract.sda --check\n  residiuum-sda fmt -f extract.sda --write\n  residiuum-sda fmt --stdin-filepath extract.sda < extract.sda"
 )]
 struct FmtArgs {
     #[command(flatten)]
@@ -135,7 +135,7 @@ fn main() {
 
 fn legacy_eval(cli: Cli) {
     let expr = cli.expression.unwrap_or_else(|| {
-        eprintln!("Error: missing expression. Use `residuum-sda eval -e ...` or provide the legacy positional expression.");
+        eprintln!("Error: missing expression. Use `residiuum-sda eval -e ...` or provide the legacy positional expression.");
         std::process::exit(2);
     });
 

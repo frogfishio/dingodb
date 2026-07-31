@@ -45,7 +45,7 @@ frontier,” **not** “the database is nearly empty.”
 
 ## Validation classes
 
-`Store::primary_cache_diag` / `residuum doctor` report:
+`Store::primary_cache_diag` / `residiuum doctor` report:
 
 | Class | Meaning |
 |-------|---------|
@@ -91,6 +91,6 @@ lifecycle {
 
 - APIs: `diagnose_primary_cache`, `Store::primary_cache_diag`,
   `Store::lifecycle_diag`
-- CLI: `residuum doctor` / `residuum doctor --json-out`
-- Tests: `crates/residuum-store/tests/stage_def_102_primary_cache_diag.rs`
+- CLI: `residiuum doctor` / `residiuum doctor --json-out`
+- Tests: `crates/residiuum-store/tests/stage_def_102_primary_cache_diag.rs`
 - Matrix: `doc/CAPABILITY_MATRIX.md` § Derived-index lifecycle diagnostics

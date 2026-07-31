@@ -2,7 +2,7 @@
 
 Status: **Axis A + Axis B + Axis C harness implemented; testrig `--writer-shards` / `--stores` + 10 GiB Axis B + 1 GiB Axis C comparative + clean multi-store 10 GiB done (2026-07-27)**  
 Date: 2026-07-27  
-Trigger: 10 GiB `residuum-testrig` on MacBook Air M4 after DEF-095  
+Trigger: 10 GiB `residiuum-testrig` on MacBook Air M4 after DEF-095  
 Companion: DEF-023 follow-on, DEF-096, `doc/BENCHMARK_DISCLOSURE.md`, OVERVIEW §12
 
 ## 1. Observation (what you saw)
@@ -23,7 +23,7 @@ Net: **CPU headroom and disk headroom both exist.** The pump is a single-CPU gam
 ## 2. What is serial today (code truth)
 
 ```text
-residuum-testrig pump
+residiuum-testrig pump
   └── for each key: Store::put  (one thread, one Store handle)
         └── exclusive WriterLock (DEF-020)
               └── one active segment file
@@ -76,7 +76,7 @@ Axis C — Horizontal scale    (N stores / partitions / nodes — cluster path)
 
 ### Axis A — Async lifecycle (first; highest leverage per complexity)
 
-**Status: landed** in `residuum-store` (`seal_pipeline` + `Store::rotate_active_async`).
+**Status: landed** in `residiuum-store` (`seal_pipeline` + `Store::rotate_active_async`).
 
 Implementation shape:
 
@@ -88,7 +88,7 @@ Implementation shape:
 6. **Explicit `seal_active`** remains synchronous (drains pipeline first) for tests/failpoints.
 7. **Crash recovery** — `Store::open` runs `recover_all_pending` before index rebuild.
 
-Tests: `crates/residuum-store/tests/stage_def_096_async_lifecycle.rs`.
+Tests: `crates/residiuum-store/tests/stage_def_096_async_lifecycle.rs`.
 
 Why this matches the M4 observation:
 
@@ -106,7 +106,7 @@ Why this matches the M4 observation:
 
 ### Axis B — Sharded writers (second; true multi-core append)
 
-**Status: landed** in `residuum-store` (`Store::create_with_shards`, subject-hash routing, `put_many`).
+**Status: landed** in `residiuum-store` (`Store::create_with_shards`, subject-hash routing, `put_many`).
 
 Implementation shape:
 
@@ -130,10 +130,10 @@ Implementation shape:
 
 **Status: testrig multi-store harness landed + measured** (`--stores N` → N child processes; clean 10 GiB Axis C PASS 2026-07-27).
 
-- **Harness:** `residuum-testrig pump|run --stores N` (N>1) creates `store-00`… under the parent/work dir, spawns N child `pump` processes (true multi-process), splits `target-bytes` across stores, aggregates wall-clock ops/s + summed child RSS/CPU%, discloses `store_count` / `concurrency = stores × writer_shards` / `writer_model: multi_process_stores[_sharded]`.
+- **Harness:** `residiuum-testrig pump|run --stores N` (N>1) creates `store-00`… under the parent/work dir, spawns N child `pump` processes (true multi-process), splits `target-bytes` across stores, aggregates wall-clock ops/s + summed child RSS/CPU%, discloses `store_count` / `concurrency = stores × writer_shards` / `writer_model: multi_process_stores[_sharded]`.
 - **10 GiB free-disk campaign:** `--stores 4 --target-bytes 10G` → ~17.7k ops/s wall, CPU% sum ~376, RSS sum ~2.49 GiB, integrity **PASS** (see `doc/BENCHMARK_DISCLOSURE.md`).
 - Multiple independent stores (manual N pumps under N dirs still works).
-- Cluster partitions with independent leaders (residuum-cluster) remain the **product** multi-node path.
+- Cluster partitions with independent leaders (residiuum-cluster) remain the **product** multi-node path.
 - This is **capacity**, not single-node efficiency. The multi-store pump is a media upper-bound bench — **not** product sharding.
 
 ## 5. Where the cores go (target pipeline)
@@ -170,16 +170,16 @@ Hydra `build_many` already knows how to fan out; seal workers should call the sa
 
 ```sh
 # Multi-core Axis B campaign (diagnostic only)
-residuum-testrig run \
-  --work /var/tmp/residuum-testrig-10g-shards \
+residiuum-testrig run \
+  --work /var/tmp/residiuum-testrig-10g-shards \
   --target-bytes 10G \
   --payload-size 8192 \
   --writer-shards 4 \
   --seed 2
 
 # Multi-process Axis C campaign (diagnostic only; N independent stores)
-residuum-testrig run \
-  --work /var/tmp/residuum-testrig-10g-stores \
+residiuum-testrig run \
+  --work /var/tmp/residiuum-testrig-10g-stores \
   --target-bytes 10G \
   --payload-size 8192 \
   --stores 4 \
@@ -203,7 +203,7 @@ Multi-store pump is a **harness** parallelization for Axis C upper-bound media b
 6. ~~1 GiB Axis C comparative + 256 MiB multi-store integrity.~~ **Done** (2026-07-27) — see `doc/BENCHMARK_DISCLOSURE.md` (peak CPU% sum ~316 on 4 stores; wall ops/s not linear; integrity PASS).
 7. ~~Optional: large multi-store 10 GiB re-measure when host has ≥15 GiB free.~~ **Done** (2026-07-27) — clean Axis C 10 GiB with ~32 GiB free pre-pump: **~17.7k ops/s wall**, peak CPU% sum ~376, RSS sum ~2.49 GiB, **PASS** all four roots. See `doc/BENCHMARK_DISCLOSURE.md` (Multi-store 10 GiB).
 8. **Optional Axis B residual:** shrink serial PrimaryIndex publish after `put_many` so wall ops/s and process CPU% move together (only with before/after disclosure).
-9. **Product capacity:** residuum-cluster multi-partition / multi-node (network serve-cluster); `Cluster::put_many` started — not this harness.
+9. **Product capacity:** residiuum-cluster multi-partition / multi-node (network serve-cluster); `Cluster::put_many` started — not this harness.
 10. **Hot/read (separate lane):** cached Hydra → frame pread; Chimera compiler worker — not on the write-parallelization critical path.
 11. **DEF-093:** durable/replicated ingest + published reproducible profiles.
 

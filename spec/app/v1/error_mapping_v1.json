@@ -1,7 +1,7 @@
 {
   "profile": "dingo-app-error-map-v1",
   "normative": "doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §12",
-  "authority": "crates/residuum-sdk/src/error.rs ErrorCode",
+  "authority": "crates/residiuum-sdk/src/error.rs ErrorCode",
   "retry_policy": {
     "allowed_when_all": [
       "error classified retryable",

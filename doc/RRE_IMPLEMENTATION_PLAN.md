@@ -25,7 +25,7 @@ LocalHeap Atomic packages pass.
 Create:
 
 ```text
-crates/residuum-dre/
+crates/residiuum-dre/
   src/
     lib.rs
     token.rs
@@ -58,16 +58,16 @@ crates/residuum-dre/
 - no host database access;
 - no floating point;
 - no random behavior;
-- no dependence on `residuum-store`.
+- no dependence on `residiuum-store`.
 
 Host integration lives in:
 
 ```text
-residuum-store    artifact/activation persistence and commit gate
-residuum-sdk      rule administration and violations
-residuum-server   Heap-bound protocol dispatch
-residuum-examine  SDA projection of rule evidence
-residuum-cli      compile/check/install/status/examine
+residiuum-store    artifact/activation persistence and commit gate
+residiuum-sdk      rule administration and violations
+residiuum-server   Heap-bound protocol dispatch
+residiuum-examine  SDA projection of rule evidence
+residiuum-cli      compile/check/install/status/examine
 ```
 
 ## 3. Artifact boundary

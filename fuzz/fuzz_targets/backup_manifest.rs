@@ -2,7 +2,7 @@
 
 #![no_main]
 
-use residuum_store::BackupManifest;
+use residiuum_store::BackupManifest;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

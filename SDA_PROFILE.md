@@ -1,20 +1,20 @@
-# ResiduumDB SDA Examination Profile
+# Residiuum SDA Examination Profile
 
 Status: Draft v0.1  
 Depends on: SDA core and standalone profile
 
 ## 1. Purpose
 
-This profile defines how ResiduumDB presents stored material, recovery evidence,
+This profile defines how Residiuum presents stored material, recovery evidence,
 holes, partial payloads, and query pages to SDA.
 
 SDA remains pure. Storage access, tier staging, decryption, decoding, and
-resource control occur in the ResiduumDB host before SDA evaluation. The host
+resource control occur in the Residiuum host before SDA evaluation. The host
 supplies explicit values describing their outcomes.
 
 The profile rule is:
 
-> If ResiduumDB can recover it, SDA can examine it.
+> If Residiuum can recover it, SDA can examine it.
 
 ## 2. Normative conventions
 
@@ -413,7 +413,7 @@ completion, or replica encounter order as SDA sequence order.
 
 ## 13. Evaluation failures
 
-ResiduumDB conditions are examination data. SDA language errors remain `Fail`.
+Residiuum conditions are examination data. SDA language errors remain `Fail`.
 
 Examples:
 
@@ -427,7 +427,7 @@ Examples:
 
 ## 14. Conformance
 
-A conforming ResiduumDB SDA host MUST test:
+A conforming Residiuum SDA host MUST test:
 
 - explicit `Null` versus absence;
 - complete and partial opaque payloads;

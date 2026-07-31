@@ -1,4 +1,4 @@
-# ResiduumDB rebrand plan
+# Residiuum rebrand plan
 
 Status: **active; Phase 0 and Phase 1 complete; Phase 2 implementation renames
 labor-complete (REB-0…REB-7 → in_review); website Phase 4 still open**
@@ -6,14 +6,14 @@ labor-complete (REB-0…REB-7 → in_review); website Phase 4 still open**
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
 
-Canonical product name: **ResiduumDB**
+Canonical product name: **Residiuum**
 
-Canonical short name: **Residuum**
+Canonical short name: **Residiuum**
 
 ## 1. Purpose
 
 This document is the authoritative plan for the transition from the former
-DingoDB working name to ResiduumDB.
+DingoDB working name to Residiuum.
 
 The migration is deliberately phased. A completed phase does not authorize the
 next phase, and a documentation rename does not imply that an implementation
@@ -33,18 +33,18 @@ identifiers that still exist in the implementation.
 
 | Former documentation term | Canonical term |
 |---|---|
-| DingoDB | ResiduumDB |
-| Residuum | Residuum, when referring to the product |
-| Residuum Query Language (DQL) | Residuum Query Language (RQL) |
-| Residuum Rule Expression (DRE) | Residuum Rule Expression (RRE) |
-| Residuum Rules | Residuum Rules |
-| Residuum Predicate | Residuum Predicate |
-| Residuum Studio | Residuum Studio |
-| Residuum Evidence Ledger | Residuum Evidence Ledger |
-| Residuum Direct Access | Residuum Direct Access |
-| Residuum Order Wavelet | Residuum Order Wavelet |
-| `dingodb.org` | `residuumdb.org` |
-| `docs.dingodb.org` | `docs.residuumdb.org` |
+| DingoDB | Residiuum |
+| Dingo | Residiuum, when referring to the product |
+| Dingo Query Language (DQL) | Residiuum Query Language (RQL) |
+| Dingo Rule Expression (DRE) | Residiuum Rule Expression (RRE) |
+| Dingo Rules | Residiuum Rules |
+| Dingo Predicate | Residiuum Predicate |
+| Dingo Studio | Residiuum Studio |
+| Dingo Evidence Ledger | Residiuum Evidence Ledger |
+| Dingo Direct Access | Residiuum Direct Access |
+| Dingo Order Wavelet | Residiuum Order Wavelet |
+| `dingodb.org` | `residiuumdb.org` |
+| `docs.dingodb.org` | `docs.residiuumdb.org` |
 
 The RQL and RRE names describe the canonical language identities. Lowercase
 implementation spellings such as `dql`, `dql_query`, source filenames, work
@@ -56,7 +56,7 @@ separate implementation migration is approved.
 Markdown MUST preserve a legacy identifier when changing it would make an
 example, command, path, protocol statement, compatibility claim, test vector,
 or source reference false. After Phase 2 Class A/B renames, **current**
-implementation identity is Residuum-named; the remaining **literal legacy**
+implementation identity is Residiuum-named; the remaining **literal legacy**
 identifiers include, without limitation:
 
 - Class C wire/on-disk facts: `.dingo` store files; `dingo-*-v1` profiles;
@@ -71,8 +71,8 @@ identifiers include, without limitation:
   before/after examples (e.g. [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md)).
 
 **Current (post–Phase 2) Class B identity (do not reverse):** packages
-`residuum-*`, type `Residuum` / `Residuum::open`, CLI `residuum` /
-`residuum-sda`, URI `residuum://`, env `RESIDUUM_*`.
+`residiuum-*`, type `Residiuum` / `Residiuum::open`, CLI `residiuum` /
+`residiuum-sda`, URI `residiuum://`, env `RESIDIUUM_*`.
 
 When readers could mistake a literal identifier for the current brand,
 documentation SHOULD label it **legacy technical identifier** on first relevant
@@ -81,19 +81,19 @@ because its product terminology has changed.
 
 ## 4. Naming form
 
-Use **ResiduumDB** for the first product mention in a document and whenever the
-database category matters. Use **Residuum** afterward when natural.
+Use **Residiuum** for the product. Do not append “DB” to the product name.
 
-Do not use the misspelling “Residiuum.” Do not abbreviate the product itself to
-“RDB”; that abbreviation is already overloaded. RQL and RRE are the canonical
-language abbreviations.
+Do not use the incorrect spellings “Residuum” or “ResiduumDB.” The `db` suffix
+belongs only to the public domain names. Do not abbreviate the product itself
+to “RDB”; that abbreviation is already overloaded. RQL and RRE are the
+canonical language abbreviations.
 
 ## 5. Domain policy
 
 The canonical public hosts are:
 
-- `https://residuumdb.org`
-- `https://docs.residuumdb.org`
+- `https://residiuumdb.org`
+- `https://docs.residiuumdb.org`
 
 References to local repository directories such as `web/dingodb.org` remain
 unchanged until the Phase 4 website migration because those directories have
@@ -101,7 +101,7 @@ not yet been renamed.
 
 The docs-site content filenames and routes containing `dql`, `dre`, or
 `choose-dingodb` also remain as legacy route identifiers until Phase 4. Their
-visible titles and link labels use RQL, RRE, and ResiduumDB. Renaming those
+visible titles and link labels use RQL, RRE, and Residiuum. Renaming those
 routes requires coordinated changes to non-Markdown navigation and migration
 manifests and belongs to the later website migration.
 
@@ -111,9 +111,9 @@ Phase 1, the Markdown phase, is complete when:
 
 1. normative prose uses the canonical terminology;
 2. normative Markdown specification names and visible link labels use RQL,
-   RRE, and Residuum names;
+   RRE, and Residiuum names;
 3. all local Markdown links resolve;
-4. every remaining Residuum-branded occurrence is a literal technical identifier,
+4. every remaining Dingo-branded occurrence is a literal technical identifier,
    historical statement, local path, or explicit compatibility note; and
 5. no Rust or non-Markdown implementation artifact has been changed by this
    phase.
@@ -128,9 +128,9 @@ The required order is:
 | Phase | Owner | State | Work |
 |---|---|---|---|
 | 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
-| 1. Documentation identity | Codex | **complete** | Establish ResiduumDB, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
+| 1. Documentation identity | Codex | **complete** | Establish Residiuum, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
 | 2. Wholesale repository naming | Codex | **labor complete (awaiting principal accept)** | Class A/B renames + changelog + Class C freeze; REB board in_review |
-| 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and core tests green under residuum names; principal owns any further semantic realignment beyond REB |
+| 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and core tests green under residiuum names; principal owns any further semantic realignment beyond REB |
 | 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
 | 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
 
@@ -143,12 +143,12 @@ Phase 3 residual beyond compile/test green.
 
 Phase 2 is repository-wide, not a blind search-and-replace. It includes:
 
-- Rust public types and constructors such as `Residuum` and `Residuum::open`;
-- Cargo package, crate, feature, and import names such as `residuum-sdk` and
-  `residuum_sdk`;
-- executables and commands such as `residuum` and `residuum-sda`;
-- the `residuum://` URI scheme;
-- `RESIDUUM_*` environment variables (hard-break from former `DINGO_*`);
+- Rust public types and constructors such as `Residiuum` and `Residiuum::open`;
+- Cargo package, crate, feature, and import names such as `residiuum-sdk` and
+  `residiuum_sdk`;
+- executables and commands such as `residiuum` and `residiuum-sda`;
+- the `residiuum://` URI scheme;
+- `RESIDIUUM_*` environment variables (hard-break from former `DINGO_*`);
 - product-owned configuration keys, service names, telemetry names, fixtures,
   examples, scripts, and generated-package metadata;
 - internal repository directories whose names are not being reserved for the
@@ -221,13 +221,13 @@ work must confirm collisions and compatibility behavior before adoption.
 
 | Current implementation name | Intended name |
 |---|---|
-| `Residuum` | `Residuum` |
-| `Residuum::open` | `Residuum::open` |
-| `dingo-*` package/binary prefix | `residuum-*` |
-| `dingo_*` Rust crate/module prefix | `residuum_*` |
-| `residuum` CLI | `residuum` |
-| `residuum://` | `residuum://` |
-| `DINGO_*` | `RESIDUUM_*` |
+| `Dingo` | `Residiuum` |
+| `Dingo::open` | `Residiuum::open` |
+| `dingo-*` package/binary prefix | `residiuum-*` |
+| `dingo_*` Rust crate/module prefix | `residiuum_*` |
+| `dingo` CLI | `residiuum` |
+| `dingo://` | `residiuum://` |
+| `DINGO_*` | `RESIDIUUM_*` |
 | DQL implementation names | RQL equivalents |
 | DRE implementation names | RRE equivalents |
 
@@ -273,10 +273,10 @@ The rebrand is complete only after:
 - wire negotiation and credentials behave according to the Class C decisions;
 - package metadata and published names are coherent;
 - website routes, canonical URLs, navigation, search metadata, code samples,
-  and redirects use ResiduumDB;
+  and redirects use Residiuum;
 - repository-wide stale-name searches contain only approved legacy or
   historical occurrences; and
-- the final review records no unexplained Residuum, DQL, or DRE identity.
+- the final review records no unexplained Dingo, DQL, or DRE identity.
 
 ## 12. Required migration changelog
 
@@ -308,7 +308,7 @@ The Phase 5 review must examine:
 - filenames, directory names, source symbols, package manifests, lockfiles,
   scripts, CI, release automation, fixtures, examples, and generated metadata;
 - human prose separately from literal implementation identifiers;
-- case, separator, and abbreviation variants of DingoDB, Residuum, DQL, and DRE;
+- case, separator, and abbreviation variants of DingoDB, Dingo, DQL, and DRE;
 - public API and package usability from a clean consumer project;
 - old and new command, URI, environment, and configuration behavior;
 - new-store, old-store, mixed-version, backup, restore, and rollback journeys;
@@ -321,3 +321,193 @@ The Phase 5 review must examine:
 The audit result must classify every remaining former-name occurrence as
 approved compatibility, immutable history, or a defect. “Probably harmless”
 is not a valid disposition.
+
+## 14. Remaining implementation handoff
+
+This section is the authoritative handoff for completing the rebrand. Execute
+the work packages sequentially. Do not restart the rebrand, run an unrestricted
+brand replacement, or allow multiple models to edit the same surface
+concurrently.
+
+### 14.1 Canonical identity
+
+The product name is **Residiuum**.
+
+The spelling `residiuumdb` is not a product name. It is permitted only as part
+of a web domain, including:
+
+- `residiuumdb.com`;
+- `residiuumdb.org`; and
+- `docs.residiuumdb.org`.
+
+The spellings `Residuum`, `ResiduumDB`, and `residuum-*` are incorrect,
+unreleased intermediate names and have no compatibility status.
+
+### 14.2 REB-8 — complete the interrupted RQL public-surface rename
+
+The working tree contains a partially completed DQL-to-RQL implementation
+rename. The next implementer MUST continue from the current state rather than
+restarting it.
+
+Known partial state:
+
+- `crates/residiuum-sdk/src/dialects/dql.rs` has been moved to `rql.rs`;
+- several `Dql` and `dql` public symbols have become `Rql` and `rql`;
+- some frozen profile values were accidentally changed to `rql-*` and must be
+  restored; and
+- `crates/residiuum-sdk/src/lib.rs` still exports the obsolete
+  `DQL_APP_CORE_PROFILE` symbol.
+
+The following public names MUST become RQL names:
+
+- `BuiltinDialect::Dql` → `BuiltinDialect::Rql`;
+- dialect identifier `"dql"` → `"rql"`;
+- `compile_dql` → `compile_rql`;
+- `DqlProgram` → `RqlProgram`;
+- `parse_dql` → `parse_rql`;
+- public method `dql` → `rql`;
+- `explain_dql` → `explain_rql`;
+- `DQL_APP_CORE_PROFILE` symbol → `RQL_APP_CORE_PROFILE`;
+- `DQL_PLAN_PROFILE` symbol → `RQL_PLAN_PROFILE`;
+- visible console terminology DQL → RQL; and
+- source-document links `DQL_SPEC.md` → `RQL_SPEC.md`.
+
+The obsolete public dialect aliases `"dql"` and `"dingo-ql"` SHOULD be removed
+unless an existing normative compatibility decision explicitly requires them.
+
+The following serialized values are frozen compatibility identifiers and MUST
+remain unchanged:
+
+- `dql-app-core-v1`;
+- `dql-plan-v1`;
+- `dql-plan-encoding-v1`;
+- `dingo:dql-plan-v1:canonical-v1`;
+- wire operation and fixture names such as `dql_query.*`;
+- serialized error identifiers such as `dql_feature_unavailable`;
+- accepted profile fields under `spec/app/v1/`; and
+- accepted wire fixtures under `spec/heap/`.
+
+The intended distinction is:
+
+```rust
+pub const RQL_APP_CORE_PROFILE: &str = "dql-app-core-v1";
+pub const RQL_PLAN_PROFILE: &str = "dql-plan-v1";
+```
+
+In `crates/residiuum-sdk/src/app_v1.rs`, restore the frozen values
+`dql-app-core-v1` and `dql-plan-v1`, including their assertions. In
+`crates/residiuum-sdk/src/lib.rs`, export `RQL_APP_CORE_PROFILE` and remove the
+stale `DQL_APP_CORE_PROFILE` export. Tests must use the new Rust symbol names
+while continuing to expect the frozen serialized values.
+
+REB-8 acceptance:
+
+```text
+cargo check --workspace
+cargo test -p residiuum-sdk
+cargo test -p residiuum-cli --test console
+rg '\bDql\b|compile_dql|parse_dql|explain_dql|DQL_APP_CORE_PROFILE|DQL_PLAN_PROFILE' crates
+```
+
+The final search must be empty. Remaining lowercase `dql` occurrences must each
+be demonstrably frozen profiles, wire identifiers, fixtures, error identifiers,
+or historical compatibility statements.
+
+### 14.3 REB-9 — Class C compatibility audit
+
+Inspect every changed literal against
+[doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md). In particular,
+preserve:
+
+- `DINGOFRM` and `DINGOEND`;
+- `dingo-*-v1` profiles;
+- `dingo-store-9`;
+- persisted cluster labels;
+- `urn:dingo:*`;
+- `application/dingo.*`;
+- `DINGODB-*` cryptographic domains;
+- `dingo:` hash domains;
+- `.dingo`;
+- `__dingo_snapshot_base__`; and
+- the frozen DQL profile and wire identifiers listed in REB-8.
+
+An earlier mechanical pass accidentally renamed some Class C values. The known
+store, Heap, server, SDA, and cluster cases have been restored, including the
+store readers that recognize the `dingo-store-*` metadata family. REB-9 must
+prove that no additional Class C value escaped.
+
+REB-9 acceptance:
+
+```text
+cargo test -p residiuum-format
+cargo test -p residiuum-heap
+cargo test -p residiuum-store
+cargo test -p residiuum-cluster
+```
+
+### 14.4 REB-10 — public identity residual audit
+
+The required public identity is:
+
+| Surface | Required identity |
+|---|---|
+| Product | `Residiuum` |
+| Rust entry type | `Residiuum` |
+| Constructor | `Residiuum::open` |
+| Cargo packages | `residiuum-*` |
+| Rust imports | `residiuum_*` |
+| Main CLI | `residiuum` |
+| SDA CLI | `residiuum-sda` |
+| Client URI | `residiuum://` |
+| Environment | `RESIDIUUM_*` |
+| Query language | RQL |
+| Rule language | RRE |
+
+Search for and classify every remaining spelling of `Residuum`,
+`ResiduumDB`, `residuum`, `DingoDB`, product-facing `Dingo`, public
+`dingo_*`, `dingo://`, public `DINGO_*`, DQL, and DRE. Every remaining former
+name must be approved Class C compatibility, immutable history, an explicitly
+deferred website occurrence, or a defect.
+
+Do not modify `web/` during REB-10. Website migration remains Phase 4.
+
+### 14.5 REB-11 — documentation and changelog reconciliation
+
+Reconcile this document, [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md), and
+[doc/REBRAND_INVENTORY.md](doc/REBRAND_INVENTORY.md) with implemented reality.
+They must record:
+
+- Residiuum as the exact product name;
+- `Residuum` as an incorrect, unreleased intermediate spelling;
+- `residiuumdb` as domain-only;
+- the completed Class A/B renames;
+- deliberate retention of Class C identifiers;
+- RQL public names paired with frozen DQL profile and wire values;
+- explicit deferral of the websites; and
+- only test evidence that was actually observed.
+
+All local Markdown links must resolve after reconciliation.
+
+### 14.6 REB-12 — final verification
+
+After REB-8 through REB-11 are complete, run:
+
+```text
+cargo check --workspace
+cargo test --workspace
+```
+
+The full workspace suite previously exposed a test-harness race in
+`hp006_heap_migration`: parallel cases shared the process-wide failpoint
+registry. The failpoint-using cases now take a common test mutex, and the test
+passes under its normal parallel configuration.
+
+Do not apply repository-wide automatic formatting during this work. The
+repository has substantial pre-existing formatting differences; doing so would
+create a large unrelated diff. Formatting must be limited to files materially
+changed by the relevant work package.
+
+REB-12 is complete only when the workspace build and test suite pass, the
+residual audit has no unexplained occurrence, and the evidence is recorded in
+the rebrand changelog. Website work and the post-website Phase 5 audit remain
+separate.

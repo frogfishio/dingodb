@@ -1,4 +1,4 @@
-# ResiduumDB staged delivery plan
+# Residiuum staged delivery plan
 
 Status: Draft v0.23 (Stages 0–9 done; Doc P2 aligned; product follow-ons 1–4 landed)  
 Audience: implementers  
@@ -9,10 +9,10 @@ Depends on: [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 
 ## 1. Purpose
 
-Specs are ahead of code. SDA is already specified; the rest of ResiduumDB is
+Specs are ahead of code. SDA is already specified; the rest of Residiuum is
 specified as architecture, wire format, DX, and clustering.
 
-This plan answers: **how do we ship ResiduumDB in stages** so each stage is
+This plan answers: **how do we ship Residiuum in stages** so each stage is
 demoable, testable, and aligned with the product thesis, without waiting for
 the full system.
 
@@ -69,8 +69,8 @@ The governing product rule stays:
 Stages 0–4 are the **minimum path to a useful embedded database**.  
 Stages 5–7 complete the **README initial implementation target**.  
 Stages 8–9 are **scale-out and retention** after the single-node product is real.
-Stage **8a–8f** (`residuum-cluster`) completes the in-process cluster profile.
-Stage **9** (`residuum-store` tiers + runbook) completes single-node long retention.
+Stage **8a–8f** (`residiuum-cluster`) completes the in-process cluster profile.
+Stage **9** (`residiuum-store` tiers + runbook) completes single-node long retention.
 
 ---
 
@@ -131,8 +131,8 @@ especially §1–§12 and §14.
   `section_14_must_lock` + golden `tests/sda/section14_must.json`.
 - Minimal suite in §14.1 fully automated. **Met**.
 - Determinism: same program + input ⇒ same value or stable `Fail`.
-- Public surface: library API (`residuum-sda`) + optional `residuum-sda` CLI (`eval`, `check`).
-- **No** ResiduumDB types, segments, or host IO inside the SDA core.
+- Public surface: library API (`residiuum-sda`) + optional `residiuum-sda` CLI (`eval`, `check`).
+- **No** Residiuum types, segments, or host IO inside the SDA core.
 - Standalone freeze tag: `sda-standalone-v1.0` (`CONFORMANCE_CORPUS_TAG`).
 
 **Why first**
@@ -221,7 +221,7 @@ chunks as needed for inline-only first.
 
 **Suggested sub-milestones**
 
-| 3a | Open/create, put/get/delete, durability modes, rebuildable index, catalog wipe salvage | **done** — `residuum-store` |
+| 3a | Open/create, put/get/delete, durability modes, rebuildable index, catalog wipe salvage | **done** — `residiuum-store` |
 | 3b | Broader OVERVIEW §16 store-level suite (middle segment loss, reorder, etc.) | **done** — `tests/section16_store.rs` (cases 1–10) |
 | 3c | Store descriptor frame + optional index cache on disk | **done** — `store-info/descriptor.dingo` + `indexes/primary.idx` |
 
@@ -237,7 +237,7 @@ chunks as needed for inline-only first.
 **Goal:** The boring happy path from [DX_SPEC.md](DX_SPEC.md) and README:
 
 ```ts
-const db = await Residuum.open("./app.dingo");
+const db = await Residiuum.open("./app.dingo");
 await db.collection("users").put("user-42", { name: "Alice" });
 ```
 
@@ -246,7 +246,7 @@ disclosure layers 1–2.
 
 **Deliverables**
 
-1. `Residuum.open(path)` create-or-open with safe defaults.
+1. `Residiuum.open(path)` create-or-open with safe defaults.
 2. Collections: `put`, `get`, `delete`, optional `append` for streams.
 3. JSON and raw bytes as first-class payloads.
 4. Simple filters without requiring callers to write SDA (builder or object
@@ -265,7 +265,7 @@ disclosure layers 1–2.
 
 **Suggested sub-milestones**
 
-| 4a | Open + put/get/delete JSON | **done** — `residuum-sdk` (`Residuum::open`, `collection`, JSON put/get/delete) |
+| 4a | Open + put/get/delete JSON | **done** — `residiuum-sdk` (`Residiuum::open`, `collection`, JSON put/get/delete) |
 | 4b | Bytes + streaming scan of collection | **done** — `put_bytes`/`get_bytes`, `scan_keys`/`scan_json`, `scan_json_iter` |
 | 4c | Filter builder + limit/order basics | **done** — `Filter` AST, `find`/`find_json`, fluent `query()`, limit/order |
 | 4d | Error taxonomy + durability receipts | **done** — `ErrorCode` + `Error::code`; receipts report achieved durability |
@@ -293,7 +293,7 @@ SDA programs examine verified items, partial payloads, and holes.
 
 **Exit criteria**
 
-- “If ResiduumDB can recover it, SDA can examine it” holds for Stage 2–3 salvage
+- “If Residiuum can recover it, SDA can examine it” holds for Stage 2–3 salvage
   outputs.
 - Profile field set matches SDA_PROFILE (unknown future tags preserved).
 - Golden tests: damaged segment → examination stream → SDA filter finds only
@@ -301,7 +301,7 @@ SDA programs examine verified items, partial payloads, and holes.
 
 **Status**
 
-| 5 | ExaminationUnit host + SDA over salvage | **done** — `residuum-examine` (`examine_store` / `examine_bytes`, `filter_units` / `map_units`, `ExaminePage` + limits); `Store::examination_sources`; golden tests in `stage5_examination.rs` |
+| 5 | ExaminationUnit host + SDA over salvage | **done** — `residiuum-examine` (`examine_store` / `examine_bytes`, `filter_units` / `map_units`, `ExaminePage` + limits); `Store::examination_sources`; golden tests in `stage5_examination.rs` |
 
 **Dependency note**
 
@@ -358,27 +358,27 @@ operator tooling and same-API remote access.
 
 **Deliverables**
 
-1. CLI mirroring logical API: put/get/list basics. **done** — `crates/residuum-cli` (`residuum` binary)
-2. `residuum doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
+1. CLI mirroring logical API: put/get/list basics. **done** — `crates/residiuum-cli` (`residiuum` binary)
+2. `residiuum doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
 3. `dingo salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
-4. Server process + `Residuum.connect("residuum://...")` with the same collection API
-   as embedded. **done** — `residuum serve` + line-delimited JSON RPC; remote put/get/delete/scan
-5. Authn/deadline/retry as connection options only (no app-level API split). **done** — `ConnectOptions` / `ServeOptions` / `Residuum::connect_with`; `residuum serve --token`; DX codes `authentication_failed` / `deadline_exceeded`
+4. Server process + `Residiuum.connect("residiuum://...")` with the same collection API
+   as embedded. **done** — `residiuum serve` + line-delimited JSON RPC; remote put/get/delete/scan
+5. Authn/deadline/retry as connection options only (no app-level API split). **done** — `ConnectOptions` / `ServeOptions` / `Residiuum::connect_with`; `residiuum serve --token`; DX codes `authentication_failed` / `deadline_exceeded`
 6. Reproducible corruption + performance test packaging for CI/nightly. **done** — `.github/workflows/nightly.yml` + `scripts/nightly.sh` run §13/§16/stage6 bench + Stage 7 CLI
 
 **Exit criteria**
 
 - DX journeys 4–5, 7, 9–10 satisfied for single-node. **done** (CLI + doctor + salvage + serve/connect)
-- Doctor never writes by default; salvage does not mutate the source store. **done** — tests in `residuum-cli/tests/cli.rs`, `residuum-store/tests/salvage.rs`
+- Doctor never writes by default; salvage does not mutate the source store. **done** — tests in `residiuum-cli/tests/cli.rs`, `residiuum-store/tests/salvage.rs`
 - Embedded and server pass the same logical SDK put/get path (transport differs). **done** — `serve_and_sdk_connect_parity`
 - README “initial implementation target” checklist checked item-by-item. **done** for single-node items
 
 **Suggested sub-milestones**
 
-| 7a | `residuum` CLI put/get/list/delete/put-bytes | **done** |
-| 7b | `residuum doctor` read-only | **done** |
+| 7a | `residiuum` CLI put/get/list/delete/put-bytes | **done** |
+| 7b | `residiuum doctor` read-only | **done** |
 | 7c | `dingo salvage --output` | **done** |
-| 7d | `residuum serve` + `Residuum::connect` | **done** |
+| 7d | `residiuum serve` + `Residiuum::connect` | **done** |
 | 7e | Authn/deadline/retry connection options | **done** |
 | 7f | Nightly corruption/perf packaging polish | **done** |
 
@@ -418,10 +418,10 @@ control plane payload authority.
 
 **Suggested sub-milestones**
 
-| 8a | Foundation: `residuum-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
+| 8a | Foundation: `residiuum-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
 | 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
 | 8c | Convergent-append path + split dual-accept tests | **done** — `src/convergent.rs`, `tests/stage8c_convergent.rs` |
-| 8d | SDK routing (`Residuum::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Residuum::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
+| 8d | SDK routing (`Residiuum::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Residiuum::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
 | 8e | Distributed scan/find coverage + partial-query honesty | **done** — `FindResult` / `ScanOptions`, `Cluster::scan_with` / `find`, SDK `find_with_coverage` + `allow_partial_coverage`; tests `stage8e_find.rs`, `stage8e_find_coverage.rs` |
 | 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | **done** — interruptible rebalance (§14), placement persist, directory reconstruct; tests `stage8f_rebalance.rs` |
 
@@ -447,7 +447,7 @@ control plane payload authority.
 
 **Stage 8b notes**
 
-- Per-partition Raft-equivalent groups (`residuum_cluster::raft`) with published
+- Per-partition Raft-equivalent groups (`residiuum_cluster::raft`) with published
   election, log-matching, and commit rules (CLUSTER_SPEC §10.1).
 - Leadership is elected among online voters; quorum is majority of the
   **configured** voter set. Leader loss with a live majority re-elects.
@@ -466,11 +466,11 @@ control plane payload authority.
 
 **Stage 8d notes**
 
-- Same collection API over an in-process cluster via `Residuum::create_cluster` /
+- Same collection API over an in-process cluster via `Residiuum::create_cluster` /
   `open_cluster`; client holds a [`ClientDirectoryCache`] of partition → leader
   routes and refreshes on stale placement (CLUSTER_SPEC §13, §22.5).
-- Multi-seed `residuum://h1:p1,h2:p2[/label]` URLs parse and try seeds in order.
-- Single-node `residuum serve` answers `directory` with a synthetic all-local
+- Multi-seed `residiuum://h1:p1,h2:p2[/label]` URLs parse and try seeds in order.
+- Single-node `residiuum serve` answers `directory` with a synthetic all-local
   placement snapshot for uniform client caching.
 
 **Stage 8e notes**
@@ -516,7 +516,7 @@ USP long retention.
 
 **Implementation notes**
 
-- `residuum-store`: `tier.rs` (placement, transfer, coverage, format classify),
+- `residiuum-store`: `tier.rs` (placement, transfer, coverage, format classify),
   `segment_catalog.rs` (hierarchical summaries), layout `tiers/` +
   `catalogs/tier-placement.cat` + `catalogs/segments.cat`.
 - APIs: `transfer_segment_to_tier`, `set_tier_available`, `tier_coverage`,
@@ -532,11 +532,11 @@ USP long retention.
 
 **Follow-ons (not Stage 9 blockers)**
 
-- Live S3/GCS HTTP backends behind the same [`MediaLocator`](crates/residuum-store/src/media.rs)
+- Live S3/GCS HTTP backends behind the same [`MediaLocator`](crates/residiuum-store/src/media.rs)
   placement API (`object:local:` stand-in shipped; `s3://` / `gs://` parse-ready).
 - Automatic lifecycle policies; erasure-coded archive shards.
 - Network multi-node Raft serve polish (post–Stage 8 in-process):
-  `endpoints.json` + `residuum serve-cluster` directory advertise; further client
+  `endpoints.json` + `residiuum serve-cluster` directory advertise; further client
   multi-hop routing / chaos demos continue.
 
 ---
@@ -586,7 +586,7 @@ These are narrative checkpoints for users and sponsors, not separate engineering
 tracks. Living scripts (where checked in) live under `scripts/demos/`.
 
 1. **“Algebra works”** — Stage 1: paste JSON, run SDA, get deterministic tree.
-   (`cargo run -p residuum-sda-cli --bin residuum-sda -- eval -e '1 + 2'`)
+   (`cargo run -p residiuum-sda-cli --bin residiuum-sda -- eval -e '1 + 2'`)
 2. **“Punch a hole”** — Stage 2: corrupt a segment file; scanner lists islands
    and holes. → [`scripts/demos/02_punch_a_hole.sh`](scripts/demos/02_punch_a_hole.sh)
 3. **“Database that survives”** — Stage 3–4: app puts data; wipe indexes;
@@ -596,7 +596,7 @@ tracks. Living scripts (where checked in) live under `scripts/demos/`.
    verified vs holes.
 5. **“Ordinary product”** — Stage 6–7: indexes, doctor, CLI, server.
 6. **“Federation”** — Stage 8: kill a node; others serve; dead node’s disks
-   still salvage offline. Network process serve: `residuum serve-cluster`.
+   still salvage offline. Network process serve: `residiuum serve-cluster`.
    → [`scripts/demos/08_kill_a_node.sh`](scripts/demos/08_kill_a_node.sh)
 7. **“Keep it fifteen years”** — Stage 9: tier move + cold search story.
    → [`scripts/demos/07_tier_move.sh`](scripts/demos/07_tier_move.sh)
@@ -608,11 +608,11 @@ Record answers in-repo; they block packaging, not the stage order:
 | # | Decision | Status |
 |---|----------|--------|
 | 1 | Implementation language(s) for core vs SDK | **Resolved (Stage 0):** Rust core; first SDK is Rust lib API; DX TypeScript-like samples remain the product shape (other language SDKs later). See [ARCHITECTURE.md](ARCHITECTURE.md). |
-| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `DINGOFRM` / `DINGOEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `residuum-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
+| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `DINGOFRM` / `DINGOEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `residiuum-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
 | 3 | Default durability mode for embedded open | **As implemented (Stage 3–4):** SDK default is `DurabilityMode::Durable` (`WriteOptions::default`, remote/server fallback). DX “safe by default” holds. |
 | 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
-| 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `residuum-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
-| 6 | Whether SDA CLI ships inside `residuum` or separate | **Resolved for now:** separate `residuum-sda` binary via `residuum-sda-cli` (Stage 1). Stage 7 `residuum` coexists. |
+| 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `residiuum-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
+| 6 | Whether SDA CLI ships inside `residiuum` or separate | **Resolved for now:** separate `residiuum-sda` binary via `residiuum-sda-cli` (Stage 1). Stage 7 `residiuum` coexists. |
 
 ## 10. Work apportionment (streams)
 
@@ -656,10 +656,10 @@ the cited conformance suites as required checks—not optional polish.
    `crates/sda-core/tests/sda/section14_must.json`; `∪`/`∩`/`\` spellings;
    `bindOpt`/`bindRes` enforce Opt/Res return contracts (§11.3).
 4. ~~Freeze SDA standalone behind a versioned conformance corpus tag.~~ **Done** —
-   `residuum_sda::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
+   `residiuum_sda::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
    `tests/sda/VERSION`). Semantic changes require a new tag.
-5. ~~Open Stage 2 format work (`residuum-format` frame codec).~~ **Done (2a)** —
-   `crates/residuum-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
+5. ~~Open Stage 2 format work (`residiuum-format` frame codec).~~ **Done (2a)** —
+   `crates/residiuum-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
    BLAKE3-256 body hash and structural `verified-complete` checks including
    deterministic CBOR envelope rules (§5 condition 6).
 6. ~~Stage 2b–2c — active segment seal + forward salvage scanner.~~ **Done** —
@@ -670,11 +670,11 @@ the cited conformance suites as required checks—not optional polish.
    `tests/section13_corpus.rs` automates every §13 bullet; `scan_reverse`
    (§7.4); `group_by_event_id` (§9); draft `reassemble_chunks` partial maps
    (§8). Deterministic envelope CBOR (§5 condition 6) enforced.
-8. ~~Stage 3 store (`residuum-store`).~~ **Done (3a–3c)** — put/get/delete,
+8. ~~Stage 3 store (`residiuum-store`).~~ **Done (3a–3c)** — put/get/delete,
    durability, salvage, §16 suite, descriptor + index cache.
-9. ~~Stage 4 collection SDK (`residuum-sdk`).~~ **Done (4a–4d)** — open,
+9. ~~Stage 4 collection SDK (`residiuum-sdk`).~~ **Done (4a–4d)** — open,
    JSON/bytes, scan/stream, filters, `ErrorCode`, receipts.
-10. ~~Stage 5 SDA examination (`residuum-examine`).~~ **Done** — ExaminationUnit
+10. ~~Stage 5 SDA examination (`residiuum-examine`).~~ **Done** — ExaminationUnit
     projection from salvage, `examine_store` / `examine_bytes`, SDA
     `filter_units` / `map_units`, bounded `ExaminePage` with resource-limit
     honesty; golden tests `stage5_examination.rs`.
@@ -684,10 +684,10 @@ the cited conformance suites as required checks—not optional polish.
     live-state compaction (sources retained); derived checkpoints; bench
     skeleton (`stage6_store.rs`, `stage6_indexes_history.rs`,
     `stage6_bench_skeleton.rs`).
-12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `residuum-cli` (`residuum`
+12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `residiuum-cli` (`residiuum`
     put/get/list/delete/put-bytes/history/doctor/salvage/serve);
-    `Store::open_inspect` + `salvage_to`; `Residuum::connect("residuum://...")`
-    line-delimited JSON RPC; tests `residuum-cli/tests/cli.rs`.
+    `Store::open_inspect` + `salvage_to`; `Residiuum::connect("residiuum://...")`
+    line-delimited JSON RPC; tests `residiuum-cli/tests/cli.rs`.
 13. ~~Stage 7e–7f tighten (authn/deadline/retry + nightly packaging).~~ **Done** —
     `ConnectOptions` / `ServeOptions`, remote receipt ids, nightly workflow.
 14. ~~Remote parity for history + secondary indexes.~~ **Done** — RPC ops
@@ -698,7 +698,7 @@ the cited conformance suites as required checks—not optional polish.
     `get_payload` (complete/partial/unavailable/conflicting maps) and `find`
     (JSON filter, limit/order/budget/`force_scan`, index-accelerated via
     shared `find_on_store`); tests in `stage7_remote_parity.rs`.
-16. ~~Stage 8a cluster foundation.~~ **Done** — `residuum-cluster` crate:
+16. ~~Stage 8a cluster foundation.~~ **Done** — `residiuum-cluster` crate:
     virtual partitions (`blake3-mod-v1`), coverage records, placement
     directory, development (1-node) + dependable-local (3-node) profiles,
     quorum-style put/delete, node salvage without cluster software;
@@ -711,7 +711,7 @@ the cited conformance suites as required checks—not optional polish.
     `append_local` + `reconcile` with explicit subject conflicts; tests
     `stage8c_convergent.rs` (§22 items 7–8).
 19. ~~Stage 8d SDK routing + client directory cache.~~ **Done** —
-    `ClientDirectoryCache`, `Residuum::open_cluster` / `create_cluster`, multi-seed
+    `ClientDirectoryCache`, `Residiuum::open_cluster` / `create_cluster`, multi-seed
     URL parse, `directory` RPC; tests `stage8d_routing.rs` (§13, §22.5).
 20. ~~Stage 8e distributed find coverage.~~ **Done** — `FindResult` /
     `ScanOptions`, partial-query honesty; tests `stage8e_find.rs`,
@@ -719,15 +719,15 @@ the cited conformance suites as required checks—not optional polish.
 21. ~~Stage 8f rebalance + §22 remainder.~~ **Done** — interruptible rebalance
     (§14), placement persist/reconstruct; tests `stage8f_rebalance.rs`.
 22. ~~Optional deterministic CBOR envelope validation.~~ **Done** —
-    `residuum-format` validates deterministic CBOR maps on encode/decode
+    `residiuum-format` validates deterministic CBOR maps on encode/decode
     (`cbor_envelope.rs`, FORMAT_SPEC §4.4 / §5 condition 6); empty envelope
-    is the empty map `0xa0`; item envelopes in `residuum-store` are CBOR
+    is the empty map `0xa0`; item envelopes in `residiuum-store` are CBOR
     uint-keyed maps (keys 1–6).
 23. ~~Stage 9 tiering / archive.~~ **Done** — segment move/copy, hierarchical
     catalogs, offline coverage honesty, archive-path bench class, retention
     runbook (`stage9_tiering.rs`, `doc/RUNBOOK_RETENTION.md`).
 24. ~~**Product follow-ons 1–4.**~~ **Done** —
-    - **Live S3/GCS** — `CloudMirrorConfig` / `RESIDUUM_S3_ROOT` / `RESIDUUM_GS_ROOT`
+    - **Live S3/GCS** — `CloudMirrorConfig` / `RESIDIUUM_S3_ROOT` / `RESIDIUUM_GS_ROOT`
       + `MirroredCloudMedia` (`media.rs`).
     - **Network multi-hop** — `RemoteClient` leader routing + live
       `endpoints.json` reload; `multi_hop_and_kill_node_survivor` + demo 08.

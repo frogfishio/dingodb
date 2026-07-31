@@ -1,7 +1,7 @@
-# ResiduumDB production-readiness defects and execution plan
+# Residiuum production-readiness defects and execution plan
 
 Status: active remediation plan  
-Scope: the complete ResiduumDB workspace
+Scope: the complete Residiuum workspace
 Primary inputs: repository review performed 2026-07-25, `OVERVIEW.md`,
 `FORMAT_SPEC.md`, `DX_SPEC.md`, `CLUSTER_SPEC.md`, and current implementation
 
@@ -10,7 +10,7 @@ Primary inputs: repository review performed 2026-07-25, `OVERVIEW.md`,
 This document turns the current product-review findings into an ordered,
 testable engineering program.
 
-ResiduumDB already has a credible damage-tolerant format, salvage scanner,
+Residiuum already has a credible damage-tolerant format, salvage scanner,
 single-node store, Rust SDK, and unusually strong conformance tests. It is not
 yet production-ready as a network database or distributed storage system.
 Production readiness requires more than implementing missing APIs: acknowledged
@@ -142,12 +142,12 @@ Acceptance:
 
 Priority: P0  
 Dependencies: none  
-Status: **remediated in-tree** (2026-07-25) — `residuum-sdk` bind policy +
+Status: **remediated in-tree** (2026-07-25) — `residiuum-sdk` bind policy +
 `ServeOptions` + CLI flags + structured startup report + CLI tests
 
 Work:
 
-- Default `residuum serve` and `serve-cluster` to loopback.
+- Default `residiuum serve` and `serve-cluster` to loopback.
 - Refuse non-loopback plaintext binds unless the operator supplies an explicit
   development-only override.
 - Print a structured startup warning showing transport security, authentication,
@@ -241,7 +241,7 @@ In-tree so far:
 - SDK mutations mint a client `operation_id` once per call so `call_keyed`
   transport retries reuse the same id.
 - Content identity over `(op, collection, key, payload)` via
-  `residuum_store::content_identity`.
+  `residiuum_store::content_identity`.
 - Server looks up `WriteDedupTable` before append; exact retry returns the
   original receipt; content-mismatched reuse → `ConsistencyViolation`.
 - Dedup table persisted under `store-info/write_dedup.v1` after each accepted
@@ -480,7 +480,7 @@ In-tree:
 - `WriterLock` on `store-info/writer.lock` via Unix `flock(LOCK_EX|LOCK_NB)`.
 - In-process path registry so two handles in one process also collide.
 - `Store::create` / `Store::open` acquire before active segment open;
-  `Store::open_inspect` / `Residuum::open_inspect` do not.
+  `Store::open_inspect` / `Residiuum::open_inspect` do not.
 - Diagnostic lock file text is not trusted for exclusion.
 - Startup report claims exclusive-writer lock status.
 - Tests: second writer, concurrent inspect, drop-release, cross-process flock.
@@ -512,7 +512,7 @@ Acceptance:
 
 In-tree:
 
-- `residuum_store::atomic_file` — `write_atomic` / `write_atomic_keep_previous`,
+- `residiuum_store::atomic_file` — `write_atomic` / `write_atomic_keep_previous`,
   `previous_path` / `read_with_previous`, failpoints
   `atomic.before_tmp_write` … `atomic.after_dir_sync`.
 - Wired for store meta/descriptor, catalogs, index cache, secondary indexes,
@@ -556,20 +556,20 @@ Acceptance:
 
 In-tree:
 
-- `crates/residuum-store/crash_matrix.v1.json` — operations, ordered persistence
+- `crates/residiuum-store/crash_matrix.v1.json` — operations, ordered persistence
   steps, failpoint cells (`fault`: enospc / permission / short_write /
   process_abort), expected reopen state, CI subset flags.
-- `residuum_store::failpoint` — `Panic`, `Abort`, `Error`/`Return`, `IoEnospc`,
+- `residiuum_store::failpoint` — `Panic`, `Abort`, `Error`/`Return`, `IoEnospc`,
   `IoPermission`, `ShortWrite`; `consume_short_write` for instrumented sites.
 - Instrumented boundaries: create meta, active write_tail (before/after write/
   after sync/short_write), active dir_sync, seal dest write/remove, index cache,
   write dedup, catalog, checkpoint, compact segment sync, tier placement write,
   atomic tmp short_write.
-- Multi-process harness: `residuum-store-crash-child` binary + parent reopen
+- Multi-process harness: `residiuum-store-crash-child` binary + parent reopen
   asserts (kill before write / after sync).
 - Tests: `stage_def_022_crash_matrix` (document validation + CI subset + I/O
   suite + multi-process abort always; full matrix when
-  `RESIDUUM_CRASH_MATRIX_FULL=1`).
+  `RESIDIUUM_CRASH_MATRIX_FULL=1`).
 - Nightly workflow / `scripts/nightly.sh` run the full matrix.
 - Doc: `doc/CRASH_CONSISTENCY.md`.
 
@@ -704,7 +704,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `ID_PROFILE = "dingo-id-v1"` in `residuum_store::ids`.
+- Profile tag `ID_PROFILE = "dingo-id-v1"` in `residiuum_store::ids`.
 - Random identities (`event_id`, `store_id`, job/checkpoint/operation ids,
   cluster id) use `getrandom` via `random_id()`; `StoreError::RandomUnavailable`
   on failure (no wall-clock/hash fallback).
@@ -746,7 +746,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `CURSOR_PROFILE = "dingo-cursor-v1"` in `residuum_store::cursor`.
+- Profile tag `CURSOR_PROFILE = "dingo-cursor-v1"` in `residiuum_store::cursor`.
 - `Store::scan_live_page` walks the primary index in subject order, loading at
   most one page of complete bodies (default 64, cap 4096). Incomplete subjects
   are reported per page and still advance the cursor.
@@ -863,7 +863,7 @@ Implementation notes:
   `allow_partial_coverage` returns matches collected so far.
 - Hard host [`ResourceLimits`]: JSON depth (default 64), payload bytes
   (16 MiB), RPC line bytes (16 MiB), result materialisation ceiling (64 MiB)
-  → `ResourceLimit`. Frame length bounds remain in `residuum_format::SafetyLimits`.
+  → `ResourceLimit`. Frame length bounds remain in `residiuum_format::SafetyLimits`.
 - Cooperative [`CancelToken`] on `QueryOptions` / builder; checked between
   scan pages and index probes (not serialized in query plans).
 - Sort/materialise fail closed when over budget/ceiling; spill-to-disk sort
@@ -884,7 +884,7 @@ Status: **addressed (cut)** (2026-07-27) — slim PrimaryIndex + v3 cache
 
 Problem:
 
-The 10 GiB `residuum-testrig` campaign drove process RSS to ~10 GiB and forced the
+The 10 GiB `residiuum-testrig` campaign drove process RSS to ~10 GiB and forced the
 host into swap, poisoning latency metrics. Root cause:
 
 1. **`PrimaryIndex` stored full payload bodies** for every live subject
@@ -898,7 +898,7 @@ host into swap, poisoning latency metrics. Root cause:
 4. Checkpoint encode built another full body `Vec` while dual maps still held
    payloads → additional multi-GB peak during pump rate-limited checkpoints.
 
-Evidence from `/var/tmp/residuum-testrig-10g/store`:
+Evidence from `/var/tmp/residiuum-testrig-10g/store`:
 
 | Component | On-disk |
 |-----------|---------|
@@ -940,7 +940,7 @@ Acceptance:
 - Reopen with v3 cache does not load O(dataset) body bytes into RSS.
 - Existing store unit/integration suites pass.
 
-**Re-verification (2026-07-27):** second 10 GiB `residuum-testrig` campaign
+**Re-verification (2026-07-27):** second 10 GiB `residiuum-testrig` campaign
 (`--seed 2`, 8 KiB payloads, buffered) **PASS**; peak RSS ~0.92 GiB (vs ~10 GiB
 pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 `doc/WORK_HORIZON.md` (memory-eat self-check).
@@ -997,7 +997,7 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
    `put_many` parallel appends; tests `stage_def_096_sharded_writers`.
 3. **Axis C — Horizontal (harness done; product path started):** testrig
    `--stores N` multi-process harness (capacity upper bound). Product path:
-   `Cluster::put_many` multi-partition batch on residuum-cluster with independent
+   `Cluster::put_many` multi-partition batch on residiuum-cluster with independent
    partition leaders (dependable-local multi-node). Network multi-process
    serve-cluster capacity still open.
 4. **Harness (done for Axis B + C):** testrig `--writer-shards N` creates with
@@ -1043,7 +1043,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `SERVER_PROFILE = "residuum-server-v1"`.
+- Profile tag `SERVER_PROFILE = "dingo-server-v1"`.
 - `serve_store_with` opens **one** `Store` (exclusive writer), wraps it in
   `Arc<Mutex<Store>>`, and admits up to `ServerLimits::max_connections`
   (default 64) worker threads. Accept loop is non-blocking and never runs
@@ -1068,7 +1068,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-sdk/tests/stage_def_030_bounded_server.rs` — concurrent clients,
+- `crates/residiuum-sdk/tests/stage_def_030_bounded_server.rs` — concurrent clients,
   connection limit overload, single store owner under load, graceful shutdown.
 - Unit: `server::tests` admission/drain/mutation accounting.
 
@@ -1113,16 +1113,16 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-sdk/tests/stage_def_031_protocol.rs` — handshake, legacy
+- `crates/residiuum-sdk/tests/stage_def_031_protocol.rs` — handshake, legacy
   rejection, version reject, oversized frames, diagnostic mode, fixtures.
-- `crates/residuum-sdk/tests/fixtures/protocol/*.json` — golden payloads.
+- `crates/residiuum-sdk/tests/fixtures/protocol/*.json` — golden payloads.
 - Unit: `protocol::tests` frame limits and feature negotiation.
 
 ### DEF-032 — Add TLS and authenticated peer identity
 
 Priority: P0  
 Status: **addressed** (TLS 1.3 + mTLS + identity SANs; see
-`stage_def_032_tls`, `residuum_sdk::tls`, `doc/CAPABILITY_MATRIX.md`)
+`stage_def_032_tls`, `residiuum_sdk::tls`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1156,7 +1156,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-sdk/tests/stage_def_032_tls.rs` — happy path, wrong host,
+- `crates/residiuum-sdk/tests/stage_def_032_tls.rs` — happy path, wrong host,
   wrong cluster, expired, wrong CA (MITM), revoked serial, mTLS, rotation,
   plaintext loopback, public bind policy with TLS.
 - Unit: `tls::tests` constant-time compare + URN helpers.
@@ -1165,7 +1165,7 @@ Evidence:
 
 Priority: P1  
 Status: **addressed** (privilege model + audit chain; see `stage_def_033_authz`,
-`residuum_sdk::authz`, `doc/CAPABILITY_MATRIX.md`)
+`residiuum_sdk::authz`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1201,7 +1201,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-sdk/tests/stage_def_033_authz.rs` — writer denial matrix, high-
+- `crates/residiuum-sdk/tests/stage_def_033_authz.rs` — writer denial matrix, high-
   friction confirm, reader cannot write, auth vs authz error codes, legacy
   token superuser, secret non-leakage.
 - Unit: `authz::tests` chain integrity, open mode, constant-time auth.
@@ -1210,7 +1210,7 @@ Evidence:
 
 Priority: P1  
 Status: **addressed** (rate / auth lockout / connect churn / expensive budgets /
-operation-id replay; see `stage_def_034_admission`, `residuum_sdk::admission`,
+operation-id replay; see `stage_def_034_admission`, `residiuum_sdk::admission`,
 `doc/CAPABILITY_MATRIX.md`)
 
 Work:
@@ -1245,7 +1245,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-sdk/tests/stage_def_034_admission.rs` — global rate, auth
+- `crates/residiuum-sdk/tests/stage_def_034_admission.rs` — global rate, auth
   lockout, connect churn, expensive concurrency, operation-id replay, SDK
   client `resource_limit` surface.
 - Unit: `admission::tests` rate windows, lockout key hygiene, expensive guard,
@@ -1261,7 +1261,7 @@ Priority: P0
 Dependencies: DEF-021, DEF-022  
 Status: **addressed** (durable hard state / log / membership / snapshots;
 in-process cluster restore on open; see `stage_def_035_raft_persist`,
-`residuum_cluster::raft_persist`, `doc/CAPABILITY_MATRIX.md`)
+`residiuum_cluster::raft_persist`, `doc/CAPABILITY_MATRIX.md`)
 
 Problem:
 
@@ -1297,7 +1297,7 @@ Implementation notes:
   advances past validated durable evidence.
 - `ConsensusEvidenceClass`: `committed` | `prepared` | `conflicting` |
   `unknown_commit`.
-- User payload frames remain in ordinary `residuum-store` segments (salvage
+- User payload frames remain in ordinary `residiuum-store` segments (salvage
   independent of Raft control plane).
 
 Acceptance:
@@ -1310,7 +1310,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-cluster/tests/stage_def_035_raft_persist.rs` — process restart
+- `crates/residiuum-cluster/tests/stage_def_035_raft_persist.rs` — process restart
   with committed write, vote hard-state durability, torn tail, corrupt
   snapshot discard, snapshot compact+recover, uncommitted not promoted,
   term restore across nodes.
@@ -1330,7 +1330,7 @@ Dependencies: DEF-031, DEF-032, DEF-035
 Status: **addressed** (control-plane RequestVote / AppendEntries /
 InstallSnapshot / ReadIndex over framed transport; term / membership /
 placement-epoch fences; see `stage_def_036_raft_rpc`,
-`residuum_cluster::raft_rpc`, `residuum_sdk::raft_server`, `doc/CAPABILITY_MATRIX.md`)
+`residiuum_cluster::raft_rpc`, `residiuum_sdk::raft_server`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1368,10 +1368,10 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-cluster/tests/stage_def_036_raft_rpc.rs` — three-peer quorum
+- `crates/residiuum-cluster/tests/stage_def_036_raft_rpc.rs` — three-peer quorum
   commit, minority no-elect, stale leader fence, operation_id retry,
   placement-epoch fence, multi-root durable peers.
-- `crates/residuum-sdk/tests/stage_def_036_raft_rpc.rs` — TCP RequestVote /
+- `crates/residiuum-sdk/tests/stage_def_036_raft_rpc.rs` — TCP RequestVote /
   AppendEntries / ReadIndex across three listeners; unauthenticated reject.
 - Unit: `raft_rpc::tests` (campaign/propose, offline peers, snapshot install).
 
@@ -1406,7 +1406,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `CLUSTER_COMMIT_PROFILE = "residuum-cluster-commit-v1"` and
+- Profile tag `CLUSTER_COMMIT_PROFILE = "dingo-cluster-commit-v1"` and
   feature token `FEATURE_CLUSTER_COMMIT_V1 = "cluster-commit-v1"`.
 - `serve_cluster_node` attaches `RaftServerState` by default (best-effort;
   directory-only fallback if attach fails).
@@ -1426,11 +1426,11 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-sdk/tests/stage_def_037_cluster_commit.rs` — feature/profile
+- `crates/residiuum-sdk/tests/stage_def_037_cluster_commit.rs` — feature/profile
   labels; in-process and network share commit semantics; kill contacted seed
   after committed puts (survivor reads + new commit); distinct operation
   events; single-node serve without Raft still local-commits.
-- Server path: `residuum_server::raft_server::RaftServerState::propose_and_apply`,
+- Server path: `residiuum_server::raft_server::RaftServerState::propose_and_apply`,
   `serve.rs` mutate + linearizable read barrier.
 
 Remaining (out of DEF-037 cut; DEF-038 addressed separately):
@@ -1487,7 +1487,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-cluster/tests/stage_def_038_control_plane.rs` — restart at
+- `crates/residiuum-cluster/tests/stage_def_038_control_plane.rs` — restart at
   every phase + resume; joint membership restore; health missing nodes;
   missing placement refused; authenticated endpoints.
 - Unit: `RebalanceJobsFile` roundtrip; Stage 8f suite still green.
@@ -1535,7 +1535,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-cluster/tests/stage_def_039_repair.rs` — missing replica
+- `crates/residiuum-cluster/tests/stage_def_039_repair.rs` — missing replica
   converges; divergent newer body loses to majority; 1-1 conflict preserved;
   rate limit; audit survives restart; segment fingerprints in inventory.
 - Unit: `select_repair_source` majority / corrupt / conflict / irrecoverable;
@@ -1569,7 +1569,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-cluster/src/coverage.rs` — `QueryContinuation` keyed tags
+- `crates/residiuum-cluster/src/coverage.rs` — `QueryContinuation` keyed tags
   whose public key derivation remains DEF-097;
   `Coverage` indexes/tiers fields; `FindResult.has_more` / `continuation`.
 - `Cluster::scan_with` / `scan_page` — paged merge by subject order;
@@ -1604,18 +1604,18 @@ Acceptance:
 
 Evidence:
 
-- `crates/residuum-cluster/src/sim.rs` — `SeedRng`, `FaultModel`, `SimTransport`,
+- `crates/residiuum-cluster/src/sim.rs` — `SeedRng`, `FaultModel`, `SimTransport`,
   `SimWorld` (`client_put` / `client_get` / `run_chaos` / `run_soak` /
   `campaign_with_epoch`), `check_partition_linearizable`,
   `check_convergent_preserved`, `run_conformance_matrix`, profile
-  `VERIFY_PROFILE` = `residuum-cluster-verify-v1`.
+  `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
 - Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.8, chaos + soak
   linearizability, dump retains seed); module unit tests under `sim::tests`.
 - **DEF-041-N labor (2026-07-31):** multiproc OS harness
-  `residuum-cluster-multiproc-v1` (`multiproc` module + `residuum-cluster-multiproc-child`
+  `dingo-cluster-multiproc-v1` (`multiproc` module + `residiuum-cluster-multiproc-child`
   binary + `stage_def_041n_multiproc`): rolling restart, abort-after-ack, cross-
   process writer lock, short soak, seed+history JSON dumps. Long soak via
-  `RESIDUUM_MULTIPROC_LONG_SOAK=1`.
+  `RESIDIUUM_MULTIPROC_LONG_SOAK=1`.
 - Remaining: full Jepsen PORC against live `serve-cluster` TCP partitions,
   multi-hour soak, CLUSTER_SPEC §22.9–.20 network surface; serve-cluster stays
   experimental until those pass.
@@ -1652,7 +1652,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/residuum-store/src/backup.rs` — `BACKUP_PROFILE` = `dingo-backup-v1`,
+- `crates/residiuum-store/src/backup.rs` — `BACKUP_PROFILE` = `dingo-backup-v1`,
   `write_full_backup` / `restore_full_backup`, manifest + per-file blake3,
   `BackupConsistency::{FlushedExclusive,OnDiskInspect}`.
 - `Store::backup_to` flushes durable active under exclusive writer; inspect
@@ -1679,7 +1679,7 @@ Remaining (out of this cut):
 Priority: P1  
 Status: **addressed (single-node cut)** (2026-07-27) — bounded scrub with
 durable frontier/findings, placement hash checks, frame-hole detection,
-quarantine-without-hide, pause/resume, CLI `residuum scrub`. Background daemon
+quarantine-without-hide, pause/resume, CLI `residiuum scrub`. Background daemon
 scheduling, cluster repair hook-in, and media SMART/health remain follow-ons.
 
 Work:
@@ -1697,14 +1697,14 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/residuum-store/src/scrub.rs` — `SCRUB_PROFILE` = `dingo-scrub-v1`,
+- `crates/residiuum-store/src/scrub.rs` — `SCRUB_PROFILE` = `dingo-scrub-v1`,
   `scrub_once` / pause / resume / status, plan over sealed + active + chunks,
   BLAKE3 + placement `content_hash` + `scan_forward` holes.
 - Durable state: `recovery/scrub/state.v1.json`, `findings.v1.json`,
   `quarantine/` (copy only; original retained).
 - `Store::scrub_once`, `scrub_to_completion`, `scrub_status`, `pause_scrub`,
   `resume_scrub`, `list_scrub_findings`.
-- CLI: `residuum scrub STORE [--once|--status|--pause|--resume] [--max-files]
+- CLI: `residiuum scrub STORE [--once|--status|--pause|--resume] [--max-files]
   [--max-bytes] [--no-quarantine]`.
 - Tests: `stage_def_051_scrub.rs`, module unit tests, CLI
   `scrub_clean_store_and_status`.
@@ -1721,11 +1721,11 @@ Remaining (out of this cut):
 Priority: P0
 
 Status: **addressed (single-generation cut)** (2026-07-27) — declared wire
-reader/writer matrix (`residuum-format::compat`), protocol policy snapshot,
+reader/writer matrix (`residiuum-format::compat`), protocol policy snapshot,
 phased store migration `dingo-migrate-v1` (preflight / plan / apply / verify /
 rollback), evidence-preserving copy (never in-place rewrite), unsupported and
 unreadable segment bytes preserved as opaque evidence, durable job under
-`recovery/migration/`, CLI `residuum migrate`; multi-major dual-read writers and
+`recovery/migration/`, CLI `residiuum migrate`; multi-major dual-read writers and
 rolling mixed-cluster upgrade drills remain follow-ons (DEF-053 freeze).
 
 Work:
@@ -1745,13 +1745,13 @@ Acceptance:
 
 Evidence (this cut):
 
-- `residuum-format::compat` — `wire_compat_matrix`, `SUPPORTED_READER_MAJORS`,
+- `residiuum-format::compat` — `wire_compat_matrix`, `SUPPORTED_READER_MAJORS`,
   `wire_reader_supports` / `wire_writer_emits`.
-- `residuum-store::migrate` — `migrate_preflight`, `migrate_plan`, `migrate_apply`,
+- `residiuum-store::migrate` — `migrate_preflight`, `migrate_plan`, `migrate_apply`,
   `migrate_verify`, `migrate_rollback`, `migrate_store`; `Store::migrate_to`.
 - Tests: `stage_def_052_migrate`, `migrate::tests`, CLI
   `migrate_roundtrip_and_status`.
-- CLI: `residuum migrate STORE --output DEST` (`--preflight`, `--plan-only`,
+- CLI: `residiuum migrate STORE --output DEST` (`--preflight`, `--plan-only`,
   `--status`, `--rollback`, `--skip-verify`).
 
 Remaining (out of this cut):
@@ -1769,7 +1769,7 @@ Dependencies: DEF-010 through DEF-014, DEF-022, DEF-052
 Status: **partial — freeze gap inventory + policy cut** (2026-07-31) — freeze
 **not** declared; `WIRE_PROFILE_LABEL` remains `1.0-draft`. Published
 `doc/WIRE_MAJOR1_FREEZE.md` (criteria F1–F16, canonical encodings inventory,
-compatibility / relabel procedure), `residuum-format::compat` freeze readiness API
+compatibility / relabel procedure), `residiuum-format::compat` freeze readiness API
 (`wire_freeze_criteria`, `wire_is_frozen`, `wire_freeze_summary`) with DEF-053
 guard test preventing silent stable relabel. Implemented Met rows: framing,
 integrity, limits, CBOR, conflict, salvage §13, encodings inventory, compat
@@ -1793,7 +1793,7 @@ Acceptance:
 Evidence (this cut):
 
 - `doc/WIRE_MAJOR1_FREEZE.md` — policy id `dingo-wire-major1-freeze-v1`.
-- `residuum-format::compat` — freeze criteria table + `wire_is_frozen() == false`
+- `residiuum-format::compat` — freeze criteria table + `wire_is_frozen() == false`
   guard while draft.
 - Tests: `compat::tests::def_053_wire_remains_draft_until_freeze`.
 
@@ -1815,7 +1815,7 @@ Status: **addressed (process config cut)** (2026-07-27) — versioned
 restart-required vs dynamic setting classes, secret refs (`env:` / `file:`)
 with redacted effective reports, unsafe-combination gates (replication claim
 with one local copy, public plaintext bind, serve-cluster without experimental
-opt-in), CLI `residuum config validate|show` and `serve`/`serve-cluster --config`;
+opt-in), CLI `residiuum config validate|show` and `serve`/`serve-cluster --config`;
 live atomic admission reload + audit chain remain follow-ons.
 
 Work:
@@ -1834,14 +1834,14 @@ Acceptance:
 
 Evidence (this cut):
 
-- `residuum-server::config` — `DingoConfigFile`, `load_and_validate`,
+- `residiuum-server::config` — `DingoConfigFile`, `load_and_validate`,
   `validate_document`, `ConfigOverrides`, `ValidatedConfig`,
   `EffectiveConfigReport`, `resolve_secret_ref`, `redact_json_value`,
   `setting_class`; profile `CONFIG_PROFILE` = `dingo-config-v1`.
 - Typed errors: `ConfigError::Validation` / `Unsafe` / `UnsupportedFormat` /
   `Secret` with stable `code` strings.
-- CLI: `residuum config validate|show [--mode serve|serve-cluster|validate]`,
-  `residuum serve --config`, `residuum serve-cluster --config` (flags override file).
+- CLI: `residiuum config validate|show [--mode serve|serve-cluster|validate]`,
+  `residiuum serve --config`, `residiuum serve-cluster --config` (flags override file).
 - Tests: `stage_def_054_config`, `config::tests`, CLI
   `config_validate_show_and_unsafe_reject`.
 
@@ -1862,7 +1862,7 @@ Remaining (out of this cut):
 Priority: P1
 
 Status: **addressed (process NDJSON cut)** (2026-07-27) — versioned
-`dingo-log-v1` structured facade (`residuum-server::slog`), stable event names,
+`dingo-log-v1` structured facade (`residiuum-server::slog`), stable event names,
 bounded field cardinality, redaction of credentials/payloads by construction,
 RPC completion + guarantee-failed correlation fields on the serve path;
 client-side log emission and distributed replica join remain follow-ons.
@@ -1888,7 +1888,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `residuum-server::slog` — `Logger`, `LogEvent`, `LogSink` / `StderrSink` /
+- `residiuum-server::slog` — `Logger`, `LogEvent`, `LogSink` / `StderrSink` /
   `MemorySink`, `log_rpc_complete`, profile `LOG_PROFILE` = `dingo-log-v1`.
 - Stable events: `server.start`, `server.drain`, `connection.rejected`,
   `connection.error`, `rpc.complete`, `guarantee.failed`, `raft.attach_failed`.
@@ -1953,7 +1953,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `residuum-server::metrics` — `MetricsRegistry`, `MetricsSnapshot`,
+- `residiuum-server::metrics` — `MetricsRegistry`, `MetricsSnapshot`,
   `evaluate_health` / `HealthReport`, profiles `METRICS_PROFILE` /
   `HEALTH_PROFILE`.
 - RPCs: `health_live` and `health_ready` (public probes, no token);
@@ -2246,7 +2246,7 @@ MSRV 1.88, OS matrix (ubuntu + macos), and cargo-deny; local mirror
 
 Work:
 
-- Fix current strict clippy failures in `residuum-format`.
+- Fix current strict clippy failures in `residiuum-format`.
 - Add to required CI:
   - `cargo fmt --check`;
   - build/test all targets;
@@ -2308,7 +2308,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/residuum-format/tests/stage_def_091_properties.rs` — proptest in PR CI.
+- `crates/residiuum-format/tests/stage_def_091_properties.rs` — proptest in PR CI.
 - `fuzz/` — cargo-fuzz package (not a workspace member) + README corpus policy.
 - `.github/workflows/nightly.yml` job `fuzz_smoke` — 30s per target.
 - `scripts/quality.sh` runs the property test binary.
@@ -2395,8 +2395,8 @@ distribution beyond local cluster root remain residual**
 
 Finding:
 
-Both `residuum-store::cursor` and
-`residuum-cluster::coverage::QueryContinuation` previously derived their keyed
+Both `residiuum-store::cursor` and
+`residiuum-cluster::coverage::QueryContinuation` previously derived their keyed
 BLAKE3 keys solely from the store ID or cluster ID, while that public ID is
 included in the token. A client could therefore derive the same key and forge a
 token. The tag detected accidental corruption and cross-store/cluster
@@ -2506,7 +2506,7 @@ threshold.
 
 Current effective boundaries differ by surface:
 
-- direct `residuum-store` chunks values above the soft threshold without first
+- direct `residiuum-store` chunks values above the soft threshold without first
   applying one declared logical-value ceiling;
 - the ordinary SDK applies a 16 MiB payload ceiling;
 - remote use is also bounded by payload and negotiated RPC-frame limits;
@@ -2560,7 +2560,7 @@ A monolithic transcript may therefore retain most physical bytes while losing
 all ordinary document-level readability after one missing chunk.
 
 This does not violate the byte-survival format rule: `get_payload` can expose
-verified surviving extents. It does mean ResiduumDB must not imply that chunking
+verified surviving extents. It does mean Residiuum must not imply that chunking
 alone makes every field or array element independently examinable.
 
 #### Immediate containment
@@ -2812,7 +2812,7 @@ Conflicting   -> DataDamaged with damage_kind=payload_conflict
 
 If changing the public error shape requires a compatibility phase, add
 structured detail first and retain the old broad code temporarily. Telemetry,
-doctor, scrub, and Residuum Studio show the exact class, missing slot count,
+doctor, scrub, and Residiuum Studio show the exact class, missing slot count,
 conflict slot, expected event IDs, and affected tier—never payload bytes.
 
 Repair may fetch an exact missing `chunk_event_id` from an authenticated replica
@@ -2839,7 +2839,7 @@ transcript/{id}/turn/{monotonic-id}
 transcript/{id}/timeline/{bounded-block-id}
 ```
 
-Each turn/block is an independently meaningful ResiduumDB value. Optional aggregate
+Each turn/block is an independently meaningful Residiuum value. Optional aggregate
 snapshots are derived and replaceable. Losing one unit does not make surviving
 units unqueryable.
 
@@ -3219,7 +3219,7 @@ or instruct operators to delete a harmless file.
 
 - Only successful OS/in-process ownership establishes writer authority.
 - Diagnostic PID/text is advisory and never grants, retains, or breaks a lock.
-- ResiduumDB MUST NOT delete a lock file or kill a process to acquire ownership.
+- Residiuum MUST NOT delete a lock file or kill a process to acquire ownership.
 - Writer-lock failure is never database absence.
 - Read-only inspection uses `open_inspect` and cannot mutate derived state.
 - Waiting is bounded, cancellable, observable, and defaults to the existing
@@ -3253,7 +3253,7 @@ Expose:
 Store::open_with_options
 Store::try_open
 Store::open_inspect
-residuum doctor lock-status
+residiuum doctor lock-status
 ```
 
 On contention, reread advisory metadata for diagnostics but do not trust it.
@@ -3534,7 +3534,7 @@ and suite IDs.
 
 ## 16. Production release gates
 
-ResiduumDB may be called production-ready only when all applicable gates pass.
+Residiuum may be called production-ready only when all applicable gates pass.
 
 ### 16.1 Data-safety gates
 

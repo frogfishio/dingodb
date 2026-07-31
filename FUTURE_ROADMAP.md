@@ -1,4 +1,4 @@
-# ResiduumDB future retrieval roadmap
+# Residiuum future retrieval roadmap
 
 Status: **deferred product direction — not an active delivery priority**
 
@@ -20,7 +20,7 @@ capabilities without promoting them into the current implementation program:
 2. vector search;
 3. geospatial search.
 
-These capabilities matter to ResiduumDB's eventual position as a serious
+These capabilities matter to Residiuum's eventual position as a serious
 general-purpose document database. They are deliberately deferred while the
 core product, Heap isolation, operational qualification, Atomics, and the
 generic index lifecycle mature.
@@ -31,7 +31,7 @@ promise until promoted into a dedicated specification.
 
 ## 2. Governing decision
 
-ResiduumDB should drive all three retrieval families from:
+Residiuum should drive all three retrieval families from:
 
 > **One authoritative document store, one common derived-index substrate, and
 > several mathematically appropriate index engines.**
@@ -61,7 +61,7 @@ and failure semantics should not.
 ## 3. Prerequisite: the common derived-index substrate
 
 No retrieval family should be implemented as an isolated subsystem. Before
-product work begins, ResiduumDB needs a generic index substrate that all three can
+product work begins, Residiuum needs a generic index substrate that all three can
 reuse.
 
 The substrate owns:
@@ -84,7 +84,7 @@ The substrate owns:
 - exact bitmap/rank-select integration where the retrieval family defines an
   exact membership set and deterministic order.
 
-The shared lifecycle may reuse Residuum Direct Access rank blocks, frozen read
+The shared lifecycle may reuse Residiuum Direct Access rank blocks, frozen read
 views, and selection artifacts. Approximate vector results MUST NOT inherit an
 exact DDA certificate.
 
@@ -122,7 +122,7 @@ For every retrieval family:
 - rebuilding an index MUST NOT rewrite historical authority.
 
 For externally generated vectors, the vector stored by the application is
-authoritative data. An ANN structure built from it is derived. ResiduumDB should
+authoritative data. An ANN structure built from it is derived. Residiuum should
 not initially call an embedding service during indexing.
 
 ### 4.2 Heap isolation
@@ -194,7 +194,7 @@ index_frontier: 9182771
 damaged_segments: [41, 77]
 ```
 
-When an exact fallback is requested and practical, ResiduumDB may scan surviving
+When an exact fallback is requested and practical, Residiuum may scan surviving
 authoritative data. If resource limits prevent completion, the result remains
 explicitly incomplete.
 
@@ -325,7 +325,7 @@ existence or prevalence of terms in another Heap.
 The inverted index should use independently recoverable immutable segments.
 Loss of one segment must leave other postings usable.
 
-If exact text search is requested, ResiduumDB may tokenize and scan surviving
+If exact text search is requested, Residiuum may tokenize and scan surviving
 source documents to fill index holes, subject to an explicit resource bound.
 The response states whether the fallback completed.
 
@@ -403,7 +403,7 @@ Vector search enables:
 - retrieval-augmented generation;
 - hybrid lexical and semantic search.
 
-ResiduumDB should store vectors and retrieve them. It should not initially generate
+Residiuum should store vectors and retrieve them. It should not initially generate
 embeddings. Model execution introduces external availability, nondeterminism,
 cost, and hidden model-version semantics that do not belong in the first
 database implementation.
@@ -499,7 +499,7 @@ Hybrid retrieval belongs after useful text search and vector search exist
 independently.
 
 Lexical score and vector similarity are not naturally interchangeable numbers.
-ResiduumDB MUST NOT silently add them together. A hybrid profile freezes:
+Residiuum MUST NOT silently add them together. A hybrid profile freezes:
 
 - the lexical and vector index versions;
 - candidate counts and filtering order;
@@ -666,7 +666,7 @@ when:
 These capabilities are not the current priority, but they are strategically
 important. Together with Heaps, capability-based access, Atomics, Data Rules,
 referential integrity, damage tolerance, long retention, and SDA examination,
-they move ResiduumDB beyond “raw storage” or “a fast document store.”
+they move Residiuum beyond “raw storage” or “a fast document store.”
 
 The intended long-term proposition is:
 

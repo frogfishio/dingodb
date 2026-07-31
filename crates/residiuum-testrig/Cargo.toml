@@ -1,0 +1,26 @@
+[package]
+name = "residiuum-testrig"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "MPL-2.0"
+authors.workspace = true
+description = "Three-prong store stress rig: data pump, filesystem chaos monkey, performance monitor (not a product CLI)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["dingodb", "test", "chaos", "benchmark", "stress"]
+categories = ["development-tools", "database"]
+publish = false
+include = ["Cargo.toml", "README.md", "src/**"]
+
+[[bin]]
+name = "residiuum-testrig"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+residiuum-store = { workspace = true, features = ["legacy-raw-store"] }
+clap.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+getrandom.workspace = true

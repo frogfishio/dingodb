@@ -1,11 +1,11 @@
-# ResiduumDB Heap Specification
+# Residiuum Heap Specification
 
 Status: Developer-ready implementation contract v0.9  
 Capability status: **Partial** — HP-000…HP-009 landed in-tree (with listed
 gaps); HP-010 evidence advanced: **H3 Accept**, H0–H2/H4–H5 partial, H6 partial
 with complete-path review + external-review brief + pure proof bundle + §32.4
 remote data/list/scan cut (`qualified=false`); HP-011…HP-012 not started. HC1
-not started. No `residuum-heap-v1` qualified claim. See **Implementation progress**
+not started. No `dingo-heap-v1` qualified claim. See **Implementation progress**
 below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
@@ -35,13 +35,13 @@ criteria in §40.
 
 | Layer | State |
 |-------|--------|
-| Spec contract (`residuum-heap-v1` prose §§30–41) | Frozen (this document) |
+| Spec contract (`dingo-heap-v1` prose §§30–41) | Frozen (this document) |
 | Machine-readable artifacts (`spec/heap/`) | Present; HP-000 mostly landed |
-| Isolation kernel crate (`crates/residuum-heap`) | Present; HP-001 mostly landed |
-| Durable ownership in `residuum-format` | Present; HP-002 partial |
+| Isolation kernel crate (`crates/residiuum-heap`) | Present; HP-001 mostly landed |
+| Durable ownership in `residiuum-format` | Present; HP-002 partial |
 | Store façades / architecture check | Present; HP-003 partial |
 | Heap/object catalogs (HP-004) | Present; staged genesis + rebuild Accept |
-| Authority + local ceremony (HP-005) | Present; two-slot store + `residuum-authority` |
+| Authority + local ceremony (HP-005) | Present; two-slot store + `residiuum-authority` |
 | SDK heap API (HP-007) | Present; typed handles + isolation Accept |
 | Qualified network (HP-008) | Present; live TLS accept-loop + HeapKey session |
 | Legacy migration (HP-006) | Present; durable job engine + phase-6 gate Accept |
@@ -51,7 +51,7 @@ criteria in §40.
 
 Before Gate H6, product language remains:
 
-> ResiduumDB provides named heap namespaces; strong access-isolation qualification
+> Residiuum provides named heap namespaces; strong access-isolation qualification
 > is in progress.
 
 #### Work packages (§40)
@@ -59,15 +59,15 @@ Before Gate H6, product language remains:
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
 | **HP-000** | Machine-readable contract | **Landed (format closed; ops expanding under §32.4)** | Baseline process ops **1–3** + data/list/scan/find/history/indexes cut **105/110–112/114–117/120–122/130–133** with schemas/fixtures; bootstrap cert/proof + **`format_vectors`**. Authority/RPC remainder of §38.1 still partial; remaining ops stay `reserved`. |
-| **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/residuum-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
+| **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/residiuum-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
 | **HP-002** | Durable ownership | **Landed (Accept corpus)** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree (merge); descriptor encode/decode + `descriptor_hash`; `admit_frame_to_heap` / salvage; store `require_admit` + `HeapStore` SubjectV2 heap check; adversarial unit/corpus rejects wrong-heap. |
 | **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind **opt-in** feature `legacy-raw-store`; package **default is façades-only** (A3). Stages 3–9 enable the feature explicitly. |
-| **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `residuum-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
-| **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/residuum-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `residuum-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
-| **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `residuum-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
+| **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `residiuum-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
+| **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/residiuum-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `residiuum-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
+| **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `residiuum-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap data + CPR-001 heap-only default)** | Heap APIs + SubjectV2 put/get + `connect_heap` with remote put/get/delete/list/scan/find/history/indexes. Equality `find` accelerates via ready secondary indexes; put/delete marks indexes **stale**. **CPR-001:** package default **heap-only**; `legacy-flat-sdk` opt-in for Stages 3–9. Accept: isolation, SubjectV2, connect_heap data+list/scan/find/history/indexes (+ find-via-index + stale), `cpr001_legacy_opt_in`. **Gaps:** incremental rebuild (not only full); store `legacy-raw-store` default still on (A3). |
 | **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan/find/history/indexes)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (18 ops):** process 1–3 + 105/110–112/114–117/120–122 + **130–133** indexes (**IndexAdmin** on 131–133; bootstrap cert rights_mask includes IndexAdmin). Accept: connect_heap put/get/delete + list/scan/find/history/indexes. **Gaps:** lifecycle still reserved, default qualified listener, RPC corpus expansion. |
-| **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media wipe + retention residual)** | `residuum-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover, media-domain purge plans with unavailable-domain incomplete result that **stays `retired`**, **live multi-tier filesystem wipe** (`destroy_coverage_unit_on_media` / `wipe_heap_object_media`), `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID; incomplete purge; retention; live FS multi-tier wipe. **Gaps:** HSM/provider data-key adapters, mixed-heap salvage drill, operator CLI. |
+| **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media wipe + retention residual)** | `residiuum-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover, media-domain purge plans with unavailable-domain incomplete result that **stays `retired`**, **live multi-tier filesystem wipe** (`destroy_coverage_unit_on_media` / `wipe_heap_object_media`), `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID; incomplete purge; retention; live FS multi-tier wipe. **Gaps:** HSM/provider data-key adapters, mixed-heap salvage drill, operator CLI. |
 | HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept**. **H1 advanced** (SubjectV2 + remote data/list/scan/find/history/indexes + CPR-001 opt-in). H0/H1/H2/H4/H5 still partial. H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close (default flat SDK). |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
@@ -89,29 +89,29 @@ Before Gate H6, product language remains:
 
 ```text
 spec/heap/                     # HP-000 contract + format_vectors
-crates/residuum-heap/             # HP-001 kernel (MIT)
-crates/residuum-format/           # HP-002 ownership, SubjectV2, descriptors, admit
-crates/residuum-store/src/kernel/ # PhysicalStore alias (crate-private)
-crates/residuum-store/src/heap/   # HP-003 façades + HP-004 catalog
-crates/residuum-authority/        # HP-005 local ceremony (AGPL; not linked by server)
-crates/residuum-sdk/src/heap.rs   # HP-007 Heap / typed handles
-crates/residuum-client/src/heap_handshake.rs  # HP-008 wire types
-crates/residuum-server/src/heap_{registry,auth,dispatch,session,audit}.rs  # HP-008
-crates/residuum-store/src/heap/migration.rs  # HP-006 job engine + phase-6 gate
-crates/residuum-store/src/heap/lifecycle.rs  # HP-009 purge/backup/restore gates
+crates/residiuum-heap/             # HP-001 kernel (MIT)
+crates/residiuum-format/           # HP-002 ownership, SubjectV2, descriptors, admit
+crates/residiuum-store/src/kernel/ # PhysicalStore alias (crate-private)
+crates/residiuum-store/src/heap/   # HP-003 façades + HP-004 catalog
+crates/residiuum-authority/        # HP-005 local ceremony (AGPL; not linked by server)
+crates/residiuum-sdk/src/heap.rs   # HP-007 Heap / typed handles
+crates/residiuum-client/src/heap_handshake.rs  # HP-008 wire types
+crates/residiuum-server/src/heap_{registry,auth,dispatch,session,audit}.rs  # HP-008
+crates/residiuum-store/src/heap/migration.rs  # HP-006 job engine + phase-6 gate
+crates/residiuum-store/src/heap/lifecycle.rs  # HP-009 purge/backup/restore gates
 spec/heap/qualification/                 # HP-010 evidence matrix
-crates/residuum-heap/src/qualification.rs   # claim surface (qualified=false)
-crates/residuum-heap/src/isolation.rs       # query-escape confinement (H3/H6)
-crates/residuum-heap/src/operational.rs     # metrics/logs/export/health/bundle (H3)
-crates/residuum-heap/src/isolation_model.rs # connected Rust ↔ HeapIsolation Inv (H6)
-crates/residuum-heap/src/authority_model.rs  # connected Rust ↔ HeapAuthority Inv (H6)
-crates/residuum-heap/src/isolation_profile.rs # §13 named profiles + registry
-crates/residuum-heap/src/decide_obligations.rs # executable §39 Verus stand-in (H6)
+crates/residiuum-heap/src/qualification.rs   # claim surface (qualified=false)
+crates/residiuum-heap/src/isolation.rs       # query-escape confinement (H3/H6)
+crates/residiuum-heap/src/operational.rs     # metrics/logs/export/health/bundle (H3)
+crates/residiuum-heap/src/isolation_model.rs # connected Rust ↔ HeapIsolation Inv (H6)
+crates/residiuum-heap/src/authority_model.rs  # connected Rust ↔ HeapAuthority Inv (H6)
+crates/residiuum-heap/src/isolation_profile.rs # §13 named profiles + registry
+crates/residiuum-heap/src/decide_obligations.rs # executable §39 Verus stand-in (H6)
 spec/heap/isolation-profiles-v1.json         # closed declassification registry
 doc/RUNBOOK_HEAP_QUALIFICATION.md        # HP-010 operator runbook
 doc/HEAP_COMPLETE_PATH_REVIEW.md         # Gate H6 complete-path review (CPR-*)
 doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md  # External review engagement pack
-crates/residuum-heap/src/pure_proofs.rs     # Verus-oriented pure lemmas (executable)
+crates/residiuum-heap/src/pure_proofs.rs     # Verus-oriented pure lemmas (executable)
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
@@ -126,7 +126,7 @@ fuzz/fuzz_targets/heap_ownership.rs
 |----------|--------|
 | Is the **spec prose** a usable implementation contract? | **Yes** — §§30–41 are frozen developer-ready text (v0.9). |
 | Is **implementation** of the full package tree complete? | **No** — HP-010 incomplete; HP-011/012 not started. |
-| May we advertise `residuum-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
+| May we advertise `dingo-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
 | Is the **hot data path** good enough for heap-bound apps? | **Mostly yes** for embedded + qualified remote put/get/list/scan/find/history/indexes (equality find index-accelerated); lifecycle RPC still reserved. |
 
 **Bottom line:** we are **not done** with the *program* HEAP_SPEC describes. We **are** done writing the core *contract document*; remaining work is residual implementation + honest qualification evidence.
@@ -149,7 +149,7 @@ NEXT   HP-010 single-node qualification  (H3 Accept; H6 partial; Verus + signed 
 LATER  HP-011 → HP-012 cluster
 ```
 
-**Critical path to a qualified single-node claim (`residuum-heap-v1`):**  
+**Critical path to a qualified single-node claim (`dingo-heap-v1`):**  
 close qualification residuals as required → **HP-010** evidence matrices.
 
 #### What's left (operator checklist)
@@ -182,10 +182,10 @@ Product language stays Level 1 until Gate H6.
 
 ## 1. Purpose
 
-A ResiduumDB deployment may serve more than one independent body of application
+A Residiuum deployment may serve more than one independent body of application
 data.
 
-ResiduumDB calls each such body a **heap**.
+Residiuum calls each such body a **heap**.
 
 ```text
 Deployment
@@ -221,13 +221,13 @@ any particular way.
 
 ## 1.1 Defining property: heaps cannot meet
 
-The defining property of a ResiduumDB heap is not that queries normally include a
+The defining property of a Residiuum heap is not that queries normally include a
 heap filter.
 
 It is:
 
 > **Heaps are not filtered apart. They are incapable of meeting inside a
-> ResiduumDB data operation.**
+> Residiuum data operation.**
 
 Heap separation MUST NOT depend on RQL, SDA, ENR, an optimizer, an index,
 an SDK, or an RPC handler remembering to append:
@@ -340,7 +340,7 @@ assumes only the declared trusted computing base in §3.12.
 
 ## 1.4 Claim ladder
 
-ResiduumDB distinguishes three maturity levels.
+Residiuum distinguishes three maturity levels.
 
 ### Level 1 — Heap namespaces
 
@@ -348,7 +348,7 @@ The API names heaps and scopes collections beneath them.
 
 Permitted claim:
 
-> ResiduumDB provides named logical heap namespaces.
+> Residiuum provides named logical heap namespaces.
 
 This is organisation, not qualified security isolation.
 
@@ -360,7 +360,7 @@ finds no bypass.
 
 Permitted claim:
 
-> ResiduumDB enforces logical access isolation between cryptographically
+> Residiuum enforces logical access isolation between cryptographically
 > authorized heaps for the qualified deployment profile.
 
 This remains an implementation assurance supported by architecture and tests.
@@ -374,7 +374,7 @@ and an independent security review is complete.
 
 Permitted claim:
 
-> ResiduumDB provides formally verified non-interference between heap-bound data
+> Residiuum provides formally verified non-interference between heap-bound data
 > operations for the qualified deployment profile.
 
 No release may use a higher-level claim based solely on the existence of APIs,
@@ -384,7 +384,7 @@ tests, types, a model, or an unconnected implementation proof.
 
 To preserve the defining property:
 
-- no ResiduumDB data-plane operation spans two heaps;
+- no Residiuum data-plane operation spans two heaps;
 - no cross-heap join or transaction will be added later;
 - no query layer receives a global data iterator;
 - no caller-provided `HeapId` is treated as authority;
@@ -437,12 +437,12 @@ identify user
     -> execute
 ```
 
-ResiduumDB stores no human RBAC state for heap access. Applications may implement
-RBAC or any other human access model above ResiduumDB.
+Residiuum stores no human RBAC state for heap access. Applications may implement
+RBAC or any other human access model above Residiuum.
 
 The governing rule is:
 
-> **A HeapKey carries cryptographic proof of authority. ResiduumDB does not ask an
+> **A HeapKey carries cryptographic proof of authority. Residiuum does not ask an
 > authorization database whether that authority exists.**
 
 The certificate is validated when establishing a channel. With an unchanged
@@ -483,8 +483,8 @@ A named append-oriented sequence within one heap.
 An application, service, worker, agent, pipeline, or administrative tool that
 holds a cryptographic keypair and presents a `HeapKey`.
 
-ResiduumDB authorizes systems. Human users, organisational roles, groups, and
-business policy belong to the application above ResiduumDB.
+Residiuum authorizes systems. Human users, organisational roles, groups, and
+business policy belong to the application above Residiuum.
 
 ### 2.6 Heap master key
 
@@ -576,23 +576,23 @@ Authorization is evaluated against resolved immutable identity.
 
 ### 3.5.1 Systems are the database subjects
 
-ResiduumDB does not maintain human users, groups, roles, role inheritance, or
+Residiuum does not maintain human users, groups, roles, role inheritance, or
 principal-to-permission grants.
 
 Applications MAY implement RBAC, ABAC, ACLs, relationship policy, subscription
-policy, or any other human authorization model above ResiduumDB. The resulting
-application operation reaches ResiduumDB through the application's HeapKey.
+policy, or any other human authorization model above Residiuum. The resulting
+application operation reaches Residiuum through the application's HeapKey.
 
 The governing separation is:
 
-> ResiduumDB authorizes systems. Systems authorize people.
+> Residiuum authorizes systems. Systems authorize people.
 
 ### 3.5.2 Authority travels with the channel
 
 The authorization decision is encoded and cryptographically authenticated
 inside the presented HeapKey.
 
-ResiduumDB MUST NOT perform a user, role, group, grant, permission, or revocation
+Residiuum MUST NOT perform a user, role, group, grant, permission, or revocation
 database lookup on the request path.
 
 After channel establishment, ordinary operations use an in-memory
@@ -600,7 +600,7 @@ After channel establishment, ordinary operations use an in-memory
 
 ### 3.6 Logical isolation is not physical isolation
 
-Heap authorization protects against systems using ResiduumDB interfaces.
+Heap authorization protects against systems using Residiuum interfaces.
 
 It does not by itself protect against:
 
@@ -613,7 +613,7 @@ It does not by itself protect against:
 
 A system legitimately issued separate HeapKeys for two heaps can read them
 through two separate handles and combine the results in application memory.
-ResiduumDB prevents one heap-bound operation from doing so; it cannot control
+Residiuum prevents one heap-bound operation from doing so; it cannot control
 what an authorized caller does after separate results leave the database.
 
 Deployments requiring protection against those threats need separate stores,
@@ -867,7 +867,7 @@ No software can mathematically guarantee behavior in the presence of an
 arbitrary defect in the compiler, kernel, hardware, cryptography, or the code
 that implements the proved model.
 
-ResiduumDB's guarantee is therefore precise:
+Residiuum's guarantee is therefore precise:
 
 > Assuming the heap isolation kernel, cryptographic primitives, compiler,
 > runtime, and operating system behave according to their specified models, a
@@ -1136,8 +1136,8 @@ Heap selection produces a heap-bound handle.
 Qualified remote Rust:
 
 ```rust
-let heap = Residuum::connect_heap(
-    "residuum://localhost:7434/accounts",
+let heap = Residiuum::connect_heap(
+    "residiuum://localhost:7434/accounts",
     RemoteHeapOptions::new(tls, credential)
         .expected_heap_name("accounts"),
 )?;
@@ -1147,7 +1147,7 @@ let users = heap.collection("users")?;
 Trusted embedded multi-heap Rust:
 
 ```rust
-let deployment = Residuum::open_deployment("./app.dingo")?;
+let deployment = Residiuum::open_deployment("./app.dingo")?;
 let heap = deployment.heap("accounts")?;
 let users = heap.collection("users")?;
 ```
@@ -1227,7 +1227,7 @@ An embedded heap handle provides namespace correctness but does not isolate
 mutually hostile code within the same process.
 
 Applications requiring in-process human authorization implement it above the
-heap handle. ResiduumDB MUST NOT describe HeapKeys as protection from arbitrary
+heap handle. Residiuum MUST NOT describe HeapKeys as protection from arbitrary
 code already running with the same process authority and access to holder key
 material.
 
@@ -1246,7 +1246,7 @@ Heap H
 
 The corresponding `MasterPrivateKey` is generated and retained by the heap
 owner, HSM, or protected key provider and MUST NOT be stored in plaintext by
-ResiduumDB. The preferred ceremony never places it in ResiduumDB memory.
+Residiuum. The preferred ceremony never places it in Residiuum memory.
 
 The master key is not a database login. It has no read, write, query, backup,
 recovery, administration, or data-encryption permission.
@@ -1259,14 +1259,14 @@ It exists only to:
 
 ### 8.2 First-level and second-level access
 
-ResiduumDB's first-level access subjects are systems holding HeapKeys.
+Residiuum's first-level access subjects are systems holding HeapKeys.
 
 ```text
 application / worker / agent / admin tool
                     │
                     │ HeapKey
                     ▼
-                 ResiduumDB
+                 Residiuum
 ```
 
 Human access control is second-level application policy:
@@ -1281,10 +1281,10 @@ application
 application HeapKey
   │
   ▼
-ResiduumDB
+Residiuum
 ```
 
-ResiduumDB MUST NOT implement human RBAC as part of heap authorization. An
+Residiuum MUST NOT implement human RBAC as part of heap authorization. An
 external identity or role system MAY decide which system receives a HeapKey,
 but it has no place in channel verification or the isolation kernel.
 
@@ -1499,7 +1499,7 @@ database. A retry on another node obtains and signs a fresh nonce.
 
 The qualified network profile requires authenticated TLS 1.3 server identity.
 TLS termination, proxying, resumption, and transport migration are conforming
-only when the ResiduumDB endpoint that verifies the proof has access to the
+only when the Residiuum endpoint that verifies the proof has access to the
 correct exporter value for that exact logical channel. Otherwise the proof
 exchange occurs inside a separately end-to-end protected channel.
 
@@ -1628,7 +1628,7 @@ can prove grace has not ended.
 
 ### 8.8 No master key over the network
 
-The ResiduumDB network protocol MUST NOT define an operation for:
+The Residiuum network protocol MUST NOT define an operation for:
 
 - presenting a master private key;
 - issuing a HeapKey;
@@ -1645,7 +1645,7 @@ A network `admin` HeapKey cannot issue keys or cycle authority.
 
 The precise guarantee is:
 
-> The ResiduumDB data-service executable has no protocol operation,
+> The Residiuum data-service executable has no protocol operation,
 > client/local-control parser for master-authority event bytes, concrete
 > master-key provider, or linked local-authority implementation capable of
 > accepting a master key or originating a change to the master generation,
@@ -1666,7 +1666,7 @@ master key over the network.
 ### 8.9 Local authority plane
 
 Heap creation, HeapKey issuance, and master-key cycling occur through the
-separate `residuum-authority` executable running with declared operating-system
+separate `residiuum-authority` executable running with declared operating-system
 access. The qualified data-server process neither links a master-key provider
 implementation nor contains a client/local master-authority mutation
 dispatcher. The cluster-only verified replication exception is §37.2.
@@ -1674,14 +1674,14 @@ dispatcher. The cluster-only verified replication exception is §37.2.
 Illustrative commands:
 
 ```text
-residuum-authority heap create <name>
-residuum-authority key issue <heap> <issuance-request>
-residuum-authority authority cycle <heap>
-residuum-authority authority blacklist <heap> <certificate-or-holder-fingerprint>
+residiuum-authority heap create <name>
+residiuum-authority key issue <heap> <issuance-request>
+residiuum-authority authority cycle <heap>
+residiuum-authority authority blacklist <heap> <certificate-or-holder-fingerprint>
 ```
 
 Use through SSH is still network use at the operating-system layer. It is not
-use through the ResiduumDB network protocol.
+use through the Residiuum network protocol.
 
 “Local-only issuance” is an implementation and custody boundary, not a claim
 that a signature reveals where it was created. Anyone who steals a current
@@ -1690,7 +1690,7 @@ host until the owner completes a hard cycle. The design prevents use of the
 master itself as a network credential; it cannot make stolen signing power
 harmless.
 
-The executable has no TCP, UDP, HTTP, ResiduumDB RPC, or other inbound listener. It
+The executable has no TCP, UDP, HTTP, Residiuum RPC, or other inbound listener. It
 accepts authority inputs only from its local terminal and protected local
 files. As a client, it may connect to the qualified data server's local
 barrier/reload Unix-domain endpoint. That endpoint accepts only these fixed
@@ -1861,7 +1861,7 @@ authority-root event bytes from a request.
 
 The holder generates its own keypair. The authority tool receives only the
 holder public key and a fresh proof of possession, then displays or records its
-fingerprint for operator confirmation. ResiduumDB does not generate or deliver
+fingerprint for operator confirmation. Residiuum does not generate or deliver
 holder private keys.
 
 Issuance receipts are append-only forensic evidence, not an authorization
@@ -1872,7 +1872,7 @@ use of each certificate is also audited.
 ### 8.9.1 Heap creation ceremony
 
 The preferred ceremony has the owner or HSM generate the generation-1 master
-key outside ResiduumDB. Only its public key and proof of possession enter the
+key outside Residiuum. Only its public key and proof of possession enter the
 local tool.
 
 Creation is a recoverable state machine:
@@ -1893,8 +1893,8 @@ resumes or aborts the same immutable `HeapId`; it never creates a second
 active identity.
 
 Creation is local-only but does not require deployment-wide downtime.
-`residuum-authority` obtains the deployment `creation.lock`, then uses
-`residuum-store`'s authority-provisioning interface to write and sync one
+`residiuum-authority` obtains the deployment `creation.lock`, then uses
+`residiuum-store`'s authority-provisioning interface to write and sync one
 canonical active `HeapDescriptor` plus its segment descriptor into a
 non-discoverable, freshly created staging path. The running server never scans
 that path. The tool computes the §34.7 descriptor hash and commits the
@@ -2186,7 +2186,7 @@ only then mark heap ready
 Missing, corrupt, ambiguous, rolled-back, or unavailable authority state keeps
 the heap unavailable.
 
-ResiduumDB MUST NOT become ready with an empty default blacklist, permissive
+Residiuum MUST NOT become ready with an empty default blacklist, permissive
 policy, active administrative state, expired lease, earlier epoch, or earlier
 root as a fallback.
 
@@ -2439,7 +2439,7 @@ This is a permanent isolation invariant, not a v1 feature omission.
 ### 10.2 References
 
 Applications MAY store opaque identifiers referring to another heap, but
-ResiduumDB does not resolve or enforce those references in v1.
+Residiuum does not resolve or enforce those references in v1.
 
 ### 10.3 Data movement
 
@@ -2487,7 +2487,7 @@ genesis protocol has established:
 - permanent identity tombstone;
 - creation audit record.
 
-The preferred ceremony never delivers a master private key through ResiduumDB.
+The preferred ceremony never delivers a master private key through Residiuum.
 Failure MUST NOT leave a discoverable heap without authoritative policy or
 leave an active heap whose master private key has not been proved controlled
 and recoverable under the selected profile.
@@ -2495,7 +2495,7 @@ and recoverable under the selected profile.
 ### 11.2 List
 
 There is no ordinary network operation that enumerates heaps available to a
-human identity, because ResiduumDB stores no human-to-heap grants.
+human identity, because Residiuum stores no human-to-heap grants.
 
 A system already holding a HeapKey may describe only that key's heap.
 
@@ -2692,7 +2692,7 @@ add a field without restarting and loading a newly qualified registry.
 
 ### 14.1 Atomic scope
 
-ResiduumDB Atomics are heap-local in v1. A transaction-shaped compatibility API
+Residiuum Atomics are heap-local in v1. A transaction-shaped compatibility API
 is one possible client surface over Atomics; it does not weaken or replace the
 `ATOMICS_SPEC.md` execution and recovery model.
 
@@ -3050,7 +3050,7 @@ Shared keys weaken blast-radius isolation and MUST be visible in policy.
 
 ## 21. Audit
 
-The durable audit subsystem is named the **Residuum Evidence Ledger** and is
+The durable audit subsystem is named the **Residiuum Evidence Ledger** and is
 specified normatively by
 [EVIDENCE_LEDGER_SPEC.md](EVIDENCE_LEDGER_SPEC.md). This section defines the
 Heap-facing obligations; where it is less specific, the Evidence Ledger
@@ -3157,11 +3157,11 @@ without an application error because the capability instance has terminated.
 The local authority CLI may report `issuance_request_consumed`; it is not a
 network code.
 
-## 23. Compatibility with current ResiduumDB
+## 23. Compatibility with current Residiuum
 
 ### 23.1 Current state
 
-Before this specification, ResiduumDB has:
+Before this specification, Residiuum has:
 
 - one physical/logical store per embedded path or server process;
 - a flat collection namespace within that store;
@@ -3173,7 +3173,7 @@ This is not multi-heap support.
 
 ### 23.2 Legacy embedded compatibility
 
-`Residuum::open(path)` MAY continue to return a handle whose collection methods
+`Residiuum::open(path)` MAY continue to return a handle whose collection methods
 operate within one implicit compatibility heap.
 
 The compatibility heap:
@@ -3216,7 +3216,7 @@ linked into the qualified multi-heap data plane.
 Migration assigns the legacy store one `HeapId` and records it in authoritative
 heap/store identity metadata.
 
-The frozen `residuum-heap-v1` profile rewrites every admitted legacy frame as
+The frozen `dingo-heap-v1` profile rewrites every admitted legacy frame as
 specified in §36. A future named profile may avoid rewriting only if it proves
 all of the following with equally strong surviving ownership evidence:
 
@@ -3229,7 +3229,7 @@ all of the following with equally strong surviving ownership evidence:
   profile.
 
 Such a future profile is not wire- or recovery-compatible with
-`residuum-heap-v1` unless this specification explicitly says so.
+`dingo-heap-v1` unless this specification explicitly says so.
 
 ### 23.5 SDK transition
 
@@ -3274,7 +3274,7 @@ For the HeapKey server profile, heap isolation protects against:
 Heap authorization alone does not protect against:
 
 - server process compromise;
-- ResiduumDB binary compromise;
+- Residiuum binary compromise;
 - kernel or hypervisor compromise;
 - storage administrator access;
 - memory inspection;
@@ -3283,7 +3283,7 @@ Heap authorization alone does not protect against:
 - compromise of the local master private key;
 - compromise of the local authority tool or rollback-resistant authority head;
 - an application explicitly holding HeapKeys for two heaps combining separately
-  obtained results outside ResiduumDB.
+  obtained results outside Residiuum.
 
 Those require other doctrine controls.
 
@@ -3332,7 +3332,7 @@ A conforming implementation maintains all of the following:
     operation.
 20. Query and interpretation engines cannot access a deployment-global data
     iterator.
-21. ResiduumDB stores no human user, group, role, membership, grant, or
+21. Residiuum stores no human user, group, role, membership, grant, or
     permission database for heap access.
 22. The network protocol cannot accept a master/recovery secret, issue
     HeapKeys, mutate grace/blacklist, recover a master, or cycle authority.
@@ -3736,7 +3736,7 @@ This gate is required only for the `cluster` deployment profile:
 
 ### Gate H6 — Isolation claim
 
-ResiduumDB may claim for a named isolation and deployment profile:
+Residiuum may claim for a named isolation and deployment profile:
 
 > Cryptographically authorized systems are logically isolated between heaps.
 
@@ -3759,7 +3759,7 @@ only after:
 
 Before H6, product language is:
 
-> ResiduumDB provides named heap namespaces; strong access-isolation qualification
+> Residiuum provides named heap namespaces; strong access-isolation qualification
 > is in progress.
 
 ## 28. Deployment profile selections
@@ -3813,7 +3813,7 @@ It is complete for a declared profile when:
   recoverable unit has integrity-protected ownership;
 - every operation is heap-bound;
 - HeapKey authorization is self-contained, default-deny, and complete-path;
-- ResiduumDB has no human RBAC or permission database for heap access;
+- Residiuum has no human RBAC or permission database for heap access;
 - the network protocol cannot exercise the master key;
 - the resident heap security snapshot is complete before readiness;
 - administrative state and access policy participate in one resident security
@@ -3866,7 +3866,7 @@ profile.
 The implementation profile label is:
 
 ```text
-residuum-heap-v1
+dingo-heap-v1
 ```
 
 The profile targets the existing Rust 1.88 workspace and existing draft frame
@@ -3893,25 +3893,25 @@ cluster lease.
 Add two workspace crates:
 
 ```text
-crates/residuum-heap/
-crates/residuum-authority/
+crates/residiuum-heap/
+crates/residiuum-authority/
 ```
 
 Kernel package:
 
 ```toml
 [package]
-name = "residuum-heap"
+name = "residiuum-heap"
 version.workspace = true
 license = "MIT"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "ResiduumDB heap identity, capability, and authority kernel."
+description = "Residiuum heap identity, capability, and authority kernel."
 
 [dependencies]
-residuum-format.workspace = true
+residiuum-format.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 getrandom.workspace = true
@@ -3922,33 +3922,33 @@ arc-swap = "1.7"
 zeroize = "1.8"
 ```
 
-Add `"crates/residuum-heap"` to workspace members and:
+Add `"crates/residiuum-heap"` to workspace members and:
 
 ```toml
-residuum-heap = { path = "crates/residuum-heap", version = "0.2.0" }
+residiuum-heap = { path = "crates/residiuum-heap", version = "0.2.0" }
 ```
 
 to `[workspace.dependencies]`, using the workspace release version rather than
 copying a stale literal when the workspace version changes. Crates consume it
-as `residuum-heap.workspace = true`.
+as `residiuum-heap.workspace = true`.
 
 Local authority package:
 
 ```toml
 [package]
-name = "residuum-authority"
+name = "residiuum-authority"
 version.workspace = true
 license = "AGPL-3.0-or-later"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Local-only ResiduumDB heap authority controller."
+description = "Local-only Residiuum heap authority controller."
 
 [dependencies]
-residuum-heap.workspace = true
-residuum-format.workspace = true
-residuum-store = { workspace = true, features = ["authority-provisioning"] }
+residiuum-heap.workspace = true
+residiuum-format.workspace = true
+residiuum-store = { workspace = true, features = ["authority-provisioning"] }
 clap.workspace = true
 thiserror.workspace = true
 zeroize = "1.8"
@@ -3957,12 +3957,12 @@ zeroize = "1.8"
 Add:
 
 ```toml
-residuum-authority = { path = "crates/residuum-authority", version = "0.2.0" }
+residiuum-authority = { path = "crates/residiuum-authority", version = "0.2.0" }
 ```
 
 to workspace dependencies using the same workspace-version rule.
-`residuum-authority` produces a separate `residuum-authority` executable. Neither
-`residuum-server` nor the qualified `residuum` data-service executable depends on
+`residiuum-authority` produces a separate `residiuum-authority` executable. Neither
+`residiuum-server` nor the qualified `residiuum` data-service executable depends on
 or links this crate.
 
 The workspace lockfile pins exact transitive versions. Dependency upgrades
@@ -3972,35 +3972,35 @@ require golden-vector and negative-corpus reruns.
 The permitted dependency direction is:
 
 ```text
-residuum-format
+residiuum-format
       ▲
       │
-residuum-heap
+residiuum-heap
   ▲   ▲   ▲   ▲
-  │   │   │   └──────── residuum-authority (also uses store/authority-provisioning)
-  │   │   └──────────── residuum-client
-  │   └──────────────── residuum-store
+  │   │   │   └──────── residiuum-authority (also uses store/authority-provisioning)
+  │   │   └──────────── residiuum-client
+  │   └──────────────── residiuum-store
   │                           ▲
   └──────────────────┬────────┼──────────────┐
                      │        │              │
-                 residuum-sdk  residuum-cluster  residuum-server
+                 residiuum-sdk  residiuum-cluster  residiuum-server
                      ▲          ▲              ▲
-                     └──────────┴──── residuum-cli
+                     └──────────┴──── residiuum-cli
 ```
 
-`residuum-heap` MUST NOT depend on `residuum-store`, `residuum-sdk`, `residuum-server`,
-`residuum-cluster`, SDA, RQL, ENR, a filesystem abstraction, or a network
+`residiuum-heap` MUST NOT depend on `residiuum-store`, `residiuum-sdk`, `residiuum-server`,
+`residiuum-cluster`, SDA, RQL, ENR, a filesystem abstraction, or a network
 runtime.
 
-`residuum-authority` MUST NOT depend on `residuum-server`, `residuum-sdk`,
-`residuum-client`, `residuum-cluster`, SDA, RQL, ENR, or a TCP/HTTP runtime. Its
+`residiuum-authority` MUST NOT depend on `residiuum-server`, `residiuum-sdk`,
+`residiuum-client`, `residiuum-cluster`, SDA, RQL, ENR, or a TCP/HTTP runtime. Its
 only IPC client is the bounded local barrier/reload protocol defined in §8.9.
-The `residuum-store/authority-provisioning` feature exposes only
+The `residiuum-store/authority-provisioning` feature exposes only
 non-discoverable staged genesis writes and offline publication under the
 required locks; it exposes no live data read, write, scan, query, or server
 operation and is never enabled in the qualified data-service target.
 
-### 30.3 `residuum-heap` module ownership
+### 30.3 `residiuum-heap` module ownership
 
 The crate contains exactly these public implementation areas:
 
@@ -4029,10 +4029,10 @@ backup, and recovery-media code do not belong in this crate.
 The required module placement is:
 
 ```text
-residuum-format/src/canonical_cbor.rs
+residiuum-format/src/canonical_cbor.rs
     generic bounded deterministic CBOR values and COSE array support
 
-residuum-store/src/heap/
+residiuum-store/src/heap/
     host.rs
     heap_store.rs
     maintenance_store.rs
@@ -4044,23 +4044,23 @@ residuum-store/src/heap/
     authority_operational.rs
     migration.rs
 
-residuum-store/src/kernel/
+residiuum-store/src/kernel/
     physical_store.rs
     physical_index.rs
     physical_segments.rs
 
-residuum-client/src/heap_handshake.rs
-residuum-sdk/src/heap.rs
-residuum-sdk/src/heap_collection.rs
-residuum-server/src/heap_auth.rs
-residuum-server/src/heap_dispatch.rs
-residuum-server/src/heap_registry.rs
-residuum-server/src/heap_authority_reload.rs
-residuum-cluster/src/heap_control.rs
-residuum-cluster/src/heap_lease.rs
-residuum-cli/src/heap.rs
+residiuum-client/src/heap_handshake.rs
+residiuum-sdk/src/heap.rs
+residiuum-sdk/src/heap_collection.rs
+residiuum-server/src/heap_auth.rs
+residiuum-server/src/heap_dispatch.rs
+residiuum-server/src/heap_registry.rs
+residiuum-server/src/heap_authority_reload.rs
+residiuum-cluster/src/heap_control.rs
+residiuum-cluster/src/heap_lease.rs
+residiuum-cli/src/heap.rs
 
-residuum-authority/src/
+residiuum-authority/src/
     main.rs
     command.rs
     filesystem_store.rs
@@ -4069,17 +4069,17 @@ residuum-authority/src/
     reload_notify.rs
 ```
 
-The ordinary `residuum` CLI may perform HeapKey-authorized data and heap
+The ordinary `residiuum` CLI may perform HeapKey-authorized data and heap
 administration. Master issuance, cycling, blacklist, grace, epoch recovery,
 and recovery-profile commands exist only in the separate
-`residuum-authority` executable.
+`residiuum-authority` executable.
 
-The current `residuum-server::authz` token/role implementation remains only for
+The current `residiuum-server::authz` token/role implementation remains only for
 the isolated legacy server profile. Qualified heap dispatch does not call it.
 
 ### 30.5 Compilation firewall
 
-The current public `residuum_store::Store` allows global scans and raw subjects.
+The current public `residiuum_store::Store` allows global scans and raw subjects.
 It cannot remain reachable from qualified upper layers.
 
 During H1:
@@ -4088,26 +4088,26 @@ During H1:
 - expose `StoreHost` with no get, put, scan, index, or raw-path methods;
 - expose capability-gated `HeapStore`, `MaintenanceStore`, `ReplicaStore`, and
   `RecoveryStore` façades;
-- remove `Store` re-exports from `residuum-store::lib`;
+- remove `Store` re-exports from `residiuum-store::lib`;
 - update embedded, SDK, server, and cluster code to use the correct façade;
 - keep any legacy raw wrapper in a separate legacy-only crate or binary that
-  cannot be linked into `residuum-server` with `residuum-heap-v1`.
+  cannot be linked into `residiuum-server` with `dingo-heap-v1`.
 
 CI adds `scripts/check_heap_architecture.sh`. It fails when:
 
-- `residuum-sdk`, `residuum-server`, query, SDA host, index host, or client modules
+- `residiuum-sdk`, `residiuum-server`, query, SDA host, index host, or client modules
   import `kernel`, `PhysicalStore`, raw segment catalogs, or raw iterators;
-- any type outside `residuum-heap` implements or constructs a capability;
+- any type outside `residiuum-heap` implements or constructs a capability;
 - `HeapCap`, `HeapMaintenanceCap`, `ReplicaCap`, or `RecoveryCap` implements
   `Serialize` or `Deserialize`;
 - the qualified server links legacy role dispatch or diagnostic line protocol;
-- `residuum-server`, the qualified `residuum` data-service target, or any
-  client-facing dispatcher depends on `residuum-authority`, implements
+- `residiuum-server`, the qualified `residiuum` data-service target, or any
+  client-facing dispatcher depends on `residiuum-authority`, implements
   `MasterKeyProvider`, stores a `dyn MasterKeyProvider`, contains
   `MasterAuthorityStore`, or accepts a raw authority event instead of
   `AuthorizedOperationalEvent`;
 - the qualified data-service feature graph enables
-  `residuum-store/authority-provisioning` or links its provisioning symbols;
+  `residiuum-store/authority-provisioning` or links its provisioning symbols;
 - a cluster component decodes `ReplicatedMasterAuthorityEvent` anywhere
   except the mTLS-authenticated security-control Raft peer module, or that
   module can construct/sign an event rather than verify and replicate one;
@@ -4116,7 +4116,7 @@ CI adds `scripts/check_heap_architecture.sh`. It fails when:
 
 ### 30.6 Concrete identity types
 
-`residuum-heap::ids` defines:
+`residiuum-heap::ids` defines:
 
 ```rust
 #[repr(transparent)]
@@ -4193,7 +4193,7 @@ struct CapInner {
 
 Rules:
 
-- fields and constructors are private to `residuum-heap`;
+- fields and constructors are private to `residiuum-heap`;
 - `HeapCap` is cloneable inside the trusted process but not serializable;
 - `Debug` prints only heap ID, generation, revision, and redacted
   fingerprints;
@@ -4322,7 +4322,7 @@ impl RemoteHeapOptions {
     pub fn retry_backoff(self, value: Duration) -> Self;
 }
 
-impl Residuum {
+impl Residiuum {
     pub fn connect_heap(
         url: impl AsRef<str>,
         options: RemoteHeapOptions,
@@ -4379,10 +4379,10 @@ deployment-global application-data iterator, query, collection, transaction,
 or backup. Heap creation, retirement, authority, and cross-heap import remain
 explicit administrative APIs and never hide inside `heap(name)`.
 
-The existing `Residuum::connect`, `ConnectOptions::auth_token`, and name-based
+The existing `Residiuum::connect`, `ConnectOptions::auth_token`, and name-based
 `RpcRequest` remain legacy-only and are deprecated when the heap feature is
 enabled. They cannot select the qualified listener. Existing
-`Residuum::open(path)` becomes a deprecated spelling of
+`Residiuum::open(path)` becomes a deprecated spelling of
 `open_compatibility_heap(path)` and never opens a deployment-global
 multi-heap handle.
 
@@ -4720,7 +4720,7 @@ resulting values.
 The kernel constructs a private-field `AuthorizedOperationalEvent` only from
 that successful check. The storage writer accepts that type, never raw event
 bytes or a public struct literal. Its constructor and fields are private to
-`residuum-heap`; serialization occurs only after construction. This is the
+`residiuum-heap`; serialization occurs only after construction. This is the
 compile-time firewall between a network handler and arbitrary authority-state
 mutation.
 
@@ -4758,7 +4758,7 @@ Before allocation:
 - byte string: at most the field's exact or declared maximum;
 - no floats, tags, indefinite lengths, duplicate keys, or trailing bytes.
 
-`residuum-format::canonical_cbor` performs structural bounds before allocating.
+`residiuum-format::canonical_cbor` performs structural bounds before allocating.
 Semantic decoders then require the exact field set.
 
 ### 31.7 Holder issuance request
@@ -4869,7 +4869,7 @@ filesystem path, external callback, or mutable user identity.
 
 ### 32.3 Operation registry
 
-`residuum-heap::rights::Operation` is `#[repr(u16)]`. The numeric IDs below are
+`residiuum-heap::rights::Operation` is `#[repr(u16)]`. The numeric IDs below are
 the qualified wire representation and are permanently allocated by this
 table. Allocation freezes identity and minimum rights but does not by itself
 make an operation callable. Wire names are frozen SDK, audit, schema, and
@@ -5026,7 +5026,7 @@ Each entry contains:
 }
 ```
 
-`build.rs` in `residuum-heap` generates the Rust enum, name parser, rights table,
+`build.rs` in `residiuum-heap` generates the Rust enum, name parser, rights table,
 and test cases from this file. CI rejects generated diffs and duplicate IDs,
 names, or incomplete dispatch coverage.
 
@@ -5194,7 +5194,7 @@ Additional JSON fields:
   "authority_generation": 1,
   "security_revision": 1,
   "capability_expires_at": 1700003600,
-  "heap_profile": "residuum-heap-v1"
+  "heap_profile": "dingo-heap-v1"
 }
 ```
 
@@ -5313,7 +5313,7 @@ or detailed denial logging after the applicable budget is exhausted.
 
 ## 34. Frozen durable-storage profile
 
-This section is normative for `residuum-heap-v1`. A different layout is permitted
+This section is normative for `dingo-heap-v1`. A different layout is permitted
 only under a new profile name and after requalification.
 
 ### 34.1 One heap per segment
@@ -5328,7 +5328,7 @@ Every heap-aware segment has:
 2. envelope keys 31 and 34 on that descriptor, binding `HeapId` and ownership
    profile;
 3. the existing descriptor body binding store ID, segment ID, creation time,
-   and safety limits exactly as defined by `residuum-format`;
+   and safety limits exactly as defined by `residiuum-format`;
 4. heap identity on every independently recoverable frame;
 5. keys 31 and 34 on the final `SegmentSummary`, when present.
 
@@ -5336,7 +5336,7 @@ This preserves the existing invariant that `SegmentDescriptor` is frame zero;
 `HeapDescriptor` is heap catalog/history evidence and is not substituted for
 the segment-lifecycle descriptor.
 
-`residuum-format` adds the profile-neutral constructor:
+`residiuum-format` adds the profile-neutral constructor:
 
 ```rust
 pub fn create_with_descriptor_envelope(
@@ -5348,10 +5348,10 @@ pub fn create_with_descriptor_envelope(
 ```
 
 It validates the envelope with the existing deterministic-CBOR limits and
-writes the unchanged draft descriptor body. `residuum-store::kernel` is the only
+writes the unchanged draft descriptor body. `residiuum-store::kernel` is the only
 qualified caller and supplies canonical `{31: heap_id_bytes, 34: 1}` after
 deriving the bytes from its bound capability. This avoids a dependency cycle:
-`residuum-format` does not import `HeapId` or depend on `residuum-heap`.
+`residiuum-format` does not import `HeapId` or depend on `residiuum-heap`.
 
 The qualified store cannot call the legacy empty-envelope constructor.
 Migration remains the only qualified module permitted to decode legacy
@@ -5407,7 +5407,7 @@ administrative chain survives payload purge.
 
 ### 34.3 Allocated frame kinds and envelope fields
 
-The following `residuum-format` values are frozen:
+The following `residiuum-format` values are frozen:
 
 | Value | Frame kind |
 |---:|---|
@@ -5493,7 +5493,7 @@ Descriptors are deterministic CBOR maps embedded as frame bodies.
 | 3 | heap ID | bstr(16) |
 | 4 | creation event ID | bstr(16) |
 | 5 | created at | Unix seconds |
-| 6 | profile | `"residuum-heap-v1"` |
+| 6 | profile | `"dingo-heap-v1"` |
 | 7 | predecessor descriptor hash | bstr(32) or null |
 | 8 | descriptor sequence | uint, starting at 1 |
 | 9 | state | 1 active, 2 read-only, 3 suspended, 4 retired, 5 purging, 6 purged |
@@ -5588,7 +5588,7 @@ segment IDs are a preflight conflict. Filesystem paths are diagnostic only and
 are excluded from identity, so non-UTF-8 or platform-specific paths do not
 change the inventory hash or prevent salvage. No field called `hash` or
 `descriptor hash` may silently choose another algorithm. Frame CRC/checksum
-fields retain their existing `residuum-format` algorithms and are not object
+fields retain their existing `residiuum-format` algorithms and are not object
 identity.
 
 ## 35. Authority storage and key-provider contract
@@ -5620,13 +5620,13 @@ UID, and all traversal/mutation is directory-descriptor-relative with
 no-follow semantics. The data server holds an exclusive `serving.lock` for its
 deployment from verification through shutdown, preventing a second serving
 process. A separate per-heap `mutation.lock` serializes all authority-chain
-commits. `residuum-authority` holds it exclusively for a local master-authority
+commits. `residiuum-authority` holds it exclusively for a local master-authority
 mutation; the server holds it exclusively only inside
 `commit_operational`, and shared while loading a candidate snapshot or
 checking time. The lock is never held while waiting for an admitted data
 operation.
 
-When `residuum-authority` observes no running server, it MUST also acquire
+When `residiuum-authority` observes no running server, it MUST also acquire
 `serving.lock` exclusively and retain both locks through the commit and
 selector publication. This closes the race in which a server could start
 after the tool skipped the barrier but before the new head became durable. If
@@ -5742,7 +5742,7 @@ Head validation additionally requires:
 - label 26 equals root-event label 19 at an epoch root; creation requires
   labels 18 and 19 to match, and within the epoch label 26 changes only
   through a valid §31.5.1 event whose label 16 equals the new value.
-- labels 27 and 28 are both null before Residuum Evidence Ledger activation and
+- labels 27 and 28 are both null before Residiuum Evidence Ledger activation and
   both non-null afterward; activation and every later change is a valid
   authority event atomically bound to the corresponding ledger evidence.
 
@@ -5807,12 +5807,12 @@ back.
 
 ### 35.2 Storage interface
 
-`residuum-heap` exposes the following split interfaces. The split is normative:
+`residiuum-heap` exposes the following split interfaces. The split is normative:
 the data-service dependency graph may contain `AuthorityReader`,
 `OperationalAuthorityWriter`, `AuthorityCheckpointWriter`, and
 the opaque implementations of those traits. `AuthorityAnchor`,
 `MasterAuthorityStore`, and their mutation types are private to the authority
-storage implementation and `residuum-authority`; none is callable from the data
+storage implementation and `residiuum-authority`; none is callable from the data
 service.
 
 ```rust
@@ -5843,7 +5843,7 @@ pub struct TimeCheckpoint {
 }
 
 pub struct AuthorizedOperationalEvent {
-    /* private fields; constructed only by residuum-heap authorization */
+    /* private fields; constructed only by residiuum-heap authorization */
 }
 
 pub struct OperationalCommit {
@@ -5948,11 +5948,11 @@ permitted only under the visibly named `development-file-key-provider` and
 zeroize secret buffers. Production adapters may use an OS keystore, TPM, HSM,
 or remote signer, but must pass the same conformance suite.
 
-Master rotation is a local-only `residuum-authority` command. The data-service
+Master rotation is a local-only `residiuum-authority` command. The data-service
 listener has no operation ID, parser branch, crate dependency, concrete
 provider, or trait object capable of invoking `MasterKeyProvider`.
 
-For a security-barrier mutation, `residuum-authority` first completes
+For a security-barrier mutation, `residiuum-authority` first completes
 `begin_security_barrier`, commits against the returned current head, and then
 sends `apply_committed_head` as defined in §8.9. The server validates peer
 credentials, rereads the anchored state, and acknowledges only the exact
@@ -6053,7 +6053,7 @@ stop new admission, wait the documented drain bound, then publish.
 
 ### 37.2 Cluster control plane
 
-Cluster support extends `residuum-cluster` with a dedicated security-control Raft
+Cluster support extends `residiuum-cluster` with a dedicated security-control Raft
 group per deployment. Payload partitions do not query this group for each
 request. Its committed log contains:
 

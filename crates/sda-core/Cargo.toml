@@ -1,11 +1,11 @@
 [package]
-name = "residuum-sda"
+name = "residiuum-sda"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "MIT"
 authors.workspace = true
-description = "DingoDB hybrid evaluator for Structured Data Algebra (SDA) plus additive ENR1 enrichment — pure Rust, no storage IO."
+description = "Residiuum hybrid evaluator for Structured Data Algebra (SDA) plus additive ENR1 enrichment — pure Rust, no storage IO."
 readme = "README.md"
 repository.workspace = true
 keywords = ["dingodb", "sda", "enr", "json", "transformation"]

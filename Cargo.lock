@@ -980,7 +980,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "residuum-authority"
+name = "residiuum-authority"
 version = "0.2.0"
 dependencies = [
  "blake3",
@@ -988,9 +988,9 @@ dependencies = [
  "ed25519-dalek",
  "getrandom 0.3.4",
  "hex",
- "residuum-format",
- "residuum-heap",
- "residuum-store",
+ "residiuum-format",
+ "residiuum-heap",
+ "residiuum-store",
  "sha2",
  "tempfile",
  "thiserror",
@@ -998,20 +998,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-cli"
+name = "residiuum-cli"
 version = "0.2.0"
 dependencies = [
  "clap",
- "residuum-examine",
- "residuum-sdk",
- "residuum-server",
- "residuum-store",
+ "residiuum-examine",
+ "residiuum-sdk",
+ "residiuum-server",
+ "residiuum-store",
  "serde_json",
  "tempfile",
 ]
 
 [[package]]
-name = "residuum-client"
+name = "residiuum-client"
 version = "0.2.0"
 dependencies = [
  "serde",
@@ -1020,11 +1020,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-cluster"
+name = "residiuum-cluster"
 version = "0.2.0"
 dependencies = [
  "blake3",
- "residuum-store",
+ "residiuum-store",
  "serde",
  "serde_json",
  "tempfile",
@@ -1032,19 +1032,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-examine"
+name = "residiuum-examine"
 version = "0.2.0"
 dependencies = [
- "residuum-format",
- "residuum-sda",
- "residuum-store",
+ "residiuum-format",
+ "residiuum-sda",
+ "residiuum-store",
  "serde_json",
  "tempfile",
  "thiserror",
 ]
 
 [[package]]
-name = "residuum-format"
+name = "residiuum-format"
 version = "0.2.0"
 dependencies = [
  "blake3",
@@ -1054,7 +1054,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-heap"
+name = "residiuum-heap"
 version = "0.2.0"
 dependencies = [
  "arc-swap",
@@ -1063,7 +1063,7 @@ dependencies = [
  "getrandom 0.3.4",
  "hex",
  "proptest",
- "residuum-format",
+ "residiuum-format",
  "serde",
  "serde_json",
  "sha2",
@@ -1074,11 +1074,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-heap-verus"
+name = "residiuum-heap-verus"
 version = "0.2.0"
 
 [[package]]
-name = "residuum-sda"
+name = "residiuum-sda"
 version = "0.2.0"
 dependencies = [
  "num-bigint",
@@ -1090,16 +1090,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-sda-cli"
+name = "residiuum-sda-cli"
 version = "0.2.0"
 dependencies = [
  "clap",
- "residuum-sda",
+ "residiuum-sda",
  "serde_json",
 ]
 
 [[package]]
-name = "residuum-sdk"
+name = "residiuum-sdk"
 version = "0.2.0"
 dependencies = [
  "blake3",
@@ -1107,13 +1107,13 @@ dependencies = [
  "getrandom 0.3.4",
  "hex",
  "rcgen",
- "residuum-client",
- "residuum-cluster",
- "residuum-format",
- "residuum-heap",
- "residuum-sda",
- "residuum-server",
- "residuum-store",
+ "residiuum-client",
+ "residiuum-cluster",
+ "residiuum-format",
+ "residiuum-heap",
+ "residiuum-sda",
+ "residiuum-server",
+ "residiuum-store",
  "rustls",
  "rustls-pemfile",
  "rustls-pki-types",
@@ -1126,19 +1126,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-server"
+name = "residiuum-server"
 version = "0.2.0"
 dependencies = [
  "ed25519-dalek",
  "getrandom 0.3.4",
  "hex",
  "rcgen",
- "residuum-client",
- "residuum-cluster",
- "residuum-format",
- "residuum-heap",
- "residuum-sdk",
- "residuum-store",
+ "residiuum-client",
+ "residiuum-cluster",
+ "residiuum-format",
+ "residiuum-heap",
+ "residiuum-sdk",
+ "residiuum-store",
  "rustls",
  "rustls-pemfile",
  "rustls-pki-types",
@@ -1150,15 +1150,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-store"
+name = "residiuum-store"
 version = "0.2.0"
 dependencies = [
  "blake3",
  "getrandom 0.3.4",
  "hex",
  "hmac",
- "residuum-format",
- "residuum-heap",
+ "residiuum-format",
+ "residiuum-heap",
  "serde",
  "serde_json",
  "sha2",
@@ -1168,12 +1168,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "residuum-testrig"
+name = "residiuum-testrig"
 version = "0.2.0"
 dependencies = [
  "clap",
  "getrandom 0.3.4",
- "residuum-store",
+ "residiuum-store",
  "serde",
  "serde_json",
 ]

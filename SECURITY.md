@@ -1,7 +1,7 @@
 # Security policy (DEF-063-A)
 
-This document is the **public vulnerability disclosure process** for ResiduumDB
-/ DingoDB. It is normative process text for operators and researchers.
+This document is the **public vulnerability disclosure process** for Residiuum
+/ Residiuum. It is normative process text for operators and researchers.
 
 Related:
 
@@ -15,7 +15,7 @@ Related:
 
 ## Status of the product
 
-**ResiduumDB is not production-ready.** Do not treat any release as having
+**Residiuum is not production-ready.** Do not treat any release as having
 passed independent security acceptance until:
 
 1. an independent audit of the claimed surface is complete;

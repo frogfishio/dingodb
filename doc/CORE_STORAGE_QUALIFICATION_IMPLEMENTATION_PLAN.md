@@ -112,7 +112,7 @@ Depends: `CSQ-0`
 Deliver:
 
 ```text
-crates/residuum-store-model/
+crates/residiuum-store-model/
 tools/core-storage-reference-reader/
 ```
 

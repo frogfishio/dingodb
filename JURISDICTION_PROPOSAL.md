@@ -1,14 +1,14 @@
-# ResiduumDB jurisdiction, residency, and sovereign placement proposal
+# Residiuum jurisdiction, residency, and sovereign placement proposal
 
 Status: implementation-ready proposal  
-Target profile: jurisdiction-aware ResiduumDB
+Target profile: jurisdiction-aware Residiuum
 Normative impact: `OVERVIEW.md`, `FORMAT_SPEC.md`, `DX_SPEC.md`,
 `CLUSTER_SPEC.md`, `TRANSACTIONS.md`, SDK compatibility policy, operator CLI,
 and production release gates
 
 ## 1. Purpose
 
-This proposal defines how ResiduumDB binds data to enforceable residency,
+This proposal defines how Residiuum binds data to enforceable residency,
 processing, movement, retention, and recovery policies.
 
 The objective is not to attach geographic labels to partitions. The objective
@@ -17,9 +17,9 @@ deriving, backing up, repairing, exporting, or destroying governed data is
 evaluated against a versioned policy and fails closed when compliance cannot
 be established.
 
-The model extends ResiduumDB’s long-horizon promise:
+The model extends Residiuum’s long-horizon promise:
 
-> ResiduumDB manages data across time, place, and failure.
+> Residiuum manages data across time, place, and failure.
 
 - **Time:** data remains usable beyond the applications and systems that
   created it.
@@ -158,7 +158,7 @@ Storage permission does not automatically imply processing permission.
 
 ### 6.4 Residency domain
 
-A stable ResiduumDB identifier for an operator-defined set of trusted placement
+A stable Residiuum identifier for an operator-defined set of trusted placement
 and processing attributes.
 
 Examples:
@@ -198,7 +198,7 @@ recorded with data and evidence.
 An operator-defined classification such as `public`, `internal`,
 `confidential`, `health`, `financial`, or `export-controlled`.
 
-ResiduumDB treats data-class values as policy inputs. It does not infer them.
+Residiuum treats data-class values as policy inputs. It does not infer them.
 
 ### 6.9 Placement claim
 
@@ -236,7 +236,7 @@ Changing a catalog field is not a policy transition.
 
 ### 7.1 Fail closed
 
-If ResiduumDB cannot establish that an authoritative action is permitted, it MUST
+If Residiuum cannot establish that an authoritative action is permitted, it MUST
 deny the action.
 
 Examples:
@@ -733,7 +733,7 @@ This is easier to explain and safer to implement.
 
 ### 11.4 No accidental weakening
 
-When multiple policies apply, ResiduumDB retains the contributing policy IDs and
+When multiple policies apply, Residiuum retains the contributing policy IDs and
 decision evidence. It does not emit a simplified policy that loses a source
 restriction.
 
@@ -1298,7 +1298,7 @@ pub struct ExportAuthorization {
 
 ### 22.3 Declassification
 
-ResiduumDB never infers that hashing, aggregation, tokenization, encryption, or
+Residiuum never infers that hashing, aggregation, tokenization, encryption, or
 redaction removes governance.
 
 Only a named approved transformation profile may assign a less restrictive
@@ -1384,7 +1384,7 @@ exist.
 
 ### 23.6 Damage evidence versus erasure rights
 
-ResiduumDB’s conflict-preservation rule does not override authorized legal purge.
+Residiuum’s conflict-preservation rule does not override authorized legal purge.
 The system preserves conflict evidence until an authorized purge explicitly
 requires removal.
 
@@ -1739,7 +1739,7 @@ context. Every advanced result includes jurisdiction coverage.
 Create a pure Rust crate with no storage or network I/O:
 
 ```text
-crates/residuum-policy/
+crates/residiuum-policy/
   src/
     lib.rs
     ids.rs
@@ -1764,7 +1764,7 @@ Responsibilities:
 
 The crate must deny unknown actions/required attributes.
 
-### 31.2 `residuum-format`
+### 31.2 `residiuum-format`
 
 Add:
 
@@ -1775,7 +1775,7 @@ Add:
 - unknown-version preservation;
 - malformed/adversarial corpora.
 
-### 31.3 `residuum-store`
+### 31.3 `residiuum-store`
 
 Add:
 
@@ -1803,7 +1803,7 @@ store/
 These directories accelerate management. Essential policy identity remains in
 framed evidence.
 
-### 31.4 `residuum-cluster`
+### 31.4 `residiuum-cluster`
 
 Add:
 
@@ -1816,7 +1816,7 @@ Add:
 - policy epoch fencing;
 - policy-aware coverage.
 
-### 31.5 `residuum-sdk`
+### 31.5 `residiuum-sdk`
 
 Add:
 
@@ -1827,11 +1827,11 @@ Add:
 - export/workflow API;
 - backend parity.
 
-### 31.6 `residuum-cli`
+### 31.6 `residiuum-cli`
 
 Add policy/domain/transition/export/hold/purge commands and stable JSON.
 
-### 31.7 `residuum-examine` and SDA
+### 31.7 `residiuum-examine` and SDA
 
 Expose:
 
@@ -2259,7 +2259,7 @@ If accepted:
 
 ## 40. Production release gates
 
-ResiduumDB may claim the jurisdiction-aware profile only when:
+Residiuum may claim the jurisdiction-aware profile only when:
 
 - [ ] Every authoritative and derived copy path is inventoried.
 - [ ] Every authoritative frame retains independent policy identity.
@@ -2322,6 +2322,6 @@ onto.
 
 The defining guarantee should be:
 
-> ResiduumDB never moves, processes, repairs, backs up, or recovers governed data
+> Residiuum never moves, processes, repairs, backs up, or recovers governed data
 > outside its declared policy without an explicit, authorized, auditable
 > transition—and it never calls missing evidence compliant.

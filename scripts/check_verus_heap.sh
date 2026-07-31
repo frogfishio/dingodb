@@ -32,12 +32,12 @@ do
 done
 
 # Executable stand-ins always green.
-cargo test -p residuum-heap pure_proof --quiet \
-  || fail "residuum-heap pure_proof tests failed"
+cargo test -p residiuum-heap pure_proof --quiet \
+  || fail "residiuum-heap pure_proof tests failed"
 
 find_verus() {
-  if [[ -n "${RESIDUUM_VERUS_BIN:-}" && -x "${RESIDUUM_VERUS_BIN}" ]]; then
-    echo "$RESIDUUM_VERUS_BIN"
+  if [[ -n "${RESIDIUUM_VERUS_BIN:-}" && -x "${RESIDIUUM_VERUS_BIN}" ]]; then
+    echo "$RESIDIUUM_VERUS_BIN"
     return 0
   fi
   if [[ -x "$ROOT/tools/verus/verus" ]]; then
@@ -68,11 +68,11 @@ if VERUS_BIN=$(find_verus); then
     || fail "VERUS_PROOFS_CONNECTED must be true when verus proofs are connected"
   echo "check_verus_heap: machine-checked pure_kernel OK"
 else
-  if [[ "${RESIDUUM_REQUIRE_VERUS:-}" == "1" ]]; then
-    fail "verus required (RESIDUUM_REQUIRE_VERUS=1) but not found (set RESIDUUM_VERUS_BIN or tools/verus/verus)"
+  if [[ "${RESIDIUUM_REQUIRE_VERUS:-}" == "1" ]]; then
+    fail "verus required (RESIDIUUM_REQUIRE_VERUS=1) but not found (set RESIDIUUM_VERUS_BIN or tools/verus/verus)"
   fi
   echo "check_verus_heap: verus not installed — pure_kernel source + executable lemmas OK"
-  echo "  install: see scripts/setup_verus.sh ; CI job verus-heap sets RESIDUUM_REQUIRE_VERUS=1"
+  echo "  install: see scripts/setup_verus.sh ; CI job verus-heap sets RESIDIUUM_REQUIRE_VERUS=1"
 fi
 
 echo "check_verus_heap: OK"

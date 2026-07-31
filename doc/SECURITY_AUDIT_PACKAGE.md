@@ -15,7 +15,7 @@ is necessary but not sufficient for DEF-063 acceptance.
 |------|-----|
 | Local store media, writer lock, salvage/doctor honesty | Core data integrity |
 | Untrusted parsers (format, CBOR, SDA, RPC frames, manifests, tokens) | Hostile input |
-| TLS / authz / admission for `residuum serve` (as implemented) | Network boundary |
+| TLS / authz / admission for `residiuum serve` (as implemented) | Network boundary |
 | Heap isolation Level-1 claims (if claimed in release) | Authorization TCB |
 | Backup / migrate / scrub control documents | Recovery trust |
 | Supply chain of published crates | What operators run |
@@ -50,12 +50,12 @@ is necessary but not sufficient for DEF-063 acceptance.
 | Evidence | How to run |
 |----------|------------|
 | Delivery / quality bar | `./scripts/quality.sh` |
-| Fuzz property bar (no cargo-fuzz required) | `RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
+| Fuzz property bar (no cargo-fuzz required) | `RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
 | Full fuzz smoke (nightly + cargo-fuzz) | `./scripts/fuzz-smoke.sh` or CI job `fuzz_smoke` |
-| Crash matrix (CI subset) | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_022_crash_matrix` |
-| Cluster in-process verify | `cargo test -p residuum-cluster --test stage_def_041_verify` |
-| Writer-lock honesty | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_101_writer_lock` |
-| Continuation secret keys | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_097_token_keys` |
+| Crash matrix (CI subset) | `cargo test -p residiuum-store --features legacy-raw-store --test stage_def_022_crash_matrix` |
+| Cluster in-process verify | `cargo test -p residiuum-cluster --test stage_def_041_verify` |
+| Writer-lock honesty | `cargo test -p residiuum-store --features legacy-raw-store --test stage_def_101_writer_lock` |
+| Continuation secret keys | `cargo test -p residiuum-store --features legacy-raw-store --test stage_def_097_token_keys` |
 | Crash/recovery contract | `./scripts/verify-crash-recovery-contract.sh` |
 
 ## 4. Fuzz inventory (DEF-091 / 091-F)

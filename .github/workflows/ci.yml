@@ -63,7 +63,7 @@ jobs:
         # if platform-specific files appear under target/ only (they should not).
         run: ./scripts/release_content.sh
         env:
-          RESIDUUM_RELEASE_ALLOW_DIRTY: "0"
+          RESIDIUUM_RELEASE_ALLOW_DIRTY: "0"
 
   msrv:
     name: MSRV
@@ -102,7 +102,7 @@ jobs:
           command: check
           arguments: --all-features
 
-  # Gate H6 / CPR-004 — Kani harnesses for pure heap lemmas (residuum-heap).
+  # Gate H6 / CPR-004 — Kani harnesses for pure heap lemmas (residiuum-heap).
   kani-heap:
     name: kani heap pure lemmas
     runs-on: ubuntu-latest
@@ -123,7 +123,7 @@ jobs:
       - name: Kani pure proof harnesses + executable bundle
         run: ./scripts/check_kani_heap.sh
         env:
-          RESIDUUM_REQUIRE_KANI: "1"
+          RESIDIUUM_REQUIRE_KANI: "1"
 
   # Gate H6 / CPR-004 — Verus pure-kernel proofs (verification/heap-verus/verus).
   verus-heap:
@@ -144,4 +144,4 @@ jobs:
       - name: Verus pure_kernel + executable lemmas
         run: ./scripts/check_verus_heap.sh
         env:
-          RESIDUUM_REQUIRE_VERUS: "1"
+          RESIDIUUM_REQUIRE_VERUS: "1"

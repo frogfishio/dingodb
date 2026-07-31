@@ -1,8 +1,8 @@
-# Residuum Rule Expression (RRE) specification
+# Residiuum Rule Expression (RRE) specification
 
 Status: **Normative design v1.0-draft**
 
-Language name: **Residuum Rule Expression (RRE)**
+Language name: **Residiuum Rule Expression (RRE)**
 
 Product capability: **Data Rules**
 
@@ -14,7 +14,7 @@ Scope: Declarative document rules, transition rules, referential integrity,
 formal semantics, proof obligations, and Atomic enforcement
 
 Normative companions: `ATOMICS_SPEC.md`, `HEAP_SPEC.md`, `RQL_SPEC.md`,
-`RESIDUUM_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`,
+`RESIDIUUM_PREDICATE_SPEC.md`, `SDA_SPEC.md`, `SDA_PROFILE.md`,
 `COLLECTION_CONTRACT_SPEC.md`, `doc/RRE_IMPLEMENTATION_PLAN.md`, and
 `DX_SPEC.md`
 
@@ -22,10 +22,10 @@ Compatibility importer: `JSON_SCHEMA_TO_RRE_SPEC.md`
 
 ## 1. Decision
 
-ResiduumDB provides a small, declarative, non-Turing-complete language for
+Residiuum provides a small, declarative, non-Turing-complete language for
 describing valid stored state and valid state transitions.
 
-The language is named **Residuum Rule Expression**, abbreviated **RRE**. One RRE
+The language is named **Residiuum Rule Expression**, abbreviated **RRE**. One RRE
 denotes one invariant; a RRE ruleset is the immutable deployment container.
 “Data Rules” remains the plain-English name of the product capability. Its
 source dialect identifier is `dre`.
@@ -43,7 +43,7 @@ RREs are not:
 - user-defined runtime functions;
 - arbitrary SDA programs;
 - arbitrary RQL queries;
-- application code that ResiduumDB promises to remember to call.
+- application code that Residiuum promises to remember to call.
 
 A RRE denotes a finite mathematical predicate. Compilation determines
 its complete dependency set, required Atomic scope, execution bound, canonical
@@ -78,9 +78,9 @@ The market is commonly divided along two independent axes:
 | | Truth maintained by applications | Truth maintained by the database |
 |---|---|---|
 | Fixed or relational shape | loosely governed relational use | relational constraints and foreign keys |
-| Flexible or document shape | conventional document-store practice | **ResiduumDB Data Rules** |
+| Flexible or document shape | conventional document-store practice | **Residiuum Data Rules** |
 
-ResiduumDB's intended quadrant is:
+Residiuum's intended quadrant is:
 
 ```text
 document-native shape
@@ -103,7 +103,7 @@ SDA              examines rules, decisions, data, and holes
 bounded execution keeps the path fast
 ```
 
-ResiduumDB is not claiming to reproduce PostgreSQL, SQL, joins, or arbitrary
+Residiuum is not claiming to reproduce PostgreSQL, SQL, joins, or arbitrary
 distributed ACID. It is extracting a central value of a mature relational
 database—the database owns declared integrity—without forcing documents into
 one universal row shape.
@@ -194,7 +194,7 @@ stable. If a surface construct cannot lower faithfully, compilation fails.
 
 ### 4.3 Absence and `null` are different
 
-Data Rules preserve ResiduumDB's value distinctions:
+Data Rules preserve Residiuum's value distinctions:
 
 ```text
 absent       the path is not present
@@ -221,7 +221,7 @@ does not impose a universal schema on unrelated collections.
 
 ### 4.5 No silent weakening
 
-ResiduumDB rejects a declaration when it cannot prove:
+Residiuum rejects a declaration when it cannot prove:
 
 - total lowering;
 - finite evaluation;
@@ -1147,7 +1147,7 @@ The proof obligation is:
 Dependencies(r) ⊆ AtomicScope(o)
 ```
 
-Before prepare, ResiduumDB closes the Atomic plan over:
+Before prepare, Residiuum closes the Atomic plan over:
 
 - caller mutations;
 - rule reads;
@@ -1287,7 +1287,7 @@ requirements permit it.
 
 ## 12. Damage, recovery, and truth
 
-Data Rules preserve ResiduumDB's two-dimensional truth.
+Data Rules preserve Residiuum's two-dimensional truth.
 
 An event may be:
 
@@ -1328,7 +1328,7 @@ Rule artifacts are historical evidence and must be:
 SDA does not become the rule authority. It examines the evidence supplied by
 the host.
 
-The ResiduumDB SDA profile should expose:
+The Residiuum SDA profile should expose:
 
 ```text
 rule source
@@ -1503,7 +1503,7 @@ declared runtime and hardware assumptions
 The goal is to keep this base small, auditable, fuzzable, and progressively
 verifiable.
 
-ResiduumDB must not use “formally verified database” as a product claim until the
+Residiuum must not use “formally verified database” as a product claim until the
 relevant implementation has actually reached that standard.
 
 Defensible staged claims include:
@@ -1663,7 +1663,7 @@ These are boundaries required for truth, boundedness, and speed.
 
 The exploratory questions are resolved as follows:
 
-1. The language is **Residuum Rule Expression (RRE)**; the product capability is
+1. The language is **Residiuum Rule Expression (RRE)**; the product capability is
    **Data Rules**; the dialect identifier is `dre`.
 2. Paths and predicates use `dingo-predicate-v1`.
 3. Scalar and composite types are exactly those in §5.1–§5.2. Numeric
@@ -1721,7 +1721,7 @@ Proceed with Data Rules as the unified declarative layer above Atomics.
 
 The governing statement is:
 
-> ResiduumDB does not execute user programs. It enforces finite declarations
+> Residiuum does not execute user programs. It enforces finite declarations
 > about valid data and valid state transitions.
 
 The central mathematical claim is:

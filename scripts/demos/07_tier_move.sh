@@ -5,14 +5,14 @@
 # script uses a short Rust one-shot through cargo test helpers style: prefer
 # the library APIs when CLI has no `tier` subcommand yet.
 #
-# Until CLI grows `residuum tier move`, we document the operator story and run
+# Until CLI grows `residiuum tier move`, we document the operator story and run
 # the Stage 9 unit suite as the living acceptance gate.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 echo "== Stage 9 living acceptance (cargo test stage9_tiering) =="
-cargo test -q -p residuum-store --test stage9_tiering
+cargo test -q -p residiuum-store --test stage9_tiering
 
 echo
 echo "Operator story (Rust API / runbook):"

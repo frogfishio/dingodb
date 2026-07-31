@@ -1,4 +1,4 @@
-# Residuum Evidence Ledger v1 specification
+# Residiuum Evidence Ledger v1 specification
 
 Status: normative design v1.0-draft; implementation not yet qualified
 
@@ -19,19 +19,19 @@ Normative companions:
 
 ## 1. Decision
 
-The **Residuum Evidence Ledger** (DEL) is ResiduumDB's durable, append-only,
+The **Residiuum Evidence Ledger** (DEL) is Residiuum's durable, append-only,
 cryptographically verifiable record of security-sensitive and
 administratively significant facts.
 
 The ledger is not a log destination, telemetry transport, application event
 stream, change-data-capture stream, or replacement for document history.
 
-ResiduumDB has two deliberately separate operational channels:
+Residiuum has two deliberately separate operational channels:
 
 | Channel | Contract |
 |---|---|
 | Ratatouille telemetry | bounded, asynchronous, high-volume, best effort, disposable |
-| Residuum Evidence Ledger | selective, durable, integrity-protected, independently examinable |
+| Residiuum Evidence Ledger | selective, durable, integrity-protected, independently examinable |
 
 Telemetry failure MUST NOT change a database result. Failure to record evidence
 classified as `required_atomic` MUST prevent the protected operation from
@@ -39,8 +39,8 @@ committing.
 
 The product statement is:
 
-> Ratatouille reports what ResiduumDB appears to be doing. The Residuum Evidence
-> Ledger proves what ResiduumDB accepted, rejected, or changed within its declared
+> Ratatouille reports what Residiuum appears to be doing. The Residiuum Evidence
+> Ledger proves what Residiuum accepted, rejected, or changed within its declared
 > evidence coverage.
 
 ## 2. Requirement language
@@ -79,7 +79,7 @@ V1 does not claim that:
   to it; or
 - a retained hash can reconstruct content that retention or damage removed.
 
-The ledger proves that a named ResiduumDB evidence signer committed a canonical
+The ledger proves that a named Residiuum evidence signer committed a canonical
 assertion. The strength of rollback and deletion detection is stated by the
 active anchoring profile.
 
@@ -295,7 +295,7 @@ coverage field is `bounded_aggregate`, not `complete`.
 Ordinary successful reads are not ledgered by default. A Heap MAY enable a
 closed enhanced-audit policy for selected operations or collections.
 
-When policy makes a read `required_before_reply`, ResiduumDB MUST durably append
+When policy makes a read `required_before_reply`, Residiuum MUST durably append
 the evidence before releasing the result. This cost is explicit and MUST NOT
 be enabled through an unbounded request-supplied flag.
 
@@ -939,12 +939,12 @@ V1 defaults to `retain_forever`. A shorter policy requires an explicit
 Evidence policies classify event kinds independently. A policy cannot shorten
 retention below an active legal hold, recovery dependency, signer-certificate
 dependency, unexpired backup contract, or the minimum required by another
-normative ResiduumDB profile.
+normative Residiuum profile.
 
 ### 13.2 Retention cut
 
 Physical removal is not an ordinary delete. Before removing an eligible closed
-range, ResiduumDB commits a kind-5 `ledger_retention_cut` record and a structural
+range, Residiuum commits a kind-5 `ledger_retention_cut` record and a structural
 cut frame:
 
 | Key | Field |
@@ -1329,7 +1329,7 @@ A profile cannot claim `dingo-evidence-ledger-v1` until all pass:
 15. evidence-key destruction with ciphertext verification;
 16. backup/restore-to-new-ID and same-ID takeover;
 17. bounded denial flood with honest dropped/aggregate coverage;
-18. offline export verification with no running ResiduumDB;
+18. offline export verification with no running Residiuum;
 19. concurrency/sequence linearizability;
 20. cluster leader change and stale-leader rejection for any cluster claim;
 21. fuzzing of record, checkpoint, cut, certificate, cursor, and manifest
@@ -1385,7 +1385,7 @@ evidence_profile = none
 ```
 
 It MUST NOT describe in-memory diagnostics, structured logs, Ratatouille
-events, history frames, or Atomic evidence as the Residuum Evidence Ledger.
+events, history frames, or Atomic evidence as the Residiuum Evidence Ledger.
 
 ## 24. Completion definition
 

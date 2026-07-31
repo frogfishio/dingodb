@@ -1,4 +1,4 @@
-# Residuum Order Wavelet (DOW) specification
+# Residiuum Order Wavelet (DOW) specification
 
 Status: **Normative design v1.0-draft; not yet implemented**
 
@@ -17,7 +17,7 @@ conformance implementers
 Normative companions:
 [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md),
 [RQL_SPEC.md](RQL_SPEC.md),
-[RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
+[RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [HEAP_SPEC.md](HEAP_SPEC.md),
 [CLUSTER_SPEC.md](CLUSTER_SPEC.md),
@@ -29,11 +29,11 @@ Implementation plan:
 
 ## 1. Decision
 
-ResiduumDB SHALL support exact ranked navigation through a filtered result in a
+Residiuum SHALL support exact ranked navigation through a filtered result in a
 declared RQL order without sorting the matching documents at query time and
 without enumerating the preceding matches.
 
-The semantic structure is the **Residuum Order Wavelet**:
+The semantic structure is the **Residiuum Order Wavelet**:
 
 ```text
 exact RQL match bitmap
@@ -1539,7 +1539,7 @@ when exact bitmap projection/intersection is performed at query setup.
 
 ### 21.3 Build classification
 
-If ResiduumDB must scan authoritative documents or comparison-sort a new tuple
+If Residiuum must scan authoritative documents or comparison-sort a new tuple
 dictionary/result mapping, the plan is `BUILDABLE`, not `DIRECT`, until the
 artifact is verified and atomically published.
 
@@ -2151,7 +2151,7 @@ DOW builds on:
   [Engineering Compact Data Structures for Rank and Select Queries on Bit
   Vectors](https://arxiv.org/abs/2206.01149).
 
-The specific ResiduumDB composition is:
+The specific Residiuum composition is:
 
 - exact RQL predicate bitmap as an arbitrary conditioned subset;
 - stable wavelet projection of that subset;
@@ -2161,4 +2161,4 @@ The specific ResiduumDB composition is:
 - DDA certificates, frozen views, Heap isolation, and survivors-domain
   honesty.
 
-That composition is the Residuum Order Wavelet proposition.
+That composition is the Residiuum Order Wavelet proposition.

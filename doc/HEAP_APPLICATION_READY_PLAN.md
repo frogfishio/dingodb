@@ -39,7 +39,7 @@ RBAC lookup.
 Target application surface:
 
 ```rust
-let deployment = Residuum::open_deployment("./data")?;
+let deployment = Residiuum::open_deployment("./data")?;
 
 let acme = deployment.open_heap(acme_key)?;
 let users = acme.create_collection("users")?;
@@ -60,9 +60,9 @@ let key = local.issue_key(
 ```
 
 `HeapAuthority` is illustrative naming for the package. Implementers MAY reuse
-the existing `residuum-authority` types, but MUST preserve the separation:
+the existing `residiuum-authority` types, but MUST preserve the separation:
 
-- ordinary `Residuum`/`RemoteHeap` handles cannot wield master authority;
+- ordinary `Residiuum`/`RemoteHeap` handles cannot wield master authority;
 - network data connections cannot execute master-key ceremonies;
 - local authority APIs are not linked into the qualified data server.
 
@@ -147,9 +147,9 @@ Owned areas:
 - `spec/heap/operations-v1.json`;
 - `spec/heap/rpc-v1/collection_create.*.json`;
 - accepted/rejected fixtures;
-- `residuum-store::heap::catalog::create_object`;
-- `residuum-server::heap_dispatch`;
-- `residuum-sdk::RemoteHeap` and embedded Heap handle.
+- `residiuum-store::heap::catalog::create_object`;
+- `residiuum-server::heap_dispatch`;
+- `residiuum-sdk::RemoteHeap` and embedded Heap handle.
 
 Contract:
 
@@ -202,8 +202,8 @@ Purpose: create a Heap without hand-editing catalogs or using test fixtures.
 
 Owned areas:
 
-- `residuum-authority::ceremony`;
-- `residuum-store::heap::catalog`;
+- `residiuum-authority::ceremony`;
+- `residiuum-store::heap::catalog`;
 - new CLI `heap create/list/inspect`;
 - SDK/admin façade only if it remains local.
 
@@ -300,7 +300,7 @@ Exit: the CLI can reproduce the complete issue → use → blacklist/cycle journ
 
 ### HAR-4 — Qualified remote posture
 
-Purpose: make the HeapKey path the normal ResiduumDB server.
+Purpose: make the HeapKey path the normal Residiuum server.
 
 Work:
 
@@ -425,12 +425,12 @@ It MUST NOT say “independently reviewed” or set the H6 qualified claim.
 
 | Area | Primary crate |
 |---|---|
-| IDs, rights, pure admission | `residuum-heap` |
-| local master ceremony | `residuum-authority` |
-| descriptors, lifecycle, backup | `residuum-store` |
-| Heap protocol and listener | `residuum-server` |
-| ordinary embedded/remote API | `residuum-sdk` |
-| human administration | `residuum-cli` / local authority binary |
+| IDs, rights, pure admission | `residiuum-heap` |
+| local master ceremony | `residiuum-authority` |
+| descriptors, lifecycle, backup | `residiuum-store` |
+| Heap protocol and listener | `residiuum-server` |
+| ordinary embedded/remote API | `residiuum-sdk` |
+| human administration | `residiuum-cli` / local authority binary |
 | fixtures and qualification | `spec/heap`, `verification/heap-verus` |
 
 No package may bypass its lower-level owner by reproducing authority logic.

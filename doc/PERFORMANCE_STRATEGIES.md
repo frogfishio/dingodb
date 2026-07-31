@@ -31,7 +31,7 @@ Narrative evidence lives in [`WORK_HORIZON.md`](WORK_HORIZON.md),
 |---|----------|----|--------|
 | **S1** | **Declare write cliffs closed** | Treat DEF-023 / DEF-095 / DEF-096 A–C harness as closed cuts with residual only | Reopen PrimaryIndex structure thrash or “one more seal threshold tweak” as the main program |
 | **S2** | **One optional Axis B efficiency cut** (only if labor stays on single-node write) | Shrink serial work after `put_many` (index publish / dual-apply tax); seal pipeline scales with shards | Rayon over one `Store::put`; multi-thread one active segment |
-| **S3** | **Productize capacity on the cluster path** | Independent partition leaders (residuum-cluster), honest RF/ack, network multi-process proof | Treat testrig `--stores N` as multi-tenant product sharding |
+| **S3** | **Productize capacity on the cluster path** | Independent partition leaders (residiuum-cluster), honest RF/ack, network multi-process proof | Treat testrig `--stores N` as multi-tenant product sharding |
 | **S4** | **Gate-driven program labor (default next)** | Jepsen/soak, fuzz, wire freeze, security review, CI quality bar | Polish already-landed cut follow-ons as if they move maturity |
 | **S5** | **Measurement hygiene** | Disclose concurrency / writer_model / free disk / durability; p50/p95/p99; path class | Publish averages alone; claim multi-core from ~100% CPU |
 | **S6** | **Read path only under dedicated benches** | Hydra/Chimera on get only after body-less / locator-cache design + `read_latency_breakdown` | “Parallelize gets” by loading full `.cmr` |
@@ -98,10 +98,10 @@ ingest/hot-get. Pure CPU, no disk; claims must not be mixed with store SLOs.
 
 ```bash
 # Diagnostic phase breakdown (release)
-cargo run -p residuum-sda --release --example sda_latency_breakdown
+cargo run -p residiuum-sda --release --example sda_latency_breakdown
 
 # CI skeleton (no performance gate — absurdity bounds only)
-cargo test -p residuum-sda --test sda_bench_skeleton
+cargo test -p residiuum-sda --test sda_bench_skeleton
 ```
 
 Numbers are **diagnostic only**. See
@@ -123,15 +123,15 @@ Two client-side patterns at the same (customers, products, orders) scales:
 | Pattern | Where join lives | Harness |
 |---------|------------------|---------|
 | **Nested SDA** | Pure SDA nested yields over combined bag | `multi_collection_sda_join_perf` |
-| **Host hash equijoin + SDA normalise** | `Residuum::query` progressive hash join; SDA projects | `multi_query_join_perf` |
+| **Host hash equijoin + SDA normalise** | `Residiuum::query` progressive hash join; SDA projects | `multi_query_join_perf` |
 
 ```bash
 # Nested SDA join (release)
-cargo test -p residuum-sdk --release --test multi_collection_sda_join \
+cargo test -p residiuum-sdk --release --test multi_collection_sda_join \
   multi_collection_sda_join_perf -- --nocapture
 
 # Host join + SDA normalise (release); MULTI_JOIN_BENCH_STRESS=1 for mod scale
-cargo test -p residuum-sdk --release --test multi_query_join_sda \
+cargo test -p residiuum-sdk --release --test multi_query_join_sda \
   multi_query_join_perf -- --nocapture
 ```
 
@@ -151,7 +151,7 @@ call — optional A2 residual for the multi-query helper).
 
 | Finding | Implication |
 |---------|-------------|
-| Host join ~75× faster than nested SDA at small | Prefer `Residuum::query` + optional `map_sda`; do not nest joins in SDA |
+| Host join ~75× faster than nested SDA at small | Prefer `Residiuum::query` + optional `map_sda`; do not nest joins in SDA |
 | Collect ~ms through mod; SDA normalise grows with bag | Next optional residual: compile-once `map_joined_sda` + strip fat fields before normalise |
 | Seed still dominates wall on tiny stores | Perf claims must separate seed I/O from join CPU |
 

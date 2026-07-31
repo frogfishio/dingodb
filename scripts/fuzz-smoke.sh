@@ -5,30 +5,30 @@
 # When cargo-fuzz + nightly available: short smoke per registered target.
 #
 # Env:
-#   RESIDUUM_FUZZ_SECONDS   seconds per target (default 30; use 5 for quick local)
-#   RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1  property tests only
+#   RESIDIUUM_FUZZ_SECONDS   seconds per target (default 30; use 5 for quick local)
+#   RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1  property tests only
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-SECONDS_PER="${RESIDUUM_FUZZ_SECONDS:-30}"
+SECONDS_PER="${RESIDIUUM_FUZZ_SECONDS:-30}"
 
 ok() { echo "fuzz-smoke: $*"; }
 fail() { echo "fuzz-smoke: FAIL: $*" >&2; exit 1; }
 
 # --- Property / hostile decode bar (always, PR-safe) ---
-ok "residuum-format property suite (DEF-091)"
-cargo test -p residuum-format --test stage_def_091_properties --quiet
+ok "residiuum-format property suite (DEF-091)"
+cargo test -p residiuum-format --test stage_def_091_properties --quiet
 
 ok "hostile chunk-manifest length refuses pre-check (DEF-091-F)"
-cargo test -p residuum-store --features legacy-raw-store --lib chunk_payload --quiet
+cargo test -p residiuum-store --features legacy-raw-store --lib chunk_payload --quiet
 
 ok "SDA no-panic property suite (DEF-091-F)"
-cargo test -p residuum-sda --test stage_def_091f_sda_properties --quiet
+cargo test -p residiuum-sda --test stage_def_091f_sda_properties --quiet
 
 ok "RPC frame refuse-before-alloc properties (DEF-091-F)"
-cargo test -p residuum-client --lib protocol --quiet
+cargo test -p residiuum-client --lib protocol --quiet
 
 # --- cargo-fuzz smoke (scheduled / local with nightly) ---
 TARGETS=(
@@ -45,8 +45,8 @@ TARGETS=(
   cursor_token
 )
 
-if [[ "${RESIDUUM_FUZZ_SKIP_CARGO_FUZZ:-0}" == "1" ]]; then
-  ok "skipping cargo-fuzz (RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1)"
+if [[ "${RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ:-0}" == "1" ]]; then
+  ok "skipping cargo-fuzz (RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1)"
   ok "OK (property bar only)"
   exit 0
 fi

@@ -1,11 +1,11 @@
-# Residuum Query Language (RQL)
+# Residiuum Query Language (RQL)
 
 Status: **Normative design v1.0-draft; shipped implementation is v0.1 subset**
 
 Dialect identifier: `dql`
 
 Audience: language, SDK, planner, server, and conformance implementers
-Normative companions: [RESIDUUM_PREDICATE_SPEC.md](RESIDUUM_PREDICATE_SPEC.md),
+Normative companions: [RESIDIUUM_PREDICATE_SPEC.md](RESIDIUUM_PREDICATE_SPEC.md),
 [SDA_SPEC.md](SDA_SPEC.md), [SDA_PROFILE.md](SDA_PROFILE.md),
 [COLLECTION_CONTRACT_SPEC.md](COLLECTION_CONTRACT_SPEC.md),
 [crates/enr-core/ENR1.md](crates/enr-core/ENR1.md), and
@@ -23,7 +23,7 @@ directly executable frontend. RQL remains the compiled semantic authority.
 
 ## 1. Decision
 
-RQL is ResiduumDB's official human query language.
+RQL is Residiuum's official human query language.
 
 It is:
 
@@ -79,7 +79,7 @@ Comfort never redefines truth:
 |---|---|
 | SDA | value, absence, carrier, and reduction semantics |
 | ENR | match bags, cardinality, attach, and nested expansion |
-| Residuum Predicate Profile | shared total predicate surface |
+| Residiuum Predicate Profile | shared total predicate surface |
 | RQL | official query surface and serializable host plan |
 | foreign dialects | partial migration surfaces with declared holes |
 
@@ -439,7 +439,7 @@ root row. The error identifies the enrichment path and root key but excludes
 document bodies by default.
 
 An `optional` attachment logically stores an SDA optional carrier. A lossless
-ResiduumDB result preserves `None` versus `Some(Null)`. A JSON compatibility bridge
+Residiuum result preserves `None` versus `Some(Null)`. A JSON compatibility bridge
 omits a field for `None` and emits JSON null for `Some(Null)`.
 
 For paths that traverse a RQL-created optional attachment, RQL uses lifted
@@ -509,7 +509,7 @@ Every explicit ordering appends immutable document key ascending as an
 unwritten final tie-breaker. A query therefore has a strict deterministic
 order suitable for continuation.
 
-An implementation MAY realize an indexed scalar order through a Residuum Order
+An implementation MAY realize an indexed scalar order through a Residiuum Order
 Wavelet. That structure compiles sorting into stable rank/select branch
 decisions over the exact filter bitmap; it does not alter the logical ordering
 defined here.
@@ -577,7 +577,7 @@ RQL uses authenticated continuation:
 after "<opaque authenticated token>"
 ```
 
-SQL-style offset execution is not part of RQL v1: ResiduumDB does not interpret a
+SQL-style offset execution is not part of RQL v1: Residiuum does not interpret a
 numeric position as permission to enumerate and discard every preceding
 answer.
 
@@ -593,7 +593,7 @@ admissibility proof, access classes, damage behavior, and complexity contract
 are defined by [DIRECT_ACCESS_SPEC.md](DIRECT_ACCESS_SPEC.md).
 
 For a query containing `at rank`, omitted `access` defaults to `direct`.
-Therefore ResiduumDB either reaches the requested rank through exact counting and
+Therefore Residiuum either reaches the requested rank through exact counting and
 selection structures or refuses. It never silently performs work proportional
 to the requested rank.
 
@@ -626,7 +626,7 @@ next  = query.page_size(100).after(first.next_cursor).run()
 ```
 
 Textual `after $cursor` is equivalent. `$cursor` must be a bound string or
-bytes parameter containing an opaque token previously issued by ResiduumDB.
+bytes parameter containing an opaque token previously issued by Residiuum.
 
 The first request supplies no cursor. Every non-final page returns:
 
@@ -867,7 +867,7 @@ consistency requirement is weakened.
 ## 17. Optimizer laws
 
 Physical plans may use scans, Hydra indexes, hash probes, batch probes, remote
-partition requests, caches, rank/select maps, Residuum Order Wavelets, selection
+partition requests, caches, rank/select maps, Residiuum Order Wavelets, selection
 artifacts, or future specialized indexes.
 
 An optimization is legal only if it preserves:

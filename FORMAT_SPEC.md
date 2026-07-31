@@ -1,4 +1,4 @@
-# ResiduumDB Survival Format
+# Residiuum Survival Format
 
 Status: Draft wire profile v0.1  
 Wire major version: 1  
@@ -6,7 +6,7 @@ Byte order: little-endian
 
 ## 1. Scope
 
-This document defines the first concrete physical profile for ResiduumDB frames,
+This document defines the first concrete physical profile for Residiuum frames,
 segments, and salvage scanning.
 
 Its purpose is not merely to serialize data. Its purpose is to ensure that a
@@ -148,10 +148,10 @@ Wire version 1 assigns:
 | 7 | segment summary |
 | 8 | purge attestation |
 | 9 | padding |
-| 10 | heap descriptor (`residuum-heap-v1`) |
-| 11 | collection descriptor (`residuum-heap-v1`) |
-| 12 | stream descriptor (`residuum-heap-v1`) |
-| 13 | heap migration evidence (`residuum-heap-v1`) |
+| 10 | heap descriptor (`dingo-heap-v1`) |
+| 11 | collection descriptor (`dingo-heap-v1`) |
+| 12 | stream descriptor (`dingo-heap-v1`) |
+| 13 | heap migration evidence (`dingo-heap-v1`) |
 | 14 | evidence record (`dingo-evidence-ledger-v1`) |
 | 15 | evidence checkpoint (`dingo-evidence-ledger-v1`) |
 | 16 | evidence retention cut (`dingo-evidence-ledger-v1`) |

@@ -18,7 +18,7 @@ Normative companions:
 
 - [HEAP_SPEC.md](../HEAP_SPEC.md)
 - [RQL_SPEC.md](../RQL_SPEC.md)
-- [RESIDUUM_PREDICATE_SPEC.md](../RESIDUUM_PREDICATE_SPEC.md)
+- [RESIDIUUM_PREDICATE_SPEC.md](../RESIDIUUM_PREDICATE_SPEC.md)
 - [DX_SPEC.md](../DX_SPEC.md)
 - [COLLECTION_CONTRACT_SPEC.md](../COLLECTION_CONTRACT_SPEC.md)
 - [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
@@ -45,7 +45,7 @@ At acceptance, an application developer can:
 
 The release is successful when an ordinary Rust application can complete this
 journey without importing legacy unqualified storage types, constructing wire
-JSON, handling collection identifiers as strings, or understanding ResiduumDB's
+JSON, handling collection identifiers as strings, or understanding Residiuum's
 directory structure.
 
 ## 2. Product decision
@@ -104,7 +104,7 @@ MUST NOT be treated as product-level deferrals.
 - SQL-ish+ and SQL-to-RQL compilation;
 - enrichment, nested `within`, and cross-collection RQL execution in this
   delivery package;
-- exact ranked access and Residuum Order Wavelets;
+- exact ranked access and Residiuum Order Wavelets;
 - offset pagination;
 - aggregation, watches, change streams, and bulk mutation;
 - text, vector, and geospatial retrieval;
@@ -741,8 +741,8 @@ Deliver:
 | Error mapping | `spec/app/v1/error_mapping_v1.json` |
 | Plan vectors | `spec/app/v1/plan_vectors_v1.json` |
 | Cursor vectors | `spec/app/v1/cursor_vectors_v1.json` |
-| Rust compile surface | `crates/residuum-sdk/src/app_v1.rs` (`dingo-rust-app-v1`) |
-| Contract tests | `crates/residuum-sdk/tests/app0_contract_lock.rs` |
+| Rust compile surface | `crates/residiuum-sdk/src/app_v1.rs` (`dingo-rust-app-v1`) |
+| Contract tests | `crates/residiuum-sdk/tests/app0_contract_lock.rs` |
 | Verify script | `scripts/verify-app0-contract.sh` |
 | Wire schemas (staged) | `spec/heap/rpc-v1/collection_create.*`, `dql_query.*` |
 | Wire fixtures (staged) | `spec/heap/fixtures/collection_create.*`, `dql_query.*` |
@@ -829,8 +829,8 @@ Deliver:
 - builder-to-plan compilation;
 - model and property tests for predicate totality.
 
-**Labor cut (2026-07-31):** `residuum_sdk::predicate` (total Residuum eval),
-`residuum_sdk::plan_v1` (`dql-plan-encoding-v1`, BLAKE3 domain
+**Labor cut (2026-07-31):** `residiuum_sdk::predicate` (total Residiuum eval),
+`residiuum_sdk::plan_v1` (`dql-plan-encoding-v1`, BLAKE3 domain
 `dingo:dql-plan-v1:canonical-v1`), `PlanBuilder` + name binding,
 `spec/app/v1/plan_vectors_v1.json` hashes locked, tests
 `app4_predicate_plan`. Full RQL source parsing remains APP-5; scan/index
@@ -1004,7 +1004,7 @@ The following require later, explicit specifications:
 - persistent snapshots across mutations;
 - bulk write and transactional/Atomic batches;
 - exact ranked access;
-- arbitrary scale ordering through Residuum Order Wavelets;
+- arbitrary scale ordering through Residiuum Order Wavelets;
 - query-plan compatibility across a breaking semantic profile.
 
 Developers MUST NOT fill these gaps inside this package.

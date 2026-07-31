@@ -12,7 +12,7 @@ external review with accepted residual disposition does.
 
 ## 1. Review objective
 
-Assess whether the **single-node** `residuum-heap-v1` isolation kernel and authority
+Assess whether the **single-node** `dingo-heap-v1` isolation kernel and authority
 path prevent cross-heap data observation/mutation for cryptographically authorized
 holders, under the published limitations (admin, physical access, side channels).
 
@@ -43,11 +43,11 @@ Attacker classes (HEAP_SPEC + this brief):
 
 | Component | Path | Role |
 |-----------|------|------|
-| Isolation kernel | `crates/residuum-heap` | decide, caps, constraints, confinement |
-| Ownership / admit | `crates/residuum-format` | SubjectV2, frame admit |
-| Store façades / lifecycle | `crates/residuum-store/src/heap/` | catalogs, purge, restore, migration |
-| Local ceremony | `crates/residuum-authority` | issue / cycle (not linked by server) |
-| Qualified network | `crates/residuum-server` heap_* + client handshake | HeapKey session |
+| Isolation kernel | `crates/residiuum-heap` | decide, caps, constraints, confinement |
+| Ownership / admit | `crates/residiuum-format` | SubjectV2, frame admit |
+| Store façades / lifecycle | `crates/residiuum-store/src/heap/` | catalogs, purge, restore, migration |
+| Local ceremony | `crates/residiuum-authority` | issue / cycle (not linked by server) |
+| Qualified network | `crates/residiuum-server` heap_* + client handshake | HeapKey session |
 | Spec | `HEAP_SPEC.md`, `spec/heap/` | Normative contract |
 | Formal sketches | `formal/heap/*.tla` | Isolation + Authority models |
 | Executable obligations | `decide_obligations`, IsolationModel, AuthorityModel | CI stand-ins |
