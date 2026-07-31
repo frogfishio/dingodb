@@ -37,6 +37,9 @@ pub struct PumpConfig {
     /// Minimum free space required on the store volume before pumping.
     /// `0` disables the floor. Default callers use [`default_min_free_for_target`].
     pub min_free_bytes: u64,
+    /// Override put batch size (`0` = auto from shard count). Use `1` to measure
+    /// general single-put load (one OS tail write per key for Buffered).
+    pub put_batch_size: usize,
 }
 
 /// Peak process resource samples collected during the pump (diagnostic).
@@ -354,13 +357,15 @@ fn run_pump_single(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
     let mut last_report = Instant::now();
     let mut samples = ProcessSamples::default();
 
-    // Size check every N puts — dir walk is expensive at GB scale.
-    let size_check_every = size_check_interval(cfg.target_bytes, cfg.payload_size);
-
-    // Parallel put_many batching when multi-shard (DEF-096 Axis B).
-    // Larger batches amortize serial index publish and keep shard threads busy.
-    let batch_size = put_batch_size(actual_shards);
+    // Progress uses sum of WriteReceipt.encoded_frame_len (no mid-run dir walks).
+    // Final acceptance still measures real on-disk size once after seal.
+    let batch_size = if cfg.put_batch_size == 0 {
+        put_batch_size(actual_shards)
+    } else {
+        cfg.put_batch_size.max(1)
+    };
     let mut pending_keys: Vec<String> = Vec::with_capacity(batch_size);
+    let mut encoded_bytes: u64 = 0;
     let mut reached_target = false;
 
     while !reached_target {
@@ -368,47 +373,42 @@ fn run_pump_single(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         pending_keys.push(key);
         keys_written += 1;
 
-        // Flush full batches promptly so multi-shard put_many stays busy.
-        // Size checks stay on `size_check_every` (dir walk is expensive at GB scale).
         if pending_keys.len() >= batch_size {
-            flush_puts(&mut store, &pending_keys, &payload, cfg.durability)?;
+            encoded_bytes = encoded_bytes.saturating_add(flush_puts(
+                &mut store,
+                &pending_keys,
+                &payload,
+                cfg.durability,
+            )?);
             pending_keys.clear();
-        }
-
-        if keys_written % size_check_every == 0 || keys_written == 1 {
-            if !pending_keys.is_empty() {
-                flush_puts(&mut store, &pending_keys, &payload, cfg.durability)?;
-                pending_keys.clear();
-            }
-            let on_disk = dir_size_bytes(&cfg.store).map_err(|e| format!("dir size: {e}"))?;
-            if on_disk >= cfg.target_bytes {
+            if encoded_bytes >= cfg.target_bytes {
                 reached_target = true;
             }
+        }
 
-            // Resource sample + progress on ~2s cadence (and first key).
-            if last_report.elapsed().as_secs() >= 2 || keys_written == 1 {
-                sample_process(&mut samples);
-                if !cfg.json_out {
-                    let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
-                    let rss_note = samples
-                        .peak_rss_bytes
-                        .map(|b| format!(" peak_rss={}", format_bytes(b)))
-                        .unwrap_or_default();
-                    let cpu_note = samples
-                        .last_cpu_pct
-                        .map(|c| format!(" cpu={c:.0}%"))
-                        .unwrap_or_default();
-                    eprintln!(
-                        "pump: keys={keys_written} shards={actual_shards} disk={} / {} ({:.1}%) {:.1} ops/s {:.2} MB/s{cpu_note}{rss_note}",
-                        format_bytes(on_disk),
-                        format_bytes(cfg.target_bytes),
-                        100.0 * on_disk as f64 / cfg.target_bytes as f64,
-                        keys_written as f64 / elapsed,
-                        (on_disk as f64 / (1024.0 * 1024.0)) / elapsed
-                    );
-                }
-                last_report = Instant::now();
+        // Resource sample on ~2s cadence (not tied to expensive dir walks).
+        if last_report.elapsed().as_secs() >= 2 || keys_written == 1 {
+            sample_process(&mut samples);
+            if !cfg.json_out {
+                let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
+                let rss_note = samples
+                    .peak_rss_bytes
+                    .map(|b| format!(" peak_rss={}", format_bytes(b)))
+                    .unwrap_or_default();
+                let cpu_note = samples
+                    .last_cpu_pct
+                    .map(|c| format!(" cpu={c:.0}%"))
+                    .unwrap_or_default();
+                eprintln!(
+                    "pump: keys={keys_written} shards={actual_shards} encoded≈{} / {} ({:.1}%) {:.1} ops/s {:.2} MB/s{cpu_note}{rss_note}",
+                    format_bytes(encoded_bytes),
+                    format_bytes(cfg.target_bytes),
+                    100.0 * encoded_bytes as f64 / cfg.target_bytes.max(1) as f64,
+                    keys_written as f64 / elapsed,
+                    (encoded_bytes as f64 / (1024.0 * 1024.0)) / elapsed
+                );
             }
+            last_report = Instant::now();
         }
 
         // Safety: if payload is tiny and metadata dominates oddly, still stop.
@@ -417,11 +417,18 @@ fn run_pump_single(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         }
     }
 
-    // Flush any trailing keys left after the last size-check break.
+    // Flush any trailing keys left after the last full batch.
     if !pending_keys.is_empty() {
-        flush_puts(&mut store, &pending_keys, &payload, cfg.durability)?;
+        encoded_bytes = encoded_bytes.saturating_add(flush_puts(
+            &mut store,
+            &pending_keys,
+            &payload,
+            cfg.durability,
+        )?);
         pending_keys.clear();
     }
+    // `encoded_bytes` is the mid-run progress meter; final report uses dir size.
+    let _encoded_progress = encoded_bytes;
 
     // Final resource sample before seal (seal can be heavy).
     sample_process(&mut samples);
@@ -549,38 +556,33 @@ fn open_or_create_store(path: &Path, writer_shards: usize) -> Result<Store, Stri
         .map_err(|e| format!("create store with {writer_shards} writer shards: {e}"))
 }
 
+/// Flush keys via `put_many`. Returns sum of `encoded_frame_len` for progress.
 fn flush_puts(
     store: &mut Store,
     keys: &[String],
     payload: &[u8],
     durability: DurabilityMode,
-) -> Result<(), String> {
+) -> Result<u64, String> {
     if keys.is_empty() {
-        return Ok(());
+        return Ok(0);
     }
-    if keys.len() == 1 || store.writer_shards() <= 1 {
-        for k in keys {
-            store
-                .put(k, payload, durability)
-                .map_err(|e| format!("put {k}: {e}"))?;
-        }
-        return Ok(());
-    }
-    // Multi-shard: put_many partitions by subject hash and appends in parallel.
+    // Always use put_many so single-shard batches get one segment tail write
+    // (store amortizes seek+write_all). Len==1 still goes through put_many.
     let items: Vec<(&str, &[u8])> = keys.iter().map(|k| (k.as_str(), payload)).collect();
-    store
+    let receipts = store
         .put_many(&items, durability)
         .map_err(|e| format!("put_many ({} keys): {e}", keys.len()))?;
-    Ok(())
+    Ok(receipts.iter().map(|r| r.encoded_frame_len).sum())
 }
 
 fn put_batch_size(writer_shards: usize) -> usize {
+    // Single-shard: batch so store issues one file tail write per flush instead
+    // of one seek+write_all per key (was the primary SSD under-utilization cause).
+    // Multi-shard: larger batches keep shard threads fed after partition.
     if writer_shards <= 1 {
-        1
+        128
     } else {
-        // Enough keys per flush that each shard is likely to see work, without
-        // holding huge pending sets in the harness. Clamp to a modest range.
-        (writer_shards * 64).clamp(64, 1024)
+        (writer_shards * 64).clamp(128, 1024)
     }
 }
 
@@ -638,12 +640,6 @@ fn fill_payload(buf: &mut [u8], seed: u64) {
     let magic = b"RESIDIUUM-TESTRIG-PAYLOAD-v1\n";
     let n = magic.len().min(buf.len());
     buf[..n].copy_from_slice(&magic[..n]);
-}
-
-fn size_check_interval(target: u64, payload: usize) -> u64 {
-    // Aim for ~64 size checks across the run, but not more often than every 32 puts.
-    let approx_keys = (target / payload.max(1) as u64).max(1);
-    (approx_keys / 64).clamp(32, 4096)
 }
 
 pub fn durability_label(d: DurabilityMode) -> &'static str {

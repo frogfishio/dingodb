@@ -59,9 +59,9 @@ pub use compat::{
 };
 pub use events::{group_by_event_id, EventIdOutcome};
 pub use frame::{
-    decode_frame, encode_frame, verify_frame_at, verify_frame_bytes, DecodedFrame, FrameHeader,
-    FrameParts, FrameVerifyError, VerifiedFrameViews, END_MAGIC, FRAME_PREFIX_LEN,
-    FRAME_SUFFIX_LEN, START_MAGIC, WIRE_MAJOR, WIRE_MINOR,
+    decode_frame, encode_frame, encode_frame_into, verify_frame_at, verify_frame_bytes,
+    DecodedFrame, FrameHeader, FrameParts, FrameVerifyError, VerifiedFrameViews, END_MAGIC,
+    FRAME_PREFIX_LEN, FRAME_SUFFIX_LEN, START_MAGIC, WIRE_MAJOR, WIRE_MINOR,
 };
 // WIRE_PROFILE_LABEL is defined at crate root for packaging / disclosure.
 pub use integrity::{body_hash, prefix_crc32c, suffix_crc32c, BODY_HASH_LEN};

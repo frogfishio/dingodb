@@ -10,6 +10,7 @@
 mod chaos;
 mod manifest;
 mod monitor;
+mod phase_bench;
 mod pump;
 mod size;
 
@@ -19,6 +20,7 @@ use manifest::{
     manifest_path_for_store, per_store_manifest_path, store_path_for, MAX_STORES,
 };
 use monitor::{evaluate_run, run_monitor, MonitorConfig};
+use phase_bench::{run_phase_bench, PhaseBenchConfig};
 use pump::{ensure_parent, parse_durability, run_pump, PumpConfig};
 use serde_json::{json, Value};
 use size::{default_min_free_for_target, format_bytes, parse_size};
@@ -84,6 +86,10 @@ enum Command {
         /// (≈2.5× target + 512 MiB). Pass `0` to disable. Near-full disks contaminate rates.
         #[arg(long, default_value = "auto")]
         min_free: String,
+        /// Puts per `put_many` flush. `0` = auto (128 single-shard). Use `1` to
+        /// simulate general single-put load (one Buffered OS write per key).
+        #[arg(long, default_value_t = 0)]
+        put_batch_size: usize,
         /// Machine-readable JSON on stdout.
         #[arg(long)]
         json_out: bool,
@@ -177,6 +183,25 @@ enum Command {
         #[arg(long)]
         json_out: bool,
     },
+    /// Diagnostic: phase breakdown (Blake vs raw write vs Memory vs Buffered put).
+    ///
+    /// Falsifies "CPU/Blake bound" when process CPU stays low: pure Blake should
+    /// be huge ops/s; large Memory→Buffered gap means blocking OS write wait.
+    PhaseBench {
+        /// Work directory (stores created under it; deleted after each phase).
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        /// Number of operations per phase (keep modest on external SSDs).
+        #[arg(long, default_value_t = 20_000)]
+        ops: u64,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        /// Batch size for put_many phase.
+        #[arg(long, default_value_t = 128)]
+        batch: usize,
+        #[arg(long)]
+        json_out: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -194,6 +219,7 @@ fn main() -> ExitCode {
             writer_shards,
             stores,
             min_free,
+            put_batch_size,
             json_out,
         } => cmd_pump(
             store,
@@ -207,6 +233,7 @@ fn main() -> ExitCode {
             writer_shards,
             stores,
             min_free,
+            put_batch_size,
             json_out,
         ),
         Command::Chaos {
@@ -276,6 +303,19 @@ fn main() -> ExitCode {
             min_free,
             json_out,
         ),
+        Command::PhaseBench {
+            work,
+            ops,
+            payload_size,
+            batch,
+            json_out,
+        } => run_phase_bench(&PhaseBenchConfig {
+            work,
+            ops,
+            payload_size,
+            batch,
+            json_out,
+        }),
     };
 
     match result {
@@ -317,6 +357,7 @@ fn cmd_pump(
     writer_shards: usize,
     stores: usize,
     min_free: String,
+    put_batch_size: usize,
     json_out: bool,
 ) -> Result<(), String> {
     validate_stores(stores)?;
@@ -347,6 +388,7 @@ fn cmd_pump(
         writer_shards,
         store_count: stores,
         min_free_bytes,
+        put_batch_size,
     })
     .map(|_| ())
 }
@@ -475,6 +517,7 @@ fn cmd_run(
         writer_shards,
         store_count: stores,
         min_free_bytes,
+        put_batch_size: 0,
     })?;
 
     // Per-store monitor + chaos (each root is independent).

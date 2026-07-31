@@ -109,6 +109,184 @@ Smoke: `--min-free 999G` → exit 1 with clear refuse message. Unit tests for pa
 
 ---
 
+## Campaign D — Write-path throttle diagnosis (not disk-bound)
+
+**Policy:** All bulk pumps go on **`/Volumes/Scratch/TEST/` only**. Do **not** use the Mac internal volume / `/tmp` for multi‑hundred‑MiB stores — earlier internal surveys contaminated rates and nearly filled the local disk.
+
+### Device ceiling (Scratch SSD)
+
+| Probe | Result |
+|-------|-------:|
+| Sequential 512 MiB write + fsync | ~**360 MiB/s** |
+| Sequential 512 MiB flush only | ~**390 MiB/s** |
+| Residiuum pump disk-growth (1 GiB, 8 KiB payload, buffered, 64 MiB seal) | ~**130–135 MiB/s** |
+| Residiuum logical payload rate | ~**63–67 MiB/s** |
+| Peak process CPU% (macOS: 100% ≈ 1 core) | ~**36–48%** of one core on M4 (10 cores) |
+
+**Conclusion:** We are **well below** SSD sequential bandwidth and **not** saturating the machine. Disk is **not** the limiter at current rates. There is substantial headroom for store/harness optimization before device throughput becomes the story.
+
+### What was killing the path (code evidence)
+
+| Killer | Where | Effect |
+|--------|-------|--------|
+| **Per-key `put` + batch_size=1** (pre-fix) | testrig `put_batch_size` / `flush_puts` | One full `write_event` per key; no amortization |
+| **Per-put `seek` + `write_all` of segment tail** | `store::write_segment_tail` on every put | Syscall + small write per ~8 KiB frame instead of large sequential chunks |
+| **Dual primary index publish** | `apply_durable_event` → `index` + `durable_index` | Two BTree inserts + subject clone every key |
+| **Full active segment held in RAM** | `ActiveSegment.bytes: Vec<u8>` | Every byte is appended in memory **and** written to the file (double copy / large RSS ~0.5 GiB) |
+| **Envelope encode + id mint per key** | `write_event` / batched put | Per-op CPU fixed cost → ~8–9k ops/s ceiling class |
+| Mid-run **recursive dir_size** (pre-fix) | testrig pump loop | Extra metadata work during write (now removed for progress) |
+
+### Fixes landed this slice
+
+1. **Store `put_many` single-shard batching** — N in-memory appends, **one** `write_segment_tail` per batch (`put_many_single_shard_batched`). Multi-shard parallel path also tails once per shard batch.
+2. **Locator-first index**: durable put path no longer does `body.to_vec()` only to slim it away.
+3. **Testrig** always uses `put_many` with **batch 128** (single shard); multi-shard batches ≥128.
+4. **Testrig progress** from `WriteReceipt.encoded_frame_len` sum — **no mid-run dir walks**; one final `dir_size` for acceptance.
+5. **Free-space refuse** (Campaign earlier) so near-full volumes fail closed.
+
+### After-fix Scratch sample (still not device-bound)
+
+Artifacts: `doc/wip/status/surveys/scratch-batchfix-20260731/`, `scratch-bottleneck-20260731/`
+
+| Run | Notes | Logical MiB/s | Disk MiB/s | CPU% |
+|-----|-------|-------------:|-----------:|-----:|
+| b02 | 1 shard, 64 MiB seal, 1 GiB, batch=128 | 65.7 | 134.5 | 44 |
+| b03 | 4 shards, 64 MiB seal, 1 GiB, batch=256 | 68.4 | 139.4 | 49 |
+| confirm | 1 shard, 256 MiB, batch=128 | 63.3 | 129.1 | 38 |
+
+Batching **helped multi-shard slightly** (57.8 → ~68 logical) but **did not** approach the ~360 MiB/s sequential ceiling. Remaining limit is **per-key store CPU/structure** (encode + dual index + dual-buffer segment), not the SSD.
+
+### Next optimization targets (ranked)
+
+1. **Write-through / ring buffer for active segment** — stop retaining full sealed-prefix bytes in RAM after durable_len advances (cuts RSS and memcpy).
+2. **Single index publish path** for bulk load / or cheaper dual-map update.
+3. **Multi-process Axis C** capacity (independent store roots) when the goal is machine-level throughput, not single-writer ops/s.
+4. **Larger payloads / bulk APIs** for qualification cells that claim “device bound.”
+5. Keep **all large pumps on Scratch**; treat internal disk as forbidden for GB-scale surveys.
+
+---
+
+## Campaign E — General load vs SQLite-class expectations
+
+**Question:** Why low disk activity *and* low CPU when SQLite is said to go much faster?  
+**Policy:** Scratch only (`/Volumes/Scratch/TEST/`).
+
+### Fairness: what “SQLite throughput” usually measures
+
+| SQLite headline number | Residiuum pump (this survey) |
+|------------------------|------------------------------|
+| Many inserts **inside one transaction** → one WAL/commit write | Each put is its own durability unit (`Buffered` = OS write before ack) |
+| Small rows (tens of bytes) → **ops/s** looking huge | 8 KiB opaque payloads + full frame + **BLAKE3 body hash every put** |
+| Often mmap / page cache, single B-tree | Dual primary index (`index` + `durable_index`) + full active segment `Vec` in RAM |
+| Autocommit-per-insert SQLite is **much** slower than batched txn numbers | Our single-put path is the honest “general load” analogue |
+
+Comparing Residiuum **per-put Buffered** to SQLite **multi-row COMMIT** is not like-for-like.
+
+### Evidence: single-put vs batched (Scratch, 256 MiB, 8 KiB, buffered, 64 MiB seal)
+
+Artifacts: `doc/wip/status/surveys/scratch-general-load-20260801/`  
+Harness: `--put-batch-size 1` vs `128` (new flag).
+
+| Mode | put_batch | Logical MiB/s | Disk MiB/s | ops/s | Peak CPU% |
+|------|----------:|-------------:|-----------:|------:|----------:|
+| **General single-put** | 1 | 63.0 | 128.4 | ~8060 | 36 |
+| Batched put_many | 128 | 64.8 | 132.2 | ~8300 | 42 |
+
+**Batching barely helps at 8 KiB.** So the story is **not** “we forgot to batch OS writes.” The limiter is **per-key fixed work** that still leaves average CPU and disk gauges low.
+
+### Why both gauges look idle (logic)
+
+```text
+single thread:
+  encode envelope → BLAKE3 body → dual BTree insert → write_all (~16KiB) → repeat
+```
+
+- **Not multi-core** — only one producer; 40% of *one* core ≈ 4% of the machine.
+- **Not QD>1 disk** — one outstanding write; Activity Monitor “disk activity” stays modest.
+- **Not “sleeping on a lock” as the main story** — batch=1 ≈ batch=128; syscall count is not the dominant delta.
+- **Copy storm (fixed this slice):** `append_raw` used to `body.to_vec()` into `encode_frame` then `extend_from_slice` (second full payload copy). Now `encode_frame_into` writes once into the segment buffer. Good hygiene; **did not** jump us to SQLite-class MiB/s by itself.
+
+### What we are doing “wrong” relative to SQLite-class bulk
+
+1. **No application transaction** that amortizes durability across many puts (product API gap vs SQLite `BEGIN…COMMIT`).
+2. **Integrity cost every put** — BLAKE3 of full body is format-required; SQLite does not hash 8 KiB payloads per insert.
+3. **Dual in-memory indexes + growing active segment RAM** — extra CPU/cache pressure vs a page cache design.
+4. **Single-threaded load generator** — will never light up 10 cores or a modern SSD queue.
+
+None of that means the store is “idle-correct.” It means **the measured path is a serial, integrity-heavy, per-ack write pipeline** — exactly what produces *low* average CPU *and* *low* disk gauges while absolute rates stay ~⅓ of sequential SSD.
+
+### Fixes landed this slice
+
+| Change | Intent |
+|--------|--------|
+| `encode_frame_into` + segment append without double payload clone | Cut encode copy storm on **every** put (general + bulk) |
+| `--put-batch-size` on testrig pump | Measure general load (1) vs batched (N) honestly |
+| This section | Stop false “disk bound” / false SQLite apples-to-apples narratives |
+
+### Next levers (general load, ranked)
+
+1. **Explicit write batch / transaction API** (ack many puts after one Buffered/Durable boundary) — closest to SQLite txn semantics.  
+2. **Cheaper dual-index update** (or single map + derived durable projection).  
+3. **Write-through active segment** (drop RAM prefix after OS transfer) — RSS + memcpy.  
+4. **Multi-producer / Axis C** only when machine-level capacity is the goal.  
+5. Always quote **durability mode + batching + payload size** next to any rate.
+
+### Correction: low CPU means the “Blake bound” story was wrong
+
+Principal pushback: if pure processing stuck us, one core would sit near 90%+, not ~25–50%.
+
+**Measured on Scratch** (`residiuum-testrig phase-bench`, 20 000 ops × 8 KiB):
+
+| Phase | ops/s | Notes |
+|-------|------:|-------|
+| Pure BLAKE3 body hash | ~200–310k | Fast user CPU |
+| `encode_frame_into` growing Vec | ~230–250k | Format encode including Blake |
+| Raw `write_all` / seek+write | ~650k–1M | OS path alone is fine |
+| **Store Memory put** | ~560–640k | Index path only — no segment file write |
+| **Store Buffered put (batch 1)** | ~29–32k | ~20× slower than Memory |
+| Buffered put_many batch 128 | ~32–33k | Batching barely helps in this bench |
+
+**Boundary probe on Buffered batch-1 (same run):**
+
+```text
+wall ≈ 688 ms
+append (encode into segment) sum ≈ 90 ms   (~4.5 µs/op)
+file_write sum ≈ 36 ms                     (~1.8 µs/op)
+file_sync sum ≈ 443 ms  (n=4)              ← ~64% of wall
+append+write = only ~18% of wall
+ps %cpu ≈ 20→25 (of one core)
+```
+
+**What this means**
+
+1. **Not Blake-bound.** Pure Blake is ~10× the Buffered put rate. If Blake were the limiter, CPU would be pegged near 100% of one core.
+2. **Not “disk can’t keep up” either.** Raw writes are ~1M ops/s; file_write mean ~2 µs. The volume is barely asked to work between stalls.
+3. **Wall time is dominated by wait**, especially **`sync_all` on auto-seal** (probe `file_sync` n=4 for ~320 MiB encoded / 64 MiB seal threshold). Seal path **forces Durable flush + sealed-file fsync** even when puts were only `Buffered` (`store.rs` `flush_active_file(..., Durable)` on rotate/seal).
+4. Low CPU + low disk gauges **do compute**: the thread is often **blocked in fsync** (not runnable), not busy hashing. That matches Activity Monitor far better than the Blake narrative.
+5. A SQLite-style **txn product API is not required** to explain this gap. The next honest engineering target is **seal/fsync policy vs durability mode** (and how often we rewrite full sealed images), not “add transactions because Blake is slow.”
+
+Harness: `residiuum-testrig phase-bench -w /Volumes/Scratch/TEST/...`  
+Artifacts: `doc/wip/status/surveys/scratch-phase-bench-20260801/`
+
+### Robustness / guarantees (principal Q: “would this affect our guarantees?”)
+
+**Normative SoT:** `doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md` (durability ack table). Performance work must not silently change those modes.
+
+| Change class | Affects robustness / guarantees? | Notes |
+|--------------|----------------------------------|--------|
+| **`encode_frame_into` (landed)** | **No** — same bytes on the wire | Only removes an intermediate full-frame `Vec` clone before segment append. Frame layout, BLAKE3, CRC, recovery unchanged. |
+| **`put_many` batch tail write (landed)** | **No if ack after OS transfer of the whole batch** | All receipts still mean “Buffered/Durable boundary crossed” for that batch. Process kill mid-batch without returned receipts → same **unknown/old/new** rules as mid-single-put. |
+| **Testrig `--put-batch-size` / free-space refuse** | **No** (harness only) | Measurement; does not change product store contract. |
+| **Write-batch / transaction API (proposed)** | **Only if designed carefully** | Safe: hold frames, one OS write (+ `sync_all` for Durable), **then** return all receipts — same guarantees as today, amortized. **Unsafe / contract change:** return receipts before OS transfer while still labeling `Buffered`/`Durable`. That would require a new mode or an explicit “uncommitted batch” surface. |
+| **Write-through / drop RAM prefix after durable_len** | **No if recovery still rebuilds from on-disk frames** | Must keep locator offsets valid and seal/open paths correct. Risk is implementation bugs (torn tail, wrong durable_len), not a deliberate weaker mode. Needs crash-matrix re-run. |
+| **Cheaper dual-index (single map + derived projection)** | **No if visibility after durable ack is identical** | Risk is publish-order bugs (DEF-023: visibility only after authoritative append). Must not make incomplete frames visible. |
+| **Skip BLAKE3 / weaken frame integrity for speed** | **Yes — guarantee change** | Format integrity and salvage would change. Not recommended as a silent perf flag. |
+| **Treating SQLite-style uncommitted multi-put as `Buffered` without OS write** | **Yes — weakens CSQ-ACK-004 Buffered** | Buffered today = “handed to OS page cache.” Deferring OS write past ack is Memory-class loss domain until flush. |
+
+**Bottom line:** The optimizations already landed (encode path, put_many tail batching) are **performance hygiene under the existing durability contract**. The big SQLite-shaped win is a **batch/txn API that keeps the same ack table**, not relaxing Durable/Buffered. Any change that returns success before the named boundary must be a **new, named mode** — never a quiet rewrite of `Buffered`/`Durable`.
+
+---
+
 ## Comparison to contaminated internal medians
 
 ```text
@@ -139,7 +317,10 @@ Scratch 2 GiB counterbalance (free space OK):
 | **Testrig process sampling** | Works on current binary |
 | **Free-space floor** | **Done** — pumps refuse when volume is too tight |
 | **Seal default / threshold** | Product-relevant: ~**1.5×** clean 64 vs 4 MiB on Scratch |
-| **Multi-shard capacity claim** | **Closed for single-process Axis B**: no throughput win at 2/4 shards; multi-process capacity still a separate question |
+| **Multi-shard capacity claim** | Single-process Axis B: no big win; post-batch ~same as 1-shard. Axis C multi-process still open |
+| **SSD saturation** | **Not reached** — ~1/3 of sequential ceiling; CPU ~40% of one core |
+| **Write-path throttle** | Per-key encode/index/hash + dual-buffer segment; OS batching is **not** the main 8 KiB limiter |
+| **SQLite comparison** | Batch txn numbers ≠ our per-put Buffered path; see Campaign E |
 
 ## Bottom line
 
@@ -147,7 +328,9 @@ There **was** a real problem with the **measurement environment** (full internal
 On Scratch with free space:
 
 1. Segment threshold still matters (~**1.5×** at both 1 GiB and 2 GiB targets).  
-2. Single-process multi-shard ladder does **not** improve logical throughput.  
-3. Testrig now **refuses** near-full disks so this class of contamination is harder to repeat.
+2. We are **not disk-bound** (~130 MiB/s growth vs ~360 MiB/s sequential Scratch).  
+3. **General load** (batch=1) ≈ **batched** (batch=128) at 8 KiB — limiter is **per-key integrity/index work**, not “forgot to batch writes.”  
+4. Low CPU + low disk together is expected on a **single-threaded, QD=1, per-ack** pipeline; SQLite-class bulk numbers usually mean **transactions + small rows**, not this path.  
+5. **Always pump on `/Volumes/Scratch/TEST/`** for large surveys — never the internal volume.
 
 **Do not** publish absolute product MB/s from these diagnostics without Benchmark Disclosure + controlled runner class.

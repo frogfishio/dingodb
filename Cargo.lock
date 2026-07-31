@@ -1208,6 +1208,7 @@ version = "0.2.0"
 dependencies = [
  "clap",
  "getrandom 0.3.4",
+ "residiuum-format",
  "residiuum-store",
  "serde",
  "serde_json",

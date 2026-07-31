@@ -1157,8 +1157,10 @@ impl Store {
     ///
     /// When `writer_shards > 1` and items are non-chunked buffered/durable puts,
     /// shard appends run in parallel (`std::thread::scope`) then the primary
-    /// index is published serially. Memory mode, chunked bodies, or a single
-    /// shard fall back to sequential [`Self::put`] (DEF-096 Axis B).
+    /// index is published serially. Single-shard non-chunked buffered/durable
+    /// batches append many frames then issue **one** segment tail write (syscall
+    /// amortization). Memory mode or any chunked body fall back to sequential
+    /// [`Self::put`] (DEF-096 Axis B).
     pub fn put_many(
         &mut self,
         items: &[(&str, &[u8])],
@@ -1177,17 +1179,140 @@ impl Store {
             }
             let _ = self.large_value_policy.admit(value.len())?;
         }
-        let parallel_ok = self.writer_shards() > 1
-            && mode != DurabilityMode::Memory
-            && items.iter().all(|(_, b)| b.len() <= self.chunk_threshold);
-        if !parallel_ok {
+        let non_chunked = items
+            .iter()
+            .all(|(_, b)| b.len() <= self.chunk_threshold);
+        // Memory / chunked: keep the per-item put path (memory is visibility-only;
+        // chunked needs multi-frame layout that is not batch-tailed here).
+        if mode == DurabilityMode::Memory || !non_chunked {
             let mut out = Vec::with_capacity(items.len());
             for (subject, value) in items {
                 out.push(self.put(subject, value, mode)?);
             }
             return Ok(out);
         }
-        self.put_many_parallel(items, mode)
+        if self.writer_shards() > 1 {
+            return self.put_many_parallel(items, mode);
+        }
+        // Single active segment: batch appends + one write_segment_tail.
+        self.put_many_single_shard_batched(items, mode)
+    }
+
+    /// Single-shard batched put: N in-memory appends, one file tail write.
+    ///
+    /// This is the dominant throughput path for testrig / bulk loaders. Per-put
+    /// `write_all`+`seek` was leaving SSD and CPU idle (~1/3 of sequential ceiling).
+    fn put_many_single_shard_batched(
+        &mut self,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        debug_assert_eq!(self.writer_shards(), 1);
+        debug_assert_ne!(mode, DurabilityMode::Memory);
+
+        let mut out = Vec::with_capacity(items.len());
+        for (subject, value) in items {
+            let admit = self.large_value_policy.admit(value.len())?;
+            let subject_bytes = subject.as_bytes();
+            if subject_bytes.len() > MAX_SUBJECT_LEN {
+                return Err(StoreError::SubjectTooLong {
+                    max: MAX_SUBJECT_LEN,
+                });
+            }
+            if value.len() as u64 > self.limits.max_body_len {
+                return Err(StoreError::PayloadTooLarge);
+            }
+
+            self.ensure_active(0)?;
+            // Seal may flush any prior unflushed tail; safe mid-batch.
+            self.maybe_auto_seal(0)?;
+
+            let segment_id = self
+                .active_ref(0)
+                .map(|w| w.segment_id)
+                .expect("active segment");
+            let item_id = match self.index.get(subject_bytes) {
+                Some(entry) => entry.item_id(),
+                None => subject_item_id(subject_bytes),
+            };
+            let event_id = self.next_event_id()?;
+            let env = ItemEnvelope {
+                store_id: self.store_id,
+                segment_id,
+                item_id,
+                event_kind: EventKind::Put,
+                created_ns: now_ns(),
+                subject: subject_bytes.to_vec(),
+            };
+            let envelope = encode_item_envelope(&env).map_err(StoreError::BadEnvelope)?;
+            if !self
+                .limits
+                .accepts_lengths(envelope.len() as u32, value.len() as u64)
+            {
+                return Err(StoreError::PayloadTooLarge);
+            }
+
+            let (offset, encoded_frame_len, append_ns) = {
+                let writer = self.active_mut(0).expect("active segment");
+                let t_append = std::time::Instant::now();
+                let offset = writer.segment.append(
+                    FrameKind::ItemEvent,
+                    &envelope,
+                    value,
+                    event_id,
+                )?;
+                let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                let encoded_frame_len =
+                    (writer.segment.as_bytes().len() as u64).saturating_sub(offset);
+                (offset, encoded_frame_len, append_ns)
+            };
+
+            self.boundary_probe.record_append(
+                encoded_frame_len,
+                value.len() as u64,
+                offset,
+                mode,
+                false,
+                false,
+                0,
+                append_ns,
+                0,
+            );
+            // Locator-first index: do not allocate full payload only to slim it away.
+            self.apply_durable_event(
+                subject_bytes.to_vec(),
+                EventKind::Put,
+                Vec::new(),
+                item_id,
+                event_id,
+                segment_id,
+                0,
+                offset,
+            );
+            self.boundary_probe.record_publish(offset, mode, 0);
+            self.note_collection_for_subject(subject_bytes);
+            let _ = self.note_durable_derived();
+
+            let mut receipt = WriteReceipt::base(
+                self.store_id,
+                segment_id,
+                item_id,
+                event_id,
+                EventKind::Put,
+                mode,
+                offset,
+            )
+            .with_layout(admit, &self.large_value_policy.profile_id);
+            receipt.encoded_frame_len = encoded_frame_len;
+            out.push(receipt);
+        }
+
+        // One seek+write_all (and optional sync) for the whole batch.
+        if let Some(writer) = self.active_mut(0) {
+            let tail = Self::write_segment_tail(writer, mode)?;
+            self.record_tail_probe(&tail, mode, 0)?;
+        }
+        Ok(out)
     }
 
     /// Parallel multi-shard append path (non-chunked durable/buffered only).
@@ -1330,13 +1455,8 @@ impl Store {
                                 // Exact encoded frame length at store boundary.
                                 let encoded_frame_len = (writer.segment.as_bytes().len() as u64)
                                     .saturating_sub(offset);
-                                let tail = match Self::write_segment_tail(writer, mode) {
-                                    Ok(t) => t,
-                                    Err(e) => {
-                                        *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
-                                        return;
-                                    }
-                                };
+                                // Defer write_segment_tail until all frames in this
+                                // shard batch are appended (one seek+write_all).
                                 outs.push(ShardRow {
                                     item_idx: p.item_idx,
                                     offset,
@@ -1347,12 +1467,26 @@ impl Store {
                                     body: p.body,
                                     encoded_frame_len,
                                     append_ns,
-                                    tail,
+                                    tail: TailIoStats::default(),
                                 });
                             }
                             Err(e) => {
                                 *out_mu.lock().unwrap_or_else(|err| err.into_inner()) =
                                     Err(StoreError::Segment(e));
+                                return;
+                            }
+                        }
+                    }
+                    // One file tail write for the whole shard batch.
+                    if !outs.is_empty() {
+                        match Self::write_segment_tail(writer, mode) {
+                            Ok(tail) => {
+                                if let Some(last) = outs.last_mut() {
+                                    last.tail = tail;
+                                }
+                            }
+                            Err(e) => {
+                                *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
                                 return;
                             }
                         }
@@ -1387,10 +1521,11 @@ impl Store {
                 );
                 self.record_tail_probe(&row.tail, mode, shard_u32)?;
 
+                // Locator-first: slim drops ordinary payloads; avoid dual full copies.
                 self.apply_durable_event(
                     row.subject.clone(),
                     EventKind::Put,
-                    row.body,
+                    Vec::new(),
                     row.item_id,
                     row.event_id,
                     row.segment_id,
@@ -4390,10 +4525,12 @@ impl Store {
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Durable projection is locator-first (DEF-095): frame_offset + slim body.
+        // Ordinary put bodies are not kept resident — pass empty rather than
+        // allocating `body.to_vec()` only for `slim_put_body_for_index` to drop.
         self.apply_durable_event(
             subject_bytes.to_vec(),
             kind,
-            body.to_vec(),
+            Vec::new(),
             item_id,
             event_id,
             segment_id,

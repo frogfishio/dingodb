@@ -1,0 +1,59 @@
+{
+  "batch": 128,
+  "disclosure": "Diagnostic only — not a published SLO.",
+  "interpretation": [
+    "Buffered put is only 11.8% of pure-Blake ops/s — NOT Blake-bound (Blake is far faster).",
+    "Memory put 595712 ops/s vs Buffered 31717 — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.",
+    "Raw write_all 752251 ops/s vs Buffered put 31717 — store adds 23.7× wall vs raw same-size writes.",
+    "Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute."
+  ],
+  "ok": true,
+  "ops": 20000,
+  "payload_size": 8192,
+  "phases": [
+    {
+      "logical_mib_per_sec": 2104.8094052987312,
+      "name": "blake3_body_hash_only",
+      "note": "pure user CPU; if store is Blake-bound, put rates should be near this order",
+      "ops_per_sec": 269415.6038782376,
+      "wall_ms": 74.23475
+    },
+    {
+      "logical_mib_per_sec": 5876.959966148711,
+      "name": "raw_write_all_payload_only",
+      "note": "OS write path only (no fsync); device + page cache ceiling for small writes",
+      "ops_per_sec": 752250.875667035,
+      "wall_ms": 26.586875
+    },
+    {
+      "logical_mib_per_sec": 6487.557136552662,
+      "name": "raw_write_all_frame_sized",
+      "note": "closer to segment tail write size (~payload+envelope)",
+      "ops_per_sec": 805243.4554945364,
+      "wall_ms": 24.837208999999998
+    },
+    {
+      "logical_mib_per_sec": 4653.996992609483,
+      "name": "store_put_memory",
+      "note": "index/visibility path only — NO durable segment write_all",
+      "ops_per_sec": 595711.6150540138,
+      "wall_ms": 33.573291999999995
+    },
+    {
+      "logical_mib_per_sec": 247.7881765273164,
+      "name": "store_put_buffered_batch1",
+      "note": "one write_segment_tail per put; ps%cpu sample≈Some(9.3)→Some(34.3)",
+      "ops_per_sec": 31716.8865954965,
+      "wall_ms": 630.578917
+    },
+    {
+      "logical_mib_per_sec": 258.8448850283497,
+      "name": "store_put_many_buffered",
+      "note": "batch=128; one tail write per batch",
+      "ops_per_sec": 33132.145283628764,
+      "wall_ms": 603.643375
+    }
+  ],
+  "prong": "phase_bench",
+  "work": "/Volumes/Scratch/TEST/residiuum-phase-bench-20260801/run"
+}

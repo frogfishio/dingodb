@@ -1,0 +1,18 @@
+=== phase-bench (falsify Blake-bound narrative) ===
+work=/Volumes/Scratch/TEST/residiuum-phase-bench-20260801/run3 ops=20000 payload=8192 batch=128
+
+phase                               wall_ms        ops/s        MiB/s  note
+blake3_body_hash_only                  94.4       211853       1655.1  pure user CPU; if store is Blake-bound, put rates should be near this order
+encode_frame_into_growing_vec          81.6       245111       1914.9  format encode only (includes Blake); no store index, no OS write
+raw_seek_plus_write_all_per_op         28.8       693552       5587.7  mimics write_segment_tail: seek(durable_len)+write_all each put
+raw_write_all_payload_only             22.2       900169       7032.6  OS write path only (no fsync); device + page cache ceiling for small writes
+raw_write_all_frame_sized              21.5       931947       7508.4  closer to segment tail write size (~payload+envelope)
+store_put_memory                       32.6       614414       4800.1  index/visibility path only — NO durable segment write_all
+store_put_buffered_batch1             620.3        32244        251.9  one write_segment_tail per put; ps%cpu sample≈Some(16.8)→Some(28.8)
+store_put_many_buffered               609.8        32796        256.2  batch=128; one tail write per batch
+
+interpretation:
+  • Buffered put is 15% of pure-Blake ops/s — Blake-scale cost may matter.
+  • Memory put 614414 ops/s vs Buffered 32244 — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.
+  • Raw write_all 900169 ops/s vs Buffered put 32244 — store adds 27.9× wall vs raw same-size writes.
+  • Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute.

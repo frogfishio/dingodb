@@ -20,6 +20,7 @@ doc = false
 
 [dependencies]
 residiuum-store = { workspace = true, features = ["legacy-raw-store"] }
+residiuum-format = { workspace = true }
 clap.workspace = true
 serde = { workspace = true }
 serde_json.workspace = true

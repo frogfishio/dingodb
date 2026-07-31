@@ -161,43 +161,56 @@ pub enum FrameVerifyError {
 ///
 /// The envelope must satisfy deterministic CBOR rules (FORMAT_SPEC §4.4).
 pub fn encode_frame(parts: &FrameParts) -> Result<Vec<u8>, FrameVerifyError> {
-    if parts.envelope.len() as u32 != parts.header.envelope_len
-        || parts.body.len() as u64 != parts.header.body_len
-    {
-        return Err(FrameVerifyError::HeaderPayloadMismatch);
-    }
-    if parts.header.wire_major != WIRE_MAJOR {
-        return Err(FrameVerifyError::UnsupportedWireMajor(
-            parts.header.wire_major,
-        ));
-    }
-    validate_deterministic_cbor_envelope(&parts.envelope)?;
     let frame_len = checked_frame_len(parts.header.envelope_len, parts.header.body_len)
         .ok_or(FrameVerifyError::LengthsOutOfLimits)?;
     let mut out = Vec::with_capacity(frame_len as usize);
+    encode_frame_into(&mut out, &parts.header, &parts.envelope, &parts.body)?;
+    Ok(out)
+}
+
+/// Encode a complete frame by appending into `out` (no intermediate body clone).
+///
+/// Hot path for segment append: previously `encode_frame` allocated a full
+/// frame `Vec` (copying the payload) and the segment then `extend_from_slice`d
+/// it (second payload copy). This writes once into the caller's buffer.
+pub fn encode_frame_into(
+    out: &mut Vec<u8>,
+    header: &FrameHeader,
+    envelope: &[u8],
+    body: &[u8],
+) -> Result<(), FrameVerifyError> {
+    if envelope.len() as u32 != header.envelope_len || body.len() as u64 != header.body_len {
+        return Err(FrameVerifyError::HeaderPayloadMismatch);
+    }
+    if header.wire_major != WIRE_MAJOR {
+        return Err(FrameVerifyError::UnsupportedWireMajor(header.wire_major));
+    }
+    validate_deterministic_cbor_envelope(envelope)?;
+    let frame_len = checked_frame_len(header.envelope_len, header.body_len)
+        .ok_or(FrameVerifyError::LengthsOutOfLimits)?;
+    out.reserve(frame_len as usize);
 
     let mut prefix = [0u8; FRAME_PREFIX_LEN];
-    write_prefix_fields(&mut prefix, &parts.header);
-    let pcrc = prefix_crc32c(&prefix, &parts.envelope);
+    write_prefix_fields(&mut prefix, header);
+    let pcrc = prefix_crc32c(&prefix, envelope);
     prefix[56..60].copy_from_slice(&pcrc.to_le_bytes());
     // reserved at 60..64 remains zero
 
     out.extend_from_slice(&prefix);
-    out.extend_from_slice(&parts.envelope);
-    out.extend_from_slice(&parts.body);
+    out.extend_from_slice(envelope);
+    out.extend_from_slice(body);
 
     let mut suffix = [0u8; FRAME_SUFFIX_LEN];
     suffix[0..8].copy_from_slice(END_MAGIC);
     suffix[8..16].copy_from_slice(&frame_len.to_le_bytes());
-    let hash = body_hash(&parts.body);
+    let hash = body_hash(body);
     suffix[16..48].copy_from_slice(&hash);
     let scrc = suffix_crc32c(&suffix);
     suffix[48..52].copy_from_slice(&scrc.to_le_bytes());
     // reserved 52..56 zero
 
     out.extend_from_slice(&suffix);
-    debug_assert_eq!(out.len() as u64, frame_len);
-    Ok(out)
+    Ok(())
 }
 
 /// Decode and structurally verify a complete frame buffer (exact length).

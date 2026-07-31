@@ -5,7 +5,9 @@
 //! envelopes are deterministic CBOR maps (empty map when no fields).
 
 use crate::cbor_envelope::EMPTY_ENVELOPE;
-use crate::frame::{encode_frame, FrameHeader, FrameParts, FrameVerifyError};
+use crate::frame::{
+    encode_frame, encode_frame_into, FrameHeader, FrameParts, FrameVerifyError,
+};
 use crate::kinds::FrameKind;
 use crate::limits::SafetyLimits;
 use thiserror::Error;
@@ -217,13 +219,8 @@ impl ActiveSegment {
         }
         let mut header = parts.header.clone();
         header.writer_sequence = self.writer_sequence;
-        let encoded = encode_frame(&FrameParts {
-            header,
-            envelope: parts.envelope.clone(),
-            body: parts.body.clone(),
-        })?;
         let offset = self.bytes.len() as u64;
-        self.bytes.extend_from_slice(&encoded);
+        encode_frame_into(&mut self.bytes, &header, &parts.envelope, &parts.body)?;
         self.writer_sequence = self.writer_sequence.saturating_add(1);
         self.frame_count = self.frame_count.saturating_add(1);
         Ok(offset)
@@ -296,13 +293,9 @@ impl ActiveSegment {
         {
             return Err(FrameVerifyError::LengthsOutOfLimits.into());
         }
-        let encoded = encode_frame(&FrameParts {
-            header,
-            envelope: envelope.to_vec(),
-            body: body.to_vec(),
-        })?;
         let offset = self.bytes.len() as u64;
-        self.bytes.extend_from_slice(&encoded);
+        // Encode directly into the segment buffer (one payload copy, not two).
+        encode_frame_into(&mut self.bytes, &header, envelope, body)?;
         self.writer_sequence = self.writer_sequence.saturating_add(1);
         self.frame_count = self.frame_count.saturating_add(1);
         Ok(offset)

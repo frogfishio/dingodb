@@ -1,0 +1,25 @@
+{
+  "format_version": 1,
+  "store_path": "/Volumes/Scratch/TEST/residiuum-survey-batchfix-20260731/b04-store",
+  "target_bytes": 1073741824,
+  "payload_size": 8192,
+  "durability": "buffered",
+  "keys_written": 65536,
+  "first_key": "load/00000000000000000000",
+  "last_key": "load/00000000000000065535",
+  "key_prefix": "load/",
+  "bytes_on_disk": 1102426910,
+  "pump_elapsed_ms": 11764,
+  "pump_ops_per_sec": 5570.780761072604,
+  "pump_mb_per_sec": 89.36882107397425,
+  "seed": 20260731,
+  "writer_shards": 1,
+  "concurrency": 1,
+  "writer_model": "single_active_segment",
+  "store_count": 1,
+  "store_paths": [
+    "/Volumes/Scratch/TEST/residiuum-survey-batchfix-20260731/b04-store"
+  ],
+  "peak_rss_bytes": 231718912,
+  "peak_cpu_pct": 48.0
+}
