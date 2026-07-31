@@ -1,0 +1,20 @@
+[package]
+name = "core-storage-reference-reader"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "MPL-2.0"
+authors.workspace = true
+description = "CSQ-1 independent byte reader/scanner oracle (no residiuum-store / production scan dependency)."
+publish = false
+
+[[bin]]
+name = "core-storage-reference-reader"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+blake3 = { workspace = true }
+clap = { workspace = true }

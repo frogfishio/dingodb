@@ -35,7 +35,9 @@ mod catalog;
 mod chimera;
 mod chunk_payload;
 mod compact;
+mod composed_failure;
 mod crash_matrix;
+mod csq_harness;
 mod cursor;
 mod durability;
 mod envelope;
@@ -100,10 +102,19 @@ pub use compact::{
     CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport, COMPACTION_JOB_DIR,
     COMPACTION_JOB_SUFFIX,
 };
+pub use composed_failure::{
+    failure_class_action, schedule as schedule_failure_combinations,
+    validate_combinations as validate_failure_combinations, FailureCombination,
+    FailureCombinationDoc, ScheduleDecision,
+};
 pub use crash_matrix::{
     all_cells, ci_subset_cells, load_embedded as load_crash_matrix,
     validate as validate_crash_matrix, CrashMatrix, ExpectedReopen, MatrixFailpoint,
     MatrixOperation, CRASH_MATRIX_JSON,
+};
+pub use csq_harness::{
+    harness_is_approved, parse_harness, BarrierKind, BarrierPhase, CrashController,
+    FilesystemImageHarness, HarnessCapability, HARNESS_CAPABILITIES,
 };
 pub use cursor::{
     scan_generation, verify_continuation_token, CoverageGap, CoverageGapKind, DocumentScanPage,
@@ -127,9 +138,13 @@ pub use erasure::{
 pub use error::StoreError;
 pub use failpoint::{
     any_armed as failpoints_armed, arm as arm_failpoint, arm_n as arm_failpoint_n,
-    arm_once as arm_failpoint_once, clear as clear_failpoints,
-    consume_short_write as consume_failpoint_short_write, disarm as disarm_failpoint,
-    hit as hit_failpoint, short_write_len as failpoint_short_write_len, Action as FailpointAction,
+    arm_once as arm_failpoint_once, clear as clear_failpoints, clear_all as clear_failpoints_all,
+    clear_visits as clear_failpoint_visits, consume_short_write as consume_failpoint_short_write,
+    disable_hit_proof as disable_failpoint_hit_proof, disarm as disarm_failpoint,
+    enable_hit_proof as enable_failpoint_hit_proof, hit as hit_failpoint,
+    hit_proof_enabled as failpoint_hit_proof_enabled, is_armed as failpoint_is_armed,
+    require_visited as require_failpoint_visited, short_write_len as failpoint_short_write_len,
+    visit_count as failpoint_visit_count, Action as FailpointAction,
 };
 /// Capability-gated heap façades (HP-003). Prefer these over the legacy raw store
 /// for qualified heap isolation; the unscoped store remains available behind the

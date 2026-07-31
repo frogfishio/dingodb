@@ -190,6 +190,10 @@ required-features = ["legacy-raw-store"]
 name = "store_basic"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "csq2_instrumentation"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]

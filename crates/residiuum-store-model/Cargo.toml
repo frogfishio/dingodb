@@ -1,0 +1,20 @@
+[package]
+name = "residiuum-store-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "MPL-2.0"
+authors.workspace = true
+description = "CSQ-1 sequential logical store model oracle (no production store/recovery dependency)."
+readme = "README.md"
+repository.workspace = true
+keywords = ["residiuum", "csq", "oracle", "model"]
+categories = ["database-implementations"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -81,6 +81,21 @@
       ],
       "executable_owner": "CSQ-SUITE-CRASH",
       "feasibility": "scheduled"
+    },
+    {
+      "id": "CSQ-FC-corruption+clock_discontinuity",
+      "failures": [
+        "corruption",
+        "clock_discontinuity"
+      ],
+      "order": [
+        "corruption",
+        "clock_discontinuity"
+      ],
+      "executable_owner": "CSQ-SUITE-INSTRUMENT",
+      "feasibility": "rejected",
+      "rejection_reason": "No joint injection harness for media corruption with clock discontinuity in CSQ-2; campaign deferred to CSQ-5/CSQ-7",
+      "ci_subset": true
     }
   ]
 }

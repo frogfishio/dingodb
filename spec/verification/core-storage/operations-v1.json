@@ -880,7 +880,15 @@
         "CSQ-BND-compact_live-01-segment_sync",
         "CSQ-BND-compact_live-02-index_cache_persist",
         "CSQ-BND-compact_live-03-catalog_refresh",
-        "CSQ-BND-FP-compact_live-store_compact_before_segment_sync"
+        "CSQ-BND-FP-compact_live-store_compact_before_segment_sync",
+        "CSQ-BND-FP-compact_live-store_compact_after_activate",
+        "CSQ-BND-FP-compact_live-store_compact_after_create",
+        "CSQ-BND-FP-compact_live-store_compact_after_plan",
+        "CSQ-BND-FP-compact_live-store_compact_after_reclaim",
+        "CSQ-BND-FP-compact_live-store_compact_after_verify",
+        "CSQ-BND-FP-compact_live-store_compact_before_reclaim",
+        "CSQ-BND-FP-compact_live-store_compact_before_verify",
+        "CSQ-BND-FP-compact_live-store_compact_job_write"
       ],
       "permitted_crash_outcomes": [
         "old",
@@ -1562,6 +1570,112 @@
         "time": "bounded"
       },
       "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "atomic_control_doc",
+      "description": "Atomic control-document publish (tmp write, rename, dir sync)",
+      "authority_inputs": [
+        "control_path"
+      ],
+      "preconditions": [],
+      "logical_transition": "Publish control document atomically",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "tmp_write",
+        "tmp_sync",
+        "rename",
+        "dir_sync"
+      ],
+      "publication_point": "rename",
+      "boundaries": [
+        "CSQ-BND-FP-atomic_control_doc-atomic_after_dir_sync",
+        "CSQ-BND-FP-atomic_control_doc-atomic_after_rename",
+        "CSQ-BND-FP-atomic_control_doc-atomic_after_tmp_sync",
+        "CSQ-BND-FP-atomic_control_doc-atomic_before_rename",
+        "CSQ-BND-FP-atomic_control_doc-atomic_before_tmp_write",
+        "CSQ-BND-FP-atomic_control_doc-atomic_tmp_short_write"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-ACK-001",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/src/atomic_file.rs",
+      "historical_operation_id": "atomic_control_doc"
+    },
+    {
+      "id": "heap_migration",
+      "description": "Heap migration phase/state persist and frame admit",
+      "authority_inputs": [
+        "heap_root"
+      ],
+      "preconditions": [],
+      "logical_transition": "Advance heap migration phases with durable state",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "state_persist",
+        "phase_advance",
+        "frame_admit"
+      ],
+      "publication_point": "frame_admit",
+      "boundaries": [
+        "CSQ-BND-FP-heap_migration-heap_migration_after_frame_admit",
+        "CSQ-BND-FP-heap_migration-heap_migration_after_phase_advance",
+        "CSQ-BND-FP-heap_migration-heap_migration_after_state_persist",
+        "CSQ-BND-FP-heap_migration-heap_migration_before_frame_admit",
+        "CSQ-BND-FP-heap_migration-heap_migration_before_phase_advance",
+        "CSQ-BND-FP-heap_migration-heap_migration_before_state_persist"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-ACK-001",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/src/heap/",
+      "historical_operation_id": "heap_migration"
     }
   ]
 }

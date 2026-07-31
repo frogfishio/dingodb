@@ -9,14 +9,14 @@
       "kind": "sequential_logical_model",
       "crate_path": "crates/residiuum-store-model/",
       "imports_production_store": false,
-      "status": "planned_csq1"
+      "status": "implemented_csq1"
     },
     {
       "id": "CSQ-ORACLE-READER",
       "kind": "independent_byte_reader",
       "crate_path": "tools/core-storage-reference-reader/",
       "imports_production_store": false,
-      "status": "planned_csq1"
+      "status": "implemented_csq1"
     },
     {
       "id": "CSQ-ORACLE-IMPL",

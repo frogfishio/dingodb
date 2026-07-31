@@ -56,8 +56,8 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | VFY-1 | not_started | — | VFY-0 | — | no preflight/infra-classified runner | evidence runner |
 | VFY-2 | not_started | — | VFY-0 | Heap matrix is ad-hoc VFY-2 partial only | no whole-DB claim map | oracle mapping |
 | CSQ-0 | active | 2026-07-31 | — | [specification](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md); [implementation plan](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md); DEF-098…DEF-104 accepted | CSQ-0 registries materialised under `spec/verification/core-storage/`; `scripts/verify-core-storage-registry.sh` green; Rust `csq0_registry` tests agree | core-storage contract |
-| CSQ-1 | not_started | — | CSQ-0 | — | independent model/reader absent | storage oracles |
-| CSQ-2 | not_started | — | CSQ-0 | — | boundary census/instrumentation incomplete | failure injection |
+| CSQ-1 | active | 2026-07-31 | CSQ-0 | — | independent model (`residiuum-store-model`) + reference-reader tool; firewall script green | storage oracles |
+| CSQ-2 | active | 2026-07-31 | CSQ-0 | — | hit-proof failpoints; boundary↔source CI; composed-failure schedule; crash controller; FS-image inventory (campaign CSQ-5) | failure injection |
 | CSQ-3 | not_started | — | CSQ-1, CSQ-2 | — | exhaustive format corpus absent | format qualification |
 | CSQ-4 | not_started | — | CSQ-1, CSQ-2 | — | generated store model suite absent | transition qualification |
 | CSQ-5 | not_started | — | CSQ-2, CSQ-4 | — | full crash/filesystem campaign absent | persistence qualification |

@@ -32,6 +32,12 @@ bash ./scripts/verify-crash-recovery-contract.sh
 # CSQ-0 core-storage registries (VFY-0 namespace)
 bash ./scripts/verify-core-storage-registry.sh
 
+# CSQ-1 oracle dependency firewall
+bash ./scripts/verify-csq-oracle-firewall.sh
+
+# CSQ-2 boundary/failpoint instrumentation
+bash ./scripts/verify-csq-boundary-instrumentation.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh

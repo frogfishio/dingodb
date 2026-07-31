@@ -6,6 +6,8 @@ members = [
   "crates/residiuum-heap",
   "crates/residiuum-authority",
   "crates/residiuum-store",
+  "crates/residiuum-store-model",
+  "tools/core-storage-reference-reader",
   "crates/residiuum-client",
   "crates/residiuum-sdk",
   "crates/residiuum-server",
@@ -41,6 +43,7 @@ residiuum-authority = { path = "crates/residiuum-authority", version = "0.2.0" }
 # default-features false: public raw `Store` is opt-in via `legacy-raw-store`
 # (HP-003 / CPR-001). Dependents that need Stages 3–9 flat store enable the feature.
 residiuum-store = { path = "crates/residiuum-store", version = "0.2.0", default-features = false }
+residiuum-store-model = { path = "crates/residiuum-store-model", version = "0.2.0" }
 residiuum-client = { path = "crates/residiuum-client", version = "0.2.0" }
 residiuum-sdk = { path = "crates/residiuum-sdk", version = "0.2.0" }
 residiuum-server = { path = "crates/residiuum-server", version = "0.2.0" }

@@ -2,7 +2,7 @@
   "schema": "residiuum-csq-boundaries-v1",
   "namespace": "core-storage",
   "profile_scope": "residiuum-core-storage-v1",
-  "generated_for": "CSQ-0",
+  "generated_for": "CSQ-0+CSQ-2",
   "items": [
     {
       "id": "CSQ-BND-store_create-00-create_dirs",
@@ -11,8 +11,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-01-writer_lock_acquire",
@@ -21,8 +22,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-02-write_store_id",
@@ -31,8 +33,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-03-write_meta",
@@ -41,8 +44,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-04-write_store_descriptor",
@@ -51,8 +55,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-05-root_dir_sync",
@@ -61,8 +66,9 @@
       "step_index": 5,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-06-active_start_segment",
@@ -71,8 +77,9 @@
       "step_index": 6,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-07-active_persist_header",
@@ -81,8 +88,9 @@
       "step_index": 7,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-08-index_cache_persist",
@@ -91,8 +99,9 @@
       "step_index": 8,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-store_create-09-catalog_refresh",
@@ -101,8 +110,9 @@
       "step_index": 9,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-store_create-store_create_after_meta",
@@ -149,8 +159,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-01-active_append_in_memory",
@@ -159,8 +170,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-02-active_write_tail",
@@ -169,8 +181,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-03-active_file_sync_all",
@@ -179,8 +192,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-04-active_dir_sync",
@@ -189,8 +203,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-05-index_apply_event",
@@ -199,8 +214,9 @@
       "step_index": 5,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-06-index_cache_persist",
@@ -209,8 +225,9 @@
       "step_index": 6,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable-07-catalog_refresh",
@@ -219,8 +236,9 @@
       "step_index": 7,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-put_durable-store_active_write_tail_before",
@@ -362,8 +380,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_io_faults-01-active_append_in_memory",
@@ -372,8 +391,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_io_faults-02-active_write_tail",
@@ -382,8 +402,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_io_faults-03-active_file_sync_all",
@@ -392,8 +413,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-put_durable_io_faults-store_active_write_tail_before",
@@ -421,8 +443,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_process_kill-01-active_append_in_memory",
@@ -431,8 +454,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_process_kill-02-active_write_tail",
@@ -441,8 +465,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_process_kill-03-active_file_sync_all",
@@ -451,8 +476,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_durable_process_kill-04-active_dir_sync",
@@ -461,8 +487,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_before",
@@ -509,8 +536,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_buffered-01-active_append_in_memory",
@@ -519,8 +547,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_buffered-02-active_write_tail",
@@ -529,8 +558,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_buffered-03-index_apply_event",
@@ -539,8 +569,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-put_buffered-04-index_cache_persist",
@@ -549,8 +580,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-put_buffered-store_active_write_tail_before",
@@ -597,8 +629,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-delete_durable-01-active_append_in_memory",
@@ -607,8 +640,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-delete_durable-02-active_write_tail",
@@ -617,8 +651,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-delete_durable-03-active_file_sync_all",
@@ -627,8 +662,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-delete_durable-04-active_dir_sync",
@@ -637,8 +673,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-delete_durable-05-index_apply_event",
@@ -647,8 +684,9 @@
       "step_index": 5,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-delete_durable-06-index_cache_persist",
@@ -657,8 +695,9 @@
       "step_index": 6,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-delete_durable-store_active_write_tail_before",
@@ -705,8 +744,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-01-active_append_chunks",
@@ -715,8 +755,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-02-encode_manifest",
@@ -725,8 +766,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-03-active_append_manifest",
@@ -735,8 +777,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-04-active_write_tail",
@@ -745,8 +788,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-05-active_file_sync_all",
@@ -755,8 +799,9 @@
       "step_index": 5,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-06-index_apply_event",
@@ -765,8 +810,9 @@
       "step_index": 6,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-chunked_put_durable-07-index_cache_persist",
@@ -775,8 +821,9 @@
       "step_index": 7,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_before",
@@ -823,8 +870,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-01-seal_in_memory",
@@ -833,8 +881,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-02-sealed_dest_write",
@@ -843,8 +892,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-03-sealed_dest_sync",
@@ -853,8 +903,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-04-segments_dir_sync",
@@ -863,8 +914,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-05-active_remove",
@@ -873,8 +925,9 @@
       "step_index": 5,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-06-active_dir_sync",
@@ -883,8 +936,9 @@
       "step_index": 6,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-07-tier_register_hot",
@@ -893,8 +947,9 @@
       "step_index": 7,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-08-tier_persist",
@@ -903,8 +958,9 @@
       "step_index": 8,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-09-segment_catalog_refresh",
@@ -913,8 +969,9 @@
       "step_index": 9,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-10-active_start_new",
@@ -923,8 +980,9 @@
       "step_index": 10,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-seal_active-11-index_cache_persist",
@@ -933,8 +991,9 @@
       "step_index": 11,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-seal_active-store_seal_before_dest_write",
@@ -1000,8 +1059,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-write_dedup_persist-01-dedup_table_insert_memory",
@@ -1010,8 +1070,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-write_dedup_persist-02-dedup_tmp_write",
@@ -1020,8 +1081,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-write_dedup_persist-03-dedup_rename",
@@ -1030,8 +1092,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-write_dedup_persist-04-dedup_parent_sync",
@@ -1040,8 +1103,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-write_dedup_persist-store_dedup_before_write",
@@ -1088,8 +1152,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-catalog_refresh-01-catalog_tmp_write",
@@ -1098,8 +1163,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-catalog_refresh-02-catalog_rename",
@@ -1108,8 +1174,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-catalog_refresh-store_catalog_before_write",
@@ -1137,8 +1204,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-checkpoint-01-snapshots_write",
@@ -1147,8 +1215,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-checkpoint-02-snapshots_sync",
@@ -1157,8 +1226,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-checkpoint-store_checkpoint_before_write",
@@ -1186,8 +1256,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-tier_move-01-dest_sync",
@@ -1196,8 +1267,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-tier_move-02-placement_catalog_write",
@@ -1206,8 +1278,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-tier_move-03-source_remove_if_move",
@@ -1216,8 +1289,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-tier_move-store_tier_before_placement_write",
@@ -1245,8 +1319,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-compact_live-01-segment_sync",
@@ -1255,8 +1330,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-compact_live-02-index_cache_persist",
@@ -1265,8 +1341,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-compact_live-03-catalog_refresh",
@@ -1275,8 +1352,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-compact_live-store_compact_before_segment_sync",
@@ -1304,8 +1382,9 @@
       "step_index": 0,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-heap_lifecycle-01-transition_receipt",
@@ -1314,8 +1393,9 @@
       "step_index": 1,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-heap_lifecycle-02-identity_tombstone",
@@ -1324,8 +1404,9 @@
       "step_index": 2,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-heap_lifecycle-03-purge_plan",
@@ -1334,8 +1415,9 @@
       "step_index": 3,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-heap_lifecycle-04-coverage_destroy",
@@ -1344,8 +1426,9 @@
       "step_index": 4,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-heap_lifecycle-05-purge_receipt_or_incomplete",
@@ -1354,8 +1437,9 @@
       "step_index": 5,
       "kind": "persistence",
       "failpoint": null,
-      "harness": "in_process_failpoint",
-      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+      "harness": "operation_matrix_proxy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "injection_note": "covered by named failpoints on same operation (CSQ-2)"
     },
     {
       "id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_state_store",
@@ -1531,6 +1615,266 @@
       "failpoint": null,
       "harness": "suite_owned",
       "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-FP-atomic_control_doc-atomic_after_dir_sync",
+      "operation_id": "atomic_control_doc",
+      "step": "atomic.after_dir_sync",
+      "kind": "failpoint",
+      "failpoint": "atomic.after_dir_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "atomic.after_dir_sync",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-atomic_control_doc-atomic_after_rename",
+      "operation_id": "atomic_control_doc",
+      "step": "atomic.after_rename",
+      "kind": "failpoint",
+      "failpoint": "atomic.after_rename",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "atomic.after_rename",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-atomic_control_doc-atomic_after_tmp_sync",
+      "operation_id": "atomic_control_doc",
+      "step": "atomic.after_tmp_sync",
+      "kind": "failpoint",
+      "failpoint": "atomic.after_tmp_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "atomic.after_tmp_sync",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-atomic_control_doc-atomic_before_rename",
+      "operation_id": "atomic_control_doc",
+      "step": "atomic.before_rename",
+      "kind": "failpoint",
+      "failpoint": "atomic.before_rename",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "atomic.before_rename",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-atomic_control_doc-atomic_before_tmp_write",
+      "operation_id": "atomic_control_doc",
+      "step": "atomic.before_tmp_write",
+      "kind": "failpoint",
+      "failpoint": "atomic.before_tmp_write",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "atomic.before_tmp_write",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-atomic_control_doc-atomic_tmp_short_write",
+      "operation_id": "atomic_control_doc",
+      "step": "atomic.tmp.short_write",
+      "kind": "failpoint",
+      "failpoint": "atomic.tmp.short_write",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "atomic.tmp.short_write",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_migration-heap_migration_after_frame_admit",
+      "operation_id": "heap_migration",
+      "step": "heap_migration.after_frame_admit",
+      "kind": "failpoint",
+      "failpoint": "heap_migration.after_frame_admit",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_migration.after_frame_admit",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_migration-heap_migration_after_phase_advance",
+      "operation_id": "heap_migration",
+      "step": "heap_migration.after_phase_advance",
+      "kind": "failpoint",
+      "failpoint": "heap_migration.after_phase_advance",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_migration.after_phase_advance",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_migration-heap_migration_after_state_persist",
+      "operation_id": "heap_migration",
+      "step": "heap_migration.after_state_persist",
+      "kind": "failpoint",
+      "failpoint": "heap_migration.after_state_persist",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_migration.after_state_persist",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_migration-heap_migration_before_frame_admit",
+      "operation_id": "heap_migration",
+      "step": "heap_migration.before_frame_admit",
+      "kind": "failpoint",
+      "failpoint": "heap_migration.before_frame_admit",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_migration.before_frame_admit",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_migration-heap_migration_before_phase_advance",
+      "operation_id": "heap_migration",
+      "step": "heap_migration.before_phase_advance",
+      "kind": "failpoint",
+      "failpoint": "heap_migration.before_phase_advance",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_migration.before_phase_advance",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_migration-heap_migration_before_state_persist",
+      "operation_id": "heap_migration",
+      "step": "heap_migration.before_state_persist",
+      "kind": "failpoint",
+      "failpoint": "heap_migration.before_state_persist",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_migration.before_state_persist",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_after_activate",
+      "operation_id": "compact_live",
+      "step": "store.compact.after_activate",
+      "kind": "failpoint",
+      "failpoint": "store.compact.after_activate",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.after_activate",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_after_create",
+      "operation_id": "compact_live",
+      "step": "store.compact.after_create",
+      "kind": "failpoint",
+      "failpoint": "store.compact.after_create",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.after_create",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_after_plan",
+      "operation_id": "compact_live",
+      "step": "store.compact.after_plan",
+      "kind": "failpoint",
+      "failpoint": "store.compact.after_plan",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.after_plan",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_after_reclaim",
+      "operation_id": "compact_live",
+      "step": "store.compact.after_reclaim",
+      "kind": "failpoint",
+      "failpoint": "store.compact.after_reclaim",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.after_reclaim",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_after_verify",
+      "operation_id": "compact_live",
+      "step": "store.compact.after_verify",
+      "kind": "failpoint",
+      "failpoint": "store.compact.after_verify",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.after_verify",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_before_reclaim",
+      "operation_id": "compact_live",
+      "step": "store.compact.before_reclaim",
+      "kind": "failpoint",
+      "failpoint": "store.compact.before_reclaim",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.before_reclaim",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_before_verify",
+      "operation_id": "compact_live",
+      "step": "store.compact.before_verify",
+      "kind": "failpoint",
+      "failpoint": "store.compact.before_verify",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.before_verify",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_job_write",
+      "operation_id": "compact_live",
+      "step": "store.compact.job_write",
+      "kind": "failpoint",
+      "failpoint": "store.compact.job_write",
+      "fault": "error",
+      "ci_subset": false,
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.job_write",
+      "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
+      "generated_for": "CSQ-2"
     }
   ]
 }

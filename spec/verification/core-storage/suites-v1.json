@@ -225,6 +225,21 @@
       "status": "registry_only"
     },
     {
+      "id": "CSQ-SUITE-INSTRUMENT",
+      "package_owner": "CSQ-2",
+      "invariants": [
+        "CSQ-ACK-001",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "active_csq2",
+      "description": "Boundary census, failpoint hit-proof, crash controller, composed-failure schedule"
+    },
+    {
       "id": "CSQ-SUITE-MIG",
       "package_owner": "CSQ-8",
       "invariants": [

@@ -6,7 +6,16 @@ Closed-world registries for profile `residiuum-core-storage-v1`.
 
 ```bash
 bash scripts/verify-core-storage-registry.sh
+bash scripts/verify-csq-oracle-firewall.sh
+bash scripts/verify-csq-boundary-instrumentation.sh
 cargo test -p residiuum-store --test csq0_registry
+cargo test -p residiuum-store --features legacy-raw-store --test csq2_instrumentation
+```
+
+CSQ-2 also exercises the DEF-022 crash matrix driver:
+
+```bash
+cargo test -p residiuum-store --features legacy-raw-store --test stage_def_022_crash_matrix
 ```
 
 ## Authority
