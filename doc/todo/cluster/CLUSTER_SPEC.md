@@ -9,6 +9,12 @@ Public client-ingress companion:
 [INGRESS_SPEC.md](INGRESS_SPEC.md). Storage and control nodes remain private;
 the separate ingress binary has no management or authority-amplification path.
 
+Distributed durability companion:
+[MEDUSA_DURABILITY_FABRIC_SPEC.md](MEDUSA_DURABILITY_FABRIC_SPEC.md). Medusa
+separates payload dispersal, durable-availability evidence and compact ordering;
+compiles protection and failure-domain placement; and preserves authoritative
+Residiuum frames as independently examinable salvage truth.
+
 Status: Draft v0.1  
 Scope: Partitioning, replication, consistency, placement, failover, repair, and
 distributed SDA examination
@@ -44,6 +50,7 @@ them, the final semantics and composition rules for:
 - strong, bounded-stale, available, salvage and convergent operation;
 - multi-region placement and correlated failure domains;
 - replicated, erasure-coded, online and offline storage tiers;
+- Medusa protection compilation, certified dispersal and commitment witnesses;
 - large-value staging, replication, publication and repair;
 - distributed indexes, SDA execution, direct access and deterministic merge;
 - membership change, control-plane scaling and disaster reconstruction;

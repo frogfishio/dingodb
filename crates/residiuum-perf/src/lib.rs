@@ -9,6 +9,7 @@
 //! - **PQH-4:** L0 calibration + L1 device envelope (fake + file I/O adapters).
 //! - **PQH-5:** PhysicalWritePlan + L2 opaque shadow writer.
 //! - **PQH-6:** L3 CPU pipeline + stage probes (null/memory sink).
+//! - **PQH-7:** L4/L5/L6 matrix runner (ledger, profiles, scheduler).
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
@@ -16,6 +17,7 @@
 #![forbid(unsafe_code)]
 
 pub mod envelope;
+pub mod matrix;
 pub mod metrics;
 pub mod pipeline;
 pub mod runner;

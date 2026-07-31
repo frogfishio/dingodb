@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# PQH-1…PQH-6: runner, workload, metrics, envelope, shadow, L3 pipeline tests.
+# PQH-1…PQH-7: full residiuum-perf harness unit tests.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-echo "PQH-1…6: cargo test -p residiuum-perf --lib"
+echo "PQH-1…7: cargo test -p residiuum-perf --lib"
 cargo test -p residiuum-perf --lib --quiet
-echo "OK: residiuum-perf PQH-1…6 tests passed"
+echo "OK: residiuum-perf PQH-1…7 tests passed"

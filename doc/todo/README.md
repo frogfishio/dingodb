@@ -20,4 +20,6 @@ Later programs:
 - [Atomics](atomics/)
 - [Direct Access](direct-access/)
 - [Order Wavelets](order-wavelets/)
-- Evidence, Telemetry, Studio, clustering, and deferred expansion programs
+- Evidence, Telemetry, Studio, clustering (including the
+  [Medusa Durability Fabric](cluster/MEDUSA_DURABILITY_FABRIC_SPEC.md)), and
+  deferred expansion programs
