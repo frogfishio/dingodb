@@ -214,10 +214,12 @@ fn rank_bottlenecks(result: &CampaignResult) -> Vec<RankedBottleneck> {
             .iter()
             .map(|r| r.report.throughput_bytes_per_sec_proxy)
             .collect();
-        // Pass campaign-measured observer overhead into attribution (never invent).
+        // Per-cell measured overhead when present (never invent).
         let measured_oh = result
-            .observer_overhead_report
-            .as_ref()
+            .observer_overhead_reports
+            .iter()
+            .find(|r| r.cell_id == cell_id)
+            .or_else(|| result.observer_overhead_report.as_ref())
             .map(|r| r.overhead_fraction);
         let subject = run_evidence_from(reps[0], &samples, measured_oh);
         let attr = classify_bottleneck(&AttributionInput {

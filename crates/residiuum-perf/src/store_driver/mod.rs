@@ -16,7 +16,7 @@ mod synthetic;
 mod real;
 
 pub use aggregates::{
-    BoundaryAggregateSummary, ObserverOverheadReport, OverheadPairSample,
+    BoundaryAggregateSummary, ObserverOverheadReport, OverheadPairSample, WorkloadContract,
     OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL, OVERHEAD_MIN_PAIRS_SMOKE,
 };
 pub use emitter::{

@@ -132,9 +132,12 @@ pub struct CampaignResult {
     /// Full environment fingerprint JSON (optional; hashed into evidence).
     #[serde(default)]
     pub environment_fingerprint: Option<serde_json::Value>,
-    /// Order-balanced multi-pair probe-off/on observer overhead (real_store).
-    /// Hashed into evidence as `observer_overhead.json`. Measured fraction is
-    /// passed into attribution via `RunEvidence.observer_overhead_fraction`.
+    /// Per-qualified-cell observer overhead (real_store).
+    /// Each entry matches that cell's full workload contract (floors/distribution/
+    /// durability/concurrency/…). Hashed as `observer_overhead.json`.
+    #[serde(default)]
+    pub observer_overhead_reports: Vec<ObserverOverheadReport>,
+    /// Convenience: first per-cell report when any (legacy single-slot consumers).
     #[serde(default)]
     pub observer_overhead_report: Option<ObserverOverheadReport>,
 }
@@ -314,40 +317,58 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         );
     }
 
-    // Observer-overhead qualification: repeated order-balanced probe-off/on on
-    // the actual cell workload (no 64-op cap for non-smoke). Enforces budget.
-    let mut observer_overhead_report = None;
+    // Per-qualified-cell observer overhead: order-balanced probe-off/on under the
+    // **same workload contract** as the measured cell (floors/distribution/durability/…).
+    let mut observer_overhead_reports = Vec::new();
     let mut overhead_within_budget = true;
     if cfg.driver == DriverKind::RealStore && store_driver_compiled() {
-        if let (Some(work), Some(cell)) = (cfg.work_root.as_ref(), cells.first()) {
-            match measure_campaign_observer_overhead(cfg, work, cell) {
-                Ok(report) => {
-                    overhead_within_budget = report.within_budget;
-                    if !report.within_budget {
+        if let Some(work) = cfg.work_root.as_ref() {
+            // Every campaign cell (+ multiproc finding cells executed) gets evidence.
+            let mut oh_cells: Vec<&MatrixCell> = cells.iter().collect();
+            for c in &multiproc_cells {
+                if !oh_cells.iter().any(|x| x.cell_id == c.cell_id) {
+                    oh_cells.push(c);
+                }
+            }
+            for cell in oh_cells {
+                match measure_campaign_observer_overhead(cfg, work, cell) {
+                    Ok(report) => {
+                        if !report.within_budget {
+                            overhead_within_budget = false;
+                            withdrawals.push(format!(
+                                "observer overhead cell={} median={:.6} exceeds budget={:.4}; product claims withheld",
+                                report.cell_id,
+                                report.median_overhead_fraction,
+                                report.overhead_budget
+                            ));
+                        } else {
+                            withdrawals.push(format!(
+                                "observer overhead cell={} mean={:.6} median={:.6} pairs={} stop={:?} within_budget=true",
+                                report.cell_id,
+                                report.overhead_fraction,
+                                report.median_overhead_fraction,
+                                report.pair_count,
+                                report
+                                    .workload_contract
+                                    .as_ref()
+                                    .map(|c| c.stop_policy.as_str())
+                                    .unwrap_or("?")
+                            ));
+                        }
+                        observer_overhead_reports.push(report);
+                    }
+                    Err(e) => {
+                        overhead_within_budget = false;
                         withdrawals.push(format!(
-                            "observer overhead median={:.6} exceeds budget={:.4}; product claims withheld (probe cost is not DB cost)",
-                            report.median_overhead_fraction, report.overhead_budget
-                        ));
-                    } else {
-                        withdrawals.push(format!(
-                            "observer overhead measured mean={:.6} median={:.6} pairs={} ops_per_leg={} within_budget=true",
-                            report.overhead_fraction,
-                            report.median_overhead_fraction,
-                            report.pair_count,
-                            report.ops_per_leg
+                            "observer overhead cell={} failed: {e}; product claims withheld",
+                            cell.cell_id
                         ));
                     }
-                    observer_overhead_report = Some(report);
-                }
-                Err(e) => {
-                    overhead_within_budget = false;
-                    withdrawals.push(format!(
-                        "observer overhead measurement failed: {e}; product claims withheld"
-                    ));
                 }
             }
         }
     }
+    let observer_overhead_report = observer_overhead_reports.first().cloned();
 
     Ok(CampaignResult {
         plan: cfg.plan.clone(),
@@ -375,6 +396,7 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         environment_hash,
         preflight_report: preflight_report_json,
         environment_fingerprint: environment_fingerprint_json,
+        observer_overhead_reports,
         observer_overhead_report,
     })
 }
@@ -911,13 +933,20 @@ mod real_store_tests {
         })
         .expect("campaign with overhead");
 
+        assert!(
+            !result.observer_overhead_reports.is_empty(),
+            "per-cell overhead evidence required"
+        );
         let oh = result
-            .observer_overhead_report
-            .as_ref()
-            .expect("observer_overhead_report on real_store campaign");
+            .observer_overhead_reports
+            .first()
+            .expect("observer_overhead_reports on real_store campaign");
         assert_eq!(oh.pair_count, OVERHEAD_MIN_PAIRS_SMOKE);
         assert!(oh.ops_per_leg > 0);
         assert!((oh.overhead_budget - OBSERVER_OVERHEAD_BUDGET).abs() < 1e-12);
+        let wc = oh.workload_contract.as_ref().expect("workload_contract");
+        assert_eq!(wc.stop_policy, "smoke_op_cap");
+        assert!(!wc.durability.is_empty());
         assert_eq!(
             oh.pairs.iter().filter(|p| p.order == "off_first").count(),
             oh.pairs.iter().filter(|p| p.order == "on_first").count()

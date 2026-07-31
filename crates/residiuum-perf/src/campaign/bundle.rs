@@ -86,7 +86,18 @@ pub fn write_evidence_bundle(
         )?;
         optional_hash_paths.push("environment_hash.json");
     }
-    if let Some(oh) = result.observer_overhead_report.as_ref() {
+    if !result.observer_overhead_reports.is_empty() {
+        // Per-cell overhead evidence (full array) — primary hashed artifact.
+        write_json(
+            &campaign_dir.join("observer_overhead.json"),
+            &serde_json::json!({
+                "schema": "residiuum-observer-overhead-v1",
+                "cells": result.observer_overhead_reports,
+                "all_within_budget": result.observer_overhead_reports.iter().all(|r| r.within_budget),
+            }),
+        )?;
+        optional_hash_paths.push("observer_overhead.json");
+    } else if let Some(oh) = result.observer_overhead_report.as_ref() {
         write_json(&campaign_dir.join("observer_overhead.json"), oh)?;
         optional_hash_paths.push("observer_overhead.json");
     }
@@ -266,6 +277,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let plan = campaign_plan_synthetic(17, 1);
         let result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
+        assert!(result.observer_overhead_reports.is_empty());
         assert!(result.observer_overhead_report.is_none());
         let reports = build_campaign_reports(&result);
         let disclosure = build_disclosure(&result, &reports);

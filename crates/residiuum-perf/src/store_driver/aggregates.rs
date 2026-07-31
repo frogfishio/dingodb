@@ -96,6 +96,87 @@ pub const OVERHEAD_MIN_PAIRS_QUAL: u32 = 4;
 /// Minimum pairs for smoke/CI overhead (still order-balanced).
 pub const OVERHEAD_MIN_PAIRS_SMOKE: u32 = 2;
 
+/// Qualification workload contract mirrored by overhead legs (not op_count alone).
+///
+/// Overhead probe-off/on legs must execute the **same** stop conditions and cell
+/// parameters as the measured cell driver: duration/byte floors (non-smoke),
+/// smoke op cap when applicable, payload distribution, durability, concurrency,
+/// outstanding, shards, batch, db_state, features, and interference.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct WorkloadContract {
+    pub cell_id: String,
+    pub run_class: String,
+    /// How the leg stops: `smoke_op_cap` or `duration_and_byte_floors`.
+    pub stop_policy: String,
+    pub min_duration_secs: u64,
+    pub min_logical_bytes: u64,
+    /// Smoke-only op ceiling when `stop_policy=smoke_op_cap`; else None.
+    pub smoke_ops_limit: Option<u64>,
+    /// Planned cell op_count (not a silent helper cap for non-smoke).
+    pub cell_op_count: u64,
+    pub payload_size: u64,
+    pub distribution: Option<String>,
+    pub durability: String,
+    pub concurrency: u32,
+    pub outstanding: u32,
+    pub batch_size: u32,
+    pub shards: u32,
+    pub db_state: String,
+    pub features: String,
+    pub interference: String,
+    pub layer: String,
+    /// Driver applies these the same way as the measured cell (serial puts today).
+    pub application_note: String,
+}
+
+impl WorkloadContract {
+    /// Build contract from a matrix cell + run class floors.
+    pub fn from_cell_and_class(
+        cell: &crate::matrix::MatrixCell,
+        run_class: crate::campaign::RunClass,
+    ) -> Self {
+        let smoke = run_class.allows_smoke_op_cap();
+        let stop_policy = if smoke {
+            "smoke_op_cap"
+        } else {
+            "duration_and_byte_floors"
+        };
+        let smoke_ops_limit = if smoke {
+            Some(cell.op_count.min(crate::campaign::RunClass::SMOKE_MAX_OPS).max(1))
+        } else {
+            None
+        };
+        Self {
+            cell_id: cell.cell_id.clone(),
+            run_class: run_class.as_str().into(),
+            stop_policy: stop_policy.into(),
+            min_duration_secs: run_class.min_duration_secs(),
+            min_logical_bytes: run_class.min_logical_bytes(),
+            smoke_ops_limit,
+            cell_op_count: cell.op_count,
+            payload_size: cell.payload_size,
+            distribution: cell.distribution.map(|d| d.as_str().to_string()),
+            durability: cell.durability.as_str().into(),
+            concurrency: cell.concurrency,
+            outstanding: cell.outstanding,
+            batch_size: cell.batch_size,
+            shards: cell.shards,
+            db_state: cell.db_state.as_str().into(),
+            features: cell.features.name.clone(),
+            interference: cell.interference.kind.as_str().into(),
+            layer: cell.layer.as_str().into(),
+            application_note:
+                "overhead legs share execute_workload_puts with measured real_store cell driver"
+                    .into(),
+        }
+    }
+
+    /// True when stop policy is floors (qualification/diagnostic/soak), not op_count.
+    pub fn uses_duration_byte_floors(&self) -> bool {
+        self.stop_policy == "duration_and_byte_floors"
+    }
+}
+
 /// One matched probe-off / probe-on sample (one leg order).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct OverheadPairSample {
@@ -106,19 +187,27 @@ pub struct OverheadPairSample {
     pub probe_on_e2e_ns: u64,
     pub probe_off_logical_bytes: u64,
     pub probe_on_logical_bytes: u64,
+    /// Ops completed on each leg (should match contract stop policy).
+    #[serde(default)]
+    pub probe_off_ops: u64,
+    #[serde(default)]
+    pub probe_on_ops: u64,
     /// (on - off) / off when off > 0; else 0.
     pub overhead_fraction: f64,
 }
 
-/// Matched probe-off vs probe-on observer overhead (same cell work).
+/// Matched probe-off vs probe-on observer overhead for **one** qualified cell.
 ///
-/// Qualification path: repeated, order-balanced pairs (ABAB / BABA) on the
-/// actual cell op_count/payload — not a 64-op toy helper.
+/// Legs execute the same [`WorkloadContract`] as the measured cell — duration/
+/// byte floors (or smoke op cap), not a fixed op_count toy helper.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ObserverOverheadReport {
     pub cell_id: String,
     pub seed: u64,
-    /// Ops executed per probe-off or probe-on leg.
+    /// Full workload contract (floors, distribution, durability, concurrency, …).
+    #[serde(default)]
+    pub workload_contract: Option<WorkloadContract>,
+    /// Ops completed per leg (mean); not the stop policy for non-smoke.
     #[serde(default)]
     pub ops_per_leg: u64,
     #[serde(default)]
@@ -162,6 +251,19 @@ impl OverheadPairSample {
         off_bytes: u64,
         on_bytes: u64,
     ) -> Self {
+        Self::from_leg_stats(pair_index, order, off_e2e_ns, on_e2e_ns, off_bytes, on_bytes, 0, 0)
+    }
+
+    pub fn from_leg_stats(
+        pair_index: u32,
+        order: &str,
+        off_e2e_ns: u64,
+        on_e2e_ns: u64,
+        off_bytes: u64,
+        on_bytes: u64,
+        off_ops: u64,
+        on_ops: u64,
+    ) -> Self {
         let overhead_fraction = if off_e2e_ns > 0 {
             (on_e2e_ns as f64 - off_e2e_ns as f64) / off_e2e_ns as f64
         } else {
@@ -174,6 +276,8 @@ impl OverheadPairSample {
             probe_on_e2e_ns: on_e2e_ns,
             probe_off_logical_bytes: off_bytes,
             probe_on_logical_bytes: on_bytes,
+            probe_off_ops: off_ops,
+            probe_on_ops: on_ops,
             overhead_fraction,
         }
     }
@@ -190,13 +294,23 @@ impl ObserverOverheadReport {
         on_bytes: u64,
     ) -> Self {
         let pair = OverheadPairSample::from_times(0, "off_first", off_e2e_ns, on_e2e_ns, off_bytes, on_bytes);
-        Self::from_pairs(cell_id, seed, 0, 0, "smoke", OBSERVER_OVERHEAD_BUDGET, vec![pair])
+        Self::from_pairs(
+            cell_id,
+            seed,
+            None,
+            0,
+            0,
+            "smoke",
+            OBSERVER_OVERHEAD_BUDGET,
+            vec![pair],
+        )
     }
 
     /// Build report from order-balanced multi-pair samples; enforces budget.
     pub fn from_pairs(
         cell_id: &str,
         seed: u64,
+        workload_contract: Option<WorkloadContract>,
         ops_per_leg: u64,
         payload_size: u64,
         run_class: &str,
@@ -206,14 +320,42 @@ impl ObserverOverheadReport {
         let pair_count = pairs.len() as u32;
         let mut notes = vec![
             format!(
-                "order-balanced probe-off/on observer overhead: pairs={pair_count} ops_per_leg={ops_per_leg} run_class={run_class}"
+                "order-balanced probe-off/on on matched workload contract: pairs={pair_count} ops_per_leg={ops_per_leg} run_class={run_class}"
             ),
         ];
+        if let Some(c) = workload_contract.as_ref() {
+            notes.push(format!(
+                "workload_contract stop={} floors_s={} floors_bytes={} dur={} conc={} out={} shards={} dist={:?} features={} interference={} db_state={}",
+                c.stop_policy,
+                c.min_duration_secs,
+                c.min_logical_bytes,
+                c.durability,
+                c.concurrency,
+                c.outstanding,
+                c.shards,
+                c.distribution,
+                c.features,
+                c.interference,
+                c.db_state
+            ));
+            if c.uses_duration_byte_floors() {
+                notes.push(
+                    "stop_policy=duration_and_byte_floors (not cell.op_count); same as measured cell"
+                        .into(),
+                );
+            } else {
+                notes.push(format!(
+                    "stop_policy=smoke_op_cap limit={:?}",
+                    c.smoke_ops_limit
+                ));
+            }
+        }
         if pairs.is_empty() {
             notes.push("no pairs measured".into());
             return Self {
                 cell_id: cell_id.into(),
                 seed,
+                workload_contract,
                 ops_per_leg,
                 payload_size,
                 run_class: run_class.into(),
@@ -240,6 +382,16 @@ impl ObserverOverheadReport {
             / pairs.len() as u64;
         let mean_on_bytes = pairs.iter().map(|p| p.probe_on_logical_bytes).sum::<u64>()
             / pairs.len() as u64;
+        let mean_ops = pairs
+            .iter()
+            .map(|p| p.probe_off_ops.saturating_add(p.probe_on_ops) / 2)
+            .sum::<u64>()
+            / pairs.len() as u64;
+        let ops_per_leg = if ops_per_leg > 0 {
+            ops_per_leg
+        } else {
+            mean_ops
+        };
 
         let mean_frac: f64 = pairs.iter().map(|p| p.overhead_fraction).sum::<f64>() / n;
         let mut fracs: Vec<f64> = pairs.iter().map(|p| p.overhead_fraction).collect();
@@ -256,8 +408,8 @@ impl ObserverOverheadReport {
         ));
         for p in &pairs {
             notes.push(format!(
-                "pair[{}] order={} overhead={:.6}",
-                p.pair_index, p.order, p.overhead_fraction
+                "pair[{}] order={} overhead={:.6} off_ops={} on_ops={}",
+                p.pair_index, p.order, p.overhead_fraction, p.probe_off_ops, p.probe_on_ops
             ));
         }
         if mean_off_bytes != mean_on_bytes {
@@ -285,6 +437,7 @@ impl ObserverOverheadReport {
         Self {
             cell_id: cell_id.into(),
             seed,
+            workload_contract,
             ops_per_leg,
             payload_size,
             run_class: run_class.into(),
@@ -327,6 +480,7 @@ mod tests {
         let r = ObserverOverheadReport::from_pairs(
             "c1",
             1,
+            None,
             32,
             256,
             "qualification",
@@ -352,6 +506,7 @@ mod tests {
         let r = ObserverOverheadReport::from_pairs(
             "c1",
             2,
+            None,
             8,
             64,
             "smoke",

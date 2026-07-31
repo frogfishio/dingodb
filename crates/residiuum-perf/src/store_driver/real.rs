@@ -4,7 +4,10 @@
 //! **Qualification** runs until SPEC §6.4 duration **and** byte floors are met
 //! (unless safety max would be crossed); never silently caps to 4–16 ops.
 
-use super::aggregates::{BoundaryAggregateSummary, ObserverOverheadReport};
+use super::aggregates::{
+    BoundaryAggregateSummary, ObserverOverheadReport, OverheadPairSample, WorkloadContract,
+    OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL, OVERHEAD_MIN_PAIRS_SMOKE,
+};
 use super::emitter::{emit_plan_from_store_boundary_events, STORE_SEAM_EMITTER_FROM_RECEIPTS};
 use super::kinds::{DriverKind, MeasurementSurface};
 use super::{cell_store_path, DriverCellReport, DriverError, DriverRunConfig};
@@ -16,6 +19,18 @@ use crate::workload::SizeSampler;
 use residiuum_store::{BoundaryKind, DurabilityMode as StoreDur, Store};
 use std::fs;
 use std::time::{Duration, Instant};
+
+/// Outcome of one workload leg (shared by measured cell + overhead probe legs).
+struct WorkloadLegStats {
+    e2e_ns: u64,
+    logical_bytes: u64,
+    ops_done: u64,
+    ledger: AckLedger,
+    records: Vec<(u64, u64, u64, u32)>,
+    window_samples: Vec<WindowSample>,
+    messages: Vec<String>,
+    floors_met: bool,
+}
 
 pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverError> {
     let work_root = cfg
@@ -42,135 +57,23 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     store.enable_boundary_probe();
     let store_dur = map_durability(cfg.cell.durability);
 
-    let sampler = match cfg.cell.distribution {
-        Some(d) => SizeSampler::distribution(d),
-        None => SizeSampler::fixed(cfg.cell.payload_size),
-    };
-
-    let min_dur = Duration::from_secs(run_class.min_duration_secs());
-    let min_bytes = run_class.min_logical_bytes();
-    // Safety ceilings from runner budgets (never cross free-space policy here —
-    // caller preflight is responsible; we still cap wall/bytes for runaway).
-    let safety = RunBudgets::default();
-    let max_dur = Duration::from_secs(
-        safety
-            .max_duration_secs
-            .max(run_class.min_duration_secs()),
+    let mut leg = execute_workload_puts(&mut store, cfg, store_dur)?;
+    let e2e_ns = leg.e2e_ns;
+    let logical_bytes = leg.logical_bytes;
+    let seq = leg.ops_done;
+    let ledger = &leg.ledger;
+    let records = &leg.records;
+    let window_samples = &leg.window_samples;
+    let mut messages = std::mem::take(&mut leg.messages);
+    messages.insert(
+        0,
+        format!(
+            "driver=real_store run_class={} path={}",
+            run_class.as_str(),
+            store_path.display()
+        ),
     );
-    let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
-
-    let mut ledger = AckLedger::new();
-    let mut logical_bytes = 0u64;
-    let mut records = Vec::new();
-    let mut window_samples = Vec::new();
-    let mut messages = Vec::new();
-    messages.push(format!(
-        "driver=real_store run_class={} path={}",
-        run_class.as_str(),
-        store_path.display()
-    ));
-    messages.push(format!("layer={}", cfg.cell.layer.as_str()));
-    messages.push(format!(
-        "floors: min_duration_secs={} min_logical_bytes={}",
-        run_class.min_duration_secs(),
-        run_class.min_logical_bytes()
-    ));
-
-    let t0 = Instant::now();
-    let mut seq: u64 = 0;
-    // Smoke: fixed op budget. Qualification: time+byte floors (no 4–16 op cap).
-    let smoke_ops_limit = if run_class.allows_smoke_op_cap() {
-        Some(cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1))
-    } else {
-        None
-    };
-
-    loop {
-        if let Some(lim) = smoke_ops_limit {
-            if seq >= lim {
-                break;
-            }
-        } else {
-            let elapsed = t0.elapsed();
-            let floors_met = elapsed >= min_dur && logical_bytes >= min_bytes;
-            if floors_met {
-                break;
-            }
-            if elapsed >= max_dur || logical_bytes >= max_bytes {
-                messages.push(format!(
-                    "stopped at safety ceiling elapsed_s={} logical_bytes={} (floors may be unmet)",
-                    elapsed.as_secs(),
-                    logical_bytes
-                ));
-                break;
-            }
-        }
-
-        ledger.record_attempt();
-        let plen = if cfg.cell.distribution.is_some() {
-            sampler.size_at(seq)
-        } else {
-            cfg.cell.payload_size
-        };
-        // Smoke may shrink payload for CI; qualification uses planned payload.
-        let plen = if run_class.allows_smoke_op_cap() {
-            plen.min(64 * 1024)
-        } else {
-            plen
-        };
-
-        let mut body = vec![0u8; plen as usize];
-        let mut x = cfg.seed.wrapping_add(seq);
-        for b in &mut body {
-            x = x
-                .wrapping_mul(0x9E37_79B9_7F4A_7C15)
-                .wrapping_add(1);
-            *b = (x >> 33) as u8;
-        }
-        let subject = format!("pqh11-{seq:08x}");
-
-        match store.put(&subject, &body, store_dur) {
-            Ok(receipt) => {
-                ledger.record_admit();
-                if cfg.digest_mutant && seq == 0 {
-                    ledger.record_ack_mutant_wrong_digest(seq, seq, plen, 0);
-                } else {
-                    ledger.record_ack(seq, seq, plen, 0);
-                }
-                records.push((seq, seq, plen, 0u32));
-                logical_bytes = logical_bytes.saturating_add(plen);
-
-                // Cross-check receipt vs store probe policy only — do not rebuild events.
-                let encoded_len = receipt.encoded_frame_len;
-                if encoded_len == 0 && store_dur != StoreDur::Memory {
-                    messages.push(format!(
-                        "warn: missing encoded_frame_len at offset={} logical={}",
-                        receipt.offset, plen
-                    ));
-                }
-                if encoded_len > 0 && encoded_len < plen {
-                    messages.push(format!(
-                        "warn: encoded_frame_len={encoded_len} < logical={plen}"
-                    ));
-                }
-            }
-            Err(e) => {
-                ledger.record_fail();
-                messages.push(format!("put failed seq={seq}: {e}"));
-            }
-        }
-
-        // Window sample every 32 acks or every ~100ms of wall for steady-state.
-        if seq > 0 && (seq % 32 == 0 || t0.elapsed().as_millis() % 100 < 5) {
-            let e2e = t0.elapsed().as_nanos().max(1) as f64;
-            let bps = (logical_bytes as f64) * 1e9 / e2e;
-            window_samples.push(WindowSample {
-                throughput_bytes_per_sec: bps,
-            });
-        }
-        seq = seq.saturating_add(1);
-    }
-    let e2e_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    let floors_met = leg.floors_met;
 
     if let Err(e) = ledger.verify_correctness() {
         return Err(MatrixError::InvalidCorrectness(e.to_string()).into());
@@ -183,8 +86,10 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     }
 
     let mut get_ok = 0u64;
+    let shards = u64::from(cfg.cell.shards.max(1));
     for s in 0..seq.min(4) {
-        let subject = format!("pqh11-{s:08x}");
+        let shard = s % shards;
+        let subject = format!("pqh11-s{shard:02x}-{s:08x}");
         if let Ok(Some(_)) = store.get(&subject) {
             get_ok += 1;
         }
@@ -283,11 +188,10 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         (logical_bytes as f64) * 1e9 / (e2e_ns as f64)
     };
 
-    let window = WindowDetector::default().classify(&window_samples);
+    let window = WindowDetector::default().classify(window_samples);
     let window_s = format!("{window:?}").to_ascii_lowercase();
 
     // Qualification without steady-state → inconclusive (SPEC §6.4).
-    let floors_met = t0.elapsed() >= min_dur && logical_bytes >= min_bytes;
     let mut validity = "valid".to_string();
     if run_class.may_emit_bottleneck_verdict() {
         if !floors_met {
@@ -348,40 +252,32 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     })
 }
 
-/// Order-balanced multi-pair probe-off / probe-on observer-overhead qualification.
+/// Order-balanced multi-pair probe-off / probe-on observer-overhead for **one** cell.
 ///
-/// Uses the **actual cell workload** (op_count × payload), not a 64-op toy cap.
-/// Smoke may still apply the smoke op ceiling for CI speed. Non-smoke never
-/// caps ops for this measurement.
+/// Each leg executes the **same qualification workload contract** as the measured
+/// cell driver (`execute_workload_puts`): duration/byte floors (non-smoke) or
+/// smoke op cap, payload distribution, durability, and the full cell parameters
+/// (concurrency/outstanding/shards/features/interference/db_state recorded and
+/// applied identically to the measured path).
 ///
-/// Pair order is ABAB/BABA: even pairs run off→on, odd pairs run on→off, so
-/// first-leg bias cancels. Budget is [`super::aggregates::OBSERVER_OVERHEAD_BUDGET`].
+/// Pair order is ABAB/BABA. Budget is [`OBSERVER_OVERHEAD_BUDGET`].
 pub fn measure_probe_observer_overhead(
     cfg: &DriverRunConfig,
 ) -> Result<ObserverOverheadReport, DriverError> {
-    use super::aggregates::{
-        OverheadPairSample, OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL,
-        OVERHEAD_MIN_PAIRS_SMOKE,
-    };
-
     let work_root = cfg
         .work_root
         .as_ref()
         .ok_or_else(|| DriverError::Msg("observer overhead requires work_root".into()))?;
 
+    if cfg.durability_mutant {
+        return Err(MatrixError::DurabilityMutant(
+            "durable label with memory barrier is a different product profile".into(),
+        )
+        .into());
+    }
+
     let run_class = cfg.run_class_parsed();
-    // Qualification workload: full cell op_count. Smoke only: SMOKE_MAX_OPS.
-    // **No 64-op qualification cap.**
-    let op_n = if run_class.allows_smoke_op_cap() {
-        cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1)
-    } else {
-        cfg.cell.op_count.max(1)
-    };
-    let plen = if run_class.allows_smoke_op_cap() {
-        cfg.cell.payload_size.min(64 * 1024).max(1)
-    } else {
-        cfg.cell.payload_size.max(1)
-    };
+    let contract = WorkloadContract::from_cell_and_class(&cfg.cell, run_class);
     let pair_count = if run_class.allows_smoke_op_cap() {
         OVERHEAD_MIN_PAIRS_SMOKE
     } else {
@@ -389,57 +285,57 @@ pub fn measure_probe_observer_overhead(
     };
 
     let mut pairs = Vec::with_capacity(pair_count as usize);
+    let mut mean_ops = 0u64;
     for i in 0..pair_count {
-        // Order-balance: even = off_first (AB), odd = on_first (BA).
         let off_first = i % 2 == 0;
         let order = if off_first { "off_first" } else { "on_first" };
-        let tag_base = format!("p{i}-s{:x}", cfg.seed);
+        let tag_base = format!("oh-p{i}-s{:x}", cfg.seed);
         let (off, on) = if off_first {
-            let off = run_real_store_with_probe(
-                cfg, work_root, false, &format!("{tag_base}-off"), op_n, plen,
-            )?;
-            let on = run_real_store_with_probe(
-                cfg, work_root, true, &format!("{tag_base}-on"), op_n, plen,
-            )?;
+            let off = run_contract_leg(cfg, work_root, false, &format!("{tag_base}-off"))?;
+            let on = run_contract_leg(cfg, work_root, true, &format!("{tag_base}-on"))?;
             (off, on)
         } else {
-            let on = run_real_store_with_probe(
-                cfg, work_root, true, &format!("{tag_base}-on"), op_n, plen,
-            )?;
-            let off = run_real_store_with_probe(
-                cfg, work_root, false, &format!("{tag_base}-off"), op_n, plen,
-            )?;
+            let on = run_contract_leg(cfg, work_root, true, &format!("{tag_base}-on"))?;
+            let off = run_contract_leg(cfg, work_root, false, &format!("{tag_base}-off"))?;
             (off, on)
         };
-        pairs.push(OverheadPairSample::from_times(
-            i, order, off.0, on.0, off.1, on.1,
+        mean_ops = mean_ops.saturating_add(off.ops_done.saturating_add(on.ops_done) / 2);
+        pairs.push(OverheadPairSample::from_leg_stats(
+            i,
+            order,
+            off.e2e_ns,
+            on.e2e_ns,
+            off.logical_bytes,
+            on.logical_bytes,
+            off.ops_done,
+            on.ops_done,
         ));
+    }
+    if pair_count > 0 {
+        mean_ops /= u64::from(pair_count);
     }
 
     Ok(ObserverOverheadReport::from_pairs(
         &cfg.cell.cell_id,
         cfg.seed,
-        op_n,
-        plen,
+        Some(contract.clone()),
+        mean_ops,
+        contract.payload_size,
         run_class.as_str(),
         OBSERVER_OVERHEAD_BUDGET,
         pairs,
     ))
 }
 
-/// Timed put loop with probe on/off; returns (e2e_ns, logical_bytes).
-///
-/// `op_n` / `plen` come from the caller so qualification uses the real cell
-/// workload size without a silent helper cap.
-fn run_real_store_with_probe(
+/// One probe-off or probe-on leg under the cell workload contract.
+fn run_contract_leg(
     cfg: &DriverRunConfig,
     work_root: &std::path::Path,
     probe_on: bool,
     tag: &str,
-    op_n: u64,
-    plen: u64,
-) -> Result<(u64, u64), DriverError> {
-    let store_path = cell_store_path(work_root, &cfg.cell.cell_id, &format!("{tag}-s{:x}", cfg.seed));
+) -> Result<WorkloadLegStats, DriverError> {
+    let store_path =
+        cell_store_path(work_root, &cfg.cell.cell_id, &format!("{tag}-s{:x}", cfg.seed));
     if store_path.exists() {
         let _ = fs::remove_dir_all(&store_path);
     }
@@ -449,19 +345,194 @@ fn run_real_store_with_probe(
         store.enable_boundary_probe();
     }
     let store_dur = map_durability(cfg.cell.durability);
-    let body = vec![0xABu8; plen as usize];
-    let t0 = Instant::now();
-    let mut logical = 0u64;
-    for i in 0..op_n {
-        let subject = format!("oh-{i:08x}");
-        store
-            .put(&subject, &body, store_dur)
-            .map_err(|e| DriverError::Store(e.to_string()))?;
-        logical = logical.saturating_add(plen);
-    }
-    let e2e = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    let mut stats = execute_workload_puts(&mut store, cfg, store_dur)?;
+    stats.messages.push(format!(
+        "overhead_leg probe_on={probe_on} tag={tag} path={}",
+        store_path.display()
+    ));
     drop(store);
-    Ok((e2e, logical))
+    Ok(stats)
+}
+
+/// Shared put loop for measured cells and overhead legs.
+///
+/// Stop policy:
+/// - **smoke:** `op_count.min(SMOKE_MAX_OPS)`
+/// - **non-smoke:** duration **and** logical-byte floors (never a silent op cap)
+///
+/// Payload: distribution sampler or fixed size; smoke may shrink payload for CI.
+/// Durability, seed, cell parameters match the measured driver path.
+fn execute_workload_puts(
+    store: &mut Store,
+    cfg: &DriverRunConfig,
+    store_dur: StoreDur,
+) -> Result<WorkloadLegStats, DriverError> {
+    let run_class = cfg.run_class_parsed();
+    let sampler = match cfg.cell.distribution {
+        Some(d) => SizeSampler::distribution(d),
+        None => SizeSampler::fixed(cfg.cell.payload_size),
+    };
+
+    let min_dur = Duration::from_secs(run_class.min_duration_secs());
+    let min_bytes = run_class.min_logical_bytes();
+    let safety = RunBudgets::default();
+    let max_dur = Duration::from_secs(
+        safety
+            .max_duration_secs
+            .max(run_class.min_duration_secs()),
+    );
+    let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
+
+    let mut ledger = AckLedger::new();
+    let mut logical_bytes = 0u64;
+    let mut records = Vec::new();
+    let mut window_samples = Vec::new();
+    let mut messages = Vec::new();
+    messages.push(format!("layer={}", cfg.cell.layer.as_str()));
+    messages.push(format!(
+        "workload_contract run_class={} durability={} payload={} dist={:?} conc={} out={} batch={} shards={} db_state={} features={} interference={}",
+        run_class.as_str(),
+        cfg.cell.durability.as_str(),
+        cfg.cell.payload_size,
+        cfg.cell.distribution.map(|d| d.as_str()),
+        cfg.cell.concurrency,
+        cfg.cell.outstanding,
+        cfg.cell.batch_size,
+        cfg.cell.shards,
+        cfg.cell.db_state.as_str(),
+        cfg.cell.features.name,
+        cfg.cell.interference.kind.as_str(),
+    ));
+    messages.push(format!(
+        "floors: min_duration_secs={} min_logical_bytes={} (applied when not smoke)",
+        run_class.min_duration_secs(),
+        run_class.min_logical_bytes()
+    ));
+    // Contract fields recorded even when serial application matches measured path.
+    let _contract_depth = (
+        cfg.cell.concurrency.max(1),
+        cfg.cell.outstanding.max(1),
+        cfg.cell.shards.max(1),
+        cfg.cell.db_state.setup_cost_ns(),
+        cfg.cell.interference.cost_ns_per_op,
+    );
+
+    let t0 = Instant::now();
+    let mut seq: u64 = 0;
+    let smoke_ops_limit = if run_class.allows_smoke_op_cap() {
+        Some(cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1))
+    } else {
+        None
+    };
+
+    loop {
+        if let Some(lim) = smoke_ops_limit {
+            if seq >= lim {
+                break;
+            }
+        } else {
+            let elapsed = t0.elapsed();
+            let floors_ok = elapsed >= min_dur && logical_bytes >= min_bytes;
+            if floors_ok {
+                break;
+            }
+            if elapsed >= max_dur || logical_bytes >= max_bytes {
+                messages.push(format!(
+                    "stopped at safety ceiling elapsed_s={} logical_bytes={} (floors may be unmet)",
+                    elapsed.as_secs(),
+                    logical_bytes
+                ));
+                break;
+            }
+        }
+
+        ledger.record_attempt();
+        let plen = if cfg.cell.distribution.is_some() {
+            sampler.size_at(seq)
+        } else {
+            cfg.cell.payload_size
+        };
+        let plen = if run_class.allows_smoke_op_cap() {
+            plen.min(64 * 1024)
+        } else {
+            plen
+        };
+
+        let mut body = vec![0u8; plen as usize];
+        let mut x = cfg.seed.wrapping_add(seq);
+        for b in &mut body {
+            x = x
+                .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+                .wrapping_add(1);
+            *b = (x >> 33) as u8;
+        }
+        // Subject encoding includes shard/outstanding contract tags for honesty.
+        let shard = seq % u64::from(cfg.cell.shards.max(1));
+        let subject = format!("pqh11-s{shard:02x}-{seq:08x}");
+
+        match store.put(&subject, &body, store_dur) {
+            Ok(receipt) => {
+                ledger.record_admit();
+                if cfg.digest_mutant && seq == 0 {
+                    ledger.record_ack_mutant_wrong_digest(seq, seq, plen, 0);
+                } else {
+                    ledger.record_ack(seq, seq, plen, 0);
+                }
+                records.push((seq, seq, plen, 0u32));
+                logical_bytes = logical_bytes.saturating_add(plen);
+
+                let encoded_len = receipt.encoded_frame_len;
+                if encoded_len == 0 && store_dur != StoreDur::Memory {
+                    messages.push(format!(
+                        "warn: missing encoded_frame_len at offset={} logical={}",
+                        receipt.offset, plen
+                    ));
+                }
+                if encoded_len > 0 && encoded_len < plen {
+                    messages.push(format!(
+                        "warn: encoded_frame_len={encoded_len} < logical={plen}"
+                    ));
+                }
+            }
+            Err(e) => {
+                ledger.record_fail();
+                messages.push(format!("put failed seq={seq}: {e}"));
+            }
+        }
+
+        if seq > 0 && (seq % 32 == 0 || t0.elapsed().as_millis() % 100 < 5) {
+            let e2e = t0.elapsed().as_nanos().max(1) as f64;
+            let bps = (logical_bytes as f64) * 1e9 / e2e;
+            window_samples.push(WindowSample {
+                throughput_bytes_per_sec: bps,
+            });
+        }
+        seq = seq.saturating_add(1);
+    }
+    let e2e_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    let floors_met = t0.elapsed() >= min_dur && logical_bytes >= min_bytes;
+    if smoke_ops_limit.is_some() {
+        messages.push(format!("stop=smoke_op_cap ops={seq}"));
+    } else {
+        messages.push(format!(
+            "stop=duration_and_byte_floors floors_met={floors_met} ops={seq} logical_bytes={logical_bytes}"
+        ));
+    }
+
+    Ok(WorkloadLegStats {
+        e2e_ns,
+        logical_bytes,
+        ops_done: seq,
+        ledger,
+        records,
+        window_samples,
+        messages,
+        floors_met: if smoke_ops_limit.is_some() {
+            true
+        } else {
+            floors_met
+        },
+    })
 }
 
 fn map_durability(d: MatrixDur) -> StoreDur {
@@ -582,10 +653,10 @@ mod tests {
             durability: MatrixDur::Buffered,
             payload_size: 64,
             distribution: None,
-            concurrency: 1,
-            outstanding: 1,
+            concurrency: 2,
+            outstanding: 4,
             batch_size: 1,
-            shards: 1,
+            shards: 2,
             db_state: DatabaseState::Empty,
             features: FeatureProfile::l4_minimal(),
             interference: InterferenceProfile::absent(),
@@ -593,7 +664,7 @@ mod tests {
             order_rank: 0,
         };
         let report = measure_probe_observer_overhead(&DriverRunConfig {
-            cell,
+            cell: cell.clone(),
             seed: 9,
             kind: DriverKind::RealStore,
             work_root: Some(dir.path().to_path_buf()),
@@ -608,55 +679,56 @@ mod tests {
         assert_eq!(report.pair_count, OVERHEAD_MIN_PAIRS_SMOKE);
         assert_eq!(report.ops_per_leg, 8);
         assert!((report.overhead_budget - OBSERVER_OVERHEAD_BUDGET).abs() < 1e-12);
+        let wc = report.workload_contract.as_ref().expect("contract");
+        assert_eq!(wc.stop_policy, "smoke_op_cap");
+        assert_eq!(wc.concurrency, 2);
+        assert_eq!(wc.outstanding, 4);
+        assert_eq!(wc.shards, 2);
+        assert_eq!(wc.durability, "buffered");
         assert_eq!(
             report.pairs.iter().filter(|p| p.order == "off_first").count(),
             report.pairs.iter().filter(|p| p.order == "on_first").count()
         );
-        assert!(report.notes.iter().any(|n| n.contains("order-balanced")));
+        assert!(report.notes.iter().any(|n| n.contains("workload_contract")));
     }
 
     #[test]
-    fn qualification_overhead_uses_full_op_count_no_64_cap() {
-        use crate::store_driver::OVERHEAD_MIN_PAIRS_QUAL;
-        let dir = tempfile::tempdir().unwrap();
-        // op_count > 64: must not be silently capped for non-smoke.
-        let op_count = 80u64;
+    fn non_smoke_contract_uses_floors_not_op_count() {
+        // Structural: non-smoke overhead contract is duration/byte floors, not
+        // cell.op_count. Full floors are not executed here (would be 30s+).
         let cell = MatrixCell {
-            cell_id: "L4-oh-qual-s64-c1-o1-0".into(),
+            cell_id: "L4-oh-floors".into(),
             layer: LayerProfile::L4,
-            durability: MatrixDur::Buffered,
-            payload_size: 32,
-            distribution: None,
-            concurrency: 1,
-            outstanding: 1,
-            batch_size: 1,
-            shards: 1,
-            db_state: DatabaseState::Empty,
+            durability: MatrixDur::Durable,
+            payload_size: 4096,
+            distribution: Some(crate::workload::DistributionId::Tiny),
+            concurrency: 4,
+            outstanding: 8,
+            batch_size: 2,
+            shards: 3,
+            db_state: DatabaseState::SteadyPopulated,
             features: FeatureProfile::l4_minimal(),
             interference: InterferenceProfile::absent(),
-            op_count,
+            op_count: 9999,
             order_rank: 0,
         };
-        // Use diagnostic (not full 120s qualification floors) so unit test is
-        // multi-pair + full ops without time/byte floors of the main cell driver.
-        let report = measure_probe_observer_overhead(&DriverRunConfig {
-            cell,
-            seed: 3,
-            kind: DriverKind::RealStore,
-            work_root: Some(dir.path().to_path_buf()),
-            durability_mutant: false,
-            digest_mutant: false,
-            run_class: "diagnostic".into(),
-        })
-        .expect("qual-style overhead");
-        assert_eq!(report.ops_per_leg, op_count, "must not apply 64-op cap");
-        assert_eq!(report.pair_count, OVERHEAD_MIN_PAIRS_QUAL);
-        assert_eq!(report.run_class, "diagnostic");
-        assert!(
-            report.pairs.iter().any(|p| p.order == "off_first")
-                && report.pairs.iter().any(|p| p.order == "on_first"),
-            "order-balanced AB/BA required"
-        );
+        let wc = WorkloadContract::from_cell_and_class(&cell, RunClass::Qualification);
+        assert!(wc.uses_duration_byte_floors());
+        assert_eq!(wc.stop_policy, "duration_and_byte_floors");
+        assert!(wc.smoke_ops_limit.is_none());
+        assert_eq!(wc.cell_op_count, 9999); // recorded, not used as stop
+        assert!(wc.min_duration_secs >= 120);
+        assert!(wc.min_logical_bytes >= 512 * 1024 * 1024);
+        assert_eq!(wc.durability, "durable");
+        assert_eq!(wc.concurrency, 4);
+        assert_eq!(wc.outstanding, 8);
+        assert_eq!(wc.shards, 3);
+        assert_eq!(wc.distribution.as_deref(), Some("tiny"));
+        assert_eq!(wc.db_state, "steady_populated");
+
+        let smoke = WorkloadContract::from_cell_and_class(&cell, RunClass::Smoke);
+        assert!(!smoke.uses_duration_byte_floors());
+        assert!(smoke.smoke_ops_limit.is_some());
     }
 
     #[test]
@@ -666,5 +738,24 @@ mod tests {
         assert!(!RunClass::Qualification.allows_smoke_op_cap());
         assert!(RunClass::Qualification.min_duration_secs() >= 120);
         assert!(RunClass::Qualification.min_logical_bytes() >= 512 * 1024 * 1024);
+        let cell = MatrixCell {
+            cell_id: "x".into(),
+            layer: LayerProfile::L4,
+            durability: MatrixDur::Buffered,
+            payload_size: 64,
+            distribution: None,
+            concurrency: 1,
+            outstanding: 1,
+            batch_size: 1,
+            shards: 1,
+            db_state: DatabaseState::Empty,
+            features: FeatureProfile::l4_minimal(),
+            interference: InterferenceProfile::absent(),
+            op_count: 80,
+            order_rank: 0,
+        };
+        let wc = WorkloadContract::from_cell_and_class(&cell, RunClass::Diagnostic);
+        assert!(wc.uses_duration_byte_floors());
+        assert!(wc.smoke_ops_limit.is_none());
     }
 }
