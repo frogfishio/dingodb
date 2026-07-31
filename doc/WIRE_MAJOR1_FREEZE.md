@@ -219,7 +219,7 @@ Only after §2 is all Met and principal accept:
 | §13 only | `cargo test -p residuum-format --test section13_corpus` |
 | Compat / freeze guard | `cargo test -p residuum-format compat` |
 | DEF-091 properties | `cargo test -p residuum-format --test stage_def_091_properties` |
-| Fuzz property bar | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
+| Fuzz property bar | `RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
 | Migrate cut | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_052_migrate` |
 | Freeze readiness API | `wire_freeze_readiness()` / `wire_is_frozen()` in `residuum-format::compat` |
 

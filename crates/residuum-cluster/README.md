@@ -17,7 +17,7 @@ Use this crate directly for lower-level partition/Raft/rebalance control.
 | Collection API on a multi-node cluster | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) with `cluster` |
 | Partition, Raft, coverage, rebalance APIs | **`residuum-cluster`** (this crate) |
 | Single-node store only | [`residuum-store`](https://crates.io/crates/residuum-store) |
-| TCP serve of a cluster node | [`residuum-server`](https://crates.io/crates/residuum-server) / `dingo serve-cluster` |
+| TCP serve of a cluster node | [`residuum-server`](https://crates.io/crates/residuum-server) / `residuum serve-cluster` |
 
 ## Install
 
@@ -135,11 +135,11 @@ unreadable. Open any node path with `residuum_store::Store` / `salvage` as usual
 Process-per-node TCP beyond the in-process `Cluster` handle:
 
 ```text
-dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster
+residuum serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster
 ```
 
 - `endpoints.json` holds routing hints only (not write authority).
-- In-process quorum remains `Dingo::open_cluster` / `Cluster::create`.
+- In-process quorum remains `Residuum::open_cluster` / `Cluster::create`.
 - Demo: `scripts/demos/08_kill_a_node.sh` in the monorepo.
 
 ## Related crates
@@ -149,7 +149,7 @@ dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-netw
 | [`residuum-store`](https://crates.io/crates/residuum-store) | MPL-2.0 | Per-node store |
 | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) | MPL-2.0 | Collection API + `cluster` feature |
 | [`residuum-server`](https://crates.io/crates/residuum-server) | AGPL-3.0-or-later | Network serve + Raft RPC glue |
-| [`residuum-cli`](https://crates.io/crates/residuum-cli) | AGPL-3.0-or-later | `dingo serve-cluster` |
+| [`residuum-cli`](https://crates.io/crates/residuum-cli) | AGPL-3.0-or-later | `residuum serve-cluster` |
 
 ## Documentation
 

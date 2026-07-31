@@ -1,7 +1,7 @@
 //! Legacy flat database handle (`legacy-flat-sdk` feature / CPR-001).
 //!
 //! This surface uses deployment-global collection names and is **not**
-//! `residuum-heap-v1` qualified. Prefer [`crate::Dingo::open_deployment`] +
+//! `residuum-heap-v1` qualified. Prefer [`crate::Residuum::open_deployment`] +
 //! [`crate::Heap`] for isolation claims.
 
 #[cfg(feature = "cluster")]
@@ -10,7 +10,7 @@ use crate::collection::Collection;
 use crate::error::Error;
 use crate::heap::DingoDeployment;
 use crate::multi_query::MultiQuery;
-use crate::remote::{parse_dingo_url, ConnectOptions, RemoteClient};
+use crate::remote::{parse_residuum_url, ConnectOptions, RemoteClient};
 use crate::sda_query::SdaTextQuery;
 use crate::subject::validate_collection_name;
 #[cfg(feature = "cluster")]
@@ -23,17 +23,17 @@ use std::path::{Path, PathBuf};
 /// **Claim:** legacy flat surface (`FLAT_COLLECTION_SURFACE_LABEL`); not Gate H6.
 ///
 /// ```ignore
-/// let mut db = Dingo::open("./app.dingo")?;
+/// let mut db = Residuum::open("./app.dingo")?;
 /// let mut users = db.collection("users")?;
 /// users.put("user-42", &serde_json::json!({"name": "Alice"}))?;
 /// ```
 ///
 /// Remote (Stage 7):
 /// ```ignore
-/// let mut db = Dingo::connect("dingo://localhost:7434/app")?;
+/// let mut db = Residuum::connect("residuum://localhost:7434/app")?;
 /// // or with auth / deadlines / connect retry:
-/// let mut db = Dingo::connect_with(
-///     "dingo://localhost:7434/app",
+/// let mut db = Residuum::connect_with(
+///     "residuum://localhost:7434/app",
 ///     ConnectOptions::new().auth_token("secret"),
 /// )?;
 /// ```
@@ -41,14 +41,14 @@ use std::path::{Path, PathBuf};
 /// Cluster (Stage 8d, requires feature `cluster`) — same collection API;
 /// partition routes are cached client-side:
 /// ```ignore
-/// let mut db = Dingo::create_cluster(
+/// let mut db = Residuum::create_cluster(
 ///     residuum_cluster::ClusterConfig::dependable_local("./cluster")
 /// )?;
 /// // or open an existing cluster root:
-/// let mut db = Dingo::open_cluster("./cluster")?;
+/// let mut db = Residuum::open_cluster("./cluster")?;
 /// db.collection("users")?.put("user-42", &serde_json::json!({"name": "Alice"}))?;
 /// ```
-pub struct Dingo {
+pub struct Residuum {
     pub(crate) backend: Backend,
 }
 
@@ -59,7 +59,7 @@ pub(crate) enum Backend {
     Cluster(ClusterBackend),
 }
 
-impl Dingo {
+impl Residuum {
     /// Open an existing store at `path`, or create one with safe defaults.
     ///
     /// **Legacy flat surface (CPR-001):** collection names are deployment-global
@@ -67,7 +67,7 @@ impl Dingo {
     /// Alias: [`Self::open_compatibility`].
     ///
     /// Writer opens take an exclusive store lock (DEF-020). A second writer —
-    /// including `dingo serve` while an embedded handle is open — fails until
+    /// including `residuum serve` while an embedded handle is open — fails until
     /// the first handle is dropped. Use [`Self::open_inspect`] for concurrent
     /// read-only doctor/parity checks.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
@@ -96,14 +96,14 @@ impl Dingo {
     /// Open an **existing** store for read-only inspection (no writer lock).
     ///
     /// Suitable while another process holds the exclusive writer (for example
-    /// `dingo serve`). Mutations fail because no active writer is opened.
+    /// `residuum serve`). Mutations fail because no active writer is opened.
     pub fn open_inspect(path: impl AsRef<Path>) -> Result<Self, Error> {
         Ok(Self {
             backend: Backend::Local(Store::open_inspect(path)?),
         })
     }
 
-    /// Connect to a remote `dingo serve` endpoint (`dingo://host:port[/label]`).
+    /// Connect to a remote `residuum serve` endpoint (`residuum://host:port[/label]`).
     ///
     /// Uses default [`ConnectOptions`] (no auth token, 5s connect / 30s request
     /// deadlines, 3 connect attempts). Prefer [`Self::connect_with`] when the
@@ -134,16 +134,16 @@ impl Dingo {
     /// Connect with explicit connection options (authn, deadlines, retry).
     ///
     /// Application put/get APIs stay the same; only the transport policy changes
-    /// (DX_SPEC §4.2). Multi-seed URLs (`dingo://h1:p1,h2:p2/app`) try seeds in
+    /// (DX_SPEC §4.2). Multi-seed URLs (`residuum://h1:p1,h2:p2/app`) try seeds in
     /// order and use the first that accepts a connection; the client may then
     /// fetch a `directory` snapshot for route caching (Stage 8d).
     ///
     /// **Legacy** relative to [`Self::connect_heap`]: token/RBAC path only.
     pub fn connect_with(url: impl AsRef<str>, options: ConnectOptions) -> Result<Self, Error> {
         let url = url.as_ref();
-        let parsed = parse_dingo_url(url)?;
+        let parsed = parse_residuum_url(url)?;
         if parsed.seeds.is_empty() {
-            return Err(Error::ValidationMsg("empty dingo:// URL".into()));
+            return Err(Error::ValidationMsg("empty residuum:// URL".into()));
         }
         let mut last_err: Option<Error> = None;
         for hostport in &parsed.seeds {

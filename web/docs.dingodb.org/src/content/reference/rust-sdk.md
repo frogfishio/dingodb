@@ -32,7 +32,7 @@ residuum-sdk = "0.2"
 
 | Type | Role |
 |------|------|
-| `Dingo` | Open embedded / connect remote / optional cluster |
+| `Residuum` | Open embedded / connect remote / optional cluster |
 | `Collection` | put/get/delete/find/history/indexes |
 | `Filter` | Typed JSON predicates |
 | `QueryOptions` | Coverage and query budgets |

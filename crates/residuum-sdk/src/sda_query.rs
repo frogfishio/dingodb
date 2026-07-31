@@ -41,7 +41,7 @@
 //!     "#)?;
 //! ```
 
-use crate::residuum::Dingo;
+use crate::residuum::Residuum;
 use crate::error::Error;
 use crate::filter::{Filter, QueryOptions};
 use crate::subject::validate_collection_name;
@@ -86,21 +86,19 @@ struct BindSpec {
     options: QueryOptions,
 }
 
-/// Multi-collection raw SDA/ENR1 text query ([`Dingo::sda_query`] / [`Dingo::enr_query`]).
+/// Multi-collection raw SDA/ENR1 text query ([`Residuum::sda_query`] / [`Residuum::enr_query`]).
 ///
 /// Materialises each bound collection (optional per-source filter / budget),
 /// builds `input` as a map `alias → document array`, binds each alias as a
 /// top-level name, then runs the program (ENR1 `Match` / `enrich` / `one!` ok).
 pub struct SdaTextQuery<'a> {
-    dingo: &'a mut Dingo,
+    residuum: &'a mut Residuum,
     sources: Vec<BindSpec>,
 }
 
 impl<'a> SdaTextQuery<'a> {
-    pub(crate) fn new(dingo: &'a mut Dingo) -> Self {
-        Self {
-            dingo,
-            sources: Vec::new(),
+    pub(crate) fn new(residuum: &'a mut Residuum) -> Self {
+        Self { residuum, sources: Vec::new(),
         }
     }
 
@@ -187,11 +185,11 @@ impl<'a> SdaTextQuery<'a> {
             }
         }
 
-        let SdaTextQuery { dingo, sources } = self;
+        let SdaTextQuery { residuum, sources } = self;
         let mut map = Map::new();
         for src in sources {
             let rows = {
-                let mut col = dingo.collection(&src.collection)?;
+                let mut col = residuum.collection(&src.collection)?;
                 col.find_with(&src.filter, src.options)?
             };
             let docs: Vec<JsonValue> = rows.into_iter().map(|(_, v)| v).collect();
@@ -237,7 +235,7 @@ mod tests {
     #[test]
     fn multi_bind_enr1_attach_text() {
         let dir = tempdir().unwrap();
-        let mut db = Dingo::open(dir.path().join("enr-text.dingo")).unwrap();
+        let mut db = Residuum::open(dir.path().join("enr-text.dingo")).unwrap();
         {
             let mut orders = db.collection("orders").unwrap();
             orders
@@ -298,7 +296,7 @@ mod tests {
     #[test]
     fn describe_requires_no_io() {
         let dir = tempdir().unwrap();
-        let mut db = Dingo::open(dir.path().join("d.dingo")).unwrap();
+        let mut db = Residuum::open(dir.path().join("d.dingo")).unwrap();
         let plan = db
             .sda_query()
             .bind("orders")

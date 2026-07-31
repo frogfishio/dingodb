@@ -1,6 +1,6 @@
 //! Stage 6 SDK: secondary indexes, history, query budget, catalog rebuild.
 
-use residuum_sdk::{json, Dingo, ErrorCode, Filter, IndexState, QueryBudget, QueryOptions, SortOrder};
+use residuum_sdk::{json, Residuum, ErrorCode, Filter, IndexState, QueryBudget, QueryOptions, SortOrder};
 
 
 use std::fs;
@@ -9,7 +9,7 @@ use tempfile::tempdir;
 #[test]
 fn secondary_index_create_query_drop() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users
@@ -45,7 +45,7 @@ fn secondary_index_create_query_drop() {
 #[test]
 fn index_states_visible_and_stale_after_write() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users.put("u1", &json!({"email": "a@x.com"})).unwrap();
@@ -71,7 +71,7 @@ fn index_states_visible_and_stale_after_write() {
 #[test]
 fn query_budget_required_on_tight_scan() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     {
         let mut c = db.collection("docs").unwrap();
         for i in 0..10 {
@@ -93,7 +93,7 @@ fn query_budget_required_on_tight_scan() {
 #[test]
 fn history_for_key() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users.put("u1", &json!({"v": 1})).unwrap();
@@ -116,7 +116,7 @@ fn wipe_catalogs_indexes_same_logical_content() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         db.collection("users")
             .unwrap()
             .put("u1", &json!({"n": 1}))
@@ -144,7 +144,7 @@ fn wipe_catalogs_indexes_same_logical_content() {
         }
     }
 
-    let mut db = Dingo::open(&path).unwrap();
+    let mut db = Residuum::open(&path).unwrap();
     db.rebuild_index().unwrap();
     db.rebuild_catalogs().unwrap();
     assert_eq!(
@@ -163,7 +163,7 @@ fn wipe_catalogs_indexes_same_logical_content() {
 #[test]
 fn chunked_large_bytes_roundtrip() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     // Force chunking with low threshold on underlying store.
     db.store_mut().unwrap().set_chunk_threshold(32);
     db.store_mut().unwrap().set_chunk_size(16);
@@ -181,7 +181,7 @@ fn chunked_large_bytes_roundtrip() {
 #[test]
 fn find_still_orders_and_limits() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     {
         let mut c = db.collection("t").unwrap();
         c.put("a", &json!({"age": 30})).unwrap();

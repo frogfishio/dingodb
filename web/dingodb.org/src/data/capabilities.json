@@ -6,7 +6,7 @@
     {
       "id": "embedded-single-node",
       "name": "Embedded single-node",
-      "how": "Dingo::open(path)",
+      "how": "Residuum::open(path)",
       "durability": "Local store durability modes (memory / buffered / durable)",
       "status": "experimental",
       "note": "Strongest current path; early access",
@@ -15,7 +15,7 @@
     {
       "id": "single-node-tcp",
       "name": "Single-node TCP",
-      "how": "dingo serve (default 127.0.0.1)",
+      "how": "residuum serve (default 127.0.0.1)",
       "durability": "Local store only; no network quorum",
       "status": "development-only",
       "note": "Development and evaluation, not a production claim",
@@ -24,7 +24,7 @@
     {
       "id": "in-process-cluster",
       "name": "In-process cluster",
-      "how": "Dingo::open_cluster / create_cluster",
+      "how": "Residuum::open_cluster / create_cluster",
       "durability": "Partition-local quorum in one process",
       "status": "development-only",
       "note": "Integration-test harness",
@@ -33,7 +33,7 @@
     {
       "id": "network-multi-node",
       "name": "Network multi-node",
-      "how": "dingo serve-cluster + multi-seed connect",
+      "how": "residuum serve-cluster + multi-seed connect",
       "durability": "Partition Raft propose when control plane attaches",
       "status": "experimental",
       "note": "Not production; requires --experimental-network-cluster",
@@ -78,7 +78,7 @@
     {
       "id": "open-create",
       "name": "Embedded open / create",
-      "description": "Open or create a local store with Dingo::open.",
+      "description": "Open or create a local store with Residuum::open.",
       "scope": "Embedded single-node",
       "status": "experimental",
       "claim_id": "claim.embedded.strongest-path"

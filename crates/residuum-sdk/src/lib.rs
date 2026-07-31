@@ -4,9 +4,9 @@
 //!
 //! | Surface | Feature | Qualified claim |
 //! |---------|---------|-----------------|
-//! | Flat `Dingo::open` / `collection(name)` | `legacy-flat-sdk` (**opt-in**) | **No** (not H6) |
-//! | `Dingo::open_deployment` + `Heap` / SubjectV2 | always (package default) | Path for HP-010 / H1 |
-//! | `Dingo::connect_heap` | always | HeapKey remote process ops |
+//! | Flat `Residuum::open` / `collection(name)` | `legacy-flat-sdk` (**opt-in**) | **No** (not H6) |
+//! | `Residuum::open_deployment` + `Heap` / SubjectV2 | always (package default) | Path for HP-010 / H1 |
+//! | `Residuum::connect_heap` | always | HeapKey remote process ops |
 //!
 //! Package default is heap-only (CPR-001). Stages 3–9 demos enable `legacy-flat-sdk`
 //! or `cluster` explicitly. Gate H6 / `residuum-heap-v1` never covers the flat path.
@@ -28,7 +28,7 @@
 /// Collection SDK API freeze label (DELIVERY_PLAN §7: Collection SDK 1.0).
 ///
 /// Stages 4 + 7 parity are met for the **legacy flat** surface: embedded,
-/// `dingo serve`, and cluster handles share put/get/delete/scan/find/history/
+/// `residuum serve`, and cluster handles share put/get/delete/scan/find/history/
 /// indexes. This label does **not** authorize `residuum-heap-v1` qualification.
 pub const SDK_API_VERSION: &str = "1.0";
 
@@ -98,7 +98,7 @@ pub use collection::{
     find_on_store, Collection, DocumentScanPage, IncompleteDocument, JsonScanIter, JsonScanPage,
     KeyScanPage, UndecodableDocument,
 };
-pub use residuum::Dingo;
+pub use residuum::Residuum;
 /// Re-export cluster coverage / scan types when the `cluster` feature is on.
 #[cfg(feature = "cluster")]
 pub use residuum_cluster::{Coverage, FindResult, ScanOptions};
@@ -142,7 +142,7 @@ pub use resource::{
     RESOURCE_PROFILE,
 };
 pub use remote::{
-    parse_dingo_url, ConnectOptions, ExtentRow, HistoryVersionRow, IndexInfoRow, ParsedDingoUrl,
+    parse_residuum_url, ConnectOptions, ExtentRow, HistoryVersionRow, IndexInfoRow, ParsedResiduumUrl,
     PresentChunkRow, RemoteClient, RpcRequest, RpcResponse, ScanRow, DEFAULT_PORT,
 };
 pub use tls::{
@@ -239,7 +239,7 @@ pub fn write_reject_frame<W: std::io::Write>(
     residuum_client::write_reject_frame(w, code, error).map_err(Error::from)
 }
 
-/// Re-export cluster config for [`Dingo::create_cluster`] (requires `cluster` feature).
+/// Re-export cluster config for [`Residuum::create_cluster`] (requires `cluster` feature).
 #[cfg(feature = "cluster")]
 pub use residuum_cluster::ClusterConfig;
 

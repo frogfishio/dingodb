@@ -29,16 +29,16 @@ MEMBERS=(
   "residuum-testrig|crates/residuum-testrig"
 )
 
-ALLOW_DIRTY="${DINGO_RELEASE_ALLOW_DIRTY:-0}"
+ALLOW_DIRTY="${RESIDUUM_RELEASE_ALLOW_DIRTY:-0}"
 
 echo "== git status (must be clean) =="
 if [[ -n "$(git status --short)" ]]; then
   git status --short
   if [[ "$ALLOW_DIRTY" == "1" ]]; then
-    echo "warning: dirty work tree allowed via DINGO_RELEASE_ALLOW_DIRTY=1"
+    echo "warning: dirty work tree allowed via RESIDUUM_RELEASE_ALLOW_DIRTY=1"
   else
     echo "error: git work tree is not clean (DEF-003). Commit or stash first," >&2
-    echo "       or set DINGO_RELEASE_ALLOW_DIRTY=1 for a local dry-run." >&2
+    echo "       or set RESIDUUM_RELEASE_ALLOW_DIRTY=1 for a local dry-run." >&2
     exit 1
   fi
 else
@@ -80,7 +80,7 @@ done
 
 echo
 echo "== build from packaged file lists =="
-STAGE="$(mktemp -d "${TMPDIR:-/tmp}/dingo-release-content.XXXXXX")"
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/residuum-release-content.XXXXXX")"
 cleanup() {
   rm -rf "$STAGE"
 }

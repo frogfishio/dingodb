@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 
 use tempfile::tempdir;
 
-fn dingo_bin() -> Command {
+fn residuum_bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_dingo"))
 }
 
@@ -23,7 +23,7 @@ fn console_executes_put_get_via_stdin() {
         store.display()
     );
 
-    let mut child = dingo_bin()
+    let mut child = residuum_bin()
         .args(["console", store.to_str().unwrap()])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

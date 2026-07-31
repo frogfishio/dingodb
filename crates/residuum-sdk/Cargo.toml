@@ -19,10 +19,10 @@ include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 # (deployment + HeapCap + connect_heap). Stages 3–9 flat surface is opt-in via
 # `legacy-flat-sdk` (or `cluster`, which implies it).
 default = []
-# Flat `Dingo::open` / `collection(name)` / token remote / raw Store access.
+# Flat `Residuum::open` / `collection(name)` / token remote / raw Store access.
 # Pulls public `residuum-store` `legacy-raw-store`. Not part of Gate H6 claims.
 legacy-flat-sdk = ["residuum-store/legacy-raw-store"]
-# In-process multi-node (`Dingo::open_cluster` / `create_cluster`) via AGPL residuum-cluster.
+# In-process multi-node (`Residuum::open_cluster` / `create_cluster`) via AGPL residuum-cluster.
 # Implies the flat SDK (cluster routing uses the same collection surface).
 cluster = ["dep:residuum-cluster", "legacy-flat-sdk"]
 # Reference in-memory Ed25519 holder key for tests/dev only (`HEAP_SPEC` §30.9).

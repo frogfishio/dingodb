@@ -4,7 +4,7 @@
 //! in-process path registry so two writer handles cannot open the same store
 //! from one process either. Lock file text is diagnostic only and is never
 //! trusted in place of the OS lock — stale PID text cannot block a free lock,
-//! and Dingo never deletes the lock file or kills a process to acquire ownership.
+//! and Residuum never deletes the lock file or kills a process to acquire ownership.
 
 use crate::error::StoreError;
 use crate::layout::StorePaths;

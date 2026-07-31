@@ -26,7 +26,7 @@
 //! only if the host includes them in the combined value — drop garbage before
 //! the join when bandwidth matters.
 
-use residuum_sdk::{json, Dingo, Filter};
+use residuum_sdk::{json, Residuum, Filter};
 use sda_core::Program;
 use serde_json::Value as JsonValue;
 use tempfile::tempdir;
@@ -111,7 +111,7 @@ bindOpt(getPath(input, Seq["products"]), products =>
 #[test]
 fn three_collections_sda_query_combine_join_filter() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("shop.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("shop.dingo")).unwrap();
     let blob = garbage_blob();
 
     // --- seed ---------------------------------------------------------------
@@ -376,7 +376,7 @@ fn progress(label: &str, msg: &str) {
 /// Returns (active_customers, in_stock_products, paid_orders) expected counts
 /// under the same filters as the correctness test (scaled).
 fn seed_shop(
-    db: &mut Dingo,
+    db: &mut Residuum,
     blob: &str,
     n_customers: usize,
     n_products: usize,
@@ -490,7 +490,7 @@ fn run_scale(
     join_iters: usize,
 ) {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join(format!("shop_{label}.dingo"))).unwrap();
+    let mut db = Residuum::open(dir.path().join(format!("shop_{label}.dingo"))).unwrap();
     let blob = garbage_blob();
     let body_bytes = {
         let sample = json!({"id":"x","garbage": blob});

@@ -237,7 +237,7 @@ chunks as needed for inline-only first.
 **Goal:** The boring happy path from [DX_SPEC.md](DX_SPEC.md) and README:
 
 ```ts
-const db = await Dingo.open("./app.dingo");
+const db = await Residuum.open("./app.dingo");
 await db.collection("users").put("user-42", { name: "Alice" });
 ```
 
@@ -246,7 +246,7 @@ disclosure layers 1–2.
 
 **Deliverables**
 
-1. `Dingo.open(path)` create-or-open with safe defaults.
+1. `Residuum.open(path)` create-or-open with safe defaults.
 2. Collections: `put`, `get`, `delete`, optional `append` for streams.
 3. JSON and raw bytes as first-class payloads.
 4. Simple filters without requiring callers to write SDA (builder or object
@@ -265,7 +265,7 @@ disclosure layers 1–2.
 
 **Suggested sub-milestones**
 
-| 4a | Open + put/get/delete JSON | **done** — `residuum-sdk` (`Dingo::open`, `collection`, JSON put/get/delete) |
+| 4a | Open + put/get/delete JSON | **done** — `residuum-sdk` (`Residuum::open`, `collection`, JSON put/get/delete) |
 | 4b | Bytes + streaming scan of collection | **done** — `put_bytes`/`get_bytes`, `scan_keys`/`scan_json`, `scan_json_iter` |
 | 4c | Filter builder + limit/order basics | **done** — `Filter` AST, `find`/`find_json`, fluent `query()`, limit/order |
 | 4d | Error taxonomy + durability receipts | **done** — `ErrorCode` + `Error::code`; receipts report achieved durability |
@@ -358,12 +358,12 @@ operator tooling and same-API remote access.
 
 **Deliverables**
 
-1. CLI mirroring logical API: put/get/list basics. **done** — `crates/residuum-cli` (`dingo` binary)
-2. `dingo doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
+1. CLI mirroring logical API: put/get/list basics. **done** — `crates/residuum-cli` (`residuum` binary)
+2. `residuum doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
 3. `dingo salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
-4. Server process + `Dingo.connect("dingo://...")` with the same collection API
-   as embedded. **done** — `dingo serve` + line-delimited JSON RPC; remote put/get/delete/scan
-5. Authn/deadline/retry as connection options only (no app-level API split). **done** — `ConnectOptions` / `ServeOptions` / `Dingo::connect_with`; `dingo serve --token`; DX codes `authentication_failed` / `deadline_exceeded`
+4. Server process + `Residuum.connect("residuum://...")` with the same collection API
+   as embedded. **done** — `residuum serve` + line-delimited JSON RPC; remote put/get/delete/scan
+5. Authn/deadline/retry as connection options only (no app-level API split). **done** — `ConnectOptions` / `ServeOptions` / `Residuum::connect_with`; `residuum serve --token`; DX codes `authentication_failed` / `deadline_exceeded`
 6. Reproducible corruption + performance test packaging for CI/nightly. **done** — `.github/workflows/nightly.yml` + `scripts/nightly.sh` run §13/§16/stage6 bench + Stage 7 CLI
 
 **Exit criteria**
@@ -375,10 +375,10 @@ operator tooling and same-API remote access.
 
 **Suggested sub-milestones**
 
-| 7a | `dingo` CLI put/get/list/delete/put-bytes | **done** |
-| 7b | `dingo doctor` read-only | **done** |
+| 7a | `residuum` CLI put/get/list/delete/put-bytes | **done** |
+| 7b | `residuum doctor` read-only | **done** |
 | 7c | `dingo salvage --output` | **done** |
-| 7d | `dingo serve` + `Dingo::connect` | **done** |
+| 7d | `residuum serve` + `Residuum::connect` | **done** |
 | 7e | Authn/deadline/retry connection options | **done** |
 | 7f | Nightly corruption/perf packaging polish | **done** |
 
@@ -421,7 +421,7 @@ control plane payload authority.
 | 8a | Foundation: `residuum-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
 | 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
 | 8c | Convergent-append path + split dual-accept tests | **done** — `src/convergent.rs`, `tests/stage8c_convergent.rs` |
-| 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
+| 8d | SDK routing (`Residuum::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Residuum::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
 | 8e | Distributed scan/find coverage + partial-query honesty | **done** — `FindResult` / `ScanOptions`, `Cluster::scan_with` / `find`, SDK `find_with_coverage` + `allow_partial_coverage`; tests `stage8e_find.rs`, `stage8e_find_coverage.rs` |
 | 8f | CLUSTER_SPEC §22 remaining conformance + rebalance | **done** — interruptible rebalance (§14), placement persist, directory reconstruct; tests `stage8f_rebalance.rs` |
 
@@ -466,11 +466,11 @@ control plane payload authority.
 
 **Stage 8d notes**
 
-- Same collection API over an in-process cluster via `Dingo::create_cluster` /
+- Same collection API over an in-process cluster via `Residuum::create_cluster` /
   `open_cluster`; client holds a [`ClientDirectoryCache`] of partition → leader
   routes and refreshes on stale placement (CLUSTER_SPEC §13, §22.5).
-- Multi-seed `dingo://h1:p1,h2:p2[/label]` URLs parse and try seeds in order.
-- Single-node `dingo serve` answers `directory` with a synthetic all-local
+- Multi-seed `residuum://h1:p1,h2:p2[/label]` URLs parse and try seeds in order.
+- Single-node `residuum serve` answers `directory` with a synthetic all-local
   placement snapshot for uniform client caching.
 
 **Stage 8e notes**
@@ -536,7 +536,7 @@ USP long retention.
   placement API (`object:local:` stand-in shipped; `s3://` / `gs://` parse-ready).
 - Automatic lifecycle policies; erasure-coded archive shards.
 - Network multi-node Raft serve polish (post–Stage 8 in-process):
-  `endpoints.json` + `dingo serve-cluster` directory advertise; further client
+  `endpoints.json` + `residuum serve-cluster` directory advertise; further client
   multi-hop routing / chaos demos continue.
 
 ---
@@ -596,7 +596,7 @@ tracks. Living scripts (where checked in) live under `scripts/demos/`.
    verified vs holes.
 5. **“Ordinary product”** — Stage 6–7: indexes, doctor, CLI, server.
 6. **“Federation”** — Stage 8: kill a node; others serve; dead node’s disks
-   still salvage offline. Network process serve: `dingo serve-cluster`.
+   still salvage offline. Network process serve: `residuum serve-cluster`.
    → [`scripts/demos/08_kill_a_node.sh`](scripts/demos/08_kill_a_node.sh)
 7. **“Keep it fifteen years”** — Stage 9: tier move + cold search story.
    → [`scripts/demos/07_tier_move.sh`](scripts/demos/07_tier_move.sh)
@@ -612,7 +612,7 @@ Record answers in-repo; they block packaging, not the stage order:
 | 3 | Default durability mode for embedded open | **As implemented (Stage 3–4):** SDK default is `DurabilityMode::Durable` (`WriteOptions::default`, remote/server fallback). DX “safe by default” holds. |
 | 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
 | 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `residuum-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
-| 6 | Whether SDA CLI ships inside `dingo` or separate | **Resolved for now:** separate `residuum-sda` binary via `residuum-sda-cli` (Stage 1). Stage 7 `dingo` coexists. |
+| 6 | Whether SDA CLI ships inside `residuum` or separate | **Resolved for now:** separate `residuum-sda` binary via `residuum-sda-cli` (Stage 1). Stage 7 `residuum` coexists. |
 
 ## 10. Work apportionment (streams)
 
@@ -684,9 +684,9 @@ the cited conformance suites as required checks—not optional polish.
     live-state compaction (sources retained); derived checkpoints; bench
     skeleton (`stage6_store.rs`, `stage6_indexes_history.rs`,
     `stage6_bench_skeleton.rs`).
-12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `residuum-cli` (`dingo`
+12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `residuum-cli` (`residuum`
     put/get/list/delete/put-bytes/history/doctor/salvage/serve);
-    `Store::open_inspect` + `salvage_to`; `Dingo::connect("dingo://...")`
+    `Store::open_inspect` + `salvage_to`; `Residuum::connect("residuum://...")`
     line-delimited JSON RPC; tests `residuum-cli/tests/cli.rs`.
 13. ~~Stage 7e–7f tighten (authn/deadline/retry + nightly packaging).~~ **Done** —
     `ConnectOptions` / `ServeOptions`, remote receipt ids, nightly workflow.
@@ -711,7 +711,7 @@ the cited conformance suites as required checks—not optional polish.
     `append_local` + `reconcile` with explicit subject conflicts; tests
     `stage8c_convergent.rs` (§22 items 7–8).
 19. ~~Stage 8d SDK routing + client directory cache.~~ **Done** —
-    `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed
+    `ClientDirectoryCache`, `Residuum::open_cluster` / `create_cluster`, multi-seed
     URL parse, `directory` RPC; tests `stage8d_routing.rs` (§13, §22.5).
 20. ~~Stage 8e distributed find coverage.~~ **Done** — `FindResult` /
     `ScanOptions`, partial-query honesty; tests `stage8e_find.rs`,

@@ -1,7 +1,7 @@
 # dingo console v1 — implementation plan (mixed mode)
 
 ## Goal
-Add an interactive text console to the existing `dingo` CLI.
+Add an interactive text console to the existing `residuum` CLI.
 
 - Invocation: `dingo console ./app.dingo`
 - Mixed mode UX:

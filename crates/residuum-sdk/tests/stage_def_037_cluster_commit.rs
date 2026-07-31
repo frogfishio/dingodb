@@ -4,12 +4,12 @@
 //! Acks report `committed=true` only after quorum + local apply. Killing the
 //! contacted node after commit must not lose the acknowledged write.
 //!
-//! In-process cluster (`Dingo::create_cluster`) already shares the same logical
+//! In-process cluster (`Residuum::create_cluster`) already shares the same logical
 //! commit model; this suite proves the network path matches that contract.
 
 
 use residuum_cluster::ClusterConfig;
-use residuum_sdk::{json, ConnectOptions, Dingo, PutOptions, RemoteClient};
+use residuum_sdk::{json, ConnectOptions, Residuum, PutOptions, RemoteClient};
 
 
 use std::net::{TcpListener, TcpStream};
@@ -75,7 +75,7 @@ fn start_cluster_nodes(
         for _ in 0..50 {
             if let Ok(mut c) = RemoteClient::connect_with(
                 bind,
-                format!("dingo://{bind}/c"),
+                format!("residuum://{bind}/c"),
                 ConnectOptions::new().auth_token(token),
             ) {
                 if let Ok(snap) = c.fetch_directory() {
@@ -118,7 +118,7 @@ fn in_process_and_network_share_commit_semantics() {
 
     // In-process: committed ack + readable after put.
     {
-        let mut db = Dingo::create_cluster(
+        let mut db = Residuum::create_cluster(
             ClusterConfig::dependable_local(&root).with_virtual_partitions(8),
         )
         .unwrap();
@@ -143,7 +143,7 @@ fn in_process_and_network_share_commit_semantics() {
 
     let mut client = RemoteClient::connect_with(
         &binds[0],
-        format!("dingo://{}/c", binds[0]),
+        format!("residuum://{}/c", binds[0]),
         ConnectOptions::new().auth_token(token),
     )
     .expect("connect");
@@ -182,7 +182,7 @@ fn network_put_survives_contacted_node_kill() {
     let dir = TempDir::new().unwrap();
     let root = dir.path().join("c");
     {
-        let _ = Dingo::create_cluster(
+        let _ = Residuum::create_cluster(
             ClusterConfig::dependable_local(&root).with_virtual_partitions(4),
         )
         .unwrap();
@@ -193,7 +193,7 @@ fn network_put_survives_contacted_node_kill() {
 
     let mut client = RemoteClient::connect_with(
         &binds[0],
-        format!("dingo://{}/c", binds[0]),
+        format!("residuum://{}/c", binds[0]),
         ConnectOptions::new().auth_token(token),
     )
     .unwrap();
@@ -213,7 +213,7 @@ fn network_put_survives_contacted_node_kill() {
 
     let mut survivor = RemoteClient::connect_with(
         &binds[1],
-        format!("dingo://{}/c", binds[1]),
+        format!("residuum://{}/c", binds[1]),
         ConnectOptions::new().auth_token(token),
     )
     .expect("survivor connect");
@@ -251,7 +251,7 @@ fn operation_id_retry_preserves_one_network_write() {
     let dir = TempDir::new().unwrap();
     let root = dir.path().join("c");
     {
-        let _ = Dingo::create_cluster(
+        let _ = Residuum::create_cluster(
             ClusterConfig::dependable_local(&root).with_virtual_partitions(4),
         )
         .unwrap();
@@ -261,7 +261,7 @@ fn operation_id_retry_preserves_one_network_write() {
 
     let mut client = RemoteClient::connect_with(
         &binds[0],
-        format!("dingo://{}/c", binds[0]),
+        format!("residuum://{}/c", binds[0]),
         ConnectOptions::new().auth_token(token),
     )
     .unwrap();
@@ -296,7 +296,7 @@ fn single_node_serve_without_raft_still_local_commit() {
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("solo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
@@ -313,7 +313,7 @@ fn single_node_serve_without_raft_still_local_commit() {
     wait_for(&bind);
 
     let mut client =
-        RemoteClient::connect_with(&bind, format!("dingo://{bind}/s"), ConnectOptions::new())
+        RemoteClient::connect_with(&bind, format!("residuum://{bind}/s"), ConnectOptions::new())
             .unwrap();
     let r = client
         .put_json("x", "k", &json!(1), PutOptions::default())

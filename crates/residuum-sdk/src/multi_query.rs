@@ -1,7 +1,7 @@
-//! Multi-collection join query axis (Dingo-level).
+//! Multi-collection join query axis (Residuum-level).
 //!
 //! Complementary to single-collection [`crate::QueryBuilder`] and to the raw
-//! **SDA/ENR text** axis ([`crate::SdaTextQuery`] / [`crate::Dingo::sda_query`]):
+//! **SDA/ENR text** axis ([`crate::SdaTextQuery`] / [`crate::Residuum::sda_query`]):
 //!
 //! 1. **Join axis** — `FROM` + equijoin `ON left = right` over named collections
 //!    (SQL / Mongo-ish), producing a rough bag of joined JSON objects.
@@ -9,7 +9,7 @@
 //!    normalisation (SDA never opens collections).
 //!
 //! When users want to write match bags, `one!` / `one?`, and attach/`+` **as
-//! source text** rather than fluent equijoins, use [`crate::Dingo::sda_query`]
+//! source text** rather than fluent equijoins, use [`crate::Residuum::sda_query`]
 //! instead of this builder.
 //!
 //! ```ignore
@@ -37,7 +37,7 @@
 //! budgets. Nested SDA over full cartesian products is intentionally avoided —
 //! the host join does the X=Y work; SDA only shapes the result.
 
-use crate::residuum::Dingo;
+use crate::residuum::Residuum;
 use crate::error::Error;
 use crate::filter::{resolve_path_value, Filter, QueryBudget, QueryOptions};
 use crate::subject::validate_collection_name;
@@ -64,12 +64,12 @@ struct JoinSpec {
     right_field: String,
 }
 
-/// Multi-collection join query builder ([`Dingo::query`]).
+/// Multi-collection join query builder ([`Residuum::query`]).
 ///
 /// Materialises per-collection finds, hash-equijoins them, then optionally
 /// runs an SDA program with `input` bound to the joined row sequence.
 pub struct MultiQuery<'a> {
-    dingo: &'a mut Dingo,
+    residuum: &'a mut Residuum,
     sources: Vec<SourceSpec>,
     joins: Vec<JoinSpec>,
     /// Cap on the final joined row count (applied after all joins).
@@ -88,10 +88,8 @@ pub struct JoinBuilder<'a> {
 }
 
 impl<'a> MultiQuery<'a> {
-    pub(crate) fn new(dingo: &'a mut Dingo) -> Self {
-        Self {
-            dingo,
-            sources: Vec::new(),
+    pub(crate) fn new(residuum: &'a mut Residuum) -> Self {
+        Self { residuum, sources: Vec::new(),
             joins: Vec::new(),
             limit: None,
             include_keys: false,
@@ -320,17 +318,15 @@ impl<'a> MultiQuery<'a> {
 
         // Materialise each source: alias → rows of (store_key, doc).
         let mut loaded: Vec<(String, Vec<(String, JsonValue)>)> = Vec::with_capacity(self.sources.len());
-        // We need sequential mutable access to dingo.collection — load one at a time.
-        let MultiQuery {
-            dingo,
-            sources,
+        // We need sequential mutable access to residuum.collection — load one at a time.
+        let MultiQuery { residuum, sources,
             joins,
             limit,
             include_keys,
         } = self;
 
         for src in &sources {
-            let mut col = dingo.collection(&src.collection)?;
+            let mut col = residuum.collection(&src.collection)?;
             let rows = col.find_with(&src.filter, src.options.clone())?;
             loaded.push((src.alias.clone(), rows));
         }
@@ -554,7 +550,7 @@ mod tests {
     #[test]
     fn equijoin_two_collections() {
         let dir = tempdir().unwrap();
-        let mut db = Dingo::open(dir.path().join("q.dingo")).unwrap();
+        let mut db = Residuum::open(dir.path().join("q.dingo")).unwrap();
         {
             let mut a = db.collection("a").unwrap();
             a.put("1", &json!({"id": 1, "x": "aa"})).unwrap();
@@ -581,7 +577,7 @@ mod tests {
     #[test]
     fn describe_plan_shape() {
         let dir = tempdir().unwrap();
-        let mut db = Dingo::open(dir.path().join("d.dingo")).unwrap();
+        let mut db = Residuum::open(dir.path().join("d.dingo")).unwrap();
         let plan = db
             .query()
             .from("orders")

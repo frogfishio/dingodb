@@ -33,7 +33,7 @@
 //! - Multi-partition batch put ([`Cluster::put_many`]; product capacity path /
 //!   WORK_HORIZON S3 — independent partition leaders, honest acks)
 //! - Node-local salvage without cluster software
-//! - Network advertise path: [`endpoints`] + `dingo serve-cluster`
+//! - Network advertise path: [`endpoints`] + `residuum serve-cluster`
 //!
 //! **Product freeze:** [`CLUSTER_PROFILE_VERSION`] labels the Stage 8
 //! conformance profile (no cross-partition atomic writes; CLUSTER_SPEC).

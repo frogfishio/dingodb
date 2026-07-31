@@ -84,8 +84,8 @@ Hosts that apply one program to many bags should `Program::parse` once and
 | Now | Later |
 |-----|--------|
 | **ENR1 in `residuum-sda`** (this cut) | **ENR2** candidates / ranking / explain — not yet |
-| Host engines (`Dingo::query`, hash Index) remain valid stand-ins | Optionally compile host joins from ENR1 programs |
-| **Text path** — `Collection::sda` / `Dingo::sda_query` run ENR1+SDA source | Pushdown / plan compile of ENR1 text (optional) |
+| Host engines (`Residuum::query`, hash Index) remain valid stand-ins | Optionally compile host joins from ENR1 programs |
+| **Text path** — `Collection::sda` / `Residuum::sda_query` run ENR1+SDA source | Pushdown / plan compile of ENR1 text (optional) |
 
 **Do not implement ENR2 yet.** Read it only to understand that ENR1 is the
 *kernel* of a larger, co-designed surface—not a dead-end sketch.
@@ -118,9 +118,9 @@ Users who prefer the algebra write programs as **text**:
 |-----|------|
 | `Collection::sda(program)` | Scan one collection → `input` = doc array → pure SDA/ENR1 (DX §7.6) |
 | `Collection::filter_sda(pred)` | Per-doc boolean SDA/ENR text predicate; keeps keys |
-| `Dingo::enr_query().bind(..).run(program)` | Multi-collection ENR surface (`Match` / `enrich`); aliases free |
-| `Dingo::sda_query()` | Same builder (alias of `enr_query`) |
-| `Dingo::sda(&["orders","customers"], program)` | Convenience multi-bind + run |
+| `Residuum::enr_query().bind(..).run(program)` | Multi-collection ENR surface (`Match` / `enrich`); aliases free |
+| `Residuum::sda_query()` | Same builder (alias of `enr_query`) |
+| `Residuum::sda(&["orders","customers"], program)` | Convenience multi-bind + run |
 | `eval_sda_program(program, input)` | Host already has the JSON value (object keys → free names) |
 
 Example (preferred `Match` + `enrich` pipe against live collections):
@@ -165,7 +165,7 @@ surface.
 | Multi-generator expand vs SDA v1 (one generator) | Enrichment owns expand semantics; nest match bags inside yield for one-to-many until multi-generator lands. |
 | Attach/merge want `Prod`; ResiduumDB JSON is `Map` | Both `Map` and `Prod` work with `merge` / `+`. |
 | Multi-source / fallback / explain | ENR2. Explicitly out of ENR1 minimal subset. |
-| Relation to `Dingo::query` | Host join is an **engine**. ENR1 is the portable program surface those engines can evaluate or compile from. |
+| Relation to `Residuum::query` | Host join is an **engine**. ENR1 is the portable program surface those engines can evaluate or compile from. |
 
 ## How this language is designed (not “Bob called Oracle”)
 

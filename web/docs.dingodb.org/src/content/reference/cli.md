@@ -18,7 +18,7 @@ keywords:
   - cli
 ---
 
-Binary: `dingo` (AGPL networked product tier for serve paths).
+Binary: `residuum` (AGPL networked product tier for serve paths).
 
 Common commands (see `dingo --help` for flags):
 

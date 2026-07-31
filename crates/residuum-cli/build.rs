@@ -22,6 +22,6 @@ fn main() {
         .map(|v| v.trim().to_string())
         .unwrap_or_else(|_| "0".into());
 
-    println!("cargo:rustc-env=DINGO_VERSION={version}");
-    println!("cargo:rustc-env=DINGO_BUILD={build}");
+    println!("cargo:rustc-env=RESIDUUM_VERSION={version}");
+    println!("cargo:rustc-env=RESIDUUM_BUILD={build}");
 }

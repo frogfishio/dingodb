@@ -115,7 +115,7 @@ pub struct DialectInfo {
 pub enum BuiltinDialect {
     /// Pure SDA / ENR1 source (parse-checked pass-through).
     Sda,
-    /// Official Dingo Query Language → pure ENR1 + SDA ([`DQL_SPEC`](../../../../../DQL_SPEC.md)).
+    /// Official Residuum Query Language → pure ENR1 + SDA ([`DQL_SPEC`](../../../../../DQL_SPEC.md)).
     Dql,
     /// DX/Mongo-style JSON filter object → document predicate.
     Json,
@@ -157,7 +157,7 @@ impl BuiltinDialect {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Sda => "Pure SDA",
-            Self::Dql => "Dingo Query Language",
+            Self::Dql => "Residuum Query Language",
             Self::Json => "JSON filter",
             Self::Mongo => "Mongo-style filter",
             Self::Sql => "SQL mimicry",
@@ -227,7 +227,7 @@ pub fn list_builtin_dialects() -> &'static [DialectInfo] {
         },
         DialectInfo {
             id: "dql",
-            name: "Dingo Query Language",
+            name: "Residuum Query Language",
             description: "Official human dialect; lowers to ENR1 Match/enrich/cardinality",
             implemented: true,
         },

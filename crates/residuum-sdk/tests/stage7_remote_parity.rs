@@ -1,7 +1,7 @@
 //! Stage 7 remote parity: history, indexes, get_payload, server-side find.
 
 
-use residuum_sdk::{json, Dingo, ErrorCode, Filter, IndexState, PayloadResult, QueryBudget, QueryOptions};
+use residuum_sdk::{json, Residuum, ErrorCode, Filter, IndexState, PayloadResult, QueryBudget, QueryOptions};
 
 
 use std::net::TcpListener;
@@ -41,7 +41,7 @@ fn remote_history_matches_embedded() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut docs = db.collection("docs").unwrap();
         docs.put("k", &json!({"v": 1})).unwrap();
         docs.put("k", &json!({"v": 2})).unwrap();
@@ -52,8 +52,8 @@ fn remote_history_matches_embedded() {
     let bind = free_bind();
     spawn_server(path, &bind);
 
-    let url = format!("dingo://{bind}/app");
-    let mut remote = Dingo::connect(&url).expect("connect");
+    let url = format!("residuum://{bind}/app");
+    let mut remote = Residuum::connect(&url).expect("connect");
     assert!(remote.is_remote());
 
     let hist = remote.collection("docs").unwrap().history("k").unwrap();
@@ -72,7 +72,7 @@ fn remote_indexes_create_list_stale_rebuild_drop() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut users = db.collection("users").unwrap();
         users
             .put("u1", &json!({"email": "a@x.com", "status": "active"}))
@@ -85,8 +85,8 @@ fn remote_indexes_create_list_stale_rebuild_drop() {
     let bind = free_bind();
     spawn_server(path.clone(), &bind);
 
-    let url = format!("dingo://{bind}/app");
-    let mut remote = Dingo::connect(&url).unwrap();
+    let url = format!("residuum://{bind}/app");
+    let mut remote = Residuum::connect(&url).unwrap();
     {
         let mut users = remote.collection("users").unwrap();
         let info = users
@@ -122,7 +122,7 @@ fn remote_indexes_create_list_stale_rebuild_drop() {
 
     // Read-only inspect while the server still holds the exclusive writer lock
     // (DEF-020): index gone and data intact without competing for ownership.
-    let mut local = Dingo::open_inspect(&path).unwrap();
+    let mut local = Residuum::open_inspect(&path).unwrap();
     assert!(local
         .collection("users")
         .unwrap()
@@ -146,7 +146,7 @@ fn remote_get_payload_complete_and_absent() {
     let path = dir.path().join("app.dingo");
     let data: Vec<u8> = (0u8..100).collect();
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         // Force chunking so get_payload reassembly is exercised.
         db.store_mut().unwrap().set_chunk_threshold(32);
         db.store_mut().unwrap().set_chunk_size(16);
@@ -158,8 +158,8 @@ fn remote_get_payload_complete_and_absent() {
     let bind = free_bind();
     spawn_server(path, &bind);
 
-    let url = format!("dingo://{bind}/app");
-    let mut remote = Dingo::connect(&url).unwrap();
+    let url = format!("residuum://{bind}/app");
+    let mut remote = Residuum::connect(&url).unwrap();
     let mut blobs = remote.collection("blobs").unwrap();
 
     match blobs.get_payload("big").unwrap() {
@@ -193,7 +193,7 @@ fn remote_find_index_accelerated_under_budget() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut docs = db.collection("docs").unwrap();
         for i in 0..20 {
             docs.put(&format!("k{i}"), &json!({"n": i, "tag": format!("t{i}")}))
@@ -205,8 +205,8 @@ fn remote_find_index_accelerated_under_budget() {
     let bind = free_bind();
     spawn_server(path, &bind);
 
-    let url = format!("dingo://{bind}/app");
-    let mut remote = Dingo::connect(&url).unwrap();
+    let url = format!("residuum://{bind}/app");
+    let mut remote = Residuum::connect(&url).unwrap();
     let mut docs = remote.collection("docs").unwrap();
 
     // Tight budget: full scan of 20 docs would fail; index probe must succeed.

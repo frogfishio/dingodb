@@ -30,10 +30,10 @@ use std::sync::{Arc, RwLock};
 /// Profile tag for the TLS transport surface (DEF-032).
 pub const TLS_PROFILE: &str = "dingo-tls-v1";
 
-/// URI scheme prefix for Dingo cluster identity in certificate SANs.
+/// URI scheme prefix for Residuum cluster identity in certificate SANs.
 pub const CLUSTER_URN_PREFIX: &str = "urn:dingo:cluster:";
 
-/// URI scheme prefix for Dingo node identity in certificate SANs.
+/// URI scheme prefix for Residuum node identity in certificate SANs.
 pub const NODE_URN_PREFIX: &str = "urn:dingo:node:";
 
 /// Build a cluster identity URN for embedding in a certificate SAN.

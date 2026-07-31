@@ -147,7 +147,7 @@ Status: **remediated in-tree** (2026-07-25) — `residuum-sdk` bind policy +
 
 Work:
 
-- Default `dingo serve` and `serve-cluster` to loopback.
+- Default `residuum serve` and `serve-cluster` to loopback.
 - Refuse non-loopback plaintext binds unless the operator supplies an explicit
   development-only override.
 - Print a structured startup warning showing transport security, authentication,
@@ -480,7 +480,7 @@ In-tree:
 - `WriterLock` on `store-info/writer.lock` via Unix `flock(LOCK_EX|LOCK_NB)`.
 - In-process path registry so two handles in one process also collide.
 - `Store::create` / `Store::open` acquire before active segment open;
-  `Store::open_inspect` / `Dingo::open_inspect` do not.
+  `Store::open_inspect` / `Residuum::open_inspect` do not.
 - Diagnostic lock file text is not trusted for exclusion.
 - Startup report claims exclusive-writer lock status.
 - Tests: second writer, concurrent inspect, drop-release, cross-process flock.
@@ -569,7 +569,7 @@ In-tree:
   asserts (kill before write / after sync).
 - Tests: `stage_def_022_crash_matrix` (document validation + CI subset + I/O
   suite + multi-process abort always; full matrix when
-  `DINGO_CRASH_MATRIX_FULL=1`).
+  `RESIDUUM_CRASH_MATRIX_FULL=1`).
 - Nightly workflow / `scripts/nightly.sh` run the full matrix.
 - Doc: `doc/CRASH_CONSISTENCY.md`.
 
@@ -1615,7 +1615,7 @@ Evidence:
   `residuum-cluster-multiproc-v1` (`multiproc` module + `residuum-cluster-multiproc-child`
   binary + `stage_def_041n_multiproc`): rolling restart, abort-after-ack, cross-
   process writer lock, short soak, seed+history JSON dumps. Long soak via
-  `DINGO_MULTIPROC_LONG_SOAK=1`.
+  `RESIDUUM_MULTIPROC_LONG_SOAK=1`.
 - Remaining: full Jepsen PORC against live `serve-cluster` TCP partitions,
   multi-hour soak, CLUSTER_SPEC §22.9–.20 network surface; serve-cluster stays
   experimental until those pass.
@@ -1679,7 +1679,7 @@ Remaining (out of this cut):
 Priority: P1  
 Status: **addressed (single-node cut)** (2026-07-27) — bounded scrub with
 durable frontier/findings, placement hash checks, frame-hole detection,
-quarantine-without-hide, pause/resume, CLI `dingo scrub`. Background daemon
+quarantine-without-hide, pause/resume, CLI `residuum scrub`. Background daemon
 scheduling, cluster repair hook-in, and media SMART/health remain follow-ons.
 
 Work:
@@ -1704,7 +1704,7 @@ Evidence (this cut):
   `quarantine/` (copy only; original retained).
 - `Store::scrub_once`, `scrub_to_completion`, `scrub_status`, `pause_scrub`,
   `resume_scrub`, `list_scrub_findings`.
-- CLI: `dingo scrub STORE [--once|--status|--pause|--resume] [--max-files]
+- CLI: `residuum scrub STORE [--once|--status|--pause|--resume] [--max-files]
   [--max-bytes] [--no-quarantine]`.
 - Tests: `stage_def_051_scrub.rs`, module unit tests, CLI
   `scrub_clean_store_and_status`.
@@ -1725,7 +1725,7 @@ reader/writer matrix (`residuum-format::compat`), protocol policy snapshot,
 phased store migration `dingo-migrate-v1` (preflight / plan / apply / verify /
 rollback), evidence-preserving copy (never in-place rewrite), unsupported and
 unreadable segment bytes preserved as opaque evidence, durable job under
-`recovery/migration/`, CLI `dingo migrate`; multi-major dual-read writers and
+`recovery/migration/`, CLI `residuum migrate`; multi-major dual-read writers and
 rolling mixed-cluster upgrade drills remain follow-ons (DEF-053 freeze).
 
 Work:
@@ -1751,7 +1751,7 @@ Evidence (this cut):
   `migrate_verify`, `migrate_rollback`, `migrate_store`; `Store::migrate_to`.
 - Tests: `stage_def_052_migrate`, `migrate::tests`, CLI
   `migrate_roundtrip_and_status`.
-- CLI: `dingo migrate STORE --output DEST` (`--preflight`, `--plan-only`,
+- CLI: `residuum migrate STORE --output DEST` (`--preflight`, `--plan-only`,
   `--status`, `--rollback`, `--skip-verify`).
 
 Remaining (out of this cut):
@@ -1815,7 +1815,7 @@ Status: **addressed (process config cut)** (2026-07-27) — versioned
 restart-required vs dynamic setting classes, secret refs (`env:` / `file:`)
 with redacted effective reports, unsafe-combination gates (replication claim
 with one local copy, public plaintext bind, serve-cluster without experimental
-opt-in), CLI `dingo config validate|show` and `serve`/`serve-cluster --config`;
+opt-in), CLI `residuum config validate|show` and `serve`/`serve-cluster --config`;
 live atomic admission reload + audit chain remain follow-ons.
 
 Work:
@@ -1840,8 +1840,8 @@ Evidence (this cut):
   `setting_class`; profile `CONFIG_PROFILE` = `dingo-config-v1`.
 - Typed errors: `ConfigError::Validation` / `Unsafe` / `UnsupportedFormat` /
   `Secret` with stable `code` strings.
-- CLI: `dingo config validate|show [--mode serve|serve-cluster|validate]`,
-  `dingo serve --config`, `dingo serve-cluster --config` (flags override file).
+- CLI: `residuum config validate|show [--mode serve|serve-cluster|validate]`,
+  `residuum serve --config`, `residuum serve-cluster --config` (flags override file).
 - Tests: `stage_def_054_config`, `config::tests`, CLI
   `config_validate_show_and_unsafe_reject`.
 
@@ -3253,7 +3253,7 @@ Expose:
 Store::open_with_options
 Store::try_open
 Store::open_inspect
-dingo doctor lock-status
+residuum doctor lock-status
 ```
 
 On contention, reread advisory metadata for diagnostics but do not trust it.

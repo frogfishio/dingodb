@@ -10,12 +10,12 @@ use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
 
-/// Wait until a dingo serve process completes a framed handshake + ping.
+/// Wait until a residuum serve process completes a framed handshake + ping.
 ///
 /// A bare TCP connect is not enough: production servers (DEF-031) require the
 /// `dingo-rpc-v1` hello/welcome exchange before application RPCs. Any framed
 /// JSON response (including auth failure on a later store_info) means live.
-fn wait_for_dingo_ping(bind: &str) {
+fn wait_for_residuum_ping(bind: &str) {
     for _ in 0..100 {
         if let Ok(mut stream) = TcpStream::connect(bind) {
             let _ = stream.set_read_timeout(Some(Duration::from_millis(400)));
@@ -33,15 +33,15 @@ fn wait_for_dingo_ping(bind: &str) {
         }
         thread::sleep(Duration::from_millis(30));
     }
-    panic!("dingo serve did not answer ping on {bind}");
+    panic!("residuum serve did not answer ping on {bind}");
 }
 
-fn dingo_bin() -> Command {
+fn residuum_bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_dingo"))
 }
 
 fn run_ok(args: &[&str]) -> String {
-    let output = dingo_bin().args(args).output().expect("run dingo");
+    let output = residuum_bin().args(args).output().expect("run dingo");
     assert!(
         output.status.success(),
         "cmd {:?} failed\nstdout:\n{}\nstderr:\n{}",
@@ -129,7 +129,7 @@ fn put_get_list_delete_roundtrip() {
     assert!(json_get.contains(r#""found":true"#) || json_get.contains(r#""found": true"#));
 
     run_ok(&["delete", store_s, "users/user-42"]);
-    let missing = dingo_bin()
+    let missing = residuum_bin()
         .args(["get", store_s, "users/user-42"])
         .output()
         .unwrap();
@@ -326,7 +326,7 @@ fn config_validate_show_and_unsafe_reject() {
           "serve": {
             "bind": "127.0.0.1:7434",
             "max_connections": 8,
-            "token_env": "DINGO_TEST_CLI_NO_TOKEN",
+            "token_env": "RESIDUUM_TEST_CLI_NO_TOKEN",
             "admission": { "global_max_rps": 50 }
           }
         }"#,
@@ -359,7 +359,7 @@ fn config_validate_show_and_unsafe_reject() {
     )
     .unwrap();
     let bad_s = bad.to_str().unwrap();
-    let output = dingo_bin()
+    let output = residuum_bin()
         .args(["config", "validate", bad_s, "--mode", "serve-cluster"])
         .output()
         .expect("run");
@@ -423,17 +423,17 @@ fn serve_and_sdk_connect_parity() {
     drop(listener);
     let bind = format!("127.0.0.1:{port}");
 
-    let mut child = dingo_bin()
+    let mut child = residuum_bin()
         .args(["serve", store_s, "--bind", &bind])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .expect("spawn dingo serve");
+        .expect("spawn residuum serve");
 
-    wait_for_dingo_ping(&bind);
+    wait_for_residuum_ping(&bind);
 
-    let url = format!("dingo://{bind}/app");
-    let mut db = residuum_sdk::Dingo::connect(&url).expect("connect");
+    let url = format!("residuum://{bind}/app");
+    let mut db = residuum_sdk::Residuum::connect(&url).expect("connect");
     assert!(db.is_remote());
 
     {
@@ -451,7 +451,7 @@ fn serve_and_sdk_connect_parity() {
     let _ = child.kill();
     let _ = child.wait();
 
-    let mut local = residuum_sdk::Dingo::open(&store).unwrap();
+    let mut local = residuum_sdk::Residuum::open(&store).unwrap();
     let v = local
         .collection("users")
         .unwrap()
@@ -487,26 +487,26 @@ fn serve_auth_token_required() {
     drop(listener);
     let bind = format!("127.0.0.1:{port}");
 
-    let mut child = dingo_bin()
+    let mut child = residuum_bin()
         .args(["serve", store_s, "--bind", &bind, "--token", "s3cret"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .expect("spawn dingo serve");
+        .expect("spawn residuum serve");
 
-    wait_for_dingo_ping(&bind);
+    wait_for_residuum_ping(&bind);
 
-    let url = format!("dingo://{bind}/app");
+    let url = format!("residuum://{bind}/app");
 
     // No token → authentication_failed.
-    let err = match residuum_sdk::Dingo::connect(&url) {
+    let err = match residuum_sdk::Residuum::connect(&url) {
         Ok(_) => panic!("must reject missing token"),
         Err(e) => e,
     };
     assert_eq!(err.code(), ErrorCode::AuthenticationFailed);
 
     // Wrong token → authentication_failed.
-    let err = match residuum_sdk::Dingo::connect_with(&url, ConnectOptions::new().auth_token("wrong"))
+    let err = match residuum_sdk::Residuum::connect_with(&url, ConnectOptions::new().auth_token("wrong"))
     {
         Ok(_) => panic!("must reject wrong token"),
         Err(e) => e,
@@ -514,7 +514,7 @@ fn serve_auth_token_required() {
     assert_eq!(err.code(), ErrorCode::AuthenticationFailed);
 
     // Correct token → put/get works; receipts carry non-zero event ids.
-    let mut db = residuum_sdk::Dingo::connect_with(
+    let mut db = residuum_sdk::Residuum::connect_with(
         &url,
         ConnectOptions::new()
             .auth_token("s3cret")
@@ -547,9 +547,9 @@ fn connect_retry_deadline_to_closed_port() {
     let port = listener.local_addr().unwrap().port();
     drop(listener);
 
-    let url = format!("dingo://127.0.0.1:{port}/app");
+    let url = format!("residuum://127.0.0.1:{port}/app");
     let t0 = Instant::now();
-    let err = match residuum_sdk::Dingo::connect_with(
+    let err = match residuum_sdk::Residuum::connect_with(
         &url,
         ConnectOptions::new()
             .connect_timeout(Duration::from_millis(50))
@@ -577,7 +577,7 @@ fn connect_retry_deadline_to_closed_port() {
 fn serve_cluster_missing_root_fails_fast() {
     let dir = tempdir().unwrap();
     let missing = dir.path().join("no-such-cluster");
-    let out = dingo_bin()
+    let out = residuum_bin()
         .args([
             "serve-cluster",
             missing.to_str().unwrap(),
@@ -600,7 +600,7 @@ fn serve_cluster_missing_root_fails_fast() {
 #[test]
 fn serve_cluster_requires_experimental_flag() {
     let dir = tempdir().unwrap();
-    let out = dingo_bin()
+    let out = residuum_bin()
         .args([
             "serve-cluster",
             dir.path().to_str().unwrap(),
@@ -632,7 +632,7 @@ fn serve_refuses_public_plaintext_bind_without_override() {
         "--json",
         r#"{"ok":true}"#,
     ]);
-    let out = dingo_bin()
+    let out = residuum_bin()
         .args(["serve", store_s, "--bind", "0.0.0.0:17434"])
         .output()
         .expect("run serve with public bind");
@@ -658,13 +658,13 @@ fn serve_loopback_bind_is_allowed() {
     drop(listener);
     let bind = format!("127.0.0.1:{port}");
 
-    let mut child = dingo_bin()
+    let mut child = residuum_bin()
         .args(["serve", store_s, "--bind", &bind])
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("spawn dingo serve");
-    wait_for_dingo_ping(&bind);
+        .expect("spawn residuum serve");
+    wait_for_residuum_ping(&bind);
 
     // Startup report must not claim network quorum durability.
     // Kill after a successful ping; capture any stderr already written.
@@ -721,7 +721,7 @@ fn serve_public_bind_allowed_with_insecure_override() {
     // Bind all interfaces on an ephemeral port with explicit override (DEF-002).
     let bind = format!("0.0.0.0:{port}");
 
-    let mut child = dingo_bin()
+    let mut child = residuum_bin()
         .args([
             "serve",
             store_s,
@@ -732,10 +732,10 @@ fn serve_public_bind_allowed_with_insecure_override() {
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("spawn dingo serve with insecure bind");
+        .expect("spawn residuum serve with insecure bind");
     // Connect via loopback to the same port.
     let connect = format!("127.0.0.1:{port}");
-    wait_for_dingo_ping(&connect);
+    wait_for_residuum_ping(&connect);
     let _ = child.kill();
     let output = child.wait_with_output().expect("wait serve");
     let err = String::from_utf8_lossy(&output.stderr);
@@ -753,7 +753,7 @@ fn serve_cluster_advertises_placement_and_endpoints() {
     let dir = tempdir().unwrap();
     let root = dir.path().join("c");
     // Build a 3-node cluster on disk, then serve node 0 in-process over TCP.
-    let mut db = residuum_sdk::Dingo::create_cluster(
+    let mut db = residuum_sdk::Residuum::create_cluster(
         ClusterConfig::dependable_local(&root).with_virtual_partitions(8),
     )
     .expect("create cluster");
@@ -779,9 +779,9 @@ fn serve_cluster_advertises_placement_and_endpoints() {
         );
     });
 
-    wait_for_dingo_ping(&bind);
+    wait_for_residuum_ping(&bind);
 
-    let url = format!("dingo://{bind}/c");
+    let url = format!("residuum://{bind}/c");
     let mut client = RemoteClient::connect(&bind, url.clone()).expect("connect to cluster node");
     let snap = client.fetch_directory().expect("directory");
     assert_eq!(snap.virtual_partitions, 8);
@@ -801,7 +801,7 @@ fn serve_cluster_advertises_placement_and_endpoints() {
     assert!(ep.contains(&bind));
 
     // Second client after the first connection is closed.
-    let mut db = residuum_sdk::Dingo::connect(&url).unwrap();
+    let mut db = residuum_sdk::Residuum::connect(&url).unwrap();
     assert!(db.is_remote());
     let _ = db.collection("users").unwrap().get("seed");
     drop(db);

@@ -3,7 +3,7 @@
 
 use residuum_cluster::ClusterConfig;
 use residuum_sdk::{
-    json, parse_dingo_url, ClientDirectoryCache, ClusterConfig as SdkClusterConfig, Dingo,
+    json, parse_residuum_url, ClientDirectoryCache, ClusterConfig as SdkClusterConfig, Residuum,
     DirectorySnapshot, ErrorCode, Filter, NodeId,
 };
 
@@ -17,7 +17,7 @@ use residuum_server::{ServeOptions, serve_cluster_node, serve_store};
 #[test]
 fn create_cluster_same_collection_api() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::create_cluster(
+    let mut db = Residuum::create_cluster(
         SdkClusterConfig::dependable_local(dir.path().join("c")).with_virtual_partitions(8),
     )
     .unwrap();
@@ -59,14 +59,14 @@ fn open_cluster_roundtrip() {
     let root = dir.path().join("c");
     {
         let mut db =
-            Dingo::create_cluster(ClusterConfig::development(&root).with_virtual_partitions(4))
+            Residuum::create_cluster(ClusterConfig::development(&root).with_virtual_partitions(4))
                 .unwrap();
         db.collection("docs")
             .unwrap()
             .put("k", &json!({"v": 1}))
             .unwrap();
     }
-    let mut db = Dingo::open_cluster(&root).unwrap();
+    let mut db = Residuum::open_cluster(&root).unwrap();
     assert_eq!(
         db.collection("docs").unwrap().get("k").unwrap().unwrap()["v"],
         1
@@ -76,7 +76,7 @@ fn open_cluster_roundtrip() {
 #[test]
 fn client_cache_routes_and_refreshes_on_poisoned_leader() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::create_cluster(
+    let mut db = Residuum::create_cluster(
         ClusterConfig::dependable_local(dir.path().join("c")).with_virtual_partitions(8),
     )
     .unwrap();
@@ -115,7 +115,7 @@ fn client_cache_routes_and_refreshes_on_poisoned_leader() {
 
 #[test]
 fn multi_seed_url_parse() {
-    let p = parse_dingo_url("dingo://127.0.0.1:7400,127.0.0.1:7401/app").unwrap();
+    let p = parse_residuum_url("residuum://127.0.0.1:7400,127.0.0.1:7401/app").unwrap();
     assert_eq!(p.seeds.len(), 2);
     assert_eq!(p.label.as_deref(), Some("app"));
 }
@@ -142,7 +142,7 @@ fn remote_directory_op_and_cache() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         db.collection("c")
             .unwrap()
             .put("k", &json!({"x": 1}))
@@ -157,7 +157,7 @@ fn remote_directory_op_and_cache() {
     });
     wait_for(&bind);
 
-    let url = format!("dingo://{bind}/app");
+    let url = format!("residuum://{bind}/app");
     let mut client = residuum_sdk::RemoteClient::connect(&bind, url.clone()).unwrap();
     let snap: DirectorySnapshot = client.fetch_directory().unwrap();
     assert!(snap.virtual_partitions >= 1);
@@ -171,7 +171,7 @@ fn remote_directory_op_and_cache() {
 
     // Collection API still works on a separate connection (serve is sequential).
     drop(client);
-    let mut db = Dingo::connect(&url).unwrap();
+    let mut db = Residuum::connect(&url).unwrap();
     assert_eq!(
         db.collection("c").unwrap().get("k").unwrap().unwrap()["x"],
         1
@@ -205,7 +205,7 @@ fn multi_hop_and_kill_node_survivor() {
     let dir = tempdir().unwrap();
     let root = dir.path().join("c");
     {
-        let mut db = Dingo::create_cluster(
+        let mut db = Residuum::create_cluster(
             ClusterConfig::dependable_local(&root).with_virtual_partitions(8),
         )
         .unwrap();
@@ -232,7 +232,7 @@ fn multi_hop_and_kill_node_survivor() {
         wait_for(bind);
     }
 
-    let url = format!("dingo://{}/c", binds[0]);
+    let url = format!("residuum://{}/c", binds[0]);
     let mut client = RemoteClient::connect(&binds[0], url.clone()).expect("connect seed 0");
     let cache = client
         .directory_cache()
@@ -271,7 +271,7 @@ fn multi_hop_and_kill_node_survivor() {
     // perspective). Directory still lists node 2, but ops whose leader is 0 or 1 work.
     drop(client);
     let mut survivor =
-        RemoteClient::connect(&binds[1], format!("dingo://{}/c", binds[1])).expect("survivor seed");
+        RemoteClient::connect(&binds[1], format!("residuum://{}/c", binds[1])).expect("survivor seed");
     assert!(survivor.ping().is_ok());
     assert!(survivor.directory_cache().is_some());
     // Seed written in-process should still be readable on some node store.

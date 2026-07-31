@@ -27,7 +27,7 @@ pub const CONFIG_PROFILE: &str = "dingo-config-v1";
 pub const CONFIG_FORMAT_VERSION: u32 = 1;
 
 /// Environment variable used when `serve.token_env` is omitted.
-pub const DEFAULT_TOKEN_ENV: &str = "DINGO_TOKEN";
+pub const DEFAULT_TOKEN_ENV: &str = "RESIDUUM_TOKEN";
 
 /// How a setting may change after process start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -201,7 +201,7 @@ pub struct ServeConfigSection {
     pub token_env: Option<String>,
     /// Optional external secret provider ref (opaque string; resolved by host).
     ///
-    /// Example: `env:DINGO_TOKEN`, `file:/run/secrets/dingo_token`.
+    /// Example: `env:RESIDUUM_TOKEN`, `file:/run/secrets/dingo_token`.
     /// When set, takes precedence over `token_env` for resolution order.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub token_secret_ref: Option<String>,
@@ -368,9 +368,9 @@ pub struct ConfigOverrides {
 pub enum ConfigMode {
     /// Validate only (no bind / open).
     Validate,
-    /// Single-node `dingo serve`.
+    /// Single-node `residuum serve`.
     Serve,
-    /// Multi-node `dingo serve-cluster`.
+    /// Multi-node `residuum serve-cluster`.
     ServeCluster,
 }
 
@@ -1104,10 +1104,10 @@ mod tests {
     #[test]
     fn empty_validate_mode_ok() {
         // Point token_env at a name that must not be present so ambient
-        // DINGO_TOKEN in the developer environment cannot fail the test.
+        // RESIDUUM_TOKEN in the developer environment cannot fail the test.
         let mut doc = DingoConfigFile::empty();
         doc.serve = Some(ServeConfigSection {
-            token_env: Some("DINGO_TEST_CFG_NO_SUCH_TOKEN".into()),
+            token_env: Some("RESIDUUM_TEST_CFG_NO_SUCH_TOKEN".into()),
             ..Default::default()
         });
         let v = validate_document(
@@ -1263,10 +1263,10 @@ mod tests {
 
     #[test]
     fn secret_ref_env_and_file() {
-        std::env::set_var("DINGO_TEST_CFG_TOKEN", "s3cr3t");
-        let v = resolve_secret_ref("env:DINGO_TEST_CFG_TOKEN").unwrap();
+        std::env::set_var("RESIDUUM_TEST_CFG_TOKEN", "s3cr3t");
+        let v = resolve_secret_ref("env:RESIDUUM_TEST_CFG_TOKEN").unwrap();
         assert_eq!(v, "s3cr3t");
-        std::env::remove_var("DINGO_TEST_CFG_TOKEN");
+        std::env::remove_var("RESIDUUM_TEST_CFG_TOKEN");
 
         let dir = tempdir().unwrap();
         let secret_path = dir.path().join("tok");
@@ -1287,7 +1287,7 @@ mod tests {
                 durability_default: None,
             }),
             serve: Some(ServeConfigSection {
-                token_env: Some("DINGO_TEST_CFG_NO_SUCH_TOKEN".into()),
+                token_env: Some("RESIDUUM_TEST_CFG_NO_SUCH_TOKEN".into()),
                 ..Default::default()
             }),
             cluster: None,
@@ -1310,12 +1310,12 @@ mod tests {
     fn redact_json_hides_token_values_keeps_paths() {
         let mut v = serde_json::json!({
             "token": "hunter2",
-            "token_env": "DINGO_TOKEN",
+            "token_env": "RESIDUUM_TOKEN",
             "tls": { "key_path": "/secret/key.pem", "cert_path": "/secret/cert.pem" }
         });
         redact_json_value(&mut v);
         assert_eq!(v["token"], "[redacted]");
-        assert_eq!(v["token_env"], "DINGO_TOKEN");
+        assert_eq!(v["token_env"], "RESIDUUM_TOKEN");
         assert_eq!(v["tls"]["key_path"], "/secret/key.pem");
     }
 

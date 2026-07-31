@@ -1,13 +1,13 @@
 //! DEF-099 — Collection historical get / last-complete (embedded).
 
-use residuum_sdk::{json, Dingo};
+use residuum_sdk::{json, Residuum};
 use residuum_store::{BeforeEvent, RecoveryReadOptions};
 use tempfile::tempdir;
 
 #[test]
 fn collection_get_version_and_find_last_complete() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("db")).unwrap();
+    let mut db = Residuum::open(dir.path().join("db")).unwrap();
     let mut coll = db.collection("docs").unwrap();
 
     coll.put("k", &json!({"n": 1})).unwrap();

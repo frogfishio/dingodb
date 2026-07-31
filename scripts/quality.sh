@@ -3,9 +3,9 @@
 # Run from the repository root: ./scripts/quality.sh
 #
 # Optional env:
-#   DINGO_QUALITY_SKIP_DENY=1   skip cargo-deny when the binary is not installed
-#   DINGO_QUALITY_SKIP_DOC=1    skip cargo doc
-#   DINGO_RELEASE_ALLOW_DIRTY=1 pass through to release_content.sh
+#   RESIDUUM_QUALITY_SKIP_DENY=1   skip cargo-deny when the binary is not installed
+#   RESIDUUM_QUALITY_SKIP_DOC=1    skip cargo doc
+#   RESIDUUM_RELEASE_ALLOW_DIRTY=1 pass through to release_content.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,7 +24,7 @@ echo "== crash-and-recovery contract (DEF-104) =="
 bash ./scripts/verify-crash-recovery-contract.sh
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
-DINGO_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
+RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
 
 echo "== security process docs (DEF-063-A) =="
 bash ./scripts/verify-security-process.sh
@@ -41,7 +41,7 @@ cargo build --workspace --all-targets
 echo "== test =="
 cargo test --workspace
 
-if [[ "${DINGO_QUALITY_SKIP_DOC:-0}" != "1" ]]; then
+if [[ "${RESIDUUM_QUALITY_SKIP_DOC:-0}" != "1" ]]; then
   echo "== doc =="
   cargo doc --workspace --no-deps --document-private-items
 fi
@@ -49,15 +49,15 @@ fi
 echo "== release content (DEF-003) =="
 ./scripts/release_content.sh
 
-if [[ "${DINGO_QUALITY_SKIP_DENY:-0}" == "1" ]]; then
-  echo "== cargo-deny skipped (DINGO_QUALITY_SKIP_DENY=1) =="
+if [[ "${RESIDUUM_QUALITY_SKIP_DENY:-0}" == "1" ]]; then
+  echo "== cargo-deny skipped (RESIDUUM_QUALITY_SKIP_DENY=1) =="
 elif command -v cargo-deny >/dev/null 2>&1; then
   echo "== cargo-deny =="
   cargo deny check --all-features
 else
   echo "warning: cargo-deny not installed; install with:" >&2
   echo "  cargo install --locked cargo-deny" >&2
-  echo "or set DINGO_QUALITY_SKIP_DENY=1 for a local dry-run." >&2
+  echo "or set RESIDUUM_QUALITY_SKIP_DENY=1 for a local dry-run." >&2
   exit 1
 fi
 

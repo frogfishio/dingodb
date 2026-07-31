@@ -2,7 +2,7 @@
 last_verified: 2026-07-30
 claim_ids:
 title: Single-node server
-description: Run dingo serve for development.
+description: Run residuum serve for development.
 class: operation
 status: development-only
 section: operations
@@ -35,13 +35,13 @@ Medium (network exposure).
 ## Procedure
 
 ```bash
-dingo serve ./app.dingo
+residuum serve ./app.dingo
 # optional: --token, TLS flags per CLI help
 ```
 
 ## Verification
 
-SDK `Dingo::connect` put/get against loopback.
+SDK `Residuum::connect` put/get against loopback.
 
 ## Rollback
 

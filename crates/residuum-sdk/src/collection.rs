@@ -17,7 +17,7 @@ use serde::Serialize;
 use serde_json::Value as JsonValue;
 use std::str;
 
-/// A lazy handle to a named collection within a [`crate::Dingo`] database.
+/// A lazy handle to a named collection within a [`crate::Residuum`] database.
 ///
 /// Merely constructing a collection does not touch disk. The first write
 /// creates store-level subject entries; the collection catalog is derived
@@ -116,7 +116,7 @@ impl<'a> Collection<'a> {
     /// Get payload with explicit completeness (chunked values).
     ///
     /// Returns partial / unavailable / conflicting maps without silent fill.
-    /// Works over embedded and remote (`dingo://`) backends.
+    /// Works over embedded and remote (`residuum://`) backends.
     pub fn get_payload(&mut self, key: &str) -> Result<Option<PayloadResult>, Error> {
         match self.backend {
             Backend::Local(store) => {

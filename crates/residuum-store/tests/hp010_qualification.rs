@@ -1316,7 +1316,7 @@ fn complete_path_and_external_review_artifacts() {
         "unscoped",
         "qualified=false",
         "legacy",
-        "Dingo::collection",
+        "Residuum::collection",
     ] {
         assert!(cpr.contains(needle), "complete-path review missing {needle}");
     }

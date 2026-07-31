@@ -1,11 +1,11 @@
-//! HP-007 residual: `Dingo::connect_heap` qualified remote session + process ops.
+//! HP-007 residual: `Residuum::connect_heap` qualified remote session + process ops.
 
 use residuum_heap::{
     verify_certificate, HeapAdministrativeState, HeapSecuritySnapshot, HeapSlot, SecurityRevision,
     HEAP_PROFILE,
 };
 use residuum_sdk::{
-    Dingo, HeapCredential, InMemoryHolderKey, RemoteHeapOptions, TlsClientOptions, TlsServerOptions,
+    Residuum, HeapCredential, InMemoryHolderKey, RemoteHeapOptions, TlsClientOptions, TlsServerOptions,
 };
 use residuum_server::{
     serve_store_with, HeapAuthAuditLog, ResidentHeap, ResidentHeapRegistry, ServeOptions,
@@ -163,8 +163,8 @@ fn connect_heap_welcome_and_process_ops() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let url = format!("dingo://127.0.0.1:{port}/accounts");
-    let mut heap = Dingo::connect_heap(&url, options).expect("connect_heap");
+    let url = format!("residuum://127.0.0.1:{port}/accounts");
+    let mut heap = Residuum::connect_heap(&url, options).expect("connect_heap");
     assert_eq!(heap.id(), verified.heap_id);
     assert_eq!(heap.welcome().msg, "welcome");
     assert_eq!(heap.heap_profile(), HEAP_PROFILE);
@@ -257,8 +257,8 @@ fn connect_heap_wrong_name_rejects() {
     .now_unix_s(now_unix)
     .max_connect_attempts(std::num::NonZeroU32::new(1).unwrap());
 
-    let url = format!("dingo://127.0.0.1:{port}/wrong-name");
-    let err = match Dingo::connect_heap(&url, options) {
+    let url = format!("residuum://127.0.0.1:{port}/wrong-name");
+    let err = match Residuum::connect_heap(&url, options) {
         Ok(_) => panic!("name mismatch should reject"),
         Err(e) => e,
     };
@@ -362,7 +362,7 @@ fn connect_heap_put_get_delete_subject_v2() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let mut heap = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+    let mut heap = Residuum::connect_heap(format!("residuum://127.0.0.1:{port}/accounts"), options)
         .expect("connect_heap");
     let cid = heap.collection_open("users").expect("collection_open");
     heap.put_json(&cid, "user-1", &serde_json::json!({"name": "Alice"}))
@@ -471,7 +471,7 @@ fn connect_heap_list_and_scan_json() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+    let mut remote = Residuum::connect_heap(format!("residuum://127.0.0.1:{port}/accounts"), options)
         .expect("connect_heap");
     let listed = remote.list_collections().expect("list_collections");
     assert!(
@@ -594,7 +594,7 @@ fn connect_heap_history() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+    let mut remote = Residuum::connect_heap(format!("residuum://127.0.0.1:{port}/accounts"), options)
         .expect("connect_heap");
     let cid = remote.collection_open("users").unwrap();
     remote
@@ -722,7 +722,7 @@ fn connect_heap_find_filter() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+    let mut remote = Residuum::connect_heap(format!("residuum://127.0.0.1:{port}/accounts"), options)
         .expect("connect_heap");
     let cid = remote.collection_open("users").unwrap();
     remote
@@ -842,7 +842,7 @@ fn connect_heap_indexes() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+    let mut remote = Residuum::connect_heap(format!("residuum://127.0.0.1:{port}/accounts"), options)
         .expect("connect_heap");
     let cid = remote.collection_open("users").unwrap();
     remote
@@ -982,7 +982,7 @@ fn connect_heap_find_via_index() {
     .expected_heap_name("accounts")
     .now_unix_s(now_unix);
 
-    let mut remote = Dingo::connect_heap(format!("dingo://127.0.0.1:{port}/accounts"), options)
+    let mut remote = Residuum::connect_heap(format!("residuum://127.0.0.1:{port}/accounts"), options)
         .expect("connect_heap");
     let cid = remote.collection_open("users").unwrap();
     remote

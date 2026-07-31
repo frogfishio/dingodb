@@ -74,7 +74,7 @@ co-launch requirements.
 
 | Order | Wedge | When |
 |------:|-------|------|
-| 2 | Single-node `dingo serve` for small teams | After security review + wire freeze path + soak evidence |
+| 2 | Single-node `residuum serve` for small teams | After security review + wire freeze path + soak evidence |
 | 3 | Cluster GA (Milestone C) | After multi-process Jepsen/soak and network repair/query |
 | 4 | Archive / native object store (Milestone D) | Its own launch after B/C honesty |
 

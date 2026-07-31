@@ -7,7 +7,7 @@ Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 
 | Layer | When | Command |
 |-------|------|---------|
-| Property / hostile unit tests | Every PR (`quality.sh`) | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
+| Property / hostile unit tests | Every PR (`quality.sh`) | `RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
 | cargo-fuzz smoke | Nightly + `scripts/nightly.sh` | `./scripts/fuzz-smoke.sh` (30s/target in CI) |
 | Deep / OSS-Fuzz | Residual | Longer budgets; land crashes under `fuzz/corpus/<target>/` |
 

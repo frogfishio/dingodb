@@ -23,7 +23,7 @@ keywords:
 Create and use a named collection for application keys.
 
 ```rust
-let mut db = Dingo::open("./app.dingo")?;
+let mut db = Residuum::open("./app.dingo")?;
 let mut users = db.collection("users")?;
 users.put("k1", &json!({"v": 1}))?;
 let got = users.get("k1")?;

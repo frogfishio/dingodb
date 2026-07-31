@@ -22,13 +22,13 @@ cargo test -p residuum-heap --lib qualification::
 if [[ "$MODE" == "full" ]]; then
   # CPR-004: Kani + Verus pure-kernel (install tools for full machine check).
   if command -v cargo >/dev/null 2>&1 && cargo kani --version >/dev/null 2>&1; then
-    DINGO_REQUIRE_KANI=1 ./scripts/check_kani_heap.sh
+    RESIDUUM_REQUIRE_KANI=1 ./scripts/check_kani_heap.sh
   else
     ./scripts/check_kani_heap.sh
     echo "kani not installed; harness sources + executable lemmas verified"
   fi
   if [[ -x "$ROOT/tools/verus/verus" ]] || command -v verus >/dev/null 2>&1; then
-    DINGO_REQUIRE_VERUS=1 ./scripts/check_verus_heap.sh
+    RESIDUUM_REQUIRE_VERUS=1 ./scripts/check_verus_heap.sh
   else
     ./scripts/check_verus_heap.sh
     echo "verus not installed; pure_kernel source + executable lemmas verified"

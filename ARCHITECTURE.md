@@ -82,7 +82,7 @@ dingodb/
     residuum-sdk/      # collection API + remote connect (Stages 4 + 6 + 7); cluster via feature — MPL-2.0
     residuum-server/   # accept loop, authz, admission, Raft RPC glue, serve_* — AGPL
     residuum-examine/  # ExaminationUnit + SDA over salvage (Stage 5) — MPL-2.0
-    residuum-cli/      # `dingo` binary: put/get, doctor, salvage, backup/restore, scrub, migrate, serve (Stage 7) — AGPL
+    residuum-cli/      # `residuum` binary: put/get, doctor, salvage, backup/restore, scrub, migrate, serve (Stage 7) — AGPL
     residuum-cluster/  # partitions, coverage, multi-node + Raft + find + rebalance (Stage 8a–8f) — AGPL
 ```
 
@@ -96,7 +96,7 @@ Crate ownership:
 | 4+6+7+8d–8e | `residuum-sdk` | **Present** — collections, filters, indexes, history, remote RPC; `cluster` feature for open_cluster |
 | 5 | `residuum-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
 | 7 | `residuum-server` | **Present** — bounded serve, authz, admission, TLS bind policy, network Raft glue |
-| 7 | `residuum-cli` | **Present** — `dingo` put/get/list/doctor/salvage/backup/restore/scrub/migrate/serve (serve via `residuum-server`) |
+| 7 | `residuum-cli` | **Present** — `residuum` put/get/list/doctor/salvage/backup/restore/scrub/migrate/serve (serve via `residuum-server`) |
 | 8 | `residuum-cluster` | **Present (8a–8f)** — partitions, coverage, Raft, convergent-append, find honesty, rebalance |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**
@@ -107,7 +107,7 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 |--------|----------|
 | Core implementation language | **Rust** |
 | First embedded surface | Rust library API; TypeScript-like examples in DX_SPEC remain the product shape |
-| First CLI | `residuum-sda` (Stage 1) + `dingo` (Stage 7) |
+| First CLI | `residuum-sda` (Stage 1) + `residuum` (Stage 7) |
 | SDA packaging | `residuum-sda` (lib) + `residuum-sda-cli` (`residuum-sda` binary); SDA+ENR1 hybrid; no storage IO |
 | Wire format versioning | Draft `1.0-draft`; reader/writer matrix + migrate phases (DEF-052); freeze is DEF-053 |
 | Process configuration | Versioned `dingo-config-v1` validate-before-serve (DEF-054); live reload follow-on |
@@ -131,14 +131,14 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 1. **S3/GCS filesystem mirrors** — `MediaLocator` + `CloudMirrorConfig`
    (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`); `object:local:` stand-in unchanged.
    These are **mirrors**, not native cloud backends.
-2. **Network multi-hop routing + experimental Raft** — `dingo serve-cluster` +
+2. **Network multi-hop routing + experimental Raft** — `residuum serve-cluster` +
    live `endpoints.json` reload; `RemoteClient` routes keyed ops and refreshes
    on transport failure; demo `scripts/demos/08_kill_a_node.sh`. Requires
    `--experimental-network-cluster`. When Raft attaches (default), collection
    put/delete use partition propose (DEF-037) and control-plane `raft_*` RPCs
    (DEF-036); acks report `committed` only after quorum + local apply.
    Directory-only fallback if attach fails. Deterministic multi-replica tests
-   still prefer in-process `Dingo::open_cluster`.
+   still prefer in-process `Residuum::open_cluster`.
 3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
    `CLUSTER_PROFILE_VERSION` (`v1` in-process), `WIRE_PROFILE_LABEL`
    (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`residuum-cluster-commit-v1`).
@@ -150,7 +150,7 @@ Network Raft control plane, data-plane commit, durable rebalance jobs,
 in-process anti-entropy repair, and seeded in-process verification are in-tree
 on the experimental path (DEF-035–041). Production local-cluster gates
 (multi-process Jepsen / long soak) remain DEF-041 follow-ons. Operator path today:
-development `dingo serve`, experimental `serve-cluster` with Raft when attached,
+development `residuum serve`, experimental `serve-cluster` with Raft when attached,
 and offline node salvage. Maturity labels:
 [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md), [DEFECTS.md](DEFECTS.md).
 Work horizon (stage plan vs remaining gates):

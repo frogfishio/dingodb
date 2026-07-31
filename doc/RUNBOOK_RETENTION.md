@@ -112,7 +112,7 @@ summary metadata when placement still records them.
 | Policy | Operator action |
 |--------|-----------------|
 | Format-version support | Prefer readers that preserve unsupported majors; upgrade software before deleting old binaries |
-| Integrity scrub | `dingo scrub STORE` / `Store::scrub_to_completion` (DEF-051): hash sealed segments, compare placement `content_hash`, frame-scan holes; pause/resume; findings under `recovery/scrub/` |
+| Integrity scrub | `residuum scrub STORE` / `Store::scrub_to_completion` (DEF-051): hash sealed segments, compare placement `content_hash`, frame-scan holes; pause/resume; findings under `recovery/scrub/` |
 | Replica / EC | Out of band for single-node Stage 9; cluster profiles add redundancy |
 | Media refresh | Copy segment to new media (`Copy` then verify), then `Move` off dying media |
 | Encryption keys | Not yet in Stage 9 wire; retain keys outside the store if payloads are encrypted at rest by the host |

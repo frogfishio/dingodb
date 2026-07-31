@@ -9,7 +9,7 @@
 //! - end-to-end SDK traffic emits correlated `rpc.complete` lines
 
 use residuum_sdk::{
-    client_handshake, json, read_frame, write_frame, ConnectOptions, Dingo, DEFAULT_MAX_FRAME_BYTES,
+    client_handshake, json, read_frame, write_frame, ConnectOptions, Residuum, DEFAULT_MAX_FRAME_BYTES,
 };
 use residuum_server::{
     log_events, serve_store_with, AdmissionController, AdmissionLimits, LogSink, Logger,
@@ -47,7 +47,7 @@ fn start_server(
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
     let store_path = dir.path().join("log.dingo");
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
     let bind_c = bind.clone();
@@ -246,7 +246,7 @@ fn connection_churn_reject_emits_connection_rejected() {
     let admission = AdmissionController::new(limits);
 
     let store_path = dir.path().join("log.dingo");
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
     let bind_c = bind.clone();
@@ -305,8 +305,8 @@ fn sdk_put_get_emits_rpc_complete() {
 
     let (bind, stop, handle) = start_server(&dir, logger, ServeOptions::new());
 
-    let uri = format!("dingo://{bind}/app");
-    let mut db = Dingo::connect_with(&uri, ConnectOptions::new()).expect("connect");
+    let uri = format!("residuum://{bind}/app");
+    let mut db = Residuum::connect_with(&uri, ConnectOptions::new()).expect("connect");
     let mut col = db.collection("docs").unwrap();
     col.put("item", &json!({"n": 1})).unwrap();
     let got = col.get("item").unwrap();

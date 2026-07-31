@@ -1,7 +1,7 @@
 //! DEF-033: authorization privileges + tamper-evident audit (no secret leakage).
 
 
-use residuum_sdk::{client_handshake, json, read_frame, write_frame, ConnectOptions, Dingo, Error, ErrorCode};
+use residuum_sdk::{client_handshake, json, read_frame, write_frame, ConnectOptions, Residuum, Error, ErrorCode};
 
 
 
@@ -38,7 +38,7 @@ fn start_server(
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
     let store_path = dir.path().join("authz.dingo");
     // Create the store (open creates on missing path), then drop so serve can lock.
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
     let bind_c = bind.clone();
@@ -316,8 +316,8 @@ fn legacy_shared_token_is_superuser() {
     assert_eq!(purge["ok"], true);
 
     {
-        let mut db = Dingo::connect_with(
-            format!("dingo://{bind}"),
+        let mut db = Residuum::connect_with(
+            format!("residuum://{bind}"),
             ConnectOptions::new().auth_token("legacy-token"),
         )
         .unwrap();

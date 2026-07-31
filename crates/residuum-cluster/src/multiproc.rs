@@ -11,7 +11,7 @@
 //! - Rolling restart: clean exit then reopen — no lost acks
 //! - Force-kill after recorded acks — acks survive reopen
 //! - Cross-process writer lock exclusion
-//! - Short CI soak; long soak via `DINGO_MULTIPROC_LONG_SOAK=1`
+//! - Short CI soak; long soak via `RESIDUUM_MULTIPROC_LONG_SOAK=1`
 //!
 //! Residual: full Jepsen PORC against live `serve-cluster` TCP + multi-hour soak.
 

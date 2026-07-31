@@ -2,7 +2,7 @@
 //!
 //! - Validates the embedded machine-readable matrix.
 //! - Runs the **CI subset** of failpoint cells on every test run.
-//! - When `DINGO_CRASH_MATRIX_FULL=1`, runs every matrix cell (nightly).
+//! - When `RESIDUUM_CRASH_MATRIX_FULL=1`, runs every matrix cell (nightly).
 //! - I/O fault injection: ENOSPC, permission-denied, short-write.
 //! - Multi-process `process::abort` via `residuum-store-crash-child`.
 //!
@@ -79,8 +79,8 @@ fn ci_subset_failpoints_respect_reopen_invariants() {
 
 #[test]
 fn full_matrix_when_env_set() {
-    if std::env::var_os("DINGO_CRASH_MATRIX_FULL").is_none() {
-        eprintln!("skip full matrix (set DINGO_CRASH_MATRIX_FULL=1 for nightly)");
+    if std::env::var_os("RESIDUUM_CRASH_MATRIX_FULL").is_none() {
+        eprintln!("skip full matrix (set RESIDUUM_CRASH_MATRIX_FULL=1 for nightly)");
         return;
     }
     let _guard = matrix_lock();

@@ -233,7 +233,7 @@ Body incomplete + key event verified → **key listable**, document in
 **Forbidden:** delete `writer.lock` to force unlock; treat `WriterLockHeld` as
 empty database; kill peer processes as the product “unlock” path.
 
-CLI: `dingo doctor` prints `writer_lock` class + guidance.
+CLI: `residuum doctor` prints `writer_lock` class + guidance.
 
 ---
 
@@ -249,7 +249,7 @@ CLI: `dingo doctor` prints `writer_lock` class + guidance.
 
 Healthy shape: large `active/`, sparse `segments/`, tiny `primary.idx` is
 **normal**. Classify with `primary_cache_diag` /
-`lifecycle_diag` / `dingo doctor` (`primary_cache`, `lifecycle` JSON).
+`lifecycle_diag` / `residuum doctor` (`primary_cache`, `lifecycle` JSON).
 
 Deleting all derived dirs and reopening must reconstruct the same logical live
 state (DEF-023 / DEF-102).
@@ -286,7 +286,7 @@ Helpers: `residuum_store::rewrite_heavy::*`. Detail:
    ├─ WriterLockHeld → writer_lock_status / open_inspect; wait or find holder
    │                    NEVER delete writer.lock
    └─ NotAStore → wrong path; do not create over unknown data without intent
-2. dingo doctor --json-out PATH
+2. residuum doctor --json-out PATH
    ├─ healthy + primary_cache.validation → interpret per DEF-102 (size ≠ data)
    └─ holes/damaged → salvage / examine; preserve source
 3. Application read fails?

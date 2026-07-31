@@ -6,28 +6,28 @@
     {
       "id": "embedded-single-node",
       "name": "Embedded single-node",
-      "how": "Dingo::open(path)",
+      "how": "Residuum::open(path)",
       "status": "experimental",
       "note": "Strongest current path; early access"
     },
     {
       "id": "single-node-tcp",
       "name": "Single-node TCP",
-      "how": "dingo serve (default 127.0.0.1)",
+      "how": "residuum serve (default 127.0.0.1)",
       "status": "development-only",
       "note": "Development and evaluation only"
     },
     {
       "id": "in-process-cluster",
       "name": "In-process cluster",
-      "how": "Dingo::open_cluster / create_cluster",
+      "how": "Residuum::open_cluster / create_cluster",
       "status": "development-only",
       "note": "Integration-test harness"
     },
     {
       "id": "network-multi-node",
       "name": "Network multi-node",
-      "how": "dingo serve-cluster + multi-seed connect",
+      "how": "residuum serve-cluster + multi-seed connect",
       "status": "experimental",
       "note": "Not production; requires --experimental-network-cluster"
     },

@@ -21,11 +21,11 @@ keywords:
 
 ## Maturity
 
-Single-node TCP (`dingo serve`) is **development only**. It is not a production deployment claim.
+Single-node TCP (`residuum serve`) is **development only**. It is not a production deployment claim.
 
 ```rust
-use residuum_sdk::{ConnectOptions, Dingo};
-let mut db = Dingo::connect("dingo://127.0.0.1:7434/app")?;
+use residuum_sdk::{ConnectOptions, Residuum};
+let mut db = Residuum::connect("residuum://127.0.0.1:7434/app")?;
 ```
 
 Prefer loopback binds. Public plaintext binds are refused without explicit insecure override. TLS/mTLS paths exist—see [security operations](/operations/security/).

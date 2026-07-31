@@ -7,7 +7,7 @@ Principal decisions: Class B hard break; Class C keep; repo rename out of scope
 
 Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 
-## 1. Paths with `dingo` in the name
+## 1. Paths with `residuum` in the name
 
 | Kind | Path | Class | Disposition |
 |------|------|-------|-------------|
@@ -41,7 +41,7 @@ Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 | `residuum-sdk` | `crates/residuum-sdk` | `residuum-sdk` | lib |
 | `residuum-server` | `crates/residuum-server` | `residuum-server` | lib |
 | `residuum-examine` | `crates/residuum-examine` | `residuum-examine` | lib |
-| `residuum-cli` | `crates/residuum-cli` | `residuum-cli` | **`dingo` → `residuum`** |
+| `residuum-cli` | `crates/residuum-cli` | `residuum-cli` | **`residuum` → `residuum`** |
 | `residuum-cluster` | `crates/residuum-cluster` | `residuum-cluster` | `residuum-cluster-multiproc-child` → `residuum-…` |
 | `residuum-testrig` | `crates/residuum-testrig` | `residuum-testrig` | `residuum-testrig` → `residuum-testrig` |
 | `residuum-sda` | `crates/sda-core` | `residuum-sda` | lib (dir name may stay `sda-core`) |
@@ -55,10 +55,10 @@ Also: `verification/heap-verus` package name `residuum-heap-verus` if present �
 
 | Current | Intended | Notes |
 |---------|----------|--------|
-| `Dingo` type / `Dingo::open` | `Residuum` / `Residuum::open` | Hard break |
-| `dingo://` URI | `residuum://` | Hard break |
+| `Residuum` type / `Residuum::open` | `Residuum` / `Residuum::open` | Hard break |
+| `residuum://` URI | `residuum://` | Hard break |
 | `DINGO_*` env vars | `RESIDUUM_*` | Hard break; inventory exact keys in REB-3 |
-| Feature flags naming product `dingo` | `residuum` where Class B | Not Class C profiles |
+| Feature flags naming product `residuum` | `residuum` where Class B | Not Class C profiles |
 
 ## 4. Class C — keep legacy (REB-5 freeze; do not bulk-replace)
 
@@ -88,7 +88,7 @@ Update after package renames: `scripts/*`, `.github/workflows/*`, demos that `ca
 
 ## 7. Content hit scale (pre-REB-2)
 
-Approx (excl `target` / `node_modules`): ~495 files / ~4k matches for `dingo`. Not all rows; bulk is REB-2/3/4 grep-fix.
+Approx (excl `target` / `node_modules`): ~495 files / ~4k matches for `residuum`. Not all rows; bulk is REB-2/3/4 grep-fix.
 
 ## 8. Task mapping
 

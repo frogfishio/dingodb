@@ -64,7 +64,7 @@ impl ResourceLimits {
     }
 }
 
-/// Process-wide draft defaults (until ServeOptions/Dingo options thread custom
+/// Process-wide draft defaults (until ServeOptions/Residuum options thread custom
 /// limits). Tests may construct local [`ResourceLimits`] values.
 pub fn host_limits() -> ResourceLimits {
     ResourceLimits::draft_defaults()

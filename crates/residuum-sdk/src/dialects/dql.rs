@@ -1,4 +1,4 @@
-//! DQL (Dingo Query Language) — official human dialect → pure ENR1 + SDA.
+//! DQL (Residuum Query Language) — official human dialect → pure ENR1 + SDA.
 //!
 //! Design authority: [DQL_SPEC.md](../../../../../DQL_SPEC.md).
 //! Every construct lowers into the same match-bag kernel that pure ENR text uses

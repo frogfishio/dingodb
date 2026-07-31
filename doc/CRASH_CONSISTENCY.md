@@ -81,7 +81,7 @@ cells for durable put.
 | Mode | How | Coverage |
 |------|-----|----------|
 | PR / default CI | `cargo test -p residuum-store --test stage_def_022_crash_matrix` | Document validation + `ci_subset` cells + I/O suite + multi-process abort |
-| Nightly / full | `DINGO_CRASH_MATRIX_FULL=1 cargo test -p residuum-store --test stage_def_022_crash_matrix` | Every matrix cell |
+| Nightly / full | `RESIDUUM_CRASH_MATRIX_FULL=1 cargo test -p residuum-store --test stage_def_022_crash_matrix` | Every matrix cell |
 
 `scripts/nightly.sh` and `.github/workflows/nightly.yml` set the full env.
 

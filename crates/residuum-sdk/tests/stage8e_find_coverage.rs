@@ -1,14 +1,14 @@
 //! Stage 8e — SDK distributed find coverage honesty.
 
 use residuum_cluster::{ClusterConfig, NodeId, PartitionId};
-use residuum_sdk::{json, Dingo, ErrorCode, Filter, QueryOptions};
+use residuum_sdk::{json, Residuum, ErrorCode, Filter, QueryOptions};
 
 
 
 #[test]
 fn cluster_find_complete_when_healthy() {
     let dir = tempfile::tempdir().unwrap();
-    let mut db = Dingo::create_cluster(
+    let mut db = Residuum::create_cluster(
         ClusterConfig::dependable_local(dir.path().join("c")).with_virtual_partitions(8),
     )
     .unwrap();
@@ -31,7 +31,7 @@ fn cluster_find_complete_when_healthy() {
 #[test]
 fn incomplete_coverage_errors_by_default() {
     let dir = tempfile::tempdir().unwrap();
-    let mut db = Dingo::create_cluster(
+    let mut db = Residuum::create_cluster(
         ClusterConfig::dependable_local(dir.path().join("c")).with_virtual_partitions(8),
     )
     .unwrap();
@@ -63,7 +63,7 @@ fn incomplete_coverage_errors_by_default() {
 #[test]
 fn allow_partial_coverage_returns_matches_and_coverage() {
     let dir = tempfile::tempdir().unwrap();
-    let mut db = Dingo::create_cluster(
+    let mut db = Residuum::create_cluster(
         ClusterConfig::dependable_local(dir.path().join("c")).with_virtual_partitions(8),
     )
     .unwrap();

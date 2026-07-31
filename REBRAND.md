@@ -32,15 +32,15 @@ identifiers that still exist in the implementation.
 | Former documentation term | Canonical term |
 |---|---|
 | DingoDB | ResiduumDB |
-| Dingo | Residuum, when referring to the product |
-| Dingo Query Language (DQL) | Residuum Query Language (RQL) |
-| Dingo Rule Expression (DRE) | Residuum Rule Expression (RRE) |
-| Dingo Rules | Residuum Rules |
-| Dingo Predicate | Residuum Predicate |
-| Dingo Studio | Residuum Studio |
-| Dingo Evidence Ledger | Residuum Evidence Ledger |
-| Dingo Direct Access | Residuum Direct Access |
-| Dingo Order Wavelet | Residuum Order Wavelet |
+| Residuum | Residuum, when referring to the product |
+| Residuum Query Language (DQL) | Residuum Query Language (RQL) |
+| Residuum Rule Expression (DRE) | Residuum Rule Expression (RRE) |
+| Residuum Rules | Residuum Rules |
+| Residuum Predicate | Residuum Predicate |
+| Residuum Studio | Residuum Studio |
+| Residuum Evidence Ledger | Residuum Evidence Ledger |
+| Residuum Direct Access | Residuum Direct Access |
+| Residuum Order Wavelet | Residuum Order Wavelet |
 | `dingodb.org` | `residuumdb.org` |
 | `docs.dingodb.org` | `docs.residuumdb.org` |
 
@@ -57,9 +57,9 @@ or source reference false. This includes, without limitation:
 
 - Rust packages and import paths beginning with `dingo-`;
 - Rust crate paths beginning with `dingo_`;
-- the current Rust type `Dingo` and expressions such as `Dingo::open`;
-- the current `dingo` executable and `residuum-sda` executable;
-- the `dingo://` URI scheme;
+- the current Rust type `Residuum` and expressions such as `Residuum::open`;
+- the current `residuum` executable and `residuum-sda` executable;
+- the `residuum://` URI scheme;
 - `DINGO_*` environment variables;
 - `.dingo` store files;
 - `dingo-*-v1` wire and persistence profiles;
@@ -106,7 +106,7 @@ Phase 1, the Markdown phase, is complete when:
 2. normative Markdown specification names and visible link labels use RQL,
    RRE, and Residuum names;
 3. all local Markdown links resolve;
-4. every remaining Dingo-branded occurrence is a literal technical identifier,
+4. every remaining Residuum-branded occurrence is a literal technical identifier,
    historical statement, local path, or explicit compatibility note; and
 5. no Rust or non-Markdown implementation artifact has been changed by this
    phase.
@@ -135,11 +135,11 @@ the compatibility analysis required below.
 
 Phase 2 is repository-wide, not a blind search-and-replace. It includes:
 
-- Rust public types and constructors such as `Dingo` and `Dingo::open`;
+- Rust public types and constructors such as `Residuum` and `Residuum::open`;
 - Cargo package, crate, feature, and import names such as `residuum-sdk` and
   `residuum_sdk`;
-- executables and commands such as `dingo` and `residuum-sda`;
-- the `dingo://` URI scheme;
+- executables and commands such as `residuum` and `residuum-sda`;
+- the `residuum://` URI scheme;
 - `DINGO_*` environment variables;
 - product-owned configuration keys, service names, telemetry names, fixtures,
   examples, scripts, and generated-package metadata;
@@ -213,12 +213,12 @@ work must confirm collisions and compatibility behavior before adoption.
 
 | Current implementation name | Intended name |
 |---|---|
-| `Dingo` | `Residuum` |
-| `Dingo::open` | `Residuum::open` |
+| `Residuum` | `Residuum` |
+| `Residuum::open` | `Residuum::open` |
 | `dingo-*` package/binary prefix | `residuum-*` |
 | `dingo_*` Rust crate/module prefix | `residuum_*` |
-| `dingo` CLI | `residuum` |
-| `dingo://` | `residuum://` |
+| `residuum` CLI | `residuum` |
+| `residuum://` | `residuum://` |
 | `DINGO_*` | `RESIDUUM_*` |
 | DQL implementation names | RQL equivalents |
 | DRE implementation names | RRE equivalents |
@@ -268,7 +268,7 @@ The rebrand is complete only after:
   and redirects use ResiduumDB;
 - repository-wide stale-name searches contain only approved legacy or
   historical occurrences; and
-- the final review records no unexplained Dingo, DQL, or DRE identity.
+- the final review records no unexplained Residuum, DQL, or DRE identity.
 
 ## 12. Required migration changelog
 
@@ -300,7 +300,7 @@ The Phase 5 review must examine:
 - filenames, directory names, source symbols, package manifests, lockfiles,
   scripts, CI, release automation, fixtures, examples, and generated metadata;
 - human prose separately from literal implementation identifiers;
-- case, separator, and abbreviation variants of DingoDB, Dingo, DQL, and DRE;
+- case, separator, and abbreviation variants of DingoDB, Residuum, DQL, and DRE;
 - public API and package usability from a clean consumer project;
 - old and new command, URI, environment, and configuration behavior;
 - new-store, old-store, mixed-version, backup, restore, and rollback journeys;

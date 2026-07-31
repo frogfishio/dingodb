@@ -67,7 +67,7 @@ first-party engineering.
 | How to re-run locally | Command |
 |----------------------|---------|
 | Install pinned Verus | `./scripts/setup_verus.sh` |
-| Verify pure_kernel | `./scripts/check_verus_heap.sh` (or `DINGO_REQUIRE_VERUS=1`) |
+| Verify pure_kernel | `./scripts/check_verus_heap.sh` (or `RESIDUUM_REQUIRE_VERUS=1`) |
 
 Scope honesty: pure_kernel models §39 binding / gen-grace / blacklist /
 admission / isolation with integer stand-ins (not full COSE crypto). Executable

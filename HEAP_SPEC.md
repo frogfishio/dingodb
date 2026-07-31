@@ -1136,8 +1136,8 @@ Heap selection produces a heap-bound handle.
 Qualified remote Rust:
 
 ```rust
-let heap = Dingo::connect_heap(
-    "dingo://localhost:7434/accounts",
+let heap = Residuum::connect_heap(
+    "residuum://localhost:7434/accounts",
     RemoteHeapOptions::new(tls, credential)
         .expected_heap_name("accounts"),
 )?;
@@ -1147,7 +1147,7 @@ let users = heap.collection("users")?;
 Trusted embedded multi-heap Rust:
 
 ```rust
-let deployment = Dingo::open_deployment("./app.dingo")?;
+let deployment = Residuum::open_deployment("./app.dingo")?;
 let heap = deployment.heap("accounts")?;
 let users = heap.collection("users")?;
 ```
@@ -3173,7 +3173,7 @@ This is not multi-heap support.
 
 ### 23.2 Legacy embedded compatibility
 
-`Dingo::open(path)` MAY continue to return a handle whose collection methods
+`Residuum::open(path)` MAY continue to return a handle whose collection methods
 operate within one implicit compatibility heap.
 
 The compatibility heap:
@@ -3962,7 +3962,7 @@ residuum-authority = { path = "crates/residuum-authority", version = "0.2.0" }
 
 to workspace dependencies using the same workspace-version rule.
 `residuum-authority` produces a separate `residuum-authority` executable. Neither
-`residuum-server` nor the qualified `dingo` data-service executable depends on
+`residuum-server` nor the qualified `residuum` data-service executable depends on
 or links this crate.
 
 The workspace lockfile pins exact transitive versions. Dependency upgrades
@@ -4069,7 +4069,7 @@ residuum-authority/src/
     reload_notify.rs
 ```
 
-The ordinary `dingo` CLI may perform HeapKey-authorized data and heap
+The ordinary `residuum` CLI may perform HeapKey-authorized data and heap
 administration. Master issuance, cycling, blacklist, grace, epoch recovery,
 and recovery-profile commands exist only in the separate
 `residuum-authority` executable.
@@ -4101,7 +4101,7 @@ CI adds `scripts/check_heap_architecture.sh`. It fails when:
 - `HeapCap`, `HeapMaintenanceCap`, `ReplicaCap`, or `RecoveryCap` implements
   `Serialize` or `Deserialize`;
 - the qualified server links legacy role dispatch or diagnostic line protocol;
-- `residuum-server`, the qualified `dingo` data-service target, or any
+- `residuum-server`, the qualified `residuum` data-service target, or any
   client-facing dispatcher depends on `residuum-authority`, implements
   `MasterKeyProvider`, stores a `dyn MasterKeyProvider`, contains
   `MasterAuthorityStore`, or accepts a raw authority event instead of
@@ -4322,7 +4322,7 @@ impl RemoteHeapOptions {
     pub fn retry_backoff(self, value: Duration) -> Self;
 }
 
-impl Dingo {
+impl Residuum {
     pub fn connect_heap(
         url: impl AsRef<str>,
         options: RemoteHeapOptions,
@@ -4379,10 +4379,10 @@ deployment-global application-data iterator, query, collection, transaction,
 or backup. Heap creation, retirement, authority, and cross-heap import remain
 explicit administrative APIs and never hide inside `heap(name)`.
 
-The existing `Dingo::connect`, `ConnectOptions::auth_token`, and name-based
+The existing `Residuum::connect`, `ConnectOptions::auth_token`, and name-based
 `RpcRequest` remain legacy-only and are deprecated when the heap feature is
 enabled. They cannot select the qualified listener. Existing
-`Dingo::open(path)` becomes a deprecated spelling of
+`Residuum::open(path)` becomes a deprecated spelling of
 `open_compatibility_heap(path)` and never opens a deployment-global
 multi-heap handle.
 

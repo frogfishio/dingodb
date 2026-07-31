@@ -5,14 +5,14 @@
 # When cargo-fuzz + nightly available: short smoke per registered target.
 #
 # Env:
-#   DINGO_FUZZ_SECONDS   seconds per target (default 30; use 5 for quick local)
-#   DINGO_FUZZ_SKIP_CARGO_FUZZ=1  property tests only
+#   RESIDUUM_FUZZ_SECONDS   seconds per target (default 30; use 5 for quick local)
+#   RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1  property tests only
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-SECONDS_PER="${DINGO_FUZZ_SECONDS:-30}"
+SECONDS_PER="${RESIDUUM_FUZZ_SECONDS:-30}"
 
 ok() { echo "fuzz-smoke: $*"; }
 fail() { echo "fuzz-smoke: FAIL: $*" >&2; exit 1; }
@@ -45,8 +45,8 @@ TARGETS=(
   cursor_token
 )
 
-if [[ "${DINGO_FUZZ_SKIP_CARGO_FUZZ:-0}" == "1" ]]; then
-  ok "skipping cargo-fuzz (DINGO_FUZZ_SKIP_CARGO_FUZZ=1)"
+if [[ "${RESIDUUM_FUZZ_SKIP_CARGO_FUZZ:-0}" == "1" ]]; then
+  ok "skipping cargo-fuzz (RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1)"
   ok "OK (property bar only)"
   exit 0
 fi

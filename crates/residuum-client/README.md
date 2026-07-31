@@ -14,7 +14,7 @@ in [`residuum-sdk`](https://crates.io/crates/residuum-sdk); TCP serve lives in
 | You want… | Use |
 |-----------|-----|
 | Open a local `.dingo` store and put/get JSON | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) |
-| Connect over the network with the full collection API | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) (`Dingo::connect`) |
+| Connect over the network with the full collection API | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) (`Residuum::connect`) |
 | Only framing + handshake (interop, tools, other languages) | **`residuum-client`** (this crate) |
 | Accept TCP connections and dispatch RPCs | [`residuum-server`](https://crates.io/crates/residuum-server) |
 

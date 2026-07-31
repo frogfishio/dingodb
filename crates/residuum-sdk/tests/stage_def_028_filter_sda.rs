@@ -7,7 +7,7 @@
 //!
 //! and asserts agreement. Also checks versioned [`QueryPlan`] round-trips.
 
-use residuum_sdk::{json, Dingo, Filter, Pred, QueryOptions, QueryPlan, QUERY_PLAN_PROFILE};
+use residuum_sdk::{json, Residuum, Filter, Pred, QueryOptions, QueryPlan, QUERY_PLAN_PROFILE};
 
 
 use serde_json::Value as JsonValue;
@@ -249,7 +249,7 @@ fn native_and_sda_agree_on_corpus() {
 #[test]
 fn embedded_find_agrees_with_filter_matches() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     let mut col = db.collection("docs").unwrap();
 
     let docs = [

@@ -11,7 +11,7 @@
 //! stay CI-connected via `cargo test` regardless of Verus install.
 //!
 //! Verify Verus: `./scripts/setup_verus.sh && ./scripts/check_verus_heap.sh`
-//! (CI job `verus-heap` with `DINGO_REQUIRE_VERUS=1`).
+//! (CI job `verus-heap` with `RESIDUUM_REQUIRE_VERUS=1`).
 
 #![allow(dead_code)]
 

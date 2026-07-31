@@ -2,7 +2,7 @@
 //!
 //! Indexes are derived, online, resumable, and deletable. Queries remain
 //! correct without them via scan (+ optional budget). Work over both embedded
-//! stores and remote `dingo serve` connections (Stage 7 remote parity).
+//! stores and remote `residuum serve` connections (Stage 7 remote parity).
 //!
 //! ## Lifecycle (DEF-027)
 //!

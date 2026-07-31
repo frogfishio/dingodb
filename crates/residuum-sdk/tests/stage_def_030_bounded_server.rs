@@ -5,7 +5,7 @@
 //! store owner is used, and graceful shutdown drains in-flight work.
 
 
-use residuum_sdk::{client_handshake, json, read_frame, write_frame, Dingo, ErrorCode, DEFAULT_MAX_FRAME_BYTES};
+use residuum_sdk::{client_handshake, json, read_frame, write_frame, Residuum, ErrorCode, DEFAULT_MAX_FRAME_BYTES};
 
 
 use std::io::BufReader;
@@ -90,7 +90,7 @@ fn concurrent_clients_progress_independently() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         db.collection("docs")
             .unwrap()
             .put("seed", &json!({"n": 0}))
@@ -108,8 +108,8 @@ fn concurrent_clients_progress_independently() {
     for i in 0..8 {
         let bind_c = bind.clone();
         handles.push(thread::spawn(move || {
-            let url = format!("dingo://{bind_c}/app");
-            let mut db = Dingo::connect(&url).expect("connect");
+            let url = format!("residuum://{bind_c}/app");
+            let mut db = Residuum::connect(&url).expect("connect");
             db.collection("docs")
                 .unwrap()
                 .put(&format!("k{i}"), &json!({"i": i}))
@@ -120,8 +120,8 @@ fn concurrent_clients_progress_independently() {
         h.join().unwrap();
     }
 
-    let url = format!("dingo://{bind}/app");
-    let mut db = Dingo::connect(&url).unwrap();
+    let url = format!("residuum://{bind}/app");
+    let mut db = Residuum::connect(&url).unwrap();
     let keys = db.collection("docs").unwrap().scan_keys().unwrap();
     assert!(keys.len() >= 9, "expected seed + 8 puts, got {keys:?}");
 
@@ -134,7 +134,7 @@ fn connection_limit_returns_resource_limit() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
 
     let bind = free_bind();
@@ -200,7 +200,7 @@ fn graceful_shutdown_drains_and_stops_accept() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
 
     let bind = free_bind();
@@ -215,8 +215,8 @@ fn graceful_shutdown_drains_and_stops_accept() {
     );
     assert!(Arc::ptr_eq(&flag, &shutdown));
 
-    let url = format!("dingo://{bind}/app");
-    let mut db = Dingo::connect(&url).unwrap();
+    let url = format!("residuum://{bind}/app");
+    let mut db = Residuum::connect(&url).unwrap();
     db.collection("docs")
         .unwrap()
         .put("before", &json!({"ok": true}))
@@ -280,7 +280,7 @@ fn single_store_owner_survives_many_clients() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
 
     let bind = free_bind();
@@ -290,8 +290,8 @@ fn single_store_owner_survives_many_clients() {
     for i in 0..20 {
         let bind_c = bind.clone();
         handles.push(thread::spawn(move || {
-            let url = format!("dingo://{bind_c}/app");
-            let mut db = Dingo::connect(&url).unwrap();
+            let url = format!("residuum://{bind_c}/app");
+            let mut db = Residuum::connect(&url).unwrap();
             db.collection("c")
                 .unwrap()
                 .put(&format!("k{i}"), &json!({"i": i}))
@@ -327,7 +327,7 @@ fn raw_ping_while_peer_idle() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let bind = free_bind();
     let shutdown = spawn_server(path, &bind, ServeOptions::new());

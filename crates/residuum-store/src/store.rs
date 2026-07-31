@@ -570,7 +570,7 @@ impl Store {
     /// Never creates a store, never opens the active segment for append, and
     /// never persists derived catalogs/indexes. Primary index and collection
     /// catalog are rebuilt in memory from authoritative segment bytes when
-    /// needed. Suitable for `dingo doctor` (DX_SPEC §13.3). Does **not** take
+    /// needed. Suitable for `residuum doctor` (DX_SPEC §13.3). Does **not** take
     /// the exclusive writer lock, so it can run while a writer holds the store.
     pub fn open_inspect(path: impl AsRef<Path>) -> Result<Self, StoreError> {
         let root = path.as_ref();

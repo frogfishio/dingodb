@@ -6,7 +6,7 @@
 //! - Abort after recorded acks: those acks survive parent reopen
 //! - Cross-process exclusive writer lock
 //! - Failures retain seed + history dump ([`MULTIPROC_PROFILE`])
-//! - Short CI soak; long soak gated by `DINGO_MULTIPROC_LONG_SOAK=1`
+//! - Short CI soak; long soak gated by `RESIDUUM_MULTIPROC_LONG_SOAK=1`
 //!
 //! Residual: full Jepsen PORC against live `serve-cluster` TCP partitions,
 //! multi-hour soak, CLUSTER_SPEC §22.9–.20 network surface.
@@ -159,12 +159,12 @@ fn short_soak_sequential_process_restarts() {
     let dir = tempdir().unwrap();
     let store = dir.path().join("s");
     let seed = 0x50a1_0041u64;
-    let rounds = if env::var("DINGO_MULTIPROC_LONG_SOAK").ok().as_deref() == Some("1") {
+    let rounds = if env::var("RESIDUUM_MULTIPROC_LONG_SOAK").ok().as_deref() == Some("1") {
         32
     } else {
         4
     };
-    let ops_per = if env::var("DINGO_MULTIPROC_LONG_SOAK").ok().as_deref() == Some("1") {
+    let ops_per = if env::var("RESIDUUM_MULTIPROC_LONG_SOAK").ok().as_deref() == Some("1") {
         16
     } else {
         4

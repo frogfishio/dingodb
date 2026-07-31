@@ -47,7 +47,7 @@ fn load_validate_apply_roundtrip() {
             "bind": "127.0.0.1:9123",
             "max_connections": 12,
             "idle_timeout_secs": 30,
-            "token_env": "DINGO_TEST_STAGE054_ABSENT",
+            "token_env": "RESIDUUM_TEST_STAGE054_ABSENT",
             "admission": {
               "global_max_rps": 77,
               "per_principal_max_rps": 11,
@@ -97,7 +97,7 @@ fn flag_overrides_file_bind() {
         }),
         serve: Some(ServeConfigSection {
             bind: Some("127.0.0.1:1".into()),
-            token_env: Some("DINGO_TEST_STAGE054_ABSENT".into()),
+            token_env: Some("RESIDUUM_TEST_STAGE054_ABSENT".into()),
             ..Default::default()
         }),
         cluster: None,
@@ -128,7 +128,7 @@ fn refuse_replication_claim_single_copy() {
         store: None,
         serve: Some(ServeConfigSection {
             experimental_network_cluster: Some(true),
-            token_env: Some("DINGO_TEST_STAGE054_ABSENT".into()),
+            token_env: Some("RESIDUUM_TEST_STAGE054_ABSENT".into()),
             ..Default::default()
         }),
         cluster: Some(ClusterConfigSection {
@@ -167,7 +167,7 @@ fn refuse_public_plaintext_without_opt_in() {
         serve: Some(ServeConfigSection {
             bind: Some("0.0.0.0:7434".into()),
             allow_insecure_bind: Some(false),
-            token_env: Some("DINGO_TEST_STAGE054_ABSENT".into()),
+            token_env: Some("RESIDUUM_TEST_STAGE054_ABSENT".into()),
             ..Default::default()
         }),
         cluster: None,
@@ -193,12 +193,12 @@ fn secret_file_ref_and_redaction() {
 
     let mut raw = serde_json::json!({
         "auth_token": "should-hide",
-        "token_env": "DINGO_TOKEN",
+        "token_env": "RESIDUUM_TOKEN",
         "nested": { "password": "x", "bind": "127.0.0.1:1" }
     });
     redact_json_value(&mut raw);
     assert_eq!(raw["auth_token"], "[redacted]");
-    assert_eq!(raw["token_env"], "DINGO_TOKEN");
+    assert_eq!(raw["token_env"], "RESIDUUM_TOKEN");
     assert_eq!(raw["nested"]["password"], "[redacted]");
     assert_eq!(raw["nested"]["bind"], "127.0.0.1:1");
 }
@@ -215,7 +215,7 @@ fn effective_report_never_leaks_token() {
                 durability_default: Some("durable".into()),
             }),
             serve: Some(ServeConfigSection {
-                token_env: Some("DINGO_TEST_STAGE054_ABSENT".into()),
+                token_env: Some("RESIDUUM_TEST_STAGE054_ABSENT".into()),
                 ..Default::default()
             }),
             cluster: None,

@@ -57,7 +57,7 @@ pub fn run_chaos(cfg: &ChaosConfig) -> Result<ChaosReport, String> {
         return Err(format!("store path is not a directory: {}", cfg.store.display()));
     }
 
-    let candidates = collect_dingo_files(&cfg.store).map_err(|e| format!("scan segments: {e}"))?;
+    let candidates = collect_residuum_files(&cfg.store).map_err(|e| format!("scan segments: {e}"))?;
     if candidates.is_empty() {
         return Err("no .dingo segment files found under store (run pump first?)".into());
     }
@@ -188,7 +188,7 @@ fn usable_span(file_size: u64, cfg: &ChaosConfig) -> (u64, u64) {
     (min_off, max_end.saturating_sub(min_off))
 }
 
-fn collect_dingo_files(store: &Path) -> std::io::Result<Vec<Cand>> {
+fn collect_residuum_files(store: &Path) -> std::io::Result<Vec<Cand>> {
     let mut out = Vec::new();
     // Prefer authoritative segment media: active/ + segments/ (+ tier media if present).
     let roots = [

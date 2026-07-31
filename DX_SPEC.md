@@ -109,7 +109,7 @@ offline. It MUST NOT return a knowingly incomplete empty result.
 Canonical shape:
 
 ```ts
-const db = await Dingo.open("./app.dingo");
+const db = await Residuum.open("./app.dingo");
 ```
 
 If the path does not exist, it is created with safe defaults.
@@ -125,7 +125,7 @@ path when valid acceleration metadata exists.
 Canonical shape:
 
 ```ts
-const db = await Dingo.connect("dingo://localhost:7434/app");
+const db = await Residuum.connect("residuum://localhost:7434/app");
 ```
 
 The logical API is the same as embedded use. Network-only concerns such as
@@ -136,7 +136,7 @@ authentication, deadlines, and retry policy are connection options.
 Canonical shape:
 
 ```ts
-const db = await Dingo.connect("dingo://db.example.com/app");
+const db = await Residuum.connect("residuum://db.example.com/app");
 ```
 
 Clients discover and cache partition routes automatically.
@@ -882,7 +882,7 @@ result is complete.
 ### 13.3 Doctor
 
 ```text
-dingo doctor ./app.dingo
+residuum doctor ./app.dingo
 ```
 
 `doctor` is read-only by default.
@@ -925,8 +925,8 @@ dingo put-bytes ./app.dingo artifacts/build-19 ./build.bin
 dingo history ./app.dingo users/user-42
 dingo inspect ./app.dingo users/user-42
 dingo index create ./app.dingo users by-email --field email
-dingo doctor ./app.dingo
-dingo serve ./app.dingo
+residuum doctor ./app.dingo
+residuum serve ./app.dingo
 ```
 
 Exact command grammar will be frozen with the first CLI implementation.

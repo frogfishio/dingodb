@@ -16,7 +16,7 @@ Freeze label: `SDK_API_VERSION` = `1.0`.
 | You want… | Use |
 |-----------|-----|
 | Application put/get/find on a local file | **`residuum-sdk`** (this crate) |
-| Same API over TCP (`dingo serve`) | **`residuum-sdk`** (`Dingo::connect`) |
+| Same API over TCP (`residuum serve`) | **`residuum-sdk`** (`Residuum::connect`) |
 | CLI | [`residuum-cli`](https://crates.io/crates/residuum-cli) |
 | Raw subject store / salvage | [`residuum-store`](https://crates.io/crates/residuum-store) |
 | Embed a TCP server | [`residuum-server`](https://crates.io/crates/residuum-server) |
@@ -51,11 +51,11 @@ dependency of this SDK.
 ### Embedded
 
 ```rust
-use residuum_sdk::{json, Dingo, Filter};
+use residuum_sdk::{json, Residuum, Filter};
 
 # let dir = tempfile::tempdir().unwrap();
 # let path = dir.path().join("app.dingo");
-let mut db = Dingo::open(&path)?;
+let mut db = Residuum::open(&path)?;
 {
     let mut users = db.collection("users")?;
     users.put(
@@ -78,16 +78,16 @@ let mut db = Dingo::open(&path)?;
 
 ### Remote
 
-Requires a running server (`dingo serve ./app.dingo` or `dingo serve --token SECRET`):
+Requires a running server (`residuum serve ./app.dingo` or `residuum serve --token SECRET`):
 
 ```rust
-use residuum_sdk::{json, ConnectOptions, Dingo};
+use residuum_sdk::{json, ConnectOptions, Residuum};
 use std::time::Duration;
 
-let mut db = Dingo::connect("dingo://127.0.0.1:7434/app")?;
+let mut db = Residuum::connect("residuum://127.0.0.1:7434/app")?;
 // With auth and timeouts:
-let mut db = Dingo::connect_with(
-    "dingo://127.0.0.1:7434/app",
+let mut db = Residuum::connect_with(
+    "residuum://127.0.0.1:7434/app",
     ConnectOptions::new()
         .auth_token("SECRET")
         .request_timeout(Duration::from_secs(10))
@@ -103,10 +103,10 @@ db.collection("users")?
 Requires `features = ["cluster"]`:
 
 ```rust
-use residuum_sdk::{json, ClusterConfig, Dingo, Filter, QueryOptions};
+use residuum_sdk::{json, ClusterConfig, Residuum, Filter, QueryOptions};
 
 # let dir = tempfile::tempdir().unwrap();
-let mut db = Dingo::create_cluster(
+let mut db = Residuum::create_cluster(
     ClusterConfig::development(dir.path().join("cluster")).with_virtual_partitions(16),
 )?;
 {
@@ -125,13 +125,13 @@ let mut db = Dingo::create_cluster(
 
 | Area | Capability |
 |------|------------|
-| Embedded | `Dingo::open`, JSON/bytes put/get/delete, scan + streaming iter |
+| Embedded | `Residuum::open`, JSON/bytes put/get/delete, scan + streaming iter |
 | Filters | SDK-native `Filter` / `find` / `query`, secondary field indexes, budgets |
-| Multi-collection join | `Dingo::query().from(..).join(..).on(X,Y).collect()`; `.map_sda(..)` normalises |
-| SDA/ENR text queries | `Collection::sda` / `filter_sda` (DX §7.6); multi-collection `Dingo::enr_query().bind(..).run` (`Match`/`enrich`) or `Dingo::sda(&[…], program)` |
+| Multi-collection join | `Residuum::query().from(..).join(..).on(X,Y).collect()`; `.map_sda(..)` normalises |
+| SDA/ENR text queries | `Collection::sda` / `filter_sda` (DX §7.6); multi-collection `Residuum::enr_query().bind(..).run` (`Match`/`enrich`) or `Residuum::sda(&[…], program)` |
 | History | Per-key immutable event stream |
 | Chunks | Completeness-aware `get_payload` for large bodies |
-| Remote | `Dingo::connect("dingo://host:port")` framed `dingo-rpc-v1` TCP; auth token, deadline, retry |
+| Remote | `Residuum::connect("residuum://host:port")` framed `dingo-rpc-v1` TCP; auth token, deadline, retry |
 | Parity | Remote put/get/delete/scan, history, indexes, `get_payload`, server-side find, `directory` |
 | Cluster | Feature `cluster`: `create_cluster` / `open_cluster`, directory cache, `find_with_coverage` |
 
@@ -141,18 +141,18 @@ Application developers do not need to know about frames or segments.
 
 | API | Role |
 |-----|------|
-| `Dingo::open` | Create-or-open store directory with safe defaults |
-| `Dingo::connect` / `connect_with` | Remote `dingo://host:port[/label]` or multi-seed |
-| `Dingo::create_cluster` / `open_cluster` | In-process multi-node (`cluster` feature) |
-| `Dingo::collection` | Lazy named collection handle |
+| `Residuum::open` | Create-or-open store directory with safe defaults |
+| `Residuum::connect` / `connect_with` | Remote `residuum://host:port[/label]` or multi-seed |
+| `Residuum::create_cluster` / `open_cluster` | In-process multi-node (`cluster` feature) |
+| `Residuum::collection` | Lazy named collection handle |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |
 | `Collection::put_bytes` / `get_bytes` | Opaque byte payloads |
 | `Collection::get_payload` | Completeness-aware chunked read |
 | `Collection::scan_keys` / `scan_json` / `scan_json_iter` / `scan_json_page` | Live scan |
 | `Collection::find` / `find_json` / `query` | Filters + index acceleration |
-| `Dingo::query` | Multi-collection equijoin (`from` / `join` / `on`) + optional SDA map |
+| `Residuum::query` | Multi-collection equijoin (`from` / `join` / `on`) + optional SDA map |
 | `Collection::sda` / `filter_sda` | Raw SDA/ENR1 text over one collection (DX §7.6) |
-| `Dingo::enr_query` / `sda_query` / `sda` | Bind collections → free names + pure SDA/ENR1 text (`Match`/`enrich`) |
+| `Residuum::enr_query` / `sda_query` / `sda` | Bind collections → free names + pure SDA/ENR1 text (`Match`/`enrich`) |
 | `Collection::find_with_coverage` | Cluster find with explicit partition coverage |
 | `Collection::indexes` | Create / drop / rebuild / list secondary indexes |
 | `Collection::history` | Immutable event stream for one key |

@@ -55,7 +55,7 @@ jobs:
 
       - name: DEF-022 full crash matrix
         env:
-          DINGO_CRASH_MATRIX_FULL: "1"
+          RESIDUUM_CRASH_MATRIX_FULL: "1"
         run: cargo test -p residuum-store --test stage_def_022_crash_matrix -- --nocapture --test-threads=1
 
       - name: Stage 7 CLI doctor / salvage / serve
@@ -88,7 +88,7 @@ jobs:
         run: cargo install cargo-fuzz --locked
 
       - name: Fuzz property bar (PR-safe surfaces)
-        run: DINGO_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
+        run: RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
 
       - name: Fuzz smoke cargo-fuzz (30s per target, DEF-091-F)
         working-directory: fuzz

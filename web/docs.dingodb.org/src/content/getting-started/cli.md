@@ -53,7 +53,7 @@ printf '%s\n' \
 ## Doctor / inspection
 
 ```bash
-dingo doctor "$WORKDIR"
+residuum doctor "$WORKDIR"
 ```
 
 ## Cleanup

@@ -3,7 +3,7 @@
 //! Uses an ephemeral private PKI (rcgen) — not system roots.
 
 
-use residuum_sdk::{cluster_urn, node_urn, ConnectOptions, Dingo, Error, PeerIdentity, RemoteClient, TlsClientOptions, TlsServerOptions, TlsServerState};
+use residuum_sdk::{cluster_urn, node_urn, ConnectOptions, Residuum, Error, PeerIdentity, RemoteClient, TlsClientOptions, TlsServerOptions, TlsServerState};
 
 
 use rcgen::{
@@ -133,7 +133,7 @@ impl Pki {
 fn open_store(dir: &Path) -> PathBuf {
     let path = dir.join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     path
 }
@@ -185,7 +185,7 @@ fn tls_happy_path_ping() {
 
     let mut client = RemoteClient::connect_with(
         &bind,
-        format!("dingo://localhost:{port}/"),
+        format!("residuum://localhost:{port}/"),
         ConnectOptions::new().tls(
             TlsClientOptions::new("localhost")
                 .ca_path(pki.ca_path())
@@ -215,7 +215,7 @@ fn wrong_hostname_fails() {
     assert_auth_err(
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new()
                 .tls(TlsClientOptions::new("not-localhost").ca_path(pki.ca_path())),
         ),
@@ -241,7 +241,7 @@ fn wrong_cluster_id_fails() {
     assert_auth_err(
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new().tls(
                 TlsClientOptions::new("localhost")
                     .ca_path(pki.ca_path())
@@ -279,7 +279,7 @@ fn expired_certificate_fails() {
     assert_auth_err(
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new()
                 .tls(TlsClientOptions::new("localhost").ca_path(pki.ca_path())),
         ),
@@ -306,7 +306,7 @@ fn mitm_wrong_ca_fails() {
     assert_auth_err(
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new()
                 .tls(TlsClientOptions::new("localhost").ca_path(pki_good.ca_path())),
         ),
@@ -333,7 +333,7 @@ fn revoked_serial_fails() {
     assert_auth_err(
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new().tls(
                 TlsClientOptions::new("localhost")
                     .ca_path(pki.ca_path())
@@ -369,7 +369,7 @@ fn mtls_requires_client_cert() {
     assert_auth_err(
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new()
                 .tls(TlsClientOptions::new("localhost").ca_path(pki.ca_path())),
         ),
@@ -378,7 +378,7 @@ fn mtls_requires_client_cert() {
 
     let mut client = RemoteClient::connect_with(
         &bind,
-        format!("dingo://localhost:{port}/"),
+        format!("residuum://localhost:{port}/"),
         ConnectOptions::new().tls(
             TlsClientOptions::new("localhost")
                 .ca_path(pki.ca_path())
@@ -432,7 +432,7 @@ fn cert_rotation_keeps_new_handshakes_healthy() {
     let connect = || {
         RemoteClient::connect_with(
             &bind,
-            format!("dingo://localhost:{port}/"),
+            format!("residuum://localhost:{port}/"),
             ConnectOptions::new().tls(
                 TlsClientOptions::new("localhost")
                     .ca_path(pki.ca_path())
@@ -460,7 +460,7 @@ fn plaintext_loopback_still_works() {
     let shutdown = spawn_server(store, &bind, ServeOptions::new());
     let mut client = RemoteClient::connect_with(
         &bind,
-        format!("dingo://127.0.0.1:{port}/"),
+        format!("residuum://127.0.0.1:{port}/"),
         ConnectOptions::new(),
     )
     .unwrap();

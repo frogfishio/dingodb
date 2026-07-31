@@ -5,7 +5,7 @@
 //! fixtures under `tests/fixtures/protocol/`.
 
 
-use residuum_sdk::{client_handshake, encode_frame, json, read_frame, write_frame, write_json_frame, write_reject_frame, ConnectOptions, Dingo, ErrorCode, Handshake, HandshakeMsg, DEFAULT_MAX_FRAME_BYTES, FEATURE_JSON_RPC_V1, HANDSHAKE_MAX_FRAME_BYTES, PROTOCOL_MAJOR, PROTOCOL_PROFILE, REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL};
+use residuum_sdk::{client_handshake, encode_frame, json, read_frame, write_frame, write_json_frame, write_reject_frame, ConnectOptions, Residuum, ErrorCode, Handshake, HandshakeMsg, DEFAULT_MAX_FRAME_BYTES, FEATURE_JSON_RPC_V1, HANDSHAKE_MAX_FRAME_BYTES, PROTOCOL_MAJOR, PROTOCOL_PROFILE, REQUIRED_FEATURES, REQUIRED_WRITE_RECEIPT_FIELDS, RPC_WIRE_LABEL};
 
 
 use std::io::{BufReader, Write};
@@ -120,7 +120,7 @@ fn framed_handshake_and_ping_over_serve() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let bind = free_bind();
     let shutdown = spawn_server(path, &bind, ServeOptions::new());
@@ -142,8 +142,8 @@ fn framed_handshake_and_ping_over_serve() {
     assert_eq!(v["id"], 42);
 
     // SDK client path also handshakes.
-    let url = format!("dingo://{bind}/app");
-    let mut db = Dingo::connect(&url).unwrap();
+    let url = format!("residuum://{bind}/app");
+    let mut db = Residuum::connect(&url).unwrap();
     db.collection("docs")
         .unwrap()
         .put("k", &json!({"n": 1}))
@@ -158,7 +158,7 @@ fn legacy_line_client_fails_clearly() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let bind = free_bind();
     let shutdown = spawn_server(path, &bind, ServeOptions::new());
@@ -209,7 +209,7 @@ fn unsupported_protocol_major_rejected() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let bind = free_bind();
     let shutdown = spawn_server(path, &bind, ServeOptions::new());
@@ -242,7 +242,7 @@ fn oversized_frame_refused_without_full_read() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let bind = free_bind();
     let shutdown = spawn_server(path, &bind, ServeOptions::new());
@@ -288,7 +288,7 @@ fn diagnostic_line_protocol_opt_in() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let _ = Dingo::open(&path).unwrap();
+        let _ = Residuum::open(&path).unwrap();
     }
     let bind = free_bind();
     let shutdown = spawn_server(
@@ -316,8 +316,8 @@ fn diagnostic_line_protocol_opt_in() {
     assert_eq!(v["id"], 9);
 
     // Matching diagnostic client options.
-    let url = format!("dingo://{bind}/app");
-    let mut db = Dingo::connect_with(
+    let url = format!("residuum://{bind}/app");
+    let mut db = Residuum::connect_with(
         &url,
         ConnectOptions::new().diagnostic_line_protocol(true),
     )

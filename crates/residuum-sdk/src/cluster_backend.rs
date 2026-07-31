@@ -48,7 +48,7 @@ pub struct ClusterFindResult {
 pub struct ClusterBackend {
     cluster: Cluster,
     cache: ClientDirectoryCache,
-    /// Last store_id observed on a write (for Dingo::store_id when no writes yet).
+    /// Last store_id observed on a write (for Residuum::store_id when no writes yet).
     last_store_id: [u8; 16],
 }
 

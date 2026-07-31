@@ -9,7 +9,7 @@ use residuum_heap::{claim_language, may_advertise_qualified};
 /// Cargo feature name that enables the flat collection / token-remote surface.
 pub const LEGACY_FLAT_SDK_FEATURE: &str = "legacy-flat-sdk";
 
-/// Whether this build includes the legacy flat `Dingo::open` / `collection(name)` path.
+/// Whether this build includes the legacy flat `Residuum::open` / `collection(name)` path.
 ///
 /// When `false` (package default after CPR-001 flip), only deployment /
 /// `HeapCap` / `connect_heap` entry points are available. When `true` (opt-in

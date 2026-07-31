@@ -5,7 +5,7 @@ authorization, protocol admission, TLS bind policy, and network Raft control /
 data-plane glue.
 
 Use this crate when you embed a ResiduumDB TCP server in a Rust binary (the
-`dingo` CLI does exactly that). Application collection APIs and remote clients
+`residuum` CLI does exactly that). Application collection APIs and remote clients
 live in [`residuum-sdk`](https://crates.io/crates/residuum-sdk). Wire framing is MIT
 [`residuum-client`](https://crates.io/crates/residuum-client).
 
@@ -14,7 +14,7 @@ live in [`residuum-sdk`](https://crates.io/crates/residuum-sdk). Wire framing is
 | You want… | Use |
 |-----------|-----|
 | Embedded local store, no network | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) only |
-| CLI (`dingo serve`, `dingo doctor`, …) | [`residuum-cli`](https://crates.io/crates/residuum-cli) |
+| CLI (`residuum serve`, `residuum doctor`, …) | [`residuum-cli`](https://crates.io/crates/residuum-cli) |
 | Programmatic TCP serve from Rust | **`residuum-server`** (this crate) |
 | Wire framing / handshake only | [`residuum-client`](https://crates.io/crates/residuum-client) |
 
@@ -57,10 +57,10 @@ fn run(store_path: &Path) -> Result<(), residuum_sdk::Error> {
 Clients then connect with the SDK:
 
 ```rust
-use residuum_sdk::{ConnectOptions, Dingo};
+use residuum_sdk::{ConnectOptions, Residuum};
 
-let mut db = Dingo::connect_with(
-    "dingo://127.0.0.1:7434/app",
+let mut db = Residuum::connect_with(
+    "residuum://127.0.0.1:7434/app",
     ConnectOptions::new().auth_token("SECRET"),
 )?;
 # Ok::<(), residuum_sdk::Error>(())
@@ -183,7 +183,7 @@ rebalance, repair, and Jepsen gates remain open (DEF-038+).
 | [`residuum-sdk`](https://crates.io/crates/residuum-sdk) | MPL-2.0 | Collection + remote client API |
 | [`residuum-client`](https://crates.io/crates/residuum-client) | MIT | Framed RPC + handshake |
 | [`residuum-cluster`](https://crates.io/crates/residuum-cluster) | AGPL-3.0-or-later | Partitions, Raft, rebalance |
-| [`residuum-cli`](https://crates.io/crates/residuum-cli) | AGPL-3.0-or-later | `dingo serve` binary |
+| [`residuum-cli`](https://crates.io/crates/residuum-cli) | AGPL-3.0-or-later | `residuum serve` binary |
 
 ## License
 

@@ -23,7 +23,7 @@ by each crate’s `include` list in `Cargo.toml`.
 | `crates/residuum-sdk` | `residuum-sdk` | — | Collection API + dialects (incl. official `dql`) |
 | `crates/residuum-server` | `residuum-server` | — | Network serve runtime |
 | `crates/residuum-examine` | `residuum-examine` | — | Examination host |
-| `crates/residuum-cli` | `residuum-cli` | `dingo` | Operator CLI |
+| `crates/residuum-cli` | `residuum-cli` | `residuum` | Operator CLI |
 | `crates/residuum-cluster` | `residuum-cluster` | — | In-process federation |
 | `crates/residuum-testrig` | `residuum-testrig` | `residuum-testrig` | Stress rig (`publish = false`; workspace release only) |
 
@@ -69,7 +69,7 @@ Living scripts under `scripts/demos/`:
 | `README.md` | Index and run instructions |
 
 Demos are release artifacts: they must remain runnable from a clean checkout
-with a built `dingo` binary (or `DINGO_BIN`). They are not crates.io content.
+with a built `residuum` binary (or `RESIDUUM_BIN`). They are not crates.io content.
 
 ### Tooling
 

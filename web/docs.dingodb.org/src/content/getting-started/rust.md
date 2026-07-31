@@ -52,10 +52,10 @@ Replace `src/main.rs` with:
 
 ```rust
 // tested: repository SDK examples / stage suites exercise this surface
-use residuum_sdk::{json, Dingo, Filter};
+use residuum_sdk::{json, Residuum, Filter};
 
 fn main() -> Result<(), residuum_sdk::Error> {
-    let mut db = Dingo::open("./app.dingo")?;
+    let mut db = Residuum::open("./app.dingo")?;
     {
         let mut users = db.collection("users")?;
         users.put(
@@ -70,7 +70,7 @@ fn main() -> Result<(), residuum_sdk::Error> {
         }
     }
     // Dropping scopes releases the exclusive writer; reopen proves persistence.
-    let mut db2 = Dingo::open("./app.dingo")?;
+    let mut db2 = Residuum::open("./app.dingo")?;
     let users = db2.collection("users")?;
     let again = users.get("user-42")?;
     println!("reopened user-42: {:?}", again);
@@ -92,7 +92,7 @@ Run `cargo run` again. The store directory already exists; the put overwrites th
 
 ## 6. Where the store lives
 
-The path passed to `Dingo::open` is a **directory** tree managed by `residuum-store`. Do not hand-edit files inside it. For inspection, prefer CLI `doctor` / `scrub` / salvage tools.
+The path passed to `Residuum::open` is a **directory** tree managed by `residuum-store`. Do not hand-edit files inside it. For inspection, prefer CLI `doctor` / `scrub` / salvage tools.
 
 ## 7. Durability note
 

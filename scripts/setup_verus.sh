@@ -4,7 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Pin to a known-good weekly release (update deliberately).
-VERUS_VER="${DINGO_VERUS_VERSION:-0.2026.07.27.31579f0}"
+VERUS_VER="${RESIDUUM_VERUS_VERSION:-0.2026.07.27.31579f0}"
 OS=$(uname -s)
 ARCH=$(uname -m)
 case "$OS-$ARCH" in

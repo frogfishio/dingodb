@@ -26,7 +26,7 @@ Companion: [DEFECTS.md](../DEFECTS.md) DEF-063, [FORMAT_SPEC.md](../FORMAT_SPEC.
 [untrusted client / network]
         |  TLS / authz / admission (DEF-032–034)
         v
-[dingo serve / serve-cluster process]
+[residuum serve / serve-cluster process]
         |  local FS paths, flock writer ownership
         v
 [store root: segments, meta, derived]

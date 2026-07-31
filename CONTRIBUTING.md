@@ -98,7 +98,7 @@ crate must package completely:
 
 What counts as a release artifact (crates, specs, demos) is defined in
 [doc/RELEASE_ARTIFACTS.md](doc/RELEASE_ARTIFACTS.md). Local dry-runs on a dirty
-tree: `DINGO_RELEASE_ALLOW_DIRTY=1 ./scripts/release_content.sh`.
+tree: `RESIDUUM_RELEASE_ALLOW_DIRTY=1 ./scripts/release_content.sh`.
 
 ### Nightly packaging
 
@@ -125,7 +125,7 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 | Store | `residuum-store` | Authority + tiers + media mirrors (early-access) |
 | SDK | `residuum-sdk` | `SDK_API_VERSION` = `1.0` |
 | Examination | `residuum-examine` | Profile over salvage |
-| CLI | `dingo` | doctor / salvage / development `serve` / experimental `serve-cluster` |
+| CLI | `residuum` | doctor / salvage / development `serve` / experimental `serve-cluster` |
 | Cluster | `residuum-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
 Immediate package selection, priority, and release order:

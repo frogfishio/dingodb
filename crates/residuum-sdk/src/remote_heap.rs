@@ -1,12 +1,12 @@
 //! Qualified remote heap connection (`HEAP_SPEC` §7.1 / §30.9 / HP-007 residual).
 //!
-//! `Dingo::connect_heap` performs TLS 1.3 + HeapKey handshake
+//! `Residuum::connect_heap` performs TLS 1.3 + HeapKey handshake
 //! (`hello` → `heap_challenge` → `heap_auth` → `welcome`) and returns a
 //! [`RemoteHeap`] session bound to one `HeapId`. Active process ops 1–3 plus
 //! §32.4 data (105–106/110–112/114–117/120–122) and secondary indexes (130–133).
 
 use crate::error::Error;
-use crate::remote::{parse_dingo_url, DEFAULT_PORT};
+use crate::remote::{parse_residuum_url, DEFAULT_PORT};
 use crate::tls::{client_connect, IoStream, TlsClientOptions};
 use residuum_client::{
     b64u_decode, b64u_encode, read_frame, write_json_frame, Handshake, HeapAuth, HeapChallenge,
@@ -143,7 +143,7 @@ impl HolderSigner for InMemoryHolderKey {
     }
 }
 
-/// Options for [`crate::Dingo::connect_heap`].
+/// Options for [`crate::Residuum::connect_heap`].
 ///
 /// TLS is mandatory. There is no token, role, username, diagnostic-line,
 /// plaintext, or caller-supplied heap-id field.
@@ -732,7 +732,7 @@ pub struct RemoteCreatedCollection {
     pub replayed: bool,
 }
 
-/// Connect to a qualified heap listener (`dingo://host:port[/label]`).
+/// Connect to a qualified heap listener (`residuum://host:port[/label]`).
 ///
 /// The URL path label is an expected human name only when
 /// [`RemoteHeapOptions::expected_heap_name`] is not set; when both are set the
@@ -742,9 +742,9 @@ pub fn connect_heap(
     options: RemoteHeapOptions,
 ) -> Result<RemoteHeap, Error> {
     let url = url.as_ref();
-    let parsed = parse_dingo_url(url)?;
+    let parsed = parse_residuum_url(url)?;
     if parsed.seeds.is_empty() {
-        return Err(Error::ValidationMsg("empty dingo:// URL".into()));
+        return Err(Error::ValidationMsg("empty residuum:// URL".into()));
     }
     let expected_name = options
         .expected_heap_name

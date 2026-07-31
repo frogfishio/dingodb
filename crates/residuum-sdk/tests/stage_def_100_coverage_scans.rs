@@ -1,12 +1,12 @@
 //! DEF-100 — Collection coverage-aware key / document scans (embedded).
 
-use residuum_sdk::{json, Dingo, Error};
+use residuum_sdk::{json, Residuum, Error};
 use tempfile::tempdir;
 
 #[test]
 fn scan_keys_lists_verified_keys_around_chunked_values() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("db")).unwrap();
+    let mut db = Residuum::open(dir.path().join("db")).unwrap();
     let mut coll = db.collection("chats").unwrap();
 
     coll.put("a", &json!({"t": 1})).unwrap();
@@ -21,7 +21,7 @@ fn scan_keys_lists_verified_keys_around_chunked_values() {
 #[test]
 fn scan_keys_page_and_partial_document_page() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("db")).unwrap();
+    let mut db = Residuum::open(dir.path().join("db")).unwrap();
     let mut coll = db.collection("docs").unwrap();
 
     for i in 0..5 {
@@ -54,7 +54,7 @@ fn scan_keys_page_and_partial_document_page() {
 #[test]
 fn scan_json_page_still_succeeds_when_complete() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("db")).unwrap();
+    let mut db = Residuum::open(dir.path().join("db")).unwrap();
     let mut coll = db.collection("ok").unwrap();
     coll.put("x", &json!(1)).unwrap();
     let page = coll.scan_json_page(8, None).unwrap();
@@ -65,7 +65,7 @@ fn scan_json_page_still_succeeds_when_complete() {
 #[test]
 fn scan_keys_empty_collection_complete() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("db")).unwrap();
+    let mut db = Residuum::open(dir.path().join("db")).unwrap();
     let mut coll = db.collection("empty").unwrap();
     let keys = coll.scan_keys().unwrap();
     assert!(keys.is_empty());

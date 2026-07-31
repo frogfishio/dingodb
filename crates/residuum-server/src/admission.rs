@@ -100,7 +100,7 @@ impl Default for AdmissionLimits {
 }
 
 impl AdmissionLimits {
-    /// Draft defaults used by `dingo serve` and library helpers.
+    /// Draft defaults used by `residuum serve` and library helpers.
     pub fn draft_defaults() -> Self {
         Self::default()
     }

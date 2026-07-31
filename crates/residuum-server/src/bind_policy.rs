@@ -1,4 +1,4 @@
-//! Bind policy for `dingo serve` / `serve-cluster` (DEF-002 + DEF-032).
+//! Bind policy for `residuum serve` / `serve-cluster` (DEF-002 + DEF-032).
 //!
 //! Defaults stay on loopback. Non-loopback **plaintext** binds are refused
 //! unless the operator opts in with `--allow-insecure-bind`. Non-loopback
@@ -137,7 +137,7 @@ pub struct ServeStartupReport {
 }
 
 impl ServeStartupReport {
-    /// Single-node `dingo serve` defaults.
+    /// Single-node `residuum serve` defaults.
     pub fn single_node(
         path: impl Into<String>,
         bind: impl Into<String>,
@@ -147,7 +147,7 @@ impl ServeStartupReport {
         Self::single_node_tls(path, bind, auth_enabled, allow_insecure_bind, false, false)
     }
 
-    /// Single-node `dingo serve` with explicit TLS flags.
+    /// Single-node `residuum serve` with explicit TLS flags.
     pub fn single_node_tls(
         path: impl Into<String>,
         bind: impl Into<String>,
@@ -171,7 +171,7 @@ impl ServeStartupReport {
         }
     }
 
-    /// Network `dingo serve-cluster` defaults (experimental; Raft when attached).
+    /// Network `residuum serve-cluster` defaults (experimental; Raft when attached).
     pub fn cluster_node(
         path: impl Into<String>,
         bind: impl Into<String>,
@@ -190,7 +190,7 @@ impl ServeStartupReport {
         )
     }
 
-    /// Network `dingo serve-cluster` with explicit TLS flags.
+    /// Network `residuum serve-cluster` with explicit TLS flags.
     pub fn cluster_node_tls(
         path: impl Into<String>,
         bind: impl Into<String>,

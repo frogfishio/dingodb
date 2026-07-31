@@ -45,11 +45,11 @@ if command -v cargo >/dev/null 2>&1 && cargo kani --version >/dev/null 2>&1; the
     --default-unwind 16 \
     || fail "cargo kani pure proof bundle failed"
 else
-  if [[ "${DINGO_REQUIRE_KANI:-}" == "1" ]]; then
-    fail "cargo kani required (DINGO_REQUIRE_KANI=1) but not installed"
+  if [[ "${RESIDUUM_REQUIRE_KANI:-}" == "1" ]]; then
+    fail "cargo kani required (RESIDUUM_REQUIRE_KANI=1) but not installed"
   fi
   echo "check_kani_heap: cargo kani not installed — harness sources + executable lemmas OK"
-  echo "  (CI kani-heap job installs kani-verifier and sets DINGO_REQUIRE_KANI=1)"
+  echo "  (CI kani-heap job installs kani-verifier and sets RESIDUUM_REQUIRE_KANI=1)"
 fi
 
 echo "check_kani_heap: OK"

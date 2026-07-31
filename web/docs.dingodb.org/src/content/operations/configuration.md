@@ -32,14 +32,14 @@ Medium if mis-binding network interfaces.
 
 ## Prerequisites
 
-- Built `dingo` CLI
+- Built `residuum` CLI
 - Config file under your control
 
 ## Pre-flight checks
 
 ```bash
-dingo config validate --config ./dingo.json
-dingo config show --config ./dingo.json
+residuum config validate --config ./dingo.json
+residuum config show --config ./dingo.json
 ```
 
 ## Procedure

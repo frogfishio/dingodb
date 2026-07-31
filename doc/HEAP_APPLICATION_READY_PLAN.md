@@ -39,7 +39,7 @@ RBAC lookup.
 Target application surface:
 
 ```rust
-let deployment = Dingo::open_deployment("./data")?;
+let deployment = Residuum::open_deployment("./data")?;
 
 let acme = deployment.open_heap(acme_key)?;
 let users = acme.create_collection("users")?;
@@ -62,7 +62,7 @@ let key = local.issue_key(
 `HeapAuthority` is illustrative naming for the package. Implementers MAY reuse
 the existing `residuum-authority` types, but MUST preserve the separation:
 
-- ordinary `Dingo`/`RemoteHeap` handles cannot wield master authority;
+- ordinary `Residuum`/`RemoteHeap` handles cannot wield master authority;
 - network data connections cannot execute master-key ceremonies;
 - local authority APIs are not linked into the qualified data server.
 

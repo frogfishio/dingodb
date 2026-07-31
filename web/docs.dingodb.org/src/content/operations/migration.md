@@ -29,8 +29,8 @@ High if pointed at production without backup.
 ## Procedure
 
 ```bash
-dingo migrate "$STORE" --preflight
-dingo migrate "$STORE" --plan-only
+residuum migrate "$STORE" --preflight
+residuum migrate "$STORE" --plan-only
 # apply only after reviewing plan on non-production data
 ```
 

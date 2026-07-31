@@ -123,7 +123,7 @@ Two client-side patterns at the same (customers, products, orders) scales:
 | Pattern | Where join lives | Harness |
 |---------|------------------|---------|
 | **Nested SDA** | Pure SDA nested yields over combined bag | `multi_collection_sda_join_perf` |
-| **Host hash equijoin + SDA normalise** | `Dingo::query` progressive hash join; SDA projects | `multi_query_join_perf` |
+| **Host hash equijoin + SDA normalise** | `Residuum::query` progressive hash join; SDA projects | `multi_query_join_perf` |
 
 ```bash
 # Nested SDA join (release)
@@ -151,7 +151,7 @@ call — optional A2 residual for the multi-query helper).
 
 | Finding | Implication |
 |---------|-------------|
-| Host join ~75× faster than nested SDA at small | Prefer `Dingo::query` + optional `map_sda`; do not nest joins in SDA |
+| Host join ~75× faster than nested SDA at small | Prefer `Residuum::query` + optional `map_sda`; do not nest joins in SDA |
 | Collect ~ms through mod; SDA normalise grows with bag | Next optional residual: compile-once `map_joined_sda` + strip fat fields before normalise |
 | Seed still dominates wall on tiny stores | Perf claims must separate seed I/O from join CPU |
 

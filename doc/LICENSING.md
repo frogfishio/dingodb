@@ -109,7 +109,7 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 | `residuum-testrig` | **MPL-2.0** | Unpublished store stress/chaos tool |
 | `residuum-cluster` | **AGPL-3.0-or-later** | |
 | `residuum-server` | **AGPL-3.0-or-later** | Enables `residuum-sdk/cluster` |
-| `residuum-cli` → `dingo` | **AGPL-3.0-or-later** | Enables `residuum-sdk/cluster` |
+| `residuum-cli` → `residuum` | **AGPL-3.0-or-later** | Enables `residuum-sdk/cluster` |
 | `residuum-authority` | **AGPL-3.0-or-later** | Planned separate local-only heap authority executable; never linked by data server |
 | `dingo-studio-core` | **AGPL-3.0-or-later** | Planned Studio orchestration and remote-management core |
 | `apps/dingo-studio` | **AGPL-3.0-or-later** | Planned Residuum Studio desktop product |
@@ -139,9 +139,9 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 
 | Module group | Natural tier | Status |
 |--------------|--------------|--------|
-| `collection`, `dingo` (local open), `filter`, `history`, `indexes`, `value`, `receipt`, `error` | **Embedded** (MPL) | Always on |
+| `collection`, `residuum` (local open), `filter`, `history`, `indexes`, `value`, `receipt`, `error` | **Embedded** (MPL) | Always on |
 | `remote`, `directory_cache` (wire types, no `residuum-cluster`), client TLS, connect helpers | **Remote client** (MPL; wire re-export MIT) | Always on; directory cache no longer imports AGPL types |
-| `cluster_backend`, `Dingo::open_cluster` / `create_cluster` | **Networked / AGPL** | Behind `features = ["cluster"]` only |
+| `cluster_backend`, `Residuum::open_cluster` / `create_cluster` | **Networked / AGPL** | Behind `features = ["cluster"]` only |
 
 **Today:** default `residuum-sdk` is honestly **MPL-2.0** (depends on `residuum-store` +
 `residuum-client`, not `residuum-cluster`). Builds with `cluster` pull AGPL
@@ -156,7 +156,7 @@ the AGPL dependency. Serve path lives only in `residuum-server`.
 | `residuum-client` | wire framing + handshake | MIT | — |
 | `residuum-heap` | heap identity, credentials, capability and pure decision kernel | MIT | format |
 | `residuum-store` | unchanged | MPL-2.0 | format |
-| `residuum-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, residuum-sda; optional cluster |
+| `residuum-sdk` | `Residuum::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, residuum-sda; optional cluster |
 | `residuum-testrig` | unpublished store stress, chaos, and performance rig | MPL-2.0 | store |
 | `residuum-examine` | unchanged | MPL-2.0 | store, format, residuum-sda |
 | `residuum-cluster` | unchanged | AGPL-3.0-or-later | store |
@@ -198,7 +198,7 @@ store remains an optional business track; keep pure client and format MIT.
    adds `residuum-heap` as MIT and HP-005 adds `residuum-authority` as AGPL.
 2. **LICENSE files** — root multi-license tree (done).
 3. **README + CONTRIBUTING** — multi-license notice; inbound = outbound (done).
-4. **CLI `--license`** — `residuum-sda` MIT and `dingo` AGPL are done;
+4. **CLI `--license`** — `residuum-sda` MIT and `residuum` AGPL are done;
    `residuum-authority` MUST report AGPL when HP-005 creates it.
 5. **Publish `residuum-sdk` as MPL-2.0** with default features only (no
    `residuum-cluster`). Document that `features = ["cluster"]` pulls AGPL.
@@ -233,5 +233,5 @@ AGPL dependency.
 **Adopted:** keep **SDA and the wire format MIT**; keep a **thin network
 client MIT** (`residuum-client`); put **MPL-2.0 on the embedded store, examination
 host, and default `residuum-sdk`** (embedded + remote); put **AGPL-3.0-or-later on
-cluster, server, the `dingo` operator binary**, and any build that enables
+cluster, server, the `residuum` operator binary**, and any build that enables
 `residuum-sdk`’s `cluster` feature.

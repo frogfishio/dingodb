@@ -5,14 +5,14 @@
 //! Null vs absence (SDA_SPEC §4.0.1).
 
 use residuum_sdk::{
-    compile_dialect, json, list_builtin_dialects, BuiltinDialect, Dingo, SdaShape,
+    compile_dialect, json, list_builtin_dialects, BuiltinDialect, Residuum, SdaShape,
 };
 use tempfile::tempdir;
 
 #[test]
 fn find_dialect_sql_and_json_on_collection() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("d.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("d.dingo")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users
@@ -173,7 +173,7 @@ fn pure_sda_null_vs_absence_sql_is_null_collapses() {
 #[test]
 fn find_dialect_sql_is_null_on_collection() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("d.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("d.dingo")).unwrap();
     {
         let mut users = db.collection("users").unwrap();
         users

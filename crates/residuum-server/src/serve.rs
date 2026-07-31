@@ -41,15 +41,15 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-/// Server options for `dingo serve` / [`serve_store_with`] / cluster node serve.
+/// Server options for `residuum serve` / [`serve_store_with`] / cluster node serve.
 #[derive(Debug, Clone)]
 pub struct ServeOptions {
     /// When set, every RPC must carry a matching `token` field.
     pub auth_token: Option<String>,
     /// When set, `directory` RPC returns this snapshot (network multi-node serve).
     ///
-    /// Single-node `dingo serve` leaves this unset and synthesizes an all-local
-    /// directory. Cluster nodes (`dingo serve-cluster`) pass real placement +
+    /// Single-node `residuum serve` leaves this unset and synthesizes an all-local
+    /// directory. Cluster nodes (`residuum serve-cluster`) pass real placement +
     /// `endpoints.json` so clients can cache routes (CLUSTER_SPEC §13).
     ///
     /// When [`Self::cluster_root`] is also set, each `directory` RPC reloads
@@ -615,7 +615,7 @@ pub fn serve_store_with(
         )
         .emit_stderr();
         eprintln!(
-            "dingo serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
+            "residuum serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
              tls={TLS_PROFILE}/{} admission={ADMISSION_PROFILE} log={LOG_PROFILE} \
              metrics={METRICS_PROFILE} health={HEALTH_PROFILE} \
              max_connections={} idle_timeout_ms={} global_rps={} diagnostic_line={}",
@@ -749,7 +749,7 @@ fn serve_accept_loop(
     let stats = runtime.stats();
     let drain_status = if idle { "complete" } else { "timeout" };
     eprintln!(
-        "dingo serve: drain {drain_status} active={} peak={} rejected={} accepted={} \
+        "residuum serve: drain {drain_status} active={} peak={} rejected={} accepted={} \
          mutations_started={} mutations_finished={}",
         stats.active_connections,
         stats.peak_connections,
@@ -934,7 +934,7 @@ fn server_handshake_buffered(reader: &mut BufReader<IoStream>) -> Result<Negotia
 /// control-plane `raft_*` RPCs (DEF-036) and data-plane collection put/delete
 /// via Raft propose (DEF-037) are served from durable peer stores under
 /// `{cluster_root}/raft/`. Acks report `committed=true` only after quorum.
-/// In-process quorum remains available via `Dingo::open_cluster`.
+/// In-process quorum remains available via `Residuum::open_cluster`.
 ///
 /// **Experimental (DEF-002):** requires
 /// [`ServeOptions::experimental_network_cluster`].
@@ -1019,7 +1019,7 @@ pub fn serve_cluster_node(
             Err(e) => {
                 // Raft attach is best-effort: routing-only serve still works.
                 eprintln!(
-                    "dingo serve-cluster: raft control plane not attached: {e} (directory-only mode)"
+                    "residuum serve-cluster: raft control plane not attached: {e} (directory-only mode)"
                 );
                 opts.effective_logger()
                     .warn(log_events::RAFT_ATTACH_FAILED)
@@ -1047,7 +1047,7 @@ pub fn serve_cluster_node(
         )
         .emit_stderr();
         eprintln!(
-            "dingo serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={} raft={} log={LOG_PROFILE}",
+            "residuum serve-cluster: root={} node={node_index} store={} bind={bind} nodes={} tls={} raft={} log={LOG_PROFILE}",
             root.display(),
             store_path.display(),
             meta.node_count,

@@ -30,7 +30,7 @@ echo "== Stage 6 bench skeleton =="
 cargo test -p residuum-store --test stage6_bench_skeleton -- --nocapture
 
 echo "== DEF-022 full crash matrix =="
-DINGO_CRASH_MATRIX_FULL=1 cargo test -p residuum-store --test stage_def_022_crash_matrix -- --nocapture --test-threads=1
+RESIDUUM_CRASH_MATRIX_FULL=1 cargo test -p residuum-store --test stage_def_022_crash_matrix -- --nocapture --test-threads=1
 
 echo "== Stage 7 CLI =="
 cargo test -p residuum-cli --test cli -- --nocapture
@@ -38,7 +38,7 @@ cargo test -p residuum-cli --test cli -- --nocapture
 echo "== DEF-091-F fuzz smoke (property bar + optional cargo-fuzz) =="
 # Property tests always; cargo-fuzz when nightly+cargo-fuzz installed.
 # CI nightly workflow runs the full 30s×N cargo-fuzz list.
-DINGO_FUZZ_SECONDS="${DINGO_FUZZ_SECONDS:-5}" bash ./scripts/fuzz-smoke.sh
+RESIDUUM_FUZZ_SECONDS="${RESIDUUM_FUZZ_SECONDS:-5}" bash ./scripts/fuzz-smoke.sh
 
 echo "== DEF-041-N multiproc OS chaos (short soak) =="
 cargo test -p residuum-cluster --test stage_def_041n_multiproc -- --nocapture

@@ -441,7 +441,7 @@ All UUIDs (**sessionId**, **conversationId**, **projectId**, **package_id**, **t
 
 ### Phase 0 — Prerequisites (ResiduumDB + Gremlin)
 
-1. **Embedded open path** stable: `Dingo::open(path)` local store used by daemon tests.  
+1. **Embedded open path** stable: `Residuum::open(path)` local store used by daemon tests.  
 2. **Stream append + cursor read** API usable from Rust (`residuum-sdk`).  
 3. **Collection put/get/history** usable.  
 4. **Durability modes** mapped: journal `every_batch` → ResiduumDB durability that fsyncs segment; `terminal_only` → group mid-turn stream appends + fsync on terminal kinds.  
@@ -522,7 +522,7 @@ function import_journal(path, session_id):
   stream = dingo.stream("gremlin.journal." + session_id)
   for r in records:
     stream.append(id=str(r.seq), value=r, metadata={ kind: r.kind, turnId: r.turnId })
-  dingo.collection("gremlin.session_manifest").put(session_id, {
+  residuum.collection("gremlin.session_manifest").put(session_id, {
     next_seq: expected_seq,
     head_hash: prev_hash
   })
@@ -574,7 +574,7 @@ trait SessionStore {
 }
 
 struct FsSessionStore { ... }       // today’s journal_store.rs
-struct DingoSessionStore { dingo: Dingo }
+struct DingoSessionStore { dingo: Residuum }
 struct DualSessionStore { fs, dingo, mode }
 ```
 

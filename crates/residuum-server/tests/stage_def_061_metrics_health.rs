@@ -9,7 +9,7 @@
 //! - credentials / payloads never appear in health or metrics JSON
 
 use residuum_sdk::{
-    client_handshake, json, read_frame, write_frame, ConnectOptions, Dingo, DEFAULT_MAX_FRAME_BYTES,
+    client_handshake, json, read_frame, write_frame, ConnectOptions, Residuum, DEFAULT_MAX_FRAME_BYTES,
 };
 use residuum_server::{
     serve_store_with, MetricsRegistry, ServeOptions, ServerLimits, ServerRuntime, HEALTH_PROFILE,
@@ -46,7 +46,7 @@ fn start_server(
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
     let store_path = dir.path().join("log.dingo");
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
     let bind_c = bind.clone();
@@ -210,8 +210,8 @@ fn put_traffic_increments_metrics_with_bounded_labels() {
         start_server(&dir, ServeOptions::new().metrics(Arc::clone(&metrics)));
 
     {
-        let uri = format!("dingo://{bind}/app");
-        let mut db = Dingo::connect_with(&uri, ConnectOptions::new()).expect("connect");
+        let uri = format!("residuum://{bind}/app");
+        let mut db = Residuum::connect_with(&uri, ConnectOptions::new()).expect("connect");
         let mut col = db.collection("docs").unwrap();
         col.put("k1", &json!({"ssn": "123-45-6789"})).unwrap();
         let _ = col.get("k1").unwrap();
@@ -266,7 +266,7 @@ fn put_traffic_increments_metrics_with_bounded_labels() {
 fn readiness_fails_when_runtime_draining() {
     let dir = TempDir::new().unwrap();
     let store_path = dir.path().join("log.dingo");
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
 
     // Inject a pre-draining runtime so health_ready fails closed without waiting
     // for full accept-loop shutdown races.

@@ -1,14 +1,14 @@
 //! Database handle entry points (`DX_SPEC` §4 / `HEAP_SPEC` §7.1 / CPR-001).
 //!
-//! - **Heap-bound (always):** [`Dingo::open_deployment`], [`Dingo::connect_heap`]
-//! - **Legacy flat (feature `legacy-flat-sdk`, default on):** [`Dingo::open`],
-//!   [`Dingo::collection`], token [`Dingo::connect`], cluster open
+//! - **Heap-bound (always):** [`Residuum::open_deployment`], [`Residuum::connect_heap`]
+//! - **Legacy flat (feature `legacy-flat-sdk`, default on):** [`Residuum::open`],
+//!   [`Residuum::collection`], token [`Residuum::connect`], cluster open
 
 #[cfg(feature = "legacy-flat-sdk")]
 mod flat;
 
 #[cfg(feature = "legacy-flat-sdk")]
-pub use flat::Dingo;
+pub use flat::Residuum;
 #[cfg(feature = "legacy-flat-sdk")]
 pub(crate) use flat::Backend;
 
@@ -19,9 +19,9 @@ mod heap_only {
     use std::path::Path;
 
     /// Namespace for heap-bound entry points when `legacy-flat-sdk` is disabled.
-    pub struct Dingo;
+    pub struct Residuum;
 
-    impl Dingo {
+    impl Residuum {
         /// Open a store directory as a **deployment host** (heap-bound).
         pub fn open_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
             DingoDeployment::open(path)
@@ -43,4 +43,4 @@ mod heap_only {
 }
 
 #[cfg(not(feature = "legacy-flat-sdk"))]
-pub use heap_only::Dingo;
+pub use heap_only::Residuum;

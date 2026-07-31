@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-BIN="${DINGO_TESTRIG_BIN:-}"
+BIN="${RESIDUUM_TESTRIG_BIN:-}"
 if [[ -z "$BIN" ]]; then
   cargo build -q -p residuum-testrig
   BIN="$ROOT/target/debug/residuum-testrig"

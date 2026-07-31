@@ -4,7 +4,7 @@ Narrative checkpoints from [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md) §8.
 Stages **0–9** are complete; these scripts are the live smoke path for the
 product thesis (*damage it; find what survived*).
 
-Run from the repo root (or set `DINGO_BIN` to a built `dingo` binary).
+Run from the repo root (or set `RESIDUUM_BIN` to a built `residuum` binary).
 
 | Script | What it proves |
 |--------|----------------|

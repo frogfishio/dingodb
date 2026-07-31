@@ -60,7 +60,7 @@ pub fn run_console(_store: &Path) -> Result<(), String> {
 }
 
 fn print_help() {
-    println!("Dingo console v1 (mixed mode)");
+    println!("Residuum console v1 (mixed mode)");
     println!("Meta commands:");
     println!("  .help           Show this help");
     println!("  .collections   List collections");

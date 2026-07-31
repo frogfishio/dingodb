@@ -15,7 +15,7 @@ projects store evidence into SDA values.
 |-----------|-----|
 | Pure SDA over arbitrary JSON | [`residuum-sda`](https://crates.io/crates/residuum-sda) |
 | Examine a ResiduumDB store / salvage stream | **`residuum-examine`** (this crate) |
-| CLI health report | `dingo doctor` ([`residuum-cli`](https://crates.io/crates/residuum-cli)) |
+| CLI health report | `residuum doctor` ([`residuum-cli`](https://crates.io/crates/residuum-cli)) |
 
 ## Install
 
@@ -37,7 +37,7 @@ Rule:
 > If ResiduumDB can recover it, SDA can examine it.
 
 SDA remains pure. Storage access, decoding, and resource control happen in this
-host before evaluation. The `dingo doctor` CLI uses this crate for recovery
+host before evaluation. The `residuum doctor` CLI uses this crate for recovery
 unit summaries.
 
 ## Quick example
@@ -95,7 +95,7 @@ a silent empty success.
 | [`residuum-sda`](https://crates.io/crates/residuum-sda) | MIT | Pure SDA language runtime |
 | [`residuum-store`](https://crates.io/crates/residuum-store) | MPL-2.0 | Store salvage sources |
 | [`residuum-format`](https://crates.io/crates/residuum-format) | MIT | Frame verification under salvage |
-| [`residuum-cli`](https://crates.io/crates/residuum-cli) | AGPL-3.0-or-later | `dingo doctor` |
+| [`residuum-cli`](https://crates.io/crates/residuum-cli) | AGPL-3.0-or-later | `residuum doctor` |
 
 ## Documentation
 

@@ -156,10 +156,10 @@ RQL compiles to pure ENR1/SDA text. You then bind the named collections and
 execute that program.
 
 ```rust
-use residuum_sdk::{compile_dialect, json, Dingo};
+use residuum_sdk::{compile_dialect, json, Residuum};
 
 fn main() -> Result<(), residuum_sdk::Error> {
-    let mut db = Dingo::open("./app.dingo")?;
+    let mut db = Residuum::open("./app.dingo")?;
 
     // Load sample data (abbreviated).
     {

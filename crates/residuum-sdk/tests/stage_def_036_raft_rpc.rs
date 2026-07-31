@@ -8,7 +8,7 @@
 use residuum_cluster::{
     ClusterId, LogCommand, NodeId, PartitionId, PlacementEpoch, RequestVoteRequest,
 };
-use residuum_sdk::{ConnectOptions, Dingo, RemoteClient};
+use residuum_sdk::{ConnectOptions, Residuum, RemoteClient};
 
 
 use std::collections::HashMap;
@@ -45,7 +45,7 @@ fn start_peer(
     token: &str,
 ) -> (String, Arc<AtomicBool>, thread::JoinHandle<()>) {
     let store_path = store_dir.path().join(name);
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
     let bind_c = bind.clone();

@@ -28,7 +28,7 @@ still required before production security claims.
 
 ## Console / CLI
 
-ResiduumDB includes a small CLI binary named `dingo`.
+ResiduumDB includes a small CLI binary named `residuum`.
 
 ### Run an interactive console
 

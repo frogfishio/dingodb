@@ -1,4 +1,4 @@
-//! Framed, versioned JSON RPC for `dingo://` remote access (Stages 7 + 8d, DEF-031).
+//! Framed, versioned JSON RPC for `residuum://` remote access (Stages 7 + 8d, DEF-031).
 //!
 //! Server and client share the same request/response shapes. Transport is TCP.
 //! **Production profile** (`dingo-rpc-v1`):
@@ -39,7 +39,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::Duration;
 
-/// Default TCP port from DX_SPEC server examples (`dingo://localhost:7434/...`).
+/// Default TCP port from DX_SPEC server examples (`residuum://localhost:7434/...`).
 pub const DEFAULT_PORT: u16 = 7434;
 
 /// Client connection options (DX_SPEC §4.2: authn, deadlines, retry).
@@ -403,7 +403,7 @@ impl IndexInfoRow {
 /// Maximum transport retries after a directory refresh (multi-hop polish).
 const MAX_ROUTE_TRANSPORT_RETRIES: u32 = 3;
 
-/// Client connection to a `dingo serve` / `dingo serve-cluster` process.
+/// Client connection to a `residuum serve` / `residuum serve-cluster` process.
 ///
 /// After connect the client fetches a partition [`DirectorySnapshot`] and, for
 /// keyed ops, routes to the advertised leader `host:port` (CLUSTER_SPEC §13).
@@ -412,7 +412,7 @@ pub struct RemoteClient {
     /// Buffered transport (plaintext or TLS). Writes use `reader.get_mut()`.
     reader: BufReader<IoStream>,
     next_id: AtomicU64,
-    /// Logical URL (`dingo://…`) for display / errors.
+    /// Logical URL (`residuum://…`) for display / errors.
     endpoint: String,
     /// TCP address of the current connection (`host:port`).
     addr: String,
@@ -440,7 +440,7 @@ impl RemoteClient {
     /// Connect with explicit auth / deadline / retry options.
     ///
     /// On success, loads a partition directory snapshot for multi-hop routing
-    /// when the server advertises real endpoints (`dingo serve-cluster`).
+    /// when the server advertises real endpoints (`residuum serve-cluster`).
     pub fn connect_with(
         addr: &str,
         endpoint: String,
@@ -1547,26 +1547,26 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, Error> {
     Ok(out)
 }
 
-/// Parsed `dingo://` URL (Stage 7 single-seed; Stage 8d multi-seed).
+/// Parsed `residuum://` URL (Stage 7 single-seed; Stage 8d multi-seed).
 ///
 /// Forms:
-/// - `dingo://host:port[/label]`
-/// - `dingo://h1:p1,h2:p2,h3:p3[/label]` (comma-separated seeds)
+/// - `residuum://host:port[/label]`
+/// - `residuum://h1:p1,h2:p2,h3:p3[/label]` (comma-separated seeds)
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParsedDingoUrl {
+pub struct ParsedResiduumUrl {
     /// Seed endpoints as `host:port` (at least one).
     pub seeds: Vec<String>,
     /// Optional path label (informational for Stage 7/8d).
     pub label: Option<String>,
 }
 
-/// Parse a `dingo://host:port[/path]` or multi-seed URL.
-pub fn parse_dingo_url(url: &str) -> Result<ParsedDingoUrl, Error> {
+/// Parse a `residuum://host:port[/path]` or multi-seed URL.
+pub fn parse_residuum_url(url: &str) -> Result<ParsedResiduumUrl, Error> {
     let rest = url
-        .strip_prefix("dingo://")
-        .ok_or_else(|| Error::ValidationMsg("URL must start with dingo://".into()))?;
+        .strip_prefix("residuum://")
+        .ok_or_else(|| Error::ValidationMsg("URL must start with residuum://".into()))?;
     if rest.is_empty() {
-        return Err(Error::ValidationMsg("empty dingo:// URL".into()));
+        return Err(Error::ValidationMsg("empty residuum:// URL".into()));
     }
     let (hosts_part, label) = match rest.split_once('/') {
         Some((hp, path)) => {
@@ -1583,7 +1583,7 @@ pub fn parse_dingo_url(url: &str) -> Result<ParsedDingoUrl, Error> {
         None => (rest, None),
     };
     if hosts_part.is_empty() {
-        return Err(Error::ValidationMsg("dingo:// URL missing host".into()));
+        return Err(Error::ValidationMsg("residuum:// URL missing host".into()));
     }
     let mut seeds = Vec::new();
     for part in hosts_part.split(',') {
@@ -1599,9 +1599,9 @@ pub fn parse_dingo_url(url: &str) -> Result<ParsedDingoUrl, Error> {
         seeds.push(hostport);
     }
     if seeds.is_empty() {
-        return Err(Error::ValidationMsg("dingo:// URL has no seeds".into()));
+        return Err(Error::ValidationMsg("residuum:// URL has no seeds".into()));
     }
-    Ok(ParsedDingoUrl { seeds, label })
+    Ok(ParsedResiduumUrl { seeds, label })
 }
 
 #[cfg(test)]
@@ -1655,13 +1655,13 @@ mod tests {
 
     #[test]
     fn parse_url() {
-        let p = parse_dingo_url("dingo://localhost:7434/app").unwrap();
+        let p = parse_residuum_url("residuum://localhost:7434/app").unwrap();
         assert_eq!(p.seeds, vec!["localhost:7434".to_string()]);
         assert_eq!(p.label.as_deref(), Some("app"));
-        let p = parse_dingo_url("dingo://127.0.0.1").unwrap();
+        let p = parse_residuum_url("residuum://127.0.0.1").unwrap();
         assert_eq!(p.seeds, vec!["127.0.0.1:7434".to_string()]);
         assert!(p.label.is_none());
-        let p = parse_dingo_url("dingo://a:1,b:2,c:3/app").unwrap();
+        let p = parse_residuum_url("residuum://a:1,b:2,c:3/app").unwrap();
         assert_eq!(
             p.seeds,
             vec!["a:1".to_string(), "b:2".to_string(), "c:3".to_string()]

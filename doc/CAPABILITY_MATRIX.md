@@ -11,10 +11,10 @@ with the acceptance evidence expected before a stronger label.
 
 | Profile | How to run | Durability / replication | Maturity | Evidence |
 |---------|------------|---------------------------|----------|----------|
-| Embedded single-node | `Dingo::open(path)` | Local store durability modes (`memory` / `buffered` / `durable`) | experimental / early-access | `residuum-store` / `residuum-sdk` stage suites |
-| Single-node TCP | `dingo serve` (default `127.0.0.1`) | Local store only; **no** network quorum | development only | CLI `serve_*` tests; remote parity suite |
-| In-process cluster | `Dingo::open_cluster` / `create_cluster` | Partition-local quorum **in one process** | integration-test harness | `residuum-cluster` stage8a–8f tests |
-| Network multi-node | `dingo serve-cluster` + multi-seed connect | Partition Raft propose when control plane attaches (DEF-036/037); directory-only if Raft attach fails | experimental (requires `--experimental-network-cluster`) | `stage_def_036_raft_rpc`, `stage_def_037_cluster_commit`; CLI bind gates |
+| Embedded single-node | `Residuum::open(path)` | Local store durability modes (`memory` / `buffered` / `durable`) | experimental / early-access | `residuum-store` / `residuum-sdk` stage suites |
+| Single-node TCP | `residuum serve` (default `127.0.0.1`) | Local store only; **no** network quorum | development only | CLI `serve_*` tests; remote parity suite |
+| In-process cluster | `Residuum::open_cluster` / `create_cluster` | Partition-local quorum **in one process** | integration-test harness | `residuum-cluster` stage8a–8f tests |
+| Network multi-node | `residuum serve-cluster` + multi-seed connect | Partition Raft propose when control plane attaches (DEF-036/037); directory-only if Raft attach fails | experimental (requires `--experimental-network-cluster`) | `stage_def_036_raft_rpc`, `stage_def_037_cluster_commit`; CLI bind gates |
 | S3/GCS placement | `MediaLocator` + mirror env roots | Filesystem mirror of segments, not native cloud I/O SDK | experimental mirror | store tier / media tests |
 | Erasure / lifecycle | scaffold APIs | Not production protection | scaffold | types/docs only until codecs land |
 
@@ -29,7 +29,7 @@ with the acceptance evidence expected before a stronger label.
    DEF-039, query paging DEF-040, and in-process seeded verification DEF-041
    are shipped; multi-process Jepsen / long soak still open).
 2. **In-process quorum ≠ production network cluster.** Prefer
-   `Dingo::open_cluster` for deterministic multi-replica tests; use
+   `Residuum::open_cluster` for deterministic multi-replica tests; use
    `serve-cluster` + DEF-037 suite for multi-process data-plane checks.
 3. **Mirrors ≠ native cloud backends.** `s3://` / `gs://` parse and mirror
    paths are not a substitute for a production object-store connector.
@@ -92,7 +92,7 @@ with the acceptance evidence expected before a stronger label.
 | In-process soak put/get after chaos | DEF-041 | **shipped** (`run_soak`) |
 | Multi-process OS chaos + short soak | DEF-041-N `residuum-cluster-multiproc-v1` | **shipped (labor)** — rolling restart, abort-after-ack, cross-process writer lock, seed+history dumps (`stage_def_041n_multiproc`) |
 | Multi-process Jepsen PORC vs live `serve-cluster` TCP | DEF-041-N residual | **not yet** — serve-cluster stays experimental |
-| Multi-hour soak | DEF-041-N residual | **not yet** (optional env `DINGO_MULTIPROC_LONG_SOAK=1` expands short soak) |
+| Multi-hour soak | DEF-041-N residual | **not yet** (optional env `RESIDUUM_MULTIPROC_LONG_SOAK=1` expands short soak) |
 
 Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
 ordinary `residuum-store` segments (salvage independent of Raft control plane).
@@ -201,7 +201,7 @@ Evidence: `stage_def_050_backup`, `residuum_store::backup` unit tests, CLI
 | Quarantine | Copy corrupt targets; never delete originals | **shipped** |
 | Pause / resume | Durable `paused` flag on state | **shipped** |
 | Operator metrics | coverage, bytes verified, failures, scrub age | **shipped** |
-| CLI | `dingo scrub` / `--status` / `--pause` / `--resume` | **shipped** |
+| CLI | `residuum scrub` / `--status` / `--pause` / `--resume` | **shipped** |
 | Background interval daemon | — | **not yet** |
 | Cluster repair integration | — | **not yet** (DEF-039 follow-on) |
 
@@ -219,7 +219,7 @@ Evidence: `stage_def_051_scrub`, `residuum_store::scrub` unit tests, CLI
 | Evidence-preserving copy | Never in-place rewrite; blake3 per file | **shipped** |
 | Unsupported / unreadable segments | Preserve opaque bytes + plan notes | **shipped** |
 | Failed migration | Source remains fully readable | **shipped** |
-| CLI | `dingo migrate` / `--preflight` / `--plan-only` / `--status` / `--rollback` | **shipped** |
+| CLI | `residuum migrate` / `--preflight` / `--plan-only` / `--status` / `--rollback` | **shipped** |
 | Second wire major dual-read + rewrite | — | **not yet** (DEF-053 residual) |
 | Rolling mixed-cluster upgrade drills | — | **not yet** |
 | Wire major-1 freeze declaration | Checklist + policy published; label still draft | **not yet** (DEF-053 partial) |
@@ -240,7 +240,7 @@ unit tests, CLI `migrate_roundtrip_and_status`. Freeze inventory:
 | Secrets | `token_env`, `token_secret_ref` (`env:` / `file:`); never inline | **shipped** |
 | Redaction | effective report + `redact_json_value` | **shipped** |
 | Unsafe combos | replication claim &lt; 3 nodes; public plaintext; serve-cluster gate | **shipped** |
-| CLI | `dingo config validate\|show`, `serve --config` | **shipped** |
+| CLI | `residuum config validate\|show`, `serve --config` | **shipped** |
 | Live dynamic reload + audit | — | **not yet** |
 
 Evidence: `stage_def_054_config`, `residuum_server::config` unit tests, CLI
@@ -317,8 +317,8 @@ Evidence: `stage_def_054_config`, `residuum_server::config` unit tests, CLI
 
 | Open path | Exclusive lock | Concurrent with serve |
 |-----------|----------------|------------------------|
-| `Store::open` / `Dingo::open` / CLI mutations / `dingo serve` | yes | second writer fails |
-| `Store::open_inspect` / `Dingo::open_inspect` / `dingo doctor` | no | yes (read-only) |
+| `Store::open` / `Residuum::open` / CLI mutations / `residuum serve` | yes | second writer fails |
+| `Store::open_inspect` / `Residuum::open_inspect` / `residuum doctor` | no | yes (read-only) |
 
 Kill -9 releases the OS advisory lock; recovery rebuilds from segment bytes.
 
@@ -437,7 +437,7 @@ collection catalogs are built from segment-derived durable state only.
 | Failpoint framework | shipped | `residuum_store::failpoint` (`Abort`, I/O faults, short-write) |
 | Persistence-order docs | shipped | [CRASH_CONSISTENCY.md](CRASH_CONSISTENCY.md) + matrix `persistence_order` |
 | CI subset | shipped | `stage_def_022_crash_matrix` (default) |
-| Full matrix | nightly | `DINGO_CRASH_MATRIX_FULL=1` in nightly workflow / `scripts/nightly.sh` |
+| Full matrix | nightly | `RESIDUUM_CRASH_MATRIX_FULL=1` in nightly workflow / `scripts/nightly.sh` |
 | Multi-process abort | shipped | `residuum-store-crash-child` + kill before-write / after-sync |
 | ENOSPC / permission / short-write | shipped | failpoint I/O actions + instrumented write sites |
 | Buffered power-loss equivalence | not yet | remaining DEF-022 work |
@@ -478,7 +478,7 @@ collection catalogs are built from segment-derived durable state only.
 | Format cargo-fuzz targets | **shipped** | `decode_frame`, `cbor_envelope`, `scan_forward/reverse`, `heap_ownership` |
 | Expanded untrusted decoders | **shipped (labor)** | SDA parse, RPC frame, chunk manifest, item envelope, backup JSON, cursor token |
 | Continuous policy entrypoint | **shipped (labor)** | `scripts/fuzz-smoke.sh` + nightly `fuzz_smoke` job (30s×N) |
-| Property bar on PR quality | **shipped (labor)** | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1` in `quality.sh` |
+| Property bar on PR quality | **shipped (labor)** | `RESIDUUM_FUZZ_SKIP_CARGO_FUZZ=1` in `quality.sh` |
 | Hostile chunk_count no OOM | **shipped (labor)** | `decode_chunk_manifest` capacity bound + unit test |
 | OSS-Fuzz / multi-hour accumulation | **residual** | Nightly smoke is continuous schedule, not hosted long-run |
 | Raft wire / full migration job fuzz | **residual** | Named follow-on |

@@ -2,7 +2,7 @@
 
 use clap::{ArgAction, Parser, Subcommand};
 use residuum_examine::{examine_store, ExaminationUnit, ExamineLimits};
-use residuum_sdk::Dingo;
+use residuum_sdk::Residuum;
 use residuum_server::{
     load_and_validate, serve_cluster_node, serve_store_with, ConfigMode, ConfigOverrides,
     ServeOptions, CONFIG_PROFILE,
@@ -18,10 +18,10 @@ use std::path::{Path, PathBuf};
 mod console;
 use std::process::ExitCode;
 
-const APP_VERSION: &str = concat!(env!("DINGO_VERSION"), "-build ", env!("DINGO_BUILD"));
+const APP_VERSION: &str = concat!(env!("RESIDUUM_VERSION"), "-build ", env!("RESIDUUM_BUILD"));
 const CLI_ABOUT: &str = "DingoDB command-line interface";
 const CLI_LONG_ABOUT: &str = "DingoDB command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), format migration preflight/plan/apply/verify/rollback (DEF-052), versioned config validate/show (DEF-054), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
-const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`dingo`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
+const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`residuum`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nDingoDB is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
 
 #[derive(Parser)]
 #[command(
@@ -204,7 +204,7 @@ enum Command {
         #[arg(long = "rollback", action = ArgAction::SetTrue)]
         rollback: bool,
     },
-    /// Serve the store over TCP for `Dingo::connect("dingo://...")` (development).
+    /// Serve the store over TCP for `Residuum::connect("residuum://...")` (development).
     ///
     /// Defaults to loopback. Non-loopback plaintext binds require
     /// `--allow-insecure-bind`. Non-loopback binds with `--tls-cert`/`--tls-key`
@@ -220,7 +220,7 @@ enum Command {
         #[arg(long = "bind")]
         bind: Option<String>,
         /// Optional shared auth token (clients must pass the same via ConnectOptions).
-        /// Also accepted from the `DINGO_TOKEN` environment variable when the flag is omitted.
+        /// Also accepted from the `RESIDUUM_TOKEN` environment variable when the flag is omitted.
         #[arg(long = "token")]
         token: Option<String>,
         /// Allow non-loopback plaintext bind (development only).
@@ -248,12 +248,12 @@ enum Command {
     /// collection put/delete use partition propose and acks report `committed`
     /// only after quorum (DEF-036/037). If attach fails, directory-only routing
     /// applies writes to this node alone. Not production-ready. Prefer
-    /// in-process `Dingo::open_cluster` for deterministic multi-replica tests.
+    /// in-process `Residuum::open_cluster` for deterministic multi-replica tests.
     ///
     /// Optional `--config` loads a `dingo-config-v1` document (DEF-054).
     ///
     /// Example:
-    /// `dingo serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster`
+    /// `residuum serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-network-cluster`
     ServeCluster {
         /// Cluster root (contains cluster.json, placement.json, nodes/).
         cluster: PathBuf,
@@ -266,7 +266,7 @@ enum Command {
         /// Bind address (default `127.0.0.1:7434`, or `serve.bind` from config).
         #[arg(long = "bind")]
         bind: Option<String>,
-        /// Optional shared auth token (also `DINGO_TOKEN`).
+        /// Optional shared auth token (also `RESIDUUM_TOKEN`).
         #[arg(long = "token")]
         token: Option<String>,
         /// Allow non-loopback plaintext bind (development only).
@@ -302,7 +302,7 @@ enum Command {
     Collections { store: PathBuf },
 }
 
-/// Subcommands under `dingo config` (DEF-054).
+/// Subcommands under `residuum config` (DEF-054).
 #[derive(Subcommand)]
 enum ConfigAction {
     /// Validate a config file (schema, ranges, unsafe combinations).
@@ -445,7 +445,7 @@ fn run() -> Result<(), String> {
                 .store_path
                 .clone()
                 .unwrap_or(store);
-            let _ = json_out; // serve is long-running; use `dingo config show` for reports
+            let _ = json_out; // serve is long-running; use `residuum config show` for reports
             for w in &validated.warnings {
                 eprintln!("config warning: {w}");
             }
@@ -616,7 +616,7 @@ fn cmd_put(store: &Path, target: &str, json_body: &str, json_out: bool) -> Resul
     let (coll, key) = parse_target(target)?;
     let value: JsonValue =
         serde_json::from_str(json_body).map_err(|e| format!("invalid --json: {e}"))?;
-    let mut db = Dingo::open(store).map_err(|e| e.to_string())?;
+    let mut db = Residuum::open(store).map_err(|e| e.to_string())?;
     let receipt = db
         .collection(&coll)
         .map_err(|e| e.to_string())?
@@ -644,7 +644,7 @@ fn cmd_put(store: &Path, target: &str, json_body: &str, json_out: bool) -> Resul
 
 fn cmd_get(store: &Path, target: &str, json_out: bool) -> Result<(), String> {
     let (coll, key) = parse_target(target)?;
-    let mut db = Dingo::open(store).map_err(|e| e.to_string())?;
+    let mut db = Residuum::open(store).map_err(|e| e.to_string())?;
     let found = db
         .collection(&coll)
         .map_err(|e| e.to_string())?
@@ -685,7 +685,7 @@ fn cmd_get(store: &Path, target: &str, json_out: bool) -> Result<(), String> {
 
 fn cmd_delete(store: &Path, target: &str, json_out: bool) -> Result<(), String> {
     let (coll, key) = parse_target(target)?;
-    let mut db = Dingo::open(store).map_err(|e| e.to_string())?;
+    let mut db = Residuum::open(store).map_err(|e| e.to_string())?;
     let receipt = db
         .collection(&coll)
         .map_err(|e| e.to_string())?
@@ -713,7 +713,7 @@ fn cmd_delete(store: &Path, target: &str, json_out: bool) -> Result<(), String> 
 }
 
 fn cmd_list(store: &Path, collection: Option<&str>, json_out: bool) -> Result<(), String> {
-    let mut db = Dingo::open(store).map_err(|e| e.to_string())?;
+    let mut db = Residuum::open(store).map_err(|e| e.to_string())?;
     match collection {
         None => {
             let cols = db.list_collections().map_err(|e| e.to_string())?;
@@ -755,7 +755,7 @@ fn cmd_list(store: &Path, collection: Option<&str>, json_out: bool) -> Result<()
 fn cmd_put_bytes(store: &Path, target: &str, file: &Path, json_out: bool) -> Result<(), String> {
     let (coll, key) = parse_target(target)?;
     let bytes = fs::read(file).map_err(|e| format!("read {}: {e}", file.display()))?;
-    let mut db = Dingo::open(store).map_err(|e| e.to_string())?;
+    let mut db = Residuum::open(store).map_err(|e| e.to_string())?;
     let receipt = db
         .collection(&coll)
         .map_err(|e| e.to_string())?
@@ -784,7 +784,7 @@ fn cmd_put_bytes(store: &Path, target: &str, file: &Path, json_out: bool) -> Res
 
 fn cmd_history(store: &Path, target: &str, json_out: bool) -> Result<(), String> {
     let (coll, key) = parse_target(target)?;
-    let mut db = Dingo::open(store).map_err(|e| e.to_string())?;
+    let mut db = Residuum::open(store).map_err(|e| e.to_string())?;
     let hist = db
         .collection(&coll)
         .map_err(|e| e.to_string())?
@@ -930,7 +930,7 @@ fn cmd_doctor(store: &Path, json_out: bool) -> Result<(), String> {
             "recommendations": recommendations,
         }))?;
     } else {
-        println!("dingo doctor {}", store.display());
+        println!("residuum doctor {}", store.display());
         println!("  read_only: true");
         println!("  healthy: {healthy}");
         println!("  store_id: {}", hex16(&inspect.store_id()));

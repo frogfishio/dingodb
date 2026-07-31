@@ -6,7 +6,7 @@
 //! - Dropping indexes never changes correctness
 //! - Indexed vs force-scan results match
 
-use residuum_sdk::{json, Dingo, Filter, IndexState, QueryOptions};
+use residuum_sdk::{json, Residuum, Filter, IndexState, QueryOptions};
 
 
 use residuum_store::{
@@ -42,7 +42,7 @@ fn with_failpoints<R>(f: impl FnOnce() -> R) -> R {
 #[test]
 fn create_reaches_ready_with_build_id() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     let mut users = db.collection("users").unwrap();
     users.put("u1", &json!({"email": "a@x.com"})).unwrap();
     users.put("u2", &json!({"email": "b@x.com"})).unwrap();
@@ -63,7 +63,7 @@ fn create_reaches_ready_with_build_id() {
 #[test]
 fn write_marks_ready_stale_and_miss_falls_back_to_scan() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     let mut users = db.collection("users").unwrap();
     users.put("u1", &json!({"email": "a@x.com"})).unwrap();
     users
@@ -90,7 +90,7 @@ fn resume_after_plan_failpoint() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("app.dingo");
         {
-            let mut db = Dingo::open(&path).unwrap();
+            let mut db = Residuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
             for i in 0..10 {
                 c.put(&format!("k{i}"), &json!({"n": i})).unwrap();
@@ -112,7 +112,7 @@ fn resume_after_plan_failpoint() {
             ));
             assert!(!idx.meta.build_id.iter().all(|&b| b == 0));
         }
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut c = db.collection("docs").unwrap();
         let info = c.indexes().unwrap().create("by-n", &["n"]).unwrap();
         assert_eq!(info.state, IndexState::Ready);
@@ -128,7 +128,7 @@ fn resume_after_mid_build_failpoint() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("app.dingo");
         {
-            let mut db = Dingo::open(&path).unwrap();
+            let mut db = Residuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
             for i in 0..80 {
                 c.put(&format!("k{i:03}"), &json!({"n": i})).unwrap();
@@ -145,7 +145,7 @@ fn resume_after_mid_build_failpoint() {
             assert!(!idx.meta.resume_after_subject.is_empty());
             assert!(idx.meta.entry_count > 0);
         }
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut c = db.collection("docs").unwrap();
         let info = c.indexes().unwrap().continue_build("by-n").unwrap();
         assert_eq!(info.state, IndexState::Ready);
@@ -161,7 +161,7 @@ fn resume_after_before_ready_failpoint() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("app.dingo");
         {
-            let mut db = Dingo::open(&path).unwrap();
+            let mut db = Residuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
             for i in 0..5 {
                 c.put(&format!("k{i}"), &json!({"n": i})).unwrap();
@@ -176,7 +176,7 @@ fn resume_after_before_ready_failpoint() {
             assert!(idx.is_build_in_progress());
             assert!(idx.meta.entry_count >= 5);
         }
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let info = db
             .collection("docs")
             .unwrap()
@@ -194,7 +194,7 @@ fn panic_failpoint_leaves_building_and_resume_works() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("app.dingo");
         {
-            let mut db = Dingo::open(&path).unwrap();
+            let mut db = Residuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
             for i in 0..40 {
                 c.put(&format!("k{i:02}"), &json!({"n": i})).unwrap();
@@ -208,7 +208,7 @@ fn panic_failpoint_leaves_building_and_resume_works() {
             drop(c);
             drop(db);
         }
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut c = db.collection("docs").unwrap();
         {
             let store_view = Store::open_inspect(&path).unwrap();
@@ -228,7 +228,7 @@ fn partial_index_never_proves_absence() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("app.dingo");
     {
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut c = db.collection("users").unwrap();
         c.put("u1", &json!({"email": "a@x.com"})).unwrap();
         c.indexes()
@@ -251,7 +251,7 @@ fn partial_index_never_proves_absence() {
         idx.mark_partial([1u8; 32], "test partial after write");
         store.write_secondary_index(&idx).unwrap();
     }
-    let mut db = Dingo::open(&path).unwrap();
+    let mut db = Residuum::open(&path).unwrap();
     let mut c = db.collection("users").unwrap();
     let listed = c.list_indexes().unwrap();
     assert_eq!(listed[0].state, IndexState::Partial);
@@ -265,7 +265,7 @@ fn partial_index_never_proves_absence() {
 #[test]
 fn drop_all_indexes_preserves_query_correctness() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     let mut c = db.collection("items").unwrap();
     for i in 0..20 {
         c.put(
@@ -296,7 +296,7 @@ fn drop_all_indexes_preserves_query_correctness() {
 #[test]
 fn indexed_matches_force_scan() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     let mut c = db.collection("docs").unwrap();
     for i in 0..30 {
         c.put(
@@ -326,7 +326,7 @@ fn indexed_matches_force_scan() {
 #[test]
 fn rebuild_uses_rebuilding_then_ready() {
     let dir = tempdir().unwrap();
-    let mut db = Dingo::open(dir.path().join("app.dingo")).unwrap();
+    let mut db = Residuum::open(dir.path().join("app.dingo")).unwrap();
     let mut c = db.collection("users").unwrap();
     c.put("u1", &json!({"email": "a@x.com"})).unwrap();
     c.indexes()
@@ -348,7 +348,7 @@ fn concurrent_writes_during_build_do_not_block() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("app.dingo");
         {
-            let mut db = Dingo::open(&path).unwrap();
+            let mut db = Residuum::open(&path).unwrap();
             let mut c = db.collection("docs").unwrap();
             for i in 0..40 {
                 c.put(&format!("k{i:02}"), &json!({"n": i})).unwrap();
@@ -361,7 +361,7 @@ fn concurrent_writes_during_build_do_not_block() {
             c.put("k99", &json!({"n": 99})).unwrap();
             assert_eq!(c.get("k99").unwrap().unwrap()["n"], 99);
         }
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut c = db.collection("docs").unwrap();
         let info = c.indexes().unwrap().create("by-n", &["n"]).unwrap();
         assert_eq!(info.state, IndexState::Ready);

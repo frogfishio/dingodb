@@ -5,7 +5,7 @@
 //! windows return useful overload / auth errors under abuse.
 
 
-use residuum_sdk::{client_handshake, json, read_frame, write_frame, ConnectOptions, Dingo, ErrorCode, DEFAULT_MAX_FRAME_BYTES};
+use residuum_sdk::{client_handshake, json, read_frame, write_frame, ConnectOptions, Residuum, ErrorCode, DEFAULT_MAX_FRAME_BYTES};
 
 
 use std::io::BufReader;
@@ -40,7 +40,7 @@ fn start_server(
     options: ServeOptions,
 ) -> (String, Arc<AtomicBool>, Arc<AdmissionController>, thread::JoinHandle<()>) {
     let store_path = dir.path().join("admission.dingo");
-    drop(Dingo::open(&store_path).unwrap());
+    drop(Residuum::open(&store_path).unwrap());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
     let bind_c = bind.clone();
@@ -272,7 +272,7 @@ fn expensive_op_concurrency_budget() {
     // Seed some data so find has work.
     {
         let path = dir.path().join("admission.dingo");
-        let mut db = Dingo::open(&path).unwrap();
+        let mut db = Residuum::open(&path).unwrap();
         let mut c = db.collection("docs").unwrap();
         for i in 0..20 {
             c.put(&format!("k{i}"), &json!({"n": i})).unwrap();
@@ -442,10 +442,10 @@ fn sdk_client_sees_resource_limit_on_rate() {
         ServeOptions::new().admission_limits(limits),
     );
 
-    let url = format!("dingo://{bind}");
+    let url = format!("residuum://{bind}");
     let mut limited = false;
     for _ in 0..8 {
-        match Dingo::connect_with(
+        match Residuum::connect_with(
             &url,
             ConnectOptions::new().connect_timeout(Duration::from_secs(2)),
         ) {

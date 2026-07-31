@@ -424,9 +424,9 @@ residuum-sdk = "0.2"
 ```
 
 ```rust
-use residuum_sdk::{json, Dingo, Filter};
+use residuum_sdk::{json, Residuum, Filter};
 
-let mut db = Dingo::open("./app.dingo")?;
+let mut db = Residuum::open("./app.dingo")?;
 let mut users = db.collection("users")?;
 
 users.put("user-42", &json!({

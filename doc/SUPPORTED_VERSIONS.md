@@ -61,7 +61,7 @@ For **unsupported** versions:
 ## Operator expectations
 
 1. Pin commits or tags intentionally; record the exact revision in ops notes.
-2. Run `dingo doctor` / salvage / backup procedures on upgrade paths as
+2. Run `residuum doctor` / salvage / backup procedures on upgrade paths as
    documented.
 3. Do not assume `1.0-draft` wire will remain binary-compatible without reading
    migration notes after DEF-053 freeze (see [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)

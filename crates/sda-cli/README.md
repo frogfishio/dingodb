@@ -15,7 +15,7 @@ and emits canonical formatting for editor and CI workflows.
 |-----------|-----|
 | Shell / CI: evaluate, check, format SDA+ENR1 | **`residuum-sda`** (this binary) |
 | Embed evaluation in a Rust program | [`residuum-sda`](https://crates.io/crates/residuum-sda) |
-| ResiduumDB recovery examination | [`residuum-examine`](https://crates.io/crates/residuum-examine) or `dingo doctor` |
+| ResiduumDB recovery examination | [`residuum-examine`](https://crates.io/crates/residuum-examine) or `residuum doctor` |
 
 ## Install
 
