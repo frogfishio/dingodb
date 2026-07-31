@@ -23,6 +23,49 @@ Consensus decides who may coordinate writes. It does not give bytes their
 meaning. If every cluster catalog and consensus member is lost, surviving
 segments remain self-identifying, independently verifiable, and salvageable.
 
+### 1.1 Whole-system design law
+
+This specification defines the complete intended Residiuum cluster
+architecture. Delivery may be staged; architecture may not be left implicit
+merely because a capability is scheduled later.
+
+The specification SHALL therefore define, before implementation depends on
+them, the final semantics and composition rules for:
+
+- adaptive partition creation, splitting, merging and migration;
+- Multi-Raft scheduling, batching, persistence and recovery;
+- leadership, fencing, quorum reads and proved lease optimizations;
+- partition-local and cross-partition Atomics;
+- distributed snapshot and isolation semantics;
+- strong, bounded-stale, available, salvage and convergent operation;
+- multi-region placement and correlated failure domains;
+- replicated, erasure-coded, online and offline storage tiers;
+- large-value staging, replication, publication and repair;
+- distributed indexes, SDA execution, direct access and deterministic merge;
+- membership change, control-plane scaling and disaster reconstruction;
+- anti-entropy, conflict retention and authoritative repair;
+- rolling upgrade, mixed-version operation and protocol migration;
+- Heap noninterference, node authentication, rotation and recovery authority;
+- admission control, backpressure, hot-partition isolation and resource bounds;
+  and
+- machine-checked safety, explicit assumptions and conditional liveness.
+
+A deferred delivery package MUST still have a named architectural contract,
+dependencies, compatibility boundary and proof obligations before an earlier
+package makes a decision that could constrain it. A future feature MUST NOT be
+used as an unspecified escape hatch.
+
+The governing distinction is:
+
+```text
+architecture = one coherent final system
+delivery      = independently useful, dependency-ordered stages
+```
+
+An early conformance profile may omit a capability operationally. It MUST NOT
+redefine that omission as a permanent product limitation or allow an
+incompatible local substitute.
+
 ## 2. Requirement language
 
 The requirement words defined by the
@@ -56,17 +99,26 @@ A conforming cluster is designed to provide:
 - preservation of conflicting verified data;
 - deterministic coverage and uncertainty reporting.
 
-## 4. Non-goals
+## 4. Delivery-stage exclusions, not architectural non-goals
 
-The initial cluster profile does not promise:
+An early cluster delivery profile MAY omit the following capabilities. The
+complete architecture does not omit them; later sections and companion
+specifications MUST define how they compose with the foundation:
 
-- atomic transactions spanning arbitrary partitions;
-- a global serial order over every event;
-- synchronous global secondary indexes;
+- cross-partition Atomic commitment and declared distributed isolation;
+- distributed snapshot/frontier semantics where a global observation is
+  requested;
+- synchronously qualified global secondary-index profiles;
 - write availability in both sides of a partition while also claiming one
   linearizable history;
 - that one surviving replica proves a formerly replicated write was committed;
 - that consensus metadata is authoritative payload storage.
+
+The final three items are enduring impossibility/honesty boundaries, not
+features deferred for later implementation. In particular, the architecture
+will not claim mutually inconsistent partition histories as linearizable,
+promote surviving bytes to committed state without sufficient evidence, or
+make control metadata the sole authority for payload meaning.
 
 ## 5. Terms
 
@@ -675,26 +727,34 @@ not proof of absence.
 
 ### 19.1 Reads
 
-Multi-partition reads are not one linearizable snapshot unless a future
-snapshot protocol explicitly establishes and reports one.
+Multi-partition reads are not one linearizable snapshot unless the selected
+snapshot protocol explicitly establishes and reports one. The complete
+architecture MUST define both frontier-based partial observation and a named
+distributed snapshot profile, including its coordination, failure and
+coverage semantics.
 
 The default result reports a frontier per partition.
 
 ### 19.2 Writes
 
-The v1 cluster profile does not define atomic cross-partition writes.
+The complete architecture MUST define cross-partition Atomic commitment and
+its exact isolation profile. It MUST specify coordinator identity, durable
+decision authority, participant preparation, retry identity, crash recovery,
+timeout semantics, invariant scope and interaction with partition consensus.
+This protocol is not yet frozen; no implementation may invent it locally.
 
-Applications use:
+Delivery profiles preceding that package use:
 
 - independent idempotent events;
 - sagas with compensating events;
 - one partition key for data requiring atomic ordering;
 - explicit batch workflows whose partial state remains examinable.
 
-A qualified `Partition` Atomic profile may add indivisible commitment inside
-one partition. A transaction-shaped API is only a compatibility projection of
-that profile. Neither profile permits cross-partition atomicity, and both MUST
-preserve physical salvage of prepared and partially replicated frames.
+A qualified `Partition` Atomic profile provides indivisible commitment inside
+one partition. The later distributed Atomic profile composes decisions across
+partition consensus groups. A transaction-shaped API is only a compatibility
+projection of one of these declared profiles. Every profile MUST preserve
+physical salvage of prepared and partially replicated frames.
 
 ## 20. Performance strategy
 
