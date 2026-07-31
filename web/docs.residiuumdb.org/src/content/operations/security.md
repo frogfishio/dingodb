@@ -41,4 +41,4 @@ Public plaintext bind refused without override; TLS handshakes succeed with expe
 
 DEF-032–034, `doc/THREAT_MODEL.md` (draft)
 
-Product page: [residuumdb.org/security](https://residuumdb.org/security/)
+Product page: [residiuumdb.org/security](https://residiuumdb.org/security/)

@@ -29,4 +29,4 @@ Roadmap is **not** availability. Status page remains authoritative for present c
 5. **Future search** (text, vector, geo) as derived accelerators
 6. **Design work**: Heaps, RRE, Atomics, DDA, Order Wavelets
 
-Sources: `FUTURE_ROADMAP.md`, `doc/PRIME_TIME_PLAN.md`. Product page: [residuumdb.org/roadmap](https://residuumdb.org/roadmap/)
+Sources: `FUTURE_ROADMAP.md`, `doc/PRIME_TIME_PLAN.md`. Product page: [residiuumdb.org/roadmap](https://residiuumdb.org/roadmap/)

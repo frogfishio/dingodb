@@ -43,4 +43,4 @@ keywords:
 | Embedded arbitrary data with explicit damage model | Evaluate Residiuum |
 | Production network cluster today | Do not choose Residiuum yet |
 
-Product homepage: [residuumdb.org](https://residuumdb.org/use-cases/).
+Product homepage: [residiuumdb.org](https://residiuumdb.org/use-cases/).

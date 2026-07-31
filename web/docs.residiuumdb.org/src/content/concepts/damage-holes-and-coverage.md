@@ -34,4 +34,4 @@ Query and scan results should report what was searched. Incomplete tier/partitio
 
 Damage tolerance reduces blast radius. It does **not** recover overwritten or never-written bytes.
 
-Product narrative: [residuumdb.org/survival](https://residuumdb.org/survival/).
+Product narrative: [residiuumdb.org/survival](https://residiuumdb.org/survival/).

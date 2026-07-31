@@ -73,7 +73,7 @@ import release from '../../data/release.json';
 
   <h2>Direct rank instead of offset walking</h2>
   <p>
-    Today, bounded resume-key cursors page subjects in stable order. Dingo
+    Today, bounded resume-key cursors page subjects in stable order. Residiuum
     Direct Access goes further: its normative design treats numeric position as
     an exact rank query. When admitted indexes contain enough counting
     information, the engine reaches result <code>k</code> without silently
@@ -82,13 +82,13 @@ import release from '../../data/release.json';
   <p>
     <StatusBadge status="design" />
     <ExternalLink href={release.github + '/blob/main/DIRECT_ACCESS_SPEC.md'}>
-      Dingo Direct Access specification
+      Residiuum Direct Access specification
     </ExternalLink>
   </p>
 
   <h2>Sorting compiled into counted structure</h2>
   <p>
-    Dingo Order Wavelets specify a derived rank/select structure for ordered
+    Residiuum Order Wavelets specify a derived rank/select structure for ordered
     fields. A filtered query transports its exact match bitmap through that
     structure and navigates conditional counts to the kth ordered answer. It
     avoids comparison-sorting every matching document at query time.

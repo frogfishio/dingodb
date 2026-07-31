@@ -44,7 +44,7 @@ cd residiuum-quickstart
 residiuum-sdk = "0.2"
 ```
 
-**Licensing:** default features are **MPL-2.0** (embedded + remote client). Enabling `features = ["cluster"]` pulls **AGPL-3.0-or-later** `residiuum-cluster`. See [project licensing](https://residuumdb.org/project/#licensing).
+**Licensing:** default features are **MPL-2.0** (embedded + remote client). Enabling `features = ["cluster"]` pulls **AGPL-3.0-or-later** `residiuum-cluster`. See [project licensing](https://residiuumdb.org/project/#licensing).
 
 ## 3. Complete program
 

@@ -26,4 +26,4 @@ Documented release **0.2.0**. Residiuum is **experimental software**.
 - [Benchmark disclosure](/status/benchmark-disclosure/)
 - [Roadmap](/status/roadmap/)
 
-Product mirror: [residuumdb.org/status](https://residuumdb.org/status/)
+Product mirror: [residiuumdb.org/status](https://residiuumdb.org/status/)
