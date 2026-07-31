@@ -1,0 +1,6 @@
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk14s1    1.8Ti   1.7Ti   153Gi    92%       1     0  100%   /Volumes/Scratch
+/dev/disk3s1s1   228Gi    10Gi    23Gi    32%    426k  241M    0%   /
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk14s1    1.8Ti   1.7Ti   153Gi    92%       1     0  100%   /Volumes/Scratch
+/dev/disk3s1s1   228Gi    10Gi    23Gi    32%    426k  241M    0%   /

@@ -7,7 +7,7 @@
 use crate::manifest::{
     per_store_manifest_path, store_path_for, write_manifest, WorkloadManifest, MAX_STORES,
 };
-use crate::size::{dir_size_bytes, format_bytes};
+use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
 use residiuum_store::{DurabilityMode, Store, StorePaths, MAX_WRITER_SHARDS};
 use serde_json::{json, Value};
 use std::fs;
@@ -34,6 +34,9 @@ pub struct PumpConfig {
     /// Independent store roots (DEF-096 Axis C). `1` = single process; `N>1` spawns
     /// N child `pump` processes under `store/store-00` … `store/store-(N-1)`.
     pub store_count: usize,
+    /// Minimum free space required on the store volume before pumping.
+    /// `0` disables the floor. Default callers use [`default_min_free_for_target`].
+    pub min_free_bytes: u64,
 }
 
 /// Peak process resource samples collected during the pump (diagnostic).
@@ -51,6 +54,16 @@ struct ProcessSamples {
 
 pub fn run_pump(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
     validate_pump_cfg(cfg)?;
+    // Fail closed when the volume is near full — contaminated rates are worse than no run.
+    let free = ensure_free_space(&cfg.store, cfg.min_free_bytes)?;
+    if !cfg.json_out && cfg.min_free_bytes > 0 {
+        eprintln!(
+            "pump free-space ok: free={} min-free={} path={}",
+            format_bytes(free),
+            format_bytes(cfg.min_free_bytes),
+            cfg.store.display()
+        );
+    }
     if cfg.store_count > 1 {
         run_pump_multi_process(cfg)
     } else {
@@ -142,6 +155,9 @@ fn run_pump_multi_process(cfg: &PumpConfig) -> Result<WorkloadManifest, String> 
             .arg("--writer-shards")
             .arg(cfg.writer_shards.to_string())
             // Children are always single-store (store_count defaults to 1).
+            // Parent already enforced the floor for total footprint; children skip re-check.
+            .arg("--min-free")
+            .arg("0")
             .arg("--json-out")
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());

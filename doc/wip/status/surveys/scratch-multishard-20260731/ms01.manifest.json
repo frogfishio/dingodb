@@ -1,0 +1,25 @@
+{
+  "format_version": 1,
+  "store_path": "/Volumes/Scratch/TEST/residiuum-survey-multishard-20260731/ms01-store",
+  "target_bytes": 1073741824,
+  "payload_size": 8192,
+  "durability": "buffered",
+  "keys_written": 73728,
+  "first_key": "load/00000000000000000000",
+  "last_key": "load/00000000000000073727",
+  "key_prefix": "load/",
+  "bytes_on_disk": 1237633450,
+  "pump_elapsed_ms": 8825,
+  "pump_ops_per_sec": 8353.965286650022,
+  "pump_mb_per_sec": 133.73723459141465,
+  "seed": 20260731,
+  "writer_shards": 1,
+  "concurrency": 1,
+  "writer_model": "single_active_segment",
+  "store_count": 1,
+  "store_paths": [
+    "/Volumes/Scratch/TEST/residiuum-survey-multishard-20260731/ms01-store"
+  ],
+  "peak_rss_bytes": 503005184,
+  "peak_cpu_pct": 43.6
+}

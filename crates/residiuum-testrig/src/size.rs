@@ -3,6 +3,7 @@
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::process::Command;
 
 /// Recursively sum file lengths under `root` (follows neither symlinks as new roots).
 pub fn dir_size_bytes(root: &Path) -> io::Result<u64> {
@@ -93,6 +94,81 @@ pub fn format_bytes(n: u64) -> String {
     }
 }
 
+/// Free space (available bytes) on the volume containing `path`.
+///
+/// Uses `df -k` (macOS/Linux) so we need no extra crates. Walks parents until an
+/// existing path is found; falls back to `.` if the whole chain is missing.
+pub fn free_space_bytes(path: &Path) -> io::Result<u64> {
+    let mut probe = path.to_path_buf();
+    loop {
+        if probe.exists() {
+            break;
+        }
+        match probe.parent() {
+            Some(p) if p != probe => probe = p.to_path_buf(),
+            _ => {
+                probe = Path::new(".").to_path_buf();
+                break;
+            }
+        }
+    }
+    let output = Command::new("df")
+        .args(["-k", &probe.to_string_lossy()])
+        .output()?;
+    if !output.status.success() {
+        return Err(io::Error::other(format!(
+            "df -k failed for {}",
+            probe.display()
+        )));
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    // Last non-empty line: Filesystem 1024-blocks Used Available Capacity ...
+    let line = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .last()
+        .ok_or_else(|| io::Error::other("df produced no lines"))?;
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    // Available is column 4 on both macOS and Linux `df -k` data lines.
+    if parts.len() < 4 {
+        return Err(io::Error::other(format!("unexpected df line: {line}")));
+    }
+    let kib: u64 = parts[3]
+        .parse()
+        .map_err(|_| io::Error::other(format!("df available not a number: {}", parts[3])))?;
+    Ok(kib.saturating_mul(1024))
+}
+
+/// Default free-space floor before a pump: cover ~2.05× footprint + 512 MiB headroom.
+///
+/// Prevents silent near-full-disk contamination (first seal-threshold survey).
+pub fn default_min_free_for_target(target_bytes: u64) -> u64 {
+    let footprint = target_bytes
+        .saturating_mul(25)
+        .saturating_div(10); // 2.5×
+    let headroom = 512 * 1024 * 1024;
+    footprint.saturating_add(headroom)
+}
+
+/// Refuse a pump when free space is below the floor.
+pub fn ensure_free_space(path: &Path, min_free: u64) -> Result<u64, String> {
+    if min_free == 0 {
+        return free_space_bytes(path).map_err(|e| format!("free-space probe: {e}"));
+    }
+    let free = free_space_bytes(path).map_err(|e| format!("free-space probe: {e}"))?;
+    if free < min_free {
+        return Err(format!(
+            "refuse pump: free space {} < min-free {} on volume for {} \
+             (near-full disk contaminates rates; free space or pass --min-free 0 to override)",
+            format_bytes(free),
+            format_bytes(min_free),
+            path.display()
+        ));
+    }
+    Ok(free)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,5 +180,19 @@ mod tests {
         assert_eq!(parse_size("1M").unwrap(), 1024 * 1024);
         assert_eq!(parse_size("1G").unwrap(), 1024 * 1024 * 1024);
         assert_eq!(parse_size("1.5M").unwrap(), (1.5 * 1024.0 * 1024.0) as u64);
+    }
+
+    #[test]
+    fn default_min_free_covers_footprint() {
+        let t = 1024u64 * 1024 * 1024; // 1G
+        let m = default_min_free_for_target(t);
+        assert!(m > t * 2);
+        assert!(m < t * 4);
+    }
+
+    #[test]
+    fn free_space_on_tmp_is_positive() {
+        let f = free_space_bytes(Path::new(".")).expect("df");
+        assert!(f > 0);
     }
 }

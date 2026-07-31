@@ -21,7 +21,7 @@ use manifest::{
 use monitor::{evaluate_run, run_monitor, MonitorConfig};
 use pump::{ensure_parent, parse_durability, run_pump, PumpConfig};
 use serde_json::{json, Value};
-use size::{format_bytes, parse_size};
+use size::{default_min_free_for_target, format_bytes, parse_size};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -80,6 +80,10 @@ enum Command {
         /// N child pumps under `<store>/store-00` … (multi-process capacity harness).
         #[arg(long, default_value_t = 1)]
         stores: usize,
+        /// Minimum free space on the store volume before pumping. Default: auto
+        /// (≈2.5× target + 512 MiB). Pass `0` to disable. Near-full disks contaminate rates.
+        #[arg(long, default_value = "auto")]
+        min_free: String,
         /// Machine-readable JSON on stdout.
         #[arg(long)]
         json_out: bool,
@@ -166,6 +170,10 @@ enum Command {
         /// N child pumps at `<work>/store-00` … (multi-process capacity harness).
         #[arg(long, default_value_t = 1)]
         stores: usize,
+        /// Minimum free space on the work volume before pumping. Default: auto
+        /// (≈2.5× target + 512 MiB). Pass `0` to disable.
+        #[arg(long, default_value = "auto")]
+        min_free: String,
         #[arg(long)]
         json_out: bool,
     },
@@ -185,6 +193,7 @@ fn main() -> ExitCode {
             manifest,
             writer_shards,
             stores,
+            min_free,
             json_out,
         } => cmd_pump(
             store,
@@ -197,6 +206,7 @@ fn main() -> ExitCode {
             manifest,
             writer_shards,
             stores,
+            min_free,
             json_out,
         ),
         Command::Chaos {
@@ -248,6 +258,7 @@ fn main() -> ExitCode {
             brutal,
             writer_shards,
             stores,
+            min_free,
             json_out,
         } => cmd_run(
             work,
@@ -262,6 +273,7 @@ fn main() -> ExitCode {
             brutal,
             writer_shards,
             stores,
+            min_free,
             json_out,
         ),
     };
@@ -285,6 +297,14 @@ fn resolve_seed(seed: u64) -> u64 {
         .unwrap_or(0xD160_B17)
 }
 
+fn resolve_min_free(spec: &str, target_bytes: u64) -> Result<u64, String> {
+    let s = spec.trim();
+    if s.eq_ignore_ascii_case("auto") {
+        return Ok(default_min_free_for_target(target_bytes));
+    }
+    parse_size(s)
+}
+
 fn cmd_pump(
     store: PathBuf,
     target_bytes: String,
@@ -296,6 +316,7 @@ fn cmd_pump(
     manifest: Option<PathBuf>,
     writer_shards: usize,
     stores: usize,
+    min_free: String,
     json_out: bool,
 ) -> Result<(), String> {
     validate_stores(stores)?;
@@ -304,6 +325,7 @@ fn cmd_pump(
     let seal = parse_size(&seal_threshold)?;
     let seed = resolve_seed(seed);
     let durability = parse_durability(&durability)?;
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
     // Single-store: manifest sibling of store. Multi-store: aggregate under parent.
     let manifest_path = manifest.unwrap_or_else(|| {
         if stores > 1 {
@@ -324,6 +346,7 @@ fn cmd_pump(
         json_out,
         writer_shards,
         store_count: stores,
+        min_free_bytes,
     })
     .map(|_| ())
 }
@@ -400,6 +423,7 @@ fn cmd_run(
     brutal: bool,
     writer_shards: usize,
     stores: usize,
+    min_free: String,
     json_out: bool,
 ) -> Result<(), String> {
     validate_stores(stores)?;
@@ -408,6 +432,7 @@ fn cmd_run(
     let seal = parse_size(&seal_threshold)?;
     let seed = resolve_seed(seed);
     let durability = parse_durability(&durability)?;
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
 
     // Layout: single-store keeps `work/store` for backward compatibility.
     // Multi-store (Axis C): parent is `work`; children at `work/store-00` …
@@ -449,6 +474,7 @@ fn cmd_run(
         json_out: false, // orchestrator owns final JSON
         writer_shards,
         store_count: stores,
+        min_free_bytes,
     })?;
 
     // Per-store monitor + chaos (each root is independent).
