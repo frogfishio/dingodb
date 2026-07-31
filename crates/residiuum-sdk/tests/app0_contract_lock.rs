@@ -139,7 +139,7 @@ fn app0_error_mapping_codes_are_sdk_codes() {
 #[test]
 fn app0_plan_and_cursor_vectors_shaped() {
     let plans = read_json("spec/app/v1/plan_vectors_v1.json");
-    assert_eq!(plans["profile"].as_str(), Some("rql-plan-v1"));
+    assert_eq!(plans["profile"].as_str(), Some("dql-plan-v1"));
     let vectors = plans["vectors"].as_array().expect("plan vectors");
     assert!(vectors.len() >= 3, "need at least three plan vectors");
 
@@ -182,8 +182,8 @@ fn v4(seed: u8) -> [u8; 16] {
 #[test]
 fn app0_rust_compile_surface() {
     assert_eq!(RUST_APP_PROFILE, "dingo-rust-app-v1");
-    assert_eq!(RQL_APP_CORE_PROFILE, "rql-app-core-v1");
-    assert_eq!(RQL_PLAN_PROFILE, "rql-plan-v1");
+    assert_eq!(RQL_APP_CORE_PROFILE, "dql-app-core-v1");
+    assert_eq!(RQL_PLAN_PROFILE, "dql-plan-v1");
     assert_eq!(CURSOR_PROFILE, "dingo-cursor-v1");
     assert_eq!(PREDICATE_PROFILE, "dingo-predicate-v1");
 

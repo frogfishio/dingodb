@@ -1,6 +1,6 @@
 //! RQL (Residiuum Query Language) — official human dialect → pure ENR1 + SDA.
 //!
-//! Design authority: [DQL_SPEC.md](../../../../../DQL_SPEC.md).
+//! Design authority: [RQL_SPEC.md](../../../../../RQL_SPEC.md).
 //! Every construct lowers into the same match-bag kernel that pure ENR text uses
 //! (`Match` / `one!` / `one?` / bare bag / `enrich` pipe). Execution is shared
 //! (`residiuum-sda`); there is no second evaluator.

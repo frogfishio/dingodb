@@ -18,11 +18,11 @@ use std::time::SystemTime;
 /// Profile label for the public Rust application façade.
 pub const RUST_APP_PROFILE: &str = "dingo-rust-app-v1";
 
-/// RQL Application Core source profile.
-pub const RQL_APP_CORE_PROFILE: &str = "rql-app-core-v1";
+/// RQL Application Core source profile (serialized value is frozen Class C).
+pub const RQL_APP_CORE_PROFILE: &str = "dql-app-core-v1";
 
-/// Canonical logical plan profile.
-pub const RQL_PLAN_PROFILE: &str = "rql-plan-v1";
+/// Canonical logical plan profile (serialized value is frozen Class C).
+pub const RQL_PLAN_PROFILE: &str = "dql-plan-v1";
 
 /// Authenticated continuation profile.
 pub const CURSOR_PROFILE: &str = "dingo-cursor-v1";
@@ -418,8 +418,8 @@ mod tests {
     #[test]
     fn profiles_are_stable() {
         assert_eq!(RUST_APP_PROFILE, "dingo-rust-app-v1");
-        assert_eq!(RQL_APP_CORE_PROFILE, "rql-app-core-v1");
-        assert_eq!(RQL_PLAN_PROFILE, "rql-plan-v1");
+        assert_eq!(RQL_APP_CORE_PROFILE, "dql-app-core-v1");
+        assert_eq!(RQL_PLAN_PROFILE, "dql-plan-v1");
         assert_eq!(CURSOR_PROFILE, "dingo-cursor-v1");
         assert_eq!(PREDICATE_PROFILE, "dingo-predicate-v1");
     }
