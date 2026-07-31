@@ -3,6 +3,8 @@
 //! - **PQH-0:** contract registries loaded from `spec/performance/`.
 //! - **PQH-1:** safe runner, path guard, preflight, platform fingerprint,
 //!   budgets, and classifiable cancel artifacts.
+//! - **PQH-2:** deterministic workload engine (generators, distributions,
+//!   digest oracle, scheduler partitions).
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
@@ -10,6 +12,7 @@
 #![forbid(unsafe_code)]
 
 pub mod runner;
+pub mod workload;
 
 use serde::Deserialize;
 use std::collections::HashSet;
