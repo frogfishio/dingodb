@@ -90,7 +90,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
-| APP-4 | not_started | — | APP-0 | filter/SDA/dialect precursors | no single `dingo-predicate-v1` accept | canonical predicates/plans |
+| APP-4 | active | 2026-07-31 | APP-0 | `dingo_sdk::predicate` + `plan_v1` (`dql-plan-encoding-v1`); plan_vectors hashes locked; tests `app4_predicate_plan`; **board `in_review`** (labor handoff) | full RQL source parser (APP-5); indexed/scan oracle parity residual | canonical predicates/plans |
 | APP-5 | not_started | — | APP-4 | — | dql-app-core-v1 compiler not accept | RQL Application Core |
 | APP-6 | not_started | — | APP-3, APP-5, HAR-4 | — | authenticated cursor not product | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `dql_query` reserved | remote query parity missing | remote query |

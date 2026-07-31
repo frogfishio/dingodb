@@ -829,6 +829,13 @@ Deliver:
 - builder-to-plan compilation;
 - model and property tests for predicate totality.
 
+**Labor cut (2026-07-31):** `dingo_sdk::predicate` (total Residuum eval),
+`dingo_sdk::plan_v1` (`dql-plan-encoding-v1`, BLAKE3 domain
+`dingo:dql-plan-v1:canonical-v1`), `PlanBuilder` + name binding,
+`spec/app/v1/plan_vectors_v1.json` hashes locked, tests
+`app4_predicate_plan`. Full RQL source parsing remains APP-5; scan/index
+oracle parity residual.
+
 Exit:
 
 - builder and RQL predicate fixtures compile to identical canonical plans;

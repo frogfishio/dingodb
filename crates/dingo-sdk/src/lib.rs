@@ -39,6 +39,7 @@ pub const SDK_API_VERSION: &str = "1.0";
 /// [`app_v1::QueryBudget`].
 pub mod app_v1;
 mod claim;
+// APP-4: shared predicates + canonical dql-plan-v1 (public modules).
 #[cfg(feature = "cluster")]
 mod cluster_backend;
 #[cfg(feature = "legacy-flat-sdk")]
@@ -49,6 +50,10 @@ mod directory_cache;
 mod error;
 mod filter;
 mod heap;
+/// Shared total predicate profile (`dingo-predicate-v1`).
+pub mod predicate;
+/// Canonical Application Core logical plan (`dql-plan-v1`) + plan hash.
+pub mod plan_v1;
 mod history;
 mod indexes;
 #[cfg(feature = "legacy-flat-sdk")]
@@ -72,6 +77,15 @@ pub use app_v1::{
 };
 /// Application Core query budget (APP-0). Distinct from legacy [`filter::QueryBudget`].
 pub use app_v1::QueryBudget as AppQueryBudget;
+pub use plan_v1::{
+    where_field_eq_param, CollectionBindings, NullsOrder, OrderDir, OrderTerm, PlanBuilder,
+    PlanSource, RqlPlanV1, DEFAULT_PAGE_SIZE, KEY_TIE_BREAK_PATH, MAX_ORDER_TERMS, MAX_PAGE_SIZE,
+    MAX_PROJECT_ITEMS, PLAN_ENCODING_PROFILE, PLAN_HASH_DOMAIN, PLAN_PROFILE,
+};
+pub use predicate::{
+    field, param, CompareOp, Operand, Path as PredPath, PredField, Predicate, Resolve,
+    MAX_PATH_SEGMENTS, MAX_PREDICATE_NODES, PREDICATE_PROFILE_V1,
+};
 pub use claim::{
     flat_collection_claim_language, heap_only_embedded_profile, legacy_flat_sdk_enabled,
     product_claim_language, product_may_advertise_qualified_heap, FLAT_COLLECTION_SURFACE_LABEL,

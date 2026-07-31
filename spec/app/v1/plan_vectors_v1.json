@@ -2,8 +2,10 @@
   "profile": "dql-plan-v1",
   "source_profile": "dql-app-core-v1",
   "predicate_profile": "dingo-predicate-v1",
-  "encoding_note": "Persistent/exchanged plan bytes require the companion encoding profile from DQL_SPEC §15. These vectors freeze logical shape and domain-separated hash labels for APP-0.",
-  "hash_domain": "dingo:dql-plan-v1:logical-v0",
+  "encoding_profile": "dql-plan-encoding-v1",
+  "encoding_note": "Canonical plan bytes are deterministic JSON (BTree key order) of RqlPlanV1. Plan hash is BLAKE3-256 over domain UTF-8 || 0x00 || canonical JSON UTF-8 (APP-4).",
+  "hash_domain": "dingo:dql-plan-v1:canonical-v1",
+  "hash_algorithm": "blake3-256",
   "vectors": [
     {
       "id": "plan-orders-status-open-page",
@@ -31,9 +33,9 @@
         "coverage": "complete",
         "consistency": "available"
       },
-      "plan_hash_hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "plan_hash_status": "placeholder_sha256_empty_until_encoding_profile",
-      "notes": "Replace plan_hash_hex when APP-4 freezes canonical encoding; shape is normative now."
+      "plan_hash_hex": "3efd561f280567e8bae659369c7f0ce8df86fc67b7bf31418cad8e95b5e454f4",
+      "plan_hash_status": "canonical_v1",
+      "notes": "Hash from dingo_sdk::plan_v1 builder + encoding profile; APP-5 must match from source_dql."
     },
     {
       "id": "plan-feature-unavailable-enrich",
@@ -64,7 +66,9 @@
         "page_size": 64,
         "coverage": "complete",
         "consistency": "available"
-      }
+      },
+      "plan_hash_hex": "3a5bd7c756db619f7eac1f648029376688438ebf9309fb9042b5a53f0775c65c",
+      "plan_hash_status": "canonical_v1"
     }
   ]
 }

@@ -7,9 +7,10 @@
     {
       "id": "APP0-R1",
       "item": "plan_hash_hex in plan_vectors_v1",
-      "status": "placeholder_labeled",
+      "status": "done",
       "blocks_implementer": false,
-      "resolved_by": "APP-4 canonical encoding profile"
+      "note": "dql-plan-encoding-v1 + domain dingo:dql-plan-v1:canonical-v1; BLAKE3 hashes locked in plan_vectors; dingo_sdk::plan_v1",
+      "resolved_by": "APP-4 2026-07-31 labor"
     },
     {
       "id": "APP0-R2",
