@@ -5,12 +5,14 @@
 //!   budgets, and classifiable cancel artifacts.
 //! - **PQH-2:** deterministic workload engine (generators, distributions,
 //!   digest oracle, scheduler partitions).
+//! - **PQH-3:** metrics kernel (histograms, clocks, probes, result writers).
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
 
 #![forbid(unsafe_code)]
 
+pub mod metrics;
 pub mod runner;
 pub mod workload;
 
