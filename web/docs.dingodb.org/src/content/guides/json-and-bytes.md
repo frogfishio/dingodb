@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/dingo-sdk/README.md
+  path: crates/residuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -32,4 +32,4 @@ users.put("user-42", &json!({ "name": "Alice", "status": "active" }))?;
 
 Bytes remain first-class durable material. Do not force every payload into a document shape.
 
-Prefer the SDK byte APIs documented in `crates/dingo-sdk` for binary objects, then examine survivors with salvage/SDA when needed.
+Prefer the SDK byte APIs documented in `crates/residuum-sdk` for binary objects, then examine survivors with salvage/SDA when needed.

@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/dingo-sdk/README.md
+  path: crates/residuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -19,7 +19,7 @@ keywords:
 ---
 
 - `doc/SDA/SDA_SPEC.md`, grammar, cheatsheet
-- CLI: `dingo-sda` / `sda-cli` eval
+- CLI: `residuum-sda` / `sda-cli` eval
 - Conformance corpus: SDA §14
 
 Pure evaluation only in core.

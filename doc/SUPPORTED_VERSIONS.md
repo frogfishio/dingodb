@@ -37,7 +37,7 @@ Until a production maturity announcement:
 ## Version identity
 
 - **Crate/workspace version:** monorepo `VERSION` / Cargo package versions.
-- **Wire profile:** `dingo_format::WIRE_PROFILE_LABEL` — independent of crate
+- **Wire profile:** `residuum_format::WIRE_PROFILE_LABEL` — independent of crate
   version; remains draft until DEF-053 freeze criteria pass (checklist and
   compatibility policy: [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md);
   runtime: `wire_is_frozen()` / `wire_freeze_summary()`).

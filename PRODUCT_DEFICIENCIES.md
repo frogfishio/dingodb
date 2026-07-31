@@ -65,7 +65,7 @@ embedded-only method does not establish backend parity.
 
 The audit uses:
 
-- actual public Rust methods in `dingo-store` and `dingo-sdk`;
+- actual public Rust methods in `residuum-store` and `residuum-sdk`;
 - reserved/scaffolded methods in `app_v1`;
 - active server/Heap RPC dispatch;
 - capability and delivery status documents;

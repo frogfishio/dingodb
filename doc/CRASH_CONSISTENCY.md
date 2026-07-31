@@ -3,7 +3,7 @@
 Status: **hardened beyond skeleton** (failpoints + matrix + multi-process abort +
 I/O fault injection)  
 Audience: store implementers, reviewers, CI  
-Companion: [`crates/dingo-store/crash_matrix.v1.json`](../crates/dingo-store/crash_matrix.v1.json),
+Companion: [`crates/residuum-store/crash_matrix.v1.json`](../crates/residuum-store/crash_matrix.v1.json),
 [DEFECTS.md](../DEFECTS.md) DEF-022
 
 ## Goal
@@ -18,7 +18,7 @@ authoritative segment bytes.
 The source of truth for operation → failpoint → expected reopen state is:
 
 ```text
-crates/dingo-store/crash_matrix.v1.json
+crates/residuum-store/crash_matrix.v1.json
 ```
 
 It is embedded in the crate (`CRASH_MATRIX_JSON` / `load_crash_matrix`) and
@@ -34,7 +34,7 @@ validated on every CI run. Each operation lists:
 ## Failpoint framework
 
 ```rust
-use dingo_store::{arm_failpoint_once, clear_failpoints, FailpointAction};
+use residuum_store::{arm_failpoint_once, clear_failpoints, FailpointAction};
 
 arm_failpoint_once("store.active.write_tail.before", FailpointAction::Error);
 // ... drive put/delete/seal ...
@@ -63,7 +63,7 @@ code paths.
 
 ## Multi-process abort harness
 
-Integration tests spawn the helper binary `dingo-store-crash-child`:
+Integration tests spawn the helper binary `residuum-store-crash-child`:
 
 ```text
 DINGO_CRASH_STORE=<path>
@@ -80,8 +80,8 @@ cells for durable put.
 
 | Mode | How | Coverage |
 |------|-----|----------|
-| PR / default CI | `cargo test -p dingo-store --test stage_def_022_crash_matrix` | Document validation + `ci_subset` cells + I/O suite + multi-process abort |
-| Nightly / full | `DINGO_CRASH_MATRIX_FULL=1 cargo test -p dingo-store --test stage_def_022_crash_matrix` | Every matrix cell |
+| PR / default CI | `cargo test -p residuum-store --test stage_def_022_crash_matrix` | Document validation + `ci_subset` cells + I/O suite + multi-process abort |
+| Nightly / full | `DINGO_CRASH_MATRIX_FULL=1 cargo test -p residuum-store --test stage_def_022_crash_matrix` | Every matrix cell |
 
 `scripts/nightly.sh` and `.github/workflows/nightly.yml` set the full env.
 

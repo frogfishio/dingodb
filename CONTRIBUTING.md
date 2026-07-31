@@ -30,7 +30,7 @@ qualify persistence, isolation, concurrency, or recovery claims.
 4. **Conformance is the gate.** Prefer golden and destructive tests over API
    surface alone.
 5. **Cluster does not own the bytes.** Node directories remain ordinary
-   `dingo-store` salvage targets without cluster software.
+   `residuum-store` salvage targets without cluster software.
 
 ## Workspace commands
 
@@ -39,35 +39,35 @@ qualify persistence, isolation, concurrency, or recovery claims.
 cargo test --workspace
 
 # SDA library (Stage 1 freeze)
-cargo test -p dingo-sda
+cargo test -p residuum-sda
 
 # SDA CLI
-cargo test -p dingo-sda-cli
+cargo test -p residuum-sda-cli
 
 # Wire format / frame codec
-cargo test -p dingo-format
+cargo test -p residuum-format
 
 # Single-node store (+ Stage 6 / 9 suites)
-cargo test -p dingo-store
+cargo test -p residuum-store
 
 # Collection SDK (+ remote / cluster routing tests)
-cargo test -p dingo-sdk
+cargo test -p residuum-sdk
 
 # SDA examination
-cargo test -p dingo-examine
+cargo test -p residuum-examine
 
 # Operator CLI
 cargo test -p dingo
 
 # Cluster federation
-cargo test -p dingo-cluster
+cargo test -p residuum-cluster
 
 # Quick SDA eval
-cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e '1 + 2'
-echo '{"name":"Ada"}' | cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e 'input<"name">!'
+cargo run -p residuum-sda-cli --bin residuum-sda -- eval -e '1 + 2'
+echo '{"name":"Ada"}' | cargo run -p residuum-sda-cli --bin residuum-sda -- eval -e 'input<"name">!'
 
 # CLI help
-cargo run -p dingo --bin dingo -- --help
+cargo run -p dingo --bin residuum -- --help
 ```
 
 Aliases (see `.cargo/config.toml`):
@@ -120,13 +120,13 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 
 | Area | Crate | Notes |
 |------|-------|--------|
-| SDA+ENR1 | `dingo-sda` / `dingo-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
-| Wire | `dingo-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/WIRE_MAJOR1_FREEZE.md`) |
-| Store | `dingo-store` | Authority + tiers + media mirrors (early-access) |
-| SDK | `dingo-sdk` | `SDK_API_VERSION` = `1.0` |
-| Examination | `dingo-examine` | Profile over salvage |
+| SDA+ENR1 | `residuum-sda` / `residuum-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
+| Wire | `residuum-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/WIRE_MAJOR1_FREEZE.md`) |
+| Store | `residuum-store` | Authority + tiers + media mirrors (early-access) |
+| SDK | `residuum-sdk` | `SDK_API_VERSION` = `1.0` |
+| Examination | `residuum-examine` | Profile over salvage |
 | CLI | `dingo` | doctor / salvage / development `serve` / experimental `serve-cluster` |
-| Cluster | `dingo-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
+| Cluster | `residuum-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
 Immediate package selection, priority, and release order:
 [MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md). Production-readiness defects
@@ -140,16 +140,16 @@ Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
 
 - `VERSION` / crate semver (`0.2.0`) — packaging only; **not** a maturity claim
 - `BUILD` — integer build stamp used by CLI `--version` output
-- `crates/sda-cli/BUILD` and `crates/dingo-cli/BUILD` — keep in sync with root
+- `crates/sda-cli/BUILD` and `crates/residuum-cli/BUILD` — keep in sync with root
   `BUILD` when CLI version tests require it
 
 Freeze labels (product API/profile labels, **not** crate semver):
 
-- `SDK_API_VERSION` (`dingo-sdk`) = `1.0` — collection API surface
-- `CLUSTER_PROFILE_VERSION` (`dingo-cluster`) = `v1` — in-process cluster only
-- `WIRE_PROFILE_LABEL` (`dingo-format`) = `1.0-draft` — draft wire bytes;
+- `SDK_API_VERSION` (`residuum-sdk`) = `1.0` — collection API surface
+- `CLUSTER_PROFILE_VERSION` (`residuum-cluster`) = `v1` — in-process cluster only
+- `WIRE_PROFILE_LABEL` (`residuum-format`) = `1.0-draft` — draft wire bytes;
   freeze checklist `doc/WIRE_MAJOR1_FREEZE.md` (DEF-053; not frozen)
-- `CONFORMANCE_CORPUS_TAG` (`dingo-sda`) = `sda-standalone-v1.0`
+- `CONFORMANCE_CORPUS_TAG` (`residuum-sda`) = `sda-standalone-v1.0`
 
 ## License
 

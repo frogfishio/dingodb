@@ -102,7 +102,7 @@ jobs:
           command: check
           arguments: --all-features
 
-  # Gate H6 / CPR-004 — Kani harnesses for pure heap lemmas (dingo-heap).
+  # Gate H6 / CPR-004 — Kani harnesses for pure heap lemmas (residuum-heap).
   kani-heap:
     name: kani heap pure lemmas
     runs-on: ubuntu-latest

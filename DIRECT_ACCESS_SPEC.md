@@ -2369,12 +2369,12 @@ was written.
 
 The shipped paths are not DDA:
 
-- `dingo-store::cursor` pages raw live subjects in subject order with a
+- `residuum-store::cursor` pages raw live subjects in subject order with a
   generation fence;
 - `Collection::scan_json_page` exposes that embedded raw scan;
 - `Collection::find_with` supports filters, ordering, and a result limit but
   does not expose a unified filtered rank page;
-- `dingo-cluster::Cluster::scan_with` pages prefix-filtered subjects using one
+- `residuum-cluster::Cluster::scan_with` pages prefix-filtered subjects using one
   `after_subject` frontier and deterministic merge;
 - no shipped path builds an exact predicate rank map, order domain, selection
   artifact, frozen DDA read view, or direct-access certificate;
@@ -2396,7 +2396,7 @@ The first implementation SHOULD remain a vertical slice across existing
 crates rather than creating an empty subsystem tree:
 
 ```text
-crates/dingo-store/
+crates/residuum-store/
   rank/
     bitvec.rs        abstract bitmap + plain rank/select reference
     block.rs         RankBlockV1 and document mapping
@@ -2410,18 +2410,18 @@ crates/dingo-store/
     dictionary.rs    exact RQL tuple order dictionary
     forest.rs        base/delta global value selection
 
-crates/dingo-sdk/
+crates/residuum-sdk/
   direct.rs          Rank, AccessPolicy, DirectQueryPage, query builder
   filter.rs          exact/candidate index capability declarations
 
-crates/dingo-cluster/
+crates/residuum-cluster/
   direct.rs          distributed read view and global rank directory
 
-crates/dingo-server/
+crates/residuum-server/
   direct.rs          admission, artifact leases, cursor issuance
   token_keys.rs      secret generation, rotation, and protected distribution
 
-crates/dingo-examine/
+crates/residuum-examine/
   direct.rs          SDA projection of blocks, maps, views, and holes
 ```
 

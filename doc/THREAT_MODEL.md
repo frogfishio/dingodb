@@ -63,16 +63,16 @@ Aligned with DEF-091 targets and DEF-063 “hostile-input surfaces”:
 
 | Surface | Primary crate | Status (this cut) |
 |---------|---------------|-------------------|
-| Frame decode / verify | `dingo-format` | Property tests + fuzz target `decode_frame` |
-| Forward / reverse salvage scan | `dingo-format` | Property tests + fuzz targets |
-| Deterministic CBOR envelopes | `dingo-format` | Property tests + fuzz target `cbor_envelope` |
-| Segment descriptor / trailer | `dingo-format` | Unit / corpus tests; fuzz follow-on |
-| Chunk manifest reassembly | `dingo-format` | Unit tests; fuzz follow-on |
-| Store envelopes / indexes / catalogs | `dingo-store` | Integration tests; fuzz follow-on |
+| Frame decode / verify | `residuum-format` | Property tests + fuzz target `decode_frame` |
+| Forward / reverse salvage scan | `residuum-format` | Property tests + fuzz targets |
+| Deterministic CBOR envelopes | `residuum-format` | Property tests + fuzz target `cbor_envelope` |
+| Segment descriptor / trailer | `residuum-format` | Unit / corpus tests; fuzz follow-on |
+| Chunk manifest reassembly | `residuum-format` | Unit tests; fuzz follow-on |
+| Store envelopes / indexes / catalogs | `residuum-store` | Integration tests; fuzz follow-on |
 | SDA lexer / parser / eval | `sda-core` | Conformance JSON; property/fuzz follow-on |
-| RPC / URL / protocol parsers | `dingo-client` / server | Protocol fixtures; fuzz follow-on |
-| Cluster control metadata | `dingo-cluster` | Stage tests; fuzz follow-on |
-| Salvage / migration / backup manifests | `dingo-store` | DEF-050–052 tests; fuzz follow-on |
+| RPC / URL / protocol parsers | `residuum-client` / server | Protocol fixtures; fuzz follow-on |
+| Cluster control metadata | `residuum-cluster` | Stage tests; fuzz follow-on |
+| Salvage / migration / backup manifests | `residuum-store` | DEF-050–052 tests; fuzz follow-on |
 
 ## 5. Security controls already in tree (partial)
 

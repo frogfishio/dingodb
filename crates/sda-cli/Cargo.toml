@@ -1,5 +1,5 @@
 [package]
-name = "dingo-sda-cli"
+name = "residuum-sda-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "parser-implementations", "text-processi
 include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
 
 [[bin]]
-name = "dingo-sda"
+name = "residuum-sda"
 path = "src/main.rs"
 
 [dependencies]

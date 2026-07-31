@@ -393,205 +393,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dingo-authority"
-version = "0.2.0"
-dependencies = [
- "blake3",
- "clap",
- "dingo-format",
- "dingo-heap",
- "dingo-store",
- "ed25519-dalek",
- "getrandom 0.3.4",
- "hex",
- "sha2",
- "tempfile",
- "thiserror",
- "zeroize",
-]
-
-[[package]]
-name = "dingo-cli"
-version = "0.2.0"
-dependencies = [
- "clap",
- "dingo-examine",
- "dingo-sdk",
- "dingo-server",
- "dingo-store",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "dingo-client"
-version = "0.2.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "dingo-cluster"
-version = "0.2.0"
-dependencies = [
- "blake3",
- "dingo-store",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "dingo-examine"
-version = "0.2.0"
-dependencies = [
- "dingo-format",
- "dingo-sda",
- "dingo-store",
- "serde_json",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "dingo-format"
-version = "0.2.0"
-dependencies = [
- "blake3",
- "crc32c",
- "proptest",
- "thiserror",
-]
-
-[[package]]
-name = "dingo-heap"
-version = "0.2.0"
-dependencies = [
- "arc-swap",
- "ciborium",
- "dingo-format",
- "ed25519-dalek",
- "getrandom 0.3.4",
- "hex",
- "proptest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
- "trybuild",
- "zeroize",
-]
-
-[[package]]
-name = "dingo-heap-verus"
-version = "0.2.0"
-
-[[package]]
-name = "dingo-sda"
-version = "0.2.0"
-dependencies = [
- "num-bigint",
- "num-rational",
- "num-traits",
- "proptest",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "dingo-sda-cli"
-version = "0.2.0"
-dependencies = [
- "clap",
- "dingo-sda",
- "serde_json",
-]
-
-[[package]]
-name = "dingo-sdk"
-version = "0.2.0"
-dependencies = [
- "blake3",
- "dingo-client",
- "dingo-cluster",
- "dingo-format",
- "dingo-heap",
- "dingo-sda",
- "dingo-server",
- "dingo-store",
- "ed25519-dalek",
- "getrandom 0.3.4",
- "hex",
- "rcgen",
- "rustls",
- "rustls-pemfile",
- "rustls-pki-types",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "webpki-roots 0.26.11",
- "x509-parser",
-]
-
-[[package]]
-name = "dingo-server"
-version = "0.2.0"
-dependencies = [
- "dingo-client",
- "dingo-cluster",
- "dingo-format",
- "dingo-heap",
- "dingo-sdk",
- "dingo-store",
- "ed25519-dalek",
- "getrandom 0.3.4",
- "hex",
- "rcgen",
- "rustls",
- "rustls-pemfile",
- "rustls-pki-types",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "dingo-store"
-version = "0.2.0"
-dependencies = [
- "blake3",
- "dingo-format",
- "dingo-heap",
- "getrandom 0.3.4",
- "hex",
- "hmac",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
- "ureq",
-]
-
-[[package]]
-name = "dingo-testrig"
-version = "0.2.0"
-dependencies = [
- "clap",
- "dingo-store",
- "getrandom 0.3.4",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "displaydoc"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1177,6 +978,205 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "residuum-authority"
+version = "0.2.0"
+dependencies = [
+ "blake3",
+ "clap",
+ "ed25519-dalek",
+ "getrandom 0.3.4",
+ "hex",
+ "residuum-format",
+ "residuum-heap",
+ "residuum-store",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
+name = "residuum-cli"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "residuum-examine",
+ "residuum-sdk",
+ "residuum-server",
+ "residuum-store",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "residuum-client"
+version = "0.2.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "residuum-cluster"
+version = "0.2.0"
+dependencies = [
+ "blake3",
+ "residuum-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "residuum-examine"
+version = "0.2.0"
+dependencies = [
+ "residuum-format",
+ "residuum-sda",
+ "residuum-store",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "residuum-format"
+version = "0.2.0"
+dependencies = [
+ "blake3",
+ "crc32c",
+ "proptest",
+ "thiserror",
+]
+
+[[package]]
+name = "residuum-heap"
+version = "0.2.0"
+dependencies = [
+ "arc-swap",
+ "ciborium",
+ "ed25519-dalek",
+ "getrandom 0.3.4",
+ "hex",
+ "proptest",
+ "residuum-format",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "trybuild",
+ "zeroize",
+]
+
+[[package]]
+name = "residuum-heap-verus"
+version = "0.2.0"
+
+[[package]]
+name = "residuum-sda"
+version = "0.2.0"
+dependencies = [
+ "num-bigint",
+ "num-rational",
+ "num-traits",
+ "proptest",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "residuum-sda-cli"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "residuum-sda",
+ "serde_json",
+]
+
+[[package]]
+name = "residuum-sdk"
+version = "0.2.0"
+dependencies = [
+ "blake3",
+ "ed25519-dalek",
+ "getrandom 0.3.4",
+ "hex",
+ "rcgen",
+ "residuum-client",
+ "residuum-cluster",
+ "residuum-format",
+ "residuum-heap",
+ "residuum-sda",
+ "residuum-server",
+ "residuum-store",
+ "rustls",
+ "rustls-pemfile",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "webpki-roots 0.26.11",
+ "x509-parser",
+]
+
+[[package]]
+name = "residuum-server"
+version = "0.2.0"
+dependencies = [
+ "ed25519-dalek",
+ "getrandom 0.3.4",
+ "hex",
+ "rcgen",
+ "residuum-client",
+ "residuum-cluster",
+ "residuum-format",
+ "residuum-heap",
+ "residuum-sdk",
+ "residuum-store",
+ "rustls",
+ "rustls-pemfile",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "residuum-store"
+version = "0.2.0"
+dependencies = [
+ "blake3",
+ "getrandom 0.3.4",
+ "hex",
+ "hmac",
+ "residuum-format",
+ "residuum-heap",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "ureq",
+]
+
+[[package]]
+name = "residuum-testrig"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "getrandom 0.3.4",
+ "residuum-store",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "ring"

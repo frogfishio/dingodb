@@ -36,6 +36,6 @@ print("verify-crash-recovery-contract: document sections OK")
 PY
 
 ok "running stage_def_104 suite"
-cargo test -p dingo-store --features legacy-raw-store --test stage_def_104_crash_recovery_contract -- --quiet
+cargo test -p residuum-store --features legacy-raw-store --test stage_def_104_crash_recovery_contract -- --quiet
 
 ok "OK"

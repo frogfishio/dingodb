@@ -2,17 +2,17 @@
 members = [
   "crates/sda-core",
   "crates/sda-cli",
-  "crates/dingo-format",
-  "crates/dingo-heap",
-  "crates/dingo-authority",
-  "crates/dingo-store",
-  "crates/dingo-client",
-  "crates/dingo-sdk",
-  "crates/dingo-server",
-  "crates/dingo-examine",
-  "crates/dingo-cli",
-  "crates/dingo-cluster",
-  "crates/dingo-testrig",
+  "crates/residuum-format",
+  "crates/residuum-heap",
+  "crates/residuum-authority",
+  "crates/residuum-store",
+  "crates/residuum-client",
+  "crates/residuum-sdk",
+  "crates/residuum-server",
+  "crates/residuum-examine",
+  "crates/residuum-cli",
+  "crates/residuum-cluster",
+  "crates/residuum-testrig",
   "verification/heap-verus",
 ]
 resolver = "2"
@@ -30,22 +30,22 @@ authors = ["Alexander R. Croft"]
 repository = "https://github.com/frogfishio/dingodb"
 
 [workspace.dependencies]
-# Directory is crates/sda-core; published package name is dingo-sda (not bare
+# Directory is crates/sda-core; published package name is residuum-sda (not bare
 # `sda` / `sda-lib` — those crates.io names must not be reused). Dependents that
 # use the workspace key import as `sda_core`. Inside the package, the crate path
-# is `dingo_sda`. `version` is required so `cargo package` can rewrite path deps.
-sda-core = { package = "dingo-sda", path = "crates/sda-core", version = "0.2.0" }
-dingo-format = { path = "crates/dingo-format", version = "0.2.0" }
-dingo-heap = { path = "crates/dingo-heap", version = "0.2.0" }
-dingo-authority = { path = "crates/dingo-authority", version = "0.2.0" }
+# is `residuum_sda`. `version` is required so `cargo package` can rewrite path deps.
+sda-core = { package = "residuum-sda", path = "crates/sda-core", version = "0.2.0" }
+residuum-format = { path = "crates/residuum-format", version = "0.2.0" }
+residuum-heap = { path = "crates/residuum-heap", version = "0.2.0" }
+residuum-authority = { path = "crates/residuum-authority", version = "0.2.0" }
 # default-features false: public raw `Store` is opt-in via `legacy-raw-store`
 # (HP-003 / CPR-001). Dependents that need Stages 3–9 flat store enable the feature.
-dingo-store = { path = "crates/dingo-store", version = "0.2.0", default-features = false }
-dingo-client = { path = "crates/dingo-client", version = "0.2.0" }
-dingo-sdk = { path = "crates/dingo-sdk", version = "0.2.0" }
-dingo-server = { path = "crates/dingo-server", version = "0.2.0" }
-dingo-examine = { path = "crates/dingo-examine", version = "0.2.0" }
-dingo-cluster = { path = "crates/dingo-cluster", version = "0.2.0" }
+residuum-store = { path = "crates/residuum-store", version = "0.2.0", default-features = false }
+residuum-client = { path = "crates/residuum-client", version = "0.2.0" }
+residuum-sdk = { path = "crates/residuum-sdk", version = "0.2.0" }
+residuum-server = { path = "crates/residuum-server", version = "0.2.0" }
+residuum-examine = { path = "crates/residuum-examine", version = "0.2.0" }
+residuum-cluster = { path = "crates/residuum-cluster", version = "0.2.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
@@ -57,7 +57,7 @@ blake3 = "1"
 crc32c = "0.6"
 getrandom = "0.3"
 tempfile = "3"
-# Lightweight HTTP for optional AWS KMS connector (dingo-store `aws-kms`).
+# Lightweight HTTP for optional AWS KMS connector (residuum-store `aws-kms`).
 ureq = { version = "2", default-features = false, features = ["tls"] }
 hmac = "0.12"
 sha2 = "0.10"

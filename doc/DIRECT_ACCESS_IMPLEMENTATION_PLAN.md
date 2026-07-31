@@ -40,7 +40,7 @@ Secondary scalar order becomes direct only through qualified DOW packages.
 The first implementation is a vertical slice:
 
 ```text
-crates/dingo-store/src/rank/
+crates/residuum-store/src/rank/
   bitvec.rs
   block.rs
   directory.rs
@@ -48,14 +48,14 @@ crates/dingo-store/src/rank/
   build.rs
   verify.rs
 
-crates/dingo-sdk/src/
+crates/residuum-sdk/src/
   direct.rs
 
-crates/dingo-server/src/
+crates/residuum-server/src/
   direct.rs
   token_keys.rs
 
-crates/dingo-examine/src/
+crates/residuum-examine/src/
   direct.rs
 ```
 

@@ -1,6 +1,6 @@
 # enr-core — Enrichment algebra (ENR1 in SDA; ENR2 design only)
 
-Status: **ENR1 kernel implemented inside `dingo-sda`** (same parser/evaluator).  
+Status: **ENR1 kernel implemented inside `residuum-sda`** (same parser/evaluator).  
 **ENR2** remains design notes only — do not implement yet.
 
 Companion specs: [ENR1.md](ENR1.md), [ENR2.md](ENR2.md), [SDA_SPEC.md](../../SDA_SPEC.md), [doc/SDA/DOCTRINE.md](../../doc/SDA/DOCTRINE.md).
@@ -12,12 +12,12 @@ parser would mean two languages and two compiles. Instead:
 
 | Choice | Rationale |
 |--------|-----------|
-| **Add ENR1 to SDA** (`dingo-sda` / `crates/sda-core`) | One `Program::parse`, one AST, pure eval |
+| **Add ENR1 to SDA** (`residuum-sda` / `crates/sda-core`) | One `Program::parse`, one AST, pure eval |
 | Match bag = SDA comprehension + `asBag` / `matchBag` when carrier must be Bag | Reuse existing `{ r \| r in R \| pred }` form |
 | Cardinality / merge as stdlib + sugar | `one?` / `one!` parse sugar; `only`, `first`, `last`, `merge`, `+` attach |
 | ENR2 stays out | Candidate ranking / multi-source / explain = cottage industry |
 
-Profile tag: `dingo_sda::ENR1_PROFILE_TAG` (`sda-enr1-v0.1`).  
+Profile tag: `residuum_sda::ENR1_PROFILE_TAG` (`sda-enr1-v0.1`).  
 Tests: `crates/sda-core/tests/enr1_kernel.rs`.
 
 Standalone SDA conformance (`sda-standalone-v1.0`) is **unchanged**; ENR1 is
@@ -27,8 +27,8 @@ additive (new names + `+` on Prod/Map).
 
 | Layer | Primitive | Job | Code today |
 |-------|-----------|-----|------------|
-| **SDA** | Values, carriers, pure transforms | Tree/algebra on values the host supplies | `dingo-sda` |
-| **ENR1** | Match bag | Relate left value ↔ right dataset; explicit cardinality + attach/merge/expand | **in `dingo-sda`** |
+| **SDA** | Values, carriers, pure transforms | Tree/algebra on values the host supplies | `residuum-sda` |
+| **ENR1** | Match bag | Relate left value ↔ right dataset; explicit cardinality + attach/merge/expand | **in `residuum-sda`** |
 | **ENR2** | Candidate bag → resolve → combine → explain | Multi-source, refine, rank, ambiguity, provenance | specs only |
 
 Shared laws (do not break when implementing any layer):
@@ -83,7 +83,7 @@ Hosts that apply one program to many bags should `Program::parse` once and
 
 | Now | Later |
 |-----|--------|
-| **ENR1 in `dingo-sda`** (this cut) | **ENR2** candidates / ranking / explain — not yet |
+| **ENR1 in `residuum-sda`** (this cut) | **ENR2** candidates / ranking / explain — not yet |
 | Host engines (`Dingo::query`, hash Index) remain valid stand-ins | Optionally compile host joins from ENR1 programs |
 | **Text path** — `Collection::sda` / `Dingo::sda_query` run ENR1+SDA source | Pushdown / plan compile of ENR1 text (optional) |
 
@@ -94,7 +94,7 @@ Evidence that ENR1 is the right *first* cut: multi-collection join measurements
 (nested pure SDA vs host hash equijoin) show the semantic gap is match +
 explicit cardinality, not candidate ranking. See
 `doc/PERFORMANCE_STRATEGIES.md` and the multi-collection SDA join tests under
-`dingo-sdk`.
+`residuum-sdk`.
 
 ## Host text path (people still write ENR + SDA)
 
@@ -260,18 +260,18 @@ control flow.
 4. **Dialects** absorb familiarity. Pure notation stays mathematical even
    when ugly.
 
-When coding any remaining ENR1 piece: keep one compile path in `dingo-sda`,
+When coding any remaining ENR1 piece: keep one compile path in `residuum-sda`,
 preserve match-bag reduction law, do not invent a second parser.
 
 ## Reading order
 
 1. [ENR1.md](ENR1.md) — match-bag kernel (normative intent).
-2. Code: `dingo-sda` stdlib ENR ops + `tests/enr1_kernel.rs`.
+2. Code: `residuum-sda` stdlib ENR ops + `tests/enr1_kernel.rs`.
 3. [ENR2.md](ENR2.md) — **read for orientation only until needed**.
 4. [SDA_SPEC.md](../../SDA_SPEC.md) + [DOCTRINE.md](../../doc/SDA/DOCTRINE.md) — value laws ENR must not weaken.
 
 ## Crate intent
 
-This directory holds **specs**. Runtime enrichment is in **`dingo-sda`** so SDA
+This directory holds **specs**. Runtime enrichment is in **`residuum-sda`** so SDA
 and ENR1 compile once. A future split into a thin `enr-lib` wrapper is optional
 and must not fork the parser.

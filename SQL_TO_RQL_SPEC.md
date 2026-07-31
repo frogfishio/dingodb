@@ -44,7 +44,7 @@ The compiler has one governing rule:
 > Emit equivalent RQL, emit a conditional translation with explicit
 > obligations, or refuse. Never guess.
 
-The existing `sql` dialect in `dingo-sdk` is a small SQL-ish-to-SDA filter
+The existing `sql` dialect in `residuum-sdk` is a small SQL-ish-to-SDA filter
 frontend. SQL-ish+ is its intended richer successor. This specification defines
 the new compiler surfaces:
 

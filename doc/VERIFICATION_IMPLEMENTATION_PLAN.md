@@ -92,7 +92,7 @@ Depends: `VFY-0`
 Deliver:
 
 ```text
-crates/dingo-verify/
+crates/residuum-verify/
 scripts/dingo-verify.sh
 ```
 

@@ -11,9 +11,9 @@ with the acceptance evidence expected before a stronger label.
 
 | Profile | How to run | Durability / replication | Maturity | Evidence |
 |---------|------------|---------------------------|----------|----------|
-| Embedded single-node | `Dingo::open(path)` | Local store durability modes (`memory` / `buffered` / `durable`) | experimental / early-access | `dingo-store` / `dingo-sdk` stage suites |
+| Embedded single-node | `Dingo::open(path)` | Local store durability modes (`memory` / `buffered` / `durable`) | experimental / early-access | `residuum-store` / `residuum-sdk` stage suites |
 | Single-node TCP | `dingo serve` (default `127.0.0.1`) | Local store only; **no** network quorum | development only | CLI `serve_*` tests; remote parity suite |
-| In-process cluster | `Dingo::open_cluster` / `create_cluster` | Partition-local quorum **in one process** | integration-test harness | `dingo-cluster` stage8a–8f tests |
+| In-process cluster | `Dingo::open_cluster` / `create_cluster` | Partition-local quorum **in one process** | integration-test harness | `residuum-cluster` stage8a–8f tests |
 | Network multi-node | `dingo serve-cluster` + multi-seed connect | Partition Raft propose when control plane attaches (DEF-036/037); directory-only if Raft attach fails | experimental (requires `--experimental-network-cluster`) | `stage_def_036_raft_rpc`, `stage_def_037_cluster_commit`; CLI bind gates |
 | S3/GCS placement | `MediaLocator` + mirror env roots | Filesystem mirror of segments, not native cloud I/O SDK | experimental mirror | store tier / media tests |
 | Erasure / lifecycle | scaffold APIs | Not production protection | scaffold | types/docs only until codecs land |
@@ -51,7 +51,7 @@ with the acceptance evidence expected before a stronger label.
 | `CONFORMANCE_CORPUS_TAG` | `sda-standalone-v1.0` | SDA §14 corpus |
 | `QUERY_PLAN_PROFILE` | `dingo-query-plan-v1` | Serializable filter/query plans (DEF-028) |
 | `RESOURCE_PROFILE` | `dingo-resource-v1` | Query budgets + host resource limits (DEF-029) |
-| `SERVER_PROFILE` | `dingo-server-v1` | Bounded TCP server admission + drain (DEF-030) |
+| `SERVER_PROFILE` | `residuum-server-v1` | Bounded TCP server admission + drain (DEF-030) |
 | `PROTOCOL_PROFILE` | `dingo-rpc-v1` | Framed RPC + handshake (DEF-031) |
 | `RPC_WIRE_LABEL` | `1.0-draft` | Network RPC interoperability draft (DEF-031; not frozen) |
 | `TLS_PROFILE` | `dingo-tls-v1` | TLS 1.3 transport + peer identity (DEF-032) |
@@ -60,7 +60,7 @@ with the acceptance evidence expected before a stronger label.
 | `RAFT_PERSIST_PROFILE` | `dingo-raft-persist-v1` | Durable Raft hard state, log, membership, snapshots (DEF-035) |
 | `RAFT_RPC_PROFILE` | `dingo-raft-rpc-v1` | Network Raft control-plane RPCs (DEF-036) |
 | `FEATURE_RAFT_RPC_V1` | `raft-rpc-v1` | Handshake feature when server serves `raft_*` ops |
-| `CLUSTER_COMMIT_PROFILE` | `dingo-cluster-commit-v1` | Data-plane put/get via network Raft propose (DEF-037) |
+| `CLUSTER_COMMIT_PROFILE` | `residuum-cluster-commit-v1` | Data-plane put/get via network Raft propose (DEF-037) |
 | `FEATURE_CLUSTER_COMMIT_V1` | `cluster-commit-v1` | Feature token for quorum-committed collection ops |
 | `REBALANCE_CONTROL_PROFILE` | `dingo-rebalance-control-v1` | Durable rebalance jobs + joint membership (DEF-038) |
 | `ANTI_ENTROPY_PROFILE` | `dingo-anti-entropy-v1` | Hierarchical inventory + integrity-based repair (DEF-039) |
@@ -87,17 +87,17 @@ with the acceptance evidence expected before a stronger label.
 | Anti-entropy inventory + replica repair | DEF-039 majority/integrity source select; `repair_audit.json` | **in-process cluster** shipped |
 | Network multi-process Raft control plane | DEF-036 RequestVote / AppendEntries / snapshot / ReadIndex | **shipped** (see below) |
 | Data-plane client writes via network Raft | DEF-037 propose + apply; `committed` after quorum | **shipped (experimental)** |
-| Seeded in-process fault sim + lincheck | DEF-041 `dingo-cluster-verify-v1` | **shipped** (network Raft in-process) |
+| Seeded in-process fault sim + lincheck | DEF-041 `residuum-cluster-verify-v1` | **shipped** (network Raft in-process) |
 | CLUSTER_SPEC §22 core matrix (network Raft) | DEF-041 | **shipped** (§22.1–.8 + chaos) |
 | In-process soak put/get after chaos | DEF-041 | **shipped** (`run_soak`) |
-| Multi-process OS chaos + short soak | DEF-041-N `dingo-cluster-multiproc-v1` | **shipped (labor)** — rolling restart, abort-after-ack, cross-process writer lock, seed+history dumps (`stage_def_041n_multiproc`) |
+| Multi-process OS chaos + short soak | DEF-041-N `residuum-cluster-multiproc-v1` | **shipped (labor)** — rolling restart, abort-after-ack, cross-process writer lock, seed+history dumps (`stage_def_041n_multiproc`) |
 | Multi-process Jepsen PORC vs live `serve-cluster` TCP | DEF-041-N residual | **not yet** — serve-cluster stays experimental |
 | Multi-hour soak | DEF-041-N residual | **not yet** (optional env `DINGO_MULTIPROC_LONG_SOAK=1` expands short soak) |
 
 Layout: `{cluster_root}/raft/node-{n}/p{partition}/`. User payloads remain in
-ordinary `dingo-store` segments (salvage independent of Raft control plane).
+ordinary `residuum-store` segments (salvage independent of Raft control plane).
 
-Evidence: `stage_def_035_raft_persist`, `dingo_cluster::raft_persist` unit tests.
+Evidence: `stage_def_035_raft_persist`, `residuum_cluster::raft_persist` unit tests.
 
 ## Network Raft RPC (DEF-036)
 
@@ -113,7 +113,7 @@ Evidence: `stage_def_035_raft_persist`, `dingo_cluster::raft_persist` unit tests
 | Retry identity | `operation_id` dedup → same log index | **shipped** |
 | Client put/get via Raft propose | DEF-037 `propose_and_apply` + read-index barrier | **shipped (experimental)** |
 
-Evidence: `stage_def_036_raft_rpc` (cluster + SDK), `dingo_cluster::raft_rpc` unit tests.
+Evidence: `stage_def_036_raft_rpc` (cluster + SDK), `residuum_cluster::raft_rpc` unit tests.
 
 ## Network data-plane commit (DEF-037)
 
@@ -155,7 +155,7 @@ Evidence: `stage_def_038_control_plane` (6 tests), Stage 8f rebalance suite.
 | Rate limit | `RepairOptions::{max_subjects,max_bytes,dry_run}` | **in-process cluster** shipped |
 | Network multi-process repair RPC | Background peer exchange over `serve-cluster` | **not yet** (inventory/repair is in-process) |
 
-Evidence: `stage_def_039_repair` (8 tests), `dingo_cluster::repair` unit tests.
+Evidence: `stage_def_039_repair` (8 tests), `residuum_cluster::repair` unit tests.
 
 ## Distributed query paging (DEF-040)
 
@@ -169,7 +169,7 @@ Evidence: `stage_def_039_repair` (8 tests), `dingo_cluster::repair` unit tests.
 | Partial partition honesty | Unavailable partitions never look like empty complete success | **in-process cluster** shipped |
 | Network multi-process page RPC | Remote worker page protocol over `serve-cluster` | **not yet** (coordinator is in-process) |
 
-Evidence: `stage_def_040_query` (7 tests), `dingo_cluster::coverage` continuation unit tests.
+Evidence: `stage_def_040_query` (7 tests), `residuum_cluster::coverage` continuation unit tests.
 
 ## Backup and restore (DEF-050)
 
@@ -186,7 +186,7 @@ Evidence: `stage_def_040_query` (7 tests), `dingo_cluster::coverage` continuatio
 | Incremental / encrypted / remote targets | — | **not yet** |
 | Cluster-coordinated multi-node backup | — | **not yet** |
 
-Evidence: `stage_def_050_backup`, `dingo_store::backup` unit tests, CLI
+Evidence: `stage_def_050_backup`, `residuum_store::backup` unit tests, CLI
 `backup_and_restore_roundtrip`.
 
 ## Integrity scrub (DEF-051)
@@ -205,7 +205,7 @@ Evidence: `stage_def_050_backup`, `dingo_store::backup` unit tests, CLI
 | Background interval daemon | — | **not yet** |
 | Cluster repair integration | — | **not yet** (DEF-039 follow-on) |
 
-Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
+Evidence: `stage_def_051_scrub`, `residuum_store::scrub` unit tests, CLI
 `scrub_clean_store_and_status`.
 
 ## Format and protocol migration (DEF-052)
@@ -213,7 +213,7 @@ Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
 | Concern | How | Maturity |
 |---------|-----|----------|
 | Profile | `dingo-migrate-v1` job under `recovery/migration/` | **shipped** (single-generation) |
-| Wire reader/writer matrix | `dingo-format::compat` (`SUPPORTED_READER_MAJORS`, current major 1) | **shipped** |
+| Wire reader/writer matrix | `residuum-format::compat` (`SUPPORTED_READER_MAJORS`, current major 1) | **shipped** |
 | Protocol policy snapshot | Declared `dingo-rpc-v1` / `1.0-draft` in job documents | **shipped** |
 | Phases | preflight → plan → apply → verify; rollback of incomplete | **shipped** |
 | Evidence-preserving copy | Never in-place rewrite; blake3 per file | **shipped** |
@@ -224,7 +224,7 @@ Evidence: `stage_def_051_scrub`, `dingo_store::scrub` unit tests, CLI
 | Rolling mixed-cluster upgrade drills | — | **not yet** |
 | Wire major-1 freeze declaration | Checklist + policy published; label still draft | **not yet** (DEF-053 partial) |
 
-Evidence: `stage_def_052_migrate`, `dingo_format::compat` / `dingo_store::migrate`
+Evidence: `stage_def_052_migrate`, `residuum_format::compat` / `residuum_store::migrate`
 unit tests, CLI `migrate_roundtrip_and_status`. Freeze inventory:
 [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md); `wire_is_frozen()` /
 `wire_freeze_summary()`.
@@ -243,7 +243,7 @@ unit tests, CLI `migrate_roundtrip_and_status`. Freeze inventory:
 | CLI | `dingo config validate\|show`, `serve --config` | **shipped** |
 | Live dynamic reload + audit | — | **not yet** |
 
-Evidence: `stage_def_054_config`, `dingo_server::config` unit tests, CLI
+Evidence: `stage_def_054_config`, `residuum_server::config` unit tests, CLI
 `config_validate_show_and_unsafe_reject`.
 
 ## Network bind policy (DEF-002 / DEF-032)
@@ -311,7 +311,7 @@ Evidence: `stage_def_054_config`, `dingo_server::config` unit tests, CLI
   `protocol_violation` (clear error; no silent dual-mode).
 - `RPC_WIRE_LABEL = 1.0-draft` is not an interoperability freeze (separate from
   survival-frame freeze; see DEF-053 / [WIRE_MAJOR1_FREEZE.md](WIRE_MAJOR1_FREEZE.md)).
-- Golden fixtures: `crates/dingo-sdk/tests/fixtures/protocol/`.
+- Golden fixtures: `crates/residuum-sdk/tests/fixtures/protocol/`.
 
 ## Writer ownership (DEF-020)
 
@@ -324,7 +324,7 @@ Kill -9 releases the OS advisory lock; recovery rebuilds from segment bytes.
 
 ## Control-document durability (DEF-021)
 
-Mutable metadata uses `dingo_store::write_atomic` (temp → `sync_all` → rename →
+Mutable metadata uses `residuum_store::write_atomic` (temp → `sync_all` → rename →
 parent dirsync). Non-trivial documents (`write_dedup.v1`, `lifecycle.json`,
 `endpoints.json`, `cluster.json`, `placement.json`, recovery manifests) also
 retain a `*.prev` generation. Endpoint upserts take a process + OS lock so
@@ -433,12 +433,12 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Machine-readable matrix | shipped (hardened) | `crates/dingo-store/crash_matrix.v1.json` |
-| Failpoint framework | shipped | `dingo_store::failpoint` (`Abort`, I/O faults, short-write) |
+| Machine-readable matrix | shipped (hardened) | `crates/residuum-store/crash_matrix.v1.json` |
+| Failpoint framework | shipped | `residuum_store::failpoint` (`Abort`, I/O faults, short-write) |
 | Persistence-order docs | shipped | [CRASH_CONSISTENCY.md](CRASH_CONSISTENCY.md) + matrix `persistence_order` |
 | CI subset | shipped | `stage_def_022_crash_matrix` (default) |
 | Full matrix | nightly | `DINGO_CRASH_MATRIX_FULL=1` in nightly workflow / `scripts/nightly.sh` |
-| Multi-process abort | shipped | `dingo-store-crash-child` + kill before-write / after-sync |
+| Multi-process abort | shipped | `residuum-store-crash-child` + kill before-write / after-sync |
 | ENOSPC / permission / short-write | shipped | failpoint I/O actions + instrumented write sites |
 | Buffered power-loss equivalence | not yet | remaining DEF-022 work |
 
@@ -455,7 +455,7 @@ collection catalogs are built from segment-derived durable state only.
 | Index-path maximum point | documented | Steady-state index insertion past cliff (diminishing returns); next write-path leverage is async lifecycle, not new primary-index structure (`BENCHMARK_DISCLOSURE` maximum-point self-check) |
 | Parallel ingest / multi-core write | **Axis A + B + C harness shipped; product cluster put_many started** | Axis A: O(1) rotate + background seal (`seal_pipeline`). Axis B: `create_with_shards(N)`, subject-hash routing, `put_many` parallel append; N=1 keeps legacy `active/active.dingo`. Axis C harness: testrig `--stores N` multi-process child pumps. Product path: `Cluster::put_many` groups by virtual partition / independent leaders (`stage_def_096_product_capacity`). Testrig disclosure: `concurrency` / `writer_model` / `store_count` / peak RSS+CPU%. See `doc/PARALLEL_INGEST.md` / DEF-096 |
 | Hydra adaptive per-segment indexes | **foundation shipped** | Seal writes derived `indexes/seg/{id}.hdx` (Eytzinger / PGM / RadixSpline / compressed radix / MPHF); multithread rebuild API; **not** yet on `Store::get` (still `PrimaryIndex`). See `INDEXING_STRATEGY_PROPOSAL.md`, `hydra_segment_index` tests |
-| Scale-ladder integrity rig | **diagnostic tool shipped** | `dingo-testrig` pump + chaos + monitor; 1 GiB campaign is evidence of salvage/integrity, not a published SLO |
+| Scale-ladder integrity rig | **diagnostic tool shipped** | `residuum-testrig` pump + chaos + monitor; 1 GiB campaign is evidence of salvage/integrity, not a published SLO |
 | Recovery without derived state | shipped | Wipe `indexes/` + `catalogs/` + `snapshots/` still reconstructs logical state |
 | Tests | shipped | `stage_def_023_write_path` (+ bench disclosure skeleton) |
 
@@ -523,8 +523,8 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Profile tag | shipped | `dingo_store::ID_PROFILE = "dingo-id-v1"` |
-| OS CSPRNG | shipped | `getrandom` via `dingo_store::random_id` / `fill_random` |
+| Profile tag | shipped | `residuum_store::ID_PROFILE = "dingo-id-v1"` |
+| OS CSPRNG | shipped | `getrandom` via `residuum_store::random_id` / `fill_random` |
 | Fail closed | shipped | `StoreError::RandomUnavailable` (no time-hash fallback) |
 | Random identities | shipped | `event_id`, `store_id`, job/checkpoint ids, client `operation_id`, `ClusterId::generate` |
 | Sortable segment ids | shipped | LE seq + store mix; seq recovered from disk on open |
@@ -552,7 +552,7 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Profile tag | shipped | `dingo_store::INDEX_LIFECYCLE_PROFILE = "dingo-index-lifecycle-v1"` |
+| Profile tag | shipped | `residuum_store::INDEX_LIFECYCLE_PROFILE = "dingo-index-lifecycle-v1"` |
 | Durable states | shipped | building / ready / stale / partial / failed / rebuilding on `.six` v2 |
 | Build metadata | shipped | build_id, source_frontier, resume_after_subject, failure_reason |
 | Snapshot + catch-up | shipped | unfenced build pages + one frontier catch-up before Ready |
@@ -566,7 +566,7 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Profile tag | shipped | `dingo_sdk::QUERY_PLAN_PROFILE = "dingo-query-plan-v1"` |
+| Profile tag | shipped | `residuum_sdk::QUERY_PLAN_PROFILE = "dingo-query-plan-v1"` |
 | Filter → SDA | shipped | `Filter::to_sda` / `matches_sda` over portable vocabulary |
 | Path helpers | shipped | SDA `getPath` / `startsWith` / `strContains` (pure stdlib) |
 | Absence vs Null | shipped | missing/`None` ≠ stored `null`/`Some(null)` |
@@ -579,14 +579,14 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Profile tag | shipped | `dingo_sdk::RESOURCE_PROFILE = "dingo-resource-v1"` |
+| Profile tag | shipped | `residuum_sdk::RESOURCE_PROFILE = "dingo-resource-v1"` |
 | Query budget | shipped | `max_docs_scanned` / `max_bytes_scanned` / `max_result_bytes` → `query_budget_required` |
 | Partial budget stop | shipped | `allow_partial_coverage` returns matches so far instead of error |
 | Host JSON depth | shipped | default 64; put paths fail closed with `resource_limit` |
 | Host payload / RPC line | shipped | 16 MiB defaults; remote refuse oversized lines before parse |
 | Result / sort memory | shipped | budget + 64 MiB host ceiling; no spill-to-disk in this profile |
 | Cancellation | shipped | `CancelToken` on `QueryOptions` / builder (embedded find loops) |
-| Frame length bounds | shipped | `dingo_format::SafetyLimits` (unchanged) |
+| Frame length bounds | shipped | `residuum_format::SafetyLimits` (unchanged) |
 | Conn / concurrent query admission | shipped | DEF-030 bounded server (`SERVER_PROFILE`) |
 | Protocol rate / auth lockout / expensive budgets | shipped | DEF-034 admission (`ADMISSION_PROFILE`) |
 | Per-tenant work quotas | partial | DEF-034 per-principal RPS; multi-tenant ACL store still follow-on |
@@ -596,7 +596,7 @@ collection catalogs are built from segment-derived durable state only.
 
 | Surface | Status | Evidence |
 |---------|--------|----------|
-| Profile tag | shipped | `dingo_sdk::SERVER_PROFILE = "dingo-server-v1"` |
+| Profile tag | shipped | `residuum_sdk::SERVER_PROFILE = "residuum-server-v1"` |
 | Single store owner | shipped | one `Store::open` per serve process; shared via `Arc<Mutex<Store>>` |
 | Concurrent connections | shipped | thread-per-connection workers; accept loop never blocks on client I/O |
 | Connection limit | shipped | `ServeOptions::max_connections` / `ServerLimits` (default 64) |
@@ -612,4 +612,4 @@ collection catalogs are built from segment-derived durable state only.
 
 A lightweight workspace test asserts this file exists and still forbids the
 disallowed production claim phrases used in public status tables. See
-`crates/dingo-cli/tests/cli.rs` (`capability_matrix_document_present`).
+`crates/residuum-cli/tests/cli.rs` (`capability_matrix_document_present`).

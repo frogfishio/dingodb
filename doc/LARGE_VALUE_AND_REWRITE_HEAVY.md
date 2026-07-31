@@ -47,7 +47,7 @@ transcript/{id}/timeline/{bounded-block-id}
 transcript/{id}/snapshot/{generation}   # derived / rebuildable only
 ```
 
-Helpers: `dingo_store::rewrite_heavy::*`.
+Helpers: `residuum_store::rewrite_heavy::*`.
 
 Losing one turn/block must not make surviving units unqueryable. Aggregate
 snapshots are optional and replaceable.

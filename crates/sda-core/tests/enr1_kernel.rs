@@ -1,25 +1,25 @@
 //! ENR1 kernel profile tests (additive to standalone SDA).
 //!
-//! ENR1 lives in the same `dingo-sda` compile path as SDA (`Program::parse` once).
+//! ENR1 lives in the same `residuum-sda` compile path as SDA (`Program::parse` once).
 //! Spec spine: `crates/enr-core/ENR1.md` minimal subset. ENR2 is out of scope.
 //!
-//! Profile tag: [`dingo_sda::ENR1_PROFILE_TAG`].
+//! Profile tag: [`residuum_sda::ENR1_PROFILE_TAG`].
 
-use dingo_sda::{from_json, Program, Value, ENR1_PROFILE_TAG};
+use residuum_sda::{from_json, Program, Value, ENR1_PROFILE_TAG};
 use serde_json::json;
 
 fn run(src: &str) -> serde_json::Value {
-    dingo_sda::run(src, serde_json::Value::Null).expect("enr1 program should evaluate")
+    residuum_sda::run(src, serde_json::Value::Null).expect("enr1 program should evaluate")
 }
 
 fn run_input(src: &str, input: serde_json::Value) -> serde_json::Value {
-    dingo_sda::run(src, input).expect("enr1 program should evaluate")
+    residuum_sda::run(src, input).expect("enr1 program should evaluate")
 }
 
 #[test]
 fn enr1_profile_tag_is_stable() {
     assert_eq!(ENR1_PROFILE_TAG, "sda-enr1-v0.1");
-    assert_eq!(dingo_sda::SdaRuntime::enr1_profile_tag(), ENR1_PROFILE_TAG);
+    assert_eq!(residuum_sda::SdaRuntime::enr1_profile_tag(), ENR1_PROFILE_TAG);
 }
 
 #[test]

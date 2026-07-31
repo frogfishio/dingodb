@@ -2,7 +2,7 @@
 
 #![no_main]
 
-use dingo_store::BackupManifest;
+use residuum_store::BackupManifest;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

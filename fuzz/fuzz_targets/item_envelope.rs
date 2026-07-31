@@ -2,7 +2,7 @@
 
 #![no_main]
 
-use dingo_store::decode_item_envelope;
+use residuum_store::decode_item_envelope;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

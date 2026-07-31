@@ -1739,7 +1739,7 @@ context. Every advanced result includes jurisdiction coverage.
 Create a pure Rust crate with no storage or network I/O:
 
 ```text
-crates/dingo-policy/
+crates/residuum-policy/
   src/
     lib.rs
     ids.rs
@@ -1764,7 +1764,7 @@ Responsibilities:
 
 The crate must deny unknown actions/required attributes.
 
-### 31.2 `dingo-format`
+### 31.2 `residuum-format`
 
 Add:
 
@@ -1775,7 +1775,7 @@ Add:
 - unknown-version preservation;
 - malformed/adversarial corpora.
 
-### 31.3 `dingo-store`
+### 31.3 `residuum-store`
 
 Add:
 
@@ -1803,7 +1803,7 @@ store/
 These directories accelerate management. Essential policy identity remains in
 framed evidence.
 
-### 31.4 `dingo-cluster`
+### 31.4 `residuum-cluster`
 
 Add:
 
@@ -1816,7 +1816,7 @@ Add:
 - policy epoch fencing;
 - policy-aware coverage.
 
-### 31.5 `dingo-sdk`
+### 31.5 `residuum-sdk`
 
 Add:
 
@@ -1827,11 +1827,11 @@ Add:
 - export/workflow API;
 - backend parity.
 
-### 31.6 `dingo-cli`
+### 31.6 `residuum-cli`
 
 Add policy/domain/transition/export/hold/purge commands and stable JSON.
 
-### 31.7 `dingo-examine` and SDA
+### 31.7 `residuum-examine` and SDA
 
 Expose:
 

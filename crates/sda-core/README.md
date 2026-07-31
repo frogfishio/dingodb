@@ -1,6 +1,6 @@
-# dingo-sda
+# residuum-sda
 
-`dingo-sda` is **ResiduumDB's hybrid pure evaluator** for Structured Data Algebra
+`residuum-sda` is **ResiduumDB's hybrid pure evaluator** for Structured Data Algebra
 (SDA) plus the additive **ENR1** enrichment kernel. It is a ResiduumDB monorepo
 package — not a claim on the bare crates.io names `sda` / `sda-lib`.
 
@@ -8,8 +8,8 @@ It provides a small host-facing API for parsing, validating, formatting, and
 evaluating programs over JSON. Evaluation is pure: no file or network IO lives
 in this crate.
 
-> **Package name:** publish and depend as **`dingo-sda`**. Source lives under
-> `crates/sda-core`. Inside this package the Rust path is `dingo_sda`; workspace
+> **Package name:** publish and depend as **`residuum-sda`**. Source lives under
+> `crates/sda-core`. Inside this package the Rust path is `residuum_sda`; workspace
 > dependents that use the `sda-core` key import as `sda_core`.
 
 ## Why not `sda` / `sda-lib`?
@@ -23,23 +23,23 @@ compile path. Treat it as ResiduumDB's SDA+ENR1 hybrid surface.
 
 | You want… | Use |
 |-----------|-----|
-| Embed SDA+ENR1 evaluation in a Rust program | **`dingo-sda`** (this crate) |
-| Shell CLI (`eval` / `check` / `fmt`) | [`dingo-sda-cli`](https://crates.io/crates/dingo-sda-cli) (`dingo-sda` binary) |
-| ResiduumDB recovery examination units | [`dingo-examine`](https://crates.io/crates/dingo-examine) |
+| Embed SDA+ENR1 evaluation in a Rust program | **`residuum-sda`** (this crate) |
+| Shell CLI (`eval` / `check` / `fmt`) | [`residuum-sda-cli`](https://crates.io/crates/residuum-sda-cli) (`residuum-sda` binary) |
+| ResiduumDB recovery examination units | [`residuum-examine`](https://crates.io/crates/residuum-examine) |
 
 ## Install
 
 ```toml
 [dependencies]
-dingo-sda = "0.1"
+residuum-sda = "0.1"
 ```
 
-Or: `cargo add dingo-sda`
+Or: `cargo add residuum-sda`
 
 ## Quick example
 
 ```rust
-let output = dingo_sda::run(
+let output = residuum_sda::run(
     r#"input<"name">!"#,
     serde_json::json!({"name": "Ada"}),
 )?;
@@ -47,7 +47,7 @@ assert_eq!(
     output,
     serde_json::json!({"$type": "ok", "$value": "Ada"})
 );
-# Ok::<(), dingo_sda::SdaError>(())
+# Ok::<(), residuum_sda::SdaError>(())
 ```
 
 Bind host input under a name other than `input` with
@@ -76,7 +76,7 @@ ENR1 (match bag + explicit cardinality) is implemented **inside this crate**, no
 as a second parser. Spec: [`crates/enr-core/`](../enr-core/README.md). Example:
 
 ```rust
-let prog = dingo_sda::Program::parse(
+let prog = residuum_sda::Program::parse(
     r#"orders
        |> enrich {
             customer:
@@ -86,7 +86,7 @@ let prog = dingo_sda::Program::parse(
           }"#,
 )?;
 # let _ = prog;
-# Ok::<(), dingo_sda::SdaError>(())
+# Ok::<(), residuum_sda::SdaError>(())
 ```
 
 ENR2 (candidates, ranking, explain) is **not** implemented.
@@ -94,24 +94,24 @@ ENR2 (candidates, ranking, explain) is **not** implemented.
 ## Status
 
 **Shipped.** Standalone behavior is frozen under
-`dingo_sda::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
+`residuum_sda::CONFORMANCE_CORPUS_TAG` (`sda-standalone-v1.0`). Semantic changes
 require a new corpus tag. ENR1 is additive under `ENR1_PROFILE_TAG`.
 
 ResiduumDB recovery examination (ExaminationUnit projection) lives in
-[`dingo-examine`](https://crates.io/crates/dingo-examine), not here — this crate
+[`residuum-examine`](https://crates.io/crates/residuum-examine), not here — this crate
 stays pure.
 
 ## Conformance
 
 ```sh
-cargo test -p dingo-sda
+cargo test -p residuum-sda
 ```
 
 ## Latency / phase breakdown (diagnostic)
 
 ```sh
-cargo run -p dingo-sda --release --example sda_latency_breakdown
-cargo test -p dingo-sda --test sda_bench_skeleton
+cargo run -p residuum-sda --release --example sda_latency_breakdown
+cargo test -p residuum-sda --test sda_bench_skeleton
 ```
 
 ## Documentation
@@ -119,7 +119,7 @@ cargo test -p dingo-sda --test sda_bench_skeleton
 - Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
 - User docs: [doc/SDA/](../../doc/SDA/)
 - ENR: [crates/enr-core/](../enr-core/README.md)
-- CLI package: [`dingo-sda-cli`](https://crates.io/crates/dingo-sda-cli)
+- CLI package: [`residuum-sda-cli`](https://crates.io/crates/residuum-sda-cli)
 
 ## License
 

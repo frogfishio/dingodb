@@ -27,8 +27,8 @@ These ideas transfer easily from jq:
 Examples:
 
 ```sh
-echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
-dingo-sda eval -f transform.sda -i input.json
+echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
+residuum-sda eval -f transform.sda -i input.json
 ```
 
 ## 2. What will feel different
@@ -59,7 +59,7 @@ It often gives you a named failure instead.
 Example:
 
 ```sh
-echo '{}' | dingo-sda eval -e 'input<"name">!'
+echo '{}' | residuum-sda eval -e 'input<"name">!'
 ```
 
 Typical output:
@@ -114,7 +114,7 @@ It is just a useful starting intuition.
 SDA:
 
 ```sh
-echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
+echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
 ```
 
 ### Filter a list
@@ -122,7 +122,7 @@ echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
 SDA:
 
 ```sh
-echo '[1,2,3,4]' | dingo-sda eval -e '{ x in input | x > 2 }'
+echo '[1,2,3,4]' | residuum-sda eval -e '{ x in input | x > 2 }'
 ```
 
 ### Transform a list
@@ -130,7 +130,7 @@ echo '[1,2,3,4]' | dingo-sda eval -e '{ x in input | x > 2 }'
 SDA:
 
 ```sh
-echo '[1,2,3,4]' | dingo-sda eval -e '{ yield x * 2 | x in input }'
+echo '[1,2,3,4]' | residuum-sda eval -e '{ yield x * 2 | x in input }'
 ```
 
 ## 5. Why SDA may seem stricter

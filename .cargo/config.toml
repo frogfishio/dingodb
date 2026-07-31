@@ -2,5 +2,5 @@
 test-all = "test --workspace"
 sda-test = "test -p sda-lib"
 sda-run = "run -p sda --bin sda --"
-store-test = "test -p dingo-store"
-format-test = "test -p dingo-format"
+store-test = "test -p residuum-store"
+format-test = "test -p residuum-format"

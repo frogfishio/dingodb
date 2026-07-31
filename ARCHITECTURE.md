@@ -38,7 +38,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | JSON Schema Draft 2020-12 import into RRE | [JSON_SCHEMA_TO_RRE_SPEC.md](JSON_SCHEMA_TO_RRE_SPEC.md) |
 | Query dialects (dql / sda / json / mongo / sql / … → pure SDA) | [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md) |
 | SDA examination of recovered ResiduumDB units | [SDA_PROFILE.md](SDA_PROFILE.md) |
-| Enrichment algebra (ENR1 kernel in `dingo-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
+| Enrichment algebra (ENR1 kernel in `residuum-sda`; ENR2 candidates design-only) | [crates/enr-core/README.md](crates/enr-core/README.md), [ENR1.md](crates/enr-core/ENR1.md), [ENR2.md](crates/enr-core/ENR2.md); profile `sda-enr1-v0.1` |
 | Cluster federation and coverage | [CLUSTER_SPEC.md](CLUSTER_SPEC.md) |
 | Product framing | [USP.md](USP.md) |
 | Public product website | [WEBSITE_SPEC.md](WEBSITE_SPEC.md) |
@@ -61,10 +61,10 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 | 1 | SDA standalone (pure) | **done** — full §14 MUST lock; corpus tag `sda-standalone-v1.0` |
 | 2 | Wire format + salvage scanner | **2a–2d** — frames, seal, fwd/rev scan, §13 corpus, deterministic CBOR envelopes |
 | 3 | Single-node store | **3a–3c** — put/get/delete, §16 suite, descriptor + index cache |
-| 4 | Collection SDK | **4a–4d** — `dingo-sdk` open, JSON/bytes, scan/stream, filters, `ErrorCode` |
-| 5 | SDA examination profile | **done** — `dingo-examine` ExaminationUnit + SDA over salvage |
+| 4 | Collection SDK | **4a–4d** — `residuum-sdk` open, JSON/bytes, scan/stream, filters, `ErrorCode` |
+| 5 | SDA examination profile | **done** — `residuum-examine` ExaminationUnit + SDA over salvage |
 | 6 | Indexes, catalogs, chunks | **done** — secondary indexes, history, chunks, compact, checkpoints |
-| 7 | CLI doctor/salvage + server | **done** — `dingo-cli`, connect options (auth/deadline/retry), nightly packaging |
+| 7 | CLI doctor/salvage + server | **done** — `residuum-cli`, connect options (auth/deadline/retry), nightly packaging |
 | 8 | Cluster federation | **8a–8f done** — partitions, coverage, Raft, convergent-append, SDK routing, find coverage, rebalance |
 | 9 | Tiering / archive | **done** — filesystem media roots, segment move/copy, hierarchical catalogs, offline coverage, retention runbook |
 
@@ -73,31 +73,31 @@ See [DELIVERY_PLAN.md](DELIVERY_PLAN.md) for full exit criteria.
 ```text
 dingodb/
   crates/
-    sda-core/       # package name dingo-sda; SDA+ENR1 hybrid pure eval (Stage 1) — MIT
-    sda-cli/        # package name dingo-sda-cli; `dingo-sda` binary (Stage 1) — MIT
-    enr-core/       # ENR1/ENR2 specs; ENR1 runtime lives in dingo-sda (one compile path)
-    dingo-format/   # frames, CBOR envelopes, seal, scan, §13 corpus (Stage 2a–2d) — MIT
-    dingo-client/   # framed RPC + handshake only — MIT
-    dingo-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to) — MPL-2.0
-    dingo-sdk/      # collection API + remote connect (Stages 4 + 6 + 7); cluster via feature — MPL-2.0
-    dingo-server/   # accept loop, authz, admission, Raft RPC glue, serve_* — AGPL
-    dingo-examine/  # ExaminationUnit + SDA over salvage (Stage 5) — MPL-2.0
-    dingo-cli/      # `dingo` binary: put/get, doctor, salvage, backup/restore, scrub, migrate, serve (Stage 7) — AGPL
-    dingo-cluster/  # partitions, coverage, multi-node + Raft + find + rebalance (Stage 8a–8f) — AGPL
+    sda-core/       # package name residuum-sda; SDA+ENR1 hybrid pure eval (Stage 1) — MIT
+    sda-cli/        # package name residuum-sda-cli; `residuum-sda` binary (Stage 1) — MIT
+    enr-core/       # ENR1/ENR2 specs; ENR1 runtime lives in residuum-sda (one compile path)
+    residuum-format/   # frames, CBOR envelopes, seal, scan, §13 corpus (Stage 2a–2d) — MIT
+    residuum-client/   # framed RPC + handshake only — MIT
+    residuum-store/    # single-node append store (Stages 3 + 6 + 7 inspect/salvage_to) — MPL-2.0
+    residuum-sdk/      # collection API + remote connect (Stages 4 + 6 + 7); cluster via feature — MPL-2.0
+    residuum-server/   # accept loop, authz, admission, Raft RPC glue, serve_* — AGPL
+    residuum-examine/  # ExaminationUnit + SDA over salvage (Stage 5) — MPL-2.0
+    residuum-cli/      # `dingo` binary: put/get, doctor, salvage, backup/restore, scrub, migrate, serve (Stage 7) — AGPL
+    residuum-cluster/  # partitions, coverage, multi-node + Raft + find + rebalance (Stage 8a–8f) — AGPL
 ```
 
 Crate ownership:
 
 | Stage | Crate | Role |
 |-------|-------|------|
-| 2 | `dingo-format` | **Present** — frames, deterministic CBOR envelopes, seal, scanner, §13 corpus (2a–2d) |
-| — | `dingo-client` | **Present** — MIT wire framing + handshake (`dingo-rpc-v1`) |
-| 3+6+7 | `dingo-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, backup_to/restore (DEF-050), scrub (DEF-051), migrate (DEF-052), catalogs, chunks, history, compact |
-| 4+6+7+8d–8e | `dingo-sdk` | **Present** — collections, filters, indexes, history, remote RPC; `cluster` feature for open_cluster |
-| 5 | `dingo-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
-| 7 | `dingo-server` | **Present** — bounded serve, authz, admission, TLS bind policy, network Raft glue |
-| 7 | `dingo-cli` | **Present** — `dingo` put/get/list/doctor/salvage/backup/restore/scrub/migrate/serve (serve via `dingo-server`) |
-| 8 | `dingo-cluster` | **Present (8a–8f)** — partitions, coverage, Raft, convergent-append, find honesty, rebalance |
+| 2 | `residuum-format` | **Present** — frames, deterministic CBOR envelopes, seal, scanner, §13 corpus (2a–2d) |
+| — | `residuum-client` | **Present** — MIT wire framing + handshake (`dingo-rpc-v1`) |
+| 3+6+7 | `residuum-store` | **Present** — put/get/delete, salvage, open_inspect, salvage_to, backup_to/restore (DEF-050), scrub (DEF-051), migrate (DEF-052), catalogs, chunks, history, compact |
+| 4+6+7+8d–8e | `residuum-sdk` | **Present** — collections, filters, indexes, history, remote RPC; `cluster` feature for open_cluster |
+| 5 | `residuum-examine` | **Present** — ExaminationUnit projection, salvage stream, SDA filter/map, bounded pages |
+| 7 | `residuum-server` | **Present** — bounded serve, authz, admission, TLS bind policy, network Raft glue |
+| 7 | `residuum-cli` | **Present** — `dingo` put/get/list/doctor/salvage/backup/restore/scrub/migrate/serve (serve via `residuum-server`) |
+| 8 | `residuum-cluster` | **Present (8a–8f)** — partitions, coverage, Raft, convergent-append, find honesty, rebalance |
 
 Rule of thumb from the delivery plan: **vertical slices over empty package trees.**
 
@@ -107,8 +107,8 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 |--------|----------|
 | Core implementation language | **Rust** |
 | First embedded surface | Rust library API; TypeScript-like examples in DX_SPEC remain the product shape |
-| First CLI | `dingo-sda` (Stage 1) + `dingo` (Stage 7) |
-| SDA packaging | `dingo-sda` (lib) + `dingo-sda-cli` (`dingo-sda` binary); SDA+ENR1 hybrid; no storage IO |
+| First CLI | `residuum-sda` (Stage 1) + `dingo` (Stage 7) |
+| SDA packaging | `residuum-sda` (lib) + `residuum-sda-cli` (`residuum-sda` binary); SDA+ENR1 hybrid; no storage IO |
 | Wire format versioning | Draft `1.0-draft`; reader/writer matrix + migrate phases (DEF-052); freeze is DEF-053 |
 | Process configuration | Versioned `dingo-config-v1` validate-before-serve (DEF-054); live reload follow-on |
 | Operational telemetry | [Ratatouille-only bounded firehose](TELEMETRY_SPEC.md); no request-path file/stdout logging |
@@ -118,10 +118,10 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 
 ## SDA import convention
 
-- Package name on crates.io: **`dingo-sda`** (never bare `sda` / `sda-lib`)
-- CLI package: **`dingo-sda-cli`**, binary **`dingo-sda`**
+- Package name on crates.io: **`residuum-sda`** (never bare `sda` / `sda-lib`)
+- CLI package: **`residuum-sda-cli`**, binary **`residuum-sda`**
 - Workspace dependency key: `sda-core` → Rust path `sda_core::…` (dependents)
-- Inside the library package / its integration tests: `dingo_sda::…`
+- Inside the library package / its integration tests: `residuum_sda::…`
 - Product shape: SDA + additive ENR1 hybrid for ResiduumDB, not a generic pure-SDA claim
 
 ## Product follow-ons (in-tree v0.23 — not production)
@@ -141,7 +141,7 @@ Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
    still prefer in-process `Dingo::open_cluster`.
 3. **Freeze / packaging labels** — `SDK_API_VERSION` (`1.0`),
    `CLUSTER_PROFILE_VERSION` (`v1` in-process), `WIRE_PROFILE_LABEL`
-   (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`dingo-cluster-commit-v1`).
+   (`1.0-draft`), plus `CLUSTER_COMMIT_PROFILE` (`residuum-cluster-commit-v1`).
    Distinct from crate semver `0.2.0`.
 4. **Nice-to-haves** — `LifecyclePolicy`, erasure manifest scaffold,
    [doc/BENCHMARK_DISCLOSURE.md](doc/BENCHMARK_DISCLOSURE.md) (OVERVIEW §12.2).

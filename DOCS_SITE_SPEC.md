@@ -247,7 +247,7 @@ applies_to:
   product: "0.2"
   surface: embedded-single-node
 source:
-  path: crates/dingo-sdk/README.md
+  path: crates/residuum-sdk/README.md
   revision: generated
 last_verified: 2026-07-30
 owners:
@@ -298,7 +298,7 @@ The canonical quickstart MUST start from an empty directory and include:
 
 1. prerequisites and supported Rust version;
 2. project creation;
-3. `dingo-sdk` dependency;
+3. `residuum-sdk` dependency;
 4. complete compilable source;
 5. first run and expected output;
 6. second run proving reopen/persistence;
@@ -505,7 +505,7 @@ The launch migration MUST use a reviewed manifest. Initial mapping:
 | Repository source | Docs destination |
 |---|---|
 | `README.md` | Docs home summary and getting-started entry points |
-| `crates/dingo-sdk/README.md` | Rust SDK quickstart/reference source |
+| `crates/residuum-sdk/README.md` | Rust SDK quickstart/reference source |
 | `DX_SPEC.md` | Concepts plus specification |
 | `doc/RQL/USER_GUIDE.md` | `/guides/dql/` |
 | RQL/SDA grammar and manuals | `/reference/dql/`, `/reference/sda/`, related guides |

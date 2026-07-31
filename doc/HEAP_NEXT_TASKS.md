@@ -10,7 +10,7 @@ Companions: [HEAP_SPEC.md](../HEAP_SPEC.md) (contract + progress),
 
 ## North star
 
-Close **single-node** `dingo-heap-v1` **honestly** (`qualified=true` only when the
+Close **single-node** `residuum-heap-v1` **honestly** (`qualified=true` only when the
 matrix says so). Do **not** open HP-011/012 (cluster) until HP-010 is Accept or
 deliberately deferred with Level-1 product language.
 
@@ -26,7 +26,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 |---|------|-----|-----------|
 | A1 | Migrate high-traffic demos/tests to `open_deployment` + `HeapCap` | Unblocks default flip | **Done (partial)** — heap Accept paths use connect_heap / open_deployment; Stages 3–9 tests opt into `legacy-flat-sdk` |
 | A2 | Flip **`legacy-flat-sdk` default off** (keep feature for Stages 3–9) | Closes CPR-001 residual for claim honesty | **Done (2026-07-30)** — `default = []`; stage tests `required-features = ["legacy-flat-sdk"]`; claim + arch check updated |
-| A3 | Flip or document **`legacy-raw-store`** default consistently with A2 | HP-003 cutover | **Done (2026-07-30)** — `dingo-store` `default = []`; Stages 3–9 tests/examples `required-features = ["legacy-raw-store"]`; arch check updated |
+| A3 | Flip or document **`legacy-raw-store`** default consistently with A2 | HP-003 cutover | **Done (2026-07-30)** — `residuum-store` `default = []`; Stages 3–9 tests/examples `required-features = ["legacy-raw-store"]`; arch check updated |
 
 ### Wave B — §32.4 surface completeness (H1–H2)
 
@@ -94,7 +94,7 @@ Work top-down. Prefer gate closers over more polish on already-landed cuts.
 ```bash
 bash ./scripts/check_heap_architecture.sh
 ./scripts/verify-heap.sh quick   # or full before release candidate
-cargo test -p dingo-sdk --features dangerous-key-export --test hp007_connect_heap
+cargo test -p residuum-sdk --features dangerous-key-export --test hp007_connect_heap
 ```
 
 Matrix truth: `spec/heap/qualification/hp010-matrix-v1.json` → `"qualified": false`.

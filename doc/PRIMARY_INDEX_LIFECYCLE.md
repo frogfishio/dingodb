@@ -92,5 +92,5 @@ lifecycle {
 - APIs: `diagnose_primary_cache`, `Store::primary_cache_diag`,
   `Store::lifecycle_diag`
 - CLI: `dingo doctor` / `dingo doctor --json-out`
-- Tests: `crates/dingo-store/tests/stage_def_102_primary_cache_diag.rs`
+- Tests: `crates/residuum-store/tests/stage_def_102_primary_cache_diag.rs`
 - Matrix: `doc/CAPABILITY_MATRIX.md` § Derived-index lifecycle diagnostics

@@ -61,7 +61,7 @@ else
   exit 1
 fi
 
-echo "== DEF-091 property tests (dingo-format) =="
-cargo test -p dingo-format --test stage_def_091_properties
+echo "== DEF-091 property tests (residuum-format) =="
+cargo test -p residuum-format --test stage_def_091_properties
 
 echo "quality bar OK (DEF-090); DEF-091 properties exercised"

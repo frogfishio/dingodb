@@ -1,6 +1,6 @@
 # Heap complete-path review (HP-010 / Gate H6)
 
-**Status:** living review for single-node `dingo-heap-v1` qualification  
+**Status:** living review for single-node `residuum-heap-v1` qualification  
 **Date:** 2026-07-29  
 **Claim impact:** does **not** authorize `qualified=true`  
 **Normative anchors:** HEAP_SPEC §3.4 (complete-path enforcement), §27 Gate H6,
@@ -31,11 +31,11 @@ an honest qualified claim.
 
 | Layer | In TCB for logical isolation | Notes |
 |-------|------------------------------|-------|
-| `dingo-heap` pure decide / caps | Yes | Unforgeable `HeapCap`, trybuild |
-| `dingo-format` admit / SubjectV2 | Yes | Wrong-heap frames rejected |
-| `dingo-store` heap façades / lifecycle | Yes | Catalog + purge/restore |
-| `dingo-authority` (local ceremony) | Yes (ceremony only) | Not linked by server |
-| `dingo-server` qualified HeapKey path | Yes (when enabled) | TLS exporter + session |
+| `residuum-heap` pure decide / caps | Yes | Unforgeable `HeapCap`, trybuild |
+| `residuum-format` admit / SubjectV2 | Yes | Wrong-heap frames rejected |
+| `residuum-store` heap façades / lifecycle | Yes | Catalog + purge/restore |
+| `residuum-authority` (local ceremony) | Yes (ceremony only) | Not linked by server |
+| `residuum-server` qualified HeapKey path | Yes (when enabled) | TLS exporter + session |
 | Legacy `Dingo::collection` / raw `Store` | **Out of qualified profile** | Flat-store compatibility |
 | Cluster routing / Raft | **Out of single-node profile** | HC1 / HP-011+ |
 

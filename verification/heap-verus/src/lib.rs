@@ -5,9 +5,9 @@
 //! | Path | Flag | Location |
 //! |------|------|----------|
 //! | **Verus** | [`VERUS_PROOFS_CONNECTED`] | `verification/heap-verus/verus/pure_kernel.rs` |
-//! | **Kani** | [`KANI_HARNESSES_CONNECTED`] | `dingo_heap::pure_proofs` `#[cfg(kani)]` |
+//! | **Kani** | [`KANI_HARNESSES_CONNECTED`] | `residuum_heap::pure_proofs` `#[cfg(kani)]` |
 //!
-//! Executable stand-ins in `dingo_heap::pure_proofs` / `h6_decide_obligations`
+//! Executable stand-ins in `residuum_heap::pure_proofs` / `h6_decide_obligations`
 //! stay CI-connected via `cargo test` regardless of Verus install.
 //!
 //! Verify Verus: `./scripts/setup_verus.sh && ./scripts/check_verus_heap.sh`
@@ -80,7 +80,7 @@ pub const VERUS_TARGET_PREDICATES: &[&str] = &[
     "lemma_connected_pure_proof_bundle",
 ];
 
-/// Names of Kani proof harnesses in `dingo_heap` pure_proofs.
+/// Names of Kani proof harnesses in `residuum_heap` pure_proofs.
 pub const KANI_HARNESS_NAMES: &[&str] = &[
     "kani_binding_rejects_foreign_heap",
     "kani_generation_grace_window",

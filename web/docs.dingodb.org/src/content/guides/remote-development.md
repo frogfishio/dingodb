@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: single-node-tcp
 source:
-  path: crates/dingo-sdk/README.md
+  path: crates/residuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -24,7 +24,7 @@ keywords:
 Single-node TCP (`dingo serve`) is **development only**. It is not a production deployment claim.
 
 ```rust
-use dingo_sdk::{ConnectOptions, Dingo};
+use residuum_sdk::{ConnectOptions, Dingo};
 let mut db = Dingo::connect("dingo://127.0.0.1:7434/app")?;
 ```
 

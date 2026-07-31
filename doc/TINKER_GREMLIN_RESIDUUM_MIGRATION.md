@@ -442,7 +442,7 @@ All UUIDs (**sessionId**, **conversationId**, **projectId**, **package_id**, **t
 ### Phase 0 — Prerequisites (ResiduumDB + Gremlin)
 
 1. **Embedded open path** stable: `Dingo::open(path)` local store used by daemon tests.  
-2. **Stream append + cursor read** API usable from Rust (`dingo-sdk`).  
+2. **Stream append + cursor read** API usable from Rust (`residuum-sdk`).  
 3. **Collection put/get/history** usable.  
 4. **Durability modes** mapped: journal `every_batch` → ResiduumDB durability that fsyncs segment; `terminal_only` → group mid-turn stream appends + fsync on terminal kinds.  
 5. Feature flags:  
@@ -598,7 +598,7 @@ Tauri commands stay stable; repository swaps underneath.
 
 ### 8.3 Dependency
 
-- Daemon: `dingo-sdk` / `dingo-store` path dependency or crates.io once published.  
+- Daemon: `residuum-sdk` / `residuum-store` path dependency or crates.io once published.  
 - Feature `store-dingo` to keep default builds FS-only until ready.
 
 ---
@@ -644,7 +644,7 @@ Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, du
 ## 12. Testing plan
 
 1. **Unit:** hash chain parity, torn-tail salvage parity, index fold golden files.  
-2. **Import fixtures:** copy anonymized micro journals into `dingo-store` tests.  
+2. **Import fixtures:** copy anonymized micro journals into `residuum-store` tests.  
 3. **Crash matrix:** kill -9 mid dual-write; ensure FS or ResiduumDB recoverable and no silent fork (receipt decides canonical).  
 4. **Dogfood:** migrate gremlin repo sessions (~50 MB) on a branch daemon; run one day of real work.  
 5. **Tinker Recents:** redirect + project meta + archived/deleted flags.  

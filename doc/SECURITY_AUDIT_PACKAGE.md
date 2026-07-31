@@ -52,10 +52,10 @@ is necessary but not sufficient for DEF-063 acceptance.
 | Delivery / quality bar | `./scripts/quality.sh` |
 | Fuzz property bar (no cargo-fuzz required) | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
 | Full fuzz smoke (nightly + cargo-fuzz) | `./scripts/fuzz-smoke.sh` or CI job `fuzz_smoke` |
-| Crash matrix (CI subset) | `cargo test -p dingo-store --features legacy-raw-store --test stage_def_022_crash_matrix` |
-| Cluster in-process verify | `cargo test -p dingo-cluster --test stage_def_041_verify` |
-| Writer-lock honesty | `cargo test -p dingo-store --features legacy-raw-store --test stage_def_101_writer_lock` |
-| Continuation secret keys | `cargo test -p dingo-store --features legacy-raw-store --test stage_def_097_token_keys` |
+| Crash matrix (CI subset) | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_022_crash_matrix` |
+| Cluster in-process verify | `cargo test -p residuum-cluster --test stage_def_041_verify` |
+| Writer-lock honesty | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_101_writer_lock` |
+| Continuation secret keys | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_097_token_keys` |
 | Crash/recovery contract | `./scripts/verify-crash-recovery-contract.sh` |
 
 ## 4. Fuzz inventory (DEF-091 / 091-F)

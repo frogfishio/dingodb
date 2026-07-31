@@ -19,19 +19,19 @@ License text files (full terms)
 | `LICENSE-AGPL-3.0` | AGPL-3.0-or-later | Cluster, server/serve path, operator CLI |
 
 Per-crate SPDX identifiers are declared in each package’s `Cargo.toml`. Enabling
-the optional `cluster` feature on `dingo-sdk` pulls AGPL `dingo-cluster` into
+the optional `cluster` feature on `residuum-sdk` pulls AGPL `residuum-cluster` into
 that build (see `doc/LICENSING.md` §4).
 
 How to use this tree
 --------------------
 
-- **SDA+ENR1 hybrid** (`dingo-sda`, `dingo-sda-cli`): MIT — see `LICENSE-MIT`.
-- **Wire format / thin client** (`dingo-format`, `dingo-client`): MIT — see
+- **SDA+ENR1 hybrid** (`residuum-sda`, `residuum-sda-cli`): MIT — see `LICENSE-MIT`.
+- **Wire format / thin client** (`residuum-format`, `residuum-client`): MIT — see
   `LICENSE-MIT`.
-- **Embedded store / examine / SDK** (`dingo-store`, `dingo-examine`,
-  `dingo-sdk` default): MPL-2.0 — see `LICENSE-MPL-2.0`.
-- **Networked product** (`dingo-cluster`, `dingo-server`, `dingo-cli`, and
-  `dingo-sdk` when built with `features = ["cluster"]`): AGPL-3.0-or-later —
+- **Embedded store / examine / SDK** (`residuum-store`, `residuum-examine`,
+  `residuum-sdk` default): MPL-2.0 — see `LICENSE-MPL-2.0`.
+- **Networked product** (`residuum-cluster`, `residuum-server`, `residuum-cli`, and
+  `residuum-sdk` when built with `features = ["cluster"]`): AGPL-3.0-or-later —
   see `LICENSE-AGPL-3.0`.
 
 Contributions

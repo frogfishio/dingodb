@@ -242,7 +242,7 @@ Studio may examine:
 - SDA examination units; and
 - damage/coverage reports.
 
-Offline examination uses `dingo-examine` and `dingo-format`. It MUST NOT open a
+Offline examination uses `residuum-examine` and `residuum-format`. It MUST NOT open a
 live store as a second writer, repair media implicitly, rebuild catalogs merely
 to make the UI look complete, or suppress unsupported/damaged units.
 
@@ -288,7 +288,7 @@ apps/dingo-studio/
 Recommended Rust crate boundary:
 
 ```text
-crates/dingo-studio-core/     # session, query, telemetry, evidence, settings
+crates/residuum-studio-core/     # session, query, telemetry, evidence, settings
 apps/dingo-studio/src-tauri/  # Tauri application and IPC adapter
 ```
 
@@ -303,9 +303,9 @@ Angular UI
 Tauri IPC adapter
     ↓
 dingo-studio-core
-    ├── dingo-sdk / dingo-client
-    ├── dingo-examine / dingo-format / dingo-sda
-    ├── dingo-heap
+    ├── residuum-sdk / residuum-client
+    ├── residuum-examine / residuum-format / residuum-sda
+    ├── residuum-heap
     └── Evidence and telemetry adapters
 ```
 

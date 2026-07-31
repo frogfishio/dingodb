@@ -13,10 +13,10 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 serde_json = "1"
-dingo-format = { path = "../crates/dingo-format" }
-dingo-sda = { path = "../crates/sda-core" }
-dingo-client = { path = "../crates/dingo-client" }
-dingo-store = { path = "../crates/dingo-store", features = ["legacy-raw-store"] }
+residuum-format = { path = "../crates/residuum-format" }
+residuum-sda = { path = "../crates/sda-core" }
+residuum-client = { path = "../crates/residuum-client" }
+residuum-store = { path = "../crates/residuum-store", features = ["legacy-raw-store"] }
 
 [[bin]]
 name = "decode_frame"

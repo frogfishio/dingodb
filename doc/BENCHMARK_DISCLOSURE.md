@@ -8,7 +8,7 @@ class from the hot path (OVERVIEW §12.1).
 
 | Field | Example / notes |
 |-------|-----------------|
-| ResiduumDB version | `VERSION` + git SHA; wire [`WIRE_PROFILE_LABEL`](../crates/dingo-format/src/lib.rs) |
+| ResiduumDB version | `VERSION` + git SHA; wire [`WIRE_PROFILE_LABEL`](../crates/residuum-format/src/lib.rs) |
 | SDK / cluster labels | `SDK_API_VERSION`, `CLUSTER_PROFILE_VERSION` |
 | Durability mode | `memory` / `buffered` / `durable` / `replicated` |
 | Verification mode | frame CRC + BLAKE3 body hash on/off for the workload |
@@ -38,16 +38,16 @@ durability conditions.
 
 | Suite | Path class |
 |-------|------------|
-| `dingo-store` `stage6_bench_skeleton` | hot-path skeleton |
-| `dingo-store` `stage_def_023_write_path` | hot-path write amplification / fsync-ack disclosure (DEF-023) |
-| `dingo-store` example `write_latency_breakdown` | hot-path phase split: memory index vs buffered data vs full `persist_index_cache` vs seal |
-| `dingo-store` example `write_scale_curve` | buffered scale curve (early vs late windows) |
-| `dingo-store` example `read_latency_breakdown` | open-once vs reopen-per-get; PrimaryIndex gets vs Chimera sidecar probe |
-| `dingo-store` `stage9_archive_bench` | archive-path class (separate) |
-| `dingo-sda` example `sda_latency_breakdown` | pure-SDA phase split: parse / from_json / eval / to_json / reparse vs compile-once |
-| `dingo-sda` `sda_bench_skeleton` | pure-SDA CI skeleton (absurdity bounds only) |
-| `dingo-sdk` `multi_collection_sda_join_perf` | nested-SDA multi-collection join (viability / anti-pattern cliff) |
-| `dingo-sdk` `multi_query_join_perf` | host hash equijoin + SDA normalise (product multi-query path) |
+| `residuum-store` `stage6_bench_skeleton` | hot-path skeleton |
+| `residuum-store` `stage_def_023_write_path` | hot-path write amplification / fsync-ack disclosure (DEF-023) |
+| `residuum-store` example `write_latency_breakdown` | hot-path phase split: memory index vs buffered data vs full `persist_index_cache` vs seal |
+| `residuum-store` example `write_scale_curve` | buffered scale curve (early vs late windows) |
+| `residuum-store` example `read_latency_breakdown` | open-once vs reopen-per-get; PrimaryIndex gets vs Chimera sidecar probe |
+| `residuum-store` `stage9_archive_bench` | archive-path class (separate) |
+| `residuum-sda` example `sda_latency_breakdown` | pure-SDA phase split: parse / from_json / eval / to_json / reparse vs compile-once |
+| `residuum-sda` `sda_bench_skeleton` | pure-SDA CI skeleton (absurdity bounds only) |
+| `residuum-sdk` `multi_collection_sda_join_perf` | nested-SDA multi-collection join (viability / anti-pattern cliff) |
+| `residuum-sdk` `multi_query_join_perf` | host hash equijoin + SDA normalise (product multi-query path) |
 
 Strategies (write-path S1–S6, max-performance residuals, SDA A1–A5):
 [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md).
@@ -102,8 +102,8 @@ every few puts.
 Run:
 
 ```bash
-cargo run -p dingo-store --release --example write_latency_breakdown
-cargo run -p dingo-store --release --example write_scale_curve
+cargo run -p residuum-store --release --example write_latency_breakdown
+cargo run -p residuum-store --release --example write_scale_curve
 ```
 
 #### Maximum point self-check (diminishing returns)
@@ -130,7 +130,7 @@ lifecycle is off the ack path.
 
 ### 1 GiB testrig diagnostic snapshot (not a published SLO)
 
-Latest local campaign (`dingo-testrig run`, buffered, 4 KiB payloads, target 1 GiB;
+Latest local campaign (`residuum-testrig run`, buffered, 4 KiB payloads, target 1 GiB;
 summary under the work dir `testrig-summary.v1.json`). **Diagnostic only.**
 
 | Phase | Signal (order of magnitude) |
@@ -145,7 +145,7 @@ summary under the work dir `testrig-summary.v1.json`). **Diagnostic only.**
 ### 10 GiB testrig diagnostic snapshot (not a published SLO)
 
 Second local campaign after locator-first PrimaryIndex (**DEF-095**):
-`dingo-testrig run --work /var/tmp/dingo-testrig-10g --target-bytes 10G
+`residuum-testrig run --work /var/tmp/residuum-testrig-10g --target-bytes 10G
 --payload-size 8192 --durability buffered --chaos-hits 64 --sample-keys 128
 --seed 2` (release binary). Summary: `testrig-summary.v1.json`. **Diagnostic only.**
 
@@ -163,7 +163,7 @@ Second local campaign after locator-first PrimaryIndex (**DEF-095**):
 ### 10 GiB sharded testrig diagnostic snapshot (Axis B, not a published SLO)
 
 Third local campaign after Axis A+B + testrig harness (2026-07-27):
-`dingo-testrig run --work /var/tmp/dingo-testrig-10g-shards --target-bytes 10G
+`residuum-testrig run --work /var/tmp/residuum-testrig-10g-shards --target-bytes 10G
 --payload-size 8192 --durability buffered --chaos-hits 64 --sample-keys 128
 --seed 2 --writer-shards 4` (release binary). Summary:
 `testrig-summary.v1.json`. **Diagnostic only.**
@@ -195,17 +195,17 @@ Notes (honest):
 
 - **Axis B wall average can lose** at 1 GiB: more on-disk overshoot (1.50 GiB vs 1.15 GiB) and serial PrimaryIndex publish after `put_many` still dominate. Early windows remain higher (~13k ops/s class). Matches the 10 GiB sharded story (modest wall lift, concurrency disclosure works).
 - **Axis C is the first path that actually multiplies process CPU%** (sum ~316% ≈ multi-core; macOS 100% ≈ one core). Wall ops/s does **not** scale linearly — spawn + media contention + slowest-child wall clock. This is a **capacity harness**, not product sharding.
-- Multi-store integrity: `dingo-testrig run --target-bytes 256M --stores 4` → **PASS** on all four roots (pump, baseline, chaos, post-chaos salvage).
+- Multi-store integrity: `residuum-testrig run --target-bytes 256M --stores 4` → **PASS** on all four roots (pump, baseline, chaos, post-chaos salvage).
 - A 4 GiB Axis C pump completed (~3.1k ops/s wall) while the volume was near full; single-store 4 GiB control hit **ENOSPC**. Treat 4 GiB multi-store numbers as disk-pressure contaminated; free space before large campaigns.
 
 ### Multi-store 10 GiB (Axis C, not a published SLO)
 
 Clean re-measure with free SSD headroom (2026-07-27): host had **~32 GiB free**
 before pump (prior stacked 10 GiB trees already removed). Command:
-`dingo-testrig run --work /var/tmp/dingo-testrig-10g-stores --target-bytes 10G
+`residuum-testrig run --work /var/tmp/residuum-testrig-10g-stores --target-bytes 10G
 --payload-size 8192 --durability buffered --chaos-hits 64 --sample-keys 128
 --stores 4 --seed 3` (release binary). Summary:
-`/var/tmp/dingo-testrig-10g-stores/testrig-summary.v1.json`. **Diagnostic only.**
+`/var/tmp/residuum-testrig-10g-stores/testrig-summary.v1.json`. **Diagnostic only.**
 
 | Phase | Signal (order of magnitude) |
 |-------|-----------------------------|
@@ -229,7 +229,7 @@ Compare (same machine class, diagnostic):
 Honest notes:
 
 - Free disk matters: near-full volume crushed the 4 GiB Axis C wall rate; with ≥15 GiB free the 10 GiB multi-store pump is the first disclosed Axis C number that clearly beats single-store wall ops/s.
-- Still a **harness**, not multi-tenant product sharding. Product capacity remains dingo-cluster.
+- Still a **harness**, not multi-tenant product sharding. Product capacity remains residuum-cluster.
 - Per-process efficiency is not 4× linear vs single-store 10 GiB (~7.4k → ~17.7k ≈ 2.4× wall), but CPU% sum proves multi-core media utilization.
 - **Strategy read (2026-07-27):** movement is real; numbers not ideal. Prefer gate-driven + product cluster labor next; optional Axis B residual is serial index publish after `put_many`, not another PrimaryIndex structure. See `doc/WORK_HORIZON.md` and `doc/PARALLEL_INGEST.md` §10.
 
@@ -240,7 +240,7 @@ After DEF-095 + DEF-096 Axis A+B+C harness:
 1. Async lifecycle — **shipped**.
 2. Sharded writers + testrig `--writer-shards N` disclosure — **shipped** (measured above).
 3. Multi-store multi-process harness (`--stores N`) — **shipped** (smoke + 1 GiB comparative + 256 MiB integrity + **10 GiB multi-store PASS** with free disk).
-4. Product multi-node cluster capacity — remains dingo-cluster (not this harness).
+4. Product multi-node cluster capacity — remains residuum-cluster (not this harness).
 
 #### Next steps toward maximum performance (pointer)
 
@@ -255,7 +255,7 @@ PrimaryIndex structure work without a new measured bottleneck.
 ## SDA pure-eval diagnostic snapshot (not a published SLO)
 
 Separate performance class from store hot/ingest/archive. First harness cut
-(2026-07-27): `cargo run -p dingo-sda --release --example sda_latency_breakdown`
+(2026-07-27): `cargo run -p residuum-sda --release --example sda_latency_breakdown`
 on Apple M4-class developer hardware. **Diagnostic only.**
 
 | Case | parse p50 | eval p50 | run_json_once p50 | run (re-parse) p50 | Compile-once vs reparse |
@@ -300,7 +300,7 @@ the resident body.
 Measure with:
 
 ```bash
-cargo run -p dingo-store --release --example read_latency_breakdown
+cargo run -p residuum-store --release --example read_latency_breakdown
 ```
 
 Do **not** quote testrig or example numbers as Redis comparisons, multi-node SLOs,

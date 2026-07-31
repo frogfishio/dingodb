@@ -12,7 +12,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 echo "== Stage 9 living acceptance (cargo test stage9_tiering) =="
-cargo test -q -p dingo-store --test stage9_tiering
+cargo test -q -p residuum-store --test stage9_tiering
 
 echo
 echo "Operator story (Rust API / runbook):"

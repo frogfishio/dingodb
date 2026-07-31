@@ -9,8 +9,8 @@ cd "$ROOT"
 
 BIN="${DINGO_BIN:-}"
 if [[ -z "$BIN" ]]; then
-  cargo build -q -p dingo-cli --bin dingo
-  BIN="$ROOT/target/debug/dingo"
+  cargo build -q -p residuum-cli --bin residuum
+  BIN="$ROOT/target/debug/residuum"
 fi
 
 WORKDIR="${TMPDIR:-/tmp}/dingo-demo-punch-$$"

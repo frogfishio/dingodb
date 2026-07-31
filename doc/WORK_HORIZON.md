@@ -64,7 +64,7 @@ partially cut:
 | **DEF-050–052 follow-ons** | Incremental/encrypted backup; cluster-coordinated backup; scrub daemon; second wire major + rolling upgrade drills. |
 | **DEF-070–074** | Native object stores, lifecycle scheduler, erasure coding, encryption, multi-decade retention proof — archive product, currently scaffold/mirror. |
 | **DEF-080–084** | SDK MVP gaps, operator CLI depth, executable journeys, distribution, compatibility policy. |
-| **ENR1 (in `dingo-sda`)** | Match-bag **kernel + surface** shipped (`sda-enr1-v0.1`: `Match`/`enrich`/`one?`/`one!`/`merge`/`mergeLeft`/`mergeRight`/`+`/`asBag`/keyed sugar/`source` decls/`t_enr_invalid_key`). Multi-gen expand still blocked on SDA multi-gen. **RQL** v0.1 official dialect compiles to the same kernel (`compile_dialect("dql", …)`); proof tests equate RQL ≡ pure ENR. Foreign dialects absorb comfort. **Do not open ENR2 yet.** |
+| **ENR1 (in `residuum-sda`)** | Match-bag **kernel + surface** shipped (`sda-enr1-v0.1`: `Match`/`enrich`/`one?`/`one!`/`merge`/`mergeLeft`/`mergeRight`/`+`/`asBag`/keyed sugar/`source` decls/`t_enr_invalid_key`). Multi-gen expand still blocked on SDA multi-gen. **RQL** v0.1 official dialect compiles to the same kernel (`compile_dialect("dql", …)`); proof tests equate RQL ≡ pure ENR. Foreign dialects absorb comfort. **Do not open ENR2 yet.** |
 
 ### Engineering quality bar (release blockers, not vanity)
 
@@ -162,19 +162,19 @@ duplicates values on **disk** (~3.5 GiB `.cmr`); that is a follow-on disk
 amplification issue, not the RSS spike path.
 
 **Re-run confirmation (2026-07-27, second 10 GiB campaign):**
-`dingo-testrig run --target-bytes 10G --payload-size 8192 --seed 2` → **PASS**.
+`residuum-testrig run --target-bytes 10G --payload-size 8192 --seed 2` → **PASS**.
 Peak process RSS while pumping ~**0.92 GiB** (2 s samples via `ps`), not ~10 GiB.
 ~643k keys / 10.05 GiB on disk; baseline get p50 **18 µs**; post-chaos get p50
 **19 µs** with 128 salvage holes; pump ~7.4k ops/s. Summary:
-`/var/tmp/dingo-testrig-10g/testrig-summary.v1.json`. Diagnostic only.
+`/var/tmp/residuum-testrig-10g/testrig-summary.v1.json`. Diagnostic only.
 
 **Sharded re-measure (2026-07-27, Axis B harness):**
-`dingo-testrig run --target-bytes 10G --payload-size 8192 --seed 2
+`residuum-testrig run --target-bytes 10G --payload-size 8192 --seed 2
 --writer-shards 4` → **PASS**. ~680k keys / 10.57 GiB; wall ~**8.1k ops/s**
 (~129 MB/s); peak RSS ~**1.05 GiB**; peak CPU% ~95 (still ~1-core class under
 `ps` — serial index publish after `put_many`); concurrency **4** /
 `sharded_active_segments`. Summary:
-`/var/tmp/dingo-testrig-10g-shards/testrig-summary.v1.json`. Diagnostic only.
+`/var/tmp/residuum-testrig-10g-shards/testrig-summary.v1.json`. Diagnostic only.
 
 ### Multi-core / parallel ingest self-check (2026-07-27)
 
@@ -228,7 +228,7 @@ product; ~2.4× not ~4×; early windows still much higher than wall averages
    stays modest; CPU% stays one-core class. Axis C multiplies whole processes
    (each with its own index) and actually moves wall ops/s + CPU%.
 3. **Capacity ≠ efficiency.** Multi-store proves media and cores can be used;
-   product multi-tenant / multi-node is still dingo-cluster.
+   product multi-tenant / multi-node is still residuum-cluster.
 4. **Free disk and path class are part of the experiment.** Near-full volume
    poisoned Axis C 4 GiB; free-disk 10 GiB is the honest capacity number.
 5. **Diminishing returns are local, not global.** Write-index micro-opts are
@@ -240,7 +240,7 @@ product; ~2.4× not ~4×; early windows still much higher than wall averages
 |---|----------|----|--------|
 | **S1** | **Declare write cliffs closed** | Treat DEF-023 / DEF-095 / DEF-096 A–C harness as closed cuts with residual only | Reopen PrimaryIndex structure thrash or “one more seal threshold tweak” as the main program |
 | **S2** | **One optional Axis B efficiency cut** (only if labor stays on single-node write) | Shrink serial work after `put_many`: sharded or batched index publish, reduce dual-apply tax on batch path, ensure seal pipeline scales with shard count so early-window rates hold late | Rayon over one `Store::put`; multi-thread one active segment |
-| **S3** | **Productize capacity on the cluster path** | Independent store/partition leaders (dingo-cluster), honest RF/ack modes, network repair/query only as needed for multi-process proof | Treat testrig `--stores N` as multi-tenant product sharding |
+| **S3** | **Productize capacity on the cluster path** | Independent store/partition leaders (residuum-cluster), honest RF/ack modes, network repair/query only as needed for multi-process proof | Treat testrig `--stores N` as multi-tenant product sharding |
 | **S4** | **Gate-driven program labor (default next)** | Milestone A quality (DEF-090–092), multi-process Jepsen/soak (DEF-041), fuzz (DEF-091), wire freeze path (DEF-053), security review (DEF-063) | Polish already-landed cut follow-ons (extra gauges, log join fields, etc.) as if they move maturity |
 | **S5** | **Measurement hygiene** | Always disclose concurrency / writer_model / free disk / durability; re-run only when a cut claims a new bottleneck; keep hot/warm/archive claims separate | Publish averages alone; mix path classes; claim “maxed M4” while CPU% ~100 |
 | **S6** | **Read path only under dedicated benches** | Wire Hydra/Chimera into get only after body-less / locator-cache design + `read_latency_breakdown` attribution | “Parallelize gets” by loading full `.cmr` (already fixed once) |
@@ -294,7 +294,7 @@ User question after Hydra + 1 GiB testrig: *dude… this is a big flex isn’t
 4. **Open hard gates remain:** multi-process Jepsen/soak (DEF-041 follow-ons),
    wire freeze (DEF-053), security review (DEF-063), continuous fuzz (DEF-091),
    most §16 data-safety checkboxes.
-5. **Repo integrity.** Hydra + `dingo-testrig` sources must live in git with the
+5. **Repo integrity.** Hydra + `residuum-testrig` sources must live in git with the
    glue commits that claim them — a “feat” commit that only touches docs/exports
    is not the flex.
 
@@ -445,7 +445,7 @@ gates from the earlier strategy self-check.
 
 #### Concrete code residual for step 1 (Axis B)
 
-Today in `Store::put_many_parallel` (`dingo-store` `store.rs`):
+Today in `Store::put_many_parallel` (`residuum-store` `store.rs`):
 
 1. Prepare envelopes (serial, needs `&mut self`).
 2. Parallel shard appends (`thread::scope`) — **already multi-core capable**.
@@ -491,9 +491,9 @@ Started: pure-SDA path is a separate performance class from store ingest/hot-get
 
 | Hook | Role |
 |------|------|
-| `dingo-sda` `Program::parse` + `run_json` / `eval` | Compile-once host API |
-| `dingo-sda` example `sda_latency_breakdown` | Phase attribution (diagnostic) |
-| `dingo-sda` `sda_bench_skeleton` | CI absurdity bounds |
+| `residuum-sda` `Program::parse` + `run_json` / `eval` | Compile-once host API |
+| `residuum-sda` example `sda_latency_breakdown` | Phase attribution (diagnostic) |
+| `residuum-sda` `sda_bench_skeleton` | CI absurdity bounds |
 | SDK `Filter::compile_sda` / `matches_compiled_sda` | Multi-doc filter parity without re-parse |
 
 Strategies: [`PERFORMANCE_STRATEGIES.md`](PERFORMANCE_STRATEGIES.md) § SDA.

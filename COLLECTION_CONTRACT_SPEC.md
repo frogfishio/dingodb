@@ -531,7 +531,7 @@ Rules:
 9. grants sort by immutable CollectionId;
 10. unknown modes or fields fail closed.
 
-The existing `dingo-heap-v1` constraint registry is frozen and does not
+The existing `residuum-heap-v1` constraint registry is frozen and does not
 contain this constraint. Remote qualification therefore requires a versioned
 HeapKey constraint-registry amendment or successor profile. Implementations
 MUST NOT reinterpret an existing v1 constraint kind.
@@ -1594,7 +1594,7 @@ examine contract, scopes, and evidence through SDA
 Recommended vertical slice:
 
 ```text
-crates/dingo-contract/
+crates/residuum-contract/
   source.rs
   ast.rs
   canonical.rs
@@ -1606,23 +1606,23 @@ crates/dingo-contract/
   limits.rs
   oracle.rs
 
-crates/dingo-heap/
+crates/residuum-heap/
   collection_scope_constraint.rs
 
-crates/dingo-store/
+crates/residuum-store/
   contract_catalog.rs
   scoped_record.rs
   contract_activation.rs
 
-crates/dingo-sdk/
+crates/residuum-sdk/
   contract.rs
   scoped_collection.rs
 
-crates/dingo-server/
+crates/residuum-server/
   contract.rs
   scope_admission.rs
 
-crates/dingo-examine/
+crates/residuum-examine/
   contract.rs
 ```
 

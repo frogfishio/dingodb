@@ -1251,7 +1251,7 @@ semantics. There is no production file or console emitter.
 
 ## 21. Migration from current implementation
 
-The current `dingo-server::slog` and default `StderrSink` are legacy
+The current `residuum-server::slog` and default `StderrSink` are legacy
 DEF-060 implementation, not the target architecture.
 
 Migration:

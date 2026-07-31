@@ -39,7 +39,7 @@ selection, and adaptive codecs are not part of P5.
 Implement inside the existing vertical slice:
 
 ```text
-crates/dingo-store/src/order_wavelet/
+crates/residuum-store/src/order_wavelet/
   tree.rs
   matrix.rs
   dictionary.rs
@@ -49,9 +49,9 @@ crates/dingo-store/src/order_wavelet/
   build.rs
   verify.rs
 
-crates/dingo-sdk/src/direct.rs
-crates/dingo-server/src/direct.rs
-crates/dingo-examine/src/direct.rs
+crates/residuum-sdk/src/direct.rs
+crates/residuum-server/src/direct.rs
+crates/residuum-examine/src/direct.rs
 ```
 
 `tree.rs` is the simple executable oracle. `matrix.rs` is allowed to be fast

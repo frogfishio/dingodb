@@ -142,7 +142,7 @@ Acceptance:
 
 Priority: P0  
 Dependencies: none  
-Status: **remediated in-tree** (2026-07-25) — `dingo-sdk` bind policy +
+Status: **remediated in-tree** (2026-07-25) — `residuum-sdk` bind policy +
 `ServeOptions` + CLI flags + structured startup report + CLI tests
 
 Work:
@@ -241,7 +241,7 @@ In-tree so far:
 - SDK mutations mint a client `operation_id` once per call so `call_keyed`
   transport retries reuse the same id.
 - Content identity over `(op, collection, key, payload)` via
-  `dingo_store::content_identity`.
+  `residuum_store::content_identity`.
 - Server looks up `WriteDedupTable` before append; exact retry returns the
   original receipt; content-mismatched reuse → `ConsistencyViolation`.
 - Dedup table persisted under `store-info/write_dedup.v1` after each accepted
@@ -512,7 +512,7 @@ Acceptance:
 
 In-tree:
 
-- `dingo_store::atomic_file` — `write_atomic` / `write_atomic_keep_previous`,
+- `residuum_store::atomic_file` — `write_atomic` / `write_atomic_keep_previous`,
   `previous_path` / `read_with_previous`, failpoints
   `atomic.before_tmp_write` … `atomic.after_dir_sync`.
 - Wired for store meta/descriptor, catalogs, index cache, secondary indexes,
@@ -556,16 +556,16 @@ Acceptance:
 
 In-tree:
 
-- `crates/dingo-store/crash_matrix.v1.json` — operations, ordered persistence
+- `crates/residuum-store/crash_matrix.v1.json` — operations, ordered persistence
   steps, failpoint cells (`fault`: enospc / permission / short_write /
   process_abort), expected reopen state, CI subset flags.
-- `dingo_store::failpoint` — `Panic`, `Abort`, `Error`/`Return`, `IoEnospc`,
+- `residuum_store::failpoint` — `Panic`, `Abort`, `Error`/`Return`, `IoEnospc`,
   `IoPermission`, `ShortWrite`; `consume_short_write` for instrumented sites.
 - Instrumented boundaries: create meta, active write_tail (before/after write/
   after sync/short_write), active dir_sync, seal dest write/remove, index cache,
   write dedup, catalog, checkpoint, compact segment sync, tier placement write,
   atomic tmp short_write.
-- Multi-process harness: `dingo-store-crash-child` binary + parent reopen
+- Multi-process harness: `residuum-store-crash-child` binary + parent reopen
   asserts (kill before write / after sync).
 - Tests: `stage_def_022_crash_matrix` (document validation + CI subset + I/O
   suite + multi-process abort always; full matrix when
@@ -704,7 +704,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `ID_PROFILE = "dingo-id-v1"` in `dingo_store::ids`.
+- Profile tag `ID_PROFILE = "dingo-id-v1"` in `residuum_store::ids`.
 - Random identities (`event_id`, `store_id`, job/checkpoint/operation ids,
   cluster id) use `getrandom` via `random_id()`; `StoreError::RandomUnavailable`
   on failure (no wall-clock/hash fallback).
@@ -746,7 +746,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `CURSOR_PROFILE = "dingo-cursor-v1"` in `dingo_store::cursor`.
+- Profile tag `CURSOR_PROFILE = "dingo-cursor-v1"` in `residuum_store::cursor`.
 - `Store::scan_live_page` walks the primary index in subject order, loading at
   most one page of complete bodies (default 64, cap 4096). Incomplete subjects
   are reported per page and still advance the cursor.
@@ -863,7 +863,7 @@ Implementation notes:
   `allow_partial_coverage` returns matches collected so far.
 - Hard host [`ResourceLimits`]: JSON depth (default 64), payload bytes
   (16 MiB), RPC line bytes (16 MiB), result materialisation ceiling (64 MiB)
-  → `ResourceLimit`. Frame length bounds remain in `dingo_format::SafetyLimits`.
+  → `ResourceLimit`. Frame length bounds remain in `residuum_format::SafetyLimits`.
 - Cooperative [`CancelToken`] on `QueryOptions` / builder; checked between
   scan pages and index probes (not serialized in query plans).
 - Sort/materialise fail closed when over budget/ceiling; spill-to-disk sort
@@ -884,7 +884,7 @@ Status: **addressed (cut)** (2026-07-27) — slim PrimaryIndex + v3 cache
 
 Problem:
 
-The 10 GiB `dingo-testrig` campaign drove process RSS to ~10 GiB and forced the
+The 10 GiB `residuum-testrig` campaign drove process RSS to ~10 GiB and forced the
 host into swap, poisoning latency metrics. Root cause:
 
 1. **`PrimaryIndex` stored full payload bodies** for every live subject
@@ -898,7 +898,7 @@ host into swap, poisoning latency metrics. Root cause:
 4. Checkpoint encode built another full body `Vec` while dual maps still held
    payloads → additional multi-GB peak during pump rate-limited checkpoints.
 
-Evidence from `/var/tmp/dingo-testrig-10g/store`:
+Evidence from `/var/tmp/residuum-testrig-10g/store`:
 
 | Component | On-disk |
 |-----------|---------|
@@ -940,7 +940,7 @@ Acceptance:
 - Reopen with v3 cache does not load O(dataset) body bytes into RSS.
 - Existing store unit/integration suites pass.
 
-**Re-verification (2026-07-27):** second 10 GiB `dingo-testrig` campaign
+**Re-verification (2026-07-27):** second 10 GiB `residuum-testrig` campaign
 (`--seed 2`, 8 KiB payloads, buffered) **PASS**; peak RSS ~0.92 GiB (vs ~10 GiB
 pre-cut). See `doc/BENCHMARK_DISCLOSURE.md` (10 GiB snapshot) and
 `doc/WORK_HORIZON.md` (memory-eat self-check).
@@ -997,7 +997,7 @@ Work (sequenced — do **not** multi-thread one `Store::put` first):
    `put_many` parallel appends; tests `stage_def_096_sharded_writers`.
 3. **Axis C — Horizontal (harness done; product path started):** testrig
    `--stores N` multi-process harness (capacity upper bound). Product path:
-   `Cluster::put_many` multi-partition batch on dingo-cluster with independent
+   `Cluster::put_many` multi-partition batch on residuum-cluster with independent
    partition leaders (dependable-local multi-node). Network multi-process
    serve-cluster capacity still open.
 4. **Harness (done for Axis B + C):** testrig `--writer-shards N` creates with
@@ -1043,7 +1043,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `SERVER_PROFILE = "dingo-server-v1"`.
+- Profile tag `SERVER_PROFILE = "residuum-server-v1"`.
 - `serve_store_with` opens **one** `Store` (exclusive writer), wraps it in
   `Arc<Mutex<Store>>`, and admits up to `ServerLimits::max_connections`
   (default 64) worker threads. Accept loop is non-blocking and never runs
@@ -1068,7 +1068,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-sdk/tests/stage_def_030_bounded_server.rs` — concurrent clients,
+- `crates/residuum-sdk/tests/stage_def_030_bounded_server.rs` — concurrent clients,
   connection limit overload, single store owner under load, graceful shutdown.
 - Unit: `server::tests` admission/drain/mutation accounting.
 
@@ -1113,16 +1113,16 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-sdk/tests/stage_def_031_protocol.rs` — handshake, legacy
+- `crates/residuum-sdk/tests/stage_def_031_protocol.rs` — handshake, legacy
   rejection, version reject, oversized frames, diagnostic mode, fixtures.
-- `crates/dingo-sdk/tests/fixtures/protocol/*.json` — golden payloads.
+- `crates/residuum-sdk/tests/fixtures/protocol/*.json` — golden payloads.
 - Unit: `protocol::tests` frame limits and feature negotiation.
 
 ### DEF-032 — Add TLS and authenticated peer identity
 
 Priority: P0  
 Status: **addressed** (TLS 1.3 + mTLS + identity SANs; see
-`stage_def_032_tls`, `dingo_sdk::tls`, `doc/CAPABILITY_MATRIX.md`)
+`stage_def_032_tls`, `residuum_sdk::tls`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1156,7 +1156,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-sdk/tests/stage_def_032_tls.rs` — happy path, wrong host,
+- `crates/residuum-sdk/tests/stage_def_032_tls.rs` — happy path, wrong host,
   wrong cluster, expired, wrong CA (MITM), revoked serial, mTLS, rotation,
   plaintext loopback, public bind policy with TLS.
 - Unit: `tls::tests` constant-time compare + URN helpers.
@@ -1165,7 +1165,7 @@ Evidence:
 
 Priority: P1  
 Status: **addressed** (privilege model + audit chain; see `stage_def_033_authz`,
-`dingo_sdk::authz`, `doc/CAPABILITY_MATRIX.md`)
+`residuum_sdk::authz`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1201,7 +1201,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-sdk/tests/stage_def_033_authz.rs` — writer denial matrix, high-
+- `crates/residuum-sdk/tests/stage_def_033_authz.rs` — writer denial matrix, high-
   friction confirm, reader cannot write, auth vs authz error codes, legacy
   token superuser, secret non-leakage.
 - Unit: `authz::tests` chain integrity, open mode, constant-time auth.
@@ -1210,7 +1210,7 @@ Evidence:
 
 Priority: P1  
 Status: **addressed** (rate / auth lockout / connect churn / expensive budgets /
-operation-id replay; see `stage_def_034_admission`, `dingo_sdk::admission`,
+operation-id replay; see `stage_def_034_admission`, `residuum_sdk::admission`,
 `doc/CAPABILITY_MATRIX.md`)
 
 Work:
@@ -1245,7 +1245,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-sdk/tests/stage_def_034_admission.rs` — global rate, auth
+- `crates/residuum-sdk/tests/stage_def_034_admission.rs` — global rate, auth
   lockout, connect churn, expensive concurrency, operation-id replay, SDK
   client `resource_limit` surface.
 - Unit: `admission::tests` rate windows, lockout key hygiene, expensive guard,
@@ -1261,7 +1261,7 @@ Priority: P0
 Dependencies: DEF-021, DEF-022  
 Status: **addressed** (durable hard state / log / membership / snapshots;
 in-process cluster restore on open; see `stage_def_035_raft_persist`,
-`dingo_cluster::raft_persist`, `doc/CAPABILITY_MATRIX.md`)
+`residuum_cluster::raft_persist`, `doc/CAPABILITY_MATRIX.md`)
 
 Problem:
 
@@ -1297,7 +1297,7 @@ Implementation notes:
   advances past validated durable evidence.
 - `ConsensusEvidenceClass`: `committed` | `prepared` | `conflicting` |
   `unknown_commit`.
-- User payload frames remain in ordinary `dingo-store` segments (salvage
+- User payload frames remain in ordinary `residuum-store` segments (salvage
   independent of Raft control plane).
 
 Acceptance:
@@ -1310,7 +1310,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/tests/stage_def_035_raft_persist.rs` — process restart
+- `crates/residuum-cluster/tests/stage_def_035_raft_persist.rs` — process restart
   with committed write, vote hard-state durability, torn tail, corrupt
   snapshot discard, snapshot compact+recover, uncommitted not promoted,
   term restore across nodes.
@@ -1330,7 +1330,7 @@ Dependencies: DEF-031, DEF-032, DEF-035
 Status: **addressed** (control-plane RequestVote / AppendEntries /
 InstallSnapshot / ReadIndex over framed transport; term / membership /
 placement-epoch fences; see `stage_def_036_raft_rpc`,
-`dingo_cluster::raft_rpc`, `dingo_sdk::raft_server`, `doc/CAPABILITY_MATRIX.md`)
+`residuum_cluster::raft_rpc`, `residuum_sdk::raft_server`, `doc/CAPABILITY_MATRIX.md`)
 
 Work:
 
@@ -1368,10 +1368,10 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/tests/stage_def_036_raft_rpc.rs` — three-peer quorum
+- `crates/residuum-cluster/tests/stage_def_036_raft_rpc.rs` — three-peer quorum
   commit, minority no-elect, stale leader fence, operation_id retry,
   placement-epoch fence, multi-root durable peers.
-- `crates/dingo-sdk/tests/stage_def_036_raft_rpc.rs` — TCP RequestVote /
+- `crates/residuum-sdk/tests/stage_def_036_raft_rpc.rs` — TCP RequestVote /
   AppendEntries / ReadIndex across three listeners; unauthenticated reject.
 - Unit: `raft_rpc::tests` (campaign/propose, offline peers, snapshot install).
 
@@ -1406,7 +1406,7 @@ Work:
 
 Implementation notes:
 
-- Profile tag `CLUSTER_COMMIT_PROFILE = "dingo-cluster-commit-v1"` and
+- Profile tag `CLUSTER_COMMIT_PROFILE = "residuum-cluster-commit-v1"` and
   feature token `FEATURE_CLUSTER_COMMIT_V1 = "cluster-commit-v1"`.
 - `serve_cluster_node` attaches `RaftServerState` by default (best-effort;
   directory-only fallback if attach fails).
@@ -1426,11 +1426,11 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-sdk/tests/stage_def_037_cluster_commit.rs` — feature/profile
+- `crates/residuum-sdk/tests/stage_def_037_cluster_commit.rs` — feature/profile
   labels; in-process and network share commit semantics; kill contacted seed
   after committed puts (survivor reads + new commit); distinct operation
   events; single-node serve without Raft still local-commits.
-- Server path: `dingo_server::raft_server::RaftServerState::propose_and_apply`,
+- Server path: `residuum_server::raft_server::RaftServerState::propose_and_apply`,
   `serve.rs` mutate + linearizable read barrier.
 
 Remaining (out of DEF-037 cut; DEF-038 addressed separately):
@@ -1487,7 +1487,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/tests/stage_def_038_control_plane.rs` — restart at
+- `crates/residuum-cluster/tests/stage_def_038_control_plane.rs` — restart at
   every phase + resume; joint membership restore; health missing nodes;
   missing placement refused; authenticated endpoints.
 - Unit: `RebalanceJobsFile` roundtrip; Stage 8f suite still green.
@@ -1535,7 +1535,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/tests/stage_def_039_repair.rs` — missing replica
+- `crates/residuum-cluster/tests/stage_def_039_repair.rs` — missing replica
   converges; divergent newer body loses to majority; 1-1 conflict preserved;
   rate limit; audit survives restart; segment fingerprints in inventory.
 - Unit: `select_repair_source` majority / corrupt / conflict / irrecoverable;
@@ -1569,7 +1569,7 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/src/coverage.rs` — `QueryContinuation` keyed tags
+- `crates/residuum-cluster/src/coverage.rs` — `QueryContinuation` keyed tags
   whose public key derivation remains DEF-097;
   `Coverage` indexes/tiers fields; `FindResult.has_more` / `continuation`.
 - `Cluster::scan_with` / `scan_page` — paged merge by subject order;
@@ -1604,15 +1604,15 @@ Acceptance:
 
 Evidence:
 
-- `crates/dingo-cluster/src/sim.rs` — `SeedRng`, `FaultModel`, `SimTransport`,
+- `crates/residuum-cluster/src/sim.rs` — `SeedRng`, `FaultModel`, `SimTransport`,
   `SimWorld` (`client_put` / `client_get` / `run_chaos` / `run_soak` /
   `campaign_with_epoch`), `check_partition_linearizable`,
   `check_convergent_preserved`, `run_conformance_matrix`, profile
-  `VERIFY_PROFILE` = `dingo-cluster-verify-v1`.
+  `VERIFY_PROFILE` = `residuum-cluster-verify-v1`.
 - Tests: `stage_def_041_verify.rs` (seed replay, §22.1–.8, chaos + soak
   linearizability, dump retains seed); module unit tests under `sim::tests`.
 - **DEF-041-N labor (2026-07-31):** multiproc OS harness
-  `dingo-cluster-multiproc-v1` (`multiproc` module + `dingo-cluster-multiproc-child`
+  `residuum-cluster-multiproc-v1` (`multiproc` module + `residuum-cluster-multiproc-child`
   binary + `stage_def_041n_multiproc`): rolling restart, abort-after-ack, cross-
   process writer lock, short soak, seed+history JSON dumps. Long soak via
   `DINGO_MULTIPROC_LONG_SOAK=1`.
@@ -1652,7 +1652,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/dingo-store/src/backup.rs` — `BACKUP_PROFILE` = `dingo-backup-v1`,
+- `crates/residuum-store/src/backup.rs` — `BACKUP_PROFILE` = `dingo-backup-v1`,
   `write_full_backup` / `restore_full_backup`, manifest + per-file blake3,
   `BackupConsistency::{FlushedExclusive,OnDiskInspect}`.
 - `Store::backup_to` flushes durable active under exclusive writer; inspect
@@ -1697,7 +1697,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/dingo-store/src/scrub.rs` — `SCRUB_PROFILE` = `dingo-scrub-v1`,
+- `crates/residuum-store/src/scrub.rs` — `SCRUB_PROFILE` = `dingo-scrub-v1`,
   `scrub_once` / pause / resume / status, plan over sealed + active + chunks,
   BLAKE3 + placement `content_hash` + `scan_forward` holes.
 - Durable state: `recovery/scrub/state.v1.json`, `findings.v1.json`,
@@ -1721,7 +1721,7 @@ Remaining (out of this cut):
 Priority: P0
 
 Status: **addressed (single-generation cut)** (2026-07-27) — declared wire
-reader/writer matrix (`dingo-format::compat`), protocol policy snapshot,
+reader/writer matrix (`residuum-format::compat`), protocol policy snapshot,
 phased store migration `dingo-migrate-v1` (preflight / plan / apply / verify /
 rollback), evidence-preserving copy (never in-place rewrite), unsupported and
 unreadable segment bytes preserved as opaque evidence, durable job under
@@ -1745,9 +1745,9 @@ Acceptance:
 
 Evidence (this cut):
 
-- `dingo-format::compat` — `wire_compat_matrix`, `SUPPORTED_READER_MAJORS`,
+- `residuum-format::compat` — `wire_compat_matrix`, `SUPPORTED_READER_MAJORS`,
   `wire_reader_supports` / `wire_writer_emits`.
-- `dingo-store::migrate` — `migrate_preflight`, `migrate_plan`, `migrate_apply`,
+- `residuum-store::migrate` — `migrate_preflight`, `migrate_plan`, `migrate_apply`,
   `migrate_verify`, `migrate_rollback`, `migrate_store`; `Store::migrate_to`.
 - Tests: `stage_def_052_migrate`, `migrate::tests`, CLI
   `migrate_roundtrip_and_status`.
@@ -1769,7 +1769,7 @@ Dependencies: DEF-010 through DEF-014, DEF-022, DEF-052
 Status: **partial — freeze gap inventory + policy cut** (2026-07-31) — freeze
 **not** declared; `WIRE_PROFILE_LABEL` remains `1.0-draft`. Published
 `doc/WIRE_MAJOR1_FREEZE.md` (criteria F1–F16, canonical encodings inventory,
-compatibility / relabel procedure), `dingo-format::compat` freeze readiness API
+compatibility / relabel procedure), `residuum-format::compat` freeze readiness API
 (`wire_freeze_criteria`, `wire_is_frozen`, `wire_freeze_summary`) with DEF-053
 guard test preventing silent stable relabel. Implemented Met rows: framing,
 integrity, limits, CBOR, conflict, salvage §13, encodings inventory, compat
@@ -1793,7 +1793,7 @@ Acceptance:
 Evidence (this cut):
 
 - `doc/WIRE_MAJOR1_FREEZE.md` — policy id `dingo-wire-major1-freeze-v1`.
-- `dingo-format::compat` — freeze criteria table + `wire_is_frozen() == false`
+- `residuum-format::compat` — freeze criteria table + `wire_is_frozen() == false`
   guard while draft.
 - Tests: `compat::tests::def_053_wire_remains_draft_until_freeze`.
 
@@ -1834,7 +1834,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `dingo-server::config` — `DingoConfigFile`, `load_and_validate`,
+- `residuum-server::config` — `DingoConfigFile`, `load_and_validate`,
   `validate_document`, `ConfigOverrides`, `ValidatedConfig`,
   `EffectiveConfigReport`, `resolve_secret_ref`, `redact_json_value`,
   `setting_class`; profile `CONFIG_PROFILE` = `dingo-config-v1`.
@@ -1862,7 +1862,7 @@ Remaining (out of this cut):
 Priority: P1
 
 Status: **addressed (process NDJSON cut)** (2026-07-27) — versioned
-`dingo-log-v1` structured facade (`dingo-server::slog`), stable event names,
+`dingo-log-v1` structured facade (`residuum-server::slog`), stable event names,
 bounded field cardinality, redaction of credentials/payloads by construction,
 RPC completion + guarantee-failed correlation fields on the serve path;
 client-side log emission and distributed replica join remain follow-ons.
@@ -1888,7 +1888,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `dingo-server::slog` — `Logger`, `LogEvent`, `LogSink` / `StderrSink` /
+- `residuum-server::slog` — `Logger`, `LogEvent`, `LogSink` / `StderrSink` /
   `MemorySink`, `log_rpc_complete`, profile `LOG_PROFILE` = `dingo-log-v1`.
 - Stable events: `server.start`, `server.drain`, `connection.rejected`,
   `connection.error`, `rpc.complete`, `guarantee.failed`, `raft.attach_failed`.
@@ -1953,7 +1953,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `dingo-server::metrics` — `MetricsRegistry`, `MetricsSnapshot`,
+- `residuum-server::metrics` — `MetricsRegistry`, `MetricsSnapshot`,
   `evaluate_health` / `HealthReport`, profiles `METRICS_PROFILE` /
   `HEALTH_PROFILE`.
 - RPCs: `health_live` and `health_ready` (public probes, no token);
@@ -2246,7 +2246,7 @@ MSRV 1.88, OS matrix (ubuntu + macos), and cargo-deny; local mirror
 
 Work:
 
-- Fix current strict clippy failures in `dingo-format`.
+- Fix current strict clippy failures in `residuum-format`.
 - Add to required CI:
   - `cargo fmt --check`;
   - build/test all targets;
@@ -2308,7 +2308,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `crates/dingo-format/tests/stage_def_091_properties.rs` — proptest in PR CI.
+- `crates/residuum-format/tests/stage_def_091_properties.rs` — proptest in PR CI.
 - `fuzz/` — cargo-fuzz package (not a workspace member) + README corpus policy.
 - `.github/workflows/nightly.yml` job `fuzz_smoke` — 30s per target.
 - `scripts/quality.sh` runs the property test binary.
@@ -2395,8 +2395,8 @@ distribution beyond local cluster root remain residual**
 
 Finding:
 
-Both `dingo-store::cursor` and
-`dingo-cluster::coverage::QueryContinuation` previously derived their keyed
+Both `residuum-store::cursor` and
+`residuum-cluster::coverage::QueryContinuation` previously derived their keyed
 BLAKE3 keys solely from the store ID or cluster ID, while that public ID is
 included in the token. A client could therefore derive the same key and forge a
 token. The tag detected accidental corruption and cross-store/cluster
@@ -2506,7 +2506,7 @@ threshold.
 
 Current effective boundaries differ by surface:
 
-- direct `dingo-store` chunks values above the soft threshold without first
+- direct `residuum-store` chunks values above the soft threshold without first
   applying one declared logical-value ceiling;
 - the ordinary SDK applies a 16 MiB payload ceiling;
 - remote use is also bounded by payload and negotiated RPC-frame limits;

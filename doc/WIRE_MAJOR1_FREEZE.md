@@ -5,7 +5,7 @@ Date: 2026-07-31
 Status: **freeze NOT declared** — `WIRE_PROFILE_LABEL` remains `1.0-draft`  
 Companion: [FORMAT_SPEC.md](../FORMAT_SPEC.md), [DEFECTS.md](../DEFECTS.md) §DEF-053,
 [CAPABILITY_MATRIX.md](CAPABILITY_MATRIX.md), [SUPPORTED_VERSIONS.md](SUPPORTED_VERSIONS.md),
-`dingo-format::compat`
+`residuum-format::compat`
 
 This document is the **freeze gate checklist**, **gap inventory**, and
 **compatibility policy** for on-disk / survival wire major 1. Completing this
@@ -23,9 +23,9 @@ every gate in §2 is **Met** and a principal freeze declaration is recorded here
 | On-disk frame layout (prefix/envelope/body/suffix) | **Yes** (candidate) | `WIRE_PROFILE_LABEL = 1.0-draft` |
 | Magics, CRC32C + BLAKE3-256 integrity | **Yes** (candidate) | same |
 | Deterministic CBOR envelope rules | **Yes** (candidate) | same |
-| Core frame kinds 0–13 assignments | **Yes** (candidate) | `FrameKind` in `dingo-format` |
+| Core frame kinds 0–13 assignments | **Yes** (candidate) | `FrameKind` in `residuum-format` |
 | Chunk body layout helpers | **Yes** (candidate helpers) | store owns full manifests |
-| Reader/writer support matrix | Policy under freeze | `dingo-format::compat` |
+| Reader/writer support matrix | Policy under freeze | `residuum-format::compat` |
 | Network RPC (`dingo-rpc-v1`) | **Separate** | `RPC_WIRE_LABEL = 1.0-draft` |
 | Collection SDK API | **Separate** | `SDK_API_VERSION = 1.0` |
 | Crate / workspace semver | **Separate** | monorepo `VERSION` |
@@ -43,7 +43,7 @@ relabel.
 
 | ID | Criterion | Status | Evidence / residual |
 |----|-----------|--------|---------------------|
-| F1 | Framing layout + magics + field offsets match FORMAT_SPEC §4 | **Met (impl)** | `dingo-format::frame`; `frame_codec` tests |
+| F1 | Framing layout + magics + field offsets match FORMAT_SPEC §4 | **Met (impl)** | `residuum-format::frame`; `frame_codec` tests |
 | F2 | Integrity: CRC32C prefix/suffix + BLAKE3-256 body (FORMAT_SPEC §3) | **Met (impl)** | `integrity`; encode/decode round-trips |
 | F3 | Safety limits reject adversarial lengths before allocation | **Met (impl)** | `SafetyLimits::draft_defaults`; checked frame len |
 | F4 | Deterministic CBOR envelope validation | **Met (impl)** | `cbor_envelope`; fuzz target `cbor_envelope` |
@@ -56,7 +56,7 @@ relabel.
 | F11 | Production-scale soak + long corruption campaigns | **Open** | Nightly corruption suite exists; multi-hour / multi-media soak residual (ties DEF-041-N / DEF-090) |
 | F12 | External review of framing, integrity, limits, chunks, envelopes, conflict, recovery | **Open** | [SECURITY_AUDIT_PACKAGE.md](SECURITY_AUDIT_PACKAGE.md) prepared; audit **not** completed |
 | F13 | Canonical encodings inventory published | **Met (this cut)** | §3 below |
-| F14 | Compatibility / support-window policy published | **Met (this cut)** | §4 below + `dingo-format::compat` |
+| F14 | Compatibility / support-window policy published | **Met (this cut)** | §4 below + `residuum-format::compat` |
 | F15 | Golden corpus upgrade/downgrade across promised windows | **Open** | Single-gen migrate (DEF-052) shipped; multi-major dual-read not yet |
 | F16 | Explicit freeze declaration + stable `WIRE_PROFILE_LABEL` | **Open** | Label stays `1.0-draft` until F1–F15 close |
 
@@ -74,8 +74,8 @@ as a long-term interoperability promise.
 
 | Name | Value | Source |
 |------|-------|--------|
-| `START_MAGIC` | ASCII `DINGOFRM` (8 B) | `dingo-format::START_MAGIC` |
-| `END_MAGIC` | ASCII `DINGOEND` (8 B) | `dingo-format::END_MAGIC` |
+| `START_MAGIC` | ASCII `DINGOFRM` (8 B) | `residuum-format::START_MAGIC` |
+| `END_MAGIC` | ASCII `DINGOEND` (8 B) | `residuum-format::END_MAGIC` |
 | Prefix length | 64 B | `FRAME_PREFIX_LEN` |
 | Suffix length | 56 B | `FRAME_SUFFIX_LEN` |
 | Byte order | little-endian for multi-byte integers | FORMAT_SPEC §2 |
@@ -142,16 +142,16 @@ media that used the previous bound within the support window.
 
 | Fixture / suite | Location | Role |
 |-----------------|----------|------|
-| FORMAT_SPEC §13 destructive corpus | `crates/dingo-format/tests/section13_corpus.rs` | Required wire tests |
-| Frame codec unit suite | `crates/dingo-format/tests/frame_codec.rs` | Encode/decode edges |
-| Segment + scan suite | `crates/dingo-format/tests/segment_and_scan.rs` | Seal / salvage |
-| Property / hostile tests | `crates/dingo-format/tests/stage_def_091_properties.rs` | DEF-091 |
+| FORMAT_SPEC §13 destructive corpus | `crates/residuum-format/tests/section13_corpus.rs` | Required wire tests |
+| Frame codec unit suite | `crates/residuum-format/tests/frame_codec.rs` | Encode/decode edges |
+| Segment + scan suite | `crates/residuum-format/tests/segment_and_scan.rs` | Seal / salvage |
+| Property / hostile tests | `crates/residuum-format/tests/stage_def_091_properties.rs` | DEF-091 |
 | HP-000 format vectors | `spec/heap/vectors-v1.json` + `emit_hp000_format_vectors` | Heap/format golden |
-| Protocol RPC goldens | `crates/dingo-sdk/tests/fixtures/protocol/` | Network (separate label) |
+| Protocol RPC goldens | `crates/residuum-sdk/tests/fixtures/protocol/` | Network (separate label) |
 | cargo-fuzz targets | `fuzz/fuzz_targets/{decode_frame,cbor_envelope,scan_*,heap_ownership}` | Hostile input |
 
 **Residual for true multi-impl:** a second language or clean-room encoder that
-round-trips the same golden byte vectors without linking `dingo-format`.
+round-trips the same golden byte vectors without linking `residuum-format`.
 
 ---
 
@@ -172,7 +172,7 @@ round-trips the same golden byte vectors without linking `dingo-format`.
 
 ### 4.2 Declared matrix (this build)
 
-Source of truth: `dingo_format::wire_compat_matrix()` / `wire_support_summary()`.
+Source of truth: `residuum_format::wire_compat_matrix()` / `wire_support_summary()`.
 
 | Major | Minors | Read | Write | Status |
 |------:|--------|------|-------|--------|
@@ -215,13 +215,13 @@ Only after §2 is all Met and principal accept:
 
 | Check | Command |
 |-------|---------|
-| Format unit + §13 corpus | `cargo test -p dingo-format` |
-| §13 only | `cargo test -p dingo-format --test section13_corpus` |
-| Compat / freeze guard | `cargo test -p dingo-format compat` |
-| DEF-091 properties | `cargo test -p dingo-format --test stage_def_091_properties` |
+| Format unit + §13 corpus | `cargo test -p residuum-format` |
+| §13 only | `cargo test -p residuum-format --test section13_corpus` |
+| Compat / freeze guard | `cargo test -p residuum-format compat` |
+| DEF-091 properties | `cargo test -p residuum-format --test stage_def_091_properties` |
 | Fuzz property bar | `DINGO_FUZZ_SKIP_CARGO_FUZZ=1 ./scripts/fuzz-smoke.sh` |
-| Migrate cut | `cargo test -p dingo-store --features legacy-raw-store --test stage_def_052_migrate` |
-| Freeze readiness API | `wire_freeze_readiness()` / `wire_is_frozen()` in `dingo-format::compat` |
+| Migrate cut | `cargo test -p residuum-store --features legacy-raw-store --test stage_def_052_migrate` |
+| Freeze readiness API | `wire_freeze_readiness()` / `wire_is_frozen()` in `residuum-format::compat` |
 
 ---
 
@@ -246,6 +246,6 @@ Only after §2 is all Met and principal accept:
 | Labor cut | DEF-053 freeze gap inventory + policy (2026-07-31) |
 | Freeze declared | **No** |
 | Stable label | not assigned (`1.0-draft` retained) |
-| Code guard | `dingo_format::wire_is_frozen() == false` while draft |
+| Code guard | `residuum_format::wire_is_frozen() == false` while draft |
 
 Revisions: append dated notes; do not silently edit Met→Open without a defect.

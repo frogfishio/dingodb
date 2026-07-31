@@ -1,6 +1,6 @@
 //! DingoDB hybrid evaluator for Structured Data Algebra (SDA) plus additive ENR1.
 //!
-//! `dingo-sda` is the monorepo package for DingoDB's pure examination surface:
+//! `residuum-sda` is the monorepo package for DingoDB's pure examination surface:
 //! standalone SDA (`sda-standalone-v1.0`) plus the ENR1 enrichment kernel
 //! (`sda-enr1-v0.1`) on one compile path. It is **not** published under the bare
 //! crates.io names `sda` / `sda-lib`. Evaluation is pure: no file or network IO.
@@ -9,18 +9,18 @@
 //! run a program, and recover canonical JSON output without embedding CLI concerns.
 //!
 //! ```rust
-//! let output = dingo_sda::run("input<\"name\">!", serde_json::json!({"name": "Ada"}))?;
+//! let output = residuum_sda::run("input<\"name\">!", serde_json::json!({"name": "Ada"}))?;
 //! assert_eq!(output, serde_json::json!({"$type": "ok", "$value": "Ada"}));
-//! # Ok::<(), dingo_sda::SdaError>(())
+//! # Ok::<(), residuum_sda::SdaError>(())
 //! ```
 //!
 //! For hosts that evaluate one program against many inputs, parse once:
 //!
 //! ```rust
-//! let prog = dingo_sda::Program::parse(r#"input<"name">!"#)?;
+//! let prog = residuum_sda::Program::parse(r#"input<"name">!"#)?;
 //! let out = prog.run_json("input", serde_json::json!({"name": "Ada"}))?;
 //! assert_eq!(out, serde_json::json!({"$type": "ok", "$value": "Ada"}));
-//! # Ok::<(), dingo_sda::SdaError>(())
+//! # Ok::<(), residuum_sda::SdaError>(())
 //! ```
 
 mod ast;
@@ -66,7 +66,7 @@ pub struct SdaRuntime;
 impl SdaRuntime {
     #[must_use]
     pub fn name() -> &'static str {
-        "dingo-sda"
+        "residuum-sda"
     }
 
     /// Tag for the frozen standalone conformance corpus.
@@ -213,10 +213,10 @@ pub enum SdaError {
 /// on every call.
 ///
 /// ```rust
-/// let prog = dingo_sda::Program::parse(r#"input<"name">!"#)?;
+/// let prog = residuum_sda::Program::parse(r#"input<"name">!"#)?;
 /// let out = prog.run_json("input", serde_json::json!({"name": "Ada"}))?;
 /// assert_eq!(out, serde_json::json!({"$type": "ok", "$value": "Ada"}));
-/// # Ok::<(), dingo_sda::SdaError>(())
+/// # Ok::<(), residuum_sda::SdaError>(())
 /// ```
 #[derive(Debug, Clone)]
 pub struct Program {

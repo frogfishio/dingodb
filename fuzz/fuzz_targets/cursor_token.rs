@@ -4,7 +4,7 @@
 
 #![no_main]
 
-use dingo_store::{verify_continuation_token, ContinuationKeyring};
+use residuum_store::{verify_continuation_token, ContinuationKeyring};
 use libfuzzer_sys::fuzz_target;
 use std::sync::OnceLock;
 

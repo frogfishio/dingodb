@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/dingo-sdk/README.md
+  path: crates/residuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -24,4 +24,4 @@ keywords:
 | RPC_WIRE_LABEL | 1.0-draft | Network RPC draft |
 | Protocol | dingo-rpc-v1 | Framed length + JSON |
 
-See FORMAT_SPEC and protocol fixtures under `crates/dingo-sdk/tests/fixtures`.
+See FORMAT_SPEC and protocol fixtures under `crates/residuum-sdk/tests/fixtures`.

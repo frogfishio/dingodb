@@ -649,7 +649,7 @@ compiles through RQL rather than introducing an SQL execution engine. See
 [SQL_TO_RQL_SPEC.md](SQL_TO_RQL_SPEC.md).
 
 Normative detail: [doc/SDA/DIALECTS.md](doc/SDA/DIALECTS.md), [RQL_SPEC.md](RQL_SPEC.md).
-Rust surface: `dingo-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
+Rust surface: `residuum-sdk::dialects` (`compile_dialect`, `DialectRegistry`,
 `QueryDialect`).
 
 ### 7.8 Explain

@@ -40,7 +40,7 @@ What “external” means for this product:
 1. **Ship the pack** (already in-tree): brief, matrix, complete-path review,
    `./scripts/verify-heap.sh quick|full`, Accept drills named in the matrix.
 2. **Engage reviewer** with the brief §5 attack questions; fix time-box and
-   TCB boundary (single-node `dingo-heap-v1`, not cluster).
+   TCB boundary (single-node `residuum-heap-v1`, not cluster).
 3. **Receive signed report** (PDF + hash + signer identity / firm letterhead).
 4. **File artifacts**:
    - `doc/HEAP_EXTERNAL_SECURITY_REVIEW_REPORT.md` (summary + link/hash to PDF),
@@ -61,7 +61,7 @@ first-party engineering.
 
 | Flag | Today | Meaning |
 |------|-------|---------|
-| `KANI_HARNESSES_CONNECTED` | **true** | `dingo_heap` pure_proofs; CI `kani-heap` |
+| `KANI_HARNESSES_CONNECTED` | **true** | `residuum_heap` pure_proofs; CI `kani-heap` |
 | `VERUS_PROOFS_CONNECTED` | **true** | `verification/heap-verus/verus/pure_kernel.rs`; CI `verus-heap` |
 
 | How to re-run locally | Command |
@@ -71,7 +71,7 @@ first-party engineering.
 
 Scope honesty: pure_kernel models §39 binding / gen-grace / blacklist /
 admission / isolation with integer stand-ins (not full COSE crypto). Executable
-Rust lemmas in `dingo_heap::pure_proofs` remain the product-code stand-ins.
+Rust lemmas in `residuum_heap::pure_proofs` remain the product-code stand-ins.
 
 ## 3. What still blocks `qualified=true`
 

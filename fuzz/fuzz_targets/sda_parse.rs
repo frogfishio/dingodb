@@ -16,5 +16,5 @@ fuzz_target!(|data: &[u8]| {
     };
     // Lossy UTF-8 covers hostile non-text bytes.
     let src = String::from_utf8_lossy(slice);
-    let _ = dingo_sda::Program::parse(&src);
+    let _ = residuum_sda::Program::parse(&src);
 });

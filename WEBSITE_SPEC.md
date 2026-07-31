@@ -414,17 +414,17 @@ link to `/status/`.
 ### 7.7 Real quickstart
 
 The page MUST show an executable Rust example based on
-`crates/dingo-sdk/README.md`, not illustrative pseudocode.
+`crates/residuum-sdk/README.md`, not illustrative pseudocode.
 
 Minimum example:
 
 ```toml
 [dependencies]
-dingo-sdk = "0.2"
+residuum-sdk = "0.2"
 ```
 
 ```rust
-use dingo_sdk::{json, Dingo, Filter};
+use residuum_sdk::{json, Dingo, Filter};
 
 let mut db = Dingo::open("./app.dingo")?;
 let mut users = db.collection("users")?;

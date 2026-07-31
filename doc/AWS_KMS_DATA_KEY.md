@@ -1,8 +1,8 @@
 # AWS KMS data-key provider (live)
 
 **Status:** connected (feature-gated)  
-**Crate:** `dingo-store` feature `aws-kms`  
-**Type:** [`AwsKmsDataKeyProvider`](../crates/dingo-store/src/heap/kms_aws.rs)
+**Crate:** `residuum-store` feature `aws-kms`  
+**Type:** [`AwsKmsDataKeyProvider`](../crates/residuum-store/src/heap/kms_aws.rs)
 
 ## What it does
 
@@ -13,13 +13,13 @@
 
 Encryption context on generate:
 
-- `dingo-heap-id` — hex heap id  
-- `dingo-profile` — `dingo-heap-v1`
+- `residuum-heap-id` — hex heap id  
+- `dingo-profile` — `residuum-heap-v1`
 
 ## Build
 
 ```bash
-cargo check -p dingo-store --features aws-kms
+cargo check -p residuum-store --features aws-kms
 ```
 
 Default store builds do **not** pull HTTP/SigV4 deps.
@@ -35,7 +35,7 @@ Default store builds do **not** pull HTTP/SigV4 deps.
 | `DINGO_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` | Optional (LocalStack / VPC endpoint) |
 
 ```rust
-use dingo_store::{AwsKmsDataKeyProvider, DataKeyProvider, HsmDataKeyConfig};
+use residuum_store::{AwsKmsDataKeyProvider, DataKeyProvider, HsmDataKeyConfig};
 
 // From env
 let p = AwsKmsDataKeyProvider::from_env()?;
@@ -43,7 +43,7 @@ let p = AwsKmsDataKeyProvider::from_env()?;
 // Or explicit
 let cfg = HsmDataKeyConfig::aws_kms(
     "us-east-1",
-    "alias/dingo-heap",
+    "alias/residuum-heap",
     None, // or Some("http://localhost:4566".into()) for LocalStack
 );
 let p = AwsKmsDataKeyProvider::from_config(&cfg)?;
@@ -59,7 +59,7 @@ export DINGO_AWS_KMS_KEY_ID=alias/your-cmk
 export AWS_REGION=us-east-1
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
-cargo test -p dingo-store --features aws-kms aws_kms_live_generate_destroy -- --ignored --nocapture
+cargo test -p residuum-store --features aws-kms aws_kms_live_generate_destroy -- --ignored --nocapture
 ```
 
 ## Honesty

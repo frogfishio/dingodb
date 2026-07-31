@@ -14,19 +14,19 @@ export RUSTFLAGS="${RUSTFLAGS:--D warnings}"
 
 # package_name|member_path (directory under repo root)
 MEMBERS=(
-  "dingo-sda|crates/sda-core"
-  "dingo-sda-cli|crates/sda-cli"
-  "dingo-format|crates/dingo-format"
-  "dingo-heap|crates/dingo-heap"
-  "dingo-store|crates/dingo-store"
-  "dingo-client|crates/dingo-client"
-  "dingo-sdk|crates/dingo-sdk"
-  "dingo-server|crates/dingo-server"
-  "dingo-examine|crates/dingo-examine"
-  "dingo-cli|crates/dingo-cli"
-  "dingo-cluster|crates/dingo-cluster"
+  "residuum-sda|crates/sda-core"
+  "residuum-sda-cli|crates/sda-cli"
+  "residuum-format|crates/residuum-format"
+  "residuum-heap|crates/residuum-heap"
+  "residuum-store|crates/residuum-store"
+  "residuum-client|crates/residuum-client"
+  "residuum-sdk|crates/residuum-sdk"
+  "residuum-server|crates/residuum-server"
+  "residuum-examine|crates/residuum-examine"
+  "residuum-cli|crates/residuum-cli"
+  "residuum-cluster|crates/residuum-cluster"
   # Workspace member (publish = false); still required for staged rebuild from package lists.
-  "dingo-testrig|crates/dingo-testrig"
+  "residuum-testrig|crates/residuum-testrig"
 )
 
 ALLOW_DIRTY="${DINGO_RELEASE_ALLOW_DIRTY:-0}"
@@ -69,10 +69,10 @@ for entry in "${MEMBERS[@]}"; do
     echo "error: $pkg package list has no src/ files" >&2
     exit 1
   fi
-  # dingo-store ships the crash matrix as package data.
-  if [[ "$pkg" == "dingo-store" ]]; then
+  # residuum-store ships the crash matrix as package data.
+  if [[ "$pkg" == "residuum-store" ]]; then
     if ! printf '%s\n' "$list" | grep -qx "crash_matrix.v1.json"; then
-      echo "error: dingo-store package list missing crash_matrix.v1.json" >&2
+      echo "error: residuum-store package list missing crash_matrix.v1.json" >&2
       exit 1
     fi
   fi

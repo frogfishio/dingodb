@@ -32,8 +32,8 @@ do
 done
 
 # Executable stand-ins always green.
-cargo test -p dingo-heap pure_proof --quiet \
-  || fail "dingo-heap pure_proof tests failed"
+cargo test -p residuum-heap pure_proof --quiet \
+  || fail "residuum-heap pure_proof tests failed"
 
 find_verus() {
   if [[ -n "${DINGO_VERUS_BIN:-}" && -x "${DINGO_VERUS_BIN}" ]]; then

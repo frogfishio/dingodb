@@ -69,8 +69,8 @@ The governing product rule stays:
 Stages 0–4 are the **minimum path to a useful embedded database**.  
 Stages 5–7 complete the **README initial implementation target**.  
 Stages 8–9 are **scale-out and retention** after the single-node product is real.
-Stage **8a–8f** (`dingo-cluster`) completes the in-process cluster profile.
-Stage **9** (`dingo-store` tiers + runbook) completes single-node long retention.
+Stage **8a–8f** (`residuum-cluster`) completes the in-process cluster profile.
+Stage **9** (`residuum-store` tiers + runbook) completes single-node long retention.
 
 ---
 
@@ -131,7 +131,7 @@ especially §1–§12 and §14.
   `section_14_must_lock` + golden `tests/sda/section14_must.json`.
 - Minimal suite in §14.1 fully automated. **Met**.
 - Determinism: same program + input ⇒ same value or stable `Fail`.
-- Public surface: library API (`dingo-sda`) + optional `dingo-sda` CLI (`eval`, `check`).
+- Public surface: library API (`residuum-sda`) + optional `residuum-sda` CLI (`eval`, `check`).
 - **No** ResiduumDB types, segments, or host IO inside the SDA core.
 - Standalone freeze tag: `sda-standalone-v1.0` (`CONFORMANCE_CORPUS_TAG`).
 
@@ -221,7 +221,7 @@ chunks as needed for inline-only first.
 
 **Suggested sub-milestones**
 
-| 3a | Open/create, put/get/delete, durability modes, rebuildable index, catalog wipe salvage | **done** — `dingo-store` |
+| 3a | Open/create, put/get/delete, durability modes, rebuildable index, catalog wipe salvage | **done** — `residuum-store` |
 | 3b | Broader OVERVIEW §16 store-level suite (middle segment loss, reorder, etc.) | **done** — `tests/section16_store.rs` (cases 1–10) |
 | 3c | Store descriptor frame + optional index cache on disk | **done** — `store-info/descriptor.dingo` + `indexes/primary.idx` |
 
@@ -265,7 +265,7 @@ disclosure layers 1–2.
 
 **Suggested sub-milestones**
 
-| 4a | Open + put/get/delete JSON | **done** — `dingo-sdk` (`Dingo::open`, `collection`, JSON put/get/delete) |
+| 4a | Open + put/get/delete JSON | **done** — `residuum-sdk` (`Dingo::open`, `collection`, JSON put/get/delete) |
 | 4b | Bytes + streaming scan of collection | **done** — `put_bytes`/`get_bytes`, `scan_keys`/`scan_json`, `scan_json_iter` |
 | 4c | Filter builder + limit/order basics | **done** — `Filter` AST, `find`/`find_json`, fluent `query()`, limit/order |
 | 4d | Error taxonomy + durability receipts | **done** — `ErrorCode` + `Error::code`; receipts report achieved durability |
@@ -301,7 +301,7 @@ SDA programs examine verified items, partial payloads, and holes.
 
 **Status**
 
-| 5 | ExaminationUnit host + SDA over salvage | **done** — `dingo-examine` (`examine_store` / `examine_bytes`, `filter_units` / `map_units`, `ExaminePage` + limits); `Store::examination_sources`; golden tests in `stage5_examination.rs` |
+| 5 | ExaminationUnit host + SDA over salvage | **done** — `residuum-examine` (`examine_store` / `examine_bytes`, `filter_units` / `map_units`, `ExaminePage` + limits); `Store::examination_sources`; golden tests in `stage5_examination.rs` |
 
 **Dependency note**
 
@@ -358,7 +358,7 @@ operator tooling and same-API remote access.
 
 **Deliverables**
 
-1. CLI mirroring logical API: put/get/list basics. **done** — `crates/dingo-cli` (`dingo` binary)
+1. CLI mirroring logical API: put/get/list basics. **done** — `crates/residuum-cli` (`dingo` binary)
 2. `dingo doctor` — read-only diagnostics by default. **done** — `Store::open_inspect`
 3. `dingo salvage` — non-destructive recovery to a new store path. **done** — `Store::salvage_to`
 4. Server process + `Dingo.connect("dingo://...")` with the same collection API
@@ -369,7 +369,7 @@ operator tooling and same-API remote access.
 **Exit criteria**
 
 - DX journeys 4–5, 7, 9–10 satisfied for single-node. **done** (CLI + doctor + salvage + serve/connect)
-- Doctor never writes by default; salvage does not mutate the source store. **done** — tests in `dingo-cli/tests/cli.rs`, `dingo-store/tests/salvage.rs`
+- Doctor never writes by default; salvage does not mutate the source store. **done** — tests in `residuum-cli/tests/cli.rs`, `residuum-store/tests/salvage.rs`
 - Embedded and server pass the same logical SDK put/get path (transport differs). **done** — `serve_and_sdk_connect_parity`
 - README “initial implementation target” checklist checked item-by-item. **done** for single-node items
 
@@ -418,7 +418,7 @@ control plane payload authority.
 
 **Suggested sub-milestones**
 
-| 8a | Foundation: `dingo-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
+| 8a | Foundation: `residuum-cluster` crate; virtual partitions; coverage; placement directory; development + dependable-local profiles; quorum-style put/delete; node salvage without cluster | **done** — `tests/stage8a_cluster.rs` |
 | 8b | Real per-partition Raft (or equivalent) elections, log matching, commit evidence | **done** — `src/raft.rs`, `tests/stage8b_raft.rs` |
 | 8c | Convergent-append path + split dual-accept tests | **done** — `src/convergent.rs`, `tests/stage8c_convergent.rs` |
 | 8d | SDK routing (`Dingo::connect` cluster URLs) + client directory cache | **done** — `ClientDirectoryCache`, `Dingo::open_cluster` / `create_cluster`, multi-seed URL parse, `directory` RPC; tests `stage8d_routing.rs` |
@@ -447,7 +447,7 @@ control plane payload authority.
 
 **Stage 8b notes**
 
-- Per-partition Raft-equivalent groups (`dingo_cluster::raft`) with published
+- Per-partition Raft-equivalent groups (`residuum_cluster::raft`) with published
   election, log-matching, and commit rules (CLUSTER_SPEC §10.1).
 - Leadership is elected among online voters; quorum is majority of the
   **configured** voter set. Leader loss with a live majority re-elects.
@@ -516,7 +516,7 @@ USP long retention.
 
 **Implementation notes**
 
-- `dingo-store`: `tier.rs` (placement, transfer, coverage, format classify),
+- `residuum-store`: `tier.rs` (placement, transfer, coverage, format classify),
   `segment_catalog.rs` (hierarchical summaries), layout `tiers/` +
   `catalogs/tier-placement.cat` + `catalogs/segments.cat`.
 - APIs: `transfer_segment_to_tier`, `set_tier_available`, `tier_coverage`,
@@ -532,7 +532,7 @@ USP long retention.
 
 **Follow-ons (not Stage 9 blockers)**
 
-- Live S3/GCS HTTP backends behind the same [`MediaLocator`](crates/dingo-store/src/media.rs)
+- Live S3/GCS HTTP backends behind the same [`MediaLocator`](crates/residuum-store/src/media.rs)
   placement API (`object:local:` stand-in shipped; `s3://` / `gs://` parse-ready).
 - Automatic lifecycle policies; erasure-coded archive shards.
 - Network multi-node Raft serve polish (post–Stage 8 in-process):
@@ -586,7 +586,7 @@ These are narrative checkpoints for users and sponsors, not separate engineering
 tracks. Living scripts (where checked in) live under `scripts/demos/`.
 
 1. **“Algebra works”** — Stage 1: paste JSON, run SDA, get deterministic tree.
-   (`cargo run -p dingo-sda-cli --bin dingo-sda -- eval -e '1 + 2'`)
+   (`cargo run -p residuum-sda-cli --bin residuum-sda -- eval -e '1 + 2'`)
 2. **“Punch a hole”** — Stage 2: corrupt a segment file; scanner lists islands
    and holes. → [`scripts/demos/02_punch_a_hole.sh`](scripts/demos/02_punch_a_hole.sh)
 3. **“Database that survives”** — Stage 3–4: app puts data; wipe indexes;
@@ -608,11 +608,11 @@ Record answers in-repo; they block packaging, not the stage order:
 | # | Decision | Status |
 |---|----------|--------|
 | 1 | Implementation language(s) for core vs SDK | **Resolved (Stage 0):** Rust core; first SDK is Rust lib API; DX TypeScript-like samples remain the product shape (other language SDKs later). See [ARCHITECTURE.md](ARCHITECTURE.md). |
-| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `DINGOFRM` / `DINGOEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `dingo-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
+| 2 | Sync marker, integrity algorithms, draft wire constants | **As implemented (Stage 2a–2d):** start/end magics `DINGOFRM` / `DINGOEND`; CRC32C prefix+suffix; BLAKE3-256 body hash; wire major/minor `1.0` draft profile in `residuum-format` (`START_MAGIC`, `WIRE_MAJOR`, …). Major-1 freeze still waits on production soak (§7). |
 | 3 | Default durability mode for embedded open | **As implemented (Stage 3–4):** SDK default is `DurabilityMode::Durable` (`WriteOptions::default`, remote/server fallback). DX “safe by default” holds. |
 | 4 | First secondary-index implementation | **Done (in-process)** — Stage 6 field indexes under `indexes/sec/`. |
-| 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `dingo-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
-| 6 | Whether SDA CLI ships inside `dingo` or separate | **Resolved for now:** separate `dingo-sda` binary via `dingo-sda-cli` (Stage 1). Stage 7 `dingo` coexists. |
+| 5 | Consensus library vs purpose-built leadership | **As implemented (Stage 8b):** purpose-built in-process Raft-equivalent in `residuum-cluster::raft` (elections, log matching, majority commit). Not an external Raft library. Network multi-node serve is a post-plan follow-on on the same rules. |
+| 6 | Whether SDA CLI ships inside `dingo` or separate | **Resolved for now:** separate `residuum-sda` binary via `residuum-sda-cli` (Stage 1). Stage 7 `dingo` coexists. |
 
 ## 10. Work apportionment (streams)
 
@@ -656,10 +656,10 @@ the cited conformance suites as required checks—not optional polish.
    `crates/sda-core/tests/sda/section14_must.json`; `∪`/`∩`/`\` spellings;
    `bindOpt`/`bindRes` enforce Opt/Res return contracts (§11.3).
 4. ~~Freeze SDA standalone behind a versioned conformance corpus tag.~~ **Done** —
-   `dingo_sda::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
+   `residuum_sda::CONFORMANCE_CORPUS_TAG = "sda-standalone-v1.0"` (also
    `tests/sda/VERSION`). Semantic changes require a new tag.
-5. ~~Open Stage 2 format work (`dingo-format` frame codec).~~ **Done (2a)** —
-   `crates/dingo-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
+5. ~~Open Stage 2 format work (`residuum-format` frame codec).~~ **Done (2a)** —
+   `crates/residuum-format` encodes/decodes FORMAT_SPEC frames with CRC32C +
    BLAKE3-256 body hash and structural `verified-complete` checks including
    deterministic CBOR envelope rules (§5 condition 6).
 6. ~~Stage 2b–2c — active segment seal + forward salvage scanner.~~ **Done** —
@@ -670,11 +670,11 @@ the cited conformance suites as required checks—not optional polish.
    `tests/section13_corpus.rs` automates every §13 bullet; `scan_reverse`
    (§7.4); `group_by_event_id` (§9); draft `reassemble_chunks` partial maps
    (§8). Deterministic envelope CBOR (§5 condition 6) enforced.
-8. ~~Stage 3 store (`dingo-store`).~~ **Done (3a–3c)** — put/get/delete,
+8. ~~Stage 3 store (`residuum-store`).~~ **Done (3a–3c)** — put/get/delete,
    durability, salvage, §16 suite, descriptor + index cache.
-9. ~~Stage 4 collection SDK (`dingo-sdk`).~~ **Done (4a–4d)** — open,
+9. ~~Stage 4 collection SDK (`residuum-sdk`).~~ **Done (4a–4d)** — open,
    JSON/bytes, scan/stream, filters, `ErrorCode`, receipts.
-10. ~~Stage 5 SDA examination (`dingo-examine`).~~ **Done** — ExaminationUnit
+10. ~~Stage 5 SDA examination (`residuum-examine`).~~ **Done** — ExaminationUnit
     projection from salvage, `examine_store` / `examine_bytes`, SDA
     `filter_units` / `map_units`, bounded `ExaminePage` with resource-limit
     honesty; golden tests `stage5_examination.rs`.
@@ -684,10 +684,10 @@ the cited conformance suites as required checks—not optional polish.
     live-state compaction (sources retained); derived checkpoints; bench
     skeleton (`stage6_store.rs`, `stage6_indexes_history.rs`,
     `stage6_bench_skeleton.rs`).
-12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `dingo-cli` (`dingo`
+12. ~~Stage 7 CLI/doctor/salvage/server.~~ **Done** — `residuum-cli` (`dingo`
     put/get/list/delete/put-bytes/history/doctor/salvage/serve);
     `Store::open_inspect` + `salvage_to`; `Dingo::connect("dingo://...")`
-    line-delimited JSON RPC; tests `dingo-cli/tests/cli.rs`.
+    line-delimited JSON RPC; tests `residuum-cli/tests/cli.rs`.
 13. ~~Stage 7e–7f tighten (authn/deadline/retry + nightly packaging).~~ **Done** —
     `ConnectOptions` / `ServeOptions`, remote receipt ids, nightly workflow.
 14. ~~Remote parity for history + secondary indexes.~~ **Done** — RPC ops
@@ -698,7 +698,7 @@ the cited conformance suites as required checks—not optional polish.
     `get_payload` (complete/partial/unavailable/conflicting maps) and `find`
     (JSON filter, limit/order/budget/`force_scan`, index-accelerated via
     shared `find_on_store`); tests in `stage7_remote_parity.rs`.
-16. ~~Stage 8a cluster foundation.~~ **Done** — `dingo-cluster` crate:
+16. ~~Stage 8a cluster foundation.~~ **Done** — `residuum-cluster` crate:
     virtual partitions (`blake3-mod-v1`), coverage records, placement
     directory, development (1-node) + dependable-local (3-node) profiles,
     quorum-style put/delete, node salvage without cluster software;
@@ -719,9 +719,9 @@ the cited conformance suites as required checks—not optional polish.
 21. ~~Stage 8f rebalance + §22 remainder.~~ **Done** — interruptible rebalance
     (§14), placement persist/reconstruct; tests `stage8f_rebalance.rs`.
 22. ~~Optional deterministic CBOR envelope validation.~~ **Done** —
-    `dingo-format` validates deterministic CBOR maps on encode/decode
+    `residuum-format` validates deterministic CBOR maps on encode/decode
     (`cbor_envelope.rs`, FORMAT_SPEC §4.4 / §5 condition 6); empty envelope
-    is the empty map `0xa0`; item envelopes in `dingo-store` are CBOR
+    is the empty map `0xa0`; item envelopes in `residuum-store` are CBOR
     uint-keyed maps (keys 1–6).
 23. ~~Stage 9 tiering / archive.~~ **Done** — segment move/copy, hierarchical
     catalogs, offline coverage honesty, archive-path bench class, retention

@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/dingo-sdk/README.md
+  path: crates/residuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -21,7 +21,7 @@ keywords:
 ## Rust Filter
 
 ```rust
-use dingo_sdk::Filter;
+use residuum_sdk::Filter;
 let rows = users.find(&Filter::field("status").eq("active"))?;
 ```
 

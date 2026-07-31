@@ -1,5 +1,5 @@
 [package]
-name = "dingo-heap-verus"
+name = "residuum-heap-verus"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

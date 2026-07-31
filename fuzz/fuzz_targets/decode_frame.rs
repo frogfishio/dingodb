@@ -4,7 +4,7 @@
 
 #![no_main]
 
-use dingo_format::{decode_frame, verify_frame_at, SafetyLimits};
+use residuum_format::{decode_frame, verify_frame_at, SafetyLimits};
 use libfuzzer_sys::fuzz_target;
 
 fn limits() -> SafetyLimits {

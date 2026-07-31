@@ -25,7 +25,7 @@ LocalHeap Atomic packages pass.
 Create:
 
 ```text
-crates/dingo-dre/
+crates/residuum-dre/
   src/
     lib.rs
     token.rs
@@ -58,16 +58,16 @@ crates/dingo-dre/
 - no host database access;
 - no floating point;
 - no random behavior;
-- no dependence on `dingo-store`.
+- no dependence on `residuum-store`.
 
 Host integration lives in:
 
 ```text
-dingo-store    artifact/activation persistence and commit gate
-dingo-sdk      rule administration and violations
-dingo-server   Heap-bound protocol dispatch
-dingo-examine  SDA projection of rule evidence
-dingo-cli      compile/check/install/status/examine
+residuum-store    artifact/activation persistence and commit gate
+residuum-sdk      rule administration and violations
+residuum-server   Heap-bound protocol dispatch
+residuum-examine  SDA projection of rule evidence
+residuum-cli      compile/check/install/status/examine
 ```
 
 ## 3. Artifact boundary

@@ -63,7 +63,7 @@ or explicit seal) so the segment is immutable.
 API (Rust): `Store::transfer_segment_to_tier(segment_id, tier, TierMoveMode::{Copy,Move})`.
 
 Each transfer writes migration evidence under `recovery/migrations/` with
-source/dest BLAKE3 hashes and `tool_version=dingo-store-9`.
+source/dest BLAKE3 hashes and `tool_version=residuum-store-9`.
 
 ### 3.3 Mark a tier offline
 
@@ -150,7 +150,7 @@ The third column of `tiers/roots.txt` is a **media root spec**:
 | `s3://bucket/prefix` | Amazon S3 — live via `DINGO_S3_ROOT` mirror |
 | `gs://bucket/prefix` | GCS — live via `DINGO_GS_ROOT` mirror |
 
-Rust: `dingo_store::MediaLocator::parse`, `open_media` / `open_media_with`,
+Rust: `residuum_store::MediaLocator::parse`, `open_media` / `open_media_with`,
 `CloudMirrorConfig`, `MirroredCloudMedia`, `FilesystemMedia`, `LocalObjectMedia`.
 
 ### Live cloud mirrors
@@ -165,7 +165,7 @@ a mirror, cloud roots stay **offline** for coverage honesty (`MediaUnsupported`
 on put/get).
 
 Lifecycle policy (declarative): `tiers/lifecycle.json` via
-`dingo_store::LifecyclePolicy` — evaluation is pure; transfers remain explicit.
+`residuum_store::LifecyclePolicy` — evaluation is pure; transfers remain explicit.
 Erasure-coded archive shards are scaffolded (`ErasureManifest`) but codecs are
 not shipped. Latency claims: see [BENCHMARK_DISCLOSURE.md](BENCHMARK_DISCLOSURE.md).
 

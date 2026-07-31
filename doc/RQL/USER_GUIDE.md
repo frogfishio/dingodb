@@ -156,9 +156,9 @@ RQL compiles to pure ENR1/SDA text. You then bind the named collections and
 execute that program.
 
 ```rust
-use dingo_sdk::{compile_dialect, json, Dingo};
+use residuum_sdk::{compile_dialect, json, Dingo};
 
-fn main() -> Result<(), dingo_sdk::Error> {
+fn main() -> Result<(), residuum_sdk::Error> {
     let mut db = Dingo::open("./app.dingo")?;
 
     // Load sample data (abbreviated).
@@ -621,5 +621,5 @@ let v = db.enr_query()
 - [doc/SDA/USER_MANUAL.md](../SDA/USER_MANUAL.md) — pure SDA everyday use  
 - [DX_SPEC.md](../../DX_SPEC.md) §7 — everyday query experience  
 - [crates/enr-core/README.md](../../crates/enr-core/README.md) — ENR1 kernel surface  
-- Implementation: `crates/dingo-sdk/src/dialects/dql.rs`  
-- Proof tests: `crates/dingo-sdk/tests/dialects_query.rs`
+- Implementation: `crates/residuum-sdk/src/dialects/dql.rs`  
+- Proof tests: `crates/residuum-sdk/tests/dialects_query.rs`

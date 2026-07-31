@@ -7,7 +7,7 @@
     "status": "active"
   },
   {
-    "source": "crates/dingo-sdk/README.md",
+    "source": "crates/residuum-sdk/README.md",
     "destination": "/getting-started/rust/",
     "mode": "transform",
     "owner": "sdk",

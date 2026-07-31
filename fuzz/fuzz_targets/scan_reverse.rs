@@ -2,7 +2,7 @@
 
 #![no_main]
 
-use dingo_format::{scan_reverse, SafetyLimits};
+use residuum_format::{scan_reverse, SafetyLimits};
 use libfuzzer_sys::fuzz_target;
 
 fn limits() -> SafetyLimits {
@@ -16,7 +16,7 @@ fn limits() -> SafetyLimits {
 fuzz_target!(|data: &[u8]| {
     let report = scan_reverse(data, limits());
     for region in &report.regions {
-        if let dingo_format::ScanRegion::VerifiedFrame { range, .. } = region {
+        if let residuum_format::ScanRegion::VerifiedFrame { range, .. } = region {
             assert!(range.end as usize <= data.len());
             assert!(range.start <= range.end);
         }

@@ -121,7 +121,7 @@ Result at revision `1d75199428d2f386ff5b8c87a2bddf9a728d9ee9`:
 ```text
 pass
 architecture: OK
-dingo-heap / dingo-format / authority / isolation / handshake / lifecycle /
+residuum-heap / residuum-format / authority / isolation / handshake / lifecycle /
 hp010_qualification (24 tests): all green
 qualified claim remains false
 ```

@@ -181,7 +181,7 @@ P0 storage claims require three structurally different observations:
 1. **Sequential logical model** — a small event/state machine that knows no
    segment, cache, production scanner, or production recovery algorithm.
 2. **Independent format/recovery reader** — reads bytes without importing
-   `dingo-store`; it does not call production frame scan or index code.
+   `residuum-store`; it does not call production frame scan or index code.
 3. **Production implementation** — live, reopen, rebuild, inspect, salvage,
    compact, backup/restore, and migration observations.
 
@@ -192,7 +192,7 @@ Disagreement is a failing minimized artifact, never resolved by majority vote.
 
 The reference model MUST NOT depend on:
 
-- `dingo-store`;
+- `residuum-store`;
 - store index, chunk, compaction, recovery, or catalog modules;
 - production test helpers that calculate expected state; or
 - production code hidden behind a test feature.

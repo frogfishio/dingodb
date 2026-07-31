@@ -15,16 +15,16 @@ Untrusted parser surfaces for continuous / scheduled fuzzing. This package is
 
 | Binary | Surface | Package |
 |--------|---------|---------|
-| `decode_frame` | frame decode/verify | dingo-format |
-| `cbor_envelope` | deterministic CBOR envelope | dingo-format |
-| `scan_forward` / `scan_reverse` | salvage scanners | dingo-format |
-| `heap_ownership` | subject/ownership/heap descriptors | dingo-format |
-| `sda_parse` | SDA program lex/parse | dingo-sda |
-| `rpc_frame` | length-prefixed RPC framing | dingo-client |
-| `chunk_manifest` | chunked-value manifest decode | dingo-store |
-| `item_envelope` | item event envelope CBOR | dingo-store |
-| `backup_manifest` | backup control JSON | dingo-store |
-| `cursor_token` | continuation-token MAC decode | dingo-store |
+| `decode_frame` | frame decode/verify | residuum-format |
+| `cbor_envelope` | deterministic CBOR envelope | residuum-format |
+| `scan_forward` / `scan_reverse` | salvage scanners | residuum-format |
+| `heap_ownership` | subject/ownership/heap descriptors | residuum-format |
+| `sda_parse` | SDA program lex/parse | residuum-sda |
+| `rpc_frame` | length-prefixed RPC framing | residuum-client |
+| `chunk_manifest` | chunked-value manifest decode | residuum-store |
+| `item_envelope` | item event envelope CBOR | residuum-store |
+| `backup_manifest` | backup control JSON | residuum-store |
+| `cursor_token` | continuation-token MAC decode | residuum-store |
 
 ## Local run
 

@@ -1,6 +1,6 @@
 //! Pure-kernel Verus proofs for Gate H6 / CPR-004 (HEAP_SPEC §39).
 //!
-//! These lemmas model the same obligations as `dingo_heap::pure_proofs` with
+//! These lemmas model the same obligations as `residuum_heap::pure_proofs` with
 //! integer stand-ins for heap/deployment/epoch/generation identities so the
 //! proofs stay free of I/O, crypto, and OS APIs.
 //!
@@ -8,7 +8,7 @@
 //!   ./scripts/check_verus_heap.sh
 //!   # or: tools/verus/verus verification/heap-verus/verus/pure_kernel.rs
 //!
-//! Executable Rust stand-ins remain in `crates/dingo-heap` and are always
+//! Executable Rust stand-ins remain in `crates/residuum-heap` and are always
 //! CI-connected via `cargo test` + Kani.
 
 use vstd::prelude::*;

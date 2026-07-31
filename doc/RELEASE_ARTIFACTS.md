@@ -15,17 +15,17 @@ by each crate’s `include` list in `Cargo.toml`.
 
 | Directory | Package name | Binary | Notes |
 |-----------|--------------|--------|-------|
-| `crates/sda-core` | `dingo-sda` | — | SDA+ENR1 hybrid pure evaluator (not bare `sda`/`sda-lib`) |
-| `crates/sda-cli` | `dingo-sda-cli` | `dingo-sda` | Hybrid evaluator CLI |
-| `crates/dingo-format` | `dingo-format` | — | Wire format / salvage scan |
-| `crates/dingo-store` | `dingo-store` | — | Includes `crash_matrix.v1.json` |
-| `crates/dingo-client` | `dingo-client` | — | Wire framing / client protocol |
-| `crates/dingo-sdk` | `dingo-sdk` | — | Collection API + dialects (incl. official `dql`) |
-| `crates/dingo-server` | `dingo-server` | — | Network serve runtime |
-| `crates/dingo-examine` | `dingo-examine` | — | Examination host |
-| `crates/dingo-cli` | `dingo-cli` | `dingo` | Operator CLI |
-| `crates/dingo-cluster` | `dingo-cluster` | — | In-process federation |
-| `crates/dingo-testrig` | `dingo-testrig` | `dingo-testrig` | Stress rig (`publish = false`; workspace release only) |
+| `crates/sda-core` | `residuum-sda` | — | SDA+ENR1 hybrid pure evaluator (not bare `sda`/`sda-lib`) |
+| `crates/sda-cli` | `residuum-sda-cli` | `residuum-sda` | Hybrid evaluator CLI |
+| `crates/residuum-format` | `residuum-format` | — | Wire format / salvage scan |
+| `crates/residuum-store` | `residuum-store` | — | Includes `crash_matrix.v1.json` |
+| `crates/residuum-client` | `residuum-client` | — | Wire framing / client protocol |
+| `crates/residuum-sdk` | `residuum-sdk` | — | Collection API + dialects (incl. official `dql`) |
+| `crates/residuum-server` | `residuum-server` | — | Network serve runtime |
+| `crates/residuum-examine` | `residuum-examine` | — | Examination host |
+| `crates/residuum-cli` | `residuum-cli` | `dingo` | Operator CLI |
+| `crates/residuum-cluster` | `residuum-cluster` | — | In-process federation |
+| `crates/residuum-testrig` | `residuum-testrig` | `residuum-testrig` | Stress rig (`publish = false`; workspace release only) |
 
 **Package rules**
 
@@ -108,7 +108,7 @@ dependencies are versioned so packaging *can* rewrite them later, but members
 are not yet the primary distribution channel. Full crates.io verify would
 resolve foreign packages. **Do not republish under bare `sda` / `sda-lib`** —
 those names were misused for this hybrid surface; new publishes use
-`dingo-sda` / `dingo-sda-cli` only. Mistaken hybrid `0.1.0` under the old
+`residuum-sda` / `residuum-sda-cli` only. Mistaken hybrid `0.1.0` under the old
 names was yanked on crates.io (2026-07-28); pre-existing pure-SDA `1.0.x`
 under those names is out of scope for this monorepo. The workspace release
 gate validates tarball *content completeness* via `--list` + rebuild, which

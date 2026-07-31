@@ -9,7 +9,7 @@ You only need to know that SDA helps you read data, check data, and reshape data
 The goal is simple:
 
 - explain what SDA is
-- show how to use the `dingo-sda` tool
+- show how to use the `residuum-sda` tool
 - teach the basic language by example
 - avoid academic language unless it is truly needed
 
@@ -43,9 +43,9 @@ That means:
 Now run these commands:
 
 ```sh
-dingo-sda check -f SDA/examples/getting_started/person_name.sda
-dingo-sda fmt -f SDA/examples/getting_started/person_name.sda --check
-dingo-sda eval -f SDA/examples/getting_started/person_name.sda -i SDA/examples/getting_started/person.json
+residuum-sda check -f SDA/examples/getting_started/person_name.sda
+residuum-sda fmt -f SDA/examples/getting_started/person_name.sda --check
+residuum-sda eval -f SDA/examples/getting_started/person_name.sda -i SDA/examples/getting_started/person.json
 ```
 
 What these do:
@@ -57,7 +57,7 @@ What these do:
 If you want to try one more command right away:
 
 ```sh
-echo '{"name":"Ada","city":"London"}' | dingo-sda eval -e 'input<"city">!'
+echo '{"name":"Ada","city":"London"}' | residuum-sda eval -e 'input<"city">!'
 ```
 
 If those examples make sense, you already understand the basic shape of SDA.
@@ -85,11 +85,11 @@ If you want an even simpler picture:
 
 - JSON is the thing you have
 - SDA is the thing you write
-- `dingo-sda` is the tool that runs it
+- `residuum-sda` is the tool that runs it
 
-## 2. What the `dingo-sda` command does
+## 2. What the `residuum-sda` command does
 
-The command-line tool is called `dingo-sda`.
+The command-line tool is called `residuum-sda`.
 
 It has four main jobs:
 
@@ -101,11 +101,11 @@ It has four main jobs:
 The most important commands are:
 
 ```sh
-dingo-sda eval -e 'values(input)'
-dingo-sda check -e 'values(input)'
-dingo-sda fmt -e 'input<name>!'
-dingo-sda --version
-dingo-sda --license
+residuum-sda eval -e 'values(input)'
+residuum-sda check -e 'values(input)'
+residuum-sda fmt -e 'input<name>!'
+residuum-sda --version
+residuum-sda --license
 ```
 
 ## 3. A first example
@@ -119,7 +119,7 @@ Suppose you have this JSON:
 You can ask SDA to extract the `name` field like this:
 
 ```sh
-echo '{"name":"Ada","city":"London"}' | dingo-sda eval -e 'input<"name">!'
+echo '{"name":"Ada","city":"London"}' | residuum-sda eval -e 'input<"name">!'
 ```
 
 What this means:
@@ -142,16 +142,16 @@ Another way to say it is:
 
 ## 4. The three commands you will use most
 
-### `dingo-sda eval`
+### `residuum-sda eval`
 
 Run SDA code.
 
 Examples:
 
 ```sh
-dingo-sda eval -e '1 + 2'
-echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
-dingo-sda eval -f extract.sda -i event.json
+residuum-sda eval -e '1 + 2'
+echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
+residuum-sda eval -f extract.sda -i event.json
 ```
 
 Useful flags:
@@ -162,30 +162,30 @@ Useful flags:
 - `--compact` for one-line JSON output
 - `--bind` to use a name other than `input`
 
-### `dingo-sda check`
+### `residuum-sda check`
 
 Check whether SDA code is valid without running it.
 
 Examples:
 
 ```sh
-dingo-sda check -e 'values(input)'
-dingo-sda check -f extract.sda
+residuum-sda check -e 'values(input)'
+residuum-sda check -f extract.sda
 ```
 
 This is useful in editors, CI, and before running a bigger script.
 
-### `dingo-sda fmt`
+### `residuum-sda fmt`
 
 Format SDA code into a consistent style.
 
 Examples:
 
 ```sh
-dingo-sda fmt -e ' input<name>! '
-dingo-sda fmt -f extract.sda --check
-dingo-sda fmt -f extract.sda --write
-dingo-sda fmt --stdin-filepath extract.sda < extract.sda
+residuum-sda fmt -e ' input<name>! '
+residuum-sda fmt -f extract.sda --check
+residuum-sda fmt -f extract.sda --write
+residuum-sda fmt --stdin-filepath extract.sda < extract.sda
 ```
 
 Useful modes:
@@ -330,7 +330,7 @@ You can keep only numbers greater than `2` like this:
 Run it:
 
 ```sh
-echo '[1,2,3,4,5]' | dingo-sda eval -e '{ x in input | x > 2 }'
+echo '[1,2,3,4,5]' | residuum-sda eval -e '{ x in input | x > 2 }'
 ```
 
 You can also transform values while filtering:
@@ -377,7 +377,7 @@ values(input)
 Example:
 
 ```sh
-echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
+echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
 ```
 
 ## 10. Chaining steps with pipes
@@ -456,7 +456,7 @@ Here are the most common patterns.
 Command:
 
 ```sh
-dingo-sda eval -e '1 + 2'
+residuum-sda eval -e '1 + 2'
 ```
 
 Output:
@@ -470,7 +470,7 @@ Output:
 Command:
 
 ```sh
-echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
+echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
 ```
 
 Output:
@@ -487,7 +487,7 @@ Output:
 Command:
 
 ```sh
-echo '{"name":"Ada"}' | dingo-sda eval -e 'input<"name">!'
+echo '{"name":"Ada"}' | residuum-sda eval -e 'input<"name">!'
 ```
 
 Typical output shape:
@@ -504,7 +504,7 @@ Typical output shape:
 Command:
 
 ```sh
-echo '{"name":"Ada"}' | dingo-sda eval -e 'input<"name">?'
+echo '{"name":"Ada"}' | residuum-sda eval -e 'input<"name">?'
 ```
 
 Typical output shape:
@@ -521,7 +521,7 @@ Typical output shape:
 Command:
 
 ```sh
-echo '{}' | dingo-sda eval -e 'input<"name">?'
+echo '{}' | residuum-sda eval -e 'input<"name">?'
 ```
 
 Typical output shape:
@@ -537,7 +537,7 @@ Typical output shape:
 Command:
 
 ```sh
-echo '{}' | dingo-sda eval -e 'input<"name">!'
+echo '{}' | residuum-sda eval -e 'input<"name">!'
 ```
 
 Typical output shape:
@@ -561,11 +561,11 @@ What matters is the idea:
 
 If you are just starting, this is a good pattern:
 
-1. try a small expression inline with `dingo-sda eval -e ...`
+1. try a small expression inline with `residuum-sda eval -e ...`
 2. move it into a file when it gets longer
-3. run `dingo-sda check -f your_file.sda`
-4. run `dingo-sda fmt -f your_file.sda --write`
-5. then use `dingo-sda eval -f your_file.sda -i your_input.json`
+3. run `residuum-sda check -f your_file.sda`
+4. run `residuum-sda fmt -f your_file.sda --write`
+5. then use `residuum-sda eval -f your_file.sda -i your_input.json`
 
 This is a good habit because it separates three different questions:
 
@@ -576,9 +576,9 @@ This is a good habit because it separates three different questions:
 Example:
 
 ```sh
-dingo-sda check -f extract.sda
-dingo-sda fmt -f extract.sda --write
-dingo-sda eval -f extract.sda -i event.json --compact
+residuum-sda check -f extract.sda
+residuum-sda fmt -f extract.sda --write
+residuum-sda eval -f extract.sda -i event.json --compact
 ```
 
 ## 13. A few examples you can copy
@@ -586,49 +586,49 @@ dingo-sda eval -f extract.sda -i event.json --compact
 ### Get a required field
 
 ```sh
-echo '{"name":"Ada"}' | dingo-sda eval -e 'input<"name">!'
+echo '{"name":"Ada"}' | residuum-sda eval -e 'input<"name">!'
 ```
 
 ### Get all values from an object
 
 ```sh
-echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
+echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
 ```
 
 ### Filter a list
 
 ```sh
-echo '[1,2,3,4]' | dingo-sda eval -e '{ x in input | x > 2 }'
+echo '[1,2,3,4]' | residuum-sda eval -e '{ x in input | x > 2 }'
 ```
 
 ### Transform a list
 
 ```sh
-echo '[1,2,3,4]' | dingo-sda eval -e '{ yield x * 2 | x in input }'
+echo '[1,2,3,4]' | residuum-sda eval -e '{ yield x * 2 | x in input }'
 ```
 
 ### Format a file
 
 ```sh
-dingo-sda fmt -f extract.sda --write
+residuum-sda fmt -f extract.sda --write
 ```
 
 ### Check formatting in CI
 
 ```sh
-dingo-sda fmt -f extract.sda --check
+residuum-sda fmt -f extract.sda --check
 ```
 
 ### Show the tool version
 
 ```sh
-dingo-sda --version
+residuum-sda --version
 ```
 
 ### Show copyright and license notice
 
 ```sh
-dingo-sda --license
+residuum-sda --license
 ```
 
 ## 13.2 One failure on purpose
@@ -638,7 +638,7 @@ It is useful to see one failure on purpose, because SDA failures are part of the
 Try this command:
 
 ```sh
-echo '{}' | dingo-sda eval -e 'input<"name">!'
+echo '{}' | residuum-sda eval -e 'input<"name">!'
 ```
 
 Why this fails:
@@ -666,7 +666,7 @@ How to read that result:
 If you want a softer version that does not fail when the key is missing, try this instead:
 
 ```sh
-echo '{}' | dingo-sda eval -e 'input<"name">?'
+echo '{}' | residuum-sda eval -e 'input<"name">?'
 ```
 
 That returns `None` rather than a failure.
@@ -676,21 +676,21 @@ That returns `None` rather than a failure.
 If you prefer learning by typing exactly what you see, start with this transcript.
 
 ```sh
-$ dingo-sda check -f SDA/examples/getting_started/person_name.sda
+$ residuum-sda check -f SDA/examples/getting_started/person_name.sda
 ok
 
-$ dingo-sda fmt -f SDA/examples/getting_started/person_name.sda --check
+$ residuum-sda fmt -f SDA/examples/getting_started/person_name.sda --check
 
-$ dingo-sda eval -f SDA/examples/getting_started/person_name.sda -i SDA/examples/getting_started/person.json
+$ residuum-sda eval -f SDA/examples/getting_started/person_name.sda -i SDA/examples/getting_started/person.json
 {
   "$type": "ok",
   "$value": "Ada"
 }
 
-$ dingo-sda eval -e '1 + 2'
+$ residuum-sda eval -e '1 + 2'
 3
 
-$ echo '{"a":1,"b":2}' | dingo-sda eval -e 'values(input)'
+$ echo '{"a":1,"b":2}' | residuum-sda eval -e 'values(input)'
 [
   1,
   2
@@ -727,9 +727,9 @@ bindRes(
 Run it like this:
 
 ```sh
-dingo-sda check -f SDA/examples/getting_started/person_summary.sda
-dingo-sda fmt -f SDA/examples/getting_started/person_summary.sda --write
-dingo-sda eval -f SDA/examples/getting_started/person_summary.sda -i SDA/examples/getting_started/person.json
+residuum-sda check -f SDA/examples/getting_started/person_summary.sda
+residuum-sda fmt -f SDA/examples/getting_started/person_summary.sda --write
+residuum-sda eval -f SDA/examples/getting_started/person_summary.sda -i SDA/examples/getting_started/person.json
 ```
 
 What it does:
@@ -828,9 +828,9 @@ input<"name">?
 Better workflow:
 
 ```sh
-dingo-sda check -f program.sda
-dingo-sda fmt -f program.sda --write
-dingo-sda eval -f program.sda -i input.json
+residuum-sda check -f program.sda
+residuum-sda fmt -f program.sda --write
+residuum-sda eval -f program.sda -i input.json
 ```
 
 ### Mistake: assuming every JSON object is just a loose bag of fields
@@ -864,9 +864,9 @@ You do not need to learn the whole language at once.
 If you remember only four things from this manual, remember these:
 
 1. `input` is your incoming data
-2. `dingo-sda eval` runs SDA code
-3. `dingo-sda check` validates SDA code
-4. `dingo-sda fmt` keeps SDA code tidy and consistent
+2. `residuum-sda eval` runs SDA code
+3. `residuum-sda check` validates SDA code
+4. `residuum-sda fmt` keeps SDA code tidy and consistent
 
 ## 18. Short FAQ
 
@@ -899,8 +899,8 @@ Start with:
 1. `input`
 2. `input<"name">!`
 3. `values(input)`
-4. `dingo-sda eval`
-5. `dingo-sda check`
+4. `residuum-sda eval`
+5. `residuum-sda check`
 
 ### What should I do when something looks confusing?
 

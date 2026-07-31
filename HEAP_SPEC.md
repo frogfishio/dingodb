@@ -5,7 +5,7 @@ Capability status: **Partial** — HP-000…HP-009 landed in-tree (with listed
 gaps); HP-010 evidence advanced: **H3 Accept**, H0–H2/H4–H5 partial, H6 partial
 with complete-path review + external-review brief + pure proof bundle + §32.4
 remote data/list/scan cut (`qualified=false`); HP-011…HP-012 not started. HC1
-not started. No `dingo-heap-v1` qualified claim. See **Implementation progress**
+not started. No `residuum-heap-v1` qualified claim. See **Implementation progress**
 below.  
 Scope: Logical heap identity, collection containment, authorization, isolation,
 administration, recovery, and compatibility  
@@ -35,13 +35,13 @@ criteria in §40.
 
 | Layer | State |
 |-------|--------|
-| Spec contract (`dingo-heap-v1` prose §§30–41) | Frozen (this document) |
+| Spec contract (`residuum-heap-v1` prose §§30–41) | Frozen (this document) |
 | Machine-readable artifacts (`spec/heap/`) | Present; HP-000 mostly landed |
-| Isolation kernel crate (`crates/dingo-heap`) | Present; HP-001 mostly landed |
-| Durable ownership in `dingo-format` | Present; HP-002 partial |
+| Isolation kernel crate (`crates/residuum-heap`) | Present; HP-001 mostly landed |
+| Durable ownership in `residuum-format` | Present; HP-002 partial |
 | Store façades / architecture check | Present; HP-003 partial |
 | Heap/object catalogs (HP-004) | Present; staged genesis + rebuild Accept |
-| Authority + local ceremony (HP-005) | Present; two-slot store + `dingo-authority` |
+| Authority + local ceremony (HP-005) | Present; two-slot store + `residuum-authority` |
 | SDK heap API (HP-007) | Present; typed handles + isolation Accept |
 | Qualified network (HP-008) | Present; live TLS accept-loop + HeapKey session |
 | Legacy migration (HP-006) | Present; durable job engine + phase-6 gate Accept |
@@ -59,15 +59,15 @@ Before Gate H6, product language remains:
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
 | **HP-000** | Machine-readable contract | **Landed (format closed; ops expanding under §32.4)** | Baseline process ops **1–3** + data/list/scan/find/history/indexes cut **105/110–112/114–117/120–122/130–133** with schemas/fixtures; bootstrap cert/proof + **`format_vectors`**. Authority/RPC remainder of §38.1 still partial; remaining ops stay `reserved`. |
-| **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/dingo-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
+| **HP-001** | Isolation kernel | **Landed (gaps)** | `crates/residuum-heap`: IDs, `Rights`, constraints, COSE cert + holder-proof verify, snapshot/`HeapSlot`, pure `decide`, unforgeable `HeapCap` (trybuild compile-fail). **Gap:** Verus/Kani paths under `verification/heap-verus/` and `formal/heap/` are scaffolds, not connected proofs. |
 | **HP-002** | Durable ownership | **Landed (Accept corpus)** | Frame kinds **10–13**; envelope keys **31–36**; `SubjectV2`; ownership parse/agree (merge); descriptor encode/decode + `descriptor_hash`; `admit_frame_to_heap` / salvage; store `require_admit` + `HeapStore` SubjectV2 heap check; adversarial unit/corpus rejects wrong-heap. |
 | **HP-003** | Store compilation firewall | **Landed (qualified path)** | `kernel::PhysicalStore` alias; façades; architecture checker. Public raw `Store` gated behind **opt-in** feature `legacy-raw-store`; package **default is façades-only** (A3). Stages 3–9 enable the feature explicitly. |
-| **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `dingo-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
-| **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/dingo-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `dingo-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
-| **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `dingo-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
+| **HP-004** | Heap and object catalogs | **Landed (Accept rebuild)** | `residuum-store::heap::catalog`: non-discoverable staged genesis, descriptor-chain history, immutable collection/stream IDs, rename/retire, rebuildable `heap-catalog`/`collections`/`streams` CBOR, local admin receipts. Accept test deletes catalogs and reconstructs names/aliases/IDs/owner from chains. **Does not** bind authority (HP-005). |
+| **HP-005** | Authority and local ceremony | **Landed (Accept core)** | `crates/residuum-authority` (AGPL): two-slot head/time-floor store, anchor, root-event genesis binding staged descriptor hash, publish, HeapKey issue, reload notify (read-only apply). `residuum-store/authority-provisioning` feature. Accept: genesis+issue, staged-invisible, fork fail-closed, reload non-mutating, server does not link authority. **Gaps:** full COSE transition/mutation event corpus, threshold recovery, Unix lock/peer-cred barrier, crash-matrix failpoints. |
+| **HP-006** | Legacy migration | **Landed (Accept job/gate)** | `residuum-store::heap::migration`: durable `MigrationStateV1`, inventory/assignment hashes (§34.7), phases 0–7, idempotent rewrite admit log, failpoint crash resume, phase-6 `CutoverGate` refuses `unlabelled_active_frames > 0`. Accept: crash injection converges without duplicate/lost frames; cutover blocked until unlabelled cleared. **Gaps:** physical segment rewrite against live `Store` trees, preflight backup verification, operator CLI/report, full quarantine filesystem moves. |
 | **HP-007** | SDK capability surface | **Landed (Accept isolation + SubjectV2 + connect_heap data + CPR-001 heap-only default)** | Heap APIs + SubjectV2 put/get + `connect_heap` with remote put/get/delete/list/scan/find/history/indexes. Equality `find` accelerates via ready secondary indexes; put/delete marks indexes **stale**. **CPR-001:** package default **heap-only**; `legacy-flat-sdk` opt-in for Stages 3–9. Accept: isolation, SubjectV2, connect_heap data+list/scan/find/history/indexes (+ find-via-index + stale), `cpr001_legacy_opt_in`. **Gaps:** incremental rebuild (not only full); store `legacy-raw-store` default still on (A3). |
 | **HP-008** | Qualified network protocol | **Landed (Accept TLS + §32.4 data/list/scan/find/history/indexes)** | Session/audit/exporter + accept-loop; **no token/RBAC**. **§32.4 active (18 ops):** process 1–3 + 105/110–112/114–117/120–122 + **130–133** indexes (**IndexAdmin** on 131–133; bootstrap cert rights_mask includes IndexAdmin). Accept: connect_heap put/get/delete + list/scan/find/history/indexes. **Gaps:** lifecycle still reserved, default qualified listener, RPC corpus expansion. |
-| **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media wipe + retention residual)** | `dingo-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover, media-domain purge plans with unavailable-domain incomplete result that **stays `retired`**, **live multi-tier filesystem wipe** (`destroy_coverage_unit_on_media` / `wipe_heap_object_media`), `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID; incomplete purge; retention; live FS multi-tier wipe. **Gaps:** HSM/provider data-key adapters, mixed-heap salvage drill, operator CLI. |
+| **HP-009** | Lifecycle, backup, recovery | **Landed (Accept + DR/key + media wipe + retention residual)** | `residuum-store::heap::lifecycle`: suspend/resume/retire/purge on `HeapSlot`, hold-blocked purge, verifiable `PurgeReceipt`, heap-aware backup manifest, payload-only restore-to-new-id (no access), labelled-unit damage isolation, permanent identity tombstones, in-process data-key destruction receipts, disaster-recovery same-identity takeover, media-domain purge plans with unavailable-domain incomplete result that **stays `retired`**, **live multi-tier filesystem wipe** (`destroy_coverage_unit_on_media` / `wipe_heap_object_media`), `RetentionScheduler` minimum-retain window. Accept: receipt verifies; payload restore denied; damage isolation; key destroy; tombstone permanent; DR retain-ID; incomplete purge; retention; live FS multi-tier wipe. **Gaps:** HSM/provider data-key adapters, mixed-heap salvage drill, operator CLI. |
 | HP-010 | Single-node qualification | **In progress (H3 Accept; H6 partial)** | Matrix stays `qualified=false`. **H3 Accept**. **H1 advanced** (SubjectV2 + remote data/list/scan/find/history/indexes + CPR-001 opt-in). H0/H1/H2/H4/H5 still partial. H6 still needs machine-checked Verus/Kani + **signed** external review + CPR residual close (default flat SDK). |
 | HP-011 | Cluster control and placement | Not started | |
 | HP-012 | Cluster qualification | Not started | |
@@ -89,29 +89,29 @@ Before Gate H6, product language remains:
 
 ```text
 spec/heap/                     # HP-000 contract + format_vectors
-crates/dingo-heap/             # HP-001 kernel (MIT)
-crates/dingo-format/           # HP-002 ownership, SubjectV2, descriptors, admit
-crates/dingo-store/src/kernel/ # PhysicalStore alias (crate-private)
-crates/dingo-store/src/heap/   # HP-003 façades + HP-004 catalog
-crates/dingo-authority/        # HP-005 local ceremony (AGPL; not linked by server)
-crates/dingo-sdk/src/heap.rs   # HP-007 Heap / typed handles
-crates/dingo-client/src/heap_handshake.rs  # HP-008 wire types
-crates/dingo-server/src/heap_{registry,auth,dispatch,session,audit}.rs  # HP-008
-crates/dingo-store/src/heap/migration.rs  # HP-006 job engine + phase-6 gate
-crates/dingo-store/src/heap/lifecycle.rs  # HP-009 purge/backup/restore gates
+crates/residuum-heap/             # HP-001 kernel (MIT)
+crates/residuum-format/           # HP-002 ownership, SubjectV2, descriptors, admit
+crates/residuum-store/src/kernel/ # PhysicalStore alias (crate-private)
+crates/residuum-store/src/heap/   # HP-003 façades + HP-004 catalog
+crates/residuum-authority/        # HP-005 local ceremony (AGPL; not linked by server)
+crates/residuum-sdk/src/heap.rs   # HP-007 Heap / typed handles
+crates/residuum-client/src/heap_handshake.rs  # HP-008 wire types
+crates/residuum-server/src/heap_{registry,auth,dispatch,session,audit}.rs  # HP-008
+crates/residuum-store/src/heap/migration.rs  # HP-006 job engine + phase-6 gate
+crates/residuum-store/src/heap/lifecycle.rs  # HP-009 purge/backup/restore gates
 spec/heap/qualification/                 # HP-010 evidence matrix
-crates/dingo-heap/src/qualification.rs   # claim surface (qualified=false)
-crates/dingo-heap/src/isolation.rs       # query-escape confinement (H3/H6)
-crates/dingo-heap/src/operational.rs     # metrics/logs/export/health/bundle (H3)
-crates/dingo-heap/src/isolation_model.rs # connected Rust ↔ HeapIsolation Inv (H6)
-crates/dingo-heap/src/authority_model.rs  # connected Rust ↔ HeapAuthority Inv (H6)
-crates/dingo-heap/src/isolation_profile.rs # §13 named profiles + registry
-crates/dingo-heap/src/decide_obligations.rs # executable §39 Verus stand-in (H6)
+crates/residuum-heap/src/qualification.rs   # claim surface (qualified=false)
+crates/residuum-heap/src/isolation.rs       # query-escape confinement (H3/H6)
+crates/residuum-heap/src/operational.rs     # metrics/logs/export/health/bundle (H3)
+crates/residuum-heap/src/isolation_model.rs # connected Rust ↔ HeapIsolation Inv (H6)
+crates/residuum-heap/src/authority_model.rs  # connected Rust ↔ HeapAuthority Inv (H6)
+crates/residuum-heap/src/isolation_profile.rs # §13 named profiles + registry
+crates/residuum-heap/src/decide_obligations.rs # executable §39 Verus stand-in (H6)
 spec/heap/isolation-profiles-v1.json         # closed declassification registry
 doc/RUNBOOK_HEAP_QUALIFICATION.md        # HP-010 operator runbook
 doc/HEAP_COMPLETE_PATH_REVIEW.md         # Gate H6 complete-path review (CPR-*)
 doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md  # External review engagement pack
-crates/dingo-heap/src/pure_proofs.rs     # Verus-oriented pure lemmas (executable)
+crates/residuum-heap/src/pure_proofs.rs     # Verus-oriented pure lemmas (executable)
                                # Store public only with legacy-raw-store (default)
 scripts/check_heap_architecture.sh
 scripts/verify-heap.sh
@@ -126,7 +126,7 @@ fuzz/fuzz_targets/heap_ownership.rs
 |----------|--------|
 | Is the **spec prose** a usable implementation contract? | **Yes** — §§30–41 are frozen developer-ready text (v0.9). |
 | Is **implementation** of the full package tree complete? | **No** — HP-010 incomplete; HP-011/012 not started. |
-| May we advertise `dingo-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
+| May we advertise `residuum-heap-v1` **qualified**? | **No** — `qualified=false`; Level 1 claim language only. |
 | Is the **hot data path** good enough for heap-bound apps? | **Mostly yes** for embedded + qualified remote put/get/list/scan/find/history/indexes (equality find index-accelerated); lifecycle RPC still reserved. |
 
 **Bottom line:** we are **not done** with the *program* HEAP_SPEC describes. We **are** done writing the core *contract document*; remaining work is residual implementation + honest qualification evidence.
@@ -149,7 +149,7 @@ NEXT   HP-010 single-node qualification  (H3 Accept; H6 partial; Verus + signed 
 LATER  HP-011 → HP-012 cluster
 ```
 
-**Critical path to a qualified single-node claim (`dingo-heap-v1`):**  
+**Critical path to a qualified single-node claim (`residuum-heap-v1`):**  
 close qualification residuals as required → **HP-010** evidence matrices.
 
 #### What's left (operator checklist)
@@ -1666,7 +1666,7 @@ master key over the network.
 ### 8.9 Local authority plane
 
 Heap creation, HeapKey issuance, and master-key cycling occur through the
-separate `dingo-authority` executable running with declared operating-system
+separate `residuum-authority` executable running with declared operating-system
 access. The qualified data-server process neither links a master-key provider
 implementation nor contains a client/local master-authority mutation
 dispatcher. The cluster-only verified replication exception is §37.2.
@@ -1674,10 +1674,10 @@ dispatcher. The cluster-only verified replication exception is §37.2.
 Illustrative commands:
 
 ```text
-dingo-authority heap create <name>
-dingo-authority key issue <heap> <issuance-request>
-dingo-authority authority cycle <heap>
-dingo-authority authority blacklist <heap> <certificate-or-holder-fingerprint>
+residuum-authority heap create <name>
+residuum-authority key issue <heap> <issuance-request>
+residuum-authority authority cycle <heap>
+residuum-authority authority blacklist <heap> <certificate-or-holder-fingerprint>
 ```
 
 Use through SSH is still network use at the operating-system layer. It is not
@@ -1893,8 +1893,8 @@ resumes or aborts the same immutable `HeapId`; it never creates a second
 active identity.
 
 Creation is local-only but does not require deployment-wide downtime.
-`dingo-authority` obtains the deployment `creation.lock`, then uses
-`dingo-store`'s authority-provisioning interface to write and sync one
+`residuum-authority` obtains the deployment `creation.lock`, then uses
+`residuum-store`'s authority-provisioning interface to write and sync one
 canonical active `HeapDescriptor` plus its segment descriptor into a
 non-discoverable, freshly created staging path. The running server never scans
 that path. The tool computes the §34.7 descriptor hash and commits the
@@ -3216,7 +3216,7 @@ linked into the qualified multi-heap data plane.
 Migration assigns the legacy store one `HeapId` and records it in authoritative
 heap/store identity metadata.
 
-The frozen `dingo-heap-v1` profile rewrites every admitted legacy frame as
+The frozen `residuum-heap-v1` profile rewrites every admitted legacy frame as
 specified in §36. A future named profile may avoid rewriting only if it proves
 all of the following with equally strong surviving ownership evidence:
 
@@ -3229,7 +3229,7 @@ all of the following with equally strong surviving ownership evidence:
   profile.
 
 Such a future profile is not wire- or recovery-compatible with
-`dingo-heap-v1` unless this specification explicitly says so.
+`residuum-heap-v1` unless this specification explicitly says so.
 
 ### 23.5 SDK transition
 
@@ -3866,7 +3866,7 @@ profile.
 The implementation profile label is:
 
 ```text
-dingo-heap-v1
+residuum-heap-v1
 ```
 
 The profile targets the existing Rust 1.88 workspace and existing draft frame
@@ -3893,15 +3893,15 @@ cluster lease.
 Add two workspace crates:
 
 ```text
-crates/dingo-heap/
-crates/dingo-authority/
+crates/residuum-heap/
+crates/residuum-authority/
 ```
 
 Kernel package:
 
 ```toml
 [package]
-name = "dingo-heap"
+name = "residuum-heap"
 version.workspace = true
 license = "MIT"
 edition.workspace = true
@@ -3911,7 +3911,7 @@ repository.workspace = true
 description = "ResiduumDB heap identity, capability, and authority kernel."
 
 [dependencies]
-dingo-format.workspace = true
+residuum-format.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 getrandom.workspace = true
@@ -3922,21 +3922,21 @@ arc-swap = "1.7"
 zeroize = "1.8"
 ```
 
-Add `"crates/dingo-heap"` to workspace members and:
+Add `"crates/residuum-heap"` to workspace members and:
 
 ```toml
-dingo-heap = { path = "crates/dingo-heap", version = "0.2.0" }
+residuum-heap = { path = "crates/residuum-heap", version = "0.2.0" }
 ```
 
 to `[workspace.dependencies]`, using the workspace release version rather than
 copying a stale literal when the workspace version changes. Crates consume it
-as `dingo-heap.workspace = true`.
+as `residuum-heap.workspace = true`.
 
 Local authority package:
 
 ```toml
 [package]
-name = "dingo-authority"
+name = "residuum-authority"
 version.workspace = true
 license = "AGPL-3.0-or-later"
 edition.workspace = true
@@ -3946,9 +3946,9 @@ repository.workspace = true
 description = "Local-only ResiduumDB heap authority controller."
 
 [dependencies]
-dingo-heap.workspace = true
-dingo-format.workspace = true
-dingo-store = { workspace = true, features = ["authority-provisioning"] }
+residuum-heap.workspace = true
+residuum-format.workspace = true
+residuum-store = { workspace = true, features = ["authority-provisioning"] }
 clap.workspace = true
 thiserror.workspace = true
 zeroize = "1.8"
@@ -3957,12 +3957,12 @@ zeroize = "1.8"
 Add:
 
 ```toml
-dingo-authority = { path = "crates/dingo-authority", version = "0.2.0" }
+residuum-authority = { path = "crates/residuum-authority", version = "0.2.0" }
 ```
 
 to workspace dependencies using the same workspace-version rule.
-`dingo-authority` produces a separate `dingo-authority` executable. Neither
-`dingo-server` nor the qualified `dingo` data-service executable depends on
+`residuum-authority` produces a separate `residuum-authority` executable. Neither
+`residuum-server` nor the qualified `dingo` data-service executable depends on
 or links this crate.
 
 The workspace lockfile pins exact transitive versions. Dependency upgrades
@@ -3972,35 +3972,35 @@ require golden-vector and negative-corpus reruns.
 The permitted dependency direction is:
 
 ```text
-dingo-format
+residuum-format
       ▲
       │
-dingo-heap
+residuum-heap
   ▲   ▲   ▲   ▲
-  │   │   │   └──────── dingo-authority (also uses store/authority-provisioning)
-  │   │   └──────────── dingo-client
-  │   └──────────────── dingo-store
+  │   │   │   └──────── residuum-authority (also uses store/authority-provisioning)
+  │   │   └──────────── residuum-client
+  │   └──────────────── residuum-store
   │                           ▲
   └──────────────────┬────────┼──────────────┐
                      │        │              │
-                 dingo-sdk  dingo-cluster  dingo-server
+                 residuum-sdk  residuum-cluster  residuum-server
                      ▲          ▲              ▲
-                     └──────────┴──── dingo-cli
+                     └──────────┴──── residuum-cli
 ```
 
-`dingo-heap` MUST NOT depend on `dingo-store`, `dingo-sdk`, `dingo-server`,
-`dingo-cluster`, SDA, RQL, ENR, a filesystem abstraction, or a network
+`residuum-heap` MUST NOT depend on `residuum-store`, `residuum-sdk`, `residuum-server`,
+`residuum-cluster`, SDA, RQL, ENR, a filesystem abstraction, or a network
 runtime.
 
-`dingo-authority` MUST NOT depend on `dingo-server`, `dingo-sdk`,
-`dingo-client`, `dingo-cluster`, SDA, RQL, ENR, or a TCP/HTTP runtime. Its
+`residuum-authority` MUST NOT depend on `residuum-server`, `residuum-sdk`,
+`residuum-client`, `residuum-cluster`, SDA, RQL, ENR, or a TCP/HTTP runtime. Its
 only IPC client is the bounded local barrier/reload protocol defined in §8.9.
-The `dingo-store/authority-provisioning` feature exposes only
+The `residuum-store/authority-provisioning` feature exposes only
 non-discoverable staged genesis writes and offline publication under the
 required locks; it exposes no live data read, write, scan, query, or server
 operation and is never enabled in the qualified data-service target.
 
-### 30.3 `dingo-heap` module ownership
+### 30.3 `residuum-heap` module ownership
 
 The crate contains exactly these public implementation areas:
 
@@ -4029,10 +4029,10 @@ backup, and recovery-media code do not belong in this crate.
 The required module placement is:
 
 ```text
-dingo-format/src/canonical_cbor.rs
+residuum-format/src/canonical_cbor.rs
     generic bounded deterministic CBOR values and COSE array support
 
-dingo-store/src/heap/
+residuum-store/src/heap/
     host.rs
     heap_store.rs
     maintenance_store.rs
@@ -4044,23 +4044,23 @@ dingo-store/src/heap/
     authority_operational.rs
     migration.rs
 
-dingo-store/src/kernel/
+residuum-store/src/kernel/
     physical_store.rs
     physical_index.rs
     physical_segments.rs
 
-dingo-client/src/heap_handshake.rs
-dingo-sdk/src/heap.rs
-dingo-sdk/src/heap_collection.rs
-dingo-server/src/heap_auth.rs
-dingo-server/src/heap_dispatch.rs
-dingo-server/src/heap_registry.rs
-dingo-server/src/heap_authority_reload.rs
-dingo-cluster/src/heap_control.rs
-dingo-cluster/src/heap_lease.rs
-dingo-cli/src/heap.rs
+residuum-client/src/heap_handshake.rs
+residuum-sdk/src/heap.rs
+residuum-sdk/src/heap_collection.rs
+residuum-server/src/heap_auth.rs
+residuum-server/src/heap_dispatch.rs
+residuum-server/src/heap_registry.rs
+residuum-server/src/heap_authority_reload.rs
+residuum-cluster/src/heap_control.rs
+residuum-cluster/src/heap_lease.rs
+residuum-cli/src/heap.rs
 
-dingo-authority/src/
+residuum-authority/src/
     main.rs
     command.rs
     filesystem_store.rs
@@ -4072,14 +4072,14 @@ dingo-authority/src/
 The ordinary `dingo` CLI may perform HeapKey-authorized data and heap
 administration. Master issuance, cycling, blacklist, grace, epoch recovery,
 and recovery-profile commands exist only in the separate
-`dingo-authority` executable.
+`residuum-authority` executable.
 
-The current `dingo-server::authz` token/role implementation remains only for
+The current `residuum-server::authz` token/role implementation remains only for
 the isolated legacy server profile. Qualified heap dispatch does not call it.
 
 ### 30.5 Compilation firewall
 
-The current public `dingo_store::Store` allows global scans and raw subjects.
+The current public `residuum_store::Store` allows global scans and raw subjects.
 It cannot remain reachable from qualified upper layers.
 
 During H1:
@@ -4088,26 +4088,26 @@ During H1:
 - expose `StoreHost` with no get, put, scan, index, or raw-path methods;
 - expose capability-gated `HeapStore`, `MaintenanceStore`, `ReplicaStore`, and
   `RecoveryStore` façades;
-- remove `Store` re-exports from `dingo-store::lib`;
+- remove `Store` re-exports from `residuum-store::lib`;
 - update embedded, SDK, server, and cluster code to use the correct façade;
 - keep any legacy raw wrapper in a separate legacy-only crate or binary that
-  cannot be linked into `dingo-server` with `dingo-heap-v1`.
+  cannot be linked into `residuum-server` with `residuum-heap-v1`.
 
 CI adds `scripts/check_heap_architecture.sh`. It fails when:
 
-- `dingo-sdk`, `dingo-server`, query, SDA host, index host, or client modules
+- `residuum-sdk`, `residuum-server`, query, SDA host, index host, or client modules
   import `kernel`, `PhysicalStore`, raw segment catalogs, or raw iterators;
-- any type outside `dingo-heap` implements or constructs a capability;
+- any type outside `residuum-heap` implements or constructs a capability;
 - `HeapCap`, `HeapMaintenanceCap`, `ReplicaCap`, or `RecoveryCap` implements
   `Serialize` or `Deserialize`;
 - the qualified server links legacy role dispatch or diagnostic line protocol;
-- `dingo-server`, the qualified `dingo` data-service target, or any
-  client-facing dispatcher depends on `dingo-authority`, implements
+- `residuum-server`, the qualified `dingo` data-service target, or any
+  client-facing dispatcher depends on `residuum-authority`, implements
   `MasterKeyProvider`, stores a `dyn MasterKeyProvider`, contains
   `MasterAuthorityStore`, or accepts a raw authority event instead of
   `AuthorizedOperationalEvent`;
 - the qualified data-service feature graph enables
-  `dingo-store/authority-provisioning` or links its provisioning symbols;
+  `residuum-store/authority-provisioning` or links its provisioning symbols;
 - a cluster component decodes `ReplicatedMasterAuthorityEvent` anywhere
   except the mTLS-authenticated security-control Raft peer module, or that
   module can construct/sign an event rather than verify and replicate one;
@@ -4116,7 +4116,7 @@ CI adds `scripts/check_heap_architecture.sh`. It fails when:
 
 ### 30.6 Concrete identity types
 
-`dingo-heap::ids` defines:
+`residuum-heap::ids` defines:
 
 ```rust
 #[repr(transparent)]
@@ -4193,7 +4193,7 @@ struct CapInner {
 
 Rules:
 
-- fields and constructors are private to `dingo-heap`;
+- fields and constructors are private to `residuum-heap`;
 - `HeapCap` is cloneable inside the trusted process but not serializable;
 - `Debug` prints only heap ID, generation, revision, and redacted
   fingerprints;
@@ -4720,7 +4720,7 @@ resulting values.
 The kernel constructs a private-field `AuthorizedOperationalEvent` only from
 that successful check. The storage writer accepts that type, never raw event
 bytes or a public struct literal. Its constructor and fields are private to
-`dingo-heap`; serialization occurs only after construction. This is the
+`residuum-heap`; serialization occurs only after construction. This is the
 compile-time firewall between a network handler and arbitrary authority-state
 mutation.
 
@@ -4758,7 +4758,7 @@ Before allocation:
 - byte string: at most the field's exact or declared maximum;
 - no floats, tags, indefinite lengths, duplicate keys, or trailing bytes.
 
-`dingo-format::canonical_cbor` performs structural bounds before allocating.
+`residuum-format::canonical_cbor` performs structural bounds before allocating.
 Semantic decoders then require the exact field set.
 
 ### 31.7 Holder issuance request
@@ -4869,7 +4869,7 @@ filesystem path, external callback, or mutable user identity.
 
 ### 32.3 Operation registry
 
-`dingo-heap::rights::Operation` is `#[repr(u16)]`. The numeric IDs below are
+`residuum-heap::rights::Operation` is `#[repr(u16)]`. The numeric IDs below are
 the qualified wire representation and are permanently allocated by this
 table. Allocation freezes identity and minimum rights but does not by itself
 make an operation callable. Wire names are frozen SDK, audit, schema, and
@@ -5026,7 +5026,7 @@ Each entry contains:
 }
 ```
 
-`build.rs` in `dingo-heap` generates the Rust enum, name parser, rights table,
+`build.rs` in `residuum-heap` generates the Rust enum, name parser, rights table,
 and test cases from this file. CI rejects generated diffs and duplicate IDs,
 names, or incomplete dispatch coverage.
 
@@ -5194,7 +5194,7 @@ Additional JSON fields:
   "authority_generation": 1,
   "security_revision": 1,
   "capability_expires_at": 1700003600,
-  "heap_profile": "dingo-heap-v1"
+  "heap_profile": "residuum-heap-v1"
 }
 ```
 
@@ -5313,7 +5313,7 @@ or detailed denial logging after the applicable budget is exhausted.
 
 ## 34. Frozen durable-storage profile
 
-This section is normative for `dingo-heap-v1`. A different layout is permitted
+This section is normative for `residuum-heap-v1`. A different layout is permitted
 only under a new profile name and after requalification.
 
 ### 34.1 One heap per segment
@@ -5328,7 +5328,7 @@ Every heap-aware segment has:
 2. envelope keys 31 and 34 on that descriptor, binding `HeapId` and ownership
    profile;
 3. the existing descriptor body binding store ID, segment ID, creation time,
-   and safety limits exactly as defined by `dingo-format`;
+   and safety limits exactly as defined by `residuum-format`;
 4. heap identity on every independently recoverable frame;
 5. keys 31 and 34 on the final `SegmentSummary`, when present.
 
@@ -5336,7 +5336,7 @@ This preserves the existing invariant that `SegmentDescriptor` is frame zero;
 `HeapDescriptor` is heap catalog/history evidence and is not substituted for
 the segment-lifecycle descriptor.
 
-`dingo-format` adds the profile-neutral constructor:
+`residuum-format` adds the profile-neutral constructor:
 
 ```rust
 pub fn create_with_descriptor_envelope(
@@ -5348,10 +5348,10 @@ pub fn create_with_descriptor_envelope(
 ```
 
 It validates the envelope with the existing deterministic-CBOR limits and
-writes the unchanged draft descriptor body. `dingo-store::kernel` is the only
+writes the unchanged draft descriptor body. `residuum-store::kernel` is the only
 qualified caller and supplies canonical `{31: heap_id_bytes, 34: 1}` after
 deriving the bytes from its bound capability. This avoids a dependency cycle:
-`dingo-format` does not import `HeapId` or depend on `dingo-heap`.
+`residuum-format` does not import `HeapId` or depend on `residuum-heap`.
 
 The qualified store cannot call the legacy empty-envelope constructor.
 Migration remains the only qualified module permitted to decode legacy
@@ -5407,7 +5407,7 @@ administrative chain survives payload purge.
 
 ### 34.3 Allocated frame kinds and envelope fields
 
-The following `dingo-format` values are frozen:
+The following `residuum-format` values are frozen:
 
 | Value | Frame kind |
 |---:|---|
@@ -5493,7 +5493,7 @@ Descriptors are deterministic CBOR maps embedded as frame bodies.
 | 3 | heap ID | bstr(16) |
 | 4 | creation event ID | bstr(16) |
 | 5 | created at | Unix seconds |
-| 6 | profile | `"dingo-heap-v1"` |
+| 6 | profile | `"residuum-heap-v1"` |
 | 7 | predecessor descriptor hash | bstr(32) or null |
 | 8 | descriptor sequence | uint, starting at 1 |
 | 9 | state | 1 active, 2 read-only, 3 suspended, 4 retired, 5 purging, 6 purged |
@@ -5588,7 +5588,7 @@ segment IDs are a preflight conflict. Filesystem paths are diagnostic only and
 are excluded from identity, so non-UTF-8 or platform-specific paths do not
 change the inventory hash or prevent salvage. No field called `hash` or
 `descriptor hash` may silently choose another algorithm. Frame CRC/checksum
-fields retain their existing `dingo-format` algorithms and are not object
+fields retain their existing `residuum-format` algorithms and are not object
 identity.
 
 ## 35. Authority storage and key-provider contract
@@ -5620,13 +5620,13 @@ UID, and all traversal/mutation is directory-descriptor-relative with
 no-follow semantics. The data server holds an exclusive `serving.lock` for its
 deployment from verification through shutdown, preventing a second serving
 process. A separate per-heap `mutation.lock` serializes all authority-chain
-commits. `dingo-authority` holds it exclusively for a local master-authority
+commits. `residuum-authority` holds it exclusively for a local master-authority
 mutation; the server holds it exclusively only inside
 `commit_operational`, and shared while loading a candidate snapshot or
 checking time. The lock is never held while waiting for an admitted data
 operation.
 
-When `dingo-authority` observes no running server, it MUST also acquire
+When `residuum-authority` observes no running server, it MUST also acquire
 `serving.lock` exclusively and retain both locks through the commit and
 selector publication. This closes the race in which a server could start
 after the tool skipped the barrier but before the new head became durable. If
@@ -5807,12 +5807,12 @@ back.
 
 ### 35.2 Storage interface
 
-`dingo-heap` exposes the following split interfaces. The split is normative:
+`residuum-heap` exposes the following split interfaces. The split is normative:
 the data-service dependency graph may contain `AuthorityReader`,
 `OperationalAuthorityWriter`, `AuthorityCheckpointWriter`, and
 the opaque implementations of those traits. `AuthorityAnchor`,
 `MasterAuthorityStore`, and their mutation types are private to the authority
-storage implementation and `dingo-authority`; none is callable from the data
+storage implementation and `residuum-authority`; none is callable from the data
 service.
 
 ```rust
@@ -5843,7 +5843,7 @@ pub struct TimeCheckpoint {
 }
 
 pub struct AuthorizedOperationalEvent {
-    /* private fields; constructed only by dingo-heap authorization */
+    /* private fields; constructed only by residuum-heap authorization */
 }
 
 pub struct OperationalCommit {
@@ -5948,11 +5948,11 @@ permitted only under the visibly named `development-file-key-provider` and
 zeroize secret buffers. Production adapters may use an OS keystore, TPM, HSM,
 or remote signer, but must pass the same conformance suite.
 
-Master rotation is a local-only `dingo-authority` command. The data-service
+Master rotation is a local-only `residuum-authority` command. The data-service
 listener has no operation ID, parser branch, crate dependency, concrete
 provider, or trait object capable of invoking `MasterKeyProvider`.
 
-For a security-barrier mutation, `dingo-authority` first completes
+For a security-barrier mutation, `residuum-authority` first completes
 `begin_security_barrier`, commits against the returned current head, and then
 sends `apply_committed_head` as defined in §8.9. The server validates peer
 credentials, rereads the anchored state, and acknowledges only the exact
@@ -6053,7 +6053,7 @@ stop new admission, wait the documented drain bound, then publish.
 
 ### 37.2 Cluster control plane
 
-Cluster support extends `dingo-cluster` with a dedicated security-control Raft
+Cluster support extends `residuum-cluster` with a dedicated security-control Raft
 group per deployment. Payload partitions do not query this group for each
 request. Its committed log contains:
 

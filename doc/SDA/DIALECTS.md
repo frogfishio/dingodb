@@ -19,7 +19,7 @@ execution is shared.
 ```text
   Pure ENR+SDA ──┐
   RQL (official) ┤
-  JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► dingo-sda eval
+  JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► residuum-sda eval
   SQL mimicry ───┤
   GraphQL / … ───┤
   Fluent API ────┘
@@ -125,7 +125,7 @@ RQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 |----|---------|-------------|----------|
 | `sda` | Pure SDA / ENR1 source | identity (parse-checked) | **complete** for standalone + ENR1 |
 | **`dql`** | **Residuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../../RQL_SPEC.md) |
-| `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/dingo-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
+| `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/residuum-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
 | `sql` | Tiny legacy `SELECT` / `WHERE` mimicry | document predicate or projection program | **implemented, deprecated when SQL-ish+ ships** |
 | `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical RQL v1 plan | **specified, not implemented** — [SQL_TO_RQL_SPEC.md](../../SQL_TO_RQL_SPEC.md) |
@@ -207,7 +207,7 @@ than comfort.
 
 ## Pluggable model (SDK)
 
-Rust surface lives in `dingo-sdk::dialects`:
+Rust surface lives in `residuum-sdk::dialects`:
 
 - [`QueryDialect`] — trait for a frontend that compiles source → pure SDA.
 - [`BuiltinDialect`] — builtin ids above.
@@ -236,7 +236,7 @@ Application
     └─ dialect "sda"                    (same pure path, explicit id)
     │
     ▼
-Compiled pure SDA / shared IR  →  dingo-sda  →  value / Fail
+Compiled pure SDA / shared IR  →  residuum-sda  →  value / Fail
 ```
 
 Storage, indexes, budgets, and coverage remain **host** concerns. Dialects do

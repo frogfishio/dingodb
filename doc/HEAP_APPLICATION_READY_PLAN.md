@@ -60,7 +60,7 @@ let key = local.issue_key(
 ```
 
 `HeapAuthority` is illustrative naming for the package. Implementers MAY reuse
-the existing `dingo-authority` types, but MUST preserve the separation:
+the existing `residuum-authority` types, but MUST preserve the separation:
 
 - ordinary `Dingo`/`RemoteHeap` handles cannot wield master authority;
 - network data connections cannot execute master-key ceremonies;
@@ -147,9 +147,9 @@ Owned areas:
 - `spec/heap/operations-v1.json`;
 - `spec/heap/rpc-v1/collection_create.*.json`;
 - accepted/rejected fixtures;
-- `dingo-store::heap::catalog::create_object`;
-- `dingo-server::heap_dispatch`;
-- `dingo-sdk::RemoteHeap` and embedded Heap handle.
+- `residuum-store::heap::catalog::create_object`;
+- `residuum-server::heap_dispatch`;
+- `residuum-sdk::RemoteHeap` and embedded Heap handle.
 
 Contract:
 
@@ -202,8 +202,8 @@ Purpose: create a Heap without hand-editing catalogs or using test fixtures.
 
 Owned areas:
 
-- `dingo-authority::ceremony`;
-- `dingo-store::heap::catalog`;
+- `residuum-authority::ceremony`;
+- `residuum-store::heap::catalog`;
 - new CLI `heap create/list/inspect`;
 - SDK/admin façade only if it remains local.
 
@@ -425,12 +425,12 @@ It MUST NOT say “independently reviewed” or set the H6 qualified claim.
 
 | Area | Primary crate |
 |---|---|
-| IDs, rights, pure admission | `dingo-heap` |
-| local master ceremony | `dingo-authority` |
-| descriptors, lifecycle, backup | `dingo-store` |
-| Heap protocol and listener | `dingo-server` |
-| ordinary embedded/remote API | `dingo-sdk` |
-| human administration | `dingo-cli` / local authority binary |
+| IDs, rights, pure admission | `residuum-heap` |
+| local master ceremony | `residuum-authority` |
+| descriptors, lifecycle, backup | `residuum-store` |
+| Heap protocol and listener | `residuum-server` |
+| ordinary embedded/remote API | `residuum-sdk` |
+| human administration | `residuum-cli` / local authority binary |
 | fixtures and qualification | `spec/heap`, `verification/heap-verus` |
 
 No package may bypass its lower-level owner by reproducing authority logic.

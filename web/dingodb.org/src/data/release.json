@@ -1,6 +1,6 @@
 {
   "productVersion": "0.2.0",
-  "sdkCrate": "dingo-sdk",
+  "sdkCrate": "residuum-sdk",
   "sdkSemverRange": "0.2",
   "embeddedLabel": "early access",
   "productStatus": "Experimental software",

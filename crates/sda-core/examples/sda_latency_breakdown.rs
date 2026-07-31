@@ -10,12 +10,12 @@
 //! Program classes cover common host patterns: arithmetic literal, map
 //! projection, filter-shaped predicate, and a sequence comprehension.
 //!
-//! Run: `cargo run -p dingo-sda --release --example sda_latency_breakdown`
+//! Run: `cargo run -p residuum-sda --release --example sda_latency_breakdown`
 //!
 //! Numbers are **diagnostic only**. See `doc/BENCHMARK_DISCLOSURE.md` and
 //! `doc/PERFORMANCE_STRATEGIES.md` (SDA section). Do not publish as SLOs.
 
-use dingo_sda::{from_json, to_json, Program};
+use residuum_sda::{from_json, to_json, Program};
 use std::time::{Duration, Instant};
 
 /// Default iters for micro programs (override with `SDA_BENCH_ITERS`).
@@ -162,7 +162,7 @@ fn main() {
             let _ = program
                 .run_json("input", case.input.clone())
                 .expect("run_json warmup");
-            let _ = dingo_sda::run(case.source, case.input.clone()).expect("run warmup");
+            let _ = residuum_sda::run(case.source, case.input.clone()).expect("run warmup");
         }
 
         // --- parse only ---
@@ -205,7 +205,7 @@ fn main() {
 
         // --- full run (re-parse every call) ---
         let full_samples = bench_durations(n, || {
-            let _ = dingo_sda::run(case.source, case.input.clone()).expect("run");
+            let _ = residuum_sda::run(case.source, case.input.clone()).expect("run");
         });
         summarize(&format!("{}|run_reparse", case.name), full_samples);
 
@@ -220,7 +220,7 @@ fn main() {
                 .expect("run_json");
         }));
         let mean_full = mean_ns(&bench_durations(attr_n, || {
-            let _ = dingo_sda::run(case.source, case.input.clone()).expect("run");
+            let _ = residuum_sda::run(case.source, case.input.clone()).expect("run");
         }));
         let parse_share = (mean_parse / mean_full.max(1.0) * 100.0).clamp(0.0, 100.0);
         let once_vs_full = (mean_once / mean_full.max(1.0) * 100.0).clamp(0.0, 100.0);

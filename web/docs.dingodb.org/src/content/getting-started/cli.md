@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/dingo-cli/README.md
+  path: crates/residuum-cli/README.md
 owners:
   - cli
 keywords:
@@ -27,7 +27,7 @@ Prefer a **versioned** release or build from the repository pin matching this do
 From a clone of the monorepo:
 
 ```bash
-cargo install --path crates/dingo-cli --locked
+cargo install --path crates/residuum-cli --locked
 dingo --version
 ```
 
@@ -36,7 +36,7 @@ Do **not** pipe an unauthenticated network installer into a shell unless the pro
 ## Create a temporary store
 
 ```bash
-WORKDIR="$(mktemp -d /tmp/dingo-cli-XXXXXX)"
+WORKDIR="$(mktemp -d /tmp/residuum-cli-XXXXXX)"
 echo "Using $WORKDIR"
 ```
 

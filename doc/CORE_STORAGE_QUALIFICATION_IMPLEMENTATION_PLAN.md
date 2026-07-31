@@ -112,7 +112,7 @@ Depends: `CSQ-0`
 Deliver:
 
 ```text
-crates/dingo-store-model/
+crates/residuum-store-model/
 tools/core-storage-reference-reader/
 ```
 

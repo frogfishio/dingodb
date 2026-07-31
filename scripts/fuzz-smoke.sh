@@ -18,17 +18,17 @@ ok() { echo "fuzz-smoke: $*"; }
 fail() { echo "fuzz-smoke: FAIL: $*" >&2; exit 1; }
 
 # --- Property / hostile decode bar (always, PR-safe) ---
-ok "dingo-format property suite (DEF-091)"
-cargo test -p dingo-format --test stage_def_091_properties --quiet
+ok "residuum-format property suite (DEF-091)"
+cargo test -p residuum-format --test stage_def_091_properties --quiet
 
 ok "hostile chunk-manifest length refuses pre-check (DEF-091-F)"
-cargo test -p dingo-store --features legacy-raw-store --lib chunk_payload --quiet
+cargo test -p residuum-store --features legacy-raw-store --lib chunk_payload --quiet
 
 ok "SDA no-panic property suite (DEF-091-F)"
-cargo test -p dingo-sda --test stage_def_091f_sda_properties --quiet
+cargo test -p residuum-sda --test stage_def_091f_sda_properties --quiet
 
 ok "RPC frame refuse-before-alloc properties (DEF-091-F)"
-cargo test -p dingo-client --lib protocol --quiet
+cargo test -p residuum-client --lib protocol --quiet
 
 # --- cargo-fuzz smoke (scheduled / local with nightly) ---
 TARGETS=(

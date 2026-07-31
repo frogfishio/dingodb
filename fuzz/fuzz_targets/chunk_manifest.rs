@@ -4,7 +4,7 @@
 
 #![no_main]
 
-use dingo_store::{decode_chunk_manifest, is_chunk_manifest};
+use residuum_store::{decode_chunk_manifest, is_chunk_manifest};
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

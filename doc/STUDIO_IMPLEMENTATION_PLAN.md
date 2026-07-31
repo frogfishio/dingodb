@@ -41,7 +41,7 @@ Planned paths:
 
 ```text
 apps/dingo-studio/
-crates/dingo-studio-core/
+crates/residuum-studio-core/
 spec/studio/
 scripts/verify-studio.sh
 ```
@@ -54,7 +54,7 @@ Ownership:
 | Work packages/status | `doc/STUDIO_IMPLEMENTATION_PLAN.md` |
 | Machine IPC/topic/view schemas | `spec/studio/` |
 | Framework shell | `apps/dingo-studio/` |
-| Reusable Rust orchestration | `crates/dingo-studio-core/` |
+| Reusable Rust orchestration | `crates/residuum-studio-core/` |
 | ResiduumDB protocol semantics | existing legacy `dingo-*` crates/specs |
 | CI qualification | `scripts/verify-studio.sh` |
 
@@ -106,7 +106,7 @@ updates follow `STUDIO_SPEC.md` §34.4.
 ### Deliverables
 
 - `apps/dingo-studio` Tauri + Angular + SCSS skeleton;
-- `crates/dingo-studio-core`;
+- `crates/residuum-studio-core`;
 - `spec/studio/ipc-v1.json`;
 - `spec/studio/commands-v1.json`;
 - `spec/studio/errors-v1.json`;

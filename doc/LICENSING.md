@@ -21,10 +21,10 @@ MIT was temporary scaffolding only; it is **not** the product license policy.
 | 1 | Strong copyleft for cluster / server / CLI | **AGPL-3.0-or-later** |
 | 2 | Weak copyleft for store + embedded API | **MPL-2.0** (not LGPL) |
 | 3 | SDA + wire format | **MIT** (remains permissive) |
-| 4 | Thin network client (wire) | **MIT** (`dingo-client`) |
+| 4 | Thin network client (wire) | **MIT** (`residuum-client`) |
 | 5 | Inbound contributions | **Inbound = outbound** (license of modified files / crate SPDX) |
-| 6 | `dingo-format` | Stays **MIT** even when store is MPL |
-| 7 | `dingo-sdk` crate split | **Done for publish path:** default features are MPL embedded + remote; optional `cluster` feature pulls AGPL `dingo-cluster` |
+| 6 | `residuum-format` | Stays **MIT** even when store is MPL |
+| 7 | `residuum-sdk` crate split | **Done for publish path:** default features are MPL embedded + remote; optional `cluster` feature pulls AGPL `residuum-cluster` |
 
 ---
 
@@ -79,18 +79,18 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │  MIT — protocol, pure algebra, wire format, pure clients    │
-│  dingo-sda · dingo-sda-cli · dingo-format · dingo-client · dingo-heap   │
+│  residuum-sda · residuum-sda-cli · residuum-format · residuum-client · residuum-heap   │
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
 │  MPL-2.0 — linkable embedded engine + collection SDK        │
-│  dingo-store · dingo-examine · dingo-sdk · dingo-testrig    │
+│  residuum-store · residuum-examine · residuum-sdk · residuum-testrig    │
 └────────────────────────────▲────────────────────────────────┘
                              │ may depend only upward
 ┌────────────────────────────┴────────────────────────────────┐
 │  AGPL-3.0-or-later — networked product                      │
-│  dingo-cluster · dingo-server · dingo-cli · dingo-authority │
-│  (+ dingo-sdk when built with features = ["cluster"])       │
+│  residuum-cluster · residuum-server · residuum-cli · residuum-authority │
+│  (+ residuum-sdk when built with features = ["cluster"])       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -98,19 +98,19 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 
 | Crate (dir → package) | SPDX today | Notes |
 |----------------------|------------|-------|
-| `sda-core` → `dingo-sda` | **MIT** | SDA+ENR1 hybrid; not bare `sda`/`sda-lib` |
-| `sda-cli` → `dingo-sda-cli` | **MIT** | Binary `dingo-sda` |
-| `dingo-format` | **MIT** | |
-| `dingo-client` | **MIT** | Wire framing + handshake |
-| `dingo-heap` | **MIT** | Planned heap identity, certificate, capability, and pure decision kernel |
-| `dingo-store` | **MPL-2.0** | |
-| `dingo-examine` | **MPL-2.0** | |
-| `dingo-sdk` | **MPL-2.0** | Default: embedded + remote; optional `cluster` → AGPL dep |
-| `dingo-testrig` | **MPL-2.0** | Unpublished store stress/chaos tool |
-| `dingo-cluster` | **AGPL-3.0-or-later** | |
-| `dingo-server` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
-| `dingo-cli` → `dingo` | **AGPL-3.0-or-later** | Enables `dingo-sdk/cluster` |
-| `dingo-authority` | **AGPL-3.0-or-later** | Planned separate local-only heap authority executable; never linked by data server |
+| `sda-core` → `residuum-sda` | **MIT** | SDA+ENR1 hybrid; not bare `sda`/`sda-lib` |
+| `sda-cli` → `residuum-sda-cli` | **MIT** | Binary `residuum-sda` |
+| `residuum-format` | **MIT** | |
+| `residuum-client` | **MIT** | Wire framing + handshake |
+| `residuum-heap` | **MIT** | Planned heap identity, certificate, capability, and pure decision kernel |
+| `residuum-store` | **MPL-2.0** | |
+| `residuum-examine` | **MPL-2.0** | |
+| `residuum-sdk` | **MPL-2.0** | Default: embedded + remote; optional `cluster` → AGPL dep |
+| `residuum-testrig` | **MPL-2.0** | Unpublished store stress/chaos tool |
+| `residuum-cluster` | **AGPL-3.0-or-later** | |
+| `residuum-server` | **AGPL-3.0-or-later** | Enables `residuum-sdk/cluster` |
+| `residuum-cli` → `dingo` | **AGPL-3.0-or-later** | Enables `residuum-sdk/cluster` |
+| `residuum-authority` | **AGPL-3.0-or-later** | Planned separate local-only heap authority executable; never linked by data server |
 | `dingo-studio-core` | **AGPL-3.0-or-later** | Planned Studio orchestration and remote-management core |
 | `apps/dingo-studio` | **AGPL-3.0-or-later** | Planned Residuum Studio desktop product |
 
@@ -125,51 +125,51 @@ BAD:   mpl-store   ──depends──►  agpl-cluster
 
 ---
 
-## 4. Split status: `dingo-sdk` was three products
+## 4. Split status: `residuum-sdk` was three products
 
 ### 4.0 Done
 
 | Package | Status | License |
 |---------|--------|---------|
-| `dingo-client` | **Extracted** — framed RPC + handshake only | MIT |
-| `dingo-server` | **Extracted** — accept loop, authz, admission, raft RPC glue, `serve_*` | AGPL-3.0-or-later |
-| `dingo-sdk` | **MPL default**; remote client + TLS always on; `cluster` feature optional | MPL-2.0 |
+| `residuum-client` | **Extracted** — framed RPC + handshake only | MIT |
+| `residuum-server` | **Extracted** — accept loop, authz, admission, raft RPC glue, `serve_*` | AGPL-3.0-or-later |
+| `residuum-sdk` | **MPL default**; remote client + TLS always on; `cluster` feature optional | MPL-2.0 |
 
-### 4.1 Modules in `dingo-sdk`
+### 4.1 Modules in `residuum-sdk`
 
 | Module group | Natural tier | Status |
 |--------------|--------------|--------|
 | `collection`, `dingo` (local open), `filter`, `history`, `indexes`, `value`, `receipt`, `error` | **Embedded** (MPL) | Always on |
-| `remote`, `directory_cache` (wire types, no `dingo-cluster`), client TLS, connect helpers | **Remote client** (MPL; wire re-export MIT) | Always on; directory cache no longer imports AGPL types |
+| `remote`, `directory_cache` (wire types, no `residuum-cluster`), client TLS, connect helpers | **Remote client** (MPL; wire re-export MIT) | Always on; directory cache no longer imports AGPL types |
 | `cluster_backend`, `Dingo::open_cluster` / `create_cluster` | **Networked / AGPL** | Behind `features = ["cluster"]` only |
 
-**Today:** default `dingo-sdk` is honestly **MPL-2.0** (depends on `dingo-store` +
-`dingo-client`, not `dingo-cluster`). Builds with `cluster` pull AGPL
-`dingo-cluster` — document that effective license for those binaries follows
-the AGPL dependency. Serve path lives only in `dingo-server`.
+**Today:** default `residuum-sdk` is honestly **MPL-2.0** (depends on `residuum-store` +
+`residuum-client`, not `residuum-cluster`). Builds with `cluster` pull AGPL
+`residuum-cluster` — document that effective license for those binaries follows
+the AGPL dependency. Serve path lives only in `residuum-server`.
 
 ### 4.2 Crate apportionment
 
 | Package | Contents | License | Depends on |
 |---------|----------|---------|------------|
-| `dingo-format` | unchanged | MIT | — |
-| `dingo-client` | wire framing + handshake | MIT | — |
-| `dingo-heap` | heap identity, credentials, capability and pure decision kernel | MIT | format |
-| `dingo-store` | unchanged | MPL-2.0 | format |
-| `dingo-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, dingo-sda; optional cluster |
-| `dingo-testrig` | unpublished store stress, chaos, and performance rig | MPL-2.0 | store |
-| `dingo-examine` | unchanged | MPL-2.0 | store, format, dingo-sda |
-| `dingo-cluster` | unchanged | AGPL-3.0-or-later | store |
-| `dingo-server` | accept loop, authz, admission, raft RPC glue | AGPL-3.0-or-later | sdk+cluster, store |
-| `dingo-cli` | CLI + doctor/salvage/serve | AGPL-3.0-or-later | server, sdk+cluster, examine |
-| `dingo-authority` | separate local authority mutation and genesis executable | AGPL-3.0-or-later | heap, format, store (`authority-provisioning`) |
-| `dingo-sda` / `dingo-sda-cli` | SDA+ENR1 hybrid | MIT | — |
+| `residuum-format` | unchanged | MIT | — |
+| `residuum-client` | wire framing + handshake | MIT | — |
+| `residuum-heap` | heap identity, credentials, capability and pure decision kernel | MIT | format |
+| `residuum-store` | unchanged | MPL-2.0 | format |
+| `residuum-sdk` | `Dingo::open`, connect, collections, filters, indexes; optional cluster | MPL-2.0 | store, client, residuum-sda; optional cluster |
+| `residuum-testrig` | unpublished store stress, chaos, and performance rig | MPL-2.0 | store |
+| `residuum-examine` | unchanged | MPL-2.0 | store, format, residuum-sda |
+| `residuum-cluster` | unchanged | AGPL-3.0-or-later | store |
+| `residuum-server` | accept loop, authz, admission, raft RPC glue | AGPL-3.0-or-later | sdk+cluster, store |
+| `residuum-cli` | CLI + doctor/salvage/serve | AGPL-3.0-or-later | server, sdk+cluster, examine |
+| `residuum-authority` | separate local authority mutation and genesis executable | AGPL-3.0-or-later | heap, format, store (`authority-provisioning`) |
+| `residuum-sda` / `residuum-sda-cli` | SDA+ENR1 hybrid | MIT | — |
 
 ### 4.3 Remaining optional polish
 
-1. ~~**`dingo-client`** (MIT) — protocol framing~~ **done**
-2. ~~**`dingo-server`** (AGPL) — serve modules out of sdk~~ **done**
-3. ~~**`dingo-sdk`** → MPL-2.0 default; cluster feature-gated~~ **done**
+1. ~~**`residuum-client`** (MIT) — protocol framing~~ **done**
+2. ~~**`residuum-server`** (AGPL) — serve modules out of sdk~~ **done**
+3. ~~**`residuum-sdk`** → MPL-2.0 default; cluster feature-gated~~ **done**
 4. Optional: move remote/TLS into a separate MIT/MPL crate later; dual-crate
    is not required for an honest MPL embedded + remote publish.
 
@@ -178,12 +178,12 @@ the AGPL dependency. Serve path lives only in `dingo-server`.
 ## 5. GPL-track matrix (adopted)
 
 ```text
-MIT                → dingo-sda, dingo-sda-cli, dingo-format, dingo-client,
-                     dingo-heap
-MPL-2.0            → dingo-store, dingo-examine, dingo-sdk (default features),
-                     dingo-testrig
-AGPL-3.0-or-later  → dingo-cluster, dingo-server, dingo-cli, dingo-authority
-                     (+ dingo-sdk when features = ["cluster"])
+MIT                → residuum-sda, residuum-sda-cli, residuum-format, residuum-client,
+                     residuum-heap
+MPL-2.0            → residuum-store, residuum-examine, residuum-sdk (default features),
+                     residuum-testrig
+AGPL-3.0-or-later  → residuum-cluster, residuum-server, residuum-cli, residuum-authority
+                     (+ residuum-sdk when features = ["cluster"])
 ```
 
 AGPL protects “networked bits” against pure SaaS freeloading (source offer on
@@ -195,13 +195,13 @@ store remains an optional business track; keep pure client and format MIT.
 ## 6. Release checklist
 
 1. **Per-crate `license` in Cargo.toml** — done for existing crates; HP-001
-   adds `dingo-heap` as MIT and HP-005 adds `dingo-authority` as AGPL.
+   adds `residuum-heap` as MIT and HP-005 adds `residuum-authority` as AGPL.
 2. **LICENSE files** — root multi-license tree (done).
 3. **README + CONTRIBUTING** — multi-license notice; inbound = outbound (done).
-4. **CLI `--license`** — `dingo-sda` MIT and `dingo` AGPL are done;
-   `dingo-authority` MUST report AGPL when HP-005 creates it.
-5. **Publish `dingo-sdk` as MPL-2.0** with default features only (no
-   `dingo-cluster`). Document that `features = ["cluster"]` pulls AGPL.
+4. **CLI `--license`** — `residuum-sda` MIT and `dingo` AGPL are done;
+   `residuum-authority` MUST report AGPL when HP-005 creates it.
+5. **Publish `residuum-sdk` as MPL-2.0** with default features only (no
+   `residuum-cluster`). Document that `features = ["cluster"]` pulls AGPL.
 6. **`cargo deny` / license policies** — optional hardening before crates.io.
 7. ~~**Remaining sdk split**~~ — server extract + cluster feature-gate **done**.
 
@@ -212,18 +212,18 @@ store remains an optional business track; keep pure client and format MIT.
 Today:
 
 ```text
-dingo-cli      → dingo-sdk (cluster), dingo-server, dingo-store, dingo-examine  (AGPL)
-dingo-server   → dingo-sdk (cluster), dingo-cluster, dingo-store               (AGPL)
-dingo-sdk      → dingo-client, dingo-store, sda-core  (+ optional dingo-cluster) (MPL)
-dingo-client   → (none of store/cluster)                                       (MIT)
-dingo-cluster  → dingo-store                                                   (AGPL)
-dingo-examine  → dingo-format, dingo-store, sda-core                           (MPL)
-dingo-testrig  → dingo-store                                                   (MPL)
-dingo-store    → dingo-format                                                  (MPL)
+residuum-cli      → residuum-sdk (cluster), residuum-server, residuum-store, residuum-examine  (AGPL)
+residuum-server   → residuum-sdk (cluster), residuum-cluster, residuum-store               (AGPL)
+residuum-sdk      → residuum-client, residuum-store, sda-core  (+ optional residuum-cluster) (MPL)
+residuum-client   → (none of store/cluster)                                       (MIT)
+residuum-cluster  → residuum-store                                                   (AGPL)
+residuum-examine  → residuum-format, residuum-store, sda-core                           (MPL)
+residuum-testrig  → residuum-store                                                   (MPL)
+residuum-store    → residuum-format                                                  (MPL)
 sda-cli        → sda-core                                                      (MIT)
 ```
 
-All edges respect “stronger may depend on weaker.” Default `dingo-sdk` has no
+All edges respect “stronger may depend on weaker.” Default `residuum-sdk` has no
 AGPL dependency.
 
 ---
@@ -231,7 +231,7 @@ AGPL dependency.
 ## 8. One-paragraph summary
 
 **Adopted:** keep **SDA and the wire format MIT**; keep a **thin network
-client MIT** (`dingo-client`); put **MPL-2.0 on the embedded store, examination
-host, and default `dingo-sdk`** (embedded + remote); put **AGPL-3.0-or-later on
+client MIT** (`residuum-client`); put **MPL-2.0 on the embedded store, examination
+host, and default `residuum-sdk`** (embedded + remote); put **AGPL-3.0-or-later on
 cluster, server, the `dingo` operator binary**, and any build that enables
-`dingo-sdk`’s `cluster` feature.
+`residuum-sdk`’s `cluster` feature.

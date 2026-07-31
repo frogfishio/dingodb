@@ -42,27 +42,27 @@ jobs:
         run: cargo test --workspace
 
       - name: FORMAT_SPEC §13 destructive corpus
-        run: cargo test -p dingo-format --test section13_corpus -- --nocapture
+        run: cargo test -p residuum-format --test section13_corpus -- --nocapture
 
       - name: OVERVIEW §16 store suite
-        run: cargo test -p dingo-store --test section16_store -- --nocapture
+        run: cargo test -p residuum-store --test section16_store -- --nocapture
 
       - name: Stage 6 salvage / store suite
-        run: cargo test -p dingo-store --test stage6_store -- --nocapture
+        run: cargo test -p residuum-store --test stage6_store -- --nocapture
 
       - name: Stage 6 bench skeleton (no marketing gates)
-        run: cargo test -p dingo-store --test stage6_bench_skeleton -- --nocapture
+        run: cargo test -p residuum-store --test stage6_bench_skeleton -- --nocapture
 
       - name: DEF-022 full crash matrix
         env:
           DINGO_CRASH_MATRIX_FULL: "1"
-        run: cargo test -p dingo-store --test stage_def_022_crash_matrix -- --nocapture --test-threads=1
+        run: cargo test -p residuum-store --test stage_def_022_crash_matrix -- --nocapture --test-threads=1
 
       - name: Stage 7 CLI doctor / salvage / serve
-        run: cargo test -p dingo-cli --test cli -- --nocapture
+        run: cargo test -p residuum-cli --test cli -- --nocapture
 
       - name: DEF-041-N multiproc OS chaos (short soak)
-        run: cargo test -p dingo-cluster --test stage_def_041n_multiproc -- --nocapture
+        run: cargo test -p residuum-cluster --test stage_def_041n_multiproc -- --nocapture
 
       - name: Release content (DEF-003)
         run: ./scripts/release_content.sh

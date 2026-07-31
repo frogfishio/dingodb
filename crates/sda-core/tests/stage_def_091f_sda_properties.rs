@@ -1,6 +1,6 @@
 //! DEF-091-F — SDA lexer/parser must not panic on adversarial text (PR CI).
 
-use dingo_sda::Program;
+use residuum_sda::Program;
 use proptest::prelude::*;
 
 proptest! {

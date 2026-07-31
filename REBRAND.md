@@ -1,7 +1,7 @@
 # ResiduumDB rebrand plan
 
-Status: **active, phased migration; Phase 1 complete; implementation migration
-blocked on defect completion**
+Status: **active; Phase 0 and Phase 1 complete; Phase 2 wholesale repository
+naming in progress**
 
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
@@ -17,10 +17,12 @@ DingoDB working name to ResiduumDB.
 
 The migration is deliberately phased. A completed phase does not authorize the
 next phase, and a documentation rename does not imply that an implementation
-identifier has shipped. Until the implementation phase is explicitly started,
-this document does not authorize renaming Rust packages, source symbols,
-executables, environment variables, URI schemes, persistent files, wire
-profiles, cryptographic domains, test vectors, or repository directories.
+identifier has shipped. Phase 2 is now explicitly authorized. Its work remains
+subject to the compatibility classes and gates in this document; in particular,
+persisted, wire, cryptographic, and historical identifiers are not ordinary
+mechanical renames.
+
+Living Phase 2 inventory (REB-1): [doc/REBRAND_INVENTORY.md](doc/REBRAND_INVENTORY.md).
 
 Documentation MUST distinguish the product identity from literal technical
 identifiers that still exist in the implementation.
@@ -56,7 +58,7 @@ or source reference false. This includes, without limitation:
 - Rust packages and import paths beginning with `dingo-`;
 - Rust crate paths beginning with `dingo_`;
 - the current Rust type `Dingo` and expressions such as `Dingo::open`;
-- the current `dingo` executable and `dingo-sda` executable;
+- the current `dingo` executable and `residuum-sda` executable;
 - the `dingo://` URI scheme;
 - `DINGO_*` environment variables;
 - `.dingo` store files;
@@ -87,11 +89,11 @@ The canonical public hosts are:
 - `https://docs.residuumdb.org`
 
 References to local repository directories such as `web/dingodb.org` remain
-unchanged during this documentation-only phase because those directories have
+unchanged until the Phase 4 website migration because those directories have
 not yet been renamed.
 
 The docs-site content filenames and routes containing `dql`, `dre`, or
-`choose-dingodb` also remain as legacy route identifiers in this phase. Their
+`choose-dingodb` also remain as legacy route identifiers until Phase 4. Their
 visible titles and link labels use RQL, RRE, and ResiduumDB. Renaming those
 routes requires coordinated changes to non-Markdown navigation and migration
 manifests and belongs to the later website migration.
@@ -118,25 +120,25 @@ The required order is:
 
 | Phase | Owner | State | Work |
 |---|---|---|---|
-| 0. Defect stabilization | active defect developers | **in progress** | Complete and accept the current storage-defect work without rebrand churn |
+| 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
 | 1. Documentation identity | Codex | **complete** | Establish ResiduumDB, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
-| 2. Wholesale repository naming | Codex, after explicit instruction | **blocked on Phase 0** | Rename implementation-facing product identifiers and write the migration changelog |
+| 2. Wholesale repository naming | Codex | **in progress** | Rename implementation-facing product identifiers and write the migration changelog |
 | 3. Rust realignment | principal | not started | Resolve, compile, and semantically realign Rust after the mechanical identity change |
 | 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
 | 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
 
-No Phase 2 work may begin merely because a legacy identifier is discovered.
-The principal must state that the defect work is complete and authorize the
-wholesale migration.
+Phase 0 was declared complete and Phase 2 was declared in progress by the
+principal on 2026-07-31. That declaration opens the phase; it does not waive
+the compatibility analysis required below.
 
 ## 8. Phase 2 change surface
 
 Phase 2 is repository-wide, not a blind search-and-replace. It includes:
 
 - Rust public types and constructors such as `Dingo` and `Dingo::open`;
-- Cargo package, crate, feature, and import names such as `dingo-sdk` and
-  `dingo_sdk`;
-- executables and commands such as `dingo` and `dingo-sda`;
+- Cargo package, crate, feature, and import names such as `residuum-sdk` and
+  `residuum_sdk`;
+- executables and commands such as `dingo` and `residuum-sda`;
 - the `dingo://` URI scheme;
 - `DINGO_*` environment variables;
 - product-owned configuration keys, service names, telemetry names, fixtures,

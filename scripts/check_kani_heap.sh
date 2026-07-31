@@ -10,7 +10,7 @@ cd "$ROOT"
 fail() { echo "check_kani_heap: $*" >&2; exit 1; }
 
 # Honesty: harness symbols exist in pure_proofs source.
-PURE="$ROOT/crates/dingo-heap/src/pure_proofs.rs"
+PURE="$ROOT/crates/residuum-heap/src/pure_proofs.rs"
 [[ -f "$PURE" ]] || fail "missing $PURE"
 for h in \
   kani_binding_rejects_foreign_heap \
@@ -32,15 +32,15 @@ rg -n 'VERUS_PROOFS_CONNECTED: bool = true' "$VERUS" >/dev/null \
   || fail "VERUS_PROOFS_CONNECTED must be true (pure_kernel connected; see check_verus_heap.sh)"
 
 # Executable lemmas always green in CI (no Kani required for this step).
-cargo test -p dingo-heap pure_proof --quiet \
-  || fail "dingo-heap pure_proof tests failed"
-cargo test -p dingo-store --test hp010_qualification h6_pure_proof_bundle --quiet \
+cargo test -p residuum-heap pure_proof --quiet \
+  || fail "residuum-heap pure_proof tests failed"
+cargo test -p residuum-store --test hp010_qualification h6_pure_proof_bundle --quiet \
   || fail "hp010 pure proof bundle Accept failed"
 
 if command -v cargo >/dev/null 2>&1 && cargo kani --version >/dev/null 2>&1; then
-  echo "check_kani_heap: running cargo kani on dingo-heap pure harnesses"
+  echo "check_kani_heap: running cargo kani on residuum-heap pure harnesses"
   # Bounded unwind; lemmas are concrete (no symbolic input).
-  cargo kani -p dingo-heap \
+  cargo kani -p residuum-heap \
     --harness kani_connected_pure_proof_bundle \
     --default-unwind 16 \
     || fail "cargo kani pure proof bundle failed"

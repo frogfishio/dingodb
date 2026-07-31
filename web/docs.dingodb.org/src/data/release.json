@@ -1,7 +1,7 @@
 {
   "productVersion": "0.2.0",
   "productLine": "0.2",
-  "sdkCrate": "dingo-sdk",
+  "sdkCrate": "residuum-sdk",
   "sdkSemverRange": "0.2",
   "sdkApiVersion": "1.0",
   "wireProfile": "1.0-draft",

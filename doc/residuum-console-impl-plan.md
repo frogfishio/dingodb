@@ -39,14 +39,14 @@ Additionally, support optional fully-qualified targets:
 
 ## Implementation steps
 
-### 1) Add `console` subcommand to `crates/dingo-cli`
-- File: `crates/dingo-cli/src/main.rs`
+### 1) Add `console` subcommand to `crates/residuum-cli`
+- File: `crates/residuum-cli/src/main.rs`
 - Extend the `Command` enum:
   - `Console { store: PathBuf }`
 - In `run()` match arm, dispatch to `cmd_console(store)`.
 
 ### 2) Implement interactive loop
-- File: `crates/dingo-cli/src/console.rs` (new)
+- File: `crates/residuum-cli/src/console.rs` (new)
 - Use a minimal line reader (prefer `rustyline` only if already in deps; otherwise use `std::io::stdin` + buffering for v1).
 - Session state:
   - `store: PathBuf`
@@ -93,7 +93,7 @@ If RQL does not support the full v1 data operations:
   - print a concise confirmation plus ack/committed fields if available.
 
 ### 6) Tests
-- Extend `crates/dingo-cli/tests/cli.rs` or add new integration test `tests/console.rs`.
+- Extend `crates/residuum-cli/tests/cli.rs` or add new integration test `tests/console.rs`.
 - Test strategy:
   - Spawn `dingo console ./tmp_store` with stdin piping scripted lines.
   - Assert stdout contains expected prompts and outputs.
@@ -104,7 +104,7 @@ Cases:
 3. `DELETE user-1` removes the key (subsequent GET errors or returns null).
 
 ### 7) Documentation
-- Update `crates/dingo-cli/README.md` with a `dingo console` section + examples.
+- Update `crates/residuum-cli/README.md` with a `dingo console` section + examples.
 - Mention mixed mode and delete semantics.
 
 ## Acceptance criteria

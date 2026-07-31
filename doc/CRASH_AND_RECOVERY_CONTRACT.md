@@ -23,7 +23,7 @@ Companions (depth, not substitutes):
 | Primary cache lifecycle | [PRIMARY_INDEX_LIFECYCLE.md](PRIMARY_INDEX_LIFECYCLE.md), `stage_def_102_primary_cache_diag` |
 | Large / rewrite-heavy | [LARGE_VALUE_AND_REWRITE_HEAVY.md](LARGE_VALUE_AND_REWRITE_HEAVY.md), `stage_def_103_large_value_policy` |
 | CSQ invariants | [CORE_STORAGE_QUALIFICATION_SPEC.md](../CORE_STORAGE_QUALIFICATION_SPEC.md) |
-| Executable contract suite | `crates/dingo-store/tests/stage_def_104_crash_recovery_contract.rs` |
+| Executable contract suite | `crates/residuum-store/tests/stage_def_104_crash_recovery_contract.rs` |
 
 ---
 
@@ -272,7 +272,7 @@ transcript/{id}/timeline/{bounded-block-id}
 transcript/{id}/snapshot/{generation}   # derived only
 ```
 
-Helpers: `dingo_store::rewrite_heavy::*`. Detail:
+Helpers: `residuum_store::rewrite_heavy::*`. Detail:
 [LARGE_VALUE_AND_REWRITE_HEAVY.md](LARGE_VALUE_AND_REWRITE_HEAVY.md).
 
 ---
@@ -335,7 +335,7 @@ documented in CRASH_CONSISTENCY / CSQ).
 
 ## Executable journeys (CI)
 
-Suite: `cargo test -p dingo-store --features legacy-raw-store --test stage_def_104_crash_recovery_contract`
+Suite: `cargo test -p residuum-store --features legacy-raw-store --test stage_def_104_crash_recovery_contract`
 
 | Journey | Test / linked suite | CSQ / DEF |
 |---------|---------------------|-----------|
