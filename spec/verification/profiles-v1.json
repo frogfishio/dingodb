@@ -1,0 +1,11 @@
+{
+  "schema": "residiuum-vfy-profiles-v1",
+  "items": [
+    {
+      "id": "residiuum-core-storage-v1",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/profiles-v1.json",
+      "level_target": "A2"
+    }
+  ]
+}

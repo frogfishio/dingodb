@@ -1,0 +1,344 @@
+{
+  "schema": "residiuum-csq-suites-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-SUITE-ABS",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-ACK",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-ACK-001",
+        "CSQ-ACK-002",
+        "CSQ-ACK-003",
+        "CSQ-ACK-004",
+        "CSQ-ACK-005",
+        "CSQ-ACK-006",
+        "CSQ-ACK-007"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-BAK",
+      "package_owner": "CSQ-8",
+      "invariants": [
+        "CSQ-BAK-001",
+        "CSQ-BAK-002",
+        "CSQ-BAK-003",
+        "CSQ-BAK-004"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-CHK",
+      "package_owner": "CSQ-6",
+      "invariants": [
+        "CSQ-CHK-001",
+        "CSQ-CHK-002",
+        "CSQ-CHK-003",
+        "CSQ-CHK-004",
+        "CSQ-CHK-005",
+        "CSQ-CHK-006",
+        "CSQ-CHK-007"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-COMPAT",
+      "package_owner": "CSQ-11",
+      "invariants": [
+        "CSQ-COMPAT-001",
+        "CSQ-COMPAT-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-CON",
+      "package_owner": "CSQ-9",
+      "invariants": [
+        "CSQ-CON-001",
+        "CSQ-CON-002",
+        "CSQ-CON-003",
+        "CSQ-CON-004",
+        "CSQ-CON-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-CRASH",
+      "package_owner": "CSQ-5",
+      "invariants": [
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001",
+        "CSQ-REC-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-DER",
+      "package_owner": "CSQ-8",
+      "invariants": [
+        "CSQ-DER-001",
+        "CSQ-DER-002",
+        "CSQ-DER-003",
+        "CSQ-DER-004"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-DMG",
+      "package_owner": "CSQ-7",
+      "invariants": [
+        "CSQ-DMG-001",
+        "CSQ-DMG-002",
+        "CSQ-DMG-003",
+        "CSQ-DMG-004",
+        "CSQ-DMG-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-FMT",
+      "package_owner": "CSQ-3",
+      "invariants": [
+        "CSQ-FMT-001",
+        "CSQ-FMT-002",
+        "CSQ-FMT-003",
+        "CSQ-FMT-004",
+        "CSQ-FMT-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-GEN",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-GEN-001",
+        "CSQ-GEN-002",
+        "CSQ-GEN-003",
+        "CSQ-GEN-004"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-HIST",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-ID",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-ID-001",
+        "CSQ-ID-002",
+        "CSQ-ID-003",
+        "CSQ-ID-004",
+        "CSQ-ID-005",
+        "CSQ-ID-006",
+        "CSQ-ID-007",
+        "CSQ-ID-008",
+        "CSQ-ID-009"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-MIG",
+      "package_owner": "CSQ-8",
+      "invariants": [
+        "CSQ-MIG-001",
+        "CSQ-MIG-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-MNT",
+      "package_owner": "CSQ-8",
+      "invariants": [
+        "CSQ-MNT-001",
+        "CSQ-MNT-002",
+        "CSQ-MNT-003",
+        "CSQ-MNT-004",
+        "CSQ-MNT-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-OBS",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-OBS-001",
+        "CSQ-OBS-002",
+        "CSQ-OBS-003",
+        "CSQ-OBS-004",
+        "CSQ-OBS-005",
+        "CSQ-OBS-006",
+        "CSQ-OBS-007"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-PUB",
+      "package_owner": "CSQ-4",
+      "invariants": [
+        "CSQ-PUB-001",
+        "CSQ-PUB-002",
+        "CSQ-PUB-003"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-REC",
+      "package_owner": "CSQ-7",
+      "invariants": [
+        "CSQ-REC-001",
+        "CSQ-REC-002",
+        "CSQ-REC-003",
+        "CSQ-REC-004",
+        "CSQ-REC-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    },
+    {
+      "id": "CSQ-SUITE-REG",
+      "package_owner": "CSQ-0",
+      "invariants": [
+        "CSQ-ID-001",
+        "CSQ-ID-002",
+        "CSQ-ID-003",
+        "CSQ-ID-004",
+        "CSQ-ID-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "executable"
+    },
+    {
+      "id": "CSQ-SUITE-RES",
+      "package_owner": "CSQ-9",
+      "invariants": [
+        "CSQ-RES-001",
+        "CSQ-RES-002",
+        "CSQ-RES-003",
+        "CSQ-RES-004",
+        "CSQ-RES-005"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "status": "registry_only"
+    }
+  ]
+}

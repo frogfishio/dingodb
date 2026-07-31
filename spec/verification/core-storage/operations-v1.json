@@ -1,0 +1,1567 @@
+{
+  "schema": "residiuum-csq-operations-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "store_create",
+      "description": "Create a new store directory and first active segment",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Create a new store directory and first active segment",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "create_dirs",
+        "writer_lock.acquire",
+        "write_store_id",
+        "write_meta",
+        "write_store_descriptor",
+        "root.dir_sync",
+        "active.start_segment",
+        "active.persist_header",
+        "index_cache.persist",
+        "catalog.refresh"
+      ],
+      "publication_point": "catalog.refresh",
+      "boundaries": [
+        "CSQ-BND-store_create-00-create_dirs",
+        "CSQ-BND-store_create-01-writer_lock_acquire",
+        "CSQ-BND-store_create-02-write_store_id",
+        "CSQ-BND-store_create-03-write_meta",
+        "CSQ-BND-store_create-04-write_store_descriptor",
+        "CSQ-BND-store_create-05-root_dir_sync",
+        "CSQ-BND-store_create-06-active_start_segment",
+        "CSQ-BND-store_create-07-active_persist_header",
+        "CSQ-BND-store_create-08-index_cache_persist",
+        "CSQ-BND-store_create-09-catalog_refresh",
+        "CSQ-BND-FP-store_create-store_create_after_meta",
+        "CSQ-BND-FP-store_create-store_create_after_active_header"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "store_create"
+    },
+    {
+      "id": "put_durable",
+      "description": "Inline put with DurabilityMode::Durable (append + fsync)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Inline put with DurabilityMode::Durable (append + fsync)",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "encode_frame_memory",
+        "active.append_in_memory",
+        "active.write_tail",
+        "active.file.sync_all",
+        "active.dir_sync",
+        "index.apply_event",
+        "index_cache.persist",
+        "catalog.refresh"
+      ],
+      "publication_point": "catalog.refresh",
+      "boundaries": [
+        "CSQ-BND-put_durable-00-encode_frame_memory",
+        "CSQ-BND-put_durable-01-active_append_in_memory",
+        "CSQ-BND-put_durable-02-active_write_tail",
+        "CSQ-BND-put_durable-03-active_file_sync_all",
+        "CSQ-BND-put_durable-04-active_dir_sync",
+        "CSQ-BND-put_durable-05-index_apply_event",
+        "CSQ-BND-put_durable-06-index_cache_persist",
+        "CSQ-BND-put_durable-07-catalog_refresh",
+        "CSQ-BND-FP-put_durable-store_active_write_tail_before",
+        "CSQ-BND-FP-put_durable-store_active_write_tail_after_write",
+        "CSQ-BND-FP-put_durable-store_active_write_tail_after_sync",
+        "CSQ-BND-FP-put_durable-store_active_dir_sync",
+        "CSQ-BND-FP-put_durable-store_index_cache_before_write",
+        "CSQ-BND-FP-put_durable-store_index_cache_after_write",
+        "CSQ-BND-FP-put_durable-store_active_write_tail_short_write"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "put_durable"
+    },
+    {
+      "id": "put_durable_io_faults",
+      "description": "Durable put under ENOSPC / permission-loss injection at write_tail boundaries",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Durable put under ENOSPC / permission-loss injection at write_tail boundaries",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "encode_frame_memory",
+        "active.append_in_memory",
+        "active.write_tail",
+        "active.file.sync_all"
+      ],
+      "publication_point": "active.file.sync_all",
+      "boundaries": [
+        "CSQ-BND-put_durable_io_faults-00-encode_frame_memory",
+        "CSQ-BND-put_durable_io_faults-01-active_append_in_memory",
+        "CSQ-BND-put_durable_io_faults-02-active_write_tail",
+        "CSQ-BND-put_durable_io_faults-03-active_file_sync_all",
+        "CSQ-BND-FP-put_durable_io_faults-store_active_write_tail_before"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "put_durable_io_faults"
+    },
+    {
+      "id": "put_durable_process_kill",
+      "description": "Multi-process abort (process::abort) at durable put boundaries",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Multi-process abort (process::abort) at durable put boundaries",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "encode_frame_memory",
+        "active.append_in_memory",
+        "active.write_tail",
+        "active.file.sync_all",
+        "active.dir_sync"
+      ],
+      "publication_point": "active.dir_sync",
+      "boundaries": [
+        "CSQ-BND-put_durable_process_kill-00-encode_frame_memory",
+        "CSQ-BND-put_durable_process_kill-01-active_append_in_memory",
+        "CSQ-BND-put_durable_process_kill-02-active_write_tail",
+        "CSQ-BND-put_durable_process_kill-03-active_file_sync_all",
+        "CSQ-BND-put_durable_process_kill-04-active_dir_sync",
+        "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_before",
+        "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_after_sync"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "put_durable_process_kill"
+    },
+    {
+      "id": "put_buffered",
+      "description": "Inline put with DurabilityMode::Buffered (write, no fsync)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Inline put with DurabilityMode::Buffered (write, no fsync)",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "encode_frame_memory",
+        "active.append_in_memory",
+        "active.write_tail",
+        "index.apply_event",
+        "index_cache.persist"
+      ],
+      "publication_point": "index_cache.persist",
+      "boundaries": [
+        "CSQ-BND-put_buffered-00-encode_frame_memory",
+        "CSQ-BND-put_buffered-01-active_append_in_memory",
+        "CSQ-BND-put_buffered-02-active_write_tail",
+        "CSQ-BND-put_buffered-03-index_apply_event",
+        "CSQ-BND-put_buffered-04-index_cache_persist",
+        "CSQ-BND-FP-put_buffered-store_active_write_tail_before",
+        "CSQ-BND-FP-put_buffered-store_active_write_tail_after_write"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "put_buffered"
+    },
+    {
+      "id": "delete_durable",
+      "description": "Logical delete with DurabilityMode::Durable",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Logical delete with DurabilityMode::Durable",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "encode_delete_frame",
+        "active.append_in_memory",
+        "active.write_tail",
+        "active.file.sync_all",
+        "active.dir_sync",
+        "index.apply_event",
+        "index_cache.persist"
+      ],
+      "publication_point": "index_cache.persist",
+      "boundaries": [
+        "CSQ-BND-delete_durable-00-encode_delete_frame",
+        "CSQ-BND-delete_durable-01-active_append_in_memory",
+        "CSQ-BND-delete_durable-02-active_write_tail",
+        "CSQ-BND-delete_durable-03-active_file_sync_all",
+        "CSQ-BND-delete_durable-04-active_dir_sync",
+        "CSQ-BND-delete_durable-05-index_apply_event",
+        "CSQ-BND-delete_durable-06-index_cache_persist",
+        "CSQ-BND-FP-delete_durable-store_active_write_tail_before",
+        "CSQ-BND-FP-delete_durable-store_active_write_tail_after_sync"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "delete_durable"
+    },
+    {
+      "id": "chunked_put_durable",
+      "description": "Chunked put (payload chunks + manifest item event) durable",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Chunked put (payload chunks + manifest item event) durable",
+      "durability_modes": [
+        "Durable"
+      ],
+      "persistence_steps": [
+        "encode_chunks_memory",
+        "active.append_chunks",
+        "encode_manifest",
+        "active.append_manifest",
+        "active.write_tail",
+        "active.file.sync_all",
+        "index.apply_event",
+        "index_cache.persist"
+      ],
+      "publication_point": "index_cache.persist",
+      "boundaries": [
+        "CSQ-BND-chunked_put_durable-00-encode_chunks_memory",
+        "CSQ-BND-chunked_put_durable-01-active_append_chunks",
+        "CSQ-BND-chunked_put_durable-02-encode_manifest",
+        "CSQ-BND-chunked_put_durable-03-active_append_manifest",
+        "CSQ-BND-chunked_put_durable-04-active_write_tail",
+        "CSQ-BND-chunked_put_durable-05-active_file_sync_all",
+        "CSQ-BND-chunked_put_durable-06-index_apply_event",
+        "CSQ-BND-chunked_put_durable-07-index_cache_persist",
+        "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_before",
+        "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_after_sync"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "chunked_put_durable"
+    },
+    {
+      "id": "seal_active",
+      "description": "Seal active segment to segments/ and start a new active",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Seal active segment to segments/ and start a new active",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "active.flush_durable",
+        "seal_in_memory",
+        "sealed.dest_write",
+        "sealed.dest_sync",
+        "segments.dir_sync",
+        "active.remove",
+        "active.dir_sync",
+        "tier.register_hot",
+        "tier.persist",
+        "segment_catalog.refresh",
+        "active.start_new",
+        "index_cache.persist"
+      ],
+      "publication_point": "index_cache.persist",
+      "boundaries": [
+        "CSQ-BND-seal_active-00-active_flush_durable",
+        "CSQ-BND-seal_active-01-seal_in_memory",
+        "CSQ-BND-seal_active-02-sealed_dest_write",
+        "CSQ-BND-seal_active-03-sealed_dest_sync",
+        "CSQ-BND-seal_active-04-segments_dir_sync",
+        "CSQ-BND-seal_active-05-active_remove",
+        "CSQ-BND-seal_active-06-active_dir_sync",
+        "CSQ-BND-seal_active-07-tier_register_hot",
+        "CSQ-BND-seal_active-08-tier_persist",
+        "CSQ-BND-seal_active-09-segment_catalog_refresh",
+        "CSQ-BND-seal_active-10-active_start_new",
+        "CSQ-BND-seal_active-11-index_cache_persist",
+        "CSQ-BND-FP-seal_active-store_seal_before_dest_write",
+        "CSQ-BND-FP-seal_active-store_seal_after_dest_sync",
+        "CSQ-BND-FP-seal_active-store_seal_after_active_remove"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "seal_active"
+    },
+    {
+      "id": "write_dedup_persist",
+      "description": "Persist write_dedup.v1 after authoritative append (DEF-010)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Persist write_dedup.v1 after authoritative append (DEF-010)",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "authoritative_append",
+        "dedup.table_insert_memory",
+        "dedup.tmp_write",
+        "dedup.rename",
+        "dedup.parent_sync"
+      ],
+      "publication_point": "dedup.parent_sync",
+      "boundaries": [
+        "CSQ-BND-write_dedup_persist-00-authoritative_append",
+        "CSQ-BND-write_dedup_persist-01-dedup_table_insert_memory",
+        "CSQ-BND-write_dedup_persist-02-dedup_tmp_write",
+        "CSQ-BND-write_dedup_persist-03-dedup_rename",
+        "CSQ-BND-write_dedup_persist-04-dedup_parent_sync",
+        "CSQ-BND-FP-write_dedup_persist-store_dedup_before_write",
+        "CSQ-BND-FP-write_dedup_persist-store_dedup_after_rename"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "write_dedup_persist"
+    },
+    {
+      "id": "catalog_refresh",
+      "description": "Derived collection catalog rewrite (not authoritative)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Derived collection catalog rewrite (not authoritative)",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "scan_segments_for_fp",
+        "catalog.tmp_write",
+        "catalog.rename"
+      ],
+      "publication_point": "catalog.rename",
+      "boundaries": [
+        "CSQ-BND-catalog_refresh-00-scan_segments_for_fp",
+        "CSQ-BND-catalog_refresh-01-catalog_tmp_write",
+        "CSQ-BND-catalog_refresh-02-catalog_rename",
+        "CSQ-BND-FP-catalog_refresh-store_catalog_before_write"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "catalog_refresh"
+    },
+    {
+      "id": "checkpoint",
+      "description": "Derived checkpoint under snapshots/ (not authoritative)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Derived checkpoint under snapshots/ (not authoritative)",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "build_checkpoint_meta",
+        "snapshots.write",
+        "snapshots.sync"
+      ],
+      "publication_point": "snapshots.sync",
+      "boundaries": [
+        "CSQ-BND-checkpoint-00-build_checkpoint_meta",
+        "CSQ-BND-checkpoint-01-snapshots_write",
+        "CSQ-BND-checkpoint-02-snapshots_sync",
+        "CSQ-BND-FP-checkpoint-store_checkpoint_before_write"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "checkpoint"
+    },
+    {
+      "id": "tier_move",
+      "description": "Move/copy sealed segment to another tier media root",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Move/copy sealed segment to another tier media root",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "copy_or_rename_bytes",
+        "dest.sync",
+        "placement.catalog_write",
+        "source_remove_if_move"
+      ],
+      "publication_point": "source_remove_if_move",
+      "boundaries": [
+        "CSQ-BND-tier_move-00-copy_or_rename_bytes",
+        "CSQ-BND-tier_move-01-dest_sync",
+        "CSQ-BND-tier_move-02-placement_catalog_write",
+        "CSQ-BND-tier_move-03-source_remove_if_move",
+        "CSQ-BND-FP-tier_move-store_tier_before_placement_write"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "tier_move"
+    },
+    {
+      "id": "compact_live",
+      "description": "Live-state compaction into a new segment (sources retained)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Live-state compaction into a new segment (sources retained)",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "write_live_projection_segment",
+        "segment.sync",
+        "index_cache.persist",
+        "catalog.refresh"
+      ],
+      "publication_point": "catalog.refresh",
+      "boundaries": [
+        "CSQ-BND-compact_live-00-write_live_projection_segment",
+        "CSQ-BND-compact_live-01-segment_sync",
+        "CSQ-BND-compact_live-02-index_cache_persist",
+        "CSQ-BND-compact_live-03-catalog_refresh",
+        "CSQ-BND-FP-compact_live-store_compact_before_segment_sync"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "compact_live"
+    },
+    {
+      "id": "heap_lifecycle",
+      "description": "HP-010/H5 heap administrative transitions and purge (HEAP_SPEC \u00a727/H5)",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "HP-010/H5 heap administrative transitions and purge (HEAP_SPEC \u00a727/H5)",
+      "durability_modes": [
+        "Durable",
+        "Buffered",
+        "Memory"
+      ],
+      "persistence_steps": [
+        "slot.store_state",
+        "transition_receipt",
+        "identity_tombstone",
+        "purge_plan",
+        "coverage_destroy",
+        "purge_receipt_or_incomplete"
+      ],
+      "publication_point": "purge_receipt_or_incomplete",
+      "boundaries": [
+        "CSQ-BND-heap_lifecycle-00-slot_store_state",
+        "CSQ-BND-heap_lifecycle-01-transition_receipt",
+        "CSQ-BND-heap_lifecycle-02-identity_tombstone",
+        "CSQ-BND-heap_lifecycle-03-purge_plan",
+        "CSQ-BND-heap_lifecycle-04-coverage_destroy",
+        "CSQ-BND-heap_lifecycle-05-purge_receipt_or_incomplete",
+        "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_state_store",
+        "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_transition_receipt",
+        "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_purge_plan",
+        "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_coverage_destroy"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "no_fabricated_committed_event",
+        "no_lost_durable_acknowledgement",
+        "no_duplicated_event_identity",
+        "derived_not_ahead_of_authority",
+        "surviving_evidence_salvageable",
+        "CSQ-ACK-001",
+        "CSQ-ACK-003",
+        "CSQ-REC-001"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error",
+        "short_write",
+        "enospc"
+      ],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json",
+      "historical_operation_id": "heap_lifecycle"
+    },
+    {
+      "id": "get_current",
+      "description": "Point read of current subject value",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Point read of current subject value",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-get_current-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "get_historical",
+      "description": "Exact historical event read (DEF-099)",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Exact historical event read (DEF-099)",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-get_historical-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "scan_keys",
+      "description": "Coverage-aware key scan (DEF-100)",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Coverage-aware key scan (DEF-100)",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-scan_keys-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "scan_documents",
+      "description": "Coverage-aware document scan (DEF-100)",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Coverage-aware document scan (DEF-100)",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-scan_documents-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "seal_segment",
+      "description": "Seal active segment",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Seal active segment",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-seal_segment-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "compact",
+      "description": "Compaction job",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Compaction job",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-compact-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "scrub",
+      "description": "Scrub non-mutation verification",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Scrub non-mutation verification",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-scrub-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "backup",
+      "description": "Backup package create",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Backup package create",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-backup-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "restore",
+      "description": "Restore from backup package",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Restore from backup package",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-restore-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "salvage",
+      "description": "Salvage damaged store",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Salvage damaged store",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-salvage-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "rebuild_derived",
+      "description": "Rebuild derived indexes/caches",
+      "authority_inputs": [
+        "store_root"
+      ],
+      "preconditions": [
+        "store_open"
+      ],
+      "logical_transition": "Rebuild derived indexes/caches",
+      "durability_modes": [
+        "n/a"
+      ],
+      "persistence_steps": [],
+      "publication_point": "n/a",
+      "boundaries": [
+        "CSQ-BND-rebuild_derived-00-logical"
+      ],
+      "permitted_crash_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "invariants": [
+        "CSQ-HIST-001",
+        "CSQ-HIST-002",
+        "CSQ-HIST-003",
+        "CSQ-HIST-004",
+        "CSQ-HIST-005",
+        "CSQ-HIST-006",
+        "CSQ-ABS-001",
+        "CSQ-ABS-002"
+      ],
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "failure_classes": [
+        "io_error",
+        "corruption",
+        "resource_exhaustion"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "resource_bounds": {
+        "memory": "bounded",
+        "time": "bounded"
+      },
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    }
+  ]
+}

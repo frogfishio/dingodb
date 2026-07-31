@@ -1,0 +1,29 @@
+{
+  "schema": "residiuum-csq-oracles-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-ORACLE-MODEL",
+      "kind": "sequential_logical_model",
+      "crate_path": "crates/residiuum-store-model/",
+      "imports_production_store": false,
+      "status": "planned_csq1"
+    },
+    {
+      "id": "CSQ-ORACLE-READER",
+      "kind": "independent_byte_reader",
+      "crate_path": "tools/core-storage-reference-reader/",
+      "imports_production_store": false,
+      "status": "planned_csq1"
+    },
+    {
+      "id": "CSQ-ORACLE-IMPL",
+      "kind": "production_implementation",
+      "crate_path": "crates/residiuum-store/",
+      "imports_production_store": true,
+      "status": "exists"
+    }
+  ]
+}

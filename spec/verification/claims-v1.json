@@ -1,0 +1,10 @@
+{
+  "schema": "residiuum-vfy-claims-v1",
+  "items": [
+    {
+      "id": "CLAIM-CORE-STORAGE-A2",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/claims-v1.json"
+    }
+  ]
+}

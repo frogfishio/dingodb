@@ -1,0 +1,52 @@
+{
+  "schema": "residiuum-csq-failures-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "process_abort",
+      "description": "Process crash/abort mid-operation"
+    },
+    {
+      "id": "io_error",
+      "description": "Generic IO/syscall error"
+    },
+    {
+      "id": "short_write",
+      "description": "Partial write short of expected length"
+    },
+    {
+      "id": "enospc",
+      "description": "No space / quota"
+    },
+    {
+      "id": "permission",
+      "description": "Permission denied"
+    },
+    {
+      "id": "eio",
+      "description": "Media EIO"
+    },
+    {
+      "id": "corruption",
+      "description": "Bitrot / adversarial media damage"
+    },
+    {
+      "id": "resource_exhaustion",
+      "description": "Allocator/FD/thread exhaustion"
+    },
+    {
+      "id": "cancellation",
+      "description": "Cooperative cancel / shutdown"
+    },
+    {
+      "id": "clock_discontinuity",
+      "description": "Clock jump / discontinuity"
+    },
+    {
+      "id": "writer_contention",
+      "description": "Multi-process writer lock conflict"
+    }
+  ]
+}

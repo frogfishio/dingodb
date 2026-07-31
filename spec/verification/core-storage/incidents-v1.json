@@ -1,0 +1,73 @@
+{
+  "schema": "residiuum-csq-incidents-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "DEF-098",
+      "title": "Generation-exact chunk reassembly",
+      "regression_suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-099",
+      "title": "Exact historical get / last-complete",
+      "regression_suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-100",
+      "title": "Coverage-aware key & document scans",
+      "regression_suites": [
+        "CSQ-SUITE-ABS"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-101",
+      "title": "Writer-lock diagnostic contract",
+      "regression_suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-102",
+      "title": "Derived-index lifecycle diagnostics",
+      "regression_suites": [
+        "CSQ-SUITE-DER"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-103",
+      "title": "Large-value / rewrite-heavy profile",
+      "regression_suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-104",
+      "title": "Executable crash-and-recovery contract",
+      "regression_suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "status": "scoreboard_accept"
+    },
+    {
+      "id": "DEF-022",
+      "title": "Crash matrix foundation",
+      "regression_suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "status": "historical",
+      "source_matrix": "crates/residiuum-store/crash_matrix.v1.json"
+    }
+  ]
+}

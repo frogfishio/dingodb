@@ -1,0 +1,35 @@
+{
+  "schema": "residiuum-csq-compositions-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-COMP-CRASH-REOPEN",
+      "features": [
+        "crash",
+        "reopen",
+        "oracle_diff"
+      ],
+      "owner": "CSQ-SUITE-CRASH"
+    },
+    {
+      "id": "CSQ-COMP-DAMAGE-SALVAGE",
+      "features": [
+        "damage",
+        "salvage",
+        "rebuild"
+      ],
+      "owner": "CSQ-SUITE-DMG"
+    },
+    {
+      "id": "CSQ-COMP-BACKUP-RESTORE",
+      "features": [
+        "backup",
+        "restore",
+        "scrub"
+      ],
+      "owner": "CSQ-SUITE-BAK"
+    }
+  ]
+}

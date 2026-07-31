@@ -1,0 +1,46 @@
+{
+  "schema": "residiuum-csq-projections-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-PROJ-PUBLIC-ERROR",
+      "from_outcomes": [
+        "old",
+        "new",
+        "unknown",
+        "fail"
+      ],
+      "public_surface": "StoreError_or_success",
+      "total": true,
+      "forbidden_collapses": [
+        "CSQ-MUT-ABSENCE-FROM-DAMAGE"
+      ]
+    },
+    {
+      "id": "CSQ-PROJ-RECEIPT",
+      "from_outcomes": [
+        "new"
+      ],
+      "public_surface": "durable_receipt",
+      "total": true,
+      "forbidden_collapses": [
+        "CSQ-MUT-RECEIPT-WITHOUT-DURABILITY"
+      ]
+    },
+    {
+      "id": "CSQ-PROJ-SCAN",
+      "from_outcomes": [
+        "old",
+        "new",
+        "unknown"
+      ],
+      "public_surface": "scan_completeness_label",
+      "total": true,
+      "forbidden_collapses": [
+        "CSQ-MUT-ABSENCE-FROM-DAMAGE"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,617 @@
+{
+  "schema": "residiuum-csq-proofs-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-PROOF-CSQ-ID-001",
+      "invariant": "CSQ-ID-001",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-002",
+      "invariant": "CSQ-ID-002",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-003",
+      "invariant": "CSQ-ID-003",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-004",
+      "invariant": "CSQ-ID-004",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-005",
+      "invariant": "CSQ-ID-005",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-006",
+      "invariant": "CSQ-ID-006",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-007",
+      "invariant": "CSQ-ID-007",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-008",
+      "invariant": "CSQ-ID-008",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ID-009",
+      "invariant": "CSQ-ID-009",
+      "owner_suite": "CSQ-SUITE-ID",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-001",
+      "invariant": "CSQ-ACK-001",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-002",
+      "invariant": "CSQ-ACK-002",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-003",
+      "invariant": "CSQ-ACK-003",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-004",
+      "invariant": "CSQ-ACK-004",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-005",
+      "invariant": "CSQ-ACK-005",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-006",
+      "invariant": "CSQ-ACK-006",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ACK-007",
+      "invariant": "CSQ-ACK-007",
+      "owner_suite": "CSQ-SUITE-ACK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-PUB-001",
+      "invariant": "CSQ-PUB-001",
+      "owner_suite": "CSQ-SUITE-PUB",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-PUB-002",
+      "invariant": "CSQ-PUB-002",
+      "owner_suite": "CSQ-SUITE-PUB",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-PUB-003",
+      "invariant": "CSQ-PUB-003",
+      "owner_suite": "CSQ-SUITE-PUB",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-GEN-001",
+      "invariant": "CSQ-GEN-001",
+      "owner_suite": "CSQ-SUITE-GEN",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-GEN-002",
+      "invariant": "CSQ-GEN-002",
+      "owner_suite": "CSQ-SUITE-GEN",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-GEN-003",
+      "invariant": "CSQ-GEN-003",
+      "owner_suite": "CSQ-SUITE-GEN",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-GEN-004",
+      "invariant": "CSQ-GEN-004",
+      "owner_suite": "CSQ-SUITE-GEN",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-HIST-001",
+      "invariant": "CSQ-HIST-001",
+      "owner_suite": "CSQ-SUITE-HIST",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-HIST-002",
+      "invariant": "CSQ-HIST-002",
+      "owner_suite": "CSQ-SUITE-HIST",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-HIST-003",
+      "invariant": "CSQ-HIST-003",
+      "owner_suite": "CSQ-SUITE-HIST",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-HIST-004",
+      "invariant": "CSQ-HIST-004",
+      "owner_suite": "CSQ-SUITE-HIST",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-HIST-005",
+      "invariant": "CSQ-HIST-005",
+      "owner_suite": "CSQ-SUITE-HIST",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-HIST-006",
+      "invariant": "CSQ-HIST-006",
+      "owner_suite": "CSQ-SUITE-HIST",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ABS-001",
+      "invariant": "CSQ-ABS-001",
+      "owner_suite": "CSQ-SUITE-ABS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-ABS-002",
+      "invariant": "CSQ-ABS-002",
+      "owner_suite": "CSQ-SUITE-ABS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-FMT-001",
+      "invariant": "CSQ-FMT-001",
+      "owner_suite": "CSQ-SUITE-FMT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-FMT-002",
+      "invariant": "CSQ-FMT-002",
+      "owner_suite": "CSQ-SUITE-FMT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-FMT-003",
+      "invariant": "CSQ-FMT-003",
+      "owner_suite": "CSQ-SUITE-FMT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-FMT-004",
+      "invariant": "CSQ-FMT-004",
+      "owner_suite": "CSQ-SUITE-FMT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-FMT-005",
+      "invariant": "CSQ-FMT-005",
+      "owner_suite": "CSQ-SUITE-FMT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-001",
+      "invariant": "CSQ-CHK-001",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-002",
+      "invariant": "CSQ-CHK-002",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-003",
+      "invariant": "CSQ-CHK-003",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-004",
+      "invariant": "CSQ-CHK-004",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-005",
+      "invariant": "CSQ-CHK-005",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-006",
+      "invariant": "CSQ-CHK-006",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CHK-007",
+      "invariant": "CSQ-CHK-007",
+      "owner_suite": "CSQ-SUITE-CHK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DMG-001",
+      "invariant": "CSQ-DMG-001",
+      "owner_suite": "CSQ-SUITE-DMG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DMG-002",
+      "invariant": "CSQ-DMG-002",
+      "owner_suite": "CSQ-SUITE-DMG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DMG-003",
+      "invariant": "CSQ-DMG-003",
+      "owner_suite": "CSQ-SUITE-DMG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DMG-004",
+      "invariant": "CSQ-DMG-004",
+      "owner_suite": "CSQ-SUITE-DMG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DMG-005",
+      "invariant": "CSQ-DMG-005",
+      "owner_suite": "CSQ-SUITE-DMG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-REC-001",
+      "invariant": "CSQ-REC-001",
+      "owner_suite": "CSQ-SUITE-REC",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-REC-002",
+      "invariant": "CSQ-REC-002",
+      "owner_suite": "CSQ-SUITE-REC",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-REC-003",
+      "invariant": "CSQ-REC-003",
+      "owner_suite": "CSQ-SUITE-REC",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-REC-004",
+      "invariant": "CSQ-REC-004",
+      "owner_suite": "CSQ-SUITE-REC",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-REC-005",
+      "invariant": "CSQ-REC-005",
+      "owner_suite": "CSQ-SUITE-REC",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DER-001",
+      "invariant": "CSQ-DER-001",
+      "owner_suite": "CSQ-SUITE-DER",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DER-002",
+      "invariant": "CSQ-DER-002",
+      "owner_suite": "CSQ-SUITE-DER",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DER-003",
+      "invariant": "CSQ-DER-003",
+      "owner_suite": "CSQ-SUITE-DER",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-DER-004",
+      "invariant": "CSQ-DER-004",
+      "owner_suite": "CSQ-SUITE-DER",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MNT-001",
+      "invariant": "CSQ-MNT-001",
+      "owner_suite": "CSQ-SUITE-MNT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MNT-002",
+      "invariant": "CSQ-MNT-002",
+      "owner_suite": "CSQ-SUITE-MNT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MNT-003",
+      "invariant": "CSQ-MNT-003",
+      "owner_suite": "CSQ-SUITE-MNT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MNT-004",
+      "invariant": "CSQ-MNT-004",
+      "owner_suite": "CSQ-SUITE-MNT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MNT-005",
+      "invariant": "CSQ-MNT-005",
+      "owner_suite": "CSQ-SUITE-MNT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-BAK-001",
+      "invariant": "CSQ-BAK-001",
+      "owner_suite": "CSQ-SUITE-BAK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-BAK-002",
+      "invariant": "CSQ-BAK-002",
+      "owner_suite": "CSQ-SUITE-BAK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-BAK-003",
+      "invariant": "CSQ-BAK-003",
+      "owner_suite": "CSQ-SUITE-BAK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-BAK-004",
+      "invariant": "CSQ-BAK-004",
+      "owner_suite": "CSQ-SUITE-BAK",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MIG-001",
+      "invariant": "CSQ-MIG-001",
+      "owner_suite": "CSQ-SUITE-MIG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-MIG-002",
+      "invariant": "CSQ-MIG-002",
+      "owner_suite": "CSQ-SUITE-MIG",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-COMPAT-001",
+      "invariant": "CSQ-COMPAT-001",
+      "owner_suite": "CSQ-SUITE-COMPAT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-COMPAT-002",
+      "invariant": "CSQ-COMPAT-002",
+      "owner_suite": "CSQ-SUITE-COMPAT",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-RES-001",
+      "invariant": "CSQ-RES-001",
+      "owner_suite": "CSQ-SUITE-RES",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-RES-002",
+      "invariant": "CSQ-RES-002",
+      "owner_suite": "CSQ-SUITE-RES",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-RES-003",
+      "invariant": "CSQ-RES-003",
+      "owner_suite": "CSQ-SUITE-RES",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-RES-004",
+      "invariant": "CSQ-RES-004",
+      "owner_suite": "CSQ-SUITE-RES",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-RES-005",
+      "invariant": "CSQ-RES-005",
+      "owner_suite": "CSQ-SUITE-RES",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CON-001",
+      "invariant": "CSQ-CON-001",
+      "owner_suite": "CSQ-SUITE-CON",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CON-002",
+      "invariant": "CSQ-CON-002",
+      "owner_suite": "CSQ-SUITE-CON",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CON-003",
+      "invariant": "CSQ-CON-003",
+      "owner_suite": "CSQ-SUITE-CON",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CON-004",
+      "invariant": "CSQ-CON-004",
+      "owner_suite": "CSQ-SUITE-CON",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-CON-005",
+      "invariant": "CSQ-CON-005",
+      "owner_suite": "CSQ-SUITE-CON",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-001",
+      "invariant": "CSQ-OBS-001",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-002",
+      "invariant": "CSQ-OBS-002",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-003",
+      "invariant": "CSQ-OBS-003",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-004",
+      "invariant": "CSQ-OBS-004",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-005",
+      "invariant": "CSQ-OBS-005",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-006",
+      "invariant": "CSQ-OBS-006",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    },
+    {
+      "id": "CSQ-PROOF-CSQ-OBS-007",
+      "invariant": "CSQ-OBS-007",
+      "owner_suite": "CSQ-SUITE-OBS",
+      "kind": "executable_suite",
+      "status": "registered"
+    }
+  ]
+}

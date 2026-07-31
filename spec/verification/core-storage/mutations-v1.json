@@ -1,0 +1,53 @@
+{
+  "schema": "residiuum-csq-mutations-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-MUT-ABSENCE-FROM-DAMAGE",
+      "description": "Map damage/unavailability to authoritative absence (None)",
+      "must_be_killed_by": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER"
+      ],
+      "severity": true
+    },
+    {
+      "id": "CSQ-MUT-RECEIPT-WITHOUT-DURABILITY",
+      "description": "Return durable receipt before stable storage boundary",
+      "must_be_killed_by": [
+        "CSQ-ORACLE-IMPL",
+        "CSQ-SUITE-CRASH"
+      ],
+      "forbidden": true
+    },
+    {
+      "id": "CSQ-MUT-FABRICATE-COMMIT",
+      "description": "Invent committed event not on durable media",
+      "must_be_killed_by": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-SUITE-CRASH"
+      ],
+      "forbidden": true
+    },
+    {
+      "id": "CSQ-MUT-HYBRID-EVENT",
+      "description": "Produce half-old half-new impossible event",
+      "must_be_killed_by": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-SUITE-CRASH"
+      ],
+      "forbidden": true
+    },
+    {
+      "id": "CSQ-MUT-DERIVED-AS-AUTHORITY",
+      "description": "Let derived cache override authoritative bytes",
+      "must_be_killed_by": [
+        "CSQ-ORACLE-READER",
+        "CSQ-SUITE-DER"
+      ],
+      "forbidden": true
+    }
+  ]
+}

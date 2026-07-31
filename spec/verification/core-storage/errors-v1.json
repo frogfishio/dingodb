@@ -1,0 +1,164 @@
+{
+  "schema": "residiuum-csq-errors-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "STORE-ERR-Io",
+      "rust_variant": "StoreError::Io",
+      "observation_case": "CSQ-OBS-ERR-Io",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-Frame",
+      "rust_variant": "StoreError::Frame",
+      "observation_case": "CSQ-OBS-ERR-Frame",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-Segment",
+      "rust_variant": "StoreError::Segment",
+      "observation_case": "CSQ-OBS-ERR-Segment",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-NotAStore",
+      "rust_variant": "StoreError::NotAStore",
+      "observation_case": "CSQ-OBS-ERR-NotAStore",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-AlreadyExists",
+      "rust_variant": "StoreError::AlreadyExists",
+      "observation_case": "CSQ-OBS-ERR-AlreadyExists",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-BadEnvelope",
+      "rust_variant": "StoreError::BadEnvelope",
+      "observation_case": "CSQ-OBS-ERR-BadEnvelope",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-SubjectTooLong",
+      "rust_variant": "StoreError::SubjectTooLong",
+      "observation_case": "CSQ-OBS-ERR-SubjectTooLong",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-CorruptMeta",
+      "rust_variant": "StoreError::CorruptMeta",
+      "observation_case": "CSQ-OBS-ERR-CorruptMeta",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-CorruptControl",
+      "rust_variant": "StoreError::CorruptControl",
+      "observation_case": "CSQ-OBS-ERR-CorruptControl",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-TierOffline",
+      "rust_variant": "StoreError::TierOffline",
+      "observation_case": "CSQ-OBS-ERR-TierOffline",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-FormatUnsupported",
+      "rust_variant": "StoreError::FormatUnsupported",
+      "observation_case": "CSQ-OBS-ERR-FormatUnsupported",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-MediaUnsupported",
+      "rust_variant": "StoreError::MediaUnsupported",
+      "observation_case": "CSQ-OBS-ERR-MediaUnsupported",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-WriterLockHeld",
+      "rust_variant": "StoreError::WriterLockHeld",
+      "observation_case": "CSQ-OBS-ERR-WriterLockHeld",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-CoverageIncomplete",
+      "rust_variant": "StoreError::CoverageIncomplete",
+      "observation_case": "CSQ-OBS-ERR-CoverageIncomplete",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-ConsistencyViolation",
+      "rust_variant": "StoreError::ConsistencyViolation",
+      "observation_case": "CSQ-OBS-ERR-ConsistencyViolation",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-Failpoint",
+      "rust_variant": "StoreError::Failpoint",
+      "observation_case": "CSQ-OBS-ERR-Failpoint",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-RandomUnavailable",
+      "rust_variant": "StoreError::RandomUnavailable",
+      "observation_case": "CSQ-OBS-ERR-RandomUnavailable",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-CursorInvalid",
+      "rust_variant": "StoreError::CursorInvalid",
+      "observation_case": "CSQ-OBS-ERR-CursorInvalid",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-CursorStale",
+      "rust_variant": "StoreError::CursorStale",
+      "observation_case": "CSQ-OBS-ERR-CursorStale",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-HeapCapability",
+      "rust_variant": "StoreError::HeapCapability",
+      "observation_case": "CSQ-OBS-ERR-HeapCapability",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-HeapAdmit",
+      "rust_variant": "StoreError::HeapAdmit",
+      "observation_case": "CSQ-OBS-ERR-HeapAdmit",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-PayloadTooLarge",
+      "rust_variant": "StoreError::PayloadTooLarge",
+      "observation_case": "CSQ-OBS-ERR-PayloadTooLarge",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-PayloadPartial",
+      "rust_variant": "StoreError::PayloadPartial",
+      "observation_case": "CSQ-OBS-ERR-PayloadPartial",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-PayloadConflict",
+      "rust_variant": "StoreError::PayloadConflict",
+      "observation_case": "CSQ-OBS-ERR-PayloadConflict",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-HistoryEventNotFound",
+      "rust_variant": "StoreError::HistoryEventNotFound",
+      "observation_case": "CSQ-OBS-ERR-HistoryEventNotFound",
+      "suite": "CSQ-SUITE-OBS"
+    },
+    {
+      "id": "STORE-ERR-SegmentNotFound",
+      "rust_variant": "StoreError::SegmentNotFound",
+      "observation_case": "CSQ-OBS-ERR-SegmentNotFound",
+      "suite": "CSQ-SUITE-OBS"
+    }
+  ]
+}

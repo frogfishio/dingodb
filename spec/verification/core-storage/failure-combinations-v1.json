@@ -1,0 +1,86 @@
+{
+  "schema": "residiuum-csq-failure-combinations-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-FC-process_abort+io_error",
+      "failures": [
+        "process_abort",
+        "io_error"
+      ],
+      "order": [
+        "process_abort",
+        "io_error"
+      ],
+      "executable_owner": "CSQ-SUITE-CRASH",
+      "feasibility": "scheduled"
+    },
+    {
+      "id": "CSQ-FC-process_abort+short_write",
+      "failures": [
+        "process_abort",
+        "short_write"
+      ],
+      "order": [
+        "process_abort",
+        "short_write"
+      ],
+      "executable_owner": "CSQ-SUITE-CRASH",
+      "feasibility": "scheduled"
+    },
+    {
+      "id": "CSQ-FC-process_abort+enospc",
+      "failures": [
+        "process_abort",
+        "enospc"
+      ],
+      "order": [
+        "process_abort",
+        "enospc"
+      ],
+      "executable_owner": "CSQ-SUITE-CRASH",
+      "feasibility": "scheduled"
+    },
+    {
+      "id": "CSQ-FC-io_error+short_write",
+      "failures": [
+        "io_error",
+        "short_write"
+      ],
+      "order": [
+        "io_error",
+        "short_write"
+      ],
+      "executable_owner": "CSQ-SUITE-CRASH",
+      "feasibility": "scheduled"
+    },
+    {
+      "id": "CSQ-FC-io_error+enospc",
+      "failures": [
+        "io_error",
+        "enospc"
+      ],
+      "order": [
+        "io_error",
+        "enospc"
+      ],
+      "executable_owner": "CSQ-SUITE-CRASH",
+      "feasibility": "scheduled"
+    },
+    {
+      "id": "CSQ-FC-short_write+enospc",
+      "failures": [
+        "short_write",
+        "enospc"
+      ],
+      "order": [
+        "short_write",
+        "enospc"
+      ],
+      "executable_owner": "CSQ-SUITE-CRASH",
+      "feasibility": "scheduled"
+    }
+  ]
+}

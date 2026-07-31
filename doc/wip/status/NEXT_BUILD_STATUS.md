@@ -55,7 +55,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | VFY-0 | not_started | — | — | — | missing `spec/verification/` registries | claim registry |
 | VFY-1 | not_started | — | VFY-0 | — | no preflight/infra-classified runner | evidence runner |
 | VFY-2 | not_started | — | VFY-0 | Heap matrix is ad-hoc VFY-2 partial only | no whole-DB claim map | oracle mapping |
-| CSQ-0 | ready | 2026-07-31 | — | [specification](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md); [implementation plan](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md); DEF-098…DEF-104 accepted | contract registries not yet implemented | core-storage contract |
+| CSQ-0 | active | 2026-07-31 | — | [specification](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md); [implementation plan](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md); DEF-098…DEF-104 accepted | CSQ-0 registries materialised under `spec/verification/core-storage/`; `scripts/verify-core-storage-registry.sh` green; Rust `csq0_registry` tests agree | core-storage contract |
 | CSQ-1 | not_started | — | CSQ-0 | — | independent model/reader absent | storage oracles |
 | CSQ-2 | not_started | — | CSQ-0 | — | boundary census/instrumentation incomplete | failure injection |
 | CSQ-3 | not_started | — | CSQ-1, CSQ-2 | — | exhaustive format corpus absent | format qualification |

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-core-storage-report-v1.json",
+  "title": "residiuum-core-storage-report-v1",
+  "type": "object",
+  "required": [
+    "format",
+    "profile",
+    "level",
+    "source_revision",
+    "cells",
+    "result"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "residiuum-core-storage-report-v1"
+    },
+    "profile": {
+      "const": "residiuum-core-storage-v1"
+    },
+    "level": {
+      "enum": [
+        "A1",
+        "A2",
+        "A3"
+      ]
+    },
+    "source_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "enum": [
+        "pass",
+        "fail",
+        "not_run",
+        "infrastructure_failure"
+      ]
+    },
+    "assumption_ledger": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cell_id",
+          "result"
+        ],
+        "properties": {
+          "cell_id": {
+            "type": "string"
+          },
+          "invariant_id": {
+            "type": "string"
+          },
+          "suite_id": {
+            "type": "string"
+          },
+          "oracle_id": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "not_run",
+              "infrastructure_failure"
+            ]
+          },
+          "evidence_hash": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "missing_cells": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

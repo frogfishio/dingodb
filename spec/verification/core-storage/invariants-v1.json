@@ -1,0 +1,1487 @@
+{
+  "schema": "residiuum-csq-invariants-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-ID-001",
+      "family": "ID",
+      "statement": "Store identity is stable across reopen, seal, compact, backup inspection, and derived rebuild.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-001"
+      ]
+    },
+    {
+      "id": "CSQ-ID-002",
+      "family": "ID",
+      "statement": "Event IDs identify one logical event; identical physical duplicates do not double-apply.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-002"
+      ]
+    },
+    {
+      "id": "CSQ-ID-003",
+      "family": "ID",
+      "statement": "Conflicting verified frames sharing an event ID remain conflicting; encounter order never chooses truth.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-003"
+      ]
+    },
+    {
+      "id": "CSQ-ID-004",
+      "family": "ID",
+      "statement": "Item lineage is stable for one subject and cannot merge two subjects.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-004"
+      ]
+    },
+    {
+      "id": "CSQ-ID-005",
+      "family": "ID",
+      "statement": "Activity on subject A cannot change the logical observation of subject B except declared global resource/maintenance evidence.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-005"
+      ]
+    },
+    {
+      "id": "CSQ-ID-006",
+      "family": "ID",
+      "statement": "Binary SubjectV2 identities remain byte-exact; UTF-8 convenience paths cannot alias them.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-006"
+      ]
+    },
+    {
+      "id": "CSQ-ID-007",
+      "family": "ID",
+      "statement": "Writer-shard routing is deterministic and does not change logical identity.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-007"
+      ]
+    },
+    {
+      "id": "CSQ-ID-008",
+      "family": "ID",
+      "statement": "One process holds exclusive writer authority; rejected contenders create no durable effect.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-008"
+      ]
+    },
+    {
+      "id": "CSQ-ID-009",
+      "family": "ID",
+      "statement": "Diagnostic lock-file contents never grant, retain, or break writer authority; OS/in-process ownership remains decisive.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ID"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ID-009"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-001",
+      "family": "ACK",
+      "statement": "A returned durable receipt implies the complete event crossed its declared stable-storage boundary.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-001"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-002",
+      "family": "ACK",
+      "statement": "Every returned durable receipt is observable after crash/reopen on the qualified filesystem model.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-002"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-003",
+      "family": "ACK",
+      "statement": "An operation without a returned receipt may resolve only to a registered old/new/unknown outcome; never a hybrid event.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-003"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-004",
+      "family": "ACK",
+      "statement": "Buffered and memory acknowledgements never acquire stronger labels after reopen or logging.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-004"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-005",
+      "family": "ACK",
+      "statement": "A receipt describes the actual event, item, store, segment, operation identity, and achieved durability.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-005"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-006",
+      "family": "ACK",
+      "statement": "Exact mutation retry returns one logical effect and the original receipt.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-006"
+      ]
+    },
+    {
+      "id": "CSQ-ACK-007",
+      "family": "ACK",
+      "statement": "Reusing an operation ID with different content cannot mutate authority.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ACK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ACK-007"
+      ]
+    },
+    {
+      "id": "CSQ-PUB-001",
+      "family": "PUB",
+      "statement": "Visibility is published only after the authoritative bytes required by the selected durability mode.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-PUB"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-PUB-001"
+      ]
+    },
+    {
+      "id": "CSQ-PUB-002",
+      "family": "PUB",
+      "statement": "A failed derived-cache/catalog update cannot roll back or conceal an authoritative event.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-PUB"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-PUB-002"
+      ]
+    },
+    {
+      "id": "CSQ-PUB-003",
+      "family": "PUB",
+      "statement": "Directory-entry creation, rename, replacement, and removal obey registered directory-sync assumptions.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-PUB"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-PUB-003"
+      ]
+    },
+    {
+      "id": "CSQ-GEN-001",
+      "family": "GEN",
+      "statement": "Current state is selected by authoritative event order, not physical encounter order.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-GEN"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-GEN-001"
+      ]
+    },
+    {
+      "id": "CSQ-GEN-002",
+      "family": "GEN",
+      "statement": "A value is reconstructed only from evidence named by its current generation.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-GEN"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-GEN-002"
+      ]
+    },
+    {
+      "id": "CSQ-GEN-003",
+      "family": "GEN",
+      "statement": "Older/newer orphan evidence cannot complete, damage, or conflict with another generation.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-GEN"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-GEN-003"
+      ]
+    },
+    {
+      "id": "CSQ-GEN-004",
+      "family": "GEN",
+      "statement": "Put\u2192put, put\u2192delete, delete\u2192put, inline\u2192chunked, and chunked\u2192inline transitions yield exactly the latest committed state.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-GEN"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-GEN-004"
+      ]
+    },
+    {
+      "id": "CSQ-HIST-001",
+      "family": "HIST",
+      "statement": "History preserves every verified event, its order evidence, identity, and kind.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-HIST-001"
+      ]
+    },
+    {
+      "id": "CSQ-HIST-002",
+      "family": "HIST",
+      "statement": "Tombstones establish logical absence only at their valid position; missing data never becomes a tombstone.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-HIST-002"
+      ]
+    },
+    {
+      "id": "CSQ-HIST-003",
+      "family": "HIST",
+      "statement": "Known gaps before/between history events remain explicit.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-HIST-003"
+      ]
+    },
+    {
+      "id": "CSQ-HIST-004",
+      "family": "HIST",
+      "statement": "Compaction may change physical representation but cannot invent, reorder, or silently discard history promised by its profile.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-HIST-004"
+      ]
+    },
+    {
+      "id": "CSQ-HIST-005",
+      "family": "HIST",
+      "statement": "An exact historical-value read resolves only the requested event and labels it non-current when applicable.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-HIST-005"
+      ]
+    },
+    {
+      "id": "CSQ-HIST-006",
+      "family": "HIST",
+      "statement": "Last-complete recovery is bounded, preserves partial candidates and gaps, and never crosses a tombstone without explicit forensic policy.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-HIST"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-HIST-006"
+      ]
+    },
+    {
+      "id": "CSQ-ABS-001",
+      "family": "ABS",
+      "statement": "`None` means authoritative absence; damage, unavailability, unsupported format, resource stop, and conflict are not absence.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ABS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ABS-001"
+      ]
+    },
+    {
+      "id": "CSQ-ABS-002",
+      "family": "ABS",
+      "statement": "Key/document scans claim completeness only when key-bearing authority coverage is complete; body damage cannot hide an independently surviving key.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-ABS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-ABS-002"
+      ]
+    },
+    {
+      "id": "CSQ-FMT-001",
+      "family": "FMT",
+      "statement": "A frame is verified only when every structural, length, version, envelope, suffix, and integrity condition succeeds.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-FMT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-FMT-001"
+      ]
+    },
+    {
+      "id": "CSQ-FMT-002",
+      "family": "FMT",
+      "statement": "One damaged region cannot prevent discovery of later independently valid frames promised by the scan profile.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-FMT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-FMT-002"
+      ]
+    },
+    {
+      "id": "CSQ-FMT-003",
+      "family": "FMT",
+      "statement": "Forward and reverse evidence reconcile without fabricating byte extents.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-FMT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-FMT-003"
+      ]
+    },
+    {
+      "id": "CSQ-FMT-004",
+      "family": "FMT",
+      "statement": "Unsupported versions/kinds survive as unsupported evidence, not corruption or valid known data.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-FMT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-FMT-004"
+      ]
+    },
+    {
+      "id": "CSQ-FMT-005",
+      "family": "FMT",
+      "statement": "All parsing terminates within declared time, depth, allocation, and progress bounds.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-FMT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-FMT-005"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-001",
+      "family": "CHK",
+      "statement": "A manifest is internally consistent and binds exact chunk event IDs, order, lengths, count, total length, and content hash.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-001"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-002",
+      "family": "CHK",
+      "statement": "Complete requires every exact current-generation chunk and matching full hash.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-002"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-003",
+      "family": "CHK",
+      "statement": "Partial/unavailable/conflicting states preserve exact surviving extents and causes.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-003"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-004",
+      "family": "CHK",
+      "statement": "Same-lineage chunks from another generation are ignored for current reassembly.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-004"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-005",
+      "family": "CHK",
+      "statement": "Chunk physical duplicates deduplicate only when their verified content agrees.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-005"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-006",
+      "family": "CHK",
+      "statement": "A durable chunked acknowledgement covers all chunks and the manifest.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-006"
+      ]
+    },
+    {
+      "id": "CSQ-CHK-007",
+      "family": "CHK",
+      "statement": "Chunk lookup cost is bounded by manifest/referenced bytes, not total dataset size.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CHK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CHK-007"
+      ]
+    },
+    {
+      "id": "CSQ-DMG-001",
+      "family": "DMG",
+      "statement": "Corrupt bytes are never returned as verified payload.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DMG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DMG-001"
+      ]
+    },
+    {
+      "id": "CSQ-DMG-002",
+      "family": "DMG",
+      "statement": "Damage outside an authority unit cannot change the decoded meaning of a healthy unit.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DMG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DMG-002"
+      ]
+    },
+    {
+      "id": "CSQ-DMG-003",
+      "family": "DMG",
+      "statement": "Holes have conservative ranges, causes, source identity, and provenance; exactness is never guessed.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DMG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DMG-003"
+      ]
+    },
+    {
+      "id": "CSQ-DMG-004",
+      "family": "DMG",
+      "statement": "Multiple holes, garbage islands, duplicates, reorder, truncation, and stale copies do not cause nontermination or fabrication.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DMG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DMG-004"
+      ]
+    },
+    {
+      "id": "CSQ-DMG-005",
+      "family": "DMG",
+      "statement": "Encryption/key unavailability is a semantic hole distinct from absent ciphertext.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DMG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DMG-005"
+      ]
+    },
+    {
+      "id": "CSQ-REC-001",
+      "family": "REC",
+      "statement": "Reopening identical bytes under identical declared availability produces identical logical conclusions.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-REC"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-REC-001"
+      ]
+    },
+    {
+      "id": "CSQ-REC-002",
+      "family": "REC",
+      "statement": "Repeating reopen/rebuild/salvage is idempotent.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-REC"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-REC-002"
+      ]
+    },
+    {
+      "id": "CSQ-REC-003",
+      "family": "REC",
+      "statement": "Live, clean reopen, cacheless rebuild, and independent recovery agree on authoritative observations.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-REC"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-REC-003"
+      ]
+    },
+    {
+      "id": "CSQ-REC-004",
+      "family": "REC",
+      "statement": "Recovery never writes into the source unless an explicit separately tested repair operation was requested.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-REC"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-REC-004"
+      ]
+    },
+    {
+      "id": "CSQ-REC-005",
+      "family": "REC",
+      "statement": "Healthy work can continue after recoverable damage without erasing the damage evidence.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-REC"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-REC-005"
+      ]
+    },
+    {
+      "id": "CSQ-DER-001",
+      "family": "DER",
+      "statement": "Primary caches, catalogs, summaries, checkpoints, secondary indexes, Hydra, Chimera, and chunk locators are derived.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DER"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DER-001"
+      ]
+    },
+    {
+      "id": "CSQ-DER-002",
+      "family": "DER",
+      "statement": "Missing, stale, corrupt, truncated, ahead, or foreign derived state is rejected/rebuilt and cannot change authority.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DER"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DER-002"
+      ]
+    },
+    {
+      "id": "CSQ-DER-003",
+      "family": "DER",
+      "statement": "Rebuild from the same authoritative coverage is deterministic.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DER"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DER-003"
+      ]
+    },
+    {
+      "id": "CSQ-DER-004",
+      "family": "DER",
+      "statement": "An accelerator result equals the slow complete authoritative path or reports incomplete coverage.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-DER"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-DER-004"
+      ]
+    },
+    {
+      "id": "CSQ-MNT-001",
+      "family": "MNT",
+      "statement": "Seal preserves every authoritative event and makes duplicates harmless.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MNT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MNT-001"
+      ]
+    },
+    {
+      "id": "CSQ-MNT-002",
+      "family": "MNT",
+      "statement": "Compaction output is verified before activation; source authority remains until safe reclamation.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MNT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MNT-002"
+      ]
+    },
+    {
+      "id": "CSQ-MNT-003",
+      "family": "MNT",
+      "statement": "Interrupted compaction/reclamation resumes or rolls back without losing acknowledged state.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MNT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MNT-003"
+      ]
+    },
+    {
+      "id": "CSQ-MNT-004",
+      "family": "MNT",
+      "statement": "Tier copy/move preserves bytes and identity; unavailable tiers remain explicit coverage gaps.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MNT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MNT-004"
+      ]
+    },
+    {
+      "id": "CSQ-MNT-005",
+      "family": "MNT",
+      "statement": "Scrub observes and records damage without changing authority unless explicit repair is invoked.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MNT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MNT-005"
+      ]
+    },
+    {
+      "id": "CSQ-BAK-001",
+      "family": "BAK",
+      "statement": "Backup includes exactly its declared authoritative frontier and coverage.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-BAK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-BAK-001"
+      ]
+    },
+    {
+      "id": "CSQ-BAK-002",
+      "family": "BAK",
+      "statement": "Backup manifests bind every included artifact and reject mutation/omission/substitution.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-BAK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-BAK-002"
+      ]
+    },
+    {
+      "id": "CSQ-BAK-003",
+      "family": "BAK",
+      "statement": "Restore of a complete backup has the same logical projection and damage evidence promised by the profile.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-BAK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-BAK-003"
+      ]
+    },
+    {
+      "id": "CSQ-BAK-004",
+      "family": "BAK",
+      "statement": "Partial backup/restore never masquerades as complete.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-BAK"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-BAK-004"
+      ]
+    },
+    {
+      "id": "CSQ-MIG-001",
+      "family": "MIG",
+      "statement": "Supported migration preserves logical state, identity rules, history, damage, and unsupported evidence.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MIG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MIG-001"
+      ]
+    },
+    {
+      "id": "CSQ-MIG-002",
+      "family": "MIG",
+      "statement": "Interrupted migration resumes/rolls back according to its phase record.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-MIG"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-MIG-002"
+      ]
+    },
+    {
+      "id": "CSQ-COMPAT-001",
+      "family": "COMPAT",
+      "statement": "Every advertised old-writer\u2192new-reader edge is exercised using artifacts made by the released old binary.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-COMPAT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-COMPAT-001"
+      ]
+    },
+    {
+      "id": "CSQ-COMPAT-002",
+      "family": "COMPAT",
+      "statement": "Unsupported compatibility edges fail without modifying the source.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-COMPAT"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-COMPAT-002"
+      ]
+    },
+    {
+      "id": "CSQ-RES-001",
+      "family": "RES",
+      "statement": "Size/depth/count/arithmetic violations fail before durable effect.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-RES"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-RES-001"
+      ]
+    },
+    {
+      "id": "CSQ-RES-002",
+      "family": "RES",
+      "statement": "Reader and writer limits are compatible; a supported writer cannot emit unreadable-by-policy authority.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-RES"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-RES-002"
+      ]
+    },
+    {
+      "id": "CSQ-RES-003",
+      "family": "RES",
+      "statement": "Scans, reads, rebuilds, salvage, and maintenance obey declared memory/file/time budgets or stop explicitly.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-RES"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-RES-003"
+      ]
+    },
+    {
+      "id": "CSQ-RES-004",
+      "family": "RES",
+      "statement": "ENOSPC, quota, inode exhaustion, permission loss, allocation failure, and descriptor exhaustion preserve prior authority.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-RES"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-RES-004"
+      ]
+    },
+    {
+      "id": "CSQ-RES-005",
+      "family": "RES",
+      "statement": "Cancellation/deadline cannot publish a half-operation or conceal committed authority.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-RES"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-RES-005"
+      ]
+    },
+    {
+      "id": "CSQ-CON-001",
+      "family": "CON",
+      "statement": "Concurrent reads observe a permitted complete generation, never a mixed generation.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CON"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CON-001"
+      ]
+    },
+    {
+      "id": "CSQ-CON-002",
+      "family": "CON",
+      "statement": "Concurrent writers are serialized/fenced according to the selected writer model.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CON"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CON-002"
+      ]
+    },
+    {
+      "id": "CSQ-CON-003",
+      "family": "CON",
+      "statement": "Seal, compact, checkpoint, index rebuild, scrub, backup, and tier movement cannot race authority into an impossible state.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CON"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CON-003"
+      ]
+    },
+    {
+      "id": "CSQ-CON-004",
+      "family": "CON",
+      "statement": "Async lifecycle completion is fenced before shutdown/reopen claims completion.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CON"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CON-004"
+      ]
+    },
+    {
+      "id": "CSQ-CON-005",
+      "family": "CON",
+      "statement": "No panic, poison, deadlock, livelock, use-after-free, or data race becomes a successful storage result.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-CON"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-CON-005"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-001",
+      "family": "OBS",
+      "statement": "Every reachable engine outcome has one registered public projection; unknown mappings fail closed.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-001"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-002",
+      "family": "OBS",
+      "statement": "Partial, unavailable, conflicting, unsupported, resource-stopped, and incomplete-coverage outcomes cannot become absence, empty success, or a complete result.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-002"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-003",
+      "family": "OBS",
+      "statement": "Ownership contention cannot become missing-store discovery, creation, initialization, or an empty logical store.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-003"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-004",
+      "family": "OBS",
+      "statement": "Historical/recovered values remain explicitly non-current and recovery reads do not mutate or promote authority.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-004"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-005",
+      "family": "OBS",
+      "statement": "Key coverage and body completeness remain separate through paging, filtering, decoding, and convenience APIs.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-005"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-006",
+      "family": "OBS",
+      "statement": "Error code, structured detail, retryability, provenance, and achieved durability remain semantically compatible across projections.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-006"
+      ]
+    },
+    {
+      "id": "CSQ-OBS-007",
+      "family": "OBS",
+      "statement": "Every critical forbidden-collapse mutant is rejected by at least one independent oracle and public journey.",
+      "mandatory": true,
+      "oracles": [
+        "CSQ-ORACLE-MODEL",
+        "CSQ-ORACLE-READER",
+        "CSQ-ORACLE-IMPL"
+      ],
+      "suites": [
+        "CSQ-SUITE-OBS"
+      ],
+      "proof_obligations": [
+        "CSQ-PROOF-CSQ-OBS-007"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "residiuum-csq-claims-v1",
+  "namespace": "core-storage",
+  "items": [
+    {
+      "id": "BAD",
+      "profile": "residiuum-core-storage-v1",
+      "level": "A2",
+      "statement": "x",
+      "invariants": [],
+      "oracles": [],
+      "suites": [],
+      "assumptions": [],
+      "proofs": []
+    }
+  ]
+}

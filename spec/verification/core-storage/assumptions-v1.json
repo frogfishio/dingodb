@@ -1,0 +1,38 @@
+{
+  "schema": "residiuum-csq-assumptions-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-ASM-FS-POSIX",
+      "statement": "Qualified filesystem provides durable ordered writes after fsync + directory sync as declared",
+      "applies_to": [
+        "CSQ-ACK-001",
+        "CSQ-ACK-002"
+      ]
+    },
+    {
+      "id": "CSQ-ASM-SINGLE-WRITER",
+      "statement": "OS advisory lock or equivalent exclusive writer ownership is reliable on supported platforms",
+      "applies_to": [
+        "CSQ-ID-008",
+        "CSQ-ID-009"
+      ]
+    },
+    {
+      "id": "CSQ-ASM-POST-RESET-IDENTITY",
+      "statement": "Only Residiuum protocol identities are accepted (post 02e1b0d); former Dingo identities are invalid",
+      "applies_to": [
+        "residiuum-core-storage-v1"
+      ]
+    },
+    {
+      "id": "CSQ-ASM-CLOSED-WORLD",
+      "statement": "Operations and boundaries outside the registry are architecture-CI failures",
+      "applies_to": [
+        "residiuum-core-storage-v1"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schema": "residiuum-vfy-suites-v1",
+  "items": [
+    {
+      "id": "CSQ-SUITE-ABS",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-ACK",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-BAK",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-CHK",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-COMPAT",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-CON",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-CRASH",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-DER",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-DMG",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-FMT",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-GEN",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-HIST",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-ID",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-MIG",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-MNT",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-OBS",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-PUB",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-REC",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-REG",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    },
+    {
+      "id": "CSQ-SUITE-RES",
+      "namespace": "core-storage",
+      "import": "spec/verification/core-storage/suites-v1.json"
+    }
+  ]
+}

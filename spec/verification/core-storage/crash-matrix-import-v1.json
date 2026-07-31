@@ -1,0 +1,500 @@
+{
+  "version": 1,
+  "title": "Imported from crates/residiuum-store/crash_matrix.v1.json without losing historical failpoint names",
+  "source_path": "crates/residiuum-store/crash_matrix.v1.json",
+  "global_invariants": [
+    "no_fabricated_committed_event",
+    "no_lost_durable_acknowledgement",
+    "no_duplicated_event_identity",
+    "derived_not_ahead_of_authority",
+    "surviving_evidence_salvageable"
+  ],
+  "operations": [
+    {
+      "historical_operation_id": "store_create",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.create.after_meta",
+          "boundary_id": "CSQ-BND-FP-store_create-store_create_after_meta",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Create aborts after store-info meta; reopen must not invent live data. May look incomplete or recreate cleanly."
+          }
+        },
+        {
+          "historical_cell_id": "store.create.after_active_header",
+          "boundary_id": "CSQ-BND-FP-store_create-store_create_after_active_header",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Active header may exist; no item events."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "put_durable",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_active_write_tail_before",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "No bytes written for this put; prior durable keys remain."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.after_write",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_active_write_tail_after_write",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": null,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Buffered write may or may not reach stable storage without sync; recovery keeps verified prefix only. Must not fabricate if frame incomplete."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.after_sync",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_active_write_tail_after_sync",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Authoritative bytes synced; if op returned before this failpoint, receipt was not issued \u2014 post-sync failure leaves durable-on-disk (may be visible on reopen even if caller saw error)."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.dir_sync",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_active_dir_sync",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "File sync already done; dir sync failure still leaves frame recoverable on same FS."
+          }
+        },
+        {
+          "historical_cell_id": "store.index_cache.before_write",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_index_cache_before_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Derived cache is optional; authority is segments."
+          }
+        },
+        {
+          "historical_cell_id": "store.index_cache.after_write",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_index_cache_after_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Cache may be partial; rebuild from segments wins."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.short_write",
+          "boundary_id": "CSQ-BND-FP-put_durable-store_active_write_tail_short_write",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Partial frame bytes may exist; recovery keeps verified prefix only. Unacked put must not appear as live."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "put_durable_io_faults",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-put_durable_io_faults-store_active_write_tail_before",
+          "ci_subset": true,
+          "fault": "enospc",
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "ENOSPC before any new bytes; prior durable retained; put not visible."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-put_durable_io_faults-store_active_write_tail_before",
+          "ci_subset": true,
+          "fault": "permission",
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Permission denied before write; prior durable retained."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "put_durable_process_kill",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_before",
+          "ci_subset": true,
+          "fault": "process_abort",
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Child killed before write; no fabricated commit; prior retained."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.after_sync",
+          "boundary_id": "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_after_sync",
+          "ci_subset": false,
+          "fault": "process_abort",
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Child killed after fsync of frame; bytes durable even though caller never got receipt."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "put_buffered",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-put_buffered-store_active_write_tail_before",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Buffered put never reached disk."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.after_write",
+          "boundary_id": "CSQ-BND-FP-put_buffered-store_active_write_tail_after_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": null,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Power loss may drop buffered write; recovery keeps verified frames only."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "delete_durable",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-delete_durable-store_active_write_tail_before",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Delete not on disk; prior live value remains."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.after_sync",
+          "boundary_id": "CSQ-BND-FP-delete_durable-store_active_write_tail_after_sync",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Tombstone frame durable; subject gone after reopen rebuild."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "chunked_put_durable",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.active.write_tail.before",
+          "boundary_id": "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_before",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Chunks only in memory; not durable."
+          }
+        },
+        {
+          "historical_cell_id": "store.active.write_tail.after_sync",
+          "boundary_id": "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_after_sync",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "All chunk frames + manifest synced."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "seal_active",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.seal.before_dest_write",
+          "boundary_id": "CSQ-BND-FP-seal_active-store_seal_before_dest_write",
+          "ci_subset": true,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Sealed dest not written; data remains in active/ on reopen recovery."
+          }
+        },
+        {
+          "historical_cell_id": "store.seal.after_dest_sync",
+          "boundary_id": "CSQ-BND-FP-seal_active-store_seal_after_dest_sync",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Sealed file durable; active may still exist (duplicate bytes possible; recovery must not double-apply by event_id)."
+          }
+        },
+        {
+          "historical_cell_id": "store.seal.after_active_remove",
+          "boundary_id": "CSQ-BND-FP-seal_active-store_seal_after_active_remove",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Active removed after sealed write; new active may be missing until next open creates one."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "write_dedup_persist",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.dedup.before_write",
+          "boundary_id": "CSQ-BND-FP-write_dedup_persist-store_dedup_before_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Append durable; dedup table missing \u2192 retry may create a second event until DEF-010 full recovery lands. Skeleton records expected honesty gap."
+          }
+        },
+        {
+          "historical_cell_id": "store.dedup.after_rename",
+          "boundary_id": "CSQ-BND-FP-write_dedup_persist-store_dedup_after_rename",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Dedup table present; exact retry returns original receipt."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "catalog_refresh",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.catalog.before_write",
+          "boundary_id": "CSQ-BND-FP-catalog_refresh-store_catalog_before_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Missing catalog is rebuildable from segments."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "checkpoint",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.checkpoint.before_write",
+          "boundary_id": "CSQ-BND-FP-checkpoint-store_checkpoint_before_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Checkpoint is derived; absence is safe."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "tier_move",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.tier.before_placement_write",
+          "boundary_id": "CSQ-BND-FP-tier_move-store_tier_before_placement_write",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Bytes may exist in both places; placement catalog not updated."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "compact_live",
+      "failpoints": [
+        {
+          "historical_cell_id": "store.compact.before_segment_sync",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_before_segment_sync",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Partial compact segment discarded on recovery; sources remain authoritative."
+          }
+        }
+      ]
+    },
+    {
+      "historical_operation_id": "heap_lifecycle",
+      "failpoints": [
+        {
+          "historical_cell_id": "heap_lifecycle.after_state_store",
+          "boundary_id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_state_store",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "State may be advanced in slot before receipt; other heaps unchanged. Caps terminate on revision. Exercised by hp010_qualification::lifecycle_crash_matrix_peer_heaps_unaffected."
+          }
+        },
+        {
+          "historical_cell_id": "heap_lifecycle.after_transition_receipt",
+          "boundary_id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_transition_receipt",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Transition durable; peer heaps retain prior durable labelled units. Exercised by hp010."
+          }
+        },
+        {
+          "historical_cell_id": "heap_lifecycle.after_purge_plan",
+          "boundary_id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_purge_plan",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Crash after purge plan: heap remains purging/retired path; never invent purged without receipt. Peer heaps untouched. Exercised by hp010."
+          }
+        },
+        {
+          "historical_cell_id": "heap_lifecycle.after_coverage_destroy",
+          "boundary_id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_coverage_destroy",
+          "ci_subset": false,
+          "fault": null,
+          "expected_on_reopen": {
+            "acknowledged_visible": false,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Partial coverage destroy: incomplete purge stays retired; peer heaps readable. Exercised by hp010."
+          }
+        }
+      ]
+    }
+  ]
+}

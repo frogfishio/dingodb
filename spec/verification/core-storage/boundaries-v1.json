@@ -1,0 +1,1536 @@
+{
+  "schema": "residiuum-csq-boundaries-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "CSQ-BND-store_create-00-create_dirs",
+      "operation_id": "store_create",
+      "step": "create_dirs",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-01-writer_lock_acquire",
+      "operation_id": "store_create",
+      "step": "writer_lock.acquire",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-02-write_store_id",
+      "operation_id": "store_create",
+      "step": "write_store_id",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-03-write_meta",
+      "operation_id": "store_create",
+      "step": "write_meta",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-04-write_store_descriptor",
+      "operation_id": "store_create",
+      "step": "write_store_descriptor",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-05-root_dir_sync",
+      "operation_id": "store_create",
+      "step": "root.dir_sync",
+      "step_index": 5,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-06-active_start_segment",
+      "operation_id": "store_create",
+      "step": "active.start_segment",
+      "step_index": 6,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-07-active_persist_header",
+      "operation_id": "store_create",
+      "step": "active.persist_header",
+      "step_index": 7,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-08-index_cache_persist",
+      "operation_id": "store_create",
+      "step": "index_cache.persist",
+      "step_index": 8,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-store_create-09-catalog_refresh",
+      "operation_id": "store_create",
+      "step": "catalog.refresh",
+      "step_index": 9,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-store_create-store_create_after_meta",
+      "operation_id": "store_create",
+      "step": "store.create.after_meta",
+      "kind": "failpoint",
+      "failpoint": "store.create.after_meta",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Create aborts after store-info meta; reopen must not invent live data. May look incomplete or recreate cleanly."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.create.after_meta",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-store_create-store_create_after_active_header",
+      "operation_id": "store_create",
+      "step": "store.create.after_active_header",
+      "kind": "failpoint",
+      "failpoint": "store.create.after_active_header",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Active header may exist; no item events."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.create.after_active_header",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-00-encode_frame_memory",
+      "operation_id": "put_durable",
+      "step": "encode_frame_memory",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-01-active_append_in_memory",
+      "operation_id": "put_durable",
+      "step": "active.append_in_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-02-active_write_tail",
+      "operation_id": "put_durable",
+      "step": "active.write_tail",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-03-active_file_sync_all",
+      "operation_id": "put_durable",
+      "step": "active.file.sync_all",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-04-active_dir_sync",
+      "operation_id": "put_durable",
+      "step": "active.dir_sync",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-05-index_apply_event",
+      "operation_id": "put_durable",
+      "step": "index.apply_event",
+      "step_index": 5,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-06-index_cache_persist",
+      "operation_id": "put_durable",
+      "step": "index_cache.persist",
+      "step_index": 6,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable-07-catalog_refresh",
+      "operation_id": "put_durable",
+      "step": "catalog.refresh",
+      "step_index": 7,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_active_write_tail_before",
+      "operation_id": "put_durable",
+      "step": "store.active.write_tail.before",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.before",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "No bytes written for this put; prior durable keys remain."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.before",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_active_write_tail_after_write",
+      "operation_id": "put_durable",
+      "step": "store.active.write_tail.after_write",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.after_write",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": null,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Buffered write may or may not reach stable storage without sync; recovery keeps verified prefix only. Must not fabricate if frame incomplete."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.after_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_active_write_tail_after_sync",
+      "operation_id": "put_durable",
+      "step": "store.active.write_tail.after_sync",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.after_sync",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Authoritative bytes synced; if op returned before this failpoint, receipt was not issued \u2014 post-sync failure leaves durable-on-disk (may be visible on reopen even if caller saw error)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.after_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_active_dir_sync",
+      "operation_id": "put_durable",
+      "step": "store.active.dir_sync",
+      "kind": "failpoint",
+      "failpoint": "store.active.dir_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "File sync already done; dir sync failure still leaves frame recoverable on same FS."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.dir_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_index_cache_before_write",
+      "operation_id": "put_durable",
+      "step": "store.index_cache.before_write",
+      "kind": "failpoint",
+      "failpoint": "store.index_cache.before_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Derived cache is optional; authority is segments."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.index_cache.before_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_index_cache_after_write",
+      "operation_id": "put_durable",
+      "step": "store.index_cache.after_write",
+      "kind": "failpoint",
+      "failpoint": "store.index_cache.after_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Cache may be partial; rebuild from segments wins."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.index_cache.after_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable-store_active_write_tail_short_write",
+      "operation_id": "put_durable",
+      "step": "store.active.write_tail.short_write",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.short_write",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Partial frame bytes may exist; recovery keeps verified prefix only. Unacked put must not appear as live."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.short_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_io_faults-00-encode_frame_memory",
+      "operation_id": "put_durable_io_faults",
+      "step": "encode_frame_memory",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_io_faults-01-active_append_in_memory",
+      "operation_id": "put_durable_io_faults",
+      "step": "active.append_in_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_io_faults-02-active_write_tail",
+      "operation_id": "put_durable_io_faults",
+      "step": "active.write_tail",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_io_faults-03-active_file_sync_all",
+      "operation_id": "put_durable_io_faults",
+      "step": "active.file.sync_all",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable_io_faults-store_active_write_tail_before",
+      "operation_id": "put_durable_io_faults",
+      "step": "store.active.write_tail.before",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.before",
+      "fault": "enospc",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "ENOSPC before any new bytes; prior durable retained; put not visible."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.before",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_process_kill-00-encode_frame_memory",
+      "operation_id": "put_durable_process_kill",
+      "step": "encode_frame_memory",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_process_kill-01-active_append_in_memory",
+      "operation_id": "put_durable_process_kill",
+      "step": "active.append_in_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_process_kill-02-active_write_tail",
+      "operation_id": "put_durable_process_kill",
+      "step": "active.write_tail",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_process_kill-03-active_file_sync_all",
+      "operation_id": "put_durable_process_kill",
+      "step": "active.file.sync_all",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_durable_process_kill-04-active_dir_sync",
+      "operation_id": "put_durable_process_kill",
+      "step": "active.dir_sync",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_before",
+      "operation_id": "put_durable_process_kill",
+      "step": "store.active.write_tail.before",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.before",
+      "fault": "process_abort",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Child killed before write; no fabricated commit; prior retained."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.before",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_durable_process_kill-store_active_write_tail_after_sync",
+      "operation_id": "put_durable_process_kill",
+      "step": "store.active.write_tail.after_sync",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.after_sync",
+      "fault": "process_abort",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Child killed after fsync of frame; bytes durable even though caller never got receipt."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.after_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_buffered-00-encode_frame_memory",
+      "operation_id": "put_buffered",
+      "step": "encode_frame_memory",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_buffered-01-active_append_in_memory",
+      "operation_id": "put_buffered",
+      "step": "active.append_in_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_buffered-02-active_write_tail",
+      "operation_id": "put_buffered",
+      "step": "active.write_tail",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_buffered-03-index_apply_event",
+      "operation_id": "put_buffered",
+      "step": "index.apply_event",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-put_buffered-04-index_cache_persist",
+      "operation_id": "put_buffered",
+      "step": "index_cache.persist",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_buffered-store_active_write_tail_before",
+      "operation_id": "put_buffered",
+      "step": "store.active.write_tail.before",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Buffered put never reached disk."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.before",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-put_buffered-store_active_write_tail_after_write",
+      "operation_id": "put_buffered",
+      "step": "store.active.write_tail.after_write",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.after_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": null,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Power loss may drop buffered write; recovery keeps verified frames only."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.after_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-00-encode_delete_frame",
+      "operation_id": "delete_durable",
+      "step": "encode_delete_frame",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-01-active_append_in_memory",
+      "operation_id": "delete_durable",
+      "step": "active.append_in_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-02-active_write_tail",
+      "operation_id": "delete_durable",
+      "step": "active.write_tail",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-03-active_file_sync_all",
+      "operation_id": "delete_durable",
+      "step": "active.file.sync_all",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-04-active_dir_sync",
+      "operation_id": "delete_durable",
+      "step": "active.dir_sync",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-05-index_apply_event",
+      "operation_id": "delete_durable",
+      "step": "index.apply_event",
+      "step_index": 5,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-delete_durable-06-index_cache_persist",
+      "operation_id": "delete_durable",
+      "step": "index_cache.persist",
+      "step_index": 6,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-delete_durable-store_active_write_tail_before",
+      "operation_id": "delete_durable",
+      "step": "store.active.write_tail.before",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.before",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Delete not on disk; prior live value remains."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.before",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-delete_durable-store_active_write_tail_after_sync",
+      "operation_id": "delete_durable",
+      "step": "store.active.write_tail.after_sync",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.after_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Tombstone frame durable; subject gone after reopen rebuild."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.after_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-00-encode_chunks_memory",
+      "operation_id": "chunked_put_durable",
+      "step": "encode_chunks_memory",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-01-active_append_chunks",
+      "operation_id": "chunked_put_durable",
+      "step": "active.append_chunks",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-02-encode_manifest",
+      "operation_id": "chunked_put_durable",
+      "step": "encode_manifest",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-03-active_append_manifest",
+      "operation_id": "chunked_put_durable",
+      "step": "active.append_manifest",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-04-active_write_tail",
+      "operation_id": "chunked_put_durable",
+      "step": "active.write_tail",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-05-active_file_sync_all",
+      "operation_id": "chunked_put_durable",
+      "step": "active.file.sync_all",
+      "step_index": 5,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-06-index_apply_event",
+      "operation_id": "chunked_put_durable",
+      "step": "index.apply_event",
+      "step_index": 6,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-chunked_put_durable-07-index_cache_persist",
+      "operation_id": "chunked_put_durable",
+      "step": "index_cache.persist",
+      "step_index": 7,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_before",
+      "operation_id": "chunked_put_durable",
+      "step": "store.active.write_tail.before",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Chunks only in memory; not durable."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.before",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-chunked_put_durable-store_active_write_tail_after_sync",
+      "operation_id": "chunked_put_durable",
+      "step": "store.active.write_tail.after_sync",
+      "kind": "failpoint",
+      "failpoint": "store.active.write_tail.after_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "All chunk frames + manifest synced."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.active.write_tail.after_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-00-active_flush_durable",
+      "operation_id": "seal_active",
+      "step": "active.flush_durable",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-01-seal_in_memory",
+      "operation_id": "seal_active",
+      "step": "seal_in_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-02-sealed_dest_write",
+      "operation_id": "seal_active",
+      "step": "sealed.dest_write",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-03-sealed_dest_sync",
+      "operation_id": "seal_active",
+      "step": "sealed.dest_sync",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-04-segments_dir_sync",
+      "operation_id": "seal_active",
+      "step": "segments.dir_sync",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-05-active_remove",
+      "operation_id": "seal_active",
+      "step": "active.remove",
+      "step_index": 5,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-06-active_dir_sync",
+      "operation_id": "seal_active",
+      "step": "active.dir_sync",
+      "step_index": 6,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-07-tier_register_hot",
+      "operation_id": "seal_active",
+      "step": "tier.register_hot",
+      "step_index": 7,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-08-tier_persist",
+      "operation_id": "seal_active",
+      "step": "tier.persist",
+      "step_index": 8,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-09-segment_catalog_refresh",
+      "operation_id": "seal_active",
+      "step": "segment_catalog.refresh",
+      "step_index": 9,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-10-active_start_new",
+      "operation_id": "seal_active",
+      "step": "active.start_new",
+      "step_index": 10,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-seal_active-11-index_cache_persist",
+      "operation_id": "seal_active",
+      "step": "index_cache.persist",
+      "step_index": 11,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-seal_active-store_seal_before_dest_write",
+      "operation_id": "seal_active",
+      "step": "store.seal.before_dest_write",
+      "kind": "failpoint",
+      "failpoint": "store.seal.before_dest_write",
+      "fault": "error",
+      "ci_subset": true,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Sealed dest not written; data remains in active/ on reopen recovery."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.seal.before_dest_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-seal_active-store_seal_after_dest_sync",
+      "operation_id": "seal_active",
+      "step": "store.seal.after_dest_sync",
+      "kind": "failpoint",
+      "failpoint": "store.seal.after_dest_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Sealed file durable; active may still exist (duplicate bytes possible; recovery must not double-apply by event_id)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.seal.after_dest_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-seal_active-store_seal_after_active_remove",
+      "operation_id": "seal_active",
+      "step": "store.seal.after_active_remove",
+      "kind": "failpoint",
+      "failpoint": "store.seal.after_active_remove",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Active removed after sealed write; new active may be missing until next open creates one."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.seal.after_active_remove",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-write_dedup_persist-00-authoritative_append",
+      "operation_id": "write_dedup_persist",
+      "step": "authoritative_append",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-write_dedup_persist-01-dedup_table_insert_memory",
+      "operation_id": "write_dedup_persist",
+      "step": "dedup.table_insert_memory",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-write_dedup_persist-02-dedup_tmp_write",
+      "operation_id": "write_dedup_persist",
+      "step": "dedup.tmp_write",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-write_dedup_persist-03-dedup_rename",
+      "operation_id": "write_dedup_persist",
+      "step": "dedup.rename",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-write_dedup_persist-04-dedup_parent_sync",
+      "operation_id": "write_dedup_persist",
+      "step": "dedup.parent_sync",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-write_dedup_persist-store_dedup_before_write",
+      "operation_id": "write_dedup_persist",
+      "step": "store.dedup.before_write",
+      "kind": "failpoint",
+      "failpoint": "store.dedup.before_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Append durable; dedup table missing \u2192 retry may create a second event until DEF-010 full recovery lands. Skeleton records expected honesty gap."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.dedup.before_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-write_dedup_persist-store_dedup_after_rename",
+      "operation_id": "write_dedup_persist",
+      "step": "store.dedup.after_rename",
+      "kind": "failpoint",
+      "failpoint": "store.dedup.after_rename",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Dedup table present; exact retry returns original receipt."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.dedup.after_rename",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-catalog_refresh-00-scan_segments_for_fp",
+      "operation_id": "catalog_refresh",
+      "step": "scan_segments_for_fp",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-catalog_refresh-01-catalog_tmp_write",
+      "operation_id": "catalog_refresh",
+      "step": "catalog.tmp_write",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-catalog_refresh-02-catalog_rename",
+      "operation_id": "catalog_refresh",
+      "step": "catalog.rename",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-catalog_refresh-store_catalog_before_write",
+      "operation_id": "catalog_refresh",
+      "step": "store.catalog.before_write",
+      "kind": "failpoint",
+      "failpoint": "store.catalog.before_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Missing catalog is rebuildable from segments."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.catalog.before_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-checkpoint-00-build_checkpoint_meta",
+      "operation_id": "checkpoint",
+      "step": "build_checkpoint_meta",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-checkpoint-01-snapshots_write",
+      "operation_id": "checkpoint",
+      "step": "snapshots.write",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-checkpoint-02-snapshots_sync",
+      "operation_id": "checkpoint",
+      "step": "snapshots.sync",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-checkpoint-store_checkpoint_before_write",
+      "operation_id": "checkpoint",
+      "step": "store.checkpoint.before_write",
+      "kind": "failpoint",
+      "failpoint": "store.checkpoint.before_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Checkpoint is derived; absence is safe."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.checkpoint.before_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-tier_move-00-copy_or_rename_bytes",
+      "operation_id": "tier_move",
+      "step": "copy_or_rename_bytes",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-tier_move-01-dest_sync",
+      "operation_id": "tier_move",
+      "step": "dest.sync",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-tier_move-02-placement_catalog_write",
+      "operation_id": "tier_move",
+      "step": "placement.catalog_write",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-tier_move-03-source_remove_if_move",
+      "operation_id": "tier_move",
+      "step": "source_remove_if_move",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-tier_move-store_tier_before_placement_write",
+      "operation_id": "tier_move",
+      "step": "store.tier.before_placement_write",
+      "kind": "failpoint",
+      "failpoint": "store.tier.before_placement_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Bytes may exist in both places; placement catalog not updated."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.tier.before_placement_write",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-compact_live-00-write_live_projection_segment",
+      "operation_id": "compact_live",
+      "step": "write_live_projection_segment",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-compact_live-01-segment_sync",
+      "operation_id": "compact_live",
+      "step": "segment.sync",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-compact_live-02-index_cache_persist",
+      "operation_id": "compact_live",
+      "step": "index_cache.persist",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-compact_live-03-catalog_refresh",
+      "operation_id": "compact_live",
+      "step": "catalog.refresh",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-compact_live-store_compact_before_segment_sync",
+      "operation_id": "compact_live",
+      "step": "store.compact.before_segment_sync",
+      "kind": "failpoint",
+      "failpoint": "store.compact.before_segment_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Partial compact segment discarded on recovery; sources remain authoritative."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.compact.before_segment_sync",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-heap_lifecycle-00-slot_store_state",
+      "operation_id": "heap_lifecycle",
+      "step": "slot.store_state",
+      "step_index": 0,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-heap_lifecycle-01-transition_receipt",
+      "operation_id": "heap_lifecycle",
+      "step": "transition_receipt",
+      "step_index": 1,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-heap_lifecycle-02-identity_tombstone",
+      "operation_id": "heap_lifecycle",
+      "step": "identity_tombstone",
+      "step_index": 2,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-heap_lifecycle-03-purge_plan",
+      "operation_id": "heap_lifecycle",
+      "step": "purge_plan",
+      "step_index": 3,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-heap_lifecycle-04-coverage_destroy",
+      "operation_id": "heap_lifecycle",
+      "step": "coverage_destroy",
+      "step_index": 4,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-heap_lifecycle-05-purge_receipt_or_incomplete",
+      "operation_id": "heap_lifecycle",
+      "step": "purge_receipt_or_incomplete",
+      "step_index": 5,
+      "kind": "persistence",
+      "failpoint": null,
+      "harness": "in_process_failpoint",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_state_store",
+      "operation_id": "heap_lifecycle",
+      "step": "heap_lifecycle.after_state_store",
+      "kind": "failpoint",
+      "failpoint": "heap_lifecycle.after_state_store",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "State may be advanced in slot before receipt; other heaps unchanged. Caps terminate on revision. Exercised by hp010_qualification::lifecycle_crash_matrix_peer_heaps_unaffected."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_lifecycle.after_state_store",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_transition_receipt",
+      "operation_id": "heap_lifecycle",
+      "step": "heap_lifecycle.after_transition_receipt",
+      "kind": "failpoint",
+      "failpoint": "heap_lifecycle.after_transition_receipt",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Transition durable; peer heaps retain prior durable labelled units. Exercised by hp010."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_lifecycle.after_transition_receipt",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_purge_plan",
+      "operation_id": "heap_lifecycle",
+      "step": "heap_lifecycle.after_purge_plan",
+      "kind": "failpoint",
+      "failpoint": "heap_lifecycle.after_purge_plan",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Crash after purge plan: heap remains purging/retired path; never invent purged without receipt. Peer heaps untouched. Exercised by hp010."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_lifecycle.after_purge_plan",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-FP-heap_lifecycle-heap_lifecycle_after_coverage_destroy",
+      "operation_id": "heap_lifecycle",
+      "step": "heap_lifecycle.after_coverage_destroy",
+      "kind": "failpoint",
+      "failpoint": "heap_lifecycle.after_coverage_destroy",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": false,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Partial coverage destroy: incomplete purge stays retired; peer heaps readable. Exercised by hp010."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "heap_lifecycle.after_coverage_destroy",
+      "source_ref": "crates/residiuum-store/crash_matrix.v1.json"
+    },
+    {
+      "id": "CSQ-BND-get_current-00-logical",
+      "operation_id": "get_current",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-get_historical-00-logical",
+      "operation_id": "get_historical",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-scan_keys-00-logical",
+      "operation_id": "scan_keys",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-scan_documents-00-logical",
+      "operation_id": "scan_documents",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-seal_segment-00-logical",
+      "operation_id": "seal_segment",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-compact-00-logical",
+      "operation_id": "compact",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-scrub-00-logical",
+      "operation_id": "scrub",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-backup-00-logical",
+      "operation_id": "backup",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-restore-00-logical",
+      "operation_id": "restore",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-salvage-00-logical",
+      "operation_id": "salvage",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    },
+    {
+      "id": "CSQ-BND-rebuild_derived-00-logical",
+      "operation_id": "rebuild_derived",
+      "step": "logical",
+      "kind": "logical",
+      "failpoint": null,
+      "harness": "suite_owned",
+      "source_ref": "CORE_STORAGE_QUALIFICATION_SPEC.md"
+    }
+  ]
+}

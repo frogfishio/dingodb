@@ -1,0 +1,36 @@
+{
+  "schema": "residiuum-csq-outcomes-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "old",
+      "description": "Pre-operation durable state only"
+    },
+    {
+      "id": "new",
+      "description": "Post-operation durable state fully applied"
+    },
+    {
+      "id": "unknown",
+      "description": "Bounded uncertainty from surviving evidence; never hybrid event"
+    },
+    {
+      "id": "pass",
+      "description": "Gate satisfied"
+    },
+    {
+      "id": "fail",
+      "description": "Gate failed"
+    },
+    {
+      "id": "not_run",
+      "description": "Cell not executed \u2014 cannot satisfy gate"
+    },
+    {
+      "id": "infrastructure_failure",
+      "description": "Harness/infra failure \u2014 cannot satisfy gate"
+    }
+  ]
+}

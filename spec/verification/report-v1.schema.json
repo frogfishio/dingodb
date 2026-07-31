@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-verification-report-v1.json",
+  "title": "residiuum-verification-report-v1",
+  "type": "object",
+  "required": [
+    "format",
+    "attachments"
+  ],
+  "properties": {
+    "format": {
+      "const": "residiuum-verification-report-v1"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "body"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "body": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

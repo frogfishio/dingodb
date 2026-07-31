@@ -1,0 +1,36 @@
+{
+  "schema": "residiuum-csq-platforms-v1",
+  "namespace": "core-storage",
+  "profile_scope": "residiuum-core-storage-v1",
+  "generated_for": "CSQ-0",
+  "items": [
+    {
+      "id": "linux-x86_64-ext4",
+      "os": "linux",
+      "arch": "x86_64",
+      "fs": "ext4",
+      "status": "required"
+    },
+    {
+      "id": "linux-x86_64-xfs",
+      "os": "linux",
+      "arch": "x86_64",
+      "fs": "xfs",
+      "status": "required"
+    },
+    {
+      "id": "macos-aarch64-apfs",
+      "os": "macos",
+      "arch": "aarch64",
+      "fs": "apfs",
+      "status": "required"
+    },
+    {
+      "id": "linux-loopback-dm",
+      "os": "linux",
+      "arch": "x86_64",
+      "fs": "dm-loop",
+      "status": "nightly"
+    }
+  ]
+}

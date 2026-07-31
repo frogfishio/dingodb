@@ -29,6 +29,10 @@ bash ./scripts/verify-app0-contract.sh
 echo "== crash-and-recovery contract (DEF-104) =="
 bash ./scripts/verify-crash-recovery-contract.sh
 
+# CSQ-0 core-storage registries (VFY-0 namespace)
+bash ./scripts/verify-core-storage-registry.sh
+
+
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
 
