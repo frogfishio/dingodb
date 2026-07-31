@@ -127,7 +127,7 @@ link returns to `residiuumdb.org`.
 ```text
 /
 ├── getting-started/
-│   ├── choose-dingodb/
+│   ├── choose-residiuum/
 │   ├── rust/
 │   ├── cli/
 │   ├── first-collection/
@@ -136,7 +136,7 @@ link returns to `residiuumdb.org`.
 │   ├── collections/
 │   ├── json-and-bytes/
 │   ├── filtering/
-│   ├── dql/
+│   ├── rql/
 │   ├── raw-sda/
 │   ├── indexes/
 │   ├── pagination-and-ordering/
@@ -152,8 +152,8 @@ link returns to `residiuumdb.org`.
 │   ├── durability-and-receipts/
 │   ├── heaps/
 │   ├── sda/
-│   ├── dql/
-│   ├── dre/
+│   ├── rql/
+│   ├── rre/
 │   └── atomics/
 ├── operations/
 │   ├── deployment-profiles/
@@ -174,7 +174,7 @@ link returns to `residiuumdb.org`.
 │   ├── configuration/
 │   ├── errors/
 │   ├── receipts-and-evidence/
-│   ├── dql/
+│   ├── rql/
 │   ├── sda/
 │   ├── wire/
 │   └── compatibility/
@@ -477,7 +477,7 @@ Specification URLs MUST use stable semantic slugs, for example:
 
 ```text
 /specifications/heaps/
-/specifications/dre/
+/specifications/rre/
 /specifications/atomics/
 /specifications/direct-access/
 /specifications/order-wavelets/
@@ -507,8 +507,8 @@ The launch migration MUST use a reviewed manifest. Initial mapping:
 | `README.md` | Docs home summary and getting-started entry points |
 | `crates/residiuum-sdk/README.md` | Rust SDK quickstart/reference source |
 | `DX_SPEC.md` | Concepts plus specification |
-| `doc/RQL/USER_GUIDE.md` | `/guides/dql/` |
-| RQL/SDA grammar and manuals | `/reference/dql/`, `/reference/sda/`, related guides |
+| `doc/RQL/USER_GUIDE.md` | `/guides/rql/` |
+| RQL/SDA grammar and manuals | `/reference/rql/`, `/reference/sda/`, related guides |
 | `doc/CAPABILITY_MATRIX.md` | `/status/capabilities/` |
 | `doc/BENCHMARK_DISCLOSURE.md` | `/status/benchmark-disclosure/` |
 | backup/scrub/migration/runbook documents | `/operations/` |

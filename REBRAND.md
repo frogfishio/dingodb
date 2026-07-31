@@ -68,7 +68,7 @@ identifiers include, without limitation:
   [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md));
 - Class D history: git history, release tags, remote
   `github.com/frogfishio/dingodb`, historical work-package ids;
-- Phase 4 surfaces: local dirs `web/dingodb.org`, marketing copy, old routes;
+- Redirect and migration history for the former website hosts and routes;
 - Historical docs that deliberately show pre-Phase-2 names as migration
   before/after examples (e.g. [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md)).
 

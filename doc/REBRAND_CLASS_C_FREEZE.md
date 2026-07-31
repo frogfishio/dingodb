@@ -98,5 +98,6 @@ file under REB-7 residual.
 ## 9. Future work (out of this Feature)
 
 - Dual-read wire major or profile aliases if product requires non-`dingo` labels.
-- Website Phase 4: `web/dingodb.org` copy still says “Dingo” (marketing, not wire).
+- Website Phase 4 is complete; former hosts and routes remain only where
+  required for redirects or migration history.
 - Repo remote `github.com/frogfishio/dingodb` rename (principal: out of scope).

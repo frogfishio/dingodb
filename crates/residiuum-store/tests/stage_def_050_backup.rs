@@ -206,7 +206,7 @@ fn salvage_is_not_a_backup_package() {
     // A live store directory is not a backup package.
     let err = load_and_verify_manifest(&salvage_dst).unwrap_err();
     assert!(
-        err.to_string().contains("not a dingodb store")
+        err.to_string().contains("not a Residiuum store")
             || err.to_string().contains("missing")
             || err.to_string().contains("not a"),
         "err={err}"

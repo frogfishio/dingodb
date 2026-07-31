@@ -253,7 +253,7 @@ Ratatouille owns the canonical outer NDJSON record:
   "seq": 42,
   "topic": "dingo:rpc",
   "src": {
-    "app": "dingodb",
+    "app": "residiuum",
     "where": "deployment-ref",
     "instance": "boot-id"
   },
@@ -379,7 +379,7 @@ unsampled events did not occur.
 Ratatouille `SourceIdentity` is:
 
 ```text
-app      = "dingodb"
+app      = "residiuum"
 where    = deployment_ref
 instance = boot_id
 ```

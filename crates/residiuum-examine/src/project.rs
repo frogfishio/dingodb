@@ -10,7 +10,7 @@ use residiuum_format::{
 use residiuum_store::{decode_item_envelope, hex16, EventKind};
 
 /// Tool identity stamped into recovered provenance.
-const TOOL: &str = "dingodb-examine";
+const TOOL: &str = "residiuum-examine";
 const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Options controlling payload materialization during projection.

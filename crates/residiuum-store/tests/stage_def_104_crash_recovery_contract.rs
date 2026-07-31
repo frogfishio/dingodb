@@ -161,7 +161,7 @@ fn journey_writer_held_inspect_not_empty() {
             assert_eq!(obs.class, WriterLockClass::InProcess);
             assert!(obs.os_lock_authoritative);
             // Forbidden: treat as empty / NotAStore.
-            assert!(!obs.detail.to_lowercase().contains("not a dingodb store"));
+            assert!(!obs.detail.to_lowercase().contains("not a residiuum store"));
             assert!(
                 obs.detail.contains("do not delete writer.lock")
                     || obs.detail.contains("writer.lock")

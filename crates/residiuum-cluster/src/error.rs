@@ -15,7 +15,7 @@ pub enum ClusterError {
     CorruptMeta(&'static str),
 
     /// Path exists but is not a Residiuum cluster root.
-    #[error("not a dingodb cluster: {0}")]
+    #[error("not a Residiuum cluster: {0}")]
     NotACluster(String),
 
     /// Cluster already exists at path when exclusive create was requested.

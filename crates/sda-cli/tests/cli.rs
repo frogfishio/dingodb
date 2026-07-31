@@ -12,7 +12,10 @@ fn unique_temp_path(name: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards")
         .as_nanos();
-    std::env::temp_dir().join(format!("dingodb-sda-{name}-{}-{nanos}", std::process::id()))
+    std::env::temp_dir().join(format!(
+        "residiuum-sda-{name}-{}-{nanos}",
+        std::process::id()
+    ))
 }
 
 fn repo_root() -> PathBuf {

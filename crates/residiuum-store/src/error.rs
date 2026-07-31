@@ -20,7 +20,7 @@ pub enum StoreError {
     Segment(#[from] SegmentError),
 
     /// Path exists but is not a Residiuum store (missing store-info).
-    #[error("not a dingodb store: missing store-info at {0}")]
+    #[error("not a Residiuum store: missing store-info at {0}")]
     NotAStore(std::path::PathBuf),
 
     /// Store already exists at path when create was exclusive.

@@ -308,7 +308,7 @@ The physical product carries the known byte range. An unknown boundary is
 Prod{
   action: "recovered",
   source_id: Some("..."),
-  tool: "dingodb-recover",
+  tool: "residiuum-examine",
   tool_version: "0.1.0",
   evidence: Map{}
 }

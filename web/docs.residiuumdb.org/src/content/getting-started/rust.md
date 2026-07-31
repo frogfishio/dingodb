@@ -32,8 +32,8 @@ This walkthrough starts from an empty directory and ends with a store you can re
 ## 1. Create a project
 
 ```bash
-cargo new dingodb-quickstart
-cd dingodb-quickstart
+cargo new residiuum-quickstart
+cd residiuum-quickstart
 ```
 
 ## 2. Add the dependency
