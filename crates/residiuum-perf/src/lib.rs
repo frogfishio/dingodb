@@ -7,6 +7,7 @@
 //!   digest oracle, scheduler partitions).
 //! - **PQH-3:** metrics kernel (histograms, clocks, probes, result writers).
 //! - **PQH-4:** L0 calibration + L1 device envelope (fake + file I/O adapters).
+//! - **PQH-5:** PhysicalWritePlan + L2 opaque shadow writer.
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
@@ -16,6 +17,7 @@
 pub mod envelope;
 pub mod metrics;
 pub mod runner;
+pub mod shadow;
 pub mod workload;
 
 use serde::Deserialize;
