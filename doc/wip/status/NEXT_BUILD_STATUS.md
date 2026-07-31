@@ -169,17 +169,23 @@ they do not override this package interlock.
 
 Program order (Kanban determines the individual active cards):
 
-1. Execute **CSQ-0…CSQ-12**, beginning with the ready CSQ-0 contract
-   registries.
-2. Begin **PQH-0…PQH-9** as the first post-C0 measurement lane. It may run
-   alongside M1 but must precede speculative tuning or new performance claims.
-3. Begin **FAS-0…FAS-5** after CSQ as the formal foundation/consistency/security
+1. **Principal accept** implementer handoffs for **CSQ-0…CSQ-12** (board
+   `in_review`; scoreboard still `active` — do not invent accepts).
+2. Close **A2 residual gates** reported by
+   `scripts/residiuum-verify-core-storage.sh` until
+   `residiuum-core-storage-v1 / A2` independently verifies with no missing cells.
+3. Begin **PQH-0…PQH-9** as the first post-C0 measurement lane after
+   `CSQ-12 = accept`. It may run alongside M1 but must precede speculative
+   tuning or new performance claims.
+4. Begin **FAS-0…FAS-5** after CSQ as the formal foundation/consistency/security
    lane. FAS-6…FAS-8 travel with Atomics and cluster rather than running early.
-4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
+5. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
    [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md).
-5. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
+6. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
+Do **not** claim `residiuum-core-storage-v1 / A2` until CSQ-12 accepts and the
+evidence bundle independently verifies.
 
 ## M0-2 exit checklist
 
@@ -203,6 +209,7 @@ Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 
 | Order | Package | Note |
 |---:|---|---|
-| 1 | DEF-098…DEF-104 acceptance | Close or explicitly retain every documented residual in Kanban |
-| 2 | **CSQ-0** | Freeze the core-storage qualification registries |
-| 3 | CSQ-1 / CSQ-2 | Independent oracles and failure-boundary instrumentation |
+| 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
+| 2 | **CSQ-0…CSQ-12 principal accept** | Labor floors at board `in_review`; scoreboard `active` |
+| 3 | **CSQ-12 A2 residual gates** | Exact missing cells from evidence runner; no false A2 claim |
+| 4 | PQH-0 / FAS-0 / APB-0 | Blocked on `CSQ-12 = accept` |

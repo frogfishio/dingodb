@@ -220,11 +220,41 @@ Release outcome:
 
 Priority: `P0-GATE`
 
+**Live claim (post protocol identity reset, commit `02e1b0d`):**
+`residiuum-core-storage-v1` / **A2** — never `dingo-core-storage-v1`.
+Former pre-release Dingo identities are invalid for qualification
+([REBRAND_PROTOCOL_IDENTITY_RESET.md](./doc/done/rebrand/REBRAND_PROTOCOL_IDENTITY_RESET.md)
+§§3–5).
+
+**Qualification command:**
+
+```text
+residiuum verify --profile residiuum-core-storage-v1 --level A2
+```
+
+Stand-in until the CLI subcommand lands:
+[scripts/residiuum-verify-core-storage.sh](./scripts/residiuum-verify-core-storage.sh)
+([scripts/lib/csq_evidence.py](./scripts/lib/csq_evidence.py)).
+
 Normative specification:
 [CORE_STORAGE_QUALIFICATION_SPEC.md](./doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md).
 
 Implementation plan:
 [doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md](./doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md).
+
+Program scoreboard (package qualification state, not Kanban columns):
+[doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
+
+**Board materialization (Kanban = live stages):** Feature **C0 — Core Storage
+Qualification** plus tasks `CSQ-0`…`CSQ-12` and docs track `CSQ-DOC`. Package
+graph: `CSQ-0 → (CSQ-1 ‖ CSQ-2) → CSQ-3…CSQ-11 → CSQ-12`.
+
+**Labor snapshot (2026-07-31 — not principal accept):** implementer labor floors
+for `CSQ-0`…`CSQ-12` are on the board at **`in_review`**. Scoreboard package
+states remain **`active`** until principal acceptance. The evidence runner
+builds a valid `residiuum-core-storage-report-v1` with **exact missing residual
+gates** and does **not** claim A2 pass
+(`not_run` / infrastructure failure / prose cannot satisfy the gate).
 
 Required order:
 
@@ -995,13 +1025,18 @@ This is the current executable queue:
 | 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
 | 4 | `APP-0` / `APP-1` | `in_review` on board | complete review only; preserve work already produced |
 | 5 | `DEF-098`…`DEF-104` | `accept` | emergency remediation complete; incident record archived |
-| 6 | `CSQ-0`…`CSQ-12` | `CSQ-0 ready` | **current principal track:** execute Core Storage Qualification |
-| 7 | `APB-0`…`APB-12` | `not_started` | immediate Must-Add program after `CSQ-12`; absorbs APP-2…APP-8 |
+| 6 | `CSQ-0`…`CSQ-12` | scoreboard `active`; board labor `in_review` | **current principal track:** principal accept CSQ labor + close A2 residual gates; no A2 claim until `CSQ-12 = accept` and independent verify |
+| 7 | `APB-0`…`APB-12` | `not_started` | immediate Must-Add program after `CSQ-12` accept; absorbs APP-2…APP-8 |
 | 8 | `HAR-0`…`HAR-7` | mixed | truth residual may continue; feature packages interleave only by APB/HAR dependencies |
 
-The next implementation task is **CSQ-0**, followed by **CSQ-1…12**, then
-**APB-0**. Live
-scoreboard: [doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
+**Next principal action on C0:** review/accept implementer handoffs for
+`CSQ-0`…`CSQ-12` (board `in_review`), then close residual A2 gates listed by
+the evidence runner (`CSQ12-GATE-*`) until
+`residiuum verify --profile residiuum-core-storage-v1 --level A2` passes
+without missing cells. **APB-0** remains blocked on `CSQ-12 = accept`.
+
+Live scoreboard:
+[doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
 
 No developer should start RRE, Atomics, Direct Access, Order Wavelets, search,
 or cluster product work from this queue.
@@ -1058,8 +1093,10 @@ change the plan.
 
 ```text
 NOW:
-DEF-098…DEF-104 incident defect family
-→ CSQ-0…CSQ-12
+DEF-098…DEF-104 accepted
+→ C0 / CSQ-0…CSQ-12 (labor floors in_review; principal accept open)
+→ residiuum-core-storage-v1 / A2 evidence runner (honest not_run + exact residual gates)
+→ principal accept + residual A2 gate closure → CSQ-12 accept
 → verified residiuum-core-storage-v1 / A2
 → APB-0…APB-12 with HAR dependencies
 → verified residiuum-application-baseline-v1 / A2
