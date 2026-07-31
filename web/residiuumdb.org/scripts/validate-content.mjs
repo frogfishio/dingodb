@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Claim/status validation for dingodb.org (WEBSITE_SPEC §5, §10, §15).
+ * Claim/status validation for residiuumdb.org (WEBSITE_SPEC §5, §10, §15).
  * Fails the build on unknown status values, unknown claim IDs, or
  * verified_for mismatch with release metadata.
  */

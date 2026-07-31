@@ -7,7 +7,7 @@
     "status": "active"
   },
   {
-    "source": "crates/residuum-sdk/README.md",
+    "source": "crates/residiuum-sdk/README.md",
     "destination": "/getting-started/rust/",
     "mode": "transform",
     "owner": "sdk",

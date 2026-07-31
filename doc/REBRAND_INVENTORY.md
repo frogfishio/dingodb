@@ -104,7 +104,7 @@ Not all rows; bulk is REB-2/3/4 grep-fix.
 
 ## 8. Task mapping
 
-| Task | Consumes this inventory | Labor (2026-07-31) |
+| Task | Consumes this inventory | Status (2026-07-31) |
 |------|-------------------------|---------------------|
 | REB-2 | §1 dirs (crates), §2 packages | **done** |
 | REB-3 | §3 API/CLI/env/URI | **done** |
@@ -112,11 +112,11 @@ Not all rows; bulk is REB-2/3/4 grep-fix.
 | REB-5 | §4 Class C freeze confirmation | **done** |
 | REB-6 | changelog from all sections | **done** |
 | REB-7 | residual search vs approved Class C/D | **done** |
-| REB-8 | RQL public symbols + frozen DQL wire values | **in_review** |
-| REB-9 | Class C re-audit after mechanical renames | **in_review** |
-| REB-10 | public identity residual (types, CLI, keywords) | **in_review** |
-| REB-11 | doc/changelog reconcile with reality | **in_review** |
-| REB-12 | `cargo check/test --workspace` + final evidence | **in_review** |
+| REB-8 | RQL public symbols + frozen DQL wire values | **done** |
+| REB-9 | Class C re-audit after mechanical renames | **done** |
+| REB-10 | public identity residual (types, CLI, keywords) | **done** |
+| REB-11 | doc/changelog reconcile with reality | **done** |
+| REB-12 | `cargo check/test --workspace` + final evidence | **done** |
 
 ## 9. REB-1 exit (historical)
 

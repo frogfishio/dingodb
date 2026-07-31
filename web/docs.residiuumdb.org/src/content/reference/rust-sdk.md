@@ -11,21 +11,21 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/residuum-sdk/README.md
+  path: crates/residiuum-sdk/README.md
 owners:
   - sdk
 keywords:
   - rust-sdk
 ---
 
-**Crate:** `residuum-sdk` **0.2** · `SDK_API_VERSION` = `1.0` · Status: experimental embedded path.
+**Crate:** `residiuum-sdk` **0.2** · `SDK_API_VERSION` = `1.0` · Status: experimental embedded path.
 
 ## Install
 
 ```toml
-residuum-sdk = "0.2"
+residiuum-sdk = "0.2"
 # optional AGPL cluster:
-# residuum-sdk = { version = "0.2", features = ["cluster"] }
+# residiuum-sdk = { version = "0.2", features = ["cluster"] }
 ```
 
 ## Core types
@@ -37,4 +37,4 @@ residuum-sdk = "0.2"
 | `Filter` | Typed JSON predicates |
 | `QueryOptions` | Coverage and query budgets |
 
-Authoritative examples: `crates/residuum-sdk/README.md` and crate tests.
+Authoritative examples: `crates/residiuum-sdk/README.md` and crate tests.

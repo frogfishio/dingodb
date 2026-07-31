@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/residuum-sdk/README.md
+  path: crates/residiuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -25,4 +25,4 @@ Profile: `dingo-config-v1`.
 - Secrets via env/file refs only
 - Validate before serve
 
-Source: `crates/residuum-server` config module; DEF-054.
+Source: `crates/residiuum-server` config module; DEF-054.

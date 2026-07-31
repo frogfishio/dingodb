@@ -1,6 +1,6 @@
-# docs.residuumdb.org
+# docs.residiuumdb.org
 
-Canonical documentation for [ResiduumDB](https://github.com/frogfishio/dingodb).
+Canonical documentation for [Residiuum](https://github.com/frogfishio/dingodb).
 
 Specification: repository [`DOCS_SITE_SPEC.md`](../../DOCS_SITE_SPEC.md). Shared truth/status contract: [`WEBSITE_SPEC.md`](../../WEBSITE_SPEC.md).
 
@@ -8,7 +8,7 @@ Specification: repository [`DOCS_SITE_SPEC.md`](../../DOCS_SITE_SPEC.md). Shared
 
 - Astro static site (TypeScript)
 - Markdown content under `src/content/` with validated frontmatter
-- Shared design tokens with residuumdb.org (paper/ink palette, IBM Plex)
+- Shared design tokens with residiuumdb.org (paper/ink palette, IBM Plex)
 - Local search via on-demand `search-index.json` (no external provider)
 - Build-time Markdown → HTML (no client Markdown evaluation)
 

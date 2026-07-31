@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: single-node-tcp
 source:
-  path: crates/residuum-sdk/README.md
+  path: crates/residiuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -24,8 +24,8 @@ keywords:
 Single-node TCP (`residuum serve`) is **development only**. It is not a production deployment claim.
 
 ```rust
-use residuum_sdk::{ConnectOptions, Residuum};
-let mut db = Residuum::connect("residuum://127.0.0.1:7434/app")?;
+use residiuum_sdk::{ConnectOptions, Residuum};
+let mut db = Residuum::connect("residiuum://127.0.0.1:7434/app")?;
 ```
 
 Prefer loopback binds. Public plaintext binds are refused without explicit insecure override. TLS/mTLS paths exist—see [security operations](/operations/security/).

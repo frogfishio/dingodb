@@ -1,9 +1,9 @@
 {
-  "name": "dingodb.org",
+  "name": "residiuumdb.org",
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "DingoDB product website (dingodb.org)",
+  "description": "Residiuum product website (residiuumdb.org)",
   "engines": {
     "node": ">=22.12.0"
   },

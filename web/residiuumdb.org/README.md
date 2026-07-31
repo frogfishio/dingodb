@@ -1,6 +1,6 @@
-# residuumdb.org
+# residiuumdb.org
 
-Product and project website for [ResiduumDB](https://github.com/frogfishio/dingodb).
+Product and project website for [Residiuum](https://github.com/frogfishio/dingodb).
 
 Specification: repository root [`WEBSITE_SPEC.md`](../../WEBSITE_SPEC.md).
 
@@ -45,7 +45,7 @@ See [CONTENT_RUNBOOK.md](./CONTENT_RUNBOOK.md).
 
 ## Deploy notes
 
-- Canonical host: `https://residuumdb.org`
-- Configure `www.residuumdb.org` → apex permanent redirect at the CDN/DNS layer
+- Canonical host: `https://residiuumdb.org`
+- Configure `www.residiuumdb.org` → apex permanent redirect at the CDN/DNS layer
 - `public/_headers` supplies CSP and security headers for Netlify-style hosts
 - Set `PUBLIC_PREVIEW=true` on preview deployments for `noindex`

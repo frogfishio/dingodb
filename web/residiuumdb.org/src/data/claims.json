@@ -29,7 +29,7 @@
     "status": "experimental",
     "scope": "embedded single-node",
     "source": [
-      "crates/residuum-sdk/README.md",
+      "crates/residiuum-sdk/README.md",
       "doc/CAPABILITY_MATRIX.md"
     ],
     "verified_for": "0.2.0",

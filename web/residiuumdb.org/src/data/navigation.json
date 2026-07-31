@@ -14,7 +14,7 @@
     },
     {
       "label": "Docs",
-      "href": "https://docs.dingodb.org/",
+      "href": "https://docs.residiuumdb.org/",
       "external": true
     },
     {
@@ -25,13 +25,13 @@
   ],
   "cta": {
     "label": "Get started",
-    "href": "https://docs.dingodb.org/guides/quickstart/",
+    "href": "https://docs.residiuumdb.org/guides/quickstart/",
     "external": true
   },
   "footer": [
     {
       "label": "Docs",
-      "href": "https://docs.dingodb.org/",
+      "href": "https://docs.residiuumdb.org/",
       "external": true
     },
     {

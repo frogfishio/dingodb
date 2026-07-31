@@ -348,7 +348,7 @@ unreleased intermediate names and have no compatibility status.
 
 ### 14.2 REB-8 — complete the interrupted RQL public-surface rename
 
-**Labor status (2026-07-31): complete → board `in_review`.** Implementers
+**Status (2026-07-31): complete.** Implementers
 continued from the partial tree rather than restarting the rename.
 
 Prior interrupted state (now resolved):
@@ -445,7 +445,7 @@ store, Heap, server, SDA, and cluster cases have been restored, including the
 store readers that recognize the `dingo-store-*` metadata family. REB-9 must
 prove that no additional Class C value escaped.
 
-**Labor status (2026-07-31): complete → board `in_review`.** Greps confirmed
+**Status (2026-07-31): complete.** Greps confirmed
 magics, `dingo-*-v1` profiles, `dingo-store-*`, URNs, `application/dingo.*`,
 `DINGODB-*` domains, `__dingo_snapshot_base__`, and frozen DQL profile strings
 remain. No Class C reverts required after REB-8 profile restore.
@@ -491,7 +491,7 @@ deferred website occurrence, or a defect.
 
 Do not modify `web/` during REB-10. Website migration remains Phase 4.
 
-**Labor status (2026-07-31): complete → board `in_review`.** Defects fixed
+**Status (2026-07-31): complete.** Defects fixed
 without touching `web/`:
 
 | Former public identity | Now |
@@ -522,7 +522,7 @@ They must record:
 
 All local Markdown links must resolve after reconciliation.
 
-**Labor status (2026-07-31): complete → board `in_review`.** Docs and changelog
+**Status (2026-07-31): complete.** Docs and changelog
 reconciled; REB-12 workspace evidence follows.
 
 ### 14.6 REB-12 — final verification
@@ -549,7 +549,7 @@ residual audit has no unexplained occurrence, and the evidence is recorded in
 the rebrand changelog. Website work and the post-website Phase 5 audit remain
 separate.
 
-**Labor status (2026-07-31): complete → board `in_review`.** Observed:
+**Status (2026-07-31): complete.** Observed:
 
 ```text
 cargo check --workspace   # exit 0

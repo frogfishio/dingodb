@@ -30,7 +30,7 @@ const today = new Date().toISOString().slice(0, 10);
 release.productVersion = productVersion;
 release.productLine = productVersion.split('.').slice(0, 2).join('.');
 release.sourceRevision = rev;
-release.dingoSourceRevision = rev;
+delete release.dingoSourceRevision;
 release.generatedAt = today;
 release.lastVerified = today;
 writeFileSync(releasePath, JSON.stringify(release, null, 2) + '\n');

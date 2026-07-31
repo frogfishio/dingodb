@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sync release.json from repository VERSION + git revision.
- * Run from web/dingodb.org or via npm run sync-release.
+ * Run from web/residiuumdb.org or via npm run sync-release.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -34,7 +34,7 @@ const today = new Date().toISOString().slice(0, 10);
 
 release.productVersion = productVersion;
 release.sourceRevision = sourceRevision;
-release.dingoSourceRevision = sourceRevision;
+delete release.dingoSourceRevision;
 release.generatedAt = today;
 release.lastVerified = today;
 

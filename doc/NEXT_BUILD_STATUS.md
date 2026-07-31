@@ -6,9 +6,11 @@ Sources: [MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-07-31 (P0 core-storage qualification interlock)
+Updated: 2026-07-31 (post-rebrand truth reconciliation)
 
-This file records delivery state. It does not change normative semantics.
+This file records package qualification state and dependency truth. It does not
+change normative semantics and it does not mirror live Kanban columns. Kanban
+owns assignment, execution stage, review, and acceptance workflow.
 
 ## Allowed states
 
@@ -19,7 +21,8 @@ not_started | ready | active | blocked | accept | deferred
 Rules (from master plan):
 
 - `ready` — every dependency and entry condition is satisfied.
-- `active` — an owner is producing required artifacts.
+- `active` — the package is admitted and an owner is producing required
+  artifacts; Kanban may use more detailed workflow states.
 - `blocked` — named unsatisfied dependency or defect.
 - `accept` — every exit test and evidence item; never with an unresolved release-gate defect.
 - Code existing in the repository does **not** by itself mean `accept`.
@@ -37,16 +40,16 @@ Rules (from master plan):
 | Level-1 product language only | yes | HEAP_SPEC / claim_language |
 | Last Heap quick surface | pass | `bash scripts/verify-heap.sh quick` @ `1d75199428d2` (see M0-1) |
 | Verus pure_kernel | 8 verified | `scripts/check_verus_heap.sh` |
-| Full workspace suite | not_run (disk) | M0-DISC-003 |
+| Full workspace suite | pass | `cargo test --workspace` exit 0 on 2026-07-31 after REB-12 |
 
-Inventory revision: `1d75199428d2f386ff5b8c87a2bddf9a728d9ee9`.
-Working tree may be ahead (M0-1/M0-2 doc and script fixes).
+Inventory baseline: `1d75199428d2f386ff5b8c87a2bddf9a728d9ee9`.
+Current verification includes the completed Residiuum rebrand through REB-12.
 
 ## Scoreboard
 
 | Package | State | last_verified | blocked_by | Evidence | Open defects | Capability impact |
 |---|---|---|---|---|---|---|
-| M0-1 | accept | 2026-07-30 | — | [M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md); [VERIFICATION_STATUS.md](VERIFICATION_STATUS.md); `verify-heap.sh quick` pass; matrix map HAR/APP | full workspace not_run; CPR-005 remains product gate not M0-1 gate | program truth inventory |
+| M0-1 | accept | 2026-07-31 | — | [M0_1_EVIDENCE_INVENTORY.md](M0_1_EVIDENCE_INVENTORY.md); [VERIFICATION_STATUS.md](VERIFICATION_STATUS.md); `verify-heap.sh quick` pass; REB-12 full workspace pass | CPR-005 remains a product gate, not an M0-1 gate | program truth inventory |
 | M0-2 | accept | 2026-07-30 | — | this file reconciled to M0-1 §4–§7; DEL/TEL/DST/VFY rows; last_verified/blocked_by | none | scoreboard honesty |
 | M0-3 | accept | 2026-07-30 | — | [scripts/verify-delivery-status.sh](../scripts/verify-delivery-status.sh); [scripts/quality.sh](../scripts/quality.sh); `.github/workflows/ci.yml` job `quality` step **Delivery scoreboard (M0-3)** | none | CI program-status gate |
 | VFY-0 | not_started | — | — | — | missing `spec/verification/` registries | claim registry |
@@ -90,7 +93,7 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
-| APP-4 | active | 2026-07-31 | APP-0 | `residiuum_sdk::predicate` + `plan_v1` (`dql-plan-encoding-v1`); plan_vectors hashes locked; tests `app4_predicate_plan`; **board `in_review`** (labor handoff) | full RQL source parser (APP-5); indexed/scan oracle parity residual | canonical predicates/plans |
+| APP-4 | blocked | 2026-07-31 | CSQ-12, APP-0 | precursor implemented: `residiuum_sdk::predicate` + `plan_v1` (`dql-plan-encoding-v1`); plan vectors locked; `app4_predicate_plan` passes; live review stage is Kanban-owned | package admission waits for core-storage qualification; full RQL source parser is APP-5 | canonical predicates/plans |
 | APP-5 | not_started | — | APP-4 | — | dql-app-core-v1 compiler not accept | RQL Application Core |
 | APP-6 | not_started | — | APP-3, APP-5, HAR-4 | — | authenticated cursor not product | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `dql_query` reserved | remote query parity missing | remote query |
@@ -130,37 +133,26 @@ Working tree may be ahead (M0-1/M0-2 doc and script fixes).
 | DOW-4 | not_started | — | DOW-3 | — | — | mutable order path |
 | DOW-5 | deferred | — | cluster profile | — | cluster profile unavailable | distributed order |
 
-## Principal labor track (board SoT)
+## Execution ownership
 
-**Active labor:** DEF-098…DEF-104 remediation, then CSQ, then APB. Do not pull
-APP-2 or APP-4 outside their APB mapping.
-**Handoff:** **APP-0**, **APP-1** are `in_review` (labor done; principal owns accept).
+Kanban is the source of truth for live stages, owners, handoffs, review, and
+acceptance actions. This document deliberately does not reproduce its columns.
+The package state above records qualification and dependency truth only.
 
-Board stages (principal 2026-07-30; handoff rule: labor → `in_review`, never
-`done` — principal moves `done` after accept):
-
-| Stage | Cards |
-|---|---|
-| done | M0-1, M0-2, M0-3 |
-| in_review | **APP-0** (contract freeze; APP0-R3), **APP-1** (create/dedup/op 106) |
-| doing | — |
-| backlog | DEF-098…DEF-104, CSQ-0…CSQ-12, APB-0…APB-12, HAR-0…HAR-7, APP-2…APP-8, DEL-0, TEL-0, DST-000 |
-
-Do **not** pull new HAR/APP/APB feature cards into `todo` before `CSQ-12`
-accepts.
-Scoreboard may still list HAR-0 as `ready` (dependency honesty); that is not a
-labor order override.
+The engine order remains DEF-098…DEF-104 acceptance, then CSQ, then APB. Do not
+admit APP-2…APP-8 or HAR-1…HAR-7 as active product packages before `CSQ-12`
+accepts. Existing precursor code and Kanban review cards remain valid evidence;
+they do not override this package interlock.
 
 ## Ready queue (honest)
 
-Labor order for this principal (not “everything that is ready”):
+Program order (Kanban determines the individual active cards):
 
-1. Complete **APP-0/APP-1 review** only; no new feature expansion.
-2. Remediate **DEF-098…DEF-104** in dependency order.
-3. Execute **CSQ-0…CSQ-12** after the incident defect family accepts.
-4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
+1. Complete acceptance of the DEF-098…DEF-104 remediation evidence.
+2. Execute **CSQ-0…CSQ-12** after that incident family accepts.
+3. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
    [MUST_ADD.md](../MUST_ADD.md).
-5. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
+4. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 
@@ -182,11 +174,10 @@ Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 - [x] Local `bash scripts/verify-delivery-status.sh` passes against this scoreboard
 - [x] M0 exit companion: HAR-1 not falsely ready — blocked by named predecessors **HAR-0**, **APP-0**
 
-## Next package after M0
+## Next engine package
 
 | Order | Package | Note |
 |---:|---|---|
-| 1 | **APP-0** | CORE plan — contract and fixture lock (**doing**) |
-| 2 | APP-1 ≡ HAR-1 capability | collection_create 106 after APP-0 |
-| 3 | APP-4 | predicates/plan; may parallel APP-1 after APP-0 |
-| — | HAR-0 residual | board **backlog** until principal re-queues |
+| 1 | DEF-098…DEF-104 acceptance | Close or explicitly retain every documented residual in Kanban |
+| 2 | **CSQ-0** | Freeze the core-storage qualification registries |
+| 3 | CSQ-1 / CSQ-2 | Independent oracles and failure-boundary instrumentation |

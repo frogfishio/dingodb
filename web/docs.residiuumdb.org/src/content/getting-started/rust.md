@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/residuum-sdk/README.md
+  path: crates/residiuum-sdk/README.md
 owners:
   - sdk
 keywords:
@@ -41,10 +41,10 @@ cd dingodb-quickstart
 ```toml
 # Cargo.toml
 [dependencies]
-residuum-sdk = "0.2"
+residiuum-sdk = "0.2"
 ```
 
-**Licensing:** default features are **MPL-2.0** (embedded + remote client). Enabling `features = ["cluster"]` pulls **AGPL-3.0-or-later** `residuum-cluster`. See [project licensing](https://residuumdb.org/project/#licensing).
+**Licensing:** default features are **MPL-2.0** (embedded + remote client). Enabling `features = ["cluster"]` pulls **AGPL-3.0-or-later** `residiuum-cluster`. See [project licensing](https://residuumdb.org/project/#licensing).
 
 ## 3. Complete program
 
@@ -52,9 +52,9 @@ Replace `src/main.rs` with:
 
 ```rust
 // tested: repository SDK examples / stage suites exercise this surface
-use residuum_sdk::{json, Residuum, Filter};
+use residiuum_sdk::{json, Residuum, Filter};
 
-fn main() -> Result<(), residuum_sdk::Error> {
+fn main() -> Result<(), residiuum_sdk::Error> {
     let mut db = Residuum::open("./app.dingo")?;
     {
         let mut users = db.collection("users")?;
@@ -92,7 +92,7 @@ Run `cargo run` again. The store directory already exists; the put overwrites th
 
 ## 6. Where the store lives
 
-The path passed to `Residuum::open` is a **directory** tree managed by `residuum-store`. Do not hand-edit files inside it. For inspection, prefer CLI `doctor` / `scrub` / salvage tools.
+The path passed to `Residuum::open` is a **directory** tree managed by `residiuum-store`. Do not hand-edit files inside it. For inspection, prefer CLI `doctor` / `scrub` / salvage tools.
 
 ## 7. Durability note
 

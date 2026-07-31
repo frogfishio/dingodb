@@ -7,7 +7,7 @@ import ExternalLink from './ExternalLink.astro';
 
 const { data, slug } = Astro.props;
 const sourceUrl = data.source.path
-  ? `${release.github}/blob/${release.dingoSourceRevision}/${data.source.path}`
+  ? `${release.github}/blob/${release.sourceRevision}/${data.source.path}`
   : release.github;
 const editUrl = data.source.path
   ? `${release.github}/edit/main/${data.source.path}`
@@ -15,7 +15,7 @@ const editUrl = data.source.path
 const issueTitle = encodeURIComponent(`[docs] ${data.title} (${slug})`);
 const issueBody = encodeURIComponent(
   [
-    `Page: https://docs.dingodb.org/${slug}/`,
+    `Page: https://docs.residiuumdb.org/${slug}/`,
     `Version: ${data.applies_to.product}`,
     `Docs revision: ${release.sourceRevision}`,
     '',

@@ -31,7 +31,7 @@ Implemented store format with draft labels; see capability matrix.
 
 - Path: `FORMAT_SPEC.md`
 - Raw: https://github.com/frogfishio/dingodb/blob/main/FORMAT_SPEC.md
-- Companions: `crates/residuum-format`
+- Companions: `crates/residiuum-format`
 
 ## Summary
 

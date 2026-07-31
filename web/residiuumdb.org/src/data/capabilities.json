@@ -10,7 +10,7 @@
       "durability": "Local store durability modes (memory / buffered / durable)",
       "status": "experimental",
       "note": "Strongest current path; early access",
-      "evidence": "residuum-store / residuum-sdk stage suites"
+      "evidence": "residiuum-store / residiuum-sdk stage suites"
     },
     {
       "id": "single-node-tcp",
@@ -28,7 +28,7 @@
       "durability": "Partition-local quorum in one process",
       "status": "development-only",
       "note": "Integration-test harness",
-      "evidence": "residuum-cluster stage8a–8f tests"
+      "evidence": "residiuum-cluster stage8a–8f tests"
     },
     {
       "id": "network-multi-node",

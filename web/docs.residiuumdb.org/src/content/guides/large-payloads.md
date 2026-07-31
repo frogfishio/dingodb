@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/residuum-sdk/README.md
+  path: crates/residiuum-sdk/README.md
 owners:
   - sdk
 keywords:

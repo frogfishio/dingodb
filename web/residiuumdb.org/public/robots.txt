@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dingodb.org/sitemap-index.xml
+Sitemap: https://residiuumdb.org/sitemap-index.xml

@@ -15,7 +15,7 @@ const {
   noindex = false,
 } = Astro.props;
 
-const site = 'https://docs.dingodb.org';
+const site = 'https://docs.residiuumdb.org';
 const canonical = new URL(path.endsWith('/') || path.endsWith('.html') ? path : path + '/', site).href;
 const fullTitle = title.includes('DingoDB') ? title : `${title} · DingoDB Docs`;
 const isPreview = import.meta.env.PUBLIC_PREVIEW === 'true';

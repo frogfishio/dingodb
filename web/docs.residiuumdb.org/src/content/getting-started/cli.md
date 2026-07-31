@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: crates/residuum-cli/README.md
+  path: crates/residiuum-cli/README.md
 owners:
   - cli
 keywords:
@@ -27,7 +27,7 @@ Prefer a **versioned** release or build from the repository pin matching this do
 From a clone of the monorepo:
 
 ```bash
-cargo install --path crates/residuum-cli --locked
+cargo install --path crates/residiuum-cli --locked
 dingo --version
 ```
 
@@ -36,7 +36,7 @@ Do **not** pipe an unauthenticated network installer into a shell unless the pro
 ## Create a temporary store
 
 ```bash
-WORKDIR="$(mktemp -d /tmp/residuum-cli-XXXXXX)"
+WORKDIR="$(mktemp -d /tmp/residiuum-cli-XXXXXX)"
 echo "Using $WORKDIR"
 ```
 
