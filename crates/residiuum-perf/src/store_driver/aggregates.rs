@@ -166,8 +166,9 @@ impl WorkloadContract {
             interference: cell.interference.kind.as_str().into(),
             layer: cell.layer.as_str().into(),
             application_note:
-                "shared execute_workload_puts: create_with_shards; concurrent workers; \
-                 outstanding-bounded put_many batches; same floors as measured cell"
+                "shared execute_workload_puts: create_with_shards; concurrent preparers; \
+                 outstanding-bounded put_many (put_many_parallel when multi-shard, probe-instrumented); \
+                 same floors as measured cell"
                     .into(),
         }
     }

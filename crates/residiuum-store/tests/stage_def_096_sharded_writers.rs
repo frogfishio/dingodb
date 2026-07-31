@@ -91,6 +91,41 @@ fn sharded_put_many_parallel_roundtrip() {
     }
 }
 
+/// put_many_parallel must record boundary-probe events (same product path for
+/// probe-on/off overhead legs — not sequential-put bypass).
+#[test]
+fn sharded_put_many_parallel_records_boundary_probe() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::create_with_shards(dir.path().join("probe"), 4).unwrap();
+    store.enable_boundary_probe();
+    let payload = vec![b'q'; 64];
+    let keys: Vec<String> = (0..48).map(|i| format!("q/{i}")).collect();
+    let items: Vec<(&str, &[u8])> = keys
+        .iter()
+        .map(|k| (k.as_str(), payload.as_slice()))
+        .collect();
+    let receipts = store
+        .put_many(&items, DurabilityMode::Buffered)
+        .expect("put_many with probe");
+    assert_eq!(receipts.len(), 48);
+    assert!(
+        receipts.iter().all(|r| r.encoded_frame_len > 0),
+        "parallel path must set encoded_frame_len"
+    );
+    let snap = store.take_boundary_snapshot();
+    assert!(
+        snap.coverage.total_observed > 0,
+        "put_many_parallel must emit boundary observations when probe enabled"
+    );
+    // At least one append observation per put (publish/write may add more).
+    assert!(
+        snap.coverage.total_observed >= 48,
+        "expected >=48 observations, got {}",
+        snap.coverage.total_observed
+    );
+    assert!(!snap.event_chain_digest.is_empty());
+}
+
 #[test]
 fn sharded_reopen_recovers_all_shards() {
     let dir = tempfile::tempdir().unwrap();

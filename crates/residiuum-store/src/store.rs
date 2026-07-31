@@ -1278,8 +1278,21 @@ impl Store {
             .collect();
         let store_id = self.store_id;
 
-        // Results: (item_idx, offset, segment_id, item_id, event_id, subject, body)
-        type ShardRow = (usize, u64, [u8; 16], [u8; 16], [u8; 16], Vec<u8>, Vec<u8>);
+        // Results per shard row: identity + append/tail timing for boundary probe.
+        // Probe recording happens on the main thread after writers are restored so
+        // probe-on and probe-off share this identical product path (DEF PQH-11).
+        struct ShardRow {
+            item_idx: usize,
+            offset: u64,
+            segment_id: [u8; 16],
+            item_id: [u8; 16],
+            event_id: [u8; 16],
+            subject: Vec<u8>,
+            body: Vec<u8>,
+            encoded_frame_len: u64,
+            append_ns: u64,
+            tail: TailIoStats,
+        }
         type ShardOut = Result<Vec<ShardRow>, StoreError>;
         let shard_outputs: Vec<std::sync::Mutex<ShardOut>> =
             (0..n).map(|_| std::sync::Mutex::new(Ok(Vec::new()))).collect();
@@ -1301,6 +1314,7 @@ impl Store {
                     };
                     let mut outs = Vec::with_capacity(prep.len());
                     for p in prep {
+                        let t_append = std::time::Instant::now();
                         match writer.segment.append(
                             FrameKind::ItemEvent,
                             &p.envelope,
@@ -1308,19 +1322,33 @@ impl Store {
                             p.event_id,
                         ) {
                             Ok(offset) => {
-                                if let Err(e) = Self::write_segment_tail(writer, mode).map(|_| ()) {
-                                    *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
-                                    return;
-                                }
-                                outs.push((
-                                    p.item_idx,
+                                let append_ns = t_append
+                                    .elapsed()
+                                    .as_nanos()
+                                    .min(u128::from(u64::MAX))
+                                    as u64;
+                                // Exact encoded frame length at store boundary.
+                                let encoded_frame_len = (writer.segment.as_bytes().len() as u64)
+                                    .saturating_sub(offset);
+                                let tail = match Self::write_segment_tail(writer, mode) {
+                                    Ok(t) => t,
+                                    Err(e) => {
+                                        *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
+                                        return;
+                                    }
+                                };
+                                outs.push(ShardRow {
+                                    item_idx: p.item_idx,
                                     offset,
-                                    p.segment_id,
-                                    p.item_id,
-                                    p.event_id,
-                                    p.subject,
-                                    p.body,
-                                ));
+                                    segment_id: p.segment_id,
+                                    item_id: p.item_id,
+                                    event_id: p.event_id,
+                                    subject: p.subject,
+                                    body: p.body,
+                                    encoded_frame_len,
+                                    append_ns,
+                                    tail,
+                                });
                             }
                             Err(e) => {
                                 *out_mu.lock().unwrap_or_else(|err| err.into_inner()) =
@@ -1334,46 +1362,63 @@ impl Store {
             }
         });
 
-        // Restore writers before index publish / error return.
+        // Restore writers before index publish / probe record / error return.
         for (shard, mu) in writers.into_iter().enumerate() {
             let w = mu.into_inner().unwrap_or_else(|e| e.into_inner());
             self.set_active(shard, w);
         }
 
         let mut receipts: Vec<Option<WriteReceipt>> = (0..items.len()).map(|_| None).collect();
-        for out_mu in shard_outputs {
+        for (shard, out_mu) in shard_outputs.into_iter().enumerate() {
             let batch = out_mu.into_inner().unwrap_or_else(|e| e.into_inner())?;
-            for (item_idx, offset, segment_id, item_id, event_id, subject, body) in batch {
-                self.apply_durable_event(
-                    subject.clone(),
-                    EventKind::Put,
-                    body,
-                    item_id,
-                    event_id,
-                    segment_id,
+            let shard_u32 = shard as u32;
+            for row in batch {
+                // Boundary probe: same events as single-put write_event path.
+                self.boundary_probe.record_append(
+                    row.encoded_frame_len,
+                    row.body.len() as u64,
+                    row.offset,
+                    mode,
+                    false,
+                    false,
                     0,
-                    offset,
+                    row.append_ns,
+                    shard_u32,
                 );
-                self.note_collection_for_subject(&subject);
+                self.record_tail_probe(&row.tail, mode, shard_u32)?;
+
+                self.apply_durable_event(
+                    row.subject.clone(),
+                    EventKind::Put,
+                    row.body,
+                    row.item_id,
+                    row.event_id,
+                    row.segment_id,
+                    0,
+                    row.offset,
+                );
+                self.boundary_probe
+                    .record_publish(row.offset, mode, shard_u32);
+                self.note_collection_for_subject(&row.subject);
                 let admit = LargeValuePolicy::application_v1()
-                    .admit(items[item_idx].1.len())
+                    .admit(items[row.item_idx].1.len())
                     .unwrap_or(AdmitDecision {
                         layout: PayloadLayout::Inline,
-                        logical_len: items[item_idx].1.len() as u64,
+                        logical_len: items[row.item_idx].1.len() as u64,
                         chunk_count: 0,
                     });
-                receipts[item_idx] = Some(
-                    WriteReceipt::base(
-                        store_id,
-                        segment_id,
-                        item_id,
-                        event_id,
-                        EventKind::Put,
-                        mode,
-                        offset,
-                    )
-                    .with_layout(admit, LARGE_VALUE_PROFILE_ID),
-                );
+                let mut receipt = WriteReceipt::base(
+                    store_id,
+                    row.segment_id,
+                    row.item_id,
+                    row.event_id,
+                    EventKind::Put,
+                    mode,
+                    row.offset,
+                )
+                .with_layout(admit, LARGE_VALUE_PROFILE_ID);
+                receipt.encoded_frame_len = row.encoded_frame_len;
+                receipts[row.item_idx] = Some(receipt);
             }
         }
         let _ = self.note_durable_derived();

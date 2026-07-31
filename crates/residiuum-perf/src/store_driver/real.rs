@@ -889,34 +889,17 @@ struct PreparedBatch {
 }
 
 
-/// Flush a prepared batch.
-///
-/// Always uses the same path for probe-on and probe-off legs. Multi-shard
-/// `put_many` parallel append can omit boundary-probe samples, so multi-shard
-/// flushes as sequential `put` (still batch-sized outstanding units from the
-/// driver). Single-shard uses `put_many` (internally sequential puts).
+/// Flush a prepared batch via the **identical product path** for probe-on and
+/// probe-off: always `Store::put_many` (multi-shard → `put_many_parallel` with
+/// boundary-probe instrumentation in the store — never sequential-put bypass).
 fn flush_batch(
     store: &mut Store,
     items: &[(&str, &[u8])],
     mode: StoreDur,
 ) -> Result<Vec<residiuum_store::WriteReceipt>, DriverError> {
-    if items.is_empty() {
-        return Ok(Vec::new());
-    }
-    if store.writer_shards() <= 1 {
-        return store
-            .put_many(items, mode)
-            .map_err(|e| DriverError::Store(e.to_string()));
-    }
-    let mut out = Vec::with_capacity(items.len());
-    for (subject, body) in items {
-        out.push(
-            store
-                .put(subject, body, mode)
-                .map_err(|e| DriverError::Store(e.to_string()))?,
-        );
-    }
-    Ok(out)
+    store
+        .put_many(items, mode)
+        .map_err(|e| DriverError::Store(e.to_string()))
 }
 
 fn payload_len(
@@ -1154,6 +1137,10 @@ mod tests {
                 || n.contains("workers=2")),
             "expected concurrency dimension applied"
         );
+        // Multi-shard + probe: observations must come from put_many product path
+        // (put_many_parallel instrumentation), not sequential-put bypass.
+        assert!(report.boundary_aggregates.is_some());
+        assert!(report.boundary_aggregates.as_ref().unwrap().total_observed > 0);
     }
 
     #[test]
