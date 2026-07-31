@@ -1,7 +1,7 @@
 # Residiuum rebrand changelog (Phase 2)
 
-Status: **implemented through REB-10 labor (2026-07-31); REB-11 reconciliation
-complete; REB-12 full workspace suite still required before normative tag**  
+Status: **Phase 2 implementation labor complete through REB-12 (2026-07-31);
+awaiting principal accept → `done` and any release tag**  
 Normative plan: [REBRAND.md](REBRAND.md). Inventory: [doc/REBRAND_INVENTORY.md](doc/REBRAND_INVENTORY.md).  
 Class C freeze: [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md).
 
@@ -254,10 +254,24 @@ Also Class D: git history, release tags, remote `github.com/frogfishio/dingodb`
 | `residiuum-cli --test console` | 1/1 |
 | public `DingoDeployment` / `DingoConfigFile` / `dingo://` in crates | none remaining |
 
-**Not yet claimed:** full `cargo test --workspace` (REB-12).
+### REB-12 (final verification)
 
+| Check | Result |
+|-------|--------|
+| `cargo check --workspace` | exit 0 |
+| `cargo test --workspace` | exit 0 (~1265 tests passed, 0 failed across package targets) |
+| residual public identity in `crates/**/*.rs` (`DingoDeployment`, `DingoConfigFile`, `dingo://`) | none |
+| Class C freeze greps | still retained (REB-9) |
 
-### Residual classification summary (REB-7…REB-10)
+**Incidental product fix during REB-12:** DEF-013 catalog frontier — when a
+**new** durable collection name is first observed, persist the durable-only
+collections catalog immediately (`note_collection_for_subject` →
+`refresh_collection_catalog`). Index-cache checkpoints remain rate-limited
+(DEF-023). Unblocked `stage_def_010_012_013` under workspace test.
+
+Website Phase 4 and Phase 5 final audit remain out of scope.
+
+### Residual classification summary (REB-7…REB-12)
 
 | Class | Disposition | Examples |
 |-------|-------------|---------|

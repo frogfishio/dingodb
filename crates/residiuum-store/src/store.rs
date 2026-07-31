@@ -2533,11 +2533,15 @@ impl Store {
 
     /// Record a collection name for a durable subject (visibility + durable set).
     ///
-    /// No disk I/O. Avoids O(N) `from_index` rebuilds on the checkpoint path.
+    /// When a **new** durable collection name appears, persist the durable-only
+    /// catalog immediately (DEF-013 frontier honesty). Index-cache checkpoints
+    /// remain rate-limited via [`Self::note_durable_derived`] (DEF-023).
     fn note_collection_for_subject(&mut self, subject: &[u8]) {
         if let Some(name) = crate::catalog::collection_name_from_subject(subject) {
             self.collection_catalog.insert(name.clone());
-            self.durable_collections.insert(name);
+            if self.durable_collections.insert(name) {
+                let _ = self.refresh_collection_catalog();
+            }
         }
     }
 

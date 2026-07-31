@@ -51,11 +51,14 @@ impl CollectionCatalog {
     }
 
     /// Insert a collection name.
-    pub fn insert(&mut self, name: impl Into<String>) {
+    ///
+    /// Returns `true` when the name was not already present.
+    pub fn insert(&mut self, name: impl Into<String>) -> bool {
         let name = name.into();
-        if !name.is_empty() {
-            self.names.insert(name);
+        if name.is_empty() {
+            return false;
         }
+        self.names.insert(name)
     }
 
     /// Rebuild from a primary index (live + deleted subjects).

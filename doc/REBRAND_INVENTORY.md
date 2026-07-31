@@ -115,8 +115,8 @@ Not all rows; bulk is REB-2/3/4 grep-fix.
 | REB-8 | RQL public symbols + frozen DQL wire values | **in_review** |
 | REB-9 | Class C re-audit after mechanical renames | **in_review** |
 | REB-10 | public identity residual (types, CLI, keywords) | **in_review** |
-| REB-11 | doc/changelog reconcile with reality | **this task** |
-| REB-12 | `cargo check/test --workspace` + final evidence | **todo** |
+| REB-11 | doc/changelog reconcile with reality | **in_review** |
+| REB-12 | `cargo check/test --workspace` + final evidence | **in_review** |
 
 ## 9. REB-1 exit (historical)
 

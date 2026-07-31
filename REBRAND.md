@@ -1,8 +1,8 @@
 # Residiuum rebrand plan
 
-Status: **active; Phase 0 and Phase 1 complete; Phase 2 handoff REB-0…REB-10
-labor-complete (board `done` or `in_review`); REB-11 docs reconciliation and
-REB-12 final verification remain; website Phase 4 still open**
+Status: **active; Phase 0 and Phase 1 complete; Phase 2 handoff REB-0…REB-12
+labor-complete (board `done` or `in_review`, awaiting principal accept);
+website Phase 4 still open; Phase 5 final audit not started**
 
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
@@ -130,7 +130,7 @@ The required order is:
 |---|---|---|---|
 | 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
 | 1. Documentation identity | Codex | **complete** | Establish Residiuum, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
-| 2. Wholesale repository naming | Codex | **labor complete through REB-10 (awaiting principal accept + REB-11/12)** | Class A/B renames + Class C freeze + RQL public surface + residual identity audit; REB-0…7 `done`, REB-8…10 `in_review` |
+| 2. Wholesale repository naming | Codex | **labor complete through REB-12 (awaiting principal accept)** | Class A/B renames + Class C freeze + RQL surface + residual audit + docs + workspace verify; REB-0…7 `done`, REB-8…12 `in_review` |
 | 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and package suites green under residiuum names; principal owns any further semantic realignment beyond REB |
 | 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
 | 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
@@ -522,8 +522,8 @@ They must record:
 
 All local Markdown links must resolve after reconciliation.
 
-**Labor status:** this task (REB-11) performs the reconciliation. After exit,
-REB-12 remains for full `cargo test --workspace` evidence.
+**Labor status (2026-07-31): complete → board `in_review`.** Docs and changelog
+reconciled; REB-12 workspace evidence follows.
 
 ### 14.6 REB-12 — final verification
 
@@ -548,3 +548,14 @@ REB-12 is complete only when the workspace build and test suite pass, the
 residual audit has no unexplained occurrence, and the evidence is recorded in
 the rebrand changelog. Website work and the post-website Phase 5 audit remain
 separate.
+
+**Labor status (2026-07-31): complete → board `in_review`.** Observed:
+
+```text
+cargo check --workspace   # exit 0
+cargo test --workspace    # exit 0 (~1265 tests passed, 0 failed)
+```
+
+Evidence recorded in [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md) §15. Incidental
+DEF-013 durable collection-catalog frontier fix landed under `residiuum-store`
+so the workspace suite is green.
