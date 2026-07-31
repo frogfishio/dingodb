@@ -33,5 +33,6 @@ pub enum ShadowError {
     Io(#[from] crate::envelope::IoError),
 }
 
-/// Architecture residual until store emits plans at the authoritative boundary.
-pub const STORE_SEAM_STATUS: &str = "pending_store_boundary_emitter";
+/// Store boundary plan emission status (PQH-10).
+/// Receipt-stream emitter is available; full in-store instrumentation remains residual.
+pub const STORE_SEAM_STATUS: &str = "store_boundary_emitter_from_receipts_v1";

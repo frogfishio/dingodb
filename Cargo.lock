@@ -1094,6 +1094,7 @@ name = "residiuum-perf"
 version = "0.2.0"
 dependencies = [
  "hex",
+ "residiuum-store",
  "serde",
  "serde_json",
  "sha2",

@@ -40,7 +40,7 @@ pub fn build_disclosure(result: &CampaignResult, reports: &CampaignReports) -> D
     let allows = result.plan.platform.allows_product_baseline();
     let mut warnings = reports.notes.clone();
     warnings.push(
-        "Real residiuum-store attachment remains residual; matrix driver is harness simulation"
+        "Default campaign matrix uses harness simulation; real residiuum-store driver is feature-gated (store-driver) and must be selected explicitly"
             .into(),
     );
     if !allows {
@@ -92,8 +92,8 @@ pub fn build_disclosure(result: &CampaignResult, reports: &CampaignReports) -> D
         ),
         item(
             "store_driver",
-            "residual",
-            "pending real store attachment; proxies only",
+            "available_feature_gated",
+            "real store via --features store-driver + --driver real_store; default synthetic is NON-PRODUCT",
         ),
         item(
             "absolute_throughput_claim",

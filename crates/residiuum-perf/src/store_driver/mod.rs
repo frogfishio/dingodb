@@ -1,0 +1,106 @@
+//! PQH-10: L4/L5/L6 drivers and store-native PhysicalWritePlan emission.
+//!
+//! - **Synthetic** (always available): harness proxy; **non-product**.
+//! - **Real store** (`store-driver` feature): `residiuum-store` with
+//!   `legacy-raw-store`; measurements may support product baselines only when
+//!   the campaign platform allows it and disclosure is complete.
+//!
+//! Plans never contain payloads, keys, or heap identities.
+
+mod emitter;
+mod kinds;
+mod synthetic;
+
+#[cfg(feature = "store-driver")]
+mod real;
+
+pub use emitter::{
+    emit_plan_from_receipts, WriteReceiptFact, STORE_SEAM_EMITTER_FROM_RECEIPTS,
+};
+pub use kinds::{DriverKind, MeasurementSurface, DRIVER_KIND_SYNTHETIC};
+
+use crate::matrix::{CellRunReport, DurabilityMode, MatrixCell, MatrixError};
+use crate::shadow::PhysicalWritePlan;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum DriverError {
+    #[error("driver: {0}")]
+    Msg(String),
+    #[error("matrix: {0}")]
+    Matrix(#[from] MatrixError),
+    #[error("io: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("store feature disabled; rebuild with --features store-driver")]
+    StoreFeatureDisabled,
+    #[cfg(feature = "store-driver")]
+    #[error("store: {0}")]
+    Store(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DriverCellReport {
+    pub cell: CellRunReport,
+    pub driver_kind: DriverKind,
+    pub measurement_surface: MeasurementSurface,
+    /// True only when this run may contribute to a product baseline claim.
+    pub product_claim_eligible: bool,
+    pub plan: Option<PhysicalWritePlan>,
+    pub plan_source: String,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DriverRunConfig {
+    pub cell: MatrixCell,
+    pub seed: u64,
+    pub kind: DriverKind,
+    /// Work root for real store paths (must already be path-guarded by caller).
+    pub work_root: Option<std::path::PathBuf>,
+    pub durability_mutant: bool,
+    pub digest_mutant: bool,
+}
+
+/// Run one cell with the selected driver.
+pub fn run_driver_cell(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverError> {
+    match cfg.kind {
+        DriverKind::Synthetic => synthetic::run_synthetic(cfg),
+        DriverKind::RealStore => {
+            #[cfg(feature = "store-driver")]
+            {
+                real::run_real_store(cfg)
+            }
+            #[cfg(not(feature = "store-driver"))]
+            {
+                let _ = cfg;
+                Err(DriverError::StoreFeatureDisabled)
+            }
+        }
+    }
+}
+
+/// Whether the `store-driver` feature is compiled in.
+pub fn store_driver_compiled() -> bool {
+    cfg!(feature = "store-driver")
+}
+
+/// Map matrix durability to a stable name (shared).
+pub fn durability_name(d: DurabilityMode) -> &'static str {
+    d.as_str()
+}
+
+/// Ensure a subdirectory under work_root for a cell store.
+pub fn cell_store_path(work_root: &Path, cell_id: &str, process_tag: &str) -> std::path::PathBuf {
+    work_root
+        .join("stores")
+        .join(process_tag)
+        .join(sanitize_id(cell_id))
+}
+
+fn sanitize_id(id: &str) -> String {
+    id.chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect()
+}

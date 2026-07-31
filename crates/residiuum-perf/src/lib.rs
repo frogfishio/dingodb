@@ -12,9 +12,13 @@
 //! - **PQH-7:** L4/L5/L6 matrix runner (ledger, profiles, scheduler).
 //! - **PQH-8:** attribution analyzer, bottleneck verdicts, false narratives.
 //! - **PQH-9:** qualification campaign, evidence bundle, disclosure.
+//! - **PQH-10:** store driver + plan emitter + campaign CLI (operational residual).
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
+//!
+//! Synthetic/proxy measurements are **non-product**. Real-store measurements
+//! require the `store-driver` feature and controlled-runner disclosure.
 
 #![forbid(unsafe_code)]
 
@@ -26,6 +30,7 @@ pub mod metrics;
 pub mod pipeline;
 pub mod runner;
 pub mod shadow;
+pub mod store_driver;
 pub mod workload;
 
 use serde::Deserialize;

@@ -1,9 +1,9 @@
 //! PQH-7: L4/L5/L6 database matrix runner.
 //!
 //! Harness-side drivers model the authoritative path with a correctness
-//! interlock (ack ledger + independent digest). Real store attachment remains
-//! residual; the closed contracts here make matrix execution and matching
-//! possible without product durability changes.
+//! interlock (ack ledger + independent digest). Real store attachment lives in
+//! [`crate::store_driver`] (feature `store-driver`); this matrix module remains
+//! the synthetic/proxy path and is always **non-product**.
 
 mod compare;
 mod driver;

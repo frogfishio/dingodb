@@ -5,8 +5,18 @@ edition.workspace = true
 rust-version.workspace = true
 license = "MPL-2.0"
 authors.workspace = true
-description = "PQH performance qualification harness (development). Registries + runner scaffold."
+description = "PQH performance qualification harness (development). Registries + runner + campaign CLI."
 publish = false
+
+[[bin]]
+name = "residiuum-perf"
+path = "src/bin/residiuum-perf.rs"
+
+[features]
+default = []
+# Real residiuum-store L4/L5/L6 driver (legacy-raw-store). Optional — default
+# builds stay lightweight for PR CI. Controlled campaigns enable this feature.
+store-driver = ["dep:residiuum-store"]
 
 [dependencies]
 serde = { workspace = true }
@@ -14,6 +24,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
+residiuum-store = { workspace = true, optional = true, default-features = false, features = ["legacy-raw-store"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }
