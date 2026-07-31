@@ -65,6 +65,9 @@ bash ./scripts/verify-csq-mutation-fuzz.sh
 # CSQ-11 compatibility / packaged journey / PR-safe scale+soak seed
 bash ./scripts/verify-csq-compat-scale-soak.sh
 
+# CSQ-12 evidence bundle builder + independent A2 verifier
+bash ./scripts/verify-csq-evidence-bundle.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
