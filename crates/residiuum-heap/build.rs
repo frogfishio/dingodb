@@ -36,15 +36,24 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(kani)");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let workspace_root = manifest_dir
-        .parent()
-        .and_then(|p| p.parent())
-        .expect("workspace root")
-        .to_path_buf();
-    let ops_path = workspace_root.join("spec/heap/operations-v1.json");
-    let cbor_path = workspace_root.join("spec/heap/cbor-v1.json");
-    let vectors_path = workspace_root.join("spec/heap/vectors-v1.json");
-    let isolation_path = workspace_root.join("spec/heap/isolation-profiles-v1.json");
+    // Prefer crate-local copies (crates.io packages cannot reach monorepo `spec/heap/`).
+    // Fall back to workspace root for in-tree developer builds.
+    let resolve_spec = |name: &str| -> PathBuf {
+        let local = manifest_dir.join("spec").join(name);
+        if local.is_file() {
+            return local;
+        }
+        let workspace_root = manifest_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .expect("workspace root")
+            .to_path_buf();
+        workspace_root.join("spec/heap").join(name)
+    };
+    let ops_path = resolve_spec("operations-v1.json");
+    let cbor_path = resolve_spec("cbor-v1.json");
+    let vectors_path = resolve_spec("vectors-v1.json");
+    let isolation_path = resolve_spec("isolation-profiles-v1.json");
 
     println!("cargo:rerun-if-changed={}", ops_path.display());
     println!("cargo:rerun-if-changed={}", cbor_path.display());

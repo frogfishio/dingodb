@@ -1,0 +1,186 @@
+{
+  "profile": "residiuum-heap-v1",
+  "spec_section": "31",
+  "cose": {
+    "alg": -8,
+    "alg_name": "EdDSA",
+    "unprotected_must_be_empty": true,
+    "tags_rejected": true,
+    "signature_len": 64,
+    "public_key_len": 32
+  },
+  "content_types": {
+    "certificate": "application/residiuum.heap-key+cbor",
+    "holder_proof": "application/residiuum.heap-proof+cbor",
+    "authority_transition": "application/residiuum.heap-authority-transition+cbor",
+    "authority_mutation": "application/residiuum.heap-authority-mutation+cbor",
+    "issuance_request": "application/residiuum.heap-issuance-request+cbor"
+  },
+  "external_aad": {
+    "certificate": "RESIDIUUM-HEAPKEY-CERTIFICATE-V1",
+    "holder_proof": "RESIDIUUM-HEAPKEY-HOLDER-PROOF-V1",
+    "authority_transition": "RESIDIUUM-HEAP-AUTHORITY-TRANSITION-V1",
+    "authority_mutation": "RESIDIUUM-HEAP-AUTHORITY-MUTATION-V1",
+    "issuance_request": "RESIDIUUM-HEAPKEY-ISSUANCE-REQUEST-V1",
+    "new_master_possession": "RESIDIUUM-HEAP-NEW-MASTER-POSSESSION-V1",
+    "authority_root": "RESIDIUUM-HEAP-AUTHORITY-ROOT-V1"
+  },
+  "certificate_labels": {
+    "1": {
+      "field": "profile_version",
+      "type": "uint",
+      "rule": "exactly 1"
+    },
+    "2": {
+      "field": "deployment_id",
+      "type": "bstr(16)",
+      "rule": "non-zero UUIDv4"
+    },
+    "3": {
+      "field": "heap_id",
+      "type": "bstr(16)",
+      "rule": "non-zero UUIDv4"
+    },
+    "4": {
+      "field": "authority_epoch",
+      "type": "uint",
+      "rule": "1..=u64::MAX"
+    },
+    "5": {
+      "field": "authority_generation",
+      "type": "uint",
+      "rule": "1..=u64::MAX"
+    },
+    "6": {
+      "field": "certificate_id",
+      "type": "bstr(16)",
+      "rule": "non-zero UUIDv4"
+    },
+    "7": {
+      "field": "holder_public_key",
+      "type": "bstr(32)",
+      "rule": "strict Ed25519"
+    },
+    "8": {
+      "field": "rights",
+      "type": "uint",
+      "rule": "non-zero; only \u00a732.1 bits"
+    },
+    "9": {
+      "field": "constraints",
+      "type": "array",
+      "rule": "canonical \u00a732.2"
+    },
+    "10": {
+      "field": "not_before",
+      "type": "uint",
+      "rule": "Unix seconds"
+    },
+    "11": {
+      "field": "expires_at",
+      "type": "uint",
+      "rule": "> not_before; lifetime <= 7776000"
+    },
+    "12": {
+      "field": "audience",
+      "type": "text",
+      "rule": "exactly residiuum:data:v1"
+    },
+    "13": {
+      "field": "issuer_master_key_id",
+      "type": "bstr(32)",
+      "rule": "SHA-256 of master public key"
+    }
+  },
+  "holder_proof_labels": {
+    "1": {
+      "field": "profile_version",
+      "type": "uint"
+    },
+    "2": {
+      "field": "proof_id",
+      "type": "bstr(16)"
+    },
+    "3": {
+      "field": "created_at",
+      "type": "uint"
+    },
+    "4": {
+      "field": "certificate_hash",
+      "type": "bstr(32)"
+    },
+    "5": {
+      "field": "deployment_id",
+      "type": "bstr(16)"
+    },
+    "6": {
+      "field": "heap_id",
+      "type": "bstr(16)"
+    },
+    "7": {
+      "field": "authority_epoch",
+      "type": "uint"
+    },
+    "8": {
+      "field": "audience",
+      "type": "text"
+    },
+    "9": {
+      "field": "server_nonce",
+      "type": "bstr(32)"
+    },
+    "10": {
+      "field": "tls_exporter",
+      "type": "bstr(32)"
+    },
+    "11": {
+      "field": "protocol",
+      "type": "array(3)"
+    }
+  },
+  "envelope_keys": {
+    "31": {
+      "name": "heap_id",
+      "encoding": "bstr(16)"
+    },
+    "32": {
+      "name": "collection_id",
+      "encoding": "bstr(16)"
+    },
+    "33": {
+      "name": "stream_id",
+      "encoding": "bstr(16)"
+    },
+    "34": {
+      "name": "ownership_profile",
+      "encoding": "uint",
+      "value": 1
+    },
+    "35": {
+      "name": "source_heap_id",
+      "encoding": "bstr(16)"
+    },
+    "36": {
+      "name": "source_object_id",
+      "encoding": "bstr(1..=64)"
+    }
+  },
+  "frame_kinds": {
+    "10": "HeapDescriptor",
+    "11": "CollectionDescriptor",
+    "12": "StreamDescriptor",
+    "13": "HeapMigrationEvidence"
+  },
+  "decoder_limits": {
+    "certificate_max_bytes": 16384,
+    "proof_max_bytes": 4096,
+    "authority_object_max_bytes": 16777216,
+    "cbor_nesting_depth": 8,
+    "map_entries": 64,
+    "array_entries_default": 64,
+    "array_entries_blacklist": 100000,
+    "text_max_utf8": 128,
+    "certificate_max_lifetime_s": 7776000
+  },
+  "audience": "residiuum:data:v1"
+}

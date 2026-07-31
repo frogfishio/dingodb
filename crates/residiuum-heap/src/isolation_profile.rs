@@ -9,12 +9,14 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::sync::OnceLock;
 
-/// Relative path from the workspace root.
+/// Relative path from the workspace root (monorepo layout).
+///
+/// Published crates also ship a copy under `crates/residiuum-heap/spec/`.
 pub const ISOLATION_PROFILES_REL: &str = "spec/heap/isolation-profiles-v1.json";
 
-/// Embedded registry bytes (build-independent; tests also check the on-disk file).
+/// Embedded registry bytes (crate-local `spec/` so crates.io packages verify).
 pub const ISOLATION_PROFILES_JSON: &str =
-    include_str!("../../../spec/heap/isolation-profiles-v1.json");
+    include_str!("../spec/isolation-profiles-v1.json");
 
 /// Named isolation profile id (`HEAP_SPEC` §13.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]

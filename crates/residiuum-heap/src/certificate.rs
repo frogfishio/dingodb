@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn bootstrap_certificate_verifies() {
         let vectors: serde_json::Value =
-            serde_json::from_str(include_str!("../../../spec/heap/vectors-v1.json")).unwrap();
+            serde_json::from_str(include_str!("../spec/vectors-v1.json")).unwrap();
         let master_pk: [u8; 32] = hex(vectors["inputs"]["master_public_key"].as_str().unwrap())
             .try_into()
             .unwrap();

@@ -1,0 +1,106 @@
+{
+  "format": "residiuum-heap-isolation-profiles-v1",
+  "spec_section": "13",
+  "h6_minimum_profile": "heap-data-isolated",
+  "reference_profile": "heap-data-isolated",
+  "deployment_extension": {
+    "version": 0,
+    "fields": [],
+    "notes": "Empty by default. A deployment extension is a versioned, reviewed JSON addition; its SHA-256 is recorded in HP-010 evidence. Runtime cannot add fields without restart + newly qualified registry."
+  },
+  "profiles": [
+    {
+      "id": "heap-data-isolated",
+      "title": "Heap data isolation",
+      "guarantee": "No application data or functional heap metadata crosses heaps",
+      "permitted_leakage": ["timing", "aggregate_load", "availability"],
+      "unauthenticated_fields": [
+        "protocol_versions",
+        "live",
+        "ready",
+        "build_id"
+      ],
+      "authenticated_heap_local_fields": [
+        "heap_id",
+        "display_metadata",
+        "admin_state",
+        "budgets",
+        "usage",
+        "receipts",
+        "operation_results",
+        "heap_directory_routing"
+      ],
+      "always_confidential": [
+        "heap_count",
+        "other_heap_names",
+        "other_heap_ids",
+        "global_object_counts",
+        "per_heap_readiness",
+        "authority_provider_inventory",
+        "physical_paths",
+        "placement_topology",
+        "rejected_heap_existence"
+      ],
+      "coarsen_public_timing": false,
+      "expose_aggregate_load": true
+    },
+    {
+      "id": "heap-metadata-hardened",
+      "title": "Heap metadata hardened",
+      "extends": "heap-data-isolated",
+      "guarantee": "Data isolation plus closed, tested metadata declassification",
+      "permitted_leakage": ["coarsened_timing", "declared_aggregate_health", "availability"],
+      "unauthenticated_fields": [
+        "protocol_versions",
+        "live",
+        "ready",
+        "build_id"
+      ],
+      "authenticated_heap_local_fields": [
+        "heap_id",
+        "display_metadata",
+        "admin_state",
+        "budgets",
+        "usage",
+        "receipts",
+        "operation_results",
+        "heap_directory_routing"
+      ],
+      "always_confidential": [
+        "heap_count",
+        "other_heap_names",
+        "other_heap_ids",
+        "global_object_counts",
+        "per_heap_readiness",
+        "authority_provider_inventory",
+        "physical_paths",
+        "placement_topology",
+        "rejected_heap_existence",
+        "aggregate_load",
+        "fine_timing_ms"
+      ],
+      "coarsen_public_timing": true,
+      "expose_aggregate_load": false
+    },
+    {
+      "id": "heap-resource-isolated",
+      "title": "Heap resource isolation",
+      "extends": "heap-metadata-hardened",
+      "guarantee": "Metadata-hardened plus enforced CPU, memory, I/O, cache, and bandwidth budgets",
+      "permitted_leakage": ["residual_hardware_side_channels", "network_side_channels"],
+      "requires_budget_publication": true,
+      "coarsen_public_timing": true,
+      "expose_aggregate_load": false,
+      "status": "declared_not_qualified_in_hp010"
+    },
+    {
+      "id": "heap-physical-isolated",
+      "title": "Heap physical isolation",
+      "extends": "heap-resource-isolated",
+      "guarantee": "Separate process/store/key/host boundaries as declared",
+      "permitted_leakage": ["explicitly_documented_infrastructure_channels"],
+      "requires_separate_hosts": true,
+      "status": "declared_not_qualified_in_hp010"
+    }
+  ]
+}

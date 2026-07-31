@@ -8,6 +8,10 @@ repository.workspace = true
 license = "MIT"
 description = "Residiuum heap identity, capability, and authority kernel."
 readme = "README.md"
+keywords = ["residiuum", "heap", "capability", "authority"]
+categories = ["cryptography", "data-structures"]
+# Vendor heap registry JSON under `spec/` so crates.io verify can run `build.rs`.
+include = ["Cargo.toml", "README.md", "build.rs", "src/**", "tests/**", "examples/**", "spec/**"]
 
 [dependencies]
 residiuum-format.workspace = true
