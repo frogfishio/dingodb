@@ -8,6 +8,7 @@
 //! - **PQH-3:** metrics kernel (histograms, clocks, probes, result writers).
 //! - **PQH-4:** L0 calibration + L1 device envelope (fake + file I/O adapters).
 //! - **PQH-5:** PhysicalWritePlan + L2 opaque shadow writer.
+//! - **PQH-6:** L3 CPU pipeline + stage probes (null/memory sink).
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
@@ -16,6 +17,7 @@
 
 pub mod envelope;
 pub mod metrics;
+pub mod pipeline;
 pub mod runner;
 pub mod shadow;
 pub mod workload;
