@@ -72,7 +72,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | PQH-1 | active | 2026-07-31 | PQH-0 | `crates/residiuum-perf/src/runner/*` path guard, marker, budgets, preflight, platform adapters, fingerprint, cancel→`invalid_partial_cancelled`; `cargo test -p residiuum-perf --lib` 32/32; **board `in_review`** | L0+ measurement residual PQH-2…; principal accept PQH-0/1 | safe controlled runner |
 | PQH-2 | active | 2026-07-31 | PQH-0 | `crates/residiuum-perf/src/workload/*` generator/distributions/digest oracle/scheduler; fixed-size + threshold probes; `cargo test -p residiuum-perf --lib` 53/53; **board `in_review`** | L0 calibration residual PQH-4; metrics residual PQH-3; principal accept | workload oracle |
 | PQH-3 | active | 2026-07-31 | PQH-0 | `crates/residiuum-perf/src/metrics/*` histogram/clock/counters/probes/result writers; `cargo test -p residiuum-perf --lib` 80/80; **board `in_review`** | L0/L1 envelope residual PQH-4; principal accept PQH-0…3 | measurement integrity |
-| PQH-4 | not_started | — | PQH-1, PQH-2, PQH-3 | — | device-envelope ladder absent | filesystem/device ceiling |
+| PQH-4 | active | 2026-07-31 | PQH-1, PQH-2, PQH-3 | `crates/residiuum-perf/src/envelope/*` L0 cal + L1 fake/file adapters; no raw devices; honest direct/cold; `cargo test -p residiuum-perf --lib` 98/98; **board `in_review`** | L2 shadow residual PQH-5; principal accept | filesystem/device ceiling |
 | PQH-5 | not_started | — | PQH-4 | — | shared PhysicalWritePlan/shadow writer absent | shaped-I/O ceiling |
 | PQH-6 | not_started | — | PQH-5 | — | CPU pipeline/stage probes absent | stage attribution |
 | PQH-7 | not_started | — | PQH-5, PQH-6 | — | additive/full database matrix absent | complete-path measurement |

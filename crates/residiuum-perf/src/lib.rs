@@ -6,12 +6,14 @@
 //! - **PQH-2:** deterministic workload engine (generators, distributions,
 //!   digest oracle, scheduler partitions).
 //! - **PQH-3:** metrics kernel (histograms, clocks, probes, result writers).
+//! - **PQH-4:** L0 calibration + L1 device envelope (fake + file I/O adapters).
 //!
 //! This crate is **unpublished** development tooling. It must not change
 //! product durability or verification semantics.
 
 #![forbid(unsafe_code)]
 
+pub mod envelope;
 pub mod metrics;
 pub mod runner;
 pub mod workload;
