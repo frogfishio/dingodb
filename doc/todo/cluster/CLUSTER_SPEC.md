@@ -5,6 +5,10 @@ Formal assurance companion:
 theorem family `FAS-8`. The strong cluster protocol is modeled and its safety
 obligations proved before implementation admission.
 
+Public client-ingress companion:
+[INGRESS_SPEC.md](INGRESS_SPEC.md). Storage and control nodes remain private;
+the separate ingress binary has no management or authority-amplification path.
+
 Status: Draft v0.1  
 Scope: Partitioning, replication, consistency, placement, failover, repair, and
 distributed SDA examination
