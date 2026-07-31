@@ -70,7 +70,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq6"
     },
     {
       "id": "CSQ-SUITE-COMPAT",

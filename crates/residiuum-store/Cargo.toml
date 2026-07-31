@@ -198,6 +198,10 @@ required-features = ["legacy-raw-store"]
 name = "csq5_crash_campaign"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "csq6_chunk_large_value"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]

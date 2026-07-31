@@ -47,6 +47,9 @@ bash ./scripts/verify-csq-state-machine.sh
 # CSQ-5 crash / filesystem campaign
 bash ./scripts/verify-csq-crash-campaign.sh
 
+# CSQ-6 chunk / large-value qualification
+bash ./scripts/verify-csq-chunk-large-value.sh
+
 
 echo "== fuzz property bar (DEF-091-F, no cargo-fuzz required) =="
 RESIDIUUM_FUZZ_SKIP_CARGO_FUZZ=1 bash ./scripts/fuzz-smoke.sh
