@@ -3278,43 +3278,59 @@ impl Store {
         // Flush strength matches strongest put ack on this segment (not always Durable).
         let flush_mode = seal_flush_mode(writer.max_ack_durability);
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
+        // After flush, on-disk active length is the verified prefix (no summary yet).
+        let prefix_len = writer.durable_len;
 
         let sealed = writer.segment.seal()?;
         let bytes = sealed.as_bytes();
         let dest = self.paths.sealed_segment(&writer.segment_id);
         let content_hash = *blake3::hash(bytes).as_bytes();
         let size = bytes.len() as u64;
+        let sealed_id = writer.segment_id;
+        let active_path = self.paths.active_segment_for_shard(shard, self.writer_shards());
+        drop(writer.file); // release handle before rename / rewrite
 
         crate::failpoint::hit("store.seal.before_dest_write")?;
 
-        // Write sealed image to destination, then remove active file.
-        {
-            let mut out = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(&dest)?;
-            out.write_all(bytes)?;
-            if flush_mode == DurabilityMode::Durable {
-                out.sync_all()?;
+        // Prefer append-summary + rename (no full segment rewrite).
+        let mut published = false;
+        if (prefix_len as usize) < bytes.len() && (prefix_len as usize) <= bytes.len() {
+            {
+                let mut f = OpenOptions::new().append(true).open(&active_path)?;
+                f.write_all(&bytes[prefix_len as usize..])?;
+                if flush_mode == DurabilityMode::Durable {
+                    f.sync_all()?;
+                }
+            }
+            if dest.exists() {
+                let _ = fs::remove_file(&dest);
+            }
+            if fs::rename(&active_path, &dest).is_ok() {
+                published = true;
+            }
+        }
+        if !published {
+            {
+                let mut out = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&dest)?;
+                out.write_all(bytes)?;
+                if flush_mode == DurabilityMode::Durable {
+                    out.sync_all()?;
+                }
+            }
+            if active_path.exists() {
+                fs::remove_file(&active_path)?;
             }
         }
         crate::failpoint::hit("store.seal.after_dest_sync")?;
         if flush_mode == DurabilityMode::Durable {
             sync_dir(&self.paths.segments_dir())?;
-        }
-
-        // Truncate/remove active.
-        let sealed_id = writer.segment_id;
-        drop(writer.file);
-        let active_path = self.paths.active_segment_for_shard(shard, self.writer_shards());
-        if active_path.exists() {
-            fs::remove_file(&active_path)?;
-        }
-        crate::failpoint::hit("store.seal.after_active_remove")?;
-        if flush_mode == DurabilityMode::Durable {
             sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
         }
+        crate::failpoint::hit("store.seal.after_active_remove")?;
 
         // Stage 9: register sealed segment on hot tier using the in-memory hash
         // (no second full-file read). Catalog upsert is O(this segment only).

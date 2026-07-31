@@ -232,8 +232,12 @@ fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult
     }
 }
 
-/// Finalize one pending segment: seal (preserve offsets), write sealed image,
+/// Finalize one pending segment: seal (preserve offsets), publish sealed image,
 /// BLAKE3, Hydra, best-effort Chimera from segment puts, remove pending.
+///
+/// **Hot path:** append only the segment-summary suffix to the pending file and
+/// `rename` into `segments/` (no full ~seal-threshold rewrite). Falls back to
+/// write-temp+rename if rename-across-volume fails.
 pub fn finalize_seal(
     store_id: [u8; 16],
     segment_id: [u8; 16],
@@ -257,38 +261,53 @@ pub fn finalize_seal(
     }
 
     let raw = fs::read(pending_path)?;
-    let sealed_bytes = seal_pending_bytes(raw, store_id, segment_id, limits)?;
+    let (sealed_bytes, prefix_len) = seal_pending_bytes(raw, store_id, segment_id, limits)?;
     let content_hash = *blake3::hash(&sealed_bytes).as_bytes();
     let size = sealed_bytes.len() as u64;
+    debug_assert!(prefix_len as usize <= sealed_bytes.len());
+    debug_assert!(
+        sealed_bytes.len() >= prefix_len as usize,
+        "summary must extend the verified prefix"
+    );
 
-    // Atomic-ish publish: write temp then rename into segments/.
     if let Some(parent) = sealed_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let tmp = sealed_path.with_extension("residiuum.tmp");
-    {
-        let mut out = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&tmp)?;
-        out.write_all(&sealed_bytes)?;
-        if require_fsync {
-            out.sync_all()?;
-        }
-    }
-    fs::rename(&tmp, sealed_path)?;
-    if require_fsync {
-        if let Some(parent) = sealed_path.parent() {
-            let _ = crate::atomic_file::sync_dir(parent);
-        }
-    }
 
-    // Remove pending after sealed is published (fsync only when Durable path).
-    let _ = fs::remove_file(pending_path);
-    if require_fsync {
-        if let Some(parent) = pending_path.parent() {
-            let _ = crate::atomic_file::sync_dir(parent);
+    // Prefer: truncate pending to verified prefix, append summary only, rename
+    // into segments/. Avoids rewriting tens of MiB already on disk.
+    let published = publish_sealed_from_pending(
+        pending_path,
+        sealed_path,
+        &sealed_bytes,
+        prefix_len,
+        require_fsync,
+    )?;
+    if !published {
+        // Cross-device or exotic FS: full write to temp + rename (old path).
+        let tmp = sealed_path.with_extension("residiuum.tmp");
+        {
+            let mut out = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(&tmp)?;
+            out.write_all(&sealed_bytes)?;
+            if require_fsync {
+                out.sync_all()?;
+            }
+        }
+        fs::rename(&tmp, sealed_path)?;
+        if require_fsync {
+            if let Some(parent) = sealed_path.parent() {
+                let _ = crate::atomic_file::sync_dir(parent);
+            }
+        }
+        let _ = fs::remove_file(pending_path);
+        if require_fsync {
+            if let Some(parent) = pending_path.parent() {
+                let _ = crate::atomic_file::sync_dir(parent);
+            }
         }
     }
 
@@ -297,6 +316,55 @@ pub fn finalize_seal(
     let _ = write_chimera_from_segment_puts(paths, store_id, segment_id, &sealed_bytes, limits);
 
     Ok((content_hash, size, sealed_bytes))
+}
+
+/// Append summary to pending and rename to sealed. Returns false if rename failed
+/// (caller should fall back to full write).
+fn publish_sealed_from_pending(
+    pending_path: &std::path::Path,
+    sealed_path: &std::path::Path,
+    sealed_bytes: &[u8],
+    prefix_len: u64,
+    require_fsync: bool,
+) -> Result<bool, StoreError> {
+    let prefix = prefix_len as usize;
+    if prefix > sealed_bytes.len() {
+        return Ok(false);
+    }
+    let summary = &sealed_bytes[prefix..];
+    // In-place: keep verified prefix, append summary frame(s) only.
+    {
+        // Truncate first (separate handle), then append summary — avoids
+        // platform-dependent seek-after-set_len positioning bugs.
+        {
+            let f = OpenOptions::new().write(true).open(pending_path)?;
+            f.set_len(prefix_len)?;
+        }
+        let mut f = OpenOptions::new().append(true).open(pending_path)?;
+        f.write_all(summary)?;
+        if require_fsync {
+            f.sync_all()?;
+        }
+    }
+    // Destination must not exist for rename (Windows / some FS).
+    if sealed_path.exists() {
+        let _ = fs::remove_file(sealed_path);
+    }
+    match fs::rename(pending_path, sealed_path) {
+        Ok(()) => {
+            if require_fsync {
+                if let Some(parent) = sealed_path.parent() {
+                    let _ = crate::atomic_file::sync_dir(parent);
+                }
+            }
+            Ok(true)
+        }
+        Err(_) => {
+            // Leave pending with summary appended; fallback will write sealed_bytes
+            // and remove pending.
+            Ok(false)
+        }
+    }
 }
 
 /// Synchronously finalize every pending file under `active/pending/` (open recovery).
@@ -331,12 +399,16 @@ pub fn list_pending_paths(paths: &StorePaths) -> Result<Vec<PathBuf>, StoreError
     list_residiuum_files(&paths.pending_seal_dir()).map_err(StoreError::from)
 }
 
+/// Returns `(sealed_image, verified_prefix_len)`.
+///
+/// `verified_prefix_len` is the byte length of the contiguous verified prefix
+/// **before** the summary frame is appended — used to append-only publish.
 fn seal_pending_bytes(
     raw: Vec<u8>,
     store_id: [u8; 16],
     segment_id: [u8; 16],
     limits: SafetyLimits,
-) -> Result<Vec<u8>, StoreError> {
+) -> Result<(Vec<u8>, u64), StoreError> {
     // Contiguous verified prefix only (same discipline as active recovery).
     let report = scan_forward(&raw, limits);
     let mut end = 0u64;
@@ -361,9 +433,10 @@ fn seal_pending_bytes(
                         }
                     }
                 }
-                // Already sealed? Accept as-is.
+                // Already sealed? Accept as-is (prefix == full sealed image).
                 if frame.header.known_kind() == Some(FrameKind::SegmentSummary) {
-                    return Ok(raw[..end as usize].to_vec());
+                    let sealed = raw[..end as usize].to_vec();
+                    return Ok((sealed, end));
                 }
             }
             residiuum_format::ScanRegion::Hole { .. } => break,
@@ -375,6 +448,7 @@ fn seal_pending_bytes(
         // finalize under the caller's expected path ownership.
     }
     let kept = raw[..end as usize].to_vec();
+    let prefix_len = end;
     if kept.is_empty() || frame_count == 0 {
         return Err(StoreError::CorruptMeta("pending segment empty or unreadable"));
     }
@@ -395,7 +469,16 @@ fn seal_pending_bytes(
     let sealed = active
         .seal()
         .map_err(|_| StoreError::CorruptMeta("pending seal summary failed"))?;
-    Ok(sealed.as_bytes().to_vec())
+    let sealed_bytes = sealed.as_bytes().to_vec();
+    // Integrity: sealed image must preserve the verified prefix byte-for-byte.
+    if sealed_bytes.len() < prefix_len as usize
+        || sealed_bytes[..prefix_len as usize] != raw[..prefix_len as usize]
+    {
+        return Err(StoreError::CorruptMeta(
+            "seal summary path failed to preserve verified prefix",
+        ));
+    }
+    Ok((sealed_bytes, prefix_len))
 }
 
 fn write_hydra_for_bytes(
@@ -479,14 +562,54 @@ mod tests {
         assert!(off > 0);
         let raw = active.as_bytes().to_vec();
         let prefix_len = raw.len();
-        let sealed =
+        let (sealed, kept) =
             seal_pending_bytes(raw.clone(), [1u8; 16], [2u8; 16], SafetyLimits::default())
                 .unwrap();
+        assert_eq!(kept as usize, prefix_len);
         assert!(sealed.len() > prefix_len);
         assert_eq!(&sealed[..prefix_len], &raw[..]);
         // Original item body still at same offset.
         let (_h, _e, body, _, _) =
             residiuum_format::verify_frame_at(&sealed[off as usize..], SafetyLimits::default())
+                .unwrap();
+        assert_eq!(body, b"hello");
+    }
+
+    #[test]
+    fn finalize_append_only_preserves_pending_prefix() {
+        let dir = tempdir().unwrap();
+        let paths = StorePaths::new(dir.path());
+        paths.create_dirs().unwrap();
+        let store_id = [1u8; 16];
+        let segment_id = [2u8; 16];
+        let ids = SegmentId::new(store_id, segment_id);
+        let mut active = ActiveSegment::create(ids, SafetyLimits::default(), 1).unwrap();
+        let off = active
+            .append(FrameKind::ItemEvent, &[0xa0], b"hello", [9u8; 16])
+            .unwrap();
+        let pending = paths.pending_segment(&segment_id);
+        let raw = active.as_bytes().to_vec();
+        let prefix_len = raw.len();
+        fs::write(&pending, &raw).unwrap();
+        let sealed = paths.sealed_segment(&segment_id);
+        let (_hash, size, bytes) = finalize_seal(
+            store_id,
+            segment_id,
+            &pending,
+            &sealed,
+            SafetyLimits::default(),
+            &paths,
+            false,
+        )
+        .unwrap();
+        assert!(sealed.is_file());
+        assert!(!pending.is_file());
+        assert_eq!(size, bytes.len() as u64);
+        assert_eq!(&bytes[..prefix_len], &raw[..]);
+        let on_disk = fs::read(&sealed).unwrap();
+        assert_eq!(on_disk, bytes);
+        let (_h, _e, body, _, _) =
+            residiuum_format::verify_frame_at(&on_disk[off as usize..], SafetyLimits::default())
                 .unwrap();
         assert_eq!(body, b"hello");
     }

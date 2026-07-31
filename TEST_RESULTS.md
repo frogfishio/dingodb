@@ -289,24 +289,33 @@ Never return a `Durable` receipt without a Durable boundary. Never relabel Buffe
 3. `finalize_seal(..., require_fsync)` — fsync only when Durable path required.
 4. Open/recovery finalize still uses `require_fsync: true` (fail closed).
 
-**After fix (Scratch phase-bench, 20k × 8 KiB Buffered):**
+**After seal-durability match (Scratch phase-bench, 20k × 8 KiB Buffered):**
 
 ```text
 file_sync n=0  (was n=4, ~443 ms)
 Buffered put still ~31k ops/s  (was ~29–32k)
 ```
 
-Fsync tax is gone for Buffered-only seals, but **rate barely moved**. Remaining wall is largely:
+Fsync tax gone; rate barely moved until rename-seal (below).
 
-- **Full sealed-image rewrite** (read/hash/write ~64 MiB per seal, × several seals)
-- Per-put encode/index (still present; Memory put remains ~600k ops/s)
+**Rename-based seal (landed next):** finalize appends **only the summary suffix** to pending and `rename`s into `segments/` (prefix preserved; no full ~64 MiB rewrite). Durable still fsyncs when `require_fsync`.
 
-**Next strategies (ranked, still integrity-safe):**
+```text
+After rename-seal (same phase-bench):
+  Buffered put  ~41k ops/s   (was ~31k)
+  put_many 128  ~44k ops/s
+  file_sync n=0
+  256 MiB pump  ~81 logical MiB/s, peak CPU ~75%  (was ~63–65 MiB/s / ~40% CPU)
+```
 
-1. **Rename-based seal when pending already holds complete frames** — avoid second full rewrite of 64 MiB (big win; recovery must still verify).
-2. **Larger seal threshold for Buffered bulk** — fewer seals (operational knob; same ack table).
-3. **Keep Durable path strict** — any Durable put on a segment forces Durable seal forever for that segment.
-4. **Do not** skip frame BLAKE3 / weaken wire integrity for speed.
+Remaining gap vs Memory (~600k ops/s) is still encode/index + seal scan/hash work — not “need a product txn API” first.
+
+**Still integrity-safe next:**
+
+1. Stream/mmap seal scan to avoid holding two full segment copies in RAM during finalize.  
+2. Larger seal threshold for Buffered bulk (fewer seals).  
+3. Durable path stays strict.  
+4. Do not skip frame BLAKE3 / weaken wire integrity.
 
 **What we will not do:** silent “faster Buffered” that acks before OS write, or Durable without `sync_all`.
 
