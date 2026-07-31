@@ -61,6 +61,16 @@ pub struct DriverRunConfig {
     pub work_root: Option<std::path::PathBuf>,
     pub durability_mutant: bool,
     pub digest_mutant: bool,
+    /// `smoke` | `diagnostic` | `qualification` | `soak` (SPEC §6.4).
+    /// Default smoke when empty.
+    pub run_class: String,
+}
+
+impl DriverRunConfig {
+    pub fn run_class_parsed(&self) -> crate::campaign::RunClass {
+        crate::campaign::RunClass::parse(&self.run_class)
+            .unwrap_or(crate::campaign::RunClass::Smoke)
+    }
 }
 
 /// Run one cell with the selected driver.

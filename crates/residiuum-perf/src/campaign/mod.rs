@@ -13,6 +13,7 @@ mod disclosure;
 mod plan;
 mod reports;
 mod run;
+mod run_class;
 
 pub use bundle::{verify_bundle_hashes, write_evidence_bundle, EvidenceBundle, BUNDLE_SCHEMA};
 pub use disclosure::{
@@ -30,6 +31,7 @@ pub use run::{
     attach_primary_bottleneck, run_campaign, CampaignConfig, CampaignResult, CellRepetition,
     ProcessSlot,
 };
+pub use run_class::RunClass;
 
 use thiserror::Error;
 

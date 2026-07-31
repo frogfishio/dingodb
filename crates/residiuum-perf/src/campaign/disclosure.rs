@@ -54,12 +54,18 @@ pub fn build_disclosure(result: &CampaignResult, reports: &CampaignReports) -> D
                 .into(),
         );
     }
+    warnings.extend(result.withdrawals.iter().cloned());
+    warnings.push(format!("run_class={}", result.run_class));
     if let Some(v) = &result.primary_bottleneck {
         warnings.push(format!(
             "primary_bottleneck={} run_ids={}",
             v,
             result.primary_bottleneck_run_ids.join(",")
         ));
+    } else {
+        warnings.push(
+            "no primary bottleneck (smoke withdrawn, or qualification floors/window unmet)".into(),
+        );
     }
 
     let checklist = vec![

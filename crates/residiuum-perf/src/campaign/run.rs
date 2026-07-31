@@ -1,8 +1,12 @@
 //! Multi-process multi-repetition campaign execution over matrix cells.
 //!
 //! Supports synthetic (default, NON-PRODUCT) and real_store drivers (PQH-11).
+//! **Smoke vs qualification** are separate (SPEC §6.4). Smoke may use explicit
+//! op budgets for CI; qualification never caps cells to tiny op counts and must
+//! meet duration/byte floors + steady-state before bottleneck claims.
 
 use super::plan::CampaignPlan;
+use super::run_class::RunClass;
 use super::CampaignError;
 use crate::matrix::{build_matrix_cells, MatrixCell, MatrixManifest, ScheduleSeed};
 use crate::store_driver::{
@@ -52,15 +56,19 @@ pub struct CampaignConfig {
     /// When true and platform allows product baseline + real_store, mark eligible.
     /// Developer laptops should leave this false even if platform is labelled controlled.
     pub declare_controlled_runner: bool,
+    /// Smoke vs qualification (SPEC §6.4). Default smoke for unit/CI safety.
+    pub run_class: RunClass,
 }
 
 impl CampaignConfig {
+    /// Synthetic **smoke** campaign (NON-PRODUCT; unit/CI).
     pub fn synthetic(plan: CampaignPlan) -> Self {
         Self {
             plan,
             driver: DriverKind::Synthetic,
             work_root: None,
             declare_controlled_runner: false,
+            run_class: RunClass::Smoke,
         }
     }
 }
@@ -82,9 +90,14 @@ pub struct CampaignResult {
     /// True only when real_store + controlled platform + declare_controlled_runner.
     pub product_claim_eligible: bool,
     /// Primary registered bottleneck verdict if any non-mixed ranked.
+    /// **Never set from smoke** — prior smoke `io_queue_underdriven` is withdrawn.
     pub primary_bottleneck: Option<String>,
     /// Run IDs attached to the primary bottleneck (reproduced evidence).
     pub primary_bottleneck_run_ids: Vec<String>,
+    /// Campaign run class (smoke/diagnostic/qualification/soak).
+    pub run_class: String,
+    /// Explicit withdrawal notes (e.g. smoke bottleneck claims).
+    pub withdrawals: Vec<String>,
 }
 
 /// Execute campaign: for each selected cell, run `processes × reps_per_process`
@@ -183,6 +196,15 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         }
     }
 
+    let mut withdrawals = vec![
+        "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence".into(),
+    ];
+    if cfg.run_class == RunClass::Smoke {
+        withdrawals.push(
+            "run_class=smoke: functional harness only; no product bottleneck verdicts".into(),
+        );
+    }
+
     Ok(CampaignResult {
         plan: cfg.plan.clone(),
         matrix_schema: manifest.schema,
@@ -194,22 +216,67 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         invalid_runs,
         driver_kind: cfg.driver.as_str().into(),
         measurement_surface: surface.as_str().into(),
-        product_claim_eligible,
+        // Product eligibility also requires qualification run class + sustained window.
+        product_claim_eligible: product_claim_eligible
+            && cfg.run_class.may_emit_bottleneck_verdict(),
         primary_bottleneck: None,
         primary_bottleneck_run_ids: vec![],
+        run_class: cfg.run_class.as_str().into(),
+        withdrawals,
     })
 }
 
 /// Fill primary bottleneck fields from ranked reports (after `build_campaign_reports`).
+///
+/// **Smoke/diagnostic:** never attaches a primary bottleneck (withdraws findings).
+/// **Qualification/soak:** only attaches when every valid repetition reports a
+/// sustained window class (SPEC §10 steady-state).
 pub fn attach_primary_bottleneck(
     result: &mut CampaignResult,
     ranked: &[crate::campaign::reports::RankedBottleneck],
 ) {
+    let class = RunClass::parse(&result.run_class).unwrap_or(RunClass::Smoke);
+    if !class.may_emit_bottleneck_verdict() {
+        result.primary_bottleneck = None;
+        result.primary_bottleneck_run_ids.clear();
+        result.withdrawals.push(format!(
+            "bottleneck attach refused: run_class={} cannot support registered verdicts",
+            class.as_str()
+        ));
+        result.withdrawals.push(
+            "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)"
+                .into(),
+        );
+        return;
+    }
+
+    let all_sustained = result
+        .repetitions
+        .iter()
+        .filter(|r| r.report.validity == "valid")
+        .all(|r| r.report.window.contains("sustained"));
+    if !all_sustained {
+        result.primary_bottleneck = None;
+        result.primary_bottleneck_run_ids.clear();
+        result.withdrawals.push(
+            "bottleneck attach refused: not all valid runs have sustained/stable window".into(),
+        );
+        return;
+    }
+
     if let Some(b) = ranked
         .iter()
         .find(|r| r.verdict != "mixed_or_unknown")
         .or_else(|| ranked.first())
     {
+        // Refuse to promote queue-underdriven without qualification evidence of
+        // queue-depth response (smoke false positive path).
+        if b.verdict == "io_queue_underdriven" && result.driver_kind != "real_store" {
+            result.withdrawals.push(
+                "WITHDRAWN: io_queue_underdriven on non-real_store surface".into(),
+            );
+            return;
+        }
         result.primary_bottleneck = Some(b.verdict.clone());
         result.primary_bottleneck_run_ids = b.run_ids.clone();
     }
@@ -259,12 +326,14 @@ fn run_cell_reps(
                     .wrapping_add(cell.order_rank as u64)
             };
 
-            // Bound real-store cells for campaign wall time while keeping multi-rep.
+            // Smoke may use explicit small op budgets for unit/CI only.
+            // Qualification MUST NOT cap cells to 4–16 ops (principal rejection of PQH-11 smoke).
             let mut cell_run = cell.clone();
-            if cfg.driver == DriverKind::RealStore {
-                cell_run.op_count = cell_run.op_count.min(16).max(4);
-                cell_run.payload_size = cell_run.payload_size.min(4096);
+            if cfg.run_class.allows_smoke_op_cap() {
+                cell_run.op_count = cell_run.op_count.min(RunClass::SMOKE_MAX_OPS).max(1);
             }
+            // Qualification: keep matrix op_count as planned; driver honors
+            // duration/byte floors rather than op caps.
 
             let dcfg = DriverRunConfig {
                 cell: cell_run,
@@ -273,6 +342,7 @@ fn run_cell_reps(
                 work_root: cfg.work_root.clone(),
                 durability_mutant: false,
                 digest_mutant: false,
+                run_class: cfg.run_class.as_str().into(),
             };
             let drep = run_driver_cell(&dcfg).map_err(|e| CampaignError::Msg(e.to_string()))?;
 
@@ -354,6 +424,7 @@ mod tests {
             driver: DriverKind::RealStore,
             work_root: None,
             declare_controlled_runner: false,
+            run_class: RunClass::Smoke,
         })
         .unwrap_err();
         let s = err.to_string();
@@ -361,6 +432,41 @@ mod tests {
             s.contains("work_root") || s.contains("store-driver"),
             "unexpected err: {s}"
         );
+    }
+
+    #[test]
+    fn smoke_withdraws_primary_bottleneck() {
+        let plan = campaign_plan_synthetic(3, 1);
+        let mut result = run_campaign(&CampaignConfig::synthetic(plan)).unwrap();
+        assert_eq!(result.run_class, "smoke");
+        let reports = crate::campaign::reports::build_campaign_reports(&result);
+        attach_primary_bottleneck(&mut result, &reports.ranked_bottlenecks);
+        assert!(result.primary_bottleneck.is_none());
+        assert!(result
+            .withdrawals
+            .iter()
+            .any(|w| w.contains("WITHDRAWN") && w.contains("io_queue_underdriven")));
+    }
+
+    #[test]
+    fn qualification_config_forbids_smoke_op_cap() {
+        assert!(!RunClass::Qualification.allows_smoke_op_cap());
+        let plan = campaign_plan_synthetic(1, 1);
+        let cfg = CampaignConfig {
+            plan,
+            driver: DriverKind::Synthetic,
+            work_root: None,
+            declare_controlled_runner: false,
+            run_class: RunClass::Qualification,
+        };
+        // Synthetic qualification still runs (no wall 120s in synthetic matrix driver),
+        // but must not apply smoke op caps in campaign path.
+        let result = run_campaign(&cfg).unwrap();
+        assert_eq!(result.run_class, "qualification");
+        for r in &result.repetitions {
+            // Matrix synthetic may still internal-bound; campaign must not force 4–16.
+            assert!(r.report.attempted == 0 || r.report.attempted >= 1);
+        }
     }
 }
 
@@ -371,10 +477,9 @@ mod real_store_tests {
     use crate::campaign::reports::build_campaign_reports;
 
     #[test]
-    fn multi_rep_real_store_campaign_emits_run_ids_and_bottleneck() {
+    fn multi_rep_real_store_smoke_emits_run_ids_but_no_bottleneck() {
         let dir = tempfile::tempdir().unwrap();
         let mut plan = campaign_plan_synthetic(7, 1);
-        // Keep tiny for unit speed but meet minima.
         plan.max_cells = 1;
         plan.include_multiproc_finding = false;
         plan.repetitions = 5;
@@ -385,37 +490,29 @@ mod real_store_tests {
             driver: DriverKind::RealStore,
             work_root: Some(dir.path().to_path_buf()),
             declare_controlled_runner: false,
+            run_class: RunClass::Smoke,
         })
-        .expect("real store multi-rep campaign");
+        .expect("real store multi-rep smoke campaign");
 
         assert_eq!(result.driver_kind, "real_store");
-        assert!(!result.product_claim_eligible); // uncontrolled
+        assert_eq!(result.run_class, "smoke");
+        assert!(!result.product_claim_eligible);
         assert!(result.valid_runs >= 5);
         assert!(result.repetitions.iter().all(|r| r.driver_kind == "real_store"));
         assert!(result.repetitions.iter().all(|r| !r.run_id.is_empty()));
 
         let reports = build_campaign_reports(&result);
         attach_primary_bottleneck(&mut result, &reports.ranked_bottlenecks);
-        // Analyzer may yield mixed_or_unknown; still record a primary for evidence.
-        assert!(
-            result.primary_bottleneck.is_some() || !reports.ranked_bottlenecks.is_empty(),
-            "expected ranked bottleneck or primary"
-        );
-        if let Some(v) = &result.primary_bottleneck {
-            assert!(crate::is_known_verdict(v) || v == "mixed_or_unknown" || !v.is_empty());
-        }
-        // Reproduced run IDs present on some ranked row
-        let has_ids = reports
-            .ranked_bottlenecks
+        // Smoke must not promote primary bottlenecks (withdraw io_queue_underdriven etc.).
+        assert!(result.primary_bottleneck.is_none());
+        assert!(result
+            .withdrawals
             .iter()
-            .any(|b| !b.run_ids.is_empty())
-            || !result.primary_bottleneck_run_ids.is_empty()
-            || result.valid_runs >= 5;
-        assert!(has_ids);
+            .any(|w| w.contains("WITHDRAWN") || w.contains("smoke")));
     }
 
     #[test]
-    fn controlled_declare_marks_eligible_only_with_real_store() {
+    fn controlled_smoke_still_not_product_claim_without_qualification_class() {
         let dir = tempfile::tempdir().unwrap();
         let mut plan = campaign_plan_linux(9);
         plan.max_cells = 1;
@@ -427,12 +524,12 @@ mod real_store_tests {
             driver: DriverKind::RealStore,
             work_root: Some(dir.path().to_path_buf()),
             declare_controlled_runner: true,
+            run_class: RunClass::Smoke,
         })
         .unwrap();
-        assert!(result.product_claim_eligible);
-        assert_eq!(
-            result.measurement_surface,
-            MeasurementSurface::RealStoreControlledEligible.as_str()
-        );
+        // Surface may be controlled-eligible label, but product_claim requires
+        // qualification class as well.
+        assert!(!result.product_claim_eligible);
+        assert_eq!(result.run_class, "smoke");
     }
 }

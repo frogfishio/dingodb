@@ -6,8 +6,16 @@ use crate::store_driver::kinds::{DriverKind, MeasurementSurface};
 use crate::store_driver::emitter::{emit_plan_from_receipts, WriteReceiptFact};
 
 pub fn run_synthetic(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverError> {
+    let mut cell = cfg.cell.clone();
+    // Synthetic smoke may bound ops for unit speed; qualification keeps planned count.
+    if cfg.run_class_parsed().allows_smoke_op_cap() {
+        cell.op_count = cell
+            .op_count
+            .min(crate::campaign::RunClass::SMOKE_MAX_OPS)
+            .max(1);
+    }
     let report = run_cell(&RunCellConfig {
-        cell: cfg.cell.clone(),
+        cell: cell.clone(),
         seed: cfg.seed,
         durability_mutant: cfg.durability_mutant,
         digest_mutant: cfg.digest_mutant,

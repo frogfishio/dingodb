@@ -14,7 +14,7 @@
 use residiuum_perf::campaign::{
     attach_primary_bottleneck, build_campaign_reports, build_disclosure, campaign_plan_linux,
     campaign_plan_macos_apple_silicon, campaign_plan_synthetic, run_campaign, verify_bundle_hashes,
-    write_evidence_bundle, CampaignConfig, PlatformClass,
+    write_evidence_bundle, CampaignConfig, PlatformClass, RunClass,
 };
 use residiuum_perf::matrix::{build_matrix_cells, ScheduleSeed};
 use residiuum_perf::runner::{
@@ -62,16 +62,19 @@ store-driver compiled: {}
 Commands:
   preflight --work <dir> [--qualification]
   run --work <dir> [--driver synthetic|real_store] [--max-cells N] [--seed N]
-      [--platform synthetic|macos_as|linux] [--controlled]
+      [--platform synthetic|macos_as|linux] [--class smoke|diagnostic|qualification|soak]
+      [--controlled]
   analyze --campaign <dir>
   verify --campaign <dir>
   driver-smoke --work <dir> [--driver synthetic|real_store]
 
 Honesty:
+  Default --class is smoke (functional only; NO bottleneck verdicts).
+  Qualification requires --class qualification (120s + 512MiB floors; no op caps).
   synthetic/proxy results are NON-PRODUCT.
-  real_store multi-rep campaign needs --features store-driver.
-  --controlled only when this host is a declared controlled runner.
-  No optimisations are applied by this CLI.
+  real_store needs --features store-driver.
+  --controlled only on a declared controlled runner + qualification class.
+  No optimisations. Smoke-derived io_queue_underdriven is WITHDRAWN.
 ",
         store_driver_compiled()
     );
@@ -164,33 +167,43 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
     if controlled && kind != DriverKind::RealStore {
         return Err("--controlled requires --driver real_store".into());
     }
+    let class_s = flag_value(args, "--class").unwrap_or_else(|| "smoke".into());
+    let run_class =
+        RunClass::parse(&class_s).ok_or_else(|| format!("bad --class {class_s}"))?;
+    if controlled && !run_class.may_emit_bottleneck_verdict() {
+        return Err("--controlled requires --class qualification (or soak)".into());
+    }
 
     let mut result = run_campaign(&CampaignConfig {
         plan: plan.clone(),
         driver: kind,
         work_root: Some(work.clone()),
         declare_controlled_runner: controlled,
+        run_class,
     })
     .map_err(|e| e.to_string())?;
 
     let mut reports = build_campaign_reports(&result);
     attach_primary_bottleneck(&mut result, &reports.ranked_bottlenecks);
+    reports.notes.extend(result.withdrawals.iter().cloned());
 
-    if kind == DriverKind::Synthetic {
-        reports
-            .notes
-            .push("NON-PRODUCT: synthetic/proxy campaign; do not publish absolute MB/s".into());
+    if kind == DriverKind::Synthetic || run_class == RunClass::Smoke {
+        reports.notes.push(
+            "NON-PRODUCT / smoke: not qualification evidence; no absolute MB/s claims".into(),
+        );
         reports.multiproc_finding.overstates_product = false;
     }
     if kind == DriverKind::RealStore {
         reports.notes.push(format!(
-            "real_store multi-rep campaign valid_runs={} product_claim_eligible={} surface={}",
-            result.valid_runs, result.product_claim_eligible, result.measurement_surface
+            "real_store multi-rep run_class={} valid_runs={} product_claim_eligible={} surface={}",
+            result.run_class,
+            result.valid_runs,
+            result.product_claim_eligible,
+            result.measurement_surface
         ));
-        if !result.product_claim_eligible {
+        if run_class == RunClass::Smoke {
             reports.notes.push(
-                "real_store run is uncontrolled/non-baseline unless --controlled on a controlled platform"
-                    .into(),
+                "WITHDRAWN: smoke-mode primary bottlenecks (incl. io_queue_underdriven)".into(),
             );
         }
         if let Some(v) = &result.primary_bottleneck {
@@ -199,6 +212,10 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
                 v,
                 result.primary_bottleneck_run_ids.join(",")
             ));
+        } else {
+            reports.notes.push(
+                "no primary bottleneck attached (smoke or missing sustained window/floors)".into(),
+            );
         }
         reports.notes.push(
             "NO optimisations applied; follow-up cards are stubs only".into(),
@@ -217,14 +234,18 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
             "campaign_dir": campaign_dir,
             "campaign_id": plan.campaign_id,
             "driver": kind.as_str(),
+            "run_class": result.run_class,
             "platform": plan.platform.as_str(),
             "measurement_surface": result.measurement_surface,
             "product_claim_eligible": result.product_claim_eligible,
             "valid_runs": result.valid_runs,
             "primary_bottleneck": result.primary_bottleneck,
             "primary_bottleneck_run_ids": result.primary_bottleneck_run_ids,
+            "withdrawals": result.withdrawals,
             "content_hash": bundle.content_hash,
-            "non_product": kind == DriverKind::Synthetic || !result.product_claim_eligible,
+            "non_product": kind == DriverKind::Synthetic
+                || run_class == RunClass::Smoke
+                || !result.product_claim_eligible,
             "notes": reports.notes,
         })
     );
@@ -290,6 +311,7 @@ fn cmd_driver_smoke(args: &[String]) -> Result<(), String> {
         work_root: Some(work),
         durability_mutant: false,
         digest_mutant: false,
+        run_class: "smoke".into(),
     })
     .map_err(|e| e.to_string())?;
     println!(
