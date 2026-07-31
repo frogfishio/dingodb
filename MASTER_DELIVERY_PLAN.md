@@ -1,6 +1,6 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.3**
+Status: **definitive execution plan v1.4**
 
 Effective: 2026-07-31
 
@@ -110,6 +110,7 @@ M0  Program Truth
  ↓
 C0  Core Storage Qualification
  ├── PQ0 Performance Qualification Harness (measurement lane)
+ ├── FA0 Formal Assurance Spine foundation
  └── M1  Heap Application Ready + Application Baseline
       ↓
 M2  Trustworthy Core Early Access
@@ -316,6 +317,71 @@ PQ0 exit:
 - the current 4 KiB/8 KiB underutilization observation has a registered,
   evidence-backed verdict; and
 - subsequent tuning cards cite reproduced PQH run IDs.
+
+## 6C. FA0 — Formal Assurance Spine
+
+Release outcome:
+
+> Residiuum’s principal consistency and security claims are named mathematical
+> theorems with disclosed assumptions, machine-checkable proofs, production
+> Rust refinement links, adversarial qualification evidence and reproducible
+> release-bound proof bundles.
+
+Priority: `P1-TRUST` immediately after `C0`
+
+Entry dependency: `CSQ-12 = accept`.
+
+Normative specification:
+[FORMAL_ASSURANCE_SPEC.md](./doc/todo/formal-assurance/FORMAL_ASSURANCE_SPEC.md).
+
+Implementation plan:
+[FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md](./doc/todo/formal-assurance/FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md).
+
+Execution waves:
+
+```text
+post-C0 foundation:
+  FAS-0 → FAS-1/FAS-2 → FAS-3 → FAS-4 → FAS-5
+
+with Atomics:
+  FAS-6 → FAS-7
+
+before/with cluster:
+  FAS-8
+
+incremental public proof product:
+  FAS-9 after FAS-3 and each accepted theorem family
+```
+
+FA0 runs alongside PQH and M1. It does not delay ordinary application work
+unless that work makes or changes a theorem-bearing claim.
+
+No feature may claim mathematical or formal assurance merely because:
+
+- documentation contains equations;
+- a model checker explored an undisclosed finite bound;
+- an abstract theorem exists without a Rust refinement;
+- a proof file exists but was skipped; or
+- tests happen to agree with the intended property.
+
+The formal spine is cumulative:
+
+- consistency establishes authoritative truth;
+- security proves who may affect or observe it;
+- Atomics proves compound transitions and exact isolation;
+- cluster proves distributed agreement, fencing and convergence; and
+- every later family proves preservation of earlier accepted invariants.
+
+FA0 foundation exit:
+
+- `FAS-0` through `FAS-5` are accepted for their exact declared scopes;
+- theorem, assumption, TCB and public-claim registries are closed;
+- at least the consistency and achieved Heap security profiles independently
+  reproduce;
+- applicable proofs are connected to the released Rust entrypoints;
+- negative controls demonstrate live proof harnesses;
+- CSQ/adversarial evidence is linked; and
+- the public proof bundle refuses every overclaim fixture.
 
 ## 7. M1 — Heap Application Ready
 

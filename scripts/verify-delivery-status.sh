@@ -82,6 +82,7 @@ required = [
     "M0-1", "M0-2", "M0-3",
     *[f"CSQ-{i}" for i in range(0, 13)],
     *[f"PQH-{i}" for i in range(0, 10)],
+    *[f"FAS-{i}" for i in range(0, 10)],
     *[f"APB-{i}" for i in range(0, 13)],
     "HAR-0", "HAR-1", "HAR-2", "HAR-3", "HAR-4", "HAR-5", "HAR-6", "HAR-7",
     "APP-0", "APP-1", "APP-2", "APP-3", "APP-4", "APP-5", "APP-6", "APP-7", "APP-8",

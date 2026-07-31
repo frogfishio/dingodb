@@ -37,6 +37,8 @@ DONE: emergency storage defects + Residiuum rebrand
 TODO NOW: Core Storage Qualification (CSQ-0…CSQ-12)
   ├── TODO NEXT: Performance Qualification Harness (PQH-0…PQH-9)
   │              first post-C0 measurement lane
+  ├── Formal Assurance Spine foundation (FAS-0…FAS-5)
+  │   later families travel with Atomics and cluster
   └── Application Baseline (APB-0…APB-12), alongside PQH
        ↓
       Heap Application Ready completion

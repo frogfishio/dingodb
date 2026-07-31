@@ -1,5 +1,10 @@
 # Residiuum Cluster Architecture
 
+Formal assurance companion:
+[FORMAL_ASSURANCE_SPEC.md](../formal-assurance/FORMAL_ASSURANCE_SPEC.md),
+theorem family `FAS-8`. The strong cluster protocol is modeled and its safety
+obligations proved before implementation admission.
+
 Status: Draft v0.1  
 Scope: Partitioning, replication, consistency, placement, failover, repair, and
 distributed SDA examination

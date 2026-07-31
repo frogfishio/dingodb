@@ -535,6 +535,12 @@ Its device-envelope, shaped-I/O, CPU-pipeline and complete-database layers
 remain separate test surfaces; a result from one may not be relabeled as
 another.
 
+Formal claims additionally conform to the
+[Formal Assurance Spine](../../todo/formal-assurance/FORMAL_ASSURANCE_SPEC.md).
+Tests, finite model checks, abstract theorems, Rust-connected refinements and
+physical qualification are distinct evidence classes and MUST retain their
+exact achieved status.
+
 ### 8.15 Security testing
 
 Required:

@@ -9,8 +9,10 @@ Immediate order:
 1. [Core Storage Qualification](core-storage/)
 2. [Performance Qualification Harness](performance-qualification/) — first
    post-C0 measurement lane; may execute alongside M1
-3. [Application Baseline](application-baseline/)
-4. [Heap Application Ready](heap-application-ready/)
+3. [Formal Assurance Spine](formal-assurance/) — begins post-C0 alongside PQH
+   and M1; later theorem families travel with Atomics and cluster
+4. [Application Baseline](application-baseline/)
+5. [Heap Application Ready](heap-application-ready/)
 
 Later programs:
 

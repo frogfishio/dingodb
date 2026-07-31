@@ -61,7 +61,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | CSQ-3 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | frozen Residiuum microframes; bit/byte/trunc/insert/delete + holes + pairwise multi-fault; FMT-001…005 tests green | format qualification |
 | CSQ-4 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | publication kernel + transition coverage; HIST/scan/gen/shrinker; false harnesses; DEF-099/100 linked | transition qualification |
 | CSQ-5 | active | 2026-07-31 | CSQ-2, CSQ-4 | — | matrix + composed pairs; reopen/continuation; ENOSPC/perm; writer-lock; portable FS image; outcome validator; no silent skips | persistence qualification |
-| CSQ-6 | not_started | — | CSQ-3…CSQ-5 | DEF-098 regression authority | chunk/large-value suite absent | chunk qualification |
+| CSQ-6 | active | 2026-07-31 | CSQ-3…CSQ-5 | `tests/csq6_chunk_large_value.rs` (9); `scripts/verify-csq-chunk-large-value.sh`; DEF-098 + DEF-103 linked; suite `CSQ-SUITE-CHK` → `active_csq6`; **board `in_review`** | principal accept of CSQ-3…5 still open; deeper damage/conflict campaign residual (CSQ-7) | chunk qualification |
 | CSQ-7 | not_started | — | CSQ-3…CSQ-5 | — | damage/recovery differential absent | survival qualification |
 | CSQ-8 | not_started | — | CSQ-4, CSQ-5, CSQ-7 | — | maintenance/backup/migration matrix absent | maintenance qualification |
 | CSQ-9 | not_started | — | CSQ-2, CSQ-4, CSQ-8 | — | concurrency/resource suite absent | boundedness qualification |
@@ -78,6 +78,16 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | PQH-7 | not_started | — | PQH-5, PQH-6 | — | additive/full database matrix absent | complete-path measurement |
 | PQH-8 | not_started | — | PQH-7 | — | causal analyzer/false-narrative suite absent | bottleneck verdicts |
 | PQH-9 | not_started | — | PQH-0…PQH-8 | — | controlled qualification campaign absent | performance qualification |
+| FAS-0 | not_started | — | CSQ-12 | [specification](../../todo/formal-assurance/FORMAL_ASSURANCE_SPEC.md); [implementation plan](../../todo/formal-assurance/FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md) | theorem/assumption/TCB registries absent | formal claim governance |
+| FAS-1 | not_started | — | FAS-0 | existing Heap Verus/Kani tools are precursor evidence | unified pinned multi-tool proof CI absent | reproducible proof toolchain |
+| FAS-2 | not_started | — | FAS-0, FAS-1 | — | common abstract state/observation kernel absent | mathematical semantics |
+| FAS-3 | not_started | — | FAS-2 | existing Heap proof connections are partial precursor evidence | general Rust refinement bridge absent | implementation connection |
+| FAS-4 | not_started | — | FAS-3, applicable CSQ accept | CSQ proof obligations and models are precursor evidence | consistency theorem family not connected | formal consistency |
+| FAS-5 | not_started | — | FAS-3, FAS-4, Heap contract freeze | Heap Kani/Verus 8 verified; TLA+ sketches | unified security theorem/refinement bundle absent | formal security |
+| FAS-6 | not_started | — | FAS-3…FAS-5, ATM-1 | Atomics formal contract drafted | Atomic safety/preservation proofs absent | formal Atomic safety |
+| FAS-7 | not_started | — | FAS-6, Atomic recovery freeze | — | isolation/liveness proofs absent | formal isolation |
+| FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
+| FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
 | APB-0 | not_started | — | CSQ-12, APP-0, APP-1 | [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md) | complete baseline contract not frozen | application contract |
 | APB-1 | not_started | — | APB-0, HAR-1 | — | unified client absent | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
@@ -150,7 +160,7 @@ acceptance actions. This document deliberately does not reproduce its columns.
 The package state above records qualification and dependency truth only.
 
 The emergency DEF-098…DEF-104 family is accepted. The engine order is now CSQ,
-then the PQH measurement lane alongside APB. Do not
+then the PQH measurement lane and FAS foundation alongside APB. Do not
 admit APP-2…APP-8 or HAR-1…HAR-7 as active product packages before `CSQ-12`
 accepts. Existing precursor code and Kanban review cards remain valid evidence;
 they do not override this package interlock.
@@ -163,9 +173,11 @@ Program order (Kanban determines the individual active cards):
    registries.
 2. Begin **PQH-0…PQH-9** as the first post-C0 measurement lane. It may run
    alongside M1 but must precede speculative tuning or new performance claims.
-3. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
+3. Begin **FAS-0…FAS-5** after CSQ as the formal foundation/consistency/security
+   lane. FAS-6…FAS-8 travel with Atomics and cluster rather than running early.
+4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
    [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md).
-4. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
+5. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 

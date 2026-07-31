@@ -1,5 +1,10 @@
 # Residiuum Atomics v1 specification
 
+Formal assurance companion:
+[FORMAL_ASSURANCE_SPEC.md](../formal-assurance/FORMAL_ASSURANCE_SPEC.md),
+theorem families `FAS-6` and `FAS-7`. Atomic safety and isolation proofs are
+developed with the implementation, not retrofitted after it.
+
 Status: normative design v1.0-draft; implementation not yet qualified
 
 Profiles:
