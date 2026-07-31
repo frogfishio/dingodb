@@ -1360,10 +1360,10 @@ The frozen v1 profile uses
 Signature inputs use distinct fixed domain strings:
 
 ```text
-DINGODB-HEAPKEY-CERTIFICATE-V1
-DINGODB-HEAPKEY-HOLDER-PROOF-V1
-DINGODB-HEAP-AUTHORITY-TRANSITION-V1
-DINGODB-HEAP-AUTHORITY-MUTATION-V1
+RESIDIUUM-HEAPKEY-CERTIFICATE-V1
+RESIDIUUM-HEAPKEY-HOLDER-PROOF-V1
+RESIDIUUM-HEAP-AUTHORITY-TRANSITION-V1
+RESIDIUUM-HEAP-AUTHORITY-MUTATION-V1
 ```
 
 One signing key is used for one algorithm and purpose. Key identifiers only
@@ -2722,7 +2722,7 @@ so changing one cannot evade conflict detection.
 The request-binding hash is SHA-256 over:
 
 ```text
-ASCII("DINGODB-HEAP-RPC-REQUEST-V1") || 0x00
+ASCII("RESIDIUUM-HEAP-RPC-REQUEST-V1") || 0x00
 || op_id_u16_be
 || operation_id_16_bytes
 || collection_present_u8 || collection_id_if_present
@@ -4438,7 +4438,7 @@ application/dingo.heap-key+cbor
 External AAD:
 
 ```text
-DINGODB-HEAPKEY-CERTIFICATE-V1
+RESIDIUUM-HEAPKEY-CERTIFICATE-V1
 ```
 
 Payload labels:
@@ -4473,7 +4473,7 @@ application/dingo.heap-proof+cbor
 External AAD:
 
 ```text
-DINGODB-HEAPKEY-HOLDER-PROOF-V1
+RESIDIUUM-HEAPKEY-HOLDER-PROOF-V1
 ```
 
 Payload labels:
@@ -4506,7 +4506,7 @@ application/dingo.heap-authority-transition+cbor
 External AAD:
 
 ```text
-DINGODB-HEAP-AUTHORITY-TRANSITION-V1
+RESIDIUUM-HEAP-AUTHORITY-TRANSITION-V1
 ```
 
 Payload labels:
@@ -4536,7 +4536,7 @@ the COSE object. Label 15 signs the SHA-256 digest of the deterministic CBOR
 map containing labels 1–14 using the new master. Its exact signed message is:
 
 ```text
-ASCII("DINGODB-HEAP-NEW-MASTER-POSSESSION-V1")
+ASCII("RESIDIUUM-HEAP-NEW-MASTER-POSSESSION-V1")
 || 0x00
 || SHA-256(canonical_map(labels 1..14))
 ```
@@ -4571,7 +4571,7 @@ CBOR:
 The common signing message is:
 
 ```text
-ASCII("DINGODB-HEAP-AUTHORITY-ROOT-V1")
+ASCII("RESIDIUUM-HEAP-AUTHORITY-ROOT-V1")
 || 0x00
 || SHA-256(canonical_map(labels 1..14, 18, and 19))
 ```
@@ -4614,7 +4614,7 @@ application/dingo.heap-authority-mutation+cbor
 External AAD:
 
 ```text
-DINGODB-HEAP-AUTHORITY-MUTATION-V1
+RESIDIUUM-HEAP-AUTHORITY-MUTATION-V1
 ```
 
 Payload labels:
@@ -4768,7 +4768,7 @@ request. It is an untagged COSE Sign1 with empty unprotected map, protected
 content type `application/dingo.heap-issuance-request+cbor`, and external AAD:
 
 ```text
-DINGODB-HEAPKEY-ISSUANCE-REQUEST-V1
+RESIDIUUM-HEAPKEY-ISSUANCE-REQUEST-V1
 ```
 
 Payload:
@@ -5577,10 +5577,10 @@ following ASCII domain, one zero byte, then the exact input:
 
 | Name | Domain | Input |
 |---|---|---|
-| descriptor hash | `DINGODB-HEAP-DESCRIPTOR-V1` | canonical descriptor body |
-| migration inventory hash | `DINGODB-HEAP-MIGRATION-INVENTORY-V1` | canonical ordered inventory |
-| assignment-map hash | `DINGODB-HEAP-MIGRATION-ASSIGNMENTS-V1` | canonical assignment map |
-| rewritten-segment hash | `DINGODB-HEAP-MIGRATION-SEGMENT-V1` | complete committed segment bytes |
+| descriptor hash | `RESIDIUUM-HEAP-DESCRIPTOR-V1` | canonical descriptor body |
+| migration inventory hash | `RESIDIUUM-HEAP-MIGRATION-INVENTORY-V1` | canonical ordered inventory |
+| assignment-map hash | `RESIDIUUM-HEAP-MIGRATION-ASSIGNMENTS-V1` | canonical assignment map |
+| rewritten-segment hash | `RESIDIUUM-HEAP-MIGRATION-SEGMENT-V1` | complete committed segment bytes |
 
 “Canonical inventory” sorts entries by raw source `SegmentId` and records
 segment ID, byte length, and BLAKE3-256 of the complete source bytes. Duplicate

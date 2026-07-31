@@ -522,7 +522,7 @@ fn cursor_mac(
     security_revision: u64,
 ) -> [u8; 32] {
     let mut h = Hasher::new();
-    h.update(b"DINGODB-HEAP-CURSOR-V1");
+    h.update(b"RESIDIUUM-HEAP-CURSOR-V1");
     h.update(&[0u8]);
     h.update(capability_id);
     h.update(heap_id);

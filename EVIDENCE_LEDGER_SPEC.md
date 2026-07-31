@@ -112,7 +112,7 @@ Every Heap has exactly one logical evidence ledger:
 
 ```text
 LedgerId = BLAKE3-256(
-  "DINGODB-EVIDENCE-LEDGER-V1"
+  "RESIDIUUM-EVIDENCE-LEDGER-V1"
   || 0x01
   || HeapId
 )
@@ -147,7 +147,7 @@ One deployment ledger records facts that cannot belong to a live Heap, such as:
 
 ```text
 LedgerId = BLAKE3-256(
-  "DINGODB-EVIDENCE-LEDGER-V1"
+  "RESIDIUUM-EVIDENCE-LEDGER-V1"
   || 0x02
   || DeploymentId
 )
@@ -476,7 +476,7 @@ names the immediately preceding canonical record hash.
 The signature input is:
 
 ```text
-"DINGODB-EVIDENCE-RECORD-V1"
+"RESIDIUUM-EVIDENCE-RECORD-V1"
 || deterministic_cbor(map keys 1..28, with key 29 absent)
 ```
 
@@ -484,7 +484,7 @@ Hashing the complete stored record uses:
 
 ```text
 BLAKE3-256(
-  "DINGODB-EVIDENCE-RECORD-HASH-V1"
+  "RESIDIUUM-EVIDENCE-RECORD-HASH-V1"
   || deterministic_cbor(map keys 1..29)
 )
 ```
@@ -581,7 +581,7 @@ plaintext assertion hash is:
 
 ```text
 BLAKE3-256(
-  "DINGODB-EVIDENCE-ASSERTION-V1"
+  "RESIDIUUM-EVIDENCE-ASSERTION-V1"
   || event_kind_u16_be
   || canonical_plaintext_assertion
 )
@@ -637,7 +637,7 @@ The certificate is deterministic CBOR:
 The issuer signature input is:
 
 ```text
-"DINGODB-EVIDENCE-SIGNER-CERT-V1"
+"RESIDIUUM-EVIDENCE-SIGNER-CERT-V1"
 || deterministic_cbor(map keys 1..12, with key 13 absent)
 ```
 
@@ -798,11 +798,11 @@ A checkpoint covers a contiguous bounded range and contains:
 The signature input and checkpoint hash are:
 
 ```text
-"DINGODB-EVIDENCE-CHECKPOINT-V1"
+"RESIDIUUM-EVIDENCE-CHECKPOINT-V1"
 || deterministic_cbor(map keys 1..13, with key 14 absent)
 
 BLAKE3-256(
-  "DINGODB-EVIDENCE-CHECKPOINT-HASH-V1"
+  "RESIDIUUM-EVIDENCE-CHECKPOINT-HASH-V1"
   || deterministic_cbor(map keys 1..14)
 )
 ```
@@ -816,8 +816,8 @@ or damage report.
 The ordered Merkle tree uses:
 
 ```text
-leaf = BLAKE3-256("DINGODB-EVIDENCE-MERKLE-LEAF-V1" || sequence_be || record_hash)
-node = BLAKE3-256("DINGODB-EVIDENCE-MERKLE-NODE-V1" || left || right)
+leaf = BLAKE3-256("RESIDIUUM-EVIDENCE-MERKLE-LEAF-V1" || sequence_be || record_hash)
+node = BLAKE3-256("RESIDIUUM-EVIDENCE-MERKLE-NODE-V1" || left || right)
 ```
 
 An odd final node is paired with itself. Empty checkpoints are forbidden.
@@ -966,11 +966,11 @@ cut frame:
 The signature input and cut hash are:
 
 ```text
-"DINGODB-EVIDENCE-RETENTION-CUT-V1"
+"RESIDIUUM-EVIDENCE-RETENTION-CUT-V1"
 || deterministic_cbor(map keys 1..12, with key 13 absent)
 
 BLAKE3-256(
-  "DINGODB-EVIDENCE-RETENTION-CUT-HASH-V1"
+  "RESIDIUUM-EVIDENCE-RETENTION-CUT-HASH-V1"
   || deterministic_cbor(map keys 1..13)
 )
 ```
@@ -1154,7 +1154,7 @@ Where identity is needed, use a domain-separated digest:
 
 ```text
 BLAKE3-256(
-  "DINGODB-EVIDENCE-IDENTITY-V1"
+  "RESIDIUUM-EVIDENCE-IDENTITY-V1"
   || HeapId
   || kind
   || canonical_identity_bytes

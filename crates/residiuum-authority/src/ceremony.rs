@@ -114,7 +114,7 @@ pub fn commit_genesis(
     // New-master possession: sign domain || 0x00 || SHA-256(labels 1..14 map without sigs).
     // Simplified HP-005: sign genesis hash under possession domain.
     let mut possession_msg = Vec::new();
-    possession_msg.extend_from_slice(b"DINGODB-HEAP-NEW-MASTER-POSSESSION-V1");
+    possession_msg.extend_from_slice(b"RESIDIUUM-HEAP-NEW-MASTER-POSSESSION-V1");
     possession_msg.push(0);
     possession_msg.extend_from_slice(&staged.descriptor_hash);
     let possession_sig = provider.sign(&possession_msg)?;

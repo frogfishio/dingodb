@@ -23,8 +23,10 @@ compatibility status. The canonical spelling contains the second `i`:
 **What this cut does:** Implementation identity hard-break for crates, public
 Rust API entry type, CLI, URI scheme, and process environment variables.
 
-**What this cut does not do:** Rewrite wire magics, profile string IDs, or crypto
-domains. Website Phase 4 is a separate Feature WEB cut (see §13).
+**What this cut does not do:** Rewrite wire magics or profile string IDs.
+Cryptographic `DINGODB-*` domains are deliberately hard-reset to
+`RESIDIUUM-*`; see §10. Website Phase 4 is a separate Feature WEB cut (see
+§13).
 
 Effective release: **unreleased** until principal tags; apply when upgrading
 from a pre-Phase-2 tree.
@@ -169,7 +171,7 @@ No on-disk rewrite is required solely for the package rename.
 
 | Item | Policy |
 |------|--------|
-| Domain separators containing historical `DINGODB` / frozen domains | **Unchanged** |
+| Former `DINGODB-*` domain separators | **Hard reset to `RESIDIUUM-*`; old pre-release artifacts invalidated** |
 | Process auth token env name | Renamed to `RESIDIUUM_TOKEN` (operators must re-export secrets) |
 | Wire profiles for heap | String ids remain `dingo-heap-v1` etc. |
 

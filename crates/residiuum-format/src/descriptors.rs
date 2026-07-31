@@ -410,10 +410,10 @@ pub fn decode_object_descriptor(bytes: &[u8]) -> Result<ObjectDescriptor, Descri
     Ok(d)
 }
 
-/// §34.7 descriptor hash: BLAKE3-256(`DINGODB-HEAP-DESCRIPTOR-V1` || 0x00 || body).
+/// §34.7 descriptor hash: BLAKE3-256(`RESIDIUUM-HEAP-DESCRIPTOR-V1` || 0x00 || body).
 pub fn descriptor_hash(body: &[u8]) -> [u8; 32] {
     let mut hasher = blake3::Hasher::new();
-    hasher.update(b"DINGODB-HEAP-DESCRIPTOR-V1");
+    hasher.update(b"RESIDIUUM-HEAP-DESCRIPTOR-V1");
     hasher.update(&[0u8]);
     hasher.update(body);
     *hasher.finalize().as_bytes()

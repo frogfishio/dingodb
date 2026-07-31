@@ -15,10 +15,10 @@ pub const CONTENT_TYPE_CERTIFICATE: &str = "application/dingo.heap-key+cbor";
 pub const CONTENT_TYPE_HOLDER_PROOF: &str = "application/dingo.heap-proof+cbor";
 
 /// External AAD for certificate Sig_structure.
-pub const EXTERNAL_AAD_CERTIFICATE: &[u8] = b"DINGODB-HEAPKEY-CERTIFICATE-V1";
+pub const EXTERNAL_AAD_CERTIFICATE: &[u8] = b"RESIDIUUM-HEAPKEY-CERTIFICATE-V1";
 
 /// External AAD for holder-proof Sig_structure.
-pub const EXTERNAL_AAD_HOLDER_PROOF: &[u8] = b"DINGODB-HEAPKEY-HOLDER-PROOF-V1";
+pub const EXTERNAL_AAD_HOLDER_PROOF: &[u8] = b"RESIDIUUM-HEAPKEY-HOLDER-PROOF-V1";
 
 /// COSE `alg` = EdDSA.
 pub const COSE_ALG_EDDSA: i64 = -8;

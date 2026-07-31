@@ -37,22 +37,22 @@ pub const HEAP_LIFECYCLE_PROFILE: &str = "dingo-heap-lifecycle-v1";
 pub const LIFECYCLE_DIR: &str = "lifecycle";
 
 /// Domain for purge coverage hash.
-pub const PURGE_COVERAGE_DOMAIN: &[u8] = b"DINGODB-HEAP-PURGE-COVERAGE-V1";
+pub const PURGE_COVERAGE_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-PURGE-COVERAGE-V1";
 
 /// Domain for heap backup manifest identity.
-pub const BACKUP_MANIFEST_DOMAIN: &[u8] = b"DINGODB-HEAP-BACKUP-MANIFEST-V1";
+pub const BACKUP_MANIFEST_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-BACKUP-MANIFEST-V1";
 
 /// Domain for identity tombstone records.
-pub const TOMBSTONE_DOMAIN: &[u8] = b"DINGODB-HEAP-IDENTITY-TOMBSTONE-V1";
+pub const TOMBSTONE_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-IDENTITY-TOMBSTONE-V1";
 
 /// Domain for data-key destruction receipts.
-pub const DATA_KEY_DESTROY_DOMAIN: &[u8] = b"DINGODB-HEAP-DATA-KEY-DESTROY-V1";
+pub const DATA_KEY_DESTROY_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-DATA-KEY-DESTROY-V1";
 
 /// Domain for incomplete-purge result hashes.
-pub const INCOMPLETE_PURGE_DOMAIN: &[u8] = b"DINGODB-HEAP-INCOMPLETE-PURGE-V1";
+pub const INCOMPLETE_PURGE_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-INCOMPLETE-PURGE-V1";
 
 /// Domain for heap retention policy documents.
-pub const RETENTION_POLICY_DOMAIN: &[u8] = b"DINGODB-HEAP-RETENTION-POLICY-V1";
+pub const RETENTION_POLICY_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-RETENTION-POLICY-V1";
 
 /// Managed media / replica domain that purge coverage must enumerate (§11.7).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1592,7 +1592,7 @@ pub fn disaster_recovery_restore_retaining_id(
     evidence_body.extend_from_slice(&ceremony.new_authority_epoch.to_le_bytes());
     evidence_body.extend_from_slice(&ceremony.new_master_public_key);
     evidence_body.extend_from_slice(&ceremony.recovery_authority_evidence);
-    let takeover_evidence_hash = domain_hash(b"DINGODB-HEAP-DR-TAKEOVER-V1", &evidence_body);
+    let takeover_evidence_hash = domain_hash(b"RESIDIUUM-HEAP-DR-TAKEOVER-V1", &evidence_body);
 
     let evidence_bytes = encode_deterministic_uint_map(&[
         (1u64, CborValue::Text(HEAP_LIFECYCLE_PROFILE.into())),

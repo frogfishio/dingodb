@@ -91,7 +91,7 @@ pub fn collection_create_binding(name: &str) -> [u8; 32] {
 /// Generic admin op binding: `op || 0x00 || args`.
 pub fn admin_op_binding(op: &str, args: &[u8]) -> [u8; 32] {
     let mut h = Hasher::new();
-    h.update(b"DINGODB-HEAP-ADMIN-OP-V1");
+    h.update(b"RESIDIUUM-HEAP-ADMIN-OP-V1");
     h.update(&[0]);
     h.update(op.as_bytes());
     h.update(&[0]);

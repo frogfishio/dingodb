@@ -2,7 +2,8 @@
 
 Date: 2026-07-31  
 Feature: REB (`da4cc5c7-0952-4fa7-9378-4b38b2089080`)  
-Principal policy: **retain legacy** for this Feature (no dual-read / hard break)  
+Principal policy: **retain legacy except for the explicit cryptographic-domain
+reset recorded in §6**
 Companion: [REBRAND.md](../REBRAND.md) §9.3, [REBRAND_INVENTORY.md](REBRAND_INVENTORY.md)
 
 These identifiers are **protocol, on-disk, or cryptographic facts**. Phase 2
@@ -59,15 +60,20 @@ keep `dingo-…` until a versioned migration Feature lands.
 |------------|------|-------------|
 | `__dingo_snapshot_base__` | Raft snapshot base subject sentinel | **retain_legacy** (persisted log identity) |
 
-## 6. Cryptographic / domain separators
+## 6. Cryptographic / domain separators — explicit hard reset
 
 | Identifier | Role | Disposition |
 |------------|------|-------------|
-| Literals containing `DINGODB` in domain-separation strings (specs/code) | Crypto domain | **retain_legacy** |
-| Any BLAKE3/MAC domain already used in production fixtures | Integrity domains | **retain_legacy** |
+| `DINGODB-*` domain-separation strings (specs/code) | Former crypto domain | **replace with `RESIDIUUM-*`** |
+| Golden vectors and fixtures derived from those strings | Integrity evidence | **regenerate** |
+| Existing keys, certificates, cursors, manifests, signatures, and test stores bound to those strings | Pre-release artifacts | **invalidate; no compatibility reader** |
+| Other frozen `dingo:` hash domains | Crypto domain | **retain_legacy unless separately authorized** |
 
-Changing a domain separator creates a new cryptographic domain and may
-invalidate keys, tokens, or proofs. Not in REB Phase 2.
+The principal explicitly waived compatibility for `DINGODB-*` domains on
+2026-07-31 because all affected databases are disposable test databases.
+This is a deliberate pre-release identity reset. The replacement domains keep
+the `V1` suffix: the protocol shape has not changed, and no released
+`DINGODB-*` V1 compatibility contract exists.
 
 ## 7. Explicitly **not** Class C (already hard-broken in REB-2/3)
 
@@ -88,6 +94,10 @@ After REB-2/3, confirm:
 rg -n 'DINGOFRM|DINGOEND' crates/residiuum-format/src/frame.rs
 # Profiles still string-valued dingo-*
 rg -n 'dingo-cursor-v1|dingo-rust-app-v1' crates/residiuum-sdk/src
+# Former cryptographic domains are gone
+rg -n 'DINGODB-' crates spec \
+  ATOMICS_SPEC.md EVIDENCE_LEDGER_SPEC.md HEAP_SPEC.md TELEMETRY_SPEC.md
+# should be empty
 # No accidental magic rewrite
 rg -n 'RESIDIUUMFRM|RESIDIUUMEND' crates || true  # should be empty
 ```
@@ -97,7 +107,9 @@ file under REB-7 residual.
 
 ## 9. Future work (out of this Feature)
 
-- Dual-read wire major or profile aliases if product requires non-`dingo` labels.
+- Dual-read wire major or profile aliases if product requires non-`dingo`
+  labels. This does not apply to the deliberately invalidated `DINGODB-*`
+  cryptographic domains.
 - Website Phase 4 is complete; former hosts and routes remain only where
   required for redirects or migration history.
 - Repo remote `github.com/frogfishio/dingodb` rename (principal: out of scope).

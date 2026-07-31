@@ -390,7 +390,7 @@ instance = boot_id
 base32(
   keyed_BLAKE3(
     telemetry_identity_key,
-    "DINGODB-TELEMETRY-DEPLOYMENT-V1" || DeploymentId
+    "RESIDIUUM-TELEMETRY-DEPLOYMENT-V1" || DeploymentId
   )[0..16]
 )
 ```
@@ -464,7 +464,7 @@ temporary Heap-detail telemetry. Each is represented as:
 heap_ref = base32(
   keyed_BLAKE3(
     telemetry_identity_key,
-    "DINGODB-TELEMETRY-HEAP-V1" || HeapId
+    "RESIDIUUM-TELEMETRY-HEAP-V1" || HeapId
   )[0..16]
 )
 ```
@@ -487,8 +487,8 @@ partition. V1 supports a protected local allowlist of at most:
 ```
 
 References use keyed BLAKE3 with domain separators
-`DINGODB-TELEMETRY-NODE-V1` and
-`DINGODB-TELEMETRY-PARTITION-V1`. Non-allowlisted identities merge into
+`RESIDIUUM-TELEMETRY-NODE-V1` and
+`RESIDIUUM-TELEMETRY-PARTITION-V1`. Non-allowlisted identities merge into
 `other`. The allowlist has the same 24-hour expiry, Evidence Ledger recording,
 and non-request-modifiability rules as Heap detail.
 

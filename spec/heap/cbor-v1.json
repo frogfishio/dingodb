@@ -17,13 +17,13 @@
     "issuance_request": "application/dingo.heap-issuance-request+cbor"
   },
   "external_aad": {
-    "certificate": "DINGODB-HEAPKEY-CERTIFICATE-V1",
-    "holder_proof": "DINGODB-HEAPKEY-HOLDER-PROOF-V1",
-    "authority_transition": "DINGODB-HEAP-AUTHORITY-TRANSITION-V1",
-    "authority_mutation": "DINGODB-HEAP-AUTHORITY-MUTATION-V1",
-    "issuance_request": "DINGODB-HEAPKEY-ISSUANCE-REQUEST-V1",
-    "new_master_possession": "DINGODB-HEAP-NEW-MASTER-POSSESSION-V1",
-    "authority_root": "DINGODB-HEAP-AUTHORITY-ROOT-V1"
+    "certificate": "RESIDIUUM-HEAPKEY-CERTIFICATE-V1",
+    "holder_proof": "RESIDIUUM-HEAPKEY-HOLDER-PROOF-V1",
+    "authority_transition": "RESIDIUUM-HEAP-AUTHORITY-TRANSITION-V1",
+    "authority_mutation": "RESIDIUUM-HEAP-AUTHORITY-MUTATION-V1",
+    "issuance_request": "RESIDIUUM-HEAPKEY-ISSUANCE-REQUEST-V1",
+    "new_master_possession": "RESIDIUUM-HEAP-NEW-MASTER-POSSESSION-V1",
+    "authority_root": "RESIDIUUM-HEAP-AUTHORITY-ROOT-V1"
   },
   "certificate_labels": {
     "1": {

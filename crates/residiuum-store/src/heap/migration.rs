@@ -35,10 +35,10 @@ pub const ASSIGNMENTS_FILE: &str = "assigned-objects.v1.cbor";
 pub const ADMITTED_FILE: &str = "admitted.v1.cbor";
 
 /// Domain for §34.7 migration inventory hash.
-pub const INVENTORY_HASH_DOMAIN: &[u8] = b"DINGODB-HEAP-MIGRATION-INVENTORY-V1";
+pub const INVENTORY_HASH_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-MIGRATION-INVENTORY-V1";
 
 /// Domain for §34.7 assignment-map hash.
-pub const ASSIGNMENTS_HASH_DOMAIN: &[u8] = b"DINGODB-HEAP-MIGRATION-ASSIGNMENTS-V1";
+pub const ASSIGNMENTS_HASH_DOMAIN: &[u8] = b"RESIDIUUM-HEAP-MIGRATION-ASSIGNMENTS-V1";
 
 /// Migration phase numbers (`HEAP_SPEC` §36.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -398,7 +398,7 @@ impl HeapMigrationJob {
             {
                 body.extend_from_slice(&f.content_hash);
             }
-            let h = domain_hash(b"DINGODB-HEAP-MIGRATION-SEGMENT-V1", &body);
+            let h = domain_hash(b"RESIDIUUM-HEAP-MIGRATION-SEGMENT-V1", &body);
             self.state.completed_segments.push((seg.segment_id, h));
         }
         self.state.next_segment = None;

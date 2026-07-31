@@ -116,7 +116,7 @@ Engine-generated IDs are:
 
 ```text
 BLAKE3-256(
-  "DINGODB-ATOMIC-ID-V1"
+  "RESIDIUUM-ATOMIC-ID-V1"
   || heap_id
   || source_operation_id
   || invariant_or_job_id
@@ -127,7 +127,7 @@ An Atomic plan has:
 
 ```text
 content_root = BLAKE3-256(
-  "DINGODB-ATOMIC-CONTENT-V1"
+  "RESIDIUUM-ATOMIC-CONTENT-V1"
   || canonical_plan_bytes
 )
 ```
@@ -295,12 +295,12 @@ not decisions an engine intentionally writes.
 Domain separators:
 
 ```text
-DINGODB-ATOMIC-PREPARE-V1
-DINGODB-ATOMIC-MEMBER-V1
-DINGODB-ATOMIC-DECISION-V1
-DINGODB-ATOMIC-MANIFEST-V1
-DINGODB-ATOMIC-READSET-V1
-DINGODB-ATOMIC-PREDICATES-V1
+RESIDIUUM-ATOMIC-PREPARE-V1
+RESIDIUUM-ATOMIC-MEMBER-V1
+RESIDIUUM-ATOMIC-DECISION-V1
+RESIDIUUM-ATOMIC-MANIFEST-V1
+RESIDIUUM-ATOMIC-READSET-V1
+RESIDIUUM-ATOMIC-PREDICATES-V1
 ```
 
 Persistent v1 uses deterministic CBOR under the repository canonical-CBOR

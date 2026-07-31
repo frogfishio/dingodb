@@ -62,7 +62,7 @@ identifiers include, without limitation:
 - Class C wire/on-disk facts: `.dingo` store files; `dingo-*-v1` profiles;
   frame magics `DINGOFRM` / `DINGOEND`; `urn:dingo:…`;
   `__dingo_snapshot_base__`; content-types such as `application/dingo.heap-*`;
-  every `DINGODB-*` cryptographic domain separator (see
+  frozen `dingo:` hash domains except where explicitly reset (see
   [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md));
 - Class D history: git history, release tags, remote
   `github.com/frogfishio/dingodb`, historical work-package ids;
@@ -206,6 +206,12 @@ Cryptographic domain separators are especially sensitive: changing one creates
 a new cryptographic domain and may invalidate existing keys, signatures,
 proofs, fixtures, or stored authority. That effect must be designed, not
 discovered during compilation.
+
+**Approved exception (2026-07-31):** all `DINGODB-*` cryptographic domain
+separators are hard-reset to `RESIDIUUM-*`. Affected databases and artifacts
+are pre-release test data and will be discarded. No dual verification or
+migration path is required; derived vectors and fixtures must be regenerated.
+The `V1` suffix remains because the encoded protocol shape is unchanged.
 
 ### 9.4 Class D — immutable history
 
@@ -431,7 +437,6 @@ preserve:
 - persisted cluster labels;
 - `urn:dingo:*`;
 - `application/dingo.*`;
-- `DINGODB-*` cryptographic domains;
 - `dingo:` hash domains;
 - `.dingo`;
 - `__dingo_snapshot_base__`; and
@@ -444,8 +449,9 @@ prove that no additional Class C value escaped.
 
 **Status (2026-07-31): complete.** Greps confirmed
 magics, `dingo-*-v1` profiles, `dingo-store-*`, URNs, `application/dingo.*`,
-`DINGODB-*` domains, `__dingo_snapshot_base__`, and frozen DQL profile strings
-remain. No Class C reverts required after REB-8 profile restore.
+`__dingo_snapshot_base__`, and frozen DQL profile strings remain. No Class C
+reverts required after REB-8 profile restore. The later principal-approved
+cryptographic reset replaces all `DINGODB-*` domains with `RESIDIUUM-*`.
 
 REB-9 acceptance (observed):
 

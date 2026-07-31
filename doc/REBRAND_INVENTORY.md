@@ -3,7 +3,8 @@
 Date: 2026-07-31  
 Feature: REB (`da4cc5c7-0952-4fa7-9378-4b38b2089080`)  
 Normative: [REBRAND.md](../REBRAND.md) §9 classes, §10 map  
-Principal decisions: Class B hard break; Class C keep; repo rename out of scope
+Principal decisions: Class B hard break; Class C keep except for the explicit
+`DINGODB-*` cryptographic-domain reset; repo rename out of scope
 
 Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 
@@ -71,7 +72,8 @@ Also: `verification/heap-verus` package name `dingo-heap-verus` if present →
 |------------|------|-------------|
 | `DINGOFRM` / `DINGOEND` | Frame magics | **retain_legacy** |
 | `dingo-*-v1` wire/persist profiles (e.g. `dingo-heap-v1`, `dingo-cursor-v1`, `dingo-rpc-v1`, `dingo-config-v1`, …) | Protocol/profile strings | **retain_legacy** unless proven purely cosmetic packaging labels in REB-5 audit |
-| Crypto domain separators containing `DINGODB` / `dingo:` in hash domains that bind keys/proofs | Crypto | **retain_legacy** |
+| Crypto domain separators formerly containing `DINGODB-*` | Crypto | **hard reset to `RESIDIUUM-*`; invalidate pre-release artifacts** |
+| Other frozen `dingo:` hash domains that bind plans/proofs | Crypto | **retain_legacy** |
 | `urn:dingo:cluster:` / `urn:dingo:node:` | Identity URIs in TLS | **retain_legacy** or dual-read later (not this Feature hard break without REB-5 explicit exception) |
 | Golden vectors / fixtures encoding above | Evidence | **retain_legacy** |
 | `.dingo` store path conventions if any | On-disk | **retain_legacy** |
