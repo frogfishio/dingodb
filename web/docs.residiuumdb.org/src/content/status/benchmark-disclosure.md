@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: all-profiles
 source:
-  path: doc/BENCHMARK_DISCLOSURE.md
+  path: doc/reference/operations/BENCHMARK_DISCLOSURE.md
 owners:
   - release
 keywords:
@@ -22,6 +22,6 @@ keywords:
 
 **No public comparative benchmark result is currently claimed.**
 
-Methodology checklist lives in `doc/BENCHMARK_DISCLOSURE.md`. Required fields include version/git SHA, durability mode, hardware, dataset, concurrency, warm/cold state, latency percentiles, and competing system configuration if any comparison is made.
+Methodology checklist lives in `doc/reference/operations/BENCHMARK_DISCLOSURE.md`. Required fields include version/git SHA, durability mode, hardware, dataset, concurrency, warm/cold state, latency percentiles, and competing system configuration if any comparison is made.
 
 Design language such as “designed for a fast hot path” is not a measured ranking.

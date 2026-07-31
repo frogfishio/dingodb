@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: COLLECTION_CONTRACT_SPEC.md
+  path: doc/todo/rre/COLLECTION_CONTRACT_SPEC.md
 owners:
   - specs
 keywords:
@@ -30,4 +30,4 @@ spec_state: draft
 
 ## Source
 
-https://github.com/frogfishio/dingodb/blob/main/COLLECTION_CONTRACT_SPEC.md
+https://github.com/frogfishio/dingodb/blob/main/doc/todo/rre/COLLECTION_CONTRACT_SPEC.md

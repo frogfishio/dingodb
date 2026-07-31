@@ -16,7 +16,7 @@ The goal is simple:
 Hosts may also offer **query dialects** (JSON/Mongo filters, SQL-ish strings)
 that compile into SDA for everyday comfort. Those are not a replacement for
 SDA: if you need exact meaning around missing fields vs stored `null`, use pure
-SDA (see [DIALECTS.md](DIALECTS.md)).
+SDA (see [DIALECTS.md](./DIALECTS.md)).
 
 ## 0. A quick start you can finish in 10 minutes
 
@@ -890,7 +890,7 @@ That is often safer than silently returning nothing.
 No.
 It can be used in a jq-like way, but it is stricter and more explicit about missing values, duplicates, and failure states.
 
-If you come from jq, read [FOR_JQ_USERS.md](FOR_JQ_USERS.md) next.
+If you come from jq, read [FOR_JQ_USERS.md](./FOR_JQ_USERS.md) next.
 
 ### What should I learn first?
 
@@ -912,11 +912,11 @@ Small examples are the fastest way to learn SDA.
 
 If you want more after this guide:
 
-- [SDA Cheat Sheet](CHEATSHEET.md)
-- [SDA for jq Users](FOR_JQ_USERS.md)
-- [SDA JSON Filter Demo](JSON_FILTER_DEMO.md)
-- [Query Dialects](DIALECTS.md) — pure SDA plus json/mongo/sql frontends
-- [SDA Specification](SDA_SPEC.md)
+- [SDA Cheat Sheet](./CHEATSHEET.md)
+- [SDA for jq Users](./FOR_JQ_USERS.md)
+- [SDA JSON Filter Demo](./JSON_FILTER_DEMO.md)
+- [Query Dialects](./DIALECTS.md) — pure SDA plus json/mongo/sql frontends
+- [SDA Specification](./SDA_SPEC.md)
 
 Use this manual first.
 Use the specification when you need exact rules.

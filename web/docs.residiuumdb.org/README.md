@@ -2,7 +2,7 @@
 
 Canonical documentation for [Residiuum](https://github.com/frogfishio/dingodb).
 
-Specification: repository [`DOCS_SITE_SPEC.md`](../../DOCS_SITE_SPEC.md). Shared truth/status contract: [`WEBSITE_SPEC.md`](../../WEBSITE_SPEC.md).
+Specification: repository [`DOCS_SITE_SPEC.md`](../../doc/done/web/DOCS_SITE_SPEC.md). Shared truth/status contract: [`WEBSITE_SPEC.md`](../../doc/done/web/WEBSITE_SPEC.md).
 
 ## Stack
 

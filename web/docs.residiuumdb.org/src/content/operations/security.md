@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: single-node-tcp
 source:
-  path: doc/CAPABILITY_MATRIX.md
+  path: doc/wip/status/CAPABILITY_MATRIX.md
 owners:
   - ops
 keywords:
@@ -39,6 +39,6 @@ Public plaintext bind refused without override; TLS handshakes succeed with expe
 
 ## Related evidence
 
-DEF-032–034, `doc/THREAT_MODEL.md` (draft)
+DEF-032–034, `doc/wip/security/THREAT_MODEL.md` (draft)
 
 Product page: [residiuumdb.org/security](https://residiuumdb.org/security/)

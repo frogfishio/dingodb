@@ -106,4 +106,4 @@ MIT. Independent of the AGPL server and cluster crates so closed and open apps
 can speak the wire protocol without taking server copyleft.
 
 Part of [Residiuum](https://github.com/frogfishio/dingodb). Multi-tier license map:
-[doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).
+[doc/reference/operations/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/LICENSING.md).

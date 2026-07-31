@@ -2,8 +2,8 @@
 //!
 //! Times parse-once vs re-parse full run and a few program classes.
 //! Assertions only guard against absurd failures (timeouts), not performance
-//! targets. See `doc/PERFORMANCE_STRATEGIES.md` and
-//! `doc/BENCHMARK_DISCLOSURE.md` before any public comparison.
+//! targets. See `doc/reference/operations/PERFORMANCE_STRATEGIES.md` and
+//! `doc/reference/operations/BENCHMARK_DISCLOSURE.md` before any public comparison.
 
 use residiuum_sda::{from_json, Program};
 use std::time::Instant;

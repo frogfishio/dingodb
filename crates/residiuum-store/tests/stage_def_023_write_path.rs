@@ -269,7 +269,7 @@ fn seal_cost_independent_of_retained_segment_count() {
 
 #[test]
 fn write_path_bench_disclosure() {
-    // Disclosure fields for DEF-023 / doc/BENCHMARK_DISCLOSURE.md (skeleton only).
+    // Disclosure fields for DEF-023 / doc/reference/operations/BENCHMARK_DISCLOSURE.md (skeleton only).
     let dir = tempdir().unwrap();
     let root = dir.path().join("bench");
     let mut store = Store::create(&root).unwrap();

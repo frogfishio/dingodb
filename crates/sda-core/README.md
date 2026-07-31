@@ -116,7 +116,7 @@ cargo test -p residiuum-sda --test sda_bench_skeleton
 
 ## Documentation
 
-- Spec: [SDA_SPEC.md](../../SDA_SPEC.md)
+- Spec: [SDA_SPEC.md](../../doc/reference/query/SDA_SPEC.md)
 - User docs: [doc/SDA/](../../doc/SDA/)
 - ENR: [crates/enr-core/](../enr-core/README.md)
 - CLI package: [`residiuum-sda-cli`](https://crates.io/crates/residiuum-sda-cli)

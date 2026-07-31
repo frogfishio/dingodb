@@ -17,6 +17,9 @@ export RUSTDOCFLAGS="${RUSTDOCFLAGS:--D warnings}"
 echo "== delivery scoreboard (M0-3) =="
 bash ./scripts/verify-delivery-status.sh
 
+echo "== documentation structure and links =="
+node ./scripts/check-doc-links.mjs
+
 echo "== APP-0 application contract lock =="
 bash ./scripts/verify-app0-contract.sh
 

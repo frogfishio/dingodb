@@ -99,13 +99,13 @@ a silent empty success.
 
 ## Documentation
 
-- Examination profile: [SDA_PROFILE.md](https://github.com/frogfishio/dingodb/blob/main/SDA_PROFILE.md)
-- Architecture: [OVERVIEW.md](https://github.com/frogfishio/dingodb/blob/main/OVERVIEW.md) §11
-- SDA language: [SDA_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/SDA_SPEC.md)
+- Examination profile: [SDA_PROFILE.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/query/SDA_PROFILE.md)
+- Architecture: [OVERVIEW.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/product/OVERVIEW.md) §11
+- SDA language: [SDA_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/query/SDA_SPEC.md)
 
 ## License
 
 MPL-2.0.
 
 Part of [Residiuum](https://github.com/frogfishio/dingodb). Multi-tier license map:
-[doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).
+[doc/reference/operations/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/LICENSING.md).

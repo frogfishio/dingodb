@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # M0-3 — program delivery scoreboard checks.
-# Parses doc/NEXT_BUILD_STATUS.md and fails on dishonest or invalid rows.
+# Parses doc/wip/status/NEXT_BUILD_STATUS.md and fails on dishonest or invalid rows.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-STATUS="${STATUS_FILE:-doc/NEXT_BUILD_STATUS.md}"
+STATUS="${STATUS_FILE:-doc/wip/status/NEXT_BUILD_STATUS.md}"
 MATRIX="${MATRIX_FILE:-spec/heap/qualification/hp010-matrix-v1.json}"
 fail() { echo "verify-delivery-status: FAIL: $*" >&2; exit 1; }
 warn() { echo "verify-delivery-status: WARN: $*" >&2; }
@@ -115,9 +115,9 @@ if h3 != "accept":
 # Plan links
 for path in (
     "MASTER_DELIVERY_PLAN.md",
-    "MUST_ADD.md",
-    "doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md",
-    "doc/M0_1_EVIDENCE_INVENTORY.md",
+    "doc/todo/application-baseline/MUST_ADD.md",
+    "doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md",
+    "doc/done/programs/M0_1_EVIDENCE_INVENTORY.md",
 ):
     if not Path(path).is_file():
         errors.append(f"required plan/evidence missing: {path}")

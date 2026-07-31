@@ -1,6 +1,6 @@
 //! DEF-038 — durable control-plane + rebalance workflows across restarts.
 //!
-//! Acceptance (DEFECTS.md):
+//! Acceptance (doc/done/incidents/DEFECTS.md):
 //! - Restart at every rebalance phase leaves old placement authoritative or a
 //!   valid joint configuration.
 //! - Loss of the coordinator does not lose the operation state.

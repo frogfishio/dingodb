@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: USP.md
+  path: doc/reference/product/USP.md
 owners:
   - docs
 keywords:
@@ -23,4 +23,4 @@ spec_state: draft
 
 Heaps describe authority, isolation, and capability ideas under `HEAP_SPEC.md` and formal models in `formal/heap/`. Do not treat formal models as implementation proofs of the full product.
 
-Source: [HEAP_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/HEAP_SPEC.md)
+Source: [HEAP_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/wip/heap/HEAP_SPEC.md)

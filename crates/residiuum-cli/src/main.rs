@@ -21,7 +21,7 @@ use std::process::ExitCode;
 const APP_VERSION: &str = concat!(env!("RESIDIUUM_VERSION"), "-build ", env!("RESIDIUUM_BUILD"));
 const CLI_ABOUT: &str = "Residiuum command-line interface";
 const CLI_LONG_ABOUT: &str = "Residiuum command-line interface\n\nEveryday put/get/list, read-only doctor diagnostics, evidence-preserving salvage (and explicit export-live materialization), full backup/restore with verified manifests (DEF-050), integrity scrub (DEF-051), format migration preflight/plan/apply/verify/rollback (DEF-052), versioned config validate/show (DEF-054), single-node TCP serve (development), and experimental multi-node serve-cluster (Raft control + data-plane commit when attached; not production-ready).";
-const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`residiuum`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md in the repository for full terms.\n\nResidiuum is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
+const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`residiuum`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/reference/operations/LICENSING.md in the repository for full terms.\n\nResidiuum is multi-licensed by crate: MIT (SDA/format), MPL-2.0 (store/examine),\nAGPL-3.0-or-later (cluster, server, this CLI; SDK remains AGPL until embedded-only).";
 
 #[derive(Parser)]
 #[command(

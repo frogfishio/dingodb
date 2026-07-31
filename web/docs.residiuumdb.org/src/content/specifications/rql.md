@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: RQL_SPEC.md
+  path: doc/wip/query/RQL_SPEC.md
 owners:
   - specs
 keywords:
@@ -29,5 +29,5 @@ Experimental; **not** full design completeness.
 
 ## Source
 
-- https://github.com/frogfishio/dingodb/blob/main/RQL_SPEC.md
+- https://github.com/frogfishio/dingodb/blob/main/doc/wip/query/RQL_SPEC.md
 - https://github.com/frogfishio/dingodb/blob/main/doc/RQL/USER_GUIDE.md

@@ -3,7 +3,7 @@
 Status: Draft v0.4
 
 Audience: SDK authors, host integrators, advanced query users
-Normative companions: [SDA_SPEC.md](../../SDA_SPEC.md), [DX_SPEC.md](../../DX_SPEC.md) §7
+Normative companions: [SDA_SPEC.md](../reference/query/SDA_SPEC.md), [DX_SPEC.md](../reference/product/DX_SPEC.md) §7
 
 ## Thesis
 
@@ -28,7 +28,7 @@ execution is shared.
 | Kind | Role |
 |------|------|
 | **Pure ENR + SDA** | Mathematical kernel; always available; only lossless path for full algebra |
-| **RQL** | **Official** human dialect of Residiuum — co-designed with ENR; faithful lowering ([RQL_SPEC.md](../../RQL_SPEC.md)) |
+| **RQL** | **Official** human dialect of Residiuum — co-designed with ENR; faithful lowering ([RQL_SPEC.md](../wip/query/RQL_SPEC.md)) |
 | **Foreign dialects** | Comfort / familiarity (SQL-ish, Mongo-ish, …); admit holes and notes |
 | **Fluent / builder API** | Host-native code surface; same IR target |
 
@@ -63,7 +63,7 @@ everyday filters — not so the algebra can be abandoned.
 are the sanctioned place for user familiarity and “impurities.” We do not
 wait for developers to invent SDA/ENR by feature request, and we do not bend
 the kernel toward SQL because Bob asked. See
-[DOCTRINE.md § Language Design Authority](DOCTRINE.md#language-design-authority-top-down-kernel)
+[DOCTRINE.md § Language Design Authority](./DOCTRINE.md#language-design-authority-top-down-kernel)
 and [enr-core/README.md](../../crates/enr-core/README.md#how-this-language-is-designed-not-bob-called-oracle).
 
 ## The clincher: Null vs absence (no value)
@@ -124,11 +124,11 @@ RQL does not adopt SQL’s null model; it inherits ENR+SDA carriers.
 | Id | Surface | Compiles to | Maturity |
 |----|---------|-------------|----------|
 | `sda` | Pure SDA / ENR1 source | identity (parse-checked) | **complete** for standalone + ENR1 |
-| **`dql`** | **Residiuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../../RQL_SPEC.md) |
+| **`dql`** | **Residiuum Query Language** (official human surface) | pure ENR1/SDA program (`Match` / `enrich` / cardinality) | **v0.1 implemented** — [RQL_SPEC.md](../wip/query/RQL_SPEC.md) |
 | `json` | DX/Mongo-style filter object | document predicate via [`Filter::to_sda`](../../crates/residiuum-sdk/src/filter.rs) | **complete** for the portable vocabulary (DX §7.1) |
 | `mongo` | Alias of `json` | same | same (name for Mongo-familiar callers) |
 | `sql` | Tiny legacy `SELECT` / `WHERE` mimicry | document predicate or projection program | **implemented, deprecated when SQL-ish+ ships** |
-| `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical RQL v1 plan | **specified, not implemented** — [SQL_TO_RQL_SPEC.md](../../SQL_TO_RQL_SPEC.md) |
+| `sql+` / `sql-plus` | **SQL-ish+** executable compatibility surface | canonical RQL v1 plan | **specified, not implemented** — [SQL_TO_RQL_SPEC.md](../todo/rql/SQL_TO_RQL_SPEC.md) |
 | `graphql` | Reserved id | — | **scaffold** — not implemented |
 
 ### RQL (official)
@@ -137,7 +137,7 @@ RQL is the product’s preferred text dialect for multi-collection enrichment an
 nested projection. It looks a little like SQL in places but is **not** SQL:
 `enrich` attaches named fields, `expect` states cardinality, and `project` is
 nested. How to write and run it: [USER_GUIDE.md](../RQL/USER_GUIDE.md). Full
-design: [RQL_SPEC.md](../../RQL_SPEC.md).
+design: [RQL_SPEC.md](../wip/query/RQL_SPEC.md).
 
 **v0.1:** `compile_dialect("dql", …)` / `BuiltinDialect::Dql` lowers
 `from` + `enrich … matching … expect …` (+ optional `project`) into the same
@@ -192,7 +192,7 @@ This is not SQL-ish+. The separately specified `sql+` / `sql-plus` profile
 translates a richer SQL subset into RQL, models SQL three-valued predicates
 explicitly, and requires proof for hidden join cardinality before direct
 execution. It is the intended successor to this legacy path. See
-[SQL_TO_RQL_SPEC.md](../../SQL_TO_RQL_SPEC.md).
+[SQL_TO_RQL_SPEC.md](../todo/rql/SQL_TO_RQL_SPEC.md).
 
 ### GraphQL (`graphql`)
 
@@ -253,9 +253,9 @@ not open collections and do not change examination profiles.
 ## See also
 
 - [RQL USER_GUIDE.md](../RQL/USER_GUIDE.md) — how to express and run RQL
-- [RQL_SPEC.md](../../RQL_SPEC.md) — official Residiuum Query Language (design authority)
-- [JSON_FILTER_DEMO.md](JSON_FILTER_DEMO.md) — SDA as a jq-like filter
-- [FOR_JQ_USERS.md](FOR_JQ_USERS.md) — notation contrast for jq users
-- [DOCTRINE.md](DOCTRINE.md) — why certainty beats convenience
+- [RQL_SPEC.md](../wip/query/RQL_SPEC.md) — official Residiuum Query Language (design authority)
+- [JSON_FILTER_DEMO.md](./JSON_FILTER_DEMO.md) — SDA as a jq-like filter
+- [FOR_JQ_USERS.md](./FOR_JQ_USERS.md) — notation contrast for jq users
+- [DOCTRINE.md](./DOCTRINE.md) — why certainty beats convenience
 - [ENR README](../../crates/enr-core/README.md) — ENR1 text path (same pure kernel)
 - DX_SPEC §7 — everyday query experience

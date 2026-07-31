@@ -12,9 +12,9 @@ need_file() {
 }
 
 need_file "SECURITY.md"
-need_file "doc/SUPPORTED_VERSIONS.md"
-need_file "doc/SECURITY_AUDIT_PACKAGE.md"
-need_file "doc/THREAT_MODEL.md"
+need_file "doc/reference/operations/SUPPORTED_VERSIONS.md"
+need_file "doc/wip/security/SECURITY_AUDIT_PACKAGE.md"
+need_file "doc/wip/security/THREAT_MODEL.md"
 need_file "README.md"
 
 python3 - <<'PY' || exit 1
@@ -27,13 +27,13 @@ checks = [
         "SUPPORTED_VERSIONS",
         "Do not open a public GitHub issue",
     ]),
-    ("doc/SUPPORTED_VERSIONS.md", [
+    ("doc/reference/operations/SUPPORTED_VERSIONS.md", [
         "dingo-supported-versions-v1",
         "Development tip",
         "WIRE_PROFILE_LABEL",
         "1.0-draft",
     ]),
-    ("doc/SECURITY_AUDIT_PACKAGE.md", [
+    ("doc/wip/security/SECURITY_AUDIT_PACKAGE.md", [
         "dingo-security-audit-package-v1",
         "fuzz-smoke",
         "THREAT_MODEL",
@@ -44,7 +44,7 @@ checks = [
         "SUPPORTED_VERSIONS",
         "SECURITY_AUDIT_PACKAGE",
     ]),
-    ("doc/THREAT_MODEL.md", [
+    ("doc/wip/security/THREAT_MODEL.md", [
         "SECURITY.md",
         "SUPPORTED_VERSIONS",
         "SECURITY_AUDIT_PACKAGE",

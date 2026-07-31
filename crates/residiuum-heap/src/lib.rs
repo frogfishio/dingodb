@@ -1,6 +1,6 @@
 //! Residiuum heap identity, capability, and authority kernel (`dingo-heap-v1`).
 //!
-//! Normative: `HEAP_SPEC.md` §§30–32. Contract artifacts: `spec/heap/`.
+//! Normative: `doc/wip/heap/HEAP_SPEC.md` §§30–32. Contract artifacts: `spec/heap/`.
 
 #![deny(missing_docs)]
 

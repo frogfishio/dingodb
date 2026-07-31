@@ -7,7 +7,7 @@ This repository is **not** under a single uniform license. MIT was used only
 as temporary scaffolding during project setup. The adopted product license
 map is multi-tier (GPL-family track with AGPL for networked bits).
 
-Policy and crate map: `doc/LICENSING.md`
+Policy and crate map: `doc/reference/operations/LICENSING.md`
 
 License text files (full terms)
 -------------------------------
@@ -20,7 +20,7 @@ License text files (full terms)
 
 Per-crate SPDX identifiers are declared in each package’s `Cargo.toml`. Enabling
 the optional `cluster` feature on `residiuum-sdk` pulls AGPL `residiuum-cluster` into
-that build (see `doc/LICENSING.md` §4).
+that build (see `doc/reference/operations/LICENSING.md` §4).
 
 How to use this tree
 --------------------

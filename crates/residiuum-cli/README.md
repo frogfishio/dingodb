@@ -170,8 +170,8 @@ Secrets belong in the environment or secret files (`serve.token_env`,
 ## Documentation
 
 - Project overview: [README.md](https://github.com/frogfishio/dingodb/blob/main/README.md)
-- DX / operator surface: [DX_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/DX_SPEC.md)
-- Licensing: [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md)
+- DX / operator surface: [DX_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/product/DX_SPEC.md)
+- Licensing: [doc/reference/operations/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/LICENSING.md)
 
 ## License
 

@@ -1,8 +1,8 @@
 //! Canonical logical plan (`dql-plan-v1`) + encoding/hash (APP-4).
 //!
 //! Normative companions:
-//! - [RQL_SPEC.md](../../../RQL_SPEC.md) §15–§16
-//! - [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](../../../doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §9 / §14 APP-4
+//! - [doc/wip/query/RQL_SPEC.md](../../../doc/wip/query/RQL_SPEC.md) §15–§16
+//! - [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](../../../doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §9 / §14 APP-4
 //! - `spec/app/v1/plan_vectors_v1.json`
 //!
 //! This cut freezes **canonical JSON bytes** and a domain-separated BLAKE3 plan

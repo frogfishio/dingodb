@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: all-profiles
 source:
-  path: doc/CAPABILITY_MATRIX.md
+  path: doc/wip/status/CAPABILITY_MATRIX.md
 owners:
   - ops
 keywords:
@@ -25,7 +25,7 @@ Identify which profile matches your intent and its public maturity label.
 
 ## Applies to / maturity
 
-All profiles; labels from `doc/CAPABILITY_MATRIX.md`.
+All profiles; labels from `doc/wip/status/CAPABILITY_MATRIX.md`.
 
 ## Risk level
 
@@ -52,4 +52,4 @@ N/A — informational.
 
 ## Related evidence
 
-`doc/CAPABILITY_MATRIX.md`
+`doc/wip/status/CAPABILITY_MATRIX.md`

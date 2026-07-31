@@ -25,7 +25,7 @@ edition = "2021"
 # requires a newer compiler (`is_multiple_of` needs ≥1.87).
 rust-version = "1.88.0"
 # Multi-tier licensing (not a single workspace license). Per-crate SPDX in
-# each package; policy in doc/LICENSING.md. MIT was temporary scaffolding only.
+# each package; policy in doc/reference/operations/LICENSING.md. MIT was temporary scaffolding only.
 authors = ["Alexander R. Croft"]
 repository = "https://github.com/frogfishio/dingodb"
 

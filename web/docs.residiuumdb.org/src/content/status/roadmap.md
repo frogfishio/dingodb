@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: all-profiles
 source:
-  path: FUTURE_ROADMAP.md
+  path: doc/todo/deferred/FUTURE_ROADMAP.md
 owners:
   - product
 keywords:
@@ -29,4 +29,4 @@ Roadmap is **not** availability. Status page remains authoritative for present c
 5. **Future search** (text, vector, geo) as derived accelerators
 6. **Design work**: Heaps, RRE, Atomics, DDA, Order Wavelets
 
-Sources: `FUTURE_ROADMAP.md`, `doc/PRIME_TIME_PLAN.md`. Product page: [residiuumdb.org/roadmap](https://residiuumdb.org/roadmap/)
+Sources: `FUTURE_ROADMAP.md`, `doc/done/programs/PRIME_TIME_PLAN.md`. Product page: [residiuumdb.org/roadmap](https://residiuumdb.org/roadmap/)

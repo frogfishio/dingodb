@@ -7,7 +7,7 @@
    ```sh
    npm run sync-release
    ```
-3. Update `src/data/capabilities.json` from `doc/CAPABILITY_MATRIX.md`.
+3. Update `src/data/capabilities.json` from `doc/wip/status/CAPABILITY_MATRIX.md`.
 4. Refresh critical `last_verified` fields on getting-started, operations, security, and reference pages.
 5. Run:
    ```sh

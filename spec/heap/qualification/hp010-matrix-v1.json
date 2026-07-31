@@ -85,7 +85,7 @@
         "crates/residiuum-store/tests/hp010_qualification.rs::metadata_hardened_operational_confinement",
         "spec/heap/isolation-profiles-v1.json",
         "crates/residiuum-heap confine_query_observation / confine_operational_observation(_under) / confine_export_heaps / confine_health_detail / confine_support_bundle / IsolationProfileRegistry",
-        "doc/HEAP_COMPLETE_PATH_REVIEW.md \u00a74.1 heap-bound surfaces",
+        "doc/wip/heap/HEAP_COMPLETE_PATH_REVIEW.md \u00a74.1 heap-bound surfaces",
         "crates/residiuum-heap pure_proofs connected_pure_proof_bundle (isolation lemmas)"
       ],
       "scope": "single-node heap-data-isolated + heap-metadata-hardened operational surface; resource/physical profiles declared_not_qualified"
@@ -148,8 +148,8 @@
         "crates/residiuum-store/tests/hp010_qualification.rs::query_escape_faulty_planner_confined",
         "crates/residiuum-heap pure_proofs / connected_pure_proof_bundle + #[cfg(kani)] harnesses",
         "scripts/check_kani_heap.sh + CI job kani-heap (RESIDIUUM_REQUIRE_KANI=1)",
-        "doc/HEAP_COMPLETE_PATH_REVIEW.md (complete-path review; CPR findings)",
-        "doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md (external review package; report open)",
+        "doc/wip/heap/HEAP_COMPLETE_PATH_REVIEW.md (complete-path review; CPR findings)",
+        "doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md (external review package; report open)",
         "crates/residiuum-store/tests/hp010_qualification.rs::h6_pure_proof_bundle_connected",
         "crates/residiuum-store/tests/hp010_qualification.rs::complete_path_and_external_review_artifacts",
         "verification/heap-verus VERUS_PROOFS_CONNECTED=true + verus/pure_kernel.rs",
@@ -268,7 +268,7 @@
       "status": "accept",
       "section": "40/HP-010",
       "test": "hp010_qualification::operator_runbook_present",
-      "doc": "doc/RUNBOOK_HEAP_QUALIFICATION.md"
+      "doc": "doc/wip/heap/RUNBOOK_HEAP_QUALIFICATION.md"
     },
     "h6_pure_proof_bundle": {
       "status": "accept",
@@ -280,14 +280,14 @@
       "status": "accept",
       "section": "27/H6",
       "test": "hp010_qualification::complete_path_and_external_review_artifacts",
-      "doc": "doc/HEAP_COMPLETE_PATH_REVIEW.md",
+      "doc": "doc/wip/heap/HEAP_COMPLETE_PATH_REVIEW.md",
       "notes": "Review present with open CPR findings; does not clear H6"
     },
     "external_security_review_brief": {
       "status": "accept",
       "section": "27/H6",
       "test": "hp010_qualification::complete_path_and_external_review_artifacts",
-      "doc": "doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md",
+      "doc": "doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md",
       "notes": "Brief ready; signed external report still open (drill accepts brief presence only)"
     }
   }

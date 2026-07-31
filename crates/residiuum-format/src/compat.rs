@@ -1,5 +1,5 @@
 //! Wire format reader/writer compatibility matrix (DEF-052 / FORMAT_SPEC §12)
-//! and major-1 freeze readiness (DEF-053 / `doc/WIRE_MAJOR1_FREEZE.md`).
+//! and major-1 freeze readiness (DEF-053 / `doc/wip/format/WIRE_MAJOR1_FREEZE.md`).
 //!
 //! Major versions may change framing semantics. Minor versions may add kinds,
 //! flags, or envelope fields while preserving the ability of an older
@@ -57,7 +57,7 @@ pub const WRITER_WIRE_MINOR: u8 = WIRE_MINOR;
 /// Policy id for the freeze checklist document (DEF-053 labor cut).
 pub const WIRE_FREEZE_POLICY_ID: &str = "dingo-wire-major1-freeze-v1";
 
-/// Status of one freeze criterion (see `doc/WIRE_MAJOR1_FREEZE.md` §2).
+/// Status of one freeze criterion (see `doc/wip/format/WIRE_MAJOR1_FREEZE.md` §2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireFreezeCriterionStatus {
     /// Implemented evidence exists and is accepted for this criterion.
@@ -138,7 +138,7 @@ pub fn wire_support_summary() -> String {
 }
 
 /// Freeze criteria for wire major 1 (DEF-053). Keep in sync with
-/// `doc/WIRE_MAJOR1_FREEZE.md` §2. Do **not** mark every row Met without
+/// `doc/wip/format/WIRE_MAJOR1_FREEZE.md` §2. Do **not** mark every row Met without
 /// evidence and a principal freeze declaration.
 pub fn wire_freeze_criteria() -> &'static [WireFreezeCriterion] {
     const CRITERIA: &[WireFreezeCriterion] = &[

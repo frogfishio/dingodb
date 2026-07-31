@@ -3,21 +3,21 @@
 ## Spec before behavior
 
 Implementation work should map to a named section of a normative document
-listed in [ARCHITECTURE.md](ARCHITECTURE.md). Stages **0–9** and product
-follow-ons 1–4 are already landed (see [DELIVERY_PLAN.md](DELIVERY_PLAN.md)
-and the root [README.md](README.md) status table).
+listed in [ARCHITECTURE.md](./ARCHITECTURE.md). Stages **0–9** and product
+follow-ons 1–4 are already landed (see [DELIVERY_PLAN.md](./doc/done/programs/DELIVERY_PLAN.md)
+and the root [README.md](./README.md) status table).
 
 If the change is not covered by an existing stage exit criterion, freeze label,
 or a named MUST in a spec, open a short design note or amend the relevant spec
 first.
 
 Work selection and package order are governed by
-[MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md). Do not select the next
+[MASTER_DELIVERY_PLAN.md](./MASTER_DELIVERY_PLAN.md). Do not select the next
 feature from `DELIVERY_PLAN.md`, `DEFECTS.md`, or an individual subsystem plan
 without checking the master starting queue and stage gate first.
 
 All new claims and stable capabilities require the assurance chain in
-[TESTING_STRATEGY.md](TESTING_STRATEGY.md). Example-based tests alone do not
+[TESTING_STRATEGY.md](./doc/reference/engineering/TESTING_STRATEGY.md). Example-based tests alone do not
 qualify persistence, isolation, concurrency, or recovery claims.
 
 ## Engineering rules
@@ -97,7 +97,7 @@ crate must package completely:
 ```
 
 What counts as a release artifact (crates, specs, demos) is defined in
-[doc/RELEASE_ARTIFACTS.md](doc/RELEASE_ARTIFACTS.md). Local dry-runs on a dirty
+[doc/reference/operations/RELEASE_ARTIFACTS.md](./doc/reference/operations/RELEASE_ARTIFACTS.md). Local dry-runs on a dirty
 tree: `RESIDIUUM_RELEASE_ALLOW_DIRTY=1 ./scripts/release_content.sh`.
 
 ### Nightly packaging
@@ -121,7 +121,7 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 | Area | Crate | Notes |
 |------|-------|--------|
 | SDA+ENR1 | `residiuum-sda` / `residiuum-sda-cli` | Conformance-locked `sda-standalone-v1.0` + ENR1 profile |
-| Wire | `residiuum-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/WIRE_MAJOR1_FREEZE.md`) |
+| Wire | `residiuum-format` | `WIRE_PROFILE_LABEL` = `1.0-draft` (freeze: `doc/wip/format/WIRE_MAJOR1_FREEZE.md`) |
 | Store | `residiuum-store` | Authority + tiers + media mirrors (early-access) |
 | SDK | `residiuum-sdk` | `SDK_API_VERSION` = `1.0` |
 | Examination | `residiuum-examine` | Profile over salvage |
@@ -129,12 +129,12 @@ routing, freeze labels, lifecycle/erasure scaffolds + benchmark disclosure.
 | Cluster | `residiuum-cluster` | `CLUSTER_PROFILE_VERSION` = `v1` (**in-process**) |
 
 Immediate package selection, priority, and release order:
-[MASTER_DELIVERY_PLAN.md](MASTER_DELIVERY_PLAN.md). Production-readiness defects
-remain in [DEFECTS.md](DEFECTS.md); product maturity rules remain in
-[doc/PRIME_TIME_PLAN.md](doc/PRIME_TIME_PLAN.md). Network Raft qualification,
+[MASTER_DELIVERY_PLAN.md](./MASTER_DELIVERY_PLAN.md). Production-readiness defects
+remain in [DEFECTS.md](./doc/done/incidents/DEFECTS.md); product maturity rules remain in
+[doc/done/programs/PRIME_TIME_PLAN.md](./doc/done/programs/PRIME_TIME_PLAN.md). Network Raft qualification,
 native cloud SDKs, and erasure codecs remain later programs.
 
-Capability matrix: [doc/CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md).
+Capability matrix: [doc/wip/status/CAPABILITY_MATRIX.md](./doc/wip/status/CAPABILITY_MATRIX.md).
 
 ## Version and BUILD numbers
 
@@ -148,13 +148,13 @@ Freeze labels (product API/profile labels, **not** crate semver):
 - `SDK_API_VERSION` (`residiuum-sdk`) = `1.0` — collection API surface
 - `CLUSTER_PROFILE_VERSION` (`residiuum-cluster`) = `v1` — in-process cluster only
 - `WIRE_PROFILE_LABEL` (`residiuum-format`) = `1.0-draft` — draft wire bytes;
-  freeze checklist `doc/WIRE_MAJOR1_FREEZE.md` (DEF-053; not frozen)
+  freeze checklist `doc/wip/format/WIRE_MAJOR1_FREEZE.md` (DEF-053; not frozen)
 - `CONFORMANCE_CORPUS_TAG` (`residiuum-sda`) = `sda-standalone-v1.0`
 
 ## License
 
 Residiuum is multi-licensed (MIT / MPL-2.0 / AGPL-3.0-or-later by crate). See
-[LICENSE](LICENSE) and [doc/LICENSING.md](doc/LICENSING.md).
+[LICENSE](LICENSE) and [doc/reference/operations/LICENSING.md](./doc/reference/operations/LICENSING.md).
 
 **Inbound = outbound:** by contributing, you license your contribution under
 the same license(s) that apply to the files you modify (and any SPDX declared

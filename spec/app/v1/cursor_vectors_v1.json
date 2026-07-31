@@ -1,6 +1,6 @@
 {
   "profile": "dingo-cursor-v1",
-  "normative": "doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §11",
+  "normative": "doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md §11",
   "ttl_seconds": 900,
   "skew_seconds": 120,
   "max_accept_age_seconds": 1020,

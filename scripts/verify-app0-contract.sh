@@ -23,7 +23,7 @@ required=(
   spec/heap/fixtures/dql_query.rejected.json
   crates/residiuum-sdk/src/app_v1.rs
   crates/residiuum-sdk/tests/app0_contract_lock.rs
-  doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md
+  doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md
 )
 
 for f in "${required[@]}"; do

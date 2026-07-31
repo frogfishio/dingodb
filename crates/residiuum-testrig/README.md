@@ -12,7 +12,7 @@ Orchestrator: **`run`** = pump → baseline monitor → chaos → post-chaos mon
 
 This is the scale ladder the product thesis needs: *damage it; measure what survived; see if it still speaks*. Pass at 1 GiB, then 10 GiB, then larger.
 
-Numbers are **diagnostic only**. Do not publish them as SLOs without [BENCHMARK_DISCLOSURE.md](../../doc/BENCHMARK_DISCLOSURE.md).
+Numbers are **diagnostic only**. Do not publish them as SLOs without [BENCHMARK_DISCLOSURE.md](../../doc/reference/operations/BENCHMARK_DISCLOSURE.md).
 
 ## Build
 
@@ -109,7 +109,7 @@ Summary JSON: `<work>/testrig-summary.v1.json`.
 
 - **Chaos is offline filesystem damage**, same family as `scripts/demos/02_punch_a_hole.sh`. It does not hold the store writer lock; run it only when the store is closed.
 - **Pump** defaults to `buffered` durability for throughput; pass `--durability durable` when you want fsync-honest campaigns.
-- **Pump writer model** is disclosed in JSON: default `--writer-shards 1` → `concurrency: 1` / `writer_model: single_active_segment`. With `--writer-shards N` (N>1) the pump creates via `Store::create_with_shards(N)` and writes with `put_many` → `concurrency: N` / `writer_model: sharded_active_segments`, plus peak RSS / process CPU% samples from `ps` (macOS: 100% ≈ one core). **Axis C:** `--stores N` (N>1) spawns N child pump processes under `store-00`… (or `<work>/store-00`… for `run`); total target is split across stores; disclosed `store_count`, `concurrency = stores × writer_shards`, `writer_model: multi_process_stores[_sharded]`, and summed child RSS/CPU%. Multi-store is a **harness** for media upper-bound capacity — not product sharding. See **DEF-096** / [`doc/PARALLEL_INGEST.md`](../../doc/PARALLEL_INGEST.md). Shard count is fixed at create — rematch the flag or recreate the store.
+- **Pump writer model** is disclosed in JSON: default `--writer-shards 1` → `concurrency: 1` / `writer_model: single_active_segment`. With `--writer-shards N` (N>1) the pump creates via `Store::create_with_shards(N)` and writes with `put_many` → `concurrency: N` / `writer_model: sharded_active_segments`, plus peak RSS / process CPU% samples from `ps` (macOS: 100% ≈ one core). **Axis C:** `--stores N` (N>1) spawns N child pump processes under `store-00`… (or `<work>/store-00`… for `run`); total target is split across stores; disclosed `store_count`, `concurrency = stores × writer_shards`, `writer_model: multi_process_stores[_sharded]`, and summed child RSS/CPU%. Multi-store is a **harness** for media upper-bound capacity — not product sharding. See **DEF-096** / [`doc/reference/operations/PARALLEL_INGEST.md`](../../doc/reference/operations/PARALLEL_INGEST.md). Shard count is fixed at create — rematch the flag or recreate the store.
 - **Monitor** reports p50/p95/p99 get latency, salvage frame/hole counts, and optional scrub failures. Not a replacement for DEF-093 disclosed benchmarks.
 - Manifest: `testrig-manifest.v1.json` next to the store (or under `--work`) so monitor can sample keys the pump wrote.
 

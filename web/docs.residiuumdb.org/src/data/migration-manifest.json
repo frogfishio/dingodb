@@ -21,70 +21,70 @@
     "status": "active"
   },
   {
-    "source": "doc/CAPABILITY_MATRIX.md",
+    "source": "doc/wip/status/CAPABILITY_MATRIX.md",
     "destination": "/status/capabilities/",
     "mode": "summarize",
     "owner": "release",
     "status": "active"
   },
   {
-    "source": "doc/BENCHMARK_DISCLOSURE.md",
+    "source": "doc/reference/operations/BENCHMARK_DISCLOSURE.md",
     "destination": "/status/benchmark-disclosure/",
     "mode": "summarize",
     "owner": "release",
     "status": "active"
   },
   {
-    "source": "FORMAT_SPEC.md",
+    "source": "doc/reference/storage/FORMAT_SPEC.md",
     "destination": "/specifications/format/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "HEAP_SPEC.md",
+    "source": "doc/wip/heap/HEAP_SPEC.md",
     "destination": "/specifications/heaps/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "CLUSTER_SPEC.md",
+    "source": "doc/todo/cluster/CLUSTER_SPEC.md",
     "destination": "/specifications/cluster/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "RQL_SPEC.md",
+    "source": "doc/wip/query/RQL_SPEC.md",
     "destination": "/specifications/rql/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "RRE_SPEC.md",
+    "source": "doc/todo/rre/RRE_SPEC.md",
     "destination": "/specifications/rre/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "ATOMICS_PROPOSAL.md",
+    "source": "doc/todo/atomics/ATOMICS_SPEC.md",
     "destination": "/specifications/atomics/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "DIRECT_ACCESS_SPEC.md",
+    "source": "doc/todo/direct-access/DIRECT_ACCESS_SPEC.md",
     "destination": "/specifications/direct-access/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "ORDER_WAVELET_SPEC.md",
+    "source": "doc/todo/order-wavelets/ORDER_WAVELET_SPEC.md",
     "destination": "/specifications/order-wavelets/",
     "mode": "summarize",
     "owner": "specs",
@@ -105,7 +105,7 @@
     "status": "active"
   },
   {
-    "source": "FUTURE_ROADMAP.md",
+    "source": "doc/todo/deferred/FUTURE_ROADMAP.md",
     "destination": "/status/roadmap/",
     "mode": "summarize",
     "owner": "product",

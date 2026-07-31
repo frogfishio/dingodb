@@ -130,7 +130,7 @@ mkdir -p "$STAGE/scripts/demos" "$STAGE/doc"
 cp "$ROOT/scripts/demos/"*.sh "$STAGE/scripts/demos/" 2>/dev/null || true
 cp "$ROOT/scripts/demos/README.md" "$STAGE/scripts/demos/" 2>/dev/null || true
 cp "$ROOT/scripts/release_content.sh" "$STAGE/scripts/" 2>/dev/null || true
-cp "$ROOT/doc/RELEASE_ARTIFACTS.md" "$STAGE/doc/" 2>/dev/null || true
+cp "$ROOT/doc/reference/operations/RELEASE_ARTIFACTS.md" "$STAGE/doc/" 2>/dev/null || true
 
 (
   cd "$STAGE"

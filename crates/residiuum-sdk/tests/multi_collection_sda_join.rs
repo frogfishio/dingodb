@@ -362,7 +362,7 @@ fn first_some_str(v: &JsonValue) -> Option<String> {
 //
 // 99% of one core with no new lines mid-join is **CPU-bound nested eval**, not a
 // deadlock. Kill only if a phase prints and then stalls far past the bounds above.
-// Numbers are diagnostic only. See doc/BENCHMARK_DISCLOSURE.md.
+// Numbers are diagnostic only. See doc/reference/operations/BENCHMARK_DISCLOSURE.md.
 
 use std::io::{self, Write};
 use std::time::Instant;

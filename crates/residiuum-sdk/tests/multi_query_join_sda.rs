@@ -302,7 +302,7 @@ fn unwrap_opt_i64(v: &JsonValue) -> i64 {
 //   MULTI_JOIN_BENCH_STRESS=1 cargo test -p residiuum-sdk --release \
 //     --test multi_query_join_sda multi_query_join_perf -- --nocapture
 //
-// Numbers are diagnostic only. See doc/BENCHMARK_DISCLOSURE.md.
+// Numbers are diagnostic only. See doc/reference/operations/BENCHMARK_DISCLOSURE.md.
 
 use std::io::{self, Write};
 use std::time::Instant;

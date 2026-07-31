@@ -1,5 +1,5 @@
 {
-  "source": "doc/CAPABILITY_MATRIX.md",
+  "source": "doc/wip/status/CAPABILITY_MATRIX.md",
   "verified_for": "0.2.0",
   "last_verified": "2026-07-30",
   "deploymentProfiles": [

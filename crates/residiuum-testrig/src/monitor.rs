@@ -175,7 +175,7 @@ pub fn run_monitor(cfg: &MonitorConfig) -> Result<MonitorResult, String> {
             "skipped": cfg.inspect_only,
         },
         "manifest_keys_written": manifest.as_ref().map(|m| m.keys_written),
-        "disclosure": "Diagnostic only — not a published SLO (see doc/BENCHMARK_DISCLOSURE.md).",
+        "disclosure": "Diagnostic only — not a published SLO (see doc/reference/operations/BENCHMARK_DISCLOSURE.md).",
     });
 
     if cfg.json_out {

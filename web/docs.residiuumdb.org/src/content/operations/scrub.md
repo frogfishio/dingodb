@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: doc/CAPABILITY_MATRIX.md
+  path: doc/wip/status/CAPABILITY_MATRIX.md
 owners:
   - ops
 keywords:

@@ -1,6 +1,6 @@
 //! DEF-039 — anti-entropy inventory and replica repair.
 //!
-//! Acceptance (DEFECTS.md / CLUSTER_SPEC §15.3):
+//! Acceptance (doc/done/incidents/DEFECTS.md / CLUSTER_SPEC §15.3):
 //! - Corrupt / newer-mtime replicas never overwrite healthy evidence.
 //! - Random deletion/corruption converges to policy while preserving
 //!   explicit irrecoverable holes.

@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: USP.md
+  path: doc/reference/product/USP.md
 owners:
   - docs
 keywords:

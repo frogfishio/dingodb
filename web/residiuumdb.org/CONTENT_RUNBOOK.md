@@ -14,7 +14,7 @@ For release owners updating version and maturity without editing the same fact i
 | Roadmap tracks | `src/data/roadmap.json` |
 | Repository VERSION | `../../VERSION` (synced into release.json) |
 
-Canonical product maturity evidence remains `doc/CAPABILITY_MATRIX.md` in the monorepo. Update that document first, then mirror user-facing labels into `capabilities.json`.
+Canonical product maturity evidence remains `doc/wip/status/CAPABILITY_MATRIX.md` in the monorepo. Update that document first, then mirror user-facing labels into `capabilities.json`.
 
 ## Release bump procedure
 

@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: DOCS_SITE_SPEC.md
+  path: doc/done/web/DOCS_SITE_SPEC.md
 owners:
   - docs
 keywords:

@@ -5,7 +5,7 @@ const APP_VERSION: &str = concat!(env!("SDA_VERSION"), "-build ", env!("SDA_BUIL
 const CLI_ABOUT: &str = "Residiuum SDA+ENR1 hybrid command-line interface";
 const CLI_LONG_ABOUT: &str = "Residiuum SDA+ENR1 hybrid command-line interface\n\nEvaluate, validate, and format SDA programs (including additive ENR1) against JSON input.\n\nThe shipped binary is `residiuum-sda` (package `residiuum-sda-cli`): use `residiuum-sda eval` to run filters, `residiuum-sda check` to validate source, and `residiuum-sda fmt` to emit canonical source for editor and CI workflows.\n\nThis is Residiuum's hybrid surface, not a claim on the bare crates.io name `sda`.";
 const CLI_AFTER_HELP: &str = "Examples:\n  residiuum-sda eval -e 'values(input)' < event.json\n  residiuum-sda eval -f extract.sda -i event.json --compact\n  residiuum-sda check -f extract.sda\n  residiuum-sda fmt -f extract.sda --check\n  residiuum-sda fmt --stdin-filepath extract.sda < extract.sda\n  residiuum-sda --license";
-const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nMIT License\n\nThis program (`residiuum-sda`) is offered under the MIT License.\nSee LICENSE-MIT and doc/LICENSING.md in the repository for full terms.";
+const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nMIT License\n\nThis program (`residiuum-sda`) is offered under the MIT License.\nSee LICENSE-MIT and doc/reference/operations/LICENSING.md in the repository for full terms.";
 
 #[derive(Parser)]
 #[command(

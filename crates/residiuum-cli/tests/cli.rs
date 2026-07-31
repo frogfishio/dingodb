@@ -685,8 +685,8 @@ fn serve_loopback_bind_is_allowed() {
 fn capability_matrix_document_present() {
     // DEF-001: release-facing capability matrix must stay in-tree.
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let matrix = root.join("doc/CAPABILITY_MATRIX.md");
-    let text = fs::read_to_string(&matrix).expect("doc/CAPABILITY_MATRIX.md must exist");
+    let matrix = root.join("doc/wip/status/CAPABILITY_MATRIX.md");
+    let text = fs::read_to_string(&matrix).expect("doc/wip/status/CAPABILITY_MATRIX.md must exist");
     assert!(
         text.contains("Experimental network cluster is not production")
             || text.contains("not a production release claim")

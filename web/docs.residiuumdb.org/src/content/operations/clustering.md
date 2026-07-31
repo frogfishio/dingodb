@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: network-multi-node
 source:
-  path: doc/CAPABILITY_MATRIX.md
+  path: doc/wip/status/CAPABILITY_MATRIX.md
 owners:
   - ops
 keywords:
@@ -50,4 +50,4 @@ N/A — do not place irreplaceable data solely on experimental cluster.
 
 ## Related evidence
 
-`doc/CAPABILITY_MATRIX.md`, CLUSTER_SPEC.md
+`doc/wip/status/CAPABILITY_MATRIX.md`, CLUSTER_SPEC.md

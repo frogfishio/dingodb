@@ -210,10 +210,10 @@ designed to be rebuilt from immutable, independently framed segments
 
 ## Documentation
 
-- Architecture: [OVERVIEW.md](https://github.com/frogfishio/dingodb/blob/main/OVERVIEW.md)
-- Format: [FORMAT_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/FORMAT_SPEC.md)
-- Crash consistency: [doc/CRASH_CONSISTENCY.md](https://github.com/frogfishio/dingodb/blob/main/doc/CRASH_CONSISTENCY.md)
-- Retention runbook: [doc/RUNBOOK_RETENTION.md](https://github.com/frogfishio/dingodb/blob/main/doc/RUNBOOK_RETENTION.md)
+- Architecture: [OVERVIEW.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/product/OVERVIEW.md)
+- Format: [FORMAT_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/storage/FORMAT_SPEC.md)
+- Crash consistency: [doc/reference/operations/CRASH_CONSISTENCY.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/CRASH_CONSISTENCY.md)
+- Retention runbook: [doc/reference/operations/RUNBOOK_RETENTION.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/RUNBOOK_RETENTION.md)
 
 ## License
 
@@ -221,4 +221,4 @@ MPL-2.0 (file-level weak copyleft). Proprietary applications may embed the
 store; modifications to MPL-covered files must be disclosed.
 
 Part of [Residiuum](https://github.com/frogfishio/dingodb). Multi-tier license map:
-[doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md).
+[doc/reference/operations/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/LICENSING.md).

@@ -12,8 +12,8 @@
 //!
 //! Run: `cargo run -p residiuum-sda --release --example sda_latency_breakdown`
 //!
-//! Numbers are **diagnostic only**. See `doc/BENCHMARK_DISCLOSURE.md` and
-//! `doc/PERFORMANCE_STRATEGIES.md` (SDA section). Do not publish as SLOs.
+//! Numbers are **diagnostic only**. See `doc/reference/operations/BENCHMARK_DISCLOSURE.md` and
+//! `doc/reference/operations/PERFORMANCE_STRATEGIES.md` (SDA section). Do not publish as SLOs.
 
 use residiuum_sda::{from_json, to_json, Program};
 use std::time::{Duration, Instant};
@@ -238,5 +238,5 @@ fn main() {
         eprintln!();
     }
 
-    eprintln!("done. diagnostic only — see doc/PERFORMANCE_STRATEGIES.md (SDA).");
+    eprintln!("done. diagnostic only — see doc/reference/operations/PERFORMANCE_STRATEGIES.md (SDA).");
 }

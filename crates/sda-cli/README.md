@@ -81,7 +81,7 @@ let out = residiuum_sda::run("input<\"x\">!", serde_json::json!({"x": 1}))?;
 
 ## Documentation
 
-- Spec: [SDA_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/SDA_SPEC.md)
+- Spec: [SDA_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/query/SDA_SPEC.md)
 - User docs: [doc/SDA/](https://github.com/frogfishio/dingodb/tree/main/doc/SDA)
 - Library: [`residiuum-sda`](https://crates.io/crates/residiuum-sda)
 

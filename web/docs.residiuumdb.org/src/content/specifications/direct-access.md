@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: DIRECT_ACCESS_SPEC.md
+  path: doc/todo/direct-access/DIRECT_ACCESS_SPEC.md
 owners:
   - specs
 keywords:
@@ -29,4 +29,4 @@ spec_state: draft
 
 ## Source
 
-https://github.com/frogfishio/dingodb/blob/main/DIRECT_ACCESS_SPEC.md
+https://github.com/frogfishio/dingodb/blob/main/doc/todo/direct-access/DIRECT_ACCESS_SPEC.md

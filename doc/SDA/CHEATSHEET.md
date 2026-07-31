@@ -9,9 +9,9 @@ This is the short version of SDA for day-to-day use.
 - `residiuum-sda check` validates SDA code
 - `residiuum-sda fmt` formats SDA code
 - **SDA (+ ENR1) is the mathematical language**; **RQL** is the official human
-  dialect ([USER_GUIDE.md](../RQL/USER_GUIDE.md), [RQL_SPEC.md](../../RQL_SPEC.md)); JSON/Mongo filters and SQL-ish
+  dialect ([USER_GUIDE.md](../RQL/USER_GUIDE.md), [RQL_SPEC.md](../wip/query/RQL_SPEC.md)); JSON/Mongo filters and SQL-ish
   strings are foreign **dialects** that compile into pure SDA — not a hybrid of
-  peer languages (see [DIALECTS.md](DIALECTS.md))
+  peer languages (see [DIALECTS.md](./DIALECTS.md))
 - **Null ≠ absence.** Stored `null` is `Some(null)`; missing key is `None`. If you
   need that distinction, write pure SDA — foreign dialects cannot express it losslessly
 
@@ -107,4 +107,4 @@ Start smaller:
 2. then one filter
 3. then one file-based program
 
-See the full guide in [USER_MANUAL.md](USER_MANUAL.md).
+See the full guide in [USER_MANUAL.md](./USER_MANUAL.md).

@@ -131,7 +131,7 @@ pub const H6_PUBLISHED_LIMITATIONS: &str = concat!(
     "Logical heap isolation does not protect against: privileged administrators with ",
     "local recovery authority; physical access to media or process memory; shared-resource ",
     "side channels (timing, cache, scheduler); or compromise of the serving process TCB. ",
-    "See doc/RUNBOOK_HEAP_QUALIFICATION.md."
+    "See doc/wip/heap/RUNBOOK_HEAP_QUALIFICATION.md."
 );
 
 #[cfg(test)]

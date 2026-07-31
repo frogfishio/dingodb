@@ -31,7 +31,7 @@ Or: `cargo add residiuum-format`
 
 **Shipped** for Stage 2. Wire profile label `WIRE_PROFILE_LABEL` = `1.0-draft`
 (`wire_major = 1`, `wire_minor = 0`). Not frozen as production wire major 1 —
-freeze criteria and gaps: [WIRE_MAJOR1_FREEZE.md](../../doc/WIRE_MAJOR1_FREEZE.md)
+freeze criteria and gaps: [WIRE_MAJOR1_FREEZE.md](../../doc/wip/format/WIRE_MAJOR1_FREEZE.md)
 (DEF-053). Runtime honesty: `wire_is_frozen()` / `wire_freeze_summary()`. A
 breaking on-disk change requires a major bump and dual-read support.
 
@@ -98,8 +98,8 @@ holes; surviving verified islands remain recoverable without a global catalog.
 
 ## Documentation
 
-- Format spec: [FORMAT_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/FORMAT_SPEC.md)
-- Architecture: [OVERVIEW.md](https://github.com/frogfishio/dingodb/blob/main/OVERVIEW.md)
+- Format spec: [FORMAT_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/storage/FORMAT_SPEC.md)
+- Architecture: [OVERVIEW.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/product/OVERVIEW.md)
 
 ## License
 

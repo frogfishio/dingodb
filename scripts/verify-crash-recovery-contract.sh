@@ -7,12 +7,12 @@ cd "$ROOT"
 fail() { echo "verify-crash-recovery-contract: FAIL: $*" >&2; exit 1; }
 ok() { echo "verify-crash-recovery-contract: $*"; }
 
-DOC="doc/CRASH_AND_RECOVERY_CONTRACT.md"
+DOC="doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md"
 [[ -f "$DOC" ]] || fail "missing $DOC"
 
 python3 - <<'PY' || exit 1
 from pathlib import Path
-text = Path("doc/CRASH_AND_RECOVERY_CONTRACT.md").read_text(encoding="utf-8")
+text = Path("doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md").read_text(encoding="utf-8")
 needles = [
     "dingo-crash-recovery-v1",
     "Durability-mode acknowledgement",

@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: design-only
 source:
-  path: ORDER_WAVELET_SPEC.md
+  path: doc/todo/order-wavelets/ORDER_WAVELET_SPEC.md
 owners:
   - specs
 keywords:
@@ -29,4 +29,4 @@ spec_state: draft
 
 ## Source
 
-https://github.com/frogfishio/dingodb/blob/main/ORDER_WAVELET_SPEC.md
+https://github.com/frogfishio/dingodb/blob/main/doc/todo/order-wavelets/ORDER_WAVELET_SPEC.md

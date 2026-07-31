@@ -2,7 +2,7 @@
 
 Product and project website for [Residiuum](https://github.com/frogfishio/dingodb).
 
-Specification: repository root [`WEBSITE_SPEC.md`](../../WEBSITE_SPEC.md).
+Specification: repository root [`WEBSITE_SPEC.md`](../../doc/done/web/WEBSITE_SPEC.md).
 
 ## Stack
 

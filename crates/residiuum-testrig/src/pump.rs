@@ -280,7 +280,7 @@ fn run_pump_multi_process(cfg: &PumpConfig) -> Result<WorkloadManifest, String> 
         "manifest": cfg.manifest_path.display().to_string(),
         "store": cfg.store.display().to_string(),
         "pump_mode": "multi_process",
-        "disclosure": "Diagnostic only — not a published SLO (doc/BENCHMARK_DISCLOSURE.md). Axis C multi-store harness.",
+        "disclosure": "Diagnostic only — not a published SLO (doc/reference/operations/BENCHMARK_DISCLOSURE.md). Axis C multi-store harness.",
     });
 
     if cfg.json_out {
@@ -461,7 +461,7 @@ fn run_pump_single(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         "elapsed_ms": manifest.pump_elapsed_ms,
         "ops_per_sec": ops_per_sec,
         "mb_per_sec": mb_per_sec,
-        // Honest concurrency disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
+        // Honest concurrency disclosure (doc/reference/operations/BENCHMARK_DISCLOSURE.md, DEF-096).
         "concurrency": concurrency,
         "writer_shards": actual_shards,
         "writer_model": writer_model,
@@ -473,7 +473,7 @@ fn run_pump_single(cfg: &PumpConfig) -> Result<WorkloadManifest, String> {
         "manifest": cfg.manifest_path.display().to_string(),
         "store": cfg.store.display().to_string(),
         "pump_mode": "single_process",
-        "disclosure": "Diagnostic only — not a published SLO (doc/BENCHMARK_DISCLOSURE.md).",
+        "disclosure": "Diagnostic only — not a published SLO (doc/reference/operations/BENCHMARK_DISCLOSURE.md).",
     });
 
     if cfg.json_out {

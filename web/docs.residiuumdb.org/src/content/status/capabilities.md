@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: all-profiles
 source:
-  path: doc/CAPABILITY_MATRIX.md
+  path: doc/wip/status/CAPABILITY_MATRIX.md
 owners:
   - release
 keywords:
@@ -19,7 +19,7 @@ keywords:
   - matrix
 ---
 
-Generated from structured docs data checked against `doc/CAPABILITY_MATRIX.md`.
+Generated from structured docs data checked against `doc/wip/status/CAPABILITY_MATRIX.md`.
 
 ## Deployment profiles
 
@@ -46,4 +46,4 @@ Generated from structured docs data checked against `doc/CAPABILITY_MATRIX.md`.
 
 Heaps, RRE, Atomics, DDA, Order Wavelets — **Design** unless the matrix gains implementation evidence.
 
-Full repository matrix: https://github.com/frogfishio/dingodb/blob/main/doc/CAPABILITY_MATRIX.md
+Full repository matrix: https://github.com/frogfishio/dingodb/blob/main/doc/wip/status/CAPABILITY_MATRIX.md

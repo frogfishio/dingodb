@@ -4,12 +4,12 @@ Start from the kernel and do not lose it.
 
 **Implementation (2026):** ENR1 **kernel + designed surface** is implemented
 **inside `residiuum-sda`** (same lexer/parser/eval as SDA — compile once). Profile tag
-`sda-enr1-v0.1`. See [README.md](README.md) and `crates/sda-core/tests/enr1_kernel.rs`.
+`sda-enr1-v0.1`. See [README.md](./README.md) and `crates/sda-core/tests/enr1_kernel.rs`.
 
 **Still open within ENR1 design:** multi-generator expand (blocked on SDA
 multi-gen; nest match bags) and provenance decorations (orthogonal / ENR2 for
 serious decision provenance). Languages are designed top-down — see
-[README.md § How this language is designed](README.md#how-this-language-is-designed-not-bob-called-oracle).
+[README.md § How this language is designed](./README.md#how-this-language-is-designed-not-bob-called-oracle).
 ENR2 remains spec-only until that *model* is opened, not until a ticket asks.
 
 Enrichment Language Sketch

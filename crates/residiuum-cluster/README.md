@@ -153,8 +153,8 @@ residiuum serve-cluster ./cluster --node 0 --bind 127.0.0.1:7434 --experimental-
 
 ## Documentation
 
-- Cluster spec: [CLUSTER_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/CLUSTER_SPEC.md)
-- Licensing: [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md)
+- Cluster spec: [CLUSTER_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/todo/cluster/CLUSTER_SPEC.md)
+- Licensing: [doc/reference/operations/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/LICENSING.md)
 
 ## License
 

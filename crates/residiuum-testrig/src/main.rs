@@ -37,7 +37,7 @@ const ABOUT: &str = "Three-prong Residiuum store stress rig: pump · chaos · mo
         Prong 2 (chaos): punch random garbage into segment files while closed.\n\
         Prong 3 (monitor): measure gets/puts, salvage holes, scrub findings.\n\n\
         Suggested ladder: --target-bytes 1G, then 10G, then larger.\n\
-        Numbers are diagnostic only (see doc/BENCHMARK_DISCLOSURE.md)."
+        Numbers are diagnostic only (see doc/reference/operations/BENCHMARK_DISCLOSURE.md)."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -556,7 +556,7 @@ fn cmd_run(
         "pump_ops_per_sec": pump_manifest.pump_ops_per_sec,
         "pump_mb_per_sec": pump_manifest.pump_mb_per_sec,
         "pump_elapsed_ms": pump_manifest.pump_elapsed_ms,
-        // Multi-core / multi-process disclosure (doc/BENCHMARK_DISCLOSURE.md, DEF-096).
+        // Multi-core / multi-process disclosure (doc/reference/operations/BENCHMARK_DISCLOSURE.md, DEF-096).
         "concurrency": pump_manifest.concurrency,
         "writer_shards": pump_manifest.writer_shards,
         "writer_model": pump_manifest.writer_model,
@@ -568,7 +568,7 @@ fn cmd_run(
         "post_chaos": if stores == 1 { post_reports[0].clone() } else { json!(post_reports) },
         "reasons": all_reasons,
         "ladder_hint": "If ok at 1G, re-run with --target-bytes 10G (then larger). Axis B: --writer-shards N. Axis C: --stores N (multi-process).",
-        "disclosure": "Diagnostic only — not a published SLO (doc/BENCHMARK_DISCLOSURE.md).",
+        "disclosure": "Diagnostic only — not a published SLO (doc/reference/operations/BENCHMARK_DISCLOSURE.md).",
     });
 
     let summary_path = work.join("testrig-summary.v1.json");

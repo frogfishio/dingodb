@@ -3,7 +3,7 @@
 Status: **ENR1 kernel implemented inside `residiuum-sda`** (same parser/evaluator).  
 **ENR2** remains design notes only — do not implement yet.
 
-Companion specs: [ENR1.md](ENR1.md), [ENR2.md](ENR2.md), [SDA_SPEC.md](../../SDA_SPEC.md), [doc/SDA/DOCTRINE.md](../../doc/SDA/DOCTRINE.md).
+Companion specs: [ENR1.md](./ENR1.md), [ENR2.md](./ENR2.md), [SDA_SPEC.md](../../doc/reference/query/SDA_SPEC.md), [doc/SDA/DOCTRINE.md](../../doc/SDA/DOCTRINE.md).
 
 ## Decision: one compile path (SDA + ENR1)
 
@@ -93,7 +93,7 @@ Hosts that apply one program to many bags should `Program::parse` once and
 Evidence that ENR1 is the right *first* cut: multi-collection join measurements
 (nested pure SDA vs host hash equijoin) show the semantic gap is match +
 explicit cardinality, not candidate ranking. See
-`doc/PERFORMANCE_STRATEGIES.md` and the multi-collection SDA join tests under
+`doc/reference/operations/PERFORMANCE_STRATEGIES.md` and the multi-collection SDA join tests under
 `residiuum-sdk`.
 
 ## Host text path (people still write ENR + SDA)
@@ -102,7 +102,7 @@ ENR + SDA are the **exact mathematical surface** — often atrocious DX, loved b
 a small loud technical audience. Everyday product text is intended to be
 **RQL** (Residiuum Query Language): the official human dialect that lowers into the
 same ENR+SDA IR. User guide: [doc/RQL/USER_GUIDE.md](../../doc/RQL/USER_GUIDE.md).
-Design: [RQL_SPEC.md](../../RQL_SPEC.md).
+Design: [RQL_SPEC.md](../../doc/wip/query/RQL_SPEC.md).
 
 **RQL** (`dialect "dql"`) is the official human surface and lowers into the same
 ENR1+SDA programs (`Match` / `enrich` / cardinality). Fluent filters, equijoins,
@@ -110,7 +110,7 @@ pure ENR text, and **foreign query dialects** (`json` / `mongo` / `sql` → pure
 SDA) remain everyday DX frontends, not hybrid peer languages: pure notation
 remains the only lossless path for distinctions foreign surfaces cannot express
 (notably **Null vs absence**). See [doc/SDA/DIALECTS.md](../../doc/SDA/DIALECTS.md)
-and [RQL_SPEC.md](../../RQL_SPEC.md).
+and [RQL_SPEC.md](../../doc/wip/query/RQL_SPEC.md).
 
 Users who prefer the algebra write programs as **text**:
 
@@ -265,10 +265,10 @@ preserve match-bag reduction law, do not invent a second parser.
 
 ## Reading order
 
-1. [ENR1.md](ENR1.md) — match-bag kernel (normative intent).
+1. [ENR1.md](./ENR1.md) — match-bag kernel (normative intent).
 2. Code: `residiuum-sda` stdlib ENR ops + `tests/enr1_kernel.rs`.
-3. [ENR2.md](ENR2.md) — **read for orientation only until needed**.
-4. [SDA_SPEC.md](../../SDA_SPEC.md) + [DOCTRINE.md](../../doc/SDA/DOCTRINE.md) — value laws ENR must not weaken.
+3. [ENR2.md](./ENR2.md) — **read for orientation only until needed**.
+4. [SDA_SPEC.md](../../doc/reference/query/SDA_SPEC.md) + [DOCTRINE.md](../../doc/SDA/DOCTRINE.md) — value laws ENR must not weaken.
 
 ## Crate intent
 

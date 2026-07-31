@@ -3,7 +3,7 @@
 Status: **frozen for implementers (APP-0)**
 
 Normative plan:
-[`doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md`](../../../doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
+[`doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md`](../../../doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
 
 This directory holds machine-readable contract artifacts that APP-1…APP-8
 must not contradict without amending the CORE plan.

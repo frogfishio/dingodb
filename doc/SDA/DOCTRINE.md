@@ -343,7 +343,7 @@ the algebra.
 
 **RQL** is the official human dialect co-designed to lower *faithfully* into
 that algebra (not SQL mimicry). Foreign dialects remain imperfect comfort.
-See [DIALECTS.md](DIALECTS.md) and [RQL_SPEC.md](../../RQL_SPEC.md).
+See [DIALECTS.md](./DIALECTS.md) and [RQL_SPEC.md](../wip/query/RQL_SPEC.md).
 
 ## Language Design Authority (Top-Down Kernel)
 

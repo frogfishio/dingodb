@@ -801,7 +801,7 @@ fn fuzz_budget_structured_mutations() {
 
 #[test]
 fn operator_runbook_present() {
-    let path = workspace_root().join("doc/RUNBOOK_HEAP_QUALIFICATION.md");
+    let path = workspace_root().join("doc/wip/heap/RUNBOOK_HEAP_QUALIFICATION.md");
     let body = fs::read_to_string(&path).expect("operator runbook present");
     for needle in [
         "HP-010",
@@ -1308,7 +1308,7 @@ fn h6_pure_proof_bundle_connected() {
 fn complete_path_and_external_review_artifacts() {
     // Gate H6 complete-path + external review package (brief only; report open).
     let root = workspace_root();
-    let cpr = fs::read_to_string(root.join("doc/HEAP_COMPLETE_PATH_REVIEW.md")).unwrap();
+    let cpr = fs::read_to_string(root.join("doc/wip/heap/HEAP_COMPLETE_PATH_REVIEW.md")).unwrap();
     for needle in [
         "CPR-001",
         "CPR-004",
@@ -1321,7 +1321,7 @@ fn complete_path_and_external_review_artifacts() {
         assert!(cpr.contains(needle), "complete-path review missing {needle}");
     }
 
-    let brief = fs::read_to_string(root.join("doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md")).unwrap();
+    let brief = fs::read_to_string(root.join("doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md")).unwrap();
     for needle in [
         "External security review",
         "TCB",

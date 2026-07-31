@@ -1,6 +1,6 @@
 //! DEF-040 — complete distributed query semantics.
 //!
-//! Acceptance (DEFECTS.md):
+//! Acceptance (doc/done/incidents/DEFECTS.md):
 //! - Randomized worker ordering produces identical sequence results.
 //! - Coordinator failover neither silently duplicates nor omits rows.
 //! - Partial partitions are never represented as empty complete partitions.

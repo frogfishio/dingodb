@@ -1,6 +1,6 @@
 //! APP-0 contract lock: error map, plan/cursor vectors, wire fixtures, compile surface.
 //!
-//! Normative: `doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md` §12–§14 APP-0.
+//! Normative: `doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md` §12–§14 APP-0.
 
 use residiuum_sdk::{
     AppQueryBudget, CollectionClient, ConsistencyMode, CoveragePolicy, CURSOR_PROFILE,
@@ -206,5 +206,7 @@ fn app0_rust_compile_surface() {
     assert_eq!(err.code(), ErrorCode::Internal);
 
     // Touch workspace Path so unused import stays honest if layout moves.
-    assert!(Path::new(&workspace_root()).join("doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md").is_file());
+    assert!(Path::new(&workspace_root())
+        .join("doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md")
+        .is_file());
 }

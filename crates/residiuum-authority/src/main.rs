@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`residiuum-authority`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/LICENSING.md.\n\nThe qualified data server must never link this crate or a MasterKeyProvider.";
+const LICENSE_TEXT: &str = "Copyright (c) 2026 Alexander R. Croft\nGNU Affero General Public License v3.0 or later\n\nThis program (`residiuum-authority`) is offered under the AGPL-3.0-or-later.\nSee LICENSE-AGPL-3.0 and doc/reference/operations/LICENSING.md.\n\nThe qualified data server must never link this crate or a MasterKeyProvider.";
 
 #[derive(Parser)]
 #[command(

@@ -1,27 +1,31 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.1**
+Status: **definitive execution plan v1.2**
 
-Effective: 2026-07-30
+Effective: 2026-07-31
 
 Owner: Residiuum product and engineering program
 
 Testing authority:
-[TESTING_STRATEGY.md](TESTING_STRATEGY.md),
-[doc/VERIFICATION_IMPLEMENTATION_PLAN.md](doc/VERIFICATION_IMPLEMENTATION_PLAN.md),
+[TESTING_STRATEGY.md](./doc/reference/engineering/TESTING_STRATEGY.md),
+[doc/todo/verification/VERIFICATION_IMPLEMENTATION_PLAN.md](./doc/todo/verification/VERIFICATION_IMPLEMENTATION_PLAN.md),
 and
-[doc/VERIFICATION_STATUS.md](doc/VERIFICATION_STATUS.md).
+[doc/wip/status/VERIFICATION_STATUS.md](./doc/wip/status/VERIFICATION_STATUS.md).
 
 ## 1. Authority
 
 This is the controlling document for **what Residiuum builds next and in what
 order**.
 
+Document state and location are governed by
+[doc/README.md](./doc/README.md).
+
 Other documents retain their narrower authority:
 
 - specifications define semantics;
 - implementation plans define individual package contents;
-- `DEFECTS.md` defines defects and production gates;
+- the archived emergency-defect record defines incident history and permanent
+  regression authority;
 - capability documents define what may be claimed;
 - this document defines program order, priority, entry, and exit.
 
@@ -94,7 +98,7 @@ Rules:
   team.
 
 The machine-readable/living scoreboard remains:
-[doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
+[doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
 
 It MUST be expanded to contain every active-master-plan package and updated in
 the same change that changes a package state.
@@ -151,7 +155,7 @@ Work:
 Required outputs:
 
 - updated Heap qualification matrix;
-- updated `doc/VERIFICATION_STATUS.md`;
+- updated `doc/wip/status/VERIFICATION_STATUS.md`;
 - claim/suite gap report;
 - list of genuinely missing work; and
 - discrepancies raised as named defects.
@@ -167,7 +171,7 @@ Depends: `M0-1`
 
 Work:
 
-- update `doc/NEXT_BUILD_STATUS.md` with the observed HAR state;
+- update `doc/wip/status/NEXT_BUILD_STATUS.md` with the observed HAR state;
 - add `DEL`, `TEL`, `DST`, trust-gate, and release rows used by this plan;
 - preserve source revision and evidence columns;
 - add `last_verified` and `blocked_by` fields if the table remains Markdown;
@@ -216,10 +220,10 @@ Release outcome:
 Priority: `P0-GATE`
 
 Normative specification:
-[CORE_STORAGE_QUALIFICATION_SPEC.md](CORE_STORAGE_QUALIFICATION_SPEC.md).
+[CORE_STORAGE_QUALIFICATION_SPEC.md](./doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md).
 
 Implementation plan:
-[doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md](doc/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md).
+[doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md](./doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md).
 
 Required order:
 
@@ -272,21 +276,21 @@ Priority: `P1-PATH`
 Entry dependency: `C0` exit.
 
 Immediate Must-Add program:
-[MUST_ADD.md](MUST_ADD.md), packages `APB-0` through `APB-12`.
+[MUST_ADD.md](./doc/todo/application-baseline/MUST_ADD.md), packages `APB-0` through `APB-12`.
 
 Normative package plan:
-[doc/HEAP_APPLICATION_READY_PLAN.md](doc/HEAP_APPLICATION_READY_PLAN.md).
+[doc/todo/heap-application-ready/HEAP_APPLICATION_READY_PLAN.md](./doc/todo/heap-application-ready/HEAP_APPLICATION_READY_PLAN.md).
 
 The ordinary Rust API, collection provisioning, and RQL Application Core
 vertical slice is governed by
-[doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
+[doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](./doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md).
 Its `APP-1` implements `HAR-1`; `APP-2` through `APP-8` supply the application
 portion of `HAR-6` and its release evidence. This does not alter the HAR gate
 order: work may be prepared in parallel only where the APP plan and this
 master plan both permit it.
 
 The product-gap authority is
-[PRODUCT_DEFICIENCIES.md](PRODUCT_DEFICIENCIES.md). Before `APP-2` begins, the
+[PRODUCT_DEFICIENCIES.md](./doc/reference/product/PRODUCT_DEFICIENCIES.md). Before `APP-2` begins, the
 `APB-0` contract closure MUST reconcile and amend the existing APP plan.
 Existing APP-0 fixtures remain evidence; they do not freeze the known omissions
 as the final baseline. APP-2…APP-8 implementation is absorbed into the
@@ -306,7 +310,7 @@ corresponding APB packages rather than duplicated.
 | 8 | `HAR-7` | release evidence | complete journey and honest label |
 
 The APB lane begins with `APB-0` immediately after C0 and interleaves with HAR
-only where [MUST_ADD.md](MUST_ADD.md) dependencies permit. `APB-12` additionally
+only where [MUST_ADD.md](./doc/todo/application-baseline/MUST_ADD.md) dependencies permit. `APB-12` additionally
 depends on the qualified remote Heap posture and therefore cannot accept before
 the applicable HAR packages.
 
@@ -536,7 +540,7 @@ Release outcome:
 Priority: `P1-PATH`
 
 Normative plan:
-[doc/RRE_IMPLEMENTATION_PLAN.md](doc/RRE_IMPLEMENTATION_PLAN.md).
+[doc/todo/rre/RRE_IMPLEMENTATION_PLAN.md](./doc/todo/rre/RRE_IMPLEMENTATION_PLAN.md).
 
 Order:
 
@@ -585,7 +589,7 @@ Release outcome:
 Priority: `P1-PATH`
 
 Normative plan:
-[doc/ATOMICS_IMPLEMENTATION_PLAN.md](doc/ATOMICS_IMPLEMENTATION_PLAN.md).
+[doc/todo/atomics/ATOMICS_IMPLEMENTATION_PLAN.md](./doc/todo/atomics/ATOMICS_IMPLEMENTATION_PLAN.md).
 
 Order:
 
@@ -639,9 +643,9 @@ Release outcome:
 Priority: `P1-PATH`
 
 Normative plans:
-[doc/DIRECT_ACCESS_IMPLEMENTATION_PLAN.md](doc/DIRECT_ACCESS_IMPLEMENTATION_PLAN.md)
+[doc/todo/direct-access/DIRECT_ACCESS_IMPLEMENTATION_PLAN.md](./doc/todo/direct-access/DIRECT_ACCESS_IMPLEMENTATION_PLAN.md)
 and
-[doc/ORDER_WAVELET_IMPLEMENTATION_PLAN.md](doc/ORDER_WAVELET_IMPLEMENTATION_PLAN.md).
+[doc/todo/order-wavelets/ORDER_WAVELET_IMPLEMENTATION_PLAN.md](./doc/todo/order-wavelets/ORDER_WAVELET_IMPLEMENTATION_PLAN.md).
 
 ### M5-A — Direct Access
 
@@ -869,14 +873,14 @@ This is the current executable queue:
 | 2 | `M0-2` | `accept` | scoreboard reconciled |
 | 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
 | 4 | `APP-0` / `APP-1` | `in_review` on board | complete review only; preserve work already produced |
-| 5 | `DEF-098`…`DEF-104` | `open P0/P1/P2` | **principal track:** close the complete observed storage/recovery contract |
-| 6 | `CSQ-0`…`CSQ-12` | `not_started` | execute Core Storage Qualification immediately after DEF-098…104 |
+| 5 | `DEF-098`…`DEF-104` | `accept` | emergency remediation complete; incident record archived |
+| 6 | `CSQ-0`…`CSQ-12` | `CSQ-0 ready` | **current principal track:** execute Core Storage Qualification |
 | 7 | `APB-0`…`APB-12` | `not_started` | immediate Must-Add program after `CSQ-12`; absorbs APP-2…APP-8 |
 | 8 | `HAR-0`…`HAR-7` | mixed | truth residual may continue; feature packages interleave only by APB/HAR dependencies |
 
-The next implementation task is **DEF-098**, followed by **DEF-099…104**,
-**CSQ-0…12**, then **APB-0**. Live
-scoreboard: [doc/NEXT_BUILD_STATUS.md](doc/NEXT_BUILD_STATUS.md).
+The next implementation task is **CSQ-0**, followed by **CSQ-1…12**, then
+**APB-0**. Live
+scoreboard: [doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
 
 No developer should start RRE, Atomics, Direct Access, Order Wavelets, search,
 or cluster product work from this queue.

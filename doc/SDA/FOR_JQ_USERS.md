@@ -162,7 +162,7 @@ That is enough to become productive quickly.
 
 ## 7. Where next
 
-- [SDA User Manual](USER_MANUAL.md)
-- [SDA Cheat Sheet](CHEATSHEET.md)
-- [SDA JSON Filter Demo](JSON_FILTER_DEMO.md)
-- [SDA Specification](SDA_SPEC.md)
+- [SDA User Manual](./USER_MANUAL.md)
+- [SDA Cheat Sheet](./CHEATSHEET.md)
+- [SDA JSON Filter Demo](./JSON_FILTER_DEMO.md)
+- [SDA Specification](./SDA_SPEC.md)

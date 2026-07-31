@@ -200,9 +200,9 @@ data only when every chunk verifies.
 
 ## Documentation
 
-- DX / product surface: [DX_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/DX_SPEC.md)
+- DX / product surface: [DX_SPEC.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/product/DX_SPEC.md)
 - Project overview: [README.md](https://github.com/frogfishio/dingodb/blob/main/README.md)
-- Licensing: [doc/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/LICENSING.md)
+- Licensing: [doc/reference/operations/LICENSING.md](https://github.com/frogfishio/dingodb/blob/main/doc/reference/operations/LICENSING.md)
 
 ## License
 

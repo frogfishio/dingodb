@@ -7,12 +7,12 @@ by hand.
 
 This guide is for application developers. It teaches what to type, how cardinality
 works, and how to run a program from the Rust SDK. It is **not** the design
-authority — that is [RQL_SPEC.md](../../RQL_SPEC.md).
+authority — that is [RQL_SPEC.md](../wip/query/RQL_SPEC.md).
 
 | Document | Role |
 |----------|------|
 | **This guide** | How to express and run RQL |
-| [RQL_SPEC.md](../../RQL_SPEC.md) | Normative design, lowering, IR |
+| [RQL_SPEC.md](../wip/query/RQL_SPEC.md) | Normative design, lowering, IR |
 | [DIALECTS.md](../SDA/DIALECTS.md) | How dialects sit on pure SDA |
 | [SDA USER_MANUAL.md](../SDA/USER_MANUAL.md) | Pure SDA when you need full control |
 
@@ -616,10 +616,10 @@ let v = db.enr_query()
 
 ## 15. See also
 
-- [RQL_SPEC.md](../../RQL_SPEC.md) — full design and lowering contract  
+- [RQL_SPEC.md](../wip/query/RQL_SPEC.md) — full design and lowering contract
 - [doc/SDA/DIALECTS.md](../SDA/DIALECTS.md) — dialect stack and foreign comfort rules  
 - [doc/SDA/USER_MANUAL.md](../SDA/USER_MANUAL.md) — pure SDA everyday use  
-- [DX_SPEC.md](../../DX_SPEC.md) §7 — everyday query experience  
+- [DX_SPEC.md](../reference/product/DX_SPEC.md) §7 — everyday query experience
 - [crates/enr-core/README.md](../../crates/enr-core/README.md) — ENR1 kernel surface  
 - Implementation: `crates/residiuum-sdk/src/dialects/dql.rs`  
 - Proof tests: `crates/residiuum-sdk/tests/dialects_query.rs`

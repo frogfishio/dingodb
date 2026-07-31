@@ -115,7 +115,8 @@ pub struct DialectInfo {
 pub enum BuiltinDialect {
     /// Pure SDA / ENR1 source (parse-checked pass-through).
     Sda,
-    /// Official Residiuum Query Language → pure ENR1 + SDA ([`RQL_SPEC`](../../../../../RQL_SPEC.md)).
+    /// Official Residiuum Query Language → pure ENR1 + SDA
+    /// ([`RQL_SPEC`](../../../../doc/wip/query/RQL_SPEC.md)).
     Rql,
     /// DX/Mongo-style JSON filter object → document predicate.
     Json,

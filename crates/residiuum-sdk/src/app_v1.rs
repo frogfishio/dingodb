@@ -1,7 +1,7 @@
 //! APP-0 public Rust application surface (`dingo-rust-app-v1`).
 //!
 //! These types freeze the **names and fields** from
-//! `doc/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md` §5 / §10.
+//! `doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md` §5 / §10.
 //! Method bodies that require storage/wire activation land in APP-1…APP-8;
 //! this module must compile so implementers share one contract.
 //!

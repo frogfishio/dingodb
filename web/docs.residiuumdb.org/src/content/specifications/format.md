@@ -11,7 +11,7 @@ applies_to:
   product: 0.2
   surface: embedded-single-node
 source:
-  path: FORMAT_SPEC.md
+  path: doc/reference/storage/FORMAT_SPEC.md
 owners:
   - specs
 keywords:
@@ -30,7 +30,7 @@ Implemented store format with draft labels; see capability matrix.
 ## Source
 
 - Path: `FORMAT_SPEC.md`
-- Raw: https://github.com/frogfishio/dingodb/blob/main/FORMAT_SPEC.md
+- Raw: https://github.com/frogfishio/dingodb/blob/main/doc/reference/storage/FORMAT_SPEC.md
 - Companions: `crates/residiuum-format`
 
 ## Summary

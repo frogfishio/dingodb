@@ -1,4 +1,4 @@
-//! DEF-104 — executable journeys for `doc/CRASH_AND_RECOVERY_CONTRACT.md`
+//! DEF-104 — executable journeys for `doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md`
 //! (`dingo-crash-recovery-v1`).
 //!
 //! These tests are the compiled/CI examples for the normative page. Deeper
@@ -380,7 +380,7 @@ fn forbidden_get_no_silent_historical_fallback() {
 fn contract_document_present() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join("doc/CRASH_AND_RECOVERY_CONTRACT.md");
+        .join("doc/reference/operations/CRASH_AND_RECOVERY_CONTRACT.md");
     let text = fs::read_to_string(&root).expect("CRASH_AND_RECOVERY_CONTRACT.md must exist");
     assert!(text.contains("dingo-crash-recovery-v1"));
     for needle in [

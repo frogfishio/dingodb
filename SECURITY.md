@@ -7,11 +7,11 @@ Related:
 
 | Document | Role |
 |----------|------|
-| [doc/SUPPORTED_VERSIONS.md](doc/SUPPORTED_VERSIONS.md) | Support windows and upgrade expectations |
-| [doc/THREAT_MODEL.md](doc/THREAT_MODEL.md) | In-tree threat model (`dingo-threat-model-v0`) |
-| [doc/SECURITY_AUDIT_PACKAGE.md](doc/SECURITY_AUDIT_PACKAGE.md) | Evidence pack for independent auditors |
-| [doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](doc/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md) | Heap isolation review brief (H6) |
-| [fuzz/README.md](fuzz/README.md) | Continuous fuzz policy (DEF-091 / DEF-091-F) |
+| [doc/reference/operations/SUPPORTED_VERSIONS.md](./doc/reference/operations/SUPPORTED_VERSIONS.md) | Support windows and upgrade expectations |
+| [doc/wip/security/THREAT_MODEL.md](./doc/wip/security/THREAT_MODEL.md) | In-tree threat model (`dingo-threat-model-v0`) |
+| [doc/wip/security/SECURITY_AUDIT_PACKAGE.md](./doc/wip/security/SECURITY_AUDIT_PACKAGE.md) | Evidence pack for independent auditors |
+| [doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md](./doc/wip/heap/HEAP_EXTERNAL_SECURITY_REVIEW_BRIEF.md) | Heap isolation review brief (H6) |
+| [fuzz/README.md](./fuzz/README.md) | Continuous fuzz policy (DEF-091 / DEF-091-F) |
 
 ## Status of the product
 
@@ -20,7 +20,7 @@ passed independent security acceptance until:
 
 1. an independent audit of the claimed surface is complete;
 2. critical/high findings are remediated or accepted with published residual;
-3. [CAPABILITY_MATRIX.md](doc/CAPABILITY_MATRIX.md) and maturity labels match
+3. [CAPABILITY_MATRIX.md](./doc/wip/status/CAPABILITY_MATRIX.md) and maturity labels match
    the audited surface.
 
 Reporting vulnerabilities is still welcome and will be handled under this
@@ -106,7 +106,7 @@ Security advisories, when issued, will identify:
 
 ## Supported versions
 
-See [doc/SUPPORTED_VERSIONS.md](doc/SUPPORTED_VERSIONS.md). Only versions listed
+See [doc/reference/operations/SUPPORTED_VERSIONS.md](./doc/reference/operations/SUPPORTED_VERSIONS.md). Only versions listed
 as supported receive security fixes as a matter of policy.
 
 ## Residual (honest)
