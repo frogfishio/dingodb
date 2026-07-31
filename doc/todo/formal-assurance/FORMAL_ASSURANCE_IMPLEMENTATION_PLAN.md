@@ -7,6 +7,15 @@ Program: `FAS`
 Normative semantics:
 [FORMAL_ASSURANCE_SPEC.md](FORMAL_ASSURANCE_SPEC.md).
 
+Normative implementation contracts:
+
+- [registry and evidence contract](FORMAL_ASSURANCE_REGISTRY_CONTRACT.md);
+- [formal kernel model contract](FORMAL_KERNEL_MODEL_CONTRACT.md).
+
+If this plan conflicts with either contract, the contract controls. A package
+owner SHALL raise a specification defect rather than select a convenient
+interpretation.
+
 ## 1. Delivery law
 
 The foundation begins immediately after `CSQ-12`. Consistency and security then
@@ -32,6 +41,8 @@ formal/
     assumptions-v1.json
     tcb-v1.json
     claims-v1.json
+    profiles-v1.json
+    toolchain-lock-v1.json
     schemas/
     fixtures/
   lean/
@@ -65,10 +76,13 @@ verification/
 scripts/
   setup-formal-tools.sh
   check-formal-registry.sh
+  check-formal-toolchain.sh
   check-formal-foundation.sh
+  check-formal-refinement.sh
   check-formal-consistency.sh
   check-formal-security.sh
-  check-formal-atomics.sh
+  check-formal-atomics-safety.sh
+  check-formal-atomics-temporal.sh
   check-formal-cluster.sh
   build-proof-bundle.sh
   verify-proof-bundle.sh
@@ -104,6 +118,40 @@ FAS-1/2/3 + any completed theorem family
   ↓
 FAS-9  Public proof bundle, CLI and clean-room reproduction
 ```
+
+### 3.1 Package acceptance interface
+
+Each package has one authoritative command and one machine-readable report.
+The command SHALL exit nonzero on failed, missing, skipped, stale or
+infrastructure-failed mandatory work.
+
+| Package | Acceptance command | Required report |
+|---|---|---|
+| FAS-0 | `bash scripts/check-formal-registry.sh` | `target/formal-assurance/fas0-registry-report.json` |
+| FAS-1 | `bash scripts/check-formal-toolchain.sh` | `target/formal-assurance/fas1-toolchain-report.json` |
+| FAS-2 | `bash scripts/check-formal-foundation.sh` | `target/formal-assurance/fas2-foundation-report.json` |
+| FAS-3 | `bash scripts/check-formal-refinement.sh` | `target/formal-assurance/fas3-refinement-report.json` |
+| FAS-4 | `bash scripts/check-formal-consistency.sh` | `target/formal-assurance/fas4-consistency-report.json` |
+| FAS-5 | `bash scripts/check-formal-security.sh` | `target/formal-assurance/fas5-security-report.json` |
+| FAS-6 | `bash scripts/check-formal-atomics-safety.sh` | `target/formal-assurance/fas6-atomics-safety-report.json` |
+| FAS-7 | `bash scripts/check-formal-atomics-temporal.sh` | `target/formal-assurance/fas7-atomics-temporal-report.json` |
+| FAS-8 | `bash scripts/check-formal-cluster.sh` | `target/formal-assurance/fas8-cluster-report.json` |
+| FAS-9 | `bash scripts/build-proof-bundle.sh` then `bash scripts/verify-proof-bundle.sh --require-profile <PROFILE>` | `target/formal-assurance/fas9-bundle-report.json` |
+
+Every report uses the proof-result schema, names the package, source tree hash,
+toolchain-lock hash, start/end time, executed obligations, negative controls,
+result and artifact hashes. Human-readable output is diagnostic only.
+
+### 3.2 Package admission law
+
+A package can move to development only when:
+
+1. every dependency is accepted, except explicitly parallel work that cannot
+   claim acceptance yet;
+2. its mandatory theorem IDs and operation contracts exist;
+3. the exact command, report and negative fixtures are named;
+4. unknown semantic choices are filed as specification defects; and
+5. an owner cannot make a public claim by editing generated status.
 
 ## 4. FAS-0 — Doctrine and registries
 
@@ -153,6 +201,17 @@ Deliver:
 - changed-proof dependency selection; and
 - dedicated CI lanes.
 
+FAS-1 begins with a compatibility run, not an arbitrary upgrade. It retains
+the existing Verus pin `0.2026.07.27.31579f0`, selects mutually compatible
+exact Lean 4, Kani, TLA+/TLC and TLAPS versions, records archive/source hashes,
+and obtains principal acceptance of `toolchain-lock-v1.json`. CI SHALL install
+only from that lock. Floating `latest`, an unversioned package install, or a
+moving branch is a hard failure.
+
+`setup-formal-tools.sh --locked` installs or validates the lock without
+changing it. A separate explicit `--propose-update` mode may produce a review
+candidate but cannot update accepted results or profiles.
+
 Tests cover corrupt/missing/wrong-version tools, stale cached results, timeout
 versus failed theorem, skipped proof discovery, accepted false companions,
 source/result mismatch and clean-machine bootstrap.
@@ -161,7 +220,9 @@ Exit:
 
 - one command reproduces a small proof in every selected system;
 - negative controls demonstrably fail; and
-- CI cannot report green when a mandatory tool did not run.
+- CI cannot report green when a mandatory tool did not run; and
+- a clean second run produces semantically identical result JSON and artifact
+  hashes after normalization of declared timestamps and workspace paths.
 
 ## 6. FAS-2 — Abstract semantic kernel
 
@@ -353,6 +414,12 @@ Deliver:
 - clean-room reproduction; and
 - release capability-language integration.
 
+The builder is `residiuum-formal-bundle`. The independent verifier is
+`residiuum-formal-verify`; it MUST NOT depend on the builder's status or gate
+evaluation code. They may share passive schema structs and canonical decoding
+only. The verifier recomputes hashes, dependency closure, achieved statuses,
+profile gates and release identity from bundle contents.
+
 Tests reject tampered/omitted/stale results, forged higher status, missing
 negative controls, unavailable tools, wrong binaries and partial bundles.
 
@@ -411,3 +478,8 @@ Release/source hashes:        match
 and a critic can reproduce that result without trusting Residiuum’s runtime or
 team.
 
+No individual package is accepted from a narrative handoff. Acceptance
+requires its command, report, registered results, negative controls and
+dependency closure to pass from the pinned environment. FAS-6 through FAS-8
+remain intentionally gated on the corresponding feature/protocol freeze; the
+foundation specification does not pre-invent those protocols.

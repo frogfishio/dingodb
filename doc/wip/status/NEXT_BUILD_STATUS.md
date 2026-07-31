@@ -67,7 +67,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | CSQ-9 | active | 2026-07-31 | CSQ-2, CSQ-4, CSQ-8 | `tests/csq9_concurrency_resources.rs` (9); `scripts/verify-csq-concurrency-resources.sh`; DEF-101/096/020 linked; suites CON/RES → `active_csq9`; **board `in_review`** | Loom/Shuttle kernels + full multi-process soak residual; principal accept CSQ-2/4/8 still open | boundedness qualification |
 | CSQ-10 | active | 2026-07-31 | CSQ-3, CSQ-4, CSQ-6…CSQ-9 | `tests/csq10_mutation_fuzz.rs` (7); `scripts/verify-csq-mutation-fuzz.sh`; P0 mutants 5/5 killed; fuzz-smoke property bar owned; suite `CSQ-SUITE-MUT` → `active_csq10`; **board `in_review`** | cargo-fuzz scheduled smoke optional; Miri/sanitizer CI residual; 95% broader mutant surface residual | suite sensitivity |
 | CSQ-11 | active | 2026-07-31 | CSQ-5…CSQ-10 | `tests/csq11_compat_scale_soak.rs` (7); `scripts/verify-csq-compat-scale-soak.sh`; suite `CSQ-SUITE-COMPAT` → `active_csq11`; platforms-v1 + wire matrix floors; DEF-104 linked in journey; **board `in_review`** | principal accept CSQ-5…10 still open; multi-version released-writer fixtures residual; full multi-platform CI + 24h/72h soak residual | release campaign |
-| CSQ-12 | active | 2026-07-31 | CSQ-0…CSQ-11 | `scripts/lib/csq_evidence.py` builder+independent verifier; `scripts/residiuum-verify-core-storage.sh` (stand-in for `residiuum verify --profile residiuum-core-storage-v1 --level A2`); `scripts/verify-csq-evidence-bundle.sh`; vectors/csq12 README; retention policy attachment; **board `in_review`** | A2 residual gates still `not_run` (predecessor accept, full boundary/platform/soak/mutation/publication); CLI subcommand residual; principal accept CSQ-0…11 open | core-storage qualification |
+| CSQ-12 | active | 2026-07-31 | CSQ-0…CSQ-11 | `scripts/lib/csq_evidence.py` v2 gate eval; A2 vs A3 separation; boundary/P0-mut/publication gates pass with evidence; `residiuum-verify-core-storage.sh`; **board labor cut** | **A2 missing only** `CSQ12-GATE-PREDECESSOR-ACCEPT` (scoreboard accept CSQ-0…11); A3: platform/soak/full-mutation; CLI subcommand residual | core-storage qualification |
 | PQH-0 | not_started | — | CSQ-12 | [specification](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md); [implementation plan](../../todo/performance-qualification/PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md) | registries absent | performance measurement contract |
 | PQH-1 | not_started | — | PQH-0 | — | safe runner/platform fingerprint absent | safe controlled runner |
 | PQH-2 | not_started | — | PQH-0 | — | canonical deterministic workloads absent | workload oracle |
@@ -169,11 +169,13 @@ they do not override this package interlock.
 
 Program order (Kanban determines the individual active cards):
 
-1. **Principal accept** implementer handoffs for **CSQ-0…CSQ-12** (board
-   `in_review`; scoreboard still `active` — do not invent accepts).
-2. Close **A2 residual gates** reported by
-   `scripts/residiuum-verify-core-storage.sh` until
-   `residiuum-core-storage-v1 / A2` independently verifies with no missing cells.
+1. **Principal accept** implementer handoffs for **CSQ-0…CSQ-11** (board
+   `in_review`; scoreboard still `active` — labor accept is independent of A2).
+2. After CSQ-0…11 scoreboard **`accept`**, re-run
+   `scripts/residiuum-verify-core-storage.sh` — A2 currently fails only on
+   `CSQ12-GATE-PREDECESSOR-ACCEPT` once labor floors are green.
+3. A3 campaign residuals (platform CI, 72h soak, full mutation %) are **not**
+   A2 blockers.
 3. Begin **PQH-0…PQH-9** as the first post-C0 measurement lane after
    `CSQ-12 = accept`. It may run alongside M1 but must precede speculative
    tuning or new performance claims.

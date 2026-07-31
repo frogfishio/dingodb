@@ -252,9 +252,12 @@ graph: `CSQ-0 → (CSQ-1 ‖ CSQ-2) → CSQ-3…CSQ-11 → CSQ-12`.
 **Labor snapshot (2026-07-31 — not principal accept):** implementer labor floors
 for `CSQ-0`…`CSQ-12` are on the board at **`in_review`**. Scoreboard package
 states remain **`active`** until principal acceptance. The evidence runner
-builds a valid `residiuum-core-storage-report-v1` with **exact missing residual
-gates** and does **not** claim A2 pass
-(`not_run` / infrastructure failure / prose cannot satisfy the gate).
+builds a valid `residiuum-core-storage-report-v1`. **A2 vs A3 gates are
+separated:** boundary / P0-mutation / independent-publication evaluate with
+real evidence; **A2 currently misses only**
+`CSQ12-GATE-PREDECESSOR-ACCEPT` (scoreboard accept of CSQ-0…11). Platform /
+72h soak / full mutation threshold are **A3** and do not block A2.
+Package labor accept is independent of A2 green.
 
 Required order:
 

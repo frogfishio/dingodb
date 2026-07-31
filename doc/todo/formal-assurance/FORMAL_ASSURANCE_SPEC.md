@@ -1,6 +1,6 @@
 # Residiuum Formal Assurance Spine specification
 
-Status: **normative design v1.0-draft — developer-ready after CSQ-12**
+Status: **normative design v1.1-draft — implementation-ready after CSQ-12**
 
 Program: `FAS`
 
@@ -16,6 +16,8 @@ residiuum-formal-cluster-v1
 
 Normative companions:
 
+- [Registry and evidence contract](FORMAL_ASSURANCE_REGISTRY_CONTRACT.md)
+- [Formal kernel model contract](FORMAL_KERNEL_MODEL_CONTRACT.md)
 - [Core Storage Qualification](../core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md)
 - [Heap specification](../../wip/heap/HEAP_SPEC.md)
 - [Atomics specification](../atomics/ATOMICS_SPEC.md)
@@ -192,6 +194,12 @@ that limits the claim.
 
 ## 7. Canonical mathematical universe
 
+The exact primitive types, closed constructors, state record, `WellFormed`,
+`Init`, operation vocabulary, transition relation and observation law are
+normative in
+[FORMAL_KERNEL_MODEL_CONTRACT.md](FORMAL_KERNEL_MODEL_CONTRACT.md). This
+section is its compact mathematical overview, not an alternative model.
+
 The abstract state is:
 
 \[
@@ -290,7 +298,13 @@ invalidating the storage/security foundation.
 
 ## 8. Theorem registry
 
-Each theorem is versioned:
+The exact schemas, identifiers, mandatory theorem catalogue, status evaluator,
+profile gates and fixture rules are normative in
+[FORMAL_ASSURANCE_REGISTRY_CONTRACT.md](FORMAL_ASSURANCE_REGISTRY_CONTRACT.md).
+
+Each theorem is versioned. The following is a conceptual summary; developers
+MUST implement the closed schema from the registry contract rather than infer
+a schema from this list:
 
 ```text
 theorem_id
@@ -749,4 +763,3 @@ The release proposition is:
 
 > Mathematically specified. Machine checked. Connected to the released Rust
 > kernel where stated. Physically tortured. Independently reproducible.
-

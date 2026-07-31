@@ -11,6 +11,8 @@ to adversarial qualification evidence.
 | Document | Authority |
 |---|---|
 | [FORMAL_ASSURANCE_SPEC.md](FORMAL_ASSURANCE_SPEC.md) | Claim language, mathematical model, proof systems, theorem families, refinement and release evidence |
+| [FORMAL_ASSURANCE_REGISTRY_CONTRACT.md](FORMAL_ASSURANCE_REGISTRY_CONTRACT.md) | Exact identifiers, schemas, initial theorem catalogue, evidence objects, status derivation and profile gates |
+| [FORMAL_KERNEL_MODEL_CONTRACT.md](FORMAL_KERNEL_MODEL_CONTRACT.md) | Exact abstract types, state, operations, observations, well-formedness and Rust-refinement obligations |
 | [FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md](FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md) | Package order, repositories, tooling, artifacts, tests and acceptance |
 
 The foundation starts immediately after `CSQ-12` alongside PQH and M1.
@@ -28,4 +30,3 @@ FAS foundation + consistency
 Residiuum never claims “the whole database is formally verified.” It publishes
 the exact theorem, assumptions, bounds, proof status, Rust connection and
 physical qualification status for each claim.
-
