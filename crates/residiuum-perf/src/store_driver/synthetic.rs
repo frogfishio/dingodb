@@ -59,8 +59,11 @@ pub fn run_synthetic(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverEr
         driver_kind: DriverKind::Synthetic,
         measurement_surface: MeasurementSurface::NonProductSynthetic,
         product_claim_eligible: false,
+        // Synthetic plan is a harness proxy — not a lossless store-boundary plan.
         plan: Some(plan),
         plan_source: super::emitter::STORE_SEAM_EMITTER_FROM_RECEIPTS.into(),
+        lossless_plan_eligible: false,
+        boundary_aggregates: None,
         notes,
     })
 }

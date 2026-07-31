@@ -79,7 +79,10 @@ pub use backup::{
     BackupReport, RestoreOptions, RestoreReport, BACKUP_MANIFEST_FILE, BACKUP_PROFILE,
     BACKUP_STORE_DIR,
 };
-pub use boundary_probe::{BoundaryEvent, BoundaryKind, BoundaryProbe};
+pub use boundary_probe::{
+    BoundaryCounters, BoundaryCoverage, BoundaryEvent, BoundaryKind, BoundaryOutcome,
+    BoundaryProbe, BoundarySnapshot, FileRole, LatencyHistogram,
+};
 pub use catalog::{
     collection_name_from_subject, collections_catalog_path, try_load_collection_catalog,
     CollectionCatalog, COLLECTIONS_CATALOG_FILE,

@@ -334,6 +334,20 @@ struct ActiveWriter {
     durable_len: u64,
 }
 
+/// Measured segment-tail file I/O at the actual boundary (write/sync).
+#[derive(Debug, Clone, Default)]
+struct TailIoStats {
+    write_requested: u64,
+    write_completed: u64,
+    write_duration_ns: u64,
+    write_outcome: crate::boundary_probe::BoundaryOutcome,
+    synced: bool,
+    sync_duration_ns: u64,
+    sync_outcome: crate::boundary_probe::BoundaryOutcome,
+    /// When true, caller must surface short-write error after probe record.
+    fail_as_short_write: bool,
+}
+
 impl Store {
     /// Create a new store at `path` (directory). Fails if a store already exists.
     ///
@@ -652,19 +666,34 @@ impl Store {
         self.boundary_probe.enable();
     }
 
+    /// Enable boundary probe with an explicit sample-vector capacity.
+    pub fn enable_boundary_probe_with_capacity(&mut self, max_samples: usize) {
+        self.boundary_probe.enable_with_capacity(max_samples);
+    }
+
     /// Whether boundary instrumentation is recording.
     pub fn boundary_probe_enabled(&self) -> bool {
         self.boundary_probe.is_enabled()
     }
 
-    /// Borrow recorded boundary events (empty when disabled).
+    /// Borrow retained sample events (may be incomplete when capped).
     pub fn boundary_events(&self) -> &[crate::boundary_probe::BoundaryEvent] {
         self.boundary_probe.events()
     }
 
-    /// Drain recorded boundary events (probe stays enabled).
+    /// Exact counters / histograms / chain digest / coverage (authoritative).
+    pub fn boundary_snapshot(&self) -> crate::boundary_probe::BoundarySnapshot {
+        self.boundary_probe.snapshot()
+    }
+
+    /// Drain sample events only (counters/histograms/digest remain until clear).
     pub fn take_boundary_events(&mut self) -> Vec<crate::boundary_probe::BoundaryEvent> {
         self.boundary_probe.take_events()
+    }
+
+    /// Take a full snapshot and clear probe aggregates (probe stays enabled).
+    pub fn take_boundary_snapshot(&mut self) -> crate::boundary_probe::BoundarySnapshot {
+        self.boundary_probe.take_snapshot()
     }
 
     /// Number of writer shards (DEF-096 Axis B). Always ≥ 1.
@@ -3043,7 +3072,7 @@ impl Store {
             return Ok(());
         };
         // Ensure all buffered bytes are on the file before seal rewrite.
-        self.flush_active_file(&mut writer, DurabilityMode::Durable)?;
+        self.flush_active_file(&mut writer, DurabilityMode::Durable, shard as u32)?;
 
         let sealed = writer.segment.seal()?;
         let bytes = sealed.as_bytes();
@@ -3258,7 +3287,7 @@ impl Store {
             return Ok(());
         };
         // Durable flush so pending file is crash-safe before we open a new active.
-        self.flush_active_file(&mut writer, DurabilityMode::Durable)?;
+        self.flush_active_file(&mut writer, DurabilityMode::Durable, shard as u32)?;
         let segment_id = writer.segment_id;
         drop(writer); // close file handle; bytes remain at active path
 
@@ -3340,14 +3369,14 @@ impl Store {
         if !need {
             return Ok(());
         }
-        self.boundary_probe.record_segment_rotate();
+        self.boundary_probe.record_segment_rotate(shard as u32);
         let r = if self.async_lifecycle_enabled() {
             self.rotate_active_async(shard)
         } else {
             self.seal_active_shard(shard)
         };
         if r.is_ok() {
-            self.boundary_probe.record_lifecycle_seal();
+            self.boundary_probe.record_lifecycle_seal(shard as u32);
         }
         r
     }
@@ -3946,7 +3975,7 @@ impl Store {
         })
         .map_err(StoreError::BadEnvelope)?;
 
-        let (offset, wrote, synced) = {
+        let (offset, append_ns, tail) = {
             let writer = self.active_mut(shard).expect("active segment");
             let header = FrameHeader {
                 wire_major: residiuum_format::WIRE_MAJOR,
@@ -3959,21 +3988,23 @@ impl Store {
                 writer_sequence: 0,
                 event_id,
             };
+            let t_append = std::time::Instant::now();
             let offset = writer.segment.append_parts(&FrameParts {
                 header,
                 envelope: item_envelope,
                 body: manifest_body.clone(),
             })?;
+            let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
             encoded_frame_len = encoded_frame_len.saturating_add(
                 (writer.segment.as_bytes().len() as u64).saturating_sub(offset),
             );
-            let (wrote, synced) = match mode {
-                DurabilityMode::Memory => (0u64, false),
+            let tail = match mode {
+                DurabilityMode::Memory => TailIoStats::default(),
                 DurabilityMode::Buffered | DurabilityMode::Durable => {
                     Self::write_segment_tail(writer, mode)?
                 }
             };
-            (offset, wrote, synced)
+            (offset, append_ns, tail)
         };
 
         // Boundary probe: actual append + file write/sync (not reconstructed by harness).
@@ -3985,8 +4016,10 @@ impl Store {
             false,
             true,
             0, // pieces already summed into encoded_frame_len
+            append_ns,
+            shard as u32,
         );
-        self.record_tail_probe(wrote, synced, mode);
+        self.record_tail_probe(&tail, mode, shard as u32)?;
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Chunk manifest is small and kept resident by slim_put_body_for_index.
@@ -4000,7 +4033,8 @@ impl Store {
             0,
             offset,
         );
-        self.boundary_probe.record_publish(offset, mode);
+        self.boundary_probe
+            .record_publish(offset, mode, shard as u32);
         self.note_collection_for_subject(subject_bytes);
 
         if mode != DurabilityMode::Memory {
@@ -4282,16 +4316,18 @@ impl Store {
             return Err(StoreError::PayloadTooLarge);
         }
 
-        let (offset, encoded_frame_len, wrote, synced) = {
+        let (offset, encoded_frame_len, append_ns, tail) = {
             let writer = self.active_mut(shard).expect("active segment");
+            let t_append = std::time::Instant::now();
             let offset = writer
                 .segment
                 .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
+            let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
             // Exact encoded frame length at store boundary (not logical+estimate).
             let encoded_frame_len =
                 (writer.segment.as_bytes().len() as u64).saturating_sub(offset);
-            let (wrote, synced) = Self::write_segment_tail(writer, mode)?;
-            (offset, encoded_frame_len, wrote, synced)
+            let tail = Self::write_segment_tail(writer, mode)?;
+            (offset, encoded_frame_len, append_ns, tail)
         };
 
         self.boundary_probe.record_append(
@@ -4302,8 +4338,10 @@ impl Store {
             false,
             false,
             0,
+            append_ns,
+            shard as u32,
         );
-        self.record_tail_probe(wrote, synced, mode);
+        self.record_tail_probe(&tail, mode, shard as u32)?;
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Durable projection is locator-first (DEF-095): frame_offset + slim body.
@@ -4317,7 +4355,8 @@ impl Store {
             0, // writer_sequence already inside frame; not required for index
             offset,
         );
-        self.boundary_probe.record_publish(offset, mode);
+        self.boundary_probe
+            .record_publish(offset, mode, shard as u32);
         self.note_collection_for_subject(subject_bytes);
 
         let _ = self.note_durable_derived();
@@ -4335,66 +4374,101 @@ impl Store {
         Ok(receipt)
     }
 
-    /// Flush pending segment bytes to the file; returns bytes written + whether sync ran.
+    /// Flush pending segment bytes to the file; returns measured I/O stats.
     fn write_segment_tail(
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
-    ) -> Result<(u64, bool), StoreError> {
+    ) -> Result<TailIoStats, StoreError> {
         crate::failpoint::hit("store.active.write_tail.before")?;
         let bytes = writer.segment.as_bytes();
         let start = writer.durable_len as usize;
         if start > bytes.len() {
             return Err(StoreError::CorruptMeta("durable_len past segment"));
         }
-        let mut wrote = 0u64;
+        let mut stats = TailIoStats::default();
         if start < bytes.len() {
             let pending = &bytes[start..];
+            stats.write_requested = pending.len() as u64;
             writer.file.seek(SeekFrom::Start(writer.durable_len))?;
             // DEF-022: optional short-write injection mid-append.
             if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
                 let n = crate::failpoint::short_write_len(pending.len());
+                let t0 = std::time::Instant::now();
                 if n > 0 {
                     writer.file.write_all(&pending[..n])?;
                     // Do not advance durable_len past the short write so a
                     // later retry could rewrite; crash/drop leaves torn bytes.
                     writer.durable_len += n as u64;
                 }
-                return Err(StoreError::Io(std::io::Error::new(
-                    std::io::ErrorKind::WriteZero,
-                    "failpoint short write: store.active.write_tail.short_write",
-                )));
+                stats.write_completed = n as u64;
+                stats.write_duration_ns =
+                    t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                stats.write_outcome = crate::boundary_probe::BoundaryOutcome::ShortWrite;
+                // Return Ok so callers can record probe stats, then fail closed.
+                stats.fail_as_short_write = true;
+                return Ok(stats);
             }
+            let t0 = std::time::Instant::now();
             writer.file.write_all(pending)?;
-            wrote = pending.len() as u64;
+            stats.write_duration_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            stats.write_completed = pending.len() as u64;
+            stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
             writer.durable_len = bytes.len() as u64;
         }
         crate::failpoint::hit("store.active.write_tail.after_write")?;
-        let mut synced = false;
         if mode == DurabilityMode::Durable {
+            let t0 = std::time::Instant::now();
             writer.file.sync_all()?;
-            synced = true;
+            stats.sync_duration_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            stats.synced = true;
+            stats.sync_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
             crate::failpoint::hit("store.active.write_tail.after_sync")?;
         }
-        Ok((wrote, synced))
+        Ok(stats)
     }
 
     fn flush_active_file(
         &mut self,
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
+        shard: u32,
     ) -> Result<(), StoreError> {
-        let (wrote, synced) = Self::write_segment_tail(writer, mode)?;
-        self.record_tail_probe(wrote, synced, mode);
+        let stats = Self::write_segment_tail(writer, mode)?;
+        self.record_tail_probe(&stats, mode, shard)?;
         Ok(())
     }
 
-    fn record_tail_probe(&mut self, wrote: u64, synced: bool, mode: DurabilityMode) {
-        if wrote > 0 {
-            self.boundary_probe.record_file_write(wrote, mode);
+    fn record_tail_probe(
+        &mut self,
+        stats: &TailIoStats,
+        mode: DurabilityMode,
+        shard: u32,
+    ) -> Result<(), StoreError> {
+        if stats.write_requested > 0 || stats.write_completed > 0 {
+            self.boundary_probe.record_file_write(
+                stats.write_requested,
+                stats.write_completed,
+                stats.write_duration_ns,
+                stats.write_outcome,
+                mode,
+                shard,
+            );
         }
-        if synced {
-            self.boundary_probe.record_file_sync(mode);
+        if stats.synced {
+            self.boundary_probe.record_file_sync(
+                stats.sync_duration_ns,
+                stats.sync_outcome,
+                mode,
+                shard,
+            );
         }
+        if stats.fail_as_short_write {
+            return Err(StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::WriteZero,
+                "failpoint short write: store.active.write_tail.short_write",
+            )));
+        }
+        Ok(())
     }
 
     fn persist_all_actives(&mut self, mode: DurabilityMode) -> Result<(), StoreError> {
@@ -4408,15 +4482,18 @@ impl Store {
     fn persist_active_shard(&mut self, shard: usize, mode: DurabilityMode) -> Result<(), StoreError> {
         if self.active_mut(shard).is_some() {
             // Split borrows: take stats from writer, then probe on self.
-            let (wrote, synced) = {
+            let stats = {
                 let writer = self.active_mut(shard).expect("active");
                 Self::write_segment_tail(writer, mode)?
             };
-            self.record_tail_probe(wrote, synced, mode);
+            self.record_tail_probe(&stats, mode, shard as u32)?;
             if mode == DurabilityMode::Durable {
                 crate::failpoint::hit("store.active.dir_sync")?;
+                let t0 = std::time::Instant::now();
                 sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
-                self.boundary_probe.record_directory_sync();
+                let dir_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                self.boundary_probe
+                    .record_directory_sync(dir_ns, shard as u32);
             }
         }
         Ok(())

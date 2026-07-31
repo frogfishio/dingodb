@@ -64,16 +64,44 @@ pub fn write_evidence_bundle(
         write_json(&run_dir.join("result.json"), &rep.report)?;
     }
 
+    // Bind preflight + environment fingerprint into hashed evidence when present.
+    let mut optional_hash_paths: Vec<&str> = Vec::new();
+    if let Some(pf) = result.preflight_report.as_ref() {
+        write_json(&campaign_dir.join("preflight.json"), pf)?;
+        optional_hash_paths.push("preflight.json");
+    }
+    if let Some(env) = result.environment_fingerprint.as_ref() {
+        write_json(&campaign_dir.join("environment.json"), env)?;
+        optional_hash_paths.push("environment.json");
+    }
+    // Observer-overhead and boundary-aggregate markers from withdrawals/notes.
+    if let Some(h) = result.environment_hash.as_ref() {
+        write_json(
+            &campaign_dir.join("environment_hash.json"),
+            &serde_json::json!({
+                "environment_hash": h,
+                "preflight_outcome": result.preflight_outcome,
+                "preflight_validity_id": result.preflight_validity_id,
+            }),
+        )?;
+        optional_hash_paths.push("environment_hash.json");
+    }
+
     // Hash on-disk bytes (stable independent check — no re-serialize drift).
     let mut file_hashes = Vec::new();
-    for rel in [
+    let mut hash_rels: Vec<&str> = vec![
         "plan.json",
         "campaign_result.json",
         "reports.json",
         "disclosure.json",
         "DISCLOSURE.md",
-    ] {
+    ];
+    hash_rels.extend(optional_hash_paths.iter().copied());
+    for rel in hash_rels {
         let p = campaign_dir.join(rel);
+        if !p.exists() {
+            continue;
+        }
         file_hashes.push(FileHash {
             relative_path: rel.into(),
             sha256_hex: hash_file(&p)?,
@@ -193,5 +221,38 @@ mod tests {
         // tamper
         fs::write(dir.path().join("plan.json"), b"{}").unwrap();
         assert!(verify_bundle_hashes(dir.path()).is_err());
+    }
+
+    #[test]
+    fn bundle_hashes_include_environment_when_present() {
+        let dir = tempfile::tempdir().unwrap();
+        let work = dir.path().join("work");
+        fs::create_dir_all(&work).unwrap();
+        let plan = campaign_plan_synthetic(11, 1);
+        let result = run_campaign(&CampaignConfig {
+            plan,
+            driver: crate::store_driver::DriverKind::Synthetic,
+            work_root: Some(work),
+            declare_controlled_runner: false,
+            run_class: crate::campaign::RunClass::Smoke,
+            spawn_workers: false,
+            worker_bin: None,
+            require_qualification_preflight: false,
+        })
+        .unwrap();
+        assert!(result.environment_hash.is_some());
+        let reports = build_campaign_reports(&result);
+        let disclosure = build_disclosure(&result, &reports);
+        let camp = dir.path().join("campaign");
+        let bundle = write_evidence_bundle(&camp, &result, &reports, &disclosure).unwrap();
+        assert!(
+            bundle
+                .file_hashes
+                .iter()
+                .any(|f| f.relative_path == "environment.json"
+                    || f.relative_path == "environment_hash.json"),
+            "environment must be bound into hashed evidence"
+        );
+        verify_bundle_hashes(&camp).unwrap();
     }
 }

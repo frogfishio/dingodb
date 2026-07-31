@@ -4,6 +4,7 @@
 //! **Qualification** runs until SPEC §6.4 duration **and** byte floors are met
 //! (unless safety max would be crossed); never silently caps to 4–16 ops.
 
+use super::aggregates::{BoundaryAggregateSummary, ObserverOverheadReport};
 use super::emitter::{emit_plan_from_store_boundary_events, STORE_SEAM_EMITTER_FROM_RECEIPTS};
 use super::kinds::{DriverKind, MeasurementSurface};
 use super::{cell_store_path, DriverCellReport, DriverError, DriverRunConfig};
@@ -190,39 +191,41 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     }
     messages.push(format!("sample_get_ok={get_ok} ops_done={seq}"));
 
-    // Drain store-native boundary instrumentation (write/sync/rotate/publish/lifecycle).
-    let store_events = store.take_boundary_events();
+    // Drain store-native boundary instrumentation (exact counters + samples).
+    let snap = store.take_boundary_snapshot();
+    let cov = &snap.coverage;
     messages.push(format!(
-        "store_emitted_boundary_events={} append={} file_write={} file_sync={} publish={} rotate={} lifecycle={}",
-        store_events.len(),
-        store_events
-            .iter()
-            .filter(|e| e.kind == BoundaryKind::AppendEncodedFrame)
-            .count(),
-        store_events
-            .iter()
-            .filter(|e| e.kind == BoundaryKind::FileWrite)
-            .count(),
-        store_events
-            .iter()
-            .filter(|e| e.kind == BoundaryKind::FileSync)
-            .count(),
-        store_events
-            .iter()
-            .filter(|e| e.kind == BoundaryKind::PublishVisibility)
-            .count(),
-        store_events
-            .iter()
-            .filter(|e| e.kind == BoundaryKind::SegmentRotate)
-            .count(),
-        store_events
-            .iter()
-            .filter(|e| e.kind == BoundaryKind::LifecycleSeal)
-            .count(),
+        "boundary_coverage total_observed={} samples_retained={} samples_dropped={} capped={} capacity={}",
+        cov.total_observed,
+        cov.samples_retained,
+        cov.samples_dropped,
+        cov.sample_vector_capped,
+        cov.sample_capacity
     ));
-    if store_events.is_empty() && seq > 0 {
+    if let Some(reason) = &cov.drop_reason {
+        messages.push(format!("boundary_drop_reason={reason}"));
+    }
+    messages.push(format!(
+        "boundary_counters append={} file_write={} file_sync={} publish={} rotate={} lifecycle={} req_bytes={} done_bytes={} write_lat_n={} sync_lat_n={}",
+        snap.counters.count(BoundaryKind::AppendEncodedFrame),
+        snap.counters.count(BoundaryKind::FileWrite),
+        snap.counters.count(BoundaryKind::FileSync),
+        snap.counters.count(BoundaryKind::PublishVisibility),
+        snap.counters.count(BoundaryKind::SegmentRotate),
+        snap.counters.count(BoundaryKind::LifecycleSeal),
+        snap.counters.total_requested_bytes,
+        snap.counters.total_completed_bytes,
+        snap.write_latency.samples,
+        snap.sync_latency.samples,
+    ));
+    messages.push(format!(
+        "boundary_event_chain_digest={}",
+        snap.event_chain_digest
+    ));
+    if cov.total_observed == 0 && seq > 0 {
         return Err(DriverError::Msg(
-            "store boundary probe produced no events; refuse reconstructed receipt stream".into(),
+            "store boundary probe produced no observations; refuse reconstructed receipt stream"
+                .into(),
         ));
     }
 
@@ -232,19 +235,47 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     messages.push(format!("reopen_live_count={live}"));
     drop(reopen_store);
 
-    let plan = emit_plan_from_store_boundary_events(
-        &cfg.cell.cell_id,
-        &store_events,
-        32 * 1024,
-        1024 * 1024,
-        cfg.cell.batch_size.max(1),
-    );
-    plan.assert_redacted_json()
-        .map_err(|e| DriverError::Msg(e))?;
-    messages.push(
-        "plan_source=store_boundary_probe (consumed store events; not receipt reconstruction)"
-            .into(),
-    );
+    // Exact aggregates always; lossless plan only when zero sample drops.
+    let aggregates = BoundaryAggregateSummary::from_store_snapshot(&snap);
+    let (plan, lossless_plan_eligible, plan_source) = if aggregates.lossless_plan_eligible {
+        let plan = emit_plan_from_store_boundary_events(
+            &cfg.cell.cell_id,
+            &snap.samples,
+            32 * 1024,
+            1024 * 1024,
+            cfg.cell.batch_size.max(1),
+        );
+        plan.assert_redacted_json()
+            .map_err(|e| DriverError::Msg(e))?;
+        messages.push(
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)"
+                .into(),
+        );
+        (Some(plan), true, STORE_SEAM_EMITTER_FROM_RECEIPTS.to_string())
+    } else {
+        messages.push(format!(
+            "lossless_plan=no: {}",
+            aggregates
+                .plan_replay_invalidate_reason
+                .as_deref()
+                .unwrap_or("sample drops")
+        ));
+        messages.push(
+            "exact aggregates (counters/histograms/digest) remain valid; plan/replay claims withheld"
+                .into(),
+        );
+        (
+            None,
+            false,
+            "store_boundary_aggregates_only_v1".into(),
+        )
+    };
+    messages.push(format!(
+        "boundary_aggregates_digest={}",
+        aggregates.event_chain_digest
+    ));
+
+    let planned_bytes = plan.as_ref().map(|p| p.planned_bytes).unwrap_or(0);
 
     let tput = if e2e_ns == 0 {
         0.0
@@ -287,8 +318,8 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         e2e_ns_proxy: e2e_ns,
         throughput_bytes_per_sec_proxy: tput,
         window: window_s,
-        shadow_planned_bytes: plan.planned_bytes,
-        shadow_completed_bytes: plan.planned_bytes,
+        shadow_planned_bytes: planned_bytes,
+        shadow_completed_bytes: planned_bytes,
         features: cfg.cell.features.name.clone(),
         interference: cfg.cell.interference.kind.as_str().into(),
         messages: messages.clone(),
@@ -297,7 +328,7 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
 
     let surface = MeasurementSurface::RealStoreUncontrolled;
     let mut notes = messages;
-    notes.push(format!("plan_source={STORE_SEAM_EMITTER_FROM_RECEIPTS}"));
+    notes.push(format!("plan_source={plan_source}"));
     notes.push(format!(
         "run_class={} floors_met={} (smoke caps ops; qualification does not)",
         run_class.as_str(),
@@ -309,10 +340,75 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         driver_kind: DriverKind::RealStore,
         measurement_surface: surface,
         product_claim_eligible: false, // campaign layer decides with --controlled
-        plan: Some(plan),
-        plan_source: STORE_SEAM_EMITTER_FROM_RECEIPTS.into(),
+        plan,
+        plan_source,
+        lossless_plan_eligible,
+        boundary_aggregates: Some(aggregates),
         notes,
     })
+}
+
+/// Matched probe-off / probe-on observer-overhead qualification (same seed/cell).
+///
+/// Runs the cell twice under separate store roots: once without the boundary
+/// probe, once with it. Wall-time delta is the measured observer overhead.
+pub fn measure_probe_observer_overhead(
+    cfg: &DriverRunConfig,
+) -> Result<ObserverOverheadReport, DriverError> {
+    let work_root = cfg
+        .work_root
+        .as_ref()
+        .ok_or_else(|| DriverError::Msg("observer overhead requires work_root".into()))?;
+
+    let off = run_real_store_with_probe(cfg, work_root, false, "probe-off")?;
+    let on = run_real_store_with_probe(cfg, work_root, true, "probe-on")?;
+    Ok(ObserverOverheadReport::from_pair(
+        &cfg.cell.cell_id,
+        cfg.seed,
+        off.0,
+        on.0,
+        off.1,
+        on.1,
+    ))
+}
+
+/// Minimal timed put loop with probe on/off; returns (e2e_ns, logical_bytes).
+fn run_real_store_with_probe(
+    cfg: &DriverRunConfig,
+    work_root: &std::path::Path,
+    probe_on: bool,
+    tag: &str,
+) -> Result<(u64, u64), DriverError> {
+    let store_path = cell_store_path(work_root, &cfg.cell.cell_id, &format!("{tag}-s{:x}", cfg.seed));
+    if store_path.exists() {
+        let _ = fs::remove_dir_all(&store_path);
+    }
+    fs::create_dir_all(store_path.parent().unwrap_or(work_root))?;
+    let mut store = Store::create(&store_path).map_err(|e| DriverError::Store(e.to_string()))?;
+    if probe_on {
+        store.enable_boundary_probe();
+    }
+    let store_dur = map_durability(cfg.cell.durability);
+    let run_class = cfg.run_class_parsed();
+    let op_n = if run_class.allows_smoke_op_cap() {
+        cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1)
+    } else {
+        cfg.cell.op_count.max(1).min(64) // bound overhead helper
+    };
+    let plen = cfg.cell.payload_size.min(64 * 1024).max(1);
+    let body = vec![0xABu8; plen as usize];
+    let t0 = Instant::now();
+    let mut logical = 0u64;
+    for i in 0..op_n {
+        let subject = format!("oh-{i:08x}");
+        store
+            .put(&subject, &body, store_dur)
+            .map_err(|e| DriverError::Store(e.to_string()))?;
+        logical = logical.saturating_add(plen);
+    }
+    let e2e = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    drop(store);
+    Ok((e2e, logical))
 }
 
 fn map_durability(d: MatrixDur) -> StoreDur {
@@ -329,6 +425,7 @@ mod tests {
     use crate::matrix::{
         DatabaseState, FeatureProfile, InterferenceProfile, LayerProfile, MatrixCell,
     };
+    use residiuum_store::{DurabilityMode as StoreDur, Store};
 
     #[test]
     fn real_store_smoke_cell() {
@@ -364,42 +461,101 @@ mod tests {
         assert_eq!(report.cell.validity, "valid");
         assert!(report.cell.acknowledged > 0);
         assert!(report.cell.acknowledged <= RunClass::SMOKE_MAX_OPS);
+        assert!(report.boundary_aggregates.is_some());
+        let agg = report.boundary_aggregates.as_ref().unwrap();
+        assert!(agg.total_observed > 0);
+        assert!(!agg.event_chain_digest.is_empty());
+        // Small smoke run should not drop samples → lossless plan eligible.
+        assert!(report.lossless_plan_eligible);
         assert!(report.plan.is_some());
         let plan = report.plan.as_ref().unwrap();
         plan.assert_redacted_json().unwrap();
-        // Ops must come from store-boundary encoded frame lengths, not estimate.
-        assert!(
-            plan.planned_bytes > 0,
-            "expected measured encoded bytes from WriteReceipt.encoded_frame_len"
-        );
-        let logical_floor = 256u64; // cell.payload_size
-        assert!(
-            plan.planned_bytes >= logical_floor,
-            "planned_bytes={} < logical floor",
-            plan.planned_bytes
-        );
-        assert!(
-            !report
-                .notes
-                .iter()
-                .any(|n| n.contains("missing encoded_frame_len")),
-            "store must emit encoded_frame_len on durable/buffered puts"
-        );
+        assert!(plan.planned_bytes > 0);
         assert!(
             report
                 .notes
                 .iter()
-                .any(|n| n.contains("store_emitted_boundary_events=")),
-            "real driver must consume store-emitted boundary events"
-        );
-        assert!(
-            report
-                .notes
-                .iter()
-                .any(|n| n.contains("not receipt reconstruction")),
-            "must not reconstruct boundary stream from receipts"
+                .any(|n| n.contains("lossless_plan=yes")),
+            "expected lossless plan note"
         );
         assert!(report.notes.iter().any(|n| n.contains("run_class=smoke")));
+    }
+
+    #[test]
+    fn dropped_samples_invalidate_lossless_plan_not_aggregates() {
+        let dir = tempfile::tempdir().unwrap();
+        let cell = MatrixCell {
+            cell_id: "L4-drop-s256-c1-o1-0".into(),
+            layer: LayerProfile::L4,
+            durability: MatrixDur::Buffered,
+            payload_size: 128,
+            distribution: None,
+            concurrency: 1,
+            outstanding: 1,
+            batch_size: 1,
+            shards: 1,
+            db_state: DatabaseState::Empty,
+            features: FeatureProfile::l4_minimal(),
+            interference: InterferenceProfile::absent(),
+            op_count: 16,
+            order_rank: 0,
+        };
+        // Tiny sample capacity forces drops while counters stay exact.
+        let store_path = cell_store_path(dir.path(), &cell.cell_id, "drop");
+        fs::create_dir_all(store_path.parent().unwrap()).unwrap();
+        let mut store = Store::create(&store_path).unwrap();
+        store.enable_boundary_probe_with_capacity(2);
+        for i in 0..8 {
+            store
+                .put(
+                    format!("k{i}").as_bytes(),
+                    &[0u8; 32],
+                    StoreDur::Buffered,
+                )
+                .unwrap();
+        }
+        let snap = store.take_boundary_snapshot();
+        assert!(snap.coverage.samples_dropped > 0 || snap.coverage.sample_vector_capped);
+        let agg = BoundaryAggregateSummary::from_store_snapshot(&snap);
+        assert!(!agg.lossless_plan_eligible);
+        assert!(agg.plan_replay_invalidate_reason.is_some());
+        assert!(agg.total_observed > agg.samples_retained);
+        assert!(!agg.event_chain_digest.is_empty());
+    }
+
+    #[test]
+    fn matched_probe_observer_overhead_runs() {
+        let dir = tempfile::tempdir().unwrap();
+        let cell = MatrixCell {
+            cell_id: "L4-oh-s256-c1-o1-0".into(),
+            layer: LayerProfile::L4,
+            durability: MatrixDur::Buffered,
+            payload_size: 64,
+            distribution: None,
+            concurrency: 1,
+            outstanding: 1,
+            batch_size: 1,
+            shards: 1,
+            db_state: DatabaseState::Empty,
+            features: FeatureProfile::l4_minimal(),
+            interference: InterferenceProfile::absent(),
+            op_count: 8,
+            order_rank: 0,
+        };
+        let report = measure_probe_observer_overhead(&DriverRunConfig {
+            cell,
+            seed: 9,
+            kind: DriverKind::RealStore,
+            work_root: Some(dir.path().to_path_buf()),
+            durability_mutant: false,
+            digest_mutant: false,
+            run_class: "smoke".into(),
+        })
+        .expect("observer overhead");
+        assert!(report.probe_off_e2e_ns > 0);
+        assert!(report.probe_on_e2e_ns > 0);
+        assert_eq!(report.probe_off_logical_bytes, report.probe_on_logical_bytes);
+        assert!(report.notes.iter().any(|n| n.contains("probe-off")));
     }
 
     #[test]

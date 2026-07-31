@@ -7,6 +7,7 @@
 //!
 //! Plans never contain payloads, keys, or heap identities.
 
+mod aggregates;
 mod emitter;
 mod kinds;
 mod synthetic;
@@ -14,12 +15,15 @@ mod synthetic;
 #[cfg(feature = "store-driver")]
 mod real;
 
+pub use aggregates::{BoundaryAggregateSummary, ObserverOverheadReport};
 pub use emitter::{
     emit_plan_from_boundary_events, emit_plan_from_receipts, facts_from_boundary_events,
     StoreBoundaryEvent, StoreBoundaryKind, WriteReceiptFact, STORE_SEAM_EMITTER_FROM_RECEIPTS,
 };
 #[cfg(feature = "store-driver")]
 pub use emitter::{emit_plan_from_store_boundary_events, facts_from_store_boundary_events};
+#[cfg(feature = "store-driver")]
+pub use real::measure_probe_observer_overhead;
 pub use kinds::{DriverKind, MeasurementSurface, DRIVER_KIND_SYNTHETIC};
 
 use crate::matrix::{CellRunReport, DurabilityMode, MatrixCell, MatrixError};
@@ -50,8 +54,15 @@ pub struct DriverCellReport {
     pub measurement_surface: MeasurementSurface,
     /// True only when this run may contribute to a product baseline claim.
     pub product_claim_eligible: bool,
+    /// Lossless PhysicalWritePlan for L2 replay — **None** when samples dropped.
     pub plan: Option<PhysicalWritePlan>,
     pub plan_source: String,
+    /// True only when plan is complete (zero sample drops) for replay claims.
+    #[serde(default)]
+    pub lossless_plan_eligible: bool,
+    /// Exact boundary aggregates (always when probe ran); separate from plan.
+    #[serde(default)]
+    pub boundary_aggregates: Option<BoundaryAggregateSummary>,
     pub notes: Vec<String>,
 }
 

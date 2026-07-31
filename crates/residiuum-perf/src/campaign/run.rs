@@ -10,7 +10,7 @@ use super::run_class::RunClass;
 use super::CampaignError;
 use crate::matrix::{build_matrix_cells, MatrixCell, MatrixManifest, ScheduleSeed};
 use crate::runner::{
-    preflight_work_root, BuildMode, PreflightConfig, RunBudgets,
+    environment_fingerprint, preflight_work_root, BuildMode, PreflightConfig, RunBudgets,
 };
 use crate::store_driver::{
     run_driver_cell, store_driver_compiled, DriverKind, DriverRunConfig, MeasurementSurface,
@@ -116,6 +116,21 @@ pub struct CampaignResult {
     pub workers_spawned: bool,
     /// Worker PIDs observed (one per process slot when spawned).
     pub worker_pids: Vec<u32>,
+    /// Fail-closed preflight outcome when qualification preflight ran.
+    #[serde(default)]
+    pub preflight_outcome: Option<String>,
+    /// Preflight validity id (e.g. valid / invalid_debug_build).
+    #[serde(default)]
+    pub preflight_validity_id: Option<String>,
+    /// Environment fingerprint hash bound into evidence when available.
+    #[serde(default)]
+    pub environment_hash: Option<String>,
+    /// Full preflight report JSON (optional; hashed into evidence bundle).
+    #[serde(default)]
+    pub preflight_report: Option<serde_json::Value>,
+    /// Full environment fingerprint JSON (optional; hashed into evidence).
+    #[serde(default)]
+    pub environment_fingerprint: Option<serde_json::Value>,
 }
 
 /// Execute campaign: for each selected cell, run `processes × reps_per_process`
@@ -151,6 +166,12 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
     // Fail-closed qualification preflight (SPEC §6.4 / plan §5).
     // CLI sets require_qualification_preflight for qualification/soak; unit
     // tests leave false so smoke/synthetic harness stays fast.
+    let mut preflight_outcome = None;
+    let mut preflight_validity_id = None;
+    let mut preflight_report_json = None;
+    let mut environment_hash = None;
+    let mut environment_fingerprint_json = None;
+
     if cfg.require_qualification_preflight {
         if !cfg.run_class.may_emit_bottleneck_verdict() {
             return Err(CampaignError::Msg(
@@ -168,6 +189,20 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
                 "qualification preflight fail-closed: outcome={:?} reason={:?} messages={:?}",
                 report.outcome, report.reject_reason, report.messages
             )));
+        }
+        preflight_outcome = Some(format!("{:?}", report.outcome).to_ascii_lowercase());
+        preflight_validity_id = Some(report.validity_id.clone());
+        if let Some(env) = report.environment.as_ref() {
+            environment_hash = Some(env.environment_hash.clone());
+            environment_fingerprint_json =
+                serde_json::to_value(env).ok();
+        }
+        preflight_report_json = serde_json::to_value(&report).ok();
+    } else if let Some(work) = cfg.work_root.as_ref() {
+        // Bind environment fingerprint even for smoke when work_root is present.
+        if let Ok(env) = environment_fingerprint(Some(work), BuildMode::Diagnostic) {
+            environment_hash = Some(env.environment_hash.clone());
+            environment_fingerprint_json = serde_json::to_value(&env).ok();
         }
     }
 
@@ -293,6 +328,11 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         withdrawals,
         workers_spawned,
         worker_pids,
+        preflight_outcome,
+        preflight_validity_id,
+        environment_hash,
+        preflight_report: preflight_report_json,
+        environment_fingerprint: environment_fingerprint_json,
     })
 }
 
