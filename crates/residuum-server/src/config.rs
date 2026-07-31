@@ -201,7 +201,7 @@ pub struct ServeConfigSection {
     pub token_env: Option<String>,
     /// Optional external secret provider ref (opaque string; resolved by host).
     ///
-    /// Example: `env:RESIDUUM_TOKEN`, `file:/run/secrets/dingo_token`.
+    /// Example: `env:RESIDUUM_TOKEN`, `file:/run/secrets/residuum_token`.
     /// When set, takes precedence over `token_env` for resolution order.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub token_secret_ref: Option<String>,

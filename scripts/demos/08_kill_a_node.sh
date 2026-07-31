@@ -17,5 +17,5 @@ cargo test -p residuum-sdk --features cluster --test stage8d_routing \
 echo
 echo "Also available (experimental routing only; not network quorum):"
 echo "  residuum serve-cluster CLUSTER --node N --bind 127.0.0.1:PORT --experimental-network-cluster"
-echo "Offline salvage of a dead node: residuum doctor / dingo salvage on nodes/node-N"
+echo "Offline salvage of a dead node: residuum doctor / residuum salvage on nodes/node-N"
 echo "demo complete"

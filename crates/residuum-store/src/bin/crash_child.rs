@@ -5,11 +5,11 @@
 //! with a status code describing the outcome.
 //!
 //! Environment:
-//! - `DINGO_CRASH_STORE` — store directory (required)
-//! - `DINGO_CRASH_OP` — `put_durable` | `delete_durable` | `seed_prior` (required)
-//! - `DINGO_CRASH_FP` — failpoint name to arm with Abort (optional; omit to finish cleanly)
-//! - `DINGO_CRASH_KEY` — subject key (default `k`)
-//! - `DINGO_CRASH_VAL` — put payload (default `v-new`)
+//! - `RESIDUUM_CRASH_STORE` — store directory (required)
+//! - `RESIDUUM_CRASH_OP` — `put_durable` | `delete_durable` | `seed_prior` (required)
+//! - `RESIDUUM_CRASH_FP` — failpoint name to arm with Abort (optional; omit to finish cleanly)
+//! - `RESIDUUM_CRASH_KEY` — subject key (default `k`)
+//! - `RESIDUUM_CRASH_VAL` — put payload (default `v-new`)
 
 use residuum_store::{
     arm_failpoint_once, clear_failpoints, DurabilityMode, FailpointAction, Store,
@@ -19,17 +19,17 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let store_path = match env::var_os("DINGO_CRASH_STORE") {
+    let store_path = match env::var_os("RESIDUUM_CRASH_STORE") {
         Some(p) => PathBuf::from(p),
         None => {
-            eprintln!("DINGO_CRASH_STORE required");
+            eprintln!("RESIDUUM_CRASH_STORE required");
             return ExitCode::from(2);
         }
     };
-    let op = env::var("DINGO_CRASH_OP").unwrap_or_else(|_| "put_durable".into());
-    let key = env::var("DINGO_CRASH_KEY").unwrap_or_else(|_| "k".into());
-    let val = env::var("DINGO_CRASH_VAL").unwrap_or_else(|_| "v-new".into());
-    let fp = env::var("DINGO_CRASH_FP").ok();
+    let op = env::var("RESIDUUM_CRASH_OP").unwrap_or_else(|_| "put_durable".into());
+    let key = env::var("RESIDUUM_CRASH_KEY").unwrap_or_else(|_| "k".into());
+    let val = env::var("RESIDUUM_CRASH_VAL").unwrap_or_else(|_| "v-new".into());
+    let fp = env::var("RESIDUUM_CRASH_FP").ok();
 
     clear_failpoints();
 
@@ -93,7 +93,7 @@ fn main() -> ExitCode {
             }
         }
         other => {
-            eprintln!("unknown DINGO_CRASH_OP={other}");
+            eprintln!("unknown RESIDUUM_CRASH_OP={other}");
             ExitCode::from(2)
         }
     }

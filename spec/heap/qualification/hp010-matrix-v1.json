@@ -106,7 +106,7 @@
         "crates/residuum-store HsmBackendKind / HsmDataKeyConfig / HsmCapabilities / mock_for_tests",
         "crates/residuum-store feature aws-kms AwsKmsDataKeyProvider (live SigV4 GenerateDataKey)",
         "crates/residuum-store/tests/hp009_lifecycle.rs::aws_kms_config_surface",
-        "crates/residuum-store/tests/hp009_lifecycle.rs::aws_kms_live_generate_destroy (ignored; DINGO_KMS_LIVE=1)"
+        "crates/residuum-store/tests/hp009_lifecycle.rs::aws_kms_live_generate_destroy (ignored; RESIDUUM_KMS_LIVE=1)"
       ],
       "open": [
         "PKCS#11 / GCP / Azure live connectors not wired (AWS KMS live via feature aws-kms)"

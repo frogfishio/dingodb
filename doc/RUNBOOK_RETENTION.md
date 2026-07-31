@@ -147,8 +147,8 @@ The third column of `tiers/roots.txt` is a **media root spec**:
 |------|---------|
 | path / `file:///path` | Filesystem directory (Stage 9 baseline) |
 | `object:local:/path` | Local object layout (in-tree stand-in; optional `#prefix`) |
-| `s3://bucket/prefix` | Amazon S3 — live via `DINGO_S3_ROOT` mirror |
-| `gs://bucket/prefix` | GCS — live via `DINGO_GS_ROOT` mirror |
+| `s3://bucket/prefix` | Amazon S3 — live via `RESIDUUM_S3_ROOT` mirror |
+| `gs://bucket/prefix` | GCS — live via `RESIDUUM_GS_ROOT` mirror |
 
 Rust: `residuum_store::MediaLocator::parse`, `open_media` / `open_media_with`,
 `CloudMirrorConfig`, `MirroredCloudMedia`, `FilesystemMedia`, `LocalObjectMedia`.
@@ -157,8 +157,8 @@ Rust: `residuum_store::MediaLocator::parse`, `open_media` / `open_media_with`,
 
 | Env | Layout |
 |-----|--------|
-| `DINGO_S3_ROOT` | `{root}/{bucket}/{prefix}/…` object keys as files |
-| `DINGO_GS_ROOT` | same for `gs://` |
+| `RESIDUUM_S3_ROOT` | `{root}/{bucket}/{prefix}/…` object keys as files |
+| `RESIDUUM_GS_ROOT` | same for `gs://` |
 
 Point these at an rclone/s3fs mount, MinIO disk tree, or offline copy. Without
 a mirror, cloud roots stay **offline** for coverage honesty (`MediaUnsupported`

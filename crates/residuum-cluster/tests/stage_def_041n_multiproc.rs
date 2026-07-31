@@ -32,16 +32,16 @@ fn run_child(
     mode: &str,
 ) -> std::process::Output {
     let mut cmd = child_bin();
-    cmd.env("DINGO_MP_STORE", store)
-        .env("DINGO_MP_HISTORY", history)
-        .env("DINGO_MP_SEED", seed.to_string())
-        .env("DINGO_MP_OPS", ops.to_string())
-        .env("DINGO_MP_MODE", mode)
-        .env("DINGO_MP_PREFIX", "mp/")
+    cmd.env("RESIDUUM_MP_STORE", store)
+        .env("RESIDUUM_MP_HISTORY", history)
+        .env("RESIDUUM_MP_SEED", seed.to_string())
+        .env("RESIDUUM_MP_OPS", ops.to_string())
+        .env("RESIDUUM_MP_MODE", mode)
+        .env("RESIDUUM_MP_PREFIX", "mp/")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if let Some(n) = abort_after {
-        cmd.env("DINGO_MP_ABORT_AFTER", n.to_string());
+        cmd.env("RESIDUUM_MP_ABORT_AFTER", n.to_string());
     }
     cmd.output().expect("spawn multiproc child")
 }
@@ -175,12 +175,12 @@ fn short_soak_sequential_process_restarts() {
         let history = dir.path().join(format!("h-{r}.json"));
         // Each round is a separate process; first creates, later open.
         let mut cmd = child_bin();
-        cmd.env("DINGO_MP_STORE", &store)
-            .env("DINGO_MP_HISTORY", &history)
-            .env("DINGO_MP_SEED", (seed + r as u64).to_string())
-            .env("DINGO_MP_OPS", ops_per.to_string())
-            .env("DINGO_MP_MODE", "put_series")
-            .env("DINGO_MP_PREFIX", format!("r{r}/"));
+        cmd.env("RESIDUUM_MP_STORE", &store)
+            .env("RESIDUUM_MP_HISTORY", &history)
+            .env("RESIDUUM_MP_SEED", (seed + r as u64).to_string())
+            .env("RESIDUUM_MP_OPS", ops_per.to_string())
+            .env("RESIDUUM_MP_MODE", "put_series")
+            .env("RESIDUUM_MP_PREFIX", format!("r{r}/"));
         let out = cmd.output().unwrap();
         assert!(
             out.status.success(),

@@ -28,11 +28,11 @@ Default store builds do **not** pull HTTP/SigV4 deps.
 
 | Variable | Role |
 |----------|------|
-| `DINGO_AWS_KMS_KEY_ID` or `DINGO_KMS_KEY_ARN` | CMK id, alias, or ARN (**required**) |
-| `AWS_REGION` or `DINGO_AWS_REGION` | Region (default `us-east-1`) |
+| `RESIDUUM_AWS_KMS_KEY_ID` or `RESIDUUM_KMS_KEY_ARN` | CMK id, alias, or ARN (**required**) |
+| `AWS_REGION` or `RESIDUUM_AWS_REGION` | Region (default `us-east-1`) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credentials (**required** for live calls) |
 | `AWS_SESSION_TOKEN` | Optional session token |
-| `DINGO_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` | Optional (LocalStack / VPC endpoint) |
+| `RESIDUUM_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` | Optional (LocalStack / VPC endpoint) |
 
 ```rust
 use residuum_store::{AwsKmsDataKeyProvider, DataKeyProvider, HsmDataKeyConfig};
@@ -54,8 +54,8 @@ p.destroy(data_root, &mut h)?;
 ## Live Accept test
 
 ```bash
-export DINGO_KMS_LIVE=1
-export DINGO_AWS_KMS_KEY_ID=alias/your-cmk
+export RESIDUUM_KMS_LIVE=1
+export RESIDUUM_AWS_KMS_KEY_ID=alias/your-cmk
 export AWS_REGION=us-east-1
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...

@@ -365,12 +365,12 @@ fn run_crash_child(
         bin.display()
     );
     let mut cmd = Command::new(&bin);
-    cmd.env("DINGO_CRASH_STORE", store)
-        .env("DINGO_CRASH_OP", op)
-        .env("DINGO_CRASH_KEY", key)
-        .env("DINGO_CRASH_VAL", val);
+    cmd.env("RESIDUUM_CRASH_STORE", store)
+        .env("RESIDUUM_CRASH_OP", op)
+        .env("RESIDUUM_CRASH_KEY", key)
+        .env("RESIDUUM_CRASH_VAL", val);
     if let Some(fp) = failpoint {
-        cmd.env("DINGO_CRASH_FP", fp);
+        cmd.env("RESIDUUM_CRASH_FP", fp);
     }
     cmd.status().unwrap_or_else(|e| panic!("spawn {}: {e}", bin.display()))
 }

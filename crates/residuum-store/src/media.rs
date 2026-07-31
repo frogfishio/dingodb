@@ -13,12 +13,12 @@
 //! | `/abs/path` or `relative/path` | Filesystem directory |
 //! | `file:///abs/path` | Filesystem (URI form) |
 //! | `object:local:/abs/or/rel` | Local object layout under a directory |
-//! | `s3://bucket/prefix` | Amazon S3 — I/O via `DINGO_S3_ROOT` mirror |
-//! | `gs://bucket/prefix` | Google Cloud Storage — I/O via `DINGO_GS_ROOT` mirror |
+//! | `s3://bucket/prefix` | Amazon S3 — I/O via `RESIDUUM_S3_ROOT` mirror |
+//! | `gs://bucket/prefix` | Google Cloud Storage — I/O via `RESIDUUM_GS_ROOT` mirror |
 //!
 //! ## Live cloud connectors
 //!
-//! Set `DINGO_S3_ROOT` / `DINGO_GS_ROOT` to a directory that holds
+//! Set `RESIDUUM_S3_ROOT` / `RESIDUUM_GS_ROOT` to a directory that holds
 //! `{bucket}/{prefix}/…` object keys (rclone mount, s3fs, offline mirror, or
 //! MinIO disk layout). Keys are stored as ordinary files under that tree.
 //! Without a mirror, cloud locators parse and appear **offline** for coverage
@@ -367,13 +367,13 @@ impl MediaBackend for LocalObjectMedia {
 /// Operator mirror for live S3/GCS object keys on a local filesystem tree.
 ///
 /// Layout: `{root}/{bucket}/{key_prefix}/…` where object keys are relative
-/// paths under that directory. Point `DINGO_S3_ROOT` / `DINGO_GS_ROOT` at an
+/// paths under that directory. Point `RESIDUUM_S3_ROOT` / `RESIDUUM_GS_ROOT` at an
 /// rclone/s3fs mount or offline copy to enable put/get without an HTTP SDK.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CloudMirrorConfig {
-    /// Base directory for `s3://` (`DINGO_S3_ROOT`).
+    /// Base directory for `s3://` (`RESIDUUM_S3_ROOT`).
     pub s3_root: Option<PathBuf>,
-    /// Base directory for `gs://` (`DINGO_GS_ROOT`).
+    /// Base directory for `gs://` (`RESIDUUM_GS_ROOT`).
     pub gs_root: Option<PathBuf>,
 }
 
@@ -387,12 +387,12 @@ impl CloudMirrorConfig {
     ///
     /// | Variable | Scheme |
     /// |----------|--------|
-    /// | `DINGO_S3_ROOT` | `s3://` |
-    /// | `DINGO_GS_ROOT` | `gs://` |
+    /// | `RESIDUUM_S3_ROOT` | `s3://` |
+    /// | `RESIDUUM_GS_ROOT` | `gs://` |
     pub fn from_env() -> Self {
         Self {
-            s3_root: std::env::var_os("DINGO_S3_ROOT").map(PathBuf::from),
-            gs_root: std::env::var_os("DINGO_GS_ROOT").map(PathBuf::from),
+            s3_root: std::env::var_os("RESIDUUM_S3_ROOT").map(PathBuf::from),
+            gs_root: std::env::var_os("RESIDUUM_GS_ROOT").map(PathBuf::from),
         }
     }
 
@@ -581,7 +581,7 @@ pub fn media_root_directory_with(
     match &loc {
         MediaLocator::Object(u) => mirror.resolve_directory(u).ok_or_else(|| {
             StoreError::MediaUnsupported(format!(
-                "no local directory for media root {spec:?}; set DINGO_S3_ROOT / DINGO_GS_ROOT or use object:local:"
+                "no local directory for media root {spec:?}; set RESIDUUM_S3_ROOT / RESIDUUM_GS_ROOT or use object:local:"
             ))
         }),
         MediaLocator::Filesystem(_) => unreachable!("filesystem always has local_directory"),
@@ -594,15 +594,15 @@ mod tests {
 
     #[test]
     fn parse_filesystem_and_file_uri() {
-        let a = MediaLocator::parse("/var/dingo/cold").unwrap();
+        let a = MediaLocator::parse("/var/residuum/cold").unwrap();
         assert_eq!(
             a,
-            MediaLocator::Filesystem(PathBuf::from("/var/dingo/cold"))
+            MediaLocator::Filesystem(PathBuf::from("/var/residuum/cold"))
         );
-        let b = MediaLocator::parse("file:///var/dingo/cold").unwrap();
+        let b = MediaLocator::parse("file:///var/residuum/cold").unwrap();
         assert_eq!(
             b,
-            MediaLocator::Filesystem(PathBuf::from("/var/dingo/cold"))
+            MediaLocator::Filesystem(PathBuf::from("/var/residuum/cold"))
         );
     }
 

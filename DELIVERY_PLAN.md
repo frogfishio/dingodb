@@ -727,7 +727,7 @@ the cited conformance suites as required checks—not optional polish.
     catalogs, offline coverage honesty, archive-path bench class, retention
     runbook (`stage9_tiering.rs`, `doc/RUNBOOK_RETENTION.md`).
 24. ~~**Product follow-ons 1–4.**~~ **Done** —
-    - **Live S3/GCS** — `CloudMirrorConfig` / `DINGO_S3_ROOT` / `DINGO_GS_ROOT`
+    - **Live S3/GCS** — `CloudMirrorConfig` / `RESIDUUM_S3_ROOT` / `RESIDUUM_GS_ROOT`
       + `MirroredCloudMedia` (`media.rs`).
     - **Network multi-hop** — `RemoteClient` leader routing + live
       `endpoints.json` reload; `multi_hop_and_kill_node_survivor` + demo 08.

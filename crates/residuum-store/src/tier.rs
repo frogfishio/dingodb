@@ -900,7 +900,7 @@ pub fn write_tier_roots_file(
 ///
 /// The third column may be a filesystem path or a media URI
 /// (`object:local:…`, `file://…`, `s3://…`, `gs://…`). Cloud schemes resolve
-/// via `DINGO_S3_ROOT` / `DINGO_GS_ROOT` mirrors; without a mirror they are
+/// via `RESIDUUM_S3_ROOT` / `RESIDUUM_GS_ROOT` mirrors; without a mirror they are
 /// recorded as offline so coverage stays honest.
 pub fn load_tier_roots_file(paths: &StorePaths, placement: &mut TierPlacement) {
     let path = paths.tiers_dir().join(TIER_ROOTS_FILE);

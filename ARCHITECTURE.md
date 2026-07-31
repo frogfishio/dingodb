@@ -129,7 +129,7 @@ Rule of thumb from the delivery plan: **vertical slices over empty package trees
 Stages **0–9** are implemented in-tree. Product follow-ons 1–4:
 
 1. **S3/GCS filesystem mirrors** — `MediaLocator` + `CloudMirrorConfig`
-   (`DINGO_S3_ROOT` / `DINGO_GS_ROOT`); `object:local:` stand-in unchanged.
+   (`RESIDUUM_S3_ROOT` / `RESIDUUM_GS_ROOT`); `object:local:` stand-in unchanged.
    These are **mirrors**, not native cloud backends.
 2. **Network multi-hop routing + experimental Raft** — `residuum serve-cluster` +
    live `endpoints.json` reload; `RemoteClient` routes keyed ops and refreshes

@@ -63,7 +63,7 @@ If the call does **not** return a receipt (error, kill mid-call, client drop):
 Never a hybrid fabricated event (CSQ-ACK-003).
 
 CLI: `dingo put` / `dingo get` for smoke; crash cells via
-`DINGO_CRASH_*` harness (see CRASH_CONSISTENCY).
+`RESIDUUM_CRASH_*` harness (see CRASH_CONSISTENCY).
 
 ---
 

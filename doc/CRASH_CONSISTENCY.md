@@ -66,10 +66,10 @@ code paths.
 Integration tests spawn the helper binary `residuum-store-crash-child`:
 
 ```text
-DINGO_CRASH_STORE=<path>
-DINGO_CRASH_OP=put_durable|delete_durable|seed_prior
-DINGO_CRASH_FP=<failpoint name>   # armed with Abort
-DINGO_CRASH_KEY / DINGO_CRASH_VAL
+RESIDUUM_CRASH_STORE=<path>
+RESIDUUM_CRASH_OP=put_durable|delete_durable|seed_prior
+RESIDUUM_CRASH_FP=<failpoint name>   # armed with Abort
+RESIDUUM_CRASH_KEY / RESIDUUM_CRASH_VAL
 ```
 
 Parent seeds durable prior state, child aborts mid-op, parent reopens and

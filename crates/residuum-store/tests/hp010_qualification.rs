@@ -1032,7 +1032,7 @@ fn support_bundle_health_detail_scoped() {
         live: true,
         ready: false,
         reasons: vec!["store not open".into()],
-        store_path: Some("/data/dingo".into()),
+        store_path: Some("/data/residuum".into()),
         live_count: Some(12_345),
         node_index: Some(1),
         draining: true,

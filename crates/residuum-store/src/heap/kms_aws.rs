@@ -10,13 +10,13 @@
 //!   (does **not** `ScheduleKeyDeletion` on a shared CMK)
 //!
 //! ## Env (`HsmDataKeyConfig::aws_kms_from_env` / [`AwsKmsDataKeyProvider::from_env`])
-//! - `DINGO_AWS_KMS_KEY_ID` or `DINGO_KMS_KEY_ARN` — CMK id/ARN (**required**)
-//! - `AWS_REGION` / `DINGO_AWS_REGION` — region (default `us-east-1`)
-//! - `DINGO_AWS_ENDPOINT_URL` / `AWS_ENDPOINT_URL` — optional base URL
+//! - `RESIDUUM_AWS_KMS_KEY_ID` or `RESIDUUM_KMS_KEY_ARN` — CMK id/ARN (**required**)
+//! - `AWS_REGION` / `RESIDUUM_AWS_REGION` — region (default `us-east-1`)
+//! - `RESIDUUM_AWS_ENDPOINT_URL` / `AWS_ENDPOINT_URL` — optional base URL
 //! - Credentials: standard AWS chain via env  
 //!   (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`)
 //!
-//! Live Accept: `DINGO_KMS_LIVE=1` + creds + CMK, then  
+//! Live Accept: `RESIDUUM_KMS_LIVE=1` + creds + CMK, then  
 //! `cargo test -p residuum-store --features aws-kms aws_kms_live -- --ignored --nocapture`.
 
 use crate::error::StoreError;
@@ -120,7 +120,7 @@ impl AwsKmsDataKeyProvider {
     pub fn from_env() -> Result<Self, StoreError> {
         let cfg = HsmDataKeyConfig::aws_kms_from_env().ok_or_else(|| {
             StoreError::HeapAdmit(
-                "AWS KMS env not set (need DINGO_AWS_KMS_KEY_ID or DINGO_KMS_KEY_ARN)".into(),
+                "AWS KMS env not set (need RESIDUUM_AWS_KMS_KEY_ID or RESIDUUM_KMS_KEY_ARN)".into(),
             )
         })?;
         Self::from_config(&cfg)
@@ -404,10 +404,10 @@ mod tests {
 
     #[test]
     fn aws_kms_config_helpers() {
-        let cfg = HsmDataKeyConfig::aws_kms("eu-west-1", "alias/dingo-test", None);
+        let cfg = HsmDataKeyConfig::aws_kms("eu-west-1", "alias/residuum-test", None);
         assert_eq!(cfg.backend, HsmBackendKind::AwsKms);
         assert_eq!(cfg.slot_or_region.as_deref(), Some("eu-west-1"));
-        assert_eq!(cfg.key_label.as_deref(), Some("alias/dingo-test"));
+        assert_eq!(cfg.key_label.as_deref(), Some("alias/residuum-test"));
     }
 
     #[test]

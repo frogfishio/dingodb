@@ -1,7 +1,7 @@
 # ResiduumDB rebrand plan
 
-Status: **active; Phase 0 and Phase 1 complete; Phase 2 wholesale repository
-naming in progress**
+Status: **active; Phase 0 and Phase 1 complete; Phase 2 implementation renames
+labor-complete (REB-0…REB-7 → in_review); website Phase 4 still open**
 
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
@@ -22,7 +22,9 @@ subject to the compatibility classes and gates in this document; in particular,
 persisted, wire, cryptographic, and historical identifiers are not ordinary
 mechanical renames.
 
-Living Phase 2 inventory (REB-1): [doc/REBRAND_INVENTORY.md](doc/REBRAND_INVENTORY.md).
+Living Phase 2 inventory (REB-1): [doc/REBRAND_INVENTORY.md](doc/REBRAND_INVENTORY.md).  
+Class C freeze (REB-5): [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md).  
+User-facing migration draft (REB-6): [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md).
 
 Documentation MUST distinguish the product identity from literal technical
 identifiers that still exist in the implementation.
@@ -53,19 +55,24 @@ separate implementation migration is approved.
 
 Markdown MUST preserve a legacy identifier when changing it would make an
 example, command, path, protocol statement, compatibility claim, test vector,
-or source reference false. This includes, without limitation:
+or source reference false. After Phase 2 Class A/B renames, **current**
+implementation identity is Residuum-named; the remaining **literal legacy**
+identifiers include, without limitation:
 
-- Rust packages and import paths beginning with `dingo-`;
-- Rust crate paths beginning with `dingo_`;
-- the current Rust type `Residuum` and expressions such as `Residuum::open`;
-- the current `residuum` executable and `residuum-sda` executable;
-- the `residuum://` URI scheme;
-- `DINGO_*` environment variables;
-- `.dingo` store files;
-- `dingo-*-v1` wire and persistence profiles;
-- `DINGOFRM` and every `DINGODB-*` cryptographic domain separator;
-- historical evidence, accepted test output, package names, filesystem paths,
-  work-package identifiers, and repository URLs that have not yet moved.
+- Class C wire/on-disk facts: `.dingo` store files; `dingo-*-v1` profiles;
+  frame magics `DINGOFRM` / `DINGOEND`; `urn:dingo:…`;
+  `__dingo_snapshot_base__`; content-types such as `application/dingo.heap-*`;
+  every `DINGODB-*` cryptographic domain separator (see
+  [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md));
+- Class D history: git history, release tags, remote
+  `github.com/frogfishio/dingodb`, historical work-package ids;
+- Phase 4 surfaces: local dirs `web/dingodb.org`, marketing copy, old routes;
+- Historical docs that deliberately show pre-Phase-2 names as migration
+  before/after examples (e.g. [REBRAND_CHANGELOG.md](REBRAND_CHANGELOG.md)).
+
+**Current (post–Phase 2) Class B identity (do not reverse):** packages
+`residuum-*`, type `Residuum` / `Residuum::open`, CLI `residuum` /
+`residuum-sda`, URI `residuum://`, env `RESIDUUM_*`.
 
 When readers could mistake a literal identifier for the current brand,
 documentation SHOULD label it **legacy technical identifier** on first relevant
@@ -122,14 +129,15 @@ The required order is:
 |---|---|---|---|
 | 0. Defect stabilization | active defect developers | **complete** | Current storage defects addressed before rebrand churn |
 | 1. Documentation identity | Codex | **complete** | Establish ResiduumDB, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
-| 2. Wholesale repository naming | Codex | **in progress** | Rename implementation-facing product identifiers and write the migration changelog |
-| 3. Rust realignment | principal | not started | Resolve, compile, and semantically realign Rust after the mechanical identity change |
+| 2. Wholesale repository naming | Codex | **labor complete (awaiting principal accept)** | Class A/B renames + changelog + Class C freeze; REB board in_review |
+| 3. Rust realignment | principal | **partially absorbed into Phase 2** | Workspace compiles and core tests green under residuum names; principal owns any further semantic realignment beyond REB |
 | 4. Website and route migration | principal | not started | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
 | 5. Final audit | Codex | not started | Review the entire repository and websites for correctness, compatibility, stale branding, broken references, and release readiness |
 
-Phase 0 was declared complete and Phase 2 was declared in progress by the
-principal on 2026-07-31. That declaration opens the phase; it does not waive
-the compatibility analysis required below.
+Phase 0 was declared complete and Phase 2 was authorized by the principal on
+2026-07-31. Phase 2 mechanical renames and compile evidence were completed under
+Feature REB the same day; principal still owns card accept → `done` and any
+Phase 3 residual beyond compile/test green.
 
 ## 8. Phase 2 change surface
 
@@ -140,7 +148,7 @@ Phase 2 is repository-wide, not a blind search-and-replace. It includes:
   `residuum_sdk`;
 - executables and commands such as `residuum` and `residuum-sda`;
 - the `residuum://` URI scheme;
-- `DINGO_*` environment variables;
+- `RESIDUUM_*` environment variables (hard-break from former `DINGO_*`);
 - product-owned configuration keys, service names, telemetry names, fixtures,
   examples, scripts, and generated-package metadata;
 - internal repository directories whose names are not being reserved for the

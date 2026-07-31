@@ -1,13 +1,13 @@
 //! Multi-process campaign child (DEF-041-N).
 //!
 //! Environment:
-//! - `DINGO_MP_STORE` — store directory (required; created if missing)
-//! - `DINGO_MP_HISTORY` — path to write MultiprocHistory JSON (required)
-//! - `DINGO_MP_SEED` — u64 seed for diagnostic dump (default 1)
-//! - `DINGO_MP_OPS` — number of durable puts (default 8)
-//! - `DINGO_MP_ABORT_AFTER` — if set to N, `process::abort` after N successful acks
-//! - `DINGO_MP_PREFIX` — key prefix (default `mp/`)
-//! - `DINGO_MP_MODE` — `put_series` (default) | `try_open_only`
+//! - `RESIDUUM_MP_STORE` — store directory (required; created if missing)
+//! - `RESIDUUM_MP_HISTORY` — path to write MultiprocHistory JSON (required)
+//! - `RESIDUUM_MP_SEED` — u64 seed for diagnostic dump (default 1)
+//! - `RESIDUUM_MP_OPS` — number of durable puts (default 8)
+//! - `RESIDUUM_MP_ABORT_AFTER` — if set to N, `process::abort` after N successful acks
+//! - `RESIDUUM_MP_PREFIX` — key prefix (default `mp/`)
+//! - `RESIDUUM_MP_MODE` — `put_series` (default) | `try_open_only`
 //!
 //! Exit codes: 0 success, 2 usage, 3 store open/create, 4 write failure,
 //! 6 writer lock held (try_open_only / open contention).
@@ -19,33 +19,33 @@ use std::path::PathBuf;
 use std::process::{abort, ExitCode};
 
 fn main() -> ExitCode {
-    let store = match env::var_os("DINGO_MP_STORE") {
+    let store = match env::var_os("RESIDUUM_MP_STORE") {
         Some(p) => PathBuf::from(p),
         None => {
-            eprintln!("DINGO_MP_STORE required");
+            eprintln!("RESIDUUM_MP_STORE required");
             return ExitCode::from(2);
         }
     };
-    let history_path = match env::var_os("DINGO_MP_HISTORY") {
+    let history_path = match env::var_os("RESIDUUM_MP_HISTORY") {
         Some(p) => PathBuf::from(p),
         None => {
-            eprintln!("DINGO_MP_HISTORY required");
+            eprintln!("RESIDUUM_MP_HISTORY required");
             return ExitCode::from(2);
         }
     };
-    let seed: u64 = env::var("DINGO_MP_SEED")
+    let seed: u64 = env::var("RESIDUUM_MP_SEED")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(1);
-    let ops: u64 = env::var("DINGO_MP_OPS")
+    let ops: u64 = env::var("RESIDUUM_MP_OPS")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(8);
-    let abort_after: Option<u64> = env::var("DINGO_MP_ABORT_AFTER")
+    let abort_after: Option<u64> = env::var("RESIDUUM_MP_ABORT_AFTER")
         .ok()
         .and_then(|s| s.parse().ok());
-    let prefix = env::var("DINGO_MP_PREFIX").unwrap_or_else(|_| "mp/".into());
-    let mode = env::var("DINGO_MP_MODE").unwrap_or_else(|_| "put_series".into());
+    let prefix = env::var("RESIDUUM_MP_PREFIX").unwrap_or_else(|_| "mp/".into());
+    let mode = env::var("RESIDUUM_MP_MODE").unwrap_or_else(|_| "put_series".into());
 
     let mut history = MultiprocHistory::new(seed, store.display().to_string());
     history.note(format!("mode={mode} ops={ops} abort_after={abort_after:?}"));

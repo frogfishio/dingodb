@@ -540,18 +540,18 @@ impl HsmDataKeyConfig {
 
     /// Load AWS KMS config from environment when set.
     ///
-    /// - `DINGO_AWS_KMS_KEY_ID` or `DINGO_KMS_KEY_ARN` — CMK id/ARN (required)
-    /// - `AWS_REGION` or `DINGO_AWS_REGION` — region (default `us-east-1`)
-    /// - `DINGO_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` — optional override (LocalStack)
+    /// - `RESIDUUM_AWS_KMS_KEY_ID` or `RESIDUUM_KMS_KEY_ARN` — CMK id/ARN (required)
+    /// - `AWS_REGION` or `RESIDUUM_AWS_REGION` — region (default `us-east-1`)
+    /// - `RESIDUUM_AWS_ENDPOINT_URL` or `AWS_ENDPOINT_URL` — optional override (LocalStack)
     pub fn aws_kms_from_env() -> Option<Self> {
-        let key = std::env::var("DINGO_AWS_KMS_KEY_ID")
-            .or_else(|_| std::env::var("DINGO_KMS_KEY_ARN"))
+        let key = std::env::var("RESIDUUM_AWS_KMS_KEY_ID")
+            .or_else(|_| std::env::var("RESIDUUM_KMS_KEY_ARN"))
             .ok()
             .filter(|s| !s.is_empty())?;
-        let region = std::env::var("DINGO_AWS_REGION")
+        let region = std::env::var("RESIDUUM_AWS_REGION")
             .or_else(|_| std::env::var("AWS_REGION"))
             .unwrap_or_else(|_| "us-east-1".into());
-        let endpoint = std::env::var("DINGO_AWS_ENDPOINT_URL")
+        let endpoint = std::env::var("RESIDUUM_AWS_ENDPOINT_URL")
             .or_else(|_| std::env::var("AWS_ENDPOINT_URL"))
             .ok()
             .filter(|s| !s.is_empty());

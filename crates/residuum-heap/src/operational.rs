@@ -500,7 +500,7 @@ mod tests {
             live: true,
             ready: true,
             reasons: vec!["ok".into()],
-            store_path: Some("/var/lib/dingo/secret".into()),
+            store_path: Some("/var/lib/residuum/secret".into()),
             live_count: Some(999),
             node_index: Some(3),
             draining: false,
