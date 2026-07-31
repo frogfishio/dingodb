@@ -150,7 +150,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq7"
     },
     {
       "id": "CSQ-SUITE-FMT",
@@ -320,7 +320,7 @@
         "CSQ-ORACLE-READER",
         "CSQ-ORACLE-IMPL"
       ],
-      "status": "registry_only"
+      "status": "active_csq7"
     },
     {
       "id": "CSQ-SUITE-REG",

@@ -62,7 +62,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | CSQ-4 | active | 2026-07-31 | CSQ-1, CSQ-2 | — | publication kernel + transition coverage; HIST/scan/gen/shrinker; false harnesses; DEF-099/100 linked | transition qualification |
 | CSQ-5 | active | 2026-07-31 | CSQ-2, CSQ-4 | — | matrix + composed pairs; reopen/continuation; ENOSPC/perm; writer-lock; portable FS image; outcome validator; no silent skips | persistence qualification |
 | CSQ-6 | active | 2026-07-31 | CSQ-3…CSQ-5 | `tests/csq6_chunk_large_value.rs` (9); `scripts/verify-csq-chunk-large-value.sh`; DEF-098 + DEF-103 linked; suite `CSQ-SUITE-CHK` → `active_csq6`; **board `in_review`** | principal accept of CSQ-3…5 still open; deeper damage/conflict campaign residual (CSQ-7) | chunk qualification |
-| CSQ-7 | not_started | — | CSQ-3…CSQ-5 | — | damage/recovery differential absent | survival qualification |
+| CSQ-7 | active | 2026-07-31 | CSQ-3…CSQ-5 | `tests/csq7_damage_salvage.rs` (8); `scripts/verify-csq-damage-salvage.sh`; DEF-011 + stage salvage linked; suites DMG/REC → `active_csq7`; **board `in_review`** | principal accept CSQ-3…6 still open; encryption-unavailable semantic hole residual | survival qualification |
 | CSQ-8 | not_started | — | CSQ-4, CSQ-5, CSQ-7 | — | maintenance/backup/migration matrix absent | maintenance qualification |
 | CSQ-9 | not_started | — | CSQ-2, CSQ-4, CSQ-8 | — | concurrency/resource suite absent | boundedness qualification |
 | CSQ-10 | not_started | — | CSQ-3, CSQ-4, CSQ-6…CSQ-9 | — | mutation/fuzz thresholds absent | suite sensitivity |
