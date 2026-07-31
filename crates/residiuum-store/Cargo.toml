@@ -119,6 +119,58 @@ name = "stage_def_096_sharded_writers"
 required-features = ["legacy-raw-store"]
 
 [[test]]
+name = "stage_def_097_token_keys"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_098_chunk_generation"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_099_historical_get"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_100_coverage_scans"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_101_writer_lock"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_102_primary_cache_diag"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_103_large_value_policy"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "stage_def_104_crash_recovery_contract"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "hp002_one_heap"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "hp004_catalog_rebuild"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "hp006_heap_migration"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "hp009_lifecycle"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "hp010_qualification"
+required-features = ["legacy-raw-store"]
+
+[[test]]
 name = "stage6_bench_skeleton"
 required-features = ["legacy-raw-store"]
 
