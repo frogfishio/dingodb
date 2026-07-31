@@ -1,6 +1,9 @@
-# Apex is canonical; configure www → apex at the DNS/CDN layer as a 301.
+# Apex is canonical; configure www.residiuumdb.org → apex at the DNS/CDN layer as a 301.
 # HTTP → HTTPS is handled by the host.
+#
+# Principal ops (outside this file): point dingodb.org / docs.dingodb.org
+# DNS/CDN at Residiuum hosts when cutover is authorized.
 
-# Legacy or alternate paths (extend as routes change)
-/docs/*  https://docs.dingodb.org/:splat  302
-/get-started/*  https://docs.dingodb.org/guides/quickstart/  302
+# Docs site (canonical host docs.residiuumdb.org)
+/docs/*  https://docs.residiuumdb.org/:splat  302
+/get-started/*  https://docs.residiuumdb.org/getting-started/rust/  302

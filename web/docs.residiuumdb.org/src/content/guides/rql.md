@@ -15,7 +15,7 @@ source:
 owners:
   - sdk
 keywords:
-  - dql
+  - rql
 ---
 
 Source: `doc/RQL/USER_GUIDE.md`.
@@ -28,4 +28,4 @@ RQL is the official human query surface. The **implemented** surface may be smal
 - For enrichment/join designs, check capability status before coding
 - Raw SDA remains available for deterministic examination
 
-References: [RQL concept](/concepts/dql/) · [RQL reference](/reference/dql/) · [RQL specification](/specifications/dql/)
+References: [RQL concept](/concepts/rql/) · [RQL reference](/reference/rql/) · [RQL specification](/specifications/rql/)

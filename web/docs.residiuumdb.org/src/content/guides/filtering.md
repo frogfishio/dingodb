@@ -38,4 +38,4 @@ let via_sql = users.find_dialect(
 
 Dialects are convenience surfaces. Authoritative examination algebra is [SDA](/concepts/sda/).
 
-Distinguish: Rust Filter · [RQL](/guides/dql/) · dialects · [raw SDA](/guides/raw-sda/).
+Distinguish: Rust Filter · [RQL](/guides/rql/) · dialects · [raw SDA](/guides/raw-sda/).

@@ -23,7 +23,7 @@ keywords:
 - [Configuration](/reference/configuration/)
 - [Errors](/reference/errors/)
 - [Receipts and evidence](/reference/receipts-and-evidence/)
-- [RQL](/reference/dql/)
+- [RQL](/reference/rql/)
 - [SDA](/reference/sda/)
 - [Wire](/reference/wire/)
 - [Compatibility](/reference/compatibility/)

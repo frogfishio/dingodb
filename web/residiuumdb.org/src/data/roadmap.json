@@ -62,7 +62,7 @@
       "description": "Move the formal architecture from specifications into one coherent product: database-owned document truth, admitted transitions, exact ranked access, and counted ordering.",
       "items": [
         "Heaps — non-crossing authority and isolation",
-        "DRE — finite document and transition invariants",
+        "RRE — finite document and transition invariants",
         "Atomics — indivisible admitted state changes",
         "Direct Access — exact from/to result ranks",
         "Order Wavelets — filtered sorting by rank/select navigation"

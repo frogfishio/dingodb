@@ -69,8 +69,8 @@
     },
     {
       "id": "dql-dialects",
-      "name": "DQL and query dialects",
-      "description": "Human DQL plus SQL, Mongo-style, JSON, and raw SDA entry surfaces compile toward the same execution kernel within their declared subsets.",
+      "name": "RQL and query dialects",
+      "description": "Human RQL plus SQL, Mongo-style, JSON, and raw SDA entry surfaces compile toward the same execution kernel within their declared subsets.",
       "scope": "SDK query surface",
       "status": "experimental",
       "claim_id": "claim.dql.one-kernel"
@@ -175,7 +175,7 @@
     },
     {
       "id": "dre",
-      "name": "DRE — Data Rules",
+      "name": "RRE — Data Rules",
       "description": "Finite declarative invariants that give flexible documents database-owned, formally specified truth.",
       "scope": "Normative design",
       "status": "design",
@@ -184,7 +184,7 @@
     {
       "id": "atomics",
       "name": "Atomics",
-      "description": "Mathematically admitted state transitions that enforce DRE and relationship invariants without pretending to be arbitrary distributed SQL transactions.",
+      "description": "Mathematically admitted state transitions that enforce RRE and relationship invariants without pretending to be arbitrary distributed SQL transactions.",
       "scope": "Exploratory design",
       "status": "design",
       "claim_id": null

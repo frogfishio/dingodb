@@ -1,8 +1,9 @@
 # Residiuum rebrand plan
 
-Status: **non-website rebrand complete through REB-12; website Phase 4 is
-owner-managed and still open; Phase 5 is complete for non-web surfaces and
-awaits the websites**
+Status: **Phase 2–3 non-web rebrand complete through REB-12; website Phase 4
+(WEB-0…WEB-7) labor complete in repo (principal review); Phase 5 non-web
+complete — re-run website portion of Phase 5 audit after principal accept /
+DNS cutover**
 
 Scope: product identity, documentation, implementation identifiers,
 compatibility, release notes, and websites
@@ -96,15 +97,11 @@ The canonical public hosts are:
 - `https://residiuumdb.org`
 - `https://docs.residiuumdb.org`
 
-References to local repository directories such as `web/dingodb.org` remain
-unchanged until the Phase 4 website migration because those directories have
-not yet been renamed.
-
-The docs-site content filenames and routes containing `dql`, `dre`, or
-`choose-dingodb` also remain as legacy route identifiers until Phase 4. Their
-visible titles and link labels use RQL, RRE, and Residiuum. Renaming those
-routes requires coordinated changes to non-Markdown navigation and migration
-manifests and belongs to the later website migration.
+Local site directories are `web/residiuumdb.org` and `web/docs.residiuumdb.org`
+(Phase 4 WEB-0…WEB-7). Docs routes use RQL/RRE paths
+(`/guides/rql/`, `/concepts/rre/`, `/getting-started/choose-residiuum/`, …);
+old DQL/DRE/choose-dingodb paths 301 via `public/_redirects`. Inventory:
+[doc/WEB_REBRAND_INVENTORY.md](doc/WEB_REBRAND_INVENTORY.md).
 
 ## 6. Completion rule
 
@@ -132,15 +129,16 @@ The required order is:
 | 1. Documentation identity | Codex | **complete** | Establish Residiuum, RQL, RRE, renamed normative Markdown, and the legacy-identifier rule |
 | 2. Wholesale repository naming | Codex | **complete through REB-12** | Class A/B renames + Class C freeze + RQL surface + residual audit + docs + workspace verify |
 | 3. Rust realignment | principal | **complete for rebrand scope** | Workspace compiles and the full workspace suite is green under Residiuum names |
-| 4. Website and route migration | principal | owner-managed; open | Rename website directories, routes, navigation, domains, metadata, and deployment configuration |
-| 5. Final audit | Codex | **non-web complete; website remainder open** | Non-web repository is audited; repeat against both websites after Phase 4 |
+| 4. Website and route migration | principal | **repo complete (WEB-0…WEB-7 in_review); DNS cutover principal** | Sites under `web/residiuumdb.org` + `web/docs.residiuumdb.org`; package/astro hosts; Residiuum copy; RQL/RRE routes; redirects; hosting project_id frozen |
+| 5. Final audit | Codex | **non-web complete; website re-audit after principal accept** | Non-web repository is audited; repeat against both websites after Phase 4 accept / live DNS |
 
 Phase 0 was declared complete and Phase 2 was authorized by the principal on
 2026-07-31. Phase 2 mechanical renames, RQL public-surface completion (REB-8),
 Class C re-audit (REB-9), public-identity residual fixes (REB-10), and REB-12
-workspace verification are complete. The non-web rebrand is closed. Website
-work remains the independently managed Phase 4, followed by the website portion
-of the Phase 5 audit.
+workspace verification are complete. The non-web rebrand is closed. Phase 4
+website migration is implemented in-repo under Feature WEB (WEB-0…WEB-7);
+principal owns accept into `done` and live DNS/CDN cutover for old hosts.
+See [doc/WEB_REBRAND_INVENTORY.md](doc/WEB_REBRAND_INVENTORY.md).
 
 ## 8. Phase 2 change surface
 

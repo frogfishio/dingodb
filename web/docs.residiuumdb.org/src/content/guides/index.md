@@ -25,7 +25,7 @@ How-to guides complete a specific real task. Prefer [getting started](/getting-s
 - [Collections](/guides/collections/)
 - [JSON and bytes](/guides/json-and-bytes/)
 - [Filtering](/guides/filtering/)
-- [RQL](/guides/dql/)
+- [RQL](/guides/rql/)
 - [Raw SDA](/guides/raw-sda/)
 - [Indexes](/guides/indexes/)
 - [Pagination and ordering](/guides/pagination-and-ordering/)

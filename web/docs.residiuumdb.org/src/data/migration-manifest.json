@@ -14,8 +14,8 @@
     "status": "active"
   },
   {
-    "source": "doc/DQL/USER_GUIDE.md",
-    "destination": "/guides/dql/",
+    "source": "doc/RQL/USER_GUIDE.md",
+    "destination": "/guides/rql/",
     "mode": "summarize",
     "owner": "sdk",
     "status": "active"
@@ -56,15 +56,15 @@
     "status": "active"
   },
   {
-    "source": "DQL_SPEC.md",
-    "destination": "/specifications/dql/",
+    "source": "RQL_SPEC.md",
+    "destination": "/specifications/rql/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"
   },
   {
-    "source": "DRE_SPEC.md",
-    "destination": "/specifications/dre/",
+    "source": "RRE_SPEC.md",
+    "destination": "/specifications/rre/",
     "mode": "summarize",
     "owner": "specs",
     "status": "active"

@@ -1,3 +1,24 @@
+# Legacy path continuity (Netlify-style _redirects).
+# WEB-5 renames: permanent 301 from old DQL/DRE/choose-dingodb routes.
+# Pre-existing alternate paths keep 302 unless upgraded later.
+
+# WEB-5 renames (permanent)
+/guides/dql/*  /guides/rql/:splat  301
+/guides/dql  /guides/rql/  301
+/concepts/dql/*  /concepts/rql/:splat  301
+/concepts/dql  /concepts/rql/  301
+/concepts/dre/*  /concepts/rre/:splat  301
+/concepts/dre  /concepts/rre/  301
+/reference/dql/*  /reference/rql/:splat  301
+/reference/dql  /reference/rql/  301
+/specifications/dql/*  /specifications/rql/:splat  301
+/specifications/dql  /specifications/rql/  301
+/specifications/dre/*  /specifications/rre/:splat  301
+/specifications/dre  /specifications/rre/  301
+/getting-started/choose-dingodb/*  /getting-started/choose-residiuum/:splat  301
+/getting-started/choose-dingodb  /getting-started/choose-residiuum/  301
+
+# Older alternate paths (pre-rebrand site IA)
 /guides/quickstart/*  /getting-started/rust/  302
 /guides/recovery/*  /guides/scrub-and-salvage/  302
 /architecture/*  /concepts/  302

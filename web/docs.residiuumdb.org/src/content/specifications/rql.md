@@ -15,7 +15,7 @@ source:
 owners:
   - specs
 keywords:
-  - dql
+  - rql
 spec_state: draft
 ---
 

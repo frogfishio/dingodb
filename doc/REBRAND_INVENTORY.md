@@ -23,11 +23,11 @@ Baseline (REB-0): `cargo check --workspace` exit 0 @ commit `e090c05` (main).
 | dir | `crates/dingo-server` | B | → `crates/residiuum-server` |
 | dir | `crates/dingo-store` | B | → `crates/residiuum-store` |
 | dir | `crates/dingo-testrig` | B | → `crates/residiuum-testrig` |
-| dir | `web/dingodb.org` | B* | Website Phase 4 preferred; path rename deferred unless forced |
-| dir | `web/docs.dingodb.org` | B* | Website Phase 4 preferred; deferred |
-| file | `web/docs.dingodb.org/.../choose-dingodb.md` | B* | Route rename Phase 4; deferred with web dirs |
+| dir | `web/dingodb.org` | B | **Done Phase 4:** → `web/residiuumdb.org` |
+| dir | `web/docs.dingodb.org` | B | **Done Phase 4:** → `web/docs.residiuumdb.org` |
+| file | `…/choose-dingodb.md` | B | **Done Phase 4:** → `choose-residiuum.md` (+ 301) |
 
-\*Feature scope: website dirs deferred (Phase 4). Content path strings updated only if forced by crate renames.
+\*Website Phase 4 Feature WEB (WEB-0…WEB-7) implemented 2026-07-31. Details: [WEB_REBRAND_INVENTORY.md](WEB_REBRAND_INVENTORY.md).
 
 ## 2. Cargo packages and binaries (Class B → rename)
 
@@ -126,7 +126,8 @@ beyond this document.
 ## 10. Post–REB-10 inventory note (REB-11)
 
 Implemented Class B identity is Residiuum-named throughout crates (see §3).
-Website directories under `web/` remain deferred (Phase 4). Wrong intermediate
+Website directories under `web/` are Phase 4 complete (Feature WEB); see
+[WEB_REBRAND_INVENTORY.md](WEB_REBRAND_INVENTORY.md). Wrong intermediate
 spellings `Residuum` / `residuum-*` are documentation-only forbidden forms, not
 compatibility aliases. Observed test evidence lives in
 [REBRAND_CHANGELOG.md](../REBRAND_CHANGELOG.md) §15.

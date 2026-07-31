@@ -15,7 +15,7 @@ source:
 owners:
   - docs
 keywords:
-  - dql
+  - rql
 ---
 
 RQL is the official human surface. Implementation coverage may lag the full design. Always check the user guide and capability matrix.

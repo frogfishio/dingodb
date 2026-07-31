@@ -8,7 +8,7 @@ Class C freeze: [doc/REBRAND_CLASS_C_FREEZE.md](doc/REBRAND_CLASS_C_FREEZE.md).
 **Product name:** Residiuum only. **`Residuum` / `ResiduumDB` / `residuum-*`**
 are incorrect unreleased intermediate spellings with no compatibility status.
 **`residiuumdb`** is domain-only (`residiuumdb.org`, `docs.residiuumdb.org`).
-Websites (`web/`) remain Phase 4.
+Websites (`web/`) Phase 4 is implemented in-repo (Feature WEB); see §13.
 
 ## 1. Reason and effective release
 
@@ -23,8 +23,8 @@ compatibility status. The canonical spelling contains the second `i`:
 **What this cut does:** Implementation identity hard-break for crates, public
 Rust API entry type, CLI, URI scheme, and process environment variables.
 
-**What this cut does not do:** Rewrite wire magics, profile string IDs, crypto
-domains, or website Phase 4 surfaces.
+**What this cut does not do:** Rewrite wire magics, profile string IDs, or crypto
+domains. Website Phase 4 is a separate Feature WEB cut (see §13).
 
 Effective release: **unreleased** until principal tags; apply when upgrading
 from a pre-Phase-2 tree.
@@ -197,9 +197,32 @@ No temporary `dingo` crate or CLI aliases. Removal N/A.
 
 ## 13. Website / domain
 
-Deferred to **Phase 4**. Local dirs `web/dingodb.org` and marketing copy still
-contain “Dingo” strings. Canonical public hosts remain `residiuumdb.org` /
-`docs.residiuumdb.org` per REBRAND.md.
+**Phase 4 (Feature WEB, WEB-0…WEB-7) — implemented in-repo 2026-07-31.**
+
+| Former | New |
+|--------|-----|
+| Local dirs `web/dingodb.org`, `web/docs.dingodb.org` | `web/residiuumdb.org`, `web/docs.residiuumdb.org` |
+| package/astro `dingodb.org` / `docs.dingodb.org` | `residiuumdb.org` / `docs.residiuumdb.org` |
+| Product copy DingoDB / Residuum / ResiduumDB | **Residiuum** |
+| Public languages DQL / DRE (site surface) | **RQL** / **RRE** |
+| Docs routes `/guides/dql/`, `/concepts/dre/`, … | `/guides/rql/`, `/concepts/rre/`, … |
+| `/getting-started/choose-dingodb/` | `/getting-started/choose-residiuum/` |
+| Main `/docs/*` redirect target | `https://docs.residiuumdb.org/:splat` |
+
+Canonical public hosts: `https://residiuumdb.org`, `https://docs.residiuumdb.org`.
+
+**Hosting freeze:** `web/residiuumdb.org/.openai/hosting.json` `project_id`
+`appgprj_6a6a4bd6baf08191949a0106278a04d8` **unchanged**.
+
+**Class C on web:** profile IDs such as `dingo-backup-v1` retained in capability
+tables and ops docs (wire identity, not product name).
+
+**Class D left:** `github.com/frogfishio/dingodb` remote links.
+
+**Principal ops remaining:** DNS/CDN cutover for `dingodb.org` /
+`docs.dingodb.org`; `www.residiuumdb.org` → apex 301; accept WEB cards to `done`.
+
+Inventory: [doc/WEB_REBRAND_INVENTORY.md](doc/WEB_REBRAND_INVENTORY.md).
 
 ## 14. Intentionally retained legacy identifiers
 
@@ -269,7 +292,8 @@ collections catalog immediately (`note_collection_for_subject` →
 `refresh_collection_catalog`). Index-cache checkpoints remain rate-limited
 (DEF-023). Unblocked `stage_def_010_012_013` under workspace test.
 
-Website Phase 4 and Phase 5 final audit remain out of scope.
+Website Phase 4 is implemented (Feature WEB / §13). Phase 5 website re-audit
+after principal accept and DNS cutover remains open.
 
 ### Residual classification summary (REB-7…REB-12)
 
@@ -277,7 +301,7 @@ Website Phase 4 and Phase 5 final audit remain out of scope.
 |-------|-------------|---------|
 | Class A/B | Renamed | crates, packages, `Residiuum`, `ResidiuumDeployment`, CLI, `residiuum://`, `RESIDIUUM_*`, RQL symbols |
 | Class C | **retain_legacy** | profiles `dingo-*-v1` / frozen `dql-*-v1` wire values, magics, URNs, crypto domains, `application/dingo.*`, `.dingo` media, `dingo-store-*` |
-| Class D | history / Phase 4 | `web/dingodb.org`, marketing strings, git remote `dingodb`, historical `DRE-*` work-package ids |
+| Class D | history | git remote `github.com/frogfishio/dingodb`, historical `DRE-*` work-package ids; website Phase 4 complete (see §13) |
 | Forbidden intermediate | documented only | `Residuum` / `residuum-*` (never shipped) |
 | Cosmetic residual fixed in REB-7 | example paths | `/var/lib/residiuum`, `alias/residiuum-test`, fuzz package |
 

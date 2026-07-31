@@ -36,7 +36,7 @@
         },
         {
           "label": "Choose Residiuum",
-          "href": "/getting-started/choose-dingodb/"
+          "href": "/getting-started/choose-residiuum/"
         },
         {
           "label": "Rust quickstart",
@@ -74,7 +74,7 @@
         },
         {
           "label": "RQL",
-          "href": "/guides/dql/"
+          "href": "/guides/rql/"
         },
         {
           "label": "Raw SDA",
@@ -140,11 +140,11 @@
         },
         {
           "label": "RQL",
-          "href": "/concepts/dql/"
+          "href": "/concepts/rql/"
         },
         {
           "label": "RRE",
-          "href": "/concepts/dre/"
+          "href": "/concepts/rre/"
         },
         {
           "label": "Atomics",
@@ -232,7 +232,7 @@
         },
         {
           "label": "RQL",
-          "href": "/reference/dql/"
+          "href": "/reference/rql/"
         },
         {
           "label": "SDA",
@@ -270,11 +270,11 @@
         },
         {
           "label": "RQL",
-          "href": "/specifications/dql/"
+          "href": "/specifications/rql/"
         },
         {
           "label": "RRE",
-          "href": "/specifications/dre/"
+          "href": "/specifications/rre/"
         },
         {
           "label": "Atomics",

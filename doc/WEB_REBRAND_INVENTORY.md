@@ -177,3 +177,32 @@ cat web/residiuumdb.org/.openai/hosting.json
 # no docs .openai/hosting.json
 # scanned both trees excluding node_modules/dist for DingoDB|dingodb.org|Residuum*|DQL|DRE|choose-dingodb|dingo-*-v1|...
 ```
+
+---
+
+## 11. WEB-6 redirects (implemented)
+
+### Main site (`web/residiuumdb.org/public/_redirects`)
+- `/docs/*` → `https://docs.residiuumdb.org/:splat` (302)
+- `/get-started/*` → docs getting-started rust quickstart (302)
+- Comment documents principal DNS: `dingodb.org` / `docs.dingodb.org` cutover + `www.residiuumdb.org` → apex 301
+
+### Docs site (`web/docs.residiuumdb.org/public/_redirects`)
+301 permanent from WEB-5 old paths:
+- `/guides/dql` → `/guides/rql/`
+- `/concepts/dql` → `/concepts/rql/`
+- `/concepts/dre` → `/concepts/rre/`
+- `/reference/dql` → `/reference/rql/`
+- `/specifications/dql` → `/specifications/rql/`
+- `/specifications/dre` → `/specifications/rre/`
+- `/getting-started/choose-dingodb` → `/getting-started/choose-residiuum/`
+
+Legacy IA redirects retained (302): quickstart, recovery, architecture, api.
+
+### Hosting
+`web/residiuumdb.org/.openai/hosting.json` `project_id` **unchanged**: `appgprj_6a6a4bd6baf08191949a0106278a04d8`.
+
+### Principal remaining ops
+1. DNS/CDN: map `dingodb.org` and `docs.dingodb.org` to Residiuum hosts when ready.
+2. CDN: `www.residiuumdb.org` → apex 301.
+3. Optional: separate docs OpenAI Sites hosting binding if/when authorized.

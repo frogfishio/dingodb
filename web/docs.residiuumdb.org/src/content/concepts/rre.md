@@ -15,8 +15,8 @@ source:
 owners:
   - docs
 keywords:
-  - dre
+  - rre
 spec_state: draft
 ---
 
-**Product capability: Design.** RRE explores formal data rules. See [RRE specification](/specifications/dre/). Not available as a production rule engine today.
+**Product capability: Design.** RRE explores formal data rules. See [RRE specification](/specifications/rre/). Not available as a production rule engine today.

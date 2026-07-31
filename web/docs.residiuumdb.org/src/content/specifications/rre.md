@@ -15,7 +15,7 @@ source:
 owners:
   - specs
 keywords:
-  - dre
+  - rre
 spec_state: draft
 ---
 

@@ -121,12 +121,12 @@
   },
   {
     "id": "claim.dql.one-kernel",
-    "text": "DQL and declared compatibility dialect subsets compile toward the SDA / ENR mathematical kernel.",
+    "text": "RQL and declared compatibility dialect subsets compile toward the SDA / ENR mathematical kernel.",
     "status": "experimental",
     "scope": "SDK query surface",
     "source": [
-      "DQL_SPEC.md",
-      "doc/DQL/USER_GUIDE.md",
+      "RQL_SPEC.md",
+      "doc/RQL/USER_GUIDE.md",
       "doc/SDA/DIALECTS.md"
     ],
     "verified_for": "0.2.0",
@@ -145,11 +145,11 @@
   },
   {
     "id": "claim.dre.document-truth",
-    "text": "DRE specifies finite, non-Turing-complete invariants for database-owned document truth.",
+    "text": "RRE specifies finite, non-Turing-complete invariants for database-owned document truth.",
     "status": "design",
     "scope": "normative design",
     "source": [
-      "DRE_SPEC.md"
+      "RRE_SPEC.md"
     ],
     "verified_for": "0.2.0",
     "last_verified": "2026-07-30"

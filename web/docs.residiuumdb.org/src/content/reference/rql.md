@@ -15,7 +15,7 @@ source:
 owners:
   - sdk
 keywords:
-  - dql
+  - rql
 ---
 
 Authoritative user-facing syntax: `doc/RQL/USER_GUIDE.md`.

@@ -24,11 +24,11 @@ import release from '../../data/release.json';
   <h2>The center: one deterministic kernel</h2>
   <p>
     Residiuum does not let each API, query dialect, rule engine, and recovery tool
-    invent a slightly different meaning for values and predicates. DQL, its
-    declared compatibility dialects, DRE, and examination reduce toward the
+    invent a slightly different meaning for values and predicates. RQL, its
+    declared compatibility dialects, RRE, and examination reduce toward the
     SDA / ENR mathematical kernels.
   </p>
-  <pre>{`SQL-ish / Mongo-ish / DQL        DRE rules
+  <pre>{`SQL-ish / Mongo-ish / RQL        RRE rules
              \\                    /
               deterministic predicate + value semantics
                               ↓
@@ -36,7 +36,7 @@ import release from '../../data/release.json';
                               ↓
              results / coverage / holes / provenance`}</pre>
   <p>
-    The implemented DQL surface is currently a subset of the full v1 design.
+    The implemented RQL surface is currently a subset of the full v1 design.
     Raw SDA remains available when callers need the exact kernel directly.
   </p>
 
@@ -44,12 +44,12 @@ import release from '../../data/release.json';
   <p>
     Applications open a store, name a collection, and put/get/delete values by
     string key (subject). The ordinary surface is the Rust
-    <code>dingo-sdk</code> collection API—not frames or segments.
+    <code>residiuum-sdk</code> collection API—not frames or segments.
   </p>
   <p>
     <ExternalLink href={`${release.docsBase}/`}>Docs home</ExternalLink>
     ·
-    <ExternalLink href={release.github + '/blob/main/crates/dingo-sdk/README.md'}>
+    <ExternalLink href={release.github + '/blob/main/crates/residiuum-sdk/README.md'}>
       SDK README
     </ExternalLink>
   </p>
@@ -61,13 +61,13 @@ import release from '../../data/release.json';
     durable material without forced document interpretation.
   </p>
   <p>
-    DRE is the normative design for finite, declarative document and transition
+    RRE is the normative design for finite, declarative document and transition
     invariants. Atomics is the enforcement model. Together they target a
     document database where the database—not an optional callback in application
     code—owns declared truth.
   </p>
   <p>
-    <StatusBadge status="design" /> DRE and Atomics are specified direction,
+    <StatusBadge status="design" /> RRE and Atomics are specified direction,
     not release {release.productVersion} capabilities.
   </p>
 
@@ -99,7 +99,7 @@ versioned order wavelet
         +
 rank/select branch counts
         =
-exact kth filtered document in DQL order`}</pre>
+exact kth filtered document in RQL order`}</pre>
   <p>
     <StatusBadge status="design" />
     <ExternalLink href={release.github + '/blob/main/ORDER_WAVELET_SPEC.md'}>
@@ -163,7 +163,7 @@ exact kth filtered document in DQL order`}</pre>
           <td>Typed collection filters in the SDK</td>
         </tr>
         <tr>
-          <td>DQL</td>
+          <td>RQL</td>
           <td>Official human query surface over collections</td>
         </tr>
         <tr>
@@ -182,8 +182,8 @@ exact kth filtered document in DQL order`}</pre>
       SDA introduction
     </ExternalLink>
     ·
-    <ExternalLink href={release.github + '/blob/main/doc/DQL/USER_GUIDE.md'}>
-      DQL user guide
+    <ExternalLink href={release.github + '/blob/main/doc/RQL/USER_GUIDE.md'}>
+      RQL user guide
     </ExternalLink>
   </p>
 
@@ -210,7 +210,7 @@ exact kth filtered document in DQL order`}</pre>
   <p>
     <StatusBadge status="experimental" /> Embedded single-node is the strongest
     deployment path today. The language/storage kernel, recovery tools, and
-    bounded cursors exist; DRE, full Direct Access, and Order Wavelets remain
+    bounded cursors exist; RRE, full Direct Access, and Order Wavelets remain
     design work. Network multi-node remains experimental; single-node TCP is
     development-only. Details:
     <a href="/status/">status matrix</a>.

@@ -15,13 +15,13 @@ const systemLayers = [
     marker: '01',
     status: 'available',
     title: 'One deterministic kernel',
-    body: 'SDA and ENR give filters, projections, enrichment, examination, and recovery evidence one exact meaning. DQL and familiar dialects compile toward that kernel.',
+    body: 'SDA and ENR give filters, projections, enrichment, examination, and recovery evidence one exact meaning. RQL and familiar dialects compile toward that kernel.',
   },
   {
     marker: '02',
     status: 'design',
     title: 'Documents with database-owned truth',
-    body: 'DRE declares finite, non-Turing-complete invariants. Atomics enforce admitted state transitions. Flexible shape no longer has to mean “the application might remember.”',
+    body: 'RRE declares finite, non-Turing-complete invariants. Atomics enforce admitted state transitions. Flexible shape no longer has to mean “the application might remember.”',
   },
   {
     marker: '03',
@@ -129,7 +129,7 @@ const designCards = capabilities.beingBuilt.filter((c) =>
           <h2 id="system-heading" class="section-title">More than a storage engine.</h2>
         </div>
         <p>
-          The storage and SDA kernel run today. DRE, Atomics, Direct Access,
+          The storage and SDA kernel run today. RRE, Atomics, Direct Access,
           and Order Wavelets are normative designs under implementation—not
           features quietly advertised ahead of their evidence.
         </p>
@@ -150,7 +150,7 @@ const designCards = capabilities.beingBuilt.filter((c) =>
 
       <div class="kernel-flow" aria-label="Residiuum language and execution flow">
         <div>
-          <span>SQL-ish · Mongo-ish · DQL · raw SDA</span>
+          <span>SQL-ish · Mongo-ish · RQL · raw SDA</span>
           <small>human and compatibility surfaces</small>
         </div>
         <b aria-hidden="true">→</b>
@@ -275,9 +275,9 @@ const designCards = capabilities.beingBuilt.filter((c) =>
       </div>
       <div>
         <CodeExample title="Embedded Rust" language="rust" filename="main.rs" copyId="quick-rust">
-{`use dingo_sdk::{json, Dingo, Filter};
+{`use residiuum_sdk::{json, Residiuum, Filter};
 
-let mut db = Dingo::open("./app.dingo")?;
+let mut db = Residiuum::open("./app.dingo")?;
 let mut users = db.collection("users")?;
 
 users.put("user-42", &json!({
