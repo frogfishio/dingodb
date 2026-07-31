@@ -434,7 +434,7 @@ impl MirroredCloudMedia {
         }
         let root = mirror.resolve_directory(&uri).ok_or_else(|| {
             StoreError::MediaUnsupported(format!(
-                "{} mirror not configured for {} (set DINGO_{}_ROOT)",
+                "{} mirror not configured for {} (set RESIDIUUM_{}_ROOT)",
                 uri.scheme.as_str(),
                 uri.to_uri_string(),
                 if uri.scheme == ObjectScheme::S3 {
@@ -495,7 +495,7 @@ impl UnsupportedCloudMedia {
 impl MediaBackend for UnsupportedCloudMedia {
     fn put_object(&self, _key: &str, _bytes: &[u8]) -> Result<(), StoreError> {
         Err(StoreError::MediaUnsupported(format!(
-            "{} connector unavailable ({}); set DINGO_{}_ROOT or use object:local: / filesystem roots",
+            "{} connector unavailable ({}); set RESIDIUUM_{}_ROOT or use object:local: / filesystem roots",
             self.uri.scheme.as_str(),
             self.uri.to_uri_string(),
             if self.uri.scheme == ObjectScheme::S3 {

@@ -1,4 +1,4 @@
-//! Integration test for `dingo console`.
+//! Integration test for `residiuum console`.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -29,7 +29,7 @@ fn console_executes_put_get_via_stdin() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("spawn dingo console");
+        .expect("spawn residiuum console");
 
     child
         .stdin

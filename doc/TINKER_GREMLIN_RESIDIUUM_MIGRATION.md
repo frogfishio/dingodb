@@ -574,7 +574,7 @@ trait SessionStore {
 }
 
 struct FsSessionStore { ... }       // today’s journal_store.rs
-struct DingoSessionStore { dingo: Residiuum }
+struct ResidiuumSessionStore { residiuum: Residiuum }
 struct DualSessionStore { fs, dingo, mode }
 ```
 
@@ -648,7 +648,7 @@ Budget: dual-write Phase 2 should stay within +10–20% turn latency; if not, du
 3. **Crash matrix:** kill -9 mid dual-write; ensure FS or Residiuum recoverable and no silent fork (receipt decides canonical).  
 4. **Dogfood:** migrate gremlin repo sessions (~50 MB) on a branch daemon; run one day of real work.  
 5. **Tinker Recents:** redirect + project meta + archived/deleted flags.  
-6. **Protocol:** existing `persist_restart` tests retargeted at `DingoSessionStore`.
+6. **Protocol:** existing `persist_restart` tests retargeted at `ResidiuumSessionStore`.
 
 ---
 
@@ -696,7 +696,7 @@ Tinker: Settings → Advanced → “Conversation storage: File / Residiuum / Da
 | PR | Scope |
 |----|--------|
 | P0 | `SessionStore` trait + FS adapter (behavior-neutral refactor) |
-| P1 | `DingoSessionStore` append/hydrate for journal only |
+| P1 | `ResidiuumSessionStore` append/hydrate for journal only |
 | P2 | `gremlin migrate` inventory + import + verify CLI |
 | P3 | Dual mode + backfill worker |
 | P4 | Catalog/brains/runtime/arena/usage collections |

@@ -10,7 +10,7 @@ authors.workspace = true
 description = "Residiuum collection SDK: embedded open, remote connect, filters, indexes, history (Stages 4+6+7). Optional cluster via feature."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "sdk", "embedded", "json", "database"]
+keywords = ["residiuum", "sdk", "embedded", "json", "database"]
 categories = ["database", "api-bindings"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 

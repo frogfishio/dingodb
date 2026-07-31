@@ -8,7 +8,7 @@ authors.workspace = true
 description = "CLI for Residiuum's SDA+ENR1 hybrid evaluator: eval, check, and format programs over JSON."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "sda", "enr", "cli", "json"]
+keywords = ["residiuum", "sda", "enr", "cli", "json"]
 categories = ["command-line-utilities", "parser-implementations", "text-processing"]
 include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
 

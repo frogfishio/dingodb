@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum thin network client: framed RPC protocol and handshake (MIT)."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "client", "rpc", "protocol"]
+keywords = ["residiuum", "client", "rpc", "protocol"]
 categories = ["network-programming", "database"]
 include = ["Cargo.toml", "README.md", "src/**"]
 

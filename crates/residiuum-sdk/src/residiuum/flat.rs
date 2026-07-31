@@ -8,7 +8,7 @@
 use crate::cluster_backend::ClusterBackend;
 use crate::collection::Collection;
 use crate::error::Error;
-use crate::heap::DingoDeployment;
+use crate::heap::ResidiuumDeployment;
 use crate::multi_query::MultiQuery;
 use crate::remote::{parse_residiuum_url, ConnectOptions, RemoteClient};
 use crate::sda_query::SdaTextQuery;
@@ -84,13 +84,13 @@ impl Residiuum {
     }
 
     /// Open a store directory as a **deployment host** (heap-bound; no flat data API).
-    pub fn open_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
-        DingoDeployment::open(path)
+    pub fn open_deployment(path: impl AsRef<Path>) -> Result<ResidiuumDeployment, Error> {
+        ResidiuumDeployment::open(path)
     }
 
     /// Create a new store directory as a deployment host.
-    pub fn create_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
-        DingoDeployment::create(path)
+    pub fn create_deployment(path: impl AsRef<Path>) -> Result<ResidiuumDeployment, Error> {
+        ResidiuumDeployment::create(path)
     }
 
     /// Open an **existing** store for read-only inspection (no writer lock).

@@ -6,7 +6,7 @@ use residiuum_heap::{
     HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
     TrustedInstant, VerifiedCertificate,
 };
-use residiuum_sdk::DingoDeployment;
+use residiuum_sdk::ResidiuumDeployment;
 use residiuum_store::{
     create_object, publish_staged_genesis, stage_heap_genesis, HeapMetaLayout, ObjectKind,
 };
@@ -56,7 +56,7 @@ fn uuid() -> [u8; 16] {
 fn identical_collection_names_cannot_cross_heaps() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let deployment = DingoDeployment::create(root).unwrap();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
 
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
@@ -133,7 +133,7 @@ fn identical_collection_names_cannot_cross_heaps() {
 fn subject_v2_put_get_isolated_across_heaps() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let deployment = DingoDeployment::create(root).unwrap();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
 
     let dep = *DeploymentId::new_random().unwrap().as_bytes();

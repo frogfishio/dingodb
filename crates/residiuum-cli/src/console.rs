@@ -11,7 +11,7 @@ pub fn run_console(_store: &Path) -> Result<(), String> {
     let mut line = String::new();
 
     loop {
-        print!("dingo> ");
+        print!("residiuum> ");
         io::stdout().flush().map_err(|e| e.to_string())?;
         line.clear();
 

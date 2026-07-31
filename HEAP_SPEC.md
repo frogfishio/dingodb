@@ -4309,7 +4309,7 @@ pub struct RemoteHeapOptions {
     pub retry_backoff: Duration,
 }
 
-pub struct DingoDeployment {
+pub struct ResidiuumDeployment {
     host: StoreHost,
 }
 
@@ -4334,10 +4334,10 @@ impl Residiuum {
 
     pub fn open_deployment(
         path: impl AsRef<Path>,
-    ) -> Result<DingoDeployment, Error>;
+    ) -> Result<ResidiuumDeployment, Error>;
 }
 
-impl DingoDeployment {
+impl ResidiuumDeployment {
     pub fn heap(&self, name: &str) -> Result<Heap, Error>;
     pub fn heap_by_id(&self, id: HeapId) -> Result<Heap, Error>;
 }
@@ -4373,7 +4373,7 @@ from a 32-byte seed are absent from default public Rustdoc.
 identity. `RemoteHeapOptions` has no token, role, username, diagnostic-line,
 plaintext, TLS-version, or caller-supplied heap-ID setting.
 
-`DingoDeployment` is embedded trusted-process authority, is not serializable,
+`ResidiuumDeployment` is embedded trusted-process authority, is not serializable,
 and has no remote constructor. It can resolve heaps but exposes no
 deployment-global application-data iterator, query, collection, transaction,
 or backup. Heap creation, retirement, authority, and cross-heap import remain

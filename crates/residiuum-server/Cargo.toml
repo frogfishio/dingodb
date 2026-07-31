@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum networked server: accept loop, authz, admission, Raft RPC glue (AGPL)."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "server", "raft", "rpc"]
+keywords = ["residiuum", "server", "raft", "rpc"]
 categories = ["database", "network-programming"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 

@@ -15,7 +15,7 @@ pub(crate) use flat::Backend;
 #[cfg(not(feature = "legacy-flat-sdk"))]
 mod heap_only {
     use crate::error::Error;
-    use crate::heap::DingoDeployment;
+    use crate::heap::ResidiuumDeployment;
     use std::path::Path;
 
     /// Namespace for heap-bound entry points when `legacy-flat-sdk` is disabled.
@@ -23,13 +23,13 @@ mod heap_only {
 
     impl Residiuum {
         /// Open a store directory as a **deployment host** (heap-bound).
-        pub fn open_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
-            DingoDeployment::open(path)
+        pub fn open_deployment(path: impl AsRef<Path>) -> Result<ResidiuumDeployment, Error> {
+            ResidiuumDeployment::open(path)
         }
 
         /// Create a new store directory as a deployment host.
-        pub fn create_deployment(path: impl AsRef<Path>) -> Result<DingoDeployment, Error> {
-            DingoDeployment::create(path)
+        pub fn create_deployment(path: impl AsRef<Path>) -> Result<ResidiuumDeployment, Error> {
+            ResidiuumDeployment::create(path)
         }
 
         /// Connect a **qualified** remote heap via HeapKey.

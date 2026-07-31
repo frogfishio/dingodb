@@ -104,7 +104,7 @@ impl ConfigError {
 
 /// Top-level versioned configuration document.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DingoConfigFile {
+pub struct ResidiuumConfigFile {
     /// Must be [`CONFIG_PROFILE`].
     pub format: String,
     /// Document schema version (currently [`CONFIG_FORMAT_VERSION`]).
@@ -284,7 +284,7 @@ pub struct EffectiveConfigReport {
 #[derive(Debug, Clone)]
 pub struct ValidatedConfig {
     /// Original document (paths only; no resolved secrets).
-    pub document: DingoConfigFile,
+    pub document: ResidiuumConfigFile,
     /// Path the document was loaded from, if any.
     pub config_path: Option<PathBuf>,
     /// Resolved bind address.
@@ -374,7 +374,7 @@ pub enum ConfigMode {
     ServeCluster,
 }
 
-impl DingoConfigFile {
+impl ResidiuumConfigFile {
     /// Minimal valid empty document (defaults only).
     pub fn empty() -> Self {
         Self {
@@ -419,15 +419,15 @@ pub fn load_and_validate(
     overrides: ConfigOverrides,
 ) -> Result<ValidatedConfig, ConfigError> {
     let (document, config_path) = match path {
-        Some(p) => (DingoConfigFile::load(p)?, Some(p.to_path_buf())),
-        None => (DingoConfigFile::empty(), None),
+        Some(p) => (ResidiuumConfigFile::load(p)?, Some(p.to_path_buf())),
+        None => (ResidiuumConfigFile::empty(), None),
     };
     validate_document(document, config_path, mode, overrides)
 }
 
 /// Validate an already-parsed document with overrides.
 pub fn validate_document(
-    document: DingoConfigFile,
+    document: ResidiuumConfigFile,
     config_path: Option<PathBuf>,
     mode: ConfigMode,
     overrides: ConfigOverrides,
@@ -1105,7 +1105,7 @@ mod tests {
     fn empty_validate_mode_ok() {
         // Point token_env at a name that must not be present so ambient
         // RESIDIUUM_TOKEN in the developer environment cannot fail the test.
-        let mut doc = DingoConfigFile::empty();
+        let mut doc = ResidiuumConfigFile::empty();
         doc.serve = Some(ServeConfigSection {
             token_env: Some("RESIDIUUM_TEST_CFG_NO_SUCH_TOKEN".into()),
             ..Default::default()
@@ -1124,7 +1124,7 @@ mod tests {
 
     #[test]
     fn reject_wrong_format() {
-        let mut doc = DingoConfigFile::empty();
+        let mut doc = ResidiuumConfigFile::empty();
         doc.format = "nope".into();
         let err = validate_document(doc, None, ConfigMode::Validate, ConfigOverrides::default())
             .unwrap_err();
@@ -1134,7 +1134,7 @@ mod tests {
     #[test]
     fn serve_requires_store_path() {
         let err = validate_document(
-            DingoConfigFile::empty(),
+            ResidiuumConfigFile::empty(),
             None,
             ConfigMode::Serve,
             ConfigOverrides::default(),
@@ -1148,7 +1148,7 @@ mod tests {
 
     #[test]
     fn reject_replication_claim_with_one_node() {
-        let doc = DingoConfigFile {
+        let doc = ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,
@@ -1176,7 +1176,7 @@ mod tests {
 
     #[test]
     fn reject_replication_claim_on_single_node_serve() {
-        let doc = DingoConfigFile {
+        let doc = ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,
@@ -1203,7 +1203,7 @@ mod tests {
 
     #[test]
     fn reject_insecure_public_bind() {
-        let doc = DingoConfigFile {
+        let doc = ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,
@@ -1278,7 +1278,7 @@ mod tests {
     #[test]
     fn flag_token_wins_over_env() {
         // Flag wins regardless of env; no need to mutate process environment.
-        let doc = DingoConfigFile {
+        let doc = ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,
@@ -1334,7 +1334,7 @@ mod tests {
 
     #[test]
     fn serve_cluster_requires_experimental() {
-        let doc = DingoConfigFile {
+        let doc = ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,
@@ -1362,7 +1362,7 @@ mod tests {
 
     #[test]
     fn zero_max_connections_rejected() {
-        let doc = DingoConfigFile {
+        let doc = ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,

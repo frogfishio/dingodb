@@ -33,7 +33,7 @@ Residiuum includes a small CLI binary named `residiuum`.
 ### Run an interactive console
 
 ```bash
-dingo console ./path/to/store
+residiuum console ./path/to/store
 ```
 
 The console reads RQL commands from **stdin** (one command per line is typical) and executes them against the provided store directory.
@@ -44,7 +44,7 @@ The console reads RQL commands from **stdin** (one command per line is typical) 
 printf '%s\n' \
   'PUT ./tmp/store users/user-1 {"name":"hello"}' \
   'GET ./tmp/store users/user-1' \
-| dingo console ./tmp/store
+| residiuum console ./tmp/store
 ```
 
 ### Non-interactive usage

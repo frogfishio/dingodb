@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum SDA examination host: project salvage regions to ExaminationUnit values (Stage 5)."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "sda", "examination", "salvage", "recovery"]
+keywords = ["residiuum", "sda", "examination", "salvage", "recovery"]
 categories = ["database", "data-structures"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 

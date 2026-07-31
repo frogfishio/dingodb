@@ -78,7 +78,7 @@ let mut db = Residiuum::connect_with(
 | `AdmissionController` / `AdmissionLimits` | Rate limits, auth lockout, replay window |
 | `AuthzPolicy` / `Principal` / `Privilege` | Principal privileges + audit chain |
 | `validate_bind` / `ServeStartupReport` | Loopback-default bind policy (DEF-002) |
-| `load_and_validate` / `DingoConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `dingo-config-v1`) |
+| `load_and_validate` / `ResidiuumConfigFile` / `ValidatedConfig` | Versioned process config (DEF-054, `dingo-config-v1`) |
 | `Logger` / `LogEvent` / `MemorySink` / `log_rpc_complete` | Structured NDJSON process logs (DEF-060, `dingo-log-v1`) |
 | `MetricsRegistry` / `HealthReport` / `evaluate_health` | Process metrics + health probes (DEF-061) |
 | `RaftServerState` / `TcpRaftTransport` | Network Raft RPC (vote / append / snapshot / read-index) |

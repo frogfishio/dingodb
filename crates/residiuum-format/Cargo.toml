@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum survival wire format: frame codec, integrity, and salvage scanning (Stage 2)."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "wire-format", "salvage", "blake3", "crc32c"]
+keywords = ["residiuum", "wire-format", "salvage", "blake3", "crc32c"]
 categories = ["encoding", "data-structures"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 

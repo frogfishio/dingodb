@@ -240,7 +240,7 @@ impl CollectionClient {
 Construction uses the current qualified entry points:
 
 ```rust
-let deployment = DingoDeployment::open("./data")?;
+let deployment = ResidiuumDeployment::open("./data")?;
 let heap: HeapClient = deployment.open_heap(heap_cap).into();
 
 let heap: HeapClient =

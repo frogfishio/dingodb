@@ -1834,7 +1834,7 @@ Acceptance:
 
 Evidence (this cut):
 
-- `residiuum-server::config` — `DingoConfigFile`, `load_and_validate`,
+- `residiuum-server::config` — `ResidiuumConfigFile`, `load_and_validate`,
   `validate_document`, `ConfigOverrides`, `ValidatedConfig`,
   `EffectiveConfigReport`, `resolve_secret_ref`, `redact_json_value`,
   `setting_class`; profile `CONFIG_PROFILE` = `dingo-config-v1`.

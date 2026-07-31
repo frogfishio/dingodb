@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum local-only heap authority ceremony tool (AGPL). Never linked by the data server."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "authority", "heap", "ceremony"]
+keywords = ["residiuum", "authority", "heap", "ceremony"]
 categories = ["command-line-utilities", "cryptography"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 

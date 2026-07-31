@@ -5,7 +5,7 @@ use residiuum_heap::{
     HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
     TrustedInstant, VerifiedCertificate,
 };
-use residiuum_sdk::{DingoDeployment, ErrorCode};
+use residiuum_sdk::{ResidiuumDeployment, ErrorCode};
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use std::sync::Arc;
 use tempfile::tempdir;
@@ -53,7 +53,7 @@ fn uuid() -> [u8; 16] {
 fn embedded_create_list_open_and_duplicate_name() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let deployment = DingoDeployment::create(root).unwrap();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
 
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
@@ -98,7 +98,7 @@ fn embedded_create_list_open_and_duplicate_name() {
 fn two_heaps_same_name_distinct_ids() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let deployment = DingoDeployment::create(root).unwrap();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
 
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
@@ -130,7 +130,7 @@ fn two_heaps_same_name_distinct_ids() {
 fn operation_id_exact_retry_replays_and_conflict() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let deployment = DingoDeployment::create(root).unwrap();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
     let heap_bytes = *HeapId::new_random().unwrap().as_bytes();
@@ -178,7 +178,7 @@ fn operation_id_exact_retry_replays_and_conflict() {
     drop(heap);
     drop(deployment);
 
-    let deployment2 = DingoDeployment::open(root).unwrap();
+    let deployment2 = ResidiuumDeployment::open(root).unwrap();
     let heap2 = deployment2.open_heap(mint_cap_for(heap_id, dep_id));
     let after_reopen = heap2
         .create_collection_with("orders", Some(op))
@@ -192,7 +192,7 @@ fn operation_id_exact_retry_replays_and_conflict() {
 fn empty_name_rejected() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let deployment = DingoDeployment::create(root).unwrap();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
     let heap_bytes = *HeapId::new_random().unwrap().as_bytes();

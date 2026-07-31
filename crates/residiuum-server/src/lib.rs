@@ -40,7 +40,7 @@ pub use bind_policy::{
 pub use config::{
     load_and_validate, redact_json_value, resolve_secret_ref, setting_class, validate_document,
     AdmissionConfigSection, ClusterConfigSection, ConfigError, ConfigLayer, ConfigMode,
-    ConfigOverrides, DingoConfigFile, EffectiveConfigReport, EffectiveSetting, ServeConfigSection,
+    ConfigOverrides, ResidiuumConfigFile, EffectiveConfigReport, EffectiveSetting, ServeConfigSection,
     SettingClass, StoreConfigSection, TlsConfigSection, ValidatedConfig, CONFIG_FORMAT_VERSION,
     CONFIG_PROFILE, DEFAULT_TOKEN_ENV,
 };

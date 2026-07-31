@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum hybrid evaluator for Structured Data Algebra (SDA) plus additive ENR1 enrichment — pure Rust, no storage IO."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "sda", "enr", "json", "transformation"]
+keywords = ["residiuum", "sda", "enr", "json", "transformation"]
 categories = ["data-structures", "parser-implementations", "text-processing"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**", "examples/**"]
 

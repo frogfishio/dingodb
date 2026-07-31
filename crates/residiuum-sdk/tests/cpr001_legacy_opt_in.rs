@@ -6,7 +6,7 @@
 
 use residiuum_sdk::{
     flat_collection_claim_language, heap_only_embedded_profile, legacy_flat_sdk_enabled,
-    product_may_advertise_qualified_heap, Residiuum, DingoDeployment, FLAT_COLLECTION_SURFACE_LABEL,
+    product_may_advertise_qualified_heap, Residiuum, ResidiuumDeployment, FLAT_COLLECTION_SURFACE_LABEL,
     LEGACY_FLAT_SDK_FEATURE, SDK_API_VERSION,
 };
 use tempfile::tempdir;
@@ -46,7 +46,7 @@ fn flat_open_and_deployment_host_both_available() {
     assert_eq!(deployment.root(), dep_path.as_path());
     let dep2_path = dir.path().join("dep2.dingo");
     let _ = Residiuum::create_deployment(&dep2_path).expect("create_deployment");
-    let _ = DingoDeployment::open(&dep2_path).expect("reopen deployment");
+    let _ = ResidiuumDeployment::open(&dep2_path).expect("reopen deployment");
 }
 
 #[test]

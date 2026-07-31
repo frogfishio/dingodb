@@ -20,12 +20,12 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Deployment-level host wrapping a capability-gated [`StoreHost`].
-pub struct DingoDeployment {
+pub struct ResidiuumDeployment {
     host: StoreHost,
     data_root: PathBuf,
 }
 
-impl DingoDeployment {
+impl ResidiuumDeployment {
     /// Open an existing store directory as a deployment host (no raw data API).
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();

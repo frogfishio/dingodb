@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum cluster federation: partitions, coverage, placement, multi-node stores, Raft, convergent-append, find coverage/paging, rebalance, anti-entropy repair, verification sim (Stage 8)."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "cluster", "partition", "replication", "coverage"]
+keywords = ["residiuum", "cluster", "partition", "replication", "coverage"]
 categories = ["database", "database-implementations"]
 include = ["Cargo.toml", "README.md", "src/**", "tests/**"]
 

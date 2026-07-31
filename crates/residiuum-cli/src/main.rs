@@ -52,7 +52,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Put a JSON document: `dingo put PATH COLL/KEY --json '...'`
+    /// Put a JSON document: `residiuum put PATH COLL/KEY --json '...'`
     Put {
         /// Store directory path.
         store: PathBuf,
@@ -62,9 +62,9 @@ enum Command {
         #[arg(long = "json")]
         json_body: String,
     },
-    /// Get a JSON document: `dingo get PATH COLL/KEY`
+    /// Get a JSON document: `residiuum get PATH COLL/KEY`
     Get { store: PathBuf, target: String },
-    /// Delete a key: `dingo delete PATH COLL/KEY`
+    /// Delete a key: `residiuum delete PATH COLL/KEY`
     Delete { store: PathBuf, target: String },
     /// List collections, or keys in a collection.
     List {
@@ -72,7 +72,7 @@ enum Command {
         /// Optional collection name.
         collection: Option<String>,
     },
-    /// Put raw bytes from a file: `dingo put-bytes PATH COLL/KEY FILE`
+    /// Put raw bytes from a file: `residiuum put-bytes PATH COLL/KEY FILE`
     PutBytes {
         store: PathBuf,
         target: String,
@@ -82,7 +82,7 @@ enum Command {
     History { store: PathBuf, target: String },
     /// Minimal interactive console.
     ///
-    /// Invocation: `dingo console ./store`
+    /// Invocation: `residiuum console ./store`
     Console {
         /// Store directory.
         store: PathBuf,
@@ -344,7 +344,7 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
     let Some(cmd) = cli.command else {
-        return Err("missing command; try `dingo --help`".into());
+        return Err("missing command; try `residiuum --help`".into());
     };
     let json_out = cli.json_out;
     match cmd {
@@ -1564,7 +1564,7 @@ fn doctor_recommendations(
     let mut out = Vec::new();
     if salvage.holes > 0 || summary.holes > 0 {
         out.push(
-            "holes detected: run `dingo salvage SRC --output DST` for evidence-preserving recovery (source stays immutable); use `dingo export-live` only for clean live-state materialization".into(),
+            "holes detected: run `residiuum salvage SRC --output DST` for evidence-preserving recovery (source stays immutable); use `residiuum export-live` only for clean live-state materialization".into(),
         );
     }
     if summary.damaged > 0 {

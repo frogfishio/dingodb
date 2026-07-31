@@ -11,7 +11,7 @@
 
 use residiuum_server::{
     load_and_validate, redact_json_value, resolve_secret_ref, setting_class, validate_document,
-    ClusterConfigSection, ConfigError, ConfigLayer, ConfigMode, ConfigOverrides, DingoConfigFile,
+    ClusterConfigSection, ConfigError, ConfigLayer, ConfigMode, ConfigOverrides, ResidiuumConfigFile,
     ServeConfigSection, SettingClass, StoreConfigSection, CONFIG_PROFILE,
 };
 use std::fs;
@@ -87,7 +87,7 @@ fn load_validate_apply_roundtrip() {
 
 #[test]
 fn flag_overrides_file_bind() {
-    let doc = DingoConfigFile {
+    let doc = ResidiuumConfigFile {
         format: CONFIG_PROFILE.into(),
         format_version: 1,
         comment: None,
@@ -121,7 +121,7 @@ fn flag_overrides_file_bind() {
 
 #[test]
 fn refuse_replication_claim_single_copy() {
-    let doc = DingoConfigFile {
+    let doc = ResidiuumConfigFile {
         format: CONFIG_PROFILE.into(),
         format_version: 1,
         comment: None,
@@ -156,7 +156,7 @@ fn refuse_replication_claim_single_copy() {
 
 #[test]
 fn refuse_public_plaintext_without_opt_in() {
-    let doc = DingoConfigFile {
+    let doc = ResidiuumConfigFile {
         format: CONFIG_PROFILE.into(),
         format_version: 1,
         comment: None,
@@ -206,7 +206,7 @@ fn secret_file_ref_and_redaction() {
 #[test]
 fn effective_report_never_leaks_token() {
     let v = validate_document(
-        DingoConfigFile {
+        ResidiuumConfigFile {
             format: CONFIG_PROFILE.into(),
             format_version: 1,
             comment: None,

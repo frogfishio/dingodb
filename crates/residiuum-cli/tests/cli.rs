@@ -41,7 +41,7 @@ fn residiuum_bin() -> Command {
 }
 
 fn run_ok(args: &[&str]) -> String {
-    let output = residiuum_bin().args(args).output().expect("run dingo");
+    let output = residiuum_bin().args(args).output().expect("run residiuum");
     assert!(
         output.status.success(),
         "cmd {:?} failed\nstdout:\n{}\nstderr:\n{}",
@@ -58,11 +58,11 @@ fn license_prints_notice() {
     assert!(out.contains("Alexander R. Croft"), "license={out}");
     assert!(
         out.contains("AGPL") || out.contains("Affero"),
-        "dingo CLI must advertise AGPL, license={out}"
+        "residiuum CLI must advertise AGPL, license={out}"
     );
     assert!(
         !out.contains("MIT License") || out.contains("multi-licensed"),
-        "dingo must not claim pure MIT, license={out}"
+        "residiuum must not claim pure MIT, license={out}"
     );
 }
 

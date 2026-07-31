@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Residiuum command-line interface: put/get, doctor, salvage, backup/restore, and serve (Stage 7)."
 readme = "README.md"
 repository.workspace = true
-keywords = ["dingodb", "cli", "doctor", "salvage", "database"]
+keywords = ["residiuum", "cli", "doctor", "salvage", "database"]
 categories = ["command-line-utilities", "database"]
 include = ["BUILD", "Cargo.toml", "README.md", "build.rs", "src/**", "tests/**"]
 

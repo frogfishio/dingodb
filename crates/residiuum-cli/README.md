@@ -1,4 +1,4 @@
-# dingo (CLI)
+# residiuum (CLI)
 
 Operator and everyday command-line interface for Residiuum.
 
@@ -39,14 +39,14 @@ cargo install --path crates/residiuum-cli
 ## Everyday data path
 
 ```sh
-dingo put ./app.dingo users/user-42 --json '{"name":"Alice","status":"active"}'
-dingo get ./app.dingo users/user-42
-dingo delete ./app.dingo users/user-42
-dingo list ./app.dingo
-dingo list ./app.dingo users
-dingo collections ./app.dingo
-dingo put-bytes ./app.dingo artifacts/build-19 ./build.bin
-dingo history ./app.dingo users/user-42
+residiuum put ./app.dingo users/user-42 --json '{"name":"Alice","status":"active"}'
+residiuum get ./app.dingo users/user-42
+residiuum delete ./app.dingo users/user-42
+residiuum list ./app.dingo
+residiuum list ./app.dingo users
+residiuum collections ./app.dingo
+residiuum put-bytes ./app.dingo artifacts/build-19 ./build.bin
+residiuum history ./app.dingo users/user-42
 ```
 
 ## Operator path
@@ -56,16 +56,16 @@ dingo history ./app.dingo users/user-42
 residiuum doctor ./app.dingo
 
 # Evidence-preserving salvage: never mutates the source
-dingo salvage ./damaged.dingo --output ./recovered.dingo
+residiuum salvage ./damaged.dingo --output ./recovered.dingo
 
 # Live-state only materialization (new lineage; prefer salvage when history matters)
-dingo export-live ./damaged.dingo --output ./live-only.dingo
+residiuum export-live ./damaged.dingo --output ./live-only.dingo
 
 # Full backup package (content-hashed; distinct from salvage)
-dingo backup ./app.dingo --output ./app.bak
-dingo restore ./app.bak --output ./restored.dingo
+residiuum backup ./app.dingo --output ./app.bak
+residiuum restore ./app.bak --output ./restored.dingo
 # Clone with a new store identity:
-dingo restore ./app.bak --output ./clone.dingo --reassign-identity
+residiuum restore ./app.bak --output ./clone.dingo --reassign-identity
 
 # Integrity scrub (bounded verification; findings under recovery/scrub/)
 residiuum scrub ./app.dingo
@@ -124,9 +124,9 @@ behavior.
 ## Global flags
 
 ```sh
-dingo --version
-dingo --license
-dingo --json-out doctor ./app.dingo   # stable machine-readable output
+residiuum --version
+residiuum --license
+residiuum --json-out doctor ./app.dingo   # stable machine-readable output
 ```
 
 Auth token for serve: `--token` or environment variable `RESIDIUUM_TOKEN`.
@@ -136,7 +136,7 @@ Auth token for serve: `--token` or environment variable `RESIDIUUM_TOKEN`.
 ```sh
 # Validate a versioned dingo-config-v1 document before deploy
 residiuum config validate ./dingo.json --mode serve
-dingo --json-out config show ./dingo.json --mode serve
+residiuum --json-out config show ./dingo.json --mode serve
 
 # Apply config at serve time (CLI flags still override the file)
 residiuum serve ./app.dingo --config ./dingo.json --bind 127.0.0.1:7434
