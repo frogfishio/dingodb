@@ -507,11 +507,7 @@ mod tests {
         store.enable_boundary_probe_with_capacity(2);
         for i in 0..8 {
             store
-                .put(
-                    format!("k{i}").as_bytes(),
-                    &[0u8; 32],
-                    StoreDur::Buffered,
-                )
+                .put(&format!("k{i}"), &[0u8; 32], StoreDur::Buffered)
                 .unwrap();
         }
         let snap = store.take_boundary_snapshot();
