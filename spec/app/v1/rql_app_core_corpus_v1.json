@@ -72,6 +72,16 @@
         "source_name": "orders",
         "page_size": 64
       }
+    },
+    {
+      "id": "accept-budget-clause",
+      "source_rql": "from orders budget { documents: 50000, bytes: 1048576, result_bytes: 65536 }",
+      "expect": {
+        "page_size": 64,
+        "budget_documents": 50000,
+        "budget_bytes": 1048576,
+        "budget_result_bytes": 65536
+      }
     }
   ],
   "reject": [
@@ -106,9 +116,14 @@
       "diagnostic_contains": ["rql_feature_unavailable"]
     },
     {
-      "id": "reject-budget-clause",
+      "id": "reject-budget-malformed",
       "source_rql": "from orders budget documents 10",
-      "diagnostic_contains": ["rql_feature_unavailable"]
+      "diagnostic_contains": ["expected"]
+    },
+    {
+      "id": "reject-budget-duplicate-key",
+      "source_rql": "from orders budget { documents: 1, documents: 2 }",
+      "diagnostic_contains": ["duplicate"]
     },
     {
       "id": "reject-after-clause",

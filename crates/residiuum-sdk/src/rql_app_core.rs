@@ -9,10 +9,11 @@
 //! fail with [`Error::QueryInvalid`] and diagnostic `rql_feature_unavailable`
 //! when appropriate.
 //!
-//! Residual (later APP-5 cuts): budget-clause source surface, after-clause
-//! (APP-6), ranked access, full conformance corpus fixtures, parser fuzz.
+//! Residual: `after` continuation clause (APP-6), ranked access. Budget source
+//! clause is parsed into [`CompiledAppCore::budget`] for merge with
+//! [`crate::app_v1::QueryRunOptions`] at execution (not part of plan hash).
 
-use crate::app_v1::{ConsistencyMode, CoveragePolicy};
+use crate::app_v1::{ConsistencyMode, CoveragePolicy, QueryBudget};
 use crate::error::Error;
 use crate::plan_v1::{
     CollectionBindings, NullsOrder, OrderDir, PlanBuilder, RqlPlanV1, DEFAULT_PAGE_SIZE,
@@ -33,18 +34,25 @@ pub const DIAG_RQL_FEATURE_UNAVAILABLE: &str = "rql_feature_unavailable";
 /// Result of compiling Application Core source.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CompiledAppCore {
-    /// Validated plan.
+    /// Validated logical plan (hash identity; **no** budget fields).
     pub plan: RqlPlanV1,
     /// True when source began with `explain`.
     pub explain: bool,
+    /// Optional budgets from `budget { … }` (run options, not plan hash).
+    pub budget: Option<QueryBudget>,
     /// Profile string for advertising.
     pub profile: &'static str,
 }
 
-/// Compile Application Core RQL into [`RqlPlanV1`].
+/// Compile Application Core RQL into [`RqlPlanV1`] (+ explain/budget run metadata).
 ///
 /// `bindings` must resolve the `from` source name to an immutable collection id.
+///
+/// Budgets are **not** part of the canonical plan hash: they travel with
+/// [`crate::app_v1::QueryRunOptions`] at execution. Source `budget { … }` and
+/// run-option budgets should be merged by the host (stricter wins).
 pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<CompiledAppCore, Error> {
+    // UTF-8 validity is guaranteed for `&str`; reject oversized source first.
     if source.len() > MAX_RQL_SOURCE_BYTES {
         return Err(Error::QueryInvalid(format!(
             "RQL source exceeds {MAX_RQL_SOURCE_BYTES} bytes"
@@ -76,6 +84,15 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
     let mut builder = PlanBuilder::from_source(source_name);
     // CORE §9 EBNF allows repeated `where` clauses — they AND together.
     let mut where_parts: Vec<Predicate> = Vec::new();
+    let mut budget: Option<QueryBudget> = None;
+    // Terminal clauses appear at most once (RQL_SPEC §5).
+    let mut saw_project = false;
+    let mut saw_order = false;
+    let mut saw_limit = false;
+    let mut saw_page = false;
+    let mut saw_coverage = false;
+    let mut saw_consistency = false;
+    let mut saw_budget = false;
 
     loop {
         p.skip_ws();
@@ -88,12 +105,22 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             continue;
         }
         if p.eat_keyword("project") {
+            if saw_project {
+                return Err(Error::QueryInvalid(
+                    "duplicate project clause".into(),
+                ));
+            }
+            saw_project = true;
             p.skip_ws();
             let fields = p.parse_project_list()?;
             builder = builder.project(fields)?;
             continue;
         }
         if p.eat_keyword("order") {
+            if saw_order {
+                return Err(Error::QueryInvalid("duplicate order clause".into()));
+            }
+            saw_order = true;
             p.skip_ws();
             p.expect_keyword("by")?;
             p.skip_ws();
@@ -133,12 +160,20 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             continue;
         }
         if p.eat_keyword("limit") {
+            if saw_limit {
+                return Err(Error::QueryInvalid("duplicate limit clause".into()));
+            }
+            saw_limit = true;
             p.skip_ws();
             let n = p.parse_u64()?;
             builder = builder.limit(n);
             continue;
         }
         if p.eat_keyword("page") {
+            if saw_page {
+                return Err(Error::QueryInvalid("duplicate page clause".into()));
+            }
+            saw_page = true;
             p.skip_ws();
             p.expect_keyword("size")?;
             p.skip_ws();
@@ -152,6 +187,10 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             continue;
         }
         if p.eat_keyword("coverage") {
+            if saw_coverage {
+                return Err(Error::QueryInvalid("duplicate coverage clause".into()));
+            }
+            saw_coverage = true;
             p.skip_ws();
             if p.eat_keyword("complete") {
                 builder = builder.coverage(CoveragePolicy::Complete);
@@ -167,6 +206,12 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             continue;
         }
         if p.eat_keyword("consistency") {
+            if saw_consistency {
+                return Err(Error::QueryInvalid(
+                    "duplicate consistency clause".into(),
+                ));
+            }
+            saw_consistency = true;
             p.skip_ws();
             if p.eat_keyword("available") {
                 builder = builder.consistency(ConsistencyMode::Available);
@@ -180,9 +225,16 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             continue;
         }
         if p.eat_keyword("budget") {
-            return feature_unavailable("budget clause (surface residual; set via run options)");
+            if saw_budget {
+                return Err(Error::QueryInvalid("duplicate budget clause".into()));
+            }
+            saw_budget = true;
+            p.skip_ws();
+            budget = Some(p.parse_budget_clause()?);
+            continue;
         }
         if p.eat_keyword("after") {
+            // Continuation is APP-6 product surface; never silently ignore.
             return feature_unavailable("after / continuation clause (APP-6)");
         }
         return Err(Error::QueryInvalid(format!(
@@ -207,8 +259,33 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
     Ok(CompiledAppCore {
         plan,
         explain,
+        budget,
         profile: APP_CORE_PROFILE,
     })
+}
+
+/// Merge source-clause budget with run-option budget (stricter wins per field).
+///
+/// `None` means unlimited for that field; the other side fills it. When both
+/// set a field, the minimum is kept.
+pub fn merge_budgets(source: Option<QueryBudget>, run: Option<QueryBudget>) -> Option<QueryBudget> {
+    match (source, run) {
+        (None, None) => None,
+        (Some(a), None) | (None, Some(a)) => Some(a),
+        (Some(a), Some(b)) => Some(QueryBudget {
+            max_documents: min_opt(a.max_documents, b.max_documents),
+            max_bytes: min_opt(a.max_bytes, b.max_bytes),
+            max_result_bytes: min_opt(a.max_result_bytes, b.max_result_bytes),
+        }),
+    }
+}
+
+fn min_opt(a: Option<u64>, b: Option<u64>) -> Option<u64> {
+    match (a, b) {
+        (None, None) => None,
+        (Some(x), None) | (None, Some(x)) => Some(x),
+        (Some(x), Some(y)) => Some(x.min(y)),
+    }
 }
 
 fn feature_unavailable(what: &str) -> Result<CompiledAppCore, Error> {
@@ -263,7 +340,12 @@ impl<'a> Parser<'a> {
     }
 
     fn rest(&self) -> &'a str {
-        &self.s[self.i..]
+        // Fuzz-hardening: never panic if `i` lands mid-codepoint.
+        let mut i = self.i.min(self.s.len());
+        while i > 0 && i < self.s.len() && !self.s.is_char_boundary(i) {
+            i -= 1;
+        }
+        &self.s[i..]
     }
 
     fn snippet(&self) -> String {
@@ -276,10 +358,13 @@ impl<'a> Parser<'a> {
     }
 
     fn bump(&mut self) -> Option<char> {
-        let mut it = self.rest().char_indices();
+        let r = self.rest();
+        let mut it = r.char_indices();
         let (_, c) = it.next()?;
-        let next = it.next().map(|(o, _)| o).unwrap_or(self.rest().len());
-        self.i += next;
+        let next = it.next().map(|(o, _)| o).unwrap_or(r.len());
+        // Align self.i to current rest base then advance by char width.
+        let base = self.s.len() - r.len();
+        self.i = base + next;
         Some(c)
     }
 
@@ -309,17 +394,34 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_keyword(&mut self, kw: &str) -> bool {
+    /// Consume an ASCII multi-char operator (`!=`, `<=`, …) without mid-char slices.
+    fn eat_ascii_op(&mut self, op: &str) -> bool {
+        debug_assert!(op.is_ascii());
         let r = self.rest();
-        if r.len() >= kw.len()
-            && r[..kw.len()].eq_ignore_ascii_case(kw)
+        if r.len() >= op.len() && r.is_char_boundary(op.len()) && r.starts_with(op) {
+            let base = self.s.len() - r.len();
+            self.i = base + op.len();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn eat_keyword(&mut self, kw: &str) -> bool {
+        // Keywords are ASCII; refuse to slice through multi-byte codepoints.
+        let r = self.rest();
+        if r.len() < kw.len() || !r.is_char_boundary(kw.len()) {
+            return false;
+        }
+        if r[..kw.len()].eq_ignore_ascii_case(kw)
             && r[kw.len()..]
                 .chars()
                 .next()
                 .map(|c| !c.is_ascii_alphanumeric() && c != '_')
                 .unwrap_or(true)
         {
-            self.i += kw.len();
+            let base = self.s.len() - r.len();
+            self.i = base + kw.len();
             true
         } else {
             false
@@ -412,6 +514,82 @@ impl<'a> Parser<'a> {
         self.s[start..self.i]
             .parse()
             .map_err(|_| Error::QueryInvalid("integer overflow".into()))
+    }
+
+    /// `budget { documents: N, bytes: N, result_bytes: N }` (RQL_SPEC §5).
+    fn parse_budget_clause(&mut self) -> Result<QueryBudget, Error> {
+        self.skip_ws();
+        self.expect_char('{')?;
+        let mut max_documents = None;
+        let mut max_bytes = None;
+        let mut max_result_bytes = None;
+        self.skip_ws();
+        if self.eat_char('}') {
+            // Empty budget {} is legal (literal zeros/unlimited).
+            return Ok(QueryBudget {
+                max_documents: None,
+                max_bytes: None,
+                max_result_bytes: None,
+            });
+        }
+        loop {
+            self.skip_ws();
+            let key = if self.eat_keyword("documents") {
+                "documents"
+            } else if self.eat_keyword("bytes") {
+                "bytes"
+            } else if self.eat_keyword("result_bytes") {
+                "result_bytes"
+            } else {
+                return Err(Error::QueryInvalid(format!(
+                    "budget entry expects documents|bytes|result_bytes near `{}`",
+                    self.snippet()
+                )));
+            };
+            self.skip_ws();
+            self.expect_char(':')?;
+            self.skip_ws();
+            let n = self.parse_u64()?;
+            match key {
+                "documents" => {
+                    if max_documents.is_some() {
+                        return Err(Error::QueryInvalid(
+                            "duplicate budget key `documents`".into(),
+                        ));
+                    }
+                    max_documents = Some(n);
+                }
+                "bytes" => {
+                    if max_bytes.is_some() {
+                        return Err(Error::QueryInvalid("duplicate budget key `bytes`".into()));
+                    }
+                    max_bytes = Some(n);
+                }
+                "result_bytes" => {
+                    if max_result_bytes.is_some() {
+                        return Err(Error::QueryInvalid(
+                            "duplicate budget key `result_bytes`".into(),
+                        ));
+                    }
+                    max_result_bytes = Some(n);
+                }
+                _ => unreachable!(),
+            }
+            self.skip_ws();
+            let _ = self.eat_char(','); // optional trailing/separator comma
+            self.skip_ws();
+            if self.eat_char('}') {
+                break;
+            }
+            if self.is_eof() {
+                return Err(Error::QueryInvalid("unterminated budget clause".into()));
+            }
+        }
+        Ok(QueryBudget {
+            max_documents,
+            max_bytes,
+            max_result_bytes,
+        })
     }
 
     fn parse_project_list(&mut self) -> Result<Vec<String>, Error> {
@@ -578,19 +756,13 @@ impl<'a> Parser<'a> {
             )));
         }
 
-        let cmp = if self.rest().starts_with("!=") {
-            self.i += 2;
-            CompareOp::Ne
-        } else if self.rest().starts_with("<>") {
-            self.i += 2;
+        let cmp = if self.eat_ascii_op("!=") || self.eat_ascii_op("<>") {
             CompareOp::Ne
         } else if self.eat_char('=') {
             CompareOp::Eq
-        } else if self.rest().starts_with("<=") {
-            self.i += 2;
+        } else if self.eat_ascii_op("<=") {
             CompareOp::Lte
-        } else if self.rest().starts_with(">=") {
-            self.i += 2;
+        } else if self.eat_ascii_op(">=") {
             CompareOp::Gte
         } else if self.eat_char('<') {
             CompareOp::Lt
@@ -919,5 +1091,156 @@ mod tests {
         )
         .unwrap();
         assert_eq!(c.plan.from.source_name, "orders");
+    }
+
+    #[test]
+    fn budget_clause_parsed_not_in_plan_hash() {
+        let b = bindings();
+        let without = compile_app_core("from orders", &b).unwrap();
+        let with = compile_app_core(
+            "from orders budget { documents: 10, bytes: 20, result_bytes: 30 }",
+            &b,
+        )
+        .unwrap();
+        assert!(without.budget.is_none());
+        let bud = with.budget.expect("budget");
+        assert_eq!(bud.max_documents, Some(10));
+        assert_eq!(bud.max_bytes, Some(20));
+        assert_eq!(bud.max_result_bytes, Some(30));
+        // Budget is run metadata — plan hash unchanged by budget clause alone.
+        assert_eq!(without.plan.plan_hash_hex(), with.plan.plan_hash_hex());
+    }
+
+    #[test]
+    fn merge_budgets_stricter_wins() {
+        let a = QueryBudget {
+            max_documents: Some(100),
+            max_bytes: Some(1000),
+            max_result_bytes: None,
+        };
+        let b = QueryBudget {
+            max_documents: Some(50),
+            max_bytes: None,
+            max_result_bytes: Some(9),
+        };
+        let m = merge_budgets(Some(a), Some(b)).unwrap();
+        assert_eq!(m.max_documents, Some(50));
+        assert_eq!(m.max_bytes, Some(1000));
+        assert_eq!(m.max_result_bytes, Some(9));
+    }
+
+    #[test]
+    fn after_still_feature_unavailable() {
+        let err = compile_app_core("from orders after $c", &bindings()).unwrap_err();
+        assert!(err.to_string().contains(DIAG_RQL_FEATURE_UNAVAILABLE));
+    }
+
+    #[test]
+    fn source_oversize_rejected() {
+        let huge = format!("from orders -- {}\n", "x".repeat(MAX_RQL_SOURCE_BYTES));
+        assert!(huge.len() > MAX_RQL_SOURCE_BYTES);
+        let err = compile_app_core(&huge, &bindings()).unwrap_err();
+        assert!(err.to_string().contains("exceeds"));
+    }
+
+    /// Bounded deterministic fuzz: compiler must not panic on garbage/truncated.
+    #[test]
+    fn bounded_fuzz_panic_free() {
+        let b = bindings();
+        let samples: &[&str] = &[
+            "",
+            " ",
+            "from",
+            "from ",
+            "from orders where",
+            "from orders where (",
+            "from orders where status =",
+            "from orders project",
+            "from orders order by",
+            "from orders limit",
+            "from orders page size 0",
+            "from orders page size 99999",
+            "from orders budget {",
+            "from orders budget { documents: }",
+            "from orders budget { documents: 1, documents: 2 }",
+            "from orders coverage",
+            "from orders consistency",
+            "from orders \0 null byte",
+            "from orders where status = \"unterminated",
+            "from orders where (a = 1 and",
+            "from orders where not",
+            "from orders where region in [",
+            "from orders where region in [1,]",
+            "SELECT 1",
+            ";;;;",
+            "from orders where status = $",
+            "from orders as",
+            "explain",
+            "explain from",
+            "from \"",
+            "from orders where starts_with(",
+            "from orders where starts_with(name)",
+            "from orders where contains(name, )",
+            "from orders where status is",
+            "from orders where status is not",
+            "from orders where not in [1]",
+            "from orders project [a, b",
+            "from orders order by created_at nulls",
+            "from orders after",
+            "from orders enrich x",
+            "from orders within x",
+            "from orders at rank 1",
+            "from orders sequential access",
+            "from orders direct access",
+            "from orders build access",
+            "from orders where status = 1.2.3",
+            "from orders where status = --",
+            "from orders where ((((((((((",
+            "from orders where ))))))))))",
+            "from orders limit 999999999999999999999",
+            "from orders where status = true and and false",
+            "from orders where or true",
+            "from orders where present",
+            "from orders where missing()",
+            "from orders budget { unknown: 1 }",
+            "from orders page size 1 page size 2",
+            "from orders limit 1 limit 2",
+            "from orders project a project b",
+        ];
+        for (i, s) in samples.iter().enumerate() {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _ = compile_app_core(s, &b);
+            }))
+            .unwrap_or_else(|_| panic!("fuzz sample {i} panicked: {s:?}"));
+        }
+
+        // Pseudo-random short mutations of a valid seed (deterministic LCG).
+        let seed = b"from orders where status = \"paid\" limit 10 page size 5";
+        let mut state: u64 = 0xC0FFEE_u64;
+        for i in 0..256u64 {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1);
+            let mut buf = seed.to_vec();
+            let n = (state as usize % 8) + 1;
+            for _ in 0..n {
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1);
+                let idx = (state as usize) % buf.len().max(1);
+                let byte = (state >> 32) as u8;
+                if idx < buf.len() {
+                    buf[idx] = byte;
+                } else {
+                    buf.push(byte);
+                }
+            }
+            // Lossy UTF-8: skip invalid sequences by from_utf8_lossy
+            let s = String::from_utf8_lossy(&buf);
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _ = compile_app_core(&s, &b);
+            }))
+            .unwrap_or_else(|_| panic!("mutated sample {i} panicked"));
+        }
     }
 }

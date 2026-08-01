@@ -85,8 +85,8 @@ pub use plan_v1::{
     MAX_PROJECT_ITEMS, PLAN_ENCODING_PROFILE, PLAN_HASH_DOMAIN, PLAN_PROFILE,
 };
 pub use rql_app_core::{
-    compile_app_core, CompiledAppCore, APP_CORE_PROFILE, DIAG_RQL_FEATURE_UNAVAILABLE,
-    MAX_RQL_SOURCE_BYTES,
+    compile_app_core, merge_budgets, CompiledAppCore, APP_CORE_PROFILE,
+    DIAG_RQL_FEATURE_UNAVAILABLE, MAX_RQL_SOURCE_BYTES,
 };
 pub use predicate::{
     field, param, CompareOp, Operand, Path as PredPath, PredField, Predicate, Resolve,

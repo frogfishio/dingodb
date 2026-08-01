@@ -145,6 +145,21 @@ fn app5_corpus_accept_and_reject() {
                     other => panic!("{id}: bad first_order_dir `{other}`"),
                 }
             }
+            if let Some(n) = exp.get("budget_documents").and_then(|x| x.as_u64()) {
+                let b = compiled
+                    .budget
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("{id}: expected budget"));
+                assert_eq!(b.max_documents, Some(n), "{id}: budget_documents");
+            }
+            if let Some(n) = exp.get("budget_bytes").and_then(|x| x.as_u64()) {
+                let b = compiled.budget.as_ref().expect("budget");
+                assert_eq!(b.max_bytes, Some(n), "{id}: budget_bytes");
+            }
+            if let Some(n) = exp.get("budget_result_bytes").and_then(|x| x.as_u64()) {
+                let b = compiled.budget.as_ref().expect("budget");
+                assert_eq!(b.max_result_bytes, Some(n), "{id}: budget_result_bytes");
+            }
         }
     }
 
