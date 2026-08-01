@@ -1,0 +1,26 @@
+{
+  "schema": "residiuum-formal-theorems-v1",
+  "profile_scope": "residiuum-formal-foundation-v1",
+  "items": [
+    {
+      "id": "FAS-FND-OBSERVATION-SEPARATION-001",
+      "version": 1,
+      "family": "foundation",
+      "title": "A",
+      "property_class": "safety",
+      "status": "proposed",
+      "depends_on": ["FAS-FND-FORBIDDEN-COLLAPSE-001"],
+      "result_refs": []
+    },
+    {
+      "id": "FAS-FND-FORBIDDEN-COLLAPSE-001",
+      "version": 1,
+      "family": "foundation",
+      "title": "B",
+      "property_class": "safety",
+      "status": "proposed",
+      "depends_on": ["FAS-FND-OBSERVATION-SEPARATION-001"],
+      "result_refs": []
+    }
+  ]
+}

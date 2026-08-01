@@ -1,0 +1,85 @@
+{
+  "schema": "residiuum-formal-artifact-ownership-v1",
+  "source": "doc/wip/status/FAS_MIGRATION_MAP.md",
+  "package_accept": false,
+  "items": [
+    {
+      "path": "formal/heap/HeapAuthority.tla",
+      "disposition": "register_in_FAS0",
+      "packages": [
+        "FAS-0",
+        "FAS-5"
+      ],
+      "theorem_ids": [
+        "FAS-SEC-AUTHORITY-CONFINEMENT-001",
+        "FAS-SEC-EPOCH-REVOCATION-001"
+      ]
+    },
+    {
+      "path": "formal/heap/HeapIsolation.tla",
+      "disposition": "register_in_FAS0",
+      "packages": [
+        "FAS-0",
+        "FAS-5"
+      ],
+      "theorem_ids": [
+        "FAS-SEC-HEAP-NONINTERFERENCE-001"
+      ]
+    },
+    {
+      "path": "verification/heap-verus/verus/pure_kernel.rs",
+      "disposition": "register_in_FAS0",
+      "packages": [
+        "FAS-0",
+        "FAS-1",
+        "FAS-3",
+        "FAS-5"
+      ],
+      "theorem_ids": [
+        "FAS-SEC-AUTHORITY-CONFINEMENT-001",
+        "FAS-SEC-EPOCH-REVOCATION-001",
+        "FAS-SEC-BLACKLIST-SOUND-001",
+        "FAS-SEC-MASTER-NONSERVING-001",
+        "FAS-SEC-HEAP-NONINTERFERENCE-001"
+      ]
+    },
+    {
+      "path": "crates/residiuum-heap/src/pure_proofs.rs",
+      "disposition": "register_in_FAS0",
+      "packages": [
+        "FAS-0",
+        "FAS-3",
+        "FAS-5"
+      ],
+      "theorem_ids": [
+        "FAS-SEC-AUTHORITY-CONFINEMENT-001",
+        "FAS-SEC-BLACKLIST-SOUND-001",
+        "FAS-SEC-HEAP-NONINTERFERENCE-001"
+      ]
+    },
+    {
+      "path": "crates/residiuum-store-model/",
+      "disposition": "register_in_FAS0",
+      "packages": [
+        "FAS-0",
+        "FAS-4"
+      ],
+      "theorem_ids": [
+        "FAS-CON-PUBLICATION-NONHYBRID-001",
+        "FAS-CON-DAMAGE-HONESTY-001",
+        "FAS-CON-NO-FABRICATED-VALUE-001"
+      ]
+    },
+    {
+      "path": "tools/core-storage-reference-reader/",
+      "disposition": "register_in_FAS0",
+      "packages": [
+        "FAS-0",
+        "FAS-4"
+      ],
+      "theorem_ids": [
+        "FAS-CON-HEALTHY-ISLAND-001"
+      ]
+    }
+  ]
+}

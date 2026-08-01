@@ -4,7 +4,41 @@
     {
       "id": "FAS-TCB-VERUS-PIN-001",
       "class": "prover",
-      "title": "Verus pin 0.2026.07.27.31579f0 (setup_verus.sh)",
+      "name": "Verus",
+      "version_ref": "FAS-TOOL-VERUS-001",
+      "reason_trusted": "Machine-checks pure_kernel and future Rust refinements",
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-TCB-KANI-001",
+      "class": "model_checker",
+      "name": "Kani",
+      "version_ref": "FAS-TOOL-KANI-001",
+      "reason_trusted": "Bounded Rust model checking of pure_proofs harnesses",
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-TCB-TLC-001",
+      "class": "model_checker",
+      "name": "TLC",
+      "version_ref": "FAS-TOOL-TLC-001",
+      "reason_trusted": "Bounded model checking of Heap TLA specs",
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-TCB-LEAN4-001",
+      "class": "proof_kernel",
+      "name": "Lean 4 kernel",
+      "version_ref": "FAS-TOOL-LEAN4-001",
+      "reason_trusted": "Checks Lean proof terms for abstract theorems",
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-TCB-CROSS-TOOL-001",
+      "class": "cross_tool_bridge",
+      "name": "Cross-tool semantic bridge",
+      "version_ref": "FAS-ASM-CROSS-TOOL-MAP-001",
+      "reason_trusted": "Lean/TLA/Verus correspondence is assumed not proved",
       "wave0_stub": true
     }
   ]

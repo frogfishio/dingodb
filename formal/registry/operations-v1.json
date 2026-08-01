@@ -1,4 +1,5 @@
 {
   "schema": "residiuum-formal-operations-v1",
-  "items": []
+  "items": [],
+  "note": "Filled from FORMAL_KERNEL_MODEL_CONTRACT in FAS-2"
 }

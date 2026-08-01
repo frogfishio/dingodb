@@ -2,16 +2,68 @@
   "schema": "residiuum-formal-assumptions-v1",
   "items": [
     {
-      "id": "FAS-ASM-FS-DURABLE-WRITE-001",
-      "class": "filesystem",
-      "title": "Durable ack survives under declared filesystem assumptions",
-      "wave0_stub": true
+      "id": "FAS-ASM-CLASSICAL-LOGIC-001",
+      "class": "mathematics",
+      "title": "Accepted logic foundations of selected proof kernels",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
     },
     {
-      "id": "FAS-ASM-CROSS-TOOL-BRIDGE-001",
+      "id": "FAS-ASM-CROSS-TOOL-MAP-001",
       "class": "cross_tool_bridge",
-      "title": "Lean / Verus / TLA correspondence is an explicit TCB boundary",
-      "wave0_stub": true
+      "title": "Lean/TLA+/Verus representations correspond where claimed",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-ASM-RUST-COMPILER-001",
+      "class": "compiler",
+      "title": "Verified source meaning preserved by named Rust toolchain outside proved compiler scope",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-ASM-CRYPTO-PRIMITIVES-001",
+      "class": "cryptography",
+      "title": "Named primitives meet their standard security assumptions",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-ASM-FILESYSTEM-DURABILITY-001",
+      "class": "filesystem",
+      "title": "Qualified sync/persistence contract holds",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-ASM-ATOMIC-FAIR-RECOVERY-001",
+      "class": "scheduler",
+      "title": "Recovery is eventually scheduled for Atomic liveness only",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-ASM-CLUSTER-EVENTUAL-SYNCHRONY-001",
+      "class": "network",
+      "title": "Network eventually satisfies the liveness timing model",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-ASM-CLUSTER-FAILURE-BOUND-001",
+      "class": "hardware",
+      "title": "Failures remain within the declared quorum profile",
+      "status": "active",
+      "wave0_stub": true,
+      "fas0_catalogue": true
     }
   ]
 }

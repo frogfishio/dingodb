@@ -3,7 +3,27 @@
   "items": [
     {
       "id": "residiuum-formal-foundation-v1",
-      "title": "Formal foundation profile (stub)",
+      "title": "Formal foundation",
+      "wave0_stub": true
+    },
+    {
+      "id": "residiuum-formal-consistency-v1",
+      "title": "Formal consistency",
+      "wave0_stub": true
+    },
+    {
+      "id": "residiuum-formal-security-v1",
+      "title": "Formal security",
+      "wave0_stub": true
+    },
+    {
+      "id": "residiuum-formal-atomics-v1",
+      "title": "Formal atomics",
+      "wave0_stub": true
+    },
+    {
+      "id": "residiuum-formal-cluster-v1",
+      "title": "Formal cluster",
       "wave0_stub": true
     }
   ]

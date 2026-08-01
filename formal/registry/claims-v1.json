@@ -1,4 +1,5 @@
 {
   "schema": "residiuum-formal-claims-v1",
-  "items": []
+  "items": [],
+  "note": "No public theorem-bearing claims until implementation_connected + package policy"
 }

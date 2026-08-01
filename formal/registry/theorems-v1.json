@@ -1,42 +1,527 @@
 {
   "schema": "residiuum-formal-theorems-v1",
   "profile_scope": "residiuum-formal-foundation-v1",
+  "catalogue_version": "REGISTRY_CONTRACT-\u00a712",
+  "package_accept": false,
   "items": [
     {
       "id": "FAS-FND-OBSERVATION-SEPARATION-001",
       "version": 1,
       "family": "foundation",
-      "title": "Observation constructors are distinct",
+      "title": "Observation constructors are distinct (complete/absent/partial/damaged/unknown/unauthorized/unavailable)",
       "property_class": "safety",
-      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#12.1",
-      "status": "proposed",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-FND-OBSERVATION-SEPARATION-001",
+      "status": "specified",
       "depends_on": [],
       "result_refs": [],
-      "wave0_stub": true
+      "wave0_stub": true,
+      "fas0_catalogue": true
     },
     {
       "id": "FAS-FND-FORBIDDEN-COLLAPSE-001",
       "version": 1,
       "family": "foundation",
-      "title": "No forbidden observation collapse",
+      "title": "No registered public projection performs a forbidden collapse",
       "property_class": "safety",
-      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#12.1",
-      "status": "proposed",
-      "depends_on": ["FAS-FND-OBSERVATION-SEPARATION-001"],
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-FND-FORBIDDEN-COLLAPSE-001",
+      "status": "specified",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
       "result_refs": [],
-      "wave0_stub": true
+      "wave0_stub": true,
+      "fas0_catalogue": true
     },
     {
       "id": "FAS-FND-REFINEMENT-COMPOSITION-001",
       "version": 1,
       "family": "foundation",
-      "title": "Valid refinements compose",
+      "title": "Valid refinements compose while preserving named invariants",
       "property_class": "refinement",
-      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#12.1",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-FND-REFINEMENT-COMPOSITION-001",
+      "status": "specified",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true
+    },
+    {
+      "id": "FAS-CON-NO-FABRICATED-VALUE-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Complete observations have authoritative committed provenance",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-NO-FABRICATED-VALUE-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-GENERATION-EXACT-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Reconstruction uses only the manifest generation",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-GENERATION-EXACT-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-PUBLICATION-NONHYBRID-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Crash recovery selects old/new/unknown, never hybrid",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-PUBLICATION-NONHYBRID-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-DURABLE-ACK-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Durable acknowledgement survives under declared filesystem assumptions",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-DURABLE-ACK-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-RECOVERY-IDEMPOTENT-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Recovery reaches a fixed point after one application",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-RECOVERY-IDEMPOTENT-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-DERIVED-NONAUTHORITY-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Derived state cannot establish authoritative truth",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-DERIVED-NONAUTHORITY-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-DAMAGE-HONESTY-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Insufficient evidence cannot become absence or completeness",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-DAMAGE-HONESTY-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-CON-HEALTHY-ISLAND-001",
+      "version": 1,
+      "family": "consistency",
+      "title": "Unaffected valid frames remain discoverable within scanner assumptions",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CON-HEALTHY-ISLAND-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Physical evidence path: CSQ store-model + reference-reader (FAS_MIGRATION_MAP)"
+    },
+    {
+      "id": "FAS-SEC-HEAP-NONINTERFERENCE-001",
+      "version": 1,
+      "family": "security",
+      "title": "One Heap operation cannot change another Heap observation",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-HEAP-NONINTERFERENCE-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-SEC-AUTHORITY-CONFINEMENT-001",
+      "version": 1,
+      "family": "security",
+      "title": "Authorized operation remains within Heap and rights",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-AUTHORITY-CONFINEMENT-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-SEC-DELEGATION-MONOTONE-001",
+      "version": 1,
+      "family": "security",
+      "title": "Child authority cannot exceed parent authority",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-DELEGATION-MONOTONE-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-SEC-EPOCH-REVOCATION-001",
+      "version": 1,
+      "family": "security",
+      "title": "Stale epochs fail outside declared grace",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-EPOCH-REVOCATION-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-SEC-BLACKLIST-SOUND-001",
+      "version": 1,
+      "family": "security",
+      "title": "Blacklisted certificate identities fail authorization",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-BLACKLIST-SOUND-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-SEC-MASTER-NONSERVING-001",
+      "version": 1,
+      "family": "security",
+      "title": "Master credentials cannot authorize network operations",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-MASTER-NONSERVING-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-SEC-SCOPE-GUARD-001",
+      "version": 1,
+      "family": "security",
+      "title": "Scoped/wildcard RUD-no-create preserves authority and noninterference",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-SEC-SCOPE-GUARD-001",
+      "status": "proposed",
+      "depends_on": [
+        "FAS-FND-OBSERVATION-SEPARATION-001"
+      ],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Precursor: pure_kernel + pure_proofs + TLA HeapAuthority/Isolation (register_in_FAS0)"
+    },
+    {
+      "id": "FAS-ATM-ALL-OR-NONE-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Member visibility is empty or complete",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-ALL-OR-NONE-001",
       "status": "proposed",
       "depends_on": [],
       "result_refs": [],
-      "wave0_stub": true
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-PREPARE-COMPLETE-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Commit requires all exact members prepared",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-PREPARE-COMPLETE-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-DECISION-UNIQUE-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Commit and abort cannot both be authoritative",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-DECISION-UNIQUE-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-PREPARED-INVISIBLE-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Ordinary readers cannot see uncommitted prepared state",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-PREPARED-INVISIBLE-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-RETRY-IDEMPOTENT-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Canonical retry identity cannot duplicate effects",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-RETRY-IDEMPOTENT-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-INVARIANT-PRESERVATION-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Atomic commit preserves active RRE/relationship invariants",
+      "property_class": "preservation",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-INVARIANT-PRESERVATION-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-ISOLATION-HISTORY-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Concrete concurrent history refines the named isolation profile",
+      "property_class": "refinement",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-ISOLATION-HISTORY-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-ATM-RECOVERY-CONVERGENCE-001",
+      "version": 1,
+      "family": "atomics",
+      "title": "Recovery is safe and conditionally reaches one final decision",
+      "property_class": "liveness",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-ATM-RECOVERY-CONVERGENCE-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "Blocked on ATM-1; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-QUORUM-INTERSECTION-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "All permitted quorums intersect",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-QUORUM-INTERSECTION-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-TERM-AUTHORITY-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "One leader authority exists per partition term",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-TERM-AUTHORITY-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-LEADER-FENCING-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "Stale terms cannot commit",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-LEADER-FENCING-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-AGREEMENT-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "One command occupies a committed log position",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-AGREEMENT-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-ACK-SURVIVAL-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "Quorum acknowledgement remains recoverable within failure bounds",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-ACK-SURVIVAL-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-PARTITION-HONESTY-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "Missing quorum evidence cannot become committed/current success",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-PARTITION-HONESTY-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-REPLICA-CONVERGENCE-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "Live replicas converge under explicit liveness assumptions",
+      "property_class": "liveness",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-REPLICA-CONVERGENCE-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-HEAP-CONFINEMENT-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "Distribution preserves Heap noninterference",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-HEAP-CONFINEMENT-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
+    },
+    {
+      "id": "FAS-CLU-MEMBERSHIP-SAFETY-001",
+      "version": 1,
+      "family": "cluster",
+      "title": "Membership transitions preserve quorum safety and fencing",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#FAS-CLU-MEMBERSHIP-SAFETY-001",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true,
+      "fas0_catalogue": true,
+      "note": "FAS-8 deferred; catalogue stub only"
     }
   ]
 }

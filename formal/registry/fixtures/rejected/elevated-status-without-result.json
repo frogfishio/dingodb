@@ -1,0 +1,16 @@
+{
+  "schema": "residiuum-formal-theorems-v1",
+  "profile_scope": "residiuum-formal-foundation-v1",
+  "items": [
+    {
+      "id": "FAS-FND-OBSERVATION-SEPARATION-001",
+      "version": 1,
+      "family": "foundation",
+      "title": "Illegal elevated status without result_refs",
+      "property_class": "safety",
+      "status": "machine_proved",
+      "depends_on": [],
+      "result_refs": []
+    }
+  ]
+}

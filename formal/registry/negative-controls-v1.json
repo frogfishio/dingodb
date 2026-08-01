@@ -1,4 +1,16 @@
 {
   "schema": "residiuum-formal-negative-controls-v1",
-  "items": []
+  "items": [
+    {
+      "id": "FAS-NEG-CLAIM-WITHOUT-THEOREM-001",
+      "title": "Claim without theorem must reject",
+      "fixture": "fixtures/rejected/claim-without-theorem.json",
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-NEG-FORBIDDEN-WORDING-001",
+      "title": "Forbidden 'formally verified database' wording",
+      "wave0_stub": true
+    }
+  ]
 }
