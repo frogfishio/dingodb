@@ -1,0 +1,106 @@
+//! APB-6 T1: read view surface scaffold (fail-closed observation).
+
+use residiuum_heap::{
+    mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
+    HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
+    TrustedInstant, VerifiedCertificate,
+};
+use residiuum_sdk::{
+    ErrorCode, FrontierKind, HeapClient, READ_VIEW_PROFILE, ReadViewOptions, ResidiuumDeployment,
+};
+use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
+use std::sync::Arc;
+use std::time::Duration;
+use tempfile::{tempdir, TempDir};
+
+fn mint_cap_for(heap: HeapId, deployment: DeploymentId) -> residiuum_heap::HeapCap {
+    let snap = HeapSecuritySnapshot {
+        deployment_id: deployment,
+        heap_id: heap,
+        authority_epoch: AuthorityEpoch::new(1).unwrap(),
+        authority_generation: AuthorityGeneration::new(1).unwrap(),
+        previous_generation: None,
+        grace_deadline_unix_s: None,
+        master_public_key: [7u8; 32],
+        previous_master_public_key: None,
+        security_revision: SecurityRevision::new(1).unwrap(),
+        authority_chain_head_hash: [9u8; 32],
+        administrative_state: HeapAdministrativeState::Active,
+        blacklist: vec![],
+        policy_rights_ceiling: None,
+    };
+    let slot = Arc::new(HeapSlot::new(snap));
+    let cert = VerifiedCertificate {
+        cose_bytes: vec![0x01],
+        fingerprint: [3u8; 32],
+        deployment_id: deployment,
+        heap_id: heap,
+        authority_epoch: AuthorityEpoch::new(1).unwrap(),
+        authority_generation: AuthorityGeneration::new(1).unwrap(),
+        certificate_id: CertificateId::new_random().unwrap(),
+        holder_public_key: [4u8; 32],
+        rights: Rights::from_bits_certificate(0x0d).unwrap(),
+        constraints: Constraints::empty(),
+        not_before: 1,
+        expires_at: 4_000_000_000,
+        issuer_master_key_id: [5u8; 32],
+    };
+    mint_capability(slot, &cert, TrustedInstant { unix_s: 1_700_000_000 }).unwrap()
+}
+
+fn uuid() -> [u8; 16] {
+    *residiuum_heap::CollectionId::new_random()
+        .unwrap()
+        .as_bytes()
+}
+
+fn open_bound_client() -> (TempDir, HeapClient) {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let deployment = ResidiuumDeployment::create(root).unwrap();
+    let layout = HeapMetaLayout::new(root);
+    let dep = *DeploymentId::new_random().unwrap().as_bytes();
+    let heap_bytes = *HeapId::new_random().unwrap().as_bytes();
+    let staged = stage_heap_genesis(&layout, dep, heap_bytes, uuid(), "heap-apb6").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+    let heap_id = HeapId::from_bytes_unchecked_nonzero(heap_bytes).unwrap();
+    let dep_id = DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap();
+    let cap = mint_cap_for(heap_id, dep_id);
+    (dir, HeapClient::from(deployment.open_heap(cap)))
+}
+
+#[test]
+fn read_view_open_info_and_fail_closed_collection() {
+    let (_dir, mut client) = open_bound_client();
+    let mut view = client
+        .read_view(ReadViewOptions {
+            max_age: Some(Duration::from_secs(300)),
+            ..Default::default()
+        })
+        .expect("read_view");
+    let info = view.info().clone();
+    assert_eq!(info.heap_id, client.id());
+    assert_eq!(info.semantic_versions.read_view, READ_VIEW_PROFILE);
+    assert_eq!(info.frontier.kind, FrontierKind::LiveUnpinned);
+    assert!(!info.observation_pinned);
+    assert!(!info.view_id_hex.is_empty());
+    assert!(!info.frontier.identity_hex.is_empty());
+    view.ensure_usable().unwrap();
+
+    let err = view.open_collection("orders").unwrap_err();
+    assert!(
+        err.to_string().contains("APB-6 residual") || err.code() == ErrorCode::Internal,
+        "expected fail-closed residual, got {err:?}"
+    );
+
+    view.close();
+    assert_eq!(view.ensure_usable().unwrap_err().code(), ErrorCode::ConsistencyViolation);
+}
+
+#[test]
+fn unbound_heap_client_rejects_read_view() {
+    let heap = HeapId::from_bytes_unchecked_nonzero([2u8; 16]).unwrap();
+    let mut client = HeapClient::from_id_for_contract(heap);
+    let err = client.read_view(ReadViewOptions::default()).unwrap_err();
+    assert_eq!(err.code(), ErrorCode::Internal);
+}

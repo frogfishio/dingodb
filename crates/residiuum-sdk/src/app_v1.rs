@@ -415,6 +415,26 @@ impl HeapClient {
         !matches!(self.backend, HeapBackend::Unbound)
     }
 
+    /// Open a stable bounded read view (APB-6 T1 scaffold).
+    ///
+    /// Returns a live-unpinned view binding heap identity, declared modes,
+    /// semantic profile versions, and expiry. **Does not** pin reclamation or
+    /// provide multi-query snapshot observation — see
+    /// `APB6_READ_VIEW_GAP_INVENTORY.md`. Product collection access under the
+    /// view fails closed until frontier pin lands.
+    pub fn read_view(
+        &mut self,
+        options: crate::read_view_v1::ReadViewOptions,
+    ) -> Result<crate::read_view_v1::ReadView, Error> {
+        if !self.is_bound() {
+            return Err(Error::Internal(
+                "HeapClient unbound; construct with From<Heap|RemoteHeap> (APB-1)".into(),
+            ));
+        }
+        // Embedded and remote share the same unpinned scaffold today; pin residual.
+        crate::read_view_v1::ReadView::open_live_unpinned(self.heap_id, options)
+    }
+
     /// Create a collection (APP-1 / APB-1).
     pub fn create_collection(
         &mut self,

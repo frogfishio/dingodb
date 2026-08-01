@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APP-6 T2 page executor + scan oracle; cursor T1; Kanban-first backlog; APB-2 dual-pack)
+Updated: 2026-08-01 (APB-6 T1 read-view scaffold + inventory; APP-6 T1/T2; Kanban-first backlog)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -101,7 +101,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
-| APB-6 | not_started | — | APB-1, APB-3 | — | stable read views absent | read consistency |
+| APB-6 | active | 2026-08-01 | APB-1, APB-3 | T1: [APB6_READ_VIEW_GAP_INVENTORY.md](../../todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md) + `read_view_v1` types + `HeapClient::read_view` (live-unpinned open/close/expiry; observation **fail-closed**); `cargo test -p residiuum-sdk --test apb6_read_view_scaffold` **2/2** (+ lib unit) | frontier pin (segment fingerprint), retention pin, view-bound query/export, mutation-between-pages matrix, APB-3 lifecycle; **no package accept / no snapshot claim** | read consistency |
 | APB-7 | not_started | — | APB-1, APB-6, APP-4, APP-5 | — | RQL application runtime absent | query baseline |
 | APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
 | APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
@@ -189,12 +189,11 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Card | Feature | Note |
 |---:|---|---|---|
-| 1 | **APB-6 T1** read views inventory/scaffold | Query spine | preferred next (APP-6 T2 in_review) |
-| 2 | **APP-6 T3** product cursor secrets residual (optional) | Query spine | after T2 |
+| 1 | **APB-6 T2** frontier pin (segment fingerprint) | Query spine | preferred next after T1 scaffold |
+| 2 | **APB-7 T0** runtime gap inventory | Query spine | APP-6 + APB-6 scaffold available |
 | 3 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
-| 4 | **APB-7 T0** runtime gap inventory | Query spine | blocked until 1–2 progress |
-| 5 | **APB-2 T6** residual checklist | APB-2 residuals | no false accept |
-| 6 | **GOV T1** process rule | Labor governance | this scoreboard section |
+| 4 | **APB-2 T6** residual checklist | APB-2 residuals | no false accept |
+| 5 | **GOV T1** process rule | Labor governance | Kanban-first (in_review) |
 
 Program order (packages; Kanban cards bind labor under them):
 
