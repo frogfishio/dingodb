@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0–T5 + T8–T10 2026-08-02** (… + product cursor secrets) · package `APB-7` **active / not accept**  
+Status: **T0–T5 + T8–T11 2026-08-02** (… + multipage oracle matrix) · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -136,7 +136,7 @@ honest residual until APP-7/APB-7 activate wire.
 | G10 | Budgets max_bytes / max_result_bytes | **T2 partial** | Enforced in `query_exec_v1` (compact JSON lengths); documents budget retained |
 | G11 | Deadline / cancellation | **T8 partial** | `QueryRunOptions::{deadline,cancel}`; cooperative checks in executor; tests 4/4 |
 | G12 | Index-versus-scan oracle | **T4 partial** | Equality AND pushdown via `lookup_index_keys` + re-eval; differential tests; remote residual |
-| G13 | Independent complete-scan oracle suite | **partial** | APP-6 equality tests; not full dual-path differential |
+| G13 | Independent complete-scan oracle suite | **T11 partial** | Multipage matrix: key-order / equality / field-order / index / builder↔RQL; residual: remote dual, range index |
 | G14 | Remote op **118** product path | **blocked** | Wire reserved; APP-7 + HAR-4 |
 | G15 | Remote parity without inventing wire | **partial** | Remote `rql` today = collection-plane list_keys+get (same as embedded) — honest, not product `rql_query` |
 | G16 | `scan_json` / `find` on façade | **T3 partial** | `CollectionClient::scan_json` + `find_json` (embedded + remote 115/116); not product accept |
@@ -164,9 +164,26 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T8** | `5bd3fe3b` | **in_review** | Deadline + CancelToken (`apb7_deadline_cancel` 4/4) |
 | **T9** | `99e32b76` | **in_review** | Coverage grade (`apb7_coverage_grade` 4/4) |
 | **T10** | `b11912fe` | **in_review** | Product cursor secrets + parameter_hash (`apb7_cursor_secrets` 4/4) |
-| **T11** | `f6633005` | **todo** | Multipage oracle matrix |
+| **T11** | `f6633005` | **in_review** | Multipage oracle matrix (`apb7_multipage_oracle_matrix` 6/6) |
 
 Do **not** invent the next slice in markdown alone — pull or create the board card first (GOV T1).
+
+### T11 multipage oracle residual matrix (2026-08-02)
+
+| Scenario | Embedded list_keys+get oracle | Status |
+|---|---|---|
+| Key-order multipage drain | `apb7_multipage_oracle_matrix` | **covered** |
+| Equality filter multipage | same | **covered** |
+| Field-order multipage | same | **covered** |
+| Equality + ready index multipage | same | **covered** |
+| Builder ↔ RQL multipage key parity | same | **covered** |
+| Document budget fail-closed | same | **covered** |
+| Dual remote (HAR-4 / op 118) multipage oracle | — | **residual** (blocked) |
+| Range / multi-field index pushdown multipage | — | **residual** |
+| Incomplete coverage multipage (holes across pages) | T9 unit | **partial residual** |
+| ReadView-bound multipage under pin | APB-7 T5 + APB-6 T3 | **residual** |
+
+Feeds **T7** accept checklist; does **not** alone authorize package accept.
 
 ---
 
@@ -186,7 +203,7 @@ Do **not** invent the next slice in markdown alone — pull or create the board 
 | Artifact | Role |
 |---|---|
 | `crates/residiuum-sdk/src/{predicate,plan_v1,rql_app_core,cursor_v1,query_exec_v1,read_view_v1,app_v1}.rs` | Labor surfaces |
-| `crates/residiuum-sdk/tests/app{4,5,6}_*` / `apb6_read_view_scaffold` | Package precursors |
+| `crates/residiuum-sdk/tests/app{4,5,6}_*` / `apb{6,7}_*` | Package precursors + T11 multipage oracle |
 | `spec/app/v1/{plan_vectors,rql_app_core_corpus,cursor_vectors}_v1.json` | Locked vectors |
 | `spec/heap/rpc-v1/rql_query.*` + fixtures | Staged wire (not active product) |
 | `spec/app/baseline-v1/operations-v1.json` | App ops + wire honesty |
