@@ -1,43 +1,67 @@
 {
   "schema": "residiuum-formal-toolchain-lock-v1",
-  "wave0_stub": true,
-  "closed": false,
+  "closed": true,
+  "profile": "residiuum-formal-foundation-v1",
+  "approved_note": "FAS-1 compatibility pin set 2026-08-01 — Verus retained; Kani/Lean/TLC selected and smoke-proved. TLAPS deferred (not required for FAS-1 accept).",
   "tools": [
     {
       "id": "FAS-TOOL-VERUS-001",
       "tool": "verus",
       "version": "0.2026.07.27.31579f0",
-      "source": "scripts/setup_verus.sh",
+      "source": "https://github.com/verus-lang/verus/releases/download/release%2F0.2026.07.27.31579f0/",
       "bootstrap": "scripts/setup_verus.sh",
-      "wave0_stub": true
+      "verify": "tools/verus/verus --version",
+      "smoke": "tools/verus/verus verification/heap-verus/verus/pure_kernel.rs",
+      "accept_required": true,
+      "sha256_notes": {
+        "macos_aarch64_binary": "38a0c59b739361559db6e5c2fc0a20d69b82e00298eb1a9d180f6589fba3a8c2"
+      }
     },
     {
       "id": "FAS-TOOL-KANI-001",
       "tool": "kani",
-      "version": "unpinned-wave0",
-      "source": "cargo install kani-verifier",
-      "wave0_stub": true
+      "version": "0.67.0",
+      "source": "cargo install --locked kani-verifier --version 0.67.0 && cargo kani setup",
+      "bootstrap": "scripts/setup-formal-tools.sh --locked",
+      "verify": "cargo kani --version",
+      "smoke": "cargo kani --manifest-path formal/kani-smoke/Cargo.toml --harness fas1_kani_smoke",
+      "accept_required": true
     },
     {
       "id": "FAS-TOOL-LEAN4-001",
       "tool": "lean4",
-      "version": "unpinned-wave0",
-      "source": "FAS-1 compatibility run required",
-      "wave0_stub": true
+      "version": "v4.32.2",
+      "source": "elan default leanprover/lean4:v4.32.2",
+      "bootstrap": "scripts/setup-formal-tools.sh --locked",
+      "verify": "lean --version",
+      "smoke": "lake --dir formal/lean build",
+      "accept_required": true,
+      "toolchain_file": "formal/lean/lean-toolchain"
     },
     {
       "id": "FAS-TOOL-TLC-001",
       "tool": "tlc",
-      "version": "unpinned-wave0",
-      "source": "FAS-1 compatibility run required",
-      "wave0_stub": true
+      "version": "tla2tools-1.7.4 / TLC 2.19",
+      "source": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
+      "bootstrap": "scripts/setup-formal-tools.sh --locked",
+      "verify": "java -cp tools/formal/tla2tools.jar tlc2.TLC -help",
+      "smoke": "java -cp tools/formal/tla2tools.jar tlc2.TLC -config formal/tla/smoke/MCFAS1Smoke.cfg formal/tla/smoke/FAS1Smoke.tla",
+      "accept_required": true,
+      "sha256_by_artifact": {
+        "tla2tools.jar": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
+      },
+      "local_path": "tools/formal/tla2tools.jar"
     },
     {
       "id": "FAS-TOOL-TLAPS-001",
       "tool": "tlaps",
-      "version": "unpinned-wave0",
-      "source": "FAS-1 compatibility run required",
-      "wave0_stub": true
+      "version": "deferred-fas1",
+      "source": "TLAPS install deferred; TLC covers FAS-1 model-check smokes. Required before unbounded TLA theorem family claims (FAS-5/6 temporal).",
+      "bootstrap": null,
+      "verify": null,
+      "smoke": null,
+      "accept_required": false,
+      "deferred": true
     }
   ]
 }

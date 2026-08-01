@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (CSQ-12 A2 accept + FAS-0 accept; FAS-1 active residual)
+Updated: 2026-08-01 (CSQ-12 + FAS-0 + FAS-1 accept; FAS-2 ready)
 
 This file records package qualification state and dependency truth. It does not
 change normative semantics and it does not mirror live Kanban columns. Kanban
@@ -81,8 +81,8 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | PQH-10 | active | 2026-07-31 | PQH-0…PQH-9 | `store_driver/*` synthetic+real (feature `store-driver`/legacy-raw-store), receipt-stream PhysicalWritePlan emitter, `residiuum-perf` CLI (preflight/run/analyze/verify/driver-smoke); synthetic NON-PRODUCT; `cargo test -p residiuum-perf --lib` 165/165; `--features store-driver` 166/166; **board `in_review`** | principal accept | operational PQH completion |
 | PQH-11 | active | 2026-07-31 | PQH-10 | **Still not qualification-accept.** Prior accepted: tput formula + floor gating. **This slice:** instrument `Store::put_many_parallel` (append/tail/publish probe + encoded_frame_len); harness always `put_many` (identical product path probe-on/off — no sequential-put bypass); multi-shard concurrent preparers + outstanding-bounded batches. Evidence: store DEF-096 probe test + store-driver lib green. **No 120s qual.** Board `in_review` | controlled host `--class qualification` 120s+512MiB + sustained window; principal accept | put_many_parallel probe + product path |
 | FAS-0 | accept | 2026-08-01 | CSQ-12 | Full §12 catalogue (35) + §5 assumptions (8); ownership map; 10 schemas; negative-fixture self-tests; `formal/registry/FAS0_CLOSED`; `bash scripts/check-formal-registry.sh` **exit 0** (`structural_ok`+`closed`); [FAS0_GATE.md](./FAS0_GATE.md); CSQ-12 accept same day | residual: expand schemas/linter depth; no theorem `machine_proved` claims yet | formal claim governance |
-| FAS-1 | active | 2026-08-01 | FAS-0 | `scripts/setup-formal-tools.sh --locked` + `scripts/check-formal-toolchain.sh`; Verus pin + binary ok; report `target/formal-assurance/fas1-toolchain-report.json`; board FAS-1-T1 `in_review` | **not accept** — Lean/Kani/TLC/TLAPS still unpinned; lock `closed=false`; CI multi-tool residual | reproducible proof toolchain |
-| FAS-2 | not_started | — | FAS-0, FAS-1 | — | common abstract state/observation kernel absent | mathematical semantics |
+| FAS-1 | accept | 2026-08-01 | FAS-0 | Lock closed: Verus `0.2026.07.27.31579f0`, Kani `0.67.0`, Lean `v4.32.2`, TLC `tla2tools-1.7.4` (jar sha256 pinned); smokes: pure_kernel 8 verified, kani-smoke, `lake build` fas1_smoke, TLC FAS1Smoke; `setup-formal-tools.sh --locked` + `check-formal-toolchain.sh` **exit 0**; report `target/formal-assurance/fas1-toolchain-report.json` | TLAPS deferred (not accept-required); CI job wiring residual; archive sha for Lean/Kani installers residual | reproducible proof toolchain |
+| FAS-2 | ready | 2026-08-01 | FAS-0, FAS-1 | FAS-1 accept; Lean pin + `formal/lean` smoke present | abstract Residiuum State/Observation kernel residual | mathematical semantics |
 | FAS-3 | not_started | — | FAS-2 | existing Heap proof connections are partial precursor evidence | general Rust refinement bridge absent | implementation connection |
 | FAS-4 | not_started | — | FAS-3, applicable CSQ accept | CSQ proof obligations and models are precursor evidence | consistency theorem family not connected | formal consistency |
 | FAS-5 | not_started | — | FAS-3, FAS-4, Heap contract freeze | Heap Kani/Verus 8 verified; TLA+ sketches | unified security theorem/refinement bundle absent | formal security |
@@ -209,6 +209,6 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 |---:|---|---|
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
-| 3 | **FAS-1** (then FAS-2…5) | FAS-0 accept unlocked; toolchain lock next |
+| 3 | **FAS-2** (then FAS-3…5) | FAS-1 accept; Lean abstract kernel next |
 | 4 | **PQH principal accept** | PQH-0…11 labor largely `in_review`; qualification residual |
 | 5 | **APB-0** | Application baseline; may run alongside PQH/FAS |

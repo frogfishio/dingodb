@@ -1,0 +1,6 @@
+name = "Residiuum"
+version = "0.1.0"
+defaultTargets = ["Residiuum"]
+
+[[lean_lib]]
+name = "Residiuum"

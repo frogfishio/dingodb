@@ -24,6 +24,12 @@ tools/verus/
 tools/verus.zip
 tools/verus-*.zip
 
+# FAS-1 formal tool downloads / build dirs (bootstrap via setup-formal-tools.sh)
+tools/formal/
+formal/lean/.lake/
+formal/kani-smoke/target/
+formal/kani-smoke/Cargo.lock
+
 # cargo-fuzz artifacts (DEF-091); keep checked-in seed corpora if added under
 # fuzz/corpus/ intentionally.
 fuzz/target/
