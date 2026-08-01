@@ -1,26 +1,28 @@
-//! APB-1 G6 dual-backend façade parity scenarios.
+//! APB-1 G6 + APB-2 dual-backend façade parity scenarios.
 //!
 //! Shared behavioral checks for [`HeapClient`] / [`CollectionClient`] that both
 //! the **embedded** suite (`apb1_heap_client_embedded`) and the **remote** suite
 //! (`residiuum-server` `apb1_heap_client_from_remote_*`) must run.
 //!
 //! Normative: MUST_ADD §5 (one app source differs only by constructor);
-//! inventory G6. **Not** package accept — suite expands over time.
+//! inventory G6; MUST_ADD §6 mutation surface (APB-2). **Not** package accept —
+//! suite expands over time; store Key Atomic CAS remains residual.
 //!
 //! Include from another integration test crate with:
 //! ```ignore
-//! #[path = "../../residiuum-sdk/tests/apb1_facade_parity.rs"]
+//! #[path = "../../residiuum-sdk/tests/common/apb1_facade_parity.rs"]
 //! mod apb1_facade_parity;
 //! ```
 
-use residiuum_sdk::{CollectionClient, HeapClient};
+use residiuum_sdk::{CollectionClient, ErrorCode, HeapClient, KEY_PROFILE_RANDOM_V1};
 
-/// Scenario ids currently covered by this module (checklist for G6).
+/// Scenario ids currently covered by this module (checklist for G6 / APB-2).
 pub const SCENARIO_IDS: &[&str] = &[
     "create_open_list",
     "put_get_delete",
     "history_versions",
     "index_lifecycle",
+    "apb2_mutations",
 ];
 
 /// Create → list → open by name; asserts bound ids and list contains the collection.
@@ -158,14 +160,110 @@ pub fn scenario_index_lifecycle(col: &mut CollectionClient) {
     );
 }
 
+/// APB-2 safe single-key mutations (create / upsert / list_keys / replace /
+/// delete_with / add) with OCC via `WriteReceipt.version` (== event_id).
+///
+/// First cut is read-then-write on both backends; store CAS residual is honest.
+pub fn scenario_apb2_mutations(col: &mut CollectionClient) {
+    // upsert insert + replace
+    let up = col
+        .upsert("apb2-k1", &serde_json::json!({"n": 1}))
+        .unwrap_or_else(|e| panic!("parity apb2 upsert insert: {e:?}"));
+    assert!(up.inserted, "parity apb2 first upsert must insert");
+    assert_eq!(up.receipt.version, up.receipt.event_id);
+
+    let up2 = col
+        .upsert("apb2-k1", &serde_json::json!({"n": 2}))
+        .unwrap_or_else(|e| panic!("parity apb2 upsert replace: {e:?}"));
+    assert!(!up2.inserted, "parity apb2 second upsert must report !inserted");
+
+    match col.create("apb2-k1", &serde_json::json!({"n": 9})) {
+        Ok(_) => panic!("parity apb2 create on present key must fail"),
+        Err(e) => assert_eq!(
+            e.code(),
+            ErrorCode::AlreadyExists,
+            "parity apb2 create conflict: {e:?}"
+        ),
+    }
+
+    col.create("apb2-k2", &serde_json::json!({"n": 3}))
+        .unwrap_or_else(|e| panic!("parity apb2 create absent: {e:?}"));
+
+    let keys = col
+        .list_keys(Some(64), None)
+        .unwrap_or_else(|e| panic!("parity apb2 list_keys: {e:?}"));
+    assert!(
+        keys.iter().any(|k| k == "apb2-k1") && keys.iter().any(|k| k == "apb2-k2"),
+        "parity apb2 list_keys missing keys: {keys:?}"
+    );
+
+    // replace + version conflict
+    let seed = col
+        .put("apb2-cas", &serde_json::json!({"n": 10}))
+        .unwrap_or_else(|e| panic!("parity apb2 cas seed: {e:?}"));
+    assert_eq!(seed.version, seed.event_id);
+    let v1 = seed.version;
+    let next = col
+        .replace("apb2-cas", &serde_json::json!({"n": 11}), v1)
+        .unwrap_or_else(|e| panic!("parity apb2 replace ok: {e:?}"));
+    assert_eq!(
+        col.get("apb2-cas")
+            .unwrap_or_else(|e| panic!("parity apb2 get after replace: {e:?}"))
+            .expect("present")["n"],
+        11
+    );
+    match col.replace("apb2-cas", &serde_json::json!({"n": 99}), v1) {
+        Ok(_) => panic!("parity apb2 stale replace must fail"),
+        Err(e) => assert_eq!(
+            e.code(),
+            ErrorCode::VersionConflict,
+            "parity apb2 stale replace: {e:?}"
+        ),
+    }
+
+    match col.delete_with(
+        "apb2-cas",
+        Some(v1),
+        true,
+        residiuum_sdk::PutOptions::default(),
+    ) {
+        Ok(_) => panic!("parity apb2 stale delete_with must fail"),
+        Err(e) => assert_eq!(e.code(), ErrorCode::VersionConflict),
+    }
+    let del = col
+        .delete_with(
+            "apb2-cas",
+            Some(next.version),
+            true,
+            residiuum_sdk::PutOptions::default(),
+        )
+        .unwrap_or_else(|e| panic!("parity apb2 delete_with ok: {e:?}"));
+    assert!(del.removed);
+
+    // add generated key
+    let added = col
+        .add(&serde_json::json!({"kind": "parity"}))
+        .unwrap_or_else(|e| panic!("parity apb2 add: {e:?}"));
+    assert_eq!(added.key_profile, KEY_PROFILE_RANDOM_V1);
+    assert_eq!(added.key.len(), 32);
+    assert_eq!(added.receipt.version, added.receipt.event_id);
+    assert_eq!(
+        col.get(&added.key)
+            .unwrap_or_else(|e| panic!("parity apb2 get add: {e:?}"))
+            .expect("add key present")["kind"],
+        "parity"
+    );
+}
+
 /// Collection data-plane scenarios shared by embedded and remote (no admin create).
 ///
-/// Covers: put/get/delete, history, index lifecycle. Requires Read + Write +
-/// IndexAdmin on the bound session.
+/// Covers: put/get/delete, history, index lifecycle, APB-2 mutations.
+/// Requires Read + Write + IndexAdmin on the bound session.
 pub fn run_collection_plane_parity(col: &mut CollectionClient) {
     scenario_put_get_delete(col);
     scenario_history_versions(col);
     scenario_index_lifecycle(col);
+    scenario_apb2_mutations(col);
 }
 
 /// Full pack including create/list/open (needs create rights on the session).

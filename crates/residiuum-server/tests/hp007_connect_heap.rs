@@ -606,6 +606,7 @@ fn apb1_heap_client_from_remote_open_put_get_delete() {
             "put_get_delete",
             "history_versions",
             "index_lifecycle",
+            "apb2_mutations",
         ]
     );
     let mut col = apb1_facade_parity::scenario_list_and_open(&mut client, "users");

@@ -89,6 +89,7 @@ fn facade_parity_pack_embedded() {
             "put_get_delete",
             "history_versions",
             "index_lifecycle",
+            "apb2_mutations",
         ]
     );
     apb1_facade_parity::run_full_facade_parity(&mut client, "orders");

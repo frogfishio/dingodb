@@ -1,7 +1,7 @@
-# APB-1 G6 — Dual-backend façade parity suite
+# APB-1 G6 + APB-2 — Dual-backend façade parity suite
 
-Status: **matrix green 2026-08-01** · package `APB-1` **active / not accept**  
-Authority: [MUST_ADD.md](./MUST_ADD.md) §5 · [APB1_CLIENT_GAP_INVENTORY.md](./APB1_CLIENT_GAP_INVENTORY.md) G6
+Status: **matrix green 2026-08-01** (APB-2 mutations added same day) · packages `APB-1`/`APB-2` **active / not accept**  
+Authority: [MUST_ADD.md](./MUST_ADD.md) §5–§6 · [APB1_CLIENT_GAP_INVENTORY.md](./APB1_CLIENT_GAP_INVENTORY.md) G6
 
 ## Goal
 
@@ -27,6 +27,7 @@ Shared code lives at:
 | `put_get_delete` | yes | yes | yes | Collection plane |
 | `history_versions` | yes | yes | yes | Collection plane |
 | `index_lifecycle` | yes | yes | yes | Needs IndexAdmin |
+| `apb2_mutations` | yes | yes | yes | create/upsert/list_keys/replace/delete_with/add + OCC; CAS residual |
 
 ## Commands
 
@@ -53,5 +54,6 @@ cargo test -p residiuum-server --features dangerous-key-export \
 
 ## Explicit non-claims
 
-- Dual matrix green ≠ APB-1 package accept (IndexManager product claims, HAR-1, Recovery still open).
+- Dual matrix green ≠ APB-1 / APB-2 package accept (store Key Atomic CAS, HAR-1, Recovery still open).
 - Product bootstrap vectors remain rights_mask **13** (no silent expand of public vectors).
+- APB-2 mutation scenario is façade read-then-write parity, not concurrent/crash CAS proof.
