@@ -1,0 +1,2 @@
+Filesystem       Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk16s1   1.8Ti   1.7Ti   153Gi    92%       1     0  100%   /Volumes/Scratch

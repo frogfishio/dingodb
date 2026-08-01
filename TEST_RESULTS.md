@@ -372,7 +372,50 @@ Scratch 2 GiB counterbalance (free space OK):
 | **SSD saturation** | **Not reached** — ~1/3 of sequential ceiling; CPU ~40% of one core |
 | **Write-path throttle** | Per-key encode/index/hash + dual-buffer segment; OS batching is **not** the main 8 KiB limiter |
 | **SQLite comparison** | Batch txn numbers ≠ our per-put Buffered path; see Campaign E |
-| **PEER-SQL same-bed peer** | Contract: [doc/wip/status/surveys/README-PEER-SQL.md](./doc/wip/status/surveys/README-PEER-SQL.md) (modes A/B; harness T2+) |
+| **PEER-SQL same-bed peer** | Contract + first Scratch campaign below (modes A/B) |
+
+---
+
+## Campaign F — PEER-SQL same-bed Residiuum vs SQLite (2026-08-01)
+
+**Diagnostic only** — not a published SLO. Contract:
+[doc/wip/status/surveys/README-PEER-SQL.md](./doc/wip/status/surveys/README-PEER-SQL.md).
+Disclosure: [BENCHMARK_DISCLOSURE.md](./doc/reference/operations/BENCHMARK_DISCLOSURE.md).
+
+**Host:** `Kazoo.local` arm64 Darwin · **Volume:** `/Volumes/Scratch/TEST/` (~153 GiB free before; ~151 GiB after)  
+**Binary:** `target/release/residiuum-testrig` `peer-pump`  
+**Fixed knobs:** logical target **256 MiB**, payload **8192**, seed **20260801**, single thread  
+**SQLite:** WAL, `synchronous=NORMAL` · **Residiuum:** `buffered`  
+**Artifacts:** `doc/wip/status/surveys/scratch-sqlite-peer-20260801/`  
+**Scratch work:** `/Volumes/Scratch/TEST/residiuum-peer-20260801/`
+
+| Cell | Engine | Mode | Keys | ops/s | Logical MiB/s | Disk MiB/s | Peak CPU% | Peak RSS | Wall |
+|------|--------|------|-----:|------:|-------------:|-----------:|----------:|---------:|-----:|
+| residiuum-A | residiuum | A_autocommit (batch=1) | 32768 | **9924** | **77.5** | 158.1 | 77 | 595 MiB | 3.30 s |
+| sqlite-A | sqlite | A_autocommit | 32768 | **9458** | **73.9** | 78.9 | 17 | 6.8 MiB | 3.46 s |
+| residiuum-B | residiuum | B_txn_128 (batch=128) | 32768 | **10221** | **79.8** | 162.8 | 70 | 441 MiB | 3.21 s |
+| sqlite-B | sqlite | B_txn_128 | 32768 | **18675** | **145.9** | 155.7 | 15 | 6.1 MiB | 1.75 s |
+
+### Ratios (Residiuum / SQLite) — same mode only
+
+| Mode | ops/s ratio | Logical MiB/s ratio | Read |
+|------|------------:|--------------------:|------|
+| **A** (autocommit / per-put Buffered) | **1.05** | **1.05** | Residiuum ≈ SQLite (slightly ahead on this run) |
+| **B** (txn-128 / put_many 128) | **0.55** | **0.55** | SQLite ~1.8× Residiuum (amortized commit) |
+
+**Do not** compare Residiuum-A to SQLite-B (or cross modes).
+
+### Interpretation
+
+1. **Mode A is the fair “general load” peer.** On this Scratch run, Residiuum matches SQLite within noise (~5% ops/s). That is the first measured same-bed answer for per-ack / autocommit 8 KiB blobs — not a legend number.
+2. **Mode B is not equal semantics.** SQLite `BEGIN…COMMIT` amortizes durability; Residiuum batch=128 still pays Buffered path costs without a product txn API. SQLite leads ~1.8× — expected shape, not a silent store bug.
+3. Residiuum **RSS** is much higher (active segment + indexes in RAM); SQLite stays small. Disk-growth MiB/s is not the comparison metric; **logical MiB/s** is.
+4. Residiuum A ≈ B again (batching barely helps at 8 KiB) — consistent with Campaign E.
+5. Re-run on the same volume after seal/index changes; keep seed/payload/target fixed.
+
+### Command recipe
+
+See `crates/residiuum-testrig/README.md` (PEER-SQL section).
 
 ## Bottom line
 
