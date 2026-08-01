@@ -1,10 +1,14 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.4**
+Status: **definitive execution plan v1.5**
 
-Effective: 2026-07-31
+Effective: 2026-08-01
 
 Owner: Residiuum product and engineering program
+
+**v1.5 note:** External delivery record for scoreboard-accepted C0 (CSQ-12 /
+A2) and FA0 foundation packages FAS-0…FAS-4 (MVP scopes). Living detail remains
+in [doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
 
 Testing authority:
 [TESTING_STRATEGY.md](./doc/reference/engineering/TESTING_STRATEGY.md),
@@ -249,15 +253,15 @@ Program scoreboard (package qualification state, not Kanban columns):
 Qualification** plus tasks `CSQ-0`…`CSQ-12` and docs track `CSQ-DOC`. Package
 graph: `CSQ-0 → (CSQ-1 ‖ CSQ-2) → CSQ-3…CSQ-11 → CSQ-12`.
 
-**Labor snapshot (2026-07-31 — not principal accept):** implementer labor floors
-for `CSQ-0`…`CSQ-12` are on the board at **`in_review`**. Scoreboard package
-states remain **`active`** until principal acceptance. The evidence runner
-builds a valid `residiuum-core-storage-report-v1`. **A2 vs A3 gates are
-separated:** boundary / P0-mutation / independent-publication evaluate with
-real evidence; **A2 currently misses only**
-`CSQ12-GATE-PREDECESSOR-ACCEPT` (scoreboard accept of CSQ-0…11). Platform /
-72h soak / full mutation threshold are **A3** and do not block A2.
-Package labor accept is independent of A2 green.
+**Delivery record (2026-08-01 — scoreboard `accept`):** `CSQ-0`…`CSQ-12` are
+**`accept`** on the program scoreboard. A2 verifies:
+`bash scripts/residiuum-verify-core-storage.sh` (+ `--require-a2-pass`) exit 0;
+`target/csq-evidence/a2-evaluation.json` **a2_pass=true** missing=0 (111 cells);
+`residiuum-core-storage-report-v1.json` result=pass. **A3 residuals** (platform
+matrix, 72h soak, full-mutation %) remain open and do **not** block A2. Board
+stages for some CSQ tasks may still show `in_review` pending principal Kanban
+`done` — package **qualification** state is scoreboard `accept`, not Kanban
+column.
 
 Required order:
 
@@ -276,9 +280,10 @@ DEF-098 exact chunk generations/publication
 → CSQ-12 verified A2 evidence bundle
 ```
 
-Existing APP-0/APP-1 work may complete review because its implementation
-preceded this interlock. No new APP-2+, APB, or HAR-1+ feature labor starts
-until `CSQ-12` is `accept`. HAR-0 truth-only reconciliation may continue.
+`CSQ-12 = accept` unlocks post-C0 lanes (PQH entry honesty, FA0, APB-0 entry
+dependency). APP-0/APP-1 may complete principal review. HAR-0 truth-only
+reconciliation may continue. APB/HAR feature labor still follows package
+dependencies in §7 and the scoreboard.
 
 Any P0 storage-invariant violation discovered during C0:
 
@@ -386,7 +391,18 @@ incremental public proof product:
   FAS-9 after FAS-3 and each accepted theorem family
 ```
 
-FA0 runs alongside PQH and M1. It does not delay ordinary application work
+**Delivery record (2026-08-01 — scoreboard; living detail in NEXT_BUILD_STATUS):**
+
+| Package | Scoreboard | Exit evidence (summary) | Honest residual |
+|---|---|---|---|
+| `FAS-0` | **accept** | Closed §12 catalogue + schemas; `formal/registry/FAS0_CLOSED`; `check-formal-registry.sh` → `fas0-registry-report.json` | Linter/schema depth; no `machine_proved` status inflation |
+| `FAS-1` | **accept** | Pinned Verus/Kani/Lean/TLC; four-tool smokes; `check-formal-toolchain.sh` → `fas1-toolchain-report.json` | TLAPS deferred; CI job wiring |
+| `FAS-2` | **accept** | Lean `Residiuum` State/Observation kernel; `check-formal-foundation.sh` → `fas2-foundation-report.json` | Stronger WF/put preservation; feature ops stubs |
+| `FAS-3` | **accept** | Entrypoint census + type-map; vertical slice `FAS-BRIDGE-AUTHORITY-BINDING-001`; `check-formal-refinement.sh` → `fas3-refinement-report.json` | Store put/get full forward simulation |
+| `FAS-4` | **accept (MVP)** | 8× `FAS-CON-*` Lean theorems; connections + negatives; CSQ A2 links; `check-formal-consistency.sh` → `fas4-consistency-report.json`; profile `mvp_abstract_plus_csq_links` | Full `physically_qualified` consistency profile |
+| `FAS-5`…`FAS-9` | not_started / ready / deferred | — | Per scoreboard |
+
+FA0 continues alongside PQH and M1. It does not delay ordinary application work
 unless that work makes or changes a theorem-bearing claim.
 
 No feature may claim mathematical or formal assurance merely because:
@@ -1019,24 +1035,24 @@ For a single developer, percentages become interleaving order:
 
 ## 17. Starting queue
 
-This is the current executable queue:
+This is the current executable queue (as of **2026-08-01**):
 
 | Queue | Package | State now | Action |
 |---:|---|---|---|
-| 1 | `M0-1` | `accept` | evidence inventory done |
-| 2 | `M0-2` | `accept` | scoreboard reconciled |
-| 3 | `M0-3` | `accept` | `verify-delivery-status.sh` + CI/quality wire-up |
-| 4 | `APP-0` / `APP-1` | `in_review` on board | complete review only; preserve work already produced |
-| 5 | `DEF-098`…`DEF-104` | `accept` | emergency remediation complete; incident record archived |
-| 6 | `CSQ-0`…`CSQ-12` | scoreboard `active`; board labor `in_review` | **current principal track:** principal accept CSQ labor + close A2 residual gates; no A2 claim until `CSQ-12 = accept` and independent verify |
-| 7 | `APB-0`…`APB-12` | `not_started` | immediate Must-Add program after `CSQ-12` accept; absorbs APP-2…APP-8 |
-| 8 | `HAR-0`…`HAR-7` | mixed | truth residual may continue; feature packages interleave only by APB/HAR dependencies |
+| 1 | `M0-1`…`M0-3` | `accept` | program truth + delivery status check |
+| 2 | `DEF-098`…`DEF-104` | `accept` | emergency remediation complete; permanent regressions |
+| 3 | `CSQ-0`…`CSQ-12` | **scoreboard `accept`** | C0/A2 delivered; A3 residuals only |
+| 4 | `FAS-0`…`FAS-4` | **scoreboard `accept`** (FAS-4 = MVP) | FA0 foundation through consistency MVP; FAS-5 next formal lane |
+| 5 | `PQH-0`…`PQH-11` | scoreboard `active`; board largely `in_review` | **principal accept** PQH labor; qualification residual on controlled hosts |
+| 6 | `APP-0` / `APP-1` | board `in_review` | principal review only; preserve produced work |
+| 7 | `APB-0`…`APB-12` | `not_started` | **M1 application baseline** — unblocked by CSQ-12 accept; next engine path with HAR |
+| 8 | `HAR-0`…`HAR-7` | mixed | truth residual may continue; feature packages follow APB/HAR deps |
+| 9 | `FAS-5`…`FAS-9` | ready / not_started / deferred | security family and later formal waves; do not freestyle past plan order |
 
-**Next principal action on C0:** review/accept implementer handoffs for
-`CSQ-0`…`CSQ-12` (board `in_review`), then close residual A2 gates listed by
-the evidence runner (`CSQ12-GATE-*`) until
-`residiuum verify --profile residiuum-core-storage-v1 --level A2` passes
-without missing cells. **APB-0** remains blocked on `CSQ-12 = accept`.
+**Critical path (re-check scoreboard before labor):** Heap application-ready +
+APB (M1) and principal PQH accept remain the product gate after C0. FA0 may
+continue as `P1-TRUST` alongside. **APB-0** entry dependency (`CSQ-12 = accept`)
+is satisfied on the scoreboard.
 
 Live scoreboard:
 [doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
@@ -1095,17 +1111,21 @@ change the plan.
 ## 20. Definitive summary
 
 ```text
-NOW:
+DELIVERED (scoreboard accept — 2026-08-01):
 DEF-098…DEF-104 accepted
-→ C0 / CSQ-0…CSQ-12 (labor floors in_review; principal accept open)
-→ residiuum-core-storage-v1 / A2 evidence runner (honest not_run + exact residual gates)
-→ principal accept + residual A2 gate closure → CSQ-12 accept
-→ verified residiuum-core-storage-v1 / A2
-→ APB-0…APB-12 with HAR dependencies
+→ C0 / CSQ-0…CSQ-12 accepted
+→ residiuum-core-storage-v1 / A2 verifies (a2_pass; A3 residual)
+→ FA0: FAS-0…FAS-4 accepted (FAS-4 consistency profile = MVP abstract+CSQ links)
+→ reports under target/formal-assurance/fas{0..4}-*.json
+
+NOW (critical path):
+PQH principal accept (labor largely in_review; not qualification-accept alone)
+→ APB-0…APB-12 with HAR dependencies (M1)
 → verified residiuum-application-baseline-v1 / A2
+→ FAS-5… (P1-TRUST formal lane; does not replace APB/M1 order)
 
 THEN:
-trustworthy SQLite-replacement core
+trustworthy SQLite-replacement core (M2)
 + minimum Evidence substrate
 + minimum bounded Telemetry path
 + Studio Explorer in parallel, not as an engine gate
@@ -1125,5 +1145,6 @@ massive retention
 → geospatial
 ```
 
-Start with `M0-1`. Its output determines which apparent Heap gaps are real and
-prevents already completed work from being rebuilt.
+Authoritative living package states:
+[doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
+Do not treat code presence or board `in_review` alone as package `accept`.
