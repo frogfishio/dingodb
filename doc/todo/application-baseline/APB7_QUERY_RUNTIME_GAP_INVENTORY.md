@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0–T5 + T8–T9 2026-08-02** (… + coverage grade) · package `APB-7` **active / not accept**  
+Status: **T0–T5 + T8–T10 2026-08-02** (… + product cursor secrets) · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -130,8 +130,8 @@ honest residual until APP-7/APB-7 activate wire.
 | G4 | Builder plan_hash == RQL plan_hash | **T1 partial** | Façade path tested vs `compile_app_core` for equality filter + project/order/limit |
 | G5 | Projection | **T2 partial** | Project after field-order sort on full docs (order paths need not be projected) |
 | G6 | Scalar order + key tie-break | **T2+T3** | Field-order sort + multipage `last_sort_tuple` resume (APP-6 T3) |
-| G7 | Limit + page + continuation | **partial** | Working under vector-lock keys; product cursor secrets residual |
-| G8 | View / parameter bound in cursor | **gap** | Cursor binds heap/collection/plan; **not** ReadView id / full parameter MAC set |
+| G7 | Limit + page + continuation | **T10 partial** | Installable product ring; default vector-lock; Heap-confined durable secret residual |
+| G8 | View / parameter bound in cursor | **T10 partial** | `parameter_hash` mint/verify bound; ReadView id in cursor still residual |
 | G9 | Complete-by-default coverage | **T3 partial** | `ScanJsonPage` carries hole evidence (embedded list/get race); RQL page coverage still stub-complete |
 | G10 | Budgets max_bytes / max_result_bytes | **T2 partial** | Enforced in `query_exec_v1` (compact JSON lengths); documents budget retained |
 | G11 | Deadline / cancellation | **T8 partial** | `QueryRunOptions::{deadline,cancel}`; cooperative checks in executor; tests 4/4 |
@@ -163,7 +163,7 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T7** | `9e19bd5f` | **todo** | Dual-pack + accept checklist |
 | **T8** | `5bd3fe3b` | **in_review** | Deadline + CancelToken (`apb7_deadline_cancel` 4/4) |
 | **T9** | `99e32b76` | **in_review** | Coverage grade (`apb7_coverage_grade` 4/4) |
-| **T10** | `b11912fe` | **todo** | Product cursor secrets |
+| **T10** | `b11912fe` | **in_review** | Product cursor secrets + parameter_hash (`apb7_cursor_secrets` 4/4) |
 | **T11** | `f6633005` | **todo** | Multipage oracle matrix |
 
 Do **not** invent the next slice in markdown alone — pull or create the board card first (GOV T1).

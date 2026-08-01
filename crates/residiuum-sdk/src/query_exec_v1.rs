@@ -21,7 +21,10 @@ use crate::app_v1::{
     ConsistencyEvidence, Continuation, CoverageEvidence, CoveragePolicy, HoleEvidence, Parameters,
     QueryBudget, QueryId, QueryPage, QueryRow, QueryRunOptions, QueryExplanation,
 };
-use crate::cursor_v1::{mint, CursorKeyRing, CursorLogical, VerifyContext, PROFILE as CURSOR_PROFILE};
+use crate::cursor_v1::{
+    active_cursor_key_ring, mint, parameter_hash as cursor_parameter_hash, CursorLogical,
+    VerifyContext, PROFILE as CURSOR_PROFILE,
+};
 use crate::error::Error;
 use crate::plan_v1::{CollectionBindings, NullsOrder, OrderDir, OrderTerm, RqlPlanV1};
 use crate::predicate::{
@@ -134,8 +137,15 @@ pub fn execute_plan<S: DocScan>(
         .unwrap_or(plan.page_size)
         .clamp(1, 4_096) as usize;
 
+    let param_hash = cursor_parameter_hash(params);
     let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
-        decode_after(cont, heap_id, collection_id, &plan.plan_hash())?
+        decode_after(
+            cont,
+            heap_id,
+            collection_id,
+            &plan.plan_hash(),
+            &param_hash,
+        )?
     } else {
         (None, plan.limit)
     };
@@ -425,6 +435,7 @@ pub fn execute_plan<S: DocScan>(
             heap_id,
             collection_id,
             &plan.plan_hash(),
+            &param_hash,
             &plan.order,
             &last_tuple,
             remaining_after,
@@ -715,6 +726,7 @@ fn mint_page_cursor(
     heap_id: HeapId,
     collection_id: CollectionId,
     plan_hash: &[u8; 32],
+    parameter_hash: &str,
     order: &[OrderTerm],
     last_sort_tuple: &JsonValue,
     remaining_limit: Option<u64>,
@@ -722,7 +734,8 @@ fn mint_page_cursor(
     coverage: CoveragePolicy,
     consistency: crate::app_v1::ConsistencyMode,
 ) -> Result<Continuation, Error> {
-    let ring = CursorKeyRing::vector_lock();
+    // APB-7 T10: product ring when installed; otherwise vector-lock default.
+    let ring = active_cursor_key_ring();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -734,7 +747,7 @@ fn mint_page_cursor(
         collection_id: format_uuid(collection_id.as_bytes()),
         authority_epoch: 1,
         plan_hash: hex32(plan_hash),
-        parameter_hash: "00".repeat(32),
+        parameter_hash: parameter_hash.to_string(),
         order_normalized: order_normalized_json(order),
         last_sort_tuple: last_sort_tuple.clone(),
         source_frontier: serde_json::json!({"generation": 0}),
@@ -760,8 +773,9 @@ fn decode_after(
     heap_id: HeapId,
     collection_id: CollectionId,
     plan_hash: &[u8; 32],
+    parameter_hash: &str,
 ) -> Result<(Option<JsonValue>, Option<u64>), Error> {
-    let ring = CursorKeyRing::vector_lock();
+    let ring = active_cursor_key_ring();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -770,7 +784,8 @@ fn decode_after(
         heap_id: format_uuid(heap_id.as_bytes()),
         collection_id: format_uuid(collection_id.as_bytes()),
         plan_hash: Some(hex32(plan_hash)),
-        parameter_hash: None,
+        // APB-7 T10: bind parameters into resume (fail-closed on mismatch).
+        parameter_hash: Some(parameter_hash.to_string()),
     };
     let logical = crate::cursor_v1::verify(&cont.token, &ctx, &ring, now)?;
     let rem = if logical.remaining_limit == u64::MAX {

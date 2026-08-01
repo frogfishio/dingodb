@@ -98,11 +98,13 @@ pub use rql_app_core::{
     DIAG_RQL_FEATURE_UNAVAILABLE, MAX_RQL_SOURCE_BYTES,
 };
 pub use cursor_v1::{
-    derive_vector_lock_key, mint as mint_cursor, mint_now as mint_cursor_now, verify as verify_cursor,
-    CursorKey, CursorKeyRing, CursorLogical, VerifyContext as CursorVerifyContext,
-    CURSOR_KEY_MATERIAL_PROFILE, MAC_DOMAIN as CURSOR_MAC_DOMAIN, MAX_ACCEPT_AGE_SECONDS,
-    PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS, TTL_SECONDS as CURSOR_TTL_SECONDS,
-    VECTOR_LOCK_SEED,
+    active_cursor_key_ring, derive_vector_lock_key, install_cursor_key_ring,
+    mint as mint_cursor, mint_now as mint_cursor_now, parameter_hash as cursor_parameter_hash,
+    verify as verify_cursor, CursorKey, CursorKeyRing, CursorKeyRingGuard, CursorLogical,
+    VerifyContext as CursorVerifyContext, CURSOR_KEY_MATERIAL_PROFILE,
+    MAC_DOMAIN as CURSOR_MAC_DOMAIN, MAX_ACCEPT_AGE_SECONDS, PARAMETER_HASH_DOMAIN,
+    PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS,
+    TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
 };
 pub use query_exec_v1::{execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE};
 pub use read_view_v1::{

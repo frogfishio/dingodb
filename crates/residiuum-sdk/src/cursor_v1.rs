@@ -3,18 +3,24 @@
 //! Normative: CORE plan §11; `spec/app/v1/cursor_vectors_v1.json`.
 //!
 //! This module freezes **mint / verify** for opaque [`Continuation`] tokens with
-//! domain-separated BLAKE3 keyed MACs. It does **not** execute queries or claim
-//! product pagination (page executor residual; product key storage residual;
-//! HAR-4 path residual).
+//! domain-separated BLAKE3 keyed MACs.
+//!
+//! **APB-7 T10:** product cursors use an installable [`CursorKeyRing`] (not
+//! vector-lock-only) and bind a canonical [`parameter_hash`] into mint/verify.
+//! Heap-confined durable secret storage remains a residual (CORE §11).
 //!
 //! Test / vector key material uses
-//! [`CURSOR_KEY_MATERIAL_PROFILE`] — not Heap-confined production secrets.
+//! [`CURSOR_KEY_MATERIAL_PROFILE`] when no product ring is installed.
 
 use crate::app_v1::{Continuation, CURSOR_PROFILE};
 use crate::error::Error;
 use serde_json::{json, Map, Value as JsonValue};
 use std::collections::BTreeMap;
+use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Domain separation for parameter binding hashes (APB-7 T10).
+pub const PARAMETER_HASH_DOMAIN: &str = "residiuum:cursor-v1:parameter-hash-v1";
 
 /// Cursor profile label (Class C; matches [`CURSOR_PROFILE`]).
 pub const PROFILE: &str = CURSOR_PROFILE;
@@ -119,6 +125,39 @@ impl CursorKeyRing {
         }
     }
 
+    /// Product / host-provided secret ring (APB-7 T10).
+    ///
+    /// `secret` MUST NOT be derived only from public identifiers. This type
+    /// never logs the secret. Durable Heap-confined storage is residual.
+    pub fn product(key_id: impl Into<String>, secret: [u8; 32]) -> Self {
+        Self {
+            current: CursorKey {
+                key_id: key_id.into(),
+                secret,
+            },
+            previous: None,
+        }
+    }
+
+    /// Product ring with previous key still accepted (rotation window).
+    pub fn product_with_previous(
+        current_key_id: impl Into<String>,
+        current_secret: [u8; 32],
+        previous_key_id: impl Into<String>,
+        previous_secret: [u8; 32],
+    ) -> Self {
+        Self {
+            current: CursorKey {
+                key_id: current_key_id.into(),
+                secret: current_secret,
+            },
+            previous: Some(CursorKey {
+                key_id: previous_key_id.into(),
+                secret: previous_secret,
+            }),
+        }
+    }
+
     fn lookup(&self, key_id: &str) -> Option<&CursorKey> {
         if self.current.key_id == key_id {
             return Some(&self.current);
@@ -138,6 +177,63 @@ pub fn derive_vector_lock_key(key_id: &str) -> [u8; 32] {
     h.update(&[0u8]);
     h.update(VECTOR_LOCK_SEED.as_bytes());
     *h.finalize().as_bytes()
+}
+
+/// Canonical parameter hash bound into cursor mint/verify (64 hex chars).
+///
+/// Empty map hashes to a stable digest (not the all-zero placeholder).
+pub fn parameter_hash(params: &BTreeMap<String, JsonValue>) -> String {
+    let body = serde_json::to_vec(params).unwrap_or_else(|_| b"{}".to_vec());
+    let mut h = blake3::Hasher::new();
+    h.update(PARAMETER_HASH_DOMAIN.as_bytes());
+    h.update(&[0u8]);
+    h.update(&body);
+    hex32(h.finalize().as_bytes())
+}
+
+fn active_ring_slot() -> &'static Mutex<CursorKeyRing> {
+    static SLOT: OnceLock<Mutex<CursorKeyRing>> = OnceLock::new();
+    SLOT.get_or_init(|| Mutex::new(CursorKeyRing::vector_lock()))
+}
+
+/// Install the process-local cursor key ring used by page mint/verify.
+///
+/// Returns the previous ring (for restore in tests).
+pub fn install_cursor_key_ring(ring: CursorKeyRing) -> CursorKeyRing {
+    let mut guard = active_ring_slot()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    std::mem::replace(&mut *guard, ring)
+}
+
+/// Clone of the active process-local cursor key ring.
+pub fn active_cursor_key_ring() -> CursorKeyRing {
+    active_ring_slot()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+}
+
+/// RAII restore of the previous cursor key ring on drop.
+pub struct CursorKeyRingGuard {
+    previous: Option<CursorKeyRing>,
+}
+
+impl CursorKeyRingGuard {
+    /// Install `ring` until this guard is dropped.
+    pub fn install(ring: CursorKeyRing) -> Self {
+        Self {
+            previous: Some(install_cursor_key_ring(ring)),
+        }
+    }
+}
+
+impl Drop for CursorKeyRingGuard {
+    fn drop(&mut self) {
+        if let Some(prev) = self.previous.take() {
+            let _ = install_cursor_key_ring(prev);
+        }
+    }
 }
 
 impl CursorLogical {
