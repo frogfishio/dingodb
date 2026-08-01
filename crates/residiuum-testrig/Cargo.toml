@@ -25,3 +25,5 @@ clap.workspace = true
 serde = { workspace = true }
 serde_json.workspace = true
 getrandom.workspace = true
+# PEER-SQL: same-bed SQLite peer (diagnostic only; bundled libsqlite for portability).
+rusqlite = { version = "0.32", features = ["bundled"] }

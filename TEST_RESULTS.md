@@ -372,6 +372,7 @@ Scratch 2 GiB counterbalance (free space OK):
 | **SSD saturation** | **Not reached** — ~1/3 of sequential ceiling; CPU ~40% of one core |
 | **Write-path throttle** | Per-key encode/index/hash + dual-buffer segment; OS batching is **not** the main 8 KiB limiter |
 | **SQLite comparison** | Batch txn numbers ≠ our per-put Buffered path; see Campaign E |
+| **PEER-SQL same-bed peer** | Contract: [doc/wip/status/surveys/README-PEER-SQL.md](./doc/wip/status/surveys/README-PEER-SQL.md) (modes A/B; harness T2+) |
 
 ## Bottom line
 

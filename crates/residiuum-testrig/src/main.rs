@@ -10,6 +10,7 @@
 mod chaos;
 mod manifest;
 mod monitor;
+mod peer;
 mod phase_bench;
 mod pump;
 mod size;
@@ -20,6 +21,7 @@ use manifest::{
     manifest_path_for_store, per_store_manifest_path, store_path_for, MAX_STORES,
 };
 use monitor::{evaluate_run, run_monitor, MonitorConfig};
+use peer::{parse_engine, parse_mode, run_peer_pump, PeerConfig};
 use phase_bench::{run_phase_bench, PhaseBenchConfig};
 use pump::{ensure_parent, parse_durability, run_pump, PumpConfig};
 use serde_json::{json, Value};
@@ -202,6 +204,33 @@ enum Command {
         #[arg(long)]
         json_out: bool,
     },
+    /// PEER-SQL same-bed peer pump: Residiuum or SQLite under mode A/B.
+    ///
+    /// Target is **logical payload** (`keys * payload_size`). Compare A vs A and
+    /// B vs B only. See doc/wip/status/surveys/README-PEER-SQL.md.
+    PeerPump {
+        /// Work directory (Residiuum: `work/store`; SQLite: `work/peer.sqlite`).
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        /// Engine: residiuum | sqlite
+        #[arg(long)]
+        engine: String,
+        /// Mode: A (autocommit / batch=1) | B (txn-128 / batch=128)
+        #[arg(long)]
+        mode: String,
+        /// Logical payload budget (default 256M).
+        #[arg(long, default_value = "256M")]
+        target_bytes: String,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        #[arg(long, default_value_t = 0)]
+        seed: u64,
+        /// Minimum free space (auto ≈2.5× target + 512 MiB). Pass `0` to disable.
+        #[arg(long, default_value = "auto")]
+        min_free: String,
+        #[arg(long)]
+        json_out: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -316,6 +345,25 @@ fn main() -> ExitCode {
             batch,
             json_out,
         }),
+        Command::PeerPump {
+            work,
+            engine,
+            mode,
+            target_bytes,
+            payload_size,
+            seed,
+            min_free,
+            json_out,
+        } => cmd_peer_pump(
+            work,
+            engine,
+            mode,
+            target_bytes,
+            payload_size,
+            seed,
+            min_free,
+            json_out,
+        ),
     };
 
     match result {
@@ -343,6 +391,31 @@ fn resolve_min_free(spec: &str, target_bytes: u64) -> Result<u64, String> {
         return Ok(default_min_free_for_target(target_bytes));
     }
     parse_size(s)
+}
+
+fn cmd_peer_pump(
+    work: PathBuf,
+    engine: String,
+    mode: String,
+    target_bytes: String,
+    payload_size: usize,
+    seed: u64,
+    min_free: String,
+    json_out: bool,
+) -> Result<(), String> {
+    let target = parse_size(&target_bytes)?;
+    let seed = resolve_seed(seed);
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
+    run_peer_pump(&PeerConfig {
+        work,
+        engine: parse_engine(&engine)?,
+        mode: parse_mode(&mode)?,
+        target_bytes: target,
+        payload_size,
+        seed,
+        min_free_bytes,
+        json_out,
+    })
 }
 
 fn cmd_pump(

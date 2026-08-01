@@ -21,6 +21,41 @@ cargo build -p residiuum-testrig --release
 # binary: target/release/residiuum-testrig
 ```
 
+## PEER-SQL same-bed peer (`peer-pump`)
+
+Diagnostic Residiuum vs SQLite pump under **named** modes. **Not** a product SLO.
+Contract: [README-PEER-SQL.md](../../doc/wip/status/surveys/README-PEER-SQL.md).
+Disclosure: [BENCHMARK_DISCLOSURE.md](../../doc/reference/operations/BENCHMARK_DISCLOSURE.md).
+
+| Mode | SQLite | Residiuum |
+|------|--------|-----------|
+| **A** | Autocommit per row | `buffered`, put batch 1 |
+| **B** | `BEGIN`…128 inserts…`COMMIT` | `buffered`, put batch 128 |
+
+Target is **logical payload** (`keys × payload_size`). Defaults: payload **8192**, target **256M**.
+Compare **A vs A** and **B vs B** only.
+
+**Reportable campaigns:** work under `/Volumes/Scratch/TEST/` (never a near-full internal disk).
+Smoke may use `/tmp` with `--min-free 0`.
+
+```sh
+cargo build -p residiuum-testrig --release
+BIN=target/release/residiuum-testrig
+SCRATCH=/Volumes/Scratch/TEST   # required for publishable runs
+
+# Four cells (engine × mode). Copy JSON into doc/wip/status/surveys/scratch-sqlite-peer-YYYYMMDD/
+$BIN peer-pump -w "$SCRATCH/residiuum-peer-ra" --engine residiuum --mode A --json-out
+$BIN peer-pump -w "$SCRATCH/residiuum-peer-rb" --engine residiuum --mode B --json-out
+$BIN peer-pump -w "$SCRATCH/residiuum-peer-sa" --engine sqlite    --mode A --json-out
+$BIN peer-pump -w "$SCRATCH/residiuum-peer-sb" --engine sqlite    --mode B --json-out
+
+# Tiny smoke (not Scratch)
+$BIN peer-pump -w /tmp/peer-smoke --engine sqlite --mode A \
+  --target-bytes 2M --payload-size 8192 --seed 1 --min-free 0 --json-out
+```
+
+Writeups land in `TEST_RESULTS.md` after a Scratch campaign (board task T3).
+
 ## Quick smoke (small target)
 
 ```sh
