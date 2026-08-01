@@ -49,7 +49,7 @@ reconcile with an independent complete-scan oracle; both backends.
 | APB-1 | **active** | `CollectionClient` dual backend; `DocScan` over list_keys+get |
 | APB-6 | **active** (T1/T2 in_review) | ReadView pin (embedded segment FP); **APB-7 T5** view-bound gate (not SI) |
 | APP-3 | **active** | Data plane for scan (put/get/list_keys) |
-| HAR-4 | **not_started** | Qualified remote posture residual for product remote query |
+| HAR-4 | **active** (inventory) | [HAR4_QUERY_REMOTE_GAP_INVENTORY.md](../heap-application-ready/HAR4_QUERY_REMOTE_GAP_INVENTORY.md); op 118 still reserved; default not HeapKey |
 | APP-7 | **not_started** | Wire op **118** `rql_query` remains **reserved** |
 
 **Unblock vs product claim:** APP-4/5/6 + APB-1 labor is enough to *inventory*

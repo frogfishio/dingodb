@@ -112,7 +112,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | HAR-1 | active | 2026-08-01 | HAR-0, APP-0 | **Reconcile:** op **106** `collection_create` is **active** in `operations-v1.json` + `rpc-v1/collection_create.*` + fixtures; embedded `Heap::create_collection` / `create_collection_idempotent`; server dispatch 106; `RemoteHeap::create_collection`; façade dual create (APB-1 G6b HeapAdmin mint); [HAR1_COLLECTION_CREATE_EVIDENCE.md](../../todo/heap-application-ready/HAR1_COLLECTION_CREATE_EVIDENCE.md) | crash/failpoint/journey residual; product bootstrap cert still no HeapAdmin; **no package accept** | collection creation |
 | HAR-2 | not_started | — | HAR-1 | precursor: `hp005_accept`, authority genesis | CLI ceremony package not accept | local Heap ceremony |
 | HAR-3 | not_started | — | HAR-2 | precursor: certs, handshake | full key lifecycle journey open | application-key lifecycle |
-| HAR-4 | not_started | — | HAR-3 | precursor: HeapKey handshake, TLS accept loop | HeapKey not proven default remote posture | qualified remote path |
+| HAR-4 | active | 2026-08-02 | HAR-3 | **T0 inventory** for query-remote dep: [HAR4_QUERY_REMOTE_GAP_INVENTORY.md](../../todo/heap-application-ready/HAR4_QUERY_REMOTE_GAP_INVENTORY.md); gate locks `har4_query_remote_gate` **4/4** (op 118 reserved; default not yet `qualified_heap_key`; `validate_qualified_listener` matrix); precursor: HeapKey handshake + TLS + `connect_heap` | default HeapKey serve flip; co-host config; op 118 activate (APP-7); dual remote query oracle; **no package accept** | qualified remote path |
 | HAR-5 | not_started | — | HAR-4 | precursor: wipe/restore/key-loss/DR drills (hp009/hp010) | broader crash cells; non-AWS KMS live | Heap operations |
 | HAR-6 | not_started | — | HAR-5, APB-12 | precursor: RemoteHeap CRUD/find/history/indexes | no qualified application-baseline journey | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
@@ -193,7 +193,8 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Board card | Stage | Note |
 |---:|---|---|---|
-| 1 | **HAR-4 dep** for query remote `7872d5fa` | `todo` | **next** (blocks product remote / op 118) |
+| 1 | **APP-7 / T6** op 118 `48b8f01b` | `todo` | still **blocked** until HAR-4 default path / explicit lab admit |
+| — | **HAR-4 dep** query remote `7872d5fa` | `in_review` | inventory + gate locks; not package accept |
 | — | **APB-6 T3** view residual `be072203` | `in_review` | retention + PinCapability + multipage accounting |
 | — | **APB-7 T11** multipage oracle matrix `f6633005` | `in_review` | 6/6 multipage vs list_keys+get; residual dual-remote |
 | — | **APB-7 T10** product cursor secrets `b11912fe` | `in_review` | product ring + parameter_hash; tests 4/4 |
@@ -201,7 +202,6 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **APB-7 T8** deadline+cancel `5bd3fe3b` | `in_review` | deadline + CancelToken; tests 4/4 |
 | — | **APP-6 T3** field-order multipage `c7cd3cca` | `in_review` | last_sort_tuple resume; tests 3/3 |
 | — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
-| 9 | **APP-7 / T6** op 118 `48b8f01b` | `todo` | **blocked** until HAR-4 |
 | 10 | **APB-7 T7** dual-pack accept `9e19bd5f` | `todo` | package accept gate |
 | — | **RQL-v1 full language** `89a80e77` | `todo` | **NOT** APB-7; later package |
 | — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
@@ -220,7 +220,7 @@ Program order (packages; Kanban cards bind labor under them):
 3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
    **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
    **APB-7 active** (**T0–T4** in_review; **T5–T7** + APB-6 T3 still `todo` — no product query / no op 118);
-   **APB-1 active** (G1–G6 dual matrix); next pull **HAR-4 dep** / APP-7 T6 gates or **APB-7 T7** checklist (board SoT).
+   **APB-1 active** (G1–G6 dual matrix); **HAR-4 active** (inventory only); next pull **APB-7 T7** checklist labor or **HAR-4 T2** default HeapKey (board SoT).
    Non-query APB may lag (APB-2 T5/T6 already `todo` on board).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
