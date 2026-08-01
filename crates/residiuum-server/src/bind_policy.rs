@@ -134,6 +134,8 @@ pub struct ServeStartupReport {
     pub node_index: Option<u32>,
     /// Whether the operator opted into a non-loopback plaintext bind.
     pub allow_insecure_bind: bool,
+    /// HAR-4: `qualified-heap-key`, `legacy-token-server`, or unset.
+    pub auth_path: Option<&'static str>,
 }
 
 impl ServeStartupReport {
@@ -168,7 +170,20 @@ impl ServeStartupReport {
             store_lock: "exclusive-writer (OS advisory + in-process; DEF-020)",
             node_index: None,
             allow_insecure_bind,
+            auth_path: None,
         }
+    }
+
+    /// Attach HAR-4 authentication path label for operator honesty.
+    pub fn with_auth_path(mut self, qualified_heap_key: bool, legacy_token_server: bool) -> Self {
+        self.auth_path = Some(if qualified_heap_key {
+            "qualified-heap-key (product)"
+        } else if legacy_token_server {
+            "legacy-token-server (non-qualified; not product remote)"
+        } else {
+            "unset"
+        });
+        self
     }
 
     /// Network `residiuum serve-cluster` defaults (experimental; Raft when attached).
@@ -212,6 +227,7 @@ impl ServeStartupReport {
             store_lock: "exclusive-writer per node store (DEF-020)",
             node_index: Some(node_index),
             allow_insecure_bind,
+            auth_path: None,
         }
     }
 
@@ -247,6 +263,17 @@ impl ServeStartupReport {
             format!("  store_lock: {}", self.store_lock),
             format!("  allow_insecure_bind: {insecure}"),
         ];
+        if let Some(path) = self.auth_path {
+            lines.push(format!("  auth_path: {path}"));
+            if path.starts_with("legacy-token-server") {
+                lines.push(
+                    "  warning: legacy-token-server is non-qualified (HAR-4); product \
+                     remote tutorials use connect_heap + qualified HeapKey. Not a \
+                     product remote posture claim."
+                        .into(),
+                );
+            }
+        }
         if let Some(n) = self.node_index {
             lines.push(format!("  node_index: {n}"));
         }

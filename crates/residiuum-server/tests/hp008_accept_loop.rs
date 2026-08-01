@@ -219,7 +219,7 @@ fn live_tls_accept_loop_heap_key_ping_without_token() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))

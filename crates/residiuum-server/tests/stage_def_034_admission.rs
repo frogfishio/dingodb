@@ -129,7 +129,7 @@ fn global_rate_limit_returns_resource_limit() {
         .unwrap();
     let (bind, stop, ctrl, handle) = start_server(
         &dir,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .authz(policy)
             .admission_limits(limits)
             .admission(Arc::clone(&admission)),
@@ -173,7 +173,7 @@ fn auth_failure_lockout() {
         .unwrap();
     let (bind, stop, ctrl, handle) = start_server(
         &dir,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .authz(policy)
             .admission_limits(limits),
     );
@@ -223,7 +223,7 @@ fn connect_churn_limit_rejects() {
     let admission = AdmissionController::new(limits.clone());
     let (bind, stop, ctrl, handle) = start_server(
         &dir,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .admission_limits(limits)
             .admission(Arc::clone(&admission))
             .max_connections(64),
@@ -288,7 +288,7 @@ fn expensive_op_concurrency_budget() {
     let admission = AdmissionController::new(limits.clone());
     let (bind, stop, ctrl, handle) = start_server(
         &dir,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .admission_limits(limits)
             .admission(Arc::clone(&admission)),
     );
@@ -369,7 +369,7 @@ fn operation_id_replay_window_allows_retry() {
     let admission = AdmissionController::new(limits.clone());
     let (bind, stop, ctrl, handle) = start_server(
         &dir,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .admission_limits(limits)
             .admission(Arc::clone(&admission)),
     );
@@ -439,7 +439,7 @@ fn sdk_client_sees_resource_limit_on_rate() {
     };
     let (bind, stop, _ctrl, handle) = start_server(
         &dir,
-        ServeOptions::new().admission_limits(limits),
+        ServeOptions::new().legacy_token_server().admission_limits(limits),
     );
 
     let url = format!("residiuum://{bind}");

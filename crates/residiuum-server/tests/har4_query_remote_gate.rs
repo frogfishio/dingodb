@@ -1,7 +1,7 @@
 //! HAR-4 dep (query product): gate locks for qualified remote + op 118.
 //!
-//! Does **not** activate op 118 or flip ServeOptions default to HeapKey.
-//! Locks honesty for APP-7 / APB-7 T6 dependency tracking.
+//! HAR-4 T2: product default is qualified HeapKey; legacy requires explicit
+//! opt-in. Does **not** activate op 118 or mark HAR-4 package accept.
 
 use residiuum_server::{
     request_registry_allows, validate_qualified_listener, ResidentHeapRegistry, ServeOptions,
@@ -18,13 +18,40 @@ fn op_118_rql_query_still_reserved() {
 }
 
 #[test]
-fn serve_options_default_is_not_yet_qualified_heap_key() {
-    // HAR-4 exit requires HeapKey default; today default remains opt-in.
+fn serve_options_product_default_is_qualified_heap_key() {
+    // HAR-4 T2: HeapKey is the product ServeOptions default.
     let opts = ServeOptions::default();
     assert!(
-        !opts.qualified_heap_key,
-        "HAR-4 residual: default serve is not yet qualified_heap_key=true"
+        opts.qualified_heap_key,
+        "HAR-4 T2: default serve must be qualified_heap_key=true"
     );
+    assert!(
+        !opts.legacy_token_server,
+        "product default is not legacy_token_server"
+    );
+}
+
+#[test]
+fn legacy_token_server_clears_qualified_and_labels_path() {
+    let opts = ServeOptions::new().legacy_token_server();
+    assert!(!opts.qualified_heap_key);
+    assert!(opts.legacy_token_server);
+}
+
+#[test]
+fn qualified_and_legacy_flags_are_mutually_exclusive_at_api() {
+    // Builder: enabling qualified clears legacy.
+    let opts = ServeOptions::new()
+        .legacy_token_server()
+        .qualified_heap_key(true);
+    assert!(opts.qualified_heap_key);
+    assert!(!opts.legacy_token_server);
+
+    // Setting both true is possible only by field mutation; serve_store_with
+    // must refuse. Simulate via explicit field set after builders.
+    let mut bad = ServeOptions::new().legacy_token_server();
+    bad.qualified_heap_key = true;
+    assert!(bad.qualified_heap_key && bad.legacy_token_server);
 }
 
 #[test]
@@ -60,17 +87,35 @@ fn qualified_listener_requires_tls_and_forbids_token() {
 }
 
 #[test]
+fn serve_store_with_refuses_co_host_qualified_and_legacy() {
+    use residiuum_server::serve_store_with;
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("app.residiuum");
+    residiuum_store::Store::open(&path).unwrap();
+
+    let mut opts = ServeOptions::new().legacy_token_server();
+    // Force both flags (builder normally clears legacy when enabling qualified).
+    opts.qualified_heap_key = true;
+    let err = serve_store_with(&path, "127.0.0.1:0", opts).expect_err("co-host must fail");
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("co-host") || msg.contains("legacy"),
+        "err={msg}"
+    );
+}
+
+#[test]
 fn baseline_ops_json_marks_118_reserved() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../spec/app/baseline-v1/operations-v1.json");
     let raw = std::fs::read_to_string(&path).expect("operations-v1.json");
     let v: serde_json::Value = serde_json::from_str(&raw).expect("json");
-    // Find any wire entry for rql_query / 118 and assert reserved language.
     let s = raw.to_lowercase();
     assert!(
         s.contains("rql_query") && (s.contains("reserved") || s.contains("\"status\": \"reserved\"")),
         "baseline ops must keep rql_query reserved honesty"
     );
-    // Spot-check op id 118 appears as reserved in structured form when present.
     let _ = v;
 }

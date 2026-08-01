@@ -118,7 +118,7 @@ fn public_probes_work_without_token_on_auth_server() {
     let dir = TempDir::new().unwrap();
     let (bind, stop, handle) = start_server(
         &dir,
-        ServeOptions::new().auth_token("super-secret-token-value"),
+        ServeOptions::new().legacy_token_server().auth_token("super-secret-token-value"),
     );
 
     {
@@ -152,7 +152,7 @@ fn public_probes_work_without_token_on_auth_server() {
 fn detailed_health_and_metrics_require_auth() {
     let dir = TempDir::new().unwrap();
     let secret = "super-secret-token-value";
-    let (bind, stop, handle) = start_server(&dir, ServeOptions::new().auth_token(secret));
+    let (bind, stop, handle) = start_server(&dir, ServeOptions::new().legacy_token_server().auth_token(secret));
 
     {
         let (mut stream, mut reader) = framed_connect(&bind);
@@ -207,7 +207,7 @@ fn put_traffic_increments_metrics_with_bounded_labels() {
     let dir = TempDir::new().unwrap();
     let metrics = MetricsRegistry::new().shared();
     let (bind, stop, handle) =
-        start_server(&dir, ServeOptions::new().metrics(Arc::clone(&metrics)));
+        start_server(&dir, ServeOptions::new().legacy_token_server().metrics(Arc::clone(&metrics)));
 
     {
         let uri = format!("residiuum://{bind}/app");
@@ -282,7 +282,7 @@ fn readiness_fails_when_runtime_draining() {
     // Note: serve_store_with overwrites options.runtime with its own. For drain
     // readiness we exercise the evaluate path via health after shutdown begins.
     // Instead, call health_ready after stop is set and the accept loop enters drain.
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .metrics(metrics)
         .shutdown_flag(Arc::clone(&stop))
         .suppress_startup_report(true);
@@ -356,7 +356,7 @@ fn readiness_fails_when_runtime_draining() {
 #[test]
 fn health_live_always_ok_when_serving() {
     let dir = TempDir::new().unwrap();
-    let (bind, stop, handle) = start_server(&dir, ServeOptions::new());
+    let (bind, stop, handle) = start_server(&dir, ServeOptions::new().legacy_token_server());
     {
         let (mut stream, mut reader) = framed_connect(&bind);
         let live = rpc_raw(

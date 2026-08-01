@@ -253,7 +253,7 @@ fn connect_heap_welcome_and_process_ops() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -349,7 +349,7 @@ fn connect_heap_wrong_name_rejects() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -455,7 +455,7 @@ fn connect_heap_put_get_delete_subject_v2() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -568,7 +568,7 @@ fn apb1_heap_client_from_remote_open_put_get_delete() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -684,7 +684,7 @@ fn apb1_heap_client_from_remote_full_parity_heap_admin() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -793,7 +793,7 @@ fn apb7_query_from_remote_collection_plane() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -911,7 +911,7 @@ fn connect_heap_list_and_scan_json() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -1034,7 +1034,7 @@ fn connect_heap_history() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -1162,7 +1162,7 @@ fn connect_heap_find_filter() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -1282,7 +1282,7 @@ fn connect_heap_indexes() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))
@@ -1422,7 +1422,7 @@ fn connect_heap_find_via_index() {
     let bind = format!("127.0.0.1:{port}");
     let shutdown = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&shutdown);
-    let opts = ServeOptions::new()
+    let opts = ServeOptions::new().legacy_token_server()
         .tls(TlsServerOptions::new(&cert_path, &key_path))
         .qualified_heap_key(true)
         .heap_registry(Arc::clone(&registry))

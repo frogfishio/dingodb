@@ -123,7 +123,7 @@ fn framed_handshake_and_ping_over_serve() {
         let _ = Residiuum::open(&path).unwrap();
     }
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new());
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server());
 
     let mut stream = TcpStream::connect(&bind).unwrap();
     stream
@@ -161,7 +161,7 @@ fn legacy_line_client_fails_clearly() {
         let _ = Residiuum::open(&path).unwrap();
     }
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new());
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server());
 
     let mut stream = TcpStream::connect(&bind).unwrap();
     stream
@@ -212,7 +212,7 @@ fn unsupported_protocol_major_rejected() {
         let _ = Residiuum::open(&path).unwrap();
     }
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new());
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server());
 
     let mut stream = TcpStream::connect(&bind).unwrap();
     stream
@@ -245,7 +245,7 @@ fn oversized_frame_refused_without_full_read() {
         let _ = Residiuum::open(&path).unwrap();
     }
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new());
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server());
 
     let mut stream = TcpStream::connect(&bind).unwrap();
     stream
@@ -294,7 +294,7 @@ fn diagnostic_line_protocol_opt_in() {
     let shutdown = spawn_server(
         path,
         &bind,
-        ServeOptions::new().diagnostic_line_protocol(true),
+        ServeOptions::new().legacy_token_server().diagnostic_line_protocol(true),
     );
 
     // Raw line client works only against diagnostic servers.

@@ -204,12 +204,15 @@ enum Command {
         #[arg(long = "rollback", action = ArgAction::SetTrue)]
         rollback: bool,
     },
-    /// Serve the store over TCP for `Residiuum::connect("residiuum://...")` (development).
+    /// Serve the store over TCP for remote clients.
     ///
-    /// Defaults to loopback. Non-loopback plaintext binds require
-    /// `--allow-insecure-bind`. Non-loopback binds with `--tls-cert`/`--tls-key`
-    /// are allowed (DEF-032). Optional `--config` loads a `residiuum-config-v1`
-    /// document; CLI flags override the file (DEF-054).
+    /// **HAR-4 T2 auth path:** product default is qualified HeapKey
+    /// (`--qualified-heap-key` with TLS + `--deployment-id`). Non-product
+    /// open/token Stage-7 posture requires explicit `--legacy-token-server`.
+    /// Co-host of both paths is refused. Defaults to loopback. Non-loopback
+    /// plaintext binds require `--allow-insecure-bind`. Optional `--config`
+    /// loads a `residiuum-config-v1` document; CLI flags override the file
+    /// (DEF-054).
     Serve {
         /// Store directory path (overrides `store.path` from `--config`).
         store: PathBuf,
@@ -221,6 +224,7 @@ enum Command {
         bind: Option<String>,
         /// Optional shared auth token (clients must pass the same via ConnectOptions).
         /// Also accepted from the `RESIDIUUM_TOKEN` environment variable when the flag is omitted.
+        /// Requires `--legacy-token-server` (incompatible with qualified HeapKey).
         #[arg(long = "token")]
         token: Option<String>,
         /// Allow non-loopback plaintext bind (development only).
@@ -241,6 +245,17 @@ enum Command {
         /// Expected peer cluster id (`urn:residiuum:cluster:…` SAN).
         #[arg(long = "tls-cluster-id")]
         tls_cluster_id: Option<String>,
+        /// Product path: qualified HeapKey TLS listener (HAR-4). Requires TLS +
+        /// `--deployment-id`. Incompatible with `--legacy-token-server` / `--token`.
+        #[arg(long = "qualified-heap-key", action = ArgAction::SetTrue)]
+        qualified_heap_key: bool,
+        /// Non-product open/token Stage-7 path (HAR-4). Explicit opt-in; not a
+        /// product remote posture claim. Required when not using qualified HeapKey.
+        #[arg(long = "legacy-token-server", action = ArgAction::SetTrue)]
+        legacy_token_server: bool,
+        /// Canonical deployment UUID string for HeapKey challenges (qualified path).
+        #[arg(long = "deployment-id")]
+        deployment_id: Option<String>,
     },
     /// Serve one node of a multi-node cluster root (**experimental**).
     ///
@@ -287,6 +302,16 @@ enum Command {
         /// Expected peer cluster id (`urn:residiuum:cluster:…` SAN).
         #[arg(long = "tls-cluster-id")]
         tls_cluster_id: Option<String>,
+        /// Product path: qualified HeapKey TLS listener (HAR-4). Requires TLS +
+        /// `--deployment-id`.
+        #[arg(long = "qualified-heap-key", action = ArgAction::SetTrue)]
+        qualified_heap_key: bool,
+        /// Non-product open/token path (HAR-4). Explicit opt-in.
+        #[arg(long = "legacy-token-server", action = ArgAction::SetTrue)]
+        legacy_token_server: bool,
+        /// Canonical deployment UUID for HeapKey challenges (qualified path).
+        #[arg(long = "deployment-id")]
+        deployment_id: Option<String>,
     },
     /// Validate or show a versioned configuration document (DEF-054).
     ///
@@ -421,6 +446,9 @@ fn run() -> Result<(), String> {
             tls_key,
             tls_client_ca,
             tls_cluster_id,
+            qualified_heap_key,
+            legacy_token_server,
+            deployment_id,
         } => {
             let overrides = ConfigOverrides {
                 bind,
@@ -449,7 +477,14 @@ fn run() -> Result<(), String> {
             for w in &validated.warnings {
                 eprintln!("config warning: {w}");
             }
-            let opts = validated.apply_to_serve_options(ServeOptions::new());
+            let opts = build_serve_auth_options(
+                validated.apply_to_serve_options(ServeOptions::new()),
+                qualified_heap_key,
+                legacy_token_server,
+                deployment_id,
+                validated.auth_token.is_some(),
+                validated.tls.is_some(),
+            )?;
             serve_store_with(&store_path, &bind, opts).map_err(|e| e.to_string())
         }
         Command::ServeCluster {
@@ -464,6 +499,9 @@ fn run() -> Result<(), String> {
             tls_key,
             tls_client_ca,
             tls_cluster_id,
+            qualified_heap_key,
+            legacy_token_server,
+            deployment_id,
         } => {
             let overrides = ConfigOverrides {
                 bind,
@@ -499,7 +537,14 @@ fn run() -> Result<(), String> {
             for w in &validated.warnings {
                 eprintln!("config warning: {w}");
             }
-            let opts = validated.apply_to_serve_options(ServeOptions::new());
+            let opts = build_serve_auth_options(
+                validated.apply_to_serve_options(ServeOptions::new()),
+                qualified_heap_key,
+                legacy_token_server,
+                deployment_id,
+                validated.auth_token.is_some(),
+                validated.tls.is_some(),
+            )?;
             serve_cluster_node(&cluster_root, node_index, &bind, opts).map_err(|e| e.to_string())
         }
         Command::Config { action } => match action {
@@ -510,6 +555,73 @@ fn run() -> Result<(), String> {
         },
         Command::Collections { store } => cmd_list(&store, None, json_out),
     }
+}
+
+/// HAR-4 T2: resolve CLI serve auth path (product qualified vs legacy opt-in).
+fn build_serve_auth_options(
+    mut opts: ServeOptions,
+    qualified_heap_key: bool,
+    legacy_token_server: bool,
+    deployment_id: Option<String>,
+    has_token: bool,
+    has_tls: bool,
+) -> Result<ServeOptions, String> {
+    use residiuum_server::ResidentHeapRegistry;
+    use std::sync::Arc;
+
+    if qualified_heap_key && legacy_token_server {
+        return Err(
+            "co-host forbidden: pass only one of --qualified-heap-key or --legacy-token-server (HAR-4)"
+                .into(),
+        );
+    }
+    if has_token && (qualified_heap_key || (!legacy_token_server && opts.qualified_heap_key)) {
+        // Token on product path is refuse (also enforced in validate_qualified_listener).
+        if !legacy_token_server {
+            return Err(
+                "--token requires --legacy-token-server (shared token is non-qualified; HAR-4)"
+                    .into(),
+            );
+        }
+    }
+
+    if legacy_token_server || has_token {
+        // Explicit or implied legacy (token-only implies non-product path).
+        if !legacy_token_server {
+            eprintln!(
+                "config warning: --token implies non-qualified serve; prefer explicit \
+                 --legacy-token-server (HAR-4)"
+            );
+        }
+        return Ok(opts.legacy_token_server());
+    }
+
+    if qualified_heap_key || (has_tls && deployment_id.is_some()) {
+        let dep = deployment_id.ok_or_else(|| {
+            "--qualified-heap-key requires --deployment-id (canonical deployment UUID; HAR-4)"
+                .to_string()
+        })?;
+        if !has_tls {
+            return Err(
+                "--qualified-heap-key requires --tls-cert and --tls-key (HAR-4)".into(),
+            );
+        }
+        // Empty resident registry is enough for listener validation; heaps are
+        // admitted later by HAR-2/3 ceremony. Handshake rejects unknown heaps.
+        opts = opts
+            .qualified_heap_key(true)
+            .deployment_id(dep)
+            .heap_registry(Arc::new(ResidentHeapRegistry::new()));
+        return Ok(opts);
+    }
+
+    // No explicit path: refuse silent open default (product default is HeapKey).
+    Err(
+        "residiuum serve requires an auth path (HAR-4 T2):\n  \
+         product: --qualified-heap-key --tls-cert … --tls-key … --deployment-id <uuid>\n  \
+         non-product open/token: --legacy-token-server [--token …]"
+            .into(),
+    )
 }
 
 fn parse_config_mode(mode: &str) -> Result<ConfigMode, String> {

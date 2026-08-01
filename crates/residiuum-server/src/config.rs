@@ -1249,7 +1249,7 @@ mod tests {
         assert_eq!(v.bind, "127.0.0.1:9000");
         assert_eq!(v.server_limits.max_connections, 16);
         assert_eq!(v.admission_limits.global_max_rps, 100);
-        let opts = v.apply_to_serve_options(ServeOptions::new());
+        let opts = v.apply_to_serve_options(ServeOptions::new().legacy_token_server());
         assert_eq!(opts.server_limits.max_connections, 16);
         assert_eq!(opts.admission_limits.global_max_rps, 100);
 

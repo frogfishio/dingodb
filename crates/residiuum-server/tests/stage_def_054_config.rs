@@ -69,7 +69,7 @@ fn load_validate_apply_roundtrip() {
     assert_eq!(v.sources.bind, ConfigLayer::File);
     assert!(v.auth_token.is_none());
 
-    let opts = v.apply_to_serve_options(residiuum_server::ServeOptions::new());
+    let opts = v.apply_to_serve_options(residiuum_server::ServeOptions::new().legacy_token_server());
     assert_eq!(opts.server_limits.max_connections, 12);
     assert_eq!(opts.admission_limits.global_max_rps, 77);
 

@@ -1,6 +1,6 @@
 # HAR-4 dep — Qualified remote path for query product (gap inventory)
 
-Status: **T0 inventory 2026-08-02** · package `HAR-4` **active / not accept**  
+Status: **T0 inventory + T2 default flip 2026-08-02** · package `HAR-4` **active / not accept**  
 Board: `7872d5fa` (Query spine Feature)  
 Authority: [HEAP_APPLICATION_READY_PLAN.md](./HEAP_APPLICATION_READY_PLAN.md) §HAR-4 ·
 [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md) ·
@@ -38,7 +38,7 @@ Exit highlights:
 | TLS 1.3 server/client | `residiuum_sdk::tls` | Required for qualified path |
 | HeapKey handshake (challenge/auth/welcome) | `residiuum_server::heap_session` / `heap_auth` | HP-008 |
 | `validate_qualified_listener` | `heap_session` | TLS + no token + registry + deployment_id |
-| `ServeOptions::qualified_heap_key` | `serve.rs` | **opt-in** (`default = false`) |
+| `ServeOptions::qualified_heap_key` | `serve.rs` | **T2 product default `true`**; open/token via `legacy_token_server()` / CLI `--legacy-token-server` |
 | `Residiuum::connect_heap` | `remote_heap.rs` | Qualified client entry |
 | Façade remote CollectionClient | APB-1 | Data plane over RemoteHeap (not op 118) |
 | APP-6/APB-7 embedded query | `query_exec_v1` | Product Core execute **embedded** |
@@ -51,9 +51,9 @@ Exit highlights:
 
 | ID | Gap | Blocks |
 |---|---|---|
-| H4-G1 | `ServeOptions::qualified_heap_key` not default | HAR-4 “normal path” exit |
-| H4-G2 | CLI/tutorials still allow open/token postures without clear non-qualified labels | Product claim honesty |
-| H4-G3 | Co-host prohibition not fully productized as config UX | HAR-4 exit |
+| H4-G1 | `ServeOptions::qualified_heap_key` not default | **T2 closed** (default true; legacy explicit) |
+| H4-G2 | CLI/tutorials still allow open/token without labels | **T2 partial** — CLI requires `--legacy-token-server` or qualified flags; startup labels; tutorials residual |
+| H4-G3 | Co-host prohibition not fully productized as config UX | **T2 partial** — API + CLI refuse co-host; config-file keys residual (T3) |
 | H4-G4 | Op **118** still **reserved** (no server dispatch / RemoteHeap rql) | APP-7 / APB-7 T6 |
 | H4-G5 | Dual remote multipage oracle for **product** Core query (op 118) | APB-7 T7 partial (collection-plane dual green); product wire residual |
 | H4-G6 | Remote ReadView pin (still `RemoteUnpinnedResidual`) | APB-6 T3 residual |
@@ -87,9 +87,9 @@ Do **not** activate op 118 from this card alone.
 
 | Slice | Deliverable | Notes |
 |---|---|---|
-| HAR-4 T1 | This inventory + scoreboard HAR-4→active | **this labor** |
-| HAR-4 T2 | Default config / CLI qualified listener + legacy opt-in flag | Product default flip |
-| HAR-4 T3 | Co-host config reject + help/error labels | HAR-4 exit bullets |
+| HAR-4 T1 | This inventory + scoreboard HAR-4→active | **done (in_review)** |
+| HAR-4 T2 | Default config / CLI qualified listener + legacy opt-in flag | **done (in_review)** — `ServeOptions` default qualified; CLI flags; co-host refuse |
+| HAR-4 T3 | Co-host config reject + help/error labels | Config-file keys + residual UX |
 | HAR-4 T4 | Journey: tutorial uses `connect_heap` only | Evidence pack |
 | APP-7 T1 | Op 118 registry active + dispatch + RemoteHeap | **after** qualified path honesty |
 | APB-7 T6 | Wire façade remote `rql` to op 118 | same |

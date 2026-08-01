@@ -56,7 +56,7 @@ fn start_cluster_nodes(
         let stop_c = Arc::clone(&stop);
         let handle = thread::spawn(move || {
             let policy = AuthzPolicy::shared_superuser(&token_c);
-            let opts = ServeOptions::new()
+            let opts = ServeOptions::new().legacy_token_server()
                 .experimental_network_cluster(true)
                 .auth_token(token_c.clone())
                 .authz(policy)
@@ -305,7 +305,7 @@ fn single_node_serve_without_raft_still_local_commit() {
     let path_c = path.clone();
     let bind_c = bind.clone();
     let h = thread::spawn(move || {
-        let opts = ServeOptions::new()
+        let opts = ServeOptions::new().legacy_token_server()
             .shutdown_flag(stop_c)
             .suppress_startup_report(true);
         let _ = serve_store_with(path_c, &bind_c, opts);

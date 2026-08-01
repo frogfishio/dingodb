@@ -55,7 +55,7 @@ fn start_peer(
     let token = token.to_string();
     let handle = thread::spawn(move || {
         let policy = AuthzPolicy::shared_superuser(&token);
-        let opts = ServeOptions::new()
+        let opts = ServeOptions::new().legacy_token_server()
             .auth_token(token)
             .authz(policy)
             .raft(raft)

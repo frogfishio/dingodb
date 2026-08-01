@@ -130,9 +130,16 @@ pub struct ServeOptions {
     pub runtime: Option<Arc<ServerRuntime>>,
     /// When true, connections use the qualified heap-key-v1 sequence (§33.2).
     ///
-    /// Requires TLS, a resident heap registry, and `deployment_id`. Forbids
-    /// shared `auth_token` and diagnostic line protocol.
+    /// **HAR-4 T2 product default is `true`.** Requires TLS, a resident heap
+    /// registry, and `deployment_id`. Forbids shared `auth_token` and diagnostic
+    /// line protocol. Use [`Self::legacy_token_server`] for the non-product
+    /// open/token Stage-7 path.
     pub qualified_heap_key: bool,
+    /// Explicit non-product open/token path (HAR-4 `--legacy-token-server`).
+    ///
+    /// Mutually exclusive with [`Self::qualified_heap_key`]. When true, startup
+    /// reports label the listener as non-qualified.
+    pub legacy_token_server: bool,
     /// Resident heap slots for qualified auth (HP-008).
     pub heap_registry: Option<Arc<crate::ResidentHeapRegistry>>,
     /// Canonical deployment UUID for heap challenges.
@@ -167,7 +174,9 @@ impl Default for ServeOptions {
             logger: None,
             metrics: None,
             runtime: None,
-            qualified_heap_key: false,
+            // HAR-4 T2: HeapKey is the product default serve profile.
+            qualified_heap_key: true,
+            legacy_token_server: false,
             heap_registry: None,
             deployment_id: None,
             heap_auth_audit: None,
@@ -177,12 +186,29 @@ impl Default for ServeOptions {
 }
 
 impl ServeOptions {
-    /// No authentication required.
+    /// Product defaults: qualified HeapKey listener (HAR-4).
+    ///
+    /// Callers that need open/token Stage-7 posture must chain
+    /// [`Self::legacy_token_server`].
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Non-product open/token (or shared-token) listener path.
+    ///
+    /// Explicit opt-in for Stage-7 development and legacy tutorials. Clears
+    /// qualified HeapKey mode. Co-host with qualified is forbidden at serve
+    /// start.
+    pub fn legacy_token_server(mut self) -> Self {
+        self.qualified_heap_key = false;
+        self.legacy_token_server = true;
+        self
+    }
+
     /// Require this shared token on every request.
+    ///
+    /// Incompatible with qualified HeapKey (fail-closed at serve start). Prefer
+    /// chaining after [`Self::legacy_token_server`].
     pub fn auth_token(mut self, token: impl Into<String>) -> Self {
         self.auth_token = Some(token.into());
         self
@@ -239,9 +265,16 @@ impl ServeOptions {
         self
     }
 
-    /// Enable the qualified heap-key-v1 listener (`HEAP_SPEC` §33).
+    /// Enable or disable the qualified heap-key-v1 listener (`HEAP_SPEC` §33).
+    ///
+    /// When `enabled` is true, clears [`Self::legacy_token_server`]. When false,
+    /// does **not** automatically set legacy mode — call
+    /// [`Self::legacy_token_server`] for an explicit non-product path.
     pub fn qualified_heap_key(mut self, enabled: bool) -> Self {
         self.qualified_heap_key = enabled;
+        if enabled {
+            self.legacy_token_server = false;
+        }
         self
     }
 
@@ -536,7 +569,12 @@ fn prepare_mutation_dedup(
 /// Serve one store over TCP until shutdown or the listener fails (Stage 7 + DEF-030).
 ///
 /// Opens the store **once** (exclusive writer ownership), then admits a bounded
-/// number of concurrent connection workers. No auth required by default.
+/// number of concurrent connection workers.
+///
+/// **HAR-4 T2:** uses product defaults ([`ServeOptions::default`] = qualified
+/// HeapKey). That requires TLS + registry + deployment_id. For open/token
+/// development, call [`serve_store_with`] with
+/// [`ServeOptions::legacy_token_server`].
 pub fn serve_store(store_path: impl AsRef<Path>, bind: &str) -> Result<(), Error> {
     serve_store_with(store_path, bind, ServeOptions::default())
 }
@@ -556,12 +594,23 @@ pub fn serve_store(store_path: impl AsRef<Path>, bind: &str) -> Result<(), Error
 /// connection is wrapped in TLS 1.3 before the framed RPC handshake. Call
 /// [`TlsServerState::reload`] via the shared state to rotate certs without
 /// downtime (new handshakes pick up reloaded material).
+///
+/// **HAR-4 path honesty:** qualified HeapKey and legacy token/open cannot
+/// co-host. Product default is qualified; use
+/// [`ServeOptions::legacy_token_server`] for the non-product path.
 pub fn serve_store_with(
     store_path: impl AsRef<Path>,
     bind: &str,
     options: ServeOptions,
 ) -> Result<(), Error> {
     let tls_enabled = options.tls.is_some();
+    // Co-host prohibition: cannot claim both product HeapKey and legacy path.
+    if options.qualified_heap_key && options.legacy_token_server {
+        return Err(Error::ValidationMsg(
+            "co-host forbidden: qualified HeapKey and --legacy-token-server cannot share one process (HAR-4)"
+                .into(),
+        ));
+    }
     if options.qualified_heap_key {
         crate::validate_qualified_listener(
             tls_enabled,
@@ -570,6 +619,13 @@ pub fn serve_store_with(
             options.heap_registry.as_ref(),
             options.deployment_id.as_deref(),
         )?;
+    } else if !options.legacy_token_server {
+        // Ambiguous non-qualified path without explicit legacy opt-in.
+        return Err(Error::ValidationMsg(
+            "serve path ambiguous: set qualified_heap_key (product) or call legacy_token_server() \
+             / --legacy-token-server (non-product open/token) (HAR-4 T2)"
+                .into(),
+        ));
     }
     bind_policy::validate_bind(bind, options.allow_insecure_bind, tls_enabled)?;
     let path = store_path.as_ref().to_path_buf();
@@ -614,17 +670,27 @@ pub fn serve_store_with(
             tls_enabled,
             mtls,
         )
+        .with_auth_path(
+            options.qualified_heap_key,
+            options.legacy_token_server,
+        )
         .emit_stderr();
         eprintln!(
             "residiuum serve: profile={SERVER_PROFILE} protocol={PROTOCOL_PROFILE} \
              tls={TLS_PROFILE}/{} admission={ADMISSION_PROFILE} log={LOG_PROFILE} \
              metrics={METRICS_PROFILE} health={HEALTH_PROFILE} \
-             max_connections={} idle_timeout_ms={} global_rps={} diagnostic_line={}",
+             max_connections={} idle_timeout_ms={} global_rps={} diagnostic_line={} \
+             auth_path={}",
             if tls_enabled { "on" } else { "off" },
             options.server_limits.max_connections,
             options.server_limits.idle_timeout.as_millis(),
             options.admission_limits.global_max_rps,
-            options.diagnostic_line_protocol
+            options.diagnostic_line_protocol,
+            if options.qualified_heap_key {
+                "qualified-heap-key (product)"
+            } else {
+                "legacy-token-server (non-qualified)"
+            }
         );
         logger
             .info(log_events::SERVER_START)
@@ -1066,8 +1132,12 @@ pub fn serve_cluster_node(
 }
 
 /// Serve a single already-open TCP client (used by tests and `serve_store`).
+///
+/// Uses the **legacy** open path (HAR-4): exclusive-store helpers cannot host
+/// the qualified HeapKey shared-owner sequence. Production multi-client serve
+/// goes through [`serve_store_with`] + product defaults.
 pub fn handle_connection(store: &mut Store, stream: TcpStream) -> Result<(), Error> {
-    handle_connection_with(store, stream, ServeOptions::default())
+    handle_connection_with(store, stream, ServeOptions::new().legacy_token_server())
 }
 
 /// Handle one client with server options (auth token).

@@ -12,7 +12,7 @@ use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
-use residiuum_server::{ServeOptions, serve_cluster_node, serve_store};
+use residiuum_server::{serve_cluster_node, serve_store_with, ServeOptions};
 
 #[test]
 fn create_cluster_same_collection_api() {
@@ -153,7 +153,11 @@ fn remote_directory_op_and_cache() {
     let path_c = path.clone();
     let bind_c = bind.clone();
     thread::spawn(move || {
-        let _ = serve_store(path_c, &bind_c);
+        let _ = serve_store_with(
+            path_c,
+            &bind_c,
+            ServeOptions::new().legacy_token_server(),
+        );
     });
     wait_for(&bind);
 
@@ -226,7 +230,7 @@ fn multi_hop_and_kill_node_survivor() {
                 &root_t,
                 idx,
                 &bind_t,
-                ServeOptions::new().experimental_network_cluster(true),
+                ServeOptions::new().legacy_token_server().experimental_network_cluster(true),
             );
         });
         wait_for(bind);

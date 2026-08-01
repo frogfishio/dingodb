@@ -98,7 +98,7 @@ fn concurrent_clients_progress_independently() {
     }
 
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new().max_connections(16));
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server().max_connections(16));
 
     // Hold an idle TCP connection open (slow client) without sending RPCs.
     let _slow = TcpStream::connect(&bind).expect("slow client connect");
@@ -141,7 +141,7 @@ fn connection_limit_returns_resource_limit() {
     let shutdown = spawn_server(
         path,
         &bind,
-        ServeOptions::new().server_limits(ServerLimits {
+        ServeOptions::new().legacy_token_server().server_limits(ServerLimits {
             max_connections: 2,
             idle_timeout: Duration::from_secs(30),
             drain_timeout: Duration::from_secs(5),
@@ -208,7 +208,7 @@ fn graceful_shutdown_drains_and_stops_accept() {
     let flag = spawn_server(
         path,
         &bind,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .max_connections(8)
             .drain_timeout(Duration::from_secs(5))
             .shutdown_flag(Arc::clone(&shutdown)),
@@ -284,7 +284,7 @@ fn single_store_owner_survives_many_clients() {
     }
 
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new().max_connections(32));
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server().max_connections(32));
 
     let mut handles = Vec::new();
     for i in 0..20 {
@@ -316,7 +316,7 @@ fn remote_error_code_for_limit_is_stable() {
 
 #[test]
 fn idle_timeout_is_configurable_on_options() {
-    let opts = ServeOptions::new().idle_timeout(Duration::from_secs(3));
+    let opts = ServeOptions::new().legacy_token_server().idle_timeout(Duration::from_secs(3));
     assert_eq!(opts.server_limits.idle_timeout, Duration::from_secs(3));
 }
 
@@ -330,7 +330,7 @@ fn raw_ping_while_peer_idle() {
         let _ = Residiuum::open(&path).unwrap();
     }
     let bind = free_bind();
-    let shutdown = spawn_server(path, &bind, ServeOptions::new());
+    let shutdown = spawn_server(path, &bind, ServeOptions::new().legacy_token_server());
 
     let _idle = TcpStream::connect(&bind).unwrap();
     let (mut active, mut reader) = framed_connect(&bind);

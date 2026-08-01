@@ -180,7 +180,7 @@ fn tls_happy_path_ping() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(TlsServerOptions::new(&cert, &key)),
+        ServeOptions::new().legacy_token_server().tls(TlsServerOptions::new(&cert, &key)),
     );
 
     let mut client = RemoteClient::connect_with(
@@ -209,7 +209,7 @@ fn wrong_hostname_fails() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(TlsServerOptions::new(&cert, &key)),
+        ServeOptions::new().legacy_token_server().tls(TlsServerOptions::new(&cert, &key)),
     );
 
     assert_auth_err(
@@ -235,7 +235,7 @@ fn wrong_cluster_id_fails() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(TlsServerOptions::new(&cert, &key)),
+        ServeOptions::new().legacy_token_server().tls(TlsServerOptions::new(&cert, &key)),
     );
 
     assert_auth_err(
@@ -273,7 +273,7 @@ fn expired_certificate_fails() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(TlsServerOptions::new(&cert, &key)),
+        ServeOptions::new().legacy_token_server().tls(TlsServerOptions::new(&cert, &key)),
     );
 
     assert_auth_err(
@@ -300,7 +300,7 @@ fn mitm_wrong_ca_fails() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(TlsServerOptions::new(&cert, &key)),
+        ServeOptions::new().legacy_token_server().tls(TlsServerOptions::new(&cert, &key)),
     );
 
     assert_auth_err(
@@ -327,7 +327,7 @@ fn revoked_serial_fails() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(TlsServerOptions::new(&cert, &key)),
+        ServeOptions::new().legacy_token_server().tls(TlsServerOptions::new(&cert, &key)),
     );
 
     assert_auth_err(
@@ -359,7 +359,7 @@ fn mtls_requires_client_cert() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new().tls(
+        ServeOptions::new().legacy_token_server().tls(
             TlsServerOptions::new(&srv_cert, &srv_key)
                 .with_client_ca(pki.ca_path())
                 .expected_cluster_id("c1"),
@@ -410,7 +410,7 @@ fn cert_rotation_keeps_new_handshakes_healthy() {
     let shutdown = spawn_server(
         store,
         &bind,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .tls(TlsServerOptions::new(&live_cert, &live_key))
             .tls_state_slot(Arc::clone(&slot)),
     );
@@ -457,7 +457,7 @@ fn plaintext_loopback_still_works() {
     let store = open_store(tmp.path());
     let port = free_port();
     let bind = format!("127.0.0.1:{port}");
-    let shutdown = spawn_server(store, &bind, ServeOptions::new());
+    let shutdown = spawn_server(store, &bind, ServeOptions::new().legacy_token_server());
     let mut client = RemoteClient::connect_with(
         &bind,
         format!("residiuum://127.0.0.1:{port}/"),

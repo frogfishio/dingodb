@@ -8,7 +8,7 @@ use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
-use residiuum_server::{ServeOptions, serve_store};
+use residiuum_server::{serve_store_with, ServeOptions};
 
 fn free_bind() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -31,7 +31,8 @@ fn spawn_server(path: std::path::PathBuf, bind: &str) {
     let path_c = path;
     let bind_c = bind.to_string();
     thread::spawn(move || {
-        let _ = serve_store(path_c, &bind_c);
+        // Stage-7 open path: explicit legacy (HAR-4 product default is HeapKey).
+        let _ = serve_store_with(path_c, &bind_c, ServeOptions::new().legacy_token_server());
     });
     wait_for(bind);
 }
@@ -256,7 +257,7 @@ fn remote_put_is_idempotent_with_operation_id() {
     thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut store = Store::open(path_c).unwrap();
-        let _ = handle_connection_with(&mut store, stream, ServeOptions::default());
+        let _ = handle_connection_with(&mut store, stream, ServeOptions::default().legacy_token_server());
     });
 
     let mut stream = TcpStream::connect(addr).unwrap();

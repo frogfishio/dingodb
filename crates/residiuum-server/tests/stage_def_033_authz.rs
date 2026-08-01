@@ -136,7 +136,7 @@ fn writer_can_put_but_not_admin_or_purge() {
     let (policy, audit) = writer_policy();
     let (bind, stop, handle) = start_server(
         &dir,
-        ServeOptions::new().authz(policy).audit(Arc::clone(&audit)),
+        ServeOptions::new().legacy_token_server().authz(policy).audit(Arc::clone(&audit)),
     );
 
     let put = rpc(&bind, Some("writer-secret"), "put", Some("docs"), None);
@@ -203,7 +203,7 @@ fn root_purge_requires_confirm_then_succeeds() {
     let (policy, audit) = writer_policy();
     let (bind, stop, handle) = start_server(
         &dir,
-        ServeOptions::new().authz(policy).audit(Arc::clone(&audit)),
+        ServeOptions::new().legacy_token_server().authz(policy).audit(Arc::clone(&audit)),
     );
 
     let missing = rpc(&bind, Some("root-secret"), "purge", Some("docs"), None);
@@ -258,7 +258,7 @@ fn reader_cannot_write() {
     let (policy, audit) = writer_policy();
     let (bind, stop, handle) = start_server(
         &dir,
-        ServeOptions::new().authz(policy).audit(Arc::clone(&audit)),
+        ServeOptions::new().legacy_token_server().authz(policy).audit(Arc::clone(&audit)),
     );
 
     let put = rpc(&bind, Some("reader-secret"), "put", Some("docs"), None);
@@ -279,7 +279,7 @@ fn bad_token_is_authentication_failed_not_permission() {
     let (policy, audit) = writer_policy();
     let (bind, stop, handle) = start_server(
         &dir,
-        ServeOptions::new().authz(policy).audit(Arc::clone(&audit)),
+        ServeOptions::new().legacy_token_server().authz(policy).audit(Arc::clone(&audit)),
     );
 
     let r = rpc(&bind, Some("nope"), "store_info", None, None);
@@ -298,7 +298,7 @@ fn legacy_shared_token_is_superuser() {
     let audit = Arc::new(AuditLog::new());
     let (bind, stop, handle) = start_server(
         &dir,
-        ServeOptions::new()
+        ServeOptions::new().legacy_token_server()
             .auth_token("legacy-token")
             .audit(Arc::clone(&audit)),
     );

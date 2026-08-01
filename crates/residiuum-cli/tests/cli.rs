@@ -93,6 +93,14 @@ fn version_and_help() {
         serve_help.contains("config"),
         "serve should accept --config (DEF-054), help={serve_help}"
     );
+    assert!(
+        serve_help.contains("legacy-token-server"),
+        "serve should document --legacy-token-server (HAR-4), help={serve_help}"
+    );
+    assert!(
+        serve_help.contains("qualified-heap-key"),
+        "serve should document --qualified-heap-key (HAR-4), help={serve_help}"
+    );
     let sc_help = run_ok(&["serve-cluster", "--help"]);
     assert!(
         sc_help.contains("experimental-network-cluster"),
@@ -424,7 +432,8 @@ fn serve_and_sdk_connect_parity() {
     let bind = format!("127.0.0.1:{port}");
 
     let mut child = residiuum_bin()
-        .args(["serve", store_s, "--bind", &bind])
+        .args(["serve",
+            "--legacy-token-server", store_s, "--bind", &bind])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -488,7 +497,8 @@ fn serve_auth_token_required() {
     let bind = format!("127.0.0.1:{port}");
 
     let mut child = residiuum_bin()
-        .args(["serve", store_s, "--bind", &bind, "--token", "s3cret"])
+        .args(["serve",
+            "--legacy-token-server", store_s, "--bind", &bind, "--token", "s3cret"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -633,7 +643,8 @@ fn serve_refuses_public_plaintext_bind_without_override() {
         r#"{"ok":true}"#,
     ]);
     let out = residiuum_bin()
-        .args(["serve", store_s, "--bind", "0.0.0.0:17434"])
+        .args(["serve",
+            "--legacy-token-server", store_s, "--bind", "0.0.0.0:17434"])
         .output()
         .expect("run serve with public bind");
     assert!(!out.status.success(), "public bind must fail closed");
@@ -659,7 +670,8 @@ fn serve_loopback_bind_is_allowed() {
     let bind = format!("127.0.0.1:{port}");
 
     let mut child = residiuum_bin()
-        .args(["serve", store_s, "--bind", &bind])
+        .args(["serve",
+            "--legacy-token-server", store_s, "--bind", &bind])
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
@@ -724,6 +736,7 @@ fn serve_public_bind_allowed_with_insecure_override() {
     let mut child = residiuum_bin()
         .args([
             "serve",
+            "--legacy-token-server",
             store_s,
             "--bind",
             &bind,
@@ -775,7 +788,7 @@ fn serve_cluster_advertises_placement_and_endpoints() {
             &root_thread,
             0,
             &bind_thread,
-            ServeOptions::new().experimental_network_cluster(true),
+            ServeOptions::new().legacy_token_server().experimental_network_cluster(true),
         );
     });
 
