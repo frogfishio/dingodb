@@ -434,8 +434,33 @@ pub fn execute_plan<S: DocScan>(
         )?)
     };
 
-    let coverage_complete = known_holes.is_empty()
-        && matches!(options.coverage, CoveragePolicy::Complete | CoveragePolicy::IncompleteAllowed);
+    // APB-7 T9: coverage policy from the plan (RQL/builder); complete-by-default.
+    // Run options may only *relax* to IncompleteAllowed when the plan already allows it.
+    let coverage_mode = match (plan.coverage, options.coverage) {
+        (CoveragePolicy::IncompleteAllowed, CoveragePolicy::IncompleteAllowed) => {
+            CoveragePolicy::IncompleteAllowed
+        }
+        // Plan IncompleteAllowed + run default Complete still honors plan (RQL source).
+        (CoveragePolicy::IncompleteAllowed, _) => CoveragePolicy::IncompleteAllowed,
+        _ => CoveragePolicy::Complete,
+    };
+    let hole_count = known_holes.len() as u32;
+    if hole_count > 0 && matches!(coverage_mode, CoveragePolicy::Complete) {
+        let sample: Vec<&str> = known_holes
+            .iter()
+            .take(3)
+            .map(|h| h.code.as_str())
+            .collect();
+        return Err(Error::CoverageIncomplete(format!(
+            "complete coverage required but {hole_count} known hole(s); \
+             sample codes={sample:?} (set coverage incomplete_allowed to allow)"
+        )));
+    }
+    let coverage = if hole_count == 0 {
+        CoverageEvidence::complete(coverage_mode, examined_docs)
+    } else {
+        CoverageEvidence::incomplete(coverage_mode, examined_docs, hole_count)
+    };
 
     let _ = result_bytes; // accounted during fill; residual: surface on QueryPage later
     let _ = examined_bytes;
@@ -448,10 +473,7 @@ pub fn execute_plan<S: DocScan>(
         rows,
         next: if exhausted { None } else { next },
         exhausted,
-        coverage: CoverageEvidence {
-            complete: coverage_complete,
-            mode: options.coverage,
-        },
+        coverage,
         consistency: ConsistencyEvidence {
             mode: options.consistency,
         },

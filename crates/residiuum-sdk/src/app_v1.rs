@@ -324,13 +324,48 @@ pub struct Continuation {
     pub token: Vec<u8>,
 }
 
-/// Coverage evidence on a page.
+/// Coverage evidence on a page (APB-7 T9 / DEF-100 honesty).
+///
+/// `complete` means every listed key on this page was readable (no known holes).
+/// Complete-by-default: when [`CoveragePolicy::Complete`] and holes exist, the
+/// executor fails closed with [`crate::Error::CoverageIncomplete`] rather than
+/// returning a page that pretends completeness.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverageEvidence {
-    /// Whether coverage is complete for the requested result.
+    /// Whether coverage is complete for the materialised page sources.
     pub complete: bool,
-    /// Policy in force.
+    /// Policy in force (from the logical plan / run options).
     pub mode: CoveragePolicy,
+    /// Documents examined while building this page (get/list attempts counted).
+    pub examined_documents: u64,
+    /// Number of known holes on this page (`known_holes.len()`).
+    pub hole_count: u32,
+}
+
+impl CoverageEvidence {
+    /// Complete page: no holes.
+    pub fn complete(mode: CoveragePolicy, examined_documents: u64) -> Self {
+        Self {
+            complete: true,
+            mode,
+            examined_documents,
+            hole_count: 0,
+        }
+    }
+
+    /// Incomplete page with hole evidence (only when incomplete is allowed).
+    pub fn incomplete(
+        mode: CoveragePolicy,
+        examined_documents: u64,
+        hole_count: u32,
+    ) -> Self {
+        Self {
+            complete: false,
+            mode,
+            examined_documents,
+            hole_count,
+        }
+    }
 }
 
 /// Consistency evidence on a page.
@@ -1255,21 +1290,24 @@ impl CollectionClient {
             None
         };
         let exhausted = !has_more;
-        let coverage_complete = known_holes.is_empty();
+        let examined = (rows.len() + known_holes.len()) as u64;
+        let coverage = if known_holes.is_empty() {
+            CoverageEvidence::complete(CoveragePolicy::Complete, examined)
+        } else {
+            // scan_json is coverage-aware but not fail-closed Complete; report holes.
+            CoverageEvidence::incomplete(
+                CoveragePolicy::IncompleteAllowed,
+                examined,
+                known_holes.len() as u32,
+            )
+        };
         Ok(ScanJsonPage {
             heap_id: self.heap_id,
             collection_id: self.collection_id,
             rows,
             next_after_key,
             exhausted,
-            coverage: CoverageEvidence {
-                complete: coverage_complete,
-                mode: if coverage_complete {
-                    CoveragePolicy::Complete
-                } else {
-                    CoveragePolicy::IncompleteAllowed
-                },
-            },
+            coverage,
             known_holes,
         })
     }
@@ -1295,6 +1333,7 @@ impl CollectionClient {
             .into_iter()
             .map(|(key, value)| QueryRow { key, value })
             .collect();
+        let examined = rows.len() as u64;
         // Remote op 115 does not currently surface holes; claim complete only
         // when the page is non-empty or empty+exhausted (honest residual).
         Ok(ScanJsonPage {
@@ -1303,10 +1342,7 @@ impl CollectionClient {
             rows,
             next_after_key,
             exhausted,
-            coverage: CoverageEvidence {
-                complete: true,
-                mode: CoveragePolicy::Complete,
-            },
+            coverage: CoverageEvidence::complete(CoveragePolicy::Complete, examined),
             known_holes: Vec::new(),
         })
     }
