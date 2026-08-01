@@ -40,7 +40,8 @@ fn mint_cap_for(heap: HeapId, deployment: DeploymentId) -> residiuum_heap::HeapC
         authority_generation: AuthorityGeneration::new(1).unwrap(),
         certificate_id: CertificateId::new_random().unwrap(),
         holder_public_key: [4u8; 32],
-        rights: Rights::from_bits_certificate(0x5).unwrap(),
+        // READ | WRITE | INDEX_ADMIN (G3 index create/drop/rebuild)
+        rights: Rights::from_bits_certificate(0x0d).unwrap(),
         constraints: Constraints::empty(),
         not_before: 1,
         expires_at: 4_000_000_000,
@@ -121,6 +122,30 @@ fn facade_from_heap_create_list_open_put_get() {
     assert_eq!(hist.versions[0].json.as_ref().unwrap()["n"], 1);
     let kinds: Vec<&str> = hist.versions.iter().map(|v| v.kind).collect();
     assert!(kinds.contains(&"delete"), "kinds={kinds:?}");
+
+    // G3: IndexManager list/create/rebuild/drop
+    opened
+        .put("idx-a", &serde_json::json!({"status": "active", "n": 1}))
+        .expect("put idx-a");
+    opened
+        .put("idx-b", &serde_json::json!({"status": "paused", "n": 2}))
+        .expect("put idx-b");
+    {
+        let mut im = opened.indexes();
+        assert!(im.list().expect("list empty").is_empty());
+        let created = im
+            .create("by-status", &["status"])
+            .expect("create index");
+        assert_eq!(created.name, "by-status");
+        assert_eq!(created.fields, vec!["status".to_string()]);
+        assert!(created.entry_count >= 2);
+        let listed = im.list().expect("list after create");
+        assert_eq!(listed.len(), 1);
+        let rebuilt = im.rebuild("by-status").expect("rebuild");
+        assert_eq!(rebuilt.name, "by-status");
+        im.drop("by-status").expect("drop");
+        assert!(im.list().expect("list after drop").is_empty());
+    }
 
     match client.create_collection("orders") {
         Ok(_) => panic!("duplicate name must fail"),

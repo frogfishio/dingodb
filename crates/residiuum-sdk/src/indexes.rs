@@ -23,9 +23,10 @@ use crate::filter::{resolve_path_value, Filter, Pred};
 use crate::subject::collection_prefix;
 #[cfg(feature = "legacy-flat-sdk")]
 use crate::value::decode_json;
-use residiuum_store::IndexState;
+use residiuum_store::{IndexState, SecondaryIndex};
 #[cfg(feature = "legacy-flat-sdk")]
-use residiuum_store::{SecondaryIndex, Store};
+use residiuum_store::Store;
+#[cfg(feature = "legacy-flat-sdk")]
 use serde_json::Value as JsonValue;
 
 /// Subjects processed between durable checkpoints during an index build.
@@ -60,13 +61,19 @@ pub struct IndexInfo {
     pub build_id_hex: String,
 }
 
-#[cfg(feature = "legacy-flat-sdk")]
 impl IndexInfo {
     /// Project a store secondary index record into the SDK view.
+    ///
+    /// `collection` is the store scope key (legacy flat) or heap scope key.
     pub fn from_store(idx: &SecondaryIndex) -> Self {
+        Self::from_store_with_collection(idx, idx.meta.collection.clone())
+    }
+
+    /// Project with an explicit display collection name (APB-1 façade).
+    pub fn from_store_with_collection(idx: &SecondaryIndex, collection: impl Into<String>) -> Self {
         Self {
             name: idx.meta.name.clone(),
-            collection: idx.meta.collection.clone(),
+            collection: collection.into(),
             fields: idx.meta.fields.clone(),
             state: idx.meta.state,
             entry_count: idx.meta.entry_count,

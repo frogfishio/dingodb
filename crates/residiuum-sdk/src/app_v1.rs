@@ -11,8 +11,10 @@
 use crate::error::Error;
 use crate::heap::{Heap, HeapCollection};
 use crate::history::{KeyHistory, Version};
+use crate::indexes::IndexInfo;
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::remote_heap::RemoteHeap;
+use residiuum_store::IndexState;
 use residiuum_heap::{CollectionId, HeapId};
 use residiuum_store::DurabilityMode;
 use serde::Serialize;
@@ -752,6 +754,13 @@ impl CollectionClient {
         }
     }
 
+    /// Secondary-index manager for this collection (APB-1 G3).
+    ///
+    /// Unbound clients return an unbound manager that fails closed on ops.
+    pub fn indexes(&mut self) -> IndexManager<'_> {
+        IndexManager { client: self }
+    }
+
     /// RQL Application Core execution (APP-5…APP-7).
     pub fn rql(
         &mut self,
@@ -777,6 +786,96 @@ impl CollectionClient {
     }
 }
 
+/// Secondary index administration bound to a [`CollectionClient`] (APB-1 G3).
+///
+/// Obtained via [`CollectionClient::indexes`]. Mirrors baseline ops
+/// `apb.index.list|create|drop|rebuild`.
+pub struct IndexManager<'a> {
+    client: &'a mut CollectionClient,
+}
+
+impl IndexManager<'_> {
+    /// List secondary indexes on this collection.
+    pub fn list(&mut self) -> Result<Vec<IndexInfo>, Error> {
+        match &self.client.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "IndexManager unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.list_indexes(),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let rows = guard.index_list(wire_collection_id)?;
+                let display = self.client.name.clone();
+                rows.into_iter()
+                    .map(|v| index_info_from_remote_json(v, &display))
+                    .collect()
+            }
+        }
+    }
+
+    /// Create (or rebuild-by-create) a field index. Requires IndexAdmin on remote/embedded caps.
+    pub fn create(&mut self, name: &str, fields: &[&str]) -> Result<IndexInfo, Error> {
+        match &self.client.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "IndexManager unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.create_index(name, fields),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let row = guard.index_create(wire_collection_id, name, fields)?;
+                index_info_from_remote_json(row, &self.client.name)
+            }
+        }
+    }
+
+    /// Drop a secondary index by name.
+    pub fn drop(&mut self, name: &str) -> Result<(), Error> {
+        match &self.client.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "IndexManager unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.drop_index(name),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let _ = guard.index_drop(wire_collection_id, name)?;
+                Ok(())
+            }
+        }
+    }
+
+    /// Rebuild an existing index definition from live data.
+    pub fn rebuild(&mut self, name: &str) -> Result<IndexInfo, Error> {
+        match &self.client.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "IndexManager unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.rebuild_index(name),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let row = guard.index_rebuild(wire_collection_id, name)?;
+                index_info_from_remote_json(row, &self.client.name)
+            }
+        }
+    }
+
+    /// Get one index by name (list + find).
+    pub fn get(&mut self, name: &str) -> Result<Option<IndexInfo>, Error> {
+        Ok(self.list()?.into_iter().find(|i| i.name == name))
+    }
+}
+
 /// Map remote put event/version hex ids into a façade [`WriteReceipt`].
 ///
 /// Wire put does not yet return store/segment ids; those fields are zeroed.
@@ -793,6 +892,67 @@ fn write_receipt_from_remote_ids(
         committed: true,
         store_id: [0u8; 16],
         segment_id: [0u8; 16],
+    })
+}
+
+/// Project remote index metadata JSON (ops 130–133) into [`IndexInfo`].
+fn index_info_from_remote_json(
+    row: serde_json::Value,
+    display_collection: &str,
+) -> Result<IndexInfo, Error> {
+    let name = row
+        .get("name")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::ProtocolViolation("index metadata missing name".into()))?
+        .to_string();
+    let fields: Vec<String> = row
+        .get("fields")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let state_s = row
+        .get("state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("ready");
+    let state = IndexState::parse(state_s).ok_or_else(|| {
+        Error::ProtocolViolation(format!("unknown index state from remote: {state_s}"))
+    })?;
+    let entry_count = row
+        .get("entry_count")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let complete_coverage = row
+        .get("complete_coverage")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let failure_reason = row
+        .get("failure_reason")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let build_id_hex = row
+        .get("build_id_hex")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let collection = row
+        .get("collection")
+        .and_then(|v| v.as_str())
+        .unwrap_or(display_collection)
+        .to_string();
+    Ok(IndexInfo {
+        name,
+        collection,
+        fields,
+        state,
+        entry_count,
+        complete_coverage,
+        failure_reason,
+        build_id_hex,
     })
 }
 

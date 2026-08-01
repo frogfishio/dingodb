@@ -6,6 +6,7 @@
 
 use crate::error::Error;
 use crate::history::KeyHistory;
+use crate::indexes::IndexInfo;
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::subject::{validate_collection_name, validate_key};
 use blake3::Hasher;
@@ -409,6 +410,41 @@ impl HeapCollection {
             .store
             .history_collection(self.id.as_bytes(), key.as_bytes())?;
         KeyHistory::from_store(key.to_string(), hist)
+    }
+
+    /// List secondary indexes (metadata only). Requires Read.
+    pub fn list_indexes(&self) -> Result<Vec<IndexInfo>, Error> {
+        let listed = self.store.list_indexes(self.id.as_bytes())?;
+        Ok(listed
+            .iter()
+            .map(|idx| IndexInfo::from_store_with_collection(idx, self.name_at_open.clone()))
+            .collect())
+    }
+
+    /// Create a field index over JSON documents. Requires IndexAdmin + Read for build.
+    pub fn create_index(&self, name: &str, fields: &[&str]) -> Result<IndexInfo, Error> {
+        let idx = self
+            .store
+            .create_index(self.id.as_bytes(), name, fields)?;
+        Ok(IndexInfo::from_store_with_collection(
+            &idx,
+            self.name_at_open.clone(),
+        ))
+    }
+
+    /// Drop a secondary index by name. Requires IndexAdmin.
+    pub fn drop_index(&self, name: &str) -> Result<(), Error> {
+        self.store.drop_index(self.id.as_bytes(), name)?;
+        Ok(())
+    }
+
+    /// Rebuild an existing index definition from a full collection scan.
+    pub fn rebuild_index(&self, name: &str) -> Result<IndexInfo, Error> {
+        let idx = self.store.rebuild_index(self.id.as_bytes(), name)?;
+        Ok(IndexInfo::from_store_with_collection(
+            &idx,
+            self.name_at_open.clone(),
+        ))
     }
 
     /// Issue a signed cursor bound to this collection + capability instance.

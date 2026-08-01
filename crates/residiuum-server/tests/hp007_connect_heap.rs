@@ -525,6 +525,28 @@ fn apb1_heap_client_from_remote_open_put_get_delete() {
     let kinds: Vec<&str> = hist.versions.iter().map(|v| v.kind).collect();
     assert!(kinds.contains(&"put") && kinds.contains(&"delete"), "kinds={kinds:?}");
 
+    // G3: IndexManager via remote façade (vector cert rights include IndexAdmin).
+    col.put("ia", &serde_json::json!({"status": "active", "n": 1}))
+        .expect("put ia");
+    col.put("ib", &serde_json::json!({"status": "paused", "n": 2}))
+        .expect("put ib");
+    {
+        let mut im = col.indexes();
+        assert!(im.list().expect("list empty").is_empty());
+        let created = im
+            .create("by-status", &["status"])
+            .expect("create index via façade");
+        assert_eq!(created.name, "by-status");
+        assert_eq!(created.state.as_str(), "ready");
+        assert!(created.entry_count >= 2);
+        let listed = im.list().expect("list");
+        assert_eq!(listed.len(), 1);
+        let rebuilt = im.rebuild("by-status").expect("rebuild");
+        assert_eq!(rebuilt.name, "by-status");
+        im.drop("by-status").expect("drop");
+        assert!(im.list().expect("after drop").is_empty());
+    }
+
     drop(client);
     flag.store(true, Ordering::SeqCst);
     thread::sleep(Duration::from_millis(50));
