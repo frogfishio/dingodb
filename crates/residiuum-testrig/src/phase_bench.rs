@@ -262,7 +262,10 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let _ = fs::remove_dir_all(&store_path);
         let mut store =
             Store::create(&store_path).map_err(|e| format!("create buf1 store: {e}"))?;
-        store.set_seal_threshold(64 * 1024 * 1024);
+        // Large seal threshold so Mode A microbench is not dominated by 1–2 full
+        // segment seals mid-run (those are timed separately as seal_rotate).
+        // 64 MiB seal still used for put_many phase below / production defaults.
+        store.set_seal_threshold(512 * 1024 * 1024);
         store.enable_boundary_probe();
         let cpu0 = sample_cpu_pct();
         let t0 = Instant::now();
@@ -283,11 +286,13 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let post_ms = snap.post_latency.sum_ns as f64 / 1e6;
         let wr_ms = snap.write_latency.sum_ns as f64 / 1e6;
         let sync_ms = snap.sync_latency.sum_ns as f64 / 1e6;
-        let accounted_ms = prep_ms + enc_ms + app_ms + pub_ms + post_ms + wr_ms + sync_ms;
+        let seal_ms = snap.seal_latency.sum_ns as f64 / 1e6;
+        let accounted_ms =
+            prep_ms + enc_ms + app_ms + pub_ms + post_ms + wr_ms + sync_ms + seal_ms;
         let other_ms = (wall_ms - accounted_ms).max(0.0);
         let pct = |part: f64| 100.0 * part / wall_ms.max(1e-9);
         let probe_note = format!(
-            " MODE_A breakdown: prep sum_ms={prep_ms:.1} mean_us={:.1} ({:.0}%) | encode_env sum_ms={enc_ms:.1} mean_us={:.1} ({:.0}%) | append_frame sum_ms={app_ms:.1} mean_us={:.1} ({:.0}%) | publish_index sum_ms={pub_ms:.1} mean_us={:.1} ({:.0}%) | post_derived sum_ms={post_ms:.1} mean_us={:.1} ({:.0}%) | file_write sum_ms={wr_ms:.1} mean_us={:.1} ({:.0}%) | file_sync n={} | other_ms={other_ms:.1} ({:.0}%) | accounted={accounted_ms:.1}/{wall_ms:.1}ms",
+            " MODE_A breakdown: prep sum_ms={prep_ms:.1} mean_us={:.1} ({:.0}%) | encode_env sum_ms={enc_ms:.1} mean_us={:.1} ({:.0}%) | append_frame sum_ms={app_ms:.1} mean_us={:.1} ({:.0}%) | publish_index sum_ms={pub_ms:.1} mean_us={:.1} ({:.0}%) | post_derived sum_ms={post_ms:.1} ({:.0}%) | file_write sum_ms={wr_ms:.1} mean_us={:.1} ({:.0}%) | seal_rotate sum_ms={seal_ms:.1} n={} ({:.0}%) | file_sync n={} | other_ms={other_ms:.1} ({:.0}%) | accounted={accounted_ms:.1}/{wall_ms:.1}ms",
             snap.prep_latency.mean_ns() / 1e3,
             pct(prep_ms),
             snap.encode_latency.mean_ns() / 1e3,
@@ -296,10 +301,11 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
             pct(app_ms),
             snap.publish_latency.mean_ns() / 1e3,
             pct(pub_ms),
-            snap.post_latency.mean_ns() / 1e3,
             pct(post_ms),
             snap.write_latency.mean_ns() / 1e3,
             pct(wr_ms),
+            snap.seal_latency.samples,
+            pct(seal_ms),
             snap.sync_latency.samples,
             pct(other_ms),
         );

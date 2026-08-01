@@ -23,39 +23,69 @@ eliminate hogs before fine optimisations (arena, dual-index, etc.).
 
 Harness: `residiuum-testrig phase-bench` prints MODE_A breakdown with **% of wall**.
 
-## Results (Scratch, 20k × 8 KiB Buffered batch=1)
+## Results
 
-| Phase | sum_ms | mean µs/op | **% wall** |
-|-------|-------:|-----------:|----------:|
-| **put_prep** | **340.5** | **17.0** | **~65%** |
-| append_frame | 92.6 | 4.6 | ~18% |
-| file_write | 47.7 | 2.4 | ~9% |
-| encode_envelope | 10.7 | 0.5 | ~2% |
-| publish_index | 5.2 | 0.3 | ~1% |
-| put_post | 0.5 | ~0 | ~0% |
-| file_sync | 0 | — | 0% |
-| other (harness key format, Instant, …) | ~30 | — | ~6% |
-| **wall** | **527** | — | 100% |
-| **accounted** | **497** | — | **~94%** |
+### A. With mid-run seals mis-binned into prep (first read)
 
-Buffered rate this run: **~38k ops/s** (~296 logical MiB/s microbench; peer-A 256 MiB was lower due to longer run/seal/RSS).
+`put_prep` looked like **~65%** until seal wall was timed separately.
 
-## Process of elimination
+### B. Corrected breakdown (seal timed as `seal_rotate`)
 
-1. **Not Blake-bound** — pure Blake ~265k ops/s; encode_env only 2% wall.
-2. **Not dual-index publish alone** — publish ~1% wall (locator-first already cheap here).
-3. **Not allocator temps alone** — encode_env is small; arena is still useful but not the 65% hog.
-4. **Not fsync** — Buffered file_sync n=0.
-5. **Biggest hog: put_prep (~65%)** — mostly **`maybe_auto_seal` / ensure_active / id path** before any frame encode. Next resolution step: split prep into seal-check vs ensure vs id-mint (or sample seal hit rate).
-6. **Second: append_frame (~18%)** — frame Blake+copy into segment buffer; worth micro-opts after prep.
-7. **Third: file_write (~9%)** — per-put seek+write_all on Mode A; Mode B amortizes this.
+20k × 8 KiB, **64 MiB** seal (2 rotates mid-run):
 
-## Next optimisations (ordered by this data)
+| Phase | **% wall** | Notes |
+|-------|----------:|-------|
+| **seal_rotate** | **~65%** | n=2 full seal/rotate events |
+| append_frame | ~19% | Blake + copy into segment |
+| file_write | ~6% | per-put seek+write_all |
+| encode_env / publish / prep | ~4% | hot path small once seals separated |
+| other | ~6% | harness keys, etc. |
+| Buffered rate | **~42k ops/s** | wall ~475 ms |
 
-1. **Cheapen / skip work in put_prep** when under seal threshold (hot path: seal check must be O(1) and branch-predictable; avoid heavy work every put).
-2. **append_frame** micro (reuse, reserve segment to seal size).
-3. **file_write** batching only if Mode A product allows (else leave to Atomics/Mode B).
-4. **Scratch/reuse** for envelope temps (2% — still free money, not the main story).
+### C. No mid-run seal (seal threshold 512 MiB)
+
+| Phase | **% wall** |
+|-------|----------:|
+| **append_frame** | **~53%** |
+| file_write | ~17% |
+| encode_env | ~6% |
+| prep | ~3% |
+| publish | ~3% |
+| other | ~18% |
+| **Buffered rate** | **~108k ops/s** (~843 logical MiB/s microbench) |
+
+### D. Hygiene opts (still CSQ-safe)
+
+| Change | Intent |
+|--------|--------|
+| Thread-local **CSPRNG pool** (`ids.rs`) | Amortize `getrandom` syscalls; entropy still OS-only |
+| **Cached `now_ns`** (Instant interpolate, ~1 ms OS refresh) | Avoid `SystemTime::now()` every put |
+| Memory put after opts | **~1.0M ops/s** (was ~0.58M) |
+
+### E. Peer-A 256 MiB logical (Scratch)
+
+| Seal threshold | ops/s | Logical MiB/s |
+|---------------:|------:|-------------:|
+| 64 MiB (Campaign F-like) | ~10.2k | ~80 |
+| 512 MiB (fewer mid seals) | ~8.6k | ~67 |
+
+Larger threshold **did not** help the long peer run (RSS/cache pressure from a multi-hundred-MiB active segment). Microbench without seals shows the **ceiling**; production Mode A needs **faster seals** and/or **write-through**, not only “never seal.”
+
+## Process of elimination (updated)
+
+1. **Not Blake / encode_env alone** for long runs with default seal.
+2. **Not dual-index publish** (~1–3%).
+3. **First “prep 65%” was seal amortized into prep** — fixed accounting.
+4. **True long-run hog: segment seal/rotate** (~65% when it fires).
+5. **True continuous Mode A hog (no seal): append_frame** (~53%), then file_write (~17%).
+6. Alloc/arena still free money on the small %s, not the main bar.
+
+## Next optimisations (ordered)
+
+1. **Faster Buffered seal** (already rename-seal; next: stream/mmap finalize, less dual-copy, less derived work on seal).
+2. **append_frame** micro (reserve, less realloc) for continuous put.
+3. **Write-through active segment** so large seal thresholds do not thrash RAM on peer-scale runs.
+4. Scratch/reuse for envelope temps (low %).
 
 ## Re-run
 

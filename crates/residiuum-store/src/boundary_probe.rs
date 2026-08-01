@@ -335,6 +335,8 @@ pub struct BoundarySnapshot {
     pub prep_latency: LatencyHistogram,
     /// Latency histogram for PutPost (collection + derived checkpoint touch).
     pub post_latency: LatencyHistogram,
+    /// Latency histogram for SegmentRotate seal/rotate wall time.
+    pub seal_latency: LatencyHistogram,
     /// Blake3 hex digest of the full event chain (all observations, including dropped samples).
     pub event_chain_digest: String,
     /// Explicit coverage / drop accounting.
@@ -360,6 +362,7 @@ pub struct BoundaryProbe {
     publish_latency: LatencyHistogram,
     prep_latency: LatencyHistogram,
     post_latency: LatencyHistogram,
+    seal_latency: LatencyHistogram,
     /// Running blake3 hasher for the full event chain.
     chain_hasher: blake3::Hasher,
     samples_dropped: u64,
@@ -392,6 +395,7 @@ impl BoundaryProbe {
             publish_latency: LatencyHistogram::default(),
             prep_latency: LatencyHistogram::default(),
             post_latency: LatencyHistogram::default(),
+            seal_latency: LatencyHistogram::default(),
             chain_hasher: blake3::Hasher::new(),
             samples_dropped: 0,
             sample_vector_capped: false,
@@ -462,6 +466,7 @@ impl BoundaryProbe {
             publish_latency: self.publish_latency.clone(),
             prep_latency: self.prep_latency.clone(),
             post_latency: self.post_latency.clone(),
+            seal_latency: self.seal_latency.clone(),
             event_chain_digest: self.event_chain_digest(),
             coverage: self.coverage(),
             next_seq: self.next_seq,
@@ -493,6 +498,7 @@ impl BoundaryProbe {
         self.publish_latency = LatencyHistogram::default();
         self.prep_latency = LatencyHistogram::default();
         self.post_latency = LatencyHistogram::default();
+        self.seal_latency = LatencyHistogram::default();
         self.chain_hasher = blake3::Hasher::new();
         self.samples_dropped = 0;
         self.sample_vector_capped = false;
@@ -515,6 +521,7 @@ impl BoundaryProbe {
             BoundaryKind::PublishVisibility => self.publish_latency.record(ev.duration_ns),
             BoundaryKind::PutPrep => self.prep_latency.record(ev.duration_ns),
             BoundaryKind::PutPost => self.post_latency.record(ev.duration_ns),
+            BoundaryKind::SegmentRotate => self.seal_latency.record(ev.duration_ns),
             _ => {}
         }
         feed_chain(&mut self.chain_hasher, &ev);
@@ -647,6 +654,11 @@ impl BoundaryProbe {
 
     /// Record segment rotation / seal start.
     pub fn record_segment_rotate(&mut self, shard: u32) {
+        self.record_segment_rotate_timed(shard, 0);
+    }
+
+    /// Record segment rotation with wall duration of the seal/rotate work.
+    pub fn record_segment_rotate_timed(&mut self, shard: u32, duration_ns: u64) {
         self.segment_gen = self.segment_gen.saturating_add(1);
         self.observe(BoundaryEvent {
             seq: 0,
@@ -655,7 +667,7 @@ impl BoundaryProbe {
             logical_len: 0,
             requested_bytes: 0,
             completed_bytes: 0,
-            duration_ns: 0,
+            duration_ns,
             outcome: BoundaryOutcome::Ok,
             shard,
             file_role: FileRole::None,

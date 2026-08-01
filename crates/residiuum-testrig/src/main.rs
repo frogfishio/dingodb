@@ -228,6 +228,9 @@ enum Command {
         /// Minimum free space (auto ≈2.5× target + 512 MiB). Pass `0` to disable.
         #[arg(long, default_value = "auto")]
         min_free: String,
+        /// Soft seal threshold (e.g. 64M, 512M). Default 64M.
+        #[arg(long, default_value = "64M")]
+        seal_threshold: String,
         #[arg(long)]
         json_out: bool,
     },
@@ -353,6 +356,7 @@ fn main() -> ExitCode {
             payload_size,
             seed,
             min_free,
+            seal_threshold,
             json_out,
         } => cmd_peer_pump(
             work,
@@ -362,6 +366,7 @@ fn main() -> ExitCode {
             payload_size,
             seed,
             min_free,
+            seal_threshold,
             json_out,
         ),
     };
@@ -401,11 +406,13 @@ fn cmd_peer_pump(
     payload_size: usize,
     seed: u64,
     min_free: String,
+    seal_threshold: String,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
     let seed = resolve_seed(seed);
     let min_free_bytes = resolve_min_free(&min_free, target)?;
+    let seal = parse_size(&seal_threshold)?;
     run_peer_pump(&PeerConfig {
         work,
         engine: parse_engine(&engine)?,
@@ -415,6 +422,7 @@ fn cmd_peer_pump(
         seed,
         min_free_bytes,
         json_out,
+        seal_threshold: seal,
     })
 }
 

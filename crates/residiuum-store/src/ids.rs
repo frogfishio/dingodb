@@ -22,6 +22,7 @@
 //! `event_id`.
 
 use crate::error::StoreError;
+use std::cell::RefCell;
 
 /// Generation profile tag for diagnostics and capability matrix.
 pub const ID_PROFILE: &str = "residiuum-id-v1";
@@ -29,11 +30,64 @@ pub const ID_PROFILE: &str = "residiuum-id-v1";
 /// Fixed width of random and segment identities on the wire (FORMAT_SPEC).
 pub const ID_LEN: usize = 16;
 
-/// Fill `buf` from the OS CSPRNG. Fails closed if entropy is unavailable.
+/// Bytes drawn from OS CSPRNG per refill. Amortizes `getrandom` syscalls on the
+/// hot put path (Mode A instrumentation: put_prep was ~65% wall; per-event
+/// `getrandom` was the dominant prep cost). Entropy source remains OS CSPRNG
+/// only — no PRNG substitution (DEF-025 / fail-closed).
+const RANDOM_POOL_LEN: usize = 4096;
+
+thread_local! {
+    /// Process-local refill buffer still filled exclusively via [`getrandom`].
+    static RANDOM_POOL: RefCell<RandomPool> = RefCell::new(RandomPool::empty());
+}
+
+struct RandomPool {
+    buf: [u8; RANDOM_POOL_LEN],
+    /// Next unread index in `buf`.
+    off: usize,
+    /// Valid prefix length after last successful refill (`0` until first fill).
+    end: usize,
+}
+
+impl RandomPool {
+    fn empty() -> Self {
+        Self {
+            buf: [0u8; RANDOM_POOL_LEN],
+            off: 0,
+            end: 0,
+        }
+    }
+
+    fn fill_from_os(&mut self) -> Result<(), StoreError> {
+        getrandom::fill(&mut self.buf).map_err(|e| {
+            StoreError::RandomUnavailable(format!("getrandom failed ({ID_PROFILE}): {e}"))
+        })?;
+        self.off = 0;
+        self.end = RANDOM_POOL_LEN;
+        Ok(())
+    }
+
+    fn take(&mut self, out: &mut [u8]) -> Result<(), StoreError> {
+        let mut filled = 0usize;
+        while filled < out.len() {
+            if self.off >= self.end {
+                self.fill_from_os()?;
+            }
+            let n = (out.len() - filled).min(self.end - self.off);
+            out[filled..filled + n].copy_from_slice(&self.buf[self.off..self.off + n]);
+            self.off += n;
+            filled += n;
+        }
+        Ok(())
+    }
+}
+
+/// Fill `buf` from the OS CSPRNG (via a thread-local refill buffer).
+///
+/// Fails closed if entropy is unavailable. Still **only** OS CSPRNG bytes —
+/// the buffer amortizes syscalls, not cryptographic strength.
 pub fn fill_random(buf: &mut [u8]) -> Result<(), StoreError> {
-    getrandom::fill(buf).map_err(|e| {
-        StoreError::RandomUnavailable(format!("getrandom failed ({ID_PROFILE}): {e}"))
-    })
+    RANDOM_POOL.with(|pool| pool.borrow_mut().take(buf))
 }
 
 /// Mint a 16-byte random identity (event, store, job, operation, checkpoint).

@@ -419,33 +419,46 @@ See `crates/residiuum-testrig/README.md` (PEER-SQL section).
 
 ---
 
-## Campaign G — Mode A put-path instrumentation (2026-08-01)
+## Campaign G — Mode A put-path instrumentation + first squeezes (2026-08-01)
 
 **Diagnostic only.** Artifact:
 [doc/wip/status/surveys/scratch-mode-a-breakdown-20260801/](./doc/wip/status/surveys/scratch-mode-a-breakdown-20260801/).
 
-Extended `BoundaryProbe` phases on Buffered single-put: **prep / encode_env /
-append_frame / publish_index / post_derived / file_write / file_sync**.
+### Probe phases (Buffered single-put)
 
-### 20k × 8 KiB Buffered batch=1 (Scratch phase-bench)
+prep · encode_env · append_frame · publish_index · post_derived · file_write ·
+**seal_rotate (timed)** · file_sync.
 
-| Phase | % of wall | mean µs/op | Notes |
-|-------|----------:|-----------:|-------|
-| **put_prep** | **~65%** | **~17** | ensure_active + **maybe_auto_seal** + id mint + env setup |
-| append_frame | ~18% | ~4.6 | Blake + encode into segment buffer |
-| file_write | ~9% | ~2.4 | per-put seek+write_all (Mode A) |
-| encode_envelope | ~2% | ~0.5 | CBOR envelope |
-| publish_index | ~1% | ~0.3 | dual locator index |
-| put_post | ~0% | ~0 | collection + rate-limited derived |
-| other | ~6% | — | harness key format, timer noise |
-| **accounted** | **~94%** | | wall ~527 ms → ~38k ops/s |
+### Corrected elimination (20k × 8 KiB Scratch)
 
-### Elimination
+| Scenario | ops/s | Dominant phase |
+|----------|------:|----------------|
+| 64 MiB seal (2 mid-run rotates) | ~42k | **seal_rotate ~65%** of wall |
+| 512 MiB seal (**0** mid-run rotates) | **~108k** | **append_frame ~53%**, file_write ~17%, prep ~3% |
 
-- Alloc/arena temps: real but **not** the 65% story (encode_env 2%).
-- Dual-index publish: **not** the hog after locator-first (~1%).
-- **Hog #1: put_prep** — make seal/threshold checks and prep O(1) and cold when not sealing.
-- Hog #2: append_frame; hog #3: per-put file_write.
+First “prep 65%” was **seal cost mis-binned** into prep. After split:
+
+- Per-put hot prep (ids + env + clock) is **~1–3%**.
+- Long Mode A runs with default 64 MiB seal are **seal-bound**.
+- Continuous put without seals is **append-bound** (Blake+copy), then per-put `write_all`.
+
+### Hygiene opts landed
+
+| Change | Effect |
+|--------|--------|
+| CSPRNG **refill pool** (`ids.rs`) | Fewer `getrandom` syscalls; still OS entropy only |
+| **Cached `now_ns`** (Instant + ~1 ms wall refresh) | Avoid `SystemTime::now()` every put |
+| Memory put after opts | **~1.0M ops/s** (was ~0.58M) |
+
+### Peer-A 256 MiB logical
+
+Raising seal threshold to 512 MiB did **not** beat 64 MiB on the long peer (~67 vs ~80 logical MiB/s) — large active segment **RSS/cache** pressure. Need **faster seals** and/or **write-through**, not only “seal less.”
+
+### Next squeezes
+
+1. Seal/finalize cost (still rename-seal; cut remaining work).  
+2. append_frame micro + segment reserve.  
+3. Write-through so large thresholds stay RAM-safe.
 
 ## Bottom line
 

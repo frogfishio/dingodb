@@ -1,0 +1,18 @@
+=== phase-bench (falsify Blake-bound narrative) ===
+work=/Volumes/Scratch/TEST/residiuum-mode-a-noseal-20260801 ops=20000 payload=8192 batch=128
+
+phase                               wall_ms        ops/s        MiB/s  note
+blake3_body_hash_only                  79.9       250304       1955.5  pure user CPU; if store is Blake-bound, put rates should be near this order
+encode_frame_into_growing_vec          82.7       241954       1890.3  format encode only (includes Blake); no store index, no OS write
+raw_seek_plus_write_all_per_op         28.2       708328       5706.7  mimics write_segment_tail: seek(durable_len)+write_all each put
+raw_write_all_payload_only             21.4       935033       7304.9  OS write path only (no fsync); device + page cache ceiling for small writes
+raw_write_all_frame_sized              22.0       910208       7333.2  closer to segment tail write size (~payload+envelope)
+store_put_memory                       20.0      1001749       7826.2  index/visibility path only — NO durable segment write_all
+store_put_buffered_batch1             480.6        41618        325.1  wall_ms=480.6 probe_encode+append+publish+write_ms=451.7 (94% of wall); ps%cpu≈Some(13.3)→Some(52.4); MODE_A breakdown: prep sum_ms=4.7 mean_us=0.2 (1%) | encode_env sum_ms=10.3 mean_us=0.5 (2%) | append_frame sum_ms=91.8 mean_us=4.6 (19%) | publish_index sum_ms=5.0 mean_us=0.3 (1%) | post_derived sum_ms=0.5 (0%) | file_write sum_ms=27.0 mean_us=1.3 (6%) | seal_rotate sum_ms=312.4 n=2 (65%) | file_sync n=0 | other_ms=28.9 (6%) | accounted=451.7/480.6ms
+store_put_many_buffered               444.2        45022        351.7  batch=128; one tail write per batch
+
+interpretation:
+  • Buffered put is 17% of pure-Blake ops/s — Blake-scale cost may matter.
+  • Memory put 1001749 ops/s vs Buffered 41618 — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.
+  • Raw write_all 935033 ops/s vs Buffered put 41618 — store adds 22.5× wall vs raw same-size writes.
+  • Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute.

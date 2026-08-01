@@ -1,0 +1,18 @@
+=== phase-bench (falsify Blake-bound narrative) ===
+work=/Volumes/Scratch/TEST/residiuum-mode-a-prep-opt-20260801 ops=20000 payload=8192 batch=128
+
+phase                               wall_ms        ops/s        MiB/s  note
+blake3_body_hash_only                  97.0       206085       1610.0  pure user CPU; if store is Blake-bound, put rates should be near this order
+encode_frame_into_growing_vec         109.3       182985       1429.6  format encode only (includes Blake); no store index, no OS write
+raw_seek_plus_write_all_per_op         33.5       596474       4805.6  mimics write_segment_tail: seek(durable_len)+write_all each put
+raw_write_all_payload_only             31.3       639543       4996.4  OS write path only (no fsync); device + page cache ceiling for small writes
+raw_write_all_frame_sized              28.8       694248       5593.3  closer to segment tail write size (~payload+envelope)
+store_put_memory                       28.9       692584       5410.8  index/visibility path only — NO durable segment write_all
+store_put_buffered_batch1             590.9        33846        264.4  wall_ms=590.9 probe_encode+append+publish+write_ms=547.1 (93% of wall); ps%cpu≈Some(19.3)→Some(86.9); MODE_A breakdown: prep sum_ms=324.4 mean_us=16.2 (55%) | encode_env sum_ms=14.8 mean_us=0.7 (3%) | append_frame sum_ms=125.7 mean_us=6.3 (21%) | publish_index sum_ms=9.4 mean_us=0.5 (2%) | post_derived sum_ms=0.8 mean_us=0.0 (0%) | file_write sum_ms=72.0 mean_us=3.6 (12%) | file_sync n=0 | other_ms=43.8 (7%) | accounted=547.1/590.9ms
+store_put_many_buffered               540.5        37001        289.1  batch=128; one tail write per batch
+
+interpretation:
+  • Buffered put is 16% of pure-Blake ops/s — Blake-scale cost may matter.
+  • Memory put 692584 ops/s vs Buffered 33846 — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.
+  • Raw write_all 639543 ops/s vs Buffered put 33846 — store adds 18.9× wall vs raw same-size writes.
+  • Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute.

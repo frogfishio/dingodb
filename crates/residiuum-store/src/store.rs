@@ -3611,6 +3611,10 @@ impl Store {
     }
 
     /// Seal or rotate when the given shard's active segment is at/over threshold.
+    ///
+    /// Fast path (under threshold) is a single length compare. Seal work is timed
+    /// on the probe as `segment_rotate` / `lifecycle_seal` so it does **not** get
+    /// mixed into Mode A `put_prep` (which is the per-put hot path only).
     fn maybe_auto_seal(&mut self, shard: usize) -> Result<(), StoreError> {
         let need = self
             .active_ref(shard)
@@ -3619,14 +3623,19 @@ impl Store {
         if !need {
             return Ok(());
         }
-        self.boundary_probe.record_segment_rotate(shard as u32);
+        let t0 = std::time::Instant::now();
         let r = if self.async_lifecycle_enabled() {
             self.rotate_active_async(shard)
         } else {
             self.seal_active_shard(shard)
         };
-        if r.is_ok() {
-            self.boundary_probe.record_lifecycle_seal(shard as u32);
+        let seal_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+        if self.boundary_probe_enabled() {
+            self.boundary_probe
+                .record_segment_rotate_timed(shard as u32, seal_ns);
+            if r.is_ok() {
+                self.boundary_probe.record_lifecycle_seal(shard as u32);
+            }
         }
         r
     }
@@ -4536,12 +4545,12 @@ impl Store {
         }
 
         let probe = self.boundary_probe_enabled();
-        let t_prep = std::time::Instant::now();
         self.ensure_active(shard)?;
-
-        // Maybe seal/rotate first if oversized (async lifecycle: DEF-096 Axis A).
+        // Seal/rotate is rare and expensive — timed on segment_rotate, not put_prep.
         self.maybe_auto_seal(shard)?;
 
+        // put_prep: per-put hot path only (ids + env subject + wall clock).
+        let t_prep = std::time::Instant::now();
         let segment_id = self
             .active_ref(shard)
             .map(|w| w.segment_id)
@@ -5438,7 +5447,46 @@ fn seal_flush_mode(max_ack: DurabilityMode) -> DurabilityMode {
     }
 }
 
+/// Wall-clock ns for envelope `created_ns` (FORMAT_SPEC optional).
+///
+/// Hot path: do **not** call `SystemTime::now()` every put (Mode A prep was ~65%
+/// of wall; OS wall-clock reads dominate). Cache wall time and interpolate with
+/// [`Instant`] between refreshes (~1 ms). Still real-time based; not a synthetic
+/// counter. Thread-local so concurrent shards stay independent.
 fn now_ns() -> u64 {
+    use std::cell::RefCell;
+    use std::time::Instant;
+
+    struct Cache {
+        wall_ns: u64,
+        tick: Instant,
+    }
+
+    thread_local! {
+        static CLOCK: RefCell<Option<Cache>> = const { RefCell::new(None) };
+    }
+
+    CLOCK.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let cache = slot.get_or_insert_with(|| Cache {
+            wall_ns: system_time_ns(),
+            tick: Instant::now(),
+        });
+        let elapsed = cache.tick.elapsed();
+        // Refresh OS wall clock about once per millisecond of put traffic.
+        if elapsed.as_micros() >= 1000 {
+            cache.wall_ns = system_time_ns();
+            cache.tick = Instant::now();
+            cache.wall_ns
+        } else {
+            cache
+                .wall_ns
+                .saturating_add(elapsed.as_nanos().min(u128::from(u64::MAX)) as u64)
+        }
+    })
+}
+
+fn system_time_ns() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos() as u64)

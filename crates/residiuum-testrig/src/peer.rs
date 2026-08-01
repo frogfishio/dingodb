@@ -70,6 +70,9 @@ pub struct PeerConfig {
     pub seed: u64,
     pub min_free_bytes: u64,
     pub json_out: bool,
+    /// Soft seal threshold (bytes). Default 64 MiB matches surveys; raise to
+    /// measure Mode A without mid-run seal cost (seal is separate from put prep).
+    pub seal_threshold: u64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -213,8 +216,12 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     }
     let mut store = Store::create_with_shards(&store_path, 1)
         .map_err(|e| format!("create store: {e}"))?;
-    // Match general-load surveys (64 MiB soft seal).
-    store.set_seal_threshold(64 * 1024 * 1024);
+    let seal = if cfg.seal_threshold == 0 {
+        64 * 1024 * 1024
+    } else {
+        cfg.seal_threshold
+    };
+    store.set_seal_threshold(seal);
 
     let batch = cfg.mode.batch_size();
     let mut samples = ProcessSamples::default();
