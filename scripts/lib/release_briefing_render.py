@@ -516,6 +516,414 @@ def con_table_html() -> str:
 """
 
 
+def _fmt_num(v: object, digits: int = 1) -> str:
+    if v is None:
+        return "—"
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return esc(v)
+    if digits == 0:
+        return f"{f:,.0f}"
+    return f"{f:,.{digits}f}"
+
+
+def _fmt_bytes_mib(v: object) -> str:
+    if v is None:
+        return "—"
+    try:
+        b = float(v)
+    except (TypeError, ValueError):
+        return esc(v)
+    return f"{b / (1024 * 1024):,.1f} MiB"
+
+
+def metrics_section_html(data: dict) -> str:
+    """Render latest published diagnostic write/read metrics (not product gates)."""
+    m = data.get("metrics") or {}
+    if not m:
+        return """
+  <h2>Latest published read / write metrics</h2>
+  <div class="note">
+    No metrics block was assembled for this briefing (collector returned empty).
+    Re-run <code>bash scripts/release-briefing.sh</code> from a tree that includes
+    <code>doc/wip/status/surveys/</code> peer-pump artifacts.
+  </div>
+"""
+    disclosure = m.get("disclosure") or (
+        "Diagnostic only — not a published SLO and not a package accept gate."
+    )
+    knobs = m.get("knobs") or {}
+    knobs_bits = []
+    for k in (
+        "logical_target",
+        "payload",
+        "seed",
+        "residiuum_durability",
+        "sqlite_journal",
+        "sqlite_synchronous",
+        "threads",
+        "volume_hint",
+    ):
+        if knobs.get(k):
+            knobs_bits.append(f"<code>{esc(k)}</code>={esc(knobs[k])}")
+    knobs_line = " · ".join(knobs_bits) if knobs_bits else "see source paths"
+
+    # --- inventory: what did we pull? ---
+    inv = m.get("inventory") or {}
+    inv_items = []
+    for it in inv.get("items") or []:
+        paths = it.get("paths") or []
+        path_html = (
+            "<ul class='metric-notes'>"
+            + "".join(f"<li><code>{esc(p)}</code></li>" for p in paths)
+            + "</ul>"
+            if paths
+            else "<em class='detail'>(none / not published)</em>"
+        )
+        inv_items.append(
+            f"<tr class='data'>"
+            f"<td><strong>{esc(it.get('group'))}</strong></td>"
+            f"<td>{esc(it.get('why'))}</td>"
+            f"<td>{path_html}</td>"
+            f"</tr>"
+        )
+    inventory_html = ""
+    if inv_items:
+        inventory_html = f"""
+  <h3>What data did we pull in?</h3>
+  <p class="sub">
+    {esc(inv.get('title') or 'Provenance of every metrics cell')}
+    · if a path is missing, the briefing is not inventing a number for it.
+  </p>
+  <table>
+    <thead><tr><th>Group</th><th>Why it is here</th><th>Source files</th></tr></thead>
+    <tbody>{''.join(inv_items)}</tbody>
+  </table>
+"""
+
+    # --- three-band headline ---
+    bands = m.get("three_bands") or {}
+    band_rows: list[str] = []
+    for b in bands.get("rows") or []:
+        hl = " class='data warn'" if b.get("highlight") else " class='data'"
+        ladder = b.get("cook_ladder") or []
+        ladder_s = ""
+        if ladder:
+            bits = [
+                f"cook{x.get('workers')}={_fmt_num(x.get('ops'), 0)}"
+                for x in ladder
+                if x.get("ops") is not None
+            ]
+            ladder_s = " · ".join(bits)
+        band_rows.append(
+            f"<tr{hl}>"
+            f"<td><strong>Band {esc(b.get('band'))}</strong><div class='plain'>{esc(b.get('name'))}</div></td>"
+            f"<td class='num'>{_fmt_num(b.get('ops_per_sec'), 0)}</td>"
+            f"<td class='num'>{_fmt_num(b.get('logical_mib_s'), 1)}</td>"
+            f"<td>{esc(b.get('cores') or '—')}"
+            f"<div class='detail'>{esc(ladder_s)}</div></td>"
+            f"<td class='num'>{esc(b.get('batch') if b.get('batch') is not None else '—')}</td>"
+            f"<td>{esc(b.get('bed') or '')}<div class='detail'>{esc(b.get('what') or '')}</div></td>"
+            f"<td class='detail'><code>{esc(b.get('path') or '')}</code></td>"
+            f"</tr>"
+        )
+    bands_html = ""
+    if band_rows:
+        bnotes = ""
+        if bands.get("notes"):
+            bnotes = "<ul class='metric-notes'>" + "".join(
+                f"<li>{esc(n)}</li>" for n in bands["notes"]
+            ) + "</ul>"
+        bands_html = f"""
+  <h3>Three-band write rates (primary story)</h3>
+  <p class="sub">
+    {esc(bands.get('title') or 'Do not mix beds')}
+    · highlighted row = the <strong>~100k on 4 cook workers</strong> measurement
+    (not writer-shards).
+  </p>
+  <table>
+    <thead><tr>
+      <th>Band</th><th>ops/s</th><th>Logical MiB/s</th>
+      <th>Cores / workers</th><th>Batch</th><th>Bed + meaning</th><th>Source</th>
+    </tr></thead>
+    <tbody>{''.join(band_rows)}</tbody>
+  </table>
+  {bnotes}
+"""
+
+    # --- parallel cook detail ---
+    cook = m.get("write_cook") or {}
+    cook_html_blocks: list[str] = []
+    for bed in cook.get("beds") or []:
+        rows_html = []
+        for r in bed.get("rows") or []:
+            hl = " class='data warn'" if r.get("cook_workers") == 4 else " class='data'"
+            rows_html.append(
+                f"<tr{hl}>"
+                f"<td><code>{esc(r.get('name'))}</code></td>"
+                f"<td class='num'>{esc(r.get('cook_workers') if r.get('cook_workers') is not None else '—')}</td>"
+                f"<td class='num'>{esc(r.get('put_batch_size') if r.get('put_batch_size') is not None else '—')}</td>"
+                f"<td class='num'>{_fmt_num(r.get('ops_per_sec'), 0)}</td>"
+                f"<td class='num'>{_fmt_num(r.get('logical_mib_s'), 1)}</td>"
+                f"<td class='num'>{_fmt_num(r.get('wall_ms'), 1)}</td>"
+                f"<td class='detail'>{esc(r.get('note') or '')}</td>"
+                f"</tr>"
+            )
+        if not rows_html:
+            continue
+        cook_html_blocks.append(f"""
+  <h4>{esc(bed.get('title'))}</h4>
+  <p class="sub">source <code>{esc(bed.get('path') or '')}</code>
+  · {esc(bed.get('note') or '')}</p>
+  <table>
+    <thead><tr>
+      <th>Phase</th><th>Cook workers</th><th>Batch</th>
+      <th>ops/s</th><th>Logical MiB/s</th><th>Wall ms</th><th>Note</th>
+    </tr></thead>
+    <tbody>{''.join(rows_html)}</tbody>
+  </table>
+""")
+    cook_section = ""
+    if cook_html_blocks:
+        cnotes = ""
+        if cook.get("notes"):
+            cnotes = "<ul class='metric-notes'>" + "".join(
+                f"<li>{esc(n)}</li>" for n in cook["notes"]
+            ) + "</ul>"
+        cook_section = f"""
+  <h3>Parallel cook detail (real 4-core batched)</h3>
+  <p class="sub">
+    {esc(cook.get('title') or '')}
+    · contract <code>{esc(cook.get('contract') or '')}</code>.
+  </p>
+  {''.join(cook_html_blocks)}
+  {cnotes}
+"""
+
+    # --- write peer table ---
+    peer = m.get("write_peer") or {}
+    peer_rows: list[str] = []
+    for cell in peer.get("cells") or []:
+        peer_rows.append(
+            f"<tr class='data'>"
+            f"<td>{esc(cell.get('label') or cell.get('id'))}</td>"
+            f"<td><code>{esc(cell.get('engine'))}</code></td>"
+            f"<td><code>{esc(cell.get('mode'))}</code></td>"
+            f"<td class='num'>{_fmt_num(cell.get('ops_per_sec'), 0)}</td>"
+            f"<td class='num'>{_fmt_num(cell.get('logical_mib_s'), 1)}</td>"
+            f"<td class='num'>{_fmt_num(cell.get('disk_mib_s'), 1)}</td>"
+            f"<td class='num'>{_fmt_bytes_mib(cell.get('peak_rss_bytes'))}</td>"
+            f"<td class='num'>{_fmt_num(cell.get('elapsed_s'), 2)}s</td>"
+            f"<td class='detail'><code>{esc(cell.get('path') or '')}</code></td>"
+            f"</tr>"
+        )
+    ratio_rows: list[str] = []
+    for r in peer.get("ratios") or []:
+        ratio_rows.append(
+            f"<tr class='data'>"
+            f"<td><code>{esc(r.get('mode'))}</code></td>"
+            f"<td class='num'>{esc(r.get('ops_ratio') or '—')}</td>"
+            f"<td class='num'>{esc(r.get('logical_mib_ratio') or '—')}</td>"
+            f"<td>{esc(r.get('read') or '')}</td>"
+            f"</tr>"
+        )
+
+    peer_html = ""
+    if peer_rows:
+        peer_html = f"""
+  <h3>Write — PEER-SQL same-bed (latest campaign)</h3>
+  <p class="sub">
+    {esc(peer.get('title') or 'Residiuum vs SQLite peer-pump')}
+    · campaign <code>{esc(peer.get('campaign') or '')}</code>
+    · compare <strong>A vs A</strong> and <strong>B vs B</strong> only.
+  </p>
+  <table>
+    <thead><tr>
+      <th>Cell</th><th>Engine</th><th>Mode</th>
+      <th>ops/s</th><th>Logical MiB/s</th><th>Disk MiB/s</th>
+      <th>Peak RSS</th><th>Wall</th><th>Source</th>
+    </tr></thead>
+    <tbody>{''.join(peer_rows)}</tbody>
+  </table>
+"""
+        if ratio_rows:
+            peer_html += f"""
+  <table>
+    <thead><tr>
+      <th>Mode</th><th>Residiuum/SQLite ops/s</th>
+      <th>Logical MiB/s ratio</th><th>How to read</th>
+    </tr></thead>
+    <tbody>{''.join(ratio_rows)}</tbody>
+  </table>
+"""
+        if peer.get("notes"):
+            notes = "".join(f"<li>{esc(n)}</li>" for n in peer["notes"])
+            peer_html += f"<ul class='metric-notes'>{notes}</ul>"
+    else:
+        peer_html = """
+  <h3>Write — PEER-SQL same-bed</h3>
+  <div class="note">No peer-pump JSON found under
+  <code>doc/wip/status/surveys/scratch-sqlite-peer-*/</code>.</div>
+"""
+
+    # --- secondary: writer-shards / multi-process (NOT the 100k path) ---
+    mc = m.get("write_multicore") or {}
+    mc_rows: list[str] = []
+    for cell in mc.get("cells") or []:
+        cat = cell.get("category") or ""
+        mc_rows.append(
+            f"<tr class='data'>"
+            f"<td><strong>{esc(cat)}</strong><div class='detail'>{esc(cell.get('label') or '')}</div></td>"
+            f"<td><code>Axis {esc(cell.get('axis'))}</code></td>"
+            f"<td class='num'>{esc(cell.get('writer_shards') if cell.get('writer_shards') is not None else '—')}</td>"
+            f"<td class='num'>{esc(cell.get('put_batch_size') if cell.get('put_batch_size') is not None else '—')}</td>"
+            f"<td class='num'>{esc(cell.get('store_count') if cell.get('store_count') is not None else '—')}</td>"
+            f"<td class='num'>{_fmt_num(cell.get('ops_per_sec'), 0)}</td>"
+            f"<td class='num'>{_fmt_num(cell.get('pump_mib_s'), 1)}</td>"
+            f"<td class='num'>{_fmt_num(cell.get('peak_cpu_pct'), 1) if cell.get('peak_cpu_pct') is not None else '—'}</td>"
+            f"<td class='num'>{_fmt_bytes_mib(cell.get('peak_rss_bytes'))}</td>"
+            f"<td class='detail'><code>{esc(cell.get('path') or '')}</code></td>"
+            f"</tr>"
+        )
+    multicore_html = ""
+    if mc_rows:
+        mc_notes = ""
+        if mc.get("notes"):
+            mc_notes = "<ul class='metric-notes'>" + "".join(
+                f"<li>{esc(n)}</li>" for n in mc["notes"]
+            ) + "</ul>"
+        multicore_html = f"""
+  <h3>Secondary — writer-shards / multi-process (not ~100k cook)</h3>
+  <p class="sub">
+    {esc(mc.get('title') or '')}
+    · campaign <code>{esc(mc.get('campaign') or '')}</code>
+    · contract <code>{esc(mc.get('contract') or '')}</code>.
+    These sit in the <strong>~10k band</strong>. Do not confuse with cook_parallelism=4.
+  </p>
+  <table>
+    <thead><tr>
+      <th>Category</th><th>Axis</th><th>Shards</th><th>Batch</th><th>Stores</th>
+      <th>ops/s</th><th>Pump MiB/s</th><th>Peak CPU%</th><th>Peak RSS</th><th>Source</th>
+    </tr></thead>
+    <tbody>{''.join(mc_rows)}</tbody>
+  </table>
+  {mc_notes}
+"""
+
+    # --- write micro / phase-bench ---
+    micro = m.get("write_micro") or {}
+    micro_rows: list[str] = []
+    for row in micro.get("phases") or []:
+        micro_rows.append(
+            f"<tr class='data'>"
+            f"<td><code>{esc(row.get('name'))}</code></td>"
+            f"<td class='num'>{_fmt_num(row.get('ops_per_sec'), 0)}</td>"
+            f"<td class='num'>{_fmt_num(row.get('logical_mib_s'), 1)}</td>"
+            f"<td class='num'>{_fmt_num(row.get('wall_ms'), 1)}</td>"
+            f"<td class='detail'>{esc(row.get('note') or '')}</td>"
+            f"</tr>"
+        )
+    micro_html = ""
+    if micro_rows:
+        micro_html = f"""
+  <h3>Write — short phase-bench (micro, not multi-seal peer)</h3>
+  <p class="sub">
+    {esc(micro.get('title') or 'phase-bench after write-through')}
+    · source <code>{esc(micro.get('path') or '')}</code>
+    · do <strong>not</strong> mix these rates with long PEER-SQL multi-seal numbers.
+  </p>
+  <table>
+    <thead><tr>
+      <th>Phase</th><th>ops/s</th><th>Logical MiB/s</th><th>Wall ms</th><th>Note</th>
+    </tr></thead>
+    <tbody>{''.join(micro_rows)}</tbody>
+  </table>
+"""
+        if micro.get("band_rule"):
+            micro_html += f"<p class='sub'>{esc(micro['band_rule'])}</p>"
+
+    # --- reads ---
+    rd = m.get("read") or {}
+    st = (rd.get("status") or "").lower()
+    if st in ("not_published", "missing", "absent", ""):
+        read_html = f"""
+  <h3>Read — get / get_payload path</h3>
+  <div class="note">
+    <strong>No get/read numbers</strong> in this briefing
+    ({esc(rd.get('note') or 'monitor tooling exists; peer-pump is write-only')}).
+  </div>
+"""
+    else:
+        read_rows = []
+        for cell in rd.get("cells") or []:
+            read_rows.append(
+                f"<tr class='data'>"
+                f"<td><strong>{esc(cell.get('label'))}</strong>"
+                f"<div class='detail'>{esc(cell.get('campaign') or '')} · "
+                f"{esc(cell.get('phase') or '')}</div></td>"
+                f"<td class='num'>{esc(cell.get('sample_keys') if cell.get('sample_keys') is not None else '—')}</td>"
+                f"<td>{esc(cell.get('ok') or '—')}</td>"
+                f"<td class='num'>{esc(cell.get('p50_us') if cell.get('p50_us') is not None else '—')}</td>"
+                f"<td class='num'>{esc(cell.get('p95_us') if cell.get('p95_us') is not None else '—')}</td>"
+                f"<td class='num'>{esc(cell.get('p99_us') if cell.get('p99_us') is not None else '—')}</td>"
+                f"<td class='detail'>{esc(cell.get('path_class') or '')}"
+                f"<div>{esc(cell.get('notes') or '')}</div></td>"
+                f"</tr>"
+            )
+        not_m = rd.get("not_measured") or []
+        not_lis = "".join(f"<li>{esc(x)}</li>" for x in not_m)
+        tools = rd.get("tooling") or []
+        tools_s = " · ".join(f"<code>{esc(t)}</code>" for t in tools)
+        read_html = f"""
+  <h3>Read — get stats (disclosed)</h3>
+  <p class="sub">
+    {esc(rd.get('title') or 'Hot PrimaryIndex gets')}
+    · source <code>{esc(rd.get('source') or '')}</code>
+    · status <code>{esc(rd.get('status') or '')}</code>.
+  </p>
+  <div class="note">
+    <strong>How measured.</strong> {esc(rd.get('how_measured') or '')}
+    <div style="margin-top:0.4rem">{esc(rd.get('note') or '')}</div>
+    <div style="margin-top:0.35rem">Tooling: {tools_s}</div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Cell</th><th>Samples</th><th>OK</th>
+      <th>p50 µs</th><th>p95 µs</th><th>p99 µs</th><th>Path / notes</th>
+    </tr></thead>
+    <tbody>{''.join(read_rows) if read_rows else '<tr><td colspan="7">No cells</td></tr>'}</tbody>
+  </table>
+  <p class="sub"><strong>Not measured yet (honest gaps):</strong></p>
+  <ul class="metric-notes">{not_lis if not_lis else '<li>(none listed)</li>'}</ul>
+"""
+
+    sources = m.get("sources") or []
+    src_lis = "".join(f"<li><code>{esc(s)}</code></li>" for s in sources)
+
+    return f"""
+  <h2>Latest published read / write metrics</h2>
+  <div class="note">
+    <strong>Honesty.</strong> {esc(disclosure)}
+    Numbers are <em>diagnostic surveys</em> (Scratch / controlled beds), not PQH
+    product accept and not “Residiuum is X MB/s” marketing. Always quote durability,
+    batch mode, payload size, and volume class next to a rate.
+    Narrative twin: <code>{esc(m.get('narrative') or 'TEST_RESULTS.md')}</code>.
+    Contract: <code>{esc(m.get('contract') or 'doc/wip/status/surveys/README-PEER-SQL.md')}</code>.
+  </div>
+  <p class="sub">Fixed knobs (when known): {knobs_line}</p>
+  {inventory_html}
+  {bands_html}
+  {cook_section}
+  {peer_html}
+  {multicore_html}
+  {micro_html}
+  {read_html}
+  <h3>Metric sources ingested this run</h3>
+  <ul class="metric-notes">{src_lis if src_lis else '<li>(none)</li>'}</ul>
+"""
+
+
 def render(data: dict) -> str:
     steps = data.get("steps") or []
     artifacts = data.get("artifacts") or []
@@ -615,7 +1023,8 @@ def render(data: dict) -> str:
   .wrap {{ max-width: 1100px; margin: 0 auto; }}
   h1 {{ font-size: 1.5rem; margin: 0 0 0.35rem; font-weight: 650; }}
   h2 {{ font-size: 1.1rem; margin: 2rem 0 0.75rem; color: var(--muted); font-weight: 600; }}
-  h3 {{ font-size: 1rem; margin: 0 0 0.5rem; color: var(--accent); }}
+  h3 {{ font-size: 1rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }}
+  h4 {{ font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--text); font-weight: 600; }}
   .sub {{ color: var(--muted); font-size: 0.95rem; margin-bottom: 1.25rem; }}
   .plain {{ color: var(--accent); font-weight: 600; margin-top: 0.25rem; font-size: 0.9rem; }}
   .cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }}
@@ -646,6 +1055,8 @@ def render(data: dict) -> str:
   th, td {{ text-align: left; padding: 0.55rem 0.65rem; vertical-align: top; border-bottom: 1px solid var(--border); }}
   th {{ color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }}
   tr.data:hover {{ background: #1f2a3d; }}
+  tr.data.warn {{ background: #2a2410; }}
+  tr.data.warn:hover {{ background: #3a3218; }}
   tr.explain td {{
     background: var(--explain); border-bottom: 2px solid var(--border);
     padding: 0.75rem 0.9rem 1rem; color: var(--muted); font-size: 0.86rem;
@@ -656,6 +1067,7 @@ def render(data: dict) -> str:
   code {{ font-family: var(--mono); font-size: 0.82em; }}
   code.cmd {{ color: #a8b8d0; word-break: break-all; }}
   td.detail {{ color: var(--muted); max-width: 260px; }}
+  td.num {{ font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }}
   .note, .primer, .glossary {{
     background: var(--card); border: 1px solid var(--border);
     padding: 0.9rem 1.1rem; margin: 1rem 0; border-radius: 10px;
@@ -665,6 +1077,8 @@ def render(data: dict) -> str:
   .primer {{ border-left: 3px solid var(--accent); }}
   .primer ol {{ margin: 0.4rem 0 0.6rem 1.2rem; padding: 0; }}
   .primer li {{ margin: 0.25rem 0; }}
+  ul.metric-notes {{ color: var(--muted); font-size: 0.9rem; margin: 0.5rem 0 1rem 1.2rem; }}
+  ul.metric-notes li {{ margin: 0.25rem 0; }}
   .overall {{ margin: 1rem 0 1.25rem; }}
   footer {{ margin-top: 2.5rem; color: var(--skip); font-size: 0.8rem; }}
 </style>
@@ -697,6 +1111,8 @@ def render(data: dict) -> str:
     explanation row: what the check is, why it matters, how it relates to data,
     and what <em>this</em> status means. Formal rows are expanded further in the
     CON plain-English table — theorem ids alone are not enough for non-authors.
+    The <em>Latest published read / write metrics</em> section is diagnostic survey
+    data (not a gate status): useful context only; never treat missing read numbers as zero.
   </div>
   <h2>Steps (result + explanation)</h2>
   <table>
@@ -714,6 +1130,7 @@ def render(data: dict) -> str:
       {''.join(art_rows) if art_rows else '<tr><td colspan="4">No artifacts</td></tr>'}
     </tbody>
   </table>
+  {metrics_section_html(data)}
   {con_table_html()}
   <h2>How to re-run</h2>
   <p class="sub">
