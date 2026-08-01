@@ -1279,8 +1279,7 @@ impl Store {
                     event_id,
                 )?;
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-                let encoded_frame_len =
-                    (writer.segment.as_bytes().len() as u64).saturating_sub(offset);
+                let encoded_frame_len = writer.segment.len().saturating_sub(offset);
                 (offset, encoded_frame_len, append_ns)
             };
 
@@ -1479,8 +1478,8 @@ impl Store {
                                     .min(u128::from(u64::MAX))
                                     as u64;
                                 // Exact encoded frame length at store boundary.
-                                let encoded_frame_len = (writer.segment.as_bytes().len() as u64)
-                                    .saturating_sub(offset);
+                                let encoded_frame_len =
+                                    writer.segment.len().saturating_sub(offset);
                                 // Defer write_segment_tail until all frames in this
                                 // shard batch are appended (one seek+write_all).
                                 outs.push(ShardRow {
@@ -2874,15 +2873,18 @@ impl Store {
         if !lv.body.is_empty() {
             return Ok(lv.body.clone());
         }
-        // Prefer in-memory active segment (avoids re-read of just-written frames).
+        // Prefer in-memory active tail (write-through may have dropped older frames).
         if let Some(w) = self.find_active_by_segment(&lv.segment_id) {
-            let bytes = w.segment.as_bytes();
-            let off = lv.frame_offset as usize;
-            if off < bytes.len() {
-                if let Ok((_h, _e, body, _hash, _len)) =
-                    residiuum_format::verify_frame_at(&bytes[off..], self.limits)
-                {
-                    return Ok(body.to_vec());
+            let base = w.segment.base_offset();
+            if lv.frame_offset >= base {
+                let bytes = w.segment.as_bytes();
+                let off = (lv.frame_offset - base) as usize;
+                if off < bytes.len() {
+                    if let Ok((_h, _e, body, _hash, _len)) =
+                        residiuum_format::verify_frame_at(&bytes[off..], self.limits)
+                    {
+                        return Ok(body.to_vec());
+                    }
                 }
             }
         }
@@ -3295,15 +3297,30 @@ impl Store {
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
         // After flush, on-disk active length is the verified prefix (no summary yet).
         let prefix_len = writer.durable_len;
-
-        let sealed = writer.segment.seal()?;
-        let bytes = sealed.as_bytes();
-        let dest = self.paths.sealed_segment(&writer.segment_id);
-        let content_hash = *blake3::hash(bytes).as_bytes();
-        let size = bytes.len() as u64;
         let sealed_id = writer.segment_id;
         let active_path = self.paths.active_segment_for_shard(shard, self.writer_shards());
-        drop(writer.file); // release handle before rename / rewrite
+        let dest = self.paths.sealed_segment(&sealed_id);
+
+        // Write-through may have discarded the RAM prefix — seal from disk when
+        // base_offset > 0 (same bytes as the flushed active file).
+        let sealed_owned: Vec<u8> = if writer.segment.base_offset() == 0 {
+            let sealed = writer.segment.seal()?;
+            drop(writer.file); // release handle before rename / rewrite
+            sealed.into_bytes()
+        } else {
+            drop(writer); // close file; durable prefix is on active_path
+            let raw = fs::read(&active_path)?;
+            let (bytes, _) = crate::seal_pipeline::seal_pending_image(
+                raw,
+                self.store_id,
+                sealed_id,
+                self.limits,
+            )?;
+            bytes
+        };
+        let bytes = sealed_owned.as_slice();
+        let content_hash = *blake3::hash(bytes).as_bytes();
+        let size = bytes.len() as u64;
 
         crate::failpoint::hit("store.seal.before_dest_write")?;
 
@@ -4200,9 +4217,8 @@ impl Store {
                     envelope: envelope.clone(),
                     body,
                 })?;
-                encoded_frame_len = encoded_frame_len.saturating_add(
-                    (writer.segment.as_bytes().len() as u64).saturating_sub(offset),
-                );
+                encoded_frame_len = encoded_frame_len
+                    .saturating_add(writer.segment.len().saturating_sub(offset));
                 new_chunk_locs.push((*chunk_event_id, offset, piece));
             }
         }
@@ -4254,9 +4270,8 @@ impl Store {
                 body: manifest_body.clone(),
             })?;
             let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-            encoded_frame_len = encoded_frame_len.saturating_add(
-                (writer.segment.as_bytes().len() as u64).saturating_sub(offset),
-            );
+            encoded_frame_len =
+                encoded_frame_len.saturating_add(writer.segment.len().saturating_sub(offset));
             let tail = match mode {
                 DurabilityMode::Memory => TailIoStats::default(),
                 DurabilityMode::Buffered | DurabilityMode::Durable => {
@@ -4365,24 +4380,27 @@ impl Store {
         expected_event_id: &[u8; 16],
         loc: &ChunkFrameLocator,
     ) -> Result<ResolvedChunk, StoreError> {
-        // Active in-memory segment first (just-written chunks).
+        // Active in-memory tail first (write-through may drop older frames).
         if let Some(w) = self.find_active_by_segment(&loc.segment_id) {
-            let bytes = w.segment.as_bytes();
-            let off = loc.frame_offset as usize;
-            if off < bytes.len() {
-                if let Ok((header, _env, body, _hash, _len)) =
-                    residiuum_format::verify_frame_at(&bytes[off..], self.limits)
-                {
-                    if header.event_id == *expected_event_id
-                        && header.known_kind() == Some(FrameKind::PayloadChunk)
+            let base = w.segment.base_offset();
+            if loc.frame_offset >= base {
+                let bytes = w.segment.as_bytes();
+                let off = (loc.frame_offset - base) as usize;
+                if off < bytes.len() {
+                    if let Ok((header, _env, body, _hash, _len)) =
+                        residiuum_format::verify_frame_at(&bytes[off..], self.limits)
                     {
-                        if let Some(piece) = decode_piece_body(body) {
-                            return Ok(resolve_piece(
-                                header.event_id,
-                                piece,
-                                loc.segment_id,
-                                loc.frame_offset,
-                            ));
+                        if header.event_id == *expected_event_id
+                            && header.known_kind() == Some(FrameKind::PayloadChunk)
+                        {
+                            if let Some(piece) = decode_piece_body(body) {
+                                return Ok(resolve_piece(
+                                    header.event_id,
+                                    piece,
+                                    loc.segment_id,
+                                    loc.frame_offset,
+                                ));
+                            }
                         }
                     }
                 }
@@ -4602,8 +4620,7 @@ impl Store {
                 .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
             let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
             // Exact encoded frame length at store boundary (not logical+estimate).
-            let encoded_frame_len =
-                (writer.segment.as_bytes().len() as u64).saturating_sub(offset);
+            let encoded_frame_len = writer.segment.len().saturating_sub(offset);
             let tail = Self::write_segment_tail(writer, mode)?;
             (offset, encoded_frame_len, append_ns, tail)
         };
@@ -4669,27 +4686,39 @@ impl Store {
     }
 
     /// Flush pending segment bytes to the file; returns measured I/O stats.
+    ///
+    /// After a successful Buffered/Durable transfer, **write-through** drops the
+    /// durable prefix from the in-RAM segment (`discard_through`) so large seal
+    /// thresholds do not pin a full segment image in process RSS. Locator offsets
+    /// stay absolute; reads of older frames use file pread.
     fn write_segment_tail(
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
     ) -> Result<TailIoStats, StoreError> {
         crate::failpoint::hit("store.active.write_tail.before")?;
-        let bytes = writer.segment.as_bytes();
-        let start = writer.durable_len as usize;
-        if start > bytes.len() {
+        let base = writer.segment.base_offset();
+        if writer.durable_len < base {
+            return Err(StoreError::CorruptMeta("durable_len behind base_offset"));
+        }
+        let retained_len = writer.segment.as_bytes().len();
+        let start = (writer.durable_len - base) as usize;
+        if start > retained_len {
             return Err(StoreError::CorruptMeta("durable_len past segment"));
         }
         let mut stats = TailIoStats::default();
-        if start < bytes.len() {
-            let pending = &bytes[start..];
-            stats.write_requested = pending.len() as u64;
+        if start < retained_len {
+            // Copy pending slice length before taking file mut borrow; write from
+            // a temporary view of retained bytes (segment is not mutated until after).
+            let pending_len = retained_len - start;
+            stats.write_requested = pending_len as u64;
             writer.file.seek(SeekFrom::Start(writer.durable_len))?;
             // DEF-022: optional short-write injection mid-append.
             if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
-                let n = crate::failpoint::short_write_len(pending.len());
+                let n = crate::failpoint::short_write_len(pending_len);
                 let t0 = std::time::Instant::now();
                 if n > 0 {
-                    writer.file.write_all(&pending[..n])?;
+                    let pending = &writer.segment.as_bytes()[start..start + n];
+                    writer.file.write_all(pending)?;
                     // Do not advance durable_len past the short write so a
                     // later retry could rewrite; crash/drop leaves torn bytes.
                     writer.durable_len += n as u64;
@@ -4699,15 +4728,20 @@ impl Store {
                     t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 stats.write_outcome = crate::boundary_probe::BoundaryOutcome::ShortWrite;
                 // Return Ok so callers can record probe stats, then fail closed.
+                // No write-through discard on short write (prefix may be torn).
                 stats.fail_as_short_write = true;
                 return Ok(stats);
             }
             let t0 = std::time::Instant::now();
-            writer.file.write_all(pending)?;
+            {
+                let pending = &writer.segment.as_bytes()[start..];
+                writer.file.write_all(pending)?;
+            }
             stats.write_duration_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-            stats.write_completed = pending.len() as u64;
+            stats.write_completed = pending_len as u64;
             stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
-            writer.durable_len = bytes.len() as u64;
+            writer.durable_len = base.saturating_add(retained_len as u64);
+            debug_assert_eq!(writer.durable_len, writer.segment.len());
         }
         crate::failpoint::hit("store.active.write_tail.after_write")?;
         if mode == DurabilityMode::Durable {
@@ -4717,6 +4751,13 @@ impl Store {
             stats.synced = true;
             stats.sync_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
             crate::failpoint::hit("store.active.write_tail.after_sync")?;
+        }
+        // Write-through: free RAM for bytes now known on the OS path.
+        // Capacity is kept for the next frame (append micro).
+        if stats.write_outcome == crate::boundary_probe::BoundaryOutcome::Ok
+            || stats.write_requested == 0
+        {
+            writer.segment.discard_through(writer.durable_len);
         }
         Ok(stats)
     }

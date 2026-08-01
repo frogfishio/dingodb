@@ -80,12 +80,35 @@ Larger threshold **did not** help the long peer run (RSS/cache pressure from a m
 5. **True continuous Mode A hog (no seal): append_frame** (~53%), then file_write (~17%).
 6. Alloc/arena still free money on the small %s, not the main bar.
 
-## Next optimisations (ordered)
+## F. Write-through + lean finalize (landed)
 
-1. **Faster Buffered seal** (already rename-seal; next: stream/mmap finalize, less dual-copy, less derived work on seal).
-2. **append_frame** micro (reserve, less realloc) for continuous put.
-3. **Write-through active segment** so large seal thresholds do not thrash RAM on peer-scale runs.
-4. Scratch/reuse for envelope temps (low %).
+| Change | Effect |
+|--------|--------|
+| `discard_through` after Buffered/Durable tail write | Active RAM ≈ unflushed tail |
+| File-based seal when prefix discarded | Same sealed image; no weaker Buffered |
+| In-place seal finalize (truncate + `into_bytes`) | Fewer full-segment clones |
+
+### Phase-bench after write-through (512 MiB seal micro)
+
+| Phase | ops/s | Notes |
+|-------|------:|-------|
+| **Buffered put batch=1** | **~135k** | was ~41k (rename-seal) / ~108k (no-seal pre-WT) |
+| append_frame | ~51% wall | still dominant continuous path |
+| file_write | ~16% | |
+| file_sync | n=0 | |
+
+Artifact: `phase-bench-after-write-through.txt`
+
+### Peer-A 256 MiB after write-through
+
+| Seal | ops/s | Logical MiB/s | Peak RSS |
+|-----:|------:|-------------:|---------:|
+| 64 MiB | 10303 | 80.5 | **339 MiB** (was ~595) |
+| 512 MiB | 8093 | 63.2 | **22 MiB** (was multi-hundred) |
+
+Artifacts: `peer-A-after-write-through.json`, `peer-A-after-write-through-512.json`
+
+**Read:** Write-through fixes large-threshold RSS. Long peer-A @64 MiB stays ~Campaign F parity; continuous microbench is clearly faster. Next headroom: append Blake/copy + seal-worker backpressure on long multi-seal runs.
 
 ## Re-run
 
@@ -94,4 +117,7 @@ cargo build -p residiuum-testrig --release
 target/release/residiuum-testrig phase-bench \
   -w /Volumes/Scratch/TEST/residiuum-mode-a-breakdown-YYYYMMDD \
   --ops 20000 --payload-size 8192
+target/release/residiuum-testrig peer-pump \
+  -w /Volumes/Scratch/TEST/residiuum-peer-A --engine residiuum --mode A \
+  --target-bytes 256M --seal-threshold 64M --json-out
 ```

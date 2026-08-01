@@ -68,11 +68,20 @@ pub enum SegmentError {
 }
 
 /// In-memory active append segment (FORMAT_SPEC §6.3 until sealed).
+///
+/// The store may **write-through** durable prefix bytes and call
+/// [`ActiveSegment::discard_through`] so RAM holds only the unflushed tail.
+/// Locator offsets remain absolute from the segment start (`base_offset` +
+/// retained). Seal from RAM requires `base_offset == 0`; otherwise the store
+/// seals from the on-disk prefix.
 #[derive(Debug, Clone)]
 pub struct ActiveSegment {
     ids: SegmentId,
     limits: SafetyLimits,
+    /// Retained bytes starting at [`Self::base_offset`] in the logical segment.
     bytes: Vec<u8>,
+    /// Logical byte offset of `bytes[0]` (bytes already write-through and dropped).
+    base_offset: u64,
     writer_sequence: u64,
     /// Number of complete frames appended (includes descriptor).
     frame_count: u64,
@@ -108,7 +117,10 @@ impl ActiveSegment {
         let mut seg = Self {
             ids,
             limits,
-            bytes: Vec::new(),
+            // Modest headroom for the first frames; store write-through keeps
+            // the retained tail small so we do not pre-allocate seal_threshold.
+            bytes: Vec::with_capacity(256 * 1024),
+            base_offset: 0,
             writer_sequence: 0,
             frame_count: 0,
             sealed: false,
@@ -155,6 +167,7 @@ impl ActiveSegment {
             ids,
             limits,
             bytes,
+            base_offset: 0,
             writer_sequence,
             frame_count,
             sealed: false,
@@ -167,14 +180,14 @@ impl ActiveSegment {
         self.sealed
     }
 
-    /// Current sealed or unsealed byte length.
+    /// Current sealed or unsealed **logical** byte length (includes discarded prefix).
     pub fn len(&self) -> u64 {
-        self.bytes.len() as u64
+        self.base_offset.saturating_add(self.bytes.len() as u64)
     }
 
-    /// Whether no bytes have been written (should not occur after `create`).
+    /// Whether no logical bytes have been written (should not occur after `create`).
     pub fn is_empty(&self) -> bool {
-        self.bytes.is_empty()
+        self.len() == 0
     }
 
     /// Number of complete frames currently in the segment.
@@ -182,9 +195,45 @@ impl ActiveSegment {
         self.frame_count
     }
 
-    /// Raw segment bytes (descriptor, items, optional summary).
+    /// Logical offset of the first retained byte (`0` when nothing was write-through).
+    pub fn base_offset(&self) -> u64 {
+        self.base_offset
+    }
+
+    /// Bytes still held in RAM (suffix starting at [`Self::base_offset`]).
+    ///
+    /// When `base_offset == 0` this is the full unsealed image. After write-through
+    /// discard it is only the unflushed tail.
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
+    }
+
+    /// Ensure capacity for at least `additional` more retained bytes (append micro).
+    pub fn reserve_additional(&mut self, additional: usize) {
+        self.bytes.reserve(additional);
+    }
+
+    /// Drop RAM for absolute range `[0, absolute_end)` that is durable on disk.
+    ///
+    /// `absolute_end` must be in `[base_offset, len()]`. Capacity is retained for
+    /// subsequent appends. Locator offsets stay absolute; callers must pread the
+    /// file for frames below `base_offset`.
+    pub fn discard_through(&mut self, absolute_end: u64) {
+        if absolute_end <= self.base_offset {
+            return;
+        }
+        let logical = self.len();
+        let end = absolute_end.min(logical);
+        let drop_n = (end - self.base_offset) as usize;
+        if drop_n == 0 {
+            return;
+        }
+        if drop_n >= self.bytes.len() {
+            self.bytes.clear();
+        } else {
+            self.bytes.drain(..drop_n);
+        }
+        self.base_offset = end;
     }
 
     /// Append an application/content frame (not descriptor or summary).
@@ -219,7 +268,7 @@ impl ActiveSegment {
         }
         let mut header = parts.header.clone();
         header.writer_sequence = self.writer_sequence;
-        let offset = self.bytes.len() as u64;
+        let offset = self.base_offset.saturating_add(self.bytes.len() as u64);
         encode_frame_into(&mut self.bytes, &header, &parts.envelope, &parts.body)?;
         self.writer_sequence = self.writer_sequence.saturating_add(1);
         self.frame_count = self.frame_count.saturating_add(1);
@@ -230,11 +279,18 @@ impl ActiveSegment {
     ///
     /// After seal, further appends fail. The segment is marked immutable in
     /// this in-memory profile; durable immutability is a storage concern.
+    ///
+    /// Requires `base_offset == 0` (full image in RAM). After write-through
+    /// discard the store must seal from the on-disk prefix instead.
     pub fn seal(mut self) -> Result<SealedSegment, SegmentError> {
         if self.sealed {
             return Err(SegmentError::AlreadySealed);
         }
         if self.frame_count == 0 {
+            return Err(SegmentError::MissingDescriptor);
+        }
+        if self.base_offset != 0 {
+            // Cannot form a contiguous sealed image without the discarded prefix.
             return Err(SegmentError::MissingDescriptor);
         }
 
@@ -293,7 +349,7 @@ impl ActiveSegment {
         {
             return Err(FrameVerifyError::LengthsOutOfLimits.into());
         }
-        let offset = self.bytes.len() as u64;
+        let offset = self.base_offset.saturating_add(self.bytes.len() as u64);
         // Encode directly into the segment buffer (one payload copy, not two).
         encode_frame_into(&mut self.bytes, &header, envelope, body)?;
         self.writer_sequence = self.writer_sequence.saturating_add(1);
@@ -542,6 +598,28 @@ mod tests {
             .append(FrameKind::SegmentDescriptor, EMPTY_ENVELOPE, b"", [0u8; 16])
             .unwrap_err();
         assert!(matches!(err, SegmentError::ReservedKind(_)));
+    }
+
+    #[test]
+    fn write_through_discard_preserves_logical_offsets() {
+        let mut active = ActiveSegment::create(sample_ids(), SafetyLimits::default(), 0).unwrap();
+        let desc_len = active.len();
+        let off = active
+            .append(FrameKind::ItemEvent, b"\xa0", b"hello", [9u8; 16])
+            .unwrap();
+        assert!(off >= desc_len);
+        let logical = active.len();
+        active.discard_through(desc_len);
+        assert_eq!(active.base_offset(), desc_len);
+        assert_eq!(active.len(), logical);
+        assert_eq!(active.as_bytes().len() as u64, logical - desc_len);
+        // Next append continues absolute offsets.
+        let off2 = active
+            .append(FrameKind::ItemEvent, b"\xa0", b"world", [8u8; 16])
+            .unwrap();
+        assert_eq!(off2, logical);
+        // Cannot seal from RAM after discard.
+        assert!(active.seal().is_err());
     }
 
     #[test]

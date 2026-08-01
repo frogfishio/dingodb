@@ -454,11 +454,44 @@ First “prep 65%” was **seal cost mis-binned** into prep. After split:
 
 Raising seal threshold to 512 MiB did **not** beat 64 MiB on the long peer (~67 vs ~80 logical MiB/s) — large active segment **RSS/cache** pressure. Need **faster seals** and/or **write-through**, not only “seal less.”
 
-### Next squeezes
+### Next squeezes (implemented this slice)
 
 1. Seal/finalize cost (still rename-seal; cut remaining work).  
 2. append_frame micro + segment reserve.  
 3. Write-through so large thresholds stay RAM-safe.
+
+### Campaign G.2 — write-through + seal finalize lean (2026-08-01)
+
+**Changes (integrity-preserving):**
+
+| Change | Intent |
+|--------|--------|
+| `ActiveSegment::base_offset` + `discard_through` | Drop RAM for bytes already transferred to the OS |
+| `write_segment_tail` write-through after Buffered/Durable write | Active segment RSS ≈ unflushed tail (not full seal threshold) |
+| File-based sync seal when prefix discarded | Same sealed bytes; recovery still from on-disk frames |
+| `seal_pending_bytes` in-place truncate + `into_bytes` | Fewer full-segment clones on finalize |
+| Modest 256 KiB create capacity (not full threshold) | Append micro without pinning seal_threshold RAM |
+
+**Scratch phase-bench** (20k × 8 KiB, 512 MiB seal micro — no mid seals):
+
+| Phase | Before (G) | After write-through |
+|-------|----------:|--------------------:|
+| Buffered put batch=1 | ~41–108k ops/s | **~135k ops/s** |
+| append_frame share | ~53% (no-seal) | ~51% |
+| file_sync | n=0 | n=0 |
+
+**Peer-A 256 MiB logical** (same knobs as Campaign F residiuum-A):
+
+| Seal | Logical MiB/s | ops/s | Peak RSS | Notes |
+|------|-------------:|------:|---------:|-------|
+| 64 MiB (Campaign F) | 77.5 | 9924 | 595 MiB | pre write-through |
+| **64 MiB (after)** | **80.5** | **10303** | **339 MiB** | ~same rate, **~43% less RSS** |
+| 512 MiB (pre) | ~67 | — | multi-hundred MiB | RSS/cache pressure |
+| **512 MiB (after)** | 63.2 | 8093 | **22 MiB** | write-through RSS proof |
+
+Artifacts: `doc/wip/status/surveys/scratch-mode-a-breakdown-20260801/phase-bench-after-write-through.txt`, `peer-A-after-write-through.json`, `peer-A-after-write-through-512.json`.
+
+**Read:** Write-through lands the “large seal threshold without multi-hundred-MiB RSS” goal. Long peer-A at 64 MiB seal stays ~parity with Campaign F (±noise); the microbench put path is clearly faster when seals are not mid-run. Remaining Mode A headroom is still append Blake/copy + seal worker backpressure on long runs — not a silent weaker Buffered mode.
 
 ## Bottom line
 

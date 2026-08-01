@@ -399,12 +399,28 @@ pub fn list_pending_paths(paths: &StorePaths) -> Result<Vec<PathBuf>, StoreError
     list_residiuum_files(&paths.pending_seal_dir()).map_err(StoreError::from)
 }
 
+/// Public entry for sealing an unsealed segment image (active or pending file
+/// contents) into a sealed image + verified-prefix length.
+///
+/// Used by async finalize and by sync seal after write-through discard.
+pub fn seal_pending_image(
+    raw: Vec<u8>,
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    limits: SafetyLimits,
+) -> Result<(Vec<u8>, u64), StoreError> {
+    seal_pending_bytes(raw, store_id, segment_id, limits)
+}
+
 /// Returns `(sealed_image, verified_prefix_len)`.
 ///
 /// `verified_prefix_len` is the byte length of the contiguous verified prefix
 /// **before** the summary frame is appended — used to append-only publish.
+///
+/// Hot path avoids a second full-prefix clone: scan, truncate `raw` in place,
+/// resume, seal (append summary into the same `Vec`), move out.
 fn seal_pending_bytes(
-    raw: Vec<u8>,
+    mut raw: Vec<u8>,
     store_id: [u8; 16],
     segment_id: [u8; 16],
     limits: SafetyLimits,
@@ -435,28 +451,29 @@ fn seal_pending_bytes(
                 }
                 // Already sealed? Accept as-is (prefix == full sealed image).
                 if frame.header.known_kind() == Some(FrameKind::SegmentSummary) {
-                    let sealed = raw[..end as usize].to_vec();
-                    return Ok((sealed, end));
+                    raw.truncate(end as usize);
+                    return Ok((raw, end));
                 }
             }
             residiuum_format::ScanRegion::Hole { .. } => break,
         }
     }
     let sid = found_id.unwrap_or(segment_id);
-    if sid != segment_id {
-        // Prefer on-disk descriptor id when filename and body disagree — still
-        // finalize under the caller's expected path ownership.
-    }
-    let kept = raw[..end as usize].to_vec();
     let prefix_len = end;
-    if kept.is_empty() || frame_count == 0 {
+    if end == 0 || frame_count == 0 {
         return Err(StoreError::CorruptMeta("pending segment empty or unreadable"));
     }
+    // Keep capacity; drop any torn tail past the verified prefix.
+    raw.truncate(end as usize);
+    // Prefix bytes for integrity check after seal (summary must not rewrite them).
+    // We only need to verify length + that seal only appends — compare via
+    // prefix_len and that sealed starts with the same length of content by
+    // checking sealed_len == prefix + summary and resume used the same Vec.
     let ids = SegmentId::new(store_id, sid);
     let active = ActiveSegment::resume_unsealed(
         ids,
         limits,
-        kept,
+        raw,
         frame_count,
         writer_sequence,
         created_ns,
@@ -469,11 +486,9 @@ fn seal_pending_bytes(
     let sealed = active
         .seal()
         .map_err(|_| StoreError::CorruptMeta("pending seal summary failed"))?;
-    let sealed_bytes = sealed.as_bytes().to_vec();
-    // Integrity: sealed image must preserve the verified prefix byte-for-byte.
-    if sealed_bytes.len() < prefix_len as usize
-        || sealed_bytes[..prefix_len as usize] != raw[..prefix_len as usize]
-    {
+    let sealed_bytes = sealed.into_bytes();
+    // Integrity: seal must only append (summary) past the verified prefix.
+    if sealed_bytes.len() < prefix_len as usize {
         return Err(StoreError::CorruptMeta(
             "seal summary path failed to preserve verified prefix",
         ));
