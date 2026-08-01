@@ -1,8 +1,12 @@
-//! APB-1 G1: `HeapClient` / `CollectionClient` façade over embedded [`Heap`].
+//! APB-1 G1–G6: `HeapClient` / `CollectionClient` façade over embedded [`Heap`].
 //!
-//! Normative: MUST_ADD §5; inventory `APB1_CLIENT_GAP_INVENTORY.md` G1–G2.
-//! Remote bind covered by server `apb1_heap_client_from_remote_*` (G1b).
+//! Normative: MUST_ADD §5; inventory `APB1_CLIENT_GAP_INVENTORY.md`.
+//! Shared scenarios: `tests/common/apb1_facade_parity.rs` (G6 dual suite).
+//! Remote pack: server `apb1_heap_client_from_remote_*`.
 //! No package accept.
+
+#[path = "common/apb1_facade_parity.rs"]
+mod apb1_facade_parity;
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -57,7 +61,7 @@ fn uuid() -> [u8; 16] {
 }
 
 #[test]
-fn facade_from_heap_create_list_open_put_get() {
+fn facade_parity_pack_embedded() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     let deployment = ResidiuumDeployment::create(root).unwrap();
@@ -77,75 +81,17 @@ fn facade_from_heap_create_list_open_put_get() {
     assert!(client.is_bound());
     assert_eq!(client.id(), heap_id);
 
-    let created = client.create_collection("orders").expect("create");
-    assert_eq!(created.collection.name(), "orders");
-    assert_eq!(created.collection.heap_id(), heap_id);
-    assert!(created.collection.is_bound());
+    // G6: same scenario pack as remote façade suite.
     assert_eq!(
-        created.receipt.operation,
-        residiuum_sdk::AdminOperation::CreateCollection
+        apb1_facade_parity::SCENARIO_IDS,
+        &[
+            "create_open_list",
+            "put_get_delete",
+            "history_versions",
+            "index_lifecycle",
+        ]
     );
-    assert_eq!(created.receipt.heap_id, heap_id);
-    assert_eq!(created.receipt.collection_id, created.collection.id());
-
-    let listed = client.list_collections().expect("list");
-    assert_eq!(listed.len(), 1);
-    assert_eq!(listed[0].name, "orders");
-    assert_eq!(listed[0].collection_id, created.collection.id());
-
-    let mut opened = client.open_collection("orders").expect("open");
-    assert_eq!(opened.id(), created.collection.id());
-    assert!(opened.is_bound());
-
-    opened
-        .put("k1", &serde_json::json!({"n": 1}))
-        .expect("put via façade");
-    let got = opened.get("k1").expect("get");
-    assert_eq!(got, Some(serde_json::json!({"n": 1})));
-
-    // G4: multi-version history through the façade.
-    opened
-        .put("k1", &serde_json::json!({"n": 2}))
-        .expect("put v2");
-    opened.delete("k1").expect("delete");
-    opened
-        .put("k1", &serde_json::json!({"n": 3}))
-        .expect("put v3");
-    let hist = opened.history("k1").expect("history");
-    assert_eq!(hist.key, "k1");
-    assert!(
-        hist.versions.len() >= 4,
-        "expected put,put,delete,put; got {}",
-        hist.versions.len()
-    );
-    assert_eq!(hist.versions[0].kind, "put");
-    assert_eq!(hist.versions[0].json.as_ref().unwrap()["n"], 1);
-    let kinds: Vec<&str> = hist.versions.iter().map(|v| v.kind).collect();
-    assert!(kinds.contains(&"delete"), "kinds={kinds:?}");
-
-    // G3: IndexManager list/create/rebuild/drop
-    opened
-        .put("idx-a", &serde_json::json!({"status": "active", "n": 1}))
-        .expect("put idx-a");
-    opened
-        .put("idx-b", &serde_json::json!({"status": "paused", "n": 2}))
-        .expect("put idx-b");
-    {
-        let mut im = opened.indexes();
-        assert!(im.list().expect("list empty").is_empty());
-        let created = im
-            .create("by-status", &["status"])
-            .expect("create index");
-        assert_eq!(created.name, "by-status");
-        assert_eq!(created.fields, vec!["status".to_string()]);
-        assert!(created.entry_count >= 2);
-        let listed = im.list().expect("list after create");
-        assert_eq!(listed.len(), 1);
-        let rebuilt = im.rebuild("by-status").expect("rebuild");
-        assert_eq!(rebuilt.name, "by-status");
-        im.drop("by-status").expect("drop");
-        assert!(im.list().expect("list after drop").is_empty());
-    }
+    apb1_facade_parity::run_full_facade_parity(&mut client, "orders");
 
     match client.create_collection("orders") {
         Ok(_) => panic!("duplicate name must fail"),

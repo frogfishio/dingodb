@@ -1,6 +1,6 @@
 # APB-1 — HeapClient / CollectionClient gap inventory
 
-Status: **labor inventory v1.4** (2026-08-01) · package `APB-1` **active / not accept**  
+Status: **labor inventory v1.5** (2026-08-01) · package `APB-1` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §5 · [CORE plan](./CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §3–4 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -123,11 +123,11 @@ Priority order for **APB-1 labor after this inventory** (not started here):
 | # | Gap | Proposed package slice | Depends |
 |---:|---|---|---|
 | G1 | Sealed backend + `From<Heap>` / `From<RemoteHeap>` / connect helpers | APB-1 / APP-2 | **G1+G1b 2026-08-01:** Unbound\|Embedded\|Remote; both `From`s; create/open/list + put/get/delete both backends |
-| G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | **Embedded** `apb1_heap_client_embedded` 2/2; **remote** `apb1_heap_client_from_remote_open_put_get_delete` (hp007) ok; dual shared suite still open |
+| G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | **Wired**; exercised by G6 pack (embedded create; remote list/open) |
 | G3 | `IndexManager` façade over embedded indexes + remote index_* | APB-1 | **Landed 2026-08-01:** `CollectionClient::indexes` both backends |
 | G4 | `CollectionClient::history` / HistoryClient | APB-1 | **Landed 2026-08-01:** both backends; optional named HistoryClient residual |
 | G5 | RecoveryClient only when wire un-reserves or pure local examine defined | APB-1 later | reserved wire honesty |
-| G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | G2–G4 |
+| G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | **Scaffold 2026-08-01:** shared `apb1_facade_parity` + both backends; remote create residual; **not accept** |
 | G7 | put/get/delete façade binding | **APP-3 / APB-2** | **Basic forward done on G1/G1b**; conditional/add/upsert + options parity still APB-2 |
 | G8 | rql execution + cursor | **APP-6 / APB-7** | APP-5 accept ✓; G1; HAR-4 for remote |
 
@@ -144,8 +144,9 @@ Principal §0.8 still prioritizes query path. After APP-5 accept:
 DONE  APB-1 G1+G1b  From<Heap|RemoteHeap> + create/open/list + basic put/get/delete
 DONE  APB-1 G4      CollectionClient::history both backends
 DONE  APB-1 G3      IndexManager list/create/drop/rebuild both backends
-NOW   APB-1 G6      dual shared suite scaffolding (or HAR-1 scoreboard reconcile)
-  ||  HAR-0 residual + HAR-1 scoreboard reconcile (provisioning honesty)
+DONE  APB-1 G6      dual suite scaffold (shared scenarios; remote create residual)
+NOW   expand G6 (HeapAdmin create on remote) || HAR-1 scoreboard reconcile
+  ||  HAR-0 residual
 THEN  APP-3 / APB-2 richer mutation (conditional/add/upsert) on façade
 THEN  APB-6 read views
 THEN  APP-6 / APB-7 RQL execution (compiler ready)
@@ -162,11 +163,13 @@ Do **not** claim APB-1 accept until dual-backend suite exits.
 | Inventory (this file) | `doc/todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md` |
 | Ops registry | `spec/app/baseline-v1/operations-v1.json` (10 APB-1 rows) |
 | Façade | `crates/residiuum-sdk/src/app_v1.rs` (`From`, history, `IndexManager`) |
-| Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** (history + indexes) |
-| Remote suite | `cargo test -p residiuum-server --features dangerous-key-export --test hp007_connect_heap apb1_heap_client_from_remote` **1/1** (history + indexes) |
-| Embedded | `crates/residiuum-sdk/src/heap.rs` (history + list/create/drop/rebuild indexes) |
+| Dual suite doc | [APB1_DUAL_BACKEND_SUITE.md](./APB1_DUAL_BACKEND_SUITE.md) |
+| Shared scenarios | `crates/residiuum-sdk/tests/common/apb1_facade_parity.rs` |
+| Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** (full G6 pack) |
+| Remote suite | `cargo test -p residiuum-server --features dangerous-key-export --test hp007_connect_heap apb1_heap_client_from_remote` **1/1** (collection plane) |
+| Embedded | `crates/residiuum-sdk/src/heap.rs` |
 | Remote | `crates/residiuum-sdk/src/remote_heap.rs` |
-| Scoreboard | `APB-1` → **active** (not accept); G1+G1b+G3+G4; dual suite residual |
+| Scoreboard | `APB-1` → **active** (not accept); G1–G4 + G6 scaffold; dual exit residual |
 
 ---
 

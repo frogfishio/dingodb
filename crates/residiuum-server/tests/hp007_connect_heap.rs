@@ -1,5 +1,8 @@
 //! HP-007 residual: `Residiuum::connect_heap` qualified remote session + process ops.
 
+#[path = "../../residiuum-sdk/tests/common/apb1_facade_parity.rs"]
+mod apb1_facade_parity;
+
 use residiuum_heap::{
     verify_certificate, HeapAdministrativeState, HeapSecuritySnapshot, HeapSlot, SecurityRevision,
     HEAP_PROFILE,
@@ -382,7 +385,10 @@ fn connect_heap_put_get_delete_subject_v2() {
     thread::sleep(Duration::from_millis(50));
 }
 
-/// APB-1 G1b: `HeapClient::from(RemoteHeap)` open/list/put/get/delete over the wire.
+/// APB-1 G1b/G6: remote `HeapClient` façade runs the shared collection-plane parity pack.
+///
+/// Vector cert is Read|Write|IndexAdmin (no HeapAdmin) — create is exercised only
+/// on the embedded suite; remote uses pre-provisioned `users` + list/open.
 #[test]
 fn apb1_heap_client_from_remote_open_put_get_delete() {
     use residiuum_sdk::HeapClient;
@@ -483,69 +489,19 @@ fn apb1_heap_client_from_remote_open_put_get_delete() {
     assert!(client.is_bound());
     assert_eq!(client.id(), verified.heap_id);
 
-    let listed = client.list_collections().expect("list via façade");
-    assert!(
-        listed.iter().any(|e| e.name == "users"),
-        "list must include users: {listed:?}"
-    );
-
-    let mut col = client.open_collection("users").expect("open via façade");
-    assert!(col.is_bound());
-    assert_eq!(col.name(), "users");
-    assert_eq!(col.heap_id(), verified.heap_id);
-
-    col.put("user-1", &serde_json::json!({"name": "Alice"}))
-        .expect("put via façade");
-    let got = col.get("user-1").expect("get").expect("found");
-    assert_eq!(got["name"], "Alice");
-
-    col.put_bytes("blob-1", b"\x00\xff").expect("put_bytes");
+    // G6: same collection-plane scenarios as embedded `facade_parity_pack_embedded`.
     assert_eq!(
-        col.get_bytes("blob-1").expect("get_bytes").unwrap(),
-        b"\x00\xff"
+        apb1_facade_parity::SCENARIO_IDS,
+        &[
+            "create_open_list",
+            "put_get_delete",
+            "history_versions",
+            "index_lifecycle",
+        ]
     );
-
-    let del = col.delete("user-1").expect("delete");
-    assert!(del.removed);
-    assert!(col.get("user-1").expect("get after delete").is_none());
-
-    // G4: history after put/delete cycle.
-    col.put("hist-k", &serde_json::json!({"v": 1}))
-        .expect("hist put1");
-    col.put("hist-k", &serde_json::json!({"v": 2}))
-        .expect("hist put2");
-    col.delete("hist-k").expect("hist delete");
-    let hist = col.history("hist-k").expect("history via façade");
-    assert_eq!(hist.key, "hist-k");
-    assert!(
-        hist.versions.len() >= 3,
-        "expected ≥3 versions, got {}",
-        hist.versions.len()
-    );
-    let kinds: Vec<&str> = hist.versions.iter().map(|v| v.kind).collect();
-    assert!(kinds.contains(&"put") && kinds.contains(&"delete"), "kinds={kinds:?}");
-
-    // G3: IndexManager via remote façade (vector cert rights include IndexAdmin).
-    col.put("ia", &serde_json::json!({"status": "active", "n": 1}))
-        .expect("put ia");
-    col.put("ib", &serde_json::json!({"status": "paused", "n": 2}))
-        .expect("put ib");
-    {
-        let mut im = col.indexes();
-        assert!(im.list().expect("list empty").is_empty());
-        let created = im
-            .create("by-status", &["status"])
-            .expect("create index via façade");
-        assert_eq!(created.name, "by-status");
-        assert_eq!(created.state.as_str(), "ready");
-        assert!(created.entry_count >= 2);
-        let listed = im.list().expect("list");
-        assert_eq!(listed.len(), 1);
-        let rebuilt = im.rebuild("by-status").expect("rebuild");
-        assert_eq!(rebuilt.name, "by-status");
-        im.drop("by-status").expect("drop");
-        assert!(im.list().expect("after drop").is_empty());
-    }
+    let mut col = apb1_facade_parity::scenario_list_and_open(&mut client, "users");
+    assert_eq!(col.heap_id(), verified.heap_id);
+    apb1_facade_parity::run_collection_plane_parity(&mut col);
 
     drop(client);
     flag.store(true, Ordering::SeqCst);
