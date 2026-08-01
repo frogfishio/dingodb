@@ -520,34 +520,57 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let _ = fs::remove_dir_all(&store_path);
     }
 
-    // --- 6. Store Buffered put_many in batches ---
-    {
-        let store_path = cfg.work.join("bufn-store");
+    // --- 6. Store Buffered put_many: serial cook vs parallel cooker (Option C) ---
+    for (workers, phase_name) in [
+        (1usize, "store_put_many_cook1"),
+        (2usize, "store_put_many_cook2"),
+        (4usize, "store_put_many_cook4"),
+    ] {
+        let store_path = cfg.work.join(format!("bufn-cook{workers}"));
         let _ = fs::remove_dir_all(&store_path);
         let mut store =
-            Store::create(&store_path).map_err(|e| format!("create bufn store: {e}"))?;
-        store.set_seal_threshold(64 * 1024 * 1024);
+            Store::create(&store_path).map_err(|e| format!("create cook{workers}: {e}"))?;
+        // Large seal so mid-batch rotate does not abort parallel install.
+        store.set_seal_threshold(512 * 1024 * 1024);
+        store.set_cook_parallelism(workers);
+        let cpu0 = sample_cpu_pct();
         let t0 = Instant::now();
         let mut i = 0u64;
         while i < ops {
             let end = (i + batch as u64).min(ops);
-            let keys: Vec<String> = (i..end).map(|k| format!("n/{k:020}")).collect();
-            let items: Vec<(&str, &[u8])> = keys.iter().map(|k| (k.as_str(), payload.as_slice())).collect();
+            let keys: Vec<String> = (i..end).map(|k| format!("c{workers}/{k:020}")).collect();
+            let items: Vec<(&str, &[u8])> =
+                keys.iter().map(|k| (k.as_str(), payload.as_slice())).collect();
             store
                 .put_many(&items, DurabilityMode::Buffered)
-                .map_err(|e| format!("put_many: {e}"))?;
+                .map_err(|e| format!("put_many cook{workers}: {e}"))?;
             i = end;
         }
         let s = t0.elapsed().as_secs_f64();
+        let cpu1 = sample_cpu_pct();
         phases.push(phase(
-            "store_put_many_buffered",
+            phase_name,
             ops,
             payload_bytes,
             s,
-            format!("batch={batch}; one tail write per batch"),
+            format!(
+                "PARALLEL COOKER workers={workers} batch={batch}; real disk; ps%cpu≈{:?}→{:?}",
+                cpu0, cpu1
+            ),
         ));
         drop(store);
         let _ = fs::remove_dir_all(&store_path);
+    }
+
+    // Keep legacy name as alias of cook1 for older dashboards.
+    if let Some(p) = phases.iter().find(|p| p.name == "store_put_many_cook1").cloned() {
+        phases.push(Phase {
+            name: "store_put_many_buffered",
+            wall_ms: p.wall_ms,
+            ops_per_sec: p.ops_per_sec,
+            mib_per_sec: p.mib_per_sec,
+            note: format!("alias of cook1; {}", p.note),
+        });
     }
 
     // Interpretation helper rates — disk bisection first
@@ -678,6 +701,16 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
     interpretation.push(
         "Note: long peer multi-seal runs can still add seal_rotate wall; this micro uses 512MiB seal so mid seals are off.".into(),
     );
+    let c1 = phases.iter().find(|p| p.name == "store_put_many_cook1");
+    let c4 = phases.iter().find(|p| p.name == "store_put_many_cook4");
+    if let (Some(a), Some(b)) = (c1, c4) {
+        interpretation.push(format!(
+            "COOKER POOL: cook1 {:.0} vs cook4 {:.0} ops/s ({:.2}×) — parallel full-record cook (env+Blake+encode) then ordered install.",
+            a.ops_per_sec,
+            b.ops_per_sec,
+            b.ops_per_sec / a.ops_per_sec.max(1.0)
+        ));
+    }
 
     let report = json!({
         "prong": "phase_bench",

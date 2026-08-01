@@ -195,9 +195,33 @@ impl ActiveSegment {
         self.frame_count
     }
 
+    /// Next writer-local sequence that will be stamped on the following append.
+    pub fn writer_sequence(&self) -> u64 {
+        self.writer_sequence
+    }
+
     /// Logical offset of the first retained byte (`0` when nothing was write-through).
     pub fn base_offset(&self) -> u64 {
         self.base_offset
+    }
+
+    /// Append a fully encoded frame image (prefix|env|body|suffix) without re-encoding.
+    ///
+    /// Used by the parallel cooker: workers produce complete frames (Blake included);
+    /// the writer thread installs them in order. Caller must stamp `writer_sequence`
+    /// in the frame header to match [`Self::writer_sequence`] before calling.
+    pub fn append_preencoded_frame(&mut self, frame: &[u8]) -> Result<u64, SegmentError> {
+        if self.sealed {
+            return Err(SegmentError::AlreadySealed);
+        }
+        if frame.is_empty() {
+            return Err(SegmentError::MissingDescriptor);
+        }
+        let offset = self.base_offset.saturating_add(self.bytes.len() as u64);
+        self.bytes.extend_from_slice(frame);
+        self.writer_sequence = self.writer_sequence.saturating_add(1);
+        self.frame_count = self.frame_count.saturating_add(1);
+        Ok(offset)
     }
 
     /// Bytes still held in RAM (suffix starting at [`Self::base_offset`]).

@@ -60,8 +60,9 @@ use crate::write_dedup::{
 };
 use crate::writer_lock::{StoreOpenOptions, WriterLock, WriterLockObservation};
 use residiuum_format::{
-    decode_store_descriptor_body, encode_store_descriptor_frame, scan_forward, ActiveSegment,
-    FrameFlags, FrameHeader, FrameKind, FrameParts, SafetyLimits, SegmentId,
+    decode_store_descriptor_body, encode_frame_into, encode_store_descriptor_frame, scan_forward,
+    ActiveSegment, FrameFlags, FrameHeader, FrameKind, FrameParts, SafetyLimits, SegmentId,
+    WIRE_MAJOR, WIRE_MINOR,
 };
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -332,6 +333,9 @@ pub struct Store {
     ///
     /// Isolates Blake vs memcpy/write within append_frame. Frames fail verify.
     diagnostic_skip_blake: bool,
+    /// Parallel record-cooker workers for single-shard [`Self::put_many`].
+    /// `1` = serial (default); `N>1` cooks full frames (env+Blake+encode) in parallel.
+    cook_parallelism: usize,
 }
 
 /// Where `write_segment_tail` sends bytes (diagnostic bisection only).
@@ -479,6 +483,7 @@ impl Store {
             diagnostic_skip_index: false,
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
+            cook_parallelism: 1,
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -571,6 +576,7 @@ impl Store {
             diagnostic_skip_index: false,
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
+            cook_parallelism: 1,
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -700,6 +706,7 @@ impl Store {
             diagnostic_skip_index: false,
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
+            cook_parallelism: 1,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -789,6 +796,19 @@ impl Store {
     /// Whether Blake body hash is short-circuited (diagnostic).
     pub fn diagnostic_skip_blake(&self) -> bool {
         self.diagnostic_skip_blake
+    }
+
+    /// Parallel cooker worker count for single-shard [`Self::put_many`].
+    ///
+    /// Values `< 1` clamp to `1`. Cooks full records (envelope + frame + Blake)
+    /// on a pool; ordered install + one tail write. Default `1` (serial).
+    pub fn set_cook_parallelism(&mut self, workers: usize) {
+        self.cook_parallelism = workers.max(1);
+    }
+
+    /// Current cook parallelism (`1` = serial).
+    pub fn cook_parallelism(&self) -> usize {
+        self.cook_parallelism.max(1)
     }
 
     /// Enable boundary probe with an explicit sample-vector capacity.
@@ -1327,6 +1347,9 @@ impl Store {
     ///
     /// This is the dominant throughput path for testrig / bulk loaders. Per-put
     /// `write_all`+`seek` was leaving SSD and CPU idle (~1/3 of sequential ceiling).
+    ///
+    /// With [`Self::set_cook_parallelism`] `> 1`, full record cooking (env + Blake
+    /// + frame encode) runs on a worker pool; frames install in order (Option C).
     fn put_many_single_shard_batched(
         &mut self,
         items: &[(&str, &[u8])],
@@ -1334,6 +1357,11 @@ impl Store {
     ) -> Result<Vec<WriteReceipt>, StoreError> {
         debug_assert_eq!(self.writer_shards(), 1);
         debug_assert_ne!(mode, DurabilityMode::Memory);
+
+        let workers = self.cook_parallelism();
+        if workers > 1 && items.len() >= 2 {
+            return self.put_many_single_shard_parallel_cook(items, mode, workers);
+        }
 
         let mut out = Vec::with_capacity(items.len());
         for (subject, value) in items {
@@ -1451,6 +1479,224 @@ impl Store {
             let writer = self
                 .active_mut(0)
                 .expect("active segment after put_many batch");
+            if mode != DurabilityMode::Memory {
+                writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
+            }
+            Self::write_segment_tail(writer, mode, sink, null.as_mut())?
+        };
+        self.null_io_file = null;
+        self.record_tail_probe(&tail, mode, 0)?;
+        Ok(out)
+    }
+
+    /// Parallel record cooker: full frames (env + Blake + encode) on `workers` threads.
+    fn put_many_single_shard_parallel_cook(
+        &mut self,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+        workers: usize,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        use std::sync::Mutex;
+        use std::thread;
+
+        self.ensure_active(0)?;
+        self.maybe_auto_seal(0)?;
+
+        let segment_id = self
+            .active_ref(0)
+            .map(|w| w.segment_id)
+            .expect("active segment");
+        let mut next_seq = self
+            .active_ref(0)
+            .map(|w| w.segment.writer_sequence())
+            .expect("active segment");
+
+        struct Prep {
+            admit: AdmitDecision,
+            subject: Vec<u8>,
+            body: Vec<u8>,
+            item_id: [u8; 16],
+            event_id: [u8; 16],
+            writer_sequence: u64,
+            created_ns: u64,
+            profile_id: String,
+        }
+        let profile = self.large_value_policy.profile_id.clone();
+        let mut preps: Vec<Prep> = Vec::with_capacity(items.len());
+        for (subject, value) in items {
+            let admit = self.large_value_policy.admit(value.len())?;
+            let subject_bytes = subject.as_bytes();
+            if subject_bytes.len() > MAX_SUBJECT_LEN {
+                return Err(StoreError::SubjectTooLong {
+                    max: MAX_SUBJECT_LEN,
+                });
+            }
+            if value.len() as u64 > self.limits.max_body_len {
+                return Err(StoreError::PayloadTooLarge);
+            }
+            let item_id = match self.index.get(subject_bytes) {
+                Some(entry) => entry.item_id(),
+                None => subject_item_id(subject_bytes),
+            };
+            let event_id = self.next_event_id()?;
+            let writer_sequence = next_seq;
+            next_seq = next_seq.saturating_add(1);
+            preps.push(Prep {
+                admit,
+                subject: subject_bytes.to_vec(),
+                body: value.to_vec(),
+                item_id,
+                event_id,
+                writer_sequence,
+                created_ns: now_ns(),
+                profile_id: profile.clone(),
+            });
+        }
+
+        let store_id = self.store_id;
+        let limits = self.limits;
+        let n = preps.len();
+        let workers = workers.min(n).max(1);
+
+        struct Cooked {
+            prep_idx: usize,
+            frame: Vec<u8>,
+        }
+        let cooked: Mutex<Vec<Option<Result<Cooked, String>>>> =
+            Mutex::new((0..n).map(|_| None).collect());
+
+        thread::scope(|scope| {
+            let chunk = (n + workers - 1) / workers;
+            for w in 0..workers {
+                let start = w * chunk;
+                if start >= n {
+                    break;
+                }
+                let end = (start + chunk).min(n);
+                let preps_slice = &preps[start..end];
+                let cooked = &cooked;
+                scope.spawn(move || {
+                    for (local_i, p) in preps_slice.iter().enumerate() {
+                        let prep_idx = start + local_i;
+                        let env = ItemEnvelope {
+                            store_id,
+                            segment_id,
+                            item_id: p.item_id,
+                            event_kind: EventKind::Put,
+                            created_ns: p.created_ns,
+                            subject: p.subject.clone(),
+                        };
+                        let r = (|| {
+                            let envelope =
+                                encode_item_envelope(&env).map_err(|e| e.to_string())?;
+                            if !limits.accepts_lengths(envelope.len() as u32, p.body.len() as u64)
+                            {
+                                return Err("payload too large".into());
+                            }
+                            let header = FrameHeader {
+                                wire_major: WIRE_MAJOR,
+                                wire_minor: WIRE_MINOR,
+                                frame_kind: FrameKind::ItemEvent.as_u8(),
+                                flags: Default::default(),
+                                envelope_len: envelope.len() as u32,
+                                body_len: p.body.len() as u64,
+                                logical_len: p.body.len() as u64,
+                                writer_sequence: p.writer_sequence,
+                                event_id: p.event_id,
+                            };
+                            let mut frame =
+                                Vec::with_capacity((p.body.len() + envelope.len() + 128).max(256));
+                            encode_frame_into(&mut frame, &header, &envelope, &p.body)
+                                .map_err(|e| e.to_string())?;
+                            Ok(Cooked { prep_idx, frame })
+                        })();
+                        if let Ok(mut slot) = cooked.lock() {
+                            slot[prep_idx] = Some(r);
+                        }
+                    }
+                });
+            }
+        });
+
+        let cooked_list = cooked
+            .into_inner()
+            .map_err(|_| StoreError::CorruptMeta("cook pool lock poisoned"))?;
+
+        let mut out = Vec::with_capacity(n);
+        for (i, cooked_opt) in cooked_list.into_iter().enumerate() {
+            let cooked_r = cooked_opt.ok_or(StoreError::CorruptMeta("cook slot empty"))?;
+            let cooked = cooked_r.map_err(|e| {
+                StoreError::Io(std::io::Error::other(format!("parallel cook: {e}")))
+            })?;
+            let p = &preps[i];
+            debug_assert_eq!(cooked.prep_idx, i);
+
+            self.maybe_auto_seal(0)?;
+            let cur_seg = self
+                .active_ref(0)
+                .map(|w| w.segment_id)
+                .expect("active");
+            if cur_seg != segment_id {
+                return Err(StoreError::CorruptMeta(
+                    "segment rotated mid parallel cook install; retry batch",
+                ));
+            }
+
+            let (offset, encoded_frame_len) = {
+                let writer = self.active_mut(0).expect("active");
+                let offset = writer
+                    .segment
+                    .append_preencoded_frame(&cooked.frame)
+                    .map_err(StoreError::from)?;
+                (offset, cooked.frame.len() as u64)
+            };
+            self.boundary_probe.record_append(
+                encoded_frame_len,
+                p.body.len() as u64,
+                offset,
+                mode,
+                false,
+                false,
+                0,
+                0,
+                0,
+            );
+
+            if !self.diagnostic_skip_index {
+                self.apply_durable_event(
+                    p.subject.clone(),
+                    EventKind::Put,
+                    Vec::new(),
+                    p.item_id,
+                    p.event_id,
+                    segment_id,
+                    0,
+                    offset,
+                );
+                self.note_collection_for_subject(&p.subject);
+                let _ = self.note_durable_derived();
+            }
+
+            let mut receipt = WriteReceipt::base(
+                self.store_id,
+                segment_id,
+                p.item_id,
+                p.event_id,
+                EventKind::Put,
+                mode,
+                offset,
+            )
+            .with_layout(p.admit, &p.profile_id);
+            receipt.encoded_frame_len = encoded_frame_len;
+            out.push(receipt);
+        }
+
+        let sink = self.diagnostic_io;
+        let mut null = self.null_io_file.take();
+        let tail = {
+            let writer = self
+                .active_mut(0)
+                .expect("active segment after parallel cook");
             if mode != DurabilityMode::Memory {
                 writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
             }
@@ -5936,6 +6182,23 @@ mod tests {
         assert!(n >= 1);
         let layout = store.load_chimera_layout(seg).unwrap().expect("rebuilt");
         assert_eq!(layout.get(b"x").unwrap().unwrap(), b"tiny-x");
+    }
+
+    #[test]
+    fn parallel_cook_put_many_roundtrip() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        store.set_seal_threshold(64 * 1024 * 1024);
+        store.set_cook_parallelism(4);
+        let payload = vec![7u8; 4096];
+        let keys: Vec<String> = (0..64).map(|i| format!("pk{i}")).collect();
+        let items: Vec<(&str, &[u8])> =
+            keys.iter().map(|k| (k.as_str(), payload.as_slice())).collect();
+        let receipts = store.put_many(&items, DurabilityMode::Buffered).unwrap();
+        assert_eq!(receipts.len(), 64);
+        for k in &keys {
+            assert_eq!(store.get(k).unwrap().as_deref(), Some(payload.as_slice()));
+        }
     }
 
     #[test]
