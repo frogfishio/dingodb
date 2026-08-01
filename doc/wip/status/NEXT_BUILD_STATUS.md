@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APP-6 **active** cursor-v1 mint/verify + vector MAC lock; APB-2 dual-pack mutations; HAR-1 active; APB-1 G1–G6; APP-5/4 accept)
+Updated: 2026-08-01 (Kanban-first labor rule + managed backlog Features/tasks; APP-6 active cursor; APB-2 dual-pack; query spine cards staged)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -174,7 +174,29 @@ they do not override this package interlock.
 
 ## Ready queue (honest)
 
-Program order (Kanban determines the individual active cards):
+### Kanban-first labor rule (2026-08-01)
+
+Labor **must not** deliver product features ad-hoc. Sequence:
+
+1. `work_board_get` (project partition UUID) — read Features + tasks + `project_version`
+2. If no matching **Feature**, `kanban_feature_upsert` first (restores readiness; empty Features = `feature_missing`)
+3. If no matching **task**, `kanban_task_upsert` with `feature_id` + `feature_revision_id` before code
+4. Stage `todo` → `doing` → `in_review` via `kanban_task_stage_request` (labor never self-`done`)
+5. Scoreboard (`NEXT_BUILD_STATUS`) = **package SoT**; Kanban board = **labor SoT**
+6. Prefer host board tools; do not invent boards under `.koderra/`
+
+**Pull order (managed backlog, 2026-08-01):**
+
+| Priority | Card | Feature | Note |
+|---:|---|---|---|
+| 1 | **APP-6 T2** page executor + scan oracle | Query spine | preferred next code labor |
+| 2 | **APB-6 T1** read views inventory/scaffold | Query spine | unblocks APB-7 honesty |
+| 3 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
+| 4 | **APB-7 T0** runtime gap inventory | Query spine | blocked until 1–2 progress |
+| 5 | **APB-2 T6** residual checklist | APB-2 residuals | no false accept |
+| 6 | **GOV T1** process rule | Labor governance | this scoreboard section |
+
+Program order (packages; Kanban cards bind labor under them):
 
 1. **CSQ-12 = accept** (2026-08-01): A2 independently verifies (`residiuum-verify-core-storage.sh`,
    `a2_pass=true`, missing=0). A3 residuals remain (platform / 72h soak / full mutation %) —
@@ -182,9 +204,9 @@ Program order (Kanban determines the individual active cards):
 2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
    do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
    with Atomics/cluster when those packages admit formal work.
-3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APB-1 active** (G1–G6 dual matrix; package exit residual);
-   next labor G1–G2 façade bind + create/open/list; then APB-6 / APP-6 → APB-7.
-   Non-query APB may lag.
+3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (cursor mint/verify);
+   **APB-1 active** (G1–G6 dual matrix); next **APP-6 T2 → APB-6 T1 → APB-7** (board cards).
+   Non-query APB may lag (APB-2 CAS residual is board-managed, not ad-hoc).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
 6. **PQH principal accept** remains measurement hygiene (labor largely `in_review`).
