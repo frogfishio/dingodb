@@ -110,7 +110,7 @@ APB-1 inventory still lists them as *adjacent* so the façade seam is planned on
 
 | Adjacent | Owning package | Façade today |
 |---|---|---|
-| put / get / delete | APB-2 / APP-3 | **basic forward both backends**; options/conditional residual |
+| put / get / delete | APB-2 / APP-3 | **basic forward both backends**; create/upsert/list_keys landed (APB-2 active); CAS residual |
 | rql / explain_rql | APB-7 (+ APP-6) | stubs; pure compiler APP-5 **accept** |
 | read_view | APB-6 | missing |
 
@@ -128,7 +128,7 @@ Priority order for **APB-1 labor after this inventory** (not started here):
 | G4 | `CollectionClient::history` / HistoryClient | APB-1 | **Landed 2026-08-01:** both backends; optional named HistoryClient residual |
 | G5 | RecoveryClient only when wire un-reserves or pure local examine defined | APB-1 later | reserved wire honesty |
 | G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | **Matrix green 2026-08-01:** shared pack; remote full create via HeapAdmin mint; product vectors still rights 13; **not package accept** |
-| G7 | put/get/delete façade binding | **APP-3 / APB-2** | **Basic forward done on G1/G1b**; conditional/add/upsert + options parity still APB-2 |
+| G7 | put/get/delete façade binding | **APP-3 / APB-2** | **put/get/delete + create/upsert/list_keys**; replace/if_version/CAS residual |
 | G8 | rql execution + cursor | **APP-6 / APB-7** | APP-5 accept ✓; G1; HAR-4 for remote |
 
 **Out of APB-1 scope (do not pull forward):** watches, import/export, bulk,
@@ -146,8 +146,9 @@ DONE  APB-1 G4      CollectionClient::history both backends
 DONE  APB-1 G3      IndexManager list/create/drop/rebuild both backends
 DONE  APB-1 G6      dual suite scaffold + remote full create (HeapAdmin mint)
 DONE  HAR-1 T1     scoreboard op-106 evidence reconcile (active, not accept)
-NOW   APP-3/APB-2 richer mutation || APB-6 read views
-  ||  HAR-0 residual; HAR-1 crash/journey residual; optional CI dual harness
+DONE  APB-2 slice  create/upsert/list_keys on CollectionClient (active, not accept)
+NOW   APB-2 replace/if_version || APB-6 read views || HAR-1 crash residual
+  ||  HAR-0 residual; optional CI dual harness
 THEN  APP-6 / APB-7 RQL execution (compiler ready)
 ```
 

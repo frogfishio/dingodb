@@ -412,6 +412,36 @@ impl HeapCollection {
         KeyHistory::from_store(key.to_string(), hist)
     }
 
+    /// List application keys (SubjectV2), deterministic order.
+    ///
+    /// `limit` is clamped 1..=4096. `after_key` resumes after that key.
+    pub fn list_keys(
+        &self,
+        limit: usize,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        if let Some(k) = after_key {
+            validate_key(k)?;
+        }
+        let raw = self.store.list_collection_keys(
+            self.id.as_bytes(),
+            limit,
+            after_key.map(|s| s.as_bytes()),
+        )?;
+        let mut out = Vec::with_capacity(raw.len());
+        for k in raw {
+            match String::from_utf8(k) {
+                Ok(s) => out.push(s),
+                Err(_) => {
+                    return Err(Error::Internal(
+                        "list_keys: non-UTF-8 application key".into(),
+                    ))
+                }
+            }
+        }
+        Ok(out)
+    }
+
     /// List secondary indexes (metadata only). Requires Read.
     pub fn list_indexes(&self) -> Result<Vec<IndexInfo>, Error> {
         let listed = self.store.list_indexes(self.id.as_bytes())?;

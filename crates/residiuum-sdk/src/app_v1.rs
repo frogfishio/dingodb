@@ -68,6 +68,15 @@ pub struct CreateCollectionResult {
     pub receipt: CollectionCreateReceipt,
 }
 
+/// Result of [`CollectionClient::upsert`] (APB-2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UpsertResult {
+    /// True when the key was absent before this write (inserted vs replaced).
+    pub inserted: bool,
+    /// Write receipt for the mutation.
+    pub receipt: WriteReceipt,
+}
+
 /// Receipt for `create_collection` (wire op 106).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CollectionCreateReceipt {
@@ -739,6 +748,61 @@ impl CollectionClient {
                     store_id: [0u8; 16],
                     segment_id: [0u8; 16],
                 })
+            }
+        }
+    }
+
+    /// Create JSON only when the key is currently absent (APB-2 / `apb.doc.create`).
+    ///
+    /// First cut: read-then-write (not a single-key CAS). Concurrent lost-create
+    /// races remain residual until store-level conditional put lands.
+    pub fn create<T: Serialize>(
+        &mut self,
+        key: &str,
+        value: &T,
+    ) -> Result<WriteReceipt, Error> {
+        if self.get(key)?.is_some() {
+            return Err(Error::Remote {
+                code: "already_exists".into(),
+                message: format!("key already present: {key}"),
+            });
+        }
+        self.put(key, value)
+    }
+
+    /// Upsert JSON; reports whether the key was absent before the write (APB-2).
+    ///
+    /// First cut: read-then-write. Concurrent lost-update remains residual.
+    pub fn upsert<T: Serialize>(
+        &mut self,
+        key: &str,
+        value: &T,
+    ) -> Result<UpsertResult, Error> {
+        let inserted = self.get(key)?.is_none();
+        let receipt = self.put(key, value)?;
+        Ok(UpsertResult { inserted, receipt })
+    }
+
+    /// List application keys (APB-2 / `apb.doc.list_keys`).
+    ///
+    /// `limit` defaults to 256 when `None`. `after_key` resumes after that key.
+    pub fn list_keys(
+        &mut self,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        let limit = limit.unwrap_or(256);
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.list_keys(limit, after_key),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                guard.list_keys(wire_collection_id, Some(limit), after_key)
             }
         }
     }
