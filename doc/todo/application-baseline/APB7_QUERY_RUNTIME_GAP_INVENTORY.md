@@ -129,7 +129,7 @@ honest residual until APP-7/APB-7 activate wire.
 | G3 | `collection.query()` builder on façade | **T1 partial** | `CollectionClient::query()` → `CollectionQuery` wraps `PlanBuilder`; compile/run/explain; not product |
 | G4 | Builder plan_hash == RQL plan_hash | **T1 partial** | Façade path tested vs `compile_app_core` for equality filter + project/order/limit |
 | G5 | Projection | **T2 partial** | Project after field-order sort on full docs (order paths need not be projected) |
-| G6 | Scalar order + key tie-break | **T2 partial** | Field-order oracle tests; multi-page field-order cursor still key-based residual |
+| G6 | Scalar order + key tie-break | **T2+T3** | Field-order sort + multipage `last_sort_tuple` resume (APP-6 T3) |
 | G7 | Limit + page + continuation | **partial** | Working under vector-lock keys; product cursor secrets residual |
 | G8 | View / parameter bound in cursor | **gap** | Cursor binds heap/collection/plan; **not** ReadView id / full parameter MAC set |
 | G9 | Complete-by-default coverage | **T3 partial** | `ScanJsonPage` carries hole evidence (embedded list/get race); RQL page coverage still stub-complete |

@@ -1,17 +1,19 @@
-//! Bounded Application Core page executor — APP-6 T2 + APB-7 T2/T4.
+//! Bounded Application Core page executor — APP-6 T2/T3 + APB-7 T2/T4.
 //!
 //! Normative: CORE plan §10 / §14 APP-6 (partial). Compiles via
 //! [`crate::rql_app_core::compile_app_core`], scans with `list_keys` + `get`,
 //! evaluates predicates with [`crate::predicate::Predicate::eval`].
 //!
 //! **T2 budgets:** `max_documents`, `max_bytes`, `max_result_bytes`.
+//! **T3 multipage field-order:** cursor `last_sort_tuple` carries order-term
+//! values (+ key); resume skips rows `<=` the prior page's last tuple (not
+//! key-only). Key-stream order still uses key resume for streaming.
 //! **T4 index pushdown:** when [`DocScan::try_equality_index_keys`] returns
 //! candidates for field equalities, examine only those keys (still re-eval
 //! full predicate). Fall back to full scan when no usable index.
 //!
 //! **Not claimed:** product query qualification (APB-7 package accept), product
-//! cursor secrets, remote op 118, multi-page field-order continuation tuples,
-//! snapshot reads.
+//! cursor secrets, remote op 118, snapshot reads.
 
 use crate::app_v1::{
     ConsistencyEvidence, Continuation, CoverageEvidence, CoveragePolicy, HoleEvidence, Parameters,
@@ -126,11 +128,15 @@ pub fn execute_plan<S: DocScan>(
         .unwrap_or(plan.page_size)
         .clamp(1, 4_096) as usize;
 
-    let (after_key, remaining_limit) = if let Some(ref cont) = options.after {
+    let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
         decode_after(cont, heap_id, collection_id, &plan.plan_hash())?
     } else {
         (None, plan.limit)
     };
+    // Key-stream resume (when order is key-only): last element of sort tuple is the key.
+    let after_key = last_sort_tuple_resume
+        .as_ref()
+        .and_then(key_from_sort_tuple);
 
     let total_limit = remaining_limit;
     let need = match total_limit {
@@ -155,21 +161,31 @@ pub fn execute_plan<S: DocScan>(
 
     // Matched rows keep projected values (key-only) or full docs until project (field-order).
     let mut matched: Vec<(String, JsonValue)> = Vec::new();
+    // Last full document on the page (for field-order sort-tuple mint; pre-project).
+    let mut last_full_for_cursor: Option<(String, JsonValue)> = None;
     let mut examined_docs: u64 = 0;
     let mut examined_bytes: u64 = 0;
     let mut result_bytes: u64 = 0;
-    let mut after = after_key.clone();
+    // Key-stream resume only for key-only order. Field-order always full-scans
+    // then resumes with last_sort_tuple (key after would drop out-of-key-order rows).
+    let mut after = if key_only_order {
+        after_key.clone()
+    } else {
+        None
+    };
     let mut known_holes = Vec::new();
     // When index path stops early, whether more candidate keys remain.
     let mut index_more = false;
+    // Field-order: more rows after page truncate.
+    let mut field_order_more = false;
 
     if let Some(mut candidates) = index_keys {
         // Index path: examine only candidate keys; re-eval full predicate.
         candidates.sort();
-        if let Some(ref ak) = after_key {
-            candidates.retain(|k| k.as_str() > ak.as_str());
-        }
         if key_only_order {
+            if let Some(ref ak) = after_key {
+                candidates.retain(|k| k.as_str() > ak.as_str());
+            }
             let mut iter = candidates.into_iter();
             while let Some(key) = iter.next() {
                 match scan.get_json(&key)? {
@@ -187,6 +203,7 @@ pub fn execute_plan<S: DocScan>(
                         check_doc_budget(budget, examined_docs)?;
                         check_bytes_budget(budget, examined_bytes)?;
                         if plan.where_pred.eval(&doc, params)? {
+                            last_full_for_cursor = Some((key.clone(), doc.clone()));
                             let value = project_doc(&doc, plan.project.as_ref())?;
                             let row_len = json_byte_len(&value);
                             let next_result = result_bytes.saturating_add(row_len);
@@ -222,13 +239,19 @@ pub fn execute_plan<S: DocScan>(
                 }
             }
             full.sort_by(|(ka, va), (kb, vb)| compare_rows(ka, va, kb, vb, &plan.order));
+            if let Some(ref lst) = last_sort_tuple_resume {
+                retain_after_sort_tuple(&mut full, &plan.order, lst);
+            }
+            // remaining_limit is rows still allowed after prior pages.
             if let Some(n) = total_limit {
                 full.truncate(n as usize);
             }
             if full.len() > page_size {
+                field_order_more = true;
                 full.truncate(page_size);
             }
             for (key, doc) in full {
+                last_full_for_cursor = Some((key.clone(), doc.clone()));
                 let value = project_doc(&doc, plan.project.as_ref())?;
                 let row_len = json_byte_len(&value);
                 let next_result = result_bytes.saturating_add(row_len);
@@ -261,6 +284,7 @@ pub fn execute_plan<S: DocScan>(
                         check_doc_budget(budget, examined_docs)?;
                         check_bytes_budget(budget, examined_bytes)?;
                         if plan.where_pred.eval(&doc, params)? {
+                            last_full_for_cursor = Some((key.clone(), doc.clone()));
                             let value = project_doc(&doc, plan.project.as_ref())?;
                             let row_len = json_byte_len(&value);
                             let next_result = result_bytes.saturating_add(row_len);
@@ -276,7 +300,7 @@ pub fn execute_plan<S: DocScan>(
             }
         }
     } else {
-        // Full scan under budget, sort on full docs, then page + project.
+        // Full scan under budget, sort on full docs, resume by sort-tuple, page + project.
         let mut full: Vec<(String, JsonValue)> = Vec::new();
         loop {
             let batch = scan.list_keys(Some(256), after.as_deref())?;
@@ -304,19 +328,20 @@ pub fn execute_plan<S: DocScan>(
             }
         }
         full.sort_by(|(ka, va), (kb, vb)| compare_rows(ka, va, kb, vb, &plan.order));
+        // APP-6 T3: multipage field-order uses last_sort_tuple, not key position.
+        if let Some(ref lst) = last_sort_tuple_resume {
+            retain_after_sort_tuple(&mut full, &plan.order, lst);
+        }
+        // remaining_limit is rows still allowed after prior pages.
         if let Some(n) = total_limit {
             full.truncate(n as usize);
         }
-        // Residual multi-page field-order: continuation is key-based only.
-        if let Some(ref ak) = after_key {
-            if let Some(pos) = full.iter().position(|(k, _)| k == ak) {
-                full = full.split_off(pos + 1);
-            }
-        }
         if full.len() > page_size {
+            field_order_more = true;
             full.truncate(page_size);
         }
         for (key, doc) in full {
+            last_full_for_cursor = Some((key.clone(), doc.clone()));
             let value = project_doc(&doc, plan.project.as_ref())?;
             let row_len = json_byte_len(&value);
             let next_result = result_bytes.saturating_add(row_len);
@@ -332,13 +357,12 @@ pub fn execute_plan<S: DocScan>(
         if key_only_order {
             !index_more && took <= need
         } else {
-            took < page_size
+            !field_order_more
         }
     } else if key_only_order {
         took < need
     } else {
-        // If we truncated to page_size after sort, may have more.
-        took < page_size
+        !field_order_more
     };
 
     // Full-scan key-only: if took == need, probe whether more matches exist.
@@ -376,12 +400,19 @@ pub fn execute_plan<S: DocScan>(
     let next = if exhausted || rows.is_empty() {
         None
     } else {
-        let last_key = rows.last().map(|r| r.key.clone()).unwrap_or_default();
+        let (last_key, last_doc) = last_full_for_cursor.unwrap_or_else(|| {
+            (
+                rows.last().map(|r| r.key.clone()).unwrap_or_default(),
+                JsonValue::Null,
+            )
+        });
+        let last_tuple = build_sort_tuple(&last_key, &last_doc, &plan.order);
         Some(mint_page_cursor(
             heap_id,
             collection_id,
             &plan.plan_hash(),
-            &last_key,
+            &plan.order,
+            &last_tuple,
             remaining_after,
             page_size as u32,
             plan.coverage,
@@ -633,7 +664,8 @@ fn mint_page_cursor(
     heap_id: HeapId,
     collection_id: CollectionId,
     plan_hash: &[u8; 32],
-    last_key: &str,
+    order: &[OrderTerm],
+    last_sort_tuple: &JsonValue,
     remaining_limit: Option<u64>,
     page_size: u32,
     coverage: CoveragePolicy,
@@ -652,8 +684,8 @@ fn mint_page_cursor(
         authority_epoch: 1,
         plan_hash: hex32(plan_hash),
         parameter_hash: "00".repeat(32),
-        order_normalized: serde_json::json!([{"path":["$key"],"dir":"asc","tie_break":true}]),
-        last_sort_tuple: serde_json::json!([last_key]),
+        order_normalized: order_normalized_json(order),
+        last_sort_tuple: last_sort_tuple.clone(),
         source_frontier: serde_json::json!({"generation": 0}),
         remaining_limit: remaining_limit.unwrap_or(u64::MAX),
         page_size,
@@ -671,12 +703,13 @@ fn mint_page_cursor(
     mint(&logical, &ring)
 }
 
+/// Decode continuation → (`last_sort_tuple`, remaining limit).
 fn decode_after(
     cont: &Continuation,
     heap_id: HeapId,
     collection_id: CollectionId,
     plan_hash: &[u8; 32],
-) -> Result<(Option<String>, Option<u64>), Error> {
+) -> Result<(Option<JsonValue>, Option<u64>), Error> {
     let ring = CursorKeyRing::vector_lock();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -689,18 +722,142 @@ fn decode_after(
         parameter_hash: None,
     };
     let logical = crate::cursor_v1::verify(&cont.token, &ctx, &ring, now)?;
-    let after = logical
-        .last_sort_tuple
-        .as_array()
-        .and_then(|a| a.first())
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
     let rem = if logical.remaining_limit == u64::MAX {
         None
     } else {
         Some(logical.remaining_limit)
     };
-    Ok((after, rem))
+    Ok((Some(logical.last_sort_tuple), rem))
+}
+
+/// Key resume for key-stream order: last string element of the sort tuple.
+fn key_from_sort_tuple(t: &JsonValue) -> Option<String> {
+    let arr = t.as_array()?;
+    // Prefer last element (key tie-break is last); fall back to first for legacy [key].
+    arr.iter()
+        .rev()
+        .find_map(|v| v.as_str().map(|s| s.to_string()))
+        .or_else(|| arr.first().and_then(|v| v.as_str().map(|s| s.to_string())))
+}
+
+fn order_normalized_json(order: &[OrderTerm]) -> JsonValue {
+    JsonValue::Array(
+        order
+            .iter()
+            .map(|t| {
+                serde_json::json!({
+                    "path": t.path.0,
+                    "dir": match t.dir {
+                        OrderDir::Asc => "asc",
+                        OrderDir::Desc => "desc",
+                    },
+                    "nulls": match t.nulls {
+                        NullsOrder::Last => "last",
+                        NullsOrder::First => "first",
+                    },
+                    "tie_break": t.tie_break,
+                })
+            })
+            .collect(),
+    )
+}
+
+/// Sort-tuple for a full document (pre-projection), aligned with [`compare_rows`].
+fn build_sort_tuple(key: &str, doc: &JsonValue, order: &[OrderTerm]) -> JsonValue {
+    let mut parts = Vec::with_capacity(order.len());
+    for term in order {
+        if term.tie_break || term.path.0.as_slice() == ["$key"] {
+            parts.push(JsonValue::String(key.to_string()));
+        } else {
+            match resolve_path(doc, &term.path) {
+                Resolve::Present(v) => parts.push(v),
+                // Distinct from JSON null so nulls placement matches compare_rows.
+                Resolve::Absent => parts.push(serde_json::json!({"__rv":"absent"})),
+            }
+        }
+    }
+    JsonValue::Array(parts)
+}
+
+fn resolve_from_tuple_part(v: &JsonValue) -> Resolve {
+    if v.get("__rv").and_then(|x| x.as_str()) == Some("absent") {
+        Resolve::Absent
+    } else {
+        Resolve::Present(v.clone())
+    }
+}
+
+fn cmp_sort_tuples(a: &JsonValue, b: &JsonValue, order: &[OrderTerm]) -> Ordering {
+    let aa = a.as_array().map(|x| x.as_slice()).unwrap_or(&[]);
+    let bb = b.as_array().map(|x| x.as_slice()).unwrap_or(&[]);
+    for (i, term) in order.iter().enumerate() {
+        let av = aa.get(i).unwrap_or(&JsonValue::Null);
+        let bv = bb.get(i).unwrap_or(&JsonValue::Null);
+        let c = if term.tie_break || term.path.0.as_slice() == ["$key"] {
+            let as_ = av.as_str().unwrap_or("");
+            let bs_ = bv.as_str().unwrap_or("");
+            as_.cmp(bs_)
+        } else {
+            compare_resolve(&resolve_from_tuple_part(av), &resolve_from_tuple_part(bv), term.nulls)
+        };
+        if c != Ordering::Equal {
+            return apply_dir(c, term.dir);
+        }
+    }
+    Ordering::Equal
+}
+
+fn retain_after_sort_tuple(
+    full: &mut Vec<(String, JsonValue)>,
+    order: &[OrderTerm],
+    last: &JsonValue,
+) {
+    full.retain(|(k, doc)| {
+        let t = build_sort_tuple(k, doc, order);
+        let c = cmp_sort_tuples(&t, last, order);
+        c == Ordering::Greater
+    });
+}
+
+#[cfg(test)]
+mod sort_tuple_tests {
+    use super::*;
+    use crate::plan_v1::{NullsOrder, OrderDir, OrderTerm};
+    use crate::predicate::Path;
+
+    fn term_n() -> OrderTerm {
+        OrderTerm {
+            path: Path(vec!["n".into()]),
+            dir: OrderDir::Asc,
+            nulls: NullsOrder::Last,
+            tie_break: false,
+        }
+    }
+    fn term_key() -> OrderTerm {
+        OrderTerm {
+            path: Path(vec!["$key".into()]),
+            dir: OrderDir::Asc,
+            nulls: NullsOrder::Last,
+            tie_break: true,
+        }
+    }
+
+    #[test]
+    fn after_c20_keeps_b30_and_d40() {
+        let order = vec![term_n(), term_key()];
+        let last = build_sort_tuple("c", &serde_json::json!({"n": 20}), &order);
+        assert_eq!(last, serde_json::json!([20, "c"]));
+        let mut full: Vec<(String, JsonValue)> = vec![
+            ("a".to_string(), serde_json::json!({"n": 10})),
+            ("b".to_string(), serde_json::json!({"n": 30})),
+            ("c".to_string(), serde_json::json!({"n": 20})),
+            ("d".to_string(), serde_json::json!({"n": 40})),
+        ];
+        full.sort_by(|(ka, va), (kb, vb)| compare_rows(ka, va, kb, vb, &order));
+        retain_after_sort_tuple(&mut full, &order, &last);
+        let keys: Vec<String> = full.iter().map(|(k, _)| k.clone()).collect();
+        assert_eq!(keys, vec!["b".to_string(), "d".to_string()], "last={last:?}");
+    }
 }
 
 fn format_uuid(bytes: &[u8; 16]) -> String {

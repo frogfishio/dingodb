@@ -122,7 +122,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-3 | active | 2026-08-01 | APP-2, HAR-4 | façade put/get/delete + history + indexes (APB-1) + APB-2 mutations dual-pack; OCC version alignment | APP-2 scoreboard lag; store CAS; remote durability; crash matrices; **no package accept** | typed data/history/index |
 | APP-4 | accept | 2026-08-01 | APP-0 freeze | `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); `spec/app/v1/plan_vectors_v1.json` hashes locked; `cargo test -p residiuum-sdk --test app4_predicate_plan` **4/4**; builder↔fixture plan hash parity; predicate totality model (absent≠value); name-binding fail-closed | full RQL source is APP-5; scan/index oracle parity at execution (APP-6/APB-7); **no product query claim** until APB-7/HAR | canonical predicates/plans |
 | APP-5 | accept | 2026-08-01 | APP-4 | CORE §14 exit: `residiuum_sdk::rql_app_core` `compile_app_core` → `RqlPlanV1` + explain/budget run metadata; profile **`rql-app-core-v1`** (not full RQL v1); §9 surface (multi-where, project/order/nulls, coverage/consistency, predicates, budget `{documents,bytes,result_bytes}`); non-Core reject (`enrich`/`within`/`at rank`/access + `after`→APP-6) with `rql_feature_unavailable`; corpus `spec/app/v1/rql_app_core_corpus_v1.json`; `cargo test -p residiuum-sdk --lib rql_app_core` **13/13**; `--test app5_rql_app_core` **3/3**; plan_vectors `source_rql` hash lock; bounded fuzz panic-free | `after`/continuation product = APP-6; no query execution/product claim until APB-7 (+ APP-3/HAR-4 path); host must merge `CompiledAppCore.budget` with `QueryRunOptions` | RQL Application Core |
-| APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1** cursor + **T2** page executor; APB-7 T2 also enforces max_bytes/max_result_bytes + field-order full-doc sort; `app6_page_executor` **4/4**; cursor tests **4/4+4/4** | product cursor secrets; multi-page field-order cursor residual; HAR-4 remote op 118; index pushdown; **no product query / APB-7 package accept** | query execution |
+| APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1–T3**: cursor + page executor + **multipage field-order** (`last_sort_tuple` + order_normalized; full-scan resume not key-after); `app6_page_executor` **4/4**; `app6_field_order_multipage` **3/3**; cursor tests; APB-7 T2 budgets/field-order | product cursor secrets (APB-7 T10); HAR-4 remote op 118; **no product query / APB-7 package accept** | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `rql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
@@ -193,9 +193,9 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Board card | Stage | Note |
 |---:|---|---|---|
-| 1 | **APP-6 T3** field-order multipage cursor `c7cd3cca` | `todo` | **next code pull** |
+| 1 | **APB-7 T8** deadline+cancel `5bd3fe3b` | `todo` | **next code pull** |
+| — | **APP-6 T3** field-order multipage `c7cd3cca` | `in_review` | last_sort_tuple resume; tests 3/3 |
 | — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
-| 3 | **APB-7 T8** deadline+cancel `5bd3fe3b` | `todo` | MUST_ADD residual |
 | 4 | **APB-7 T9** coverage grade `99e32b76` | `todo` | MUST_ADD residual |
 | 5 | **APB-7 T10** product cursor secrets `b11912fe` | `todo` | MUST_ADD residual |
 | 6 | **APB-7 T11** multipage oracle matrix `f6633005` | `todo` | feeds accept |
@@ -220,7 +220,7 @@ Program order (packages; Kanban cards bind labor under them):
 3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
    **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
    **APB-7 active** (**T0–T4** in_review; **T5–T7** + APB-6 T3 still `todo` — no product query / no op 118);
-   **APB-1 active** (G1–G6 dual matrix); next pull **APP-6 T3** `c7cd3cca` only (board SoT).
+   **APB-1 active** (G1–G6 dual matrix); next pull **APB-7 T8** `5bd3fe3b` only (board SoT).
    Non-query APB may lag (APB-2 T5/T6 already `todo` on board).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
