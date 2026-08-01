@@ -26,12 +26,18 @@ export PATH="${HOME}/.elan/bin:${HOME}/.cargo/bin:${PATH}"
 
 PROFILE="snapshot"
 COLLECT_ONLY=0
+ALLOW_FAIL=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --profile) PROFILE="${2:-}"; shift 2 ;;
     --collect-only) COLLECT_ONLY=1; shift ;;
+    --allow-fail)
+      # Still write HTML/JSON; exit 0 even if a gate failed (for make dist packaging).
+      ALLOW_FAIL=1
+      shift
+      ;;
     -h|--help)
-      sed -n '2,25p' "$0"
+      sed -n '2,30p' "$0"
       exit 0
       ;;
     *)
@@ -164,7 +170,7 @@ fi
 
 # --- assemble briefing JSON + HTML ---
 export ROOT RUN_LOG JSON_OUT HTML_OUT LATEST_JSON LATEST_HTML
-export PROFILE STAMP generated_at git_head host COLLECT_ONLY
+export PROFILE STAMP generated_at git_head host COLLECT_ONLY ALLOW_FAIL
 
 python3 <<'PY'
 import json, os, re
@@ -286,5 +292,8 @@ print(json.dumps({
     "fail": fail_n,
     "pass": pass_n,
 }, indent=2))
-raise SystemExit(1 if overall == "fail" else 0)
+allow_fail = os.environ.get("ALLOW_FAIL", "0") == "1"
+if overall == "fail" and not allow_fail:
+    raise SystemExit(1)
+raise SystemExit(0)
 PY

@@ -48,3 +48,14 @@ bash scripts/release-briefing.sh --profile pre-release
 
 Chains selected gates, ingests FAS/CSQ JSON, writes human HTML + machine JSON.
 Does **not** replace `./scripts/quality.sh` or PQH qualification campaigns.
+
+### Packaging (`make dist`)
+
+```bash
+make dist
+# → dist/bin/<host-triple>/{residiuum,residiuum-perf,...}
+# → dist/briefing/LATEST.html  and  dist/release-briefing.html
+# → dist/MANIFEST.txt
+```
+
+See top-level `Makefile` (`DIST_BRIEFING_PROFILE`, `DIST_BRIEFING_ALLOW_FAIL`).
