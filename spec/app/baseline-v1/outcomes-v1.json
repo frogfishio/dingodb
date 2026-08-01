@@ -1,0 +1,524 @@
+{
+  "profile": "residiuum-application-baseline-v1",
+  "package": "APB-0",
+  "status": "frozen",
+  "updated": "2026-08-01",
+  "authority": [
+    "doc/todo/application-baseline/MUST_ADD.md \u00a74",
+    "crates/residiuum-sdk/src/error.rs ErrorCode",
+    "spec/app/v1/error_mapping_v1.json",
+    "spec/app/baseline-v1/operations-v1.json"
+  ],
+  "policy": {
+    "total_projection": "Every reachable lower condition on the application surface MUST map to exactly one public outcome kind or ErrorCode set listed here.",
+    "no_invented_codes": "Implementers MUST NOT invent ErrorCode strings outside public_error_codes.",
+    "amend_app0": "This file supersedes inventable gaps; APP-0 error_mapping is amended in the same change for missing codes.",
+    "honesty": "Gone is gone; incomplete coverage is coverage_incomplete; damage is data_damaged/payload_partial; never verified-corrupt.",
+    "retry": "Retry only when retryable true AND operation is read-only or carries stable operation_id AND deadline/authority/fingerprint rules from APP-0 hold."
+  },
+  "public_error_codes": [
+    "already_exists",
+    "not_found",
+    "version_conflict",
+    "validation_failed",
+    "query_invalid",
+    "query_budget_required",
+    "resource_limit",
+    "coverage_incomplete",
+    "partition_unavailable",
+    "stale_route",
+    "consistency_violation",
+    "durability_unavailable",
+    "data_damaged",
+    "payload_partial",
+    "format_unsupported",
+    "type_mismatch",
+    "authentication_failed",
+    "permission_denied",
+    "deadline_exceeded",
+    "io",
+    "protocol_violation",
+    "writer_lock_held",
+    "internal"
+  ],
+  "public_success_kinds": [
+    {
+      "kind": "ok",
+      "meaning": "Operation completed with full semantic success",
+      "carries": [
+        "receipt_optional",
+        "value_optional"
+      ]
+    },
+    {
+      "kind": "ok_absent",
+      "meaning": "Absence is a valid success result (e.g. get returns None)",
+      "carries": [
+        "coverage"
+      ]
+    },
+    {
+      "kind": "ok_inserted",
+      "meaning": "Upsert/create inserted a new key",
+      "carries": [
+        "receipt",
+        "version"
+      ]
+    },
+    {
+      "kind": "ok_replaced",
+      "meaning": "Upsert/replace replaced existing",
+      "carries": [
+        "receipt",
+        "version"
+      ]
+    },
+    {
+      "kind": "ok_page",
+      "meaning": "Bounded page of results with optional continuation",
+      "carries": [
+        "items",
+        "cursor_optional",
+        "coverage",
+        "read_view_optional"
+      ]
+    },
+    {
+      "kind": "ok_explain",
+      "meaning": "Query plan/explain without executing pages",
+      "carries": [
+        "plan",
+        "estimates_optional"
+      ]
+    },
+    {
+      "kind": "ok_capability",
+      "meaning": "Capability discovery snapshot",
+      "carries": [
+        "capabilities"
+      ]
+    },
+    {
+      "kind": "bulk_committed",
+      "meaning": "Bulk item committed with receipt",
+      "carries": [
+        "receipt",
+        "item_index"
+      ]
+    },
+    {
+      "kind": "bulk_rejected",
+      "meaning": "Bulk item rejected with public error",
+      "carries": [
+        "error",
+        "item_index"
+      ]
+    },
+    {
+      "kind": "bulk_uncertain",
+      "meaning": "Bulk item unknown after transport/crash; recovery handle required",
+      "carries": [
+        "recovery_handle",
+        "item_index"
+      ]
+    },
+    {
+      "kind": "bulk_not_attempted",
+      "meaning": "Bulk item not started (budget/cancel/prior failure policy)",
+      "carries": [
+        "reason",
+        "item_index"
+      ]
+    }
+  ],
+  "projections": [
+    {
+      "lower_id": "L-OK-001",
+      "layer": "app",
+      "condition": "mutation or admin effect completed with durable receipt",
+      "public": {
+        "kind": "ok"
+      },
+      "retryable": false,
+      "notes": "Receipt reports durability and version when applicable"
+    },
+    {
+      "lower_id": "L-OK-002",
+      "layer": "app",
+      "condition": "get/lookup finds no key and API returns Option::None",
+      "public": {
+        "kind": "ok_absent"
+      },
+      "retryable": false,
+      "honesty": "Never invent a value; absence only when coverage allows proof or API documents Option"
+    },
+    {
+      "lower_id": "L-OK-003",
+      "layer": "app",
+      "condition": "upsert/create inserted new key",
+      "public": {
+        "kind": "ok_inserted"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-OK-004",
+      "layer": "app",
+      "condition": "upsert/replace updated existing key",
+      "public": {
+        "kind": "ok_replaced"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-OK-005",
+      "layer": "app",
+      "condition": "query/find/scan returns a bounded page",
+      "public": {
+        "kind": "ok_page"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-OK-006",
+      "layer": "app",
+      "condition": "explain_rql without execution",
+      "public": {
+        "kind": "ok_explain"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-OK-007",
+      "layer": "app",
+      "condition": "capabilities discovery",
+      "public": {
+        "kind": "ok_capability"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-001",
+      "layer": "store_or_app",
+      "condition": "collection/key absent where absence is exceptional",
+      "public": {
+        "code": "not_found"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-002",
+      "layer": "store_or_app",
+      "condition": "duplicate collection/index name",
+      "public": {
+        "code": "already_exists"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-003",
+      "layer": "app",
+      "condition": "malformed RQL, predicate, path, key, or name",
+      "public": {
+        "code": [
+          "query_invalid",
+          "validation_failed"
+        ]
+      },
+      "retryable": false,
+      "notes": "Implementer picks most specific; never invent a third code"
+    },
+    {
+      "lower_id": "L-ERR-004",
+      "layer": "app",
+      "condition": "unsupported Application Core feature",
+      "public": {
+        "code": "query_invalid"
+      },
+      "retryable": false,
+      "diagnostic": "rql_feature_unavailable"
+    },
+    {
+      "lower_id": "L-ERR-005",
+      "layer": "authority",
+      "condition": "insufficient authority",
+      "public": {
+        "code": "permission_denied"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-006",
+      "layer": "authority",
+      "condition": "invalid credential",
+      "public": {
+        "code": "authentication_failed"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-007",
+      "layer": "app",
+      "condition": "stale/tampered/mismatched cursor",
+      "public": {
+        "code": "consistency_violation"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-008",
+      "layer": "store",
+      "condition": "complete result cannot be proven",
+      "public": {
+        "code": "coverage_incomplete"
+      },
+      "retryable": false,
+      "honesty": "Incomplete coverage must not become not_found for absence-sensitive ops"
+    },
+    {
+      "lower_id": "L-ERR-009",
+      "layer": "app",
+      "condition": "explicit budget required",
+      "public": {
+        "code": "query_budget_required"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-010",
+      "layer": "app",
+      "condition": "hard ceiling reached",
+      "public": {
+        "code": "resource_limit"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-011",
+      "layer": "store",
+      "condition": "requested durability unavailable",
+      "public": {
+        "code": "durability_unavailable"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-012",
+      "layer": "store",
+      "condition": "damaged authoritative data",
+      "public": {
+        "code": [
+          "data_damaged",
+          "payload_partial"
+        ]
+      },
+      "retryable": false,
+      "honesty": "Never label corrupt candidates verified"
+    },
+    {
+      "lower_id": "L-ERR-013",
+      "layer": "wire",
+      "condition": "protocol shape impossible under the profile",
+      "public": {
+        "code": "protocol_violation"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-014",
+      "layer": "app",
+      "condition": "cancellation/deadline",
+      "public": {
+        "code": "deadline_exceeded"
+      },
+      "retryable": true
+    },
+    {
+      "lower_id": "L-ERR-015",
+      "layer": "store",
+      "condition": "identical (H, principal, O) with different request fingerprint",
+      "public": {
+        "code": "consistency_violation"
+      },
+      "retryable": false,
+      "notes": "operation-id conflict (e.g. collection_create)"
+    },
+    {
+      "lower_id": "L-ERR-016",
+      "layer": "store",
+      "condition": "JSON vs bytes type mismatch",
+      "public": {
+        "code": "type_mismatch"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-017",
+      "layer": "store",
+      "condition": "optimistic concurrency / if_version failed",
+      "public": {
+        "code": "version_conflict"
+      },
+      "retryable": false,
+      "notes": "Required by APB-2 Key Atomic; added by APB-0 T3 amend"
+    },
+    {
+      "lower_id": "L-ERR-018",
+      "layer": "store",
+      "condition": "exclusive writer lock held by another process",
+      "public": {
+        "code": "writer_lock_held"
+      },
+      "retryable": true,
+      "notes": "Retry only if op is idempotent or read-only per retry_policy"
+    },
+    {
+      "lower_id": "L-ERR-019",
+      "layer": "store_or_io",
+      "condition": "underlying IO failure",
+      "public": {
+        "code": "io"
+      },
+      "retryable": true
+    },
+    {
+      "lower_id": "L-ERR-020",
+      "layer": "cluster",
+      "condition": "required partition/tier offline",
+      "public": {
+        "code": "partition_unavailable"
+      },
+      "retryable": true,
+      "notes": "Single-node baseline may still emit for future parity; not a cluster product claim"
+    },
+    {
+      "lower_id": "L-ERR-021",
+      "layer": "cluster",
+      "condition": "cached placement route stale",
+      "public": {
+        "code": "stale_route"
+      },
+      "retryable": true
+    },
+    {
+      "lower_id": "L-ERR-022",
+      "layer": "app",
+      "condition": "encoding or format not supported by this build",
+      "public": {
+        "code": "format_unsupported"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-ERR-023",
+      "layer": "app",
+      "condition": "internal unexpected failure",
+      "public": {
+        "code": "internal"
+      },
+      "retryable": false,
+      "honesty": "Must not be used to hide validation or damage"
+    },
+    {
+      "lower_id": "L-ERR-024",
+      "layer": "wire",
+      "condition": "application op bound to reserved wire with null schemas invoked as product API",
+      "public": {
+        "code": "protocol_violation"
+      },
+      "retryable": false,
+      "diagnostic": "wire_op_reserved",
+      "honesty": "Reserved wire ops are registered but not product; do not invent alternate codes"
+    },
+    {
+      "lower_id": "L-ERR-025",
+      "layer": "app",
+      "condition": "application fa\u00e7ade op called before owning package accept",
+      "public": {
+        "code": "protocol_violation"
+      },
+      "retryable": false,
+      "diagnostic": "app_op_not_activated",
+      "notes": "Contract freeze names the op; package accept enables product use"
+    },
+    {
+      "lower_id": "L-BULK-001",
+      "layer": "app",
+      "condition": "bulk item committed",
+      "public": {
+        "kind": "bulk_committed"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-BULK-002",
+      "layer": "app",
+      "condition": "bulk item rejected with public error",
+      "public": {
+        "kind": "bulk_rejected"
+      },
+      "retryable": false,
+      "notes": "error field uses public ErrorCode only"
+    },
+    {
+      "lower_id": "L-BULK-003",
+      "layer": "app",
+      "condition": "bulk item uncertain after partial transport or crash window",
+      "public": {
+        "kind": "bulk_uncertain"
+      },
+      "retryable": false,
+      "honesty": "Must not invent committed; recovery_handle required"
+    },
+    {
+      "lower_id": "L-BULK-004",
+      "layer": "app",
+      "condition": "bulk item not attempted",
+      "public": {
+        "kind": "bulk_not_attempted"
+      },
+      "retryable": false
+    },
+    {
+      "lower_id": "L-OBS-001",
+      "layer": "store",
+      "condition": "payload partial or chunk incomplete",
+      "public": {
+        "code": "payload_partial"
+      },
+      "retryable": false,
+      "honesty": "Distinct from data_damaged and from not_found"
+    },
+    {
+      "lower_id": "L-OBS-002",
+      "layer": "store",
+      "condition": "authoritative bytes fail integrity",
+      "public": {
+        "code": "data_damaged"
+      },
+      "retryable": false,
+      "honesty": "Distinct from payload_partial and internal"
+    }
+  ],
+  "completeness": {
+    "app0_mappings_carried": 16,
+    "codes_added_in_t3": [
+      "version_conflict",
+      "writer_lock_held",
+      "io",
+      "partition_unavailable",
+      "stale_route",
+      "format_unsupported",
+      "internal"
+    ],
+    "bulk_kinds": [
+      "bulk_committed",
+      "bulk_rejected",
+      "bulk_uncertain",
+      "bulk_not_attempted"
+    ],
+    "note": "Local vs remote parity of the same public outcome is T4 (projections-v1.json)."
+  },
+  "frozen_at": "2026-08-01",
+  "freeze_note": "APB-0 T6: structural freeze for implementers; package scoreboard accept with verify-app-baseline-contract.sh"
+}

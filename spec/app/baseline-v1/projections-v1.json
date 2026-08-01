@@ -1,0 +1,457 @@
+{
+  "profile": "residiuum-application-baseline-v1",
+  "package": "APB-0",
+  "status": "frozen",
+  "updated": "2026-08-01",
+  "authority": [
+    "doc/todo/application-baseline/MUST_ADD.md \u00a74\u2013\u00a75",
+    "spec/app/baseline-v1/outcomes-v1.json",
+    "spec/app/baseline-v1/operations-v1.json"
+  ],
+  "policy": {
+    "backends": [
+      "embedded",
+      "remote"
+    ],
+    "definition": "Local (embedded) and remote adapters are projections of the same application contract; only transport envelope may differ.",
+    "no_unexplained_remote_only": true,
+    "outcomes_file": "spec/app/baseline-v1/outcomes-v1.json"
+  },
+  "fields": {
+    "must_match": [
+      "public_outcome_kind_or_error_code",
+      "semantic_value_or_absence",
+      "document_version",
+      "coverage_report",
+      "receipt.durability_class",
+      "receipt.new_version",
+      "operation_id_replay_behavior",
+      "cursor_binding_identity"
+    ],
+    "may_differ": [
+      "transport.endpoint",
+      "transport.tls_presentation",
+      "transport.correlation_id",
+      "transport.deadline_clock_source",
+      "diagnostic_detail_text_english"
+    ],
+    "never_public": [
+      "filesystem_path",
+      "raw_wire_json_as_app_return",
+      "caller_supplied_heap_id_override",
+      "cross_heap_join_handle"
+    ]
+  },
+  "rules": [
+    {
+      "rule_id": "PAR-001",
+      "name": "semantic_identity",
+      "statement": "For the same HeapId, CollectionId, request fingerprint, authority, and operation_id, public outcome kind/ErrorCode and semantic fields (value, version, coverage, receipt durability class) MUST be identical on embedded and remote.",
+      "applies_to": "all_operations_after_bind",
+      "forbidden": [
+        "remote-only success shape that embedded cannot express",
+        "different ErrorCode for the same lower condition",
+        "silently coercing coverage_incomplete to not_found on either backend"
+      ]
+    },
+    {
+      "rule_id": "PAR-002",
+      "name": "constructor_only_switch",
+      "statement": "Application source may change only the HeapClient constructor between embedded and remote; collection methods share one contract.",
+      "applies_to": [
+        "apb.heap.bind"
+      ],
+      "forbidden": [
+        "caller-supplied HeapId",
+        "raw wire JSON in app source",
+        "filesystem path as public API"
+      ]
+    },
+    {
+      "rule_id": "PAR-003",
+      "name": "transport_envelope_only",
+      "statement": "Fields that may differ without breaking parity: connection endpoint, TLS material presentation, transport deadline wiring, wire framing. They MUST NOT change semantic ErrorCode or success kind.",
+      "applies_to": "all_remote_paths"
+    },
+    {
+      "rule_id": "PAR-004",
+      "name": "auth_surface",
+      "statement": "authentication_failed and permission_denied are public on both; embedded may use local master/app key ceremony but projects to the same codes.",
+      "codes": [
+        "authentication_failed",
+        "permission_denied"
+      ]
+    },
+    {
+      "rule_id": "PAR-005",
+      "name": "no_unexplained_remote_only",
+      "statement": "Any error observed only on remote MUST be one of public_error_codes and listed under remote_specific_allowed. Inventing remote-only codes is forbidden.",
+      "remote_specific_allowed": [
+        {
+          "code": "deadline_exceeded",
+          "when": "remote connect/request deadline"
+        },
+        {
+          "code": "protocol_violation",
+          "when": "malformed wire or reserved wire product use"
+        },
+        {
+          "code": "stale_route",
+          "when": "cached placement stale (if cluster path present; single-node rarely)"
+        },
+        {
+          "code": "partition_unavailable",
+          "when": "partition offline (future parity; not single-node product claim)"
+        },
+        {
+          "code": "io",
+          "when": "transport IO"
+        },
+        {
+          "code": "authentication_failed",
+          "when": "credential rejection at remote"
+        }
+      ]
+    },
+    {
+      "rule_id": "PAR-006",
+      "name": "receipt_parity",
+      "statement": "Receipts report the same durability class and version semantics on both backends; remote may add transport correlation id without changing receipt semantic fields."
+    },
+    {
+      "rule_id": "PAR-007",
+      "name": "cursor_parity",
+      "statement": "Authenticated cursors bind Heap/collection/view/plan/parameters; a cursor valid on one backend MUST NOT be accepted on another Heap; mismatch \u2192 consistency_violation on both."
+    },
+    {
+      "rule_id": "PAR-008",
+      "name": "coverage_parity",
+      "statement": "coverage_incomplete and payload_partial/data_damaged MUST project identically; remote MUST NOT invent values when embedded would refuse."
+    },
+    {
+      "rule_id": "PAR-009",
+      "name": "operation_id_idempotency",
+      "statement": "Stable operation_id retry with same fingerprint replays the same public outcome; fingerprint conflict \u2192 consistency_violation on both backends."
+    },
+    {
+      "rule_id": "PAR-010",
+      "name": "reserved_wire",
+      "statement": "Ops bound to reserved wire (e.g. rql_query 118) MUST NOT claim product parity until wire active and owning package accept; both backends refuse product use with protocol_violation / wire_op_reserved."
+    },
+    {
+      "rule_id": "PAR-011",
+      "name": "bulk_item_parity",
+      "statement": "Bulk per-item outcomes (committed/rejected/uncertain/not_attempted) use the same public kinds; uncertain requires recovery_handle on both."
+    },
+    {
+      "rule_id": "PAR-012",
+      "name": "cross_heap_impossible",
+      "statement": "No API projects results that compose two HeapIds; handles are Heap-bound on embedded and remote."
+    }
+  ],
+  "operations": [
+    {
+      "app_id": "apb.heap.bind",
+      "must_add_package": "APB-1",
+      "parity_mode": "constructor_switch",
+      "notes": "Embedded vs remote constructor only; post-bind ops follow PAR-001"
+    },
+    {
+      "app_id": "apb.collection.open",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.collection.create",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.collection.list",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.index.list",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.index.create",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.index.drop",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.index.rebuild",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.history.get",
+      "must_add_package": "APB-1",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.recover.examine",
+      "must_add_package": "APB-1",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.doc.get",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.get_bytes",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.get_payload",
+      "must_add_package": "APB-2",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.doc.list_keys",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.create",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.replace",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.delete",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.add",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.upsert",
+      "must_add_package": "APB-2",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.collection.describe",
+      "must_add_package": "APB-3",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.collection.rename",
+      "must_add_package": "APB-3",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.retire",
+      "must_add_package": "APB-3",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.restore_retired",
+      "must_add_package": "APB-3",
+      "parity_mode": "identical_when_activated",
+      "notes": "No dedicated wire; both backends implement fa\u00e7ade to same public outcomes after package accept"
+    },
+    {
+      "app_id": "apb.collection.plan_purge",
+      "must_add_package": "APB-3",
+      "parity_mode": "identical_when_activated",
+      "notes": "No dedicated wire; both backends implement fa\u00e7ade to same public outcomes after package accept"
+    },
+    {
+      "app_id": "apb.collection.purge",
+      "must_add_package": "APB-3",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.heap.capabilities",
+      "must_add_package": "APB-3",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.capabilities",
+      "must_add_package": "APB-3",
+      "parity_mode": "identical_when_activated",
+      "notes": "No dedicated wire; both backends implement fa\u00e7ade to same public outcomes after package accept"
+    },
+    {
+      "app_id": "apb.doc.lookup",
+      "must_add_package": "APB-4",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.doc.mutate",
+      "must_add_package": "APB-4",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.doc.bulk_write",
+      "must_add_package": "APB-5",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.heap.read_view",
+      "must_add_package": "APB-6",
+      "parity_mode": "identical_when_activated",
+      "notes": "No dedicated wire; both backends implement fa\u00e7ade to same public outcomes after package accept"
+    },
+    {
+      "app_id": "apb.collection.scan_json",
+      "must_add_package": "APB-7",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.collection.find",
+      "must_add_package": "APB-7",
+      "parity_mode": "identical_semantics",
+      "notes": "PAR-001 full semantic identity"
+    },
+    {
+      "app_id": "apb.collection.rql",
+      "must_add_package": "APB-7",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.explain_rql",
+      "must_add_package": "APB-7",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.sda_query",
+      "must_add_package": "APB-7",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.exists",
+      "must_add_package": "APB-8",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.count",
+      "must_add_package": "APB-8",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.distinct",
+      "must_add_package": "APB-8",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.group_count",
+      "must_add_package": "APB-8",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.numeric_agg",
+      "must_add_package": "APB-8",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.watch",
+      "must_add_package": "APB-9",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.export",
+      "must_add_package": "APB-10",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.collection.import",
+      "must_add_package": "APB-10",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.heap.backup_create",
+      "must_add_package": "APB-10",
+      "parity_mode": "refuse_until_wire_active",
+      "notes": "Product call forbidden; protocol_violation parity (PAR-010)"
+    },
+    {
+      "app_id": "apb.testkit.run",
+      "must_add_package": "APB-11",
+      "parity_mode": "identical_when_activated",
+      "notes": "No dedicated wire; both backends implement fa\u00e7ade to same public outcomes after package accept"
+    },
+    {
+      "app_id": "apb.qualify.baseline",
+      "must_add_package": "APB-12",
+      "parity_mode": "identical_when_activated",
+      "notes": "No dedicated wire; both backends implement fa\u00e7ade to same public outcomes after package accept"
+    }
+  ],
+  "test_expectations": {
+    "shared_suite": "Same test body runs against embedded and remote constructors (APB-1/APB-11/APB-12)",
+    "compare": [
+      "ErrorCode / success kind",
+      "version and coverage",
+      "receipt durability class",
+      "cursor reject rules"
+    ],
+    "do_not_compare": [
+      "wall-clock latency",
+      "transport correlation ids",
+      "TLS certificate fingerprints as app outcomes"
+    ]
+  },
+  "completeness": {
+    "operation_count": 47,
+    "rule_count": 12,
+    "note": "T5 freezes capability/types; T6 adds executable verify."
+  },
+  "frozen_at": "2026-08-01",
+  "freeze_note": "APB-0 T6: structural freeze for implementers; package scoreboard accept with verify-app-baseline-contract.sh"
+}

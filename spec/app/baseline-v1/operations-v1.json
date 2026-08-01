@@ -1,0 +1,1074 @@
+{
+  "profile": "residiuum-application-baseline-v1",
+  "package": "APB-0",
+  "status": "frozen",
+  "updated": "2026-08-01",
+  "authority": [
+    "doc/todo/application-baseline/MUST_ADD.md",
+    "MASTER_DELIVERY_PLAN.md",
+    "spec/heap/operations-v1.json",
+    "spec/app/v1/"
+  ],
+  "policy": {
+    "amend_not_fork": "Amend APP-0 / heap wire registry; do not invent a second public fa\u00e7ade.",
+    "reserved_not_absent": "Wire status reserved means registered with null schemas; not free to invent alternate ops.",
+    "no_cross_heap": "Every operation is Heap-bound; cross-Heap composition is impossible by construction.",
+    "product_claims": "product_claim field gates language; code existing \u2260 accept.",
+    "status_vocabulary": {
+      "draft": "APB-0 freeze incomplete",
+      "frozen": "APB-0 accept \u2014 implementers must not invent names/types"
+    },
+    "binding_vocabulary": {
+      "wire": "Maps 1:1 or N:1 to heap wire operation id(s)",
+      "mixed": "Composes wire ops and/or app projections",
+      "app_facade": "Application contract surface without a dedicated wire id yet"
+    }
+  },
+  "wire_registry": "spec/heap/operations-v1.json",
+  "operations": [
+    {
+      "app_id": "apb.heap.bind",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "HeapClient::open_embedded",
+        "HeapClient::connect_remote"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "Constructor-only backend switch; no public HeapId from caller",
+      "product_claim": "forbidden_until_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.open",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "HeapClient::collection",
+        "CollectionClient::open"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 105,
+          "wire_name": "collection_open",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/collection_open.request.json",
+          "response_schema": "rpc-v1/collection_open.response.json"
+        }
+      ],
+      "notes": "Binds immutable HeapId+CollectionId",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.create",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "HeapClient::create_collection"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 106,
+          "wire_name": "collection_create",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/collection_create.request.json",
+          "response_schema": "rpc-v1/collection_create.response.json"
+        }
+      ],
+      "notes": "APP-1 labor; wire active",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.list",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "HeapClient::list_collections"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 110,
+          "wire_name": "list_collections",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/list_collections.request.json",
+          "response_schema": "rpc-v1/list_collections.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.index.list",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "IndexManager::list"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 130,
+          "wire_name": "index_list",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/index_list.request.json",
+          "response_schema": "rpc-v1/index_list.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.index.create",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "IndexManager::create"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 131,
+          "wire_name": "index_create",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/index_create.request.json",
+          "response_schema": "rpc-v1/index_create.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.index.drop",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "IndexManager::drop"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 132,
+          "wire_name": "index_drop",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/index_drop.request.json",
+          "response_schema": "rpc-v1/index_drop.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.index.rebuild",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "IndexManager::rebuild"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 133,
+          "wire_name": "index_rebuild",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/index_rebuild.request.json",
+          "response_schema": "rpc-v1/index_rebuild.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.history.get",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "HistoryClient::get",
+        "CollectionClient::history"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 117,
+          "wire_name": "history",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/history.request.json",
+          "response_schema": "rpc-v1/history.response.json"
+        }
+      ],
+      "notes": "DEF-099 historical surface",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.recover.examine",
+      "must_add_package": "APB-1",
+      "rust_methods": [
+        "RecoveryClient::examine"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 155,
+          "wire_name": "recover_examine",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "DEF-099/100 recovery examination; wire reserved until package exits",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.doc.get",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::get"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 111,
+          "wire_name": "get",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/get.request.json",
+          "response_schema": "rpc-v1/get.response.json"
+        }
+      ],
+      "notes": "JSON get",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.get_bytes",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::get_bytes"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 112,
+          "wire_name": "get_bytes",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/get_bytes.request.json",
+          "response_schema": "rpc-v1/get_bytes.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.get_payload",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::get_payload"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 113,
+          "wire_name": "get_payload",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "wire reserved",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.doc.list_keys",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::list_keys"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 114,
+          "wire_name": "list_keys",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/list_keys.request.json",
+          "response_schema": "rpc-v1/list_keys.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.create",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::create"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 120,
+          "wire_name": "put",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/put.request.json",
+          "response_schema": "rpc-v1/put.response.json"
+        }
+      ],
+      "notes": "create = put with proven absence; Key Atomic with op id",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.replace",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::replace"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 120,
+          "wire_name": "put",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/put.request.json",
+          "response_schema": "rpc-v1/put.response.json"
+        }
+      ],
+      "notes": "if_version Key Atomic",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.delete",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::delete_with"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 122,
+          "wire_name": "delete",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/delete.request.json",
+          "response_schema": "rpc-v1/delete.response.json"
+        }
+      ],
+      "notes": null,
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.add",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::add"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 120,
+          "wire_name": "put",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/put.request.json",
+          "response_schema": "rpc-v1/put.response.json"
+        }
+      ],
+      "notes": "generated key profile",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.upsert",
+      "must_add_package": "APB-2",
+      "rust_methods": [
+        "CollectionClient::upsert"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 120,
+          "wire_name": "put",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/put.request.json",
+          "response_schema": "rpc-v1/put.response.json"
+        }
+      ],
+      "notes": "reports inserted vs replaced",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.describe",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "describe_collection"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 105,
+          "wire_name": "collection_open",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/collection_open.request.json",
+          "response_schema": "rpc-v1/collection_open.response.json"
+        },
+        {
+          "id": 110,
+          "wire_name": "list_collections",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/list_collections.request.json",
+          "response_schema": "rpc-v1/list_collections.response.json"
+        }
+      ],
+      "notes": "Describe may compose open/list until dedicated wire",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.rename",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "rename_collection"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 107,
+          "wire_name": "collection_rename",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "name binding only; never identity",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.retire",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "retire_collection"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 108,
+          "wire_name": "collection_retire",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": null,
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.restore_retired",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "restore_retired_collection"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "No dedicated wire id yet; must be registered before inventing",
+      "product_claim": "forbidden_until_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.plan_purge",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "plan_purge_collection"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "Privileged plan step; high friction",
+      "product_claim": "forbidden_until_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.purge",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "purge_collection"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 164,
+          "wire_name": "heap_purge",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "heap_purge wire reserved; collection purge must not invent silent op",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.heap.capabilities",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "heap.capabilities"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 100,
+          "wire_name": "heap_describe",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        },
+        {
+          "id": 101,
+          "wire_name": "heap_directory",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        },
+        {
+          "id": 181,
+          "wire_name": "heap_health",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Discovery; wire reserved \u2014 app contract freezes shape in capabilities schema",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.capabilities",
+      "must_add_package": "APB-3",
+      "rust_methods": [
+        "collection.capabilities"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "Effective limits + semantic profiles",
+      "product_claim": "forbidden_until_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.lookup",
+      "must_add_package": "APB-4",
+      "rust_methods": [
+        "CollectionClient::lookup"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 111,
+          "wire_name": "get",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/get.request.json",
+          "response_schema": "rpc-v1/get.response.json"
+        },
+        {
+          "id": 113,
+          "wire_name": "get_payload",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Path Get/Exists over one document version",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.doc.mutate",
+      "must_add_package": "APB-4",
+      "rust_methods": [
+        "CollectionClient::mutate"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 120,
+          "wire_name": "put",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/put.request.json",
+          "response_schema": "rpc-v1/put.response.json"
+        }
+      ],
+      "notes": "Set/Remove/Increment/ArrayAppend/Test; all-or-none",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.doc.bulk_write",
+      "must_add_package": "APB-5",
+      "rust_methods": [
+        "CollectionClient::bulk_write"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 200,
+          "wire_name": "batch",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "batch wire reserved; per-item truth required",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.heap.read_view",
+      "must_add_package": "APB-6",
+      "rust_methods": [
+        "HeapClient::read_view"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "Binds frontier/coverage/semantic versions; no inventable snapshot type",
+      "product_claim": "forbidden_until_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.scan_json",
+      "must_add_package": "APB-7",
+      "rust_methods": [
+        "CollectionClient::scan_json"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 115,
+          "wire_name": "scan_json",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/scan_json.request.json",
+          "response_schema": "rpc-v1/scan_json.response.json"
+        }
+      ],
+      "notes": "DEF-100 coverage-aware scans",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.find",
+      "must_add_package": "APB-7",
+      "rust_methods": [
+        "CollectionClient::find",
+        "collection.query()"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 116,
+          "wire_name": "find",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/find.request.json",
+          "response_schema": "rpc-v1/find.response.json"
+        }
+      ],
+      "notes": "Builder path",
+      "product_claim": "allowed_only_after_owning_package_accept"
+    },
+    {
+      "app_id": "apb.collection.rql",
+      "must_add_package": "APB-7",
+      "rust_methods": [
+        "CollectionClient::rql"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "rql_query RESERVED until APP-7/APB-7; schemas null \u2014 do not claim product",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.explain_rql",
+      "must_add_package": "APB-7",
+      "rust_methods": [
+        "CollectionClient::explain_rql"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Same wire family; explain is app projection",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.sda_query",
+      "must_add_package": "APB-7",
+      "rust_methods": [
+        "CollectionClient::sda_query"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 119,
+          "wire_name": "sda_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Optional examination path; reserved",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.exists",
+      "must_add_package": "APB-8",
+      "rust_methods": [
+        "CollectionClient::exists"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 116,
+          "wire_name": "find",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/find.request.json",
+          "response_schema": "rpc-v1/find.response.json"
+        },
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Coverage-aware; incomplete coverage cannot be exact",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.count",
+      "must_add_package": "APB-8",
+      "rust_methods": [
+        "CollectionClient::count"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 116,
+          "wire_name": "find",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/find.request.json",
+          "response_schema": "rpc-v1/find.response.json"
+        },
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": null,
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.distinct",
+      "must_add_package": "APB-8",
+      "rust_methods": [
+        "CollectionClient::distinct"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 116,
+          "wire_name": "find",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/find.request.json",
+          "response_schema": "rpc-v1/find.response.json"
+        },
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": null,
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.group_count",
+      "must_add_package": "APB-8",
+      "rust_methods": [
+        "CollectionClient::group_count"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 116,
+          "wire_name": "find",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/find.request.json",
+          "response_schema": "rpc-v1/find.response.json"
+        },
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": null,
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.numeric_agg",
+      "must_add_package": "APB-8",
+      "rust_methods": [
+        "min",
+        "max",
+        "sum",
+        "average"
+      ],
+      "binding": "mixed",
+      "wire": [
+        {
+          "id": 116,
+          "wire_name": "find",
+          "wire_status": "active",
+          "request_schema": "rpc-v1/find.request.json",
+          "response_schema": "rpc-v1/find.response.json"
+        },
+        {
+          "id": 118,
+          "wire_name": "rql_query",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Overflow/precision policy required",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.watch",
+      "must_add_package": "APB-9",
+      "rust_methods": [
+        "CollectionClient::watch"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 190,
+          "wire_name": "stream_open",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        },
+        {
+          "id": 195,
+          "wire_name": "stream_read",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "stream_* reserved; at-least-once change feed profile",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.export",
+      "must_add_package": "APB-10",
+      "rust_methods": [
+        "export"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 140,
+          "wire_name": "export",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "JSON/JSONL/bytes/SDA/CSV-with-mapping",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.collection.import",
+      "must_add_package": "APB-10",
+      "rust_methods": [
+        "import"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 142,
+          "wire_name": "restore_import",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "restore_import / streaming import",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.heap.backup_create",
+      "must_add_package": "APB-10",
+      "rust_methods": [
+        "backup_create"
+      ],
+      "binding": "wire",
+      "wire": [
+        {
+          "id": 141,
+          "wire_name": "backup_create",
+          "wire_status": "reserved",
+          "request_schema": null,
+          "response_schema": null
+        }
+      ],
+      "notes": "Heap-scoped backup as data movement relative",
+      "product_claim": "forbidden_until_wire_active_and_package_accept"
+    },
+    {
+      "app_id": "apb.testkit.run",
+      "must_add_package": "APB-11",
+      "rust_methods": [
+        "ApplicationTestKit"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "Official conformance kit; begins with APB-1",
+      "product_claim": "forbidden_until_owning_package_accept"
+    },
+    {
+      "app_id": "apb.qualify.baseline",
+      "must_add_package": "APB-12",
+      "rust_methods": [
+        "residiuum-application-baseline-v1"
+      ],
+      "binding": "app_facade",
+      "wire": [],
+      "notes": "Packaged A2-style baseline qualification; not a wire op",
+      "product_claim": "forbidden_until_owning_package_accept"
+    }
+  ],
+  "wire_coverage_note": "Not every heap wire op is an application baseline surface (policy/lifecycle admin, streams beyond watch profile, etc.). Those remain heap-admin and are out of APB-0 app surface unless MUST_ADD names them.",
+  "intentionally_non_app_wire": [
+    {
+      "id": 121,
+      "wire_name": "put_bytes",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 143,
+      "wire_name": "audit_read",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 150,
+      "wire_name": "policy_get",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 151,
+      "wire_name": "policy_set",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 152,
+      "wire_name": "lifecycle_set",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 153,
+      "wire_name": "hold_place",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 154,
+      "wire_name": "hold_release",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 156,
+      "wire_name": "tier_move",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 160,
+      "wire_name": "heap_rename",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 161,
+      "wire_name": "heap_suspend",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 162,
+      "wire_name": "heap_resume",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 163,
+      "wire_name": "heap_retire",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 165,
+      "wire_name": "heap_set_read_only",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 166,
+      "wire_name": "heap_set_active",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 167,
+      "wire_name": "heap_alias_release",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 170,
+      "wire_name": "data_key_status",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 171,
+      "wire_name": "data_key_rotate",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 172,
+      "wire_name": "placement_get",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 173,
+      "wire_name": "placement_set",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 180,
+      "wire_name": "heap_metrics",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 191,
+      "wire_name": "stream_create",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 192,
+      "wire_name": "stream_rename",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 193,
+      "wire_name": "stream_retire",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 194,
+      "wire_name": "stream_append",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    },
+    {
+      "id": 196,
+      "wire_name": "stream_history",
+      "reason": "heap admin / policy / stream / placement unless promoted by MUST_ADD"
+    }
+  ],
+  "frozen_at": "2026-08-01",
+  "freeze_note": "APB-0 T6: structural freeze for implementers; package scoreboard accept with verify-app-baseline-contract.sh"
+}

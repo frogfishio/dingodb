@@ -1,0 +1,36 @@
+{
+  "profile": "residiuum-application-baseline-v1",
+  "heap_id": "heap:fixture-acme",
+  "semantic_profiles": [
+    "residiuum-application-baseline-v1",
+    "rql-plan-v1",
+    "residiuum-cursor-v1"
+  ],
+  "limits": {
+    "max_page_items": 1000,
+    "max_json_depth": 64,
+    "max_bulk_items": 10000,
+    "max_value_bytes": 16777216,
+    "query_budget_required_default": true
+  },
+  "operations_advertised": [
+    "apb.heap.bind",
+    "apb.collection.open",
+    "apb.collection.create",
+    "apb.doc.get",
+    "apb.doc.create"
+  ],
+  "backends": [
+    "embedded",
+    "remote"
+  ],
+  "wire_ops_active": [
+    105,
+    106,
+    111,
+    120
+  ],
+  "def099_history": true,
+  "def100_coverage_scans": true,
+  "notes": "APB-0 T6 accepted capabilities fixture"
+}

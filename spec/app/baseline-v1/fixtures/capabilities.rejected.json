@@ -1,0 +1,15 @@
+{
+  "profile": "residiuum-application-baseline-v1",
+  "heap_id": "",
+  "semantic_profiles": [],
+  "limits": {
+    "max_page_items": 0,
+    "max_json_depth": 0,
+    "max_bulk_items": 0
+  },
+  "operations_advertised": [
+    "not_an_apb_op"
+  ],
+  "backends": [],
+  "notes": "must fail schema + app_id checks"
+}

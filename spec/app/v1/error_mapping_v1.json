@@ -98,8 +98,52 @@
       "condition": "JSON vs bytes type mismatch",
       "code": "type_mismatch",
       "retryable": false
+    },
+    {
+      "condition": "optimistic concurrency / if_version failed",
+      "code": "version_conflict",
+      "retryable": false,
+      "notes": "APB-0 T3: was listed in required_error_codes without a mapping"
+    },
+    {
+      "condition": "exclusive writer lock held by another process",
+      "code": "writer_lock_held",
+      "retryable": true
+    },
+    {
+      "condition": "underlying IO failure",
+      "code": "io",
+      "retryable": true
+    },
+    {
+      "condition": "required partition/tier offline",
+      "code": "partition_unavailable",
+      "retryable": true
+    },
+    {
+      "condition": "cached placement route stale",
+      "code": "stale_route",
+      "retryable": true
+    },
+    {
+      "condition": "encoding or format not supported by this build",
+      "code": "format_unsupported",
+      "retryable": false
+    },
+    {
+      "condition": "internal unexpected failure",
+      "code": "internal",
+      "retryable": false
+    },
+    {
+      "condition": "application op bound to reserved wire invoked as product API",
+      "code": "protocol_violation",
+      "diagnostic": "wire_op_reserved",
+      "retryable": false,
+      "notes": "APB-0 T3: reserved ≠ invent alternate surface"
     }
   ],
+  "baseline_outcomes": "spec/app/baseline-v1/outcomes-v1.json",
   "required_error_codes": [
     "already_exists",
     "not_found",

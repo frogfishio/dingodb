@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (CSQ-12 + FAS-0…FAS-4 accept MVP; principal: past FAS — product path next; FAS-5+ later)
+Updated: 2026-08-01 (APP-4 **accept**; APP-5 **active** query-spine compiler slice; APB-0 already accept)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -95,7 +95,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-7 | not_started | — | FAS-6, Atomic recovery freeze | — | isolation/liveness proofs absent | formal isolation |
 | FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
 | FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
-| APB-0 | not_started | — | CSQ-12, APP-0, APP-1 | [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md) | complete baseline contract not frozen | application contract |
+| APB-0 | accept | 2026-08-01 | CSQ-12 (accept), APP-0/APP-1 evidence | [spec/app/baseline-v1/](../../../spec/app/baseline-v1/) **frozen**; `bash scripts/verify-app-baseline-contract.sh --require-frozen` exit 0; fixtures under baseline-v1/fixtures/; APP-0 error_mapping total; [APB_QUERY_ATOMICS_SEQUENCE.md](../../todo/application-baseline/APB_QUERY_ATOMICS_SEQUENCE.md) | residual: product APB-1…12 implementation; compile fixtures expand with packages | application contract |
 | APB-1 | not_started | — | APB-0, HAR-1 | — | unified client absent | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
@@ -120,22 +120,22 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
-| APP-4 | blocked | 2026-07-31 | CSQ-12, APP-0 | precursor implemented: `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); plan vectors locked; `app4_predicate_plan` passes; live review stage is Kanban-owned | package admission waits for core-storage qualification; full RQL source parser is APP-5 | canonical predicates/plans |
-| APP-5 | not_started | — | APP-4 | — | rql-app-core-v1 compiler not accept | RQL Application Core |
+| APP-4 | accept | 2026-08-01 | APP-0 freeze | `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); `spec/app/v1/plan_vectors_v1.json` hashes locked; `cargo test -p residiuum-sdk --test app4_predicate_plan` **4/4**; builder↔fixture plan hash parity; predicate totality model (absent≠value); name-binding fail-closed | full RQL source is APP-5; scan/index oracle parity at execution (APP-6/APB-7); **no product query claim** until APB-7/HAR | canonical predicates/plans |
+| APP-5 | active | 2026-08-01 | APP-4 | first cut: `residiuum_sdk::rql_app_core` `compile_app_core` → `RqlPlanV1`; reject enrich/within/budget/after; unit tests 4/4 (incl. builder↔RQL hash parity); profile `rql-app-core-v1` | full §9 corpus, budget clause surface, after/ranked, fuzz expansion residual — **not package accept** | RQL Application Core |
 | APP-6 | not_started | — | APP-3, APP-5, HAR-4 | — | authenticated cursor not product | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `rql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
 | TEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1 | Telemetry registries |
 | DST-000 | not_started | — | HAR-3 (drafting may start after) | — | not M2 engine gate | Studio scaffolding |
-| RRE-0 | not_started | — | M1 exit | — | — | semantic oracle |
+| RRE-0 | ready | 2026-08-01 | C0 accept (pure prep) | plan §14 / §0.8: pure semantic oracle + adversarial corpus permitted after C0; **product activation still requires M3 packages** | no ruleset activation; diagnostic only | semantic oracle |
 | RRE-1 | not_started | — | RRE-0 | — | — | source language |
 | RRE-2 | not_started | — | RRE-1 | — | — | canonical invariant core |
 | RRE-3 | not_started | — | RRE-2 | — | encoding amendment required | verified artifact |
 | RRE-4 | not_started | — | RRE-3 | — | — | document-local enforcement |
 | RRE-5 | not_started | — | RRE-4, ATM path | — | — | operational lifecycle |
 | RRE-6 | not_started | — | RRE-5, REL | — | — | P2 release gate |
-| ATM-0 | not_started | — | HAR-2 freeze identity | — | — | semantic oracle |
+| ATM-0 | not_started | — | HAR-2 freeze identity | plan §14 / §0.8: pure oracle/profile after HAR-2; principal wants early risk discovery | no LocalHeap Atomic product API until M4 packages accept | semantic oracle |
 | ATM-1 | not_started | — | ATM-0 | — | — | canonical plans |
 | ATM-2 | not_started | — | ATM-1 | — | — | prepare/member evidence |
 | ATM-3 | not_started | — | ATM-2 | — | — | durable decision |
@@ -182,11 +182,13 @@ Program order (Kanban determines the individual active cards):
 2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
    do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
    with Atomics/cluster when those packages admit formal work.
-3. **PQH-0…PQH-11** principal accept + controlled qualification residual (post-C0 measurement lane).
-   Must precede speculative tuning or new performance claims.
-4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
-   [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md).
-5. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
+3. **Query spine** (principal §0.8): **APP-4 = accept**; **APP-5 active** (compiler slice);
+   next APB-7 deps still need APP-5 accept + APB-1/APB-6. Wide-case / gotcha discovery.
+   Non-query APB may lag.
+4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
+5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
+6. **PQH principal accept** remains measurement hygiene (labor largely `in_review`).
+7. Finish remaining **APB/HAR** for M1 exit → **M2**.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
 A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is not claimed.
@@ -216,6 +218,10 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
 | 3 | **FAS-0…FAS-4** | Scoreboard **accept** MVP 2026-08-01; foundation closed |
-| 4 | **PQH principal accept** | Active product path; PQH-0…11 labor largely `in_review`; qualification residual |
-| 5 | **APB-0** + **HAR** | Application baseline + Heap app-ready; path to M2 |
-| later | **FAS-5…** (security family) | **deferred** — principal: more FAS later; does not block PQH/APB/M2 |
+| 4 | **APB-0** | **accept** 2026-08-01 — baseline-v1 frozen |
+| 5 | **APP-4 → APP-5 → APB-7** | APP-4 **accept**; APP-5 **active** compiler slice; APB-7 next after APP-5 exit |
+| 6 | **HAR-0…HAR-3** | Identity/keys; enables ATM-0 prep after HAR-2 |
+| 7 | **RRE-0 / ATM-0** pure | Risk oracles/corpora only — **not** M3/M4 product exit |
+| 8 | Remaining HAR/APB → M1 exit → **M2** | Complete baseline journey |
+| hygiene | **PQH principal accept** | Measurement lane; labor largely `in_review` |
+| later | **FAS-5…** | **deferred** — does not block query path |

@@ -1,0 +1,156 @@
+{
+  "profile": "residiuum-application-baseline-v1",
+  "package": "APB-0",
+  "status": "frozen",
+  "updated": "2026-08-01",
+  "authority": [
+    "doc/todo/application-baseline/MUST_ADD.md \u00a74",
+    "spec/app/v1/",
+    "DEF-099",
+    "DEF-100"
+  ],
+  "policy": {
+    "no_invent": "APB implementers MUST use these type names/fields; no parallel public types.",
+    "heap_bound": "All types are Heap-scoped; cross-Heap composition impossible by construction."
+  },
+  "types": {
+    "ApiVersion": {
+      "description": "Public application API version string",
+      "shape": {
+        "major": "u32",
+        "minor": "u32",
+        "profile": "string"
+      },
+      "example_profile": "residiuum-application-baseline-v1"
+    },
+    "OperationId": {
+      "description": "Stable client-supplied operation identity for idempotent retries",
+      "shape": {
+        "bytes_or_string": "opaque",
+        "scope": "(HeapId, principal, OperationId)"
+      },
+      "rules": [
+        "Same fingerprint \u2192 replay same outcome",
+        "Different fingerprint \u2192 consistency_violation"
+      ]
+    },
+    "Receipt": {
+      "description": "Post-mutation public receipt",
+      "required_fields": [
+        "heap_id",
+        "collection_id_optional",
+        "operation_id_optional",
+        "new_version_optional",
+        "durability_class",
+        "achieved_at_optional"
+      ],
+      "durability_class_enum": [
+        "buffered",
+        "flushed",
+        "acknowledged_profile"
+      ],
+      "notes": "Exact enum labels may refine at APB-2; class MUST be named and parity-stable"
+    },
+    "Coverage": {
+      "description": "Whether observation is complete for absence/aggregate claims",
+      "required_fields": [
+        "complete",
+        "gaps_optional"
+      ],
+      "rules": [
+        "complete=false cannot prove absence",
+        "Maps to coverage_incomplete when proof required"
+      ],
+      "binds": "DEF-100 coverage-aware scans"
+    },
+    "ReadView": {
+      "description": "Stable bounded read view (APB-6)",
+      "required_fields": [
+        "heap_id",
+        "authoritative_frontier",
+        "coverage",
+        "semantic_versions",
+        "expiry_optional",
+        "resource_budget_optional"
+      ],
+      "rules": [
+        "Mutations do not silently change observation within the view",
+        "Unsupported/expired views fail explicitly"
+      ]
+    },
+    "ContinuationCursor": {
+      "description": "Authenticated continuation (residiuum-cursor-v1)",
+      "required_fields": [
+        "heap_id",
+        "collection_id_optional",
+        "view_or_plan_binding",
+        "mac_or_signature",
+        "parameters_binding_optional"
+      ],
+      "mismatch": "consistency_violation",
+      "app0": "spec/app/v1/cursor_vectors_v1.json"
+    },
+    "ChangeCheckpoint": {
+      "description": "Resumable change-feed position (APB-9)",
+      "required_fields": [
+        "heap_id",
+        "collection_id",
+        "opaque_token",
+        "durability_position_optional"
+      ],
+      "rules": [
+        "at-least-once",
+        "gaps and replays explicit"
+      ]
+    },
+    "JobHandle": {
+      "description": "Long-running import/export/rebuild job identity (APB-10 / index rebuild)",
+      "required_fields": [
+        "heap_id",
+        "job_id",
+        "kind",
+        "checkpoint_optional"
+      ]
+    },
+    "HistoryRef": {
+      "description": "Historical generation/version inspection (DEF-099)",
+      "required_fields": [
+        "heap_id",
+        "collection_id",
+        "key",
+        "generation_or_version"
+      ],
+      "binds": "DEF-099 exact historical recovery",
+      "wire_hint": "history op 117"
+    },
+    "RecoveryHandle": {
+      "description": "Bulk uncertain item recovery (APB-5)",
+      "required_fields": [
+        "heap_id",
+        "opaque",
+        "item_index_optional"
+      ],
+      "honesty": "Must not invent committed"
+    }
+  },
+  "def_bindings": {
+    "DEF-099": {
+      "surface": [
+        "HistoryRef",
+        "apb.history.get",
+        "apb.recover.examine"
+      ],
+      "note": "Historical recovery types surface through APB; not reimplemented"
+    },
+    "DEF-100": {
+      "surface": [
+        "Coverage",
+        "apb.collection.scan_json",
+        "aggregates"
+      ],
+      "note": "Coverage-aware scans; incomplete coverage cannot yield exact absence/aggregates"
+    }
+  },
+  "frozen_at": "2026-08-01",
+  "freeze_note": "APB-0 T6: structural freeze for implementers; package scoreboard accept with verify-app-baseline-contract.sh"
+}

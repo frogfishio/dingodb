@@ -26,6 +26,9 @@ node ./scripts/check-residiuum-identity.mjs
 echo "== APP-0 application contract lock =="
 bash ./scripts/verify-app0-contract.sh
 
+echo "== APB-0 application baseline contract freeze =="
+bash ./scripts/verify-app-baseline-contract.sh --require-frozen
+
 echo "== crash-and-recovery contract (DEF-104) =="
 bash ./scripts/verify-crash-recovery-contract.sh
 

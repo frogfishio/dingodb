@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuum.local/spec/app/baseline-v1/capabilities-v1.schema.json",
+  "title": "Residiuum application baseline capabilities v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "heap_id",
+    "semantic_profiles",
+    "limits",
+    "operations_advertised",
+    "backends"
+  ],
+  "properties": {
+    "profile": {
+      "const": "residiuum-application-baseline-v1"
+    },
+    "heap_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Immutable Heap identity; never a caller-supplied override"
+    },
+    "semantic_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "e.g. rql-app-core-v1, residiuum-cursor-v1, rql-plan-v1",
+      "uniqueItems": true
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_page_items",
+        "max_json_depth",
+        "max_bulk_items"
+      ],
+      "properties": {
+        "max_page_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_json_depth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_bulk_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_value_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "query_budget_required_default": {
+          "type": "boolean"
+        }
+      }
+    },
+    "operations_advertised": {
+      "type": "array",
+      "description": "Subset of operations-v1.json app_id that this deployment activates",
+      "items": {
+        "type": "string",
+        "pattern": "^apb\\."
+      },
+      "uniqueItems": true
+    },
+    "backends": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "embedded",
+          "remote"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "wire_ops_active": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 100
+      },
+      "description": "Heap wire op ids with status active in this build"
+    },
+    "def099_history": {
+      "type": "boolean",
+      "description": "DEF-099 historical recovery surface advertised"
+    },
+    "def100_coverage_scans": {
+      "type": "boolean",
+      "description": "DEF-100 coverage-aware scan surface advertised"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

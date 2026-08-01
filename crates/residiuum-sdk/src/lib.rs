@@ -54,6 +54,8 @@ mod heap;
 pub mod predicate;
 /// Canonical Application Core logical plan (`rql-plan-v1`) + plan hash.
 pub mod plan_v1;
+/// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
+pub mod rql_app_core;
 mod history;
 mod indexes;
 #[cfg(feature = "legacy-flat-sdk")]
@@ -81,6 +83,10 @@ pub use plan_v1::{
     where_field_eq_param, CollectionBindings, NullsOrder, OrderDir, OrderTerm, PlanBuilder,
     PlanSource, RqlPlanV1, DEFAULT_PAGE_SIZE, KEY_TIE_BREAK_PATH, MAX_ORDER_TERMS, MAX_PAGE_SIZE,
     MAX_PROJECT_ITEMS, PLAN_ENCODING_PROFILE, PLAN_HASH_DOMAIN, PLAN_PROFILE,
+};
+pub use rql_app_core::{
+    compile_app_core, CompiledAppCore, APP_CORE_PROFILE, DIAG_RQL_FEATURE_UNAVAILABLE,
+    MAX_RQL_SOURCE_BYTES,
 };
 pub use predicate::{
     field, param, CompareOp, Operand, Path as PredPath, PredField, Predicate, Resolve,

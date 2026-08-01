@@ -1,11 +1,14 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.6**
+Status: **definitive execution plan v1.7**
 
 Effective: 2026-08-01
 
 Owner: Residiuum product and engineering program
 
+**v1.7 note:** Principal amendment — **Query + Atomics early risk discovery**
+on the M-line (§0.8, §14, §19 record). Not impatience: prove expressiveness,
+gotchas, and performance sinkholes while store put/get is already tested.
 **v1.6 note:** Added **§0 Reader map** so stage boundaries, package families,
 and “what connects to what” are visible without reading the whole file.
 **v1.5 note:** External delivery record for scoreboard-accepted C0 (CSQ-12 /
@@ -204,6 +207,64 @@ the stage you are in.
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Map to normative specs (not a second roadmap) |
 | Stage package plans under `doc/todo/…` | Contents of one package family |
 | Kanban (`project_id` on board) | Who is doing which task; **not** accept |
+
+### 0.8 Principal amendment — Query + Atomics earlier (risk management)
+
+**Date:** 2026-08-01  
+**Kind:** order / emphasis amendment under §19 (not a new architecture).
+
+#### Intent
+
+Store and retrieve are already under test. The remaining product risk is
+**query expressiveness**, **Atomic compound transitions**, and the **gotchas**
+that only show under wide corpora (hard-to-express shapes, refusal edges,
+performance sinkholes). Principal wants those risks **surfaced earlier on the
+M-line**, not deferred until after a long M1/M2 product digression.
+
+#### New emphasis (order of attack)
+
+```text
+M1 spine (unchanged gate):  HAR + APB still required for product M1 exit
+         │
+         ├─ PRIORITIZE inside M1:  query spine
+         │     APB-0 contract → APP-4/APP-5 (predicate/plan + RQL core)
+         │     → APB-7 query baseline  (then page/history/index as needed)
+         │
+         ├─ RISK LANE (non-product until exits fire): pure oracles + corpora
+         │     RRE-0 semantic oracle / corpus  (prep; no ruleset activation)
+         │     ATM-0 oracle/profile after HAR-2 identity freeze
+         │     adversarial “gotcha” + expressiveness matrices (diagnostic only)
+         │
+         └─ DE-EMPHASIZE until query spine breathes:
+               APB watches / bulk import-export polish, Studio decoration,
+               FAS-5+, cluster/search
+```
+
+**M3/M4 stage exits are not moved earlier.** Product claims for RRE enforcement
+and LocalHeap Atomics still require their stage packages to `accept`. What
+moves earlier is **risk discovery** (oracles, corpora, pure models, harness
+stress) and **M1 query baseline** labor priority.
+
+#### §19 fields
+
+| Field | Statement |
+|---|---|
+| **1. New order** | Keep `M0→C0→M1→M2→M3→M4→…`. Inside M1, **query packages first** after APB-0. Admit **RRE-0 pure oracle** and **ATM-0 pure oracle** as preparation earlier (see §14). Do not accept M3/M4 from prep alone. |
+| **2. Product reason** | Put/get is exercised; residual risk is query + atomics expressiveness and failure modes. Early discovery avoids late redesign of application baseline and document semantics. |
+| **3. Dependency / evidence** | C0/`CSQ-12` accept; APP-4 precursor already in tree; plan already allowed APP-4/5 alongside HAR after APP-0 freeze; scoreboard already ties ATM-0 to **HAR-2 identity freeze** (not full M4). |
+| **4. Delayed** | Non-query APB polish (e.g. watches/import-export) may lag the query spine; FAS-5+ remains deferred; full Studio/Evidence/Telemetry product surfaces stay on M2 schedule. |
+| **5. Risk introduced** | Publishing live query/Atomic **product APIs** or capability claims before M1 security/isolation gates would be unsafe. Mitigation: prep is **pure/diagnostic only** until named package exits; no public claim language. |
+| **6. Scoreboard / claims** | Next-engine order prioritizes APB-0 + query spine; APP-4 blocked_by drops satisfied `CSQ-12`; RRE-0/ATM-0 remain non-accept until exits; **no** new `qualified` claims. |
+
+#### How this changes day-to-day labor
+
+1. Close **APB-0** (application contract) as soon as practical.  
+2. Unblock / drive **APP-4 → APP-5 → APB-7** as the M1 query path.  
+3. Keep **HAR-0…HAR-3** honest (identity and keys) so ATM-0 and remote query
+   have a real surface later.  
+4. Run **RRE-0 / ATM-0** as pure risk lanes when §14 allows — catalog gotchas,
+   do not ship.  
+5. M2 early-access still follows M1 exit; it is not skipped for query/atomics.
 
 ---
 
@@ -1152,14 +1213,18 @@ The following preparation may occur without changing release order:
 
 | When | Permitted |
 |---|---|
+| after `C0` accept + `APP-0` freeze in progress | **Query risk:** expand APP-4/APP-5 pure predicate/plan/compiler corpora; expressiveness and refusal matrices; **no** remote query product claim |
+| after `HAR-0` + application contract draft | **RRE-0 pure semantic oracle** and adversarial document-invariant corpus (diagnostic); **no** ruleset activation, no product RRE claim |
+| after `HAR-2` identity freeze | **`ATM-0` oracle/profile** work (pure crate, fixtures, hostile cases); **no** LocalHeap Atomic product API claim |
 | after `HAR-3` | `DEL-0`, `TEL-0`, `DST-000` drafting/scaffold |
 | after shared RRE predicate semantics freeze | `DDA-0` oracle work |
-| after `RRE-2` | `ATM-0` oracle/profile work |
+| after `RRE-2` | further ATM integration prep beyond ATM-0 (still pure until M4 packages accept) |
 | after `DDA-3` order identity freezes | `DOW-0` oracle work |
 | during M6 | E1 archive-adapter/profile specification and E2 common-index substrate specification only |
 
-Preparation means pure models, corpora, schemas, and design validation. It
-does not mean publishing APIs, starting migrations, or claiming capability.
+Preparation means pure models, corpora, schemas, harness stress, and design
+validation. It does **not** mean publishing product APIs, starting migrations,
+or claiming capability. See §0.8 (principal query + atomics risk amendment).
 
 ## 15. Explicit deferrals
 
@@ -1181,12 +1246,15 @@ Before M6, the following are `P3-FUTURE`:
 
 ## 16. Work allocation
 
-Until M1 exits:
+Until M1 exits (principal §0.8 emphasis):
 
 ```text
-70%  active HAR package
+45%  active HAR / APB gate package on the query spine
+     (APB-0 → APP-4/APP-5 → APB-7; HAR identity/keys as required)
+20%  remaining M1 packages needed for M1 exit (non-query APB, HAR ops)
 15%  qualification, crash, fuzz, and release evidence
-15%  permitted Evidence/Telemetry/Studio preparation
+10%  permitted query/RRE/ATM pure risk discovery (§14)
+10%  permitted Evidence/Telemetry/Studio preparation
 ```
 
 During M2:
@@ -1236,20 +1304,24 @@ This is the current executable queue (as of **2026-08-01**):
 | 4 | `FAS-0`…`FAS-4` | **scoreboard `accept`** (FAS-4 = MVP) | FA0 foundation through consistency MVP; FAS-5… deferred (principal: more FAS later) |
 | 5 | `PQH-0`…`PQH-11` | scoreboard `active`; board largely `in_review` | **principal accept** PQH labor; qualification residual on controlled hosts |
 | 6 | `APP-0` / `APP-1` | board `in_review` | principal review only; preserve produced work |
-| 7 | `APB-0`…`APB-12` | `not_started` | **M1 application baseline** — unblocked by CSQ-12 accept; next engine path with HAR |
-| 8 | `HAR-0`…`HAR-7` | mixed | truth residual may continue; feature packages follow APB/HAR deps |
-| 9 | `FAS-5`…`FAS-9` | ready / not_started / deferred | security family and later formal waves; do not freestyle past plan order |
+| 7 | `APB-0` then **query spine** | `not_started` / mixed | **M1 priority:** APB-0 → APP-4/APP-5 → APB-7 (query baseline); other APB may lag |
+| 8 | `HAR-0`…`HAR-3` (identity/keys) | mixed | keep honest for remote query + ATM-0 gate; full HAR-4…7 still M1 exit |
+| 9 | Risk prep `RRE-0` / `ATM-0` | prep only | pure oracles/corpora when §14 allows; **no** M3/M4 product accept |
+| 10 | `FAS-5`…`FAS-9` | deferred | formal expansion later; does not replace M1 query path |
 
-**Critical path (re-check scoreboard before labor):** Heap application-ready +
-APB (M1) and principal PQH accept remain the product gate after C0. FA0 may
-continue as `P1-TRUST` alongside. **APB-0** entry dependency (`CSQ-12 = accept`)
-is satisfied on the scoreboard.
+**Critical path (re-check scoreboard before labor):** M1 with **query spine
+first** (APB-0 → APP-4/5 → APB-7) + HAR identity; pure RRE/ATM risk discovery
+alongside under §14; then complete M1 exit → M2. Principal PQH accept remains
+honest measurement hygiene, not a blocker for query prep. **APB-0** entry
+(`CSQ-12 = accept`) is satisfied.
 
 Live scoreboard:
 [doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
 
-No developer should start RRE, Atomics, Direct Access, Order Wavelets, search,
-or cluster product work from this queue.
+No developer should start **product** RRE activation, **product** Atomics APIs,
+Direct Access, Order Wavelets, search, or cluster work from this queue. Pure
+oracle/corpus prep for RRE-0/ATM-0 is permitted only under §14 / §0.8 and never
+counts as stage exit.
 
 ## 18. Package handoff template
 
@@ -1309,13 +1381,17 @@ DEF-098…DEF-104 accepted
 → FA0: FAS-0…FAS-4 accepted (FAS-4 consistency profile = MVP abstract+CSQ links)
 → reports under target/formal-assurance/fas{0..4}-*.json
 
-NOW (critical path):
-PQH principal accept (labor largely in_review; not qualification-accept alone)
-→ APB-0…APB-12 with HAR dependencies (M1)
+NOW (critical path — M-line + §0.8 query/atomics risk):
+PQH principal accept (hygiene; not a hard gate for pure query prep)
+→ APB-0 contract
+→ M1 query spine: APP-4 / APP-5 → APB-7 (wide-case / gotcha discovery)
+→ HAR-0…HAR-3 identity/keys (in parallel as deps require)
+→ pure RRE-0 / ATM-0 risk oracles when §14 allows (no product claims)
+→ finish remaining HAR/APB for M1 exit
 → verified residiuum-application-baseline-v1 / A2
 → M2 early access (Heap single-node vs SQLite+files)
-(Principal 2026-08-01: past FAS stage — FAS-5… deferred; re-open formal lane later.
- FAS remains P1-TRUST and does not replace APB/M1/M2 order.)
+(Principal: past FAS expansion; FAS-5… deferred.
+ Product M3/M4 exits not skipped — risk prep is earlier, claims are not.)
 
 THEN:
 trustworthy SQLite-replacement core (M2)
@@ -1323,9 +1399,9 @@ trustworthy SQLite-replacement core (M2)
 + minimum bounded Telemetry path
 + Studio Explorer in parallel, not as an engine gate
 
-THEN:
-RRE document invariants
-→ LocalHeap Atomics and relationships
+THEN (product stages — after M1/M2 gates as written):
+RRE document invariants (M3 product)
+→ LocalHeap Atomics and relationships (M4 product)
 → Direct Access
 → Order Wavelets
 → single-node production-candidate qualification

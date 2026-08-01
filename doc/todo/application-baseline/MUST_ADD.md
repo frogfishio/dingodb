@@ -74,6 +74,10 @@ DEF-099 and DEF-100 already implement the underlying historical-recovery and
 coverage-aware scan contracts before CSQ. `APB-1`, `APB-2`, and `APB-7` must
 surface them coherently; they are not reimplemented.
 
+Labor sequence from APB-0 through **query** and **atomics** (including pure risk
+lanes and product stages):  
+[APB_QUERY_ATOMICS_SEQUENCE.md](./APB_QUERY_ATOMICS_SEQUENCE.md).
+
 ## 4. APB-0 — Contract closure
 
 Depends: `CSQ-12`, accepted APP-0/APP-1 evidence
