@@ -417,6 +417,25 @@ Disclosure: [BENCHMARK_DISCLOSURE.md](./doc/reference/operations/BENCHMARK_DISCL
 
 See `crates/residiuum-testrig/README.md` (PEER-SQL section).
 
+### Campaign F re-run — post write-through (same bed, 2026-08-01 later)
+
+Same knobs: 256 MiB logical · 8 KiB · seed 20260801 · Scratch · Residiuum seal **64 MiB**.  
+Artifacts: `doc/wip/status/surveys/scratch-sqlite-peer-20260801/post-wt-*.json`
+
+| Cell | ops/s | Logical MiB/s | Peak RSS | Wall |
+|------|------:|-------------:|---------:|-----:|
+| residiuum-A | **9577** | **74.8** | 301 MiB | 3.42 s |
+| sqlite-A | **9778** | **76.4** | 6.4 MiB | 3.35 s |
+| residiuum-B | **10131** | **79.1** | 330 MiB | 3.23 s |
+| sqlite-B | **18534** | **144.8** | 6.3 MiB | 1.77 s |
+
+| Mode | Residiuum/SQLite ops/s | vs Campaign F |
+|------|-----------------------:|---------------|
+| **A** | **0.98×** (~parity) | was 1.05× — same story within noise |
+| **B** | **0.55×** | was 0.55× — unchanged shape |
+
+Write-through did **not** move the Mode A peer vs SQLite (still fair parity). It cut Residiuum RSS (Campaign F A was ~595 MiB → ~301 MiB here) without a Mode A throughput leap on the long peer. Mode B gap remains SQLite txn amortization.
+
 ---
 
 ## Campaign G — Mode A put-path instrumentation + first squeezes (2026-08-01)
