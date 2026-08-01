@@ -228,6 +228,87 @@ for mp in must_paths:
     if mp not in own_paths:
         fail(f"ownership map missing must-keep path: {mp}")
 
+# Required schemas present (expanded set)
+for sch in [
+    "schemas/theorems-v1.schema.json",
+    "schemas/assumptions-v1.schema.json",
+    "schemas/package-report-v1.schema.json",
+    "schemas/tcb-v1.schema.json",
+    "schemas/claims-v1.schema.json",
+    "schemas/profiles-v1.schema.json",
+    "schemas/operations-v1.schema.json",
+    "schemas/negative-controls-v1.schema.json",
+    "schemas/toolchain-lock-v1.schema.json",
+    "schemas/artifact-ownership-v1.schema.json",
+]:
+    if not (reg / sch).is_file():
+        fail(f"missing schema: {sch}")
+
+# Negative-control self-tests: reject fixtures must trip the same rules
+def theorem_linter_errors(doc, base_id_set=None):
+    """Return list of linter errors for a theorems-v1 document."""
+    local = []
+    its = doc.get("items") or []
+    lids = [i.get("id") for i in its if isinstance(i, dict)]
+    lset = set(lids)
+    if len(lids) != len(lset):
+        local.append("duplicate theorem ids")
+    for i in its:
+        if not isinstance(i, dict):
+            continue
+        tid = i.get("id", "?")
+        st = i.get("status")
+        if st not in ALLOWED_STATUS:
+            local.append(f"{tid}: unknown status")
+        if st in ELEVATED and not i.get("result_refs"):
+            local.append(f"{tid}: elevated status {st} without result_refs")
+        for d in i.get("depends_on") or []:
+            if d not in lset:
+                local.append(f"{tid}: depends_on unknown {d}")
+    # cycles
+    g = {i["id"]: list(i.get("depends_on") or []) for i in its if isinstance(i, dict) and "id" in i}
+    col = {n: 0 for n in g}
+    def walk(n, stack):
+        col[n] = 1
+        for m in g.get(n, []):
+            if m not in col:
+                continue
+            if col[m] == 1:
+                local.append(f"circular dependency {n}->{m}")
+                return
+            if col[m] == 0:
+                walk(m, stack + [n])
+        col[n] = 2
+    for n in list(g):
+        if col[n] == 0:
+            walk(n, [])
+    return local
+
+neg_fixtures = [
+    ("fixtures/rejected/elevated-status-without-result.json", "elevated"),
+    ("fixtures/rejected/circular-dependency.json", "circular"),
+]
+for rel, kind in neg_fixtures:
+    p = reg / rel
+    if not p.is_file():
+        fail(f"missing negative fixture: {rel}")
+        continue
+    try:
+        doc = json.loads(p.read_text())
+    except json.JSONDecodeError as e:
+        fail(f"bad JSON negative fixture {rel}: {e}")
+        continue
+    ne = theorem_linter_errors(doc)
+    if not ne:
+        fail(f"negative fixture {rel} did not trip theorem linter (expected failures)")
+    else:
+        # record as diagnostic only
+        warns.append(f"negative fixture {rel} correctly fails: {ne[0]}")
+
+# Claim-without-theorem fixture already checked above for shape
+if not (reg / "fixtures/rejected/claim-without-theorem.json").is_file():
+    fail("missing fixtures/rejected/claim-without-theorem.json")
+
 closed_marker = (reg / "FAS0_CLOSED").is_file()
 structural_ok = len(errs) == 0
 
@@ -261,6 +342,8 @@ report = {
     "theorem_count": len(ids),
     "mandatory_theorem_count": len(MANDATORY_THEOREMS),
     "assumption_count": len(asm_ids),
+    "schema_files": 10,
+    "negative_fixture_self_tests": len(neg_fixtures) + 1,
     "errors": errs,
     "warnings": warns,
     "message": (

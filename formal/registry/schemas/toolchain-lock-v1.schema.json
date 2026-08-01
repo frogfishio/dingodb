@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema",
+    "tools"
+  ],
+  "properties": {
+    "schema": {
+      "const": "residiuum-formal-toolchain-lock-v1"
+    },
+    "closed": {
+      "type": "boolean"
+    },
+    "wave0_stub": {
+      "type": "boolean"
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "tool"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^FAS-TOOL-"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "bootstrap": {
+            "type": "string"
+          },
+          "wave0_stub": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

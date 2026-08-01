@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "items"
+  ],
+  "properties": {
+    "schema": {
+      "const": "residiuum-formal-tcb-v1"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "class",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^FAS-TCB-"
+          },
+          "class": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version_ref": {
+            "type": "string"
+          },
+          "reason_trusted": {
+            "type": "string"
+          },
+          "wave0_stub": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}
