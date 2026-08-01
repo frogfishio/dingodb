@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "pump_mode": "multi_process_fair_batch1",
+  "store_count": 4,
+  "writer_shards": 1,
+  "put_batch_size": 1,
+  "per_store_target": "128M",
+  "keys_written": 63860,
+  "elapsed_ms": 4368,
+  "ops_per_sec": 14616.886394908399,
+  "mb_per_sec": 114.19442496022187,
+  "peak_cpu_pct_children": [
+    2.7,
+    2.9,
+    2.9,
+    3.0
+  ],
+  "sum_peak_cpu_pct_children": 11.5,
+  "sum_peak_rss_bytes": 705036288,
+  "child_ops": [
+    3859.5315847689994,
+    3864.1083185411,
+    3862.9040473023665,
+    3875.7789186758896
+  ],
+  "disclosure": "Diagnostic only \u2014 4 parallel pumps batch=1; aggregate ops/s = sum keys / parent wall."
+}
