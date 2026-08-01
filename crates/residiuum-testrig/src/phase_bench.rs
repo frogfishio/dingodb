@@ -8,7 +8,7 @@
 use residiuum_format::{
     body_hash, encode_frame_into, FrameHeader, FrameKind, WIRE_MAJOR, WIRE_MINOR,
 };
-use residiuum_store::{DurabilityMode, Store};
+use residiuum_store::{DiagnosticIoSink, DurabilityMode, Store};
 use serde_json::json;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
@@ -174,7 +174,27 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let _ = fs::remove_file(&path);
     }
 
-    // --- 2. Raw sequential write of payload-sized chunks (no Residiuum) ---
+    // --- 2a. Raw write_all → /dev/null (syscall/VFS, no media) ---
+    {
+        let mut f = OpenOptions::new()
+            .write(true)
+            .open("/dev/null")
+            .map_err(|e| format!("open /dev/null: {e}"))?;
+        let t0 = Instant::now();
+        for _ in 0..ops {
+            f.write_all(&payload).map_err(|e| format!("null write: {e}"))?;
+        }
+        let s = t0.elapsed().as_secs_f64();
+        phases.push(phase(
+            "raw_write_all_dev_null",
+            ops,
+            payload_bytes,
+            s,
+            "write_all to /dev/null — OS path without durable media (disk detached)",
+        ));
+    }
+
+    // --- 2b. Raw sequential write of payload-sized chunks (real path under work) ---
     {
         let path = cfg.work.join("raw-seq.bin");
         let _ = fs::remove_file(&path);
@@ -256,24 +276,43 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let _ = fs::remove_dir_all(&store_path);
     }
 
-    // --- 5. Store Buffered single puts (general load) ---
-    {
-        let store_path = cfg.work.join("buf1-store");
+    // --- 5. Disk bisection: full Buffered put with I/O sink variants ---
+    //
+    // Ladder (same encode/index/append path; only tail write destination changes):
+    //   Memory          — no segment tail write at all
+    //   Buffered+Discard — full path, durable_len advances, **no write_all**
+    //   Buffered+DevNull — full path, write_all → /dev/null (no media)
+    //   Buffered+Real    — full path, real active segment file under work/
+    //
+    // If Discard ≈ Real ⇒ wall is **store-side** (not disk/media).
+    // If Discard ≫ Real ⇒ wall is on the **write/OS/media** side.
+    // If DevNull ≈ Real and both ≪ raw_null ⇒ cost is store, not media.
+    fn run_buffered_sink(
+        phases: &mut Vec<Phase>,
+        cfg: &PhaseBenchConfig,
+        payload: &[u8],
+        ops: u64,
+        payload_bytes: u64,
+        sink: DiagnosticIoSink,
+        phase_name: &'static str,
+        note_prefix: &str,
+    ) -> Result<(), String> {
+        let store_path = cfg.work.join(format!("buf-{}", phase_name));
         let _ = fs::remove_dir_all(&store_path);
         let mut store =
-            Store::create(&store_path).map_err(|e| format!("create buf1 store: {e}"))?;
-        // Large seal threshold so Mode A microbench is not dominated by 1–2 full
-        // segment seals mid-run (those are timed separately as seal_rotate).
-        // 64 MiB seal still used for put_many phase below / production defaults.
+            Store::create(&store_path).map_err(|e| format!("create {phase_name}: {e}"))?;
         store.set_seal_threshold(512 * 1024 * 1024);
+        store
+            .set_diagnostic_io_sink(sink)
+            .map_err(|e| format!("set_diagnostic_io_sink: {e}"))?;
         store.enable_boundary_probe();
         let cpu0 = sample_cpu_pct();
         let t0 = Instant::now();
         for i in 0..ops {
             let key = format!("b/{i:020}");
             store
-                .put(&key, &payload, DurabilityMode::Buffered)
-                .map_err(|e| format!("buffered put: {e}"))?;
+                .put(&key, payload, DurabilityMode::Buffered)
+                .map_err(|e| format!("{phase_name} put: {e}"))?;
         }
         let s = t0.elapsed().as_secs_f64();
         let cpu1 = sample_cpu_pct();
@@ -292,39 +331,60 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let other_ms = (wall_ms - accounted_ms).max(0.0);
         let pct = |part: f64| 100.0 * part / wall_ms.max(1e-9);
         let probe_note = format!(
-            " MODE_A breakdown: prep sum_ms={prep_ms:.1} mean_us={:.1} ({:.0}%) | encode_env sum_ms={enc_ms:.1} mean_us={:.1} ({:.0}%) | append_frame sum_ms={app_ms:.1} mean_us={:.1} ({:.0}%) | publish_index sum_ms={pub_ms:.1} mean_us={:.1} ({:.0}%) | post_derived sum_ms={post_ms:.1} ({:.0}%) | file_write sum_ms={wr_ms:.1} mean_us={:.1} ({:.0}%) | seal_rotate sum_ms={seal_ms:.1} n={} ({:.0}%) | file_sync n={} | other_ms={other_ms:.1} ({:.0}%) | accounted={accounted_ms:.1}/{wall_ms:.1}ms",
-            snap.prep_latency.mean_ns() / 1e3,
+            " MODE_A: prep={prep_ms:.1}ms({:.0}%) enc={enc_ms:.1}({:.0}%) append={app_ms:.1}({:.0}%) pub={pub_ms:.1}({:.0}%) write={wr_ms:.1}({:.0}%) seal_n={} other={other_ms:.1}({:.0}%)",
             pct(prep_ms),
-            snap.encode_latency.mean_ns() / 1e3,
             pct(enc_ms),
-            snap.append_latency.mean_ns() / 1e3,
             pct(app_ms),
-            snap.publish_latency.mean_ns() / 1e3,
             pct(pub_ms),
-            pct(post_ms),
-            snap.write_latency.mean_ns() / 1e3,
             pct(wr_ms),
             snap.seal_latency.samples,
-            pct(seal_ms),
-            snap.sync_latency.samples,
             pct(other_ms),
         );
         phases.push(phase(
-            "store_put_buffered_batch1",
+            phase_name,
             ops,
             payload_bytes,
             s,
             format!(
-                "wall_ms={wall_ms:.1} probe_encode+append+publish+write_ms={accounted_ms:.1} ({:.0}% of wall); ps%cpu≈{:?}→{:?};{}",
-                100.0 * accounted_ms / wall_ms.max(1.0),
-                cpu0,
-                cpu1,
-                probe_note
+                "{note_prefix}; wall_ms={wall_ms:.1} accounted={accounted_ms:.1}; ps%cpu≈{:?}→{:?};{probe_note}",
+                cpu0, cpu1
             ),
         ));
         drop(store);
         let _ = fs::remove_dir_all(&store_path);
+        Ok(())
     }
+
+    run_buffered_sink(
+        &mut phases,
+        cfg,
+        &payload,
+        ops,
+        payload_bytes,
+        DiagnosticIoSink::Discard,
+        "store_put_buffered_discard_io",
+        "DISK DETACHED: full Buffered path, no write_all (sink=Discard)",
+    )?;
+    run_buffered_sink(
+        &mut phases,
+        cfg,
+        &payload,
+        ops,
+        payload_bytes,
+        DiagnosticIoSink::DevNull,
+        "store_put_buffered_dev_null",
+        "DISK DETACHED: full Buffered path, write_all→/dev/null (syscall only)",
+    )?;
+    run_buffered_sink(
+        &mut phases,
+        cfg,
+        &payload,
+        ops,
+        payload_bytes,
+        DiagnosticIoSink::Real,
+        "store_put_buffered_batch1",
+        "REAL FILE: full Buffered path on work volume (page cache + media)",
+    )?;
 
     // --- 6. Store Buffered put_many in batches ---
     {
@@ -356,18 +416,52 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let _ = fs::remove_dir_all(&store_path);
     }
 
-    // Interpretation helper rates
+    // Interpretation helper rates — disk bisection first
     let blake = phases.iter().find(|p| p.name == "blake3_body_hash_only");
     let raw = phases.iter().find(|p| p.name == "raw_write_all_payload_only");
+    let raw_null = phases.iter().find(|p| p.name == "raw_write_all_dev_null");
     let mem = phases.iter().find(|p| p.name == "store_put_memory");
+    let disc = phases.iter().find(|p| p.name == "store_put_buffered_discard_io");
+    let dnull = phases.iter().find(|p| p.name == "store_put_buffered_dev_null");
     let buf1 = phases.iter().find(|p| p.name == "store_put_buffered_batch1");
 
     let mut interpretation = Vec::new();
+    if let (Some(d), Some(r), Some(n)) = (disc, buf1, dnull) {
+        let ratio_real_vs_disc = r.ops_per_sec / d.ops_per_sec.max(1.0);
+        let ratio_null_vs_disc = n.ops_per_sec / d.ops_per_sec.max(1.0);
+        if ratio_real_vs_disc > 0.85 && ratio_null_vs_disc > 0.85 {
+            interpretation.push(format!(
+                "DISK BISECT: Discard {:.0} ≈ DevNull {:.0} ≈ Real {:.0} ops/s — wall is on the **store CPU path** (encode/append/index), not media. Small-write disk hate is NOT the Mode A micro limiter.",
+                d.ops_per_sec, n.ops_per_sec, r.ops_per_sec
+            ));
+        } else if ratio_real_vs_disc < 0.7 {
+            interpretation.push(format!(
+                "DISK BISECT: Discard {:.0} vs Real {:.0} ops/s (Real is {:.0}% of Discard) — real-file write_all/page-cache/media adds substantial wall; OS/media side matters.",
+                d.ops_per_sec,
+                r.ops_per_sec,
+                100.0 * ratio_real_vs_disc
+            ));
+        } else {
+            interpretation.push(format!(
+                "DISK BISECT: Discard {:.0} / DevNull {:.0} / Real {:.0} ops/s — partial OS cost (Real/Discard={:.2}×).",
+                d.ops_per_sec,
+                n.ops_per_sec,
+                r.ops_per_sec,
+                ratio_real_vs_disc
+            ));
+        }
+    }
+    if let (Some(rn), Some(r)) = (raw_null, raw) {
+        interpretation.push(format!(
+            "Raw /dev/null {:.0} vs raw work-file {:.0} ops/s — pure write_all media delta without Residiuum.",
+            rn.ops_per_sec, r.ops_per_sec
+        ));
+    }
     if let (Some(b), Some(p)) = (blake, buf1) {
         let ratio = p.ops_per_sec / b.ops_per_sec.max(1.0);
         if ratio < 0.15 {
             interpretation.push(format!(
-                "Buffered put is only {:.1}% of pure-Blake ops/s — NOT Blake-bound (Blake is far faster).",
+                "Buffered put is only {:.1}% of pure-Blake ops/s — NOT Blake-bound alone (Blake is far faster).",
                 100.0 * ratio
             ));
         } else {
@@ -377,18 +471,11 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
             ));
         }
     }
-    if let (Some(m), Some(p)) = (mem, buf1) {
-        if p.ops_per_sec < m.ops_per_sec * 0.5 {
-            interpretation.push(format!(
-                "Memory put {:.0} ops/s vs Buffered {:.0} — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.",
-                m.ops_per_sec, p.ops_per_sec
-            ));
-        } else {
-            interpretation.push(format!(
-                "Memory {:.0} ≈ Buffered {:.0} ops/s — dominant cost is pre-disk (index/encode), not write_all.",
-                m.ops_per_sec, p.ops_per_sec
-            ));
-        }
+    if let (Some(m), Some(d), Some(p)) = (mem, disc, buf1) {
+        interpretation.push(format!(
+            "Memory {:.0} → Discard-Buffered {:.0} → Real-Buffered {:.0}: gap Memory→Discard is **pre-disk store work**; Discard→Real is **tail I/O**.",
+            m.ops_per_sec, d.ops_per_sec, p.ops_per_sec
+        ));
     }
     if let (Some(r), Some(p)) = (raw, buf1) {
         interpretation.push(format!(
@@ -399,7 +486,7 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         ));
     }
     interpretation.push(
-        "Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute.".into(),
+        "Note: long peer multi-seal runs can still add seal_rotate wall; this micro uses 512MiB seal so mid seals are off.".into(),
     );
 
     let report = json!({

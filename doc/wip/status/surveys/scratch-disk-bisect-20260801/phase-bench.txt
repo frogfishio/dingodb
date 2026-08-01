@@ -1,0 +1,21 @@
+=== phase-bench (falsify Blake-bound narrative) ===
+work=/Volumes/Scratch/TEST/residiuum-disk-bisect-20260801 ops=20000 payload=8192 batch=128
+
+phase                               wall_ms        ops/s        MiB/s  note
+blake3_body_hash_only                  83.0       240992       1882.7  pure user CPU; if store is Blake-bound, put rates should be near this order
+encode_frame_into_growing_vec          83.5       239387       1870.2  format encode only (includes Blake); no store index, no OS write
+raw_seek_plus_write_all_per_op         24.3       822447       6626.2  mimics write_segment_tail: seek(durable_len)+write_all each put
+raw_write_all_dev_null                  5.5      3620128      28282.2  write_all to /dev/null — OS path without durable media (disk detached)
+raw_write_all_payload_only             19.7      1013698       7919.5  OS write path only (no fsync); device + page cache ceiling for small writes
+raw_write_all_frame_sized              21.0       950467       7657.6  closer to segment tail write size (~payload+envelope)
+store_put_memory                       19.4      1030534       8051.0  index/visibility path only — NO durable segment write_all
+store_put_buffered_discard_io         118.3       169028       1320.5  DISK DETACHED: full Buffered path, no write_all (sink=Discard); wall_ms=118.3 accounted=95.1; ps%cpu≈Some(14.0)→Some(40.2); MODE_A: prep=4.4ms(4%) enc=9.8(8%) append=75.4(64%) pub=4.7(4%) write=0.3(0%) seal_n=0 other=23.2(20%)
+store_put_buffered_dev_null           237.9        84072        656.8  DISK DETACHED: full Buffered path, write_all→/dev/null (syscall only); wall_ms=237.9 accounted=212.8; ps%cpu≈Some(40.2)→Some(59.5); MODE_A: prep=4.6ms(2%) enc=10.3(4%) append=77.9(33%) pub=5.3(2%) write=114.2(48%) seal_n=0 other=25.1(11%)
+store_put_buffered_batch1             147.8       135327       1057.2  REAL FILE: full Buffered path on work volume (page cache + media); wall_ms=147.8 accounted=119.6; ps%cpu≈Some(69.9)→Some(70.6); MODE_A: prep=4.5ms(3%) enc=10.0(7%) append=76.1(51%) pub=4.9(3%) write=23.7(16%) seal_n=0 other=28.2(19%)
+store_put_many_buffered               433.4        46151        360.6  batch=128; one tail write per batch
+
+interpretation:
+  • Buffered put is 56% of pure-Blake ops/s — Blake-scale cost may matter.
+  • Memory put 1030534 ops/s vs Buffered 135327 — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.
+  • Raw write_all 1013698 ops/s vs Buffered put 135327 — store adds 7.5× wall vs raw same-size writes.
+  • Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute.

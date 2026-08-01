@@ -1,0 +1,94 @@
+{
+  "batch": 128,
+  "disclosure": "Diagnostic only — not a published SLO.",
+  "interpretation": [
+    "Buffered put is 47% of pure-Blake ops/s — Blake-scale cost may matter.",
+    "Memory put 979562 ops/s vs Buffered 135366 — large gap ⇒ time spent in segment OS write path (stall/wait), not only index CPU.",
+    "Raw write_all 1023834 ops/s vs Buffered put 135366 — store adds 7.6× wall vs raw same-size writes.",
+    "Low process %CPU + low disk gauges with large Memory→Buffered gap = classic blocking I/O wait (thread not runnable), not pure compute."
+  ],
+  "ok": true,
+  "ops": 20000,
+  "payload_size": 8192,
+  "phases": [
+    {
+      "logical_mib_per_sec": 2244.6662026205377,
+      "name": "blake3_body_hash_only",
+      "note": "pure user CPU; if store is Blake-bound, put rates should be near this order",
+      "ops_per_sec": 287317.2739354288,
+      "wall_ms": 69.609459
+    },
+    {
+      "logical_mib_per_sec": 1916.2374294824626,
+      "name": "encode_frame_into_growing_vec",
+      "note": "format encode only (includes Blake); no store index, no OS write",
+      "ops_per_sec": 245278.39097375522,
+      "wall_ms": 81.54
+    },
+    {
+      "logical_mib_per_sec": 6330.560705100497,
+      "name": "raw_seek_plus_write_all_per_op",
+      "note": "mimics write_segment_tail: seek(durable_len)+write_all each put",
+      "ops_per_sec": 785756.868123989,
+      "wall_ms": 25.453166
+    },
+    {
+      "logical_mib_per_sec": 29412.224228632655,
+      "name": "raw_write_all_dev_null",
+      "note": "write_all to /dev/null — OS path without durable media (disk detached)",
+      "ops_per_sec": 3764764.70126498,
+      "wall_ms": 5.312417
+    },
+    {
+      "logical_mib_per_sec": 7998.703007107917,
+      "name": "raw_write_all_payload_only",
+      "note": "OS write path only (no fsync); device + page cache ceiling for small writes",
+      "ops_per_sec": 1023833.9849098134,
+      "wall_ms": 19.534416999999998
+    },
+    {
+      "logical_mib_per_sec": 7593.902744035936,
+      "name": "raw_write_all_frame_sized",
+      "note": "closer to segment tail write size (~payload+envelope)",
+      "ops_per_sec": 942564.4133203392,
+      "wall_ms": 21.218709
+    },
+    {
+      "logical_mib_per_sec": 7652.826829336623,
+      "name": "store_put_memory",
+      "note": "index/visibility path only — NO durable segment write_all",
+      "ops_per_sec": 979561.8341550877,
+      "wall_ms": 20.417292
+    },
+    {
+      "logical_mib_per_sec": 1306.5168676720918,
+      "name": "store_put_buffered_discard_io",
+      "note": "DISK DETACHED: full Buffered path, no write_all (sink=Discard); wall_ms=119.6 accounted=96.1; ps%cpu≈Some(6.9)→Some(21.0); MODE_A: prep=4.5ms(4%) enc=9.8(8%) append=76.4(64%) pub=4.6(4%) write=0.3(0%) seal_n=0 other=23.5(20%)",
+      "ops_per_sec": 167234.15906202776,
+      "wall_ms": 119.592792
+    },
+    {
+      "logical_mib_per_sec": 644.4654339675561,
+      "name": "store_put_buffered_dev_null",
+      "note": "DISK DETACHED: full Buffered path, write_all→/dev/null (syscall only); wall_ms=242.4 accounted=217.0; ps%cpu≈Some(43.5)→Some(64.7); MODE_A: prep=4.7ms(2%) enc=11.0(5%) append=79.1(33%) pub=4.9(2%) write=116.8(48%) seal_n=0 other=25.5(11%)",
+      "ops_per_sec": 82491.57554784718,
+      "wall_ms": 242.44899999999998
+    },
+    {
+      "logical_mib_per_sec": 1057.5475050339262,
+      "name": "store_put_buffered_batch1",
+      "note": "REAL FILE: full Buffered path on work volume (page cache + media); wall_ms=147.7 accounted=119.5; ps%cpu≈Some(61.9)→Some(65.4); MODE_A: prep=4.5ms(3%) enc=9.9(7%) append=76.2(52%) pub=4.9(3%) write=23.6(16%) seal_n=0 other=28.2(19%)",
+      "ops_per_sec": 135366.08064434255,
+      "wall_ms": 147.7475
+    },
+    {
+      "logical_mib_per_sec": 372.60330347298805,
+      "name": "store_put_many_buffered",
+      "note": "batch=128; one tail write per batch",
+      "ops_per_sec": 47693.22284454247,
+      "wall_ms": 419.34679200000005
+    }
+  ],
+  "prong": "phase_bench",
+  "work": "/Volumes/Scratch/TEST/residiuum-disk-bisect-20260801/json"
+}

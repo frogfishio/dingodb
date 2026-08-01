@@ -312,6 +312,28 @@ pub struct Store {
     /// Optional PQH boundary instrumentation (write/sync/rotate/publish/lifecycle).
     /// Default disabled — zero cost on ordinary product paths.
     boundary_probe: crate::boundary_probe::BoundaryProbe,
+    /// Diagnostic I/O detach for phase-bench bisection (default: real file).
+    /// **Not a product durability mode** — seals / recovery are undefined under
+    /// non-Real sinks; use only with a huge seal threshold for short microbenches.
+    diagnostic_io: DiagnosticIoSink,
+    /// Cached `/dev/null` handle when [`DiagnosticIoSink::DevNull`] is set.
+    null_io_file: Option<File>,
+}
+
+/// Where `write_segment_tail` sends bytes (diagnostic bisection only).
+///
+/// Used to answer: is wall time on the **store CPU path** or the **OS/media
+/// write path**? Product code must leave this at [`DiagnosticIoSink::Real`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DiagnosticIoSink {
+    /// Normal path: seek + `write_all` on the active segment file.
+    #[default]
+    Real,
+    /// Full Buffered put path, but **no** `write_all` (detach all OS I/O).
+    /// Advances `durable_len` as if the transfer succeeded.
+    Discard,
+    /// Full path with `write_all` to `/dev/null` (syscall/VFS, no durable media).
+    DevNull,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -438,6 +460,8 @@ impl Store {
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
+            diagnostic_io: DiagnosticIoSink::Real,
+            null_io_file: None,
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -525,6 +549,8 @@ impl Store {
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
+            diagnostic_io: DiagnosticIoSink::Real,
+            null_io_file: None,
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -649,6 +675,8 @@ impl Store {
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
+            diagnostic_io: DiagnosticIoSink::Real,
+            null_io_file: None,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -671,6 +699,35 @@ impl Store {
     /// Enable store-boundary I/O instrumentation (PQH harness). Default off.
     pub fn enable_boundary_probe(&mut self) {
         self.boundary_probe.enable();
+    }
+
+    /// Diagnostic only: detach or redirect segment tail I/O for bisection.
+    ///
+    /// See [`DiagnosticIoSink`]. Does **not** change CSQ durability labels on
+    /// receipts — only where bytes go. Never enable in product paths.
+    pub fn set_diagnostic_io_sink(&mut self, sink: DiagnosticIoSink) -> Result<(), StoreError> {
+        self.diagnostic_io = sink;
+        match sink {
+            DiagnosticIoSink::DevNull => {
+                if self.null_io_file.is_none() {
+                    self.null_io_file = Some(
+                        OpenOptions::new()
+                            .write(true)
+                            .open("/dev/null")
+                            .map_err(StoreError::from)?,
+                    );
+                }
+            }
+            DiagnosticIoSink::Real | DiagnosticIoSink::Discard => {
+                self.null_io_file = None;
+            }
+        }
+        Ok(())
+    }
+
+    /// Current diagnostic I/O sink (default [`DiagnosticIoSink::Real`]).
+    pub fn diagnostic_io_sink(&self) -> DiagnosticIoSink {
+        self.diagnostic_io
     }
 
     /// Enable boundary probe with an explicit sample-vector capacity.
@@ -1327,6 +1384,8 @@ impl Store {
         }
 
         // One seek+write_all (and optional sync) for the whole batch.
+        let sink = self.diagnostic_io;
+        let mut null = self.null_io_file.take();
         let tail = {
             let writer = self
                 .active_mut(0)
@@ -1334,8 +1393,9 @@ impl Store {
             if mode != DurabilityMode::Memory {
                 writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
             }
-            Self::write_segment_tail(writer, mode)?
+            Self::write_segment_tail(writer, mode, sink, null.as_mut())?
         };
+        self.null_io_file = null;
         self.record_tail_probe(&tail, mode, 0)?;
         Ok(out)
     }
@@ -1446,6 +1506,7 @@ impl Store {
         type ShardOut = Result<Vec<ShardRow>, StoreError>;
         let shard_outputs: Vec<std::sync::Mutex<ShardOut>> =
             (0..n).map(|_| std::sync::Mutex::new(Ok(Vec::new()))).collect();
+        let sink = self.diagnostic_io;
 
         thread::scope(|scope| {
             for shard in 0..n {
@@ -1504,7 +1565,13 @@ impl Store {
                     }
                     // One file tail write for the whole shard batch.
                     if !outs.is_empty() {
-                        match Self::write_segment_tail(writer, mode) {
+                        // Parallel path: open a local /dev/null if needed (diagnostic only).
+                        let mut local_null = if sink == DiagnosticIoSink::DevNull {
+                            OpenOptions::new().write(true).open("/dev/null").ok()
+                        } else {
+                            None
+                        };
+                        match Self::write_segment_tail(writer, mode, sink, local_null.as_mut()) {
                             Ok(tail) => {
                                 if let Some(last) = outs.last_mut() {
                                     last.tail = tail;
@@ -4250,6 +4317,8 @@ impl Store {
         })
         .map_err(StoreError::BadEnvelope)?;
 
+        let sink = self.diagnostic_io;
+        let mut null = self.null_io_file.take();
         let (offset, append_ns, tail) = {
             let writer = self.active_mut(shard).expect("active segment");
             let header = FrameHeader {
@@ -4275,11 +4344,12 @@ impl Store {
             let tail = match mode {
                 DurabilityMode::Memory => TailIoStats::default(),
                 DurabilityMode::Buffered | DurabilityMode::Durable => {
-                    Self::write_segment_tail(writer, mode)?
+                    Self::write_segment_tail(writer, mode, sink, null.as_mut())?
                 }
             };
             (offset, append_ns, tail)
         };
+        self.null_io_file = null;
 
         // Boundary probe: actual append + file write/sync (not reconstructed by harness).
         self.boundary_probe.record_append(
@@ -4612,6 +4682,8 @@ impl Store {
             return Err(StoreError::PayloadTooLarge);
         }
 
+        let sink = self.diagnostic_io;
+        let mut null = self.null_io_file.take();
         let (offset, encoded_frame_len, append_ns, tail) = {
             let writer = self.active_mut(shard).expect("active segment");
             let t_append = std::time::Instant::now();
@@ -4621,9 +4693,10 @@ impl Store {
             let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
             // Exact encoded frame length at store boundary (not logical+estimate).
             let encoded_frame_len = writer.segment.len().saturating_sub(offset);
-            let tail = Self::write_segment_tail(writer, mode)?;
+            let tail = Self::write_segment_tail(writer, mode, sink, null.as_mut())?;
             (offset, encoded_frame_len, append_ns, tail)
         };
+        self.null_io_file = null;
 
         self.boundary_probe.record_append(
             encoded_frame_len,
@@ -4691,9 +4764,13 @@ impl Store {
     /// durable prefix from the in-RAM segment (`discard_through`) so large seal
     /// thresholds do not pin a full segment image in process RSS. Locator offsets
     /// stay absolute; reads of older frames use file pread.
+    ///
+    /// `sink` may redirect or drop I/O for diagnostic bisection only.
     fn write_segment_tail(
         writer: &mut ActiveWriter,
         mode: DurabilityMode,
+        sink: DiagnosticIoSink,
+        null_file: Option<&mut File>,
     ) -> Result<TailIoStats, StoreError> {
         crate::failpoint::hit("store.active.write_tail.before")?;
         let base = writer.segment.base_offset();
@@ -4711,40 +4788,73 @@ impl Store {
             // a temporary view of retained bytes (segment is not mutated until after).
             let pending_len = retained_len - start;
             stats.write_requested = pending_len as u64;
-            writer.file.seek(SeekFrom::Start(writer.durable_len))?;
-            // DEF-022: optional short-write injection mid-append.
-            if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
-                let n = crate::failpoint::short_write_len(pending_len);
-                let t0 = std::time::Instant::now();
-                if n > 0 {
-                    let pending = &writer.segment.as_bytes()[start..start + n];
-                    writer.file.write_all(pending)?;
-                    // Do not advance durable_len past the short write so a
-                    // later retry could rewrite; crash/drop leaves torn bytes.
-                    writer.durable_len += n as u64;
+
+            match sink {
+                DiagnosticIoSink::Discard => {
+                    // Detach OS/media entirely: advance durable_len as if write succeeded.
+                    let t0 = std::time::Instant::now();
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                    stats.write_duration_ns =
+                        t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
                 }
-                stats.write_completed = n as u64;
-                stats.write_duration_ns =
-                    t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-                stats.write_outcome = crate::boundary_probe::BoundaryOutcome::ShortWrite;
-                // Return Ok so callers can record probe stats, then fail closed.
-                // No write-through discard on short write (prefix may be torn).
-                stats.fail_as_short_write = true;
-                return Ok(stats);
+                DiagnosticIoSink::DevNull => {
+                    // Syscall/VFS path without durable media (bisection vs Real).
+                    // Caller must pass a reused `/dev/null` handle (open once).
+                    let null = null_file.ok_or_else(|| {
+                        StoreError::CorruptMeta("DevNull sink without null_io_file")
+                    })?;
+                    let t0 = std::time::Instant::now();
+                    {
+                        let pending = &writer.segment.as_bytes()[start..];
+                        null.write_all(pending)?;
+                    }
+                    stats.write_duration_ns =
+                        t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                }
+                DiagnosticIoSink::Real => {
+                    writer.file.seek(SeekFrom::Start(writer.durable_len))?;
+                    // DEF-022: optional short-write injection mid-append.
+                    if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
+                        let n = crate::failpoint::short_write_len(pending_len);
+                        let t0 = std::time::Instant::now();
+                        if n > 0 {
+                            let pending = &writer.segment.as_bytes()[start..start + n];
+                            writer.file.write_all(pending)?;
+                            // Do not advance durable_len past the short write so a
+                            // later retry could rewrite; crash/drop leaves torn bytes.
+                            writer.durable_len += n as u64;
+                        }
+                        stats.write_completed = n as u64;
+                        stats.write_duration_ns =
+                            t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                        stats.write_outcome = crate::boundary_probe::BoundaryOutcome::ShortWrite;
+                        // Return Ok so callers can record probe stats, then fail closed.
+                        // No write-through discard on short write (prefix may be torn).
+                        stats.fail_as_short_write = true;
+                        return Ok(stats);
+                    }
+                    let t0 = std::time::Instant::now();
+                    {
+                        let pending = &writer.segment.as_bytes()[start..];
+                        writer.file.write_all(pending)?;
+                    }
+                    stats.write_duration_ns =
+                        t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                    debug_assert_eq!(writer.durable_len, writer.segment.len());
+                }
             }
-            let t0 = std::time::Instant::now();
-            {
-                let pending = &writer.segment.as_bytes()[start..];
-                writer.file.write_all(pending)?;
-            }
-            stats.write_duration_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-            stats.write_completed = pending_len as u64;
-            stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
-            writer.durable_len = base.saturating_add(retained_len as u64);
-            debug_assert_eq!(writer.durable_len, writer.segment.len());
         }
         crate::failpoint::hit("store.active.write_tail.after_write")?;
-        if mode == DurabilityMode::Durable {
+        // Durable sync only applies to the real active file (not diagnostic sinks).
+        if mode == DurabilityMode::Durable && sink == DiagnosticIoSink::Real {
             let t0 = std::time::Instant::now();
             writer.file.sync_all()?;
             stats.sync_duration_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
@@ -4752,7 +4862,7 @@ impl Store {
             stats.sync_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
             crate::failpoint::hit("store.active.write_tail.after_sync")?;
         }
-        // Write-through: free RAM for bytes now known on the OS path.
+        // Write-through: free RAM for bytes now known on the OS path (or discarded).
         // Capacity is kept for the next frame (append micro).
         if stats.write_outcome == crate::boundary_probe::BoundaryOutcome::Ok
             || stats.write_requested == 0
@@ -4768,7 +4878,10 @@ impl Store {
         mode: DurabilityMode,
         shard: u32,
     ) -> Result<(), StoreError> {
-        let stats = Self::write_segment_tail(writer, mode)?;
+        let sink = self.diagnostic_io;
+        let mut null = self.null_io_file.take();
+        let stats = Self::write_segment_tail(writer, mode, sink, null.as_mut())?;
+        self.null_io_file = null;
         self.record_tail_probe(&stats, mode, shard)?;
         Ok(())
     }
@@ -4817,10 +4930,13 @@ impl Store {
     fn persist_active_shard(&mut self, shard: usize, mode: DurabilityMode) -> Result<(), StoreError> {
         if self.active_mut(shard).is_some() {
             // Split borrows: take stats from writer, then probe on self.
+            let sink = self.diagnostic_io;
+            let mut null = self.null_io_file.take();
             let stats = {
                 let writer = self.active_mut(shard).expect("active");
-                Self::write_segment_tail(writer, mode)?
+                Self::write_segment_tail(writer, mode, sink, null.as_mut())?
             };
+            self.null_io_file = null;
             self.record_tail_probe(&stats, mode, shard as u32)?;
             if mode == DurabilityMode::Durable {
                 crate::failpoint::hit("store.active.dir_sync")?;
