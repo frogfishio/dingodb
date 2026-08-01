@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0–T3 2026-08-02** (inventory + builder + executor + scan/find façade) · package `APB-7` **active / not accept**  
+Status: **T0–T4 2026-08-02** (inventory + builder + executor + scan/find + index pushdown) · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -135,7 +135,7 @@ honest residual until APP-7/APB-7 activate wire.
 | G9 | Complete-by-default coverage | **T3 partial** | `ScanJsonPage` carries hole evidence (embedded list/get race); RQL page coverage still stub-complete |
 | G10 | Budgets max_bytes / max_result_bytes | **T2 partial** | Enforced in `query_exec_v1` (compact JSON lengths); documents budget retained |
 | G11 | Deadline / cancellation | **missing** | No cooperative cancel token on façade |
-| G12 | Index-versus-scan oracle | **missing** | No pushdown; IndexManager unused by executor |
+| G12 | Index-versus-scan oracle | **T4 partial** | Equality AND pushdown via `lookup_index_keys` + re-eval; differential tests; remote residual |
 | G13 | Independent complete-scan oracle suite | **partial** | APP-6 equality tests; not full dual-path differential |
 | G14 | Remote op **118** product path | **blocked** | Wire reserved; APP-7 + HAR-4 |
 | G15 | Remote parity without inventing wire | **partial** | Remote `rql` today = collection-plane list_keys+get (same as embedded) — honest, not product `rql_query` |
@@ -157,7 +157,7 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T1** | `68731e2d` | in_review | Façade `query()` PlanBuilder |
 | **T2** | `8084d687` | in_review | Executor budgets + field-order |
 | **T3** | `f51b2fa8` | in_review | `scan_json` + `find_json` |
-| **T4** | `ff6892ba` | **todo** | Index pushdown + scan/index oracle |
+| **T4** | `ff6892ba` | **in_review** | Index pushdown + scan/index oracle (equality AND) |
 | **T5** | `6c7601a5` | **todo** | ReadView-bound page path |
 | **T6** | `48b8f01b` | **todo** | Op 118 activate (HAR-4 blocked) |
 | **T7** | `9e19bd5f` | **todo** | Dual-pack + accept checklist |

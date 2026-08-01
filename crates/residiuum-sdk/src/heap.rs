@@ -464,6 +464,35 @@ impl HeapCollection {
             .collect())
     }
 
+    /// Equality index acceleration (APB-7 T4): candidate application keys.
+    ///
+    /// `equalities` is a shallow AND of (field path, JSON value). Returns:
+    /// - `Ok(None)` — no usable ready/partial index; caller must scan
+    /// - `Ok(Some(keys))` — candidates (may be empty when Ready+complete proves absence)
+    pub fn lookup_index_keys(
+        &self,
+        equalities: &[(String, serde_json::Value)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        let raw = self
+            .store
+            .lookup_index_keys(self.id.as_bytes(), equalities)?;
+        let Some(keys) = raw else {
+            return Ok(None);
+        };
+        let mut out = Vec::with_capacity(keys.len());
+        for k in keys {
+            match String::from_utf8(k) {
+                Ok(s) => out.push(s),
+                Err(_) => {
+                    return Err(Error::Internal(
+                        "index lookup: non-UTF-8 application key".into(),
+                    ))
+                }
+            }
+        }
+        Ok(Some(out))
+    }
+
     /// Create a field index over JSON documents. Requires IndexAdmin + Read for build.
     pub fn create_index(&self, name: &str, fields: &[&str]) -> Result<IndexInfo, Error> {
         let idx = self

@@ -1153,6 +1153,23 @@ impl CollectionClient {
         IndexManager { client: self }
     }
 
+    /// Equality index candidate keys (APB-7 T4 probe; embedded only).
+    ///
+    /// See [`crate::heap::HeapCollection::lookup_index_keys`]. Remote returns
+    /// `Ok(None)` until a product index-probe wire exists.
+    pub fn lookup_index_keys(
+        &mut self,
+        equalities: &[(String, serde_json::Value)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.lookup_index_keys(equalities),
+            CollectionBackend::Remote { .. } => Ok(None),
+        }
+    }
+
     /// Coverage-aware JSON document scan (APB-7 T3 / `apb.collection.scan_json`).
     ///
     /// Embedded: `list_keys` + `get` with hole evidence when a listed key is
@@ -1548,6 +1565,17 @@ impl crate::query_exec_v1::DocScan for CollectionClient {
 
     fn get_json(&mut self, key: &str) -> Result<Option<serde_json::Value>, Error> {
         CollectionClient::get(self, key)
+    }
+
+    fn try_equality_index_keys(
+        &mut self,
+        equalities: &[(String, serde_json::Value)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        match &self.backend {
+            CollectionBackend::Embedded(hc) => hc.lookup_index_keys(equalities),
+            // Remote residual: no index-probe wire for Application Core yet.
+            CollectionBackend::Remote { .. } | CollectionBackend::Unbound => Ok(None),
+        }
     }
 }
 

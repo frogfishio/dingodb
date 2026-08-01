@@ -1,17 +1,17 @@
-//! Bounded Application Core page executor — APP-6 T2 + APB-7 T2 hardening.
+//! Bounded Application Core page executor — APP-6 T2 + APB-7 T2/T4.
 //!
 //! Normative: CORE plan §10 / §14 APP-6 (partial). Compiles via
 //! [`crate::rql_app_core::compile_app_core`], scans with `list_keys` + `get`,
 //! evaluates predicates with [`crate::predicate::Predicate::eval`].
 //!
-//! **T2 budgets:** `max_documents`, `max_bytes` (examined JSON), and
-//! `max_result_bytes` (projected page payload) all fail closed with
-//! [`Error::ResourceLimit`]. Field order sorts on **full documents**, then
-//! projects (so order paths need not appear in `project`).
+//! **T2 budgets:** `max_documents`, `max_bytes`, `max_result_bytes`.
+//! **T4 index pushdown:** when [`DocScan::try_equality_index_keys`] returns
+//! candidates for field equalities, examine only those keys (still re-eval
+//! full predicate). Fall back to full scan when no usable index.
 //!
 //! **Not claimed:** product query qualification (APB-7 package accept), product
-//! cursor secrets (vector-lock ring only), remote op 118, index pushdown,
-//! multi-page field-order continuation tuples, snapshot reads.
+//! cursor secrets, remote op 118, multi-page field-order continuation tuples,
+//! snapshot reads.
 
 use crate::app_v1::{
     ConsistencyEvidence, Continuation, CoverageEvidence, CoveragePolicy, HoleEvidence, Parameters,
@@ -20,7 +20,9 @@ use crate::app_v1::{
 use crate::cursor_v1::{mint, CursorKeyRing, CursorLogical, VerifyContext, PROFILE as CURSOR_PROFILE};
 use crate::error::Error;
 use crate::plan_v1::{CollectionBindings, NullsOrder, OrderDir, OrderTerm, RqlPlanV1};
-use crate::predicate::{resolve_path, Path, Predicate, Resolve};
+use crate::predicate::{
+    resolve_path, CompareOp, Operand, Path, Predicate, Resolve,
+};
 use crate::rql_app_core::{compile_app_core, merge_budgets, CompiledAppCore};
 use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
@@ -41,6 +43,17 @@ pub trait DocScan {
 
     /// JSON get (None when absent).
     fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error>;
+
+    /// Optional equality-index acceleration (APB-7 T4).
+    ///
+    /// Default: no index → caller full-scans. Implementors may return candidate
+    /// application keys for a shallow AND of field equalities.
+    fn try_equality_index_keys(
+        &mut self,
+        _equalities: &[(String, JsonValue)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        Ok(None)
+    }
 }
 
 /// Execute Application Core RQL source against a document scan.
@@ -131,16 +144,101 @@ pub fn execute_plan<S: DocScan>(
         .iter()
         .all(|t| t.tie_break || t.path.0 == ["$key"]);
 
-    // Matched rows keep full documents until final project (field-order sort).
+    // APB-7 T4: equality index acceleration when available.
+    let eqs = equality_constraints(&plan.where_pred, params);
+    let index_keys = if eqs.is_empty() {
+        None
+    } else {
+        scan.try_equality_index_keys(&eqs)?
+    };
+    let used_index = index_keys.is_some();
+
+    // Matched rows keep projected values (key-only) or full docs until project (field-order).
     let mut matched: Vec<(String, JsonValue)> = Vec::new();
     let mut examined_docs: u64 = 0;
     let mut examined_bytes: u64 = 0;
     let mut result_bytes: u64 = 0;
     let mut after = after_key.clone();
     let mut known_holes = Vec::new();
+    // When index path stops early, whether more candidate keys remain.
+    let mut index_more = false;
 
-    if key_only_order {
-        // Stream until page full or scan ends; project on the way for result budget.
+    if let Some(mut candidates) = index_keys {
+        // Index path: examine only candidate keys; re-eval full predicate.
+        candidates.sort();
+        if let Some(ref ak) = after_key {
+            candidates.retain(|k| k.as_str() > ak.as_str());
+        }
+        if key_only_order {
+            let mut iter = candidates.into_iter();
+            while let Some(key) = iter.next() {
+                match scan.get_json(&key)? {
+                    None => {
+                        examined_docs += 1;
+                        check_doc_budget(budget, examined_docs)?;
+                        known_holes.push(HoleEvidence {
+                            code: "index_key_absent".into(),
+                            key: Some(key),
+                        });
+                    }
+                    Some(doc) => {
+                        examined_docs += 1;
+                        examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
+                        check_doc_budget(budget, examined_docs)?;
+                        check_bytes_budget(budget, examined_bytes)?;
+                        if plan.where_pred.eval(&doc, params)? {
+                            let value = project_doc(&doc, plan.project.as_ref())?;
+                            let row_len = json_byte_len(&value);
+                            let next_result = result_bytes.saturating_add(row_len);
+                            check_result_budget(budget, next_result)?;
+                            result_bytes = next_result;
+                            matched.push((key, value));
+                            if matched.len() >= need {
+                                index_more = iter.next().is_some();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            let mut full: Vec<(String, JsonValue)> = Vec::new();
+            for key in candidates {
+                if let Some(doc) = scan.get_json(&key)? {
+                    examined_docs += 1;
+                    examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
+                    check_doc_budget(budget, examined_docs)?;
+                    check_bytes_budget(budget, examined_bytes)?;
+                    if plan.where_pred.eval(&doc, params)? {
+                        full.push((key, doc));
+                    }
+                } else {
+                    examined_docs += 1;
+                    check_doc_budget(budget, examined_docs)?;
+                    known_holes.push(HoleEvidence {
+                        code: "index_key_absent".into(),
+                        key: Some(key),
+                    });
+                }
+            }
+            full.sort_by(|(ka, va), (kb, vb)| compare_rows(ka, va, kb, vb, &plan.order));
+            if let Some(n) = total_limit {
+                full.truncate(n as usize);
+            }
+            if full.len() > page_size {
+                full.truncate(page_size);
+            }
+            for (key, doc) in full {
+                let value = project_doc(&doc, plan.project.as_ref())?;
+                let row_len = json_byte_len(&value);
+                let next_result = result_bytes.saturating_add(row_len);
+                check_result_budget(budget, next_result)?;
+                result_bytes = next_result;
+                matched.push((key, value));
+            }
+        }
+    } else if key_only_order {
+        // Full key-stream until page full or scan ends.
         'outer: loop {
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
@@ -154,7 +252,6 @@ pub fn execute_plan<S: DocScan>(
                             code: "key_listed_absent".into(),
                             key: Some(key),
                         });
-                        // Listing still counts as one examination for documents.
                         examined_docs += 1;
                         check_doc_budget(budget, examined_docs)?;
                     }
@@ -230,16 +327,22 @@ pub fn execute_plan<S: DocScan>(
     }
 
     let took = matched.len();
-    let exhausted = if key_only_order {
+    let exhausted = if used_index {
+        // Index candidates fully considered unless we stopped early for page size.
+        if key_only_order {
+            !index_more && took <= need
+        } else {
+            took < page_size
+        }
+    } else if key_only_order {
         took < need
     } else {
         // If we truncated to page_size after sort, may have more.
         took < page_size
     };
 
-    // More precise exhausted for key-only: if took < need, scan ended.
-    // If took == need, probe one more key after last match.
-    let exhausted = if key_only_order && took == need {
+    // Full-scan key-only: if took == need, probe whether more matches exist.
+    let exhausted = if !used_index && key_only_order && took == need {
         if let Some((last_k, _)) = matched.last() {
             let more = scan.list_keys(Some(1), Some(last_k.as_str()))?;
             if more.is_empty() {
@@ -258,6 +361,8 @@ pub fn execute_plan<S: DocScan>(
         } else {
             true
         }
+    } else if used_index && key_only_order {
+        !index_more
     } else {
         exhausted
     };
@@ -313,6 +418,54 @@ pub fn execute_plan<S: DocScan>(
 fn json_byte_len(v: &JsonValue) -> u64 {
     // Compact JSON encoding length — stable enough for budget accounting.
     serde_json::to_vec(v).map(|b| b.len() as u64).unwrap_or(0)
+}
+
+/// Extract field equality constraints for index pushdown (shallow AND of `=` only).
+///
+/// Returns empty when the predicate is not a pure conjunction of field equalities
+/// (or a single equality). Parameters are resolved from `params`.
+pub(crate) fn equality_constraints(
+    pred: &Predicate,
+    params: &BTreeMap<String, JsonValue>,
+) -> Vec<(String, JsonValue)> {
+    match pred {
+        Predicate::True => Vec::new(),
+        Predicate::Cmp {
+            cmp: CompareOp::Eq,
+            left,
+            right,
+        } => match (left, right) {
+            (Operand::Path { path }, other) | (other, Operand::Path { path }) => {
+                if let Some(v) = operand_as_json(other, params) {
+                    vec![(path.dotted(), v)]
+                } else {
+                    Vec::new()
+                }
+            }
+            _ => Vec::new(),
+        },
+        Predicate::And { args } => {
+            let mut out = Vec::new();
+            for a in args {
+                let part = equality_constraints(a, params);
+                if part.is_empty() {
+                    // Non-equality conjunct → do not claim pure eq-AND for pushdown.
+                    return Vec::new();
+                }
+                out.extend(part);
+            }
+            out
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn operand_as_json(op: &Operand, params: &BTreeMap<String, JsonValue>) -> Option<JsonValue> {
+    match op {
+        Operand::Literal { value } => Some(value.clone()),
+        Operand::Param { name } => params.get(name).cloned(),
+        Operand::Path { .. } => None,
+    }
 }
 
 fn check_doc_budget(budget: Option<QueryBudget>, examined: u64) -> Result<(), Error> {
