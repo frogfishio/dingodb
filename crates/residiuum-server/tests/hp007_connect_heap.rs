@@ -733,8 +733,9 @@ fn apb1_heap_client_from_remote_full_parity_heap_admin() {
 
 /// APB-7 T7: remote collection-plane Application Core query dual pack.
 ///
-/// Same shared scenarios as embedded `apb7_query_dual_pack`. Uses list_keys+get
-/// over the remote façade — **not** product op 118 `rql_query`. No package accept.
+/// Same shared scenarios as embedded `apb7_query_dual_pack`. Remote façade now
+/// uses product wire op **118** `rql_query` for Application Core (APP-7 T6).
+/// No package accept.
 #[test]
 fn apb7_query_from_remote_collection_plane() {
     use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
@@ -837,7 +838,7 @@ fn apb7_query_from_remote_collection_plane() {
             "index_equality_pushdown",
         ]
     );
-    // Collection-plane remote only — not product rql_query (op 118 reserved).
+    // APP-7 T6: remote rql uses op 118 wire (not collection-plane scan only).
     apb7_query_parity::run_full_query_parity(&mut client, "orders_t7");
 
     drop(client);

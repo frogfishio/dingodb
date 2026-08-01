@@ -3,7 +3,8 @@
 //! `Residiuum::connect_heap` performs TLS 1.3 + HeapKey handshake
 //! (`hello` → `heap_challenge` → `heap_auth` → `welcome`) and returns a
 //! [`RemoteHeap`] session bound to one `HeapId`. Active process ops 1–3 plus
-//! §32.4 data (105–106/110–112/114–117/120–122) and secondary indexes (130–133).
+//! §32.4 data (105–106/110–112/114–118/120–122) and secondary indexes (130–133).
+//! Op **118** `rql_query` is active (APP-7 T6).
 
 use crate::error::Error;
 use crate::remote::{parse_residiuum_url, DEFAULT_PORT};
@@ -611,6 +612,18 @@ impl RemoteHeap {
             ));
         }
         Ok(result)
+    }
+
+    /// Application Core RQL page / explain (op_id = **118** `rql_query`).
+    ///
+    /// APP-7 T6: product wire path. Server recompiles `source` and returns a
+    /// page object matching `rql_query.response.json`. Not a package-accept claim.
+    pub fn rql_query(
+        &mut self,
+        collection_id: &str,
+        args: Value,
+    ) -> Result<Value, Error> {
+        self.call_args(118, Some(collection_id), args)
     }
 
     /// Scan JSON rows in a collection (op_id = 115).

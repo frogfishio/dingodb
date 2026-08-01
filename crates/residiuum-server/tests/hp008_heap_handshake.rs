@@ -367,7 +367,7 @@ fn successful_auth_then_proof_replay_fails() {
     assert!(request_registry_allows(106)); // APP-1 collection_create active
     assert!(request_registry_allows(131)); // index_create active
     assert!(!request_registry_allows(140)); // export still reserved
-    assert!(!request_registry_allows(118)); // rql_query still reserved
+    assert!(request_registry_allows(118)); // APP-7 T6: rql_query active
 }
 
 #[test]

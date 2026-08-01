@@ -656,12 +656,12 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
-      "notes": "rql_query RESERVED until APP-7/APB-7; schemas null \u2014 do not claim product",
+      "notes": "rql_query wire active (APP-7 T6); package accept still principal-gated",
       "product_claim": "forbidden_until_wire_active_and_package_accept"
     },
     {
@@ -675,9 +675,9 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
       "notes": "Same wire family; explain is app projection",
@@ -720,9 +720,9 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
       "notes": "Coverage-aware; incomplete coverage cannot be exact",
@@ -746,9 +746,9 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
       "notes": null,
@@ -772,9 +772,9 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
       "notes": null,
@@ -798,9 +798,9 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
       "notes": null,
@@ -827,9 +827,9 @@
         {
           "id": 118,
           "wire_name": "rql_query",
-          "wire_status": "reserved",
-          "request_schema": null,
-          "response_schema": null
+          "wire_status": "active",
+          "request_schema": "rpc-v1/rql_query.request.json",
+          "response_schema": "rpc-v1/rql_query.response.json"
         }
       ],
       "notes": "Overflow/precision policy required",

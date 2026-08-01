@@ -18,8 +18,7 @@ One shared scenario pack for Application Core query surfaces runs against:
 | Backend | Constructor | Host test | Path honesty |
 |---|---|---|---|
 | Embedded | `HeapClient::from(Heap)` | `cargo test -p residiuum-sdk --test apb7_query_dual_pack` | Full APP-6 / APB-7 collection-plane executor |
-| Remote (collection-plane) | `HeapClient::from(RemoteHeap)` | `… --test hp007_connect_heap apb7_query_from_remote` | Same façade methods; scan via list_keys+get over wire **not** op 118 |
-| Remote product `rql_query` | op **118** | **blocked** | T6 + HAR-4 residual |
+| Remote product `rql_query` | `HeapClient::from(RemoteHeap)` + op **118** | `… --test hp007_connect_heap apb7_query_from_remote` | APP-7 T6: façade `rql` uses wire 118 |
 
 Shared code:
 
@@ -90,7 +89,7 @@ gates. Labor must **never** self-mark accept from partial dual-pack green.
 - [x] Budgets + deadline + cancellation (T2, T8)
 - [x] Index-versus-scan equality path (T4; range residual)
 - [x] Authenticated cursor mint/verify + parameter_hash (T10; Heap-confined durable secret residual)
-- [ ] **Product** embedded/remote parity via op **118** (T6 blocked; HAR-4)
+- [x] **Product** remote wire path via op **118** (T6 labor; package accept residual)
 
 ### 4.2 Exit criteria (normative MUST_ADD §11)
 
@@ -98,22 +97,20 @@ gates. Labor must **never** self-mark accept from partial dual-pack green.
 |---|---|---|
 | Builder and RQL compile to the same plan | **partial green** | dual pack `builder_rql_plan_hash`; APP-5 corpus |
 | All pages reconcile with independent complete-scan oracle | **partial green** (embedded) | dual pack multipage + T11 matrix |
-| Both backends (product remote) | **not met** | collection-plane remote only; op 118 reserved |
-| Dual-pack matrix green on product remote | **not met** | H4-G4 / T6 |
+| Both backends (product remote) | **labor green** | op 118 wire + dual pack remote; package accept residual |
+| Dual-pack matrix green on product remote | **labor green** | `apb7_query_from_remote_collection_plane` 1/1 via wire |
 
 ### 4.3 Hard blockers before accept
 
-1. **APP-7 / APB-7 T6** — activate op 118 schemas + server dispatch + RemoteHeap product path (not collection-plane scan pretending to be product wire).
-2. **HAR-4** — qualified remote posture honesty for product claim (default HeapKey residual).
-3. **Dual remote multipage oracle** — same complete-scan oracle on product wire path.
-4. **Principal scoreboard gate** — only principal marks `APB-7 = accept`.
-5. Residual honesty retained on scoreboard: range index, SI / view multipage, Heap-confined cursor secrets, max_bytes residual paths as noted in inventory.
+1. ~~**APP-7 / APB-7 T6** activate op 118~~ — **labor done** (wire active; not package accept).
+2. **HAR-4** package accept / T3–T4 residual (config UX, tutorial journey).
+3. **Principal scoreboard gate** — only principal marks `APB-7 = accept`.
+4. Residual honesty: range index, SI / view multipage, Heap-confined cursor secrets, plan-only wire args.
 
 ### 4.4 Explicit non-claims (always until accept)
 
-- Dual pack embedded green ≠ APB-7 package accept.
-- Collection-plane remote `rql` ≠ product `rql_query` (op 118).
-- No “query baseline qualified” / marketing language.
+- Dual pack green (embedded or remote wire) ≠ APB-7 package accept.
+- Op 118 active ≠ product “query baseline qualified”.
 - No snapshot isolation claim (APB-6 / T5 residual).
 - Full RQL v1 language is **not** APB-7 (separate card).
 

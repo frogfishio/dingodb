@@ -54,7 +54,7 @@ Exit highlights:
 | H4-G1 | `ServeOptions::qualified_heap_key` not default | **T2 closed** (default true; legacy explicit) |
 | H4-G2 | CLI/tutorials still allow open/token without labels | **T2 partial** — CLI requires `--legacy-token-server` or qualified flags; startup labels; tutorials residual |
 | H4-G3 | Co-host prohibition not fully productized as config UX | **T2 partial** — API + CLI refuse co-host; config-file keys residual (T3) |
-| H4-G4 | Op **118** still **reserved** (no server dispatch / RemoteHeap rql) | APP-7 / APB-7 T6 |
+| H4-G4 | Op **118** still **reserved** (no server dispatch / RemoteHeap rql) | **APP-7 T6 closed** (active + dispatch + RemoteHeap); package accept residual |
 | H4-G5 | Dual remote multipage oracle for **product** Core query (op 118) | APB-7 T7 partial (collection-plane dual green); product wire residual |
 | H4-G6 | Remote ReadView pin (still `RemoteUnpinnedResidual`) | APB-6 T3 residual |
 | H4-G7 | Heap-confined product cursor secrets on server | APB-7 T10 residual |
@@ -91,15 +91,14 @@ Do **not** activate op 118 from this card alone.
 | HAR-4 T2 | Default config / CLI qualified listener + legacy opt-in flag | **done (in_review)** — `ServeOptions` default qualified; CLI flags; co-host refuse |
 | HAR-4 T3 | Co-host config reject + help/error labels | Config-file keys + residual UX |
 | HAR-4 T4 | Journey: tutorial uses `connect_heap` only | Evidence pack |
-| APP-7 T1 | Op 118 registry active + dispatch + RemoteHeap | **after** qualified path honesty |
-| APB-7 T6 | Wire façade remote `rql` to op 118 | same |
+| APP-7 T1 / APB-7 T6 | Op 118 registry active + dispatch + RemoteHeap + façade | **done (in_review)** — wire active; dual pack remote green |
 
 ---
 
 ## 6. Explicit non-claims
 
 - No HAR-4 package **accept**.
-- No product remote query / op 118 active.
+- Op 118 wire is **active** (APP-7 T6) but HAR-4 / APB-7 packages remain **not accept**.
 - No claim that `CollectionClient::rql` on remote is product wire.
 - Embedded Application Core query labor remains valid evidence; it does not
   satisfy HAR-4 exit.

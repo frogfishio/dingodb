@@ -1,7 +1,7 @@
 //! HAR-4 dep (query product): gate locks for qualified remote + op 118.
 //!
 //! HAR-4 T2: product default is qualified HeapKey; legacy requires explicit
-//! opt-in. Does **not** activate op 118 or mark HAR-4 package accept.
+//! opt-in. APP-7 T6 activated op 118 in the registry (package accept still open).
 
 use residiuum_server::{
     request_registry_allows, validate_qualified_listener, ResidentHeapRegistry, ServeOptions,
@@ -9,11 +9,11 @@ use residiuum_server::{
 use std::sync::Arc;
 
 #[test]
-fn op_118_rql_query_still_reserved() {
-    // Product remote query wire remains off until APP-7/APB-7 activate it.
+fn op_118_rql_query_is_active() {
+    // APP-7 T6: wire registry active. Package accept remains principal-gated.
     assert!(
-        !request_registry_allows(118),
-        "op 118 rql_query must stay reserved until HAR-4 path + APP-7 admit it"
+        request_registry_allows(118),
+        "op 118 rql_query must be active after APP-7 T6"
     );
 }
 
@@ -107,15 +107,29 @@ fn serve_store_with_refuses_co_host_qualified_and_legacy() {
 }
 
 #[test]
-fn baseline_ops_json_marks_118_reserved() {
+fn baseline_ops_json_marks_118_active() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../spec/app/baseline-v1/operations-v1.json");
     let raw = std::fs::read_to_string(&path).expect("operations-v1.json");
     let v: serde_json::Value = serde_json::from_str(&raw).expect("json");
-    let s = raw.to_lowercase();
+    // apb.collection.rql wire 118 must be active with schemas.
+    let ops = v["operations"]
+        .as_array()
+        .expect("operations array");
+    let rql = ops
+        .iter()
+        .find(|o| o["app_id"] == "apb.collection.rql")
+        .expect("apb.collection.rql");
+    let wire = rql["wire"]
+        .as_array()
+        .and_then(|a| a.iter().find(|w| w["id"] == 118))
+        .expect("wire 118");
+    assert_eq!(wire["wire_status"], "active");
     assert!(
-        s.contains("rql_query") && (s.contains("reserved") || s.contains("\"status\": \"reserved\"")),
-        "baseline ops must keep rql_query reserved honesty"
+        wire["request_schema"]
+            .as_str()
+            .unwrap_or("")
+            .contains("rql_query"),
+        "schema link required"
     );
-    let _ = v;
 }

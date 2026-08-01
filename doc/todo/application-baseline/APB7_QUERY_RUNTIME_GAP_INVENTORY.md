@@ -49,8 +49,8 @@ reconcile with an independent complete-scan oracle; both backends.
 | APB-1 | **active** | `CollectionClient` dual backend; `DocScan` over list_keys+get |
 | APB-6 | **active** (T1/T2 in_review) | ReadView pin (embedded segment FP); **APB-7 T5** view-bound gate (not SI) |
 | APP-3 | **active** | Data plane for scan (put/get/list_keys) |
-| HAR-4 | **active** (inventory) | [HAR4_QUERY_REMOTE_GAP_INVENTORY.md](../heap-application-ready/HAR4_QUERY_REMOTE_GAP_INVENTORY.md); op 118 still reserved; default not HeapKey |
-| APP-7 | **not_started** | Wire op **118** `rql_query` remains **reserved** |
+| HAR-4 | **active** | [HAR4_QUERY_REMOTE_GAP_INVENTORY.md](../heap-application-ready/HAR4_QUERY_REMOTE_GAP_INVENTORY.md); T2 default HeapKey; T3/T4 residual; **no package accept** |
+| APP-7 | **active** (T6) | Wire op **118** `rql_query` **active** + dispatch + RemoteHeap; **no package accept** |
 
 **Unblock vs product claim:** APP-4/5/6 + APB-1 labor is enough to *inventory*
 and later implement package slices. Product query language still requires package
@@ -66,8 +66,8 @@ From `operations-v1.json` (`must_add_package: APB-7`):
 |---|---|---|---|
 | `apb.collection.scan_json` | `CollectionClient::scan_json` | **115** `scan_json` **active** | **gap** — wire exists on `RemoteHeap` / legacy `Collection`; **not** on neutral `CollectionClient` |
 | `apb.collection.find` | `CollectionClient::find`, `collection.query()` | **116** `find` **active** | **gap** — builder on legacy `Collection`; façade `query`/`find` missing |
-| `apb.collection.rql` | `CollectionClient::rql` | **118** `rql_query` **reserved** | **partial** — embedded/remote *collection-plane* executor via APP-6; **not** product wire |
-| `apb.collection.explain_rql` | `CollectionClient::explain_rql` | **118** (explain projection) **reserved** | **partial** — plan tree + hash, no row scan; not wire |
+| `apb.collection.rql` | `CollectionClient::rql` | **118** `rql_query` **active** | **T6** — remote wire path; embedded list_keys+get executor |
+| `apb.collection.explain_rql` | `CollectionClient::explain_rql` | **118** (explain projection) **active** | **T6** — wire explain + local plan tree residual |
 | `apb.collection.sda_query` | `CollectionClient::sda_query` | **119** `sda_query` **reserved** | **optional / out of Core first cut** — flat `sda_query` only |
 
 Staged schemas exist under `spec/heap/rpc-v1/rql_query.*` + fixtures, but
@@ -137,8 +137,8 @@ honest residual until APP-7/APB-7 activate wire.
 | G11 | Deadline / cancellation | **T8 partial** | `QueryRunOptions::{deadline,cancel}`; cooperative checks in executor; tests 4/4 |
 | G12 | Index-versus-scan oracle | **T4 partial** | Equality AND pushdown via `lookup_index_keys` + re-eval; differential tests; remote residual |
 | G13 | Independent complete-scan oracle suite | **T11 partial** | Multipage matrix: key-order / equality / field-order / index / builder↔RQL; residual: remote dual, range index |
-| G14 | Remote op **118** product path | **blocked** | Wire reserved; APP-7 + HAR-4 |
-| G15 | Remote parity without inventing wire | **partial** | Remote `rql` today = collection-plane list_keys+get (same as embedded) — honest, not product `rql_query` |
+| G14 | Remote op **118** product path | **T6 partial** | Wire active + dispatch + façade; package accept residual |
+| G15 | Remote parity without inventing wire | **T6 partial** | Remote `rql` uses op 118; dual pack green; accept residual |
 | G16 | `scan_json` / `find` on façade | **T3 partial** | `CollectionClient::scan_json` + `find_json` (embedded + remote 115/116); not product accept |
 | G17 | View-bound observation under ReadView | **partial (T5)** | Stable pin + live executor; not SI; multipage-under-pin residual |
 | G18 | sda_query on façade | **deferred** | Optional; reserved 119 |
@@ -159,7 +159,7 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T3** | `f51b2fa8` | in_review | `scan_json` + `find_json` |
 | **T4** | `ff6892ba` | **in_review** | Index pushdown + scan/index oracle (equality AND) |
 | **T5** | `6c7601a5` | **in_review** | ReadView-bound page path (`ViewBoundCollection`; tests 4/4) |
-| **T6** | `48b8f01b` | **todo** | Op 118 activate (HAR-4 blocked) |
+| **T6** | `48b8f01b` | **in_review** | Op 118 active + dispatch + façade wire; no package accept |
 | **T7** | `9e19bd5f` | **in_review** | Dual-pack + accept checklist (`APB7_DUAL_BACKEND_SUITE.md`; embedded+remote collection-plane; no accept) |
 | **T8** | `5bd3fe3b` | **in_review** | Deadline + CancelToken (`apb7_deadline_cancel` 4/4) |
 | **T9** | `99e32b76` | **in_review** | Coverage grade (`apb7_coverage_grade` 4/4) |
@@ -191,7 +191,7 @@ Feeds **T7** accept checklist; does **not** alone authorize package accept.
 
 - No product “query baseline” or APB-7 package accept.
 - No claim that `CollectionClient::rql` is qualified product query.
-- Op **118** remains **reserved** until APP-7/APB-7 activate wire.
+- Op **118** is **active** (APP-7 T6); APB-7 package accept still forbidden until principal gate.
 - No snapshot isolation / view-bound multi-page product claim.
 - No index-correctness or full remote product parity claim.
 - Aggregates (APB-8), watches (APB-9) are out of scope.

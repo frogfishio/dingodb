@@ -530,11 +530,11 @@
     {
       "id": 118,
       "wire_name": "rql_query",
-      "status": "reserved",
+      "status": "active",
       "surface": "heap",
       "rights_mask": 1,
-      "request_schema": null,
-      "response_schema": null,
+      "request_schema": "rpc-v1/rql_query.request.json",
+      "response_schema": "rpc-v1/rql_query.response.json",
       "allowed_states": [
         "active",
         "read_only"

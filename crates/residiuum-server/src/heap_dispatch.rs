@@ -2,14 +2,20 @@
 //!
 //! Under `heap-key-v1`, heap identity comes solely from the channel [`HeapCap`].
 //! Token/RBAC fields are rejected. Active ops: process 1–3 plus collection data
-//! 105–106 / 110–112 / 114–117 / 120–122 and secondary indexes 130–133.
+//! 105–106 / 110–112 / 114–118 / 120–122 and secondary indexes 130–133.
+//!
+//! Op **118** `rql_query` is active (APP-7 T6) — Application Core page execution
+//! via store `list_keys`+`get`. Package accept remains principal-gated.
 
 use residiuum_client::b64u_decode;
 use residiuum_heap::{
     active_operation_ids, refresh_capability_or_terminate, CollectionId, HeapCap, HeapId, Operation,
     OperationStatus, Rights,
 };
-use residiuum_sdk::{Filter, Pred};
+use residiuum_sdk::{
+    execute_rql, explain_rql_source, AppQueryBudget, ConsistencyMode, Continuation, CoveragePolicy,
+    DocScan, Error as SdkError, Filter, Parameters, Pred, QueryRunOptions,
+};
 use residiuum_store::{
     create_collection_idempotent, hex16, rebuild_object_entry_from_chain,
     try_load_collections_catalog, HeapMetaLayout, HeapStore, ObjectKind, StoreError, WriteReceipt,
@@ -186,7 +192,7 @@ pub fn dispatch_heap_request_with(
     // 106 requires HeapAdmin (CORE plan §6.3).
     let required_rights = match req.op_id {
         1 | 2 | 3 => Rights::EMPTY,
-        105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 | 130 => Rights::READ,
+        105 | 110 | 111 | 112 | 114 | 115 | 116 | 117 | 118 | 130 => Rights::READ,
         106 => Rights::HEAP_ADMIN,
         120 | 121 | 122 => Rights::WRITE,
         131 | 132 | 133 => Rights::INDEX_ADMIN,
@@ -234,6 +240,10 @@ pub fn dispatch_heap_request_with(
         },
         117 => match data {
             Some(ctx) => dispatch_history(req.id, &req, ctx),
+            None => unavailable(req.id),
+        },
+        118 => match data {
+            Some(ctx) => dispatch_rql_query(req.id, &req, ctx),
             None => unavailable(req.id),
         },
         120 => match data {
@@ -1045,6 +1055,290 @@ fn dispatch_index_rebuild(
 pub fn request_registry_allows(op_id: u16) -> bool {
     active_operation_ids().contains(&op_id)
         && matches!(Operation::status(op_id), Ok(OperationStatus::Active))
+}
+
+// --- APP-7 T6: op 118 rql_query -------------------------------------------------
+
+/// Store-backed [`DocScan`] for Application Core execution on the server.
+struct HeapStoreDocScan<'a> {
+    store: &'a HeapStore,
+    collection_id: [u8; 16],
+}
+
+impl DocScan for HeapStoreDocScan<'_> {
+    fn list_keys(
+        &mut self,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, SdkError> {
+        let lim = limit.unwrap_or(256).clamp(1, 4096);
+        let after = after_key.map(|s| s.as_bytes());
+        let keys = self
+            .store
+            .list_collection_keys(&self.collection_id, lim, after)
+            .map_err(|e| SdkError::Internal(format!("list_collection_keys: {e}")))?;
+        let mut out = Vec::with_capacity(keys.len());
+        for k in keys {
+            let s = String::from_utf8(k)
+                .map_err(|_| SdkError::Internal("non-UTF-8 collection key".into()))?;
+            out.push(s);
+        }
+        Ok(out)
+    }
+
+    fn get_json(&mut self, key: &str) -> Result<Option<Value>, SdkError> {
+        let body = self
+            .store
+            .get_collection(&self.collection_id, key.as_bytes())
+            .map_err(|e| SdkError::Internal(format!("get_collection: {e}")))?;
+        let Some(body) = body else {
+            return Ok(None);
+        };
+        if body.first() != Some(&0x01) {
+            return Ok(None);
+        }
+        let json = serde_json::from_slice(&body[1..])
+            .map_err(|e| SdkError::Internal(format!("json decode: {e}")))?;
+        Ok(Some(json))
+    }
+
+    fn try_equality_index_keys(
+        &mut self,
+        equalities: &[(String, Value)],
+    ) -> Result<Option<Vec<String>>, SdkError> {
+        let found = self
+            .store
+            .lookup_index_keys(&self.collection_id, equalities)
+            .map_err(|e| SdkError::Internal(format!("lookup_index_keys: {e}")))?;
+        match found {
+            None => Ok(None),
+            Some(keys) => {
+                let mut out = Vec::with_capacity(keys.len());
+                for k in keys {
+                    out.push(
+                        String::from_utf8(k)
+                            .map_err(|_| SdkError::Internal("non-UTF-8 index key".into()))?,
+                    );
+                }
+                Ok(Some(out))
+            }
+        }
+    }
+}
+
+fn collection_name_for_id(ctx: &HeapDataCtx<'_>, coll: &[u8; 16]) -> Option<String> {
+    let heap_id = *ctx.store.capability().heap_id().as_bytes();
+    let entries = try_load_collections_catalog(ctx.layout, &heap_id).ok().flatten()?;
+    for entry in entries {
+        if &entry.object_id == coll {
+            return Some(entry.name);
+        }
+    }
+    None
+}
+
+fn dispatch_rql_query(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
+    let cid_s = match req.collection_id.as_deref() {
+        Some(s) => s,
+        None => return unavailable_id(id),
+    };
+    let coll = match parse_collection_id(cid_s) {
+        Some(c) => c,
+        None => return unavailable_id(id),
+    };
+    let heap_id_bytes = *ctx.store.capability().heap_id().as_bytes();
+    if rebuild_object_entry_from_chain(
+        ctx.layout,
+        &heap_id_bytes,
+        ObjectKind::Collection,
+        coll.as_bytes(),
+    )
+    .ok()
+    .flatten()
+    .is_none()
+    {
+        return unavailable_id(id);
+    }
+    let collection_name = match collection_name_for_id(&ctx, coll.as_bytes()) {
+        Some(n) => n,
+        None => return unavailable_id(id),
+    };
+    let heap_id = match HeapId::from_bytes_unchecked_nonzero(heap_id_bytes) {
+        Ok(h) => h,
+        Err(_) => return unavailable_id(id),
+    };
+
+    let explain = req.args.get("explain").and_then(|v| v.as_bool()).unwrap_or(false);
+    let source = req.args.get("source").and_then(|v| v.as_str());
+
+    // Allowed arg keys for first cut (APP-7 T6).
+    const ALLOWED: &[&str] = &[
+        "source",
+        "plan",
+        "parameters",
+        "explain",
+        "page_size",
+        "coverage",
+        "consistency",
+        "continuation",
+        "budget",
+    ];
+    for k in req.args.keys() {
+        if !ALLOWED.contains(&k.as_str()) {
+            return unavailable_id(id);
+        }
+    }
+
+    if explain {
+        let Some(src) = source else {
+            return err_code(id, "validation_failed");
+        };
+        match explain_rql_source(src, coll, &collection_name) {
+            Ok(ex) => {
+                return ok_id(
+                    id,
+                    serde_json::json!({
+                        "query_id": "0".repeat(32),
+                        "plan_hash": hex32(&ex.plan_hash),
+                        "heap_id": heap_id.to_string(),
+                        "collection_id": coll.to_string(),
+                        "rows": [],
+                        "exhausted": true,
+                        "coverage": { "complete": true, "mode": "complete" },
+                        "consistency": { "mode": "available" },
+                        "explain": {
+                            "plan_profile": ex.plan_profile,
+                            "plan_hash": hex32(&ex.plan_hash),
+                            "tree": ex.tree,
+                        }
+                    }),
+                );
+            }
+            Err(_) => return unavailable_id(id),
+        }
+    }
+
+    let Some(src) = source else {
+        // plan-only / continuation-only residual: require source for T6 first cut.
+        return err_code(id, "validation_failed");
+    };
+
+    let mut params = Parameters::default();
+    if let Some(Value::Object(m)) = req.args.get("parameters") {
+        for (k, v) in m {
+            params.values.insert(k.clone(), v.clone());
+        }
+    }
+
+    let mut options = QueryRunOptions::default();
+    if let Some(n) = req.args.get("page_size").and_then(|v| v.as_u64()) {
+        if (1..=4096).contains(&n) {
+            options.page_size = Some(n as u32);
+        } else {
+            return err_code(id, "validation_failed");
+        }
+    }
+    if let Some(s) = req.args.get("coverage").and_then(|v| v.as_str()) {
+        options.coverage = match s {
+            "complete" => CoveragePolicy::Complete,
+            "incomplete_allowed" => CoveragePolicy::IncompleteAllowed,
+            _ => return err_code(id, "validation_failed"),
+        };
+    }
+    if let Some(s) = req.args.get("consistency").and_then(|v| v.as_str()) {
+        options.consistency = match s {
+            "available" => ConsistencyMode::Available,
+            "current" => ConsistencyMode::Current,
+            _ => return err_code(id, "validation_failed"),
+        };
+    }
+    if let Some(s) = req.args.get("continuation").and_then(|v| v.as_str()) {
+        // Cursor tokens are JSON bytes; accept UTF-8 or base64url.
+        let token = if s.starts_with('{') {
+            s.as_bytes().to_vec()
+        } else {
+            match b64u_decode(s) {
+                Ok(t) => t,
+                Err(_) => return err_code(id, "validation_failed"),
+            }
+        };
+        options.after = Some(Continuation { token });
+    }
+    if let Some(Value::Object(b)) = req.args.get("budget") {
+        options.budget = Some(AppQueryBudget {
+            max_documents: b.get("max_documents").and_then(|v| v.as_u64()),
+            max_bytes: b.get("max_bytes").and_then(|v| v.as_u64()),
+            max_result_bytes: b.get("max_result_bytes").and_then(|v| v.as_u64()),
+        });
+    }
+
+    let mut scan = HeapStoreDocScan {
+        store: ctx.store,
+        collection_id: *coll.as_bytes(),
+    };
+    let page = match execute_rql(
+        &mut scan,
+        src,
+        &params,
+        &options,
+        heap_id,
+        coll,
+        &collection_name,
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            // Map public app errors to registry codes where possible.
+            let code = match e {
+                SdkError::CoverageIncomplete(_) => "coverage_incomplete",
+                SdkError::ResourceLimit(_) => "resource_limit",
+                SdkError::DeadlineExceeded(_) => "deadline_exceeded",
+                SdkError::QueryInvalid(_) => "validation_failed",
+                _ => return unavailable_id(id),
+            };
+            return err_code(id, code);
+        }
+    };
+
+    let rows: Vec<Value> = page
+        .rows
+        .iter()
+        .map(|r| serde_json::json!({ "key": r.key, "value": r.value }))
+        .collect();
+    let next = page.next.as_ref().map(|c| {
+        // Prefer UTF-8 cursor JSON; fall back to base64url.
+        match std::str::from_utf8(&c.token) {
+            Ok(s) => s.to_string(),
+            Err(_) => residiuum_client::b64u_encode(&c.token),
+        }
+    });
+    let cov_mode = match page.coverage.mode {
+        CoveragePolicy::Complete => "complete",
+        CoveragePolicy::IncompleteAllowed => "incomplete_allowed",
+    };
+    let cons_mode = match page.consistency.mode {
+        ConsistencyMode::Available => "available",
+        ConsistencyMode::Current => "current",
+    };
+    let query_id_hex: String = page.query_id.0.iter().map(|b| format!("{b:02x}")).collect();
+    let result = serde_json::json!({
+        "query_id": query_id_hex,
+        "plan_hash": hex32(&page.plan_hash),
+        "heap_id": heap_id.to_string(),
+        "collection_id": coll.to_string(),
+        "rows": rows,
+        "next": next,
+        "exhausted": page.exhausted,
+        "coverage": {
+            "complete": page.coverage.complete,
+            "mode": cov_mode,
+        },
+        "consistency": { "mode": cons_mode },
+        "remaining_limit": page.remaining_limit,
+        "known_holes": page.known_holes.iter().map(|h| {
+            serde_json::json!({ "code": h.code, "key": h.key })
+        }).collect::<Vec<_>>(),
+    });
+    ok_id(id, result)
 }
 
 /// Build a [`HeapMetaLayout`] for a store data root.

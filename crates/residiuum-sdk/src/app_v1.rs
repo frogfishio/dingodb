@@ -1415,13 +1415,13 @@ impl CollectionClient {
         CollectionQuery::open(self)
     }
 
-    /// RQL Application Core execution (APP-6 T2 page executor).
+    /// RQL Application Core execution (APP-6 page executor / APP-7 remote wire).
     ///
-    /// Compiles Application Core source, scans via `list_keys`+`get`, evaluates
-    /// predicates, pages with key order (field order supported under budget).
-    /// Continuation via [`QueryRunOptions::after`] (vector-lock cursor keys).
+    /// **Embedded:** compiles Application Core source, scans via `list_keys`+`get`,
+    /// evaluates predicates, pages with key / field-order continuation.
     ///
-    /// **Not** a product query claim (APB-7 residual); remote uses same scan plane.
+    /// **Remote:** product wire op **118** `rql_query` (APP-7 T6). Server
+    /// recompiles source; not a package-accept claim.
     pub fn rql(
         &mut self,
         source: &str,
@@ -1432,6 +1432,19 @@ impl CollectionClient {
             return Err(Error::Internal(
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             ));
+        }
+        if let CollectionBackend::Remote {
+            remote,
+            wire_collection_id,
+        } = &self.backend
+        {
+            return self.rql_via_wire(
+                Arc::clone(remote),
+                wire_collection_id.clone(),
+                source,
+                parameters,
+                options,
+            );
         }
         let heap_id = self.heap_id;
         let collection_id = self.collection_id;
@@ -1447,20 +1460,263 @@ impl CollectionClient {
         )
     }
 
-    /// RQL explain — returns plan tree + hash (no row scan).
+    /// RQL explain — plan tree + hash (no row scan).
+    ///
+    /// Remote uses op **118** with `explain: true` when available.
     pub fn explain_rql(
         &mut self,
         source: &str,
-        _parameters: &Parameters,
-        _options: QueryRunOptions,
+        parameters: &Parameters,
+        options: QueryRunOptions,
     ) -> Result<QueryExplanation, Error> {
         if matches!(self.backend, CollectionBackend::Unbound) {
             return Err(Error::Internal(
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             ));
         }
+        if let CollectionBackend::Remote {
+            remote,
+            wire_collection_id,
+        } = &self.backend
+        {
+            let mut opts = options;
+            opts.explain = true;
+            let page = self.rql_via_wire(
+                Arc::clone(remote),
+                wire_collection_id.clone(),
+                source,
+                parameters,
+                opts,
+            )?;
+            // Wire explain packs tree under known_holes-free page; recover from
+            // local compile if server only returned plan_hash (first cut).
+            return crate::query_exec_v1::explain_rql_source(
+                source,
+                self.collection_id,
+                &self.name,
+            )
+            .map(|mut ex| {
+                // Prefer wire plan_hash when present.
+                if page.plan_hash != [0u8; 32] {
+                    ex.plan_hash = page.plan_hash;
+                }
+                ex
+            });
+        }
         crate::query_exec_v1::explain_rql_source(source, self.collection_id, &self.name)
     }
+
+    /// Remote op 118 wire path (APP-7 T6).
+    fn rql_via_wire(
+        &mut self,
+        remote: Arc<Mutex<RemoteHeap>>,
+        wire_collection_id: String,
+        source: &str,
+        parameters: &Parameters,
+        options: QueryRunOptions,
+    ) -> Result<QueryPage, Error> {
+        let mut args = serde_json::Map::new();
+        args.insert("source".into(), serde_json::Value::String(source.into()));
+        if !parameters.values.is_empty() {
+            let mut m = serde_json::Map::new();
+            for (k, v) in &parameters.values {
+                m.insert(k.clone(), v.clone());
+            }
+            args.insert("parameters".into(), serde_json::Value::Object(m));
+        }
+        if options.explain {
+            args.insert("explain".into(), serde_json::Value::Bool(true));
+        }
+        if let Some(ps) = options.page_size {
+            args.insert("page_size".into(), serde_json::json!(ps));
+        }
+        match options.coverage {
+            CoveragePolicy::Complete => {
+                args.insert("coverage".into(), serde_json::Value::String("complete".into()));
+            }
+            CoveragePolicy::IncompleteAllowed => {
+                args.insert(
+                    "coverage".into(),
+                    serde_json::Value::String("incomplete_allowed".into()),
+                );
+            }
+        }
+        match options.consistency {
+            ConsistencyMode::Available => {
+                args.insert(
+                    "consistency".into(),
+                    serde_json::Value::String("available".into()),
+                );
+            }
+            ConsistencyMode::Current => {
+                args.insert(
+                    "consistency".into(),
+                    serde_json::Value::String("current".into()),
+                );
+            }
+        }
+        if let Some(ref cont) = options.after {
+            let s = match std::str::from_utf8(&cont.token) {
+                Ok(t) => t.to_string(),
+                Err(_) => {
+                    // fall back: hex is not schema-native; require UTF-8 cursors on wire
+                    return Err(Error::QueryInvalid(
+                        "continuation token must be UTF-8 for wire op 118".into(),
+                    ));
+                }
+            };
+            args.insert("continuation".into(), serde_json::Value::String(s));
+        }
+        if let Some(b) = options.budget {
+            let mut bm = serde_json::Map::new();
+            if let Some(n) = b.max_documents {
+                bm.insert("max_documents".into(), serde_json::json!(n));
+            }
+            if let Some(n) = b.max_bytes {
+                bm.insert("max_bytes".into(), serde_json::json!(n));
+            }
+            if let Some(n) = b.max_result_bytes {
+                bm.insert("max_result_bytes".into(), serde_json::json!(n));
+            }
+            if !bm.is_empty() {
+                args.insert("budget".into(), serde_json::Value::Object(bm));
+            }
+        }
+
+        let mut guard = remote
+            .lock()
+            .map_err(|_| Error::Internal("remote heap lock poisoned".into()))?;
+        let result = guard.rql_query(&wire_collection_id, serde_json::Value::Object(args))?;
+        drop(guard);
+        parse_rql_query_result(result, self.heap_id, self.collection_id)
+    }
+}
+
+/// Parse op 118 response into [`QueryPage`].
+fn parse_rql_query_result(
+    result: serde_json::Value,
+    fallback_heap: HeapId,
+    fallback_coll: CollectionId,
+) -> Result<QueryPage, Error> {
+    let plan_hash_hex = result
+        .get("plan_hash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::ProtocolViolation("rql_query missing plan_hash".into()))?;
+    let plan_hash = hex_to_32(plan_hash_hex)
+        .ok_or_else(|| Error::ProtocolViolation("rql_query bad plan_hash".into()))?;
+    let query_id_fallback = "0".repeat(32);
+    let query_id_hex = result
+        .get("query_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or(query_id_fallback.as_str());
+    let query_id = QueryId(hex_to_16(query_id_hex).unwrap_or([0u8; 16]));
+    let rows_v = result
+        .get("rows")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| Error::ProtocolViolation("rql_query missing rows".into()))?;
+    let mut rows = Vec::with_capacity(rows_v.len());
+    for row in rows_v {
+        let key = row
+            .get("key")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("rql_query row key".into()))?
+            .to_string();
+        let value = row
+            .get("value")
+            .cloned()
+            .ok_or_else(|| Error::ProtocolViolation("rql_query row value".into()))?;
+        rows.push(QueryRow { key, value });
+    }
+    let next = match result.get("next") {
+        None | Some(serde_json::Value::Null) => None,
+        Some(serde_json::Value::String(s)) => Some(Continuation {
+            token: s.as_bytes().to_vec(),
+        }),
+        _ => {
+            return Err(Error::ProtocolViolation(
+                "rql_query next must be string or null".into(),
+            ))
+        }
+    };
+    let exhausted = result
+        .get("exhausted")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let complete = result
+        .pointer("/coverage/complete")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    let cov_mode = match result
+        .pointer("/coverage/mode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("complete")
+    {
+        "incomplete_allowed" => CoveragePolicy::IncompleteAllowed,
+        _ => CoveragePolicy::Complete,
+    };
+    let cons_mode = match result
+        .pointer("/consistency/mode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("available")
+    {
+        "current" => ConsistencyMode::Current,
+        _ => ConsistencyMode::Available,
+    };
+    let remaining_limit = result.get("remaining_limit").and_then(|v| v.as_u64());
+    let mut known_holes = Vec::new();
+    if let Some(arr) = result.get("known_holes").and_then(|v| v.as_array()) {
+        for h in arr {
+            known_holes.push(HoleEvidence {
+                code: h
+                    .get("code")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string(),
+                key: h.get("key").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            });
+        }
+    }
+    let examined = (rows.len() + known_holes.len()) as u64;
+    let coverage = if complete {
+        CoverageEvidence::complete(cov_mode, examined)
+    } else {
+        CoverageEvidence::incomplete(cov_mode, examined, known_holes.len() as u32)
+    };
+    Ok(QueryPage {
+        query_id,
+        plan_hash,
+        heap_id: fallback_heap,
+        collection_id: fallback_coll,
+        rows,
+        next,
+        exhausted,
+        coverage,
+        consistency: ConsistencyEvidence { mode: cons_mode },
+        remaining_limit,
+        known_holes,
+    })
+}
+
+fn hex_to_32(s: &str) -> Option<[u8; 32]> {
+    if s.len() != 64 {
+        return None;
+    }
+    let mut out = [0u8; 32];
+    for i in 0..32 {
+        out[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
+
+fn hex_to_16(s: &str) -> Option<[u8; 16]> {
+    if s.len() != 32 {
+        return None;
+    }
+    let mut out = [0u8; 16];
+    for i in 0..16 {
+        out[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
 }
 
 /// Fluent Application Core builder bound to a [`CollectionClient`] (APB-7 T1).
