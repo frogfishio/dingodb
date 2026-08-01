@@ -33,6 +33,12 @@ pub enum BoundaryKind {
     PublishVisibility,
     /// Lifecycle finalize / seal pipeline work completed for a rotated segment.
     LifecycleSeal,
+    /// Item envelope CBOR encode (pre-append hot path; Mode A resolution).
+    EncodeEnvelope,
+    /// Pre-encode setup: ensure_active, maybe_auto_seal, id mint, envelope struct.
+    PutPrep,
+    /// Post-publish derived work: collection note + rate-limited checkpoint touch.
+    PutPost,
 }
 
 impl BoundaryKind {
@@ -46,6 +52,9 @@ impl BoundaryKind {
             Self::SegmentRotate => "segment_rotate",
             Self::PublishVisibility => "publish_visibility",
             Self::LifecycleSeal => "lifecycle_seal",
+            Self::EncodeEnvelope => "encode_envelope",
+            Self::PutPrep => "put_prep",
+            Self::PutPost => "put_post",
         }
     }
 
@@ -59,11 +68,14 @@ impl BoundaryKind {
             Self::SegmentRotate => 4,
             Self::PublishVisibility => 5,
             Self::LifecycleSeal => 6,
+            Self::EncodeEnvelope => 7,
+            Self::PutPrep => 8,
+            Self::PutPost => 9,
         }
     }
 
     /// Number of distinct kinds.
-    pub const COUNT: usize = 7;
+    pub const COUNT: usize = 10;
 
     /// All kinds in index order.
     pub const ALL: [BoundaryKind; Self::COUNT] = [
@@ -74,6 +86,9 @@ impl BoundaryKind {
         Self::SegmentRotate,
         Self::PublishVisibility,
         Self::LifecycleSeal,
+        Self::EncodeEnvelope,
+        Self::PutPrep,
+        Self::PutPost,
     ];
 }
 
@@ -310,8 +325,16 @@ pub struct BoundarySnapshot {
     pub write_latency: LatencyHistogram,
     /// Latency histogram for FileSync.
     pub sync_latency: LatencyHistogram,
-    /// Latency histogram for AppendEncodedFrame.
+    /// Latency histogram for AppendEncodedFrame (encode_frame_into into segment buffer).
     pub append_latency: LatencyHistogram,
+    /// Latency histogram for EncodeEnvelope (item CBOR before append).
+    pub encode_latency: LatencyHistogram,
+    /// Latency histogram for PublishVisibility (dual-index apply after append).
+    pub publish_latency: LatencyHistogram,
+    /// Latency histogram for PutPrep (seal check, ids, env struct).
+    pub prep_latency: LatencyHistogram,
+    /// Latency histogram for PutPost (collection + derived checkpoint touch).
+    pub post_latency: LatencyHistogram,
     /// Blake3 hex digest of the full event chain (all observations, including dropped samples).
     pub event_chain_digest: String,
     /// Explicit coverage / drop accounting.
@@ -333,6 +356,10 @@ pub struct BoundaryProbe {
     write_latency: LatencyHistogram,
     sync_latency: LatencyHistogram,
     append_latency: LatencyHistogram,
+    encode_latency: LatencyHistogram,
+    publish_latency: LatencyHistogram,
+    prep_latency: LatencyHistogram,
+    post_latency: LatencyHistogram,
     /// Running blake3 hasher for the full event chain.
     chain_hasher: blake3::Hasher,
     samples_dropped: u64,
@@ -361,6 +388,10 @@ impl BoundaryProbe {
             write_latency: LatencyHistogram::default(),
             sync_latency: LatencyHistogram::default(),
             append_latency: LatencyHistogram::default(),
+            encode_latency: LatencyHistogram::default(),
+            publish_latency: LatencyHistogram::default(),
+            prep_latency: LatencyHistogram::default(),
+            post_latency: LatencyHistogram::default(),
             chain_hasher: blake3::Hasher::new(),
             samples_dropped: 0,
             sample_vector_capped: false,
@@ -427,6 +458,10 @@ impl BoundaryProbe {
             write_latency: self.write_latency.clone(),
             sync_latency: self.sync_latency.clone(),
             append_latency: self.append_latency.clone(),
+            encode_latency: self.encode_latency.clone(),
+            publish_latency: self.publish_latency.clone(),
+            prep_latency: self.prep_latency.clone(),
+            post_latency: self.post_latency.clone(),
             event_chain_digest: self.event_chain_digest(),
             coverage: self.coverage(),
             next_seq: self.next_seq,
@@ -454,6 +489,10 @@ impl BoundaryProbe {
         self.write_latency = LatencyHistogram::default();
         self.sync_latency = LatencyHistogram::default();
         self.append_latency = LatencyHistogram::default();
+        self.encode_latency = LatencyHistogram::default();
+        self.publish_latency = LatencyHistogram::default();
+        self.prep_latency = LatencyHistogram::default();
+        self.post_latency = LatencyHistogram::default();
         self.chain_hasher = blake3::Hasher::new();
         self.samples_dropped = 0;
         self.sample_vector_capped = false;
@@ -472,6 +511,10 @@ impl BoundaryProbe {
             BoundaryKind::FileWrite => self.write_latency.record(ev.duration_ns),
             BoundaryKind::FileSync => self.sync_latency.record(ev.duration_ns),
             BoundaryKind::AppendEncodedFrame => self.append_latency.record(ev.duration_ns),
+            BoundaryKind::EncodeEnvelope => self.encode_latency.record(ev.duration_ns),
+            BoundaryKind::PublishVisibility => self.publish_latency.record(ev.duration_ns),
+            BoundaryKind::PutPrep => self.prep_latency.record(ev.duration_ns),
+            BoundaryKind::PutPost => self.post_latency.record(ev.duration_ns),
             _ => {}
         }
         feed_chain(&mut self.chain_hasher, &ev);
@@ -625,8 +668,86 @@ impl BoundaryProbe {
         });
     }
 
-    /// Record durable visibility publication after append.
-    pub fn record_publish(&mut self, offset: u64, durability: DurabilityMode, shard: u32) {
+    /// Record put prep (ensure_active / seal check / ids / envelope subject).
+    pub fn record_put_prep(&mut self, duration_ns: u64, durability: DurabilityMode, shard: u32) {
+        self.observe(BoundaryEvent {
+            seq: 0,
+            kind: BoundaryKind::PutPrep,
+            encoded_bytes: 0,
+            logical_len: 0,
+            requested_bytes: 0,
+            completed_bytes: 0,
+            duration_ns,
+            outcome: BoundaryOutcome::Ok,
+            shard,
+            file_role: FileRole::None,
+            offset: 0,
+            segment_gen: self.segment_gen,
+            durability: durability.as_str().into(),
+            segment_rotate: false,
+            chunked: false,
+            chunk_count: 0,
+        });
+    }
+
+    /// Record post-publish derived work.
+    pub fn record_put_post(&mut self, duration_ns: u64, durability: DurabilityMode, shard: u32) {
+        self.observe(BoundaryEvent {
+            seq: 0,
+            kind: BoundaryKind::PutPost,
+            encoded_bytes: 0,
+            logical_len: 0,
+            requested_bytes: 0,
+            completed_bytes: 0,
+            duration_ns,
+            outcome: BoundaryOutcome::Ok,
+            shard,
+            file_role: FileRole::None,
+            offset: 0,
+            segment_gen: self.segment_gen,
+            durability: durability.as_str().into(),
+            segment_rotate: false,
+            chunked: false,
+            chunk_count: 0,
+        });
+    }
+
+    /// Record item-envelope CBOR encode (pre-append).
+    pub fn record_encode_envelope(
+        &mut self,
+        envelope_len: u64,
+        duration_ns: u64,
+        durability: DurabilityMode,
+        shard: u32,
+    ) {
+        self.observe(BoundaryEvent {
+            seq: 0,
+            kind: BoundaryKind::EncodeEnvelope,
+            encoded_bytes: envelope_len,
+            logical_len: 0,
+            requested_bytes: envelope_len,
+            completed_bytes: envelope_len,
+            duration_ns,
+            outcome: BoundaryOutcome::Ok,
+            shard,
+            file_role: FileRole::None,
+            offset: 0,
+            segment_gen: self.segment_gen,
+            durability: durability.as_str().into(),
+            segment_rotate: false,
+            chunked: false,
+            chunk_count: 0,
+        });
+    }
+
+    /// Record durable visibility publication after append (timed).
+    pub fn record_publish(
+        &mut self,
+        offset: u64,
+        durability: DurabilityMode,
+        shard: u32,
+        duration_ns: u64,
+    ) {
         self.observe(BoundaryEvent {
             seq: 0,
             kind: BoundaryKind::PublishVisibility,
@@ -634,7 +755,7 @@ impl BoundaryProbe {
             logical_len: 0,
             requested_bytes: 0,
             completed_bytes: 0,
-            duration_ns: 0,
+            duration_ns,
             outcome: BoundaryOutcome::Ok,
             shard,
             file_role: FileRole::None,
@@ -716,15 +837,19 @@ mod tests {
         p.record_append(164, 100, 0, DurabilityMode::Buffered, false, false, 0, 50, 0);
         p.record_file_write(164, 164, 100, BoundaryOutcome::Ok, DurabilityMode::Buffered, 0);
         p.record_file_sync(200, BoundaryOutcome::Ok, DurabilityMode::Durable, 0);
-        p.record_publish(0, DurabilityMode::Buffered, 0);
+        p.record_encode_envelope(40, 12, DurabilityMode::Buffered, 0);
+        p.record_publish(0, DurabilityMode::Buffered, 0, 25);
         p.record_segment_rotate(0);
         p.record_lifecycle_seal(0);
-        assert_eq!(p.events().len(), 6);
+        assert_eq!(p.events().len(), 7);
         assert_eq!(p.counters().count(BoundaryKind::AppendEncodedFrame), 1);
         assert_eq!(p.counters().count(BoundaryKind::FileWrite), 1);
+        assert_eq!(p.counters().count(BoundaryKind::EncodeEnvelope), 1);
         assert_eq!(p.write_latency.samples, 1);
         assert_eq!(p.sync_latency.samples, 1);
-        assert_eq!(p.coverage().total_observed, 6);
+        assert_eq!(p.encode_latency.samples, 1);
+        assert_eq!(p.publish_latency.samples, 1);
+        assert_eq!(p.coverage().total_observed, 7);
         assert!(!p.coverage().sample_vector_capped);
         let d1 = p.event_chain_digest();
         assert_eq!(d1.len(), 64);

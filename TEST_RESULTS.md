@@ -417,6 +417,36 @@ Disclosure: [BENCHMARK_DISCLOSURE.md](./doc/reference/operations/BENCHMARK_DISCL
 
 See `crates/residiuum-testrig/README.md` (PEER-SQL section).
 
+---
+
+## Campaign G — Mode A put-path instrumentation (2026-08-01)
+
+**Diagnostic only.** Artifact:
+[doc/wip/status/surveys/scratch-mode-a-breakdown-20260801/](./doc/wip/status/surveys/scratch-mode-a-breakdown-20260801/).
+
+Extended `BoundaryProbe` phases on Buffered single-put: **prep / encode_env /
+append_frame / publish_index / post_derived / file_write / file_sync**.
+
+### 20k × 8 KiB Buffered batch=1 (Scratch phase-bench)
+
+| Phase | % of wall | mean µs/op | Notes |
+|-------|----------:|-----------:|-------|
+| **put_prep** | **~65%** | **~17** | ensure_active + **maybe_auto_seal** + id mint + env setup |
+| append_frame | ~18% | ~4.6 | Blake + encode into segment buffer |
+| file_write | ~9% | ~2.4 | per-put seek+write_all (Mode A) |
+| encode_envelope | ~2% | ~0.5 | CBOR envelope |
+| publish_index | ~1% | ~0.3 | dual locator index |
+| put_post | ~0% | ~0 | collection + rate-limited derived |
+| other | ~6% | — | harness key format, timer noise |
+| **accounted** | **~94%** | | wall ~527 ms → ~38k ops/s |
+
+### Elimination
+
+- Alloc/arena temps: real but **not** the 65% story (encode_env 2%).
+- Dual-index publish: **not** the hog after locator-first (~1%).
+- **Hog #1: put_prep** — make seal/threshold checks and prep O(1) and cold when not sealing.
+- Hog #2: append_frame; hog #3: per-put file_write.
+
 ## Bottom line
 
 There **was** a real problem with the **measurement environment** (full internal disk + incomplete order + missing process samples), not a silent “everything is broken in the store.”  

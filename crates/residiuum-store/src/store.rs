@@ -1251,7 +1251,17 @@ impl Store {
                 created_ns: now_ns(),
                 subject: subject_bytes.to_vec(),
             };
+            let t_enc = std::time::Instant::now();
             let envelope = encode_item_envelope(&env).map_err(StoreError::BadEnvelope)?;
+            let encode_ns = t_enc.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            if self.boundary_probe_enabled() {
+                self.boundary_probe.record_encode_envelope(
+                    envelope.len() as u64,
+                    encode_ns,
+                    mode,
+                    0,
+                );
+            }
             if !self
                 .limits
                 .accepts_lengths(envelope.len() as u32, value.len() as u64)
@@ -1286,6 +1296,7 @@ impl Store {
                 0,
             );
             // Locator-first index: do not allocate full payload only to slim it away.
+            let t_pub = std::time::Instant::now();
             self.apply_durable_event(
                 subject_bytes.to_vec(),
                 EventKind::Put,
@@ -1296,7 +1307,9 @@ impl Store {
                 0,
                 offset,
             );
-            self.boundary_probe.record_publish(offset, mode, 0);
+            let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            self.boundary_probe
+                .record_publish(offset, mode, 0, publish_ns);
             self.note_collection_for_subject(subject_bytes);
             let _ = self.note_durable_derived();
 
@@ -1546,6 +1559,7 @@ impl Store {
                 self.record_tail_probe(&row.tail, mode, shard_u32)?;
 
                 // Locator-first: slim drops ordinary payloads; avoid dual full copies.
+                let t_pub = std::time::Instant::now();
                 self.apply_durable_event(
                     row.subject.clone(),
                     EventKind::Put,
@@ -1556,8 +1570,9 @@ impl Store {
                     0,
                     row.offset,
                 );
+                let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 self.boundary_probe
-                    .record_publish(row.offset, mode, shard_u32);
+                    .record_publish(row.offset, mode, shard_u32, publish_ns);
                 self.note_collection_for_subject(&row.subject);
                 let admit = LargeValuePolicy::application_v1()
                     .admit(items[row.item_idx].1.len())
@@ -4258,6 +4273,7 @@ impl Store {
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Chunk manifest is small and kept resident by slim_put_body_for_index.
+        let t_pub = std::time::Instant::now();
         self.apply_durable_event(
             subject_bytes.to_vec(),
             EventKind::Put,
@@ -4268,8 +4284,9 @@ impl Store {
             0,
             offset,
         );
+        let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
         self.boundary_probe
-            .record_publish(offset, mode, shard as u32);
+            .record_publish(offset, mode, shard as u32, publish_ns);
         self.note_collection_for_subject(subject_bytes);
 
         if mode != DurabilityMode::Memory {
@@ -4518,6 +4535,8 @@ impl Store {
             ));
         }
 
+        let probe = self.boundary_probe_enabled();
+        let t_prep = std::time::Instant::now();
         self.ensure_active(shard)?;
 
         // Maybe seal/rotate first if oversized (async lifecycle: DEF-096 Axis A).
@@ -4543,7 +4562,22 @@ impl Store {
             created_ns,
             subject: subject_bytes.to_vec(),
         };
+        if probe {
+            let prep_ns = t_prep.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            self.boundary_probe
+                .record_put_prep(prep_ns, mode, shard as u32);
+        }
+        let t_enc = std::time::Instant::now();
         let envelope = encode_item_envelope(&env).map_err(StoreError::BadEnvelope)?;
+        let encode_ns = t_enc.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+        if probe {
+            self.boundary_probe.record_encode_envelope(
+                envelope.len() as u64,
+                encode_ns,
+                mode,
+                shard as u32,
+            );
+        }
         if !self
             .limits
             .accepts_lengths(envelope.len() as u32, body.len() as u64)
@@ -4582,6 +4616,7 @@ impl Store {
         // Durable projection is locator-first (DEF-095): frame_offset + slim body.
         // Ordinary put bodies are not kept resident — pass empty rather than
         // allocating `body.to_vec()` only for `slim_put_body_for_index` to drop.
+        let t_pub = std::time::Instant::now();
         self.apply_durable_event(
             subject_bytes.to_vec(),
             kind,
@@ -4592,11 +4627,18 @@ impl Store {
             0, // writer_sequence already inside frame; not required for index
             offset,
         );
+        let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
         self.boundary_probe
-            .record_publish(offset, mode, shard as u32);
+            .record_publish(offset, mode, shard as u32, publish_ns);
+        let t_post = std::time::Instant::now();
         self.note_collection_for_subject(subject_bytes);
 
         let _ = self.note_durable_derived();
+        if probe {
+            let post_ns = t_post.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            self.boundary_probe
+                .record_put_post(post_ns, mode, shard as u32);
+        }
 
         let mut receipt = WriteReceipt::base(
             self.store_id,

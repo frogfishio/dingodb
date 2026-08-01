@@ -275,28 +275,42 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let s = t0.elapsed().as_secs_f64();
         let cpu1 = sample_cpu_pct();
         let snap = store.boundary_snapshot();
+        let wall_ms = s * 1000.0;
+        let prep_ms = snap.prep_latency.sum_ns as f64 / 1e6;
+        let enc_ms = snap.encode_latency.sum_ns as f64 / 1e6;
+        let app_ms = snap.append_latency.sum_ns as f64 / 1e6;
+        let pub_ms = snap.publish_latency.sum_ns as f64 / 1e6;
+        let post_ms = snap.post_latency.sum_ns as f64 / 1e6;
+        let wr_ms = snap.write_latency.sum_ns as f64 / 1e6;
+        let sync_ms = snap.sync_latency.sum_ns as f64 / 1e6;
+        let accounted_ms = prep_ms + enc_ms + app_ms + pub_ms + post_ms + wr_ms + sync_ms;
+        let other_ms = (wall_ms - accounted_ms).max(0.0);
+        let pct = |part: f64| 100.0 * part / wall_ms.max(1e-9);
         let probe_note = format!(
-            " append sum_ms={:.1} mean_us={:.1} n={} | file_write sum_ms={:.1} mean_us={:.1} n={} | file_sync sum_ms={:.1} n={}",
-            snap.append_latency.sum_ns as f64 / 1e6,
+            " MODE_A breakdown: prep sum_ms={prep_ms:.1} mean_us={:.1} ({:.0}%) | encode_env sum_ms={enc_ms:.1} mean_us={:.1} ({:.0}%) | append_frame sum_ms={app_ms:.1} mean_us={:.1} ({:.0}%) | publish_index sum_ms={pub_ms:.1} mean_us={:.1} ({:.0}%) | post_derived sum_ms={post_ms:.1} mean_us={:.1} ({:.0}%) | file_write sum_ms={wr_ms:.1} mean_us={:.1} ({:.0}%) | file_sync n={} | other_ms={other_ms:.1} ({:.0}%) | accounted={accounted_ms:.1}/{wall_ms:.1}ms",
+            snap.prep_latency.mean_ns() / 1e3,
+            pct(prep_ms),
+            snap.encode_latency.mean_ns() / 1e3,
+            pct(enc_ms),
             snap.append_latency.mean_ns() / 1e3,
-            snap.append_latency.samples,
-            snap.write_latency.sum_ns as f64 / 1e6,
+            pct(app_ms),
+            snap.publish_latency.mean_ns() / 1e3,
+            pct(pub_ms),
+            snap.post_latency.mean_ns() / 1e3,
+            pct(post_ms),
             snap.write_latency.mean_ns() / 1e3,
-            snap.write_latency.samples,
-            snap.sync_latency.sum_ns as f64 / 1e6,
+            pct(wr_ms),
             snap.sync_latency.samples,
+            pct(other_ms),
         );
-        let accounted_ms = (snap.append_latency.sum_ns + snap.write_latency.sum_ns) as f64 / 1e6;
         phases.push(phase(
             "store_put_buffered_batch1",
             ops,
             payload_bytes,
             s,
             format!(
-                "wall_ms={:.1} probe_append+write_ms={:.1} ({:.0}% of wall); ps%cpu≈{:?}→{:?};{}",
-                s * 1000.0,
-                accounted_ms,
-                100.0 * accounted_ms / (s * 1000.0).max(1.0),
+                "wall_ms={wall_ms:.1} probe_encode+append+publish+write_ms={accounted_ms:.1} ({:.0}% of wall); ps%cpu≈{:?}→{:?};{}",
+                100.0 * accounted_ms / wall_ms.max(1.0),
                 cpu0,
                 cpu1,
                 probe_note
