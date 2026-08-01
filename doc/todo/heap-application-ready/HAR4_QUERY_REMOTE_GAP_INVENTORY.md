@@ -1,6 +1,6 @@
 # HAR-4 dep — Qualified remote path for query product (gap inventory)
 
-Status: **T0 inventory + T2 default flip 2026-08-02** · package `HAR-4` **active / not accept**  
+Status: **T0–T3 2026-08-02** (inventory + default flip + config auth path) · package `HAR-4` **active / not accept**  
 Board: `7872d5fa` (Query spine Feature)  
 Authority: [HEAP_APPLICATION_READY_PLAN.md](./HEAP_APPLICATION_READY_PLAN.md) §HAR-4 ·
 [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md) ·
@@ -52,8 +52,8 @@ Exit highlights:
 | ID | Gap | Blocks |
 |---|---|---|
 | H4-G1 | `ServeOptions::qualified_heap_key` not default | **T2 closed** (default true; legacy explicit) |
-| H4-G2 | CLI/tutorials still allow open/token without labels | **T2 partial** — CLI requires `--legacy-token-server` or qualified flags; startup labels; tutorials residual |
-| H4-G3 | Co-host prohibition not fully productized as config UX | **T2 partial** — API + CLI refuse co-host; config-file keys residual (T3) |
+| H4-G2 | CLI/tutorials still allow open/token without labels | **T3 partial** — CLI+config labels; tutorials residual (T4) |
+| H4-G3 | Co-host prohibition not fully productized as config UX | **T3 closed** — config keys + validate co-host refuse + effective report |
 | H4-G4 | Op **118** still **reserved** (no server dispatch / RemoteHeap rql) | **APP-7 T6 closed** (active + dispatch + RemoteHeap); package accept residual |
 | H4-G5 | Dual remote multipage oracle for **product** Core query (op 118) | APB-7 T7 partial (collection-plane dual green); product wire residual |
 | H4-G6 | Remote ReadView pin (still `RemoteUnpinnedResidual`) | APB-6 T3 residual |
@@ -89,7 +89,7 @@ Do **not** activate op 118 from this card alone.
 |---|---|---|
 | HAR-4 T1 | This inventory + scoreboard HAR-4→active | **done (in_review)** |
 | HAR-4 T2 | Default config / CLI qualified listener + legacy opt-in flag | **done (in_review)** — `ServeOptions` default qualified; CLI flags; co-host refuse |
-| HAR-4 T3 | Co-host config reject + help/error labels | Config-file keys + residual UX |
+| HAR-4 T3 | Co-host config reject + help/error labels | **done (in_review)** — `serve.legacy_token_server` / `qualified_heap_key` / `deployment_id` |
 | HAR-4 T4 | Journey: tutorial uses `connect_heap` only | Evidence pack |
 | APP-7 T1 / APB-7 T6 | Op 118 registry active + dispatch + RemoteHeap + façade | **done (in_review)** — wire active; dual pack remote green |
 

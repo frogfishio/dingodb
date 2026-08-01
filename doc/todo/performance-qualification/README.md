@@ -13,6 +13,7 @@ testrig.
 |---|---|
 | [PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md](PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md) | Measurement semantics, experiment matrix, metrics, attribution mathematics, safety and acceptance |
 | [PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md](PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md) | Packages, dependencies, artifacts, tests and delivery order |
+| [ADAPTIVE_WRITE_OPTIMISER_SPEC.md](ADAPTIVE_WRITE_OPTIMISER_SPEC.md) | Post-PQH adaptive intake, cooking, write-pipeline, acknowledgement, control, proof and qualification contract |
 | [../../spec/performance/README.md](../../spec/performance/README.md) | PQH-0 live registries |
 
 Profile: `residiuum-performance-qualification-v1`
@@ -28,3 +29,6 @@ follow a reproduced PQH finding.
 `cargo test -p residiuum-perf --lib`.
 
 **Next:** PQH-1 safe runner (after PQH-0 accept).
+
+The Adaptive Write Optimiser is a specified post-PQH implementation candidate.
+Its presence here does not admit it ahead of the master delivery plan.

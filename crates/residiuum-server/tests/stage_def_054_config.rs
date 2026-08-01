@@ -155,6 +155,103 @@ fn refuse_replication_claim_single_copy() {
 }
 
 #[test]
+fn har4_t3_cohost_legacy_and_qualified_refused() {
+    let doc = ResidiuumConfigFile {
+        format: CONFIG_PROFILE.into(),
+        format_version: 1,
+        comment: None,
+        store: Some(StoreConfigSection {
+            path: Some(PathBuf::from("/data")),
+            durability_default: None,
+        }),
+        serve: Some(ServeConfigSection {
+            bind: Some("127.0.0.1:9".into()),
+            legacy_token_server: Some(true),
+            qualified_heap_key: Some(true),
+            deployment_id: Some("00000000-0000-4000-8000-000000000001".into()),
+            token_env: Some("RESIDIUUM_TEST_STAGE054_ABSENT".into()),
+            ..Default::default()
+        }),
+        cluster: None,
+    };
+    let err = validate_document(doc, None, ConfigMode::Serve, ConfigOverrides::default())
+        .unwrap_err();
+    match err {
+        ConfigError::Unsafe { code, detail } => {
+            assert_eq!(code, "auth_path_cohost");
+            assert!(detail.contains("HAR-4") || detail.contains("co-host"), "{detail}");
+        }
+        other => panic!("expected co-host Unsafe, got {other:?}"),
+    }
+}
+
+#[test]
+fn har4_t3_qualified_requires_tls_and_deployment_id() {
+    let doc = ResidiuumConfigFile {
+        format: CONFIG_PROFILE.into(),
+        format_version: 1,
+        comment: None,
+        store: Some(StoreConfigSection {
+            path: Some(PathBuf::from("/data")),
+            durability_default: None,
+        }),
+        serve: Some(ServeConfigSection {
+            bind: Some("127.0.0.1:9".into()),
+            qualified_heap_key: Some(true),
+            token_env: Some("RESIDIUUM_TEST_STAGE054_ABSENT".into()),
+            ..Default::default()
+        }),
+        cluster: None,
+    };
+    let err = validate_document(doc, None, ConfigMode::Serve, ConfigOverrides::default())
+        .unwrap_err();
+    match err {
+        ConfigError::Unsafe { code, .. } => {
+            assert!(
+                code == "qualified_requires_tls" || code == "qualified_requires_deployment_id",
+                "code={code}"
+            );
+        }
+        other => panic!("expected Unsafe, got {other:?}"),
+    }
+}
+
+#[test]
+fn har4_t3_legacy_apply_and_report_labels() {
+    let doc = ResidiuumConfigFile {
+        format: CONFIG_PROFILE.into(),
+        format_version: 1,
+        comment: None,
+        store: Some(StoreConfigSection {
+            path: Some(PathBuf::from("/data")),
+            durability_default: None,
+        }),
+        serve: Some(ServeConfigSection {
+            bind: Some("127.0.0.1:9123".into()),
+            legacy_token_server: Some(true),
+            token_env: Some("RESIDIUUM_TEST_STAGE054_ABSENT".into()),
+            ..Default::default()
+        }),
+        cluster: None,
+    };
+    let v = validate_document(doc, None, ConfigMode::Serve, ConfigOverrides::default()).unwrap();
+    assert!(v.legacy_token_server);
+    assert!(!v.qualified_heap_key);
+    let opts = v.apply_to_serve_options(residiuum_server::ServeOptions::new());
+    assert!(opts.legacy_token_server);
+    assert!(!opts.qualified_heap_key);
+    let report = v.effective_report(ConfigMode::Serve);
+    assert!(report
+        .settings
+        .iter()
+        .any(|s| s.path == "serve.auth_path" && s.value.contains("legacy")));
+    assert!(report
+        .settings
+        .iter()
+        .any(|s| s.path == "serve.legacy_token_server" && s.value == "true"));
+}
+
+#[test]
 fn refuse_public_plaintext_without_opt_in() {
     let doc = ResidiuumConfigFile {
         format: CONFIG_PROFILE.into(),

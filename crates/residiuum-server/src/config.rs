@@ -211,6 +211,21 @@ pub struct ServeConfigSection {
     /// Admission budgets (dynamic-reload candidates).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub admission: Option<AdmissionConfigSection>,
+    /// HAR-4: non-product open/token path (`--legacy-token-server`).
+    ///
+    /// Mutually exclusive with [`Self::qualified_heap_key`]. When true, serve
+    /// is labeled non-qualified.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_token_server: Option<bool>,
+    /// HAR-4: product HeapKey listener (`--qualified-heap-key`).
+    ///
+    /// Requires TLS + [`Self::deployment_id`]. Mutually exclusive with
+    /// [`Self::legacy_token_server`] and shared token auth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub qualified_heap_key: Option<bool>,
+    /// Canonical deployment UUID for HeapKey challenges (qualified path).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployment_id: Option<String>,
 }
 
 /// Cluster-root settings for `serve-cluster` and honesty checks.
@@ -311,6 +326,12 @@ pub struct ValidatedConfig {
     pub claim_replication: bool,
     /// Expected deployment node count when set.
     pub expected_node_count: Option<u32>,
+    /// HAR-4: explicit non-product open/token path.
+    pub legacy_token_server: bool,
+    /// HAR-4: product qualified HeapKey path.
+    pub qualified_heap_key: bool,
+    /// Deployment id for HeapKey challenges when qualified.
+    pub deployment_id: Option<String>,
     /// Layer provenance for key fields.
     pub sources: ConfigSources,
     /// Non-fatal warnings.
@@ -332,6 +353,8 @@ pub struct ConfigSources {
     pub tls: ConfigLayer,
     /// Source of experimental cluster flag.
     pub experimental_network_cluster: ConfigLayer,
+    /// Source of auth path (legacy vs qualified).
+    pub auth_path: ConfigLayer,
 }
 
 /// CLI / API overrides applied after the file and env layers.
@@ -361,6 +384,12 @@ pub struct ConfigOverrides {
     pub tls_client_ca: Option<PathBuf>,
     /// Override expected cluster id.
     pub tls_cluster_id: Option<String>,
+    /// HAR-4 CLI: force legacy open/token path.
+    pub legacy_token_server: Option<bool>,
+    /// HAR-4 CLI: force qualified HeapKey path.
+    pub qualified_heap_key: Option<bool>,
+    /// HAR-4 CLI: deployment id for qualified path.
+    pub deployment_id: Option<String>,
 }
 
 /// Intended use of the validated configuration.
@@ -767,6 +796,18 @@ pub fn validate_document(
         );
     }
 
+    // --- HAR-4 T3: auth path (legacy vs qualified) ---
+    let (legacy_token_server, qualified_heap_key, deployment_id, auth_path_src) =
+        resolve_auth_path(
+            &serve,
+            &overrides,
+            auth_token.is_some(),
+            tls.is_some(),
+            mode,
+            &mut warnings,
+        )?;
+    sources.auth_path = auth_path_src;
+
     Ok(ValidatedConfig {
         document,
         config_path,
@@ -782,9 +823,127 @@ pub fn validate_document(
         tls,
         claim_replication,
         expected_node_count,
+        legacy_token_server,
+        qualified_heap_key,
+        deployment_id,
         sources,
         warnings,
     })
+}
+
+/// Resolve HAR-4 serve auth path from file + flag layers.
+///
+/// Co-host of qualified HeapKey and legacy open/token is fail-closed.
+fn resolve_auth_path(
+    serve: &ServeConfigSection,
+    overrides: &ConfigOverrides,
+    has_token: bool,
+    has_tls: bool,
+    mode: ConfigMode,
+    warnings: &mut Vec<String>,
+) -> Result<(bool, bool, Option<String>, ConfigLayer), ConfigError> {
+    // Flag wins over file for each boolean.
+    let file_legacy = serve.legacy_token_server.unwrap_or(false);
+    let file_qualified = serve.qualified_heap_key.unwrap_or(false);
+    let (legacy, legacy_src) = match overrides.legacy_token_server {
+        Some(true) => (true, ConfigLayer::Flag),
+        Some(false) => (false, ConfigLayer::Flag),
+        None if serve.legacy_token_server.is_some() => (file_legacy, ConfigLayer::File),
+        None => (false, ConfigLayer::Default),
+    };
+    let (qualified, qual_src) = match overrides.qualified_heap_key {
+        Some(true) => (true, ConfigLayer::Flag),
+        Some(false) => (false, ConfigLayer::Flag),
+        None if serve.qualified_heap_key.is_some() => (file_qualified, ConfigLayer::File),
+        None => (false, ConfigLayer::Default),
+    };
+    let (deployment_id, dep_src) = match (
+        overrides.deployment_id.clone(),
+        serve.deployment_id.clone(),
+    ) {
+        (Some(d), _) => (Some(d), ConfigLayer::Flag),
+        (None, Some(d)) => (Some(d), ConfigLayer::File),
+        (None, None) => (None, ConfigLayer::Default),
+    };
+    let mut path_src = match (legacy_src, qual_src) {
+        (ConfigLayer::Flag, _) | (_, ConfigLayer::Flag) => ConfigLayer::Flag,
+        (ConfigLayer::File, _) | (_, ConfigLayer::File) => ConfigLayer::File,
+        _ => dep_src,
+    };
+
+    let mut legacy = legacy;
+    let qualified = qualified;
+
+    if legacy && qualified {
+        return Err(ConfigError::unsafe_cfg(
+            "auth_path_cohost",
+            "co-host forbidden (HAR-4): serve.legacy_token_server and \
+             serve.qualified_heap_key cannot both be true — use only one auth path \
+             (or --legacy-token-server / --qualified-heap-key)",
+        ));
+    }
+
+    if has_token && qualified {
+        return Err(ConfigError::unsafe_cfg(
+            "token_on_qualified_path",
+            "shared token auth is non-qualified (HAR-4): remove serve token / --token \
+             when serve.qualified_heap_key is true, or set serve.legacy_token_server=true",
+        ));
+    }
+
+    // Implicit path resolution for development configs.
+    if !legacy && !qualified {
+        if has_token {
+            legacy = true;
+            path_src = ConfigLayer::Default;
+            warnings.push(
+                "auth path implied legacy-token-server because a shared token is configured \
+                 (HAR-4); set serve.legacy_token_server=true explicitly"
+                    .into(),
+            );
+        } else if matches!(mode, ConfigMode::Serve | ConfigMode::ServeCluster) {
+            // Preserve Stage-7 open-mode configs with loud honesty; product
+            // default remains HeapKey on ServeOptions when apply runs.
+            legacy = true;
+            path_src = ConfigLayer::Default;
+            warnings.push(
+                "auth path unset: defaulting config apply to legacy-token-server \
+                 (non-qualified open path; HAR-4). Product path requires \
+                 serve.qualified_heap_key=true + TLS + serve.deployment_id"
+                    .into(),
+            );
+        }
+    }
+
+    if qualified {
+        if !has_tls {
+            return Err(ConfigError::unsafe_cfg(
+                "qualified_requires_tls",
+                "serve.qualified_heap_key=true requires TLS (serve.tls.cert_path + key_path \
+                 or --tls-cert/--tls-key) (HAR-4)",
+            ));
+        }
+        match &deployment_id {
+            Some(d) if !d.trim().is_empty() => {}
+            _ => {
+                return Err(ConfigError::unsafe_cfg(
+                    "qualified_requires_deployment_id",
+                    "serve.qualified_heap_key=true requires serve.deployment_id \
+                     (canonical deployment UUID) or --deployment-id (HAR-4)",
+                ));
+            }
+        }
+    }
+
+    if legacy {
+        warnings.push(
+            "auth_path=legacy-token-server (non-qualified; not product remote). \
+             Product tutorials use connect_heap + qualified HeapKey (HAR-4)."
+                .into(),
+        );
+    }
+
+    Ok((legacy, qualified, deployment_id, path_src))
 }
 
 fn resolve_auth_token(
@@ -882,6 +1041,10 @@ pub fn resolve_secret_ref(spec: &str) -> Result<String, ConfigError> {
 
 impl ValidatedConfig {
     /// Apply resolved serve settings onto a [`ServeOptions`] skeleton.
+    ///
+    /// HAR-4 T3: applies `legacy_token_server` or qualified HeapKey + deployment_id
+    /// from the validated config. Callers may still pass a pre-shaped skeleton;
+    /// auth path fields from this config win when set.
     pub fn apply_to_serve_options(&self, mut opts: ServeOptions) -> ServeOptions {
         opts = opts
             .allow_insecure_bind(self.allow_insecure_bind)
@@ -899,6 +1062,22 @@ impl ValidatedConfig {
         }
         if let Some(ref root) = self.cluster_root {
             opts = opts.cluster_root(root.clone());
+        }
+        // Auth path (HAR-4 T3).
+        if self.legacy_token_server {
+            opts = opts.legacy_token_server();
+        } else if self.qualified_heap_key {
+            opts = opts.qualified_heap_key(true);
+            if let Some(ref dep) = self.deployment_id {
+                opts = opts.deployment_id(dep.clone());
+            }
+            // Empty resident registry satisfies listener validation; heaps are
+            // admitted by ceremony (HAR-2/3). Same posture as CLI T2.
+            if opts.heap_registry.is_none() {
+                opts = opts.heap_registry(std::sync::Arc::new(
+                    crate::ResidentHeapRegistry::new(),
+                ));
+            }
         }
         opts
     }
@@ -956,6 +1135,39 @@ impl ValidatedConfig {
                 },
                 class: SettingClass::RestartRequired,
                 source: self.sources.auth_token,
+            },
+            EffectiveSetting {
+                path: "serve.auth_path".into(),
+                value: if self.qualified_heap_key {
+                    "qualified-heap-key (product)".into()
+                } else if self.legacy_token_server {
+                    "legacy-token-server (non-qualified)".into()
+                } else {
+                    "unset".into()
+                },
+                class: SettingClass::RestartRequired,
+                source: self.sources.auth_path,
+            },
+            EffectiveSetting {
+                path: "serve.legacy_token_server".into(),
+                value: self.legacy_token_server.to_string(),
+                class: SettingClass::RestartRequired,
+                source: self.sources.auth_path,
+            },
+            EffectiveSetting {
+                path: "serve.qualified_heap_key".into(),
+                value: self.qualified_heap_key.to_string(),
+                class: SettingClass::RestartRequired,
+                source: self.sources.auth_path,
+            },
+            EffectiveSetting {
+                path: "serve.deployment_id".into(),
+                value: self
+                    .deployment_id
+                    .clone()
+                    .unwrap_or_else(|| "<unset>".into()),
+                class: SettingClass::RestartRequired,
+                source: self.sources.auth_path,
             },
             EffectiveSetting {
                 path: "serve.admission.global_max_rps".into(),
@@ -1036,7 +1248,11 @@ pub fn setting_class(path: &str) -> Option<SettingClass> {
         | "serve.max_connections"
         | "serve.experimental_network_cluster"
         | "serve.tls"
-        | "serve.auth_token" => Some(SettingClass::RestartRequired),
+        | "serve.auth_token"
+        | "serve.auth_path"
+        | "serve.legacy_token_server"
+        | "serve.qualified_heap_key"
+        | "serve.deployment_id" => Some(SettingClass::RestartRequired),
         "serve.idle_timeout_secs"
         | "serve.admission.global_max_rps"
         | "serve.admission.per_principal_max_rps"

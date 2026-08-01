@@ -464,6 +464,17 @@ fn run() -> Result<(), String> {
                 tls_key,
                 tls_client_ca,
                 tls_cluster_id,
+                legacy_token_server: if legacy_token_server {
+                    Some(true)
+                } else {
+                    None
+                },
+                qualified_heap_key: if qualified_heap_key {
+                    Some(true)
+                } else {
+                    None
+                },
+                deployment_id,
                 ..Default::default()
             };
             let validated = load_and_validate(config.as_deref(), ConfigMode::Serve, overrides)
@@ -477,14 +488,8 @@ fn run() -> Result<(), String> {
             for w in &validated.warnings {
                 eprintln!("config warning: {w}");
             }
-            let opts = build_serve_auth_options(
-                validated.apply_to_serve_options(ServeOptions::new()),
-                qualified_heap_key,
-                legacy_token_server,
-                deployment_id,
-                validated.auth_token.is_some(),
-                validated.tls.is_some(),
-            )?;
+            // HAR-4 T3: config validation already resolved auth path; apply it.
+            let opts = validated.apply_to_serve_options(ServeOptions::new());
             serve_store_with(&store_path, &bind, opts).map_err(|e| e.to_string())
         }
         Command::ServeCluster {
@@ -522,6 +527,17 @@ fn run() -> Result<(), String> {
                 tls_key,
                 tls_client_ca,
                 tls_cluster_id,
+                legacy_token_server: if legacy_token_server {
+                    Some(true)
+                } else {
+                    None
+                },
+                qualified_heap_key: if qualified_heap_key {
+                    Some(true)
+                } else {
+                    None
+                },
+                deployment_id,
                 ..Default::default()
             };
             let validated =
@@ -537,14 +553,7 @@ fn run() -> Result<(), String> {
             for w in &validated.warnings {
                 eprintln!("config warning: {w}");
             }
-            let opts = build_serve_auth_options(
-                validated.apply_to_serve_options(ServeOptions::new()),
-                qualified_heap_key,
-                legacy_token_server,
-                deployment_id,
-                validated.auth_token.is_some(),
-                validated.tls.is_some(),
-            )?;
+            let opts = validated.apply_to_serve_options(ServeOptions::new());
             serve_cluster_node(&cluster_root, node_index, &bind, opts).map_err(|e| e.to_string())
         }
         Command::Config { action } => match action {
@@ -555,73 +564,6 @@ fn run() -> Result<(), String> {
         },
         Command::Collections { store } => cmd_list(&store, None, json_out),
     }
-}
-
-/// HAR-4 T2: resolve CLI serve auth path (product qualified vs legacy opt-in).
-fn build_serve_auth_options(
-    mut opts: ServeOptions,
-    qualified_heap_key: bool,
-    legacy_token_server: bool,
-    deployment_id: Option<String>,
-    has_token: bool,
-    has_tls: bool,
-) -> Result<ServeOptions, String> {
-    use residiuum_server::ResidentHeapRegistry;
-    use std::sync::Arc;
-
-    if qualified_heap_key && legacy_token_server {
-        return Err(
-            "co-host forbidden: pass only one of --qualified-heap-key or --legacy-token-server (HAR-4)"
-                .into(),
-        );
-    }
-    if has_token && (qualified_heap_key || (!legacy_token_server && opts.qualified_heap_key)) {
-        // Token on product path is refuse (also enforced in validate_qualified_listener).
-        if !legacy_token_server {
-            return Err(
-                "--token requires --legacy-token-server (shared token is non-qualified; HAR-4)"
-                    .into(),
-            );
-        }
-    }
-
-    if legacy_token_server || has_token {
-        // Explicit or implied legacy (token-only implies non-product path).
-        if !legacy_token_server {
-            eprintln!(
-                "config warning: --token implies non-qualified serve; prefer explicit \
-                 --legacy-token-server (HAR-4)"
-            );
-        }
-        return Ok(opts.legacy_token_server());
-    }
-
-    if qualified_heap_key || (has_tls && deployment_id.is_some()) {
-        let dep = deployment_id.ok_or_else(|| {
-            "--qualified-heap-key requires --deployment-id (canonical deployment UUID; HAR-4)"
-                .to_string()
-        })?;
-        if !has_tls {
-            return Err(
-                "--qualified-heap-key requires --tls-cert and --tls-key (HAR-4)".into(),
-            );
-        }
-        // Empty resident registry is enough for listener validation; heaps are
-        // admitted later by HAR-2/3 ceremony. Handshake rejects unknown heaps.
-        opts = opts
-            .qualified_heap_key(true)
-            .deployment_id(dep)
-            .heap_registry(Arc::new(ResidentHeapRegistry::new()));
-        return Ok(opts);
-    }
-
-    // No explicit path: refuse silent open default (product default is HeapKey).
-    Err(
-        "residiuum serve requires an auth path (HAR-4 T2):\n  \
-         product: --qualified-heap-key --tls-cert … --tls-key … --deployment-id <uuid>\n  \
-         non-product open/token: --legacy-token-server [--token …]"
-            .into(),
-    )
 }
 
 fn parse_config_mode(mode: &str) -> Result<ConfigMode, String> {
