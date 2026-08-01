@@ -1,0 +1,104 @@
+{
+  "batch": 128,
+  "disclosure": "Diagnostic only — not a published SLO.",
+  "interpretation": [
+    "INDEX BISECT: no-index 141694 ≈ full 135610 ops/s (ratio 1.04×) — dual-index publish is NOT the killer; **data cooking** (encode/append/Blake+copy + write) dominates.",
+    "DISK BISECT: Discard 165940 / DevNull 158711 / Real 135610 ops/s — partial OS cost (Real/Discard=0.82×).",
+    "Raw /dev/null 3713274 vs raw work-file 963681 ops/s — pure write_all media delta without Residiuum.",
+    "Buffered put is 47% of pure-Blake ops/s — Blake-scale cost may matter.",
+    "Memory 1047216 → Discard-Buffered 165940 → Real-Buffered 135610: gap Memory→Discard is **pre-disk store work**; Discard→Real is **tail I/O**.",
+    "Raw write_all 963681 ops/s vs Buffered put 135610 — store adds 7.1× wall vs raw same-size writes.",
+    "Note: long peer multi-seal runs can still add seal_rotate wall; this micro uses 512MiB seal so mid seals are off."
+  ],
+  "ok": true,
+  "ops": 20000,
+  "payload_size": 8192,
+  "phases": [
+    {
+      "logical_mib_per_sec": 2242.8430769757238,
+      "name": "blake3_body_hash_only",
+      "note": "pure user CPU; if store is Blake-bound, put rates should be near this order",
+      "ops_per_sec": 287083.91385289264,
+      "wall_ms": 69.666042
+    },
+    {
+      "logical_mib_per_sec": 1880.0941074637965,
+      "name": "encode_frame_into_growing_vec",
+      "note": "format encode only (includes Blake); no store index, no OS write",
+      "ops_per_sec": 240652.04575536595,
+      "wall_ms": 83.10754200000001
+    },
+    {
+      "logical_mib_per_sec": 6577.587790466277,
+      "name": "raw_seek_plus_write_all_per_op",
+      "note": "mimics write_segment_tail: seek(durable_len)+write_all each put",
+      "ops_per_sec": 816418.1693863596,
+      "wall_ms": 24.49725
+    },
+    {
+      "logical_mib_per_sec": 29009.95027369612,
+      "name": "raw_write_all_dev_null",
+      "note": "write_all to /dev/null — OS path without durable media (disk detached)",
+      "ops_per_sec": 3713273.635033103,
+      "wall_ms": 5.386083
+    },
+    {
+      "logical_mib_per_sec": 7528.75986267542,
+      "name": "raw_write_all_payload_only",
+      "note": "OS write path only (no fsync); device + page cache ceiling for small writes",
+      "ops_per_sec": 963681.2624224537,
+      "wall_ms": 20.75375
+    },
+    {
+      "logical_mib_per_sec": 7423.223291293705,
+      "name": "raw_write_all_frame_sized",
+      "note": "closer to segment tail write size (~payload+envelope)",
+      "ops_per_sec": 921379.4727617884,
+      "wall_ms": 21.706583000000002
+    },
+    {
+      "logical_mib_per_sec": 8181.3778749361845,
+      "name": "store_put_memory",
+      "note": "index/visibility path only — NO durable segment write_all",
+      "ops_per_sec": 1047216.3679918316,
+      "wall_ms": 19.09825
+    },
+    {
+      "logical_mib_per_sec": 1296.4074992506764,
+      "name": "store_put_buffered_discard_io",
+      "note": "DISK DETACHED: full Buffered path, no write_all (sink=Discard); wall_ms=120.5 accounted=96.7; ps%cpu≈Some(13.3)→Some(24.3); MODE_A: prep=4.5ms(4%) enc=9.8(8%) append=76.9(64%) pub=4.7(4%) write=0.3(0%) seal_n=0 other=23.8(20%)",
+      "ops_per_sec": 165940.15990408658,
+      "wall_ms": 120.52537500000001
+    },
+    {
+      "logical_mib_per_sec": 1239.9297075318084,
+      "name": "store_put_buffered_dev_null",
+      "note": "DISK DETACHED: full Buffered path, write_all→/dev/null (syscall only); wall_ms=126.0 accounted=102.1; ps%cpu≈Some(39.0)→Some(48.3); MODE_A: prep=4.6ms(4%) enc=9.8(8%) append=76.6(61%) pub=4.6(4%) write=6.0(5%) seal_n=0 other=23.9(19%)",
+      "ops_per_sec": 158711.00256407147,
+      "wall_ms": 126.01520799999999
+    },
+    {
+      "logical_mib_per_sec": 1059.4498286871321,
+      "name": "store_put_buffered_batch1",
+      "note": "REAL FILE: full Buffered path on work volume (page cache + media); wall_ms=147.5 accounted=119.1; ps%cpu≈Some(47.7)→Some(60.6); MODE_A: prep=4.6ms(3%) enc=9.9(7%) append=76.6(52%) pub=4.5(3%) write=23.1(16%) seal_n=0 other=28.4(19%)",
+      "ops_per_sec": 135609.5780719529,
+      "wall_ms": 147.482208
+    },
+    {
+      "logical_mib_per_sec": 1106.9839443473793,
+      "name": "store_put_buffered_no_index",
+      "note": "REAL FILE + skip dual-index publish (data cooking only); wall_ms=141.1 enc=9.8 append=76.4 write=23.4 pub=0.3; ps%cpu≈Some(16.1)→Some(40.4)",
+      "ops_per_sec": 141693.94487646455,
+      "wall_ms": 141.149292
+    },
+    {
+      "logical_mib_per_sec": 373.269337314771,
+      "name": "store_put_many_buffered",
+      "note": "batch=128; one tail write per batch",
+      "ops_per_sec": 47778.47517629069,
+      "wall_ms": 418.598541
+    }
+  ],
+  "prong": "phase_bench",
+  "work": "/Volumes/Scratch/TEST/residiuum-index-bisect-20260801/j"
+}

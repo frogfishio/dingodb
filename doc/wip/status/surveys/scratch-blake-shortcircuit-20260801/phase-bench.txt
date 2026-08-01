@@ -1,0 +1,32 @@
+=== phase-bench (falsify Blake-bound narrative) ===
+work=/Volumes/Scratch/TEST/residiuum-blake-sc-20260801b ops=20000 payload=8192 batch=128
+
+phase                               wall_ms        ops/s        MiB/s  note
+blake3_body_hash_only                 100.2       199546       1559.0  pure user CPU; if store is Blake-bound, put rates should be near this order
+encode_frame_into_growing_vec          80.4       248651       1942.6  format encode only (includes Blake); no store index, no OS write
+raw_seek_plus_write_all_per_op         24.2       825463       6650.5  mimics write_segment_tail: seek(durable_len)+write_all each put
+raw_write_all_dev_null                  4.9      4098151      32016.8  write_all to /dev/null — OS path without durable media (disk detached)
+raw_write_all_payload_only             18.9      1056685       8255.3  OS write path only (no fsync); device + page cache ceiling for small writes
+raw_write_all_frame_sized              20.1       992940       7999.8  closer to segment tail write size (~payload+envelope)
+store_put_memory                       19.4      1032800       8068.8  index/visibility path only — NO durable segment write_all
+store_put_buffered_discard_io         116.0       172393       1346.8  DISK DETACHED: full Buffered path, no write_all (sink=Discard); wall_ms=116.0 accounted=93.4; ps%cpu≈Some(12.9)→Some(20.7); MODE_A: prep=4.3ms(4%) enc=9.4(8%) append=74.5(64%) pub=4.4(4%) write=0.3(0%) seal_n=0 other=22.6(19%)
+store_put_buffered_dev_null           122.2       163687       1278.8  DISK DETACHED: full Buffered path, write_all→/dev/null (syscall only); wall_ms=122.2 accounted=99.3; ps%cpu≈Some(40.2)→Some(44.9); MODE_A: prep=4.3ms(4%) enc=9.3(8%) append=75.0(61%) pub=4.4(4%) write=5.8(5%) seal_n=0 other=22.9(19%)
+store_put_buffered_batch1             145.3       137642       1075.3  REAL FILE: full Buffered path on work volume (page cache + media); wall_ms=145.3 accounted=117.3; ps%cpu≈Some(48.4)→Some(49.8); MODE_A: prep=4.4ms(3%) enc=9.5(7%) append=75.1(52%) pub=4.8(3%) write=23.0(16%) seal_n=0 other=28.0(19%)
+store_put_buffered_no_index           138.3       144644       1130.0  REAL FILE + skip dual-index publish (data cooking only); wall_ms=138.3 enc=9.4 append=74.6 write=23.1 pub=0.3; ps%cpu≈Some(17.6)→Some(28.4)
+store_put_buffered_no_blake            75.6       264615       2067.3  SHORT-CIRCUIT Blake only (still memcpy body + real write); wall_ms=75.6 enc=9.8 append=5.8 write=22.6; ps%cpu≈Some(14.2)→Some(28.6)
+store_put_buffered_no_append           37.6       532183       4157.7  SHORT-CIRCUIT append_frame only (prep+env+index+no Blake/segment/write); wall_ms=37.6 prep=4.4 enc=9.7 append=0.0 pub=4.3; ps%cpu≈Some(10.1)→Some(10.1)
+store_put_buffered_no_append_no_index       31.9       626087       4891.3  SHORT-CIRCUIT append+index (prep+env encode only); wall_ms=31.9 prep=2.9 enc=9.5 append=0.0 pub=0.3; ps%cpu≈Some(20.2)→Some(20.2)
+store_put_many_buffered               420.5        47565        371.6  batch=128; one tail write per batch
+
+interpretation:
+  • BLAKE SHORT-CIRCUIT: no-blake 264615 vs full 137642 ops/s (1.9×) — **Blake is a major cook cost** (still memcpy+write).
+  • APPEND SHORT-CIRCUIT: no-append 532183 vs full 137642 ops/s (3.9×) — if ratio ≫1, append_frame (Blake+buffer) is the data-cooking hog.
+  • Blake vs full append: no-blake 264615 / no-append 532183 — gap is memcpy+frame framing+write after Blake is removed.
+  • APPEND SC + no-index: 626087 ops/s (vs no-append-with-index 532183) — residual after skipping Blake/append.
+  • INDEX BISECT: no-index 144644 ≈ full 137642 ops/s (ratio 1.05×) — dual-index publish is NOT the killer; **data cooking** (encode/append/Blake+copy + write) dominates.
+  • DISK BISECT: Discard 172393 / DevNull 163687 / Real 137642 ops/s — partial OS cost (Real/Discard=0.80×).
+  • Raw /dev/null 4098151 vs raw work-file 1056685 ops/s — pure write_all media delta without Residiuum.
+  • Buffered put is 69% of pure-Blake ops/s — Blake-scale cost may matter.
+  • Memory 1032800 → Discard-Buffered 172393 → Real-Buffered 137642: gap Memory→Discard is **pre-disk store work**; Discard→Real is **tail I/O**.
+  • Raw write_all 1056685 ops/s vs Buffered put 137642 — store adds 7.7× wall vs raw same-size writes.
+  • Note: long peer multi-seal runs can still add seal_rotate wall; this micro uses 512MiB seal so mid seals are off.

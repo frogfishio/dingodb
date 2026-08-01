@@ -318,6 +318,20 @@ pub struct Store {
     diagnostic_io: DiagnosticIoSink,
     /// Cached `/dev/null` handle when [`DiagnosticIoSink::DevNull`] is set.
     null_io_file: Option<File>,
+    /// Diagnostic: skip dual-index publish / collection / derived after durable append.
+    ///
+    /// Isolates **data cooking** (encode + append + tail write) from **indexing**.
+    /// Visibility will not match frames; never enable in product paths.
+    diagnostic_skip_index: bool,
+    /// Diagnostic: skip `segment.append` / `encode_frame_into` (Blake + buffer cook).
+    ///
+    /// Isolates whether **append_frame** is the data-cooking killer. No new bytes
+    /// are written to the active file; never enable in product paths.
+    diagnostic_skip_append_frame: bool,
+    /// Diagnostic: still encode/copy/write frames but skip BLAKE3 body hash.
+    ///
+    /// Isolates Blake vs memcpy/write within append_frame. Frames fail verify.
+    diagnostic_skip_blake: bool,
 }
 
 /// Where `write_segment_tail` sends bytes (diagnostic bisection only).
@@ -462,6 +476,9 @@ impl Store {
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
             diagnostic_io: DiagnosticIoSink::Real,
             null_io_file: None,
+            diagnostic_skip_index: false,
+            diagnostic_skip_append_frame: false,
+            diagnostic_skip_blake: false,
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -551,6 +568,9 @@ impl Store {
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
             diagnostic_io: DiagnosticIoSink::Real,
             null_io_file: None,
+            diagnostic_skip_index: false,
+            diagnostic_skip_append_frame: false,
+            diagnostic_skip_blake: false,
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -677,6 +697,9 @@ impl Store {
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
             diagnostic_io: DiagnosticIoSink::Real,
             null_io_file: None,
+            diagnostic_skip_index: false,
+            diagnostic_skip_append_frame: false,
+            diagnostic_skip_blake: false,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -728,6 +751,44 @@ impl Store {
     /// Current diagnostic I/O sink (default [`DiagnosticIoSink::Real`]).
     pub fn diagnostic_io_sink(&self) -> DiagnosticIoSink {
         self.diagnostic_io
+    }
+
+    /// Diagnostic only: when true, durable puts append+write but **skip** dual-index
+    /// publish, collection catalog, and rate-limited derived checkpoints.
+    ///
+    /// Use with real disk to bisect **indexing** vs **data cooking** (encode/append).
+    pub fn set_diagnostic_skip_index(&mut self, skip: bool) {
+        self.diagnostic_skip_index = skip;
+    }
+
+    /// Whether index publish is skipped (diagnostic).
+    pub fn diagnostic_skip_index(&self) -> bool {
+        self.diagnostic_skip_index
+    }
+
+    /// Diagnostic only: skip frame encode/append (Blake + segment buffer).
+    ///
+    /// Put still runs prep + envelope encode (+ optional index). No new segment
+    /// bytes; used to short-circuit `append_frame` for phase-bench ceilings.
+    pub fn set_diagnostic_skip_append_frame(&mut self, skip: bool) {
+        self.diagnostic_skip_append_frame = skip;
+    }
+
+    /// Whether frame append is skipped (diagnostic).
+    pub fn diagnostic_skip_append_frame(&self) -> bool {
+        self.diagnostic_skip_append_frame
+    }
+
+    /// Diagnostic only: skip BLAKE3 body hash while still copying body into the
+    /// segment and writing the tail. Isolates Blake vs rest of append_frame.
+    pub fn set_diagnostic_skip_blake(&mut self, skip: bool) {
+        self.diagnostic_skip_blake = skip;
+        residiuum_format::set_diagnostic_skip_body_hash(skip);
+    }
+
+    /// Whether Blake body hash is short-circuited (diagnostic).
+    pub fn diagnostic_skip_blake(&self) -> bool {
+        self.diagnostic_skip_blake
     }
 
     /// Enable boundary probe with an explicit sample-vector capacity.
@@ -4644,9 +4705,14 @@ impl Store {
             .map(|w| w.segment_id)
             .expect("active segment");
 
-        let item_id = match self.index.get(subject_bytes) {
-            Some(entry) => entry.item_id(),
-            None => subject_item_id(subject_bytes),
+        // Diagnostic skip_index: avoid index lookup (item_id = subject hash only).
+        let item_id = if self.diagnostic_skip_index {
+            subject_item_id(subject_bytes)
+        } else {
+            match self.index.get(subject_bytes) {
+                Some(entry) => entry.item_id(),
+                None => subject_item_id(subject_bytes),
+            }
         };
         let event_id = self.next_event_id()?;
         let created_ns = now_ns();
@@ -4683,18 +4749,28 @@ impl Store {
         }
 
         let sink = self.diagnostic_io;
+        let skip_append = self.diagnostic_skip_append_frame;
         let mut null = self.null_io_file.take();
         let (offset, encoded_frame_len, append_ns, tail) = {
             let writer = self.active_mut(shard).expect("active segment");
-            let t_append = std::time::Instant::now();
-            let offset = writer
-                .segment
-                .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
-            let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-            // Exact encoded frame length at store boundary (not logical+estimate).
-            let encoded_frame_len = writer.segment.len().saturating_sub(offset);
-            let tail = Self::write_segment_tail(writer, mode, sink, null.as_mut())?;
-            (offset, encoded_frame_len, append_ns, tail)
+            if skip_append {
+                // Short-circuit data cook: no Blake, no segment growth, no tail write.
+                let offset = writer.segment.len();
+                (offset, 0u64, 0u64, TailIoStats::default())
+            } else {
+                let t_append = std::time::Instant::now();
+                let offset = writer.segment.append(
+                    FrameKind::ItemEvent,
+                    &envelope,
+                    body,
+                    event_id,
+                )?;
+                let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                // Exact encoded frame length at store boundary (not logical+estimate).
+                let encoded_frame_len = writer.segment.len().saturating_sub(offset);
+                let tail = Self::write_segment_tail(writer, mode, sink, null.as_mut())?;
+                (offset, encoded_frame_len, append_ns, tail)
+            }
         };
         self.null_io_file = null;
 
@@ -4709,30 +4785,36 @@ impl Store {
             append_ns,
             shard as u32,
         );
-        self.record_tail_probe(&tail, mode, shard as u32)?;
+        if !skip_append {
+            self.record_tail_probe(&tail, mode, shard as u32)?;
+        }
 
         // Publish visibility only after authoritative append succeeded (DEF-023).
         // Durable projection is locator-first (DEF-095): frame_offset + slim body.
         // Ordinary put bodies are not kept resident — pass empty rather than
         // allocating `body.to_vec()` only for `slim_put_body_for_index` to drop.
+        // Diagnostic: skip_index isolates data cooking (encode/append/write) from dual-index.
         let t_pub = std::time::Instant::now();
-        self.apply_durable_event(
-            subject_bytes.to_vec(),
-            kind,
-            Vec::new(),
-            item_id,
-            event_id,
-            segment_id,
-            0, // writer_sequence already inside frame; not required for index
-            offset,
-        );
+        if !self.diagnostic_skip_index {
+            self.apply_durable_event(
+                subject_bytes.to_vec(),
+                kind,
+                Vec::new(),
+                item_id,
+                event_id,
+                segment_id,
+                0, // writer_sequence already inside frame; not required for index
+                offset,
+            );
+        }
         let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
         self.boundary_probe
             .record_publish(offset, mode, shard as u32, publish_ns);
         let t_post = std::time::Instant::now();
-        self.note_collection_for_subject(subject_bytes);
-
-        let _ = self.note_durable_derived();
+        if !self.diagnostic_skip_index {
+            self.note_collection_for_subject(subject_bytes);
+            let _ = self.note_durable_derived();
+        }
         if probe {
             let post_ns = t_post.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
             self.boundary_probe

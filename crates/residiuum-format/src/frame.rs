@@ -7,7 +7,28 @@ use crate::cbor_envelope::EMPTY_ENVELOPE;
 use crate::integrity::{body_hash, prefix_crc32c, suffix_crc32c, BODY_HASH_LEN};
 use crate::kinds::{FrameFlags, FrameKind};
 use crate::limits::{checked_frame_len, SafetyLimits};
+use std::cell::Cell;
 use thiserror::Error;
+
+thread_local! {
+    /// Diagnostic only: when true, [`encode_frame_into`] copies the body but
+    /// writes a zero body-hash (skips BLAKE3). **Not for product paths** —
+    /// frames will fail verify. Used by store phase-bench short-circuit.
+    static DIAGNOSTIC_SKIP_BODY_HASH: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Diagnostic only: skip BLAKE3 body hash during [`encode_frame_into`].
+///
+/// Frames get an all-zero body-hash field and will not pass structural verify.
+/// Must remain false in product code.
+pub fn set_diagnostic_skip_body_hash(skip: bool) {
+    DIAGNOSTIC_SKIP_BODY_HASH.with(|c| c.set(skip));
+}
+
+/// Whether body-hash is currently short-circuited (diagnostic).
+pub fn diagnostic_skip_body_hash() -> bool {
+    DIAGNOSTIC_SKIP_BODY_HASH.with(|c| c.get())
+}
 
 /// Fixed prefix length in bytes.
 pub const FRAME_PREFIX_LEN: usize = 64;
@@ -198,12 +219,15 @@ pub fn encode_frame_into(
 
     out.extend_from_slice(&prefix);
     out.extend_from_slice(envelope);
-    out.extend_from_slice(body);
+
+    // Single-pass body: BLAKE3 while copying into the segment buffer.
+    // Previously: body_hash(body) (full payload read) then extend_from_slice
+    // (second full read + write). Same digest, one fewer memory pass.
+    let hash = append_body_hashed(out, body);
 
     let mut suffix = [0u8; FRAME_SUFFIX_LEN];
     suffix[0..8].copy_from_slice(END_MAGIC);
     suffix[8..16].copy_from_slice(&frame_len.to_le_bytes());
-    let hash = body_hash(body);
     suffix[16..48].copy_from_slice(&hash);
     let scrc = suffix_crc32c(&suffix);
     suffix[48..52].copy_from_slice(&scrc.to_le_bytes());
@@ -211,6 +235,31 @@ pub fn encode_frame_into(
 
     out.extend_from_slice(&suffix);
     Ok(())
+}
+
+/// Append `body` to `out` while computing BLAKE3-256 (one sequential payload pass).
+fn append_body_hashed(out: &mut Vec<u8>, body: &[u8]) -> [u8; BODY_HASH_LEN] {
+    // Diagnostic short-circuit: copy only, zero hash (frames fail verify).
+    if diagnostic_skip_body_hash() {
+        out.extend_from_slice(body);
+        return [0u8; BODY_HASH_LEN];
+    }
+    if body.is_empty() {
+        return body_hash(body);
+    }
+    // Chunked update keeps the hash working set warm and matches blake3's
+    // preferred incremental API without an extra full-buffer read.
+    let mut hasher = blake3::Hasher::new();
+    const CHUNK: usize = 16 * 1024;
+    let mut offset = 0usize;
+    while offset < body.len() {
+        let end = (offset + CHUNK).min(body.len());
+        let chunk = &body[offset..end];
+        hasher.update(chunk);
+        out.extend_from_slice(chunk);
+        offset = end;
+    }
+    *hasher.finalize().as_bytes()
 }
 
 /// Decode and structurally verify a complete frame buffer (exact length).

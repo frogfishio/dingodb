@@ -1,0 +1,120 @@
+{
+  "batch": 128,
+  "disclosure": "Diagnostic only — not a published SLO.",
+  "interpretation": [
+    "APPEND SHORT-CIRCUIT: no-append 532167 vs full 135023 ops/s (3.9×) — if ratio ≫1, append_frame (Blake+buffer) is the data-cooking hog.",
+    "APPEND SC + no-index: 634137 ops/s (vs no-append-with-index 532167) — residual after skipping Blake/append.",
+    "INDEX BISECT: no-index 142680 ≈ full 135023 ops/s (ratio 1.06×) — dual-index publish is NOT the killer; **data cooking** (encode/append/Blake+copy + write) dominates.",
+    "DISK BISECT: Discard 168977 / DevNull 158768 / Real 135023 ops/s — partial OS cost (Real/Discard=0.80×).",
+    "Raw /dev/null 3955696 vs raw work-file 1062831 ops/s — pure write_all media delta without Residiuum.",
+    "Buffered put is 47% of pure-Blake ops/s — Blake-scale cost may matter.",
+    "Memory 977310 → Discard-Buffered 168977 → Real-Buffered 135023: gap Memory→Discard is **pre-disk store work**; Discard→Real is **tail I/O**.",
+    "Raw write_all 1062831 ops/s vs Buffered put 135023 — store adds 7.9× wall vs raw same-size writes.",
+    "Note: long peer multi-seal runs can still add seal_rotate wall; this micro uses 512MiB seal so mid seals are off."
+  ],
+  "ok": true,
+  "ops": 20000,
+  "payload_size": 8192,
+  "phases": [
+    {
+      "logical_mib_per_sec": 2267.7094501802376,
+      "name": "blake3_body_hash_only",
+      "note": "pure user CPU; if store is Blake-bound, put rates should be near this order",
+      "ops_per_sec": 290266.8096230704,
+      "wall_ms": 68.902125
+    },
+    {
+      "logical_mib_per_sec": 1914.8978698872181,
+      "name": "encode_frame_into_growing_vec",
+      "note": "format encode only (includes Blake); no store index, no OS write",
+      "ops_per_sec": 245106.92734556392,
+      "wall_ms": 81.59704099999999
+    },
+    {
+      "logical_mib_per_sec": 6435.937655773095,
+      "name": "raw_seek_plus_write_all_per_op",
+      "note": "mimics write_segment_tail: seek(durable_len)+write_all each put",
+      "ops_per_sec": 798836.382971109,
+      "wall_ms": 25.036416
+    },
+    {
+      "logical_mib_per_sec": 30903.876582278484,
+      "name": "raw_write_all_dev_null",
+      "note": "write_all to /dev/null — OS path without durable media (disk detached)",
+      "ops_per_sec": 3955696.202531646,
+      "wall_ms": 5.056
+    },
+    {
+      "logical_mib_per_sec": 8303.367255887779,
+      "name": "raw_write_all_payload_only",
+      "note": "OS write path only (no fsync); device + page cache ceiling for small writes",
+      "ops_per_sec": 1062831.0087536357,
+      "wall_ms": 18.817667
+    },
+    {
+      "logical_mib_per_sec": 7240.839170436214,
+      "name": "raw_write_all_frame_sized",
+      "note": "closer to segment tail write size (~payload+envelope)",
+      "ops_per_sec": 898741.7346092949,
+      "wall_ms": 22.253334
+    },
+    {
+      "logical_mib_per_sec": 7635.235038677535,
+      "name": "store_put_memory",
+      "note": "index/visibility path only — NO durable segment write_all",
+      "ops_per_sec": 977310.0849507245,
+      "wall_ms": 20.464334
+    },
+    {
+      "logical_mib_per_sec": 1320.1320132013202,
+      "name": "store_put_buffered_discard_io",
+      "note": "DISK DETACHED: full Buffered path, no write_all (sink=Discard); wall_ms=118.4 accounted=95.2; ps%cpu≈Some(7.2)→Some(17.7); MODE_A: prep=4.4ms(4%) enc=9.5(8%) append=75.8(64%) pub=4.6(4%) write=0.3(0%) seal_n=0 other=23.2(20%)",
+      "ops_per_sec": 168976.897689769,
+      "wall_ms": 118.359375
+    },
+    {
+      "logical_mib_per_sec": 1240.3726443001508,
+      "name": "store_put_buffered_dev_null",
+      "note": "DISK DETACHED: full Buffered path, write_all→/dev/null (syscall only); wall_ms=126.0 accounted=101.9; ps%cpu≈Some(44.3)→Some(41.9); MODE_A: prep=4.4ms(3%) enc=10.3(8%) append=76.3(61%) pub=4.6(4%) write=5.9(5%) seal_n=0 other=24.1(19%)",
+      "ops_per_sec": 158767.6984704193,
+      "wall_ms": 125.970208
+    },
+    {
+      "logical_mib_per_sec": 1054.8695332972961,
+      "name": "store_put_buffered_batch1",
+      "note": "REAL FILE: full Buffered path on work volume (page cache + media); wall_ms=148.1 accounted=120.0; ps%cpu≈Some(53.4)→Some(51.0); MODE_A: prep=4.4ms(3%) enc=9.9(7%) append=76.4(52%) pub=5.0(3%) write=23.9(16%) seal_n=0 other=28.1(19%)",
+      "ops_per_sec": 135023.3002620539,
+      "wall_ms": 148.122583
+    },
+    {
+      "logical_mib_per_sec": 1114.6913292367005,
+      "name": "store_put_buffered_no_index",
+      "note": "REAL FILE + skip dual-index publish (data cooking only); wall_ms=140.2 enc=9.5 append=76.3 write=23.2 pub=0.3; ps%cpu≈Some(18.7)→Some(34.2)",
+      "ops_per_sec": 142680.49014229767,
+      "wall_ms": 140.173334
+    },
+    {
+      "logical_mib_per_sec": 4157.552314181426,
+      "name": "store_put_buffered_no_append",
+      "note": "SHORT-CIRCUIT append_frame only (prep+env+index+no Blake/segment/write); wall_ms=37.6 prep=4.4 enc=9.5 append=0.0 pub=4.5; ps%cpu≈Some(14.2)→Some(14.2)",
+      "ops_per_sec": 532166.6962152225,
+      "wall_ms": 37.582209
+    },
+    {
+      "logical_mib_per_sec": 4954.196746831859,
+      "name": "store_put_buffered_no_append_no_index",
+      "note": "SHORT-CIRCUIT append+index (prep+env encode only); wall_ms=31.5 prep=2.9 enc=9.4 append=0.0 pub=0.3; ps%cpu≈Some(22.9)→Some(22.9)",
+      "ops_per_sec": 634137.183594478,
+      "wall_ms": 31.538916999999998
+    },
+    {
+      "logical_mib_per_sec": 372.36466327074226,
+      "name": "store_put_many_buffered",
+      "note": "batch=128; one tail write per batch",
+      "ops_per_sec": 47662.67689865501,
+      "wall_ms": 419.615542
+    }
+  ],
+  "prong": "phase_bench",
+  "work": "/Volumes/Scratch/TEST/residiuum-mem-algo-20260801/j"
+}

@@ -386,6 +386,140 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         "REAL FILE: full Buffered path on work volume (page cache + media)",
     )?;
 
+    // --- 5b. Index vs data-cooking bisection (REAL disk) ---
+    // Full path vs skip dual-index publish (encode+append+write only).
+    {
+        let store_path = cfg.work.join("buf-no-index");
+        let _ = fs::remove_dir_all(&store_path);
+        let mut store = Store::create(&store_path)
+            .map_err(|e| format!("create no-index store: {e}"))?;
+        store.set_seal_threshold(512 * 1024 * 1024);
+        store.set_diagnostic_skip_index(true);
+        store.enable_boundary_probe();
+        let cpu0 = sample_cpu_pct();
+        let t0 = Instant::now();
+        for i in 0..ops {
+            let key = format!("x/{i:020}");
+            store
+                .put(&key, &payload, DurabilityMode::Buffered)
+                .map_err(|e| format!("no-index put: {e}"))?;
+        }
+        let s = t0.elapsed().as_secs_f64();
+        let cpu1 = sample_cpu_pct();
+        let snap = store.boundary_snapshot();
+        let wall_ms = s * 1000.0;
+        let app_ms = snap.append_latency.sum_ns as f64 / 1e6;
+        let wr_ms = snap.write_latency.sum_ns as f64 / 1e6;
+        let pub_ms = snap.publish_latency.sum_ns as f64 / 1e6;
+        let enc_ms = snap.encode_latency.sum_ns as f64 / 1e6;
+        phases.push(phase(
+            "store_put_buffered_no_index",
+            ops,
+            payload_bytes,
+            s,
+            format!(
+                "REAL FILE + skip dual-index publish (data cooking only); wall_ms={wall_ms:.1} enc={enc_ms:.1} append={app_ms:.1} write={wr_ms:.1} pub={pub_ms:.1}; ps%cpu≈{:?}→{:?}",
+                cpu0, cpu1
+            ),
+        ));
+        drop(store);
+        let _ = fs::remove_dir_all(&store_path);
+    }
+
+    // --- 5c. Short-circuit BLAKE3 only (still copy body + write_all) ---
+    {
+        let store_path = cfg.work.join("buf-no-blake");
+        let _ = fs::remove_dir_all(&store_path);
+        let mut store = Store::create(&store_path)
+            .map_err(|e| format!("create no-blake store: {e}"))?;
+        store.set_seal_threshold(512 * 1024 * 1024);
+        store.set_diagnostic_skip_blake(true);
+        store.enable_boundary_probe();
+        let cpu0 = sample_cpu_pct();
+        let t0 = Instant::now();
+        for i in 0..ops {
+            let key = format!("h/{i:020}");
+            store
+                .put(&key, &payload, DurabilityMode::Buffered)
+                .map_err(|e| format!("no-blake put: {e}"))?;
+        }
+        let s = t0.elapsed().as_secs_f64();
+        let cpu1 = sample_cpu_pct();
+        let snap = store.boundary_snapshot();
+        let wall_ms = s * 1000.0;
+        let app_ms = snap.append_latency.sum_ns as f64 / 1e6;
+        let wr_ms = snap.write_latency.sum_ns as f64 / 1e6;
+        let enc_ms = snap.encode_latency.sum_ns as f64 / 1e6;
+        phases.push(phase(
+            "store_put_buffered_no_blake",
+            ops,
+            payload_bytes,
+            s,
+            format!(
+                "SHORT-CIRCUIT Blake only (still memcpy body + real write); wall_ms={wall_ms:.1} enc={enc_ms:.1} append={app_ms:.1} write={wr_ms:.1}; ps%cpu≈{:?}→{:?}",
+                cpu0, cpu1
+            ),
+        ));
+        // Leave flag off for subsequent stores on this thread.
+        store.set_diagnostic_skip_blake(false);
+        drop(store);
+        let _ = fs::remove_dir_all(&store_path);
+    }
+
+    // --- 5d. Short-circuit append_frame (Blake+buffer cook) ---
+    // Proves whether append_frame is the data-cooking hog.
+    for (label, skip_idx, phase_name, note) in [
+        (
+            "no-append",
+            false,
+            "store_put_buffered_no_append",
+            "SHORT-CIRCUIT append_frame only (prep+env+index+no Blake/segment/write)",
+        ),
+        (
+            "no-append-no-index",
+            true,
+            "store_put_buffered_no_append_no_index",
+            "SHORT-CIRCUIT append+index (prep+env encode only)",
+        ),
+    ] {
+        let store_path = cfg.work.join(format!("buf-{label}"));
+        let _ = fs::remove_dir_all(&store_path);
+        let mut store = Store::create(&store_path)
+            .map_err(|e| format!("create {label} store: {e}"))?;
+        store.set_seal_threshold(512 * 1024 * 1024);
+        store.set_diagnostic_skip_append_frame(true);
+        store.set_diagnostic_skip_index(skip_idx);
+        store.enable_boundary_probe();
+        let cpu0 = sample_cpu_pct();
+        let t0 = Instant::now();
+        for i in 0..ops {
+            let key = format!("a/{i:020}");
+            store
+                .put(&key, &payload, DurabilityMode::Buffered)
+                .map_err(|e| format!("{label} put: {e}"))?;
+        }
+        let s = t0.elapsed().as_secs_f64();
+        let cpu1 = sample_cpu_pct();
+        let snap = store.boundary_snapshot();
+        let wall_ms = s * 1000.0;
+        let app_ms = snap.append_latency.sum_ns as f64 / 1e6;
+        let enc_ms = snap.encode_latency.sum_ns as f64 / 1e6;
+        let pub_ms = snap.publish_latency.sum_ns as f64 / 1e6;
+        let prep_ms = snap.prep_latency.sum_ns as f64 / 1e6;
+        phases.push(phase(
+            phase_name,
+            ops,
+            payload_bytes,
+            s,
+            format!(
+                "{note}; wall_ms={wall_ms:.1} prep={prep_ms:.1} enc={enc_ms:.1} append={app_ms:.1} pub={pub_ms:.1}; ps%cpu≈{:?}→{:?}",
+                cpu0, cpu1
+            ),
+        ));
+        drop(store);
+        let _ = fs::remove_dir_all(&store_path);
+    }
+
     // --- 6. Store Buffered put_many in batches ---
     {
         let store_path = cfg.work.join("bufn-store");
@@ -424,8 +558,64 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
     let disc = phases.iter().find(|p| p.name == "store_put_buffered_discard_io");
     let dnull = phases.iter().find(|p| p.name == "store_put_buffered_dev_null");
     let buf1 = phases.iter().find(|p| p.name == "store_put_buffered_batch1");
+    let noidx = phases.iter().find(|p| p.name == "store_put_buffered_no_index");
+    let noapp = phases.iter().find(|p| p.name == "store_put_buffered_no_append");
+    let noapp_ni = phases.iter().find(|p| p.name == "store_put_buffered_no_append_no_index");
+    let noblake = phases.iter().find(|p| p.name == "store_put_buffered_no_blake");
 
     let mut interpretation = Vec::new();
+    if let (Some(full), Some(nb)) = (buf1, noblake) {
+        let ratio = nb.ops_per_sec / full.ops_per_sec.max(1.0);
+        if ratio >= 1.5 {
+            interpretation.push(format!(
+                "BLAKE SHORT-CIRCUIT: no-blake {:.0} vs full {:.0} ops/s ({:.1}×) — **Blake is a major cook cost** (still memcpy+write).",
+                nb.ops_per_sec, full.ops_per_sec, ratio
+            ));
+        } else if ratio >= 1.15 {
+            interpretation.push(format!(
+                "BLAKE SHORT-CIRCUIT: no-blake {:.0} vs full {:.0} ops/s ({:.1}×) — Blake is a meaningful but partial cook cost.",
+                nb.ops_per_sec, full.ops_per_sec, ratio
+            ));
+        } else {
+            interpretation.push(format!(
+                "BLAKE SHORT-CIRCUIT: no-blake {:.0} ≈ full {:.0} ops/s ({:.1}×) — Blake is NOT the main remaining cook cost; look at memcpy/write.",
+                nb.ops_per_sec, full.ops_per_sec, ratio
+            ));
+        }
+    }
+    if let (Some(full), Some(na)) = (buf1, noapp) {
+        let ratio = na.ops_per_sec / full.ops_per_sec.max(1.0);
+        interpretation.push(format!(
+            "APPEND SHORT-CIRCUIT: no-append {:.0} vs full {:.0} ops/s ({:.1}×) — if ratio ≫1, append_frame (Blake+buffer) is the data-cooking hog.",
+            na.ops_per_sec, full.ops_per_sec, ratio
+        ));
+    }
+    if let (Some(nb), Some(na)) = (noblake, noapp) {
+        interpretation.push(format!(
+            "Blake vs full append: no-blake {:.0} / no-append {:.0} — gap is memcpy+frame framing+write after Blake is removed.",
+            nb.ops_per_sec, na.ops_per_sec
+        ));
+    }
+    if let (Some(na), Some(nani)) = (noapp, noapp_ni) {
+        interpretation.push(format!(
+            "APPEND SC + no-index: {:.0} ops/s (vs no-append-with-index {:.0}) — residual after skipping Blake/append.",
+            nani.ops_per_sec, na.ops_per_sec
+        ));
+    }
+    if let (Some(full), Some(ni)) = (buf1, noidx) {
+        let ratio = ni.ops_per_sec / full.ops_per_sec.max(1.0);
+        if ratio < 1.15 {
+            interpretation.push(format!(
+                "INDEX BISECT: no-index {:.0} ≈ full {:.0} ops/s (ratio {:.2}×) — dual-index publish is NOT the killer; **data cooking** (encode/append/Blake+copy + write) dominates.",
+                ni.ops_per_sec, full.ops_per_sec, ratio
+            ));
+        } else {
+            interpretation.push(format!(
+                "INDEX BISECT: no-index {:.0} vs full {:.0} ops/s (ratio {:.2}×) — indexing takes a large share of wall; dual-index publish is a primary drag.",
+                ni.ops_per_sec, full.ops_per_sec, ratio
+            ));
+        }
+    }
     if let (Some(d), Some(r), Some(n)) = (disc, buf1, dnull) {
         let ratio_real_vs_disc = r.ops_per_sec / d.ops_per_sec.max(1.0);
         let ratio_null_vs_disc = n.ops_per_sec / d.ops_per_sec.max(1.0);
