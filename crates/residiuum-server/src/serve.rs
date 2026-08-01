@@ -499,7 +499,8 @@ fn parse_hex16_strict(s: &str, field: &str) -> Result<[u8; 16], Error> {
 
 fn fill_receipt_fields(resp: &mut RpcResponse, receipt: &StoreWriteReceipt) {
     resp.event_id = Some(hex16(&receipt.event_id));
-    resp.version = Some(hex16(&receipt.item_id));
+    // Public OCC version = establishing event id (APB-2 / DX §6.4).
+    resp.version = Some(hex16(&receipt.event_id));
     resp.store_id = Some(hex16(&receipt.store_id));
     resp.segment_id = Some(hex16(&receipt.segment_id));
     resp.acknowledgement = Some(durability_name(receipt.durability).into());

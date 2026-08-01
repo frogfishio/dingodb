@@ -79,13 +79,10 @@ pub struct UpsertResult {
 
 /// Options for version-conditional replace (APB-2 / PD-002).
 ///
-/// `if_version` is the **establishing event id** of the live value
-/// ([`WriteReceipt::event_id`] or history last put `event_id`).
-///
-/// Residual: [`WriteReceipt::version`] is still item lineage (`item_id`) on the
-/// embedded/remote put path — do not use it as the OCC token until that
-/// mapping is aligned. Concurrent lost-update remains residual until
-/// store-level Key Atomic CAS lands (this façade is read-then-write).
+/// `if_version` is the establishing event id of the live value
+/// ([`WriteReceipt::version`] / [`WriteReceipt::event_id`], or history last
+/// put `event_id`). Concurrent lost-update remains residual until store-level
+/// Key Atomic CAS lands (this façade is read-then-write).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReplaceOptions {
     /// Establishing event id that must still be current.
@@ -112,6 +109,52 @@ impl Default for DeleteWithOptions {
         }
     }
 }
+
+/// Generated-key profile for [`CollectionClient::add`] (APB-2 / PD-004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum KeyProfile {
+    /// Opaque random 16-byte key as lowercase hex (32 chars).
+    ///
+    /// Profile id: [`KEY_PROFILE_RANDOM_V1`]. Collision-safe under create+retry;
+    /// **not** claimed sortable.
+    #[default]
+    RandomV1,
+}
+
+/// Frozen profile label for [`KeyProfile::RandomV1`].
+pub const KEY_PROFILE_RANDOM_V1: &str = "residiuum-key-random-v1";
+
+impl KeyProfile {
+    /// Stable profile label (documented / product claim surface).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::RandomV1 => KEY_PROFILE_RANDOM_V1,
+        }
+    }
+
+    fn mint_key(self) -> Result<String, Error> {
+        match self {
+            Self::RandomV1 => {
+                let id = residiuum_store::random_id().map_err(Error::from)?;
+                Ok(residiuum_store::hex16(&id))
+            }
+        }
+    }
+}
+
+/// Result of [`CollectionClient::add`] (APB-2 / PD-004).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddResult {
+    /// Generated application key (stable opaque string).
+    pub key: String,
+    /// Profile that produced the key.
+    pub key_profile: &'static str,
+    /// Write receipt for the insert.
+    pub receipt: WriteReceipt,
+}
+
+/// Max mint attempts when a generated key collides (astronomically rare).
+const ADD_KEY_MINT_ATTEMPTS: usize = 8;
 
 /// Receipt for `create_collection` (wire op 106).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -822,8 +865,8 @@ impl CollectionClient {
     /// Replace JSON only when the live establishing event id matches (APB-2).
     ///
     /// First cut: observe via history then put (not a single-key CAS). Pass
-    /// [`WriteReceipt::event_id`] (or history last put `event_id`) as
-    /// `if_version` — not [`WriteReceipt::version`] (item lineage residual).
+    /// [`WriteReceipt::version`] (or `event_id` / history last put `event_id`)
+    /// as `if_version`.
     pub fn replace<T: Serialize>(
         &mut self,
         key: &str,
@@ -831,6 +874,41 @@ impl CollectionClient {
         if_version: [u8; 16],
     ) -> Result<WriteReceipt, Error> {
         self.replace_with(key, value, ReplaceOptions { if_version }, PutOptions::default())
+    }
+
+    /// Insert with a generated key (APB-2 / `apb.doc.add` / PD-004).
+    ///
+    /// Default profile: [`KeyProfile::RandomV1`]. Returns the key explicitly.
+    pub fn add<T: Serialize>(&mut self, value: &T) -> Result<AddResult, Error> {
+        self.add_with(value, KeyProfile::RandomV1, PutOptions::default())
+    }
+
+    /// Insert with a generated key under a named profile (APB-2).
+    ///
+    /// Uses create-then-write (absent check + put). Retries mint on the rare
+    /// collision. Residual: not a single-key atomic create; concurrent create
+    /// races remain until store CAS.
+    pub fn add_with<T: Serialize>(
+        &mut self,
+        value: &T,
+        profile: KeyProfile,
+        options: PutOptions,
+    ) -> Result<AddResult, Error> {
+        for _ in 0..ADD_KEY_MINT_ATTEMPTS {
+            let key = profile.mint_key()?;
+            if self.get(&key)?.is_some() {
+                continue;
+            }
+            let receipt = self.put_with(&key, value, options)?;
+            return Ok(AddResult {
+                key,
+                key_profile: profile.as_str(),
+                receipt,
+            });
+        }
+        Err(Error::Internal(
+            "add: exhausted generated-key collision retries".into(),
+        ))
     }
 
     /// Replace with durability options (APB-2).
@@ -1110,12 +1188,15 @@ impl IndexManager<'_> {
 fn write_receipt_from_remote_ids(
     key: &str,
     event_id_s: &str,
-    version_s: &str,
+    _version_s: &str,
 ) -> Result<WriteReceipt, Error> {
+    // Public OCC version is always the establishing event id (matches embedded
+    // WriteReceipt::from_store and post-APB-2 server put receipts).
+    let event_id = parse_hex16(event_id_s).unwrap_or([0u8; 16]);
     Ok(WriteReceipt {
         key: key.to_string(),
-        event_id: parse_hex16(event_id_s).unwrap_or([0u8; 16]),
-        version: parse_hex16(version_s).unwrap_or([0u8; 16]),
+        event_id,
+        version: event_id,
         acknowledgement: DurabilityMode::Durable,
         committed: true,
         store_id: [0u8; 16],

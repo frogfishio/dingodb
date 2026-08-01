@@ -1,17 +1,19 @@
-//! APB-2 / APP-3 slice: façade create / upsert / list_keys / replace / delete_with.
+//! APB-2 / APP-3 slice: create / upsert / list_keys / replace / delete_with / add.
 //!
 //! Normative: MUST_ADD §6 (safe single-key mutations). First cut is
 //! read-then-write; store Key Atomic CAS residual is documented. No package accept.
 //!
-//! OCC token for `if_version` is the establishing **event_id** (not
-//! `WriteReceipt.version`, which is still item lineage).
+//! OCC token for `if_version` is establishing event id (`WriteReceipt.version`
+//! / `event_id`).
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
     HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
     TrustedInstant, VerifiedCertificate,
 };
-use residiuum_sdk::{ErrorCode, HeapClient, PutOptions, ResidiuumDeployment};
+use residiuum_sdk::{
+    ErrorCode, HeapClient, KEY_PROFILE_RANDOM_V1, KeyProfile, PutOptions, ResidiuumDeployment,
+};
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use std::sync::Arc;
 use tempfile::{tempdir, TempDir};
@@ -131,14 +133,16 @@ fn facade_replace_if_version_and_delete_with() {
     let r1 = col
         .put("k", &serde_json::json!({"n": 1}))
         .expect("seed put");
-    // OCC token is establishing event_id (not receipt.version / item lineage).
-    let v1 = r1.event_id;
+    // OCC token: WriteReceipt.version == establishing event_id.
+    assert_eq!(r1.version, r1.event_id);
+    let v1 = r1.version;
 
     let r2 = col
         .replace("k", &serde_json::json!({"n": 2}), v1)
         .expect("replace matching version");
     assert_eq!(col.get("k").unwrap().unwrap()["n"], 2);
-    assert_ne!(r2.event_id, v1);
+    assert_ne!(r2.version, v1);
+    assert_eq!(r2.version, r2.event_id);
 
     // Stale token must not clobber newer value.
     match col.replace("k", &serde_json::json!({"n": 99}), v1) {
@@ -148,7 +152,7 @@ fn facade_replace_if_version_and_delete_with() {
             match e {
                 residiuum_sdk::Error::VersionConflict { expected, observed } => {
                     assert_eq!(expected, v1);
-                    assert_eq!(observed, Some(r2.event_id));
+                    assert_eq!(observed, Some(r2.version));
                 }
                 other => panic!("expected VersionConflict variant, got {other:?}"),
             }
@@ -165,7 +169,7 @@ fn facade_replace_if_version_and_delete_with() {
 
     // delete_with matching version
     let del = col
-        .delete_with("k", Some(r2.event_id), true, PutOptions::default())
+        .delete_with("k", Some(r2.version), true, PutOptions::default())
         .expect("delete matching");
     assert!(del.removed);
     assert!(col.get("k").unwrap().is_none());
@@ -181,4 +185,37 @@ fn facade_replace_if_version_and_delete_with() {
         .delete_with("gone", None, false, PutOptions::default())
         .expect("soft absent delete");
     assert!(!soft.removed);
+}
+
+#[test]
+fn facade_add_generated_key() {
+    let (_dir, mut client) = open_bound_client();
+    let mut col = client.create_collection("events").unwrap().collection;
+
+    let a = col
+        .add(&serde_json::json!({"kind": "ping"}))
+        .expect("add default profile");
+    assert_eq!(a.key_profile, KEY_PROFILE_RANDOM_V1);
+    assert_eq!(a.key.len(), 32);
+    assert!(a.key.chars().all(|c| c.is_ascii_hexdigit()));
+    assert_eq!(a.receipt.key, a.key);
+    assert_eq!(a.receipt.version, a.receipt.event_id);
+    assert_eq!(
+        col.get(&a.key).unwrap().unwrap()["kind"],
+        "ping"
+    );
+
+    let b = col
+        .add_with(
+            &serde_json::json!({"kind": "pong"}),
+            KeyProfile::RandomV1,
+            PutOptions::default(),
+        )
+        .expect("add_with");
+    assert_ne!(a.key, b.key);
+    assert_eq!(b.key_profile, KeyProfile::RandomV1.as_str());
+
+    let keys = col.list_keys(Some(10), None).expect("list");
+    assert!(keys.contains(&a.key));
+    assert!(keys.contains(&b.key));
 }

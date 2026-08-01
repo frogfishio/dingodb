@@ -395,9 +395,11 @@ fn parse_collection_id(s: &str) -> Option<CollectionId> {
 }
 
 fn receipt_result(r: &WriteReceipt) -> Value {
+    // Public OCC `version` is the establishing event id (APB-2 / DX §6.4).
+    // Item lineage remains on history rows as `item_id`, not this field.
     serde_json::json!({
         "event_id": hex16(&r.event_id),
-        "version": hex16(&r.item_id),
+        "version": hex16(&r.event_id),
     })
 }
 

@@ -47,7 +47,10 @@ pub struct WriteReceipt {
     pub key: String,
     /// Unique event identifier for this write.
     pub event_id: [u8; 16],
-    /// Item lineage / version identity for the subject.
+    /// Optimistic-concurrency version for the live value.
+    ///
+    /// Equals the establishing [`Self::event_id`] of this write (APB-2 OCC).
+    /// Store item lineage remains available via history `item_id` (DEF-099).
     pub version: [u8; 16],
     /// Durability mode that was actually applied.
     pub acknowledgement: DurabilityMode,
@@ -64,7 +67,8 @@ impl WriteReceipt {
         Self {
             key,
             event_id: r.event_id,
-            version: r.item_id,
+            // OCC token: establishing event id (matches cluster_backend + DX §6.4).
+            version: r.event_id,
             acknowledgement: r.durability,
             // Memory/buffered/durable acks from the store are successful commits
             // for their respective failure boundaries.
@@ -84,7 +88,7 @@ pub struct DeleteReceipt {
     pub removed: bool,
     /// Unique event identifier for the tombstone write.
     pub event_id: [u8; 16],
-    /// Item lineage for the subject.
+    /// OCC version for this delete event (equals [`Self::event_id`]).
     pub version: [u8; 16],
     /// Durability mode that was actually applied.
     pub acknowledgement: DurabilityMode,
@@ -102,7 +106,7 @@ impl DeleteReceipt {
             key,
             removed,
             event_id: r.event_id,
-            version: r.item_id,
+            version: r.event_id,
             acknowledgement: r.durability,
             committed: true,
             store_id: r.store_id,

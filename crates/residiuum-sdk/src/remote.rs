@@ -1182,7 +1182,9 @@ fn write_receipt_from_resp(
         Error::ProtocolViolation("write receipt missing required field `committed`".into())
     })?;
     let event_id = require_hex16(resp.event_id.as_deref(), "event_id")?;
-    let version = require_hex16(resp.version.as_deref(), "version")?;
+    // Require version field for protocol completeness; OCC public version is
+    // always the establishing event id (aligned with embedded + server put).
+    let _wire_version = require_hex16(resp.version.as_deref(), "version")?;
     let store_id = require_hex16(resp.store_id.as_deref(), "store_id")?;
     let segment_id = require_hex16(resp.segment_id.as_deref(), "segment_id")?;
     if event_id == [0u8; 16] {
@@ -1194,7 +1196,7 @@ fn write_receipt_from_resp(
         // Request key is authoritative when the server omits the echo.
         key: resp.key.clone().unwrap_or_else(|| key.to_string()),
         event_id,
-        version,
+        version: event_id,
         acknowledgement,
         committed,
         store_id,
@@ -1216,7 +1218,7 @@ fn delete_receipt_from_resp(
         Error::ProtocolViolation("delete receipt missing required field `removed`".into())
     })?;
     let event_id = require_hex16(resp.event_id.as_deref(), "event_id")?;
-    let version = require_hex16(resp.version.as_deref(), "version")?;
+    let _wire_version = require_hex16(resp.version.as_deref(), "version")?;
     let store_id = require_hex16(resp.store_id.as_deref(), "store_id")?;
     let segment_id = require_hex16(resp.segment_id.as_deref(), "segment_id")?;
     if event_id == [0u8; 16] {
@@ -1228,7 +1230,7 @@ fn delete_receipt_from_resp(
         key: resp.key.clone().unwrap_or_else(|| key.to_string()),
         removed,
         event_id,
-        version,
+        version: event_id,
         acknowledgement,
         committed,
         store_id,
