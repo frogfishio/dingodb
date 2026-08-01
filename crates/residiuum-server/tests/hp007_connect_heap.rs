@@ -3,6 +3,9 @@
 #[path = "../../residiuum-sdk/tests/common/apb1_facade_parity.rs"]
 mod apb1_facade_parity;
 
+#[path = "../../residiuum-sdk/tests/common/apb7_query_parity.rs"]
+mod apb7_query_parity;
+
 use ed25519_dalek::{Signer, SigningKey};
 use residiuum_format::{encode_deterministic_uint_map, CborValue};
 use residiuum_heap::{
@@ -722,6 +725,120 @@ fn apb1_heap_client_from_remote_full_parity_heap_admin() {
         Ok(_) => panic!("duplicate name must fail on remote façade"),
         Err(_) => {}
     }
+
+    drop(client);
+    flag.store(true, Ordering::SeqCst);
+    thread::sleep(Duration::from_millis(50));
+}
+
+/// APB-7 T7: remote collection-plane Application Core query dual pack.
+///
+/// Same shared scenarios as embedded `apb7_query_dual_pack`. Uses list_keys+get
+/// over the remote façade — **not** product op 118 `rql_query`. No package accept.
+#[test]
+fn apb7_query_from_remote_collection_plane() {
+    use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
+
+    let doc = vectors();
+    let inputs = &doc["inputs"];
+    let holder_seed: [u8; 32] = hex(inputs["holder_seed"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let master_pk: [u8; 32] = hex(inputs["master_public_key"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+
+    let (cose, verified) = mint_vector_cose_with_rights(RIGHTS_FULL_G6);
+    assert!(
+        verified.rights.bits() & 0x1000 != 0,
+        "HeapAdmin bit required for create"
+    );
+    let now_unix = verified.not_before + 10;
+
+    let snap = HeapSecuritySnapshot {
+        deployment_id: verified.deployment_id,
+        heap_id: verified.heap_id,
+        authority_epoch: verified.authority_epoch,
+        authority_generation: verified.authority_generation,
+        previous_generation: None,
+        grace_deadline_unix_s: None,
+        master_public_key: master_pk,
+        previous_master_public_key: None,
+        security_revision: SecurityRevision::new(1).unwrap(),
+        authority_chain_head_hash: [1u8; 32],
+        administrative_state: HeapAdministrativeState::Active,
+        blacklist: vec![],
+        policy_rights_ceiling: None,
+    };
+    let registry = Arc::new(ResidentHeapRegistry::new());
+    registry.insert(
+        verified.heap_id,
+        ResidentHeap {
+            slot: Arc::new(HeapSlot::new(snap)),
+            display_name: Some("accounts".into()),
+        },
+    );
+
+    let tmp = TempDir::new().unwrap();
+    let store_path = tmp.path().join("app.residiuum");
+    Store::open(&store_path).unwrap();
+    let layout = HeapMetaLayout::new(&store_path);
+    let dep = *verified.deployment_id.as_bytes();
+    let heap_bytes = *verified.heap_id.as_bytes();
+    let staged = stage_heap_genesis(&layout, dep, heap_bytes, [9u8; 16], "accounts").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+
+    let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
+    let port = free_port();
+    let bind = format!("127.0.0.1:{port}");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&shutdown);
+    let opts = ServeOptions::new()
+        .tls(TlsServerOptions::new(&cert_path, &key_path))
+        .qualified_heap_key(true)
+        .heap_registry(Arc::clone(&registry))
+        .deployment_id(verified.deployment_id.to_string())
+        .security_now_unix_s(now_unix)
+        .shutdown_flag(Arc::clone(&shutdown));
+    let store_c = store_path.clone();
+    let bind_c = bind.clone();
+    thread::spawn(move || {
+        let _ = serve_store_with(store_c, &bind_c, opts);
+    });
+    wait_for_server(&bind);
+
+    let holder = Arc::new(InMemoryHolderKey::from_seed(holder_seed));
+    let credential = HeapCredential::new(&cose, holder).expect("admin credential");
+    let options = RemoteHeapOptions::new(
+        TlsClientOptions::new("localhost").ca_path(ca_path),
+        credential,
+    )
+    .expected_heap_name("accounts")
+    .now_unix_s(now_unix);
+
+    let remote = Residiuum::connect_heap(
+        format!("residiuum://127.0.0.1:{port}/accounts"),
+        options,
+    )
+    .expect("connect_heap admin");
+
+    let mut client = HeapClient::from(remote);
+    assert!(client.is_bound());
+    assert_eq!(
+        apb7_query_parity::SCENARIO_IDS,
+        &[
+            "builder_rql_plan_hash",
+            "equality_filter_keys",
+            "multipage_key_order_oracle",
+            "multipage_field_order_oracle",
+            "explain_rql_surface",
+            "scan_json_page",
+            "budget_fail_closed",
+            "index_equality_pushdown",
+        ]
+    );
+    // Collection-plane remote only — not product rql_query (op 118 reserved).
+    apb7_query_parity::run_full_query_parity(&mut client, "orders_t7");
 
     drop(client);
     flag.store(true, Ordering::SeqCst);

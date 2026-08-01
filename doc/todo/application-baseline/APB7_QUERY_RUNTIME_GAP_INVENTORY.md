@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0–T5 + T8–T11 2026-08-02** (… + multipage oracle matrix) · package `APB-7` **active / not accept**  
+Status: **T0–T5 + T7–T11 2026-08-02** (… + dual-pack + accept checklist) · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -142,8 +142,8 @@ honest residual until APP-7/APB-7 activate wire.
 | G16 | `scan_json` / `find` on façade | **T3 partial** | `CollectionClient::scan_json` + `find_json` (embedded + remote 115/116); not product accept |
 | G17 | View-bound observation under ReadView | **partial (T5)** | Stable pin + live executor; not SI; multipage-under-pin residual |
 | G18 | sda_query on façade | **deferred** | Optional; reserved 119 |
-| G19 | Dual-backend product parity pack | **missing** | Need APB-7 scenario pack (like APB-1 G6) after wire |
-| G20 | Package accept language | **forbidden** | Until exit tests + wire + scoreboard accept |
+| G19 | Dual-backend product parity pack | **T7 partial** | Shared `apb7_query_parity` + embedded host + remote collection-plane host; product op 118 residual |
+| G20 | Package accept language | **forbidden** | Until exit tests + wire + scoreboard accept; checklist in [APB7_DUAL_BACKEND_SUITE.md](./APB7_DUAL_BACKEND_SUITE.md) |
 
 ---
 
@@ -160,7 +160,7 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T4** | `ff6892ba` | **in_review** | Index pushdown + scan/index oracle (equality AND) |
 | **T5** | `6c7601a5` | **in_review** | ReadView-bound page path (`ViewBoundCollection`; tests 4/4) |
 | **T6** | `48b8f01b` | **todo** | Op 118 activate (HAR-4 blocked) |
-| **T7** | `9e19bd5f` | **todo** | Dual-pack + accept checklist |
+| **T7** | `9e19bd5f` | **in_review** | Dual-pack + accept checklist (`APB7_DUAL_BACKEND_SUITE.md`; embedded+remote collection-plane; no accept) |
 | **T8** | `5bd3fe3b` | **in_review** | Deadline + CancelToken (`apb7_deadline_cancel` 4/4) |
 | **T9** | `99e32b76` | **in_review** | Coverage grade (`apb7_coverage_grade` 4/4) |
 | **T10** | `b11912fe` | **in_review** | Product cursor secrets + parameter_hash (`apb7_cursor_secrets` 4/4) |
@@ -204,6 +204,8 @@ Feeds **T7** accept checklist; does **not** alone authorize package accept.
 |---|---|
 | `crates/residiuum-sdk/src/{predicate,plan_v1,rql_app_core,cursor_v1,query_exec_v1,read_view_v1,app_v1}.rs` | Labor surfaces |
 | `crates/residiuum-sdk/tests/app{4,5,6}_*` / `apb{6,7}_*` | Package precursors + T11 multipage oracle |
+| `tests/common/apb7_query_parity.rs` + `apb7_query_dual_pack` + server `apb7_query_from_remote_*` | T7 dual pack (collection-plane remote; not op 118) |
+| [APB7_DUAL_BACKEND_SUITE.md](./APB7_DUAL_BACKEND_SUITE.md) | T7 matrix + MUST_ADD §11 accept checklist |
 | `spec/app/v1/{plan_vectors,rql_app_core_corpus,cursor_vectors}_v1.json` | Locked vectors |
 | `spec/heap/rpc-v1/rql_query.*` + fixtures | Staged wire (not active product) |
 | `spec/app/baseline-v1/operations-v1.json` | App ops + wire honesty |

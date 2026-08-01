@@ -102,7 +102,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
 | APB-6 | active | 2026-08-02 | APB-1, APB-3 | **T1–T3**: scaffold + embedded pin + **retention enforce** (`max_hold`/`max_pinned_documents`) + `PinCapability` remote residual honesty + multipage under-pin re-check/accounting; tests `apb6_read_view_scaffold` **3/3**, `apb6_view_retention` **4/4**; APB-7 T5 view-bound gate; inventory [APB6_READ_VIEW_GAP_INVENTORY.md](../../todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md) | export under pin; HAR-4 remote product pin; reclamation fence; **no package accept / no snapshot claim** | read consistency |
-| APB-7 | active | 2026-08-02 | APB-1, APB-6, APP-4, APP-5 | **T0–T5 + T8–T11**: …; T8–T10; **T11** multipage complete-scan oracle matrix (`apb7_multipage_oracle_matrix` **6/6**: key-order / equality / field-order / index / builder↔RQL / budget fail-closed); [APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../../todo/application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md); **no product query / no op 118 / no package accept** | dual remote oracle; op 118 + HAR-4; dual-pack accept (T7) | query baseline |
+| APB-7 | active | 2026-08-02 | APB-1, APB-6, APP-4, APP-5 | **T0–T5 + T7–T11**: dual-pack `apb7_query_parity` + `apb7_query_dual_pack` **1/1** + remote collection-plane `apb7_query_from_remote_collection_plane` **1/1**; accept checklist [APB7_DUAL_BACKEND_SUITE.md](../../todo/application-baseline/APB7_DUAL_BACKEND_SUITE.md); T11 multipage oracle **6/6**; inventory [APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../../todo/application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md); **no product query / no op 118 / no package accept** | product dual remote via op 118; HAR-4; principal accept gate | query baseline |
 | APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
 | APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
 | APB-10 | not_started | — | APB-3, APB-5, APB-6 | — | resumable import/export absent | data movement |
@@ -196,13 +196,13 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | 1 | **APP-7 / T6** op 118 `48b8f01b` | `todo` | still **blocked** until HAR-4 default path / explicit lab admit |
 | — | **HAR-4 dep** query remote `7872d5fa` | `in_review` | inventory + gate locks; not package accept |
 | — | **APB-6 T3** view residual `be072203` | `in_review` | retention + PinCapability + multipage accounting |
-| — | **APB-7 T11** multipage oracle matrix `f6633005` | `in_review` | 6/6 multipage vs list_keys+get; residual dual-remote |
+| — | **APB-7 T11** multipage oracle matrix `f6633005` | `in_review` | 6/6 multipage vs list_keys+get; residual product dual-remote |
 | — | **APB-7 T10** product cursor secrets `b11912fe` | `in_review` | product ring + parameter_hash; tests 4/4 |
 | — | **APB-7 T9** coverage grade `99e32b76` | `in_review` | CoverageIncomplete fail-closed; evidence fields; tests 4/4 |
 | — | **APB-7 T8** deadline+cancel `5bd3fe3b` | `in_review` | deadline + CancelToken; tests 4/4 |
 | — | **APP-6 T3** field-order multipage `c7cd3cca` | `in_review` | last_sort_tuple resume; tests 3/3 |
 | — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
-| 10 | **APB-7 T7** dual-pack accept `9e19bd5f` | `todo` | package accept gate |
+| — | **APB-7 T7** dual-pack + accept checklist `9e19bd5f` | `in_review` | suite + checklist; collection-plane dual green; **not** package accept |
 | — | **RQL-v1 full language** `89a80e77` | `todo` | **NOT** APB-7; later package |
 | — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
 | — | APB-2 T5/T6 | `todo` | mutations lag OK |
@@ -219,8 +219,8 @@ Program order (packages; Kanban cards bind labor under them):
    with Atomics/cluster when those packages admit formal work.
 3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
    **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
-   **APB-7 active** (**T0–T4** in_review; **T5–T7** + APB-6 T3 still `todo` — no product query / no op 118);
-   **APB-1 active** (G1–G6 dual matrix); **HAR-4 active** (inventory only); next pull **APB-7 T7** checklist labor or **HAR-4 T2** default HeapKey (board SoT).
+   **APB-7 active** (**T0–T5 + T7–T11** in_review; **T6** op 118 still `todo`/blocked — no product query / no package accept);
+   **APB-1 active** (G1–G6 dual matrix); **HAR-4 active** (inventory only); next pull **APP-7/T6** when HAR-4 admits, or **HAR-4 T2** default HeapKey (board SoT).
    Non-query APB may lag (APB-2 T5/T6 already `todo` on board).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.

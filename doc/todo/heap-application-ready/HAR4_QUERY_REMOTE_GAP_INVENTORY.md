@@ -55,7 +55,7 @@ Exit highlights:
 | H4-G2 | CLI/tutorials still allow open/token postures without clear non-qualified labels | Product claim honesty |
 | H4-G3 | Co-host prohibition not fully productized as config UX | HAR-4 exit |
 | H4-G4 | Op **118** still **reserved** (no server dispatch / RemoteHeap rql) | APP-7 / APB-7 T6 |
-| H4-G5 | Dual remote multipage oracle for Core query | APB-7 T7 / T11 residual |
+| H4-G5 | Dual remote multipage oracle for **product** Core query (op 118) | APB-7 T7 partial (collection-plane dual green); product wire residual |
 | H4-G6 | Remote ReadView pin (still `RemoteUnpinnedResidual`) | APB-6 T3 residual |
 | H4-G7 | Heap-confined product cursor secrets on server | APB-7 T10 residual |
 | H4-G8 | HAR-3 key lifecycle package not accept | Upstream of full HAR-4 exit |
