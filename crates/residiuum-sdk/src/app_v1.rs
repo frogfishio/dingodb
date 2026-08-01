@@ -464,8 +464,9 @@ impl HeapClient {
     /// **Embedded:** pins `authoritative_frontier` to the store segment
     /// fingerprint (`observation_pinned = true`). Drift is re-checkable via
     /// [`crate::read_view_v1::ReadView::check_drift`]. This is **not** multi-
-    /// query snapshot isolation — product collection observation under the
-    /// view remains fail-closed until a view-bound executor lands.
+    /// query snapshot isolation. View-bound Core query is available when
+    /// [`crate::read_view_v1::ReadView::ensure_observation_stable`] holds
+    /// (APB-7 T5); see [`crate::read_view_v1::ReadView::open_collection`].
     ///
     /// **Remote:** live-unpinned residual (honest; remote pin / HAR-4 later).
     ///
@@ -1576,6 +1577,185 @@ impl crate::query_exec_v1::DocScan for CollectionClient {
             // Remote residual: no index-probe wire for Application Core yet.
             CollectionBackend::Remote { .. } | CollectionBackend::Unbound => Ok(None),
         }
+    }
+}
+
+/// Collection handle opened under a [`ReadView`] pin gate (APB-7 T5).
+///
+/// Each `rql` / builder `run` re-checks
+/// [`ReadView::ensure_observation_stable`]. This is **not** snapshot isolation:
+/// rows are still live `list_keys`+`get`; the gate only fails closed when the
+/// segment-fingerprint frontier is Unpinned or Drifted.
+pub struct ViewBoundCollection<'a> {
+    view: &'a mut crate::read_view_v1::ReadView,
+    inner: CollectionClient,
+}
+
+impl<'a> ViewBoundCollection<'a> {
+    /// Bound collection id.
+    pub fn id(&self) -> CollectionId {
+        self.inner.id()
+    }
+
+    /// Canonical collection name.
+    pub fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    /// Owning heap id.
+    pub fn heap_id(&self) -> HeapId {
+        self.inner.heap_id()
+    }
+
+    /// Underlying live client (advanced; prefer `rql` / `query` so pin is checked).
+    pub fn inner_mut(&mut self) -> &mut CollectionClient {
+        &mut self.inner
+    }
+
+    /// Application Core builder under this view (pin checked at `run`).
+    pub fn query(&mut self) -> ViewBoundQuery<'_> {
+        let source_name = self.inner.name().to_string();
+        ViewBoundQuery {
+            view: self.view,
+            client: &mut self.inner,
+            builder: PlanBuilder::from_source(source_name),
+        }
+    }
+
+    /// RQL Application Core page under the view pin (APB-7 T5).
+    pub fn rql(
+        &mut self,
+        source: &str,
+        parameters: &Parameters,
+        options: QueryRunOptions,
+    ) -> Result<QueryPage, Error> {
+        self.view.ensure_observation_stable()?;
+        self.inner.rql(source, parameters, options)
+    }
+
+    /// Explain under the view pin (no row scan; still requires Stable).
+    pub fn explain_rql(
+        &mut self,
+        source: &str,
+        parameters: &Parameters,
+        options: QueryRunOptions,
+    ) -> Result<QueryExplanation, Error> {
+        self.view.ensure_observation_stable()?;
+        self.inner.explain_rql(source, parameters, options)
+    }
+}
+
+/// Builder query bound to a [`ViewBoundCollection`] (pin re-checked at `run`).
+pub struct ViewBoundQuery<'a> {
+    view: &'a mut crate::read_view_v1::ReadView,
+    client: &'a mut CollectionClient,
+    builder: PlanBuilder,
+}
+
+impl<'a> ViewBoundQuery<'a> {
+    /// Attach a where predicate.
+    pub fn where_(mut self, pred: Predicate) -> Self {
+        self.builder = self.builder.where_(pred);
+        self
+    }
+
+    /// Projection field paths (dotted).
+    pub fn project<I, S>(mut self, fields: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.builder = self.builder.project(fields)?;
+        Ok(self)
+    }
+
+    /// Add an order term (nulls last by default).
+    pub fn order_by(mut self, path: &str, dir: OrderDir) -> Result<Self, Error> {
+        self.builder = self.builder.order_by(path, dir)?;
+        Ok(self)
+    }
+
+    /// Total limit across pages.
+    pub fn limit(mut self, n: u64) -> Self {
+        self.builder = self.builder.limit(n);
+        self
+    }
+
+    /// Page size.
+    pub fn page_size(mut self, n: u32) -> Result<Self, Error> {
+        self.builder = self.builder.page_size(n)?;
+        Ok(self)
+    }
+
+    /// Compile without executing (still requires Stable pin).
+    pub fn compile(self) -> Result<RqlPlanV1, Error> {
+        self.view.ensure_observation_stable()?;
+        let mut bindings = CollectionBindings::default();
+        bindings.bind(self.client.name(), self.client.id());
+        let mut plan = self.builder.compile(&bindings)?;
+        if plan.from.collection_id != self.client.collection_id {
+            plan.from.collection_id = self.client.collection_id;
+        }
+        Ok(plan)
+    }
+
+    /// Execute one page; re-checks pin first.
+    pub fn run(
+        self,
+        parameters: &Parameters,
+        options: QueryRunOptions,
+    ) -> Result<QueryPage, Error> {
+        self.view.ensure_observation_stable()?;
+        if options.explain {
+            return Err(Error::QueryInvalid(
+                "use explain_rql; ViewBoundQuery::run executes rows".into(),
+            ));
+        }
+        let heap_id = self.client.heap_id;
+        let collection_id = self.client.collection_id;
+        let mut bindings = CollectionBindings::default();
+        bindings.bind(self.client.name(), self.client.id());
+        let mut plan = self.builder.compile(&bindings)?;
+        if plan.from.collection_id != collection_id {
+            plan.from.collection_id = collection_id;
+        }
+        crate::query_exec_v1::execute_plan(
+            self.client,
+            &plan,
+            &parameters.values,
+            &options,
+            heap_id,
+            collection_id,
+            None,
+        )
+    }
+}
+
+impl crate::read_view_v1::ReadView {
+    /// Open a collection for view-bound Application Core query (APB-7 T5).
+    ///
+    /// Requires [`Self::ensure_observation_stable`] (pinned + Stable drift).
+    /// `heap` must be the same Heap as this view. Returns a
+    /// [`ViewBoundCollection`] that re-checks the pin on each page.
+    ///
+    /// **Not** snapshot isolation — live documents are read under a frontier
+    /// gate only.
+    pub fn open_collection(
+        &mut self,
+        heap: &mut HeapClient,
+        name: &str,
+    ) -> Result<ViewBoundCollection<'_>, Error> {
+        self.ensure_observation_stable()?;
+        if heap.id() != self.heap_id() {
+            return Err(Error::ConsistencyViolation(
+                "read view heap_id does not match HeapClient; refuse view-bound open".into(),
+            ));
+        }
+        let inner = heap.open_collection(name)?;
+        Ok(ViewBoundCollection {
+            view: self,
+            inner,
+        })
     }
 }
 

@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0–T4 2026-08-02** (inventory + builder + executor + scan/find + index pushdown) · package `APB-7` **active / not accept**  
+Status: **T0–T5 2026-08-02** (… + ReadView-bound page path) · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -47,7 +47,7 @@ reconcile with an independent complete-scan oracle; both backends.
 | APP-5 | **accept** | `rql_app_core` / `compile_app_core` → `RqlPlanV1`; corpus + fuzz |
 | APP-6 | **active** (T1/T2 in_review) | Cursor mint/verify + `query_exec_v1` page executor |
 | APB-1 | **active** | `CollectionClient` dual backend; `DocScan` over list_keys+get |
-| APB-6 | **active** (T1/T2 in_review) | ReadView pin (embedded segment FP); **not** view-bound query |
+| APB-6 | **active** (T1/T2 in_review) | ReadView pin (embedded segment FP); **APB-7 T5** view-bound gate (not SI) |
 | APP-3 | **active** | Data plane for scan (put/get/list_keys) |
 | HAR-4 | **not_started** | Qualified remote posture residual for product remote query |
 | APP-7 | **not_started** | Wire op **118** `rql_query` remains **reserved** |
@@ -106,7 +106,7 @@ honest residual until APP-7/APB-7 activate wire.
 | Piece | Status |
 |---|---|
 | Embedded segment-fingerprint pin | T2 landed; `check_drift` / `refresh_pin` |
-| `ReadView::open_collection` / view-bound rql | **fail-closed** |
+| `ReadView::open_collection(heap, name)` / view-bound rql | **APB-7 T5** Stable pin gate → `ViewBoundCollection`; not SI |
 | Multipage under snapshot isolation | **not claimed** |
 
 ### 4.4 Legacy / parallel paths (do not confuse with façade product)
@@ -140,7 +140,7 @@ honest residual until APP-7/APB-7 activate wire.
 | G14 | Remote op **118** product path | **blocked** | Wire reserved; APP-7 + HAR-4 |
 | G15 | Remote parity without inventing wire | **partial** | Remote `rql` today = collection-plane list_keys+get (same as embedded) — honest, not product `rql_query` |
 | G16 | `scan_json` / `find` on façade | **T3 partial** | `CollectionClient::scan_json` + `find_json` (embedded + remote 115/116); not product accept |
-| G17 | View-bound observation under ReadView | **blocked on APB-6 residual** | Pin exists; executor not view-bound |
+| G17 | View-bound observation under ReadView | **partial (T5)** | Stable pin + live executor; not SI; multipage-under-pin residual |
 | G18 | sda_query on façade | **deferred** | Optional; reserved 119 |
 | G19 | Dual-backend product parity pack | **missing** | Need APB-7 scenario pack (like APB-1 G6) after wire |
 | G20 | Package accept language | **forbidden** | Until exit tests + wire + scoreboard accept |
@@ -158,7 +158,7 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T2** | `8084d687` | in_review | Executor budgets + field-order |
 | **T3** | `f51b2fa8` | in_review | `scan_json` + `find_json` |
 | **T4** | `ff6892ba` | **in_review** | Index pushdown + scan/index oracle (equality AND) |
-| **T5** | `6c7601a5` | **todo** | ReadView-bound page path |
+| **T5** | `6c7601a5` | **in_review** | ReadView-bound page path (`ViewBoundCollection`; tests 4/4) |
 | **T6** | `48b8f01b` | **todo** | Op 118 activate (HAR-4 blocked) |
 | **T7** | `9e19bd5f` | **todo** | Dual-pack + accept checklist |
 

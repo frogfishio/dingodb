@@ -4,11 +4,15 @@
 //!
 //! **T2 (embedded):** binds `authoritative_frontier` to the store segment
 //! fingerprint and sets `observation_pinned = true`. Drift is detectable via
-//! [`ReadView::check_drift`]. This is **not** multi-query snapshot isolation:
-//! product collection access under a view remains fail-closed until a
-//! view-bound executor path lands.
+//! [`ReadView::check_drift`]. This is **not** multi-query snapshot isolation.
 //!
-//! **Remote:** still opens live-unpinned (honest residual; HAR-4 pin later).
+//! **APB-7 T5:** pinned views may open a view-bound collection for Core query
+//! when [`ReadView::ensure_observation_stable`] succeeds (`observation_pinned`
+//! + [`FrontierDrift::Stable`]). Live data is still read; the pin only gates
+//! on segment-fingerprint drift — not a frozen snapshot.
+//!
+//! **Remote:** still opens live-unpinned (honest residual; HAR-4 pin later);
+//! view-bound query fail-closes with [`FrontierDrift::Unpinned`].
 //!
 //! Inventory: `doc/todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md`.
 
@@ -146,12 +150,12 @@ pub struct ReadViewInfo {
     pub observation_pinned: bool,
 }
 
-/// Stable bounded read view handle (APB-6).
+/// Stable bounded read view handle (APB-6 / APB-7 T5 gate).
 ///
-/// Embedded opens pin the store segment fingerprint. Product collection
-/// observation under the view stays fail-closed until a view-bound executor
-/// lands (see inventory). Call [`Self::ensure_usable`] before attaching future
-/// query/export APIs.
+/// Embedded opens pin the store segment fingerprint. Call
+/// [`Self::ensure_observation_stable`] before view-bound query; open a bound
+/// collection via [`Self::open_collection`] (impl in `app_v1`). Not a
+/// snapshot-isolation claim.
 pub struct ReadView {
     info: ReadViewInfo,
     retention_budget: Option<ReadViewRetentionBudget>,
@@ -323,6 +327,36 @@ impl ReadView {
         }
     }
 
+    /// Gate for view-bound query / collection open (APB-7 T5).
+    ///
+    /// Requires usable view, `observation_pinned`, and
+    /// [`FrontierDrift::Stable`]. Fail-closes on Unpinned/Drifted.
+    ///
+    /// **Not** snapshot isolation: Stable only means the segment-fingerprint
+    /// pin still matches the live store layout.
+    pub fn ensure_observation_stable(&self) -> Result<(), Error> {
+        self.ensure_usable()?;
+        if !self.info.observation_pinned {
+            return Err(Error::ConsistencyViolation(
+                "read view observation is not pinned (live-unpinned / remote residual); \
+                 view-bound query requires segment-fingerprint pin (APB-7 T5)"
+                    .into(),
+            ));
+        }
+        match self.check_drift()? {
+            FrontierDrift::Stable => Ok(()),
+            FrontierDrift::Drifted => Err(Error::ConsistencyViolation(
+                "read view frontier drifted (segment fingerprint moved); \
+                 refresh_pin or open a new view before view-bound query (APB-7 T5)"
+                    .into(),
+            )),
+            FrontierDrift::Unpinned => Err(Error::ConsistencyViolation(
+                "read view has no re-checkable pin; view-bound query fail-closed (APB-7 T5)"
+                    .into(),
+            )),
+        }
+    }
+
     /// Re-sample the store segment fingerprint and update the pin in place.
     ///
     /// Residual: does not reclaim old segments or freeze document pages.
@@ -344,30 +378,6 @@ impl ReadView {
         };
         self.info.observation_pinned = true;
         Ok(())
-    }
-
-    /// Product collection observation under this view (fail-closed until executor).
-    ///
-    /// Frontier pin (T2) is orthogonal: a pinned view still fails closed here
-    /// until `query_exec_v1` (or equivalent) is bound to the view.
-    pub fn open_collection(&mut self, _name: &str) -> Result<(), Error> {
-        self.ensure_usable()?;
-        if self.info.observation_pinned {
-            Err(Error::Internal(
-                "APB-6 residual: segment frontier is pinned but view-bound collection \
-                 observation/executor is not wired; use CollectionClient::rql on a live \
-                 handle (generation-fenced) or wait for view-bound exec \
-                 (see APB6_READ_VIEW_GAP_INVENTORY.md)"
-                    .into(),
-            ))
-        } else {
-            Err(Error::Internal(
-                "APB-6 residual: read view does not pin observation yet; \
-                 use CollectionClient::rql on a live handle (generation-fenced) \
-                 or wait for frontier pin (see APB6_READ_VIEW_GAP_INVENTORY.md)"
-                    .into(),
-            ))
-        }
     }
 }
 
@@ -427,7 +437,7 @@ mod tests {
         assert_eq!(v.info().semantic_versions.read_view, READ_VIEW_PROFILE);
         assert_eq!(v.check_drift().unwrap(), FrontierDrift::Unpinned);
         v.ensure_usable().unwrap();
-        assert!(v.open_collection("orders").is_err());
+        assert!(v.ensure_observation_stable().is_err());
         assert!(v.refresh_pin().is_err());
         v.close();
         assert!(v.ensure_usable().is_err());

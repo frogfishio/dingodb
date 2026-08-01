@@ -74,6 +74,8 @@ fn open_bound_client() -> (TempDir, HeapClient) {
 #[test]
 fn read_view_embedded_pins_segment_fingerprint() {
     let (_dir, mut client) = open_bound_client();
+    // Create collection before pin so view-bound open has a target.
+    let _ = client.create_collection("orders").expect("create");
     let mut view = client
         .read_view(ReadViewOptions {
             max_age: Some(Duration::from_secs(300)),
@@ -91,13 +93,11 @@ fn read_view_embedded_pins_segment_fingerprint() {
     view.ensure_usable().unwrap();
     assert_eq!(view.check_drift().unwrap(), FrontierDrift::Stable);
 
-    let err = view.open_collection("orders").unwrap_err();
-    assert!(
-        err.to_string().contains("APB-6 residual")
-            || err.to_string().contains("view-bound")
-            || err.code() == ErrorCode::Internal,
-        "expected fail-closed residual, got {err:?}"
-    );
+    // APB-7 T5: Stable pin allows open_collection under the view.
+    let bound = view
+        .open_collection(&mut client, "orders")
+        .expect("Stable pin may open view-bound collection");
+    drop(bound);
 
     view.close();
     assert_eq!(

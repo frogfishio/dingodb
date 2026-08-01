@@ -22,7 +22,7 @@ Authority: [MUST_ADD.md](./MUST_ADD.md) §10 · [PRODUCT_DEFICIENCIES.md](../../
 | `expiry` | MUST_ADD | **yes** — `max_age` → expires_at |
 | `resource_budget` | MUST_ADD | **optional** — stored, not enforced as retention pin |
 | mutation isolation | MUST_ADD | **partial** — `check_drift` detects segment-layout movement; **not** snapshot isolation |
-| `view.collection(..).query` | PD-008 | **fail-closed** until view-bound executor |
+| `view.collection(..).query` | PD-008 | **APB-7 T5:** `ReadView::open_collection(heap, name)` → `ViewBoundCollection` when Stable pin; live scan under gate — **not** snapshot isolation |
 | share across export/count/watch | MUST_ADD | residual |
 
 ## Existing primitives (reuse, do not reinvent)
@@ -48,7 +48,9 @@ ReadView::ensure_usable()
 ReadView::check_drift() -> FrontierDrift { Stable | Drifted | Unpinned }
 ReadView::refresh_pin()  // re-sample segment fingerprint (pinned only)
 ReadView::pinned_fingerprint() -> Option<[u8;32]>
-ReadView::open_collection(name)  // fail-closed (view-bound executor residual)
+ReadView::ensure_observation_stable()  // pin + Stable (APB-7 T5 gate)
+ReadView::open_collection(heap, name) -> ViewBoundCollection  // APB-7 T5; fail-closed Unpinned/Drifted
+ViewBoundCollection::rql / ::query().run  // re-check pin each page
 ```
 
 ## Dependency honesty
@@ -57,12 +59,14 @@ ReadView::open_collection(name)  // fail-closed (view-bound executor residual)
 |---|---|---|
 | APB-1 | **active** | `HeapClient` bound backends required |
 | APB-3 | **not_started** | Lifecycle/capabilities not required for pin; retention/reclaim pin may need APB-3 later |
-| APP-6 T2 | **in_review** | Live `rql` exists; should eventually take optional `ReadView` |
+| APP-6 T2 | **in_review** | Live `rql` exists |
+| APB-7 T5 | **in_review** | View-bound `ViewBoundCollection` under Stable pin |
 | HAR-4 | **not_started** | Remote view pin / product remote posture residual |
 
 ## Residuals (package accept — not this task)
 
-- view-bound `query_exec_v1` / export under a pin
+- export under a pin; multipage under pin honesty matrix (still residual)
+- ~~view-bound query gate~~ (APB-7 T5 scaffold; not SI)
 - mutation-between-pages isolation proof (beyond segment drift token)
 - compaction / tier movement while pinned (retention)
 - expiry / resource budget enforcement as reclamation pin
