@@ -204,6 +204,11 @@ pub struct QueryRunOptions {
     pub budget: Option<QueryBudget>,
     /// When true, explain only (op 118 `explain: true`).
     pub explain: bool,
+    /// Authenticated continuation from a prior page (APP-6).
+    ///
+    /// Preferred over source `after` clause (still rejected at compile until
+    /// product continuation surface freezes).
+    pub after: Option<Continuation>,
 }
 
 impl Default for QueryRunOptions {
@@ -214,6 +219,7 @@ impl Default for QueryRunOptions {
             consistency: ConsistencyMode::Available,
             budget: None,
             explain: false,
+            after: None,
         }
     }
 }
@@ -1067,28 +1073,65 @@ impl CollectionClient {
         IndexManager { client: self }
     }
 
-    /// RQL Application Core execution (APP-5…APP-7).
+    /// RQL Application Core execution (APP-6 T2 page executor).
+    ///
+    /// Compiles Application Core source, scans via `list_keys`+`get`, evaluates
+    /// predicates, pages with key order (field order supported under budget).
+    /// Continuation via [`QueryRunOptions::after`] (vector-lock cursor keys).
+    ///
+    /// **Not** a product query claim (APB-7 residual); remote uses same scan plane.
     pub fn rql(
         &mut self,
-        _source: &str,
-        _parameters: &Parameters,
-        _options: QueryRunOptions,
+        source: &str,
+        parameters: &Parameters,
+        options: QueryRunOptions,
     ) -> Result<QueryPage, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: rql activates in APP-5…APP-7".into(),
-        ))
+        if matches!(self.backend, CollectionBackend::Unbound) {
+            return Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            ));
+        }
+        let heap_id = self.heap_id;
+        let collection_id = self.collection_id;
+        let name = self.name.clone();
+        crate::query_exec_v1::execute_rql(
+            self,
+            source,
+            parameters,
+            &options,
+            heap_id,
+            collection_id,
+            &name,
+        )
     }
 
-    /// RQL explain (APP-5…APP-7).
+    /// RQL explain — returns plan tree + hash (no row scan).
     pub fn explain_rql(
         &mut self,
-        _source: &str,
+        source: &str,
         _parameters: &Parameters,
         _options: QueryRunOptions,
     ) -> Result<QueryExplanation, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: explain_rql activates in APP-5…APP-7".into(),
-        ))
+        if matches!(self.backend, CollectionBackend::Unbound) {
+            return Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            ));
+        }
+        crate::query_exec_v1::explain_rql_source(source, self.collection_id, &self.name)
+    }
+}
+
+impl crate::query_exec_v1::DocScan for CollectionClient {
+    fn list_keys(
+        &mut self,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        CollectionClient::list_keys(self, limit, after_key)
+    }
+
+    fn get_json(&mut self, key: &str) -> Result<Option<serde_json::Value>, Error> {
+        CollectionClient::get(self, key)
     }
 }
 

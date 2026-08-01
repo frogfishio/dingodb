@@ -58,6 +58,8 @@ pub mod plan_v1;
 pub mod rql_app_core;
 /// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
 pub mod cursor_v1;
+/// Bounded Application Core page executor — APP-6 T2.
+pub mod query_exec_v1;
 mod history;
 mod indexes;
 #[cfg(feature = "legacy-flat-sdk")]
@@ -98,6 +100,7 @@ pub use cursor_v1::{
     PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS, TTL_SECONDS as CURSOR_TTL_SECONDS,
     VECTOR_LOCK_SEED,
 };
+pub use query_exec_v1::{execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE};
 pub use predicate::{
     field, param, CompareOp, Operand, Path as PredPath, PredField, Predicate, Resolve,
     MAX_PATH_SEGMENTS, MAX_PREDICATE_NODES, PREDICATE_PROFILE_V1,

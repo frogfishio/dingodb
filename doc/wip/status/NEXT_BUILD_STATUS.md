@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (Kanban-first labor rule + managed backlog Features/tasks; APP-6 active cursor; APB-2 dual-pack; query spine cards staged)
+Updated: 2026-08-01 (APP-6 T2 page executor + scan oracle; cursor T1; Kanban-first backlog; APB-2 dual-pack)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -122,7 +122,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-3 | active | 2026-08-01 | APP-2, HAR-4 | façade put/get/delete + history + indexes (APB-1) + APB-2 mutations dual-pack; OCC version alignment | APP-2 scoreboard lag; store CAS; remote durability; crash matrices; **no package accept** | typed data/history/index |
 | APP-4 | accept | 2026-08-01 | APP-0 freeze | `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); `spec/app/v1/plan_vectors_v1.json` hashes locked; `cargo test -p residiuum-sdk --test app4_predicate_plan` **4/4**; builder↔fixture plan hash parity; predicate totality model (absent≠value); name-binding fail-closed | full RQL source is APP-5; scan/index oracle parity at execution (APP-6/APB-7); **no product query claim** until APB-7/HAR | canonical predicates/plans |
 | APP-5 | accept | 2026-08-01 | APP-4 | CORE §14 exit: `residiuum_sdk::rql_app_core` `compile_app_core` → `RqlPlanV1` + explain/budget run metadata; profile **`rql-app-core-v1`** (not full RQL v1); §9 surface (multi-where, project/order/nulls, coverage/consistency, predicates, budget `{documents,bytes,result_bytes}`); non-Core reject (`enrich`/`within`/`at rank`/access + `after`→APP-6) with `rql_feature_unavailable`; corpus `spec/app/v1/rql_app_core_corpus_v1.json`; `cargo test -p residiuum-sdk --lib rql_app_core` **13/13**; `--test app5_rql_app_core` **3/3**; plan_vectors `source_rql` hash lock; bounded fuzz panic-free | `after`/continuation product = APP-6; no query execution/product claim until APB-7 (+ APP-3/HAR-4 path); host must merge `CompiledAppCore.budget` with `QueryRunOptions` | RQL Application Core |
-| APP-6 | active | 2026-08-01 | APP-3, APP-5, HAR-4 | `residiuum_sdk::cursor_v1` mint/verify (CORE §11 fences: profile/MAC/heap/collection/plan/parameter/expiry); profile **`residiuum-cursor-v1`** + key material **`residiuum-cursor-key-material-v1`** (vector-lock only); `cursor_vectors_v1` MAC locked; `cargo test -p residiuum-sdk --lib cursor_v1` **4/4**; `--test app6_cursor_v1` **4/4**; APP0-R2 residual closed | page executor / scan oracle / product Heap cursor secrets / HAR-4 product path; **no product query claim** | query execution |
+| APP-6 | active | 2026-08-01 | APP-3, APP-5, HAR-4 | **T1** cursor mint/verify + **T2** `query_exec_v1` bounded page executor (`CollectionClient::rql` / `explain_rql`); scan = list_keys+get + predicate.eval; page_size + `QueryRunOptions.after` continuation (vector-lock keys); budget max_documents; `cargo test -p residiuum-sdk --test app6_page_executor` **4/4**; cursor tests **4/4+4/4** | product cursor secrets; field-order deep residual; HAR-4 remote op 118; index pushdown; **no product query / APB-7 claim** | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `rql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
@@ -189,8 +189,8 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Card | Feature | Note |
 |---:|---|---|---|
-| 1 | **APP-6 T2** page executor + scan oracle | Query spine | preferred next code labor |
-| 2 | **APB-6 T1** read views inventory/scaffold | Query spine | unblocks APB-7 honesty |
+| 1 | **APB-6 T1** read views inventory/scaffold | Query spine | preferred next (APP-6 T2 in_review) |
+| 2 | **APP-6 T3** product cursor secrets residual (optional) | Query spine | after T2 |
 | 3 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
 | 4 | **APB-7 T0** runtime gap inventory | Query spine | blocked until 1–2 progress |
 | 5 | **APB-2 T6** residual checklist | APB-2 residuals | no false accept |
