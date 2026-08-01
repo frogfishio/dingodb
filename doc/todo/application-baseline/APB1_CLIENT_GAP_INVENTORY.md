@@ -1,6 +1,6 @@
 # APB-1 — HeapClient / CollectionClient gap inventory
 
-Status: **labor inventory v1.2** (2026-08-01) · package `APB-1` **active / not accept**  
+Status: **labor inventory v1.3** (2026-08-01) · package `APB-1` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §5 · [CORE plan](./CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §3–4 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -59,8 +59,10 @@ accept before APB-1 product claim language.
 | `HeapClient::open_collection` / `list_collections` | **embedded + remote wired** | Remote open 105 / list 110; list zeros `descriptor_hash` until wire grows field |
 | `CollectionClient` + embedded/remote handle | **G1/G1b landed** | Bound from create/open |
 | `CollectionClient::{put,get,delete,…}` | **embedded + remote forward** | Remote put maps event/version; delete receipt ids zeroed (wire returns bool only) |
+| `CollectionClient::history` | **G4 landed** | Embedded `HeapCollection::history` (SubjectV2); remote op 117 → `KeyHistory` |
 | `CollectionClient::{rql,explain_rql}` | **stub** | APP-5…7 activation messages (compiler is APP-5 accept; **execution** APB-7) |
-| `IndexManager` / `HistoryClient` / `RecoveryClient` | **missing types** | Not on `app_v1` façade |
+| `IndexManager` / `RecoveryClient` | **missing types** | Index ops still G3; recover reserved |
+| `HistoryClient` type | **optional residual** | Method on `CollectionClient` covers `apb.history.get` for now |
 | Named connect helpers (`open_embedded` / `connect_remote`) | **optional residual** | `From` constructors cover bind; baseline registry may still want helpers |
 
 ### 3.2 Working embedded path (`residiuum_sdk::Heap` / `HeapCollection`)
@@ -99,7 +101,7 @@ From `operations-v1.json` (`must_add_package: APB-1`):
 | `apb.index.create` | `IndexManager::create` | **active** (131) | Type missing |
 | `apb.index.drop` | `IndexManager::drop` | **active** | Type missing; remote has drop |
 | `apb.index.rebuild` | `IndexManager::rebuild` | **active** | Type missing; remote has rebuild |
-| `apb.history.get` | `HistoryClient::get` / `CollectionClient::history` | **active** (117) | Method missing on façade; remote `history` exists |
+| `apb.history.get` | `HistoryClient::get` / `CollectionClient::history` | **active** (117) | **Wired** on both backends (`CollectionClient::history`) |
 | `apb.recover.examine` | `RecoveryClient::examine` | **reserved** | Type missing; wire not active — **no invent** |
 
 CRUD put/get/delete are **APB-2** in the registry (and APP-3 in façade stubs).
@@ -122,7 +124,7 @@ Priority order for **APB-1 labor after this inventory** (not started here):
 | G1 | Sealed backend + `From<Heap>` / `From<RemoteHeap>` / connect helpers | APB-1 / APP-2 | **G1+G1b 2026-08-01:** Unbound\|Embedded\|Remote; both `From`s; create/open/list + put/get/delete both backends |
 | G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | **Embedded** `apb1_heap_client_embedded` 2/2; **remote** `apb1_heap_client_from_remote_open_put_get_delete` (hp007) ok; dual shared suite still open |
 | G3 | `IndexManager` façade over embedded indexes + remote index_* | APB-1 | G1 |
-| G4 | `CollectionClient::history` / HistoryClient | APB-1 | G1; DEF-099 |
+| G4 | `CollectionClient::history` / HistoryClient | APB-1 | **Landed 2026-08-01:** both backends; optional named HistoryClient residual |
 | G5 | RecoveryClient only when wire un-reserves or pure local examine defined | APB-1 later | reserved wire honesty |
 | G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | G2–G4 |
 | G7 | put/get/delete façade binding | **APP-3 / APB-2** | **Basic forward done on G1/G1b**; conditional/add/upsert + options parity still APB-2 |
@@ -139,7 +141,8 @@ Principal §0.8 still prioritizes query path. After APP-5 accept:
 
 ```text
 DONE  APB-1 G1+G1b  From<Heap|RemoteHeap> + create/open/list + basic put/get/delete
-NOW   APB-1 G3–G4   IndexManager + history (or dual shared suite G6 scaffolding)
+DONE  APB-1 G4      CollectionClient::history both backends
+NOW   APB-1 G3      IndexManager list/create/drop/rebuild (or dual suite G6 scaffolding)
   ||  HAR-0 residual + HAR-1 scoreboard reconcile (provisioning honesty)
 THEN  APP-3 / APB-2 richer mutation (conditional/add/upsert) on façade
 THEN  APB-6 read views
@@ -156,12 +159,12 @@ Do **not** claim APB-1 accept until dual-backend suite exits.
 |---|---|
 | Inventory (this file) | `doc/todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md` |
 | Ops registry | `spec/app/baseline-v1/operations-v1.json` (10 APB-1 rows) |
-| Façade | `crates/residiuum-sdk/src/app_v1.rs` (`From<Heap>`, `From<RemoteHeap>`, sealed backends) |
-| Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** |
-| Remote suite | `cargo test -p residiuum-server --features dangerous-key-export --test hp007_connect_heap apb1_heap_client_from_remote` **1/1** |
-| Embedded | `crates/residiuum-sdk/src/heap.rs` |
+| Façade | `crates/residiuum-sdk/src/app_v1.rs` (`From<Heap|RemoteHeap>`, history) |
+| Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** (includes history) |
+| Remote suite | `cargo test -p residiuum-server --features dangerous-key-export --test hp007_connect_heap apb1_heap_client_from_remote` **1/1** (includes history) |
+| Embedded | `crates/residiuum-sdk/src/heap.rs` (`HeapCollection::history`) |
 | Remote | `crates/residiuum-sdk/src/remote_heap.rs` |
-| Scoreboard | `APB-1` → **active** (not accept); G1+G1b bind landed; Index/History/dual suite residual |
+| Scoreboard | `APB-1` → **active** (not accept); G1+G1b+G4; IndexManager/dual suite residual |
 
 ---
 

@@ -509,6 +509,22 @@ fn apb1_heap_client_from_remote_open_put_get_delete() {
     assert!(del.removed);
     assert!(col.get("user-1").expect("get after delete").is_none());
 
+    // G4: history after put/delete cycle.
+    col.put("hist-k", &serde_json::json!({"v": 1}))
+        .expect("hist put1");
+    col.put("hist-k", &serde_json::json!({"v": 2}))
+        .expect("hist put2");
+    col.delete("hist-k").expect("hist delete");
+    let hist = col.history("hist-k").expect("history via façade");
+    assert_eq!(hist.key, "hist-k");
+    assert!(
+        hist.versions.len() >= 3,
+        "expected ≥3 versions, got {}",
+        hist.versions.len()
+    );
+    let kinds: Vec<&str> = hist.versions.iter().map(|v| v.kind).collect();
+    assert!(kinds.contains(&"put") && kinds.contains(&"delete"), "kinds={kinds:?}");
+
     drop(client);
     flag.store(true, Ordering::SeqCst);
     thread::sleep(Duration::from_millis(50));

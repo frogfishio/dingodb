@@ -10,6 +10,7 @@
 
 use crate::error::Error;
 use crate::heap::{Heap, HeapCollection};
+use crate::history::{KeyHistory, Version};
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::remote_heap::RemoteHeap;
 use residiuum_heap::{CollectionId, HeapId};
@@ -730,6 +731,27 @@ impl CollectionClient {
         }
     }
 
+    /// Per-key event history (APB-1 G4 / DEF-099 surface).
+    ///
+    /// Embedded: SubjectV2 via [`HeapCollection::history`]. Remote: op 117,
+    /// projected into [`KeyHistory`].
+    pub fn history(&mut self, key: &str) -> Result<KeyHistory, Error> {
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.history(key),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let (versions, has_known_holes) = guard.history(wire_collection_id, key)?;
+                key_history_from_remote_versions(key, versions, has_known_holes)
+            }
+        }
+    }
+
     /// RQL Application Core execution (APP-5…APP-7).
     pub fn rql(
         &mut self,
@@ -771,6 +793,71 @@ fn write_receipt_from_remote_ids(
         committed: true,
         store_id: [0u8; 16],
         segment_id: [0u8; 16],
+    })
+}
+
+/// Project remote op-117 version rows (JSON objects) into [`KeyHistory`].
+fn key_history_from_remote_versions(
+    key: &str,
+    versions: Vec<serde_json::Value>,
+    has_known_holes: bool,
+) -> Result<KeyHistory, Error> {
+    let mut out = Vec::with_capacity(versions.len());
+    for row in versions {
+        out.push(version_from_remote_json(row)?);
+    }
+    Ok(KeyHistory {
+        key: key.to_string(),
+        versions: out,
+        has_known_holes,
+    })
+}
+
+fn version_from_remote_json(row: serde_json::Value) -> Result<Version, Error> {
+    let kind_s = row
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::ProtocolViolation("history version missing kind".into()))?;
+    let kind = match kind_s {
+        "put" => "put",
+        "delete" => "delete",
+        other => {
+            return Err(Error::ProtocolViolation(format!(
+                "unknown history kind from remote: {other}"
+            )))
+        }
+    };
+    let event_id = row
+        .get("event_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let item_id = row
+        .get("item_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let segment_id = row
+        .get("segment_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let known_gap_before = row
+        .get("known_gap_before")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let json = row.get("json").cloned().filter(|v| !v.is_null());
+    // RemoteHeap history rows typically carry `json` for puts; raw body is optional
+    // and left unset on this façade path (no base64 dep in app_v1).
+    let _ = row.get("body_b64");
+    Ok(Version {
+        kind,
+        event_id,
+        item_id,
+        segment_id,
+        json,
+        body: None,
+        known_gap_before,
     })
 }
 

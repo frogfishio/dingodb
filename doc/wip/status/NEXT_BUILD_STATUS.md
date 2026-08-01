@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APB-1 **active** G1+G1b `From<Heap|RemoteHeap>`; APP-5 **accept**; APP-4/APB-0 accept)
+Updated: 2026-08-01 (APB-1 **active** G1+G1b+G4 history; APP-5 **accept**; APP-4/APB-0 accept)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -96,7 +96,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
 | FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
 | APB-0 | accept | 2026-08-01 | CSQ-12 (accept), APP-0/APP-1 evidence | [spec/app/baseline-v1/](../../../spec/app/baseline-v1/) **frozen**; `bash scripts/verify-app-baseline-contract.sh --require-frozen` exit 0; fixtures under baseline-v1/fixtures/; APP-0 error_mapping total; [APB_QUERY_ATOMICS_SEQUENCE.md](../../todo/application-baseline/APB_QUERY_ATOMICS_SEQUENCE.md) | residual: product APB-1…12 implementation; compile fixtures expand with packages | application contract |
-| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory + **G1+G1b:** sealed Unbound\|Embedded\|Remote; `From<Heap>` + `From<RemoteHeap>`; create/open/list + put/get/delete both backends; embedded suite **2/2**; remote façade `apb1_heap_client_from_remote_*` **1/1** (hp007); [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md) v1.2 | dual shared suite / IndexManager/History open; HAR-1 scoreboard stale; **no package accept** | backend-neutral client |
+| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory + **G1+G1b+G4:** sealed backends; `From<Heap|RemoteHeap>`; create/open/list + put/get/delete + **history** both backends; embedded **2/2**; remote façade **1/1** (hp007); [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md) v1.3 | IndexManager (G3) / dual shared suite open; HAR-1 scoreboard stale; **no package accept** | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
@@ -182,7 +182,7 @@ Program order (Kanban determines the individual active cards):
 2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
    do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
    with Atomics/cluster when those packages admit formal work.
-3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APB-1 active** (G1+G1b façade bind; dual suite residual);
+3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APB-1 active** (G1+G1b+G4 history; IndexManager residual);
    next labor G1–G2 façade bind + create/open/list; then APB-6 / APP-6 → APB-7.
    Non-query APB may lag.
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
@@ -219,7 +219,7 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
 | 3 | **FAS-0…FAS-4** | Scoreboard **accept** MVP 2026-08-01; foundation closed |
 | 4 | **APB-0** | **accept** 2026-08-01 — baseline-v1 frozen |
-| 5 | **APP-4 → APP-5 → APB-7** | APP-4/5 **accept**; **APB-1 active** (G1+G1b bind); still need APB-6/APP-6 + Index/History for APB-7 path |
+| 5 | **APP-4 → APP-5 → APB-7** | APP-4/5 **accept**; **APB-1 active** (G1+G1b+G4); still need IndexManager + APB-6/APP-6 for APB-7 path |
 | 6 | **HAR-0…HAR-3** | Identity/keys; enables ATM-0 prep after HAR-2 |
 | 7 | **RRE-0 / ATM-0** pure | Risk oracles/corpora only — **not** M3/M4 product exit |
 | 8 | Remaining HAR/APB → M1 exit → **M2** | Complete baseline journey |

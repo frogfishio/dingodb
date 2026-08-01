@@ -5,6 +5,7 @@
 //! checkouts — composition requires pointer-identical capabilities.
 
 use crate::error::Error;
+use crate::history::KeyHistory;
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::subject::{validate_collection_name, validate_key};
 use blake3::Hasher;
@@ -397,6 +398,17 @@ impl HeapCollection {
             .store
             .delete_collection(self.id.as_bytes(), key.as_bytes())?;
         Ok(DeleteReceipt::from_store(key.to_string(), existed, receipt))
+    }
+
+    /// Immutable event history for `key` (SubjectV2; DEF-099 surface, oldest first).
+    ///
+    /// First cut accepts Read; ReadHistory is preferred when present on the cap.
+    pub fn history(&self, key: &str) -> Result<KeyHistory, Error> {
+        validate_key(key)?;
+        let hist = self
+            .store
+            .history_collection(self.id.as_bytes(), key.as_bytes())?;
+        KeyHistory::from_store(key.to_string(), hist)
     }
 
     /// Issue a signed cursor bound to this collection + capability instance.

@@ -102,6 +102,26 @@ fn facade_from_heap_create_list_open_put_get() {
     let got = opened.get("k1").expect("get");
     assert_eq!(got, Some(serde_json::json!({"n": 1})));
 
+    // G4: multi-version history through the façade.
+    opened
+        .put("k1", &serde_json::json!({"n": 2}))
+        .expect("put v2");
+    opened.delete("k1").expect("delete");
+    opened
+        .put("k1", &serde_json::json!({"n": 3}))
+        .expect("put v3");
+    let hist = opened.history("k1").expect("history");
+    assert_eq!(hist.key, "k1");
+    assert!(
+        hist.versions.len() >= 4,
+        "expected put,put,delete,put; got {}",
+        hist.versions.len()
+    );
+    assert_eq!(hist.versions[0].kind, "put");
+    assert_eq!(hist.versions[0].json.as_ref().unwrap()["n"], 1);
+    let kinds: Vec<&str> = hist.versions.iter().map(|v| v.kind).collect();
+    assert!(kinds.contains(&"delete"), "kinds={kinds:?}");
+
     match client.create_collection("orders") {
         Ok(_) => panic!("duplicate name must fail"),
         Err(err) => assert_eq!(err.code(), ErrorCode::AlreadyExists),
