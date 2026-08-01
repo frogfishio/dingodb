@@ -9,13 +9,14 @@
 //! fail with [`Error::QueryInvalid`] and diagnostic `rql_feature_unavailable`
 //! when appropriate.
 //!
-//! Residual (not this cut): full §9 production coverage, budget-clause surface,
-//! after-clause / ranked access, parser fuzz corpus expansion.
+//! Residual (later APP-5 cuts): budget-clause source surface, after-clause
+//! (APP-6), ranked access, full conformance corpus fixtures, parser fuzz.
 
 use crate::app_v1::{ConsistencyMode, CoveragePolicy};
 use crate::error::Error;
 use crate::plan_v1::{
-    CollectionBindings, OrderDir, PlanBuilder, RqlPlanV1, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+    CollectionBindings, NullsOrder, OrderDir, PlanBuilder, RqlPlanV1, DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
 };
 use crate::predicate::{param, CompareOp, Operand, Path, Predicate};
 use serde_json::{Number, Value as JsonValue};
@@ -73,6 +74,8 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
     }
 
     let mut builder = PlanBuilder::from_source(source_name);
+    // CORE §9 EBNF allows repeated `where` clauses — they AND together.
+    let mut where_parts: Vec<Predicate> = Vec::new();
 
     loop {
         p.skip_ws();
@@ -81,8 +84,7 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
         }
         if p.eat_keyword("where") {
             p.skip_ws();
-            let pred = p.parse_or()?;
-            builder = builder.where_(pred);
+            where_parts.push(p.parse_or()?);
             continue;
         }
         if p.eat_keyword("project") {
@@ -105,18 +107,22 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
                     OrderDir::Asc
                 };
                 p.skip_ws();
-                // optional nulls first|last — PlanBuilder order_by uses Last default;
-                // consume tokens for grammar honesty.
-                if p.eat_keyword("nulls") {
+                let nulls = if p.eat_keyword("nulls") {
                     p.skip_ws();
-                    if !(p.eat_keyword("first") || p.eat_keyword("last")) {
+                    if p.eat_keyword("first") {
+                        NullsOrder::First
+                    } else if p.eat_keyword("last") {
+                        NullsOrder::Last
+                    } else {
                         return Err(Error::QueryInvalid(
                             "order by … nulls requires first|last".into(),
                         ));
                     }
-                    p.skip_ws();
-                }
-                builder = builder.order_by(&path, dir)?;
+                } else {
+                    NullsOrder::Last
+                };
+                p.skip_ws();
+                builder = builder.order_by_nulls(&path, dir, nulls)?;
                 p.skip_ws();
                 if p.eat_char(',') {
                     p.skip_ws();
@@ -185,9 +191,17 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
         )));
     }
 
-    // Default page size when omitted (CORE §9.2).
-    // PlanBuilder defaults at compile when page_size is None.
+    // Default page size when omitted (CORE §9.2) — PlanBuilder fills DEFAULT_PAGE_SIZE.
     let _ = DEFAULT_PAGE_SIZE;
+
+    if !where_parts.is_empty() {
+        let combined = if where_parts.len() == 1 {
+            where_parts.pop().expect("len==1")
+        } else {
+            Predicate::And { args: where_parts }
+        };
+        builder = builder.where_(combined);
+    }
 
     let plan = builder.compile(bindings)?;
     Ok(CompiledAppCore {
@@ -503,8 +517,34 @@ impl<'a> Parser<'a> {
             self.expect_char(')')?;
             return Ok(Predicate::Missing { path });
         }
+        if self.eat_keyword("starts_with") {
+            self.skip_ws();
+            self.expect_char('(')?;
+            self.skip_ws();
+            let path = Path::parse_dotted(&self.parse_path_dotted()?)?;
+            self.skip_ws();
+            self.expect_char(',')?;
+            self.skip_ws();
+            let prefix = self.parse_string()?;
+            self.skip_ws();
+            self.expect_char(')')?;
+            return Ok(Predicate::StartsWith { path, prefix });
+        }
+        if self.eat_keyword("contains") {
+            self.skip_ws();
+            self.expect_char('(')?;
+            self.skip_ws();
+            let path = Path::parse_dotted(&self.parse_path_dotted()?)?;
+            self.skip_ws();
+            self.expect_char(',')?;
+            self.skip_ws();
+            let needle = self.parse_literal_value()?;
+            self.skip_ws();
+            self.expect_char(')')?;
+            return Ok(Predicate::Contains { path, needle });
+        }
 
-        // path op operand
+        // path op operand | path [not] in [...] | path is [not] null
         let path_s = self.parse_path_dotted()?;
         let path = Path::parse_dotted(&path_s)?;
         self.skip_ws();
@@ -520,10 +560,29 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let cmp = if self.eat_keyword("!=") || self.rest().starts_with("<>") {
-            if self.rest().starts_with("<>") {
-                self.i += 2;
-            }
+        // `not in` / `in`
+        let not_in = self.eat_keyword("not");
+        self.skip_ws();
+        if self.eat_keyword("in") {
+            self.skip_ws();
+            let list = self.parse_literal_list()?;
+            return Ok(Predicate::In {
+                left: Operand::path(path),
+                list,
+                negated: not_in,
+            });
+        }
+        if not_in {
+            return Err(Error::QueryInvalid(format!(
+                "expected `in` after `not` near path `{path_s}`"
+            )));
+        }
+
+        let cmp = if self.rest().starts_with("!=") {
+            self.i += 2;
+            CompareOp::Ne
+        } else if self.rest().starts_with("<>") {
+            self.i += 2;
             CompareOp::Ne
         } else if self.eat_char('=') {
             CompareOp::Eq
@@ -549,6 +608,77 @@ impl<'a> Parser<'a> {
             left: Operand::path(path),
             right,
         })
+    }
+
+    fn parse_literal_list(&mut self) -> Result<Vec<JsonValue>, Error> {
+        self.skip_ws();
+        self.expect_char('[')?;
+        let mut list = Vec::new();
+        self.skip_ws();
+        if self.eat_char(']') {
+            return Ok(list);
+        }
+        loop {
+            list.push(self.parse_literal_value()?);
+            self.skip_ws();
+            if self.eat_char(',') {
+                self.skip_ws();
+                continue;
+            }
+            break;
+        }
+        self.skip_ws();
+        self.expect_char(']')?;
+        Ok(list)
+    }
+
+    /// Parse a JSON-ish literal (string, number, bool, null) — not a path or param.
+    fn parse_literal_value(&mut self) -> Result<JsonValue, Error> {
+        self.skip_ws();
+        if self.peek() == Some('"') {
+            return Ok(JsonValue::String(self.parse_string()?));
+        }
+        if self.eat_keyword("true") {
+            return Ok(JsonValue::Bool(true));
+        }
+        if self.eat_keyword("false") {
+            return Ok(JsonValue::Bool(false));
+        }
+        if self.eat_keyword("null") {
+            return Ok(JsonValue::Null);
+        }
+        let start = self.i;
+        if self.eat_char('-') {
+            // keep
+        }
+        let dig_start = self.i;
+        while matches!(self.peek(), Some(c) if c.is_ascii_digit()) {
+            self.bump();
+        }
+        if self.i == dig_start {
+            self.i = start;
+            return Err(Error::QueryInvalid(format!(
+                "expected literal near `{}`",
+                self.snippet()
+            )));
+        }
+        // optional fractional
+        if self.peek() == Some('.') {
+            self.bump();
+            while matches!(self.peek(), Some(c) if c.is_ascii_digit()) {
+                self.bump();
+            }
+        }
+        let num = &self.s[start..self.i];
+        if let Ok(i) = num.parse::<i64>() {
+            return Ok(JsonValue::Number(i.into()));
+        }
+        if let Ok(f) = num.parse::<f64>() {
+            if let Some(n) = Number::from_f64(f) {
+                return Ok(JsonValue::Number(n));
+            }
+        }
+        Err(Error::QueryInvalid(format!("bad number `{num}`")))
     }
 
     fn expect_char(&mut self, ch: char) -> Result<(), Error> {
@@ -614,7 +744,8 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::predicate::{field, param as pred_param};
+    use crate::app_v1::{ConsistencyMode, CoveragePolicy};
+    use crate::predicate::{field, param as pred_param, CompareOp, Operand, Path, Predicate};
     use residiuum_heap::CollectionId;
     use std::str::FromStr;
 
@@ -672,5 +803,121 @@ mod tests {
         .unwrap()
         .plan;
         assert_eq!(from_builder.plan_hash_hex(), from_rql.plan_hash_hex());
+    }
+
+    #[test]
+    fn multi_clause_hash_matches_builder() {
+        use crate::plan_v1::{NullsOrder, OrderDir, PlanBuilder};
+        let b = bindings();
+        let from_builder = PlanBuilder::from_source("orders")
+            .where_(field("status").unwrap().eq(pred_param("st")))
+            .project(["id", "status"])
+            .unwrap()
+            .order_by_nulls("created_at", OrderDir::Desc, NullsOrder::First)
+            .unwrap()
+            .limit(1000)
+            .page_size(100)
+            .unwrap()
+            .coverage(CoveragePolicy::IncompleteAllowed)
+            .consistency(ConsistencyMode::Current)
+            .compile(&b)
+            .unwrap();
+        let src = r#"
+            from orders
+            where status = $st
+            project id, status
+            order by created_at desc nulls first
+            limit 1000
+            page size 100
+            coverage incomplete
+            consistency current
+        "#;
+        let from_rql = compile_app_core(src, &b).unwrap().plan;
+        assert_eq!(from_builder.plan_hash_hex(), from_rql.plan_hash_hex());
+        assert_eq!(from_rql.order[0].nulls, NullsOrder::First);
+        assert!(matches!(
+            from_rql.coverage,
+            CoveragePolicy::IncompleteAllowed
+        ));
+        assert!(matches!(from_rql.consistency, ConsistencyMode::Current));
+    }
+
+    #[test]
+    fn repeated_where_and_and_or_not() {
+        let b = bindings();
+        let c = compile_app_core(
+            r#"from orders where status = "paid" where not missing(customer.id) or present(tags)"#,
+            &b,
+        )
+        .unwrap();
+        // Two where clauses → And of (eq, Or(Not(Missing), Present))
+        match &c.plan.where_pred {
+            Predicate::And { args } => {
+                assert_eq!(args.len(), 2);
+                assert!(matches!(&args[0], Predicate::Cmp { cmp: CompareOp::Eq, .. }));
+                assert!(matches!(&args[1], Predicate::Or { .. }));
+            }
+            other => panic!("expected And of two where clauses, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn present_missing_is_null_in_starts_contains() {
+        let b = bindings();
+        let c = compile_app_core(
+            r#"from orders where present(status) and missing(gone) and tags is not null and region in ["us", "eu"] and starts_with(name, "Acme") and contains(notes, "rush")"#,
+            &b,
+        )
+        .unwrap();
+        // Flatten not required — just ensure it compiles and is And tree
+        assert!(!matches!(c.plan.where_pred, Predicate::True));
+        let c2 = compile_app_core(
+            r#"from orders where status is null and code not in [1, 2, 3]"#,
+            &b,
+        )
+        .unwrap();
+        match &c2.plan.where_pred {
+            Predicate::And { args } => {
+                assert!(matches!(
+                    &args[0],
+                    Predicate::IsNull { negated: false, .. }
+                ));
+                assert!(matches!(
+                    &args[1],
+                    Predicate::In { negated: true, .. }
+                ));
+            }
+            other => panic!("expected And, got {other:?}"),
+        }
+        // starts_with / contains forms
+        let c3 = compile_app_core(
+            r#"from orders where starts_with(sku, "AB") and contains(desc, "x")"#,
+            &b,
+        )
+        .unwrap();
+        match &c3.plan.where_pred {
+            Predicate::And { args } => {
+                assert!(matches!(&args[0], Predicate::StartsWith { prefix, .. } if prefix == "AB"));
+                assert!(matches!(&args[1], Predicate::Contains { .. }));
+            }
+            other => panic!("expected And, got {other:?}"),
+        }
+        let _ = Path::parse_dotted("status").unwrap();
+        let _ = Operand::path(Path::parse_dotted("x").unwrap());
+    }
+
+    #[test]
+    fn comment_and_as_alias() {
+        let b = bindings();
+        let c = compile_app_core(
+            r#"
+            -- line comment
+            from orders as o
+            where status = "open"
+            "#,
+            &b,
+        )
+        .unwrap();
+        assert_eq!(c.plan.from.source_name, "orders");
     }
 }

@@ -499,14 +499,26 @@ impl PlanBuilder {
     }
 
     /// Add an order term (key tie-break inserted at compile).
-    pub fn order_by(mut self, path: &str, dir: OrderDir) -> Result<Self, Error> {
+    ///
+    /// Null/missing placement defaults to [`NullsOrder::Last`].
+    pub fn order_by(self, path: &str, dir: OrderDir) -> Result<Self, Error> {
+        self.order_by_nulls(path, dir, NullsOrder::Last)
+    }
+
+    /// Add an order term with explicit null/missing placement.
+    pub fn order_by_nulls(
+        mut self,
+        path: &str,
+        dir: OrderDir,
+        nulls: NullsOrder,
+    ) -> Result<Self, Error> {
         if self.order.len() >= MAX_ORDER_TERMS {
             return Err(Error::QueryInvalid("too many order terms".into()));
         }
         self.order.push(OrderTerm {
             path: Path::parse_dotted(path)?,
             dir,
-            nulls: NullsOrder::Last,
+            nulls,
             tie_break: false,
         });
         Ok(self)

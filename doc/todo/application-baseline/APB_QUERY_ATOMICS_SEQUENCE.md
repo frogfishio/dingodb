@@ -1,7 +1,7 @@
 # Sequence: APB-0 → Query → Atomics (honest path)
 
-Status: **normative labor sequence v1.0** (2026-08-01)  
-Package context: `APB-0` active · principal: do not jump; risk-manage query + atomics  
+Status: **normative labor sequence v1.1** (2026-08-01)  
+Package context: `APB-0` accept · APP-4 accept · APP-5 active · principal: query spine + parallel HAR/client deps  
 
 Authority (strict):
 
@@ -116,6 +116,16 @@ APB-0 accept
 - Expressiveness / refusal matrices (diagnostic)  
 - Wide-case corpora against pure compiler (APP-5)  
 - **No** public “query is qualified” until APB-7 + evidence chain  
+
+**Suggested Kanban (board SoT; filled 2026-08-01):**
+
+| Feature | Labor IDs | Stage intent |
+|---|---|---|
+| *Phase B — Query spine* | APP-5 **T2** §9 surface · **T3** corpus/reject · **T4** budget+fuzz · **T5** scoreboard accept | Primary path; do T2→T5 before APB-7 |
+| *Phase B∥ — HAR identity + min client* | HAR-0 **T1** residual · HAR-1 **T1** op-106 reconcile · APB-1 **T1** client gap inventory | Parallel deps for APB-7 |
+| *Phase C — RRE-0 pure risk* | RRE-0 **T1** oracle scaffold | Diagnostic only; never blocks APP-5 |
+
+APP-4 T1 + APP-5 T1 labor are **in_review** (APP-4 scoreboard accept landed).
 
 ---
 
