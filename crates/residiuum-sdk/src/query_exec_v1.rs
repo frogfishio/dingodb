@@ -11,6 +11,8 @@
 //! **T4 index pushdown:** when [`DocScan::try_equality_index_keys`] returns
 //! candidates for field equalities, examine only those keys (still re-eval
 //! full predicate). Fall back to full scan when no usable index.
+//! **T8 deadline/cancel:** [`QueryRunOptions::deadline`] and
+//! [`QueryRunOptions::cancel`] checked cooperatively between scan steps.
 //!
 //! **Not claimed:** product query qualification (APB-7 package accept), product
 //! cursor secrets, remote op 118, snapshot reads.
@@ -30,6 +32,7 @@ use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::time::Instant;
 
 /// Profile label for this executor cut (not full product query).
 pub const EXEC_PROFILE: &str = "residiuum-app-core-exec-v1";
@@ -122,6 +125,9 @@ pub fn execute_plan<S: DocScan>(
     collection_id: CollectionId,
     source_budget: Option<QueryBudget>,
 ) -> Result<QueryPage, Error> {
+    let started = Instant::now();
+    check_governance(options, started)?;
+
     let budget = merge_budgets(source_budget, options.budget);
     let page_size = options
         .page_size
@@ -188,6 +194,7 @@ pub fn execute_plan<S: DocScan>(
             }
             let mut iter = candidates.into_iter();
             while let Some(key) = iter.next() {
+                check_governance(options, started)?;
                 match scan.get_json(&key)? {
                     None => {
                         examined_docs += 1;
@@ -221,6 +228,7 @@ pub fn execute_plan<S: DocScan>(
         } else {
             let mut full: Vec<(String, JsonValue)> = Vec::new();
             for key in candidates {
+                check_governance(options, started)?;
                 if let Some(doc) = scan.get_json(&key)? {
                     examined_docs += 1;
                     examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
@@ -251,6 +259,7 @@ pub fn execute_plan<S: DocScan>(
                 full.truncate(page_size);
             }
             for (key, doc) in full {
+                check_governance(options, started)?;
                 last_full_for_cursor = Some((key.clone(), doc.clone()));
                 let value = project_doc(&doc, plan.project.as_ref())?;
                 let row_len = json_byte_len(&value);
@@ -263,11 +272,13 @@ pub fn execute_plan<S: DocScan>(
     } else if key_only_order {
         // Full key-stream until page full or scan ends.
         'outer: loop {
+            check_governance(options, started)?;
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
                 break;
             }
             for key in batch {
+                check_governance(options, started)?;
                 after = Some(key.clone());
                 match scan.get_json(&key)? {
                     None => {
@@ -303,11 +314,13 @@ pub fn execute_plan<S: DocScan>(
         // Full scan under budget, sort on full docs, resume by sort-tuple, page + project.
         let mut full: Vec<(String, JsonValue)> = Vec::new();
         loop {
+            check_governance(options, started)?;
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
                 break;
             }
             for key in batch {
+                check_governance(options, started)?;
                 after = Some(key.clone());
                 if let Some(doc) = scan.get_json(&key)? {
                     examined_docs += 1;
@@ -341,6 +354,7 @@ pub fn execute_plan<S: DocScan>(
             full.truncate(page_size);
         }
         for (key, doc) in full {
+            check_governance(options, started)?;
             last_full_for_cursor = Some((key.clone(), doc.clone()));
             let value = project_doc(&doc, plan.project.as_ref())?;
             let row_len = json_byte_len(&value);
@@ -497,6 +511,21 @@ fn operand_as_json(op: &Operand, params: &BTreeMap<String, JsonValue>) -> Option
         Operand::Param { name } => params.get(name).cloned(),
         Operand::Path { .. } => None,
     }
+}
+
+/// Cooperative deadline + cancellation (APB-7 T8).
+fn check_governance(options: &QueryRunOptions, started: Instant) -> Result<(), Error> {
+    if let Some(ref cancel) = options.cancel {
+        cancel.check()?;
+    }
+    if let Some(deadline) = options.deadline {
+        if started.elapsed() >= deadline {
+            return Err(Error::DeadlineExceeded(
+                "query deadline exceeded".into(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn check_doc_budget(budget: Option<QueryBudget>, examined: u64) -> Result<(), Error> {

@@ -201,6 +201,9 @@ fn app0_rust_compile_surface() {
         consistency: ConsistencyMode::Available,
         budget: Some(AppQueryBudget::documents(50_000)),
         explain: false,
+        after: None,
+        deadline: None,
+        cancel: None,
     };
     let err = col.rql("from orders", &params, opts).unwrap_err();
     assert_eq!(err.code(), ErrorCode::Internal);

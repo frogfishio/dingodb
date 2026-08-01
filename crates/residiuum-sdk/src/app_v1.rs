@@ -214,6 +214,16 @@ pub struct QueryRunOptions {
     /// Preferred over source `after` clause (still rejected at compile until
     /// product continuation surface freezes).
     pub after: Option<Continuation>,
+    /// Wall-clock budget from the start of this page execution (APB-7 T8).
+    ///
+    /// When elapsed time reaches this duration, the executor fails closed with
+    /// [`Error::DeadlineExceeded`]. Checked cooperatively between scan steps.
+    pub deadline: Option<Duration>,
+    /// Cooperative cancellation (APB-7 T8). Shared via [`crate::CancelToken`].
+    ///
+    /// When cancelled, the executor fails closed with
+    /// [`Error::ResourceLimit`] (`query cancelled`).
+    pub cancel: Option<crate::resource::CancelToken>,
 }
 
 impl Default for QueryRunOptions {
@@ -225,6 +235,8 @@ impl Default for QueryRunOptions {
             budget: None,
             explain: false,
             after: None,
+            deadline: None,
+            cancel: None,
         }
     }
 }

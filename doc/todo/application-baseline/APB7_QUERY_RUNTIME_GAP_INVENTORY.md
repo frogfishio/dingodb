@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0–T5 2026-08-02** (… + ReadView-bound page path) · package `APB-7` **active / not accept**  
+Status: **T0–T5 + T8 2026-08-02** (… + deadline/cancel) · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -134,7 +134,7 @@ honest residual until APP-7/APB-7 activate wire.
 | G8 | View / parameter bound in cursor | **gap** | Cursor binds heap/collection/plan; **not** ReadView id / full parameter MAC set |
 | G9 | Complete-by-default coverage | **T3 partial** | `ScanJsonPage` carries hole evidence (embedded list/get race); RQL page coverage still stub-complete |
 | G10 | Budgets max_bytes / max_result_bytes | **T2 partial** | Enforced in `query_exec_v1` (compact JSON lengths); documents budget retained |
-| G11 | Deadline / cancellation | **missing** | No cooperative cancel token on façade |
+| G11 | Deadline / cancellation | **T8 partial** | `QueryRunOptions::{deadline,cancel}`; cooperative checks in executor; tests 4/4 |
 | G12 | Index-versus-scan oracle | **T4 partial** | Equality AND pushdown via `lookup_index_keys` + re-eval; differential tests; remote residual |
 | G13 | Independent complete-scan oracle suite | **partial** | APP-6 equality tests; not full dual-path differential |
 | G14 | Remote op **118** product path | **blocked** | Wire reserved; APP-7 + HAR-4 |
@@ -161,6 +161,10 @@ Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 | **T5** | `6c7601a5` | **in_review** | ReadView-bound page path (`ViewBoundCollection`; tests 4/4) |
 | **T6** | `48b8f01b` | **todo** | Op 118 activate (HAR-4 blocked) |
 | **T7** | `9e19bd5f` | **todo** | Dual-pack + accept checklist |
+| **T8** | `5bd3fe3b` | **in_review** | Deadline + CancelToken (`apb7_deadline_cancel` 4/4) |
+| **T9** | `99e32b76` | **todo** | Coverage grade (next pull) |
+| **T10** | `b11912fe` | **todo** | Product cursor secrets |
+| **T11** | `f6633005` | **todo** | Multipage oracle matrix |
 
 Do **not** invent the next slice in markdown alone — pull or create the board card first (GOV T1).
 
