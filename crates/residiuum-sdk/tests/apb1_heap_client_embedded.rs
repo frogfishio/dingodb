@@ -1,7 +1,8 @@
 //! APB-1 G1: `HeapClient` / `CollectionClient` façade over embedded [`Heap`].
 //!
-//! Normative: MUST_ADD §5; inventory `APB1_CLIENT_GAP_INVENTORY.md` G1–G2 start.
-//! No package accept. Remote `From` not claimed.
+//! Normative: MUST_ADD §5; inventory `APB1_CLIENT_GAP_INVENTORY.md` G1–G2.
+//! Remote bind covered by server `apb1_heap_client_from_remote_*` (G1b).
+//! No package accept.
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,

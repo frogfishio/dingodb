@@ -11,10 +11,14 @@
 use crate::error::Error;
 use crate::heap::{Heap, HeapCollection};
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
+use crate::remote_heap::RemoteHeap;
 use residiuum_heap::{CollectionId, HeapId};
+use residiuum_store::DurabilityMode;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Profile label for the public Rust application façade.
@@ -242,20 +246,22 @@ pub struct QueryExplanation {
     pub tree: serde_json::Value,
 }
 
-/// Sealed storage backend for [`HeapClient`] (APB-1 G1).
+/// Sealed storage backend for [`HeapClient`] (APB-1 G1 / G1b).
 ///
-/// Remote adapter is a later slice; unbound remains the contract-only fixture.
+/// Unbound remains the contract-only fixture.
 enum HeapBackend {
     /// No storage — `from_id_for_contract` / APP-0 fixtures.
     Unbound,
     /// Embedded capability-gated [`Heap`].
     Embedded(Heap),
+    /// Qualified remote session ([`RemoteHeap`]); shared with collection handles.
+    Remote(Arc<Mutex<RemoteHeap>>),
 }
 
 /// Heap-bound application client (façade).
 ///
-/// Bind storage with [`HeapClient::from`] / [`From<Heap>`] (APB-1 G1). Contract
-/// fixtures use [`HeapClient::from_id_for_contract`] (unbound, fail-closed IO).
+/// Bind storage with [`From<Heap>`] or [`From<RemoteHeap>`] (APB-1 G1/G1b).
+/// Contract fixtures use [`HeapClient::from_id_for_contract`] (unbound, fail-closed).
 pub struct HeapClient {
     heap_id: HeapId,
     backend: HeapBackend,
@@ -266,6 +272,7 @@ impl fmt::Debug for HeapClient {
         let backend = match &self.backend {
             HeapBackend::Unbound => "unbound",
             HeapBackend::Embedded(_) => "embedded",
+            HeapBackend::Remote(_) => "remote",
         };
         f.debug_struct("HeapClient")
             .field("heap_id", &self.heap_id)
@@ -279,6 +286,15 @@ impl From<Heap> for HeapClient {
         Self {
             heap_id: heap.id(),
             backend: HeapBackend::Embedded(heap),
+        }
+    }
+}
+
+impl From<RemoteHeap> for HeapClient {
+    fn from(remote: RemoteHeap) -> Self {
+        Self {
+            heap_id: remote.id(),
+            backend: HeapBackend::Remote(Arc::new(Mutex::new(remote))),
         }
     }
 }
@@ -318,35 +334,54 @@ impl HeapClient {
     ) -> Result<CreateCollectionResult, Error> {
         match &self.backend {
             HeapBackend::Unbound => Err(Error::Internal(
-                "HeapClient unbound; construct with From<Heap> (APB-1 G1) or use Heap::create_collection".into(),
+                "HeapClient unbound; construct with From<Heap|RemoteHeap> (APB-1)".into(),
             )),
             HeapBackend::Embedded(heap) => {
                 let created = heap.create_collection_with(name, options.operation_id)?;
                 Ok(create_result_from_embedded(created))
             }
+            HeapBackend::Remote(remote) => {
+                let mut guard = lock_remote(remote)?;
+                let created = guard.create_collection(name, options.operation_id)?;
+                create_result_from_remote(self.heap_id, Arc::clone(remote), created)
+            }
         }
     }
 
-    /// Open by canonical name (embedded: [`Heap::collection`]).
+    /// Open by canonical name (embedded: [`Heap::collection`]; remote: op 105).
     pub fn open_collection(&mut self, name: &str) -> Result<CollectionClient, Error> {
         match &self.backend {
             HeapBackend::Unbound => Err(Error::Internal(
-                "HeapClient unbound; construct with From<Heap> (APB-1 G1) or use Heap::collection"
-                    .into(),
+                "HeapClient unbound; construct with From<Heap|RemoteHeap> (APB-1)".into(),
             )),
             HeapBackend::Embedded(heap) => {
                 let hc = heap.collection(name)?;
                 Ok(CollectionClient::from_embedded(hc))
             }
+            HeapBackend::Remote(remote) => {
+                let mut guard = lock_remote(remote)?;
+                let cid_s = guard.collection_open(name)?;
+                let collection_id = CollectionId::from_str(&cid_s)
+                    .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))?;
+                Ok(CollectionClient::from_remote(
+                    self.heap_id,
+                    collection_id,
+                    name.to_string(),
+                    Arc::clone(remote),
+                    cid_s,
+                ))
+            }
         }
     }
 
-    /// List collections (embedded: [`Heap::list_collections`]).
+    /// List collections (embedded catalog; remote op 110).
+    ///
+    /// Remote wire omits descriptor hashes today — listed remote rows use
+    /// zeroed `descriptor_hash` until the wire grows the field.
     pub fn list_collections(&mut self) -> Result<Vec<CollectionInfo>, Error> {
         match &self.backend {
             HeapBackend::Unbound => Err(Error::Internal(
-                "HeapClient unbound; construct with From<Heap> (APB-1 G1) or use Heap::list_collections"
-                    .into(),
+                "HeapClient unbound; construct with From<Heap|RemoteHeap> (APB-1)".into(),
             )),
             HeapBackend::Embedded(heap) => {
                 let listed = heap.list_collections()?;
@@ -360,8 +395,30 @@ impl HeapClient {
                     })
                     .collect())
             }
+            HeapBackend::Remote(remote) => {
+                let mut guard = lock_remote(remote)?;
+                let listed = guard.list_collections()?;
+                let mut out = Vec::with_capacity(listed.len());
+                for (id_s, name) in listed {
+                    let collection_id = CollectionId::from_str(&id_s)
+                        .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))?;
+                    out.push(CollectionInfo {
+                        heap_id: self.heap_id,
+                        collection_id,
+                        name,
+                        descriptor_hash: [0u8; 32],
+                    });
+                }
+                Ok(out)
+            }
         }
     }
+}
+
+fn lock_remote(remote: &Arc<Mutex<RemoteHeap>>) -> Result<std::sync::MutexGuard<'_, RemoteHeap>, Error> {
+    remote
+        .lock()
+        .map_err(|_| Error::Internal("RemoteHeap mutex poisoned".into()))
 }
 
 fn create_result_from_embedded(
@@ -383,12 +440,81 @@ fn create_result_from_embedded(
     }
 }
 
-/// Sealed collection backend (embedded handle when bound).
+fn create_result_from_remote(
+    heap_id: HeapId,
+    remote: Arc<Mutex<RemoteHeap>>,
+    created: crate::remote_heap::RemoteCreatedCollection,
+) -> Result<CreateCollectionResult, Error> {
+    let collection_id = CollectionId::from_str(&created.collection_id)
+        .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))?;
+    let descriptor_hash = parse_hex32(&created.descriptor_hash)?;
+    let receipt_id = if created.receipt_id.is_empty() {
+        [0u8; 16]
+    } else {
+        parse_hex16(&created.receipt_id)?
+    };
+    Ok(CreateCollectionResult {
+        collection: CollectionClient::from_remote(
+            heap_id,
+            collection_id,
+            created.canonical_name,
+            remote,
+            created.collection_id,
+        ),
+        receipt: CollectionCreateReceipt {
+            receipt_id,
+            operation: AdminOperation::CreateCollection,
+            heap_id,
+            collection_id,
+            descriptor_hash,
+            created_at: SystemTime::now(),
+        },
+    })
+}
+
+fn parse_hex16(s: &str) -> Result<[u8; 16], Error> {
+    let clean: String = s.chars().filter(|c| *c != '-').collect();
+    if clean.len() != 32 {
+        return Err(Error::ProtocolViolation(format!(
+            "expected 16-byte hex, got len {}",
+            clean.len()
+        )));
+    }
+    let mut out = [0u8; 16];
+    for i in 0..16 {
+        out[i] = u8::from_str_radix(&clean[i * 2..i * 2 + 2], 16)
+            .map_err(|e| Error::ProtocolViolation(format!("hex: {e}")))?;
+    }
+    Ok(out)
+}
+
+fn parse_hex32(s: &str) -> Result<[u8; 32], Error> {
+    let clean: String = s.chars().filter(|c| *c != '-').collect();
+    if clean.len() != 64 {
+        return Err(Error::ProtocolViolation(format!(
+            "expected 32-byte hex, got len {}",
+            clean.len()
+        )));
+    }
+    let mut out = [0u8; 32];
+    for i in 0..32 {
+        out[i] = u8::from_str_radix(&clean[i * 2..i * 2 + 2], 16)
+            .map_err(|e| Error::ProtocolViolation(format!("hex: {e}")))?;
+    }
+    Ok(out)
+}
+
+/// Sealed collection backend (embedded or remote handle when bound).
 enum CollectionBackend {
     /// Identity-only / contract fixture.
     Unbound,
-    /// Embedded [`HeapCollection`] for data-plane methods (APP-3+ wiring).
+    /// Embedded [`HeapCollection`] for data-plane methods.
     Embedded(HeapCollection),
+    /// Remote collection: wire collection UUID + shared session.
+    Remote {
+        remote: Arc<Mutex<RemoteHeap>>,
+        wire_collection_id: String,
+    },
 }
 
 /// Collection-bound application client (façade).
@@ -404,6 +530,7 @@ impl fmt::Debug for CollectionClient {
         let backend = match &self.backend {
             CollectionBackend::Unbound => "unbound",
             CollectionBackend::Embedded(_) => "embedded",
+            CollectionBackend::Remote { .. } => "remote",
         };
         f.debug_struct("CollectionClient")
             .field("heap_id", &self.heap_id)
@@ -438,7 +565,25 @@ impl CollectionClient {
         }
     }
 
-    /// Whether this client holds an embedded collection handle.
+    fn from_remote(
+        heap_id: HeapId,
+        collection_id: CollectionId,
+        name: String,
+        remote: Arc<Mutex<RemoteHeap>>,
+        wire_collection_id: String,
+    ) -> Self {
+        Self {
+            heap_id,
+            collection_id,
+            name,
+            backend: CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            },
+        }
+    }
+
+    /// Whether this client holds an embedded or remote collection handle.
     pub fn is_bound(&self) -> bool {
         !matches!(self.backend, CollectionBackend::Unbound)
     }
@@ -458,7 +603,7 @@ impl CollectionClient {
         &self.name
     }
 
-    /// JSON put (APP-3).
+    /// JSON put (APP-3 / APB-2 path; embedded + remote).
     pub fn put<T: Serialize>(
         &mut self,
         key: &str,
@@ -468,12 +613,23 @@ impl CollectionClient {
             CollectionBackend::Unbound => Err(Error::Internal(
                 "CollectionClient unbound; open via HeapClient::open_collection / create (APB-1)".into(),
             )),
-            // Data plane already works on embedded handles; façade forwards (APP-3/APB-2 path).
             CollectionBackend::Embedded(hc) => hc.put(key, value),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let json = serde_json::to_value(value)
+                    .map_err(|e| Error::ValidationMsg(format!("serialize: {e}")))?;
+                let mut guard = lock_remote(remote)?;
+                let (event_id_s, version_s) =
+                    guard.put_json(wire_collection_id, key, &json)?;
+                Ok(write_receipt_from_remote_ids(key, &event_id_s, &version_s)?)
+            }
         }
     }
 
-    /// JSON put with options (APP-3).
+    /// JSON put with options (APP-3). Remote ignores durability options today
+    /// (server default); embedded honors [`PutOptions`].
     pub fn put_with<T: Serialize>(
         &mut self,
         key: &str,
@@ -485,6 +641,11 @@ impl CollectionClient {
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             )),
             CollectionBackend::Embedded(hc) => hc.put_with(key, value, options),
+            CollectionBackend::Remote { .. } => {
+                // Wire put path has no durability field on this surface yet.
+                let _ = options;
+                self.put(key, value)
+            }
         }
     }
 
@@ -495,6 +656,15 @@ impl CollectionClient {
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             )),
             CollectionBackend::Embedded(hc) => hc.put_bytes(key, value),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let (event_id_s, version_s) =
+                    guard.put_bytes(wire_collection_id, key, value)?;
+                Ok(write_receipt_from_remote_ids(key, &event_id_s, &version_s)?)
+            }
         }
     }
 
@@ -505,6 +675,13 @@ impl CollectionClient {
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             )),
             CollectionBackend::Embedded(hc) => hc.get(key),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                guard.get_json(wire_collection_id, key)
+            }
         }
     }
 
@@ -515,6 +692,13 @@ impl CollectionClient {
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             )),
             CollectionBackend::Embedded(hc) => hc.get_bytes(key),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                guard.get_bytes(wire_collection_id, key)
+            }
         }
     }
 
@@ -525,6 +709,24 @@ impl CollectionClient {
                 "CollectionClient unbound; open via HeapClient (APB-1)".into(),
             )),
             CollectionBackend::Embedded(hc) => hc.delete(key),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let removed = guard.delete(wire_collection_id, key)?;
+                // Remote delete returns only removed: bool today — receipt ids zeroed.
+                Ok(DeleteReceipt {
+                    key: key.to_string(),
+                    removed,
+                    event_id: [0u8; 16],
+                    version: [0u8; 16],
+                    acknowledgement: DurabilityMode::Durable,
+                    committed: true,
+                    store_id: [0u8; 16],
+                    segment_id: [0u8; 16],
+                })
+            }
         }
     }
 
@@ -551,6 +753,25 @@ impl CollectionClient {
             "APP-0 contract surface: explain_rql activates in APP-5…APP-7".into(),
         ))
     }
+}
+
+/// Map remote put event/version hex ids into a façade [`WriteReceipt`].
+///
+/// Wire put does not yet return store/segment ids; those fields are zeroed.
+fn write_receipt_from_remote_ids(
+    key: &str,
+    event_id_s: &str,
+    version_s: &str,
+) -> Result<WriteReceipt, Error> {
+    Ok(WriteReceipt {
+        key: key.to_string(),
+        event_id: parse_hex16(event_id_s).unwrap_or([0u8; 16]),
+        version: parse_hex16(version_s).unwrap_or([0u8; 16]),
+        acknowledgement: DurabilityMode::Durable,
+        committed: true,
+        store_id: [0u8; 16],
+        segment_id: [0u8; 16],
+    })
 }
 
 #[cfg(test)]

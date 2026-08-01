@@ -1,12 +1,13 @@
 # APB-1 — HeapClient / CollectionClient gap inventory
 
-Status: **labor inventory v1.1** (2026-08-01) · package `APB-1` **active / not accept**  
+Status: **labor inventory v1.2** (2026-08-01) · package `APB-1` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §5 · [CORE plan](./CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §3–4 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
 
-This document is a **gap inventory only**. It does not implement the unified
-client, does not claim product readiness, and does not change wire schemas.
+This document tracks **gaps vs APB-1 exit**. G1/G1b façade bind is labor-
+landed; dual-backend suite, Index/History, and package accept remain open.
+It does not claim product readiness and does not change wire schemas.
 
 ---
 
@@ -37,7 +38,7 @@ backends. This inventory does **not** meet exit.
 |---|---|---|
 | `APB-0` | **accept** | baseline-v1 frozen — ops/types OK to implement against |
 | `HAR-1` | scoreboard still says op **106 reserved** | **Stale vs reality:** APP-1 labor has op **106 active** + schemas + `RemoteHeap::create_collection` / `Heap::create_collection`. HAR-1 T1 must reconcile Evidence/State before APB-1 claims *qualified* create. |
-| `APP-1` | **active** | Embedded + remote create paths exist; façade not wired |
+| `APP-1` | **active** | Create paths exist; façade G1+G1b now wires create/open/list (+ basic put/get/delete) |
 | `APP-2` | not_started | Normative “implementation core of APB-1” (MUST_ADD map) |
 | `APP-4` / `APP-5` | **accept** | Pure plan/compiler ready for later APB-7; **not** APB-1 exit |
 
@@ -53,13 +54,14 @@ accept before APB-1 product claim language.
 | Type / method | Status | Notes |
 |---|---|---|
 | `HeapClient` + `From<Heap>` sealed `Embedded` | **G1 landed** | Unbound fixtures remain fail-closed |
-| `HeapClient::create_collection[_with]` | **embedded wired** | Forwards to `Heap::create_collection_with` |
-| `HeapClient::open_collection` / `list_collections` | **embedded wired** | Forwards to `Heap` |
-| `CollectionClient` + embedded handle | **G1 landed** | Bound from create/open |
-| `CollectionClient::{put,get,delete,…}` | **embedded forward** | Works when bound; unbound fail-closed |
+| `HeapClient` + `From<RemoteHeap>` sealed `Remote(Arc<Mutex<_>>)` | **G1b landed** | Shared session with collection handles |
+| `HeapClient::create_collection[_with]` | **embedded + remote wired** | Remote → op 106; receipt maps wire hex |
+| `HeapClient::open_collection` / `list_collections` | **embedded + remote wired** | Remote open 105 / list 110; list zeros `descriptor_hash` until wire grows field |
+| `CollectionClient` + embedded/remote handle | **G1/G1b landed** | Bound from create/open |
+| `CollectionClient::{put,get,delete,…}` | **embedded + remote forward** | Remote put maps event/version; delete receipt ids zeroed (wire returns bool only) |
 | `CollectionClient::{rql,explain_rql}` | **stub** | APP-5…7 activation messages (compiler is APP-5 accept; **execution** APB-7) |
 | `IndexManager` / `HistoryClient` / `RecoveryClient` | **missing types** | Not on `app_v1` façade |
-| `From<Heap>` / `From<RemoteHeap>` constructors | **missing** | MUST_ADD “change only constructor” |
+| Named connect helpers (`open_embedded` / `connect_remote`) | **optional residual** | `From` constructors cover bind; baseline registry may still want helpers |
 
 ### 3.2 Working embedded path (`residiuum_sdk::Heap` / `HeapCollection`)
 
@@ -89,10 +91,10 @@ From `operations-v1.json` (`must_add_package: APB-1`):
 
 | app_id | Rust methods (registry) | Wire | Gap vs façade |
 |---|---|---|---|
-| `apb.heap.bind` | `HeapClient::open_embedded`, `connect_remote` | app_facade | **Missing** constructors / sealed backend enum |
-| `apb.collection.open` | `HeapClient::collection` / open | **active** (105) | Stub; embedded+remote exist outside façade |
-| `apb.collection.create` | `HeapClient::create_collection` | **active** (106) | Stub façade; real on Heap/RemoteHeap |
-| `apb.collection.list` | `HeapClient::list_collections` | **active** (110) | Stub façade |
+| `apb.heap.bind` | `HeapClient::open_embedded`, `connect_remote` | app_facade | **`From<Heap>` / `From<RemoteHeap>` landed**; named helpers optional residual |
+| `apb.collection.open` | `HeapClient::collection` / open | **active** (105) | **Wired** on both backends |
+| `apb.collection.create` | `HeapClient::create_collection` | **active** (106) | **Wired** on both backends (HAR-1 evidence residual) |
+| `apb.collection.list` | `HeapClient::list_collections` | **active** (110) | **Wired**; remote list zeros descriptor_hash |
 | `apb.index.list` | `IndexManager::list` | **active** (130) | Type missing; remote `index_list` exists |
 | `apb.index.create` | `IndexManager::create` | **active** (131) | Type missing |
 | `apb.index.drop` | `IndexManager::drop` | **active** | Type missing; remote has drop |
@@ -105,7 +107,7 @@ APB-1 inventory still lists them as *adjacent* so the façade seam is planned on
 
 | Adjacent | Owning package | Façade today |
 |---|---|---|
-| put / get / delete | APB-2 / APP-3 | stubs |
+| put / get / delete | APB-2 / APP-3 | **basic forward both backends**; options/conditional residual |
 | rql / explain_rql | APB-7 (+ APP-6) | stubs; pure compiler APP-5 **accept** |
 | read_view | APB-6 | missing |
 
@@ -117,13 +119,13 @@ Priority order for **APB-1 labor after this inventory** (not started here):
 
 | # | Gap | Proposed package slice | Depends |
 |---:|---|---|---|
-| G1 | Sealed backend + `From<Heap>` / `From<RemoteHeap>` / connect helpers | APB-1 / APP-2 | **Partial 2026-08-01:** `From<Heap>` + create/open/list + put/get/delete forward; **RemoteHeap From pending** |
-| G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | **Embedded suite:** `apb1_heap_client_embedded` 2/2; remote parity pending |
+| G1 | Sealed backend + `From<Heap>` / `From<RemoteHeap>` / connect helpers | APB-1 / APP-2 | **G1+G1b 2026-08-01:** Unbound\|Embedded\|Remote; both `From`s; create/open/list + put/get/delete both backends |
+| G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | **Embedded** `apb1_heap_client_embedded` 2/2; **remote** `apb1_heap_client_from_remote_open_put_get_delete` (hp007) ok; dual shared suite still open |
 | G3 | `IndexManager` façade over embedded indexes + remote index_* | APB-1 | G1 |
 | G4 | `CollectionClient::history` / HistoryClient | APB-1 | G1; DEF-099 |
 | G5 | RecoveryClient only when wire un-reserves or pure local examine defined | APB-1 later | reserved wire honesty |
 | G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | G2–G4 |
-| G7 | put/get/delete façade binding | **APP-3 / APB-2** | G1 |
+| G7 | put/get/delete façade binding | **APP-3 / APB-2** | **Basic forward done on G1/G1b**; conditional/add/upsert + options parity still APB-2 |
 | G8 | rql execution + cursor | **APP-6 / APB-7** | APP-5 accept ✓; G1; HAR-4 for remote |
 
 **Out of APB-1 scope (do not pull forward):** watches, import/export, bulk,
@@ -136,9 +138,10 @@ aggregates, document-path mutate — later APB packages.
 Principal §0.8 still prioritizes query path. After APP-5 accept:
 
 ```text
-NOW   APB-1 G1–G2  min client bind + create/open/list (enables later APB-6/7)
+DONE  APB-1 G1+G1b  From<Heap|RemoteHeap> + create/open/list + basic put/get/delete
+NOW   APB-1 G3–G4   IndexManager + history (or dual shared suite G6 scaffolding)
   ||  HAR-0 residual + HAR-1 scoreboard reconcile (provisioning honesty)
-THEN  APP-3 / APB-2 CRUD on façade (or keep HeapCollection until suite demands)
+THEN  APP-3 / APB-2 richer mutation (conditional/add/upsert) on façade
 THEN  APB-6 read views
 THEN  APP-6 / APB-7 RQL execution (compiler ready)
 ```
@@ -153,11 +156,12 @@ Do **not** claim APB-1 accept until dual-backend suite exits.
 |---|---|
 | Inventory (this file) | `doc/todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md` |
 | Ops registry | `spec/app/baseline-v1/operations-v1.json` (10 APB-1 rows) |
-| Façade | `crates/residiuum-sdk/src/app_v1.rs` (`From<Heap>`, sealed backends) |
+| Façade | `crates/residiuum-sdk/src/app_v1.rs` (`From<Heap>`, `From<RemoteHeap>`, sealed backends) |
 | Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** |
+| Remote suite | `cargo test -p residiuum-server --features dangerous-key-export --test hp007_connect_heap apb1_heap_client_from_remote` **1/1** |
 | Embedded | `crates/residiuum-sdk/src/heap.rs` |
 | Remote | `crates/residiuum-sdk/src/remote_heap.rs` |
-| Scoreboard | `APB-1` → **active** (not accept); G1 partial |
+| Scoreboard | `APB-1` → **active** (not accept); G1+G1b bind landed; Index/History/dual suite residual |
 
 ---
 
