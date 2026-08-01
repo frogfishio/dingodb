@@ -1,6 +1,7 @@
 # Formal Assurance Spine
 
-State: **TODO — FAS-0 blocked by CSQ-12**
+State: **foundation in progress — FAS-0…FAS-4 scoreboard accept (MVP scopes);
+FAS-5+ open.** Operator guide: [formal/HOW_TO_USE.md](../../../formal/HOW_TO_USE.md).
 
 Program: `FAS`
 
@@ -15,16 +16,18 @@ to adversarial qualification evidence.
 | [FORMAL_KERNEL_MODEL_CONTRACT.md](FORMAL_KERNEL_MODEL_CONTRACT.md) | Exact abstract types, state, operations, observations, well-formedness and Rust-refinement obligations |
 | [FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md](FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md) | Package order, repositories, tooling, artifacts, tests and acceptance |
 
-The foundation starts immediately after `CSQ-12` alongside PQH and M1.
-Feature-specific theorem families enter with their feature:
+`CSQ-12` is scoreboard **accept**; FA0 foundation packages **FAS-0…FAS-4** are
+scoreboard **accept** (FAS-4 = consistency MVP). Feature-specific families
+continue with their features:
 
 ```text
-CSQ-12
+CSQ-12 (accept)
   ↓
-FAS foundation + consistency
-  ├── security/noninterference
-  ├── Atomics/isolation when Atomics enters
-  └── cluster agreement/convergence before cluster implementation
+FAS-0…4 foundation + consistency MVP   ← delivered (see formal/HOW_TO_USE.md)
+  ├── FAS-5 security/noninterference     ← next formal lane
+  ├── FAS-6/7 Atomics/isolation when Atomics enters
+  └── FAS-8 cluster before cluster product
+FAS-9 public proof bundle after families land
 ```
 
 Residiuum never claims “the whole database is formally verified.” It publishes

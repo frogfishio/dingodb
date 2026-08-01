@@ -37,6 +37,13 @@ jobs:
       - name: Delivery scoreboard (M0-3)
         run: bash ./scripts/verify-delivery-status.sh
 
+      # FAS-0 — formal claim registry (fail-closed; bash + python3 only).
+      # Full FAS-1…FAS-4 package gates are heavier (Lean/Verus/Kani/TLC + CSQ
+      # evidence under target/); run scripts/check-formal-*.sh on formal changes.
+      # See formal/HOW_TO_USE.md §1b.
+      - name: Formal registry (FAS-0)
+        run: bash ./scripts/check-formal-registry.sh
+
       - name: Residiuum protocol identity reset
         run: node ./scripts/check-residiuum-identity.mjs
 
