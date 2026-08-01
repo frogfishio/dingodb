@@ -78,10 +78,10 @@ mod value;
 
 pub use app_v1::{
     AdminOperation, AddResult, CollectionClient, CollectionCreateReceipt, CollectionInfo,
-    ConsistencyEvidence, ConsistencyMode, Continuation, CoverageEvidence, CoveragePolicy,
-    CreateCollectionOptions, CreateCollectionResult, DeleteWithOptions, HeapClient, HoleEvidence,
-    IndexManager, KeyProfile, Parameters, QueryExplanation, QueryId, QueryPage, QueryRow,
-    QueryRunOptions, ReplaceOptions, UpsertResult, CURSOR_PROFILE, KEY_PROFILE_RANDOM_V1,
+    CollectionQuery, ConsistencyEvidence, ConsistencyMode, Continuation, CoverageEvidence,
+    CoveragePolicy, CreateCollectionOptions, CreateCollectionResult, DeleteWithOptions, HeapClient,
+    HoleEvidence, IndexManager, KeyProfile, Parameters, QueryExplanation, QueryId, QueryPage,
+    QueryRow, QueryRunOptions, ReplaceOptions, UpsertResult, CURSOR_PROFILE, KEY_PROFILE_RANDOM_V1,
     RQL_APP_CORE_PROFILE, RQL_PLAN_PROFILE, PREDICATE_PROFILE, RUST_APP_PROFILE,
 };
 /// Application Core query budget (APP-0). Distinct from legacy [`filter::QueryBudget`].

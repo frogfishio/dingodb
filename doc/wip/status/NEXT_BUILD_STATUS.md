@@ -102,7 +102,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
 | APB-6 | active | 2026-08-02 | APB-1, APB-3 | **T1** scaffold + **T2** embedded pin: `Heap`/`HeapStore::segment_fingerprint`; `ReadView` `FrontierKind::SegmentFingerprint` + `observation_pinned`; `check_drift` / `refresh_pin`; remote residual live-unpinned; inventory [APB6_READ_VIEW_GAP_INVENTORY.md](../../todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md); `cargo test -p residiuum-sdk --test apb6_read_view_scaffold` **3/3** (+ lib unit) | view-bound query/export, retention pin, remote pin, mutation-between-pages matrix, APB-3 lifecycle; **no package accept / no snapshot claim** | read consistency |
-| APB-7 | active | 2026-08-02 | APB-1, APB-6, APP-4, APP-5 | **T0** inventory: [APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../../todo/application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md) — maps MUST_ADD §11 / PD-009 + ops 115/116/118/119 to APP-4/5 accept, APP-6 executor, APB-6 pin; G1–G20 gaps; **no product query / no op 118 / no package accept** | façade `query()` builder; executor hardening (bytes budget, index pushdown, scan oracle); op 118 + HAR-4 remote product path; view-bound rql; dual-pack accept | query baseline |
+| APB-7 | active | 2026-08-02 | APB-1, APB-6, APP-4, APP-5 | **T0** inventory + **T1** `CollectionClient::query()` → `CollectionQuery` (PlanBuilder compile/run/explain; plan_hash == RQL; `query_exec_v1`); [APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../../todo/application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md); `cargo test -p residiuum-sdk --test apb7_query_builder` **4/4**; **no product query / no op 118 / no package accept** | executor hardening (bytes budget, index pushdown, scan oracle); op 118 + HAR-4; view-bound rql; dual-pack accept | query baseline |
 | APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
 | APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
 | APB-10 | not_started | — | APB-3, APB-5, APB-6 | — | resumable import/export absent | data movement |
@@ -189,9 +189,9 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Card | Feature | Note |
 |---:|---|---|---|
-| 1 | **APB-7 T1** façade `query()` / PlanBuilder path | Query spine | after T0 inventory; same plan as RQL |
-| 2 | **APP-6 / APB-7** executor hardening | Query spine | bytes budget, oracle, index pushdown |
-| 3 | **APB-6** residuals (view-bound exec / retention) | Query spine | pin landed; no package accept |
+| 1 | **APB-7 T2** executor hardening | Query spine | bytes budget, field-order, scan oracle |
+| 2 | **APB-6** residuals (view-bound exec / retention) | Query spine | pin landed; no package accept |
+| 3 | **APP-7** op 118 activation path | Query spine | after façade; HAR-4 residual |
 | 4 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
 | 5 | **GOV T1** process rule | Labor governance | Kanban-first (in_review) |
 
@@ -205,8 +205,8 @@ Program order (packages; Kanban cards bind labor under them):
    with Atomics/cluster when those packages admit formal work.
 3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
    **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
-   **APB-7 active** (**T0** inventory only — no product query / no op 118);
-   **APB-1 active** (G1–G6 dual matrix); next **APB-7 T1** façade builder (board).
+   **APB-7 active** (**T0** inventory + **T1** façade `query()` builder — no product query / no op 118);
+   **APB-1 active** (G1–G6 dual matrix); next **APB-7 T2** executor hardening (board).
    Non-query APB may lag (APB-2 CAS residual is board-managed, not ad-hoc).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.

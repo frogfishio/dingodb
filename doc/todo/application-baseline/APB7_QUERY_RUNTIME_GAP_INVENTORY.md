@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **inventory 2026-08-02** · package `APB-7` **active / not accept**  
+Status: **T0 inventory + T1 façade builder 2026-08-02** · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -126,8 +126,8 @@ honest residual until APP-7/APB-7 activate wire.
 |---:|---|---|---|
 | G1 | `CollectionClient::rql` façade | **partial** | Exists (APP-6); must not claim product until APB-7 exit + wire |
 | G2 | `CollectionClient::explain_rql` | **partial** | Plan explain only; no cost model / index choice tree |
-| G3 | `collection.query()` builder on façade | **missing** | Need façade builder that builds `RqlPlanV1` / PlanBuilder, not legacy Filter |
-| G4 | Builder plan_hash == RQL plan_hash | **compile-ready** | APP-5 goldens; need façade `query().…` entry that reuses PlanBuilder |
+| G3 | `collection.query()` builder on façade | **T1 partial** | `CollectionClient::query()` → `CollectionQuery` wraps `PlanBuilder`; compile/run/explain; not product |
+| G4 | Builder plan_hash == RQL plan_hash | **T1 partial** | Façade path tested vs `compile_app_core` for equality filter + project/order/limit |
 | G5 | Projection | **partial** | Executor projects; deep field-order residual in APP-6 notes |
 | G6 | Scalar order + key tie-break | **partial** | Key-stream + full-scan+sort paths; deep order residual |
 | G7 | Limit + page + continuation | **partial** | Working under vector-lock keys; product cursor secrets residual |
@@ -153,7 +153,7 @@ Ordered for honesty; board cards may refine:
 
 | Task | Deliverable | Depends |
 |---|---|---|
-| **T1** | Façade `query()` / PlanBuilder path → same plan as RQL; no new wire | APP-4/5 |
+| **T1** | Façade `query()` / PlanBuilder path → same plan as RQL; no new wire | **done** (2026-08-02 labor; not package accept) |
 | **T2** | Hardening APP-6 executor: bytes budgets, field-order matrix, scan oracle expansion | APP-6 |
 | **T3** | Coverage evidence upgrade + façade `scan_json` (op 115) projection | DEF-100 / wire 115 |
 | **T4** | Index pushdown + scan/index differential oracle | IndexManager ready |

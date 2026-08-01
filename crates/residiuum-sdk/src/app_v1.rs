@@ -12,6 +12,10 @@ use crate::error::Error;
 use crate::heap::{Heap, HeapCollection};
 use crate::history::{KeyHistory, Version};
 use crate::indexes::IndexInfo;
+use crate::plan_v1::{
+    CollectionBindings, NullsOrder, OrderDir, PlanBuilder, RqlPlanV1,
+};
+use crate::predicate::Predicate;
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use crate::remote_heap::RemoteHeap;
 use residiuum_store::IndexState;
@@ -1109,6 +1113,17 @@ impl CollectionClient {
         IndexManager { client: self }
     }
 
+    /// Application Core builder path (APB-7 T1).
+    ///
+    /// Returns a [`CollectionQuery`] seeded with this collection's canonical
+    /// name. Compiles via [`PlanBuilder`] to the same [`RqlPlanV1`] shape as
+    /// RQL Application Core; execute reuses the APP-6 page executor.
+    ///
+    /// **Not** a product query claim; op 118 remains reserved.
+    pub fn query(&mut self) -> CollectionQuery<'_> {
+        CollectionQuery::open(self)
+    }
+
     /// RQL Application Core execution (APP-6 T2 page executor).
     ///
     /// Compiles Application Core source, scans via `list_keys`+`get`, evaluates
@@ -1154,6 +1169,146 @@ impl CollectionClient {
             ));
         }
         crate::query_exec_v1::explain_rql_source(source, self.collection_id, &self.name)
+    }
+}
+
+/// Fluent Application Core builder bound to a [`CollectionClient`] (APB-7 T1).
+///
+/// Wraps [`PlanBuilder`] so builder and RQL compile to the same plan hash when
+/// they express the same logical plan. Execution uses
+/// [`crate::query_exec_v1::execute_plan`] (not product wire op 118).
+pub struct CollectionQuery<'a> {
+    client: &'a mut CollectionClient,
+    builder: PlanBuilder,
+}
+
+impl<'a> CollectionQuery<'a> {
+    fn open(client: &'a mut CollectionClient) -> Self {
+        let name = client.name.clone();
+        Self {
+            client,
+            builder: PlanBuilder::from_source(name),
+        }
+    }
+
+    /// Attach a where predicate.
+    pub fn where_(mut self, pred: Predicate) -> Self {
+        self.builder = self.builder.where_(pred);
+        self
+    }
+
+    /// Projection field paths (dotted).
+    pub fn project<I, S>(mut self, fields: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        self.builder = self.builder.project(fields)?;
+        Ok(self)
+    }
+
+    /// Add an order term (nulls last by default).
+    pub fn order_by(mut self, path: &str, dir: OrderDir) -> Result<Self, Error> {
+        self.builder = self.builder.order_by(path, dir)?;
+        Ok(self)
+    }
+
+    /// Add an order term with explicit null/missing placement.
+    pub fn order_by_nulls(
+        mut self,
+        path: &str,
+        dir: OrderDir,
+        nulls: NullsOrder,
+    ) -> Result<Self, Error> {
+        self.builder = self.builder.order_by_nulls(path, dir, nulls)?;
+        Ok(self)
+    }
+
+    /// Total limit across pages.
+    pub fn limit(mut self, n: u64) -> Self {
+        self.builder = self.builder.limit(n);
+        self
+    }
+
+    /// Page size.
+    pub fn page_size(mut self, n: u32) -> Result<Self, Error> {
+        self.builder = self.builder.page_size(n)?;
+        Ok(self)
+    }
+
+    /// Coverage policy.
+    pub fn coverage(mut self, c: CoveragePolicy) -> Self {
+        self.builder = self.builder.coverage(c);
+        self
+    }
+
+    /// Consistency mode.
+    pub fn consistency(mut self, c: ConsistencyMode) -> Self {
+        self.builder = self.builder.consistency(c);
+        self
+    }
+
+    fn bindings(&self) -> CollectionBindings {
+        let mut bindings = CollectionBindings::default();
+        bindings.bind(self.client.name(), self.client.id());
+        bindings
+    }
+
+    /// Compile to a validated logical plan (no scan).
+    pub fn compile(self) -> Result<RqlPlanV1, Error> {
+        let bindings = self.bindings();
+        let mut plan = self.builder.compile(&bindings)?;
+        // Prefer live collection id if binding name resolution ever diverges.
+        if plan.from.collection_id != self.client.collection_id {
+            plan.from.collection_id = self.client.collection_id;
+        }
+        Ok(plan)
+    }
+
+    /// Explain: plan profile, hash, and canonical tree (no row materialization).
+    pub fn explain(self) -> Result<QueryExplanation, Error> {
+        let plan = self.compile()?;
+        Ok(QueryExplanation {
+            plan_profile: plan.profile.clone(),
+            plan_hash: plan.plan_hash(),
+            tree: plan.to_canonical_json(),
+        })
+    }
+
+    /// Execute one page against the bound collection (APP-6 executor).
+    ///
+    /// Unbound clients fail closed. Not a product query claim.
+    pub fn run(
+        self,
+        parameters: &Parameters,
+        options: QueryRunOptions,
+    ) -> Result<QueryPage, Error> {
+        if matches!(self.client.backend, CollectionBackend::Unbound) {
+            return Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            ));
+        }
+        if options.explain {
+            return Err(Error::QueryInvalid(
+                "use CollectionQuery::explain or explain_rql; run executes rows".into(),
+            ));
+        }
+        let heap_id = self.client.heap_id;
+        let collection_id = self.client.collection_id;
+        let bindings = self.bindings();
+        let mut plan = self.builder.compile(&bindings)?;
+        if plan.from.collection_id != collection_id {
+            plan.from.collection_id = collection_id;
+        }
+        crate::query_exec_v1::execute_plan(
+            self.client,
+            &plan,
+            &parameters.values,
+            &options,
+            heap_id,
+            collection_id,
+            None,
+        )
     }
 }
 
