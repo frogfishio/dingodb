@@ -1,6 +1,6 @@
 # APB-7 T0 — Query runtime gap inventory
 
-Status: **T0 inventory + T1 façade builder 2026-08-02** · package `APB-7` **active / not accept**  
+Status: **T0 inventory + T1 façade builder + T2 executor harden 2026-08-02** · package `APB-7` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §11 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-009 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -128,12 +128,12 @@ honest residual until APP-7/APB-7 activate wire.
 | G2 | `CollectionClient::explain_rql` | **partial** | Plan explain only; no cost model / index choice tree |
 | G3 | `collection.query()` builder on façade | **T1 partial** | `CollectionClient::query()` → `CollectionQuery` wraps `PlanBuilder`; compile/run/explain; not product |
 | G4 | Builder plan_hash == RQL plan_hash | **T1 partial** | Façade path tested vs `compile_app_core` for equality filter + project/order/limit |
-| G5 | Projection | **partial** | Executor projects; deep field-order residual in APP-6 notes |
-| G6 | Scalar order + key tie-break | **partial** | Key-stream + full-scan+sort paths; deep order residual |
+| G5 | Projection | **T2 partial** | Project after field-order sort on full docs (order paths need not be projected) |
+| G6 | Scalar order + key tie-break | **T2 partial** | Field-order oracle tests; multi-page field-order cursor still key-based residual |
 | G7 | Limit + page + continuation | **partial** | Working under vector-lock keys; product cursor secrets residual |
 | G8 | View / parameter bound in cursor | **gap** | Cursor binds heap/collection/plan; **not** ReadView id / full parameter MAC set |
 | G9 | Complete-by-default coverage | **stub** | Hole evidence for list/get race only; DEF-100 / scan_json façade gap |
-| G10 | Budgets max_bytes / max_result_bytes | **gap** | Documents budget only in executor |
+| G10 | Budgets max_bytes / max_result_bytes | **T2 partial** | Enforced in `query_exec_v1` (compact JSON lengths); documents budget retained |
 | G11 | Deadline / cancellation | **missing** | No cooperative cancel token on façade |
 | G12 | Index-versus-scan oracle | **missing** | No pushdown; IndexManager unused by executor |
 | G13 | Independent complete-scan oracle suite | **partial** | APP-6 equality tests; not full dual-path differential |
@@ -154,7 +154,7 @@ Ordered for honesty; board cards may refine:
 | Task | Deliverable | Depends |
 |---|---|---|
 | **T1** | Façade `query()` / PlanBuilder path → same plan as RQL; no new wire | **done** (2026-08-02 labor; not package accept) |
-| **T2** | Hardening APP-6 executor: bytes budgets, field-order matrix, scan oracle expansion | APP-6 |
+| **T2** | Hardening executor: bytes budgets, field-order on full docs, scan oracle tests | **done** (2026-08-02 labor; not package accept) |
 | **T3** | Coverage evidence upgrade + façade `scan_json` (op 115) projection | DEF-100 / wire 115 |
 | **T4** | Index pushdown + scan/index differential oracle | IndexManager ready |
 | **T5** | Optional ReadView-bound page path (fail-open only when pin stable) | APB-6 pin |

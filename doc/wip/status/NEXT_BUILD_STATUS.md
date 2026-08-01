@@ -102,7 +102,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
 | APB-6 | active | 2026-08-02 | APB-1, APB-3 | **T1** scaffold + **T2** embedded pin: `Heap`/`HeapStore::segment_fingerprint`; `ReadView` `FrontierKind::SegmentFingerprint` + `observation_pinned`; `check_drift` / `refresh_pin`; remote residual live-unpinned; inventory [APB6_READ_VIEW_GAP_INVENTORY.md](../../todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md); `cargo test -p residiuum-sdk --test apb6_read_view_scaffold` **3/3** (+ lib unit) | view-bound query/export, retention pin, remote pin, mutation-between-pages matrix, APB-3 lifecycle; **no package accept / no snapshot claim** | read consistency |
-| APB-7 | active | 2026-08-02 | APB-1, APB-6, APP-4, APP-5 | **T0** inventory + **T1** `CollectionClient::query()` → `CollectionQuery` (PlanBuilder compile/run/explain; plan_hash == RQL; `query_exec_v1`); [APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../../todo/application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md); `cargo test -p residiuum-sdk --test apb7_query_builder` **4/4**; **no product query / no op 118 / no package accept** | executor hardening (bytes budget, index pushdown, scan oracle); op 118 + HAR-4; view-bound rql; dual-pack accept | query baseline |
+| APB-7 | active | 2026-08-02 | APB-1, APB-6, APP-4, APP-5 | **T0** inventory + **T1** façade `query()` + **T2** executor harden: `max_bytes`/`max_result_bytes` + field-order sort on full docs then project; [APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../../todo/application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md); tests `apb7_query_builder` **4/4**, `apb7_executor_harden` **4/4**, `app6_page_executor` **4/4**; **no product query / no op 118 / no package accept** | index pushdown; multi-page field-order cursors; op 118 + HAR-4; view-bound rql; dual-pack accept | query baseline |
 | APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
 | APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
 | APB-10 | not_started | — | APB-3, APB-5, APB-6 | — | resumable import/export absent | data movement |
@@ -122,7 +122,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-3 | active | 2026-08-01 | APP-2, HAR-4 | façade put/get/delete + history + indexes (APB-1) + APB-2 mutations dual-pack; OCC version alignment | APP-2 scoreboard lag; store CAS; remote durability; crash matrices; **no package accept** | typed data/history/index |
 | APP-4 | accept | 2026-08-01 | APP-0 freeze | `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); `spec/app/v1/plan_vectors_v1.json` hashes locked; `cargo test -p residiuum-sdk --test app4_predicate_plan` **4/4**; builder↔fixture plan hash parity; predicate totality model (absent≠value); name-binding fail-closed | full RQL source is APP-5; scan/index oracle parity at execution (APP-6/APB-7); **no product query claim** until APB-7/HAR | canonical predicates/plans |
 | APP-5 | accept | 2026-08-01 | APP-4 | CORE §14 exit: `residiuum_sdk::rql_app_core` `compile_app_core` → `RqlPlanV1` + explain/budget run metadata; profile **`rql-app-core-v1`** (not full RQL v1); §9 surface (multi-where, project/order/nulls, coverage/consistency, predicates, budget `{documents,bytes,result_bytes}`); non-Core reject (`enrich`/`within`/`at rank`/access + `after`→APP-6) with `rql_feature_unavailable`; corpus `spec/app/v1/rql_app_core_corpus_v1.json`; `cargo test -p residiuum-sdk --lib rql_app_core` **13/13**; `--test app5_rql_app_core` **3/3**; plan_vectors `source_rql` hash lock; bounded fuzz panic-free | `after`/continuation product = APP-6; no query execution/product claim until APB-7 (+ APP-3/HAR-4 path); host must merge `CompiledAppCore.budget` with `QueryRunOptions` | RQL Application Core |
-| APP-6 | active | 2026-08-01 | APP-3, APP-5, HAR-4 | **T1** cursor mint/verify + **T2** `query_exec_v1` bounded page executor (`CollectionClient::rql` / `explain_rql`); scan = list_keys+get + predicate.eval; page_size + `QueryRunOptions.after` continuation (vector-lock keys); budget max_documents; `cargo test -p residiuum-sdk --test app6_page_executor` **4/4**; cursor tests **4/4+4/4** | product cursor secrets; field-order deep residual; HAR-4 remote op 118; index pushdown; **no product query / APB-7 claim** | query execution |
+| APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1** cursor + **T2** page executor; APB-7 T2 also enforces max_bytes/max_result_bytes + field-order full-doc sort; `app6_page_executor` **4/4**; cursor tests **4/4+4/4** | product cursor secrets; multi-page field-order cursor residual; HAR-4 remote op 118; index pushdown; **no product query / APB-7 package accept** | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `rql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
@@ -189,9 +189,9 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Card | Feature | Note |
 |---:|---|---|---|
-| 1 | **APB-7 T2** executor hardening | Query spine | bytes budget, field-order, scan oracle |
+| 1 | **APB-7 T3** coverage / scan_json façade or index pushdown | Query spine | after T2 budgets |
 | 2 | **APB-6** residuals (view-bound exec / retention) | Query spine | pin landed; no package accept |
-| 3 | **APP-7** op 118 activation path | Query spine | after façade; HAR-4 residual |
+| 3 | **APP-7** op 118 activation path | Query spine | HAR-4 residual |
 | 4 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
 | 5 | **GOV T1** process rule | Labor governance | Kanban-first (in_review) |
 
@@ -205,8 +205,8 @@ Program order (packages; Kanban cards bind labor under them):
    with Atomics/cluster when those packages admit formal work.
 3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
    **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
-   **APB-7 active** (**T0** inventory + **T1** façade `query()` builder — no product query / no op 118);
-   **APB-1 active** (G1–G6 dual matrix); next **APB-7 T2** executor hardening (board).
+   **APB-7 active** (**T0–T2** inventory + façade builder + executor budgets/field-order — no product query / no op 118);
+   **APB-1 active** (G1–G6 dual matrix); next **APB-7 T3** coverage/scan_json or index pushdown (board).
    Non-query APB may lag (APB-2 CAS residual is board-managed, not ad-hoc).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.

@@ -1,11 +1,17 @@
-//! Bounded Application Core page executor — APP-6 T2 (embedded-first).
+//! Bounded Application Core page executor — APP-6 T2 + APB-7 T2 hardening.
 //!
 //! Normative: CORE plan §10 / §14 APP-6 (partial). Compiles via
 //! [`crate::rql_app_core::compile_app_core`], scans with `list_keys` + `get`,
 //! evaluates predicates with [`crate::predicate::Predicate::eval`].
 //!
-//! **Not claimed:** product query qualification (APB-7), product cursor secrets
-//! (vector-lock ring only), remote op 118, index pushdown, snapshot reads.
+//! **T2 budgets:** `max_documents`, `max_bytes` (examined JSON), and
+//! `max_result_bytes` (projected page payload) all fail closed with
+//! [`Error::ResourceLimit`]. Field order sorts on **full documents**, then
+//! projects (so order paths need not appear in `project`).
+//!
+//! **Not claimed:** product query qualification (APB-7 package accept), product
+//! cursor secrets (vector-lock ring only), remote op 118, index pushdown,
+//! multi-page field-order continuation tuples, snapshot reads.
 
 use crate::app_v1::{
     ConsistencyEvidence, Continuation, CoverageEvidence, CoveragePolicy, HoleEvidence, Parameters,
@@ -125,13 +131,16 @@ pub fn execute_plan<S: DocScan>(
         .iter()
         .all(|t| t.tie_break || t.path.0 == ["$key"]);
 
+    // Matched rows keep full documents until final project (field-order sort).
     let mut matched: Vec<(String, JsonValue)> = Vec::new();
-    let mut examined: u64 = 0;
+    let mut examined_docs: u64 = 0;
+    let mut examined_bytes: u64 = 0;
+    let mut result_bytes: u64 = 0;
     let mut after = after_key.clone();
     let mut known_holes = Vec::new();
 
     if key_only_order {
-        // Stream until page full or scan ends.
+        // Stream until page full or scan ends; project on the way for result budget.
         'outer: loop {
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
@@ -139,24 +148,27 @@ pub fn execute_plan<S: DocScan>(
             }
             for key in batch {
                 after = Some(key.clone());
-                examined += 1;
-                if let Some(max) = budget.and_then(|b| b.max_documents) {
-                    if examined > max {
-                        return Err(Error::ResourceLimit(format!(
-                            "query budget max_documents={max} exceeded"
-                        )));
-                    }
-                }
                 match scan.get_json(&key)? {
                     None => {
                         known_holes.push(HoleEvidence {
                             code: "key_listed_absent".into(),
                             key: Some(key),
                         });
+                        // Listing still counts as one examination for documents.
+                        examined_docs += 1;
+                        check_doc_budget(budget, examined_docs)?;
                     }
                     Some(doc) => {
+                        examined_docs += 1;
+                        examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
+                        check_doc_budget(budget, examined_docs)?;
+                        check_bytes_budget(budget, examined_bytes)?;
                         if plan.where_pred.eval(&doc, params)? {
                             let value = project_doc(&doc, plan.project.as_ref())?;
+                            let row_len = json_byte_len(&value);
+                            let next_result = result_bytes.saturating_add(row_len);
+                            check_result_budget(budget, next_result)?;
+                            result_bytes = next_result;
                             matched.push((key, value));
                             if matched.len() >= need {
                                 break 'outer;
@@ -167,7 +179,8 @@ pub fn execute_plan<S: DocScan>(
             }
         }
     } else {
-        // Full scan under budget, then sort, then page slice.
+        // Full scan under budget, sort on full docs, then page + project.
+        let mut full: Vec<(String, JsonValue)> = Vec::new();
         loop {
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
@@ -175,36 +188,44 @@ pub fn execute_plan<S: DocScan>(
             }
             for key in batch {
                 after = Some(key.clone());
-                examined += 1;
-                if let Some(max) = budget.and_then(|b| b.max_documents) {
-                    if examined > max {
-                        return Err(Error::ResourceLimit(format!(
-                            "query budget max_documents={max} exceeded"
-                        )));
-                    }
-                }
                 if let Some(doc) = scan.get_json(&key)? {
+                    examined_docs += 1;
+                    examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
+                    check_doc_budget(budget, examined_docs)?;
+                    check_bytes_budget(budget, examined_bytes)?;
                     if plan.where_pred.eval(&doc, params)? {
-                        let value = project_doc(&doc, plan.project.as_ref())?;
-                        matched.push((key, value));
+                        full.push((key, doc));
                     }
+                } else {
+                    examined_docs += 1;
+                    check_doc_budget(budget, examined_docs)?;
+                    known_holes.push(HoleEvidence {
+                        code: "key_listed_absent".into(),
+                        key: Some(key),
+                    });
                 }
             }
         }
-        matched.sort_by(|(ka, va), (kb, vb)| {
-            compare_rows(ka, va, kb, vb, &plan.order)
-        });
+        full.sort_by(|(ka, va), (kb, vb)| compare_rows(ka, va, kb, vb, &plan.order));
         if let Some(n) = total_limit {
-            matched.truncate(n as usize);
+            full.truncate(n as usize);
         }
-        // Page: drop keys <= after_key from prior page when field-ordered.
+        // Residual multi-page field-order: continuation is key-based only.
         if let Some(ref ak) = after_key {
-            if let Some(pos) = matched.iter().position(|(k, _)| k == ak) {
-                matched = matched.split_off(pos + 1);
+            if let Some(pos) = full.iter().position(|(k, _)| k == ak) {
+                full = full.split_off(pos + 1);
             }
         }
-        if matched.len() > page_size {
-            matched.truncate(page_size);
+        if full.len() > page_size {
+            full.truncate(page_size);
+        }
+        for (key, doc) in full {
+            let value = project_doc(&doc, plan.project.as_ref())?;
+            let row_len = json_byte_len(&value);
+            let next_result = result_bytes.saturating_add(row_len);
+            check_result_budget(budget, next_result)?;
+            result_bytes = next_result;
+            matched.push((key, value));
         }
     }
 
@@ -221,12 +242,18 @@ pub fn execute_plan<S: DocScan>(
     let exhausted = if key_only_order && took == need {
         if let Some((last_k, _)) = matched.last() {
             let more = scan.list_keys(Some(1), Some(last_k.as_str()))?;
-            // May still have non-matching keys; check remaining stream for any match
-            // (bounded): scan up to 64 more keys for a match.
             if more.is_empty() {
                 true
             } else {
-                !has_later_match(scan, last_k, &plan.where_pred, params, budget, examined)?
+                !has_later_match(
+                    scan,
+                    last_k,
+                    &plan.where_pred,
+                    params,
+                    budget,
+                    examined_docs,
+                    examined_bytes,
+                )?
             }
         } else {
             true
@@ -260,6 +287,9 @@ pub fn execute_plan<S: DocScan>(
     let coverage_complete = known_holes.is_empty()
         && matches!(options.coverage, CoveragePolicy::Complete | CoveragePolicy::IncompleteAllowed);
 
+    let _ = result_bytes; // accounted during fill; residual: surface on QueryPage later
+    let _ = examined_bytes;
+
     Ok(QueryPage {
         query_id: QueryId(residiuum_store::random_id().map_err(Error::from)?),
         plan_hash: plan.plan_hash(),
@@ -280,13 +310,52 @@ pub fn execute_plan<S: DocScan>(
     })
 }
 
+fn json_byte_len(v: &JsonValue) -> u64 {
+    // Compact JSON encoding length — stable enough for budget accounting.
+    serde_json::to_vec(v).map(|b| b.len() as u64).unwrap_or(0)
+}
+
+fn check_doc_budget(budget: Option<QueryBudget>, examined: u64) -> Result<(), Error> {
+    if let Some(max) = budget.and_then(|b| b.max_documents) {
+        if examined > max {
+            return Err(Error::ResourceLimit(format!(
+                "query budget max_documents={max} exceeded"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn check_bytes_budget(budget: Option<QueryBudget>, examined_bytes: u64) -> Result<(), Error> {
+    if let Some(max) = budget.and_then(|b| b.max_bytes) {
+        if examined_bytes > max {
+            return Err(Error::ResourceLimit(format!(
+                "query budget max_bytes={max} exceeded (examined_bytes={examined_bytes})"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn check_result_budget(budget: Option<QueryBudget>, result_bytes: u64) -> Result<(), Error> {
+    if let Some(max) = budget.and_then(|b| b.max_result_bytes) {
+        if result_bytes > max {
+            return Err(Error::ResourceLimit(format!(
+                "query budget max_result_bytes={max} exceeded (result_bytes={result_bytes})"
+            )));
+        }
+    }
+    Ok(())
+}
+
 fn has_later_match<S: DocScan>(
     scan: &mut S,
     after_key: &str,
     pred: &Predicate,
     params: &BTreeMap<String, JsonValue>,
     budget: Option<QueryBudget>,
-    mut examined: u64,
+    mut examined_docs: u64,
+    mut examined_bytes: u64,
 ) -> Result<bool, Error> {
     let mut after = Some(after_key.to_string());
     let mut probes = 0usize;
@@ -297,21 +366,27 @@ fn has_later_match<S: DocScan>(
         }
         for key in batch {
             after = Some(key.clone());
-            examined += 1;
             probes += 1;
-            if let Some(max) = budget.and_then(|b| b.max_documents) {
-                if examined > max {
+            if let Some(doc) = scan.get_json(&key)? {
+                examined_docs += 1;
+                examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
+                if budget.and_then(|b| b.max_documents).is_some_and(|m| examined_docs > m) {
                     return Ok(false);
                 }
-            }
-            if let Some(doc) = scan.get_json(&key)? {
+                if budget.and_then(|b| b.max_bytes).is_some_and(|m| examined_bytes > m) {
+                    return Ok(false);
+                }
                 if pred.eval(&doc, params)? {
                     return Ok(true);
                 }
+            } else {
+                examined_docs += 1;
+                if budget.and_then(|b| b.max_documents).is_some_and(|m| examined_docs > m) {
+                    return Ok(false);
+                }
             }
             if probes >= 64 {
-                // Residual: may still have matches further; treat as not exhausted
-                // only if we found one; else conservative not exhausted.
+                // Residual: may still have matches further — conservative not exhausted.
                 return Ok(true);
             }
         }
