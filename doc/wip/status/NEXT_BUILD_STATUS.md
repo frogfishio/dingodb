@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (FAS-0 structural catalogue labor; not package accept)
+Updated: 2026-08-01 (CSQ-12 A2 accept + FAS-0 accept; FAS-1 active residual)
 
 This file records package qualification state and dependency truth. It does not
 change normative semantics and it does not mirror live Kanban columns. Kanban
@@ -56,18 +56,18 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | VFY-1 | not_started | — | VFY-0 | — | no preflight/infra-classified runner | evidence runner |
 | VFY-2 | not_started | — | VFY-0 | Heap matrix is ad-hoc VFY-2 partial only | no whole-DB claim map | oracle mapping |
 | CSQ-0 | accept | 2026-07-31 | — | [specification](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md); [implementation plan](../../todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md); DEF-098…DEF-104 accepted | CSQ-0 registries materialised under `spec/verification/core-storage/`; `scripts/verify-core-storage-registry.sh` green; Rust `csq0_registry` tests agree | core-storage contract |
-| CSQ-1 | accept | 2026-07-31 | CSQ-0 | — | independent model (`residiuum-store-model`) + reference-reader tool; firewall script green | storage oracles |
-| CSQ-2 | accept | 2026-07-31 | CSQ-0 | — | hit-proof failpoints; boundary↔source CI; composed-failure schedule; crash controller; FS-image inventory (campaign CSQ-5) | failure injection |
-| CSQ-3 | accept | 2026-07-31 | CSQ-1, CSQ-2 | — | frozen Residiuum microframes; bit/byte/trunc/insert/delete + holes + pairwise multi-fault; FMT-001…005 tests green | format qualification |
-| CSQ-4 | accept | 2026-07-31 | CSQ-1, CSQ-2 | — | publication kernel + transition coverage; HIST/scan/gen/shrinker; false harnesses; DEF-099/100 linked | transition qualification |
-| CSQ-5 | accept | 2026-07-31 | CSQ-2, CSQ-4 | — | matrix + composed pairs; reopen/continuation; ENOSPC/perm; writer-lock; portable FS image; outcome validator; no silent skips | persistence qualification |
+| CSQ-1 | accept | 2026-07-31 | CSQ-0 | `crates/residiuum-store-model/`; `tools/core-storage-reference-reader/`; `scripts/verify-csq-oracle-firewall.sh` green | independent model + reference-reader; residual depth optional | storage oracles |
+| CSQ-2 | accept | 2026-07-31 | CSQ-0 | `scripts/verify-csq-boundary-instrumentation.sh`; `scripts/verify-csq-crash-campaign.sh`; failpoint/boundary labor | hit-proof failpoints + crash controller; residual campaign depth optional | failure injection |
+| CSQ-3 | accept | 2026-07-31 | CSQ-1, CSQ-2 | `scripts/verify-csq-format-corpus.sh`; FMT-001…005; frozen microframes | format corpus green; residual multi-fault depth optional | format qualification |
+| CSQ-4 | accept | 2026-07-31 | CSQ-1, CSQ-2 | `scripts/verify-csq-state-machine.sh`; `crates/residiuum-store-model` publication/history; DEF-099/100 | transition + false harnesses; residual shrinker depth optional | transition qualification |
+| CSQ-5 | accept | 2026-07-31 | CSQ-2, CSQ-4 | `scripts/verify-csq-crash-campaign.sh`; persistence matrix + FS-image inventory | reopen/ENOSPC/lock cells; residual portable-image depth optional | persistence qualification |
 | CSQ-6 | accept | 2026-07-31 | CSQ-3…CSQ-5 | `tests/csq6_chunk_large_value.rs` (9); `scripts/verify-csq-chunk-large-value.sh`; DEF-098 + DEF-103 linked; suite `CSQ-SUITE-CHK` → `active_csq6`; **board `in_review`** | principal accept of CSQ-3…5 still open; deeper damage/conflict campaign residual (CSQ-7) | chunk qualification |
 | CSQ-7 | accept | 2026-07-31 | CSQ-3…CSQ-5 | `tests/csq7_damage_salvage.rs` (8); `scripts/verify-csq-damage-salvage.sh`; DEF-011 + stage salvage linked; suites DMG/REC → `active_csq7`; **board `in_review`** | principal accept CSQ-3…6 still open; encryption-unavailable semantic hole residual | survival qualification |
 | CSQ-8 | accept | 2026-07-31 | CSQ-4, CSQ-5, CSQ-7 | `tests/csq8_derived_maintenance.rs` (9); `scripts/verify-csq-derived-maintenance.sh`; DEF-102/050/051/052/024 linked; suites DER/MNT/BAK/MIG → `active_csq8`; **board `in_review`** | principal accept CSQ-4/5/7 still open; tier reclaim interruption depth residual | maintenance qualification |
 | CSQ-9 | accept | 2026-07-31 | CSQ-2, CSQ-4, CSQ-8 | `tests/csq9_concurrency_resources.rs` (9); `scripts/verify-csq-concurrency-resources.sh`; DEF-101/096/020 linked; suites CON/RES → `active_csq9`; **board `in_review`** | Loom/Shuttle kernels + full multi-process soak residual; principal accept CSQ-2/4/8 still open | boundedness qualification |
 | CSQ-10 | accept | 2026-07-31 | CSQ-3, CSQ-4, CSQ-6…CSQ-9 | `tests/csq10_mutation_fuzz.rs` (7); `scripts/verify-csq-mutation-fuzz.sh`; P0 mutants 5/5 killed; fuzz-smoke property bar owned; suite `CSQ-SUITE-MUT` → `active_csq10`; **board `in_review`** | cargo-fuzz scheduled smoke optional; Miri/sanitizer CI residual; 95% broader mutant surface residual | suite sensitivity |
 | CSQ-11 | accept | 2026-07-31 | CSQ-5…CSQ-10 | `tests/csq11_compat_scale_soak.rs` (7); `scripts/verify-csq-compat-scale-soak.sh`; suite `CSQ-SUITE-COMPAT` → `active_csq11`; platforms-v1 + wire matrix floors; DEF-104 linked in journey; **board `in_review`** | principal accept CSQ-5…10 still open; multi-version released-writer fixtures residual; full multi-platform CI + 24h/72h soak residual | release campaign |
-| CSQ-12 | active | 2026-07-31 | CSQ-0…CSQ-11 | `scripts/lib/csq_evidence.py` v2 gate eval; A2 vs A3 separation; principal authorized CSQ-0…11 scoreboard accept 2026-07-31; `residiuum-verify-core-storage.sh` | A3 residuals: platform/soak/full-mutation; CLI subcommand residual; principal may accept CSQ-12 if A2 verifies | core-storage qualification |
+| CSQ-12 | accept | 2026-08-01 | CSQ-0…CSQ-11 | `bash scripts/residiuum-verify-core-storage.sh` (+ `--require-a2-pass`) exit 0; `target/csq-evidence/a2-evaluation.json` **a2_pass=true** missing=0 cells=111; `residiuum-core-storage-report-v1.json` result=pass; independent verify ok; CSQ-0…11 scoreboard accept; principal note: accept when A2 verifies | A3 residuals only (platform matrix, 72h soak, full-mutation %); not A2 blockers | core-storage qualification |
 | PQH-0 | active | 2026-07-31 | CSQ-12 | `spec/performance/*` registries+schemas+fixtures; `scripts/verify-performance-registry.sh`; `crates/residiuum-perf` registry load/tests; **board `in_review`** | runner/workloads residual PQH-1…; CSQ-12 scoreboard accept for program entry honesty | performance measurement contract |
 | PQH-1 | active | 2026-07-31 | PQH-0 | `crates/residiuum-perf/src/runner/*` path guard, marker, budgets, preflight, platform adapters, fingerprint, cancel→`invalid_partial_cancelled`; `cargo test -p residiuum-perf --lib` 32/32; **board `in_review`** | L0+ measurement residual PQH-2…; principal accept PQH-0/1 | safe controlled runner |
 | PQH-2 | active | 2026-07-31 | PQH-0 | `crates/residiuum-perf/src/workload/*` generator/distributions/digest oracle/scheduler; fixed-size + threshold probes; `cargo test -p residiuum-perf --lib` 53/53; **board `in_review`** | L0 calibration residual PQH-4; metrics residual PQH-3; principal accept | workload oracle |
@@ -80,8 +80,8 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | PQH-9 | active | 2026-07-31 | PQH-0…PQH-8 | `crates/residiuum-perf/src/campaign/*` macOS/Linux/synthetic plans, ≥5 reps × ≥2 processes, reports, multiproc 4K/8K finding, ranked bottlenecks, hashed evidence bundle + disclosure, opt-card stubs only; `cargo test -p residiuum-perf --lib` 164/164; **board `in_review`** | controlled-runner product baseline accept; principal accept PQH-0…9 | performance qualification |
 | PQH-10 | active | 2026-07-31 | PQH-0…PQH-9 | `store_driver/*` synthetic+real (feature `store-driver`/legacy-raw-store), receipt-stream PhysicalWritePlan emitter, `residiuum-perf` CLI (preflight/run/analyze/verify/driver-smoke); synthetic NON-PRODUCT; `cargo test -p residiuum-perf --lib` 165/165; `--features store-driver` 166/166; **board `in_review`** | principal accept | operational PQH completion |
 | PQH-11 | active | 2026-07-31 | PQH-10 | **Still not qualification-accept.** Prior accepted: tput formula + floor gating. **This slice:** instrument `Store::put_many_parallel` (append/tail/publish probe + encoded_frame_len); harness always `put_many` (identical product path probe-on/off — no sequential-put bypass); multi-shard concurrent preparers + outstanding-bounded batches. Evidence: store DEF-096 probe test + store-driver lib green. **No 120s qual.** Board `in_review` | controlled host `--class qualification` 120s+512MiB + sustained window; principal accept | put_many_parallel probe + product path |
-| FAS-0 | active | 2026-08-01 | CSQ-12 | Full §12 catalogue (35) + §5 assumptions (8); ownership map; 10 schemas; negative-fixture self-tests in `check-formal-registry.sh` (**structural_ok**, package fail-closed); [FAS0_GATE.md](./FAS0_GATE.md); board FAS-0-T1/T2 `in_review` | **not accept** — CSQ-12 scoreboard accept + `FAS0_CLOSED` + principal | formal claim governance |
-| FAS-1 | not_started | — | FAS-0 | existing Heap Verus/Kani tools are precursor evidence | unified pinned multi-tool proof CI absent | reproducible proof toolchain |
+| FAS-0 | accept | 2026-08-01 | CSQ-12 | Full §12 catalogue (35) + §5 assumptions (8); ownership map; 10 schemas; negative-fixture self-tests; `formal/registry/FAS0_CLOSED`; `bash scripts/check-formal-registry.sh` **exit 0** (`structural_ok`+`closed`); [FAS0_GATE.md](./FAS0_GATE.md); CSQ-12 accept same day | residual: expand schemas/linter depth; no theorem `machine_proved` claims yet | formal claim governance |
+| FAS-1 | active | 2026-08-01 | FAS-0 | `scripts/setup-formal-tools.sh --locked` + `scripts/check-formal-toolchain.sh`; Verus pin + binary ok; report `target/formal-assurance/fas1-toolchain-report.json`; board FAS-1-T1 `in_review` | **not accept** — Lean/Kani/TLC/TLAPS still unpinned; lock `closed=false`; CI multi-tool residual | reproducible proof toolchain |
 | FAS-2 | not_started | — | FAS-0, FAS-1 | — | common abstract state/observation kernel absent | mathematical semantics |
 | FAS-3 | not_started | — | FAS-2 | existing Heap proof connections are partial precursor evidence | general Rust refinement bridge absent | implementation connection |
 | FAS-4 | not_started | — | FAS-3, applicable CSQ accept | CSQ proof obligations and models are precursor evidence | consistency theorem family not connected | formal consistency |
@@ -171,25 +171,19 @@ they do not override this package interlock.
 
 Program order (Kanban determines the individual active cards):
 
-1. **Principal accept** implementer handoffs for **CSQ-0…CSQ-11** (board
-   `in_review`; scoreboard still `active` — labor accept is independent of A2).
-2. After CSQ-0…11 scoreboard **`accept`**, re-run
-   `scripts/residiuum-verify-core-storage.sh` — A2 currently fails only on
-   `CSQ12-GATE-PREDECESSOR-ACCEPT` once labor floors are green.
-3. A3 campaign residuals (platform CI, 72h soak, full mutation %) are **not**
-   A2 blockers.
-3. Begin **PQH-0…PQH-9** as the first post-C0 measurement lane after
-   `CSQ-12 = accept`. It may run alongside M1 but must precede speculative
-   tuning or new performance claims.
-4. Begin **FAS-0…FAS-5** after CSQ as the formal foundation/consistency/security
-   lane. FAS-6…FAS-8 travel with Atomics and cluster rather than running early.
-5. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
+1. **CSQ-12 = accept** (2026-08-01): A2 independently verifies (`residiuum-verify-core-storage.sh`,
+   `a2_pass=true`, missing=0). A3 residuals remain (platform / 72h soak / full mutation %) —
+   not A2 blockers.
+2. **FAS-0 = accept** (2026-08-01): registries closed + `check-formal-registry.sh` exit 0.
+   Continue **FAS-1…FAS-5** foundation; FAS-6…FAS-8 travel with Atomics/cluster.
+3. **PQH-0…PQH-11** principal accept + controlled qualification residual (post-C0 measurement lane).
+   Must precede speculative tuning or new performance claims.
+4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
    [MUST_ADD.md](../../todo/application-baseline/MUST_ADD.md).
-6. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
+5. **HAR-0…HAR-7** interleave only where their APB dependencies permit.
 
 Do **not** mark any HAR or APP package `accept` from precursor tests alone.
-Do **not** claim `residiuum-core-storage-v1 / A2` until CSQ-12 accepts and the
-evidence bundle independently verifies.
+A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is not claimed.
 
 ## M0-2 exit checklist
 
@@ -214,6 +208,7 @@ evidence bundle independently verifies.
 | Order | Package | Note |
 |---:|---|---|
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
-| 2 | **CSQ-0…CSQ-12 principal accept** | Labor floors at board `in_review`; scoreboard `active` |
-| 3 | **CSQ-12 A2 residual gates** | Exact missing cells from evidence runner; no false A2 claim |
-| 4 | PQH-0 / FAS-0 / APB-0 | Blocked on `CSQ-12 = accept` |
+| 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
+| 3 | **FAS-1** (then FAS-2…5) | FAS-0 accept unlocked; toolchain lock next |
+| 4 | **PQH principal accept** | PQH-0…11 labor largely `in_review`; qualification residual |
+| 5 | **APB-0** | Application baseline; may run alongside PQH/FAS |
