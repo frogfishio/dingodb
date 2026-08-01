@@ -15,9 +15,10 @@
     {
       "id": "APP0-R2",
       "item": "cursor mac bytes in cursor_vectors_v1",
-      "status": "placeholder_labeled",
+      "status": "done",
       "blocks_implementer": false,
-      "resolved_by": "APP-6 cursor key material profile"
+      "note": "residiuum-cursor-v1 MAC locked under residiuum-cursor-key-material-v1 vector-lock seed (test keys only); residiuum_sdk::cursor_v1 mint/verify; product Heap-confined cursor secrets residual",
+      "resolved_by": "APP-6 T1 2026-08-01 labor"
     },
     {
       "id": "APP0-R3",

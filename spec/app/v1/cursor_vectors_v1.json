@@ -49,10 +49,12 @@
         "consistency_mode": "available",
         "issued_at": 1785360100,
         "expires_at": 1785361000,
-        "mac": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        "mac": "a0de75b183f788b58ba9181be5c72c27f5474005bdf9c28fbbb0ef79b79eacc1"
       },
-      "mac_status": "placeholder_until_cursor_key_material_profile",
-      "expect_verify": "shape_only"
+      "mac_status": "locked_vector_key_material_v1",
+      "key_material_profile": "residiuum-cursor-key-material-v1",
+      "mac_domain": "residiuum:cursor-v1:mac-v1",
+      "expect_verify": "mac_and_binding"
     },
     {
       "id": "cursor-heap-mismatch",
