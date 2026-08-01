@@ -1,0 +1,105 @@
+{
+  "schema": "residiuum-formal-type-map-v1",
+  "package": "FAS-3",
+  "version": 1,
+  "note": "Concrete→abstract type map for FAS-2 State/Observation. Partial where production types are richer.",
+  "abstraction_functions": [
+    {
+      "id": "alpha_state",
+      "lean_symbol": "Residiuum.Refinement.alphaState",
+      "domain": "ConcreteState",
+      "codomain": "Residiuum.State",
+      "status": "specified",
+      "total": true,
+      "notes": "Foundation form maps heaps/collections/current generations; residual fields empty"
+    },
+    {
+      "id": "alpha_input",
+      "lean_symbol": "Residiuum.Refinement.alphaInput",
+      "domain": "ConcreteInput",
+      "codomain": "Residiuum.Input",
+      "status": "specified",
+      "total": true
+    },
+    {
+      "id": "alpha_outcome",
+      "lean_symbol": "Residiuum.Refinement.alphaOutcome",
+      "domain": "ConcreteOutcome",
+      "codomain": "Residiuum.Outcome (Observation Value)",
+      "status": "specified",
+      "total": true
+    },
+    {
+      "id": "alpha_observation",
+      "lean_symbol": "Residiuum.Refinement.alphaObservation",
+      "domain": "ConcreteObservation",
+      "codomain": "Residiuum.Observation Value",
+      "status": "specified",
+      "total": true
+    },
+    {
+      "id": "alpha_heap_id",
+      "lean_symbol": "Residiuum.Refinement.alphaHeapId",
+      "domain": "u64 / HeapId bytes stand-in",
+      "codomain": "Residiuum.HeapId",
+      "status": "specified",
+      "total": true
+    }
+  ],
+  "type_rows": [
+    {
+      "concrete": "residiuum_heap::ids::HeapId",
+      "abstract": "Residiuum.HeapId",
+      "via": "alpha_heap_id",
+      "notes": "Verus uses u64 stand-in; Lean Nat wrapper"
+    },
+    {
+      "concrete": "residiuum_heap::decide::authority_binding_holds",
+      "abstract": "Residiuum.Refinement.authorityBindingHolds",
+      "via": "alpha_heap_id equality",
+      "notes": "Vertical slice FAS-BRIDGE-AUTHORITY-BINDING-001"
+    },
+    {
+      "concrete": "Store put subject/value",
+      "abstract": "Residiuum.Input.put",
+      "via": "alpha_input (partial)",
+      "notes": "Subject→ItemId map residual; census only in FAS-3"
+    },
+    {
+      "concrete": "Store get Option payload",
+      "abstract": "Residiuum.Observation Value",
+      "via": "alpha_observation",
+      "notes": "None≠absent_proved without collection authority; matches FAS-2 Observe law"
+    },
+    {
+      "concrete": "Publication committed generation",
+      "abstract": "Residiuum.Publication.committed",
+      "via": "alpha_state.publication",
+      "notes": "No prepared→committed collapse"
+    }
+  ],
+  "feature_flag_bindings": [
+    {
+      "flag": "VERUS_PROOFS_CONNECTED",
+      "path": "verification/heap-verus/src/lib.rs",
+      "required_for_bridges": ["FAS-BRIDGE-AUTHORITY-BINDING-001"]
+    },
+    {
+      "flag": "KANI_HARNESSES_CONNECTED",
+      "path": "verification/heap-verus/src/lib.rs",
+      "required_for_bridges": ["FAS-BRIDGE-AUTHORITY-BINDING-001"]
+    }
+  ],
+  "unsafe_ffi_census": [
+    {
+      "path": "crates/residiuum-store/src",
+      "status": "present_in_production",
+      "notes": "Store uses FS/mmap; not in sda-core. Abstraction erases IO; crash/recovery residual FAS-4"
+    },
+    {
+      "path": "crates/residiuum-heap/src/decide.rs",
+      "status": "pure_no_fs",
+      "notes": "Decide path is pure over snapshot+certificate; suitable for Verus connection"
+    }
+  ]
+}

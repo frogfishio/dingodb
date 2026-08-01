@@ -7,7 +7,9 @@
 | `lean/` | FAS-1 smoke + FAS-2 abstract State/Observation kernel |
 | `kani-smoke/` | FAS-1 Kani smoke harness |
 | `tla/smoke/` | FAS-1 TLC smoke module |
+| `refinement/` | FAS-3 entrypoint census, type map, vertical bridges |
 
 Bootstrap: `bash scripts/setup-formal-tools.sh --locked`  
 FAS-1 gate: `bash scripts/check-formal-toolchain.sh`  
-FAS-2 gate: `bash scripts/check-formal-foundation.sh`
+FAS-2 gate: `bash scripts/check-formal-foundation.sh`  
+FAS-3 gate: `bash scripts/check-formal-refinement.sh`

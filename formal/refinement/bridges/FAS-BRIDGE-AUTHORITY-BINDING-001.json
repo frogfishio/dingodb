@@ -1,0 +1,72 @@
+{
+  "bridge_id": "FAS-BRIDGE-AUTHORITY-BINDING-001",
+  "version": 1,
+  "theorem_id": "FAS-SEC-AUTHORITY-CONFINEMENT-001",
+  "title": "Foreign heap identity fails authority binding (vertical slice)",
+  "connection_class": "rust_connected_refinement",
+  "canonical_names": {
+    "operation": "authority_binding",
+    "outcome_reject": "unauthorized / binding_fail",
+    "predicate": "authority_binding_holds"
+  },
+  "lean": {
+    "module": "Residiuum.Refinement",
+    "symbols": [
+      "authorityBindingHolds",
+      "lemma_foreign_heap_rejects_binding",
+      "alphaHeapId",
+      "init_correspondence",
+      "forward_sim_binding_reject"
+    ]
+  },
+  "tla": {
+    "actions": ["formal/heap/HeapAuthority.tla", "formal/heap/HeapIsolation.tla"],
+    "notes": "Temporal/authority sketches; not required for this slice machine gate"
+  },
+  "verus": {
+    "path": "verification/heap-verus/verus/pure_kernel.rs",
+    "spec_functions": ["authority_binding_holds"],
+    "proofs": ["lemma_binding_rejects_foreign_heap"]
+  },
+  "rust_entrypoints": [
+    {
+      "path": "crates/residiuum-heap/src/decide.rs",
+      "symbols": ["authority_binding_holds", "decide"]
+    },
+    {
+      "path": "crates/residiuum-heap/src/pure_proofs.rs",
+      "symbols": ["lemma_binding_rejects_foreign_heap"]
+    }
+  ],
+  "kani": {
+    "path": "crates/residiuum-heap/src/pure_proofs.rs",
+    "notes": "#[cfg(kani)] harnesses on pure_proofs; flag KANI_HARNESSES_CONNECTED"
+  },
+  "normalization": "Heap identities compared by equality of abstract HeapId.val / concrete u64 stand-in; full UUID map residual",
+  "common_vectors": [
+    {
+      "id": "VEC-BINDING-MATCH",
+      "concrete": "cert_heap == snap_heap",
+      "abstract": "authorityBindingHolds true",
+      "expected": "accept_binding"
+    },
+    {
+      "id": "VEC-BINDING-FOREIGN",
+      "concrete": "cert_heap != snap_heap",
+      "abstract": "authorityBindingHolds false",
+      "expected": "reject_binding"
+    }
+  ],
+  "csq_evidence_links": [
+    "target/csq-evidence/a2-evaluation.json",
+    "target/csq-evidence/residiuum-core-storage-report-v1.json"
+  ],
+  "semantic_map_assumption": "FAS-ASM-CROSS-TOOL-MAP-001",
+  "rejects": {
+    "demo_paths": ["crates/residiuum-store/examples/"],
+    "duplicate_demo_as_connection": true,
+    "renamed_entrypoint_must_fail_gate": true
+  },
+  "status": "connected_mvp",
+  "honest_residual": "Full State forward simulation for store put/get not claimed; this slice covers authority binding only"
+}

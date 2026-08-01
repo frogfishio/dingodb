@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (CSQ-12 + FAS-0 + FAS-1 + FAS-2 accept; FAS-3 next)
+Updated: 2026-08-01 (CSQ-12 + FAS-0…FAS-3 accept; FAS-4 next)
 
 This file records package qualification state and dependency truth. It does not
 change normative semantics and it does not mirror live Kanban columns. Kanban
@@ -83,8 +83,8 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-0 | accept | 2026-08-01 | CSQ-12 | Full §12 catalogue (35) + §5 assumptions (8); ownership map; 10 schemas; negative-fixture self-tests; `formal/registry/FAS0_CLOSED`; `bash scripts/check-formal-registry.sh` **exit 0** (`structural_ok`+`closed`); [FAS0_GATE.md](./FAS0_GATE.md); CSQ-12 accept same day | residual: expand schemas/linter depth; no theorem `machine_proved` claims yet | formal claim governance |
 | FAS-1 | accept | 2026-08-01 | FAS-0 | Lock closed: Verus `0.2026.07.27.31579f0`, Kani `0.67.0`, Lean `v4.32.2`, TLC `tla2tools-1.7.4` (jar sha256 pinned); smokes: pure_kernel 8 verified, kani-smoke, `lake build` fas1_smoke, TLC FAS1Smoke; `setup-formal-tools.sh --locked` + `check-formal-toolchain.sh` **exit 0**; report `target/formal-assurance/fas1-toolchain-report.json` | TLAPS deferred (not accept-required); CI job wiring residual; archive sha for Lean/Kani installers residual | reproducible proof toolchain |
 | FAS-2 | accept | 2026-08-01 | FAS-0, FAS-1 | Lean kernel `formal/lean/Residiuum/{Identity,Observation,State,WellFormed,Operations,Observe,Vectors,Foundation}.lean`; `init_well_formed`; observation separation + forbidden-collapse; 19 ops in `operations-v1.json`; `bash scripts/check-formal-foundation.sh` **exit 0**; report `target/formal-assurance/fas2-foundation-report.json` | residual: strengthen WF proofs beyond empty-map rfl; full put/get preservation; feature ops still stub Step | mathematical semantics |
-| FAS-3 | ready | 2026-08-01 | FAS-2 | FAS-2 accept; Heap Verus/TLA precursors exist | general Rust refinement bridge + entrypoint census residual | implementation connection |
-| FAS-4 | not_started | — | FAS-3, applicable CSQ accept | CSQ proof obligations and models are precursor evidence | consistency theorem family not connected | formal consistency |
+| FAS-3 | accept | 2026-08-01 | FAS-2 | Entrypoint census + type-map; vertical slice **FAS-BRIDGE-AUTHORITY-BINDING-001** (Lean `Refinement.lean` + Verus `pure_kernel` + `decide`/`pure_proofs`); negative rename/demo controls; `bash scripts/check-formal-refinement.sh` **exit 0**; report `target/formal-assurance/fas3-refinement-report.json` | residual: store put/get full forward simulation; more CON bridges; Kani not re-run in gate (flag only) | implementation connection |
+| FAS-4 | ready | 2026-08-01 | FAS-3, applicable CSQ accept | FAS-3 accept; CSQ A2 evidence + CON catalogue stubs | consistency theorem family MVP residual | formal consistency |
 | FAS-5 | not_started | — | FAS-3, FAS-4, Heap contract freeze | Heap Kani/Verus 8 verified; TLA+ sketches | unified security theorem/refinement bundle absent | formal security |
 | FAS-6 | not_started | — | FAS-3…FAS-5, ATM-1 | Atomics formal contract drafted | Atomic safety/preservation proofs absent | formal Atomic safety |
 | FAS-7 | not_started | — | FAS-6, Atomic recovery freeze | — | isolation/liveness proofs absent | formal isolation |
@@ -209,6 +209,6 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 |---:|---|---|
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
-| 3 | **FAS-3** (then FAS-4…5) | FAS-2 accept; refinement bridge + entrypoint census next |
+| 3 | **FAS-4** (then FAS-5) | FAS-3 accept; consistency theorem family MVP next |
 | 4 | **PQH principal accept** | PQH-0…11 labor largely `in_review`; qualification residual |
 | 5 | **APB-0** | Application baseline; may run alongside PQH/FAS |

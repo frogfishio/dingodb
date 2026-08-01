@@ -1,0 +1,12 @@
+{
+  "schema": "residiuum-formal-refinement-negative-v1",
+  "id": "NEG-RENAMED-ENTRYPOINT-001",
+  "description": "Simulated rename: production symbol path claimed by bridge but missing on disk → gate must fail",
+  "bridge_id": "FAS-BRIDGE-AUTHORITY-BINDING-001",
+  "mutated_entrypoint": {
+    "path": "crates/residiuum-heap/src/decide_RENAMED_DOES_NOT_EXIST.rs",
+    "symbols": ["authority_binding_holds"]
+  },
+  "expected_gate_result": "fail",
+  "expected_error_substring": "entrypoint path missing"
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "residiuum-formal-refinement-negative-v1",
+  "id": "NEG-DEMO-AS-CONNECTION-001",
+  "description": "Example/demo crate path must not satisfy rust_connected_refinement",
+  "claimed_path": "crates/residiuum-store/examples/write_scale_curve.rs",
+  "connection_class": "rust_connected_refinement",
+  "expected_gate_result": "fail",
+  "expected_error_substring": "demo"
+}

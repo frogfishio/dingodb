@@ -1,0 +1,123 @@
+{
+  "schema": "residiuum-formal-entrypoint-census-v1",
+  "package": "FAS-3",
+  "version": 1,
+  "note": "Production entrypoints for target formal claims. Connection class is honest: not every row is Rust-connected yet.",
+  "connection_classes": [
+    "abstract_theorem_only",
+    "independent_executable_agreement",
+    "bounded_concrete",
+    "rust_connected_refinement"
+  ],
+  "items": [
+    {
+      "entrypoint_id": "EP-HEAP-AUTHORITY-BINDING-001",
+      "crate": "residiuum-heap",
+      "path": "crates/residiuum-heap/src/decide.rs",
+      "symbols": ["authority_binding_holds", "decide"],
+      "target_theorems": ["FAS-SEC-AUTHORITY-CONFINEMENT-001", "FAS-SEC-HEAP-NONINTERFERENCE-001"],
+      "operations": ["issue_credential", "get"],
+      "connection_class": "rust_connected_refinement",
+      "bridge_id": "FAS-BRIDGE-AUTHORITY-BINDING-001",
+      "notes": "Production decide path; Verus pure_kernel + pure_proofs + Lean refinement slice"
+    },
+    {
+      "entrypoint_id": "EP-HEAP-PURE-PROOFS-001",
+      "crate": "residiuum-heap",
+      "path": "crates/residiuum-heap/src/pure_proofs.rs",
+      "symbols": ["lemma_binding_rejects_foreign_heap", "connected_pure_proof_bundle"],
+      "target_theorems": ["FAS-SEC-AUTHORITY-CONFINEMENT-001"],
+      "operations": [],
+      "connection_class": "independent_executable_agreement",
+      "bridge_id": "FAS-BRIDGE-AUTHORITY-BINDING-001",
+      "notes": "Executable stand-in for Verus lemmas; Kani harnesses live here"
+    },
+    {
+      "entrypoint_id": "EP-HEAP-VERUS-PURE-KERNEL-001",
+      "crate": "verification/heap-verus",
+      "path": "verification/heap-verus/verus/pure_kernel.rs",
+      "symbols": ["authority_binding_holds", "lemma_binding_rejects_foreign_heap"],
+      "target_theorems": ["FAS-SEC-AUTHORITY-CONFINEMENT-001"],
+      "operations": [],
+      "connection_class": "bounded_concrete",
+      "bridge_id": "FAS-BRIDGE-AUTHORITY-BINDING-001",
+      "notes": "Machine-checked Verus pure kernel (integer stand-ins)"
+    },
+    {
+      "entrypoint_id": "EP-STORE-PUT-001",
+      "crate": "residiuum-store",
+      "path": "crates/residiuum-store/src/store.rs",
+      "symbols": ["put", "put_many", "put_subject_bytes"],
+      "target_theorems": [
+        "FAS-CON-NO-FABRICATED-VALUE-001",
+        "FAS-CON-GENERATION-EXACT-001",
+        "FAS-CON-PUBLICATION-NONHYBRID-001",
+        "FAS-CON-DURABLE-ACK-001"
+      ],
+      "operations": ["put"],
+      "connection_class": "abstract_theorem_only",
+      "bridge_id": null,
+      "notes": "Census for FAS-4; no complete Lean↔Verus forward simulation yet"
+    },
+    {
+      "entrypoint_id": "EP-STORE-GET-001",
+      "crate": "residiuum-store",
+      "path": "crates/residiuum-store/src/store.rs",
+      "symbols": ["get", "get_subject_bytes", "get_payload"],
+      "target_theorems": [
+        "FAS-FND-OBSERVATION-SEPARATION-001",
+        "FAS-CON-DAMAGE-HONESTY-001",
+        "FAS-CON-NO-FABRICATED-VALUE-001"
+      ],
+      "operations": ["get"],
+      "connection_class": "abstract_theorem_only",
+      "bridge_id": null,
+      "notes": "Observation path; CSQ evidence supports physical qualification separately"
+    },
+    {
+      "entrypoint_id": "EP-STORE-OPEN-CREATE-001",
+      "crate": "residiuum-store",
+      "path": "crates/residiuum-store/src/store.rs",
+      "symbols": ["create", "open", "open_inspect"],
+      "target_theorems": ["FAS-CON-RECOVERY-IDEMPOTENT-001", "FAS-CON-HEALTHY-ISLAND-001"],
+      "operations": ["recover", "create_heap"],
+      "connection_class": "abstract_theorem_only",
+      "bridge_id": null,
+      "notes": "Open/create/salvage surface; recovery refinement residual FAS-4"
+    },
+    {
+      "entrypoint_id": "EP-STORE-HEAP-PUT-GET-001",
+      "crate": "residiuum-store",
+      "path": "crates/residiuum-store/src/heap/heap_store.rs",
+      "symbols": ["put", "get", "put_collection", "get_collection"],
+      "target_theorems": ["FAS-SEC-HEAP-NONINTERFERENCE-001"],
+      "operations": ["put", "get", "create_collection"],
+      "connection_class": "abstract_theorem_only",
+      "bridge_id": null,
+      "notes": "Heap-scoped store façade"
+    },
+    {
+      "entrypoint_id": "EP-STORE-CREATE-COLLECTION-001",
+      "crate": "residiuum-store",
+      "path": "crates/residiuum-store/src/heap/admin_op_dedup.rs",
+      "symbols": ["create_collection_idempotent"],
+      "target_theorems": ["FAS-SEC-AUTHORITY-CONFINEMENT-001"],
+      "operations": ["create_collection"],
+      "connection_class": "abstract_theorem_only",
+      "bridge_id": null,
+      "notes": "Admin collection create"
+    },
+    {
+      "entrypoint_id": "EP-DEMO-REJECT-001",
+      "crate": "residiuum-store",
+      "path": "crates/residiuum-store/examples/write_scale_curve.rs",
+      "symbols": ["main"],
+      "target_theorems": [],
+      "operations": [],
+      "connection_class": "abstract_theorem_only",
+      "bridge_id": null,
+      "demo_only": true,
+      "notes": "Explicit demo/example — MUST NOT be used as a refinement connection target"
+    }
+  ]
+}
