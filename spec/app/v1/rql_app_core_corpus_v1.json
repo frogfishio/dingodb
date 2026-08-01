@@ -1,0 +1,129 @@
+{
+  "profile": "rql-app-core-v1",
+  "plan_profile": "rql-plan-v1",
+  "predicate_profile": "residiuum-predicate-v1",
+  "encoding_profile": "rql-plan-encoding-v1",
+  "hash_domain": "residiuum:rql-plan-v1:canonical-v1",
+  "hash_algorithm": "blake3-256",
+  "description": "APP-5 rql-app-core-v1 conformance corpus: accept compiles to RqlPlanV1; reject must fail closed with diagnostics (never silent).",
+  "default_bindings": {
+    "orders": "00000000-0000-4000-8000-0000000000a1"
+  },
+  "accept": [
+    {
+      "id": "accept-defaults-only",
+      "source_rql": "from orders",
+      "plan_hash_hex": "e43f1d8d86cb01835d8bc6c093cc70172e91398dafd959984aa77a41feee1051",
+      "expect": {
+        "page_size": 64,
+        "explain": false,
+        "coverage": "complete",
+        "consistency": "available"
+      }
+    },
+    {
+      "id": "accept-status-param-project-order",
+      "source_rql": "from orders where status = $status project id, status order by created_at desc limit 1000 page size 100",
+      "plan_hash_hex": "2a0a78272d91833a231f5562a399c389c59b9013d065dfdeb04f4dba90a23597",
+      "expect": {
+        "page_size": 100,
+        "limit": 1000,
+        "explain": false
+      }
+    },
+    {
+      "id": "accept-explain-multi-where",
+      "source_rql": "explain from orders where status = \"paid\" where present(customer.id) limit 50 page size 10",
+      "expect": {
+        "explain": true,
+        "page_size": 10,
+        "limit": 50
+      }
+    },
+    {
+      "id": "accept-coverage-incomplete-consistency-current",
+      "source_rql": "from orders coverage incomplete consistency current",
+      "expect": {
+        "coverage": "incomplete_allowed",
+        "consistency": "current",
+        "page_size": 64
+      }
+    },
+    {
+      "id": "accept-in-and-starts-with",
+      "source_rql": "from orders where region in [\"us\", \"eu\"] and starts_with(name, \"Acme\") page size 32",
+      "expect": {
+        "page_size": 32
+      }
+    },
+    {
+      "id": "accept-order-nulls-first",
+      "source_rql": "from orders order by created_at desc nulls first page size 20",
+      "expect": {
+        "page_size": 20,
+        "first_order_nulls": "first",
+        "first_order_dir": "desc"
+      }
+    },
+    {
+      "id": "accept-as-alias-and-comment",
+      "source_rql": "-- readable alias\nfrom orders as o where status = \"open\"",
+      "expect": {
+        "source_name": "orders",
+        "page_size": 64
+      }
+    }
+  ],
+  "reject": [
+    {
+      "id": "reject-enrich",
+      "source_rql": "from orders enrich other",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-within",
+      "source_rql": "from orders within other",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-at-rank",
+      "source_rql": "from orders at rank 1",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-sequential-access",
+      "source_rql": "from orders sequential access",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-direct-access",
+      "source_rql": "from orders direct access",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-build-access",
+      "source_rql": "from orders build access",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-budget-clause",
+      "source_rql": "from orders budget documents 10",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-after-clause",
+      "source_rql": "from orders after $cursor",
+      "diagnostic_contains": ["rql_feature_unavailable"]
+    },
+    {
+      "id": "reject-unknown-source",
+      "source_rql": "from missing_collection",
+      "diagnostic_contains": ["unknown collection"]
+    },
+    {
+      "id": "reject-not-a-query",
+      "source_rql": "select * from orders",
+      "diagnostic_contains": ["expected"]
+    }
+  ]
+}

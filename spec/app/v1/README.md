@@ -14,6 +14,7 @@ must not contradict without amending the CORE plan.
 |---|---|---|
 | Error mapping | [`error_mapping_v1.json`](error_mapping_v1.json) | Condition → `ErrorCode` + diagnostic |
 | Plan vectors | [`plan_vectors_v1.json`](plan_vectors_v1.json) | Canonical logical `rql-plan-v1` samples + BLAKE3 hashes (`rql-plan-encoding-v1`) |
+| RQL Application Core corpus | [`rql_app_core_corpus_v1.json`](rql_app_core_corpus_v1.json) | APP-5 accept + reject matrix (`rql-app-core-v1`) |
 | Cursor vectors | [`cursor_vectors_v1.json`](cursor_vectors_v1.json) | `residiuum-cursor-v1` field binding examples |
 | Residuals | [`residuals_v1.json`](residuals_v1.json) | Named non-blocking placeholders / open APP-1 items |
 | Compile surface | `crates/residiuum-sdk/src/app_v1.rs` | Public Rust types that **compile** |
@@ -50,4 +51,5 @@ reserved ops (118).
 bash scripts/verify-app0-contract.sh
 cargo test -p residiuum-sdk --test app0_contract_lock
 cargo test -p residiuum-sdk --test app4_predicate_plan
+cargo test -p residiuum-sdk --test app5_rql_app_core
 ```
