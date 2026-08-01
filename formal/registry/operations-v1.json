@@ -1,5 +1,218 @@
 {
   "schema": "residiuum-formal-operations-v1",
-  "items": [],
-  "note": "Filled from FORMAL_KERNEL_MODEL_CONTRACT in FAS-2"
+  "note": "Foundation operation contracts from FORMAL_KERNEL_MODEL_CONTRACT §7–§8 (FAS-2)",
+  "items": [
+    {
+      "operation_id": "create_heap",
+      "input_type": "Input.createHeap",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.createHeap", "Residiuum.stepFoundation", "Residiuum.create_heap_preserves_wf"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "foundation_open",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "create_collection",
+      "input_type": "Input.createCollection",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.createCollection", "Residiuum.stepFoundation"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "heap_exists",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "put",
+      "input_type": "Input.put",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.put", "Residiuum.stepFoundation"],
+      "preserved_invariants": ["WellFormed", "WF_CurrentCommitted", "WF_ValueEvidence"],
+      "authorization_predicate": "heap_and_collection_exist",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "delete",
+      "input_type": "Input.delete",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.delete", "Residiuum.stepFoundation"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "heap_exists",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "get",
+      "input_type": "Input.get",
+      "read_or_write": "read",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.get", "Residiuum.stepFoundation", "Residiuum.Observe"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "foundation_open",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "scan",
+      "input_type": "Input.scan",
+      "read_or_write": "read",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.scan", "Residiuum.Observe"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "foundation_open",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "recover",
+      "input_type": "Input.recover",
+      "read_or_write": "write",
+      "deterministic_or_relational": "relational",
+      "lean_symbols": ["Residiuum.Input.recover", "Residiuum.RecoverStep"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "foundation_open",
+      "rust_entrypoints": [],
+      "status": "specified",
+      "note": "Foundation stub; full recovery contract in FAS-4"
+    },
+    {
+      "operation_id": "reassemble",
+      "input_type": "Input.reassemble",
+      "read_or_write": "write",
+      "deterministic_or_relational": "relational",
+      "lean_symbols": ["Residiuum.Input.reassemble"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "foundation_open",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "repair",
+      "input_type": "Input.repair",
+      "read_or_write": "write",
+      "deterministic_or_relational": "relational",
+      "lean_symbols": ["Residiuum.Input.repair"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "foundation_open",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "issue_credential",
+      "input_type": "Input.issueCredential",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.issueCredential"],
+      "preserved_invariants": ["WellFormed", "WF_CredentialHeapBinding"],
+      "authorization_predicate": "heap_admin",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "blacklist_credential",
+      "input_type": "Input.blacklistCredential",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.blacklistCredential"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "heap_admin",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "rotate_epoch",
+      "input_type": "Input.rotateEpoch",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.rotateEpoch"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "heap_admin",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "atomic_prepare",
+      "input_type": "Input.atomicPrepare",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.atomicPrepare"],
+      "preserved_invariants": ["WellFormed", "WF_AtomicMemberQualification"],
+      "authorization_predicate": "feature_atomics",
+      "rust_entrypoints": [],
+      "status": "specified",
+      "note": "Catalogue complete; behavior residual FAS-6"
+    },
+    {
+      "operation_id": "atomic_decide",
+      "input_type": "Input.atomicDecide",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.atomicDecide"],
+      "preserved_invariants": ["WellFormed", "WF_AtomicDecisionUnique"],
+      "authorization_predicate": "feature_atomics",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "atomic_recover",
+      "input_type": "Input.atomicRecover",
+      "read_or_write": "write",
+      "deterministic_or_relational": "relational",
+      "lean_symbols": ["Residiuum.Input.atomicRecover"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "feature_atomics",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "cluster_append",
+      "input_type": "Input.clusterAppend",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.clusterAppend"],
+      "preserved_invariants": ["WellFormed", "WF_LogIndexUnique"],
+      "authorization_predicate": "feature_cluster",
+      "rust_entrypoints": [],
+      "status": "specified",
+      "note": "Catalogue complete; behavior residual FAS-8"
+    },
+    {
+      "operation_id": "cluster_elect",
+      "input_type": "Input.clusterElect",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.clusterElect"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "feature_cluster",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "cluster_change_membership",
+      "input_type": "Input.clusterChangeMembership",
+      "read_or_write": "write",
+      "deterministic_or_relational": "deterministic",
+      "lean_symbols": ["Residiuum.Input.clusterChangeMembership"],
+      "preserved_invariants": ["WellFormed", "WF_MembershipNonempty"],
+      "authorization_predicate": "feature_cluster",
+      "rust_entrypoints": [],
+      "status": "specified"
+    },
+    {
+      "operation_id": "cluster_repair",
+      "input_type": "Input.clusterRepair",
+      "read_or_write": "write",
+      "deterministic_or_relational": "relational",
+      "lean_symbols": ["Residiuum.Input.clusterRepair"],
+      "preserved_invariants": ["WellFormed"],
+      "authorization_predicate": "feature_cluster",
+      "rust_entrypoints": [],
+      "status": "specified"
+    }
+  ]
 }
