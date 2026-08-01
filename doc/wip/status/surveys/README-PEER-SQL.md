@@ -141,6 +141,9 @@ See **Campaign E** in [TEST_RESULTS.md](../../../TEST_RESULTS.md):
 
 PEER-SQL does not replace phase-bench diagnosis; it **anchors the SQLite side of the adoption claim**.
 
+**Parked follow-on (write-path wall ladder, cook → disk):**  
+[PARKED-write-path-wall-20260801.md](./PARKED-write-path-wall-20260801.md) — Mode A parity → parallel cook micro → multi‑GiB disk wall. **P1 diagnostic; not M2.**
+
 ---
 
 ## Artifact layout
@@ -150,6 +153,7 @@ PEER-SQL does not replace phase-bench diagnosis; it **anchors the SQLite side of
 | This contract | `doc/wip/status/surveys/README-PEER-SQL.md` |
 | Campaign results | `doc/wip/status/surveys/scratch-sqlite-peer-YYYYMMDD/` |
 | Writeup | section in `TEST_RESULTS.md` after first campaign |
+| Parked wall ladder | `doc/wip/status/surveys/PARKED-write-path-wall-20260801.md` |
 | Harness | `crates/residiuum-testrig` (`peer-pump` or equivalent — T2) |
 
 Scratch work roots: under `/Volumes/Scratch/TEST/` (e.g. `residiuum-peer-*`), then copy JSON into the surveys tree for git.

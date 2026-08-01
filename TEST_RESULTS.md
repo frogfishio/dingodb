@@ -512,15 +512,59 @@ Artifacts: `doc/wip/status/surveys/scratch-mode-a-breakdown-20260801/phase-bench
 
 **Read:** Write-through lands the “large seal threshold without multi-hundred-MiB RSS” goal. Long peer-A at 64 MiB seal stays ~parity with Campaign F (±noise); the microbench put path is clearly faster when seals are not mid-run. Remaining Mode A headroom is still append Blake/copy + seal worker backpressure on long runs — not a silent weaker Buffered mode.
 
+---
+
+## Campaign H — Cook path → disk wall — **PARKED** (2026-08-01)
+
+**Status: PARKED.** Full writeup + resume criteria:  
+[doc/wip/status/surveys/PARKED-write-path-wall-20260801.md](./doc/wip/status/surveys/PARKED-write-path-wall-20260801.md)
+
+**Diagnostic only — not a published SLO.** Does **not** move CSQ-12 / PQH / M2.
+
+### Ladder (one screen)
+
+| Stage | Finding |
+|-------|---------|
+| PEER-SQL Mode A | Residiuum ≈ SQLite **~10k** puts/s same bed |
+| Short Scratch phase-bench | **Cook CPU** (Blake/append) dominates; disk detach only partial |
+| Parallel cooker Option C | `set_cook_parallelism`; cook4 ~**1.8×** cook1 on 20k × 8 KiB Scratch (~**330k** ops/s micro) |
+| `/tmp` 1 GiB phase-bench | Real ≈ **58%** of Discard; cook4 **≤** cook1 (~116–158k) |
+| `/tmp` 2 GiB peer multi-seal | **~10.2k** puts/s · **~80** logical MiB/s · **~4.1 GiB** disk — **disk + seal wall** |
+
+### Three-band rule (do not mix)
+
+1. **~10k** — multi-seal / PEER long peer (adoption floor)  
+2. **~100–160k** — 1 GiB batch on real APFS `/tmp`  
+3. **~330k** — short Scratch cook micro only  
+
+### Code kept while parked
+
+- `Store::set_cook_parallelism` + preencoded frame install  
+- phase-bench cook1/2/4 + short-circuits  
+- Peer env `RESIDIUUM_COOK_PARALLELISM`  
+
+### Known gap
+
+Parallel cook **fails** if segment seals mid-batch install.
+
+### Next wall when unparked
+
+**Disk / seal policy / seal-safe parallel install** — not more Blake-only workers.  
+Artifacts: `scratch-parallel-cooker-20260801/`, `tmp-real-disk-20260801/`, bisect surveys under `doc/wip/status/surveys/`.
+
+---
+
 ## Bottom line
 
 There **was** a real problem with the **measurement environment** (full internal disk + incomplete order + missing process samples), not a silent “everything is broken in the store.”  
-On Scratch with free space:
+On Scratch with free space (early campaigns):
 
 1. Segment threshold still matters (~**1.5×** at both 1 GiB and 2 GiB targets).  
-2. We are **not disk-bound** (~130 MiB/s growth vs ~360 MiB/s sequential Scratch).  
-3. **General load** (batch=1) ≈ **batched** (batch=128) at 8 KiB — limiter is **per-key integrity/index work**, not “forgot to batch writes.”  
+2. Short QD=1 pumps can look **not disk-bound** (~130 MiB/s growth vs higher sequential ceilings) while still **cook-bound**.  
+3. **General load** (batch=1) ≈ **batched** (batch=128) at 8 KiB on some early beds — limiter often **per-key integrity/index/cook**, not “forgot to batch writes.”  
 4. Low CPU + low disk together is expected on a **single-threaded, QD=1, per-ack** pipeline; SQLite-class bulk numbers usually mean **transactions + small rows**, not this path.  
-5. **Always pump on `/Volumes/Scratch/TEST/`** for large surveys — never the internal volume.
+5. Prefer **`/Volumes/Scratch/TEST/`** for large Scratch surveys; **Campaign H** also used **`/tmp` deliberately** for a real multi‑GiB disk check (budget-capped).
+
+**Campaign H park:** multi‑GiB **multi-seal** load hits the **disk wall** (~10k / ~80 MiB/s on APFS `/tmp`). Short cook micros (~330k) must not be sold as media capacity. See parked doc above.
 
 **Do not** publish absolute product MB/s from these diagnostics without Benchmark Disclosure + controlled runner class.

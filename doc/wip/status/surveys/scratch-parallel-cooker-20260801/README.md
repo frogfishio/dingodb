@@ -1,5 +1,8 @@
 # Parallel record cooker (Option C) — Scratch 2026-08-01
 
+**Parent (parked campaign):** [../PARKED-write-path-wall-20260801.md](../PARKED-write-path-wall-20260801.md)  
+**Caveat:** these ~330k ops/s numbers are a **short Scratch micro**; multi‑GiB multi-seal load hits the **disk wall** (see parent + `tmp-real-disk-20260801/`).
+
 **Not** naive multi-store clones. **Yes** parallelising the full **record cook**
 (item envelope + frame encode including BLAKE3), then ordered install + one tail write.
 

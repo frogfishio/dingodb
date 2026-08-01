@@ -530,8 +530,13 @@ pub fn run_phase_bench(cfg: &PhaseBenchConfig) -> Result<(), String> {
         let _ = fs::remove_dir_all(&store_path);
         let mut store =
             Store::create(&store_path).map_err(|e| format!("create cook{workers}: {e}"))?;
-        // Large seal so mid-batch rotate does not abort parallel install.
-        store.set_seal_threshold(512 * 1024 * 1024);
+        // Seal above this phase's logical payload so parallel install is not
+        // interrupted by rotate mid-batch (still real write_all on work volume).
+        let seal_need = ops
+            .saturating_mul(payload_bytes)
+            .saturating_add(64 * 1024 * 1024)
+            .max(512 * 1024 * 1024);
+        store.set_seal_threshold(seal_need);
         store.set_cook_parallelism(workers);
         let cpu0 = sample_cpu_pct();
         let t0 = Instant::now();

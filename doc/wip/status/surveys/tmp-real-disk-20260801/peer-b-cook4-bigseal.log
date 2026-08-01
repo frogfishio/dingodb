@@ -1,0 +1,6 @@
+peer-pump residiuum: keys=1 logical≈8.00 KiB / 2.00 GiB 481.1 ops/s
+peer-pump residiuum: keys=162432 logical≈1.24 GiB / 2.00 GiB 80919.7 ops/s
+peer-pump done: engine=residiuum mode=B_txn_128 keys=262144 logical=2.00 GiB disk=4.10 GiB in 33.31s — 7869.9 ops/s, 61.48 logical MiB/s
+  peak_rss=292.98 MiB  peak_cpu%=35
+  path=/tmp/residiuum-real-tmp-20260801/peer-b-cook4-bigseal/store
+  Diagnostic only — not a published SLO. PEER-SQL same-bed peer (doc/wip/status/surveys/README-PEER-SQL.md; doc/reference/operations/BENCHMARK_DISCLOSURE.md). Compare A vs A and B vs B only.

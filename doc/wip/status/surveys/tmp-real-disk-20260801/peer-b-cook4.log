@@ -1,0 +1,2 @@
+peer-pump residiuum: keys=1 logical≈8.00 KiB / 2.00 GiB 314.5 ops/s
+error: put_many (128 keys): corrupt store metadata: segment rotated mid parallel cook install; retry batch

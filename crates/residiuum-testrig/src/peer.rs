@@ -222,6 +222,14 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
         cfg.seal_threshold
     };
     store.set_seal_threshold(seal);
+    // Optional: RESIDIUUM_COOK_PARALLELISM=N for put_many multi-core cook (peer).
+    if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
+        if let Ok(n) = raw.parse::<usize>() {
+            if n >= 1 {
+                store.set_cook_parallelism(n);
+            }
+        }
+    }
 
     let batch = cfg.mode.batch_size();
     let mut samples = ProcessSamples::default();
