@@ -6,7 +6,12 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (CSQ-12 + FAS-0…FAS-4 accept MVP; FAS-5 next)
+Updated: 2026-08-01 (CSQ-12 + FAS-0…FAS-4 accept MVP; principal: past FAS — product path next; FAS-5+ later)
+
+**How to read program order:** open
+[MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
+first (stages vs packages, ID glossary, boundaries). This file is only the
+**package state table** — not a second roadmap.
 
 This file records package qualification state and dependency truth. It does not
 change normative semantics and it does not mirror live Kanban columns. Kanban
@@ -85,7 +90,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-2 | accept | 2026-08-01 | FAS-0, FAS-1 | Lean kernel `formal/lean/Residiuum/{Identity,Observation,State,WellFormed,Operations,Observe,Vectors,Foundation}.lean`; `init_well_formed`; observation separation + forbidden-collapse; 19 ops in `operations-v1.json`; `bash scripts/check-formal-foundation.sh` **exit 0**; report `target/formal-assurance/fas2-foundation-report.json` | residual: strengthen WF proofs beyond empty-map rfl; full put/get preservation; feature ops still stub Step | mathematical semantics |
 | FAS-3 | accept | 2026-08-01 | FAS-2 | Entrypoint census + type-map; vertical slice **FAS-BRIDGE-AUTHORITY-BINDING-001** (Lean `Refinement.lean` + Verus `pure_kernel` + `decide`/`pure_proofs`); negative rename/demo controls; `bash scripts/check-formal-refinement.sh` **exit 0**; report `target/formal-assurance/fas3-refinement-report.json` | residual: store put/get full forward simulation; more CON bridges; Kani not re-run in gate (flag only) | implementation connection |
 | FAS-4 | accept | 2026-08-01 | FAS-3, CSQ-12 | All 8 `FAS-CON-*` Lean theorems in `Residiuum.Consistency`; connections + live negatives; CSQ A2 links; FS assumption named; `bash scripts/check-formal-consistency.sh` **exit 0**; report `target/formal-assurance/fas4-consistency-report.json`; profile **MVP** (`mvp_abstract_plus_csq_links`, not full `physically_qualified`) | residual: full physical profile; store put/get refinement; stronger durable-ack under FS ledger | formal consistency |
-| FAS-5 | ready | 2026-08-01 | FAS-3, FAS-4, Heap contract freeze | FAS-4 MVP accept; Heap Verus/Kani 8 + TLA sketches | unified security theorem/refinement bundle residual | formal security |
+| FAS-5 | deferred | 2026-08-01 | FAS-3, FAS-4, Heap contract freeze | FAS-4 MVP accept; Heap Verus/Kani 8 + TLA sketches; **principal: more FAS later** (not active product lane) | unified security theorem/refinement bundle residual | formal security |
 | FAS-6 | not_started | — | FAS-3…FAS-5, ATM-1 | Atomics formal contract drafted | Atomic safety/preservation proofs absent | formal Atomic safety |
 | FAS-7 | not_started | — | FAS-6, Atomic recovery freeze | — | isolation/liveness proofs absent | formal isolation |
 | FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
@@ -174,8 +179,9 @@ Program order (Kanban determines the individual active cards):
 1. **CSQ-12 = accept** (2026-08-01): A2 independently verifies (`residiuum-verify-core-storage.sh`,
    `a2_pass=true`, missing=0). A3 residuals remain (platform / 72h soak / full mutation %) —
    not A2 blockers.
-2. **FAS-0 = accept** (2026-08-01): registries closed + `check-formal-registry.sh` exit 0.
-   Continue **FAS-1…FAS-5** foundation; FAS-6…FAS-8 travel with Atomics/cluster.
+2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
+   do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
+   with Atomics/cluster when those packages admit formal work.
 3. **PQH-0…PQH-11** principal accept + controlled qualification residual (post-C0 measurement lane).
    Must precede speculative tuning or new performance claims.
 4. Execute **APB-0…APB-12**, absorbing APP-2…APP-8 work according to
@@ -209,6 +215,7 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 |---:|---|---|
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
-| 3 | **FAS-5** (security family) | FAS-4 MVP accept; Heap noninterference/authority residual |
-| 4 | **PQH principal accept** | PQH-0…11 labor largely `in_review`; qualification residual |
-| 5 | **APB-0** | Application baseline; may run alongside PQH/FAS |
+| 3 | **FAS-0…FAS-4** | Scoreboard **accept** MVP 2026-08-01; foundation closed |
+| 4 | **PQH principal accept** | Active product path; PQH-0…11 labor largely `in_review`; qualification residual |
+| 5 | **APB-0** + **HAR** | Application baseline + Heap app-ready; path to M2 |
+| later | **FAS-5…** (security family) | **deferred** — principal: more FAS later; does not block PQH/APB/M2 |

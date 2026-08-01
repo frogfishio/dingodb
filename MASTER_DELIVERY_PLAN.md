@@ -1,20 +1,211 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.5**
+Status: **definitive execution plan v1.6**
 
 Effective: 2026-08-01
 
 Owner: Residiuum product and engineering program
 
+**v1.6 note:** Added **§0 Reader map** so stage boundaries, package families,
+and “what connects to what” are visible without reading the whole file.
 **v1.5 note:** External delivery record for scoreboard-accepted C0 (CSQ-12 /
-A2) and FA0 foundation packages FAS-0…FAS-4 (MVP scopes). Living detail remains
-in [doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
+A2) and FA0 foundation packages FAS-0…FAS-4 (MVP scopes). Living package
+states remain in
+[doc/wip/status/NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md).
 
 Testing authority:
 [TESTING_STRATEGY.md](./doc/reference/engineering/TESTING_STRATEGY.md),
 [doc/todo/verification/VERIFICATION_IMPLEMENTATION_PLAN.md](./doc/todo/verification/VERIFICATION_IMPLEMENTATION_PLAN.md),
 and
 [doc/wip/status/VERIFICATION_STATUS.md](./doc/wip/status/VERIFICATION_STATUS.md).
+
+---
+
+## 0. Reader map (start here)
+
+This section is the map. Everything below is detail. If the rest of the file
+feels like a pile of acronyms, re-read this section — not every package plan.
+
+### 0.1 What this document is (and is not)
+
+| This document owns | This document does **not** own |
+|---|---|
+| **Program order** — which stage and package family comes next | Live package states (`accept` / `ready` / …) → **scoreboard** |
+| **Stage boundaries** — what “M1 exit” or “C0 exit” means | Semantics of put/get/salvage → **specs** (`ARCHITECTURE.md` → named specs) |
+| **Priority law** — what may preempt what | Day-to-day assignment → **Kanban** (workflow only) |
+| **Entry / exit rules** for admitted packages | Full test matrices → package plans + `TESTING_STRATEGY` |
+
+**Living “where are we now?”** is always:
+
+1. **§0 + §20** of this file (map + NOW/THEN summary)
+2. **[NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md)** (each package’s state)
+3. Open **one** stage section below only when you are working that stage
+
+Kanban columns are not package acceptance. Code in the tree is not acceptance.
+
+### 0.2 Two layers (this is the usual confusion)
+
+There are **two different name systems**. Mixing them makes the plan feel
+self-referential.
+
+```text
+STAGES (release chapters — public program gates)
+  M0  C0  M1  M2  M3  M4  M5  M6  E1+
+
+PACKAGES (units of labor + qualification)
+  CSQ-12   HAR-3   APB-0   FAS-4   PQH-9   DEF-100   …
+
+LANES (parallel workstreams allowed inside / beside a stage)
+  under/after C0:  PQ0 (PQH-*) , FA0 (FAS-*) , then M1 (HAR-* + APB-*)
+```
+
+| Word | Means | Example |
+|---|---|---|
+| **Stage** | A **release boundary**. Stages do not “accept”; their **packages** do. Public product claims advance when the stage **exits**. | “M1 exit” = app can create/secure/operate a Heap |
+| **Package** | One scoreboard row with state `not_started`…`accept`. Smallest honest unit of exit evidence. | `CSQ-12`, `HAR-1`, `APB-0` |
+| **Lane** | Work that may run **alongside** the critical path without renaming the stage. | PQ0 = measurement; FA0 = formal; neither is “M1” |
+
+**Rule of thumb:** Stages answer *where is the product going?* Packages answer
+*what do I implement or accept this week?*
+
+### 0.3 Package ID dictionary (what the letters mean)
+
+| Prefix | Family | Stage / lane | One-line meaning |
+|---|---|---|---|
+| `M0-*` | Program truth | **M0** | Honest inventory + scoreboard + delivery check script |
+| `DEF-*` | Defect remediation | before/with **C0** | Named P0 storage defects with permanent regressions |
+| `CSQ-*` | Core storage qualification | **C0** | Store/format A2 evidence cells → `CSQ-12` closes C0 |
+| `PQH-*` | Performance qualification harness | **PQ0** lane | Measurement machinery; not the M1 product gate |
+| `FAS-*` | Formal assurance spine | **FA0** lane | Registry, tools, proofs; foundation `FAS-0…4` done; later waves deferred |
+| `HAR-*` | Heap application ready | **M1** | Create/secure/operate/backup/restore one Heap |
+| `APB-*` | Application baseline | **M1** | Product API baseline (contract → qualification) |
+| `APP-*` | Application API slice | feeds **M1** | Older/core API plan; absorbed into APB/HAR where noted |
+| `DEL-*` | Evidence (durable) | **M2+** | Evidence substrate (not “delivery plan”) |
+| `TEL-*` | Telemetry | **M2+** | Bounded operational signals |
+| `DST-*` | Studio | **M2+** | Explorer UI (parallel; not engine gate alone) |
+| `RRE-*` | Document / math layer | **M3** | Residiuum Rules / document invariants |
+| `ATM-*` | Atomics | **M4** | Atomic integrity / relationships |
+| `VFY-*` | Verification IDs | cross-cutting | Claim/suite/profile identifiers |
+
+Detail for a package lives in its **implementation plan** (linked from the
+stage section). This file only admits order and exits.
+
+### 0.4 Stage map — boundaries and “done means”
+
+Stages are sequential for **public release**. Lanes may run in parallel only
+where this plan says so.
+
+```text
+  [done] M0 Program Truth
+           │  one honest queue + scoreboard + verify-delivery-status
+           ▼
+  [done] C0 Core Storage Qualification
+           │  CSQ-0…12 accept; residiuum-core-storage-v1 / A2 verifies
+           │
+           ├─► PQ0  (lane)  PQH harness — alongside, not M1 exit
+           ├─► FA0  (lane)  FAS foundation — alongside; FAS-5+ deferred
+           │
+           ▼
+  [NOW]  M1 Heap Application Ready + Application Baseline
+           │  HAR-0…7 + APB-0…12 accept; critical Heap journey
+           ▼
+         M2 Trustworthy Core Early Access   ← first “SQLite replacement” gate
+           │  min Evidence + Telemetry + early-access trust
+           ▼
+         M3 Mathematical Documents (RRE)
+           ▼
+         M4 Atomic Integrity
+           ▼
+         M5 Exact Navigation (Direct Access + Order Wavelets)
+           ▼
+         M6 Single-Node Production Candidate
+           ▼
+         E1+ Competitive expansion (cluster, search, …) — not immediate target
+```
+
+| Stage | Product sentence (exit) | Package families | Detail section |
+|---|---|---|---|
+| **M0** | One accurate queue; Heap evidence not fantasized | `M0-1…M0-3` | §6 |
+| **C0** | Format/store kernel A2-qualified | `DEF-098…104`, `CSQ-0…12` | §6A |
+| **PQ0** | Performance can be measured honestly | `PQH-0…11` | §6B |
+| **FA0** | Formal claim discipline foundation | `FAS-0…9` (0…4 accept MVP) | §6C |
+| **M1** | App can create, secure, operate, back up, restore, retire a Heap | `HAR-*`, `APB-*` (+ `APP-*` absorbed) | §7 |
+| **M2** | Careful outsider can replace SQLite + loose files | min `DEL`/`TEL`/`DST` + trust/distribution | §8 |
+| **M3–M6** | Product-defining math → atomics → navigation → production candidate | `RRE`, `ATM`, DA/OW, gates | §9–§12 |
+| **E1+** | Competitive expansion | cluster, retrieval, archive | §13 |
+
+**Hard boundary rules (do not blur):**
+
+1. **Stages do not overlap at the public-release level.** You do not “ship M2”
+   while M1 is open. Limited **preparation** may overlap only where §7 / §14
+   allow.
+2. **C0 exit unlocks** post-C0 lanes: honest PQH entry, FA0, **APB-0** entry,
+   and HAR feature labor per package deps — it does **not** mean M1 is done.
+3. **M1 does not require full PQH** unless M1 work introduces or changes a
+   **quantitative performance claim** (§7).
+4. **FAS-5+ does not block** APB/HAR/M2 (principal: formal expansion deferred;
+   foundation FAS-0…4 already accepted).
+5. **Cluster / search / archive** stay later (`P3-FUTURE` / E1+) unless
+   `P0-SAFETY`.
+
+### 0.5 What connects to what (dependency spine)
+
+Critical product spine (engine path):
+
+```text
+M0 ──► C0 ──► M1 (HAR + APB) ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
+```
+
+Side lanes (do not redefine the spine):
+
+```text
+        ┌── PQ0 (PQH-*)  measurement ─────────────────────────┐
+C0 ─────┤                                                     ├── may run in
+        └── FA0 (FAS-*)  formal ──► FAS-5+ later / deferred ─┘    parallel
+```
+
+Inside **M1** only (order is package-level, not “all of M1 at once”):
+
+```text
+HAR-0 → HAR-1 → HAR-2 → HAR-3 → HAR-4 → HAR-5 → HAR-6 → HAR-7
+APB-0  (after C0)  interleaves with HAR only where MUST_ADD deps permit
+APP-0 / APP-1      feed collection create (HAR-1); later APP absorbed into APB
+```
+
+Inside **C0** only:
+
+```text
+DEF-098…104 → CSQ-0 → CSQ-1‖CSQ-2 → CSQ-3…11 → CSQ-12 (A2 bundle)
+```
+
+### 0.6 How to read the rest of this file
+
+| Goal | Read |
+|---|---|
+| “What is Residiuum trying to ship first?” | §2 Product target + §0.4 M2 row |
+| “What may I work on?” | §3 Priority + §17 Starting queue + **scoreboard** |
+| “What does package state mean?” | §4 + scoreboard (not Kanban) |
+| “What is stage M*?” | §5 diagram, then **one** of §6–§12 |
+| “What is the current NOW?” | **§20** + scoreboard header / next-engine table |
+| “May I prep X early?” | §14 Permitted preparation |
+| “Is X deferred?” | §13 / §15 |
+| “Change the order?” | §19 Amendment rule (required; chat is not enough) |
+
+**Do not** treat §6–§12 as a novel to read end-to-end. Each stage section is a
+**closed folder**: outcome, priority, package order, exit. Open the folder for
+the stage you are in.
+
+### 0.7 Companion files (narrow authority)
+
+| File | Role |
+|---|---|
+| [NEXT_BUILD_STATUS.md](./doc/wip/status/NEXT_BUILD_STATUS.md) | Living package scoreboard |
+| [doc/README.md](./doc/README.md) | Doc lifecycle (todo/wip/done/reference) |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Map to normative specs (not a second roadmap) |
+| Stage package plans under `doc/todo/…` | Contents of one package family |
+| Kanban (`project_id` on board) | Who is doing which task; **not** accept |
+
+---
 
 ## 1. Authority
 
@@ -1042,7 +1233,7 @@ This is the current executable queue (as of **2026-08-01**):
 | 1 | `M0-1`…`M0-3` | `accept` | program truth + delivery status check |
 | 2 | `DEF-098`…`DEF-104` | `accept` | emergency remediation complete; permanent regressions |
 | 3 | `CSQ-0`…`CSQ-12` | **scoreboard `accept`** | C0/A2 delivered; A3 residuals only |
-| 4 | `FAS-0`…`FAS-4` | **scoreboard `accept`** (FAS-4 = MVP) | FA0 foundation through consistency MVP; FAS-5 next formal lane |
+| 4 | `FAS-0`…`FAS-4` | **scoreboard `accept`** (FAS-4 = MVP) | FA0 foundation through consistency MVP; FAS-5… deferred (principal: more FAS later) |
 | 5 | `PQH-0`…`PQH-11` | scoreboard `active`; board largely `in_review` | **principal accept** PQH labor; qualification residual on controlled hosts |
 | 6 | `APP-0` / `APP-1` | board `in_review` | principal review only; preserve produced work |
 | 7 | `APB-0`…`APB-12` | `not_started` | **M1 application baseline** — unblocked by CSQ-12 accept; next engine path with HAR |
@@ -1122,7 +1313,9 @@ NOW (critical path):
 PQH principal accept (labor largely in_review; not qualification-accept alone)
 → APB-0…APB-12 with HAR dependencies (M1)
 → verified residiuum-application-baseline-v1 / A2
-→ FAS-5… (P1-TRUST formal lane; does not replace APB/M1 order)
+→ M2 early access (Heap single-node vs SQLite+files)
+(Principal 2026-08-01: past FAS stage — FAS-5… deferred; re-open formal lane later.
+ FAS remains P1-TRUST and does not replace APB/M1/M2 order.)
 
 THEN:
 trustworthy SQLite-replacement core (M2)
