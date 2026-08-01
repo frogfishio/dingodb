@@ -37,7 +37,7 @@ backends. This inventory does **not** meet exit.
 | Dep | Scoreboard | Inventory note |
 |---|---|---|
 | `APB-0` | **accept** | baseline-v1 frozen — ops/types OK to implement against |
-| `HAR-1` | scoreboard still says op **106 reserved** | **Stale vs reality:** APP-1 labor has op **106 active** + schemas + `RemoteHeap::create_collection` / `Heap::create_collection`. HAR-1 T1 must reconcile Evidence/State before APB-1 claims *qualified* create. |
+| `HAR-1` | **active** (2026-08-01) | Scoreboard reconciled: op **106 active** + schemas/fixtures + create paths. See [HAR1_COLLECTION_CREATE_EVIDENCE.md](../heap-application-ready/HAR1_COLLECTION_CREATE_EVIDENCE.md). **Not accept** (crash/journey residual). |
 | `APP-1` | **active** | Create paths exist; façade G1+G1b now wires create/open/list (+ basic put/get/delete) |
 | `APP-2` | not_started | Normative “implementation core of APB-1” (MUST_ADD map) |
 | `APP-4` / `APP-5` | **accept** | Pure plan/compiler ready for later APB-7; **not** APB-1 exit |
@@ -145,9 +145,9 @@ DONE  APB-1 G1+G1b  From<Heap|RemoteHeap> + create/open/list + basic put/get/del
 DONE  APB-1 G4      CollectionClient::history both backends
 DONE  APB-1 G3      IndexManager list/create/drop/rebuild both backends
 DONE  APB-1 G6      dual suite scaffold + remote full create (HeapAdmin mint)
-NOW   HAR-1 scoreboard reconcile || APP-3/APB-2 richer mutation
-  ||  HAR-0 residual; optional CI dual harness
-THEN  APB-6 read views
+DONE  HAR-1 T1     scoreboard op-106 evidence reconcile (active, not accept)
+NOW   APP-3/APB-2 richer mutation || APB-6 read views
+  ||  HAR-0 residual; HAR-1 crash/journey residual; optional CI dual harness
 THEN  APP-6 / APB-7 RQL execution (compiler ready)
 ```
 
@@ -176,5 +176,5 @@ Do **not** claim APB-1 accept until dual-backend suite exits.
 - No product “unified client” marketing language.
 - No inventing wire ops for reserved recover/rql.
 - No APB-1 package accept from this inventory alone.
-- HAR-1 scoreboard “106 reserved” is **not** re-asserted as truth — listed for
-  reconcile labor (HAR-1 T1).
+- HAR-1 “106 reserved” was stale; corrected to **active** with residual honesty
+  (HAR1_COLLECTION_CREATE_EVIDENCE.md). Still not HAR-1 package accept.

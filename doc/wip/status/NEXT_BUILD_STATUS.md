@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APB-1 **active** G1–G6 dual matrix green; APP-5 **accept**; APP-4/APB-0 accept)
+Updated: 2026-08-01 (HAR-1 **active** op-106 evidence reconcile; APB-1 G1–G6 dual matrix; APP-5/4/APB-0 accept)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -96,7 +96,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
 | FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
 | APB-0 | accept | 2026-08-01 | CSQ-12 (accept), APP-0/APP-1 evidence | [spec/app/baseline-v1/](../../../spec/app/baseline-v1/) **frozen**; `bash scripts/verify-app-baseline-contract.sh --require-frozen` exit 0; fixtures under baseline-v1/fixtures/; APP-0 error_mapping total; [APB_QUERY_ATOMICS_SEQUENCE.md](../../todo/application-baseline/APB_QUERY_ATOMICS_SEQUENCE.md) | residual: product APB-1…12 implementation; compile fixtures expand with packages | application contract |
-| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory + **G1–G6:** sealed backends; full dual pack (embedded + remote HeapAdmin create mint); shared `apb1_facade_parity`; UUIDv4 create ids; [APB1_DUAL_BACKEND_SUITE.md](../../todo/application-baseline/APB1_DUAL_BACKEND_SUITE.md); [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md) v1.6 | HAR-1 scoreboard stale; RecoveryClient reserved; optional CI harness; **no package accept** | backend-neutral client |
+| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory + **G1–G6:** sealed backends; full dual pack (embedded + remote HeapAdmin create mint); shared `apb1_facade_parity`; UUIDv4 create ids; [APB1_DUAL_BACKEND_SUITE.md](../../todo/application-baseline/APB1_DUAL_BACKEND_SUITE.md); [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md) v1.6 | HAR-1 **active** (evidence reconcile; not accept); RecoveryClient reserved; optional CI harness; **no package accept** | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
@@ -109,7 +109,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APB-11 | not_started | — | APB-1…APB-10 | — | public application test kit absent | consumer verification |
 | APB-12 | not_started | — | APB-0…APB-11, HAR-4 | — | baseline A2 bundle absent | application qualification |
 | HAR-0 | ready | 2026-07-30 | — | matrix; Verus/Kani flags aligned (M0-DISC-001 fixed); architecture OK; M0 complete | residual: confirm CI kani-heap job; HAR-0 plan checklist; **board stage backlog** (principal: APP/CORE first) | truth cleanup residual |
-| HAR-1 | not_started | — | HAR-0, APP-0 | op **106** `collection_create` **reserved**, schemas null | product create missing | collection creation |
+| HAR-1 | active | 2026-08-01 | HAR-0, APP-0 | **Reconcile:** op **106** `collection_create` is **active** in `operations-v1.json` + `rpc-v1/collection_create.*` + fixtures; embedded `Heap::create_collection` / `create_collection_idempotent`; server dispatch 106; `RemoteHeap::create_collection`; façade dual create (APB-1 G6b HeapAdmin mint); [HAR1_COLLECTION_CREATE_EVIDENCE.md](../../todo/heap-application-ready/HAR1_COLLECTION_CREATE_EVIDENCE.md) | crash/failpoint/journey residual; product bootstrap cert still no HeapAdmin; **no package accept** | collection creation |
 | HAR-2 | not_started | — | HAR-1 | precursor: `hp005_accept`, authority genesis | CLI ceremony package not accept | local Heap ceremony |
 | HAR-3 | not_started | — | HAR-2 | precursor: certs, handshake | full key lifecycle journey open | application-key lifecycle |
 | HAR-4 | not_started | — | HAR-3 | precursor: HeapKey handshake, TLS accept loop | HeapKey not proven default remote posture | qualified remote path |
@@ -117,7 +117,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | HAR-6 | not_started | — | HAR-5, APB-12 | precursor: RemoteHeap CRUD/find/history/indexes | no qualified application-baseline journey | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
 | APP-0 | active | 2026-07-30 | — | plan: [CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](../../todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §14; [spec/app/v1/](../../../spec/app/v1/) + residuals; wire staged schemas/fixtures; `residiuum_sdk::app_v1`; `verify-app0-contract.sh` + `app0_contract_lock` (verify PASS; contract_lock 6/6); **board `in_review`** (labor handoff) | owner sign-off still open (APP0-R3; principal → `done`); plan_hash/mac placeholders (APP0-R1/R2) | application contract |
-| APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent`; server dispatch 106 (HeapAdmin); `RemoteHeap::create_collection`; tests app1_collection_create 4/4 + app1_collection_create_dispatch | crash-matrix cells optional; HeapClient façade (APP1-R3/APP-2); bootstrap cert lacks HeapAdmin (TLS create needs admin cert) | qualified collection create |
+| APP-1 | active | 2026-07-30 | — | op **106 active** + schemas; `create_collection_idempotent` (UUIDv4 ids); server dispatch 106; `RemoteHeap::create_collection`; `HeapClient` create both backends (APB-1); tests app1 4/4 + dispatch 1/1 + dual pack | crash-matrix/failpoint residual; bootstrap cert lacks HeapAdmin; HAR-1 package exit still open | qualified collection create |
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
 | APP-4 | accept | 2026-08-01 | APP-0 freeze | `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); `spec/app/v1/plan_vectors_v1.json` hashes locked; `cargo test -p residiuum-sdk --test app4_predicate_plan` **4/4**; builder↔fixture plan hash parity; predicate totality model (absent≠value); name-binding fail-closed | full RQL source is APP-5; scan/index oracle parity at execution (APP-6/APB-7); **no product query claim** until APB-7/HAR | canonical predicates/plans |
@@ -210,6 +210,7 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 - [x] Script invoked from `.github/workflows/ci.yml` `quality` job (step **Delivery scoreboard (M0-3)**)
 - [x] Local `bash scripts/verify-delivery-status.sh` passes against this scoreboard
 - [x] M0 exit companion: HAR-1 not falsely ready — blocked by named predecessors **HAR-0**, **APP-0**
+- [x] HAR-1 T1: scoreboard “106 reserved” corrected → **active** with residual honesty ([HAR1_COLLECTION_CREATE_EVIDENCE.md](../../todo/heap-application-ready/HAR1_COLLECTION_CREATE_EVIDENCE.md)); **not accept**
 
 ## Next engine package
 
