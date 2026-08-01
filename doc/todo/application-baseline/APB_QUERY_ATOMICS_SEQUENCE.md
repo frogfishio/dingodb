@@ -122,10 +122,11 @@ APB-0 accept
 | Feature | Labor IDs | Stage intent |
 |---|---|---|
 | *Phase B — Query spine* | APP-5 **T2** §9 surface · **T3** corpus/reject · **T4** budget+fuzz · **T5** scoreboard accept | Primary path; do T2→T5 before APB-7 |
-| *Phase B∥ — HAR identity + min client* | HAR-0 **T1** residual · HAR-1 **T1** op-106 reconcile · APB-1 **T1** client gap inventory | Parallel deps for APB-7 |
+| *Phase B∥ — HAR identity + min client* | HAR-0 **T1** residual · HAR-1 **T1** op-106 reconcile · APB-1 **T1** client gap inventory (**landed** → scoreboard APB-1 active) | Parallel deps for APB-7 |
 | *Phase C — RRE-0 pure risk* | RRE-0 **T1** oracle scaffold | Diagnostic only; never blocks APP-5 |
 
-APP-4 T1 + APP-5 T1 labor are **in_review** (APP-4 scoreboard accept landed).
+APP-4 + APP-5 scoreboard **accept** landed (2026-08-01). Board labor T1–T5 for APP-5
+in `in_review` for principal stage accept. Next spine product gate: APB-7 (deps APB-1/6).
 
 ---
 

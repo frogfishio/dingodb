@@ -9,9 +9,11 @@
 //! fail with [`Error::QueryInvalid`] and diagnostic `rql_feature_unavailable`
 //! when appropriate.
 //!
-//! Residual: `after` continuation clause (APP-6), ranked access. Budget source
-//! clause is parsed into [`CompiledAppCore::budget`] for merge with
-//! [`crate::app_v1::QueryRunOptions`] at execution (not part of plan hash).
+//! Package APP-5 exit (scoreboard accept): §9 Application Core compile + corpus +
+//! bounded fuzz. Residual for later packages: `after` continuation (APP-6),
+//! ranked access (excluded Core). Budget source clause is parsed into
+//! [`CompiledAppCore::budget`] for merge with [`crate::app_v1::QueryRunOptions`]
+//! at execution (not part of plan hash). No product query claim until APB-7.
 
 use crate::app_v1::{ConsistencyMode, CoveragePolicy, QueryBudget};
 use crate::error::Error;

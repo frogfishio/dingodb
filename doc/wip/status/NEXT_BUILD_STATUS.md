@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APP-4 **accept**; APP-5 **active** query-spine compiler slice; APB-0 already accept)
+Updated: 2026-08-01 (APB-1 **active** gap inventory; APP-5 **accept**; APP-4 accept; APB-0 accept)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -96,7 +96,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
 | FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
 | APB-0 | accept | 2026-08-01 | CSQ-12 (accept), APP-0/APP-1 evidence | [spec/app/baseline-v1/](../../../spec/app/baseline-v1/) **frozen**; `bash scripts/verify-app-baseline-contract.sh --require-frozen` exit 0; fixtures under baseline-v1/fixtures/; APP-0 error_mapping total; [APB_QUERY_ATOMICS_SEQUENCE.md](../../todo/application-baseline/APB_QUERY_ATOMICS_SEQUENCE.md) | residual: product APB-1…12 implementation; compile fixtures expand with packages | application contract |
-| APB-1 | not_started | — | APB-0, HAR-1 | — | unified client absent | backend-neutral client |
+| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory: [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md); ops baseline-v1 10 APB-1 rows; façade stubs in `app_v1`; real paths on `Heap`/`RemoteHeap`; G1–G6 backlog | dual-backend suite not started; HAR-1 scoreboard still stale (106); **no product client claim** | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
@@ -121,7 +121,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-2 | not_started | — | APP-1 | SDK precursor types | façade not product | backend-neutral Rust API |
 | APP-3 | not_started | — | APP-2, HAR-4 | CRUD/history/index precursor | parity suite not package-accept | typed data/history/index |
 | APP-4 | accept | 2026-08-01 | APP-0 freeze | `residiuum_sdk::predicate` + `plan_v1` (`rql-plan-encoding-v1`); `spec/app/v1/plan_vectors_v1.json` hashes locked; `cargo test -p residiuum-sdk --test app4_predicate_plan` **4/4**; builder↔fixture plan hash parity; predicate totality model (absent≠value); name-binding fail-closed | full RQL source is APP-5; scan/index oracle parity at execution (APP-6/APB-7); **no product query claim** until APB-7/HAR | canonical predicates/plans |
-| APP-5 | active | 2026-08-01 | APP-4 | §9 surface + budget `{documents,bytes,result_bytes}` → `CompiledAppCore.budget` (not plan hash); `merge_budgets`; corpus accept/reject; unit **13/13** + `app5_rql_app_core` **3/3**; bounded fuzz panic-free; after = APP-6 residual | T5 scoreboard accept when exit met; **not package accept** until T5 | RQL Application Core |
+| APP-5 | accept | 2026-08-01 | APP-4 | CORE §14 exit: `residiuum_sdk::rql_app_core` `compile_app_core` → `RqlPlanV1` + explain/budget run metadata; profile **`rql-app-core-v1`** (not full RQL v1); §9 surface (multi-where, project/order/nulls, coverage/consistency, predicates, budget `{documents,bytes,result_bytes}`); non-Core reject (`enrich`/`within`/`at rank`/access + `after`→APP-6) with `rql_feature_unavailable`; corpus `spec/app/v1/rql_app_core_corpus_v1.json`; `cargo test -p residiuum-sdk --lib rql_app_core` **13/13**; `--test app5_rql_app_core` **3/3**; plan_vectors `source_rql` hash lock; bounded fuzz panic-free | `after`/continuation product = APP-6; no query execution/product claim until APB-7 (+ APP-3/HAR-4 path); host must merge `CompiledAppCore.budget` with `QueryRunOptions` | RQL Application Core |
 | APP-6 | not_started | — | APP-3, APP-5, HAR-4 | — | authenticated cursor not product | query execution |
 | APP-7 | not_started | — | APP-6, HAR-4 | op 118 `rql_query` reserved | remote query parity missing | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
@@ -182,8 +182,8 @@ Program order (Kanban determines the individual active cards):
 2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
    do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
    with Atomics/cluster when those packages admit formal work.
-3. **Query spine** (principal §0.8): **APP-4 = accept**; **APP-5 active** (compiler slice);
-   next APB-7 deps still need APP-5 accept + APB-1/APB-6. Wide-case / gotcha discovery.
+3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APB-1 active** (client gap inventory);
+   next labor G1–G2 façade bind + create/open/list; then APB-6 / APP-6 → APB-7.
    Non-query APB may lag.
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
@@ -219,7 +219,7 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
 | 3 | **FAS-0…FAS-4** | Scoreboard **accept** MVP 2026-08-01; foundation closed |
 | 4 | **APB-0** | **accept** 2026-08-01 — baseline-v1 frozen |
-| 5 | **APP-4 → APP-5 → APB-7** | APP-4 **accept**; APP-5 **active** compiler slice; APB-7 next after APP-5 exit |
+| 5 | **APP-4 → APP-5 → APB-7** | APP-4/5 **accept**; **APB-1 active** (inventory); still need APB-6/APP-6 for APB-7 |
 | 6 | **HAR-0…HAR-3** | Identity/keys; enables ATM-0 prep after HAR-2 |
 | 7 | **RRE-0 / ATM-0** pure | Risk oracles/corpora only — **not** M3/M4 product exit |
 | 8 | Remaining HAR/APB → M1 exit → **M2** | Complete baseline journey |
