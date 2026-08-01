@@ -415,24 +415,40 @@ impl HeapClient {
         !matches!(self.backend, HeapBackend::Unbound)
     }
 
-    /// Open a stable bounded read view (APB-6 T1 scaffold).
+    /// Open a stable bounded read view (APB-6).
     ///
-    /// Returns a live-unpinned view binding heap identity, declared modes,
-    /// semantic profile versions, and expiry. **Does not** pin reclamation or
-    /// provide multi-query snapshot observation — see
-    /// `APB6_READ_VIEW_GAP_INVENTORY.md`. Product collection access under the
-    /// view fails closed until frontier pin lands.
+    /// **Embedded:** pins `authoritative_frontier` to the store segment
+    /// fingerprint (`observation_pinned = true`). Drift is re-checkable via
+    /// [`crate::read_view_v1::ReadView::check_drift`]. This is **not** multi-
+    /// query snapshot isolation — product collection observation under the
+    /// view remains fail-closed until a view-bound executor lands.
+    ///
+    /// **Remote:** live-unpinned residual (honest; remote pin / HAR-4 later).
+    ///
+    /// See `APB6_READ_VIEW_GAP_INVENTORY.md`.
     pub fn read_view(
         &mut self,
         options: crate::read_view_v1::ReadViewOptions,
     ) -> Result<crate::read_view_v1::ReadView, Error> {
-        if !self.is_bound() {
-            return Err(Error::Internal(
+        match &self.backend {
+            HeapBackend::Unbound => Err(Error::Internal(
                 "HeapClient unbound; construct with From<Heap|RemoteHeap> (APB-1)".into(),
-            ));
+            )),
+            HeapBackend::Embedded(heap) => {
+                let fp = heap.segment_fingerprint()?;
+                let store = heap.store_arc();
+                crate::read_view_v1::ReadView::open_segment_fingerprint_pinned(
+                    self.heap_id,
+                    options,
+                    store,
+                    fp,
+                )
+            }
+            HeapBackend::Remote(_) => {
+                // Residual: no remote segment pin / view op yet.
+                crate::read_view_v1::ReadView::open_live_unpinned(self.heap_id, options)
+            }
         }
-        // Embedded and remote share the same unpinned scaffold today; pin residual.
-        crate::read_view_v1::ReadView::open_live_unpinned(self.heap_id, options)
     }
 
     /// Create a collection (APP-1 / APB-1).

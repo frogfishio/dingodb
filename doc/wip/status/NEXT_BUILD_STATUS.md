@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APB-6 T1 read-view scaffold + inventory; APP-6 T1/T2; Kanban-first backlog)
+Updated: 2026-08-02 (APB-6 T2 embedded segment-fingerprint pin; APP-6 T1/T2; Kanban-first backlog)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -101,7 +101,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
-| APB-6 | active | 2026-08-01 | APB-1, APB-3 | T1: [APB6_READ_VIEW_GAP_INVENTORY.md](../../todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md) + `read_view_v1` types + `HeapClient::read_view` (live-unpinned open/close/expiry; observation **fail-closed**); `cargo test -p residiuum-sdk --test apb6_read_view_scaffold` **2/2** (+ lib unit) | frontier pin (segment fingerprint), retention pin, view-bound query/export, mutation-between-pages matrix, APB-3 lifecycle; **no package accept / no snapshot claim** | read consistency |
+| APB-6 | active | 2026-08-02 | APB-1, APB-3 | **T1** scaffold + **T2** embedded pin: `Heap`/`HeapStore::segment_fingerprint`; `ReadView` `FrontierKind::SegmentFingerprint` + `observation_pinned`; `check_drift` / `refresh_pin`; remote residual live-unpinned; inventory [APB6_READ_VIEW_GAP_INVENTORY.md](../../todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md); `cargo test -p residiuum-sdk --test apb6_read_view_scaffold` **3/3** (+ lib unit) | view-bound query/export, retention pin, remote pin, mutation-between-pages matrix, APB-3 lifecycle; **no package accept / no snapshot claim** | read consistency |
 | APB-7 | not_started | — | APB-1, APB-6, APP-4, APP-5 | — | RQL application runtime absent | query baseline |
 | APB-8 | not_started | — | APB-7 | — | bounded aggregate baseline absent | aggregates |
 | APB-9 | not_started | — | APB-2, APB-6 | — | resumable change feed absent | watches |
@@ -189,8 +189,8 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Card | Feature | Note |
 |---:|---|---|---|
-| 1 | **APB-6 T2** frontier pin (segment fingerprint) | Query spine | preferred next after T1 scaffold |
-| 2 | **APB-7 T0** runtime gap inventory | Query spine | APP-6 + APB-6 scaffold available |
+| 1 | **APB-7 T0** runtime gap inventory | Query spine | APP-6 + APB-6 T1/T2 available; still no product query |
+| 2 | **APB-6** residuals (view-bound exec / retention) | Query spine | after T2 pin; no package accept |
 | 3 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
 | 4 | **APB-2 T6** residual checklist | APB-2 residuals | no false accept |
 | 5 | **GOV T1** process rule | Labor governance | Kanban-first (in_review) |
@@ -203,8 +203,9 @@ Program order (packages; Kanban cards bind labor under them):
 2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
    do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
    with Atomics/cluster when those packages admit formal work.
-3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (cursor mint/verify);
-   **APB-1 active** (G1–G6 dual matrix); next **APP-6 T2 → APB-6 T1 → APB-7** (board cards).
+3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
+   **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
+   **APB-1 active** (G1–G6 dual matrix); next **APB-7 T0** inventory (board).
    Non-query APB may lag (APB-2 CAS residual is board-managed, not ad-hoc).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.

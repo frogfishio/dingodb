@@ -107,6 +107,19 @@ impl HeapStore {
         guard.get_subject_bytes(subject)
     }
 
+    /// Current store segment fingerprint (authoritative frontier candidate).
+    ///
+    /// Used by APB-6 read-view pins and index builds. Requires [`Rights::READ`].
+    pub fn segment_fingerprint(&self) -> Result<[u8; 32], StoreError> {
+        self.gate()?;
+        self.require_right(Rights::READ)?;
+        let guard = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
+        guard.segment_fingerprint()
+    }
+
     /// Delete by SubjectV2 key within the bound heap.
     pub fn delete(&self, subject: &[u8]) -> Result<WriteReceipt, StoreError> {
         self.gate()?;

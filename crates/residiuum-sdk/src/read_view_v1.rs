@@ -1,10 +1,14 @@
-//! Stable bounded read views — APB-6 T1 surface scaffold.
+//! Stable bounded read views — APB-6 surface (T1 scaffold + T2 frontier pin).
 //!
 //! Normative: MUST_ADD §10, PD-008, `spec/app/baseline-v1` `apb.heap.read_view`.
 //!
-//! This cut freezes **names/fields** and open/close/expiry checks. It does **not**
-//! pin reclamation or prove multi-query snapshot observation. Product collection
-//! access under a view fails closed until an authoritative frontier pin lands.
+//! **T2 (embedded):** binds `authoritative_frontier` to the store segment
+//! fingerprint and sets `observation_pinned = true`. Drift is detectable via
+//! [`ReadView::check_drift`]. This is **not** multi-query snapshot isolation:
+//! product collection access under a view remains fail-closed until a
+//! view-bound executor path lands.
+//!
+//! **Remote:** still opens live-unpinned (honest residual; HAR-4 pin later).
 //!
 //! Inventory: `doc/todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md`.
 
@@ -13,6 +17,8 @@ use crate::cursor_v1::PROFILE as CURSOR_PROFILE;
 use crate::error::Error;
 use crate::predicate::PREDICATE_PROFILE_V1;
 use residiuum_heap::HeapId;
+use residiuum_store::HeapStore;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Profile label for the first read-view façade cut (not package accept).
@@ -53,10 +59,13 @@ pub struct ReadViewRetentionBudget {
 pub enum FrontierKind {
     /// Live open generation — **not** a durable segment pin.
     ///
-    /// First cut: opaque view generation id minted at open. Does not prevent
-    /// mutations from changing later observations.
+    /// Used for remote backends and contract tests until a remote pin lands.
     LiveUnpinned,
-    /// Future: store segment fingerprint pin (embedded residual).
+    /// Store segment fingerprint pin (embedded APB-6 T2).
+    ///
+    /// Identity is segment path+size fingerprint. Detects some store layout
+    /// movement via [`ReadView::check_drift`]; does **not** prove snapshot
+    /// isolation for multi-page observation.
     SegmentFingerprint,
 }
 
@@ -65,10 +74,21 @@ pub enum FrontierKind {
 pub struct AuthoritativeFrontier {
     /// Frontier class.
     pub kind: FrontierKind,
-    /// Opaque frontier identity (hex or label).
+    /// Opaque frontier identity (hex).
     pub identity_hex: String,
     /// Capture time (unix seconds).
     pub captured_at_unix: u64,
+}
+
+/// Result of comparing the pinned frontier to the live store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrontierDrift {
+    /// Live segment fingerprint still matches the pin.
+    Stable,
+    /// Live fingerprint differs from the pin (store layout moved).
+    Drifted,
+    /// View has no re-checkable store pin (live-unpinned / remote).
+    Unpinned,
 }
 
 /// Semantic profile versions bound into the view (Class C labels).
@@ -120,39 +140,48 @@ pub struct ReadViewInfo {
     pub expires_at_unix: Option<u64>,
     /// Whether [`ReadView::close`] was called.
     pub closed: bool,
-    /// Whether product observation is pinned (always false in T1).
+    /// Whether an embedded segment-fingerprint pin is active.
+    ///
+    /// `true` does **not** mean product snapshot isolation or view-bound query.
     pub observation_pinned: bool,
 }
 
-/// Stable bounded read view handle (APB-6 scaffold).
+/// Stable bounded read view handle (APB-6).
 ///
-/// Observation under this view is **not** product-pinned in T1. Call
-/// [`Self::ensure_usable`] before attaching future query/export APIs.
-#[derive(Debug)]
+/// Embedded opens pin the store segment fingerprint. Product collection
+/// observation under the view stays fail-closed until a view-bound executor
+/// lands (see inventory). Call [`Self::ensure_usable`] before attaching future
+/// query/export APIs.
 pub struct ReadView {
     info: ReadViewInfo,
     retention_budget: Option<ReadViewRetentionBudget>,
+    /// Embedded pin: store + captured fingerprint for drift checks.
+    pin: Option<SegmentPin>,
+}
+
+struct SegmentPin {
+    store: Arc<HeapStore>,
+    fingerprint: [u8; 32],
+}
+
+impl std::fmt::Debug for ReadView {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReadView")
+            .field("info", &self.info)
+            .field("retention_budget", &self.retention_budget)
+            .field("pin", &self.pin.as_ref().map(|p| hex32(&p.fingerprint)))
+            .finish()
+    }
 }
 
 impl ReadView {
-    /// Construct a live-unpinned view for a bound heap (internal / tests).
+    /// Construct a live-unpinned view (remote residual / tests).
     pub(crate) fn open_live_unpinned(
         heap_id: HeapId,
         options: ReadViewOptions,
     ) -> Result<Self, Error> {
-        let now = unix_now()?;
-        let max_age = options
-            .max_age
-            .or_else(|| {
-                options
-                    .retention_budget
-                    .and_then(|b| b.max_hold)
-            })
-            .unwrap_or(Duration::from_secs(900));
-        let expires = now.saturating_add(max_age.as_secs());
-        let view_bytes = residiuum_store::random_id().map_err(Error::from)?;
+        let (now, expires, view_bytes) = open_common(&options)?;
         let frontier_bytes = {
-            // Domain-separated open generation — not a store segment pin.
             let mut h = blake3::Hasher::new();
             h.update(b"residiuum:read-view-v1:live-unpinned");
             h.update(&[0u8]);
@@ -179,6 +208,40 @@ impl ReadView {
                 observation_pinned: false,
             },
             retention_budget: options.retention_budget,
+            pin: None,
+        })
+    }
+
+    /// Construct an embedded view pinned to a store segment fingerprint (APB-6 T2).
+    pub(crate) fn open_segment_fingerprint_pinned(
+        heap_id: HeapId,
+        options: ReadViewOptions,
+        store: Arc<HeapStore>,
+        fingerprint: [u8; 32],
+    ) -> Result<Self, Error> {
+        let (now, expires, view_bytes) = open_common(&options)?;
+        Ok(Self {
+            info: ReadViewInfo {
+                heap_id,
+                view_id_hex: hex16(&view_bytes),
+                frontier: AuthoritativeFrontier {
+                    kind: FrontierKind::SegmentFingerprint,
+                    identity_hex: hex32(&fingerprint),
+                    captured_at_unix: now,
+                },
+                coverage: CoveragePolicy::Complete,
+                consistency: options.consistency,
+                semantic_versions: SemanticVersions::current_build(),
+                opened_at_unix: now,
+                expires_at_unix: Some(expires),
+                closed: false,
+                observation_pinned: true,
+            },
+            retention_budget: options.retention_budget,
+            pin: Some(SegmentPin {
+                store,
+                fingerprint,
+            }),
         })
     }
 
@@ -231,18 +294,92 @@ impl ReadView {
         self.retention_budget
     }
 
-    /// Product collection observation under this view (fail-closed in T1).
+    /// Whether an embedded segment-fingerprint pin is active.
+    pub fn is_observation_pinned(&self) -> bool {
+        self.info.observation_pinned
+    }
+
+    /// Pinned segment fingerprint bytes when `FrontierKind::SegmentFingerprint`.
+    pub fn pinned_fingerprint(&self) -> Option<[u8; 32]> {
+        self.pin.as_ref().map(|p| p.fingerprint)
+    }
+
+    /// Compare the pin against the live store segment fingerprint.
     ///
-    /// Residual: pin authoritative frontier + wire `query_exec_v1` under the view.
+    /// - [`FrontierDrift::Stable`] / [`FrontierDrift::Drifted`] for pinned views
+    /// - [`FrontierDrift::Unpinned`] when no re-checkable store pin exists
+    ///
+    /// Does **not** enforce isolation; callers use this for residual honesty.
+    pub fn check_drift(&self) -> Result<FrontierDrift, Error> {
+        self.ensure_usable()?;
+        let Some(pin) = self.pin.as_ref() else {
+            return Ok(FrontierDrift::Unpinned);
+        };
+        let live = pin.store.segment_fingerprint()?;
+        if live == pin.fingerprint {
+            Ok(FrontierDrift::Stable)
+        } else {
+            Ok(FrontierDrift::Drifted)
+        }
+    }
+
+    /// Re-sample the store segment fingerprint and update the pin in place.
+    ///
+    /// Residual: does not reclaim old segments or freeze document pages.
+    /// Fail-closed on live-unpinned views.
+    pub fn refresh_pin(&mut self) -> Result<(), Error> {
+        self.ensure_usable()?;
+        let Some(pin) = self.pin.as_mut() else {
+            return Err(Error::ConsistencyViolation(
+                "read view has no segment-fingerprint pin to refresh (live-unpinned)".into(),
+            ));
+        };
+        let live = pin.store.segment_fingerprint()?;
+        let now = unix_now()?;
+        pin.fingerprint = live;
+        self.info.frontier = AuthoritativeFrontier {
+            kind: FrontierKind::SegmentFingerprint,
+            identity_hex: hex32(&live),
+            captured_at_unix: now,
+        };
+        self.info.observation_pinned = true;
+        Ok(())
+    }
+
+    /// Product collection observation under this view (fail-closed until executor).
+    ///
+    /// Frontier pin (T2) is orthogonal: a pinned view still fails closed here
+    /// until `query_exec_v1` (or equivalent) is bound to the view.
     pub fn open_collection(&mut self, _name: &str) -> Result<(), Error> {
         self.ensure_usable()?;
-        Err(Error::Internal(
-            "APB-6 residual: read view does not pin observation yet; \
-             use CollectionClient::rql on a live handle (generation-fenced) \
-             or wait for frontier pin (see APB6_READ_VIEW_GAP_INVENTORY.md)"
-                .into(),
-        ))
+        if self.info.observation_pinned {
+            Err(Error::Internal(
+                "APB-6 residual: segment frontier is pinned but view-bound collection \
+                 observation/executor is not wired; use CollectionClient::rql on a live \
+                 handle (generation-fenced) or wait for view-bound exec \
+                 (see APB6_READ_VIEW_GAP_INVENTORY.md)"
+                    .into(),
+            ))
+        } else {
+            Err(Error::Internal(
+                "APB-6 residual: read view does not pin observation yet; \
+                 use CollectionClient::rql on a live handle (generation-fenced) \
+                 or wait for frontier pin (see APB6_READ_VIEW_GAP_INVENTORY.md)"
+                    .into(),
+            ))
+        }
     }
+}
+
+fn open_common(options: &ReadViewOptions) -> Result<(u64, u64, [u8; 16]), Error> {
+    let now = unix_now()?;
+    let max_age = options
+        .max_age
+        .or_else(|| options.retention_budget.and_then(|b| b.max_hold))
+        .unwrap_or(Duration::from_secs(900));
+    let expires = now.saturating_add(max_age.as_secs());
+    let view_bytes = residiuum_store::random_id().map_err(Error::from)?;
+    Ok((now, expires, view_bytes))
 }
 
 fn unix_now() -> Result<u64, Error> {
@@ -274,7 +411,7 @@ mod tests {
     use residiuum_heap::HeapId;
 
     #[test]
-    fn open_close_and_expiry() {
+    fn open_close_and_expiry_live_unpinned() {
         let heap = HeapId::from_bytes_unchecked_nonzero([1u8; 16]).unwrap();
         let mut v = ReadView::open_live_unpinned(
             heap,
@@ -288,8 +425,10 @@ mod tests {
         assert!(!v.info().observation_pinned);
         assert_eq!(v.info().frontier.kind, FrontierKind::LiveUnpinned);
         assert_eq!(v.info().semantic_versions.read_view, READ_VIEW_PROFILE);
+        assert_eq!(v.check_drift().unwrap(), FrontierDrift::Unpinned);
         v.ensure_usable().unwrap();
         assert!(v.open_collection("orders").is_err());
+        assert!(v.refresh_pin().is_err());
         v.close();
         assert!(v.ensure_usable().is_err());
     }

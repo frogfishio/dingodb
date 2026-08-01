@@ -82,6 +82,19 @@ impl Heap {
         &self.cap
     }
 
+    /// Store segment fingerprint for this heap's physical store (APB-6 pin).
+    ///
+    /// Identity is over segment paths + sizes; it is a frontier token, not a
+    /// multi-query snapshot proof. Requires Read on the capability.
+    pub fn segment_fingerprint(&self) -> Result<[u8; 32], Error> {
+        Ok(self.store.segment_fingerprint()?)
+    }
+
+    /// Shared store handle for read-view pin re-checks (crate-internal).
+    pub(crate) fn store_arc(&self) -> Arc<HeapStore> {
+        Arc::clone(&self.store)
+    }
+
     /// Whether `other` is the same capability instance (pointer identity).
     pub fn same_capability(&self, other: &Heap) -> bool {
         self.cap.same_instance(&other.cap)

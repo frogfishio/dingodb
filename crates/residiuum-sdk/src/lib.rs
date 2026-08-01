@@ -104,7 +104,7 @@ pub use cursor_v1::{
 };
 pub use query_exec_v1::{execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE};
 pub use read_view_v1::{
-    AuthoritativeFrontier, FrontierKind, ReadView, ReadViewInfo, ReadViewOptions,
+    AuthoritativeFrontier, FrontierDrift, FrontierKind, ReadView, ReadViewInfo, ReadViewOptions,
     ReadViewRetentionBudget, SemanticVersions, READ_VIEW_PROFILE,
 };
 pub use predicate::{
