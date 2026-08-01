@@ -295,12 +295,17 @@ impl RemoteHeap {
         operation_id: Option<[u8; 16]>,
     ) -> Result<RemoteCreatedCollection, Error> {
         let op = operation_id.unwrap_or_else(|| {
+            // Prefer UUIDv4 so admin/op envelopes match CollectionId-shaped mints.
+            if let Ok(id) = residiuum_heap::CollectionId::new_random() {
+                return *id.as_bytes();
+            }
             let mut b = [0u8; 16];
-            // Prefer OS entropy; fall back to correlation-ish bytes only if unavailable.
             if getrandom::fill(&mut b).is_err() {
                 let n = self.next_id.load(Ordering::Relaxed);
                 b[..8].copy_from_slice(&n.to_le_bytes());
             }
+            b[6] = (b[6] & 0x0f) | 0x40;
+            b[8] = (b[8] & 0x3f) | 0x80;
             b
         });
         let op_hex: String = op.iter().map(|x| format!("{x:02x}")).collect();

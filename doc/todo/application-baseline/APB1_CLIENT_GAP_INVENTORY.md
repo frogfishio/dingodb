@@ -1,6 +1,6 @@
 # APB-1 — HeapClient / CollectionClient gap inventory
 
-Status: **labor inventory v1.5** (2026-08-01) · package `APB-1` **active / not accept**  
+Status: **labor inventory v1.6** (2026-08-01) · package `APB-1` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §5 · [CORE plan](./CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §3–4 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -127,7 +127,7 @@ Priority order for **APB-1 labor after this inventory** (not started here):
 | G3 | `IndexManager` façade over embedded indexes + remote index_* | APB-1 | **Landed 2026-08-01:** `CollectionClient::indexes` both backends |
 | G4 | `CollectionClient::history` / HistoryClient | APB-1 | **Landed 2026-08-01:** both backends; optional named HistoryClient residual |
 | G5 | RecoveryClient only when wire un-reserves or pure local examine defined | APB-1 later | reserved wire honesty |
-| G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | **Scaffold 2026-08-01:** shared `apb1_facade_parity` + both backends; remote create residual; **not accept** |
+| G6 | Shared behavior suite: same tests embedded vs remote | APB-1 exit | **Matrix green 2026-08-01:** shared pack; remote full create via HeapAdmin mint; product vectors still rights 13; **not package accept** |
 | G7 | put/get/delete façade binding | **APP-3 / APB-2** | **Basic forward done on G1/G1b**; conditional/add/upsert + options parity still APB-2 |
 | G8 | rql execution + cursor | **APP-6 / APB-7** | APP-5 accept ✓; G1; HAR-4 for remote |
 
@@ -144,10 +144,9 @@ Principal §0.8 still prioritizes query path. After APP-5 accept:
 DONE  APB-1 G1+G1b  From<Heap|RemoteHeap> + create/open/list + basic put/get/delete
 DONE  APB-1 G4      CollectionClient::history both backends
 DONE  APB-1 G3      IndexManager list/create/drop/rebuild both backends
-DONE  APB-1 G6      dual suite scaffold (shared scenarios; remote create residual)
-NOW   expand G6 (HeapAdmin create on remote) || HAR-1 scoreboard reconcile
-  ||  HAR-0 residual
-THEN  APP-3 / APB-2 richer mutation (conditional/add/upsert) on façade
+DONE  APB-1 G6      dual suite scaffold + remote full create (HeapAdmin mint)
+NOW   HAR-1 scoreboard reconcile || APP-3/APB-2 richer mutation
+  ||  HAR-0 residual; optional CI dual harness
 THEN  APB-6 read views
 THEN  APP-6 / APB-7 RQL execution (compiler ready)
 ```
@@ -166,10 +165,9 @@ Do **not** claim APB-1 accept until dual-backend suite exits.
 | Dual suite doc | [APB1_DUAL_BACKEND_SUITE.md](./APB1_DUAL_BACKEND_SUITE.md) |
 | Shared scenarios | `crates/residiuum-sdk/tests/common/apb1_facade_parity.rs` |
 | Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** (full G6 pack) |
-| Remote suite | `cargo test -p residiuum-server --features dangerous-key-export --test hp007_connect_heap apb1_heap_client_from_remote` **1/1** (collection plane) |
-| Embedded | `crates/residiuum-sdk/src/heap.rs` |
-| Remote | `crates/residiuum-sdk/src/remote_heap.rs` |
-| Scoreboard | `APB-1` → **active** (not accept); G1–G4 + G6 scaffold; dual exit residual |
+| Remote suite | `… apb1_heap_client_from_remote` **2/2** (collection plane + full HeapAdmin create) |
+| Store create ids | UUIDv4 mint in `create_collection_idempotent` |
+| Scoreboard | `APB-1` → **active** (not accept); G1–G6 matrix green; HAR-1 / package exit residual |
 
 ---
 

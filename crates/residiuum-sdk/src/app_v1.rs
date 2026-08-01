@@ -364,8 +364,7 @@ impl HeapClient {
             HeapBackend::Remote(remote) => {
                 let mut guard = lock_remote(remote)?;
                 let cid_s = guard.collection_open(name)?;
-                let collection_id = CollectionId::from_str(&cid_s)
-                    .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))?;
+                let collection_id = collection_id_from_wire(&cid_s)?;
                 Ok(CollectionClient::from_remote(
                     self.heap_id,
                     collection_id,
@@ -403,8 +402,7 @@ impl HeapClient {
                 let listed = guard.list_collections()?;
                 let mut out = Vec::with_capacity(listed.len());
                 for (id_s, name) in listed {
-                    let collection_id = CollectionId::from_str(&id_s)
-                        .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))?;
+                    let collection_id = collection_id_from_wire(&id_s)?;
                     out.push(CollectionInfo {
                         heap_id: self.heap_id,
                         collection_id,
@@ -448,8 +446,7 @@ fn create_result_from_remote(
     remote: Arc<Mutex<RemoteHeap>>,
     created: crate::remote_heap::RemoteCreatedCollection,
 ) -> Result<CreateCollectionResult, Error> {
-    let collection_id = CollectionId::from_str(&created.collection_id)
-        .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))?;
+    let collection_id = collection_id_from_wire(&created.collection_id)?;
     let descriptor_hash = parse_hex32(&created.descriptor_hash)?;
     let receipt_id = if created.receipt_id.is_empty() {
         [0u8; 16]
@@ -473,6 +470,19 @@ fn create_result_from_remote(
             created_at: SystemTime::now(),
         },
     })
+}
+
+/// Parse a wire collection UUID string into [`CollectionId`].
+///
+/// Prefers strict UUIDv4; falls back to nonzero integrity-valid bytes (embedded
+/// create path already uses unchecked reconstruction of stored object ids).
+fn collection_id_from_wire(s: &str) -> Result<CollectionId, Error> {
+    if let Ok(id) = CollectionId::from_str(s) {
+        return Ok(id);
+    }
+    let bytes = parse_hex16(s)?;
+    CollectionId::from_bytes_unchecked_nonzero(bytes)
+        .map_err(|e| Error::ProtocolViolation(format!("collection_id: {e}")))
 }
 
 fn parse_hex16(s: &str) -> Result<[u8; 16], Error> {

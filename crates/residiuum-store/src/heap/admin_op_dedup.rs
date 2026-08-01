@@ -209,7 +209,11 @@ pub fn create_collection_idempotent(
             replayed: true,
         });
     }
-    let object_id = crate::ids::random_id()?;
+    // Collection identities are UUIDv4 on the app façade (`CollectionId::from_str`).
+    // Mint version bits here so remote create responses parse without unchecked recovery.
+    let object_id = *residiuum_heap::CollectionId::new_random()
+        .map_err(|e| StoreError::HeapAdmit(format!("mint collection id: {e}")))?
+        .as_bytes();
     let admin = super::catalog::create_object(
         layout,
         heap_id,

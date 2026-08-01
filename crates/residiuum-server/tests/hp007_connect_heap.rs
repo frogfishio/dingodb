@@ -3,12 +3,16 @@
 #[path = "../../residiuum-sdk/tests/common/apb1_facade_parity.rs"]
 mod apb1_facade_parity;
 
+use ed25519_dalek::{Signer, SigningKey};
+use residiuum_format::{encode_deterministic_uint_map, CborValue};
 use residiuum_heap::{
-    verify_certificate, HeapAdministrativeState, HeapSecuritySnapshot, HeapSlot, SecurityRevision,
-    HEAP_PROFILE,
+    sig_structure_for, verify_certificate, AUDIENCE_DATA_V1, CONTENT_TYPE_CERTIFICATE,
+    EXTERNAL_AAD_CERTIFICATE, HEAP_PROFILE, PROFILE_VERSION, HeapAdministrativeState,
+    HeapSecuritySnapshot, HeapSlot, SecurityRevision,
 };
 use residiuum_sdk::{
-    Residiuum, HeapCredential, InMemoryHolderKey, RemoteHeapOptions, TlsClientOptions, TlsServerOptions,
+    HeapCredential, InMemoryHolderKey, RemoteHeapOptions, Residiuum, TlsClientOptions,
+    TlsServerOptions, HeapClient,
 };
 use residiuum_server::{
     serve_store_with, HeapAuthAuditLog, ResidentHeap, ResidentHeapRegistry, ServeOptions,
@@ -17,6 +21,7 @@ use residiuum_store::Store;
 use rcgen::{
     BasicConstraints, CertificateParams, DnType, IsCa, KeyPair, KeyUsagePurpose, SanType,
 };
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -25,6 +30,9 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+
+/// READ | WRITE | INDEX_ADMIN | HEAP_ADMIN — full G6 remote pack including create.
+const RIGHTS_FULL_G6: u64 = 0x1 | 0x4 | 0x8 | 0x1000;
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -60,6 +68,108 @@ fn wait_for_server(bind: &str) {
         thread::sleep(Duration::from_millis(20));
     }
     panic!("server did not accept on {bind}");
+}
+
+fn write_text(out: &mut Vec<u8>, s: &str) {
+    let b = s.as_bytes();
+    if b.len() < 24 {
+        out.push(0x60 | (b.len() as u8));
+    } else {
+        out.push(0x78);
+        out.push(b.len() as u8);
+    }
+    out.extend_from_slice(b);
+}
+
+fn write_bstr(out: &mut Vec<u8>, b: &[u8]) {
+    if b.len() < 24 {
+        out.push(0x40 | (b.len() as u8));
+    } else if b.len() < 256 {
+        out.push(0x58);
+        out.push(b.len() as u8);
+    } else {
+        out.push(0x59);
+        out.extend_from_slice(&(b.len() as u16).to_be_bytes());
+    }
+    out.extend_from_slice(b);
+}
+
+fn hex16(s: &str) -> [u8; 16] {
+    let b = hex::decode(s).expect("hex16");
+    b.try_into().expect("16")
+}
+
+fn hex32(s: &str) -> [u8; 32] {
+    let b = hex::decode(s).expect("hex32");
+    b.try_into().expect("32")
+}
+
+/// Mint a bootstrap COSE cert from vector seeds with an expanded rights mask.
+///
+/// Does **not** rewrite `vectors-v1.json` — test-local only so product vectors
+/// stay at Read|Write|IndexAdmin (13) unless deliberately regenerated.
+fn mint_vector_cose_with_rights(rights_mask: u64) -> (Vec<u8>, residiuum_heap::VerifiedCertificate) {
+    let doc = vectors();
+    let inputs = &doc["inputs"];
+    let master_seed = hex32(inputs["master_seed"].as_str().unwrap());
+    let holder_seed = hex32(inputs["holder_seed"].as_str().unwrap());
+    let master = SigningKey::from_bytes(&master_seed);
+    let holder = SigningKey::from_bytes(&holder_seed);
+    let master_pk = master.verifying_key().to_bytes();
+    let holder_pk = holder.verifying_key().to_bytes();
+    assert_eq!(
+        hex::encode(master_pk),
+        inputs["master_public_key"].as_str().unwrap()
+    );
+    assert_eq!(
+        hex::encode(holder_pk),
+        inputs["holder_public_key"].as_str().unwrap()
+    );
+
+    let deployment = hex16(inputs["deployment_id"].as_str().unwrap());
+    let heap = hex16(inputs["heap_id"].as_str().unwrap());
+    let cert_id = hex16(inputs["certificate_id"].as_str().unwrap());
+    let issuer = Sha256::digest(master_pk);
+    let not_before = inputs["not_before"].as_u64().unwrap();
+    let expires_at = inputs["expires_at"].as_u64().unwrap();
+
+    let mut protected = Vec::new();
+    protected.push(0xa2);
+    protected.push(0x01);
+    protected.push(0x27);
+    protected.push(0x03);
+    write_text(&mut protected, CONTENT_TYPE_CERTIFICATE);
+
+    let payload = encode_deterministic_uint_map(&[
+        (1u64, CborValue::Uint(PROFILE_VERSION)),
+        (2, CborValue::Bytes(deployment.to_vec())),
+        (3, CborValue::Bytes(heap.to_vec())),
+        (4, CborValue::Uint(1)),
+        (5, CborValue::Uint(1)),
+        (6, CborValue::Bytes(cert_id.to_vec())),
+        (7, CborValue::Bytes(holder_pk.to_vec())),
+        (8, CborValue::Uint(rights_mask)),
+        (9, CborValue::Array(vec![])),
+        (10, CborValue::Uint(not_before)),
+        (11, CborValue::Uint(expires_at)),
+        (12, CborValue::Text(AUDIENCE_DATA_V1.into())),
+        (13, CborValue::Bytes(issuer.to_vec())),
+    ])
+    .expect("payload");
+
+    let sig_structure = sig_structure_for(&protected, EXTERNAL_AAD_CERTIFICATE, &payload);
+    let signature = master.sign(&sig_structure).to_bytes();
+
+    let mut cose = Vec::new();
+    cose.push(0x84);
+    write_bstr(&mut cose, &protected);
+    cose.push(0xa0);
+    write_bstr(&mut cose, &payload);
+    write_bstr(&mut cose, &signature);
+
+    let verified = verify_certificate(&cose, &master_pk).expect("verify mint");
+    assert_eq!(verified.rights.bits(), rights_mask);
+    (cose, verified)
 }
 
 fn issue_localhost_tls(dir: &std::path::Path) -> (PathBuf, PathBuf, PathBuf) {
@@ -391,7 +501,6 @@ fn connect_heap_put_get_delete_subject_v2() {
 /// on the embedded suite; remote uses pre-provisioned `users` + list/open.
 #[test]
 fn apb1_heap_client_from_remote_open_put_get_delete() {
-    use residiuum_sdk::HeapClient;
     use residiuum_store::{
         create_object, publish_staged_genesis, stage_heap_genesis, HeapMetaLayout, ObjectKind,
     };
@@ -502,6 +611,116 @@ fn apb1_heap_client_from_remote_open_put_get_delete() {
     let mut col = apb1_facade_parity::scenario_list_and_open(&mut client, "users");
     assert_eq!(col.heap_id(), verified.heap_id);
     apb1_facade_parity::run_collection_plane_parity(&mut col);
+
+    drop(client);
+    flag.store(true, Ordering::SeqCst);
+    thread::sleep(Duration::from_millis(50));
+}
+
+/// APB-1 G6: full remote façade parity including create (test-local HeapAdmin COSE).
+///
+/// Vector product cert stays at rights 13; this test mints Read|Write|IndexAdmin|HeapAdmin
+/// from the same seeds without rewriting `vectors-v1.json`.
+#[test]
+fn apb1_heap_client_from_remote_full_parity_heap_admin() {
+    use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
+
+    let doc = vectors();
+    let inputs = &doc["inputs"];
+    let holder_seed: [u8; 32] = hex(inputs["holder_seed"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let master_pk: [u8; 32] = hex(inputs["master_public_key"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+
+    let (cose, verified) = mint_vector_cose_with_rights(RIGHTS_FULL_G6);
+    assert!(
+        verified.rights.bits() & 0x1000 != 0,
+        "HeapAdmin bit required for create"
+    );
+    let now_unix = verified.not_before + 10;
+
+    let snap = HeapSecuritySnapshot {
+        deployment_id: verified.deployment_id,
+        heap_id: verified.heap_id,
+        authority_epoch: verified.authority_epoch,
+        authority_generation: verified.authority_generation,
+        previous_generation: None,
+        grace_deadline_unix_s: None,
+        master_public_key: master_pk,
+        previous_master_public_key: None,
+        security_revision: SecurityRevision::new(1).unwrap(),
+        authority_chain_head_hash: [1u8; 32],
+        administrative_state: HeapAdministrativeState::Active,
+        blacklist: vec![],
+        policy_rights_ceiling: None,
+    };
+    let registry = Arc::new(ResidentHeapRegistry::new());
+    registry.insert(
+        verified.heap_id,
+        ResidentHeap {
+            slot: Arc::new(HeapSlot::new(snap)),
+            display_name: Some("accounts".into()),
+        },
+    );
+
+    let tmp = TempDir::new().unwrap();
+    let store_path = tmp.path().join("app.residiuum");
+    Store::open(&store_path).unwrap();
+    // Genesis only — no pre-created collections so create_open_list is real.
+    let layout = HeapMetaLayout::new(&store_path);
+    let dep = *verified.deployment_id.as_bytes();
+    let heap_bytes = *verified.heap_id.as_bytes();
+    let staged = stage_heap_genesis(&layout, dep, heap_bytes, [9u8; 16], "accounts").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+
+    let (ca_path, cert_path, key_path) = issue_localhost_tls(tmp.path());
+    let port = free_port();
+    let bind = format!("127.0.0.1:{port}");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&shutdown);
+    let opts = ServeOptions::new()
+        .tls(TlsServerOptions::new(&cert_path, &key_path))
+        .qualified_heap_key(true)
+        .heap_registry(Arc::clone(&registry))
+        .deployment_id(verified.deployment_id.to_string())
+        .security_now_unix_s(now_unix)
+        .shutdown_flag(Arc::clone(&shutdown));
+    let store_c = store_path.clone();
+    let bind_c = bind.clone();
+    thread::spawn(move || {
+        let _ = serve_store_with(store_c, &bind_c, opts);
+    });
+    wait_for_server(&bind);
+
+    let holder = Arc::new(InMemoryHolderKey::from_seed(holder_seed));
+    let credential = HeapCredential::new(&cose, holder).expect("admin credential");
+    let options = RemoteHeapOptions::new(
+        TlsClientOptions::new("localhost").ca_path(ca_path),
+        credential,
+    )
+    .expected_heap_name("accounts")
+    .now_unix_s(now_unix);
+
+    let remote = Residiuum::connect_heap(
+        format!("residiuum://127.0.0.1:{port}/accounts"),
+        options,
+    )
+    .expect("connect_heap admin");
+
+    let mut client = HeapClient::from(remote);
+    assert!(client.is_bound());
+    assert_eq!(client.id(), verified.heap_id);
+
+    // Full G6 pack — same as embedded `run_full_facade_parity`.
+    apb1_facade_parity::run_full_facade_parity(&mut client, "orders");
+
+    // Duplicate create fail-closed (semantic parity with embedded).
+    match client.create_collection("orders") {
+        Ok(_) => panic!("duplicate name must fail on remote façade"),
+        Err(_) => {}
+    }
 
     drop(client);
     flag.store(true, Ordering::SeqCst);
