@@ -1,0 +1,11 @@
+{
+  "schema": "residiuum-formal-tcb-v1",
+  "items": [
+    {
+      "id": "FAS-TCB-VERUS-PIN-001",
+      "class": "prover",
+      "title": "Verus pin 0.2026.07.27.31579f0 (setup_verus.sh)",
+      "wave0_stub": true
+    }
+  ]
+}

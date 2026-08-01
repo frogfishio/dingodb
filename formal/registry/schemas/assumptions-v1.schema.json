@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuum.local/formal/registry/schemas/assumptions-v1.schema.json",
+  "title": "residiuum-formal-assumptions-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "items"],
+  "properties": {
+    "schema": { "const": "residiuum-formal-assumptions-v1" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "class", "title"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^FAS-ASM-[A-Z0-9-]+-[0-9]{3}$"
+          },
+          "class": {
+            "type": "string",
+            "enum": [
+              "mathematics",
+              "cryptography",
+              "compiler",
+              "language_runtime",
+              "filesystem",
+              "hardware",
+              "scheduler",
+              "network",
+              "time",
+              "operator",
+              "cross_tool_bridge"
+            ]
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "wave0_stub": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

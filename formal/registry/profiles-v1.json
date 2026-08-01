@@ -1,0 +1,10 @@
+{
+  "schema": "residiuum-formal-profiles-v1",
+  "items": [
+    {
+      "id": "residiuum-formal-foundation-v1",
+      "title": "Formal foundation profile (stub)",
+      "wave0_stub": true
+    }
+  ]
+}

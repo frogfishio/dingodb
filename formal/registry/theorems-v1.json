@@ -1,0 +1,42 @@
+{
+  "schema": "residiuum-formal-theorems-v1",
+  "profile_scope": "residiuum-formal-foundation-v1",
+  "items": [
+    {
+      "id": "FAS-FND-OBSERVATION-SEPARATION-001",
+      "version": 1,
+      "family": "foundation",
+      "title": "Observation constructors are distinct",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#12.1",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-FND-FORBIDDEN-COLLAPSE-001",
+      "version": 1,
+      "family": "foundation",
+      "title": "No forbidden observation collapse",
+      "property_class": "safety",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#12.1",
+      "status": "proposed",
+      "depends_on": ["FAS-FND-OBSERVATION-SEPARATION-001"],
+      "result_refs": [],
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-FND-REFINEMENT-COMPOSITION-001",
+      "version": 1,
+      "family": "foundation",
+      "title": "Valid refinements compose",
+      "property_class": "refinement",
+      "statement_ref": "FORMAL_ASSURANCE_REGISTRY_CONTRACT.md#12.1",
+      "status": "proposed",
+      "depends_on": [],
+      "result_refs": [],
+      "wave0_stub": true
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuum.local/formal/registry/schemas/package-report-v1.schema.json",
+  "title": "residiuum-formal-package-report-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "package", "result"],
+  "properties": {
+    "schema": { "const": "residiuum-formal-package-report-v1" },
+    "package": { "type": "string" },
+    "result": {
+      "type": "string",
+      "enum": ["pass", "fail", "not_run", "infrastructure_failure", "revoked"]
+    },
+    "closed": { "type": "boolean" },
+    "message": { "type": "string" },
+    "wave0_scaffold": { "type": "boolean" }
+  }
+}

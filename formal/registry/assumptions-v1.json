@@ -1,0 +1,17 @@
+{
+  "schema": "residiuum-formal-assumptions-v1",
+  "items": [
+    {
+      "id": "FAS-ASM-FS-DURABLE-WRITE-001",
+      "class": "filesystem",
+      "title": "Durable ack survives under declared filesystem assumptions",
+      "wave0_stub": true
+    },
+    {
+      "id": "FAS-ASM-CROSS-TOOL-BRIDGE-001",
+      "class": "cross_tool_bridge",
+      "title": "Lean / Verus / TLA correspondence is an explicit TCB boundary",
+      "wave0_stub": true
+    }
+  ]
+}

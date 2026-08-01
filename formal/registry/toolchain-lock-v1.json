@@ -1,0 +1,14 @@
+{
+  "schema": "residiuum-formal-toolchain-lock-v1",
+  "wave0_stub": true,
+  "closed": false,
+  "tools": [
+    {
+      "id": "FAS-TOOL-VERUS-001",
+      "tool": "verus",
+      "version": "0.2026.07.27.31579f0",
+      "source": "scripts/setup_verus.sh",
+      "wave0_stub": true
+    }
+  ]
+}

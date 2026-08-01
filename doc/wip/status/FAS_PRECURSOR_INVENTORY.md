@@ -4,7 +4,8 @@ Status: **Wave 0 inventory only**
 Date: 2026-08-01  
 Package: does **not** claim FAS-0 accept or any theorem `machine_proved` / `implementation_connected`.  
 Authority: FA0 Feature board + `FORMAL_ASSURANCE_IMPLEMENTATION_PLAN.md` §2 migration.  
-Next task: **FA0-W0-T2** migration map (classify each row).
+Wave 0: inventory + [FAS_MIGRATION_MAP.md](./FAS_MIGRATION_MAP.md) + `formal/registry/` scaffold complete (labor).  
+Next: **FAS-0-T1** (Wave A; package accept needs CSQ-12 accept).
 
 **status column values (this document):**
 
@@ -98,4 +99,4 @@ Do **not** upgrade status here. Scoreboard FAS rows stay `not_started` until pac
 - [x] Paths under `formal/heap`, `verification/heap-verus`, heap check scripts, related CI
 - [x] CSQ-linked model/reader paths named for later registration
 - [x] All theorem-like rows marked `unconnected` or harness rows `n/a`
-- [ ] FA0-W0-T2 migration classification (next)
+- [x] FA0-W0-T2 migration classification → [FAS_MIGRATION_MAP.md](./FAS_MIGRATION_MAP.md)

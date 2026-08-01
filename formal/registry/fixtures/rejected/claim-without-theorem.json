@@ -1,0 +1,10 @@
+{
+  "schema": "residiuum-formal-claims-v1",
+  "items": [
+    {
+      "id": "FAS-CLAIM-INVALID-001",
+      "title": "Illegal claim without theorem",
+      "theorem_ids": ["FAS-CON-DOES-NOT-EXIST-001"]
+    }
+  ]
+}
