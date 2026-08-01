@@ -147,21 +147,22 @@ honest residual until APP-7/APB-7 activate wire.
 
 ---
 
-## 6. Suggested labor slices (not started this turn)
+## 6. Labor slices (board-bound)
 
-Ordered for honesty; board cards may refine:
+Kanban Query spine feature `1a8a3e05` / rev `94186c3a` (2026-08-02):
 
-| Task | Deliverable | Depends |
-|---|---|---|
-| **T1** | Façade `query()` / PlanBuilder path → same plan as RQL; no new wire | **done** (2026-08-02 labor; not package accept) |
-| **T2** | Hardening executor: bytes budgets, field-order on full docs, scan oracle tests | **done** (2026-08-02 labor; not package accept) |
-| **T3** | Façade `scan_json` + `find_json` (ops 115/116); hole coverage on embedded scan | **done** (2026-08-02 labor; not package accept) |
-| **T4** | Index pushdown + scan/index differential oracle | IndexManager ready |
-| **T5** | Optional ReadView-bound page path (fail-open only when pin stable) | APB-6 pin |
-| **T6** | APP-7: activate op 118 schemas in registry + server dispatch + RemoteHeap | HAR-4 path |
-| **T7** | Dual-pack product parity + scoreboard accept checklist | T1–T6 |
+| Task | Board | Stage | Deliverable |
+|---|---|---|---|
+| **T0** | `eaef1692` | in_review | Inventory |
+| **T1** | `68731e2d` | in_review | Façade `query()` PlanBuilder |
+| **T2** | `8084d687` | in_review | Executor budgets + field-order |
+| **T3** | `f51b2fa8` | in_review | `scan_json` + `find_json` |
+| **T4** | `ff6892ba` | **todo** | Index pushdown + scan/index oracle |
+| **T5** | `6c7601a5` | **todo** | ReadView-bound page path |
+| **T6** | `48b8f01b` | **todo** | Op 118 activate (HAR-4 blocked) |
+| **T7** | `9e19bd5f` | **todo** | Dual-pack + accept checklist |
 
-T0 does **not** implement any of the above.
+Do **not** invent the next slice in markdown alone — pull or create the board card first (GOV T1).
 
 ---
 

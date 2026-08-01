@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (APB-7 T0 query runtime inventory; APB-6 T2 pin; APP-6 T1/T2; Kanban-first backlog)
+Updated: 2026-08-02 (query spine backlog **pre-staged on Kanban**; APB-7 T0–T3 labor landed; T4–T7 + APB-6 T3 as `todo`)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -174,26 +174,35 @@ they do not override this package interlock.
 
 ## Ready queue (honest)
 
-### Kanban-first labor rule (2026-08-01)
+### Kanban-first labor rule (2026-08-02)
+
+**Principal tracking = Kanban only** (todo / doing / in_review / done).  
+Scoreboard markdown is agent/package evidence — **not** the human dashboard.
 
 Labor **must not** deliver product features ad-hoc. Sequence:
 
-1. `work_board_get` (project partition UUID) — read Features + tasks + `project_version`
-2. If no matching **Feature**, `kanban_feature_upsert` first (restores readiness; empty Features = `feature_missing`)
-3. If no matching **task**, `kanban_task_upsert` with `feature_id` + `feature_revision_id` before code
-4. Stage `todo` → `doing` → `in_review` via `kanban_task_stage_request` (labor never self-`done`)
-5. Scoreboard (`NEXT_BUILD_STATUS`) = **package SoT**; Kanban board = **labor SoT**
-6. Prefer host board tools; do not invent boards under `.koderra/`
+1. `work_board_get` — read Features + tasks + `project_version` (**what’s next / what landed**)
+2. If no matching **Feature**, `kanban_feature_upsert` first
+3. If no matching **task**, `kanban_task_upsert` **before code**
+4. Stage `todo` → `doing` → `in_review` (labor never self-`done`; principal gates `done`)
+5. On `in_review`, put short **evidence in the card objective** so the board records what was done
+6. **Pre-stage** open backlog as `todo` (no next-pull invented only in docs)
+7. Prefer host board tools; do not invent boards under `.koderra/`
 
-**Pull order (managed backlog, 2026-08-01):**
+**Pull order (managed backlog — board cards are SoT; 2026-08-02 pre-stage):**
 
-| Priority | Card | Feature | Note |
-|---:|---|---|---|
-| 1 | **APB-7 T4** index pushdown + scan/index oracle | Query spine | after scan/find façade |
-| 2 | **APB-6** residuals (view-bound exec / retention) | Query spine | pin landed; no package accept |
-| 3 | **APP-7** op 118 activation path | Query spine | HAR-4 residual |
-| 4 | **APB-2 T5** store Key Atomic CAS | APB-2 residuals | mutation residual (may lag query) |
-| 5 | **GOV T1** process rule | Labor governance | Kanban-first (in_review) |
+| Priority | Board card | Stage | Feature | Note |
+|---:|---|---|---|---|
+| 1 | **APB-7 T4** index pushdown `ff6892ba` | `todo` | Query spine | next pull |
+| 2 | **APB-7 T5** ReadView-bound page `6c7601a5` | `todo` | Query spine | after pin + executor |
+| 3 | **APB-6 T3** view residual `be072203` (retention/remote pin) | `todo` | Query spine | complements T5 |
+| 4 | **APP-7 / APB-7 T6** op 118 `48b8f01b` | `todo` | Query spine | **blocked** HAR-4 honesty |
+| 5 | **APB-7 T7** dual-pack accept checklist `9e19bd5f` | `todo` | Query spine | only after T1–T6 |
+| 6 | **APB-2 T5** store CAS `d08e4633` | `todo` | APB-2 residuals | non-query lag OK |
+| 7 | **APB-2 T6** residual checklist `1b8a52b7` | `todo` | APB-2 residuals | no false accept |
+| — | **GOV T1** board-only labor `d3cb916e` | `in_review` | Labor governance | process rule |
+
+**Process honesty (2026-08-02):** T1–T3 were often **JIT-created at package start** (scoreboard compass + create-on-pull). That is half-winging. Fix: **pre-stage** remaining sequence as `todo` before code turns; pull only existing cards.
 
 Program order (packages; Kanban cards bind labor under them):
 
@@ -205,9 +214,9 @@ Program order (packages; Kanban cards bind labor under them):
    with Atomics/cluster when those packages admit formal work.
 3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
    **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
-   **APB-7 active** (**T0–T3** inventory + builder + executor harden + scan/find façade — no product query / no op 118);
-   **APB-1 active** (G1–G6 dual matrix); next **APB-7 T4** index pushdown (board) or APP-7/op 118 path.
-   Non-query APB may lag (APB-2 CAS residual is board-managed, not ad-hoc).
+   **APB-7 active** (**T0–T3** in_review; **T4–T7 pre-staged `todo`** on Query spine — no product query / no op 118);
+   **APB-1 active** (G1–G6 dual matrix); next pull **APB-7 T4** `ff6892ba` only (board SoT).
+   Non-query APB may lag (APB-2 T5/T6 already `todo` on board).
 4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
 5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
 6. **PQH principal accept** remains measurement hygiene (labor largely `in_review`).
