@@ -78,6 +78,9 @@ Labor sequence from APB-0 through **query** and **atomics** (including pure risk
 lanes and product stages):  
 [APB_QUERY_ATOMICS_SEQUENCE.md](./APB_QUERY_ATOMICS_SEQUENCE.md).
 
+Post-query architecture + path to **baseline-v1 complete** (APB-12):  
+[BASELINE_V1_JOURNEY_PLAN.md](./BASELINE_V1_JOURNEY_PLAN.md).
+
 ## 4. APB-0 — Contract closure
 
 Depends: `CSQ-12`, accepted APP-0/APP-1 evidence

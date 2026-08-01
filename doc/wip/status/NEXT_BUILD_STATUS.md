@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (query spine backlog **pre-staged on Kanban**; APB-7 T0–T3 labor landed; T4–T7 + APB-6 T3 as `todo`)
+Updated: 2026-08-02 (query spine pre-staged; BASELINE-PLAN T1 journey plan to APB-12 **in_review**; APB-7 T0–T4 in_review)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -189,18 +189,23 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 6. **Pre-stage** open backlog as `todo` (no next-pull invented only in docs)
 7. Prefer host board tools; do not invent boards under `.koderra/`
 
-**Pull order (managed backlog — board cards are SoT; 2026-08-02 pre-stage):**
+**Pull order (Application Core product path — board SoT; 2026-08-02 complete pre-stage):**
 
-| Priority | Board card | Stage | Feature | Note |
-|---:|---|---|---|---|
-| 1 | **APB-7 T5** ReadView-bound page `6c7601a5` | `todo` | Query spine | next pull |
-| 2 | **APB-7 T4** index pushdown `ff6892ba` | `in_review` | Query spine | labor done |
-| 3 | **APB-6 T3** view residual `be072203` (retention/remote pin) | `todo` | Query spine | complements T5 |
-| 4 | **APP-7 / APB-7 T6** op 118 `48b8f01b` | `todo` | Query spine | **blocked** HAR-4 honesty |
-| 5 | **APB-7 T7** dual-pack accept checklist `9e19bd5f` | `todo` | Query spine | only after T1–T6 |
-| 6 | **APB-2 T5** store CAS `d08e4633` | `todo` | APB-2 residuals | non-query lag OK |
-| 7 | **APB-2 T6** residual checklist `1b8a52b7` | `todo` | APB-2 residuals | no false accept |
-| — | **GOV T1** board-only labor `d3cb916e` | `in_review` | Labor governance | process rule |
+| Priority | Board card | Stage | Note |
+|---:|---|---|---|
+| 1 | **APB-7 T5** ReadView-bound `6c7601a5` | `todo` | next code pull |
+| 2 | **APP-6 T3** field-order multipage cursor `c7cd3cca` | `todo` | APP-6 residual |
+| 3 | **APB-7 T8** deadline+cancel `5bd3fe3b` | `todo` | MUST_ADD residual |
+| 4 | **APB-7 T9** coverage grade `99e32b76` | `todo` | MUST_ADD residual |
+| 5 | **APB-7 T10** product cursor secrets `b11912fe` | `todo` | MUST_ADD residual |
+| 6 | **APB-7 T11** multipage oracle matrix `f6633005` | `todo` | feeds accept |
+| 7 | **APB-6 T3** view residual `be072203` | `todo` | pin residuals |
+| 8 | **HAR-4 dep** for query remote `7872d5fa` | `todo` | blocks product remote |
+| 9 | **APP-7 / T6** op 118 `48b8f01b` | `todo` | **blocked** until HAR-4 |
+| 10 | **APB-7 T7** dual-pack accept `9e19bd5f` | `todo` | package accept gate |
+| — | **RQL-v1 full language** `89a80e77` | `todo` | **NOT** APB-7; later package |
+| — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
+| — | APB-2 T5/T6 | `todo` | mutations lag OK |
 
 **Process honesty (2026-08-02):** T1–T3 were often **JIT-created at package start** (scoreboard compass + create-on-pull). That is half-winging. Fix: **pre-stage** remaining sequence as `todo` before code turns; pull only existing cards.
 

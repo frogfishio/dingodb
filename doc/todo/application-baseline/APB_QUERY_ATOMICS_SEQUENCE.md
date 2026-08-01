@@ -168,6 +168,9 @@ After query spine breathes, close remaining M1 obligations **in dependency order
 
 M1 critical journey (plan §7) still requires multi-Heap isolation, keys, backup/restore — not only query.
 
+**Deep plan (architecture + waves to baseline-v1):**  
+[BASELINE_V1_JOURNEY_PLAN.md](./BASELINE_V1_JOURNEY_PLAN.md) — board Feature *Phase D+* / task **BASELINE-PLAN T1** (`e6d68a31…`). Planning first cut 2026-08-02; Wave 1+ cards staged only after principal review.
+
 ---
 
 ## 5. PHASE E — Product atomics and document rules (later stages)
