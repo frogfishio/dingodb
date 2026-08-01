@@ -1,6 +1,6 @@
 # APB-1 — HeapClient / CollectionClient gap inventory
 
-Status: **labor inventory v1.0** (2026-08-01) · package `APB-1` **not accept**  
+Status: **labor inventory v1.1** (2026-08-01) · package `APB-1` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §5 · [CORE plan](./CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) §3–4 ·
 [`spec/app/baseline-v1/operations-v1.json`](../../../spec/app/baseline-v1/operations-v1.json) ·
 scoreboard `NEXT_BUILD_STATUS.md`
@@ -52,11 +52,11 @@ accept before APB-1 product claim language.
 
 | Type / method | Status | Notes |
 |---|---|---|
-| `HeapClient` identity + `from_id_for_contract` | **compile-only** | No sealed backend |
-| `HeapClient::create_collection[_with]` | **stub** | `Error::Internal` — redirects to `Heap::create_collection` |
-| `HeapClient::open_collection` / `list_collections` | **stub** | Same |
-| `CollectionClient` identity + `from_parts_for_contract` | **compile-only** | Ids held; no IO |
-| `CollectionClient::{put,get,delete,…}` | **stub** | APP-3 activation messages |
+| `HeapClient` + `From<Heap>` sealed `Embedded` | **G1 landed** | Unbound fixtures remain fail-closed |
+| `HeapClient::create_collection[_with]` | **embedded wired** | Forwards to `Heap::create_collection_with` |
+| `HeapClient::open_collection` / `list_collections` | **embedded wired** | Forwards to `Heap` |
+| `CollectionClient` + embedded handle | **G1 landed** | Bound from create/open |
+| `CollectionClient::{put,get,delete,…}` | **embedded forward** | Works when bound; unbound fail-closed |
 | `CollectionClient::{rql,explain_rql}` | **stub** | APP-5…7 activation messages (compiler is APP-5 accept; **execution** APB-7) |
 | `IndexManager` / `HistoryClient` / `RecoveryClient` | **missing types** | Not on `app_v1` façade |
 | `From<Heap>` / `From<RemoteHeap>` constructors | **missing** | MUST_ADD “change only constructor” |
@@ -117,8 +117,8 @@ Priority order for **APB-1 labor after this inventory** (not started here):
 
 | # | Gap | Proposed package slice | Depends |
 |---:|---|---|---|
-| G1 | Sealed backend + `From<Heap>` / `From<RemoteHeap>` / connect helpers | APB-1 / APP-2 | APP-1 evidence; remote connect ceremony (HAR) |
-| G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | G1; HAR-1 scoreboard reconcile |
+| G1 | Sealed backend + `From<Heap>` / `From<RemoteHeap>` / connect helpers | APB-1 / APP-2 | **Partial 2026-08-01:** `From<Heap>` + create/open/list + put/get/delete forward; **RemoteHeap From pending** |
+| G2 | Wire `create` / `open` / `list` through façade (parity suite start) | APB-1 | **Embedded suite:** `apb1_heap_client_embedded` 2/2; remote parity pending |
 | G3 | `IndexManager` façade over embedded indexes + remote index_* | APB-1 | G1 |
 | G4 | `CollectionClient::history` / HistoryClient | APB-1 | G1; DEF-099 |
 | G5 | RecoveryClient only when wire un-reserves or pure local examine defined | APB-1 later | reserved wire honesty |
@@ -153,10 +153,11 @@ Do **not** claim APB-1 accept until dual-backend suite exits.
 |---|---|
 | Inventory (this file) | `doc/todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md` |
 | Ops registry | `spec/app/baseline-v1/operations-v1.json` (10 APB-1 rows) |
-| Façade stubs | `crates/residiuum-sdk/src/app_v1.rs` |
+| Façade | `crates/residiuum-sdk/src/app_v1.rs` (`From<Heap>`, sealed backends) |
+| Embedded suite | `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2** |
 | Embedded | `crates/residiuum-sdk/src/heap.rs` |
 | Remote | `crates/residiuum-sdk/src/remote_heap.rs` |
-| Scoreboard | `APB-1` → **active** with inventory evidence (not accept) |
+| Scoreboard | `APB-1` → **active** (not accept); G1 partial |
 
 ---
 

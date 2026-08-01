@@ -9,11 +9,13 @@
 //! `spec/heap/rpc-v1/rql_query.*`.
 
 use crate::error::Error;
+use crate::heap::{Heap, HeapCollection};
 use crate::receipt::{DeleteReceipt, PutOptions, WriteReceipt};
 use residiuum_heap::{CollectionId, HeapId};
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::time::SystemTime;
+use std::fmt;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Profile label for the public Rust application façade.
 pub const RUST_APP_PROFILE: &str = "residiuum-rust-app-v1";
@@ -240,18 +242,54 @@ pub struct QueryExplanation {
     pub tree: serde_json::Value,
 }
 
+/// Sealed storage backend for [`HeapClient`] (APB-1 G1).
+///
+/// Remote adapter is a later slice; unbound remains the contract-only fixture.
+enum HeapBackend {
+    /// No storage — `from_id_for_contract` / APP-0 fixtures.
+    Unbound,
+    /// Embedded capability-gated [`Heap`].
+    Embedded(Heap),
+}
+
 /// Heap-bound application client (façade).
 ///
-/// Construction and method wiring: APP-1…APP-3. Identity fields compile now.
-#[derive(Debug)]
+/// Bind storage with [`HeapClient::from`] / [`From<Heap>`] (APB-1 G1). Contract
+/// fixtures use [`HeapClient::from_id_for_contract`] (unbound, fail-closed IO).
 pub struct HeapClient {
     heap_id: HeapId,
+    backend: HeapBackend,
+}
+
+impl fmt::Debug for HeapClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let backend = match &self.backend {
+            HeapBackend::Unbound => "unbound",
+            HeapBackend::Embedded(_) => "embedded",
+        };
+        f.debug_struct("HeapClient")
+            .field("heap_id", &self.heap_id)
+            .field("backend", &backend)
+            .finish()
+    }
+}
+
+impl From<Heap> for HeapClient {
+    fn from(heap: Heap) -> Self {
+        Self {
+            heap_id: heap.id(),
+            backend: HeapBackend::Embedded(heap),
+        }
+    }
 }
 
 impl HeapClient {
     /// Contract fixture constructor (does not open storage).
     pub fn from_id_for_contract(heap_id: HeapId) -> Self {
-        Self { heap_id }
+        Self {
+            heap_id,
+            backend: HeapBackend::Unbound,
+        }
     }
 
     /// Bound Heap id.
@@ -259,51 +297,121 @@ impl HeapClient {
         self.heap_id
     }
 
-    /// Create a collection (APP-1).
-    ///
-    /// Prefer [`crate::Heap::create_collection`] on an embedded heap until this
-    /// façade holds a backend (APP-2). Contract-only clients have no storage.
+    /// Whether this client has a storage backend (not a contract fixture).
+    pub fn is_bound(&self) -> bool {
+        !matches!(self.backend, HeapBackend::Unbound)
+    }
+
+    /// Create a collection (APP-1 / APB-1).
     pub fn create_collection(
         &mut self,
-        _name: &str,
+        name: &str,
     ) -> Result<CreateCollectionResult, Error> {
-        Err(Error::Internal(
-            "HeapClient façade backend not bound; use Heap::create_collection (APP-1 embedded) or APP-2 From<Heap>".into(),
-        ))
+        self.create_collection_with(name, CreateCollectionOptions::default())
     }
 
-    /// Create with options (APP-1).
+    /// Create with options (APP-1 / APB-1).
     pub fn create_collection_with(
         &mut self,
-        _name: &str,
-        _options: CreateCollectionOptions,
+        name: &str,
+        options: CreateCollectionOptions,
     ) -> Result<CreateCollectionResult, Error> {
-        Err(Error::Internal(
-            "HeapClient façade backend not bound; use Heap::create_collection_with (APP-1 embedded)".into(),
-        ))
+        match &self.backend {
+            HeapBackend::Unbound => Err(Error::Internal(
+                "HeapClient unbound; construct with From<Heap> (APB-1 G1) or use Heap::create_collection".into(),
+            )),
+            HeapBackend::Embedded(heap) => {
+                let created = heap.create_collection_with(name, options.operation_id)?;
+                Ok(create_result_from_embedded(created))
+            }
+        }
     }
 
-    /// Open by canonical name (APP-2 façade; embedded path is [`crate::Heap::collection`]).
-    pub fn open_collection(&mut self, _name: &str) -> Result<CollectionClient, Error> {
-        Err(Error::Internal(
-            "HeapClient façade backend not bound; use Heap::collection".into(),
-        ))
+    /// Open by canonical name (embedded: [`Heap::collection`]).
+    pub fn open_collection(&mut self, name: &str) -> Result<CollectionClient, Error> {
+        match &self.backend {
+            HeapBackend::Unbound => Err(Error::Internal(
+                "HeapClient unbound; construct with From<Heap> (APB-1 G1) or use Heap::collection"
+                    .into(),
+            )),
+            HeapBackend::Embedded(heap) => {
+                let hc = heap.collection(name)?;
+                Ok(CollectionClient::from_embedded(hc))
+            }
+        }
     }
 
-    /// List collections (APP-2 façade; embedded path is [`crate::Heap::list_collections`]).
+    /// List collections (embedded: [`Heap::list_collections`]).
     pub fn list_collections(&mut self) -> Result<Vec<CollectionInfo>, Error> {
-        Err(Error::Internal(
-            "HeapClient façade backend not bound; use Heap::list_collections".into(),
-        ))
+        match &self.backend {
+            HeapBackend::Unbound => Err(Error::Internal(
+                "HeapClient unbound; construct with From<Heap> (APB-1 G1) or use Heap::list_collections"
+                    .into(),
+            )),
+            HeapBackend::Embedded(heap) => {
+                let listed = heap.list_collections()?;
+                Ok(listed
+                    .into_iter()
+                    .map(|e| CollectionInfo {
+                        heap_id: e.heap_id,
+                        collection_id: e.collection_id,
+                        name: e.name,
+                        descriptor_hash: e.descriptor_hash,
+                    })
+                    .collect())
+            }
+        }
     }
 }
 
+fn create_result_from_embedded(
+    created: crate::heap::CreatedCollection,
+) -> CreateCollectionResult {
+    let heap_id = created.collection.heap_id();
+    let collection_id = created.collection.id();
+    let created_at = UNIX_EPOCH + Duration::from_secs(created.created_at_unix_s);
+    CreateCollectionResult {
+        collection: CollectionClient::from_embedded(created.collection),
+        receipt: CollectionCreateReceipt {
+            receipt_id: created.receipt_id,
+            operation: AdminOperation::CreateCollection,
+            heap_id,
+            collection_id,
+            descriptor_hash: created.descriptor_hash,
+            created_at,
+        },
+    }
+}
+
+/// Sealed collection backend (embedded handle when bound).
+enum CollectionBackend {
+    /// Identity-only / contract fixture.
+    Unbound,
+    /// Embedded [`HeapCollection`] for data-plane methods (APP-3+ wiring).
+    Embedded(HeapCollection),
+}
+
 /// Collection-bound application client (façade).
-#[derive(Debug)]
 pub struct CollectionClient {
     heap_id: HeapId,
     collection_id: CollectionId,
     name: String,
+    backend: CollectionBackend,
+}
+
+impl fmt::Debug for CollectionClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let backend = match &self.backend {
+            CollectionBackend::Unbound => "unbound",
+            CollectionBackend::Embedded(_) => "embedded",
+        };
+        f.debug_struct("CollectionClient")
+            .field("heap_id", &self.heap_id)
+            .field("collection_id", &self.collection_id)
+            .field("name", &self.name)
+            .field("backend", &backend)
+            .finish()
+    }
 }
 
 impl CollectionClient {
@@ -317,7 +425,22 @@ impl CollectionClient {
             heap_id,
             collection_id,
             name: name.into(),
+            backend: CollectionBackend::Unbound,
         }
+    }
+
+    fn from_embedded(hc: HeapCollection) -> Self {
+        Self {
+            heap_id: hc.heap_id(),
+            collection_id: hc.id(),
+            name: hc.name().to_string(),
+            backend: CollectionBackend::Embedded(hc),
+        }
+    }
+
+    /// Whether this client holds an embedded collection handle.
+    pub fn is_bound(&self) -> bool {
+        !matches!(self.backend, CollectionBackend::Unbound)
     }
 
     /// Owning Heap.
@@ -338,52 +461,71 @@ impl CollectionClient {
     /// JSON put (APP-3).
     pub fn put<T: Serialize>(
         &mut self,
-        _key: &str,
-        _value: &T,
+        key: &str,
+        value: &T,
     ) -> Result<WriteReceipt, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: put activates in APP-3".into(),
-        ))
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient::open_collection / create (APB-1)".into(),
+            )),
+            // Data plane already works on embedded handles; façade forwards (APP-3/APB-2 path).
+            CollectionBackend::Embedded(hc) => hc.put(key, value),
+        }
     }
 
     /// JSON put with options (APP-3).
     pub fn put_with<T: Serialize>(
         &mut self,
-        _key: &str,
-        _value: &T,
-        _options: PutOptions,
+        key: &str,
+        value: &T,
+        options: PutOptions,
     ) -> Result<WriteReceipt, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: put_with activates in APP-3".into(),
-        ))
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.put_with(key, value, options),
+        }
     }
 
     /// Bytes put (APP-3).
-    pub fn put_bytes(&mut self, _key: &str, _value: &[u8]) -> Result<WriteReceipt, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: put_bytes activates in APP-3".into(),
-        ))
+    pub fn put_bytes(&mut self, key: &str, value: &[u8]) -> Result<WriteReceipt, Error> {
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.put_bytes(key, value),
+        }
     }
 
     /// JSON get (APP-3).
-    pub fn get(&mut self, _key: &str) -> Result<Option<serde_json::Value>, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: get activates in APP-3".into(),
-        ))
+    pub fn get(&mut self, key: &str) -> Result<Option<serde_json::Value>, Error> {
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.get(key),
+        }
     }
 
     /// Bytes get (APP-3).
-    pub fn get_bytes(&mut self, _key: &str) -> Result<Option<Vec<u8>>, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: get_bytes activates in APP-3".into(),
-        ))
+    pub fn get_bytes(&mut self, key: &str) -> Result<Option<Vec<u8>>, Error> {
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.get_bytes(key),
+        }
     }
 
     /// Delete (APP-3).
-    pub fn delete(&mut self, _key: &str) -> Result<DeleteReceipt, Error> {
-        Err(Error::Internal(
-            "APP-0 contract surface: delete activates in APP-3".into(),
-        ))
+    pub fn delete(&mut self, key: &str) -> Result<DeleteReceipt, Error> {
+        match &self.backend {
+            CollectionBackend::Unbound => Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            )),
+            CollectionBackend::Embedded(hc) => hc.delete(key),
+        }
     }
 
     /// RQL Application Core execution (APP-5…APP-7).

@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-01 (APB-1 **active** gap inventory; APP-5 **accept**; APP-4 accept; APB-0 accept)
+Updated: 2026-08-01 (APB-1 **active** G1 embedded `From<Heap>`; APP-5 **accept**; APP-4/APB-0 accept)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -96,7 +96,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-8 | deferred | — | cluster protocol freeze, FAS-3…FAS-5 | cluster spec exists | consensus/refinement proofs absent | formal cluster |
 | FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
 | APB-0 | accept | 2026-08-01 | CSQ-12 (accept), APP-0/APP-1 evidence | [spec/app/baseline-v1/](../../../spec/app/baseline-v1/) **frozen**; `bash scripts/verify-app-baseline-contract.sh --require-frozen` exit 0; fixtures under baseline-v1/fixtures/; APP-0 error_mapping total; [APB_QUERY_ATOMICS_SEQUENCE.md](../../todo/application-baseline/APB_QUERY_ATOMICS_SEQUENCE.md) | residual: product APB-1…12 implementation; compile fixtures expand with packages | application contract |
-| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory: [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md); ops baseline-v1 10 APB-1 rows; façade stubs in `app_v1`; real paths on `Heap`/`RemoteHeap`; G1–G6 backlog | dual-backend suite not started; HAR-1 scoreboard still stale (106); **no product client claim** | backend-neutral client |
+| APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory + **G1:** `HeapClient::from(Heap)` sealed embedded backend; create/open/list + bound put/get/delete; `cargo test -p residiuum-sdk --test apb1_heap_client_embedded` **2/2**; [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md) | `From<RemoteHeap>` / dual-backend suite open; IndexManager/History missing; HAR-1 scoreboard stale; **no package accept** | backend-neutral client |
 | APB-2 | not_started | — | APB-1 | — | conditional/add/upsert APIs absent | safe single-key mutation |
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
