@@ -1,14 +1,17 @@
-//! APB-2 / APP-3 slice: façade create / upsert / list_keys (embedded).
+//! APB-2 / APP-3 slice: façade create / upsert / list_keys / replace / delete_with.
 //!
 //! Normative: MUST_ADD §6 (safe single-key mutations). First cut is
-//! read-then-write; CAS residual is documented. No package accept.
+//! read-then-write; store Key Atomic CAS residual is documented. No package accept.
+//!
+//! OCC token for `if_version` is the establishing **event_id** (not
+//! `WriteReceipt.version`, which is still item lineage).
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
     HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
     TrustedInstant, VerifiedCertificate,
 };
-use residiuum_sdk::{ErrorCode, HeapClient, ResidiuumDeployment};
+use residiuum_sdk::{ErrorCode, HeapClient, PutOptions, ResidiuumDeployment};
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use std::sync::Arc;
 use tempfile::{tempdir, TempDir};
@@ -102,4 +105,80 @@ fn facade_create_upsert_list_keys() {
 
     let after = col.list_keys(Some(10), Some("k1")).expect("list after");
     assert_eq!(after, vec!["k2".to_string()]);
+}
+
+#[test]
+fn facade_replace_if_version_and_delete_with() {
+    let (_dir, mut client) = open_bound_client();
+    let mut col = client.create_collection("docs").unwrap().collection;
+
+    // replace on absent → VersionConflict (observed None)
+    let bogus = [0xab; 16];
+    match col.replace("missing", &serde_json::json!({"n": 0}), bogus) {
+        Ok(_) => panic!("replace absent must fail"),
+        Err(e) => {
+            assert_eq!(e.code(), ErrorCode::VersionConflict);
+            match e {
+                residiuum_sdk::Error::VersionConflict { expected, observed } => {
+                    assert_eq!(expected, bogus);
+                    assert!(observed.is_none());
+                }
+                other => panic!("expected VersionConflict variant, got {other:?}"),
+            }
+        }
+    }
+
+    let r1 = col
+        .put("k", &serde_json::json!({"n": 1}))
+        .expect("seed put");
+    // OCC token is establishing event_id (not receipt.version / item lineage).
+    let v1 = r1.event_id;
+
+    let r2 = col
+        .replace("k", &serde_json::json!({"n": 2}), v1)
+        .expect("replace matching version");
+    assert_eq!(col.get("k").unwrap().unwrap()["n"], 2);
+    assert_ne!(r2.event_id, v1);
+
+    // Stale token must not clobber newer value.
+    match col.replace("k", &serde_json::json!({"n": 99}), v1) {
+        Ok(_) => panic!("stale if_version must fail"),
+        Err(e) => {
+            assert_eq!(e.code(), ErrorCode::VersionConflict);
+            match e {
+                residiuum_sdk::Error::VersionConflict { expected, observed } => {
+                    assert_eq!(expected, v1);
+                    assert_eq!(observed, Some(r2.event_id));
+                }
+                other => panic!("expected VersionConflict variant, got {other:?}"),
+            }
+        }
+    }
+    assert_eq!(col.get("k").unwrap().unwrap()["n"], 2);
+
+    // delete_with wrong version
+    match col.delete_with("k", Some(v1), true, PutOptions::default()) {
+        Ok(_) => panic!("delete stale version must fail"),
+        Err(e) => assert_eq!(e.code(), ErrorCode::VersionConflict),
+    }
+    assert!(col.get("k").unwrap().is_some());
+
+    // delete_with matching version
+    let del = col
+        .delete_with("k", Some(r2.event_id), true, PutOptions::default())
+        .expect("delete matching");
+    assert!(del.removed);
+    assert!(col.get("k").unwrap().is_none());
+
+    // if_present + absent → NotFound
+    match col.delete_with("k", None, true, PutOptions::default()) {
+        Ok(_) => panic!("if_present on absent must NotFound"),
+        Err(e) => assert_eq!(e.code(), ErrorCode::NotFound),
+    }
+
+    // if_present false + absent → removed false
+    let soft = col
+        .delete_with("gone", None, false, PutOptions::default())
+        .expect("soft absent delete");
+    assert!(!soft.removed);
 }

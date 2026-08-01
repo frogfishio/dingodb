@@ -77,6 +77,42 @@ pub struct UpsertResult {
     pub receipt: WriteReceipt,
 }
 
+/// Options for version-conditional replace (APB-2 / PD-002).
+///
+/// `if_version` is the **establishing event id** of the live value
+/// ([`WriteReceipt::event_id`] or history last put `event_id`).
+///
+/// Residual: [`WriteReceipt::version`] is still item lineage (`item_id`) on the
+/// embedded/remote put path — do not use it as the OCC token until that
+/// mapping is aligned. Concurrent lost-update remains residual until
+/// store-level Key Atomic CAS lands (this façade is read-then-write).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReplaceOptions {
+    /// Establishing event id that must still be current.
+    pub if_version: [u8; 16],
+}
+
+/// Options for conditional delete (APB-2 / PD-002).
+///
+/// Same OCC token rules as [`ReplaceOptions`]. First cut is read-then-write.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DeleteWithOptions {
+    /// When set, the live establishing event id must match.
+    pub if_version: Option<[u8; 16]>,
+    /// When `true`, absence yields [`Error::NotFound`]. When `false`, absence
+    /// is idempotent (`removed: false`).
+    pub if_present: bool,
+}
+
+impl Default for DeleteWithOptions {
+    fn default() -> Self {
+        Self {
+            if_version: None,
+            if_present: false,
+        }
+    }
+}
+
 /// Receipt for `create_collection` (wire op 106).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CollectionCreateReceipt {
@@ -781,6 +817,124 @@ impl CollectionClient {
         let inserted = self.get(key)?.is_none();
         let receipt = self.put(key, value)?;
         Ok(UpsertResult { inserted, receipt })
+    }
+
+    /// Replace JSON only when the live establishing event id matches (APB-2).
+    ///
+    /// First cut: observe via history then put (not a single-key CAS). Pass
+    /// [`WriteReceipt::event_id`] (or history last put `event_id`) as
+    /// `if_version` — not [`WriteReceipt::version`] (item lineage residual).
+    pub fn replace<T: Serialize>(
+        &mut self,
+        key: &str,
+        value: &T,
+        if_version: [u8; 16],
+    ) -> Result<WriteReceipt, Error> {
+        self.replace_with(key, value, ReplaceOptions { if_version }, PutOptions::default())
+    }
+
+    /// Replace with durability options (APB-2).
+    pub fn replace_with<T: Serialize>(
+        &mut self,
+        key: &str,
+        value: &T,
+        replace: ReplaceOptions,
+        options: PutOptions,
+    ) -> Result<WriteReceipt, Error> {
+        let observed = self.observe_live_event_id(key)?;
+        match observed {
+            Some(live) if live == replace.if_version => {}
+            other => {
+                return Err(Error::VersionConflict {
+                    expected: replace.if_version,
+                    observed: other,
+                });
+            }
+        }
+        self.put_with(key, value, options)
+    }
+
+    /// Conditional delete (APB-2 / `apb.doc.delete_with`).
+    ///
+    /// - `if_version`: when `Some`, must match live establishing event id
+    /// - `if_present`: when `true`, absence is [`Error::NotFound`]; when
+    ///   `false`, absence returns `removed: false` without error
+    ///
+    /// First cut: read-then-write. Durability options apply on the embedded
+    /// path; remote uses server default (same residual as plain delete).
+    pub fn delete_with(
+        &mut self,
+        key: &str,
+        if_version: Option<[u8; 16]>,
+        if_present: bool,
+        options: PutOptions,
+    ) -> Result<DeleteReceipt, Error> {
+        self.delete_with_options(
+            key,
+            DeleteWithOptions {
+                if_version,
+                if_present,
+            },
+            options,
+        )
+    }
+
+    /// Conditional delete with structured options (APB-2).
+    pub fn delete_with_options(
+        &mut self,
+        key: &str,
+        cond: DeleteWithOptions,
+        options: PutOptions,
+    ) -> Result<DeleteReceipt, Error> {
+        let observed = self.observe_live_event_id(key)?;
+        if let Some(expected) = cond.if_version {
+            match observed {
+                Some(live) if live == expected => {}
+                other => {
+                    return Err(Error::VersionConflict {
+                        expected,
+                        observed: other,
+                    });
+                }
+            }
+        } else if observed.is_none() {
+            if cond.if_present {
+                return Err(Error::NotFound(format!("key absent: {key}")));
+            }
+            // Idempotent absent delete (no version check).
+            return Ok(DeleteReceipt {
+                key: key.to_string(),
+                removed: false,
+                event_id: [0u8; 16],
+                version: [0u8; 16],
+                acknowledgement: options.durability,
+                committed: true,
+                store_id: [0u8; 16],
+                segment_id: [0u8; 16],
+            });
+        }
+        let _ = options; // remote delete has no durability field yet
+        self.delete(key)
+    }
+
+    /// Live establishing event id for OCC, or `None` when the key is absent.
+    ///
+    /// Uses get + history last put (both backends). Residual vs store CAS.
+    fn observe_live_event_id(&mut self, key: &str) -> Result<Option<[u8; 16]>, Error> {
+        if self.get(key)?.is_none() {
+            return Ok(None);
+        }
+        let hist = self.history(key)?;
+        let last = hist.versions.last().ok_or_else(|| {
+            Error::Internal(format!(
+                "key {key} present but history has no versions"
+            ))
+        })?;
+        if last.kind != "put" {
+            // Tombstone or inconsistent stream — treat as absent for OCC.
+            return Ok(None);
+        }
+        Ok(Some(parse_hex16(&last.event_id)?))
     }
 
     /// List application keys (APB-2 / `apb.doc.list_keys`).

@@ -172,6 +172,22 @@ pub enum Error {
     #[error("validation failed: {0}")]
     ValidationMsg(String),
 
+    /// Optimistic concurrency precondition failed (DX_SPEC §6.4 / §15).
+    ///
+    /// `expected` is the caller-supplied token; `observed` is the live
+    /// establishing event id when the key is present, or `None` when absent.
+    #[error("version conflict")]
+    VersionConflict {
+        /// Token the caller required (establishing event id).
+        expected: [u8; 16],
+        /// Live establishing event id, or `None` if the key is absent.
+        observed: Option<[u8; 16]>,
+    },
+
+    /// Key/entity not found when the API requires presence.
+    #[error("not found: {0}")]
+    NotFound(String),
+
     /// Remote server returned an error.
     #[error("remote error ({code}): {message}")]
     Remote {
@@ -240,6 +256,8 @@ impl Error {
             Self::StaleRoute { .. } => ErrorCode::StaleRoute,
             Self::ConsistencyViolation(_) => ErrorCode::ConsistencyViolation,
             Self::DurabilityUnavailable(_) => ErrorCode::DurabilityUnavailable,
+            Self::VersionConflict { .. } => ErrorCode::VersionConflict,
+            Self::NotFound(_) => ErrorCode::NotFound,
             Self::Remote { code, .. } => remote_code(code),
             Self::RemoteUnsupported(_) => ErrorCode::FormatUnsupported,
             Self::AuthenticationFailed(_) => ErrorCode::AuthenticationFailed,
@@ -325,6 +343,7 @@ fn remote_code(code: &str) -> ErrorCode {
         "coverage_incomplete" => ErrorCode::CoverageIncomplete,
         "payload_partial" => ErrorCode::PayloadPartial,
         "already_exists" => ErrorCode::AlreadyExists,
+        "version_conflict" => ErrorCode::VersionConflict,
         "io" => ErrorCode::Io,
         _ => ErrorCode::Internal,
     }
