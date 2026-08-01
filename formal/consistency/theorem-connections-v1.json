@@ -1,0 +1,141 @@
+{
+  "schema": "residiuum-formal-consistency-connections-v1",
+  "package": "FAS-4",
+  "profile": "residiuum-formal-consistency-v1",
+  "profile_status": "mvp_abstract_plus_csq_links",
+  "honest_residual": "Profile gate for full physically_qualified CON set is not claimed. Lean theorems are abstract machine-checked obligations; physical qualification reuses CSQ A2 evidence. Store put/get full refinement residual.",
+  "filesystem_assumption": "FAS-ASM-FILESYSTEM-DURABILITY-001",
+  "corruption_wording": "Damage/unknown never projected to complete or absent_proved (FAS-CON-DAMAGE-HONESTY-001)",
+  "items": [
+    {
+      "theorem_id": "FAS-CON-NO-FABRICATED-VALUE-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.no_fabricated_value_requires_provenance",
+        "Residiuum.Consistency.no_fabricated_value_neg_missing_events",
+        "Residiuum.Consistency.hasAuthoritativeProvenance"
+      ],
+      "negative_control": "NEG-CON-FABRICATED-VALUE-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json",
+        "target/csq-evidence/residiuum-core-storage-report-v1.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:get",
+        "crates/residiuum-store/src/store.rs:get_payload"
+      ],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-GENERATION-EXACT-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.generation_exact_current_unique",
+        "Residiuum.Consistency.generationExact"
+      ],
+      "negative_control": "NEG-CON-GENERATION-WRONG-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:get_payload_version"
+      ],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-PUBLICATION-NONHYBRID-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.publication_nonhybrid",
+        "Residiuum.Consistency.publication_not_hybrid",
+        "Residiuum.Consistency.publicationView"
+      ],
+      "negative_control": "NEG-CON-PUBLICATION-HYBRID-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json",
+        "target/csq-evidence/residiuum-verification-report-v1.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:open",
+        "crates/residiuum-store/src/store.rs:create"
+      ],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-DURABLE-ACK-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.durable_ack_put_event",
+        "Residiuum.Consistency.durableAckHolds"
+      ],
+      "negative_control": "NEG-CON-DURABLE-ACK-MISSING-001",
+      "csq_links": [
+        "target/csq-evidence/residiuum-core-storage-report-v1.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:put",
+        "crates/residiuum-store/src/store.rs:put_many"
+      ],
+      "assumptions": ["FAS-ASM-FILESYSTEM-DURABILITY-001"],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-RECOVERY-IDEMPOTENT-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.recovery_idempotent",
+        "Residiuum.Consistency.recovery_fixed_point"
+      ],
+      "negative_control": "NEG-CON-RECOVERY-NONIDEMPOTENT-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:open"
+      ],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-DERIVED-NONAUTHORITY-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.derived_nonauthority_observe_uses_evidence"
+      ],
+      "negative_control": "NEG-CON-DERIVED-AS-TRUTH-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/index.rs:get",
+        "crates/residiuum-store/src/store.rs:get"
+      ],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-DAMAGE-HONESTY-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.damage_honesty_public_projection",
+        "Residiuum.Consistency.damage_honesty_forbidden_collapse",
+        "Residiuum.Consistency.damage_honesty_id_no_collapse"
+      ],
+      "negative_control": "NEG-CON-DAMAGE-AS-ABSENT-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:get_with_tier_coverage"
+      ],
+      "status": "abstract_proved_mvp"
+    },
+    {
+      "theorem_id": "FAS-CON-HEALTHY-ISLAND-001",
+      "lean_symbols": [
+        "Residiuum.Consistency.healthy_island_init_wf",
+        "Residiuum.Consistency.healthy_island_create_heap_preserves_empty_values"
+      ],
+      "negative_control": "NEG-CON-ISLAND-CROSS-CONTAMINATE-001",
+      "csq_links": [
+        "target/csq-evidence/a2-evaluation.json",
+        "target/csq-evidence/residiuum-verification-report-v1.json"
+      ],
+      "rust_entrypoints": [
+        "crates/residiuum-store/src/store.rs:open_inspect"
+      ],
+      "status": "abstract_proved_mvp"
+    }
+  ]
+}

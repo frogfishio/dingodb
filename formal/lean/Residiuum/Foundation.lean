@@ -6,11 +6,12 @@ import Residiuum.Operations
 import Residiuum.Observe
 import Residiuum.Vectors
 import Residiuum.Refinement
+import Residiuum.Consistency
 
 /-!
 # Residiuum.Foundation
 
-FAS-2 kernel + FAS-3 refinement re-export.
+FAS-2 kernel + FAS-3 refinement + FAS-4 consistency re-export.
 -/
 
 namespace Residiuum
@@ -24,5 +25,10 @@ theorem fas2_foundation_ok : WellFormed Init ∧
 theorem fas3_refinement_ok :
     Residiuum.Refinement.alphaState Residiuum.Refinement.ConcreteState.empty = Init :=
   Residiuum.Refinement.init_correspondence
+
+/-- FAS-4 package marker: consistency family type-checks. -/
+theorem fas4_consistency_ok :
+    WellFormed Init :=
+  Residiuum.Consistency.healthy_island_init_wf
 
 end Residiuum

@@ -8,8 +8,10 @@
 | `kani-smoke/` | FAS-1 Kani smoke harness |
 | `tla/smoke/` | FAS-1 TLC smoke module |
 | `refinement/` | FAS-3 entrypoint census, type map, vertical bridges |
+| `consistency/` | FAS-4 CON theorem connections + negatives |
 
 Bootstrap: `bash scripts/setup-formal-tools.sh --locked`  
 FAS-1 gate: `bash scripts/check-formal-toolchain.sh`  
 FAS-2 gate: `bash scripts/check-formal-foundation.sh`  
-FAS-3 gate: `bash scripts/check-formal-refinement.sh`
+FAS-3 gate: `bash scripts/check-formal-refinement.sh`  
+FAS-4 gate: `bash scripts/check-formal-consistency.sh`

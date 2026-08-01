@@ -1,0 +1,63 @@
+{
+  "schema": "residiuum-formal-consistency-negatives-v1",
+  "package": "FAS-4",
+  "note": "Live negative controls: each mutant is rejected by a named Lean theorem or gate policy.",
+  "items": [
+    {
+      "id": "NEG-CON-FABRICATED-VALUE-001",
+      "theorem_id": "FAS-CON-NO-FABRICATED-VALUE-001",
+      "mutant": "claim complete observation without generation_events",
+      "rejected_by_lean": "Residiuum.Consistency.no_fabricated_value_neg_missing_events",
+      "expected": "fail_provenance"
+    },
+    {
+      "id": "NEG-CON-GENERATION-WRONG-001",
+      "theorem_id": "FAS-CON-GENERATION-EXACT-001",
+      "mutant": "two distinct current generations for one item",
+      "rejected_by_lean": "Residiuum.Consistency.generation_exact_current_unique",
+      "expected": "impossible_by_current_map"
+    },
+    {
+      "id": "NEG-CON-PUBLICATION-HYBRID-001",
+      "theorem_id": "FAS-CON-PUBLICATION-NONHYBRID-001",
+      "mutant": "publication simultaneously old and new",
+      "rejected_by_lean": "Residiuum.Consistency.publication_not_hybrid",
+      "expected": "contradiction"
+    },
+    {
+      "id": "NEG-CON-DURABLE-ACK-MISSING-001",
+      "theorem_id": "FAS-CON-DURABLE-ACK-001",
+      "mutant": "ack without durable_events membership after put",
+      "rejected_by_lean": "Residiuum.Consistency.durable_ack_put_event",
+      "expected": "put_marks_durable"
+    },
+    {
+      "id": "NEG-CON-RECOVERY-NONIDEMPOTENT-001",
+      "theorem_id": "FAS-CON-RECOVERY-IDEMPOTENT-001",
+      "mutant": "second recovery changes state",
+      "rejected_by_lean": "Residiuum.Consistency.recovery_idempotent",
+      "expected": "fixed_point"
+    },
+    {
+      "id": "NEG-CON-DERIVED-AS-TRUTH-001",
+      "theorem_id": "FAS-CON-DERIVED-NONAUTHORITY-001",
+      "mutant": "treat prepared publication (index-like) as complete",
+      "rejected_by_lean": "Residiuum.Consistency.derived_nonauthority_observe_uses_evidence",
+      "expected": "partial_not_complete"
+    },
+    {
+      "id": "NEG-CON-DAMAGE-AS-ABSENT-001",
+      "theorem_id": "FAS-CON-DAMAGE-HONESTY-001",
+      "mutant": "project damaged → absent_proved or complete",
+      "rejected_by_lean": "Residiuum.Consistency.damage_honesty_public_projection",
+      "expected": "forbidden_collapse"
+    },
+    {
+      "id": "NEG-CON-ISLAND-CROSS-CONTAMINATE-001",
+      "theorem_id": "FAS-CON-HEALTHY-ISLAND-001",
+      "mutant": "create_heap invents values on empty maps",
+      "rejected_by_lean": "Residiuum.Consistency.healthy_island_create_heap_preserves_empty_values",
+      "expected": "values_remain_empty"
+    }
+  ]
+}
