@@ -1,6 +1,6 @@
 # APB-6 — Stable read views gap inventory
 
-Status: **T1 scaffold + T2 embedded segment pin 2026-08-02** · package `APB-6` **active / not accept**  
+Status: **T1–T3 2026-08-02** (scaffold + pin + retention/remote honesty) · package `APB-6` **active / not accept**  
 Authority: [MUST_ADD.md](./MUST_ADD.md) §10 · [PRODUCT_DEFICIENCIES.md](../../reference/product/PRODUCT_DEFICIENCIES.md) PD-008 · `spec/app/baseline-v1/` (`apb.heap.read_view`, `ReadView` type)
 
 ## Goal
@@ -8,19 +8,20 @@ Authority: [MUST_ADD.md](./MUST_ADD.md) §10 · [PRODUCT_DEFICIENCIES.md](../../
 | Task | Deliverable | Status |
 |---|---|---|
 | T1 | Map normative fields; public types + `HeapClient::read_view` fail-closed on product observation | **done** (scaffold) |
-| T2 | Embedded frontier pin via store segment fingerprint; drift re-check | **done** (this labor) |
-| later | View-bound executor, retention pin, remote pin, package accept | residual |
+| T2 | Embedded frontier pin via store segment fingerprint; drift re-check | **done** |
+| T3 | Retention budget enforce; remote pin capability label; multipage under pin honesty | **in_review** (`apb6_view_retention` 4/4) |
+| later | Real remote store pin (HAR-4), reclamation fencing, package accept | residual |
 
 ## Normative binding (ReadView)
 
 | Field | Required by | Current labor |
 |---|---|---|
 | `heap_id` | types-v1 / MUST_ADD | **yes** — bound at open |
-| `authoritative_frontier` | types-v1 | **T2 embedded** — `FrontierKind::SegmentFingerprint` = `HeapStore::segment_fingerprint` hex; remote still `LiveUnpinned` |
+| `authoritative_frontier` | types-v1 | **T2 embedded** — `SegmentFingerprint`; remote `LiveUnpinned` + `PinCapability::RemoteUnpinnedResidual` (T3 honesty) |
 | `coverage` | types-v1 | **declared** from options; not proven complete |
 | `semantic_versions` | types-v1 | **yes** — frozen profile labels (plan/predicate/cursor/app-core) |
 | `expiry` | MUST_ADD | **yes** — `max_age` → expires_at |
-| `resource_budget` | MUST_ADD | **optional** — stored, not enforced as retention pin |
+| `resource_budget` | MUST_ADD | **T3** — `max_hold` tightens expiry; `max_pinned_documents` fail-closed on view-bound examine count |
 | mutation isolation | MUST_ADD | **partial** — `check_drift` detects segment-layout movement; **not** snapshot isolation |
 | `view.collection(..).query` | PD-008 | **APB-7 T5:** `ReadView::open_collection(heap, name)` → `ViewBoundCollection` when Stable pin; live scan under gate — **not** snapshot isolation |
 | share across export/count/watch | MUST_ADD | residual |
@@ -49,8 +50,10 @@ ReadView::check_drift() -> FrontierDrift { Stable | Drifted | Unpinned }
 ReadView::refresh_pin()  // re-sample segment fingerprint (pinned only)
 ReadView::pinned_fingerprint() -> Option<[u8;32]>
 ReadView::ensure_observation_stable()  // pin + Stable (APB-7 T5 gate)
+ReadView::pin_capability() -> SegmentFingerprint | RemoteUnpinnedResidual
+ReadView::note_examined_documents(n)   // retention max_pinned_documents (T3)
 ReadView::open_collection(heap, name) -> ViewBoundCollection  // APB-7 T5; fail-closed Unpinned/Drifted
-ViewBoundCollection::rql / ::query().run  // re-check pin each page
+ViewBoundCollection::rql / ::query().run  // re-check pin each page + retention accounting
 ```
 
 ## Dependency honesty
@@ -65,12 +68,14 @@ ViewBoundCollection::rql / ::query().run  // re-check pin each page
 
 ## Residuals (package accept — not this task)
 
-- export under a pin; multipage under pin honesty matrix (still residual)
-- ~~view-bound query gate~~ (APB-7 T5 scaffold; not SI)
+- export under a pin
+- ~~view-bound query gate~~ (APB-7 T5)
+- ~~retention hold + document examine cap~~ (T3 fail-closed; not store reclamation fence)
+- ~~remote pin capability honesty~~ (T3 label; product remote pin = HAR-4)
+- ~~multipage under pin re-check + accounting~~ (T3)
 - mutation-between-pages isolation proof (beyond segment drift token)
-- compaction / tier movement while pinned (retention)
-- expiry / resource budget enforcement as reclamation pin
-- dual-backend parity for pin (remote residual)
+- compaction / tier movement while pinned (true reclamation pin)
+- dual-backend **product** pin parity (remote still unpinned)
 - reopen tests after process restart
 
 ## Explicit non-claims

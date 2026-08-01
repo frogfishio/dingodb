@@ -1,4 +1,4 @@
-//! Stable bounded read views — APB-6 surface (T1 scaffold + T2 frontier pin).
+//! Stable bounded read views — APB-6 surface (T1–T3).
 //!
 //! Normative: MUST_ADD §10, PD-008, `spec/app/baseline-v1` `apb.heap.read_view`.
 //!
@@ -6,13 +6,13 @@
 //! fingerprint and sets `observation_pinned = true`. Drift is detectable via
 //! [`ReadView::check_drift`]. This is **not** multi-query snapshot isolation.
 //!
-//! **APB-7 T5:** pinned views may open a view-bound collection for Core query
-//! when [`ReadView::ensure_observation_stable`] succeeds (`observation_pinned`
-//! + [`FrontierDrift::Stable`]). Live data is still read; the pin only gates
-//! on segment-fingerprint drift — not a frozen snapshot.
+//! **T3:** retention budget hold/document caps are enforced on usable /
+//! view-bound paths; remote pin capability is labeled
+//! [`PinCapability::RemoteUnpinnedResidual`] (HAR-4 product pin residual).
+//! Multipage under pin re-checks drift each page (via APB-7 T5 gate).
 //!
-//! **Remote:** still opens live-unpinned (honest residual; HAR-4 pin later);
-//! view-bound query fail-closes with [`FrontierDrift::Unpinned`].
+//! **APB-7 T5:** pinned views may open a view-bound collection for Core query
+//! when [`ReadView::ensure_observation_stable`] succeeds.
 //!
 //! Inventory: `doc/todo/application-baseline/APB6_READ_VIEW_GAP_INVENTORY.md`.
 
@@ -35,7 +35,7 @@ pub struct ReadViewOptions {
     pub consistency: ConsistencyMode,
     /// Maximum age of the view after open (`None` = session-bounded default).
     pub max_age: Option<Duration>,
-    /// Optional retention / resource budget (not yet enforced as a pin).
+    /// Optional retention / resource budget (APB-6 T3: hold + document caps enforced).
     pub retention_budget: Option<ReadViewRetentionBudget>,
 }
 
@@ -49,13 +49,27 @@ impl Default for ReadViewOptions {
     }
 }
 
-/// Declared retention/resource budget (stored; pin enforcement residual).
+/// Declared retention/resource budget (APB-6 T3).
+///
+/// - `max_hold` tightens view expiry (min with `max_age`).
+/// - `max_pinned_documents` caps cumulative documents examined under the view
+///   (view-bound query accounting). Does **not** implement store reclamation
+///   fencing beyond this fail-closed budget.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReadViewRetentionBudget {
-    /// Max documents the view may pin (optional).
+    /// Max documents the view may examine under bound observation (optional).
     pub max_pinned_documents: Option<u64>,
     /// Max wall-clock hold after open (optional; combined with max_age).
     pub max_hold: Option<Duration>,
+}
+
+/// What pin operations this view can support (dual-backend honesty).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PinCapability {
+    /// Embedded: segment-fingerprint pin can be re-checked / refreshed.
+    SegmentFingerprint,
+    /// Remote residual: no store pin yet (HAR-4 product remote pin later).
+    RemoteUnpinnedResidual,
 }
 
 /// Kind of frontier currently bound (honest labels).
@@ -146,8 +160,12 @@ pub struct ReadViewInfo {
     pub closed: bool,
     /// Whether an embedded segment-fingerprint pin is active.
     ///
-    /// `true` does **not** mean product snapshot isolation or view-bound query.
+    /// `true` does **not** mean product snapshot isolation.
     pub observation_pinned: bool,
+    /// Dual-backend pin capability label (APB-6 T3).
+    pub pin_capability: PinCapability,
+    /// Cumulative documents examined under this view (retention accounting).
+    pub retention_documents_examined: u64,
 }
 
 /// Stable bounded read view handle (APB-6 / APB-7 T5 gate).
@@ -210,6 +228,8 @@ impl ReadView {
                 expires_at_unix: Some(expires),
                 closed: false,
                 observation_pinned: false,
+                pin_capability: PinCapability::RemoteUnpinnedResidual,
+                retention_documents_examined: 0,
             },
             retention_budget: options.retention_budget,
             pin: None,
@@ -240,6 +260,8 @@ impl ReadView {
                 expires_at_unix: Some(expires),
                 closed: false,
                 observation_pinned: true,
+                pin_capability: PinCapability::SegmentFingerprint,
+                retention_documents_examined: 0,
             },
             retention_budget: options.retention_budget,
             pin: Some(SegmentPin {
@@ -277,7 +299,7 @@ impl ReadView {
         self.info.closed = true;
     }
 
-    /// Fail closed if closed or expired.
+    /// Fail closed if closed, expired, or retention hold exceeded.
     pub fn ensure_usable(&self) -> Result<(), Error> {
         if self.info.closed {
             return Err(Error::ConsistencyViolation(
@@ -287,15 +309,52 @@ impl ReadView {
         let now = unix_now()?;
         if self.is_expired_at(now) {
             return Err(Error::ConsistencyViolation(
-                "read view expired".into(),
+                "read view expired (max_age / retention max_hold)".into(),
             ));
         }
+        self.check_retention_document_budget()?;
         Ok(())
     }
 
     /// Retention budget declared at open (if any).
     pub fn retention_budget(&self) -> Option<ReadViewRetentionBudget> {
         self.retention_budget
+    }
+
+    /// Dual-backend pin capability (embedded fingerprint vs remote residual).
+    pub fn pin_capability(&self) -> PinCapability {
+        self.info.pin_capability
+    }
+
+    /// Cumulative documents examined under this view (view-bound query accounting).
+    pub fn retention_documents_examined(&self) -> u64 {
+        self.info.retention_documents_examined
+    }
+
+    /// Record documents examined under bound observation (APB-6 T3 retention).
+    ///
+    /// Fail-closed when `max_pinned_documents` is exceeded. Does **not** pin
+    /// store reclamation — only a fail-closed examination budget.
+    pub fn note_examined_documents(&mut self, n: u64) -> Result<(), Error> {
+        self.ensure_usable()?;
+        self.info.retention_documents_examined =
+            self.info.retention_documents_examined.saturating_add(n);
+        self.check_retention_document_budget()
+    }
+
+    fn check_retention_document_budget(&self) -> Result<(), Error> {
+        if let Some(budget) = self.retention_budget {
+            if let Some(max) = budget.max_pinned_documents {
+                if self.info.retention_documents_examined > max {
+                    return Err(Error::ResourceLimit(format!(
+                        "read view retention max_pinned_documents={max} exceeded \
+                         (examined={})",
+                        self.info.retention_documents_examined
+                    )));
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Whether an embedded segment-fingerprint pin is active.
@@ -338,8 +397,10 @@ impl ReadView {
         self.ensure_usable()?;
         if !self.info.observation_pinned {
             return Err(Error::ConsistencyViolation(
-                "read view observation is not pinned (live-unpinned / remote residual); \
-                 view-bound query requires segment-fingerprint pin (APB-7 T5)"
+                "read view observation is not pinned \
+                 (PinCapability::RemoteUnpinnedResidual / live-unpinned); \
+                 view-bound query requires segment-fingerprint pin \
+                 (APB-6 T3 remote residual / HAR-4; APB-7 T5 gate)"
                     .into(),
             ));
         }
@@ -383,10 +444,16 @@ impl ReadView {
 
 fn open_common(options: &ReadViewOptions) -> Result<(u64, u64, [u8; 16]), Error> {
     let now = unix_now()?;
-    let max_age = options
-        .max_age
-        .or_else(|| options.retention_budget.and_then(|b| b.max_hold))
-        .unwrap_or(Duration::from_secs(900));
+    // APB-6 T3: hold budget tightens expiry (min of max_age and max_hold).
+    let max_age = match (
+        options.max_age,
+        options.retention_budget.and_then(|b| b.max_hold),
+    ) {
+        (Some(a), Some(h)) => a.min(h),
+        (Some(a), None) => a,
+        (None, Some(h)) => h,
+        (None, None) => Duration::from_secs(900),
+    };
     let expires = now.saturating_add(max_age.as_secs());
     let view_bytes = residiuum_store::random_id().map_err(Error::from)?;
     Ok((now, expires, view_bytes))
@@ -436,10 +503,34 @@ mod tests {
         assert_eq!(v.info().frontier.kind, FrontierKind::LiveUnpinned);
         assert_eq!(v.info().semantic_versions.read_view, READ_VIEW_PROFILE);
         assert_eq!(v.check_drift().unwrap(), FrontierDrift::Unpinned);
+        assert_eq!(v.pin_capability(), PinCapability::RemoteUnpinnedResidual);
         v.ensure_usable().unwrap();
         assert!(v.ensure_observation_stable().is_err());
         assert!(v.refresh_pin().is_err());
         v.close();
         assert!(v.ensure_usable().is_err());
+    }
+
+    #[test]
+    fn retention_hold_min_with_max_age() {
+        let heap = HeapId::from_bytes_unchecked_nonzero([2u8; 16]).unwrap();
+        let v = ReadView::open_live_unpinned(
+            heap,
+            ReadViewOptions {
+                consistency: ConsistencyMode::Available,
+                max_age: Some(Duration::from_secs(1000)),
+                retention_budget: Some(ReadViewRetentionBudget {
+                    max_pinned_documents: Some(10),
+                    max_hold: Some(Duration::from_secs(5)),
+                }),
+            },
+        )
+        .unwrap();
+        let info = v.info();
+        assert_eq!(
+            info.expires_at_unix,
+            Some(info.opened_at_unix.saturating_add(5)),
+            "max_hold must tighten long max_age"
+        );
     }
 }

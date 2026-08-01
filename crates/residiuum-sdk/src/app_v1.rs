@@ -1670,7 +1670,10 @@ impl<'a> ViewBoundCollection<'a> {
         }
     }
 
-    /// RQL Application Core page under the view pin (APB-7 T5).
+    /// RQL Application Core page under the view pin (APB-7 T5 / APB-6 T3).
+    ///
+    /// Re-checks pin stability and records examined documents toward retention
+    /// `max_pinned_documents` (multipage honesty under the view).
     pub fn rql(
         &mut self,
         source: &str,
@@ -1678,7 +1681,12 @@ impl<'a> ViewBoundCollection<'a> {
         options: QueryRunOptions,
     ) -> Result<QueryPage, Error> {
         self.view.ensure_observation_stable()?;
-        self.inner.rql(source, parameters, options)
+        let page = self.inner.rql(source, parameters, options)?;
+        // Re-check pin after the page (mutation-between-pages residual honesty).
+        self.view.ensure_observation_stable()?;
+        self.view
+            .note_examined_documents(page.coverage.examined_documents)?;
+        Ok(page)
     }
 
     /// Explain under the view pin (no row scan; still requires Stable).
@@ -1747,7 +1755,7 @@ impl<'a> ViewBoundQuery<'a> {
         Ok(plan)
     }
 
-    /// Execute one page; re-checks pin first.
+    /// Execute one page; re-checks pin before/after and records retention docs.
     pub fn run(
         self,
         parameters: &Parameters,
@@ -1767,7 +1775,7 @@ impl<'a> ViewBoundQuery<'a> {
         if plan.from.collection_id != collection_id {
             plan.from.collection_id = collection_id;
         }
-        crate::query_exec_v1::execute_plan(
+        let page = crate::query_exec_v1::execute_plan(
             self.client,
             &plan,
             &parameters.values,
@@ -1775,7 +1783,11 @@ impl<'a> ViewBoundQuery<'a> {
             heap_id,
             collection_id,
             None,
-        )
+        )?;
+        self.view.ensure_observation_stable()?;
+        self.view
+            .note_examined_documents(page.coverage.examined_documents)?;
+        Ok(page)
     }
 }
 
