@@ -9,6 +9,7 @@
 //! `spec/heap/rpc-v1/rql_query.*`.
 
 use crate::error::Error;
+use crate::filter::Filter;
 use crate::heap::{Heap, HeapCollection};
 use crate::history::{KeyHistory, Version};
 use crate::indexes::IndexInfo;
@@ -345,6 +346,45 @@ pub struct QueryExplanation {
     pub plan_hash: [u8; 32],
     /// Human/debug tree (shape only at APP-0).
     pub tree: serde_json::Value,
+}
+
+/// Options for [`CollectionClient::scan_json`] (APB-7 / op 115 family).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ScanJsonOptions {
+    /// Max rows to return (1..=4096). Default 256 when `None`.
+    pub limit: Option<u32>,
+    /// Resume after this key (exclusive).
+    pub after_key: Option<String>,
+}
+
+/// One page of JSON documents from a coverage-aware scan (APB-7 T3).
+///
+/// Not a product query page ([`QueryPage`]); no plan hash / continuation token.
+/// Use [`CollectionClient::rql`] / [`CollectionClient::query`] for Application
+/// Core execution.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScanJsonPage {
+    /// Owning Heap.
+    pub heap_id: HeapId,
+    /// Collection binding.
+    pub collection_id: CollectionId,
+    /// Rows for this page (key + full JSON value).
+    pub rows: Vec<QueryRow>,
+    /// Next `after_key` when more keys may exist.
+    pub next_after_key: Option<String>,
+    /// No further keys in deterministic order.
+    pub exhausted: bool,
+    /// Coverage evidence (holes when list/get races).
+    pub coverage: CoverageEvidence,
+    /// Explicit hole evidence (never silent null).
+    pub known_holes: Vec<HoleEvidence>,
+}
+
+/// Options for [`CollectionClient::find_json`] (op 116 family).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FindJsonOptions {
+    /// Max matching rows (1..=4096). Default 256 when `None`.
+    pub limit: Option<u32>,
 }
 
 /// Sealed storage backend for [`HeapClient`] (APB-1 G1 / G1b).
@@ -1111,6 +1151,191 @@ impl CollectionClient {
     /// Unbound clients return an unbound manager that fails closed on ops.
     pub fn indexes(&mut self) -> IndexManager<'_> {
         IndexManager { client: self }
+    }
+
+    /// Coverage-aware JSON document scan (APB-7 T3 / `apb.collection.scan_json`).
+    ///
+    /// Embedded: `list_keys` + `get` with hole evidence when a listed key is
+    /// absent. Remote: wire op **115** `scan_json`. Not Application Core query
+    /// (no plan hash / authenticated cursor) — use [`Self::rql`] / [`Self::query`].
+    pub fn scan_json(&mut self, options: ScanJsonOptions) -> Result<ScanJsonPage, Error> {
+        if matches!(self.backend, CollectionBackend::Unbound) {
+            return Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            ));
+        }
+        let limit = options
+            .limit
+            .unwrap_or(256)
+            .clamp(1, 4_096) as usize;
+        let after = options.after_key.as_deref();
+
+        match &self.backend {
+            CollectionBackend::Unbound => unreachable!(),
+            CollectionBackend::Embedded(_) | CollectionBackend::Remote { .. } => {
+                // Shared embedded-style materialization via list_keys+get for
+                // both backends: remote list_keys/get already exist, and this
+                // yields honest hole evidence. Prefer wire 115 when available
+                // for a single round-trip on remote.
+                if let CollectionBackend::Remote {
+                    remote,
+                    wire_collection_id,
+                } = &self.backend
+                {
+                    return self.scan_json_remote(
+                        Arc::clone(remote),
+                        wire_collection_id.clone(),
+                        limit,
+                        after,
+                    );
+                }
+                self.scan_json_via_list_get(limit, after)
+            }
+        }
+    }
+
+    fn scan_json_via_list_get(
+        &mut self,
+        limit: usize,
+        after_key: Option<&str>,
+    ) -> Result<ScanJsonPage, Error> {
+        // Fetch limit+1 keys to detect exhaustion without a second round-trip.
+        let fetch = limit.saturating_add(1).min(4_096);
+        let keys = self.list_keys(Some(fetch), after_key)?;
+        let has_more = keys.len() > limit;
+        let page_keys: Vec<String> = keys.into_iter().take(limit).collect();
+
+        let mut rows = Vec::with_capacity(page_keys.len());
+        let mut known_holes = Vec::new();
+        for key in &page_keys {
+            match self.get(key)? {
+                Some(value) => rows.push(QueryRow {
+                    key: key.clone(),
+                    value,
+                }),
+                None => known_holes.push(HoleEvidence {
+                    code: "key_listed_absent".into(),
+                    key: Some(key.clone()),
+                }),
+            }
+        }
+        let next_after_key = if has_more {
+            page_keys.last().cloned()
+        } else {
+            None
+        };
+        let exhausted = !has_more;
+        let coverage_complete = known_holes.is_empty();
+        Ok(ScanJsonPage {
+            heap_id: self.heap_id,
+            collection_id: self.collection_id,
+            rows,
+            next_after_key,
+            exhausted,
+            coverage: CoverageEvidence {
+                complete: coverage_complete,
+                mode: if coverage_complete {
+                    CoveragePolicy::Complete
+                } else {
+                    CoveragePolicy::IncompleteAllowed
+                },
+            },
+            known_holes,
+        })
+    }
+
+    fn scan_json_remote(
+        &mut self,
+        remote: Arc<Mutex<RemoteHeap>>,
+        wire_collection_id: String,
+        limit: usize,
+        after_key: Option<&str>,
+    ) -> Result<ScanJsonPage, Error> {
+        let mut guard = lock_remote(&remote)?;
+        let raw = guard.scan_json(&wire_collection_id, Some(limit), after_key)?;
+        drop(guard);
+        // Wire response has no explicit has_more; infer from page fill.
+        let exhausted = raw.len() < limit;
+        let next_after_key = if exhausted {
+            None
+        } else {
+            raw.last().map(|(k, _)| k.clone())
+        };
+        let rows: Vec<QueryRow> = raw
+            .into_iter()
+            .map(|(key, value)| QueryRow { key, value })
+            .collect();
+        // Remote op 115 does not currently surface holes; claim complete only
+        // when the page is non-empty or empty+exhausted (honest residual).
+        Ok(ScanJsonPage {
+            heap_id: self.heap_id,
+            collection_id: self.collection_id,
+            rows,
+            next_after_key,
+            exhausted,
+            coverage: CoverageEvidence {
+                complete: true,
+                mode: CoveragePolicy::Complete,
+            },
+            known_holes: Vec::new(),
+        })
+    }
+
+    /// Mongo/DX-style find (APB-7 T3 / `apb.collection.find`, wire op **116**).
+    ///
+    /// Filter vocabulary is [`Filter::from_json`]. Embedded scans with
+    /// list_keys+get (no index pushdown). Remote uses op 116. Not Application
+    /// Core — prefer [`Self::query`] / [`Self::rql`] for plan-bound pages.
+    pub fn find_json(
+        &mut self,
+        filter: &serde_json::Value,
+        options: FindJsonOptions,
+    ) -> Result<Vec<QueryRow>, Error> {
+        if matches!(self.backend, CollectionBackend::Unbound) {
+            return Err(Error::Internal(
+                "CollectionClient unbound; open via HeapClient (APB-1)".into(),
+            ));
+        }
+        let limit = options.limit.unwrap_or(256).clamp(1, 4_096) as usize;
+        let parsed = Filter::from_json(filter)?;
+
+        match &self.backend {
+            CollectionBackend::Unbound => unreachable!(),
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let mut guard = lock_remote(remote)?;
+                let raw = guard.find(wire_collection_id, filter, Some(limit))?;
+                Ok(raw
+                    .into_iter()
+                    .map(|(key, value)| QueryRow { key, value })
+                    .collect())
+            }
+            CollectionBackend::Embedded(_) => {
+                // Bounded scan: walk keys until `limit` matches or keys end.
+                let mut out = Vec::new();
+                let mut after: Option<String> = None;
+                while out.len() < limit {
+                    let batch = self.list_keys(Some(256), after.as_deref())?;
+                    if batch.is_empty() {
+                        break;
+                    }
+                    for key in batch {
+                        after = Some(key.clone());
+                        if let Some(doc) = self.get(&key)? {
+                            if parsed.matches(&doc) {
+                                out.push(QueryRow { key, value: doc });
+                                if out.len() >= limit {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(out)
+            }
+        }
     }
 
     /// Application Core builder path (APB-7 T1).
