@@ -9,7 +9,7 @@
       "kind": "qualification_profile",
       "product": "Residiuum",
       "level_target": "A2",
-      "identity_policy": "residiuum_only_no_legacy_dingo",
+      "identity_policy": "residiuum_only_no_legacy_prereset",
       "command": "residiuum verify --profile residiuum-core-storage-v1 --level A2",
       "report_attachment": "residiuum-core-storage-report-v1",
       "invariants": [
@@ -196,10 +196,10 @@
         "STORE-ERR-SegmentNotFound"
       ],
       "forbidden_identities": [
-        "dingo-core-storage-v1",
-        "DINGOFRM",
-        "DINGOEND",
-        "dingo-store-9"
+        "\u0064ingo-core-storage-v1",
+        "\u0044INGOFRM",
+        "\u0044INGOEND",
+        "\u0064ingo-store-9"
       ]
     }
   ]

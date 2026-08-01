@@ -4,7 +4,7 @@
 
 Immutable Residiuum-identity fixtures for **old-writer → new-reader** edges
 (`CSQ-COMPAT-001`). Compatibility is Residiuum format/store version edges and
-claimed platforms — **not** dual-read of pre-reset Dingo identities.
+claimed platforms — **not** dual-read of pre-reset product identities.
 
 ## Rules
 
@@ -12,8 +12,8 @@ claimed platforms — **not** dual-read of pre-reset Dingo identities.
    writer binary only.
 2. Record: binary hash, generation command, wire profile label, store meta
    version, and the advertised edge (writer major → reader major).
-3. Pre-reset `dingo-*` / `DINGOFRM` identity fixtures are **invalid** for this
-   gate. Failure to read them is expected, not a defect
+3. Pre-reset product/protocol identity fixtures are **invalid** for this gate.
+   Failure to read them is expected, not a defect
    (`REBRAND_PROTOCOL_IDENTITY_RESET.md` §§3–5).
 4. Unsupported edges (`CSQ-COMPAT-002`) must fail without modifying the source
    tree.

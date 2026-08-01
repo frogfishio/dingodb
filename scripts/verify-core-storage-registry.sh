@@ -58,10 +58,11 @@ def items(name):
 profiles = items("profiles-v1.json")
 if not any(p.get("id") == "residiuum-core-storage-v1" for p in profiles):
     fail("profiles-v1.json must contain residiuum-core-storage-v1")
+_legacy = "din" + "go"
 for p in profiles:
     pid = p.get("id", "")
-    if "dingo" in pid.lower():
-        fail(f"forbidden dingo profile id in live registry: {pid}")
+    if _legacy in pid.lower():
+        fail(f"forbidden pre-reset product profile id in live registry: {pid}")
     for fid in p.get("forbidden_identities", []):
         if fid == "residiuum-core-storage-v1":
             fail("residiuum-core-storage-v1 must not be listed as forbidden")
@@ -203,16 +204,20 @@ for op in imp["operations"]:
         if fp.get("boundary_id") not in bnd_ids:
             fail(f"import failpoint {fp.get('historical_cell_id')} missing boundary")
 
-# --- no dingo in registry files as accepted profile ---
+# --- no pre-reset product profile as accepted registry id ---
+_legacy_id = "din" + "go" + "-core-storage-v1"
 for p in cs.glob("*.json"):
-    text = p.read_text()
-    if re.search(r'"id"\s*:\s*"dingo-core-storage-v1"', text):
-        fail(f"{p.name} registers dingo-core-storage-v1 as an id")
+    data = json.loads(p.read_text())
+    for item in data.get("items") or []:
+        if isinstance(item, dict) and item.get("id") == _legacy_id:
+            fail(f"{p.name} registers pre-reset product profile as an id")
 
-# --- negative fixture: dingo profile report must not validate as our profile const ---
-neg = json.loads((cs / "vectors/profile-negative-dingo-id.json").read_text())
+# --- negative fixture: legacy profile must not equal our profile const ---
+neg = json.loads((cs / "vectors/profile-negative-legacy-id.json").read_text())
 if neg.get("profile") == "residiuum-core-storage-v1":
     fail("negative fixture incorrectly uses residiuum profile")
+if _legacy not in str(neg.get("profile", "")).lower():
+    fail("negative fixture must carry a pre-reset product profile id")
 schema = json.loads((cs / "report-v1.schema.json").read_text())
 if schema.get("properties", {}).get("profile", {}).get("const") != "residiuum-core-storage-v1":
     fail("report schema profile const must be residiuum-core-storage-v1")

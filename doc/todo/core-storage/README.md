@@ -16,7 +16,7 @@ execution within the order admitted by
 ## Live claim and command
 
 - **Profile:** `residiuum-core-storage-v1` / level **A2**
-  (post identity reset; **not** `dingo-core-storage-v1`).
+  (post identity reset; Residiuum profile id only — see rebrand protocol reset).
 - **Command:** `residiuum verify --profile residiuum-core-storage-v1 --level A2`
   — stand-in: `bash scripts/residiuum-verify-core-storage.sh`.
 - **Registries:** `spec/verification/core-storage/`.

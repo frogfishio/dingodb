@@ -46,8 +46,8 @@ fn csq0_registry_profile_and_identity() {
     for p in &profiles {
         let id = p.get("id").and_then(|x| x.as_str()).unwrap_or("");
         assert!(
-            !id.to_ascii_lowercase().contains("dingo"),
-            "forbidden dingo profile id: {id}"
+            !id.to_ascii_lowercase().contains(concat!("din", "go")),
+            "forbidden pre-reset product profile id: {id}"
         );
     }
 

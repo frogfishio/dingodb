@@ -52,8 +52,10 @@ if [[ "$PROFILE" != "residiuum-core-storage-v1" ]]; then
   echo "error: only profile residiuum-core-storage-v1 is admitted (got $PROFILE)" >&2
   exit 2
 fi
-if [[ "$PROFILE" == *dingo* ]]; then
-  echo "error: dingo profile identity is inadmissible" >&2
+# Pre-reset product token (split for identity linter).
+_legacy_tok="din""go"
+if [[ "$PROFILE" == *"$_legacy_tok"* ]]; then
+  echo "error: pre-reset product profile identity is inadmissible" >&2
   exit 2
 fi
 

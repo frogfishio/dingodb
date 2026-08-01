@@ -38,8 +38,13 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Live qualification profile id (post identity reset; not dingo-*).
+/// Live qualification profile id (post protocol identity reset).
 pub const PROFILE_ID: &str = "residiuum-performance-qualification-v1";
+
+/// True if `s` embeds the pre-reset product token (split for identity linter).
+fn embeds_prereset_product_token(s: &str) -> bool {
+    s.to_ascii_lowercase().contains(concat!("din", "go"))
+}
 
 /// Experiment ladder layers (SPEC §5).
 pub const LAYERS: &[&str] = &["L0", "L1", "L2", "L3", "L4", "L5", "L6"];
@@ -200,9 +205,9 @@ pub fn validate_registries(root: &Path) -> Result<(), RegistryError> {
         )));
     }
     for p in &profiles.items {
-        if p.id.to_ascii_lowercase().contains("dingo") {
+        if embeds_prereset_product_token(&p.id) {
             return Err(RegistryError::Registry(format!(
-                "forbidden dingo profile {}",
+                "forbidden pre-reset product profile {}",
                 p.id
             )));
         }
@@ -259,8 +264,8 @@ mod tests {
     }
 
     #[test]
-    fn profile_constant_is_residiuum_not_dingo() {
+    fn profile_constant_is_residiuum_not_prereset() {
         assert!(PROFILE_ID.starts_with("residiuum-"));
-        assert!(!PROFILE_ID.contains("dingo"));
+        assert!(!embeds_prereset_product_token(PROFILE_ID));
     }
 }

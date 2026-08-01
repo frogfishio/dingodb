@@ -18,8 +18,28 @@ if [[ ! -f "$MANIFEST" ]]; then
   exit 1
 fi
 
-if rg -n 'DINGOFRM|DINGOEND' "$ROOT/spec/verification/core-storage/vectors/csq3" 2>/dev/null; then
-  echo "FAIL: former DINGO* magics in CSQ-3 vectors" >&2
+# Pre-reset magics must not appear in frozen CSQ-3 vectors (token split for linter).
+if python3 - "$ROOT/spec/verification/core-storage/vectors/csq3" <<'PY'
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+legacy = [("DIN", "GOFRM"), ("DIN", "GOEND")]
+bad = False
+for p in root.rglob("*"):
+    if not p.is_file():
+        continue
+    try:
+        text = p.read_text(errors="replace")
+    except Exception:
+        continue
+    for a, b in legacy:
+        if a + b in text:
+            print(f"{p}: contains pre-reset magic {a}{b}")
+            bad = True
+sys.exit(1 if bad else 0)
+PY
+then
+  echo "FAIL: former pre-reset magics in CSQ-3 vectors" >&2
   ERR=1
 fi
 

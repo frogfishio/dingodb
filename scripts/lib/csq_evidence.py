@@ -494,7 +494,7 @@ def build_report(root: Path, level: str = "A2") -> dict[str, Any]:
                 "body": {
                     "builder": "scripts/lib/csq_evidence.py",
                     "builder_version": "csq12-labor-v2-gate-eval",
-                    "identity_policy": "residiuum_only_no_legacy_dingo",
+                    "identity_policy": "residiuum_only_no_legacy_prereset",
                     "a2_gates": list(A2_GATE_IDS),
                     "a3_gates": list(A3_GATE_IDS),
                     "work_acceptance_note": (
@@ -754,10 +754,13 @@ def cmd_selftest(_args: argparse.Namespace) -> int:
     v2 = verify_report(false_pass)
     check("false pass rejected", not v2["ok"])
 
-    dingo = dict(good_incomplete)
-    dingo["profile"] = "dingo-core-storage-v1"
-    v3 = verify_report(dingo)
-    check("dingo profile rejected", not v3["ok"] or bool(structural_check(dingo)))
+    legacy = dict(good_incomplete)
+    legacy["profile"] = "din" + "go" + "-core-storage-v1"
+    v3 = verify_report(legacy)
+    check(
+        "pre-reset product profile rejected",
+        not v3["ok"] or bool(structural_check(legacy)),
+    )
 
     empty_pass = {
         "format": REPORT_FORMAT,

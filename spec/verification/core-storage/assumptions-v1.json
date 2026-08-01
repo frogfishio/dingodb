@@ -22,7 +22,7 @@
     },
     {
       "id": "CSQ-ASM-POST-RESET-IDENTITY",
-      "statement": "Only Residiuum protocol identities are accepted (post 02e1b0d); former Dingo identities are invalid",
+      "statement": "Only Residiuum protocol identities are accepted (post 02e1b0d); former pre-reset product identities are invalid",
       "applies_to": [
         "residiuum-core-storage-v1"
       ]

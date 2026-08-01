@@ -22,6 +22,10 @@ const ignoredFiles = new Set([
   "web/docs.residiuumdb.org/public/_redirects",
   "web/docs.residiuumdb.org/package-lock.json",
   "web/residiuumdb.org/package-lock.json",
+  // Intentional *reject-only* fixtures: payload must carry a former identity so
+  // registries/loaders fail closed. Never accepted as live product profiles.
+  "spec/performance/fixtures/manifest.rejected-legacy-profile.json",
+  "spec/verification/core-storage/vectors/profile-negative-legacy-id.json",
 ]);
 
 const textExtensions = new Set([

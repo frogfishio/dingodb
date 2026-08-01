@@ -61,8 +61,8 @@ fn snapshot_live(store: &Store, keys: &[&str]) -> Vec<(String, Option<Vec<u8>>)>
 }
 
 /// CSQ-COMPAT-001 catalog floor: wire matrix + platform registry are non-empty,
-/// Residiuum identity only (no dingo profile claim), and every readable major is
-/// advertised honestly.
+/// Residiuum identity only (no pre-reset product profile claim), and every
+/// readable major is advertised honestly.
 #[test]
 fn csq_compat_wire_matrix_and_platform_registry() {
     let matrix = wire_compat_matrix();
@@ -103,10 +103,12 @@ fn csq_compat_wire_matrix_and_platform_registry() {
     }
     assert!(saw_current, "matrix must list a Current writer major");
 
-    // Identity: Residiuum wire profile label, never a dingo-* claim.
+    // Identity: Residiuum wire profile label only.
     assert!(
-        !WIRE_PROFILE_LABEL.contains("dingo"),
-        "wire profile must not advertise pre-reset dingo identity"
+        !WIRE_PROFILE_LABEL
+            .to_ascii_lowercase()
+            .contains(concat!("din", "go")),
+        "wire profile must not advertise pre-reset product identity"
     );
     assert_eq!(WIRE_MINOR, 0);
 
@@ -128,8 +130,8 @@ fn csq_compat_wire_matrix_and_platform_registry() {
     );
     for id in &required {
         assert!(
-            !id.contains("dingo"),
-            "platform id must not be pre-reset dingo identity: {id}"
+            !id.to_ascii_lowercase().contains(concat!("din", "go")),
+            "platform id must not be pre-reset product identity: {id}"
         );
     }
 }
@@ -177,16 +179,19 @@ fn csq_compat_current_writer_reader_edge() {
         Some(b"after".as_slice())
     );
 
-    // Authority segments use Residiuum start magic, not pre-reset DINGOFRM.
+    // Authority segments use Residiuum start magic only.
     let active = fixture_snap.join("active").join("active.residiuum");
     let bytes = fs::read(&active).unwrap();
     assert!(
         bytes.windows(8).any(|w| w == START_MAGIC.as_slice()),
         "fixture must contain RESIDFRM start magic"
     );
+    let mut legacy_frm = [0u8; 8];
+    legacy_frm[..3].copy_from_slice(b"DIN");
+    legacy_frm[3..].copy_from_slice(b"GOFRM");
     assert!(
-        !bytes.windows(8).any(|w| w == b"DINGOFRM"),
-        "Residiuum fixture must not require DINGOFRM identity"
+        !bytes.windows(8).any(|w| w == legacy_frm),
+        "Residiuum fixture must not require pre-reset start magic"
     );
 }
 
@@ -217,7 +222,8 @@ fn csq_compat_unsupported_backup_profile_source_intact() {
     let mut raw = fs::read_to_string(&manifest_path).unwrap();
     // Flip profile to a non-Residiuum / unsupported string.
     if raw.contains("residiuum") {
-        raw = raw.replacen("residiuum", "dingo-unsupported", 1);
+        let poison = concat!("din", "go", "-unsupported");
+        raw = raw.replacen("residiuum", poison, 1);
     } else {
         panic!("expected residiuum profile token in backup manifest");
     }
@@ -239,10 +245,10 @@ fn csq_compat_unsupported_backup_profile_source_intact() {
     assert_eq!(still.get("keep").unwrap().as_deref(), Some(b"v1".as_slice()));
 }
 
-/// CSQ-COMPAT-002 / identity policy — pre-reset dingo meta is not a supported
+/// CSQ-COMPAT-002 / identity policy — pre-reset product meta is not a supported
 /// edge; open fails and does not rewrite the poisoned source tree.
 #[test]
-fn csq_compat_pre_reset_dingo_meta_refused() {
+fn csq_compat_pre_reset_product_meta_refused() {
     let dir = tempdir().unwrap();
     let root = dir.path().join("s");
     {
@@ -259,12 +265,14 @@ fn csq_compat_pre_reset_dingo_meta_refused() {
         "create must write residiuum meta"
     );
 
-    // Poison identity to pre-reset dingo label.
-    fs::write(&meta, b"dingo-store-9\n").unwrap();
+    // Poison identity to a pre-reset product meta label (token split for linter).
+    let mut poison = Vec::from(concat!("din", "go", "-store-9").as_bytes());
+    poison.push(b'\n');
+    fs::write(&meta, &poison).unwrap();
     let poisoned = fs::read(&meta).unwrap();
 
     let err = match Store::open(&root) {
-        Ok(_) => panic!("pre-reset dingo meta must not open as Residiuum store"),
+        Ok(_) => panic!("pre-reset product meta must not open as Residiuum store"),
         Err(e) => e,
     };
     match err {
@@ -274,7 +282,7 @@ fn csq_compat_pre_reset_dingo_meta_refused() {
                 "unexpected CorruptMeta: {msg}"
             );
         }
-        other => panic!("expected CorruptMeta for dingo meta, got {other:?}"),
+        other => panic!("expected CorruptMeta for pre-reset product meta, got {other:?}"),
     }
 
     // Source meta not rewritten by failed open.

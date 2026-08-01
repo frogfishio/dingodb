@@ -15,7 +15,7 @@ Produces under `target/csq-evidence/` (override with `RESIDIUUM_CSQ_EVIDENCE_DIR
 
 ## Honesty
 
-- Profile must be `residiuum-core-storage-v1` (not `dingo-core-storage-v1`).
+- Profile must be `residiuum-core-storage-v1` (never a pre-reset product profile id).
 - `not_run`, `infrastructure_failure`, retry-to-green, and prose cannot satisfy A2.
 - A declared `result=pass` with missing or non-pass cells is **rejected** by the verifier.
 

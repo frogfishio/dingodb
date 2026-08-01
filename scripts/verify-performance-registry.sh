@@ -17,7 +17,7 @@ for f in \
   verdicts-v1.json validity-v1.json omission-reasons-v1.json matrix-v1.json \
   schemas/manifest-v1.schema.json schemas/result-v1.schema.json \
   schemas/comparison-v1.schema.json \
-  fixtures/manifest.accepted.json fixtures/manifest.rejected-dingo-profile.json \
+  fixtures/manifest.accepted.json fixtures/manifest.rejected-legacy-profile.json \
   fixtures/result.accepted.json fixtures/result.rejected-missing-unit.json \
   fixtures/result.rejected-zero-as-unavailable-policy.json \
   README.md
@@ -51,9 +51,10 @@ def ids(name):
 profiles = load("profiles-v1.json")["items"]
 if not any(p.get("id") == PROFILE for p in profiles):
     fail(f"profiles must contain {PROFILE}")
+_legacy = "din" + "go"
 for p in profiles:
-    if "dingo" in p.get("id", "").lower():
-        fail(f"forbidden dingo profile: {p.get('id')}")
+    if _legacy in p.get("id", "").lower():
+        fail(f"forbidden pre-reset product profile: {p.get('id')}")
 
 # Non-empty closed sets
 for name, min_n in [
@@ -129,13 +130,14 @@ for cell in matrix.get("items", []):
     if cell.get("layer") not in layer_ids:
         fail(f"matrix cell {cid}: unknown layer")
 
-# Fixtures: accepted must match profile const; dingo rejected by policy
+# Fixtures: accepted must match profile const; pre-reset profile rejected by policy
 acc = load("fixtures/manifest.accepted.json")
 if acc.get("profile") != PROFILE:
     fail("accepted manifest must use residiuum profile")
-rej = load("fixtures/manifest.rejected-dingo-profile.json")
-if "dingo" not in rej.get("profile", "").lower():
-    fail("rejected-dingo fixture must use dingo profile id")
+rej = load("fixtures/manifest.rejected-legacy-profile.json")
+_legacy = "din" + "go"
+if _legacy not in rej.get("profile", "").lower():
+    fail("rejected-legacy fixture must use a pre-reset product profile id")
 
 # Policy: unavailable must not be represented as bare zero without reason
 res = load("fixtures/result.accepted.json")

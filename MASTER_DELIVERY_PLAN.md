@@ -225,8 +225,8 @@ Release outcome:
 Priority: `P0-GATE`
 
 **Live claim (post protocol identity reset, commit `02e1b0d`):**
-`residiuum-core-storage-v1` / **A2** — never `dingo-core-storage-v1`.
-Former pre-release Dingo identities are invalid for qualification
+`residiuum-core-storage-v1` / **A2** only — pre-reset profile ids are invalid for
+qualification
 ([REBRAND_PROTOCOL_IDENTITY_RESET.md](./doc/done/rebrand/REBRAND_PROTOCOL_IDENTITY_RESET.md)
 §§3–5).
 
