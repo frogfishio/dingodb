@@ -538,7 +538,21 @@ impl HeapStore {
     /// Scan live (key, body) pairs in a collection under this heap.
     ///
     /// Bodies are raw store payloads (typed SDK tags when written via SDK).
-    /// At most `limit` complete rows (clamped 1..=4096).
+    /// At most `limit` **complete** rows (clamped 1..=4096).
+    ///
+    /// # Unresolved locators (DEF-SCAN-001 / DEF-100 parity)
+    ///
+    /// Keys whose live index entry cannot be resolved as a complete body
+    /// (`SegmentNotFound`, offline tier, payload partial/conflict) are
+    /// **skipped**, not a hard page abort. Physical
+    /// [`crate::Store::scan_live_page`] treats the same cases as incomplete and
+    /// continues; the heap façade previously used `get()?` and turned a single
+    /// bad locator into zero recovered rows (scan-amplification).
+    ///
+    /// Callers must not treat `Ok([])` as proof of an empty collection when
+    /// concurrent authority (heads, known keys, salvage) disagrees — holes stay
+    /// explicit at the application layer until a richer incomplete scan API
+    /// lands. Point-get remains fail-closed for a single subject.
     pub fn scan_collection(
         &self,
         collection_id: &[u8; 16],
@@ -583,9 +597,15 @@ impl HeapStore {
                 _ => continue,
             };
             let key = sv2.key.to_vec();
-            match self.get(&subject)? {
-                Some(body) => out.push((key, body)),
-                None => continue,
+            match self.get(&subject) {
+                Ok(Some(body)) => out.push((key, body)),
+                Ok(None) => continue,
+                // Unresolved media/locators: keep enumerating survivors (DEF-SCAN-001).
+                Err(StoreError::SegmentNotFound)
+                | Err(StoreError::TierOffline(_))
+                | Err(StoreError::PayloadPartial)
+                | Err(StoreError::PayloadConflict) => continue,
+                Err(e) => return Err(e),
             }
         }
         Ok(out)

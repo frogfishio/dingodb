@@ -1,35 +1,26 @@
-//! DEF-SCAN-001 — P0 storage defect repro (Residiuum-native).
+//! DEF-SCAN-001 — P0 scan-amplification + residual integrity (Residiuum-native).
 //!
 //! **Source report:** Gremlin dogfood 2026-08-02 — exclusive-writer heap under
-//! high Kanban churn; `scan_collection` fails with `segment not found` while
-//! project head / point-get of known keys remain valid. Application sees empty
+//! high Kanban churn; `scan_collection` failed with `segment not found` while
+//! project head / point-get of known keys remained valid. Application saw empty
 //! board (`recovered=0`).
 //!
 //! **Scope:** `residiuum-store` + `residiuum-heap` only (no SDK, no Gremlin).
 //!
-//! ## What this suite proves today
+//! ## Emergency fix (T2)
 //!
-//! 1. Healthy high-churn exclusive writer: multi-segment rewrite load still
-//!    yields a complete `scan_collection` (baseline; not the dogfood failure).
-//! 2. Controlled missing-segment: after sealing, delete one sealed segment file
-//!    while the writer is still open. Index still lists live keys that pointed
-//!    into that segment.
-//!    - **Point-get** of keys on surviving segments still succeeds.
-//!    - **`HeapStore::scan_collection` hard-aborts** with `SegmentNotFound` and
-//!      returns **zero** rows even when later keys would resolve.
-//!    - Physical `scan_live_page` continues past missing segments as incomplete
-//!      (DEF-100 posture) — heap scan does **not** match that contract.
+//! `HeapStore::scan_collection` soft-skips unresolved locators
+//! (`SegmentNotFound`, tier offline, payload partial/conflict) and returns
+//! surviving complete rows — DEF-100 parity with physical `scan_live_page`.
+//! Controlled segment deletion models **scan amplification**, not the organic
+//! locator-loss mechanism still under investigation.
 //!
-//! ## Root-cause note (code)
+//! ## Suite coverage
 //!
-//! `HeapStore::scan_collection` does `self.get(&subject)?`. Any
-//! `StoreError::SegmentNotFound` from payload resolve aborts the whole page.
-//! Physical `Store::scan_live_page` maps the same error to
-//! `IncompleteReason::PayloadUnavailable` and keeps enumerating.
-//!
-//! Natural dogfood path that *creates* a catalog→missing-segment under pure
-//! exclusive-writer churn (without external file delete) is still open —
-//! this suite pins the scan-semantics defect and a minimal multi-segment stress.
+//! 1. Healthy high-churn exclusive writer: complete scan baseline.
+//! 2. Missing sealed segment: point-get survivors + **scan returns survivors**
+//!    (must not hard-abort to zero rows).
+//! 3. Compact + reclaim: live scan remains complete.
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -210,10 +201,13 @@ fn high_churn_exclusive_writer_scan_still_complete() {
     assert_eq!(after_compact.len(), n_keys);
 }
 
-/// Controlled missing segment: models catalog/index pointing at a gone segment.
-/// Demonstrates scan hard-abort vs surviving point-gets (dogfood symptom shape).
+/// Controlled missing segment: models unresolved locators in a live index.
+///
+/// **Emergency property (DEF-SCAN-001 T2):** scan must return surviving complete
+/// rows, not hard-abort to zero. Controlled file delete is *not* the organic
+/// dogfood locator-loss mechanism — it only forces the scan-amplification path.
 #[test]
-fn missing_segment_scan_hard_aborts_while_point_get_survives() {
+fn missing_segment_scan_returns_survivors_not_empty_abort() {
     let ctx = open_heap_with_collection("gremlin.work.kanban_tasks");
 
     {
@@ -290,17 +284,32 @@ fn missing_segment_scan_hard_aborts_while_point_get_survives() {
         "expected some cohort-B point-gets to survive after deleting one sealed segment"
     );
 
-    // Heap scan: hard error (this is the product-visible failure mode).
-    let scan_err = scan_all(&ctx.heap, &ctx.collection_id).expect_err(
-        "scan_collection must surface SegmentNotFound when any live locator is missing",
-    );
+    // Heap scan: emergency fix — survivors returned, not hard empty abort.
+    let scanned = scan_all(&ctx.heap, &ctx.collection_id)
+        .expect("scan_collection must soft-skip unresolved locators, not hard-abort");
     assert!(
-        matches!(scan_err, StoreError::SegmentNotFound)
-            || scan_err.to_string().contains("segment not found"),
-        "expected SegmentNotFound, got {scan_err:?}"
+        !scanned.is_empty(),
+        "scan must return surviving complete rows; empty abort is the dogfood failure mode"
+    );
+    let scanned_keys: std::collections::HashSet<_> = scanned
+        .iter()
+        .map(|(k, _)| String::from_utf8_lossy(k).into_owned())
+        .collect();
+    let b_in_scan = cohort_b
+        .iter()
+        .filter(|k| scanned_keys.contains(k.as_str()))
+        .count();
+    assert!(
+        b_in_scan > 0,
+        "at least one cohort-B key must appear in scan results; got keys={scanned_keys:?}"
+    );
+    // Survivors should be ≤ live resolvable point-gets; do not require A gone.
+    assert!(
+        scanned.len() <= cohort_a.len() + cohort_b.len(),
+        "scan length bounded by live key count"
     );
 
-    // Physical page scan continues with incompleteness (contrast heap façade).
+    // Physical page scan continues with incompleteness (same posture).
     {
         let phys = ctx.host.physical();
         let g = phys.lock().unwrap();
@@ -310,12 +319,62 @@ fn missing_segment_scan_hard_aborts_while_point_get_survives() {
                 ..LiveScanPageOptions::default()
             })
             .expect("physical scan_live_page must not hard-abort on missing segment");
-        // May have some complete entries and/or incomplete list — must not be a hard Err.
         assert!(
             !page.complete || !page.incomplete.is_empty() || !page.entries.is_empty(),
             "physical scan should report incompleteness or partial entries after segment loss"
         );
     }
+}
+
+/// When media **exists** but the frame at the index offset is unreadable,
+/// resolve must report incomplete payload — not "segment not found".
+#[test]
+fn present_media_unreadable_frame_is_payload_partial_not_segment_not_found() {
+    let ctx = open_heap_with_collection("forensics.present_media");
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.set_seal_threshold(2 * 1024);
+    }
+    ctx.heap
+        .put_collection(&ctx.collection_id, b"k1", b"hello-present-media")
+        .unwrap();
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.seal_active().unwrap();
+    }
+    // Zero the sealed segment bytes in place (file remains; frames unreadable).
+    let paths = StorePaths::new(&ctx.root);
+    let sealed_dir = paths.segments_dir();
+    let sealed: Vec<_> = fs::read_dir(&sealed_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .collect();
+    assert!(!sealed.is_empty(), "expected sealed segment after seal");
+    for p in &sealed {
+        let len = fs::metadata(p).unwrap().len();
+        fs::write(p, vec![0u8; len as usize]).unwrap();
+    }
+    let err = ctx
+        .heap
+        .get_collection(&ctx.collection_id, b"k1")
+        .expect_err("zeroed media must fail closed");
+    assert!(
+        matches!(err, StoreError::PayloadPartial)
+            || err.to_string().contains("partial")
+            || err.to_string().contains("PayloadPartial"),
+        "present media with unreadable frame must be PayloadPartial, not SegmentNotFound; got {err:?}"
+    );
+    assert!(
+        !matches!(err, StoreError::SegmentNotFound),
+        "must not mislabel present media as SegmentNotFound"
+    );
+    // Scan soft-skips and returns Ok (possibly empty for this single-key case).
+    let scanned = scan_all(&ctx.heap, &ctx.collection_id).expect("scan soft-skips partial");
+    assert!(scanned.is_empty(), "only key was unreadable");
 }
 
 /// Compact + reclaim_sources with history-loss ack: live projection should stay

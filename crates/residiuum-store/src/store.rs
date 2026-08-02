@@ -3618,7 +3618,13 @@ impl Store {
         // Always require envelope segment_id match. After §16.10 reorder/swap,
         // the canonical sealed filename may hold another segment's bytes; bare
         // pread at the same post-descriptor offset would return the wrong body.
+        //
+        // DEF-SCAN-001: track candidate media so we do not mislabel "file present
+        // but frame unreadable at offset" as SegmentNotFound (dogfood media exam
+        // found segments on disk while resolve still failed).
+        let mut saw_candidate_media = false;
         for path in &tried {
+            saw_candidate_media = true;
             if let Ok(body) =
                 pread_item_body_if_segment(path, frame_offset, segment_id, self.limits)
             {
@@ -3630,11 +3636,20 @@ impl Store {
             if tried.iter().any(|t| t == &path) {
                 continue;
             }
+            if !path.is_file() {
+                continue;
+            }
+            saw_candidate_media = true;
             if let Ok(body) =
                 pread_item_body_if_segment(&path, frame_offset, segment_id, self.limits)
             {
                 return Ok(body);
             }
+        }
+        if saw_candidate_media {
+            // Media exists; locator could not reassemble a verified item frame.
+            // Fail-closed as incomplete payload (not "segment missing").
+            return Err(StoreError::PayloadPartial);
         }
         Err(StoreError::SegmentNotFound)
     }
