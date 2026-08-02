@@ -1,6 +1,6 @@
 # DEF-SCAN-001 — structured locator faults + honest heap scan pages (P0)
 
-**Status:** T7–T8 **accepted (labor)**; T9–T11 **accepted (blocker #5 closure, labor only)**; T12 **in_review** (`scan_collection_page` + fail-closed legacy `scan_collection` → `Vec`); package **not** accepted  
+**Status:** T7–T12 **accepted (labor)**; containment stack coherent; package **not** accepted  
 **Date:** 2026-08-02  
 **Board:** Feature `DEF-SCAN-001`  
 **Severity:** **P0**
@@ -143,7 +143,21 @@ HeapStore::scan_collection(...) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError>
 // Ok(page.entries)
 ```
 
+**T12 accepted (principal):** first precise locator/`StoreError` from the incomplete hole is a valid compatibility choice vs a generic `CoverageIncomplete` — still fail-closed, better diagnostics. Essential invariant: **no partial `Vec` escapes**.
+
 Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.
+
+## Containment stack (coherent)
+
+End-to-end honesty for this emergency (T1–T12 labor):
+
+1. **Precise locator faults** — `StoreError::LocatorFault` with distinct kinds + field diagnostics (segment, offset, path, len, cause).
+2. **Explicit incompleteness** — `CollectionScanPage` / wire `scan_json` surface `entries` + `incomplete` + `complete` (not soft-skip into empty success).
+3. **Wire pagination honesty** — `next_after_key` from last examined key; required fields + SDK invariants; no lossy UTF-8 cursors.
+4. **Index path honesty** — holes tracked on every source; build marks **Partial** when holes seen; Partial **never** exclusive candidate set.
+5. **Legacy Vec fail-closed** — `scan_collection` returns `Vec` only when complete; otherwise first hole as precise `StoreError`.
+
+Preferred product surface remains `scan_collection_page` (and wire/SDK page APIs).
 
 ## Explicit non-claims
 
