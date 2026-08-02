@@ -39,8 +39,8 @@ Its presence here does not admit it ahead of the master delivery plan.
 
 **AWO labor (2026-08-02):** Full labor plan in `AWO_LABOR_EXECUTION.md`. Kanban
 Feature **AWO — Adaptive Write Optimiser** pre-staged (AWO-0 T1–T3 + AWO-1…7).
-**AWO-0 T1–T3 labor floor complete** + **AWO-1 partial labor:**
-`ActiveSegment::checkpoint/restore`; single-shard `put_many` persist-before-publish;
-`tests/awo_persist_before_publish` 3/3. AWO-0 package accept still principal.
-AWO-1 residuals: multi-shard path, writer lease/poison, full crash failpoint matrix.
+**AWO-0 T1–T3 labor floor complete** + **AWO-1 deepen:**
+persist-before-publish on single-shard, parallel-cook, and multi-shard `put_many`
+(all-or-nothing publish; checkpoint restore on clean fail; poison on short write).
+`awo_persist_before_publish` 4/4. Residuals: full AdaptiveWriteLease, full crash matrix.
 Master-plan AWO admission residual (E1).

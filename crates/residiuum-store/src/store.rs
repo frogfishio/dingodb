@@ -353,6 +353,11 @@ pub struct Store {
     /// Parallel record-cooker workers for single-shard [`Self::put_many`].
     /// `1` = serial (default); `N>1` cooks full frames (env+Blake+encode) in parallel.
     cook_parallelism: usize,
+    /// AWO-1: writer poisoned after uncertain physical tail (short write / barrier fail).
+    ///
+    /// Mutations must refuse until ordinary close/reopen recovery. Distinct from a
+    /// full AdaptiveWriteLease (AWO-3); this is the store-local poison bit.
+    awo_writer_poisoned: bool,
 }
 
 /// Where `write_segment_tail` sends bytes (diagnostic bisection only).
@@ -513,6 +518,7 @@ impl Store {
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
+            awo_writer_poisoned: false,
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -606,6 +612,7 @@ impl Store {
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
+            awo_writer_poisoned: false,
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -736,6 +743,7 @@ impl Store {
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
+            awo_writer_poisoned: false,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -1396,6 +1404,9 @@ impl Store {
         items: &[(&str, &[u8])],
         mode: DurabilityMode,
     ) -> Result<Vec<WriteReceipt>, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -1601,8 +1612,10 @@ impl Store {
         };
         self.null_io_file = null;
         if let Err(e) = self.record_tail_probe(&tail, mode, 0) {
+            // Short write / uncertain I/O: do not restore; poison writer.
             *batch_checkpoint = None;
             pending.clear();
+            self.awo_writer_poisoned = true;
             return Err(e);
         }
         crate::failpoint::hit("awo.persist.after_write")?;
@@ -1967,6 +1980,8 @@ impl Store {
                             Err(StoreError::CorruptMeta("missing active writer for shard"));
                         return;
                     };
+                    // AWO-1: snapshot before any append so pre-I/O failure can roll back RAM.
+                    let checkpoint = writer.segment.checkpoint();
                     let mut outs = Vec::with_capacity(prep.len());
                     for p in prep {
                         let t_append = std::time::Instant::now();
@@ -1982,11 +1997,8 @@ impl Store {
                                     .as_nanos()
                                     .min(u128::from(u64::MAX))
                                     as u64;
-                                // Exact encoded frame length at store boundary.
                                 let encoded_frame_len =
                                     writer.segment.len().saturating_sub(offset);
-                                // Defer write_segment_tail until all frames in this
-                                // shard batch are appended (one seek+write_all).
                                 outs.push(ShardRow {
                                     item_idx: p.item_idx,
                                     offset,
@@ -2001,6 +2013,7 @@ impl Store {
                                 });
                             }
                             Err(e) => {
+                                let _ = writer.segment.restore_checkpoint(&checkpoint);
                                 *out_mu.lock().unwrap_or_else(|err| err.into_inner()) =
                                     Err(StoreError::Segment(e));
                                 return;
@@ -2009,7 +2022,6 @@ impl Store {
                     }
                     // One file tail write for the whole shard batch.
                     if !outs.is_empty() {
-                        // Parallel path: open a local /dev/null if needed (diagnostic only).
                         let mut local_null = if sink == DiagnosticIoSink::DevNull {
                             OpenOptions::new().write(true).open("/dev/null").ok()
                         } else {
@@ -2017,12 +2029,23 @@ impl Store {
                         };
                         match Self::write_segment_tail(writer, mode, sink, local_null.as_mut()) {
                             Ok(tail) => {
+                                if tail.fail_as_short_write {
+                                    // Partial physical I/O: do not restore; leave uncertain.
+                                    *out_mu.lock().unwrap_or_else(|e| e.into_inner()) =
+                                        Err(StoreError::Io(std::io::Error::new(
+                                            std::io::ErrorKind::WriteZero,
+                                            "failpoint short write: store.active.write_tail.short_write",
+                                        )));
+                                    return;
+                                }
                                 if let Some(last) = outs.last_mut() {
                                     last.tail = tail;
                                 }
                             }
                             Err(e) => {
-                                *out_mu.lock().unwrap_or_else(|e| e.into_inner()) = Err(e);
+                                // Clean pre/during-write failure: restore RAM.
+                                let _ = writer.segment.restore_checkpoint(&checkpoint);
+                                *out_mu.lock().unwrap_or_else(|err| err.into_inner()) = Err(e);
                                 return;
                             }
                         }
@@ -2037,6 +2060,36 @@ impl Store {
             let w = mu.into_inner().unwrap_or_else(|e| e.into_inner());
             self.set_active(shard, w);
         }
+
+        // AWO-1: all-or-nothing across shards — collect first, publish only if every
+        // shard succeeded. Prevents partial index visibility when one shard fails.
+        let mut collected: Vec<(u32, Vec<ShardRow>)> = Vec::with_capacity(n);
+        let mut first_err: Option<StoreError> = None;
+        let mut short_write_poison = false;
+        for (shard, out_mu) in shard_outputs.into_iter().enumerate() {
+            match out_mu.into_inner().unwrap_or_else(|e| e.into_inner()) {
+                Ok(batch) => collected.push((shard as u32, batch)),
+                Err(e) => {
+                    if matches!(
+                        e,
+                        StoreError::Io(ref io)
+                            if io.kind() == std::io::ErrorKind::WriteZero
+                    ) {
+                        short_write_poison = true;
+                    }
+                    if first_err.is_none() {
+                        first_err = Some(e);
+                    }
+                }
+            }
+        }
+        if let Some(e) = first_err {
+            if short_write_poison {
+                self.awo_writer_poisoned = true;
+            }
+            return Err(e);
+        }
+
         // Seal policy: any on-disk put_many upgrades max ack for shards that worked.
         if mode != DurabilityMode::Memory {
             for shard in 0..n {
@@ -2050,11 +2103,8 @@ impl Store {
         }
 
         let mut receipts: Vec<Option<WriteReceipt>> = (0..items.len()).map(|_| None).collect();
-        for (shard, out_mu) in shard_outputs.into_iter().enumerate() {
-            let batch = out_mu.into_inner().unwrap_or_else(|e| e.into_inner())?;
-            let shard_u32 = shard as u32;
+        for (shard_u32, batch) in collected {
             for row in batch {
-                // Boundary probe: same events as single-put write_event path.
                 self.boundary_probe.record_append(
                     row.encoded_frame_len,
                     row.body.len() as u64,
@@ -2066,24 +2116,44 @@ impl Store {
                     row.append_ns,
                     shard_u32,
                 );
-                self.record_tail_probe(&row.tail, mode, shard_u32)?;
+                // Tail was already recorded as Ok in the worker; re-emit probe only.
+                if row.tail.write_requested > 0 || row.tail.write_completed > 0 {
+                    self.boundary_probe.record_file_write(
+                        row.tail.write_requested,
+                        row.tail.write_completed,
+                        row.tail.write_duration_ns,
+                        row.tail.write_outcome,
+                        mode,
+                        shard_u32,
+                    );
+                }
+                if row.tail.synced {
+                    self.boundary_probe.record_file_sync(
+                        row.tail.sync_duration_ns,
+                        row.tail.sync_outcome,
+                        mode,
+                        shard_u32,
+                    );
+                }
 
-                // Locator-first: slim drops ordinary payloads; avoid dual full copies.
+                crate::failpoint::hit("awo.publish.before")?;
                 let t_pub = std::time::Instant::now();
-                self.apply_durable_event(
-                    row.subject.clone(),
-                    EventKind::Put,
-                    Vec::new(),
-                    row.item_id,
-                    row.event_id,
-                    row.segment_id,
-                    0,
-                    row.offset,
-                );
+                if !self.diagnostic_skip_index {
+                    self.apply_durable_event(
+                        row.subject.clone(),
+                        EventKind::Put,
+                        Vec::new(),
+                        row.item_id,
+                        row.event_id,
+                        row.segment_id,
+                        0,
+                        row.offset,
+                    );
+                    self.note_collection_for_subject(&row.subject);
+                }
                 let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 self.boundary_probe
                     .record_publish(row.offset, mode, shard_u32, publish_ns);
-                self.note_collection_for_subject(&row.subject);
                 let admit = LargeValuePolicy::application_v1()
                     .admit(items[row.item_idx].1.len())
                     .unwrap_or(AdmitDecision {
@@ -2106,6 +2176,8 @@ impl Store {
             }
         }
         let _ = self.note_durable_derived();
+        crate::failpoint::hit("awo.publish.after")?;
+        crate::failpoint::hit("awo.complete.before")?;
 
         let mut out = Vec::with_capacity(items.len());
         for (i, r) in receipts.into_iter().enumerate() {

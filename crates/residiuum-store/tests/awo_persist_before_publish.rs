@@ -67,3 +67,41 @@ fn put_many_success_publish_after_persist() {
     assert!(store.get("awo/ok1").unwrap().is_some());
     assert!(store.get("awo/ok2").unwrap().is_some());
 }
+
+#[test]
+fn multi_shard_put_many_persist_fail_publishes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::create_with_shards(dir.path(), 4).unwrap();
+    clear_failpoints();
+    enable_failpoint_hit_proof();
+    // Multi-shard uses store.active.write_tail failpoint inside write_segment_tail.
+    arm_failpoint_once("store.active.write_tail.before", FailpointAction::Error);
+
+    let mut items: Vec<(String, Vec<u8>)> = Vec::new();
+    for i in 0..32 {
+        items.push((format!("awo/ms/{i}"), format!("v{i}").into_bytes()));
+    }
+    let refs: Vec<(&str, &[u8])> = items
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_slice()))
+        .collect();
+    let err = store
+        .put_many(&refs, DurabilityMode::Buffered)
+        .expect_err("multi-shard persist fail");
+    let _ = err;
+    require_failpoint_visited("store.active.write_tail.before");
+
+    for (k, _) in &items {
+        assert!(
+            store.get(k).unwrap().is_none(),
+            "key {k} must not be published after multi-shard fail"
+        );
+    }
+
+    clear_failpoints();
+    // After clean fail (not short-write poison), mutations still allowed.
+    store
+        .put_many(&[("awo/ms/retry", b"ok")], DurabilityMode::Buffered)
+        .expect("retry after clean fail");
+    assert!(store.get("awo/ms/retry").unwrap().is_some());
+}

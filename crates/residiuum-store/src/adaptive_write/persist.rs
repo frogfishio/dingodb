@@ -1,9 +1,11 @@
 //! AWO-1 persist-before-publish scaffolding.
 //!
 //! Full coordinator reservation/cook pipeline arrives with later packages.
-//! Product batch paths in [`crate::store::Store`] already stage indexes until
-//! the segment tail write succeeds, using
-//! [`residiuum_format::ActiveSegment::checkpoint`].
+//! Product batch paths in [`crate::store::Store`]:
+//! - single-shard `put_many` / parallel cook: stage → tail write → publish
+//! - multi-shard `put_many_parallel`: per-shard checkpoint + tail; **all-or-nothing**
+//!   index publish only after every shard succeeds; short-write sets
+//!   `awo_writer_poisoned`
 
 use residiuum_format::ActiveSegmentCheckpoint;
 

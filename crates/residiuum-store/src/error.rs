@@ -42,6 +42,14 @@ pub enum StoreError {
     #[error("payload too large for configured safety limits")]
     PayloadTooLarge,
 
+    /// Adaptive write lease owns mutation; direct `Store` mutation is refused (AWO-3).
+    #[error("adaptive writer active; direct mutation refused")]
+    AdaptiveWriterActive,
+
+    /// Adaptive/batch writer poisoned after uncertain I/O; reopen required (AWO-1).
+    #[error("adaptive writer poisoned; close and reopen for recovery")]
+    AdaptiveWriterPoisoned,
+
     /// Corrupt or incomplete store metadata.
     #[error("corrupt store metadata: {0}")]
     CorruptMeta(&'static str),
