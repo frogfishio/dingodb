@@ -180,22 +180,41 @@ not matrix coverage. T4 uses the §6 diagnostic campaigns for rates.
 
 ### 6.0 Disk budget (read first)
 
+**Internal data volume:** about **30 GiB free** — smoke only; reserve ≥15 GiB.
+
+**External Scratch (Samsung T3):** mount **`/Volumes/Scratch`**, work under
+**`/Volumes/Scratch/TEST/`** (principal may say “Temp”; dir is **`TEST`**).
+~**100+ GiB free** (re-check `df -h /Volumes/Scratch`). Prefer this volume for
+any large campaign.
+
+**exFAT residual:** on Scratch, `class=diagnostic` failed
+`reopen digest mismatch` for **all** modes including disabled (T6). Use
+**smoke** for interactive re-runs on Scratch until reopen is fixed or a
+POSIX filesystem is available.
+
 **Diagnostic** class floors are **2 GiB logical bytes per cell** (+ 30s) and the
 default campaign plan uses **5 repetitions × 2 processes**. A `max_cells=1`
-diagnostic three-way can still write **tens of GiB** and has already nearly
-filled a ~228 GiB data volume on the labor host.
+diagnostic three-way can still write **multi-GiB to tens of GiB** and has already
+nearly filled this volume once.
 
-**Before any diagnostic run:**
+| Free space | Allowed |
+|------------|---------|
+| **~30 GiB (this host)** | Smoke / T3 / T4 disk-safe slice only; reserve **≥15 GiB** headroom |
+| ≥50–80 GiB free | Revisit one-cell diagnostic with delete-after-mode |
+| Unknown / lower | Do not start non-smoke campaigns |
+
+**Before any non-smoke run:**
 
 ```bash
-df -h /System/Volumes/Data   # require large free space (recommend ≥50 GiB free)
+df -h /System/Volumes/Data   # abort if avail is not clearly above reserve
 # Clean aborted campaigns first:
 rm -rf /tmp/awo-three-way* /tmp/awo-t4*
 ```
 
-**Disk-safe first slice (T4 labor when free space is tight):** use **smoke**
+**Disk-safe first slice (T4 labor when free space is ~30 GiB):** use **smoke**
 class, `max_cells=1`, delete work dir after each mode, keep JSON only. See
-[AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md](AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md).
+[AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md](AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md)
+and [AWO_THREE_WAY_T5_HONESTY.md](AWO_THREE_WAY_T5_HONESTY.md).
 That slice is **not** diagnostic floors.
 
 ### 6.1 Diagnostic full freeze (only when disk allows)

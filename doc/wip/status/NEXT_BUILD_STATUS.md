@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO three-way:** T2–T4 labor **in_review** — T4 is **disk-safe smoke first slice** only (host nearly filled by aborted 2 GiB/cell diagnostic; residual full diagnostic); artifacts under `doc/todo/performance-qualification/artifacts/awo-three-way-t4-disksafe/`; next T5 honesty; AWO package cards principal `in_review`; query spine / APB **in_review**)
+Updated: 2026-08-02 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO three-way T1–T6 labor complete (in_review):** Scratch external SSD used; smoke interactive re-run green (disabled/static/adaptive); **diagnostic on exFAT fails reopen digest** (even disabled); measurement slice stop met; AWO package cards principal `in_review`; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

@@ -1,0 +1,12 @@
+=== START disabled 19:38:09 free=139Gi ===
+FAIL disabled
+error: campaign: matrix: invalid_correctness: reopen digest mismatch
+=== END disabled free=139Gi ===
+=== START static 19:45:18 free=139Gi ===
+FAIL static
+error: campaign: matrix: invalid_correctness: reopen digest mismatch
+=== END static free=139Gi ===
+=== START adaptive 19:56:41 free=139Gi ===
+FAIL adaptive
+error: campaign: matrix: invalid_correctness: reopen digest mismatch
+=== END adaptive free=139Gi ===

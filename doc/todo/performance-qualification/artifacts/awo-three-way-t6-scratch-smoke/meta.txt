@@ -1,0 +1,10 @@
+volume=/Volumes/Scratch (exFAT Samsung T3)
+work_root=/Volumes/Scratch/TEST/residiuum-awo-three-way/t6-smoke-seed42-mc1-202608030309
+df=1.8Ti 1.7Ti 139Gi 93%
+class=smoke max_cells=1 seed=42
+why_smoke=diagnostic failed reopen_digest_mismatch on this volume for all 3 modes
+host=Apple M4; ncpu=10
+path_note=principal said Temp; actual dir is /Volumes/Scratch/TEST
+label=INTERACTIVE re-run on external SSD — smoke class; NOT diagnostic floors; NOT product
+Filesystem       Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk16s1   1.8Ti   1.7Ti   139Gi    93%       1     0  100%   /Volumes/Scratch

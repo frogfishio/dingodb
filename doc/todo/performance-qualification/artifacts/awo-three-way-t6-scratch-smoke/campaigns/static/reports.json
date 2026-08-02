@@ -1,0 +1,427 @@
+{
+  "fixed_size": [
+    {
+      "key": "4096",
+      "n_runs": 18,
+      "median_throughput": 13179558.471911982,
+      "mean_throughput": 54755230.34591149,
+      "mad": 10878923.872464329,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36"
+      ]
+    },
+    {
+      "key": "8192",
+      "n_runs": 6,
+      "median_throughput": 52498437.88600153,
+      "mean_throughput": 51518098.45271719,
+      "mad": 5643960.222448304,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57"
+      ]
+    },
+    {
+      "key": "16384",
+      "n_runs": 6,
+      "median_throughput": 9109912.039884862,
+      "mean_throughput": 9201519.763661755,
+      "mad": 303059.36113660596,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43"
+      ]
+    }
+  ],
+  "distribution": [
+    {
+      "key": "L4",
+      "n_runs": 18,
+      "median_throughput": 9109912.039884862,
+      "mean_throughput": 53457691.67477387,
+      "mad": 6809277.440437207,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36"
+      ]
+    },
+    {
+      "key": "L5",
+      "n_runs": 6,
+      "median_throughput": 13179558.471911982,
+      "mean_throughput": 13094135.777074615,
+      "mad": 1066300.9246772807,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55"
+      ]
+    },
+    {
+      "key": "L6",
+      "n_runs": 6,
+      "median_throughput": 52498437.88600153,
+      "mean_throughput": 51518098.45271719,
+      "mad": 5643960.222448304,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57"
+      ]
+    }
+  ],
+  "concurrency": [
+    {
+      "key": "0",
+      "n_runs": 15,
+      "median_throughput": 14186816.755060071,
+      "mean_throughput": 40697930.72715106,
+      "mad": 11790480.586908959,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-buffered-s4096-c4-o1-36"
+      ]
+    },
+    {
+      "key": "1",
+      "n_runs": 15,
+      "median_throughput": 12054214.90570551,
+      "mean_throughput": 49296192.97449431,
+      "mad": 9849281.874961313,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36"
+      ]
+    }
+  ],
+  "durability": [
+    {
+      "key": "buffered",
+      "n_runs": 6,
+      "median_throughput": 162988054.0851937,
+      "mean_throughput": 148806714.30067536,
+      "mad": 17499863.461149782,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36"
+      ]
+    },
+    {
+      "key": "durable",
+      "n_runs": 24,
+      "median_throughput": 9967843.974835906,
+      "mean_throughput": 19044648.73835951,
+      "mad": 6552646.434143166,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57"
+      ]
+    }
+  ],
+  "multiproc_finding": {
+    "title": "4 KiB / 8 KiB multi-process finding",
+    "payload_sizes": [
+      4096,
+      8192
+    ],
+    "process_count": 2,
+    "rows": [
+      {
+        "key": "4096",
+        "n_runs": 27,
+        "median_throughput": 12712477.571407788,
+        "mean_throughput": 57391566.104681216,
+        "mad": 10507544.540663593,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p0-r0-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p0-r1-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p0-r2-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55",
+          "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37",
+          "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36"
+        ]
+      },
+      {
+        "key": "8192",
+        "n_runs": 9,
+        "median_throughput": 51183456.8313931,
+        "mean_throughput": 50646618.391951464,
+        "mad": 6925317.971868306,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p0-r0-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p0-r1-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p0-r2-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+          "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57"
+        ]
+      }
+    ],
+    "statement": "Synthetic harness multiproc slice (2 process slots) for 4 KiB/8 KiB — NOT a product performance claim.",
+    "overstates_product": false
+  },
+  "ranked_bottlenecks": [
+    {
+      "rank": 1,
+      "verdict": "mixed_or_unknown",
+      "confidence": "low",
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-buffered-s4096-c4-o1-36",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-buffered-s4096-c4-o1-36"
+      ],
+      "supporting_evidence": [
+        "stage accounting residual incomplete",
+        "cell_id=L4-buffered-s4096-c4-o1-36",
+        "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+      ],
+      "falsification_ids": [
+        "isolate_one_variable",
+        "close_stage_residual"
+      ],
+      "allows_tuning_advice": false
+    },
+    {
+      "rank": 2,
+      "verdict": "mixed_or_unknown",
+      "confidence": "low",
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43"
+      ],
+      "supporting_evidence": [
+        "stage accounting residual incomplete",
+        "cell_id=L4-durable-s16384-c1-o8-43",
+        "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+      ],
+      "falsification_ids": [
+        "isolate_one_variable",
+        "close_stage_residual"
+      ],
+      "allows_tuning_advice": false
+    },
+    {
+      "rank": 3,
+      "verdict": "mixed_or_unknown",
+      "confidence": "low",
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L4-durable-s4096-c4-o1-37",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L4-durable-s4096-c4-o1-37"
+      ],
+      "supporting_evidence": [
+        "stage accounting residual incomplete",
+        "cell_id=L4-durable-s4096-c4-o1-37",
+        "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+      ],
+      "falsification_ids": [
+        "isolate_one_variable",
+        "close_stage_residual"
+      ],
+      "allows_tuning_advice": false
+    },
+    {
+      "rank": 4,
+      "verdict": "mixed_or_unknown",
+      "confidence": "low",
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L5-durable-s4096-c2-o4-55",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L5-durable-s4096-c2-o4-55"
+      ],
+      "supporting_evidence": [
+        "stage accounting residual incomplete",
+        "cell_id=L5-durable-s4096-c2-o4-55",
+        "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+      ],
+      "falsification_ids": [
+        "isolate_one_variable",
+        "close_stage_residual"
+      ],
+      "allows_tuning_advice": false
+    },
+    {
+      "rank": 5,
+      "verdict": "mixed_or_unknown",
+      "confidence": "low",
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-mp-p0-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p0-r2-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r0-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r1-L6-durable-s8192-c4-o8-57",
+        "pqh9-synthetic-000000000000002a-mp-p1-r2-L6-durable-s8192-c4-o8-57"
+      ],
+      "supporting_evidence": [
+        "stage accounting residual incomplete",
+        "cell_id=L6-durable-s8192-c4-o8-57",
+        "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+      ],
+      "falsification_ids": [
+        "isolate_one_variable",
+        "close_stage_residual"
+      ],
+      "allows_tuning_advice": false
+    }
+  ],
+  "follow_up_cards": [],
+  "variability_cv_ok": true,
+  "notes": [
+    "No optimization applied in PQH-9; follow-up cards are stubs only",
+    "platform=synthetic_harness allows_product_baseline=false",
+    "attribution: no synthesized L1/L2/L3, stage, residual, queue, CPU, or OS inputs; missing evidence → mixed_or_unknown",
+    "Synthetic/harness platform: do not publish absolute MB/s as product qualification",
+    "all ranked bottlenecks are mixed_or_unknown (expected without full ladder/stage/OS evidence)",
+    "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+    "run_class=smoke: functional harness only; no product bottleneck verdicts",
+    "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+    "observer overhead cell=L4-durable-s16384-c1-o8-43 median=0.063348 exceeds budget=0.0200; product claims withheld",
+    "observer overhead cell=L5-durable-s4096-c2-o4-55 median=0.116412 exceeds budget=0.0200; product claims withheld",
+    "observer overhead cell=L4-durable-s4096-c4-o1-37 mean=-0.092582 median=-0.092582 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+    "observer overhead cell=L6-durable-s8192-c4-o8-57 median=0.075884 exceeds budget=0.0200; product claims withheld",
+    "observer overhead cell=L4-buffered-s4096-c4-o1-36 mean=-0.560026 median=-0.560026 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+    "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+    "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+    "NON-PRODUCT / smoke: not qualification evidence; no absolute MB/s claims",
+    "real_store multi-rep run_class=smoke valid_runs=30 product_claim_eligible=false surface=real_store_uncontrolled workers_spawned=false worker_pids=[]",
+    "WITHDRAWN: smoke-mode primary bottlenecks (incl. io_queue_underdriven)",
+    "no primary bottleneck attached (smoke or missing sustained window/floors)",
+    "NO optimisations applied; follow-up cards are stubs only"
+  ]
+}

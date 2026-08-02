@@ -20,7 +20,10 @@ testrig.
 | [AWO_THREE_WAY_MEASURE_RUNBOOK.md](AWO_THREE_WAY_MEASURE_RUNBOOK.md) | Three-way measure T2/T3: fixed diagnostic matrix + correctness smoke gate (no throughput claims) |
 | [AWO_THREE_WAY_T3_CORRECTNESS_SMOKE.md](AWO_THREE_WAY_T3_CORRECTNESS_SMOKE.md) | T3 evidence: three-mode unit + CLI driver-smoke green before numbers |
 | [AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md](AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md) | T4 disk-safe first numbers (smoke slice); diagnostic residual; artifact paths |
+| [AWO_THREE_WAY_T5_HONESTY.md](AWO_THREE_WAY_T5_HONESTY.md) | T5 honesty: claim table; ~30 GiB free host budget; no product ranking |
+| [AWO_THREE_WAY_T6_INTERACTIVE.md](AWO_THREE_WAY_T6_INTERACTIVE.md) | T6 interactive re-run on Scratch; smoke OK; diagnostic exFAT residual |
 | [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |
+| [artifacts/awo-three-way-t6-scratch-smoke/](artifacts/awo-three-way-t6-scratch-smoke/) | T6 Scratch smoke three-way |
 | [../../../spec/performance/README.md](../../../spec/performance/README.md) | PQH-0 live registries |
 | [../../../spec/performance/awo/README.md](../../../spec/performance/awo/README.md) | AWO executable contracts (`verify-awo-contract.sh`) |
 

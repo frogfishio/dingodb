@@ -1,0 +1,44 @@
+{
+  "primary_cell_id": "L4-durable-s16384-c1-o8-43",
+  "class": "smoke",
+  "seed": 42,
+  "volume": "/Volumes/Scratch",
+  "label": "T6 interactive re-run on external SSD (smoke)",
+  "modes": {
+    "disabled": {
+      "n_runs": 6,
+      "all_valid_reopen": true,
+      "ack_median": 24.0,
+      "tput_MiB_s_proxy_median": 3.669183220598757,
+      "e2e_ms_proxy_median": 102.202917,
+      "stdout_ok": true
+    },
+    "static": {
+      "n_runs": 6,
+      "all_valid_reopen": true,
+      "ack_median": 24.0,
+      "tput_MiB_s_proxy_median": 8.687889137158262,
+      "e2e_ms_proxy_median": 43.183146,
+      "stdout_ok": true
+    },
+    "adaptive": {
+      "n_runs": 6,
+      "all_valid_reopen": true,
+      "ack_median": 24.0,
+      "tput_MiB_s_proxy_median": 10.006708980602426,
+      "e2e_ms_proxy_median": 37.479063,
+      "stdout_ok": true
+    }
+  },
+  "diagnostic_residual": {
+    "attempted": true,
+    "path": "/Volumes/Scratch/TEST/residiuum-awo-three-way/t6-diag-seed42-mc1-20260803",
+    "error": "campaign: matrix: invalid_correctness: reopen digest mismatch",
+    "modes_failed": [
+      "disabled",
+      "static",
+      "adaptive"
+    ],
+    "fs": "exFAT"
+  }
+}

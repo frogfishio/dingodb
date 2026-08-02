@@ -1,0 +1,1 @@
+error: campaign: matrix: invalid_correctness: reopen digest mismatch

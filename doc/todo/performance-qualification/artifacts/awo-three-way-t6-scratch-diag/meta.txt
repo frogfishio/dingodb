@@ -1,0 +1,9 @@
+volume=/Volumes/Scratch
+work_root=/Volumes/Scratch/TEST/residiuum-awo-three-way/t6-diag-seed42-mc1-20260803
+df=1.8Ti 1.7Ti 139Gi 93%
+class=diagnostic max_cells=1 seed=42
+host=Apple M4; ncpu=10
+note=path is /Volumes/Scratch/TEST (principal said Temp)
+label=DIAGNOSTIC first-slice on external SSD — not qualification product claim
+Filesystem       Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk16s1   1.8Ti   1.7Ti   139Gi    93%       1     0  100%   /Volumes/Scratch

@@ -1,0 +1,9 @@
+=== disabled ===
+OK disabled
+free=139Gi
+=== static ===
+OK static
+free=139Gi
+=== adaptive ===
+OK adaptive
+free=139Gi
