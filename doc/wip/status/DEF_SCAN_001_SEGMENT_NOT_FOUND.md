@@ -1,6 +1,6 @@
 # DEF-SCAN-001 — structured locator faults + honest heap scan pages (P0)
 
-**Status:** T5 **in_review** (principal rejected T4 unit variants as context-free)  
+**Status:** T7–T8 **accepted (labor only)**; T9 **in_review** (blocker #5 index path); package **not** accepted  
 **Date:** 2026-08-02  
 **Board:** Feature `DEF-SCAN-001`  
 **Severity:** **P0**
@@ -75,6 +75,17 @@ Op **115** result **requires**:
 
 SDK `parse_scan_json_wire` rejects missing fields and contradictions (`ProtocolViolation`).
 
+### Secondary-index safety (T9 / blocker #5)
+
+Op **116** `find` must track incompleteness on **every** materialization source:
+
+- **Index path:** each candidate `get` that is hole-class (`LocatorFault`, segment missing, partial, …) or `index_candidate_absent` is listed in `incomplete` — not silent skip / not rows-only success.
+- **Scan path:** same `incomplete` + `coverage_complete` fields.
+
+Required find fields: `rows`, `incomplete`, `coverage_complete` (`coverage_complete` ⇔ empty `incomplete`).
+
+SDK: `parse_find_wire` / `FindWirePage`; remote `find_json` fail-closes with `CoverageIncomplete` when holes are present.
+
 Physical `IncompleteReason` still maps the distinct locator kinds.
 
 ## Evidence
@@ -82,10 +93,10 @@ Physical `IncompleteReason` still maps the distinct locator kinds.
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test def_scan_001_segment_not_found
-# 7/7
+# 8/8
 ```
 
-Tests assert: SegmentNotFound holes carry segment_id; present-media corrupt frames carry path/file_len/cause; offset-past-EOF carries path + file_len + cause; multipage continues from `last_key` including holes.
+Tests assert: SegmentNotFound holes carry segment_id; present-media corrupt frames carry path/file_len/cause; offset-past-EOF carries path + file_len + cause; multipage continues from `last_key` including holes; `CollectionScanHole::from_error` is shared for index+scan sources.
 
 Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.
 

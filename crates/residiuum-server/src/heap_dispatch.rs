@@ -698,35 +698,13 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
     }
 
     // Prefer secondary-index candidates for equality / AND-of-equalities.
+    // DEF-SCAN-001 blocker #5: incompleteness must be tracked on the index path
+    // too — never return rows-only when candidates fail to resolve.
     let eqs = equality_fields(&filter);
     if !eqs.is_empty() {
         match ctx.store.lookup_index_keys(coll.as_bytes(), &eqs) {
             Ok(Some(keys)) => {
-                let mut out = Vec::new();
-                for key in keys {
-                    if out.len() >= limit {
-                        break;
-                    }
-                    let Ok(key_s) = String::from_utf8(key.clone()) else {
-                        continue;
-                    };
-                    let body = match ctx.store.get_collection(coll.as_bytes(), &key) {
-                        Ok(Some(b)) => b,
-                        Ok(None) => continue,
-                        Err(_) => return unavailable_id(id),
-                    };
-                    if body.first() != Some(&0x01) {
-                        continue;
-                    }
-                    let Ok(json) = serde_json::from_slice::<Value>(&body[1..]) else {
-                        continue;
-                    };
-                    if !filter.matches(&json) {
-                        continue;
-                    }
-                    out.push(serde_json::json!({ "key": key_s, "json": json }));
-                }
-                return ok_id(id, serde_json::json!({ "rows": out }));
+                return materialize_find_from_keys(id, ctx, coll.as_bytes(), &filter, limit, keys);
             }
             Ok(None) => {} // fall through to scan
             Err(_) => return unavailable_id(id),
@@ -744,8 +722,8 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
         if out.len() >= limit {
             break;
         }
-        let Ok(key_s) = String::from_utf8(key) else {
-            continue;
+        let Ok(key_s) = utf8_wire_key(&key) else {
+            return err_code(id, "data_damaged");
         };
         if body.first() != Some(&0x01) {
             continue;
@@ -766,12 +744,79 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
             Err(()) => return err_code(id, "data_damaged"),
         }
     }
+    let coverage_complete = incomplete.is_empty();
     ok_id(
         id,
         serde_json::json!({
             "rows": out,
             "incomplete": incomplete,
-            "scan_complete": page.complete,
+            "coverage_complete": coverage_complete,
+        }),
+    )
+}
+
+/// Materialize find rows from secondary-index (or other) candidate keys.
+///
+/// Locator / segment / payload holes become `incomplete` entries — not silent
+/// skips and not a hard `heap_unavailable` for every resolve failure.
+fn materialize_find_from_keys(
+    id: u64,
+    ctx: HeapDataCtx<'_>,
+    coll: &[u8; 16],
+    filter: &Filter,
+    limit: usize,
+    keys: Vec<Vec<u8>>,
+) -> HeapDispatchResult {
+    let mut out = Vec::new();
+    let mut incomplete = Vec::new();
+    for key in keys {
+        if out.len() >= limit {
+            break;
+        }
+        let Ok(key_s) = utf8_wire_key(&key) else {
+            return err_code(id, "data_damaged");
+        };
+        match ctx.store.get_collection(coll, &key) {
+            Ok(Some(body)) => {
+                if body.first() != Some(&0x01) {
+                    continue;
+                }
+                let Ok(json) = serde_json::from_slice::<Value>(&body[1..]) else {
+                    continue;
+                };
+                if !filter.matches(&json) {
+                    continue;
+                }
+                out.push(serde_json::json!({ "key": key_s, "json": json }));
+            }
+            Ok(None) => {
+                // Index listed a live subject that is now absent — explicit hole.
+                incomplete.push(serde_json::json!({
+                    "key": key_s,
+                    "reason": "index_candidate_absent",
+                }));
+            }
+            Err(e) => {
+                if let Some(hole) =
+                    residiuum_store::CollectionScanHole::from_error(key, &e)
+                {
+                    match hole_to_json(&hole) {
+                        Ok(v) => incomplete.push(v),
+                        Err(()) => return err_code(id, "data_damaged"),
+                    }
+                } else {
+                    return unavailable_id(id);
+                }
+            }
+        }
+    }
+    let coverage_complete = incomplete.is_empty();
+    ok_id(
+        id,
+        serde_json::json!({
+            "rows": out,
+            "incomplete": incomplete,
+            "coverage_complete": coverage_complete,
         }),
     )
 }

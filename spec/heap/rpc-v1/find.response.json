@@ -13,7 +13,24 @@
         },
         "required": ["key", "json"]
       }
+    },
+    "incomplete": {
+      "type": "array",
+      "description": "Holes from every materialization source (secondary-index candidates and scan). Required; empty array when none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "key": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "required": ["key", "reason"]
+      }
+    },
+    "coverage_complete": {
+      "type": "boolean",
+      "description": "True only when incomplete is empty. MUST be false when any index candidate or scan subject could not be fully resolved."
     }
   },
-  "required": ["rows"]
+  "required": ["rows", "incomplete", "coverage_complete"]
 }

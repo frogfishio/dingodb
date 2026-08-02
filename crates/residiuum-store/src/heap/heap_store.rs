@@ -85,7 +85,11 @@ pub struct CollectionScanHole {
 }
 
 impl CollectionScanHole {
-    fn from_error(key: Vec<u8>, e: &StoreError) -> Option<Self> {
+    /// Map a fail-closed resolve error into a scan/find hole, if it is a hole class.
+    ///
+    /// Used by collection scan and by secondary-index candidate materialization
+    /// so incompleteness is tracked across every source (DEF-SCAN-001 blocker #5).
+    pub fn from_error(key: Vec<u8>, e: &StoreError) -> Option<Self> {
         match e {
             StoreError::LocatorFault(f) => Some(Self {
                 key,

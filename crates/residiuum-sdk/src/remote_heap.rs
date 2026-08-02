@@ -59,6 +59,72 @@ impl ScanJsonWirePage {
     }
 }
 
+/// One page from remote op **116** `find` (DEF-SCAN-001 blocker #5).
+///
+/// Required: `rows`, `incomplete`, `coverage_complete`. Index-path and scan-path
+/// materialization must both surface holes — never rows-only when incomplete.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FindWirePage {
+    /// Matching complete JSON rows.
+    pub rows: Vec<(String, Value)>,
+    /// Holes from index candidates and/or scan subjects.
+    pub incomplete: Vec<Value>,
+    /// True only when `incomplete` is empty.
+    pub coverage_complete: bool,
+}
+
+/// Parse and validate op 116 `find` result (DEF-SCAN-001 T9).
+pub fn parse_find_wire(result: &Value) -> Result<FindWirePage, Error> {
+    let obj = result.as_object().ok_or_else(|| {
+        Error::ProtocolViolation("find result must be object".into())
+    })?;
+    let arr = obj
+        .get("rows")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| Error::ProtocolViolation("find missing required field rows".into()))?;
+    let mut rows = Vec::new();
+    for row in arr {
+        let key = row
+            .get("key")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("find row key missing".into()))?
+            .to_string();
+        let json = row
+            .get("json")
+            .cloned()
+            .ok_or_else(|| Error::ProtocolViolation("find row json missing".into()))?;
+        rows.push((key, json));
+    }
+    let incomplete = obj
+        .get("incomplete")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| {
+            Error::ProtocolViolation("find missing required field incomplete".into())
+        })?
+        .clone();
+    let coverage_complete = obj
+        .get("coverage_complete")
+        .and_then(|v| v.as_bool())
+        .ok_or_else(|| {
+            Error::ProtocolViolation("find missing required field coverage_complete".into())
+        })?;
+    if coverage_complete && !incomplete.is_empty() {
+        return Err(Error::ProtocolViolation(
+            "find coverage_complete true with non-empty incomplete".into(),
+        ));
+    }
+    if !coverage_complete && incomplete.is_empty() {
+        return Err(Error::ProtocolViolation(
+            "find coverage_complete false with empty incomplete".into(),
+        ));
+    }
+    Ok(FindWirePage {
+        rows,
+        incomplete,
+        coverage_complete,
+    })
+}
+
 /// Parse and validate op 115 `scan_json` result object (DEF-SCAN-001 T8).
 ///
 /// Rejects missing required fields and contradictory pagination metadata.
@@ -716,38 +782,22 @@ impl RemoteHeap {
 
     /// Find JSON rows matching a Mongo-style filter object (op_id = 116).
     ///
-    /// Filter vocabulary matches [`crate::Filter::from_json`]. First cut scans
-    /// the bound collection (no secondary-index acceleration on SubjectV2).
+    /// Filter vocabulary matches [`crate::Filter::from_json`]. Server may use
+    /// secondary-index acceleration; incompleteness is required on the wire
+    /// for **every** materialization source (DEF-SCAN-001 blocker #5).
     pub fn find(
         &mut self,
         collection_id: &str,
         filter: &Value,
         limit: Option<usize>,
-    ) -> Result<Vec<(String, Value)>, Error> {
+    ) -> Result<FindWirePage, Error> {
         let mut args = serde_json::Map::new();
         args.insert("filter".into(), filter.clone());
         if let Some(l) = limit {
             args.insert("limit".into(), Value::from(l as u64));
         }
         let result = self.call_args(116, Some(collection_id), Value::Object(args))?;
-        let arr = result
-            .get("rows")
-            .and_then(|v| v.as_array())
-            .ok_or_else(|| Error::ProtocolViolation("find missing rows".into()))?;
-        let mut out = Vec::new();
-        for row in arr {
-            let key = row
-                .get("key")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| Error::ProtocolViolation("find row key missing".into()))?
-                .to_string();
-            let json = row
-                .get("json")
-                .cloned()
-                .ok_or_else(|| Error::ProtocolViolation("find row json missing".into()))?;
-            out.push((key, json));
-        }
-        Ok(out)
+        parse_find_wire(&result)
     }
 
     /// List secondary indexes on a collection (op_id = 130).
@@ -1242,5 +1292,51 @@ mod scan_json_wire_tests {
         m2["incomplete"] = json!([{"key": "x", "reason": "segment_not_found"}]);
         // coverage_complete still true
         assert!(parse_scan_json_wire(&m2).is_err());
+    }
+}
+
+#[cfg(test)]
+mod find_wire_tests {
+    use super::parse_find_wire;
+    use serde_json::json;
+
+    #[test]
+    fn accepts_complete_find() {
+        let v = json!({
+            "rows": [{"key": "a", "json": {"n": 1}}],
+            "incomplete": [],
+            "coverage_complete": true
+        });
+        let p = parse_find_wire(&v).unwrap();
+        assert!(p.coverage_complete);
+        assert_eq!(p.rows.len(), 1);
+    }
+
+    #[test]
+    fn accepts_index_holes() {
+        let v = json!({
+            "rows": [],
+            "incomplete": [{"key": "x", "reason": "segment_not_found"}],
+            "coverage_complete": false
+        });
+        let p = parse_find_wire(&v).unwrap();
+        assert!(!p.coverage_complete);
+        assert_eq!(p.incomplete.len(), 1);
+    }
+
+    #[test]
+    fn rejects_missing_incomplete() {
+        let v = json!({
+            "rows": [],
+            "coverage_complete": true
+        });
+        assert!(parse_find_wire(&v).is_err());
+    }
+
+    #[test]
+    fn rejects_rows_only_legacy() {
+        // Pre-T9 dishonest shape: rows without incomplete/coverage_complete.
+        let v = json!({ "rows": [{"key": "a", "json": {}}] });
+        assert!(parse_find_wire(&v).is_err());
     }
 }

@@ -16,9 +16,9 @@ use residiuum_heap::{
     TrustedInstant, VerifiedCertificate,
 };
 use residiuum_store::{
-    create_object, publish_staged_genesis, stage_heap_genesis, CollectionScanHoleReason,
-    CollectionScanPage, CompactOptions, HeapMetaLayout, ObjectKind, StoreError, StoreHost,
-    StorePaths,
+    create_object, publish_staged_genesis, stage_heap_genesis, CollectionScanHole,
+    CollectionScanHoleReason, CollectionScanPage, CompactOptions, HeapMetaLayout, ObjectKind,
+    StoreError, StoreHost, StorePaths,
 };
 use std::fs;
 use std::sync::Arc;
@@ -415,6 +415,29 @@ fn empty_entries_with_holes_is_not_empty_live() {
     assert!(page.entries.is_empty());
     assert!(!page.is_empty_live());
     assert!(!page.complete);
+}
+
+/// Secondary-index materialization uses the same hole mapping as scan (blocker #5).
+#[test]
+fn locator_fault_maps_to_hole_for_index_and_scan_sources() {
+    use residiuum_store::{LocatorFault, LocatorFaultKind};
+    let f = LocatorFault {
+        kind: LocatorFaultKind::SegmentNotFound,
+        segment_id: [9u8; 16],
+        frame_offset: 42,
+        path: None,
+        file_len: None,
+        observed_segment_id: None,
+        cause: None,
+    };
+    let err = StoreError::LocatorFault(Box::new(f));
+    let hole = CollectionScanHole::from_error(b"idx-key".to_vec(), &err)
+        .expect("locator faults are hole-class for every source");
+    assert_eq!(hole.key, b"idx-key");
+    assert_eq!(hole.reason, CollectionScanHoleReason::SegmentNotFound);
+    assert!(hole.locator.is_some());
+    // Non-hole errors must not be soft-skipped into holes.
+    assert!(CollectionScanHole::from_error(b"k".to_vec(), &StoreError::PayloadTooLarge).is_none());
 }
 
 /// Continuation must follow last *examined* key (hole or complete), not last

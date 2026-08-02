@@ -1476,8 +1476,17 @@ impl CollectionClient {
                 wire_collection_id,
             } => {
                 let mut guard = lock_remote(remote)?;
-                let raw = guard.find(wire_collection_id, filter, Some(limit))?;
-                Ok(raw
+                let page = guard.find(wire_collection_id, filter, Some(limit))?;
+                // Fail closed on incomplete find: secondary-index and scan holes
+                // must not look like a complete match set (DEF-SCAN-001 #5).
+                if !page.coverage_complete {
+                    return Err(Error::CoverageIncomplete(format!(
+                        "find incomplete: {} hole(s); refuse silent partial match set",
+                        page.incomplete.len()
+                    )));
+                }
+                Ok(page
+                    .rows
                     .into_iter()
                     .map(|(key, value)| QueryRow { key, value })
                     .collect())
