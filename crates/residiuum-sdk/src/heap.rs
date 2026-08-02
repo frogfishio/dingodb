@@ -313,6 +313,11 @@ fn map_create_object_err(e: StoreError) -> Error {
 /// Data plane methods encode **SubjectV2** keys
 /// (`heap_id || collection || key`) so two heaps that share a human collection
 /// name still address disjoint store subjects (HP-007 residual).
+///
+/// [`Clone`] is cheap (`Arc` store + cap) and supports multi-thread CAS
+/// matrices (APB-2 T8) where each task holds its own handle over the same
+/// [`HeapStore`] mutex.
+#[derive(Clone)]
 pub struct HeapCollection {
     cap: HeapCap,
     store: Arc<HeapStore>,

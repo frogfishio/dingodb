@@ -6370,4 +6370,103 @@ mod tests {
             Err(StoreError::VersionConflict { observed: None, .. })
         ));
     }
+
+    /// APB-2 T8: under exclusive mutex, concurrent put_if with the same LiveEventId
+    /// admits exactly one winner (lost-update rejected for others).
+    #[test]
+    fn concurrent_put_if_one_wins() {
+        use std::sync::{Arc, Barrier, Mutex};
+        use std::thread;
+
+        let dir = tempdir().unwrap();
+        let store = Arc::new(Mutex::new(Store::create(dir.path()).unwrap()));
+        let r0 = {
+            let mut g = store.lock().unwrap();
+            g.put_subject_bytes_if(
+                b"k",
+                b"v0",
+                DurabilityMode::Durable,
+                WriteCondition::Absent,
+            )
+            .unwrap()
+        };
+        let n = 8usize;
+        let barrier = Arc::new(Barrier::new(n));
+        let wins = Arc::new(Mutex::new(0u32));
+        let conflicts = Arc::new(Mutex::new(0u32));
+        let mut handles = Vec::new();
+        for i in 0..n {
+            let store = Arc::clone(&store);
+            let barrier = Arc::clone(&barrier);
+            let wins = Arc::clone(&wins);
+            let conflicts = Arc::clone(&conflicts);
+            let expected = r0.event_id;
+            handles.push(thread::spawn(move || {
+                barrier.wait();
+                let body = format!("w{i}").into_bytes();
+                let mut g = store.lock().unwrap();
+                match g.put_subject_bytes_if(
+                    b"k",
+                    &body,
+                    DurabilityMode::Durable,
+                    WriteCondition::LiveEventId(expected),
+                ) {
+                    Ok(_) => *wins.lock().unwrap() += 1,
+                    Err(StoreError::VersionConflict { .. }) => {
+                        *conflicts.lock().unwrap() += 1
+                    }
+                    Err(e) => panic!("unexpected: {e:?}"),
+                }
+            }));
+        }
+        for h in handles {
+            h.join().unwrap();
+        }
+        assert_eq!(*wins.lock().unwrap(), 1, "exactly one CAS winner");
+        assert_eq!(*conflicts.lock().unwrap(), (n as u32) - 1);
+        let live = store.lock().unwrap().get("k").unwrap().unwrap();
+        assert!(live.starts_with(b"w"), "winner body present");
+    }
+
+    /// Concurrent create-if-absent: exactly one insert wins.
+    #[test]
+    fn concurrent_create_absent_one_wins() {
+        use std::sync::{Arc, Barrier, Mutex};
+        use std::thread;
+
+        let dir = tempdir().unwrap();
+        let store = Arc::new(Mutex::new(Store::create(dir.path()).unwrap()));
+        let n = 8usize;
+        let barrier = Arc::new(Barrier::new(n));
+        let wins = Arc::new(Mutex::new(0u32));
+        let exists = Arc::new(Mutex::new(0u32));
+        let mut handles = Vec::new();
+        for i in 0..n {
+            let store = Arc::clone(&store);
+            let barrier = Arc::clone(&barrier);
+            let wins = Arc::clone(&wins);
+            let exists = Arc::clone(&exists);
+            handles.push(thread::spawn(move || {
+                barrier.wait();
+                let body = format!("c{i}").into_bytes();
+                let mut g = store.lock().unwrap();
+                match g.put_subject_bytes_if(
+                    b"new",
+                    &body,
+                    DurabilityMode::Durable,
+                    WriteCondition::Absent,
+                ) {
+                    Ok(_) => *wins.lock().unwrap() += 1,
+                    Err(StoreError::KeyExists) => *exists.lock().unwrap() += 1,
+                    Err(e) => panic!("unexpected: {e:?}"),
+                }
+            }));
+        }
+        for h in handles {
+            h.join().unwrap();
+        }
+        assert_eq!(*wins.lock().unwrap(), 1);
+        assert_eq!(*exists.lock().unwrap(), (n as u32) - 1);
+        assert!(store.lock().unwrap().get("new").unwrap().is_some());
+    }
 }
