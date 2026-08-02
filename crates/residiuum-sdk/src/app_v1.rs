@@ -1405,10 +1405,9 @@ impl CollectionClient {
         let mut guard = lock_remote(&remote)?;
         let page = guard.scan_json(&wire_collection_id, Some(limit), after_key)?;
         drop(guard);
-        // Use wire has_more + next_after_key (last examined key). Never derive
-        // continuation from the last successful row — a hole may follow it
-        // (DEF-SCAN-001 blocker #3).
-        let exhausted = !page.has_more;
+        // Wire contract (T8): exhausted / next_after_key already validated against
+        // has_more. Never derive continuation from last successful row alone.
+        let exhausted = page.exhausted;
         let next_after_key = page.next_after_key;
         let known_holes: Vec<HoleEvidence> = page
             .incomplete
@@ -1432,7 +1431,7 @@ impl CollectionClient {
             .map(|(key, value)| QueryRow { key, value })
             .collect();
         let examined = (rows.len() + known_holes.len()) as u64;
-        let coverage = if page.scan_complete && known_holes.is_empty() {
+        let coverage = if page.coverage_complete && known_holes.is_empty() {
             CoverageEvidence::complete(CoveragePolicy::Complete, examined)
         } else {
             CoverageEvidence::incomplete(

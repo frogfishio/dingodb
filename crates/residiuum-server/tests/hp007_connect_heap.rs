@@ -964,7 +964,10 @@ fn connect_heap_list_and_scan_json() {
     assert_eq!(page.rows[0].1["n"], 1);
     assert_eq!(page.rows[2].1["n"], 3);
     assert!(!page.has_more);
+    assert!(page.exhausted);
     assert!(page.next_after_key.is_none());
+    assert!(page.coverage_complete);
+    assert!(page.incomplete.is_empty());
 
     drop(remote);
     flag.store(true, Ordering::SeqCst);

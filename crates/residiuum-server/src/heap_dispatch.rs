@@ -909,13 +909,20 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
             } else {
                 None
             };
+            // DEF-SCAN-001 T8 / blocker #4: required pagination + coverage fields.
+            // Invariants: exhausted == !has_more; has_more ⇔ next_after_key is set.
+            let has_more = page.has_more;
+            let exhausted = !has_more;
+            // Wire coverage_complete ⇔ empty incomplete (holes list is authoritative).
+            let coverage_complete = incomplete.is_empty();
             ok_id(
                 id,
                 serde_json::json!({
                     "rows": out,
                     "incomplete": incomplete,
-                    "scan_complete": page.complete,
-                    "has_more": page.has_more,
+                    "coverage_complete": coverage_complete,
+                    "has_more": has_more,
+                    "exhausted": exhausted,
                     "next_after_key": next_after_key,
                 }),
             )

@@ -26,20 +26,138 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// One page from remote op **115** `scan_json` (DEF-SCAN-001).
 ///
+/// Required wire fields (T8 / blocker #4): `incomplete`, `coverage_complete`,
+/// `has_more`, `exhausted`, `next_after_key` (plus `rows`).
+///
+/// Invariants enforced on parse:
+/// - `exhausted == !has_more`
+/// - `has_more` ⇒ `next_after_key` is `Some`
+/// - `!has_more` ⇒ `next_after_key` is `None`
+///
 /// `next_after_key` is the last **examined** collection key (complete or hole).
 /// Do not resume from the last successful row alone.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScanJsonWirePage {
     /// Fully resolved JSON rows on this page.
     pub rows: Vec<(String, Value)>,
-    /// Per-key holes with reason (+ optional locator diagnostics).
+    /// Per-key holes with reason (+ optional locator diagnostics). Required field.
     pub incomplete: Vec<Value>,
     /// True only when `incomplete` is empty for examined subjects.
-    pub scan_complete: bool,
+    pub coverage_complete: bool,
     /// More subjects may exist after this page.
     pub has_more: bool,
+    /// No further subjects after this page (`== !has_more`).
+    pub exhausted: bool,
     /// Resume cursor when [`Self::has_more`] — last examined key, not last row.
     pub next_after_key: Option<String>,
+}
+
+impl ScanJsonWirePage {
+    /// Alias for [`Self::coverage_complete`] (historical name).
+    pub fn scan_complete(&self) -> bool {
+        self.coverage_complete
+    }
+}
+
+/// Parse and validate op 115 `scan_json` result object (DEF-SCAN-001 T8).
+///
+/// Rejects missing required fields and contradictory pagination metadata.
+pub fn parse_scan_json_wire(result: &Value) -> Result<ScanJsonWirePage, Error> {
+    let obj = result.as_object().ok_or_else(|| {
+        Error::ProtocolViolation("scan_json result must be object".into())
+    })?;
+    let arr = obj
+        .get("rows")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| Error::ProtocolViolation("scan_json missing required field rows".into()))?;
+    let mut rows = Vec::new();
+    for row in arr {
+        let key = row
+            .get("key")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::ProtocolViolation("scan row key missing".into()))?
+            .to_string();
+        let json = row
+            .get("json")
+            .cloned()
+            .ok_or_else(|| Error::ProtocolViolation("scan row json missing".into()))?;
+        rows.push((key, json));
+    }
+    let incomplete = obj
+        .get("incomplete")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| {
+            Error::ProtocolViolation("scan_json missing required field incomplete".into())
+        })?
+        .clone();
+    let coverage_complete = obj
+        .get("coverage_complete")
+        .and_then(|v| v.as_bool())
+        .ok_or_else(|| {
+            Error::ProtocolViolation("scan_json missing required field coverage_complete".into())
+        })?;
+    let has_more = obj
+        .get("has_more")
+        .and_then(|v| v.as_bool())
+        .ok_or_else(|| {
+            Error::ProtocolViolation("scan_json missing required field has_more".into())
+        })?;
+    let exhausted = obj
+        .get("exhausted")
+        .and_then(|v| v.as_bool())
+        .ok_or_else(|| {
+            Error::ProtocolViolation("scan_json missing required field exhausted".into())
+        })?;
+    if !obj.contains_key("next_after_key") {
+        return Err(Error::ProtocolViolation(
+            "scan_json missing required field next_after_key".into(),
+        ));
+    }
+    let next_after_key = match obj.get("next_after_key") {
+        Some(Value::String(s)) => Some(s.clone()),
+        Some(Value::Null) => None,
+        _ => {
+            return Err(Error::ProtocolViolation(
+                "scan_json next_after_key must be string or null".into(),
+            ))
+        }
+    };
+    // Pagination invariants (blocker #4).
+    if exhausted != !has_more {
+        return Err(Error::ProtocolViolation(format!(
+            "scan_json exhausted ({exhausted}) must equal !has_more ({})",
+            !has_more
+        )));
+    }
+    if has_more && next_after_key.is_none() {
+        return Err(Error::ProtocolViolation(
+            "scan_json has_more without next_after_key".into(),
+        ));
+    }
+    if !has_more && next_after_key.is_some() {
+        return Err(Error::ProtocolViolation(
+            "scan_json next_after_key must be null when has_more is false".into(),
+        ));
+    }
+    // Coverage honesty: coverage_complete implies no holes on this page.
+    if coverage_complete && !incomplete.is_empty() {
+        return Err(Error::ProtocolViolation(
+            "scan_json coverage_complete true with non-empty incomplete".into(),
+        ));
+    }
+    if !coverage_complete && incomplete.is_empty() {
+        return Err(Error::ProtocolViolation(
+            "scan_json coverage_complete false with empty incomplete".into(),
+        ));
+    }
+    Ok(ScanJsonWirePage {
+        rows,
+        incomplete,
+        coverage_complete,
+        has_more,
+        exhausted,
+        next_after_key,
+    })
 }
 
 /// Errors from credential construction (local only; never contact a server).
@@ -708,9 +826,10 @@ impl RemoteHeap {
 
     /// Scan JSON rows in a collection (op_id = 115).
     ///
-    /// Returns complete rows plus wire pagination / hole metadata.
+    /// Returns complete rows plus **required** wire pagination / hole metadata.
     /// Continuation is [`ScanJsonWirePage::next_after_key`] (last examined key),
-    /// never the last successful row alone (DEF-SCAN-001 blocker #3).
+    /// never the last successful row alone (DEF-SCAN-001). Rejects missing or
+    /// contradictory fields (T8 / blocker #4).
     pub fn scan_json(
         &mut self,
         collection_id: &str,
@@ -725,59 +844,7 @@ impl RemoteHeap {
             args.insert("after_key".into(), Value::String(a.into()));
         }
         let result = self.call_args(115, Some(collection_id), Value::Object(args))?;
-        let arr = result
-            .get("rows")
-            .and_then(|v| v.as_array())
-            .ok_or_else(|| Error::ProtocolViolation("scan_json missing rows".into()))?;
-        let mut rows = Vec::new();
-        for row in arr {
-            let key = row
-                .get("key")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| Error::ProtocolViolation("scan row key missing".into()))?
-                .to_string();
-            let json = row
-                .get("json")
-                .cloned()
-                .ok_or_else(|| Error::ProtocolViolation("scan row json missing".into()))?;
-            rows.push((key, json));
-        }
-        let has_more = result
-            .get("has_more")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-        let next_after_key = match result.get("next_after_key") {
-            Some(Value::String(s)) => Some(s.clone()),
-            Some(Value::Null) | None => None,
-            _ => {
-                return Err(Error::ProtocolViolation(
-                    "scan_json next_after_key must be string or null".into(),
-                ))
-            }
-        };
-        let scan_complete = result
-            .get("scan_complete")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
-        let incomplete = result
-            .get("incomplete")
-            .and_then(|v| v.as_array())
-            .cloned()
-            .unwrap_or_default();
-        // When has_more, server must provide last-examined continuation.
-        if has_more && next_after_key.is_none() {
-            return Err(Error::ProtocolViolation(
-                "scan_json has_more without next_after_key (last examined key required)"
-                    .into(),
-            ));
-        }
-        Ok(ScanJsonWirePage {
-            rows,
-            incomplete,
-            scan_complete,
-            has_more,
-            next_after_key,
-        })
+        parse_scan_json_wire(&result)
     }
 
     fn call_process(&mut self, op_id: u16) -> Result<Value, Error> {
@@ -1075,4 +1142,105 @@ fn resolve_hostport(hostport: &str) -> Result<std::net::SocketAddr, Error> {
         .map_err(|e| Error::ValidationMsg(format!("resolve {with_port}: {e}")))?
         .next()
         .ok_or_else(|| Error::ValidationMsg(format!("no addresses for {with_port}")))
+}
+
+#[cfg(test)]
+mod scan_json_wire_tests {
+    use super::parse_scan_json_wire;
+    use serde_json::json;
+
+    fn good_page() -> serde_json::Value {
+        json!({
+            "rows": [{"key": "a", "json": {"n": 1}}],
+            "incomplete": [],
+            "coverage_complete": true,
+            "has_more": false,
+            "exhausted": true,
+            "next_after_key": null
+        })
+    }
+
+    #[test]
+    fn accepts_valid_exhausted_page() {
+        let p = parse_scan_json_wire(&good_page()).unwrap();
+        assert!(!p.has_more);
+        assert!(p.exhausted);
+        assert!(p.next_after_key.is_none());
+        assert!(p.coverage_complete);
+        assert!(p.incomplete.is_empty());
+    }
+
+    #[test]
+    fn accepts_valid_has_more_page() {
+        let v = json!({
+            "rows": [{"key": "a", "json": {}}],
+            "incomplete": [{"key": "b", "reason": "segment_not_found"}],
+            "coverage_complete": false,
+            "has_more": true,
+            "exhausted": false,
+            "next_after_key": "b"
+        });
+        let p = parse_scan_json_wire(&v).unwrap();
+        assert!(p.has_more);
+        assert!(!p.exhausted);
+        assert_eq!(p.next_after_key.as_deref(), Some("b"));
+        assert!(!p.coverage_complete);
+    }
+
+    #[test]
+    fn rejects_missing_required_fields() {
+        for field in [
+            "incomplete",
+            "coverage_complete",
+            "has_more",
+            "exhausted",
+            "next_after_key",
+            "rows",
+        ] {
+            let mut m = good_page();
+            m.as_object_mut().unwrap().remove(field);
+            assert!(
+                parse_scan_json_wire(&m).is_err(),
+                "expected error missing {field}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_exhausted_neq_not_has_more() {
+        let mut m = good_page();
+        m["exhausted"] = json!(false); // has_more false, exhausted must be true
+        assert!(parse_scan_json_wire(&m).is_err());
+    }
+
+    #[test]
+    fn rejects_has_more_without_cursor() {
+        let v = json!({
+            "rows": [],
+            "incomplete": [],
+            "coverage_complete": true,
+            "has_more": true,
+            "exhausted": false,
+            "next_after_key": null
+        });
+        assert!(parse_scan_json_wire(&v).is_err());
+    }
+
+    #[test]
+    fn rejects_cursor_when_not_has_more() {
+        let mut m = good_page();
+        m["next_after_key"] = json!("z");
+        assert!(parse_scan_json_wire(&m).is_err());
+    }
+
+    #[test]
+    fn rejects_coverage_complete_vs_incomplete_mismatch() {
+        let mut m = good_page();
+        m["coverage_complete"] = json!(false);
+        assert!(parse_scan_json_wire(&m).is_err());
+        let mut m2 = good_page();
+        m2["incomplete"] = json!([{"key": "x", "reason": "segment_not_found"}]);
+        // coverage_complete still true
+        assert!(parse_scan_json_wire(&m2).is_err());
+    }
 }

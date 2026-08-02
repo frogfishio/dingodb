@@ -6,6 +6,11 @@
   "result": {
     "rows": [
       { "key": "user-1", "json": { "name": "Alice" } }
-    ]
+    ],
+    "incomplete": [],
+    "coverage_complete": true,
+    "has_more": false,
+    "exhausted": true,
+    "next_after_key": null
   }
 }

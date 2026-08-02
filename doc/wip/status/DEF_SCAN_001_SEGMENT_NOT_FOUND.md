@@ -60,6 +60,21 @@ Clients must **not** resume from the last successful row alone — a hole may ha
 
 Wire product keys and `next_after_key` are **exact UTF-8**. Never `from_utf8_lossy` for a cursor (replacement would resume at the wrong key). If `has_more` and `last_key` is non-UTF-8, or a hole key is non-UTF-8, the op returns **`data_damaged`**.
 
+### Required wire fields + invariants (T8 / blocker #4)
+
+Op **115** result **requires**:
+
+| Field | Rule |
+|-------|------|
+| `rows` | array |
+| `incomplete` | array (empty allowed) |
+| `coverage_complete` | bool; ⇔ `incomplete` empty |
+| `has_more` | bool |
+| `exhausted` | bool; **must** `== !has_more` |
+| `next_after_key` | string or null; non-null **iff** `has_more` |
+
+SDK `parse_scan_json_wire` rejects missing fields and contradictions (`ProtocolViolation`).
+
 Physical `IncompleteReason` still maps the distinct locator kinds.
 
 ## Evidence

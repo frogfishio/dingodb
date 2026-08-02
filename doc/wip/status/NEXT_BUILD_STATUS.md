@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (**P0:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) T5–T6 **in_review**; T7 **in_review** — no lossy UTF-8 for `next_after_key` (fail `data_damaged`); no package accept; query spine / APB **in_review**)
+Updated: 2026-08-02 (**P0:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) T5–T7 **in_review** (T7 UTF-8 cursor ready for principal accept); T8 **in_review** — required scan_json wire fields + SDK reject missing/contradictory; no package accept; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

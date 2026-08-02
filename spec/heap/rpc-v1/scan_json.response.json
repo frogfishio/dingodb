@@ -16,6 +16,7 @@
     },
     "incomplete": {
       "type": "array",
+      "description": "Holes examined on this page (distinct reasons). Required; empty array when none.",
       "items": {
         "type": "object",
         "additionalProperties": true,
@@ -26,7 +27,7 @@
         "required": ["key", "reason"]
       }
     },
-    "scan_complete": {
+    "coverage_complete": {
       "type": "boolean",
       "description": "True only when incomplete is empty for examined subjects on this page."
     },
@@ -34,10 +35,21 @@
       "type": "boolean",
       "description": "More subjects may exist after this page."
     },
+    "exhausted": {
+      "type": "boolean",
+      "description": "No further subjects after this page. MUST equal !has_more."
+    },
     "next_after_key": {
       "type": ["string", "null"],
-      "description": "Resume after_key for the next page. MUST be the last examined collection key (complete row or hole), not the last successful row. MUST be exact UTF-8 of the store key bytes — never lossy-converted. Null when has_more is false. Server returns data_damaged if has_more and last key is non-UTF-8."
+      "description": "Resume after_key for the next page. MUST be the last examined collection key (complete row or hole), exact UTF-8. MUST be non-null iff has_more is true; MUST be null when has_more is false."
     }
   },
-  "required": ["rows"]
+  "required": [
+    "rows",
+    "incomplete",
+    "coverage_complete",
+    "has_more",
+    "exhausted",
+    "next_after_key"
+  ]
 }
