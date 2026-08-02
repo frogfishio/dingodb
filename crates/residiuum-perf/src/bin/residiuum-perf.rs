@@ -17,8 +17,8 @@
 use residiuum_perf::campaign::{
     attach_primary_bottleneck, build_campaign_reports, build_disclosure, campaign_plan_linux,
     campaign_plan_macos_apple_silicon, campaign_plan_synthetic, run_campaign, run_worker_job,
-    verify_bundle_hashes, write_evidence_bundle, CampaignConfig, PlatformClass, RunClass,
-    WorkerJob,
+    verify_bundle_hashes, write_evidence_bundle, CampaignConfig, PlatformClass, PresentationPin,
+    RunClass, WorkerJob,
 };
 use residiuum_perf::matrix::{build_matrix_cells, ScheduleSeed};
 use residiuum_perf::runner::{
@@ -70,6 +70,8 @@ Commands:
       [--platform synthetic|macos_as|linux] [--class smoke|diagnostic|qualification|soak]
       [--controlled] [--spawn-workers|--no-spawn-workers]
       [--awo-mode disabled|static|adaptive]
+      [--present-batch N] [--present-concurrency N] [--present-outstanding N]
+        (pin presentation after matrix pick; AWO-fair: keep batch=1, vary conc/out)
   analyze --campaign <dir>
   verify --campaign <dir>
   driver-smoke --work <dir> [--driver synthetic|real_store]
@@ -84,6 +86,7 @@ Honesty:
   synthetic/proxy results are NON-PRODUCT.
   real_store needs --features store-driver.
   --awo-mode (default disabled): real_store only; static/adaptive attach AWO lease.
+  --present-batch/concurrency/outstanding: pin presentation (do not use batch>1 for AWO ranking).
   --controlled only on a declared controlled runner + qualification class.
   No optimisations. Smoke-derived io_queue_underdriven is WITHDRAWN.
   AWO three-way numbers are diagnostic unless a controlled qualification campaign says otherwise.
@@ -114,6 +117,23 @@ fn parse_awo_mode(args: &[String]) -> Result<AwoMode, String> {
     let raw = flag_value(args, "--awo-mode").unwrap_or_else(|| "disabled".into());
     AwoMode::parse(&raw).ok_or_else(|| {
         format!("bad --awo-mode {raw}; expected disabled|static|adaptive")
+    })
+}
+
+fn parse_presentation_pin(args: &[String]) -> Result<PresentationPin, String> {
+    let parse_u32 = |name: &str| -> Result<Option<u32>, String> {
+        match flag_value(args, name) {
+            None => Ok(None),
+            Some(s) => s
+                .parse::<u32>()
+                .map(Some)
+                .map_err(|_| format!("bad {name} {s}; expected u32")),
+        }
+    };
+    Ok(PresentationPin {
+        batch_size: parse_u32("--present-batch")?,
+        concurrency: parse_u32("--present-concurrency")?,
+        outstanding: parse_u32("--present-outstanding")?,
     })
 }
 
@@ -196,6 +216,14 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
     if awo_mode.lease_active() && kind != DriverKind::RealStore {
         return Err("--awo-mode static|adaptive requires --driver real_store".into());
     }
+    let presentation = parse_presentation_pin(args)?;
+    if presentation.is_active() {
+        plan.include_multiproc_finding = false;
+        plan.notes.push(format!(
+            "presentation_pin batch={:?} concurrency={:?} outstanding={:?} (AWO-fair shapes; multiproc finding off)",
+            presentation.batch_size, presentation.concurrency, presentation.outstanding
+        ));
+    }
 
     // Genuine multiproc: default spawn when processes > 1. Override with flags.
     let spawn_workers = if has_flag(args, "--no-spawn-workers") {
@@ -217,6 +245,7 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
         worker_bin,
         require_qualification_preflight: run_class.may_emit_bottleneck_verdict(),
         awo_mode,
+        presentation,
     })
     .map_err(|e| e.to_string())?;
 

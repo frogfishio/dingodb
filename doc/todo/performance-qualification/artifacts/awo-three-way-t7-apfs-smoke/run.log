@@ -1,0 +1,7 @@
+=== sparse disabled conc=1 out=1 ===
+=== sparse static conc=1 out=1 ===
+=== sparse adaptive conc=1 out=1 ===
+=== saturated disabled conc=4 out=8 ===
+=== saturated static conc=4 out=8 ===
+=== saturated adaptive conc=4 out=8 ===
+DONE

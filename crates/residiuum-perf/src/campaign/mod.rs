@@ -30,7 +30,7 @@ pub use reports::{
 };
 pub use run::{
     attach_primary_bottleneck, run_campaign, run_qualification_preflight, CampaignConfig,
-    CampaignResult, CellRepetition, ProcessSlot,
+    CampaignResult, CellRepetition, PresentationPin, ProcessSlot,
 };
 pub use multiproc::{
     build_worker_jobs, current_worker_bin, run_spawned_workers, run_worker_job, WorkerJob,

@@ -228,8 +228,8 @@ Artifact root (when run):
 | T6 counters documented | Yes |
 | v1 batch_size=N saturated **rejected** | **v2 this doc** |
 | Sparse singles + saturated singles frozen | **v2 this doc** |
-| Campaigns on APFS/ext4 | Open |
-| AWO single-collection if missing | Open residual |
+| Campaigns on APFS/ext4 | **Smoke done (T8)** — see `AWO_THREE_WAY_T8_SINGLES_RUN.md` |
+| AWO single-collection if missing | **Open residual** — T8: Static/Adaptive still `file_sync/ops=1` under saturated singles |
 | Package accept | Never from labor alone |
 
 ---

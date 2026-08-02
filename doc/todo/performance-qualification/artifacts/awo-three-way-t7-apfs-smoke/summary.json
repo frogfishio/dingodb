@@ -1,0 +1,86 @@
+{
+  "shapes": {
+    "sparse": {
+      "disabled": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c1-o1",
+        "all_valid": true,
+        "all_reopen": true,
+        "ack_median": 24.0,
+        "tput_MiB_s_proxy_median": 4.274786270894914,
+        "e2e_ms_proxy_median": 91.98497900000001,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "presentation": "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=1 out=1 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled"
+      },
+      "static": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c1-o1",
+        "all_valid": true,
+        "all_reopen": true,
+        "ack_median": 24.0,
+        "tput_MiB_s_proxy_median": 4.52525358019998,
+        "e2e_ms_proxy_median": 86.9060625,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "presentation": "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=1 out=1 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=static"
+      },
+      "adaptive": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c1-o1",
+        "all_valid": true,
+        "all_reopen": true,
+        "ack_median": 24.0,
+        "tput_MiB_s_proxy_median": 4.149012374389143,
+        "e2e_ms_proxy_median": 94.7742915,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "presentation": "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=1 out=1 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=adaptive"
+      }
+    },
+    "saturated": {
+      "disabled": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "all_valid": true,
+        "all_reopen": true,
+        "ack_median": 24.0,
+        "tput_MiB_s_proxy_median": 4.301539822256584,
+        "e2e_ms_proxy_median": 91.47818799999999,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "presentation": "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled"
+      },
+      "static": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "all_valid": true,
+        "all_reopen": true,
+        "ack_median": 24.0,
+        "tput_MiB_s_proxy_median": 4.351381344665837,
+        "e2e_ms_proxy_median": 90.433708,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "presentation": "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=static"
+      },
+      "adaptive": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "all_valid": true,
+        "all_reopen": true,
+        "ack_median": 24.0,
+        "tput_MiB_s_proxy_median": 4.277416477032256,
+        "e2e_ms_proxy_median": 91.9705625,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "presentation": "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=adaptive"
+      }
+    }
+  }
+}

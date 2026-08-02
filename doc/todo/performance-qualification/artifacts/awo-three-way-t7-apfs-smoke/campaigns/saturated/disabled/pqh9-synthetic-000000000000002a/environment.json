@@ -1,0 +1,16 @@
+{
+  "arch": "aarch64",
+  "build_mode": "diagnostic",
+  "cpu_count": 10,
+  "debug_assertions": false,
+  "endian": "little",
+  "environment_hash": "2bba882e1c06bc0ba55fe6cbe776e89a43320f3c39dee408a873bebcf807d98d",
+  "family": "unix",
+  "free_bytes": 32771723264,
+  "free_inodes": 320036360,
+  "os": "macos",
+  "platform_adapter": "macos",
+  "pointer_width": "64",
+  "rustc_opt_level": null,
+  "schema": "residiuum-perf-environment-v1"
+}

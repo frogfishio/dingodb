@@ -1,0 +1,135 @@
+{
+  "fixed_size": [
+    {
+      "key": "16384",
+      "n_runs": 6,
+      "median_throughput": 4351381.344665837,
+      "mean_throughput": 4461525.713507901,
+      "mad": 208145.9380095841,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+      ]
+    }
+  ],
+  "distribution": [
+    {
+      "key": "L4",
+      "n_runs": 6,
+      "median_throughput": 4351381.344665837,
+      "mean_throughput": 4461525.713507901,
+      "mad": 208145.9380095841,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+      ]
+    }
+  ],
+  "concurrency": [
+    {
+      "key": "0",
+      "n_runs": 3,
+      "median_throughput": 4232129.851184157,
+      "mean_throughput": 4311183.067142424,
+      "mad": 1343.3390885591507,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+      ]
+    },
+    {
+      "key": "1",
+      "n_runs": 3,
+      "median_throughput": 4737073.712035802,
+      "mean_throughput": 4611868.359873378,
+      "mad": 305773.35433162283,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+      ]
+    }
+  ],
+  "durability": [
+    {
+      "key": "durable",
+      "n_runs": 6,
+      "median_throughput": 4351381.344665837,
+      "mean_throughput": 4461525.713507901,
+      "mad": 208145.9380095841,
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+      ]
+    }
+  ],
+  "multiproc_finding": {
+    "title": "4 KiB / 8 KiB multi-process finding",
+    "payload_sizes": [
+      4096,
+      8192
+    ],
+    "process_count": 2,
+    "rows": [],
+    "statement": "No 4 KiB/8 KiB multiproc cells present in this campaign slice; finding deferred.",
+    "overstates_product": false
+  },
+  "ranked_bottlenecks": [
+    {
+      "rank": 1,
+      "verdict": "mixed_or_unknown",
+      "confidence": "low",
+      "run_ids": [
+        "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+      ],
+      "supporting_evidence": [
+        "stage accounting residual incomplete",
+        "cell_id=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+      ],
+      "falsification_ids": [
+        "isolate_one_variable",
+        "close_stage_residual"
+      ],
+      "allows_tuning_advice": false
+    }
+  ],
+  "follow_up_cards": [],
+  "variability_cv_ok": true,
+  "notes": [
+    "No optimization applied in PQH-9; follow-up cards are stubs only",
+    "platform=synthetic_harness allows_product_baseline=false",
+    "attribution: no synthesized L1/L2/L3, stage, residual, queue, CPU, or OS inputs; missing evidence → mixed_or_unknown",
+    "Synthetic/harness platform: do not publish absolute MB/s as product qualification",
+    "all ranked bottlenecks are mixed_or_unknown (expected without full ladder/stage/OS evidence)",
+    "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+    "run_class=smoke: functional harness only; no product bottleneck verdicts",
+    "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+    "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8 mean=0.000275 median=0.000275 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+    "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+    "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+    "NON-PRODUCT / smoke: not qualification evidence; no absolute MB/s claims",
+    "real_store multi-rep run_class=smoke valid_runs=6 product_claim_eligible=false surface=real_store_uncontrolled workers_spawned=false worker_pids=[]",
+    "WITHDRAWN: smoke-mode primary bottlenecks (incl. io_queue_underdriven)",
+    "no primary bottleneck attached (smoke or missing sustained window/floors)",
+    "NO optimisations applied; follow-up cards are stubs only"
+  ]
+}

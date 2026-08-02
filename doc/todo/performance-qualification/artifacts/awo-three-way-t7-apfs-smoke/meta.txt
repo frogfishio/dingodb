@@ -1,0 +1,5 @@
+ROOT=/tmp/awo-t7-apfs-73564
+fs=
+Sun Aug  2 23:22:14 UTC 2026
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   228Gi   172Gi    31Gi    85%    3.1M  320M    1%   /System/Volumes/Data

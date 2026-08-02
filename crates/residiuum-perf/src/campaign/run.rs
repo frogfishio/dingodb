@@ -50,6 +50,47 @@ fn default_surface_str() -> String {
     MeasurementSurface::NonProductSynthetic.as_str().into()
 }
 
+/// Optional override of matrix presentation knobs (T7 AWO-fair shapes).
+///
+/// When set, applied after matrix counterbalance so experiments can pin
+/// **independent singles** (`batch_size = 1`) while varying concurrency /
+/// outstanding — without relying on harness `batch_size > 1` (which is L-API
+/// `put_many(N)`, not AWO collection).
+#[derive(Debug, Clone, Default)]
+pub struct PresentationPin {
+    pub batch_size: Option<u32>,
+    pub concurrency: Option<u32>,
+    pub outstanding: Option<u32>,
+}
+
+impl PresentationPin {
+    pub fn is_active(&self) -> bool {
+        self.batch_size.is_some() || self.concurrency.is_some() || self.outstanding.is_some()
+    }
+
+    pub fn apply(&self, cell: &mut MatrixCell) {
+        if let Some(b) = self.batch_size {
+            cell.batch_size = b.max(1);
+        }
+        if let Some(c) = self.concurrency {
+            cell.concurrency = c.max(1);
+        }
+        if let Some(o) = self.outstanding {
+            cell.outstanding = o.max(1);
+        }
+        if self.is_active() {
+            // Honest cell id for artifacts (presentation pin visible).
+            cell.cell_id = format!(
+                "{}-pin-b{}-c{}-o{}",
+                cell.cell_id,
+                cell.batch_size,
+                cell.concurrency,
+                cell.outstanding
+            );
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CampaignConfig {
     pub plan: CampaignPlan,
@@ -72,6 +113,8 @@ pub struct CampaignConfig {
     pub require_qualification_preflight: bool,
     /// Adaptive write mode for real_store cells (default disabled).
     pub awo_mode: AwoMode,
+    /// Optional presentation pin (batch/concurrency/outstanding).
+    pub presentation: PresentationPin,
 }
 
 impl CampaignConfig {
@@ -87,6 +130,7 @@ impl CampaignConfig {
             worker_bin: None,
             require_qualification_preflight: false,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         }
     }
 }
@@ -222,12 +266,18 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         seed: cfg.plan.seed,
     });
 
-    let cells: Vec<_> = manifest
+    let mut cells: Vec<_> = manifest
         .cells
         .iter()
         .take(cfg.plan.max_cells)
         .cloned()
         .collect();
+    // AWO-fair presentation pin (T7): rewrite batch/conc/outstanding after matrix pick.
+    if cfg.presentation.is_active() {
+        for cell in &mut cells {
+            cfg.presentation.apply(cell);
+        }
+    }
 
     let procs = cfg.plan.processes;
     let total_reps = cfg.plan.repetitions;
@@ -245,7 +295,10 @@ pub fn run_campaign(cfg: &CampaignConfig) -> Result<CampaignResult, CampaignErro
         });
     }
 
-    let multiproc_cells: Vec<MatrixCell> = if cfg.plan.include_multiproc_finding {
+    // Presentation pin runs are single-shape experiments — skip multiproc finding noise.
+    let multiproc_cells: Vec<MatrixCell> = if cfg.plan.include_multiproc_finding
+        && !cfg.presentation.is_active()
+    {
         manifest
             .cells
             .iter()
@@ -736,6 +789,7 @@ mod tests {
             worker_bin: None,
             require_qualification_preflight: false,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         })
         .unwrap_err();
         let s = err.to_string();
@@ -773,6 +827,7 @@ mod tests {
             worker_bin: None,
             require_qualification_preflight: false,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         };
         // Synthetic qualification still runs (no wall 120s in synthetic matrix driver),
         // but must not apply smoke op caps in campaign path.
@@ -797,6 +852,7 @@ mod tests {
             worker_bin: None,
             require_qualification_preflight: true,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         })
         .unwrap_err();
         assert!(
@@ -822,6 +878,7 @@ mod tests {
             worker_bin: None,
             require_qualification_preflight: true,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         })
         .unwrap_err();
         let s = err.to_string();
@@ -873,6 +930,7 @@ mod real_store_tests {
             worker_bin: None,
             require_qualification_preflight: false,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         })
         .expect("real store multi-rep smoke campaign");
 
@@ -912,6 +970,7 @@ mod real_store_tests {
             worker_bin: None,
             require_qualification_preflight: false,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         })
         .unwrap();
         // Surface may be controlled-eligible label, but product_claim requires
@@ -943,6 +1002,7 @@ mod real_store_tests {
             worker_bin: None,
             require_qualification_preflight: false,
             awo_mode: AwoMode::Disabled,
+            presentation: PresentationPin::default(),
         })
         .expect("campaign with overhead");
 
