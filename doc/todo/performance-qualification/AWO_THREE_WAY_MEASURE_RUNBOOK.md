@@ -178,8 +178,30 @@ not matrix coverage. T4 uses the §6 diagnostic campaigns for rates.
 
 ## 6. Full matrix commands (copy-paste — T2 freeze)
 
+### 6.0 Disk budget (read first)
+
+**Diagnostic** class floors are **2 GiB logical bytes per cell** (+ 30s) and the
+default campaign plan uses **5 repetitions × 2 processes**. A `max_cells=1`
+diagnostic three-way can still write **tens of GiB** and has already nearly
+filled a ~228 GiB data volume on the labor host.
+
+**Before any diagnostic run:**
+
 ```bash
-# Fixed knobs
+df -h /System/Volumes/Data   # require large free space (recommend ≥50 GiB free)
+# Clean aborted campaigns first:
+rm -rf /tmp/awo-three-way* /tmp/awo-t4*
+```
+
+**Disk-safe first slice (T4 labor when free space is tight):** use **smoke**
+class, `max_cells=1`, delete work dir after each mode, keep JSON only. See
+[AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md](AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md).
+That slice is **not** diagnostic floors.
+
+### 6.1 Diagnostic full freeze (only when disk allows)
+
+```bash
+# Fixed knobs — DO NOT run if free space is low
 SEED=42
 CLASS=diagnostic
 MAX_CELLS=64
@@ -198,6 +220,7 @@ for MODE in disabled static adaptive; do
     --class "$CLASS" \
     --max-cells "$MAX_CELLS" \
     --awo-mode "$MODE"
+  # Prefer: copy JSON evidence, then rm -rf "$WORK_ROOT/$MODE/stores"
 done
 ```
 

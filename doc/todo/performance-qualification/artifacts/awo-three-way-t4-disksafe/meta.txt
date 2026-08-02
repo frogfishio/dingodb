@@ -1,0 +1,14 @@
+host_os=Darwin 24.5.0 arm64
+cpu=Apple M4
+ncpu=10
+macos=15.5
+disk_avail_before=32Gi
+class=smoke
+reason=disk_constrained_diagnostic_floors_are_2GiB_per_cell
+label=DISK-SAFE FIRST SLICE — NOT diagnostic floors, NOT qualification, NOT product
+seed=42
+max_cells=1
+driver=real_store
+features=store-driver
+binary=target/release
+disk_avail_after=32Gi

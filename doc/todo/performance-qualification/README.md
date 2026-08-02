@@ -19,6 +19,8 @@ testrig.
 | [AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md](AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md) | AWO-0 T1 evidence: E1–E6 stamp, contract inventory, plan §15 residual (not package accept) |
 | [AWO_THREE_WAY_MEASURE_RUNBOOK.md](AWO_THREE_WAY_MEASURE_RUNBOOK.md) | Three-way measure T2/T3: fixed diagnostic matrix + correctness smoke gate (no throughput claims) |
 | [AWO_THREE_WAY_T3_CORRECTNESS_SMOKE.md](AWO_THREE_WAY_T3_CORRECTNESS_SMOKE.md) | T3 evidence: three-mode unit + CLI driver-smoke green before numbers |
+| [AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md](AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md) | T4 disk-safe first numbers (smoke slice); diagnostic residual; artifact paths |
+| [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |
 | [../../../spec/performance/README.md](../../../spec/performance/README.md) | PQH-0 live registries |
 | [../../../spec/performance/awo/README.md](../../../spec/performance/awo/README.md) | AWO executable contracts (`verify-awo-contract.sh`) |
 

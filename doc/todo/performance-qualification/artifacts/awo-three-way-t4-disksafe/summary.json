@@ -1,0 +1,39 @@
+{
+  "primary_cell_id": "L4-durable-s16384-c1-o8-43",
+  "class": "smoke",
+  "seed": 42,
+  "max_cells": 1,
+  "label": "DISK-SAFE FIRST SLICE \u2014 NOT diagnostic floors (2GiB/cell), NOT qualification, NOT product",
+  "modes": {
+    "disabled": {
+      "n_runs": 6,
+      "validity": "valid",
+      "reopen_ok": true,
+      "ack_median": 24.0,
+      "throughput_bytes_per_sec_proxy_median": 3701819.1364081386,
+      "throughput_MiB_s_proxy_median": 3.5303298343736063,
+      "e2e_ms_proxy_median": 106.2565625,
+      "logical_bytes_ack": 393216
+    },
+    "static": {
+      "n_runs": 6,
+      "validity": "valid",
+      "reopen_ok": true,
+      "ack_median": 24.0,
+      "throughput_bytes_per_sec_proxy_median": 4096510.5009533884,
+      "throughput_MiB_s_proxy_median": 3.9067368516477474,
+      "e2e_ms_proxy_median": 96.025292,
+      "logical_bytes_ack": 393216
+    },
+    "adaptive": {
+      "n_runs": 6,
+      "validity": "valid",
+      "reopen_ok": true,
+      "ack_median": 24.0,
+      "throughput_bytes_per_sec_proxy_median": 4087092.187101242,
+      "throughput_MiB_s_proxy_median": 3.8977548476231023,
+      "e2e_ms_proxy_median": 96.328271,
+      "logical_bytes_ack": 393216
+    }
+  }
+}
