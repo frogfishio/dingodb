@@ -20,6 +20,7 @@ pub mod policy;
 pub mod queue;
 pub mod runtime;
 pub mod selector;
+pub mod telemetry;
 pub mod types;
 
 pub use controller::{
@@ -39,6 +40,10 @@ pub use estimator::{
 pub use selector::{
     candidate_entry_counts, collection_delay_ns, select_plan, CandidateBounds, Selection,
     CANDIDATE_POW2,
+};
+pub use telemetry::{
+    AdaptiveWriteInspect, ScaleTelemetry, BENCHMARK_DISCLOSURE, SUPPORT_MATRIX,
+    UPGRADE_ROLLBACK_NOTE,
 };
 pub use credits::{
     mutation_credit, CreditError, CreditLedger, COMPLETION_SLOT_OVERHEAD, ENVELOPE_FIXED_OVERHEAD,

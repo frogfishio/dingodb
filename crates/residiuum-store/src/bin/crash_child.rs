@@ -6,7 +6,7 @@
 //!
 //! Environment:
 //! - `RESIDIUUM_CRASH_STORE` — store directory (required)
-//! - `RESIDIUUM_CRASH_OP` — `put_durable` | `delete_durable` | `seed_prior` (required)
+//! - `RESIDIUUM_CRASH_OP` — `put_durable` | `put_many_durable` | `delete_durable` | `seed_prior`
 //! - `RESIDIUUM_CRASH_FP` — failpoint name to arm with Abort (optional; omit to finish cleanly)
 //! - `RESIDIUUM_CRASH_KEY` — subject key (default `k`)
 //! - `RESIDIUUM_CRASH_VAL` — put payload (default `v-new`)
@@ -68,6 +68,34 @@ fn main() -> ExitCode {
                 Ok(_) => ExitCode::SUCCESS,
                 Err(e) => {
                     eprintln!("put: {e}");
+                    ExitCode::from(5)
+                }
+            }
+        }
+        // AWO multi-process cells: put_many hits awo.persist.* / awo.publish.* failpoints.
+        "put_many_durable" => {
+            let mut s = match Store::open(&store_path) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("open: {e}");
+                    return ExitCode::from(3);
+                }
+            };
+            if let Some(ref name) = fp {
+                let leaked: &'static str = Box::leak(name.clone().into_boxed_str());
+                arm_failpoint_once(leaked, FailpointAction::Abort);
+            }
+            let k2 = format!("{key}-b");
+            match s.put_many(
+                &[
+                    (key.as_str(), val.as_bytes()),
+                    (k2.as_str(), b"v-b"),
+                ],
+                DurabilityMode::Durable,
+            ) {
+                Ok(_) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("put_many: {e}");
                     ExitCode::from(5)
                 }
             }

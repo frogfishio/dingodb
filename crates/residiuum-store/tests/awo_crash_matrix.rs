@@ -151,3 +151,75 @@ fn short_write_cell_poisons_writer() {
     assert!(store.is_awo_writer_poisoned());
     clear_failpoints();
 }
+
+/// Multi-process abort at `awo.persist.before` via crash-child `put_many_durable`.
+#[test]
+fn multiprocess_abort_awo_persist_before() {
+    use std::process::Command;
+
+    clear_failpoints();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("s");
+    {
+        let mut s = Store::create(&path).unwrap();
+        s.put("prior", b"prior-v1", DurabilityMode::Durable).unwrap();
+    }
+
+    let bin = crash_child_bin();
+    if !bin.is_file() {
+        // Profile without crash-child binary: skip honestly (not a silent pass).
+        eprintln!("skip multiprocess: crash-child missing at {}", bin.display());
+        return;
+    }
+    let status = Command::new(&bin)
+        .env("RESIDIUUM_CRASH_STORE", &path)
+        .env("RESIDIUUM_CRASH_OP", "put_many_durable")
+        .env("RESIDIUUM_CRASH_FP", "awo.persist.before")
+        .env("RESIDIUUM_CRASH_KEY", "awo/mp/k")
+        .env("RESIDIUUM_CRASH_VAL", "v-new")
+        .status()
+        .expect("spawn crash child");
+    assert!(
+        !status.success(),
+        "child must abort at awo.persist.before; status={status:?}"
+    );
+
+    let store = Store::open(&path).expect("reopen");
+    assert_eq!(
+        store.get("prior").unwrap().as_deref(),
+        Some(b"prior-v1".as_slice())
+    );
+    assert!(
+        store.get("awo/mp/k").unwrap().is_none(),
+        "batch aborted before persist must not publish"
+    );
+    assert!(store.get("awo/mp/k-b").unwrap().is_none());
+    clear_failpoints();
+}
+
+fn crash_child_bin() -> std::path::PathBuf {
+    use std::path::PathBuf;
+    if let Ok(p) = std::env::var("CARGO_BIN_EXE_residiuum_store_crash_child") {
+        return PathBuf::from(p);
+    }
+    let mut exe = std::env::current_exe().expect("current_exe");
+    exe.pop();
+    if exe.file_name().and_then(|s| s.to_str()) == Some("deps") {
+        exe.pop();
+    }
+    exe.push("residiuum-store-crash-child");
+    if exe.is_file() {
+        return exe;
+    }
+    let mut alt = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    alt.pop();
+    alt.pop();
+    alt.push("target");
+    alt.push(if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    });
+    alt.push("residiuum-store-crash-child");
+    alt
+}

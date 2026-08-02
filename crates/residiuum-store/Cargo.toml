@@ -258,6 +258,10 @@ required-features = ["legacy-raw-store"]
 name = "awo_crash_matrix"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "awo_productisation"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]

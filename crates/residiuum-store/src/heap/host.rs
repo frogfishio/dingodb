@@ -1,8 +1,8 @@
 //! Store host with no unscoped data plane (`HEAP_SPEC` HP-003).
 
 use crate::adaptive_write::{
-    AdaptiveWriteError, AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy,
-    AdaptiveWriteStatus,
+    AdaptiveWriteError, AdaptiveWriteHandle, AdaptiveWriteInspect, AdaptiveWriteMode,
+    AdaptiveWritePolicy, AdaptiveWriteStatus,
 };
 use crate::error::StoreError;
 use crate::kernel::PhysicalStore;
@@ -145,12 +145,29 @@ impl StoreHost {
         self.adaptive.as_ref().map(|h| h.status())
     }
 
+    /// Operator inspection report (AWO-7). Always available; unattached ⇒ disabled snapshot.
+    pub fn adaptive_write_inspect(&self) -> AdaptiveWriteInspect {
+        AdaptiveWriteInspect::from_status(self.adaptive_write_status().as_ref())
+    }
+
     /// Drain adaptive admits until idle or deadline (no-op when disabled/absent).
     pub fn drain_writes(&self, deadline: Instant) -> Result<(), AdaptiveWriteError> {
         match &self.adaptive {
             Some(h) => h.drain_writes(deadline),
             None => Ok(()),
         }
+    }
+
+    /// Detach adaptive runtime and clear lease (AWO-7 reset). Host remains usable natural.
+    pub fn reset_adaptive_write(&mut self) -> Result<(), StoreError> {
+        if let Some(prev) = self.adaptive.take() {
+            let mut guard = self
+                .physical
+                .lock()
+                .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?;
+            prev.detach(&mut guard);
+        }
+        Ok(())
     }
 
     /// Store root path (operational metadata only).

@@ -12,6 +12,7 @@ Card: `5a8f98d0-5f89-42b3-8f70-b12f2eeccc2f`
 | Wired put_many Error cells (8) hit-proof + no publish | `each_wired_error_failpoint_aborts_without_index_publish` |
 | Deferred reserve/cook cells named, unvisited on put_many | `deferred_cells_named_but_not_required_on_put_many` |
 | Short-write poison cell | `short_write_cell_poisons_writer` |
+| Multi-process abort at `awo.persist.before` | `multiprocess_abort_awo_persist_before` (+ crash-child `put_many_durable`) |
 | Adaptive admit uses `select_plan` when cold → natural 1 | `awo_adaptive_oracle` adaptive_mode test |
 
 ## Explicit non-claims
