@@ -14,7 +14,8 @@ testrig.
 | [PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md](PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md) | Measurement semantics, experiment matrix, metrics, attribution mathematics, safety and acceptance |
 | [PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md](PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md) | Packages, dependencies, artifacts, tests and delivery order |
 | [ADAPTIVE_WRITE_OPTIMISER_SPEC.md](ADAPTIVE_WRITE_OPTIMISER_SPEC.md) | Post-PQH adaptive intake, cooking, write-pipeline, acknowledgement, control, proof and qualification contract |
-| [../../spec/performance/README.md](../../spec/performance/README.md) | PQH-0 live registries |
+| [ADAPTIVE_WRITE_OPTIMISER_IMPLEMENTATION_PLAN.md](ADAPTIVE_WRITE_OPTIMISER_IMPLEMENTATION_PLAN.md) | Exact std-thread architecture, Rust contracts, algorithms, defaults, files, packages, tests and acceptance commands |
+| [../../../spec/performance/README.md](../../../spec/performance/README.md) | PQH-0 live registries |
 
 Profile: `residiuum-performance-qualification-v1`
 

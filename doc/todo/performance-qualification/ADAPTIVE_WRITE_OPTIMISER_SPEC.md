@@ -1,6 +1,6 @@
 # Residiuum Adaptive Write Optimiser specification
 
-Status: **normative design v0.1-draft — implementation candidate after PQH qualification**
+Status: **normative design v1.0-draft — developer-ready with implementation plan; execution requires admission**
 
 Program: `AWO`
 
@@ -11,6 +11,7 @@ Normative companions:
 
 - [Performance Qualification Harness](PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md)
 - [Performance Qualification implementation plan](PERFORMANCE_QUALIFICATION_IMPLEMENTATION_PLAN.md)
+- [Adaptive Write Optimiser implementation plan](ADAPTIVE_WRITE_OPTIMISER_IMPLEMENTATION_PLAN.md)
 - [Crash and recovery contract](../../reference/operations/CRASH_AND_RECOVERY_CONTRACT.md)
 - [Benchmark disclosure](../../reference/operations/BENCHMARK_DISCLOSURE.md)
 - [Parallel ingest](../../reference/operations/PARALLEL_INGEST.md)
@@ -349,12 +350,12 @@ For candidate plan `p`:
 
 ```text
 J(p) =
-    weighted_mean_completion(p)
-  + alpha * predicted_p99_completion(p)
-  + beta  * resource_pressure(p)
+    predicted_mean_completion_ns(p)
+  + predicted_tail_completion_ns(p)
 ```
 
-Hard constraints precede optimisation:
+Resource pressure remains a hard bound rather than a mixed-unit objective.
+Hard constraints precede optimisation at admission:
 
 ```text
 for every r in p:
@@ -365,6 +366,12 @@ ordering_preserved(p)
 lane_compatible(p)
 durability_preserved(p)
 ```
+
+If no known plan can meet the deadline, reject before admission. If service
+conditions degrade after admission so every plan is predicted late, AWO adds no
+further collection delay and selects the plan with the smallest conservative
+tail. It records explicit deadline mitigation; it does not discard admitted
+work or pretend the deadline remains achievable.
 
 Batching may be selected only when:
 
@@ -639,7 +646,9 @@ selector:
 - rejects every hard-constraint violation;
 - batches only when its conservative objective beats natural release by the
   decision margin;
-- flushes no later than the earliest deadline under its clock assumptions; and
+- adds no collection delay past the latest safe start for the earliest deadline,
+  or enters explicit best-effort deadline mitigation when all post-admission
+  plans are already late; and
 - falls back naturally when evidence is missing/stale.
 
 This proves policy conformance, not that a physical machine obeys a prediction.
@@ -820,4 +829,3 @@ sparse/latency region → adaptive efficiency region → bounded saturation regi
 
 Beyond saturation, AWO applies bounded backpressure. It never converts overload
 into unbounded memory growth or weaker durability.
-

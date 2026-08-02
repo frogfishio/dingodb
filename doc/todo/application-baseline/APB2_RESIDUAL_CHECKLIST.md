@@ -83,12 +83,15 @@ Exit language (MUST_ADD §6): *concurrent lost-update, crash, retry, damage, and
 
 ## 6. Recommended next labor (after this checklist)
 
-| Priority | Slice | Outcome |
+| Priority | Board card (pre-staged) | Outcome |
 |---:|---|---|
-| 1 | ~~Remote wire CAS~~ | **T7 done** |
-| 2 | ~~Embedded concurrent lost-update~~ | **T8 done** (multi-process remote residual) |
-| 3 | Crash/retry matrix named cells | Closes R3 partial |
+| 1 | ~~T7 remote wire~~ | **done (in_review)** |
+| 2 | ~~T8 concurrent embedded~~ | **done (in_review)** |
+| 3 | **T9** crash/retry `5ffd205b` | Closes R3 partial — **pull this card** |
+| 4 | **T10** multi-process remote concurrent `32ff87be` | Multi-client residual |
 | — | Principal package accept only when exit matrices + scoreboard gate | Accept |
+
+**GOV:** Do not invent T11+ at package start. Pre-stage then pull.
 
 ---
 

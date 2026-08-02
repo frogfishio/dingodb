@@ -14,5 +14,6 @@ Profile: `residiuum-performance-qualification-v1`
 | matrix-v1.json | Axes + seed required cells |
 | schemas/ | Manifest/result/comparison JSON Schemas |
 | fixtures/ | Accepted/rejected vectors |
+| awo/ | Adaptive Write Optimiser closed contracts and golden selector vectors |
 
 Verify: `bash scripts/verify-performance-registry.sh`

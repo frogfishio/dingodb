@@ -1,0 +1,17 @@
+{
+  "format": "residiuum-awo-states-v1",
+  "profile": "residiuum-adaptive-write-v1",
+  "items": [
+    {"id": "received", "terminal": false, "authority": "no"},
+    {"id": "queued", "terminal": false, "authority": "no"},
+    {"id": "cooking", "terminal": false, "authority": "no"},
+    {"id": "ready", "terminal": false, "authority": "no"},
+    {"id": "persisting", "terminal": false, "authority": "no"},
+    {"id": "persisted", "terminal": false, "authority": "yes"},
+    {"id": "published", "terminal": false, "authority": "yes"},
+    {"id": "acknowledged", "terminal": true, "authority": "yes"},
+    {"id": "rejected", "terminal": true, "authority": "no"},
+    {"id": "failed", "terminal": true, "authority": "no"},
+    {"id": "uncertain_pending_recovery", "terminal": true, "authority": "unknown"}
+  ]
+}

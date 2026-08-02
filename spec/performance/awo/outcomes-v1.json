@@ -1,0 +1,16 @@
+{
+  "format": "residiuum-awo-outcomes-v1",
+  "profile": "residiuum-adaptive-write-v1",
+  "items": [
+    {"id": "acknowledged", "admitted": true, "retryable": false},
+    {"id": "rejected_queue_full", "admitted": false, "retryable": true},
+    {"id": "rejected_admission_deadline", "admitted": false, "retryable": true},
+    {"id": "rejected_draining", "admitted": false, "retryable": true},
+    {"id": "failed_validation", "admitted": false, "retryable": false},
+    {"id": "failed_before_persist", "admitted": true, "retryable": true},
+    {"id": "failed_known_not_persisted", "admitted": true, "retryable": true},
+    {"id": "uncertain_pending_recovery", "admitted": true, "retryable": "same_operation_id_only"},
+    {"id": "writer_poisoned", "admitted": false, "retryable": "after_reopen"}
+  ]
+}
+

@@ -1,0 +1,26 @@
+{
+  "format": "residiuum-awo-decision-reasons-v1",
+  "profile": "residiuum-adaptive-write-v1",
+  "items": [
+    {"id": "natural_single_request", "plan": "natural"},
+    {"id": "natural_no_positive_gain", "plan": "natural"},
+    {"id": "natural_insufficient_evidence", "plan": "natural"},
+    {"id": "natural_stale_model", "plan": "natural"},
+    {"id": "natural_deadline", "plan": "natural"},
+    {"id": "natural_deadline_mitigation", "plan": "natural"},
+    {"id": "natural_incompatible", "plan": "natural"},
+    {"id": "natural_memory_bound", "plan": "natural"},
+    {"id": "natural_arithmetic_overflow", "plan": "natural"},
+    {"id": "natural_tie", "plan": "natural"},
+    {"id": "batch_existing_backlog", "plan": "batch"},
+    {"id": "batch_predicted_arrival_gain", "plan": "batch"},
+    {"id": "batch_deadline_mitigation", "plan": "batch"},
+    {"id": "forced_deadline", "plan": "natural"},
+    {"id": "forced_max_entries", "plan": "batch"},
+    {"id": "forced_max_bytes", "plan": "batch"},
+    {"id": "forced_segment_boundary", "plan": "batch"},
+    {"id": "forced_fence", "plan": "natural"},
+    {"id": "forced_drain", "plan": "natural"},
+    {"id": "controller_fallback", "plan": "natural"}
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "format": "residiuum-awo-profile-registry-v1",
+  "profile": "residiuum-adaptive-write-v1",
+  "states_registry": "states-v1.json",
+  "transitions_registry": "transitions-v1.json",
+  "decision_reasons_registry": "decision-reasons-v1.json",
+  "outcomes_registry": "outcomes-v1.json",
+  "policy_registry": "policy-v1.json",
+  "golden_decisions": "golden-decisions-v1.json",
+  "modes": ["disabled", "static", "adaptive"],
+  "eligible_v1": ["unconditional_inline_put", "unconditional_delete"],
+  "natural_v1": [
+    "conditional_put",
+    "conditional_delete",
+    "chunked_put",
+    "memory_durability",
+    "atomics",
+    "cluster_commit",
+    "maintenance"
+  ]
+}
+

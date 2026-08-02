@@ -1,0 +1,39 @@
+{
+  "format": "residiuum-awo-policy-v1",
+  "profile": "residiuum-adaptive-write-v1",
+  "defaults": {
+    "mode_before_awo7": "disabled",
+    "queue_entry_limit": 8192,
+    "queue_byte_limit": 67108864,
+    "maximum_batch_entries": 1024,
+    "maximum_batch_bytes": 16777216,
+    "maximum_collection_delay_ns": 250000,
+    "default_completion_deadline_ns": 30000000000,
+    "minimum_active_cookers": 1,
+    "maximum_cookers_cap": 16,
+    "maximum_cookers_formula": "min(max(available_parallelism-1,1),16)",
+    "pipeline_depth_limit": 2,
+    "decision_margin_ppm": 100000,
+    "estimator_alpha_denominator": 8,
+    "estimator_deviation_multiplier": 3,
+    "estimator_min_samples": 32,
+    "estimator_stale_after_ns": 30000000000,
+    "controller_interval_ns": 100000000,
+    "scale_up_consecutive_intervals": 5,
+    "scale_down_consecutive_intervals": 20,
+    "scale_up_utilization_ppm": 800000,
+    "scale_down_utilization_ppm": 300000,
+    "ready_queue_scale_down_ppm": 750000,
+    "scale_up_dwell_ns": 500000000,
+    "scale_down_dwell_ns": 2000000000
+  },
+  "validation": {
+    "pipeline_depth_min": 1,
+    "pipeline_depth_max": 4,
+    "maximum_cookers_hard_max": 64,
+    "maximum_collection_delay_hard_max_ns": 10000000,
+    "queue_must_hold_one_maximum_batch": true,
+    "deadline_must_not_precede_collection_cap": true
+  },
+  "candidate_entries": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, "queued_count"]
+}

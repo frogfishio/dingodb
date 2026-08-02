@@ -212,8 +212,12 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **APB-2 T6** residual checklist `1b8a52b7` | `in_review` | honesty map; **never** self-mark package accept |
 | — | **APB-2 T7** remote wire CAS `e11fdb0c` | `in_review` | heap if_version/if_absent + façade remote; dual pack green |
 | — | **APB-2 T8** concurrent CAS `2a28fea4` | `in_review` | multi-thread lost-update one-wins; residual multi-process |
+| — | **APB-2 T9** crash/retry matrix `5ffd205b` | `todo` | **pre-staged** R3; pull this next for APB-2 exit labor |
+| — | **APB-2 T10** multi-process remote concurrent `32ff87be` | `todo` | **pre-staged** after T8 multi-process residual |
 
 **Process honesty (2026-08-02):** T1–T3 were often **JIT-created at package start** (scoreboard compass + create-on-pull). That is half-winging. Fix: **pre-stage** remaining sequence as `todo` before code turns; pull only existing cards.
+
+**Process honesty (later same day, APB-2):** After pre-staged **T5/T6** pulls, **T7/T8** were again **create-on-pull** from residual checklist markdown (not pre-staged `todo`). Course-correct: pre-stage **T9 crash/retry (R3)** `5ffd205b` + **T10 multi-process remote concurrent** as `todo`; next keep-going pulls existing cards only.
 
 Program order (packages; Kanban cards bind labor under them):
 

@@ -1,0 +1,19 @@
+{
+  "format": "residiuum-awo-transitions-v1",
+  "profile": "residiuum-adaptive-write-v1",
+  "items": [
+    {"id": "reject", "from": "received", "to": "rejected"},
+    {"id": "admit", "from": "received", "to": "queued"},
+    {"id": "start_cook", "from": "queued", "to": "cooking"},
+    {"id": "natural_fail", "from": "queued", "to": "failed"},
+    {"id": "cook_complete", "from": "cooking", "to": "ready"},
+    {"id": "cook_fail", "from": "cooking", "to": "failed"},
+    {"id": "start_persist", "from": "ready", "to": "persisting"},
+    {"id": "persist_complete", "from": "persisting", "to": "persisted"},
+    {"id": "persist_fail_known", "from": "persisting", "to": "failed"},
+    {"id": "persist_fail_uncertain", "from": "persisting", "to": "uncertain_pending_recovery"},
+    {"id": "publish", "from": "persisted", "to": "published"},
+    {"id": "acknowledge", "from": "published", "to": "acknowledged"}
+  ]
+}
+

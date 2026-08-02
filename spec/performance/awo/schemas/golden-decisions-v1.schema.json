@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-awo-golden-decisions-v1.json",
+  "title": "residiuum-awo-golden-decisions-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "profile", "items"],
+  "properties": {
+    "format": {"const": "residiuum-awo-golden-decisions-v1"},
+    "profile": {"const": "residiuum-adaptive-write-v1"},
+    "items": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "queue_count", "natural_service_lower_ns",
+          "batch_completion_upper_ns", "decision_margin_ppm",
+          "evidence_warm", "evidence_stale", "compatible", "memory_ok",
+          "earliest_deadline_ns", "expected_plan", "expected_reason"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "queue_count": {"type": "integer", "minimum": 1},
+          "natural_service_lower_ns": {"type": "integer", "minimum": 0},
+          "batch_completion_upper_ns": {"type": "integer", "minimum": 0},
+          "decision_margin_ppm": {"type": "integer", "minimum": 0, "maximum": 999999},
+          "evidence_warm": {"type": "boolean"},
+          "evidence_stale": {"type": "boolean"},
+          "compatible": {"type": "boolean"},
+          "memory_ok": {"type": "boolean"},
+          "earliest_deadline_ns": {"type": "integer", "minimum": 0},
+          "expected_plan": {"enum": ["natural", "batch"]},
+          "expected_reason": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
+
