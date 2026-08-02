@@ -1,6 +1,6 @@
 # DEF-SCAN-001 — structured locator faults + honest heap scan pages (P0)
 
-**Status:** T7–T8 **accepted (labor only)**; T9 **in_review** (blocker #5 index path); package **not** accepted  
+**Status:** T7–T8 **accepted (labor only)**; T9 query-time materialization useful; T10 **in_review** = true blocker #5 (index **construction**); package **not** accepted  
 **Date:** 2026-08-02  
 **Board:** Feature `DEF-SCAN-001`  
 **Severity:** **P0**
@@ -75,16 +75,26 @@ Op **115** result **requires**:
 
 SDK `parse_scan_json_wire` rejects missing fields and contradictions (`ProtocolViolation`).
 
-### Secondary-index safety (T9 / blocker #5)
+### Secondary-index safety
 
-Op **116** `find` must track incompleteness on **every** materialization source:
+#### Query-time materialization (T9 — useful, not the original defect)
 
-- **Index path:** each candidate `get` that is hole-class (`LocatorFault`, segment missing, partial, …) or `index_candidate_absent` is listed in `incomplete` — not silent skip / not rows-only success.
-- **Scan path:** same `incomplete` + `coverage_complete` fields.
+Op **116** `find` tracks incompleteness when **candidates are already in the index**.
 
-Required find fields: `rows`, `incomplete`, `coverage_complete` (`coverage_complete` ⇔ empty `incomplete`).
+#### Construction-time omission (T10 — true blocker #5)
 
-SDK: `parse_find_wire` / `FindWirePage`; remote `find_json` fail-closes with `CoverageIncomplete` when holes are present.
+```text
+document B has an unresolved locator
+→ index build silently omits B
+→ index marked Ready + complete_coverage
+→ later query returns zero candidates for B
+→ no candidate exists to generate a hole
+→ false authoritative absence
+```
+
+**Required:** heap `create_index` / `fill_index_from_collection` must set `saw_incomplete` when scan pages report holes, and **`mark_partial`** (not `mark_ready`) so `may_prove_absence()` is false. Resume uses `page.last_key` (examined, including holes).
+
+Legacy flat-SDK build already used `scan_live_bodies_for_build` + Partial on incomplete; heap path was the gap.
 
 Physical `IncompleteReason` still maps the distinct locator kinds.
 
@@ -93,10 +103,10 @@ Physical `IncompleteReason` still maps the distinct locator kinds.
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test def_scan_001_segment_not_found
-# 8/8
+# 9/9
 ```
 
-Tests assert: SegmentNotFound holes carry segment_id; present-media corrupt frames carry path/file_len/cause; offset-past-EOF carries path + file_len + cause; multipage continues from `last_key` including holes; `CollectionScanHole::from_error` is shared for index+scan sources.
+Tests assert locator diagnostics, multipage `last_key`, shared `from_error`, and **index build with unresolved locator → Partial (not Ready)**.
 
 Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.
 

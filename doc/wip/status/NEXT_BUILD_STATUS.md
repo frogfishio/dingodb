@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (**P0:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) T7–T8 **labor accepted** (not package); T9 **in_review** — find/index incompleteness on every source; no package accept; query spine / APB **in_review**)
+Updated: 2026-08-02 (**P0:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) T7–T8 labor accepted; T9 query-time materialization; T10 **in_review** — index **construction** refuses Ready when build sees unresolved locators (true blocker #5); no package accept; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

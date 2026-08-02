@@ -50,7 +50,11 @@ fn mint_cap(heap: HeapId, deployment: DeploymentId) -> residiuum_heap::HeapCap {
         authority_generation: AuthorityGeneration::new(1).unwrap(),
         certificate_id: CertificateId::new_random().unwrap(),
         holder_public_key: [4u8; 32],
-        rights: Rights::from_bits_certificate(0x5).unwrap(),
+        // READ | WRITE | INDEX_ADMIN — index build tests need INDEX_ADMIN.
+        rights: Rights::from_bits_certificate(
+            Rights::READ.bits() | Rights::WRITE.bits() | Rights::INDEX_ADMIN.bits(),
+        )
+        .unwrap(),
         constraints: Constraints::empty(),
         not_before: 1,
         expires_at: 4_000_000_000,
@@ -417,7 +421,111 @@ fn empty_entries_with_holes_is_not_empty_live() {
     assert!(!page.complete);
 }
 
-/// Secondary-index materialization uses the same hole mapping as scan (blocker #5).
+/// Construction-time: unresolved locator during index build must not yield
+/// Ready+complete_coverage (false authoritative absence).
+#[test]
+fn index_build_with_unresolved_locator_is_partial_not_ready() {
+    use residiuum_store::IndexState;
+    use serde_json::json;
+
+    let ctx = open_heap_with_collection("gremlin.work.index_build");
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.set_seal_threshold(2 * 1024);
+    }
+    // Cohort A then seal; cohort B — delete A's segment so A becomes holes.
+    for i in 0..4 {
+        let k = format!("a/{i}");
+        let body = {
+            let mut v = vec![0x01];
+            v.extend(serde_json::to_vec(&json!({"status": "open", "i": i})).unwrap());
+            v
+        };
+        ctx.heap
+            .put_collection(&ctx.collection_id, k.as_bytes(), &body)
+            .unwrap();
+    }
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.seal_active().unwrap();
+    }
+    for i in 0..4 {
+        let k = format!("b/{i}");
+        let body = {
+            let mut v = vec![0x01];
+            v.extend(serde_json::to_vec(&json!({"status": "open", "i": i + 10})).unwrap());
+            v
+        };
+        ctx.heap
+            .put_collection(&ctx.collection_id, k.as_bytes(), &body)
+            .unwrap();
+    }
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.seal_active().unwrap();
+    }
+    let paths = StorePaths::new(&ctx.root);
+    let mut sealed: Vec<_> = fs::read_dir(paths.segments_dir())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .collect();
+    sealed.sort();
+    assert!(sealed.len() >= 2);
+    fs::remove_file(&sealed[0]).unwrap();
+
+    // Scan sees holes (A cohort).
+    let page = scan_all(&ctx.heap, &ctx.collection_id).unwrap();
+    assert!(!page.complete);
+    assert!(!page.incomplete.is_empty());
+
+    let idx = ctx
+        .heap
+        .create_index(&ctx.collection_id, "by_status", &["status"])
+        .expect("index build must complete without hard-abort");
+    assert_eq!(
+        idx.meta.state,
+        IndexState::Partial,
+        "holes during build ⇒ Partial, not Ready (got {:?})",
+        idx.meta.state
+    );
+    assert!(
+        !idx.meta.complete_coverage,
+        "must not claim complete_coverage when build saw incomplete locators"
+    );
+    assert!(
+        !idx.meta.may_prove_absence(),
+        "Ready+complete_coverage would enable false authoritative absence"
+    );
+    // Survivors may still accelerate hits.
+    assert!(idx.meta.may_accelerate_hits());
+
+    // Empty equality lookup must not be treated as proven absence: heap
+    // lookup falls through when may_prove_absence is false.
+    let found = ctx
+        .heap
+        .lookup_index_keys(
+            &ctx.collection_id,
+            &[("status".into(), json!("open"))],
+        )
+        .unwrap();
+    // Index may return Some(candidates) for hits, or we skip for empty when
+    // absence not proven. Either way we must not get "authoritative empty"
+    // that suppresses scan: if Some(empty), that would only be legal with
+    // may_prove_absence (which we forbade).
+    if let Some(keys) = found {
+        assert!(
+            !keys.is_empty() || !idx.meta.may_prove_absence(),
+            "empty candidate set with may_prove_absence would be false absence"
+        );
+    }
+}
+
+/// Query-time hole mapping (T9) still applies when candidates are present.
 #[test]
 fn locator_fault_maps_to_hole_for_index_and_scan_sources() {
     use residiuum_store::{LocatorFault, LocatorFaultKind};

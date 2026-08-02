@@ -575,7 +575,11 @@ impl HeapStore {
             guard.segment_fingerprint()?
         };
         idx.begin_build(build_id, fp, false);
-        self.fill_index_from_collection(collection_id, &mut idx)?;
+        // DEF-SCAN-001 blocker #5 (construction-time): incomplete locators during
+        // the build walk must prevent Ready+complete_coverage. Otherwise document B
+        // is omitted from postings, the index is Ready, and empty lookup falsely
+        // proves absence (no candidate remains to surface a query-time hole).
+        let saw_incomplete = self.fill_index_from_collection(collection_id, &mut idx)?;
         let fp_final = {
             let guard = self
                 .physical
@@ -583,7 +587,12 @@ impl HeapStore {
                 .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
             guard.segment_fingerprint()?
         };
-        if fp_final == idx.meta.source_frontier {
+        if saw_incomplete {
+            idx.mark_partial(
+                fp_final,
+                "incomplete locators/payloads during index build; absence not proven",
+            );
+        } else if fp_final == idx.meta.source_frontier {
             idx.mark_ready(fp_final);
         } else {
             idx.mark_partial(fp_final, "source frontier drifted during build");
@@ -632,15 +641,24 @@ impl HeapStore {
         self.create_index(collection_id, name, &field_refs)
     }
 
+    /// Walk live collection subjects into `idx`. Returns `true` if any subject
+    /// was incomplete (unresolved locator / partial payload / etc.) and was
+    /// therefore **not** posted — caller must not mark Ready+complete_coverage.
     fn fill_index_from_collection(
         &self,
         collection_id: &[u8; 16],
         idx: &mut SecondaryIndex,
-    ) -> Result<(), StoreError> {
+    ) -> Result<bool, StoreError> {
         let mut after: Option<Vec<u8>> = None;
+        let mut saw_incomplete = false;
         loop {
             let page = self.scan_collection(collection_id, 4096, after.as_deref())?;
-            if page.entries.is_empty() && !page.has_more {
+            if !page.incomplete.is_empty() {
+                // Construction-time holes: do not invent field postings; record
+                // that coverage is incomplete so Ready absence proofs are refused.
+                saw_incomplete = true;
+            }
+            if page.entries.is_empty() && page.incomplete.is_empty() && !page.has_more {
                 break;
             }
             for (key, body) in &page.entries {
@@ -661,16 +679,14 @@ impl HeapStore {
                     idx.insert(ik, subject);
                 }
             }
-            after = page
-                .entries
-                .last()
-                .map(|(k, _)| k.clone())
-                .or_else(|| page.incomplete.last().map(|h| h.key.clone()));
+            // Resume after last *examined* key (complete or hole), never only
+            // the last complete row — same cursor honesty as scan pages.
+            after = page.last_key.clone();
             if !page.has_more {
                 break;
             }
         }
-        Ok(())
+        Ok(saw_incomplete)
     }
 
     /// Scan live (key, body) pairs in a collection under this heap.
