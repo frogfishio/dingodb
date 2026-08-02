@@ -32,37 +32,93 @@ Or: `cargo add residiuum-server`
 > version triggers the AGPL source-offer obligation. Prefer MIT
 > `residiuum-client` + MPL `residiuum-sdk` (embedded) if you only need a local store.
 
-## Quick example
+## Quick example (product path — HeapKey)
 
-Single-node serve on loopback (development):
+**HAR-4:** product serve is the **qualified HeapKey** listener.  
+`ServeOptions::new()` / `default()` sets `qualified_heap_key=true`. That path
+requires TLS 1.3, a resident heap registry, and a deployment id. Clients use
+`Residiuum::connect_heap` — not a shared token.
+
+Single-node serve on loopback (shape; registry/credential from authority install):
 
 ```rust
 use residiuum_server::{serve_store_with, ServeOptions};
+use residiuum_sdk::TlsServerOptions;
 use residiuum_store::Store;
 use std::path::Path;
+use std::sync::Arc;
 
-fn run(store_path: &Path) -> Result<(), residiuum_sdk::Error> {
-    // Ensure the store exists before serving.
+fn run(
+    store_path: &Path,
+    cert: &Path,
+    key: &Path,
+    deployment_id: &str,
+    registry: Arc<residiuum_server::ResidentHeapRegistry>,
+) -> Result<(), residiuum_sdk::Error> {
     let _ = Store::create(store_path)?;
 
-    let opts = ServeOptions::default()
-        .auth_token("SECRET"); // optional shared token
+    // Product default: qualified_heap_key=true (HAR-4).
+    let opts = ServeOptions::new()
+        .tls(TlsServerOptions::new(cert, key))
+        .deployment_id(deployment_id)
+        .heap_registry(registry);
 
     // Blocks the current thread in the accept loop.
-    // Default bind policy: loopback only for plaintext.
     serve_store_with(store_path, "127.0.0.1:7434", opts)
 }
 ```
 
-Clients then connect with the SDK:
+Product clients connect with HeapKey + TLS:
 
 ```rust
-use residiuum_sdk::{ConnectOptions, Residiuum};
+use residiuum_sdk::{
+    HeapCredential, RemoteHeapOptions, Residiuum, TlsClientOptions,
+};
 
+// certificate_cose + HolderSigner from local authority (HAR-2/HAR-3).
+let credential = HeapCredential::new(&certificate_cose, holder)?;
+let options = RemoteHeapOptions::new(
+    TlsClientOptions::new("localhost").ca_path(ca_path),
+    credential,
+)
+.expected_heap_name("accounts");
+
+let mut heap = Residiuum::connect_heap(
+    "residiuum://127.0.0.1:7434/accounts",
+    options,
+)?;
+# let _ = heap;
+# Ok::<(), residiuum_sdk::Error>(())
+```
+
+Journey evidence:  
+[HAR4_T4_CONNECT_HEAP_JOURNEY.md](../../doc/todo/heap-application-ready/HAR4_T4_CONNECT_HEAP_JOURNEY.md).
+
+### Appendix — legacy open/token (non-product)
+
+Stage-7 diagnostics and shared-token tests must opt in explicitly.
+**Do not** co-host with qualified HeapKey on one process.
+
+```rust
+use residiuum_server::{serve_store_with, ServeOptions};
+use residiuum_sdk::{ConnectOptions, Residiuum};
+use residiuum_store::Store;
+use std::path::Path;
+
+fn run_legacy(store_path: &Path) -> Result<(), residiuum_sdk::Error> {
+    let _ = Store::create(store_path)?;
+    let opts = ServeOptions::new()
+        .legacy_token_server() // HAR-4: explicit non-product path
+        .auth_token("SECRET");
+    serve_store_with(store_path, "127.0.0.1:7434", opts)
+}
+
+// Legacy client (token path — not product remote):
 let mut db = Residiuum::connect_with(
     "residiuum://127.0.0.1:7434/app",
     ConnectOptions::new().auth_token("SECRET"),
 )?;
+# let _ = db;
 # Ok::<(), residiuum_sdk::Error>(())
 ```
 
@@ -159,12 +215,22 @@ let opts = ServeOptions::new().metrics(Arc::clone(&metrics));
 use residiuum_server::ServeOptions;
 use residiuum_sdk::TlsServerOptions;
 
-let opts = ServeOptions::default()
-    .auth_token("SECRET")
-    // .tls(TlsServerOptions { /* cert, key, optional client CA */ })
+// Product: qualified HeapKey (default). Requires TLS + deployment_id + registry.
+let opts = ServeOptions::new()
+    .tls(TlsServerOptions::new(cert_path, key_path))
+    .deployment_id("00000000-0000-4000-8000-000000000001")
+    // .heap_registry(registry)
     .allow_insecure_bind(false) // refuse non-loopback plaintext
     .experimental_network_cluster(false);
+
+// Non-product Stage-7 open/token: chain legacy_token_server() first.
+// let opts = ServeOptions::new().legacy_token_server().auth_token("SECRET");
 ```
+
+**Auth path (HAR-4):** product = `qualified_heap_key` (default on `ServeOptions`).
+Legacy open/token = `legacy_token_server()`. Co-host is refuse-closed. Config
+keys: `serve.qualified_heap_key`, `serve.legacy_token_server`,
+`serve.deployment_id`.
 
 **Bind policy:** plaintext binds default to loopback. Non-loopback plaintext
 requires `allow_insecure_bind(true)`. Prefer TLS (`ServeOptions::tls`) for

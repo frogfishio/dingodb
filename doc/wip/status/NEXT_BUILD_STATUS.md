@@ -112,7 +112,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | HAR-1 | active | 2026-08-01 | HAR-0, APP-0 | **Reconcile:** op **106** `collection_create` is **active** in `operations-v1.json` + `rpc-v1/collection_create.*` + fixtures; embedded `Heap::create_collection` / `create_collection_idempotent`; server dispatch 106; `RemoteHeap::create_collection`; façade dual create (APB-1 G6b HeapAdmin mint); [HAR1_COLLECTION_CREATE_EVIDENCE.md](../../todo/heap-application-ready/HAR1_COLLECTION_CREATE_EVIDENCE.md) | crash/failpoint/journey residual; product bootstrap cert still no HeapAdmin; **no package accept** | collection creation |
 | HAR-2 | not_started | — | HAR-1 | precursor: `hp005_accept`, authority genesis | CLI ceremony package not accept | local Heap ceremony |
 | HAR-3 | not_started | — | HAR-2 | precursor: certs, handshake | full key lifecycle journey open | application-key lifecycle |
-| HAR-4 | active | 2026-08-02 | HAR-3 | **T0–T3**: product default HeapKey + CLI + config `serve.legacy_token_server` / `qualified_heap_key` / `deployment_id`; co-host fail-closed at validate; effective report `serve.auth_path`; op 118 active (APP-7); gates green; [HAR4_QUERY_REMOTE_GAP_INVENTORY.md](../../todo/heap-application-ready/HAR4_QUERY_REMOTE_GAP_INVENTORY.md) | tutorial journey (T4); **no package accept** | qualified remote path |
+| HAR-4 | active | 2026-08-02 | HAR-3 | **T0–T4**: product default HeapKey + CLI + config auth path + **tutorial journey** (`connect_heap` primary in server/cli/sdk READMEs; token appendix); [HAR4_T4_CONNECT_HEAP_JOURNEY.md](../../todo/heap-application-ready/HAR4_T4_CONNECT_HEAP_JOURNEY.md); [HAR4_QUERY_REMOTE_GAP_INVENTORY.md](../../todo/heap-application-ready/HAR4_QUERY_REMOTE_GAP_INVENTORY.md); op 118 active (APP-7) | package accept residual (principal); full ceremony tutorial HAR-2/3/6 | qualified remote path |
 | HAR-5 | not_started | — | HAR-4 | precursor: wipe/restore/key-loss/DR drills (hp009/hp010) | broader crash cells; non-AWS KMS live | Heap operations |
 | HAR-6 | not_started | — | HAR-5, APB-12 | precursor: RemoteHeap CRUD/find/history/indexes | no qualified application-baseline journey | SDK/CLI journey |
 | HAR-7 | not_started | — | HAR-6 | partial H6 evidence only | M1 critical journey + honest labels | P1 release gate |
@@ -196,6 +196,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | 1 | **APP-7 / T6** op 118 `48b8f01b` | `in_review` | wire active + dispatch + façade; dual pack remote green; **not** package accept |
 | — | **HAR-4 T2** default + legacy flag `98f6e855` | `in_review` | product default qualified; legacy opt-in; no package accept |
 | — | **HAR-4 T3** config auth path `0ee0812c` | `in_review` | config keys + co-host refuse + report labels |
+| — | **HAR-4 T4** connect_heap tutorials `b4eda326` | `in_review` | public READMEs lead with product path; token appendix; no package accept |
 | — | **HAR-4 dep** query remote `7872d5fa` | `in_review` | inventory + gate locks; not package accept |
 | — | **APB-6 T3** view residual `be072203` | `in_review` | retention + PinCapability + multipage accounting |
 | — | **APB-7 T11** multipage oracle matrix `f6633005` | `in_review` | 6/6 multipage vs list_keys+get; residual product dual-remote |

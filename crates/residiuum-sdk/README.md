@@ -16,7 +16,8 @@ Freeze label: `SDK_API_VERSION` = `1.0`.
 | You want… | Use |
 |-----------|-----|
 | Application put/get/find on a local file | **`residiuum-sdk`** (this crate) |
-| Same API over TCP (`residiuum serve`) | **`residiuum-sdk`** (`Residiuum::connect`) |
+| Same collection API over product remote (HeapKey) | **`residiuum-sdk`** (`Residiuum::connect_heap`) |
+| Legacy Stage-7 token remote | **`residiuum-sdk`** (`Residiuum::connect` / `connect_with`) |
 | CLI | [`residiuum-cli`](https://crates.io/crates/residiuum-cli) |
 | Raw subject store / salvage | [`residiuum-store`](https://crates.io/crates/residiuum-store) |
 | Embed a TCP server | [`residiuum-server`](https://crates.io/crates/residiuum-server) |
@@ -76,16 +77,47 @@ let mut db = Residiuum::open(&path)?;
 # Ok::<(), residiuum_sdk::Error>(())
 ```
 
-### Remote
+### Remote (product — HeapKey)
 
-Requires a running server (`residiuum serve ./app.residiuum` or `residiuum serve --token SECRET`):
+**HAR-4:** product remote is `Residiuum::connect_heap` against a **qualified**
+server (`residiuum serve … --qualified-heap-key` + TLS + `--deployment-id`).
+There is no shared token on this path.
+
+```rust
+use residiuum_sdk::{
+    HeapCredential, RemoteHeapOptions, Residiuum, TlsClientOptions,
+};
+
+// certificate_cose + HolderSigner from local authority ceremony (HAR-2/HAR-3).
+let credential = HeapCredential::new(&certificate_cose, holder)?;
+let options = RemoteHeapOptions::new(
+    TlsClientOptions::new("localhost").ca_path(ca_path),
+    credential,
+)
+.expected_heap_name("accounts");
+
+let mut heap = Residiuum::connect_heap(
+    "residiuum://127.0.0.1:7434/accounts",
+    options,
+)?;
+// RemoteHeap: process ops + collection plane (§32.4). Prefer HeapClient::from(remote)
+// for CollectionClient façade when that path is in use.
+# let _ = heap;
+# Ok::<(), residiuum_sdk::Error>(())
+```
+
+Journey:  
+[HAR4_T4_CONNECT_HEAP_JOURNEY.md](../../doc/todo/heap-application-ready/HAR4_T4_CONNECT_HEAP_JOURNEY.md).
+
+#### Appendix — legacy token remote (non-product)
+
+Requires a server started with `--legacy-token-server` (Stage-7 / diagnostics).
+Not the product remote path.
 
 ```rust
 use residiuum_sdk::{json, ConnectOptions, Residiuum};
 use std::time::Duration;
 
-let mut db = Residiuum::connect("residiuum://127.0.0.1:7434/app")?;
-// With auth and timeouts:
 let mut db = Residiuum::connect_with(
     "residiuum://127.0.0.1:7434/app",
     ConnectOptions::new()
@@ -131,7 +163,8 @@ let mut db = Residiuum::create_cluster(
 | SDA/ENR text queries | `Collection::sda` / `filter_sda` (DX §7.6); multi-collection `Residiuum::enr_query().bind(..).run` (`Match`/`enrich`) or `Residiuum::sda(&[…], program)` |
 | History | Per-key immutable event stream |
 | Chunks | Completeness-aware `get_payload` for large bodies |
-| Remote | `Residiuum::connect("residiuum://host:port")` framed `residiuum-rpc-v1` TCP; auth token, deadline, retry |
+| Remote (product) | `Residiuum::connect_heap` — TLS 1.3 + HeapKey; no token |
+| Remote (legacy) | `Residiuum::connect` / `connect_with` — Stage-7 token/open path only |
 | Parity | Remote put/get/delete/scan, history, indexes, `get_payload`, server-side find, `directory` |
 | Cluster | Feature `cluster`: `create_cluster` / `open_cluster`, directory cache, `find_with_coverage` |
 
@@ -142,7 +175,8 @@ Application developers do not need to know about frames or segments.
 | API | Role |
 |-----|------|
 | `Residiuum::open` | Create-or-open store directory with safe defaults |
-| `Residiuum::connect` / `connect_with` | Remote `residiuum://host:port[/label]` or multi-seed |
+| `Residiuum::connect_heap` | Product remote: TLS + HeapKey (`RemoteHeapOptions`) |
+| `Residiuum::connect` / `connect_with` | Legacy Stage-7 token/open remote only |
 | `Residiuum::create_cluster` / `open_cluster` | In-process multi-node (`cluster` feature) |
 | `Residiuum::collection` | Lazy named collection handle |
 | `Collection::put` / `get` / `delete` | JSON values (serde) |

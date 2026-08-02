@@ -82,27 +82,79 @@ residiuum migrate ./app.residiuum --status
 # residiuum migrate ./app.residiuum --rollback
 ```
 
-## Serve (development)
+## Serve
+
+### Product path — qualified HeapKey (HAR-4)
+
+Product remote is TLS + HeapKey, not a shared token. Prefer an explicit
+qualified config (or flags). Clients use `Residiuum::connect_heap`.
 
 ```sh
-# Single-node TCP server (default bind is loopback)
-residiuum serve ./app.residiuum --bind 127.0.0.1:7434
-residiuum serve ./app.residiuum --bind 127.0.0.1:7434 --token SECRET
+# Product listener shape (TLS + deployment id; registry from store/authority install)
+residiuum serve ./app.residiuum \
+  --bind 127.0.0.1:7434 \
+  --qualified-heap-key \
+  --tls-cert ./server.crt --tls-key ./server.key \
+  --deployment-id 00000000-0000-4000-8000-000000000001
 
-# TLS: --tls-cert / --tls-key (optional mTLS via --tls-client-ca)
-# Non-loopback plaintext requires --allow-insecure-bind
+# Or apply a residiuum-config-v1 file with serve.qualified_heap_key=true,
+# serve.deployment_id, and serve.tls.* secret refs (never inline secrets).
+residiuum serve ./app.residiuum --config ./residiuum.json --bind 127.0.0.1:7434
 ```
 
-SDK clients:
+Startup labels `auth_path=qualified-heap-key (product)`.  
+Non-loopback plaintext still requires `--allow-insecure-bind` (prefer TLS).
+
+SDK product client:
+
+```rust
+use residiuum_sdk::{
+    HeapCredential, RemoteHeapOptions, Residiuum, TlsClientOptions,
+};
+
+// certificate_cose + HolderSigner from local authority (HAR-2/HAR-3).
+let credential = HeapCredential::new(&certificate_cose, holder)?;
+let options = RemoteHeapOptions::new(
+    TlsClientOptions::new("localhost").ca_path(ca_path),
+    credential,
+)
+.expected_heap_name("accounts");
+
+let mut heap = Residiuum::connect_heap(
+    "residiuum://127.0.0.1:7434/accounts",
+    options,
+)?;
+# let _ = heap;
+# Ok::<(), residiuum_sdk::Error>(())
+```
+
+Journey:  
+[HAR4_T4_CONNECT_HEAP_JOURNEY.md](../../doc/todo/heap-application-ready/HAR4_T4_CONNECT_HEAP_JOURNEY.md).
+
+### Appendix — legacy open/token (non-product)
+
+Stage-7 / diagnostic shared-token path. Requires **`--legacy-token-server`**.
+Incompatible with `--qualified-heap-key` and with token-on-qualified (fail-closed).
+
+```sh
+residiuum serve ./app.residiuum --bind 127.0.0.1:7434 --legacy-token-server
+residiuum serve ./app.residiuum --bind 127.0.0.1:7434 --legacy-token-server --token SECRET
+```
+
+If auth path is **unset** in config, validate may default apply to
+`legacy-token-server` with a **warning** — that is not a product claim; set
+`serve.qualified_heap_key` + TLS + `deployment_id` for product.
+
+Legacy SDK client (token — not product remote):
 
 ```rust
 use residiuum_sdk::{ConnectOptions, Residiuum};
 
-let mut db = Residiuum::connect("residiuum://127.0.0.1:7434/app")?;
 let mut db = Residiuum::connect_with(
     "residiuum://127.0.0.1:7434/app",
     ConnectOptions::new().auth_token("SECRET"),
 )?;
+# let _ = db;
 # Ok::<(), residiuum_sdk::Error>(())
 ```
 
@@ -129,7 +181,9 @@ residiuum --license
 residiuum --json-out doctor ./app.residiuum   # stable machine-readable output
 ```
 
-Auth token for serve: `--token` or environment variable `RESIDIUUM_TOKEN`.
+Auth path (HAR-4): product uses `--qualified-heap-key` + TLS + `--deployment-id`
+(or config equivalents). Legacy shared token uses `--legacy-token-server` with
+`--token` / `RESIDIUUM_TOKEN` / `serve.token_env` — never both paths together.
 
 ### Configuration (DEF-054)
 
@@ -144,6 +198,7 @@ residiuum serve ./app.residiuum --config ./residiuum.json --bind 127.0.0.1:7434
 
 Secrets belong in the environment or secret files (`serve.token_env`,
 `serve.token_secret_ref` as `env:NAME` / `file:PATH`) — never inline in JSON.
+Product HeapKey credentials are holder-bound certificates (not serve tokens).
 
 ## Guarantees
 

@@ -1,14 +1,15 @@
 # HAR-4 dep — Qualified remote path for query product (gap inventory)
 
-Status: **T0–T3 2026-08-02** (inventory + default flip + config auth path) · package `HAR-4` **active / not accept**  
-Board: `7872d5fa` (Query spine Feature)  
+Status: **T0–T4 2026-08-02** (inventory + default flip + config auth path + tutorial journey) · package `HAR-4` **active / not accept**  
+Board: `7872d5fa` (dep) · T2 `98f6e855` · T3 `0ee0812c` · T4 `b4eda326` (Query spine Feature)  
 Authority: [HEAP_APPLICATION_READY_PLAN.md](./HEAP_APPLICATION_READY_PLAN.md) §HAR-4 ·
 [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md) ·
-[APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md)
+[APB7_QUERY_RUNTIME_GAP_INVENTORY.md](../application-baseline/APB7_QUERY_RUNTIME_GAP_INVENTORY.md) ·
+[HAR4_T4_CONNECT_HEAP_JOURNEY.md](./HAR4_T4_CONNECT_HEAP_JOURNEY.md)
 
 This document maps **what blocks product remote Application Core query**
 (op **118** `rql_query` / APB-7 dual remote claim). It is **not** HAR-4 package
-accept and does **not** activate op 118.
+accept.
 
 ---
 
@@ -42,8 +43,8 @@ Exit highlights:
 | `Residiuum::connect_heap` | `remote_heap.rs` | Qualified client entry |
 | Façade remote CollectionClient | APB-1 | Data plane over RemoteHeap (not op 118) |
 | APP-6/APB-7 embedded query | `query_exec_v1` | Product Core execute **embedded** |
-| Op **118** schemas staged | `spec/heap/rpc-v1/rql_query.*` | Registry **reserved** |
-| Op 118 registry honesty | `operations-v1.json` + `request_registry_allows(118)==false` | Locked in `hp008_heap_handshake` |
+| Op **118** schemas + wire | `spec/heap/rpc-v1/rql_query.*` | **active** (APP-7 T6); package accept residual |
+| Op 118 dispatch + RemoteHeap | `heap_dispatch` / `RemoteHeap::rql_query` | Dual pack remote green on wire |
 
 ---
 
@@ -52,7 +53,7 @@ Exit highlights:
 | ID | Gap | Blocks |
 |---|---|---|
 | H4-G1 | `ServeOptions::qualified_heap_key` not default | **T2 closed** (default true; legacy explicit) |
-| H4-G2 | CLI/tutorials still allow open/token without labels | **T3 partial** — CLI+config labels; tutorials residual (T4) |
+| H4-G2 | CLI/tutorials still allow open/token without labels | **T4 closed (labor)** — public server/cli/sdk READMEs lead with `connect_heap` / qualified serve; token demoted to labeled appendix |
 | H4-G3 | Co-host prohibition not fully productized as config UX | **T3 closed** — config keys + validate co-host refuse + effective report |
 | H4-G4 | Op **118** still **reserved** (no server dispatch / RemoteHeap rql) | **APP-7 T6 closed** (active + dispatch + RemoteHeap); package accept residual |
 | H4-G5 | Dual remote multipage oracle for **product** Core query (op 118) | APB-7 T7 partial (collection-plane dual green); product wire residual |
@@ -90,7 +91,7 @@ Do **not** activate op 118 from this card alone.
 | HAR-4 T1 | This inventory + scoreboard HAR-4→active | **done (in_review)** |
 | HAR-4 T2 | Default config / CLI qualified listener + legacy opt-in flag | **done (in_review)** — `ServeOptions` default qualified; CLI flags; co-host refuse |
 | HAR-4 T3 | Co-host config reject + help/error labels | **done (in_review)** — `serve.legacy_token_server` / `qualified_heap_key` / `deployment_id` |
-| HAR-4 T4 | Journey: tutorial uses `connect_heap` only | Evidence pack |
+| HAR-4 T4 | Journey: tutorial uses `connect_heap` only | **done (in_review)** — [HAR4_T4_CONNECT_HEAP_JOURNEY.md](./HAR4_T4_CONNECT_HEAP_JOURNEY.md) + crate README reframes |
 | APP-7 T1 / APB-7 T6 | Op 118 registry active + dispatch + RemoteHeap + façade | **done (in_review)** — wire active; dual pack remote green |
 
 ---
@@ -109,8 +110,10 @@ Do **not** activate op 118 from this card alone.
 
 | Artifact | Role |
 |---|---|
-| `crates/residiuum-server/src/{serve,heap_session,heap_dispatch}.rs` | Qualified listener + registry |
+| `crates/residiuum-server/src/{serve,heap_session,heap_dispatch,config}.rs` | Qualified listener + registry + auth path config |
 | `crates/residiuum-sdk/src/{remote_heap,tls}.rs` | `connect_heap` + TLS |
-| `crates/residiuum-server/tests/hp008_heap_handshake.rs` | Op 118 reserved lock; `validate_qualified_listener` matrix |
-| `crates/residiuum-server/tests/har4_query_remote_gate.rs` | Gate locks for query dependency (this labor) |
-| `spec/app/baseline-v1/operations-v1.json` | Op 118 reserved notes |
+| `crates/residiuum-{server,cli,sdk}/README.md` | Public tutorials (HAR-4 T4 product path) |
+| [HAR4_T4_CONNECT_HEAP_JOURNEY.md](./HAR4_T4_CONNECT_HEAP_JOURNEY.md) | Journey evidence pack |
+| `crates/residiuum-server/tests/hp008_heap_handshake.rs` | `validate_qualified_listener` matrix |
+| `crates/residiuum-server/tests/har4_query_remote_gate.rs` | Gate locks for query dependency |
+| `spec/app/baseline-v1/operations-v1.json` | Op 118 active (APP-7 T6); package accept residual |
