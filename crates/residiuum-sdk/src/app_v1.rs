@@ -1403,30 +1403,52 @@ impl CollectionClient {
         after_key: Option<&str>,
     ) -> Result<ScanJsonPage, Error> {
         let mut guard = lock_remote(&remote)?;
-        let raw = guard.scan_json(&wire_collection_id, Some(limit), after_key)?;
+        let page = guard.scan_json(&wire_collection_id, Some(limit), after_key)?;
         drop(guard);
-        // Wire response has no explicit has_more; infer from page fill.
-        let exhausted = raw.len() < limit;
-        let next_after_key = if exhausted {
-            None
-        } else {
-            raw.last().map(|(k, _)| k.clone())
-        };
-        let rows: Vec<QueryRow> = raw
+        // Use wire has_more + next_after_key (last examined key). Never derive
+        // continuation from the last successful row — a hole may follow it
+        // (DEF-SCAN-001 blocker #3).
+        let exhausted = !page.has_more;
+        let next_after_key = page.next_after_key;
+        let known_holes: Vec<HoleEvidence> = page
+            .incomplete
+            .iter()
+            .map(|h| {
+                let key = h
+                    .get("key")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let code = h
+                    .get("reason")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("incomplete")
+                    .to_string();
+                HoleEvidence { code, key }
+            })
+            .collect();
+        let rows: Vec<QueryRow> = page
+            .rows
             .into_iter()
             .map(|(key, value)| QueryRow { key, value })
             .collect();
-        let examined = rows.len() as u64;
-        // Remote op 115 does not currently surface holes; claim complete only
-        // when the page is non-empty or empty+exhausted (honest residual).
+        let examined = (rows.len() + known_holes.len()) as u64;
+        let coverage = if page.scan_complete && known_holes.is_empty() {
+            CoverageEvidence::complete(CoveragePolicy::Complete, examined)
+        } else {
+            CoverageEvidence::incomplete(
+                CoveragePolicy::IncompleteAllowed,
+                examined,
+                known_holes.len() as u32,
+            )
+        };
         Ok(ScanJsonPage {
             heap_id: self.heap_id,
             collection_id: self.collection_id,
             rows,
             next_after_key,
             exhausted,
-            coverage: CoverageEvidence::complete(CoveragePolicy::Complete, examined),
-            known_holes: Vec::new(),
+            coverage,
+            known_holes,
         })
     }
 

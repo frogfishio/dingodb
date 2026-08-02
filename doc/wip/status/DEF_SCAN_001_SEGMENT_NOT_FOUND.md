@@ -47,6 +47,15 @@ Only when **no** named media exists is salvage attempted; salvage failures do **
 
 Remote scan JSON (`hole_to_json`) includes `reason` plus `segment_id`, `frame_offset`, `path`, `file_len`, `observed_segment_id`, `cause` when present.
 
+### Wire pagination (T6 / blocker #3)
+
+Op **115** `scan_json` returns:
+
+- `has_more`
+- **`next_after_key`** = `page.last_key` (last **examined** key: complete row **or** hole)
+
+Clients must **not** resume from the last successful row alone — a hole may have been examined after it. SDK `RemoteHeap::scan_json` → `ScanJsonWirePage`; `CollectionClient::scan_json` remote path uses wire `next_after_key` / `has_more` / holes.
+
 Physical `IncompleteReason` still maps the distinct locator kinds.
 
 ## Evidence
@@ -54,10 +63,10 @@ Physical `IncompleteReason` still maps the distinct locator kinds.
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test def_scan_001_segment_not_found
-# 6/6
+# 7/7
 ```
 
-Tests assert: SegmentNotFound holes carry segment_id; present-media corrupt frames carry path/file_len/cause; offset-past-EOF carries path + file_len + cause.
+Tests assert: SegmentNotFound holes carry segment_id; present-media corrupt frames carry path/file_len/cause; offset-past-EOF carries path + file_len + cause; multipage continues from `last_key` including holes.
 
 Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.
 

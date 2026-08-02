@@ -416,3 +416,91 @@ fn empty_entries_with_holes_is_not_empty_live() {
     assert!(!page.is_empty_live());
     assert!(!page.complete);
 }
+
+/// Continuation must follow last *examined* key (hole or complete), not last
+/// successful row — otherwise a trailing hole is re-examined forever / skipped wrong.
+#[test]
+fn multipage_continues_from_last_key_including_hole() {
+    let ctx = open_heap_with_collection("gremlin.work.pagination");
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.set_seal_threshold(4 * 1024);
+    }
+    // Write a then b, seal, wipe media for a's segment if possible — simpler:
+    // write many keys, remove one sealed segment so holes appear mid-range,
+    // page with tiny limit so has_more, assert next after uses last_key.
+    for i in 0..20 {
+        let k = format!("k/{i:03}");
+        ctx.heap
+            .put_collection(
+                &ctx.collection_id,
+                k.as_bytes(),
+                &format!("body-{i}").into_bytes(),
+            )
+            .unwrap();
+        if i == 4 || i == 9 || i == 14 {
+            let phys = ctx.host.physical();
+            let mut g = phys.lock().unwrap();
+            g.seal_active().unwrap();
+        }
+    }
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.seal_active().unwrap();
+    }
+    let paths = StorePaths::new(&ctx.root);
+    let mut sealed: Vec<_> = fs::read_dir(paths.segments_dir())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .collect();
+    sealed.sort();
+    // Drop earliest sealed file so early keys become holes; later keys survive.
+    if !sealed.is_empty() {
+        fs::remove_file(&sealed[0]).unwrap();
+    }
+
+    let page1 = ctx
+        .heap
+        .scan_collection(&ctx.collection_id, 3, None)
+        .expect("page1");
+    assert!(
+        page1.has_more || page1.examined >= 1,
+        "expect multipage or at least one examined"
+    );
+    // last_key must equal the last entry or last hole — never lag behind holes.
+    if let Some(ref lk) = page1.last_key {
+        let last_entry = page1.entries.last().map(|(k, _)| k.as_slice());
+        let last_hole = page1.incomplete.last().map(|h| h.key.as_slice());
+        let max_seen = match (last_entry, last_hole) {
+            (Some(e), Some(h)) => Some(if e >= h { e } else { h }),
+            (Some(e), None) => Some(e),
+            (None, Some(h)) => Some(h),
+            (None, None) => None,
+        };
+        if let Some(m) = max_seen {
+            assert_eq!(
+                lk.as_slice(),
+                m,
+                "last_key must be the last examined key (entry or hole)"
+            );
+        }
+    }
+    if page1.has_more {
+        let after = page1.last_key.clone().expect("has_more ⇒ last_key");
+        let page2 = ctx
+            .heap
+            .scan_collection(&ctx.collection_id, 3, Some(after.as_slice()))
+            .expect("page2");
+        // Page2 must not re-include after key as examined complete/hole.
+        for (k, _) in &page2.entries {
+            assert!(k.as_slice() > after.as_slice(), "entries after cursor");
+        }
+        for h in &page2.incomplete {
+            assert!(h.key.as_slice() > after.as_slice(), "holes after cursor");
+        }
+    }
+}

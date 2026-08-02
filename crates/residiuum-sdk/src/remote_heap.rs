@@ -24,6 +24,24 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+/// One page from remote op **115** `scan_json` (DEF-SCAN-001).
+///
+/// `next_after_key` is the last **examined** collection key (complete or hole).
+/// Do not resume from the last successful row alone.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScanJsonWirePage {
+    /// Fully resolved JSON rows on this page.
+    pub rows: Vec<(String, Value)>,
+    /// Per-key holes with reason (+ optional locator diagnostics).
+    pub incomplete: Vec<Value>,
+    /// True only when `incomplete` is empty for examined subjects.
+    pub scan_complete: bool,
+    /// More subjects may exist after this page.
+    pub has_more: bool,
+    /// Resume cursor when [`Self::has_more`] — last examined key, not last row.
+    pub next_after_key: Option<String>,
+}
+
 /// Errors from credential construction (local only; never contact a server).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CredentialError {
@@ -690,13 +708,15 @@ impl RemoteHeap {
 
     /// Scan JSON rows in a collection (op_id = 115).
     ///
-    /// Each item is `(key, json)`.
+    /// Returns complete rows plus wire pagination / hole metadata.
+    /// Continuation is [`ScanJsonWirePage::next_after_key`] (last examined key),
+    /// never the last successful row alone (DEF-SCAN-001 blocker #3).
     pub fn scan_json(
         &mut self,
         collection_id: &str,
         limit: Option<usize>,
         after_key: Option<&str>,
-    ) -> Result<Vec<(String, Value)>, Error> {
+    ) -> Result<ScanJsonWirePage, Error> {
         let mut args = serde_json::Map::new();
         if let Some(l) = limit {
             args.insert("limit".into(), Value::from(l as u64));
@@ -709,7 +729,7 @@ impl RemoteHeap {
             .get("rows")
             .and_then(|v| v.as_array())
             .ok_or_else(|| Error::ProtocolViolation("scan_json missing rows".into()))?;
-        let mut out = Vec::new();
+        let mut rows = Vec::new();
         for row in arr {
             let key = row
                 .get("key")
@@ -720,9 +740,44 @@ impl RemoteHeap {
                 .get("json")
                 .cloned()
                 .ok_or_else(|| Error::ProtocolViolation("scan row json missing".into()))?;
-            out.push((key, json));
+            rows.push((key, json));
         }
-        Ok(out)
+        let has_more = result
+            .get("has_more")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let next_after_key = match result.get("next_after_key") {
+            Some(Value::String(s)) => Some(s.clone()),
+            Some(Value::Null) | None => None,
+            _ => {
+                return Err(Error::ProtocolViolation(
+                    "scan_json next_after_key must be string or null".into(),
+                ))
+            }
+        };
+        let scan_complete = result
+            .get("scan_complete")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        let incomplete = result
+            .get("incomplete")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        // When has_more, server must provide last-examined continuation.
+        if has_more && next_after_key.is_none() {
+            return Err(Error::ProtocolViolation(
+                "scan_json has_more without next_after_key (last examined key required)"
+                    .into(),
+            ));
+        }
+        Ok(ScanJsonWirePage {
+            rows,
+            incomplete,
+            scan_complete,
+            has_more,
+            next_after_key,
+        })
     }
 
     fn call_process(&mut self, op_id: u16) -> Result<Value, Error> {

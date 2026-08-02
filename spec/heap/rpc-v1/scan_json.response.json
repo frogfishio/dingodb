@@ -13,6 +13,30 @@
         },
         "required": ["key", "json"]
       }
+    },
+    "incomplete": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "key": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "required": ["key", "reason"]
+      }
+    },
+    "scan_complete": {
+      "type": "boolean",
+      "description": "True only when incomplete is empty for examined subjects on this page."
+    },
+    "has_more": {
+      "type": "boolean",
+      "description": "More subjects may exist after this page."
+    },
+    "next_after_key": {
+      "type": ["string", "null"],
+      "description": "Resume after_key for the next page. MUST be the last examined collection key (complete row or hole), not the last successful row. Null when has_more is false."
     }
   },
   "required": ["rows"]

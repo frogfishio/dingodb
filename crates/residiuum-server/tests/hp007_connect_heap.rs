@@ -958,11 +958,13 @@ fn connect_heap_list_and_scan_json() {
     let page = remote.list_keys(&cid, Some(1), Some("a")).expect("page");
     assert_eq!(page, vec!["b"]);
 
-    let rows = remote.scan_json(&cid, Some(10), None).expect("scan");
-    assert_eq!(rows.len(), 3);
-    assert_eq!(rows[0].0, "a");
-    assert_eq!(rows[0].1["n"], 1);
-    assert_eq!(rows[2].1["n"], 3);
+    let page = remote.scan_json(&cid, Some(10), None).expect("scan");
+    assert_eq!(page.rows.len(), 3);
+    assert_eq!(page.rows[0].0, "a");
+    assert_eq!(page.rows[0].1["n"], 1);
+    assert_eq!(page.rows[2].1["n"], 3);
+    assert!(!page.has_more);
+    assert!(page.next_after_key.is_none());
 
     drop(remote);
     flag.store(true, Ordering::SeqCst);

@@ -872,10 +872,22 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
                 out.push(serde_json::json!({ "key": key_s, "json": json }));
             }
             let incomplete: Vec<Value> = page
-    .incomplete
-    .iter()
-    .map(|h| hole_to_json(h))
-    .collect();
+                .incomplete
+                .iter()
+                .map(|h| hole_to_json(h))
+                .collect();
+            // Continuation must be last *examined* key (complete or hole), never
+            // last successful row — a hole may follow the last complete entry
+            // (DEF-SCAN-001 blocker #3).
+            let next_after_key = if page.has_more {
+                page.last_key.as_ref().and_then(|k| {
+                    String::from_utf8(k.clone())
+                        .ok()
+                        .or_else(|| Some(String::from_utf8_lossy(k).into_owned()))
+                })
+            } else {
+                None
+            };
             ok_id(
                 id,
                 serde_json::json!({
@@ -883,6 +895,7 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
                     "incomplete": incomplete,
                     "scan_complete": page.complete,
                     "has_more": page.has_more,
+                    "next_after_key": next_after_key,
                 }),
             )
         }
