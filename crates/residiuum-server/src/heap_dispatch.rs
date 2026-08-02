@@ -758,11 +758,14 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
         }
         out.push(serde_json::json!({ "key": key_s, "json": json }));
     }
-    let incomplete: Vec<Value> = page
-    .incomplete
-    .iter()
-    .map(|h| hole_to_json(h))
-    .collect();
+    let mut incomplete = Vec::with_capacity(page.incomplete.len());
+    for h in &page.incomplete {
+        match hole_to_json(h) {
+            Ok(v) => incomplete.push(v),
+            // Wire keys must be exact UTF-8; never lossy-encode a hole key.
+            Err(()) => return err_code(id, "data_damaged"),
+        }
+    }
     ok_id(
         id,
         serde_json::json!({
@@ -792,12 +795,22 @@ fn equality_fields(filter: &Filter) -> Vec<(String, Value)> {
 }
 
 
-fn hole_to_json(h: &residiuum_store::CollectionScanHole) -> Value {
+/// Wire JSON application keys and pagination cursors require **exact** UTF-8.
+///
+/// Never use [`String::from_utf8_lossy`] for a cursor: replacement characters
+/// change the key and resume at the wrong position (DEF-SCAN-001 T7).
+fn utf8_wire_key(bytes: &[u8]) -> Result<String, ()> {
+    std::str::from_utf8(bytes)
+        .map(|s| s.to_owned())
+        .map_err(|_| ())
+}
+
+/// Map a scan hole to wire JSON. Fails when the key is not valid UTF-8
+/// (wire product keys are UTF-8; do not invent a lossy key string).
+fn hole_to_json(h: &residiuum_store::CollectionScanHole) -> Result<Value, ()> {
+    let key_s = utf8_wire_key(&h.key)?;
     let mut m = serde_json::Map::new();
-    m.insert(
-        "key".into(),
-        Value::String(String::from_utf8_lossy(&h.key).into_owned()),
-    );
+    m.insert("key".into(), Value::String(key_s));
     m.insert("reason".into(), Value::String(h.reason.as_str().into()));
     if let Some(ref loc) = h.locator {
         m.insert("segment_id".into(), Value::String(loc.segment_hex()));
@@ -818,7 +831,7 @@ fn hole_to_json(h: &residiuum_store::CollectionScanHole) -> Value {
             m.insert("cause".into(), Value::String(c.clone()));
         }
     }
-    Value::Object(m)
+    Ok(Value::Object(m))
 }
 
 fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
@@ -859,8 +872,11 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         Ok(page) => {
             let mut out = Vec::new();
             for (key, body) in page.entries {
-                let Ok(key_s) = String::from_utf8(key) else {
-                    continue;
+                // Product scan_json keys are UTF-8 wire strings; skip non-UTF-8
+                // bodies only after exact decode fails — never invent a key.
+                let Ok(key_s) = utf8_wire_key(&key) else {
+                    // Non-UTF-8 live key is data damage for this wire product.
+                    return err_code(id, "data_damaged");
                 };
                 // Typed JSON only (tag 0x01).
                 if body.first() != Some(&0x01) {
@@ -871,20 +887,25 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
                 };
                 out.push(serde_json::json!({ "key": key_s, "json": json }));
             }
-            let incomplete: Vec<Value> = page
-                .incomplete
-                .iter()
-                .map(|h| hole_to_json(h))
-                .collect();
+            let mut incomplete = Vec::with_capacity(page.incomplete.len());
+            for h in &page.incomplete {
+                match hole_to_json(h) {
+                    Ok(v) => incomplete.push(v),
+                    Err(()) => return err_code(id, "data_damaged"),
+                }
+            }
             // Continuation must be last *examined* key (complete or hole), never
             // last successful row — a hole may follow the last complete entry
-            // (DEF-SCAN-001 blocker #3).
+            // (DEF-SCAN-001 blocker #3). Cursor bytes must be exact UTF-8 —
+            // never lossy (T7).
             let next_after_key = if page.has_more {
-                page.last_key.as_ref().and_then(|k| {
-                    String::from_utf8(k.clone())
-                        .ok()
-                        .or_else(|| Some(String::from_utf8_lossy(k).into_owned()))
-                })
+                match page.last_key.as_ref() {
+                    Some(k) => match utf8_wire_key(k) {
+                        Ok(s) => Some(s),
+                        Err(()) => return err_code(id, "data_damaged"),
+                    },
+                    None => return err_code(id, "data_damaged"),
+                }
             } else {
                 None
             };
@@ -1515,4 +1536,25 @@ fn dispatch_rql_query(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
 /// Build a [`HeapMetaLayout`] for a store data root.
 pub fn layout_for_root(root: &Path) -> HeapMetaLayout {
     HeapMetaLayout::new(root)
+}
+
+#[cfg(test)]
+mod cursor_utf8_tests {
+    use super::utf8_wire_key;
+
+    #[test]
+    fn utf8_wire_key_accepts_exact_utf8() {
+        assert_eq!(utf8_wire_key(b"user/1").unwrap(), "user/1");
+        assert_eq!(utf8_wire_key("é".as_bytes()).unwrap(), "é");
+    }
+
+    #[test]
+    fn utf8_wire_key_rejects_invalid_utf8_never_lossy() {
+        // Invalid continuation — lossy would replace with U+FFFD and corrupt cursor.
+        let bad = [0xff, 0xfe, b'a'];
+        assert!(utf8_wire_key(&bad).is_err());
+        // Confirm lossy would differ (document the hazard we refuse).
+        let lossy = String::from_utf8_lossy(&bad);
+        assert_ne!(lossy.as_bytes(), &bad[..]);
+    }
 }

@@ -56,6 +56,10 @@ Op **115** `scan_json` returns:
 
 Clients must **not** resume from the last successful row alone — a hole may have been examined after it. SDK `RemoteHeap::scan_json` → `ScanJsonWirePage`; `CollectionClient::scan_json` remote path uses wire `next_after_key` / `has_more` / holes.
 
+### Cursor UTF-8 (T7)
+
+Wire product keys and `next_after_key` are **exact UTF-8**. Never `from_utf8_lossy` for a cursor (replacement would resume at the wrong key). If `has_more` and `last_key` is non-UTF-8, or a hole key is non-UTF-8, the op returns **`data_damaged`**.
+
 Physical `IncompleteReason` still maps the distinct locator kinds.
 
 ## Evidence

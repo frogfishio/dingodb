@@ -36,7 +36,7 @@
     },
     "next_after_key": {
       "type": ["string", "null"],
-      "description": "Resume after_key for the next page. MUST be the last examined collection key (complete row or hole), not the last successful row. Null when has_more is false."
+      "description": "Resume after_key for the next page. MUST be the last examined collection key (complete row or hole), not the last successful row. MUST be exact UTF-8 of the store key bytes — never lossy-converted. Null when has_more is false. Server returns data_damaged if has_more and last key is non-UTF-8."
     }
   },
   "required": ["rows"]
