@@ -735,12 +735,12 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
 
     // Scan fallback (non-equality filters, or no usable index).
     let scan_cap = limit.saturating_mul(8).clamp(limit, 4096);
-    let scanned = match ctx.store.scan_collection(coll.as_bytes(), scan_cap, None) {
-        Ok(rows) => rows,
+    let page = match ctx.store.scan_collection(coll.as_bytes(), scan_cap, None) {
+        Ok(p) => p,
         Err(_) => return unavailable_id(id),
     };
     let mut out = Vec::new();
-    for (key, body) in scanned {
+    for (key, body) in page.entries {
         if out.len() >= limit {
             break;
         }
@@ -758,7 +758,19 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
         }
         out.push(serde_json::json!({ "key": key_s, "json": json }));
     }
-    ok_id(id, serde_json::json!({ "rows": out }))
+    let incomplete: Vec<Value> = page
+    .incomplete
+    .iter()
+    .map(|h| hole_to_json(h))
+    .collect();
+    ok_id(
+        id,
+        serde_json::json!({
+            "rows": out,
+            "incomplete": incomplete,
+            "scan_complete": page.complete,
+        }),
+    )
 }
 
 /// Shallow equality constraints for index acceleration (Eq + AND of Eq only).
@@ -777,6 +789,36 @@ fn equality_fields(filter: &Filter) -> Vec<(String, Value)> {
         }
         _ => Vec::new(),
     }
+}
+
+
+fn hole_to_json(h: &residiuum_store::CollectionScanHole) -> Value {
+    let mut m = serde_json::Map::new();
+    m.insert(
+        "key".into(),
+        Value::String(String::from_utf8_lossy(&h.key).into_owned()),
+    );
+    m.insert("reason".into(), Value::String(h.reason.as_str().into()));
+    if let Some(ref loc) = h.locator {
+        m.insert("segment_id".into(), Value::String(loc.segment_hex()));
+        m.insert("frame_offset".into(), Value::Number(loc.frame_offset.into()));
+        if let Some(ref path) = loc.path {
+            m.insert("path".into(), Value::String(path.clone()));
+        }
+        if let Some(len) = loc.file_len {
+            m.insert("file_len".into(), Value::Number(len.into()));
+        }
+        if let Some(obs) = loc.observed_segment_id {
+            m.insert(
+                "observed_segment_id".into(),
+                Value::String(residiuum_store::LocatorFault::hex16(&obs)),
+            );
+        }
+        if let Some(ref c) = loc.cause {
+            m.insert("cause".into(), Value::String(c.clone()));
+        }
+    }
+    Value::Object(m)
 }
 
 fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDispatchResult {
@@ -814,9 +856,9 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         .store
         .scan_collection(coll.as_bytes(), limit, after.map(|s| s.as_bytes()))
     {
-        Ok(rows) => {
+        Ok(page) => {
             let mut out = Vec::new();
-            for (key, body) in rows {
+            for (key, body) in page.entries {
                 let Ok(key_s) = String::from_utf8(key) else {
                     continue;
                 };
@@ -829,7 +871,20 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
                 };
                 out.push(serde_json::json!({ "key": key_s, "json": json }));
             }
-            ok_id(id, serde_json::json!({ "rows": out }))
+            let incomplete: Vec<Value> = page
+    .incomplete
+    .iter()
+    .map(|h| hole_to_json(h))
+    .collect();
+            ok_id(
+                id,
+                serde_json::json!({
+                    "rows": out,
+                    "incomplete": incomplete,
+                    "scan_complete": page.complete,
+                    "has_more": page.has_more,
+                }),
+            )
         }
         Err(_) => unavailable_id(id),
     }

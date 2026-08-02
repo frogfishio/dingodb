@@ -1,72 +1,68 @@
-# DEF-SCAN-001 — scan-amplification + locator residual (P0)
+# DEF-SCAN-001 — structured locator faults + honest heap scan pages (P0)
 
-**Status:** T1 repro + T2 soft-skip + T3 forensics/error honesty **in_review**  
+**Status:** T5 **in_review** (principal rejected T4 unit variants as context-free)  
 **Date:** 2026-08-02  
 **Board:** Feature `DEF-SCAN-001`  
-**Severity:** **P0** (scan honesty; media/error taxonomy residual)
+**Severity:** **P0**
 
-## Defect split (do not conflate)
+## Rejected claims (do not reassert)
 
-| Layer | Condition | Status |
-|-------|-----------|--------|
-| **Scan amplification** | One unresolved locator → hard-abort → zero rows look empty | **Fixed T2** — soft-skip + return survivors |
-| **Error mislabel** | Present media + unreadable frame reported as `SegmentNotFound` | **Fixed T3** — `PayloadPartial` when candidate file exists |
-| **Organic locator failure** | Why a *live* writer index might fail resolve (dogfood) | **Forensics: media currently healthy under open_inspect** |
+1. **`PayloadPartial` is not a bucket for locator damage.** Bad frame offset, frame verify failure, and segment-id mismatch are **distinct** kinds.
+2. **Soft-skip into a plain `Vec` is unsafe.** Hiding holes makes `Ok([])` look like an empty collection. Scan results must surface incompleteness in the type.
+3. **Unit locator error variants are not enough.** Category-only errors lose segment id, offset, path, file length, and underlying I/O/verify cause — field diagnosis becomes impossible.
 
-## Emergency fix T2 (scan)
+## T5 posture (supersedes T4 unit variants)
 
-`HeapStore::scan_collection` soft-skips `SegmentNotFound` / `TierOffline` / `PayloadPartial` / `PayloadConflict` and returns complete survivors (DEF-100 parity).
+### Structured `StoreError::LocatorFault(Box<LocatorFault>)`
 
-## T3 — media exam + error honesty
+| `LocatorFaultKind` | Meaning |
+|--------------------|---------|
+| `SegmentNotFound` | No named media for segment id (and salvage failed) |
+| `OffsetInvalid` | Offset past EOF / frame spans past end |
+| `FrameVerifyFailed` | Checksum / framing verify failed |
+| `SegmentIdMismatch` | Envelope segment id ≠ index locator |
 
-### Dogfood store (read-only, 2026-08-02)
+Each fault carries field diagnostics:
 
-Path: `~/.gremlin/store/gremlin.residiuum` (daemon may hold writer.lock).
+- `segment_id`, `frame_offset` (from index locator)
+- `path`, `file_len` (when a media file was examined)
+- `observed_segment_id` (mismatch)
+- `cause` (I/O / verify detail string)
 
-| Observation | Value |
-|-------------|--------|
-| Sealed segment files | 103–104 present; chimera + seg indexes 1:1 with segments |
-| `primary.idx` mtime | Can lag newest sealed segment (rate-limited cache write) |
-| `open_inspect` live subjects | **98 596** |
-| Resolve ok | **98 596 (100%)** |
-| Resolve errors | **0** |
+Legacy unit `StoreError::SegmentNotFound` remains for non-resolve call sites (e.g. tier registry); resolve paths prefer structured `LocatorFault`.
 
-Command:
+Named media is tried first; if present but unreadable → that distinct kind with path/len/cause.  
+Only when **no** named media exists is salvage attempted; salvage failures do **not** re-label a missing segment as offset-invalid on another file.
 
-```text
-cargo run -p residiuum-store --features legacy-raw-store \
-  --example inspect_unresolved_locators -- ~/.gremlin/store/gremlin.residiuum
-```
+### Honest scan page
 
-**Interpretation:** Controlled file-delete is **not** the dogfood media state. Under inspect (rebuild/load index from durable segments, no writer), **all live locators resolve**. Original `segment not found` during live exclusive-writer scan was either:
+`HeapStore::scan_collection` → `CollectionScanPage`:
 
-1. **Amplification** from a transient unresolvable locator in the live index (since overwritten / healed), and/or  
-2. **Mislabel** of present-media frame failures as `SegmentNotFound` (T3 honesty fix), and/or  
-3. A **live-only** index/seal race not visible after inspect rebuild.
+- `entries` — complete rows  
+- `incomplete` — holes with `CollectionScanHoleReason` **and** optional `locator: Option<LocatorFault>`  
+- `examined` — subjects walked (complete + holes)  
+- `examine_budget` — `limit * 8` clamped to `[limit, 4096]` so hole-only collections cannot unbounded-walk  
+- `complete` — true only when `incomplete` is empty  
+- `is_empty_live()` — true only when both empty  
 
-No claim that the live daemon process is free of all future holes — soft-skip remains the product guard.
+Remote scan JSON (`hole_to_json`) includes `reason` plus `segment_id`, `frame_offset`, `path`, `file_len`, `observed_segment_id`, `cause` when present.
 
-### Code: pread honesty
-
-`pread_body_for_locator`: if any candidate media path exists but no verified frame is recovered → `PayloadPartial` (not `SegmentNotFound`). True absence of media for the segment id remains `SegmentNotFound`.
+Physical `IncompleteReason` still maps the distinct locator kinds.
 
 ## Evidence
 
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test def_scan_001_segment_not_found
+# 6/6
 ```
 
-| Test | Role |
-|------|------|
-| `high_churn_exclusive_writer_scan_still_complete` | healthy multi-seal baseline |
-| `missing_segment_scan_returns_survivors_not_empty_abort` | amplification guard (deleted file) |
-| `present_media_unreadable_frame_is_payload_partial_not_segment_not_found` | T3 error honesty |
-| `compact_reclaim_live_scan_remains_complete` | reclaim does not empty scan |
+Tests assert: SegmentNotFound holes carry segment_id; present-media corrupt frames carry path/file_len/cause; offset-past-EOF carries path + file_len + cause.
+
+Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.
 
 ## Explicit non-claims
 
-- No package accept; Heap not production-ready.  
-- Organic **live-process** seal/index race not reproduced as a unit test.  
-- No typed incomplete scan API yet (`Ok([])` still ambiguous if every key is a hole).  
-- Dogfood inspect health ≠ forever-healthy live exclusive writer.
+- No package accept.  
+- Live exclusive-writer seal/index race not unit-reproduced.  
+- Wire/SDK product language may still evolve around incomplete scan semantics.

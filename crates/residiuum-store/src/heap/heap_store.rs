@@ -2,7 +2,7 @@
 
 use crate::adaptive_write::{AdaptiveWriteHandle, AdmissionResult};
 use crate::durability::DurabilityMode;
-use crate::error::StoreError;
+use crate::error::{LocatorFault, LocatorFaultKind, StoreError};
 use crate::history::SubjectHistory;
 use crate::ids::random_id;
 use crate::kernel::PhysicalStore;
@@ -13,6 +13,136 @@ use residiuum_format::{decode_subject_v2, encode_subject_v2, SubjectObjectKind};
 use residiuum_heap::{refresh_capability_or_terminate, HeapCap, Rights};
 use serde_json::Value as JsonValue;
 use std::sync::{Arc, Mutex};
+
+/// Why a collection key could not contribute a complete body during heap scan.
+///
+/// Distinct failure modes (DEF-SCAN-001) — do not collapse into one bucket.
+/// Locator kinds also carry optional [`LocatorFault`] context on the hole.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectionScanHoleReason {
+    /// Named segment media is absent.
+    SegmentNotFound,
+    /// Storage tier offline / unmounted.
+    TierOffline,
+    /// Multi-chunk reassembly incomplete.
+    PayloadPartial,
+    /// Conflicting chunk evidence.
+    PayloadConflict,
+    /// Locator offset past end of segment media.
+    LocatorOffsetInvalid,
+    /// Frame verify / checksum failed at locator.
+    LocatorFrameVerifyFailed,
+    /// Envelope segment id mismatches the index locator.
+    LocatorSegmentIdMismatch,
+}
+
+impl CollectionScanHoleReason {
+    /// Map a fail-closed resolve error into a scan hole reason, if it is a hole.
+    pub fn from_store_error(e: &StoreError) -> Option<Self> {
+        match e {
+            StoreError::SegmentNotFound => Some(Self::SegmentNotFound),
+            StoreError::TierOffline(_) => Some(Self::TierOffline),
+            StoreError::PayloadPartial => Some(Self::PayloadPartial),
+            StoreError::PayloadConflict => Some(Self::PayloadConflict),
+            StoreError::LocatorFault(f) => Some(Self::from_fault_kind(f.kind)),
+            _ => None,
+        }
+    }
+
+    /// Map a structured locator fault kind into a scan hole reason.
+    pub fn from_fault_kind(k: LocatorFaultKind) -> Self {
+        match k {
+            LocatorFaultKind::OffsetInvalid => Self::LocatorOffsetInvalid,
+            LocatorFaultKind::FrameVerifyFailed => Self::LocatorFrameVerifyFailed,
+            LocatorFaultKind::SegmentIdMismatch => Self::LocatorSegmentIdMismatch,
+            LocatorFaultKind::SegmentNotFound => Self::SegmentNotFound,
+        }
+    }
+
+    /// Stable snake_case label for logs / wire JSON.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::SegmentNotFound => "segment_not_found",
+            Self::TierOffline => "tier_offline",
+            Self::PayloadPartial => "payload_partial",
+            Self::PayloadConflict => "payload_conflict",
+            Self::LocatorOffsetInvalid => "locator_offset_invalid",
+            Self::LocatorFrameVerifyFailed => "locator_frame_verify_failed",
+            Self::LocatorSegmentIdMismatch => "locator_segment_id_mismatch",
+        }
+    }
+}
+
+/// One collection key that could not be fully resolved during a heap scan.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollectionScanHole {
+    /// Application collection key (not SubjectV2).
+    pub key: Vec<u8>,
+    /// Distinct failure reason.
+    pub reason: CollectionScanHoleReason,
+    /// Structured locator diagnostics when the hole is a media/locator fault.
+    pub locator: Option<LocatorFault>,
+}
+
+impl CollectionScanHole {
+    fn from_error(key: Vec<u8>, e: &StoreError) -> Option<Self> {
+        match e {
+            StoreError::LocatorFault(f) => Some(Self {
+                key,
+                reason: CollectionScanHoleReason::from_fault_kind(f.kind),
+                locator: Some((**f).clone()),
+            }),
+            StoreError::SegmentNotFound => Some(Self {
+                key,
+                reason: CollectionScanHoleReason::SegmentNotFound,
+                locator: None,
+            }),
+            StoreError::TierOffline(_) => Some(Self {
+                key,
+                reason: CollectionScanHoleReason::TierOffline,
+                locator: None,
+            }),
+            StoreError::PayloadPartial => Some(Self {
+                key,
+                reason: CollectionScanHoleReason::PayloadPartial,
+                locator: None,
+            }),
+            StoreError::PayloadConflict => Some(Self {
+                key,
+                reason: CollectionScanHoleReason::PayloadConflict,
+                locator: None,
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// One page of a heap collection scan with **explicit holes** (DEF-SCAN-001).
+///
+/// Callers must not treat `entries.is_empty()` alone as "empty collection":
+/// check [`Self::complete`] / [`Self::incomplete`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollectionScanPage {
+    /// Fully resolved (key, body) pairs on this page.
+    pub entries: Vec<(Vec<u8>, Vec<u8>)>,
+    /// Keys examined that could not be fully resolved (distinct reasons).
+    pub incomplete: Vec<CollectionScanHole>,
+    /// Live subjects examined while filling this page (including holes).
+    pub examined: usize,
+    /// True only when `incomplete` is empty.
+    pub complete: bool,
+    /// More subjects may exist after this page (complete-row budget filled).
+    pub has_more: bool,
+    /// Last examined collection key (complete or hole), for continuation.
+    pub last_key: Option<Vec<u8>>,
+}
+
+impl CollectionScanPage {
+    /// True when no complete rows and no holes — an empty live set for this prefix.
+    pub fn is_empty_live(&self) -> bool {
+        self.entries.is_empty() && self.incomplete.is_empty()
+    }
+}
 
 /// Capability-gated heap store. All methods re-check capability liveness.
 pub struct HeapStore {
@@ -506,10 +636,10 @@ impl HeapStore {
         let mut after: Option<Vec<u8>> = None;
         loop {
             let page = self.scan_collection(collection_id, 4096, after.as_deref())?;
-            if page.is_empty() {
+            if page.entries.is_empty() && !page.has_more {
                 break;
             }
-            for (key, body) in &page {
+            for (key, body) in &page.entries {
                 let subject = encode_subject_v2(
                     self.cap.heap_id().as_bytes(),
                     SubjectObjectKind::Collection,
@@ -527,8 +657,12 @@ impl HeapStore {
                     idx.insert(ik, subject);
                 }
             }
-            after = page.last().map(|(k, _)| k.clone());
-            if page.len() < 4096 {
+            after = page
+                .entries
+                .last()
+                .map(|(k, _)| k.clone())
+                .or_else(|| page.incomplete.last().map(|h| h.key.clone()));
+            if !page.has_more {
                 break;
             }
         }
@@ -540,25 +674,23 @@ impl HeapStore {
     /// Bodies are raw store payloads (typed SDK tags when written via SDK).
     /// At most `limit` **complete** rows (clamped 1..=4096).
     ///
-    /// # Unresolved locators (DEF-SCAN-001 / DEF-100 parity)
+    /// # Holes are explicit (DEF-SCAN-001)
     ///
-    /// Keys whose live index entry cannot be resolved as a complete body
-    /// (`SegmentNotFound`, offline tier, payload partial/conflict) are
-    /// **skipped**, not a hard page abort. Physical
-    /// [`crate::Store::scan_live_page`] treats the same cases as incomplete and
-    /// continues; the heap façade previously used `get()?` and turned a single
-    /// bad locator into zero recovered rows (scan-amplification).
+    /// Unresolved locators are **not** silently dropped into a plain `Vec` of
+    /// survivors. The returned [`CollectionScanPage`] carries `entries` and
+    /// `incomplete` with **distinct** reasons (offset invalid, frame verify,
+    /// segment-id mismatch, segment not found, chunk partial/conflict, tier
+    /// offline). `page.complete` is true only when `incomplete` is empty for
+    /// the examined subjects.
     ///
-    /// Callers must not treat `Ok([])` as proof of an empty collection when
-    /// concurrent authority (heads, known keys, salvage) disagrees — holes stay
-    /// explicit at the application layer until a richer incomplete scan API
-    /// lands. Point-get remains fail-closed for a single subject.
+    /// Physical [`crate::Store::scan_live_page`] uses the same incomplete-page
+    /// posture. Point-get remains fail-closed for a single subject.
     pub fn scan_collection(
         &self,
         collection_id: &[u8; 16],
         limit: usize,
         after_key: Option<&[u8]>,
-    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+    ) -> Result<CollectionScanPage, StoreError> {
         self.gate()?;
         self.require_right(Rights::READ)?;
         let limit = limit.clamp(1, 4096);
@@ -581,9 +713,17 @@ impl HeapStore {
             .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
         let subjects = guard.index_live_after(after_subject.as_deref(), Some(&prefix));
         drop(guard);
-        let mut out = Vec::new();
+        let mut entries = Vec::new();
+        let mut incomplete = Vec::new();
+        let mut examined = 0usize;
+        let mut last_key: Option<Vec<u8>> = None;
+        let mut saw_more = false;
+        // Bound total subjects examined (complete + holes). Prevents unbounded
+        // walks over hole-only collections while still filling complete rows.
+        let examine_budget = limit.saturating_mul(8).clamp(limit, 4096);
         for subject in subjects {
-            if out.len() >= limit {
+            if entries.len() >= limit || examined >= examine_budget {
+                saw_more = true;
                 break;
             }
             let sv2 = match decode_subject_v2(&subject) {
@@ -597,18 +737,29 @@ impl HeapStore {
                 _ => continue,
             };
             let key = sv2.key.to_vec();
+            examined += 1;
+            last_key = Some(key.clone());
             match self.get(&subject) {
-                Ok(Some(body)) => out.push((key, body)),
-                Ok(None) => continue,
-                // Unresolved media/locators: keep enumerating survivors (DEF-SCAN-001).
-                Err(StoreError::SegmentNotFound)
-                | Err(StoreError::TierOffline(_))
-                | Err(StoreError::PayloadPartial)
-                | Err(StoreError::PayloadConflict) => continue,
-                Err(e) => return Err(e),
+                Ok(Some(body)) => entries.push((key, body)),
+                Ok(None) => {}
+                Err(e) => {
+                    if let Some(hole) = CollectionScanHole::from_error(key, &e) {
+                        incomplete.push(hole);
+                    } else {
+                        return Err(e);
+                    }
+                }
             }
         }
-        Ok(out)
+        let complete = incomplete.is_empty();
+        Ok(CollectionScanPage {
+            entries,
+            incomplete,
+            examined,
+            complete,
+            has_more: saw_more,
+            last_key,
+        })
     }
 
     /// Lookup candidate collection keys via a secondary index for equality filters.

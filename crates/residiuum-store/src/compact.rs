@@ -369,15 +369,26 @@ pub fn resolve_live_body(
 }
 
 /// Read a verified item-event body at `offset` when the envelope `segment_id` matches.
+///
+/// Failures are **structured** [`StoreError::LocatorFault`] values (DEF-SCAN-001)
+/// carrying segment id, offset, path, file length, and optional cause.
 pub fn pread_item_body_if_segment(
     path: &Path,
     offset: u64,
     expect_segment_id: &[u8; 16],
     limits: SafetyLimits,
 ) -> Result<Vec<u8>, StoreError> {
-    let (env_seg, body) = pread_item_frame(path, offset, limits)?;
+    let (env_seg, body, file_len) = pread_item_frame(path, offset, *expect_segment_id, limits)?;
     if env_seg != *expect_segment_id {
-        return Err(StoreError::CorruptMeta("frame segment_id mismatch at offset"));
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::segment_mismatch(
+                *expect_segment_id,
+                env_seg,
+                offset,
+                path,
+                Some(file_len),
+            ),
+        )));
     }
     Ok(body)
 }
@@ -385,45 +396,137 @@ pub fn pread_item_body_if_segment(
 fn pread_item_frame(
     path: &Path,
     offset: u64,
+    expect_segment_id: [u8; 16],
     limits: SafetyLimits,
-) -> Result<([u8; 16], Vec<u8>), StoreError> {
-    let mut file = File::open(path)?;
-    let file_len = file.metadata()?.len();
+) -> Result<([u8; 16], Vec<u8>, u64), StoreError> {
+    let mut file = File::open(path).map_err(|e| {
+        StoreError::LocatorFault(Box::new(crate::error::LocatorFault::at_path(
+            crate::error::LocatorFaultKind::SegmentNotFound,
+            expect_segment_id,
+            offset,
+            path,
+            None,
+            Some(e.to_string()),
+        )))
+    })?;
+    let file_len = file.metadata().map(|m| m.len()).unwrap_or(0);
     if offset >= file_len {
-        return Err(StoreError::Io(std::io::Error::new(
-            std::io::ErrorKind::UnexpectedEof,
-            "frame offset past end of segment",
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::at_path(
+                crate::error::LocatorFaultKind::OffsetInvalid,
+                expect_segment_id,
+                offset,
+                path,
+                Some(file_len),
+                Some(format!("offset {offset} >= file_len {file_len}")),
+            ),
         )));
     }
-    file.seek(SeekFrom::Start(offset))?;
+    file.seek(SeekFrom::Start(offset)).map_err(|e| {
+        StoreError::LocatorFault(Box::new(crate::error::LocatorFault::at_path(
+            crate::error::LocatorFaultKind::OffsetInvalid,
+            expect_segment_id,
+            offset,
+            path,
+            Some(file_len),
+            Some(e.to_string()),
+        )))
+    })?;
     let mut prefix = [0u8; FRAME_PREFIX_LEN];
-    file.read_exact(&mut prefix)?;
+    if let Err(e) = file.read_exact(&mut prefix) {
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::at_path(
+                crate::error::LocatorFaultKind::OffsetInvalid,
+                expect_segment_id,
+                offset,
+                path,
+                Some(file_len),
+                Some(e.to_string()),
+            ),
+        )));
+    }
     // body_len at prefix[16..24], envelope_len at [12..16] (see frame layout).
     let envelope_len = u32::from_le_bytes(prefix[12..16].try_into().unwrap()) as u64;
     let body_len = u64::from_le_bytes(prefix[16..24].try_into().unwrap());
-    let frame_len = (FRAME_PREFIX_LEN as u64)
+    let frame_len = match (FRAME_PREFIX_LEN as u64)
         .checked_add(envelope_len)
         .and_then(|n| n.checked_add(body_len))
         .and_then(|n| n.checked_add(FRAME_SUFFIX_LEN as u64))
-        .ok_or(StoreError::CorruptMeta("frame length overflow at resolve"))?;
+    {
+        Some(n) => n,
+        None => {
+            return Err(StoreError::LocatorFault(Box::new(
+                crate::error::LocatorFault::at_path(
+                    crate::error::LocatorFaultKind::FrameVerifyFailed,
+                    expect_segment_id,
+                    offset,
+                    path,
+                    Some(file_len),
+                    Some("frame length overflow".into()),
+                ),
+            )));
+        }
+    };
     if frame_len > limits.max_frame_len {
-        return Err(StoreError::CorruptMeta("frame exceeds safety limits"));
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::at_path(
+                crate::error::LocatorFaultKind::FrameVerifyFailed,
+                expect_segment_id,
+                offset,
+                path,
+                Some(file_len),
+                Some(format!("frame_len {frame_len} exceeds safety limits")),
+            ),
+        )));
     }
     if offset.saturating_add(frame_len) > file_len {
-        return Err(StoreError::Io(std::io::Error::new(
-            std::io::ErrorKind::UnexpectedEof,
-            "frame extends past end of segment",
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::at_path(
+                crate::error::LocatorFaultKind::OffsetInvalid,
+                expect_segment_id,
+                offset,
+                path,
+                Some(file_len),
+                Some(format!(
+                    "frame extends past end: offset+len={} file_len={file_len}",
+                    offset.saturating_add(frame_len)
+                )),
+            ),
         )));
     }
     let mut frame = vec![0u8; frame_len as usize];
     frame[..FRAME_PREFIX_LEN].copy_from_slice(&prefix);
-    file.read_exact(&mut frame[FRAME_PREFIX_LEN..])?;
-    let (_h, envelope, body, _hash, _len) = verify_frame_at(&frame, limits)
-        .map_err(|_| StoreError::CorruptMeta("item frame verify failed at offset"))?;
+    if let Err(e) = file.read_exact(&mut frame[FRAME_PREFIX_LEN..]) {
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::at_path(
+                crate::error::LocatorFaultKind::OffsetInvalid,
+                expect_segment_id,
+                offset,
+                path,
+                Some(file_len),
+                Some(e.to_string()),
+            ),
+        )));
+    }
+    let (_h, envelope, body, _hash, _len) = match verify_frame_at(&frame, limits) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(StoreError::LocatorFault(Box::new(
+                crate::error::LocatorFault::at_path(
+                    crate::error::LocatorFaultKind::FrameVerifyFailed,
+                    expect_segment_id,
+                    offset,
+                    path,
+                    Some(file_len),
+                    Some(e.to_string()),
+                ),
+            )));
+        }
+    };
     let env_seg = crate::envelope::decode_item_envelope(envelope)
         .map(|e| e.segment_id)
         .unwrap_or([0u8; 16]);
-    Ok((env_seg, body.to_vec()))
+    Ok((env_seg, body.to_vec(), file_len))
 }
 
 /// Collect reclaimable sealed segment ids from source relative names.

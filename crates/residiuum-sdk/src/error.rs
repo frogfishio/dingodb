@@ -305,6 +305,10 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::PayloadConflict => ErrorCode::DataDamaged,
         StoreError::HistoryEventNotFound => ErrorCode::NotFound,
         StoreError::SegmentNotFound => ErrorCode::NotFound,
+        StoreError::LocatorFault(f) => match f.kind {
+            residiuum_store::LocatorFaultKind::SegmentNotFound => ErrorCode::NotFound,
+            _ => ErrorCode::DataDamaged,
+        },
         StoreError::TierOffline(_) => ErrorCode::PartitionUnavailable,
         StoreError::FormatUnsupported { .. } => ErrorCode::FormatUnsupported,
         StoreError::MediaUnsupported(_) => ErrorCode::FormatUnsupported,
@@ -322,6 +326,7 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::HeapAdmit(_) => ErrorCode::PermissionDenied,
         StoreError::VersionConflict { .. } => ErrorCode::VersionConflict,
         StoreError::KeyExists => ErrorCode::AlreadyExists,
+        StoreError::AdaptiveWriterActive | StoreError::AdaptiveWriterPoisoned => ErrorCode::Io,
     }
 }
 

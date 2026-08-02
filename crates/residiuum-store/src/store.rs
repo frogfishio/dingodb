@@ -108,6 +108,14 @@ pub enum IncompleteReason {
     PayloadConflict,
     /// Subject bytes are not valid UTF-8 (cannot be addressed by string APIs).
     NonUtf8Subject,
+    /// Locator offset past end of segment media (DEF-SCAN-001).
+    LocatorOffsetInvalid,
+    /// Frame verify/checksum failed at locator (DEF-SCAN-001).
+    LocatorFrameVerifyFailed,
+    /// Envelope segment id does not match index locator (DEF-SCAN-001).
+    LocatorSegmentIdMismatch,
+    /// Named segment media is absent (DEF-SCAN-001).
+    SegmentNotFound,
 }
 
 /// One live subject that could not be fully read during a logical scan.
@@ -1122,10 +1130,27 @@ impl Store {
                 Ok(Some(PayloadResult::Conflicting { .. })) => {
                     incomplete_list.push(incomplete(subject, IncompleteReason::PayloadConflict));
                 }
-                // Missing media/segments: fail-closed as incomplete, not a hard scan abort.
+                // Locator / media failures: fail-closed as incomplete, not a hard scan abort.
                 Err(StoreError::SegmentNotFound) | Err(StoreError::TierOffline(_)) => {
                     incomplete_list
-                        .push(incomplete(subject, IncompleteReason::PayloadUnavailable));
+                        .push(incomplete(subject, IncompleteReason::SegmentNotFound));
+                }
+                Err(StoreError::LocatorFault(f)) => {
+                    let reason = match f.kind {
+                        crate::error::LocatorFaultKind::OffsetInvalid => {
+                            IncompleteReason::LocatorOffsetInvalid
+                        }
+                        crate::error::LocatorFaultKind::FrameVerifyFailed => {
+                            IncompleteReason::LocatorFrameVerifyFailed
+                        }
+                        crate::error::LocatorFaultKind::SegmentIdMismatch => {
+                            IncompleteReason::LocatorSegmentIdMismatch
+                        }
+                        crate::error::LocatorFaultKind::SegmentNotFound => {
+                            IncompleteReason::SegmentNotFound
+                        }
+                    };
+                    incomplete_list.push(incomplete(subject, reason));
                 }
                 Err(e) => return Err(e),
             }
@@ -3619,19 +3644,36 @@ impl Store {
         // the canonical sealed filename may hold another segment's bytes; bare
         // pread at the same post-descriptor offset would return the wrong body.
         //
-        // DEF-SCAN-001: track candidate media so we do not mislabel "file present
-        // but frame unreadable at offset" as SegmentNotFound (dogfood media exam
-        // found segments on disk while resolve still failed).
-        let mut saw_candidate_media = false;
+        // DEF-SCAN-001: preserve distinct locator failures. Do not collapse bad
+        // offset / verify / segment-id mismatch into SegmentNotFound or PayloadPartial.
+        // 1) Named media for this segment_id (active / placement / sealed / pending).
+        //    If present but unreadable, return that distinct locator error.
+        // 2) Only when **no** named media exists, salvage other paths that may hold
+        //    the same envelope segment_id (hash renames). Salvage failures must not
+        //    re-label "segment file deleted" as OffsetInvalid on a different file.
+        let mut last_named_err: Option<StoreError> = None;
+        let mut named_media = false;
         for path in &tried {
-            saw_candidate_media = true;
-            if let Ok(body) =
-                pread_item_body_if_segment(path, frame_offset, segment_id, self.limits)
-            {
-                return Ok(body);
+            named_media = true;
+            match pread_item_body_if_segment(path, frame_offset, segment_id, self.limits) {
+                Ok(body) => return Ok(body),
+                Err(e) if is_locator_resolve_error(&e) => last_named_err = Some(e),
+                Err(_) => {}
             }
         }
-        // Salvage/hash-renamed or swapped sealed files.
+        if named_media {
+            return Err(last_named_err.unwrap_or_else(|| {
+                StoreError::LocatorFault(Box::new(crate::error::LocatorFault::at_path(
+                    crate::error::LocatorFaultKind::FrameVerifyFailed,
+                    *segment_id,
+                    frame_offset,
+                    tried.first().map(|p| p.as_path()).unwrap_or_else(|| Path::new("")),
+                    None,
+                    Some("named media unreadable".into()),
+                )))
+            }));
+        }
+        // Salvage/hash-renamed or swapped sealed files (success only).
         for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
             if tried.iter().any(|t| t == &path) {
                 continue;
@@ -3639,19 +3681,15 @@ impl Store {
             if !path.is_file() {
                 continue;
             }
-            saw_candidate_media = true;
             if let Ok(body) =
                 pread_item_body_if_segment(&path, frame_offset, segment_id, self.limits)
             {
                 return Ok(body);
             }
         }
-        if saw_candidate_media {
-            // Media exists; locator could not reassemble a verified item frame.
-            // Fail-closed as incomplete payload (not "segment missing").
-            return Err(StoreError::PayloadPartial);
-        }
-        Err(StoreError::SegmentNotFound)
+        Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::segment_not_found(*segment_id, frame_offset),
+        )))
     }
 
     /// Path of the optional primary index cache file.
@@ -6240,6 +6278,10 @@ fn stronger_durability(a: DurabilityMode, b: DurabilityMode) -> DurabilityMode {
 ///
 /// On-disk frames always need at least `Buffered` (bytes handed to the OS).
 /// `Durable` is required only if a Durable put was acked into this segment.
+fn is_locator_resolve_error(e: &StoreError) -> bool {
+    matches!(e, StoreError::LocatorFault(_))
+}
+
 fn seal_flush_mode(max_ack: DurabilityMode) -> DurabilityMode {
     match max_ack {
         DurabilityMode::Durable => DurabilityMode::Durable,

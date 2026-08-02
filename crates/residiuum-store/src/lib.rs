@@ -107,9 +107,9 @@ pub use chunk_payload::{
     DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
 pub use compact::{
-    compaction_job_path, compaction_jobs_dir, list_compact_jobs, try_load_compact_job,
-    CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport, COMPACTION_JOB_DIR,
-    COMPACTION_JOB_SUFFIX,
+    compaction_job_path, compaction_jobs_dir, list_compact_jobs, pread_item_body_if_segment,
+    try_load_compact_job, CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport,
+    COMPACTION_JOB_DIR, COMPACTION_JOB_SUFFIX,
 };
 pub use composed_failure::{
     failure_class_action, schedule as schedule_failure_combinations,
@@ -150,7 +150,7 @@ pub use erasure::{
     decode_shards, encode_shards, is_shard_key, shard_layout_note, ErasureManifest, ErasureProfile,
     DEFAULT_DATA_SHARDS, DEFAULT_PARITY_SHARDS,
 };
-pub use error::StoreError;
+pub use error::{LocatorFault, LocatorFaultKind, StoreError};
 pub use failpoint::{
     any_armed as failpoints_armed, arm as arm_failpoint, arm_n as arm_failpoint_n,
     arm_once as arm_failpoint_once, clear as clear_failpoints, clear_all as clear_failpoints_all,
@@ -180,8 +180,9 @@ pub use heap::{
     verify_purge_receipt, wipe_heap_object_media, write_identity_tombstone, AdminOpDedupRecord,
     AdminOpDedupTable, AdminReceipt, CreatedCollectionAdmin, CutoverGate,
     DataKeyDestructionReceipt, DataKeyHandle, DataKeyProvider, DisasterRecoveryCeremony,
-    DisasterRecoveryPackage, DisasterRecoveryTakeoverResult, HeapBackupManifest, HeapCatalogEntry,
-    HeapLifecycle, HeapMetaLayout, HeapMigrationJob, HeapRetentionPolicy, HeapStore,
+    CollectionScanHole, CollectionScanHoleReason, CollectionScanPage, DisasterRecoveryPackage,
+    DisasterRecoveryTakeoverResult, HeapBackupManifest, HeapCatalogEntry, HeapLifecycle,
+    HeapMetaLayout, HeapMigrationJob, HeapRetentionPolicy, HeapStore,
     HsmBackendKind, HsmCapabilities, HsmDataKeyConfig, HsmDataKeyProvider, IdentityTombstone,
     IncompletePurgeResult, InProcessDataKeyProvider, InventoryFrame, InventorySegment,
     MaintenanceStore, MediaDomain, MigrationPhase, MigrationStateV1, MixedHeapSalvageClass,

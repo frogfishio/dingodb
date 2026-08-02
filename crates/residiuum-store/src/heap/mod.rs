@@ -27,7 +27,9 @@ pub use catalog::{
     try_load_streams_catalog, AdminReceipt, HeapCatalogEntry, HeapMetaLayout, ObjectCatalogEntry,
     ObjectKind, StagedGenesis, COLLECTIONS_CATALOG_FILE, HEAP_CATALOG_FILE, STREAMS_CATALOG_FILE,
 };
-pub use heap_store::HeapStore;
+pub use heap_store::{
+    CollectionScanHole, CollectionScanHoleReason, CollectionScanPage, HeapStore,
+};
 pub use host::StoreHost;
 pub use maintenance_store::MaintenanceStore;
 pub use lifecycle::{

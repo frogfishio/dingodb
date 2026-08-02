@@ -83,6 +83,7 @@ fn err_class(e: &StoreError) -> String {
         StoreError::PayloadConflict => "PayloadConflict".into(),
         StoreError::TierOffline(t) => format!("TierOffline({t})"),
         StoreError::CorruptMeta(m) => format!("CorruptMeta({m})"),
+        StoreError::LocatorFault(f) => format!("LocatorFault({f})"),
         other => format!("Other({other})"),
     }
 }

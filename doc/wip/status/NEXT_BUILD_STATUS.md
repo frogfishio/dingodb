@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (**P0:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) T2 soft-skip + T3 forensics/error honesty **in_review** — dogfood `open_inspect` 98596/98596 resolve; present-media → PayloadPartial not SegmentNotFound; query spine / APB **in_review**)
+Updated: 2026-08-02 (**P0:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) T5 **in_review** — structured `LocatorFault` (segment_id/offset/path/file_len/cause) + hole diagnostics + examine budget; no package accept; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

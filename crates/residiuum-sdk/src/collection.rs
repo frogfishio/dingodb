@@ -1064,6 +1064,18 @@ fn scan_json_partial_page_on_store(
                         ("conflicting", "conflicting chunk content")
                     }
                     IncompleteReason::NonUtf8Subject => ("unavailable", "non-utf8 subject"),
+                    IncompleteReason::LocatorOffsetInvalid => {
+                        ("locator_offset_invalid", "locator frame offset invalid")
+                    }
+                    IncompleteReason::LocatorFrameVerifyFailed => {
+                        ("locator_frame_verify_failed", "locator frame verify failed")
+                    }
+                    IncompleteReason::LocatorSegmentIdMismatch => {
+                        ("locator_segment_id_mismatch", "locator segment id mismatch")
+                    }
+                    IncompleteReason::SegmentNotFound => {
+                        ("segment_not_found", "segment not found")
+                    }
                 };
                 incomplete.push(IncompleteDocument {
                     key: key.to_string(),
