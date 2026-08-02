@@ -93,9 +93,13 @@ $PERF run --work /tmp/w --driver real_store --seed 42 --class smoke \
 
 ## 5. Residual (next product labor, not re-run smoke thr chase)
 
-1. **Independent-single collection** under AWO lease (spec collection delay / queue) so Static can install multi-item batches from concurrent singles.
-2. Harness may need to present concurrent `admit_put` (not only concurrent preparers + serial single-item `admit_put_batch([1])`) for collection to see a queue.
-3. Re-run Shape B **diagnostic** on roomier APFS after collection exists; pass when Static `file_sync/ops ≪ 1` and Adaptive → Static.
+**Decisive freeze:** [AWO_THREE_WAY_T9_DECISIVE_FINDING.md](AWO_THREE_WAY_T9_DECISIVE_FINDING.md) —
+harness correct; AWO independent-write path is **admit_natural only** under the
+global physical mutex (not a thr-tuning problem).
+
+1. Connect collection to independent admits (spec queue / collection delay); unlock mutex story so concurrent singles can queue.
+2. Harness may need concurrent `admit_put` presentation after (1), not only serial `admit_put_batch([1])`.
+3. Re-run Shape B **diagnostic** after collection exists; pass when Static `file_sync/ops ≪ 1` and Adaptive → Static.
 
 ---
 

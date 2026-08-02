@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO three-way T1–T8:** T7 v2 plan + **T8 APFS smoke** independent singles (`--present-batch 1`); sparse+saturated three-way valid+reopen; **all modes `file_sync/ops=1`** — AWO collection residual (Static does not amortize concurrent singles yet). Artifacts `awo-three-way-t7-apfs-smoke`. Scratch diagnostic exFAT residual remains. AWO cards principal `in_review`; query spine / APB **in_review**)
+Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO T1–T9:** T8 APFS smoke independent singles all modes `file_sync/ops=1`; **T9 decisive:** harness OK — AWO **not connected** to independent writes (`admit_put`→`admit_natural` under global physical mutex). See `AWO_THREE_WAY_T9_DECISIVE_FINDING.md`. Collection connect residual open. Scratch exFAT residual remains. AWO cards principal `in_review`; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
