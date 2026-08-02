@@ -154,3 +154,37 @@ fn collection_and_payload_bucket_closed() {
     assert_eq!(collection_delay_ns(1, true, true, 250_000), 250_000);
     assert_eq!(payload_bucket(1024, 4096), 1024);
 }
+
+#[test]
+fn adaptive_mode_select_plan_sizes_cold_batch_to_natural_one() {
+    use residiuum_store::{DurabilityMode, StoreHost};
+
+    let dir = tempfile::tempdir().unwrap();
+    let mut policy = AdaptiveWritePolicy::machine_defaults();
+    policy.mode = AdaptiveWriteMode::Adaptive;
+    policy.maximum_cookers = 1;
+    policy.minimum_active_cookers = 1;
+    let host = StoreHost::create_with_adaptive_write(dir.path(), policy).unwrap();
+    let handle = host.adaptive_write().unwrap().clone();
+    let physical = host.physical();
+    let mut guard = physical.lock().unwrap();
+
+    // Cold estimator → natural → only first item of presented batch is taken.
+    let receipts = handle
+        .admit_put_batch(
+            &mut guard,
+            &[
+                ("awo/ad/a", b"1"),
+                ("awo/ad/b", b"2"),
+                ("awo/ad/c", b"3"),
+            ],
+            DurabilityMode::Buffered,
+        )
+        .unwrap();
+    assert_eq!(receipts.len(), 1);
+    assert!(guard.get("awo/ad/a").unwrap().is_some());
+    assert!(guard.get("awo/ad/b").unwrap().is_none());
+    let sel = handle.last_selection().expect("selection recorded");
+    assert_eq!(sel.plan, AwoPlan::Natural);
+    assert_eq!(sel.reason, "natural_insufficient_evidence");
+}

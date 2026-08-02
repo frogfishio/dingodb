@@ -4,15 +4,22 @@
 //! - [`AdaptiveWriteMode::Static`]: lease fences direct `Store` mutation; single
 //!   admits execute natural under the lease; [`AdaptiveWriteHandle::admit_put_batch`]
 //!   uses lease-owned `put_many` (persist-before-publish + optional parallel cook).
-//! - [`AdaptiveWriteMode::Adaptive`]: same floor as Static until AWO-5 controller.
+//! - [`AdaptiveWriteMode::Adaptive`]: lease + pipeline + live [`select_plan`] sizing
+//!   (AWO-5 wired); estimator warms from observed batch service times.
 //!
 //! E6 heap active-writer layout residual: product heap routing still uses the
 //! shared physical store lock; heap-specific active segments remain open.
 
+use super::controller::{
+    AwoClock, ControllerPolicy, ControllerSignals, InstantClock, ManualClock, ScaleController,
+};
 use super::coordinator::{PipelineCoordinator, PipelineError, PipelineStatus};
 use super::cooker::PersistentCookerPool;
 use super::credits::{mutation_credit, CreditLedger};
+use super::estimator::ServiceEstimator;
 use super::policy::{AdaptiveWriteMode, AdaptiveWritePolicy, PolicyError};
+use super::selector::{select_plan, CandidateBounds, Selection};
+use super::types::AwoPlan;
 use crate::durability::DurabilityMode;
 use crate::error::StoreError;
 use crate::store::{Store, WriteCondition, WriteReceipt};
@@ -170,6 +177,14 @@ struct RuntimeInner {
     credits: Option<CreditLedger>,
     cooker: Option<PersistentCookerPool>,
     pipeline: Option<Arc<PipelineCoordinator>>,
+    /// Adaptive-mode service estimator (AWO-5).
+    estimator: Option<ServiceEstimator>,
+    /// Adaptive-mode scale controller (AWO-5).
+    scale: Option<ScaleController>,
+    /// Process monotonic clock for estimator/controller.
+    clock: InstantClock,
+    /// Last adaptive selection (tests / telemetry).
+    last_selection: Option<Selection>,
 }
 
 /// Process-local adaptive write runtime (threads + credit ledger).
@@ -200,6 +215,10 @@ impl AdaptiveWriteHandle {
                     credits: None,
                     cooker: None,
                     pipeline: None,
+                    estimator: None,
+                    scale: None,
+                    clock: InstantClock::new(),
+                    last_selection: None,
                 }),
             }),
         })
@@ -230,6 +249,17 @@ impl AdaptiveWriteHandle {
             0,
         );
         let pipeline = Arc::new(PipelineCoordinator::new(policy.pipeline_depth_limit));
+        let adaptive = policy.mode == AdaptiveWriteMode::Adaptive;
+        let mut estimator = ServiceEstimator::with_policy_defaults();
+        estimator.min_samples = policy.estimator_min_samples;
+        estimator.stale_after_ns = policy.estimator_stale_after.as_nanos().min(u64::MAX as u128) as u64;
+        let scale = ScaleController::new(
+            ControllerPolicy::machine_defaults(
+                policy.minimum_active_cookers,
+                policy.maximum_cookers,
+            ),
+            policy.minimum_active_cookers,
+        );
         store.set_awo_lease_active(true);
         Ok(Self {
             runtime: Arc::new(AdaptiveWriteRuntime {
@@ -240,9 +270,23 @@ impl AdaptiveWriteHandle {
                     credits: Some(credits),
                     cooker: Some(cooker),
                     pipeline: Some(pipeline),
+                    estimator: if adaptive { Some(estimator) } else { None },
+                    scale: if adaptive { Some(scale) } else { None },
+                    clock: InstantClock::new(),
+                    last_selection: None,
                 }),
             }),
         })
+    }
+
+    /// Last adaptive selection (None until Adaptive admit runs select_plan).
+    pub fn last_selection(&self) -> Option<Selection> {
+        self.runtime
+            .inner
+            .lock()
+            .expect("awo runtime")
+            .last_selection
+            .clone()
     }
 
     /// Current status snapshot.
@@ -369,14 +413,16 @@ impl AdaptiveWriteHandle {
             return Ok(out);
         }
 
+        // Adaptive: size the batch via select_plan; Static takes the full slice.
+        let take_n = self.plan_batch_take(items, store)?;
+        let items = &items[..take_n];
+
         let mut total_credit: usize = 0;
-        let mut per_credits: Vec<usize> = Vec::with_capacity(items.len());
         for (subject, value) in items {
             let c = mutation_credit(subject.len(), value.len())
                 .map_err(|_| AdaptiveWriteError::QueueFull {
                     retry_after: Duration::from_millis(1),
                 })?;
-            per_credits.push(c);
             total_credit = total_credit.checked_add(c).ok_or(
                 AdaptiveWriteError::QueueFull {
                     retry_after: Duration::from_millis(1),
@@ -430,26 +476,56 @@ impl AdaptiveWriteHandle {
         };
 
         // Prefer parallel store cook when the runtime has a cooker pool.
-        let cooker_n = self
-            .runtime
-            .inner
-            .lock()
-            .expect("awo runtime")
-            .cooker
-            .as_ref()
-            .map(|c| c.maximum_cookers())
-            .unwrap_or(1);
+        let cooker_n = {
+            let mut g = self.runtime.inner.lock().expect("awo runtime");
+            let pending = g.cooker.as_ref().map(|c| c.pending_tasks()).unwrap_or(0);
+            let active = g.cooker.as_ref().map(|c| c.active_cookers()).unwrap_or(1);
+            let now_ns = g.clock.now_ns();
+            // Adaptive scale: evaluate once per batch with simple signals.
+            if let Some(ref mut scale) = g.scale {
+                let util = if active > 0 {
+                    if pending > 0 {
+                        900_000
+                    } else {
+                        100_000
+                    }
+                } else {
+                    0
+                };
+                let sig = ControllerSignals {
+                    cook_queue_bytes_increased: pending > 0,
+                    cooker_utilization_ppm: util,
+                    writer_ready_increasing: false,
+                    ready_queue_fill_ppm: 0,
+                    positive_marginal_throughput: true,
+                    writer_saturated: false,
+                    deadline_miss_from_cook: false,
+                };
+                // Temporary clock view for evaluate (InstantClock is Copy-free; use Manual snapshot).
+                let snap = ManualClock::new(now_ns);
+                let _ = scale.evaluate(&sig, &snap);
+                let target = scale.active_cookers;
+                if let Some(ref cooker) = g.cooker {
+                    cooker.set_active_cookers(target);
+                }
+            }
+            g.cooker
+                .as_ref()
+                .map(|c| c.active_cookers().max(1))
+                .unwrap_or(1)
+        };
         if cooker_n > 1 {
             store.set_cook_parallelism(cooker_n);
         }
 
         if let (Some(ref pipe), Some(id)) = (pipeline.as_ref(), reservation) {
-            // Synchronous batch path: cook+install are one store call; mark
-            // cook complete then install complete around put_many_awo_owned.
             let _ = pipe.note_cook_complete(id);
         }
 
+        let t0 = Instant::now();
         let result = store.put_many_awo_owned(items, mode);
+        let elapsed_ns = t0.elapsed().as_nanos().min(u64::MAX as u128) as u64;
+
         if let (Some(ref pipe), Some(id)) = (pipeline.as_ref(), reservation) {
             match &result {
                 Ok(_) => {
@@ -461,12 +537,91 @@ impl AdaptiveWriteHandle {
             }
         }
         {
-            let g = self.runtime.inner.lock().expect("awo runtime");
+            let mut g = self.runtime.inner.lock().expect("awo runtime");
             if let Some(credits) = g.credits.as_ref() {
                 let _ = credits.release(items.len(), total_credit);
             }
+            if result.is_ok() {
+                let now = g.clock.now_ns();
+                if let Some(ref mut est) = g.estimator {
+                    // Per-item average service sample for natural lower bound.
+                    let per = elapsed_ns / (items.len().max(1) as u64);
+                    est.ewma.observe(per.max(1), now);
+                }
+            }
         }
         result.map_err(AdaptiveWriteError::from)
+    }
+
+    /// Choose how many items to take from a presented batch (Static = all;
+    /// Adaptive = select_plan).
+    fn plan_batch_take(
+        &self,
+        items: &[(&str, &[u8])],
+        store: &Store,
+    ) -> Result<usize, AdaptiveWriteError> {
+        let mut g = self.runtime.inner.lock().expect("awo runtime");
+        if g.policy.mode != AdaptiveWriteMode::Adaptive {
+            return Ok(items.len());
+        }
+        let entries_available = g
+            .credits
+            .as_ref()
+            .map(|c| c.entries_available() as u64)
+            .unwrap_or(items.len() as u64);
+        let bytes_available = g
+            .credits
+            .as_ref()
+            .map(|c| c.bytes_available() as u64)
+            .unwrap_or(u64::MAX);
+        let avg_bytes = if items.is_empty() {
+            0u64
+        } else {
+            let sum: u64 = items
+                .iter()
+                .map(|(s, v)| (s.len() + v.len()) as u64)
+                .sum();
+            sum / items.len() as u64
+        };
+        let (warm, stale) = g
+            .estimator
+            .as_ref()
+            .map(|e| e.evidence_flags(&g.clock))
+            .unwrap_or((false, true));
+        let natural_lower = g
+            .estimator
+            .as_ref()
+            .map(|e| e.ewma.lower_ns().max(1))
+            .unwrap_or(1);
+        let bounds = CandidateBounds {
+            queued_count: items.len() as u64,
+            entries_available,
+            maximum_batch_entries: g.policy.maximum_batch_entries as u64,
+            bytes_per_entry: avg_bytes.max(1),
+            bytes_available,
+            maximum_batch_bytes: g.policy.maximum_batch_bytes as u64,
+            segment_room_entries: items.len() as u64,
+        };
+        let margin = g.policy.decision_margin_ppm;
+        let deadline_ns = g.policy.default_completion_deadline.as_nanos() as u64;
+        // Conservative batch upper: natural_lower * n (no free lunch until warm curves).
+        let selection = select_plan(
+            &bounds,
+            natural_lower,
+            margin,
+            warm,
+            stale,
+            true,
+            deadline_ns,
+            |n| natural_lower.saturating_mul(n.saturating_add(1)),
+        );
+        g.last_selection = Some(selection.clone());
+        let _ = store; // future: segment room probe
+        let take = match selection.plan {
+            AwoPlan::Natural => 1usize,
+            AwoPlan::Batch => (selection.entries as usize).clamp(1, items.len()),
+        };
+        Ok(take)
     }
 
     fn admit_natural<F>(&self, store: &mut Store, op: F) -> AdmissionResult

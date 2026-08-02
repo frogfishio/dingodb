@@ -21,10 +21,10 @@ Card: `2b57bc17-6c85-4bcf-bb05-017d1ece6dfd`
 
 ## Explicit residuals
 
-1. **Wire controller into product admit loop** — still Static natural/batch via AWO-3 paths; Adaptive mode does not yet call `select_plan` live.
+1. ~~**Wire controller into product admit loop**~~ — **closed labor**: Adaptive `admit_put_batch` calls `select_plan`; cold → natural take-1; estimator observes batch service; scale evaluates simple cooker signals.
 2. **Per-bucket multi-lane estimators** — single service estimator floor.
 3. **controller_stability / falsification** suites (lying estimators).
-4. **Live cooker utilisation signals** from runtime telemetry.
+4. **Richer utilisation telemetry** (not binary pending-based util).
 5. **Package accept** — principal only.
 
 ## Exit command
