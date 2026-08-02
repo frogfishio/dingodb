@@ -358,6 +358,9 @@ pub struct Store {
     /// Mutations must refuse until ordinary close/reopen recovery. Distinct from a
     /// full AdaptiveWriteLease (AWO-3); this is the store-local poison bit.
     awo_writer_poisoned: bool,
+    /// AWO-3: adaptive write lease owns mutation; direct put/delete refuse with
+    /// [`StoreError::AdaptiveWriterActive`] until the lease is released.
+    awo_lease_active: bool,
 }
 
 /// Where `write_segment_tail` sends bytes (diagnostic bisection only).
@@ -519,6 +522,7 @@ impl Store {
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
             awo_writer_poisoned: false,
+            awo_lease_active: false,
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
@@ -613,6 +617,7 @@ impl Store {
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
             awo_writer_poisoned: false,
+            awo_lease_active: false,
         };
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
@@ -744,6 +749,7 @@ impl Store {
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
             awo_writer_poisoned: false,
+            awo_lease_active: false,
         };
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
@@ -851,6 +857,15 @@ impl Store {
         self.awo_writer_poisoned
     }
 
+    /// Whether an adaptive-write lease fences direct mutation (AWO-3).
+    pub fn is_awo_lease_active(&self) -> bool {
+        self.awo_lease_active
+    }
+
+    /// Set or clear the adaptive-write lease fence (AWO runtime only).
+    pub fn set_awo_lease_active(&mut self, active: bool) {
+        self.awo_lease_active = active;
+    }
 
     /// Current cook parallelism (`1` = serial).
     pub fn cook_parallelism(&self) -> usize {
@@ -1320,15 +1335,25 @@ impl Store {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
-        if self.awo_writer_poisoned {
-            return Err(StoreError::AdaptiveWriterPoisoned);
-        }
+        self.refuse_direct_mutation_if_awo()?;
         self.put_subject_bytes_if(subject, value, mode, WriteCondition::Unconditional)
     }
 
     /// Conditional put: check [`WriteCondition`] then mint/append under the same
     /// exclusive writer path (APB-2 Key Atomic).
     pub fn put_subject_bytes_if(
+        &mut self,
+        subject: &[u8],
+        value: &[u8],
+        mode: DurabilityMode,
+        condition: WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
+        self.refuse_direct_mutation_if_awo()?;
+        self.put_subject_bytes_if_awo_owned(subject, value, mode, condition)
+    }
+
+    /// Put under adaptive lease (skips lease fence; still honors poison).
+    pub fn put_subject_bytes_if_awo_owned(
         &mut self,
         subject: &[u8],
         value: &[u8],
@@ -1419,9 +1444,7 @@ impl Store {
         items: &[(&str, &[u8])],
         mode: DurabilityMode,
     ) -> Result<Vec<WriteReceipt>, StoreError> {
-        if self.awo_writer_poisoned {
-            return Err(StoreError::AdaptiveWriterPoisoned);
-        }
+        self.refuse_direct_mutation_if_awo()?;
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -2378,9 +2401,7 @@ impl Store {
         subject: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
-        if self.awo_writer_poisoned {
-            return Err(StoreError::AdaptiveWriterPoisoned);
-        }
+        self.refuse_direct_mutation_if_awo()?;
         self.delete_subject_bytes_if(subject, mode, WriteCondition::Unconditional)
     }
 
@@ -2391,11 +2412,33 @@ impl Store {
         mode: DurabilityMode,
         condition: WriteCondition,
     ) -> Result<WriteReceipt, StoreError> {
+        self.refuse_direct_mutation_if_awo()?;
+        self.delete_subject_bytes_if_awo_owned(subject, mode, condition)
+    }
+
+    /// Delete under adaptive lease (skips lease fence; still honors poison).
+    pub fn delete_subject_bytes_if_awo_owned(
+        &mut self,
+        subject: &[u8],
+        mode: DurabilityMode,
+        condition: WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
         if self.awo_writer_poisoned {
             return Err(StoreError::AdaptiveWriterPoisoned);
         }
         self.check_write_condition(subject, condition)?;
         self.write_event(subject, EventKind::Delete, &[], mode)
+    }
+
+    #[inline]
+    fn refuse_direct_mutation_if_awo(&self) -> Result<(), StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
+        if self.awo_lease_active {
+            return Err(StoreError::AdaptiveWriterActive);
+        }
+        Ok(())
     }
 
     /// Event history for a subject key (oldest first; DX_SPEC §10.1).

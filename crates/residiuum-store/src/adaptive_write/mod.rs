@@ -15,6 +15,7 @@ pub mod ordered_ready;
 pub mod persist;
 pub mod policy;
 pub mod queue;
+pub mod runtime;
 pub mod types;
 
 pub use cooker::{
@@ -29,6 +30,10 @@ pub use ordered_ready::{OrderedReadyRing, ReadyError};
 pub use persist::{BatchReservation, LaneTicket, AWO_FAILPOINTS};
 pub use policy::{AdaptiveWriteMode, AdaptiveWritePolicy, PolicyError};
 pub use queue::{BoundedQueue, QueueError};
+pub use runtime::{
+    classify_delete, classify_put, AdaptiveWriteError, AdaptiveWriteHandle, AdaptiveWriteRuntime,
+    AdaptiveWriteStatus, AdmissionResult, EligibilityClass, WriteCompletion,
+};
 pub use types::{
     decision_reason_ids, AwoPlan, AWO_PROFILE, DECISION_MARGIN_PPM_DEFAULT,
 };

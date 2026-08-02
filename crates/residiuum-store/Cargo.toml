@@ -242,6 +242,10 @@ required-features = ["legacy-raw-store"]
 name = "awo_credit_bounds"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "awo_static_admission"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]
