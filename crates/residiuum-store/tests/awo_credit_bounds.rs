@@ -13,9 +13,10 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn credit_reserve_hits_entry_and_byte_limits() {
-    let ledger = CreditLedger::new(3, 2_000);
     let c = mutation_credit(8, 64).expect("credit");
     assert!(c > FRAME_FRAMING_OVERHEAD);
+    // Entry limit binds first: room for exactly 3 full credits by bytes.
+    let ledger = CreditLedger::new(3, c.saturating_mul(10));
 
     ledger.try_reserve(1, c).unwrap();
     ledger.try_reserve(1, c).unwrap();

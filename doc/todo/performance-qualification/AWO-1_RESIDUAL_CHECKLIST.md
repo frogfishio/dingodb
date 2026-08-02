@@ -2,7 +2,10 @@
 
 Status: **labor floor delivered for G2 path — not package accept**  
 Date: 2026-08-02  
-Card: `c01e33ad-69ef-46a4-8538-46df4cda6075`
+Card: `c01e33ad-69ef-46a4-8538-46df4cda6075`  
+Residual suite re-run green: `awo_persist_before_publish` 4/4,
+`awo_partial_write_recovery` 1/1, `awo_publication_failure` 1/1,
+`awo_direct_writer_lease` 2/2 (legacy-raw-store).
 
 ## Delivered
 

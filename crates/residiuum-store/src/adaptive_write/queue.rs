@@ -118,21 +118,11 @@ impl<T> BoundedQueue<T> {
         }
     }
 
-    /// Pop with predicate gate: wait while `parked()` is true (e.g. inactive
-    /// cooker permit). Returns `None` on shutdown with empty queue.
-    pub fn pop_while<F>(&self, mut parked: F) -> Option<T>
-    where
-        F: FnMut() -> bool,
-    {
+    /// Pop with a timeout. Returns `None` on timeout, or on shutdown with empty queue.
+    pub fn pop_timeout(&self, timeout: Duration) -> Option<T> {
         let mut g = self.inner.lock().expect("queue lock");
+        let deadline = std::time::Instant::now() + timeout;
         loop {
-            if parked() {
-                if g.shutdown && g.items.is_empty() {
-                    return None;
-                }
-                g = self.not_empty.wait(g).expect("queue wait");
-                continue;
-            }
             if let Some(item) = g.items.pop_front() {
                 self.not_full.notify_one();
                 return Some(item);
@@ -140,8 +130,25 @@ impl<T> BoundedQueue<T> {
             if g.shutdown {
                 return None;
             }
-            g = self.not_empty.wait(g).expect("queue wait");
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                return None;
+            }
+            let (guard, wait) = self
+                .not_empty
+                .wait_timeout(g, remaining)
+                .expect("queue wait");
+            g = guard;
+            if wait.timed_out() && g.items.is_empty() {
+                return None;
+            }
         }
+    }
+
+    /// Sleep on the queue condvar up to `timeout` (permit / shutdown wakeups).
+    pub fn wait_timeout(&self, timeout: Duration) {
+        let g = self.inner.lock().expect("queue lock");
+        let _ = self.not_empty.wait_timeout(g, timeout);
     }
 
     /// Current length.

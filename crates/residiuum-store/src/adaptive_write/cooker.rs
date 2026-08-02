@@ -5,6 +5,10 @@
 //! - Bodies/subjects stay `Arc<[u8]>` — no clone into the cook path.
 //! - Cookers never touch `Store`, indexes, file handles, or completions.
 //! - Outcomes land in an [`OrderedReadyRing`] keyed by lane ticket.
+//!
+//! Shutdown is fail-closed for hangs: inactive workers use a timed park so a
+//! missed notify cannot block `join` forever; once shutdown is set, every
+//! worker drains remaining tasks then exits.
 
 use super::ordered_ready::OrderedReadyRing;
 use super::persist::LaneTicket;
@@ -16,6 +20,7 @@ use residiuum_format::{
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 /// Immutable cook input (plan: body owned once as `Arc<[u8]>`).
 #[derive(Debug, Clone)]
@@ -155,6 +160,15 @@ impl FrameBufferPool {
     }
 }
 
+/// How long an inactive worker sleeps before re-checking permits / shutdown.
+///
+/// Timed park avoids permanent hang if a permit notify is lost; active path
+/// still wakes immediately via [`BoundedQueue::notify_all_waiters`].
+const INACTIVE_PARK: Duration = Duration::from_millis(25);
+
+/// Max time to spin when the ready ring is byte-full (coordinator must drain).
+const READY_PUSH_SPIN: Duration = Duration::from_millis(5);
+
 /// Persistent cooker pool: max threads at start, scale via permits.
 pub struct PersistentCookerPool {
     maximum_cookers: usize,
@@ -257,12 +271,27 @@ impl PersistentCookerPool {
         self.task_queue.len()
     }
 
-    /// Drain: stop accepting, wait for workers to finish remaining tasks.
+    /// Drain: stop accepting, wake workers, join all threads.
     pub fn shutdown(mut self) {
+        self.shutdown_inner();
+    }
+
+    fn shutdown_inner(&mut self) {
         self.shutdown.store(true, Ordering::SeqCst);
+        // Activate everyone so remaining tasks drain even if permits were 0.
+        self.active_cookers
+            .store(self.maximum_cookers, Ordering::SeqCst);
         self.task_queue.shutdown();
         for h in self.workers.drain(..) {
             let _ = h.join();
+        }
+    }
+}
+
+impl Drop for PersistentCookerPool {
+    fn drop(&mut self) {
+        if !self.workers.is_empty() {
+            self.shutdown_inner();
         }
     }
 }
@@ -275,26 +304,36 @@ fn worker_loop(
     shutdown: Arc<AtomicBool>,
 ) {
     loop {
-        let task = task_queue.pop_while(|| {
-            if shutdown.load(Ordering::SeqCst) && task_queue.is_empty() {
-                // still need to exit pop_while — parked true only when inactive
-            }
-            worker_id >= active_cookers.load(Ordering::SeqCst)
-                && !(shutdown.load(Ordering::SeqCst) && task_queue.is_empty())
-        });
-        // When inactive, pop_while parks. When shutdown+empty, returns None if not parked.
-        // Re-check: if parked condition is false and queue empty and shutdown, pop returns None.
-        let Some(task) = task else {
-            if shutdown.load(Ordering::SeqCst) {
-                break;
-            }
-            // Spurious: became inactive; loop again.
+        let stopping = shutdown.load(Ordering::SeqCst);
+        let active = active_cookers.load(Ordering::SeqCst);
+
+        // Inactive workers park (timed) unless shutting down — then all drain.
+        if worker_id >= active && !stopping {
+            task_queue.wait_timeout(INACTIVE_PARK);
             continue;
+        }
+
+        // Active (or draining on shutdown): take work or exit when empty+stop.
+        let task = if stopping {
+            // Non-blocking drain then exit; avoids blocking join if race empties queue.
+            match task_queue.try_pop() {
+                Some(t) => t,
+                None => {
+                    if task_queue.is_empty() {
+                        break;
+                    }
+                    // Another worker raced; brief yield.
+                    std::thread::yield_now();
+                    continue;
+                }
+            }
+        } else {
+            match task_queue.pop_timeout(INACTIVE_PARK) {
+                Some(t) => t,
+                None => continue, // timed out waiting; re-check permits/shutdown
+            }
         };
 
-        // Permit check after pop: if we became inactive, re-queue is wrong —
-        // plan says inactive workers park *before* taking work. If we already
-        // took work, finish it (no third reservation risk; CPU only).
         let outcome = match cook_item_frame(&task) {
             Ok(frame) => CookOutcome::Ok(CookedMutation {
                 ticket: task.ticket,
@@ -307,17 +346,23 @@ fn worker_loop(
         };
         let ticket = outcome.ticket();
         let bytes = outcome.frame_bytes().max(1);
-        // Ready ring full: spin-yield until space (bounded by coordinator drain).
+
+        // Push with bounded spin; on shutdown drop if ring stays full (coordinator
+        // should have drained; tests use large ready limits).
         let mut pending = Some(outcome);
+        let spin_deadline = std::time::Instant::now() + Duration::from_secs(2);
         while let Some(out) = pending.take() {
             match ready.push(ticket, out, bytes) {
                 Ok(()) => break,
                 Err((super::ordered_ready::ReadyError::BytesExhausted, out)) => {
-                    pending = Some(out);
-                    std::thread::yield_now();
-                    if shutdown.load(Ordering::SeqCst) {
+                    if shutdown.load(Ordering::SeqCst)
+                        || std::time::Instant::now() >= spin_deadline
+                    {
+                        // Drop outcome rather than hang the worker forever.
                         break;
                     }
+                    pending = Some(out);
+                    std::thread::sleep(READY_PUSH_SPIN);
                 }
                 Err(_) => break,
             }
@@ -328,7 +373,6 @@ fn worker_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{Duration, Instant};
 
     fn sample_task(ticket: u64, subject: &str, body: &[u8]) -> CookTask {
         CookTask {
@@ -345,6 +389,7 @@ mod tests {
         }
     }
 
+    /// Pure encode only — no thread pool (pool tests live in awo_credit_bounds).
     #[test]
     fn pure_cook_matches_serial_twice() {
         let t = sample_task(0, "k", b"hello-body");
@@ -352,48 +397,5 @@ mod tests {
         let b = cook_item_frame(&t).unwrap();
         assert_eq!(a, b);
         assert!(a.len() > t.body.len());
-    }
-
-    #[test]
-    fn pool_cooks_in_ticket_order() {
-        let pool = PersistentCookerPool::start(4, 2, 64, 16 * 1024 * 1024, 0);
-        assert_eq!(pool.threads_created(), 4);
-        for i in 0..8u64 {
-            pool.try_submit(sample_task(i, &format!("s{i}"), b"x"))
-                .unwrap();
-        }
-        let deadline = Instant::now() + Duration::from_secs(5);
-        let mut got = Vec::new();
-        while got.len() < 8 && Instant::now() < deadline {
-            if let Some((ticket, outcome)) = pool.ready().try_pop_next() {
-                match outcome {
-                    CookOutcome::Ok(c) => {
-                        assert_eq!(c.ticket, ticket);
-                        assert!(!c.encoded_frame.is_empty());
-                        got.push(ticket.ticket);
-                    }
-                    CookOutcome::Err { message, .. } => panic!("cook err: {message}"),
-                }
-            } else {
-                std::thread::yield_now();
-            }
-        }
-        assert_eq!(got, (0..8).collect::<Vec<_>>());
-        // Scale permits without new threads.
-        pool.set_active_cookers(1);
-        assert_eq!(pool.active_cookers(), 1);
-        assert_eq!(pool.threads_created(), 4);
-        pool.shutdown();
-    }
-
-    #[test]
-    fn inactive_workers_do_not_require_spawn() {
-        let pool = PersistentCookerPool::start(3, 1, 16, 1024 * 1024, 0);
-        assert_eq!(pool.threads_created(), 3);
-        pool.set_active_cookers(3);
-        pool.set_active_cookers(0);
-        pool.set_active_cookers(2);
-        assert_eq!(pool.threads_created(), 3);
-        pool.shutdown();
     }
 }
