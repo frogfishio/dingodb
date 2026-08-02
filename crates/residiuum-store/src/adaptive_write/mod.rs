@@ -8,22 +8,37 @@
 //! - **AWO-2:** persistent cooker pool, credit ledger, ordered ready ring.
 //! - **AWO-3+:** product StoreHost admission (mode still disabled by default).
 
+pub mod controller;
 pub mod coordinator;
 pub mod cooker;
 pub mod credits;
+pub mod estimator;
 pub mod model;
 pub mod ordered_ready;
 pub mod persist;
 pub mod policy;
 pub mod queue;
 pub mod runtime;
+pub mod selector;
 pub mod types;
 
+pub use controller::{
+    AwoClock, ControllerPolicy, ControllerSignals, InstantClock, ManualClock, ScaleController,
+    ScaleDecision,
+};
 pub use coordinator::{
     PipelineCoordinator, PipelineError, PipelineStatus, ReservationId, ReservationPhase,
 };
 pub use cooker::{
     cook_item_frame, CookOutcome, CookTask, CookedMutation, FrameBufferPool, PersistentCookerPool,
+};
+pub use estimator::{
+    payload_bucket, EwmaEstimate, ServiceEstimator, ALPHA_DENOMINATOR, DEVIATION_MULTIPLIER,
+    MIN_SAMPLES_DEFAULT, STALE_AFTER_NS_DEFAULT,
+};
+pub use selector::{
+    candidate_entry_counts, collection_delay_ns, select_plan, CandidateBounds, Selection,
+    CANDIDATE_POW2,
 };
 pub use credits::{
     mutation_credit, CreditError, CreditLedger, COMPLETION_SLOT_OVERHEAD, ENVELOPE_FIXED_OVERHEAD,
