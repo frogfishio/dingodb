@@ -1,6 +1,6 @@
 # DEF-SCAN-001 — structured locator faults + honest heap scan pages (P0)
 
-**Status:** T7–T8 **accepted (labor only)**; T9 query-time materialization useful; T10 **in_review** = true blocker #5 (index **construction**); package **not** accepted  
+**Status:** T7–T8 **accepted (labor)**; T9–T11 **accepted (blocker #5 closure, labor only)**; T12 **in_review** (`scan_collection_page` compat); package **not** accepted  
 **Date:** 2026-08-02  
 **Board:** Feature `DEF-SCAN-001`  
 **Severity:** **P0**
@@ -36,7 +36,7 @@ Only when **no** named media exists is salvage attempted; salvage failures do **
 
 ### Honest scan page
 
-`HeapStore::scan_collection` → `CollectionScanPage`:
+`HeapStore::scan_collection_page` → `CollectionScanPage` (compat alias: `scan_collection`):
 
 - `entries` — complete rows  
 - `incomplete` — holes with `CollectionScanHoleReason` **and** optional `locator: Option<LocatorFault>`  
@@ -96,6 +96,20 @@ document B has an unresolved locator
 
 Legacy flat-SDK build already used `scan_live_bodies_for_build` + Partial on incomplete; heap path was the gap.
 
+#### Partial hit lists are not exclusive (T11 residual)
+
+Even after Partial (not Ready):
+
+```text
+A matches x and was indexed
+B matches x but omitted by damaged build
+lookup(x) returns [A] only
+materialize A → coverage looks complete
+B silently omitted
+```
+
+**Required:** exclusive index paths (`lookup_index_keys`, SDK `try_index_lookup`) use only `may_supply_exclusive_candidates()` = Ready+`complete_coverage`. Partial is skipped even for non-empty hits; caller falls through to scan (holes + survivors).
+
 Physical `IncompleteReason` still maps the distinct locator kinds.
 
 ## Evidence
@@ -103,10 +117,20 @@ Physical `IncompleteReason` still maps the distinct locator kinds.
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test def_scan_001_segment_not_found
-# 9/9
+# 10/10
 ```
 
-Tests assert locator diagnostics, multipage `last_key`, shared `from_error`, and **index build with unresolved locator → Partial (not Ready)**.
+Tests assert locator diagnostics, multipage `last_key`, shared `from_error`, index build Partial, Partial never exclusive lookup, and `scan_collection` ≡ `scan_collection_page`.
+
+### API compatibility (T12)
+
+```rust
+// Preferred (explicit incomplete page)
+HeapStore::scan_collection_page(...) -> Result<CollectionScanPage, StoreError>
+
+// Compatibility alias — same return type (not a soft-skip Vec)
+HeapStore::scan_collection(...) -> Result<CollectionScanPage, StoreError>
+```
 
 Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.
 

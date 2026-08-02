@@ -652,7 +652,7 @@ impl HeapStore {
         let mut after: Option<Vec<u8>> = None;
         let mut saw_incomplete = false;
         loop {
-            let page = self.scan_collection(collection_id, 4096, after.as_deref())?;
+            let page = self.scan_collection_page(collection_id, 4096, after.as_deref())?;
             if !page.incomplete.is_empty() {
                 // Construction-time holes: do not invent field postings; record
                 // that coverage is incomplete so Ready absence proofs are refused.
@@ -689,12 +689,10 @@ impl HeapStore {
         Ok(saw_incomplete)
     }
 
-    /// Scan live (key, body) pairs in a collection under this heap.
+    /// Scan live (key, body) pairs with **explicit holes** (DEF-SCAN-001).
     ///
     /// Bodies are raw store payloads (typed SDK tags when written via SDK).
     /// At most `limit` **complete** rows (clamped 1..=4096).
-    ///
-    /// # Holes are explicit (DEF-SCAN-001)
     ///
     /// Unresolved locators are **not** silently dropped into a plain `Vec` of
     /// survivors. The returned [`CollectionScanPage`] carries `entries` and
@@ -705,7 +703,10 @@ impl HeapStore {
     ///
     /// Physical [`crate::Store::scan_live_page`] uses the same incomplete-page
     /// posture. Point-get remains fail-closed for a single subject.
-    pub fn scan_collection(
+    ///
+    /// Prefer this name over [`Self::scan_collection`] in new code; the shorter
+    /// name remains a compatibility alias with the same page type.
+    pub fn scan_collection_page(
         &self,
         collection_id: &[u8; 16],
         limit: usize,
@@ -782,13 +783,30 @@ impl HeapStore {
         })
     }
 
+    /// Compatibility alias for [`Self::scan_collection_page`].
+    ///
+    /// Returns the same incomplete-aware [`CollectionScanPage`] — **not** a
+    /// plain survivor `Vec`. Call sites that need explicit page semantics
+    /// should use `scan_collection_page`.
+    #[inline]
+    pub fn scan_collection(
+        &self,
+        collection_id: &[u8; 16],
+        limit: usize,
+        after_key: Option<&[u8]>,
+    ) -> Result<CollectionScanPage, StoreError> {
+        self.scan_collection_page(collection_id, limit, after_key)
+    }
+
     /// Lookup candidate collection keys via a secondary index for equality filters.
     ///
     /// `equalities` is a list of (field path, JSON value) constraints (shallow AND
     /// of equalities). Returns:
-    /// - `Ok(None)` — no usable index matches; caller must scan.
-    /// - `Ok(Some(keys))` — index path used; keys are application collection keys
-    ///   (may be empty when Ready+complete_coverage proves absence).
+    /// - `Ok(None)` — no exclusive index path; caller must scan.
+    /// - `Ok(Some(keys))` — index supplies an **exclusive complete** candidate set
+    ///   (Ready+complete_coverage only). Partial indexes are skipped even when
+    ///   they have hits: a non-empty Partial list can omit peers never posted
+    ///   during a damaged build (DEF-SCAN-001 blocker #5 residual).
     pub fn lookup_index_keys(
         &self,
         collection_id: &[u8; 16],
@@ -808,7 +826,8 @@ impl HeapStore {
             guard.list_secondary_indexes(&scope)?
         };
         for idx in indexes {
-            if !idx.meta.may_accelerate_hits() || idx.meta.fields.is_empty() {
+            // Exclusive candidate sets only — Partial hits are incomplete.
+            if !idx.meta.may_supply_exclusive_candidates() || idx.meta.fields.is_empty() {
                 continue;
             }
             // All index fields must appear as equalities.
@@ -831,10 +850,7 @@ impl HeapStore {
                 None => continue,
             };
             let subjects = idx.lookup(&key).to_vec();
-            // Empty miss is authoritative only when Ready + complete_coverage.
-            if subjects.is_empty() && !idx.meta.may_prove_absence() {
-                continue;
-            }
+            // Empty miss is authoritative: exclusive complete coverage only.
             let mut keys = Vec::new();
             for subject in subjects {
                 let sv2 = match decode_subject_v2(&subject) {

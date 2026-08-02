@@ -713,7 +713,10 @@ fn dispatch_find(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapDis
 
     // Scan fallback (non-equality filters, or no usable index).
     let scan_cap = limit.saturating_mul(8).clamp(limit, 4096);
-    let page = match ctx.store.scan_collection(coll.as_bytes(), scan_cap, None) {
+    let page = match ctx
+        .store
+        .scan_collection_page(coll.as_bytes(), scan_cap, None)
+    {
         Ok(p) => p,
         Err(_) => return unavailable_id(id),
     };
@@ -912,7 +915,7 @@ fn dispatch_scan_json(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
     }
     match ctx
         .store
-        .scan_collection(coll.as_bytes(), limit, after.map(|s| s.as_bytes()))
+        .scan_collection_page(coll.as_bytes(), limit, after.map(|s| s.as_bytes()))
     {
         Ok(page) => {
             let mut out = Vec::new();

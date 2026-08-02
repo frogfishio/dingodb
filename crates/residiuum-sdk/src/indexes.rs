@@ -428,9 +428,10 @@ pub(crate) fn try_index_lookup(
         return Ok(None);
     }
     let indexes = store.list_secondary_indexes(collection)?;
-    // Prefer a ready index whose fields are a prefix of the equality set order.
+    // Prefer a Ready+complete index (exclusive complete candidate set only).
+    // Partial hit lists silently omit peers skipped at construction (DEF-SCAN-001).
     for idx in indexes {
-        if !idx.meta.may_accelerate_hits() {
+        if !idx.meta.may_supply_exclusive_candidates() {
             continue;
         }
         if idx.meta.fields.is_empty() {
@@ -461,13 +462,9 @@ pub(crate) fn try_index_lookup(
             }
             out
         };
-        // DEF-027 / DEF-012: empty (miss) results are authoritative only when
-        // Ready + complete_coverage. Partial/stale/building never prove absence.
+        // Ready+complete_coverage: empty miss and non-empty hits are exclusive.
         let subjects = idx.lookup(&key).to_vec();
         let info = IndexInfo::from_store(&idx);
-        if subjects.is_empty() && !idx.meta.may_prove_absence() {
-            continue;
-        }
         return Ok(Some((info, subjects)));
     }
     Ok(None)

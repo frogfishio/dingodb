@@ -121,10 +121,22 @@ pub struct SecondaryIndexMeta {
 impl SecondaryIndexMeta {
     /// Whether this index may accelerate queries that need non-empty hits only.
     ///
-    /// Ready and Partial may return candidate subjects. Stale / Building /
-    /// Failed / Rebuilding must never be treated as authoritative for absence.
+    /// Ready and Partial are *usable* in the lifecycle sense. Callers that
+    /// treat the index result as an **exclusive complete candidate set** must
+    /// use [`Self::may_supply_exclusive_candidates`] instead: a Partial index
+    /// can return hits for documents that were indexed while silently omitting
+    /// peers skipped at construction (DEF-SCAN-001 residual on Partial hits).
     pub fn may_accelerate_hits(&self) -> bool {
         self.state.usable()
+    }
+
+    /// Whether this index may supply the **only** candidate set for a complete query.
+    ///
+    /// Requires Ready + complete_coverage. Partial hit lists are incomplete:
+    /// `lookup(x) = [A]` when B also matches x but was omitted during a damaged
+    /// build would make coverage look complete after materializing A alone.
+    pub fn may_supply_exclusive_candidates(&self) -> bool {
+        self.state == IndexState::Ready && self.complete_coverage
     }
 
     /// Whether an empty lookup may be treated as proven absence.
@@ -132,7 +144,7 @@ impl SecondaryIndexMeta {
     /// Only Ready + complete_coverage may prove a key is absent. Partial,
     /// Stale, Building, Rebuilding, and Failed never prove absence.
     pub fn may_prove_absence(&self) -> bool {
-        self.state == IndexState::Ready && self.complete_coverage
+        self.may_supply_exclusive_candidates()
     }
 }
 
@@ -541,14 +553,20 @@ mod tests {
     }
 
     #[test]
-    fn partial_and_stale_never_prove_absence() {
+    fn partial_and_stale_never_prove_absence_or_exclusive_hits() {
         let mut idx = SecondaryIndex::new_building("c", "i", vec!["f".into()]);
+        idx.mark_ready([9u8; 32]);
+        assert!(idx.meta.may_supply_exclusive_candidates());
         idx.mark_partial([1u8; 32], "frontier drifted");
         assert!(!idx.meta.may_prove_absence());
+        assert!(!idx.meta.may_supply_exclusive_candidates());
+        // Lifecycle still "usable" for Partial, but not exclusive.
         assert!(idx.meta.state.usable());
+        assert!(idx.meta.may_accelerate_hits());
         idx.mark_stale();
         assert_eq!(idx.meta.state, IndexState::Stale);
         assert!(!idx.meta.may_prove_absence());
+        assert!(!idx.meta.may_supply_exclusive_candidates());
         assert!(!idx.meta.state.usable());
     }
 

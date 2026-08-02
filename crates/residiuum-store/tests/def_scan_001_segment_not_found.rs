@@ -7,7 +7,7 @@
 //! ## Required posture
 //!
 //! - Locator resolve errors stay **distinct**.
-//! - `scan_collection` returns [`CollectionScanPage`] with `entries` + `incomplete`.
+//! - `scan_collection_page` (and alias `scan_collection`) returns [`CollectionScanPage`].
 //! - Callers use `page.complete` / `incomplete` — not `entries.is_empty()` alone.
 
 use residiuum_heap::{
@@ -117,7 +117,7 @@ fn scan_all(heap: &residiuum_store::HeapStore, coll: &[u8; 16]) -> Result<Collec
     let mut after: Option<Vec<u8>> = None;
     let mut examined = 0usize;
     loop {
-        let page = heap.scan_collection(coll, 64, after.as_deref())?;
+        let page = heap.scan_collection_page(coll, 64, after.as_deref())?;
         examined += page.examined;
         entries.extend(page.entries);
         incomplete.extend(page.incomplete);
@@ -134,6 +134,27 @@ fn scan_all(heap: &residiuum_store::HeapStore, coll: &[u8; 16]) -> Result<Collec
         }
         after = page.last_key;
     }
+}
+
+/// Compatibility: `scan_collection` is an alias of `scan_collection_page`
+/// (same page type — never a soft-skip `Vec`).
+#[test]
+fn scan_collection_alias_matches_scan_collection_page() {
+    let ctx = open_heap_with_collection("gremlin.work.scan_alias");
+    ctx.heap
+        .put_collection(&ctx.collection_id, b"k1", b"v1")
+        .unwrap();
+    let page = ctx
+        .heap
+        .scan_collection_page(&ctx.collection_id, 16, None)
+        .unwrap();
+    let alias = ctx
+        .heap
+        .scan_collection(&ctx.collection_id, 16, None)
+        .unwrap();
+    assert_eq!(page, alias);
+    assert!(page.complete);
+    assert_eq!(page.entries.len(), 1);
 }
 
 #[test]
@@ -504,8 +525,9 @@ fn index_build_with_unresolved_locator_is_partial_not_ready() {
     // Survivors may still accelerate hits.
     assert!(idx.meta.may_accelerate_hits());
 
-    // Empty equality lookup must not be treated as proven absence: heap
-    // lookup falls through when may_prove_absence is false.
+    // Partial must not supply an exclusive candidate set (even non-empty hits):
+    // survivors indexed + peers omitted would look complete after materializing
+    // only the hit list (A yes, B silently gone).
     let found = ctx
         .heap
         .lookup_index_keys(
@@ -513,16 +535,16 @@ fn index_build_with_unresolved_locator_is_partial_not_ready() {
             &[("status".into(), json!("open"))],
         )
         .unwrap();
-    // Index may return Some(candidates) for hits, or we skip for empty when
-    // absence not proven. Either way we must not get "authoritative empty"
-    // that suppresses scan: if Some(empty), that would only be legal with
-    // may_prove_absence (which we forbade).
-    if let Some(keys) = found {
-        assert!(
-            !keys.is_empty() || !idx.meta.may_prove_absence(),
-            "empty candidate set with may_prove_absence would be false absence"
-        );
-    }
+    assert!(
+        found.is_none(),
+        "Partial index must not return exclusive candidates; got {found:?}"
+    );
+    assert!(!idx.meta.may_supply_exclusive_candidates());
+    // Scan path still sees survivors + holes.
+    let page = scan_all(&ctx.heap, &ctx.collection_id).unwrap();
+    assert!(!page.complete);
+    assert!(!page.entries.is_empty());
+    assert!(!page.incomplete.is_empty());
 }
 
 /// Query-time hole mapping (T9) still applies when candidates are present.
@@ -596,7 +618,7 @@ fn multipage_continues_from_last_key_including_hole() {
 
     let page1 = ctx
         .heap
-        .scan_collection(&ctx.collection_id, 3, None)
+        .scan_collection_page(&ctx.collection_id, 3, None)
         .expect("page1");
     assert!(
         page1.has_more || page1.examined >= 1,
@@ -624,7 +646,7 @@ fn multipage_continues_from_last_key_including_hole() {
         let after = page1.last_key.clone().expect("has_more ⇒ last_key");
         let page2 = ctx
             .heap
-            .scan_collection(&ctx.collection_id, 3, Some(after.as_slice()))
+            .scan_collection_page(&ctx.collection_id, 3, Some(after.as_slice()))
             .expect("page2");
         // Page2 must not re-include after key as examined complete/hole.
         for (k, _) in &page2.entries {
