@@ -16,6 +16,7 @@ testrig.
 | [ADAPTIVE_WRITE_OPTIMISER_SPEC.md](ADAPTIVE_WRITE_OPTIMISER_SPEC.md) | Post-PQH adaptive intake, cooking, write-pipeline, acknowledgement, control, proof and qualification contract |
 | [ADAPTIVE_WRITE_OPTIMISER_IMPLEMENTATION_PLAN.md](ADAPTIVE_WRITE_OPTIMISER_IMPLEMENTATION_PLAN.md) | Exact std-thread architecture, Rust contracts, algorithms, defaults, files, packages, tests and acceptance commands |
 | [AWO_LABOR_EXECUTION.md](AWO_LABOR_EXECUTION.md) | Developer start pack: entry honesty E1–E6, package DAG, board tasks, first-pull order (does not amend norms) |
+| [AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md](AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md) | AWO-0 T1 evidence: E1–E6 stamp, contract inventory, plan §15 residual (not package accept) |
 | [../../../spec/performance/README.md](../../../spec/performance/README.md) | PQH-0 live registries |
 | [../../../spec/performance/awo/README.md](../../../spec/performance/awo/README.md) | AWO executable contracts (`verify-awo-contract.sh`) |
 
@@ -38,6 +39,7 @@ Its presence here does not admit it ahead of the master delivery plan.
 
 **AWO labor (2026-08-02):** Full labor plan in `AWO_LABOR_EXECUTION.md`. Kanban
 Feature **AWO — Adaptive Write Optimiser** pre-staged (AWO-0 T1–T3 + AWO-1…7).
-Contracts JSON green; Rust model/product path not started. First pull: **AWO-0
-T1**. Product write-path mutation requires AWO-0 accept + entry gates in that
-doc. Master-plan AWO admission remains a principal residual (E1).
+**AWO-0 T1 labor complete** (`AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md`): contracts
+verify green; E1–E6 stamped; not package accept. Next: **AWO-0 T2** pure model +
+goldens. Product write-path mutation requires AWO-0 accept. Master-plan AWO
+admission remains a principal residual (E1).

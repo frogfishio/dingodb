@@ -3,7 +3,8 @@
 Status: **labor-ready planning v1 — board pre-staged; product mutation still gated**  
 Program: `AWO`  
 Profile: `residiuum-adaptive-write-v1`  
-Date: 2026-08-02
+Date: 2026-08-02  
+AWO-0 T1: **labor complete** — see [AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md](AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md) (not package accept)
 
 Normative sources (do not re-invent):
 
@@ -39,13 +40,13 @@ After this pack:
 
 From implementation plan §1. AWO product work may begin only when:
 
-| # | Gate | Current honesty (2026-08-02) | Blocks |
+| # | Gate | Current honesty (2026-08-02, AWO-0 T1 stamp) | Blocks |
 |---|---|---|---|
-| E1 | Master-plan admission of AWO | **Not listed** as a package series in `MASTER_DELIVERY_PLAN.md` (PQ0/PQH is; AWO is “post-PQH candidate”). Principal must admit AWO (or explicitly award package labor) before treating AWO as critical-path. | Claiming AWO on critical path |
-| E2 | Core-storage ack + recovery suites green | CSQ labor exists (`csq_harness`, recovery); treat as **verify before first AWO-1 mutation**. Run CSQ subset named in `verify-awo.sh` when that script lands. | AWO-1+ persist path |
-| E3 | PQH can measure L3 cooking + L4 real-store with honest boundary events | **PQH-0** registries green (`verify-performance-registry.sh` OK; `residiuum-perf` lib tests pass). **PQH-6 (L3) / PQH-7 (L4)** not required for AWO-0 model work; required for AWO-G8 qualification claims and honest AWO-6 campaign evidence. | AWO-6/G8 product claims |
-| E4 | AWO registries pass `scripts/verify-awo-contract.sh` | **PASS** today (11 states, 12 transitions, 20 reasons, 9 outcomes, 12 golden vectors). | — |
-| E5 | **AWO-0 accepted** before product-path mutation | **Not accepted.** JSON contracts exist; Rust `adaptive_write::model` and formal skeletons do **not**. | AWO-1…AWO-4 store mutation |
+| E1 | Master-plan admission of AWO | **OPEN principal residual.** Not a named package series in `MASTER_DELIVERY_PLAN.md` (PQ0/PQH is; AWO is post-PQH candidate). Awarded turn labor may work AWO-0 pure contracts; do not claim critical-path without admission. | Claiming AWO on critical path |
+| E2 | Core-storage ack + recovery suites green | **PASS for entry.** Master plan: `CSQ-0`…`CSQ-12` scoreboard **accept**. Still re-run CSQ ack/recovery subset via future `verify-awo.sh` before AWO-1 persist claims. | AWO-1+ persist path (re-verify) |
+| E3 | PQH can measure L3 cooking + L4 real-store with honest boundary events | **PARTIAL.** PQH-0 green; PQH-6/7 (L3/L4) not delivered. OK for AWO-0; required for AWO-G8 / AWO-6 campaign claims. | AWO-6/G8 product claims |
+| E4 | AWO registries pass `scripts/verify-awo-contract.sh` | **PASS** (T1 re-run exit 0: 11 states, 12 transitions, 20 reasons, 9 outcomes, 12 golden vectors). | — |
+| E5 | **AWO-0 accepted** before product-path mutation | **NOT MET.** Contracts on disk + verifying; Rust model / formal / `verify-awo.sh` absent (T2/T3). T1 residual checklist closed. | AWO-1…AWO-4 store mutation |
 | E6 | Heap-qualified active-writer layout for AWO-3 product | HEAP_SPEC §34 path `active/<heap-id-hex>/<shard-id>.residiuum`. Legacy empty-envelope active segment is diagnostic-only; **cannot** support AWO-G7 or default-on. | AWO-3 product integration / G7 |
 
 **Labor may start on AWO-0 immediately** under this plan (no product write path).
