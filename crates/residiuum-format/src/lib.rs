@@ -87,8 +87,9 @@ pub use scan::{
 pub use segment::{
     decode_descriptor_body, decode_store_descriptor_body, decode_summary_body,
     encode_descriptor_body, encode_store_descriptor_body, encode_store_descriptor_frame,
-    encode_summary_body, ActiveSegment, SealedSegment, SegmentError, SegmentId,
-    DESCRIPTOR_BODY_LEN, STORE_DESCRIPTOR_BODY_LEN, STORE_DESCRIPTOR_FORMAT_TAG, SUMMARY_BODY_LEN,
+    encode_summary_body, ActiveSegment, ActiveSegmentCheckpoint, SealedSegment, SegmentError,
+    SegmentId, DESCRIPTOR_BODY_LEN, STORE_DESCRIPTOR_BODY_LEN, STORE_DESCRIPTOR_FORMAT_TAG,
+    SUMMARY_BODY_LEN,
 };
 pub use subject_v2::{
     decode_subject_v2, encode_subject_v2, SubjectObjectKind, SubjectV2, SubjectV2Error,

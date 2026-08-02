@@ -65,6 +65,27 @@ pub enum SegmentError {
     /// Descriptor envelope failed deterministic CBOR validation.
     #[error("invalid descriptor envelope")]
     InvalidEnvelope,
+    /// [`ActiveSegment::restore_checkpoint`] cannot apply the snapshot safely.
+    #[error("active segment checkpoint mismatch")]
+    CheckpointMismatch,
+}
+
+/// Exact in-memory snapshot of an [`ActiveSegment`] for pre-I/O rollback (AWO-1).
+///
+/// Restored only before physical tail I/O; after partial durable write the store
+/// must poison / reopen instead of inventing a clean in-memory rewrite.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveSegmentCheckpoint {
+    /// Logical base offset of retained bytes at snapshot time.
+    pub base_offset: u64,
+    /// Length of the retained RAM image (`as_bytes().len()`).
+    pub retained_len: usize,
+    /// Writer sequence counter at snapshot time.
+    pub writer_sequence: u64,
+    /// Frame count at snapshot time.
+    pub frame_count: u64,
+    /// Whether the segment was sealed.
+    pub sealed: bool,
 }
 
 /// In-memory active append segment (FORMAT_SPEC §6.3 until sealed).
@@ -203,6 +224,44 @@ impl ActiveSegment {
     /// Logical offset of the first retained byte (`0` when nothing was write-through).
     pub fn base_offset(&self) -> u64 {
         self.base_offset
+    }
+
+    /// Capture an exact in-memory checkpoint for pre-I/O rollback (AWO-1).
+    ///
+    /// Covers retained RAM image, base offset, writer sequence, frame count, and
+    /// sealed flag. May only be restored **before** physical I/O advances the
+    /// durable tail behind a partial append (implementation plan §9).
+    pub fn checkpoint(&self) -> ActiveSegmentCheckpoint {
+        ActiveSegmentCheckpoint {
+            base_offset: self.base_offset,
+            retained_len: self.bytes.len(),
+            writer_sequence: self.writer_sequence,
+            frame_count: self.frame_count,
+            sealed: self.sealed,
+        }
+    }
+
+    /// Restore a checkpoint taken by [`Self::checkpoint`].
+    ///
+    /// Requires `base_offset` unchanged (no write-through discard after the
+    /// checkpoint) and retained length not shorter than the snapshot (only
+    /// truncates appends). After partial physical I/O this must not be used —
+    /// poison/reopen recovery owns that case.
+    pub fn restore_checkpoint(
+        &mut self,
+        cp: &ActiveSegmentCheckpoint,
+    ) -> Result<(), SegmentError> {
+        if self.base_offset != cp.base_offset {
+            return Err(SegmentError::CheckpointMismatch);
+        }
+        if self.bytes.len() < cp.retained_len {
+            return Err(SegmentError::CheckpointMismatch);
+        }
+        self.bytes.truncate(cp.retained_len);
+        self.writer_sequence = cp.writer_sequence;
+        self.frame_count = cp.frame_count;
+        self.sealed = cp.sealed;
+        Ok(())
     }
 
     /// Append a fully encoded frame image (prefix|env|body|suffix) without re-encoding.
@@ -680,5 +739,30 @@ mod tests {
             b"not-cbor",
         );
         assert!(matches!(bad, Err(SegmentError::InvalidEnvelope)));
+    }
+
+    #[test]
+    fn checkpoint_restore_truncates_appends_before_io() {
+        let mut active =
+            ActiveSegment::create(sample_ids(), SafetyLimits::default(), 0).unwrap();
+        let cp = active.checkpoint();
+        let before_seq = active.writer_sequence();
+        let before_frames = active.frame_count();
+        let before_len = active.len();
+        active
+            .append(
+                FrameKind::ItemEvent,
+                crate::cbor_envelope::EMPTY_ENVELOPE,
+                b"body",
+                [9u8; 16],
+            )
+            .unwrap();
+        assert!(active.frame_count() > before_frames);
+        assert!(active.len() > before_len);
+        active.restore_checkpoint(&cp).unwrap();
+        assert_eq!(active.writer_sequence(), before_seq);
+        assert_eq!(active.frame_count(), before_frames);
+        assert_eq!(active.len(), before_len);
+        assert_eq!(active.as_bytes().len(), cp.retained_len);
     }
 }

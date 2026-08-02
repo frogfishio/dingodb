@@ -7,7 +7,8 @@ Date: 2026-08-02
 AWO-0 T1: **labor complete** — see [AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md](AWO-0_T1_CONTRACT_RESIDUAL_CHECKLIST.md) (not package accept)  
 AWO-0 T2: **labor complete** — `adaptive_write::{mod,types,model}` + 12/12 goldens  
 AWO-0 T3: **labor complete** — `formal/awo/tla/*`, `verification/awo/golden/`, `scripts/verify-awo.sh` green  
-**AWO-0 package accept:** still principal/process — labor floor T1–T3 delivered; no self-accept
+**AWO-0 package accept:** still principal/process — labor floor T1–T3 delivered; no self-accept  
+AWO-1: **partial labor** — ActiveSegment checkpoint/restore; `put_many` single-shard batch + parallel-cook **persist-before-publish**; AWO failpoints; `awo_persist_before_publish` 3/3. Residuals: multi-shard parallel path, full lease/poison, full failpoint matrix tests.
 
 Normative sources (do not re-invent):
 

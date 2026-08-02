@@ -383,6 +383,18 @@ struct ChunkFrameLocator {
     verified_body_hash: [u8; 32],
 }
 
+/// Staged put awaiting persist-before-publish (AWO-1 batch path).
+struct StagedPut {
+    subject: Vec<u8>,
+    item_id: [u8; 16],
+    event_id: [u8; 16],
+    segment_id: [u8; 16],
+    offset: u64,
+    encoded_frame_len: u64,
+    admit: crate::large_value::AdmitDecision,
+    profile_id: String,
+}
+
 struct ActiveWriter {
     segment_id: [u8; 16],
     segment: ActiveSegment,
@@ -1423,6 +1435,10 @@ impl Store {
     ///
     /// With [`Self::set_cook_parallelism`] `> 1`, full record cooking (env + Blake
     /// + frame encode) runs on a worker pool; frames install in order (Option C).
+    ///
+    /// **AWO-1:** index publication runs only after the segment tail write succeeds
+    /// (persist-before-publish). On pre-I/O failure the segment is restored from
+    /// checkpoint and nothing is published.
     fn put_many_single_shard_batched(
         &mut self,
         items: &[(&str, &[u8])],
@@ -1436,7 +1452,9 @@ impl Store {
             return self.put_many_single_shard_parallel_cook(items, mode, workers);
         }
 
-        let mut out = Vec::with_capacity(items.len());
+        let mut pending: Vec<StagedPut> = Vec::with_capacity(items.len());
+        let mut batch_checkpoint: Option<residiuum_format::ActiveSegmentCheckpoint> = None;
+
         for (subject, value) in items {
             let admit = self.large_value_policy.admit(value.len())?;
             let subject_bytes = subject.as_bytes();
@@ -1450,13 +1468,26 @@ impl Store {
             }
 
             self.ensure_active(0)?;
-            // Seal may flush any prior unflushed tail; safe mid-batch.
-            self.maybe_auto_seal(0)?;
+            let need_seal = self
+                .active_ref(0)
+                .map(|w| w.segment.len() >= self.seal_threshold)
+                .unwrap_or(false);
+            if need_seal {
+                self.finish_staged_batch_persist_publish(
+                    &mut pending,
+                    &mut batch_checkpoint,
+                    mode,
+                )?;
+                self.maybe_auto_seal(0)?;
+            }
 
             let segment_id = self
                 .active_ref(0)
                 .map(|w| w.segment_id)
                 .expect("active segment");
+            if batch_checkpoint.is_none() {
+                batch_checkpoint = self.active_ref(0).map(|w| w.segment.checkpoint());
+            }
             let item_id = match self.index.get(subject_bytes) {
                 Some(entry) => entry.item_id(),
                 None => subject_item_id(subject_bytes),
@@ -1488,6 +1519,7 @@ impl Store {
                 return Err(StoreError::PayloadTooLarge);
             }
 
+            crate::failpoint::hit("awo.install.frame.before")?;
             let (offset, encoded_frame_len, append_ns) = {
                 let writer = self.active_mut(0).expect("active segment");
                 let t_append = std::time::Instant::now();
@@ -1501,6 +1533,7 @@ impl Store {
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
                 (offset, encoded_frame_len, append_ns)
             };
+            crate::failpoint::hit("awo.install.frame.after")?;
 
             self.boundary_probe.record_append(
                 encoded_frame_len,
@@ -1513,52 +1546,107 @@ impl Store {
                 append_ns,
                 0,
             );
-            // Locator-first index: do not allocate full payload only to slim it away.
-            let t_pub = std::time::Instant::now();
-            self.apply_durable_event(
-                subject_bytes.to_vec(),
-                EventKind::Put,
-                Vec::new(),
-                item_id,
-                event_id,
-                segment_id,
-                0,
-                offset,
-            );
-            let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-            self.boundary_probe
-                .record_publish(offset, mode, 0, publish_ns);
-            self.note_collection_for_subject(subject_bytes);
-            let _ = self.note_durable_derived();
 
-            let mut receipt = WriteReceipt::base(
-                self.store_id,
-                segment_id,
+            pending.push(StagedPut {
+                subject: subject_bytes.to_vec(),
                 item_id,
                 event_id,
-                EventKind::Put,
-                mode,
+                segment_id,
                 offset,
-            )
-            .with_layout(admit, &self.large_value_policy.profile_id);
-            receipt.encoded_frame_len = encoded_frame_len;
-            out.push(receipt);
+                encoded_frame_len,
+                admit,
+                profile_id: self.large_value_policy.profile_id.clone(),
+            });
         }
 
-        // One seek+write_all (and optional sync) for the whole batch.
+        self.finish_staged_batch_persist_publish(&mut pending, &mut batch_checkpoint, mode)
+    }
+
+    /// Persist staged frames then publish indexes (AWO-1 persist-before-publish).
+    fn finish_staged_batch_persist_publish(
+        &mut self,
+        pending: &mut Vec<StagedPut>,
+        batch_checkpoint: &mut Option<residiuum_format::ActiveSegmentCheckpoint>,
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        if pending.is_empty() {
+            *batch_checkpoint = None;
+            return Ok(Vec::new());
+        }
+
+        crate::failpoint::hit("awo.persist.before")?;
         let sink = self.diagnostic_io;
         let mut null = self.null_io_file.take();
-        let tail = {
+        let tail_result = {
             let writer = self
                 .active_mut(0)
-                .expect("active segment after put_many batch");
+                .expect("active segment after staged batch");
             if mode != DurabilityMode::Memory {
                 writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
             }
-            Self::write_segment_tail(writer, mode, sink, null.as_mut())?
+            Self::write_segment_tail(writer, mode, sink, null.as_mut())
+        };
+        let tail = match tail_result {
+            Ok(stats) => stats,
+            Err(e) => {
+                if let Some(cp) = batch_checkpoint.take() {
+                    if let Some(writer) = self.active_mut(0) {
+                        let _ = writer.segment.restore_checkpoint(&cp);
+                    }
+                }
+                self.null_io_file = null;
+                pending.clear();
+                return Err(e);
+            }
         };
         self.null_io_file = null;
-        self.record_tail_probe(&tail, mode, 0)?;
+        if let Err(e) = self.record_tail_probe(&tail, mode, 0) {
+            *batch_checkpoint = None;
+            pending.clear();
+            return Err(e);
+        }
+        crate::failpoint::hit("awo.persist.after_write")?;
+        if mode == DurabilityMode::Durable {
+            crate::failpoint::hit("awo.persist.after_sync")?;
+        }
+
+        crate::failpoint::hit("awo.publish.before")?;
+        let mut out = Vec::with_capacity(pending.len());
+        for p in pending.drain(..) {
+            let t_pub = std::time::Instant::now();
+            if !self.diagnostic_skip_index {
+                self.apply_durable_event(
+                    p.subject.clone(),
+                    EventKind::Put,
+                    Vec::new(),
+                    p.item_id,
+                    p.event_id,
+                    p.segment_id,
+                    0,
+                    p.offset,
+                );
+                self.note_collection_for_subject(&p.subject);
+                let _ = self.note_durable_derived();
+            }
+            let publish_ns = t_pub.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            self.boundary_probe
+                .record_publish(p.offset, mode, 0, publish_ns);
+            let mut receipt = WriteReceipt::base(
+                self.store_id,
+                p.segment_id,
+                p.item_id,
+                p.event_id,
+                EventKind::Put,
+                mode,
+                p.offset,
+            )
+            .with_layout(p.admit, &p.profile_id);
+            receipt.encoded_frame_len = p.encoded_frame_len;
+            out.push(receipt);
+        }
+        crate::failpoint::hit("awo.publish.after")?;
+        *batch_checkpoint = None;
+        crate::failpoint::hit("awo.complete.before")?;
         Ok(out)
     }
 
@@ -1695,7 +1783,11 @@ impl Store {
             .into_inner()
             .map_err(|_| StoreError::CorruptMeta("cook pool lock poisoned"))?;
 
-        let mut out = Vec::with_capacity(n);
+        let batch_cp = self
+            .active_ref(0)
+            .map(|w| w.segment.checkpoint())
+            .expect("active segment");
+        let mut staged: Vec<StagedPut> = Vec::with_capacity(n);
         for (i, cooked_opt) in cooked_list.into_iter().enumerate() {
             let cooked_r = cooked_opt.ok_or(StoreError::CorruptMeta("cook slot empty"))?;
             let cooked = cooked_r.map_err(|e| {
@@ -1704,7 +1796,6 @@ impl Store {
             let p = &preps[i];
             debug_assert_eq!(cooked.prep_idx, i);
 
-            self.maybe_auto_seal(0)?;
             let cur_seg = self
                 .active_ref(0)
                 .map(|w| w.segment_id)
@@ -1715,6 +1806,7 @@ impl Store {
                 ));
             }
 
+            crate::failpoint::hit("awo.install.frame.before")?;
             let (offset, encoded_frame_len) = {
                 let writer = self.active_mut(0).expect("active");
                 let offset = writer
@@ -1723,6 +1815,7 @@ impl Store {
                     .map_err(StoreError::from)?;
                 (offset, cooked.frame.len() as u64)
             };
+            crate::failpoint::hit("awo.install.frame.after")?;
             self.boundary_probe.record_append(
                 encoded_frame_len,
                 p.body.len() as u64,
@@ -1735,49 +1828,20 @@ impl Store {
                 0,
             );
 
-            if !self.diagnostic_skip_index {
-                self.apply_durable_event(
-                    p.subject.clone(),
-                    EventKind::Put,
-                    Vec::new(),
-                    p.item_id,
-                    p.event_id,
-                    segment_id,
-                    0,
-                    offset,
-                );
-                self.note_collection_for_subject(&p.subject);
-                let _ = self.note_durable_derived();
-            }
-
-            let mut receipt = WriteReceipt::base(
-                self.store_id,
+            staged.push(StagedPut {
+                subject: p.subject.clone(),
+                item_id: p.item_id,
+                event_id: p.event_id,
                 segment_id,
-                p.item_id,
-                p.event_id,
-                EventKind::Put,
-                mode,
                 offset,
-            )
-            .with_layout(p.admit, &p.profile_id);
-            receipt.encoded_frame_len = encoded_frame_len;
-            out.push(receipt);
+                encoded_frame_len,
+                admit: p.admit,
+                profile_id: p.profile_id.clone(),
+            });
         }
 
-        let sink = self.diagnostic_io;
-        let mut null = self.null_io_file.take();
-        let tail = {
-            let writer = self
-                .active_mut(0)
-                .expect("active segment after parallel cook");
-            if mode != DurabilityMode::Memory {
-                writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
-            }
-            Self::write_segment_tail(writer, mode, sink, null.as_mut())?
-        };
-        self.null_io_file = null;
-        self.record_tail_probe(&tail, mode, 0)?;
-        Ok(out)
+        let mut batch_checkpoint = Some(batch_cp);
+        self.finish_staged_batch_persist_publish(&mut staged, &mut batch_checkpoint, mode)
     }
 
     /// Parallel multi-shard append path (non-chunked durable/buffered only).

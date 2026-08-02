@@ -222,6 +222,10 @@ required-features = ["legacy-raw-store"]
 name = "csq11_compat_scale_soak"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "awo_persist_before_publish"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]
