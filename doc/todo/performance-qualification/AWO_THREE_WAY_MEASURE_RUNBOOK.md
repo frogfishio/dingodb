@@ -192,11 +192,13 @@ any large campaign.
 **smoke** for interactive re-runs on Scratch until reopen is fixed or a
 POSIX filesystem is available.
 
-**T7 next (sparse / saturated):** do **not** re-interpret T6 thr as multi-write
-barrier amortization — primary cell is `batch_size=1` with `file_sync==ops` for
-every mode. Definitive shapes + metrics:
+**T7 next (sparse / saturated singles):** do **not** re-interpret T6 thr as
+multi-write barrier amortization — primary cell is `batch_size=1` with
+`file_sync==ops` for every mode. **Do not** use harness `batch_size>1` for AWO
+ranking (that is L-API `put_many`, not AWO collection). Shapes: sparse singles
+vs saturated concurrent **independent** singles — see
 [AWO_THREE_WAY_T7_SPARSE_SATURATED.md](AWO_THREE_WAY_T7_SPARSE_SATURATED.md)
-(APFS/ext4 only).
+(APFS/ext4 only; plan v2).
 
 **Diagnostic** class floors are **2 GiB logical bytes per cell** (+ 30s) and the
 default campaign plan uses **5 repetitions × 2 processes**. A `max_cells=1`

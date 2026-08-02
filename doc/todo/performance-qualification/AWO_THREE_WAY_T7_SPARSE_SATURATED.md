@@ -1,6 +1,6 @@
 # Measure AWO three-way — T7 sparse / saturated (definitive next)
 
-Status: **plan + hypothesis check (labor) — not run, not package accept**  
+Status: **plan freeze v2 (principal correction) — not run, not package accept**  
 Feature: **Measure adaptive write batching (three-way fair run)** `ac713f4d-…`  
 Date: 2026-08-03  
 Depends on: T1–T6 in_review; T5 honesty; T6 Scratch residual  
@@ -11,18 +11,32 @@ result is explicable and validates core batching. Definitive next test: two
 shapes on APFS/ext4 — sparse (Adaptive ≈ Disabled latency) and saturated
 (Adaptive converges toward Static).*
 
-This note **accepts the intent**, **corrects the T6 mechanism claim**, and freezes
-the next experiment so labor does not chase smoke MiB/s.
+**v2 correction (principal):** Saturated must **not** use harness `batch_size=N`.
+That calls `put_many(N)` for **Disabled** too and measures Residiuum’s existing
+batch API — **not AWO**. Requests must be **independent singles**; AWO is what
+may *form* batches.
 
 ---
 
-## 1. Hypothesis vs T4/T6 evidence (must read first)
+## 0. Erratum — what T7 v1 got wrong
 
-### 1.1 What the measured primary cell actually did
+| Wrong (v1 §2.3) | Why it fails as an AWO test |
+|-----------------|------------------------------|
+| Shape B: set harness `batch_size ≥ 8` | Driver flushes `put_many(8)` / `admit_put_batch(8)` for **all** modes |
+| Metric: Disabled also gets `file_sync/ops ≈ 1/N` | That is **store `put_many_single_shard_batched`**, already product path without AWO |
+| Framing: “Disabled with batch=N” | Misattributes batch API thr as AWO |
+
+**Correct framing:** Compare modes under the **same request presentation**.
+Presentation is either sparse singles or saturated **independent** singles.
+AWO may coalesce; Disabled must **not** receive a pre-batched slice.
+
+---
+
+## 1. Hypothesis vs T4/T6 evidence (unchanged, still true)
+
+### 1.1 Measured primary cell
 
 Primary cell after seed=42 counterbalance: **`L4-durable-s16384-c1-o8-43`**
-
-From result `messages` (all modes, all 6 reps on Scratch and internal):
 
 | Knob | Value |
 |------|--------|
@@ -34,180 +48,156 @@ From result `messages` (all modes, all 6 reps on Scratch and internal):
 
 | Mode | `boundary_counters` (every primary run) |
 |------|------------------------------------------|
-| disabled | `append=24 file_write=24 file_sync=24 publish=24` |
-| static | `append=24 file_write=24 file_sync=24 publish=24` |
-| adaptive | `append=24 file_write=24 file_sync=24 publish=24` |
+| disabled / static / adaptive | `append=24 file_write=24 file_sync=24 publish=24` |
 
-So on the cell we ranked:
+T6 thr gap had **equal barrier counts** — not multi-write amortization.
 
-- **Not** “Static combined multiple writes behind each barrier.”
-- **Every mode paid one Durable `file_sync` per write** (`file_sync == ops`).
-- Core multi-write batching was **not exercised** by this cell.
+### 1.2 Two different “batching” layers (do not confuse)
 
-### 1.2 Where multi-write batching actually lives
+| Layer | What it is | Who gets it |
+|-------|------------|-------------|
+| **L-API** | Caller passes N items to `put_many` / `admit_put_batch` | Any mode if harness `batch_size=N` |
+| **L-AWO** | Optimiser **collects independent single admits** into one install (collection delay, queue, Static/Adaptive plan) | static / adaptive only |
 
-In store code, `Store::put_many` and `put_many_awo_owned` share
-`put_many_single_shard_batched`: **N in-memory appends → one `write_segment_tail`
-(Durable → one `sync_all`)**.
+T7 measures **L-AWO**, not L-API.
 
-| Path | When batch amortizes barriers |
-|------|-------------------------------|
-| **disabled** | Harness calls `put_many` with `batch_size = N` → **N:1** sync if N>1 |
-| **static** | `admit_put_batch` takes **full** presented slice → same N:1 via `put_many_awo_owned` |
-| **adaptive** | `plan_batch_take` → `Natural` takes **1**, `Batch` takes **k ≤ N** |
+### 1.3 Code anchors
 
-Implication:
+- Store L-API: `put_many` → `put_many_single_shard_batched` (N appends, one Durable sync).
+- AWO single admit today: `admit_put` → **natural** one-shot (`put_subject_bytes_if_awo_owned`) — **no cross-request collection on this floor**.
+- AWO multi-item: `admit_put_batch` + `plan_batch_take` (Static = all; Adaptive = Natural k=1 or Batch k≤N) — still **caller-presented** slice, not independent-single collection.
+- Spec intent: `collection_delay_ns`, `maximum_collection_delay`, natural vs batch plans (`ADAPTIVE_WRITE_OPTIMISER_SPEC.md`).
 
-1. **Disabled is not “one barrier per write” in general** — only when each flush
-   is a single-item batch (as in T4/T6 primary).
-2. **Static does not add a second batching layer** beyond presented `batch_size`;
-   it admits the whole slice.
-3. **Adaptive’s job** under sparse traffic is to prefer **Natural (k=1)** so it
-   does not wait for / force large batches; under saturated traffic, to grow **k**
-   toward Static.
-
-### 1.3 What T6 *did* show (honest)
-
-| Observation | Reading |
-|-------------|---------|
-| Scratch: static/adaptive ~2.4–2.7× thr vs disabled | Real wall-clock difference **with equal `file_sync` counts** |
-| Internal T4: modes ~tied (~3.5–3.9) | Same barrier count; host noise dominates |
-| Barrier amortization | **Not** the T6 mechanism — open residual (path attach, probe cost, FS latency distribution) |
-| Adaptive slightly above static on Scratch | Not product ranking; batch=1 so `select_plan` has nothing to size |
-
-**Do not** claim “core batching validated by T6.”  
-**Do** claim “paths correct; thr proxy host-sensitive; barrier math needs batch>1 cells.”
+**Labor honesty:** Full **independent-single → AWO-formed batch** may require more AWO collection wiring than the current harness path. T7 freezes the *experiment*; implement residual explicitly rather than faking it with `batch_size=8`.
 
 ---
 
-## 2. Definitive next test (T7) — two shapes on POSIX
+## 2. Definitive shapes (v2) — request presentation
+
+### 2.0 Presentation law (always)
+
+```text
+Every client request is one independent Durable put (logical batch size 1).
+Disabled:  store put / put_many([one]) per request — one barrier per ack (ideal).
+Static:    AWO may coalesce concurrent outstanding singles into multi-item installs.
+Adaptive:  sparse → behave like natural/Disabled (low latency);
+           saturated → form batches, thr/sync-ratio → Static.
+```
+
+| Shape | Requests presented | Purpose |
+|-------|--------------------|---------|
+| **Sparse singles** | One independent `put` at a time (conc=1, outstanding≈1; no pile-up) | Adaptive must **preserve low latency** (no forced collection wait) |
+| **Saturated singles** | Many concurrent independent singles (high conc and/or outstanding; each request still size 1) | Adaptive must **converge toward Static** thr / barrier amortization; Disabled stays ~1 sync/op |
+
+**Forbidden for three-way AWO ranking:** harness `batch_size > 1` (pre-batches Disabled).
+
+Optional **control cell** (not AWO ranking): `batch_size=N` three-way — documents L-API baseline only; label `l_api_control`, never as Adaptive win.
 
 ### 2.1 Host constraints
 
 | Requirement | Why |
 |-------------|-----|
-| **APFS or ext4** (not exFAT) | T6 diagnostic reopen digest failed on Scratch exFAT for **all** modes |
-| Prefer external POSIX volume **or** APFS with large free space | Diagnostic floors are heavy |
-| Internal APFS today | ~**31 GiB free** — smoke / carefully deleted one-cell work only; reserve ≥15 GiB |
+| **APFS or ext4** (not exFAT) | T6 diagnostic reopen failed on Scratch exFAT (all modes) |
+| Prefer roomy POSIX volume | Diagnostic floors are heavy |
+| Internal APFS ~31 GiB free | smoke / careful one-cell; reserve ≥15 GiB |
 | Delete work dirs after each mode | Disk budget |
 
-Scratch exFAT is **smoke-only** until reopen residual is closed.
-
-### 2.2 Shape A — Sparse (latency / Natural)
-
-**Intent:** Adaptive should **not** pay Static’s large-batch behavior when traffic
-is shallow; ideally **Adaptive ≈ Disabled** on per-op latency when both do
-single-item Durable flushes.
+### 2.2 Shape A — Sparse singles
 
 | Knob | Value |
 |------|--------|
 | FS | APFS/ext4 |
-| Class | Prefer **diagnostic** one-cell if disk allows; else smoke for path-only |
-| Modes | disabled · static · adaptive |
-| `batch_size` | **1** (explicit sparse presentation) |
-| concurrency | 1 |
-| outstanding | 1 (stricter than T6’s o8) |
-| payload | 16 KiB Durable (match T6 cell family) or 4 KiB Durable |
-| Seed | 42 |
+| Presentation | **independent singles only** (`batch_size=1`) |
+| concurrency | **1** |
+| outstanding | **1** (no pipeline pile-up) |
+| durability | Durable |
+| payload | 4 KiB or 16 KiB |
+| modes | disabled · static · adaptive |
+| class | smoke first; diagnostic if disk allows |
+| seed | 42 |
 
 **Pass signals (not product claims):**
 
 | Signal | Expectation |
 |--------|-------------|
-| `file_sync ≈ ops` | All three modes |
-| Adaptive e2e / thr | **Near disabled**, not near a large-batch Static |
-| Static | Also batch=1 → should also be near disabled on **barrier count**; thr may still differ by path |
+| `file_sync ≈ ops` | All three (no L-API multi-item) |
+| Adaptive latency / e2e | **Near Disabled** — must not sit on collection delay when queue depth is 1 |
+| Static | May match Disabled on barrier count; thr may still differ by path cost |
 
-**Honesty:** With batch=1, Static cannot “combine writes.” Sparse is mainly a
-**regression guard** that Adaptive does not invent delay, and a clean baseline
-for Shape B.
-
-**Ideal Adaptive sparse (later, if harness loops partial admits):** present
-`batch_size=N` with low arrival rate / cold estimator so Adaptive chooses
-**Natural (k=1)** while Static takes N — then Adaptive latency → Disabled and
-Static shows N:1 `file_sync`.
-
-### 2.3 Shape B — Saturated (batching / converge)
-
-**Intent:** Validate **core barrier amortization** and Adaptive convergence.
+### 2.3 Shape B — Saturated singles (AWO under test)
 
 | Knob | Value |
 |------|--------|
 | FS | APFS/ext4 |
-| Class | **diagnostic** (30 s + 2 GiB floors) when disk allows |
-| Modes | disabled · static · adaptive |
-| `batch_size` | **≥ 8** (prefer 32–128 once harness can pin it) |
-| concurrency | ≥ 1 (optional 4 later) |
-| outstanding | ≥ 4 |
-| payload | 4 KiB or 16 KiB Durable |
-| Seed | 42 |
+| Presentation | **independent singles only** (`batch_size=1` always) |
+| concurrency | **≥ 4** (many concurrent independent puts) |
+| outstanding | **≥ 8** (pile-up so a collector *can* see a queue) |
+| durability | Durable |
+| payload | 4 KiB or 16 KiB |
+| modes | disabled · static · adaptive |
+| class | **diagnostic** when disk allows |
+| seed | 42 |
 
-**Primary metrics (SoT for “batching works”):**
+**Primary metrics (SoT for “AWO batching works”):**
 
-| Metric | Disabled (batch=N) | Static | Adaptive (warm/saturated) |
-|--------|--------------------|--------|---------------------------|
-| `file_sync / ops` | **≈ 1/N** | **≈ 1/N** | **→ 1/N** (not stuck at 1) |
-| thr proxy / sustained | high | high | **converges toward Static** |
+| Metric | Disabled | Static (if collection works) | Adaptive saturated |
+|--------|----------|------------------------------|--------------------|
+| Request presentation | singles | singles | singles |
+| `file_sync / ops` | **≈ 1** | **≪ 1** (amortized) | **→ Static** (not stuck at 1) |
+| thr / sustained | baseline | higher if barriers drop | **converges toward Static** |
 | validity + reopen | ok | ok | ok |
 
 **Pass signals:**
 
-1. **Core batching:** For Static (and Disabled with same N),  
-   `file_sync * N ≈ ops` (within small remainder).  
-2. **Adaptive saturated:** thr and `file_sync/ops` move toward Static, not stay
-   at Natural (`file_sync ≈ ops`).  
-3. **Adaptive sparse (Shape A or Natural branch):** does **not** force large k
-   when queue is shallow (if measurable).
+1. Disabled under saturated singles still ≈ **1 sync per op** (proves we did not sneak `put_many(N)`).
+2. Static forms multi-item installs from singles → `file_sync/ops` drops and thr rises vs Disabled.
+3. Adaptive under saturation moves thr + sync-ratio toward Static; under sparse (Shape A) stays near Disabled.
 
-**Non-claims:** default-on AWO, product floors, G8 bottleneck, package accept.
+If Static **cannot** drop `file_sync/ops` on independent singles, that is an **AWO collection residual** (product incomplete), not a reason to revive harness `batch_size=8` for ranking.
 
-### 2.4 Today’s harness gap (do not freestyle)
+### 2.4 Harness / product gaps (honest)
 
-`residiuum-perf` matrix (scheduler):
+| Gap | Impact |
+|-----|--------|
+| `residiuum-perf` groups work into `batch_size` then `put_many` / `admit_put_batch` | `batch_size>1` poisons Disabled (L-API) |
+| Concurrent path still flushes prepared batches of size `batch_size` on main thread | With `batch_size=1`, concurrent workers produce **single-item** flushes — good presentation if AWO collects across flushes |
+| `admit_put` is natural one-shot today | May **not** yet coalesce concurrent singles into one barrier |
+| `admit_put_batch` + `select_plan` needs multi-item **slice** | Caller-presented batch ≠ independent-single collection |
+| Spec `collection_delay` / queue | May need AWO labor before Shape B can pass |
 
-- Size / submission L4 legs mostly **`batch_size = 1`**
-- Some L5 distribution cells use **`batch_size = 8`**
-- No CLI `--batch-size` filter today; campaigns take first `max_cells` after seed shuffle
+**Labor options (ranked for AWO fairness):**
 
-**Labor options (pick one, document which):**
+| Option | What | AWO-fair? |
+|--------|------|-----------|
+| **S1** Pin cells: `batch_size=1`, vary conc/outstanding only | Matches v2 presentation | Yes for presentation; pass may fail until collection works |
+| **S2** Harness: concurrent single `admit_put` / `put` with optional AWO collector hook | Best product shape | Needs collection implement or wire |
+| **S3** Control only: `batch_size=N` three-way | L-API baseline | **No** for AWO ranking — label control |
+| **S4** ~~Shape B via batch_size=8~~ | — | **Rejected (v2)** |
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **B1** Post-hoc L5 `batch=8` cells from a larger campaign | No code change | Wrong durability/dist mix; hard to isolate; still not sparse o=1 |
-| **B2** Minimal harness: pin/filter cell knobs or `--batch-size` override for real_store | Clean Shape A/B | Small code change; needs card |
-| **B3** Unit/integration microbench calling `put_many` / `admit_put_batch` with N | Fast barrier proof | Not PQH campaign-shaped |
-
-**Recommended:** **B2** for definitive three-way; optional **B3** smoke for
-`file_sync` ratio before long diagnostic.
-
-**Adaptive partial-take residual:** `admit_put_batch` may return fewer receipts
-than presented when Adaptive selects Natural. Harness must **loop remaining
-items** or only present what Adaptive should take — otherwise saturated
-Adaptive under-acks. Check/fix before trusting Shape B Adaptive numbers.
+**Recommended path:** **S1** smoke on APFS (prove presentation + Disabled sync≈ops) → implement/wire **collection of independent singles** if Static does not amortize → re-run Shape B diagnostic.
 
 ---
 
-## 3. Copy-paste skeleton (after knobs exist)
+## 3. Copy-paste skeleton (presentation-correct)
 
 ```bash
-# POSIX only. Re-check: df -h "$ROOT"; diskutil info or findmnt for APFS/ext4.
+# POSIX only. Never set harness batch_size>1 for AWO ranking cells.
 ROOT=/path/to/posix-volume/residiuum-awo-t7
 PERF=target/release/residiuum-perf
 SEED=42
-# CLASS=diagnostic   # when free space allows; else smoke for path only
-CLASS=smoke
+CLASS=smoke   # diagnostic when disk allows
 
-# Shape A — sparse (today: batch=1 cells only unless B2 lands)
-# Shape B — saturated (requires batch>=8 pin — see §2.4)
+# Sparse:  conc=1 out=1 batch=1  (matrix pin when available)
+# Saturated: conc>=4 out>=8 batch=1  — NOT batch=8
 
 for SHAPE in sparse saturated; do
   for MODE in disabled static adaptive; do
     W=$ROOT/$SHAPE/$MODE
     mkdir -p "$W"
-    # TODO: pass shape-specific cell pin once B2 exists
+    # TODO: cell pin — batch_size must remain 1; only conc/outstanding differ
     $PERF run --work "$W" --driver real_store --seed $SEED \
       --class $CLASS --max-cells 1 --awo-mode $MODE --no-spawn-workers
-    # Extract: boundary_counters file_sync vs ops; thr; reopen
+    # Assert messages: batch=1; boundary file_sync vs ops
     rm -rf "$W/stores"
   done
 done
@@ -220,34 +210,37 @@ Artifact root (when run):
 
 ## 4. Claim table after T7 (preview)
 
-| Claim | After T7 pass |
-|-------|----------------|
-| N:1 Durable barrier amortization under batch=N (Static + Disabled put_many) | Allowed if `file_sync` math holds |
-| Adaptive converges toward Static under saturated presentation | Allowed if thr + sync ratio move together |
-| Adaptive preserves sparse/Natural behavior | Allowed only with measurable Natural branch |
-| T6 Scratch thr gap explained by barrier count | **Still false** unless new data shows otherwise |
+| Claim | After fair pass |
+|-------|-----------------|
+| Disabled under independent singles ≈ 1 Durable sync/op | Required baseline |
+| Static amortizes barriers by **collecting singles** (not by receiving put_many(N)) | AWO Static validation |
+| Adaptive: sparse latency ≈ Disabled; saturated → Static | AWO Adaptive validation |
+| L-API put_many(N) thr for all modes | Control only — **not** AWO claim |
+| T6 Scratch thr explained by barrier count | **Still false** on batch=1 evidence |
 | Product default-on / qualification | **No** |
 
 ---
 
-## 5. Stop condition for this card
+## 5. Stop condition
 
 | Done when | Status |
 |-----------|--------|
-| Hypothesis check written against T4/T6 counters | **This doc** |
-| Sparse + saturated experiment frozen (knobs + metrics) | **This doc** |
-| Board residual task staged | See Kanban T7 |
-| Campaigns executed on APFS/ext4 | **Open** (disk + harness pin) |
-| Package accept | **Never** from labor alone |
+| T6 counters documented | Yes |
+| v1 batch_size=N saturated **rejected** | **v2 this doc** |
+| Sparse singles + saturated singles frozen | **v2 this doc** |
+| Campaigns on APFS/ext4 | Open |
+| AWO single-collection if missing | Open residual |
+| Package accept | Never from labor alone |
 
 ---
 
-## 6. Related artifacts
+## 6. Related
 
 | Path | Role |
 |------|------|
 | `AWO_THREE_WAY_T5_HONESTY.md` | Smoke non-claims |
-| `AWO_THREE_WAY_T6_INTERACTIVE.md` | Scratch thr + exFAT residual |
-| `artifacts/awo-three-way-t6-scratch-smoke/` | Equal `file_sync=24` evidence |
-| `crates/residiuum-store/src/store.rs` | `put_many_single_shard_batched` |
-| `crates/residiuum-store/src/adaptive_write/runtime.rs` | `plan_batch_take` Natural vs Batch |
+| `AWO_THREE_WAY_T6_INTERACTIVE.md` | Scratch thr + exFAT |
+| `artifacts/awo-three-way-t6-scratch-smoke/` | Equal `file_sync=24` |
+| `ADAPTIVE_WRITE_OPTIMISER_SPEC.md` | natural vs batch, collection delay |
+| `store.rs` `put_many_single_shard_batched` | L-API batching |
+| `adaptive_write/runtime.rs` | `admit_put` natural; `admit_put_batch` / `plan_batch_take` |

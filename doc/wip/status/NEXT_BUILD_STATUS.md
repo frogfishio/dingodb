@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO three-way T1–T6 in_review;** **T7 plan freeze** sparse/saturated on APFS·ext4 — T6 thr is **not** multi-write barrier (`batch=1`, `file_sync=ops` all modes); see `AWO_THREE_WAY_T7_SPARSE_SATURATED.md`. Scratch diagnostic exFAT residual remains. AWO package cards principal `in_review`; query spine / APB **in_review**)
+Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO three-way T1–T6 in_review;** **T7 plan v2** — sparse/saturated = **independent singles** only; harness `batch_size>1` rejected for AWO ranking (tests L-API put_many, not AWO); see `AWO_THREE_WAY_T7_SPARSE_SATURATED.md`. Scratch diagnostic exFAT residual remains. AWO package cards principal `in_review`; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

@@ -22,7 +22,7 @@ testrig.
 | [AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md](AWO_THREE_WAY_T4_DISKSAFE_MEASURE.md) | T4 disk-safe first numbers (smoke slice); diagnostic residual; artifact paths |
 | [AWO_THREE_WAY_T5_HONESTY.md](AWO_THREE_WAY_T5_HONESTY.md) | T5 honesty: claim table; ~30 GiB free host budget; no product ranking |
 | [AWO_THREE_WAY_T6_INTERACTIVE.md](AWO_THREE_WAY_T6_INTERACTIVE.md) | T6 interactive re-run on Scratch; smoke OK; diagnostic exFAT residual |
-| [AWO_THREE_WAY_T7_SPARSE_SATURATED.md](AWO_THREE_WAY_T7_SPARSE_SATURATED.md) | T7 definitive next: hypothesis check (T6 ≠ multi-write barrier); sparse + saturated on APFS/ext4 |
+| [AWO_THREE_WAY_T7_SPARSE_SATURATED.md](AWO_THREE_WAY_T7_SPARSE_SATURATED.md) | T7 v2: sparse/saturated **independent singles** (not harness batch_size=N); L-API vs L-AWO |
 | [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |
 | [artifacts/awo-three-way-t6-scratch-smoke/](artifacts/awo-three-way-t6-scratch-smoke/) | T6 Scratch smoke three-way |
 | [../../../spec/performance/README.md](../../../spec/performance/README.md) | PQH-0 live registries |
