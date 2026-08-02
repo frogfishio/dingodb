@@ -226,6 +226,22 @@ required-features = ["legacy-raw-store"]
 name = "awo_persist_before_publish"
 required-features = ["legacy-raw-store"]
 
+[[test]]
+name = "awo_partial_write_recovery"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "awo_publication_failure"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "awo_direct_writer_lease"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "awo_credit_bounds"
+required-features = ["legacy-raw-store"]
+
 [[example]]
 name = "write_scale_curve"
 required-features = ["legacy-raw-store"]

@@ -843,6 +843,15 @@ impl Store {
         self.cook_parallelism = workers.max(1);
     }
 
+    /// Whether batch/adaptive writer is poisoned (AWO-1 uncertain I/O).
+    ///
+    /// When true, mutations return [`StoreError::AdaptiveWriterPoisoned`] until
+    /// the store is closed and reopened.
+    pub fn is_awo_writer_poisoned(&self) -> bool {
+        self.awo_writer_poisoned
+    }
+
+
     /// Current cook parallelism (`1` = serial).
     pub fn cook_parallelism(&self) -> usize {
         self.cook_parallelism.max(1)
@@ -1311,6 +1320,9 @@ impl Store {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
         self.put_subject_bytes_if(subject, value, mode, WriteCondition::Unconditional)
     }
 
@@ -1323,6 +1335,9 @@ impl Store {
         mode: DurabilityMode,
         condition: WriteCondition,
     ) -> Result<WriteReceipt, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
         self.check_write_condition(subject, condition)?;
         // DEF-103: admit against the effective profile before any event mint /
         // append / derived effect. Also respect scanner body ceiling.
@@ -2363,6 +2378,9 @@ impl Store {
         subject: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
         self.delete_subject_bytes_if(subject, mode, WriteCondition::Unconditional)
     }
 
@@ -2373,6 +2391,9 @@ impl Store {
         mode: DurabilityMode,
         condition: WriteCondition,
     ) -> Result<WriteReceipt, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
         self.check_write_condition(subject, condition)?;
         self.write_event(subject, EventKind::Delete, &[], mode)
     }

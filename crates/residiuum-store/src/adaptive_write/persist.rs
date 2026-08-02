@@ -1,11 +1,13 @@
-//! AWO-1 persist-before-publish scaffolding.
+//! AWO-1 persist-before-publish scaffolding + AWO-2 reservation types.
 //!
-//! Full coordinator reservation/cook pipeline arrives with later packages.
 //! Product batch paths in [`crate::store::Store`]:
 //! - single-shard `put_many` / parallel cook: stage → tail write → publish
 //! - multi-shard `put_many_parallel`: per-shard checkpoint + tail; **all-or-nothing**
 //!   index publish only after every shard succeeds; short-write sets
 //!   `awo_writer_poisoned`
+//!
+//! Persistent cookers + credit ledger live in sibling modules (AWO-2). Full
+//! coordinator as sole mutation authority is AWO-3.
 
 use residiuum_format::ActiveSegmentCheckpoint;
 
