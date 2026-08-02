@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (query spine pre-staged; BASELINE-PLAN T1 journey plan to APB-12 **in_review**; APB-7 T0–T4 in_review)
+Updated: 2026-08-02 (**P0 open:** [DEF-SCAN-001](./DEF_SCAN_001_SEGMENT_NOT_FOUND.md) heap `scan_collection` hard-aborts `segment not found` while point-get survives — native repro green, fix residual; query spine pre-staged; BASELINE-PLAN T1 / APB-7 labor **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
