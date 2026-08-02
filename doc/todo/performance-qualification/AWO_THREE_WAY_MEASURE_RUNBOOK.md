@@ -130,19 +130,49 @@ $PERF --help | head -5
 
 ---
 
-## 5. Mode smoke (optional preflight — T1 path)
+## 5. Correctness smoke before numbers (T3 — required gate)
 
-Functional only; **not** the comparison matrix. Uses smoke class and first
-matrix cell after seed=1 counterbalance.
+**Purpose:** Prove each mode can write and reopen cleanly **before** anyone
+trusts a diagnostic rate (T4). **No throughput claims.**
+
+### Unit evidence (automated)
 
 ```bash
-WORK=/tmp/awo-3way-smoke
+cargo test -p residiuum-perf --features store-driver --lib real_store_smoke -- --nocapture
+# includes:
+#   real_store_smoke_three_way_correctness_before_numbers  (disabled|static|adaptive)
+#   real_store_smoke_awo_static_and_adaptive
+# Expect all ok
+```
+
+Assertions (three-way unit): `validity=valid`, `acknowledged > 0`, `awo_mode=`
+label, sample get + `reopen_live_count > 0`, no poison notes; lease modes
+`admit_put_batch` + detach; disabled does not use AWO flush.
+
+### CLI evidence (copy-paste)
+
+```bash
+cargo build -p residiuum-perf --features store-driver
+PERF=target/debug/residiuum-perf
+WORK=/tmp/awo-t3-correctness-smoke
 rm -rf "$WORK" && mkdir -p "$WORK"
 for MODE in disabled static adaptive; do
   $PERF driver-smoke --work "$WORK/$MODE" --driver real_store --awo-mode "$MODE"
 done
-# Expect validity=valid (or documented smoke validity) and awo_mode= in JSON notes
+# Expect JSON per mode:
+#   validity=valid, acknowledged>0, awo_mode=<mode>, reopen_live_count>0
+#   product_claim_eligible=false
+# static/adaptive notes: awo_flush=admit_put_batch, awo_detached=true
 ```
+
+**Labor stamp (2026-08-02):** unit `real_store_smoke*` 4/4; CLI three modes
+`validity=valid` `acknowledged=24` `reopen_live_count=24` each.
+
+### Residual honesty
+
+CLI `driver-smoke` uses the first matrix cell after seed=1 counterbalance (not
+the T2 256/4KiB/8KiB freeze set). That is intentional: T3 is **path correctness**,
+not matrix coverage. T4 uses the §6 diagnostic campaigns for rates.
 
 ---
 

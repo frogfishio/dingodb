@@ -1279,6 +1279,115 @@ mod tests {
         }
     }
 
+    /// Measure campaign T3: all three AWO modes write, sample-get, reopen live
+    /// without poison / false empty success. No throughput claims.
+    #[test]
+    fn real_store_smoke_three_way_correctness_before_numbers() {
+        let dir = tempfile::tempdir().unwrap();
+        for mode in [AwoMode::Disabled, AwoMode::Static, AwoMode::Adaptive] {
+            let cell = MatrixCell {
+                cell_id: format!("L4-t3-{}-s256", mode.as_str()),
+                layer: LayerProfile::L4,
+                durability: MatrixDur::Buffered,
+                payload_size: 256,
+                distribution: None,
+                concurrency: 1,
+                outstanding: 1,
+                batch_size: 4,
+                shards: 1,
+                db_state: DatabaseState::Empty,
+                features: FeatureProfile::l4_minimal(),
+                interference: InterferenceProfile::absent(),
+                op_count: 8,
+                order_rank: 0,
+            };
+            let report = run_real_store(&DriverRunConfig {
+                cell,
+                seed: 42,
+                kind: DriverKind::RealStore,
+                work_root: Some(dir.path().to_path_buf()),
+                durability_mutant: false,
+                digest_mutant: false,
+                run_class: "smoke".into(),
+                awo_mode: mode,
+            })
+            .unwrap_or_else(|e| panic!("T3 three-way smoke mode={}: {e}", mode.as_str()));
+
+            assert_eq!(
+                report.cell.validity, "valid",
+                "mode={} must be valid (no poison happy path)",
+                mode.as_str()
+            );
+            assert!(
+                report.cell.acknowledged > 0,
+                "mode={} must acknowledge writes",
+                mode.as_str()
+            );
+            assert!(
+                report
+                    .notes
+                    .iter()
+                    .any(|n| n.contains(&format!("awo_mode={}", mode.as_str()))),
+                "mode={} notes must include awo_mode label",
+                mode.as_str()
+            );
+            assert!(
+                report
+                    .notes
+                    .iter()
+                    .any(|n| n.contains("sample_get_ok=")
+                        && !n.contains("sample_get_ok=0")),
+                "mode={} sample get must succeed",
+                mode.as_str()
+            );
+            assert!(
+                report
+                    .notes
+                    .iter()
+                    .any(|n| n.starts_with("reopen_live_count=")
+                        && n != "reopen_live_count=0"),
+                "mode={} reopen must see live subjects: {:?}",
+                mode.as_str(),
+                report.notes
+            );
+            // No AdaptiveWriterPoisoned / uncertain on happy-path notes.
+            assert!(
+                !report
+                    .notes
+                    .iter()
+                    .any(|n| n.to_ascii_lowercase().contains("poison")),
+                "mode={} must not poison on happy path: {:?}",
+                mode.as_str(),
+                report.notes
+            );
+
+            match mode {
+                AwoMode::Disabled => {
+                    assert!(
+                        !report
+                            .notes
+                            .iter()
+                            .any(|n| n.contains("awo_flush=admit_put_batch")),
+                        "disabled must not admit_put_batch"
+                    );
+                }
+                AwoMode::Static | AwoMode::Adaptive => {
+                    assert!(
+                        report
+                            .notes
+                            .iter()
+                            .any(|n| n.contains("awo_flush=admit_put_batch")),
+                        "lease mode must flush via admit_put_batch"
+                    );
+                    assert!(
+                        report.notes.iter().any(|n| n.contains("awo_detached=true")),
+                        "lease mode must detach after cell"
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn non_smoke_contract_uses_floors_not_op_count() {
         // Structural: non-smoke overhead contract is duration/byte floors, not

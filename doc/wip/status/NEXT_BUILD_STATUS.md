@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-02 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Resume:** Measure adaptive write batching T2 **in_review** — [AWO_THREE_WAY_MEASURE_RUNBOOK.md](../../todo/performance-qualification/AWO_THREE_WAY_MEASURE_RUNBOOK.md) fixed diagnostic matrix seed=42; AWO package cards remain principal `in_review`; query spine / APB **in_review**)
+Updated: 2026-08-02 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO three-way:** T2 matrix freeze + T3 correctness smoke **in_review** (unit 4/4 + CLI three modes valid/reopen); next T4 diagnostic run; AWO package cards principal `in_review`; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
