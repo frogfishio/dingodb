@@ -39,8 +39,7 @@ Its presence here does not admit it ahead of the master delivery plan.
 
 **AWO labor (2026-08-02):** Full labor plan in `AWO_LABOR_EXECUTION.md`. Kanban
 Feature **AWO — Adaptive Write Optimiser** pre-staged (AWO-0 T1–T3 + AWO-1…7).
-**AWO-0 T1** labor complete (contracts + E1–E6). **AWO-0 T2** labor complete:
-`crates/residiuum-store/src/adaptive_write/` pure model, 12/12 golden vectors
-(`cargo test -p residiuum-store adaptive_write::model` + `--test awo_contract`).
-Not package accept. Next: **AWO-0 T3** formal skeleton + `verify-awo.sh`. Product
-write-path mutation still gated on AWO-0 accept. Master-plan AWO admission residual (E1).
+**AWO-0 T1–T3 labor floor complete:** contracts + pure model (12/12 goldens) +
+TLA skeleton + `bash scripts/verify-awo.sh` green. **Not package accept.**
+Product write-path mutation still gated on AWO-0 accept (E5). Next after accept:
+**AWO-1** persist-before-publish. Master-plan AWO admission residual (E1).

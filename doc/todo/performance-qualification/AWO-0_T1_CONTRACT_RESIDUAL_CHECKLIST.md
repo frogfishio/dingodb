@@ -102,13 +102,13 @@ Plan AWO-0 deliverables vs tree (2026-08-02):
 | Deliverable | Status |
 |---|---|
 | All files under `spec/performance/awo/` | **Present** + verify green |
-| Pure model in `adaptive_write/model.rs` | **Missing** → AWO-0 T2 |
+| Pure model in `adaptive_write/model.rs` | **Present** (T2 labor) |
 | Registry verifier | **Present** (`scripts/verify-awo-contract.sh`) |
-| Golden-vector runner (Rust) | **Missing** → AWO-0 T2 (`awo_contract.rs` / unit tests) |
-| TLA+ skeleton (`formal/awo/tla/`) | **Missing** → AWO-0 T3 |
-| Verus pure stub (`formal/awo/verus/`) | **Missing** → AWO-0 T3 (thin) / AWO-6 depth |
-| `verification/awo/golden/` | **Missing** → AWO-0 T3 |
-| `scripts/verify-awo.sh` orchestrator | **Missing** → AWO-0 T3 |
+| Golden-vector runner (Rust) | **Present** (unit + `awo_contract.rs`) |
+| TLA+ skeleton (`formal/awo/tla/`) | **Present** (T3 labor) |
+| Verus pure stub (`formal/awo/verus/`) | **Present** thin stub (T3); deepen AWO-6 |
+| `verification/awo/golden/` | **Present** (symlink to contract goldens) |
+| `scripts/verify-awo.sh` orchestrator | **Present** (T3); AWO-0 steps green |
 | Store write-path change | **Correctly absent** (forbidden until AWO-0 accept) |
 
 **AWO-0 package accept** requires T2+T3 exit commands green and principal/process
