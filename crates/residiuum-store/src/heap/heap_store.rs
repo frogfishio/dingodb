@@ -1,5 +1,6 @@
 //! Heap-scoped data façade.
 
+use crate::adaptive_write::{AdaptiveWriteHandle, AdmissionResult};
 use crate::durability::DurabilityMode;
 use crate::error::StoreError;
 use crate::history::SubjectHistory;
@@ -17,11 +18,21 @@ use std::sync::{Arc, Mutex};
 pub struct HeapStore {
     physical: Arc<Mutex<PhysicalStore>>,
     cap: HeapCap,
+    /// When present and lease-active, puts/deletes admit through AWO (AWO-3).
+    adaptive: Option<AdaptiveWriteHandle>,
 }
 
 impl HeapStore {
-    pub(super) fn from_host(physical: Arc<Mutex<PhysicalStore>>, cap: HeapCap) -> Self {
-        Self { physical, cap }
+    pub(super) fn from_host_with_adaptive(
+        physical: Arc<Mutex<PhysicalStore>>,
+        cap: HeapCap,
+        adaptive: Option<AdaptiveWriteHandle>,
+    ) -> Self {
+        Self {
+            physical,
+            cap,
+            adaptive,
+        }
     }
 
     /// Bound heap capability.
@@ -94,7 +105,24 @@ impl HeapStore {
                 .physical
                 .lock()
                 .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
-            guard.put_subject_bytes_if(subject, value, DurabilityMode::Durable, condition)?
+            if let Some(awo) = self.adaptive.as_ref().filter(|h| h.lease_active()) {
+                match awo.admit_put(
+                    &mut guard,
+                    subject,
+                    value,
+                    DurabilityMode::Durable,
+                    condition,
+                ) {
+                    AdmissionResult::Admitted(c) => c
+                        .wait()
+                        .map_err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error)?,
+                    AdmissionResult::Rejected(e) => {
+                        return Err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error(e));
+                    }
+                }
+            } else {
+                guard.put_subject_bytes_if(subject, value, DurabilityMode::Durable, condition)?
+            }
         };
         // Collection writes invalidate derived secondary indexes (DEF-027).
         if let Ok(sv2) = decode_subject_v2(subject) {
@@ -149,7 +177,23 @@ impl HeapStore {
                 .physical
                 .lock()
                 .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
-            guard.delete_subject_bytes_if(subject, DurabilityMode::Durable, condition)?
+            if let Some(awo) = self.adaptive.as_ref().filter(|h| h.lease_active()) {
+                match awo.admit_delete(
+                    &mut guard,
+                    subject,
+                    DurabilityMode::Durable,
+                    condition,
+                ) {
+                    AdmissionResult::Admitted(c) => c
+                        .wait()
+                        .map_err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error)?,
+                    AdmissionResult::Rejected(e) => {
+                        return Err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error(e));
+                    }
+                }
+            } else {
+                guard.delete_subject_bytes_if(subject, DurabilityMode::Durable, condition)?
+            }
         };
         if let Ok(sv2) = decode_subject_v2(subject) {
             if sv2.object_kind == SubjectObjectKind::Collection {

@@ -1,10 +1,9 @@
 //! AWO-3 Static Intake Arbiter surface (product attach, mode default disabled).
 //!
 //! - [`AdaptiveWriteMode::Disabled`]: no lease, no cooker; natural store paths.
-//! - [`AdaptiveWriteMode::Static`]: lease fences direct `Store` mutation; admits
-//!   execute **natural** under the lease (synchronous completion). Cooker pool
-//!   is warmed for later batch install; coalesced cook+batch install residual
-//!   until coordinator depth (AWO-3 deep / AWO-4).
+//! - [`AdaptiveWriteMode::Static`]: lease fences direct `Store` mutation; single
+//!   admits execute natural under the lease; [`AdaptiveWriteHandle::admit_put_batch`]
+//!   uses lease-owned `put_many` (persist-before-publish + optional parallel cook).
 //! - [`AdaptiveWriteMode::Adaptive`]: same floor as Static until AWO-5 controller.
 //!
 //! E6 heap active-writer layout residual: product heap routing still uses the
@@ -301,6 +300,106 @@ impl AdaptiveWriteHandle {
         })
     }
 
+    /// Admit a batch of unconditional puts under the lease (AWO-3 deepen).
+    ///
+    /// Reserves credit for each item, then installs via
+    /// [`Store::put_many_awo_owned`] (persist-before-publish; uses store
+    /// cook_parallelism when configured). Independent receipts returned in
+    /// input order.
+    pub fn admit_put_batch(
+        &self,
+        store: &mut Store,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, AdaptiveWriteError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        // Memory / conditional work is natural one-by-one (profile natural class).
+        if mode == DurabilityMode::Memory {
+            let mut out = Vec::with_capacity(items.len());
+            for (subject, value) in items {
+                match self.admit_put(
+                    store,
+                    subject.as_bytes(),
+                    value,
+                    mode,
+                    WriteCondition::Unconditional,
+                ) {
+                    AdmissionResult::Admitted(c) => out.push(c.wait()?),
+                    AdmissionResult::Rejected(e) => return Err(e),
+                }
+            }
+            return Ok(out);
+        }
+
+        let mut total_credit: usize = 0;
+        let mut per_credits: Vec<usize> = Vec::with_capacity(items.len());
+        for (subject, value) in items {
+            let c = mutation_credit(subject.len(), value.len())
+                .map_err(|_| AdaptiveWriteError::QueueFull {
+                    retry_after: Duration::from_millis(1),
+                })?;
+            per_credits.push(c);
+            total_credit = total_credit.checked_add(c).ok_or(
+                AdaptiveWriteError::QueueFull {
+                    retry_after: Duration::from_millis(1),
+                },
+            )?;
+        }
+
+        let retry_after;
+        {
+            let g = self.runtime.inner.lock().expect("awo runtime");
+            retry_after = g.policy.maximum_collection_delay;
+            if g.policy.mode == AdaptiveWriteMode::Disabled {
+                return Err(AdaptiveWriteError::ModeDisabled);
+            }
+            if g.draining {
+                return Err(AdaptiveWriteError::Draining);
+            }
+            if !g.lease_active {
+                return Err(AdaptiveWriteError::ModeDisabled);
+            }
+            if store.is_awo_writer_poisoned() {
+                return Err(AdaptiveWriteError::WriterPoisoned {
+                    recovery_required: true,
+                });
+            }
+            if let Some(credits) = g.credits.as_ref() {
+                if credits
+                    .try_reserve(items.len(), total_credit)
+                    .is_err()
+                {
+                    return Err(AdaptiveWriteError::QueueFull { retry_after });
+                }
+            }
+        }
+
+        // Prefer parallel store cook when the runtime has a cooker pool.
+        let cooker_n = self
+            .runtime
+            .inner
+            .lock()
+            .expect("awo runtime")
+            .cooker
+            .as_ref()
+            .map(|c| c.maximum_cookers())
+            .unwrap_or(1);
+        if cooker_n > 1 {
+            store.set_cook_parallelism(cooker_n);
+        }
+
+        let result = store.put_many_awo_owned(items, mode);
+        {
+            let g = self.runtime.inner.lock().expect("awo runtime");
+            if let Some(credits) = g.credits.as_ref() {
+                let _ = credits.release(items.len(), total_credit);
+            }
+        }
+        result.map_err(AdaptiveWriteError::from)
+    }
+
     fn admit_natural<F>(&self, store: &mut Store, op: F) -> AdmissionResult
     where
         F: FnOnce(&mut Store) -> Result<WriteReceipt, StoreError>,
@@ -353,6 +452,35 @@ impl AdaptiveWriteHandle {
             Err(e) => AdmissionResult::Admitted(WriteCompletion {
                 receipt: Err(AdaptiveWriteError::from(e)),
             }),
+        }
+    }
+
+    /// Map AWO errors onto store errors for façade boundaries.
+    pub fn to_store_error(err: AdaptiveWriteError) -> StoreError {
+        match err {
+            AdaptiveWriteError::WriterPoisoned { .. } => StoreError::AdaptiveWriterPoisoned,
+            AdaptiveWriteError::WriterActive => StoreError::AdaptiveWriterActive,
+            AdaptiveWriteError::QueueFull { .. } => StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::WouldBlock,
+                "awo queue full",
+            )),
+            AdaptiveWriteError::AdmissionDeadlineExceeded => StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "awo admission deadline",
+            )),
+            AdaptiveWriteError::Draining => StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "awo draining",
+            )),
+            AdaptiveWriteError::ModeDisabled => StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "awo mode disabled",
+            )),
+            AdaptiveWriteError::InvalidPolicy(p) => StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("awo policy: {p:?}"),
+            )),
+            AdaptiveWriteError::Store(s) => StoreError::Io(std::io::Error::other(s)),
         }
     }
 

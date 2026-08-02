@@ -119,8 +119,15 @@ impl StoreHost {
     }
 
     /// Bind a validated [`HeapCap`] into a heap-scoped façade.
+    ///
+    /// When this host has an adaptive-write lease active, the heap routes
+    /// put/delete through [`AdaptiveWriteHandle`] (AWO-3).
     pub fn open_heap(&self, cap: HeapCap) -> HeapStore {
-        HeapStore::from_host(Arc::clone(&self.physical), cap)
+        HeapStore::from_host_with_adaptive(
+            Arc::clone(&self.physical),
+            cap,
+            self.adaptive.clone(),
+        )
     }
 
     /// Shared physical store handle (for process-local host reuse).

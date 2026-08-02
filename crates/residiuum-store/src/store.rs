@@ -1445,6 +1445,20 @@ impl Store {
         mode: DurabilityMode,
     ) -> Result<Vec<WriteReceipt>, StoreError> {
         self.refuse_direct_mutation_if_awo()?;
+        self.put_many_awo_owned(items, mode)
+    }
+
+    /// Batch put under adaptive lease (skips lease fence; still honors poison).
+    ///
+    /// Uses the same persist-before-publish / parallel-cook paths as [`Self::put_many`].
+    pub fn put_many_awo_owned(
+        &mut self,
+        items: &[(&str, &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -1461,12 +1475,16 @@ impl Store {
         let non_chunked = items
             .iter()
             .all(|(_, b)| b.len() <= self.chunk_threshold);
-        // Memory / chunked: keep the per-item put path (memory is visibility-only;
-        // chunked needs multi-frame layout that is not batch-tailed here).
+        // Memory / chunked: per-item lease-owned put (not public put — lease fence).
         if mode == DurabilityMode::Memory || !non_chunked {
             let mut out = Vec::with_capacity(items.len());
             for (subject, value) in items {
-                out.push(self.put(subject, value, mode)?);
+                out.push(self.put_subject_bytes_if_awo_owned(
+                    subject.as_bytes(),
+                    value,
+                    mode,
+                    WriteCondition::Unconditional,
+                )?);
             }
             return Ok(out);
         }
