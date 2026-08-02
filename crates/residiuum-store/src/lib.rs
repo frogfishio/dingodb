@@ -29,6 +29,9 @@
 
 #![deny(missing_docs)]
 
+/// Adaptive Write Optimiser pure model (AWO-0) and future runtime modules.
+pub mod adaptive_write;
+
 mod atomic_file;
 mod backup;
 mod boundary_probe;
