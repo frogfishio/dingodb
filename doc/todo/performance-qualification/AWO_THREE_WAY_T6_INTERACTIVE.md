@@ -100,6 +100,11 @@ POSIX volume is used (APFS/HFS+/ext4).
 **Out of this Feature:** default-on, formal stamps, full T2 diagnostic matrix,
 qualification host, fixing exFAT reopen digest (separate residual if desired).
 
+**Next (mechanism):** T6 thr gap is **not** multi-write-per-barrier — primary cell
+`batch=1` and `file_sync=24` for all modes. See
+[AWO_THREE_WAY_T7_SPARSE_SATURATED.md](AWO_THREE_WAY_T7_SPARSE_SATURATED.md)
+(sparse / saturated on APFS·ext4).
+
 ---
 
 ## 6. Host notes / flaky
