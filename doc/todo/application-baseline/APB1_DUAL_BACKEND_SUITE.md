@@ -54,6 +54,6 @@ cargo test -p residiuum-server --features dangerous-key-export \
 
 ## Explicit non-claims
 
-- Dual matrix green ≠ APB-1 / APB-2 package accept (store Key Atomic CAS, HAR-1, Recovery still open).
+- Dual matrix green ≠ APB-1 / APB-2 package accept (remote wire CAS, concurrent/crash matrices, HAR-1, Recovery still open — see [APB2_RESIDUAL_CHECKLIST.md](./APB2_RESIDUAL_CHECKLIST.md)).
 - Product bootstrap vectors remain rights_mask **13** (no silent expand of public vectors).
-- APB-2 mutation scenario is façade read-then-write parity, not concurrent/crash CAS proof.
+- APB-2 mutation scenario is façade dual parity; embedded store CAS is T5; concurrent/crash + remote wire CAS remain residual (T6 checklist).

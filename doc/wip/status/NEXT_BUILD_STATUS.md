@@ -97,7 +97,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | FAS-9 | not_started | — | FAS-1…FAS-3, one accepted theorem family | — | public proof bundle/CLI absent | reproducible proof product |
 | APB-0 | accept | 2026-08-01 | CSQ-12 (accept), APP-0/APP-1 evidence | [spec/app/baseline-v1/](../../../spec/app/baseline-v1/) **frozen**; `bash scripts/verify-app-baseline-contract.sh --require-frozen` exit 0; fixtures under baseline-v1/fixtures/; APP-0 error_mapping total; [APB_QUERY_ATOMICS_SEQUENCE.md](../../todo/application-baseline/APB_QUERY_ATOMICS_SEQUENCE.md) | residual: product APB-1…12 implementation; compile fixtures expand with packages | application contract |
 | APB-1 | active | 2026-08-01 | APB-0, HAR-1 | inventory + **G1–G6:** sealed backends; full dual pack (embedded + remote HeapAdmin create mint); shared `apb1_facade_parity`; UUIDv4 create ids; [APB1_DUAL_BACKEND_SUITE.md](../../todo/application-baseline/APB1_DUAL_BACKEND_SUITE.md); [APB1_CLIENT_GAP_INVENTORY.md](../../todo/application-baseline/APB1_CLIENT_GAP_INVENTORY.md) v1.6 | HAR-1 **active** (evidence reconcile; not accept); RecoveryClient reserved; optional CI harness; **no package accept** | backend-neutral client |
-| APB-2 | active | 2026-08-02 | APB-1 | façade **create** / **upsert** / **list_keys** / **replace** / **delete_with** / **add**; OCC `version`=event_id; dual pack **`apb2_mutations`**; **T5 store Key Atomic CAS** embedded (`WriteCondition` + `put/delete_if`; HeapStore under mutex; façade create/replace/delete_with); tests `key_atomic_cas` **1/1** + `apb2_facade_mutations` **3/3**; [APB2_T5_KEY_ATOMIC_CAS.md](../../todo/application-baseline/APB2_T5_KEY_ATOMIC_CAS.md) | remote wire if_version residual; crash matrix; T6 residual checklist; **no package accept** | safe single-key mutation |
+| APB-2 | active | 2026-08-02 | APB-1 | façade mutations + dual pack + **T5 embedded store CAS**; **T6 residual checklist** [APB2_RESIDUAL_CHECKLIST.md](../../todo/application-baseline/APB2_RESIDUAL_CHECKLIST.md) (R1 remote wire CAS, R2 concurrent, R3 crash/retry block accept); [APB2_T5_KEY_ATOMIC_CAS.md](../../todo/application-baseline/APB2_T5_KEY_ATOMIC_CAS.md) | R1–R4 exit matrices; **no package accept** | safe single-key mutation |
 | APB-3 | not_started | — | APB-1, HAR-1 | — | lifecycle/capability APIs absent | collection lifecycle |
 | APB-4 | not_started | — | APB-2 | — | document-path operations absent | atomic document mutation |
 | APB-5 | not_started | — | APB-2, APB-4 | — | bounded bulk contract absent | bulk mutation |
@@ -209,7 +209,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **RQL-v1 full language** `89a80e77` | `todo` | **NOT** APB-7; later package |
 | — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
 | — | **APB-2 T5** store Key Atomic CAS `d08e4633` | `in_review` | embedded CAS labor; remote wire residual; no package accept |
-| — | APB-2 T6 residual checklist | `todo` | package residual honesty |
+| — | **APB-2 T6** residual checklist `1b8a52b7` | `in_review` | honesty map; **never** self-mark package accept |
 
 **Process honesty (2026-08-02):** T1–T3 were often **JIT-created at package start** (scoreboard compass + create-on-pull). That is half-winging. Fix: **pre-stage** remaining sequence as `todo` before code turns; pull only existing cards.
 
