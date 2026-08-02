@@ -76,6 +76,16 @@ impl HeapStore {
 
     /// Put under a SubjectV2 key within the bound heap.
     pub fn put(&self, subject: &[u8], value: &[u8]) -> Result<WriteReceipt, StoreError> {
+        self.put_if(subject, value, crate::WriteCondition::Unconditional)
+    }
+
+    /// Conditional put under the store mutex (APB-2 Key Atomic).
+    pub fn put_if(
+        &self,
+        subject: &[u8],
+        value: &[u8],
+        condition: crate::WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
         self.gate()?;
         self.require_right(Rights::WRITE)?;
         self.require_subject_v2(subject, None, None)?;
@@ -84,7 +94,7 @@ impl HeapStore {
                 .physical
                 .lock()
                 .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
-            guard.put_subject_bytes(subject, value, DurabilityMode::Durable)?
+            guard.put_subject_bytes_if(subject, value, DurabilityMode::Durable, condition)?
         };
         // Collection writes invalidate derived secondary indexes (DEF-027).
         if let Ok(sv2) = decode_subject_v2(subject) {
@@ -122,6 +132,15 @@ impl HeapStore {
 
     /// Delete by SubjectV2 key within the bound heap.
     pub fn delete(&self, subject: &[u8]) -> Result<WriteReceipt, StoreError> {
+        self.delete_if(subject, crate::WriteCondition::Unconditional)
+    }
+
+    /// Conditional delete under the store mutex (APB-2 Key Atomic).
+    pub fn delete_if(
+        &self,
+        subject: &[u8],
+        condition: crate::WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
         self.gate()?;
         self.require_right(Rights::WRITE)?;
         self.require_subject_v2(subject, None, None)?;
@@ -130,7 +149,7 @@ impl HeapStore {
                 .physical
                 .lock()
                 .map_err(|_| StoreError::HeapCapability("store lock poisoned".into()))?;
-            guard.delete_subject_bytes(subject, DurabilityMode::Durable)?
+            guard.delete_subject_bytes_if(subject, DurabilityMode::Durable, condition)?
         };
         if let Ok(sv2) = decode_subject_v2(subject) {
             if sv2.object_kind == SubjectObjectKind::Collection {
@@ -147,6 +166,17 @@ impl HeapStore {
         key: &[u8],
         value: &[u8],
     ) -> Result<WriteReceipt, StoreError> {
+        self.put_collection_if(collection_id, key, value, crate::WriteCondition::Unconditional)
+    }
+
+    /// Conditional collection put (APB-2 Key Atomic under store lock).
+    pub fn put_collection_if(
+        &self,
+        collection_id: &[u8; 16],
+        key: &[u8],
+        value: &[u8],
+        condition: crate::WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
         let subject = residiuum_format::encode_subject_v2(
             self.cap.heap_id().as_bytes(),
             SubjectObjectKind::Collection,
@@ -154,7 +184,7 @@ impl HeapStore {
             key,
         )
         .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
-        self.put(&subject, value)
+        self.put_if(&subject, value, condition)
     }
 
     /// Get a collection-scoped SubjectV2 value.
@@ -179,6 +209,16 @@ impl HeapStore {
         collection_id: &[u8; 16],
         key: &[u8],
     ) -> Result<WriteReceipt, StoreError> {
+        self.delete_collection_if(collection_id, key, crate::WriteCondition::Unconditional)
+    }
+
+    /// Conditional collection delete (APB-2 Key Atomic under store lock).
+    pub fn delete_collection_if(
+        &self,
+        collection_id: &[u8; 16],
+        key: &[u8],
+        condition: crate::WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
         let subject = residiuum_format::encode_subject_v2(
             self.cap.heap_id().as_bytes(),
             SubjectObjectKind::Collection,
@@ -186,7 +226,7 @@ impl HeapStore {
             key,
         )
         .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
-        self.delete(&subject)
+        self.delete_if(&subject, condition)
     }
 
     /// Mark usable secondary indexes for a collection as stale after a write.

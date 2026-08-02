@@ -29,7 +29,7 @@ use crate::history::{
     RecoveryReadOptions, SubjectHistory, VersionedPayloadResult,
 };
 use crate::ids::{mint_sortable_segment_id, random_id, segment_seq_from_id, subject_item_id};
-use crate::index::{slim_put_body_for_index, PrimaryIndex};
+use crate::index::{slim_put_body_for_index, IndexEntry, PrimaryIndex};
 use crate::index_cache::{
     diagnose_primary_cache, primary_cache_path, segment_fingerprint, try_load_primary_index,
     try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier, LifecycleDiag,
@@ -145,6 +145,23 @@ pub struct IndexBuildPage {
     pub after: Option<Vec<u8>>,
     /// Subjects examined (complete + incomplete).
     pub examined: usize,
+}
+
+/// Optimistic concurrency precondition for a single-key put/delete (APB-2).
+///
+/// Checked against the primary index under the exclusive writer path
+/// **before** any event is minted or appended — version test + mutation is
+/// one Key Atomic when the caller holds this store handle alone (DEF-020).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteCondition {
+    /// Always write (existing unconditional put/delete).
+    Unconditional,
+    /// Key must be absent (no live entry; tombstone counts as absent).
+    Absent,
+    /// Live establishing event id must equal this token.
+    LiveEventId([u8; 16]),
+    /// Key must be live (any establishing event id).
+    Present,
 }
 
 /// Receipt returned after an acknowledged write (OVERVIEW §7.2).
@@ -1274,6 +1291,19 @@ impl Store {
         value: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        self.put_subject_bytes_if(subject, value, mode, WriteCondition::Unconditional)
+    }
+
+    /// Conditional put: check [`WriteCondition`] then mint/append under the same
+    /// exclusive writer path (APB-2 Key Atomic).
+    pub fn put_subject_bytes_if(
+        &mut self,
+        subject: &[u8],
+        value: &[u8],
+        mode: DurabilityMode,
+        condition: WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
+        self.check_write_condition(subject, condition)?;
         // DEF-103: admit against the effective profile before any event mint /
         // append / derived effect. Also respect scanner body ceiling.
         let effective_max = self
@@ -1296,6 +1326,49 @@ impl Store {
             self.write_event(subject, EventKind::Put, value, mode)?
         };
         Ok(receipt.with_layout(admit, &self.large_value_policy.profile_id))
+    }
+
+    /// Live establishing event id for `subject`, or `None` when absent/tombstoned.
+    pub fn live_event_id(&self, subject: &[u8]) -> Option<[u8; 16]> {
+        match self.index.get(subject) {
+            Some(IndexEntry::Live(lv)) => Some(lv.event_id),
+            _ => None,
+        }
+    }
+
+    fn check_write_condition(
+        &self,
+        subject: &[u8],
+        condition: WriteCondition,
+    ) -> Result<(), StoreError> {
+        let observed = self.live_event_id(subject);
+        match condition {
+            WriteCondition::Unconditional => Ok(()),
+            WriteCondition::Absent => {
+                if observed.is_some() {
+                    Err(StoreError::KeyExists)
+                } else {
+                    Ok(())
+                }
+            }
+            WriteCondition::Present => {
+                if observed.is_some() {
+                    Ok(())
+                } else {
+                    Err(StoreError::VersionConflict {
+                        expected: [0u8; 16],
+                        observed: None,
+                    })
+                }
+            }
+            WriteCondition::LiveEventId(expected) => match observed {
+                Some(live) if live == expected => Ok(()),
+                other => Err(StoreError::VersionConflict {
+                    expected,
+                    observed: other,
+                }),
+            },
+        }
     }
 
     /// Put many items, partitioning by subject hash across writer shards.
@@ -2154,6 +2227,17 @@ impl Store {
         subject: &[u8],
         mode: DurabilityMode,
     ) -> Result<WriteReceipt, StoreError> {
+        self.delete_subject_bytes_if(subject, mode, WriteCondition::Unconditional)
+    }
+
+    /// Conditional delete under the exclusive writer path (APB-2 Key Atomic).
+    pub fn delete_subject_bytes_if(
+        &mut self,
+        subject: &[u8],
+        mode: DurabilityMode,
+        condition: WriteCondition,
+    ) -> Result<WriteReceipt, StoreError> {
+        self.check_write_condition(subject, condition)?;
         self.write_event(subject, EventKind::Delete, &[], mode)
     }
 
@@ -6221,5 +6305,69 @@ mod tests {
         assert!(layout.len() >= 2);
         assert_eq!(layout.get(b"a").unwrap().unwrap(), b"one");
         assert_eq!(layout.get(b"b").unwrap().unwrap(), vec![2u8; 256]);
+    }
+
+    #[test]
+    fn key_atomic_cas_put_and_delete() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        // create-if-absent
+        let r1 = store
+            .put_subject_bytes_if(
+                b"k",
+                b"v1",
+                DurabilityMode::Durable,
+                WriteCondition::Absent,
+            )
+            .unwrap();
+        assert!(matches!(
+            store.put_subject_bytes_if(
+                b"k",
+                b"v2",
+                DurabilityMode::Durable,
+                WriteCondition::Absent,
+            ),
+            Err(StoreError::KeyExists)
+        ));
+        // stale version
+        let stale = [9u8; 16];
+        assert!(matches!(
+            store.put_subject_bytes_if(
+                b"k",
+                b"v3",
+                DurabilityMode::Durable,
+                WriteCondition::LiveEventId(stale),
+            ),
+            Err(StoreError::VersionConflict { expected, observed: Some(_) }) if expected == stale
+        ));
+        // matching version
+        let r2 = store
+            .put_subject_bytes_if(
+                b"k",
+                b"v4",
+                DurabilityMode::Durable,
+                WriteCondition::LiveEventId(r1.event_id),
+            )
+            .unwrap();
+        assert_ne!(r1.event_id, r2.event_id);
+        assert_eq!(store.get("k").unwrap().as_deref(), Some(b"v4".as_slice()));
+        // delete with version
+        store
+            .delete_subject_bytes_if(
+                b"k",
+                DurabilityMode::Durable,
+                WriteCondition::LiveEventId(r2.event_id),
+            )
+            .unwrap();
+        assert!(store.get("k").unwrap().is_none());
+        // present fails when absent
+        assert!(matches!(
+            store.delete_subject_bytes_if(
+                b"k",
+                DurabilityMode::Durable,
+                WriteCondition::Present,
+            ),
+            Err(StoreError::VersionConflict { observed: None, .. })
+        ));
     }
 }

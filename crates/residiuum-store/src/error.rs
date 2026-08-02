@@ -139,6 +139,23 @@ pub enum StoreError {
     /// One-heap admission rejected the frame (HP-002).
     #[error("heap admit: {0}")]
     HeapAdmit(String),
+
+    /// Conditional put/delete version precondition failed (APB-2 Key Atomic).
+    ///
+    /// `expected` is the caller-supplied live event id token (or zero for
+    /// absence-only creates). `observed` is the live establishing event id
+    /// when present, or `None` when the key is absent / tombstoned.
+    #[error("version conflict")]
+    VersionConflict {
+        /// Token the caller required.
+        expected: [u8; 16],
+        /// Live establishing event id, or `None` if absent.
+        observed: Option<[u8; 16]>,
+    },
+
+    /// Conditional create failed because the key is already live (APB-2).
+    #[error("key already exists")]
+    KeyExists,
 }
 
 impl StoreError {

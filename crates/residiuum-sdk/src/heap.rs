@@ -373,11 +373,77 @@ impl HeapCollection {
     }
 
     fn put_raw_body(&self, key: &str, body: &[u8]) -> Result<WriteReceipt, Error> {
+        self.put_raw_body_if(key, body, residiuum_store::WriteCondition::Unconditional)
+    }
+
+    /// Conditional put of a raw body under Key Atomic store CAS (APB-2).
+    fn put_raw_body_if(
+        &self,
+        key: &str,
+        body: &[u8],
+        condition: residiuum_store::WriteCondition,
+    ) -> Result<WriteReceipt, Error> {
         validate_key(key)?;
-        let receipt = self
-            .store
-            .put_collection(self.id.as_bytes(), key.as_bytes(), body)?;
+        let receipt = self.store.put_collection_if(
+            self.id.as_bytes(),
+            key.as_bytes(),
+            body,
+            condition,
+        )?;
         Ok(WriteReceipt::from_store(key.to_string(), receipt))
+    }
+
+    /// Create: put only when the key is absent (store Key Atomic).
+    pub fn create_if_absent<T: Serialize>(
+        &self,
+        key: &str,
+        value: &T,
+    ) -> Result<WriteReceipt, Error> {
+        let json = serde_json::to_value(value)?;
+        let body = crate::value::encode_json(&json)?;
+        self.put_raw_body_if(key, &body, residiuum_store::WriteCondition::Absent)
+    }
+
+    /// Replace: put only when live establishing event id matches (store Key Atomic).
+    pub fn replace_if_version<T: Serialize>(
+        &self,
+        key: &str,
+        value: &T,
+        if_version: [u8; 16],
+    ) -> Result<WriteReceipt, Error> {
+        let json = serde_json::to_value(value)?;
+        let body = crate::value::encode_json(&json)?;
+        self.put_raw_body_if(
+            key,
+            &body,
+            residiuum_store::WriteCondition::LiveEventId(if_version),
+        )
+    }
+
+    /// Conditional delete with store Key Atomic (APB-2).
+    pub fn delete_if(
+        &self,
+        key: &str,
+        condition: residiuum_store::WriteCondition,
+    ) -> Result<DeleteReceipt, Error> {
+        validate_key(key)?;
+        // LiveEventId / Present success implies a live value was removed.
+        // Unconditional: pre-observe (removed flag only; write itself is CAS-free).
+        let removed = match condition {
+            residiuum_store::WriteCondition::LiveEventId(_)
+            | residiuum_store::WriteCondition::Present => true,
+            residiuum_store::WriteCondition::Unconditional
+            | residiuum_store::WriteCondition::Absent => self
+                .store
+                .get_collection(self.id.as_bytes(), key.as_bytes())?
+                .is_some(),
+        };
+        let receipt = self.store.delete_collection_if(
+            self.id.as_bytes(),
+            key.as_bytes(),
+            condition,
+        )?;
+        Ok(DeleteReceipt::from_store(key.to_string(), removed, receipt))
     }
 
     /// Get JSON for `key`.

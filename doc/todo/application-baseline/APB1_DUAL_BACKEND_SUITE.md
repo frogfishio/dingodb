@@ -27,7 +27,7 @@ Shared code lives at:
 | `put_get_delete` | yes | yes | yes | Collection plane |
 | `history_versions` | yes | yes | yes | Collection plane |
 | `index_lifecycle` | yes | yes | yes | Needs IndexAdmin |
-| `apb2_mutations` | yes | yes | yes | create/upsert/list_keys/replace/delete_with/add + OCC; CAS residual |
+| `apb2_mutations` | yes | yes | yes | create/upsert/list_keys/replace/delete_with/add + OCC; **embedded store CAS (T5)**; remote wire if_version residual |
 
 ## Commands
 

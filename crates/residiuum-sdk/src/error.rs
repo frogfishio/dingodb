@@ -320,6 +320,22 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::CursorStale(_) => ErrorCode::ConsistencyViolation,
         StoreError::HeapCapability(_) => ErrorCode::PermissionDenied,
         StoreError::HeapAdmit(_) => ErrorCode::PermissionDenied,
+        StoreError::VersionConflict { .. } => ErrorCode::VersionConflict,
+        StoreError::KeyExists => ErrorCode::AlreadyExists,
+    }
+}
+
+/// Lift store CAS errors into the structured SDK variants used by APB-2 tests.
+pub(crate) fn lift_store_cas(err: Error) -> Error {
+    match err {
+        Error::Store(StoreError::VersionConflict { expected, observed }) => {
+            Error::VersionConflict { expected, observed }
+        }
+        Error::Store(StoreError::KeyExists) => Error::Remote {
+            code: "already_exists".into(),
+            message: "key already present".into(),
+        },
+        other => other,
     }
 }
 
