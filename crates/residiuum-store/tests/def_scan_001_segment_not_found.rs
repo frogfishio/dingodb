@@ -7,8 +7,11 @@
 //! ## Required posture
 //!
 //! - Locator resolve errors stay **distinct**.
-//! - `scan_collection_page` (and alias `scan_collection`) returns [`CollectionScanPage`].
-//! - Callers use `page.complete` / `incomplete` — not `entries.is_empty()` alone.
+//! - `scan_collection_page` returns [`CollectionScanPage`].
+//! - Legacy `scan_collection` returns `Vec<(key, body)>` only when complete;
+//!   any hole hard-fails as [`StoreError`] (no soft-skip partial Vec).
+//! - Callers that need honesty use `page.complete` / `incomplete` — not
+//!   `entries.is_empty()` alone.
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -136,10 +139,9 @@ fn scan_all(heap: &residiuum_store::HeapStore, coll: &[u8; 16]) -> Result<Collec
     }
 }
 
-/// Compatibility: `scan_collection` is an alias of `scan_collection_page`
-/// (same page type — never a soft-skip `Vec`).
+/// Compatibility: complete page → `scan_collection` returns `page.entries`.
 #[test]
-fn scan_collection_alias_matches_scan_collection_page() {
+fn scan_collection_returns_page_entries_when_complete() {
     let ctx = open_heap_with_collection("gremlin.work.scan_alias");
     ctx.heap
         .put_collection(&ctx.collection_id, b"k1", b"v1")
@@ -148,13 +150,90 @@ fn scan_collection_alias_matches_scan_collection_page() {
         .heap
         .scan_collection_page(&ctx.collection_id, 16, None)
         .unwrap();
-    let alias = ctx
+    let legacy = ctx
         .heap
         .scan_collection(&ctx.collection_id, 16, None)
         .unwrap();
-    assert_eq!(page, alias);
     assert!(page.complete);
-    assert_eq!(page.entries.len(), 1);
+    assert_eq!(legacy, page.entries);
+    assert_eq!(legacy.len(), 1);
+    assert_eq!(legacy[0].0, b"k1");
+    assert_eq!(legacy[0].1, b"v1");
+}
+
+/// Legacy Vec API must hard-fail on holes — never soft-skip into Ok(partial).
+#[test]
+fn scan_collection_hard_fails_on_unresolved_locator() {
+    let ctx = open_heap_with_collection("gremlin.work.scan_failclosed");
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.set_seal_threshold(4 * 1024);
+    }
+    for i in 0..8 {
+        let k = format!("a/{i:03}");
+        ctx.heap
+            .put_collection(
+                &ctx.collection_id,
+                k.as_bytes(),
+                &format!("body-{k}").into_bytes(),
+            )
+            .unwrap();
+    }
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.seal_active().unwrap();
+    }
+    for i in 0..8 {
+        let k = format!("b/{i:03}");
+        ctx.heap
+            .put_collection(
+                &ctx.collection_id,
+                k.as_bytes(),
+                &format!("body-{k}").into_bytes(),
+            )
+            .unwrap();
+    }
+    {
+        let phys = ctx.host.physical();
+        let mut g = phys.lock().unwrap();
+        g.seal_active().unwrap();
+    }
+    let paths = StorePaths::new(&ctx.root);
+    let mut sealed: Vec<_> = fs::read_dir(paths.segments_dir())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .collect();
+    sealed.sort();
+    assert!(sealed.len() >= 2);
+    fs::remove_file(&sealed[0]).unwrap();
+
+    // Page API still reports survivors + holes.
+    let page = ctx
+        .heap
+        .scan_collection_page(&ctx.collection_id, 64, None)
+        .expect("page scan must not hard-abort");
+    assert!(!page.complete);
+    assert!(!page.incomplete.is_empty());
+
+    // Legacy Vec must hard-fail — not Ok(survivors only).
+    let err = ctx
+        .heap
+        .scan_collection(&ctx.collection_id, 64, None)
+        .expect_err("legacy scan_collection must fail-closed on holes");
+    match err {
+        StoreError::LocatorFault(f) => {
+            assert_eq!(
+                f.kind,
+                residiuum_store::LocatorFaultKind::SegmentNotFound
+            );
+        }
+        StoreError::SegmentNotFound => {}
+        other => panic!("expected locator/segment fault, got {other:?}"),
+    }
 }
 
 #[test]

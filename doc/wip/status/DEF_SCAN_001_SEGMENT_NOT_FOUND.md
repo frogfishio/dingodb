@@ -1,6 +1,6 @@
 # DEF-SCAN-001 — structured locator faults + honest heap scan pages (P0)
 
-**Status:** T7–T8 **accepted (labor)**; T9–T11 **accepted (blocker #5 closure, labor only)**; T12 **in_review** (`scan_collection_page` compat); package **not** accepted  
+**Status:** T7–T8 **accepted (labor)**; T9–T11 **accepted (blocker #5 closure, labor only)**; T12 **in_review** (`scan_collection_page` + fail-closed legacy `scan_collection` → `Vec`); package **not** accepted  
 **Date:** 2026-08-02  
 **Board:** Feature `DEF-SCAN-001`  
 **Severity:** **P0**
@@ -36,7 +36,7 @@ Only when **no** named media exists is salvage attempted; salvage failures do **
 
 ### Honest scan page
 
-`HeapStore::scan_collection_page` → `CollectionScanPage` (compat alias: `scan_collection`):
+`HeapStore::scan_collection_page` → `CollectionScanPage` (preferred):
 
 - `entries` — complete rows  
 - `incomplete` — holes with `CollectionScanHoleReason` **and** optional `locator: Option<LocatorFault>`  
@@ -44,6 +44,12 @@ Only when **no** named media exists is salvage attempted; salvage failures do **
 - `examine_budget` — `limit * 8` clamped to `[limit, 4096]` so hole-only collections cannot unbounded-walk  
 - `complete` — true only when `incomplete` is empty  
 - `is_empty_live()` — true only when both empty  
+
+Legacy `HeapStore::scan_collection` → `Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError>`:
+returns `page.entries` only when `page.complete`; **any hole hard-fails** as
+`StoreError` (first incomplete via `CollectionScanHole::to_store_error`). Does
+**not** soft-skip corruption into `Ok(partial survivors)`. New code must use
+`scan_collection_page` for honest incomplete pages.
 
 Remote scan JSON (`hole_to_json`) includes `reason` plus `segment_id`, `frame_offset`, `path`, `file_len`, `observed_segment_id`, `cause` when present.
 
@@ -117,10 +123,10 @@ Physical `IncompleteReason` still maps the distinct locator kinds.
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test def_scan_001_segment_not_found
-# 10/10
+# 11/11
 ```
 
-Tests assert locator diagnostics, multipage `last_key`, shared `from_error`, index build Partial, Partial never exclusive lookup, and `scan_collection` ≡ `scan_collection_page`.
+Tests assert locator diagnostics, multipage `last_key`, shared `from_error`, index build Partial, Partial never exclusive lookup, complete-path `scan_collection` == page.entries, and fail-closed legacy scan on holes.
 
 ### API compatibility (T12)
 
@@ -128,8 +134,13 @@ Tests assert locator diagnostics, multipage `last_key`, shared `from_error`, ind
 // Preferred (explicit incomplete page)
 HeapStore::scan_collection_page(...) -> Result<CollectionScanPage, StoreError>
 
-// Compatibility alias — same return type (not a soft-skip Vec)
-HeapStore::scan_collection(...) -> Result<CollectionScanPage, StoreError>
+// Legacy wrapper — Vec type, fail-closed behavior
+HeapStore::scan_collection(...) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError>
+// let page = self.scan_collection_page(...)?;
+// if let Some(hole) = page.incomplete.first() {
+//     return Err(hole.to_store_error());
+// }
+// Ok(page.entries)
 ```
 
 Dogfood inspect (T3) remains informative: durable media currently 100% resolve under `open_inspect`; that does **not** license silent soft-skip.

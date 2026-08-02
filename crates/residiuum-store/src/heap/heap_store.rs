@@ -119,6 +119,59 @@ impl CollectionScanHole {
             _ => None,
         }
     }
+
+    /// Rehydrate the fail-closed [`StoreError`] this hole represents.
+    ///
+    /// Used by legacy [`HeapStore::scan_collection`]: the `Vec` signature cannot
+    /// surface incompleteness, so unresolved locators must hard-fail (not soft-skip).
+    pub fn to_store_error(&self) -> StoreError {
+        if let Some(f) = &self.locator {
+            return StoreError::LocatorFault(Box::new(f.clone()));
+        }
+        match self.reason {
+            CollectionScanHoleReason::SegmentNotFound => StoreError::SegmentNotFound,
+            CollectionScanHoleReason::TierOffline => {
+                StoreError::TierOffline("collection scan incomplete")
+            }
+            CollectionScanHoleReason::PayloadPartial => StoreError::PayloadPartial,
+            CollectionScanHoleReason::PayloadConflict => StoreError::PayloadConflict,
+            // Locator-kind holes normally carry `locator` from `from_error`; if
+            // missing, still fail-closed with the correct kind (no soft-skip).
+            CollectionScanHoleReason::LocatorOffsetInvalid => StoreError::LocatorFault(Box::new(
+                LocatorFault {
+                    kind: LocatorFaultKind::OffsetInvalid,
+                    segment_id: [0; 16],
+                    frame_offset: 0,
+                    path: None,
+                    file_len: None,
+                    observed_segment_id: None,
+                    cause: Some("collection scan incomplete (no locator ctx)".into()),
+                },
+            )),
+            CollectionScanHoleReason::LocatorFrameVerifyFailed => {
+                StoreError::LocatorFault(Box::new(LocatorFault {
+                    kind: LocatorFaultKind::FrameVerifyFailed,
+                    segment_id: [0; 16],
+                    frame_offset: 0,
+                    path: None,
+                    file_len: None,
+                    observed_segment_id: None,
+                    cause: Some("collection scan incomplete (no locator ctx)".into()),
+                }))
+            }
+            CollectionScanHoleReason::LocatorSegmentIdMismatch => {
+                StoreError::LocatorFault(Box::new(LocatorFault {
+                    kind: LocatorFaultKind::SegmentIdMismatch,
+                    segment_id: [0; 16],
+                    frame_offset: 0,
+                    path: None,
+                    file_len: None,
+                    observed_segment_id: None,
+                    cause: Some("collection scan incomplete (no locator ctx)".into()),
+                }))
+            }
+        }
+    }
 }
 
 /// One page of a heap collection scan with **explicit holes** (DEF-SCAN-001).
@@ -704,8 +757,9 @@ impl HeapStore {
     /// Physical [`crate::Store::scan_live_page`] uses the same incomplete-page
     /// posture. Point-get remains fail-closed for a single subject.
     ///
-    /// Prefer this name over [`Self::scan_collection`] in new code; the shorter
-    /// name remains a compatibility alias with the same page type.
+    /// Prefer this name over [`Self::scan_collection`] in new code. The shorter
+    /// name is a legacy wrapper that returns only complete `entries` (see
+    /// [`Self::scan_collection`]).
     pub fn scan_collection_page(
         &self,
         collection_id: &[u8; 16],
@@ -783,19 +837,28 @@ impl HeapStore {
         })
     }
 
-    /// Compatibility alias for [`Self::scan_collection_page`].
+    /// Legacy compatibility wrapper over [`Self::scan_collection_page`].
     ///
-    /// Returns the same incomplete-aware [`CollectionScanPage`] — **not** a
-    /// plain survivor `Vec`. Call sites that need explicit page semantics
-    /// should use `scan_collection_page`.
+    /// Return type is the historical `Vec<(key, body)>`. Behavior is
+    /// **fail-closed**: if the page has any incomplete keys (unresolved
+    /// locator / payload hole), returns the first hole as [`StoreError`].
+    /// Does **not** soft-skip corruption into a successful partial `Vec` —
+    /// that was the DEF-SCAN-001 defect.
+    ///
+    /// Prefer [`Self::scan_collection_page`] for honest incomplete-page
+    /// semantics (entries + incomplete + complete flag).
     #[inline]
     pub fn scan_collection(
         &self,
         collection_id: &[u8; 16],
         limit: usize,
         after_key: Option<&[u8]>,
-    ) -> Result<CollectionScanPage, StoreError> {
-        self.scan_collection_page(collection_id, limit, after_key)
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
+        let page = self.scan_collection_page(collection_id, limit, after_key)?;
+        if let Some(hole) = page.incomplete.first() {
+            return Err(hole.to_store_error());
+        }
+        Ok(page.entries)
     }
 
     /// Lookup candidate collection keys via a secondary index for equality filters.
