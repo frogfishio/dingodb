@@ -8,6 +8,7 @@
 //! - **AWO-2:** persistent cooker pool, credit ledger, ordered ready ring.
 //! - **AWO-3+:** product StoreHost admission (mode still disabled by default).
 
+pub mod coordinator;
 pub mod cooker;
 pub mod credits;
 pub mod model;
@@ -18,6 +19,9 @@ pub mod queue;
 pub mod runtime;
 pub mod types;
 
+pub use coordinator::{
+    PipelineCoordinator, PipelineError, PipelineStatus, ReservationId, ReservationPhase,
+};
 pub use cooker::{
     cook_item_frame, CookOutcome, CookTask, CookedMutation, FrameBufferPool, PersistentCookerPool,
 };

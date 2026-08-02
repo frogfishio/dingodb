@@ -9,6 +9,7 @@
 //! E6 heap active-writer layout residual: product heap routing still uses the
 //! shared physical store lock; heap-specific active segments remain open.
 
+use super::coordinator::{PipelineCoordinator, PipelineError, PipelineStatus};
 use super::cooker::PersistentCookerPool;
 use super::credits::{mutation_credit, CreditLedger};
 use super::policy::{AdaptiveWriteMode, AdaptiveWritePolicy, PolicyError};
@@ -43,6 +44,8 @@ pub enum AdaptiveWriteError {
     WriterActive,
     /// Underlying store error.
     Store(String),
+    /// Pipeline depth / seal / shutdown refusal (AWO-4).
+    Pipeline(PipelineError),
 }
 
 impl AdaptiveWriteError {
@@ -57,6 +60,10 @@ impl AdaptiveWriteError {
             Self::WriterPoisoned { .. } => "write_outcome_uncertain",
             Self::WriterActive => "writer_active",
             Self::Store(_) => "store_error",
+            Self::Pipeline(PipelineError::DepthExceeded { .. }) => "pipeline_depth_exceeded",
+            Self::Pipeline(PipelineError::Sealing) => "pipeline_sealing",
+            Self::Pipeline(PipelineError::ShuttingDown) => "pipeline_shutdown",
+            Self::Pipeline(_) => "pipeline_error",
         }
     }
 }
@@ -92,6 +99,8 @@ pub struct AdaptiveWriteStatus {
     pub bytes_used: usize,
     /// Pending cook tasks.
     pub pending_cook_tasks: usize,
+    /// Pipeline depth snapshot (AWO-4); zeros when disabled.
+    pub pipeline: PipelineStatus,
 }
 
 /// One-shot completion for an admitted write (plan §5).
@@ -160,6 +169,7 @@ struct RuntimeInner {
     draining: bool,
     credits: Option<CreditLedger>,
     cooker: Option<PersistentCookerPool>,
+    pipeline: Option<Arc<PipelineCoordinator>>,
 }
 
 /// Process-local adaptive write runtime (threads + credit ledger).
@@ -189,6 +199,7 @@ impl AdaptiveWriteHandle {
                     draining: false,
                     credits: None,
                     cooker: None,
+                    pipeline: None,
                 }),
             }),
         })
@@ -218,6 +229,7 @@ impl AdaptiveWriteHandle {
             policy.queue_byte_limit,
             0,
         );
+        let pipeline = Arc::new(PipelineCoordinator::new(policy.pipeline_depth_limit));
         store.set_awo_lease_active(true);
         Ok(Self {
             runtime: Arc::new(AdaptiveWriteRuntime {
@@ -227,6 +239,7 @@ impl AdaptiveWriteHandle {
                     draining: false,
                     credits: Some(credits),
                     cooker: Some(cooker),
+                    pipeline: Some(pipeline),
                 }),
             }),
         })
@@ -245,6 +258,18 @@ impl AdaptiveWriteHandle {
             .as_ref()
             .map(|c| (c.active_cookers(), c.threads_created(), c.pending_tasks()))
             .unwrap_or((0, 0, 0));
+        let pipeline = g
+            .pipeline
+            .as_ref()
+            .map(|p| p.status())
+            .unwrap_or(PipelineStatus {
+                depth_limit: g.policy.pipeline_depth_limit,
+                in_flight: 0,
+                cooking: 0,
+                installing: 0,
+                sealing: false,
+                shutting_down: false,
+            });
         AdaptiveWriteStatus {
             mode: g.policy.mode,
             lease_active: g.lease_active,
@@ -254,7 +279,18 @@ impl AdaptiveWriteHandle {
             entries_used,
             bytes_used,
             pending_cook_tasks: pending,
+            pipeline,
         }
+    }
+
+    /// Pipeline coordinator when Static/Adaptive (AWO-4).
+    pub fn pipeline(&self) -> Option<Arc<PipelineCoordinator>> {
+        self.runtime
+            .inner
+            .lock()
+            .expect("awo runtime")
+            .pipeline
+            .clone()
     }
 
     /// Configured policy mode.
@@ -349,7 +385,7 @@ impl AdaptiveWriteHandle {
         }
 
         let retry_after;
-        {
+        let pipeline = {
             let g = self.runtime.inner.lock().expect("awo runtime");
             retry_after = g.policy.maximum_collection_delay;
             if g.policy.mode == AdaptiveWriteMode::Disabled {
@@ -374,7 +410,24 @@ impl AdaptiveWriteHandle {
                     return Err(AdaptiveWriteError::QueueFull { retry_after });
                 }
             }
-        }
+            g.pipeline.clone()
+        };
+
+        // AWO-4: one pipeline reservation for this batch (cook → install).
+        let reservation = if let Some(ref pipe) = pipeline {
+            match pipe.try_begin_reservation() {
+                Ok(id) => Some(id),
+                Err(e) => {
+                    let g = self.runtime.inner.lock().expect("awo runtime");
+                    if let Some(credits) = g.credits.as_ref() {
+                        let _ = credits.release(items.len(), total_credit);
+                    }
+                    return Err(AdaptiveWriteError::Pipeline(e));
+                }
+            }
+        } else {
+            None
+        };
 
         // Prefer parallel store cook when the runtime has a cooker pool.
         let cooker_n = self
@@ -390,7 +443,23 @@ impl AdaptiveWriteHandle {
             store.set_cook_parallelism(cooker_n);
         }
 
+        if let (Some(ref pipe), Some(id)) = (pipeline.as_ref(), reservation) {
+            // Synchronous batch path: cook+install are one store call; mark
+            // cook complete then install complete around put_many_awo_owned.
+            let _ = pipe.note_cook_complete(id);
+        }
+
         let result = store.put_many_awo_owned(items, mode);
+        if let (Some(ref pipe), Some(id)) = (pipeline.as_ref(), reservation) {
+            match &result {
+                Ok(_) => {
+                    let _ = pipe.note_install_complete(id);
+                }
+                Err(_) => {
+                    let _ = pipe.abort_reservation(id);
+                }
+            }
+        }
         {
             let g = self.runtime.inner.lock().expect("awo runtime");
             if let Some(credits) = g.credits.as_ref() {
@@ -481,26 +550,38 @@ impl AdaptiveWriteHandle {
                 format!("awo policy: {p:?}"),
             )),
             AdaptiveWriteError::Store(s) => StoreError::Io(std::io::Error::other(s)),
+            AdaptiveWriteError::Pipeline(PipelineError::DepthExceeded { .. }) => {
+                StoreError::Io(std::io::Error::new(
+                    std::io::ErrorKind::WouldBlock,
+                    "awo pipeline depth exceeded",
+                ))
+            }
+            AdaptiveWriteError::Pipeline(e) => StoreError::Io(std::io::Error::other(format!(
+                "awo pipeline: {e:?}"
+            ))),
         }
     }
 
-    /// Drain admits until idle or deadline (cooker pending + credits returned).
+    /// Drain admits until idle or deadline (cooker pending + credits + pipeline).
     pub fn drain_writes(&self, deadline: Instant) -> Result<(), AdaptiveWriteError> {
         {
             let mut g = self.runtime.inner.lock().expect("awo runtime");
             g.draining = true;
+            if let Some(ref p) = g.pipeline {
+                p.begin_shutdown();
+            }
         }
         while Instant::now() < deadline {
             let pending = {
                 let g = self.runtime.inner.lock().expect("awo runtime");
-                g.cooker
+                let cook = g.cooker.as_ref().map(|c| c.pending_tasks()).unwrap_or(0);
+                let cred = g.credits.as_ref().map(|c| c.entries_used()).unwrap_or(0);
+                let pipe = g
+                    .pipeline
                     .as_ref()
-                    .map(|c| c.pending_tasks())
-                    .unwrap_or(0)
-                    + g.credits
-                        .as_ref()
-                        .map(|c| c.entries_used())
-                        .unwrap_or(0)
+                    .map(|p| p.status().in_flight)
+                    .unwrap_or(0);
+                cook + cred + pipe
             };
             if pending == 0 {
                 return Ok(());
@@ -515,10 +596,14 @@ impl AdaptiveWriteHandle {
         let mut g = self.runtime.inner.lock().expect("awo runtime");
         g.draining = true;
         g.lease_active = false;
+        if let Some(ref p) = g.pipeline {
+            p.begin_shutdown();
+        }
         if let Some(cooker) = g.cooker.take() {
             cooker.shutdown();
         }
         g.credits = None;
+        g.pipeline = None;
         store.set_awo_lease_active(false);
     }
 }
