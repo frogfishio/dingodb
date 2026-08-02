@@ -29,7 +29,7 @@ Errors: `StoreError::VersionConflict` / `KeyExists` → SDK `Error::VersionConfl
 
 | Residual | Notes |
 |---|---|
-| **Remote concurrent CAS** | Façade remote path still observe-then-put/delete; wire `if_version` / `if_absent` not productized on heap dispatch |
+| **Remote concurrent CAS** | Wire path productized in T7; multi-client stress residual (R2) |
 | **Crash / multiproc matrix** | Named residual for package exit (MUST_ADD §6 exit matrices) |
 | **Package accept** | Forbidden — residual checklist [APB2_RESIDUAL_CHECKLIST.md](./APB2_RESIDUAL_CHECKLIST.md) + principal |
 

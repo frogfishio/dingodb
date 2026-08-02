@@ -967,8 +967,7 @@ impl CollectionClient {
 
     /// Create JSON only when the key is currently absent (APB-2 / `apb.doc.create`).
     ///
-    /// **Embedded:** store Key Atomic (`WriteCondition::Absent`).  
-    /// **Remote:** still read-then-write residual until wire `if_absent` lands.
+    /// Embedded store CAS and remote wire `if_absent` (APB-2 T7) are Key Atomic.
     pub fn create<T: Serialize>(
         &mut self,
         key: &str,
@@ -981,22 +980,25 @@ impl CollectionClient {
             CollectionBackend::Embedded(hc) => hc
                 .create_if_absent(key, value)
                 .map_err(crate::error::lift_store_cas),
-            CollectionBackend::Remote { .. } => {
-                if self.get(key)?.is_some() {
-                    return Err(Error::Remote {
-                        code: "already_exists".into(),
-                        message: format!("key already present: {key}"),
-                    });
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let json = serde_json::to_value(value)?;
+                let mut guard = lock_remote(remote)?;
+                match guard.put_json_if(wire_collection_id, key, &json, None, true) {
+                    Ok((event_id_s, version_s)) => {
+                        Ok(write_receipt_from_remote_ids(key, &event_id_s, &version_s)?)
+                    }
+                    Err(e) => Err(e),
                 }
-                self.put(key, value)
             }
         }
     }
 
     /// Upsert JSON; reports whether the key was absent before the write (APB-2).
     ///
-    /// Insert path uses store Key Atomic create when embedded; concurrent
-    /// replace races on remote remain residual.
+    /// Create path is Key Atomic on both backends (T5/T7).
     pub fn upsert<T: Serialize>(
         &mut self,
         key: &str,
@@ -1020,8 +1022,7 @@ impl CollectionClient {
 
     /// Replace JSON only when the live establishing event id matches (APB-2).
     ///
-    /// **Embedded:** store Key Atomic (`WriteCondition::LiveEventId`).  
-    /// **Remote:** observe then put residual until wire `if_version` lands.  
+    /// Embedded store CAS and remote wire `if_version` (APB-2 T7) are Key Atomic.
     /// Pass [`WriteReceipt::version`] (or history last put `event_id`) as
     /// `if_version`.
     pub fn replace<T: Serialize>(
@@ -1085,19 +1086,32 @@ impl CollectionClient {
                 hc.replace_if_version(key, value, replace.if_version)
                     .map_err(crate::error::lift_store_cas)
             }
-            CollectionBackend::Remote { .. } => {
-                // Residual: remote still observe-then-put until wire if_version.
-                let observed = self.observe_live_event_id(key)?;
-                match observed {
-                    Some(live) if live == replace.if_version => {}
-                    other => {
-                        return Err(Error::VersionConflict {
-                            expected: replace.if_version,
-                            observed: other,
-                        });
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
+                let _ = options;
+                let json = serde_json::to_value(value)?;
+                let mut guard = lock_remote(remote)?;
+                match guard.put_json_if(
+                    wire_collection_id,
+                    key,
+                    &json,
+                    Some(replace.if_version),
+                    false,
+                ) {
+                    Ok((event_id_s, version_s)) => {
+                        Ok(write_receipt_from_remote_ids(key, &event_id_s, &version_s)?)
                     }
+                    Err(Error::VersionConflict { expected: _, observed }) => {
+                        // Prefer caller's token as expected (server echoes same).
+                        Err(Error::VersionConflict {
+                            expected: replace.if_version,
+                            observed,
+                        })
+                    }
+                    Err(e) => Err(e),
                 }
-                self.put_with(key, value, options)
             }
         }
     }
@@ -1108,7 +1122,7 @@ impl CollectionClient {
     /// - `if_present`: when `true`, absence is [`Error::NotFound`]; when
     ///   `false`, absence returns `removed: false` without error
     ///
-    /// **Embedded:** store Key Atomic. **Remote:** observe-then-delete residual.
+    /// Embedded + remote wire Key Atomic (APB-2 T5/T7).
     pub fn delete_with(
         &mut self,
         key: &str,
@@ -1174,57 +1188,48 @@ impl CollectionClient {
                     }
                 }
             }
-            CollectionBackend::Remote { .. } => {
-                let observed = self.observe_live_event_id(key)?;
-                if let Some(expected) = cond.if_version {
-                    match observed {
-                        Some(live) if live == expected => {}
-                        other => {
-                            return Err(Error::VersionConflict {
-                                expected,
-                                observed: other,
-                            });
-                        }
-                    }
-                } else if observed.is_none() {
-                    if cond.if_present {
-                        return Err(Error::NotFound(format!("key absent: {key}")));
-                    }
-                    return Ok(DeleteReceipt {
-                        key: key.to_string(),
-                        removed: false,
-                        event_id: [0u8; 16],
-                        version: [0u8; 16],
-                        acknowledgement: options.durability,
-                        committed: true,
-                        store_id: [0u8; 16],
-                        segment_id: [0u8; 16],
-                    });
-                }
+            CollectionBackend::Remote {
+                remote,
+                wire_collection_id,
+            } => {
                 let _ = options;
-                self.delete(key)
+                let mut guard = lock_remote(remote)?;
+                match guard.delete_if(
+                    wire_collection_id,
+                    key,
+                    cond.if_version,
+                    cond.if_present,
+                ) {
+                    Ok((removed, event_id_s, version_s)) => {
+                        let event_id = parse_hex16(&event_id_s).unwrap_or([0u8; 16]);
+                        let version = parse_hex16(&version_s).unwrap_or(event_id);
+                        Ok(DeleteReceipt {
+                            key: key.to_string(),
+                            removed,
+                            event_id,
+                            version,
+                            acknowledgement: options.durability,
+                            committed: true,
+                            store_id: [0u8; 16],
+                            segment_id: [0u8; 16],
+                        })
+                    }
+                    Err(Error::VersionConflict { expected, observed }) => {
+                        if cond.if_present && cond.if_version.is_none() {
+                            return Err(Error::NotFound(format!("key absent: {key}")));
+                        }
+                        Err(Error::VersionConflict {
+                            expected: cond.if_version.unwrap_or(expected),
+                            observed,
+                        })
+                    }
+                    Err(Error::Remote { code, message }) if code == "not_found" => {
+                        Err(Error::NotFound(message))
+                    }
+                    Err(e) => Err(e),
+                }
             }
         }
-    }
-
-    /// Live establishing event id for OCC, or `None` when the key is absent.
-    ///
-    /// Uses get + history last put (both backends). Residual vs store CAS.
-    fn observe_live_event_id(&mut self, key: &str) -> Result<Option<[u8; 16]>, Error> {
-        if self.get(key)?.is_none() {
-            return Ok(None);
-        }
-        let hist = self.history(key)?;
-        let last = hist.versions.last().ok_or_else(|| {
-            Error::Internal(format!(
-                "key {key} present but history has no versions"
-            ))
-        })?;
-        if last.kind != "put" {
-            // Tombstone or inconsistent stream — treat as absent for OCC.
-            return Ok(None);
-        }
-        Ok(Some(parse_hex16(&last.event_id)?))
     }
 
     /// List application keys (APB-2 / `apb.doc.list_keys`).

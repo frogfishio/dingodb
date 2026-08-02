@@ -351,11 +351,35 @@ impl RemoteHeap {
         key: &str,
         json: &Value,
     ) -> Result<(String, String), Error> {
-        let result = self.call_args(
-            120,
-            Some(collection_id),
-            serde_json::json!({ "key": key, "json": json }),
-        )?;
+        self.put_json_if(collection_id, key, json, None, false)
+    }
+
+    /// Conditional put JSON (APB-2 T7 wire Key Atomic).
+    ///
+    /// - `if_version: Some` → live establishing event id must match
+    /// - `if_absent: true` → key must be absent (create)
+    /// - both off → unconditional put
+    pub fn put_json_if(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+        json: &Value,
+        if_version: Option<[u8; 16]>,
+        if_absent: bool,
+    ) -> Result<(String, String), Error> {
+        let mut args = serde_json::json!({ "key": key, "json": json });
+        if let Some(v) = if_version {
+            args.as_object_mut().unwrap().insert(
+                "if_version".into(),
+                Value::String(residiuum_store::hex16(&v)),
+            );
+        }
+        if if_absent {
+            args.as_object_mut()
+                .unwrap()
+                .insert("if_absent".into(), Value::Bool(true));
+        }
+        let result = self.call_args(120, Some(collection_id), args)?;
         let event_id = result
             .get("event_id")
             .and_then(|v| v.as_str())
@@ -437,9 +461,47 @@ impl RemoteHeap {
 
     /// Delete `key` (op_id = 122). Returns whether a value was present.
     pub fn delete(&mut self, collection_id: &str, key: &str) -> Result<bool, Error> {
-        let result =
-            self.call_args(122, Some(collection_id), serde_json::json!({ "key": key }))?;
-        Ok(result.get("removed") == Some(&Value::Bool(true)))
+        Ok(self.delete_if(collection_id, key, None, false)?.0)
+    }
+
+    /// Conditional delete (APB-2 T7 wire Key Atomic).
+    ///
+    /// Returns `(removed, event_id_hex, version_hex)`.
+    ///
+    /// - `if_version: Some` → live establishing event id must match
+    /// - `if_present: true` → absence is `not_found` (unless version also set)
+    pub fn delete_if(
+        &mut self,
+        collection_id: &str,
+        key: &str,
+        if_version: Option<[u8; 16]>,
+        if_present: bool,
+    ) -> Result<(bool, String, String), Error> {
+        let mut args = serde_json::json!({ "key": key });
+        if let Some(v) = if_version {
+            args.as_object_mut().unwrap().insert(
+                "if_version".into(),
+                Value::String(residiuum_store::hex16(&v)),
+            );
+        }
+        if if_present {
+            args.as_object_mut()
+                .unwrap()
+                .insert("if_present".into(), Value::Bool(true));
+        }
+        let result = self.call_args(122, Some(collection_id), args)?;
+        let removed = result.get("removed") == Some(&Value::Bool(true));
+        let event_id = result
+            .get("event_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("00000000000000000000000000000000")
+            .to_string();
+        let version = result
+            .get("version")
+            .and_then(|v| v.as_str())
+            .unwrap_or(event_id.as_str())
+            .to_string();
+        Ok((removed, event_id, version))
     }
 
     /// List collections in the bound heap (op_id = 110).
@@ -721,6 +783,25 @@ impl RemoteHeap {
                 .pointer("/error/code")
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
+            // APB-2 T7: surface structured version_conflict when server provides tokens.
+            if code == "version_conflict" {
+                let expected = resp
+                    .pointer("/result/expected")
+                    .and_then(|v| v.as_str())
+                    .and_then(unhex16_local)
+                    .unwrap_or([0u8; 16]);
+                let observed = resp
+                    .pointer("/result/observed")
+                    .and_then(|v| {
+                        if v.is_null() {
+                            Some(None)
+                        } else {
+                            v.as_str().and_then(unhex16_local).map(Some)
+                        }
+                    })
+                    .unwrap_or(None);
+                return Err(Error::VersionConflict { expected, observed });
+            }
             return Err(Error::Remote {
                 code: code.into(),
                 message: format!("qualified op {op_id} failed"),
@@ -731,6 +812,10 @@ impl RemoteHeap {
             .cloned()
             .unwrap_or(Value::Object(Map::new())))
     }
+}
+
+fn unhex16_local(s: &str) -> Option<[u8; 16]> {
+    residiuum_store::unhex16(s)
 }
 
 /// Result of [`RemoteHeap::create_collection`] (op 106).

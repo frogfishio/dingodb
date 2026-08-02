@@ -14,14 +14,14 @@ Authority: [MUST_ADD.md](./MUST_ADD.md) §6 · [APB2_T5_KEY_ATOMIC_CAS.md](./APB
 
 | Deliverable | Labor status | Evidence |
 |---|---|---|
-| `create` | **partial green** | Embedded store Key Atomic (`WriteCondition::Absent`); remote still observe-then-put |
-| `replace` + `if_version` | **partial green** | Embedded store Key Atomic (`LiveEventId`); remote observe-then-put residual |
-| `delete_with` + `if_version` / `if_present` | **partial green** | Embedded store Key Atomic; remote residual |
+| `create` | **labor green (T5/T7)** | Embedded store CAS + remote wire `if_absent` |
+| `replace` + `if_version` | **labor green (T5/T7)** | Embedded store CAS + remote wire `if_version` |
+| `delete_with` + `if_version` / `if_present` | **labor green (T5/T7)** | Embedded store CAS + remote wire conditions |
 | `add` + key profile | **partial green** | `KeyProfile::RandomV1`; not store-atomic create-on-mint collision path |
 | `upsert` | **partial green** | Embedded create-if-absent then put; remote residual |
 | OCC version = establishing `event_id` | **green (labor)** | Receipts + history alignment (T2/T3) |
-| Dual-backend façade parity | **green (labor)** | `apb2_mutations` in dual pack (embedded + remote vector) |
-| **Package accept** | **forbidden** | Exit matrices open (below) |
+| Dual-backend façade parity | **green (labor)** | `apb2_mutations` dual pack (embedded + remote; wire CAS after T7) |
+| **Package accept** | **forbidden** | Concurrent/crash exit matrices open (below) |
 
 ---
 
@@ -34,7 +34,8 @@ Authority: [MUST_ADD.md](./MUST_ADD.md) §6 · [APB2_T5_KEY_ATOMIC_CAS.md](./APB
 | T3 add + receipt.version | done | RandomV1; version=event_id |
 | T4 dual-pack `apb2_mutations` | done | Shared scenarios dual host |
 | T5 store Key Atomic CAS | **in_review** | `WriteCondition` + embedded façade path |
-| **T6 residual checklist** | **this card** | Honesty map; **no accept** |
+| T6 residual checklist | **in_review** | Honesty map; **no accept** |
+| **T7 remote wire CAS** | **in_review** | heap `if_version`/`if_absent`/`if_present` + façade remote |
 
 ---
 
@@ -42,10 +43,10 @@ Authority: [MUST_ADD.md](./MUST_ADD.md) §6 · [APB2_T5_KEY_ATOMIC_CAS.md](./APB
 
 | ID | Residual | Blocks MUST_ADD exit? | Notes / next labor |
 |---|---|---|---|
-| R1 | **Remote wire `if_version` / `if_absent`** | **yes** | Heap dispatch + façade remote still TOCTOU observe-then-mutate; product multi-client CAS open |
-| R2 | **Concurrent lost-update matrix** (multi-thread / multi-client) | **yes** | Embedded serial CAS unit only; no stress matrix |
+| R1 | Remote wire `if_version` / `if_absent` | **closed (labor T7)** | Dual pack + heap dispatch CAS; multi-client stress still R2 |
+| R2 | **Concurrent lost-update matrix** (multi-thread / multi-client) | **yes** | Serial unit only; no stress matrix |
 | R3 | **Crash / retry / damage matrices** | **yes** | MUST_ADD §6 exit language; not labored |
-| R4 | **Local/remote parity under product CAS** | **yes** | Dual pack proves façade behavior, not concurrent remote CAS |
+| R4 | **Local/remote parity under concurrent CAS** | **yes** | Dual pack serial green; concurrent remote residual |
 | R5 | **Sortable / non-Random key profiles** | soft | Only RandomV1 productized |
 | R6 | **Remote durability options on put/delete** | soft | Server default; façade notes residual |
 | R7 | **Idempotent operation_id + conditional put coupling** | soft | DEF-010 exists; not bound to `if_version` semantics on wire |
@@ -82,9 +83,9 @@ Exit language (MUST_ADD §6): *concurrent lost-update, crash, retry, damage, and
 
 | Priority | Slice | Outcome |
 |---:|---|---|
-| 1 | Remote wire `if_version` / `if_absent` on put/delete (heap + façade) | Closes R1 |
-| 2 | Minimal concurrent lost-update matrix (embedded threads on shared HeapStore) | Closes R2 partial |
-| 3 | Crash/retry matrix named cells (may share store crash harness) | Closes R3 partial |
+| 1 | ~~Remote wire CAS~~ | **T7 labor done** |
+| 2 | Minimal concurrent lost-update matrix (embedded threads / multi-client) | Closes R2 partial |
+| 3 | Crash/retry matrix named cells | Closes R3 partial |
 | — | Principal package accept only when exit matrices + scoreboard gate | Accept |
 
 ---
@@ -95,5 +96,5 @@ Exit language (MUST_ADD §6): *concurrent lost-update, crash, retry, damage, and
 |---|---|
 | State | **active** (not accept) |
 | Evidence | T1–T5 labor + this checklist |
-| Blocked_by | R1 remote wire CAS; R2 concurrent matrix; R3 crash/retry; principal gate |
+| Blocked_by | R2 concurrent matrix; R3 crash/retry; principal gate |
 | Forbidden | Self-marking accept from residual checklist alone |

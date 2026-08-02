@@ -18,7 +18,8 @@ use residiuum_sdk::{
 };
 use residiuum_store::{
     create_collection_idempotent, hex16, rebuild_object_entry_from_chain,
-    try_load_collections_catalog, HeapMetaLayout, HeapStore, ObjectKind, StoreError, WriteReceipt,
+    try_load_collections_catalog, unhex16, HeapMetaLayout, HeapStore, ObjectKind, StoreError,
+    WriteCondition, WriteReceipt,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -316,6 +317,66 @@ fn err_code(id: u64, code: &str) -> HeapDispatchResult {
 
 fn require_string_arg(args: &Map<String, Value>, key: &str) -> Option<String> {
     args.get(key).and_then(|v| v.as_str()).map(|s| s.to_string())
+}
+
+/// Optional put condition from wire args (APB-2 T7).
+///
+/// - `if_version`: 32 lowercase hex establishing event id → [`WriteCondition::LiveEventId`]
+/// - `if_absent: true` → [`WriteCondition::Absent`] (create)
+/// - both absent → unconditional put
+fn put_condition_from_args(args: &Map<String, Value>) -> Result<WriteCondition, &'static str> {
+    if let Some(hex) = args.get("if_version").and_then(|v| v.as_str()) {
+        let id = unhex16(hex).ok_or("invalid_if_version")?;
+        return Ok(WriteCondition::LiveEventId(id));
+    }
+    if args.get("if_absent").and_then(|v| v.as_bool()) == Some(true) {
+        return Ok(WriteCondition::Absent);
+    }
+    Ok(WriteCondition::Unconditional)
+}
+
+/// Optional delete condition from wire args (APB-2 T7).
+///
+/// - `if_version` → live event id must match
+/// - `if_present: true` (without version) → key must be live
+/// - neither → unconditional delete
+fn delete_condition_from_args(args: &Map<String, Value>) -> Result<WriteCondition, &'static str> {
+    if let Some(hex) = args.get("if_version").and_then(|v| v.as_str()) {
+        let id = unhex16(hex).ok_or("invalid_if_version")?;
+        return Ok(WriteCondition::LiveEventId(id));
+    }
+    if args.get("if_present").and_then(|v| v.as_bool()) == Some(true) {
+        return Ok(WriteCondition::Present);
+    }
+    Ok(WriteCondition::Unconditional)
+}
+
+fn map_cas_store_err(id: u64, e: StoreError) -> HeapDispatchResult {
+    match e {
+        StoreError::VersionConflict { expected, observed } => {
+            let mut result = Map::new();
+            result.insert("expected".into(), Value::String(hex16(&expected)));
+            result.insert(
+                "observed".into(),
+                match observed {
+                    Some(o) => Value::String(hex16(&o)),
+                    None => Value::Null,
+                },
+            );
+            HeapDispatchResult::Response(HeapRpcResponse {
+                v: 1,
+                id,
+                ok: false,
+                result: Some(Value::Object(result)),
+                error: Some(HeapRpcError {
+                    code: "version_conflict".into(),
+                    retryable: false,
+                }),
+            })
+        }
+        StoreError::KeyExists => err_code(id, "already_exists"),
+        _ => unavailable_id(id),
+    }
 }
 
 fn parse_operation_id_hex(s: &str) -> Option<[u8; 16]> {
@@ -882,9 +943,17 @@ fn dispatch_put(
         }
         body
     };
-    match ctx.store.put_collection(coll.as_bytes(), key.as_bytes(), &body) {
+    let condition = match put_condition_from_args(&req.args) {
+        Ok(c) => c,
+        Err(_) => return unavailable_id(id),
+    };
+    // APB-2 T7: Key Atomic under HeapStore mutex (WriteCondition).
+    match ctx
+        .store
+        .put_collection_if(coll.as_bytes(), key.as_bytes(), &body, condition)
+    {
         Ok(receipt) => ok_id(id, receipt_result(&receipt)),
-        Err(_) => unavailable_id(id),
+        Err(e) => map_cas_store_err(id, e),
     }
 }
 
@@ -909,21 +978,55 @@ fn dispatch_delete(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> HeapD
     {
         return unavailable_id(id);
     }
-    let existed = ctx
+    // Soft idempotent delete: if_present=false (or omitted) and key absent →
+    // removed=false without writing (client convenience; not a separate condition).
+    let soft_absent = req.args.get("if_version").is_none()
+        && req.args.get("if_present").and_then(|v| v.as_bool()) != Some(true);
+    if soft_absent {
+        let existed = ctx
+            .store
+            .get_collection(coll.as_bytes(), key.as_bytes())
+            .ok()
+            .flatten()
+            .is_some();
+        if !existed {
+            return ok_id(
+                id,
+                serde_json::json!({
+                    "removed": false,
+                    "event_id": "00000000000000000000000000000000",
+                    "version": "00000000000000000000000000000000",
+                }),
+            );
+        }
+    }
+    let condition = match delete_condition_from_args(&req.args) {
+        Ok(c) => c,
+        Err(_) => return unavailable_id(id),
+    };
+    let removed_implies_live = matches!(
+        condition,
+        WriteCondition::LiveEventId(_) | WriteCondition::Present | WriteCondition::Unconditional
+    );
+    match ctx
         .store
-        .get_collection(coll.as_bytes(), key.as_bytes())
-        .ok()
-        .flatten()
-        .is_some();
-    match ctx.store.delete_collection(coll.as_bytes(), key.as_bytes()) {
+        .delete_collection_if(coll.as_bytes(), key.as_bytes(), condition)
+    {
         Ok(receipt) => {
             let mut result = receipt_result(&receipt);
             if let Some(obj) = result.as_object_mut() {
-                obj.insert("removed".into(), Value::Bool(existed));
+                obj.insert("removed".into(), Value::Bool(removed_implies_live));
             }
             ok_id(id, result)
         }
-        Err(_) => unavailable_id(id),
+        Err(e) => {
+            if matches!(condition, WriteCondition::Present) {
+                if let StoreError::VersionConflict { observed: None, .. } = e {
+                    return err_code(id, "not_found");
+                }
+            }
+            map_cas_store_err(id, e)
+        }
     }
 }
 
