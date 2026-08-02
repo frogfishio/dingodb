@@ -31,6 +31,7 @@ fn spawned_workers_have_distinct_pids() {
         spawn_workers: true,
         worker_bin: Some(worker_bin()),
         require_qualification_preflight: false,
+            awo_mode: residiuum_perf::store_driver::AwoMode::Disabled,
     })
     .expect("spawned multiproc campaign");
 

@@ -9,13 +9,16 @@ use super::aggregates::{
     WorkloadContract, OBSERVER_OVERHEAD_BUDGET, OVERHEAD_MIN_PAIRS_QUAL, OVERHEAD_MIN_PAIRS_SMOKE,
 };
 use super::emitter::{emit_plan_from_store_boundary_events, STORE_SEAM_EMITTER_FROM_RECEIPTS};
-use super::kinds::{DriverKind, MeasurementSurface};
+use super::kinds::{AwoMode, DriverKind, MeasurementSurface};
 use super::{cell_store_path, DriverCellReport, DriverError, DriverRunConfig};
 use crate::campaign::RunClass;
 use crate::envelope::{WindowClass, WindowDetector, WindowSample};
 use crate::matrix::{AckLedger, CellRunReport, DurabilityMode as MatrixDur, MatrixError};
 use crate::runner::RunBudgets;
 use crate::workload::SizeSampler;
+use residiuum_store::adaptive_write::{
+    AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy,
+};
 use residiuum_store::{BoundaryKind, DurabilityMode as StoreDur, Store};
 use std::fs;
 use std::sync::Arc;
@@ -66,7 +69,11 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     store.enable_boundary_probe();
     let store_dur = map_durability(cfg.cell.durability);
 
-    let mut leg = execute_workload_puts(&mut store, cfg, store_dur)?;
+    // Optional AWO lease (static/adaptive). Disabled keeps natural put_many.
+    let awo_handle = attach_awo_if_needed(&mut store, cfg.awo_mode)?;
+    let awo_ref = awo_handle.as_ref();
+
+    let mut leg = execute_workload_puts(&mut store, cfg, store_dur, awo_ref)?;
     let e2e_ns = leg.e2e_ns;
     let logical_bytes = leg.logical_bytes;
     let seq = leg.ops_done;
@@ -77,11 +84,22 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     messages.insert(
         0,
         format!(
-            "driver=real_store run_class={} path={}",
+            "driver=real_store run_class={} awo_mode={} path={}",
             run_class.as_str(),
+            cfg.awo_mode.as_str(),
             store_path.display()
         ),
     );
+    if let Some(h) = awo_ref {
+        let st = h.status();
+        messages.push(format!(
+            "awo_status mode={} lease_active={} cooker_threads={} pipeline_depth={}",
+            st.mode.as_str(),
+            st.lease_active,
+            st.cooker_threads,
+            st.pipeline.depth_limit
+        ));
+    }
     let floors_met = leg.floors_met;
 
     if let Err(e) = ledger.verify_correctness() {
@@ -104,6 +122,13 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         }
     }
     messages.push(format!("sample_get_ok={get_ok} ops_done={seq}"));
+
+    // Release AWO lease before reopen (direct open must not see active fence).
+    if let Some(h) = awo_handle {
+        let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
+        h.detach(&mut store);
+        messages.push("awo_detached=true".into());
+    }
 
     // Drain store-native boundary instrumentation (exact counters + samples).
     let snap = store.take_boundary_snapshot();
@@ -377,9 +402,15 @@ fn run_contract_leg(
         store.enable_boundary_probe();
     }
     let store_dur = map_durability(cfg.cell.durability);
-    let mut stats = execute_workload_puts(&mut store, cfg, store_dur)?;
+    let awo_handle = attach_awo_if_needed(&mut store, cfg.awo_mode)?;
+    let mut stats = execute_workload_puts(&mut store, cfg, store_dur, awo_handle.as_ref())?;
+    if let Some(h) = awo_handle {
+        let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
+        h.detach(&mut store);
+    }
     stats.messages.push(format!(
-        "overhead_leg probe_on={probe_on} tag={tag} path={} valid={} tput={:.3}",
+        "overhead_leg probe_on={probe_on} tag={tag} awo_mode={} path={} valid={} tput={:.3}",
+        cfg.awo_mode.as_str(),
         store_path.display(),
         stats.valid,
         stats.sustained_throughput_bps
@@ -388,16 +419,40 @@ fn run_contract_leg(
     Ok(stats)
 }
 
+/// Attach Static/Adaptive AWO handle; `None` for Disabled (natural put_many).
+fn attach_awo_if_needed(
+    store: &mut Store,
+    mode: AwoMode,
+) -> Result<Option<AdaptiveWriteHandle>, DriverError> {
+    if !mode.lease_active() {
+        return Ok(None);
+    }
+    let mut policy = AdaptiveWritePolicy::machine_defaults();
+    policy.mode = match mode {
+        AwoMode::Static => AdaptiveWriteMode::Static,
+        AwoMode::Adaptive => AdaptiveWriteMode::Adaptive,
+        AwoMode::Disabled => unreachable!("lease_active false"),
+    };
+    // Bound cooker cost for smoke/diagnostic cells; still exercises product path.
+    policy.maximum_cookers = policy.maximum_cookers.min(4).max(1);
+    policy.minimum_active_cookers = policy.minimum_active_cookers.min(policy.maximum_cookers);
+    AdaptiveWriteHandle::start_static(policy, store)
+        .map(Some)
+        .map_err(|e| DriverError::Store(format!("awo attach {}: {}", e.as_str(), e.as_str())))
+}
+
 /// Shared put loop for measured cells and overhead legs.
 ///
 /// **Stop policy:** smoke → op cap; non-smoke → duration **and** byte floors.
 /// **Behaviour:** `create_with_shards(shards)`; concurrent workers when
-/// `concurrency > 1`; batches of `batch_size` via `put_many`; at most
-/// `outstanding` in-flight batches per worker pipeline depth.
+/// `concurrency > 1`; batches of `batch_size` via `put_many` (or AWO
+/// `admit_put_batch` when lease active); at most `outstanding` in-flight
+/// batches per worker pipeline depth.
 fn execute_workload_puts(
     store: &mut Store,
     cfg: &DriverRunConfig,
     store_dur: StoreDur,
+    awo: Option<&AdaptiveWriteHandle>,
 ) -> Result<WorkloadLegStats, DriverError> {
     let run_class = cfg.run_class_parsed();
     let workers = cfg.cell.concurrency.max(1) as usize;
@@ -408,7 +463,7 @@ fn execute_workload_puts(
     let mut messages = Vec::new();
     messages.push(format!("layer={}", cfg.cell.layer.as_str()));
     messages.push(format!(
-        "workload_contract run_class={} durability={} payload={} dist={:?} conc={} out={} batch={} shards={} db_state={} features={} interference={}",
+        "workload_contract run_class={} durability={} payload={} dist={:?} conc={} out={} batch={} shards={} db_state={} features={} interference={} awo_mode={}",
         run_class.as_str(),
         cfg.cell.durability.as_str(),
         cfg.cell.payload_size,
@@ -420,14 +475,16 @@ fn execute_workload_puts(
         cfg.cell.db_state.as_str(),
         cfg.cell.features.name,
         cfg.cell.interference.kind.as_str(),
+        cfg.awo_mode.as_str(),
     ));
     messages.push(format!(
-        "behaviour: writer_shards={} concurrent_workers={} batch_size={} outstanding_batches={} put_many={}",
+        "behaviour: writer_shards={} concurrent_workers={} batch_size={} outstanding_batches={} put_many={} awo_flush={}",
         store.writer_shards(),
         workers,
         batch_sz,
         outstanding,
-        batch_sz > 1 || workers > 1 || n_shards > 1
+        batch_sz > 1 || workers > 1 || n_shards > 1,
+        if awo.is_some() { "admit_put_batch" } else { "put_many" }
     ));
     messages.push(format!(
         "floors: min_duration_secs={} min_logical_bytes={}",
@@ -443,7 +500,16 @@ fn execute_workload_puts(
 
     let t0 = Instant::now();
     let mut stats = if workers == 1 {
-        execute_serial_batched(store, cfg, store_dur, batch_sz, outstanding, smoke_ops_limit, t0)?
+        execute_serial_batched(
+            store,
+            cfg,
+            store_dur,
+            batch_sz,
+            outstanding,
+            smoke_ops_limit,
+            t0,
+            awo,
+        )?
     } else {
         execute_concurrent_batched(
             store,
@@ -454,6 +520,7 @@ fn execute_workload_puts(
             outstanding,
             smoke_ops_limit,
             t0,
+            awo,
         )?
     };
     messages.append(&mut stats.messages);
@@ -549,7 +616,7 @@ fn sustained_throughput_bps(samples: &[WindowSample], logical_bytes: u64, e2e_ns
     }
 }
 
-/// Single-worker path with real `put_many` batches and outstanding pipeline depth.
+/// Single-worker path with real `put_many` / AWO batch flush and outstanding depth.
 fn execute_serial_batched(
     store: &mut Store,
     cfg: &DriverRunConfig,
@@ -558,6 +625,7 @@ fn execute_serial_batched(
     outstanding: usize,
     smoke_ops_limit: Option<u64>,
     t0: Instant,
+    awo: Option<&AdaptiveWriteHandle>,
 ) -> Result<WorkloadLegStats, DriverError> {
     let run_class = cfg.run_class_parsed();
     let sampler = match cfg.cell.distribution {
@@ -632,7 +700,7 @@ fn execute_serial_batched(
             .map(|(s, b)| (s.as_str(), b.as_slice()))
             .collect();
 
-        match flush_batch(store, &items, store_dur) {
+        match flush_batch(store, &items, store_dur, awo) {
             Ok(receipts) => {
                 for (i, receipt) in receipts.iter().enumerate() {
                     let plen = bodies[i].len() as u64;
@@ -687,11 +755,11 @@ fn execute_serial_batched(
     })
 }
 
-/// Multi-worker path: concurrent preparers + outstanding-bounded `put_many`.
+/// Multi-worker path: concurrent preparers + outstanding-bounded batch flush.
 ///
 /// Workers generate batches in parallel; the store is written only on the
-/// main thread via `put_many` (which may parallelize across writer shards).
-/// Channel capacity enforces `outstanding` in-flight batches.
+/// main thread via `put_many` / AWO `admit_put_batch` (may parallelize across
+/// writer shards). Channel capacity enforces `outstanding` in-flight batches.
 fn execute_concurrent_batched(
     store: &mut Store,
     cfg: &DriverRunConfig,
@@ -701,6 +769,7 @@ fn execute_concurrent_batched(
     outstanding: usize,
     smoke_ops_limit: Option<u64>,
     t0: Instant,
+    awo: Option<&AdaptiveWriteHandle>,
 ) -> Result<WorkloadLegStats, DriverError> {
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::sync::mpsc;
@@ -817,7 +886,7 @@ fn execute_concurrent_batched(
             .zip(batch.bodies.iter())
             .map(|(s, b)| (s.as_str(), b.as_slice()))
             .collect();
-        match flush_batch(store, &items, store_dur) {
+        match flush_batch(store, &items, store_dur, awo) {
             Ok(receipts) => {
                 for (i, _receipt) in receipts.iter().enumerate() {
                     let plen = batch.bodies[i].len() as u64;
@@ -889,17 +958,26 @@ struct PreparedBatch {
 }
 
 
-/// Flush a prepared batch via the **identical product path** for probe-on and
-/// probe-off: always `Store::put_many` (multi-shard → `put_many_parallel` with
-/// boundary-probe instrumentation in the store — never sequential-put bypass).
+/// Flush a prepared batch.
+///
+/// - **AWO disabled:** `Store::put_many` (multi-shard → `put_many_parallel`).
+/// - **AWO static/adaptive:** `AdaptiveWriteHandle::admit_put_batch` →
+///   `put_many_awo_owned` (same persist-before-publish product path under lease).
+/// Never sequential-put bypass.
 fn flush_batch(
     store: &mut Store,
     items: &[(&str, &[u8])],
     mode: StoreDur,
+    awo: Option<&AdaptiveWriteHandle>,
 ) -> Result<Vec<residiuum_store::WriteReceipt>, DriverError> {
-    store
-        .put_many(items, mode)
-        .map_err(|e| DriverError::Store(e.to_string()))
+    match awo {
+        None => store
+            .put_many(items, mode)
+            .map_err(|e| DriverError::Store(e.to_string())),
+        Some(h) => h
+            .admit_put_batch(store, items, mode)
+            .map_err(|e| DriverError::Store(format!("awo admit_put_batch: {}", e.as_str()))),
+    }
 }
 
 fn payload_len(
@@ -975,6 +1053,7 @@ mod tests {
             durability_mutant: false,
             digest_mutant: false,
             run_class: "smoke".into(),
+            awo_mode: AwoMode::Disabled,
         })
         .expect("real store smoke cell");
         assert_eq!(report.driver_kind, DriverKind::RealStore);
@@ -1068,6 +1147,7 @@ mod tests {
             durability_mutant: false,
             digest_mutant: false,
             run_class: "smoke".into(),
+            awo_mode: AwoMode::Disabled,
         })
         .expect("observer overhead");
         assert!(report.probe_off_e2e_ns > 0);
@@ -1121,6 +1201,7 @@ mod tests {
             durability_mutant: false,
             digest_mutant: false,
             run_class: "smoke".into(),
+            awo_mode: AwoMode::Disabled,
         })
         .expect("concurrent batched smoke");
         assert_eq!(report.cell.validity, "valid");
@@ -1141,6 +1222,61 @@ mod tests {
         // (put_many_parallel instrumentation), not sequential-put bypass.
         assert!(report.boundary_aggregates.is_some());
         assert!(report.boundary_aggregates.as_ref().unwrap().total_observed > 0);
+    }
+
+    #[test]
+    fn real_store_smoke_awo_static_and_adaptive() {
+        let dir = tempfile::tempdir().unwrap();
+        for mode in [AwoMode::Static, AwoMode::Adaptive] {
+            let cell = MatrixCell {
+                cell_id: format!("L4-awo-{}-s256", mode.as_str()),
+                layer: LayerProfile::L4,
+                durability: MatrixDur::Buffered,
+                payload_size: 256,
+                distribution: None,
+                concurrency: 1,
+                outstanding: 1,
+                batch_size: 4,
+                shards: 1,
+                db_state: DatabaseState::Empty,
+                features: FeatureProfile::l4_minimal(),
+                interference: InterferenceProfile::absent(),
+                op_count: 8,
+                order_rank: 0,
+            };
+            let report = run_real_store(&DriverRunConfig {
+                cell,
+                seed: 7,
+                kind: DriverKind::RealStore,
+                work_root: Some(dir.path().to_path_buf()),
+                durability_mutant: false,
+                digest_mutant: false,
+                run_class: "smoke".into(),
+                awo_mode: mode,
+            })
+            .unwrap_or_else(|e| panic!("awo {} smoke: {e}", mode.as_str()));
+            assert_eq!(report.cell.validity, "valid");
+            assert!(report.cell.acknowledged > 0);
+            assert!(
+                report
+                    .notes
+                    .iter()
+                    .any(|n| n.contains(&format!("awo_mode={}", mode.as_str()))),
+                "notes must label awo_mode for {:?}",
+                mode
+            );
+            assert!(
+                report
+                    .notes
+                    .iter()
+                    .any(|n| n.contains("awo_flush=admit_put_batch")),
+                "lease modes must flush via admit_put_batch"
+            );
+            assert!(
+                report.notes.iter().any(|n| n.contains("awo_detached=true")),
+                "must detach lease after cell"
+            );
+        }
     }
 
     #[test]

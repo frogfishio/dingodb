@@ -253,6 +253,7 @@ mod tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: crate::store_driver::AwoMode::Disabled,
         })
         .unwrap();
         assert!(result.environment_hash.is_some());

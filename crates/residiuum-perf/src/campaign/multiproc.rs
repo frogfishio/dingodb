@@ -9,7 +9,8 @@ use super::run_class::RunClass;
 use super::CampaignError;
 use crate::matrix::MatrixCell;
 use crate::store_driver::{
-    run_driver_cell, store_driver_compiled, DriverKind, DriverRunConfig, MeasurementSurface,
+    run_driver_cell, store_driver_compiled, AwoMode, DriverKind, DriverRunConfig,
+    MeasurementSurface,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -31,6 +32,13 @@ pub struct WorkerJob {
     pub cells: Vec<MatrixCell>,
     pub include_multiproc_finding: bool,
     pub multiproc_cells: Vec<MatrixCell>,
+    /// `disabled` | `static` | `adaptive` (default disabled).
+    #[serde(default = "default_awo_mode_str")]
+    pub awo_mode: String,
+}
+
+fn default_awo_mode_str() -> String {
+    AwoMode::Disabled.as_str().into()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,6 +163,7 @@ pub fn run_worker_job(
         ));
     }
     let run_class = RunClass::parse(&job.run_class).unwrap_or(RunClass::Smoke);
+    let awo_mode = AwoMode::parse(&job.awo_mode).unwrap_or(AwoMode::Disabled);
     let surface = match driver {
         DriverKind::Synthetic => MeasurementSurface::NonProductSynthetic,
         DriverKind::RealStore => MeasurementSurface::RealStoreUncontrolled,
@@ -180,6 +189,7 @@ pub fn run_worker_job(
                 durability_mutant: false,
                 digest_mutant: false,
                 run_class: run_class.as_str().into(),
+                awo_mode,
             })
             .map_err(|e| CampaignError::Msg(e.to_string()))?;
             let run_id = format!(
@@ -218,6 +228,7 @@ pub fn run_worker_job(
                     durability_mutant: false,
                     digest_mutant: false,
                     run_class: run_class.as_str().into(),
+                    awo_mode,
                 })
                 .map_err(|e| CampaignError::Msg(e.to_string()))?;
                 let run_id = format!(
@@ -259,6 +270,7 @@ pub fn build_worker_jobs(
     driver: DriverKind,
     run_class: RunClass,
     work_root: &Path,
+    awo_mode: AwoMode,
 ) -> Vec<WorkerJob> {
     process_slots
         .iter()
@@ -274,6 +286,7 @@ pub fn build_worker_jobs(
             cells: cells.to_vec(),
             include_multiproc_finding,
             multiproc_cells: multiproc_cells.to_vec(),
+            awo_mode: awo_mode.as_str().into(),
         })
         .collect()
 }
@@ -315,6 +328,7 @@ mod tests {
             DriverKind::Synthetic,
             RunClass::Smoke,
             Path::new("/tmp"),
+            AwoMode::Disabled,
         );
         assert_eq!(jobs.len(), 2);
         assert_eq!(jobs[0].reps, 3);

@@ -27,7 +27,7 @@ pub use emitter::{
 pub use emitter::{emit_plan_from_store_boundary_events, facts_from_store_boundary_events};
 #[cfg(feature = "store-driver")]
 pub use real::measure_probe_observer_overhead;
-pub use kinds::{DriverKind, MeasurementSurface, DRIVER_KIND_SYNTHETIC};
+pub use kinds::{AwoMode, DriverKind, MeasurementSurface, DRIVER_KIND_SYNTHETIC};
 
 use crate::matrix::{CellRunReport, DurabilityMode, MatrixCell, MatrixError};
 use crate::shadow::PhysicalWritePlan;
@@ -81,6 +81,8 @@ pub struct DriverRunConfig {
     /// `smoke` | `diagnostic` | `qualification` | `soak` (SPEC §6.4).
     /// Default smoke when empty.
     pub run_class: String,
+    /// Adaptive write mode for real_store (ignored by synthetic). Default disabled.
+    pub awo_mode: AwoMode,
 }
 
 impl DriverRunConfig {

@@ -13,8 +13,8 @@ use crate::runner::{
     environment_fingerprint, preflight_work_root, BuildMode, PreflightConfig, RunBudgets,
 };
 use crate::store_driver::{
-    run_driver_cell, store_driver_compiled, DriverKind, DriverRunConfig, MeasurementSurface,
-    ObserverOverheadReport,
+    run_driver_cell, store_driver_compiled, AwoMode, DriverKind, DriverRunConfig,
+    MeasurementSurface, ObserverOverheadReport,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -70,6 +70,8 @@ pub struct CampaignConfig {
     /// When true (default for qualification/soak), run fail-closed preflight
     /// before any cells. Smoke unit tests leave this false.
     pub require_qualification_preflight: bool,
+    /// Adaptive write mode for real_store cells (default disabled).
+    pub awo_mode: AwoMode,
 }
 
 impl CampaignConfig {
@@ -84,6 +86,7 @@ impl CampaignConfig {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: AwoMode::Disabled,
         }
     }
 }
@@ -418,6 +421,7 @@ fn measure_campaign_observer_overhead(
             durability_mutant: false,
             digest_mutant: false,
             run_class: cfg.run_class.as_str().into(),
+            awo_mode: cfg.awo_mode,
         };
         measure_probe_observer_overhead(&oh_cfg).map_err(|e| CampaignError::Msg(e.to_string()))
     }
@@ -458,6 +462,7 @@ fn run_campaign_spawned(
         cfg.driver,
         cfg.run_class,
         work_root,
+        cfg.awo_mode,
     );
     let worker_results = super::multiproc::run_spawned_workers(&worker_bin, &jobs, &sync_root)?;
 
@@ -623,6 +628,7 @@ fn run_cell_reps(
                 durability_mutant: false,
                 digest_mutant: false,
                 run_class: cfg.run_class.as_str().into(),
+                awo_mode: cfg.awo_mode,
             };
             let drep = run_driver_cell(&dcfg).map_err(|e| CampaignError::Msg(e.to_string()))?;
 
@@ -729,6 +735,7 @@ mod tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: AwoMode::Disabled,
         })
         .unwrap_err();
         let s = err.to_string();
@@ -765,6 +772,7 @@ mod tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: AwoMode::Disabled,
         };
         // Synthetic qualification still runs (no wall 120s in synthetic matrix driver),
         // but must not apply smoke op caps in campaign path.
@@ -788,6 +796,7 @@ mod tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: true,
+            awo_mode: AwoMode::Disabled,
         })
         .unwrap_err();
         assert!(
@@ -812,6 +821,7 @@ mod tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: true,
+            awo_mode: AwoMode::Disabled,
         })
         .unwrap_err();
         let s = err.to_string();
@@ -862,6 +872,7 @@ mod real_store_tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: AwoMode::Disabled,
         })
         .expect("real store multi-rep smoke campaign");
 
@@ -900,6 +911,7 @@ mod real_store_tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: AwoMode::Disabled,
         })
         .unwrap();
         // Surface may be controlled-eligible label, but product_claim requires
@@ -930,6 +942,7 @@ mod real_store_tests {
             spawn_workers: false,
             worker_bin: None,
             require_qualification_preflight: false,
+            awo_mode: AwoMode::Disabled,
         })
         .expect("campaign with overhead");
 

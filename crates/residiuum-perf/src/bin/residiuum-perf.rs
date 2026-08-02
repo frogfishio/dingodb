@@ -6,6 +6,7 @@
 //! residiuum-perf analyze --campaign <dir>
 //! residiuum-perf verify --campaign <dir>
 //! residiuum-perf driver-smoke --work <dir> [--driver synthetic|real_store]
+//!     [--awo-mode disabled|static|adaptive]
 //! residiuum-perf worker --job <path> --out <path> --ready <path> --go <path>
 //! ```
 //!
@@ -25,7 +26,7 @@ use residiuum_perf::runner::{
     RunBudgets,
 };
 use residiuum_perf::store_driver::{
-    run_driver_cell, store_driver_compiled, DriverKind, DriverRunConfig,
+    run_driver_cell, store_driver_compiled, AwoMode, DriverKind, DriverRunConfig,
 };
 use residiuum_perf::PROFILE_ID;
 use std::env;
@@ -68,9 +69,11 @@ Commands:
   run --work <dir> [--driver synthetic|real_store] [--max-cells N] [--seed N]
       [--platform synthetic|macos_as|linux] [--class smoke|diagnostic|qualification|soak]
       [--controlled] [--spawn-workers|--no-spawn-workers]
+      [--awo-mode disabled|static|adaptive]
   analyze --campaign <dir>
   verify --campaign <dir>
   driver-smoke --work <dir> [--driver synthetic|real_store]
+      [--awo-mode disabled|static|adaptive]
   worker --job <path> --out <path> --ready <path> --go <path>
       (internal: barrier-synced process-slot child; do not invoke by hand)
 
@@ -80,8 +83,10 @@ Honesty:
   Multi-process runs spawn genuine OS workers by default (barrier-synced).
   synthetic/proxy results are NON-PRODUCT.
   real_store needs --features store-driver.
+  --awo-mode (default disabled): real_store only; static/adaptive attach AWO lease.
   --controlled only on a declared controlled runner + qualification class.
   No optimisations. Smoke-derived io_queue_underdriven is WITHDRAWN.
+  AWO three-way numbers are diagnostic unless a controlled qualification campaign says otherwise.
 ",
         store_driver_compiled()
     );
@@ -103,6 +108,13 @@ fn flag_value(args: &[String], name: &str) -> Option<String> {
 
 fn has_flag(args: &[String], name: &str) -> bool {
     args.iter().any(|a| a == name)
+}
+
+fn parse_awo_mode(args: &[String]) -> Result<AwoMode, String> {
+    let raw = flag_value(args, "--awo-mode").unwrap_or_else(|| "disabled".into());
+    AwoMode::parse(&raw).ok_or_else(|| {
+        format!("bad --awo-mode {raw}; expected disabled|static|adaptive")
+    })
 }
 
 fn cmd_preflight(args: &[String]) -> Result<(), String> {
@@ -180,6 +192,10 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
     if controlled && !run_class.may_emit_bottleneck_verdict() {
         return Err("--controlled requires --class qualification (or soak)".into());
     }
+    let awo_mode = parse_awo_mode(args)?;
+    if awo_mode.lease_active() && kind != DriverKind::RealStore {
+        return Err("--awo-mode static|adaptive requires --driver real_store".into());
+    }
 
     // Genuine multiproc: default spawn when processes > 1. Override with flags.
     let spawn_workers = if has_flag(args, "--no-spawn-workers") {
@@ -200,6 +216,7 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
         spawn_workers,
         worker_bin,
         require_qualification_preflight: run_class.may_emit_bottleneck_verdict(),
+        awo_mode,
     })
     .map_err(|e| e.to_string())?;
 
@@ -256,6 +273,7 @@ fn cmd_run(args: &[String]) -> Result<(), String> {
             "campaign_dir": campaign_dir,
             "campaign_id": plan.campaign_id,
             "driver": kind.as_str(),
+            "awo_mode": awo_mode.as_str(),
             "run_class": result.run_class,
             "platform": plan.platform.as_str(),
             "measurement_surface": result.measurement_surface,
@@ -359,6 +377,10 @@ fn cmd_driver_smoke(args: &[String]) -> Result<(), String> {
     if kind == DriverKind::RealStore && !store_driver_compiled() {
         return Err("rebuild with --features store-driver".into());
     }
+    let awo_mode = parse_awo_mode(args)?;
+    if awo_mode.lease_active() && kind != DriverKind::RealStore {
+        return Err("--awo-mode static|adaptive requires --driver real_store".into());
+    }
     let manifest = build_matrix_cells(ScheduleSeed { seed: 1 });
     let cell = manifest.cells.first().cloned().ok_or("empty matrix")?;
     let report = run_driver_cell(&DriverRunConfig {
@@ -369,12 +391,14 @@ fn cmd_driver_smoke(args: &[String]) -> Result<(), String> {
         durability_mutant: false,
         digest_mutant: false,
         run_class: "smoke".into(),
+        awo_mode,
     })
     .map_err(|e| e.to_string())?;
     println!(
         "{}",
         serde_json::json!({
             "driver": report.driver_kind.as_str(),
+            "awo_mode": awo_mode.as_str(),
             "surface": report.measurement_surface.as_str(),
             "product_claim_eligible": report.product_claim_eligible,
             "validity": report.cell.validity,
