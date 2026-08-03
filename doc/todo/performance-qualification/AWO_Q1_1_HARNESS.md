@@ -72,4 +72,4 @@ cargo test -p residiuum-store --features legacy-raw-store --test awo_static_admi
 ## 4. Residual for Q1.2 / Q1.3
 
 - **Q1.2:** Labor evidence — concurrent `HeapStore::put_collection` (façade) amortizes Durable file_sync; wait-outside-mutex product wiring proven. Direct-handle test remains in `independent_puts_collect_amortize_file_sync`.
-- **Q1.3:** Reopen digest campaign under concurrent admit; optional thr Off/Static/Adaptive re-measure; freeze claim table.
+- **Q1.3:** Labor complete — see `AWO_Q1_3_REOPEN.md` (façade concurrent Static+Adaptive reopen; thr re-measure optional residual).

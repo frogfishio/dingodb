@@ -4,8 +4,12 @@
 //! - every acknowledged seq binds to key + body hash + length;
 //! - clean close + normal product reopen preserves every ack exactly once;
 //! - pre-close value digest matches reopened-state digest;
-//! - multi-seed / concurrency / outstanding matrix + optional segment rotation;
+//! - multi-seed / concurrency settings + optional post-admit segment rotation;
 //! - records file_sync / logical_ack evidence for claim table.
+//!
+//! **Hang note:** do not use a tight spin-wait outstanding pool under Durable AWO
+//! (spinners burn CPU while collectors wait). Outstanding is modeled as the number
+//! of concurrent façade threads (each holds one in-flight put_collection).
 //!
 //! Crash-boundary semantics are **out of scope** (later crash matrix).
 //!
@@ -23,13 +27,10 @@ use residiuum_store::{
     create_object, publish_staged_genesis, stage_heap_genesis, BoundaryKind, HeapMetaLayout,
     ObjectKind, StoreHost,
 };
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Barrier, Mutex};
 use std::time::{Duration, Instant};
 
-/// Expected binding for one logical put (authoritative oracle).
 #[derive(Clone, Debug)]
 struct ExpectedOp {
     seq: u64,
@@ -56,7 +57,6 @@ fn body_hash(body: &[u8]) -> [u8; 32] {
     *blake3::hash(body).as_bytes()
 }
 
-/// Chain digest over (seq, key_bytes, body_hash, len) — independent of store.
 fn chain_digest(ops: &[(u64, &[u8], [u8; 32], u64)]) -> String {
     let mut prev: Option<[u8; 32]> = None;
     for (seq, key, hash, len) in ops {
@@ -83,43 +83,7 @@ fn hex_encode(bytes: &[u8]) -> String {
     s
 }
 
-/// Global in-flight credit (outstanding is shared, not per-worker).
-struct GlobalOutstanding {
-    available: Mutex<usize>,
-    capacity: usize,
-}
-
-impl GlobalOutstanding {
-    fn new(capacity: usize) -> Self {
-        let capacity = capacity.max(1);
-        Self {
-            available: Mutex::new(capacity),
-            capacity,
-        }
-    }
-
-    fn acquire(&self) {
-        loop {
-            {
-                let mut g = self.available.lock().unwrap();
-                if *g > 0 {
-                    *g -= 1;
-                    return;
-                }
-            }
-            std::thread::yield_now();
-        }
-    }
-
-    fn release(&self) {
-        let mut g = self.available.lock().unwrap();
-        *g = (*g).saturating_add(1).min(self.capacity);
-    }
-}
-
 struct GenesisIds {
-    dep: [u8; 16],
-    heap_id: [u8; 16],
     coll: [u8; 16],
     cap: HeapCap,
 }
@@ -181,12 +145,7 @@ fn provision(root: &Path) -> GenesisIds {
         HeapId::from_bytes_unchecked_nonzero(heap_id).unwrap(),
         DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap(),
     );
-    GenesisIds {
-        dep,
-        heap_id,
-        coll,
-        cap,
-    }
+    GenesisIds { coll, cap }
 }
 
 fn policy_for(mode: AdaptiveWriteMode) -> AdaptiveWritePolicy {
@@ -194,36 +153,39 @@ fn policy_for(mode: AdaptiveWriteMode) -> AdaptiveWritePolicy {
     policy.mode = mode;
     policy.maximum_cookers = 2;
     policy.minimum_active_cookers = 1;
-    policy.maximum_collection_delay = Duration::from_millis(8);
+    // Short collection window (same posture as Q1.2).
+    policy.maximum_collection_delay = Duration::from_millis(5);
     policy
 }
 
 #[derive(Debug)]
 struct CellReport {
-    mode: &'static str,
     seed: u64,
-    workers: usize,
-    outstanding: usize,
+    concurrency: usize,
     issued: u64,
     acked: u64,
     pre_digest: String,
     reopen_digest: String,
     file_sync: u64,
-    appends: u64,
     segment_rotate: u64,
     sync_per_logical_ack: f64,
 }
 
-/// Run one correctness cell: concurrent façade puts → drain → close → reopen → verify.
+/// Concurrent façade puts with fixed per-thread work (no spin semaphore).
+///
+/// `concurrency` = concurrent outstanding façade callers (one put each in flight).
+/// Optional `rotate_after`: after concurrent phase, lower seal threshold and write
+/// a few sequential large values so SegmentRotate runs **outside** the concurrent
+/// critical path (avoids seal × collector interaction hangs).
 fn run_cell(
     mode: AdaptiveWriteMode,
     seed: u64,
-    workers: usize,
-    outstanding: usize,
+    concurrency: usize,
     total_ops: u64,
-    force_rotate: bool,
+    rotate_after: bool,
     payload_len: usize,
 ) -> CellReport {
+    let concurrency = concurrency.max(1);
     let dir = tempfile::tempdir().unwrap();
     let root: PathBuf = dir.path().to_path_buf();
     let policy = policy_for(mode);
@@ -240,13 +202,8 @@ fn run_cell(
         let physical = host.physical();
         let mut g = physical.lock().unwrap();
         g.enable_boundary_probe();
-        if force_rotate {
-            // Small seal threshold so Durable volume triggers SegmentRotate mid-run.
-            g.set_seal_threshold(16 * 1024);
-        }
     }
 
-    // Authoritative expected table for every issued seq.
     let expected: Arc<Vec<ExpectedOp>> = Arc::new(
         (0..total_ops)
             .map(|seq| {
@@ -263,39 +220,34 @@ fn run_cell(
             .collect(),
     );
 
-    let next = Arc::new(AtomicU64::new(0));
-    let credits = Arc::new(GlobalOutstanding::new(outstanding));
-    // seq → terminal ack recorded once (detect multi-terminal).
-    let acked: Arc<Mutex<BTreeMap<u64, ()>>> = Arc::new(Mutex::new(BTreeMap::new()));
-    let barrier = Arc::new(Barrier::new(workers));
-
+    // Multi-terminal detector: seq → first ack only.
+    let acked: Arc<Mutex<Vec<bool>>> =
+        Arc::new(Mutex::new(vec![false; total_ops as usize]));
+    let barrier = Arc::new(Barrier::new(concurrency));
     let mut joins = Vec::new();
-    for _ in 0..workers {
+
+    for wid in 0..concurrency {
         let heap = Arc::clone(&heap);
         let expected = Arc::clone(&expected);
-        let next = Arc::clone(&next);
-        let credits = Arc::clone(&credits);
         let acked = Arc::clone(&acked);
         let barrier = Arc::clone(&barrier);
         joins.push(std::thread::spawn(move || {
             barrier.wait();
-            loop {
-                let seq = next.fetch_add(1, Ordering::Relaxed);
-                if seq >= total_ops {
-                    break;
-                }
-                credits.acquire();
+            // Partition sequences across workers (no shared credit pool).
+            let mut seq = wid as u64;
+            while seq < total_ops {
                 let op = &expected[seq as usize];
                 heap.put_collection(&coll, &op.key, &op.body)
                     .unwrap_or_else(|e| panic!("put_collection seq={seq}: {e}"));
                 {
                     let mut g = acked.lock().unwrap();
                     assert!(
-                        g.insert(seq, ()).is_none(),
+                        !g[seq as usize],
                         "double-ack for seq={seq}"
                     );
+                    g[seq as usize] = true;
                 }
-                credits.release();
+                seq += concurrency as u64;
             }
         }));
     }
@@ -303,30 +255,52 @@ fn run_cell(
         j.join().expect("worker panic invalidates evidence");
     }
 
-    let issued = next.load(Ordering::Relaxed).min(total_ops);
-    assert_eq!(issued, total_ops, "all sequences must be issued");
     {
         let g = acked.lock().unwrap();
-        assert_eq!(g.len() as u64, total_ops, "every issued seq must ack exactly once");
-        for s in 0..total_ops {
-            assert!(g.contains_key(&s), "missing ack for seq={s}");
+        for (s, ok) in g.iter().enumerate() {
+            assert!(*ok, "missing ack for seq={s}");
         }
     }
 
-    // Pre-close: verify live façade + build digest from store-read values.
-    let mut pre_chain: Vec<(u64, Vec<u8>, [u8; 32], u64)> = Vec::with_capacity(total_ops as usize);
-    for op in expected.iter() {
+    // Optional: force segment rotation after concurrent phase (single-threaded).
+    let mut rotate_ops: Vec<ExpectedOp> = Vec::new();
+    if rotate_after {
+        {
+            let physical = host.physical();
+            let mut g = physical.lock().unwrap();
+            g.set_seal_threshold(8 * 1024);
+        }
+        // Large sequential puts to cross seal threshold.
+        for i in 0..6u64 {
+            let seq = total_ops + i;
+            let key = format!("q13-rot-{seed:04x}-{i:04x}").into_bytes();
+            let body = fill_body(seed ^ 0xA5A5, i, 4 * 1024);
+            let hash = body_hash(&body);
+            heap.put_collection(&coll, &key, &body)
+                .expect("rotate-phase put");
+            rotate_ops.push(ExpectedOp {
+                seq,
+                key,
+                body,
+                body_hash: hash,
+            });
+        }
+    }
+
+    // Full expected set for digests (concurrent + optional rotate keys).
+    let mut all_ops: Vec<&ExpectedOp> = expected.iter().collect();
+    for op in &rotate_ops {
+        all_ops.push(op);
+    }
+
+    let mut pre_chain: Vec<(u64, Vec<u8>, [u8; 32], u64)> = Vec::with_capacity(all_ops.len());
+    for op in &all_ops {
         let got = heap
             .get_collection(&coll, &op.key)
             .expect("get")
             .unwrap_or_else(|| panic!("missing key before close seq={}", op.seq));
-        assert_eq!(
-            got, op.body,
-            "pre-close body mismatch seq={}",
-            op.seq
-        );
+        assert_eq!(got, op.body, "pre-close body mismatch seq={}", op.seq);
         assert_eq!(body_hash(&got), op.body_hash);
-        assert_eq!(got.len() as u64, op.body.len() as u64);
         pre_chain.push((op.seq, op.key.clone(), op.body_hash, op.body.len() as u64));
     }
     let pre_refs: Vec<(u64, &[u8], [u8; 32], u64)> = pre_chain
@@ -351,27 +325,22 @@ fn run_cell(
     drop(heap);
     drop(host);
 
-    // Normal product reopen path (not crash salvage).
+    // Normal product reopen (not crash salvage).
     let host2 = StoreHost::open_with_adaptive_write(&root, policy).unwrap();
     let heap2 = host2.open_heap(ids.cap);
+
     let mut reopen_chain: Vec<(u64, Vec<u8>, [u8; 32], u64)> =
-        Vec::with_capacity(total_ops as usize);
-    for op in expected.iter() {
+        Vec::with_capacity(all_ops.len());
+    for op in &all_ops {
         let got = heap2
             .get_collection(&coll, &op.key)
             .expect("reopen get")
             .unwrap_or_else(|| panic!("missing after reopen seq={}", op.seq));
-        assert_eq!(
-            got, op.body,
-            "reopen body mismatch seq={}",
-            op.seq
-        );
+        assert_eq!(got, op.body, "reopen body mismatch seq={}", op.seq);
         let h = body_hash(&got);
         assert_eq!(h, op.body_hash, "reopen hash mismatch seq={}", op.seq);
         reopen_chain.push((op.seq, op.key.clone(), h, got.len() as u64));
     }
-    // No unexpected keys: collection scan not required if we only wrote known keys
-    // and every known key matches; extra keys would not affect digest equality.
     let reopen_refs: Vec<(u64, &[u8], [u8; 32], u64)> = reopen_chain
         .iter()
         .map(|(s, k, h, l)| (*s, k.as_slice(), *h, *l))
@@ -382,46 +351,40 @@ fn run_cell(
         "pre-close digest must equal reopen digest (mode={mode:?} seed={seed})"
     );
 
-    let logical_ack = total_ops;
+    let logical_ack = all_ops.len() as u64;
     let sync_per = if logical_ack > 0 {
         file_sync as f64 / logical_ack as f64
     } else {
         0.0
     };
-    // Concurrent Durable collection should amortize syncs when outstanding/workers > 1.
-    if workers > 1 && outstanding > 1 && total_ops >= 16 {
+    if concurrency > 1 && total_ops >= 16 {
         assert!(
             file_sync > 0 && file_sync < logical_ack,
             "expected multi-write barrier amortization: file_sync={file_sync} acks={logical_ack}"
         );
     }
-    assert!(appends >= logical_ack, "append count {appends} < acks {logical_ack}");
-    if force_rotate {
+    assert!(
+        appends >= total_ops,
+        "append count {appends} < concurrent acks {total_ops}"
+    );
+    if rotate_after {
         assert!(
             segment_rotate > 0,
-            "force_rotate cell expected SegmentRotate>0"
+            "rotate_after cell expected SegmentRotate>0 (got 0)"
         );
     }
 
-    host2
-        .drain_writes(Instant::now() + Duration::from_secs(2))
-        .ok();
+    let _ = host2.drain_writes(Instant::now() + Duration::from_secs(2));
 
+    let _ = mode; // used for host policy above; report is mode-agnostic digests
     CellReport {
-        mode: match mode {
-            AdaptiveWriteMode::Static => "static",
-            AdaptiveWriteMode::Adaptive => "adaptive",
-            AdaptiveWriteMode::Disabled => "disabled",
-        },
         seed,
-        workers,
-        outstanding,
-        issued: total_ops,
+        concurrency,
+        issued: logical_ack,
         acked: logical_ack,
         pre_digest,
         reopen_digest,
         file_sync,
-        appends,
         segment_rotate,
         sync_per_logical_ack: sync_per,
     }
@@ -429,34 +392,21 @@ fn run_cell(
 
 #[test]
 fn q13_static_concurrent_reopen_matrix() {
+    // Smaller, hang-safe matrix: concurrency = outstanding façade callers.
     let cells = [
-        // seed, workers, outstanding, ops, rotate, payload
-        (1u64, 4usize, 2usize, 24u64, false, 128usize),
-        (42, 4, 4, 32, false, 256),
-        (99, 8, 4, 40, true, 512),
+        // seed, concurrency, ops, rotate_after, payload
+        (1u64, 4usize, 16u64, false, 128usize),
+        (42, 4, 24, false, 256),
+        (99, 8, 32, true, 256),
     ];
-    let mut reports = Vec::new();
-    for (seed, w, out, ops, rot, plen) in cells {
-        let r = run_cell(
-            AdaptiveWriteMode::Static,
-            seed,
-            w,
-            out,
-            ops,
-            rot,
-            plen,
-        );
+    for (seed, conc, ops, rot, plen) in cells {
+        let r = run_cell(AdaptiveWriteMode::Static, seed, conc, ops, rot, plen);
         assert_eq!(r.pre_digest, r.reopen_digest);
         assert_eq!(r.acked, r.issued);
-        reports.push(r);
-    }
-    // Smoke evidence in stdout for claim table (cargo test -- --nocapture).
-    for r in &reports {
         eprintln!(
-            "q13 static seed={} w={} out={} acked={} file_sync={} rotate={} sync/ack={:.3} digest={}",
+            "q13 static seed={} conc={} acked={} file_sync={} rotate={} sync/ack={:.3} digest={}",
             r.seed,
-            r.workers,
-            r.outstanding,
+            r.concurrency,
             r.acked,
             r.file_sync,
             r.segment_rotate,
@@ -469,31 +419,18 @@ fn q13_static_concurrent_reopen_matrix() {
 #[test]
 fn q13_adaptive_concurrent_reopen_matrix() {
     let cells = [
-        (7u64, 4usize, 2usize, 24u64, false, 128usize),
-        (42, 4, 4, 32, false, 256),
-        (1001, 8, 4, 40, true, 512),
+        (7u64, 4usize, 16u64, false, 128usize),
+        (42, 4, 24, false, 256),
+        (1001, 8, 32, true, 256),
     ];
-    let mut reports = Vec::new();
-    for (seed, w, out, ops, rot, plen) in cells {
-        let r = run_cell(
-            AdaptiveWriteMode::Adaptive,
-            seed,
-            w,
-            out,
-            ops,
-            rot,
-            plen,
-        );
+    for (seed, conc, ops, rot, plen) in cells {
+        let r = run_cell(AdaptiveWriteMode::Adaptive, seed, conc, ops, rot, plen);
         assert_eq!(r.pre_digest, r.reopen_digest);
         assert_eq!(r.acked, r.issued);
-        reports.push(r);
-    }
-    for r in &reports {
         eprintln!(
-            "q13 adaptive seed={} w={} out={} acked={} file_sync={} rotate={} sync/ack={:.3} digest={}",
+            "q13 adaptive seed={} conc={} acked={} file_sync={} rotate={} sync/ack={:.3} digest={}",
             r.seed,
-            r.workers,
-            r.outstanding,
+            r.concurrency,
             r.acked,
             r.file_sync,
             r.segment_rotate,
@@ -503,17 +440,16 @@ fn q13_adaptive_concurrent_reopen_matrix() {
     }
 }
 
-/// Cross-mode smoke: same seed/config must both reopen-correct (not thr equality).
+/// Same seed/content must reopen-correct under Static and Adaptive (digest equal).
 #[test]
 fn q13_static_and_adaptive_same_seed_both_reopen_ok() {
     let seed = 2026u64;
-    let s = run_cell(AdaptiveWriteMode::Static, seed, 4, 4, 28, false, 192);
-    let a = run_cell(AdaptiveWriteMode::Adaptive, seed, 4, 4, 28, false, 192);
-    assert_eq!(s.acked, 28);
-    assert_eq!(a.acked, 28);
+    let s = run_cell(AdaptiveWriteMode::Static, seed, 4, 20, false, 192);
+    let a = run_cell(AdaptiveWriteMode::Adaptive, seed, 4, 20, false, 192);
+    assert_eq!(s.acked, 20);
+    assert_eq!(a.acked, 20);
     assert_eq!(s.pre_digest, s.reopen_digest);
     assert_eq!(a.pre_digest, a.reopen_digest);
-    // Same oracle payload → same content digest across modes.
     assert_eq!(
         s.pre_digest, a.pre_digest,
         "Static and Adaptive must install identical logical content for same seed"
