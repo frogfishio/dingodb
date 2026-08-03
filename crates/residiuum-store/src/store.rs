@@ -882,21 +882,15 @@ impl Store {
                 continue;
             };
             if let Some(runway) = writer.runway.as_ref() {
-                // Aim the preparer at `want`: it targets write_head + chunk.
-                let aim_head = want.saturating_sub(chunk_bytes).max(writer.durable_len);
-                runway
-                    .shared()
-                    .write_head
-                    .store(aim_head, std::sync::atomic::Ordering::Release);
+                runway.shared().write_head.store(
+                    writer.durable_len,
+                    std::sync::atomic::Ordering::Release,
+                );
                 runway.wait_until_zeroed(want, timeout)?;
                 writer.zeroed_thru = runway
                     .shared()
                     .zeroed_thru
                     .load(std::sync::atomic::Ordering::Acquire);
-                runway.shared().write_head.store(
-                    writer.durable_len,
-                    std::sync::atomic::Ordering::Release,
-                );
             } else {
                 crate::segment_growth::ensure_zero_watermark(
                     &mut writer.file,
@@ -7622,6 +7616,7 @@ mod tests {
             )
             .unwrap();
         assert!(store.segment_growth_policy().is_watermark());
+        store.warm_segment_runway().unwrap();
         store
             .put("wm", b"hello-watermark", DurabilityMode::Buffered)
             .unwrap();
@@ -7639,6 +7634,30 @@ mod tests {
         assert_eq!(
             store.segment_growth_policy(),
             crate::segment_growth::SegmentGrowthPolicy::GrowOnAppend
+        );
+    }
+
+    /// Background preparer: warm capacity, then puts must not pay put-path zero.
+    #[test]
+    fn segment_growth_watermark_background_runway_put() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        store
+            .set_segment_growth_policy(crate::segment_growth::SegmentGrowthPolicy::watermark(
+                4 * 1024 * 1024,
+                1024 * 1024,
+            ))
+            .unwrap();
+        store.warm_segment_runway().unwrap();
+        for i in 0..200u32 {
+            let key = format!("k{i}");
+            store
+                .put(&key, b"xxxxxxxx", DurabilityMode::Buffered)
+                .unwrap();
+        }
+        assert_eq!(
+            store.get("k0").unwrap().as_deref(),
+            Some(b"xxxxxxxx".as_slice())
         );
     }
 }

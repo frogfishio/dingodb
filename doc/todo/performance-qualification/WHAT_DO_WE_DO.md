@@ -33,3 +33,7 @@ Grow ≈ **12–14k TPS**. Watermark at ½ GiB avoids EOF extend but still zer
 TPS(background-ready runway) ≫ TPS(grow)   on clean disk
 preferably toward SQLite band
 ```
+
+## Result (2026-08-03)
+
+Shape shipped; **TPS did not win** (~8.9k wm-bg vs ~9.7k grow on `/tmp`). See [BG_RUNWAY_PREPARER.md](BG_RUNWAY_PREPARER.md). Default stays grow.

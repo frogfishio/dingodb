@@ -21,6 +21,8 @@ pub(crate) struct RunwayShared {
     pub zeroed_thru: AtomicU64,
     /// Latest durable write head published by the put path.
     pub write_head: AtomicU64,
+    /// Optional warm floor (thr setup): preparer zeros through at least this offset.
+    pub target_floor: AtomicU64,
 }
 
 impl RunwayShared {
@@ -28,6 +30,7 @@ impl RunwayShared {
         Arc::new(Self {
             zeroed_thru: AtomicU64::new(zeroed_thru),
             write_head: AtomicU64::new(write_head),
+            target_floor: AtomicU64::new(0),
         })
     }
 }
@@ -61,7 +64,7 @@ impl RunwayPreparer {
             .spawn(move || {
                 preparer_loop(path, capacity_bytes, chunk_bytes, shared_w, stop_w);
             })
-            .map_err(|e| StoreError::Io(e))?;
+            .map_err(StoreError::Io)?;
         Ok(Self {
             stop,
             join: Some(join),
@@ -74,10 +77,6 @@ impl RunwayPreparer {
         &self.shared
     }
 
-    pub fn capacity_bytes(&self) -> u64 {
-        self.capacity_bytes
-    }
-
     /// Block until `zeroed_thru >= target` (clamped to capacity) or `timeout`.
     pub fn wait_until_zeroed(
         &self,
@@ -85,12 +84,17 @@ impl RunwayPreparer {
         timeout: Duration,
     ) -> Result<(), StoreError> {
         let want = target.min(self.capacity_bytes);
+        self.shared
+            .target_floor
+            .store(want, Ordering::Release);
         let deadline = Instant::now() + timeout;
         loop {
             if self.shared.zeroed_thru.load(Ordering::Acquire) >= want {
+                self.shared.target_floor.store(0, Ordering::Release);
                 return Ok(());
             }
             if Instant::now() >= deadline {
+                self.shared.target_floor.store(0, Ordering::Release);
                 return Err(StoreError::CorruptMeta(
                     "runway preparer warm timed out before target zeroed",
                 ));
@@ -135,13 +139,15 @@ fn preparer_loop(
             continue;
         };
         let head = shared.write_head.load(Ordering::Acquire);
+        let floor = shared.target_floor.load(Ordering::Acquire);
         let mut thru = shared.zeroed_thru.load(Ordering::Acquire);
-        // Never re-zero durable content if the head raced ahead of the watermark.
+        // Durable bytes are already page-touched by puts — never re-zero behind head.
         if thru < head {
             shared.zeroed_thru.store(head, Ordering::Release);
             thru = head;
         }
-        let target = head.saturating_add(chunk_bytes).min(capacity_bytes);
+        let ahead = head.saturating_add(chunk_bytes);
+        let target = ahead.max(floor).min(capacity_bytes);
         if thru >= target {
             thread::sleep(Duration::from_millis(1));
             continue;

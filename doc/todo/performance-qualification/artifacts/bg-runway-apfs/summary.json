@@ -1,0 +1,47 @@
+{
+  "bed": "/tmp APFS (~27Gi free; /var/tmp missing on host)",
+  "recipe": "Mode A c=8 8KiB 256MiB seed42 min-free 0",
+  "note": "bg preparer + warm before timer; default not flipped; TPS did not beat grow",
+  "verdict": "no_tps_win",
+  "cells": [
+    {
+      "file": "residiuum-A-grow.json",
+      "ops_per_sec": 9733.29011480833,
+      "segment_growth": "grow",
+      "wm_capacity_mib": 0,
+      "bytes_on_disk": 547157636,
+      "ok": true,
+      "elapsed_ms": 3366
+    },
+    {
+      "file": "residiuum-A-wm512-bg.json",
+      "ops_per_sec": 8898.323322674336,
+      "segment_growth": "watermark",
+      "wm_capacity_mib": 512,
+      "bytes_on_disk": 1084028383,
+      "ok": true,
+      "elapsed_ms": 3682
+    },
+    {
+      "file": "residiuum-A-grow-seal1g.json",
+      "ops_per_sec": 9358.4,
+      "segment_growth": "grow",
+      "seal_threshold_mib": 1024,
+      "ok": true
+    },
+    {
+      "file": "residiuum-A-wm1024-bg.json",
+      "ops_per_sec": 7696.0,
+      "segment_growth": "watermark",
+      "wm_capacity_mib": 1024,
+      "bytes_on_disk": 1620899299,
+      "ok": true
+    },
+    {
+      "file": "sqlite-A.json",
+      "ops_per_sec": 28589.656272132597,
+      "ok": true,
+      "elapsed_ms": 1146
+    }
+  ]
+}

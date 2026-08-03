@@ -1,0 +1,39 @@
+{
+  "bed": "/tmp APFS",
+  "recipe": "Mode A c=8 8KiB 256MiB seed42 seal512M",
+  "question": "How many txns ready through cook \u2192 write_all(/dev/null) before durable append?",
+  "cells": [
+    {
+      "file": "devnull.json",
+      "diag_io": "devnull",
+      "ops_per_sec": 124112.4170640211,
+      "bytes_on_disk": 1787,
+      "elapsed_ms": 264,
+      "ok": true
+    },
+    {
+      "file": "discard.json",
+      "diag_io": "discard",
+      "ops_per_sec": 130154.54064300744,
+      "bytes_on_disk": 1787,
+      "elapsed_ms": 251,
+      "ok": true
+    },
+    {
+      "file": "real.json",
+      "diag_io": "real",
+      "ops_per_sec": 10014.189928041264,
+      "bytes_on_disk": 547157600,
+      "elapsed_ms": 3272,
+      "ok": true
+    },
+    {
+      "file": "realoverwrite.json",
+      "diag_io": "realoverwrite",
+      "ops_per_sec": 106647.32677107067,
+      "bytes_on_disk": 10129,
+      "elapsed_ms": 307,
+      "ok": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+bed=/tmp APFS; recipe Mode A c=8 8KiB 256MiB seed42 seal512M min-free0

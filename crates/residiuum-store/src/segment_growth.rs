@@ -7,10 +7,14 @@
 //! amplification and setup cost; it does **not** change CSQ durability labels.
 //! Do not cite withdrawn diag ~32k figures as product thr.
 //!
+//! Product watermark zeros via a **background runway preparer** (not on the put
+//! path). Puts only consume already-ready runway and fail closed if empty.
 //! Capacity is a **host knob**, not a fixed ½ GiB religion: small stores may
 //! never need more than tens of MiB reserved; large ones may want multi‑GiB
 //! or 10 GiB extend steps. See
 //! `doc/todo/performance-qualification/PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md`.
+//!
+//! [`ensure_zero_watermark`] remains for create/bootstrap and diagnostic sinks.
 
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -32,12 +36,13 @@ pub enum SegmentGrowthPolicy {
     /// Append grows the file on demand (historic default).
     #[default]
     GrowOnAppend,
-    /// OS block reserve + ahead-of-write zero (opt-in).
+    /// OS block reserve + background ahead-of-write zero (opt-in).
     ///
     /// Not default-on: reserves [`Self::Watermark::capacity_bytes`] per active
-    /// segment and zeros [`Self::Watermark::chunk_bytes`] at a time as the write
-    /// head advances. Both fields are host-configurable (64 MiB … multi‑GiB).
-    /// Durability receipts stay Buffered/Durable as before.
+    /// segment. A background preparer zeros [`Self::Watermark::chunk_bytes`] at
+    /// a time ahead of the write head; the put path never bulk-zeros and fails
+    /// closed if runway is empty. Both fields are host-configurable
+    /// (64 MiB … multi‑GiB). Durability receipts stay Buffered/Durable as before.
     Watermark {
         /// Logical file capacity to reserve (`set_len` + OS preallocate).
         capacity_bytes: u64,
