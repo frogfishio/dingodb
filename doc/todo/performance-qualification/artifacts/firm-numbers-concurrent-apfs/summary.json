@@ -1,0 +1,26 @@
+{
+  "label": "FN concurrent feed Mode A — 8 client threads (server-async)",
+  "date": "2026-08-03",
+  "bed": {
+    "volume": "/var/tmp (APFS)",
+    "payload_size": 8192,
+    "target_bytes": 268435456,
+    "concurrency": 8,
+    "feed_shape": "server_async_concurrent",
+    "seed": 42
+  },
+  "cells": {
+    "sqlite_A": { "ops_per_sec": 29676.5, "elapsed_ms": 1104 },
+    "residiuum_off": { "ops_per_sec": 13178.7, "elapsed_ms": 2486, "awo_mode": "disabled" },
+    "residiuum_static": { "ops_per_sec": 13103.5, "elapsed_ms": 2500, "awo_mode": "static" },
+    "residiuum_adaptive": { "ops_per_sec": 13629.5, "elapsed_ms": 2404, "awo_mode": "adaptive" }
+  },
+  "vs_fn2_embedded_sync": {
+    "static": "2464 → 13104 (delay tax gone)",
+    "adaptive": "2467 → 13630 (delay tax gone)",
+    "off": "12553 → 13179 (flat)",
+    "sqlite": "29205 → 29677 (flat)"
+  },
+  "verdict_one_line": "Concurrent feed: Adaptive≈Static≈off ~13k; no longer ~2.5k. Still loses to SQLite ~30k (CPU wall). FN-2 Adaptive sabotage confirmed feed-shaped.",
+  "non_claims": ["Not Scratch", "Not package accept", "Not AWO default-on"]
+}

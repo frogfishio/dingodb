@@ -36,6 +36,10 @@ Optional Residiuum **`--awo-mode disabled|static|adaptive`** (default `disabled`
 Mode A + lease uses independent `admit_put` + collector (QD=1). Mode B + lease
 uses `admit_put_batch`. SQLite rejects lease modes.
 
+**`--concurrency N`** (default 1): N client threads for Mode A server-async feed.
+Each thread is still per-thread QD=1; overlap comes from N in flight. Use this
+to judge AWO under multi-client load (not embedded sync).
+
 Target is **logical payload** (`keys × payload_size`). Defaults: payload **8192**, target **256M**.
 Compare **A vs A** and **B vs B** only.
 

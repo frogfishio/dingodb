@@ -11,6 +11,10 @@ We can microbatch — just not on this bed.
 FN-2 Mode A is QD=1: wait for ack before the next put → collector never holds ≥2 keys.
 ```
 
+**Principal sharpening:** this bed is **embedded sync feed**, not server async.
+Judging AWO here is mixing apples and oranges —
+[EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md).
+
 ## What microbatch needs
 
 AWO independent collection coalesces **several in-flight single puts** into one

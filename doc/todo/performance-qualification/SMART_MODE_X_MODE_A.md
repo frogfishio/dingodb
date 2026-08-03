@@ -25,6 +25,13 @@ Adaptive ≈ Static (~2.5k) and **loses** to Residiuum-off on Mode A QD=1
 band as off ~68%) while elapsed ~13 s vs off ~2.6 s. Delay tax, not hotter CPU.
 See [AWO_MODE_A_QD1_DELAY_TAX.md](AWO_MODE_A_QD1_DELAY_TAX.md).
 
+**Feed label:** this X is **embedded-sync QD=1** (peer-pump waits ack before N+1).
+Not the multi-user / server-async Adaptive odometer —
+[EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md).
+
+**Server-async Adaptive X (c=8, same bed):** ≈ **13 600**/s ≈ off — see
+[FIRM_NUMBERS_CONCURRENT_FEED.md](FIRM_NUMBERS_CONCURRENT_FEED.md).
+
 Full table + disclosure: [FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md).
 Artifacts: `artifacts/firm-numbers-fn2-mode-a-apfs/`.
 

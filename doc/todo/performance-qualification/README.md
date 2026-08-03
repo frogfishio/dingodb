@@ -49,6 +49,11 @@ testrig.
 | [WHAT_PARTNER_PUT_MEANS.md](WHAT_PARTNER_PUT_MEANS.md) | **Jargon:** “partner” = second key in the collector queue, not a person |
 | [HOW_MANY_REQUESTS_FN2.md](HOW_MANY_REQUESTS_FN2.md) | **Answer:** FN-2 = 32 768 Mode A requests/cell; 131 072 across four cells |
 | [FN2_NOT_ONE_SECOND.md](FN2_NOT_ONE_SECOND.md) | **Answer:** not a 1s timed test — fixed 256 MiB work; SQLite just finished in ~1.1s |
+| [ZERO_IN_WAITING_WINDOW.md](ZERO_IN_WAITING_WINDOW.md) | **Confirm:** FN-2 Mode A wait window had zero other requests (QD=1 by construction) |
+| [WHO_WAITS_FOR_ACK.md](WHO_WAITS_FOR_ACK.md) | **Answer:** peer-pump client loop waits; AWO would accept N+1 if client sent it |
+| [EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md) | **Principal lock:** Mode A QD=1 = embedded sync feed; don’t judge AWO as multi-user DB from FN-2 |
+| [FIRM_NUMBERS_CONCURRENT_FEED.md](FIRM_NUMBERS_CONCURRENT_FEED.md) | **FN concurrent:** c=8 Mode A — Adaptive≈off~13.6k (not ~2.5k); still ≪ SQLite~30k |
+| [artifacts/firm-numbers-concurrent-apfs/](artifacts/firm-numbers-concurrent-apfs/) | Concurrent-feed JSON + summary |
 | [artifacts/firm-numbers-fn2-mode-a-apfs/](artifacts/firm-numbers-fn2-mode-a-apfs/) | FN-2 JSON + summary |
 | [artifacts/firm-numbers-multicore-apfs/](artifacts/firm-numbers-multicore-apfs/) | Multicore campaign JSON + summary |
 | [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | Q1.1 brief (anchors) |

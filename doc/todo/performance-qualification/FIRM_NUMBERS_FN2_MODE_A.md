@@ -69,6 +69,11 @@ SQLite peak CPU 16% → 78%; Residiuum only ~1.26× on the same move.
    was disk-waiting while we were already ~CPU-bound; APFS shows ~12.5k still
    CPU-hot vs SQLite ~29k. See [FAST_DISK_CPU_WALL.md](FAST_DISK_CPU_WALL.md).
    Next beat-SQLite work is per-put CPU (cook/frame), not hoping the disk was us.
+5. **Feed sabotage (principal):** FN-2 Adaptive/Static used peer-pump **QD=1
+   sync** — forces optimiser one-by-one. That is **embedded sync**, not server
+   async. Do not treat ~2.5k as real-DB Adaptive.
+   [EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md).
+
 
 ## 6. Recipe
 

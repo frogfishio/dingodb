@@ -20,6 +20,7 @@ first (`ODOMETER_FIRST_COMPLETED_WRITES.md`). Honest max (`PERF_HONEST_MAX_CHART
 | **Shape** | 1:1 presents (not harness `put_many(N)` sold as Adaptive) |
 | **Primary bed** | PEER Mode A knobs: Scratch, 8 KiB, QD=1, ~256 MiB logical, Residiuum **Buffered** vs SQLite autocommit |
 | **Smart mode** | Residiuum `awo_mode=adaptive` (and Static as explicit-ceiling control) |
+| **Feed shape (principal 2026-08-03)** | FN-2 QD=1 = **embedded sync** — hostile to AWO pile-up. **Server async** (concurrent outstanding) is a separate mode; do not judge Adaptive as a multi-user DB from FN-2 alone. See [EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md). |
 
 ## 2. Compared to what (fixed baselines)
 
@@ -29,6 +30,10 @@ first (`ODOMETER_FIRST_COMPLETED_WRITES.md`). Honest max (`PERF_HONEST_MAX_CHART
 | **Residiuum Mode A, AWO off** | Internal 1:1 | ≈ **12 600** acked writes/s (FN-2 APFS; Scratch history ≈10 000) |
 | **Residiuum Mode A, Static** | Explicit batching ceiling on same bed | ≈ **2 460** (FN-2; loses to off under QD=1 collection) |
 | **Residiuum Mode A, Adaptive** | Smart mode X | ≈ **2 470** (FN-2; ≈ Static, loses to off) |
+
+**Label:** FN-2 Static/Adaptive numbers are **embedded-sync feed** only (peer-pump
+QD=1). They are **not** the server-async / multi-client Adaptive odometer.
+Principal: feeding sabotage — [EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md).
 
 Evidence: [FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md). Scratch
 not mounted for FN-2 — re-run there for peer-ratio continuity.

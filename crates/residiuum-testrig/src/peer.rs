@@ -15,7 +15,9 @@ use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{Duration, Instant};
 
 const DISCLOSURE: &str = "Diagnostic only — not a published SLO. PEER-SQL same-bed peer \
@@ -113,6 +115,9 @@ pub struct PeerConfig {
     pub seal_threshold: u64,
     /// Residiuum only: attach Static/Adaptive AWO lease (default off).
     pub awo_mode: PeerAwoMode,
+    /// Concurrent client threads (server-async feed). Default 1 = embedded sync QD=1.
+    /// Each thread is still per-thread QD=1; overlap comes from N threads in flight.
+    pub concurrency: usize,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -151,6 +156,12 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
     if cfg.awo_mode.lease_active() && cfg.engine != PeerEngine::Residiuum {
         return Err("--awo-mode static|adaptive requires --engine residiuum".into());
     }
+    if cfg.concurrency == 0 {
+        return Err("--concurrency must be >= 1".into());
+    }
+    if cfg.concurrency > 1 && cfg.mode != PeerMode::A {
+        return Err("--concurrency > 1 currently supports Mode A only (server-async feed)".into());
+    }
     fs::create_dir_all(&cfg.work).map_err(|e| format!("create work dir: {e}"))?;
     let free = ensure_free_space(&cfg.work, cfg.min_free_bytes)?;
     if !cfg.json_out && cfg.min_free_bytes > 0 {
@@ -182,6 +193,12 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
         },
         "awo_path": result.awo_path,
         "cook_parallelism": result.cook_parallelism,
+        "concurrency": cfg.concurrency,
+        "feed_shape": if cfg.concurrency <= 1 {
+            "embedded_sync_qd1"
+        } else {
+            "server_async_concurrent"
+        },
         "payload_size": cfg.payload_size,
         "target_bytes": cfg.target_bytes,
         "target_kind": "logical_payload",
@@ -281,6 +298,9 @@ fn attach_awo(
 }
 
 fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String> {
+    if cfg.concurrency > 1 {
+        return pump_residiuum_concurrent_mode_a(cfg, payload);
+    }
     let store_path = cfg.work.join("store");
     if store_path.exists() {
         fs::remove_dir_all(&store_path)
@@ -463,7 +483,168 @@ fn flush_residiuum(
     }
 }
 
+/// Server-async Mode A: N client threads, each per-thread QD=1.
+/// Overlap = concurrency in flight — AWO collector can microbatch.
+fn pump_residiuum_concurrent_mode_a(
+    cfg: &PeerConfig,
+    payload: &[u8],
+) -> Result<PeerResult, String> {
+    let store_path = cfg.work.join("store");
+    if store_path.exists() {
+        fs::remove_dir_all(&store_path)
+            .map_err(|e| format!("remove prior residiuum store: {e}"))?;
+    }
+    let mut store = Store::create_with_shards(&store_path, 1)
+        .map_err(|e| format!("create store: {e}"))?;
+    let seal = if cfg.seal_threshold == 0 {
+        64 * 1024 * 1024
+    } else {
+        cfg.seal_threshold
+    };
+    store.set_seal_threshold(seal);
+    let mut cook_parallelism = 1usize;
+    if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
+        if let Ok(n) = raw.parse::<usize>() {
+            if n >= 1 {
+                store.set_cook_parallelism(n);
+                cook_parallelism = store.cook_parallelism();
+            }
+        }
+    }
+
+    let target_keys = cfg
+        .target_bytes
+        .div_ceil(cfg.payload_size as u64)
+        .max(1);
+    let awo = attach_awo(&mut store, cfg.awo_mode)?;
+    let store_arc = Arc::new(Mutex::new(store));
+    if let Some(ref h) = awo {
+        h.bind_physical(Arc::clone(&store_arc));
+    }
+    let next = Arc::new(AtomicU64::new(0));
+    let err: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let workers = cfg.concurrency.max(1);
+    let payload = Arc::new(payload.to_vec());
+    let mut samples = ProcessSamples::default();
+    let t0 = Instant::now();
+
+    thread::scope(|scope| {
+        for _ in 0..workers {
+            let store_arc = Arc::clone(&store_arc);
+            let next = Arc::clone(&next);
+            let err = Arc::clone(&err);
+            let payload = Arc::clone(&payload);
+            let awo = awo.clone();
+            scope.spawn(move || {
+                loop {
+                    if err.lock().ok().and_then(|g| g.clone()).is_some() {
+                        break;
+                    }
+                    let seq = next.fetch_add(1, Ordering::Relaxed);
+                    if seq >= target_keys {
+                        break;
+                    }
+                    let key = format!("peer/{:020}", seq);
+                    let put_err = if let Some(ref handle) = awo {
+                        let admitted = {
+                            let mut g = match store_arc.lock() {
+                                Ok(g) => g,
+                                Err(_) => {
+                                    let _ = err.lock().map(|mut e| {
+                                        *e = Some("store lock poisoned during admit".into());
+                                    });
+                                    break;
+                                }
+                            };
+                            handle.admit_put(
+                                &mut g,
+                                key.as_bytes(),
+                                payload.as_slice(),
+                                DurabilityMode::Buffered,
+                                WriteCondition::Unconditional,
+                            )
+                        };
+                        match admitted {
+                            AdmissionResult::Admitted(c) => c
+                                .wait()
+                                .map(|_| ())
+                                .map_err(|e| format!("admit_put wait: {}", e.as_str())),
+                            AdmissionResult::Rejected(e) => {
+                                Err(format!("admit_put rejected: {}", e.as_str()))
+                            }
+                        }
+                    } else {
+                        let mut g = match store_arc.lock() {
+                            Ok(g) => g,
+                            Err(_) => {
+                                let _ = err.lock().map(|mut e| {
+                                    *e = Some("store lock poisoned during put".into());
+                                });
+                                break;
+                            }
+                        };
+                        g.put_many(&[(&key[..], payload.as_slice())], DurabilityMode::Buffered)
+                            .map(|_| ())
+                            .map_err(|e| format!("put_many: {e}"))
+                    };
+                    if let Err(e) = put_err {
+                        let _ = err.lock().map(|mut slot| {
+                            if slot.is_none() {
+                                *slot = Some(e);
+                            }
+                        });
+                        break;
+                    }
+                }
+            });
+        }
+    });
+
+    if let Some(e) = err.lock().ok().and_then(|g| g.clone()) {
+        return Err(e);
+    }
+    let keys_written = target_keys.min(next.load(Ordering::Relaxed));
+    sample_process(&mut samples);
+    let awo_path = if let Some(ref h) = awo {
+        {
+            let mut g = store_arc
+                .lock()
+                .map_err(|_| "store lock poisoned at detach".to_string())?;
+            let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
+            h.detach(&mut g);
+            let _ = g.seal_active();
+        }
+        h.join_after_detach();
+        format!(
+            "concurrent_admit_put+collection workers={}",
+            workers
+        )
+    } else {
+        {
+            let mut g = store_arc
+                .lock()
+                .map_err(|_| "store lock poisoned at seal".to_string())?;
+            let _ = g.seal_active();
+        }
+        format!("concurrent_put_many workers={}", workers)
+    };
+    drop(awo);
+    let store = Arc::try_unwrap(store_arc)
+        .map_err(|_| "store Arc still shared after concurrent peer-pump".to_string())?
+        .into_inner()
+        .map_err(|_| "store mutex poisoned extract".to_string())?;
+    drop(store);
+
+    let mut result = finish_result(cfg, keys_written, &store_path, t0.elapsed(), &samples)?;
+    result.awo_path = awo_path;
+    result.cook_parallelism = cook_parallelism;
+    Ok(result)
+}
+
 fn pump_sqlite(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String> {
+    if cfg.concurrency > 1 {
+        return pump_sqlite_concurrent_mode_a(cfg, payload);
+    }
     let db_path = cfg.work.join("peer.sqlite");
     if db_path.exists() {
         fs::remove_file(&db_path).map_err(|e| format!("remove prior sqlite: {e}"))?;
@@ -557,6 +738,105 @@ fn pump_sqlite(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String> {
     let elapsed = t0.elapsed();
     sample_process(&mut samples);
     finish_result(cfg, keys_written, &db_path, elapsed, &samples)
+}
+
+/// N SQLite connections (WAL), Mode A autocommit — concurrent client feed peer.
+fn pump_sqlite_concurrent_mode_a(
+    cfg: &PeerConfig,
+    payload: &[u8],
+) -> Result<PeerResult, String> {
+    let db_path = cfg.work.join("peer.sqlite");
+    if db_path.exists() {
+        fs::remove_file(&db_path).map_err(|e| format!("remove prior sqlite: {e}"))?;
+    }
+    let _ = fs::remove_file(cfg.work.join("peer.sqlite-wal"));
+    let _ = fs::remove_file(cfg.work.join("peer.sqlite-shm"));
+
+    {
+        let conn = Connection::open(&db_path).map_err(|e| format!("sqlite open: {e}"))?;
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL;
+             PRAGMA synchronous=NORMAL;
+             CREATE TABLE kv (
+               k TEXT PRIMARY KEY NOT NULL,
+               v BLOB NOT NULL
+             );",
+        )
+        .map_err(|e| format!("sqlite setup: {e}"))?;
+    }
+
+    let target_keys = cfg
+        .target_bytes
+        .div_ceil(cfg.payload_size as u64)
+        .max(1);
+    let next = Arc::new(AtomicU64::new(0));
+    let err: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let workers = cfg.concurrency.max(1);
+    let payload = Arc::new(payload.to_vec());
+    let db_path_arc = Arc::new(db_path.clone());
+    let mut samples = ProcessSamples::default();
+    let t0 = Instant::now();
+
+    thread::scope(|scope| {
+        for _ in 0..workers {
+            let next = Arc::clone(&next);
+            let err = Arc::clone(&err);
+            let payload = Arc::clone(&payload);
+            let db_path = Arc::clone(&db_path_arc);
+            scope.spawn(move || {
+                let conn = match Connection::open(db_path.as_path()) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        let _ = err.lock().map(|mut slot| {
+                            *slot = Some(format!("sqlite open worker: {e}"));
+                        });
+                        return;
+                    }
+                };
+                let _ = conn.execute_batch("PRAGMA synchronous=NORMAL;");
+                let insert_sql = "INSERT INTO kv(k, v) VALUES (?1, ?2)";
+                loop {
+                    if err.lock().ok().and_then(|g| g.clone()).is_some() {
+                        break;
+                    }
+                    let seq = next.fetch_add(1, Ordering::Relaxed);
+                    if seq >= target_keys {
+                        break;
+                    }
+                    let key = format!("peer/{:020}", seq);
+                    if let Err(e) = conn.execute(insert_sql, rusqlite::params![key, payload.as_slice()])
+                    {
+                        let _ = err.lock().map(|mut slot| {
+                            if slot.is_none() {
+                                *slot = Some(format!("sqlite insert: {e}"));
+                            }
+                        });
+                        break;
+                    }
+                }
+            });
+        }
+    });
+
+    if let Some(e) = err.lock().ok().and_then(|g| g.clone()) {
+        return Err(e);
+    }
+    let keys_written = target_keys.min(next.load(Ordering::Relaxed));
+    {
+        let conn = Connection::open(&db_path).map_err(|e| format!("sqlite reopen: {e}"))?;
+        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+            .map_err(|e| format!("sqlite checkpoint: {e}"))?;
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM kv", [], |r| r.get(0))
+            .map_err(|e| format!("sqlite count: {e}"))?;
+        if count as u64 != keys_written {
+            return Err(format!(
+                "sqlite row count mismatch: table={count} keys_written={keys_written}"
+            ));
+        }
+    }
+    sample_process(&mut samples);
+    finish_result(cfg, keys_written, &db_path, t0.elapsed(), &samples)
 }
 
 fn finish_result(

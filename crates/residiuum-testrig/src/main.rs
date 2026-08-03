@@ -234,6 +234,9 @@ enum Command {
         /// Residiuum AWO: disabled | static | adaptive (ignored for sqlite).
         #[arg(long, default_value = "disabled")]
         awo_mode: String,
+        /// Concurrent client threads (server-async feed). Default 1 = embedded sync.
+        #[arg(long, default_value_t = 1)]
+        concurrency: usize,
         #[arg(long)]
         json_out: bool,
     },
@@ -361,6 +364,7 @@ fn main() -> ExitCode {
             min_free,
             seal_threshold,
             awo_mode,
+            concurrency,
             json_out,
         } => cmd_peer_pump(
             work,
@@ -372,6 +376,7 @@ fn main() -> ExitCode {
             min_free,
             seal_threshold,
             awo_mode,
+            concurrency,
             json_out,
         ),
     };
@@ -413,6 +418,7 @@ fn cmd_peer_pump(
     min_free: String,
     seal_threshold: String,
     awo_mode: String,
+    concurrency: usize,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
@@ -430,6 +436,7 @@ fn cmd_peer_pump(
         json_out,
         seal_threshold: seal,
         awo_mode: parse_awo_mode(&awo_mode)?,
+        concurrency,
     })
 }
 
