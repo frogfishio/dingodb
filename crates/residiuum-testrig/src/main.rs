@@ -18,7 +18,8 @@ mod size;
 mod write_mimic;
 
 use ack_finalize::{
-    run_ack_finalize, run_ack_finalize_matrix, AckFinalizeConfig, MeasureCell,
+    run_ack_finalize, run_ack_finalize_matrix, run_seal_interference_control, AckFinalizeConfig,
+    MeasureCell,
 };
 use chaos::{run_chaos, ChaosConfig};
 use clap::{Parser, Subcommand};
@@ -329,6 +330,26 @@ enum Command {
         #[arg(long, default_value = "auto")]
         min_free: String,
     },
+    /// Seal Interference Control: Real Full at 64M / 512M / 1G seal thresholds.
+    ///
+    /// Records pending seals at last ack + seal stage breakdown. Measurement only.
+    SealInterferenceControl {
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        /// Evidence directory (archive outside active todo when required).
+        #[arg(long)]
+        evidence: PathBuf,
+        #[arg(long, default_value = "256M")]
+        target_bytes: String,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        #[arg(long, default_value_t = 8)]
+        concurrency: usize,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+        #[arg(long, default_value = "auto")]
+        min_free: String,
+    },
     /// Experimental: mimic Residiuum peer disk write sizes (data + index shapes).
     ///
     /// Not product TPS. Defaults calibrated to Mode A peer (32 768 × ~8440 B data).
@@ -548,6 +569,23 @@ fn main() -> ExitCode {
             seal_threshold,
             min_free,
         ),
+        Command::SealInterferenceControl {
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            min_free,
+        } => cmd_seal_interference_control(
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            min_free,
+        ),
         Command::WriteMimic {
             work,
             mode,
@@ -649,6 +687,29 @@ fn cmd_ack_finalize_matrix(
         concurrency,
         seed,
         seal,
+        min_free_bytes,
+    )
+}
+
+fn cmd_seal_interference_control(
+    work: PathBuf,
+    evidence: PathBuf,
+    target_bytes: String,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    min_free: String,
+) -> Result<(), String> {
+    let target = parse_size(&target_bytes)?;
+    let seed = resolve_seed(seed);
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
+    run_seal_interference_control(
+        &work,
+        &evidence,
+        target,
+        payload_size,
+        concurrency,
+        seed,
         min_free_bytes,
     )
 }

@@ -274,7 +274,7 @@ pub use segment_growth::{
 };
 pub use store::{
     subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,
-    SalvageCopyReport, SalvageReport, WriteReceipt, MAX_WRITER_SHARDS,
+    SalvageCopyReport, SalvageReport, SealStageBreakdown, WriteReceipt, MAX_WRITER_SHARDS,
 };
 /// Legacy unscoped store API. Prefer [`StoreHost`] / [`HeapStore`] on the
 /// qualified heap path (`--no-default-features` hides this export).

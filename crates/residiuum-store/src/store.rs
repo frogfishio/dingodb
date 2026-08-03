@@ -140,6 +140,39 @@ pub struct LiveLogicalScan {
     pub tier_coverage_incomplete: bool,
 }
 
+/// Diagnostic timings for [`Store::seal_active_with_breakdown`] (measurement only).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SealStageBreakdown {
+    /// Wait + apply in-flight async auto-seals.
+    pub drain_lifecycle_ns: u64,
+    /// Flush active, build sealed image, publish to `segments/`.
+    pub final_active_seal_ns: u64,
+    /// Tier placement + segment catalog note for the sealed segment.
+    pub catalog_publication_ns: u64,
+    /// Per-segment Hydra index build/write.
+    pub hydra_ns: u64,
+    /// Per-segment Chimera layout build/write.
+    pub chimera_ns: u64,
+    /// Start next active writer + persist active meta.
+    pub reopen_active_ns: u64,
+}
+
+impl SealStageBreakdown {
+    /// Sum of all seal stages (excludes caller ack/close/verify).
+    pub fn total_ns(self) -> u64 {
+        self.drain_lifecycle_ns
+            .saturating_add(self.final_active_seal_ns)
+            .saturating_add(self.catalog_publication_ns)
+            .saturating_add(self.hydra_ns)
+            .saturating_add(self.chimera_ns)
+            .saturating_add(self.reopen_active_ns)
+    }
+}
+
+fn elapsed_ns(t0: std::time::Instant) -> u64 {
+    t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64
+}
+
 /// One unfenced page of live bodies for secondary index construction (DEF-027).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexBuildPage {
@@ -4433,17 +4466,38 @@ impl Store {
     /// Always **synchronous** (including Hydra/Chimera) so failpoints and tests
     /// see a completed seal. Drains any in-flight async seals first (DEF-096).
     pub fn seal_active(&mut self) -> Result<(), StoreError> {
-        // Drain background finalizers so sealed set is consistent.
+        self.seal_active_with_breakdown().map(|_| ())
+    }
+
+    /// Diagnostic: same as [`Self::seal_active`] but returns stage timings.
+    ///
+    /// Measurement only — does not change seal semantics. Splits
+    /// `drain_lifecycle`, final active seal/publish, catalog publication,
+    /// Hydra, and Chimera so campaigns can isolate interference.
+    pub fn seal_active_with_breakdown(&mut self) -> Result<SealStageBreakdown, StoreError> {
+        let mut out = SealStageBreakdown::default();
+        let t_drain = std::time::Instant::now();
         self.drain_lifecycle()?;
+        out.drain_lifecycle_ns = elapsed_ns(t_drain);
         let n = self.writer_shards();
         for shard in 0..n {
-            self.seal_active_shard(shard)?;
+            self.seal_active_shard_timed(shard, &mut out)?;
         }
-        Ok(())
+        Ok(out)
     }
 
     /// Synchronously seal one writer shard (DEF-096 Axis B).
     fn seal_active_shard(&mut self, shard: usize) -> Result<(), StoreError> {
+        let mut unused = SealStageBreakdown::default();
+        self.seal_active_shard_timed(shard, &mut unused)
+    }
+
+    fn seal_active_shard_timed(
+        &mut self,
+        shard: usize,
+        breakdown: &mut SealStageBreakdown,
+    ) -> Result<(), StoreError> {
+        let t_final = std::time::Instant::now();
         let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
@@ -4525,9 +4579,12 @@ impl Store {
             sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
         }
         crate::failpoint::hit("store.seal.after_active_remove")?;
+        breakdown.final_active_seal_ns =
+            breakdown.final_active_seal_ns.saturating_add(elapsed_ns(t_final));
 
         // Stage 9: register sealed segment on hot tier using the in-memory hash
         // (no second full-file read). Catalog upsert is O(this segment only).
+        let t_cat = std::time::Instant::now();
         let _ = register_hot_segment_known(
             &self.paths,
             &mut self.tier_placement,
@@ -4537,15 +4594,26 @@ impl Store {
         );
         let _ = self.persist_tier_state();
         let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
+        breakdown.catalog_publication_ns = breakdown
+            .catalog_publication_ns
+            .saturating_add(elapsed_ns(t_cat));
 
         // Hydra: adaptive per-segment index (derived only; failure is non-fatal).
+        let t_hydra = std::time::Instant::now();
         let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+        breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
         // Chimera: workload-compiled value placement (derived only; non-fatal).
+        let t_chimera = std::time::Instant::now();
         let _ = self.write_chimera_for_sealed(sealed_id);
+        breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
 
+        let t_reopen = std::time::Instant::now();
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
+        breakdown.reopen_active_ns = breakdown
+            .reopen_active_ns
+            .saturating_add(elapsed_ns(t_reopen));
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
     }

@@ -1,0 +1,10 @@
+ack-finalize real-full: keys=32768 ack_tps=24987 seal_ms=1198.0 campaign_tps=8097 pending_seals=2 reopen_exact=true
+ack-finalize real-full: keys=32768 ack_tps=82732 seal_ms=2796.1 campaign_tps=6983 pending_seals=0 reopen_exact=true
+ack-finalize real-full: keys=32768 ack_tps=82649 seal_ms=2633.0 campaign_tps=7128 pending_seals=0 reopen_exact=true
+| Seal threshold | Ack TPS | Ack time | Pending seals @ ack | Sealed @ ack | Drain ns | Final seal ns | Catalog ns | Hydra ns | Chimera ns | Campaign TPS | Reopen exact |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 64.00 MiB | 24987 | 1.31 s | 2 | 2 | 1089012709 | 9824458 | 26607125 | 12104125 | 60277291 | 8097 | yes |
+| 512.00 MiB | 82732 | 0.40 s | 0 | 0 | 291 | 298566542 | 180144625 | 176706667 | 2131519417 | 6983 | yes |
+| 1.00 GiB | 82649 | 0.40 s | 0 | 0 | 167 | 294719875 | 177536000 | 177602708 | 1971406667 | 7128 | yes |
+
+seal-interference control: wrote doc/archive/performance-qualification/2026-08-04-seal-interference-control/artifacts/control.json and doc/archive/performance-qualification/2026-08-04-seal-interference-control/artifacts/EVIDENCE_TABLE.md

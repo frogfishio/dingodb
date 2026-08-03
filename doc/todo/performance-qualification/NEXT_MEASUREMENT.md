@@ -1,69 +1,47 @@
 # Next measurement — acknowledgement/finalisation split
 
-Status: **measured — evidence in**  
-`doc/todo/performance-qualification/artifacts/ack-finalize-20260804-043624/`  
+Status: **superseded for branching by Seal Interference Control**  
+Prior evidence archived:  
+`doc/archive/performance-qualification/2026-08-04-ack-finalize-split/`  
+Seal interference evidence:  
+`doc/archive/performance-qualification/2026-08-04-seal-interference-control/`  
 Date: 2026-08-04
 
-Harness: `residiuum-testrig ack-finalize` / `ack-finalize-matrix`  
-(`crates/residiuum-testrig/src/ack_finalize.rs`). Measurement only — no storage
-or AWO changes.
+Harness: `residiuum-testrig ack-finalize` / `ack-finalize-matrix` /
+`seal-interference-control` (`crates/residiuum-testrig/src/ack_finalize.rs`).
 
-## Objective
+## Corrected conclusions (principal)
 
-Determine whether `~9.5K ops/s` is a hot acknowledgement limit or a lifecycle
-number dominated by finalisation. Change measurement only; do not optimise
-storage or tune AWO.
+- Old “~8–10K write TPS” was **false as write TPS**. It was **campaign TPS**
+  (ack + drain/seal + close + reopen + verification).
+- Actual acknowledged Real Full throughput was **~22.6K writes/sec** (64 MiB seal).
+- Disabling **live** dual-index publish raises ack only to **~27K** (~19%).
+  That cell is **not** an index-free finalisation comparison: Hydra/Chimera still
+  run during seal.
+- Discard ~104K and mimic ~223K → product ack still has **~4.6×** / **~9.9×** gaps
+  vs those diagnostics under the 64 MiB seal recipe.
+- Seal was expensive, but the 64 MiB threshold across 256 MiB meant **background
+  auto-sealing competed with writes**. Final `seal_active()` also combines
+  `drain_lifecycle` with sealing the remaining active.
 
-## Required output
+## Seal Interference Control (decisive)
 
-Record `workload_start`, `last_successful_ack`, `drain_complete`,
-`seal_complete`, `close_complete`, `reopen_complete`, and
-`verification_complete`.
+Repeat Real Full with seal threshold **> workload** (512 MiB / 1 GiB) and record
+pending seals at last acknowledgement.
 
-Emit `acknowledged_write_ops_per_sec`, `ack_elapsed_ns`, stage durations,
-`lifecycle_elapsed_ns`, and `lifecycle_ops_per_sec`. Do **not** emit ambiguous
-`ops_per_sec`.
+| Seal threshold | Ack TPS | Pending seals @ ack | Campaign TPS |
+|---|---:|---:|---:|
+| 64 MiB | 24987 | 2 | 8097 |
+| 512 MiB | 82732 | 0 | 6983 |
+| 1 GiB | 82649 | 0 | 7128 |
 
-## Fail-closed correctness
+**Verdict:** ack jumps to **~83K** when mid-run sealing is prevented →
+**seal-pipeline interference suppresses live writes**. Attack sealing next.
+Separately, final-seal stage breakdown shows Chimera dominating when one large
+segment is sealed at end-of-run.
 
-A run is invalid unless every issued operation has exactly one acknowledgement;
-drain and seal succeed; close and ordinary reopen succeed; a coverage-aware scan
-is complete; and reopened `(key, body_hash)` equals the acknowledged ledger.
-Never discard `seal_active()`. Any failure returns non-zero and no throughput
-verdict.
+## Honesty
 
-**Discard exception:** Discard never writes put bytes to media, so ordinary
-reopen cannot reconstruct the ledger. The cell still requires successful
-`seal_active()` and reports `reopen_exact=false` honestly (not a Real verdict).
-
-## First matrix
-
-```text
-APFS · payload=8 KiB · logical_data=256 MiB · concurrency=8
-Buffered · AWO=Disabled · seed=42
-```
-
-Run real full, real with index/derived publication disabled, discard full, and
-raw write mimic. Clean work directories after evidence is written.
-
-## Evidence (2026-08-04 APFS `/tmp`)
-
-| Cell | Ack TPS | Ack time | Seal time | Lifecycle TPS | Reopen exact |
-|---|---:|---:|---:|---:|---|
-| Real full | 22595 | 1.45 s | 1.21 s | 7902 | yes |
-| Real, indexing disabled | 26978 | 1.21 s | 1.09 s | 8761 | yes |
-| Discard | 104188 | 0.31 s | 0.02 s | 84489 | no |
-| Raw mimic | 222839 | 0.15 s | 0.01 s | 211973 | yes |
-
-### Branch reading
-
-- **Lifecycle ~7.9K** matches the prior apparent crisis (~9.5K wall).
-- **Ack ~22.6K** (Real full) is **not** the ~10K floor and **not** ~100K.
-- Closest package branch: **ack near ~30K, lifecycle ~10K → attack
-  sealing / index finalisation** (seal ≈ 1.21 s vs ack window 1.45 s).
-- Discard ack ~104K and raw mimic ~223K show the live media/cook path still
-  has headroom below the raw disk ceiling; that is secondary until seal cost
-  is addressed.
-
-Pause AWO-Q2, watermark experiments, controller tuning, and further theory
-docs until a seal/finalisation package is chosen from this table.
+- Prefer **campaign TPS**, not “lifecycle TPS”, for ack+reopen+verify walls.
+- Mimic `reopen_exact` is **not** full-ledger exact (length + endpoints).
+- Store verify uses coverage-aware `scan_live_logical` ledger compare.
