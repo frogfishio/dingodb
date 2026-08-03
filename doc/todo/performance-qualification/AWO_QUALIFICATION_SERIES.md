@@ -1,0 +1,140 @@
+# AWO-Q — Post-T11 qualification series
+
+Status: **series planned (board materialised) — not package accept**  
+Entry: T11 evidence freeze principal `done` (`b7986427`)  
+Date: 2026-08-03  
+
+## 0. Entry honesty
+
+T11 smoke is a **mechanism floor**, not completion:
+
+| Frozen (T11) | Not claimed |
+|--------------|-------------|
+| Saturated ≈2 logical acks / sync and ≈2× thr | Product floors / default-on |
+| Sparse: no batching; 11–20% smoke thr penalty | Sparse product latency |
+| Independent collection connected (labor) | Genuine multi-thread admit path |
+| Adaptive thr ≈ Static on one smoke cell | Adaptive **decision quality** |
+| Unchunked `append_count == logical_ack_count == 24` | Chunked workloads |
+
+**Metric law (carry forward from T11):**
+
+```text
+file_sync / logical_acknowledged_operations
+logical acknowledgements / sync
+```
+
+Do not report barrier amortization as `file_sync/append` or “writes/sync”.
+
+**Authority:** this series does not override `MASTER_DELIVERY_PLAN.md` gate order.
+It is a measurement / AWO product residual lane after the T11 freeze.
+
+---
+
+## 1. Packages (pull order)
+
+### AWO-Q1 — Genuine multithreaded admission (**first pull**)
+
+**Problem:** T10/T11 saturated path maps `conc>1` to **serial admit** with
+`outstanding = max(out, conc)`. Barrier amortization was shown under a
+**serial-outstanding** harness, not under real concurrent independent callers.
+
+**Prove:**
+
+1. **Distinct producer threads** (or processes) — not a single thread simulating depth.
+2. **Deterministic operation/completion ledger** — each logical put has a unique id;
+   exactly-once completion visible to the harness (no lost, duplicated, or double-acked
+   operations).
+3. **Caller waits without holding the store mutex** — `WriteCompletion::wait` (or
+   equivalent) outside `physical.lock()` for the whole durable path.
+4. **No lost, duplicated, or double-delivered acknowledgements** under concurrent admit.
+5. **Reopen integrity** — valid + reopen digests green after concurrent admit (T10 residual).
+6. **Optional thr cell** — re-measure Off/Static/Adaptive only after correctness;
+   still smoke unless upgraded to diagnostic class.
+
+**Non-goals for Q1:** adaptive controller quality, sustained 120s qualification,
+sparse product floors, default-on.
+
+**Likely touch points (implementer, not pre-committed):**
+
+- PQH `real_store` / presentation pin (`conc`, `outstanding`, serial admit map)
+- Heap `put_if` / `admit_put` mutex scope
+- Collection queue under concurrent producers
+- Unit / store-driver tests for concurrent admit + ledger
+
+**Evidence exit (labor → in_review):** named evidence note + tests green + honest
+claim table. Principal `done` only after review.
+
+---
+
+### AWO-Q2 — Adaptive decision quality
+
+**Problem:** T11 saturated cell shows Adaptive thr ≈ Static. That is **not** proof
+that Adaptive chooses correctly under varying load (sparse vs saturated, credit
+pressure, collection delay).
+
+**Prove (when pulled):** Adaptive diverges from Static where the controller should
+prefer different batch/delay plans; sparse Adaptive does not explode latency
+beyond documented smoke bounds without a product claim.
+
+**Depends on:** Q1 correctness path (concurrent admit must be real, or Adaptive
+cannot be stressed honestly).
+
+---
+
+### AWO-Q3 — Sustained / diagnostic qualification
+
+**Problem:** T11 is `max_cells=1` smoke. Product ranking and floors need PQH
+controlled class (reps, budgets, disclosure) per `PERFORMANCE_QUALIFICATION_HARNESS_SPEC`.
+
+**Prove (when pulled):** diagnostic-class three-way matrix under independent singles
+with logical-ack metrics; no product claim without disclosure chain.
+
+**Depends on:** Q1 (and preferably Q2 if Adaptive is ranked).
+
+---
+
+### AWO-Q4 — Sparse latency product bound
+
+**Problem:** Sparse 11–20% thr penalty is a **smoke observation**. Product language
+needs either a bound + campaign or an explicit residual that Adaptive is opt-in
+for sparse writers.
+
+**Prove (when pulled):** documented product posture (bound, opt-in, or residual)
+with measure evidence — not a re-quote of T11 smoke alone.
+
+**Depends on:** Q1 path real; Q3 if claiming diagnostic floors.
+
+---
+
+## 2. Explicit series non-claims
+
+- AWO package accept / default-on  
+- Cluster / search / archive pull-forward  
+- Replacing CSQ-12 / Heap app-ready critical path  
+- Treating T11 thr×2 as qualification accept  
+
+---
+
+## 3. Board mapping
+
+Feature: `d0ae3c06-ca55-4cea-8282-8ee89278d849` — **AWO-Q — Post-T11 qualification series**
+
+| Card | Id | Stage at plan | Notes |
+|------|-----|---------------|-------|
+| AWO-Q0 series contract | `cfb1a4d3-…` | `todo` | This doc + README/scoreboard link |
+| AWO-Q1 multithreaded admission | `b6e2a138-…` | `todo` | **First implementer code pull** |
+| AWO-Q2 adaptive decision quality | `0a043642-…` | `backlog` | After Q1 |
+| AWO-Q3 sustained qualification | `ce3e8a1c-…` | `backlog` | After Q1 (+Q2 if ranking Adaptive) |
+| AWO-Q4 sparse latency product bound | `c827e21a-…` | `backlog` | After Q1 |
+
+---
+
+## 4. Related
+
+| Path | Role |
+|------|------|
+| `AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md` | Entry freeze (both sides) |
+| `AWO_THREE_WAY_T10_HARNESS_RERUN.md` | Serial-outstanding residual |
+| `AWO_INDEPENDENT_COLLECTION_CONNECT.md` | Collection connect labor |
+| `ADAPTIVE_WRITE_OPTIMISER_SPEC.md` | Normative AWO behaviour |
+| `PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md` | Measure semantics |
