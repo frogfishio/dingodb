@@ -9,7 +9,7 @@ use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
 use residiuum_store::adaptive_write::{
     AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy, AdmissionResult,
 };
-use residiuum_store::{DurabilityMode, Store, WriteCondition};
+use residiuum_store::{DiagnosticIoSink, DurabilityMode, Store, WriteCondition};
 use rusqlite::Connection;
 use serde_json::json;
 use std::fs;
@@ -97,6 +97,49 @@ pub fn parse_awo_mode(s: &str) -> Result<PeerAwoMode, String> {
     }
 }
 
+/// Residiuum diagnostic segment-tail sink (SQLite ignores).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PeerDiagIo {
+    #[default]
+    Real,
+    Discard,
+    DevNull,
+    /// 64 KiB / 250 ms coalesce spike — hammerblast only (QD=1 hangs).
+    Coalesce64k,
+}
+
+impl PeerDiagIo {
+    pub fn label(self) -> &'static str {
+        match self {
+            PeerDiagIo::Real => "real",
+            PeerDiagIo::Discard => "discard",
+            PeerDiagIo::DevNull => "devnull",
+            PeerDiagIo::Coalesce64k => "coalesce64k",
+        }
+    }
+
+    pub fn to_sink(self) -> DiagnosticIoSink {
+        match self {
+            PeerDiagIo::Real => DiagnosticIoSink::Real,
+            PeerDiagIo::Discard => DiagnosticIoSink::Discard,
+            PeerDiagIo::DevNull => DiagnosticIoSink::DevNull,
+            PeerDiagIo::Coalesce64k => DiagnosticIoSink::Coalesce64k,
+        }
+    }
+}
+
+pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
+    match s.to_ascii_lowercase().as_str() {
+        "real" | "disk" => Ok(PeerDiagIo::Real),
+        "discard" | "none" => Ok(PeerDiagIo::Discard),
+        "devnull" | "null" => Ok(PeerDiagIo::DevNull),
+        "coalesce" | "coalesce64k" | "64k" => Ok(PeerDiagIo::Coalesce64k),
+        other => Err(format!(
+            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k)"
+        )),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PeerConfig {
     /// Work directory (created if missing). Residiuum store: `work/store`;
@@ -118,6 +161,8 @@ pub struct PeerConfig {
     /// Concurrent client threads (server-async feed). Default 1 = embedded sync QD=1.
     /// Each thread is still per-thread QD=1; overlap comes from N threads in flight.
     pub concurrency: usize,
+    /// Residiuum only: diagnostic segment-tail I/O sink (default real).
+    pub diag_io: PeerDiagIo,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -162,6 +207,15 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
     if cfg.concurrency > 1 && cfg.mode != PeerMode::A {
         return Err("--concurrency > 1 currently supports Mode A only (server-async feed)".into());
     }
+    if cfg.diag_io != PeerDiagIo::Real && cfg.engine != PeerEngine::Residiuum {
+        return Err("--diag-io requires --engine residiuum".into());
+    }
+    if cfg.diag_io == PeerDiagIo::Coalesce64k && cfg.concurrency <= 1 {
+        return Err(
+            "--diag-io coalesce64k requires --concurrency > 1 (250ms floor hangs QD=1)"
+                .into(),
+        );
+    }
     fs::create_dir_all(&cfg.work).map_err(|e| format!("create work dir: {e}"))?;
     let free = ensure_free_space(&cfg.work, cfg.min_free_bytes)?;
     if !cfg.json_out && cfg.min_free_bytes > 0 {
@@ -194,6 +248,11 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
         "awo_path": result.awo_path,
         "cook_parallelism": result.cook_parallelism,
         "concurrency": cfg.concurrency,
+        "diag_io": if cfg.engine == PeerEngine::Residiuum {
+            cfg.diag_io.label()
+        } else {
+            ""
+        },
         "feed_shape": if cfg.concurrency <= 1 {
             "embedded_sync_qd1"
         } else {
@@ -277,6 +336,15 @@ struct PeerResult {
     cook_parallelism: usize,
 }
 
+fn apply_diag_io(store: &mut Store, diag: PeerDiagIo) -> Result<(), String> {
+    if diag == PeerDiagIo::Real {
+        return Ok(());
+    }
+    store
+        .set_diagnostic_io_sink(diag.to_sink())
+        .map_err(|e| format!("set_diagnostic_io_sink: {e}"))
+}
+
 fn attach_awo(
     store: &mut Store,
     mode: PeerAwoMode,
@@ -314,6 +382,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
         cfg.seal_threshold
     };
     store.set_seal_threshold(seal);
+    apply_diag_io(&mut store, cfg.diag_io)?;
     // Optional: RESIDIUUM_COOK_PARALLELISM=N for put_many multi-core cook (peer).
     // Engages only when a presented batch has ≥2 items (Mode B); Mode A batch=1 stays serial.
     let mut cook_parallelism = 1usize;
@@ -502,6 +571,7 @@ fn pump_residiuum_concurrent_mode_a(
         cfg.seal_threshold
     };
     store.set_seal_threshold(seal);
+    apply_diag_io(&mut store, cfg.diag_io)?;
     let mut cook_parallelism = 1usize;
     if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
         if let Ok(n) = raw.parse::<usize>() {

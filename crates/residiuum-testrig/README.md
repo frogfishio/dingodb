@@ -40,6 +40,11 @@ uses `admit_put_batch`. SQLite rejects lease modes.
 Each thread is still per-thread QD=1; overlap comes from N in flight. Use this
 to judge AWO under multi-client load (not embedded sync).
 
+**`--diag-io real|discard|devnull|coalesce64k`** (Residiuum only, default `real`):
+diagnostic segment-tail sink. `coalesce64k` buffers real `write_all` to ≥64 KiB
+or 250 ms (requires `--concurrency > 1`). See
+[FIRM_NUMBERS_DIAG_COALESCE.md](../../doc/todo/performance-qualification/FIRM_NUMBERS_DIAG_COALESCE.md).
+
 Target is **logical payload** (`keys × payload_size`). Defaults: payload **8192**, target **256M**.
 Compare **A vs A** and **B vs B** only.
 

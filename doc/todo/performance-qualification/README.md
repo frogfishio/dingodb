@@ -54,6 +54,10 @@ testrig.
 | [EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md) | **Principal lock:** Mode A QD=1 = embedded sync feed; don’t judge AWO as multi-user DB from FN-2 |
 | [FIRM_NUMBERS_CONCURRENT_FEED.md](FIRM_NUMBERS_CONCURRENT_FEED.md) | **FN concurrent:** c=8 Mode A — Adaptive≈off~13.6k (not ~2.5k); still ≪ SQLite~30k |
 | [FIRM_NUMBERS_CONCURRENT_MULTICORE.md](FIRM_NUMBERS_CONCURRENT_MULTICORE.md) | **FN concurrent+cook:** cook4/8 no lift — still ~13–14k vs SQLite~27k |
+| [SQLITE_PAGES_VS_RESIDIUUM_FRAMES.md](SQLITE_PAGES_VS_RESIDIUUM_FRAMES.md) | **Answer:** we do NOT write SQLite 4KiB pages — append hashed frames to segments |
+| [FIRM_NUMBERS_DIAG_COALESCE.md](FIRM_NUMBERS_DIAG_COALESCE.md) | **Spike:** 64 KiB/250 ms coalesce ≈ Real (~10k); Discard ~129k — write *size* ≠ wall; `write_all` is |
+| [UNDERSTAND_THE_NUMBERS.md](UNDERSTAND_THE_NUMBERS.md) | **Explainer:** one-page stitch of FN-2 → concurrent → coalesce/Discard |
+| [artifacts/firm-numbers-diag-coalesce-apfs/](artifacts/firm-numbers-diag-coalesce-apfs/) | Coalesce spike JSON (real/coalesce/discard) |
 | [artifacts/firm-numbers-concurrent-apfs/](artifacts/firm-numbers-concurrent-apfs/) | Concurrent-feed JSON + summary |
 | [artifacts/firm-numbers-concurrent-multicore-apfs/](artifacts/firm-numbers-concurrent-multicore-apfs/) | Concurrent × cook sweep JSON |
 | [artifacts/firm-numbers-fn2-mode-a-apfs/](artifacts/firm-numbers-fn2-mode-a-apfs/) | FN-2 JSON + summary |

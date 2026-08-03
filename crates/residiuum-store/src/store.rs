@@ -385,6 +385,9 @@ pub enum DiagnosticIoSink {
     Discard,
     /// Full path with `write_all` to `/dev/null` (syscall/VFS, no durable media).
     DevNull,
+    /// Spike: coalesce real-file `write_all` into ≥64 KiB chunks (or flush after
+    /// 250 ms). Diagnostic only — proves whether larger disk writes change thr.
+    Coalesce64k,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -424,6 +427,10 @@ struct ActiveWriter {
     /// not require fsync). Any `Durable` put upgrades the segment for the rest of
     /// its life until sealed.
     max_ack_durability: DurabilityMode,
+    /// Coalesce64k spike: pending bytes not yet `write_all`'d (diagnostic only).
+    coalesce_buf: Vec<u8>,
+    coalesce_off: u64,
+    coalesce_since: Option<std::time::Instant>,
 }
 
 /// Measured segment-tail file I/O at the actual boundary (write/sync).
@@ -799,7 +806,7 @@ impl Store {
                     );
                 }
             }
-            DiagnosticIoSink::Real | DiagnosticIoSink::Discard => {
+            DiagnosticIoSink::Real | DiagnosticIoSink::Discard | DiagnosticIoSink::Coalesce64k => {
                 self.null_io_file = None;
             }
         }
@@ -4236,6 +4243,7 @@ impl Store {
         // Flush strength matches strongest put ack on this segment (not always Durable).
         let flush_mode = seal_flush_mode(writer.max_ack_durability);
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
+        Self::flush_writer_coalesce(&mut writer)?;
         // After flush, on-disk active length is the verified prefix (no summary yet).
         let prefix_len = writer.durable_len;
         let sealed_id = writer.segment_id;
@@ -4490,6 +4498,7 @@ impl Store {
         // Match flush to strongest put ack on this segment (Buffered vs Durable).
         let flush_mode = seal_flush_mode(writer.max_ack_durability);
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
+        Self::flush_writer_coalesce(&mut writer)?;
         let segment_id = writer.segment_id;
         drop(writer); // close file handle; bytes remain at active path
 
@@ -5745,11 +5754,44 @@ impl Store {
                     writer.durable_len = base.saturating_add(retained_len as u64);
                     debug_assert_eq!(writer.durable_len, writer.segment.len());
                 }
+                DiagnosticIoSink::Coalesce64k => {
+                    // Spike: coalesce real-file write_all into ≥64 KiB or 250 ms.
+                    const CAP: usize = 64 * 1024;
+                    const MAX_DELAY: std::time::Duration =
+                        std::time::Duration::from_millis(250);
+                    let pending = writer.segment.as_bytes()[start..].to_vec();
+                    if writer.coalesce_buf.is_empty() {
+                        writer.coalesce_off = writer.durable_len;
+                        writer.coalesce_since = Some(std::time::Instant::now());
+                    }
+                    writer.coalesce_buf.extend_from_slice(&pending);
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
+                    let age = writer
+                        .coalesce_since
+                        .map(|t| t.elapsed())
+                        .unwrap_or_default();
+                    if writer.coalesce_buf.len() >= CAP || age >= MAX_DELAY {
+                        let t0 = std::time::Instant::now();
+                        Self::flush_writer_coalesce(writer)?;
+                        stats.write_duration_ns =
+                            t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    }
+                }
             }
         }
         crate::failpoint::hit("store.active.write_tail.after_write")?;
-        // Durable sync only applies to the real active file (not diagnostic sinks).
-        if mode == DurabilityMode::Durable && sink == DiagnosticIoSink::Real {
+        // Durable sync only applies to the real active file (not Discard/DevNull).
+        if mode == DurabilityMode::Durable
+            && matches!(
+                sink,
+                DiagnosticIoSink::Real | DiagnosticIoSink::Coalesce64k
+            )
+        {
+            if sink == DiagnosticIoSink::Coalesce64k {
+                Self::flush_writer_coalesce(writer)?;
+            }
             let t0 = std::time::Instant::now();
             writer.file.sync_all()?;
             stats.sync_duration_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
@@ -5765,6 +5807,20 @@ impl Store {
             writer.segment.discard_through(writer.durable_len);
         }
         Ok(stats)
+    }
+
+    /// Force any Coalesce64k pending bytes to the real file (seal / rotate / Durable).
+    fn flush_writer_coalesce(writer: &mut ActiveWriter) -> Result<(), StoreError> {
+        if writer.coalesce_buf.is_empty() {
+            return Ok(());
+        }
+        writer
+            .file
+            .seek(SeekFrom::Start(writer.coalesce_off))?;
+        writer.file.write_all(&writer.coalesce_buf)?;
+        writer.coalesce_buf.clear();
+        writer.coalesce_since = None;
+        Ok(())
     }
 
     fn flush_active_file(
@@ -5883,6 +5939,9 @@ impl Store {
                 file,
                 durable_len,
                 max_ack_durability: DurabilityMode::Memory,
+                coalesce_buf: Vec::new(),
+                coalesce_off: 0,
+                coalesce_since: None,
             }),
         );
         Ok(())
@@ -5920,6 +5979,9 @@ impl Store {
                 file,
                 durable_len,
                 max_ack_durability: DurabilityMode::Memory,
+                coalesce_buf: Vec::new(),
+                coalesce_off: 0,
+                coalesce_since: None,
             }),
         );
         Ok(())
@@ -5971,6 +6033,9 @@ impl Store {
                 durable_len,
                 // Resumed bytes may include prior Durable frames; fail closed.
                 max_ack_durability: DurabilityMode::Durable,
+                coalesce_buf: Vec::new(),
+                coalesce_off: 0,
+                coalesce_since: None,
             }),
         );
         Ok(())

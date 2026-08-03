@@ -43,6 +43,10 @@ So: we have hit a wall that **more Blake workers do not move** on this feed.
 Likely remaining serial work: store mutex / ordered install / index / seal —
 not “forgot to set cook=8.”
 
+**Principal follow-on:** wall is past chew → **how we write**. We are **not**
+SQLite 4 KiB pages; we append variable hashed frames. See
+[SQLITE_PAGES_VS_RESIDIUUM_FRAMES.md](SQLITE_PAGES_VS_RESIDIUUM_FRAMES.md).
+
 Matches PARKED lesson: parallel cook helps **short batch-rich micros**; long
 peer concurrent Mode A is a different wall.
 
