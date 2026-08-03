@@ -1,6 +1,9 @@
 # Adaptive Write Optimiser implementation plan
 
-Status: **developer-ready v1.0-draft — execution requires master-plan admission**
+Status: **normative target v1.0-draft — implementation partially delivered; not current status authority**
+
+> Delivery truth lives in [CURRENT_STATE.md](CURRENT_STATE.md). This document
+> specifies the target architecture, not present delivery status.
 
 Program: `AWO`  
 Normative semantics: [ADAPTIVE_WRITE_OPTIMISER_SPEC.md](ADAPTIVE_WRITE_OPTIMISER_SPEC.md)  

@@ -1,6 +1,11 @@
 # Performance Qualification Harness implementation plan
 
-Status: **ACTIVE — PQH-0 registries labor floor 2026-07-31; blocked on CSQ-12 accept for program entry honesty**
+Status: **normative target v1.0-draft — historical package status superseded**
+
+> Current measurement truth and the sole active package are
+> [CURRENT_STATE.md](CURRENT_STATE.md) and
+> [NEXT_MEASUREMENT.md](NEXT_MEASUREMENT.md). This is the target architecture,
+> not a live scoreboard.
 
 Program: `PQH`
 

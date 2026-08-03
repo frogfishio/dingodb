@@ -16,7 +16,7 @@
 //! zeros can miss the writer's page cache on APFS). A background preparer may
 //! still extend runway during long runs; puts only consume already-ready bytes
 //! and fail closed if empty. Capacity is a host knob (default 64 MiB). See
-//! `doc/todo/performance-qualification/PREALLOC_IS_YOUR_MODEL.md`.
+//! `doc/archive/performance-qualification/2026-08-03-lab-notebook/PREALLOC_IS_YOUR_MODEL.md`.
 //!
 //! [`ensure_zero_watermark`] remains for create/bootstrap, same-fd warm, and
 //! diagnostic sinks.

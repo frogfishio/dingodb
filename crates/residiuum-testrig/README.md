@@ -43,10 +43,10 @@ to judge AWO under multi-client load (not embedded sync).
 **`--diag-io real|discard|devnull|coalesce100k|seekonly|realnoseek|realoverwrite`**
 (aliases: `coalesce`, `coalesce64k`, `100k`, `64k` → ≥100 KiB or 250 ms flush; needs `--concurrency > 1`)
 
-**`write-mimic`** — experimental disk I/O pattern mimic (peer-calibrated data/index sizes). See `doc/todo/performance-qualification/WRITE_MIMIC.md`.
+**`write-mimic`** — experimental disk I/O pattern mimic (peer-calibrated data/index sizes). See `doc/archive/performance-qualification/2026-08-03-lab-notebook/WRITE_MIMIC.md`.
 (Residiuum only, default `real`): diagnostic segment-tail sink. See
-[WRITE_ALL_BISECT.md](../../doc/todo/performance-qualification/WRITE_ALL_BISECT.md)
-and [FIRM_NUMBERS_DIAG_COALESCE.md](../../doc/todo/performance-qualification/FIRM_NUMBERS_DIAG_COALESCE.md).
+[WRITE_ALL_BISECT.md](../../doc/archive/performance-qualification/2026-08-03-lab-notebook/WRITE_ALL_BISECT.md)
+and [FIRM_NUMBERS_DIAG_COALESCE.md](../../doc/archive/performance-qualification/2026-08-03-lab-notebook/FIRM_NUMBERS_DIAG_COALESCE.md).
 
 Target is **logical payload** (`keys × payload_size`). Defaults: payload **8192**, target **256M**.
 Compare **A vs A** and **B vs B** only.

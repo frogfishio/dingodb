@@ -2,7 +2,7 @@
 //!
 //! Keeps bulk-zeroed bytes ahead of the active write head **off** the put path.
 //! Puts only consume already-ready runway and fail closed if exhausted.
-//! See `doc/todo/performance-qualification/WHAT_DO_WE_DO.md`.
+//! See `doc/archive/performance-qualification/2026-08-03-lab-notebook/WHAT_DO_WE_DO.md`.
 
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
