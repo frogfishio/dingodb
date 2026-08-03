@@ -66,6 +66,8 @@ testrig.
 | [PREALLOC_WATERMARK_SPIKE.md](PREALLOC_WATERMARK_SPIKE.md) | **Spike:** 64 MiB ahead-of-write zero → ~32k pump, **best E2E wall** (~28.5k) |
 | [PRODUCT_SEGMENT_WATERMARK.md](PRODUCT_SEGMENT_WATERMARK.md) | **Ship:** opt-in product `SegmentGrowthPolicy::Watermark` + peer `--segment-growth` |
 | [FIRM_NUMBERS_PRODUCT_WM.md](FIRM_NUMBERS_PRODUCT_WM.md) | **Paired:** product watermark ≈ grow; prior diag ~32k = seal-fail cheat (fixed) |
+| [NOT_SQUARE_ONE.md](NOT_SQUARE_ONE.md) | **Answer:** not square 1 — lost fake ~32k win; write-path map kept |
+| [SEAL_WAS_BROKEN.md](SEAL_WAS_BROKEN.md) | **Answer:** “broken seal” = diag seal failed + peer ignored error |
 | [HOW_MANY_TPS_NOW.md](HOW_MANY_TPS_NOW.md) | **Answer:** default ~10–14k; watermark opt-in ≈ Real (no 32k claim); Discard~120k not product |
 | [artifacts/firm-numbers-product-wm-apfs/](artifacts/firm-numbers-product-wm-apfs/) | Product-flag paired JSON + summary |
 | [artifacts/firm-numbers-prealloc-wm-apfs/](artifacts/firm-numbers-prealloc-wm-apfs/) | Watermark vs full-zero JSON |
