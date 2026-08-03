@@ -1,7 +1,12 @@
 # Next measurement — acknowledgement / seal line
 
 Status: **Seal Fast Lane = architectural accept (principal)**;  
-**Derived Catalog Checkpointing** recorded (`catalog_apply` ≪ 1% ack wall).  
+**Derived Catalog Checkpointing = package accept (principal)** —
+gates met; O(n²) catalog persist risk removed; sustained ack
+**47.8K → 57.6K TPS** (~+20.5%); `catalog_apply` under 1% of ack wall.  
+**Next (only):** three-cell lifecycle attribution — see
+[THREE_CELL_LIFECYCLE_ATTRIBUTION.md](./THREE_CELL_LIFECYCLE_ATTRIBUTION.md).  
+**AWO paused** until those three medians exist.  
 Date: 2026-08-04
 
 ## Wording (hard)
@@ -49,11 +54,22 @@ Evidence: `doc/archive/performance-qualification/2026-08-04-derived-catalog-chec
 ## Next developer instruction (freeze)
 
 Stop speculative seal-architecture changes. Seal Fast Lane accepted
-architecturally; catalog O(n²) persist defect fixed. Optional follow-ups
-(separate packages):
+architecturally; catalog O(n²) persist defect fixed and **package accepted**.
 
-- Measure enrichment-on resource interference with the same sustained recipe.
-- Return to AWO / append-path work only after principal re-opens that lane.
+**Only allowed next work:** run the matched sustained **three-cell** campaign
+on the **same binary** (full recipe:
+[THREE_CELL_LIFECYCLE_ATTRIBUTION.md](./THREE_CELL_LIFECYCLE_ATTRIBUTION.md)):
+
+| Cell | Purpose |
+|---|---|
+| 64 MiB, enrichment off | Current authoritative rotation cost |
+| Threshold above workload, enrichment off | Sustained no-rotation ceiling |
+| 64 MiB, enrichment on | Actual product cost of derived enrichment |
+
+Same 2 GiB workload, delete between runs, alternate ordering, compare
+**medians**. Do **not** optimize anything else until those three numbers
+exist. Return to AWO / append-path work only after principal re-opens that
+lane.
 
 ## Archives
 

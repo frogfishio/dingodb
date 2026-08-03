@@ -1,6 +1,8 @@
 # Derived Catalog Checkpointing (2026-08-04)
 
-Status: **package evidence recorded** — `catalog_apply` off the writer hot path.
+Status: **package accept (principal)** — gates met; `catalog_apply` off the
+writer hot path; O(n²) lifecycle persist risk removed.
+Sustained ack **47 759 → 57 640 TPS** (~+20.5%).
 
 ## Defect
 
@@ -51,4 +53,9 @@ Raw: `sustained-2g-64m.json`.
 
 Architectural accept language stands (derived off auth lane; meta publish).
 This package removes the asymptotic catalog-persist defect uncovered by that
-measurement. Do not return to AWO as a substitute for lifecycle accounting.
+measurement.
+
+**Next (frozen):** three-cell lifecycle attribution on the same binary —
+`doc/todo/performance-qualification/THREE_CELL_LIFECYCLE_ATTRIBUTION.md`.
+AWO remains paused until those medians exist. Do not return to AWO as a
+substitute for lifecycle accounting.
