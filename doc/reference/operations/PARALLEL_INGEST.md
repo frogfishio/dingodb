@@ -82,11 +82,13 @@ Implementation shape:
 
 1. **Authoritative pending bound** — `DEFAULT_MAX_PENDING_SEALS = 16` (Seal Fast Lane:
    bounds authoritative finalize only; Hydra/Chimera use a separate enrichment
-   worker and never count toward this backpressure).
+   worker and never count toward this **queue** backpressure). Derived enrichment
+   may still contend for CPU/disk/cache; that is not the same claim.
 2. **O(1) rotate** — on auto-seal threshold: durable flush, `rename` `active/active.residiuum` → `active/pending/{hex}.residiuum`, start new active. Put does **not** wait for BLAKE3/Hydra/Chimera.
-3. **Background worker** (`residiuum-seal-pipeline` thread) finalizes: offset-preserving summary seal, sealed image write, BLAKE3, Hydra, Chimera, then catalog apply on the writer thread via `poll`/`drain`.
+3. **Background worker** (`residiuum-seal-pipeline` thread) finalizes: offset-preserving summary seal, sealed image write, BLAKE3; Hydra/Chimera run on the enrichment lane, then catalog apply on the writer thread via `poll`/`drain`.
 4. **Background checkpoint** — rate-limited `persist_index_cache` clones locator-first durable index and writes on the worker.
-5. **Backpressure** when `inflight_seals >= max` — put waits for one completion.
+5. **Queue backpressure** when `inflight_seals >= max` — put waits for one
+   **authoritative** completion (enrichment backlog does not increment this).
 6. **Explicit `seal_active`** remains synchronous (drains pipeline first) for tests/failpoints.
 7. **Crash recovery** — `Store::open` runs `recover_all_pending` before index rebuild.
 

@@ -1,27 +1,46 @@
 # Next measurement — acknowledgement / seal line
 
-Status: **Zero-Scan Auth Seal in tree; ~71K ack @ 64 MiB (gate 74.7K not met)**  
+Status: **Seal Fast Lane = architectural accept, performance gate open**  
 Date: 2026-08-04
+
+## Wording (hard)
+
+Chimera / derived enrichment no longer causes **queue backpressure** on the
+put path (`max_pending_seals` counts authoritative finalize only).
+
+That does **not** prove enrichment is free of **CPU / disk / cache
+interference** while writes continue. Those are separate residuals.
 
 ## Settled facts
 
 - Old ~8–10K was **campaign** TPS, not ack.
 - Real Full ack without mid-run seals: **~82–83K** (~80% of Discard ~104K).
-- 64 MiB seals with Chimera on the seal lane: **~25K** ack.
-- Seal Fast Lane (derived off the lane): **~50K** ack @ 64 MiB.
+- 64 MiB seals with Chimera **on the seal lane**: **~25K** ack (queue + work).
+- Seal Fast Lane (derived off the lane): **~50K** ack @ 64 MiB — arch OK,
+  **≥74.7K gate failed**. Keep board **`in_review`** (not labor-`done`).
 - Enrichment-off control @ 64 MiB: **~65K** — authoritative finalize still
-  dominates (not enrichment contention alone).
-- Zero-Scan (stream-hash + metadata publish, no frame scan): **~71K** ack @
-  64 MiB, multi-rotate, coverage-exact reopen — **still short of ≥74.7K**.
+  dominates vs enrichment resource contention alone.
+- Partial zero-scan (stream-hash + metadata publish, no frame scan): **~71K**
+  ack @ 64 MiB, multi-rotate, exact reopen — still short of **≥74.7K**.
 
-## Active residual
+## Next developer instruction (freeze)
 
-Auth worker still performs one sequential read of the pending prefix to hash.
-Hot-path rolling BLAKE3 meets “zero-read” but drops high-threshold ack to
-~50K and is rejected for the gate. Next: background rolling hash that does
-not charge the put mutex / ack path (or otherwise close the ~5% gap).
+Run the 64 MiB control once with derived enrichment disabled during the
+acknowledgement window. Then implement **zero-read** authoritative sealing:
+maintain summary and hash state incrementally, append the precomputed summary
+at rotation, return compact metadata only, and remove the 64 MiB
+`sealed_bytes` transfer and writer-side rescan. Re-run the identical control
+with enrichment off/on. Acceptance: **≥74.7K** ack TPS, multiple rotations,
+exact reopen.
 
-Pause AWO and append tuning until the 74.7K floor is met or explicitly waived.
+That cleanly distinguishes:
+
+1. authoritative reread/rescan cost;
+2. concurrent enrichment resource contention;
+3. any remaining rotation/fsync cost.
+
+**Do not return to AWO** or append-path tuning until this lane closes or the
+principal waives the floor.
 
 ## Archives
 

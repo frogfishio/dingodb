@@ -14,7 +14,9 @@ Buffered · AWO=Disabled · seed=42 · seal_threshold=64 MiB (unless noted)
 | Reopen exact | yes |
 
 Interpretation: **authoritative finalisation still dominates** (not ~83K).
-Concurrent enrichment is not the primary residual after Seal Fast Lane.
+Enrichment-off proves queue backpressure is gone is **not** the same as proving
+zero CPU/disk/cache interference — but this control shows auth finalize cost
+remains first-order even with enrichment disabled.
 
 See `enrichment-off-final/`.
 

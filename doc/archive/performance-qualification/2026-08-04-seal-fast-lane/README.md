@@ -1,7 +1,14 @@
 # Seal Fast Lane — 2026-08-04
 
-Status: **implemented + measured** (ack gate not yet met — residual documented)  
+Status: **`in_review`** — architecturally successful; **performance gate failed**  
+(≥74.7K ack not met). Principal: do **not** labor-accept as `done`.  
 Evidence: `artifacts/` (outside active `doc/todo/`).
+
+## Wording (hard)
+
+Derived enrichment (Hydra/Chimera) no longer causes **queue backpressure** on
+the put path. It has **not** been proven free of **CPU / disk / cache
+interference** while writes continue. Those are separate claims.
 
 ## Architecture
 
@@ -13,11 +20,12 @@ Sealing is split into two systems:
    - Crash recovery via pending finalize (`recover_all_pending`)
 2. **Derived enrichment** (separate `residiuum-seal-enrich` worker)
    - Hydra + Chimera (+ cheap catalog stub / BLAKE3 for tier apply)
-   - **Never** counted in `max_pending_seals` / write backpressure
+   - **Never** counted in `max_pending_seals` / write **queue** backpressure
    - May lag; rebuildable from sealed segments
+   - May still steal disk bandwidth, CPU, and cache (measure with enrichment-off)
 
 Critical rule enforced: derived backlog cannot stall `rotate_active_async`
-beyond authoritative finalize lag.
+beyond authoritative finalize lag (queue).
 
 Failpoints (crash matrix): `store.seal.before_authoritative_rename`,
 `store.seal.after_authoritative_publish`, `store.seal.after_derived_enrichment`.
@@ -43,12 +51,18 @@ High-threshold control same bed: **ack ≈ 82008** (confirms ~83K ceiling).
   seal worker while puts continue — disk/CPU contention, not derived enrichment.
 - End-of-run drain dropped from ~1.1 s (Chimera-bound) to ~0.15 s.
 
-### Next residual (not this package)
+### Next developer instruction
 
-Append-summary finalize **without** full pending re-read (or hand off an
-already-sealed RAM image without holding the put mutex) to close the remaining
-gap to the ~83K control. Do **not** return to AWO / append tuning until that
-lane is addressed.
+Run the 64 MiB control once with derived enrichment disabled during the
+acknowledgement window. Then implement **zero-read** authoritative sealing:
+maintain summary and hash state incrementally, append the precomputed summary
+at rotation, return compact metadata only, and remove the 64 MiB
+`sealed_bytes` transfer and writer-side rescan. Re-run the identical control
+with enrichment off/on. Acceptance: ≥74.7K ack TPS, multiple rotations,
+exact reopen.
+
+Distinguishes: (1) authoritative reread/rescan, (2) enrichment resource
+contention, (3) remaining rotation/fsync. **Do not return to AWO** yet.
 
 ## Harness
 
