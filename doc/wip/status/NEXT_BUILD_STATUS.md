@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **AWO T11 evidence freeze principal `done`.** **AWO-Q series principal-approved:** Feature `d0ae3c06` — Q0 **done**; **Q1.1 labor `in_review`:** concurrent admit harness+ledger (`fab1a943`; evidence `AWO_Q1_1_HARNESS.md`) → next Q1.2 wait-outside-mutex → Q1.3 correctness freeze; Q2–Q4 backlog. Plan `AWO_QUALIFICATION_SERIES.md`. T11 smoke = mechanism floor only. **Not** AWO package accept / floors / default-on. Scratch exFAT residual remains. Other AWO measure cards still `in_review` as applicable; query spine / APB **in_review**)
+Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **AWO T11 evidence freeze principal `done`.** **AWO-Q series principal-approved:** Feature `d0ae3c06` — Q0 **done**; **Q1.1 labor `in_review`:** concurrent admit + correctness-grade per-seq ledger (Reject{seq}, multi-terminal, missing_seq; `fab1a943`; evidence `AWO_Q1_1_HARNESS.md`) → next Q1.2 wait-outside-mutex → Q1.3 reopen freeze; Q2–Q4 backlog. Plan `AWO_QUALIFICATION_SERIES.md`. T11 smoke = mechanism floor only. **Not** AWO package accept / floors / default-on. Scratch exFAT residual remains. Other AWO measure cards still `in_review` as applicable; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

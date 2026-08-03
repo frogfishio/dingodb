@@ -847,6 +847,148 @@ fn execute_serial_admit_put(
     })
 }
 
+/// One terminal outcome for a concurrent admit op. **Every** issued seq must
+/// land in exactly one of these; Reject carries the issued seq (not anonymous).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ConcurrentOpOutcome {
+    Ack { seq: u64, plen: u64 },
+    Fail { seq: u64 },
+    /// Admit rejected / lock poison before wait — no durable install.
+    Reject { seq: u64 },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ConcurrentTerminal {
+    Ack { plen: u64 },
+    Fail,
+    Reject,
+}
+
+/// Fold concurrent outcomes into a deterministic per-seq ledger.
+///
+/// Correctness bar (not circular count equality alone):
+/// 1. Every outcome carries a seq (Reject included).
+/// 2. Each seq has **exactly one** first terminal; any second terminal is multi-terminal
+///    (Ack+Ack, Ack+Fail, Fail+Fail, Reject+Ack, …).
+/// 3. Issued range `0..=max_seq` has no holes (missing terminal).
+struct ConcurrentLedgerFold {
+    ledger: AckLedger,
+    records: Vec<(u64, u64, u64, u32)>,
+    messages: Vec<String>,
+    /// First-terminal coverage span: `max_seq + 1` when any outcome exists.
+    ops_span: u64,
+    multi_terminal: u64,
+    missing_seq: u64,
+    balanced: bool,
+}
+
+fn fold_concurrent_op_outcomes(
+    outcomes: &[ConcurrentOpOutcome],
+    digest_mutant: bool,
+) -> ConcurrentLedgerFold {
+    use std::collections::BTreeMap;
+
+    let mut first: BTreeMap<u64, ConcurrentTerminal> = BTreeMap::new();
+    let mut multi_terminal = 0u64;
+    let mut multi_ack = 0u64;
+    let mut multi_mixed = 0u64;
+
+    for o in outcomes {
+        let (seq, term) = match *o {
+            ConcurrentOpOutcome::Ack { seq, plen } => (seq, ConcurrentTerminal::Ack { plen }),
+            ConcurrentOpOutcome::Fail { seq } => (seq, ConcurrentTerminal::Fail),
+            ConcurrentOpOutcome::Reject { seq } => (seq, ConcurrentTerminal::Reject),
+        };
+        match first.entry(seq) {
+            std::collections::btree_map::Entry::Vacant(e) => {
+                e.insert(term);
+            }
+            std::collections::btree_map::Entry::Occupied(prev) => {
+                multi_terminal = multi_terminal.saturating_add(1);
+                match (*prev.get(), term) {
+                    (ConcurrentTerminal::Ack { .. }, ConcurrentTerminal::Ack { .. }) => {
+                        multi_ack = multi_ack.saturating_add(1);
+                    }
+                    _ => {
+                        multi_mixed = multi_mixed.saturating_add(1);
+                    }
+                }
+                // Keep first terminal; do not overwrite.
+            }
+        }
+    }
+
+    let mut missing_seq = 0u64;
+    let ops_span = if let Some((&max_seq, _)) = first.iter().next_back() {
+        let span = max_seq.saturating_add(1);
+        for s in 0..span {
+            if !first.contains_key(&s) {
+                missing_seq = missing_seq.saturating_add(1);
+            }
+        }
+        span
+    } else {
+        0
+    };
+
+    // Build AckLedger from first terminals only, seq-sorted (digest order-stable).
+    let mut ledger = AckLedger::new();
+    let mut records = Vec::new();
+    for (&seq, term) in &first {
+        ledger.record_attempt();
+        match *term {
+            ConcurrentTerminal::Ack { plen } => {
+                ledger.record_admit();
+                if digest_mutant && seq == 0 {
+                    ledger.record_ack_mutant_wrong_digest(seq, seq, plen, 0);
+                } else {
+                    ledger.record_ack(seq, seq, plen, 0);
+                }
+                records.push((seq, seq, plen, 0u32));
+            }
+            ConcurrentTerminal::Fail | ConcurrentTerminal::Reject => {
+                ledger.record_fail();
+            }
+        }
+    }
+
+    let count_ok = ledger.attempted == ledger.acknowledged.saturating_add(ledger.failed);
+    let balanced = count_ok && multi_terminal == 0 && missing_seq == 0;
+    let mut messages = Vec::new();
+    if multi_terminal > 0 {
+        messages.push(format!(
+            "ledger_error=multi_terminal_count={multi_terminal} multi_ack={multi_ack} multi_mixed={multi_mixed} (second terminal for same seq: Ack+Ack, Ack+Fail, Fail+Fail, Reject+*, …)"
+        ));
+    }
+    if missing_seq > 0 {
+        messages.push(format!(
+            "ledger_error=missing_seq_count={missing_seq} ops_span={ops_span} (issued range has holes — no terminal for some seq)"
+        ));
+    }
+    messages.push(format!(
+        "ledger_balance={} attempted={} acknowledged={} failed={} multi_terminal={} missing_seq={}",
+        if balanced { "ok" } else { "fail" },
+        ledger.attempted,
+        ledger.acknowledged,
+        ledger.failed,
+        multi_terminal,
+        missing_seq
+    ));
+    if let Err(e) = ledger.verify_correctness() {
+        messages.push(format!("ledger_verify_error={e}"));
+    }
+
+    ConcurrentLedgerFold {
+        ledger,
+        records,
+        messages,
+        ops_span,
+        multi_terminal,
+        missing_seq,
+        balanced,
+    }
+}
+
 fn execute_concurrent_admit_put(
     store: Arc<Mutex<Store>>,
     cfg: &DriverRunConfig,
@@ -872,15 +1014,8 @@ fn execute_concurrent_admit_put(
     let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
 
     // Concurrent workers: admit under lock, wait outside. Outcomes collected for a
-    // deterministic per-seq ledger (built on the main thread in seq order).
-    #[derive(Clone, Copy)]
-    enum OpOutcome {
-        Ack { seq: u64, plen: u64 },
-        Fail { seq: u64 },
-        /// Admit rejected / lock poison before wait — no durable install.
-        Reject,
-    }
-    let outcomes_mu: Arc<Mutex<Vec<OpOutcome>>> = Arc::new(Mutex::new(Vec::new()));
+    // deterministic per-seq ledger (built on the main thread via fold).
+    let outcomes_mu: Arc<Mutex<Vec<ConcurrentOpOutcome>>> = Arc::new(Mutex::new(Vec::new()));
     let seq_counter = Arc::new(AtomicU64::new(0));
     let logical_shared = Arc::new(AtomicU64::new(0));
 
@@ -969,7 +1104,7 @@ fn execute_concurrent_admit_put(
                             Ok(g) => g,
                             Err(_) => {
                                 if let Ok(mut o) = outcomes_mu.lock() {
-                                    o.push(OpOutcome::Reject);
+                                    o.push(ConcurrentOpOutcome::Reject { seq });
                                 }
                                 continue;
                             }
@@ -984,7 +1119,7 @@ fn execute_concurrent_admit_put(
                             AdmissionResult::Admitted(c) => c,
                             AdmissionResult::Rejected(_) => {
                                 if let Ok(mut o) = outcomes_mu.lock() {
-                                    o.push(OpOutcome::Reject);
+                                    o.push(ConcurrentOpOutcome::Reject { seq });
                                 }
                                 continue;
                             }
@@ -1001,7 +1136,7 @@ fn execute_concurrent_admit_put(
                     Ok(_) => {
                         logical_shared.fetch_add(plen, Ordering::Relaxed);
                         if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(OpOutcome::Ack {
+                            o.push(ConcurrentOpOutcome::Ack {
                                 seq: op_seq,
                                 plen,
                             });
@@ -1009,7 +1144,7 @@ fn execute_concurrent_admit_put(
                     }
                     Err(_) => {
                         if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(OpOutcome::Fail { seq: op_seq });
+                            o.push(ConcurrentOpOutcome::Fail { seq: op_seq });
                         }
                     }
                 }
@@ -1020,7 +1155,7 @@ fn execute_concurrent_admit_put(
                     Ok(_) => {
                         logical_shared.fetch_add(plen, Ordering::Relaxed);
                         if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(OpOutcome::Ack {
+                            o.push(ConcurrentOpOutcome::Ack {
                                 seq: op_seq,
                                 plen,
                             });
@@ -1028,7 +1163,7 @@ fn execute_concurrent_admit_put(
                     }
                     Err(_) => {
                         if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(OpOutcome::Fail { seq: op_seq });
+                            o.push(ConcurrentOpOutcome::Fail { seq: op_seq });
                         }
                     }
                 }
@@ -1041,87 +1176,34 @@ fn execute_concurrent_admit_put(
     }
 
     let outcomes = outcomes_mu.lock().map(|g| g.clone()).unwrap_or_default();
-    let ops_done = seq_counter.load(Ordering::Relaxed);
     let logical_bytes = logical_shared.load(Ordering::Relaxed);
+    let fold = fold_concurrent_op_outcomes(&outcomes, cfg.digest_mutant);
+    let ops_done = fold.ops_span;
 
-    // Build deterministic ledger: process outcomes sorted by seq so digests are
-    // order-stable; reject events (no seq) after acks/fails.
-    let mut acks: Vec<(u64, u64)> = Vec::new();
-    let mut fails: Vec<u64> = Vec::new();
-    let mut rejects = 0u64;
-    let mut seen_seq = std::collections::HashSet::new();
-    let mut double_ack = 0u64;
-    for o in &outcomes {
-        match *o {
-            OpOutcome::Ack { seq, plen } => {
-                if !seen_seq.insert(seq) {
-                    double_ack = double_ack.saturating_add(1);
-                } else {
-                    acks.push((seq, plen));
-                }
-            }
-            OpOutcome::Fail { seq } => {
-                fails.push(seq);
-            }
-            OpOutcome::Reject => {
-                rejects = rejects.saturating_add(1);
-            }
-        }
-    }
-    acks.sort_by_key(|(s, _)| *s);
-    fails.sort_unstable();
-
-    let mut ledger = AckLedger::new();
-    let mut records = Vec::new();
-    for &(seq, plen) in &acks {
-        ledger.record_attempt();
-        ledger.record_admit();
-        if cfg.digest_mutant && seq == 0 {
-            ledger.record_ack_mutant_wrong_digest(seq, seq, plen, 0);
-        } else {
-            ledger.record_ack(seq, seq, plen, 0);
-        }
-        records.push((seq, seq, plen, 0u32));
-    }
-    for &_seq in &fails {
-        ledger.record_attempt();
-        ledger.record_fail();
-    }
-    for _ in 0..rejects {
-        ledger.record_attempt();
-        ledger.record_fail();
-    }
-
-    let acked = acks.len() as u64;
-    let failed = fails.len() as u64 + rejects;
     let mut messages = vec![format!(
-        "concurrent_admit_put workers={workers} outstanding={outstanding} acked={acked} failed={failed} ops_done={ops_done}"
+        "concurrent_admit_put workers={workers} outstanding={outstanding} acked={} failed={} ops_done={ops_done} multi_terminal={} missing_seq={}",
+        fold.ledger.acknowledged,
+        fold.ledger.failed,
+        fold.multi_terminal,
+        fold.missing_seq
     )];
-    if double_ack > 0 {
-        messages.push(format!(
-            "ledger_error=double_ack_count={double_ack} (same seq acked more than once)"
-        ));
-    }
-    // Count balance: every attempt is ack, fail, or reject.
-    let balanced = ledger.attempted == ledger.acknowledged.saturating_add(ledger.failed)
-        && double_ack == 0;
-    messages.push(format!(
-        "ledger_balance={} attempted={} acknowledged={} failed={}",
-        if balanced { "ok" } else { "fail" },
-        ledger.attempted,
-        ledger.acknowledged,
-        ledger.failed
-    ));
-    if let Err(e) = ledger.verify_correctness() {
-        messages.push(format!("ledger_verify_error={e}"));
+    messages.extend(fold.messages);
+
+    // Fail closed: multi-terminal or missing seq is not a valid correctness ledger.
+    // (Count balance alone is circular — first-terminal only always balances.)
+    if fold.multi_terminal > 0 || fold.missing_seq > 0 {
+        return Err(DriverError::Msg(format!(
+            "concurrent admit ledger not correctness-grade: multi_terminal={} missing_seq={} (each issued seq needs exactly one terminal Ack|Fail|Reject)",
+            fold.multi_terminal, fold.missing_seq
+        )));
     }
 
     Ok(WorkloadLegStats {
         e2e_ns: 0,
         logical_bytes,
         ops_done,
-        ledger,
-        records,
+        ledger: fold.ledger,
+        records: fold.records,
         window_samples: vec![WindowSample {
             throughput_bytes_per_sec: if t0.elapsed().as_nanos() > 0 {
                 (logical_bytes as f64) * 1e9 / (t0.elapsed().as_nanos() as f64)
@@ -1133,8 +1215,18 @@ fn execute_concurrent_admit_put(
         floors_met: false,
         sustained_throughput_bps: 0.0,
         window_class: WindowClass::Inconclusive,
-        valid: false,
-        validity_reason: String::new(),
+        // Concurrent path still uses outer run_real_store validity (floors/reopen).
+        // Fold balance is reported in messages; multi/missing invalidate via
+        // ledger_balance=fail notes for principal inspection.
+        valid: fold.balanced,
+        validity_reason: if fold.balanced {
+            "concurrent_ledger_balanced".into()
+        } else {
+            format!(
+                "concurrent_ledger_unbalanced multi={} missing={}",
+                fold.multi_terminal, fold.missing_seq
+            )
+        },
     })
 }
 
@@ -2027,6 +2119,84 @@ mod tests {
         assert!(wc.smoke_ops_limit.is_none());
     }
 
+    /// Pure fold: Reject carries seq and contributes exactly one terminal.
+    #[test]
+    fn concurrent_ledger_fold_reject_has_seq_and_covers() {
+        let fold = fold_concurrent_op_outcomes(
+            &[
+                ConcurrentOpOutcome::Ack { seq: 0, plen: 10 },
+                ConcurrentOpOutcome::Reject { seq: 1 },
+                ConcurrentOpOutcome::Fail { seq: 2 },
+            ],
+            false,
+        );
+        assert!(fold.balanced, "messages: {:?}", fold.messages);
+        assert_eq!(fold.multi_terminal, 0);
+        assert_eq!(fold.missing_seq, 0);
+        assert_eq!(fold.ops_span, 3);
+        assert_eq!(fold.ledger.attempted, 3);
+        assert_eq!(fold.ledger.acknowledged, 1);
+        assert_eq!(fold.ledger.failed, 2);
+        assert!(fold.messages.iter().any(|m| m.contains("ledger_balance=ok")));
+    }
+
+    /// Pure fold: Ack then Fail on same seq is multi-terminal (not only double-ack).
+    #[test]
+    fn concurrent_ledger_fold_detects_ack_then_fail() {
+        let fold = fold_concurrent_op_outcomes(
+            &[
+                ConcurrentOpOutcome::Ack { seq: 0, plen: 8 },
+                ConcurrentOpOutcome::Fail { seq: 0 },
+                ConcurrentOpOutcome::Ack { seq: 1, plen: 8 },
+            ],
+            false,
+        );
+        assert!(!fold.balanced);
+        assert_eq!(fold.multi_terminal, 1);
+        assert!(
+            fold.messages
+                .iter()
+                .any(|m| m.contains("multi_terminal_count=1")),
+            "{:?}",
+            fold.messages
+        );
+        // First terminal wins: seq0 Ack, seq1 Ack — no hole.
+        assert_eq!(fold.missing_seq, 0);
+        assert_eq!(fold.ledger.acknowledged, 2);
+        assert_eq!(fold.ledger.failed, 0);
+    }
+
+    /// Pure fold: double Fail and hole detection.
+    #[test]
+    fn concurrent_ledger_fold_double_fail_and_missing_hole() {
+        let multi = fold_concurrent_op_outcomes(
+            &[
+                ConcurrentOpOutcome::Fail { seq: 0 },
+                ConcurrentOpOutcome::Fail { seq: 0 },
+            ],
+            false,
+        );
+        assert!(!multi.balanced);
+        assert_eq!(multi.multi_terminal, 1);
+
+        let hole = fold_concurrent_op_outcomes(
+            &[
+                ConcurrentOpOutcome::Ack { seq: 0, plen: 1 },
+                ConcurrentOpOutcome::Ack { seq: 2, plen: 1 }, // missing seq 1
+            ],
+            false,
+        );
+        assert!(!hole.balanced);
+        assert_eq!(hole.missing_seq, 1);
+        assert!(
+            hole.messages
+                .iter()
+                .any(|m| m.contains("missing_seq_count=1")),
+            "{:?}",
+            hole.messages
+        );
+    }
+
     /// AWO-Q1.1: independent batch=1 with concurrency>1 uses real multi-thread
     /// admit_put (not serial-map) and reports a balanced per-seq ledger.
     #[test]
@@ -2097,8 +2267,16 @@ mod tests {
             !report
                 .notes
                 .iter()
-                .any(|n| n.contains("double_ack_count")),
-            "no double-acks: {:?}",
+                .any(|n| n.contains("multi_terminal_count")),
+            "no multi-terminal: {:?}",
+            report.notes
+        );
+        assert!(
+            !report
+                .notes
+                .iter()
+                .any(|n| n.contains("missing_seq_count")),
+            "no missing seq: {:?}",
             report.notes
         );
         // Count interlock: every attempt is ack or fail.
