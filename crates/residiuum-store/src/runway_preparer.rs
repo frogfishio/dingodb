@@ -78,6 +78,10 @@ impl RunwayPreparer {
     }
 
     /// Block until `zeroed_thru >= target` (clamped to capacity) or `timeout`.
+    ///
+    /// Prefer [`crate::store::Store::warm_segment_runway`] (same-fd) for product
+    /// warm; this waits on the preparer's own progress atomics.
+    #[allow(dead_code)]
     pub fn wait_until_zeroed(
         &self,
         target: u64,

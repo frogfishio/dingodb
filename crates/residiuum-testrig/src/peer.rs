@@ -589,7 +589,7 @@ fn apply_segment_growth(store: &mut Store, cfg: &PeerConfig) -> Result<(), Strin
     store
         .set_segment_growth_policy(policy)
         .map_err(|e| format!("set_segment_growth_policy: {e}"))?;
-    // Pay first-touch off the put timer: background preparer warms reserved capacity
+    // Pay first-touch off the put timer: same-fd warm of reserved capacity
     // before odometer start (product shape; not put-path zeroing).
     store
         .warm_segment_runway()

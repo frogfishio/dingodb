@@ -7,14 +7,19 @@
 //! amplification and setup cost; it does **not** change CSQ durability labels.
 //! Do not cite withdrawn diag ~32k figures as product thr.
 //!
-//! Product watermark zeros via a **background runway preparer** (not on the put
-//! path). Puts only consume already-ready runway and fail closed if empty.
-//! Capacity is a **host knob**, not a fixed ½ GiB religion: small stores may
-//! never need more than tens of MiB reserved; large ones may want multi‑GiB
-//! or 10 GiB extend steps. See
-//! `doc/todo/performance-qualification/PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md`.
+//! Product watermark model (principal): **zero N MiB on the writer fd before
+//! puts use it**, write forward at `durable_len`, seal when full, open the next
+//! pre-zeroed segment. First-touch must not sit on the put path.
 //!
-//! [`ensure_zero_watermark`] remains for create/bootstrap and diagnostic sinks.
+//! Create / policy-set / rotate zero the reserved capacity on the **same** file
+//! handle the writer will append through (same-fd warm — separate-fd preparer
+//! zeros can miss the writer's page cache on APFS). A background preparer may
+//! still extend runway during long runs; puts only consume already-ready bytes
+//! and fail closed if empty. Capacity is a host knob (default 64 MiB). See
+//! `doc/todo/performance-qualification/PREALLOC_IS_YOUR_MODEL.md`.
+//!
+//! [`ensure_zero_watermark`] remains for create/bootstrap, same-fd warm, and
+//! diagnostic sinks.
 
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -36,17 +41,18 @@ pub enum SegmentGrowthPolicy {
     /// Append grows the file on demand (historic default).
     #[default]
     GrowOnAppend,
-    /// OS block reserve + background ahead-of-write zero (opt-in).
+    /// OS block reserve + same-fd bulk-zero before puts (opt-in).
     ///
     /// Not default-on: reserves [`Self::Watermark::capacity_bytes`] per active
-    /// segment. A background preparer zeros [`Self::Watermark::chunk_bytes`] at
-    /// a time ahead of the write head; the put path never bulk-zeros and fails
-    /// closed if runway is empty. Both fields are host-configurable
-    /// (64 MiB … multi‑GiB). Durability receipts stay Buffered/Durable as before.
+    /// segment and zeros that runway on the writer fd at create / policy-set /
+    /// rotate (and optional warm). Puts never bulk-zero; they fail closed if
+    /// runway is empty. `chunk_bytes` sizes background extend steps and warm
+    /// loops. Both fields are host-configurable (64 MiB … multi‑GiB). Durability
+    /// receipts stay Buffered/Durable as before.
     Watermark {
         /// Logical file capacity to reserve (`set_len` + OS preallocate).
         capacity_bytes: u64,
-        /// Zero runway chunk size ahead of the write head.
+        /// Zero step size for warm / background extend (create zeros full capacity).
         chunk_bytes: u64,
     },
 }
@@ -76,13 +82,15 @@ impl SegmentGrowthPolicy {
     }
 
     /// Bytes known bulk-zeroed after create-time setup (0 for grow-on-append).
+    ///
+    /// Watermark create zeros the full reserved capacity on the writer fd, so
+    /// the initial head already has a complete runway.
     pub fn initial_zeroed_thru(self) -> u64 {
         match self {
             Self::GrowOnAppend => 0,
             Self::Watermark {
-                capacity_bytes,
-                chunk_bytes,
-            } => chunk_bytes.min(capacity_bytes),
+                capacity_bytes, ..
+            } => capacity_bytes,
         }
     }
 
@@ -93,6 +101,9 @@ impl SegmentGrowthPolicy {
 }
 
 /// Apply create-time watermark setup to a newly opened active segment file.
+///
+/// Zeros the **full** reserved capacity on this fd (principal prealloc model:
+/// zero N MiB, then write forward). Callers must not put until this returns.
 pub(crate) fn prepare_active_file(
     file: &mut File,
     policy: SegmentGrowthPolicy,
@@ -111,8 +122,9 @@ pub(crate) fn prepare_active_file(
     }
     os_preallocate(file, capacity_bytes)?;
     file.set_len(capacity_bytes)?;
-    let first = chunk_bytes.min(capacity_bytes);
-    bulk_zero_range(file, 0, first)?;
+    // Full-capacity same-fd zero — not first-chunk only. Separate-fd background
+    // zeros are not a substitute for this create-time touch.
+    bulk_zero_range(file, 0, capacity_bytes)?;
     file.seek(SeekFrom::Start(0))?;
     Ok(())
 }
@@ -244,9 +256,33 @@ mod tests {
             } => {
                 assert_eq!(capacity_bytes, 10 * 1024 * 1024 * 1024);
                 assert_eq!(chunk_bytes, 1024 * 1024 * 1024);
+                assert_eq!(big.initial_zeroed_thru(), capacity_bytes);
             }
             SegmentGrowthPolicy::GrowOnAppend => panic!("expected watermark"),
         }
+    }
+
+    #[test]
+    fn prepare_active_file_zeros_full_capacity() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("active.seg");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(true)
+            .open(&path)
+            .expect("open");
+        let cap = 4 * 1024 * 1024;
+        prepare_active_file(&mut file, SegmentGrowthPolicy::watermark(cap, 1024 * 1024))
+            .expect("prepare");
+        assert_eq!(file.metadata().expect("meta").len(), cap);
+        // Spot-check: last MiB is zeros (proves full-range write, not first-chunk only).
+        use std::io::Read;
+        file.seek(SeekFrom::Start(cap - 1024 * 1024)).expect("seek");
+        let mut buf = vec![0xff; 1024 * 1024];
+        file.read_exact(&mut buf).expect("read");
+        assert!(buf.iter().all(|&b| b == 0), "tail of capacity must be zeroed");
     }
 
     #[test]

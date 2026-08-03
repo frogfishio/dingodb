@@ -830,7 +830,7 @@ impl Store {
 
     /// Opt-in product segment growth policy (default grow-on-append).
     ///
-    /// Watermark mode: OS preallocate + **background** ahead-of-write zero.
+    /// Watermark mode: OS preallocate + **same-fd** full-capacity zero before puts.
     /// Capacity/chunk are host knobs (default 64 MiB). **Not default-on** (space amp).
     /// Puts only consume ready runway (fail closed if empty) — first-touch is not on
     /// the put path. Ignored while a non-Real [`DiagnosticIoSink`] is active.
@@ -865,6 +865,10 @@ impl Store {
 
     /// Like [`Self::warm_segment_runway`], but stop once each active is zeroed through
     /// at least `thru_bytes` (clamped to capacity).
+    ///
+    /// Uses the **writer file handle** (same-fd) so first-touch lands in the page
+    /// cache the put path will append through. Updates any attached preparer's
+    /// shared watermarks afterward.
     pub fn warm_segment_runway_thru(&mut self, thru_bytes: u64) -> Result<(), StoreError> {
         let crate::segment_growth::SegmentGrowthPolicy::Watermark {
             capacity_bytes,
@@ -874,34 +878,32 @@ impl Store {
             return Ok(());
         };
         let want = thru_bytes.min(capacity_bytes);
-        let timeout = std::time::Duration::from_secs(120);
-        self.attach_runway_preparers()?;
         let n = self.writer_shards();
         for shard in 0..n {
             let Some(writer) = self.active_mut(shard) else {
                 continue;
             };
+            // Same-fd warm: do not rely on the preparer's separate open for the
+            // bytes the writer will overwrite (APFS / page-cache honesty).
+            crate::segment_growth::ensure_zero_watermark(
+                &mut writer.file,
+                &mut writer.zeroed_thru,
+                want.max(writer.durable_len),
+                capacity_bytes,
+                chunk_bytes,
+            )?;
+            writer
+                .file
+                .seek(std::io::SeekFrom::Start(writer.durable_len))?;
             if let Some(runway) = writer.runway.as_ref() {
                 runway.shared().write_head.store(
                     writer.durable_len,
                     std::sync::atomic::Ordering::Release,
                 );
-                runway.wait_until_zeroed(want, timeout)?;
-                writer.zeroed_thru = runway
-                    .shared()
-                    .zeroed_thru
-                    .load(std::sync::atomic::Ordering::Acquire);
-            } else {
-                crate::segment_growth::ensure_zero_watermark(
-                    &mut writer.file,
-                    &mut writer.zeroed_thru,
-                    want.max(writer.durable_len),
-                    capacity_bytes,
-                    chunk_bytes,
-                )?;
-                writer
-                    .file
-                    .seek(std::io::SeekFrom::Start(writer.durable_len))?;
+                runway.shared().zeroed_thru.store(
+                    writer.zeroed_thru,
+                    std::sync::atomic::Ordering::Release,
+                );
             }
         }
         Ok(())
@@ -6403,16 +6405,11 @@ impl Store {
             if writer.zeroed_thru < writer.durable_len {
                 writer.zeroed_thru = writer.durable_len;
             }
-            // Bootstrap one chunk on the caller thread (before timer / before puts);
-            // further extension is background-only.
-            let need = writer
-                .durable_len
-                .saturating_add(chunk_bytes)
-                .min(capacity_bytes);
+            // Same-fd full-capacity zero before puts (principal prealloc model).
             crate::segment_growth::ensure_zero_watermark(
                 &mut writer.file,
                 &mut writer.zeroed_thru,
-                need,
+                capacity_bytes,
                 capacity_bytes,
                 chunk_bytes,
             )?;
