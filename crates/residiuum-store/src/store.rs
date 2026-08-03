@@ -1594,8 +1594,27 @@ impl Store {
         debug_assert_eq!(self.writer_shards(), 1);
         debug_assert_ne!(mode, DurabilityMode::Memory);
 
-        let _workers = self.cook_parallelism();
-        // Parallel cook remains str-keyed; bytes path is serial cook + one tail.
+        let workers = self.cook_parallelism();
+        // When cook_parallelism > 1 and the batch has ≥2 UTF-8 subjects, reuse the
+        // str parallel-cook path (AWO collector flushes are bytes-keyed).
+        if workers > 1 && items.len() >= 2 {
+            let mut owned: Vec<(String, &[u8])> = Vec::with_capacity(items.len());
+            let mut utf8_ok = true;
+            for (subject, value) in items {
+                match std::str::from_utf8(subject) {
+                    Ok(s) => owned.push((s.to_string(), *value)),
+                    Err(_) => {
+                        utf8_ok = false;
+                        break;
+                    }
+                }
+            }
+            if utf8_ok {
+                let refs: Vec<(&str, &[u8])> =
+                    owned.iter().map(|(s, v)| (s.as_str(), *v)).collect();
+                return self.put_many_single_shard_parallel_cook(&refs, mode, workers);
+            }
+        }
 
         let mut pending: Vec<StagedPut> = Vec::with_capacity(items.len());
         let mut batch_checkpoint: Option<residiuum_format::ActiveSegmentCheckpoint> = None;

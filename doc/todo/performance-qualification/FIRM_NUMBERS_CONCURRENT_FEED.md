@@ -38,6 +38,9 @@ Adaptive X (server-async feed)  ≈  13 600 acked puts/s   (this bed)
 3. **Still lose to SQLite ~2.2×** — same CPU wall as embedded-sync off vs SQLite.
 4. Do **not** quote FN-2 Adaptive ~2.5k as server-async smart mode.
 
+**Multicore follow-up:** concurrent × cook1/4/8 — **no thr lift** (still
+~13–14k). See [FIRM_NUMBERS_CONCURRENT_MULTICORE.md](FIRM_NUMBERS_CONCURRENT_MULTICORE.md).
+
 ## Recipe
 
 ```bash

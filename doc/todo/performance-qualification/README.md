@@ -53,7 +53,9 @@ testrig.
 | [WHO_WAITS_FOR_ACK.md](WHO_WAITS_FOR_ACK.md) | **Answer:** peer-pump client loop waits; AWO would accept N+1 if client sent it |
 | [EMBEDDED_SYNC_VS_SERVER_ASYNC.md](EMBEDDED_SYNC_VS_SERVER_ASYNC.md) | **Principal lock:** Mode A QD=1 = embedded sync feed; don’t judge AWO as multi-user DB from FN-2 |
 | [FIRM_NUMBERS_CONCURRENT_FEED.md](FIRM_NUMBERS_CONCURRENT_FEED.md) | **FN concurrent:** c=8 Mode A — Adaptive≈off~13.6k (not ~2.5k); still ≪ SQLite~30k |
+| [FIRM_NUMBERS_CONCURRENT_MULTICORE.md](FIRM_NUMBERS_CONCURRENT_MULTICORE.md) | **FN concurrent+cook:** cook4/8 no lift — still ~13–14k vs SQLite~27k |
 | [artifacts/firm-numbers-concurrent-apfs/](artifacts/firm-numbers-concurrent-apfs/) | Concurrent-feed JSON + summary |
+| [artifacts/firm-numbers-concurrent-multicore-apfs/](artifacts/firm-numbers-concurrent-multicore-apfs/) | Concurrent × cook sweep JSON |
 | [artifacts/firm-numbers-fn2-mode-a-apfs/](artifacts/firm-numbers-fn2-mode-a-apfs/) | FN-2 JSON + summary |
 | [artifacts/firm-numbers-multicore-apfs/](artifacts/firm-numbers-multicore-apfs/) | Multicore campaign JSON + summary |
 | [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | Q1.1 brief (anchors) |

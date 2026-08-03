@@ -1,0 +1,8 @@
+{
+  "label": "FN concurrent c=8 × cook1/4/8 Mode A APFS",
+  "date": "2026-08-03",
+  "note": "Wired AWO collector bytes flush to parallel cook when UTF-8 subjects + cook_parallelism>1",
+  "verdict_one_line": "Multicore cook does not lift concurrent Mode A off CPU wall — cook4/8 ≈ or below cook1 ~13–14k; SQLite ~27–30k.",
+  "best_residiuum": { "cell": "disabled cook1", "ops_per_sec": 14113.4 },
+  "sqlite": { "ops_per_sec": 26807.4 }
+}
