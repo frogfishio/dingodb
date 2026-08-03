@@ -47,6 +47,8 @@ Modes: `data` | `append` | `atomic`.
 3. A single end-of-run **270 MiB atomic+fsync** rewrite hurts wall (~77k ops/s equivalent) but is still ≫ peer TPS.  
 4. So peer ~10k / ~85 MiB/s is **not** “the disk cannot accept this write shape.” The gap is **inside Residiuum** (cook, encoding, growth/first-touch, sealing, lock, index side effects — already partially bisected).
 
+**Locked read:** [SEE_THE_PROBLEM.md](SEE_THE_PROBLEM.md) — disk fine; put path ~12× slower than same-sized writes.
+
 ## How to re-run
 
 ```sh

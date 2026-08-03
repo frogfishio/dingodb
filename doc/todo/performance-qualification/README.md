@@ -69,6 +69,8 @@ testrig.
 | [FIRM_NUMBERS_DIAG_COALESCE.md](FIRM_NUMBERS_DIAG_COALESCE.md) | **Spike (historical):** 64 KiB/250 ms coalesce ≈ Real (~10k); Discard ~129k |
 | [COALESCE_100K.md](COALESCE_100K.md) | **Remeasure:** 100 KiB/250 ms coalesce ~11k vs Real ~9k — modest, not a new band |
 | [WRITE_MIMIC.md](WRITE_MIMIC.md) | **Experiment:** same-sized data writes alone ~129k ops/s / ~1 GiB/s — disk not the ~10k ceiling |
+| [SEE_THE_PROBLEM.md](SEE_THE_PROBLEM.md) | **Lock:** mimic ≫ peer (~12×) — problem is Residiuum put path, not disk capacity |
+| [WHERE_IS_THE_12X.md](WHERE_IS_THE_12X.md) | **Split:** ~4× Real grow/first-touch × ~3× index/derived ≈ 12× vs mimic |
 | [UNDERSTAND_THE_NUMBERS.md](UNDERSTAND_THE_NUMBERS.md) | **Explainer:** one-page stitch of FN-2 → concurrent → coalesce/Discard |
 | [HOW_WE_WRITE_CORRECTION.md](HOW_WE_WRITE_CORRECTION.md) | **Correction:** not write *size*; yes write_all cost / vs SQLite path gap |
 | [WRITE_ALL_BISECT.md](WRITE_ALL_BISECT.md) | **Bisect:** Discard≈DevNull≈SeekOnly~120k; RealOverwrite~96k; Real~10k → **append/growth** |
