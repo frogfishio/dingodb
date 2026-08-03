@@ -4,6 +4,8 @@ State: **ACTIVE — PQH-0 labor floor delivered (principal accept open)**
 
 **Principal scoreboard (locked):** [TPS_ONLY.md](TPS_ONLY.md) — **TPS = acked puts/s only.** Do not answer the principal with component timings or meter reinterpretations.
 
+**Disk hygiene (locked):** [OWN_DISK_FILL_CLEANUP.md](OWN_DISK_FILL_CLEANUP.md) — **always `rm -rf` peer work dirs** after each cell. Do not fill the volume with test stores.
+
 Program: `PQH`
 
 This program builds the controlled laboratory used to explain Residiuum
@@ -37,7 +39,12 @@ testrig.
 | [PERF_HONEST_MAX_CHARTER.md](PERF_HONEST_MAX_CHARTER.md) | **Principal charter:** honest max; no vanity cheat; squeeze under named contracts |
 | [ODOMETER_FIRST_COMPLETED_WRITES.md](ODOMETER_FIRST_COMPLETED_WRITES.md) | **Comm rule:** lead with acked puts/s (SQLite-comparable); ratios second |
 | [TPS_ONLY.md](TPS_ONLY.md) | **Principal lock:** TPS is the only scoreboard; stop meter noise in answers |
+| [OWN_DISK_FILL_CLEANUP.md](OWN_DISK_FILL_CLEANUP.md) | **Own it:** labor left test stores filling disk; mandatory rm after peer runs |
 | [WATERMARK_MADE_TPS_WORSE.md](WATERMARK_MADE_TPS_WORSE.md) | **Answer:** watermark failed as TPS play (≈ grow, more disk); default unchanged |
+| [WHAT_HAPPENED_PREALLOC.md](WHAT_HAPPENED_PREALLOC.md) | **Recap:** added opt-in prealloc; no TPS win; default still grow |
+| [WHERE_IS_THE_BOTTLENECK.md](WHERE_IS_THE_BOTTLENECK.md) | **Answer:** TPS wall = append/growth of active segment |
+| [PREALLOC_STILL_APPEND.md](PREALLOC_STILL_APPEND.md) | **Answer:** watermark ≠ EOF grow; still first-touches on put → TPS ≈ grow |
+| [CLARIFY_SHIPPED_FOR_TPS.md](CLARIFY_SHIPPED_FOR_TPS.md) | **Clarify:** ½ GiB watermark WAS TPS-measured (~7.5k); “never shipped” was wrong |
 | [SMART_MODE_X_MODE_A.md](SMART_MODE_X_MODE_A.md) | **Answer:** Adaptive X on Mode A bed = unknown (not measured) |
 | [WHY_SMART_MODE_A_UNMEASURED.md](WHY_SMART_MODE_A_UNMEASURED.md) | **Answer:** unknown ≠ feature-blocked; campaign not run |
 | [FIRM_NUMBERS_GOALS.md](FIRM_NUMBERS_GOALS.md) | **Goals:** what/to what end/compared to what; FN-1..3 sequence |

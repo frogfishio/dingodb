@@ -461,7 +461,12 @@ struct ActiveWriter {
     coalesce_off: u64,
     coalesce_since: Option<std::time::Instant>,
     /// Diagnostic / product watermark: file offset through which bytes were bulk-zeroed.
+    ///
+    /// When [`Self::runway`] is set, the atomic inside the preparer is authoritative
+    /// for put-path readiness; this field tracks the last known value for diag sinks.
     zeroed_thru: u64,
+    /// Background first-touch for product watermark (None = grow / diag put-path zero).
+    runway: Option<crate::runway_preparer::RunwayPreparer>,
 }
 
 /// Measured segment-tail file I/O at the actual boundary (write/sync).
@@ -825,18 +830,22 @@ impl Store {
 
     /// Opt-in product segment growth policy (default grow-on-append).
     ///
-    /// Watermark mode productizes the `realpreallocwm` spike: OS preallocate +
-    /// ahead-of-write zero. Capacity/chunk are host knobs (default 64 MiB).
-    /// **Not default-on** (space amp). Does not
-    /// change durability labels. Ignored while a non-Real [`DiagnosticIoSink`] is
-    /// active. Applies immediately to already-open active writers when set.
+    /// Watermark mode: OS preallocate + **background** ahead-of-write zero.
+    /// Capacity/chunk are host knobs (default 64 MiB). **Not default-on** (space amp).
+    /// Puts only consume ready runway (fail closed if empty) — first-touch is not on
+    /// the put path. Ignored while a non-Real [`DiagnosticIoSink`] is active.
+    /// Applies immediately to already-open active writers when set.
     pub fn set_segment_growth_policy(
         &mut self,
         policy: crate::segment_growth::SegmentGrowthPolicy,
     ) -> Result<(), StoreError> {
+        if !policy.is_watermark() {
+            self.stop_all_runway_preparers();
+        }
         self.segment_growth = policy;
         if policy.is_watermark() && self.diagnostic_io == DiagnosticIoSink::Real {
             self.apply_product_growth_to_existing_actives()?;
+            self.attach_runway_preparers()?;
         }
         Ok(())
     }
@@ -844,6 +853,64 @@ impl Store {
     /// Current product segment growth policy.
     pub fn segment_growth_policy(&self) -> crate::segment_growth::SegmentGrowthPolicy {
         self.segment_growth
+    }
+
+    /// Block until background preparers have zeroed through each active's capacity
+    /// (or `thru_bytes` if smaller). Intended for thr setup **before** the put timer.
+    ///
+    /// No-op when watermark growth is off. Fail closed on timeout (120s default).
+    pub fn warm_segment_runway(&mut self) -> Result<(), StoreError> {
+        self.warm_segment_runway_thru(u64::MAX)
+    }
+
+    /// Like [`Self::warm_segment_runway`], but stop once each active is zeroed through
+    /// at least `thru_bytes` (clamped to capacity).
+    pub fn warm_segment_runway_thru(&mut self, thru_bytes: u64) -> Result<(), StoreError> {
+        let crate::segment_growth::SegmentGrowthPolicy::Watermark {
+            capacity_bytes,
+            chunk_bytes,
+        } = self.segment_growth
+        else {
+            return Ok(());
+        };
+        let want = thru_bytes.min(capacity_bytes);
+        let timeout = std::time::Duration::from_secs(120);
+        self.attach_runway_preparers()?;
+        let n = self.writer_shards();
+        for shard in 0..n {
+            let Some(writer) = self.active_mut(shard) else {
+                continue;
+            };
+            if let Some(runway) = writer.runway.as_ref() {
+                // Aim the preparer at `want`: it targets write_head + chunk.
+                let aim_head = want.saturating_sub(chunk_bytes).max(writer.durable_len);
+                runway
+                    .shared()
+                    .write_head
+                    .store(aim_head, std::sync::atomic::Ordering::Release);
+                runway.wait_until_zeroed(want, timeout)?;
+                writer.zeroed_thru = runway
+                    .shared()
+                    .zeroed_thru
+                    .load(std::sync::atomic::Ordering::Acquire);
+                runway.shared().write_head.store(
+                    writer.durable_len,
+                    std::sync::atomic::Ordering::Release,
+                );
+            } else {
+                crate::segment_growth::ensure_zero_watermark(
+                    &mut writer.file,
+                    &mut writer.zeroed_thru,
+                    want.max(writer.durable_len),
+                    capacity_bytes,
+                    chunk_bytes,
+                )?;
+                writer
+                    .file
+                    .seek(std::io::SeekFrom::Start(writer.durable_len))?;
+            }
+        }
+        Ok(())
     }
 
     /// Diagnostic only: detach or redirect segment tail I/O for bisection.
@@ -5892,21 +5959,40 @@ impl Store {
                     } else if sink == DiagnosticIoSink::Real {
                         if let crate::segment_growth::SegmentGrowthPolicy::Watermark {
                             capacity_bytes,
-                            chunk_bytes,
+                            ..
                         } = growth
                         {
+                            // Product watermark: first-touch is background-only.
+                            // Puts consume ready runway; fail closed if empty.
                             let need = writer
                                 .durable_len
-                                .saturating_add(pending_len as u64)
-                                .saturating_add(chunk_bytes)
-                                .min(capacity_bytes);
-                            crate::segment_growth::ensure_zero_watermark(
-                                &mut writer.file,
-                                &mut writer.zeroed_thru,
-                                need,
-                                capacity_bytes,
-                                chunk_bytes,
-                            )?;
+                                .saturating_add(pending_len as u64);
+                            if need > capacity_bytes {
+                                return Err(StoreError::CorruptMeta(
+                                    "segment watermark capacity exhausted (active past reserved len)",
+                                ));
+                            }
+                            let ready = writer
+                                .runway
+                                .as_ref()
+                                .map(|r| {
+                                    r.shared()
+                                        .write_head
+                                        .store(
+                                            writer.durable_len,
+                                            std::sync::atomic::Ordering::Release,
+                                        );
+                                    r.shared()
+                                        .zeroed_thru
+                                        .load(std::sync::atomic::Ordering::Acquire)
+                                })
+                                .unwrap_or(writer.zeroed_thru);
+                            if ready < need {
+                                return Err(StoreError::CorruptMeta(
+                                    "segment watermark runway exhausted (background preparer behind)",
+                                ));
+                            }
+                            writer.zeroed_thru = ready;
                         }
                     }
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
@@ -5941,6 +6027,12 @@ impl Store {
                     stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
                     writer.durable_len = base.saturating_add(retained_len as u64);
                     debug_assert_eq!(writer.durable_len, writer.segment.len());
+                    if let Some(runway) = writer.runway.as_ref() {
+                        runway.shared().write_head.store(
+                            writer.durable_len,
+                            std::sync::atomic::Ordering::Release,
+                        );
+                    }
                 }
                 DiagnosticIoSink::SeekOnly => {
                     // Seek tax only — no bytes transferred.
@@ -6180,8 +6272,10 @@ impl Store {
                 coalesce_off: 0,
                 coalesce_since: None,
                 zeroed_thru: self.product_initial_zeroed_thru(),
+                runway: None,
             }),
         );
+        self.maybe_attach_runway_preparer(shard)?;
         Ok(())
     }
 
@@ -6223,8 +6317,10 @@ impl Store {
                 coalesce_off: 0,
                 coalesce_since: None,
                 zeroed_thru: self.product_initial_zeroed_thru(),
+                runway: None,
             }),
         );
+        self.maybe_attach_runway_preparer(shard)?;
         Ok(())
     }
 
@@ -6302,6 +6398,8 @@ impl Store {
             let Some(writer) = self.active_mut(shard) else {
                 continue;
             };
+            // Stop any prior preparer before resizing / re-zero bootstrap.
+            writer.runway = None;
             crate::segment_growth::os_preallocate(&writer.file, capacity_bytes)?;
             let cur = writer.file.metadata()?.len();
             if cur < capacity_bytes {
@@ -6311,6 +6409,8 @@ impl Store {
             if writer.zeroed_thru < writer.durable_len {
                 writer.zeroed_thru = writer.durable_len;
             }
+            // Bootstrap one chunk on the caller thread (before timer / before puts);
+            // further extension is background-only.
             let need = writer
                 .durable_len
                 .saturating_add(chunk_bytes)
@@ -6324,6 +6424,55 @@ impl Store {
             )?;
             writer.file.seek(SeekFrom::Start(writer.durable_len))?;
         }
+        Ok(())
+    }
+
+    fn stop_all_runway_preparers(&mut self) {
+        let n = self.writer_shards();
+        for shard in 0..n {
+            if let Some(writer) = self.active_mut(shard) {
+                writer.runway = None;
+            }
+        }
+    }
+
+    fn attach_runway_preparers(&mut self) -> Result<(), StoreError> {
+        let n = self.writer_shards();
+        for shard in 0..n {
+            self.maybe_attach_runway_preparer(shard)?;
+        }
+        Ok(())
+    }
+
+    fn maybe_attach_runway_preparer(&mut self, shard: usize) -> Result<(), StoreError> {
+        if self.diagnostic_io != DiagnosticIoSink::Real {
+            return Ok(());
+        }
+        let crate::segment_growth::SegmentGrowthPolicy::Watermark {
+            capacity_bytes,
+            chunk_bytes,
+        } = self.segment_growth
+        else {
+            return Ok(());
+        };
+        let n = self.writer_shards();
+        let path = self.paths.active_segment_for_shard(shard, n);
+        let Some(writer) = self.active_mut(shard) else {
+            return Ok(());
+        };
+        if writer.runway.is_some() {
+            return Ok(());
+        }
+        let shared = crate::runway_preparer::RunwayShared::new(
+            writer.zeroed_thru,
+            writer.durable_len,
+        );
+        writer.runway = Some(crate::runway_preparer::RunwayPreparer::start(
+            path,
+            capacity_bytes,
+            chunk_bytes,
+            shared,
+        )?);
         Ok(())
     }
 
@@ -6471,6 +6620,7 @@ impl Store {
                 coalesce_off: 0,
                 coalesce_since: None,
                 zeroed_thru: 0,
+                runway: None,
             }),
         );
         Ok(())

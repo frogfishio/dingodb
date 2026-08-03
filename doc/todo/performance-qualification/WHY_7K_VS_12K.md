@@ -4,9 +4,13 @@
 **Card:** `fa9808a8`  
 **Ask:** “wait we’ve got only 7K transactions now to our earlier 12k?”
 
+## Correction (principal)
+
+A large share of the “nearly full `/var/tmp`” condition was **labor leaving peer-pump / prealloc work dirs unclean**. Principal cleaned. See [OWN_DISK_FILL_CLEANUP.md](OWN_DISK_FILL_CLEANUP.md). Do not cite full-disk TPS without owning that.
+
 ## Short answer
 
-**Not a silent product regression.** Same Mode A recipe family; different **host bed**. Quiet APFS runs land Residiuum Real around **~12–14k**. Today’s try / product-wm beds were **~95% full** and landed Real/grow around **~6.5–7.7k**. Quote a **band**, not one integer.
+**Not a silent product regression** — but the “full disk” story was partly **self-inflicted**. Quiet APFS runs land Residiuum around **~12–14k TPS**. Runs on a volume stuffed with leftover test stores landed **~6.5–7.7k**. Quote a **band**, and clean work dirs.
 
 ## Side-by-side (same recipe family)
 

@@ -12,7 +12,7 @@ Mode A · `--concurrency 8` · 8 KiB · 256 MiB logical · seed 42 · APFS `
 Binary: `target/release/residiuum-testrig` (post 64 MiB default).  
 Artifacts: [`artifacts/try-wm-64mib-apfs/`](artifacts/try-wm-64mib-apfs/).
 
-Disk during run: ~95% full / ~12 GiB free (noisy; SQLite still landed a strong cell).
+Disk during run: ~95% full / ~12 GiB free — **largely self-inflicted** (uncleaned peer work dirs; principal later cleaned). See [OWN_DISK_FILL_CLEANUP.md](OWN_DISK_FILL_CLEANUP.md).
 
 ## Results (honest E2E — seal in meter)
 

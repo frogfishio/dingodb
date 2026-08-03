@@ -66,6 +66,7 @@ mod scrub;
 mod seal_pipeline;
 mod secondary;
 mod segment_catalog;
+mod runway_preparer;
 mod segment_growth;
 mod store;
 mod tier;
