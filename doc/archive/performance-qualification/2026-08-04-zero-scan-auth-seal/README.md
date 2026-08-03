@@ -30,12 +30,13 @@ See `enrichment-off-final/`.
 
 | Metric | Value | Gate |
 |---|---:|---|
-| Ack TPS | **~71.4K** | FAIL (≥ 74.7K) |
+| Ack TPS | **~71.4K** | FAIL vs stale ≥74.7K (`0.90×83K`) |
 | Sealed @ last ack | ≥ 3 | PASS |
 | Reopen exact | yes | PASS |
 
 Best observed in this campaign: **~71.4K** (prior run peak ~71.4K).
-Still short of the 10%-of-83K floor.
+Superseded gate: paired medians vs contemporary control — see
+`../2026-08-04-paired-median-gate/` (median ratio **0.878**, still FAIL ≥0.90).
 
 ## What changed in code
 

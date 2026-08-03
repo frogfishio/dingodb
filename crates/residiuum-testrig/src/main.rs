@@ -307,6 +307,9 @@ enum Command {
         seal_threshold: String,
         #[arg(long, default_value = "auto")]
         min_free: String,
+        /// Disable Hydra/Chimera enqueue (causal isolation for seal gates).
+        #[arg(long, default_value_t = false)]
+        no_enrichment: bool,
         #[arg(long)]
         json_out: bool,
     },
@@ -590,6 +593,7 @@ fn main() -> ExitCode {
             seed,
             seal_threshold,
             min_free,
+            no_enrichment,
             json_out,
         } => cmd_ack_finalize(
             work,
@@ -600,6 +604,7 @@ fn main() -> ExitCode {
             seed,
             seal_threshold,
             min_free,
+            !no_enrichment,
             json_out,
         ),
         Command::AckFinalizeMatrix {
@@ -748,6 +753,7 @@ fn cmd_ack_finalize(
     seed: u64,
     seal_threshold: String,
     min_free: String,
+    enrichment_enabled: bool,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
@@ -764,7 +770,7 @@ fn cmd_ack_finalize(
         seal_threshold: seal,
         min_free_bytes,
         json_out,
-        enrichment_enabled: true,
+        enrichment_enabled,
     })
     .map(|_| ())
 }
