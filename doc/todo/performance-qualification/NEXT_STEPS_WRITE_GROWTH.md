@@ -78,6 +78,11 @@ If (1)–(4) hold: write a small design note (not a feature merge):
 - Treating Discard ~120k as a product target  
 - Shipping `set_len` “prealloc” without allocation proof  
 
+**Update 2026-08-03:** seal-sized watermark is now an **opt-in product API**
+([PRODUCT_SEGMENT_WATERMARK.md](PRODUCT_SEGMENT_WATERMARK.md)) — still not
+default-on; remaining work is sticky config, default-on gate, and paired
+product-flag measures.
+
 ## One-sentence program
 
 **Prove honest physical preallocation closes Real→SQLite on concurrent Mode A; then design seal-sized product alloc; leave AWO and the 37k→100k band as separate lanes.**

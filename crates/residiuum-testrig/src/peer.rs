@@ -9,7 +9,9 @@ use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
 use residiuum_store::adaptive_write::{
     AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy, AdmissionResult,
 };
-use residiuum_store::{DiagnosticIoSink, DurabilityMode, Store, WriteCondition};
+use residiuum_store::{
+    DiagnosticIoSink, DurabilityMode, SegmentGrowthPolicy, Store, WriteCondition,
+};
 use rusqlite::Connection;
 use serde_json::json;
 use std::fs;
@@ -195,6 +197,42 @@ pub struct PeerConfig {
     pub concurrency: usize,
     /// Residiuum only: diagnostic segment-tail I/O sink (default real).
     pub diag_io: PeerDiagIo,
+    /// Residiuum only: product segment growth (`grow` default | `watermark`).
+    pub segment_growth: PeerSegmentGrowth,
+}
+
+/// Product segment growth for Residiuum peer-pump (not a diagnostic sink).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PeerSegmentGrowth {
+    #[default]
+    GrowOnAppend,
+    Watermark,
+}
+
+impl PeerSegmentGrowth {
+    pub fn label(self) -> &'static str {
+        match self {
+            PeerSegmentGrowth::GrowOnAppend => "grow",
+            PeerSegmentGrowth::Watermark => "watermark",
+        }
+    }
+
+    pub fn to_policy(self) -> SegmentGrowthPolicy {
+        match self {
+            PeerSegmentGrowth::GrowOnAppend => SegmentGrowthPolicy::GrowOnAppend,
+            PeerSegmentGrowth::Watermark => SegmentGrowthPolicy::watermark_default(),
+        }
+    }
+}
+
+pub fn parse_segment_growth(s: &str) -> Result<PeerSegmentGrowth, String> {
+    match s.to_ascii_lowercase().as_str() {
+        "grow" | "grow-on-append" | "default" | "off" => Ok(PeerSegmentGrowth::GrowOnAppend),
+        "watermark" | "wm" | "ahead" => Ok(PeerSegmentGrowth::Watermark),
+        other => Err(format!(
+            "unknown segment-growth `{other}` (grow|watermark)"
+        )),
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -248,6 +286,17 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
                 .into(),
         );
     }
+    if cfg.segment_growth != PeerSegmentGrowth::GrowOnAppend
+        && cfg.engine != PeerEngine::Residiuum
+    {
+        return Err("--segment-growth requires --engine residiuum".into());
+    }
+    if cfg.segment_growth == PeerSegmentGrowth::Watermark && cfg.diag_io != PeerDiagIo::Real {
+        return Err(
+            "--segment-growth watermark requires --diag-io real (product path; use diag wm for bisection)"
+                .into(),
+        );
+    }
     fs::create_dir_all(&cfg.work).map_err(|e| format!("create work dir: {e}"))?;
     let free = ensure_free_space(&cfg.work, cfg.min_free_bytes)?;
     if !cfg.json_out && cfg.min_free_bytes > 0 {
@@ -282,6 +331,11 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
         "concurrency": cfg.concurrency,
         "diag_io": if cfg.engine == PeerEngine::Residiuum {
             cfg.diag_io.label()
+        } else {
+            ""
+        },
+        "segment_growth": if cfg.engine == PeerEngine::Residiuum {
+            cfg.segment_growth.label()
         } else {
             ""
         },
@@ -377,6 +431,15 @@ fn apply_diag_io(store: &mut Store, diag: PeerDiagIo) -> Result<(), String> {
         .map_err(|e| format!("set_diagnostic_io_sink: {e}"))
 }
 
+fn apply_segment_growth(store: &mut Store, growth: PeerSegmentGrowth) -> Result<(), String> {
+    if growth == PeerSegmentGrowth::GrowOnAppend {
+        return Ok(());
+    }
+    store
+        .set_segment_growth_policy(growth.to_policy())
+        .map_err(|e| format!("set_segment_growth_policy: {e}"))
+}
+
 fn attach_awo(
     store: &mut Store,
     mode: PeerAwoMode,
@@ -415,6 +478,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     };
     store.set_seal_threshold(seal);
     apply_diag_io(&mut store, cfg.diag_io)?;
+    apply_segment_growth(&mut store, cfg.segment_growth)?;
     // Optional: RESIDIUUM_COOK_PARALLELISM=N for put_many multi-core cook (peer).
     // Engages only when a presented batch has ≥2 items (Mode B); Mode A batch=1 stays serial.
     let mut cook_parallelism = 1usize;
@@ -604,6 +668,7 @@ fn pump_residiuum_concurrent_mode_a(
     };
     store.set_seal_threshold(seal);
     apply_diag_io(&mut store, cfg.diag_io)?;
+    apply_segment_growth(&mut store, cfg.segment_growth)?;
     let mut cook_parallelism = 1usize;
     if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
         if let Ok(n) = raw.parse::<usize>() {

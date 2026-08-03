@@ -21,7 +21,10 @@ use manifest::{
     manifest_path_for_store, per_store_manifest_path, store_path_for, MAX_STORES,
 };
 use monitor::{evaluate_run, run_monitor, MonitorConfig};
-use peer::{parse_awo_mode, parse_diag_io, parse_engine, parse_mode, run_peer_pump, PeerConfig};
+use peer::{
+    parse_awo_mode, parse_diag_io, parse_engine, parse_mode, parse_segment_growth, run_peer_pump,
+    PeerConfig,
+};
 use phase_bench::{run_phase_bench, PhaseBenchConfig};
 use pump::{ensure_parent, parse_durability, run_pump, PumpConfig};
 use serde_json::{json, Value};
@@ -239,10 +242,15 @@ enum Command {
         concurrency: usize,
         /// Residiuum diagnostic segment-tail I/O:
         /// real | discard | devnull | coalesce64k | seekonly | realnoseek |
-        /// realoverwrite | realprealloc | realpreallocfill.
+        /// realoverwrite | realprealloc | realpreallocfill |
+        /// realpreallocfcntl | realprealloczero | realpreallocwm.
         /// coalesce64k requires --concurrency > 1 (250 ms floor hangs QD=1).
         #[arg(long, default_value = "real")]
         diag_io: String,
+        /// Residiuum product segment growth: grow (default) | watermark.
+        /// Watermark = OS preallocate + seal-sized ahead-of-write zero (opt-in; not default-on).
+        #[arg(long, default_value = "grow")]
+        segment_growth: String,
         #[arg(long)]
         json_out: bool,
     },
@@ -372,6 +380,7 @@ fn main() -> ExitCode {
             awo_mode,
             concurrency,
             diag_io,
+            segment_growth,
             json_out,
         } => cmd_peer_pump(
             work,
@@ -385,6 +394,7 @@ fn main() -> ExitCode {
             awo_mode,
             concurrency,
             diag_io,
+            segment_growth,
             json_out,
         ),
     };
@@ -428,6 +438,7 @@ fn cmd_peer_pump(
     awo_mode: String,
     concurrency: usize,
     diag_io: String,
+    segment_growth: String,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
@@ -447,6 +458,7 @@ fn cmd_peer_pump(
         awo_mode: parse_awo_mode(&awo_mode)?,
         concurrency,
         diag_io: parse_diag_io(&diag_io)?,
+        segment_growth: parse_segment_growth(&segment_growth)?,
     })
 }
 

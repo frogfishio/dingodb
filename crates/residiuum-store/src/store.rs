@@ -361,6 +361,12 @@ pub struct Store {
     /// Parallel record-cooker workers for single-shard [`Self::put_many`].
     /// `1` = serial (default); `N>1` cooks full frames (env+Blake+encode) in parallel.
     cook_parallelism: usize,
+    /// Product opt-in active-segment growth (default grow-on-append).
+    ///
+    /// Watermark mode is **not** default-on. Only applies when
+    /// [`Self::diagnostic_io`] is [`DiagnosticIoSink::Real`] (diag sinks win for
+    /// bisection). Does not change CSQ durability labels on receipts.
+    segment_growth: crate::segment_growth::SegmentGrowthPolicy,
     /// AWO-1: writer poisoned after uncertain physical tail (short write / barrier fail).
     ///
     /// Mutations must refuse until ordinary close/reopen recovery. Distinct from a
@@ -454,7 +460,7 @@ struct ActiveWriter {
     coalesce_buf: Vec<u8>,
     coalesce_off: u64,
     coalesce_since: Option<std::time::Instant>,
-    /// Diagnostic watermark: file offset through which bytes were bulk-zeroed.
+    /// Diagnostic / product watermark: file offset through which bytes were bulk-zeroed.
     zeroed_thru: u64,
 }
 
@@ -561,6 +567,7 @@ impl Store {
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
+            segment_growth: crate::segment_growth::SegmentGrowthPolicy::GrowOnAppend,
             awo_writer_poisoned: false,
             awo_lease_active: false,
         };
@@ -656,6 +663,7 @@ impl Store {
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
+            segment_growth: crate::segment_growth::SegmentGrowthPolicy::GrowOnAppend,
             awo_writer_poisoned: false,
             awo_lease_active: false,
         };
@@ -788,6 +796,7 @@ impl Store {
             diagnostic_skip_append_frame: false,
             diagnostic_skip_blake: false,
             cook_parallelism: 1,
+            segment_growth: crate::segment_growth::SegmentGrowthPolicy::GrowOnAppend,
             awo_writer_poisoned: false,
             awo_lease_active: false,
         };
@@ -812,6 +821,28 @@ impl Store {
     /// Enable store-boundary I/O instrumentation (PQH harness). Default off.
     pub fn enable_boundary_probe(&mut self) {
         self.boundary_probe.enable();
+    }
+
+    /// Opt-in product segment growth policy (default grow-on-append).
+    ///
+    /// Watermark mode productizes the `realpreallocwm` spike: OS preallocate +
+    /// seal-sized ahead-of-write zero. **Not default-on** (space amp). Does not
+    /// change durability labels. Ignored while a non-Real [`DiagnosticIoSink`] is
+    /// active. Applies immediately to already-open active writers when set.
+    pub fn set_segment_growth_policy(
+        &mut self,
+        policy: crate::segment_growth::SegmentGrowthPolicy,
+    ) -> Result<(), StoreError> {
+        self.segment_growth = policy;
+        if policy.is_watermark() && self.diagnostic_io == DiagnosticIoSink::Real {
+            self.apply_product_growth_to_existing_actives()?;
+        }
+        Ok(())
+    }
+
+    /// Current product segment growth policy.
+    pub fn segment_growth_policy(&self) -> crate::segment_growth::SegmentGrowthPolicy {
+        self.segment_growth
     }
 
     /// Diagnostic only: detach or redirect segment tail I/O for bisection.
@@ -1989,6 +2020,7 @@ impl Store {
 
         crate::failpoint::hit("awo.persist.before")?;
         let sink = self.diagnostic_io;
+        let growth = self.segment_growth;
         let mut null = self.null_io_file.take();
         let tail_result = {
             let writer = self
@@ -1997,7 +2029,7 @@ impl Store {
             if mode != DurabilityMode::Memory {
                 writer.max_ack_durability = stronger_durability(writer.max_ack_durability, mode);
             }
-            Self::write_segment_tail(writer, mode, sink, null.as_mut())
+            Self::write_segment_tail(writer, mode, sink, null.as_mut(), growth)
         };
         let tail = match tail_result {
             Ok(stats) => stats,
@@ -2366,6 +2398,7 @@ impl Store {
         let shard_outputs: Vec<std::sync::Mutex<ShardOut>> =
             (0..n).map(|_| std::sync::Mutex::new(Ok(Vec::new()))).collect();
         let sink = self.diagnostic_io;
+        let growth = self.segment_growth;
 
         thread::scope(|scope| {
             for shard in 0..n {
@@ -2429,7 +2462,7 @@ impl Store {
                         } else {
                             None
                         };
-                        match Self::write_segment_tail(writer, mode, sink, local_null.as_mut()) {
+                        match Self::write_segment_tail(writer, mode, sink, local_null.as_mut(), growth) {
                             Ok(tail) => {
                                 if tail.fail_as_short_write {
                                     // Partial physical I/O: do not restore; leave uncertain.
@@ -5303,6 +5336,7 @@ impl Store {
         .map_err(StoreError::BadEnvelope)?;
 
         let sink = self.diagnostic_io;
+        let growth = self.segment_growth;
         let mut null = self.null_io_file.take();
         let (offset, append_ns, tail) = {
             let writer = self.active_mut(shard).expect("active segment");
@@ -5329,7 +5363,7 @@ impl Store {
             let tail = match mode {
                 DurabilityMode::Memory => TailIoStats::default(),
                 DurabilityMode::Buffered | DurabilityMode::Durable => {
-                    Self::write_segment_tail(writer, mode, sink, null.as_mut())?
+                    Self::write_segment_tail(writer, mode, sink, null.as_mut(), growth)?
                 }
             };
             (offset, append_ns, tail)
@@ -5673,6 +5707,7 @@ impl Store {
         }
 
         let sink = self.diagnostic_io;
+        let growth = self.segment_growth;
         let skip_append = self.diagnostic_skip_append_frame;
         let mut null = self.null_io_file.take();
         let (offset, encoded_frame_len, append_ns, tail) = {
@@ -5692,7 +5727,7 @@ impl Store {
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 // Exact encoded frame length at store boundary (not logical+estimate).
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
-                let tail = Self::write_segment_tail(writer, mode, sink, null.as_mut())?;
+                let tail = Self::write_segment_tail(writer, mode, sink, null.as_mut(), growth)?;
                 (offset, encoded_frame_len, append_ns, tail)
             }
         };
@@ -5777,6 +5812,7 @@ impl Store {
         mode: DurabilityMode,
         sink: DiagnosticIoSink,
         null_file: Option<&mut File>,
+        growth: crate::segment_growth::SegmentGrowthPolicy,
     ) -> Result<TailIoStats, StoreError> {
         crate::failpoint::hit("store.active.write_tail.before")?;
         let base = writer.segment.base_offset();
@@ -5838,6 +5874,25 @@ impl Store {
                             .saturating_add(CHUNK)
                             .min(CAP);
                         Self::diag_ensure_zero_watermark(writer, need, CAP)?;
+                    } else if sink == DiagnosticIoSink::Real {
+                        if let crate::segment_growth::SegmentGrowthPolicy::Watermark {
+                            capacity_bytes,
+                            chunk_bytes,
+                        } = growth
+                        {
+                            let need = writer
+                                .durable_len
+                                .saturating_add(pending_len as u64)
+                                .saturating_add(chunk_bytes)
+                                .min(capacity_bytes);
+                            crate::segment_growth::ensure_zero_watermark(
+                                &mut writer.file,
+                                &mut writer.zeroed_thru,
+                                need,
+                                capacity_bytes,
+                                chunk_bytes,
+                            )?;
+                        }
                     }
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
                     // DEF-022: optional short-write injection mid-append.
@@ -5993,8 +6048,9 @@ impl Store {
         shard: u32,
     ) -> Result<(), StoreError> {
         let sink = self.diagnostic_io;
+        let growth = self.segment_growth;
         let mut null = self.null_io_file.take();
-        let stats = Self::write_segment_tail(writer, mode, sink, null.as_mut())?;
+        let stats = Self::write_segment_tail(writer, mode, sink, null.as_mut(), growth)?;
         self.null_io_file = null;
         self.record_tail_probe(&stats, mode, shard)?;
         Ok(())
@@ -6045,10 +6101,11 @@ impl Store {
         if self.active_mut(shard).is_some() {
             // Split borrows: take stats from writer, then probe on self.
             let sink = self.diagnostic_io;
+            let growth = self.segment_growth;
             let mut null = self.null_io_file.take();
             let stats = {
                 let writer = self.active_mut(shard).expect("active");
-                Self::write_segment_tail(writer, mode, sink, null.as_mut())?
+                Self::write_segment_tail(writer, mode, sink, null.as_mut(), growth)?
             };
             self.null_io_file = null;
             self.record_tail_probe(&stats, mode, shard as u32)?;
@@ -6087,6 +6144,7 @@ impl Store {
             .truncate(true)
             .open(&path)?;
         self.maybe_diagnostic_prealloc(&mut file)?;
+        self.maybe_product_growth_prealloc(&mut file)?;
         file.write_all(segment.as_bytes())?;
         let durable_len = segment.len();
         // New active creation: Durable open paths still fsync the descriptor;
@@ -6106,7 +6164,7 @@ impl Store {
                 coalesce_buf: Vec::new(),
                 coalesce_off: 0,
                 coalesce_since: None,
-                zeroed_thru: 0,
+                zeroed_thru: self.product_initial_zeroed_thru(),
             }),
         );
         Ok(())
@@ -6132,6 +6190,7 @@ impl Store {
             .truncate(true)
             .open(&path)?;
         self.maybe_diagnostic_prealloc(&mut file)?;
+        self.maybe_product_growth_prealloc(&mut file)?;
         file.write_all(segment.as_bytes())?;
         let durable_len = segment.len();
         if mode == DurabilityMode::Durable {
@@ -6148,7 +6207,7 @@ impl Store {
                 coalesce_buf: Vec::new(),
                 coalesce_off: 0,
                 coalesce_since: None,
-                zeroed_thru: 0,
+                zeroed_thru: self.product_initial_zeroed_thru(),
             }),
         );
         Ok(())
@@ -6193,6 +6252,62 @@ impl Store {
                 file.seek(SeekFrom::Start(0))?;
             }
             _ => {}
+        }
+        Ok(())
+    }
+
+    /// Product watermark create-time setup (only when diag sink is Real).
+    fn maybe_product_growth_prealloc(&self, file: &mut File) -> Result<(), StoreError> {
+        if self.diagnostic_io != DiagnosticIoSink::Real {
+            return Ok(());
+        }
+        crate::segment_growth::prepare_active_file(file, self.segment_growth)
+    }
+
+    fn product_initial_zeroed_thru(&self) -> u64 {
+        match self.diagnostic_io {
+            DiagnosticIoSink::RealPreallocWatermark => 64 * 1024 * 1024,
+            DiagnosticIoSink::Real => self.segment_growth.initial_zeroed_thru(),
+            _ => 0,
+        }
+    }
+
+    /// Apply product watermark to already-open actives (post-create policy set).
+    fn apply_product_growth_to_existing_actives(&mut self) -> Result<(), StoreError> {
+        let policy = self.segment_growth;
+        let crate::segment_growth::SegmentGrowthPolicy::Watermark {
+            capacity_bytes,
+            chunk_bytes,
+        } = policy
+        else {
+            return Ok(());
+        };
+        let n = self.writer_shards();
+        for shard in 0..n {
+            let Some(writer) = self.active_mut(shard) else {
+                continue;
+            };
+            crate::segment_growth::os_preallocate(&writer.file, capacity_bytes)?;
+            let cur = writer.file.metadata()?.len();
+            if cur < capacity_bytes {
+                writer.file.set_len(capacity_bytes)?;
+            }
+            // Never overwrite live durable frames — only extend zero runway ahead.
+            if writer.zeroed_thru < writer.durable_len {
+                writer.zeroed_thru = writer.durable_len;
+            }
+            let need = writer
+                .durable_len
+                .saturating_add(chunk_bytes)
+                .min(capacity_bytes);
+            crate::segment_growth::ensure_zero_watermark(
+                &mut writer.file,
+                &mut writer.zeroed_thru,
+                need,
+                capacity_bytes,
+                chunk_bytes,
+            )?;
+            writer.file.seek(SeekFrom::Start(writer.durable_len))?;
         }
         Ok(())
     }
@@ -7325,5 +7440,40 @@ mod tests {
         assert_eq!(*wins.lock().unwrap(), 1);
         assert_eq!(*exists.lock().unwrap(), (n as u32) - 1);
         assert!(store.lock().unwrap().get("new").unwrap().is_some());
+    }
+
+    /// Product watermark growth: opt-in API, default off, put+get+reopen round-trip.
+    #[test]
+    fn segment_growth_watermark_opt_in_put_reopen() {
+        let dir = tempdir().unwrap();
+        let mut store = Store::create(dir.path()).unwrap();
+        assert_eq!(
+            store.segment_growth_policy(),
+            crate::segment_growth::SegmentGrowthPolicy::GrowOnAppend
+        );
+        store
+            .set_segment_growth_policy(
+                crate::segment_growth::SegmentGrowthPolicy::watermark_default(),
+            )
+            .unwrap();
+        assert!(store.segment_growth_policy().is_watermark());
+        store
+            .put("wm", b"hello-watermark", DurabilityMode::Buffered)
+            .unwrap();
+        assert_eq!(
+            store.get("wm").unwrap().as_deref(),
+            Some(b"hello-watermark".as_slice())
+        );
+        drop(store);
+        let store = Store::open(dir.path()).unwrap();
+        assert_eq!(
+            store.get("wm").unwrap().as_deref(),
+            Some(b"hello-watermark".as_slice())
+        );
+        // Policy is process-local (not persisted); reopen returns to grow-on-append.
+        assert_eq!(
+            store.segment_growth_policy(),
+            crate::segment_growth::SegmentGrowthPolicy::GrowOnAppend
+        );
     }
 }
