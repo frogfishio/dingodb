@@ -268,7 +268,9 @@ pub use secondary::{
 pub use segment_catalog::{
     segment_catalog_path, SegmentCatalog, SegmentSummary, SEGMENT_CATALOG_FILE,
 };
-pub use segment_growth::SegmentGrowthPolicy;
+pub use segment_growth::{
+    SegmentGrowthPolicy, WATERMARK_DEFAULT_CAPACITY_BYTES, WATERMARK_DEFAULT_CHUNK_BYTES,
+};
 pub use store::{
     subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,
     SalvageCopyReport, SalvageReport, WriteReceipt, MAX_WRITER_SHARDS,

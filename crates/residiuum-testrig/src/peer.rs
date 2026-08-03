@@ -199,6 +199,12 @@ pub struct PeerConfig {
     pub diag_io: PeerDiagIo,
     /// Residiuum only: product segment growth (`grow` default | `watermark`).
     pub segment_growth: PeerSegmentGrowth,
+    /// When `segment_growth` is watermark: reserved capacity in MiB.
+    /// `None` → [`SegmentGrowthPolicy::watermark_default`] capacity (64 MiB).
+    pub wm_capacity_mib: Option<u64>,
+    /// When `segment_growth` is watermark: zero-runway chunk in MiB.
+    /// `None` → default chunk (64 MiB). Hosts may set multi‑GiB values.
+    pub wm_chunk_mib: Option<u64>,
 }
 
 /// Product segment growth for Residiuum peer-pump (not a diagnostic sink).
@@ -216,11 +222,36 @@ impl PeerSegmentGrowth {
             PeerSegmentGrowth::Watermark => "watermark",
         }
     }
+}
 
-    pub fn to_policy(self) -> SegmentGrowthPolicy {
-        match self {
-            PeerSegmentGrowth::GrowOnAppend => SegmentGrowthPolicy::GrowOnAppend,
-            PeerSegmentGrowth::Watermark => SegmentGrowthPolicy::watermark_default(),
+/// Resolve product growth policy from peer flags (capacity/chunk are host knobs).
+pub fn segment_growth_policy(
+    growth: PeerSegmentGrowth,
+    capacity_mib: Option<u64>,
+    chunk_mib: Option<u64>,
+) -> Result<SegmentGrowthPolicy, String> {
+    match growth {
+        PeerSegmentGrowth::GrowOnAppend => {
+            if capacity_mib.is_some() || chunk_mib.is_some() {
+                return Err(
+                    "--wm-capacity-mib / --wm-chunk-mib require --segment-growth watermark"
+                        .into(),
+                );
+            }
+            Ok(SegmentGrowthPolicy::GrowOnAppend)
+        }
+        PeerSegmentGrowth::Watermark => {
+            let capacity_bytes = match capacity_mib {
+                Some(0) => return Err("--wm-capacity-mib must be > 0".into()),
+                Some(mib) => mib.saturating_mul(1024 * 1024),
+                None => residiuum_store::WATERMARK_DEFAULT_CAPACITY_BYTES,
+            };
+            let chunk_bytes = match chunk_mib {
+                Some(0) => return Err("--wm-chunk-mib must be > 0".into()),
+                Some(mib) => mib.saturating_mul(1024 * 1024),
+                None => residiuum_store::WATERMARK_DEFAULT_CHUNK_BYTES,
+            };
+            Ok(SegmentGrowthPolicy::watermark(capacity_bytes, chunk_bytes))
         }
     }
 }
@@ -339,6 +370,23 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
         } else {
             ""
         },
+        "wm_capacity_mib": if cfg.engine == PeerEngine::Residiuum
+            && cfg.segment_growth == PeerSegmentGrowth::Watermark
+        {
+            cfg.wm_capacity_mib.unwrap_or(
+                residiuum_store::WATERMARK_DEFAULT_CAPACITY_BYTES / (1024 * 1024),
+            )
+        } else {
+            0
+        },
+        "wm_chunk_mib": if cfg.engine == PeerEngine::Residiuum
+            && cfg.segment_growth == PeerSegmentGrowth::Watermark
+        {
+            cfg.wm_chunk_mib
+                .unwrap_or(residiuum_store::WATERMARK_DEFAULT_CHUNK_BYTES / (1024 * 1024))
+        } else {
+            0
+        },
         "feed_shape": if cfg.concurrency <= 1 {
             "embedded_sync_qd1"
         } else {
@@ -431,12 +479,22 @@ fn apply_diag_io(store: &mut Store, diag: PeerDiagIo) -> Result<(), String> {
         .map_err(|e| format!("set_diagnostic_io_sink: {e}"))
 }
 
-fn apply_segment_growth(store: &mut Store, growth: PeerSegmentGrowth) -> Result<(), String> {
-    if growth == PeerSegmentGrowth::GrowOnAppend {
+fn apply_segment_growth(store: &mut Store, cfg: &PeerConfig) -> Result<(), String> {
+    if cfg.segment_growth == PeerSegmentGrowth::GrowOnAppend {
+        if cfg.wm_capacity_mib.is_some() || cfg.wm_chunk_mib.is_some() {
+            return Err(
+                "--wm-capacity-mib / --wm-chunk-mib require --segment-growth watermark".into(),
+            );
+        }
         return Ok(());
     }
+    let policy = segment_growth_policy(
+        cfg.segment_growth,
+        cfg.wm_capacity_mib,
+        cfg.wm_chunk_mib,
+    )?;
     store
-        .set_segment_growth_policy(growth.to_policy())
+        .set_segment_growth_policy(policy)
         .map_err(|e| format!("set_segment_growth_policy: {e}"))
 }
 
@@ -478,7 +536,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     };
     store.set_seal_threshold(seal);
     apply_diag_io(&mut store, cfg.diag_io)?;
-    apply_segment_growth(&mut store, cfg.segment_growth)?;
+    apply_segment_growth(&mut store, cfg)?;
     // Optional: RESIDIUUM_COOK_PARALLELISM=N for put_many multi-core cook (peer).
     // Engages only when a presented batch has ≥2 items (Mode B); Mode A batch=1 stays serial.
     let mut cook_parallelism = 1usize;
@@ -668,7 +726,7 @@ fn pump_residiuum_concurrent_mode_a(
     };
     store.set_seal_threshold(seal);
     apply_diag_io(&mut store, cfg.diag_io)?;
-    apply_segment_growth(&mut store, cfg.segment_growth)?;
+    apply_segment_growth(&mut store, cfg)?;
     let mut cook_parallelism = 1usize;
     if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
         if let Ok(n) = raw.parse::<usize>() {

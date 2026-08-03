@@ -826,7 +826,8 @@ impl Store {
     /// Opt-in product segment growth policy (default grow-on-append).
     ///
     /// Watermark mode productizes the `realpreallocwm` spike: OS preallocate +
-    /// seal-sized ahead-of-write zero. **Not default-on** (space amp). Does not
+    /// ahead-of-write zero. Capacity/chunk are host knobs (default 64 MiB).
+    /// **Not default-on** (space amp). Does not
     /// change durability labels. Ignored while a non-Real [`DiagnosticIoSink`] is
     /// active. Applies immediately to already-open active writers when set.
     pub fn set_segment_growth_policy(

@@ -1,16 +1,25 @@
 # Next steps (post write-path / prealloc findings)
 
 **Date:** 2026-08-03 · Direction for principal — not package accept / not a product ship plan  
-**Where we are:** append/growth was the Real wall; sparse pre-size is placebo; **physical page pre-touch ~37k (~4×)** on concurrent Mode A; overwrite/Discard still ~100k+.
+**Principal steer (locked):** Prealloc space is **not** a morality debate. People buy specialist hardware for ~5% wins; reserved runway is cheap. Capacity is **configurable** (default **64 MiB**, not fixed ½ GiB; large hosts may use multi‑GiB / 10 GiB). Extension **must not** tax transactions — background watcher ahead of head. Grow-on-append-as-virtue is rejected. See [PRINCIPAL_STEER_PREALLOC_NOT_MORALITY.md](PRINCIPAL_STEER_PREALLOC_NOT_MORALITY.md), [PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md](PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md).
+
+**Where we are:** append/growth was the Real wall; sparse pre-size is placebo; put-path pre-touch can lift thr (~35–50k diag); product watermark E2E **not yet a proven win** after seal/odometer honesty fix (prior ~32k diag **withdrawn**). Overwrite/Discard still ~100k+.
 
 ## Do next (ordered)
+
+### 0. Background runway preparer (principal-shaped next)
+
+Move zero/extend **off the put path**: watcher keeps N MiB (or seal-chunk) prepared ahead of `durable_len`; optionally prepare segment N+1. Puts only consume runway; fail closed if exhausted.
+
+**Pass:** put-path thr ≫ GrowOnAppend with E2E seal in meter; space amp disclosed.  
+**This is the preferred shape** — not “debate whether to prealloc.”
 
 ### 1. Confirm prealloc-fill is not a timing cheat
 
 Pre-touch ran **before** the odometer. Re-run with either:
 
 - touch cost **inside** the timed window, or  
-- amortize: touch only the next seal-sized chunk as you go (background / ahead-of-write)
+- amortize: touch only the next seal-sized chunk as you go (background / ahead-of-write) ← **same as §0**
 
 **Pass:** still ≫ Real (~2×+) with honest accounting.  
 **Fail:** win was “pay allocation offline.”
@@ -23,9 +32,9 @@ Replace “touch every 1 MiB of 512 MiB at create” with something closer t
 |-----------|-----|
 | ~~macOS `F_PREALLOCATE` alone~~ | **≈ Real** ([GEMINI_PREALLOC_PLATFORM_REVIEW.md](GEMINI_PREALLOC_PLATFORM_REVIEW.md)) |
 | ~~`F_PREALLOCATE` + bulk zero~~ | **~48–51k pump** — works; setup heavy ([PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md)) |
-| ~~Seal-sized ahead-of-write zero~~ | **~32k pump, best E2E ~28.5k** ([PREALLOC_WATERMARK_SPIKE.md](PREALLOC_WATERMARK_SPIKE.md)) |
+| ~~Seal-sized ahead-of-write zero (diag)~~ | Prior ~32k **withdrawn** (seal fail + ignored error); product flag ~6k E2E on noisy disk — re-pair quiet |
 | Chunk-size sweep / match seal threshold | Tune 16/64/128 MiB |
-| Background prepare segment N+1 | Hide remaining mid-run zero blips |
+| **Background prepare segment N+1 / runway** | **Principal steer — next** |
 | Linux `fallocate` | Unmeasured |
 | Product design note | Now evidence-backed enough to draft |
 

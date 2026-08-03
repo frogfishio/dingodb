@@ -6,11 +6,25 @@
 //! [`SegmentGrowthPolicy::GrowOnAppend`]. Enabling watermark changes space
 //! amplification and setup cost; it does **not** change CSQ durability labels.
 //! Do not cite withdrawn diag ~32k figures as product thr.
+//!
+//! Capacity is a **host knob**, not a fixed ½ GiB religion: small stores may
+//! never need more than tens of MiB reserved; large ones may want multi‑GiB
+//! or 10 GiB extend steps. See
+//! `doc/todo/performance-qualification/PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md`.
 
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 
 use crate::error::StoreError;
+
+/// Default reserved capacity for [`SegmentGrowthPolicy::watermark_default`] (64 MiB).
+///
+/// Deliberately modest: many DBs never fill ½ GiB. Hosts that need larger
+/// runway pass [`SegmentGrowthPolicy::watermark`] with multi‑GiB values.
+pub const WATERMARK_DEFAULT_CAPACITY_BYTES: u64 = 64 * 1024 * 1024;
+
+/// Default zero-runway step for [`SegmentGrowthPolicy::watermark_default`] (64 MiB).
+pub const WATERMARK_DEFAULT_CHUNK_BYTES: u64 = 64 * 1024 * 1024;
 
 /// How the store grows active segment files on disk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -18,11 +32,12 @@ pub enum SegmentGrowthPolicy {
     /// Append grows the file on demand (historic default).
     #[default]
     GrowOnAppend,
-    /// OS block reserve + seal-sized ahead-of-write zero (opt-in).
+    /// OS block reserve + ahead-of-write zero (opt-in).
     ///
     /// Not default-on: reserves [`Self::Watermark::capacity_bytes`] per active
     /// segment and zeros [`Self::Watermark::chunk_bytes`] at a time as the write
-    /// head advances. Durability receipts stay Buffered/Durable as before.
+    /// head advances. Both fields are host-configurable (64 MiB … multi‑GiB).
+    /// Durability receipts stay Buffered/Durable as before.
     Watermark {
         /// Logical file capacity to reserve (`set_len` + OS preallocate).
         capacity_bytes: u64,
@@ -32,12 +47,27 @@ pub enum SegmentGrowthPolicy {
 }
 
 impl SegmentGrowthPolicy {
-    /// Spike-matched defaults: 512 MiB capacity, 64 MiB zero chunks.
-    pub fn watermark_default() -> Self {
+    /// Build a watermark policy with explicit capacity and zero-chunk sizes.
+    ///
+    /// `capacity_bytes` may be 64 MiB for small DBs or 10 GiB+ when the host
+    /// wants large extend steps. `chunk_bytes` is clamped to `capacity_bytes`
+    /// at use sites via [`Self::initial_zeroed_thru`] / ensure helpers.
+    pub fn watermark(capacity_bytes: u64, chunk_bytes: u64) -> Self {
         Self::Watermark {
-            capacity_bytes: 512 * 1024 * 1024,
-            chunk_bytes: 64 * 1024 * 1024,
+            capacity_bytes,
+            chunk_bytes,
         }
+    }
+
+    /// Product default watermark knobs: 64 MiB capacity, 64 MiB zero chunks.
+    ///
+    /// Not locked to the historical 512 MiB spike capacity — that size remains
+    /// available via [`Self::watermark`].
+    pub fn watermark_default() -> Self {
+        Self::watermark(
+            WATERMARK_DEFAULT_CAPACITY_BYTES,
+            WATERMARK_DEFAULT_CHUNK_BYTES,
+        )
     }
 
     /// Bytes known bulk-zeroed after create-time setup (0 for grow-on-append).
@@ -184,18 +214,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn watermark_default_matches_spike_knobs() {
+    fn watermark_default_is_modest_and_configurable() {
         match SegmentGrowthPolicy::watermark_default() {
             SegmentGrowthPolicy::Watermark {
                 capacity_bytes,
                 chunk_bytes,
             } => {
-                assert_eq!(capacity_bytes, 512 * 1024 * 1024);
-                assert_eq!(chunk_bytes, 64 * 1024 * 1024);
+                assert_eq!(capacity_bytes, WATERMARK_DEFAULT_CAPACITY_BYTES);
+                assert_eq!(chunk_bytes, WATERMARK_DEFAULT_CHUNK_BYTES);
+                assert_eq!(capacity_bytes, 64 * 1024 * 1024);
                 assert_eq!(
                     SegmentGrowthPolicy::watermark_default().initial_zeroed_thru(),
                     64 * 1024 * 1024
                 );
+            }
+            SegmentGrowthPolicy::GrowOnAppend => panic!("expected watermark"),
+        }
+        // Large-DB host knobs stay first-class (e.g. 10 GiB capacity).
+        let big = SegmentGrowthPolicy::watermark(10 * 1024 * 1024 * 1024, 1024 * 1024 * 1024);
+        match big {
+            SegmentGrowthPolicy::Watermark {
+                capacity_bytes,
+                chunk_bytes,
+            } => {
+                assert_eq!(capacity_bytes, 10 * 1024 * 1024 * 1024);
+                assert_eq!(chunk_bytes, 1024 * 1024 * 1024);
             }
             SegmentGrowthPolicy::GrowOnAppend => panic!("expected watermark"),
         }

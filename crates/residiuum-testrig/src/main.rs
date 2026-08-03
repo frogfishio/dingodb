@@ -248,9 +248,18 @@ enum Command {
         #[arg(long, default_value = "real")]
         diag_io: String,
         /// Residiuum product segment growth: grow (default) | watermark.
-        /// Watermark = OS preallocate + seal-sized ahead-of-write zero (opt-in; not default-on).
+        /// Watermark = OS preallocate + ahead-of-write zero (opt-in; not default-on).
+        /// Default capacity/chunk are 64 MiB; override with --wm-capacity-mib / --wm-chunk-mib.
         #[arg(long, default_value = "grow")]
         segment_growth: String,
+        /// Watermark reserved capacity in MiB (requires --segment-growth watermark).
+        /// Default 64. Use larger values (e.g. 10240) for multi‑GiB extend steps.
+        #[arg(long)]
+        wm_capacity_mib: Option<u64>,
+        /// Watermark zero-runway chunk in MiB (requires --segment-growth watermark).
+        /// Default 64.
+        #[arg(long)]
+        wm_chunk_mib: Option<u64>,
         #[arg(long)]
         json_out: bool,
     },
@@ -381,6 +390,8 @@ fn main() -> ExitCode {
             concurrency,
             diag_io,
             segment_growth,
+            wm_capacity_mib,
+            wm_chunk_mib,
             json_out,
         } => cmd_peer_pump(
             work,
@@ -395,6 +406,8 @@ fn main() -> ExitCode {
             concurrency,
             diag_io,
             segment_growth,
+            wm_capacity_mib,
+            wm_chunk_mib,
             json_out,
         ),
     };
@@ -439,6 +452,8 @@ fn cmd_peer_pump(
     concurrency: usize,
     diag_io: String,
     segment_growth: String,
+    wm_capacity_mib: Option<u64>,
+    wm_chunk_mib: Option<u64>,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
@@ -459,6 +474,8 @@ fn cmd_peer_pump(
         concurrency,
         diag_io: parse_diag_io(&diag_io)?,
         segment_growth: parse_segment_growth(&segment_growth)?,
+        wm_capacity_mib,
+        wm_chunk_mib,
     })
 }
 

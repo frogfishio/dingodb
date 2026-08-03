@@ -10,22 +10,29 @@ Product API (not `DiagnosticIoSink`):
 
 ```rust
 store.set_segment_growth_policy(SegmentGrowthPolicy::watermark_default())?;
+// or explicit sizes (64 MiB … multi‑GiB / 10 GiB):
+// SegmentGrowthPolicy::watermark(capacity_bytes, chunk_bytes)
 // or GrowOnAppend (default)
 ```
 
-Mechanism (matches `realpreallocwm` spike):
+Mechanism:
 
-1. OS preallocate + `set_len` to **512 MiB** capacity per active segment  
-2. Bulk-zero the first **64 MiB** at setup  
-3. On each real segment-tail write: keep ≥64 MiB of zeroed runway ahead of the write head  
+1. OS preallocate + `set_len` to **`capacity_bytes`** per active segment (**default 64 MiB**, was historically 512 MiB spike-matched)  
+2. Bulk-zero the first **`chunk_bytes`** at setup (**default 64 MiB**)  
+3. On each real segment-tail write: keep ≥`chunk_bytes` of zeroed runway ahead of the write head  
+
+Both knobs are host-owned — small DBs stay modest; large DBs may pass 10 GiB capacity. See [PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md](PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md).
 
 Peer-pump:
 
 ```sh
 residiuum-testrig peer-pump ... --engine residiuum --segment-growth watermark
+# optional:
+#   --wm-capacity-mib 64   --wm-chunk-mib 64
+#   --wm-capacity-mib 10240 --wm-chunk-mib 1024
 ```
 
-JSON reports `segment_growth: "watermark"`. Requires `--diag-io real`.
+JSON reports `segment_growth`, `wm_capacity_mib`, `wm_chunk_mib`. Requires `--diag-io real`.
 
 ## Why this is “ship” not default
 
@@ -50,7 +57,7 @@ JSON reports `segment_growth: "watermark"`. Requires `--diag-io real`.
 
 ## Non-claims
 
-Not AWO default-on. Not PQH qualification accept. **Not** that 28–32k is a product watermark floor (that band was a seal-fail cheat). Not crash/CSQ campaign for preallocated holes. Space amplification (~512 MiB/active) is intentional and host-owned.
+Not AWO default-on. Not PQH qualification accept. **Not** that 28–32k is a product watermark floor (that band was a seal-fail cheat). Not crash/CSQ campaign for preallocated holes. Space amplification is intentional, **host-tunable** (default ~64 MiB/active; not locked to ½ GiB), and disclosed.
 
 ## Next (separate cards)
 
