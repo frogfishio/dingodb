@@ -32,6 +32,10 @@ Disclosure: [BENCHMARK_DISCLOSURE.md](../../doc/reference/operations/BENCHMARK_D
 | **A** | Autocommit per row | `buffered`, put batch 1 |
 | **B** | `BEGIN`…128 inserts…`COMMIT` | `buffered`, put batch 128 |
 
+Optional Residiuum **`--awo-mode disabled|static|adaptive`** (default `disabled`).
+Mode A + lease uses independent `admit_put` + collector (QD=1). Mode B + lease
+uses `admit_put_batch`. SQLite rejects lease modes.
+
 Target is **logical payload** (`keys × payload_size`). Defaults: payload **8192**, target **256M**.
 Compare **A vs A** and **B vs B** only.
 
@@ -48,6 +52,10 @@ $BIN peer-pump -w "$SCRATCH/residiuum-peer-ra" --engine residiuum --mode A --jso
 $BIN peer-pump -w "$SCRATCH/residiuum-peer-rb" --engine residiuum --mode B --json-out
 $BIN peer-pump -w "$SCRATCH/residiuum-peer-sa" --engine sqlite    --mode A --json-out
 $BIN peer-pump -w "$SCRATCH/residiuum-peer-sb" --engine sqlite    --mode B --json-out
+
+# Mode A + AWO (firm-numbers FN-2 shape)
+$BIN peer-pump -w "$SCRATCH/residiuum-peer-ra-ad" --engine residiuum --mode A \
+  --awo-mode adaptive --json-out
 
 # Tiny smoke (not Scratch)
 $BIN peer-pump -w /tmp/peer-smoke --engine sqlite --mode A \

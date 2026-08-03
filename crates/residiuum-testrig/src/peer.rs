@@ -6,13 +6,17 @@
 //! on-disk footprint, so engines are comparable for ops/s and logical MiB/s.
 
 use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
-use residiuum_store::{DurabilityMode, Store};
+use residiuum_store::adaptive_write::{
+    AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy, AdmissionResult,
+};
+use residiuum_store::{DurabilityMode, Store, WriteCondition};
 use rusqlite::Connection;
 use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Instant;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 const DISCLOSURE: &str = "Diagnostic only — not a published SLO. PEER-SQL same-bed peer \
     (doc/wip/status/surveys/README-PEER-SQL.md; \
@@ -57,6 +61,40 @@ impl PeerEngine {
     }
 }
 
+/// Residiuum AWO lease for peer-pump (SQLite ignores).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PeerAwoMode {
+    #[default]
+    Disabled,
+    Static,
+    Adaptive,
+}
+
+impl PeerAwoMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            PeerAwoMode::Disabled => "disabled",
+            PeerAwoMode::Static => "static",
+            PeerAwoMode::Adaptive => "adaptive",
+        }
+    }
+
+    pub fn lease_active(self) -> bool {
+        !matches!(self, PeerAwoMode::Disabled)
+    }
+}
+
+pub fn parse_awo_mode(s: &str) -> Result<PeerAwoMode, String> {
+    match s.to_ascii_lowercase().as_str() {
+        "disabled" | "off" | "none" => Ok(PeerAwoMode::Disabled),
+        "static" => Ok(PeerAwoMode::Static),
+        "adaptive" | "smart" => Ok(PeerAwoMode::Adaptive),
+        other => Err(format!(
+            "unknown awo-mode `{other}` (disabled|static|adaptive)"
+        )),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PeerConfig {
     /// Work directory (created if missing). Residiuum store: `work/store`;
@@ -73,6 +111,8 @@ pub struct PeerConfig {
     /// Soft seal threshold (bytes). Default 64 MiB matches surveys; raise to
     /// measure Mode A without mid-run seal cost (seal is separate from put prep).
     pub seal_threshold: u64,
+    /// Residiuum only: attach Static/Adaptive AWO lease (default off).
+    pub awo_mode: PeerAwoMode,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -108,6 +148,9 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
     if cfg.payload_size == 0 {
         return Err("payload-size must be > 0".into());
     }
+    if cfg.awo_mode.lease_active() && cfg.engine != PeerEngine::Residiuum {
+        return Err("--awo-mode static|adaptive requires --engine residiuum".into());
+    }
     fs::create_dir_all(&cfg.work).map_err(|e| format!("create work dir: {e}"))?;
     let free = ensure_free_space(&cfg.work, cfg.min_free_bytes)?;
     if !cfg.json_out && cfg.min_free_bytes > 0 {
@@ -132,6 +175,12 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
         "ok": result.ok,
         "engine": cfg.engine.label(),
         "mode": cfg.mode.label(),
+        "awo_mode": if cfg.engine == PeerEngine::Residiuum {
+            cfg.awo_mode.label()
+        } else {
+            ""
+        },
+        "awo_path": result.awo_path,
         "payload_size": cfg.payload_size,
         "target_bytes": cfg.target_bytes,
         "target_kind": "logical_payload",
@@ -206,6 +255,27 @@ struct PeerResult {
     peak_cpu_pct: Option<f64>,
     sample_count: u64,
     path: String,
+    awo_path: String,
+}
+
+fn attach_awo(
+    store: &mut Store,
+    mode: PeerAwoMode,
+) -> Result<Option<AdaptiveWriteHandle>, String> {
+    if !mode.lease_active() {
+        return Ok(None);
+    }
+    let mut policy = AdaptiveWritePolicy::machine_defaults();
+    policy.mode = match mode {
+        PeerAwoMode::Static => AdaptiveWriteMode::Static,
+        PeerAwoMode::Adaptive => AdaptiveWriteMode::Adaptive,
+        PeerAwoMode::Disabled => unreachable!("lease_active false"),
+    };
+    policy.maximum_cookers = policy.maximum_cookers.min(4).max(1);
+    policy.minimum_active_cookers = policy.minimum_active_cookers.min(policy.maximum_cookers);
+    AdaptiveWriteHandle::start_static(policy, store)
+        .map(Some)
+        .map_err(|e| format!("awo attach: {}", e.as_str()))
 }
 
 fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String> {
@@ -231,64 +301,160 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
         }
     }
 
+    let awo = attach_awo(&mut store, cfg.awo_mode)?;
     let batch = cfg.mode.batch_size();
-    let mut samples = ProcessSamples::default();
-    let t0 = Instant::now();
-    let mut keys_written = 0u64;
-    let mut pending: Vec<String> = Vec::with_capacity(batch);
-    let mut last_report = Instant::now();
+    // Mode A (batch=1) + lease: independent admit_put + collector (QD=1 wait).
+    // Mode B (batch>1) + lease: admit_put_batch of presented size.
+    let use_independent = awo.is_some() && batch == 1;
 
-    while keys_written.saturating_mul(cfg.payload_size as u64) < cfg.target_bytes {
-        let key = format!("peer/{:020}", keys_written);
-        pending.push(key);
-        keys_written += 1;
-        if pending.len() >= batch {
-            flush_residiuum(&mut store, &pending, payload)?;
+    let (keys_written, elapsed, samples, awo_path) = if use_independent {
+        let handle = awo.as_ref().expect("awo");
+        let store_arc = Arc::new(Mutex::new(store));
+        handle.bind_physical(Arc::clone(&store_arc));
+        let mut samples = ProcessSamples::default();
+        let t0 = Instant::now();
+        let mut keys_written = 0u64;
+        let mut last_report = Instant::now();
+        while keys_written.saturating_mul(cfg.payload_size as u64) < cfg.target_bytes {
+            let key = format!("peer/{:020}", keys_written);
+            {
+                let mut g = store_arc
+                    .lock()
+                    .map_err(|_| "store lock poisoned during admit".to_string())?;
+                match handle.admit_put(
+                    &mut g,
+                    key.as_bytes(),
+                    payload,
+                    DurabilityMode::Buffered,
+                    WriteCondition::Unconditional,
+                ) {
+                    AdmissionResult::Admitted(c) => {
+                        drop(g);
+                        c.wait()
+                            .map_err(|e| format!("admit_put wait: {}", e.as_str()))?;
+                    }
+                    AdmissionResult::Rejected(e) => {
+                        return Err(format!("admit_put rejected: {}", e.as_str()));
+                    }
+                }
+            }
+            keys_written += 1;
+            if last_report.elapsed().as_secs() >= 2 || keys_written == 1 {
+                sample_process(&mut samples);
+                if !cfg.json_out {
+                    let logical = keys_written.saturating_mul(cfg.payload_size as u64);
+                    let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
+                    eprintln!(
+                        "peer-pump residiuum: keys={keys_written} logical≈{} / {} {:.1} ops/s awo={}",
+                        format_bytes(logical),
+                        format_bytes(cfg.target_bytes),
+                        keys_written as f64 / elapsed,
+                        cfg.awo_mode.label()
+                    );
+                }
+                last_report = Instant::now();
+            }
+            if keys_written >= 50_000_000 {
+                return Err("peer-pump abort: 50M keys without reaching logical target".into());
+            }
+        }
+        sample_process(&mut samples);
+        {
+            let mut g = store_arc
+                .lock()
+                .map_err(|_| "store lock poisoned at detach".to_string())?;
+            let _ = handle.drain_writes(Instant::now() + Duration::from_secs(2));
+            handle.detach(&mut g);
+            let _ = g.seal_active();
+        }
+        handle.join_after_detach();
+        let store = Arc::try_unwrap(store_arc)
+            .map_err(|_| "store Arc still shared after peer-pump".to_string())?
+            .into_inner()
+            .map_err(|_| "store mutex poisoned extract".to_string())?;
+        drop(store);
+        (
+            keys_written,
+            t0.elapsed(),
+            samples,
+            "independent_admit_put+collection".to_string(),
+        )
+    } else {
+        let mut samples = ProcessSamples::default();
+        let t0 = Instant::now();
+        let mut keys_written = 0u64;
+        let mut pending: Vec<String> = Vec::with_capacity(batch);
+        let mut last_report = Instant::now();
+        while keys_written.saturating_mul(cfg.payload_size as u64) < cfg.target_bytes {
+            let key = format!("peer/{:020}", keys_written);
+            pending.push(key);
+            keys_written += 1;
+            if pending.len() >= batch {
+                flush_residiuum(&mut store, &pending, payload, awo.as_ref())?;
+                pending.clear();
+            }
+            if last_report.elapsed().as_secs() >= 2 || keys_written == 1 {
+                sample_process(&mut samples);
+                if !cfg.json_out {
+                    let logical = keys_written.saturating_mul(cfg.payload_size as u64);
+                    let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
+                    eprintln!(
+                        "peer-pump residiuum: keys={keys_written} logical≈{} / {} {:.1} ops/s awo={}",
+                        format_bytes(logical),
+                        format_bytes(cfg.target_bytes),
+                        keys_written as f64 / elapsed,
+                        cfg.awo_mode.label()
+                    );
+                }
+                last_report = Instant::now();
+            }
+            if keys_written >= 50_000_000 {
+                return Err("peer-pump abort: 50M keys without reaching logical target".into());
+            }
+        }
+        if !pending.is_empty() {
+            flush_residiuum(&mut store, &pending, payload, awo.as_ref())?;
             pending.clear();
         }
-        if last_report.elapsed().as_secs() >= 2 || keys_written == 1 {
-            sample_process(&mut samples);
-            if !cfg.json_out {
-                let logical = keys_written.saturating_mul(cfg.payload_size as u64);
-                let elapsed = t0.elapsed().as_secs_f64().max(1e-9);
-                eprintln!(
-                    "peer-pump residiuum: keys={keys_written} logical≈{} / {} {:.1} ops/s",
-                    format_bytes(logical),
-                    format_bytes(cfg.target_bytes),
-                    keys_written as f64 / elapsed
-                );
-            }
-            last_report = Instant::now();
-        }
-        if keys_written >= 50_000_000 {
-            return Err("peer-pump abort: 50M keys without reaching logical target".into());
-        }
-    }
-    if !pending.is_empty() {
-        flush_residiuum(&mut store, &pending, payload)?;
-        pending.clear();
-    }
-    sample_process(&mut samples);
-    let _ = store.seal_active();
-    drop(store);
+        sample_process(&mut samples);
+        let awo_path = if let Some(h) = awo.as_ref() {
+            let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
+            h.detach(&mut store);
+            h.join_after_detach();
+            "admit_put_batch".to_string()
+        } else {
+            "put_many".to_string()
+        };
+        let _ = store.seal_active();
+        drop(store);
+        (keys_written, t0.elapsed(), samples, awo_path)
+    };
 
-    let elapsed = t0.elapsed();
-    finish_result(cfg, keys_written, &store_path, elapsed, &samples)
+    let mut result = finish_result(cfg, keys_written, &store_path, elapsed, &samples)?;
+    result.awo_path = awo_path;
+    Ok(result)
 }
 
 fn flush_residiuum(
     store: &mut Store,
     keys: &[String],
     payload: &[u8],
+    awo: Option<&AdaptiveWriteHandle>,
 ) -> Result<(), String> {
     if keys.is_empty() {
         return Ok(());
     }
     let items: Vec<(&str, &[u8])> = keys.iter().map(|k| (k.as_str(), payload)).collect();
-    store
-        .put_many(&items, DurabilityMode::Buffered)
-        .map_err(|e| format!("put_many ({} keys): {e}", keys.len()))?;
-    Ok(())
+    match awo {
+        None => store
+            .put_many(&items, DurabilityMode::Buffered)
+            .map_err(|e| format!("put_many ({} keys): {e}", keys.len()))
+            .map(|_| ()),
+        Some(h) => h
+            .admit_put_batch(store, &items, DurabilityMode::Buffered)
+            .map_err(|e| format!("admit_put_batch ({} keys): {}", keys.len(), e.as_str()))
+            .map(|_| ()),
+    }
 }
 
 fn pump_sqlite(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String> {
@@ -425,6 +591,7 @@ fn finish_result(
         peak_cpu_pct: samples.peak_cpu_pct,
         sample_count: samples.sample_count,
         path: path.display().to_string(),
+        awo_path: String::new(),
     })
 }
 

@@ -11,21 +11,18 @@ Date: 2026-08-03
 
 ## Answer
 
-**No — not primarily.**
+**No — not primarily.** We **can** measure Adaptive; FN-2 **did** measure Mode A
+smart X (≈2.5k acked puts/s on APFS `/var/tmp`) via peer-pump `--awo-mode`.
 
-We **can** measure Adaptive today. T11 already ran `awo_mode=adaptive` and
-reported completed-write rates (on a **Durable** smoke bed, ~1.1k/s — different
-odometer).
-
-What is missing for **Mode A smart X** is a **campaign we have not run**, not a
-blocked feature:
+What *was* missing before FN-2 was a **campaign we had not run**, not a blocked
+feature:
 
 | Blocker? | Status |
 |----------|--------|
 | Adaptive code path usable | **Yes** (T11 / Q1–Q2 labor) |
-| PEER Mode A + Adaptive measured | **No — not run** |
-| `residiuum-testrig` peer-pump AWO flag | **Absent** (harness plumb gap) |
-| `residiuum-perf --awo-mode adaptive` | **Present** (alternate way to take X) |
+| PEER Mode A + Adaptive measured | **Yes — FN-2** ([FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md)) |
+| `residiuum-testrig` peer-pump AWO flag | **Present** (`--awo-mode`) |
+| `residiuum-perf --awo-mode adaptive` | **Present** (alternate) |
 
 Incomplete residuals (`select_plan` not in collector, default-off, Q3/Q4,
 package accept) affect **how good** smart mode is and whether it is product-
@@ -34,6 +31,6 @@ default — they do **not** make “unable to measure.”
 ## One line
 
 ```text
-Unknown X  =  we haven’t taken the Mode A + Adaptive odometer reading yet
-           ≠  Adaptive unfinished so measurement impossible
+Mode A smart X  ≈  2470/s on FN-2 APFS bed (loses to Residiuum-off ~12.5k)
+Unknown was “campaign not run” — now run; Scratch re-run still open
 ```

@@ -63,6 +63,13 @@ single path.
 | A (autocommit / per-put Buffered) | ~0.98–1.05× | Fair peer ≈ parity |
 | B (txn-128 / put_many 128) | ~0.55× | SQLite wins on amortized commit — expected without product txn API |
 
+**FN-2 Mode A + AWO (APFS `/var/tmp`, Scratch off):** Adaptive X≈**2.5k** acked
+puts/s ≈ Static; Residiuum-off≈12.5k; SQLite≈29k. Adaptive **loses** to off under
+QD=1 collection — see `FIRM_NUMBERS_FN2_MODE_A.md` (not Scratch ratios).
+**CPU wall:** Scratch ~10k parity was SQLite disk-bound ∩ Residiuum already
+CPU-bound; fast disk reveals our Mode A ceiling is CPU-shaped
+(`FAST_DISK_CPU_WALL.md`).
+
 Instrumentation (Campaign G): long Mode A with default seal is often
 **seal-bound**; continuous no-rotate path is **append-bound** (Blake+copy), not
 a mystery “disk idle + CPU idle” story.

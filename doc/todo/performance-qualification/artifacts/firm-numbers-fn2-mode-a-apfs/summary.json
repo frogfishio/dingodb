@@ -1,0 +1,45 @@
+{
+  "label": "FN-2 Mode A four-cell odometer (APFS /var/tmp — Scratch not mounted)",
+  "date": "2026-08-03",
+  "bed": {
+    "volume": "/var/tmp (APFS Data volume)",
+    "scratch_mounted": false,
+    "payload_size": 8192,
+    "target_bytes": 268435456,
+    "qd": 1,
+    "seed": 42,
+    "seal_threshold": "64M",
+    "residiuum_durability": "buffered"
+  },
+  "cells": {
+    "sqlite_A": {
+      "ops_per_sec": 29205.1,
+      "elapsed_ms": 1121,
+      "keys_written": 32768
+    },
+    "residiuum_A_disabled": {
+      "ops_per_sec": 12553.0,
+      "elapsed_ms": 2610,
+      "awo_mode": "disabled",
+      "awo_path": "put_many"
+    },
+    "residiuum_A_static": {
+      "ops_per_sec": 2464.2,
+      "elapsed_ms": 13297,
+      "awo_mode": "static",
+      "awo_path": "independent_admit_put+collection"
+    },
+    "residiuum_A_adaptive": {
+      "ops_per_sec": 2467.3,
+      "elapsed_ms": 13281,
+      "awo_mode": "adaptive",
+      "awo_path": "independent_admit_put+collection"
+    }
+  },
+  "verdict_one_line": "Adaptive ≈ Static ≈ 2.5k acked puts/s; loses to Residiuum-off ≈12.5k and SQLite ≈29k on this APFS Mode A QD=1 bed (collection delay, no pile-up).",
+  "non_claims": [
+    "Not Scratch reportable PEER-SQL campaign",
+    "Not AWO package accept / default-on",
+    "Not product SLO"
+  ]
+}

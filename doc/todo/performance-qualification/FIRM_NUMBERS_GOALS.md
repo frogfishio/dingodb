@@ -25,12 +25,13 @@ first (`ODOMETER_FIRST_COMPLETED_WRITES.md`). Honest max (`PERF_HONEST_MAX_CHART
 
 | Baseline | Role | Known today |
 |----------|------|-------------|
-| **SQLite Mode A** | External peer | ≈ **10 000** acked writes/s |
-| **Residiuum Mode A, AWO off** | Internal 1:1 | ≈ **10 000** acked writes/s |
-| **Residiuum Mode A, Static** | Explicit batching ceiling on same bed | **not measured** |
-| **Residiuum Mode A, Adaptive** | Smart mode X | **not measured** |
+| **SQLite Mode A** | External peer | ≈ **29 200** acked writes/s (FN-2 APFS `/var/tmp`; Scratch history ≈10 000) |
+| **Residiuum Mode A, AWO off** | Internal 1:1 | ≈ **12 600** acked writes/s (FN-2 APFS; Scratch history ≈10 000) |
+| **Residiuum Mode A, Static** | Explicit batching ceiling on same bed | ≈ **2 460** (FN-2; loses to off under QD=1 collection) |
+| **Residiuum Mode A, Adaptive** | Smart mode X | ≈ **2 470** (FN-2; ≈ Static, loses to off) |
 
-Fill the two unknowns before arguing headroom.
+Evidence: [FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md). Scratch
+not mounted for FN-2 — re-run there for peer-ratio continuity.
 
 ## 3. To what end (success criteria — firm, not mystical)
 
@@ -62,13 +63,15 @@ If the honest max is still ~10k, that is an acceptable firm outcome.
 | ID | Card title | Stage intent | Done when |
 |----|------------|--------------|-----------|
 | **FN-0** | Firm numbers goal freeze | this card → `in_review` | This doc + pre-staged FN-1..3 |
-| **FN-1** | Harness: Mode A + AWO modes runnable | `todo` | peer-pump AWO plumb **or** documented `residiuum-perf` Mode-A-shaped recipe that reports acked puts/s for off/static/adaptive |
-| **FN-2** | Measure four-cell Mode A odometer | `todo` | Table filled; `SMART_MODE_X_MODE_A.md` updated with integers |
-| **FN-3** | Freeze optimize bound from FN-2 | `todo` | One-page: beat/match/lose + next residual or “~10k is max on this bed” |
+| **FN-1** | Harness: Mode A + AWO modes runnable | labor | peer-pump `--awo-mode` **done** (2026-08-03) |
+| **FN-2** | Measure four-cell Mode A odometer | labor | Table filled — [FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md); `SMART_MODE_X_MODE_A.md` updated |
+| **FN-3** | Freeze optimize bound from FN-2 | `todo` | One-page: Adaptive loses to off on Mode A QD=1; next residual = collection delay / pile-up (draft in FN-2 §5) |
 
 Related backlog (do **not** substitute for FN-2): AWO-Q3 diagnostic, AWO-Q4 sparse
 bound, Q2 `select_plan` collector residual — pull after Mode A X exists unless
-FN-2 shows Adaptive cannot diverge without them.
+FN-2 shows Adaptive cannot diverge without them. **FN-2 showed Adaptive cannot
+beat Residiuum-off under QD=1 collection** — residual is the delay tax, not
+missing measure.
 
 ## 6. Non-claims
 

@@ -21,7 +21,7 @@ use manifest::{
     manifest_path_for_store, per_store_manifest_path, store_path_for, MAX_STORES,
 };
 use monitor::{evaluate_run, run_monitor, MonitorConfig};
-use peer::{parse_engine, parse_mode, run_peer_pump, PeerConfig};
+use peer::{parse_awo_mode, parse_engine, parse_mode, run_peer_pump, PeerConfig};
 use phase_bench::{run_phase_bench, PhaseBenchConfig};
 use pump::{ensure_parent, parse_durability, run_pump, PumpConfig};
 use serde_json::{json, Value};
@@ -231,6 +231,9 @@ enum Command {
         /// Soft seal threshold (e.g. 64M, 512M). Default 64M.
         #[arg(long, default_value = "64M")]
         seal_threshold: String,
+        /// Residiuum AWO: disabled | static | adaptive (ignored for sqlite).
+        #[arg(long, default_value = "disabled")]
+        awo_mode: String,
         #[arg(long)]
         json_out: bool,
     },
@@ -357,6 +360,7 @@ fn main() -> ExitCode {
             seed,
             min_free,
             seal_threshold,
+            awo_mode,
             json_out,
         } => cmd_peer_pump(
             work,
@@ -367,6 +371,7 @@ fn main() -> ExitCode {
             seed,
             min_free,
             seal_threshold,
+            awo_mode,
             json_out,
         ),
     };
@@ -407,6 +412,7 @@ fn cmd_peer_pump(
     seed: u64,
     min_free: String,
     seal_threshold: String,
+    awo_mode: String,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
@@ -423,6 +429,7 @@ fn cmd_peer_pump(
         min_free_bytes,
         json_out,
         seal_threshold: seal,
+        awo_mode: parse_awo_mode(&awo_mode)?,
     })
 }
 
