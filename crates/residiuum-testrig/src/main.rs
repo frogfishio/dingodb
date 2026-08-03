@@ -260,6 +260,14 @@ enum Command {
         /// Default 64.
         #[arg(long)]
         wm_chunk_mib: Option<u64>,
+        /// Residiuum diagnostic: skip dual-index publish / derived checkpoints
+        /// (isolates data cook+append+write from index).
+        #[arg(long, default_value_t = false)]
+        diag_skip_index: bool,
+        /// Residiuum diagnostic: enable boundary probe and report data-write vs
+        /// index (publish/post) timing sums in JSON.
+        #[arg(long, default_value_t = false)]
+        boundary_probe: bool,
         #[arg(long)]
         json_out: bool,
     },
@@ -392,6 +400,8 @@ fn main() -> ExitCode {
             segment_growth,
             wm_capacity_mib,
             wm_chunk_mib,
+            diag_skip_index,
+            boundary_probe,
             json_out,
         } => cmd_peer_pump(
             work,
@@ -408,6 +418,8 @@ fn main() -> ExitCode {
             segment_growth,
             wm_capacity_mib,
             wm_chunk_mib,
+            diag_skip_index,
+            boundary_probe,
             json_out,
         ),
     };
@@ -454,6 +466,8 @@ fn cmd_peer_pump(
     segment_growth: String,
     wm_capacity_mib: Option<u64>,
     wm_chunk_mib: Option<u64>,
+    diag_skip_index: bool,
+    boundary_probe: bool,
     json_out: bool,
 ) -> Result<(), String> {
     let target = parse_size(&target_bytes)?;
@@ -476,6 +490,8 @@ fn cmd_peer_pump(
         segment_growth: parse_segment_growth(&segment_growth)?,
         wm_capacity_mib,
         wm_chunk_mib,
+        diag_skip_index,
+        boundary_probe,
     })
 }
 

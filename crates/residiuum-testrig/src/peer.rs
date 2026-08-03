@@ -205,6 +205,10 @@ pub struct PeerConfig {
     /// When `segment_growth` is watermark: zero-runway chunk in MiB.
     /// `None` → default chunk (64 MiB). Hosts may set multi‑GiB values.
     pub wm_chunk_mib: Option<u64>,
+    /// Residiuum diagnostic: skip dual-index publish / derived (data path only).
+    pub diag_skip_index: bool,
+    /// Residiuum diagnostic: accumulate boundary probe; report write vs index ms.
+    pub boundary_probe: bool,
 }
 
 /// Product segment growth for Residiuum peer-pump (not a diagnostic sink).
@@ -328,6 +332,9 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
                 .into(),
         );
     }
+    if (cfg.diag_skip_index || cfg.boundary_probe) && cfg.engine != PeerEngine::Residiuum {
+        return Err("--diag-skip-index / --boundary-probe require --engine residiuum".into());
+    }
     fs::create_dir_all(&cfg.work).map_err(|e| format!("create work dir: {e}"))?;
     let free = ensure_free_space(&cfg.work, cfg.min_free_bytes)?;
     if !cfg.json_out && cfg.min_free_bytes > 0 {
@@ -386,6 +393,23 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
                 .unwrap_or(residiuum_store::WATERMARK_DEFAULT_CHUNK_BYTES / (1024 * 1024))
         } else {
             0
+        },
+        "diag_skip_index": if cfg.engine == PeerEngine::Residiuum {
+            cfg.diag_skip_index
+        } else {
+            false
+        },
+        "boundary": {
+            "enabled": cfg.boundary_probe && cfg.engine == PeerEngine::Residiuum,
+            "data_write_sum_ms": result.data_write_sum_ms,
+            "data_write_samples": result.data_write_samples,
+            "index_publish_sum_ms": result.index_publish_sum_ms,
+            "index_publish_samples": result.index_publish_samples,
+            "index_post_sum_ms": result.index_post_sum_ms,
+            "index_post_samples": result.index_post_samples,
+            "encode_sum_ms": result.encode_sum_ms,
+            "append_sum_ms": result.append_sum_ms,
+            "prep_sum_ms": result.prep_sum_ms,
         },
         "feed_shape": if cfg.concurrency <= 1 {
             "embedded_sync_qd1"
@@ -468,6 +492,18 @@ struct PeerResult {
     path: String,
     awo_path: String,
     cook_parallelism: usize,
+    /// Boundary probe: sum of FileWrite durations (data path), ms.
+    data_write_sum_ms: f64,
+    data_write_samples: u64,
+    /// Boundary probe: sum of PublishVisibility (dual-index), ms.
+    index_publish_sum_ms: f64,
+    index_publish_samples: u64,
+    /// Boundary probe: sum of PutPost (collection/derived), ms.
+    index_post_sum_ms: f64,
+    index_post_samples: u64,
+    encode_sum_ms: f64,
+    append_sum_ms: f64,
+    prep_sum_ms: f64,
 }
 
 fn apply_diag_io(store: &mut Store, diag: PeerDiagIo) -> Result<(), String> {
@@ -477,6 +513,63 @@ fn apply_diag_io(store: &mut Store, diag: PeerDiagIo) -> Result<(), String> {
     store
         .set_diagnostic_io_sink(diag.to_sink())
         .map_err(|e| format!("set_diagnostic_io_sink: {e}"))
+}
+
+fn apply_diag_timing(store: &mut Store, cfg: &PeerConfig) {
+    if cfg.diag_skip_index {
+        store.set_diagnostic_skip_index(true);
+    }
+    if cfg.boundary_probe {
+        store.enable_boundary_probe();
+    }
+}
+
+type BoundaryTiming = (f64, u64, f64, u64, f64, u64, f64, f64, f64);
+
+fn empty_boundary_timing() -> BoundaryTiming {
+    (0.0, 0, 0.0, 0, 0.0, 0, 0.0, 0.0, 0.0)
+}
+
+fn boundary_timing_from_store(store: &Store, cfg: &PeerConfig) -> BoundaryTiming {
+    if !cfg.boundary_probe {
+        return empty_boundary_timing();
+    }
+    let snap = store.boundary_snapshot();
+    let ns_ms = |sum_ns: u128| sum_ns as f64 / 1e6;
+    (
+        ns_ms(snap.write_latency.sum_ns),
+        snap.write_latency.samples,
+        ns_ms(snap.publish_latency.sum_ns),
+        snap.publish_latency.samples,
+        ns_ms(snap.post_latency.sum_ns),
+        snap.post_latency.samples,
+        ns_ms(snap.encode_latency.sum_ns),
+        ns_ms(snap.append_latency.sum_ns),
+        ns_ms(snap.prep_latency.sum_ns),
+    )
+}
+
+fn apply_timing_tuple(result: &mut PeerResult, timing: BoundaryTiming) {
+    let (
+        data_write_sum_ms,
+        data_write_samples,
+        index_publish_sum_ms,
+        index_publish_samples,
+        index_post_sum_ms,
+        index_post_samples,
+        encode_sum_ms,
+        append_sum_ms,
+        prep_sum_ms,
+    ) = timing;
+    result.data_write_sum_ms = data_write_sum_ms;
+    result.data_write_samples = data_write_samples;
+    result.index_publish_sum_ms = index_publish_sum_ms;
+    result.index_publish_samples = index_publish_samples;
+    result.index_post_sum_ms = index_post_sum_ms;
+    result.index_post_samples = index_post_samples;
+    result.encode_sum_ms = encode_sum_ms;
+    result.append_sum_ms = append_sum_ms;
+    result.prep_sum_ms = prep_sum_ms;
 }
 
 fn apply_segment_growth(store: &mut Store, cfg: &PeerConfig) -> Result<(), String> {
@@ -543,6 +636,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     store.set_seal_threshold(seal);
     apply_diag_io(&mut store, cfg.diag_io)?;
     apply_segment_growth(&mut store, cfg)?;
+    apply_diag_timing(&mut store, cfg);
     // Optional: RESIDIUUM_COOK_PARALLELISM=N for put_many multi-core cook (peer).
     // Engages only when a presented batch has ≥2 items (Mode B); Mode A batch=1 stays serial.
     let mut cook_parallelism = 1usize;
@@ -561,6 +655,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     // Mode B (batch>1) + lease: admit_put_batch of presented size.
     let use_independent = awo.is_some() && batch == 1;
 
+    let mut timing = empty_boundary_timing();
     let (keys_written, elapsed, samples, awo_path) = if use_independent {
         let handle = awo.as_ref().expect("awo");
         let store_arc = Arc::new(Mutex::new(store));
@@ -619,6 +714,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
                 .map_err(|_| "store lock poisoned at detach".to_string())?;
             let _ = handle.drain_writes(Instant::now() + Duration::from_secs(2));
             handle.detach(&mut g);
+            timing = boundary_timing_from_store(&g, cfg);
             let _ = g.seal_active();
         }
         handle.join_after_detach();
@@ -679,6 +775,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
         } else {
             "put_many".to_string()
         };
+        timing = boundary_timing_from_store(&store, cfg);
         let _ = store.seal_active();
         drop(store);
         (keys_written, t0.elapsed(), samples, awo_path)
@@ -687,6 +784,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     let mut result = finish_result(cfg, keys_written, &store_path, elapsed, &samples)?;
     result.awo_path = awo_path;
     result.cook_parallelism = cook_parallelism;
+    apply_timing_tuple(&mut result, timing);
     Ok(result)
 }
 
@@ -733,6 +831,7 @@ fn pump_residiuum_concurrent_mode_a(
     store.set_seal_threshold(seal);
     apply_diag_io(&mut store, cfg.diag_io)?;
     apply_segment_growth(&mut store, cfg)?;
+    apply_diag_timing(&mut store, cfg);
     let mut cook_parallelism = 1usize;
     if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
         if let Ok(n) = raw.parse::<usize>() {
@@ -836,6 +935,7 @@ fn pump_residiuum_concurrent_mode_a(
     }
     let keys_written = target_keys.min(next.load(Ordering::Relaxed));
     sample_process(&mut samples);
+    let mut timing = empty_boundary_timing();
     let awo_path = if let Some(ref h) = awo {
         {
             let mut g = store_arc
@@ -843,6 +943,7 @@ fn pump_residiuum_concurrent_mode_a(
                 .map_err(|_| "store lock poisoned at detach".to_string())?;
             let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
             h.detach(&mut g);
+            timing = boundary_timing_from_store(&g, cfg);
             let _ = g.seal_active();
         }
         h.join_after_detach();
@@ -855,6 +956,7 @@ fn pump_residiuum_concurrent_mode_a(
             let mut g = store_arc
                 .lock()
                 .map_err(|_| "store lock poisoned at seal".to_string())?;
+            timing = boundary_timing_from_store(&g, cfg);
             let _ = g.seal_active();
         }
         format!("concurrent_put_many workers={}", workers)
@@ -869,6 +971,7 @@ fn pump_residiuum_concurrent_mode_a(
     let mut result = finish_result(cfg, keys_written, &store_path, t0.elapsed(), &samples)?;
     result.awo_path = awo_path;
     result.cook_parallelism = cook_parallelism;
+    apply_timing_tuple(&mut result, timing);
     Ok(result)
 }
 
@@ -1110,6 +1213,15 @@ fn finish_result(
         path: path.display().to_string(),
         awo_path: String::new(),
         cook_parallelism: 0,
+        data_write_sum_ms: 0.0,
+        data_write_samples: 0,
+        index_publish_sum_ms: 0.0,
+        index_publish_samples: 0,
+        index_post_sum_ms: 0.0,
+        index_post_samples: 0,
+        encode_sum_ms: 0.0,
+        append_sum_ms: 0.0,
+        prep_sum_ms: 0.0,
     })
 }
 

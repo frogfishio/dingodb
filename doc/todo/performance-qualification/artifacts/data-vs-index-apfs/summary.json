@@ -1,0 +1,81 @@
+{
+  "recipe": "Mode A c=8 8KiB 256MiB seed42 seal512M /tmp",
+  "cells": [
+    {
+      "file": "data-only-skip-index.json",
+      "diag_io": "real",
+      "diag_skip_index": true,
+      "ops_per_sec": 29954.275120802537,
+      "elapsed_ms": 1093,
+      "boundary": {
+        "append_sum_ms": 148.595381,
+        "data_write_samples": 32768,
+        "data_write_sum_ms": 153.012708,
+        "enabled": true,
+        "encode_sum_ms": 18.832216,
+        "index_post_samples": 0,
+        "index_post_sum_ms": 0.0,
+        "index_publish_samples": 32768,
+        "index_publish_sum_ms": 0.594898,
+        "prep_sum_ms": 0.0
+      }
+    },
+    {
+      "file": "discard-full.json",
+      "diag_io": "discard",
+      "diag_skip_index": false,
+      "ops_per_sec": 115446.67735069858,
+      "elapsed_ms": 283,
+      "boundary": {
+        "append_sum_ms": 154.68287,
+        "data_write_samples": 32768,
+        "data_write_sum_ms": 0.636694,
+        "enabled": true,
+        "encode_sum_ms": 19.761836,
+        "index_post_samples": 0,
+        "index_post_sum_ms": 0.0,
+        "index_publish_samples": 32768,
+        "index_publish_sum_ms": 10.313382,
+        "prep_sum_ms": 0.0
+      }
+    },
+    {
+      "file": "discard-skip-index.json",
+      "diag_io": "discard",
+      "diag_skip_index": true,
+      "ops_per_sec": 126327.78139285847,
+      "elapsed_ms": 259,
+      "boundary": {
+        "append_sum_ms": 149.016734,
+        "data_write_samples": 32768,
+        "data_write_sum_ms": 0.591656,
+        "enabled": true,
+        "encode_sum_ms": 19.235508,
+        "index_post_samples": 0,
+        "index_post_sum_ms": 0.0,
+        "index_publish_samples": 32768,
+        "index_publish_sum_ms": 0.605727,
+        "prep_sum_ms": 0.0
+      }
+    },
+    {
+      "file": "full-real-probe.json",
+      "diag_io": "real",
+      "diag_skip_index": false,
+      "ops_per_sec": 9556.228461709223,
+      "elapsed_ms": 3428,
+      "boundary": {
+        "append_sum_ms": 156.559358,
+        "data_write_samples": 32768,
+        "data_write_sum_ms": 172.605157,
+        "enabled": true,
+        "encode_sum_ms": 21.96611,
+        "index_post_samples": 0,
+        "index_post_sum_ms": 0.0,
+        "index_publish_samples": 32768,
+        "index_publish_sum_ms": 11.472491,
+        "prep_sum_ms": 0.0
+      }
+    }
+  ]
+}
