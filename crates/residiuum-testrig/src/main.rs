@@ -18,8 +18,9 @@ mod size;
 mod write_mimic;
 
 use ack_finalize::{
-    run_ack_finalize, run_ack_finalize_matrix, run_seal_fast_lane_measure,
-    run_seal_interference_control, AckFinalizeConfig, MeasureCell,
+    run_ack_finalize, run_ack_finalize_matrix, run_enrichment_off_control,
+    run_seal_fast_lane_measure, run_seal_interference_control, run_zero_scan_auth_seal_measure,
+    AckFinalizeConfig, MeasureCell,
 };
 use chaos::{run_chaos, ChaosConfig};
 use clap::{Parser, Subcommand};
@@ -347,6 +348,40 @@ enum Command {
         #[arg(long, default_value = "auto")]
         min_free: String,
     },
+    /// Enrichment-off control @ 64M: separates enrichment contention vs auth finalize.
+    EnrichmentOffControl {
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        #[arg(long)]
+        evidence: PathBuf,
+        #[arg(long, default_value = "256M")]
+        target_bytes: String,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        #[arg(long, default_value_t = 8)]
+        concurrency: usize,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+        #[arg(long, default_value = "auto")]
+        min_free: String,
+    },
+    /// Zero-Scan Authoritative Seal: Real Full @ 64M; ack ≥ 74.7K with exact reopen.
+    ZeroScanAuthSeal {
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        #[arg(long)]
+        evidence: PathBuf,
+        #[arg(long, default_value = "256M")]
+        target_bytes: String,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        #[arg(long, default_value_t = 8)]
+        concurrency: usize,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+        #[arg(long, default_value = "auto")]
+        min_free: String,
+    },
     /// Seal Interference Control: Real Full at 64M / 512M / 1G seal thresholds.
     ///
     /// Records pending seals at last ack + seal stage breakdown. Measurement only.
@@ -603,6 +638,40 @@ fn main() -> ExitCode {
             seed,
             min_free,
         ),
+        Command::EnrichmentOffControl {
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            min_free,
+        } => cmd_enrichment_off_control(
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            min_free,
+        ),
+        Command::ZeroScanAuthSeal {
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            min_free,
+        } => cmd_zero_scan_auth_seal(
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            min_free,
+        ),
         Command::SealInterferenceControl {
             work,
             evidence,
@@ -695,6 +764,7 @@ fn cmd_ack_finalize(
         seal_threshold: seal,
         min_free_bytes,
         json_out,
+        enrichment_enabled: true,
     })
     .map(|_| ())
 }
@@ -761,6 +831,52 @@ fn cmd_seal_fast_lane(
     let seed = resolve_seed(seed);
     let min_free_bytes = resolve_min_free(&min_free, target)?;
     run_seal_fast_lane_measure(
+        &work,
+        &evidence,
+        target,
+        payload_size,
+        concurrency,
+        seed,
+        min_free_bytes,
+    )
+}
+
+fn cmd_enrichment_off_control(
+    work: PathBuf,
+    evidence: PathBuf,
+    target_bytes: String,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    min_free: String,
+) -> Result<(), String> {
+    let target = parse_size(&target_bytes)?;
+    let seed = resolve_seed(seed);
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
+    run_enrichment_off_control(
+        &work,
+        &evidence,
+        target,
+        payload_size,
+        concurrency,
+        seed,
+        min_free_bytes,
+    )
+}
+
+fn cmd_zero_scan_auth_seal(
+    work: PathBuf,
+    evidence: PathBuf,
+    target_bytes: String,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    min_free: String,
+) -> Result<(), String> {
+    let target = parse_size(&target_bytes)?;
+    let seed = resolve_seed(seed);
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
+    run_zero_scan_auth_seal_measure(
         &work,
         &evidence,
         target,

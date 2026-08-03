@@ -55,6 +55,7 @@ mod hydra;
 mod ids;
 mod index;
 mod index_cache;
+mod incremental_seal;
 mod kernel;
 mod large_value;
 mod layout;

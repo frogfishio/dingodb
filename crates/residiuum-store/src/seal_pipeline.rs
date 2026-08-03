@@ -1,12 +1,16 @@
-//! Background seal / checkpoint pipeline (DEF-096 Axis A + Seal Fast Lane).
+//! Background seal / checkpoint pipeline (DEF-096 Axis A + Zero-Scan Auth Seal).
 //!
-//! Foreground put path does an **O(1) rotate** (rename active → pending, open a
-//! new active). A worker thread finalizes seals in two phases:
+//! Foreground put path prefers **zero-scan rotate**: incremental BLAKE3 + summary
+//! already computed while appending; rename active → pending, open next active,
+//! append precomputed summary, rename pending → sealed, apply compact catalog
+//! metadata (no 64 MiB `Vec` on the writer path).
+//!
+//! Fallback / recovery still uses the worker finalize path:
 //!
 //! 1. **Authoritative seal** — summary append, publish into `segments/`, BLAKE3.
-//!    Posts [`LifecycleResult::SealDone`] immediately so writers are not blocked.
-//! 2. **Derived enrichment** — Hydra / Chimera (rebuildable). Runs after
-//!    `SealDone` and **must never** count against seal backpressure.
+//!    Posts [`LifecycleResult::SealDone`] with compact summary metadata.
+//! 2. **Derived enrichment** — Hydra / Chimera (rebuildable). Runs with an I/O
+//!    gap so it never competes without limit against foreground ingestion.
 //!
 //! Derived index checkpoints can also run on the worker so `persist_index_cache`
 //! fsyncs leave the put acknowledgement path.
@@ -22,6 +26,7 @@ use crate::error::StoreError;
 use crate::hydra::{
     hydra_index_path, records_from_segment_bytes, write_hydra_index, HydraBuildOptions,
 };
+use crate::incremental_seal::{IncrementalSealState, SealPublishPlan};
 use crate::index::PrimaryIndex;
 use crate::index_cache::{write_primary_index_frontier, IndexFrontier};
 use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
@@ -29,11 +34,11 @@ use residiuum_format::{
     decode_descriptor_body, scan_forward, ActiveSegment, FrameKind, SafetyLimits, SegmentId,
 };
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Default bound on **authoritative** seals in flight.
 ///
@@ -42,6 +47,11 @@ use std::time::Duration;
 /// rename/publish lag. Keep it high enough that writers are not stalled by
 /// normal 64 MiB rotations; derived enrichment never counts toward it.
 pub const DEFAULT_MAX_PENDING_SEALS: usize = 16;
+
+/// Minimum wall time between derived enrichment jobs (resource isolation).
+///
+/// Enrichment may lag; correctness does not require it to keep up with seals.
+pub const ENRICHMENT_MIN_GAP: Duration = Duration::from_millis(50);
 
 /// Job submitted to the lifecycle worker.
 pub enum LifecycleJob {
@@ -61,6 +71,42 @@ pub enum LifecycleJob {
         paths: StorePaths,
         /// When true, `sync_all` sealed image + parent dir (Durable ack path).
         /// When false, write+rename only (Buffered-only segments; CSQ-ACK-004).
+        require_fsync: bool,
+    },
+    /// Zero-scan publish: append precomputed summary only (no pending re-read).
+    FinalizeSealPlan {
+        /// Segment id.
+        segment_id: [u8; 16],
+        /// Path of the unsealed pending file (durable prefix only).
+        pending_path: PathBuf,
+        /// Destination sealed path under `segments/`.
+        sealed_path: PathBuf,
+        /// Durable prefix length before summary.
+        prefix_len: u64,
+        /// Precomputed summary + content hash + catalog fields.
+        plan: SealPublishPlan,
+        /// When true, `sync_all` after summary append.
+        require_fsync: bool,
+    },
+    /// Zero-scan seal: stream-hash pending prefix (no frame scan), append summary.
+    FinalizeSealMeta {
+        /// Segment identity.
+        ids: SegmentId,
+        /// Segment id (filename stem).
+        segment_id: [u8; 16],
+        /// Durable prefix length on the pending file.
+        prefix_len: u64,
+        /// Frame count before summary.
+        frame_count: u64,
+        /// Writer sequence for the summary frame.
+        writer_sequence: u64,
+        /// Item-event frames in the prefix.
+        item_events: u64,
+        /// Path of the unsealed pending file.
+        pending_path: PathBuf,
+        /// Destination sealed path under `segments/`.
+        sealed_path: PathBuf,
+        /// When true, `sync_all` after summary append.
         require_fsync: bool,
     },
     /// Write a primary-index frontier checkpoint (derived only).
@@ -102,8 +148,8 @@ pub enum LifecycleResult {
         content_hash: [u8; 32],
         /// Sealed byte length.
         size: u64,
-        /// Sealed image bytes (for catalog summary; dropped after apply).
-        sealed_bytes: Vec<u8>,
+        /// Compact catalog summary (no sealed image buffer).
+        summary: crate::segment_catalog::SegmentSummary,
     },
     /// Checkpoint written (or best-effort failed — see `ok`).
     CheckpointDone {
@@ -155,10 +201,9 @@ impl SealPipeline {
         let (enrich_tx, enrich_rx) = mpsc::channel::<LifecycleJob>();
         let (result_tx, result_rx) = mpsc::channel::<LifecycleResult>();
         let result_tx_enrich = result_tx.clone();
-        let enrich_tx_from_seal = enrich_tx.clone();
         let join_seal = thread::Builder::new()
             .name("residiuum-seal-auth".into())
-            .spawn(move || seal_worker_loop(job_rx, enrich_tx_from_seal, result_tx))
+            .spawn(move || seal_worker_loop(job_rx, result_tx))
             .expect("spawn seal authoritative worker");
         let join_enrich = thread::Builder::new()
             .name("residiuum-seal-enrich".into())
@@ -250,11 +295,7 @@ impl Drop for SealPipeline {
     }
 }
 
-fn seal_worker_loop(
-    job_rx: Receiver<LifecycleJob>,
-    enrich_tx: Sender<LifecycleJob>,
-    result_tx: Sender<LifecycleResult>,
-) {
+fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult>) {
     while let Ok(job) = job_rx.recv() {
         match job {
             LifecycleJob::Shutdown => break,
@@ -264,9 +305,10 @@ fn seal_worker_loop(
                 pending_path,
                 sealed_path,
                 limits,
-                paths,
                 require_fsync,
+                ..
             } => {
+                // Writer enqueues EnrichDerived separately (isolation + enable flag).
                 match finalize_seal_authoritative(
                     store_id,
                     segment_id,
@@ -276,42 +318,104 @@ fn seal_worker_loop(
                     require_fsync,
                 ) {
                     Ok((content_hash, size, sealed_bytes)) => {
+                        let summary = crate::segment_catalog::summarize_segment_bytes(
+                            segment_id,
+                            crate::tier::TierClass::Hot,
+                            &sealed_bytes,
+                            content_hash,
+                            size,
+                            limits,
+                        );
+                        drop(sealed_bytes);
                         let _ = result_tx.send(LifecycleResult::SealDone {
                             segment_id,
                             content_hash,
                             size,
-                            sealed_bytes,
+                            summary,
                         });
                         let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
-                        // Hand off derived work — never blocks this lane.
-                        if enrich_tx
-                            .send(LifecycleJob::EnrichDerived {
-                                store_id,
-                                segment_id,
-                                paths,
-                                limits,
-                            })
-                            .is_err()
-                        {
-                            let _ = result_tx.send(LifecycleResult::EnrichDone {
-                                segment_id,
-                                ok: false,
-                                content_hash: [0u8; 32],
-                                size: 0,
-                            });
-                        }
                     }
                     Err(e) => {
                         let _ = result_tx.send(LifecycleResult::SealFailed {
                             segment_id,
                             error: e.to_string(),
                         });
-                        // Balance enrichment_backlog reserved at FinalizeSeal submit.
-                        let _ = result_tx.send(LifecycleResult::EnrichDone {
+                    }
+                }
+            }
+            LifecycleJob::FinalizeSealPlan {
+                segment_id,
+                pending_path,
+                sealed_path,
+                prefix_len,
+                plan,
+                require_fsync,
+            } => {
+                match publish_sealed_from_summary_frame(
+                    &pending_path,
+                    &sealed_path,
+                    prefix_len,
+                    &plan.summary_frame,
+                    require_fsync,
+                ) {
+                    Ok(()) => {
+                        let _ = result_tx.send(LifecycleResult::SealDone {
                             segment_id,
-                            ok: false,
-                            content_hash: [0u8; 32],
-                            size: 0,
+                            content_hash: plan.content_hash,
+                            size: plan.sealed_len,
+                            summary: plan.to_segment_summary(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = result_tx.send(LifecycleResult::SealFailed {
+                            segment_id,
+                            error: e.to_string(),
+                        });
+                    }
+                }
+            }
+            LifecycleJob::FinalizeSealMeta {
+                ids,
+                segment_id,
+                prefix_len,
+                frame_count,
+                writer_sequence,
+                item_events,
+                pending_path,
+                sealed_path,
+                require_fsync,
+            } => {
+                let result = (|| {
+                    let plan = plan_from_pending_prefix(
+                        &pending_path,
+                        ids,
+                        prefix_len,
+                        frame_count,
+                        writer_sequence,
+                        item_events,
+                    )?;
+                    publish_sealed_from_summary_frame(
+                        &pending_path,
+                        &sealed_path,
+                        prefix_len,
+                        &plan.summary_frame,
+                        require_fsync,
+                    )?;
+                    Ok::<_, StoreError>(plan)
+                })();
+                match result {
+                    Ok(plan) => {
+                        let _ = result_tx.send(LifecycleResult::SealDone {
+                            segment_id,
+                            content_hash: plan.content_hash,
+                            size: plan.sealed_len,
+                            summary: plan.to_segment_summary(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = result_tx.send(LifecycleResult::SealFailed {
+                            segment_id,
+                            error: e.to_string(),
                         });
                     }
                 }
@@ -336,10 +440,12 @@ fn seal_worker_loop(
             }
         }
     }
-    let _ = enrich_tx.send(LifecycleJob::Shutdown);
 }
 
 fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult>) {
+    let mut last_enrich = Instant::now()
+        .checked_sub(ENRICHMENT_MIN_GAP)
+        .unwrap_or_else(Instant::now);
     while let Ok(job) = job_rx.recv() {
         match job {
             LifecycleJob::Shutdown => break,
@@ -349,6 +455,11 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                 paths,
                 limits,
             } => {
+                // Resource isolation: never run enrichment back-to-back without a gap.
+                let since = last_enrich.elapsed();
+                if since < ENRICHMENT_MIN_GAP {
+                    thread::sleep(ENRICHMENT_MIN_GAP - since);
+                }
                 let sealed_path = paths.sealed_segment(&segment_id);
                 let (ok, content_hash, size) = match fs::read(&sealed_path) {
                     Ok(bytes) => {
@@ -388,6 +499,7 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                     }
                     Err(_) => (false, [0u8; 32], 0),
                 };
+                last_enrich = Instant::now();
                 let _ = crate::failpoint::hit("store.seal.after_derived_enrichment");
                 let _ = result_tx.send(LifecycleResult::EnrichDone {
                     segment_id,
@@ -398,6 +510,116 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
             }
             // Ignore non-enrichment jobs on this lane.
             _ => {}
+        }
+    }
+}
+
+/// Stream-hash a pending prefix and build a [`SealPublishPlan`] (no frame scan).
+pub fn plan_from_pending_prefix(
+    pending_path: &std::path::Path,
+    ids: SegmentId,
+    prefix_len: u64,
+    frame_count: u64,
+    writer_sequence: u64,
+    item_events: u64,
+) -> Result<SealPublishPlan, StoreError> {
+    let meta = fs::metadata(pending_path)?;
+    if meta.len() < prefix_len {
+        return Err(StoreError::CorruptMeta(
+            "pending prefix shorter than durable_len",
+        ));
+    }
+    let mut file = OpenOptions::new().read(true).open(pending_path)?;
+    let mut state = IncrementalSealState::new();
+    let mut remaining = prefix_len;
+    let mut buf = vec![0u8; 1024 * 1024];
+    while remaining > 0 {
+        let chunk = remaining.min(buf.len() as u64) as usize;
+        file.read_exact(&mut buf[..chunk])?;
+        let off = prefix_len - remaining;
+        state.observe_durable_bytes(off, &buf[..chunk])?;
+        remaining -= chunk as u64;
+    }
+    state.finish_publish_plan(ids, prefix_len, frame_count, writer_sequence, item_events)
+}
+
+/// Append a precomputed summary frame to pending and rename into `segments/`.
+///
+/// Zero-scan path: no frame scan of the 64 MiB prefix.
+pub fn publish_sealed_from_summary_frame(
+    pending_path: &std::path::Path,
+    sealed_path: &std::path::Path,
+    prefix_len: u64,
+    summary_frame: &[u8],
+    require_fsync: bool,
+) -> Result<(), StoreError> {
+    if !pending_path.is_file() {
+        if sealed_path.is_file() {
+            return Ok(());
+        }
+        return Err(StoreError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("pending seal missing: {}", pending_path.display()),
+        )));
+    }
+    let _ = crate::failpoint::hit("store.seal.before_authoritative_rename");
+    {
+        {
+            let f = OpenOptions::new().write(true).open(pending_path)?;
+            f.set_len(prefix_len)?;
+        }
+        let mut f = OpenOptions::new().append(true).open(pending_path)?;
+        f.write_all(summary_frame)?;
+        if require_fsync {
+            f.sync_all()?;
+        }
+    }
+    if let Some(parent) = sealed_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if sealed_path.exists() {
+        let _ = fs::remove_file(sealed_path);
+    }
+    match fs::rename(pending_path, sealed_path) {
+        Ok(()) => {
+            if require_fsync {
+                if let Some(parent) = sealed_path.parent() {
+                    let _ = crate::atomic_file::sync_dir(parent);
+                }
+            }
+            let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+            Ok(())
+        }
+        Err(_) => {
+            // Cross-device: write summary-extended image via full path is not available
+            // without the prefix bytes; fall back to reading pending (recovery-grade).
+            let mut bytes = fs::read(pending_path)?;
+            if bytes.len() as u64 != prefix_len.saturating_add(summary_frame.len() as u64) {
+                // Truncate/re-append if rename failed before summary landed.
+                bytes.truncate(prefix_len as usize);
+                bytes.extend_from_slice(summary_frame);
+            }
+            let tmp = sealed_path.with_extension("residiuum.tmp");
+            {
+                let mut out = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&tmp)?;
+                out.write_all(&bytes)?;
+                if require_fsync {
+                    out.sync_all()?;
+                }
+            }
+            fs::rename(&tmp, sealed_path)?;
+            if require_fsync {
+                if let Some(parent) = sealed_path.parent() {
+                    let _ = crate::atomic_file::sync_dir(parent);
+                }
+            }
+            let _ = fs::remove_file(pending_path);
+            let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+            Ok(())
         }
     }
 }

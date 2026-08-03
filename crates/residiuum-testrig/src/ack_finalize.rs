@@ -72,6 +72,8 @@ pub struct AckFinalizeConfig {
     pub seal_threshold: u64,
     pub min_free_bytes: u64,
     pub json_out: bool,
+    /// When false, skip Hydra/Chimera enqueue during the ack window (control).
+    pub enrichment_enabled: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -209,6 +211,7 @@ pub fn run_ack_finalize_matrix(
             seal_threshold,
             min_free_bytes,
             json_out: false,
+            enrichment_enabled: true,
         };
         match run_ack_finalize(&cfg) {
             Ok(r) => {
@@ -294,6 +297,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
         cfg.seal_threshold
     };
     store.set_seal_threshold(seal_thr);
+    store.set_enrichment_enabled(cfg.enrichment_enabled);
 
     let sink = match cfg.cell {
         MeasureCell::Discard => DiagnosticIoSink::Discard,
@@ -789,6 +793,7 @@ pub fn run_seal_interference_control(
             seal_threshold,
             min_free_bytes,
             json_out: false,
+            enrichment_enabled: true,
         };
         match run_ack_finalize(&cfg) {
             Ok(r) => {
@@ -897,6 +902,7 @@ pub fn run_seal_fast_lane_measure(
         seal_threshold: SEAL_64M,
         min_free_bytes,
         json_out: false,
+        enrichment_enabled: true,
     };
     let r = run_ack_finalize(&cfg)?;
     let floor = CONTROL_ACK_TPS * 0.90;
@@ -965,6 +971,197 @@ pub fn run_seal_fast_lane_measure(
     if !(pass_ack && pass_rotate && pass_exact) {
         return Err(format!(
             "seal fast lane gates failed: ack_pass={pass_ack} rotate_pass={pass_rotate} exact_pass={pass_exact} (ack={:.0} sealed={})",
+            r.acknowledged_write_ops_per_sec, r.sealed_segments_at_last_ack
+        ));
+    }
+    Ok(())
+}
+
+/// Enrichment-off control @ 64 MiB: isolate authoritative finalisation vs enrichment contention.
+///
+/// Interpretation: ack ≈ 83K ⇒ enrichment was the residual; ≈ 50K ⇒ auth finalize dominates.
+pub fn run_enrichment_off_control(
+    work: &Path,
+    evidence_dir: &Path,
+    target_bytes: u64,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    min_free_bytes: u64,
+) -> Result<(), String> {
+    fs::create_dir_all(evidence_dir).map_err(|e| format!("create evidence: {e}"))?;
+    if work.exists() {
+        fs::remove_dir_all(work).map_err(|e| format!("cleanup work: {e}"))?;
+    }
+    const CONTROL_ACK_TPS: f64 = 83_000.0;
+    const PRIOR_FAST_LANE_ACK_TPS: f64 = 50_000.0;
+    const SEAL_64M: u64 = 64 * 1024 * 1024;
+    let cfg = AckFinalizeConfig {
+        work: work.to_path_buf(),
+        cell: MeasureCell::RealFull,
+        target_bytes,
+        payload_size,
+        concurrency,
+        seed,
+        seal_threshold: SEAL_64M,
+        min_free_bytes,
+        json_out: false,
+        enrichment_enabled: false,
+    };
+    let r = run_ack_finalize(&cfg)?;
+    let near_83k = r.acknowledged_write_ops_per_sec >= CONTROL_ACK_TPS * 0.90;
+    let near_50k = (r.acknowledged_write_ops_per_sec - PRIOR_FAST_LANE_ACK_TPS).abs()
+        <= PRIOR_FAST_LANE_ACK_TPS * 0.15;
+    let interpretation = if near_83k {
+        "enrichment_contention_significant"
+    } else if near_50k {
+        "authoritative_finalisation_dominant"
+    } else {
+        "mixed_or_other"
+    };
+    let summary = json!({
+        "kind": "enrichment_off_control",
+        "disclosure": DISCLOSURE,
+        "control_ack_tps": CONTROL_ACK_TPS,
+        "prior_fast_lane_ack_tps": PRIOR_FAST_LANE_ACK_TPS,
+        "enrichment_enabled": false,
+        "recipe": {
+            "cell": "real-full",
+            "seal_threshold": SEAL_64M,
+            "logical_data_bytes": target_bytes,
+            "payload_size": payload_size,
+            "concurrency": concurrency,
+            "seed": seed,
+            "awo": "Disabled",
+        },
+        "result": result_json(&r),
+        "interpretation": interpretation,
+        "near_83k": near_83k,
+        "near_50k": near_50k,
+    });
+    let path = evidence_dir.join("enrichment-off-control.json");
+    fs::write(
+        &path,
+        serde_json::to_string_pretty(&summary).map_err(|e| format!("serialize: {e}"))?,
+    )
+    .map_err(|e| format!("write {}: {e}", path.display()))?;
+    let table = format!(
+        "| Metric | Value |\n|---|---:|\n\
+         | Ack TPS (enrichment off) | {:.0} |\n\
+         | Sealed @ last ack | {} |\n\
+         | Pending seals @ ack | {} |\n\
+         | Enrichment backlog @ ack | {} |\n\
+         | Reopen exact | {} |\n\
+         | Interpretation | {} |\n",
+        r.acknowledged_write_ops_per_sec,
+        r.sealed_segments_at_last_ack,
+        r.pending_seal_inflight_at_last_ack,
+        r.enrichment_backlog_at_last_ack,
+        if r.reopen_exact { "yes" } else { "no" },
+        interpretation,
+    );
+    fs::write(evidence_dir.join("EVIDENCE_TABLE.md"), format!("{table}\n"))
+        .map_err(|e| format!("write table: {e}"))?;
+    println!("{table}");
+    if work.exists() {
+        let _ = fs::remove_dir_all(work);
+    }
+    Ok(())
+}
+
+/// Zero-Scan Authoritative Seal measure: enrichment on (isolated), ≥74.7K ack @ 64 MiB.
+pub fn run_zero_scan_auth_seal_measure(
+    work: &Path,
+    evidence_dir: &Path,
+    target_bytes: u64,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    min_free_bytes: u64,
+) -> Result<(), String> {
+    fs::create_dir_all(evidence_dir).map_err(|e| format!("create evidence: {e}"))?;
+    if work.exists() {
+        fs::remove_dir_all(work).map_err(|e| format!("cleanup work: {e}"))?;
+    }
+    const CONTROL_ACK_TPS: f64 = 83_000.0;
+    const SEAL_64M: u64 = 64 * 1024 * 1024;
+    let cfg = AckFinalizeConfig {
+        work: work.to_path_buf(),
+        cell: MeasureCell::RealFull,
+        target_bytes,
+        payload_size,
+        concurrency,
+        seed,
+        seal_threshold: SEAL_64M,
+        min_free_bytes,
+        json_out: false,
+        enrichment_enabled: true,
+    };
+    let r = run_ack_finalize(&cfg)?;
+    let floor = CONTROL_ACK_TPS * 0.90;
+    let pass_ack = r.acknowledged_write_ops_per_sec >= floor;
+    let pass_rotate = r.sealed_segments_at_last_ack >= 2;
+    let pass_exact = r.reopen_exact;
+    let summary = json!({
+        "kind": "zero_scan_auth_seal_measure",
+        "disclosure": DISCLOSURE,
+        "control_ack_tps": CONTROL_ACK_TPS,
+        "success_floor_ack_tps": floor,
+        "recipe": {
+            "cell": "real-full",
+            "seal_threshold": SEAL_64M,
+            "logical_data_bytes": target_bytes,
+            "payload_size": payload_size,
+            "concurrency": concurrency,
+            "seed": seed,
+            "awo": "Disabled",
+            "enrichment": "enabled_isolated",
+        },
+        "result": result_json(&r),
+        "gates": {
+            "ack_within_10pct_of_83k": pass_ack,
+            "numerous_rotations": pass_rotate,
+            "reopen_exact_coverage_scan": pass_exact,
+            "sealed_segments_at_last_ack": r.sealed_segments_at_last_ack,
+            "pending_seal_inflight_at_last_ack": r.pending_seal_inflight_at_last_ack,
+            "enrichment_backlog_at_last_ack": r.enrichment_backlog_at_last_ack,
+        },
+        "pass": pass_ack && pass_rotate && pass_exact,
+    });
+    let path = evidence_dir.join("zero-scan-auth-seal.json");
+    fs::write(
+        &path,
+        serde_json::to_string_pretty(&summary).map_err(|e| format!("serialize: {e}"))?,
+    )
+    .map_err(|e| format!("write {}: {e}", path.display()))?;
+    let table = format!(
+        "| Metric | Value | Gate |\n|---|---:|---|\n\
+         | Ack TPS | {:.0} | {} (≥ {:.0}) |\n\
+         | Sealed @ last ack | {} | {} (≥ 2) |\n\
+         | Pending seals @ ack | {} | (info) |\n\
+         | Enrichment backlog @ ack | {} | (info) |\n\
+         | Campaign TPS | {:.0} | (info) |\n\
+         | Reopen exact | {} | {} |\n",
+        r.acknowledged_write_ops_per_sec,
+        if pass_ack { "PASS" } else { "FAIL" },
+        floor,
+        r.sealed_segments_at_last_ack,
+        if pass_rotate { "PASS" } else { "FAIL" },
+        r.pending_seal_inflight_at_last_ack,
+        r.enrichment_backlog_at_last_ack,
+        r.campaign_ops_per_sec,
+        if r.reopen_exact { "yes" } else { "no" },
+        if pass_exact { "PASS" } else { "FAIL" },
+    );
+    fs::write(evidence_dir.join("EVIDENCE_TABLE.md"), format!("{table}\n"))
+        .map_err(|e| format!("write table: {e}"))?;
+    println!("{table}");
+    if work.exists() {
+        let _ = fs::remove_dir_all(work);
+    }
+    if !(pass_ack && pass_rotate && pass_exact) {
+        return Err(format!(
+            "zero-scan auth seal gates failed: ack_pass={pass_ack} rotate_pass={pass_rotate} exact_pass={pass_exact} (ack={:.0} sealed={})",
             r.acknowledged_write_ops_per_sec, r.sealed_segments_at_last_ack
         ));
     }

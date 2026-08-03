@@ -38,8 +38,8 @@ use crate::index_cache::{
 use crate::layout::{list_residiuum_files, StorePaths};
 use crate::token_keys::ContinuationKeyring;
 use crate::seal_pipeline::{
-    list_pending_paths, recover_all_pending, LifecycleJob, LifecycleResult, SealPipeline,
-    DEFAULT_MAX_PENDING_SEALS,
+    list_pending_paths, publish_sealed_from_summary_frame, recover_all_pending, LifecycleJob,
+    LifecycleResult, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
 };
 use crate::secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,
@@ -360,6 +360,10 @@ pub struct Store {
     /// When true, auto-seal on threshold uses O(1) rotate + background finalize.
     /// Explicit [`Self::seal_active`] always drains and runs the synchronous path.
     async_lifecycle: bool,
+    /// When false, skip Hydra/Chimera enqueue (measurement control / operator).
+    ///
+    /// Authoritative seal still runs; enrichment backlog may stay empty.
+    enrichment_enabled: bool,
     /// Derived chunk_event_id → physical frame locators (DEF-098).
     ///
     /// Non-authoritative: rebuilt from segment scans and updated on chunk append.
@@ -500,6 +504,8 @@ struct ActiveWriter {
     zeroed_thru: u64,
     /// Background first-touch for product watermark (None = grow / diag put-path zero).
     runway: Option<crate::runway_preparer::RunwayPreparer>,
+    /// Item-event frames observed in this active segment (catalog summary).
+    item_events: u64,
 }
 
 /// Measured segment-tail file I/O at the actual boundary (write/sync).
@@ -596,6 +602,7 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
+            enrichment_enabled: true,
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -692,6 +699,7 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
+            enrichment_enabled: true,
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -825,6 +833,7 @@ impl Store {
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: None,
             async_lifecycle: false,
+            enrichment_enabled: false,
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -1943,6 +1952,7 @@ impl Store {
                     value,
                     event_id,
                 )?;
+                writer.item_events = writer.item_events.saturating_add(1);
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
                 (offset, encoded_frame_len, append_ns)
@@ -2074,6 +2084,7 @@ impl Store {
                     value,
                     event_id,
                 )?;
+                writer.item_events = writer.item_events.saturating_add(1);
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
                 (offset, encoded_frame_len, append_ns)
@@ -2365,6 +2376,7 @@ impl Store {
                     .segment
                     .append_preencoded_frame(&cooked.frame)
                     .map_err(StoreError::from)?;
+                writer.item_events = writer.item_events.saturating_add(1);
                 (offset, cooked.frame.len() as u64)
             };
             crate::failpoint::hit("awo.install.frame.after")?;
@@ -2532,6 +2544,7 @@ impl Store {
                             p.event_id,
                         ) {
                             Ok(offset) => {
+                                writer.item_events = writer.item_events.saturating_add(1);
                                 let append_ns = t_append
                                     .elapsed()
                                     .as_nanos()
@@ -4591,15 +4604,39 @@ impl Store {
             .reopen_active_ns
             .saturating_add(elapsed_ns(t_reopen));
 
-        if let Some(pipe) = self.seal_pipeline.as_mut() {
-            let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
-                store_id: self.store_id,
-                segment_id: sealed_id,
-                paths: self.paths.clone(),
-                limits: self.limits,
-            });
+        if self.enrichment_enabled {
+            if let Some(pipe) = self.seal_pipeline.as_mut() {
+                let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
+                    store_id: self.store_id,
+                    segment_id: sealed_id,
+                    paths: self.paths.clone(),
+                    limits: self.limits,
+                });
+            } else {
+                // No pipeline: keep prior sync derived behavior.
+                let t_cat = std::time::Instant::now();
+                let content_hash = *blake3::hash(bytes).as_bytes();
+                let _ = register_hot_segment_known(
+                    &self.paths,
+                    &mut self.tier_placement,
+                    sealed_id,
+                    content_hash,
+                    size,
+                );
+                let _ = self.persist_tier_state();
+                let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
+                breakdown.catalog_publication_ns = breakdown
+                    .catalog_publication_ns
+                    .saturating_add(elapsed_ns(t_cat));
+                let t_hydra = std::time::Instant::now();
+                let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+                breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
+                let t_chimera = std::time::Instant::now();
+                let _ = self.write_chimera_for_sealed(sealed_id);
+                breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
+            }
         } else {
-            // No pipeline: keep prior sync derived behavior.
+            // Enrichment off: still publish compact catalog from sealed bytes.
             let t_cat = std::time::Instant::now();
             let content_hash = *blake3::hash(bytes).as_bytes();
             let _ = register_hot_segment_known(
@@ -4614,12 +4651,6 @@ impl Store {
             breakdown.catalog_publication_ns = breakdown
                 .catalog_publication_ns
                 .saturating_add(elapsed_ns(t_cat));
-            let t_hydra = std::time::Instant::now();
-            let _ = self.write_hydra_for_sealed(sealed_id, bytes);
-            breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
-            let t_chimera = std::time::Instant::now();
-            let _ = self.write_chimera_for_sealed(sealed_id);
-            breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
         }
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
@@ -4664,6 +4695,19 @@ impl Store {
         self.async_lifecycle = enabled;
     }
 
+    /// Enable or disable derived enrichment (Hydra/Chimera) after seal.
+    ///
+    /// Measurement control: disable during ack TPS to isolate authoritative
+    /// finalisation cost from concurrent enrichment contention.
+    pub fn set_enrichment_enabled(&mut self, enabled: bool) {
+        self.enrichment_enabled = enabled;
+    }
+
+    /// Whether derived enrichment is enqueued after authoritative seal.
+    pub fn enrichment_enabled(&self) -> bool {
+        self.enrichment_enabled
+    }
+
     /// In-flight background seals not yet applied to in-memory catalogs.
     pub fn pending_seal_inflight(&self) -> usize {
         self.seal_pipeline
@@ -4684,6 +4728,7 @@ impl Store {
             if inflight == 0 {
                 // Also apply any residual results.
                 while self.poll_lifecycle()? {}
+                let _ = self.persist_segment_catalog();
                 return Ok(());
             }
             if !self.wait_one_lifecycle()? {
@@ -4692,6 +4737,7 @@ impl Store {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.inflight_seals = 0;
                 }
+                let _ = self.persist_segment_catalog();
                 return Ok(());
             }
         }
@@ -4725,7 +4771,7 @@ impl Store {
                 segment_id,
                 content_hash,
                 size,
-                sealed_bytes,
+                summary,
             } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.inflight_seals = p.inflight_seals.saturating_sub(1);
@@ -4738,13 +4784,7 @@ impl Store {
                     size,
                 );
                 let _ = self.persist_tier_state();
-                let _ = self.note_sealed_segment(
-                    segment_id,
-                    TierClass::Hot,
-                    &sealed_bytes,
-                    content_hash,
-                    size,
-                );
+                let _ = self.note_sealed_summary(summary);
             }
             LifecycleResult::SealFailed { segment_id, error } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
@@ -4812,11 +4852,12 @@ impl Store {
         Ok(())
     }
 
-    /// O(1) foreground rotate: rename active → pending, start new active,
-    /// enqueue authoritative finalize on the seal worker (Seal Fast Lane).
+    /// Zero-scan foreground rotate: flush → rename active→pending → open next
+    /// active → append precomputed summary → sync/rename pending→sealed → apply
+    /// compact catalog metadata (no 64 MiB `Vec` on the writer path).
     ///
-    /// Derived Hydra/Chimera run on a **separate** enrichment worker after
-    /// `SealDone` and never count toward `max_pending_seals` backpressure.
+    /// Derived Hydra/Chimera run on a **separate** enrichment worker with an I/O
+    /// gap and never count toward `max_pending_seals` backpressure.
     fn rotate_active_async(&mut self, shard: usize) -> Result<(), StoreError> {
         let _ = self.poll_lifecycle();
         // Backpressure only for authoritative finalize lag (not enrichment).
@@ -4838,6 +4879,14 @@ impl Store {
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
         Self::flush_writer_coalesce(&mut writer)?;
         let segment_id = writer.segment_id;
+        let require_fsync = flush_mode == DurabilityMode::Durable;
+        let prefix_len = writer.durable_len;
+        let ids = writer.segment.ids();
+        let frame_count = writer.segment.frame_count();
+        let writer_sequence = writer.segment.writer_sequence();
+
+        let item_events = writer.item_events;
+        let zero_scan_meta = prefix_len > 0 && frame_count > 0;
         drop(writer);
 
         let n = self.writer_shards();
@@ -4845,7 +4894,6 @@ impl Store {
         let pending_dir = self.paths.pending_seal_dir();
         fs::create_dir_all(&pending_dir)?;
         let pending_path = self.paths.pending_segment(&segment_id);
-        let require_fsync = flush_mode == DurabilityMode::Durable;
         if pending_path.exists() {
             let sealed = self.paths.sealed_segment(&segment_id);
             let _ = crate::seal_pipeline::finalize_seal(
@@ -4864,26 +4912,77 @@ impl Store {
             let _ = sync_dir(&pending_dir);
         }
 
+        // Open next active immediately (put path unblocked for new frames).
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
 
         if let Some(pipe) = self.seal_pipeline.as_mut() {
             pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
-            pipe.enrichment_backlog = pipe.enrichment_backlog.saturating_add(1);
             let max = pipe
                 .max_pending_seals
                 .max(DEFAULT_MAX_PENDING_SEALS.saturating_mul(n.max(1)));
             pipe.max_pending_seals = max;
-            pipe.submit_seal(LifecycleJob::FinalizeSeal {
-                store_id: self.store_id,
-                segment_id,
-                pending_path: pending_path.clone(),
-                sealed_path: self.paths.sealed_segment(&segment_id),
-                limits: self.limits,
-                paths: self.paths.clone(),
+            if zero_scan_meta {
+                // Metadata seal: stream-hash pending + append summary (no frame scan,
+                // no 64 MiB Vec on the writer path). Sequential read is on the auth
+                // worker only; put path stays O(1) rotate.
+                pipe.submit_seal(LifecycleJob::FinalizeSealMeta {
+                    ids,
+                    segment_id,
+                    prefix_len,
+                    frame_count,
+                    writer_sequence,
+                    item_events,
+                    pending_path: pending_path.clone(),
+                    sealed_path: self.paths.sealed_segment(&segment_id),
+                    require_fsync,
+                })?;
+            } else {
+                pipe.submit_seal(LifecycleJob::FinalizeSeal {
+                    store_id: self.store_id,
+                    segment_id,
+                    pending_path: pending_path.clone(),
+                    sealed_path: self.paths.sealed_segment(&segment_id),
+                    limits: self.limits,
+                    paths: self.paths.clone(),
+                    require_fsync,
+                })?;
+            }
+            if self.enrichment_enabled {
+                let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
+                    store_id: self.store_id,
+                    segment_id,
+                    paths: self.paths.clone(),
+                    limits: self.limits,
+                });
+            }
+        } else if zero_scan_meta {
+            let plan = crate::seal_pipeline::plan_from_pending_prefix(
+                &pending_path,
+                ids,
+                prefix_len,
+                frame_count,
+                writer_sequence,
+                item_events,
+            )?;
+            let sealed_path = self.paths.sealed_segment(&segment_id);
+            publish_sealed_from_summary_frame(
+                &pending_path,
+                &sealed_path,
+                prefix_len,
+                &plan.summary_frame,
                 require_fsync,
-            })?;
+            )?;
+            let _ = register_hot_segment_known(
+                &self.paths,
+                &mut self.tier_placement,
+                segment_id,
+                plan.content_hash,
+                plan.sealed_len,
+            );
+            let _ = self.persist_tier_state();
+            self.note_sealed_summary(plan.to_segment_summary())?;
         } else {
             let sealed = self.paths.sealed_segment(&segment_id);
             let (content_hash, size, sealed_bytes) = crate::seal_pipeline::finalize_seal(
@@ -5387,13 +5486,26 @@ impl Store {
     ) -> Result<(), StoreError> {
         let summary =
             summarize_segment_bytes(segment_id, tier, bytes, content_hash, size, self.limits);
+        self.note_sealed_summary(summary)
+    }
+
+    /// Apply a precomputed sealed-segment summary in constant time (zero-scan).
+    ///
+    /// Memory upsert is immediate; durable catalog write is deferred to
+    /// [`Self::drain_lifecycle`] / close so mid-run rotations do not fsync
+    /// catalogs on the acknowledgement path.
+    fn note_sealed_summary(&mut self, summary: SegmentSummary) -> Result<(), StoreError> {
         upsert_sealed_summary(&mut self.segment_catalog, summary);
-        let _ = write_segment_catalog(
+        Ok(())
+    }
+
+    /// Persist the in-memory segment catalog (best-effort).
+    fn persist_segment_catalog(&self) -> Result<(), StoreError> {
+        write_segment_catalog(
             &segment_catalog_path(&self.paths.catalogs_dir()),
             self.store_id,
             &self.segment_catalog,
-        );
-        Ok(())
+        )
     }
 
     fn load_or_rebuild_catalog(&mut self) -> Result<(), StoreError> {
@@ -5559,6 +5671,7 @@ impl Store {
                 envelope: item_envelope,
                 body: manifest_body.clone(),
             })?;
+            writer.item_events = writer.item_events.saturating_add(1);
             let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
             encoded_frame_len =
                 encoded_frame_len.saturating_add(writer.segment.len().saturating_sub(offset));
@@ -5926,6 +6039,7 @@ impl Store {
                     body,
                     event_id,
                 )?;
+                writer.item_events = writer.item_events.saturating_add(1);
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 // Exact encoded frame length at store boundary (not logical+estimate).
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
@@ -6393,6 +6507,7 @@ impl Store {
                 coalesce_since: None,
                 zeroed_thru: self.product_initial_zeroed_thru(),
                 runway: None,
+                item_events: 0,
             }),
         );
         self.maybe_attach_runway_preparer(shard)?;
@@ -6438,6 +6553,7 @@ impl Store {
                 coalesce_since: None,
                 zeroed_thru: self.product_initial_zeroed_thru(),
                 runway: None,
+                item_events: 0,
             }),
         );
         self.maybe_attach_runway_preparer(shard)?;
@@ -6722,6 +6838,15 @@ impl Store {
         file.write_all(rebuilt.as_bytes())?;
         file.sync_all()?;
 
+        let mut item_events = 0u64;
+        {
+            let report = scan_forward(rebuilt.as_bytes(), self.limits);
+            for (_off, frame) in report.verified_frames() {
+                if frame.header.known_kind() == Some(FrameKind::ItemEvent) {
+                    item_events = item_events.saturating_add(1);
+                }
+            }
+        }
         self.set_active(
             shard,
             Some(ActiveWriter {
@@ -6736,6 +6861,7 @@ impl Store {
                 coalesce_since: None,
                 zeroed_thru: 0,
                 runway: None,
+                item_events,
             }),
         );
         Ok(())
