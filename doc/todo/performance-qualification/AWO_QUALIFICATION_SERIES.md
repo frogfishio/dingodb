@@ -64,6 +64,16 @@ sparse product floors, default-on.
 **Evidence exit (labor → in_review):** named evidence note + tests green + honest
 claim table. Principal `done` only after review.
 
+#### Q1 implementer pull slices (board sub-cards)
+
+| Slice | Pull order | Outcome |
+|-------|------------|---------|
+| **Q1.1** Concurrent harness + ledger | **First code pull** | Drop serial-admit map for AWO batch=1; real multi-thread/process producers; deterministic ledger of logical puts ↔ completions |
+| **Q1.2** Wait-outside-mutex product path | After 1.1 | Heap/store admit path: wait not under physical mutex for full Durable; concurrent admits can pile collection |
+| **Q1.3** Correctness + evidence freeze | After 1.2 | No lost/dup/double-ack; reopen integrity; claim table; optional thr smoke only after green |
+
+Package **AWO-Q1** closes when 1.1–1.3 are principal-`done`.
+
 ---
 
 ### AWO-Q2 — Adaptive decision quality
@@ -117,14 +127,18 @@ with measure evidence — not a re-quote of T11 smoke alone.
 
 ## 3. Board mapping
 
-Feature: `d0ae3c06-ca55-4cea-8282-8ee89278d849` — **AWO-Q — Post-T11 qualification series**
+Feature: `d0ae3c06-ca55-4cea-8282-8ee89278d849` — **AWO-Q — Post-T11 qualification series**  
+Principal approved series 2026-08-03 (“keep going”).
 
-| Card | Id | Stage at plan | Notes |
-|------|-----|---------------|-------|
-| AWO-Q0 series contract | `cfb1a4d3-…` | `todo` | This doc + README/scoreboard link |
-| AWO-Q1 multithreaded admission | `b6e2a138-…` | `todo` | **First implementer code pull** |
-| AWO-Q2 adaptive decision quality | `0a043642-…` | `backlog` | After Q1 |
-| AWO-Q3 sustained qualification | `ce3e8a1c-…` | `backlog` | After Q1 (+Q2 if ranking Adaptive) |
+| Card | Id | Stage | Notes |
+|------|-----|--------|-------|
+| AWO-Q0 series contract | `cfb1a4d3-…` | **`done`** | Principal accept |
+| AWO-Q1 package umbrella | `b6e2a138-…` | `todo` | Close when 1.1–1.3 done |
+| **AWO-Q1.1** harness + ledger | `fab1a943-…` | **`todo`** | **First code pull** |
+| AWO-Q1.2 wait-outside-mutex | `37a4c1a2-…` | `todo` | After 1.1 |
+| AWO-Q1.3 correctness + freeze | `ba312673-…` | `todo` | After 1.2 |
+| AWO-Q2 adaptive decision quality | `0a043642-…` | `backlog` | After Q1 package |
+| AWO-Q3 sustained qualification | `ce3e8a1c-…` | `backlog` | After Q1 |
 | AWO-Q4 sparse latency product bound | `c827e21a-…` | `backlog` | After Q1 |
 
 ---
