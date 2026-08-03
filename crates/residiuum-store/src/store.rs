@@ -391,9 +391,9 @@ pub enum DiagnosticIoSink {
     Discard,
     /// Full path with `write_all` to `/dev/null` (syscall/VFS, no durable media).
     DevNull,
-    /// Spike: coalesce real-file `write_all` into ≥64 KiB chunks (or flush after
+    /// Spike: coalesce real-file `write_all` into ≥100 KiB chunks (or flush after
     /// 250 ms). Diagnostic only — proves whether larger disk writes change thr.
-    Coalesce64k,
+    Coalesce100k,
     /// Seek to `durable_len` only; no `write_all`. Bisects seek tax vs Discard.
     SeekOnly,
     /// Real-file `write_all` **without** seek (cursor assumed at end). Bisects
@@ -456,7 +456,7 @@ struct ActiveWriter {
     /// not require fsync). Any `Durable` put upgrades the segment for the rest of
     /// its life until sealed.
     max_ack_durability: DurabilityMode,
-    /// Coalesce64k spike: pending bytes not yet `write_all`'d (diagnostic only).
+    /// Coalesce100k spike: pending bytes not yet `write_all`'d (diagnostic only).
     coalesce_buf: Vec<u8>,
     coalesce_off: u64,
     coalesce_since: Option<std::time::Instant>,
@@ -928,7 +928,7 @@ impl Store {
             }
             DiagnosticIoSink::Real
             | DiagnosticIoSink::Discard
-            | DiagnosticIoSink::Coalesce64k
+            | DiagnosticIoSink::Coalesce100k
             | DiagnosticIoSink::SeekOnly
             | DiagnosticIoSink::RealNoSeek
             | DiagnosticIoSink::RealOverwrite
@@ -6067,9 +6067,9 @@ impl Store {
                     stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
                     writer.durable_len = base.saturating_add(retained_len as u64);
                 }
-                DiagnosticIoSink::Coalesce64k => {
-                    // Spike: coalesce real-file write_all into ≥64 KiB or 250 ms.
-                    const CAP: usize = 64 * 1024;
+                DiagnosticIoSink::Coalesce100k => {
+                    // Spike: coalesce real-file write_all into ≥100 KiB or 250 ms.
+                    const CAP: usize = 100 * 1024;
                     const MAX_DELAY: std::time::Duration =
                         std::time::Duration::from_millis(250);
                     let pending = writer.segment.as_bytes()[start..].to_vec();
@@ -6100,7 +6100,7 @@ impl Store {
             && matches!(
                 sink,
                 DiagnosticIoSink::Real
-                    | DiagnosticIoSink::Coalesce64k
+                    | DiagnosticIoSink::Coalesce100k
                     | DiagnosticIoSink::RealNoSeek
                     | DiagnosticIoSink::RealOverwrite
                     | DiagnosticIoSink::RealPrealloc
@@ -6110,7 +6110,7 @@ impl Store {
                     | DiagnosticIoSink::RealPreallocWatermark
             )
         {
-            if sink == DiagnosticIoSink::Coalesce64k {
+            if sink == DiagnosticIoSink::Coalesce100k {
                 Self::flush_writer_coalesce(writer)?;
             }
             let t0 = std::time::Instant::now();
@@ -6130,7 +6130,7 @@ impl Store {
         Ok(stats)
     }
 
-    /// Force any Coalesce64k pending bytes to the real file (seal / rotate / Durable).
+    /// Force any Coalesce100k pending bytes to the real file (seal / rotate / Durable).
     fn flush_writer_coalesce(writer: &mut ActiveWriter) -> Result<(), StoreError> {
         if writer.coalesce_buf.is_empty() {
             return Ok(());

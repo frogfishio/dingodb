@@ -14,6 +14,7 @@ mod peer;
 mod phase_bench;
 mod pump;
 mod size;
+mod write_mimic;
 
 use chaos::{run_chaos, ChaosConfig};
 use clap::{Parser, Subcommand};
@@ -32,6 +33,10 @@ use size::{default_min_free_for_target, format_bytes, parse_size};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
+use write_mimic::{
+    run_write_mimic, MimicMode, WriteMimicConfig, PEER_DATA_BYTES_PER_OP, PEER_INDEX_APPEND_BYTES,
+    PEER_INDEX_CHECKPOINT_EVERY, PEER_INDEX_END_BYTES, PEER_OPS,
+};
 
 const ABOUT: &str = "Three-prong Residiuum store stress rig: pump · chaos · monitor";
 
@@ -241,10 +246,11 @@ enum Command {
         #[arg(long, default_value_t = 1)]
         concurrency: usize,
         /// Residiuum diagnostic segment-tail I/O:
-        /// real | discard | devnull | coalesce64k | seekonly | realnoseek |
+        /// real | discard | devnull | coalesce100k | seekonly | realnoseek |
         /// realoverwrite | realprealloc | realpreallocfill |
         /// realpreallocfcntl | realprealloczero | realpreallocwm.
-        /// coalesce64k requires --concurrency > 1 (250 ms floor hangs QD=1).
+        /// coalesce100k requires --concurrency > 1 (250 ms floor hangs QD=1).
+        /// Aliases: coalesce, coalesce64k, 100k, 64k → coalesce100k (≥100 KiB or 250 ms).
         #[arg(long, default_value = "real")]
         diag_io: String,
         /// Residiuum product segment growth: grow (default) | watermark.
@@ -268,6 +274,34 @@ enum Command {
         /// index (publish/post) timing sums in JSON.
         #[arg(long, default_value_t = false)]
         boundary_probe: bool,
+        #[arg(long)]
+        json_out: bool,
+    },
+    /// Experimental: mimic Residiuum peer disk write sizes (data + index shapes).
+    ///
+    /// Not product TPS. Defaults calibrated to Mode A peer (32 768 × ~8440 B data).
+    WriteMimic {
+        /// Work directory (ephemeral; caller should rm -rf after).
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        /// Mode: data | atomic | append
+        #[arg(long, default_value = "data")]
+        mode: String,
+        /// Number of put-shaped ops (default = peer 256 MiB / 8 KiB).
+        #[arg(long, default_value_t = PEER_OPS)]
+        ops: u64,
+        /// Bytes per data `write_all` (default = skip-index measured mean).
+        #[arg(long, default_value_t = PEER_DATA_BYTES_PER_OP)]
+        data_bytes_per_op: usize,
+        /// Bytes per index-append record / atomic growth step.
+        #[arg(long, default_value_t = PEER_INDEX_APPEND_BYTES)]
+        index_append_bytes: usize,
+        /// Atomic index checkpoint every N ops (0 = never mid-run).
+        #[arg(long, default_value_t = PEER_INDEX_CHECKPOINT_EVERY)]
+        index_checkpoint_every: u64,
+        /// Final atomic index rewrite size (atomic mode; peer full−skip delta).
+        #[arg(long, default_value_t = PEER_INDEX_END_BYTES)]
+        index_end_bytes: usize,
         #[arg(long)]
         json_out: bool,
     },
@@ -422,6 +456,27 @@ fn main() -> ExitCode {
             boundary_probe,
             json_out,
         ),
+        Command::WriteMimic {
+            work,
+            mode,
+            ops,
+            data_bytes_per_op,
+            index_append_bytes,
+            index_checkpoint_every,
+            index_end_bytes,
+            json_out,
+        } => MimicMode::parse(&mode).and_then(|mode| {
+            run_write_mimic(&WriteMimicConfig {
+                work,
+                mode,
+                ops,
+                data_bytes_per_op,
+                index_append_bytes,
+                index_checkpoint_every,
+                index_end_bytes,
+                json_out,
+            })
+        }),
     };
 
     match result {

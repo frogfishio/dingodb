@@ -106,8 +106,8 @@ pub enum PeerDiagIo {
     Real,
     Discard,
     DevNull,
-    /// 64 KiB / 250 ms coalesce spike — hammerblast only (QD=1 hangs).
-    Coalesce64k,
+    /// 100 KiB / 250 ms coalesce spike — hammerblast only (QD=1 hangs).
+    Coalesce100k,
     SeekOnly,
     RealNoSeek,
     RealOverwrite,
@@ -124,7 +124,7 @@ impl PeerDiagIo {
             PeerDiagIo::Real => "real",
             PeerDiagIo::Discard => "discard",
             PeerDiagIo::DevNull => "devnull",
-            PeerDiagIo::Coalesce64k => "coalesce64k",
+            PeerDiagIo::Coalesce100k => "coalesce100k",
             PeerDiagIo::SeekOnly => "seekonly",
             PeerDiagIo::RealNoSeek => "realnoseek",
             PeerDiagIo::RealOverwrite => "realoverwrite",
@@ -141,7 +141,7 @@ impl PeerDiagIo {
             PeerDiagIo::Real => DiagnosticIoSink::Real,
             PeerDiagIo::Discard => DiagnosticIoSink::Discard,
             PeerDiagIo::DevNull => DiagnosticIoSink::DevNull,
-            PeerDiagIo::Coalesce64k => DiagnosticIoSink::Coalesce64k,
+            PeerDiagIo::Coalesce100k => DiagnosticIoSink::Coalesce100k,
             PeerDiagIo::SeekOnly => DiagnosticIoSink::SeekOnly,
             PeerDiagIo::RealNoSeek => DiagnosticIoSink::RealNoSeek,
             PeerDiagIo::RealOverwrite => DiagnosticIoSink::RealOverwrite,
@@ -159,7 +159,7 @@ pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
         "real" | "disk" => Ok(PeerDiagIo::Real),
         "discard" | "none" => Ok(PeerDiagIo::Discard),
         "devnull" | "null" => Ok(PeerDiagIo::DevNull),
-        "coalesce" | "coalesce64k" | "64k" => Ok(PeerDiagIo::Coalesce64k),
+        "coalesce" | "coalesce100k" | "100k" | "coalesce64k" | "64k" => Ok(PeerDiagIo::Coalesce100k),
         "seekonly" | "seek" => Ok(PeerDiagIo::SeekOnly),
         "realnoseek" | "noseek" => Ok(PeerDiagIo::RealNoSeek),
         "realoverwrite" | "overwrite" => Ok(PeerDiagIo::RealOverwrite),
@@ -169,7 +169,7 @@ pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
         "realprealloczero" | "prealloczero" | "zero" => Ok(PeerDiagIo::RealPreallocZero),
         "realpreallocwm" | "watermark" | "ahead" => Ok(PeerDiagIo::RealPreallocWatermark),
         other => Err(format!(
-            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill|realpreallocfcntl|realprealloczero|realpreallocwm)"
+            "unknown diag-io `{other}` (real|discard|devnull|coalesce100k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill|realpreallocfcntl|realprealloczero|realpreallocwm)"
         )),
     }
 }
@@ -315,9 +315,9 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
     if cfg.diag_io != PeerDiagIo::Real && cfg.engine != PeerEngine::Residiuum {
         return Err("--diag-io requires --engine residiuum".into());
     }
-    if cfg.diag_io == PeerDiagIo::Coalesce64k && cfg.concurrency <= 1 {
+    if cfg.diag_io == PeerDiagIo::Coalesce100k && cfg.concurrency <= 1 {
         return Err(
-            "--diag-io coalesce64k requires --concurrency > 1 (250ms floor hangs QD=1)"
+            "--diag-io coalesce100k requires --concurrency > 1 (250ms floor hangs QD=1)"
                 .into(),
         );
     }

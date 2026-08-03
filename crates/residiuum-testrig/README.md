@@ -40,7 +40,10 @@ uses `admit_put_batch`. SQLite rejects lease modes.
 Each thread is still per-thread QD=1; overlap comes from N in flight. Use this
 to judge AWO under multi-client load (not embedded sync).
 
-**`--diag-io real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite`**
+**`--diag-io real|discard|devnull|coalesce100k|seekonly|realnoseek|realoverwrite`**
+(aliases: `coalesce`, `coalesce64k`, `100k`, `64k` → ≥100 KiB or 250 ms flush; needs `--concurrency > 1`)
+
+**`write-mimic`** — experimental disk I/O pattern mimic (peer-calibrated data/index sizes). See `doc/todo/performance-qualification/WRITE_MIMIC.md`.
 (Residiuum only, default `real`): diagnostic segment-tail sink. See
 [WRITE_ALL_BISECT.md](../../doc/todo/performance-qualification/WRITE_ALL_BISECT.md)
 and [FIRM_NUMBERS_DIAG_COALESCE.md](../../doc/todo/performance-qualification/FIRM_NUMBERS_DIAG_COALESCE.md).
