@@ -95,6 +95,7 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
             handle.detach(&mut g);
             leg.messages.push("awo_detached=true".into());
         }
+        handle.join_after_detach();
         store = Arc::try_unwrap(store_arc)
             .map_err(|_| DriverError::Msg("store Arc still shared after workload".into()))?
             .into_inner()
@@ -114,6 +115,7 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
             ));
             let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
             h.detach(&mut store);
+            h.join_after_detach();
             leg.messages.push("awo_detached=true".into());
         } else {
             leg.messages.push("awo_path=put_many".into());
@@ -427,6 +429,7 @@ fn run_contract_leg(
     if let Some(h) = awo_handle {
         let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
         h.detach(&mut store);
+        h.join_after_detach();
     }
     stats.messages.push(format!(
         "overhead_leg probe_on={probe_on} tag={tag} awo_mode={} path={} valid={} tput={:.3}",

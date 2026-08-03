@@ -132,20 +132,41 @@ impl IndependentCollector {
         }
     }
 
-    pub fn shutdown(&self) {
+    /// Request collector exit (flag + wake). Does **not** join the worker.
+    ///
+    /// Callers that hold the physical store mutex (detach/Drop) must signal
+    /// under the lock after `flush_all_with_store`, then [`join_worker`] only
+    /// **after** releasing the mutex — otherwise the worker blocks on
+    /// `physical.lock()` while detach waits on join (process hang).
+    pub fn request_shutdown(&self) {
         {
             let mut g = self.inner.lock().expect("collect lock");
             g.shutdown = true;
         }
         self.wake.notify_all();
+    }
+
+    /// Join the collector thread. Safe only when the physical mutex is **not**
+    /// held by the joining thread (see [`request_shutdown`]).
+    pub fn join_worker(&self) {
         if let Some(h) = self.join.lock().expect("join lock").take() {
             let _ = h.join();
         }
-        // Fail any stragglers if physical gone.
+        // Fail any stragglers if physical gone / install abandoned.
         let mut leftover = self.take_batch(true);
         for p in leftover.drain(..) {
             let _ = p.tx.send(Err(AdaptiveWriteError::Draining));
         }
+    }
+
+    /// Signal + join (collector Drop / tests that do not hold the store lock).
+    pub fn shutdown(&self) {
+        self.request_shutdown();
+        self.join_worker();
+    }
+
+    fn is_shutdown(&self) -> bool {
+        self.inner.lock().expect("collect lock").shutdown
     }
 
     fn take_batch(&self, force: bool) -> Vec<PendingPut> {
@@ -237,22 +258,40 @@ impl IndependentCollector {
                 (physical, delay, should_exit)
             };
 
-            // Allow concurrent enqueues to pile up during the collection window.
+            // Collection window: interruptible wait so detach shutdown is not
+            // stuck behind a full `thread::sleep(delay)`.
             if !delay.is_zero() && !should_exit {
-                thread::sleep(delay);
+                let g = self.inner.lock().expect("collect lock");
+                if !g.shutdown {
+                    let (_g, _) = self
+                        .wake
+                        .wait_timeout(g, delay)
+                        .expect("collect delay wait");
+                }
+                if self.is_shutdown() && self.pending_len() == 0 {
+                    break;
+                }
             }
 
             let Some(physical) = physical else {
                 continue;
             };
-            let mut store = match physical.lock() {
+            // try_lock: detach may hold the mutex while requesting shutdown after
+            // an under-lock flush — blocking here deadlocks join_worker.
+            let mut store = match physical.try_lock() {
                 Ok(g) => g,
-                Err(_) => continue,
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    if self.is_shutdown() {
+                        break;
+                    }
+                    thread::yield_now();
+                    continue;
+                }
+                Err(std::sync::TryLockError::Poisoned(_)) => continue,
             };
             // Force flush: after delay even a single item installs.
             self.flush_all_with_store(&mut store);
-            if should_exit {
-                // one more pass
+            if should_exit || self.is_shutdown() {
                 self.flush_all_with_store(&mut store);
                 break;
             }

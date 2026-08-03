@@ -73,11 +73,14 @@ impl StoreHost {
     ) -> Result<(), StoreError> {
         // Detach prior handle if any.
         if let Some(prev) = self.adaptive.take() {
-            let mut guard = self
-                .physical
-                .lock()
-                .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?;
-            prev.detach(&mut guard);
+            {
+                let mut guard = self
+                    .physical
+                    .lock()
+                    .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?;
+                prev.detach(&mut guard);
+            }
+            prev.join_after_detach();
         }
         policy.validate().map_err(|e| {
             StoreError::Io(std::io::Error::new(
@@ -168,11 +171,14 @@ impl StoreHost {
     /// Detach adaptive runtime and clear lease (AWO-7 reset). Host remains usable natural.
     pub fn reset_adaptive_write(&mut self) -> Result<(), StoreError> {
         if let Some(prev) = self.adaptive.take() {
-            let mut guard = self
-                .physical
-                .lock()
-                .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?;
-            prev.detach(&mut guard);
+            {
+                let mut guard = self
+                    .physical
+                    .lock()
+                    .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?;
+                prev.detach(&mut guard);
+            }
+            prev.join_after_detach();
         }
         Ok(())
     }
@@ -186,9 +192,12 @@ impl StoreHost {
 impl Drop for StoreHost {
     fn drop(&mut self) {
         if let Some(h) = self.adaptive.take() {
-            if let Ok(mut guard) = self.physical.lock() {
-                h.detach(&mut guard);
+            {
+                if let Ok(mut guard) = self.physical.lock() {
+                    h.detach(&mut guard);
+                }
             }
+            h.join_after_detach();
         }
     }
 }

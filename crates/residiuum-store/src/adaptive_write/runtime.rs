@@ -213,6 +213,8 @@ struct RuntimeInner {
     pipeline: Option<Arc<PipelineCoordinator>>,
     /// Independent-write collector (Static/Adaptive when lease active).
     collector: Option<Arc<IndependentCollector>>,
+    /// Collector signaled under store lock; join only after mutex release.
+    collector_join: Option<Arc<IndependentCollector>>,
     /// Adaptive-mode service estimator (AWO-5).
     estimator: Option<ServiceEstimator>,
     /// Adaptive-mode scale controller (AWO-5).
@@ -252,6 +254,7 @@ impl AdaptiveWriteHandle {
                     cooker: None,
                     pipeline: None,
                     collector: None,
+                    collector_join: None,
                     estimator: None,
                     scale: None,
                     clock: InstantClock::new(),
@@ -312,6 +315,7 @@ impl AdaptiveWriteHandle {
                     cooker: Some(cooker),
                     pipeline: Some(pipeline),
                     collector: Some(collector),
+                    collector_join: None,
                     estimator: if adaptive { Some(estimator) } else { None },
                     scale: if adaptive { Some(scale) } else { None },
                     clock: InstantClock::new(),
@@ -880,7 +884,12 @@ impl AdaptiveWriteHandle {
         Err(AdaptiveWriteError::AdmissionDeadlineExceeded)
     }
 
-    /// Release lease on the store and shut down cookers (drop path).
+    /// Release lease on the store and shut down cookers (drop / reset path).
+    ///
+    /// Flushes the independent collector under the caller-held store lock, then
+    /// **signals** collector shutdown without joining. Call
+    /// [`Self::join_after_detach`] **after** releasing the physical mutex —
+    /// joining under the lock deadlocks the collector on `physical.lock()`.
     pub fn detach(&self, store: &mut Store) {
         let collector = {
             let mut g = self.runtime.inner.lock().expect("awo runtime");
@@ -898,8 +907,27 @@ impl AdaptiveWriteHandle {
         };
         if let Some(c) = collector {
             c.flush_all_with_store(store);
-            c.shutdown();
+            c.request_shutdown();
+            let mut g = self.runtime.inner.lock().expect("awo runtime");
+            debug_assert!(
+                g.collector_join.is_none(),
+                "join_after_detach must run before a second detach"
+            );
+            g.collector_join = Some(c);
         }
         store.set_awo_lease_active(false);
+    }
+
+    /// Join the collector thread signaled by [`Self::detach`].
+    ///
+    /// Must not be called while the joining thread holds the physical store mutex.
+    pub fn join_after_detach(&self) {
+        let collector = {
+            let mut g = self.runtime.inner.lock().expect("awo runtime");
+            g.collector_join.take()
+        };
+        if let Some(c) = collector {
+            c.join_worker();
+        }
     }
 }

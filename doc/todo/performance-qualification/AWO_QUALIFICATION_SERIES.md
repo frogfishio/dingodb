@@ -1,8 +1,8 @@
 # AWO-Q — Post-T11 qualification series
 
-Status: **AWO-Q1 principal `done` (correctness scope) — next pull AWO-Q2**  
+Status: **AWO-Q1 principal `done`; AWO-Q2 labor `in_review` (decision quality + detach hang fix)**  
 Entry: T11 evidence freeze principal `done` (`b7986427`)  
-Date: 2026-08-03 (Q1 package principal closed; Q2 promoted to `todo`)  
+Date: 2026-08-03 (Q2 labor evidence `AWO_Q2_DECISION_QUALITY.md`)  
 
 ## 0. Entry honesty
 
@@ -137,7 +137,7 @@ Principal approved series 2026-08-03 (“keep going”).
 | **AWO-Q1.1** harness + ledger | `fab1a943-…` | **`done`** | Principal accept |
 | AWO-Q1.2 wait-outside-mutex | `37a4c1a2-…` | **`done`** | Principal accept |
 | AWO-Q1.3 correctness + freeze | `ba312673-…` | **`done`** | Principal accept; concurrent rotate + exact scan set |
-| **AWO-Q2** adaptive decision quality | `0a043642-…` | **`todo`** | **Next pull** — Adaptive load-curve / ceiling vs Static |
+| **AWO-Q2** adaptive decision quality | `0a043642-…` | **`in_review`** | Labor evidence `AWO_Q2_DECISION_QUALITY.md`; detach/join hang fix |
 | AWO-Q3 sustained qualification | `ce3e8a1c-…` | `backlog` | After Q2 preferred |
 | AWO-Q4 sparse latency product bound | `c827e21a-…` | `backlog` | After Q1 path real; Q3 if floors |
 
