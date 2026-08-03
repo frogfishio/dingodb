@@ -7,6 +7,7 @@
 //! Orchestrator: **run** = pump → baseline monitor → chaos → post-chaos monitor.
 //! Scale ladder: pass at 1 GiB, then 10 GiB, then larger.
 
+mod ack_finalize;
 mod chaos;
 mod manifest;
 mod monitor;
@@ -16,6 +17,9 @@ mod pump;
 mod size;
 mod write_mimic;
 
+use ack_finalize::{
+    run_ack_finalize, run_ack_finalize_matrix, AckFinalizeConfig, MeasureCell,
+};
 use chaos::{run_chaos, ChaosConfig};
 use clap::{Parser, Subcommand};
 use manifest::{
@@ -277,6 +281,54 @@ enum Command {
         #[arg(long)]
         json_out: bool,
     },
+    /// Ack/finalisation split (NEXT_MEASUREMENT.md). Measurement only.
+    ///
+    /// Emits acknowledged_write_ops_per_sec vs lifecycle_ops_per_sec.
+    /// Fail-closed on seal_active and reopen ledger check. AWO always disabled.
+    AckFinalize {
+        /// Work directory (ephemeral; cleaned by --matrix after evidence).
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        /// Cell: real-full | skip-index | discard | raw-mimic
+        #[arg(long)]
+        cell: String,
+        /// Logical payload budget (default 256M).
+        #[arg(long, default_value = "256M")]
+        target_bytes: String,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        #[arg(long, default_value_t = 8)]
+        concurrency: usize,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+        #[arg(long, default_value = "64M")]
+        seal_threshold: String,
+        #[arg(long, default_value = "auto")]
+        min_free: String,
+        #[arg(long)]
+        json_out: bool,
+    },
+    /// Run the four-cell NEXT_MEASUREMENT matrix; write evidence table.
+    AckFinalizeMatrix {
+        /// Parent work directory (per-cell subdirs created then removed).
+        #[arg(long, short = 'w')]
+        work: PathBuf,
+        /// Directory for matrix.json + EVIDENCE_TABLE.md + per-cell JSON.
+        #[arg(long)]
+        evidence: PathBuf,
+        #[arg(long, default_value = "256M")]
+        target_bytes: String,
+        #[arg(long, default_value_t = 8192)]
+        payload_size: usize,
+        #[arg(long, default_value_t = 8)]
+        concurrency: usize,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+        #[arg(long, default_value = "64M")]
+        seal_threshold: String,
+        #[arg(long, default_value = "auto")]
+        min_free: String,
+    },
     /// Experimental: mimic Residiuum peer disk write sizes (data + index shapes).
     ///
     /// Not product TPS. Defaults calibrated to Mode A peer (32 768 × ~8440 B data).
@@ -456,6 +508,46 @@ fn main() -> ExitCode {
             boundary_probe,
             json_out,
         ),
+        Command::AckFinalize {
+            work,
+            cell,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            seal_threshold,
+            min_free,
+            json_out,
+        } => cmd_ack_finalize(
+            work,
+            cell,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            seal_threshold,
+            min_free,
+            json_out,
+        ),
+        Command::AckFinalizeMatrix {
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            seal_threshold,
+            min_free,
+        } => cmd_ack_finalize_matrix(
+            work,
+            evidence,
+            target_bytes,
+            payload_size,
+            concurrency,
+            seed,
+            seal_threshold,
+            min_free,
+        ),
         Command::WriteMimic {
             work,
             mode,
@@ -504,6 +596,61 @@ fn resolve_min_free(spec: &str, target_bytes: u64) -> Result<u64, String> {
         return Ok(default_min_free_for_target(target_bytes));
     }
     parse_size(s)
+}
+
+fn cmd_ack_finalize(
+    work: PathBuf,
+    cell: String,
+    target_bytes: String,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    seal_threshold: String,
+    min_free: String,
+    json_out: bool,
+) -> Result<(), String> {
+    let target = parse_size(&target_bytes)?;
+    let seed = resolve_seed(seed);
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
+    let seal = parse_size(&seal_threshold)?;
+    run_ack_finalize(&AckFinalizeConfig {
+        work,
+        cell: MeasureCell::parse(&cell)?,
+        target_bytes: target,
+        payload_size,
+        concurrency,
+        seed,
+        seal_threshold: seal,
+        min_free_bytes,
+        json_out,
+    })
+    .map(|_| ())
+}
+
+fn cmd_ack_finalize_matrix(
+    work: PathBuf,
+    evidence: PathBuf,
+    target_bytes: String,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    seal_threshold: String,
+    min_free: String,
+) -> Result<(), String> {
+    let target = parse_size(&target_bytes)?;
+    let seed = resolve_seed(seed);
+    let min_free_bytes = resolve_min_free(&min_free, target)?;
+    let seal = parse_size(&seal_threshold)?;
+    run_ack_finalize_matrix(
+        &work,
+        &evidence,
+        target,
+        payload_size,
+        concurrency,
+        seed,
+        seal,
+        min_free_bytes,
+    )
 }
 
 fn cmd_peer_pump(

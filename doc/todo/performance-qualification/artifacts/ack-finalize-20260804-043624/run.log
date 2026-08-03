@@ -1,0 +1,12 @@
+ack-finalize real-full: keys=32768 ack_tps=22595 seal_ms=1210.9 lifecycle_tps=7902 reopen_exact=true
+ack-finalize skip-index: keys=32768 ack_tps=26978 seal_ms=1089.3 lifecycle_tps=8761 reopen_exact=true
+ack-finalize discard: keys=32768 ack_tps=104188 seal_ms=22.1 lifecycle_tps=84489 reopen_exact=false
+ack-finalize raw-mimic: keys=32768 ack_tps=222839 seal_ms=7.4 lifecycle_tps=211973 reopen_exact=true
+| Cell | Ack TPS | Ack time | Seal time | Lifecycle TPS | Reopen exact |
+|---|---:|---:|---:|---:|---|
+| Real full | 22595 | 1.45 s | 1.21 s | 7902 | yes |
+| Real, indexing disabled | 26978 | 1.21 s | 1.09 s | 8761 | yes |
+| Discard | 104188 | 0.31 s | 0.02 s | 84489 | no |
+| Raw mimic | 222839 | 0.15 s | 0.01 s | 211973 | yes |
+
+ack-finalize matrix: wrote doc/todo/performance-qualification/artifacts/ack-finalize-20260804-043624/matrix.json and doc/todo/performance-qualification/artifacts/ack-finalize-20260804-043624/EVIDENCE_TABLE.md
