@@ -1,9 +1,11 @@
 //! Incremental seal helpers for zero-scan / zero-read publish plans.
 //!
-//! Used by stream-hash finalize (`plan_from_pending_prefix`) and by experimental
-//! zero-read paths (`FinalizeSealPlan` / resident prefix). Write-tail rolling
-//! hash and resident-prefix move were measured below the ≥74.7K ack gate; the
-//! hot path uses stream-hash meta publish (see zero-read-auth-seal archive).
+//! **Authority:** the sealed image is `{durable prefix ‖ segment-summary frame}`.
+//! Whole-segment BLAKE3 is **derived** (tier placement / segment catalog only);
+//! frame CRC + body hashes remain the authoritative corruption detectors.
+//! Hot path: [`meta_publish_plan`] — no pending read, hash pending until enrichment.
+//! Stream-hash / resident-prefix / write-tail paths remain for recovery experiments
+//! (see zero-read-auth-seal / paired-median archives).
 
 use crate::error::StoreError;
 use crate::segment_catalog::SegmentSummary;
@@ -13,12 +15,19 @@ use residiuum_format::{
     EMPTY_ENVELOPE, SUMMARY_BODY_LEN, WIRE_MAJOR, WIRE_MINOR,
 };
 
+/// Sentinel: whole-segment BLAKE3 not yet computed (derived enrichment pending).
+///
+/// Authoritative publication does not require a content hash; `[0; 32]` means
+/// "unknown/pending", not "hash of empty". Enrichment fills the real digest.
+pub const CONTENT_HASH_PENDING: [u8; 32] = [0u8; 32];
+
 /// Compact publish plan produced at rotation (no sealed image `Vec`).
 #[derive(Debug, Clone)]
 pub struct SealPublishPlan {
     /// Encoded segment-summary frame to append (small; not the segment body).
     pub summary_frame: Vec<u8>,
-    /// BLAKE3-256 of the full sealed file (prefix ‖ summary).
+    /// BLAKE3-256 of the full sealed file (prefix ‖ summary), or
+    /// [`CONTENT_HASH_PENDING`] until enrichment.
     pub content_hash: [u8; 32],
     /// Total sealed byte length including summary.
     pub sealed_len: u64,
@@ -44,6 +53,97 @@ impl SealPublishPlan {
             available: true,
         }
     }
+
+    /// Whether whole-segment BLAKE3 is still pending (derived).
+    pub fn hash_pending(&self) -> bool {
+        self.content_hash == CONTENT_HASH_PENDING
+    }
+}
+
+/// Authoritative meta publish plan: summary footer only, **no** pending read/hash.
+///
+/// `content_hash` is [`CONTENT_HASH_PENDING`]; enrichment computes BLAKE3 later.
+pub fn meta_publish_plan(
+    ids: SegmentId,
+    prefix_len: u64,
+    frame_count: u64,
+    writer_sequence: u64,
+    item_events: u64,
+) -> Result<SealPublishPlan, StoreError> {
+    build_publish_plan(
+        ids,
+        prefix_len,
+        frame_count,
+        writer_sequence,
+        item_events,
+        CONTENT_HASH_PENDING,
+        None,
+    )
+}
+
+fn build_publish_plan(
+    ids: SegmentId,
+    prefix_len: u64,
+    frame_count: u64,
+    writer_sequence: u64,
+    item_events: u64,
+    content_hash: [u8; 32],
+    mut hasher: Option<blake3::Hasher>,
+) -> Result<SealPublishPlan, StoreError> {
+    if frame_count == 0 {
+        return Err(StoreError::CorruptMeta(
+            "seal publish: missing descriptor frame",
+        ));
+    }
+    let frames_after = frame_count.saturating_add(1);
+    let body_len = SUMMARY_BODY_LEN as u64;
+    let env_len = EMPTY_ENVELOPE.len() as u32;
+    let summary_frame_len = 120u64
+        .saturating_add(u64::from(env_len))
+        .saturating_add(body_len);
+    let sealed_len = prefix_len.saturating_add(summary_frame_len);
+    let body = encode_summary_body(&ids, sealed_len, frames_after);
+    let mut event_id = [0u8; 16];
+    event_id.copy_from_slice(&ids.segment_id);
+    event_id[15] ^= 0xff;
+    let header = FrameHeader {
+        wire_major: WIRE_MAJOR,
+        wire_minor: WIRE_MINOR,
+        frame_kind: FrameKind::SegmentSummary.as_u8(),
+        flags: FrameFlags::default(),
+        envelope_len: env_len,
+        body_len,
+        logical_len: body_len,
+        writer_sequence,
+        event_id,
+    };
+    let summary_frame = encode_frame(&FrameParts {
+        header,
+        envelope: EMPTY_ENVELOPE.to_vec(),
+        body,
+    })
+    .map_err(|_| StoreError::CorruptMeta("seal publish: encode summary"))?;
+    if summary_frame.len() as u64 != summary_frame_len {
+        return Err(StoreError::CorruptMeta(
+            "seal publish: summary frame length mismatch",
+        ));
+    }
+
+    let content_hash = if let Some(mut h) = hasher.take() {
+        h.update(&summary_frame);
+        *h.finalize().as_bytes()
+    } else {
+        content_hash
+    };
+
+    Ok(SealPublishPlan {
+        summary_frame,
+        content_hash,
+        sealed_len,
+        frame_count: frames_after,
+        item_events,
+        segment_id: ids.segment_id,
+    })
 }
 
 /// Rolling seal hash state (auth worker / tests).
@@ -81,8 +181,11 @@ impl IncrementalSealState {
     }
 
     /// Build summary frame + content hash from incremental state (no segment scan).
+    ///
+    /// Used by experimental stream-hash / resident paths. Hot path prefers
+    /// [`meta_publish_plan`] (hash deferred to enrichment).
     pub fn finish_publish_plan(
-        mut self,
+        self,
         ids: SegmentId,
         prefix_len: u64,
         frame_count: u64,
@@ -94,55 +197,15 @@ impl IncrementalSealState {
                 "incremental seal: prefix_len != hashed_thru",
             ));
         }
-        if frame_count == 0 {
-            return Err(StoreError::CorruptMeta(
-                "incremental seal: missing descriptor frame",
-            ));
-        }
-        let frames_after = frame_count.saturating_add(1);
-        let body_len = SUMMARY_BODY_LEN as u64;
-        let env_len = EMPTY_ENVELOPE.len() as u32;
-        let summary_frame_len = 120u64
-            .saturating_add(u64::from(env_len))
-            .saturating_add(body_len);
-        let sealed_len = prefix_len.saturating_add(summary_frame_len);
-        let body = encode_summary_body(&ids, sealed_len, frames_after);
-        let mut event_id = [0u8; 16];
-        event_id.copy_from_slice(&ids.segment_id);
-        event_id[15] ^= 0xff;
-        let header = FrameHeader {
-            wire_major: WIRE_MAJOR,
-            wire_minor: WIRE_MINOR,
-            frame_kind: FrameKind::SegmentSummary.as_u8(),
-            flags: FrameFlags::default(),
-            envelope_len: env_len,
-            body_len,
-            logical_len: body_len,
+        build_publish_plan(
+            ids,
+            prefix_len,
+            frame_count,
             writer_sequence,
-            event_id,
-        };
-        let summary_frame = encode_frame(&FrameParts {
-            header,
-            envelope: EMPTY_ENVELOPE.to_vec(),
-            body,
-        })
-        .map_err(|_| StoreError::CorruptMeta("incremental seal: encode summary"))?;
-        if summary_frame.len() as u64 != summary_frame_len {
-            return Err(StoreError::CorruptMeta(
-                "incremental seal: summary frame length mismatch",
-            ));
-        }
-
-        self.hasher.update(&summary_frame);
-        let content_hash = *self.hasher.finalize().as_bytes();
-        Ok(SealPublishPlan {
-            summary_frame,
-            content_hash,
-            sealed_len,
-            frame_count: frames_after,
             item_events,
-            segment_id: ids.segment_id,
-        })
+            CONTENT_HASH_PENDING,
+            Some(self.hasher),
+        )
     }
 }
 
@@ -189,5 +252,34 @@ mod tests {
             .unwrap();
         let sealed2 = active2.seal().unwrap().into_bytes();
         assert_eq!(sealed2, sealed);
+    }
+
+    #[test]
+    fn meta_publish_plan_defers_content_hash() {
+        let ids = SegmentId::new([1u8; 16], [2u8; 16]);
+        let mut active = ActiveSegment::create(ids, SafetyLimits::default(), 1).unwrap();
+        active
+            .append(
+                FrameKind::ItemEvent,
+                EMPTY_ENVELOPE,
+                b"hello",
+                [9u8; 16],
+            )
+            .unwrap();
+        let prefix_len = active.as_bytes().len() as u64;
+        let plan = meta_publish_plan(
+            ids,
+            prefix_len,
+            active.frame_count(),
+            active.writer_sequence(),
+            1,
+        )
+        .unwrap();
+        assert!(plan.hash_pending());
+        assert_eq!(plan.content_hash, CONTENT_HASH_PENDING);
+        assert_eq!(
+            plan.sealed_len,
+            prefix_len + plan.summary_frame.len() as u64
+        );
     }
 }

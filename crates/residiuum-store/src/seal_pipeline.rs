@@ -26,7 +26,7 @@ use crate::error::StoreError;
 use crate::hydra::{
     hydra_index_path, records_from_segment_bytes, write_hydra_index, HydraBuildOptions,
 };
-use crate::incremental_seal::{IncrementalSealState, SealPublishPlan};
+use crate::incremental_seal::{meta_publish_plan, IncrementalSealState, SealPublishPlan};
 use crate::index::PrimaryIndex;
 use crate::index_cache::{write_primary_index_frontier, IndexFrontier};
 use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
@@ -88,7 +88,9 @@ pub enum LifecycleJob {
         /// When true, `sync_all` after summary append.
         require_fsync: bool,
     },
-    /// Zero-scan seal: stream-hash pending prefix (no frame scan), append summary.
+    /// Meta seal: append precomputed summary (no pending read / no BLAKE3).
+    ///
+    /// Whole-segment hash is derived and filled by [`LifecycleJob::EnrichDerived`].
     FinalizeSealMeta {
         /// Segment identity.
         ids: SegmentId,
@@ -162,10 +164,14 @@ pub enum LifecycleJob {
 #[derive(Debug)]
 pub enum LifecycleResult {
     /// Seal finalized; sealed file is durable.
+    ///
+    /// Authoritative publication is `{segment_id, size}` (+ summary metadata).
+    /// `content_hash` may be [`crate::incremental_seal::CONTENT_HASH_PENDING`]
+    /// until enrichment fills the derived digest.
     SealDone {
         /// Segment id.
         segment_id: [u8; 16],
-        /// BLAKE3 of sealed image.
+        /// BLAKE3 of sealed image, or pending zeros (derived).
         content_hash: [u8; 32],
         /// Sealed byte length.
         size: u64,
@@ -406,9 +412,10 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 sealed_path,
                 require_fsync,
             } => {
+                // Authoritative: summary footer + rename only. Whole-segment
+                // BLAKE3 is derived — deferred to EnrichDerived (no pending read).
                 let result = (|| {
-                    let plan = plan_from_pending_prefix(
-                        &pending_path,
+                    let plan = meta_publish_plan(
                         ids,
                         prefix_len,
                         frame_count,
@@ -585,6 +592,10 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
 }
 
 /// Stream-hash a pending prefix and build a [`SealPublishPlan`] (no frame scan).
+///
+/// Retained for diagnostics / recovery experiments. Hot path uses
+/// [`meta_publish_plan`] (hash deferred to enrichment).
+#[allow(dead_code)]
 pub fn plan_from_pending_prefix(
     pending_path: &std::path::Path,
     ids: SegmentId,

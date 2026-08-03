@@ -1,0 +1,180 @@
+{
+  "kind": "paired_median_gate",
+  "disclosure": "Diagnostic only \u2014 paired median Seal Fast Lane gate. Enrichment disabled. Not a published SLO.",
+  "recipe": {
+    "cell": "real-full",
+    "logical_data_bytes": 268435456,
+    "payload_size": 8192,
+    "concurrency": 8,
+    "seed": 42,
+    "enrichment_enabled": false,
+    "stream64_seal_threshold": 67108864,
+    "control_seal_threshold": 536870912,
+    "reps_each": 6,
+    "alternate_order": "control then stream64",
+    "binary": "/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/release/residiuum-testrig",
+    "binary_sha256": "5bf0fe17614f9bd213a8b11670f9180e02fc89a220e2e77c0189858ce926fcae"
+  },
+  "control": {
+    "n": 6,
+    "values": [
+      65851.74264303771,
+      66757.84099242245,
+      72313.37192157703,
+      75910.01438602262,
+      80503.94407660663,
+      80921.49610520725
+    ],
+    "min": 65851.74264303771,
+    "max": 80921.49610520725,
+    "median": 74111.69315379983,
+    "mean": 73709.73502081228
+  },
+  "stream64": {
+    "n": 6,
+    "values": [
+      58472.95869773412,
+      60871.32867221463,
+      63282.18388469709,
+      65538.09721911102,
+      65709.4180620291,
+      66032.69236522506
+    ],
+    "min": 58472.95869773412,
+    "max": 66032.69236522506,
+    "median": 64410.140551904056,
+    "mean": 63317.779816835166
+  },
+  "ratio_median_stream64_over_control": 0.8690955207059878,
+  "success_floor_ratio": 0.9,
+  "gates": {
+    "median_ratio_ge_0_90": false,
+    "stream64_multi_rotate_all_reps": true,
+    "stream64_reopen_exact_all_reps": true,
+    "control_reopen_exact_all_reps": true
+  },
+  "pass": false,
+  "note": "Frozen 74.7K floor was 0.90*83K (stale). This package compares medians of contemporary paired cells.",
+  "runs": [
+    {
+      "kind": "control",
+      "rep": 1,
+      "ack_tps": 65851.74264303771,
+      "sealed_segments_at_last_ack": 0,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 12738.754670034246,
+      "seal_threshold": 536870912
+    },
+    {
+      "kind": "control",
+      "rep": 2,
+      "ack_tps": 80503.94407660663,
+      "sealed_segments_at_last_ack": 0,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 13286.388434790528,
+      "seal_threshold": 536870912
+    },
+    {
+      "kind": "control",
+      "rep": 3,
+      "ack_tps": 80921.49610520725,
+      "sealed_segments_at_last_ack": 0,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 13507.762796433446,
+      "seal_threshold": 536870912
+    },
+    {
+      "kind": "control",
+      "rep": 4,
+      "ack_tps": 75910.01438602262,
+      "sealed_segments_at_last_ack": 0,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 13358.128881751669,
+      "seal_threshold": 536870912
+    },
+    {
+      "kind": "control",
+      "rep": 5,
+      "ack_tps": 66757.84099242245,
+      "sealed_segments_at_last_ack": 0,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 12931.784022363305,
+      "seal_threshold": 536870912
+    },
+    {
+      "kind": "control",
+      "rep": 6,
+      "ack_tps": 72313.37192157703,
+      "sealed_segments_at_last_ack": 0,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 13003.146661889217,
+      "seal_threshold": 536870912
+    },
+    {
+      "kind": "stream64",
+      "rep": 1,
+      "ack_tps": 66032.69236522506,
+      "sealed_segments_at_last_ack": 4,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 16128.750753403712,
+      "seal_threshold": 67108864
+    },
+    {
+      "kind": "stream64",
+      "rep": 2,
+      "ack_tps": 65709.4180620291,
+      "sealed_segments_at_last_ack": 4,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 16119.592000788833,
+      "seal_threshold": 67108864
+    },
+    {
+      "kind": "stream64",
+      "rep": 3,
+      "ack_tps": 60871.32867221463,
+      "sealed_segments_at_last_ack": 4,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 15820.48679035316,
+      "seal_threshold": 67108864
+    },
+    {
+      "kind": "stream64",
+      "rep": 4,
+      "ack_tps": 65538.09721911102,
+      "sealed_segments_at_last_ack": 4,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 15985.794514072042,
+      "seal_threshold": 67108864
+    },
+    {
+      "kind": "stream64",
+      "rep": 5,
+      "ack_tps": 58472.95869773412,
+      "sealed_segments_at_last_ack": 4,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 15733.460430193372,
+      "seal_threshold": 67108864
+    },
+    {
+      "kind": "stream64",
+      "rep": 6,
+      "ack_tps": 63282.18388469709,
+      "sealed_segments_at_last_ack": 4,
+      "reopen_exact": true,
+      "enrichment_backlog_at_last_ack": 0,
+      "campaign_ops_per_sec": 15885.365339774498,
+      "seal_threshold": 67108864
+    }
+  ]
+}

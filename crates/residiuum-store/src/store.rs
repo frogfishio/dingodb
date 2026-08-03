@@ -4837,7 +4837,10 @@ impl Store {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.enrichment_backlog = p.enrichment_backlog.saturating_sub(1);
                 }
-                if size > 0 {
+                if size > 0
+                    && content_hash != crate::incremental_seal::CONTENT_HASH_PENDING
+                {
+                    // Atomically refresh derived tier + catalog digests.
                     let _ = register_hot_segment_known(
                         &self.paths,
                         &mut self.tier_placement,
@@ -4846,6 +4849,12 @@ impl Store {
                         size,
                     );
                     let _ = self.persist_tier_state();
+                    if let Some(prior) = self.segment_catalog.get(&segment_id).cloned() {
+                        let mut updated = prior;
+                        updated.content_hash = content_hash;
+                        updated.size = size;
+                        let _ = self.note_sealed_summary(updated);
+                    }
                 }
             }
         }
@@ -4886,11 +4895,10 @@ impl Store {
         let writer_sequence = writer.segment.writer_sequence();
 
         let item_events = writer.item_events;
-        // Zero-scan (stream-hash pending, no frame scan). True zero-read variants
-        // (resident prefix move; write-tail rolling BLAKE3) were measured and
-        // regress ack TPS to ~44–66K — below the ≥74.7K Seal Fast Lane gate —
-        // so the hot path keeps FinalizeSealMeta. See
-        // doc/archive/performance-qualification/2026-08-04-zero-read-auth-seal/.
+        // Meta publish (summary footer only; no pending read / no auth BLAKE3).
+        // Whole-segment hash is derived — EnrichDerived fills it. Put-path and
+        // write-tail hashing stay off (measured regressions). See
+        // doc/archive/performance-qualification/2026-08-04-defer-segment-blake3/.
         let zero_scan_meta = prefix_len > 0 && frame_count > 0;
         drop(writer);
 
@@ -4960,8 +4968,7 @@ impl Store {
                 });
             }
         } else if zero_scan_meta {
-            let plan = crate::seal_pipeline::plan_from_pending_prefix(
-                &pending_path,
+            let plan = crate::incremental_seal::meta_publish_plan(
                 ids,
                 prefix_len,
                 frame_count,

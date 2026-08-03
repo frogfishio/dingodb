@@ -85,7 +85,7 @@ Implementation shape:
    worker and never count toward this **queue** backpressure). Derived enrichment
    may still contend for CPU/disk/cache; that is not the same claim.
 2. **O(1) rotate** — on auto-seal threshold: durable flush, `rename` `active/active.residiuum` → `active/pending/{hex}.residiuum`, start new active. Put does **not** wait for BLAKE3/Hydra/Chimera.
-3. **Background worker** (`residiuum-seal-pipeline` thread) finalizes: offset-preserving summary seal, sealed image write, BLAKE3; Hydra/Chimera run on the enrichment lane, then catalog apply on the writer thread via `poll`/`drain`.
+3. **Background worker** (`residiuum-seal-pipeline` thread) finalizes: offset-preserving summary seal + rename into `segments/` (**authoritative**). Whole-segment BLAKE3 is **derived** (tier/catalog) and runs on the enrichment lane with Hydra/Chimera; writer `poll`/`drain` applies digests afterward. Frame CRC/body hashes remain the corruption authority.
 4. **Background checkpoint** — rate-limited `persist_index_cache` clones locator-first durable index and writes on the worker.
 5. **Queue backpressure** when `inflight_seals >= max` — put waits for one
    **authoritative** completion (enrichment backlog does not increment this).
