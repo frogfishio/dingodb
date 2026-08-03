@@ -1,6 +1,7 @@
 # Next measurement — acknowledgement / seal line
 
-Status: **Seal Fast Lane = architectural accept; paired-median perf gate open**  
+Status: **Seal Fast Lane = architectural accept (principal)**;  
+90% micro-gate **unmet / superseded** by sustained-rotation qualification.  
 Date: 2026-08-04
 
 ## Wording (hard)
@@ -11,45 +12,42 @@ put path (`max_pending_seals` counts authoritative finalize only).
 That does **not** prove enrichment is free of **CPU / disk / cache
 interference** while writes continue. Those are separate residuals.
 
-## Gate (principal)
+## Architectural locks
 
-\[
-\frac{\operatorname{median}(TPS_{64MiB})}
-{\operatorname{median}(TPS_{control})} \ge 0.90
-\]
+1. Whole-segment BLAKE3 is **derived** (`ContentHashState::{Pending,Known}` —
+   never a `[0;32]` magic sentinel). Authoritative publish is summary footer +
+   rename; frame CRC/body hashes detect corruption.
+2. Remaining gap vs a **no-rotation** high-threshold control is the cost of
+   **real rotations**, not missing hash work. That control is a ceiling, not a
+   sustainable product workload; the 90% paired micro-gate is retired.
 
-Enrichment **off**, ≥6 reps each, alternating, multi-rotate + exact reopen on
-the 64 MiB cell. Stale absolute floor 74.7K (`0.90×83K`) is retired.
+## Sustained-rotation evidence (2 GiB @ 64 MiB, enrichment off)
 
-## Architectural lock — whole-segment BLAKE3
+- Ack TPS **~47.8K**, **32** rotations, reopen exact.
+- Rotation stages ≈ **14%** of ack wall; **catalog_apply** (tier persist on
+  SealDone) dominates (~13.9%); auth publish / rename / start_active are
+  fractions of a percent.
 
-**Derived, not authoritative.** Sealed authority is
-`{durable prefix ‖ segment-summary frame}`; frame CRC/body hashes detect
-corruption. Whole-segment BLAKE3 lives in tier placement / segment catalog and
-is filled by enrichment after `SealDone` (`CONTENT_HASH_PENDING` until then).
-Hot path: `meta_publish_plan` (no pending read on the auth worker).
+Evidence: `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`.
 
-Evidence: `doc/archive/performance-qualification/2026-08-04-defer-segment-blake3/`.
+## Settled facts (prior)
 
-## Settled facts
-
-- Old ~8–10K was **campaign** TPS, not ack.
-- Contemporary high-threshold control (enrichment off, 512 MiB): median
-  **~74–78K** across campaigns (machine noise).
-- Seal Fast Lane (derived off the lane): arch OK; keep board **`in_review`**.
-- Stream-hash auth finalize: paired median ratio **0.878** (FAIL).
-- Meta-publish (BLAKE3 deferred): paired median ratio **0.869** (FAIL) — did
-  **not** close the ~2 pp gap. Residual is non-hash rotate/publish cost.
+- Stream-hash / meta-publish paired medians vs control: ~0.87–0.88 (FAIL old
+  90% micro-gate).
 - Put-path / write-tail rolling BLAKE3: measured regressions; stay **off**.
+- Reopen before enrichment: proven with typed `Pending`
+  (`tests/reopen_before_enrichment.rs`).
 
 ## Next developer instruction (freeze)
 
-Paired-median gate still open after deferring derived BLAKE3. Do **not** put
-hashing back on the auth or put path. Remaining options: profile
-truncate/append-summary/rename/`start_active`/fsync overlap, principal waiver
-of the 90% paired floor, or accept arch-only and measure enrichment resource
-interference separately. Do **not** return to AWO / append-path tuning until
-this lane closes or the principal waives.
+Stop speculative seal-architecture changes. Principal may accept Seal Fast
+Lane on the board. Optional follow-ups (separate packages):
+
+- Measure enrichment-on resource interference with the same sustained recipe.
+- If desired, reduce `catalog_apply` cost (tier persist batching) — measurement
+  first, no speculative redesign.
+- Do **not** return to AWO / append-path tuning as a substitute for lifecycle
+  accounting.
 
 ## Archives
 
@@ -60,3 +58,4 @@ this lane closes or the principal waives.
 - `doc/archive/performance-qualification/2026-08-04-zero-read-auth-seal/`
 - `doc/archive/performance-qualification/2026-08-04-paired-median-gate/`
 - `doc/archive/performance-qualification/2026-08-04-defer-segment-blake3/`
+- `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`

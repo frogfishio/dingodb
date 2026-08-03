@@ -26,7 +26,9 @@ use crate::error::StoreError;
 use crate::hydra::{
     hydra_index_path, records_from_segment_bytes, write_hydra_index, HydraBuildOptions,
 };
-use crate::incremental_seal::{meta_publish_plan, IncrementalSealState, SealPublishPlan};
+use crate::incremental_seal::{
+    meta_publish_plan, ContentHashState, IncrementalSealState, SealPublishPlan,
+};
 use crate::index::PrimaryIndex;
 use crate::index_cache::{write_primary_index_frontier, IndexFrontier};
 use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
@@ -39,6 +41,10 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+
+fn elapsed_ns(t0: Instant) -> u64 {
+    t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64
+}
 
 /// Default bound on **authoritative** seals in flight.
 ///
@@ -166,17 +172,18 @@ pub enum LifecycleResult {
     /// Seal finalized; sealed file is durable.
     ///
     /// Authoritative publication is `{segment_id, size}` (+ summary metadata).
-    /// `content_hash` may be [`crate::incremental_seal::CONTENT_HASH_PENDING`]
-    /// until enrichment fills the derived digest.
+    /// `content_hash` is often [`ContentHashState::Pending`] until enrichment.
     SealDone {
         /// Segment id.
         segment_id: [u8; 16],
-        /// BLAKE3 of sealed image, or pending zeros (derived).
-        content_hash: [u8; 32],
+        /// Derived whole-segment digest state.
+        content_hash: ContentHashState,
         /// Sealed byte length.
         size: u64,
         /// Compact catalog summary (no sealed image buffer).
         summary: crate::segment_catalog::SegmentSummary,
+        /// Nanoseconds spent appending summary + renaming into `segments/`.
+        auth_publish_ns: u64,
     },
     /// Checkpoint written (or best-effort failed — see `ok`).
     CheckpointDone {
@@ -196,8 +203,8 @@ pub enum LifecycleResult {
         segment_id: [u8; 16],
         /// Whether Hydra/Chimera writes succeeded.
         ok: bool,
-        /// BLAKE3 of sealed image (for tier/catalog apply on the writer thread).
-        content_hash: [u8; 32],
+        /// Derived whole-segment digest (Known after successful read/hash).
+        content_hash: ContentHashState,
         /// Sealed byte length.
         size: u64,
     },
@@ -336,6 +343,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 ..
             } => {
                 // Writer enqueues EnrichDerived separately (isolation + enable flag).
+                let t0 = Instant::now();
                 match finalize_seal_authoritative(
                     store_id,
                     segment_id,
@@ -345,20 +353,23 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                     require_fsync,
                 ) {
                     Ok((content_hash, size, sealed_bytes)) => {
+                        let auth_publish_ns = elapsed_ns(t0);
+                        let hash = ContentHashState::Known(content_hash);
                         let summary = crate::segment_catalog::summarize_segment_bytes(
                             segment_id,
                             crate::tier::TierClass::Hot,
                             &sealed_bytes,
-                            content_hash,
+                            hash,
                             size,
                             limits,
                         );
                         drop(sealed_bytes);
                         let _ = result_tx.send(LifecycleResult::SealDone {
                             segment_id,
-                            content_hash,
+                            content_hash: hash,
                             size,
                             summary,
+                            auth_publish_ns,
                         });
                         let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
                     }
@@ -378,6 +389,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 plan,
                 require_fsync,
             } => {
+                let t0 = Instant::now();
                 match publish_sealed_from_summary_frame(
                     &pending_path,
                     &sealed_path,
@@ -391,6 +403,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                             content_hash: plan.content_hash,
                             size: plan.sealed_len,
                             summary: plan.to_segment_summary(),
+                            auth_publish_ns: elapsed_ns(t0),
                         });
                     }
                     Err(e) => {
@@ -414,6 +427,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
             } => {
                 // Authoritative: summary footer + rename only. Whole-segment
                 // BLAKE3 is derived — deferred to EnrichDerived (no pending read).
+                let t0 = Instant::now();
                 let result = (|| {
                     let plan = meta_publish_plan(
                         ids,
@@ -438,6 +452,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                             content_hash: plan.content_hash,
                             size: plan.sealed_len,
                             summary: plan.to_segment_summary(),
+                            auth_publish_ns: elapsed_ns(t0),
                         });
                     }
                     Err(e) => {
@@ -460,6 +475,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 require_fsync,
             } => {
                 let prefix_len = prefix.len() as u64;
+                let t0 = Instant::now();
                 let result = (|| {
                     let mut state = IncrementalSealState::new();
                     state.observe_durable_bytes(0, &prefix)?;
@@ -487,6 +503,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                             content_hash: plan.content_hash,
                             size: plan.sealed_len,
                             summary: plan.to_segment_summary(),
+                            auth_publish_ns: elapsed_ns(t0),
                         });
                     }
                     Err(e) => {
@@ -511,7 +528,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 let _ = result_tx.send(LifecycleResult::EnrichDone {
                     segment_id,
                     ok: false,
-                    content_hash: [0u8; 32],
+                    content_hash: ContentHashState::Pending,
                     size: 0,
                 });
             }
@@ -540,7 +557,7 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                 let sealed_path = paths.sealed_segment(&segment_id);
                 let (ok, content_hash, size) = match fs::read(&sealed_path) {
                     Ok(bytes) => {
-                        let hash = *blake3::hash(&bytes).as_bytes();
+                        let hash = ContentHashState::Known(*blake3::hash(&bytes).as_bytes());
                         let size = bytes.len() as u64;
                         let enrich_ok =
                             enrich_sealed_derived(&paths, store_id, segment_id, &bytes, limits)
@@ -574,7 +591,7 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                         );
                         (enrich_ok, hash, size)
                     }
-                    Err(_) => (false, [0u8; 32], 0),
+                    Err(_) => (false, ContentHashState::Pending, 0),
                 };
                 last_enrich = Instant::now();
                 let _ = crate::failpoint::hit("store.seal.after_derived_enrichment");

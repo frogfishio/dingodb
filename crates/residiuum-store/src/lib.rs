@@ -274,9 +274,11 @@ pub use segment_catalog::{
 pub use segment_growth::{
     SegmentGrowthPolicy, WATERMARK_DEFAULT_CAPACITY_BYTES, WATERMARK_DEFAULT_CHUNK_BYTES,
 };
+pub use incremental_seal::ContentHashState;
 pub use store::{
     subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,
-    SalvageCopyReport, SalvageReport, SealStageBreakdown, WriteReceipt, MAX_WRITER_SHARDS,
+    RotationStageTotals, SalvageCopyReport, SalvageReport, SealStageBreakdown, WriteReceipt,
+    MAX_WRITER_SHARDS,
 };
 /// Legacy unscoped store API. Prefer [`StoreHost`] / [`HeapStore`] on the
 /// qualified heap path (`--no-default-features` hides this export).

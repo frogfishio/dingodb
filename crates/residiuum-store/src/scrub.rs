@@ -386,7 +386,7 @@ pub fn plan_scrub_targets(
         let (expected_hash_hex, expected_size, segment_id_hex) = if let Some(id) = segment_id {
             if let Some(p) = placement.get(&id) {
                 (
-                    Some(hex32(&p.content_hash)),
+                    p.content_hash.known_hash().map(|h| hex32(&h)),
                     Some(p.size),
                     Some(hex16(&id)),
                 )
@@ -430,7 +430,7 @@ pub fn plan_scrub_targets(
             kind: ScrubTargetKind::SealedSegment,
             relative_path: rel,
             segment_id_hex: Some(hex16(&p.segment_id)),
-            expected_hash_hex: Some(hex32(&p.content_hash)),
+            expected_hash_hex: p.content_hash.known_hash().map(|h| hex32(&h)),
             expected_size: Some(p.size),
         });
     }

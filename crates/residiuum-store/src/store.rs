@@ -169,6 +169,40 @@ impl SealStageBreakdown {
     }
 }
 
+/// Cumulative mid-run auto-rotation stage times (writer + auth publish).
+///
+/// Used for sustained-rotation qualification — not the end-of-run
+/// [`SealStageBreakdown`] from explicit `seal_active`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RotationStageTotals {
+    /// Rotations that completed stage timing (SealDone applied).
+    pub rotations: u64,
+    /// Writer: durable flush of the retiring active.
+    pub flush_ns: u64,
+    /// Writer: rename active → pending.
+    pub rename_pending_ns: u64,
+    /// Writer: open replacement active + persist meta.
+    pub start_active_ns: u64,
+    /// Writer: wait for authoritative backpressure (`inflight_seals`).
+    pub backpressure_wait_ns: u64,
+    /// Auth worker: summary append + rename into `segments/` (from SealDone).
+    pub auth_publish_ns: u64,
+    /// Writer: apply SealDone catalog/tier publication.
+    pub catalog_apply_ns: u64,
+}
+
+impl RotationStageTotals {
+    /// Sum of timed stages (excludes put-path work between rotations).
+    pub fn total_ns(self) -> u64 {
+        self.flush_ns
+            .saturating_add(self.rename_pending_ns)
+            .saturating_add(self.start_active_ns)
+            .saturating_add(self.backpressure_wait_ns)
+            .saturating_add(self.auth_publish_ns)
+            .saturating_add(self.catalog_apply_ns)
+    }
+}
+
 fn elapsed_ns(t0: std::time::Instant) -> u64 {
     t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64
 }
@@ -364,6 +398,8 @@ pub struct Store {
     ///
     /// Authoritative seal still runs; enrichment backlog may stay empty.
     enrichment_enabled: bool,
+    /// Cumulative auto-rotation stage timings (sustained-rotation qualification).
+    rotation_stage_totals: RotationStageTotals,
     /// Derived chunk_event_id → physical frame locators (DEF-098).
     ///
     /// Non-authoritative: rebuilt from segment scans and updated on chunk append.
@@ -603,6 +639,7 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
             enrichment_enabled: true,
+            rotation_stage_totals: RotationStageTotals::default(),
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -700,6 +737,7 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
             enrichment_enabled: true,
+            rotation_stage_totals: RotationStageTotals::default(),
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -834,6 +872,7 @@ impl Store {
             seal_pipeline: None,
             async_lifecycle: false,
             enrichment_enabled: false,
+            rotation_stage_totals: RotationStageTotals::default(),
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -4604,53 +4643,30 @@ impl Store {
             .reopen_active_ns
             .saturating_add(elapsed_ns(t_reopen));
 
+        // Explicit `seal_active` is synchronous (including Hydra/Chimera).
+        // Auto-rotate uses EnrichDerived asynchronously; this path must not.
+        let t_cat = std::time::Instant::now();
+        let content_hash =
+            crate::incremental_seal::ContentHashState::Known(*blake3::hash(bytes).as_bytes());
+        let _ = register_hot_segment_known(
+            &self.paths,
+            &mut self.tier_placement,
+            sealed_id,
+            content_hash,
+            size,
+        );
+        let _ = self.persist_tier_state();
+        let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
+        breakdown.catalog_publication_ns = breakdown
+            .catalog_publication_ns
+            .saturating_add(elapsed_ns(t_cat));
         if self.enrichment_enabled {
-            if let Some(pipe) = self.seal_pipeline.as_mut() {
-                let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
-                    store_id: self.store_id,
-                    segment_id: sealed_id,
-                    paths: self.paths.clone(),
-                    limits: self.limits,
-                });
-            } else {
-                // No pipeline: keep prior sync derived behavior.
-                let t_cat = std::time::Instant::now();
-                let content_hash = *blake3::hash(bytes).as_bytes();
-                let _ = register_hot_segment_known(
-                    &self.paths,
-                    &mut self.tier_placement,
-                    sealed_id,
-                    content_hash,
-                    size,
-                );
-                let _ = self.persist_tier_state();
-                let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
-                breakdown.catalog_publication_ns = breakdown
-                    .catalog_publication_ns
-                    .saturating_add(elapsed_ns(t_cat));
-                let t_hydra = std::time::Instant::now();
-                let _ = self.write_hydra_for_sealed(sealed_id, bytes);
-                breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
-                let t_chimera = std::time::Instant::now();
-                let _ = self.write_chimera_for_sealed(sealed_id);
-                breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
-            }
-        } else {
-            // Enrichment off: still publish compact catalog from sealed bytes.
-            let t_cat = std::time::Instant::now();
-            let content_hash = *blake3::hash(bytes).as_bytes();
-            let _ = register_hot_segment_known(
-                &self.paths,
-                &mut self.tier_placement,
-                sealed_id,
-                content_hash,
-                size,
-            );
-            let _ = self.persist_tier_state();
-            let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
-            breakdown.catalog_publication_ns = breakdown
-                .catalog_publication_ns
-                .saturating_add(elapsed_ns(t_cat));
+            let t_hydra = std::time::Instant::now();
+            let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+            breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
+            let t_chimera = std::time::Instant::now();
+            let _ = self.write_chimera_for_sealed(sealed_id);
+            breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
         }
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
@@ -4662,6 +4678,26 @@ impl Store {
             .as_ref()
             .map(|p| p.enrichment_backlog)
             .unwrap_or(0)
+    }
+
+    /// Cumulative mid-run auto-rotation stage timings.
+    pub fn rotation_stage_totals(&self) -> RotationStageTotals {
+        self.rotation_stage_totals
+    }
+
+    /// Content-hash state for a sealed segment in the derived catalog (tests).
+    pub fn sealed_content_hash_state(
+        &self,
+        segment_id: &[u8; 16],
+    ) -> Option<crate::incremental_seal::ContentHashState> {
+        self.segment_catalog
+            .get(segment_id)
+            .map(|s| s.content_hash)
+            .or_else(|| {
+                self.tier_placement
+                    .get(segment_id)
+                    .map(|p| p.content_hash)
+            })
     }
 
     /// Best-effort wait for derived enrichment to drain (measurement / tests).
@@ -4772,10 +4808,12 @@ impl Store {
                 content_hash,
                 size,
                 summary,
+                auth_publish_ns,
             } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.inflight_seals = p.inflight_seals.saturating_sub(1);
                 }
+                let t0 = std::time::Instant::now();
                 let _ = register_hot_segment_known(
                     &self.paths,
                     &mut self.tier_placement,
@@ -4785,6 +4823,17 @@ impl Store {
                 );
                 let _ = self.persist_tier_state();
                 let _ = self.note_sealed_summary(summary);
+                let catalog_ns = elapsed_ns(t0);
+                self.rotation_stage_totals.rotations =
+                    self.rotation_stage_totals.rotations.saturating_add(1);
+                self.rotation_stage_totals.auth_publish_ns = self
+                    .rotation_stage_totals
+                    .auth_publish_ns
+                    .saturating_add(auth_publish_ns);
+                self.rotation_stage_totals.catalog_apply_ns = self
+                    .rotation_stage_totals
+                    .catalog_apply_ns
+                    .saturating_add(catalog_ns);
             }
             LifecycleResult::SealFailed { segment_id, error } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
@@ -4803,11 +4852,12 @@ impl Store {
                     true, // recovery: stable publish
                 ) {
                     Ok((content_hash, size, sealed_bytes)) => {
+                        let hash = crate::incremental_seal::ContentHashState::Known(content_hash);
                         let _ = register_hot_segment_known(
                             &self.paths,
                             &mut self.tier_placement,
                             segment_id,
-                            content_hash,
+                            hash,
                             size,
                         );
                         let _ = self.persist_tier_state();
@@ -4815,7 +4865,7 @@ impl Store {
                             segment_id,
                             TierClass::Hot,
                             &sealed_bytes,
-                            content_hash,
+                            hash,
                             size,
                         );
                     }
@@ -4837,9 +4887,7 @@ impl Store {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.enrichment_backlog = p.enrichment_backlog.saturating_sub(1);
                 }
-                if size > 0
-                    && content_hash != crate::incremental_seal::CONTENT_HASH_PENDING
-                {
+                if size > 0 && !content_hash.is_pending() {
                     // Atomically refresh derived tier + catalog digests.
                     let _ = register_hot_segment_known(
                         &self.paths,
@@ -4870,6 +4918,7 @@ impl Store {
     fn rotate_active_async(&mut self, shard: usize) -> Result<(), StoreError> {
         let _ = self.poll_lifecycle();
         // Backpressure only for authoritative finalize lag (not enrichment).
+        let t_bp = std::time::Instant::now();
         while self
             .seal_pipeline
             .as_ref()
@@ -4880,13 +4929,22 @@ impl Store {
                 break;
             }
         }
+        self.rotation_stage_totals.backpressure_wait_ns = self
+            .rotation_stage_totals
+            .backpressure_wait_ns
+            .saturating_add(elapsed_ns(t_bp));
 
         let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
         let flush_mode = seal_flush_mode(writer.max_ack_durability);
+        let t_flush = std::time::Instant::now();
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
         Self::flush_writer_coalesce(&mut writer)?;
+        self.rotation_stage_totals.flush_ns = self
+            .rotation_stage_totals
+            .flush_ns
+            .saturating_add(elapsed_ns(t_flush));
         let segment_id = writer.segment_id;
         let require_fsync = flush_mode == DurabilityMode::Durable;
         let prefix_len = writer.durable_len;
@@ -4919,16 +4977,26 @@ impl Store {
                 true,
             );
         }
+        let t_rename = std::time::Instant::now();
         fs::rename(&active_path, &pending_path)?;
         if require_fsync {
             sync_dir(&self.paths.active_shard_dir(shard, n))?;
             let _ = sync_dir(&pending_dir);
         }
+        self.rotation_stage_totals.rename_pending_ns = self
+            .rotation_stage_totals
+            .rename_pending_ns
+            .saturating_add(elapsed_ns(t_rename));
 
         // Open next active immediately (put path unblocked for new frames).
+        let t_start = std::time::Instant::now();
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
+        self.rotation_stage_totals.start_active_ns = self
+            .rotation_stage_totals
+            .start_active_ns
+            .saturating_add(elapsed_ns(t_start));
 
         if let Some(pipe) = self.seal_pipeline.as_mut() {
             pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
@@ -5003,11 +5071,12 @@ impl Store {
                 &self.paths,
                 require_fsync,
             )?;
+            let hash = crate::incremental_seal::ContentHashState::Known(content_hash);
             let _ = register_hot_segment_known(
                 &self.paths,
                 &mut self.tier_placement,
                 segment_id,
-                content_hash,
+                hash,
                 size,
             );
             let _ = self.persist_tier_state();
@@ -5015,7 +5084,7 @@ impl Store {
                 segment_id,
                 TierClass::Hot,
                 &sealed_bytes,
-                content_hash,
+                hash,
                 size,
             );
         }
@@ -5490,7 +5559,7 @@ impl Store {
         segment_id: [u8; 16],
         tier: TierClass,
         bytes: &[u8],
-        content_hash: [u8; 32],
+        content_hash: crate::incremental_seal::ContentHashState,
         size: u64,
     ) -> Result<(), StoreError> {
         let summary =

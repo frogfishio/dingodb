@@ -8,6 +8,7 @@
 //! (OVERVIEW §9.2, CLUSTER_SPEC §18).
 
 use crate::error::StoreError;
+use crate::incremental_seal::ContentHashState;
 use crate::layout::{hex16, list_residiuum_files, segment_id_from_filename, StorePaths};
 use blake3::Hasher;
 use std::collections::BTreeMap;
@@ -23,7 +24,8 @@ pub const TIER_PLACEMENT_FILE: &str = "tier-placement.cat";
 pub const TIER_ROOTS_FILE: &str = "roots.txt";
 
 const PLACEMENT_MAGIC: &[u8; 8] = b"RTIER001";
-const PLACEMENT_VERSION: u32 = 1;
+/// v2: `content_hash` is tagged [`ContentHashState`] (Pending | Known).
+const PLACEMENT_VERSION: u32 = 2;
 
 /// Storage performance / retention class (OVERVIEW §9.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -102,8 +104,8 @@ pub struct SegmentPlacement {
     /// Path relative to the store root when under the store tree, or absolute
     /// when using an external media root.
     pub relative_path: String,
-    /// BLAKE3-256 of the segment file bytes at last placement update.
-    pub content_hash: [u8; 32],
+    /// Derived whole-segment BLAKE3 at last placement update.
+    pub content_hash: ContentHashState,
     /// File size in bytes at last placement update.
     pub size: u64,
     /// Whether the segment's media is presently readable.
@@ -527,7 +529,7 @@ pub fn transfer_segment(
         segment_id,
         tier: to_tier,
         relative_path: rel,
-        content_hash: hash,
+        content_hash: ContentHashState::Known(hash),
         size,
         available: true,
     });
@@ -597,7 +599,7 @@ pub fn discover_placements(
                     segment_id: id,
                     tier,
                     relative_path: rel,
-                    content_hash: hash,
+                    content_hash: ContentHashState::Known(hash),
                     size,
                     available: true,
                 });
@@ -730,7 +732,7 @@ pub fn encode_placement(store_id: [u8; 16], placement: &TierPlacement) -> Vec<u8
         out.push(e.tier as u8);
         out.push(u8::from(e.available));
         out.extend_from_slice(&e.size.to_le_bytes());
-        out.extend_from_slice(&e.content_hash);
+        e.content_hash.encode_wire(&mut out);
         let pb = e.relative_path.as_bytes();
         out.extend_from_slice(&(pb.len() as u32).to_le_bytes());
         out.extend_from_slice(pb);
@@ -798,7 +800,7 @@ pub fn decode_placement(bytes: &[u8], store_id: [u8; 16]) -> Option<TierPlacemen
     let n = u32::from_le_bytes(bytes[cursor..cursor + 4].try_into().ok()?) as usize;
     cursor += 4;
     for _ in 0..n {
-        if cursor + 16 + 1 + 1 + 8 + 32 + 4 > bytes.len().saturating_sub(32) {
+        if cursor + 16 + 1 + 1 + 8 + 33 + 4 > bytes.len().saturating_sub(32) {
             return None;
         }
         let segment_id: [u8; 16] = bytes[cursor..cursor + 16].try_into().ok()?;
@@ -809,8 +811,8 @@ pub fn decode_placement(bytes: &[u8], store_id: [u8; 16]) -> Option<TierPlacemen
         cursor += 1;
         let size = u64::from_le_bytes(bytes[cursor..cursor + 8].try_into().ok()?);
         cursor += 8;
-        let content_hash: [u8; 32] = bytes[cursor..cursor + 32].try_into().ok()?;
-        cursor += 32;
+        let (content_hash, hn) = ContentHashState::decode_wire(&bytes[cursor..])?;
+        cursor += hn;
         let plen = u32::from_le_bytes(bytes[cursor..cursor + 4].try_into().ok()?) as usize;
         cursor += 4;
         if cursor + plen > bytes.len().saturating_sub(32) {
@@ -1044,18 +1046,25 @@ pub fn register_hot_segment(
         return Ok(());
     }
     let (hash, size) = hash_file(&path)?;
-    register_hot_segment_known(paths, placement, segment_id, hash, size)
+    register_hot_segment_known(
+        paths,
+        placement,
+        segment_id,
+        ContentHashState::Known(hash),
+        size,
+    )
 }
 
 /// Register a hot sealed segment when content hash/size are already known.
 ///
 /// Avoids a second full-file hash after seal has just written the bytes
 /// (write-path scale: seal work must stay O(segment), not O(retained data)).
+/// `content_hash` may be [`ContentHashState::Pending`] until enrichment.
 pub fn register_hot_segment_known(
     paths: &StorePaths,
     placement: &mut TierPlacement,
     segment_id: [u8; 16],
-    content_hash: [u8; 32],
+    content_hash: ContentHashState,
     size: u64,
 ) -> Result<(), StoreError> {
     let path = paths.sealed_segment(&segment_id);
@@ -1085,7 +1094,7 @@ mod tests {
             segment_id: [1u8; 16],
             tier: TierClass::Cold,
             relative_path: "tiers/cold/010101...".into(),
-            content_hash: [9u8; 32],
+            content_hash: ContentHashState::Known([9u8; 32]),
             size: 42,
             available: true,
         });
@@ -1116,7 +1125,7 @@ mod tests {
             segment_id: [2u8; 16],
             tier: TierClass::Archive,
             relative_path: "tiers/archive/x.residiuum".into(),
-            content_hash: [0u8; 32],
+            content_hash: ContentHashState::Pending,
             size: 1,
             available: false,
         });

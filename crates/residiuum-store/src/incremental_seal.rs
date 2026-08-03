@@ -3,9 +3,9 @@
 //! **Authority:** the sealed image is `{durable prefix ‖ segment-summary frame}`.
 //! Whole-segment BLAKE3 is **derived** (tier placement / segment catalog only);
 //! frame CRC + body hashes remain the authoritative corruption detectors.
-//! Hot path: [`meta_publish_plan`] — no pending read, hash pending until enrichment.
-//! Stream-hash / resident-prefix / write-tail paths remain for recovery experiments
-//! (see zero-read-auth-seal / paired-median archives).
+//! Hot path: [`meta_publish_plan`] — no pending read, hash [`ContentHashState::Pending`]
+//! until enrichment. Stream-hash / resident-prefix / write-tail paths remain for
+//! recovery experiments (see performance-qualification archives).
 
 use crate::error::StoreError;
 use crate::segment_catalog::SegmentSummary;
@@ -15,20 +15,71 @@ use residiuum_format::{
     EMPTY_ENVELOPE, SUMMARY_BODY_LEN, WIRE_MAJOR, WIRE_MINOR,
 };
 
-/// Sentinel: whole-segment BLAKE3 not yet computed (derived enrichment pending).
-///
-/// Authoritative publication does not require a content hash; `[0; 32]` means
-/// "unknown/pending", not "hash of empty". Enrichment fills the real digest.
-pub const CONTENT_HASH_PENDING: [u8; 32] = [0u8; 32];
+/// Derived whole-segment BLAKE3 state (never a magic all-zero digest).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ContentHashState {
+    /// Sealed image published; digest not computed yet (enrichment pending).
+    Pending,
+    /// BLAKE3-256 of the sealed file bytes.
+    Known([u8; 32]),
+}
+
+impl ContentHashState {
+    /// Known digest wrapper.
+    pub fn known(hash: [u8; 32]) -> Self {
+        Self::Known(hash)
+    }
+
+    /// Whether enrichment has not yet supplied a digest.
+    pub fn is_pending(self) -> bool {
+        matches!(self, Self::Pending)
+    }
+
+    /// Known digest bytes, if present.
+    pub fn known_hash(self) -> Option<[u8; 32]> {
+        match self {
+            Self::Pending => None,
+            Self::Known(h) => Some(h),
+        }
+    }
+
+    /// Wire: `tag(u8) ‖ digest[32]` — tag `0` = Pending, `1` = Known.
+    pub fn encode_wire(self, out: &mut Vec<u8>) {
+        match self {
+            Self::Pending => {
+                out.push(0);
+                out.extend_from_slice(&[0u8; 32]);
+            }
+            Self::Known(h) => {
+                out.push(1);
+                out.extend_from_slice(&h);
+            }
+        }
+    }
+
+    /// Decode one wire record; returns `(state, bytes_consumed)`.
+    pub fn decode_wire(bytes: &[u8]) -> Option<(Self, usize)> {
+        if bytes.len() < 33 {
+            return None;
+        }
+        match bytes[0] {
+            0 => Some((Self::Pending, 33)),
+            1 => {
+                let h: [u8; 32] = bytes[1..33].try_into().ok()?;
+                Some((Self::Known(h), 33))
+            }
+            _ => None,
+        }
+    }
+}
 
 /// Compact publish plan produced at rotation (no sealed image `Vec`).
 #[derive(Debug, Clone)]
 pub struct SealPublishPlan {
     /// Encoded segment-summary frame to append (small; not the segment body).
     pub summary_frame: Vec<u8>,
-    /// BLAKE3-256 of the full sealed file (prefix ‖ summary), or
-    /// [`CONTENT_HASH_PENDING`] until enrichment.
-    pub content_hash: [u8; 32],
+    /// Derived whole-segment digest state.
+    pub content_hash: ContentHashState,
     /// Total sealed byte length including summary.
     pub sealed_len: u64,
     /// Frame count including the summary frame.
@@ -56,13 +107,13 @@ impl SealPublishPlan {
 
     /// Whether whole-segment BLAKE3 is still pending (derived).
     pub fn hash_pending(&self) -> bool {
-        self.content_hash == CONTENT_HASH_PENDING
+        self.content_hash.is_pending()
     }
 }
 
 /// Authoritative meta publish plan: summary footer only, **no** pending read/hash.
 ///
-/// `content_hash` is [`CONTENT_HASH_PENDING`]; enrichment computes BLAKE3 later.
+/// `content_hash` is [`ContentHashState::Pending`]; enrichment computes BLAKE3 later.
 pub fn meta_publish_plan(
     ids: SegmentId,
     prefix_len: u64,
@@ -76,7 +127,7 @@ pub fn meta_publish_plan(
         frame_count,
         writer_sequence,
         item_events,
-        CONTENT_HASH_PENDING,
+        ContentHashState::Pending,
         None,
     )
 }
@@ -87,7 +138,7 @@ fn build_publish_plan(
     frame_count: u64,
     writer_sequence: u64,
     item_events: u64,
-    content_hash: [u8; 32],
+    content_hash: ContentHashState,
     mut hasher: Option<blake3::Hasher>,
 ) -> Result<SealPublishPlan, StoreError> {
     if frame_count == 0 {
@@ -131,7 +182,7 @@ fn build_publish_plan(
 
     let content_hash = if let Some(mut h) = hasher.take() {
         h.update(&summary_frame);
-        *h.finalize().as_bytes()
+        ContentHashState::Known(*h.finalize().as_bytes())
     } else {
         content_hash
     };
@@ -203,7 +254,7 @@ impl IncrementalSealState {
             frame_count,
             writer_sequence,
             item_events,
-            CONTENT_HASH_PENDING,
+            ContentHashState::Pending,
             Some(self.hasher),
         )
     }
@@ -239,7 +290,10 @@ mod tests {
         let mut sealed = prefix;
         sealed.extend_from_slice(&plan.summary_frame);
         assert_eq!(sealed.len() as u64, plan.sealed_len);
-        assert_eq!(*blake3::hash(&sealed).as_bytes(), plan.content_hash);
+        assert_eq!(
+            plan.content_hash,
+            ContentHashState::Known(*blake3::hash(&sealed).as_bytes())
+        );
 
         let mut active2 = ActiveSegment::create(ids, SafetyLimits::default(), 1).unwrap();
         active2
@@ -276,10 +330,22 @@ mod tests {
         )
         .unwrap();
         assert!(plan.hash_pending());
-        assert_eq!(plan.content_hash, CONTENT_HASH_PENDING);
+        assert_eq!(plan.content_hash, ContentHashState::Pending);
         assert_eq!(
             plan.sealed_len,
             prefix_len + plan.summary_frame.len() as u64
         );
+    }
+
+    #[test]
+    fn content_hash_state_wire_roundtrip() {
+        let mut buf = Vec::new();
+        ContentHashState::Pending.encode_wire(&mut buf);
+        ContentHashState::Known([7u8; 32]).encode_wire(&mut buf);
+        let (a, n0) = ContentHashState::decode_wire(&buf).unwrap();
+        assert_eq!(a, ContentHashState::Pending);
+        let (b, n1) = ContentHashState::decode_wire(&buf[n0..]).unwrap();
+        assert_eq!(b, ContentHashState::Known([7u8; 32]));
+        assert_eq!(n0 + n1, buf.len());
     }
 }

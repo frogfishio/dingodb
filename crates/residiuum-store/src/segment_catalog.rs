@@ -4,6 +4,7 @@
 //! Loss of this file increases recovery cost; it MUST NOT erase segment bytes.
 
 use crate::error::StoreError;
+use crate::incremental_seal::ContentHashState;
 use crate::layout::StorePaths;
 use crate::tier::{available_sealed_paths, resolve_placement_path, TierClass, TierPlacement};
 use blake3::Hasher;
@@ -16,7 +17,8 @@ use std::path::{Path, PathBuf};
 pub const SEGMENT_CATALOG_FILE: &str = "segments.cat";
 
 const MAGIC: &[u8; 8] = b"RSEGC001";
-const VERSION: u32 = 1;
+/// v2: `content_hash` is tagged [`ContentHashState`] (Pending | Known).
+const VERSION: u32 = 2;
 
 /// Summary of one sealed segment for cold search / hierarchy pruning.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,8 +29,8 @@ pub struct SegmentSummary {
     pub tier: TierClass,
     /// File size in bytes.
     pub size: u64,
-    /// BLAKE3-256 of segment file bytes.
-    pub content_hash: [u8; 32],
+    /// Derived whole-segment BLAKE3 (Pending until enrichment).
+    pub content_hash: ContentHashState,
     /// Count of structurally verified frames.
     pub verified_frames: u64,
     /// Count of verified item-event frames.
@@ -118,7 +120,7 @@ pub fn summarize_segment_file(
     segment_id: [u8; 16],
     tier: TierClass,
     path: &Path,
-    content_hash: [u8; 32],
+    content_hash: ContentHashState,
     size: u64,
     limits: SafetyLimits,
 ) -> Result<SegmentSummary, StoreError> {
@@ -141,7 +143,7 @@ pub fn summarize_segment_bytes(
     segment_id: [u8; 16],
     tier: TierClass,
     bytes: &[u8],
-    content_hash: [u8; 32],
+    content_hash: ContentHashState,
     size: u64,
     limits: SafetyLimits,
 ) -> SegmentSummary {
@@ -226,7 +228,14 @@ pub fn rebuild_segment_catalog(
         }
         let (hash, size) = crate::tier::hash_file(&path)?;
         let tier = placement.get(&id).map(|p| p.tier).unwrap_or(TierClass::Hot);
-        let summary = summarize_segment_file(id, tier, &path, hash, size, limits)?;
+        let summary = summarize_segment_file(
+            id,
+            tier,
+            &path,
+            ContentHashState::Known(hash),
+            size,
+            limits,
+        )?;
         cat.upsert(summary);
     }
 
@@ -275,7 +284,7 @@ fn encode_catalog(store_id: [u8; 16], catalog: &SegmentCatalog) -> Vec<u8> {
         out.push(s.tier as u8);
         out.push(u8::from(s.available));
         out.extend_from_slice(&s.size.to_le_bytes());
-        out.extend_from_slice(&s.content_hash);
+        s.content_hash.encode_wire(&mut out);
         out.extend_from_slice(&s.verified_frames.to_le_bytes());
         out.extend_from_slice(&s.item_events.to_le_bytes());
         out.extend_from_slice(&s.holes.to_le_bytes());
@@ -304,9 +313,10 @@ fn decode_catalog(bytes: &[u8], store_id: [u8; 16]) -> Option<SegmentCatalog> {
     let n = u32::from_le_bytes(bytes[28..32].try_into().ok()?) as usize;
     let mut cursor = 32usize;
     let mut cat = SegmentCatalog::new();
-    let entry_len = 16 + 1 + 1 + 8 + 32 + 8 + 8 + 8;
+    // segment_id|tier|avail|size|hash_state(33)|verified|items|holes
+    let entry_min = 16 + 1 + 1 + 8 + 33 + 8 + 8 + 8;
     for _ in 0..n {
-        if cursor + entry_len > bytes.len().saturating_sub(32) {
+        if cursor + entry_min > bytes.len().saturating_sub(32) {
             return None;
         }
         let segment_id: [u8; 16] = bytes[cursor..cursor + 16].try_into().ok()?;
@@ -317,8 +327,8 @@ fn decode_catalog(bytes: &[u8], store_id: [u8; 16]) -> Option<SegmentCatalog> {
         cursor += 1;
         let size = u64::from_le_bytes(bytes[cursor..cursor + 8].try_into().ok()?);
         cursor += 8;
-        let content_hash: [u8; 32] = bytes[cursor..cursor + 32].try_into().ok()?;
-        cursor += 32;
+        let (content_hash, hn) = ContentHashState::decode_wire(&bytes[cursor..])?;
+        cursor += hn;
         let verified_frames = u64::from_le_bytes(bytes[cursor..cursor + 8].try_into().ok()?);
         cursor += 8;
         let item_events = u64::from_le_bytes(bytes[cursor..cursor + 8].try_into().ok()?);
@@ -365,7 +375,7 @@ mod tests {
             segment_id: [5u8; 16],
             tier: TierClass::Warm,
             size: 100,
-            content_hash: [1u8; 32],
+            content_hash: ContentHashState::Known([1u8; 32]),
             verified_frames: 3,
             item_events: 2,
             holes: 0,

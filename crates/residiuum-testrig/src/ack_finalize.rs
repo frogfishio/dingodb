@@ -6,7 +6,9 @@
 use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
 use crate::write_mimic::{PEER_DATA_BYTES_PER_OP, PEER_OPS};
 use residiuum_format::body_hash;
-use residiuum_store::{DiagnosticIoSink, DurabilityMode, SealStageBreakdown, Store};
+use residiuum_store::{
+    DiagnosticIoSink, DurabilityMode, RotationStageTotals, SealStageBreakdown, Store,
+};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
@@ -101,6 +103,8 @@ pub struct AckFinalizeResult {
     pub pending_seal_paths_at_last_ack: usize,
     pub sealed_segments_at_last_ack: usize,
     pub enrichment_backlog_at_last_ack: usize,
+    /// Mid-run auto-rotation stage totals through last ack.
+    pub rotation_stages: RotationStageTotals,
     pub logical_bytes: u64,
     pub on_disk_bytes: u64,
     pub timestamps: Timestamps,
@@ -387,6 +391,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
 
     let pending_seal_inflight_at_last_ack = store.pending_seal_inflight();
     let enrichment_backlog_at_last_ack = store.enrichment_backlog();
+    let rotation_stages = store.rotation_stage_totals();
     let (pending_seal_paths_at_last_ack, sealed_segments_at_last_ack) =
         match store.lifecycle_diag() {
             Ok(d) => (d.pending_seals, d.sealed_segments),
@@ -472,6 +477,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
         pending_seal_paths_at_last_ack,
         sealed_segments_at_last_ack,
         enrichment_backlog_at_last_ack,
+        rotation_stages,
         logical_bytes: keys_written.saturating_mul(cfg.payload_size as u64),
         on_disk_bytes: on_disk,
         timestamps: Timestamps {
@@ -655,6 +661,7 @@ fn run_raw_mimic(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> {
         pending_seal_paths_at_last_ack: 0,
         sealed_segments_at_last_ack: 0,
         enrichment_backlog_at_last_ack: 0,
+        rotation_stages: RotationStageTotals::default(),
         logical_bytes: ops.saturating_mul(cfg.payload_size as u64),
         on_disk_bytes: expect_len,
         timestamps: Timestamps {
@@ -669,7 +676,32 @@ fn run_raw_mimic(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> {
     })
 }
 
+fn pct(part_ns: u64, whole: Duration) -> f64 {
+    let whole_ns = whole.as_nanos().max(1) as f64;
+    (part_ns as f64) * 100.0 / whole_ns
+}
+
 fn result_json(r: &AckFinalizeResult) -> Value {
+    let rot = &r.rotation_stages;
+    let rotation_stages = json!({
+        "rotations": rot.rotations,
+        "flush_ns": rot.flush_ns,
+        "rename_pending_ns": rot.rename_pending_ns,
+        "start_active_ns": rot.start_active_ns,
+        "backpressure_wait_ns": rot.backpressure_wait_ns,
+        "auth_publish_ns": rot.auth_publish_ns,
+        "catalog_apply_ns": rot.catalog_apply_ns,
+        "total_ns": rot.total_ns(),
+        "pct_of_ack_wall": {
+            "flush": pct(rot.flush_ns, r.ack_elapsed),
+            "rename_pending": pct(rot.rename_pending_ns, r.ack_elapsed),
+            "start_active": pct(rot.start_active_ns, r.ack_elapsed),
+            "backpressure_wait": pct(rot.backpressure_wait_ns, r.ack_elapsed),
+            "auth_publish": pct(rot.auth_publish_ns, r.ack_elapsed),
+            "catalog_apply": pct(rot.catalog_apply_ns, r.ack_elapsed),
+            "all_rotation_stages": pct(rot.total_ns(), r.ack_elapsed),
+        },
+    });
     json!({
         "kind": "ack_finalize_cell",
         "disclosure": DISCLOSURE,
@@ -706,6 +738,7 @@ fn result_json(r: &AckFinalizeResult) -> Value {
         "pending_seal_paths_at_last_ack": r.pending_seal_paths_at_last_ack,
         "sealed_segments_at_last_ack": r.sealed_segments_at_last_ack,
         "enrichment_backlog_at_last_ack": r.enrichment_backlog_at_last_ack,
+        "rotation_stages": rotation_stages,
         "reopen_exact": r.reopen_exact,
         "reopen_verify_mode": r.reopen_verify_mode,
         "timestamps_unix_ns": {

@@ -281,3 +281,7 @@ required-features = ["legacy-raw-store"]
 [[test]]
 name = "def_scan_001_segment_not_found"
 required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "reopen_before_enrichment"
+required-features = ["legacy-raw-store"]
