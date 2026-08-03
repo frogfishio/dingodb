@@ -60,6 +60,9 @@ testrig.
 | [HOW_WE_WRITE_CORRECTION.md](HOW_WE_WRITE_CORRECTION.md) | **Correction:** not write *size*; yes write_all cost / vs SQLite path gap |
 | [WRITE_ALL_BISECT.md](WRITE_ALL_BISECT.md) | **Bisect:** Discard≈DevNull≈SeekOnly~120k; RealOverwrite~96k; Real~10k → **append/growth** |
 | [PREALLOC_SPIKE.md](PREALLOC_SPIKE.md) | **Answer:** sparse `set_len` no; page-touch prealloc ~37k (~4× Real, >SQLite) |
+| [NEXT_STEPS_WRITE_GROWTH.md](NEXT_STEPS_WRITE_GROWTH.md) | **Next:** honest prealloc → product-shaped alloc → SQLite gap → Scratch → design |
+| [GEMINI_PREALLOC_PLATFORM_REVIEW.md](GEMINI_PREALLOC_PLATFORM_REVIEW.md) | **Review:** sparse trap ✓; `F_PREALLOCATE`≠37k on APFS (fcntl≈Real; touch still wins) |
+| [artifacts/firm-numbers-fpreallocate-apfs/](artifacts/firm-numbers-fpreallocate-apfs/) | F_PREALLOCATE vs set_len vs touch JSON |
 | [artifacts/firm-numbers-prealloc-apfs/](artifacts/firm-numbers-prealloc-apfs/) | Prealloc spike JSON |
 | [artifacts/firm-numbers-write-all-bisect-apfs/](artifacts/firm-numbers-write-all-bisect-apfs/) | Write-path bisect JSON ladder |
 | [artifacts/firm-numbers-diag-coalesce-apfs/](artifacts/firm-numbers-diag-coalesce-apfs/) | Coalesce spike JSON (real/coalesce/discard) |

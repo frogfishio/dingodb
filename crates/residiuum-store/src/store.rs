@@ -402,6 +402,9 @@ pub enum DiagnosticIoSink {
     /// Like [`RealPrealloc`], then touch every 1 MiB to force physical pages.
     /// Bisects sparse hole vs allocated extent.
     RealPreallocFill,
+    /// Like [`Real`], but macOS `fcntl(F_PREALLOCATE)` (or Linux `posix_fallocate`)
+    /// then `set_len`. Tests Gemini-style OS block reserve without page-touch.
+    RealPreallocFcntl,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -827,14 +830,17 @@ impl Store {
             | DiagnosticIoSink::RealNoSeek
             | DiagnosticIoSink::RealOverwrite
             | DiagnosticIoSink::RealPrealloc
-            | DiagnosticIoSink::RealPreallocFill => {
+            | DiagnosticIoSink::RealPreallocFill
+            | DiagnosticIoSink::RealPreallocFcntl => {
                 self.null_io_file = None;
             }
         }
         // peer-pump sets sink after create — pre-size any already-open actives.
         if matches!(
             sink,
-            DiagnosticIoSink::RealPrealloc | DiagnosticIoSink::RealPreallocFill
+            DiagnosticIoSink::RealPrealloc
+                | DiagnosticIoSink::RealPreallocFill
+                | DiagnosticIoSink::RealPreallocFcntl
         ) {
             self.prealloc_existing_actives()?;
         }
@@ -844,24 +850,37 @@ impl Store {
     /// Diagnostic: apply prealloc to already-open active writers (post-create sink set).
     fn prealloc_existing_actives(&mut self) -> Result<(), StoreError> {
         const BYTES: u64 = 512 * 1024 * 1024;
-        let fill = self.diagnostic_io == DiagnosticIoSink::RealPreallocFill;
+        let mode = self.diagnostic_io;
         let n = self.writer_shards();
         for shard in 0..n {
             let Some(writer) = self.active_mut(shard) else {
                 continue;
             };
-            let cur = writer.file.metadata()?.len();
-            if cur < BYTES {
-                writer.file.set_len(BYTES)?;
-            }
-            if fill {
-                let mut off = 0u64;
-                let one = [0u8; 1];
-                while off < BYTES {
-                    writer.file.seek(SeekFrom::Start(off))?;
-                    writer.file.write_all(&one)?;
-                    off = off.saturating_add(1024 * 1024);
+            match mode {
+                DiagnosticIoSink::RealPrealloc => {
+                    let cur = writer.file.metadata()?.len();
+                    if cur < BYTES {
+                        writer.file.set_len(BYTES)?;
+                    }
                 }
+                DiagnosticIoSink::RealPreallocFill => {
+                    let cur = writer.file.metadata()?.len();
+                    if cur < BYTES {
+                        writer.file.set_len(BYTES)?;
+                    }
+                    let mut off = 0u64;
+                    let one = [0u8; 1];
+                    while off < BYTES {
+                        writer.file.seek(SeekFrom::Start(off))?;
+                        writer.file.write_all(&one)?;
+                        off = off.saturating_add(1024 * 1024);
+                    }
+                }
+                DiagnosticIoSink::RealPreallocFcntl => {
+                    Self::diag_os_preallocate(&writer.file, BYTES)?;
+                    writer.file.set_len(BYTES)?;
+                }
+                _ => {}
             }
             writer.file.seek(SeekFrom::Start(writer.durable_len))?;
         }
@@ -5777,7 +5796,8 @@ impl Store {
                 }
                 DiagnosticIoSink::Real
                 | DiagnosticIoSink::RealPrealloc
-                | DiagnosticIoSink::RealPreallocFill => {
+                | DiagnosticIoSink::RealPreallocFill
+                | DiagnosticIoSink::RealPreallocFcntl => {
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
                     // DEF-022: optional short-write injection mid-append.
                     if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
@@ -5886,6 +5906,7 @@ impl Store {
                     | DiagnosticIoSink::RealOverwrite
                     | DiagnosticIoSink::RealPrealloc
                     | DiagnosticIoSink::RealPreallocFill
+                    | DiagnosticIoSink::RealPreallocFcntl
             )
         {
             if sink == DiagnosticIoSink::Coalesce64k {
@@ -6108,9 +6129,77 @@ impl Store {
                 }
                 file.seek(SeekFrom::Start(0))?;
             }
+            DiagnosticIoSink::RealPreallocFcntl => {
+                Self::diag_os_preallocate(file, BYTES)?;
+                file.set_len(BYTES)?;
+                file.seek(SeekFrom::Start(0))?;
+            }
             _ => {}
         }
         Ok(())
+    }
+
+    /// Platform physical block reserve (diagnostic). macOS: `F_PREALLOCATE`;
+    /// Linux: `posix_fallocate`. Other targets: error.
+    fn diag_os_preallocate(file: &File, bytes: u64) -> Result<(), StoreError> {
+        #[cfg(target_os = "macos")]
+        {
+            use std::os::unix::io::AsRawFd;
+            #[repr(C)]
+            struct FStore {
+                fst_flags: u32,
+                fst_posmode: i32,
+                fst_offset: i64,
+                fst_length: i64,
+                fst_bytesalloc: i64,
+            }
+            // From sys/fcntl.h — allocate from EOF / file start region.
+            const F_PREALLOCATE: i32 = 42;
+            const F_ALLOCATECONTIG: u32 = 0x0000_0002;
+            const F_ALLOCATEALL: u32 = 0x0000_0004;
+            const F_PEOFPOSMODE: i32 = 3;
+            extern "C" {
+                fn fcntl(fd: i32, cmd: i32, ... ) -> i32;
+            }
+            let fd = file.as_raw_fd();
+            let mut store = FStore {
+                fst_flags: F_ALLOCATECONTIG,
+                fst_posmode: F_PEOFPOSMODE,
+                fst_offset: 0,
+                fst_length: bytes as i64,
+                fst_bytesalloc: 0,
+            };
+            let rc = unsafe { fcntl(fd, F_PREALLOCATE, &mut store as *mut FStore) };
+            if rc != 0 {
+                // Contiguous failed — fall back to any physical alloc.
+                store.fst_flags = F_ALLOCATEALL;
+                store.fst_bytesalloc = 0;
+                let rc2 = unsafe { fcntl(fd, F_PREALLOCATE, &mut store as *mut FStore) };
+                if rc2 != 0 {
+                    return Err(StoreError::Io(std::io::Error::last_os_error()));
+                }
+            }
+            return Ok(());
+        }
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::io::AsRawFd;
+            extern "C" {
+                fn posix_fallocate(fd: i32, offset: i64, len: i64) -> i32;
+            }
+            let rc = unsafe { posix_fallocate(file.as_raw_fd(), 0, bytes as i64) };
+            if rc != 0 {
+                return Err(StoreError::Io(std::io::Error::from_raw_os_error(rc)));
+            }
+            return Ok(());
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        {
+            let _ = (file, bytes);
+            return Err(StoreError::CorruptMeta(
+                "RealPreallocFcntl unsupported on this OS",
+            ));
+        }
     }
 
     fn resume_or_start_all_actives(&mut self) -> Result<(), StoreError> {
