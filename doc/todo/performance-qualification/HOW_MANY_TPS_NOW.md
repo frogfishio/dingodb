@@ -1,7 +1,23 @@
 # How many TPS can we have now?
 
-**Date:** 2026-08-03 · Odometer = **acked puts/s** (Mode A · 8 KiB · APFS `/var/tmp` unless noted)  
-**Short answer:** **Default product path ≈ 10–14k TPS** (quiet bed) · **~7–9k** when `/var/tmp` is nearly full. Opt-in watermark growth is **shipped as API** — still **not default-on**. Honest paired measure: watermark ≈ Real grow (does **not** unlock a 30k band). Prior diag ~32k was a **seal-fail cheat** — do not cite. Latest try grow ~6.7k on 95%-full disk is **bed noise**, not a 12→7 product regression ([WHY_7K_VS_12K.md](WHY_7K_VS_12K.md)).
+**Principal metric (locked):** **TPS only** = acked puts/s (`ops_per_sec`). See [TPS_ONLY.md](TPS_ONLY.md). Do not answer with component timings.
+
+**Short answer:**
+
+| | TPS |
+|--|----:|
+| Residiuum default (quiet) | **~12–14k** |
+| Residiuum default (disk nearly full) | **~6.5–8k** |
+| Residiuum watermark (opt-in) | **≈ default** — no proven TPS win |
+| SQLite same recipe | **~25–30k** |
+
+We are roughly **half of SQLite** when the disk is quiet. That is the whole plot.
+
+---
+
+## Labor-only detail (not the principal answer)
+
+Do **not** lead principal replies with this section. TPS table above is SoT for “how fast are we.”
 
 ## What “now” means (three bands)
 
