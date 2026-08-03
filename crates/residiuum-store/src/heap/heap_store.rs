@@ -287,7 +287,9 @@ impl HeapStore {
         self.gate()?;
         self.require_right(Rights::WRITE)?;
         self.require_subject_v2(subject, None, None)?;
-        let receipt = {
+        // Admit under the physical lock; wait for collection install *outside*
+        // the lock so concurrent independent puts can coalesce.
+        let completion = {
             let mut guard = self
                 .physical
                 .lock()
@@ -300,17 +302,24 @@ impl HeapStore {
                     DurabilityMode::Durable,
                     condition,
                 ) {
-                    AdmissionResult::Admitted(c) => c
-                        .wait()
-                        .map_err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error)?,
+                    AdmissionResult::Admitted(c) => Some(c),
                     AdmissionResult::Rejected(e) => {
                         return Err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error(e));
                     }
                 }
             } else {
-                guard.put_subject_bytes_if(subject, value, DurabilityMode::Durable, condition)?
+                return Ok(guard.put_subject_bytes_if(
+                    subject,
+                    value,
+                    DurabilityMode::Durable,
+                    condition,
+                )?);
             }
         };
+        let receipt = completion
+            .expect("awo admit")
+            .wait()
+            .map_err(crate::adaptive_write::AdaptiveWriteHandle::to_store_error)?;
         // Collection writes invalidate derived secondary indexes (DEF-027).
         if let Ok(sv2) = decode_subject_v2(subject) {
             if sv2.object_kind == SubjectObjectKind::Collection {

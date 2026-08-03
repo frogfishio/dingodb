@@ -1520,6 +1520,61 @@ impl Store {
         self.put_many_single_shard_batched(items, mode)
     }
 
+
+    /// Batch put under lease with raw subject bytes (independent-write collection).
+    ///
+    /// Same persist-before-publish semantics as [`Self::put_many_awo_owned`].
+    pub fn put_many_subject_bytes_awo_owned(
+        &mut self,
+        items: &[(&[u8], &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        if self.awo_writer_poisoned {
+            return Err(StoreError::AdaptiveWriterPoisoned);
+        }
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let effective_max = self
+            .large_value_policy
+            .effective_with(self.limits.max_body_len);
+        for (_, value) in items {
+            if value.len() as u64 > effective_max {
+                return Err(StoreError::PayloadTooLarge);
+            }
+            let _ = self.large_value_policy.admit(value.len())?;
+        }
+        let non_chunked = items
+            .iter()
+            .all(|(_, b)| b.len() <= self.chunk_threshold);
+        if mode == DurabilityMode::Memory || !non_chunked {
+            let mut out = Vec::with_capacity(items.len());
+            for (subject, value) in items {
+                out.push(self.put_subject_bytes_if_awo_owned(
+                    subject,
+                    value,
+                    mode,
+                    WriteCondition::Unconditional,
+                )?);
+            }
+            return Ok(out);
+        }
+        if self.writer_shards() > 1 {
+            // Multi-shard: sequential lease puts (still correct; residual parallel).
+            let mut out = Vec::with_capacity(items.len());
+            for (subject, value) in items {
+                out.push(self.put_subject_bytes_if_awo_owned(
+                    subject,
+                    value,
+                    mode,
+                    WriteCondition::Unconditional,
+                )?);
+            }
+            return Ok(out);
+        }
+        self.put_many_single_shard_batched_bytes(items, mode)
+    }
+
     /// Single-shard batched put: N in-memory appends, one file tail write.
     ///
     /// This is the dominant throughput path for testrig / bulk loaders. Per-put
@@ -1531,6 +1586,129 @@ impl Store {
     /// **AWO-1:** index publication runs only after the segment tail write succeeds
     /// (persist-before-publish). On pre-I/O failure the segment is restored from
     /// checkpoint and nothing is published.
+    fn put_many_single_shard_batched_bytes(
+        &mut self,
+        items: &[(&[u8], &[u8])],
+        mode: DurabilityMode,
+    ) -> Result<Vec<WriteReceipt>, StoreError> {
+        debug_assert_eq!(self.writer_shards(), 1);
+        debug_assert_ne!(mode, DurabilityMode::Memory);
+
+        let _workers = self.cook_parallelism();
+        // Parallel cook remains str-keyed; bytes path is serial cook + one tail.
+
+        let mut pending: Vec<StagedPut> = Vec::with_capacity(items.len());
+        let mut batch_checkpoint: Option<residiuum_format::ActiveSegmentCheckpoint> = None;
+
+        for (subject, value) in items {
+            let admit = self.large_value_policy.admit(value.len())?;
+            let subject_bytes = *subject;
+            if subject_bytes.len() > MAX_SUBJECT_LEN {
+                return Err(StoreError::SubjectTooLong {
+                    max: MAX_SUBJECT_LEN,
+                });
+            }
+            if value.len() as u64 > self.limits.max_body_len {
+                return Err(StoreError::PayloadTooLarge);
+            }
+
+            self.ensure_active(0)?;
+            let need_seal = self
+                .active_ref(0)
+                .map(|w| w.segment.len() >= self.seal_threshold)
+                .unwrap_or(false);
+            if need_seal {
+                self.finish_staged_batch_persist_publish(
+                    &mut pending,
+                    &mut batch_checkpoint,
+                    mode,
+                )?;
+                self.maybe_auto_seal(0)?;
+            }
+
+            let segment_id = self
+                .active_ref(0)
+                .map(|w| w.segment_id)
+                .expect("active segment");
+            if batch_checkpoint.is_none() {
+                batch_checkpoint = self.active_ref(0).map(|w| w.segment.checkpoint());
+            }
+            let item_id = match self.index.get(subject_bytes) {
+                Some(entry) => entry.item_id(),
+                None => subject_item_id(subject_bytes),
+            };
+            let event_id = self.next_event_id()?;
+            let env = ItemEnvelope {
+                store_id: self.store_id,
+                segment_id,
+                item_id,
+                event_kind: EventKind::Put,
+                created_ns: now_ns(),
+                subject: subject_bytes.to_vec(),
+            };
+            let t_enc = std::time::Instant::now();
+            let envelope = encode_item_envelope(&env).map_err(StoreError::BadEnvelope)?;
+            let encode_ns = t_enc.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+            if self.boundary_probe_enabled() {
+                self.boundary_probe.record_encode_envelope(
+                    envelope.len() as u64,
+                    encode_ns,
+                    mode,
+                    0,
+                );
+            }
+            if !self
+                .limits
+                .accepts_lengths(envelope.len() as u32, value.len() as u64)
+            {
+                return Err(StoreError::PayloadTooLarge);
+            }
+
+            crate::failpoint::hit("awo.install.frame.before")?;
+            let (offset, encoded_frame_len, append_ns) = {
+                let writer = self.active_mut(0).expect("active segment");
+                let t_append = std::time::Instant::now();
+                let offset = writer.segment.append(
+                    FrameKind::ItemEvent,
+                    &envelope,
+                    value,
+                    event_id,
+                )?;
+                let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                let encoded_frame_len = writer.segment.len().saturating_sub(offset);
+                (offset, encoded_frame_len, append_ns)
+            };
+            crate::failpoint::hit("awo.install.frame.after")?;
+
+            self.boundary_probe.record_append(
+                encoded_frame_len,
+                value.len() as u64,
+                offset,
+                mode,
+                false,
+                false,
+                0,
+                append_ns,
+                0,
+            );
+
+            pending.push(StagedPut {
+                subject: subject_bytes.to_vec(),
+                item_id,
+                event_id,
+                segment_id,
+                offset,
+                encoded_frame_len,
+                admit,
+                profile_id: self.large_value_policy.profile_id.clone(),
+            });
+        }
+
+        self.finish_staged_batch_persist_publish(&mut pending, &mut batch_checkpoint, mode)
+    }
+
+    /// Persist staged frames then publish indexes (AWO-1 persist-before-publish).
+
     fn put_many_single_shard_batched(
         &mut self,
         items: &[(&str, &[u8])],

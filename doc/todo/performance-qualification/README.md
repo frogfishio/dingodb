@@ -24,7 +24,8 @@ testrig.
 | [AWO_THREE_WAY_T6_INTERACTIVE.md](AWO_THREE_WAY_T6_INTERACTIVE.md) | T6 interactive re-run on Scratch; smoke OK; diagnostic exFAT residual |
 | [AWO_THREE_WAY_T7_SPARSE_SATURATED.md](AWO_THREE_WAY_T7_SPARSE_SATURATED.md) | T7 v2: sparse/saturated **independent singles** (not harness batch_size=N); L-API vs L-AWO |
 | [AWO_THREE_WAY_T8_SINGLES_RUN.md](AWO_THREE_WAY_T8_SINGLES_RUN.md) | T8 APFS smoke run: pin batch=1; all modes sync/op=1; collection residual |
-| [AWO_THREE_WAY_T9_DECISIVE_FINDING.md](AWO_THREE_WAY_T9_DECISIVE_FINDING.md) | **Decisive:** harness OK; AWO not connected to independent writes (admit_natural) |
+| [AWO_THREE_WAY_T9_DECISIVE_FINDING.md](AWO_THREE_WAY_T9_DECISIVE_FINDING.md) | **Decisive (pre-connect):** harness OK; independent path was natural-only |
+| [AWO_INDEPENDENT_COLLECTION_CONNECT.md](AWO_INDEPENDENT_COLLECTION_CONNECT.md) | Collection connect labor: queue+collector; concurrent file_sync amortize test |
 | [artifacts/awo-three-way-t7-apfs-smoke/](artifacts/awo-three-way-t7-apfs-smoke/) | T8 numeric summary + campaigns |
 | [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |
 | [artifacts/awo-three-way-t6-scratch-smoke/](artifacts/awo-three-way-t6-scratch-smoke/) | T6 Scratch smoke three-way |

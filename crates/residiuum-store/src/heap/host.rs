@@ -94,12 +94,19 @@ impl StoreHost {
                     .physical
                     .lock()
                     .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?;
-                AdaptiveWriteHandle::start_static(policy, &mut guard).map_err(|e| match e {
-                    AdaptiveWriteError::WriterPoisoned { .. } => {
-                        StoreError::AdaptiveWriterPoisoned
-                    }
-                    other => StoreError::Io(std::io::Error::other(format!("awo start: {other:?}"))),
-                })?
+                let handle =
+                    AdaptiveWriteHandle::start_static(policy, &mut guard).map_err(|e| match e {
+                        AdaptiveWriteError::WriterPoisoned { .. } => {
+                            StoreError::AdaptiveWriterPoisoned
+                        }
+                        other => {
+                            StoreError::Io(std::io::Error::other(format!("awo start: {other:?}")))
+                        }
+                    })?;
+                // Independent-write collector installs multi-item batches without
+                // callers holding the mutex across WriteCompletion::wait.
+                handle.bind_physical(Arc::clone(&self.physical));
+                handle
             }
         };
         self.adaptive = Some(handle);

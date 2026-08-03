@@ -1,15 +1,17 @@
 //! AWO-3 Static Intake Arbiter surface (product attach, mode default disabled).
 //!
 //! - [`AdaptiveWriteMode::Disabled`]: no lease, no cooker; natural store paths.
-//! - [`AdaptiveWriteMode::Static`]: lease fences direct `Store` mutation; single
-//!   admits execute natural under the lease; [`AdaptiveWriteHandle::admit_put_batch`]
-//!   uses lease-owned `put_many` (persist-before-publish + optional parallel cook).
+//! - [`AdaptiveWriteMode::Static`]: lease fences direct `Store` mutation;
+//!   independent unconditional puts **collect** then install via multi-item
+//!   `put_many_subject_bytes_awo_owned` when a physical store is bound;
+//!   [`AdaptiveWriteHandle::admit_put_batch`] uses caller-presented batches.
 //! - [`AdaptiveWriteMode::Adaptive`]: lease + pipeline + live [`select_plan`] sizing
 //!   (AWO-5 wired); estimator warms from observed batch service times.
 //!
-//! E6 heap active-writer layout residual: product heap routing still uses the
-//! shared physical store lock; heap-specific active segments remain open.
+//! Callers **must not** hold the physical mutex across [`WriteCompletion::wait`]
+//! when collection is active (heap `put_if` waits outside the lock).
 
+use super::collection::IndependentCollector;
 use super::controller::{
     AwoClock, ControllerPolicy, ControllerSignals, InstantClock, ManualClock, ScaleController,
 };
@@ -23,6 +25,7 @@ use super::types::AwoPlan;
 use crate::durability::DurabilityMode;
 use crate::error::StoreError;
 use crate::store::{Store, WriteCondition, WriteReceipt};
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -113,18 +116,46 @@ pub struct AdaptiveWriteStatus {
 /// One-shot completion for an admitted write (plan §5).
 #[derive(Debug)]
 pub struct WriteCompletion {
-    receipt: Result<WriteReceipt, AdaptiveWriteError>,
+    inner: WriteCompletionInner,
+}
+
+#[derive(Debug)]
+enum WriteCompletionInner {
+    /// Already resolved (natural path).
+    Ready(Result<WriteReceipt, AdaptiveWriteError>),
+    /// Waiting on independent-write collection install.
+    Pending(Receiver<Result<WriteReceipt, AdaptiveWriteError>>),
 }
 
 impl WriteCompletion {
-    /// Consume the completion (already resolved in the AWO-3 static floor).
-    pub fn wait(self) -> Result<WriteReceipt, AdaptiveWriteError> {
-        self.receipt
+    fn ready(receipt: Result<WriteReceipt, AdaptiveWriteError>) -> Self {
+        Self {
+            inner: WriteCompletionInner::Ready(receipt),
+        }
     }
 
-    /// Whether the completion already holds a result (always true on this floor).
+    fn pending(rx: Receiver<Result<WriteReceipt, AdaptiveWriteError>>) -> Self {
+        Self {
+            inner: WriteCompletionInner::Pending(rx),
+        }
+    }
+
+    /// Block until the write is installed (natural or collected batch).
+    ///
+    /// **Do not hold the physical store mutex across this call** when collection
+    /// is active — the collector needs the same lock to install.
+    pub fn wait(self) -> Result<WriteReceipt, AdaptiveWriteError> {
+        match self.inner {
+            WriteCompletionInner::Ready(r) => r,
+            WriteCompletionInner::Pending(rx) => rx
+                .recv()
+                .unwrap_or(Err(AdaptiveWriteError::Draining)),
+        }
+    }
+
+    /// Whether the completion already holds a result.
     pub fn is_ready(&self) -> bool {
-        true
+        matches!(self.inner, WriteCompletionInner::Ready(_))
     }
 }
 
@@ -177,6 +208,8 @@ struct RuntimeInner {
     credits: Option<CreditLedger>,
     cooker: Option<PersistentCookerPool>,
     pipeline: Option<Arc<PipelineCoordinator>>,
+    /// Independent-write collector (Static/Adaptive when lease active).
+    collector: Option<Arc<IndependentCollector>>,
     /// Adaptive-mode service estimator (AWO-5).
     estimator: Option<ServiceEstimator>,
     /// Adaptive-mode scale controller (AWO-5).
@@ -215,6 +248,7 @@ impl AdaptiveWriteHandle {
                     credits: None,
                     cooker: None,
                     pipeline: None,
+                    collector: None,
                     estimator: None,
                     scale: None,
                     clock: InstantClock::new(),
@@ -249,6 +283,10 @@ impl AdaptiveWriteHandle {
             0,
         );
         let pipeline = Arc::new(PipelineCoordinator::new(policy.pipeline_depth_limit));
+        let collector = IndependentCollector::start(
+            policy.maximum_batch_entries,
+            policy.maximum_collection_delay,
+        );
         let adaptive = policy.mode == AdaptiveWriteMode::Adaptive;
         let mut estimator = ServiceEstimator::with_policy_defaults();
         estimator.min_samples = policy.estimator_min_samples;
@@ -270,6 +308,7 @@ impl AdaptiveWriteHandle {
                     credits: Some(credits),
                     cooker: Some(cooker),
                     pipeline: Some(pipeline),
+                    collector: Some(collector),
                     estimator: if adaptive { Some(estimator) } else { None },
                     scale: if adaptive { Some(scale) } else { None },
                     clock: InstantClock::new(),
@@ -277,6 +316,15 @@ impl AdaptiveWriteHandle {
                 }),
             }),
         })
+    }
+
+    /// Bind the shared physical store so the collector can install without the
+    /// caller holding the mutex across [`WriteCompletion::wait`].
+    pub fn bind_physical(&self, physical: Arc<Mutex<Store>>) {
+        let g = self.runtime.inner.lock().expect("awo runtime");
+        if let Some(c) = g.collector.as_ref() {
+            c.bind_physical(physical);
+        }
     }
 
     /// Last adaptive selection (None until Adaptive admit runs select_plan).
@@ -360,10 +408,89 @@ impl AdaptiveWriteHandle {
         mode: DurabilityMode,
         condition: WriteCondition,
     ) -> AdmissionResult {
-        let _class = classify_put(condition, mode);
+        let class = classify_put(condition, mode);
+        // Independent-write collection: enqueue and return pending when bound.
+        if class == EligibilityClass::UnconditionalInlinePut {
+            if let Some(rx) = self.try_collect_put(store, subject, value, mode) {
+                return rx;
+            }
+        }
         self.admit_natural(store, |s| {
             s.put_subject_bytes_if_awo_owned(subject, value, mode, condition)
         })
+    }
+
+    /// Try collection path; `None` means fall back to natural.
+    fn try_collect_put(
+        &self,
+        store: &mut Store,
+        subject: &[u8],
+        value: &[u8],
+        mode: DurabilityMode,
+    ) -> Option<AdmissionResult> {
+        let (collector, credit) = {
+            let g = self.runtime.inner.lock().expect("awo runtime");
+            if g.policy.mode == AdaptiveWriteMode::Disabled
+                || !g.lease_active
+                || g.draining
+            {
+                return None;
+            }
+            if store.is_awo_writer_poisoned() {
+                return Some(AdmissionResult::Rejected(
+                    AdaptiveWriteError::WriterPoisoned {
+                        recovery_required: true,
+                    },
+                ));
+            }
+            let collector = g.collector.as_ref()?.clone();
+            if !collector.is_bound() {
+                return None;
+            }
+            let credit = match mutation_credit(subject.len(), value.len()) {
+                Ok(c) => c,
+                Err(_) => {
+                    return Some(AdmissionResult::Rejected(AdaptiveWriteError::QueueFull {
+                        retry_after: g.policy.maximum_collection_delay,
+                    }));
+                }
+            };
+            if let Some(credits) = g.credits.as_ref() {
+                if credits.try_reserve(1, credit).is_err() {
+                    return Some(AdmissionResult::Rejected(AdaptiveWriteError::QueueFull {
+                        retry_after: g.policy.maximum_collection_delay,
+                    }));
+                }
+            }
+            (collector, credit)
+        };
+
+        match collector.enqueue(subject.to_vec(), value.to_vec(), mode) {
+            Ok(rx) => {
+                // Help-flush when a pile-up is already visible under this lock.
+                if collector.pending_len() >= 2 {
+                    collector.flush_with_store(store);
+                }
+                // Credits released at install time inside collector? Currently reserved
+                // until natural path release — release after wait in natural only.
+                // For collection: release credit when enqueued settles — approximate
+                // release now so ledger does not stick (install still holds durability).
+                {
+                    let g = self.runtime.inner.lock().expect("awo runtime");
+                    if let Some(credits) = g.credits.as_ref() {
+                        let _ = credits.release(1, credit);
+                    }
+                }
+                Some(AdmissionResult::Admitted(WriteCompletion::pending(rx)))
+            }
+            Err(e) => {
+                let g = self.runtime.inner.lock().expect("awo runtime");
+                if let Some(credits) = g.credits.as_ref() {
+                    let _ = credits.release(1, credit);
+                }
+                Some(AdmissionResult::Rejected(e))
+            }
+        }
     }
 
     /// Admit a delete under the adaptive lease (natural execution on AWO-3 floor).
@@ -672,10 +799,10 @@ impl AdaptiveWriteHandle {
         }
 
         match receipt {
-            Ok(r) => AdmissionResult::Admitted(WriteCompletion { receipt: Ok(r) }),
-            Err(e) => AdmissionResult::Admitted(WriteCompletion {
-                receipt: Err(AdaptiveWriteError::from(e)),
-            }),
+            Ok(r) => AdmissionResult::Admitted(WriteCompletion::ready(Ok(r))),
+            Err(e) => AdmissionResult::Admitted(WriteCompletion::ready(Err(
+                AdaptiveWriteError::from(e),
+            ))),
         }
     }
 
@@ -719,13 +846,16 @@ impl AdaptiveWriteHandle {
 
     /// Drain admits until idle or deadline (cooker pending + credits + pipeline).
     pub fn drain_writes(&self, deadline: Instant) -> Result<(), AdaptiveWriteError> {
-        {
+        let collector = {
             let mut g = self.runtime.inner.lock().expect("awo runtime");
             g.draining = true;
             if let Some(ref p) = g.pipeline {
                 p.begin_shutdown();
             }
-        }
+            g.collector.clone()
+        };
+        // Force-flush collected independent puts via caller-held path when possible
+        // is not available here without store; collector thread will install on delay.
         while Instant::now() < deadline {
             let pending = {
                 let g = self.runtime.inner.lock().expect("awo runtime");
@@ -736,7 +866,8 @@ impl AdaptiveWriteHandle {
                     .as_ref()
                     .map(|p| p.status().in_flight)
                     .unwrap_or(0);
-                cook + cred + pipe
+                let coll = collector.as_ref().map(|c| c.pending_len()).unwrap_or(0);
+                cook + cred + pipe + coll
             };
             if pending == 0 {
                 return Ok(());
@@ -748,17 +879,24 @@ impl AdaptiveWriteHandle {
 
     /// Release lease on the store and shut down cookers (drop path).
     pub fn detach(&self, store: &mut Store) {
-        let mut g = self.runtime.inner.lock().expect("awo runtime");
-        g.draining = true;
-        g.lease_active = false;
-        if let Some(ref p) = g.pipeline {
-            p.begin_shutdown();
+        let collector = {
+            let mut g = self.runtime.inner.lock().expect("awo runtime");
+            g.draining = true;
+            g.lease_active = false;
+            if let Some(ref p) = g.pipeline {
+                p.begin_shutdown();
+            }
+            if let Some(cooker) = g.cooker.take() {
+                cooker.shutdown();
+            }
+            g.credits = None;
+            g.pipeline = None;
+            g.collector.take()
+        };
+        if let Some(c) = collector {
+            c.flush_all_with_store(store);
+            c.shutdown();
         }
-        if let Some(cooker) = g.cooker.take() {
-            cooker.shutdown();
-        }
-        g.credits = None;
-        g.pipeline = None;
         store.set_awo_lease_active(false);
     }
 }

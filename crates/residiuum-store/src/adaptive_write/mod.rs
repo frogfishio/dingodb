@@ -8,6 +8,7 @@
 //! - **AWO-2:** persistent cooker pool, credit ledger, ordered ready ring.
 //! - **AWO-3+:** product StoreHost admission (mode still disabled by default).
 
+pub mod collection;
 pub mod controller;
 pub mod coordinator;
 pub mod cooker;

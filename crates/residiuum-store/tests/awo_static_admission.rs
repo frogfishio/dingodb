@@ -7,7 +7,10 @@
 use residiuum_store::adaptive_write::{
     classify_put, AdaptiveWriteMode, AdaptiveWritePolicy, AdmissionResult, EligibilityClass,
 };
-use residiuum_store::{DurabilityMode, Store, StoreError, StoreHost, WriteCondition};
+use residiuum_store::{
+    BoundaryKind, DurabilityMode, Store, StoreError, StoreHost, WriteCondition,
+};
+use std::sync::{Arc, Barrier};
 use std::time::{Duration, Instant};
 
 #[test]
@@ -69,8 +72,9 @@ fn static_mode_fences_direct_put_and_admits_under_lease() {
         ));
     }
 
-    // Admit under lease succeeds.
-    {
+    // Admit under lease succeeds. Wait **outside** the physical lock so the
+    // independent-write collector can install.
+    let completion = {
         let mut guard = physical.lock().unwrap();
         match handle.admit_put(
             &mut guard,
@@ -79,12 +83,14 @@ fn static_mode_fences_direct_put_and_admits_under_lease() {
             DurabilityMode::Buffered,
             WriteCondition::Unconditional,
         ) {
-            AdmissionResult::Admitted(c) => {
-                let r = c.wait().expect("receipt");
-                assert_ne!(r.event_id, [0u8; 16]);
-            }
+            AdmissionResult::Admitted(c) => c,
             AdmissionResult::Rejected(e) => panic!("rejected: {e:?}"),
         }
+    };
+    let r = completion.wait().expect("receipt");
+    assert_ne!(r.event_id, [0u8; 16]);
+    {
+        let guard = physical.lock().unwrap();
         assert_eq!(
             guard.get_subject_bytes(b"awo/static/a").unwrap().unwrap(),
             b"body"
@@ -92,6 +98,82 @@ fn static_mode_fences_direct_put_and_admits_under_lease() {
     }
 
     host.drain_writes(Instant::now() + Duration::from_secs(1))
+        .unwrap();
+}
+
+/// Concurrent independent singles must share Durable barriers (collection).
+#[test]
+fn independent_puts_collect_amortize_file_sync() {
+    use std::thread;
+
+    let dir = tempfile::tempdir().unwrap();
+    let mut policy = AdaptiveWritePolicy::machine_defaults();
+    policy.mode = AdaptiveWriteMode::Static;
+    policy.maximum_cookers = 2;
+    policy.minimum_active_cookers = 1;
+    // Short window so the test finishes quickly; concurrent pile-up still coalesces.
+    policy.maximum_collection_delay = Duration::from_millis(5);
+
+    let host = StoreHost::create_with_adaptive_write(dir.path(), policy).unwrap();
+    let handle = host.adaptive_write().expect("handle").clone();
+    let physical = host.physical();
+
+    {
+        let mut g = physical.lock().unwrap();
+        g.enable_boundary_probe();
+    }
+
+    let n_threads = 8;
+    let puts_per = 4;
+    let barrier = Arc::new(Barrier::new(n_threads));
+    let mut joins = Vec::new();
+    for t in 0..n_threads {
+        let handle = handle.clone();
+        let physical = Arc::clone(&physical);
+        let barrier = Arc::clone(&barrier);
+        joins.push(thread::spawn(move || {
+            barrier.wait();
+            for i in 0..puts_per {
+                let key = format!("awo/collect/t{t}/i{i}");
+                let completion = {
+                    let mut guard = physical.lock().unwrap();
+                    match handle.admit_put(
+                        &mut guard,
+                        key.as_bytes(),
+                        b"v",
+                        DurabilityMode::Durable,
+                        WriteCondition::Unconditional,
+                    ) {
+                        AdmissionResult::Admitted(c) => c,
+                        AdmissionResult::Rejected(e) => panic!("rejected: {e:?}"),
+                    }
+                };
+                completion.wait().expect("receipt");
+            }
+        }));
+    }
+    for j in joins {
+        j.join().unwrap();
+    }
+
+    let total = (n_threads * puts_per) as u64;
+    let snap = {
+        let g = physical.lock().unwrap();
+        g.boundary_snapshot()
+    };
+    let file_sync = snap.counters.count(BoundaryKind::FileSync);
+    let appends = snap.counters.count(BoundaryKind::AppendEncodedFrame);
+    // Durable puts: each natural put would sync once. Collection should amortize.
+    assert!(
+        file_sync > 0 && file_sync < total,
+        "expected file_sync < ops: sync={file_sync} ops={total}"
+    );
+    assert!(
+        appends >= total,
+        "append_count {appends} < ops {total}"
+    );
+
+    host.drain_writes(Instant::now() + Duration::from_secs(2))
         .unwrap();
 }
 

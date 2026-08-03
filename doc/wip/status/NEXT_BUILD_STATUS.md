@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **Measure AWO T1–T9:** T8 APFS smoke independent singles all modes `file_sync/ops=1`; **T9 decisive:** harness OK — AWO **not connected** to independent writes (`admit_put`→`admit_natural` under global physical mutex). See `AWO_THREE_WAY_T9_DECISIVE_FINDING.md`. Collection connect residual open. Scratch exFAT residual remains. AWO cards principal `in_review`; query spine / APB **in_review**)
+Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **AWO independent collection connect labor:** queue+collector + `put_many_subject_bytes_awo_owned`; heap wait outside mutex; test `independent_puts_collect_amortize_file_sync` (file_sync < ops). See `AWO_INDEPENDENT_COLLECTION_CONNECT.md`. T9 finding was pre-connect diagnosis. PQH T8 re-run residual (harness still batch-1 flush). Scratch exFAT residual remains. AWO cards principal `in_review`; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
