@@ -4529,7 +4529,6 @@ impl Store {
             bytes
         };
         let bytes = sealed_owned.as_slice();
-        let content_hash = *blake3::hash(bytes).as_bytes();
         let size = bytes.len() as u64;
 
         crate::failpoint::hit("store.seal.before_dest_write")?;
@@ -4582,31 +4581,8 @@ impl Store {
         breakdown.final_active_seal_ns =
             breakdown.final_active_seal_ns.saturating_add(elapsed_ns(t_final));
 
-        // Stage 9: register sealed segment on hot tier using the in-memory hash
-        // (no second full-file read). Catalog upsert is O(this segment only).
-        let t_cat = std::time::Instant::now();
-        let _ = register_hot_segment_known(
-            &self.paths,
-            &mut self.tier_placement,
-            sealed_id,
-            content_hash,
-            size,
-        );
-        let _ = self.persist_tier_state();
-        let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
-        breakdown.catalog_publication_ns = breakdown
-            .catalog_publication_ns
-            .saturating_add(elapsed_ns(t_cat));
-
-        // Hydra: adaptive per-segment index (derived only; failure is non-fatal).
-        let t_hydra = std::time::Instant::now();
-        let _ = self.write_hydra_for_sealed(sealed_id, bytes);
-        breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
-        // Chimera: workload-compiled value placement (derived only; non-fatal).
-        let t_chimera = std::time::Instant::now();
-        let _ = self.write_chimera_for_sealed(sealed_id);
-        breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
-
+        // Seal Fast Lane: start the replacement active immediately. BLAKE3,
+        // segment-catalog scan, Hydra, and Chimera are derived — enqueue them.
         let t_reopen = std::time::Instant::now();
         self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment_with_mode(shard, flush_mode)?;
@@ -4614,7 +4590,66 @@ impl Store {
         breakdown.reopen_active_ns = breakdown
             .reopen_active_ns
             .saturating_add(elapsed_ns(t_reopen));
+
+        if let Some(pipe) = self.seal_pipeline.as_mut() {
+            let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
+                store_id: self.store_id,
+                segment_id: sealed_id,
+                paths: self.paths.clone(),
+                limits: self.limits,
+            });
+        } else {
+            // No pipeline: keep prior sync derived behavior.
+            let t_cat = std::time::Instant::now();
+            let content_hash = *blake3::hash(bytes).as_bytes();
+            let _ = register_hot_segment_known(
+                &self.paths,
+                &mut self.tier_placement,
+                sealed_id,
+                content_hash,
+                size,
+            );
+            let _ = self.persist_tier_state();
+            let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
+            breakdown.catalog_publication_ns = breakdown
+                .catalog_publication_ns
+                .saturating_add(elapsed_ns(t_cat));
+            let t_hydra = std::time::Instant::now();
+            let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+            breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
+            let t_chimera = std::time::Instant::now();
+            let _ = self.write_chimera_for_sealed(sealed_id);
+            breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
+        }
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
+        Ok(())
+    }
+
+    /// Derived enrichment backlog (Hydra/Chimera jobs not yet reported done).
+    pub fn enrichment_backlog(&self) -> usize {
+        self.seal_pipeline
+            .as_ref()
+            .map(|p| p.enrichment_backlog)
+            .unwrap_or(0)
+    }
+
+    /// Best-effort wait for derived enrichment to drain (measurement / tests).
+    ///
+    /// Never used on the put acknowledgement path.
+    pub fn drain_enrichment(&mut self, timeout: std::time::Duration) -> Result<(), StoreError> {
+        let deadline = std::time::Instant::now() + timeout;
+        while self.enrichment_backlog() > 0 {
+            if std::time::Instant::now() >= deadline {
+                return Ok(());
+            }
+            if !self.wait_one_lifecycle()? {
+                while self.poll_lifecycle()? {}
+                if self.enrichment_backlog() == 0 {
+                    return Ok(());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+        }
         Ok(())
     }
 
@@ -4753,15 +4788,38 @@ impl Store {
                 }
             }
             LifecycleResult::CheckpointDone { .. } => {}
+            LifecycleResult::EnrichDone {
+                segment_id,
+                content_hash,
+                size,
+                ..
+            } => {
+                if let Some(p) = self.seal_pipeline.as_mut() {
+                    p.enrichment_backlog = p.enrichment_backlog.saturating_sub(1);
+                }
+                if size > 0 {
+                    let _ = register_hot_segment_known(
+                        &self.paths,
+                        &mut self.tier_placement,
+                        segment_id,
+                        content_hash,
+                        size,
+                    );
+                    let _ = self.persist_tier_state();
+                }
+            }
         }
         Ok(())
     }
 
-    /// O(1) foreground rotate for one shard: rename active → pending, start new
-    /// active, enqueue background finalize (DEF-096 Axis A / B).
+    /// O(1) foreground rotate: rename active → pending, start new active,
+    /// enqueue authoritative finalize on the seal worker (Seal Fast Lane).
+    ///
+    /// Derived Hydra/Chimera run on a **separate** enrichment worker after
+    /// `SealDone` and never count toward `max_pending_seals` backpressure.
     fn rotate_active_async(&mut self, shard: usize) -> Result<(), StoreError> {
         let _ = self.poll_lifecycle();
-        // Backpressure when workers lag (bound pending seals).
+        // Backpressure only for authoritative finalize lag (not enrichment).
         while self
             .seal_pipeline
             .as_ref()
@@ -4776,12 +4834,11 @@ impl Store {
         let Some(mut writer) = self.take_active(shard) else {
             return Ok(());
         };
-        // Match flush to strongest put ack on this segment (Buffered vs Durable).
         let flush_mode = seal_flush_mode(writer.max_ack_durability);
         self.flush_active_file(&mut writer, flush_mode, shard as u32)?;
         Self::flush_writer_coalesce(&mut writer)?;
         let segment_id = writer.segment_id;
-        drop(writer); // close file handle; bytes remain at active path
+        drop(writer);
 
         let n = self.writer_shards();
         let active_path = self.paths.active_segment_for_shard(shard, n);
@@ -4790,7 +4847,6 @@ impl Store {
         let pending_path = self.paths.pending_segment(&segment_id);
         let require_fsync = flush_mode == DurabilityMode::Durable;
         if pending_path.exists() {
-            // Should not happen; recover old pending first.
             let sealed = self.paths.sealed_segment(&segment_id);
             let _ = crate::seal_pipeline::finalize_seal(
                 self.store_id,
@@ -4799,7 +4855,7 @@ impl Store {
                 &sealed,
                 self.limits,
                 &self.paths,
-                true, // recovery: prefer stable publish
+                true,
             );
         }
         fs::rename(&active_path, &pending_path)?;
@@ -4814,6 +4870,7 @@ impl Store {
 
         if let Some(pipe) = self.seal_pipeline.as_mut() {
             pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
+            pipe.enrichment_backlog = pipe.enrichment_backlog.saturating_add(1);
             let max = pipe
                 .max_pending_seals
                 .max(DEFAULT_MAX_PENDING_SEALS.saturating_mul(n.max(1)));
@@ -4828,7 +4885,6 @@ impl Store {
                 require_fsync,
             })?;
         } else {
-            // No worker — finalize synchronously.
             let sealed = self.paths.sealed_segment(&segment_id);
             let (content_hash, size, sealed_bytes) = crate::seal_pipeline::finalize_seal(
                 self.store_id,

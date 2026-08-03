@@ -375,6 +375,39 @@
             "prior_durable_retained": true,
             "notes": "Active removed after sealed write; new active may be missing until next open creates one."
           }
+        },
+        {
+          "name": "store.seal.before_authoritative_rename",
+          "ci_subset": true,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Seal Fast Lane: crash before pending→sealed rename; pending remains authoritative for recovery."
+          }
+        },
+        {
+          "name": "store.seal.after_authoritative_publish",
+          "ci_subset": true,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Seal Fast Lane: sealed published; derived Hydra/Chimera may be absent and must rebuild later."
+          }
+        },
+        {
+          "name": "store.seal.after_derived_enrichment",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Seal Fast Lane: derived enrichment complete; authoritative path already durable earlier."
+          }
         }
       ]
     },

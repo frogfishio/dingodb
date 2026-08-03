@@ -1,15 +1,20 @@
-//! Background seal / checkpoint pipeline (DEF-096 Axis A).
+//! Background seal / checkpoint pipeline (DEF-096 Axis A + Seal Fast Lane).
 //!
 //! Foreground put path does an **O(1) rotate** (rename active → pending, open a
-//! new active). A worker thread finalizes seals: summary append (offset-
-//! preserving), sealed image write, BLAKE3, Hydra, and Chimera. Derived index
-//! checkpoints can also run on the worker so `persist_index_cache` fsyncs leave
-//! the put acknowledgement path.
+//! new active). A worker thread finalizes seals in two phases:
+//!
+//! 1. **Authoritative seal** — summary append, publish into `segments/`, BLAKE3.
+//!    Posts [`LifecycleResult::SealDone`] immediately so writers are not blocked.
+//! 2. **Derived enrichment** — Hydra / Chimera (rebuildable). Runs after
+//!    `SealDone` and **must never** count against seal backpressure.
+//!
+//! Derived index checkpoints can also run on the worker so `persist_index_cache`
+//! fsyncs leave the put acknowledgement path.
 //!
 //! Correctness:
 //! - Pending files are authoritative until sealed (included in open recovery).
 //! - Frame offsets are preserved (`ActiveSegment::resume_unsealed` + seal).
-//! - Bounded inflight seals provide backpressure when workers lag.
+//! - Bounded inflight seals apply **only** to authoritative finalize lag.
 //! - Explicit [`crate::Store::seal_active`] still runs the synchronous path and
 //!   drains the pipeline first (tests / failpoints).
 
@@ -30,8 +35,13 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-/// Default bound on seals in flight (dual-slot: live active + pending finalize).
-pub const DEFAULT_MAX_PENDING_SEALS: usize = 2;
+/// Default bound on **authoritative** seals in flight.
+///
+/// Historically 2 when finalize included Chimera (derived work held the lane).
+/// Seal Fast Lane keeps derived on a separate worker, so this bound only limits
+/// rename/publish lag. Keep it high enough that writers are not stalled by
+/// normal 64 MiB rotations; derived enrichment never counts toward it.
+pub const DEFAULT_MAX_PENDING_SEALS: usize = 16;
 
 /// Job submitted to the lifecycle worker.
 pub enum LifecycleJob {
@@ -64,6 +74,19 @@ pub enum LifecycleJob {
         /// Durable index snapshot (locator-first).
         index: PrimaryIndex,
     },
+    /// Build Hydra/Chimera for an already-published sealed segment (derived only).
+    ///
+    /// Does **not** count against `inflight_seals` / write-path backpressure.
+    EnrichDerived {
+        /// Store identity.
+        store_id: [u8; 16],
+        /// Sealed segment id.
+        segment_id: [u8; 16],
+        /// Store root paths.
+        paths: StorePaths,
+        /// Safety limits while scanning sealed bytes.
+        limits: SafetyLimits,
+    },
     /// Stop the worker after draining queued jobs.
     Shutdown,
 }
@@ -94,34 +117,62 @@ pub enum LifecycleResult {
         /// Error text.
         error: String,
     },
+    /// Derived enrichment finished (informational; never gates writes).
+    EnrichDone {
+        /// Segment id.
+        segment_id: [u8; 16],
+        /// Whether Hydra/Chimera writes succeeded.
+        ok: bool,
+        /// BLAKE3 of sealed image (for tier/catalog apply on the writer thread).
+        content_hash: [u8; 32],
+        /// Sealed byte length.
+        size: u64,
+    },
 }
 
 /// Background lifecycle worker handle owned by a writer `Store`.
 pub struct SealPipeline {
+    /// Authoritative finalize + checkpoint jobs.
     job_tx: Sender<LifecycleJob>,
+    /// Derived enrichment jobs (separate worker — never blocks seal lane).
+    enrich_tx: Sender<LifecycleJob>,
     result_rx: Receiver<LifecycleResult>,
-    join: Option<JoinHandle<()>>,
-    /// Jobs submitted and not yet applied via result_rx.
+    join_seal: Option<JoinHandle<()>>,
+    join_enrich: Option<JoinHandle<()>>,
+    /// Authoritative seal jobs submitted and not yet applied via result_rx.
     pub inflight_seals: usize,
-    /// Max seals allowed in flight before put backpressure.
+    /// Max authoritative seals allowed in flight before put backpressure.
+    /// Derived enrichment never counts toward this bound.
     pub max_pending_seals: usize,
+    /// EnrichDerived jobs queued/running that have not posted EnrichDone yet.
+    pub enrichment_backlog: usize,
 }
 
 impl SealPipeline {
-    /// Spawn the worker thread.
+    /// Spawn the authoritative seal worker and the derived enrichment worker.
     pub fn start() -> Self {
         let (job_tx, job_rx) = mpsc::channel::<LifecycleJob>();
+        let (enrich_tx, enrich_rx) = mpsc::channel::<LifecycleJob>();
         let (result_tx, result_rx) = mpsc::channel::<LifecycleResult>();
-        let join = thread::Builder::new()
-            .name("residiuum-seal-pipeline".into())
-            .spawn(move || worker_loop(job_rx, result_tx))
-            .expect("spawn seal pipeline worker");
+        let result_tx_enrich = result_tx.clone();
+        let enrich_tx_from_seal = enrich_tx.clone();
+        let join_seal = thread::Builder::new()
+            .name("residiuum-seal-auth".into())
+            .spawn(move || seal_worker_loop(job_rx, enrich_tx_from_seal, result_tx))
+            .expect("spawn seal authoritative worker");
+        let join_enrich = thread::Builder::new()
+            .name("residiuum-seal-enrich".into())
+            .spawn(move || enrich_worker_loop(enrich_rx, result_tx_enrich))
+            .expect("spawn seal enrichment worker");
         Self {
             job_tx,
+            enrich_tx,
             result_rx,
-            join: Some(join),
+            join_seal: Some(join_seal),
+            join_enrich: Some(join_enrich),
             inflight_seals: 0,
             max_pending_seals: DEFAULT_MAX_PENDING_SEALS,
+            enrichment_backlog: 0,
         }
     }
 
@@ -138,6 +189,17 @@ impl SealPipeline {
     /// Submit a checkpoint job (does not count against seal inflight).
     pub fn submit_checkpoint(&self, job: LifecycleJob) -> Result<(), StoreError> {
         self.submit_seal(job)
+    }
+
+    /// Submit derived enrichment (Hydra/Chimera). Never increments `inflight_seals`.
+    pub fn submit_enrichment(&mut self, job: LifecycleJob) -> Result<(), StoreError> {
+        self.enrichment_backlog = self.enrichment_backlog.saturating_add(1);
+        self.enrich_tx.send(job).map_err(|_| {
+            StoreError::Io(std::io::Error::new(
+                std::io::ErrorKind::BrokenPipe,
+                "enrichment worker gone",
+            ))
+        })
     }
 
     /// Non-blocking poll for one completed result.
@@ -161,13 +223,16 @@ impl SealPipeline {
         }
     }
 
-    /// Shut down the worker and join. Best-effort; pending jobs may complete first.
+    /// Shut down workers and join. Best-effort; pending jobs may complete first.
     pub fn shutdown(mut self) {
         let _ = self.job_tx.send(LifecycleJob::Shutdown);
-        if let Some(h) = self.join.take() {
+        let _ = self.enrich_tx.send(LifecycleJob::Shutdown);
+        if let Some(h) = self.join_seal.take() {
             let _ = h.join();
         }
-        // Drain residual results so the channel is empty.
+        if let Some(h) = self.join_enrich.take() {
+            let _ = h.join();
+        }
         while self.result_rx.try_recv().is_ok() {}
     }
 }
@@ -175,13 +240,21 @@ impl SealPipeline {
 impl Drop for SealPipeline {
     fn drop(&mut self) {
         let _ = self.job_tx.send(LifecycleJob::Shutdown);
-        if let Some(h) = self.join.take() {
+        let _ = self.enrich_tx.send(LifecycleJob::Shutdown);
+        if let Some(h) = self.join_seal.take() {
+            let _ = h.join();
+        }
+        if let Some(h) = self.join_enrich.take() {
             let _ = h.join();
         }
     }
 }
 
-fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult>) {
+fn seal_worker_loop(
+    job_rx: Receiver<LifecycleJob>,
+    enrich_tx: Sender<LifecycleJob>,
+    result_tx: Sender<LifecycleResult>,
+) {
     while let Ok(job) = job_rx.recv() {
         match job {
             LifecycleJob::Shutdown => break,
@@ -194,13 +267,12 @@ fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult
                 paths,
                 require_fsync,
             } => {
-                match finalize_seal(
+                match finalize_seal_authoritative(
                     store_id,
                     segment_id,
                     &pending_path,
                     &sealed_path,
                     limits,
-                    &paths,
                     require_fsync,
                 ) {
                     Ok((content_hash, size, sealed_bytes)) => {
@@ -210,11 +282,36 @@ fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult
                             size,
                             sealed_bytes,
                         });
+                        let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+                        // Hand off derived work — never blocks this lane.
+                        if enrich_tx
+                            .send(LifecycleJob::EnrichDerived {
+                                store_id,
+                                segment_id,
+                                paths,
+                                limits,
+                            })
+                            .is_err()
+                        {
+                            let _ = result_tx.send(LifecycleResult::EnrichDone {
+                                segment_id,
+                                ok: false,
+                                content_hash: [0u8; 32],
+                                size: 0,
+                            });
+                        }
                     }
                     Err(e) => {
                         let _ = result_tx.send(LifecycleResult::SealFailed {
                             segment_id,
                             error: e.to_string(),
+                        });
+                        // Balance enrichment_backlog reserved at FinalizeSeal submit.
+                        let _ = result_tx.send(LifecycleResult::EnrichDone {
+                            segment_id,
+                            ok: false,
+                            content_hash: [0u8; 32],
+                            size: 0,
                         });
                     }
                 }
@@ -228,16 +325,87 @@ fn worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult
                 let ok = write_primary_index_frontier(&cache_path, store_id, &frontier, &index).is_ok();
                 let _ = result_tx.send(LifecycleResult::CheckpointDone { ok });
             }
+            LifecycleJob::EnrichDerived { segment_id, .. } => {
+                // Misrouted — should not happen on the authoritative lane.
+                let _ = result_tx.send(LifecycleResult::EnrichDone {
+                    segment_id,
+                    ok: false,
+                    content_hash: [0u8; 32],
+                    size: 0,
+                });
+            }
+        }
+    }
+    let _ = enrich_tx.send(LifecycleJob::Shutdown);
+}
+
+fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleResult>) {
+    while let Ok(job) = job_rx.recv() {
+        match job {
+            LifecycleJob::Shutdown => break,
+            LifecycleJob::EnrichDerived {
+                store_id,
+                segment_id,
+                paths,
+                limits,
+            } => {
+                let sealed_path = paths.sealed_segment(&segment_id);
+                let (ok, content_hash, size) = match fs::read(&sealed_path) {
+                    Ok(bytes) => {
+                        let hash = *blake3::hash(&bytes).as_bytes();
+                        let size = bytes.len() as u64;
+                        let enrich_ok =
+                            enrich_sealed_derived(&paths, store_id, segment_id, &bytes, limits)
+                                .is_ok();
+                        // Cheap catalog stub (no frame scan) — rebuildable.
+                        let summary = crate::segment_catalog::SegmentSummary {
+                            segment_id,
+                            tier: crate::tier::TierClass::Hot,
+                            size,
+                            content_hash: hash,
+                            verified_frames: 0,
+                            item_events: 0,
+                            holes: 0,
+                            available: true,
+                        };
+                        let mut cat = crate::segment_catalog::SegmentCatalog::new();
+                        if let Some(prior) = crate::segment_catalog::try_load_segment_catalog(
+                            &crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir()),
+                            store_id,
+                        )
+                        .ok()
+                        .flatten()
+                        {
+                            cat = prior;
+                        }
+                        crate::segment_catalog::upsert_sealed_summary(&mut cat, summary);
+                        let _ = crate::segment_catalog::write_segment_catalog(
+                            &crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir()),
+                            store_id,
+                            &cat,
+                        );
+                        (enrich_ok, hash, size)
+                    }
+                    Err(_) => (false, [0u8; 32], 0),
+                };
+                let _ = crate::failpoint::hit("store.seal.after_derived_enrichment");
+                let _ = result_tx.send(LifecycleResult::EnrichDone {
+                    segment_id,
+                    ok,
+                    content_hash,
+                    size,
+                });
+            }
+            // Ignore non-enrichment jobs on this lane.
+            _ => {}
         }
     }
 }
 
-/// Finalize one pending segment: seal (preserve offsets), publish sealed image,
-/// BLAKE3, Hydra, best-effort Chimera from segment puts, remove pending.
+/// Authoritative + derived finalize (open recovery / sync fallback).
 ///
-/// **Hot path:** append only the segment-summary suffix to the pending file and
-/// `rename` into `segments/` (no full ~seal-threshold rewrite). Falls back to
-/// write-temp+rename if rename-across-volume fails.
+/// Prefer the worker path which posts [`LifecycleResult::SealDone`] before
+/// enrichment. This helper still runs both phases for recovery completeness.
 pub fn finalize_seal(
     store_id: [u8; 16],
     segment_id: [u8; 16],
@@ -245,6 +413,32 @@ pub fn finalize_seal(
     sealed_path: &std::path::Path,
     limits: SafetyLimits,
     paths: &StorePaths,
+    require_fsync: bool,
+) -> Result<([u8; 32], u64, Vec<u8>), StoreError> {
+    let (content_hash, size, sealed_bytes) = finalize_seal_authoritative(
+        store_id,
+        segment_id,
+        pending_path,
+        sealed_path,
+        limits,
+        require_fsync,
+    )?;
+    let _ = enrich_sealed_derived(paths, store_id, segment_id, &sealed_bytes, limits);
+    Ok((content_hash, size, sealed_bytes))
+}
+
+/// Authoritative seal only: seal (preserve offsets), publish sealed image,
+/// BLAKE3. Does **not** build Hydra/Chimera.
+///
+/// **Hot path:** append only the segment-summary suffix to the pending file and
+/// `rename` into `segments/` (no full ~seal-threshold rewrite). Falls back to
+/// write-temp+rename if rename-across-volume fails.
+pub fn finalize_seal_authoritative(
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    pending_path: &std::path::Path,
+    sealed_path: &std::path::Path,
+    limits: SafetyLimits,
     require_fsync: bool,
 ) -> Result<([u8; 32], u64, Vec<u8>), StoreError> {
     if !pending_path.is_file() {
@@ -259,6 +453,8 @@ pub fn finalize_seal(
             format!("pending seal missing: {}", pending_path.display()),
         )));
     }
+
+    let _ = crate::failpoint::hit("store.seal.before_authoritative_rename");
 
     let raw = fs::read(pending_path)?;
     let (sealed_bytes, prefix_len) = seal_pending_bytes(raw, store_id, segment_id, limits)?;
@@ -311,11 +507,25 @@ pub fn finalize_seal(
         }
     }
 
-    // Derived indexes (non-fatal).
-    let _ = write_hydra_for_bytes(paths, store_id, segment_id, &sealed_bytes, limits);
-    let _ = write_chimera_from_segment_puts(paths, store_id, segment_id, &sealed_bytes, limits);
-
+    let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
     Ok((content_hash, size, sealed_bytes))
+}
+
+/// Derived enrichment for a sealed segment (Hydra + Chimera). Never authoritative.
+pub fn enrich_sealed_derived(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    sealed_bytes: &[u8],
+    limits: SafetyLimits,
+) -> Result<(), StoreError> {
+    let hydra_ok = write_hydra_for_bytes(paths, store_id, segment_id, sealed_bytes, limits);
+    let chimera_ok =
+        write_chimera_from_segment_puts(paths, store_id, segment_id, sealed_bytes, limits);
+    match (hydra_ok, chimera_ok) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(e), _) | (_, Err(e)) => Err(e),
+    }
 }
 
 /// Append summary to pending and rename to sealed. Returns false if rename failed
@@ -627,6 +837,47 @@ mod tests {
             residiuum_format::verify_frame_at(&on_disk[off as usize..], SafetyLimits::default())
                 .unwrap();
         assert_eq!(body, b"hello");
+    }
+
+    #[test]
+    fn authoritative_publish_before_derived_enrichment() {
+        let dir = tempdir().unwrap();
+        let paths = StorePaths::new(dir.path());
+        paths.create_dirs().unwrap();
+        let store_id = [3u8; 16];
+        let segment_id = [4u8; 16];
+        let ids = SegmentId::new(store_id, segment_id);
+        let mut active = ActiveSegment::create(ids, SafetyLimits::default(), 1).unwrap();
+        active
+            .append(FrameKind::ItemEvent, &[0xa0], b"body", [3u8; 16])
+            .unwrap();
+        let pending = paths.pending_segment(&segment_id);
+        fs::write(&pending, active.as_bytes()).unwrap();
+        let sealed = paths.sealed_segment(&segment_id);
+        let (_hash, _size, bytes) = finalize_seal_authoritative(
+            store_id,
+            segment_id,
+            &pending,
+            &sealed,
+            SafetyLimits::default(),
+            false,
+        )
+        .unwrap();
+        assert!(sealed.is_file());
+        assert!(!pending.is_file());
+        let hydra = hydra_index_path(&paths, &segment_id);
+        let chimera = crate::chimera::chimera_layout_path(&paths, &segment_id);
+        assert!(!hydra.is_file(), "authoritative seal must not write Hydra");
+        assert!(!chimera.is_file(), "authoritative seal must not write Chimera");
+        // Enrichment is best-effort; empty/unparseable records are Ok(()).
+        enrich_sealed_derived(
+            &paths,
+            store_id,
+            segment_id,
+            &bytes,
+            SafetyLimits::default(),
+        )
+        .unwrap();
     }
 
     #[test]

@@ -1,0 +1,13 @@
+ack-finalize real-full: keys=32768 ack_tps=44311 seal_ms=6.4 campaign_tps=8876 pending_seals=0 reopen_exact=true
+| Metric | Value | Gate |
+|---|---:|---|
+| Ack TPS | 44311 | FAIL (≥ 74700) |
+| Sealed @ last ack | 4 | PASS (≥ 2) |
+| Pending seals @ ack | 0 | (info) |
+| Campaign TPS | 8876 | (info) |
+| Reopen exact | yes | PASS |
+| Drain ns | 209 | (info) |
+| Final seal ns | 6051875 | (info) |
+| Catalog ns | 0 | (info) |
+
+error: seal fast lane gates failed: ack_pass=false rotate_pass=true exact_pass=true (ack=44311 sealed=4)

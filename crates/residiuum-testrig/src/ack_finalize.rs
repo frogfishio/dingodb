@@ -98,6 +98,7 @@ pub struct AckFinalizeResult {
     pub pending_seal_inflight_at_last_ack: usize,
     pub pending_seal_paths_at_last_ack: usize,
     pub sealed_segments_at_last_ack: usize,
+    pub enrichment_backlog_at_last_ack: usize,
     pub logical_bytes: u64,
     pub on_disk_bytes: u64,
     pub timestamps: Timestamps,
@@ -381,6 +382,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
         .map_err(|_| "store mutex poisoned extract".to_string())?;
 
     let pending_seal_inflight_at_last_ack = store.pending_seal_inflight();
+    let enrichment_backlog_at_last_ack = store.enrichment_backlog();
     let (pending_seal_paths_at_last_ack, sealed_segments_at_last_ack) =
         match store.lifecycle_diag() {
             Ok(d) => (d.pending_seals, d.sealed_segments),
@@ -465,6 +467,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
         pending_seal_inflight_at_last_ack,
         pending_seal_paths_at_last_ack,
         sealed_segments_at_last_ack,
+        enrichment_backlog_at_last_ack,
         logical_bytes: keys_written.saturating_mul(cfg.payload_size as u64),
         on_disk_bytes: on_disk,
         timestamps: Timestamps {
@@ -647,6 +650,7 @@ fn run_raw_mimic(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> {
         pending_seal_inflight_at_last_ack: 0,
         pending_seal_paths_at_last_ack: 0,
         sealed_segments_at_last_ack: 0,
+        enrichment_backlog_at_last_ack: 0,
         logical_bytes: ops.saturating_mul(cfg.payload_size as u64),
         on_disk_bytes: expect_len,
         timestamps: Timestamps {
@@ -697,6 +701,7 @@ fn result_json(r: &AckFinalizeResult) -> Value {
         "pending_seal_inflight_at_last_ack": r.pending_seal_inflight_at_last_ack,
         "pending_seal_paths_at_last_ack": r.pending_seal_paths_at_last_ack,
         "sealed_segments_at_last_ack": r.sealed_segments_at_last_ack,
+        "enrichment_backlog_at_last_ack": r.enrichment_backlog_at_last_ack,
         "reopen_exact": r.reopen_exact,
         "reopen_verify_mode": r.reopen_verify_mode,
         "timestamps_unix_ns": {
@@ -859,6 +864,109 @@ pub fn run_seal_interference_control(
     }
     if rows.len() != 3 {
         return Err(format!("expected 3 threshold runs, got {}", rows.len()));
+    }
+    Ok(())
+}
+
+/// Seal Fast Lane measurement: Real Full @ 64 MiB with many mid-run rotations.
+///
+/// Success: ack TPS within 10% of the ~83K high-threshold control, coverage
+/// reopen exact, sealed_segments_at_last_ack > 1, enrichment backlog reported.
+pub fn run_seal_fast_lane_measure(
+    work: &Path,
+    evidence_dir: &Path,
+    target_bytes: u64,
+    payload_size: usize,
+    concurrency: usize,
+    seed: u64,
+    min_free_bytes: u64,
+) -> Result<(), String> {
+    fs::create_dir_all(evidence_dir).map_err(|e| format!("create evidence: {e}"))?;
+    if work.exists() {
+        fs::remove_dir_all(work).map_err(|e| format!("cleanup work: {e}"))?;
+    }
+    const CONTROL_ACK_TPS: f64 = 83_000.0;
+    const SEAL_64M: u64 = 64 * 1024 * 1024;
+    let cfg = AckFinalizeConfig {
+        work: work.to_path_buf(),
+        cell: MeasureCell::RealFull,
+        target_bytes,
+        payload_size,
+        concurrency,
+        seed,
+        seal_threshold: SEAL_64M,
+        min_free_bytes,
+        json_out: false,
+    };
+    let r = run_ack_finalize(&cfg)?;
+    let floor = CONTROL_ACK_TPS * 0.90;
+    let pass_ack = r.acknowledged_write_ops_per_sec >= floor;
+    let pass_rotate = r.sealed_segments_at_last_ack >= 2;
+    let pass_exact = r.reopen_exact;
+    let summary = json!({
+        "kind": "seal_fast_lane_measure",
+        "disclosure": DISCLOSURE,
+        "control_ack_tps": CONTROL_ACK_TPS,
+        "success_floor_ack_tps": floor,
+        "recipe": {
+            "cell": "real-full",
+            "seal_threshold": SEAL_64M,
+            "logical_data_bytes": target_bytes,
+            "payload_size": payload_size,
+            "concurrency": concurrency,
+            "seed": seed,
+            "awo": "Disabled",
+        },
+        "result": result_json(&r),
+        "gates": {
+            "ack_within_10pct_of_83k": pass_ack,
+            "numerous_rotations": pass_rotate,
+            "reopen_exact_coverage_scan": pass_exact,
+            "sealed_segments_at_last_ack": r.sealed_segments_at_last_ack,
+            "pending_seal_inflight_at_last_ack": r.pending_seal_inflight_at_last_ack,
+        },
+        "pass": pass_ack && pass_rotate && pass_exact,
+    });
+    let path = evidence_dir.join("seal-fast-lane.json");
+    fs::write(
+        &path,
+        serde_json::to_string_pretty(&summary).map_err(|e| format!("serialize: {e}"))?,
+    )
+    .map_err(|e| format!("write {}: {e}", path.display()))?;
+    let table = format!(
+        "| Metric | Value | Gate |\n|---|---:|---|\n\
+         | Ack TPS | {:.0} | {} (≥ {:.0}) |\n\
+         | Sealed @ last ack | {} | {} (≥ 2) |\n\
+         | Pending seals @ ack | {} | (info) |\n\
+         | Campaign TPS | {:.0} | (info) |\n\
+         | Reopen exact | {} | {} |\n\
+         | Drain ns | {} | (info) |\n\
+         | Final seal ns | {} | (info) |\n\
+         | Catalog ns | {} | (info) |\n",
+        r.acknowledged_write_ops_per_sec,
+        if pass_ack { "PASS" } else { "FAIL" },
+        floor,
+        r.sealed_segments_at_last_ack,
+        if pass_rotate { "PASS" } else { "FAIL" },
+        r.pending_seal_inflight_at_last_ack,
+        r.campaign_ops_per_sec,
+        if r.reopen_exact { "yes" } else { "no" },
+        if pass_exact { "PASS" } else { "FAIL" },
+        r.seal_breakdown.drain_lifecycle_ns,
+        r.seal_breakdown.final_active_seal_ns,
+        r.seal_breakdown.catalog_publication_ns,
+    );
+    fs::write(evidence_dir.join("EVIDENCE_TABLE.md"), format!("{table}\n"))
+        .map_err(|e| format!("write table: {e}"))?;
+    println!("{table}");
+    if work.exists() {
+        let _ = fs::remove_dir_all(work);
+    }
+    if !(pass_ack && pass_rotate && pass_exact) {
+        return Err(format!(
+            "seal fast lane gates failed: ack_pass={pass_ack} rotate_pass={pass_rotate} exact_pass={pass_exact} (ack={:.0} sealed={})",
+            r.acknowledged_write_ops_per_sec, r.sealed_segments_at_last_ack
+        ));
     }
     Ok(())
 }

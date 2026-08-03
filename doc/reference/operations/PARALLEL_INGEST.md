@@ -80,7 +80,9 @@ Axis C — Horizontal scale    (N stores / partitions / nodes — cluster path)
 
 Implementation shape:
 
-1. **Dual-slot bound** — `DEFAULT_MAX_PENDING_SEALS = 2` (live active + pending finalize).
+1. **Authoritative pending bound** — `DEFAULT_MAX_PENDING_SEALS = 16` (Seal Fast Lane:
+   bounds authoritative finalize only; Hydra/Chimera use a separate enrichment
+   worker and never count toward this backpressure).
 2. **O(1) rotate** — on auto-seal threshold: durable flush, `rename` `active/active.residiuum` → `active/pending/{hex}.residiuum`, start new active. Put does **not** wait for BLAKE3/Hydra/Chimera.
 3. **Background worker** (`residiuum-seal-pipeline` thread) finalizes: offset-preserving summary seal, sealed image write, BLAKE3, Hydra, Chimera, then catalog apply on the writer thread via `poll`/`drain`.
 4. **Background checkpoint** — rate-limited `persist_index_cache` clones locator-first durable index and writes on the worker.
