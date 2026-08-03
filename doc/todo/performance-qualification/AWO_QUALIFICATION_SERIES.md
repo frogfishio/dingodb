@@ -68,7 +68,7 @@ claim table. Principal `done` only after review.
 
 | Slice | Pull order | Outcome |
 |-------|------------|---------|
-| **Q1.1** Concurrent harness + ledger | **First code pull** | Drop serial-admit map for AWO batch=1; real multi-thread/process producers; deterministic ledger of logical puts ↔ completions |
+| **Q1.1** Concurrent harness + ledger | **First code pull** | Drop serial-admit map for AWO batch=1; real multi-thread/process producers; deterministic ledger of logical puts ↔ completions. **Brief:** `AWO_Q1_1_IMPLEMENTER_BRIEF.md` (anchors in `store_driver/real.rs`) |
 | **Q1.2** Wait-outside-mutex product path | After 1.1 | Heap/store admit path: wait not under physical mutex for full Durable; concurrent admits can pile collection |
 | **Q1.3** Correctness + evidence freeze | After 1.2 | No lost/dup/double-ack; reopen integrity; claim table; optional thr smoke only after green |
 
