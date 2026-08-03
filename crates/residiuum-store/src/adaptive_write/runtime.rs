@@ -147,9 +147,12 @@ impl WriteCompletion {
     pub fn wait(self) -> Result<WriteReceipt, AdaptiveWriteError> {
         match self.inner {
             WriteCompletionInner::Ready(r) => r,
-            WriteCompletionInner::Pending(rx) => rx
-                .recv()
-                .unwrap_or(Err(AdaptiveWriteError::Draining)),
+            WriteCompletionInner::Pending(rx) => rx.recv().unwrap_or_else(|_| {
+                // Sender dropped without reply — not the same as runtime drain.
+                Err(AdaptiveWriteError::Store(
+                    "collection completion dropped before install reply".into(),
+                ))
+            }),
         }
     }
 

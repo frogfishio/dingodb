@@ -1599,6 +1599,10 @@ impl Store {
 
         let mut pending: Vec<StagedPut> = Vec::with_capacity(items.len());
         let mut batch_checkpoint: Option<residiuum_format::ActiveSegmentCheckpoint> = None;
+        // Accumulate across auto-seal boundaries. Mid-batch
+        // `finish_staged_batch_persist_publish` must not drop receipts — AWO
+        // collectors zip one receipt per enqueued put (Q1.3 concurrent rotate).
+        let mut receipts: Vec<WriteReceipt> = Vec::with_capacity(items.len());
 
         for (subject, value) in items {
             let admit = self.large_value_policy.admit(value.len())?;
@@ -1618,11 +1622,12 @@ impl Store {
                 .map(|w| w.segment.len() >= self.seal_threshold)
                 .unwrap_or(false);
             if need_seal {
-                self.finish_staged_batch_persist_publish(
+                let sealed = self.finish_staged_batch_persist_publish(
                     &mut pending,
                     &mut batch_checkpoint,
                     mode,
                 )?;
+                receipts.extend(sealed);
                 self.maybe_auto_seal(0)?;
             }
 
@@ -1704,7 +1709,11 @@ impl Store {
             });
         }
 
-        self.finish_staged_batch_persist_publish(&mut pending, &mut batch_checkpoint, mode)
+        let final_receipts =
+            self.finish_staged_batch_persist_publish(&mut pending, &mut batch_checkpoint, mode)?;
+        receipts.extend(final_receipts);
+        debug_assert_eq!(receipts.len(), items.len());
+        Ok(receipts)
     }
 
     /// Persist staged frames then publish indexes (AWO-1 persist-before-publish).
@@ -1724,6 +1733,7 @@ impl Store {
 
         let mut pending: Vec<StagedPut> = Vec::with_capacity(items.len());
         let mut batch_checkpoint: Option<residiuum_format::ActiveSegmentCheckpoint> = None;
+        let mut receipts: Vec<WriteReceipt> = Vec::with_capacity(items.len());
 
         for (subject, value) in items {
             let admit = self.large_value_policy.admit(value.len())?;
@@ -1743,11 +1753,12 @@ impl Store {
                 .map(|w| w.segment.len() >= self.seal_threshold)
                 .unwrap_or(false);
             if need_seal {
-                self.finish_staged_batch_persist_publish(
+                let sealed = self.finish_staged_batch_persist_publish(
                     &mut pending,
                     &mut batch_checkpoint,
                     mode,
                 )?;
+                receipts.extend(sealed);
                 self.maybe_auto_seal(0)?;
             }
 
@@ -1829,7 +1840,11 @@ impl Store {
             });
         }
 
-        self.finish_staged_batch_persist_publish(&mut pending, &mut batch_checkpoint, mode)
+        let final_receipts =
+            self.finish_staged_batch_persist_publish(&mut pending, &mut batch_checkpoint, mode)?;
+        receipts.extend(final_receipts);
+        debug_assert_eq!(receipts.len(), items.len());
+        Ok(receipts)
     }
 
     /// Persist staged frames then publish indexes (AWO-1 persist-before-publish).

@@ -1,8 +1,8 @@
 # AWO-Q1.3 — Concurrent admit correctness + reopen evidence freeze
 
-Status: **labor complete (in_review) — not package accept**  
+Status: **labor complete (in_review) — ready for principal accept of Q1.3 + AWO-Q1 umbrella**  
 Card: `ba312673-ce84-4c89-ae1f-46c61caf112f`  
-Date: 2026-08-03  
+Date: 2026-08-03 (remediation: concurrent rotation + exact scan set)  
 Parent: AWO-Q1 (`b6e2a138`) · Series: `AWO_QUALIFICATION_SERIES.md`
 
 ## 1. What this proves
@@ -14,48 +14,73 @@ Parent: AWO-Q1 (`b6e2a138`) · Series: `AWO_QUALIFICATION_SERIES.md`
 | Exactly-once ack (no lost / double-ack) | per-seq bool vector under concurrent writers |
 | Clean close + **normal product reopen** | `drop(host)` → `StoreHost::open_with_adaptive_write` → re-open heap |
 | Pre-close digest == reopened digest | blake3 chain over (seq, key, body_hash, len) |
+| **Exact reopened key/hash set == ledger** | coverage-aware `scan_collection_page` full walk; set equality (no unexpected records) |
 | Multi-seed / concurrency matrix | seeds 1/7/42/99/1001/2026; conc 4 and 8 |
-| Segment rotation across reopen | `rotate_after` cells: seal threshold + sequential large puts **after** concurrent phase; `SegmentRotate≥3` observed |
-| file_sync / logical_ack | printed per cell; concurrent cells show amortization (`file_sync < acks`) |
-| Static ≡ Adaptive content for same seed | `q13_static_and_adaptive_same_seed_both_reopen_ok` |
+| **Segment rotation during concurrent collection** | `rotate_during` cells: seal threshold **from t0**; `SegmentRotate≥5` observed under load |
+| Concurrent-phase barrier counters | snapshot immediately after worker joins (no sequential rotate epilogue) |
+| file_sync / logical_ack | printed per cell; non-rotate cells show `file_sync < acks`; rotate cells report sync + rotate |
+| Static ≡ Adaptive content for same seed | `q13_static_and_adaptive_same_seed_both_reopen_ok` (with concurrent rotate) |
 
-## 2. Hang residual (fixed this labor)
+## 2. Product defect closed (collector × seal)
 
-Earlier draft used a **tight spin** global outstanding pool while Durable AWO
-`put_collection` blocked → multi-minute 300%+ CPU hang (processes killed).
+**Symptom:** concurrent façade puts with low seal threshold failed with
+`io: awo draining` (or hung in earlier drafts).
 
-**Fix:** outstanding = concurrent façade threads with **partitioned seq ranges**
-(no spin-wait credits). Segment rotation runs **after** the concurrent phase
-(single-threaded) to avoid seal × collector interaction under load.
+**Root cause:** `put_many_single_shard_batched[_bytes]` discarded
+`WriteReceipt`s from mid-batch `finish_staged_batch_persist_publish` when
+`maybe_auto_seal` fired. AWO `IndependentCollector` zips one receipt per
+enqueued put; short vectors left `PendingPut` senders dropped → waiters saw
+channel disconnect (mis-labeled as draining).
 
-## 3. Verify
+**Fix:**
+
+- Accumulate receipts across seal boundaries in both batched put_many paths
+  (`store.rs`).
+- Fail-closed if install receipt count ≠ batch length (`collection.rs`).
+- Distinguish completion-drop from runtime drain in `WriteCompletion::wait`.
+
+## 3. Harness posture (no avoidance)
+
+Earlier labor deferred seal to a sequential phase after concurrent collection.
+That **avoided** the requirement. Current harness:
+
+1. Low seal threshold active **before** concurrent writers start when
+   `rotate_during`.
+2. No sequential rotate epilogue mixed into barrier counters.
+3. After reopen: full coverage-aware scan vs acknowledged ledger set.
+
+## 4. Verify
 
 ```bash
 cargo test -p residiuum-store --features legacy-raw-store --test awo_q13_reopen_correctness \
   -- --test-threads=1 --nocapture
-# 3 passed in ~3s (labor host 2026-08-03)
+# 3 passed (labor host 2026-08-03 remediation)
 ```
 
-Sample output:
+Sample output (labor host re-verify 2026-08-03):
 
 ```text
-q13 static seed=1 conc=4 acked=16 file_sync=9 rotate=0 sync/ack=0.562
-q13 static seed=99 conc=8 acked=38 file_sync=29 rotate=3 sync/ack=0.763
-q13 adaptive seed=1001 conc=8 acked=38 file_sync=29 rotate=3 sync/ack=0.763
+q13 static seed=42 conc=4 acked=24 file_sync=23 rotate=5 sync/ack=0.958 scan=24
+q13 static seed=99 conc=8 acked=32 file_sync=31 rotate=7 sync/ack=0.969 scan=32
+q13 adaptive seed=42 conc=4 acked=24 file_sync=27 rotate=5 sync/ack=1.125 scan=24
+q13 adaptive seed=1001 conc=8 acked=32 file_sync=33 rotate=7 sync/ack=1.031 scan=32
+# same-seed Static≡Adaptive digest + scan count: ok
 ```
 
-## 4. Explicit non-claims
+## 5. Explicit non-claims
 
 - Crash-boundary / crash-matrix reopen (later)
 - Thr ranking Off/Static/Adaptive product floors (optional residual / Q1 thr smoke)
 - Package accept / default-on / Adaptive decision quality (Q2)
 - PQH 120s qualification class
+- Barrier amortization (`file_sync < acks`) under forced high-frequency rotate
+  (seal FileSyncs dominate; non-rotate cells still prove amortization)
 
-## 5. Q1 series posture (labor)
+## 6. Q1 series posture (labor)
 
 | Slice | Labor stage |
 |-------|-------------|
-| Q1.1 harness + ledger | `in_review` (principal may `done`) |
-| Q1.2 façade wait-outside-mutex | `in_review` (principal may `done`) |
-| Q1.3 reopen correctness | **`in_review` this card** |
-| Umbrella AWO-Q1 | still open until principal accepts 1.1–1.3 |
+| Q1.1 harness + ledger | `done` (principal) |
+| Q1.2 façade wait-outside-mutex | `done` (principal) |
+| Q1.3 reopen + concurrent rotate + exact scan | **`in_review` — ready to accept** |
+| Umbrella AWO-Q1 | `todo` until principal accepts Q1.3 and closes umbrella |

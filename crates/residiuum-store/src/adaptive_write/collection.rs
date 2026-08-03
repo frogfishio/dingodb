@@ -186,8 +186,21 @@ impl IndependentCollector {
                 .collect();
             match store.put_many_subject_bytes_awo_owned(&items, mode) {
                 Ok(receipts) => {
-                    for (p, r) in slice.iter().zip(receipts.into_iter()) {
-                        let _ = p.tx.send(Ok(r));
+                    if receipts.len() != slice.len() {
+                        // Fail closed: short receipt vectors used to drop PendingPut
+                        // senders (waiters saw disconnect → false "awo draining").
+                        let err = AdaptiveWriteError::Store(format!(
+                            "collection install receipt count {} != batch {}",
+                            receipts.len(),
+                            slice.len()
+                        ));
+                        for p in slice {
+                            let _ = p.tx.send(Err(err.clone()));
+                        }
+                    } else {
+                        for (p, r) in slice.iter().zip(receipts.into_iter()) {
+                            let _ = p.tx.send(Ok(r));
+                        }
                     }
                 }
                 Err(e) => {
