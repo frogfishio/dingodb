@@ -1,0 +1,59 @@
+{
+  "cells": [
+    {
+      "cell": "residiuum-A-grow",
+      "ops_per_sec": 6668.104976041755,
+      "elapsed_ms": 4914,
+      "bytes_on_disk": 547157648,
+      "ok": true,
+      "segment_growth": "grow",
+      "wm_capacity_mib": 0,
+      "wm_chunk_mib": 0,
+      "engine": "residiuum"
+    },
+    {
+      "cell": "residiuum-A-wm512-seal512",
+      "ops_per_sec": 7524.200552158617,
+      "elapsed_ms": 4355,
+      "bytes_on_disk": 1084028415,
+      "ok": true,
+      "segment_growth": "watermark",
+      "wm_capacity_mib": 512,
+      "wm_chunk_mib": 64,
+      "engine": "residiuum"
+    },
+    {
+      "cell": "residiuum-A-wm64-seal512",
+      "ops_per_sec": 6780.4505983787585,
+      "elapsed_ms": 4832,
+      "bytes_on_disk": 614266363,
+      "ok": true,
+      "segment_growth": "watermark",
+      "wm_capacity_mib": 64,
+      "wm_chunk_mib": 64,
+      "engine": "residiuum"
+    },
+    {
+      "cell": "residiuum-A-wm64-seal64",
+      "ops_per_sec": 6541.774216254018,
+      "elapsed_ms": 5009,
+      "bytes_on_disk": 614269091,
+      "ok": true,
+      "segment_growth": "watermark",
+      "wm_capacity_mib": 64,
+      "wm_chunk_mib": 64,
+      "engine": "residiuum"
+    },
+    {
+      "cell": "sqlite-A",
+      "ops_per_sec": 29143.984390030855,
+      "elapsed_ms": 1124,
+      "bytes_on_disk": 286507008,
+      "ok": true,
+      "segment_growth": "",
+      "wm_capacity_mib": 0,
+      "wm_chunk_mib": 0,
+      "engine": "sqlite"
+    }
+  ]
+}

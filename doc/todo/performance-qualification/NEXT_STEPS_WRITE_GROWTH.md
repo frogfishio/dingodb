@@ -3,7 +3,7 @@
 **Date:** 2026-08-03 · Direction for principal — not package accept / not a product ship plan  
 **Principal steer (locked):** Prealloc space is **not** a morality debate. People buy specialist hardware for ~5% wins; reserved runway is cheap. Capacity is **configurable** (default **64 MiB**, not fixed ½ GiB; large hosts may use multi‑GiB / 10 GiB). Extension **must not** tax transactions — background watcher ahead of head. Grow-on-append-as-virtue is rejected. See [PRINCIPAL_STEER_PREALLOC_NOT_MORALITY.md](PRINCIPAL_STEER_PREALLOC_NOT_MORALITY.md), [PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md](PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md).
 
-**Where we are:** append/growth was the Real wall; sparse pre-size is placebo; put-path pre-touch can lift thr (~35–50k diag); product watermark E2E **not yet a proven win** after seal/odometer honesty fix (prior ~32k diag **withdrawn**). Overwrite/Discard still ~100k+.
+**Where we are:** append/growth was the Real wall; sparse pre-size is placebo; put-path pre-touch can lift thr (~35–50k diag); product watermark E2E **≈ grow** after honesty fixes — including a fresh try at **64 MiB default** ([TRY_WM_64MIB.md](TRY_WM_64MIB.md)). Overwrite/Discard still ~100k+.
 
 ## Do next (ordered)
 

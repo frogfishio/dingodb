@@ -1,7 +1,7 @@
 # How many TPS can we have now?
 
 **Date:** 2026-08-03 · Odometer = **acked puts/s** (Mode A · 8 KiB · APFS `/var/tmp` unless noted)  
-**Short answer:** **Default product path ≈ 10–14k TPS** (quiet bed). Opt-in watermark growth is **shipped as API** — still **not default-on**. Honest paired measure: watermark ≈ Real grow (does **not** unlock a 30k band). Prior diag ~32k was a **seal-fail cheat** — do not cite.
+**Short answer:** **Default product path ≈ 10–14k TPS** (quiet bed) · **~7–9k** when `/var/tmp` is nearly full. Opt-in watermark growth is **shipped as API** — still **not default-on**. Honest paired measure: watermark ≈ Real grow (does **not** unlock a 30k band). Prior diag ~32k was a **seal-fail cheat** — do not cite. Latest try grow ~6.7k on 95%-full disk is **bed noise**, not a 12→7 product regression ([WHY_7K_VS_12K.md](WHY_7K_VS_12K.md)).
 
 ## What “now” means (three bands)
 
@@ -29,12 +29,12 @@ AWO Adaptive c=1 (FN-2)        ~2.5k       ← feed tax; ignore for multi-client
 | Engine / sink | ops/s | Source |
 |---------------|------:|--------|
 | SQLite A | ~29 700 | [FIRM_NUMBERS_CONCURRENT_FEED.md](FIRM_NUMBERS_CONCURRENT_FEED.md) |
-| Residiuum-off Real | ~13 200 (earlier) · ~9k on later noisy runs | concurrent feed / watermark baseline |
+| Residiuum-off Real | ~13 200 (earlier quiet) · **~6.7–7.7k** on 93–95% full beds | concurrent feed / [TRY_WM_64MIB.md](TRY_WM_64MIB.md) / product-wm |
 | Residiuum Adaptive | ~13 600 | concurrent feed |
-| **Watermark** (product opt-in, honest seal) | **≈ Real** (~6–8k on noisy bed) | [FIRM_NUMBERS_PRODUCT_WM.md](FIRM_NUMBERS_PRODUCT_WM.md) — prior ~32k **withdrawn** |
+| **Watermark** (product opt-in, honest seal) | **≈ Real on that bed** | [FIRM_NUMBERS_PRODUCT_WM.md](FIRM_NUMBERS_PRODUCT_WM.md), [TRY_WM_64MIB.md](TRY_WM_64MIB.md) — prior ~32k **withdrawn** |
 | Full-zero diag | ~48 000 pump · ~25 000 E2E | [PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md) |
 
-Run-to-run Real varies (~9–14k); quote a **band**, not one integer.
+Run-to-run Real varies (~7–14k depending on disk fullness); quote a **band**, not one integer. See [WHY_7K_VS_12K.md](WHY_7K_VS_12K.md).
 
 ### Embedded sync (`c=1`) — autocommit peer only
 

@@ -69,12 +69,15 @@ testrig.
 | [NOT_SQUARE_ONE.md](NOT_SQUARE_ONE.md) | **Answer:** not square 1 — lost fake ~32k win; write-path map kept |
 | [SEAL_WAS_BROKEN.md](SEAL_WAS_BROKEN.md) | **Answer:** “broken seal” = diag seal failed + peer ignored error |
 | [FIFTY_TO_TEN.md](FIFTY_TO_TEN.md) | **Answer:** 50k→10k = first-touch paid in-timer vs offline |
+| [FIFTY_TO_6_5K_PREALLOC.md](FIFTY_TO_6_5K_PREALLOC.md) | **Answer:** 50k→6.5k = that + E2E seal + noisy bed; not prealloc failing |
 | [WHY_EXTEND_EACH_TIME.md](WHY_EXTEND_EACH_TIME.md) | **Answer:** default grow-on-append = log design + space trade |
 | [GROW_ON_APPEND_BUYS.md](GROW_ON_APPEND_BUYS.md) | **Answer:** what grow-on-append buys besides thr (space/salvage) |
 | [GROW_ON_APPEND_BUYS_RETRACT.md](GROW_ON_APPEND_BUYS_RETRACT.md) | **Correction:** those buys were soft; principal pushback |
 | [WATERMARK_DRAWBACKS_REAL_VS_RELIGION.md](WATERMARK_DRAWBACKS_REAL_VS_RELIGION.md) | **Answer:** real watermark costs vs soft anti-reasons |
 | [PRINCIPAL_STEER_PREALLOC_NOT_MORALITY.md](PRINCIPAL_STEER_PREALLOC_NOT_MORALITY.md) | **Steer:** prealloc ≠ morality; extend ahead via watcher; grow-on-append-as-virtue rejected |
 | [PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md](PRINCIPAL_STEER_WM_CAPACITY_CONFIGURABLE.md) | **Steer+ship:** capacity/chunk configurable; default **64 MiB** (not fixed ½ GiB) |
+| [TRY_WM_64MIB.md](TRY_WM_64MIB.md) | **Try:** watermark@64 paired ≈ grow (~6.5–6.8k); SQLite ~29k; not default-on |
+| [WHY_7K_VS_12K.md](WHY_7K_VS_12K.md) | **Answer:** ~7k vs ~12k = noisy/full disk vs quiet bed; not a regression |
 | [MQ_RAW_FS_AWARENESS.md](MQ_RAW_FS_AWARENESS.md) | **Answer:** MQ-class raw/owned layout vs Residiuum files |
 | [HOW_MANY_TPS_NOW.md](HOW_MANY_TPS_NOW.md) | **Answer:** default ~10–14k; watermark opt-in ≈ Real (no 32k claim); Discard~120k not product |
 | [artifacts/firm-numbers-product-wm-apfs/](artifacts/firm-numbers-product-wm-apfs/) | Product-flag paired JSON + summary |

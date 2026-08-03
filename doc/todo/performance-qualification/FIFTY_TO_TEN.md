@@ -66,6 +66,8 @@ You must either:
 2. **Amortize it** in a disclosed product policy (watermark chunks / background prepare) and measure with a meter that matches the claim (put-path vs full E2E seal), or  
 3. Accept ~10k as default Real until a different lever moves growth cost without lying.
 
+See also [FIFTY_TO_6_5K_PREALLOC.md](FIFTY_TO_6_5K_PREALLOC.md) for why recent E2E tries land ~6.5k (bed + seal), not a second mystery wall.
+
 ## Non-claims
 
 Not that 50k is a product SLO. Not that SQLite’s growth is free (they also grow a file — cheaper *per Mode A ack* is a separate question). Not package accept / default-on.
