@@ -50,6 +50,7 @@ Sparse: collection window does not force multi-item batches; Adaptive/Static sli
 | Saturated Static/Adaptive `file_sync/ops < 1` | **Yes** (smoke) |
 | Adaptive ≈ Static thr under saturated smoke | **Yes** (this cell) |
 | Sparse Adaptive does not explode latency | **OK** (slightly slower) |
+| thr×2 ↔ sync/2 causal freeze (first positive L-AWO signal) | **Yes** → `AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md` |
 | Diagnostic floors / product ranking / default-on | **No** |
 | Multi-thread admit_put path | Residual |
 

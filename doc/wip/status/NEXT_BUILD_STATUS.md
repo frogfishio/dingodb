@@ -6,7 +6,7 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **AWO T10:** PQH harness independent `admit_put`+collection for batch=1; APFS smoke re-run — saturated Static/Adaptive **file_sync/ops=0.5 thr~2×** vs Disabled; sparse still 1.0. See `AWO_THREE_WAY_T10_HARNESS_RERUN.md` + `awo-three-way-t10-apfs-smoke`. Collection connect + measure slice labor complete (not package accept). Scratch exFAT residual remains. AWO cards principal `in_review`; query spine / APB **in_review**)
+Updated: 2026-08-03 (**P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **AWO T11 freeze:** first positive L-AWO signal under queued independent writes — Disabled **1 write/sync ~4.2 MiB/s**, Static **2 ~9.0**, Adaptive **2 ~8.8**; thr doubling tracks sync-frequency halving (smoke causal evidence). Numbers: `awo-three-way-t10-apfs-smoke`; freeze doc `AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md` (+ T10 harness). Sparse still 1.0; no floors/default-on/package accept. Scratch exFAT residual remains. AWO measure cards principal `in_review`; query spine / APB **in_review**)
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
