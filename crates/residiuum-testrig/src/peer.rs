@@ -113,6 +113,7 @@ pub enum PeerDiagIo {
     RealPreallocFill,
     RealPreallocFcntl,
     RealPreallocZero,
+    RealPreallocWatermark,
 }
 
 impl PeerDiagIo {
@@ -129,6 +130,7 @@ impl PeerDiagIo {
             PeerDiagIo::RealPreallocFill => "realpreallocfill",
             PeerDiagIo::RealPreallocFcntl => "realpreallocfcntl",
             PeerDiagIo::RealPreallocZero => "realprealloczero",
+            PeerDiagIo::RealPreallocWatermark => "realpreallocwm",
         }
     }
 
@@ -145,6 +147,7 @@ impl PeerDiagIo {
             PeerDiagIo::RealPreallocFill => DiagnosticIoSink::RealPreallocFill,
             PeerDiagIo::RealPreallocFcntl => DiagnosticIoSink::RealPreallocFcntl,
             PeerDiagIo::RealPreallocZero => DiagnosticIoSink::RealPreallocZero,
+            PeerDiagIo::RealPreallocWatermark => DiagnosticIoSink::RealPreallocWatermark,
         }
     }
 }
@@ -162,8 +165,9 @@ pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
         "realpreallocfill" | "preallocfill" => Ok(PeerDiagIo::RealPreallocFill),
         "realpreallocfcntl" | "fpreallocate" | "fcntl" => Ok(PeerDiagIo::RealPreallocFcntl),
         "realprealloczero" | "prealloczero" | "zero" => Ok(PeerDiagIo::RealPreallocZero),
+        "realpreallocwm" | "watermark" | "ahead" => Ok(PeerDiagIo::RealPreallocWatermark),
         other => Err(format!(
-            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill|realpreallocfcntl|realprealloczero)"
+            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill|realpreallocfcntl|realprealloczero|realpreallocwm)"
         )),
     }
 }

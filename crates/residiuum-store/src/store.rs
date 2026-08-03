@@ -408,6 +408,9 @@ pub enum DiagnosticIoSink {
     /// `F_PREALLOCATE` + `set_len` + **bulk zero** (1 MiB writes). Tests whether
     /// first-touch zeroing (not mere extent reserve) is what page-touch bought.
     RealPreallocZero,
+    /// `F_PREALLOCATE` + `set_len` + **seal-sized ahead-of-write zero** (64 MiB
+    /// chunks during the put path). Amortizes zeroing into the odometer.
+    RealPreallocWatermark,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -451,6 +454,8 @@ struct ActiveWriter {
     coalesce_buf: Vec<u8>,
     coalesce_off: u64,
     coalesce_since: Option<std::time::Instant>,
+    /// Diagnostic watermark: file offset through which bytes were bulk-zeroed.
+    zeroed_thru: u64,
 }
 
 /// Measured segment-tail file I/O at the actual boundary (write/sync).
@@ -835,7 +840,8 @@ impl Store {
             | DiagnosticIoSink::RealPrealloc
             | DiagnosticIoSink::RealPreallocFill
             | DiagnosticIoSink::RealPreallocFcntl
-            | DiagnosticIoSink::RealPreallocZero => {
+            | DiagnosticIoSink::RealPreallocZero
+            | DiagnosticIoSink::RealPreallocWatermark => {
                 self.null_io_file = None;
             }
         }
@@ -846,6 +852,7 @@ impl Store {
                 | DiagnosticIoSink::RealPreallocFill
                 | DiagnosticIoSink::RealPreallocFcntl
                 | DiagnosticIoSink::RealPreallocZero
+                | DiagnosticIoSink::RealPreallocWatermark
         ) {
             self.prealloc_existing_actives()?;
         }
@@ -855,6 +862,7 @@ impl Store {
     /// Diagnostic: apply prealloc to already-open active writers (post-create sink set).
     fn prealloc_existing_actives(&mut self) -> Result<(), StoreError> {
         const BYTES: u64 = 512 * 1024 * 1024;
+        const CHUNK: u64 = 64 * 1024 * 1024;
         let mode = self.diagnostic_io;
         let n = self.writer_shards();
         for shard in 0..n {
@@ -880,6 +888,7 @@ impl Store {
                         writer.file.write_all(&one)?;
                         off = off.saturating_add(1024 * 1024);
                     }
+                    writer.zeroed_thru = BYTES;
                 }
                 DiagnosticIoSink::RealPreallocFcntl => {
                     Self::diag_os_preallocate(&writer.file, BYTES)?;
@@ -888,7 +897,16 @@ impl Store {
                 DiagnosticIoSink::RealPreallocZero => {
                     Self::diag_os_preallocate(&writer.file, BYTES)?;
                     writer.file.set_len(BYTES)?;
-                    Self::diag_bulk_zero(&mut writer.file, BYTES)?;
+                    Self::diag_bulk_zero_range(&mut writer.file, 0, BYTES)?;
+                    writer.zeroed_thru = BYTES;
+                }
+                DiagnosticIoSink::RealPreallocWatermark => {
+                    Self::diag_os_preallocate(&writer.file, BYTES)?;
+                    writer.file.set_len(BYTES)?;
+                    // Prime only the first seal-sized chunk; rest during puts.
+                    let first = CHUNK.max(writer.durable_len);
+                    Self::diag_bulk_zero_range(&mut writer.file, 0, first)?;
+                    writer.zeroed_thru = first;
                 }
                 _ => {}
             }
@@ -5808,7 +5826,19 @@ impl Store {
                 | DiagnosticIoSink::RealPrealloc
                 | DiagnosticIoSink::RealPreallocFill
                 | DiagnosticIoSink::RealPreallocFcntl
-                | DiagnosticIoSink::RealPreallocZero => {
+                | DiagnosticIoSink::RealPreallocZero
+                | DiagnosticIoSink::RealPreallocWatermark => {
+                    if sink == DiagnosticIoSink::RealPreallocWatermark {
+                        // Keep ≥64 MiB of zeroed runway ahead of the write head.
+                        const CAP: u64 = 512 * 1024 * 1024;
+                        const CHUNK: u64 = 64 * 1024 * 1024;
+                        let need = writer
+                            .durable_len
+                            .saturating_add(pending_len as u64)
+                            .saturating_add(CHUNK)
+                            .min(CAP);
+                        Self::diag_ensure_zero_watermark(writer, need, CAP)?;
+                    }
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
                     // DEF-022: optional short-write injection mid-append.
                     if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
@@ -5919,6 +5949,7 @@ impl Store {
                     | DiagnosticIoSink::RealPreallocFill
                     | DiagnosticIoSink::RealPreallocFcntl
                     | DiagnosticIoSink::RealPreallocZero
+                    | DiagnosticIoSink::RealPreallocWatermark
             )
         {
             if sink == DiagnosticIoSink::Coalesce64k {
@@ -6075,6 +6106,7 @@ impl Store {
                 coalesce_buf: Vec::new(),
                 coalesce_off: 0,
                 coalesce_since: None,
+                zeroed_thru: 0,
             }),
         );
         Ok(())
@@ -6116,6 +6148,7 @@ impl Store {
                 coalesce_buf: Vec::new(),
                 coalesce_off: 0,
                 coalesce_since: None,
+                zeroed_thru: 0,
             }),
         );
         Ok(())
@@ -6149,7 +6182,14 @@ impl Store {
             DiagnosticIoSink::RealPreallocZero => {
                 Self::diag_os_preallocate(file, BYTES)?;
                 file.set_len(BYTES)?;
-                Self::diag_bulk_zero(file, BYTES)?;
+                Self::diag_bulk_zero_range(file, 0, BYTES)?;
+                file.seek(SeekFrom::Start(0))?;
+            }
+            DiagnosticIoSink::RealPreallocWatermark => {
+                const CHUNK: u64 = 64 * 1024 * 1024;
+                Self::diag_os_preallocate(file, BYTES)?;
+                file.set_len(BYTES)?;
+                Self::diag_bulk_zero_range(file, 0, CHUNK)?;
                 file.seek(SeekFrom::Start(0))?;
             }
             _ => {}
@@ -6157,12 +6197,30 @@ impl Store {
         Ok(())
     }
 
-    /// Write zeros across `[0, bytes)` in 1 MiB chunks (diagnostic first-touch).
-    fn diag_bulk_zero(file: &mut File, bytes: u64) -> Result<(), StoreError> {
+    /// Extend bulk-zero through `need_thru` in 64 MiB steps (watermark spike).
+    fn diag_ensure_zero_watermark(
+        writer: &mut ActiveWriter,
+        need_thru: u64,
+        file_cap: u64,
+    ) -> Result<(), StoreError> {
+        const CHUNK: u64 = 64 * 1024 * 1024;
+        while writer.zeroed_thru < need_thru && writer.zeroed_thru < file_cap {
+            let end = writer.zeroed_thru.saturating_add(CHUNK).min(file_cap);
+            Self::diag_bulk_zero_range(&mut writer.file, writer.zeroed_thru, end)?;
+            writer.zeroed_thru = end;
+        }
+        Ok(())
+    }
+
+    /// Write zeros across `[start, end)` in 1 MiB chunks (diagnostic first-touch).
+    fn diag_bulk_zero_range(file: &mut File, start: u64, end: u64) -> Result<(), StoreError> {
+        if end <= start {
+            return Ok(());
+        }
         let chunk = vec![0u8; 1024 * 1024];
-        let mut off = 0u64;
-        while off < bytes {
-            let n = ((bytes - off) as usize).min(chunk.len());
+        let mut off = start;
+        while off < end {
+            let n = ((end - off) as usize).min(chunk.len());
             file.seek(SeekFrom::Start(off))?;
             file.write_all(&chunk[..n])?;
             off = off.saturating_add(n as u64);
@@ -6282,6 +6340,7 @@ impl Store {
                 coalesce_buf: Vec::new(),
                 coalesce_off: 0,
                 coalesce_since: None,
+                zeroed_thru: 0,
             }),
         );
         Ok(())

@@ -22,10 +22,12 @@ Replace “touch every 1 MiB of 512 MiB at create” with something closer t
 | Candidate | Why |
 |-----------|-----|
 | ~~macOS `F_PREALLOCATE` alone~~ | **≈ Real** ([GEMINI_PREALLOC_PLATFORM_REVIEW.md](GEMINI_PREALLOC_PLATFORM_REVIEW.md)) |
-| ~~`F_PREALLOCATE` + bulk zero~~ | **~51k pump** — works; setup ~0.5 s for 512 MiB ([PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md)) |
-| Seal-sized ahead-of-write zero | Amortize the confirmed tax without 512 MiB upfront |
+| ~~`F_PREALLOCATE` + bulk zero~~ | **~48–51k pump** — works; setup heavy ([PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md)) |
+| ~~Seal-sized ahead-of-write zero~~ | **~32k pump, best E2E ~28.5k** ([PREALLOC_WATERMARK_SPIKE.md](PREALLOC_WATERMARK_SPIKE.md)) |
+| Chunk-size sweep / match seal threshold | Tune 16/64/128 MiB |
+| Background prepare segment N+1 | Hide remaining mid-run zero blips |
 | Linux `fallocate` | Unmeasured |
-| Double-buffer prepare N+1 | Hide zeroing latency |
+| Product design note | Now evidence-backed enough to draft |
 
 Same peer recipe: Mode A · c=8 · APFS · vs Real · vs SQLite A.  
 **Goal:** see if ~37k is reachable without a crude page-poke.
