@@ -1,8 +1,8 @@
 # AWO-Q — Post-T11 qualification series
 
-Status: **series planned (board materialised) — not package accept**  
+Status: **AWO-Q1 principal `done` (correctness scope) — next pull AWO-Q2**  
 Entry: T11 evidence freeze principal `done` (`b7986427`)  
-Date: 2026-08-03  
+Date: 2026-08-03 (Q1 package principal closed; Q2 promoted to `todo`)  
 
 ## 0. Entry honesty
 
@@ -133,13 +133,13 @@ Principal approved series 2026-08-03 (“keep going”).
 | Card | Id | Stage | Notes |
 |------|-----|--------|-------|
 | AWO-Q0 series contract | `cfb1a4d3-…` | **`done`** | Principal accept |
-| AWO-Q1 package umbrella | `b6e2a138-…` | `todo` | Close when 1.1–1.3 done |
-| **AWO-Q1.1** harness + ledger | `fab1a943-…` | **`todo`** | **First code pull** |
-| AWO-Q1.2 wait-outside-mutex | `37a4c1a2-…` | `todo` | After 1.1 |
-| AWO-Q1.3 correctness + freeze | `ba312673-…` | `todo` | After 1.2 |
-| AWO-Q2 adaptive decision quality | `0a043642-…` | `backlog` | After Q1 package |
-| AWO-Q3 sustained qualification | `ce3e8a1c-…` | `backlog` | After Q1 |
-| AWO-Q4 sparse latency product bound | `c827e21a-…` | `backlog` | After Q1 |
+| AWO-Q1 package umbrella | `b6e2a138-…` | **`done`** | Principal accept 2026-08-03 (correctness scope) |
+| **AWO-Q1.1** harness + ledger | `fab1a943-…` | **`done`** | Principal accept |
+| AWO-Q1.2 wait-outside-mutex | `37a4c1a2-…` | **`done`** | Principal accept |
+| AWO-Q1.3 correctness + freeze | `ba312673-…` | **`done`** | Principal accept; concurrent rotate + exact scan set |
+| **AWO-Q2** adaptive decision quality | `0a043642-…` | **`todo`** | **Next pull** — Adaptive load-curve / ceiling vs Static |
+| AWO-Q3 sustained qualification | `ce3e8a1c-…` | `backlog` | After Q2 preferred |
+| AWO-Q4 sparse latency product bound | `c827e21a-…` | `backlog` | After Q1 path real; Q3 if floors |
 
 ---
 
@@ -150,5 +150,7 @@ Principal approved series 2026-08-03 (“keep going”).
 | `AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md` | Entry freeze (both sides) |
 | `AWO_THREE_WAY_T10_HARNESS_RERUN.md` | Serial-outstanding residual |
 | `AWO_INDEPENDENT_COLLECTION_CONNECT.md` | Collection connect labor |
+| `AWO_Q1_PACKAGE_CLOSEOUT.md` | Q1 package labor freeze + principal accept sequence |
+| `AWO_Q1_1_HARNESS.md` / `AWO_Q1_2_FACADE.md` / `AWO_Q1_3_REOPEN.md` | Slice evidence |
 | `ADAPTIVE_WRITE_OPTIMISER_SPEC.md` | Normative AWO behaviour |
 | `PERFORMANCE_QUALIFICATION_HARNESS_SPEC.md` | Measure semantics |

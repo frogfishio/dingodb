@@ -1,6 +1,6 @@
 # AWO-Q1.1 — Concurrent admit harness + ledger (labor evidence)
 
-Status: **labor complete (in_review) — not package accept**  
+Status: **principal `done`** (slice accepted) · package AWO-Q1 still open until Q1.3 + umbrella  
 Card: `fab1a943-8def-4ded-9bfe-0499a567da56`  
 Date: 2026-08-03  
 Brief: `AWO_Q1_1_IMPLEMENTER_BRIEF.md`

@@ -1,6 +1,6 @@
 # AWO-Q1.2 — Wait-outside-mutex under concurrent admit (labor evidence)
 
-Status: **labor complete (in_review) — not package accept**  
+Status: **principal `done`** (slice accepted) · package AWO-Q1 still open until Q1.3 + umbrella  
 Card: `37a4c1a2-0d0f-43e7-9484-17a33d54585f`  
 Date: 2026-08-03  
 Parent: AWO-Q1 (`b6e2a138`) · Series: `AWO_QUALIFICATION_SERIES.md`

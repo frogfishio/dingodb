@@ -1,6 +1,6 @@
 # AWO-Q1.3 — Concurrent admit correctness + reopen evidence freeze
 
-Status: **labor complete (in_review) — ready for principal accept of Q1.3 + AWO-Q1 umbrella**  
+Status: **principal `done` 2026-08-03** (correctness scope; AWO-Q1 package closed)  
 Card: `ba312673-ce84-4c89-ae1f-46c61caf112f`  
 Date: 2026-08-03 (remediation: concurrent rotation + exact scan set)  
 Parent: AWO-Q1 (`b6e2a138`) · Series: `AWO_QUALIFICATION_SERIES.md`
@@ -82,5 +82,5 @@ q13 adaptive seed=1001 conc=8 acked=32 file_sync=33 rotate=7 sync/ack=1.031 scan
 |-------|-------------|
 | Q1.1 harness + ledger | `done` (principal) |
 | Q1.2 façade wait-outside-mutex | `done` (principal) |
-| Q1.3 reopen + concurrent rotate + exact scan | **`in_review` — ready to accept** |
-| Umbrella AWO-Q1 | `todo` until principal accepts Q1.3 and closes umbrella |
+| Q1.3 reopen + concurrent rotate + exact scan | **principal `done`** |
+| Umbrella AWO-Q1 | **principal `done`** — next **AWO-Q2** `todo` |
