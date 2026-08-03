@@ -273,3 +273,139 @@ fn open_heap_carries_adaptive_handle_when_lease_active() {
     // only assert the host still exposes adaptive after open_heap is available.
     let _ = host.adaptive_write_status();
 }
+
+/// AWO-Q1.2: concurrent admits through the **HeapStore façade** (not direct
+/// AdaptiveWriteHandle). Product wiring: put_collection → put_if admits under
+/// lock, waits outside, so concurrent callers can pile into the collector.
+#[test]
+fn heap_store_facade_concurrent_put_collection_wait_outside_mutex() {
+    use residiuum_heap::{
+        mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints,
+        DeploymentId, HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights,
+        SecurityRevision, TrustedInstant, VerifiedCertificate,
+    };
+    use residiuum_store::{
+        create_object, publish_staged_genesis, stage_heap_genesis, BoundaryKind, HeapMetaLayout,
+        ObjectKind,
+    };
+    use std::sync::Arc;
+
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let mut policy = AdaptiveWritePolicy::machine_defaults();
+    policy.mode = AdaptiveWriteMode::Static;
+    policy.maximum_cookers = 2;
+    policy.minimum_active_cookers = 1;
+    policy.maximum_collection_delay = Duration::from_millis(5);
+
+    let host = StoreHost::create_with_adaptive_write(root, policy).unwrap();
+    assert!(host.adaptive_write().unwrap().lease_active());
+
+    let layout = HeapMetaLayout::new(root);
+    let dep = *DeploymentId::new_random().unwrap().as_bytes();
+    let heap_id = *HeapId::new_random().unwrap().as_bytes();
+    let coll = *residiuum_heap::CollectionId::new_random()
+        .unwrap()
+        .as_bytes();
+    let staged =
+        stage_heap_genesis(&layout, dep, heap_id, [1u8; 16], "q12-facade-heap").unwrap();
+    publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
+    create_object(
+        &layout,
+        &heap_id,
+        ObjectKind::Collection,
+        coll,
+        [2u8; 16],
+        "q12.collection",
+    )
+    .unwrap();
+
+    let snap = HeapSecuritySnapshot {
+        deployment_id: DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap(),
+        heap_id: HeapId::from_bytes_unchecked_nonzero(heap_id).unwrap(),
+        authority_epoch: AuthorityEpoch::new(1).unwrap(),
+        authority_generation: AuthorityGeneration::new(1).unwrap(),
+        previous_generation: None,
+        grace_deadline_unix_s: None,
+        master_public_key: [7u8; 32],
+        previous_master_public_key: None,
+        security_revision: SecurityRevision::new(1).unwrap(),
+        authority_chain_head_hash: [9u8; 32],
+        administrative_state: HeapAdministrativeState::Active,
+        blacklist: vec![],
+        policy_rights_ceiling: None,
+    };
+    let slot = Arc::new(HeapSlot::new(snap));
+    let cert = VerifiedCertificate {
+        cose_bytes: vec![0x01],
+        fingerprint: [3u8; 32],
+        deployment_id: DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap(),
+        heap_id: HeapId::from_bytes_unchecked_nonzero(heap_id).unwrap(),
+        authority_epoch: AuthorityEpoch::new(1).unwrap(),
+        authority_generation: AuthorityGeneration::new(1).unwrap(),
+        certificate_id: CertificateId::new_random().unwrap(),
+        holder_public_key: [4u8; 32],
+        rights: Rights::from_bits_certificate(Rights::READ.bits() | Rights::WRITE.bits()).unwrap(),
+        constraints: Constraints::empty(),
+        not_before: 1,
+        expires_at: 4_000_000_000,
+        issuer_master_key_id: [5u8; 32],
+    };
+    let cap = mint_capability(slot, &cert, TrustedInstant { unix_s: 1_700_000_000 }).unwrap();
+    let heap = Arc::new(host.open_heap(cap));
+
+    {
+        let physical = host.physical();
+        let mut g = physical.lock().unwrap();
+        g.enable_boundary_probe();
+    }
+
+    let n_threads = 8;
+    let puts_per = 4;
+    let barrier = Arc::new(Barrier::new(n_threads));
+    let mut joins = Vec::new();
+    for t in 0..n_threads {
+        let heap = Arc::clone(&heap);
+        let barrier = Arc::clone(&barrier);
+        joins.push(std::thread::spawn(move || {
+            barrier.wait();
+            for i in 0..puts_per {
+                let key = format!("q12-t{t}-i{i}");
+                // Product façade path — not AdaptiveWriteHandle::admit_put.
+                heap.put_collection(&coll, key.as_bytes(), b"facade-v")
+                    .expect("heap put_collection");
+            }
+        }));
+    }
+    for j in joins {
+        j.join().expect("worker must not panic");
+    }
+
+    let total = (n_threads * puts_per) as u64;
+    // All keys readable via façade.
+    for t in 0..n_threads {
+        for i in 0..puts_per {
+            let key = format!("q12-t{t}-i{i}");
+            let v = heap
+                .get_collection(&coll, key.as_bytes())
+                .expect("get")
+                .expect("present");
+            assert_eq!(v, b"facade-v");
+        }
+    }
+
+    let snap = {
+        let physical = host.physical();
+        let g = physical.lock().unwrap();
+        g.boundary_snapshot()
+    };
+    let file_sync = snap.counters.count(BoundaryKind::FileSync);
+    // Durable façade puts: collector must amortize syncs (wait-outside-mutex enables pile-up).
+    assert!(
+        file_sync > 0 && file_sync < total,
+        "façade concurrent path must amortize file_sync: sync={file_sync} ops={total}"
+    );
+
+    host.drain_writes(Instant::now() + Duration::from_secs(2))
+        .unwrap();
+}

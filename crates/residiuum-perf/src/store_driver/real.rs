@@ -870,21 +870,24 @@ enum ConcurrentTerminal {
 /// 1. Every outcome carries a seq (Reject included).
 /// 2. Each seq has **exactly one** first terminal; any second terminal is multi-terminal
 ///    (Ack+Ack, Ack+Fail, Fail+Fail, Reject+Ack, …).
-/// 3. Issued range `0..=max_seq` has no holes (missing terminal).
+/// 3. Authoritative `issued_count`: terminal sequences must be **exactly** `0..issued_count`
+///    (missing tail invisible under `0..=max_seq` is a fail; out-of-range rejected).
 struct ConcurrentLedgerFold {
     ledger: AckLedger,
     records: Vec<(u64, u64, u64, u32)>,
     messages: Vec<String>,
-    /// First-terminal coverage span: `max_seq + 1` when any outcome exists.
+    /// Authoritative issuance span: `issued_count` (not derived from max observed seq).
     ops_span: u64,
     multi_terminal: u64,
     missing_seq: u64,
+    out_of_range: u64,
     balanced: bool,
 }
 
 fn fold_concurrent_op_outcomes(
     outcomes: &[ConcurrentOpOutcome],
     digest_mutant: bool,
+    issued_count: u64,
 ) -> ConcurrentLedgerFold {
     use std::collections::BTreeMap;
 
@@ -892,6 +895,7 @@ fn fold_concurrent_op_outcomes(
     let mut multi_terminal = 0u64;
     let mut multi_ack = 0u64;
     let mut multi_mixed = 0u64;
+    let mut out_of_range = 0u64;
 
     for o in outcomes {
         let (seq, term) = match *o {
@@ -899,6 +903,11 @@ fn fold_concurrent_op_outcomes(
             ConcurrentOpOutcome::Fail { seq } => (seq, ConcurrentTerminal::Fail),
             ConcurrentOpOutcome::Reject { seq } => (seq, ConcurrentTerminal::Reject),
         };
+        if seq >= issued_count {
+            // Terminal outside authoritative issuance range — never a valid first terminal.
+            out_of_range = out_of_range.saturating_add(1);
+            continue;
+        }
         match first.entry(seq) {
             std::collections::btree_map::Entry::Vacant(e) => {
                 e.insert(term);
@@ -918,18 +927,15 @@ fn fold_concurrent_op_outcomes(
         }
     }
 
+    // Authoritative span: exactly 0..issued_count (missing tail is visible even if
+    // final issued ops disappeared from the outcome set).
+    let ops_span = issued_count;
     let mut missing_seq = 0u64;
-    let ops_span = if let Some((&max_seq, _)) = first.iter().next_back() {
-        let span = max_seq.saturating_add(1);
-        for s in 0..span {
-            if !first.contains_key(&s) {
-                missing_seq = missing_seq.saturating_add(1);
-            }
+    for s in 0..issued_count {
+        if !first.contains_key(&s) {
+            missing_seq = missing_seq.saturating_add(1);
         }
-        span
-    } else {
-        0
-    };
+    }
 
     // Build AckLedger from first terminals only, seq-sorted (digest order-stable).
     let mut ledger = AckLedger::new();
@@ -953,7 +959,8 @@ fn fold_concurrent_op_outcomes(
     }
 
     let count_ok = ledger.attempted == ledger.acknowledged.saturating_add(ledger.failed);
-    let balanced = count_ok && multi_terminal == 0 && missing_seq == 0;
+    let balanced =
+        count_ok && multi_terminal == 0 && missing_seq == 0 && out_of_range == 0;
     let mut messages = Vec::new();
     if multi_terminal > 0 {
         messages.push(format!(
@@ -962,17 +969,24 @@ fn fold_concurrent_op_outcomes(
     }
     if missing_seq > 0 {
         messages.push(format!(
-            "ledger_error=missing_seq_count={missing_seq} ops_span={ops_span} (issued range has holes — no terminal for some seq)"
+            "ledger_error=missing_seq_count={missing_seq} issued_count={issued_count} (terminal sequences must be exactly 0..issued_count)"
+        ));
+    }
+    if out_of_range > 0 {
+        messages.push(format!(
+            "ledger_error=out_of_range_count={out_of_range} issued_count={issued_count} (terminal seq outside 0..issued_count)"
         ));
     }
     messages.push(format!(
-        "ledger_balance={} attempted={} acknowledged={} failed={} multi_terminal={} missing_seq={}",
+        "ledger_balance={} attempted={} acknowledged={} failed={} multi_terminal={} missing_seq={} out_of_range={} issued_count={}",
         if balanced { "ok" } else { "fail" },
         ledger.attempted,
         ledger.acknowledged,
         ledger.failed,
         multi_terminal,
-        missing_seq
+        missing_seq,
+        out_of_range,
+        issued_count
     ));
     if let Err(e) = ledger.verify_correctness() {
         messages.push(format!("ledger_verify_error={e}"));
@@ -985,7 +999,69 @@ fn fold_concurrent_op_outcomes(
         ops_span,
         multi_terminal,
         missing_seq,
+        out_of_range,
         balanced,
+    }
+}
+
+/// Global outstanding credit pool (not per-worker). Four workers with
+/// `outstanding=8` share 8 in-flight slots total — matching PQH cell contract.
+struct GlobalOutstanding {
+    available: Mutex<usize>,
+    capacity: usize,
+}
+
+impl GlobalOutstanding {
+    fn new(capacity: usize) -> Self {
+        let capacity = capacity.max(1);
+        Self {
+            available: Mutex::new(capacity),
+            capacity,
+        }
+    }
+
+    /// Non-blocking: returns false when the global limit is exhausted.
+    fn try_acquire(&self) -> bool {
+        let mut g = self
+            .available
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        if *g > 0 {
+            *g -= 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn release(&self) {
+        let mut g = self
+            .available
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        *g = (*g).saturating_add(1).min(self.capacity);
+    }
+}
+
+/// Allocate the next seq under an optional smoke cap without overshooting.
+fn allocate_seq(next_seq: &std::sync::atomic::AtomicU64, lim: Option<u64>) -> Option<u64> {
+    use std::sync::atomic::Ordering;
+    loop {
+        let cur = next_seq.load(Ordering::Relaxed);
+        if let Some(lim) = lim {
+            if cur >= lim {
+                return None;
+            }
+        }
+        match next_seq.compare_exchange_weak(
+            cur,
+            cur.saturating_add(1),
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(_) => return Some(cur),
+            Err(_) => continue,
+        }
     }
 }
 
@@ -1015,24 +1091,25 @@ fn execute_concurrent_admit_put(
 
     // Concurrent workers: admit under lock, wait outside. Outcomes collected for a
     // deterministic per-seq ledger (built on the main thread via fold).
+    // Outstanding is **global** (shared across workers), matching PQH cell contract.
     let outcomes_mu: Arc<Mutex<Vec<ConcurrentOpOutcome>>> = Arc::new(Mutex::new(Vec::new()));
-    let seq_counter = Arc::new(AtomicU64::new(0));
+    let next_seq = Arc::new(AtomicU64::new(0));
     let logical_shared = Arc::new(AtomicU64::new(0));
+    let credits = Arc::new(GlobalOutstanding::new(outstanding));
 
     let seed = cfg.seed;
     let dist = cfg.cell.distribution;
     let payload_size = cfg.cell.payload_size;
     let shards = cfg.cell.shards.max(1);
     let awo = awo.clone();
-    // Divide op budget across workers for smoke.
-    let per_worker_ops = smoke_ops_limit.map(|lim| ((lim as usize) + workers - 1) / workers);
 
     let mut handles = Vec::new();
     for _wid in 0..workers {
         let store = Arc::clone(&store);
-        let seq_counter = Arc::clone(&seq_counter);
+        let next_seq = Arc::clone(&next_seq);
         let logical_shared = Arc::clone(&logical_shared);
         let outcomes_mu = Arc::clone(&outcomes_mu);
+        let credits = Arc::clone(&credits);
         let awo = awo.clone();
         handles.push(thread::spawn(move || {
             let sampler = match dist {
@@ -1040,10 +1117,9 @@ fn execute_concurrent_admit_put(
                 None => SizeSampler::fixed(payload_size),
             };
             let mut pending = Vec::new();
-            let mut local_ops = 0usize;
             loop {
                 let global_done = if let Some(lim) = smoke_ops_limit {
-                    seq_counter.load(Ordering::Relaxed) >= lim && pending.is_empty()
+                    next_seq.load(Ordering::Relaxed) >= lim && pending.is_empty()
                 } else {
                     let elapsed = t0.elapsed();
                     let lb = logical_shared.load(Ordering::Relaxed);
@@ -1053,39 +1129,26 @@ fn execute_concurrent_admit_put(
                 if global_done {
                     break;
                 }
-                if let Some(cap) = per_worker_ops {
-                    if local_ops >= cap && pending.is_empty() {
-                        break;
-                    }
-                }
 
-                while pending.len() < outstanding {
-                    if let Some(lim) = smoke_ops_limit {
-                        if seq_counter.load(Ordering::Relaxed) >= lim {
-                            break;
-                        }
+                // Issue while global outstanding credits remain and budgets allow.
+                while credits.try_acquire() {
+                    let may_issue = if let Some(lim) = smoke_ops_limit {
+                        next_seq.load(Ordering::Relaxed) < lim
                     } else {
                         let elapsed = t0.elapsed();
                         let lb = logical_shared.load(Ordering::Relaxed);
-                        if elapsed >= min_dur && lb >= min_bytes {
-                            break;
-                        }
-                        if elapsed >= max_dur || lb >= max_bytes {
-                            break;
-                        }
+                        !(elapsed >= min_dur && lb >= min_bytes)
+                            && elapsed < max_dur
+                            && lb < max_bytes
+                    };
+                    if !may_issue {
+                        credits.release();
+                        break;
                     }
-                    if let Some(cap) = per_worker_ops {
-                        if local_ops >= cap {
-                            break;
-                        }
-                    }
-                    let seq = seq_counter.fetch_add(1, Ordering::Relaxed);
-                    if let Some(lim) = smoke_ops_limit {
-                        if seq >= lim {
-                            break;
-                        }
-                    }
-                    local_ops += 1;
+                    let Some(seq) = allocate_seq(&next_seq, smoke_ops_limit) else {
+                        credits.release();
+                        break;
+                    };
                     let plen = if dist.is_some() {
                         sampler.size_at(seq)
                     } else {
@@ -1103,9 +1166,12 @@ fn execute_concurrent_admit_put(
                         let mut g = match store.lock() {
                             Ok(g) => g,
                             Err(_) => {
-                                if let Ok(mut o) = outcomes_mu.lock() {
-                                    o.push(ConcurrentOpOutcome::Reject { seq });
-                                }
+                                // Poisoned store lock: record reject, free credit, continue.
+                                outcomes_mu
+                                    .lock()
+                                    .expect("outcomes_mu poisoned")
+                                    .push(ConcurrentOpOutcome::Reject { seq });
+                                credits.release();
                                 continue;
                             }
                         };
@@ -1118,9 +1184,11 @@ fn execute_concurrent_admit_put(
                         ) {
                             AdmissionResult::Admitted(c) => c,
                             AdmissionResult::Rejected(_) => {
-                                if let Ok(mut o) = outcomes_mu.lock() {
-                                    o.push(ConcurrentOpOutcome::Reject { seq });
-                                }
+                                outcomes_mu
+                                    .lock()
+                                    .expect("outcomes_mu poisoned")
+                                    .push(ConcurrentOpOutcome::Reject { seq });
+                                credits.release();
                                 continue;
                             }
                         }
@@ -1135,66 +1203,82 @@ fn execute_concurrent_admit_put(
                 match completion.wait() {
                     Ok(_) => {
                         logical_shared.fetch_add(plen, Ordering::Relaxed);
-                        if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(ConcurrentOpOutcome::Ack {
+                        outcomes_mu.lock().expect("outcomes_mu poisoned").push(
+                            ConcurrentOpOutcome::Ack {
                                 seq: op_seq,
                                 plen,
-                            });
-                        }
+                            },
+                        );
                     }
                     Err(_) => {
-                        if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(ConcurrentOpOutcome::Fail { seq: op_seq });
-                        }
+                        outcomes_mu
+                            .lock()
+                            .expect("outcomes_mu poisoned")
+                            .push(ConcurrentOpOutcome::Fail { seq: op_seq });
                     }
                 }
+                credits.release();
             }
-            // Drain remaining.
+            // Drain remaining in-flight ops (each still holds a global credit).
             for (op_seq, plen, completion) in pending {
                 match completion.wait() {
                     Ok(_) => {
                         logical_shared.fetch_add(plen, Ordering::Relaxed);
-                        if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(ConcurrentOpOutcome::Ack {
+                        outcomes_mu.lock().expect("outcomes_mu poisoned").push(
+                            ConcurrentOpOutcome::Ack {
                                 seq: op_seq,
                                 plen,
-                            });
-                        }
+                            },
+                        );
                     }
                     Err(_) => {
-                        if let Ok(mut o) = outcomes_mu.lock() {
-                            o.push(ConcurrentOpOutcome::Fail { seq: op_seq });
-                        }
+                        outcomes_mu
+                            .lock()
+                            .expect("outcomes_mu poisoned")
+                            .push(ConcurrentOpOutcome::Fail { seq: op_seq });
                     }
                 }
+                credits.release();
             }
         }));
     }
 
+    // Hard fail on worker panic — a panicked producer invalidates all leg evidence.
     for h in handles {
-        let _ = h.join();
+        match h.join() {
+            Ok(()) => {}
+            Err(_) => {
+                return Err(DriverError::Msg(
+                    "concurrent worker panicked; run evidence invalidated".into(),
+                ));
+            }
+        }
     }
 
-    let outcomes = outcomes_mu.lock().map(|g| g.clone()).unwrap_or_default();
+    // Poisoned outcomes mutex is a direct run failure (not an empty fold).
+    let outcomes = outcomes_mu.lock().map(|g| g.clone()).map_err(|_| {
+        DriverError::Msg("outcomes mutex poisoned; concurrent run failed".into())
+    })?;
+    let issued_count = next_seq.load(Ordering::Relaxed);
     let logical_bytes = logical_shared.load(Ordering::Relaxed);
-    let fold = fold_concurrent_op_outcomes(&outcomes, cfg.digest_mutant);
+    let fold = fold_concurrent_op_outcomes(&outcomes, cfg.digest_mutant, issued_count);
     let ops_done = fold.ops_span;
 
     let mut messages = vec![format!(
-        "concurrent_admit_put workers={workers} outstanding={outstanding} acked={} failed={} ops_done={ops_done} multi_terminal={} missing_seq={}",
+        "concurrent_admit_put workers={workers} outstanding_global={outstanding} issued_count={issued_count} acked={} failed={} ops_done={ops_done} multi_terminal={} missing_seq={} out_of_range={}",
         fold.ledger.acknowledged,
         fold.ledger.failed,
         fold.multi_terminal,
-        fold.missing_seq
+        fold.missing_seq,
+        fold.out_of_range
     )];
     messages.extend(fold.messages);
 
-    // Fail closed: multi-terminal or missing seq is not a valid correctness ledger.
-    // (Count balance alone is circular — first-terminal only always balances.)
-    if fold.multi_terminal > 0 || fold.missing_seq > 0 {
+    // Fail closed: multi-terminal, missing issued seq, or out-of-range is invalid.
+    if fold.multi_terminal > 0 || fold.missing_seq > 0 || fold.out_of_range > 0 {
         return Err(DriverError::Msg(format!(
-            "concurrent admit ledger not correctness-grade: multi_terminal={} missing_seq={} (each issued seq needs exactly one terminal Ack|Fail|Reject)",
-            fold.multi_terminal, fold.missing_seq
+            "concurrent admit ledger not correctness-grade: multi_terminal={} missing_seq={} out_of_range={} issued_count={} (terminal sequences must be exactly 0..issued_count, one terminal each)",
+            fold.multi_terminal, fold.missing_seq, fold.out_of_range, issued_count
         )));
     }
 
@@ -1223,8 +1307,8 @@ fn execute_concurrent_admit_put(
             "concurrent_ledger_balanced".into()
         } else {
             format!(
-                "concurrent_ledger_unbalanced multi={} missing={}",
-                fold.multi_terminal, fold.missing_seq
+                "concurrent_ledger_unbalanced multi={} missing={} out_of_range={}",
+                fold.multi_terminal, fold.missing_seq, fold.out_of_range
             )
         },
     })
@@ -2129,10 +2213,12 @@ mod tests {
                 ConcurrentOpOutcome::Fail { seq: 2 },
             ],
             false,
+            3,
         );
         assert!(fold.balanced, "messages: {:?}", fold.messages);
         assert_eq!(fold.multi_terminal, 0);
         assert_eq!(fold.missing_seq, 0);
+        assert_eq!(fold.out_of_range, 0);
         assert_eq!(fold.ops_span, 3);
         assert_eq!(fold.ledger.attempted, 3);
         assert_eq!(fold.ledger.acknowledged, 1);
@@ -2150,6 +2236,7 @@ mod tests {
                 ConcurrentOpOutcome::Ack { seq: 1, plen: 8 },
             ],
             false,
+            2,
         );
         assert!(!fold.balanced);
         assert_eq!(fold.multi_terminal, 1);
@@ -2175,6 +2262,7 @@ mod tests {
                 ConcurrentOpOutcome::Fail { seq: 0 },
             ],
             false,
+            1,
         );
         assert!(!multi.balanced);
         assert_eq!(multi.multi_terminal, 1);
@@ -2185,6 +2273,7 @@ mod tests {
                 ConcurrentOpOutcome::Ack { seq: 2, plen: 1 }, // missing seq 1
             ],
             false,
+            3,
         );
         assert!(!hole.balanced);
         assert_eq!(hole.missing_seq, 1);
@@ -2195,6 +2284,68 @@ mod tests {
             "{:?}",
             hole.messages
         );
+    }
+
+    /// Authoritative issued_count: missing tail is visible even when max observed seq is lower.
+    /// Old `0..=max_seq` would report balanced for outcomes {0,1,2} with issued_count=5.
+    #[test]
+    fn concurrent_ledger_fold_missing_tail_via_issued_count() {
+        let fold = fold_concurrent_op_outcomes(
+            &[
+                ConcurrentOpOutcome::Ack { seq: 0, plen: 1 },
+                ConcurrentOpOutcome::Ack { seq: 1, plen: 1 },
+                ConcurrentOpOutcome::Ack { seq: 2, plen: 1 },
+            ],
+            false,
+            5, // issued 0..5; seq 3 and 4 disappeared
+        );
+        assert!(!fold.balanced);
+        assert_eq!(fold.missing_seq, 2);
+        assert_eq!(fold.ops_span, 5);
+        assert_eq!(fold.out_of_range, 0);
+        assert!(
+            fold.messages
+                .iter()
+                .any(|m| m.contains("missing_seq_count=2") && m.contains("issued_count=5")),
+            "{:?}",
+            fold.messages
+        );
+    }
+
+    /// Terminals with seq >= issued_count are rejected (out of range).
+    #[test]
+    fn concurrent_ledger_fold_rejects_out_of_range_seq() {
+        let fold = fold_concurrent_op_outcomes(
+            &[
+                ConcurrentOpOutcome::Ack { seq: 0, plen: 1 },
+                ConcurrentOpOutcome::Ack { seq: 1, plen: 1 },
+                ConcurrentOpOutcome::Ack { seq: 9, plen: 1 }, // outside 0..2
+            ],
+            false,
+            2,
+        );
+        assert!(!fold.balanced);
+        assert_eq!(fold.out_of_range, 1);
+        assert_eq!(fold.missing_seq, 0);
+        assert!(
+            fold.messages
+                .iter()
+                .any(|m| m.contains("out_of_range_count=1")),
+            "{:?}",
+            fold.messages
+        );
+    }
+
+    #[test]
+    fn global_outstanding_caps_shared_credits() {
+        let credits = GlobalOutstanding::new(2);
+        assert!(credits.try_acquire());
+        assert!(credits.try_acquire());
+        assert!(!credits.try_acquire(), "third acquire must fail at capacity 2");
+        credits.release();
+        assert!(credits.try_acquire());
+        credits.release();
+        credits.release();
     }
 
     /// AWO-Q1.1: independent batch=1 with concurrency>1 uses real multi-thread
@@ -2243,8 +2394,17 @@ mod tests {
             report
                 .notes
                 .iter()
-                .any(|n| n.contains("concurrent_admit_put workers=4")),
-            "expected real concurrent_admit_put, got: {:?}",
+                .any(|n| n.contains("concurrent_admit_put workers=4")
+                    && n.contains("outstanding_global=")),
+            "expected real concurrent_admit_put with global outstanding, got: {:?}",
+            report.notes
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("issued_count=")),
+            "expected authoritative issued_count in notes: {:?}",
             report.notes
         );
         assert!(
