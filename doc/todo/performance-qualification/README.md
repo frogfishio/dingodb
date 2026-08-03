@@ -40,7 +40,10 @@ testrig.
 | [FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md) | **FN-2 labor:** Mode A four-cell odometer (APFS); Adaptive X≈2.5k loses to off≈12.5k |
 | [SQLITE_10K_TO_30K.md](SQLITE_10K_TO_30K.md) | **Answer:** SQLite 10k→30k = Scratch exFAT → APFS `/var/tmp`, not SQLite getting faster |
 | [FAST_DISK_CPU_WALL.md](FAST_DISK_CPU_WALL.md) | **Confirm:** Scratch 10k parity = SQLite disk ∩ our CPU; fast disk → our CPU wall (~12.5k) |
+| [AWO_MODE_A_QD1_DELAY_TAX.md](AWO_MODE_A_QD1_DELAY_TAX.md) | **Answer:** Static/Adaptive ~2.5k ≠ CPU hammer — QD=1 collection delay (~5× wall) |
+| [FIRM_NUMBERS_MULTICORE.md](FIRM_NUMBERS_MULTICORE.md) | **FN multicore:** Mode A cook1/2/4 flat ~13k; Mode B cook4≈cook1 on APFS long peer |
 | [artifacts/firm-numbers-fn2-mode-a-apfs/](artifacts/firm-numbers-fn2-mode-a-apfs/) | FN-2 JSON + summary |
+| [artifacts/firm-numbers-multicore-apfs/](artifacts/firm-numbers-multicore-apfs/) | Multicore campaign JSON + summary |
 | [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | Q1.1 brief (anchors) |
 | [AWO_Q1_1_HARNESS.md](AWO_Q1_1_HARNESS.md) | **Q1.1 labor:** concurrent path wired + per-seq ledger; test green |
 | [artifacts/awo-three-way-t10-apfs-smoke/](artifacts/awo-three-way-t10-apfs-smoke/) | T10 smoke numbers (SoT for T11 freeze) |

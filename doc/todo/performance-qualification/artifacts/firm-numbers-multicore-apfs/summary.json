@@ -1,0 +1,25 @@
+{
+  "label": "FN multicore: Mode A cook1/2/4 + Mode B cook1/4 on APFS /var/tmp",
+  "date": "2026-08-03",
+  "bed": {
+    "volume": "/var/tmp (APFS)",
+    "scratch_mounted": false,
+    "payload_size": 8192,
+    "target_bytes": 268435456,
+    "seed": 42,
+    "host_ncpu": 10
+  },
+  "mode_A": {
+    "sqlite": { "ops_per_sec": 29701.6, "peak_cpu_pct": 78.5 },
+    "residiuum_cook1": { "ops_per_sec": 13191.6, "peak_cpu_pct": 97.7, "cook_parallelism": 1 },
+    "residiuum_cook2": { "ops_per_sec": 12915.1, "peak_cpu_pct": 89.1, "cook_parallelism": 2 },
+    "residiuum_cook4": { "ops_per_sec": 13258.4, "peak_cpu_pct": 87.5, "cook_parallelism": 4 }
+  },
+  "mode_B": {
+    "sqlite": { "ops_per_sec": 50001.0, "peak_cpu_pct": 68.4 },
+    "residiuum_cook1": { "ops_per_sec": 13626.6, "peak_cpu_pct": 92.5, "cook_parallelism": 1 },
+    "residiuum_cook4": { "ops_per_sec": 13781.2, "peak_cpu_pct": 93.0, "cook_parallelism": 4 }
+  },
+  "verdict_one_line": "Mode A cook1/2/4 flat ~13k (batch=1 cannot parallel-cook). Mode B cook4 ≈ cook1 on this long peer — multicore does not close the SQLite gap on APFS.",
+  "non_claims": ["Not Scratch PEER", "Not AWO", "Not package accept"]
+}

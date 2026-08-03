@@ -181,6 +181,7 @@ pub fn run_peer_pump(cfg: &PeerConfig) -> Result<(), String> {
             ""
         },
         "awo_path": result.awo_path,
+        "cook_parallelism": result.cook_parallelism,
         "payload_size": cfg.payload_size,
         "target_bytes": cfg.target_bytes,
         "target_kind": "logical_payload",
@@ -256,6 +257,7 @@ struct PeerResult {
     sample_count: u64,
     path: String,
     awo_path: String,
+    cook_parallelism: usize,
 }
 
 fn attach_awo(
@@ -293,10 +295,13 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
     };
     store.set_seal_threshold(seal);
     // Optional: RESIDIUUM_COOK_PARALLELISM=N for put_many multi-core cook (peer).
+    // Engages only when a presented batch has ≥2 items (Mode B); Mode A batch=1 stays serial.
+    let mut cook_parallelism = 1usize;
     if let Ok(raw) = std::env::var("RESIDIUUM_COOK_PARALLELISM") {
         if let Ok(n) = raw.parse::<usize>() {
             if n >= 1 {
                 store.set_cook_parallelism(n);
+                cook_parallelism = store.cook_parallelism();
             }
         }
     }
@@ -432,6 +437,7 @@ fn pump_residiuum(cfg: &PeerConfig, payload: &[u8]) -> Result<PeerResult, String
 
     let mut result = finish_result(cfg, keys_written, &store_path, elapsed, &samples)?;
     result.awo_path = awo_path;
+    result.cook_parallelism = cook_parallelism;
     Ok(result)
 }
 
@@ -592,6 +598,7 @@ fn finish_result(
         sample_count: samples.sample_count,
         path: path.display().to_string(),
         awo_path: String::new(),
+        cook_parallelism: 0,
     })
 }
 

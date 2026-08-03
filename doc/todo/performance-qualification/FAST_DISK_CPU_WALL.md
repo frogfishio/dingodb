@@ -51,13 +51,18 @@ disk.” Parallel cook helps batch-rich shapes; QD=1 Mode A still pays per-put
 cook. See `doc/wip/status/surveys/PARKED-write-path-wall-20260801.md`.
 
 FN-2 Adaptive ~2.5k is a **different** tax (QD=1 collection delay) — not this
-CPU-wall story.
+CPU-wall story. See [AWO_MODE_A_QD1_DELAY_TAX.md](AWO_MODE_A_QD1_DELAY_TAX.md):
+Static/Adaptive keep ~68–76% CPU like off, but wall-clock ~5× longer.
 
 ## Optimize implication (ties FN-3)
 
 On a fast bed, beating SQLite Mode A means **cutting Residiuum CPU per acked
 put** (cook/frame/index/seal shape under Buffered QD=1) — not more AWO
 collection delay, and not assuming Scratch 10k parity was our physics floor.
+
+**Multicore follow-up (done):** Mode A cook2/4 on APFS stays ~13k (batch=1 cannot
+parallel-cook); Mode B cook4 ≈ cook1 on the long peer. Extra cores are **not**
+the unlock — see [FIRM_NUMBERS_MULTICORE.md](FIRM_NUMBERS_MULTICORE.md).
 
 ## Non-claims
 

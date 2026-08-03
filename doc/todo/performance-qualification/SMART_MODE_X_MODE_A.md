@@ -21,6 +21,10 @@ On the same run, Residiuum-off ≈ **12 600**/s and SQLite ≈ **29 200**/s.
 Adaptive ≈ Static (~2.5k) and **loses** to Residiuum-off on Mode A QD=1
 (`independent_admit_put+collection` — collection delay, no pile-up).
 
+**Not** “CPU hammered harder than off”: Static/Adaptive peak CPU ~68–76% (same
+band as off ~68%) while elapsed ~13 s vs off ~2.6 s. Delay tax, not hotter CPU.
+See [AWO_MODE_A_QD1_DELAY_TAX.md](AWO_MODE_A_QD1_DELAY_TAX.md).
+
 Full table + disclosure: [FIRM_NUMBERS_FN2_MODE_A.md](FIRM_NUMBERS_FN2_MODE_A.md).
 Artifacts: `artifacts/firm-numbers-fn2-mode-a-apfs/`.
 
