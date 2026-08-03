@@ -71,6 +71,9 @@ testrig.
 | [WRITE_MIMIC.md](WRITE_MIMIC.md) | **Experiment:** same-sized data writes alone ~129k ops/s / ~1 GiB/s — disk not the ~10k ceiling |
 | [SEE_THE_PROBLEM.md](SEE_THE_PROBLEM.md) | **Lock:** mimic ≫ peer (~12×) — problem is Residiuum put path, not disk capacity |
 | [WHERE_IS_THE_12X.md](WHERE_IS_THE_12X.md) | **Split:** ~4× Real grow/first-touch × ~3× index/derived ≈ 12× vs mimic |
+| [WHY_GROWING_SEGMENT.md](WHY_GROWING_SEGMENT.md) | **Answer:** grow = default GrowOnAppend (EOF extend); not required by the log |
+| [NOT_TRADITION.md](NOT_TRADITION.md) | **Call-out:** default grow = inertia not sacred; append stays; grow-under-put flipable |
+| [WRITE_MIMIC_FAITHFULNESS.md](WRITE_MIMIC_FAITHFULNESS.md) | **Honesty:** mimic ≠ put transaction; size-calibrated grow-append ceiling only |
 | [UNDERSTAND_THE_NUMBERS.md](UNDERSTAND_THE_NUMBERS.md) | **Explainer:** one-page stitch of FN-2 → concurrent → coalesce/Discard |
 | [HOW_WE_WRITE_CORRECTION.md](HOW_WE_WRITE_CORRECTION.md) | **Correction:** not write *size*; yes write_all cost / vs SQLite path gap |
 | [WRITE_ALL_BISECT.md](WRITE_ALL_BISECT.md) | **Bisect:** Discard≈DevNull≈SeekOnly~120k; RealOverwrite~96k; Real~10k → **append/growth** |

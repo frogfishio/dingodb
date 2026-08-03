@@ -49,6 +49,8 @@ Modes: `data` | `append` | `atomic`.
 
 **Locked read:** [SEE_THE_PROBLEM.md](SEE_THE_PROBLEM.md) — disk fine; put path ~12× slower than same-sized writes.
 
+**Faithfulness:** [WRITE_MIMIC_FAITHFULNESS.md](WRITE_MIMIC_FAITHFULNESS.md) — not a true put/transaction model; disk ceiling only.
+
 ## How to re-run
 
 ```sh
