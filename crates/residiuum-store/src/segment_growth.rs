@@ -1,12 +1,11 @@
 //! Opt-in active-segment growth policy (product path).
 //!
-//! Evidence: diagnostic watermark spike (`realpreallocwm`) showed ~32 k pump /
-//! ~28.5 k E2E acked puts/s on concurrent Mode A APFS by amortizing physical
-//! first-touch into seal-sized chunks ahead of the write head.
-//!
-//! This module is the **product** surface for that shape. Default remains
+//! Diagnostic pre-touch / bulk-zero spikes showed that paying first-touch
+//! *before* hot-path appends can lift Mode A thr vs grow-on-append (see
+//! `doc/todo/performance-qualification/FIFTY_TO_TEN.md`). Default remains
 //! [`SegmentGrowthPolicy::GrowOnAppend`]. Enabling watermark changes space
 //! amplification and setup cost; it does **not** change CSQ durability labels.
+//! Do not cite withdrawn diag ~32k figures as product thr.
 
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
