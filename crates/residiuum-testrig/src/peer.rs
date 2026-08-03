@@ -106,6 +106,9 @@ pub enum PeerDiagIo {
     DevNull,
     /// 64 KiB / 250 ms coalesce spike — hammerblast only (QD=1 hangs).
     Coalesce64k,
+    SeekOnly,
+    RealNoSeek,
+    RealOverwrite,
 }
 
 impl PeerDiagIo {
@@ -115,6 +118,9 @@ impl PeerDiagIo {
             PeerDiagIo::Discard => "discard",
             PeerDiagIo::DevNull => "devnull",
             PeerDiagIo::Coalesce64k => "coalesce64k",
+            PeerDiagIo::SeekOnly => "seekonly",
+            PeerDiagIo::RealNoSeek => "realnoseek",
+            PeerDiagIo::RealOverwrite => "realoverwrite",
         }
     }
 
@@ -124,6 +130,9 @@ impl PeerDiagIo {
             PeerDiagIo::Discard => DiagnosticIoSink::Discard,
             PeerDiagIo::DevNull => DiagnosticIoSink::DevNull,
             PeerDiagIo::Coalesce64k => DiagnosticIoSink::Coalesce64k,
+            PeerDiagIo::SeekOnly => DiagnosticIoSink::SeekOnly,
+            PeerDiagIo::RealNoSeek => DiagnosticIoSink::RealNoSeek,
+            PeerDiagIo::RealOverwrite => DiagnosticIoSink::RealOverwrite,
         }
     }
 }
@@ -134,8 +143,11 @@ pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
         "discard" | "none" => Ok(PeerDiagIo::Discard),
         "devnull" | "null" => Ok(PeerDiagIo::DevNull),
         "coalesce" | "coalesce64k" | "64k" => Ok(PeerDiagIo::Coalesce64k),
+        "seekonly" | "seek" => Ok(PeerDiagIo::SeekOnly),
+        "realnoseek" | "noseek" => Ok(PeerDiagIo::RealNoSeek),
+        "realoverwrite" | "overwrite" => Ok(PeerDiagIo::RealOverwrite),
         other => Err(format!(
-            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k)"
+            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite)"
         )),
     }
 }

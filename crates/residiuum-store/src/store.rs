@@ -388,6 +388,14 @@ pub enum DiagnosticIoSink {
     /// Spike: coalesce real-file `write_all` into ≥64 KiB chunks (or flush after
     /// 250 ms). Diagnostic only — proves whether larger disk writes change thr.
     Coalesce64k,
+    /// Seek to `durable_len` only; no `write_all`. Bisects seek tax vs Discard.
+    SeekOnly,
+    /// Real-file `write_all` **without** seek (cursor assumed at end). Bisects
+    /// seek vs page-cache write on the active segment.
+    RealNoSeek,
+    /// Seek(0) + `write_all` every time (overwrite; file stays tiny). Bisects
+    /// **file extension / growth** vs copying bytes into a regular file.
+    RealOverwrite,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -806,7 +814,12 @@ impl Store {
                     );
                 }
             }
-            DiagnosticIoSink::Real | DiagnosticIoSink::Discard | DiagnosticIoSink::Coalesce64k => {
+            DiagnosticIoSink::Real
+            | DiagnosticIoSink::Discard
+            | DiagnosticIoSink::Coalesce64k
+            | DiagnosticIoSink::SeekOnly
+            | DiagnosticIoSink::RealNoSeek
+            | DiagnosticIoSink::RealOverwrite => {
                 self.null_io_file = None;
             }
         }
@@ -5754,6 +5767,43 @@ impl Store {
                     writer.durable_len = base.saturating_add(retained_len as u64);
                     debug_assert_eq!(writer.durable_len, writer.segment.len());
                 }
+                DiagnosticIoSink::SeekOnly => {
+                    // Seek tax only — no bytes transferred.
+                    let t0 = std::time::Instant::now();
+                    writer.file.seek(SeekFrom::Start(writer.durable_len))?;
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                    stats.write_duration_ns =
+                        t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
+                }
+                DiagnosticIoSink::RealNoSeek => {
+                    // Same as Real but skip seek (file cursor should already be at end).
+                    let t0 = std::time::Instant::now();
+                    {
+                        let pending = &writer.segment.as_bytes()[start..];
+                        writer.file.write_all(pending)?;
+                    }
+                    stats.write_duration_ns =
+                        t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                }
+                DiagnosticIoSink::RealOverwrite => {
+                    // Thr bisect only: smash bytes at offset 0 so the file does not grow.
+                    let t0 = std::time::Instant::now();
+                    writer.file.seek(SeekFrom::Start(0))?;
+                    {
+                        let pending = &writer.segment.as_bytes()[start..];
+                        writer.file.write_all(pending)?;
+                    }
+                    stats.write_duration_ns =
+                        t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+                    stats.write_completed = pending_len as u64;
+                    stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
+                    writer.durable_len = base.saturating_add(retained_len as u64);
+                }
                 DiagnosticIoSink::Coalesce64k => {
                     // Spike: coalesce real-file write_all into ≥64 KiB or 250 ms.
                     const CAP: usize = 64 * 1024;
@@ -5786,7 +5836,10 @@ impl Store {
         if mode == DurabilityMode::Durable
             && matches!(
                 sink,
-                DiagnosticIoSink::Real | DiagnosticIoSink::Coalesce64k
+                DiagnosticIoSink::Real
+                    | DiagnosticIoSink::Coalesce64k
+                    | DiagnosticIoSink::RealNoSeek
+                    | DiagnosticIoSink::RealOverwrite
             )
         {
             if sink == DiagnosticIoSink::Coalesce64k {

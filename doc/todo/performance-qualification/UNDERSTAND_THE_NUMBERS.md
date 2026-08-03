@@ -5,6 +5,14 @@
 One page that stitches the firm-number arc so the coalesce spike does not
 fight the “CPU wall” story.
 
+## “HOW we write makes all the difference?”
+
+**Not quite.** See [HOW_WE_WRITE_CORRECTION.md](HOW_WE_WRITE_CORRECTION.md).
+
+- Write **chunk size** / 64 KiB coalesce → **no** (Coalesce ≈ Real).
+- Paying for segment-tail **`write_all`** → **yes, huge on our Real cell** (Discard ~13×).
+- Our real-write path vs SQLite’s → **we lose ~2×**; that is “how/what we pay for durable bytes,” not “adaptive disk paging.”
+
 ## What every cell is measuring
 
 Same work package, almost always:
@@ -106,7 +114,8 @@ noise unless a ratio repeats. The spike signal is **relative**:
 1. **SQLite ~30k vs Residiuum ~13k** = we lose on the real-write autocommit peer; fast disk exposed that, it did not create it.
 2. **AWO ~2.5k → ~13k with concurrency** = feed shape, not disk.
 3. **Coalesce ≈ Real** = buffering write size does not help.
-4. **Discard ~129k** = our Real path is heavily write_all-bound; cook alone is far above SQLite — the gap to close is *how* we pay for durable bytes, not “invent a 64 KiB disk adapter.”
+4. **Discard ~129k** = our Real path is heavily write-bound; cook alone is far above SQLite.
+5. **Write-path bisect:** the wall is **appending / growing** the active segment file — not seek, not `write_all`→`/dev/null`, not overwrite-in-place ([WRITE_ALL_BISECT.md](WRITE_ALL_BISECT.md)).
 
 ## Where the detail lives
 

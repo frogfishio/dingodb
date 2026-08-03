@@ -57,6 +57,9 @@ testrig.
 | [SQLITE_PAGES_VS_RESIDIUUM_FRAMES.md](SQLITE_PAGES_VS_RESIDIUUM_FRAMES.md) | **Answer:** we do NOT write SQLite 4KiB pages — append hashed frames to segments |
 | [FIRM_NUMBERS_DIAG_COALESCE.md](FIRM_NUMBERS_DIAG_COALESCE.md) | **Spike:** 64 KiB/250 ms coalesce ≈ Real (~10k); Discard ~129k — write *size* ≠ wall; `write_all` is |
 | [UNDERSTAND_THE_NUMBERS.md](UNDERSTAND_THE_NUMBERS.md) | **Explainer:** one-page stitch of FN-2 → concurrent → coalesce/Discard |
+| [HOW_WE_WRITE_CORRECTION.md](HOW_WE_WRITE_CORRECTION.md) | **Correction:** not write *size*; yes write_all cost / vs SQLite path gap |
+| [WRITE_ALL_BISECT.md](WRITE_ALL_BISECT.md) | **Bisect:** Discard≈DevNull≈SeekOnly~120k; RealOverwrite~96k; Real~10k → **append/growth** |
+| [artifacts/firm-numbers-write-all-bisect-apfs/](artifacts/firm-numbers-write-all-bisect-apfs/) | Write-path bisect JSON ladder |
 | [artifacts/firm-numbers-diag-coalesce-apfs/](artifacts/firm-numbers-diag-coalesce-apfs/) | Coalesce spike JSON (real/coalesce/discard) |
 | [artifacts/firm-numbers-concurrent-apfs/](artifacts/firm-numbers-concurrent-apfs/) | Concurrent-feed JSON + summary |
 | [artifacts/firm-numbers-concurrent-multicore-apfs/](artifacts/firm-numbers-concurrent-multicore-apfs/) | Concurrent × cook sweep JSON |

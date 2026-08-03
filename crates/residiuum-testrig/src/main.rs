@@ -237,7 +237,8 @@ enum Command {
         /// Concurrent client threads (server-async feed). Default 1 = embedded sync.
         #[arg(long, default_value_t = 1)]
         concurrency: usize,
-        /// Residiuum diagnostic segment-tail I/O: real | discard | devnull | coalesce64k.
+        /// Residiuum diagnostic segment-tail I/O:
+        /// real | discard | devnull | coalesce64k | seekonly | realnoseek | realoverwrite.
         /// coalesce64k requires --concurrency > 1 (250 ms floor hangs QD=1).
         #[arg(long, default_value = "real")]
         diag_io: String,
