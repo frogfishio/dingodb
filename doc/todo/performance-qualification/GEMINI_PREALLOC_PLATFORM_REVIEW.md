@@ -48,6 +48,8 @@ Gemini’s cross-platform table is a reasonable *design menu*, not a measured Re
 
 A coherent reading of *our* numbers: page-touch both (1) allocates and (2) **writes zeros into pages**. `F_PREALLOCATE` may reserve space without making first application writes as cheap as overwriting already-zeroed pages. That would explain fill ≫ fcntl without contradicting the sparse-file story.
 
+**Follow-up measured:** [PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md) — `F_PREALLOCATE` + bulk zero → **~51k** pump ops/s (fcntl alone still ~9k). Zero/first-touch hypothesis **confirmed**.
+
 ## Corrected bottom line (ours)
 
 1. Gemini is **right** about the APFS sparse trap and why touch worked.  

@@ -62,6 +62,8 @@ testrig.
 | [PREALLOC_SPIKE.md](PREALLOC_SPIKE.md) | **Answer:** sparse `set_len` no; page-touch prealloc ~37k (~4× Real, >SQLite) |
 | [NEXT_STEPS_WRITE_GROWTH.md](NEXT_STEPS_WRITE_GROWTH.md) | **Next:** honest prealloc → product-shaped alloc → SQLite gap → Scratch → design |
 | [GEMINI_PREALLOC_PLATFORM_REVIEW.md](GEMINI_PREALLOC_PLATFORM_REVIEW.md) | **Review:** sparse trap ✓; `F_PREALLOCATE`≠37k on APFS (fcntl≈Real; touch still wins) |
+| [PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md) | **Spike:** F_PREALLOCATE+bulk zero → ~51k pump (confirms zero/first-touch; fcntl alone still no) |
+| [artifacts/firm-numbers-prealloc-zero-apfs/](artifacts/firm-numbers-prealloc-zero-apfs/) | Bulk-zero vs fcntl vs touch JSON |
 | [artifacts/firm-numbers-fpreallocate-apfs/](artifacts/firm-numbers-fpreallocate-apfs/) | F_PREALLOCATE vs set_len vs touch JSON |
 | [artifacts/firm-numbers-prealloc-apfs/](artifacts/firm-numbers-prealloc-apfs/) | Prealloc spike JSON |
 | [artifacts/firm-numbers-write-all-bisect-apfs/](artifacts/firm-numbers-write-all-bisect-apfs/) | Write-path bisect JSON ladder |

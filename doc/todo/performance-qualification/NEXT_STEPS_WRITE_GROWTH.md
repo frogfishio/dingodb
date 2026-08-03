@@ -21,10 +21,11 @@ Replace “touch every 1 MiB of 512 MiB at create” with something closer t
 
 | Candidate | Why |
 |-----------|-----|
-| ~~macOS `F_PREALLOCATE`~~ | **Tried on APFS: ≈ Real (~9.5k)** — does not reproduce touch win ([GEMINI_PREALLOC_PLATFORM_REVIEW.md](GEMINI_PREALLOC_PLATFORM_REVIEW.md)) |
-| Linux `fallocate` / `posix_fallocate` | Unmeasured; may differ from APFS |
-| Seal-sized extents + ahead-of-write zero/touch | Bound waste; may match what touch actually bought |
-| Double-buffer: prepare segment N+1 while writing N | Hide setup latency |
+| ~~macOS `F_PREALLOCATE` alone~~ | **≈ Real** ([GEMINI_PREALLOC_PLATFORM_REVIEW.md](GEMINI_PREALLOC_PLATFORM_REVIEW.md)) |
+| ~~`F_PREALLOCATE` + bulk zero~~ | **~51k pump** — works; setup ~0.5 s for 512 MiB ([PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md)) |
+| Seal-sized ahead-of-write zero | Amortize the confirmed tax without 512 MiB upfront |
+| Linux `fallocate` | Unmeasured |
+| Double-buffer prepare N+1 | Hide zeroing latency |
 
 Same peer recipe: Mode A · c=8 · APFS · vs Real · vs SQLite A.  
 **Goal:** see if ~37k is reachable without a crude page-poke.

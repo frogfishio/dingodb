@@ -405,6 +405,9 @@ pub enum DiagnosticIoSink {
     /// Like [`Real`], but macOS `fcntl(F_PREALLOCATE)` (or Linux `posix_fallocate`)
     /// then `set_len`. Tests Gemini-style OS block reserve without page-touch.
     RealPreallocFcntl,
+    /// `F_PREALLOCATE` + `set_len` + **bulk zero** (1 MiB writes). Tests whether
+    /// first-touch zeroing (not mere extent reserve) is what page-touch bought.
+    RealPreallocZero,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -831,7 +834,8 @@ impl Store {
             | DiagnosticIoSink::RealOverwrite
             | DiagnosticIoSink::RealPrealloc
             | DiagnosticIoSink::RealPreallocFill
-            | DiagnosticIoSink::RealPreallocFcntl => {
+            | DiagnosticIoSink::RealPreallocFcntl
+            | DiagnosticIoSink::RealPreallocZero => {
                 self.null_io_file = None;
             }
         }
@@ -841,6 +845,7 @@ impl Store {
             DiagnosticIoSink::RealPrealloc
                 | DiagnosticIoSink::RealPreallocFill
                 | DiagnosticIoSink::RealPreallocFcntl
+                | DiagnosticIoSink::RealPreallocZero
         ) {
             self.prealloc_existing_actives()?;
         }
@@ -879,6 +884,11 @@ impl Store {
                 DiagnosticIoSink::RealPreallocFcntl => {
                     Self::diag_os_preallocate(&writer.file, BYTES)?;
                     writer.file.set_len(BYTES)?;
+                }
+                DiagnosticIoSink::RealPreallocZero => {
+                    Self::diag_os_preallocate(&writer.file, BYTES)?;
+                    writer.file.set_len(BYTES)?;
+                    Self::diag_bulk_zero(&mut writer.file, BYTES)?;
                 }
                 _ => {}
             }
@@ -5797,7 +5807,8 @@ impl Store {
                 DiagnosticIoSink::Real
                 | DiagnosticIoSink::RealPrealloc
                 | DiagnosticIoSink::RealPreallocFill
-                | DiagnosticIoSink::RealPreallocFcntl => {
+                | DiagnosticIoSink::RealPreallocFcntl
+                | DiagnosticIoSink::RealPreallocZero => {
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
                     // DEF-022: optional short-write injection mid-append.
                     if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
@@ -5907,6 +5918,7 @@ impl Store {
                     | DiagnosticIoSink::RealPrealloc
                     | DiagnosticIoSink::RealPreallocFill
                     | DiagnosticIoSink::RealPreallocFcntl
+                    | DiagnosticIoSink::RealPreallocZero
             )
         {
             if sink == DiagnosticIoSink::Coalesce64k {
@@ -6134,7 +6146,26 @@ impl Store {
                 file.set_len(BYTES)?;
                 file.seek(SeekFrom::Start(0))?;
             }
+            DiagnosticIoSink::RealPreallocZero => {
+                Self::diag_os_preallocate(file, BYTES)?;
+                file.set_len(BYTES)?;
+                Self::diag_bulk_zero(file, BYTES)?;
+                file.seek(SeekFrom::Start(0))?;
+            }
             _ => {}
+        }
+        Ok(())
+    }
+
+    /// Write zeros across `[0, bytes)` in 1 MiB chunks (diagnostic first-touch).
+    fn diag_bulk_zero(file: &mut File, bytes: u64) -> Result<(), StoreError> {
+        let chunk = vec![0u8; 1024 * 1024];
+        let mut off = 0u64;
+        while off < bytes {
+            let n = ((bytes - off) as usize).min(chunk.len());
+            file.seek(SeekFrom::Start(off))?;
+            file.write_all(&chunk[..n])?;
+            off = off.saturating_add(n as u64);
         }
         Ok(())
     }

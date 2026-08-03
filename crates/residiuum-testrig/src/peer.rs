@@ -112,6 +112,7 @@ pub enum PeerDiagIo {
     RealPrealloc,
     RealPreallocFill,
     RealPreallocFcntl,
+    RealPreallocZero,
 }
 
 impl PeerDiagIo {
@@ -127,6 +128,7 @@ impl PeerDiagIo {
             PeerDiagIo::RealPrealloc => "realprealloc",
             PeerDiagIo::RealPreallocFill => "realpreallocfill",
             PeerDiagIo::RealPreallocFcntl => "realpreallocfcntl",
+            PeerDiagIo::RealPreallocZero => "realprealloczero",
         }
     }
 
@@ -142,6 +144,7 @@ impl PeerDiagIo {
             PeerDiagIo::RealPrealloc => DiagnosticIoSink::RealPrealloc,
             PeerDiagIo::RealPreallocFill => DiagnosticIoSink::RealPreallocFill,
             PeerDiagIo::RealPreallocFcntl => DiagnosticIoSink::RealPreallocFcntl,
+            PeerDiagIo::RealPreallocZero => DiagnosticIoSink::RealPreallocZero,
         }
     }
 }
@@ -158,8 +161,9 @@ pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
         "realprealloc" | "prealloc" => Ok(PeerDiagIo::RealPrealloc),
         "realpreallocfill" | "preallocfill" => Ok(PeerDiagIo::RealPreallocFill),
         "realpreallocfcntl" | "fpreallocate" | "fcntl" => Ok(PeerDiagIo::RealPreallocFcntl),
+        "realprealloczero" | "prealloczero" | "zero" => Ok(PeerDiagIo::RealPreallocZero),
         other => Err(format!(
-            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill|realpreallocfcntl)"
+            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill|realpreallocfcntl|realprealloczero)"
         )),
     }
 }
