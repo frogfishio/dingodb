@@ -29,7 +29,8 @@ testrig.
 | [AWO_THREE_WAY_T10_HARNESS_RERUN.md](AWO_THREE_WAY_T10_HARNESS_RERUN.md) | T10: PQH admit_put path + re-run; saturated sync/op=0.5 thr~2× |
 | [AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md](AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md) | **T11 evidence freeze principal `done`:** saturated thr×2 + sparse 11–20% smoke penalty (card only; not package accept) |
 | [AWO_QUALIFICATION_SERIES.md](AWO_QUALIFICATION_SERIES.md) | **AWO-Q series plan:** Q1 multi-thread admit → Q2 adaptive quality → Q3 sustained → Q4 sparse product bound |
-| [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | **Q1.1 code pull brief:** serial map in `real.rs`, concurrent stub, ledger defects, verify cmds |
+| [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | Q1.1 brief (anchors) |
+| [AWO_Q1_1_HARNESS.md](AWO_Q1_1_HARNESS.md) | **Q1.1 labor:** concurrent path wired + per-seq ledger; test green |
 | [artifacts/awo-three-way-t10-apfs-smoke/](artifacts/awo-three-way-t10-apfs-smoke/) | T10 smoke numbers (SoT for T11 freeze) |
 | [artifacts/awo-three-way-t7-apfs-smoke/](artifacts/awo-three-way-t7-apfs-smoke/) | T8 numeric summary + campaigns |
 | [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |

@@ -637,24 +637,30 @@ fn execute_workload_puts_independent(
     };
 
     let t0 = Instant::now();
-    // Always serial admit_put with outstanding depth: correct digests/reopen, and
-    // outstanding>1 still piles independent puts for collector amortization.
-    // (Multi-thread admit is residual — ledger/reopen integrity first.)
-    let effective_out = outstanding.max(workers);
-    let mut stats = execute_serial_admit_put(
-        store,
-        cfg,
-        store_dur,
-        effective_out,
-        smoke_ops_limit,
-        t0,
-        awo,
-    )?;
-    if workers > 1 {
-        stats.messages.push(format!(
-            "note: conc={workers} mapped to serial admit_put outstanding={effective_out} for reopen integrity"
-        ));
-    }
+    // Q1.1: real concurrent producers when concurrency > 1. Serial path remains
+    // for sparse (workers=1) and as a correctness baseline.
+    let mut stats = if workers > 1 {
+        execute_concurrent_admit_put(
+            store,
+            cfg,
+            store_dur,
+            workers,
+            outstanding,
+            smoke_ops_limit,
+            t0,
+            awo,
+        )?
+    } else {
+        execute_serial_admit_put(
+            store,
+            cfg,
+            store_dur,
+            outstanding,
+            smoke_ops_limit,
+            t0,
+            awo,
+        )?
+    };
     messages.append(&mut stats.messages);
     stats.messages = messages;
 
@@ -851,7 +857,7 @@ fn execute_concurrent_admit_put(
     t0: Instant,
     awo: &AdaptiveWriteHandle,
 ) -> Result<WorkloadLegStats, DriverError> {
-    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::thread;
 
     let run_class = cfg.run_class_parsed();
@@ -865,14 +871,18 @@ fn execute_concurrent_admit_put(
     );
     let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
 
-    // Concurrent workers: each admits with outstanding depth and waits outside
-    // the store lock. Shared ledger records built under a mutex for reopen sample.
-    let records_mu: Arc<Mutex<Vec<(u64, u64, u64, u32)>>> = Arc::new(Mutex::new(Vec::new()));
+    // Concurrent workers: admit under lock, wait outside. Outcomes collected for a
+    // deterministic per-seq ledger (built on the main thread in seq order).
+    #[derive(Clone, Copy)]
+    enum OpOutcome {
+        Ack { seq: u64, plen: u64 },
+        Fail { seq: u64 },
+        /// Admit rejected / lock poison before wait — no durable install.
+        Reject,
+    }
+    let outcomes_mu: Arc<Mutex<Vec<OpOutcome>>> = Arc::new(Mutex::new(Vec::new()));
     let seq_counter = Arc::new(AtomicU64::new(0));
     let logical_shared = Arc::new(AtomicU64::new(0));
-    let fail_count = Arc::new(AtomicU64::new(0));
-    let ack_count = Arc::new(AtomicU64::new(0));
-    let attempt_count = Arc::new(AtomicU64::new(0));
 
     let seed = cfg.seed;
     let dist = cfg.cell.distribution;
@@ -880,19 +890,14 @@ fn execute_concurrent_admit_put(
     let shards = cfg.cell.shards.max(1);
     let awo = awo.clone();
     // Divide op budget across workers for smoke.
-    let per_worker_ops = smoke_ops_limit.map(|lim| {
-        ((lim as usize) + workers - 1) / workers
-    });
+    let per_worker_ops = smoke_ops_limit.map(|lim| ((lim as usize) + workers - 1) / workers);
 
     let mut handles = Vec::new();
     for _wid in 0..workers {
         let store = Arc::clone(&store);
         let seq_counter = Arc::clone(&seq_counter);
         let logical_shared = Arc::clone(&logical_shared);
-        let fail_count = Arc::clone(&fail_count);
-        let ack_count = Arc::clone(&ack_count);
-        let attempt_count = Arc::clone(&attempt_count);
-        let records_mu = Arc::clone(&records_mu);
+        let outcomes_mu = Arc::clone(&outcomes_mu);
         let awo = awo.clone();
         handles.push(thread::spawn(move || {
             let sampler = match dist {
@@ -903,8 +908,7 @@ fn execute_concurrent_admit_put(
             let mut local_ops = 0usize;
             loop {
                 let global_done = if let Some(lim) = smoke_ops_limit {
-                    seq_counter.load(Ordering::Relaxed) >= lim
-                        && pending.is_empty()
+                    seq_counter.load(Ordering::Relaxed) >= lim && pending.is_empty()
                 } else {
                     let elapsed = t0.elapsed();
                     let lb = logical_shared.load(Ordering::Relaxed);
@@ -960,12 +964,13 @@ fn execute_concurrent_admit_put(
                     let body = fill_body(seed, seq, plen);
                     let shard = seq % u64::from(shards);
                     let subject = format!("pqh11-s{shard:02x}-{seq:08x}");
-                    attempt_count.fetch_add(1, Ordering::Relaxed);
                     let completion = {
                         let mut g = match store.lock() {
                             Ok(g) => g,
                             Err(_) => {
-                                fail_count.fetch_add(1, Ordering::Relaxed);
+                                if let Ok(mut o) = outcomes_mu.lock() {
+                                    o.push(OpOutcome::Reject);
+                                }
                                 continue;
                             }
                         };
@@ -978,7 +983,9 @@ fn execute_concurrent_admit_put(
                         ) {
                             AdmissionResult::Admitted(c) => c,
                             AdmissionResult::Rejected(_) => {
-                                fail_count.fetch_add(1, Ordering::Relaxed);
+                                if let Ok(mut o) = outcomes_mu.lock() {
+                                    o.push(OpOutcome::Reject);
+                                }
                                 continue;
                             }
                         }
@@ -992,16 +999,18 @@ fn execute_concurrent_admit_put(
                 let (op_seq, plen, completion) = pending.remove(0);
                 match completion.wait() {
                     Ok(_) => {
-                        ack_count.fetch_add(1, Ordering::Relaxed);
                         logical_shared.fetch_add(plen, Ordering::Relaxed);
-                        if let Ok(mut rec) = records_mu.lock() {
-                            if rec.len() < 256 {
-                                rec.push((op_seq, op_seq, plen, 0u32));
-                            }
+                        if let Ok(mut o) = outcomes_mu.lock() {
+                            o.push(OpOutcome::Ack {
+                                seq: op_seq,
+                                plen,
+                            });
                         }
                     }
                     Err(_) => {
-                        fail_count.fetch_add(1, Ordering::Relaxed);
+                        if let Ok(mut o) = outcomes_mu.lock() {
+                            o.push(OpOutcome::Fail { seq: op_seq });
+                        }
                     }
                 }
             }
@@ -1009,16 +1018,18 @@ fn execute_concurrent_admit_put(
             for (op_seq, plen, completion) in pending {
                 match completion.wait() {
                     Ok(_) => {
-                        ack_count.fetch_add(1, Ordering::Relaxed);
                         logical_shared.fetch_add(plen, Ordering::Relaxed);
-                        if let Ok(mut rec) = records_mu.lock() {
-                            if rec.len() < 256 {
-                                rec.push((op_seq, op_seq, plen, 0u32));
-                            }
+                        if let Ok(mut o) = outcomes_mu.lock() {
+                            o.push(OpOutcome::Ack {
+                                seq: op_seq,
+                                plen,
+                            });
                         }
                     }
                     Err(_) => {
-                        fail_count.fetch_add(1, Ordering::Relaxed);
+                        if let Ok(mut o) = outcomes_mu.lock() {
+                            o.push(OpOutcome::Fail { seq: op_seq });
+                        }
                     }
                 }
             }
@@ -1029,26 +1040,81 @@ fn execute_concurrent_admit_put(
         let _ = h.join();
     }
 
+    let outcomes = outcomes_mu.lock().map(|g| g.clone()).unwrap_or_default();
     let ops_done = seq_counter.load(Ordering::Relaxed);
     let logical_bytes = logical_shared.load(Ordering::Relaxed);
-    let acked = ack_count.load(Ordering::Relaxed);
-    let failed = fail_count.load(Ordering::Relaxed);
-    let attempted = attempt_count.load(Ordering::Relaxed);
+
+    // Build deterministic ledger: process outcomes sorted by seq so digests are
+    // order-stable; reject events (no seq) after acks/fails.
+    let mut acks: Vec<(u64, u64)> = Vec::new();
+    let mut fails: Vec<u64> = Vec::new();
+    let mut rejects = 0u64;
+    let mut seen_seq = std::collections::HashSet::new();
+    let mut double_ack = 0u64;
+    for o in &outcomes {
+        match *o {
+            OpOutcome::Ack { seq, plen } => {
+                if !seen_seq.insert(seq) {
+                    double_ack = double_ack.saturating_add(1);
+                } else {
+                    acks.push((seq, plen));
+                }
+            }
+            OpOutcome::Fail { seq } => {
+                fails.push(seq);
+            }
+            OpOutcome::Reject => {
+                rejects = rejects.saturating_add(1);
+            }
+        }
+    }
+    acks.sort_by_key(|(s, _)| *s);
+    fails.sort_unstable();
+
     let mut ledger = AckLedger::new();
-    for i in 0..acked {
+    let mut records = Vec::new();
+    for &(seq, plen) in &acks {
         ledger.record_attempt();
         ledger.record_admit();
-        ledger.record_ack(i, i, 1, 0);
+        if cfg.digest_mutant && seq == 0 {
+            ledger.record_ack_mutant_wrong_digest(seq, seq, plen, 0);
+        } else {
+            ledger.record_ack(seq, seq, plen, 0);
+        }
+        records.push((seq, seq, plen, 0u32));
     }
-    for _ in 0..failed {
+    for &_seq in &fails {
         ledger.record_attempt();
         ledger.record_fail();
     }
-    let _ = attempted;
-    let records = records_mu
-        .lock()
-        .map(|g| g.clone())
-        .unwrap_or_default();
+    for _ in 0..rejects {
+        ledger.record_attempt();
+        ledger.record_fail();
+    }
+
+    let acked = acks.len() as u64;
+    let failed = fails.len() as u64 + rejects;
+    let mut messages = vec![format!(
+        "concurrent_admit_put workers={workers} outstanding={outstanding} acked={acked} failed={failed} ops_done={ops_done}"
+    )];
+    if double_ack > 0 {
+        messages.push(format!(
+            "ledger_error=double_ack_count={double_ack} (same seq acked more than once)"
+        ));
+    }
+    // Count balance: every attempt is ack, fail, or reject.
+    let balanced = ledger.attempted == ledger.acknowledged.saturating_add(ledger.failed)
+        && double_ack == 0;
+    messages.push(format!(
+        "ledger_balance={} attempted={} acknowledged={} failed={}",
+        if balanced { "ok" } else { "fail" },
+        ledger.attempted,
+        ledger.acknowledged,
+        ledger.failed
+    ));
+    if let Err(e) = ledger.verify_correctness() {
+        messages.push(format!("ledger_verify_error={e}"));
+    }
 
     Ok(WorkloadLegStats {
         e2e_ns: 0,
@@ -1063,9 +1129,7 @@ fn execute_concurrent_admit_put(
                 0.0
             },
         }],
-        messages: vec![format!(
-            "concurrent_admit_put workers={workers} outstanding={outstanding} acked={acked} failed={failed}"
-        )],
+        messages,
         floors_met: false,
         sustained_throughput_bps: 0.0,
         window_class: WindowClass::Inconclusive,
@@ -1961,5 +2025,86 @@ mod tests {
         let wc = WorkloadContract::from_cell_and_class(&cell, RunClass::Diagnostic);
         assert!(wc.uses_duration_byte_floors());
         assert!(wc.smoke_ops_limit.is_none());
+    }
+
+    /// AWO-Q1.1: independent batch=1 with concurrency>1 uses real multi-thread
+    /// admit_put (not serial-map) and reports a balanced per-seq ledger.
+    #[test]
+    fn concurrent_admit_independent_awo_smoke_ledger() {
+        let dir = tempfile::tempdir().unwrap();
+        let cell = MatrixCell {
+            cell_id: "L4-q11-conc-admit".into(),
+            layer: LayerProfile::L4,
+            durability: MatrixDur::Durable,
+            payload_size: 128,
+            distribution: None,
+            concurrency: 4,
+            outstanding: 2,
+            batch_size: 1,
+            shards: 1,
+            db_state: DatabaseState::Empty,
+            features: FeatureProfile::l4_minimal(),
+            interference: InterferenceProfile::absent(),
+            op_count: 16,
+            order_rank: 0,
+        };
+        let report = run_real_store(&DriverRunConfig {
+            cell,
+            seed: 42,
+            kind: DriverKind::RealStore,
+            work_root: Some(dir.path().to_path_buf()),
+            durability_mutant: false,
+            digest_mutant: false,
+            run_class: "smoke".into(),
+            awo_mode: AwoMode::Static,
+        })
+        .expect("concurrent independent AWO smoke");
+        assert_eq!(report.cell.validity, "valid");
+        assert!(report.cell.acknowledged > 0);
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("awo_path=independent_admit_put+collection")),
+            "expected independent admit path: {:?}",
+            report.notes
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("concurrent_admit_put workers=4")),
+            "expected real concurrent_admit_put, got: {:?}",
+            report.notes
+        );
+        assert!(
+            !report
+                .notes
+                .iter()
+                .any(|n| n.contains("mapped to serial admit_put")),
+            "must not serial-map concurrency: {:?}",
+            report.notes
+        );
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|n| n.contains("ledger_balance=ok")),
+            "ledger must balance: {:?}",
+            report.notes
+        );
+        assert!(
+            !report
+                .notes
+                .iter()
+                .any(|n| n.contains("double_ack_count")),
+            "no double-acks: {:?}",
+            report.notes
+        );
+        // Count interlock: every attempt is ack or fail.
+        assert_eq!(
+            report.cell.attempted,
+            report.cell.acknowledged + report.cell.failed
+        );
     }
 }

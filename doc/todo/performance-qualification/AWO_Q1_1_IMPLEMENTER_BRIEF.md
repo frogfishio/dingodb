@@ -1,6 +1,6 @@
 # AWO-Q1.1 — Implementer brief (concurrent harness + ledger)
 
-Status: **ready for code pull** (Planner grounding; no labor yet)  
+Status: **labor complete → see `AWO_Q1_1_HARNESS.md`**  
 Card: `fab1a943-8def-4ded-9bfe-0499a567da56`  
 Parent package: `b6e2a138` AWO-Q1  
 Feature: `d0ae3c06` AWO-Q series  
