@@ -1,0 +1,793 @@
+{
+  "schema": "residiuum-performance-evidence-bundle-v1",
+  "campaign_id": "pqh9-synthetic-000000000000002a",
+  "profile": "residiuum-performance-qualification-v1",
+  "platform": "synthetic_harness",
+  "allows_product_baseline": false,
+  "result": {
+    "plan": {
+      "schema": "residiuum-performance-campaign-plan-v1",
+      "campaign_id": "pqh9-synthetic-000000000000002a",
+      "platform": "synthetic_harness",
+      "profile": "residiuum-performance-qualification-v1",
+      "seed": 42,
+      "repetitions": 5,
+      "processes": 2,
+      "max_cells": 1,
+      "include_multiproc_finding": false,
+      "notes": [
+        "Synthetic harness campaign — not a product performance claim",
+        "Absolute throughput numbers are proxies from matrix driver",
+        "presentation_pin batch=Some(1) concurrency=Some(4) outstanding=Some(8) (AWO-fair shapes; multiproc finding off)"
+      ]
+    },
+    "matrix_schema": "residiuum-pqh7-matrix-manifest-v1",
+    "matrix_seed": 42,
+    "process_slots": [
+      {
+        "process_id": 0,
+        "process_seed": 1345933436
+      },
+      {
+        "process_id": 1,
+        "process_seed": 1345933437
+      }
+    ],
+    "repetitions": [
+      {
+        "run_id": "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "process_id": 0,
+        "rep": 0,
+        "report": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "layer": "L4",
+          "durability": "durable",
+          "validity": "valid",
+          "attempted": 24,
+          "admitted": 24,
+          "acknowledged": 24,
+          "failed": 0,
+          "logical_bytes_ack": 393216,
+          "e2e_ns_proxy": 95144083,
+          "throughput_bytes_per_sec_proxy": 4132847.651703154,
+          "window": "finite",
+          "shadow_planned_bytes": 399360,
+          "shadow_completed_bytes": 399360,
+          "features": "l4_minimal",
+          "interference": "absent",
+          "messages": [
+            "driver=real_store run_class=smoke awo_mode=disabled path=/tmp/awo-t10b-16538/saturated/disabled/stores/safd8bfd1f87aa2c/L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+            "layer=L4",
+            "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled",
+            "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding_batches=8 put_many=true awo_flush=put_many",
+            "floors: min_duration_secs=3 min_logical_bytes=67108864",
+            "concurrent_batched workers=4 batch_size=1 outstanding=8",
+            "stop=smoke_op_cap ops=24",
+            "leg_valid=true reason=smoke_op_cap_complete",
+            "awo_path=put_many",
+            "sample_get_ok=0 ops_done=24",
+            "boundary_coverage total_observed=120 samples_retained=120 samples_dropped=0 capped=false capacity=4096",
+            "boundary_counters append=24 file_write=24 file_sync=24 publish=24 rotate=0 lifecycle=0 req_bytes=798744 done_bytes=798744 write_lat_n=24 sync_lat_n=24",
+            "boundary_event_chain_digest=0500b3e0790bb60993fae6efe20939236292ea8b26ec99455deb44b55b09b3eb",
+            "reopen_live_count=24",
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)",
+            "boundary_aggregates_digest=0500b3e0790bb60993fae6efe20939236292ea8b26ec99455deb44b55b09b3eb",
+            "smoke/diagnostic: not a qualification claim; no product bottleneck"
+          ],
+          "reopen_ok": true
+        },
+        "driver_kind": "real_store",
+        "measurement_surface": "real_store_uncontrolled",
+        "plan_source": "store_boundary_emitter_from_receipts_v1"
+      },
+      {
+        "run_id": "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "process_id": 0,
+        "rep": 1,
+        "report": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "layer": "L4",
+          "durability": "durable",
+          "validity": "valid",
+          "attempted": 24,
+          "admitted": 24,
+          "acknowledged": 24,
+          "failed": 0,
+          "logical_bytes_ack": 393216,
+          "e2e_ns_proxy": 74190500,
+          "throughput_bytes_per_sec_proxy": 5300085.590473174,
+          "window": "finite",
+          "shadow_planned_bytes": 399360,
+          "shadow_completed_bytes": 399360,
+          "features": "l4_minimal",
+          "interference": "absent",
+          "messages": [
+            "driver=real_store run_class=smoke awo_mode=disabled path=/tmp/awo-t10b-16538/saturated/disabled/stores/safd8bfd1f87aa2d/L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+            "layer=L4",
+            "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled",
+            "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding_batches=8 put_many=true awo_flush=put_many",
+            "floors: min_duration_secs=3 min_logical_bytes=67108864",
+            "concurrent_batched workers=4 batch_size=1 outstanding=8",
+            "stop=smoke_op_cap ops=24",
+            "leg_valid=true reason=smoke_op_cap_complete",
+            "awo_path=put_many",
+            "sample_get_ok=0 ops_done=24",
+            "boundary_coverage total_observed=120 samples_retained=120 samples_dropped=0 capped=false capacity=4096",
+            "boundary_counters append=24 file_write=24 file_sync=24 publish=24 rotate=0 lifecycle=0 req_bytes=798744 done_bytes=798744 write_lat_n=24 sync_lat_n=24",
+            "boundary_event_chain_digest=47b557f0895525750f734e4651b30830fea41ec51e25a15be719add70699993d",
+            "reopen_live_count=24",
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)",
+            "boundary_aggregates_digest=47b557f0895525750f734e4651b30830fea41ec51e25a15be719add70699993d",
+            "smoke/diagnostic: not a qualification claim; no product bottleneck"
+          ],
+          "reopen_ok": true
+        },
+        "driver_kind": "real_store",
+        "measurement_surface": "real_store_uncontrolled",
+        "plan_source": "store_boundary_emitter_from_receipts_v1"
+      },
+      {
+        "run_id": "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "process_id": 0,
+        "rep": 2,
+        "report": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "layer": "L4",
+          "durability": "durable",
+          "validity": "valid",
+          "attempted": 24,
+          "admitted": 24,
+          "acknowledged": 24,
+          "failed": 0,
+          "logical_bytes_ack": 393216,
+          "e2e_ns_proxy": 94013083,
+          "throughput_bytes_per_sec_proxy": 4182566.802962945,
+          "window": "finite",
+          "shadow_planned_bytes": 399360,
+          "shadow_completed_bytes": 399360,
+          "features": "l4_minimal",
+          "interference": "absent",
+          "messages": [
+            "driver=real_store run_class=smoke awo_mode=disabled path=/tmp/awo-t10b-16538/saturated/disabled/stores/safd8bfd1f87aa2e/L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+            "layer=L4",
+            "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled",
+            "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding_batches=8 put_many=true awo_flush=put_many",
+            "floors: min_duration_secs=3 min_logical_bytes=67108864",
+            "concurrent_batched workers=4 batch_size=1 outstanding=8",
+            "stop=smoke_op_cap ops=24",
+            "leg_valid=true reason=smoke_op_cap_complete",
+            "awo_path=put_many",
+            "sample_get_ok=0 ops_done=24",
+            "boundary_coverage total_observed=120 samples_retained=120 samples_dropped=0 capped=false capacity=4096",
+            "boundary_counters append=24 file_write=24 file_sync=24 publish=24 rotate=0 lifecycle=0 req_bytes=798744 done_bytes=798744 write_lat_n=24 sync_lat_n=24",
+            "boundary_event_chain_digest=5abc57aef50a0da3846baeb09d4774f6e3a75d8a1a75a1d5538b1cd8a508dd8f",
+            "reopen_live_count=24",
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)",
+            "boundary_aggregates_digest=5abc57aef50a0da3846baeb09d4774f6e3a75d8a1a75a1d5538b1cd8a508dd8f",
+            "smoke/diagnostic: not a qualification claim; no product bottleneck"
+          ],
+          "reopen_ok": true
+        },
+        "driver_kind": "real_store",
+        "measurement_surface": "real_store_uncontrolled",
+        "plan_source": "store_boundary_emitter_from_receipts_v1"
+      },
+      {
+        "run_id": "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "process_id": 1,
+        "rep": 0,
+        "report": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "layer": "L4",
+          "durability": "durable",
+          "validity": "valid",
+          "attempted": 24,
+          "admitted": 24,
+          "acknowledged": 24,
+          "failed": 0,
+          "logical_bytes_ack": 393216,
+          "e2e_ns_proxy": 105900125,
+          "throughput_bytes_per_sec_proxy": 3713083.435926067,
+          "window": "finite",
+          "shadow_planned_bytes": 399360,
+          "shadow_completed_bytes": 399360,
+          "features": "l4_minimal",
+          "interference": "absent",
+          "messages": [
+            "driver=real_store run_class=smoke awo_mode=disabled path=/tmp/awo-t10b-16538/saturated/disabled/stores/sa93505b69ed22641/L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+            "layer=L4",
+            "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled",
+            "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding_batches=8 put_many=true awo_flush=put_many",
+            "floors: min_duration_secs=3 min_logical_bytes=67108864",
+            "concurrent_batched workers=4 batch_size=1 outstanding=8",
+            "stop=smoke_op_cap ops=24",
+            "leg_valid=true reason=smoke_op_cap_complete",
+            "awo_path=put_many",
+            "sample_get_ok=0 ops_done=24",
+            "boundary_coverage total_observed=120 samples_retained=120 samples_dropped=0 capped=false capacity=4096",
+            "boundary_counters append=24 file_write=24 file_sync=24 publish=24 rotate=0 lifecycle=0 req_bytes=798744 done_bytes=798744 write_lat_n=24 sync_lat_n=24",
+            "boundary_event_chain_digest=96f1eab20915dbe7e5f0818b3c588397d6b389e09cb7fba78b9ac3715e58e540",
+            "reopen_live_count=24",
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)",
+            "boundary_aggregates_digest=96f1eab20915dbe7e5f0818b3c588397d6b389e09cb7fba78b9ac3715e58e540",
+            "smoke/diagnostic: not a qualification claim; no product bottleneck"
+          ],
+          "reopen_ok": true
+        },
+        "driver_kind": "real_store",
+        "measurement_surface": "real_store_uncontrolled",
+        "plan_source": "store_boundary_emitter_from_receipts_v1"
+      },
+      {
+        "run_id": "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "process_id": 1,
+        "rep": 1,
+        "report": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "layer": "L4",
+          "durability": "durable",
+          "validity": "valid",
+          "attempted": 24,
+          "admitted": 24,
+          "acknowledged": 24,
+          "failed": 0,
+          "logical_bytes_ack": 393216,
+          "e2e_ns_proxy": 87057084,
+          "throughput_bytes_per_sec_proxy": 4516760.520028445,
+          "window": "finite",
+          "shadow_planned_bytes": 399360,
+          "shadow_completed_bytes": 399360,
+          "features": "l4_minimal",
+          "interference": "absent",
+          "messages": [
+            "driver=real_store run_class=smoke awo_mode=disabled path=/tmp/awo-t10b-16538/saturated/disabled/stores/sa93505b69ed22642/L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+            "layer=L4",
+            "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled",
+            "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding_batches=8 put_many=true awo_flush=put_many",
+            "floors: min_duration_secs=3 min_logical_bytes=67108864",
+            "concurrent_batched workers=4 batch_size=1 outstanding=8",
+            "stop=smoke_op_cap ops=24",
+            "leg_valid=true reason=smoke_op_cap_complete",
+            "awo_path=put_many",
+            "sample_get_ok=0 ops_done=24",
+            "boundary_coverage total_observed=120 samples_retained=120 samples_dropped=0 capped=false capacity=4096",
+            "boundary_counters append=24 file_write=24 file_sync=24 publish=24 rotate=0 lifecycle=0 req_bytes=798744 done_bytes=798744 write_lat_n=24 sync_lat_n=24",
+            "boundary_event_chain_digest=5a2d0886e2660948680e12b97fd38b30fdf71122a2fb370300558e599f30d65a",
+            "reopen_live_count=24",
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)",
+            "boundary_aggregates_digest=5a2d0886e2660948680e12b97fd38b30fdf71122a2fb370300558e599f30d65a",
+            "smoke/diagnostic: not a qualification claim; no product bottleneck"
+          ],
+          "reopen_ok": true
+        },
+        "driver_kind": "real_store",
+        "measurement_surface": "real_store_uncontrolled",
+        "plan_source": "store_boundary_emitter_from_receipts_v1"
+      },
+      {
+        "run_id": "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "process_id": 1,
+        "rep": 2,
+        "report": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "layer": "L4",
+          "durability": "durable",
+          "validity": "valid",
+          "attempted": 24,
+          "admitted": 24,
+          "acknowledged": 24,
+          "failed": 0,
+          "logical_bytes_ack": 393216,
+          "e2e_ns_proxy": 94241208,
+          "throughput_bytes_per_sec_proxy": 4172442.271750167,
+          "window": "finite",
+          "shadow_planned_bytes": 399360,
+          "shadow_completed_bytes": 399360,
+          "features": "l4_minimal",
+          "interference": "absent",
+          "messages": [
+            "driver=real_store run_class=smoke awo_mode=disabled path=/tmp/awo-t10b-16538/saturated/disabled/stores/sa93505b69ed22643/L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+            "layer=L4",
+            "workload_contract run_class=smoke durability=durable payload=16384 dist=None conc=4 out=8 batch=1 shards=1 db_state=steady_populated features=l4_minimal interference=absent awo_mode=disabled",
+            "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding_batches=8 put_many=true awo_flush=put_many",
+            "floors: min_duration_secs=3 min_logical_bytes=67108864",
+            "concurrent_batched workers=4 batch_size=1 outstanding=8",
+            "stop=smoke_op_cap ops=24",
+            "leg_valid=true reason=smoke_op_cap_complete",
+            "awo_path=put_many",
+            "sample_get_ok=0 ops_done=24",
+            "boundary_coverage total_observed=120 samples_retained=120 samples_dropped=0 capped=false capacity=4096",
+            "boundary_counters append=24 file_write=24 file_sync=24 publish=24 rotate=0 lifecycle=0 req_bytes=798744 done_bytes=798744 write_lat_n=24 sync_lat_n=24",
+            "boundary_event_chain_digest=b0f642cbfa26a6a39231470960d47f73e653d4fa9518ef5777f616da54d7bf44",
+            "reopen_live_count=24",
+            "lossless_plan=yes plan_source=store_boundary_probe (complete samples; not receipt reconstruction)",
+            "boundary_aggregates_digest=b0f642cbfa26a6a39231470960d47f73e653d4fa9518ef5777f616da54d7bf44",
+            "smoke/diagnostic: not a qualification claim; no product bottleneck"
+          ],
+          "reopen_ok": true
+        },
+        "driver_kind": "real_store",
+        "measurement_surface": "real_store_uncontrolled",
+        "plan_source": "store_boundary_emitter_from_receipts_v1"
+      }
+    ],
+    "cells_executed": 1,
+    "valid_runs": 6,
+    "invalid_runs": 0,
+    "driver_kind": "real_store",
+    "measurement_surface": "real_store_uncontrolled",
+    "product_claim_eligible": false,
+    "primary_bottleneck": null,
+    "primary_bottleneck_run_ids": [],
+    "run_class": "smoke",
+    "withdrawals": [
+      "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+      "run_class=smoke: functional harness only; no product bottleneck verdicts",
+      "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+      "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8 mean=-0.202380 median=-0.202380 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+      "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+      "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)"
+    ],
+    "workers_spawned": false,
+    "worker_pids": [],
+    "preflight_outcome": null,
+    "preflight_validity_id": null,
+    "environment_hash": "2bba882e1c06bc0ba55fe6cbe776e89a43320f3c39dee408a873bebcf807d98d",
+    "preflight_report": null,
+    "environment_fingerprint": {
+      "arch": "aarch64",
+      "build_mode": "diagnostic",
+      "cpu_count": 10,
+      "debug_assertions": false,
+      "endian": "little",
+      "environment_hash": "2bba882e1c06bc0ba55fe6cbe776e89a43320f3c39dee408a873bebcf807d98d",
+      "family": "unix",
+      "free_bytes": 30615810048,
+      "free_inodes": 298982520,
+      "os": "macos",
+      "platform_adapter": "macos",
+      "pointer_width": "64",
+      "rustc_opt_level": null,
+      "schema": "residiuum-perf-environment-v1"
+    },
+    "observer_overhead_reports": [
+      {
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "seed": 190711828,
+        "workload_contract": {
+          "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "run_class": "smoke",
+          "stop_policy": "smoke_op_cap",
+          "min_duration_secs": 3,
+          "min_logical_bytes": 67108864,
+          "smoke_ops_limit": 24,
+          "cell_op_count": 24,
+          "payload_size": 16384,
+          "distribution": null,
+          "durability": "durable",
+          "concurrency": 4,
+          "outstanding": 8,
+          "batch_size": 1,
+          "shards": 1,
+          "db_state": "steady_populated",
+          "features": "l4_minimal",
+          "interference": "absent",
+          "layer": "L4",
+          "application_note": "shared execute_workload_puts: create_with_shards; concurrent preparers; outstanding-bounded put_many (put_many_parallel when multi-shard, probe-instrumented); same floors as measured cell"
+        },
+        "ops_per_leg": 24,
+        "payload_size": 16384,
+        "run_class": "smoke",
+        "probe_off_e2e_ns": 122261458,
+        "probe_on_e2e_ns": 90239354,
+        "probe_off_logical_bytes": 393216,
+        "probe_on_logical_bytes": 393216,
+        "overhead_fraction": -0.20238021104556336,
+        "median_overhead_fraction": -0.20238021104556336,
+        "overhead_budget": 0.02,
+        "within_budget": true,
+        "pair_count": 2,
+        "pairs": [
+          {
+            "pair_index": 0,
+            "order": "off_first",
+            "probe_off_e2e_ns": 161322333,
+            "probe_on_e2e_ns": 98612250,
+            "probe_off_logical_bytes": 393216,
+            "probe_on_logical_bytes": 393216,
+            "probe_off_ops": 24,
+            "probe_on_ops": 24,
+            "probe_off_sustained_tput_bps": 2437455.451378824,
+            "probe_on_sustained_tput_bps": 3987496.4824349917,
+            "cost_basis": "wall_time",
+            "legs_valid": true,
+            "overhead_fraction": -0.3887253663756524
+          },
+          {
+            "pair_index": 1,
+            "order": "on_first",
+            "probe_off_e2e_ns": 83200584,
+            "probe_on_e2e_ns": 81866458,
+            "probe_off_logical_bytes": 393216,
+            "probe_on_logical_bytes": 393216,
+            "probe_off_ops": 24,
+            "probe_on_ops": 24,
+            "probe_off_sustained_tput_bps": 4726120.672422203,
+            "probe_on_sustained_tput_bps": 4803139.278359887,
+            "cost_basis": "wall_time",
+            "legs_valid": true,
+            "overhead_fraction": -0.016035055715474304
+          }
+        ],
+        "notes": [
+          "order-balanced probe-off/on on matched workload contract: pairs=2 ops_per_leg=24 run_class=smoke",
+          "workload_contract stop=smoke_op_cap floors_s=3 floors_bytes=67108864 dur=durable conc=4 out=8 shards=1 dist=None features=l4_minimal interference=absent db_state=steady_populated",
+          "stop_policy=smoke_op_cap limit=Some(24)",
+          "mean_overhead=-0.202380 median_overhead=-0.202380 budget=0.0200 within_budget=true",
+          "pair[0] order=off_first basis=wall_time overhead=-0.388725 off_ops=24 on_ops=24 off_tput=2437455.451 on_tput=3987496.482 valid=true",
+          "pair[1] order=on_first basis=wall_time overhead=-0.016035 off_ops=24 on_ops=24 off_tput=4726120.672 on_tput=4803139.278 valid=true",
+          "probe-on faster than probe-off on average (noise); negative overhead reported",
+          "order_balance off_first=1 on_first=1"
+        ]
+      }
+    ],
+    "observer_overhead_report": {
+      "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+      "seed": 190711828,
+      "workload_contract": {
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "run_class": "smoke",
+        "stop_policy": "smoke_op_cap",
+        "min_duration_secs": 3,
+        "min_logical_bytes": 67108864,
+        "smoke_ops_limit": 24,
+        "cell_op_count": 24,
+        "payload_size": 16384,
+        "distribution": null,
+        "durability": "durable",
+        "concurrency": 4,
+        "outstanding": 8,
+        "batch_size": 1,
+        "shards": 1,
+        "db_state": "steady_populated",
+        "features": "l4_minimal",
+        "interference": "absent",
+        "layer": "L4",
+        "application_note": "shared execute_workload_puts: create_with_shards; concurrent preparers; outstanding-bounded put_many (put_many_parallel when multi-shard, probe-instrumented); same floors as measured cell"
+      },
+      "ops_per_leg": 24,
+      "payload_size": 16384,
+      "run_class": "smoke",
+      "probe_off_e2e_ns": 122261458,
+      "probe_on_e2e_ns": 90239354,
+      "probe_off_logical_bytes": 393216,
+      "probe_on_logical_bytes": 393216,
+      "overhead_fraction": -0.20238021104556336,
+      "median_overhead_fraction": -0.20238021104556336,
+      "overhead_budget": 0.02,
+      "within_budget": true,
+      "pair_count": 2,
+      "pairs": [
+        {
+          "pair_index": 0,
+          "order": "off_first",
+          "probe_off_e2e_ns": 161322333,
+          "probe_on_e2e_ns": 98612250,
+          "probe_off_logical_bytes": 393216,
+          "probe_on_logical_bytes": 393216,
+          "probe_off_ops": 24,
+          "probe_on_ops": 24,
+          "probe_off_sustained_tput_bps": 2437455.451378824,
+          "probe_on_sustained_tput_bps": 3987496.4824349917,
+          "cost_basis": "wall_time",
+          "legs_valid": true,
+          "overhead_fraction": -0.3887253663756524
+        },
+        {
+          "pair_index": 1,
+          "order": "on_first",
+          "probe_off_e2e_ns": 83200584,
+          "probe_on_e2e_ns": 81866458,
+          "probe_off_logical_bytes": 393216,
+          "probe_on_logical_bytes": 393216,
+          "probe_off_ops": 24,
+          "probe_on_ops": 24,
+          "probe_off_sustained_tput_bps": 4726120.672422203,
+          "probe_on_sustained_tput_bps": 4803139.278359887,
+          "cost_basis": "wall_time",
+          "legs_valid": true,
+          "overhead_fraction": -0.016035055715474304
+        }
+      ],
+      "notes": [
+        "order-balanced probe-off/on on matched workload contract: pairs=2 ops_per_leg=24 run_class=smoke",
+        "workload_contract stop=smoke_op_cap floors_s=3 floors_bytes=67108864 dur=durable conc=4 out=8 shards=1 dist=None features=l4_minimal interference=absent db_state=steady_populated",
+        "stop_policy=smoke_op_cap limit=Some(24)",
+        "mean_overhead=-0.202380 median_overhead=-0.202380 budget=0.0200 within_budget=true",
+        "pair[0] order=off_first basis=wall_time overhead=-0.388725 off_ops=24 on_ops=24 off_tput=2437455.451 on_tput=3987496.482 valid=true",
+        "pair[1] order=on_first basis=wall_time overhead=-0.016035 off_ops=24 on_ops=24 off_tput=4726120.672 on_tput=4803139.278 valid=true",
+        "probe-on faster than probe-off on average (noise); negative overhead reported",
+        "order_balance off_first=1 on_first=1"
+      ]
+    }
+  },
+  "reports": {
+    "fixed_size": [
+      {
+        "key": "16384",
+        "n_runs": 6,
+        "median_throughput": 4177504.537356556,
+        "mean_throughput": 4336297.712140659,
+        "mad": 191956.43416264537,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+        ]
+      }
+    ],
+    "distribution": [
+      {
+        "key": "L4",
+        "n_runs": 6,
+        "median_throughput": 4177504.537356556,
+        "mean_throughput": 4336297.712140659,
+        "mad": 191956.43416264537,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+        ]
+      }
+    ],
+    "concurrency": [
+      {
+        "key": "0",
+        "n_runs": 3,
+        "median_throughput": 4182566.802962945,
+        "mean_throughput": 4538500.015046424,
+        "mad": 49719.15125979064,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+        ]
+      },
+      {
+        "key": "1",
+        "n_runs": 3,
+        "median_throughput": 4172442.271750167,
+        "mean_throughput": 4134095.4092348926,
+        "mad": 344318.2482782779,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+        ]
+      }
+    ],
+    "durability": [
+      {
+        "key": "durable",
+        "n_runs": 6,
+        "median_throughput": 4177504.537356556,
+        "mean_throughput": 4336297.712140659,
+        "mad": 191956.43416264537,
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+        ]
+      }
+    ],
+    "multiproc_finding": {
+      "title": "4 KiB / 8 KiB multi-process finding",
+      "payload_sizes": [
+        4096,
+        8192
+      ],
+      "process_count": 2,
+      "rows": [],
+      "statement": "No 4 KiB/8 KiB multiproc cells present in this campaign slice; finding deferred.",
+      "overstates_product": false
+    },
+    "ranked_bottlenecks": [
+      {
+        "rank": 1,
+        "verdict": "mixed_or_unknown",
+        "confidence": "low",
+        "run_ids": [
+          "pqh9-synthetic-000000000000002a-p0-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p0-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r0-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r1-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "pqh9-synthetic-000000000000002a-p1-r2-L4-durable-s16384-c1-o8-43-pin-b1-c4-o8"
+        ],
+        "supporting_evidence": [
+          "stage accounting residual incomplete",
+          "cell_id=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+          "no synthesized L1/L2/L3/stage/queue/CPU/OS attribution inputs"
+        ],
+        "falsification_ids": [
+          "isolate_one_variable",
+          "close_stage_residual"
+        ],
+        "allows_tuning_advice": false
+      }
+    ],
+    "follow_up_cards": [],
+    "variability_cv_ok": true,
+    "notes": [
+      "No optimization applied in PQH-9; follow-up cards are stubs only",
+      "platform=synthetic_harness allows_product_baseline=false",
+      "attribution: no synthesized L1/L2/L3, stage, residual, queue, CPU, or OS inputs; missing evidence → mixed_or_unknown",
+      "Synthetic/harness platform: do not publish absolute MB/s as product qualification",
+      "all ranked bottlenecks are mixed_or_unknown (expected without full ladder/stage/OS evidence)",
+      "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+      "run_class=smoke: functional harness only; no product bottleneck verdicts",
+      "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+      "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8 mean=-0.202380 median=-0.202380 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+      "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+      "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+      "NON-PRODUCT / smoke: not qualification evidence; no absolute MB/s claims",
+      "real_store multi-rep run_class=smoke valid_runs=6 product_claim_eligible=false surface=real_store_uncontrolled workers_spawned=false worker_pids=[]",
+      "WITHDRAWN: smoke-mode primary bottlenecks (incl. io_queue_underdriven)",
+      "no primary bottleneck attached (smoke or missing sustained window/floors)",
+      "NO optimisations applied; follow-up cards are stubs only"
+    ]
+  },
+  "disclosure": {
+    "schema": "residiuum-performance-disclosure-v1",
+    "campaign_id": "pqh9-synthetic-000000000000002a",
+    "profile": "residiuum-performance-qualification-v1",
+    "platform": "synthetic_harness",
+    "allows_product_baseline": false,
+    "durability_modes_seen": [
+      "durable"
+    ],
+    "layers_seen": [
+      "L4"
+    ],
+    "valid_runs": 6,
+    "invalid_runs": 0,
+    "repetitions_requested": 5,
+    "processes_requested": 2,
+    "residual_store_driver": true,
+    "warnings": [
+      "No optimization applied in PQH-9; follow-up cards are stubs only",
+      "platform=synthetic_harness allows_product_baseline=false",
+      "attribution: no synthesized L1/L2/L3, stage, residual, queue, CPU, or OS inputs; missing evidence → mixed_or_unknown",
+      "Synthetic/harness platform: do not publish absolute MB/s as product qualification",
+      "all ranked bottlenecks are mixed_or_unknown (expected without full ladder/stage/OS evidence)",
+      "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+      "run_class=smoke: functional harness only; no product bottleneck verdicts",
+      "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+      "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8 mean=-0.202380 median=-0.202380 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+      "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+      "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+      "NON-PRODUCT / smoke: not qualification evidence; no absolute MB/s claims",
+      "real_store multi-rep run_class=smoke valid_runs=6 product_claim_eligible=false surface=real_store_uncontrolled workers_spawned=false worker_pids=[]",
+      "WITHDRAWN: smoke-mode primary bottlenecks (incl. io_queue_underdriven)",
+      "no primary bottleneck attached (smoke or missing sustained window/floors)",
+      "NO optimisations applied; follow-up cards are stubs only",
+      "driver=real_store surface=real_store_uncontrolled product_claim_eligible=false",
+      "Product baseline claim not eligible on this campaign (need real_store + controlled platform + --controlled)",
+      "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+      "run_class=smoke: functional harness only; no product bottleneck verdicts",
+      "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+      "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c4-o8 mean=-0.202380 median=-0.202380 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+      "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+      "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+      "run_class=smoke",
+      "no primary bottleneck (smoke withdrawn, or qualification floors/window unmet)"
+    ],
+    "required_fields_checklist": [
+      {
+        "field": "profile",
+        "status": "ok",
+        "notes": "residiuum-performance-qualification-v1"
+      },
+      {
+        "field": "platform",
+        "status": "harness_only",
+        "notes": "synthetic_harness"
+      },
+      {
+        "field": "durability_modes",
+        "status": "ok",
+        "notes": "durable"
+      },
+      {
+        "field": "layers",
+        "status": "ok",
+        "notes": "L4"
+      },
+      {
+        "field": "repetitions",
+        "status": "ok",
+        "notes": "5"
+      },
+      {
+        "field": "processes",
+        "status": "ok",
+        "notes": "2"
+      },
+      {
+        "field": "correctness_interlock",
+        "status": "ok",
+        "notes": "ack ledger + independent digest on harness cells"
+      },
+      {
+        "field": "store_driver",
+        "status": "real_store_multi_rep",
+        "notes": "driver=real_store (real_store needs --features store-driver)"
+      },
+      {
+        "field": "absolute_throughput_claim",
+        "status": "not_eligible",
+        "notes": "Product MB/s only when product_claim_eligible=true; no optimisations in PQH"
+      },
+      {
+        "field": "primary_bottleneck",
+        "status": "pending_or_mixed",
+        "notes": "none"
+      },
+      {
+        "field": "optimization",
+        "status": "none",
+        "notes": "follow-up cards are stubs with run IDs only"
+      }
+    ]
+  },
+  "content_hash": "19e00b19d8d64d7fa24a907d7827167350de5e1e8f6efbeb82883cf6fee4e99f",
+  "file_hashes": [
+    {
+      "relative_path": "plan.json",
+      "sha256_hex": "add28fad62074160ff881368b08b0520744f494ccb3d7badbca88fc0422dd18b"
+    },
+    {
+      "relative_path": "campaign_result.json",
+      "sha256_hex": "082d9752d2ae33d58ee715efe159e6b4132d47d873d519b1b7af97994341a83b"
+    },
+    {
+      "relative_path": "reports.json",
+      "sha256_hex": "f10afa90632c65c2653bc25fe20130e14f49ce1120f6de893372e02f168ab114"
+    },
+    {
+      "relative_path": "disclosure.json",
+      "sha256_hex": "7c5297dbe361e5662e6fa4c12aa678740ded56adb1465ef7ad9d49cc9688fe47"
+    },
+    {
+      "relative_path": "DISCLOSURE.md",
+      "sha256_hex": "eb3eeee294a79c0fc9aa657cd90a84342ff96847622e0e1000e0f590ee9994be"
+    },
+    {
+      "relative_path": "environment.json",
+      "sha256_hex": "4e4bc28b6c2654b422ca4a471aa408b0bf623fa07d82f76731adaf8dd5f5934e"
+    },
+    {
+      "relative_path": "environment_hash.json",
+      "sha256_hex": "99d4145e3e71079126f22f554f79b1b6ca3ee95b3179ae8a31284654f3ad09ff"
+    },
+    {
+      "relative_path": "observer_overhead.json",
+      "sha256_hex": "e0637f74ce46b371a3454bdd1df4acc011f873a32a1fb25b320d12f18bfcce92"
+    }
+  ]
+}

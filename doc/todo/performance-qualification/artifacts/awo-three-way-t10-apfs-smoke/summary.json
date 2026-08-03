@@ -1,0 +1,75 @@
+{
+  "label": "T10 after collection+independent admit_put harness",
+  "shapes": {
+    "sparse": {
+      "disabled": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c1-o1",
+        "valid": "valid",
+        "reopen": true,
+        "tput_MiB_s_proxy_median": 4.420492855761718,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "awo_path": "awo_path=put_many"
+      },
+      "static": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c1-o1",
+        "valid": "valid",
+        "reopen": true,
+        "tput_MiB_s_proxy_median": 3.878943393892026,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "awo_path": "behaviour: writer_shards=1 concurrent_workers=1 batch_size=1 outstanding=1 put_many=false awo_flush=admit_put_collect"
+      },
+      "adaptive": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c1-o1",
+        "valid": "valid",
+        "reopen": true,
+        "tput_MiB_s_proxy_median": 3.5191661401408463,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "awo_path": "behaviour: writer_shards=1 concurrent_workers=1 batch_size=1 outstanding=1 put_many=false awo_flush=admit_put_collect"
+      }
+    },
+    "saturated": {
+      "disabled": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "valid": "valid",
+        "reopen": true,
+        "tput_MiB_s_proxy_median": 4.177504537356556,
+        "append_median": 24.0,
+        "file_sync_median": 24.0,
+        "file_sync_per_append_median": 1.0,
+        "awo_path": "awo_path=put_many"
+      },
+      "static": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "valid": "valid",
+        "reopen": true,
+        "tput_MiB_s_proxy_median": 9.039084467334037,
+        "append_median": 24.0,
+        "file_sync_median": 12.0,
+        "file_sync_per_append_median": 0.5,
+        "awo_path": "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding=8 put_many=false awo_flush=admit_put_collect"
+      },
+      "adaptive": {
+        "n": 6,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "valid": "valid",
+        "reopen": true,
+        "tput_MiB_s_proxy_median": 8.763690347466438,
+        "append_median": 24.0,
+        "file_sync_median": 12.0,
+        "file_sync_per_append_median": 0.5,
+        "awo_path": "behaviour: writer_shards=1 concurrent_workers=4 batch_size=1 outstanding=8 put_many=false awo_flush=admit_put_collect"
+      }
+    }
+  }
+}

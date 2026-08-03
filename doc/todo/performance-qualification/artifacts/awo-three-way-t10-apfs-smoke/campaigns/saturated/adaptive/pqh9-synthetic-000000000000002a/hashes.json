@@ -1,0 +1,38 @@
+{
+  "content_hash": "7098104f5a0108136d0bd1017e48b2bab01489d63b4aef58c29c085df19267c9",
+  "files": [
+    {
+      "relative_path": "plan.json",
+      "sha256_hex": "add28fad62074160ff881368b08b0520744f494ccb3d7badbca88fc0422dd18b"
+    },
+    {
+      "relative_path": "campaign_result.json",
+      "sha256_hex": "382fe75671daca4eace3a3d8c0acb7d02ee7e8f784253a37f251e731b7add29b"
+    },
+    {
+      "relative_path": "reports.json",
+      "sha256_hex": "d441545e4312152ea129b484836ded4c1ede65e92000c3c793f53aa7b090d808"
+    },
+    {
+      "relative_path": "disclosure.json",
+      "sha256_hex": "e4c1f72029667302e4425012b167f6178a3df2b507900d7ba02bd9db68e13382"
+    },
+    {
+      "relative_path": "DISCLOSURE.md",
+      "sha256_hex": "a27505dad2bd31038096142b90a8189c33eb7cb967ff20e8609f8fb806f7621b"
+    },
+    {
+      "relative_path": "environment.json",
+      "sha256_hex": "2903ab677c61db362075b088f601d52a34a46a9dec41026ebc5f654d73d625d9"
+    },
+    {
+      "relative_path": "environment_hash.json",
+      "sha256_hex": "99d4145e3e71079126f22f554f79b1b6ca3ee95b3179ae8a31284654f3ad09ff"
+    },
+    {
+      "relative_path": "observer_overhead.json",
+      "sha256_hex": "4d39a5cc5f01b23491455d8e96f4a5b3afb14fb260625d2da91600776b2b7983"
+    }
+  ],
+  "schema": "residiuum-performance-bundle-hashes-v1"
+}

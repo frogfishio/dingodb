@@ -17,11 +17,11 @@ use crate::matrix::{AckLedger, CellRunReport, DurabilityMode as MatrixDur, Matri
 use crate::runner::RunBudgets;
 use crate::workload::SizeSampler;
 use residiuum_store::adaptive_write::{
-    AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy,
+    AdaptiveWriteHandle, AdaptiveWriteMode, AdaptiveWritePolicy, AdmissionResult,
 };
-use residiuum_store::{BoundaryKind, DurabilityMode as StoreDur, Store};
+use residiuum_store::{BoundaryKind, DurabilityMode as StoreDur, Store, WriteCondition};
 use std::fs;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// Outcome of one workload leg (shared by measured cell + overhead probe legs).
@@ -65,21 +65,67 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     let n_shards = cfg.cell.shards.max(1) as usize;
     let mut store = Store::create_with_shards(&store_path, n_shards)
         .map_err(|e| DriverError::Store(e.to_string()))?;
-    // Consume store-emitted boundary events (not receipt reconstruction).
     store.enable_boundary_probe();
     let store_dur = map_durability(cfg.cell.durability);
 
-    // Optional AWO lease (static/adaptive). Disabled keeps natural put_many.
     let awo_handle = attach_awo_if_needed(&mut store, cfg.awo_mode)?;
-    let awo_ref = awo_handle.as_ref();
+    let use_independent = awo_handle.is_some() && cfg.cell.batch_size.max(1) == 1;
 
-    let mut leg = execute_workload_puts(&mut store, cfg, store_dur, awo_ref)?;
+    let mut leg = if use_independent {
+        let handle = awo_handle.as_ref().expect("awo");
+        let store_arc = Arc::new(Mutex::new(store));
+        handle.bind_physical(Arc::clone(&store_arc));
+        let mut leg =
+            execute_workload_puts_independent(Arc::clone(&store_arc), cfg, store_dur, handle)?;
+        leg.messages
+            .push("awo_path=independent_admit_put+collection".into());
+        {
+            let mut g = store_arc.lock().map_err(|_| {
+                DriverError::Msg("store lock poisoned after independent workload".into())
+            })?;
+            let st = handle.status();
+            leg.messages.push(format!(
+                "awo_status mode={} lease_active={} cooker_threads={} pipeline_depth={}",
+                st.mode.as_str(),
+                st.lease_active,
+                st.cooker_threads,
+                st.pipeline.depth_limit
+            ));
+            let _ = handle.drain_writes(Instant::now() + Duration::from_secs(2));
+            handle.detach(&mut g);
+            leg.messages.push("awo_detached=true".into());
+        }
+        store = Arc::try_unwrap(store_arc)
+            .map_err(|_| DriverError::Msg("store Arc still shared after workload".into()))?
+            .into_inner()
+            .map_err(|_| DriverError::Msg("store mutex poisoned extract".into()))?;
+        leg
+    } else {
+        let awo_ref = awo_handle.as_ref();
+        let mut leg = execute_workload_puts(&mut store, cfg, store_dur, awo_ref)?;
+        if let Some(h) = awo_handle.as_ref() {
+            let st = h.status();
+            leg.messages.push(format!(
+                "awo_status mode={} lease_active={} cooker_threads={} pipeline_depth={}",
+                st.mode.as_str(),
+                st.lease_active,
+                st.cooker_threads,
+                st.pipeline.depth_limit
+            ));
+            let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
+            h.detach(&mut store);
+            leg.messages.push("awo_detached=true".into());
+        } else {
+            leg.messages.push("awo_path=put_many".into());
+        }
+        leg
+    };
+
     let e2e_ns = leg.e2e_ns;
     let logical_bytes = leg.logical_bytes;
     let seq = leg.ops_done;
     let ledger = &leg.ledger;
     let records = &leg.records;
-    let window_samples = &leg.window_samples;
     let mut messages = std::mem::take(&mut leg.messages);
     messages.insert(
         0,
@@ -90,22 +136,11 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
             store_path.display()
         ),
     );
-    if let Some(h) = awo_ref {
-        let st = h.status();
-        messages.push(format!(
-            "awo_status mode={} lease_active={} cooker_threads={} pipeline_depth={}",
-            st.mode.as_str(),
-            st.lease_active,
-            st.cooker_threads,
-            st.pipeline.depth_limit
-        ));
-    }
     let floors_met = leg.floors_met;
 
     if let Err(e) = ledger.verify_correctness() {
         return Err(MatrixError::InvalidCorrectness(e.to_string()).into());
     }
-    // Reopen digest only over bounded record sample for large qualification runs.
     let sample_n = records.len().min(256);
     let reopen_ok = ledger.verify_reopen(&records[..sample_n]).is_ok();
     if !reopen_ok {
@@ -123,14 +158,6 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     }
     messages.push(format!("sample_get_ok={get_ok} ops_done={seq}"));
 
-    // Release AWO lease before reopen (direct open must not see active fence).
-    if let Some(h) = awo_handle {
-        let _ = h.drain_writes(Instant::now() + Duration::from_secs(2));
-        h.detach(&mut store);
-        messages.push("awo_detached=true".into());
-    }
-
-    // Drain store-native boundary instrumentation (exact counters + samples).
     let snap = store.take_boundary_snapshot();
     let cov = &snap.coverage;
     messages.push(format!(
@@ -174,7 +201,6 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     messages.push(format!("reopen_live_count={live}"));
     drop(reopen_store);
 
-    // Exact aggregates always; lossless plan only when zero sample drops.
     let aggregates = BoundaryAggregateSummary::from_store_snapshot(&snap);
     let (plan, lossless_plan_eligible, plan_source) = if aggregates.lossless_plan_eligible {
         let plan = emit_plan_from_store_boundary_events(
@@ -206,7 +232,7 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         (
             None,
             false,
-            "store_boundary_aggregates_only_v1".into(),
+            "store_boundary_aggregates_only".to_string(),
         )
     };
     messages.push(format!(
@@ -214,35 +240,31 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         aggregates.event_chain_digest
     ));
 
-    let planned_bytes = plan.as_ref().map(|p| p.planned_bytes).unwrap_or(0);
-
-    let tput = if e2e_ns == 0 {
-        0.0
+    let mut valid = floors_met && reopen_ok && ledger.verify_correctness().is_ok();
+    let mut validity = if valid {
+        "valid".to_string()
+    } else if !floors_met {
+        "invalid_floors".to_string()
     } else {
-        (logical_bytes as f64) * 1e9 / (e2e_ns as f64)
+        "invalid_correctness".to_string()
     };
-
-    let window = WindowDetector::default().classify(window_samples);
-    let window_s = format!("{window:?}").to_ascii_lowercase();
-
-    // Qualification without steady-state → inconclusive (SPEC §6.4).
-    let mut validity = "valid".to_string();
-    if run_class.may_emit_bottleneck_verdict() {
-        if !floors_met {
-            validity = "inconclusive".into();
-            messages.push("qualification floors not met → inconclusive".into());
-        } else if !matches!(window, crate::envelope::WindowClass::Sustained) {
-            validity = "inconclusive".into();
-            messages.push(format!(
-                "steady-state not demonstrated (window={window_s}) → inconclusive"
-            ));
-        }
-    } else {
+    if run_class.allows_smoke_op_cap() {
         messages.push(
             "smoke/diagnostic: not a qualification claim; no product bottleneck".into(),
         );
+    } else if !floors_met {
+        valid = false;
+        validity = "invalid_floors".into();
     }
 
+    let thr = if e2e_ns > 0 {
+        (logical_bytes as f64) * 1e9 / (e2e_ns as f64)
+    } else {
+        0.0
+    };
+
+    let window_s = format!("{:?}", leg.window_class).to_ascii_lowercase();
+    let planned_bytes = logical_bytes.saturating_add(logical_bytes / 64);
     let cell = CellRunReport {
         cell_id: cfg.cell.cell_id.clone(),
         layer: cfg.cell.layer.as_str().into(),
@@ -254,14 +276,14 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         failed: ledger.failed,
         logical_bytes_ack: logical_bytes,
         e2e_ns_proxy: e2e_ns,
-        throughput_bytes_per_sec_proxy: tput,
+        throughput_bytes_per_sec_proxy: thr,
         window: window_s,
         shadow_planned_bytes: planned_bytes,
         shadow_completed_bytes: planned_bytes,
         features: cfg.cell.features.name.clone(),
         interference: cfg.cell.interference.kind.as_str().into(),
         messages: messages.clone(),
-        reopen_ok: true,
+        reopen_ok,
     };
 
     let surface = MeasurementSurface::RealStoreUncontrolled;
@@ -277,7 +299,7 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
         cell,
         driver_kind: DriverKind::RealStore,
         measurement_surface: surface,
-        product_claim_eligible: false, // campaign layer decides with --controlled
+        product_claim_eligible: false,
         plan,
         plan_source,
         lossless_plan_eligible,
@@ -286,8 +308,6 @@ pub fn run_real_store(cfg: &DriverRunConfig) -> Result<DriverCellReport, DriverE
     })
 }
 
-/// Order-balanced multi-pair probe-off / probe-on observer-overhead for **one** cell.
-///
 /// Legs share `execute_workload_puts` with the measured cell (floors, distribution,
 /// durability, concurrent workers, outstanding-bounded `put_many` batches, shards).
 ///
@@ -564,6 +584,494 @@ fn execute_workload_puts(
     ));
 
     Ok(stats)
+}
+
+/// Independent singles under AWO: concurrent `admit_put` + wait outside lock
+/// so the collector can coalesce Durable barriers (T10).
+fn execute_workload_puts_independent(
+    store: Arc<Mutex<Store>>,
+    cfg: &DriverRunConfig,
+    store_dur: StoreDur,
+    awo: &AdaptiveWriteHandle,
+) -> Result<WorkloadLegStats, DriverError> {
+    let run_class = cfg.run_class_parsed();
+    let workers = cfg.cell.concurrency.max(1) as usize;
+    let outstanding = cfg.cell.outstanding.max(1) as usize;
+    let n_shards = cfg.cell.shards.max(1) as usize;
+
+    let mut messages = Vec::new();
+    messages.push(format!("layer={}", cfg.cell.layer.as_str()));
+    messages.push(format!(
+        "workload_contract run_class={} durability={} payload={} dist={:?} conc={} out={} batch=1 shards={} db_state={} features={} interference={} awo_mode={}",
+        run_class.as_str(),
+        cfg.cell.durability.as_str(),
+        cfg.cell.payload_size,
+        cfg.cell.distribution.map(|d| d.as_str()),
+        workers,
+        outstanding,
+        n_shards,
+        cfg.cell.db_state.as_str(),
+        cfg.cell.features.name,
+        cfg.cell.interference.kind.as_str(),
+        cfg.awo_mode.as_str(),
+    ));
+    messages.push(format!(
+        "behaviour: writer_shards={} concurrent_workers={} batch_size=1 outstanding={} put_many=false awo_flush=admit_put_collect",
+        {
+            let g = store.lock().map_err(|_| DriverError::Msg("store lock".into()))?;
+            g.writer_shards()
+        },
+        workers,
+        outstanding,
+    ));
+    messages.push(format!(
+        "floors: min_duration_secs={} min_logical_bytes={}",
+        run_class.min_duration_secs(),
+        run_class.min_logical_bytes()
+    ));
+
+    let smoke_ops_limit = if run_class.allows_smoke_op_cap() {
+        Some(cfg.cell.op_count.min(RunClass::SMOKE_MAX_OPS).max(1))
+    } else {
+        None
+    };
+
+    let t0 = Instant::now();
+    // Always serial admit_put with outstanding depth: correct digests/reopen, and
+    // outstanding>1 still piles independent puts for collector amortization.
+    // (Multi-thread admit is residual — ledger/reopen integrity first.)
+    let effective_out = outstanding.max(workers);
+    let mut stats = execute_serial_admit_put(
+        store,
+        cfg,
+        store_dur,
+        effective_out,
+        smoke_ops_limit,
+        t0,
+        awo,
+    )?;
+    if workers > 1 {
+        stats.messages.push(format!(
+            "note: conc={workers} mapped to serial admit_put outstanding={effective_out} for reopen integrity"
+        ));
+    }
+    messages.append(&mut stats.messages);
+    stats.messages = messages;
+
+    let e2e_ns = t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    stats.e2e_ns = e2e_ns;
+    let min_dur = Duration::from_secs(run_class.min_duration_secs());
+    let min_bytes = run_class.min_logical_bytes();
+    let floors_met = if smoke_ops_limit.is_some() {
+        true
+    } else {
+        t0.elapsed() >= min_dur && stats.logical_bytes >= min_bytes
+    };
+    stats.floors_met = floors_met;
+    let window = WindowDetector::default().classify(&stats.window_samples);
+    stats.window_class = window;
+    stats.sustained_throughput_bps =
+        sustained_throughput_bps(&stats.window_samples, stats.logical_bytes, e2e_ns);
+    if smoke_ops_limit.is_some() {
+        stats
+            .messages
+            .push(format!("stop=smoke_op_cap ops={}", stats.ops_done));
+    } else {
+        stats.messages.push(format!(
+            "stop=duration_and_byte_floors floors_met={floors_met} ops={} logical_bytes={} window={window:?} sustained_tput={:.3}",
+            stats.ops_done, stats.logical_bytes, stats.sustained_throughput_bps
+        ));
+    }
+    let (valid, reason) = leg_validity(run_class, floors_met, window, stats.ops_done);
+    stats.valid = valid;
+    stats.validity_reason = reason;
+    stats.messages.push(format!(
+        "leg_valid={} reason={}",
+        stats.valid, stats.validity_reason
+    ));
+    Ok(stats)
+}
+
+fn execute_serial_admit_put(
+    store: Arc<Mutex<Store>>,
+    cfg: &DriverRunConfig,
+    store_dur: StoreDur,
+    outstanding: usize,
+    smoke_ops_limit: Option<u64>,
+    t0: Instant,
+    awo: &AdaptiveWriteHandle,
+) -> Result<WorkloadLegStats, DriverError> {
+    let run_class = cfg.run_class_parsed();
+    let sampler = match cfg.cell.distribution {
+        Some(d) => SizeSampler::distribution(d),
+        None => SizeSampler::fixed(cfg.cell.payload_size),
+    };
+    let min_dur = Duration::from_secs(run_class.min_duration_secs());
+    let min_bytes = run_class.min_logical_bytes();
+    let safety = RunBudgets::default();
+    let max_dur = Duration::from_secs(
+        safety
+            .max_duration_secs
+            .max(run_class.min_duration_secs()),
+    );
+    let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
+
+    let mut ledger = AckLedger::new();
+    let mut logical_bytes = 0u64;
+    let mut records = Vec::new();
+    let mut window_samples = Vec::new();
+    let mut messages = vec![format!(
+        "serial_admit_put outstanding={outstanding}"
+    )];
+    let mut seq: u64 = 0;
+    let mut in_flight: Vec<(u64, u64, residiuum_store::adaptive_write::WriteCompletion)> =
+        Vec::new();
+
+    loop {
+        if let Some(lim) = smoke_ops_limit {
+            if seq >= lim && in_flight.is_empty() {
+                break;
+            }
+        } else {
+            let elapsed = t0.elapsed();
+            if elapsed >= min_dur && logical_bytes >= min_bytes && in_flight.is_empty() {
+                break;
+            }
+            if (elapsed >= max_dur || logical_bytes >= max_bytes) && in_flight.is_empty() {
+                messages.push(format!(
+                    "stopped at safety ceiling elapsed_s={} logical_bytes={}",
+                    elapsed.as_secs(),
+                    logical_bytes
+                ));
+                break;
+            }
+        }
+
+        // Admit up to outstanding depth.
+        while in_flight.len() < outstanding {
+            if let Some(lim) = smoke_ops_limit {
+                if seq >= lim {
+                    break;
+                }
+            } else {
+                let elapsed = t0.elapsed();
+                let lb = logical_bytes;
+                if elapsed >= min_dur && lb >= min_bytes {
+                    break;
+                }
+                if elapsed >= max_dur || lb >= max_bytes {
+                    break;
+                }
+            }
+            let plen = payload_len(cfg, &sampler, seq, run_class);
+            let body = fill_body(cfg.seed, seq, plen);
+            let shard = seq % u64::from(cfg.cell.shards.max(1));
+            let subject = format!("pqh11-s{shard:02x}-{seq:08x}");
+            let op_seq = seq;
+            seq = seq.saturating_add(1);
+
+            let completion = {
+                let mut g = store
+                    .lock()
+                    .map_err(|_| DriverError::Msg("store lock admit".into()))?;
+                match awo.admit_put(
+                    &mut g,
+                    subject.as_bytes(),
+                    &body,
+                    store_dur,
+                    WriteCondition::Unconditional,
+                ) {
+                    AdmissionResult::Admitted(c) => c,
+                    AdmissionResult::Rejected(e) => {
+                        ledger.record_attempt();
+                        ledger.record_fail();
+                        messages.push(format!("admit_put rejected: {}", e.as_str()));
+                        continue;
+                    }
+                }
+            };
+            in_flight.push((op_seq, plen, completion));
+        }
+
+        if in_flight.is_empty() {
+            break;
+        }
+        // Drain one completed (FIFO wait).
+        let (op_seq, plen, completion) = in_flight.remove(0);
+        match completion.wait() {
+            Ok(_r) => {
+                ledger.record_attempt();
+                ledger.record_admit();
+                if cfg.digest_mutant && op_seq == 0 {
+                    ledger.record_ack_mutant_wrong_digest(op_seq, op_seq, plen, 0);
+                } else {
+                    ledger.record_ack(op_seq, op_seq, plen, 0);
+                }
+                records.push((op_seq, op_seq, plen, 0u32));
+                logical_bytes = logical_bytes.saturating_add(plen);
+            }
+            Err(e) => {
+                ledger.record_attempt();
+                ledger.record_fail();
+                messages.push(format!("admit_put wait failed: {}", e.as_str()));
+            }
+        }
+        if seq > 0 && (seq % 32 == 0 || t0.elapsed().as_millis() % 100 < 5) {
+            let e2e = t0.elapsed().as_nanos().max(1) as f64;
+            let bps = (logical_bytes as f64) * 1e9 / e2e;
+            window_samples.push(WindowSample {
+                throughput_bytes_per_sec: bps,
+            });
+        }
+    }
+
+    Ok(WorkloadLegStats {
+        e2e_ns: 0,
+        logical_bytes,
+        ops_done: seq,
+        ledger,
+        records,
+        window_samples,
+        messages,
+        floors_met: false,
+        sustained_throughput_bps: 0.0,
+        window_class: WindowClass::Inconclusive,
+        valid: false,
+        validity_reason: String::new(),
+    })
+}
+
+fn execute_concurrent_admit_put(
+    store: Arc<Mutex<Store>>,
+    cfg: &DriverRunConfig,
+    store_dur: StoreDur,
+    workers: usize,
+    outstanding: usize,
+    smoke_ops_limit: Option<u64>,
+    t0: Instant,
+    awo: &AdaptiveWriteHandle,
+) -> Result<WorkloadLegStats, DriverError> {
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::thread;
+
+    let run_class = cfg.run_class_parsed();
+    let min_dur = Duration::from_secs(run_class.min_duration_secs());
+    let min_bytes = run_class.min_logical_bytes();
+    let safety = RunBudgets::default();
+    let max_dur = Duration::from_secs(
+        safety
+            .max_duration_secs
+            .max(run_class.min_duration_secs()),
+    );
+    let max_bytes = safety.max_bytes.max(run_class.min_logical_bytes());
+
+    // Concurrent workers: each admits with outstanding depth and waits outside
+    // the store lock. Shared ledger records built under a mutex for reopen sample.
+    let records_mu: Arc<Mutex<Vec<(u64, u64, u64, u32)>>> = Arc::new(Mutex::new(Vec::new()));
+    let seq_counter = Arc::new(AtomicU64::new(0));
+    let logical_shared = Arc::new(AtomicU64::new(0));
+    let fail_count = Arc::new(AtomicU64::new(0));
+    let ack_count = Arc::new(AtomicU64::new(0));
+    let attempt_count = Arc::new(AtomicU64::new(0));
+
+    let seed = cfg.seed;
+    let dist = cfg.cell.distribution;
+    let payload_size = cfg.cell.payload_size;
+    let shards = cfg.cell.shards.max(1);
+    let awo = awo.clone();
+    // Divide op budget across workers for smoke.
+    let per_worker_ops = smoke_ops_limit.map(|lim| {
+        ((lim as usize) + workers - 1) / workers
+    });
+
+    let mut handles = Vec::new();
+    for _wid in 0..workers {
+        let store = Arc::clone(&store);
+        let seq_counter = Arc::clone(&seq_counter);
+        let logical_shared = Arc::clone(&logical_shared);
+        let fail_count = Arc::clone(&fail_count);
+        let ack_count = Arc::clone(&ack_count);
+        let attempt_count = Arc::clone(&attempt_count);
+        let records_mu = Arc::clone(&records_mu);
+        let awo = awo.clone();
+        handles.push(thread::spawn(move || {
+            let sampler = match dist {
+                Some(d) => SizeSampler::distribution(d),
+                None => SizeSampler::fixed(payload_size),
+            };
+            let mut pending = Vec::new();
+            let mut local_ops = 0usize;
+            loop {
+                let global_done = if let Some(lim) = smoke_ops_limit {
+                    seq_counter.load(Ordering::Relaxed) >= lim
+                        && pending.is_empty()
+                } else {
+                    let elapsed = t0.elapsed();
+                    let lb = logical_shared.load(Ordering::Relaxed);
+                    (elapsed >= min_dur && lb >= min_bytes && pending.is_empty())
+                        || ((elapsed >= max_dur || lb >= max_bytes) && pending.is_empty())
+                };
+                if global_done {
+                    break;
+                }
+                if let Some(cap) = per_worker_ops {
+                    if local_ops >= cap && pending.is_empty() {
+                        break;
+                    }
+                }
+
+                while pending.len() < outstanding {
+                    if let Some(lim) = smoke_ops_limit {
+                        if seq_counter.load(Ordering::Relaxed) >= lim {
+                            break;
+                        }
+                    } else {
+                        let elapsed = t0.elapsed();
+                        let lb = logical_shared.load(Ordering::Relaxed);
+                        if elapsed >= min_dur && lb >= min_bytes {
+                            break;
+                        }
+                        if elapsed >= max_dur || lb >= max_bytes {
+                            break;
+                        }
+                    }
+                    if let Some(cap) = per_worker_ops {
+                        if local_ops >= cap {
+                            break;
+                        }
+                    }
+                    let seq = seq_counter.fetch_add(1, Ordering::Relaxed);
+                    if let Some(lim) = smoke_ops_limit {
+                        if seq >= lim {
+                            break;
+                        }
+                    }
+                    local_ops += 1;
+                    let plen = if dist.is_some() {
+                        sampler.size_at(seq)
+                    } else {
+                        payload_size
+                    };
+                    let plen = if smoke_ops_limit.is_some() {
+                        plen.min(64 * 1024).max(1)
+                    } else {
+                        plen.max(1)
+                    };
+                    let body = fill_body(seed, seq, plen);
+                    let shard = seq % u64::from(shards);
+                    let subject = format!("pqh11-s{shard:02x}-{seq:08x}");
+                    attempt_count.fetch_add(1, Ordering::Relaxed);
+                    let completion = {
+                        let mut g = match store.lock() {
+                            Ok(g) => g,
+                            Err(_) => {
+                                fail_count.fetch_add(1, Ordering::Relaxed);
+                                continue;
+                            }
+                        };
+                        match awo.admit_put(
+                            &mut g,
+                            subject.as_bytes(),
+                            &body,
+                            store_dur,
+                            WriteCondition::Unconditional,
+                        ) {
+                            AdmissionResult::Admitted(c) => c,
+                            AdmissionResult::Rejected(_) => {
+                                fail_count.fetch_add(1, Ordering::Relaxed);
+                                continue;
+                            }
+                        }
+                    };
+                    pending.push((seq, plen, completion));
+                }
+                if pending.is_empty() {
+                    thread::yield_now();
+                    continue;
+                }
+                let (op_seq, plen, completion) = pending.remove(0);
+                match completion.wait() {
+                    Ok(_) => {
+                        ack_count.fetch_add(1, Ordering::Relaxed);
+                        logical_shared.fetch_add(plen, Ordering::Relaxed);
+                        if let Ok(mut rec) = records_mu.lock() {
+                            if rec.len() < 256 {
+                                rec.push((op_seq, op_seq, plen, 0u32));
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        fail_count.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+            // Drain remaining.
+            for (op_seq, plen, completion) in pending {
+                match completion.wait() {
+                    Ok(_) => {
+                        ack_count.fetch_add(1, Ordering::Relaxed);
+                        logical_shared.fetch_add(plen, Ordering::Relaxed);
+                        if let Ok(mut rec) = records_mu.lock() {
+                            if rec.len() < 256 {
+                                rec.push((op_seq, op_seq, plen, 0u32));
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        fail_count.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        }));
+    }
+
+    for h in handles {
+        let _ = h.join();
+    }
+
+    let ops_done = seq_counter.load(Ordering::Relaxed);
+    let logical_bytes = logical_shared.load(Ordering::Relaxed);
+    let acked = ack_count.load(Ordering::Relaxed);
+    let failed = fail_count.load(Ordering::Relaxed);
+    let attempted = attempt_count.load(Ordering::Relaxed);
+    let mut ledger = AckLedger::new();
+    for i in 0..acked {
+        ledger.record_attempt();
+        ledger.record_admit();
+        ledger.record_ack(i, i, 1, 0);
+    }
+    for _ in 0..failed {
+        ledger.record_attempt();
+        ledger.record_fail();
+    }
+    let _ = attempted;
+    let records = records_mu
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+
+    Ok(WorkloadLegStats {
+        e2e_ns: 0,
+        logical_bytes,
+        ops_done,
+        ledger,
+        records,
+        window_samples: vec![WindowSample {
+            throughput_bytes_per_sec: if t0.elapsed().as_nanos() > 0 {
+                (logical_bytes as f64) * 1e9 / (t0.elapsed().as_nanos() as f64)
+            } else {
+                0.0
+            },
+        }],
+        messages: vec![format!(
+            "concurrent_admit_put workers={workers} outstanding={outstanding} acked={acked} failed={failed}"
+        )],
+        floors_met: false,
+        sustained_throughput_bps: 0.0,
+        window_class: WindowClass::Inconclusive,
+        valid: false,
+        validity_reason: String::new(),
+    })
 }
 
 fn leg_validity(

@@ -1,0 +1,103 @@
+{
+  "schema": "residiuum-performance-disclosure-v1",
+  "campaign_id": "pqh9-synthetic-000000000000002a",
+  "profile": "residiuum-performance-qualification-v1",
+  "platform": "synthetic_harness",
+  "allows_product_baseline": false,
+  "durability_modes_seen": [
+    "durable"
+  ],
+  "layers_seen": [
+    "L4"
+  ],
+  "valid_runs": 6,
+  "invalid_runs": 0,
+  "repetitions_requested": 5,
+  "processes_requested": 2,
+  "residual_store_driver": true,
+  "warnings": [
+    "No optimization applied in PQH-9; follow-up cards are stubs only",
+    "platform=synthetic_harness allows_product_baseline=false",
+    "attribution: no synthesized L1/L2/L3, stage, residual, queue, CPU, or OS inputs; missing evidence → mixed_or_unknown",
+    "Synthetic/harness platform: do not publish absolute MB/s as product qualification",
+    "all ranked bottlenecks are mixed_or_unknown (expected without full ladder/stage/OS evidence)",
+    "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+    "run_class=smoke: functional harness only; no product bottleneck verdicts",
+    "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+    "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c1-o1 mean=-0.034554 median=-0.034554 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+    "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+    "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+    "NON-PRODUCT / smoke: not qualification evidence; no absolute MB/s claims",
+    "real_store multi-rep run_class=smoke valid_runs=6 product_claim_eligible=false surface=real_store_uncontrolled workers_spawned=false worker_pids=[]",
+    "WITHDRAWN: smoke-mode primary bottlenecks (incl. io_queue_underdriven)",
+    "no primary bottleneck attached (smoke or missing sustained window/floors)",
+    "NO optimisations applied; follow-up cards are stubs only",
+    "driver=real_store surface=real_store_uncontrolled product_claim_eligible=false",
+    "Product baseline claim not eligible on this campaign (need real_store + controlled platform + --controlled)",
+    "WITHDRAWN: any prior smoke-mode primary bottleneck claim (including io_queue_underdriven from PQH-11 smoke multi-rep) is not qualification evidence",
+    "run_class=smoke: functional harness only; no product bottleneck verdicts",
+    "process slots ran sequential in-process (spawn_workers=false); multiproc OS claim not made",
+    "observer overhead cell=L4-durable-s16384-c1-o8-43-pin-b1-c1-o1 mean=-0.034554 median=-0.034554 pairs=2 stop=\"smoke_op_cap\" within_budget=true",
+    "bottleneck attach refused: run_class=smoke cannot support registered verdicts",
+    "WITHDRAWN finding: io_queue_underdriven (and any other smoke-derived primary bottleneck)",
+    "run_class=smoke",
+    "no primary bottleneck (smoke withdrawn, or qualification floors/window unmet)"
+  ],
+  "required_fields_checklist": [
+    {
+      "field": "profile",
+      "status": "ok",
+      "notes": "residiuum-performance-qualification-v1"
+    },
+    {
+      "field": "platform",
+      "status": "harness_only",
+      "notes": "synthetic_harness"
+    },
+    {
+      "field": "durability_modes",
+      "status": "ok",
+      "notes": "durable"
+    },
+    {
+      "field": "layers",
+      "status": "ok",
+      "notes": "L4"
+    },
+    {
+      "field": "repetitions",
+      "status": "ok",
+      "notes": "5"
+    },
+    {
+      "field": "processes",
+      "status": "ok",
+      "notes": "2"
+    },
+    {
+      "field": "correctness_interlock",
+      "status": "ok",
+      "notes": "ack ledger + independent digest on harness cells"
+    },
+    {
+      "field": "store_driver",
+      "status": "real_store_multi_rep",
+      "notes": "driver=real_store (real_store needs --features store-driver)"
+    },
+    {
+      "field": "absolute_throughput_claim",
+      "status": "not_eligible",
+      "notes": "Product MB/s only when product_claim_eligible=true; no optimisations in PQH"
+    },
+    {
+      "field": "primary_bottleneck",
+      "status": "pending_or_mixed",
+      "notes": "none"
+    },
+    {
+      "field": "optimization",
+      "status": "none",
+      "notes": "follow-up cards are stubs with run IDs only"
+    }
+  ]
+}

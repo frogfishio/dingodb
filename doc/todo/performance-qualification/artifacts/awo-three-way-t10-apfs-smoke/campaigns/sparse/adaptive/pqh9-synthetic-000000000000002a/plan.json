@@ -1,0 +1,16 @@
+{
+  "schema": "residiuum-performance-campaign-plan-v1",
+  "campaign_id": "pqh9-synthetic-000000000000002a",
+  "platform": "synthetic_harness",
+  "profile": "residiuum-performance-qualification-v1",
+  "seed": 42,
+  "repetitions": 5,
+  "processes": 2,
+  "max_cells": 1,
+  "include_multiproc_finding": false,
+  "notes": [
+    "Synthetic harness campaign — not a product performance claim",
+    "Absolute throughput numbers are proxies from matrix driver",
+    "presentation_pin batch=Some(1) concurrency=Some(1) outstanding=Some(1) (AWO-fair shapes; multiproc finding off)"
+  ]
+}

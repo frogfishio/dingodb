@@ -1,0 +1,11 @@
+=== sparse disabled c=1 o=1 ===
+=== sparse static c=1 o=1 ===
+=== sparse adaptive c=1 o=1 ===
+=== saturated disabled c=4 o=8 ===
+=== saturated static c=4 o=8 ===
+FAIL saturated static
+error: campaign: matrix: invalid_correctness: reopen digest mismatch
+=== saturated adaptive c=4 o=8 ===
+FAIL saturated adaptive
+error: campaign: matrix: invalid_correctness: reopen digest mismatch
+DONE

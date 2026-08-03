@@ -1,0 +1,85 @@
+{
+  "all_within_budget": true,
+  "cells": [
+    {
+      "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+      "median_overhead_fraction": -0.023149424190130385,
+      "notes": [
+        "order-balanced probe-off/on on matched workload contract: pairs=2 ops_per_leg=24 run_class=smoke",
+        "workload_contract stop=smoke_op_cap floors_s=3 floors_bytes=67108864 dur=durable conc=4 out=8 shards=1 dist=None features=l4_minimal interference=absent db_state=steady_populated",
+        "stop_policy=smoke_op_cap limit=Some(24)",
+        "mean_overhead=-0.023149 median_overhead=-0.023149 budget=0.0200 within_budget=true",
+        "pair[0] order=off_first basis=wall_time overhead=0.074290 off_ops=24 on_ops=24 off_tput=4752611.210 on_tput=4423956.514 valid=true",
+        "pair[1] order=on_first basis=wall_time overhead=-0.120589 off_ops=24 on_ops=24 off_tput=3682211.484 on_tput=4187131.923 valid=true",
+        "probe-on faster than probe-off on average (noise); negative overhead reported",
+        "order_balance off_first=1 on_first=1"
+      ],
+      "ops_per_leg": 24,
+      "overhead_budget": 0.02,
+      "overhead_fraction": -0.023149424190130385,
+      "pair_count": 2,
+      "pairs": [
+        {
+          "cost_basis": "wall_time",
+          "legs_valid": true,
+          "order": "off_first",
+          "overhead_fraction": 0.07428976644537506,
+          "pair_index": 0,
+          "probe_off_e2e_ns": 82736833,
+          "probe_off_logical_bytes": 393216,
+          "probe_off_ops": 24,
+          "probe_off_sustained_tput_bps": 4752611.210051997,
+          "probe_on_e2e_ns": 88883333,
+          "probe_on_logical_bytes": 393216,
+          "probe_on_ops": 24,
+          "probe_on_sustained_tput_bps": 4423956.513871954
+        },
+        {
+          "cost_basis": "wall_time",
+          "legs_valid": true,
+          "order": "on_first",
+          "overhead_fraction": -0.12058861482563583,
+          "pair_index": 1,
+          "probe_off_e2e_ns": 106788000,
+          "probe_off_logical_bytes": 393216,
+          "probe_off_ops": 24,
+          "probe_off_sustained_tput_bps": 3682211.4844364533,
+          "probe_on_e2e_ns": 93910583,
+          "probe_on_logical_bytes": 393216,
+          "probe_on_ops": 24,
+          "probe_on_sustained_tput_bps": 4187131.9231401216
+        }
+      ],
+      "payload_size": 16384,
+      "probe_off_e2e_ns": 94762416,
+      "probe_off_logical_bytes": 393216,
+      "probe_on_e2e_ns": 91396958,
+      "probe_on_logical_bytes": 393216,
+      "run_class": "smoke",
+      "seed": 190711828,
+      "within_budget": true,
+      "workload_contract": {
+        "application_note": "shared execute_workload_puts: create_with_shards; concurrent preparers; outstanding-bounded put_many (put_many_parallel when multi-shard, probe-instrumented); same floors as measured cell",
+        "batch_size": 1,
+        "cell_id": "L4-durable-s16384-c1-o8-43-pin-b1-c4-o8",
+        "cell_op_count": 24,
+        "concurrency": 4,
+        "db_state": "steady_populated",
+        "distribution": null,
+        "durability": "durable",
+        "features": "l4_minimal",
+        "interference": "absent",
+        "layer": "L4",
+        "min_duration_secs": 3,
+        "min_logical_bytes": 67108864,
+        "outstanding": 8,
+        "payload_size": 16384,
+        "run_class": "smoke",
+        "shards": 1,
+        "smoke_ops_limit": 24,
+        "stop_policy": "smoke_op_cap"
+      }
+    }
+  ],
+  "schema": "residiuum-observer-overhead-v1"
+}

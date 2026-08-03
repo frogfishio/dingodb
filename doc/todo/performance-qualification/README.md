@@ -26,6 +26,8 @@ testrig.
 | [AWO_THREE_WAY_T8_SINGLES_RUN.md](AWO_THREE_WAY_T8_SINGLES_RUN.md) | T8 APFS smoke run: pin batch=1; all modes sync/op=1; collection residual |
 | [AWO_THREE_WAY_T9_DECISIVE_FINDING.md](AWO_THREE_WAY_T9_DECISIVE_FINDING.md) | **Decisive (pre-connect):** harness OK; independent path was natural-only |
 | [AWO_INDEPENDENT_COLLECTION_CONNECT.md](AWO_INDEPENDENT_COLLECTION_CONNECT.md) | Collection connect labor: queue+collector; concurrent file_sync amortize test |
+| [AWO_THREE_WAY_T10_HARNESS_RERUN.md](AWO_THREE_WAY_T10_HARNESS_RERUN.md) | T10: PQH admit_put path + re-run; saturated sync/op=0.5 thr~2× |
+| [artifacts/awo-three-way-t10-apfs-smoke/](artifacts/awo-three-way-t10-apfs-smoke/) | T10 smoke numbers |
 | [artifacts/awo-three-way-t7-apfs-smoke/](artifacts/awo-three-way-t7-apfs-smoke/) | T8 numeric summary + campaigns |
 | [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |
 | [artifacts/awo-three-way-t6-scratch-smoke/](artifacts/awo-three-way-t6-scratch-smoke/) | T6 Scratch smoke three-way |
