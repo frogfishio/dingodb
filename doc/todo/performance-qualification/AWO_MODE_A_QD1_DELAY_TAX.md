@@ -14,6 +14,10 @@ CPU too much?*
 Residiuum-off.” Off already sits on the CPU wall (~12.5k @ ~68% CPU). Static and
 Adaptive keep similar peak CPU while wall-clock stretches ~5×.
 
+**Also:** Static ≠ “we batched successfully” on this table — intent to coalesce,
+but QD=1 left nothing to coalesce. See
+[STATIC_IS_NOT_BATCHED_ON_FN2.md](STATIC_IS_NOT_BATCHED_ON_FN2.md).
+
 ```text
 Residiuum-off      ~12 550/s   CPU ~68%   path=put_many                         ← CPU wall
 Static / Adaptive  ~2 460/s    CPU ~68–76% path=independent_admit_put+collection ← delay tax

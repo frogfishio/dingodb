@@ -42,6 +42,13 @@ testrig.
 | [FAST_DISK_CPU_WALL.md](FAST_DISK_CPU_WALL.md) | **Confirm:** Scratch 10k parity = SQLite disk ∩ our CPU; fast disk → our CPU wall (~12.5k) |
 | [AWO_MODE_A_QD1_DELAY_TAX.md](AWO_MODE_A_QD1_DELAY_TAX.md) | **Answer:** Static/Adaptive ~2.5k ≠ CPU hammer — QD=1 collection delay (~5× wall) |
 | [FIRM_NUMBERS_MULTICORE.md](FIRM_NUMBERS_MULTICORE.md) | **FN multicore:** Mode A cook1/2/4 flat ~13k; Mode B cook4≈cook1 on APFS long peer |
+| [WHAT_BATCH_1_MEANS.md](WHAT_BATCH_1_MEANS.md) | **Explainer:** batch=1 = one key per `put_many` (Mode A), not “one core” |
+| [WHY_PUT_MANY_NOT_FASTER.md](WHY_PUT_MANY_NOT_FASTER.md) | **Answer:** Residiuum put_many(N) ≉ slower than N×put — ≈same; SQLite B is the big jump |
+| [STATIC_IS_NOT_BATCHED_ON_FN2.md](STATIC_IS_NOT_BATCHED_ON_FN2.md) | **Answer:** FN-2 Static ≠ successful batch — “allowed to batch” + delay tax, still flush 1 |
+| [WHY_CANT_WE_MICROBATCH.md](WHY_CANT_WE_MICROBATCH.md) | **Answer:** we can microbatch — not on Mode A QD=1 (no pile-up); T11 can |
+| [WHAT_PARTNER_PUT_MEANS.md](WHAT_PARTNER_PUT_MEANS.md) | **Jargon:** “partner” = second key in the collector queue, not a person |
+| [HOW_MANY_REQUESTS_FN2.md](HOW_MANY_REQUESTS_FN2.md) | **Answer:** FN-2 = 32 768 Mode A requests/cell; 131 072 across four cells |
+| [FN2_NOT_ONE_SECOND.md](FN2_NOT_ONE_SECOND.md) | **Answer:** not a 1s timed test — fixed 256 MiB work; SQLite just finished in ~1.1s |
 | [artifacts/firm-numbers-fn2-mode-a-apfs/](artifacts/firm-numbers-fn2-mode-a-apfs/) | FN-2 JSON + summary |
 | [artifacts/firm-numbers-multicore-apfs/](artifacts/firm-numbers-multicore-apfs/) | Multicore campaign JSON + summary |
 | [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | Q1.1 brief (anchors) |

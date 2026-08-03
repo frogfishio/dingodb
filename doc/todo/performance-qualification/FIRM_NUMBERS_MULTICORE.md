@@ -38,6 +38,9 @@ Mode A presents one key per `put_many` → always serial cook. Setting
 `RESIDIUUM_COOK_PARALLELISM=4` is a no-op for Mode A. PARKED already said
 “idle single-put stays ~1-core.”
 
+Plain English for “batch = 1”:
+[WHAT_BATCH_1_MEANS.md](WHAT_BATCH_1_MEANS.md).
+
 ### Mode B (batch=128) — where multicore *can* run
 
 | Cell | ops/s | peak CPU | cook N |
@@ -49,6 +52,10 @@ Mode A presents one key per `put_many` → always serial cook. Setting
 cook4 / cook1 ≈ **1.01×** on this long peer. Contrast PARKED Scratch **short micro**
 cook1→cook4 ~**1.8×** (~330k class) — different bed (short, cache-friendly). Here
 seals + append/index still dominate; more Blake workers don’t buy SQLite’s ~50k.
+
+Also: Residiuum Mode B (~13.6k) is **not slower** than Mode A (~13.2k) — ≈same.
+Why batch doesn’t unlock SQLite-like gains:
+[WHY_PUT_MANY_NOT_FASTER.md](WHY_PUT_MANY_NOT_FASTER.md).
 
 Scratch history Mode B Residiuum (cook1 default) was also ~10k class — same
 “batch≠SQLite thr” story.
