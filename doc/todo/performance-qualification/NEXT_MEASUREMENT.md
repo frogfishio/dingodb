@@ -18,29 +18,22 @@ interference** while writes continue. Those are separate residuals.
 - 64 MiB seals with Chimera **on the seal lane**: **~25K** ack (queue + work).
 - Seal Fast Lane (derived off the lane): **~50K** ack @ 64 MiB — arch OK,
   **≥74.7K gate failed**. Keep board **`in_review`** (not labor-`done`).
-- Enrichment-off control @ 64 MiB: **~65K** — authoritative finalize still
-  dominates vs enrichment resource contention alone.
+- Enrichment-off control @ 64 MiB: **~46K** — authoritative finalize dominates
+  vs enrichment resource contention alone (`authoritative_finalisation_dominant`).
 - Partial zero-scan (stream-hash + metadata publish, no frame scan): **~71K**
   ack @ 64 MiB, multi-rotate, exact reopen — still short of **≥74.7K**.
+- True zero-read attempts (resident prefix move; write-tail rolling BLAKE3):
+  **~44–66K** — regress vs stream-hash; **not** enabled on the hot path.
+  Evidence: `doc/archive/performance-qualification/2026-08-04-zero-read-auth-seal/`.
 
 ## Next developer instruction (freeze)
 
-Run the 64 MiB control once with derived enrichment disabled during the
-acknowledgement window. Then implement **zero-read** authoritative sealing:
-maintain summary and hash state incrementally, append the precomputed summary
-at rotation, return compact metadata only, and remove the 64 MiB
-`sealed_bytes` transfer and writer-side rescan. Re-run the identical control
-with enrichment off/on. Acceptance: **≥74.7K** ack TPS, multiple rotations,
-exact reopen.
-
-That cleanly distinguishes:
-
-1. authoritative reread/rescan cost;
-2. concurrent enrichment resource contention;
-3. any remaining rotation/fsync cost.
-
-**Do not return to AWO** or append-path tuning until this lane closes or the
-principal waives the floor.
+The ≥74.7K gate is still open. Zero-read hashing on the put path and keeping
+the full prefix resident both lose to stream-hash finalize. Remaining work is
+to close the ~71K→74.7K gap **without** reintroducing those regressions
+(rotation/fsync/start_active cost, seal-worker CPU interference, or a waived
+floor). Do **not** return to AWO or append-path tuning until this lane closes
+or the principal waives.
 
 ## Archives
 
@@ -48,3 +41,4 @@ principal waives the floor.
 - `doc/archive/performance-qualification/2026-08-04-seal-interference-control/`
 - `doc/archive/performance-qualification/2026-08-04-seal-fast-lane/`
 - `doc/archive/performance-qualification/2026-08-04-zero-scan-auth-seal/`
+- `doc/archive/performance-qualification/2026-08-04-zero-read-auth-seal/`

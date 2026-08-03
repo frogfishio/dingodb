@@ -4886,6 +4886,11 @@ impl Store {
         let writer_sequence = writer.segment.writer_sequence();
 
         let item_events = writer.item_events;
+        // Zero-scan (stream-hash pending, no frame scan). True zero-read variants
+        // (resident prefix move; write-tail rolling BLAKE3) were measured and
+        // regress ack TPS to ~44–66K — below the ≥74.7K Seal Fast Lane gate —
+        // so the hot path keeps FinalizeSealMeta. See
+        // doc/archive/performance-qualification/2026-08-04-zero-read-auth-seal/.
         let zero_scan_meta = prefix_len > 0 && frame_count > 0;
         drop(writer);
 
@@ -4924,9 +4929,6 @@ impl Store {
                 .max(DEFAULT_MAX_PENDING_SEALS.saturating_mul(n.max(1)));
             pipe.max_pending_seals = max;
             if zero_scan_meta {
-                // Metadata seal: stream-hash pending + append summary (no frame scan,
-                // no 64 MiB Vec on the writer path). Sequential read is on the auth
-                // worker only; put path stays O(1) rotate.
                 pipe.submit_seal(LifecycleJob::FinalizeSealMeta {
                     ids,
                     segment_id,
@@ -6358,8 +6360,8 @@ impl Store {
             stats.sync_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
             crate::failpoint::hit("store.active.write_tail.after_sync")?;
         }
-        // Write-through: free RAM for bytes now known on the OS path (or discarded).
-        // Capacity is kept for the next frame (append micro).
+        // Write-through discard: free RAM for durable bytes (locator offsets stay
+        // absolute; older frames use file pread).
         if stats.write_outcome == crate::boundary_probe::BoundaryOutcome::Ok
             || stats.write_requested == 0
         {

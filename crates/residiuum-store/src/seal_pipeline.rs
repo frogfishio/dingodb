@@ -109,6 +109,27 @@ pub enum LifecycleJob {
         /// When true, `sync_all` after summary append.
         require_fsync: bool,
     },
+    /// Zero-read seal: hash a moved resident prefix (no pending re-read), append summary.
+    FinalizeSealResident {
+        /// Segment identity.
+        ids: SegmentId,
+        /// Segment id (filename stem).
+        segment_id: [u8; 16],
+        /// Full durable prefix bytes moved from the active segment (base_offset == 0).
+        prefix: Vec<u8>,
+        /// Frame count before summary.
+        frame_count: u64,
+        /// Writer sequence for the summary frame.
+        writer_sequence: u64,
+        /// Item-event frames in the prefix.
+        item_events: u64,
+        /// Path of the unsealed pending file.
+        pending_path: PathBuf,
+        /// Destination sealed path under `segments/`.
+        sealed_path: PathBuf,
+        /// When true, `sync_all` after summary append.
+        require_fsync: bool,
+    },
     /// Write a primary-index frontier checkpoint (derived only).
     Checkpoint {
         /// Destination cache path.
@@ -394,6 +415,55 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                         writer_sequence,
                         item_events,
                     )?;
+                    publish_sealed_from_summary_frame(
+                        &pending_path,
+                        &sealed_path,
+                        prefix_len,
+                        &plan.summary_frame,
+                        require_fsync,
+                    )?;
+                    Ok::<_, StoreError>(plan)
+                })();
+                match result {
+                    Ok(plan) => {
+                        let _ = result_tx.send(LifecycleResult::SealDone {
+                            segment_id,
+                            content_hash: plan.content_hash,
+                            size: plan.sealed_len,
+                            summary: plan.to_segment_summary(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = result_tx.send(LifecycleResult::SealFailed {
+                            segment_id,
+                            error: e.to_string(),
+                        });
+                    }
+                }
+            }
+            LifecycleJob::FinalizeSealResident {
+                ids,
+                segment_id,
+                prefix,
+                frame_count,
+                writer_sequence,
+                item_events,
+                pending_path,
+                sealed_path,
+                require_fsync,
+            } => {
+                let prefix_len = prefix.len() as u64;
+                let result = (|| {
+                    let mut state = IncrementalSealState::new();
+                    state.observe_durable_bytes(0, &prefix)?;
+                    let plan = state.finish_publish_plan(
+                        ids,
+                        prefix_len,
+                        frame_count,
+                        writer_sequence,
+                        item_events,
+                    )?;
+                    drop(prefix);
                     publish_sealed_from_summary_frame(
                         &pending_path,
                         &sealed_path,

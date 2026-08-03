@@ -1,0 +1,72 @@
+{
+  "control_ack_tps": 83000.0,
+  "disclosure": "Diagnostic only — ack/finalisation split (doc/todo/performance-qualification/NEXT_MEASUREMENT.md; doc/reference/operations/BENCHMARK_DISCLOSURE.md). Not a published SLO.",
+  "gates": {
+    "ack_within_10pct_of_83k": false,
+    "numerous_rotations": true,
+    "pending_seal_inflight_at_last_ack": 1,
+    "reopen_exact_coverage_scan": true,
+    "sealed_segments_at_last_ack": 3
+  },
+  "kind": "seal_fast_lane_measure",
+  "pass": false,
+  "recipe": {
+    "awo": "Disabled",
+    "cell": "real-full",
+    "concurrency": 8,
+    "logical_data_bytes": 268435456,
+    "payload_size": 8192,
+    "seal_threshold": 67108864,
+    "seed": 42
+  },
+  "result": {
+    "ack_elapsed_ms": 566.258166,
+    "ack_elapsed_ns": 566258166,
+    "acknowledged_write_ops_per_sec": 57867.59815133509,
+    "campaign_elapsed_ns": 2219018876,
+    "campaign_ops_per_sec": 14766.886552613536,
+    "cell": "real-full",
+    "cell_label": "Real full",
+    "close_elapsed_ns": 76419334,
+    "concurrency": 8,
+    "disclosure": "Diagnostic only — ack/finalisation split (doc/todo/performance-qualification/NEXT_MEASUREMENT.md; doc/reference/operations/BENCHMARK_DISCLOSURE.md). Not a published SLO.",
+    "drain_elapsed_ns": 49460125,
+    "enrichment_backlog_at_last_ack": 0,
+    "keys": 32768,
+    "kind": "ack_finalize_cell",
+    "logical_bytes": 268435456,
+    "note": "Use acknowledged_write_ops_per_sec vs campaign_ops_per_sec (includes reopen+verify); no ambiguous ops_per_sec. skip-index disables live dual-index publish only — Hydra/Chimera still run at seal.",
+    "on_disk_bytes": 285561680,
+    "on_disk_human": "272.33 MiB",
+    "payload_size": 8192,
+    "pending_seal_inflight_at_last_ack": 1,
+    "pending_seal_paths_at_last_ack": 1,
+    "reopen_elapsed_ns": 775301209,
+    "reopen_exact": true,
+    "reopen_verify_mode": "coverage_scan",
+    "seal_breakdown": {
+      "catalog_publication_ns": 0,
+      "chimera_ns": 0,
+      "drain_lifecycle_ns": 49460125,
+      "final_active_seal_ns": 9624667,
+      "hydra_ns": 0,
+      "reopen_active_ns": 77375,
+      "total_ns": 59162167
+    },
+    "seal_elapsed_ms": 59.167042,
+    "seal_elapsed_ns": 59167042,
+    "seal_threshold": 67108864,
+    "sealed_segments_at_last_ack": 3,
+    "timestamps_unix_ns": {
+      "close_complete": 1785797164671449000,
+      "drain_complete": 1785797164585208125,
+      "last_successful_ack": 1785797164535748000,
+      "reopen_complete": 1785797165446594000,
+      "seal_complete": 1785797164595030000,
+      "verification_complete": 1785797166188070000,
+      "workload_start": 1785797163969494000
+    },
+    "verify_elapsed_ns": 741878000
+  },
+  "success_floor_ack_tps": 74700.0
+}

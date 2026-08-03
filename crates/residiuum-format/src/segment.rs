@@ -291,6 +291,18 @@ impl ActiveSegment {
         &self.bytes
     }
 
+    /// Move out the full unsealed prefix when it is still fully resident.
+    ///
+    /// Returns `None` unless `base_offset == 0` and the segment is unsealed.
+    /// After a successful take the retained buffer is empty (writer is dropped
+    /// on the seal rotate path). Used for zero-read authoritative publish.
+    pub fn take_unsealed_prefix(&mut self) -> Option<Vec<u8>> {
+        if self.sealed || self.base_offset != 0 {
+            return None;
+        }
+        Some(std::mem::take(&mut self.bytes))
+    }
+
     /// Ensure capacity for at least `additional` more retained bytes (append micro).
     pub fn reserve_additional(&mut self, additional: usize) {
         self.bytes.reserve(additional);

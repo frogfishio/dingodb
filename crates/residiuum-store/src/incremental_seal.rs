@@ -1,9 +1,9 @@
-//! Incremental seal helpers for zero-scan authoritative publish.
+//! Incremental seal helpers for zero-scan / zero-read publish plans.
 //!
-//! The writer keeps the active segment resident (≤ seal threshold). At rotation
-//! the auth worker hashes that resident prefix, appends a precomputed summary,
-//! and publishes compact catalog metadata — without re-reading the pending file
-//! or returning a 64 MiB `Vec` to the writer.
+//! Used by stream-hash finalize (`plan_from_pending_prefix`) and by experimental
+//! zero-read paths (`FinalizeSealPlan` / resident prefix). Write-tail rolling
+//! hash and resident-prefix move were measured below the ≥74.7K ack gate; the
+//! hot path uses stream-hash meta publish (see zero-read-auth-seal archive).
 
 use crate::error::StoreError;
 use crate::segment_catalog::SegmentSummary;
