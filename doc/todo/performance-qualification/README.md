@@ -31,7 +31,12 @@ testrig.
 | [AWO_QUALIFICATION_SERIES.md](AWO_QUALIFICATION_SERIES.md) | **AWO-Q series plan:** Q1 multi-thread admit → Q2 adaptive quality → Q3 sustained → Q4 sparse product bound |
 | [PERF_BEARINGS_2026-08-03.md](PERF_BEARINGS_2026-08-03.md) | **Post-hang bearings:** where we are vs bigger truth (T11 + Q1/Q2 + PEER-SQL + PQH); not package accept |
 | [AWO_10X_VS_2X_ACCOUNTING.md](AWO_10X_VS_2X_ACCOUNTING.md) | **Aim check:** 10K→120K bucket band vs T11 Durable k≈2 (~2×); missing ~8× is cross-band, not lost sync |
+| [AWO_120K_NOT_DISK_OFF.md](AWO_120K_NOT_DISK_OFF.md) | **Clarify:** ~120k ≠ disk off; Buffered short/no mid-seal vs Discard ~330k vs Durable T11 |
 | [PERF_HONEST_MAX_CHARTER.md](PERF_HONEST_MAX_CHARTER.md) | **Principal charter:** honest max; no vanity cheat; squeeze under named contracts |
+| [ODOMETER_FIRST_COMPLETED_WRITES.md](ODOMETER_FIRST_COMPLETED_WRITES.md) | **Comm rule:** lead with acked puts/s (SQLite-comparable); ratios second |
+| [SMART_MODE_X_MODE_A.md](SMART_MODE_X_MODE_A.md) | **Answer:** Adaptive X on Mode A bed = unknown (not measured) |
+| [WHY_SMART_MODE_A_UNMEASURED.md](WHY_SMART_MODE_A_UNMEASURED.md) | **Answer:** unknown ≠ feature-blocked; campaign not run |
+| [FIRM_NUMBERS_GOALS.md](FIRM_NUMBERS_GOALS.md) | **Goals:** what/to what end/compared to what; FN-1..3 sequence |
 | [AWO_Q1_1_IMPLEMENTER_BRIEF.md](AWO_Q1_1_IMPLEMENTER_BRIEF.md) | Q1.1 brief (anchors) |
 | [AWO_Q1_1_HARNESS.md](AWO_Q1_1_HARNESS.md) | **Q1.1 labor:** concurrent path wired + per-seq ledger; test green |
 | [artifacts/awo-three-way-t10-apfs-smoke/](artifacts/awo-three-way-t10-apfs-smoke/) | T10 smoke numbers (SoT for T11 freeze) |

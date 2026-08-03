@@ -20,6 +20,10 @@ random hosts/modes are not targets).
 
 With this, each cell is a **measured ratio** Residiuum/SQLite under one mode only.
 
+**Odometer first:** when the principal asks “how many completed writes/s like
+SQLite?”, answer **acked puts/s under Mode A** before ratios or bands — see
+[ODOMETER_FIRST_COMPLETED_WRITES.md](../../../todo/performance-qualification/ODOMETER_FIRST_COMPLETED_WRITES.md).
+
 ---
 
 ## Priority and non-claims

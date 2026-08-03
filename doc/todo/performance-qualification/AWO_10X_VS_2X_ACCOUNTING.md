@@ -17,7 +17,8 @@ The **discrepancy is real in the numbers**, but it is mostly **cross-band accoun
 not “AWO found only 2× of a true 10× Durable win and lost 8×.”
 
 - **~10K → ~120–140K** lives in the **Buffered / short / seal-sensitive** world
-  (PEER + Campaign G/H three-band rule).
+  (PEER + Campaign G/H three-band rule). **Not “disk off”** — see
+  `AWO_120K_NOT_DISK_OFF.md` (Buffered still writes; `file_sync=0` means no fsync).
 - **T11 N → ~2N** lives in the **Durable / sync-bound / k≈2 collection** world
   (AWO three-way smoke).
 
