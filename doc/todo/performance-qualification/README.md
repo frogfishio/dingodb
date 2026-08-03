@@ -27,7 +27,7 @@ testrig.
 | [AWO_THREE_WAY_T9_DECISIVE_FINDING.md](AWO_THREE_WAY_T9_DECISIVE_FINDING.md) | **Decisive (pre-connect):** harness OK; independent path was natural-only |
 | [AWO_INDEPENDENT_COLLECTION_CONNECT.md](AWO_INDEPENDENT_COLLECTION_CONNECT.md) | Collection connect labor: queue+collector; concurrent file_sync amortize test |
 | [AWO_THREE_WAY_T10_HARNESS_RERUN.md](AWO_THREE_WAY_T10_HARNESS_RERUN.md) | T10: PQH admit_put path + re-run; saturated sync/op=0.5 thr~2× |
-| [AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md](AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md) | **T11 freeze:** thr×2 ↔ sync/2 = first positive L-AWO causal signal (smoke; not floors/accept) |
+| [AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md](AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md) | **T11 evidence freeze principal `done`:** saturated thr×2 + sparse 11–20% smoke penalty (card only; not package accept) |
 | [artifacts/awo-three-way-t10-apfs-smoke/](artifacts/awo-three-way-t10-apfs-smoke/) | T10 smoke numbers (SoT for T11 freeze) |
 | [artifacts/awo-three-way-t7-apfs-smoke/](artifacts/awo-three-way-t7-apfs-smoke/) | T8 numeric summary + campaigns |
 | [artifacts/awo-three-way-t4-disksafe/](artifacts/awo-three-way-t4-disksafe/) | T4 JSON evidence only (no store trees) |

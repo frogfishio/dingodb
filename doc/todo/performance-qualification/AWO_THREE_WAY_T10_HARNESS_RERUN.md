@@ -22,34 +22,40 @@ Multi-thread admit remains residual (reopen integrity); conc>1 maps to serial ad
 
 Artifacts: `artifacts/awo-three-way-t10-apfs-smoke/summary.json`
 
+**Metric note (T11 freeze):** report barrier ratios as
+`file_sync / logical_acknowledged_operations` and
+`logical acknowledgements / sync`, not `file_sync/append` / “writes/sync”.
+This unchunked smoke cell has `append_count == logical_ack_count == 24`, so
+harness `file_sync_per_append_median` equals the logical-ack ratio **here only**.
+
 ### Sparse (b1 c1 o1)
 
-| Mode | valid+reopen | thr med MiB/s | file_sync/append |
-|------|--------------|---------------|------------------|
+| Mode | valid+reopen | thr med MiB/s | file_sync / logical_ack |
+|------|--------------|---------------|-------------------------|
 | disabled | yes | ~4.42 | **1.00** |
 | static | yes | ~3.88 | **1.00** |
 | adaptive | yes | ~3.52 | **1.00** |
 
-Sparse: collection window does not force multi-item batches; Adaptive/Static slightly slower (collection delay) — honest latency tradeoff.
+Sparse smoke observations (not established floors): Disabled ~4.4, Static ~3.9 (~11% below), Adaptive ~3.5 (~20% below); `file_sync / logical_ack = 1.0` all modes. Collection delay without multi-item batches — freeze detail in T11.
 
 ### Saturated (b1 c4 o8 → serial admit outstanding=8)
 
-| Mode | valid+reopen | thr med MiB/s | file_sync med | file_sync/append |
-|------|--------------|---------------|---------------|------------------|
-| disabled | yes | ~4.18 | 24 | **1.00** |
-| static | yes | ~**9.04** | **12** | **0.50** |
-| adaptive | yes | ~**8.76** | **12** | **0.50** |
+| Mode | valid+reopen | thr med MiB/s | file_sync med | file_sync / logical_ack | logical acks / sync |
+|------|--------------|---------------|---------------|-------------------------|---------------------|
+| disabled | yes | ~4.18 | 24 | **1.00** | **1** |
+| static | yes | ~**9.04** | **12** | **0.50** | **2** |
+| adaptive | yes | ~**8.76** | **12** | **0.50** | **2** |
 
-**Decisive product signal:** under independent singles with outstanding pile-up, Static/Adaptive **amortize Durable barriers** (~2 ops per sync) and **~2× thr** vs Disabled on this smoke cell. Disabled stays 1 sync/op (presentation still fair).
+**Decisive product signal:** under independent singles with outstanding pile-up, Static/Adaptive **amortize Durable barriers** (~2 logical acks per sync) and **~2× thr** vs Disabled on this smoke cell. Disabled stays 1 logical ack / sync (presentation still fair).
 
 ## 3. Claims
 
 | Claim | Status |
 |-------|--------|
 | Harness exercises AWO collection for batch=1 | **Yes** |
-| Saturated Static/Adaptive `file_sync/ops < 1` | **Yes** (smoke) |
+| Saturated Static/Adaptive `file_sync / logical_ack < 1` | **Yes** (smoke) |
 | Adaptive ≈ Static thr under saturated smoke | **Yes** (this cell) |
-| Sparse Adaptive does not explode latency | **OK** (slightly slower) |
+| Sparse Adaptive does not explode latency | **OK** (slightly slower; no amortization) |
 | thr×2 ↔ sync/2 causal freeze (first positive L-AWO signal) | **Yes** → `AWO_THREE_WAY_T11_FIRST_POSITIVE_SIGNAL.md` |
 | Diagnostic floors / product ranking / default-on | **No** |
 | Multi-thread admit_put path | Residual |
