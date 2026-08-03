@@ -65,7 +65,9 @@ testrig.
 | [PREALLOC_ZERO_SPIKE.md](PREALLOC_ZERO_SPIKE.md) | **Spike:** F_PREALLOCATE+bulk zero → ~51k pump (confirms zero/first-touch; fcntl alone still no) |
 | [PREALLOC_WATERMARK_SPIKE.md](PREALLOC_WATERMARK_SPIKE.md) | **Spike:** 64 MiB ahead-of-write zero → ~32k pump, **best E2E wall** (~28.5k) |
 | [PRODUCT_SEGMENT_WATERMARK.md](PRODUCT_SEGMENT_WATERMARK.md) | **Ship:** opt-in product `SegmentGrowthPolicy::Watermark` + peer `--segment-growth` |
-| [HOW_MANY_TPS_NOW.md](HOW_MANY_TPS_NOW.md) | **Answer:** default ~10–14k; watermark opt-in (not default); Discard~120k not product |
+| [FIRM_NUMBERS_PRODUCT_WM.md](FIRM_NUMBERS_PRODUCT_WM.md) | **Paired:** product watermark ≈ grow; prior diag ~32k = seal-fail cheat (fixed) |
+| [HOW_MANY_TPS_NOW.md](HOW_MANY_TPS_NOW.md) | **Answer:** default ~10–14k; watermark opt-in ≈ Real (no 32k claim); Discard~120k not product |
+| [artifacts/firm-numbers-product-wm-apfs/](artifacts/firm-numbers-product-wm-apfs/) | Product-flag paired JSON + summary |
 | [artifacts/firm-numbers-prealloc-wm-apfs/](artifacts/firm-numbers-prealloc-wm-apfs/) | Watermark vs full-zero JSON |
 | [artifacts/firm-numbers-prealloc-zero-apfs/](artifacts/firm-numbers-prealloc-zero-apfs/) | Bulk-zero vs fcntl vs touch JSON |
 | [artifacts/firm-numbers-fpreallocate-apfs/](artifacts/firm-numbers-fpreallocate-apfs/) | F_PREALLOCATE vs set_len vs touch JSON |

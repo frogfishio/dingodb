@@ -78,10 +78,11 @@ If (1)–(4) hold: write a small design note (not a feature merge):
 - Treating Discard ~120k as a product target  
 - Shipping `set_len` “prealloc” without allocation proof  
 
-**Update 2026-08-03:** seal-sized watermark is now an **opt-in product API**
+**Update 2026-08-03:** seal-sized watermark is an **opt-in product API**
 ([PRODUCT_SEGMENT_WATERMARK.md](PRODUCT_SEGMENT_WATERMARK.md)) — still not
-default-on; remaining work is sticky config, default-on gate, and paired
-product-flag measures.
+default-on. Honest paired measure ([FIRM_NUMBERS_PRODUCT_WM.md](FIRM_NUMBERS_PRODUCT_WM.md))
+shows watermark ≈ Real after correcting a diag seal-fail cheat; remaining work is
+sticky config, default-on gate, and cleaner re-pair on a host with disk headroom.
 
 ## One-sentence program
 

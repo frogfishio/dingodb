@@ -1,0 +1,46 @@
+{
+  "recipe": "Mode A c=8 8KiB 256MiB seal512M APFS /var/tmp \u2014 post seal/prealloc fix",
+  "note": "Prior diag ~32k included seal-fail cheat; this run is honest end-of-run seal.",
+  "cells": [
+    {
+      "cell": "sqlite-A",
+      "ops_per_sec": 13435.7,
+      "elapsed_ms": 2438,
+      "keys_written": 32768,
+      "bytes_on_disk": 286507008,
+      "segment_growth": "",
+      "diag_io": "",
+      "concurrency": 8
+    },
+    {
+      "cell": "residiuum-A-grow",
+      "ops_per_sec": 7691.2,
+      "elapsed_ms": 4260,
+      "keys_written": 32768,
+      "bytes_on_disk": 547157728,
+      "segment_growth": "grow",
+      "diag_io": "real",
+      "concurrency": 8
+    },
+    {
+      "cell": "residiuum-A-watermark",
+      "ops_per_sec": 6200.7,
+      "elapsed_ms": 5284,
+      "keys_written": 32768,
+      "bytes_on_disk": 1084028479,
+      "segment_growth": "watermark",
+      "diag_io": "real",
+      "concurrency": 8
+    },
+    {
+      "cell": "residiuum-A-diagwm",
+      "ops_per_sec": 5497.6,
+      "elapsed_ms": 5960,
+      "keys_written": 32768,
+      "bytes_on_disk": 1084028467,
+      "segment_growth": "grow",
+      "diag_io": "realpreallocwm",
+      "concurrency": 8
+    }
+  ]
+}

@@ -42,17 +42,19 @@ JSON reports `segment_growth: "watermark"`. Requires `--diag-io real`.
 
 | Source | Finding |
 |--------|---------|
-| [PREALLOC_WATERMARK_SPIKE.md](PREALLOC_WATERMARK_SPIKE.md) | Diag ~32k pump / ~28.5k E2E on APFS c=8 |
-| [HOW_MANY_TPS_NOW.md](HOW_MANY_TPS_NOW.md) | Product Real ~10–14k; watermark now **opt-in product**, still not default |
-| `cargo test -p residiuum-store … segment_growth_watermark_opt_in_put_reopen` | Correctness smoke |
+| [PREALLOC_WATERMARK_SPIKE.md](PREALLOC_WATERMARK_SPIKE.md) | Historical diag spike (~32k) — **corrected**: seal-fail cheat |
+| [FIRM_NUMBERS_PRODUCT_WM.md](FIRM_NUMBERS_PRODUCT_WM.md) | Honest paired product flag: watermark ≈ grow (~6–8k), not ~32k |
+| [HOW_MANY_TPS_NOW.md](HOW_MANY_TPS_NOW.md) | Default Real band; watermark opt-in; do not quote cheat 32k |
+| `tests/wm_seal_probe.rs` | Diag+product watermark seal OK; sealed size ≪ 512 MiB prealloc |
+| Seal truncate + diag zero-ahead fix | `store.rs` (this card) |
 
 ## Non-claims
 
-Not AWO default-on. Not PQH qualification accept. Not that 28–32k is guaranteed on every host. Not crash/CSQ campaign for preallocated holes. Space amplification (~512 MiB/active) is intentional and host-owned.
+Not AWO default-on. Not PQH qualification accept. **Not** that 28–32k is a product watermark floor (that band was a seal-fail cheat). Not crash/CSQ campaign for preallocated holes. Space amplification (~512 MiB/active) is intentional and host-owned.
 
 ## Next (separate cards)
 
 - Persist policy in store config / heap create options if product wants sticky enable  
 - Default-on only after principal + CSQ/space disclosure  
-- Paired peer-pump Real vs `--segment-growth watermark` vs SQLite on product flag  
+- Cleaner re-pair on a host with disk headroom (this run was ~93% full / noisy)  
 - Scratch + Linux cells  

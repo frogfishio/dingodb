@@ -21,7 +21,7 @@ Mode A · c=8 · 8 KiB · 256 MiB · APFS `/var/tmp` · seal 512 MiB
 
 Artifacts: [`artifacts/firm-numbers-prealloc-wm-apfs/`](artifacts/firm-numbers-prealloc-wm-apfs/).
 
-## Verdict
+## Verdict (historical spike — see correction)
 
 ```text
 Watermark works: ~32k pump with zeroing inside the timed window
@@ -32,6 +32,15 @@ Still ≫ SQLite ~30k on pump; E2E watermark ≈ SQLite band
 1. **Product-shaped amortize is viable** on this bed — no need to zero the whole segment before the first put.
 2. Pump ops/s is lower than full-zero (pays chunk zeros mid-run) but **end-to-end wall is better** (cheaper setup).
 3. Still diagnostic. Next design knobs: chunk size vs seal threshold, background prepare of N+1, when to `F_PREALLOCATE`.
+
+## Correction (2026-08-03)
+
+The ~32k / ~28.5k figures above **must not** be reused as product watermark thr.
+Post-create diag setup zeroed from offset 0 (clobbered the on-disk descriptor);
+end-of-run `seal_active` failed and peer-pump ignored the error — seal/chimera
+cost never entered the odometer. Honest re-pair after the seal/prealloc fix:
+[`FIRM_NUMBERS_PRODUCT_WM.md`](FIRM_NUMBERS_PRODUCT_WM.md) (product watermark
+≈ grow, both ≪ prior cheat band).
 
 ## How to re-run
 

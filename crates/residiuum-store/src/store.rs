@@ -934,10 +934,18 @@ impl Store {
                 DiagnosticIoSink::RealPreallocWatermark => {
                     Self::diag_os_preallocate(&writer.file, BYTES)?;
                     writer.file.set_len(BYTES)?;
-                    // Prime only the first seal-sized chunk; rest during puts.
-                    let first = CHUNK.max(writer.durable_len);
-                    Self::diag_bulk_zero_range(&mut writer.file, 0, first)?;
-                    writer.zeroed_thru = first;
+                    // Never clobber the live durable prefix (descriptor + frames).
+                    // Zeroing from 0 destroyed the on-disk descriptor; peer-pump
+                    // ignores seal errors, so end-of-run seal failed closed and
+                    // inflated diagnostic watermark ops/s (~32k cheat).
+                    if writer.zeroed_thru < writer.durable_len {
+                        writer.zeroed_thru = writer.durable_len;
+                    }
+                    let need = writer
+                        .durable_len
+                        .saturating_add(CHUNK)
+                        .min(BYTES);
+                    Self::diag_ensure_zero_watermark(writer, need, BYTES)?;
                 }
                 _ => {}
             }
@@ -4409,10 +4417,16 @@ impl Store {
         crate::failpoint::hit("store.seal.before_dest_write")?;
 
         // Prefer append-summary + rename (no full segment rewrite).
+        // Pre-sized actives (watermark / diag prealloc) have EOF past the durable
+        // prefix — `OpenOptions::append` would write the summary after the reserved
+        // tail and rename a multi-hundred-MiB file. Truncate to the verified prefix,
+        // then write the summary at that offset.
         let mut published = false;
-        if (prefix_len as usize) < bytes.len() && (prefix_len as usize) <= bytes.len() {
+        if (prefix_len as usize) < bytes.len() {
             {
-                let mut f = OpenOptions::new().append(true).open(&active_path)?;
+                let mut f = OpenOptions::new().write(true).open(&active_path)?;
+                f.set_len(prefix_len)?;
+                f.seek(SeekFrom::Start(prefix_len))?;
                 f.write_all(&bytes[prefix_len as usize..])?;
                 if flush_mode == DurabilityMode::Durable {
                     f.sync_all()?;
