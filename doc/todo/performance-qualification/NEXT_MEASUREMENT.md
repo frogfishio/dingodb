@@ -1,7 +1,7 @@
 # Next measurement — acknowledgement / seal line
 
 Status: **Seal Fast Lane = architectural accept (principal)**;  
-90% micro-gate **unmet / superseded** by sustained-rotation qualification.  
+**Derived Catalog Checkpointing** recorded (`catalog_apply` ≪ 1% ack wall).  
 Date: 2026-08-04
 
 ## Wording (hard)
@@ -20,15 +20,23 @@ interference** while writes continue. Those are separate residuals.
 2. Remaining gap vs a **no-rotation** high-threshold control is the cost of
    **real rotations**, not missing hash work. That control is a ceiling, not a
    sustainable product workload; the 90% paired micro-gate is retired.
+3. Derived tier/segment catalogs are **rebuildable accelerators**. `SealDone`
+   updates memory only; durable checkpoints coalesce asynchronously and may
+   lag or disappear. Open rebuilds from authoritative segments.
 
-## Sustained-rotation evidence (2 GiB @ 64 MiB, enrichment off)
+## Sustained-rotation evidence
 
-- Ack TPS **~47.8K**, **32** rotations, reopen exact.
-- Rotation stages ≈ **14%** of ack wall; **catalog_apply** (tier persist on
-  SealDone) dominates (~13.9%); auth publish / rename / start_active are
-  fractions of a percent.
+### After derived-catalog checkpointing (2 GiB @ 64 MiB, enrichment off)
 
-Evidence: `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`.
+- Ack TPS **~57.6K**, **32** rotations, reopen exact.
+- `catalog_apply` **0.005%** of ack wall (was ~13.9%).
+
+Evidence: `doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`.
+
+### Prior (pre-checkpointing)
+
+- Ack TPS **~47.8K**; `catalog_apply` **~13.9%** of ack wall.
+- Evidence: `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`.
 
 ## Settled facts (prior)
 
@@ -40,14 +48,12 @@ Evidence: `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`
 
 ## Next developer instruction (freeze)
 
-Stop speculative seal-architecture changes. Principal may accept Seal Fast
-Lane on the board. Optional follow-ups (separate packages):
+Stop speculative seal-architecture changes. Seal Fast Lane accepted
+architecturally; catalog O(n²) persist defect fixed. Optional follow-ups
+(separate packages):
 
 - Measure enrichment-on resource interference with the same sustained recipe.
-- If desired, reduce `catalog_apply` cost (tier persist batching) — measurement
-  first, no speculative redesign.
-- Do **not** return to AWO / append-path tuning as a substitute for lifecycle
-  accounting.
+- Return to AWO / append-path work only after principal re-opens that lane.
 
 ## Archives
 
@@ -59,3 +65,4 @@ Lane on the board. Optional follow-ups (separate packages):
 - `doc/archive/performance-qualification/2026-08-04-paired-median-gate/`
 - `doc/archive/performance-qualification/2026-08-04-defer-segment-blake3/`
 - `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`
+- `doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`

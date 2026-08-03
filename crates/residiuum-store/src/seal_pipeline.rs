@@ -149,6 +149,20 @@ pub enum LifecycleJob {
         /// Durable index snapshot (locator-first).
         index: PrimaryIndex,
     },
+    /// Persist derived tier placement + segment catalog (best-effort; coalesce).
+    ///
+    /// Not authoritative — loss is recovered by `discover_placements` /
+    /// `rebuild_segment_catalog` from sealed segment bytes.
+    DerivedCatalogCheckpoint {
+        /// Store identity.
+        store_id: [u8; 16],
+        /// Store root paths (catalogs + tier roots).
+        paths: StorePaths,
+        /// Snapshot of in-memory placement at submit time.
+        placement: crate::tier::TierPlacement,
+        /// Snapshot of in-memory segment catalog at submit time.
+        segment_catalog: crate::segment_catalog::SegmentCatalog,
+    },
     /// Build Hydra/Chimera for an already-published sealed segment (derived only).
     ///
     /// Does **not** count against `inflight_seals` / write-path backpressure.
@@ -523,6 +537,28 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 let ok = write_primary_index_frontier(&cache_path, store_id, &frontier, &index).is_ok();
                 let _ = result_tx.send(LifecycleResult::CheckpointDone { ok });
             }
+            LifecycleJob::DerivedCatalogCheckpoint {
+                store_id,
+                paths,
+                placement,
+                segment_catalog,
+            } => {
+                let place_path =
+                    crate::tier::tier_placement_path(&paths.catalogs_dir());
+                let cat_path =
+                    crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir());
+                let ok = crate::tier::write_placement(&place_path, store_id, &placement)
+                    .and_then(|_| crate::tier::write_tier_roots_file(&paths, &placement))
+                    .and_then(|_| {
+                        crate::segment_catalog::write_segment_catalog(
+                            &cat_path,
+                            store_id,
+                            &segment_catalog,
+                        )
+                    })
+                    .is_ok();
+                let _ = result_tx.send(LifecycleResult::CheckpointDone { ok });
+            }
             LifecycleJob::EnrichDerived { segment_id, .. } => {
                 // Misrouted — should not happen on the authoritative lane.
                 let _ = result_tx.send(LifecycleResult::EnrichDone {
@@ -562,33 +598,9 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                         let enrich_ok =
                             enrich_sealed_derived(&paths, store_id, segment_id, &bytes, limits)
                                 .is_ok();
-                        // Cheap catalog stub (no frame scan) — rebuildable.
-                        let summary = crate::segment_catalog::SegmentSummary {
-                            segment_id,
-                            tier: crate::tier::TierClass::Hot,
-                            size,
-                            content_hash: hash,
-                            verified_frames: 0,
-                            item_events: 0,
-                            holes: 0,
-                            available: true,
-                        };
-                        let mut cat = crate::segment_catalog::SegmentCatalog::new();
-                        if let Some(prior) = crate::segment_catalog::try_load_segment_catalog(
-                            &crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir()),
-                            store_id,
-                        )
-                        .ok()
-                        .flatten()
-                        {
-                            cat = prior;
-                        }
-                        crate::segment_catalog::upsert_sealed_summary(&mut cat, summary);
-                        let _ = crate::segment_catalog::write_segment_catalog(
-                            &crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir()),
-                            store_id,
-                            &cat,
-                        );
+                        // Catalog durability is coalesced on the writer via
+                        // DerivedCatalogCheckpoint — enrichment must not rewrite
+                        // full catalogs (O(segments) per seal → O(n²) lifetime).
                         (enrich_ok, hash, size)
                     }
                     Err(_) => (false, ContentHashState::Pending, 0),

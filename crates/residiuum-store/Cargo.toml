@@ -285,3 +285,7 @@ required-features = ["legacy-raw-store"]
 [[test]]
 name = "reopen_before_enrichment"
 required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "derived_catalog_checkpoint"
+required-features = ["legacy-raw-store"]

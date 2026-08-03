@@ -69,7 +69,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Draft meta format version written under `store-info/meta`.
 const META_VERSION: &str = "residiuum-store-9\n";
@@ -96,6 +96,14 @@ pub const MAX_WRITER_SHARDS: usize = 64;
 /// without dominating the hot path. Seal no longer forces a full rewrite;
 /// explicit [`Store::persist_index_cache`] always does.
 const DERIVED_CHECKPOINT_EVERY_OPS: u64 = 65_536;
+
+/// Coalesce derived tier/segment-catalog disk writes (not authoritative).
+///
+/// Full catalog rewrite is O(sealed segments). Persisting on every `SealDone`
+/// made rotation cost grow with retention (O(n) per seal → O(n²) lifetime).
+/// Memory apply stays O(1); durable checkpoints lag and may disappear.
+const CATALOG_CHECKPOINT_EVERY_SEALS: u64 = 32;
+const CATALOG_CHECKPOINT_MIN_INTERVAL: Duration = Duration::from_secs(2);
 
 /// Why a live subject could not contribute a complete logical body (DEF-012).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -385,6 +393,12 @@ pub struct Store {
     tier_placement: TierPlacement,
     /// Hierarchical segment summary catalog (Stage 9, derived).
     segment_catalog: SegmentCatalog,
+    /// Seals applied to in-memory catalogs since last derived-catalog checkpoint.
+    catalog_seals_since_checkpoint: u64,
+    /// In-memory tier/segment catalog differs from last durable checkpoint.
+    catalog_dirty: bool,
+    /// Wall clock of last derived-catalog checkpoint submit/flush.
+    last_catalog_checkpoint_at: Instant,
     /// Exclusive writer ownership (DEF-020). `None` for inspect/read-only opens.
     writer_lock: Option<WriterLock>,
     /// Client operation dedup table (DEF-010); empty when unused.
@@ -634,6 +648,9 @@ impl Store {
             durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
+            catalog_seals_since_checkpoint: 0,
+            catalog_dirty: false,
+            last_catalog_checkpoint_at: Instant::now(),
             writer_lock: Some(writer_lock),
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: Some(SealPipeline::start()),
@@ -732,6 +749,9 @@ impl Store {
             durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
+            catalog_seals_since_checkpoint: 0,
+            catalog_dirty: false,
+            last_catalog_checkpoint_at: Instant::now(),
             writer_lock: Some(writer_lock),
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: Some(SealPipeline::start()),
@@ -867,6 +887,9 @@ impl Store {
             durable_collections: CollectionCatalog::new(),
             tier_placement: TierPlacement::new(),
             segment_catalog: SegmentCatalog::new(),
+            catalog_seals_since_checkpoint: 0,
+            catalog_dirty: false,
+            last_catalog_checkpoint_at: Instant::now(),
             writer_lock: None,
             write_dedup: WriteDedupTable::new(),
             seal_pipeline: None,
@@ -4645,7 +4668,7 @@ impl Store {
 
         // Explicit `seal_active` is synchronous (including Hydra/Chimera).
         // Auto-rotate uses EnrichDerived asynchronously; this path must not.
-        let t_cat = std::time::Instant::now();
+        let t_cat = Instant::now();
         let content_hash =
             crate::incremental_seal::ContentHashState::Known(*blake3::hash(bytes).as_bytes());
         let _ = register_hot_segment_known(
@@ -4655,11 +4678,12 @@ impl Store {
             content_hash,
             size,
         );
-        let _ = self.persist_tier_state();
         let _ = self.note_sealed_segment(sealed_id, TierClass::Hot, bytes, content_hash, size);
+        self.note_derived_catalog_dirty();
         breakdown.catalog_publication_ns = breakdown
             .catalog_publication_ns
             .saturating_add(elapsed_ns(t_cat));
+        self.maybe_schedule_derived_catalog_checkpoint(false);
         if self.enrichment_enabled {
             let t_hydra = std::time::Instant::now();
             let _ = self.write_hydra_for_sealed(sealed_id, bytes);
@@ -4752,9 +4776,9 @@ impl Store {
             .unwrap_or(0)
     }
 
-    /// Drain the seal pipeline: wait for all in-flight finalizes and apply
-    /// catalog updates. No-op when async lifecycle is off or no pipeline.
-    pub fn drain_lifecycle(&mut self) -> Result<(), StoreError> {
+    /// Wait for in-flight authoritative seals and apply them to **in-memory**
+    /// catalogs. Does **not** persist derived catalogs (checkpoints may lag).
+    pub fn wait_seals_applied(&mut self) -> Result<(), StoreError> {
         loop {
             let inflight = self
                 .seal_pipeline
@@ -4762,21 +4786,25 @@ impl Store {
                 .map(|p| p.inflight_seals)
                 .unwrap_or(0);
             if inflight == 0 {
-                // Also apply any residual results.
                 while self.poll_lifecycle()? {}
-                let _ = self.persist_segment_catalog();
                 return Ok(());
             }
             if !self.wait_one_lifecycle()? {
-                // Worker disconnected with outstanding count — recover pending.
                 let _ = recover_all_pending(&self.paths, self.store_id, self.limits)?;
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.inflight_seals = 0;
                 }
-                let _ = self.persist_segment_catalog();
                 return Ok(());
             }
         }
+    }
+
+    /// Drain the seal pipeline: wait for finalizes, apply memory catalogs, then
+    /// best-effort flush derived catalogs (orderly shutdown — not authority).
+    pub fn drain_lifecycle(&mut self) -> Result<(), StoreError> {
+        self.wait_seals_applied()?;
+        self.flush_derived_catalogs_best_effort();
+        Ok(())
     }
 
     /// Non-blocking: apply completed lifecycle results. Returns true if any applied.
@@ -4813,7 +4841,9 @@ impl Store {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.inflight_seals = p.inflight_seals.saturating_sub(1);
                 }
-                let t0 = std::time::Instant::now();
+                // In-memory only on the writer path (O(1)). Disk checkpoints
+                // coalesce asynchronously — never rewrite full catalogs here.
+                let t0 = Instant::now();
                 let _ = register_hot_segment_known(
                     &self.paths,
                     &mut self.tier_placement,
@@ -4821,8 +4851,10 @@ impl Store {
                     content_hash,
                     size,
                 );
-                let _ = self.persist_tier_state();
                 let _ = self.note_sealed_summary(summary);
+                self.catalog_dirty = true;
+                self.catalog_seals_since_checkpoint =
+                    self.catalog_seals_since_checkpoint.saturating_add(1);
                 let catalog_ns = elapsed_ns(t0);
                 self.rotation_stage_totals.rotations =
                     self.rotation_stage_totals.rotations.saturating_add(1);
@@ -4834,6 +4866,7 @@ impl Store {
                     .rotation_stage_totals
                     .catalog_apply_ns
                     .saturating_add(catalog_ns);
+                self.maybe_schedule_derived_catalog_checkpoint(false);
             }
             LifecycleResult::SealFailed { segment_id, error } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
@@ -4860,7 +4893,6 @@ impl Store {
                             hash,
                             size,
                         );
-                        let _ = self.persist_tier_state();
                         let _ = self.note_sealed_segment(
                             segment_id,
                             TierClass::Hot,
@@ -4868,6 +4900,8 @@ impl Store {
                             hash,
                             size,
                         );
+                        self.note_derived_catalog_dirty();
+                        self.maybe_schedule_derived_catalog_checkpoint(false);
                     }
                     Err(_) => {
                         return Err(StoreError::Io(std::io::Error::other(format!(
@@ -4888,7 +4922,7 @@ impl Store {
                     p.enrichment_backlog = p.enrichment_backlog.saturating_sub(1);
                 }
                 if size > 0 && !content_hash.is_pending() {
-                    // Atomically refresh derived tier + catalog digests.
+                    // Memory digest refresh only; durable catalogs lag.
                     let _ = register_hot_segment_known(
                         &self.paths,
                         &mut self.tier_placement,
@@ -4896,13 +4930,14 @@ impl Store {
                         content_hash,
                         size,
                     );
-                    let _ = self.persist_tier_state();
                     if let Some(prior) = self.segment_catalog.get(&segment_id).cloned() {
                         let mut updated = prior;
                         updated.content_hash = content_hash;
                         updated.size = size;
                         let _ = self.note_sealed_summary(updated);
                     }
+                    self.note_derived_catalog_dirty();
+                    self.maybe_schedule_derived_catalog_checkpoint(false);
                 }
             }
         }
@@ -5058,8 +5093,9 @@ impl Store {
                 plan.content_hash,
                 plan.sealed_len,
             );
-            let _ = self.persist_tier_state();
             self.note_sealed_summary(plan.to_segment_summary())?;
+            self.note_derived_catalog_dirty();
+            self.maybe_schedule_derived_catalog_checkpoint(false);
         } else {
             let sealed = self.paths.sealed_segment(&segment_id);
             let (content_hash, size, sealed_bytes) = crate::seal_pipeline::finalize_seal(
@@ -5079,7 +5115,6 @@ impl Store {
                 hash,
                 size,
             );
-            let _ = self.persist_tier_state();
             let _ = self.note_sealed_segment(
                 segment_id,
                 TierClass::Hot,
@@ -5087,6 +5122,8 @@ impl Store {
                 hash,
                 size,
             );
+            self.note_derived_catalog_dirty();
+            self.maybe_schedule_derived_catalog_checkpoint(false);
         }
         Ok(())
     }
@@ -5569,12 +5606,61 @@ impl Store {
 
     /// Apply a precomputed sealed-segment summary in constant time (zero-scan).
     ///
-    /// Memory upsert is immediate; durable catalog write is deferred to
-    /// [`Self::drain_lifecycle`] / close so mid-run rotations do not fsync
-    /// catalogs on the acknowledgement path.
+    /// Memory upsert is immediate; durable catalog write is coalesced via
+    /// [`Self::maybe_schedule_derived_catalog_checkpoint`] (or best-effort
+    /// [`Self::flush_derived_catalogs_best_effort`] on orderly drain).
     fn note_sealed_summary(&mut self, summary: SegmentSummary) -> Result<(), StoreError> {
         upsert_sealed_summary(&mut self.segment_catalog, summary);
         Ok(())
+    }
+
+    fn note_derived_catalog_dirty(&mut self) {
+        self.catalog_dirty = true;
+        self.catalog_seals_since_checkpoint =
+            self.catalog_seals_since_checkpoint.saturating_add(1);
+    }
+
+    /// Coalesce async (or sync) persist of derived tier + segment catalogs.
+    ///
+    /// Checkpoints may lag or be skipped entirely; open rebuilds from segments.
+    fn maybe_schedule_derived_catalog_checkpoint(&mut self, force: bool) {
+        if !self.catalog_dirty {
+            return;
+        }
+        let due = force
+            || self.catalog_seals_since_checkpoint >= CATALOG_CHECKPOINT_EVERY_SEALS
+            || self.last_catalog_checkpoint_at.elapsed() >= CATALOG_CHECKPOINT_MIN_INTERVAL;
+        if !due {
+            return;
+        }
+        if self.async_lifecycle_enabled() {
+            let job = LifecycleJob::DerivedCatalogCheckpoint {
+                store_id: self.store_id,
+                paths: self.paths.clone(),
+                placement: self.tier_placement.clone(),
+                segment_catalog: self.segment_catalog.clone(),
+            };
+            if let Some(pipe) = self.seal_pipeline.as_ref() {
+                if pipe.submit_checkpoint(job).is_ok() {
+                    self.catalog_dirty = false;
+                    self.catalog_seals_since_checkpoint = 0;
+                    self.last_catalog_checkpoint_at = Instant::now();
+                }
+            }
+        } else {
+            self.flush_derived_catalogs_best_effort();
+        }
+    }
+
+    /// Best-effort synchronous persist of derived catalogs (orderly drain/shutdown).
+    ///
+    /// Never an authority condition — failure is ignored; segments remain SoT.
+    fn flush_derived_catalogs_best_effort(&mut self) {
+        let _ = self.persist_tier_state();
+        let _ = self.persist_segment_catalog();
+        self.catalog_dirty = false;
+        self.catalog_seals_since_checkpoint = 0;
+        self.last_catalog_checkpoint_at = Instant::now();
     }
 
     /// Persist the in-memory segment catalog (best-effort).
