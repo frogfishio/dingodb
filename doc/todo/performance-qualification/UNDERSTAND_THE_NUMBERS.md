@@ -116,6 +116,7 @@ noise unless a ratio repeats. The spike signal is **relative**:
 3. **Coalesce ≈ Real** = buffering write size does not help.
 4. **Discard ~129k** = our Real path is heavily write-bound; cook alone is far above SQLite.
 5. **Write-path bisect:** the wall is **appending / growing** the active segment file — not seek, not `write_all`→`/dev/null`, not overwrite-in-place ([WRITE_ALL_BISECT.md](WRITE_ALL_BISECT.md)).
+6. **Prealloc:** sparse `set_len` does nothing; **page-touch prealloc ~37k (~4×)** — real, but not a product feature yet ([PREALLOC_SPIKE.md](PREALLOC_SPIKE.md)).
 
 ## Where the detail lives
 

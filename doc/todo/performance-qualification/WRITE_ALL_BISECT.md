@@ -40,7 +40,7 @@ So Discard’s ~13× is almost entirely **append-growth cost** on the active seg
 
 ## Next bisects (optional)
 
-- Preallocate (`fallocate` / `truncate` to final size) then append — extent allocation vs dirtying?
+- ~~Preallocate (`fallocate` / `truncate` to final size) then append~~ → done: see [PREALLOC_SPIKE.md](PREALLOC_SPIKE.md) (sparse no; page-touch ~4×).
 - Fewer / larger appends at the product layer (already tried 64 KiB coalesce ≈ Real — so growth still happens, just in bigger chunks; coalesce does not avoid extending the file).
 - Compare bytes written per ack vs SQLite (Residiuum on-disk ~522 MiB for 256 MiB logical — ~2× amplification).
 

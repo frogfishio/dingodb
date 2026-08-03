@@ -109,6 +109,8 @@ pub enum PeerDiagIo {
     SeekOnly,
     RealNoSeek,
     RealOverwrite,
+    RealPrealloc,
+    RealPreallocFill,
 }
 
 impl PeerDiagIo {
@@ -121,6 +123,8 @@ impl PeerDiagIo {
             PeerDiagIo::SeekOnly => "seekonly",
             PeerDiagIo::RealNoSeek => "realnoseek",
             PeerDiagIo::RealOverwrite => "realoverwrite",
+            PeerDiagIo::RealPrealloc => "realprealloc",
+            PeerDiagIo::RealPreallocFill => "realpreallocfill",
         }
     }
 
@@ -133,6 +137,8 @@ impl PeerDiagIo {
             PeerDiagIo::SeekOnly => DiagnosticIoSink::SeekOnly,
             PeerDiagIo::RealNoSeek => DiagnosticIoSink::RealNoSeek,
             PeerDiagIo::RealOverwrite => DiagnosticIoSink::RealOverwrite,
+            PeerDiagIo::RealPrealloc => DiagnosticIoSink::RealPrealloc,
+            PeerDiagIo::RealPreallocFill => DiagnosticIoSink::RealPreallocFill,
         }
     }
 }
@@ -146,8 +152,10 @@ pub fn parse_diag_io(s: &str) -> Result<PeerDiagIo, String> {
         "seekonly" | "seek" => Ok(PeerDiagIo::SeekOnly),
         "realnoseek" | "noseek" => Ok(PeerDiagIo::RealNoSeek),
         "realoverwrite" | "overwrite" => Ok(PeerDiagIo::RealOverwrite),
+        "realprealloc" | "prealloc" => Ok(PeerDiagIo::RealPrealloc),
+        "realpreallocfill" | "preallocfill" => Ok(PeerDiagIo::RealPreallocFill),
         other => Err(format!(
-            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite)"
+            "unknown diag-io `{other}` (real|discard|devnull|coalesce64k|seekonly|realnoseek|realoverwrite|realprealloc|realpreallocfill)"
         )),
     }
 }

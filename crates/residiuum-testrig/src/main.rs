@@ -238,7 +238,8 @@ enum Command {
         #[arg(long, default_value_t = 1)]
         concurrency: usize,
         /// Residiuum diagnostic segment-tail I/O:
-        /// real | discard | devnull | coalesce64k | seekonly | realnoseek | realoverwrite.
+        /// real | discard | devnull | coalesce64k | seekonly | realnoseek |
+        /// realoverwrite | realprealloc | realpreallocfill.
         /// coalesce64k requires --concurrency > 1 (250 ms floor hangs QD=1).
         #[arg(long, default_value = "real")]
         diag_io: String,

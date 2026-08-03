@@ -396,6 +396,12 @@ pub enum DiagnosticIoSink {
     /// Seek(0) + `write_all` every time (overwrite; file stays tiny). Bisects
     /// **file extension / growth** vs copying bytes into a regular file.
     RealOverwrite,
+    /// Like [`Real`], but active segment is `set_len`'d to 512 MiB at create
+    /// (often sparse on APFS). Bisects logical pre-size vs grow-on-append.
+    RealPrealloc,
+    /// Like [`RealPrealloc`], then touch every 1 MiB to force physical pages.
+    /// Bisects sparse hole vs allocated extent.
+    RealPreallocFill,
 }
 
 /// Physical location of one verified payload-chunk frame (DEF-098).
@@ -819,9 +825,45 @@ impl Store {
             | DiagnosticIoSink::Coalesce64k
             | DiagnosticIoSink::SeekOnly
             | DiagnosticIoSink::RealNoSeek
-            | DiagnosticIoSink::RealOverwrite => {
+            | DiagnosticIoSink::RealOverwrite
+            | DiagnosticIoSink::RealPrealloc
+            | DiagnosticIoSink::RealPreallocFill => {
                 self.null_io_file = None;
             }
+        }
+        // peer-pump sets sink after create — pre-size any already-open actives.
+        if matches!(
+            sink,
+            DiagnosticIoSink::RealPrealloc | DiagnosticIoSink::RealPreallocFill
+        ) {
+            self.prealloc_existing_actives()?;
+        }
+        Ok(())
+    }
+
+    /// Diagnostic: apply prealloc to already-open active writers (post-create sink set).
+    fn prealloc_existing_actives(&mut self) -> Result<(), StoreError> {
+        const BYTES: u64 = 512 * 1024 * 1024;
+        let fill = self.diagnostic_io == DiagnosticIoSink::RealPreallocFill;
+        let n = self.writer_shards();
+        for shard in 0..n {
+            let Some(writer) = self.active_mut(shard) else {
+                continue;
+            };
+            let cur = writer.file.metadata()?.len();
+            if cur < BYTES {
+                writer.file.set_len(BYTES)?;
+            }
+            if fill {
+                let mut off = 0u64;
+                let one = [0u8; 1];
+                while off < BYTES {
+                    writer.file.seek(SeekFrom::Start(off))?;
+                    writer.file.write_all(&one)?;
+                    off = off.saturating_add(1024 * 1024);
+                }
+            }
+            writer.file.seek(SeekFrom::Start(writer.durable_len))?;
         }
         Ok(())
     }
@@ -5733,7 +5775,9 @@ impl Store {
                     stats.write_outcome = crate::boundary_probe::BoundaryOutcome::Ok;
                     writer.durable_len = base.saturating_add(retained_len as u64);
                 }
-                DiagnosticIoSink::Real => {
+                DiagnosticIoSink::Real
+                | DiagnosticIoSink::RealPrealloc
+                | DiagnosticIoSink::RealPreallocFill => {
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
                     // DEF-022: optional short-write injection mid-append.
                     if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
@@ -5840,6 +5884,8 @@ impl Store {
                     | DiagnosticIoSink::Coalesce64k
                     | DiagnosticIoSink::RealNoSeek
                     | DiagnosticIoSink::RealOverwrite
+                    | DiagnosticIoSink::RealPrealloc
+                    | DiagnosticIoSink::RealPreallocFill
             )
         {
             if sink == DiagnosticIoSink::Coalesce64k {
@@ -5976,6 +6022,7 @@ impl Store {
             .write(true)
             .truncate(true)
             .open(&path)?;
+        self.maybe_diagnostic_prealloc(&mut file)?;
         file.write_all(segment.as_bytes())?;
         let durable_len = segment.len();
         // New active creation: Durable open paths still fsync the descriptor;
@@ -6019,6 +6066,7 @@ impl Store {
             .write(true)
             .truncate(true)
             .open(&path)?;
+        self.maybe_diagnostic_prealloc(&mut file)?;
         file.write_all(segment.as_bytes())?;
         let durable_len = segment.len();
         if mode == DurabilityMode::Durable {
@@ -6037,6 +6085,31 @@ impl Store {
                 coalesce_since: None,
             }),
         );
+        Ok(())
+    }
+
+    /// Diagnostic: pre-size (and optionally touch) the active file before first write.
+    fn maybe_diagnostic_prealloc(&self, file: &mut File) -> Result<(), StoreError> {
+        const BYTES: u64 = 512 * 1024 * 1024;
+        match self.diagnostic_io {
+            DiagnosticIoSink::RealPrealloc => {
+                file.set_len(BYTES)?;
+                file.seek(SeekFrom::Start(0))?;
+            }
+            DiagnosticIoSink::RealPreallocFill => {
+                file.set_len(BYTES)?;
+                // Force physical pages (APFS set_len is often sparse).
+                let mut off = 0u64;
+                let one = [0u8; 1];
+                while off < BYTES {
+                    file.seek(SeekFrom::Start(off))?;
+                    file.write_all(&one)?;
+                    off = off.saturating_add(1024 * 1024);
+                }
+                file.seek(SeekFrom::Start(0))?;
+            }
+            _ => {}
+        }
         Ok(())
     }
 
