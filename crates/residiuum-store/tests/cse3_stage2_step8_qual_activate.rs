@@ -1,7 +1,8 @@
 //! CSE-3 Stage 2 step 8 — qualification-store activation ceremony.
 //!
-//! Activates CompactShadow on a **qual store only** (not the release default).
-//! Default product remains Materialized until Step 9 passes.
+//! Exercises Materialized → CompactShadow migration on an isolated store.
+//! Fresh product `Store::create` defaults to CompactShadow (Stage 2k); this
+//! ceremony remains the path for legacy Materialized trees.
 //!
 //! ```text
 //! cargo test -p residiuum-store --features legacy-raw-store --release \
@@ -70,8 +71,8 @@ fn step8_qual_store_activation_ceremony() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path();
 
-    // --- Dual-run Materialized baseline (product default) ---
-    let mut store = Store::create_with_shards(root, 2).unwrap();
+    // --- Dual-run Materialized baseline (legacy / migration fixture) ---
+    let mut store = Store::create_with_shards_mode(root, 2, RecoveryMode::Materialized).unwrap();
     store.set_enrichment_enabled(true);
     store.set_seal_threshold(256 * 1024);
     assert_eq!(store.recovery_mode(), RecoveryMode::Materialized);
@@ -150,6 +151,11 @@ fn step8_qual_store_activation_ceremony() {
             .unwrap();
     }
     store.seal_active().unwrap();
+    store.wait_seals_applied().unwrap();
+    store.drain_lifecycle().unwrap();
+    store
+        .drain_enrichment(std::time::Duration::from_secs(60))
+        .unwrap();
 
     let cmr_after = list_cmr(&paths);
     assert!(
@@ -206,15 +212,16 @@ fn step8_qual_store_activation_ceremony() {
     assert_eq!(list_cmr(&paths), cmr_before_rollback);
     drop(store);
 
-    // Reopen after rollback still Materialized (release default posture).
+    // Reopen after rollback still Materialized (marker explicit).
     let store = Store::open(root).unwrap();
     assert_eq!(store.recovery_mode(), RecoveryMode::Materialized);
-    // Fresh create elsewhere stays Materialized (universal default unchanged).
+    // Fresh create elsewhere is CompactShadow (Stage 2k product default).
     let other = tempfile::tempdir().unwrap();
     let fresh = Store::create(other.path()).unwrap();
     assert_eq!(
         fresh.recovery_mode(),
-        RecoveryMode::Materialized,
-        "release default must remain Materialized"
+        RecoveryMode::CompactShadow,
+        "fresh Store::create must default to CompactShadow"
     );
+    assert!(fresh.shadow_dual_stream());
 }

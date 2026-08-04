@@ -33,11 +33,24 @@ fn with_failpoints<R>(f: impl FnOnce() -> R) -> R {
 }
 
 fn dual_store(root: &std::path::Path, shards: usize) -> Store {
-    let mut s = Store::create_with_shards(root, shards).unwrap();
+    // Materialized dual-run baseline for RSHD0004 failpoint / flip ceremony.
+    let mut s = Store::create_with_shards_mode(
+        root,
+        shards,
+        RecoveryMode::Materialized,
+    )
+    .unwrap();
     s.set_enrichment_enabled(false);
     s.set_seal_threshold(256 * 1024);
     s.attach_shadow_dual_to_actives().unwrap();
     s
+}
+
+/// Detach seal-pair then wait for async P★ publish (Protected Seal-Pair Pipeline).
+fn seal_pair(store: &mut Store) -> Result<(), residiuum_store::StoreError> {
+    store.seal_active()?;
+    store.drain_lifecycle()?;
+    Ok(())
 }
 
 /// Healthy dual-stream: verified RSHD0004 + recovery after auth wipe.
@@ -55,7 +68,7 @@ fn r4_f0_healthy_dual_stream_recovery() {
                 .unwrap();
             expect.insert(k.into_bytes(), payload.clone());
         }
-        store.seal_active().unwrap();
+        seal_pair(&mut store).unwrap();
         assert!(store.shadow_dual_published() >= 1);
         let sid = store.store_id();
         let paths = StorePaths::new(dir.path());
@@ -98,10 +111,17 @@ fn r4_fail_shadow_append_no_p_star() {
             "expected failpoint error, got {err:?}"
         );
         clear_failpoints();
-        let seal_err = store.seal_active().unwrap_err();
+        // Poisoned staging fails at seal detach (image_len / poison check) or
+        // during async pair finalize — either path must refuse P★.
+        let seal_err = match store.seal_active() {
+            Err(e) => e,
+            Ok(()) => store.drain_lifecycle().expect_err("poisoned pair"),
+        };
         assert!(
             format!("{seal_err:?}").to_lowercase().contains("poison")
-                || format!("{seal_err:?}").to_lowercase().contains("diverged"),
+                || format!("{seal_err:?}").to_lowercase().contains("diverged")
+                || format!("{seal_err:?}").to_lowercase().contains("failpoint")
+                || format!("{seal_err:?}").to_lowercase().contains("shadow"),
             "poisoned dual-stream must refuse P★: {seal_err:?}"
         );
         let sid = store.store_id();
@@ -142,7 +162,11 @@ fn seal_with_finalize_failpoint(name: &'static str) {
             .unwrap();
     }
     arm_failpoint_once(name, FailpointAction::Error);
-    let err = store.seal_active().unwrap_err();
+    // Summary failpoint fires on foreground prepare; sync/rename/dir_sync on worker.
+    let err = match store.seal_active() {
+        Err(e) => e,
+        Ok(()) => store.drain_lifecycle().expect_err("failpoint"),
+    };
     clear_failpoints();
     assert!(
         format!("{err:?}").to_lowercase().contains("failpoint"),
@@ -198,7 +222,8 @@ fn r4_fail_frontier_publish() {
                 .unwrap();
         }
         arm_failpoint_once("rshd4.frontier.publish", FailpointAction::Error);
-        let err = store.seal_active().unwrap_err();
+        store.seal_active().unwrap();
+        let err = store.drain_lifecycle().expect_err("failpoint");
         assert!(format!("{err:?}").to_lowercase().contains("failpoint"));
     });
 }
@@ -215,7 +240,7 @@ fn r4_multi_shard_rotation() {
                 .put(&format!("s{i:04}"), &payload, DurabilityMode::Buffered)
                 .unwrap();
         }
-        store.seal_active().unwrap();
+        seal_pair(&mut store).unwrap();
         let sid = store.store_id();
         let paths = StorePaths::new(dir.path());
         drop(store);
@@ -248,7 +273,7 @@ fn r4_overwrite_tombstone_recovery() {
             .put("t", b"doomed", DurabilityMode::Buffered)
             .unwrap();
         store.delete("t", DurabilityMode::Buffered).unwrap();
-        store.seal_active().unwrap();
+        seal_pair(&mut store).unwrap();
         let sid = store.store_id();
         let paths = StorePaths::new(dir.path());
         let mut expect = BTreeMap::new();
@@ -273,7 +298,7 @@ fn r4_chunked_value_recovery() {
         store
             .put("chunky", &big, DurabilityMode::Buffered)
             .unwrap();
-        store.seal_active().unwrap();
+        seal_pair(&mut store).unwrap();
         let sid = store.store_id();
         let paths = StorePaths::new(dir.path());
         drop(store);
@@ -311,7 +336,7 @@ fn r4_step8_flip_activate_rollback() {
                 .put(&format!("m{i}"), &payload, DurabilityMode::Buffered)
                 .unwrap();
         }
-        store.seal_active().unwrap();
+        seal_pair(&mut store).unwrap();
         let built = store.prepare_flip_to_compact_shadow().unwrap();
         let _ = built;
         assert_eq!(store.recovery_mode(), RecoveryMode::Transitioning);
@@ -327,7 +352,7 @@ fn r4_step8_flip_activate_rollback() {
                 .put(&format!("p{i}"), &payload, DurabilityMode::Buffered)
                 .unwrap();
         }
-        store.seal_active().unwrap();
+        seal_pair(&mut store).unwrap();
 
         let sid = store.store_id();
         let paths = StorePaths::new(dir.path());
@@ -431,7 +456,7 @@ fn r4_step8_reopen_loads_marker() {
                     .put(&format!("r{i}"), &payload, DurabilityMode::Buffered)
                     .unwrap();
             }
-            store.seal_active().unwrap();
+            seal_pair(&mut store).unwrap();
             store.prepare_flip_to_compact_shadow().unwrap();
             store.activate_compact_shadow_mode().unwrap();
         }

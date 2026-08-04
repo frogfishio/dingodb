@@ -320,6 +320,30 @@ pub enum LifecycleJob {
         /// Safety limits while scanning sealed bytes.
         limits: SafetyLimits,
     },
+    /// Protected seal-pair: auth pending + prepared Shadow → durable publish + frontier.
+    ///
+    /// Counts against `inflight_seals`. `protected_frontier` advances only after
+    /// both authoritative sealed file and `.rsh` are durable.
+    FinalizeProtectedPair {
+        /// Store identity.
+        store_id: [u8; 16],
+        /// Segment id.
+        segment_id: [u8; 16],
+        /// Writer shard (frontier coverage).
+        shard: u16,
+        /// Pending authoritative image (summary already appended).
+        pending_path: PathBuf,
+        /// Destination sealed path.
+        sealed_path: PathBuf,
+        /// Prepared Shadow staging (encoded; needs sync+rename).
+        prepared_shadow: crate::recovery_shadow::PreparedShadowPublish,
+        /// Store paths for frontier / shadow dir.
+        paths: StorePaths,
+        /// When true, fsync auth sealed image + parent dirs.
+        require_fsync: bool,
+        /// Sealed byte length (known after summary append).
+        size: u64,
+    },
     /// Stop the worker after draining queued jobs.
     Shutdown,
 }
@@ -367,6 +391,17 @@ pub enum LifecycleResult {
         size: u64,
         /// Per-job stage timings (ETQ-0). Absent on misrouted/failed early exits.
         stages: Option<EnrichmentStageTiming>,
+    },
+    /// Protected pair durable: auth + Shadow published; frontier advanced.
+    ProtectedPairDone {
+        /// Segment id.
+        segment_id: [u8; 16],
+        /// Sealed byte length.
+        size: u64,
+        /// Auth publish nanoseconds (rename/sync).
+        auth_publish_ns: u64,
+        /// Shadow durable publish nanoseconds.
+        shadow_publish_ns: u64,
     },
 }
 
@@ -704,6 +739,91 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                     })
                     .is_ok();
                 let _ = result_tx.send(LifecycleResult::CheckpointDone { ok });
+            }
+            LifecycleJob::FinalizeProtectedPair {
+                store_id,
+                segment_id,
+                shard,
+                pending_path,
+                sealed_path,
+                prepared_shadow,
+                paths,
+                require_fsync,
+                size,
+            } => {
+                let t_auth = Instant::now();
+                let auth_ok = (|| -> Result<(), StoreError> {
+                    if !pending_path.is_file() {
+                        if sealed_path.is_file() {
+                            return Ok(());
+                        }
+                        return Err(StoreError::Io(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "protected-pair pending missing",
+                        )));
+                    }
+                    if sealed_path.exists() {
+                        let _ = fs::remove_file(&sealed_path);
+                    }
+                    if let Some(parent) = sealed_path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
+                    fs::rename(&pending_path, &sealed_path)?;
+                    if require_fsync {
+                        let f = OpenOptions::new().read(true).write(true).open(&sealed_path)?;
+                        f.sync_all()?;
+                        if let Some(parent) = sealed_path.parent() {
+                            let _ = crate::atomic_file::sync_dir(parent);
+                        }
+                    }
+                    Ok(())
+                })();
+                let auth_publish_ns = elapsed_ns(t_auth);
+                if let Err(e) = auth_ok {
+                    let _ = result_tx.send(LifecycleResult::SealFailed {
+                        segment_id,
+                        error: e.to_string(),
+                    });
+                    continue;
+                }
+                let t_shadow = Instant::now();
+                let shadow_res =
+                    crate::recovery_shadow::publish_prepared_shadow(prepared_shadow, &paths);
+                let shadow_publish_ns = elapsed_ns(t_shadow);
+                if let Err(e) = shadow_res {
+                    let _ = result_tx.send(LifecycleResult::SealFailed {
+                        segment_id,
+                        error: format!("shadow publish: {e}"),
+                    });
+                    continue;
+                }
+                // P★ only after both sides durable.
+                let frontier_ok = (|| -> Result<(), StoreError> {
+                    let _ = crate::recovery_shadow::note_segment_sealed(
+                        &paths, store_id, &segment_id, shard,
+                    );
+                    crate::failpoint::hit("rshd4.frontier.publish")?;
+                    let seq = crate::ids::segment_seq_from_id(&segment_id);
+                    let mut cov =
+                        crate::recovery_shadow::load_protected_coverage(&paths, store_id)?;
+                    cov.store_id = store_id;
+                    cov.note_durable(shard, seq);
+                    crate::recovery_shadow::publish_protected_coverage(&paths, &cov)?;
+                    Ok(())
+                })();
+                if let Err(e) = frontier_ok {
+                    let _ = result_tx.send(LifecycleResult::SealFailed {
+                        segment_id,
+                        error: format!("frontier: {e}"),
+                    });
+                    continue;
+                }
+                let _ = result_tx.send(LifecycleResult::ProtectedPairDone {
+                    segment_id,
+                    size,
+                    auth_publish_ns,
+                    shadow_publish_ns,
+                });
             }
             LifecycleJob::EnrichDerived { segment_id, .. } => {
                 // Misrouted — should not happen on the authoritative lane.
@@ -1378,7 +1498,15 @@ fn write_chimera_from_segment_puts_timed(
     }
     // Dual-run Recovery Shadow (RSHD0003 canonical image mirror; additive).
     // Materialized remains product recovery until Stage 2 step 8.
-    if !bytes.is_empty() {
+    // Skip when dual-stream already published (or staged) `.rsh` — enrichment
+    // must not overwrite RSHD0004 or claim P★ after a failed protected pair.
+    let rsh = crate::recovery_shadow::shadow_path(paths, &segment_id);
+    let staging = crate::recovery_shadow::shadow_dir(paths).join(format!(
+        "{}.rsh.dual.tmp",
+        crate::layout::hex16(&segment_id)
+    ));
+    let dual_owns = rsh.is_file() || staging.is_file();
+    if !bytes.is_empty() && !dual_owns {
         let _ = crate::recovery_shadow::build_and_publish_mirror_shadow(
             paths,
             store_id,

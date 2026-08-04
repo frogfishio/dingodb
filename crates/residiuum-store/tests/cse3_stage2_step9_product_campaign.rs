@@ -1,15 +1,12 @@
 //! CSE-3 Stage 2 step 9 — CompactShadow product-API qualification campaign.
 //!
-//! Runs on a qualification store after the Step 8 activation ceremony.
-//! **No harness-only mode overrides** (`CSE3_STEP7_DUAL_STREAM`,
-//! test-only `attach_shadow_dual_to_actives`, enrichment-off candidate path).
-//! Mode comes only from `prepare_flip` / `activate_compact_shadow_mode` / reopen.
+//! After Stage 2k, fresh `Store::create` is CompactShadow — **no** harness-only
+//! mode overrides and **no** manual prepare/activate for new stores.
+//! Legacy Materialized trees still use Step 8 prepare → activate.
 //!
 //! Campaign puts use [`DurabilityMode::Buffered`] (ordinary product API — same
 //! ack class as the Step 7 product figure). Soft auto-seal threshold is raised;
 //! segments are sealed explicitly every 64 MiB via `seal_active`.
-//!
-//! Release default remains Materialized until this campaign passes.
 //!
 //! ```text
 //! cargo test -p residiuum-store --features legacy-raw-store --release \
@@ -67,7 +64,10 @@ fn is_locator_only(path: &std::path::Path, store_id: [u8; 16], segment_id: [u8; 
 }
 
 fn activate_qual_store(root: &std::path::Path) -> Store {
+    // Stage 2k: fresh create is CompactShadow — no prepare/activate ceremony.
     let mut store = Store::create_with_shards(root, 1).unwrap();
+    assert_eq!(store.recovery_mode(), RecoveryMode::CompactShadow);
+    assert!(store.shadow_dual_stream());
     store.set_enrichment_enabled(true);
     store.set_seal_threshold(256 * 1024);
     let seed = vec![0x11u8; 64];
@@ -77,9 +77,7 @@ fn activate_qual_store(root: &std::path::Path) -> Store {
             .unwrap();
     }
     store.seal_active().unwrap();
-    store.prepare_flip_to_compact_shadow().unwrap();
-    store.activate_compact_shadow_mode().unwrap();
-    assert_eq!(store.recovery_mode(), RecoveryMode::CompactShadow);
+    store.wait_seals_applied().unwrap();
     drop(store);
     let store = Store::open(root).unwrap();
     assert_eq!(store.recovery_mode(), RecoveryMode::CompactShadow);
@@ -198,6 +196,9 @@ fn run_step9(target_bytes: u64) -> Step9Report {
             .reopen_active_ns
             .saturating_add(b.reopen_active_ns);
     }
+    // Wait for in-flight protected pairs before measuring dual publish /
+    // sustainable lifecycle (detach returns before P★; worker must finish).
+    store.wait_seals_applied().unwrap();
     // Sustainable product throughput: puts + seal/P★ path (derived enrich async).
     let lifecycle_wall = ack_t0.elapsed();
     let dual_finalize_ns = store.shadow_dual_finalize_ns();
@@ -396,7 +397,7 @@ fn step9_product_campaign() {
 
     if report.target_bytes >= 2 * 1024 * 1024 * 1024 {
         eprintln!(
-            "step9 2GiB candidate ack TPS≈{:.0} (expect ~28K band; establish independently)",
+            "step9 2GiB product ack TPS≈{:.0} (SoT ~21–23K life=ack; ~30.9K is candidate-only)",
             report.ack_ops_per_sec
         );
         assert!(
@@ -426,10 +427,11 @@ fn step9_product_campaign() {
 }
 
 #[test]
-fn step9_fresh_store_default_still_materialized() {
+fn step9_fresh_store_default_is_compact_shadow() {
     let dir = tempfile::tempdir().unwrap();
     let s = Store::create(dir.path()).unwrap();
-    assert_eq!(s.recovery_mode(), RecoveryMode::Materialized);
+    assert_eq!(s.recovery_mode(), RecoveryMode::CompactShadow);
+    assert!(s.shadow_dual_stream());
 }
 
 #[test]

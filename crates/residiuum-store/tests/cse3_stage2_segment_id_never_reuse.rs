@@ -68,6 +68,12 @@ fn put_n(store: &mut Store, n: u64, tag: &str) {
     }
 }
 
+/// CompactShadow default publishes seals asynchronously — wait for sealed media.
+fn seal_and_wait(store: &mut Store) {
+    store.seal_active().unwrap();
+    store.wait_seals_applied().unwrap();
+}
+
 #[test]
 fn never_reuse_after_repeated_reopen_seal() {
     let dir = tempfile::tempdir().unwrap();
@@ -76,6 +82,7 @@ fn never_reuse_after_repeated_reopen_seal() {
     for round in 0..8u64 {
         put_n(&mut store, 4, &format!("r{round}"));
         store.seal_active().unwrap();
+        store.wait_seals_applied().unwrap();
         let ids = sealed_ids(dir.path());
         let prev = all_ids.len();
         all_ids.extend(ids.iter().copied());
@@ -89,6 +96,7 @@ fn never_reuse_after_repeated_reopen_seal() {
         store = Store::open(dir.path()).unwrap();
         put_n(&mut store, 2, &format!("c{round}"));
         store.seal_active().unwrap();
+        store.wait_seals_applied().unwrap();
         for (name, len) in &before_lens {
             let p = dir.path().join("segments").join(name);
             assert_eq!(
@@ -115,12 +123,14 @@ fn never_reuse_multi_shard_allocation() {
             .unwrap();
     }
     store.seal_active().unwrap();
+    store.wait_seals_applied().unwrap();
     let ids = sealed_ids(dir.path());
     assert_eq!(ids.len(), ids.iter().copied().collect::<BTreeSet<_>>().len());
     drop(store);
     let mut store = Store::open(dir.path()).unwrap();
     put_n(&mut store, 8, "more");
     store.seal_active().unwrap();
+    store.wait_seals_applied().unwrap();
     let after = sealed_ids(dir.path());
     assert!(after.is_superset(&ids));
     assert_eq!(after.len(), after.iter().copied().collect::<BTreeSet<_>>().len());
@@ -131,7 +141,7 @@ fn crash_at(name: &'static str) {
     let root = dir.path().to_path_buf();
     let mut store = Store::create_with_shards(&root, 1).unwrap();
     put_n(&mut store, 3, "seed");
-    store.seal_active().unwrap();
+    seal_and_wait(&mut store);
     let before = sealed_ids(&root);
     assert!(!before.is_empty());
     put_n(&mut store, 2, "live");
@@ -146,7 +156,7 @@ fn crash_at(name: &'static str) {
     drop(store);
     let mut store = Store::open(&root).unwrap();
     put_n(&mut store, 2, "after");
-    store.seal_active().unwrap();
+    seal_and_wait(&mut store);
     for (fname, len) in before_lens {
         let p = root.join("segments").join(&fname);
         if p.is_file() {

@@ -230,6 +230,116 @@ pub struct ShadowDualStream {
     poisoned: bool,
 }
 
+/// Shadow staging fully encoded on disk, awaiting durable sync + rename (P★).
+///
+/// Produced by [`ShadowDualStream::prepare_async_publish`] on the writer path;
+/// consumed by [`publish_prepared_shadow`] on the protection worker.
+#[derive(Debug)]
+pub struct PreparedShadowPublish {
+    /// Store identity.
+    pub store_id: [u8; 16],
+    /// Segment identity.
+    pub segment_id: [u8; 16],
+    /// Writer shard that sealed this pair (crash recover must not assume 0).
+    pub shard: u16,
+    /// Encoded staging path (`*.rsh.dual.tmp`).
+    pub tmp_path: PathBuf,
+    /// Image length (excluding envelope + commitment).
+    pub encoded_len: u64,
+}
+
+impl PreparedShadowPublish {
+    /// Sidecar next to staging: `{hex}.rsh.dual.shard` (u16 LE).
+    pub fn shard_meta_path(paths: &StorePaths, segment_id: &[u8; 16]) -> PathBuf {
+        shadow_dir(paths).join(format!(
+            "{}.rsh.dual.shard",
+            crate::layout::hex16(segment_id)
+        ))
+    }
+
+    /// Persist shard for crash recovery of partial pairs.
+    pub fn persist_shard_meta(&self, paths: &StorePaths) -> Result<(), StoreError> {
+        let path = Self::shard_meta_path(paths, &self.segment_id);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&path, self.shard.to_le_bytes())?;
+        Ok(())
+    }
+
+    /// Load shard sidecar; missing → `None` (legacy / single-shard recover).
+    pub fn load_shard_meta(paths: &StorePaths, segment_id: &[u8; 16]) -> Option<u16> {
+        let path = Self::shard_meta_path(paths, segment_id);
+        let bytes = fs::read(&path).ok()?;
+        if bytes.len() != 2 {
+            return None;
+        }
+        Some(u16::from_le_bytes([bytes[0], bytes[1]]))
+    }
+
+    /// Remove shard sidecar after durable publish or abandon.
+    pub fn clear_shard_meta(paths: &StorePaths, segment_id: &[u8; 16]) {
+        let _ = fs::remove_file(Self::shard_meta_path(paths, segment_id));
+    }
+}
+
+impl Drop for PreparedShadowPublish {
+    fn drop(&mut self) {
+        if !self.tmp_path.as_os_str().is_empty() && self.tmp_path.exists() {
+            let _ = fs::remove_file(&self.tmp_path);
+        }
+    }
+}
+
+/// Durable-publish a prepared Shadow staging file (sync → rename → dir sync).
+pub fn publish_prepared_shadow(
+    mut prepared: PreparedShadowPublish,
+    paths: &StorePaths,
+) -> Result<DualStreamFinalizeTiming, StoreError> {
+    let mut timing = DualStreamFinalizeTiming::default();
+    let tmp_path = prepared.tmp_path.clone();
+    let segment_id = prepared.segment_id;
+    let result = (|| -> Result<DualStreamFinalizeTiming, StoreError> {
+        let file = OpenOptions::new().read(true).write(true).open(&tmp_path)?;
+        let t_sync = Instant::now();
+        crate::failpoint::hit("rshd4.finalize.sync")?;
+        file.sync_all()?;
+        timing.file_sync_ns = t_sync.elapsed().as_nanos() as u64;
+        drop(file);
+
+        let final_path = shadow_path(paths, &segment_id);
+        let parent = final_path.parent().unwrap_or_else(|| Path::new("."));
+        let t_rename = Instant::now();
+        if final_path.exists() {
+            let _ = fs::remove_file(&final_path);
+        }
+        crate::failpoint::hit("rshd4.finalize.rename")?;
+        fs::rename(&tmp_path, &final_path)?;
+        timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
+
+        let t_dir = Instant::now();
+        crate::failpoint::hit("rshd4.finalize.dir_sync")?;
+        atomic_file::sync_dir(parent)?;
+        timing.dir_sync_ns = t_dir.elapsed().as_nanos() as u64;
+        timing.bytes_written =
+            DUAL_ENVELOPE_LEN as u64 + prepared.encoded_len + HASH_LEN as u64;
+        // Transferred — do not delete on Drop.
+        prepared.tmp_path = PathBuf::new();
+        PreparedShadowPublish::clear_shard_meta(paths, &segment_id);
+        Ok(timing)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp_path);
+        prepared.tmp_path = PathBuf::new();
+        // Keep shard meta while staging may still exist for recover; if tmp
+        // is gone, drop the sidecar too.
+        if !tmp_path.exists() {
+            PreparedShadowPublish::clear_shard_meta(paths, &segment_id);
+        }
+    }
+    result
+}
+
 impl ShadowDualStream {
     /// Open a new staging file with a zero envelope placeholder (independent alloc).
     pub fn begin(
@@ -321,6 +431,60 @@ impl ShadowDualStream {
         self.file.write_all(&self.buf)?;
         self.buf.clear();
         Ok(())
+    }
+
+    /// Encode envelope + commitment on the staging file **without** `sync_all` /
+    /// rename. Transfers ownership of the temp path for async durable publish.
+    ///
+    /// Foreground seal-pair detach: append summary, flush, encode — leave sync
+    /// + rename to the protection worker so the writer can open the next pair.
+    pub fn prepare_async_publish(
+        mut self,
+        summary_chunk: &[u8],
+        shard: u16,
+    ) -> Result<PreparedShadowPublish, StoreError> {
+        if self.poisoned {
+            return Err(StoreError::CorruptMeta(
+                "dual-stream Shadow staging poisoned; refuse P★ prepare",
+            ));
+        }
+        crate::failpoint::hit("rshd4.finalize.summary")?;
+        if !summary_chunk.is_empty() {
+            self.append_image_chunk(summary_chunk)?;
+        }
+        self.flush_buf()?;
+
+        let encoded_len = self.image_len;
+        let commit = dual_commitment(
+            &self.store_id,
+            &self.segment_id,
+            encoded_len,
+            &self.metas,
+        );
+
+        let mut env = [0u8; DUAL_ENVELOPE_LEN];
+        env[0..8].copy_from_slice(RSH_MAGIC_V4);
+        env[8..24].copy_from_slice(&self.store_id);
+        env[24..40].copy_from_slice(&self.segment_id);
+        env[40..48].copy_from_slice(&encoded_len.to_le_bytes());
+        self.file.seek(SeekFrom::Start(0))?;
+        self.file.write_all(&env)?;
+        let commit_off = DUAL_ENVELOPE_LEN as u64 + encoded_len;
+        self.file.seek(SeekFrom::Start(commit_off))?;
+        self.file.write_all(&commit)?;
+        self.file.set_len(commit_off + HASH_LEN as u64)?;
+
+        let out = PreparedShadowPublish {
+            store_id: self.store_id,
+            segment_id: self.segment_id,
+            shard,
+            tmp_path: self.tmp_path.clone(),
+            encoded_len,
+        };
+        // Prevent Drop from deleting the staging file we just transferred.
+        self.tmp_path = PathBuf::new();
+        drop(self);
+        Ok(out)
     }
 
     /// Finalize: append summary chunk (if any), patch envelope, commitment, sync, publish.

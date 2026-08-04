@@ -1,14 +1,14 @@
 //! Stage 2 step 8 — durable recovery-mode marker (controlled product flip).
 //!
 //! ```text
-//! Materialized (default dual-run)
-//!   → Transitioning (backfill Shadows; Materialized still created)
-//!   → CompactShadow (new seals: Compact + Shadow; no new Materialized)
+//! Fresh Store::create → CompactShadow (CSE-3 Stage 2k product default)
+//! Legacy tree (no marker) → Materialized on open (no silent flip)
+//! Migration: Materialized → Transitioning → CompactShadow
 //! Rollback → Materialized (keeps both recovery sources)
 //! ```
 //!
-//! The marker is an atomic control document. Flip activation must not stop
-//! Materialized creation until the CompactShadow marker is durable.
+//! The marker is an atomic control document. Existing stores are never flipped
+//! by open alone — operators must run prepare/coverage then activate.
 
 use crate::atomic_file;
 use crate::error::StoreError;
@@ -76,7 +76,11 @@ pub fn recovery_mode_path(paths: &StorePaths) -> PathBuf {
     paths.root.join(RECOVERY_MODE_FILE)
 }
 
-/// Load recovery mode (missing file ⇒ Materialized dual-run default).
+/// Load recovery mode (missing file ⇒ **legacy Materialized** — never silent-flip).
+///
+/// Fresh [`crate::Store::create`] writes an explicit CompactShadow marker.
+/// Trees created before Stage 2k have no marker and stay Materialized until
+/// the operator runs prepare → activate.
 pub fn load_recovery_mode(paths: &StorePaths) -> Result<RecoveryMode, StoreError> {
     let path = recovery_mode_path(paths);
     if !path.is_file() {

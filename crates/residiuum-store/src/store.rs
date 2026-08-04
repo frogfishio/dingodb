@@ -610,9 +610,30 @@ impl Store {
     /// has its own file handle, append offset, and seal lifecycle. `writer_shards`
     /// must be in `1..=MAX_WRITER_SHARDS`. Count is persisted under
     /// `store-info/writer_shards` and recovered on open (DEF-096 Axis B).
+    ///
+    /// Fresh stores default to [`RecoveryMode::CompactShadow`] (CSE-3 Stage 2k).
+    /// Existing trees without a mode marker remain Materialized on open — there
+    /// is no silent migration.
     pub fn create_with_shards(
         path: impl AsRef<Path>,
         writer_shards: usize,
+    ) -> Result<Self, StoreError> {
+        Self::create_with_shards_mode(
+            path,
+            writer_shards,
+            crate::recovery_shadow::RecoveryMode::CompactShadow,
+        )
+    }
+
+    /// Create a store with an explicit recovery mode (migration / qual fixtures).
+    ///
+    /// Prefer [`Self::create_with_shards`] for product defaults. Use
+    /// [`RecoveryMode::Materialized`] only for dual-run migration baselines and
+    /// Step 8 ceremony fixtures — not for new product stores.
+    pub fn create_with_shards_mode(
+        path: impl AsRef<Path>,
+        writer_shards: usize,
+        recovery_mode: crate::recovery_shadow::RecoveryMode,
     ) -> Result<Self, StoreError> {
         let writer_shards = writer_shards.clamp(1, MAX_WRITER_SHARDS);
         let paths = StorePaths::new(path.as_ref());
@@ -709,6 +730,13 @@ impl Store {
         store.persist_index_cache()?;
         store.refresh_collection_catalog()?;
         store.refresh_tier_state()?;
+        // Durable product mode marker — missing on legacy trees ⇒ Materialized.
+        crate::recovery_shadow::persist_recovery_mode(
+            &store.paths,
+            store.store_id,
+            recovery_mode,
+        )?;
+        store.apply_recovery_mode(recovery_mode);
         Ok(store)
     }
 
@@ -811,6 +839,8 @@ impl Store {
         store.load_tier_state()?;
         // Finish any pending seals left by a prior crash before index rebuild.
         let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
+        // Protected seal-pair: finish auth+Shadow+frontier for crash mid-pair.
+        let _ = crate::protected_pair::recover_protected_pairs(&store.paths, store.store_id)?;
         store.load_or_rebuild_index()?;
         store.load_or_rebuild_catalog()?;
         // Durable segment-id high water (never-reuse). Reconstructs above every
@@ -4656,6 +4686,22 @@ impl Store {
         };
         let bytes = sealed_owned.as_slice();
         let size = bytes.len() as u64;
+        let summary = if (prefix_len as usize) < bytes.len() {
+            &bytes[prefix_len as usize..]
+        } else {
+            &[]
+        };
+        let pair_async = shadow_dual.is_some() && self.seal_pipeline.is_some();
+        let pending_dir = self.paths.pending_seal_dir();
+        let pending_path = self.paths.pending_segment(&sealed_id);
+        if pair_async {
+            fs::create_dir_all(&pending_dir)?;
+        }
+        let publish_dest = if pair_async {
+            pending_path.clone()
+        } else {
+            dest.clone()
+        };
 
         crate::failpoint::hit("store.seal.before_dest_write")?;
 
@@ -4670,15 +4716,17 @@ impl Store {
                 let mut f = OpenOptions::new().write(true).open(&active_path)?;
                 f.set_len(prefix_len)?;
                 f.seek(SeekFrom::Start(prefix_len))?;
-                f.write_all(&bytes[prefix_len as usize..])?;
-                if flush_mode == DurabilityMode::Durable {
+                f.write_all(summary)?;
+                // Protected-pair: skip Durable sync on the foreground — worker
+                // fsyncs after detach. Sync path still pays sync when not async.
+                if flush_mode == DurabilityMode::Durable && !pair_async {
                     f.sync_all()?;
                 }
             }
-            if dest.exists() {
-                let _ = fs::remove_file(&dest);
+            if publish_dest.exists() {
+                let _ = fs::remove_file(&publish_dest);
             }
-            if fs::rename(&active_path, &dest).is_ok() {
+            if fs::rename(&active_path, &publish_dest).is_ok() {
                 published = true;
             }
         }
@@ -4688,9 +4736,9 @@ impl Store {
                     .create(true)
                     .write(true)
                     .truncate(true)
-                    .open(&dest)?;
+                    .open(&publish_dest)?;
                 out.write_all(bytes)?;
-                if flush_mode == DurabilityMode::Durable {
+                if flush_mode == DurabilityMode::Durable && !pair_async {
                     out.sync_all()?;
                 }
             }
@@ -4699,7 +4747,7 @@ impl Store {
             }
         }
         crate::failpoint::hit("store.seal.after_dest_sync")?;
-        if flush_mode == DurabilityMode::Durable {
+        if flush_mode == DurabilityMode::Durable && !pair_async {
             sync_dir(&self.paths.segments_dir())?;
             sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
         }
@@ -4707,8 +4755,8 @@ impl Store {
         breakdown.final_active_seal_ns =
             breakdown.final_active_seal_ns.saturating_add(elapsed_ns(t_final));
 
-        // Experimental dual-stream Shadow: append the same summary, sync/publish
-        // independently, then advance protected_frontier (never before Shadow).
+        // Protected seal-pair pipeline: prepare Shadow without sync, start next
+        // active, finalize auth+Shadow+frontier asynchronously.
         if let Some(dual) = shadow_dual.take() {
             let t_shadow = Instant::now();
             if dual.is_poisoned() || dual.image_len() != prefix_len {
@@ -4716,11 +4764,53 @@ impl Store {
                     "dual-stream Shadow staging diverged from authoritative prefix; refuse P★",
                 ));
             }
-            let summary = if (prefix_len as usize) < bytes.len() {
-                &bytes[prefix_len as usize..]
-            } else {
-                &[]
-            };
+            if pair_async {
+                let prepared = dual.prepare_async_publish(summary, shard as u16)?;
+                prepared.persist_shard_meta(&self.paths)?;
+                breakdown.shadow_dual_ns = breakdown
+                    .shadow_dual_ns
+                    .saturating_add(elapsed_ns(t_shadow));
+
+                self.segment_seq = self
+                    .segment_seq
+                    .max(segment_seq_from_id(&sealed_id));
+                let t_reopen = std::time::Instant::now();
+                self.start_active_segment_with_mode(shard, flush_mode)?;
+                self.persist_active_shard(shard, flush_mode)?;
+                breakdown.reopen_active_ns = breakdown
+                    .reopen_active_ns
+                    .saturating_add(elapsed_ns(t_reopen));
+
+                // Backpressure if protection worker is behind.
+                while self
+                    .seal_pipeline
+                    .as_ref()
+                    .map(|p| p.inflight_seals >= p.max_pending_seals)
+                    .unwrap_or(false)
+                {
+                    if !self.wait_one_lifecycle()? {
+                        break;
+                    }
+                }
+                if let Some(pipe) = self.seal_pipeline.as_mut() {
+                    pipe.inflight_seals = pipe.inflight_seals.saturating_add(1);
+                    pipe.submit_seal(LifecycleJob::FinalizeProtectedPair {
+                        store_id: self.store_id,
+                        segment_id: sealed_id,
+                        shard: shard as u16,
+                        pending_path,
+                        sealed_path: dest,
+                        prepared_shadow: prepared,
+                        paths: self.paths.clone(),
+                        require_fsync: flush_mode == DurabilityMode::Durable,
+                        size,
+                    })?;
+                }
+                // Catalog + enrichment applied on ProtectedPairDone (writer).
+                return Ok(());
+            }
+
+            // Sync fallback (no pipeline): publish Shadow + frontier here.
             let timing = dual.finalize_publish(&self.paths, summary)?;
             self.shadow_dual_finalize_ns = self.shadow_dual_finalize_ns.saturating_add(
                 timing
@@ -4749,10 +4839,7 @@ impl Store {
                 .saturating_add(elapsed_ns(t_shadow));
         }
 
-        // Seal Fast Lane: start the replacement active immediately. BLAKE3,
-        // segment-catalog scan, Hydra, and Chimera are derived — enqueue them.
-        // `start_active_segment_with_mode` mints via `next_segment_id` (durable
-        // reservation). Bump in-memory high water from sealed id as defense.
+        // Non-dual (or sync dual fallback) continue: start next active + catalog.
         self.segment_seq = self
             .segment_seq
             .max(segment_seq_from_id(&sealed_id));
@@ -4898,11 +4985,9 @@ impl Store {
     /// Not a product flip.
     pub fn set_shadow_dual_stream(&mut self, enabled: bool) {
         self.shadow_dual_stream = enabled;
-        // Dual-stream finalize runs on the synchronous seal path; async rotate
-        // would orphan staging without Shadow publication.
-        if enabled {
-            self.async_lifecycle = false;
-        }
+        // Dual-stream uses the Protected Seal-Pair Pipeline (async finalize).
+        // Do **not** disable async_lifecycle — that serialized ~167ms/seal onto
+        // the writer. Keep async so detach → next active overlaps protection.
     }
 
     /// Attach dual-stream staging to current actives (seeded from durable prefix).
@@ -5138,44 +5223,23 @@ impl Store {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.inflight_seals = p.inflight_seals.saturating_sub(1);
                 }
-                // Best-effort recover this segment on the writer thread.
+                // Best-effort **auth** recovery only. Never run Chimera/enrichment
+                // here — Materialized enrich dual-writes a mirror `.rsh` and would
+                // falsely advance P★ after a protected-pair Shadow failure.
                 let pending = self.paths.pending_segment(&segment_id);
                 let sealed = self.paths.sealed_segment(&segment_id);
-                match crate::seal_pipeline::finalize_seal(
+                let _ = crate::seal_pipeline::finalize_seal_authoritative(
                     self.store_id,
                     segment_id,
                     &pending,
                     &sealed,
                     self.limits,
-                    &self.paths,
-                    true, // recovery: stable publish
-                ) {
-                    Ok((content_hash, size, sealed_bytes)) => {
-                        let hash = crate::incremental_seal::ContentHashState::Known(content_hash);
-                        let _ = register_hot_segment_known(
-                            &self.paths,
-                            &mut self.tier_placement,
-                            segment_id,
-                            hash,
-                            size,
-                        );
-                        let _ = self.note_sealed_segment(
-                            segment_id,
-                            TierClass::Hot,
-                            &sealed_bytes,
-                            hash,
-                            size,
-                        );
-                        self.note_derived_catalog_dirty();
-                        self.maybe_schedule_derived_catalog_checkpoint(false);
-                    }
-                    Err(_) => {
-                        return Err(StoreError::Io(std::io::Error::other(format!(
-                            "async seal failed for {}: {error}",
-                            crate::layout::hex16(&segment_id)
-                        ))));
-                    }
-                }
+                    true,
+                );
+                return Err(StoreError::Io(std::io::Error::other(format!(
+                    "seal/pair failed for {}: {error}",
+                    crate::layout::hex16(&segment_id)
+                ))));
             }
             LifecycleResult::CheckpointDone { .. } => {}
             LifecycleResult::EnrichDone {
@@ -5211,6 +5275,46 @@ impl Store {
                 if let Some(mut s) = stages {
                     s.catalog_ns = catalog_ns;
                     self.enrichment_stage_totals.accumulate(s);
+                }
+            }
+            LifecycleResult::ProtectedPairDone {
+                segment_id,
+                size,
+                auth_publish_ns,
+                shadow_publish_ns,
+            } => {
+                if let Some(p) = self.seal_pipeline.as_mut() {
+                    p.inflight_seals = p.inflight_seals.saturating_sub(1);
+                }
+                self.shadow_dual_published = self.shadow_dual_published.saturating_add(1);
+                self.shadow_dual_finalize_ns = self
+                    .shadow_dual_finalize_ns
+                    .saturating_add(shadow_publish_ns);
+                self.rotation_stage_totals.rotations =
+                    self.rotation_stage_totals.rotations.saturating_add(1);
+                self.rotation_stage_totals.auth_publish_ns = self
+                    .rotation_stage_totals
+                    .auth_publish_ns
+                    .saturating_add(auth_publish_ns);
+                let content_hash = crate::incremental_seal::ContentHashState::Pending;
+                let _ = register_hot_segment_known(
+                    &self.paths,
+                    &mut self.tier_placement,
+                    segment_id,
+                    content_hash,
+                    size,
+                );
+                self.note_derived_catalog_dirty();
+                self.maybe_schedule_derived_catalog_checkpoint(false);
+                if self.enrichment_enabled {
+                    if let Some(pipe) = self.seal_pipeline.as_mut() {
+                        let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
+                            store_id: self.store_id,
+                            segment_id,
+                            paths: self.paths.clone(),
+                            limits: self.limits,
+                        });
+                    }
                 }
             }
         }
@@ -5414,6 +5518,9 @@ impl Store {
         let t0 = std::time::Instant::now();
         let r = if self.async_lifecycle_enabled() && !self.shadow_dual_stream {
             self.rotate_active_async(shard)
+        } else if self.shadow_dual_stream && self.seal_pipeline.is_some() {
+            // Dual-stream: protected pair via explicit seal detach (async P★).
+            self.seal_active_shard(shard)
         } else {
             self.seal_active_shard(shard)
         };

@@ -1,8 +1,10 @@
 # CSE-3 — Compact + Recovery Shadow (Hybrid)
 
-Status: **Stage 2 active through step 6** (2026-08-04) — CSE matrix green;
-reclaim clarification locked. **Materialized remains product until step 8.**
-Next: step 7 perf.  
+Status: **Stage 2k accepted** (2026-08-04) — CompactShadow is the **fresh-store
+product default**. Sustained product figure **~21–23K** 8 KiB life=ack
+(≈1.7–1.9× Materialized ~12.4K). ~30.9K activate-path is candidate-only.
+Legacy trees migrate via Step 8. Ops:
+[`CSE3_COMPACTSHADOW_OPS_NOTES.md`](./CSE3_COMPACTSHADOW_OPS_NOTES.md).
 Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound, Stage 1 accepted.
 
 ## Stage gate
@@ -11,8 +13,8 @@ Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound, Stage 1 accepted.
 |---|---|---|
 | **0** | P★ bound + reduced-overhead impossibility | **Complete** — [`CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md`](./CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md) |
 | **1** | Principal **C — Hybrid** formalized: Compact + Recovery Shadow (+ lifecycle addendum) | **Principal-accepted** — [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md) |
-| **2** | Implement Shadow + CSE equivalence + lifecycle gates | **Active** — [`CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`](./CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md) |
-| **3** | Perf gates (≥7 seg/s, backlog ≤0, lifecycle ≈ ack); retire Materialized default | Blocked on Stage 2 step 8+ |
+| **2** | Implement Shadow + CSE equivalence + lifecycle gates | **Complete through 2k** — [`CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`](./CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md) |
+| **3** | Perf gates; retire Materialized as fresh default | **Accepted for fresh stores** — product ~21–23K life=ack; Stage 2l A/B open |
 
 ## Delivery sequence (Stage 2)
 
@@ -26,7 +28,9 @@ Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound, Stage 1 accepted.
 8. **Only then** product seal → Compact + Shadow  
 9. Full-product throughput re-qualification  
 
-Until step 8, Materialized Chimera is the safe product path.
+Until Stage 2k, Materialized Chimera was the fresh-store safe path. Fresh
+stores now default to CompactShadow; legacy Materialized trees migrate via
+Step 8 (no silent open flip).
 
 ## Hybrid (normative)
 

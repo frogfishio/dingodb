@@ -48,7 +48,8 @@ pub use policy::{
     ShadowReclaimPolicy,
 };
 pub use dual_stream::{
-    decode_dual_mirror, is_dual_magic, DualStreamFinalizeTiming, ShadowDualStream, RSH_MAGIC_V4,
+    decode_dual_mirror, is_dual_magic, publish_prepared_shadow, DualStreamFinalizeTiming,
+    PreparedShadowPublish, ShadowDualStream, RSH_MAGIC_V4,
 };
 pub use recovery_mode::{
     activate_compact_shadow_mode, backfill_shadows_for_sealed, load_recovery_mode,

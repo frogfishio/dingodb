@@ -6,10 +6,11 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2h** — durable segment-ID never-reuse P0
-PASS; Step 9 lifecycle honesty: life=ack≈**12.4K** TPS at 2 GiB/64 MiB after
-seal-path enrich deferral; **not** ~28K sustainable. **Release/default remains
-Materialized.** **ETQ-2 paused.** **AWO paused.**
+Updated: 2026-08-04 (**CSE-3 Stage 2k accepted** — CompactShadow fresh-store
+default; **product figure ~21–23K** sustained 8 KiB life=ack ≈1.7–1.9× prior
+Materialized ~12.4K. ~30.9K is candidate-only. Stage **2l** A/B delta is
+`todo` (hypothesis until measured). Ops:
+`CSE3_COMPACTSHADOW_OPS_NOTES.md`. **ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

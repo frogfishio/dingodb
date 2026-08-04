@@ -42,3 +42,9 @@ the next seal’s `drain_lifecycle`.
 
 Do **not** flip universal default until lifecycle TPS approaches the product
 ack class (~28K band) under 2 GiB/64 MiB without seal-exclusion accounting.
+
+## Follow-on
+
+**Stage 2i** — Protected Seal-Pair Pipeline:
+[`CSE3_STAGE2_STEP2I_SEAL_PAIR_PIPELINE.md`](./CSE3_STAGE2_STEP2I_SEAL_PAIR_PIPELINE.md)
+(async finalize; RSHD0004 green; 2 GiB re-measure residual).

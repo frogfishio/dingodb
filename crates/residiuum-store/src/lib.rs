@@ -62,6 +62,7 @@ mod layout;
 mod lifecycle;
 mod media;
 mod migrate;
+mod protected_pair;
 mod recovery;
 mod recovery_shadow;
 mod scrub;
