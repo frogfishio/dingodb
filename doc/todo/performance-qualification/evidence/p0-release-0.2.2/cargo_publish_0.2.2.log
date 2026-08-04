@@ -1,0 +1,231 @@
+=== publish residiuum-sda ===
+    Updating crates.io index
+   Packaging residiuum-sda v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/sda-core)
+    Updating crates.io index
+    Packaged 20 files, 244.8KiB (47.3KiB compressed)
+   Verifying residiuum-sda v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/sda-core)
+   Compiling autocfg v1.5.1
+   Compiling serde_core v1.0.229
+   Compiling syn v2.0.119
+   Compiling num-traits v0.2.19
+   Compiling thiserror-impl v1.0.69
+   Compiling thiserror v1.0.69
+   Compiling num-integer v0.1.46
+   Compiling num-bigint v0.4.8
+   Compiling serde_json v1.0.151
+   Compiling num-rational v0.4.2
+   Compiling residiuum-sda v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-sda-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.19s
+   Uploading residiuum-sda v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/sda-core)
+    Uploaded residiuum-sda v0.2.2 to registry `crates-io`
+note: waiting for residiuum-sda v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-sda v0.2.2 at registry `crates-io`
+OK residiuum-sda
+=== publish residiuum-format ===
+    Updating crates.io index
+   Packaging residiuum-format v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-format)
+warning: ignoring example `emit_hp000_format_vectors` as `examples/emit_hp000_format_vectors.rs` is not included in the published package
+    Updating crates.io index
+    Packaged 26 files, 250.3KiB (59.4KiB compressed)
+   Verifying residiuum-format v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-format)
+   Compiling residiuum-format v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-format-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.46s
+   Uploading residiuum-format v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-format)
+    Uploaded residiuum-format v0.2.2 to registry `crates-io`
+note: waiting for residiuum-format v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-format v0.2.2 at registry `crates-io`
+OK residiuum-format
+=== publish residiuum-heap ===
+    Updating crates.io index
+   Packaging residiuum-heap v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-heap)
+    Updating crates.io index
+    Blocking waiting for file lock on package cache
+    Packaged 37 files, 286.0KiB (59.7KiB compressed)
+   Verifying residiuum-heap v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-heap)
+    Blocking waiting for file lock on package cache
+ Downloading crates ...
+warning: spurious network error (3 tries remaining): failed to get successful HTTP response from `https://static.crates.io/crates/residiuum-format/0.2.2/download` (2a04:4e42:69::649), got 500
+body:
+error sending request: Connection timeout to backend us-west-1
+  Downloaded residiuum-format v0.2.2
+   Compiling libc v0.2.189
+   Compiling residiuum-heap v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-heap-0.2.2)
+   Compiling residiuum-format v0.2.2
+   Compiling cpufeatures v0.2.17
+   Compiling getrandom v0.3.4
+   Compiling sha2 v0.10.9
+   Compiling ed25519-dalek v2.2.0
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 13.70s
+   Uploading residiuum-heap v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-heap)
+    Uploaded residiuum-heap v0.2.2 to registry `crates-io`
+note: waiting for residiuum-heap v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-heap v0.2.2 at registry `crates-io`
+OK residiuum-heap
+=== publish residiuum-store ===
+    Updating crates.io index
+   Packaging residiuum-store v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+warning: ignoring example `inspect_unresolved_locators` as `examples/inspect_unresolved_locators.rs` is not included in the published package
+warning: ignoring example `read_latency_breakdown` as `examples/read_latency_breakdown.rs` is not included in the published package
+warning: ignoring example `write_latency_breakdown` as `examples/write_latency_breakdown.rs` is not included in the published package
+warning: ignoring example `write_scale_curve` as `examples/write_scale_curve.rs` is not included in the published package
+    Updating crates.io index
+    Packaged 174 files, 2.4MiB (544.8KiB compressed)
+   Verifying residiuum-store v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+ Downloading crates ...
+  Downloaded residiuum-heap v0.2.2
+   Compiling residiuum-heap v0.2.2
+   Compiling residiuum-store v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-store-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 22.81s
+   Uploading residiuum-store v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Uploaded residiuum-store v0.2.2 to registry `crates-io`
+note: waiting for residiuum-store v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-store v0.2.2 at registry `crates-io`
+OK residiuum-store
+=== publish residiuum-client ===
+    Updating crates.io index
+   Packaging residiuum-client v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-client)
+    Updating crates.io index
+    Packaged 9 files, 43.0KiB (12.0KiB compressed)
+   Verifying residiuum-client v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-client)
+   Compiling residiuum-client v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-client-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.61s
+   Uploading residiuum-client v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-client)
+    Uploaded residiuum-client v0.2.2 to registry `crates-io`
+note: waiting for residiuum-client v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-client v0.2.2 at registry `crates-io`
+OK residiuum-client
+=== publish residiuum-examine ===
+    Updating crates.io index
+   Packaging residiuum-examine v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-examine)
+    Updating crates.io index
+    Packaged 13 files, 80.4KiB (21.3KiB compressed)
+   Verifying residiuum-examine v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-examine)
+ Downloading crates ...
+  Downloaded residiuum-sda v0.2.2
+  Downloaded residiuum-store v0.2.2
+   Compiling residiuum-sda v0.2.2
+   Compiling residiuum-store v0.2.2
+   Compiling residiuum-examine v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-examine-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.25s
+   Uploading residiuum-examine v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-examine)
+    Uploaded residiuum-examine v0.2.2 to registry `crates-io`
+note: waiting for residiuum-examine v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-examine v0.2.2 at registry `crates-io`
+OK residiuum-examine
+=== publish residiuum-sdk ===
+    Updating crates.io index
+   Packaging residiuum-sdk v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)
+    Updating crates.io index
+error: failed to prepare local package for uploading
+
+Caused by:
+  no matching package named `residiuum-cluster` found
+  location searched: crates.io index
+  required by package `residiuum-sdk v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)`
+OK residiuum-sdk
+=== publish residiuum-server ===
+    Updating crates.io index
+   Packaging residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+    Updating crates.io index
+error: failed to prepare local package for uploading
+
+Caused by:
+  no matching package named `residiuum-cluster` found
+  location searched: crates.io index
+  required by package `residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)`
+OK residiuum-server
+=== publish residiuum-cli ===
+    Updating crates.io index
+   Packaging residiuum-cli v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)
+    Updating crates.io index
+error: failed to prepare local package for uploading
+
+Caused by:
+  no matching package named `residiuum-sdk` found
+  location searched: crates.io index
+  required by package `residiuum-cli v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)`
+OK residiuum-cli
+=== publish residiuum-cluster ===
+    Updating crates.io index
+   Packaging residiuum-cluster v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cluster)
+    Updating crates.io index
+    Packaged 38 files, 544.8KiB (123.1KiB compressed)
+   Verifying residiuum-cluster v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cluster)
+   Compiling residiuum-cluster v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-cluster-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.51s
+   Uploading residiuum-cluster v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cluster)
+    Uploaded residiuum-cluster v0.2.2 to registry `crates-io`
+note: waiting for residiuum-cluster v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-cluster v0.2.2 at registry `crates-io`
+OK residiuum-cluster
+PUBLISH_BATCH_EXIT=0
+=== retry publish residiuum-sdk ===
+
+warning: constant `FP_INDEX_BUILD_BEFORE_READY` is never used
+  --> src/indexes.rs:41:11
+   |
+41 | pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_result_bytes` is never used
+   --> src/resource.rs:200:8
+    |
+200 | pub fn check_result_bytes(
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib) generated 8 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.99s
+   Uploading residiuum-sdk v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)
+    Uploaded residiuum-sdk v0.2.2 to registry `crates-io`
+note: waiting for residiuum-sdk v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-sdk v0.2.2 at registry `crates-io`
+OK residiuum-sdk
+=== retry publish residiuum-server ===
+    Updating crates.io index
+   Packaging residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+    Updating crates.io index
+    Packaged 37 files, 665.9KiB (139.1KiB compressed)
+   Verifying residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+ Downloading crates ...
+  Downloaded residiuum-cluster v0.2.2
+  Downloaded residiuum-sdk v0.2.2
+   Compiling residiuum-cluster v0.2.2
+   Compiling residiuum-sdk v0.2.2
+   Compiling residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-server-0.2.2)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.56s
+   Uploading residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+    Uploaded residiuum-server v0.2.2 to registry `crates-io`
+note: waiting for residiuum-server v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-server v0.2.2 at registry `crates-io`
+OK residiuum-server
+=== retry publish residiuum-cli ===
+   Compiling anstyle-parse v1.0.0
+   Compiling anstream v1.0.0
+   Compiling clap_builder v4.6.2
+   Compiling serde_derive v1.0.229
+   Compiling clap_derive v4.6.4
+   Compiling clap v4.6.4
+   Compiling serde v1.0.229
+   Compiling residiuum-client v0.2.2
+   Compiling residiuum-heap v0.2.2
+   Compiling residiuum-store v0.2.2
+   Compiling residiuum-cluster v0.2.2
+   Compiling residiuum-examine v0.2.2
+   Compiling residiuum-sdk v0.2.2
+   Compiling residiuum-server v0.2.2
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 14.52s
+   Uploading residiuum-cli v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)
+    Uploaded residiuum-cli v0.2.2 to registry `crates-io`
+note: waiting for residiuum-cli v0.2.2 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-cli v0.2.2 at registry `crates-io`
+OK residiuum-cli

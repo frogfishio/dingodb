@@ -54,3 +54,10 @@ Logs: `product_smoke.log`, `product_smoke_pstar.log`.
 - Publish residiuum-{sda,format,heap,store,client,sdk,examine,server,cli,cluster}
 - Tag **`v0.2.2`** on exact green commit (never move `v0.2.1`)
 - Push commit + tag
+
+## Tagged tip
+
+- Commit: `84a77c0262e1d6691b7190bc17749370d2240cfb`
+- Tag: `v0.2.2`
+- crates.io: residiuum-{sda,format,heap,store,client,sdk,examine,server,cli,cluster} **0.2.2** published (not yanked).
+- `v0.2.1` unchanged at `7285c1e312e46b912c10108f4acbdb244e0aa178`.
