@@ -1,10 +1,22 @@
 # CSE-3 Stage 2 — Recovery Shadow implement
 
-Status: **active** (2026-08-04) — delivery sequence frozen; **steps 1–4 landed**
-in `residiuum-store::recovery_shadow` (7 unit tests). Steps 5–9 open.
-**No product flip** until step 8.  
+Status: **active** (2026-08-04) — Stage 2a foundation invariants **confirmed**;
+step 5 lifecycle dual-run **landed**. Steps 6–9 open. **No product flip**
+until step 8.  
 Depends: Stage 1 principal-accepted
 [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md).
+
+## Stage 2a foundation invariants (accepted)
+
+1. **Atomic publication:** tmp write → `File::sync_all` → rename → parent
+   directory sync before protection is claimed.
+2. **Self-verifying Shadow:** store/segment identity, magic version, record
+   boundaries/count, per-record + whole-artifact integrity.
+3. **Gap-aware frontier:** downward closed — seq 12 completing cannot conceal
+   missing seq 11.
+4. **Multi-shard:** per-shard coverage; aggregate claim is **min** prefix.
+
+Formally: \(s \in ProtectedFrontier \Rightarrow \forall p \preceq s,\ p \in DurableShadow\).
 
 ## Delivery sequence (normative)
 
@@ -13,13 +25,13 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 
 | Step | Work | Authoritative? |
 |---|---|---|
-| **1** | Versioned `.rsh` wire format + atomic publication | No |
-| **2** | Streaming sequential writer | No |
-| **3** | Generation-exact salvage including tombstones | No |
-| **4** | `protected_frontier` + protection-lag telemetry | No |
-| **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | No |
-| **6** | Complete CSE F0–F5 damage/crash suite | No |
-| **7** | Prove ≥7 segments/sec with non-growing backlog | No |
+| **1** | Versioned `.rsh` wire format + atomic publication | **Done** (2a) |
+| **2** | Streaming sequential writer | **Done** (2a) |
+| **3** | Generation-exact salvage including tombstones | **Done** (2a) |
+| **4** | `protected_frontier` + protection-lag telemetry (gap-aware, per-shard) | **Done** (2a) |
+| **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | **Done** (lifecycle dual-run; no flip) |
+| **6** | Complete CSE F0–F5 damage/crash suite | Open |
+| **7** | Prove ≥7 segments/sec with non-growing backlog | Open |
 | **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Yes — only here** |
 | **9** | Re-run full-product throughput qualification | Post-flip |
 

@@ -58,6 +58,8 @@ pub enum ScrubTargetKind {
     ActiveSegment,
     /// Chunk payload piece under `chunks/`.
     ChunkFile,
+    /// Recovery Shadow (`.rsh`) — recovery-authoritative P★ media (CSE-3).
+    RecoveryShadow,
 }
 
 impl ScrubTargetKind {
@@ -67,6 +69,7 @@ impl ScrubTargetKind {
             Self::SealedSegment => "sealed_segment",
             Self::ActiveSegment => "active_segment",
             Self::ChunkFile => "chunk_file",
+            Self::RecoveryShadow => "recovery_shadow",
         }
     }
 }
@@ -85,6 +88,8 @@ pub enum ScrubFindingKind {
     MissingFile,
     /// Expected size disagrees with on-disk size.
     SizeMismatch,
+    /// Recovery Shadow failed self-verify (incomplete/corrupt — never P★).
+    ShadowIntegrity,
 }
 
 impl ScrubFindingKind {
@@ -96,6 +101,7 @@ impl ScrubFindingKind {
             Self::IoError => "io_error",
             Self::MissingFile => "missing_file",
             Self::SizeMismatch => "size_mismatch",
+            Self::ShadowIntegrity => "shadow_integrity",
         }
     }
 }
@@ -465,6 +471,32 @@ pub fn plan_scrub_targets(
         }
     }
 
+    // Recovery Shadows (CSE-3): recovery-authoritative; scrub must verify integrity.
+    let shadow_dir = crate::recovery_shadow::shadow_dir(paths);
+    if shadow_dir.is_dir() {
+        for ent in fs::read_dir(&shadow_dir)? {
+            let ent = ent?;
+            let path = ent.path();
+            if !crate::recovery_shadow::is_recovery_shadow_path(&path) {
+                continue;
+            }
+            let rel = relative_to_root(&paths.root, &path);
+            let segment_id_hex = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .filter(|s| s.len() == 32)
+                .map(|s| s.to_string());
+            targets.push(ScrubTarget {
+                key: format!("rsh:{}", rel),
+                kind: ScrubTargetKind::RecoveryShadow,
+                relative_path: rel,
+                segment_id_hex,
+                expected_hash_hex: None,
+                expected_size: None,
+            });
+        }
+    }
+
     targets.sort_by(|a, b| a.key.cmp(&b.key));
     Ok(targets)
 }
@@ -721,6 +753,32 @@ pub fn verify_scrub_target(
             findings.push(ScrubFindingKind::FrameHoles);
             if detail.is_none() {
                 detail = Some(format!("{holes} hole region(s) in forward scan"));
+            }
+        }
+    }
+
+    if matches!(target.kind, ScrubTargetKind::RecoveryShadow) {
+        match crate::recovery_shadow::try_load_shadow(&abs, None)? {
+            crate::recovery_shadow::ShadowLoad::Ok(d) => {
+                verified_frames = d.records.len() as u64;
+                if let Some(ref hex) = target.segment_id_hex {
+                    if crate::layout::hex16(&d.segment_id) != *hex {
+                        findings.push(ScrubFindingKind::ShadowIntegrity);
+                        detail = Some("shadow segment_id mismatch vs path".into());
+                    }
+                }
+            }
+            crate::recovery_shadow::ShadowLoad::Missing => {
+                findings.push(ScrubFindingKind::MissingFile);
+                detail = Some("shadow missing".into());
+            }
+            crate::recovery_shadow::ShadowLoad::Incomplete => {
+                findings.push(ScrubFindingKind::ShadowIntegrity);
+                detail = Some("incomplete recovery shadow (never P★)".into());
+            }
+            crate::recovery_shadow::ShadowLoad::Corrupt { detail: d } => {
+                findings.push(ScrubFindingKind::ShadowIntegrity);
+                detail = Some(d);
             }
         }
     }

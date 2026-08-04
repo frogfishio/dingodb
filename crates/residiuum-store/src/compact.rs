@@ -718,6 +718,28 @@ pub fn reclaim_source_segments(
     }
     sync_dir_best_effort(&paths.segments_dir());
 
+    // Stage 2 step 5: erase Recovery Shadows for reclaimed sources. Replacement
+    // Shadow (if any) must already be durable before old Shadows are retired.
+    if let Some(store_id) = unhex16(&job.store_id) {
+        if let Err(e) = crate::recovery_shadow::retire_shadows_after_replacement(
+            paths,
+            store_id,
+            &output,
+            &deleted_ids,
+            0,
+        ) {
+            // If no replacement Shadow yet (dual-run lag), still erase orphan
+            // source Shadows so retention/secure-delete does not leave payloads.
+            if matches!(e, StoreError::ConsistencyViolation(_)) {
+                for id in &deleted_ids {
+                    let _ = crate::recovery_shadow::secure_erase_shadow(paths, store_id, id, 0);
+                }
+            } else {
+                return Err(e);
+            }
+        }
+    }
+
     let mut retained = 0u64;
     for name in &job.source_segments {
         let p = paths.root.join(name);

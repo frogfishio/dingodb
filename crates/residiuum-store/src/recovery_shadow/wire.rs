@@ -451,6 +451,8 @@ pub fn publish_shadow(
     }
     fs::create_dir_all(shadow_dir(paths))?;
     let path = shadow_path(paths, segment_id);
+    // Atomic publication (Stage 2a): temp write → File::sync_all → rename →
+    // parent directory sync. Protection must not be claimed before this returns.
     atomic_file::write_atomic(&path, bytes)?;
     Ok(())
 }

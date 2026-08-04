@@ -253,11 +253,15 @@ pub use recovery::{
     RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
 };
 pub use recovery_shadow::{
-    decode_shadow, encode_shadow, ensure_shadow_dirs, load_protected_frontier, project_live,
-    protection_lag, protected_frontier_path, publish_protected_frontier, publish_shadow,
-    shadow_dir, shadow_path, try_load_shadow, DecodedShadow, LiveState, ProtectedFrontier,
-    ProtectionLag, ShadowLoad, ShadowRecord, ShadowWriter, FRONTIER_FILE, RSH_MAGIC, TAG_PUT,
-    TAG_TOMBSTONE,
+    build_and_publish_shadow, current_protection_lag, decode_shadow, delete_shadow, encode_shadow,
+    ensure_shadow_dirs, is_recovery_shadow_path, load_protected_coverage, load_protected_frontier,
+    note_segment_sealed, project_live, protected_frontier_path, protection_lag,
+    protection_lag_from_coverage, publish_protected_coverage, publish_protected_frontier,
+    publish_shadow, publish_shadow_claiming_protection, rebuild_coverage_from_shadows,
+    retire_shadows_after_replacement, secure_erase_shadow, shadow_dir, shadow_path,
+    snapshot_telemetry, try_load_shadow, DecodedShadow, LiveState, ProtectedCoverage,
+    ProtectedFrontier, ProtectionLag, ShadowLoad, ShadowRecord, ShadowTelemetry, ShadowWriter,
+    FRONTIER_FILE, RSH_MAGIC, TAG_PUT, TAG_TOMBSTONE,
 };
 pub use scrub::{
     list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,

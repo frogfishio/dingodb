@@ -83,10 +83,9 @@ Evidence `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/
 **CSE-0 labor complete** (2026-08-04): Materialized recovery baseline frozen —
 `doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`.
 
-**CSE-3 Hybrid Stage 2 active** (2026-08-04): delivery sequence frozen
-(wire → writer → salvage → frontier → lifecycle integrate → CSE → perf →
-**product flip** → TPS re-qual). Materialized until step 8. Module
-`recovery_shadow`. **ETQ-2 paused**. AWO paused.
+**CSE-3 Hybrid Stage 2 step 5** (2026-08-04): 2a invariants confirmed;
+lifecycle dual-run landed. Materialized until step 8. **Next:** step 6 CSE
+F0–F5. **ETQ-2 paused**. AWO paused.
 
 ## Archives
 

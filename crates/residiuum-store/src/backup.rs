@@ -36,6 +36,9 @@ pub const BACKUP_STORE_DIR: &str = "store";
 /// Relative paths under a store root that hold **authoritative** bytes copied
 /// into a full backup. Derived trees (`catalogs/`, `indexes/`, `snapshots/`)
 /// are omitted so restore always rebuilds from segments.
+///
+/// `recovery/` includes Recovery Shadow media (`recovery/shadow/*.rsh`) — these
+/// are **recovery-authoritative** for P★ (CSE-3), not disposable Chimera.
 const AUTHORITATIVE_TOP_LEVEL: &[&str] = &[
     "store-info",
     "active",

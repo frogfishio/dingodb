@@ -1,5 +1,12 @@
 //! Operator lifecycle policies for tier retention (product follow-on).
 //!
+//! CSE-3: retention / secure-delete of user data MUST also erase Recovery
+//! Shadow payloads (`.rsh`) via [`crate::recovery_shadow::secure_erase_shadow`] —
+//! plaintext must not survive only on recovery media. Encryption / key rotation
+//! treat `.rsh` as recovery-authoritative media (same key lifecycle as segment
+//! payloads). Product recovery authority remains Materialized Chimera until
+//! Stage 2 step 8.
+//!
 //! Automatic background enforcement is **not** required for Stage 9; this
 //! module records declarative policy so operators and future schedulers share
 //! one on-disk format. Evaluation is pure: given age/size signals, decide

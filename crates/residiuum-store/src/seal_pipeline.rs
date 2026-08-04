@@ -1281,6 +1281,10 @@ fn write_hydra_for_bytes_timed(
 /// Chimera layout from put events in the sealed segment (derived; may include
 /// superseded keys that were later deleted on a newer segment — same class of
 /// derived approximation as a full live projection when index is unavailable).
+///
+/// Also dual-writes a Recovery Shadow (`.rsh`) with puts **and** tombstones
+/// (CSE-3 Stage 2 step 5). Materialized Chimera remains the product recovery
+/// path until Stage 2 step 8 — Shadow is additive only.
 fn write_chimera_from_segment_puts_timed(
     paths: &StorePaths,
     store_id: [u8; 16],
@@ -1296,7 +1300,10 @@ fn write_chimera_from_segment_puts_timed(
     // CSE-2R: latest put body per subject (Materialized product restore).
     // Compact SegmentFrame remains available via `build_compact_layout` for ETQ.
     // This is a safety rollback, not Compact salvage parity.
+    // Shadow dual-run: retain deletes as tombstones (gen = writer_sequence).
     let mut last: std::collections::BTreeMap<Vec<u8>, Vec<u8>> =
+        std::collections::BTreeMap::new();
+    let mut shadow_live: std::collections::BTreeMap<Vec<u8>, (Option<Vec<u8>>, u64)> =
         std::collections::BTreeMap::new();
     for (_off, frame) in report.verified_frames() {
         if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
@@ -1305,18 +1312,25 @@ fn write_chimera_from_segment_puts_timed(
         let Some(env) = decode_item_envelope(&frame.envelope) else {
             continue;
         };
+        let gen = frame.header.writer_sequence;
         match env.event_kind {
             crate::envelope::EventKind::Put => {
-                last.insert(env.subject, frame.body.to_vec());
+                last.insert(env.subject.clone(), frame.body.to_vec());
+                shadow_live.insert(env.subject, (Some(frame.body.to_vec()), gen));
             }
             crate::envelope::EventKind::Delete => {
                 last.remove(&env.subject);
+                shadow_live.insert(env.subject, (None, gen));
             }
         }
     }
     let pairs: Vec<(Vec<u8>, Vec<u8>)> = last.into_iter().collect();
     let decode_ns = elapsed_ns(t_decode);
-    if pairs.is_empty() {
+
+    // Seal observation for gap-aware lag (P★ only after Shadow publish below).
+    let _ = crate::recovery_shadow::note_segment_sealed(paths, store_id, &segment_id, 0);
+
+    if pairs.is_empty() && shadow_live.is_empty() {
         return Ok(TimedWrite {
             decode_ns,
             construct_ns: 0,
@@ -1334,6 +1348,17 @@ fn write_chimera_from_segment_puts_timed(
     let path = crate::chimera::chimera_layout_path(paths, &segment_id);
     let t_persist = Instant::now();
     crate::chimera::write_chimera_layout(&path, store_id, segment_id, &layout)?;
+    // Dual-run Recovery Shadow (additive; does not replace Materialized).
+    if !shadow_live.is_empty() {
+        let _ = crate::recovery_shadow::build_and_publish_shadow(
+            paths,
+            store_id,
+            segment_id,
+            1,
+            0,
+            &shadow_live,
+        );
+    }
     let persist_ns = elapsed_ns(t_persist);
     let bytes_written = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
     Ok(TimedWrite {
