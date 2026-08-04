@@ -1,9 +1,10 @@
-# ETQ-2 — Single-Pass Enrichment Decode (deferred)
+# ETQ-2 — Single-Pass Enrichment Decode (paused)
 
-Status: **deferred** behind [CSE — Chimera Salvage Equivalence](./CHIMERA_SALVAGE_EQUIVALENCE.md).  
-Resume only after Compact Chimera salvage viability
-(\(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\),
-or CSE-2 restores parity).
+Status: **paused** behind [CSE — Chimera Salvage Equivalence](./CHIMERA_SALVAGE_EQUIVALENCE.md).  
+Resume only after **Compact + recovery code** clears salvage
+(\(\mathrm{Recoverable}_{compact(+recovery)}\supseteq\mathrm{Recoverable}_{materialized}\)).
+CSE-2R Materialized product restore is a **safety rollback**, not Compact parity
+— it does **not** unblock ETQ-2.
 
 Depends on: Compact provisional performance accept **and** CSE exit
 (`doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`).

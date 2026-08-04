@@ -1,0 +1,19 @@
+{
+  "package": "CSE-2R",
+  "date": "2026-08-04",
+  "classification": "safety_rollback",
+  "not": "compact_minimum_parity",
+  "principal_correction": "Product_new=Product_old (Materialized restore). Compact recovery unresolved. Do not accept as minimum parity.",
+  "command": "cargo test -p residiuum-store --features legacy-raw-store --test cse2r_safety_rollback -- --nocapture",
+  "result": "ok",
+  "product_safety_restored": true,
+  "compact_equivalence_holds": false,
+  "compact_status": "experimental ETQ measurement only; CSE-1 FAIL still stands",
+  "product_chimera_amp_class": "~98% Materialized",
+  "product_tps_class": "~12.4K (not 37.9K)",
+  "experimental_compact_tps": "~37.9K",
+  "etq2": "paused",
+  "mechanism": "product_seal_materialized_embed_restore",
+  "materialized_rhs": "doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/baseline.json",
+  "next": "CSE-3 Compact + explicit recovery code"
+}

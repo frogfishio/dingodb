@@ -1293,10 +1293,12 @@ fn write_chimera_from_segment_puts_timed(
 
     let t_decode = Instant::now();
     let report = scan_forward(bytes, limits);
-    // Latest put frame locator per subject within this segment only (no body clone).
-    let mut last: std::collections::BTreeMap<Vec<u8>, crate::chimera::CompactFrameRef> =
+    // CSE-2R: latest put body per subject (Materialized product restore).
+    // Compact SegmentFrame remains available via `build_compact_layout` for ETQ.
+    // This is a safety rollback, not Compact salvage parity.
+    let mut last: std::collections::BTreeMap<Vec<u8>, Vec<u8>> =
         std::collections::BTreeMap::new();
-    for (off, frame) in report.verified_frames() {
+    for (_off, frame) in report.verified_frames() {
         if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
             continue;
         }
@@ -1305,23 +1307,16 @@ fn write_chimera_from_segment_puts_timed(
         };
         match env.event_kind {
             crate::envelope::EventKind::Put => {
-                last.insert(
-                    env.subject,
-                    crate::chimera::CompactFrameRef {
-                        segment_id,
-                        frame_offset: off,
-                        body_len: frame.body.len() as u32,
-                    },
-                );
+                last.insert(env.subject, frame.body.to_vec());
             }
             crate::envelope::EventKind::Delete => {
                 last.remove(&env.subject);
             }
         }
     }
-    let frames: Vec<(Vec<u8>, crate::chimera::CompactFrameRef)> = last.into_iter().collect();
+    let pairs: Vec<(Vec<u8>, Vec<u8>)> = last.into_iter().collect();
     let decode_ns = elapsed_ns(t_decode);
-    if frames.is_empty() {
+    if pairs.is_empty() {
         return Ok(TimedWrite {
             decode_ns,
             construct_ns: 0,
@@ -1330,7 +1325,11 @@ fn write_chimera_from_segment_puts_timed(
         });
     }
     let t_build = Instant::now();
-    let layout = crate::chimera::build_compact_layout(&frames, 1);
+    let layout = crate::chimera::build_materialized_layout(
+        &pairs,
+        1,
+        &crate::chimera::ClassifyOptions::default(),
+    );
     let construct_ns = elapsed_ns(t_build);
     let path = crate::chimera::chimera_layout_path(paths, &segment_id);
     let t_persist = Instant::now();

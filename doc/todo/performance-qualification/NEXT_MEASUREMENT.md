@@ -14,8 +14,8 @@ behind (~4.93 vs ~5.57 seg/s).
 > Durability equivalence is unproven and blocks product/default acceptance.
 
 **Next (only):** [CSE — Chimera Salvage Equivalence](./CHIMERA_SALVAGE_EQUIVALENCE.md)
-(**CSE-0 labor done** → **CSE-1** → CSE-2 if needed). **ETQ-2 deferred** until Compact salvage
-viability. **AWO paused**.  
+(CSE-0/1 done; **CSE-2R = safety rollback** not Compact parity; **CSE-3** next —
+Compact+recovery code). **ETQ-2 paused**. **AWO paused**.  
 Date: 2026-08-04
 
 ## Wording (hard)
@@ -83,10 +83,10 @@ Evidence `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/
 **CSE-0 labor complete** (2026-08-04): Materialized recovery baseline frozen —
 `doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`.
 
-**Only allowed next work:** **CSE-1** (CSE-2 if needed) —
-[CHIMERA_SALVAGE_EQUIVALENCE.md](./CHIMERA_SALVAGE_EQUIVALENCE.md).
-Require \(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\)
-on the CSE-0 channels. **ETQ-2 deferred** behind CSE. AWO / three-cell remain paused.
+**CSE-1 FAIL / CSE-2R safety rollback / CSE-3 Stage 0** (2026-08-04): Compact
+cannot match Materialized **P★** at reduced overhead (info-theoretic).
+**Next:** principal A/B/C fork, then CSE-3 Stage 1 only if claim is weakened.
+**ETQ-2 paused**. AWO / three-cell remain paused.
 
 ## Archives
 

@@ -41,4 +41,8 @@ Gaps (keys Materialized recovers that Compact does not):
 | F3 | layout_direct | t,m,l |
 | F4 | layout_direct | t,m,l |
 
-**Requires CSE-2** (minimum parity). Root cause: Compact `SegmentFrame` locators need segment pread; no embedded payloads → no format-only salvage and no ChimeraGet expansion when the establishing frame is damaged.
+**Requires CSE-3** (Compact + explicit recovery code). CSE-2R restored product
+Materialized embeds only — that is a safety rollback, not Compact parity.
+Root cause: Compact `SegmentFrame` locators need segment pread; no embedded
+payloads → no format-only salvage and no ChimeraGet expansion when the
+establishing frame is damaged.

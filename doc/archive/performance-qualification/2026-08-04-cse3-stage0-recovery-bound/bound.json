@@ -1,0 +1,27 @@
+{
+  "package": "CSE-3",
+  "stage": 0,
+  "date": "2026-08-04",
+  "kind": "analysis_proof_only",
+  "strongest_pattern_id": "P_star",
+  "strongest_pattern": "Total authoritative-segment payload loss (or arbitrary body corruption) with Materialized Chimera sidecar intact → layout_direct recovers full sealed live set V_S",
+  "covers_historical_generations": false,
+  "covers_live_sealed_projection_only": true,
+  "placement": {
+    "file_level_sidecar_vs_segment": true,
+    "independent_media_proven": false
+  },
+  "info_theoretic_min_redundancy_bits": "L = sum |v| for v in V_S (incompressible)",
+  "materialized_overhead_class": "~100% Chimera amp for V_S",
+  "reduced_overhead_compact_equivalence_to_P_star": "impossible",
+  "codec_selection": "blocked_until_principal_A_B_C",
+  "principal_fork": [
+    "A_keep_P_star_full_copy",
+    "B_weaken_named_failure_set_then_select_code",
+    "C_hybrid_compact_hot_plus_full_copy_salvage_tier"
+  ],
+  "sources": [
+    "doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/",
+    "doc/todo/performance-qualification/CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md"
+  ]
+}

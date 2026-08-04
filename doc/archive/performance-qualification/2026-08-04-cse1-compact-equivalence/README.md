@@ -39,7 +39,7 @@ Auth channel matches Materialized on every cell (segment authority unchanged).
 
 ## Next
 
-**CSE-2** — minimum parity to restore
-\(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\)
-(selective embedded salvage for damaged classes; keep Materialized reader).
-Then ETQ-2.
+**CSE-2R** was a Materialized **safety rollback** (not Compact parity).
+**CSE-3** — Compact + explicit recovery code
+([`CSE3_COMPACT_RECOVERY_CODE.md`](../../todo/performance-qualification/CSE3_COMPACT_RECOVERY_CODE.md)).
+ETQ-2 stays paused.

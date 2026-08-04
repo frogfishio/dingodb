@@ -1,21 +1,21 @@
-//! CSE-1 — Compact Chimera salvage equivalence campaign (historical FAIL).
+//! CSE-2R — Product Chimera **safety rollback** (NOT Compact parity).
 //!
-//! Runs the frozen CSE-0 failure set `F` against **Compact SegmentFrame**
-//! layouts (installed explicitly — product seal is Materialized after CSE-2R)
-//! and compares recoverable sets to the Materialized baseline.
+//! After CSE-1 proved Compact SegmentFrame fails salvage equivalence, product
+//! seal/enrichment was restored to Materialized embeds (`Product_new =
+//! Product_old`). That restores product safety; Compact recovery remains
+//! unresolved. Compact layouts stay available via `build_compact_layout` for
+//! ETQ measurement only.
 //!
-//! Required inequality (per channel):
-//!   Recoverable_compact(f) ⊇ Recoverable_materialized(f)
+//! This guard re-runs frozen F0–F5 on the **product seal** path and asserts
+//! recoverable sets match the CSE-0 Materialized RHS — expected because the
+//! product path *is* Materialized again, not because Compact gained parity.
 //!
 //! Charter: `doc/todo/performance-qualification/CHIMERA_SALVAGE_EQUIVALENCE.md`.
-//! CSE-0 archive: `doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`.
-//!
-//! Honest scope: measure + compare. Documents Compact FAIL → CSE-2R rollback / CSE-3 recovery.
+//! Next: CSE-3 Compact + explicit recovery code.
 
 use residiuum_format::{scan_forward, verify_frame_at, FrameKind, SafetyLimits};
 use residiuum_store::{
-    build_compact_layout, chimera_dir, chimera_layout_path, decode_item_envelope, hex16,
-    segment_id_from_filename, write_chimera_layout, CompactFrameRef, DurabilityMode, EventKind,
+    chimera_dir, decode_item_envelope, hex16, segment_id_from_filename, DurabilityMode, EventKind,
     Store,
 };
 use std::collections::BTreeSet;
@@ -27,7 +27,7 @@ const KEYS: [&str; 3] = ["t", "m", "l"];
 
 fn expected_body(key: &str) -> Vec<u8> {
     match key {
-        "t" => b"tiny-cse1".to_vec(),
+        "t" => b"tiny-cse2".to_vec(),
         "m" => vec![0x3cu8; 200],
         "l" => vec![0x5au8; 32 * 1024],
         _ => panic!("unknown key {key}"),
@@ -61,9 +61,8 @@ fn sealed_segment_path(root: &Path, segment_id: &[u8; 16]) -> PathBuf {
         .sealed_segment(segment_id)
 }
 
-/// Seed store then **install Compact** over product seal (CSE-1 Compact campaign).
-/// After CSE-2R, product seal writes Materialized; this test still measures Compact.
-fn seed_compact_fixture() -> Fixture {
+/// Seed via product seal — CSE-2R expects Materialized embed restore (not Compact).
+fn seed_product_seal_fixture() -> Fixture {
     let dir = tempdir().unwrap();
     let root = dir.keep();
 
@@ -90,8 +89,7 @@ fn seed_compact_fixture() -> Fixture {
 
     let bytes = fs::read(&seg_path).unwrap();
     let report = scan_forward(&bytes, SafetyLimits::default());
-    let mut last: std::collections::BTreeMap<String, (u64, u32)> =
-        std::collections::BTreeMap::new();
+    let mut last: std::collections::BTreeMap<String, u64> = std::collections::BTreeMap::new();
     for (off, frame) in report.verified_frames() {
         if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
             continue;
@@ -104,7 +102,7 @@ fn seed_compact_fixture() -> Fixture {
         }
         let subj = String::from_utf8(env.subject).expect("utf8 subject");
         if KEYS.contains(&subj.as_str()) {
-            last.insert(subj, (off, frame.body.len() as u32));
+            last.insert(subj, off);
         }
     }
     let frame_offsets: Vec<(String, u64)> = KEYS
@@ -112,46 +110,28 @@ fn seed_compact_fixture() -> Fixture {
         .map(|k| {
             (
                 (*k).to_string(),
-                last.get(*k)
-                    .map(|(o, _)| *o)
-                    .unwrap_or_else(|| panic!("missing frame for {k}")),
+                *last.get(*k).unwrap_or_else(|| panic!("missing frame for {k}")),
             )
         })
         .collect();
 
-    // Overwrite product Materialized seal with Compact SegmentFrame (CSE-1 LHS).
-    let frames: Vec<(Vec<u8>, CompactFrameRef)> = KEYS
-        .iter()
-        .map(|k| {
-            let (off, body_len) = *last.get(*k).unwrap_or_else(|| panic!("missing {k}"));
-            (
-                k.as_bytes().to_vec(),
-                CompactFrameRef {
-                    segment_id,
-                    frame_offset: off,
-                    body_len,
-                },
-            )
-        })
-        .collect();
-    let layout = build_compact_layout(&frames, 1);
-    assert!(layout.count_by_kind().segment_frame >= 3);
     let store = Store::open(&root).unwrap();
-    let path = chimera_layout_path(store.paths(), &segment_id);
-    write_chimera_layout(&path, store_id, segment_id, &layout).unwrap();
     let loaded = store
         .load_chimera_layout(segment_id)
         .unwrap()
-        .expect("compact layout present");
+        .expect("product Chimera after seal");
     let counts = loaded.count_by_kind();
-    assert!(
-        counts.segment_frame >= 3,
-        "CSE-1 requires Compact SegmentFrame layout (got {counts:?})"
+    assert_eq!(
+        counts.segment_frame, 0,
+        "CSE-2R product seal must be Materialized embed, not Compact SegmentFrame (got {counts:?})"
     );
-    assert_eq!(counts.inline + counts.point_container + counts.large_value_log, 0);
     assert!(
-        loaded.get(b"t").is_err() || loaded.get(b"t").ok().flatten().is_none(),
-        "Compact layout.get must not embed t body"
+        counts.inline + counts.point_container + counts.large_value_log >= 3,
+        "CSE-2R product seal must embed payloads (got {counts:?})"
+    );
+    assert_eq!(
+        loaded.get(b"t").unwrap().as_deref(),
+        Some(expected_body("t").as_slice())
     );
     drop(store);
 
@@ -163,7 +143,7 @@ fn seed_compact_fixture() -> Fixture {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 enum Channel {
     AuthGet,
     ChimeraGet,
@@ -292,8 +272,6 @@ struct Outcome {
     failure: &'static str,
     auth: BTreeSet<String>,
     chimera: BTreeSet<String>,
-    /// Format-only: `load_chimera_layout` + `ChimeraLayout::get` (no store pread).
-    /// Compact SegmentFrame locators yield empty here by design.
     layout_direct: BTreeSet<String>,
 }
 
@@ -312,7 +290,7 @@ fn recoverable_layout_direct(store: &Store, segment_id: [u8; 16]) -> BTreeSet<St
 }
 
 fn run_one(f: Failure) -> Outcome {
-    let fx = seed_compact_fixture();
+    let fx = seed_product_seal_fixture();
     apply_failure(&fx, f);
     let store = Store::open(&fx.root).unwrap();
     assert_eq!(store.store_id(), fx.store_id);
@@ -340,7 +318,7 @@ fn missing(lhs: &BTreeSet<String>, rhs: &BTreeSet<String>) -> BTreeSet<String> {
 }
 
 #[test]
-fn cse1_compact_equivalence_campaign() {
+fn cse2r_product_seal_safety_rollback_guard() {
     let mut rows = Vec::new();
     for &f in Failure::all() {
         rows.push(run_one(f));
@@ -349,12 +327,12 @@ fn cse1_compact_equivalence_campaign() {
     let mut gaps: Vec<String> = Vec::new();
     for r in &rows {
         let (m_auth, m_chimera, m_layout) = materialized_baseline(r.failure);
-        for (ch, compact, mat) in [
+        for (ch, product, mat) in [
             ("auth", &r.auth, &m_auth),
             ("chimera", &r.chimera, &m_chimera),
             ("layout_direct", &r.layout_direct, &m_layout),
         ] {
-            let miss = missing(compact, mat);
+            let miss = missing(product, mat);
             if !miss.is_empty() {
                 gaps.push(format!(
                     "{}:{} missing {{{}}}",
@@ -366,11 +344,11 @@ fn cse1_compact_equivalence_campaign() {
         }
     }
 
-    let equivalence_holds = gaps.is_empty();
+    // Product path matches Materialized RHS because it *is* Materialized again.
+    let product_matches_materialized = gaps.is_empty();
     let summary = format!(
-        "{{\"package\":\"CSE-1\",\"equivalence_holds\":{},\"requires_cse3\":{},\"gaps\":[{}],\"compact\":[{}],\"materialized_rhs\":\"CSE-0 baseline.json\"}}",
-        equivalence_holds,
-        !equivalence_holds,
+        "{{\"package\":\"CSE-2R\",\"classification\":\"safety_rollback\",\"not\":\"compact_minimum_parity\",\"product_matches_materialized_rhs\":{},\"compact_equivalence_holds\":false,\"gaps\":[{}],\"product\":[{}],\"note\":\"Product_new=Product_old Materialized restore; Compact still unresolved; ETQ-2 paused\"}}",
+        product_matches_materialized,
         gaps.iter()
             .map(|g| format!("\"{}\"", g.replace('"', "\\\"")))
             .collect::<Vec<_>>()
@@ -388,55 +366,27 @@ fn cse1_compact_equivalence_campaign() {
             .collect::<Vec<_>>()
             .join(",")
     );
-    eprintln!("CSE1_EQUIVALENCE_JSON={summary}");
+    eprintln!("CSE2R_ROLLBACK_JSON={summary}");
 
-    // --- Sanity: Compact auth tracks Materialized auth (segment authority) ---
-    let f0 = rows.iter().find(|r| r.failure == "F0_control").unwrap();
-    assert_eq!(f0.auth, bset(&["t", "m", "l"]));
-    assert_eq!(f0.chimera, bset(&["t", "m", "l"]));
-    // Compact format-only channel cannot resolve SegmentFrame without pread.
     assert!(
-        f0.layout_direct.is_empty(),
-        "Compact layout_direct must be empty (SegmentFrame needs store pread); got {:?}",
-        f0.layout_direct
+        product_matches_materialized,
+        "CSE-2R safety rollback: product Materialized seal must match CSE-0 RHS; gaps={gaps:?}"
     );
 
+    // Materialized salvage properties must hold on the product path again.
     let f3 = rows
         .iter()
         .find(|r| r.failure == "F3_corrupt_auth_body_t")
         .unwrap();
-    assert!(!f3.auth.contains("t"));
-    // Compact Chimera points at the same damaged frame → cannot expand salvage for t.
     assert!(
-        !f3.chimera.contains("t"),
-        "Compact must NOT recover damaged t via ChimeraGet (no embedded body); got {:?}",
-        f3.chimera
+        f3.chimera.contains("t"),
+        "F3 ChimeraGet must expand salvage for damaged t (Materialized product)"
     );
-    assert!(f3.chimera.contains("m") && f3.chimera.contains("l"));
+    assert!(f3.layout_direct.contains("t"));
 
     let f4 = rows
         .iter()
         .find(|r| r.failure == "F4_delete_sealed_segment")
         .unwrap();
-    assert!(f4.auth.is_empty());
-    assert!(f4.chimera.is_empty());
-    assert!(
-        f4.layout_direct.is_empty(),
-        "Compact has no embedded payloads → layout_direct empty under F4"
-    );
-
-    // Campaign complete: inequality outcome is the deliverable (not package accept).
-    // Current Compact is expected to fail ⊇ on F0/F3/F4 layout_direct and F3 chimera.
-    assert!(
-        !equivalence_holds,
-        "unexpected: Compact held Materialized recoverability — re-check CSE-3 need; gaps={gaps:?}"
-    );
-    assert!(
-        gaps.iter().any(|g| g.contains("F3_corrupt_auth_body_t:chimera")),
-        "expected F3 chimera gap (Materialized expands salvage); gaps={gaps:?}"
-    );
-    assert!(
-        gaps.iter().any(|g| g.contains("layout_direct")),
-        "expected layout_direct gap(s); gaps={gaps:?}"
-    );
+    assert_eq!(f4.layout_direct, bset(&["t", "m", "l"]));
 }

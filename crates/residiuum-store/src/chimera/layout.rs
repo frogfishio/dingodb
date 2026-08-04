@@ -1,13 +1,10 @@
 //! Per-segment Chimera layout sidecars (seal / compaction wire-up).
 //!
-//! **Default (compact, layout version 2):** seal/enrichment persists a sorted
-//! key → [`ValueLocator::SegmentFrame`] table. Payloads stay in authoritative
-//! segments. Containers and value-log regions are empty.
-//!
-//! **Obsolete (materialized, non-default):** [`build_materialized_layout`] still
-//! embeds tiny/medium/large bodies (inline / point containers / value log) for
-//! explicit compiler / migration use. Legacy on-disk version 1 files remain
-//! readable.
+//! **Product seal default (CSE-2R safety rollback):** seal/enrichment persists a
+//! Materialized layout via [`build_materialized_layout`] (inline / point
+//! containers / value log). This restores product salvage safety; Compact
+//! SegmentFrame salvage equivalence remains **unproven** (CSE-1 FAIL). Compact
+//! layouts stay available via [`build_compact_layout`] for ETQ measurement.
 //!
 //! Layouts live under `indexes/chimera/{hex16}.cmr` and are **derived only** —
 //! loss must never block segment salvage or PrimaryIndex rebuild.
@@ -183,9 +180,11 @@ pub struct ChimeraKindCounts {
     pub segment_frame: usize,
 }
 
-/// Build the **default compact** layout: key → segment-frame locators only.
+/// Build the **ETQ / measurement** compact layout: key → segment-frame locators only.
 ///
 /// Duplicate keys keep the **last** frame ref. No containers / value-log bytes.
+/// Not the product seal default after CSE-2R safety rollback (see
+/// [`build_materialized_layout`]). Compact salvage equivalence is still open (CSE-3).
 pub fn build_compact_layout(
     frames: &[(Vec<u8>, CompactFrameRef)],
     generation: u32,
@@ -209,10 +208,11 @@ pub fn build_compact_layout(
     layout
 }
 
-/// Obsolete full-payload embedding layout (non-default).
+/// Product seal layout (CSE-2R safety rollback): embeds tiny/medium/large bodies.
 ///
 /// Tiny → inline, medium → point containers, large → value log.
-/// Prefer [`build_compact_layout`] for seal / enrichment.
+/// Compact SegmentFrame remains available via [`build_compact_layout`] for ETQ.
+/// Restoring this path is **not** Compact minimum parity.
 pub fn build_materialized_layout(
     pairs: &[(Vec<u8>, Vec<u8>)],
     generation: u32,
@@ -223,7 +223,6 @@ pub fn build_materialized_layout(
 
 /// Build a layout from logical (key, value) pairs using classification.
 ///
-/// **Obsolete default path** — embeds payloads. Prefer [`build_compact_layout`].
 /// Tiny → inline, medium → point containers (ids 0..), large → value log id 0.
 /// Duplicate keys keep the **last** value (caller order).
 pub fn build_layout(
