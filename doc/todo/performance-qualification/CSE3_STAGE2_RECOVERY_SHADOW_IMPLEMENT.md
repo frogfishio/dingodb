@@ -2,10 +2,12 @@
 
 Status: **active** (2026-08-04) — Stage 2a invariants confirmed; step 5
 lifecycle dual-run landed; **step 6 CSE F0–F5 principal-accepted**; **step 7
-RSHD0004 dual-stream labor evidence (~28K TPS)**; **step 8 flip + RSHD0004 CSE
-matrix labor complete** (marker + controlled activate/rollback; principal review).
-Step 9 open. Default product seal remains Materialized until CompactShadow
-marker is activated.  
+RSHD0004 dual-stream labor evidence (~28K TPS harness)**; **step 8 flip
+machinery + qual-store ceremony PASS**; **step 9 diagnostic PASS / product
+perf FAIL** (burst 23K excluded seals; sustainable life=ack ≈12.4K after 2h);
+**step 2h** durable segment-ID never-reuse P0 + lifecycle instrumentation
+([`CSE3_STAGE2_STEP2H_SEGID_LIFECYCLE.md`](./CSE3_STAGE2_STEP2H_SEGID_LIFECYCLE.md)).
+**Release default remains Materialized.**  
 Depends: Stage 1 principal-accepted
 [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md).
 
@@ -45,8 +47,8 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 | **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | **Done** (lifecycle dual-run; no flip) |
 | **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Principal-accepted** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
 | **7** | Prove ≥7 segments/sec with non-growing backlog | **Labor evidence PASS** — RSHD0004 dual-stream; honest product **~28K** 8 KiB TPS; finalize median 55.57 seg/s (not DB TPS). [`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-dual-stream`. |
-| **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Labor complete / in_review** — RSHD0004 CSE 15/15 + flip marker APIs ([`CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md`](./CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md); archive `2026-08-04-cse3-stage2-step8-rshd0004-matrix`). Principal activates CompactShadow marker for product flip. |
-| **9** | Re-run full-product throughput qualification | Post-flip |
+| **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Qual-store ceremony PASS** — marker APIs + activation test ([`CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md`](./CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md), `cse3_stage2_step8_qual_activate`). **Not** release default. |
+| **9** | Re-run full-product throughput qualification | **Diagnostic PASS / product-perf FAIL for default** — life=ack ≈**12.4K** after 2h honesty (prior 23K burst rejected). Archive `2026-08-04-cse3-stage2h-segid-lifecycle`. Release default stays Materialized. |
 
 ## Boundary (no ambiguity)
 

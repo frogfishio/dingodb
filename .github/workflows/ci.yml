@@ -65,6 +65,14 @@ jobs:
       - name: Test
         run: cargo test --workspace
 
+      # CSE-3 RSHD0004 failpoints are process-global — serial evidence only.
+      - name: CSE-3 RSHD0004 matrix (serial)
+        run: bash ./scripts/verify-cse3-rshd0004-matrix.sh
+
+      # Segment-ID allocator failpoints are process-global — serial evidence only.
+      - name: CSE-3 segment-ID never-reuse matrix (serial)
+        run: bash ./scripts/verify-cse3-segment-id-never-reuse.sh
+
       - name: Docs + doctests
         run: cargo doc --workspace --no-deps --document-private-items
 

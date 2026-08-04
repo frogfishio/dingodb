@@ -1283,8 +1283,9 @@ fn write_hydra_for_bytes_timed(
 /// derived approximation as a full live projection when index is unavailable).
 ///
 /// Also dual-writes a Recovery Shadow (`.rsh`) with puts **and** tombstones
-/// (CSE-3 Stage 2 step 5). Materialized Chimera remains the product recovery
-/// path until Stage 2 step 8 — Shadow is additive only.
+/// during Materialized dual-run (CSE-3 Stage 2 step 5). After CompactShadow
+/// flip, Chimera is locator-only Compact and Shadow is already published on
+/// the dual-stream seal path — enrichment must not rewrite Materialized.
 fn write_chimera_from_segment_puts_timed(
     paths: &StorePaths,
     store_id: [u8; 16],
@@ -1295,11 +1296,42 @@ fn write_chimera_from_segment_puts_timed(
     use crate::envelope::decode_item_envelope;
     use residiuum_format::scan_forward;
 
+    let mode = crate::recovery_shadow::load_recovery_mode(paths).unwrap_or(
+        crate::recovery_shadow::RecoveryMode::Materialized,
+    );
+    if mode.omits_new_materialized() {
+        // CompactShadow: Compact Chimera only; dual-stream already published `.rsh`.
+        let t_decode = Instant::now();
+        let (_live, frames, _lp) =
+            crate::recovery_shadow::decode_segment_for_candidate(segment_id, bytes, limits);
+        let decode_ns = elapsed_ns(t_decode);
+        if frames.is_empty() {
+            return Ok(TimedWrite {
+                decode_ns,
+                construct_ns: 0,
+                persist_ns: 0,
+                bytes_written: 0,
+            });
+        }
+        let t_build = Instant::now();
+        let layout = crate::chimera::build_compact_layout(&frames, 1);
+        let construct_ns = elapsed_ns(t_build);
+        let path = crate::chimera::chimera_layout_path(paths, &segment_id);
+        let t_persist = Instant::now();
+        crate::chimera::write_chimera_layout(&path, store_id, segment_id, &layout)?;
+        let persist_ns = elapsed_ns(t_persist);
+        let bytes_written = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        return Ok(TimedWrite {
+            decode_ns,
+            construct_ns,
+            persist_ns,
+            bytes_written,
+        });
+    }
+
     let t_decode = Instant::now();
     let report = scan_forward(bytes, limits);
     // CSE-2R: latest put body per subject (Materialized product restore).
-    // Compact SegmentFrame remains available via `build_compact_layout` for ETQ.
-    // Recovery Shadow dual-run uses RSHD0003 image mirror (no re-encode).
     let mut last: std::collections::BTreeMap<Vec<u8>, Vec<u8>> =
         std::collections::BTreeMap::new();
     for (_off, frame) in report.verified_frames() {

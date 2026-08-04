@@ -1,0 +1,6 @@
+ack_tps=23278
+lifecycle_tps=11845
+shadow_pub_seg_per_sec=76.90
+compact_amp_pct=0.75
+shadow_amp_pct=100.1
+gates_pass=true

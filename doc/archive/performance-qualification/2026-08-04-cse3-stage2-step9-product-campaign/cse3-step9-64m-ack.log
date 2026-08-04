@@ -1,0 +1,10 @@
+   Compiling residiuum-store v0.2.0 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `release` profile [optimized] target(s) in 1.21s
+     Running tests/cse3_stage2_step9_product_campaign.rs (target/release/deps/cse3_stage2_step9_product_campaign-2b634ed4e99a71cb)
+
+running 1 test
+step9 product: target=67108864 ack=24335 life=10298 pub=124.73 seg/s compact=0.70% shadow_amp=101.1% frontier=true rsh=true recovery=true reopen=true continue=true compact_locators=true gates_pass=true
+test step9_product_campaign ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 1.58s
+

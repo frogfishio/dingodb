@@ -28,7 +28,7 @@ use crate::history::{
     subject_history_tiered, BeforeEvent, HistoricalSearchResult, HistoryEvent, ReadBudget,
     RecoveryReadOptions, SubjectHistory, VersionedPayloadResult,
 };
-use crate::ids::{mint_sortable_segment_id, random_id, segment_seq_from_id, subject_item_id};
+use crate::ids::{random_id, segment_seq_from_id, subject_item_id};
 use crate::index::{slim_put_body_for_index, IndexEntry, PrimaryIndex};
 use crate::index_cache::{
     diagnose_primary_cache, primary_cache_path, segment_fingerprint, try_load_primary_index,
@@ -155,8 +155,12 @@ pub struct SealStageBreakdown {
     pub drain_lifecycle_ns: u64,
     /// Flush active, build sealed image, publish to `segments/`.
     pub final_active_seal_ns: u64,
+    /// Dual-stream Shadow finalize + frontier publish (CompactShadow).
+    pub shadow_dual_ns: u64,
     /// Tier placement + segment catalog note for the sealed segment.
     pub catalog_publication_ns: u64,
+    /// Whole-segment BLAKE3 for catalog `ContentHashState::Known`.
+    pub content_hash_ns: u64,
     /// Per-segment Hydra index build/write.
     pub hydra_ns: u64,
     /// Per-segment Chimera layout build/write.
@@ -170,7 +174,9 @@ impl SealStageBreakdown {
     pub fn total_ns(self) -> u64 {
         self.drain_lifecycle_ns
             .saturating_add(self.final_active_seal_ns)
+            .saturating_add(self.shadow_dual_ns)
             .saturating_add(self.catalog_publication_ns)
+            .saturating_add(self.content_hash_ns)
             .saturating_add(self.hydra_ns)
             .saturating_add(self.chimera_ns)
             .saturating_add(self.reopen_active_ns)
@@ -807,6 +813,14 @@ impl Store {
         let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
         store.load_or_rebuild_index()?;
         store.load_or_rebuild_catalog()?;
+        // Durable segment-id high water (never-reuse). Reconstructs above every
+        // active/pending/sealed/shadow/chimera id; refuses if ambiguous.
+        store.segment_seq = crate::segment_allocator::reconstruct_reserved_thru(
+            &store.paths,
+            store.store_id,
+            store.writer_shards,
+            store.limits,
+        )?;
         store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
         store.resume_or_start_all_actives()?;
         // Finish or cancel incomplete compaction jobs (DEF-024).
@@ -3466,7 +3480,7 @@ impl Store {
         let source_ids = reclaimable_source_ids(&self.paths, &sources);
         let live_planned = self.index.live_entries().count();
         let (est_read, est_write) = estimate_compact_bytes(&self.paths, &sources, &self.index);
-        let segment_id = self.next_segment_id();
+        let segment_id = self.next_segment_id()?;
         let job_id = random_id()?;
         let created_ns = now_ns();
         let recovery_generation = next_compact_recovery_generation(&self.paths)?;
@@ -4586,7 +4600,9 @@ impl Store {
     pub fn seal_active_with_breakdown(&mut self) -> Result<SealStageBreakdown, StoreError> {
         let mut out = SealStageBreakdown::default();
         let t_drain = std::time::Instant::now();
-        self.drain_lifecycle()?;
+        // Wait for in-flight authoritative seals only — do not apply EnrichDone
+        // here (that re-serialized derived work onto the seal critical path).
+        self.wait_seals_applied()?;
         out.drain_lifecycle_ns = elapsed_ns(t_drain);
         let n = self.writer_shards();
         for shard in 0..n {
@@ -4694,6 +4710,7 @@ impl Store {
         // Experimental dual-stream Shadow: append the same summary, sync/publish
         // independently, then advance protected_frontier (never before Shadow).
         if let Some(dual) = shadow_dual.take() {
+            let t_shadow = Instant::now();
             if dual.is_poisoned() || dual.image_len() != prefix_len {
                 return Err(StoreError::CorruptMeta(
                     "dual-stream Shadow staging diverged from authoritative prefix; refuse P★",
@@ -4727,23 +4744,31 @@ impl Store {
             cov.store_id = self.store_id;
             cov.note_durable(shard as u16, seq);
             crate::recovery_shadow::publish_protected_coverage(&self.paths, &cov)?;
+            breakdown.shadow_dual_ns = breakdown
+                .shadow_dual_ns
+                .saturating_add(elapsed_ns(t_shadow));
         }
 
         // Seal Fast Lane: start the replacement active immediately. BLAKE3,
         // segment-catalog scan, Hydra, and Chimera are derived — enqueue them.
+        // `start_active_segment_with_mode` mints via `next_segment_id` (durable
+        // reservation). Bump in-memory high water from sealed id as defense.
+        self.segment_seq = self
+            .segment_seq
+            .max(segment_seq_from_id(&sealed_id));
         let t_reopen = std::time::Instant::now();
-        self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
         breakdown.reopen_active_ns = breakdown
             .reopen_active_ns
             .saturating_add(elapsed_ns(t_reopen));
 
-        // Explicit `seal_active` is synchronous (including Hydra/Chimera).
-        // Auto-rotate uses EnrichDerived asynchronously; this path must not.
+        // Explicit `seal_active`: authoritative publish + Shadow dual finalize
+        // stay synchronous (P★). Whole-segment BLAKE3 / Hydra / Chimera are
+        // derived — enqueue EnrichDerived like auto-rotate (DEF defer BLAKE3).
         let t_cat = Instant::now();
-        let content_hash =
-            crate::incremental_seal::ContentHashState::Known(*blake3::hash(bytes).as_bytes());
+        let content_hash = crate::incremental_seal::ContentHashState::Pending;
+        breakdown.content_hash_ns = breakdown.content_hash_ns.saturating_add(0);
         let _ = register_hot_segment_known(
             &self.paths,
             &mut self.tier_placement,
@@ -4758,12 +4783,37 @@ impl Store {
             .saturating_add(elapsed_ns(t_cat));
         self.maybe_schedule_derived_catalog_checkpoint(false);
         if self.enrichment_enabled {
-            let t_hydra = std::time::Instant::now();
-            let _ = self.write_hydra_for_sealed(sealed_id, bytes);
-            breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
-            let t_chimera = std::time::Instant::now();
-            let _ = self.write_chimera_for_sealed(sealed_id);
-            breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
+            if self.recovery_mode.omits_new_materialized() {
+                // CompactShadow: P★ Shadow already published; Compact Chimera is
+                // derived — enqueue like auto-rotate so seal wall ≈ auth+Shadow.
+                if let Some(pipe) = self.seal_pipeline.as_mut() {
+                    let t_enq = Instant::now();
+                    let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
+                        store_id: self.store_id,
+                        segment_id: sealed_id,
+                        paths: self.paths.clone(),
+                        limits: self.limits,
+                    });
+                    breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_enq));
+                } else {
+                    let t_hydra = std::time::Instant::now();
+                    let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+                    breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
+                    let t_chimera = std::time::Instant::now();
+                    let _ = self.write_chimera_for_sealed_bytes(sealed_id, bytes);
+                    breakdown.chimera_ns =
+                        breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
+                }
+            } else {
+                // Materialized dual-run: keep sync Chimera on explicit seal so
+                // operators/tests see `.cmr` before the next statement.
+                let t_hydra = std::time::Instant::now();
+                let _ = self.write_hydra_for_sealed(sealed_id, bytes);
+                breakdown.hydra_ns = breakdown.hydra_ns.saturating_add(elapsed_ns(t_hydra));
+                let t_chimera = std::time::Instant::now();
+                let _ = self.write_chimera_for_sealed_bytes(sealed_id, bytes);
+                breakdown.chimera_ns = breakdown.chimera_ns.saturating_add(elapsed_ns(t_chimera));
+            }
         }
         // Deliberately no full index-cache rewrite here (DEF-023 scale).
         Ok(())
@@ -4989,7 +5039,8 @@ impl Store {
                 .map(|p| p.inflight_seals)
                 .unwrap_or(0);
             if inflight == 0 {
-                while self.poll_lifecycle()? {}
+                // Do not drain EnrichDone here — seal critical path must not
+                // serialize derived Hydra/Chimera apply between seals.
                 return Ok(());
             }
             if !self.wait_one_lifecycle()? {
@@ -5002,10 +5053,11 @@ impl Store {
         }
     }
 
-    /// Drain the seal pipeline: wait for finalizes, apply memory catalogs, then
-    /// best-effort flush derived catalogs (orderly shutdown — not authority).
+    /// Drain the seal pipeline: wait for finalizes, apply pending results
+    /// (including enrichment), then best-effort flush derived catalogs.
     pub fn drain_lifecycle(&mut self) -> Result<(), StoreError> {
         self.wait_seals_applied()?;
+        while self.poll_lifecycle()? {}
         self.flush_derived_catalogs_best_effort();
         Ok(())
     }
@@ -5245,8 +5297,12 @@ impl Store {
             .saturating_add(elapsed_ns(t_rename));
 
         // Open next active immediately (put path unblocked for new frames).
+        // `start_active_segment_with_mode` owns the `segment_seq` increment.
+        // Same active-filename under-count as sync seal — bump before mint.
+        self.segment_seq = self
+            .segment_seq
+            .max(segment_seq_from_id(&segment_id));
         let t_start = std::time::Instant::now();
-        self.segment_seq = self.segment_seq.saturating_add(1);
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
         self.rotation_stage_totals.start_active_ns = self
@@ -5397,7 +5453,12 @@ impl Store {
     ///   Existing `.cmr` Materialized files are retained until operator cleanup.
     fn write_chimera_for_sealed(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
         if self.recovery_mode.omits_new_materialized() {
-            return self.write_compact_chimera_for_sealed(segment_id);
+            let path = self.paths.sealed_segment(&segment_id);
+            if !path.is_file() {
+                return Ok(());
+            }
+            let bytes = fs::read(&path)?;
+            return self.write_compact_chimera_from_bytes(segment_id, &bytes);
         }
         let pairs = self.live_put_pairs_for_segment(&segment_id)?;
         if pairs.is_empty() {
@@ -5412,16 +5473,26 @@ impl Store {
         crate::chimera::write_chimera_layout(&path, self.store_id, segment_id, &layout)
     }
 
-    /// Compact Chimera for post-flip seals (query path; not P★).
-    fn write_compact_chimera_for_sealed(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
-        let path = self.paths.sealed_segment(&segment_id);
-        if !path.is_file() {
-            return Ok(());
+    /// Seal-path Chimera using the already-built sealed image (no re-read).
+    fn write_chimera_for_sealed_bytes(
+        &self,
+        segment_id: [u8; 16],
+        bytes: &[u8],
+    ) -> Result<(), StoreError> {
+        if self.recovery_mode.omits_new_materialized() {
+            return self.write_compact_chimera_from_bytes(segment_id, bytes);
         }
-        let bytes = fs::read(&path)?;
+        self.write_chimera_for_sealed(segment_id)
+    }
+
+    fn write_compact_chimera_from_bytes(
+        &self,
+        segment_id: [u8; 16],
+        bytes: &[u8],
+    ) -> Result<(), StoreError> {
         let (_live, frames, _lp) = crate::recovery_shadow::decode_segment_for_candidate(
             segment_id,
-            &bytes,
+            bytes,
             self.limits,
         );
         if frames.is_empty() {
@@ -6901,7 +6972,7 @@ impl Store {
 
     fn start_active_segment(&mut self, shard: usize) -> Result<(), StoreError> {
         let n = self.writer_shards();
-        let segment_id = self.next_segment_id();
+        let segment_id = self.next_segment_id()?;
         let ids = SegmentId::new(self.store_id, segment_id);
         let segment = ActiveSegment::create(ids, self.limits, now_ns())?;
         let dir = self.paths.active_shard_dir(shard, n);
@@ -6942,6 +7013,7 @@ impl Store {
                 shadow_dual,
             }),
         );
+        crate::failpoint::hit("segalloc.after_active_media")?;
         self.maybe_attach_runway_preparer(shard)?;
         Ok(())
     }
@@ -6953,7 +7025,7 @@ impl Store {
         mode: DurabilityMode,
     ) -> Result<(), StoreError> {
         let n = self.writer_shards();
-        let segment_id = self.next_segment_id();
+        let segment_id = self.next_segment_id()?;
         let ids = SegmentId::new(self.store_id, segment_id);
         let segment = ActiveSegment::create(ids, self.limits, now_ns())?;
         let dir = self.paths.active_shard_dir(shard, n);
@@ -6974,6 +7046,7 @@ impl Store {
             file.sync_all()?;
         }
         let shadow_dual = self.open_shadow_dual(segment_id, &initial)?;
+        crate::failpoint::hit("segalloc.after_active_media")?;
         self.set_active(
             shard,
             Some(ActiveWriter {
@@ -7276,12 +7349,41 @@ impl Store {
         file.read_to_end(&mut bytes)?;
 
         // Truncate incomplete tail: keep only verified contiguous prefix from offset 0.
-        let (kept, segment_id) = recover_active_bytes(&bytes, self.store_id, self.limits)?;
+        let (kept, segment_id) = match recover_active_bytes(&bytes, self.store_id, self.limits) {
+            Ok(v) => v,
+            Err(StoreError::CorruptMeta(_)) if bytes.is_empty() => {
+                drop(file);
+                let _ = fs::remove_file(&path);
+                self.start_active_segment(shard)?;
+                self.persist_active_shard(shard, DurabilityMode::Durable)?;
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
+        // If this id is already sealed, the active file is stale (would overwrite
+        // sealed/.rsh on the next seal). Discard and mint a fresh active.
+        if self.paths.sealed_segment(&segment_id).is_file() {
+            drop(file);
+            let _ = fs::remove_file(&path);
+            self.segment_seq = self
+                .segment_seq
+                .max(segment_seq_from_id(&segment_id));
+            self.start_active_segment(shard)?;
+            self.persist_active_shard(shard, DurabilityMode::Durable)?;
+            return Ok(());
+        }
         if kept.len() != bytes.len() {
             file.set_len(kept.len() as u64)?;
             file.seek(SeekFrom::Start(kept.len() as u64))?;
             file.sync_all()?;
         }
+
+        // Active path is `active.residiuum` (no seq in the name). Index open
+        // therefore cannot see this id via `max_segment_seq_from_paths`; bump
+        // so the next mint cannot collide with the resumed segment.
+        self.segment_seq = self
+            .segment_seq
+            .max(segment_seq_from_id(&segment_id));
 
         // Rebuild ActiveSegment by re-appending recovered item events.
         let rebuilt = rebuild_active_from_bytes(&kept, self.store_id, segment_id, self.limits)?;
@@ -7315,8 +7417,8 @@ impl Store {
                 zeroed_thru: 0,
                 runway: None,
                 item_events,
-                // Resume does not reconstruct dual-stream staging (experimental
-                // path starts fresh actives only).
+                // Dual-stream is re-attached by `reload_recovery_mode` /
+                // `attach_shadow_dual_to_actives` when CompactShadow is armed.
                 shadow_dual: None,
             }),
         );
@@ -7356,10 +7458,13 @@ impl Store {
         Ok(())
     }
 
-    fn next_segment_id(&mut self) -> [u8; 16] {
-        self.segment_seq = self.segment_seq.saturating_add(1);
-        // Sortable identity: monotonic seq recovered from disk on open (DEF-025).
-        mint_sortable_segment_id(self.segment_seq, &self.store_id)
+    fn next_segment_id(&mut self) -> Result<[u8; 16], StoreError> {
+        // Durable reservation before media: never remint a published/reserved seq.
+        crate::segment_allocator::reserve_next_segment_id(
+            &self.paths,
+            self.store_id,
+            &mut self.segment_seq,
+        )
     }
 
     /// Pure CSPRNG event identity (not sortable; order uses writer_sequence).
@@ -7751,7 +7856,17 @@ fn recover_active_bytes(
     let kept = bytes[..end as usize].to_vec();
     let sid = match segment_id {
         Some(id) => id,
-        None => random_id()?,
+        None if kept.is_empty() => {
+            // Empty / no descriptor — caller must discard and mint via allocator.
+            return Err(StoreError::CorruptMeta(
+                "active segment has no recoverable segment_id",
+            ));
+        }
+        None => {
+            return Err(StoreError::CorruptMeta(
+                "active segment missing SegmentDescriptor; refuse resume",
+            ));
+        }
     };
     Ok((kept, sid))
 }

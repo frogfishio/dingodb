@@ -295,5 +295,21 @@ name = "cse3_stage2_step7_shadow_perf"
 required-features = ["legacy-raw-store"]
 
 [[test]]
+name = "cse3_stage2_rshd0004_matrix"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "cse3_stage2_step8_qual_activate"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "cse3_stage2_step9_product_campaign"
+required-features = ["legacy-raw-store"]
+
+[[test]]
+name = "cse3_stage2_segment_id_never_reuse"
+required-features = ["legacy-raw-store"]
+
+[[test]]
 name = "derived_catalog_checkpoint"
 required-features = ["legacy-raw-store"]

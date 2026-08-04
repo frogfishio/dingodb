@@ -1,0 +1,38 @@
+   Compiling residiuum-store v0.2.0 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/cse3_stage2_segment_id_never_reuse.rs (target/debug/deps/cse3_stage2_segment_id_never_reuse-b951e14c82b5af73)
+
+running 8 tests
+test corrupt_allocator_refuses_without_mutating_media ... ok
+test crash_after_active_media ... 
+thread 'crash_after_active_media' (61355200) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: segalloc.after_active_media
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ok
+test crash_after_reserve_before_media ... 
+thread 'crash_after_reserve_before_media' (61355212) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: segalloc.after_reserve_before_media
+ok
+test crash_after_reserve_persist ... 
+thread 'crash_after_reserve_persist' (61355231) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: segalloc.after_reserve_persist
+ok
+test crash_before_reserve_persist ... 
+thread 'crash_before_reserve_persist' (61355243) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: segalloc.before_reserve_persist
+ok
+test crash_seal_publish_boundaries ... 
+thread 'crash_seal_publish_boundaries' (61355373) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: store.seal.before_dest_write
+
+thread 'crash_seal_publish_boundaries' (61355373) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: store.seal.after_dest_sync
+
+thread 'crash_seal_publish_boundaries' (61355373) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: store.seal.after_active_remove
+ok
+test never_reuse_after_repeated_reopen_seal ... ok
+test never_reuse_multi_shard_allocation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.06s
+

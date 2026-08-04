@@ -67,6 +67,7 @@ mod recovery_shadow;
 mod scrub;
 mod seal_pipeline;
 mod secondary;
+mod segment_allocator;
 mod segment_catalog;
 mod runway_preparer;
 mod segment_growth;

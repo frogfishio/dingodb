@@ -6,11 +6,10 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2 step 8 labor** — RSHD0004 CSE matrix 15/15 +
-controlled flip marker; Step 7 honest product figure **~28K** 8 KiB TPS; finalize
-median 55.57 seg/s is **not** DB TPS. Default seal still Materialized until
-CompactShadow marker activated. **ETQ-2 paused.** **AWO paused.** Prior: step 6
-accepted; RSHD0003 quiet 9.96.
+Updated: 2026-08-04 (**CSE-3 Stage 2h** — durable segment-ID never-reuse P0
+PASS; Step 9 lifecycle honesty: life=ack≈**12.4K** TPS at 2 GiB/64 MiB after
+seal-path enrich deferral; **not** ~28K sustainable. **Release/default remains
+Materialized.** **ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
