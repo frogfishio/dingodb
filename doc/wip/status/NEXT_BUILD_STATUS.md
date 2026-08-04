@@ -218,6 +218,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **RQL PATH T3.6** nested within `4d9104f7` | `in_review` | ordered pipeline: nested `within` + enrich-after-within; `at rank` residual |
 | — | **RQL PATH T3.7** nested where `b58eb37f` | `in_review` | `where` filter steps inside `within`; root post-enrich where residual |
 | — | **RQL PATH T3.8** root where `997b3632` | `in_review` | post-attach root `where` (page-then-attach); `at rank` residual |
+| — | **RQL PATH T3.9** nested project `2a92a46e` | `in_review` | brace `project { … }` after pipeline; `at rank`/index residual |
 | — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
 | — | **APB-2 T5** store Key Atomic CAS `d08e4633` | `in_review` | embedded CAS labor; no package accept |
 | — | **APB-2 T6** residual checklist `1b8a52b7` | `in_review` | honesty map; **never** self-mark package accept |

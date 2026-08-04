@@ -4,14 +4,15 @@
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.
 //!
-//! Current slice (T3.8):
+//! Current slice (T3.9):
 //! - ordered root pipeline: `enrich` / `within` / post-attach `where` interleaved
 //! - nested `within` depth (bounded by [`MAX_WITHIN_DEPTH`])
 //! - nested `where` inside `within` (ordered filter on carrier elements)
 //! - root `where` after enrich/within filters the Core page rows (page-then-attach honesty)
+//! - nested post-pipeline `project { … }` (leaf / rename / nested product + bag map)
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
 //! - candidate `where` filters foreign docs before cardinality
-//! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach pipeline)
+//! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach + project)
 //! - refuse `at rank` / access policies (DDA residual)
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
@@ -37,8 +38,17 @@ pub const DIAG_RQL_WITHIN_TYPE: &str = "rql_within_type";
 /// Diagnostic when a full-language construct is still residual.
 pub const DIAG_RQL_FULL_RESIDUAL: &str = "rql_full_residual";
 
+/// Diagnostic when nested project hits a non-projectable value.
+pub const DIAG_RQL_PROJECT_TYPE: &str = "rql_project_type";
+
+/// Diagnostic when project output names collide.
+pub const DIAG_RQL_PROJECTION_CONFLICT: &str = "rql_projection_conflict";
+
 /// Host bound on nested `within` depth (root `within` is depth 1).
 pub const MAX_WITHIN_DEPTH: usize = 8;
+
+/// Host bound on nested `project { }` depth.
+pub const MAX_PROJECT_DEPTH: usize = 8;
 
 /// Enrichment cardinality (RQL_SPEC).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,17 +113,38 @@ pub struct WithinStepV1 {
     pub steps: Vec<FullPipelineStepV1>,
 }
 
+/// One compiled nested-project item (`project { … }`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProjectItemV1 {
+    /// Leaf copy: output name ← source path (`id` or `region: address.region`).
+    Leaf {
+        /// Output field name.
+        output: String,
+        /// Source path on the current artefact.
+        source: Path,
+    },
+    /// Nested block: `customer { name }` or bag map `items { sku }`.
+    Nested {
+        /// Output field name and source field on the current artefact.
+        output: String,
+        /// Nested projection items.
+        fields: Vec<ProjectItemV1>,
+    },
+}
+
 /// Compiled full-language query (Core base + ordered enrich/within pipeline).
 #[derive(Debug, Clone, PartialEq)]
 pub struct CompiledRqlFull {
     /// Profile label.
     pub profile: &'static str,
     /// Application Core plan for the base `from`/`where`/`project`/`order`/…
-    /// (enrich/within stripped before Core compile).
+    /// (enrich/within/brace-project stripped before Core compile).
     pub base: CompiledAppCore,
     /// Ordered root pipeline (`enrich` / `within` interleaved).
     pub pipeline: Vec<FullPipelineStepV1>,
-    /// Source text with enrich/within clauses removed (Core surface).
+    /// Optional nested `project { … }` applied after the pipeline.
+    pub project: Option<Vec<ProjectItemV1>>,
+    /// Source text with enrich/within/brace-project clauses removed (Core surface).
     pub base_source: String,
 }
 
@@ -176,7 +207,8 @@ pub fn compile_rql_full(
     }
     refuse_residual_constructs(source)?;
 
-    let (base_source, raw_steps) = split_full_clauses(source)?;
+    let (without_project, project) = extract_brace_project(source)?;
+    let (base_source, raw_steps) = split_full_clauses(&without_project)?;
     let base = compile_app_core(&base_source, bindings)?;
     let mut pipeline = Vec::with_capacity(raw_steps.len());
     for raw in raw_steps {
@@ -202,6 +234,7 @@ pub fn compile_rql_full(
         profile: RQL_FULL_PROFILE,
         base,
         pipeline,
+        project,
         base_source,
     })
 }
@@ -222,6 +255,125 @@ fn refuse_residual_constructs(source: &str) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+/// Extract top-level nested `project { … }` (brace form). Flat Core `project a, b` stays.
+fn extract_brace_project(
+    source: &str,
+) -> Result<(String, Option<Vec<ProjectItemV1>>), Error> {
+    let lower = source.to_ascii_lowercase();
+    let bytes = lower.as_bytes();
+    let mut i = 0usize;
+    let mut depth = 0usize;
+    while i < lower.len() {
+        match bytes[i] {
+            b'{' => {
+                depth += 1;
+                i += 1;
+                continue;
+            }
+            b'}' => {
+                depth = depth.saturating_sub(1);
+                i += 1;
+                continue;
+            }
+            _ => {}
+        }
+        if depth == 0 && matches_kw(&lower, i, "project") {
+            let after = i + "project".len();
+            let rest = source[after..].trim_start();
+            if rest.starts_with('{') {
+                let open_abs = source.len() - rest.len();
+                let end = find_matching_brace_end(source, open_abs)?;
+                let inner = source[open_abs + 1..end - 1].trim();
+                let items = parse_project_items(inner, 1)?;
+                let mut out = String::new();
+                out.push_str(&source[..i]);
+                out.push_str(&source[end..]);
+                return Ok((out, Some(items)));
+            }
+        }
+        i += 1;
+    }
+    Ok((source.to_string(), None))
+}
+
+fn find_matching_brace_end(source: &str, open_abs: usize) -> Result<usize, Error> {
+    let bytes = source.as_bytes();
+    if bytes.get(open_abs) != Some(&b'{') {
+        return Err(Error::QueryInvalid("project: expected `{`".into()));
+    }
+    let mut depth = 0usize;
+    let mut i = open_abs;
+    while i < source.len() {
+        match bytes[i] {
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Ok(i + 1);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    Err(Error::QueryInvalid("project: unclosed `{`".into()))
+}
+
+fn parse_project_items(inner: &str, depth: usize) -> Result<Vec<ProjectItemV1>, Error> {
+    if depth > MAX_PROJECT_DEPTH {
+        return Err(Error::QueryInvalid(format!(
+            "{DIAG_RQL_FULL_RESIDUAL}: project depth exceeds host bound {MAX_PROJECT_DEPTH}"
+        )));
+    }
+    let mut p = Words::new(inner);
+    let mut items = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    while !p.is_eof() {
+        let first = p.next_ident()?;
+        let item = if p.eat_char(b'{') {
+            let nested_inner = p.take_brace_inner()?;
+            let fields = parse_project_items(&nested_inner, depth + 1)?;
+            ProjectItemV1::Nested {
+                output: first,
+                fields,
+            }
+        } else if p.eat_char(b':') {
+            let source = Path::parse_dotted(&p.next_path()?)?;
+            ProjectItemV1::Leaf {
+                output: first,
+                source,
+            }
+        } else {
+            let mut segs = vec![first];
+            loop {
+                p.skip();
+                if p.s.as_bytes().get(p.i) == Some(&b'.') {
+                    p.i += 1;
+                    segs.push(p.next_ident()?);
+                } else {
+                    break;
+                }
+            }
+            let output = segs.last().cloned().expect("non-empty");
+            let source = Path::from_segments(segs)?;
+            ProjectItemV1::Leaf { output, source }
+        };
+        let out_name = match &item {
+            ProjectItemV1::Leaf { output, .. } | ProjectItemV1::Nested { output, .. } => {
+                output.clone()
+            }
+        };
+        if !seen.insert(out_name.clone()) {
+            return Err(Error::QueryInvalid(format!(
+                "{DIAG_RQL_PROJECTION_CONFLICT}: duplicate output `{out_name}`"
+            )));
+        }
+        items.push(item);
+        let _ = p.eat_char(b',');
+    }
+    Ok(items)
 }
 
 /// Split top-level `enrich` / `within` / post-attach `where`; return Core text + steps.
@@ -938,6 +1090,60 @@ pub fn filter_rows(
     Ok(kept)
 }
 
+/// Apply nested `project { … }` to materialised rows.
+pub fn apply_project_rows(
+    rows: &[(String, JsonValue)],
+    fields: &[ProjectItemV1],
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    let mut out = Vec::with_capacity(rows.len());
+    for (k, v) in rows {
+        let projected = project_value(v, fields)?;
+        out.push((k.clone(), projected));
+    }
+    Ok(out)
+}
+
+fn project_value(doc: &JsonValue, fields: &[ProjectItemV1]) -> Result<JsonValue, Error> {
+    let mut map = serde_json::Map::new();
+    for item in fields {
+        match item {
+            ProjectItemV1::Leaf { output, source } => match resolve_path(doc, source) {
+                Resolve::Present(v) => {
+                    map.insert(output.clone(), v);
+                }
+                Resolve::Absent => {}
+            },
+            ProjectItemV1::Nested { output, fields } => {
+                let carrier_path = Path::from_segments(vec![output.clone()])?;
+                match resolve_path(doc, &carrier_path) {
+                    Resolve::Absent => {}
+                    Resolve::Present(JsonValue::Null) => {
+                        map.insert(output.clone(), JsonValue::Null);
+                    }
+                    Resolve::Present(JsonValue::Object(obj)) => {
+                        let nested = project_value(&JsonValue::Object(obj), fields)?;
+                        map.insert(output.clone(), nested);
+                    }
+                    Resolve::Present(JsonValue::Array(arr)) => {
+                        let mut mapped = Vec::with_capacity(arr.len());
+                        for el in arr {
+                            mapped.push(project_value(&el, fields)?);
+                        }
+                        map.insert(output.clone(), JsonValue::Array(mapped));
+                    }
+                    Resolve::Present(other) => {
+                        return Err(Error::QueryInvalid(format!(
+                            "{DIAG_RQL_PROJECT_TYPE}: `{output}` is {} (need product/optional/bag)",
+                            json_type_name(&other)
+                        )));
+                    }
+                }
+            }
+        }
+    }
+    Ok(JsonValue::Object(map))
+}
+
 /// Attach enrich fields onto already-materialised root JSON documents.
 ///
 /// `foreign_docs` is a complete list of `(key, json)` for the using-collection
@@ -1156,12 +1362,14 @@ fn set_at_path(doc: &mut JsonValue, path: &Path, value: JsonValue) -> Result<(),
 pub struct RqlFullPage {
     /// Profile label.
     pub profile: &'static str,
-    /// Enriched rows `(key, json)` after attach (same page bounds as base).
+    /// Rows after pipeline (+ optional project).
     pub rows: Vec<(String, JsonValue)>,
     /// Underlying Application Core page (pre-enrich values).
     pub base: QueryPage,
     /// Compiled ordered pipeline applied after the base page.
     pub pipeline: Vec<FullPipelineStepV1>,
+    /// Nested project applied after the pipeline, if any.
+    pub project: Option<Vec<ProjectItemV1>>,
 }
 
 impl RqlFullPage {
@@ -1230,11 +1438,16 @@ pub fn execute_rql_full(
         }
     }
 
+    if let Some(fields) = &compiled.project {
+        rows = apply_project_rows(&rows, fields)?;
+    }
+
     Ok(RqlFullPage {
         profile: RQL_FULL_PROFILE,
         rows,
         base: page,
         pipeline: compiled.pipeline,
+        project: compiled.project,
     })
 }
 
@@ -1772,6 +1985,80 @@ mod tests {
         let out = filter_rows(&mid, pred, &BTreeMap::new()).unwrap();
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].1["customer"]["name"], "Ada");
+    }
+
+    #[test]
+    fn compile_and_apply_nested_project() {
+        let c = compile_rql_full(
+            r#"from orders
+               enrich customer using customers matching customer_id = id expect exactly_one
+               enrich items using line_items matching order_id = order_id expect many
+               within items as item {
+                 enrich product using products as candidate
+                   matching item.product_id = candidate.id
+                   expect exactly_one
+               }
+               project {
+                 order_id,
+                 customer { name },
+                 items { sku, product { name } }
+               }"#,
+            &bindings(),
+        )
+        .unwrap();
+        let proj = c.project.as_ref().unwrap();
+        assert_eq!(proj.len(), 3);
+        assert!(c.base_source.contains("from orders"));
+        assert!(!c.base_source.contains("project"));
+
+        let roots = vec![(
+            "o1".into(),
+            serde_json::json!({"order_id": "o1", "customer_id": "c1"}),
+        )];
+        let customers = vec![("c1".into(), serde_json::json!({"id": "c1", "name": "Ada"}))];
+        let lines = vec![(
+            "l1".into(),
+            serde_json::json!({"order_id": "o1", "product_id": "p1", "sku": "A"}),
+        )];
+        let products = vec![("p1".into(), serde_json::json!({"id": "p1", "name": "Widget"}))];
+        let mid =
+            attach_enrich_rows(&roots, &customers, c.root_enrich()[0], &BTreeMap::new()).unwrap();
+        let mid2 =
+            attach_enrich_rows(&mid, &lines, c.root_enrich()[1], &BTreeMap::new()).unwrap();
+        let mut foreign = BTreeMap::new();
+        foreign.insert("products".into(), products);
+        let enriched =
+            attach_within_rows(&mid2, &foreign, c.first_within().unwrap(), &BTreeMap::new())
+                .unwrap();
+        let out = apply_project_rows(&enriched, proj).unwrap();
+        assert_eq!(out[0].1["order_id"], "o1");
+        assert_eq!(out[0].1["customer"]["name"], "Ada");
+        assert!(out[0].1["customer"].get("id").is_none());
+        let item = &out[0].1["items"].as_array().unwrap()[0];
+        assert_eq!(item["sku"], "A");
+        assert_eq!(item["product"]["name"], "Widget");
+        assert!(item.get("product_id").is_none());
+    }
+
+    #[test]
+    fn project_conflict_and_type_error() {
+        let err = compile_rql_full(
+            r#"from orders project { id, id }"#,
+            &bindings(),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains(DIAG_RQL_PROJECTION_CONFLICT));
+
+        let fields = vec![ProjectItemV1::Nested {
+            output: "status".into(),
+            fields: vec![ProjectItemV1::Leaf {
+                output: "x".into(),
+                source: Path::parse_dotted("x").unwrap(),
+            }],
+        }];
+        let rows = vec![("o1".into(), serde_json::json!({"status": "paid"}))];
+        let err = apply_project_rows(&rows, &fields).unwrap_err();
+        assert!(err.to_string().contains(DIAG_RQL_PROJECT_TYPE));
     }
 
     #[test]
