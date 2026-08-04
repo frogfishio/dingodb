@@ -233,3 +233,120 @@ Caused by:
   no matching package named `residiuum-sdk` found
   location searched: crates.io index
   required by package `residiuum-cli v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)`
+=== publish residiuum-sdk (after SegmentIdCollision map) ===
+    Updating crates.io index
+   Packaging residiuum-sdk v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)
+    Updating crates.io index
+    Packaged 80 files, 1.0MiB (224.6KiB compressed)
+   Verifying residiuum-sdk v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)
+   Compiling residiuum-sdk v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-sdk-0.2.1)
+warning: function `resolve_path_value` is never used
+   --> src/filter.rs:960:15
+    |
+960 | pub(crate) fn resolve_path_value<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    |               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `compare_field` is never used
+    --> src/filter.rs:1132:15
+     |
+1132 | pub(crate) fn compare_field(
+     |               ^^^^^^^^^^^^^
+
+warning: constant `BUILD_CHECKPOINT_EVERY` is never used
+  --> src/indexes.rs:33:7
+   |
+33 | const BUILD_CHECKPOINT_EVERY: usize = 32;
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `BUILD_PAGE_SIZE` is never used
+  --> src/indexes.rs:35:7
+   |
+35 | const BUILD_PAGE_SIZE: usize = 64;
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_AFTER_PLAN` is never used
+  --> src/indexes.rs:37:11
+   |
+37 | pub const FP_INDEX_BUILD_AFTER_PLAN: &str = "index.build.after_plan";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_MID` is never used
+  --> src/indexes.rs:39:11
+   |
+39 | pub const FP_INDEX_BUILD_MID: &str = "index.build.mid";
+   |           ^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_BEFORE_READY` is never used
+  --> src/indexes.rs:41:11
+   |
+41 | pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_result_bytes` is never used
+   --> src/resource.rs:200:8
+    |
+200 | pub fn check_result_bytes(
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib) generated 8 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.47s
+   Uploading residiuum-sdk v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)
+    Uploaded residiuum-sdk v0.2.1 to registry `crates-io`
+note: waiting for residiuum-sdk v0.2.1 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-sdk v0.2.1 at registry `crates-io`
+=== publish residiuum-server ===
+    Updating crates.io index
+   Packaging residiuum-server v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+    Updating crates.io index
+    Packaged 37 files, 665.9KiB (139.1KiB compressed)
+   Verifying residiuum-server v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+ Downloading crates ...
+  Downloaded residiuum-cluster v0.2.1
+  Downloaded residiuum-sdk v0.2.1
+   Compiling residiuum-cluster v0.2.1
+   Compiling residiuum-sdk v0.2.1
+   Compiling residiuum-server v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-server-0.2.1)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.53s
+   Uploading residiuum-server v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+    Uploaded residiuum-server v0.2.1 to registry `crates-io`
+note: waiting for residiuum-server v0.2.1 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-server v0.2.1 at registry `crates-io`
+=== publish residiuum-cli ===
+    Updating crates.io index
+   Packaging residiuum-cli v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)
+    Updating crates.io index
+    Packaged 11 files, 139.2KiB (33.3KiB compressed)
+   Verifying residiuum-cli v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)
+ Downloading crates ...
+  Downloaded residiuum-examine v0.2.1
+  Downloaded residiuum-server v0.2.1
+   Compiling serde v1.0.229
+   Compiling utf8parse v0.2.2
+   Compiling anstyle v1.0.14
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling anstyle-query v1.1.5
+   Compiling strsim v0.11.1
+   Compiling clap_lex v1.1.0
+   Compiling residiuum-cli v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/target/package/residiuum-cli-0.2.1)
+   Compiling anstyle-parse v1.0.0
+   Compiling anstream v1.0.0
+   Compiling clap_builder v4.6.2
+   Compiling residiuum-client v0.2.1
+   Compiling residiuum-heap v0.2.1
+   Compiling clap v4.6.4
+   Compiling residiuum-store v0.2.1
+   Compiling residiuum-cluster v0.2.1
+   Compiling residiuum-examine v0.2.1
+   Compiling residiuum-sdk v0.2.1
+   Compiling residiuum-server v0.2.1
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.07s
+   Uploading residiuum-cli v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-cli)
+    Uploaded residiuum-cli v0.2.1 to registry `crates-io`
+note: waiting for residiuum-cli v0.2.1 to be available at registry `crates-io`
+help: you may press ctrl-c to skip waiting; the crate should be available shortly
+   Published residiuum-cli v0.2.1 at registry `crates-io`

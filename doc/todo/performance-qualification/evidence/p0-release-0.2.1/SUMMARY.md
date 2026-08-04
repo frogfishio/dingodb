@@ -44,5 +44,6 @@ Note: publish of **0.2.1** crates to crates.io is the follow-on operator step if
 
 ## crates.io
 
-Published **0.2.1**: sda, format, heap, store, client, examine, cluster; sdk/server/cli retried after index propagate.
-Yanked **0.2.0** for the same crate set (see `cargo_yank_attempt.log`).
+- **Yanked 0.2.0** for: residiuum-{sda,format,heap,store,client,sdk,examine,server,cli,cluster} (see `cargo_yank_attempt.log`).
+- **Published 0.2.1** for the same set (see `cargo_publish_0.2.1.log`).
+- Residual: first sdk verify failed until `StoreError::SegmentIdCollision` was mapped in `residiuum-sdk` (`ConsistencyViolation`); then sdk → server → cli published.
