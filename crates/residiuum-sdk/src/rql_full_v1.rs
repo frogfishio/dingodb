@@ -1,15 +1,16 @@
 //! Full RQL-v1 compile/execute (`rql-full-v1`) — Phase 3 labor.
 //!
-//! Normative: [RQL_SPEC.md](../../../doc/wip/query/RQL_SPEC.md) enrich clause.
+//! Normative: [RQL_SPEC.md](../../../doc/wip/query/RQL_SPEC.md) enrich / within.
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.
 //!
 //! Current slice:
 //! - compile single-level `enrich … matching … [where …] expect …`
+//! - compile one `within path [as alias] { enrich … }` (no nested `within`)
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
 //! - candidate `where` filters foreign docs before cardinality
-//! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach)
-//! - refuse `within`, `at rank`, nested enrich
+//! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach pipeline)
+//! - refuse `at rank`, nested `within`, multi root enrich, enrich after within
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
 
@@ -27,6 +28,9 @@ pub const RQL_FULL_PROFILE: &str = "rql-full-v1";
 
 /// Diagnostic when an enrich cardinality cannot be satisfied.
 pub const DIAG_RQL_ENRICH_CARDINALITY: &str = "rql_enrich_cardinality";
+
+/// Diagnostic when `within` path is absent, Null, or not a sequence/bag.
+pub const DIAG_RQL_WITHIN_TYPE: &str = "rql_within_type";
 
 /// Diagnostic when a full-language construct is still residual.
 pub const DIAG_RQL_FULL_RESIDUAL: &str = "rql_full_residual";
@@ -56,13 +60,13 @@ impl EnrichCardinality {
 /// One compiled enrich step (single-level).
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnrichStepV1 {
-    /// Field name attached onto the root row.
+    /// Field name attached onto the current row (root or within element).
     pub output: String,
     /// Bound foreign collection name (diagnostics).
     pub using_name: String,
     /// Bound foreign collection id.
     pub using_id: CollectionId,
-    /// Path on the **root** document (left side of matching).
+    /// Path on the **current** document (left side of matching).
     pub left: Path,
     /// Path on the **foreign** document (right side of matching).
     pub right: Path,
@@ -72,21 +76,39 @@ pub struct EnrichStepV1 {
     pub expect: EnrichCardinality,
 }
 
-/// Compiled full-language query (Core base + enrich pipeline).
+/// One compiled `within` step (T3.4: single nested enrich; no nested within).
+#[derive(Debug, Clone, PartialEq)]
+pub struct WithinStepV1 {
+    /// Carrier path on the root row (must resolve to a JSON array).
+    pub carrier: Path,
+    /// Optional element alias (`as item`); stripped from nested left paths.
+    pub element_alias: Option<String>,
+    /// Nested enrich applied independently to each carrier element.
+    pub enrich: EnrichStepV1,
+}
+
+/// Compiled full-language query (Core base + enrich / within pipeline).
 #[derive(Debug, Clone, PartialEq)]
 pub struct CompiledRqlFull {
     /// Profile label.
     pub profile: &'static str,
     /// Application Core plan for the base `from`/`where`/`project`/`order`/…
-    /// (enrich stripped before Core compile).
+    /// (enrich/within stripped before Core compile).
     pub base: CompiledAppCore,
-    /// Ordered enrich steps (kickoff: 0 or 1).
+    /// Ordered root enrich steps (slice: 0 or 1; before optional within).
     pub enrich: Vec<EnrichStepV1>,
-    /// Source text with enrich clauses removed (Core surface).
+    /// Optional single `within` after root enrich.
+    pub within: Option<WithinStepV1>,
+    /// Source text with enrich/within clauses removed (Core surface).
     pub base_source: String,
 }
 
-/// Compile full RQL-v1 kickoff source (Core + optional single enrich).
+enum RawPipelineStep {
+    Enrich(String),
+    Within(String),
+}
+
+/// Compile full RQL-v1 source (Core + optional enrich + optional within).
 pub fn compile_rql_full(
     source: &str,
     bindings: &CollectionBindings,
@@ -99,21 +121,40 @@ pub fn compile_rql_full(
     }
     refuse_residual_constructs(source)?;
 
-    let (base_source, enrich_raw) = split_enrich_clauses(source)?;
+    let (base_source, raw_steps) = split_full_clauses(source)?;
     let base = compile_app_core(&base_source, bindings)?;
     let mut enrich = Vec::new();
-    for raw in enrich_raw {
-        enrich.push(parse_enrich_step(&raw, bindings)?);
+    let mut within = None;
+    for raw in raw_steps {
+        match raw {
+            RawPipelineStep::Enrich(body) => {
+                if within.is_some() {
+                    return Err(Error::QueryInvalid(format!(
+                        "{DIAG_RQL_FULL_RESIDUAL}: enrich after within not in this slice"
+                    )));
+                }
+                enrich.push(parse_enrich_step(&body, bindings, None)?);
+            }
+            RawPipelineStep::Within(body) => {
+                if within.is_some() {
+                    return Err(Error::QueryInvalid(format!(
+                        "{DIAG_RQL_FULL_RESIDUAL}: multiple within steps not in this slice"
+                    )));
+                }
+                within = Some(parse_within_step(&body, bindings)?);
+            }
+        }
     }
     if enrich.len() > 1 {
         return Err(Error::QueryInvalid(format!(
-            "{DIAG_RQL_FULL_RESIDUAL}: multiple enrich steps (nested/chained attach) not in kickoff"
+            "{DIAG_RQL_FULL_RESIDUAL}: multiple enrich steps (chained root attach) not in this slice"
         )));
     }
     Ok(CompiledRqlFull {
         profile: RQL_FULL_PROFILE,
         base,
         enrich,
+        within,
         base_source,
     })
 }
@@ -122,7 +163,6 @@ fn refuse_residual_constructs(source: &str) -> Result<(), Error> {
     let lower = source.to_ascii_lowercase();
     let padded = format!(" {} ", lower.replace('\t', " "));
     for (needle, label) in [
-        (" within ", "within"),
         (" at rank", "at rank"),
         (" sequential", "sequential access"),
         (" direct ", "direct access"),
@@ -130,56 +170,88 @@ fn refuse_residual_constructs(source: &str) -> Result<(), Error> {
     ] {
         if padded.contains(needle) {
             return Err(Error::QueryInvalid(format!(
-                "{DIAG_RQL_FULL_RESIDUAL}: `{label}` outside rql-full-v1 kickoff"
+                "{DIAG_RQL_FULL_RESIDUAL}: `{label}` outside rql-full-v1 current slice"
             )));
         }
     }
     Ok(())
 }
 
-/// Split `enrich … expect …` clauses out of the source, returning Core text +
-/// raw enrich clause bodies (without the leading `enrich` keyword).
-fn split_enrich_clauses(source: &str) -> Result<(String, Vec<String>), Error> {
-    // Locate top-level `enrich` tokens (not inside strings — kickoff assumes no
-    // string-embedded keyword collisions for labor corpus).
+/// Split top-level `enrich` / `within` clauses; return Core text + ordered steps.
+fn split_full_clauses(source: &str) -> Result<(String, Vec<RawPipelineStep>), Error> {
     let lower = source.to_ascii_lowercase();
-    let mut enrich_spans: Vec<(usize, usize)> = Vec::new();
-    let mut search_from = 0;
-    while let Some(rel) = lower[search_from..].find("enrich") {
-        let start = search_from + rel;
-        // Word boundary.
-        let before_ok = start == 0
-            || !lower.as_bytes()[start - 1].is_ascii_alphanumeric();
-        let after = start + "enrich".len();
-        let after_ok = after >= lower.len()
-            || !lower.as_bytes()[after].is_ascii_alphanumeric();
-        if !(before_ok && after_ok) {
-            search_from = start + 1;
-            continue;
+    let bytes = lower.as_bytes();
+    let mut spans: Vec<(usize, usize, bool)> = Vec::new();
+    let mut i = 0usize;
+    let mut depth = 0usize;
+    while i < lower.len() {
+        match bytes[i] {
+            b'{' => {
+                depth += 1;
+                i += 1;
+                continue;
+            }
+            b'}' => {
+                depth = depth.saturating_sub(1);
+                i += 1;
+                continue;
+            }
+            _ => {}
         }
-        // Enrich clause ends at next pipeline/terminal keyword or EOF.
-        let end = find_enrich_end(&lower, after);
-        enrich_spans.push((start, end));
-        search_from = end;
+        if depth == 0 {
+            if matches_kw(&lower, i, "enrich") {
+                let after = i + "enrich".len();
+                let end = find_enrich_end(&lower, after);
+                spans.push((i, end, false));
+                i = end;
+                continue;
+            }
+            if matches_kw(&lower, i, "within") {
+                let after = i + "within".len();
+                let end = find_within_end(&lower, after)?;
+                spans.push((i, end, true));
+                i = end;
+                continue;
+            }
+        }
+        i += 1;
     }
 
-    if enrich_spans.is_empty() {
+    if spans.is_empty() {
         return Ok((source.to_string(), Vec::new()));
     }
 
     let mut core = String::new();
-    let mut raws = Vec::new();
+    let mut steps = Vec::new();
     let mut cursor = 0;
-    for (start, end) in &enrich_spans {
-        core.push_str(&source[cursor..*start]);
-        let body = source[*start + "enrich".len()..*end].trim();
-        raws.push(body.to_string());
-        cursor = *end;
+    for (start, end, is_within) in spans {
+        core.push_str(&source[cursor..start]);
+        if is_within {
+            let body = source[start + "within".len()..end].trim();
+            steps.push(RawPipelineStep::Within(body.to_string()));
+        } else {
+            let body = source[start + "enrich".len()..end].trim();
+            steps.push(RawPipelineStep::Enrich(body.to_string()));
+        }
+        cursor = end;
     }
     core.push_str(&source[cursor..]);
-    // Collapse leftover whitespace.
     let core = core.split_whitespace().collect::<Vec<_>>().join(" ");
-    Ok((core, raws))
+    Ok((core, steps))
+}
+
+fn matches_kw(lower: &str, start: usize, kw: &str) -> bool {
+    let bytes = lower.as_bytes();
+    if start + kw.len() > lower.len() {
+        return false;
+    }
+    if &lower[start..start + kw.len()] != kw {
+        return false;
+    }
+    let before_ok = start == 0 || !bytes[start - 1].is_ascii_alphanumeric();
+    let after = start + kw.len();
+    let after_ok = after >= lower.len() || !bytes[after].is_ascii_alphanumeric();
+    before_ok && after_ok
 }
 
 fn find_enrich_end(lower: &str, after_enrich: usize) -> usize {
@@ -201,7 +273,6 @@ fn find_enrich_end(lower: &str, after_enrich: usize) -> usize {
     let mut best = None;
     for t in terminals {
         if let Some(rel) = padded.find(t) {
-            // rel is in padded (leading space); map back.
             let abs = after_enrich + rel;
             best = Some(best.map_or(abs, |b: usize| b.min(abs)));
         }
@@ -209,19 +280,115 @@ fn find_enrich_end(lower: &str, after_enrich: usize) -> usize {
     best.unwrap_or(lower.len())
 }
 
-fn parse_enrich_step(body: &str, bindings: &CollectionBindings) -> Result<EnrichStepV1, Error> {
+fn find_within_end(lower: &str, after_within: usize) -> Result<usize, Error> {
+    let Some(brace_rel) = lower[after_within..].find('{') else {
+        return Err(Error::QueryInvalid(
+            "within: expected `{` after path".into(),
+        ));
+    };
+    let open = after_within + brace_rel;
+    let bytes = lower.as_bytes();
+    let mut depth = 0usize;
+    let mut i = open;
+    while i < lower.len() {
+        match bytes[i] {
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Ok(i + 1);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    Err(Error::QueryInvalid("within: unclosed `{`".into()))
+}
+
+fn parse_within_step(body: &str, bindings: &CollectionBindings) -> Result<WithinStepV1, Error> {
+    // body: <path> [as <alias>] { <nested steps> }
+    let mut p = Words::new(body);
+    let carrier = Path::parse_dotted(&p.next_path()?)?;
+    let element_alias = if p.eat("as") {
+        Some(p.next_ident()?)
+    } else {
+        None
+    };
+    if !p.eat_char(b'{') {
+        return Err(Error::QueryInvalid(
+            "within: expected `{` after path".into(),
+        ));
+    }
+    let inner = p.take_brace_inner()?;
+    if !p.is_eof() {
+        return Err(Error::QueryInvalid(format!(
+            "unexpected trailing within tokens near `{}`",
+            p.rest()
+        )));
+    }
+
+    let inner_lower = format!(" {} ", inner.to_ascii_lowercase());
+    if inner_lower.contains(" within ") {
+        return Err(Error::QueryInvalid(format!(
+            "{DIAG_RQL_FULL_RESIDUAL}: nested within not in this slice"
+        )));
+    }
+
+    // Reuse top-level enrich splitter on a synthetic prefix-free body.
+    let (_ignored, nested) = split_full_clauses(&inner)?;
+    let mut enrich_bodies = Vec::new();
+    for step in nested {
+        match step {
+            RawPipelineStep::Enrich(b) => enrich_bodies.push(b),
+            RawPipelineStep::Within(_) => {
+                return Err(Error::QueryInvalid(format!(
+                    "{DIAG_RQL_FULL_RESIDUAL}: nested within not in this slice"
+                )));
+            }
+        }
+    }
+    if enrich_bodies.is_empty() {
+        return Err(Error::QueryInvalid(
+            "within block requires at least one enrich".into(),
+        ));
+    }
+    if enrich_bodies.len() > 1 {
+        return Err(Error::QueryInvalid(format!(
+            "{DIAG_RQL_FULL_RESIDUAL}: multiple enrich inside within not in this slice"
+        )));
+    }
+    let enrich = parse_enrich_step(
+        &enrich_bodies[0],
+        bindings,
+        element_alias.as_deref(),
+    )?;
+    Ok(WithinStepV1 {
+        carrier,
+        element_alias,
+        enrich,
+    })
+}
+
+fn parse_enrich_step(
+    body: &str,
+    bindings: &CollectionBindings,
+    element_alias: Option<&str>,
+) -> Result<EnrichStepV1, Error> {
     // body: <output> using <source> [as <alias>] matching <left> = <right> [where …] expect <card>
     let mut p = Words::new(body);
     let output = p.next_ident()?;
     p.expect("using")?;
     let using_name = p.next_ident()?;
-    if p.eat("as") {
-        let _alias = p.next_ident()?;
-    }
+    let foreign_alias = if p.eat("as") {
+        Some(p.next_ident()?)
+    } else {
+        None
+    };
     p.expect("matching")?;
-    let left = Path::parse_dotted(&p.next_path()?)?;
+    let left = strip_alias_prefix(Path::parse_dotted(&p.next_path()?)?, element_alias)?;
     p.expect("=")?;
-    let right = Path::parse_dotted(&p.next_path()?)?;
+    let right = strip_alias_prefix(Path::parse_dotted(&p.next_path()?)?, foreign_alias.as_deref())?;
     let candidate_where = if p.eat("where") {
         let where_src = p.take_until_keyword("expect")?;
         if where_src.trim().is_empty() {
@@ -229,7 +396,6 @@ fn parse_enrich_step(body: &str, bindings: &CollectionBindings) -> Result<Enrich
                 "enrich where clause is empty".into(),
             ));
         }
-        // Reuse Application Core predicate parser via a synthetic Core query.
         let fake = format!("from {using_name} where {where_src}");
         let compiled = compile_app_core(&fake, bindings)?;
         Some(compiled.plan.where_pred)
@@ -274,7 +440,22 @@ fn parse_enrich_step(body: &str, bindings: &CollectionBindings) -> Result<Enrich
     })
 }
 
-/// Tiny whitespace tokenizer for enrich clause bodies.
+fn strip_alias_prefix(path: Path, alias: Option<&str>) -> Result<Path, Error> {
+    let Some(a) = alias else {
+        return Ok(path);
+    };
+    if path.0.first().map(String::as_str) != Some(a) {
+        return Ok(path);
+    }
+    if path.0.len() == 1 {
+        return Err(Error::QueryInvalid(format!(
+            "path `{a}` is only an alias; need a field under it"
+        )));
+    }
+    Path::from_segments(path.0.into_iter().skip(1))
+}
+
+/// Tiny whitespace tokenizer for enrich / within clause bodies.
 struct Words<'a> {
     s: &'a str,
     i: usize,
@@ -302,6 +483,15 @@ impl<'a> Words<'a> {
     fn rest(&mut self) -> &'a str {
         self.skip();
         &self.s[self.i..]
+    }
+    fn eat_char(&mut self, c: u8) -> bool {
+        self.skip();
+        if self.s.as_bytes().get(self.i) == Some(&c) {
+            self.i += 1;
+            true
+        } else {
+            false
+        }
     }
     fn eat(&mut self, kw: &str) -> bool {
         self.skip();
@@ -362,6 +552,29 @@ impl<'a> Words<'a> {
         Ok(parts.join("."))
     }
 
+    /// After consuming `{`, take inner text until the matching `}` (consumed).
+    fn take_brace_inner(&mut self) -> Result<String, Error> {
+        let start = self.i;
+        let bytes = self.s.as_bytes();
+        let mut depth = 1usize;
+        while self.i < self.s.len() {
+            match bytes[self.i] {
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        let inner = self.s[start..self.i].trim().to_string();
+                        self.i += 1;
+                        return Ok(inner);
+                    }
+                }
+                _ => {}
+            }
+            self.i += 1;
+        }
+        Err(Error::QueryInvalid("within: unclosed `{`".into()))
+    }
+
     /// Consume text until a keyword at a word boundary (keyword not consumed).
     fn take_until_keyword(&mut self, kw: &str) -> Result<String, Error> {
         self.skip();
@@ -407,7 +620,6 @@ pub fn attach_enrich_rows(
     step: &EnrichStepV1,
     params: &BTreeMap<String, JsonValue>,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
-    // Index foreign by right-path JSON key; keep keys for stable many-order.
     let mut by_right: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
     for (fk, doc) in foreign_docs {
         if let Some(pred) = &step.candidate_where {
@@ -495,7 +707,100 @@ pub fn attach_enrich_rows(
     Ok(out)
 }
 
-/// Result of [`execute_rql_full`] (one base page + enrich attach).
+/// Apply nested enrich to each element of a carrier array on root rows.
+///
+/// Absent / Null / non-array carriers fail with [`DIAG_RQL_WITHIN_TYPE`]
+/// (never treated as empty bags).
+pub fn attach_within_rows(
+    roots: &[(String, JsonValue)],
+    foreign_docs: &[(String, JsonValue)],
+    step: &WithinStepV1,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    let mut out = Vec::with_capacity(roots.len());
+    for (key, root) in roots {
+        let carrier = match resolve_path(root, &step.carrier) {
+            Resolve::Present(JsonValue::Array(arr)) => arr,
+            Resolve::Present(other) => {
+                return Err(Error::QueryInvalid(format!(
+                    "{DIAG_RQL_WITHIN_TYPE}: path `{}` is {} on key `{key}` (need sequence/bag)",
+                    step.carrier.dotted(),
+                    json_type_name(&other)
+                )));
+            }
+            Resolve::Absent => {
+                return Err(Error::QueryInvalid(format!(
+                    "{DIAG_RQL_WITHIN_TYPE}: path `{}` absent on key `{key}`",
+                    step.carrier.dotted()
+                )));
+            }
+        };
+        let elements: Vec<(String, JsonValue)> = carrier
+            .iter()
+            .enumerate()
+            .map(|(i, el)| (format!("{key}#{i}"), el.clone()))
+            .collect();
+        let enriched = attach_enrich_rows(&elements, foreign_docs, &step.enrich, params)?;
+        let new_arr: Vec<JsonValue> = enriched.into_iter().map(|(_, v)| v).collect();
+        let mut row = root.clone();
+        set_at_path(&mut row, &step.carrier, JsonValue::Array(new_arr))?;
+        out.push((key.clone(), row));
+    }
+    Ok(out)
+}
+
+fn json_type_name(v: &JsonValue) -> &'static str {
+    match v {
+        JsonValue::Null => "null",
+        JsonValue::Bool(_) => "bool",
+        JsonValue::Number(_) => "number",
+        JsonValue::String(_) => "string",
+        JsonValue::Array(_) => "array",
+        JsonValue::Object(_) => "object",
+    }
+}
+
+fn set_at_path(doc: &mut JsonValue, path: &Path, value: JsonValue) -> Result<(), Error> {
+    if path.0.is_empty() {
+        return Err(Error::QueryInvalid("empty path for within replace".into()));
+    }
+    let mut cur = doc;
+    for (i, seg) in path.0.iter().enumerate() {
+        if i + 1 == path.0.len() {
+            match cur {
+                JsonValue::Object(map) => {
+                    map.insert(seg.clone(), value);
+                    return Ok(());
+                }
+                _ => {
+                    return Err(Error::QueryInvalid(format!(
+                        "within replace requires object at parent of `{}`",
+                        path.dotted()
+                    )));
+                }
+            }
+        }
+        match cur {
+            JsonValue::Object(map) => {
+                cur = map.get_mut(seg).ok_or_else(|| {
+                    Error::QueryInvalid(format!(
+                        "within replace missing segment `{seg}` on `{}`",
+                        path.dotted()
+                    ))
+                })?;
+            }
+            _ => {
+                return Err(Error::QueryInvalid(format!(
+                    "within replace requires object along `{}`",
+                    path.dotted()
+                )));
+            }
+        }
+    }
+    Err(Error::QueryInvalid("within replace unreachable".into()))
+}
+
+/// Result of [`execute_rql_full`] (one base page + enrich/within attach).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RqlFullPage {
     /// Profile label.
@@ -504,14 +809,16 @@ pub struct RqlFullPage {
     pub rows: Vec<(String, JsonValue)>,
     /// Underlying Application Core page (pre-enrich values).
     pub base: QueryPage,
-    /// Compiled enrich steps applied (0 or 1 in current slice).
+    /// Compiled root enrich steps applied.
     pub enrich: Vec<EnrichStepV1>,
+    /// Compiled within step applied (if any).
+    pub within: Option<WithinStepV1>,
 }
 
-/// Façade: compile full RQL, run Core base page, attach enrich via foreign scan.
+/// Façade: compile full RQL, run Core base page, attach enrich/within via scan.
 ///
 /// Discovers collection bindings from [`HeapClient::list_collections`]. Foreign
-/// collection is loaded with `list_keys`+`get` (complete scan oracle — no index
+/// collections are loaded with `list_keys`+`get` (complete scan oracle — no index
 /// claim). Multipage: call again with `options.after` from `base.next`.
 pub fn execute_rql_full(
     client: &mut HeapClient,
@@ -529,31 +836,44 @@ pub fn execute_rql_full(
     let mut base_col = client.open_collection(&from_name)?;
     let page = base_col.rql(&compiled.base_source, parameters, options)?;
 
-    if compiled.enrich.is_empty() {
-        let rows = page
-            .rows
-            .iter()
-            .map(|r| (r.key.clone(), r.value.clone()))
-            .collect();
-        return Ok(RqlFullPage {
-            profile: RQL_FULL_PROFILE,
-            rows,
-            base: page,
-            enrich: compiled.enrich,
-        });
+    let mut rows: Vec<(String, JsonValue)> = page
+        .rows
+        .iter()
+        .map(|r| (r.key.clone(), r.value.clone()))
+        .collect();
+
+    for step in &compiled.enrich {
+        let foreign = load_collection_docs(client, &step.using_name)?;
+        rows = attach_enrich_rows(&rows, &foreign, step, &parameters.values)?;
+    }
+    if let Some(w) = &compiled.within {
+        let foreign = load_collection_docs(client, &w.enrich.using_name)?;
+        rows = attach_within_rows(&rows, &foreign, w, &parameters.values)?;
     }
 
-    let step = &compiled.enrich[0];
-    let mut foreign_col = client.open_collection(&step.using_name)?;
+    Ok(RqlFullPage {
+        profile: RQL_FULL_PROFILE,
+        rows,
+        base: page,
+        enrich: compiled.enrich,
+        within: compiled.within,
+    })
+}
+
+fn load_collection_docs(
+    client: &mut HeapClient,
+    name: &str,
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    let mut col = client.open_collection(name)?;
     let mut foreign = Vec::new();
     let mut after: Option<String> = None;
     loop {
-        let batch = foreign_col.list_keys(Some(256), after.as_deref())?;
+        let batch = col.list_keys(Some(256), after.as_deref())?;
         if batch.is_empty() {
             break;
         }
         for k in &batch {
-            if let Some(v) = foreign_col.get(k)? {
+            if let Some(v) = col.get(k)? {
                 foreign.push((k.clone(), v));
             }
         }
@@ -562,23 +882,10 @@ pub fn execute_rql_full(
             break;
         }
     }
-
-    let roots: Vec<(String, JsonValue)> = page
-        .rows
-        .iter()
-        .map(|r| (r.key.clone(), r.value.clone()))
-        .collect();
-    let rows = attach_enrich_rows(&roots, &foreign, step, &parameters.values)?;
-    Ok(RqlFullPage {
-        profile: RQL_FULL_PROFILE,
-        rows,
-        base: page,
-        enrich: compiled.enrich,
-    })
+    Ok(foreign)
 }
 
 fn canonical_match_key(v: &JsonValue) -> String {
-    // Stable enough for equality matching of scalars in kickoff tests.
     serde_json::to_string(v).unwrap_or_else(|_| format!("{v:?}"))
 }
 
@@ -598,6 +905,14 @@ mod tests {
         b.bind(
             "customers",
             CollectionId::from_str("00000000-0000-4000-8000-0000000000a2").unwrap(),
+        );
+        b.bind(
+            "line_items",
+            CollectionId::from_str("00000000-0000-4000-8000-0000000000a3").unwrap(),
+        );
+        b.bind(
+            "products",
+            CollectionId::from_str("00000000-0000-4000-8000-0000000000a4").unwrap(),
         );
         b
     }
@@ -625,30 +940,99 @@ mod tests {
         assert_eq!(c.enrich.len(), 1);
         assert_eq!(c.enrich[0].output, "customer");
         assert_eq!(c.enrich[0].expect, EnrichCardinality::ExactlyOne);
+        assert!(c.within.is_none());
         assert!(c.base_source.contains("from orders"));
         assert!(!c.base_source.contains("enrich"));
         assert_eq!(c.base.plan.page_size, 10);
     }
 
     #[test]
-    fn refuse_within_still() {
-        assert!(compile_rql_full(
-            "from orders within items { enrich x using y matching a = b expect optional }",
-            &bindings()
+    fn compile_and_attach_within() {
+        let c = compile_rql_full(
+            r#"from orders
+               enrich items using line_items matching order_id = order_id expect many
+               within items as item {
+                 enrich product using products as candidate
+                   matching item.product_id = candidate.id
+                   expect exactly_one
+               }"#,
+            &bindings(),
         )
-        .is_err());
+        .unwrap();
+        assert_eq!(c.enrich.len(), 1);
+        let w = c.within.as_ref().unwrap();
+        assert_eq!(w.carrier.dotted(), "items");
+        assert_eq!(w.element_alias.as_deref(), Some("item"));
+        assert_eq!(w.enrich.output, "product");
+        assert_eq!(w.enrich.left.dotted(), "product_id");
+        assert_eq!(w.enrich.right.dotted(), "id");
+
+        let roots = vec![(
+            "o1".into(),
+            serde_json::json!({"order_id": "o1"}),
+        )];
+        let lines = vec![
+            (
+                "l1".into(),
+                serde_json::json!({"order_id": "o1", "product_id": "p1", "sku": "A"}),
+            ),
+            (
+                "l2".into(),
+                serde_json::json!({"order_id": "o1", "product_id": "p2", "sku": "B"}),
+            ),
+        ];
+        let products = vec![
+            ("p1".into(), serde_json::json!({"id": "p1", "name": "Widget"})),
+            ("p2".into(), serde_json::json!({"id": "p2", "name": "Gadget"})),
+        ];
+        let after_many =
+            attach_enrich_rows(&roots, &lines, &c.enrich[0], &BTreeMap::new()).unwrap();
+        let out =
+            attach_within_rows(&after_many, &products, w, &BTreeMap::new()).unwrap();
+        let bag = out[0].1["items"].as_array().unwrap();
+        assert_eq!(bag.len(), 2);
+        assert_eq!(bag[0]["product"]["name"], "Widget");
+        assert_eq!(bag[1]["product"]["name"], "Gadget");
+    }
+
+    #[test]
+    fn within_type_error_on_absent() {
+        let step = WithinStepV1 {
+            carrier: Path::parse_dotted("items").unwrap(),
+            element_alias: None,
+            enrich: EnrichStepV1 {
+                output: "product".into(),
+                using_name: "products".into(),
+                using_id: CollectionId::from_str("00000000-0000-4000-8000-0000000000a4")
+                    .unwrap(),
+                left: Path::parse_dotted("product_id").unwrap(),
+                right: Path::parse_dotted("id").unwrap(),
+                candidate_where: None,
+                expect: EnrichCardinality::ExactlyOne,
+            },
+        };
+        let roots = vec![("o1".into(), serde_json::json!({"order_id": "o1"}))];
+        let err = attach_within_rows(&roots, &[], &step, &BTreeMap::new()).unwrap_err();
+        assert!(err.to_string().contains(DIAG_RQL_WITHIN_TYPE));
+    }
+
+    #[test]
+    fn refuse_nested_within() {
+        let err = compile_rql_full(
+            r#"from orders within items {
+                 within nested { enrich x using products matching a = b expect optional }
+               }"#,
+            &bindings(),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains(DIAG_RQL_FULL_RESIDUAL));
     }
 
     #[test]
     fn compile_and_attach_many() {
-        let mut b = bindings();
-        b.bind(
-            "line_items",
-            CollectionId::from_str("00000000-0000-4000-8000-0000000000a3").unwrap(),
-        );
         let c = compile_rql_full(
             "from orders enrich items using line_items matching order_id = order_id expect many",
-            &b,
+            &bindings(),
         )
         .unwrap();
         assert_eq!(c.enrich[0].expect, EnrichCardinality::Many);
@@ -666,7 +1050,6 @@ mod tests {
         let out = attach_enrich_rows(&roots, &foreign, step, &BTreeMap::new()).unwrap();
         let bag = out[0].1["items"].as_array().unwrap();
         assert_eq!(bag.len(), 2);
-        // Stable by foreign key: l1 then l2
         assert_eq!(bag[0]["sku"], "A");
         assert_eq!(bag[1]["sku"], "B");
         assert_eq!(out[1].1["items"].as_array().unwrap().len(), 1);
