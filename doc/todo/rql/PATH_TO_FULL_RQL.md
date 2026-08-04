@@ -3,7 +3,7 @@
 Status: **labor map 2026-08-05** (post store P0 / packaging 0.2.2 diversion);  
 **Phase 1 labor** residual checklist [PHASE1_CORE_BASELINE_RESIDUAL.md](./PHASE1_CORE_BASELINE_RESIDUAL.md);  
 **Phase 2 labor** [PHASE2_EXPRESSIVENESS.md](./PHASE2_EXPRESSIVENESS.md);  
-**Phase 3** [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md) — kickoff through **T3.7** nested where; `at rank` / access still residual  
+**Phase 3** [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md) — kickoff through **T3.8** root pipeline where; `at rank` / access still residual  
 Authority: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md) §0.8 ·  
 [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·  
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) · APP-5 / APB-7 inventories

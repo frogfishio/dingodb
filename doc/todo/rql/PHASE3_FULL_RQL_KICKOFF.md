@@ -1,8 +1,8 @@
 # RQL Phase 3 — Full language kickoff (labor)
 
-Status: **labor 2026-08-05** · kickoff `89a80e77` + T3.2–**T3.7**  
+Status: **labor 2026-08-05** · kickoff `89a80e77` + T3.2–**T3.8**  
 (`0c101b14` where · `8ac147b5` within · `4ad54b11` multi enrich ·
-`4d9104f7` nested within · `b58eb37f` nested where)  
+`4d9104f7` nested within · `b58eb37f` nested where · `997b3632` root where)  
 Profile **`rql-full-v1`**  
 Authority: [PATH_TO_FULL_RQL.md](./PATH_TO_FULL_RQL.md) · [RQL_SPEC.md](../../wip/query/RQL_SPEC.md)
 
@@ -24,8 +24,8 @@ is **unchanged** and still rejects `enrich` / `within`.
 | Chained / multi enrich (root + inside within) | **yes** (T3.5) |
 | Ordered pipeline: nested `within` / enrich-after-within / multi top-level within | **yes** (T3.6) |
 | Nested `where` inside `within` (ordered filter steps) | **yes** (T3.7) |
+| Root-level pipeline `where` after enrich/within | **yes** (T3.8; page-then-attach) |
 | `at rank` / access | **residual** |
-| Root-level pipeline `where` after enrich | **residual** |
 | Index pushdown for match keys | **residual** |
 
 ## Two surfaces (honesty)
@@ -41,7 +41,9 @@ Optional enrich `where …` filters foreign candidates with Core `Predicate` eva
 `within path [as alias] { … }` runs ordered nested `where` / `enrich` / `within` per element;
 absent/non-array → `rql_within_type`. Nested `where` keeps elements where the predicate is true
 (alias-qualified paths strip the element alias).
-Root and nested pipelines interleave `enrich` / `within` in source order.
+Root and nested pipelines interleave `enrich` / `within` / post-attach `where` in source order.
+Pre-enrich `where` stays in Application Core; post-attach `where` filters the Core page rows
+(page-then-attach honesty — not a re-page / global-limit claim).
 Nested `within` depth is host-bounded (`MAX_WITHIN_DEPTH`).
 Foreign load is complete `list_keys`+`get` — **not** an index claim.
 
@@ -57,19 +59,20 @@ cargo test -p residiuum-sdk --test rql_full_within -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_multi_enrich -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_nested_within -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_nested_where -- --test-threads=1
+cargo test -p residiuum-sdk --test rql_full_root_where -- --test-threads=1
 ```
 
-Evidence: `doc/todo/rql/evidence/phase3_nested_where.log`
+Evidence: `doc/todo/rql/evidence/phase3_root_where.log`
 
 ## Non-claims
 
 - Not full RQL-v1 product accept.
 - Not APB-7 package accept.
 - `at rank` / access still residual (DDA-dependent).
-- Root-level pipeline `where` after enrich still residual.
+- Post-attach `where` filters within the already-paged Core result (not global re-limit).
 - Façade is HeapClient-local scan attach — not remote op-118 enrich wire.
 
 ## Next slices
 
 1. `at rank` / access policies (DDA-dependent).
-2. Optional: root-level pipeline `where` after enrich (spec §7).
+2. Optional: index pushdown for enrich match keys.

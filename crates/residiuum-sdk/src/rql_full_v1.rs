@@ -4,10 +4,11 @@
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.
 //!
-//! Current slice (T3.7):
-//! - ordered root pipeline: `enrich` / `within` interleaved (enrich-after-within, multi within)
+//! Current slice (T3.8):
+//! - ordered root pipeline: `enrich` / `within` / post-attach `where` interleaved
 //! - nested `within` depth (bounded by [`MAX_WITHIN_DEPTH`])
 //! - nested `where` inside `within` (ordered filter on carrier elements)
+//! - root `where` after enrich/within filters the Core page rows (page-then-attach honesty)
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
 //! - candidate `where` filters foreign docs before cardinality
 //! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach pipeline)
@@ -153,6 +154,7 @@ impl WithinStepV1 {
 enum RawPipelineStep {
     Enrich(String),
     Within(String),
+    Where(String),
 }
 
 enum RawNestedStep {
@@ -189,6 +191,11 @@ pub fn compile_rql_full(
                     &body, bindings, None, 1,
                 )?));
             }
+            RawPipelineStep::Where(body) => {
+                pipeline.push(FullPipelineStepV1::Filter(parse_filter_step(
+                    &body, bindings, None,
+                )?));
+            }
         }
     }
     Ok(CompiledRqlFull {
@@ -217,13 +224,18 @@ fn refuse_residual_constructs(source: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Split top-level `enrich` / `within` clauses; return Core text + ordered steps.
+/// Split top-level `enrich` / `within` / post-attach `where`; return Core text + steps.
+///
+/// Pre-enrich/within `where` clauses stay in Core. `where` after the first
+/// enrich/within becomes a pipeline [`FullPipelineStepV1::Filter`].
 fn split_full_clauses(source: &str) -> Result<(String, Vec<RawPipelineStep>), Error> {
     let lower = source.to_ascii_lowercase();
     let bytes = lower.as_bytes();
-    let mut spans: Vec<(usize, usize, bool)> = Vec::new();
+    // kind: 0=enrich 1=within 2=where
+    let mut spans: Vec<(usize, usize, u8)> = Vec::new();
     let mut i = 0usize;
     let mut depth = 0usize;
+    let mut seen_attach = false;
     while i < lower.len() {
         match bytes[i] {
             b'{' => {
@@ -242,14 +254,23 @@ fn split_full_clauses(source: &str) -> Result<(String, Vec<RawPipelineStep>), Er
             if matches_kw(&lower, i, "enrich") {
                 let after = i + "enrich".len();
                 let end = find_enrich_end(&lower, after);
-                spans.push((i, end, false));
+                spans.push((i, end, 0));
+                seen_attach = true;
                 i = end;
                 continue;
             }
             if matches_kw(&lower, i, "within") {
                 let after = i + "within".len();
                 let end = find_within_end(&lower, after)?;
-                spans.push((i, end, true));
+                spans.push((i, end, 1));
+                seen_attach = true;
+                i = end;
+                continue;
+            }
+            if seen_attach && matches_kw(&lower, i, "where") {
+                let after = i + "where".len();
+                let end = find_root_where_end(&lower, after);
+                spans.push((i, end, 2));
                 i = end;
                 continue;
             }
@@ -264,20 +285,60 @@ fn split_full_clauses(source: &str) -> Result<(String, Vec<RawPipelineStep>), Er
     let mut core = String::new();
     let mut steps = Vec::new();
     let mut cursor = 0;
-    for (start, end, is_within) in spans {
+    for (start, end, kind) in spans {
         core.push_str(&source[cursor..start]);
-        if is_within {
-            let body = source[start + "within".len()..end].trim();
-            steps.push(RawPipelineStep::Within(body.to_string()));
-        } else {
-            let body = source[start + "enrich".len()..end].trim();
-            steps.push(RawPipelineStep::Enrich(body.to_string()));
+        match kind {
+            0 => {
+                let body = source[start + "enrich".len()..end].trim();
+                steps.push(RawPipelineStep::Enrich(body.to_string()));
+            }
+            1 => {
+                let body = source[start + "within".len()..end].trim();
+                steps.push(RawPipelineStep::Within(body.to_string()));
+            }
+            2 => {
+                let body = source[start + "where".len()..end].trim();
+                if body.is_empty() {
+                    return Err(Error::QueryInvalid(
+                        "pipeline where clause is empty".into(),
+                    ));
+                }
+                steps.push(RawPipelineStep::Where(body.to_string()));
+            }
+            _ => unreachable!(),
         }
         cursor = end;
     }
     core.push_str(&source[cursor..]);
     let core = core.split_whitespace().collect::<Vec<_>>().join(" ");
     Ok((core, steps))
+}
+
+fn find_root_where_end(lower: &str, after_where: usize) -> usize {
+    let terminals = [
+        " enrich ",
+        " within ",
+        " where ",
+        " project ",
+        " order ",
+        " limit ",
+        " page ",
+        " coverage ",
+        " consistency ",
+        " budget ",
+        " at rank",
+        " after ",
+        " access ",
+    ];
+    let padded = format!(" {} ", &lower[after_where..]);
+    let mut best = None;
+    for t in terminals {
+        if let Some(rel) = padded.find(t) {
+            let abs = after_where + rel;
+            best = Some(best.map_or(abs, |b: usize| b.min(abs)));
+        }
+    }
+    best.unwrap_or(lower.len())
 }
 
 fn matches_kw(lower: &str, start: usize, kw: &str) -> bool {
@@ -862,6 +923,21 @@ impl<'a> Words<'a> {
     }
 }
 
+/// Keep rows where `pred` evaluates to true.
+pub fn filter_rows(
+    rows: &[(String, JsonValue)],
+    pred: &Predicate,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    let mut kept = Vec::with_capacity(rows.len());
+    for (k, v) in rows {
+        if pred.eval(v, params)? {
+            kept.push((k.clone(), v.clone()));
+        }
+    }
+    Ok(kept)
+}
+
 /// Attach enrich fields onto already-materialised root JSON documents.
 ///
 /// `foreign_docs` is a complete list of `(key, json)` for the using-collection
@@ -1012,13 +1088,7 @@ pub fn attach_within_rows(
                         attach_within_rows(&elements, foreign_by_using, inner, params)?;
                 }
                 FullPipelineStepV1::Filter(pred) => {
-                    let mut kept = Vec::with_capacity(elements.len());
-                    for (ek, ev) in elements {
-                        if pred.eval(&ev, params)? {
-                            kept.push((ek, ev));
-                        }
-                    }
-                    elements = kept;
+                    elements = filter_rows(&elements, pred, params)?;
                 }
             }
         }
@@ -1154,10 +1224,8 @@ pub fn execute_rql_full(
                 collect_within_using_names(w, &mut foreign_cache, client)?;
                 rows = attach_within_rows(&rows, &foreign_cache, w, &parameters.values)?;
             }
-            FullPipelineStepV1::Filter(_) => {
-                return Err(Error::QueryInvalid(format!(
-                    "{DIAG_RQL_FULL_RESIDUAL}: root-level pipeline where not in this slice"
-                )));
+            FullPipelineStepV1::Filter(pred) => {
+                rows = filter_rows(&rows, pred, &parameters.values)?;
             }
         }
     }
@@ -1657,6 +1725,53 @@ mod tests {
         let bag = out[0].1["items"].as_array().unwrap();
         assert_eq!(bag.len(), 1);
         assert_eq!(bag[0]["product"]["name"], "Widget");
+    }
+
+    #[test]
+    fn compile_and_attach_root_where_after_enrich() {
+        let c = compile_rql_full(
+            r#"from orders
+               where status = "paid"
+               enrich customer using customers matching customer_id = id expect exactly_one
+               where customer.country = "TH"
+               page size 10"#,
+            &bindings(),
+        )
+        .unwrap();
+        assert_eq!(c.pipeline.len(), 2);
+        assert!(matches!(&c.pipeline[0], FullPipelineStepV1::Enrich(_)));
+        assert!(matches!(&c.pipeline[1], FullPipelineStepV1::Filter(_)));
+        assert!(c.base_source.contains("where status"));
+        assert!(!c.base_source.contains("customer.country"));
+
+        let roots = vec![
+            (
+                "o1".into(),
+                serde_json::json!({"customer_id": "c1", "status": "paid"}),
+            ),
+            (
+                "o2".into(),
+                serde_json::json!({"customer_id": "c2", "status": "paid"}),
+            ),
+        ];
+        let customers = vec![
+            (
+                "c1".into(),
+                serde_json::json!({"id": "c1", "country": "TH", "name": "Ada"}),
+            ),
+            (
+                "c2".into(),
+                serde_json::json!({"id": "c2", "country": "US", "name": "Bob"}),
+            ),
+        ];
+        let mid =
+            attach_enrich_rows(&roots, &customers, c.root_enrich()[0], &BTreeMap::new()).unwrap();
+        let FullPipelineStepV1::Filter(pred) = &c.pipeline[1] else {
+            panic!("expected filter");
+        };
+        let out = filter_rows(&mid, pred, &BTreeMap::new()).unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].1["customer"]["name"], "Ada");
     }
 
     #[test]
