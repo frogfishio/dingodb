@@ -1,61 +1,70 @@
 # Enrichment Throughput Qualification (ETQ)
 
-Status: **ETQ-0 accepted**; **ETQ-1 compact Chimera labor measured** (amp/stage
-PASS; enrichment ≥7 / slope ≤0 still FAIL — decode residual).  
+Status: **ETQ open**.  
+**ETQ-0 accepted** (root cause: full-payload Chimera).  
+**ETQ-1 Compact Chimera Persistence = architectural package accept (principal).**  
+**ETQ-2 Single-Pass Enrichment Decode = next** (frozen).  
 AWO: **paused**. Three-cell attribution residual: **deprioritized**.  
 Date: 2026-08-04
 
-## Honest product numbers (locked)
+## Honest product numbers (locked after Compact Chimera)
 
 > Residiuum’s **complete sustainable throughput** is currently approximately
-> **12.4K 8 KiB writes/sec**.
+> **37.9K 8 KiB writes/sec** (~**296 MiB/s** logical), up from ~12.4K with
+> materialized Chimera (~**3×**).
 
 | Label | Value | Meaning |
 |---|---:|---|
-| Acknowledgement TPS | ~47.4K | Burst — financed by deferred enrichment debt |
-| Enrichment service | ~1.61–2.7 seg/s | Limited by Chimera persist |
-| Complete-lifecycle TPS | ~12.4K | Matches enrichment capacity |
-| Chimera derived write | ~63 MiB / 64 MiB auth | ~2× write amplification |
+| Acknowledgement TPS | ~43.8K | Burst — still slightly ahead of complete |
+| Complete-lifecycle TPS | ~37.9K | Sustainable full product (this campaign) |
+| Logical payload | ~296 MiB/s | 37.9K × 8 KiB |
+| Chimera derived / auth | ~0.74% | Was ~98% |
+| Enrichment produce | ~5.57 seg/s | Seals entering enrich |
+| Enrichment complete | ~4.93 seg/s | Jobs finished (ack+drain wall) |
+| Backlog slope | +0.64 | Still slowly growing |
 
-### ETQ-0 verdict (accepted)
+Correct reopen and index/query verification: **PASS**.
+
+### ETQ-1 verdict (architectural accept)
 
 | Gate | Result |
 |---|---|
-| Correctness (reopen, digests, index/query) | **PASS** |
-| Full-product performance | **FAIL** |
-| Dominant stage | **Chimera persist** (~366 ms/seg) |
-| Root cause | Eager full-payload Chimera materialization |
+| Chimera derived ≤5% auth | **PASS** (~0.74%) |
+| Chimera stage ≥7 seg/s | **PASS** (~63) |
+| Lifecycle approaches ack | **PASS** (~37.9K / ~43.8K) |
+| Reopen + query | **PASS** |
+| Enrichment ≥7 seg/s | **FAIL** (~4.93) — ETQ remains open |
+| Backlog slope ≤0 | **FAIL** (+0.64) — ETQ remains open |
 
-Evidence: `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`.
+Evidence: `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
 
-> The database is fast; eager full-payload Chimera materialization is not.
+> Compact Chimera is the right architecture; duplicated decode passes are not.
 
-## ETQ-1 — Compact Chimera Persistence (next)
+## ETQ-2 — Single-Pass Enrichment Decode (next)
 
-**Charter:** [ETQ1_COMPACT_CHIMERA.md](./ETQ1_COMPACT_CHIMERA.md)
+**Charter:** [ETQ2_SINGLE_PASS_DECODE.md](./ETQ2_SINGLE_PASS_DECODE.md)
 
-Default Chimera persists locators + metadata only; payloads remain in
-authoritative segments. Fully materialized layouts are lazy / opt-in.
-
-**Do not** start with parallel enrichment workers.
+One segment read, one verify/decode, one immutable `EnrichmentPlan` feeding
+BLAKE3 / Hydra / compact Chimera / catalog. Instrument pass + frame counts.
+**Do not** add enrichment workers first.
 
 ### Accept gates
 
-- Default Chimera derived bytes **≤ 5%** of authoritative bytes
 - Enrichment capacity **≥ 7** segments/sec
-- Backlog slope **≤ 0** during sustained ingestion
-- Full lifecycle TPS approaches acknowledgement TPS
-- Exact reopen + query verification (locator-based Chimera)
-- Chimera not required for correctness
+- Backlog slope **≤ 0**
+- Complete-lifecycle TPS close to acknowledgement TPS
+- Exact reopen + query verification
+- Exactly **one** authoritative decode pass per enriched segment
 
-## Non-goals (until ETQ-1 exits)
+## Non-goals (until ETQ exits)
 
 - AWO / append-path optimisation
 - Three-cell attribution medians
-- Worker-count tuning as a substitute for removing write amplification
+- Worker-count tuning before single-pass decode
 
 ## Evidence homes
 
 - ETQ-0: `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`
-- Enrichment-on product: `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
-- ETQ-1: `doc/archive/performance-qualification/YYYY-MM-DD-etq1-compact-chimera/`
+- ETQ-1: `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`
+- Enrichment-on (pre-compact baseline): `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
+- ETQ-2: `doc/archive/performance-qualification/YYYY-MM-DD-etq2-single-pass-decode/`

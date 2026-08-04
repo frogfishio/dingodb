@@ -1,8 +1,9 @@
 # ETQ-1 — Compact Chimera Persistence (2026-08-04)
 
-Status: **labor measured** — compact Chimera **PASS**; full enrichment
-service floors **not yet** (decode-bound residual).  
-Not package accept (principal).
+Status: **architectural package accept (principal)** — Compact Chimera
+Persistence. ETQ remains **open** (enrichment floors still short).  
+Evidence of breakthrough: complete-lifecycle TPS **~12.4K → ~37.9K** (~3×);
+Chimera amp **~98% → ~0.74%**.
 
 ## What landed
 
@@ -47,12 +48,14 @@ Legacy v1 files remain readable.
 | Reopen + query | exact | **PASS** |
 | Chimera optional for correctness | wipe → get | **PASS** (unit) |
 
-## Residual (next)
+## Residual (ETQ still open → ETQ-2)
 
-After removing Chimera write amplification, **decode** (~82 ms/seg) dominates
-enrichment wall; Hydra (~15 ms) ≈ Chimera (~16 ms). Overall service excluding
-gap ≈ **6.3 seg/s** (clears 5.8 keep-pace, short of 7). Do **not** add workers
-until decode cost is understood — same disk-contention lesson as ETQ-0.
+Enrichment produces work at ~**5.57** seg/s but completes ~**4.93**, so backlog
+still grows slowly (slope **+0.64**). After Compact Chimera, **decode**
+(~82 ms/seg) dominates; Hydra ≈ Chimera (~15 ms).
+
+**Next only:** [ETQ-2 Single-Pass Enrichment Decode](../../todo/performance-qualification/ETQ2_SINGLE_PASS_DECODE.md)
+— one read, one verify/decode, one `EnrichmentPlan`; no workers first.
 
 ## Evidence
 

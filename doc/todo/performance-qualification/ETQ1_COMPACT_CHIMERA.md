@@ -1,11 +1,11 @@
 # ETQ-1 — Compact Chimera Persistence (frozen)
 
-Status: **labor in_review** — compact persistence + 2 GiB campaign measured
-(2026-08-04). Chimera amp/stage gates PASS; overall enrichment floors still
-FAIL (decode-bound). Package accept = principal.  
+Status: **architectural package accept (principal)** — Compact Chimera
+Persistence landed; ETQ remains open for Single-Pass Decode.  
 Depends on: **ETQ-0 package accept**
 (`doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`).  
 Evidence: `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
+Next: [ETQ2_SINGLE_PASS_DECODE.md](./ETQ2_SINGLE_PASS_DECODE.md).
 
 ## ETQ-0 acceptance (locked)
 
