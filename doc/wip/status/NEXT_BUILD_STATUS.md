@@ -213,7 +213,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **RQL PATH T0** map `32d30efe` | `in_review` | [PATH_TO_FULL_RQL.md](../../todo/rql/PATH_TO_FULL_RQL.md); post-0.2.2 query de-risk |
 | — | **RQL PATH T1** Core baseline `0a5c700a` | `in_review` | Phase 1 labor: expanded corpus + execute oracle + residual checklist; **not** package accept |
 | — | **RQL PATH T2** expressiveness corpus `b4ebdaf9` | `in_review` | sql+ emit/refuse scaffold + Core gotchas; joins pending Phase 3 |
-| — | **RQL-v1 full language** `89a80e77` | `backlog` | **NOT** APB-7; promote only after Phase 1 accept |
+| — | **RQL-v1 full language** `89a80e77` | `in_review` | Phase 3 kickoff: `rql-full-v1` enrich compile+attach; within/many residual |
 | — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
 | — | **APB-2 T5** store Key Atomic CAS `d08e4633` | `in_review` | embedded CAS labor; no package accept |
 | — | **APB-2 T6** residual checklist `1b8a52b7` | `in_review` | honesty map; **never** self-mark package accept |

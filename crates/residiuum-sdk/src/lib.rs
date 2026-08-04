@@ -56,6 +56,8 @@ pub mod predicate;
 pub mod plan_v1;
 /// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
 pub mod rql_app_core;
+/// Full RQL-v1 kickoff (`rql-full-v1`) — Phase 3 enrich compile/attach (not Core).
+pub mod rql_full_v1;
 /// SQL-ish+ → Application Core RQL emit/refuse (`residiuum-sql-plus-to-rql-v1`) — Phase 2 scaffold.
 pub mod sql_plus;
 /// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
@@ -98,6 +100,10 @@ pub use plan_v1::{
 pub use rql_app_core::{
     compile_app_core, merge_budgets, CompiledAppCore, APP_CORE_PROFILE,
     DIAG_RQL_FEATURE_UNAVAILABLE, MAX_RQL_SOURCE_BYTES,
+};
+pub use rql_full_v1::{
+    attach_enrich_rows, compile_rql_full, CompiledRqlFull, EnrichCardinality, EnrichStepV1,
+    DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, RQL_FULL_PROFILE,
 };
 pub use sql_plus::{
     compile_sql_to_rql, SqlToRqlEmit, SqlToRqlResult, DIAG_SQL_RQL_CONSTRUCT_UNSUPPORTED,
