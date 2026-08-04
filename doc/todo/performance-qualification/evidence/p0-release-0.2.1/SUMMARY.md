@@ -37,4 +37,6 @@ Operator action for damaged trees remains: refuse open / fresh store (advisory).
 
 Tagged commit: `4972624b1f9f49603e052ce4c5bd06d4655bb3c9` (`4972624`)
 
-Final tagged tip:  ()
+Final tagged tip: `217a4c2fba2a2607d971a0f0b1bb6c79c62f6f23` (`217a4c2`)
+Tag: `v0.2.1`
+Yank: `cargo yank residiuum-store --vers 0.2.0` succeeded on crates.io.
