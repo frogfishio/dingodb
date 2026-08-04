@@ -1,16 +1,18 @@
-//! Full RQL-v1 compile/execute kickoff (`rql-full-v1`) — Phase 3 labor.
+//! Full RQL-v1 compile/execute (`rql-full-v1`) — Phase 3 labor.
 //!
 //! Normative: [RQL_SPEC.md](../../../doc/wip/query/RQL_SPEC.md) enrich clause.
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.
 //!
-//! This module is a **first slice**:
+//! Current slice:
 //! - compile single-level `enrich … matching … expect …`
-//! - execute `exactly_one` / `optional` attach via independent foreign scan oracle
-//! - refuse `within`, `at rank`, nested enrich, `many` (next slices)
+//! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
+//! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach)
+//! - refuse `within`, `at rank`, nested enrich, enrich candidate `where`
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
 
+use crate::app_v1::{HeapClient, Parameters, QueryPage, QueryRunOptions};
 use crate::error::Error;
 use crate::plan_v1::CollectionBindings;
 use crate::predicate::{resolve_path, Path, Resolve};
@@ -35,7 +37,7 @@ pub enum EnrichCardinality {
     ExactlyOne,
     /// Zero or one match.
     Optional,
-    /// Zero or more (bag) — residual in this kickoff.
+    /// Zero or more matches (JSON array / bag).
     Many,
 }
 
@@ -227,11 +229,7 @@ fn parse_enrich_step(body: &str, bindings: &CollectionBindings) -> Result<Enrich
     let expect = match card_s.as_str() {
         "exactly_one" => EnrichCardinality::ExactlyOne,
         "optional" => EnrichCardinality::Optional,
-        "many" => {
-            return Err(Error::QueryInvalid(format!(
-                "{DIAG_RQL_FULL_RESIDUAL}: expect many not in kickoff"
-            )));
-        }
+        "many" => EnrichCardinality::Many,
         other => {
             return Err(Error::QueryInvalid(format!(
                 "enrich expect must be exactly_one|optional|many, got `{other}`"
@@ -355,27 +353,26 @@ impl<'a> Words<'a> {
 /// Attach enrich fields onto already-materialised root JSON documents.
 ///
 /// `foreign_docs` is a complete list of `(key, json)` for the using-collection
-/// (independent oracle / kickoff scan). Does **not** claim index pushdown.
+/// (independent oracle / scan). Does **not** claim index pushdown.
+///
+/// `expect many` attaches a JSON array of matches, ordered by foreign key.
 pub fn attach_enrich_rows(
     roots: &[(String, JsonValue)],
     foreign_docs: &[(String, JsonValue)],
     step: &EnrichStepV1,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
-    if matches!(step.expect, EnrichCardinality::Many) {
-        return Err(Error::QueryInvalid(format!(
-            "{DIAG_RQL_FULL_RESIDUAL}: expect many attach not in kickoff"
-        )));
-    }
-
-    // Index foreign by right-path JSON key (canonical debug string).
-    let mut by_right: BTreeMap<String, Vec<JsonValue>> = BTreeMap::new();
-    for (_k, doc) in foreign_docs {
+    // Index foreign by right-path JSON key; keep keys for stable many-order.
+    let mut by_right: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
+    for (fk, doc) in foreign_docs {
         if let Resolve::Present(v) = resolve_path(doc, &step.right) {
             by_right
                 .entry(canonical_match_key(&v))
                 .or_default()
-                .push(doc.clone());
+                .push((fk.clone(), doc.clone()));
         }
+    }
+    for entries in by_right.values_mut() {
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
     }
 
     let mut out = Vec::with_capacity(roots.len());
@@ -392,13 +389,20 @@ pub fn attach_enrich_rows(
                         out.push((key.clone(), row));
                         continue;
                     }
+                    EnrichCardinality::Many => {
+                        let mut row = root.clone();
+                        if let JsonValue::Object(map) = &mut row {
+                            map.insert(step.output.clone(), JsonValue::Array(vec![]));
+                        }
+                        out.push((key.clone(), row));
+                        continue;
+                    }
                     EnrichCardinality::ExactlyOne => {
                         return Err(Error::QueryInvalid(format!(
                             "{DIAG_RQL_ENRICH_CARDINALITY}: missing left match path `{}` on key `{key}`",
                             step.left.0.join(".")
                         )));
                     }
-                    EnrichCardinality::Many => unreachable!(),
                 }
             }
         };
@@ -407,20 +411,22 @@ pub fn attach_enrich_rows(
             .map(|v| v.as_slice())
             .unwrap_or(&[]);
         let attached = match (step.expect, candidates.len()) {
-            (EnrichCardinality::ExactlyOne, 1) => candidates[0].clone(),
+            (EnrichCardinality::ExactlyOne, 1) => candidates[0].1.clone(),
             (EnrichCardinality::ExactlyOne, n) => {
                 return Err(Error::QueryInvalid(format!(
                     "{DIAG_RQL_ENRICH_CARDINALITY}: exactly_one expected 1 match, got {n} (key `{key}`)"
                 )));
             }
             (EnrichCardinality::Optional, 0) => JsonValue::Null,
-            (EnrichCardinality::Optional, 1) => candidates[0].clone(),
+            (EnrichCardinality::Optional, 1) => candidates[0].1.clone(),
             (EnrichCardinality::Optional, n) => {
                 return Err(Error::QueryInvalid(format!(
                     "{DIAG_RQL_ENRICH_CARDINALITY}: optional expected ≤1 match, got {n} (key `{key}`)"
                 )));
             }
-            (EnrichCardinality::Many, _) => unreachable!(),
+            (EnrichCardinality::Many, _) => JsonValue::Array(
+                candidates.iter().map(|(_, d)| d.clone()).collect(),
+            ),
         };
         let mut row = root.clone();
         match &mut row {
@@ -436,6 +442,88 @@ pub fn attach_enrich_rows(
         out.push((key.clone(), row));
     }
     Ok(out)
+}
+
+/// Result of [`execute_rql_full`] (one base page + enrich attach).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RqlFullPage {
+    /// Profile label.
+    pub profile: &'static str,
+    /// Enriched rows `(key, json)` after attach (same page bounds as base).
+    pub rows: Vec<(String, JsonValue)>,
+    /// Underlying Application Core page (pre-enrich values).
+    pub base: QueryPage,
+    /// Compiled enrich steps applied (0 or 1 in current slice).
+    pub enrich: Vec<EnrichStepV1>,
+}
+
+/// Façade: compile full RQL, run Core base page, attach enrich via foreign scan.
+///
+/// Discovers collection bindings from [`HeapClient::list_collections`]. Foreign
+/// collection is loaded with `list_keys`+`get` (complete scan oracle — no index
+/// claim). Multipage: call again with `options.after` from `base.next`.
+pub fn execute_rql_full(
+    client: &mut HeapClient,
+    source: &str,
+    parameters: &Parameters,
+    options: QueryRunOptions,
+) -> Result<RqlFullPage, Error> {
+    let infos = client.list_collections()?;
+    let mut bindings = CollectionBindings::default();
+    for info in &infos {
+        bindings.bind(&info.name, info.collection_id);
+    }
+    let compiled = compile_rql_full(source, &bindings)?;
+    let from_name = compiled.base.plan.from.source_name.clone();
+    let mut base_col = client.open_collection(&from_name)?;
+    let page = base_col.rql(&compiled.base_source, parameters, options)?;
+
+    if compiled.enrich.is_empty() {
+        let rows = page
+            .rows
+            .iter()
+            .map(|r| (r.key.clone(), r.value.clone()))
+            .collect();
+        return Ok(RqlFullPage {
+            profile: RQL_FULL_PROFILE,
+            rows,
+            base: page,
+            enrich: compiled.enrich,
+        });
+    }
+
+    let step = &compiled.enrich[0];
+    let mut foreign_col = client.open_collection(&step.using_name)?;
+    let mut foreign = Vec::new();
+    let mut after: Option<String> = None;
+    loop {
+        let batch = foreign_col.list_keys(Some(256), after.as_deref())?;
+        if batch.is_empty() {
+            break;
+        }
+        for k in &batch {
+            if let Some(v) = foreign_col.get(k)? {
+                foreign.push((k.clone(), v));
+            }
+        }
+        after = batch.last().cloned();
+        if batch.len() < 256 {
+            break;
+        }
+    }
+
+    let roots: Vec<(String, JsonValue)> = page
+        .rows
+        .iter()
+        .map(|r| (r.key.clone(), r.value.clone()))
+        .collect();
+    let rows = attach_enrich_rows(&roots, &foreign, step)?;
+    Ok(RqlFullPage {
+        profile: RQL_FULL_PROFILE,
+        rows,
+        base: page,
+        enrich: compiled.enrich,
+    })
 }
 
 fn canonical_match_key(v: &JsonValue) -> String {
@@ -492,17 +580,45 @@ mod tests {
     }
 
     #[test]
-    fn refuse_within_and_many() {
+    fn refuse_within_still() {
         assert!(compile_rql_full(
             "from orders within items { enrich x using y matching a = b expect optional }",
             &bindings()
         )
         .is_err());
-        assert!(compile_rql_full(
-            "from orders enrich customer using customers matching customer_id = id expect many",
-            &bindings()
+    }
+
+    #[test]
+    fn compile_and_attach_many() {
+        let mut b = bindings();
+        b.bind(
+            "line_items",
+            CollectionId::from_str("00000000-0000-4000-8000-0000000000a3").unwrap(),
+        );
+        let c = compile_rql_full(
+            "from orders enrich items using line_items matching order_id = order_id expect many",
+            &b,
         )
-        .is_err());
+        .unwrap();
+        assert_eq!(c.enrich[0].expect, EnrichCardinality::Many);
+
+        let step = &c.enrich[0];
+        let roots = vec![
+            ("o1".into(), serde_json::json!({"order_id": "o1"})),
+            ("o2".into(), serde_json::json!({"order_id": "o2"})),
+        ];
+        let foreign = vec![
+            ("l2".into(), serde_json::json!({"order_id": "o1", "sku": "B"})),
+            ("l1".into(), serde_json::json!({"order_id": "o1", "sku": "A"})),
+            ("l3".into(), serde_json::json!({"order_id": "o2", "sku": "C"})),
+        ];
+        let out = attach_enrich_rows(&roots, &foreign, step).unwrap();
+        let bag = out[0].1["items"].as_array().unwrap();
+        assert_eq!(bag.len(), 2);
+        // Stable by foreign key: l1 then l2
+        assert_eq!(bag[0]["sku"], "A");
+        assert_eq!(bag[1]["sku"], "B");
+        assert_eq!(out[1].1["items"].as_array().unwrap().len(), 1);
     }
 
     #[test]
