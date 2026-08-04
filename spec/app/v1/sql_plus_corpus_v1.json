@@ -1,0 +1,75 @@
+{
+  "profile": "residiuum-sql-plus-to-rql-v1",
+  "dialect": "sql+",
+  "alias": "sql-plus",
+  "target_profile": "rql-app-core-v1",
+  "description": "Phase 2 SQL-ish+ emit/refuse corpus. Refuse is a successful safety outcome. Emit locks through compile_app_core when bindings are supplied.",
+  "default_bindings": {
+    "orders": "00000000-0000-4000-8000-0000000000a1"
+  },
+  "emit": [
+    {
+      "id": "emit-select-eq-project-order-limit",
+      "source_sql": "SELECT id, status FROM orders WHERE status = 'open' ORDER BY created_at DESC LIMIT 100",
+      "expect_rql_contains": ["from orders", "status = \"open\"", "project id, status", "order by created_at desc", "limit 100"]
+    },
+    {
+      "id": "emit-star-param-page",
+      "source_sql": "SELECT * FROM orders WHERE region = :region PAGE SIZE 8",
+      "expect_rql_contains": ["from orders", "$region", "page size 8"]
+    },
+    {
+      "id": "emit-is-null-collapse",
+      "source_sql": "SELECT id FROM orders WHERE nickname IS NULL",
+      "expect_rql_contains": ["missing(nickname)", "is null"],
+      "expect_notes_nonempty": true
+    },
+    {
+      "id": "emit-in-list",
+      "source_sql": "SELECT id FROM orders WHERE region IN ('us', 'eu')",
+      "expect_rql_contains": ["region in [\"us\", \"eu\"]"]
+    }
+  ],
+  "refuse": [
+    {
+      "id": "refuse-join",
+      "source_sql": "SELECT * FROM orders JOIN customers ON orders.customer_id = customers.id",
+      "diagnostic_contains": ["sql_rql_construct_unsupported"]
+    },
+    {
+      "id": "refuse-group-by",
+      "source_sql": "SELECT status FROM orders GROUP BY status",
+      "diagnostic_contains": ["sql_rql_construct_unsupported"]
+    },
+    {
+      "id": "refuse-offset",
+      "source_sql": "SELECT * FROM orders OFFSET 10",
+      "diagnostic_contains": ["sql_rql_construct_unsupported"]
+    },
+    {
+      "id": "refuse-insert",
+      "source_sql": "INSERT INTO orders (id) VALUES ('x')",
+      "diagnostic_contains": ["sql_rql_statement_unsupported"]
+    },
+    {
+      "id": "refuse-count",
+      "source_sql": "SELECT COUNT(*) FROM orders",
+      "diagnostic_contains": ["sql_rql_construct_unsupported"]
+    },
+    {
+      "id": "refuse-union",
+      "source_sql": "SELECT id FROM orders UNION SELECT id FROM other",
+      "diagnostic_contains": ["sql_rql_construct_unsupported"]
+    },
+    {
+      "id": "refuse-like",
+      "source_sql": "SELECT * FROM orders WHERE name LIKE 'A%'",
+      "diagnostic_contains": ["sql_rql_construct_unsupported"]
+    },
+    {
+      "id": "refuse-with-cte",
+      "source_sql": "WITH t AS (SELECT * FROM orders) SELECT * FROM t",
+      "diagnostic_contains": ["sql_rql_statement_unsupported"]
+    }
+  ]
+}

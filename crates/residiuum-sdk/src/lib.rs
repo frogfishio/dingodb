@@ -56,6 +56,8 @@ pub mod predicate;
 pub mod plan_v1;
 /// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
 pub mod rql_app_core;
+/// SQL-ish+ → Application Core RQL emit/refuse (`residiuum-sql-plus-to-rql-v1`) — Phase 2 scaffold.
+pub mod sql_plus;
 /// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
 pub mod cursor_v1;
 /// Bounded Application Core page executor — APP-6 T2.
@@ -96,6 +98,11 @@ pub use plan_v1::{
 pub use rql_app_core::{
     compile_app_core, merge_budgets, CompiledAppCore, APP_CORE_PROFILE,
     DIAG_RQL_FEATURE_UNAVAILABLE, MAX_RQL_SOURCE_BYTES,
+};
+pub use sql_plus::{
+    compile_sql_to_rql, SqlToRqlEmit, SqlToRqlResult, DIAG_SQL_RQL_CONSTRUCT_UNSUPPORTED,
+    DIAG_SQL_RQL_PARSE_ERROR, DIAG_SQL_RQL_STATEMENT_UNSUPPORTED, SQL_PLUS_ALIAS, SQL_PLUS_DIALECT,
+    SQL_PLUS_PROFILE,
 };
 pub use cursor_v1::{
     active_cursor_key_ring, derive_vector_lock_key, install_cursor_key_ring,

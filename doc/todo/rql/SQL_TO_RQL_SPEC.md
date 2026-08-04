@@ -1,6 +1,8 @@
 # SQL-ish+ and SQL to RQL cross-compiler specification
 
-Status: **Normative design v1.0-draft**
+Status: **Normative design v1.0-draft** · labor scaffold **in-tree**
+(`residiuum_sdk::sql_plus` / `compile_sql_to_rql`, corpus
+`spec/app/v1/sql_plus_corpus_v1.json`) — emit/refuse only; **not** product accept.
 
 Product surface: **SQL-ish+**
 
