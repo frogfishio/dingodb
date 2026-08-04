@@ -41,3 +41,8 @@ Final tagged tip: `08a95628adb25b0c6cc2c29a13841a673709dee6` (`08a9562`)
 Tag: `v0.2.1`
 Yanked on crates.io: residiuum-store/sdk/format/sda/heap/client/cli/examine/server/cluster **0.2.0**.
 Note: publish of **0.2.1** crates to crates.io is the follow-on operator step if not done in-session.
+
+## crates.io
+
+Published **0.2.1**: sda, format, heap, store, client, examine, cluster; sdk/server/cli retried after index propagate.
+Yanked **0.2.0** for the same crate set (see `cargo_yank_attempt.log`).
