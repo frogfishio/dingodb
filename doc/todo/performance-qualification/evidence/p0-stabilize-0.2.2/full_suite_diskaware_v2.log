@@ -1,0 +1,1190 @@
+START 2026-08-04T14:51:28Z
+/dev/disk3s5   228Gi   173Gi    28Gi    87%    3.1M  289M    1%   /System/Volumes/Data
+warning: fields `mode` and `ops` are never read
+   --> crates/residiuum-store/tests/awo_q2_decision_quality.rs:114:5
+    |
+113 | struct FacadeCell {
+    |        ---------- fields in this struct
+114 |     mode: AdaptiveWriteMode,
+    |     ^^^^
+115 |     concurrency: usize,
+116 |     ops: u64,
+    |     ^^^
+    |
+    = note: `FacadeCell` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `residiuum-store` (test "awo_q2_decision_quality") generated 1 warning
+warning: unused import: `StoreOpenOptions`
+ --> crates/residiuum-store/tests/section16_store.rs:9:23
+  |
+9 | use residiuum_store::{StoreOpenOptions, DurabilityMode, Store};
+  |                       ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `residiuum-store` (test "section16_store") generated 1 warning (run `cargo fix --test "section16_store" -p residiuum-store` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_store-2e38236c1dee835c)
+
+running 243 tests
+test adaptive_write::controller::tests::dwell_blocks_immediate_re_scale ... ok
+test adaptive_write::controller::tests::scale_up_after_consecutive_intervals ... ok
+test adaptive_write::controller::tests::writer_saturation_blocks_up ... ok
+test adaptive_write::cooker::tests::pure_cook_matches_serial_twice ... ok
+test adaptive_write::coordinator::tests::cook_then_install_overlap_shape ... ok
+test adaptive_write::coordinator::tests::depth_two_blocks_third ... ok
+test adaptive_write::coordinator::tests::seal_and_shutdown_refuse_new ... ok
+test adaptive_write::credits::tests::atomic_reject_leaves_unchanged ... ok
+test adaptive_write::credits::tests::byte_exhaustion ... ok
+test adaptive_write::credits::tests::mutation_credit_includes_framing ... ok
+test adaptive_write::credits::tests::reserve_and_release_roundtrip ... ok
+test adaptive_write::estimator::tests::ewma_moves_toward_sample ... ok
+test adaptive_write::estimator::tests::first_sample_sets_mean ... ok
+test adaptive_write::estimator::tests::payload_bucket_pow2 ... ok
+test adaptive_write::estimator::tests::warm_and_stale ... ok
+test adaptive_write::model::tests::all_golden_vectors_match_decide ... ok
+test adaptive_write::model::tests::closed_reason_ids_include_all_golden_reasons ... ok
+test adaptive_write::model::tests::exact_tie_uses_integer_margin_equality ... ok
+test adaptive_write::model::tests::overflow_service_returns_natural_arithmetic_overflow ... ok
+test adaptive_write::model::tests::profile_constant_matches_registry ... ok
+test adaptive_write::ordered_ready::tests::duplicate_rejected ... ok
+test adaptive_write::ordered_ready::tests::ordered_pop_despite_out_of_order_push ... ok
+test adaptive_write::policy::tests::machine_defaults_validate ... ok
+test adaptive_write::policy::tests::rejects_pipeline_zero ... ok
+test adaptive_write::queue::tests::capacity_and_pop ... ok
+test adaptive_write::queue::tests::shutdown_unblocks ... ok
+test adaptive_write::selector::tests::candidates_clip_and_include_queued ... ok
+test adaptive_write::selector::tests::collection_delay_rules ... ok
+test adaptive_write::selector::tests::select_batch_when_gain ... ok
+test adaptive_write::selector::tests::select_natural_when_cold ... ok
+test atomic_file::tests::keep_previous_survives_replace ... ok
+test atomic_file::tests::read_with_previous_falls_back ... ok
+test atomic_file::tests::torn_temp_does_not_replace_published ... ok
+test atomic_file::tests::write_atomic_roundtrip ... ok
+test backup::tests::backup_profile_constant ... ok
+test backup::tests::full_backup_restore_roundtrip ... ok
+test backup::tests::reassign_identity_clone ... ok
+test backup::tests::tampered_file_fails_verify ... ok
+test boundary_probe::tests::disabled_is_noop ... ok
+test boundary_probe::tests::enabled_records_kinds_and_digest ... ok
+test boundary_probe::tests::sample_cap_drops_explicitly_counters_exact ... ok
+test boundary_probe::tests::short_write_outcome_counted ... ok
+test catalog::tests::catalog_roundtrip ... ok
+test catalog::tests::subject_collection_parse ... ok
+test chimera::classify::tests::classifies_by_size_defaults ... ok
+test chimera::classify::tests::force_class_override ... ok
+test chimera::classify::tests::initial_kind_respects_scan_hint ... ok
+test chimera::compiler::tests::dictionary_train_deduped_by_family ... ok
+test chimera::compiler::tests::point_hot_relocates_medium_to_container ... ok
+test chimera::compiler::tests::recluster_helper ... ok
+test chimera::compiler::tests::scan_hot_relocates_to_extent ... ok
+test chimera::container::tests::builder_respects_target ... ok
+test chimera::container::tests::corrupt_checksum_rejected ... ok
+test chimera::container::tests::roundtrip_multiple_slots ... ok
+test chimera::io_path::tests::large_cold_batch_uses_async_direct ... ok
+test chimera::io_path::tests::large_without_async_uses_direct ... ok
+test chimera::io_path::tests::medium_default_buffered ... ok
+test chimera::io_path::tests::tiny_cached_stays_buffered ... ok
+test chimera::layout::tests::build_materialized_places_all_classes ... ok
+test chimera::layout::tests::compact_layout_roundtrip_and_amp ... ok
+test chimera::layout::tests::materialized_roundtrip_disk_still_supported ... ok
+test chimera::tests::architecture_path_end_to_end ... ok
+test chimera::tests::pack_medium_values ... ok
+test chimera::tests::place_value_by_class ... ok
+test chimera::tests::resolve_inline ... ok
+test chimera::tests::resolve_point_container_slot ... ok
+test chimera::tests::resolve_scan_extent ... ok
+test chimera::tests::resolve_value_log ... ok
+test chimera::tests::segment_frame_fail_closed_on_len_mismatch_and_missing ... ok
+test chimera::value_log::tests::append_and_read_roundtrip ... ok
+test chimera::value_log::tests::corrupt_rejected ... ok
+test chunk_payload::tests::hostile_chunk_count_does_not_allocate ... ok
+test chunk_payload::tests::ignores_other_generation_same_index ... ok
+test chunk_payload::tests::manifest_roundtrip ... ok
+test chunk_payload::tests::partial_missing_middle ... ok
+test chunk_payload::tests::wrong_event_id_for_slot_is_ignored_not_mixed ... ok
+test composed_failure::tests::rejected_without_reason_fails ... ok
+test composed_failure::tests::schedules_and_rejects ... ok
+test crash_matrix::tests::embedded_matrix_loads_and_validates ... ok
+test csq5_campaign::tests::classify_old_new_unknown ... ok
+test csq5_campaign::tests::hybrid_receipt_without_visibility_fails ... ok
+test csq5_campaign::tests::silent_skip_assert ... ok
+test csq_harness::tests::harness_strings_parse ... ok
+test csq_harness::tests::inventory_covers_required_kinds ... ok
+test cursor::tests::generation_changes_with_inputs ... ok
+test cursor::tests::public_store_id_cannot_forge_mac ... ok
+test cursor::tests::rotation_grace_then_retire ... ok
+test cursor::tests::token_roundtrip_and_mac ... ok
+test envelope::tests::delete_kind_roundtrip ... ok
+test envelope::tests::rejects_incomplete_map ... ok
+test envelope::tests::rejects_non_cbor ... ok
+test envelope::tests::roundtrip ... ok
+test erasure::tests::encode_refuses ... ok
+test erasure::tests::manifest_shard_keys ... ok
+test erasure::tests::shard_key_naming ... ok
+test failpoint::tests::cancel_and_alloc_actions ... ok
+test failpoint::tests::error_action_returns_failpoint ... ok
+test failpoint::tests::hit_proof_requires_visit ... ok
+test failpoint::tests::io_enospc_is_storage_full ... ok
+test failpoint::tests::io_permission_is_permission_denied ... ok
+test failpoint::tests::panic_action_unwinds ... ok
+test failpoint::tests::short_write_consume ... ok
+test failpoint::tests::unarmed_is_noop ... ok
+test failpoint::tests::unreached_arm_stays_armed ... ok
+test heap::admin_op_dedup::tests::binding_stable_and_name_sensitive ... ok
+test heap::admin_op_dedup::tests::table_roundtrip ... ok
+test heap::catalog::tests::staged_genesis_invisible_until_publish ... ok
+test heap::one_heap::tests::mixed_heap_salvage_classifies_bound_and_foreign ... ok
+test heap::one_heap::tests::rejects_cross_heap_and_accepts_match ... ok
+test hydra::eytzinger::tests::eytzinger_all_hits ... ok
+test hydra::mphf::tests::mphf_all_hits_no_false ... ok
+test hydra::mphf::tests::mphf_empty ... ok
+test hydra::pgm::tests::pgm_sparse_hits ... ok
+test hydra::pgm::tests::radix_spline_dense_hits ... ok
+test hydra::radix::tests::prefix_and_sibling_keys ... ok
+test hydra::radix::tests::radix_string_keys ... ok
+test hydra::select::tests::dense_vs_sparse_numeric ... ok
+test hydra::select::tests::strings_are_radix ... ok
+test hydra::select::tests::tiny_and_point_only ... ok
+test hydra::tests::build_many_parallel_preserves_order ... ok
+test hydra::tests::codec_roundtrip_all_kinds ... ok
+test hydra::tests::eytzinger_scan_order ... ok
+test hydra::tests::last_duplicate_wins ... ok
+test hydra::tests::numeric_selects_pgm_or_spline ... ok
+test hydra::tests::point_only_selects_mphf ... ok
+test hydra::tests::strings_select_compressed_radix ... ok
+test hydra::tests::tiny_selects_eytzinger ... ok
+test hydra::tests::write_load_sidecar ... ok
+test ids::tests::id_profile_is_stable ... ok
+test ids::tests::random_and_sortable_kinds_differ_in_shape ... ok
+test ids::tests::random_ids_are_unique_and_nonzero ... ok
+test ids::tests::sortable_segment_ids_order_by_seq ... ok
+test ids::tests::subject_item_id_is_deterministic ... ok
+test incremental_seal::tests::content_hash_state_wire_roundtrip ... ok
+test incremental_seal::tests::meta_publish_plan_defers_content_hash ... ok
+test incremental_seal::tests::rolling_hash_matches_full_blake3_of_sealed_image ... ok
+test index_cache::tests::cache_roundtrip_v1 ... ok
+test index_cache::tests::fingerprint_mismatch_rejects_v1 ... ok
+test index_cache::tests::frontier_cache_corruption_rejects ... ok
+test index_cache::tests::frontier_cache_roundtrip_v2 ... ok
+test index_cache::tests::frontier_cache_roundtrip_v3_preserves_offset ... ok
+test kernel::tests::physical_alias_exists ... ok
+test large_value::tests::default_admits_threshold_boundary ... ok
+test large_value::tests::rejects_over_max_logical ... ok
+test large_value::tests::rejects_zero_chunk_size ... ok
+test layout::tests::hex_roundtrip ... ok
+test lifecycle::tests::evaluate_first_match ... ok
+test lifecycle::tests::roundtrip_file ... ok
+test media::tests::gs_mirror_resolves_media_root_directory ... ok
+test media::tests::local_object_put_get_delete ... ok
+test media::tests::media_root_directory_for_local_object ... ok
+test media::tests::parse_filesystem_and_file_uri ... ok
+test media::tests::parse_object_local_and_roundtrip_uri ... ok
+test media::tests::parse_s3_gs ... ok
+test media::tests::s3_backend_refuses_io_without_mirror ... ok
+test media::tests::s3_mirror_put_get_delete ... ok
+test media::tests::unknown_scheme_errors ... ok
+test media_inventory::tests::rename_exclusive_crash_after_create_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_dest_publish_completes_on_retry ... ok
+test media_inventory::tests::rename_exclusive_crash_after_file_sync_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_link_before_unlink ... ok
+test media_inventory::tests::rename_exclusive_hard_link_crash_before_unlink_retry_ok ... ok
+test media_inventory::tests::rename_exclusive_idempotent_same_bytes ... ok
+test media_inventory::tests::rename_exclusive_partial_copy_leaves_no_final ... ok
+test media_inventory::tests::rename_exclusive_refuses_different_dest ... ok
+test media_inventory::tests::rename_exclusive_uses_exclusive_publish_not_replace ... ok
+test migrate::tests::full_migrate_preserves_live_data_and_source ... ok
+test migrate::tests::matrix_snapshot_non_empty ... ok
+test migrate::tests::plan_only_does_not_create_dest_store ... ok
+test migrate::tests::preflight_blocks_non_empty_dest ... ok
+test migrate::tests::rollback_refuses_completed ... ok
+test migrate::tests::rollback_removes_incomplete_dest ... ok
+test protected_pair::tests::recover_orphan_staging_without_auth_deletes_tmp ... ok
+test protected_pair::tests::recover_sealed_plus_rsh_without_frontier_claims ... ok
+test protected_pair::tests::recover_sealed_plus_staging_claims_p_star ... ok
+test protected_pair::tests::recover_uses_shard_sidecar_not_zero ... ok
+test recovery_shadow::crypto::tests::sealed_has_no_plaintext ... ok
+test recovery_shadow::crypto::tests::wrong_key_fails_closed ... ok
+test recovery_shadow::dual_stream::tests::dual_stream_roundtrip_commitment ... ok
+test recovery_shadow::frontier::tests::coverage_roundtrip ... ok
+test recovery_shadow::frontier::tests::gap_aware_twelve_does_not_conceal_eleven ... ok
+test recovery_shadow::frontier::tests::multi_shard_aggregate_is_min_not_max ... ok
+test recovery_shadow::frontier::tests::refuses_protected_ahead_of_sealed_scalar_api ... ok
+test recovery_shadow::integrate::tests::dual_run_allows_retire_without_replacement_shadow ... ok
+test recovery_shadow::integrate::tests::publish_claims_only_after_atomic ... ok
+test recovery_shadow::integrate::tests::retire_refuses_without_replacement ... ok
+test recovery_shadow::mirror::tests::mirror_roundtrip_and_commitment ... ok
+test recovery_shadow::mirror::tests::publish_mirror_is_durable_path ... ok
+test recovery_shadow::mirror::tests::publish_mirror_republish_different_bytes_collides ... ok
+test recovery_shadow::mirror::tests::publish_mirror_republish_same_bytes_is_idempotent ... ok
+test recovery_shadow::mirror::tests::torn_mirror_fails_closed ... ok
+test recovery_shadow::policy::tests::can_switch_to_require_replacement ... ok
+test recovery_shadow::policy::tests::default_is_dual_run ... ok
+test recovery_shadow::recovery_mode::tests::mode_roundtrip_atomic ... ok
+test recovery_shadow::wire::tests::publish_atomic_and_load ... ok
+test recovery_shadow::wire::tests::refuse_publish_incomplete ... ok
+test recovery_shadow::wire::tests::roundtrip_put_and_tombstone ... ok
+test recovery_shadow::wire::tests::tombstone_prevents_resurrection_across_merge ... ok
+test recovery_shadow::wire::tests::truncated_file_is_incomplete_never_ok ... ok
+test scrub::tests::empty_store_scrub_completes ... ok
+test scrub::tests::hex32_is_64_chars ... ok
+test scrub::tests::pause_blocks_progress ... ok
+test seal_pipeline::tests::authoritative_publish_before_derived_enrichment ... ok
+test seal_pipeline::tests::finalize_append_only_preserves_pending_prefix ... ok
+test seal_pipeline::tests::finalize_roundtrip_files ... ok
+test seal_pipeline::tests::seal_pending_preserves_prefix_bytes ... ok
+test secondary::tests::failed_retains_reason ... ok
+test secondary::tests::partial_and_stale_never_prove_absence_or_exclusive_hits ... ok
+test secondary::tests::secondary_roundtrip ... ok
+test segment_allocator::tests::corrupt_durable_empty_media_refuses ... ok
+test segment_allocator::tests::encode_decode_roundtrip ... ok
+test segment_allocator::tests::reserve_monotonic_and_persistent ... ok
+test segment_catalog::tests::segment_catalog_roundtrip ... ok
+test segment_growth::tests::grow_on_append_is_default ... ok
+test segment_growth::tests::prepare_active_file_zeros_full_capacity ... ok
+test segment_growth::tests::watermark_default_is_modest_and_configurable ... ok
+test store::tests::chimera_compact_writes_output_layout ... ok
+test store::tests::chimera_rebuild_after_wipe ... ok
+test store::tests::chimera_seal_layout_and_get_resolve ... ok
+test store::tests::concurrent_create_absent_one_wins ... ok
+test store::tests::concurrent_put_if_one_wins ... ok
+test store::tests::create_put_get_delete ... ok
+test store::tests::durable_puts_are_locator_first_not_body_resident ... ok
+test store::tests::get_uses_primary_index_without_chimera_sidecars ... ok
+test store::tests::key_atomic_cas_put_and_delete ... ok
+test store::tests::parallel_cook_put_many_roundtrip ... ok
+test store::tests::reopen_recovers_state ... ok
+test store::tests::segment_growth_watermark_background_runway_put ... ok
+test store::tests::segment_growth_watermark_opt_in_put_reopen ... ok
+test tier::tests::classify_empty_supported ... ok
+test tier::tests::coverage_offline_incomplete ... ok
+test tier::tests::placement_roundtrip ... ok
+test tier::tests::transfer_copy_preserves_identity ... ok
+test token_keys::tests::debug_redacts_secret ... ok
+test token_keys::tests::public_id_insufficient_without_secret ... ok
+test token_keys::tests::rotate_retains_previous_only ... ok
+test token_keys::tests::store_persist_roundtrip ... ok
+test write_dedup::tests::content_identity_stable_and_sensitive ... ok
+test write_dedup::tests::table_roundtrip ... ok
+test writer_lock::tests::drop_releases_for_reopen ... ok
+test writer_lock::tests::observe_reports_free_when_unlocked ... ok
+test writer_lock::tests::second_in_process_writer_fails ... ok
+test writer_lock::tests::stale_diagnostic_text_does_not_block ... ok
+
+test result: ok. 243 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.79s
+
+     Running unittests src/bin/crash_child.rs (target/debug/deps/residiuum_store_crash_child-61657cf535748014)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/awo_adaptive_oracle.rs (target/debug/deps/awo_adaptive_oracle-722b37d8810d8e86)
+
+running 8 tests
+test adaptive_mode_select_plan_sizes_cold_batch_to_natural_one ... ok
+test candidates_closed_set ... ok
+test collection_and_payload_bucket_closed ... ok
+test ewma_matches_plan_formula_first_steps ... ok
+test policy_defaults_still_disabled_for_product ... ok
+test scale_controller_hysteresis_with_manual_clock ... ok
+test select_plan_aligns_with_decide_goldens_path ... ok
+test service_estimator_warm_gate ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/awo_contract.rs (target/debug/deps/awo_contract-cfe65898d9529228)
+
+running 1 test
+test golden_decisions_twelve_match_pure_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/awo_crash_matrix.rs (target/debug/deps/awo_crash_matrix-6ef2cba991fcca93)
+
+running 6 tests
+test closed_failpoint_inventory_partition ... ok
+test deferred_cells_named_but_not_required_on_put_many ... ok
+test each_pre_publish_error_failpoint_leaves_index_clean ... ok
+test multiprocess_abort_awo_persist_before ... ok
+test post_publish_failpoints_hit_after_index_visible ... ok
+test short_write_cell_poisons_writer ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+     Running tests/awo_credit_bounds.rs (target/debug/deps/awo_credit_bounds-fa35d671c60d8112)
+
+running 6 tests
+test cooker_frame_equivalence_vs_serial_encode ... ok
+test credit_release_on_failed_enqueue_path ... ok
+test credit_reserve_hits_entry_and_byte_limits ... ok
+test ordered_ready_preserves_ticket_order_under_parallel_cook ... ok
+test ordered_ready_standalone_out_of_order_buffer ... ok
+test policy_defaults_disabled_and_valid ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/awo_direct_writer_lease.rs (target/debug/deps/awo_direct_writer_lease-ba7dadae4f352669)
+
+running 2 tests
+test adaptive_writer_active_error_exists_for_awo3 ... ok
+test poison_refuses_put_and_delete_until_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/awo_partial_write_recovery.rs (target/debug/deps/awo_partial_write_recovery-6a0a184ef6f1740a)
+
+running 1 test
+test short_write_poisons_and_blocks_put_many ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/awo_persist_before_publish.rs (target/debug/deps/awo_persist_before_publish-449dcc6dec8c4c7c)
+
+running 4 tests
+test awo_failpoints_closed_set_named ... ok
+test multi_shard_put_many_persist_fail_publishes_nothing ... ok
+test put_many_persist_fail_publishes_nothing ... ok
+test put_many_success_publish_after_persist ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/awo_productisation.rs (target/debug/deps/awo_productisation-d5af64e909189e91)
+
+running 4 tests
+test disabled_attach_inspect_and_natural_put ... ok
+test machine_defaults_never_enable_by_accident ... ok
+test ordinary_create_inspect_reports_disabled ... ok
+test static_attach_drain_and_reset ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/awo_publication_failure.rs (target/debug/deps/awo_publication_failure-959a15ae151315de)
+
+running 1 test
+test publish_failpoint_aborts_before_index_update ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/awo_q13_reopen_correctness.rs (target/debug/deps/awo_q13_reopen_correctness-8ed463e3478c171a)
+
+running 3 tests
+test q13_adaptive_concurrent_reopen_matrix ... ok
+test q13_static_and_adaptive_same_seed_both_reopen_ok ... ok
+test q13_static_concurrent_reopen_matrix ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.23s
+
+     Running tests/awo_q2_decision_quality.rs (target/debug/deps/awo_q2_decision_quality-de65d8fabd5ff3f9)
+
+running 4 tests
+test q2_adaptive_warm_can_select_batch_on_multi_item ... ok
+test q2_concurrent_facade_sparse_adaptive_latency_envelope ... ok
+test q2_concurrent_facade_static_vs_adaptive_saturated_envelope ... ok
+test q2_static_full_batch_vs_adaptive_cold_natural_one ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.58s
+
+     Running tests/awo_shutdown.rs (target/debug/deps/awo_shutdown-a70068481c5ff845)
+
+running 7 tests
+test bad_phase_rejected ... ok
+test drain_writes_begins_pipeline_shutdown ... ok
+test pipeline_depth_two_no_third_reservation ... ok
+test seal_blocks_new_reservation ... ok
+test shutdown_drain_timeout_reports_remaining ... ok
+test shutdown_rejects_new_and_wait_empty ... ok
+test static_runtime_exposes_pipeline_depth_two ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/awo_static_admission.rs (target/debug/deps/awo_static_admission-d2a0507fe392e56e)
+
+running 10 tests
+test adaptive_mode_same_lease_floor_as_static ... ok
+test admit_put_batch_under_lease_persist_before_publish ... ok
+test classify_eligibility_closed ... ok
+test disabled_policy_default_no_lease ... ok
+test heap_store_facade_concurrent_put_collection_wait_outside_mutex ... ok
+test independent_puts_collect_amortize_file_sync ... ok
+test open_heap_carries_adaptive_handle_when_lease_active ... ok
+test ordinary_create_has_no_adaptive_status ... ok
+test static_mode_fences_direct_put_and_admits_under_lease ... ok
+test store_lease_flag_roundtrip ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s
+
+     Running tests/cse0_materialized_chimera_recovery.rs (target/debug/deps/cse0_materialized_chimera_recovery-44a5392a2eedeaad)
+
+running 1 test
+test cse0_materialized_recovery_baseline_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.34s
+
+     Running tests/cse1_compact_chimera_equivalence.rs (target/debug/deps/cse1_compact_chimera_equivalence-0b655604c9f22810)
+
+running 1 test
+test cse1_compact_equivalence_campaign ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.24s
+
+     Running tests/cse2r_safety_rollback.rs (target/debug/deps/cse2r_safety_rollback-a9d01d36e8d489e4)
+
+running 1 test
+test cse2r_product_seal_safety_rollback_guard ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.20s
+
+     Running tests/cse3_stage2_default_flip_ceremony.rs (target/debug/deps/cse3_stage2_default_flip_ceremony-c577fb4ecf309154)
+
+running 3 tests
+test fresh_create_defaults_to_compact_shadow ... ok
+test legacy_missing_marker_stays_materialized_on_open ... ok
+test rollback_from_default_compact_is_non_destructive ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/cse3_stage2_rshd0004_matrix.rs (target/debug/deps/cse3_stage2_rshd0004_matrix-f188e0443e816a09)
+
+running 16 tests
+test r4_chunked_value_recovery ... ok
+test r4_f0_healthy_dual_stream_recovery ... ok
+test r4_fail_finalize_dir_sync ... ok
+test r4_fail_finalize_rename ... ok
+test r4_fail_finalize_summary ... ok
+test r4_fail_finalize_sync ... ok
+test r4_fail_frontier_publish ... ok
+test r4_fail_shadow_append_no_p_star ... ok
+test r4_fail_shadow_flush ... ok
+test r4_matrix_cell_count_charter ... ok
+test r4_multi_shard_rotation ... ok
+test r4_overwrite_tombstone_recovery ... ok
+test r4_step8_activate_requires_gap_free ... ok
+test r4_step8_flip_activate_rollback ... ok
+test r4_step8_mode_persist_failpoint ... ok
+test r4_step8_reopen_loads_marker ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.36s
+
+     Running tests/cse3_stage2_segment_id_never_reuse.rs (target/debug/deps/cse3_stage2_segment_id_never_reuse-88578ac7a1de77c9)
+
+running 8 tests
+test corrupt_allocator_refuses_without_mutating_media ... ok
+test crash_after_active_media ... ok
+test crash_after_reserve_before_media ... ok
+test crash_after_reserve_persist ... ok
+test crash_before_reserve_persist ... ok
+test crash_seal_publish_boundaries ... ok
+test never_reuse_after_repeated_reopen_seal ... ok
+test never_reuse_multi_shard_allocation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.48s
+
+     Running tests/cse3_stage2_shadow_f0_f5.rs (target/debug/deps/cse3_stage2_shadow_f0_f5-89075f5d991b0971)
+
+running 15 tests
+test clarification_dual_run_allows_materialized_authority ... ok
+test f0_healthy_materialized_eq_shadow ... ok
+test f1_index_loss_shadow_intact ... ok
+test f2_shadow_damage_fail_closed ... ok
+test f3_authoritative_loss_shadow_reconstructs ... ok
+test f4_generation_tombstone_no_resurrection ... ok
+test f5_frontier_update_after_publish ... ok
+test f5_lifecycle_partial_shadow_never_p_star ... ok
+test variant_backup_restore_auth_loss ... ok
+test variant_compaction_cannot_retire_last_source ... ok
+test variant_crypto_erase_unrecoverable ... ok
+test variant_encrypted_no_plaintext ... ok
+test variant_key_rotation_preserves_recovery ... ok
+test variant_multi_shard_gaps ... ok
+test variant_wrong_store_segment_substitution ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/cse3_stage2_step2l_tps_ab.rs (target/debug/deps/cse3_stage2_step2l_tps_ab-9db8983bb41f17bb)
+
+running 1 test
+test step2l_tps_ab ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.80s
+
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/debug/deps/cse3_stage2_step7_shadow_perf-ceb55e9a75b82791)
+
+running 2 tests
+test step7_smoke_candidate_harness ... ok
+test step7_stage_medians_helper ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.22s
+
+     Running tests/cse3_stage2_step8_qual_activate.rs (target/debug/deps/cse3_stage2_step8_qual_activate-16398d18961fd8dd)
+
+running 1 test
+test step8_qual_store_activation_ceremony ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+     Running tests/cse3_stage2_step9_product_campaign.rs (target/debug/deps/cse3_stage2_step9_product_campaign-f21efe3ed6082cfc)
+
+running 6 tests
+test step9_buffered_16mib_seal_size ... ok
+test step9_buffered_64mib_seal_size ... ok
+test step9_buffered_64mib_then_continue_seal ... ok
+test step9_fresh_store_default_is_compact_shadow ... ok
+test step9_product_campaign ... ok
+test step9_reopen_continue_write_preserves_shadows ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.88s
+
+     Running tests/csq0_registry.rs (target/debug/deps/csq0_registry-ca2630e80ed16658)
+
+running 4 tests
+test csq0_crash_matrix_import_preserves_historical_ids ... ok
+test csq0_registry_graph_closed ... ok
+test csq0_registry_profile_and_identity ... ok
+test csq0_store_errors_registered ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/csq10_mutation_fuzz.rs (target/debug/deps/csq10_mutation_fuzz-998d1ebfb9dea211)
+
+running 7 tests
+test csq_fuz_hostile_chunk_manifest_owned ... ok
+test csq_mut_catalog_mandatory_p0_owned ... ok
+test csq_mut_kill_absence_from_damage ... ok
+test csq_mut_kill_derived_as_authority ... ok
+test csq_mut_kill_fabricate_commit ... ok
+test csq_mut_kill_hybrid_event ... ok
+test csq_mut_kill_receipt_without_durability ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
+
+     Running tests/csq11_compat_scale_soak.rs (target/debug/deps/csq11_compat_scale_soak-f02ff9dfcf0e6b3a)
+
+running 7 tests
+test csq_compat_current_writer_reader_edge ... ok
+test csq_compat_pre_reset_product_meta_refused ... ok
+test csq_compat_unsupported_backup_profile_source_intact ... ok
+test csq_compat_wire_matrix_and_platform_registry ... ok
+test csq_journey_packaged_torture_reconcile ... ok
+test csq_platform_host_cell_registered ... ok
+test csq_scale_pr_safe_seed_campaign_reconcile ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.44s
+
+     Running tests/csq2_instrumentation.rs (target/debug/deps/csq2_instrumentation-7a8ab9067ce60916)
+
+running 9 tests
+test csq2_composed_failure_schedule_from_registry ... ok
+test csq2_crash_controller_resolves ... ok
+test csq2_embedded_crash_matrix_still_valid ... ok
+test csq2_every_boundary_has_approved_harness ... ok
+test csq2_harness_inventory_ready_flags ... ok
+test csq2_hit_proof_on_put_boundary ... ok
+test csq2_hit_proof_unreachable_is_fail ... ok
+test csq2_ordered_pair_executor_ci_smoke ... ok
+test csq2_source_failpoints_match_registry ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests/csq5_crash_campaign.rs (target/debug/deps/csq5_crash_campaign-94673b449176ea28)
+
+running 8 tests
+test csq5_ci_subset_and_full_matrix_cells_run ... ok
+test csq5_composed_failure_pairs_execute ... ok
+test csq5_enospc_and_permission_campaign ... ok
+test csq5_outcome_validator_rejects_hybrid ... ok
+test csq5_portable_fs_image_and_path_alias ... ok
+test csq5_process_abort_lane_when_child_present ... ok
+test csq5_repeated_reopen_idempotent_after_fault ... ok
+test csq5_writer_lock_stale_and_contention ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.69s
+
+     Running tests/csq6_chunk_large_value.rs (target/debug/deps/csq6_chunk_large_value-9541e9af2bc0804b)
+
+running 9 tests
+test csq_chk_current_generation_exact_after_rewrites ... ok
+test csq_chk_generation_kernel_threshold_edges ... ok
+test csq_chk_locator_rebuild_preserves_complete ... ok
+test csq_chk_old_generation_does_not_poison_current ... ok
+test csq_chk_partial_reassembly_reports_missing_extents ... ok
+test csq_chk_unrelated_growth_does_not_poison_point_read ... ok
+test csq_def098_dual_chunked_put_latest_only ... ok
+test csq_def103_rewrite_heavy_latest_wins ... ok
+test csq_transcript_survival_after_seal_reopen ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.78s
+
+     Running tests/csq7_damage_salvage.rs (target/debug/deps/csq7_damage_salvage-0633e53c8e4a8fa2)
+
+running 8 tests
+test csq_dmg_corrupt_bytes_never_verified_survivors_readable ... ok
+test csq_dmg_incomplete_tail_locality ... ok
+test csq_dmg_multi_fault_holes_and_incomplete_tail ... ok
+test csq_rec_healthy_work_continues_after_damage ... ok
+test csq_rec_live_export_vs_evidence_differential ... ok
+test csq_rec_live_reopen_rebuild_salvage_agree ... ok
+test csq_rec_reopen_identical_and_resalvage_idempotent ... ok
+test csq_rec_salvage_never_writes_source ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.00s
+
+     Running tests/csq8_derived_maintenance.rs (target/debug/deps/csq8_derived_maintenance-67dd76fa18265933)
+
+running 9 tests
+test csq_bak_backup_restore_source_unchanged ... ok
+test csq_bak_tampered_manifest_rejected ... ok
+test csq_der_primary_cache_never_authority ... ok
+test csq_der_rebuild_deterministic ... ok
+test csq_mig_preflight_and_plan_only ... ok
+test csq_mig_roundtrip_preserves_source ... ok
+test csq_mnt_compact_retains_sources_and_live ... ok
+test csq_mnt_reclaim_requires_history_loss_ack ... ok
+test csq_mnt_scrub_non_mutation ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.19s
+
+     Running tests/csq9_concurrency_resources.rs (target/debug/deps/csq9_concurrency_resources-91353dfb8500b1c2)
+
+running 9 tests
+test csq_con_compact_then_inspect_consistent ... ok
+test csq_con_concurrent_readers_see_complete_generation ... ok
+test csq_con_second_writer_fenced ... ok
+test csq_con_shard_home_stable_and_reopen ... ok
+test csq_con_sharded_put_many_no_half_publication ... ok
+test csq_res_drop_releases_lock_for_reopen ... ok
+test csq_res_enospc_preserves_prior_authority ... ok
+test csq_res_read_budget_stops_explicitly ... ok
+test csq_res_size_limit_fails_before_effect ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.87s
+
+     Running tests/def_scan_001_segment_not_found.rs (target/debug/deps/def_scan_001_segment_not_found-d166c5653a87509d)
+
+running 11 tests
+test compact_reclaim_live_scan_remains_complete ... ok
+test empty_entries_with_holes_is_not_empty_live ... ok
+test high_churn_exclusive_writer_scan_still_complete ... ok
+test index_build_with_unresolved_locator_is_partial_not_ready ... ok
+test locator_fault_maps_to_hole_for_index_and_scan_sources ... ok
+test locator_offset_invalid_is_distinct ... ok
+test missing_segment_scan_reports_holes_and_survivors ... ok
+test multipage_continues_from_last_key_including_hole ... ok
+test present_media_unreadable_frame_is_locator_frame_verify_failed ... ok
+test scan_collection_hard_fails_on_unresolved_locator ... ok
+test scan_collection_returns_page_entries_when_complete ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.77s
+
+     Running tests/derived_catalog_checkpoint.rs (target/debug/deps/derived_catalog_checkpoint-079af9d9ac040faa)
+
+running 3 tests
+test catalog_apply_cost_flat_across_segment_counts ... ok
+test reopen_exact_after_deleting_derived_catalogs ... ok
+test reopen_exact_before_pending_catalog_checkpoint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 60.05s
+
+     Running tests/hp002_one_heap.rs (target/debug/deps/hp002_one_heap-3a0f51db51223eaf)
+
+running 1 test
+test bound_segment_never_admits_foreign_frame ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hp004_catalog_rebuild.rs (target/debug/deps/hp004_catalog_rebuild-a3cbd8fdb5b07aca)
+
+running 1 test
+test delete_catalogs_rebuilds_identical_names_aliases_ids_owners ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+
+     Running tests/hp006_heap_migration.rs (target/debug/deps/hp006_heap_migration-4317e0f209fdf0b9)
+
+running 3 tests
+test crash_injection_converges_without_duplicate_or_lost_frames ... ok
+test inventory_hash_rejects_duplicate_segment_ids ... ok
+test phase6_refuses_unlabelled_active_frames ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/hp009_lifecycle.rs (target/debug/deps/hp009_lifecycle-e8f2897da9b98eaf)
+
+running 12 tests
+test aws_kms_config_surface ... ok
+test damage_to_one_heap_leaves_other_readable ... ok
+test data_key_destruction_and_permanent_tombstone ... ok
+test data_key_provider_hsm_scaffold_and_in_process ... ok
+test disaster_recovery_retain_id_takeover_fences_old_deployment ... ok
+test incomplete_purge_unavailable_tier_or_replica_stays_retired ... ok
+test live_filesystem_multi_tier_media_wipe ... ok
+test live_media_wipe_unavailable_tier_root_stays_retired ... ok
+test mixed_heap_salvage_classification_drill ... ok
+test payload_only_restore_cannot_grant_access ... ok
+test purge_emits_verifiable_receipt_and_holds_block ... ok
+test retention_scheduler_blocks_purge_until_window_elapses ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/hp010_qualification.rs (target/debug/deps/hp010_qualification-9dfa6eb532d756bd)
+
+running 24 tests
+test complete_path_and_external_review_artifacts ... ok
+test derived_path_indexes_streams_scoped ... ok
+test differential_ni_labelled_units ... ok
+test fuzz_budget_structured_mutations ... ok
+test h6_connected_model ... ok
+test h6_decide_obligations_connected ... ok
+test h6_heap_authority_model ... ok
+test h6_isolation_claim_partial_evidence ... ok
+test h6_pure_proof_bundle_connected ... ok
+test heapcap_terminates_on_lifecycle ... ok
+test isolation_profile_registry_closed ... ok
+test key_loss_drill ... ok
+test lifecycle_crash_matrix_peer_heaps_unaffected ... ok
+test load_latency_budget ... ok
+test matrix_records_unqualified_claim_and_mandatory_structure ... ok
+test metadata_hardened_operational_confinement ... ok
+test operational_metrics_logs_export_scoped ... ok
+test operator_runbook_present ... ok
+test query_escape_faulty_planner_confined ... ok
+test restore_drills_payload_and_retain_id ... ok
+test retention_and_incomplete_purge_still_retired ... ok
+test security_revision_bump_terminates_without_lifecycle_helper ... ok
+test single_owner_admit ... ok
+test support_bundle_health_detail_scoped ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+     Running tests/hydra_segment_index.rs (target/debug/deps/hydra_segment_index-1386bc983ca19f4f)
+
+running 2 tests
+test rebuild_hydra_multithread ... ok
+test seal_writes_hydra_sidecar ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/p0_segment_id_collision.rs (target/debug/deps/p0_segment_id_collision-ee9d02cdb50f949c)
+
+running 22 tests
+test p0_async_finalize_refuses_existing_sealed ... ok
+test p0_collision_before_cache_hit_open ... ok
+test p0_collision_before_full_rebuild ... ok
+test p0_compaction_and_sealed_collision_refuses_open ... ok
+test p0_cross_record_sentinel_never_swaps ... ok
+test p0_disk_pread_rejects_wrong_record_at_offset ... ok
+test p0_filename_descriptor_mismatch_refuses ... ok
+test p0_pending_recovery_refuses_existing_sealed ... ok
+test p0_planted_active_pending_collision_refuses_open ... ok
+test p0_planted_active_sealed_collision_refuses_open ... ok
+test p0_protected_pair_rename_refuses_existing_sealed ... ok
+test p0_publish_dest_exists_is_collision_bytes_unchanged ... ok
+test p0_reproducer_async_multi_shard ... ok
+test p0_reproducer_async_single_shard ... ok
+test p0_reproducer_cache_miss_rebuild ... ok
+test p0_reproducer_sync_single_shard ... ok
+test p0_shadow_publish_refuses_existing ... ok
+test p0_summary_frame_publish_refuses_existing_sealed ... ok
+test p0_sync_finalize_refuses_existing_sealed ... ok
+test p0_thousand_reopen_rotation_unique_ids ... ok
+test p0_tier_and_sealed_collision_refuses_open ... ok
+test p0_tier_transfer_refuses_existing_dest ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.72s
+
+     Running tests/reopen_before_enrichment.rs (target/debug/deps/reopen_before_enrichment-1a2f9e77e0525790)
+
+running 1 test
+test reopen_exact_while_content_hash_pending ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+     Running tests/salvage.rs (target/debug/deps/salvage-e3943028f1328050)
+
+running 5 tests
+test destroy_catalogs_and_indexes_still_recovers ... ok
+test incomplete_tail_does_not_poison_earlier_frames ... ok
+test middle_byte_corruption_still_finds_later_items_via_salvage ... ok
+test rebuild_index_matches_get ... ok
+test salvage_to_new_path_is_non_destructive ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+
+     Running tests/section16_store.rs (target/debug/deps/section16_store-94a9d73239cd4270)
+
+running 14 tests
+test case01_truncate_active_frame_offsets ... ok
+test case02_overwrite_byte_ranges_in_segment ... ok
+test case03_delete_middle_frame_in_segment ... ok
+test case04_delete_middle_segment ... ok
+test case05_destroy_segment_headers ... ok
+test case06_destroy_segment_trailers ... ok
+test case07_destroy_derived_state ... ok
+test case08_corrupt_frame_length_fields ... ok
+test case09_insert_garbage_between_frames ... ok
+test case10_reorder_and_duplicate_segments ... ok
+test incomplete_active_tail_after_multi_segment ... ok
+test index_cache_accelerates_open_and_is_optional ... ok
+test index_cache_not_sole_map_after_segment_delete ... ok
+test store_descriptor_written_and_readable ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.18s
+
+     Running tests/stage6_bench_skeleton.rs (target/debug/deps/stage6_bench_skeleton-b0d5658134d530bf)
+
+running 1 test
+test bench_skeleton_point_read_append_salvage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.92s
+
+     Running tests/stage6_store.rs (target/debug/deps/stage6_store-47a0fc6f2b2d100f)
+
+running 6 tests
+test checkpoint_declares_coverage ... ok
+test chunked_put_get_and_partial_missing_middle ... ok
+test compact_live_preserves_current_values ... ok
+test secondary_index_create_lookup_delete ... ok
+test subject_history_orders_puts_and_deletes ... ok
+test wipe_indexes_and_catalogs_rebuild_same_content ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+     Running tests/stage9_archive_bench.rs (target/debug/deps/stage9_archive_bench-e06306671cc0f9dc)
+
+running 1 test
+test archive_path_bench_skeleton ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.24s
+
+     Running tests/stage9_tiering.rs (target/debug/deps/stage9_tiering-a7a20ee631507a4e)
+
+running 7 tests
+test archive_path_note_not_hot_slo ... ok
+test cold_search_summaries_list_archive_tier ... ok
+test copy_then_offline_archive_is_coverage_hole_not_empty_success ... ok
+test format_classification_preserves_unsupported_identity ... ok
+test hierarchical_catalog_rebuilds_after_loss ... ok
+test migration_evidence_written ... ok
+test move_segment_to_cold_preserves_identity_and_data ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+     Running tests/stage_def_010_012_013.rs (target/debug/deps/stage_def_010_012_013-f873aa488f42ed8d)
+
+running 5 tests
+test def_010_content_identity_helper_stable ... ok
+test def_010_write_dedup_exact_retry_and_content_mismatch ... ok
+test def_012_offline_tier_makes_ordinary_scan_incomplete ... ok
+test def_013_memory_not_flushed_by_later_durable_write ... ok
+test def_013_memory_then_durable_does_not_contaminate_catalog ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests/stage_def_011_salvage.rs (target/debug/deps/stage_def_011_salvage-dd985e85c467ba4c)
+
+running 6 tests
+test export_live_state_uses_new_lineage ... ok
+test incomplete_tail_does_not_poison_salvage_to ... ok
+test re_salvage_is_deterministic_on_frame_bytes ... ok
+test salvage_copies_verified_frames_byte_identical ... ok
+test salvage_preserves_history_tombstones_and_event_ids ... ok
+test salvage_records_holes_and_still_recovers_survivors ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.26s
+
+     Running tests/stage_def_020_021_lock_coverage.rs (target/debug/deps/stage_def_020_021_lock_coverage-545a5996792e24f4)
+
+running 6 tests
+test complete_scan_succeeds_when_all_payloads_readable ... ok
+test cross_process_second_writer_fails ... ok
+test drop_writer_releases_lock_for_reopen ... ok
+test inspect_can_run_while_writer_holds_lock ... ok
+test live_logical_entries_fails_closed_when_chunks_missing ... ok
+test second_writer_handle_fails_before_touching_segments ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+     Running tests/stage_def_021_atomic_meta.rs (target/debug/deps/stage_def_021_atomic_meta-5a9769928d6494d2)
+
+running 8 tests
+test atomic_write_replaces_without_torn_primary ... ok
+test failpoint_after_tmp_sync_leaves_old_or_absent ... ok
+test failpoint_before_rename_leaves_old_generation ... ok
+test index_cache_and_catalog_use_atomic_helper ... ok
+test keep_previous_and_recover_from_prev ... ok
+test lifecycle_policy_keeps_previous_and_loads_fallback ... ok
+test store_meta_writes_survive_reopen ... ok
+test write_dedup_table_keeps_previous_generation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+     Running tests/stage_def_022_crash_matrix.rs (target/debug/deps/stage_def_022_crash_matrix-a6c6b151f5ca1d9f)
+
+running 6 tests
+test ci_subset_failpoints_respect_reopen_invariants ... ok
+test crash_matrix_document_is_valid ... ok
+test full_matrix_when_env_set ... ok
+test io_fault_injection_suite ... ok
+test multiprocess_abort_after_sync_full_or_ci ... ok
+test multiprocess_abort_before_write ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.50s
+
+     Running tests/stage_def_023_write_path.rs (target/debug/deps/stage_def_023_write_path-82456311df14eda9)
+
+running 7 tests
+test delete_derived_state_reconstructs_identical_logical_results ... ok
+test durable_write_ack_independent_of_retained_volume ... ok
+test frontier_checkpoint_plus_active_tail_matches_full_rebuild ... ok
+test memory_mode_never_enters_durable_index_cache ... ok
+test rate_limited_checkpoint_still_allows_recovery ... ok
+test seal_cost_independent_of_retained_segment_count ... ok
+test write_path_bench_disclosure ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.53s
+
+     Running tests/stage_def_024_compaction.rs (target/debug/deps/stage_def_024_compaction-248b859dc0c7ce76)
+
+running 7 tests
+test cancel_before_activate_removes_output ... ok
+test default_compact_retains_sources_and_history ... ok
+test failpoint_after_create_recovers_on_reopen ... ok
+test reclaim_after_activate_measures_bytes_and_keeps_live ... ok
+test reclaim_requires_history_loss_ack ... ok
+test refuse_cancel_after_activate ... ok
+test two_phase_reclaim_via_explicit_api ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.85s
+
+     Running tests/stage_def_025_identifiers.rs (target/debug/deps/stage_def_025_identifiers-1409ef7d7f813def)
+
+running 7 tests
+test clone_dirs_get_distinct_store_ids ... ok
+test csprng_random_ids_unique_and_nonzero ... ok
+test event_ids_are_random_not_counter_prefixed ... ok
+test id_profile_tag ... ok
+test item_id_stable_event_id_changes_on_overwrite ... ok
+test segment_ids_sortable_and_recover_after_reopen ... ok
+test store_ids_differ_across_create_and_restart_preserves ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.87s
+
+     Running tests/stage_def_026_cursors.rs (target/debug/deps/stage_def_026_cursors-d2bc39a0da816f2c)
+
+running 9 tests
+test cross_store_token_rejected ... ok
+test cursor_profile_tag ... ok
+test empty_store_single_complete_page ... ok
+test mutation_stales_cursor_generation ... ok
+test no_duplicates_across_pages ... ok
+test paged_scan_matches_full_scan ... ok
+test prefix_not_starved_by_earlier_keys ... ok
+test prefix_scope_and_order ... ok
+test tampered_token_rejected ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.81s
+
+     Running tests/stage_def_050_backup.rs (target/debug/deps/stage_def_050_backup-bc36ef695757e634)
+
+running 8 tests
+test backup_refuses_non_empty_destination ... ok
+test exclusive_backup_is_flushed_and_restorable ... ok
+test inspect_backup_uses_on_disk_consistency ... ok
+test reassign_identity_produces_distinct_store ... ok
+test restore_refuses_existing_store ... ok
+test salvage_is_not_a_backup_package ... ok
+test source_unchanged_after_backup ... ok
+test tampered_manifest_hash_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.65s
+
+     Running tests/stage_def_051_scrub.rs (target/debug/deps/stage_def_051_scrub-f2b21bc6fd600ade)
+
+running 5 tests
+test clean_rescrub_clears_resolved_findings ... ok
+test clean_store_scrub_completes_without_findings ... ok
+test content_hash_mismatch_against_placement ... ok
+test injected_corruption_detected_and_quarantined ... ok
+test pause_resume_and_bounded_steps ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s
+
+     Running tests/stage_def_052_migrate.rs (target/debug/deps/stage_def_052_migrate-3df0b937783a8dc5)
+
+running 8 tests
+test full_migration_roundtrip_preserves_source ... ok
+test job_content_hash_tamper_detected ... ok
+test phased_apply_verify_and_rollback ... ok
+test preflight_and_plan_only ... ok
+test preflight_blocks_existing_store_dest ... ok
+test preflight_via_free_function ... ok
+test verify_after_apply_skip ... ok
+test wire_and_protocol_matrix_declared ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.41s
+
+     Running tests/stage_def_096_async_lifecycle.rs (target/debug/deps/stage_def_096_async_lifecycle-33287b26dbcd4b66)
+
+running 4 tests
+test async_auto_seal_preserves_gets_and_writes_hydra ... ok
+test async_put_loop_completes_with_backpressure ... ok
+test explicit_seal_active_still_sync_and_drains ... ok
+test reopen_recovers_pending_seal_files ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.65s
+
+     Running tests/stage_def_096_sharded_writers.rs (target/debug/deps/stage_def_096_sharded_writers-1d5b80dc7d9b0a35)
+
+running 8 tests
+test create_with_shards_routes_and_gets ... ok
+test put_many_completes_quickly ... ok
+test sharded_async_seal_preserves_gets ... ok
+test sharded_put_many_parallel_records_boundary_probe ... ok
+test sharded_put_many_parallel_roundtrip ... ok
+test sharded_reopen_recovers_all_shards ... ok
+test single_shard_create_keeps_legacy_layout ... ok
+test subject_home_shard_is_stable ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.91s
+
+     Running tests/stage_def_097_token_keys.rs (target/debug/deps/stage_def_097_token_keys-eb1faa2a292a5632)
+
+running 6 tests
+test doctor_safe_diagnostics_omit_secret_bytes ... ok
+test forged_token_from_public_ids_only_fails ... ok
+test keyring_file_created_and_not_public_derivable ... ok
+test paged_scan_survives_reopen_with_same_keyring ... ok
+test profiles_and_secret_size ... ok
+test rotation_grace_and_retire ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.08s
+
+     Running tests/stage_def_098_chunk_generation.rs (target/debug/deps/stage_def_098_chunk_generation-0a0b0f6e61eed4e5)
+
+running 6 tests
+test chunked_overwrite_returns_latest_generation ... ok
+test chunked_overwrite_survives_reopen ... ok
+test different_key_chunked_values_isolated ... ok
+test inline_to_chunked_to_inline ... ok
+test many_consecutive_chunked_generations ... ok
+test same_size_larger_and_smaller_chunked_replacements ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests/stage_def_099_historical_get.rs (target/debug/deps/stage_def_099_historical_get-b1231519b93f75f9)
+
+running 7 tests
+test delete_boundary_stops_default_search ... ok
+test delete_event_projects_as_tombstone ... ok
+test exact_inline_and_chunked_event_reads ... ok
+test find_last_complete_after_replacements ... ok
+test missing_event_id_errors ... ok
+test ordinary_get_never_auto_falls_back ... ok
+test recovery_is_read_only ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+     Running tests/stage_def_100_coverage_scans.rs (target/debug/deps/stage_def_100_coverage_scans-13d3447fdd84a073)
+
+running 6 tests
+test cursor_tamper_rejected_on_key_scan ... ok
+test document_page_keeps_key_when_body_partial ... ok
+test dual_keys_one_chunked_one_inline_partial_page_streams_healthy ... ok
+test empty_store_key_scan_is_complete ... ok
+test incomplete_reason_labels_exist ... ok
+test key_scan_lists_keys_without_body_reassembly ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/stage_def_101_writer_lock.rs (target/debug/deps/stage_def_101_writer_lock-8a6e7addad766321)
+
+running 9 tests
+test bounded_wait_cancel_creates_no_store_effect ... ok
+test observe_via_writer_lock_api ... ok
+test open_inspect_while_writer_live ... ok
+test stale_pid_text_does_not_block_free_lock ... ok
+test try_open_never_creates ... ok
+test two_handles_same_process_in_process_class ... ok
+test wait_timeout_structured ... ok
+test writer_lock_status_free_after_close ... ok
+test writer_lock_status_in_process_while_held ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+
+     Running tests/stage_def_102_primary_cache_diag.rs (target/debug/deps/stage_def_102_primary_cache_diag-ecf3277d9a797ab6)
+
+running 11 tests
+test absent_cache_reports_absent_and_rebuilds_logically ... ok
+test ahead_frontier_classified_corrupt ... ok
+test corrupt_hash_is_corrupt ... ok
+test delete_derived_logically_neutral ... ok
+test diag_matches_measured_file_bytes ... ok
+test foreign_store_id_classified ... ok
+test lifecycle_diag_reports_shards_and_seals ... ok
+test minimal_cache_with_nonempty_active_is_classified ... ok
+test stale_sealed_fingerprint_classified ... ok
+test truncated_cache_is_corrupt ... ok
+test unsupported_magic_classified ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.78s
+
+     Running tests/stage_def_103_large_value_policy.rs (target/debug/deps/stage_def_103_large_value_policy-0ada2e7956a3343e)
+
+running 7 tests
+test effective_with_chooses_tightest ... ok
+test independent_turns_survive_sibling_damage_model ... ok
+test invalid_policy_rejected_before_apply ... ok
+test over_max_logical_rejects_with_zero_effect ... ok
+test rewrite_heavy_key_helpers ... ok
+test threshold_minus_exact_plus_one_layout ... ok
+test tighter_policy_keeps_old_data_readable ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+
+     Running tests/stage_def_104_crash_recovery_contract.rs (target/debug/deps/stage_def_104_crash_recovery_contract-d03d28a3ed33d0e5)
+
+running 11 tests
+test contract_document_present ... ok
+test forbidden_get_no_silent_historical_fallback ... ok
+test forbidden_lock_held_is_not_empty_store ... ok
+test forbidden_payload_too_large_zero_effect ... ok
+test journey_chunked_overwrite_generation_exact ... ok
+test journey_derived_cache_wipe_neutral ... ok
+test journey_durable_put_ack_survives_reopen ... ok
+test journey_key_and_document_pages ... ok
+test journey_prior_complete_via_history_apis ... ok
+test journey_transcript_independent_turns ... ok
+test journey_writer_held_inspect_not_empty ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.52s
+
+     Running tests/store_basic.rs (target/debug/deps/store_basic-3464d0fdd0f9108b)
+
+running 6 tests
+test memory_mode_not_visible_after_reopen ... ok
+test open_is_create_or_open ... ok
+test overwrite_put_updates_current_state ... ok
+test put_get_delete_roundtrip ... ok
+test reopen_after_durable_writes ... ok
+test seal_moves_active_to_segments ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s
+
+     Running tests/wm_seal_probe.rs (target/debug/deps/wm_seal_probe-e7be9b9bb5dfc57f)
+
+running 2 tests
+test diag_watermark_seal_succeeds_without_clobbering_prefix ... ok
+test product_watermark_seal_truncates_prealloc_tail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.47s
+
+   Doc-tests residiuum_store
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT=0
+END 2026-08-04T14:55:56Z
+/dev/disk3s5   228Gi   174Gi    26Gi    87%    3.1M  277M    1%   /System/Volumes/Data

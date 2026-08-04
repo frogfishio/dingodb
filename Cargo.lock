@@ -289,7 +289,7 @@ checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
 name = "core-storage-reference-reader"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake3",
  "clap",
@@ -1051,7 +1051,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "residiuum-authority"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake3",
  "clap",
@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-cli"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "clap",
  "residiuum-examine",
@@ -1082,7 +1082,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-client"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1091,7 +1091,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-cluster"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake3",
  "residiuum-store",
@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-examine"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "residiuum-format",
  "residiuum-sda",
@@ -1115,7 +1115,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-format"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake3",
  "crc32c",
@@ -1126,7 +1126,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-heap"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "arc-swap",
  "ciborium",
@@ -1146,11 +1146,11 @@ dependencies = [
 
 [[package]]
 name = "residiuum-heap-verus"
-version = "0.2.1"
+version = "0.2.2"
 
 [[package]]
 name = "residiuum-perf"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "hex",
  "residiuum-store",
@@ -1163,7 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-sda"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "num-bigint",
  "num-rational",
@@ -1175,7 +1175,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-sda-cli"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "clap",
  "residiuum-sda",
@@ -1184,7 +1184,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-sdk"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake3",
  "ed25519-dalek",
@@ -1210,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-server"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "ed25519-dalek",
  "getrandom 0.3.4",
@@ -1234,7 +1234,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-store"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake3",
  "getrandom 0.3.4",
@@ -1252,7 +1252,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-store-model"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1262,7 +1262,7 @@ dependencies = [
 
 [[package]]
 name = "residiuum-testrig"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "clap",
  "getrandom 0.3.4",

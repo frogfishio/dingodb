@@ -1,0 +1,15 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running tests/cse3_stage2_segment_id_never_reuse.rs (target/debug/deps/cse3_stage2_segment_id_never_reuse-88578ac7a1de77c9)
+
+running 8 tests
+test corrupt_allocator_refuses_without_mutating_media ... ok
+test crash_after_active_media ... ok
+test crash_after_reserve_before_media ... ok
+test crash_after_reserve_persist ... ok
+test crash_before_reserve_persist ... ok
+test crash_seal_publish_boundaries ... ok
+test never_reuse_after_repeated_reopen_seal ... ok
+test never_reuse_multi_shard_allocation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.71s
+

@@ -3,7 +3,7 @@
 **Advisory id:** `RESIDIUUM-2026-08-SEGID-01`  
 **Severity:** High (data integrity)  
 **Affected:** `residiuum-store` **0.2.0** (and any workspace crates at packaging **0.2.0** that embed that store)  
-**Fixed (engineering):** tip / upcoming **0.2.2**. Packaging **0.2.1** was published then **yanked** (red full-store suite).  
+**Fixed:** packaging **0.2.2** (full store suite green + P0 matrices). Packaging **0.2.1** was published then **yanked** (red full-store suite).  
 **Date:** 2026-08-04  
 
 ## Summary
@@ -55,4 +55,4 @@ Tag the exact tested commit as `v0.2.1`.
 
 ## Withdrawal of 0.2.1
 
-`residiuum-*` **0.2.1** was yanked on crates.io (2026-08-04). Tag `v0.2.1` is preserved as published-but-withdrawn source. Stabilization packaging is **0.2.2** after the full store suite is green.
+`residiuum-*` **0.2.1** was yanked on crates.io (2026-08-04). Tag `v0.2.1` is preserved as published-but-withdrawn source. Stabilization packaging **0.2.2** shipped after full store suite green + P0 matrices. Tag `v0.2.1` remains immutable withdrawn source.

@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/p0_segment_id_collision.rs (target/debug/deps/p0_segment_id_collision-ee9d02cdb50f949c)
+
+running 1 test
+test p0_thousand_reopen_rotation_unique_ids ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 98.67s
+

@@ -1,0 +1,14 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.15s
+     Running tests/cse3_stage2_step9_product_campaign.rs (target/debug/deps/cse3_stage2_step9_product_campaign-f21efe3ed6082cfc)
+
+running 6 tests
+test step9_buffered_16mib_seal_size ... ok
+test step9_buffered_64mib_seal_size ... ok
+test step9_buffered_64mib_then_continue_seal ... ok
+test step9_fresh_store_default_is_compact_shadow ... ok
+test step9_product_campaign ... ok
+test step9_reopen_continue_write_preserves_shadows ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.75s
+

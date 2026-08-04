@@ -1,0 +1,29 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running tests/p0_segment_id_collision.rs (target/debug/deps/p0_segment_id_collision-ee9d02cdb50f949c)
+
+running 22 tests
+test p0_async_finalize_refuses_existing_sealed ... ok
+test p0_collision_before_cache_hit_open ... ok
+test p0_collision_before_full_rebuild ... ok
+test p0_compaction_and_sealed_collision_refuses_open ... ok
+test p0_cross_record_sentinel_never_swaps ... ok
+test p0_disk_pread_rejects_wrong_record_at_offset ... ok
+test p0_filename_descriptor_mismatch_refuses ... ok
+test p0_pending_recovery_refuses_existing_sealed ... ok
+test p0_planted_active_pending_collision_refuses_open ... ok
+test p0_planted_active_sealed_collision_refuses_open ... ok
+test p0_protected_pair_rename_refuses_existing_sealed ... ok
+test p0_publish_dest_exists_is_collision_bytes_unchanged ... ok
+test p0_reproducer_async_multi_shard ... ok
+test p0_reproducer_async_single_shard ... ok
+test p0_reproducer_cache_miss_rebuild ... ok
+test p0_reproducer_sync_single_shard ... ok
+test p0_shadow_publish_refuses_existing ... ok
+test p0_summary_frame_publish_refuses_existing_sealed ... ok
+test p0_sync_finalize_refuses_existing_sealed ... ok
+test p0_thousand_reopen_rotation_unique_ids ... ok
+test p0_tier_and_sealed_collision_refuses_open ... ok
+test p0_tier_transfer_refuses_existing_dest ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.56s
+

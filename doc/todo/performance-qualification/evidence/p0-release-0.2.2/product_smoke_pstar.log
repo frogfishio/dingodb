@@ -1,0 +1,11 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running tests/cse3_stage2_step9_product_campaign.rs (target/debug/deps/cse3_stage2_step9_product_campaign-f21efe3ed6082cfc)
+
+running 1 test
+test step9_product_campaign ... step9 seal stages (s): drain=0.128 auth=0.112 shadow=0.001 catalog=0.000 hash=0.000 hydra_enq=0.000 chimera=0.000 reopen=0.013 total=0.255
+step9 product: target=8388608 ack=2626 life=2626 pub=236.54 seg/s compact=8.80% shadow_amp=101.7% frontier=true rsh=true recovery=true reopen=true continue=true compact_locators=true gates_pass=false
+step9 smoke: skipping compact≤5% perf gate (compact=8.80%; set CSE3_STEP9_PERF_GATES=1 to enforce)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 2.03s
+

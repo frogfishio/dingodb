@@ -21,7 +21,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 # DEF-090 MSRV: keep in sync with .github/workflows/ci.yml `msrv` job and
 # CONTRIBUTING.md. Bump deliberately when a dependency or language feature
@@ -37,19 +37,19 @@ repository = "https://github.com/frogfishio/dingodb"
 # `sda` / `sda-lib` — those crates.io names must not be reused). Dependents that
 # use the workspace key import as `sda_core`. Inside the package, the crate path
 # is `residiuum_sda`. `version` is required so `cargo package` can rewrite path deps.
-sda-core = { package = "residiuum-sda", path = "crates/sda-core", version = "0.2.1" }
-residiuum-format = { path = "crates/residiuum-format", version = "0.2.1" }
-residiuum-heap = { path = "crates/residiuum-heap", version = "0.2.1" }
-residiuum-authority = { path = "crates/residiuum-authority", version = "0.2.1" }
+sda-core = { package = "residiuum-sda", path = "crates/sda-core", version = "0.2.2" }
+residiuum-format = { path = "crates/residiuum-format", version = "0.2.2" }
+residiuum-heap = { path = "crates/residiuum-heap", version = "0.2.2" }
+residiuum-authority = { path = "crates/residiuum-authority", version = "0.2.2" }
 # default-features false: public raw `Store` is opt-in via `legacy-raw-store`
 # (HP-003 / CPR-001). Dependents that need Stages 3–9 flat store enable the feature.
-residiuum-store = { path = "crates/residiuum-store", version = "0.2.1", default-features = false }
-residiuum-store-model = { path = "crates/residiuum-store-model", version = "0.2.1" }
-residiuum-client = { path = "crates/residiuum-client", version = "0.2.1" }
-residiuum-sdk = { path = "crates/residiuum-sdk", version = "0.2.1" }
-residiuum-server = { path = "crates/residiuum-server", version = "0.2.1" }
-residiuum-examine = { path = "crates/residiuum-examine", version = "0.2.1" }
-residiuum-cluster = { path = "crates/residiuum-cluster", version = "0.2.1" }
+residiuum-store = { path = "crates/residiuum-store", version = "0.2.2", default-features = false }
+residiuum-store-model = { path = "crates/residiuum-store-model", version = "0.2.2" }
+residiuum-client = { path = "crates/residiuum-client", version = "0.2.2" }
+residiuum-sdk = { path = "crates/residiuum-sdk", version = "0.2.2" }
+residiuum-server = { path = "crates/residiuum-server", version = "0.2.2" }
+residiuum-examine = { path = "crates/residiuum-examine", version = "0.2.2" }
+residiuum-cluster = { path = "crates/residiuum-cluster", version = "0.2.2" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
