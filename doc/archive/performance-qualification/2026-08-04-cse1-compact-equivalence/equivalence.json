@@ -1,0 +1,23 @@
+{
+  "package": "CSE-1",
+  "date": "2026-08-04",
+  "command": "cargo test -p residiuum-store --features legacy-raw-store --test cse1_compact_chimera_equivalence -- --nocapture",
+  "result": "ok",
+  "equivalence_holds": false,
+  "requires_cse2": true,
+  "materialized_rhs": "doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/baseline.json",
+  "gaps": [
+    "F0_control:layout_direct missing {l,m,t}",
+    "F3_corrupt_auth_body_t:chimera missing {t}",
+    "F3_corrupt_auth_body_t:layout_direct missing {l,m,t}",
+    "F4_delete_sealed_segment:layout_direct missing {l,m,t}"
+  ],
+  "compact": [
+    {"id": "F0_control", "auth": ["l", "m", "t"], "chimera": ["l", "m", "t"], "layout_direct": []},
+    {"id": "F1_wipe_chimera", "auth": ["l", "m", "t"], "chimera": [], "layout_direct": []},
+    {"id": "F2_corrupt_chimera", "auth": ["l", "m", "t"], "chimera": [], "layout_direct": []},
+    {"id": "F3_corrupt_auth_body_t", "auth": ["l", "m"], "chimera": ["l", "m"], "layout_direct": []},
+    {"id": "F4_delete_sealed_segment", "auth": [], "chimera": [], "layout_direct": []},
+    {"id": "F5_corrupt_auth_t_wipe_chimera", "auth": ["l", "m"], "chimera": [], "layout_direct": []}
+  ]
+}

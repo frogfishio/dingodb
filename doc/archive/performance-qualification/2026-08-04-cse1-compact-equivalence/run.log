@@ -1,0 +1,9 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/cse1_compact_chimera_equivalence.rs (target/debug/deps/cse1_compact_chimera_equivalence-4d5556b972aec7d9)
+
+running 1 test
+CSE1_EQUIVALENCE_JSON={"package":"CSE-1","equivalence_holds":false,"requires_cse2":true,"gaps":["F0_control:layout_direct missing {l,m,t}","F3_corrupt_auth_body_t:chimera missing {t}","F3_corrupt_auth_body_t:layout_direct missing {l,m,t}","F4_delete_sealed_segment:layout_direct missing {l,m,t}"],"compact":[{"id":"F0_control","auth":["l","m","t"],"chimera":["l","m","t"],"layout_direct":[]},{"id":"F1_wipe_chimera","auth":["l","m","t"],"chimera":[],"layout_direct":[]},{"id":"F2_corrupt_chimera","auth":["l","m","t"],"chimera":[],"layout_direct":[]},{"id":"F3_corrupt_auth_body_t","auth":["l","m"],"chimera":["l","m"],"layout_direct":[]},{"id":"F4_delete_sealed_segment","auth":[],"chimera":[],"layout_direct":[]},{"id":"F5_corrupt_auth_t_wipe_chimera","auth":["l","m"],"chimera":[],"layout_direct":[]}],"materialized_rhs":"CSE-0 baseline.json"}
+test cse1_compact_equivalence_campaign ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.33s
+

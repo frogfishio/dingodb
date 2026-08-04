@@ -7,7 +7,8 @@ materialized Chimera; resume of **ETQ-2** until Compact is proven viable.
 ## Qualified Compact status (hard)
 
 > Compact Chimera performance architecture accepted provisionally.
-> Durability equivalence is unproven and blocks product/default acceptance.
+> Durability equivalence is **disproven** by CSE-1 (inequality FAIL) and
+> blocks product/default acceptance until CSE-2 restores parity.
 
 The ~3× complete-lifecycle TPS gain (~12.4K → ~37.9K) and ~0.74% Chimera amp
 remain **valid performance evidence**. They are **not** permission to alter
@@ -38,8 +39,8 @@ for every frozen failure \(f\) in the CSE-0 set.
 | Package | Goal |
 |---|---|
 | **CSE-0** | Materialized Chimera recovery baseline — **labor complete** 2026-08-04; archive `…/2026-08-04-cse0-materialized-recovery-baseline/`. |
-| **CSE-1** | Compact equivalence campaign — identical damage on both formats; recovery-set comparison. **Next.** |
-| **CSE-2** | Minimum parity — **only if** Compact loses recoverability vs Materialized. |
+| **CSE-1** | Compact equivalence campaign — **labor complete** 2026-08-04; inequality **FAIL**; archive `…/2026-08-04-cse1-compact-equivalence/`. |
+| **CSE-2** | Minimum parity — **required** (Compact loses recoverability vs Materialized). **Next.** |
 | **ETQ-2** | Resume Single-Pass Enrichment Decode **after** Compact is proven viable (or CSE-2 restores parity). |
 
 ## CSE-0 — Materialized recovery baseline
@@ -58,22 +59,28 @@ Status: **labor complete** (2026-08-04). Evidence:
 
 ## CSE-1 — Compact equivalence
 
-- Same \(F\) against Compact layouts (and wipe/rebuild Compact).
-- Produce \(\operatorname{Recoverable}_{\mathrm{compact}}\) vs
-  \(\operatorname{Recoverable}_{\mathrm{materialized}}\) comparison table.
-- Pass only if Compact recovers **at least** Materialized’s set.
+Status: **labor complete** (2026-08-04). Evidence:
+`doc/archive/performance-qualification/2026-08-04-cse1-compact-equivalence/`.
 
-## CSE-2 — Minimum parity (conditional)
+- Same \(F\) against Compact seal layouts.
+- Comparison: \(\operatorname{Recoverable}_{\mathrm{compact}}\) **does not**
+  contain \(\operatorname{Recoverable}_{\mathrm{materialized}}\) on all cells.
+- Gaps: F0/F3/F4 `layout_direct` (no embedded payloads); F3 `chimera` (no
+  salvage expansion for damaged `t`). Auth matches Materialized on every cell.
+- Test: `crates/residiuum-store/tests/cse1_compact_chimera_equivalence.rs`.
+- **CSE-2 required.**
 
-- Only if CSE-1 shows Compact regresses recoverability.
+## CSE-2 — Minimum parity (required)
+
+- Compact regresses recoverability vs Materialized (CSE-1 FAIL).
 - Smallest change to restore the inequality (may include retaining selective
   materialized payloads for damaged classes — never silently drop salvage).
 
 ## Evidence homes
 
-- CSE-0: `doc/archive/…/YYYY-MM-DD-cse0-materialized-recovery-baseline/`
-- CSE-1: `doc/archive/…/YYYY-MM-DD-cse1-compact-equivalence/`
-- CSE-2: `doc/archive/…/YYYY-MM-DD-cse2-minimum-parity/` (if needed)
+- CSE-0: `doc/archive/…/2026-08-04-cse0-materialized-recovery-baseline/`
+- CSE-1: `doc/archive/…/2026-08-04-cse1-compact-equivalence/`
+- CSE-2: `doc/archive/…/YYYY-MM-DD-cse2-minimum-parity/`
 
 ## Relation to ETQ
 
