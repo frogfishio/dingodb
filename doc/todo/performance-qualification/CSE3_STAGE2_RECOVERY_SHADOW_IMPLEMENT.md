@@ -4,8 +4,9 @@ Status: **active** (2026-08-04) — Stage 2a invariants confirmed; step 5
 lifecycle dual-run landed; **step 6 CSE F0–F5 principal-accepted**; **step 7
 RSHD0004 dual-stream labor evidence**; **step 8 flip machinery + qual-store
 ceremony PASS**; **step 9 / Stage 2k accepted** — CompactShadow is the
-**fresh-store product default**; sustained product figure **~21–23K** 8 KiB
-life=ack (earlier ~30.9K activate-path run is candidate-only);
+**fresh-store product default**; sustained **~21–23K** 8 KiB life=ack is the
+**controlled campaign** SoT (not a hardware floor; ~30.9K candidate not
+reproducible); **Stage 2l principal-accepted**;
 **step 2h** durable segment-ID never-reuse P0;
 **step 2i** protected seal-pair pipeline;
 **step 2j/2k** flip package + default ceremony.
@@ -50,7 +51,7 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 | **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Principal-accepted** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
 | **7** | Prove ≥7 segments/sec with non-growing backlog | **Labor evidence PASS** — RSHD0004 dual-stream; honest product **~28K** 8 KiB TPS; finalize median 55.57 seg/s (not DB TPS). [`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-dual-stream`. |
 | **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Qual-store ceremony PASS** — marker APIs + activation test ([`CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md`](./CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md), `cse3_stage2_step8_qual_activate`). **Not** release default. |
-| **9** | Re-run full-product throughput qualification | **Accepted product** — fresh-default CompactShadow; **~21–23K** life=ack SoT. Candidate ~30.9K (activate path) not product. Stage 2l A/B open. |
+| **9** | Re-run full-product throughput qualification | **Accepted product** — fresh CompactShadow; **~21–23K** controlled campaign SoT. Stage 2l accepted (activate slower; residual non-blocking). |
 
 ## Boundary (no ambiguity)
 

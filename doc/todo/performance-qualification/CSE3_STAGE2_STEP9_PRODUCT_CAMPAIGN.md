@@ -1,7 +1,9 @@
 # CSE-3 Stage 2 step 9 — CompactShadow product-API campaign
 
 Status: **accepted product path** — CompactShadow fresh-store default (Stage 2k).  
-Official sustained figure: **~21–23K** 8 KiB life=ack (not the ~30.9K candidate).  
+Official sustained figure: **~21–23K** 8 KiB life=ack — **controlled campaign
+result**, not a hardware-independent floor (Stage 2l saw ~13K–~27K under load).  
+Not the ~30.9K candidate. Stage **2l** principal-accepted / closed.  
 Depends: [`CSE3_STAGE2_STEP2K_DEFAULT_FLIP.md`](./CSE3_STAGE2_STEP2K_DEFAULT_FLIP.md).
 
 ## Honest accounting
@@ -11,13 +13,15 @@ Depends: [`CSE3_STAGE2_STEP2K_DEFAULT_FLIP.md`](./CSE3_STAGE2_STEP2K_DEFAULT_FLI
 | Prior (seal-excluded ack) | 23278 | 11845 | 0.51 | Burst; rejected |
 | After 2h (serialized seals) | **12372** | **12372** | **1.00** | Materialized-class prior |
 | 2i activate-path 2 GiB | **30960** | **30960** | **1.00** | Candidate only |
-| **2k fresh-default 2 GiB** | **~21–23K** | **same** | **1.00** | **Product figure** |
+| **2k fresh-default 2 GiB** | **~21–23K** | **same** | **1.00** | **Campaign product figure** |
 
 Product implications: ≈164–180 MiB/s @ 8 KiB; ≈1.7–1.9× the ~12.4K Materialized
 product; ack≈lifecycle so the work is not borrowed.
 
 Ops notes: [`CSE3_COMPACTSHADOW_OPS_NOTES.md`](./CSE3_COMPACTSHADOW_OPS_NOTES.md).  
-A/B delta (candidate vs product): Stage **2l** — hypothesis until measured.
+A/B delta (candidate vs product): Stage **2l** **principal-accepted** — activate
+not faster than fresh (B/A≈0.63); migration residual non-blocking; see
+[`CSE3_STAGE2_STEP2L_TPS_AB.md`](./CSE3_STAGE2_STEP2L_TPS_AB.md).
 
 ## Posture
 

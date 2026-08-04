@@ -397,7 +397,7 @@ fn step9_product_campaign() {
 
     if report.target_bytes >= 2 * 1024 * 1024 * 1024 {
         eprintln!(
-            "step9 2GiB product ack TPS≈{:.0} (SoT ~21–23K life=ack; ~30.9K is candidate-only)",
+            "step9 2GiB product ack TPS≈{:.0} (controlled campaign SoT ~21–23K life=ack; not a hardware floor; ~30.9K candidate-only)",
             report.ack_ops_per_sec
         );
         assert!(

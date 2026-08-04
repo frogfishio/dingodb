@@ -11,9 +11,12 @@ CompactShadow is Residiuum proper for **fresh** stores. Flip gate stays closed.
 > ≈ **164–180 MiB/s** logical payload · ≈ **1.7–1.9×** Materialized ~12.4K ·
 > **ack ≈ lifecycle** (sustainable).
 
+This band is the **controlled campaign result**, not a universal
+hardware-independent floor (Stage 2l saw absolute arms ~13K–~27K under load).
+
 | Label | TPS | Role |
 |---|---|---|
-| **Product (2k default)** | **~21–23K** | Official sustained figure |
+| **Product (2k default)** | **~21–23K** | Official sustained campaign figure |
 | Materialized predecessor | ~12.4K | Equally protected prior product |
 | Activate-path candidate (2i) | ~30.9K | Historical candidate only — **not** product |
 
@@ -31,11 +34,17 @@ Do **not** quote 30.9K as the product number.
 
 ## Follow-up (does not reopen flip)
 
-Stage **2l** — narrow A/B (same binary): fresh-default vs manually activated
-CompactShadow; exclude init/reopen from the ack window; compare stage timings.
-Until that runs, any “reopen/dual-attach cost” explanation is a **hypothesis**.
+Stage **2l** — **principal-accepted / closed**. Fresh CompactShadow is the
+correct product path; ~30.9K not reproducible; activate reopen tax tied to
+retained Materialized media. See
+[`CSE3_STAGE2_STEP2L_TPS_AB.md`](./CSE3_STAGE2_STEP2L_TPS_AB.md).
 
 ## Residual
 
 - Pre-2k Materialized deployments still need Step 8 migrate.
+- **Non-blocking:** activated legacy stores retain Materialized recovery media
+  for rollback and may reopen more slowly than native CompactShadow stores.
+  Later (optional): mark retained Materialized as **rollback-only** so ordinary
+  open/query ignore them; do **not** optimize immediately.
 - Kanban `done` for individual cards is human accept (labor stops at `in_review`).
+- No more sealing or Chimera work is required for correctness from Stages 2k/2l.

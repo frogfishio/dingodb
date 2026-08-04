@@ -6,11 +6,12 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2k accepted** — CompactShadow fresh-store
-default; **product figure ~21–23K** sustained 8 KiB life=ack ≈1.7–1.9× prior
-Materialized ~12.4K. ~30.9K is candidate-only. Stage **2l** A/B delta is
-`todo` (hypothesis until measured). Ops:
-`CSE3_COMPACTSHADOW_OPS_NOTES.md`. **ETQ-2 paused.** **AWO paused.**
+Updated: 2026-08-04 (**CSE-3 Stage 2k + 2l accepted** — CompactShadow fresh-store
+default; **~21–23K** = controlled campaign life=ack SoT ≈1.7–1.9× Materialized
+~12.4K — not a hardware-independent floor. ~30.9K candidate-only, not
+reproducible. Stage **2l** closed; non-blocking residual: activated legacy
+stores may reopen slower (retained Materialized for rollback). Flip stands.
+Ops: `CSE3_COMPACTSHADOW_OPS_NOTES.md`. **ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

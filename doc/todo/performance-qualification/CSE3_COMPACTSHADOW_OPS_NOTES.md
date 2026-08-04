@@ -5,10 +5,19 @@ Fresh `Store::create` / `create_with_shards` persist `RMODE001=compact_shadow`.
 
 ## Product performance
 
-**~21–23K** sustained 8 KiB writes/sec (life=ack), Compact Chimera + Recovery
-Shadow, no growing deferred-work debt. ≈164–180 MiB/s; ≈1.7–1.9× Materialized
-~12.4K. Do not use ~30.9K as the product figure (candidate-only; see Stage 2l).
+**~21–23K** sustained 8 KiB writes/sec (life=ack) is the **controlled campaign
+result** (Compact Chimera + Recovery Shadow; no growing deferred-work debt).
+≈164–180 MiB/s; ≈1.7–1.9× Materialized ~12.4K. Not a hardware-independent floor
+(Stage 2l absolute range ~13K–~27K under load). Do not use ~30.9K as the product
+figure. Stage **2l** principal-accepted: activate slower than fresh (B/A≈0.63);
+see `CSE3_STAGE2_STEP2L_TPS_AB.md`.
 
+## Non-blocking migration residual
+
+Activated legacy stores retain Materialized recovery media for rollback and may
+reopen more slowly than native CompactShadow stores. Do not optimize now. Later
+safe option: mark retained Materialized files **rollback-only** so ordinary
+open/query ignore them while preserving non-destructive rollback.
 ## Operator invariants
 
 1. **Fresh stores** start in CompactShadow: dual-stream Shadow + Compact Chimera;
