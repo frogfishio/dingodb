@@ -6,7 +6,10 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2 step 6** — CSE F0–F5 + lifecycle/security matrix green (`cse3_stage2_shadow_f0_f5`, 15 tests). Dual-run vs post-flip reclaim locked (`ShadowReclaimPolicy`). **Materialized remains product recovery authority.** Next: step 7 perf ≥7 seg/s. **No product flip.** **ETQ-2 paused.** **AWO paused.** Prior: ETQ-0 accept. Prior 2026-08-03: **P0 DEF-SCAN-001** T7–T12 accepted labor, package not accepted. **AWO T11 evidence freeze principal `done`.** **AWO-Q series:** Feature `d0ae3c06` — Q0 **done**; **AWO-Q1 package principal `done`**; **AWO-Q2 labor `in_review`** (`0a043642`). Q3–Q4 still `backlog`. Explicit Q2 non-claims: package accept, default-on, thr floors, PQH diagnostic, sparse product bound, collector `select_plan` wiring. Plan `AWO_QUALIFICATION_SERIES.md`. T11 smoke = mechanism floor only. **Not** AWO product package accept / floors / default-on. Scratch exFAT residual remains. Other AWO measure cards still `in_review` as applicable; query spine / APB **in_review**)
+Updated: 2026-08-04 (**CSE-3 Stage 2 step 7** — Shadow+Compact harness + RSHD0002;
+2 GiB/64 MiB campaign **FAIL** ≥7 seg/s (3.69; best quiet 256 MiB 6.33). Safety/amp/recovery
+gates PASS. **Materialized remains product recovery authority.** Step 8 blocked.
+**No product flip.** **ETQ-2 paused.** **AWO paused.** Prior: step 6 principal-accepted.
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

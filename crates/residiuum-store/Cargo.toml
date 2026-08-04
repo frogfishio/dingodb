@@ -291,5 +291,9 @@ name = "reopen_before_enrichment"
 required-features = ["legacy-raw-store"]
 
 [[test]]
+name = "cse3_stage2_step7_shadow_perf"
+required-features = ["legacy-raw-store"]
+
+[[test]]
 name = "derived_catalog_checkpoint"
 required-features = ["legacy-raw-store"]

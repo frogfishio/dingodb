@@ -22,6 +22,7 @@ mod crypto;
 mod frontier;
 mod integrate;
 mod policy;
+pub mod qualify;
 mod wire;
 
 pub use crypto::{
@@ -42,10 +43,16 @@ pub use policy::{
     reset_shadow_reclaim_policy_for_tests, set_shadow_reclaim_policy, shadow_reclaim_policy,
     ShadowReclaimPolicy,
 };
+pub use qualify::{
+    candidate_config_label, decode_segment_for_candidate, enrich_segment_candidate, evaluate_gates,
+    every_protected_has_verified_rsh, list_sealed_segment_files, median_f64, ols_slope,
+    publish_shadow_timed, range_f64, recovery_after_auth_compact_delete, stage_medians,
+    QualifyOptions, ShadowStageSample, Step7CampaignReport, Step7Gates, HARNESS_ENVELOPE_KEY,
+};
 pub use wire::{
-    decode_shadow, encode_shadow, project_live, publish_shadow, shadow_dir, shadow_path,
-    try_load_shadow, DecodedShadow, LiveState, ShadowLoad, ShadowRecord, ShadowWriter, TAG_PUT,
-    TAG_TOMBSTONE, RSH_MAGIC,
+    decode_shadow, encode_shadow, encode_shadow_from_live_map, project_live, publish_shadow,
+    shadow_dir, shadow_path, try_load_shadow, DecodedShadow, LiveMap, LiveState, ShadowLoad,
+    ShadowRecord, ShadowWriter, TAG_PUT, TAG_TOMBSTONE, RSH_MAGIC, RSH_MAGIC_V1,
 };
 
 use crate::layout::StorePaths;

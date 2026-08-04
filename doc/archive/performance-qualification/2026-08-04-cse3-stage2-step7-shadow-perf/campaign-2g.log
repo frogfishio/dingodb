@@ -1,0 +1,58 @@
+   Compiling residiuum-store v0.2.0 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+warning: unused import: `delete_shadow`
+  --> crates/residiuum-store/src/recovery_shadow/mod.rs:37:55
+   |
+37 |     build_and_publish_shadow, current_protection_lag, delete_shadow, is_recovery_shadow_path,
+   |                                                       ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `decode_segment_for_candidate`
+  --> crates/residiuum-store/src/recovery_shadow/mod.rs:47:29
+   |
+47 |     candidate_config_label, decode_segment_for_candidate, enrich_segment_candidate, evaluate_gates,
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `decode_shadow`
+  --> crates/residiuum-store/src/recovery_shadow/mod.rs:53:5
+   |
+53 |     decode_shadow, encode_shadow, encode_shadow_from_live_map, project_live, publish_shadow,
+   |     ^^^^^^^^^^^^^
+
+warning: function `delete_shadow` is never used
+   --> crates/residiuum-store/src/recovery_shadow/integrate.rs:182:8
+    |
+182 | pub fn delete_shadow(
+    |        ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `residiuum-store` (lib) generated 4 warnings (run `cargo fix --lib -p residiuum-store` to apply 3 suggestions)
+    Finished `release` profile [optimized] target(s) in 8.03s
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/release/deps/cse3_stage2_step7_shadow_perf-c78e47162295434a)
+
+running 1 test
+step7 smoke: pub=3.69 seg/s slope=0.000 compact=0.75% shadow_amp=100.9% ack=67983 life=18490 gates=Step7Gates { shadow_pub_ge_7: false, backlog_slope_le_0: true, frontier_gap_free: true, lifecycle_near_ack: false, shadow_amp_bounded: true, compact_le_5pct: true, recovery_ok: true, verified_rsh: true, pass: false }
+  stage dir_sync_ns: median=3.964ms range=[1.327,10.324]ms
+  stage encode_ns: median=51.101ms range=[41.763,76.515]ms
+  stage encrypt_ns: median=0.000ms range=[0.000,0.000]ms
+  stage file_sync_ns: median=42.126ms range=[23.113,234.504]ms
+  stage frontier_publish_ns: median=12.686ms range=[9.055,19.847]ms
+  stage rename_ns: median=0.156ms range=[0.097,0.715]ms
+  stage sequential_write_ns: median=54.301ms range=[15.407,100.839]ms
+  stage source_read_decode_ns: median=38.322ms range=[35.294,55.442]ms
+  stage wall_ns: median=223.180ms range=[149.115,451.627]ms
+
+thread 'step7_smoke_candidate_harness' (60805270) panicked at crates/residiuum-store/tests/cse3_stage2_step7_shadow_perf.rs:257:9:
+full 2GiB campaign must pass all gates
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test step7_smoke_candidate_harness ... FAILED
+
+failures:
+
+failures:
+    step7_smoke_candidate_harness
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 21.68s
+
+error: test failed, to rerun pass `-p residiuum-store --test cse3_stage2_step7_shadow_perf`

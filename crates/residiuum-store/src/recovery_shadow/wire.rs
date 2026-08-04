@@ -1,4 +1,7 @@
-//! Versioned Recovery Shadow wire (`RSHD0001`) + streaming writer + salvage.
+//! Versioned Recovery Shadow wire (`RSHD0002`) + streaming writer + salvage.
+//!
+//! `RSHD0002` binds put `record_hash` to `body_hash` (`blake3(tag‖key‖gen‖body_hash)`)
+//! so encode can reuse the scan-time body digest. `RSHD0001` remains readable.
 
 use crate::atomic_file;
 use crate::error::StoreError;
@@ -8,8 +11,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// On-disk magic / version tag for Recovery Shadow files.
-pub const RSH_MAGIC: &[u8; 8] = b"RSHD0001";
+/// Current on-disk magic / version tag for Recovery Shadow files.
+pub const RSH_MAGIC: &[u8; 8] = b"RSHD0002";
+/// Legacy magic (full-payload record_hash). Still accepted by [`decode_shadow`].
+pub const RSH_MAGIC_V1: &[u8; 8] = b"RSHD0001";
 
 /// Put record tag.
 pub const TAG_PUT: u8 = 1;
@@ -158,7 +163,7 @@ impl ShadowWriter {
     pub fn finish(mut self) -> Vec<u8> {
         self.records
             .sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
-        encode_shadow(self.store_id, self.segment_id, self.generation, &self.records)
+        encode_shadow_sorted(self.store_id, self.segment_id, self.generation, &self.records)
     }
 }
 
@@ -170,42 +175,137 @@ pub fn encode_shadow(
     generation: u64,
     records: &[ShadowRecord],
 ) -> Vec<u8> {
-    let mut sorted: Vec<&ShadowRecord> = records.iter().collect();
+    let mut sorted = records.to_vec();
     sorted.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+    encode_shadow_sorted(store_id, segment_id, generation, &sorted)
+}
 
-    let mut out = Vec::with_capacity(HEADER_LEN + 64 * sorted.len() + HASH_LEN);
-    out.extend_from_slice(RSH_MAGIC);
-    out.extend_from_slice(&store_id);
-    out.extend_from_slice(&segment_id);
-    out.extend_from_slice(&generation.to_le_bytes());
-    out.extend_from_slice(&(sorted.len() as u32).to_le_bytes());
+/// Encode already-sorted records (no second sort). Maintains a running
+/// content hasher so the trailer does not re-scan the full buffer.
+fn encode_shadow_sorted(
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    generation: u64,
+    sorted: &[ShadowRecord],
+) -> Vec<u8> {
+    let mut need = HEADER_LEN + HASH_LEN;
+    for rec in sorted {
+        need += 1 + 4 + 8 + HASH_LEN;
+        match rec {
+            ShadowRecord::Put { key, value, .. } => {
+                need += key.len() + 4 + value.len();
+            }
+            ShadowRecord::Tombstone { key, .. } => {
+                need += key.len();
+            }
+        }
+    }
+    let mut out = Vec::with_capacity(need);
+    let mut content = Hasher::new();
+
+    let push = |out: &mut Vec<u8>, content: &mut Hasher, bytes: &[u8]| {
+        out.extend_from_slice(bytes);
+        content.update(bytes);
+    };
+
+    push(&mut out, &mut content, RSH_MAGIC);
+    push(&mut out, &mut content, &store_id);
+    push(&mut out, &mut content, &segment_id);
+    push(&mut out, &mut content, &generation.to_le_bytes());
+    push(
+        &mut out,
+        &mut content,
+        &(sorted.len() as u32).to_le_bytes(),
+    );
 
     for rec in sorted {
         match rec {
             ShadowRecord::Put { key, gen, value } => {
-                out.push(TAG_PUT);
-                out.extend_from_slice(&(key.len() as u32).to_le_bytes());
-                out.extend_from_slice(key);
-                out.extend_from_slice(&gen.to_le_bytes());
-                out.extend_from_slice(&(value.len() as u32).to_le_bytes());
-                out.extend_from_slice(value);
-                let h = record_hash_put(key, *gen, value);
-                out.extend_from_slice(&h);
+                push(&mut out, &mut content, &[TAG_PUT]);
+                push(&mut out, &mut content, &(key.len() as u32).to_le_bytes());
+                push(&mut out, &mut content, key);
+                push(&mut out, &mut content, &gen.to_le_bytes());
+                push(&mut out, &mut content, &(value.len() as u32).to_le_bytes());
+                push(&mut out, &mut content, value);
+                let body_hash = *blake3::hash(value).as_bytes();
+                let h = record_hash_put_v2(key, *gen, &body_hash);
+                push(&mut out, &mut content, &h);
             }
             ShadowRecord::Tombstone { key, gen } => {
-                out.push(TAG_TOMBSTONE);
-                out.extend_from_slice(&(key.len() as u32).to_le_bytes());
-                out.extend_from_slice(key);
-                out.extend_from_slice(&gen.to_le_bytes());
+                push(&mut out, &mut content, &[TAG_TOMBSTONE]);
+                push(&mut out, &mut content, &(key.len() as u32).to_le_bytes());
+                push(&mut out, &mut content, key);
+                push(&mut out, &mut content, &gen.to_le_bytes());
                 let h = record_hash_tombstone(key, *gen);
-                out.extend_from_slice(&h);
+                push(&mut out, &mut content, &h);
             }
         }
     }
 
-    let mut hasher = Hasher::new();
-    hasher.update(&out);
-    out.extend_from_slice(hasher.finalize().as_bytes());
+    out.extend_from_slice(content.finalize().as_bytes());
+    out
+}
+
+/// Live put/tombstone map: `None` = tombstone; `Some((value, body_hash))` = put.
+pub type LiveMap = BTreeMap<Vec<u8>, (Option<(Vec<u8>, [u8; 32])>, u64)>;
+
+/// Encode directly from a live map with precomputed body hashes.
+///
+/// Avoids an intermediate `Vec<ShadowRecord>` clone of every payload and
+/// reuses scan-time `body_hash` for V2 record digests.
+pub fn encode_shadow_from_live_map(
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    generation: u64,
+    live: &LiveMap,
+) -> Vec<u8> {
+    let mut need = HEADER_LEN + HASH_LEN;
+    for (key, (val, _)) in live {
+        need += 1 + 4 + key.len() + 8 + HASH_LEN;
+        if let Some((v, _)) = val {
+            need += 4 + v.len();
+        }
+    }
+    let mut out = Vec::with_capacity(need);
+    let mut content = Hasher::new();
+    let push = |out: &mut Vec<u8>, content: &mut Hasher, bytes: &[u8]| {
+        out.extend_from_slice(bytes);
+        content.update(bytes);
+    };
+
+    push(&mut out, &mut content, RSH_MAGIC);
+    push(&mut out, &mut content, &store_id);
+    push(&mut out, &mut content, &segment_id);
+    push(&mut out, &mut content, &generation.to_le_bytes());
+    push(
+        &mut out,
+        &mut content,
+        &(live.len() as u32).to_le_bytes(),
+    );
+
+    for (key, (val, gen)) in live {
+        match val {
+            Some((value, body_hash)) => {
+                push(&mut out, &mut content, &[TAG_PUT]);
+                push(&mut out, &mut content, &(key.len() as u32).to_le_bytes());
+                push(&mut out, &mut content, key);
+                push(&mut out, &mut content, &gen.to_le_bytes());
+                push(&mut out, &mut content, &(value.len() as u32).to_le_bytes());
+                push(&mut out, &mut content, value);
+                let h = record_hash_put_v2(key, *gen, body_hash);
+                push(&mut out, &mut content, &h);
+            }
+            None => {
+                push(&mut out, &mut content, &[TAG_TOMBSTONE]);
+                push(&mut out, &mut content, &(key.len() as u32).to_le_bytes());
+                push(&mut out, &mut content, key);
+                push(&mut out, &mut content, &gen.to_le_bytes());
+                let h = record_hash_tombstone(key, *gen);
+                push(&mut out, &mut content, &h);
+            }
+        }
+    }
+    out.extend_from_slice(content.finalize().as_bytes());
     out
 }
 
@@ -219,7 +319,10 @@ pub fn decode_shadow(bytes: &[u8], expect_store: Option<[u8; 16]>) -> ShadowLoad
         };
     }
 
-    if &bytes[0..8] != RSH_MAGIC.as_slice() {
+    let magic = &bytes[0..8];
+    let v2 = magic == RSH_MAGIC.as_slice();
+    let v1 = magic == RSH_MAGIC_V1.as_slice();
+    if !v1 && !v2 {
         return ShadowLoad::Corrupt {
             detail: "bad Recovery Shadow magic".into(),
         };
@@ -309,7 +412,12 @@ pub fn decode_shadow(bytes: &[u8], expect_store: Option<[u8; 16]>) -> ShadowLoad
                     }
                 };
                 cursor += HASH_LEN;
-                let want = record_hash_put(&key, gen, &value);
+                let want = if v2 {
+                    let body_hash = *blake3::hash(&value).as_bytes();
+                    record_hash_put_v2(&key, gen, &body_hash)
+                } else {
+                    record_hash_put_v1(&key, gen, &value)
+                };
                 if got != want {
                     return ShadowLoad::Corrupt {
                         detail: "put record_hash mismatch".into(),
@@ -457,7 +565,18 @@ pub fn publish_shadow(
     Ok(())
 }
 
-fn record_hash_put(key: &[u8], gen: u64, value: &[u8]) -> [u8; 32] {
+/// V2 put record hash: `blake3(tag‖key‖gen‖body_hash)`.
+fn record_hash_put_v2(key: &[u8], gen: u64, body_hash: &[u8; 32]) -> [u8; 32] {
+    let mut h = Hasher::new();
+    h.update(&[TAG_PUT]);
+    h.update(key);
+    h.update(&gen.to_le_bytes());
+    h.update(body_hash);
+    *h.finalize().as_bytes()
+}
+
+/// V1 put record hash: `blake3(tag‖key‖gen‖value)`.
+fn record_hash_put_v1(key: &[u8], gen: u64, value: &[u8]) -> [u8; 32] {
     let mut h = Hasher::new();
     h.update(&[TAG_PUT]);
     h.update(key);

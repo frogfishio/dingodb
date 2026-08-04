@@ -2,7 +2,8 @@
 
 Status: **active** (2026-08-04) — Stage 2a invariants confirmed; step 5
 lifecycle dual-run landed; **step 6 CSE F0–F5 + lifecycle/security matrix
-green**. Steps 7–9 open. **No product flip** until step 8.  
+principal-accepted**; **step 7 perf harness active** (no product flip).
+Steps 8–9 open. **No product flip** until step 8.  
 Depends: Stage 1 principal-accepted
 [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md).
 
@@ -40,8 +41,8 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 | **3** | Generation-exact salvage including tombstones | **Done** (2a) |
 | **4** | `protected_frontier` + protection-lag telemetry (gap-aware, per-shard) | **Done** (2a) |
 | **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | **Done** (lifecycle dual-run; no flip) |
-| **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Done** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
-| **7** | Prove ≥7 segments/sec with non-growing backlog | Open |
+| **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Principal-accepted** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
+| **7** | Prove ≥7 segments/sec with non-growing backlog | **Open (labor)** — harness+RSHD0002; 2 GiB FAIL 3.69 seg/s ([`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-shadow-perf`) |
 | **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Yes — only here** |
 | **9** | Re-run full-product throughput qualification | Post-flip |
 
@@ -58,7 +59,7 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 Path: `recovery/shadow/{hex16(segment_id)}.rsh`
 
 ```text
-magic[8] = "RSHD0001"
+magic[8] = "RSHD0002"   # RSHD0001 still readable
 store_id[16]
 segment_id[16]
 generation[u64 LE]     # seal / layout generation for this Shadow file
@@ -68,6 +69,8 @@ records[n] sorted by (key ascending, gen ascending):
   key_len[u32 LE] key[key_len]
   gen[u64 LE]
   Put: value_len[u32 LE] value[value_len] record_hash[32]
+       # V2 record_hash = blake3(tag‖key‖gen‖blake3(value))  [body_hash form]
+       # V1 record_hash = blake3(tag‖key‖gen‖value)
   Tombstone: record_hash[32]
 trailer: content_hash[32] = blake3(bytes without trailer)
 ```

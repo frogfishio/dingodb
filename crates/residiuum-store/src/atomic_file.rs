@@ -43,6 +43,19 @@ pub fn previous_path(path: &Path) -> PathBuf {
     PathBuf::from(os)
 }
 
+/// Stage timings for one atomic control-document publish (qualification).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AtomicWriteTiming {
+    /// Bytes written into the temp file (before sync).
+    pub sequential_write_ns: u64,
+    /// `File::sync_all` on the temp file.
+    pub file_sync_ns: u64,
+    /// Rename temp → published path (and optional keep-previous rename).
+    pub rename_ns: u64,
+    /// Parent directory sync after rename.
+    pub dir_sync_ns: u64,
+}
+
 /// Atomically replace `path` with `bytes` (no previous generation retained).
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), StoreError> {
     write_atomic_with(path, bytes, AtomicWriteOptions::default())
@@ -65,6 +78,23 @@ pub fn write_atomic_with(
     bytes: &[u8],
     opts: AtomicWriteOptions,
 ) -> Result<(), StoreError> {
+    write_atomic_with_timed(path, bytes, opts).map(|_| ())
+}
+
+/// Atomically replace `path` with `bytes` under `opts`, returning stage timings.
+///
+/// When `data_sync_only` is true, the temp file uses `sync_data` instead of
+/// `sync_all` (metadata still covered by the parent directory sync after rename).
+/// Intended for large Recovery Shadow payloads where full `sync_all` metadata
+/// flush dominates without adding durability for the published content.
+pub fn write_atomic_with_timed_ex(
+    path: &Path,
+    bytes: &[u8],
+    opts: AtomicWriteOptions,
+    data_sync_only: bool,
+) -> Result<AtomicWriteTiming, StoreError> {
+    use std::time::Instant;
+
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent)?;
 
@@ -74,6 +104,7 @@ pub fn write_atomic_with(
 
     crate::failpoint::hit("atomic.before_tmp_write")?;
 
+    let mut timing = AtomicWriteTiming::default();
     {
         let mut f = OpenOptions::new()
             .create_new(true)
@@ -91,12 +122,21 @@ pub fn write_atomic_with(
                 "failpoint short write: atomic.tmp.short_write",
             )));
         }
+        let t_write = Instant::now();
         f.write_all(bytes)?;
-        f.sync_all()?;
+        timing.sequential_write_ns = t_write.elapsed().as_nanos() as u64;
+        let t_sync = Instant::now();
+        if data_sync_only {
+            f.sync_data()?;
+        } else {
+            f.sync_all()?;
+        }
+        timing.file_sync_ns = t_sync.elapsed().as_nanos() as u64;
     }
 
     crate::failpoint::hit("atomic.after_tmp_sync")?;
 
+    let t_rename = Instant::now();
     if opts.keep_previous && path.is_file() {
         let prev = previous_path(path);
         // Replace any older .prev so we retain exactly one known-good generation.
@@ -108,10 +148,22 @@ pub fn write_atomic_with(
     crate::failpoint::hit("atomic.before_rename")?;
     fs::rename(&tmp, path)?;
     crate::failpoint::hit("atomic.after_rename")?;
+    timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
 
+    let t_dir = Instant::now();
     sync_dir(parent)?;
+    timing.dir_sync_ns = t_dir.elapsed().as_nanos() as u64;
     crate::failpoint::hit("atomic.after_dir_sync")?;
-    Ok(())
+    Ok(timing)
+}
+
+/// Same protocol as [`write_atomic_with`], returning stage timings.
+pub fn write_atomic_with_timed(
+    path: &Path,
+    bytes: &[u8],
+    opts: AtomicWriteOptions,
+) -> Result<AtomicWriteTiming, StoreError> {
+    write_atomic_with_timed_ex(path, bytes, opts, false)
 }
 
 /// Read control-document bytes from `path`, falling back to the previous
