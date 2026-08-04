@@ -162,7 +162,8 @@ pub use erasure::{
 };
 pub use error::{LocatorFault, LocatorFaultKind, StoreError};
 pub use media_inventory::{
-    build_authoritative_inventory, refuse_authoritative_collisions, rename_exclusive,
+    build_authoritative_inventory, heal_identical_publish_aliases, refuse_authoritative_collisions,
+    rename_exclusive,
     MediaInventory,
 };
 pub use failpoint::{

@@ -1,0 +1,9 @@
+   Compiling libc v0.2.189
+   Compiling residiuum-heap v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-heap)
+   Compiling residiuum-format v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-format)
+   Compiling cpufeatures v0.2.17
+   Compiling getrandom v0.3.4
+   Compiling sha2 v0.10.9
+   Compiling ed25519-dalek v2.2.0
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `release` profile [optimized] target(s) in 9.42s

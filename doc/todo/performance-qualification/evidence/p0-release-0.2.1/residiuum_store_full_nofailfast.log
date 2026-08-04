@@ -1,0 +1,1695 @@
+   Compiling residiuum-store v0.2.0 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+warning: fields `mode` and `ops` are never read
+   --> crates/residiuum-store/tests/awo_q2_decision_quality.rs:114:5
+    |
+113 | struct FacadeCell {
+    |        ---------- fields in this struct
+114 |     mode: AdaptiveWriteMode,
+    |     ^^^^
+115 |     concurrency: usize,
+116 |     ops: u64,
+    |     ^^^
+    |
+    = note: `FacadeCell` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `residiuum-store` (test "awo_q2_decision_quality") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.58s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_store-c89f782b82abd5e0)
+
+running 241 tests
+test adaptive_write::controller::tests::dwell_blocks_immediate_re_scale ... ok
+test adaptive_write::controller::tests::scale_up_after_consecutive_intervals ... ok
+test adaptive_write::controller::tests::writer_saturation_blocks_up ... ok
+test adaptive_write::cooker::tests::pure_cook_matches_serial_twice ... ok
+test adaptive_write::coordinator::tests::cook_then_install_overlap_shape ... ok
+test adaptive_write::coordinator::tests::depth_two_blocks_third ... ok
+test adaptive_write::coordinator::tests::seal_and_shutdown_refuse_new ... ok
+test adaptive_write::credits::tests::atomic_reject_leaves_unchanged ... ok
+test adaptive_write::credits::tests::byte_exhaustion ... ok
+test adaptive_write::credits::tests::mutation_credit_includes_framing ... ok
+test adaptive_write::credits::tests::reserve_and_release_roundtrip ... ok
+test adaptive_write::estimator::tests::ewma_moves_toward_sample ... ok
+test adaptive_write::estimator::tests::first_sample_sets_mean ... ok
+test adaptive_write::estimator::tests::payload_bucket_pow2 ... ok
+test adaptive_write::estimator::tests::warm_and_stale ... ok
+test adaptive_write::model::tests::all_golden_vectors_match_decide ... ok
+test adaptive_write::model::tests::closed_reason_ids_include_all_golden_reasons ... ok
+test adaptive_write::model::tests::exact_tie_uses_integer_margin_equality ... ok
+test adaptive_write::model::tests::overflow_service_returns_natural_arithmetic_overflow ... ok
+test adaptive_write::model::tests::profile_constant_matches_registry ... ok
+test adaptive_write::ordered_ready::tests::duplicate_rejected ... ok
+test adaptive_write::ordered_ready::tests::ordered_pop_despite_out_of_order_push ... ok
+test adaptive_write::policy::tests::machine_defaults_validate ... ok
+test adaptive_write::policy::tests::rejects_pipeline_zero ... ok
+test adaptive_write::queue::tests::capacity_and_pop ... ok
+test adaptive_write::queue::tests::shutdown_unblocks ... ok
+test adaptive_write::selector::tests::candidates_clip_and_include_queued ... ok
+test adaptive_write::selector::tests::collection_delay_rules ... ok
+test adaptive_write::selector::tests::select_batch_when_gain ... ok
+test adaptive_write::selector::tests::select_natural_when_cold ... ok
+test atomic_file::tests::keep_previous_survives_replace ... ok
+test atomic_file::tests::read_with_previous_falls_back ... ok
+test atomic_file::tests::torn_temp_does_not_replace_published ... ok
+test atomic_file::tests::write_atomic_roundtrip ... ok
+test backup::tests::backup_profile_constant ... ok
+test backup::tests::full_backup_restore_roundtrip ... ok
+test backup::tests::reassign_identity_clone ... FAILED
+test backup::tests::tampered_file_fails_verify ... ok
+test boundary_probe::tests::disabled_is_noop ... ok
+test boundary_probe::tests::enabled_records_kinds_and_digest ... ok
+test boundary_probe::tests::sample_cap_drops_explicitly_counters_exact ... ok
+test boundary_probe::tests::short_write_outcome_counted ... ok
+test catalog::tests::catalog_roundtrip ... ok
+test catalog::tests::subject_collection_parse ... ok
+test chimera::classify::tests::classifies_by_size_defaults ... ok
+test chimera::classify::tests::force_class_override ... ok
+test chimera::classify::tests::initial_kind_respects_scan_hint ... ok
+test chimera::compiler::tests::dictionary_train_deduped_by_family ... ok
+test chimera::compiler::tests::point_hot_relocates_medium_to_container ... ok
+test chimera::compiler::tests::recluster_helper ... ok
+test chimera::compiler::tests::scan_hot_relocates_to_extent ... ok
+test chimera::container::tests::builder_respects_target ... ok
+test chimera::container::tests::corrupt_checksum_rejected ... ok
+test chimera::container::tests::roundtrip_multiple_slots ... ok
+test chimera::io_path::tests::large_cold_batch_uses_async_direct ... ok
+test chimera::io_path::tests::large_without_async_uses_direct ... ok
+test chimera::io_path::tests::medium_default_buffered ... ok
+test chimera::io_path::tests::tiny_cached_stays_buffered ... ok
+test chimera::layout::tests::build_materialized_places_all_classes ... ok
+test chimera::layout::tests::compact_layout_roundtrip_and_amp ... ok
+test chimera::layout::tests::materialized_roundtrip_disk_still_supported ... ok
+test chimera::tests::architecture_path_end_to_end ... ok
+test chimera::tests::pack_medium_values ... ok
+test chimera::tests::place_value_by_class ... ok
+test chimera::tests::resolve_inline ... ok
+test chimera::tests::resolve_point_container_slot ... ok
+test chimera::tests::resolve_scan_extent ... ok
+test chimera::tests::resolve_value_log ... ok
+test chimera::tests::segment_frame_fail_closed_on_len_mismatch_and_missing ... ok
+test chimera::value_log::tests::append_and_read_roundtrip ... ok
+test chimera::value_log::tests::corrupt_rejected ... ok
+test chunk_payload::tests::hostile_chunk_count_does_not_allocate ... ok
+test chunk_payload::tests::ignores_other_generation_same_index ... ok
+test chunk_payload::tests::manifest_roundtrip ... ok
+test chunk_payload::tests::partial_missing_middle ... ok
+test chunk_payload::tests::wrong_event_id_for_slot_is_ignored_not_mixed ... ok
+test composed_failure::tests::rejected_without_reason_fails ... ok
+test composed_failure::tests::schedules_and_rejects ... ok
+test crash_matrix::tests::embedded_matrix_loads_and_validates ... ok
+test csq5_campaign::tests::classify_old_new_unknown ... ok
+test csq5_campaign::tests::hybrid_receipt_without_visibility_fails ... ok
+test csq5_campaign::tests::silent_skip_assert ... ok
+test csq_harness::tests::harness_strings_parse ... ok
+test csq_harness::tests::inventory_covers_required_kinds ... ok
+test cursor::tests::generation_changes_with_inputs ... ok
+test cursor::tests::public_store_id_cannot_forge_mac ... ok
+test cursor::tests::rotation_grace_then_retire ... ok
+test cursor::tests::token_roundtrip_and_mac ... ok
+test envelope::tests::delete_kind_roundtrip ... ok
+test envelope::tests::rejects_incomplete_map ... ok
+test envelope::tests::rejects_non_cbor ... ok
+test envelope::tests::roundtrip ... ok
+test erasure::tests::encode_refuses ... ok
+test erasure::tests::manifest_shard_keys ... ok
+test erasure::tests::shard_key_naming ... ok
+test failpoint::tests::cancel_and_alloc_actions ... ok
+test failpoint::tests::error_action_returns_failpoint ... ok
+test failpoint::tests::hit_proof_requires_visit ... ok
+test failpoint::tests::io_enospc_is_storage_full ... ok
+test failpoint::tests::io_permission_is_permission_denied ... ok
+test failpoint::tests::panic_action_unwinds ... ok
+test failpoint::tests::short_write_consume ... ok
+test failpoint::tests::unarmed_is_noop ... ok
+test failpoint::tests::unreached_arm_stays_armed ... ok
+test heap::admin_op_dedup::tests::binding_stable_and_name_sensitive ... ok
+test heap::admin_op_dedup::tests::table_roundtrip ... ok
+test heap::catalog::tests::staged_genesis_invisible_until_publish ... ok
+test heap::one_heap::tests::mixed_heap_salvage_classifies_bound_and_foreign ... ok
+test heap::one_heap::tests::rejects_cross_heap_and_accepts_match ... ok
+test hydra::eytzinger::tests::eytzinger_all_hits ... ok
+test hydra::mphf::tests::mphf_all_hits_no_false ... ok
+test hydra::mphf::tests::mphf_empty ... ok
+test hydra::pgm::tests::pgm_sparse_hits ... ok
+test hydra::pgm::tests::radix_spline_dense_hits ... ok
+test hydra::radix::tests::prefix_and_sibling_keys ... ok
+test hydra::radix::tests::radix_string_keys ... ok
+test hydra::select::tests::dense_vs_sparse_numeric ... ok
+test hydra::select::tests::strings_are_radix ... ok
+test hydra::select::tests::tiny_and_point_only ... ok
+test hydra::tests::build_many_parallel_preserves_order ... ok
+test hydra::tests::codec_roundtrip_all_kinds ... ok
+test hydra::tests::eytzinger_scan_order ... ok
+test hydra::tests::last_duplicate_wins ... ok
+test hydra::tests::numeric_selects_pgm_or_spline ... ok
+test hydra::tests::point_only_selects_mphf ... ok
+test hydra::tests::strings_select_compressed_radix ... ok
+test hydra::tests::tiny_selects_eytzinger ... ok
+test hydra::tests::write_load_sidecar ... ok
+test ids::tests::id_profile_is_stable ... ok
+test ids::tests::random_and_sortable_kinds_differ_in_shape ... ok
+test ids::tests::random_ids_are_unique_and_nonzero ... ok
+test ids::tests::sortable_segment_ids_order_by_seq ... ok
+test ids::tests::subject_item_id_is_deterministic ... ok
+test incremental_seal::tests::content_hash_state_wire_roundtrip ... ok
+test incremental_seal::tests::meta_publish_plan_defers_content_hash ... ok
+test incremental_seal::tests::rolling_hash_matches_full_blake3_of_sealed_image ... ok
+test index_cache::tests::cache_roundtrip_v1 ... ok
+test index_cache::tests::fingerprint_mismatch_rejects_v1 ... ok
+test index_cache::tests::frontier_cache_corruption_rejects ... ok
+test index_cache::tests::frontier_cache_roundtrip_v2 ... ok
+test index_cache::tests::frontier_cache_roundtrip_v3_preserves_offset ... ok
+test kernel::tests::physical_alias_exists ... ok
+test large_value::tests::default_admits_threshold_boundary ... ok
+test large_value::tests::rejects_over_max_logical ... ok
+test large_value::tests::rejects_zero_chunk_size ... ok
+test layout::tests::hex_roundtrip ... ok
+test lifecycle::tests::evaluate_first_match ... ok
+test lifecycle::tests::roundtrip_file ... ok
+test media::tests::gs_mirror_resolves_media_root_directory ... ok
+test media::tests::local_object_put_get_delete ... ok
+test media::tests::media_root_directory_for_local_object ... ok
+test media::tests::parse_filesystem_and_file_uri ... ok
+test media::tests::parse_object_local_and_roundtrip_uri ... ok
+test media::tests::parse_s3_gs ... ok
+test media::tests::s3_backend_refuses_io_without_mirror ... ok
+test media::tests::s3_mirror_put_get_delete ... ok
+test media::tests::unknown_scheme_errors ... ok
+test media_inventory::tests::rename_exclusive_crash_after_create_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_dest_publish_completes_on_retry ... ok
+test media_inventory::tests::rename_exclusive_crash_after_file_sync_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_link_before_unlink ... ok
+test media_inventory::tests::rename_exclusive_hard_link_crash_before_unlink_retry_ok ... ok
+test media_inventory::tests::rename_exclusive_idempotent_same_bytes ... ok
+test media_inventory::tests::rename_exclusive_partial_copy_leaves_no_final ... ok
+test media_inventory::tests::rename_exclusive_refuses_different_dest ... ok
+test media_inventory::tests::rename_exclusive_uses_exclusive_publish_not_replace ... ok
+test migrate::tests::full_migrate_preserves_live_data_and_source ... ok
+test migrate::tests::matrix_snapshot_non_empty ... ok
+test migrate::tests::plan_only_does_not_create_dest_store ... ok
+test migrate::tests::preflight_blocks_non_empty_dest ... ok
+test migrate::tests::rollback_refuses_completed ... ok
+test migrate::tests::rollback_removes_incomplete_dest ... ok
+test protected_pair::tests::recover_orphan_staging_without_auth_deletes_tmp ... ok
+test protected_pair::tests::recover_sealed_plus_rsh_without_frontier_claims ... ok
+test protected_pair::tests::recover_sealed_plus_staging_claims_p_star ... ok
+test protected_pair::tests::recover_uses_shard_sidecar_not_zero ... ok
+test recovery_shadow::crypto::tests::sealed_has_no_plaintext ... ok
+test recovery_shadow::crypto::tests::wrong_key_fails_closed ... ok
+test recovery_shadow::dual_stream::tests::dual_stream_roundtrip_commitment ... ok
+test recovery_shadow::frontier::tests::coverage_roundtrip ... ok
+test recovery_shadow::frontier::tests::gap_aware_twelve_does_not_conceal_eleven ... ok
+test recovery_shadow::frontier::tests::multi_shard_aggregate_is_min_not_max ... ok
+test recovery_shadow::frontier::tests::refuses_protected_ahead_of_sealed_scalar_api ... ok
+test recovery_shadow::integrate::tests::dual_run_allows_retire_without_replacement_shadow ... ok
+test recovery_shadow::integrate::tests::publish_claims_only_after_atomic ... ok
+test recovery_shadow::integrate::tests::retire_refuses_without_replacement ... ok
+test recovery_shadow::mirror::tests::mirror_roundtrip_and_commitment ... ok
+test recovery_shadow::mirror::tests::publish_mirror_is_durable_path ... ok
+test recovery_shadow::mirror::tests::torn_mirror_fails_closed ... ok
+test recovery_shadow::policy::tests::can_switch_to_require_replacement ... ok
+test recovery_shadow::policy::tests::default_is_dual_run ... ok
+test recovery_shadow::recovery_mode::tests::mode_roundtrip_atomic ... ok
+test recovery_shadow::wire::tests::publish_atomic_and_load ... ok
+test recovery_shadow::wire::tests::refuse_publish_incomplete ... ok
+test recovery_shadow::wire::tests::roundtrip_put_and_tombstone ... ok
+test recovery_shadow::wire::tests::tombstone_prevents_resurrection_across_merge ... ok
+test recovery_shadow::wire::tests::truncated_file_is_incomplete_never_ok ... ok
+test scrub::tests::empty_store_scrub_completes ... ok
+test scrub::tests::hex32_is_64_chars ... ok
+test scrub::tests::pause_blocks_progress ... ok
+test seal_pipeline::tests::authoritative_publish_before_derived_enrichment ... ok
+test seal_pipeline::tests::finalize_append_only_preserves_pending_prefix ... ok
+test seal_pipeline::tests::finalize_roundtrip_files ... ok
+test seal_pipeline::tests::seal_pending_preserves_prefix_bytes ... ok
+test secondary::tests::failed_retains_reason ... ok
+test secondary::tests::partial_and_stale_never_prove_absence_or_exclusive_hits ... ok
+test secondary::tests::secondary_roundtrip ... ok
+test segment_allocator::tests::corrupt_durable_empty_media_refuses ... ok
+test segment_allocator::tests::encode_decode_roundtrip ... ok
+test segment_allocator::tests::reserve_monotonic_and_persistent ... ok
+test segment_catalog::tests::segment_catalog_roundtrip ... ok
+test segment_growth::tests::grow_on_append_is_default ... ok
+test segment_growth::tests::prepare_active_file_zeros_full_capacity ... ok
+test segment_growth::tests::watermark_default_is_modest_and_configurable ... ok
+test store::tests::chimera_compact_writes_output_layout ... ok
+test store::tests::chimera_rebuild_after_wipe ... FAILED
+test store::tests::chimera_seal_layout_and_get_resolve ... FAILED
+test store::tests::concurrent_create_absent_one_wins ... ok
+test store::tests::concurrent_put_if_one_wins ... ok
+test store::tests::create_put_get_delete ... ok
+test store::tests::durable_puts_are_locator_first_not_body_resident ... ok
+test store::tests::get_uses_primary_index_without_chimera_sidecars ... FAILED
+test store::tests::key_atomic_cas_put_and_delete ... ok
+test store::tests::parallel_cook_put_many_roundtrip ... ok
+test store::tests::reopen_recovers_state ... ok
+test store::tests::segment_growth_watermark_background_runway_put ... ok
+test store::tests::segment_growth_watermark_opt_in_put_reopen ... ok
+test tier::tests::classify_empty_supported ... ok
+test tier::tests::coverage_offline_incomplete ... ok
+test tier::tests::placement_roundtrip ... ok
+test tier::tests::transfer_copy_preserves_identity ... ok
+test token_keys::tests::debug_redacts_secret ... ok
+test token_keys::tests::public_id_insufficient_without_secret ... ok
+test token_keys::tests::rotate_retains_previous_only ... ok
+test token_keys::tests::store_persist_roundtrip ... ok
+test write_dedup::tests::content_identity_stable_and_sensitive ... ok
+test write_dedup::tests::table_roundtrip ... ok
+test writer_lock::tests::drop_releases_for_reopen ... ok
+test writer_lock::tests::observe_reports_free_when_unlocked ... ok
+test writer_lock::tests::second_in_process_writer_fails ... ok
+test writer_lock::tests::stale_diagnostic_text_does_not_block ... ok
+
+failures:
+
+---- backup::tests::reassign_identity_clone stdout ----
+
+thread 'backup::tests::reassign_identity_clone' (62317413) panicked at crates/residiuum-store/src/backup.rs:714:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- store::tests::chimera_rebuild_after_wipe stdout ----
+
+thread 'store::tests::chimera_rebuild_after_wipe' (62317739) panicked at crates/residiuum-store/src/store.rs:8465:9:
+assertion failed: store.load_chimera_layout(seg).unwrap().is_some()
+
+---- store::tests::chimera_seal_layout_and_get_resolve stdout ----
+
+thread 'store::tests::chimera_seal_layout_and_get_resolve' (62317746) panicked at crates/residiuum-store/src/store.rs:8357:14:
+chimera layout after seal
+
+---- store::tests::get_uses_primary_index_without_chimera_sidecars stdout ----
+
+thread 'store::tests::get_uses_primary_index_without_chimera_sidecars' (62317800) panicked at crates/residiuum-store/src/store.rs:8395:9:
+assertion failed: store.load_chimera_layout(seg).unwrap().is_some()
+
+
+failures:
+    backup::tests::reassign_identity_clone
+    store::tests::chimera_rebuild_after_wipe
+    store::tests::chimera_seal_layout_and_get_resolve
+    store::tests::get_uses_primary_index_without_chimera_sidecars
+
+test result: FAILED. 237 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.73s
+
+error: test failed, to rerun pass `-p residiuum-store --lib`
+     Running unittests src/bin/crash_child.rs (target/debug/deps/residiuum_store_crash_child-f26cf531b10a31e6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/awo_adaptive_oracle.rs (target/debug/deps/awo_adaptive_oracle-590a6f3d8837f4f5)
+
+running 8 tests
+test adaptive_mode_select_plan_sizes_cold_batch_to_natural_one ... ok
+test candidates_closed_set ... ok
+test collection_and_payload_bucket_closed ... ok
+test ewma_matches_plan_formula_first_steps ... ok
+test policy_defaults_still_disabled_for_product ... ok
+test scale_controller_hysteresis_with_manual_clock ... ok
+test select_plan_aligns_with_decide_goldens_path ... ok
+test service_estimator_warm_gate ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/awo_contract.rs (target/debug/deps/awo_contract-b4bacb3144668e7f)
+
+running 1 test
+test golden_decisions_twelve_match_pure_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/awo_crash_matrix.rs (target/debug/deps/awo_crash_matrix-cbdbe4e941b4117f)
+
+running 6 tests
+test closed_failpoint_inventory_partition ... ok
+test deferred_cells_named_but_not_required_on_put_many ... ok
+test each_pre_publish_error_failpoint_leaves_index_clean ... ok
+test multiprocess_abort_awo_persist_before ... ok
+test post_publish_failpoints_hit_after_index_visible ... ok
+test short_write_cell_poisons_writer ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.83s
+
+     Running tests/awo_credit_bounds.rs (target/debug/deps/awo_credit_bounds-a6f84d8963a3eb61)
+
+running 6 tests
+test cooker_frame_equivalence_vs_serial_encode ... ok
+test credit_release_on_failed_enqueue_path ... ok
+test credit_reserve_hits_entry_and_byte_limits ... ok
+test ordered_ready_preserves_ticket_order_under_parallel_cook ... ok
+test ordered_ready_standalone_out_of_order_buffer ... ok
+test policy_defaults_disabled_and_valid ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/awo_direct_writer_lease.rs (target/debug/deps/awo_direct_writer_lease-45d7f21ae472bf4b)
+
+running 2 tests
+test adaptive_writer_active_error_exists_for_awo3 ... ok
+test poison_refuses_put_and_delete_until_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/awo_partial_write_recovery.rs (target/debug/deps/awo_partial_write_recovery-b2d565deb126e6fe)
+
+running 1 test
+test short_write_poisons_and_blocks_put_many ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/awo_persist_before_publish.rs (target/debug/deps/awo_persist_before_publish-ec8a04f4a1bebc88)
+
+running 4 tests
+test awo_failpoints_closed_set_named ... ok
+test multi_shard_put_many_persist_fail_publishes_nothing ... ok
+test put_many_persist_fail_publishes_nothing ... ok
+test put_many_success_publish_after_persist ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+     Running tests/awo_productisation.rs (target/debug/deps/awo_productisation-775940c8bc6a83e8)
+
+running 4 tests
+test disabled_attach_inspect_and_natural_put ... ok
+test machine_defaults_never_enable_by_accident ... ok
+test ordinary_create_inspect_reports_disabled ... ok
+test static_attach_drain_and_reset ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+     Running tests/awo_publication_failure.rs (target/debug/deps/awo_publication_failure-fe6b8a4fce279202)
+
+running 1 test
+test publish_failpoint_aborts_before_index_update ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/awo_q13_reopen_correctness.rs (target/debug/deps/awo_q13_reopen_correctness-9e17ef85753f10c3)
+
+running 3 tests
+test q13_adaptive_concurrent_reopen_matrix ... ok
+test q13_static_and_adaptive_same_seed_both_reopen_ok ... ok
+test q13_static_concurrent_reopen_matrix ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.54s
+
+     Running tests/awo_q2_decision_quality.rs (target/debug/deps/awo_q2_decision_quality-7d6ef1d5f759a33e)
+
+running 4 tests
+test q2_adaptive_warm_can_select_batch_on_multi_item ... ok
+test q2_concurrent_facade_sparse_adaptive_latency_envelope ... ok
+test q2_concurrent_facade_static_vs_adaptive_saturated_envelope ... ok
+test q2_static_full_batch_vs_adaptive_cold_natural_one ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+     Running tests/awo_shutdown.rs (target/debug/deps/awo_shutdown-446096a114c7c368)
+
+running 7 tests
+test bad_phase_rejected ... ok
+test drain_writes_begins_pipeline_shutdown ... ok
+test pipeline_depth_two_no_third_reservation ... ok
+test seal_blocks_new_reservation ... ok
+test shutdown_drain_timeout_reports_remaining ... ok
+test shutdown_rejects_new_and_wait_empty ... ok
+test static_runtime_exposes_pipeline_depth_two ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/awo_static_admission.rs (target/debug/deps/awo_static_admission-4d68885102b105d4)
+
+running 10 tests
+test adaptive_mode_same_lease_floor_as_static ... ok
+test admit_put_batch_under_lease_persist_before_publish ... ok
+test classify_eligibility_closed ... ok
+test disabled_policy_default_no_lease ... ok
+test heap_store_facade_concurrent_put_collection_wait_outside_mutex ... ok
+test independent_puts_collect_amortize_file_sync ... ok
+test open_heap_carries_adaptive_handle_when_lease_active ... ok
+test ordinary_create_has_no_adaptive_status ... ok
+test static_mode_fences_direct_put_and_admits_under_lease ... ok
+test store_lease_flag_roundtrip ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s
+
+     Running tests/cse0_materialized_chimera_recovery.rs (target/debug/deps/cse0_materialized_chimera_recovery-70c67020b461dba7)
+
+running 1 test
+test cse0_materialized_recovery_baseline_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.33s
+
+     Running tests/cse1_compact_chimera_equivalence.rs (target/debug/deps/cse1_compact_chimera_equivalence-4d5556b972aec7d9)
+
+running 1 test
+test cse1_compact_equivalence_campaign ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.34s
+
+     Running tests/cse2r_safety_rollback.rs (target/debug/deps/cse2r_safety_rollback-15ea4174fe03a30e)
+
+running 1 test
+test cse2r_product_seal_safety_rollback_guard ... FAILED
+
+failures:
+
+---- cse2r_product_seal_safety_rollback_guard stdout ----
+
+thread 'cse2r_product_seal_safety_rollback_guard' (62319656) panicked at crates/residiuum-store/tests/cse2r_safety_rollback.rs:122:10:
+product Chimera after seal
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    cse2r_product_seal_safety_rollback_guard
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+error: test failed, to rerun pass `-p residiuum-store --test cse2r_safety_rollback`
+     Running tests/cse3_stage2_default_flip_ceremony.rs (target/debug/deps/cse3_stage2_default_flip_ceremony-eb022f42b802784a)
+
+running 3 tests
+test fresh_create_defaults_to_compact_shadow ... ok
+test legacy_missing_marker_stays_materialized_on_open ... ok
+test rollback_from_default_compact_is_non_destructive ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running tests/cse3_stage2_rshd0004_matrix.rs (target/debug/deps/cse3_stage2_rshd0004_matrix-eb17dfe5a2105c22)
+
+running 16 tests
+test r4_chunked_value_recovery ... ok
+test r4_f0_healthy_dual_stream_recovery ... ok
+test r4_fail_finalize_dir_sync ... ok
+test r4_fail_finalize_rename ... ok
+test r4_fail_finalize_summary ... ok
+test r4_fail_finalize_sync ... ok
+test r4_fail_frontier_publish ... ok
+test r4_fail_shadow_append_no_p_star ... ok
+test r4_fail_shadow_flush ... ok
+test r4_matrix_cell_count_charter ... ok
+test r4_multi_shard_rotation ... ok
+test r4_overwrite_tombstone_recovery ... ok
+test r4_step8_activate_requires_gap_free ... ok
+test r4_step8_flip_activate_rollback ... ok
+test r4_step8_mode_persist_failpoint ... ok
+test r4_step8_reopen_loads_marker ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+
+     Running tests/cse3_stage2_segment_id_never_reuse.rs (target/debug/deps/cse3_stage2_segment_id_never_reuse-b951e14c82b5af73)
+
+running 8 tests
+test corrupt_allocator_refuses_without_mutating_media ... ok
+test crash_after_active_media ... ok
+test crash_after_reserve_before_media ... ok
+test crash_after_reserve_persist ... ok
+test crash_before_reserve_persist ... ok
+test crash_seal_publish_boundaries ... ok
+test never_reuse_after_repeated_reopen_seal ... ok
+test never_reuse_multi_shard_allocation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.56s
+
+     Running tests/cse3_stage2_shadow_f0_f5.rs (target/debug/deps/cse3_stage2_shadow_f0_f5-0644d240c8299090)
+
+running 15 tests
+test clarification_dual_run_allows_materialized_authority ... ok
+test f0_healthy_materialized_eq_shadow ... ok
+test f1_index_loss_shadow_intact ... ok
+test f2_shadow_damage_fail_closed ... ok
+test f3_authoritative_loss_shadow_reconstructs ... ok
+test f4_generation_tombstone_no_resurrection ... ok
+test f5_frontier_update_after_publish ... ok
+test f5_lifecycle_partial_shadow_never_p_star ... ok
+test variant_backup_restore_auth_loss ... ok
+test variant_compaction_cannot_retire_last_source ... ok
+test variant_crypto_erase_unrecoverable ... ok
+test variant_encrypted_no_plaintext ... ok
+test variant_key_rotation_preserves_recovery ... ok
+test variant_multi_shard_gaps ... ok
+test variant_wrong_store_segment_substitution ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+     Running tests/cse3_stage2_step2l_tps_ab.rs (target/debug/deps/cse3_stage2_step2l_tps_ab-c07eabfe71367be0)
+
+running 1 test
+test step2l_tps_ab ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.64s
+
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/debug/deps/cse3_stage2_step7_shadow_perf-6657a68cb657c672)
+
+running 2 tests
+test step7_smoke_candidate_harness ... FAILED
+test step7_stage_medians_helper ... FAILED
+
+failures:
+
+---- step7_smoke_candidate_harness stdout ----
+
+thread 'step7_smoke_candidate_harness' (62321744) panicked at crates/residiuum-store/tests/cse3_stage2_step7_shadow_perf.rs:121:10:
+called `Result::unwrap()` on an `Err` value: SegmentIdCollision { segment_id: [1, 0, 0, 0, 0, 0, 0, 0, 78, 41, 63, 95, 231, 176, 7, 10], paths: ["/var/folders/80/q4b8cv0d40v1vzxwgx2mk_rc0000gn/T/cse3-step7-8388608/recovery/shadow/01000000000000004e293f5fe7b0070a.rsh"] }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- step7_stage_medians_helper stdout ----
+
+thread 'step7_stage_medians_helper' (62321761) panicked at crates/residiuum-store/tests/cse3_stage2_step7_shadow_perf.rs:121:10:
+called `Result::unwrap()` on an `Err` value: SegmentIdCollision { segment_id: [1, 0, 0, 0, 0, 0, 0, 0, 238, 158, 43, 185, 66, 40, 33, 30], paths: ["/var/folders/80/q4b8cv0d40v1vzxwgx2mk_rc0000gn/T/cse3-step7-2097152/recovery/shadow/0100000000000000ee9e2bb94228211e.rsh"] }
+
+
+failures:
+    step7_smoke_candidate_harness
+    step7_stage_medians_helper
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+
+error: test failed, to rerun pass `-p residiuum-store --test cse3_stage2_step7_shadow_perf`
+     Running tests/cse3_stage2_step8_qual_activate.rs (target/debug/deps/cse3_stage2_step8_qual_activate-741c8b7fad309677)
+
+running 1 test
+test step8_qual_store_activation_ceremony ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/cse3_stage2_step9_product_campaign.rs (target/debug/deps/cse3_stage2_step9_product_campaign-8592b37c60e625eb)
+
+running 6 tests
+test step9_buffered_16mib_seal_size ... FAILED
+test step9_buffered_64mib_seal_size ... FAILED
+test step9_buffered_64mib_then_continue_seal ... ok
+test step9_fresh_store_default_is_compact_shadow ... ok
+test step9_product_campaign ... FAILED
+test step9_reopen_continue_write_preserves_shadows ... ok
+
+failures:
+
+---- step9_buffered_16mib_seal_size stdout ----
+target=16777216 seg 010000000000000034fda38aa0ee2f73.residiuum 2422
+
+thread 'step9_buffered_16mib_seal_size' (62321969) panicked at crates/residiuum-store/tests/cse3_stage2_step9_product_campaign.rs:509:5:
+target=16777216: expected sealed ≥12582912, got 2422
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- step9_buffered_64mib_seal_size stdout ----
+target=67108864 seg 010000000000000039f00c2b12e4cff9.residiuum 2422
+
+thread 'step9_buffered_64mib_seal_size' (62322030) panicked at crates/residiuum-store/tests/cse3_stage2_step9_product_campaign.rs:509:5:
+target=67108864: expected sealed ≥50331648, got 2422
+
+---- step9_product_campaign stdout ----
+step9 seal stages (s): drain=0.000 auth=0.112 shadow=0.001 catalog=0.000 hash=0.000 hydra_enq=0.000 chimera=0.000 reopen=0.018 total=0.131
+step9 product: target=8388608 ack=3019 life=3019 pub=310.46 seg/s compact=8.80% shadow_amp=101.7% frontier=true rsh=true recovery=true reopen=true continue=true compact_locators=true gates_pass=false
+
+thread 'step9_product_campaign' (62322703) panicked at crates/residiuum-store/tests/cse3_stage2_step9_product_campaign.rs:388:5:
+assertion failed: report.compact_amp_pct_mean <= 5.0
+
+
+failures:
+    step9_buffered_16mib_seal_size
+    step9_buffered_64mib_seal_size
+    step9_product_campaign
+
+test result: FAILED. 3 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.45s
+
+error: test failed, to rerun pass `-p residiuum-store --test cse3_stage2_step9_product_campaign`
+     Running tests/csq0_registry.rs (target/debug/deps/csq0_registry-14d65ad584218ca5)
+
+running 4 tests
+test csq0_crash_matrix_import_preserves_historical_ids ... FAILED
+test csq0_registry_graph_closed ... ok
+test csq0_registry_profile_and_identity ... ok
+test csq0_store_errors_registered ... ok
+
+failures:
+
+---- csq0_crash_matrix_import_preserves_historical_ids stdout ----
+
+thread 'csq0_crash_matrix_import_preserves_historical_ids' (62322877) panicked at crates/residiuum-store/tests/csq0_registry.rs:208:5:
+assertion `left == right` failed: historical failpoint IDs must be preserved
+  left: {"store.active.write_tail.after_sync", "store.checkpoint.before_write", "store.create.after_meta", "store.compact.before_segment_sync", "store.seal.before_dest_write", "heap_lifecycle.after_state_store", "store.seal.before_authoritative_rename", "store.active.write_tail.before", "store.seal.after_authoritative_publish", "store.dedup.before_write", "store.seal.after_active_remove", "store.dedup.after_rename", "store.catalog.before_write", "store.tier.before_placement_write", "heap_lifecycle.after_transition_receipt", "store.seal.after_dest_sync", "store.index_cache.before_write", "store.index_cache.after_write", "store.active.write_tail.short_write", "heap_lifecycle.after_purge_plan", "store.active.dir_sync", "store.active.write_tail.after_write", "store.seal.after_derived_enrichment", "store.create.after_active_header", "heap_lifecycle.after_coverage_destroy"}
+ right: {"store.dedup.after_rename", "store.active.write_tail.before", "store.seal.before_dest_write", "heap_lifecycle.after_coverage_destroy", "heap_lifecycle.after_state_store", "heap_lifecycle.after_transition_receipt", "store.create.after_meta", "store.catalog.before_write", "store.active.write_tail.after_write", "store.checkpoint.before_write", "store.tier.before_placement_write", "store.create.after_active_header", "heap_lifecycle.after_purge_plan", "store.index_cache.after_write", "store.dedup.before_write", "store.active.write_tail.after_sync", "store.active.write_tail.short_write", "store.active.dir_sync", "store.seal.after_dest_sync", "store.index_cache.before_write", "store.compact.before_segment_sync", "store.seal.after_active_remove"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    csq0_crash_matrix_import_preserves_historical_ids
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq0_registry`
+     Running tests/csq10_mutation_fuzz.rs (target/debug/deps/csq10_mutation_fuzz-617a0a545c6105d4)
+
+running 7 tests
+test csq_fuz_hostile_chunk_manifest_owned ... ok
+test csq_mut_catalog_mandatory_p0_owned ... ok
+test csq_mut_kill_absence_from_damage ... ok
+test csq_mut_kill_derived_as_authority ... ok
+test csq_mut_kill_fabricate_commit ... ok
+test csq_mut_kill_hybrid_event ... ok
+test csq_mut_kill_receipt_without_durability ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+     Running tests/csq11_compat_scale_soak.rs (target/debug/deps/csq11_compat_scale_soak-be9426009e4df2aa)
+
+running 7 tests
+test csq_compat_current_writer_reader_edge ... ok
+test csq_compat_pre_reset_product_meta_refused ... ok
+test csq_compat_unsupported_backup_profile_source_intact ... ok
+test csq_compat_wire_matrix_and_platform_registry ... ok
+test csq_journey_packaged_torture_reconcile ... ok
+test csq_platform_host_cell_registered ... ok
+test csq_scale_pr_safe_seed_campaign_reconcile ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.49s
+
+     Running tests/csq2_instrumentation.rs (target/debug/deps/csq2_instrumentation-e50afb43eeaa4e6e)
+
+running 9 tests
+test csq2_composed_failure_schedule_from_registry ... ok
+test csq2_crash_controller_resolves ... ok
+test csq2_embedded_crash_matrix_still_valid ... ok
+test csq2_every_boundary_has_approved_harness ... ok
+test csq2_harness_inventory_ready_flags ... ok
+test csq2_hit_proof_on_put_boundary ... ok
+test csq2_hit_proof_unreachable_is_fail ... ok
+test csq2_ordered_pair_executor_ci_smoke ... ok
+test csq2_source_failpoints_match_registry ... FAILED
+
+failures:
+
+---- csq2_source_failpoints_match_registry stdout ----
+
+thread 'csq2_source_failpoints_match_registry' (62323168) panicked at crates/residiuum-store/tests/csq2_instrumentation.rs:98:5:
+assertion `left == right` failed: source failpoints must equal registered failpoint boundaries
+  left: {"store.compact.before_segment_sync", "media.publish.after_create", "awo.install.frame.after", "awo.cook.after", "store.active.write_tail.after_sync", "heap_lifecycle.after_coverage_destroy", "media.publish.after_file_sync", "segalloc.before_reconstruct", "segalloc.after_reconstruct", "store.seal.before_authoritative_rename", "store.active.write_tail.after_write", "store.active.write_tail.short_write", "awo.persist.after_sync", "heap_migration.after_frame_admit", "store.index_cache.before_write", "store.checkpoint.before_write", "store.dedup.before_write", "heap_migration.before_frame_admit", "store.catalog.before_write", "segalloc.after_reserve_persist", "atomic.before_rename", "awo.persist.before", "atomic.after_tmp_sync", "store.active.dir_sync", "atomic.after_rename", "heap_migration.after_phase_advance", "rshd4.mode.before_persist", "segalloc.after_active_media", "media.publish.before_source_unlink", "rshd4.finalize.summary", "atomic.after_dir_sync", "awo.complete.before", "store.active.write_tail.before", "heap_migration.after_state_persist", "store.compact.after_create", "rshd4.frontier.publish", "store.dedup.after_rename", "store.compact.after_reclaim", "awo.publish.after", "store.compact.after_plan", "atomic.before_tmp_write", "store.index_cache.after_write", "heap_lifecycle.after_purge_plan", "store.compact.after_activate", "rshd4.shadow.flush", "rshd4.finalize.dir_sync", "store.seal.after_derived_enrichment", "awo.publish.before", "store.compact.job_write", "store.seal.after_active_remove", "store.tier.before_placement_write", "store.create.after_active_header", "awo.install.frame.before", "store.create.after_meta", "media.publish.partial_copy", "store.seal.after_dest_sync", "rshd4.mode.after_persist", "rshd4.finalize.sync", "store.compact.before_verify", "awo.persist.after_write", "store.seal.after_authoritative_publish", "store.compact.before_reclaim", "heap_lifecycle.after_state_store", "heap_lifecycle.after_transition_receipt", "heap_migration.before_phase_advance", "media.publish.after_link", "rshd4.finalize.rename", "segalloc.before_reserve_persist", "segalloc.after_reserve_before_media", "awo.cook.before", "store.compact.after_verify", "store.seal.before_dest_write", "atomic.tmp.short_write", "rshd4.shadow.append", "heap_migration.before_state_persist", "media.publish.after_dest_publish"}
+ right: {"atomic.before_rename", "store.active.dir_sync", "store.create.after_meta", "store.tier.before_placement_write", "heap_lifecycle.after_transition_receipt", "heap_migration.after_state_persist", "heap_migration.before_frame_admit", "store.active.write_tail.before", "heap_lifecycle.after_state_store", "store.dedup.before_write", "atomic.after_tmp_sync", "atomic.before_tmp_write", "heap_migration.after_frame_admit", "heap_migration.after_phase_advance", "heap_migration.before_phase_advance", "store.compact.after_plan", "store.index_cache.after_write", "store.catalog.before_write", "store.compact.after_verify", "atomic.after_dir_sync", "store.active.write_tail.short_write", "heap_lifecycle.after_purge_plan", "heap_migration.before_state_persist", "store.dedup.after_rename", "store.compact.after_activate", "store.compact.after_create", "store.seal.after_active_remove", "store.active.write_tail.after_sync", "heap_lifecycle.after_coverage_destroy", "store.compact.before_reclaim", "atomic.after_rename", "store.compact.before_verify", "store.compact.job_write", "store.checkpoint.before_write", "store.compact.after_reclaim", "store.seal.after_dest_sync", "store.active.write_tail.after_write", "store.seal.before_dest_write", "store.index_cache.before_write", "store.create.after_active_header", "atomic.tmp.short_write", "store.compact.before_segment_sync"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    csq2_source_failpoints_match_registry
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq2_instrumentation`
+     Running tests/csq5_crash_campaign.rs (target/debug/deps/csq5_crash_campaign-4534c2ee8829d287)
+
+running 8 tests
+test csq5_ci_subset_and_full_matrix_cells_run ... ok
+test csq5_composed_failure_pairs_execute ... ok
+test csq5_enospc_and_permission_campaign ... ok
+test csq5_outcome_validator_rejects_hybrid ... ok
+test csq5_portable_fs_image_and_path_alias ... ok
+test csq5_process_abort_lane_when_child_present ... ok
+test csq5_repeated_reopen_idempotent_after_fault ... ok
+test csq5_writer_lock_stale_and_contention ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.22s
+
+     Running tests/csq6_chunk_large_value.rs (target/debug/deps/csq6_chunk_large_value-9530ef6435d0efa8)
+
+running 9 tests
+test csq_chk_current_generation_exact_after_rewrites ... ok
+test csq_chk_generation_kernel_threshold_edges ... ok
+test csq_chk_locator_rebuild_preserves_complete ... ok
+test csq_chk_old_generation_does_not_poison_current ... ok
+test csq_chk_partial_reassembly_reports_missing_extents ... FAILED
+test csq_chk_unrelated_growth_does_not_poison_point_read ... ok
+test csq_def098_dual_chunked_put_latest_only ... ok
+test csq_def103_rewrite_heavy_latest_wins ... ok
+test csq_transcript_survival_after_seal_reopen ... ok
+
+failures:
+
+---- csq_chk_partial_reassembly_reports_missing_extents stdout ----
+
+thread 'csq_chk_partial_reassembly_reports_missing_extents' (62323746) panicked at crates/residiuum-store/tests/csq6_chunk_large_value.rs:206:10:
+chunked put history
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    csq_chk_partial_reassembly_reports_missing_extents
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.92s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq6_chunk_large_value`
+     Running tests/csq7_damage_salvage.rs (target/debug/deps/csq7_damage_salvage-c22795907f69e231)
+
+running 8 tests
+test csq_dmg_corrupt_bytes_never_verified_survivors_readable ... ok
+test csq_dmg_incomplete_tail_locality ... ok
+test csq_dmg_multi_fault_holes_and_incomplete_tail ... FAILED
+test csq_rec_healthy_work_continues_after_damage ... ok
+test csq_rec_live_export_vs_evidence_differential ... FAILED
+test csq_rec_live_reopen_rebuild_salvage_agree ... FAILED
+test csq_rec_reopen_identical_and_resalvage_idempotent ... FAILED
+test csq_rec_salvage_never_writes_source ... FAILED
+
+failures:
+
+---- csq_dmg_multi_fault_holes_and_incomplete_tail stdout ----
+
+thread 'csq_dmg_multi_fault_holes_and_incomplete_tail' (62323838) panicked at crates/residiuum-store/tests/csq7_damage_salvage.rs:127:39:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- csq_rec_live_export_vs_evidence_differential stdout ----
+
+thread 'csq_rec_live_export_vs_evidence_differential' (62323856) panicked at crates/residiuum-store/tests/csq7_damage_salvage.rs:329:51:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+---- csq_rec_live_reopen_rebuild_salvage_agree stdout ----
+
+thread 'csq_rec_live_reopen_rebuild_salvage_agree' (62323866) panicked at crates/residiuum-store/tests/csq7_damage_salvage.rs:227:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+---- csq_rec_reopen_identical_and_resalvage_idempotent stdout ----
+
+thread 'csq_rec_reopen_identical_and_resalvage_idempotent' (62323907) panicked at crates/residiuum-store/tests/csq7_damage_salvage.rs:174:28:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+---- csq_rec_salvage_never_writes_source stdout ----
+
+thread 'csq_rec_salvage_never_writes_source' (62323916) panicked at crates/residiuum-store/tests/csq7_damage_salvage.rs:251:57:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+
+failures:
+    csq_dmg_multi_fault_holes_and_incomplete_tail
+    csq_rec_live_export_vs_evidence_differential
+    csq_rec_live_reopen_rebuild_salvage_agree
+    csq_rec_reopen_identical_and_resalvage_idempotent
+    csq_rec_salvage_never_writes_source
+
+test result: FAILED. 3 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq7_damage_salvage`
+     Running tests/csq8_derived_maintenance.rs (target/debug/deps/csq8_derived_maintenance-7418c85a3297a1f2)
+
+running 9 tests
+test csq_bak_backup_restore_source_unchanged ... ok
+test csq_bak_tampered_manifest_rejected ... ok
+test csq_der_primary_cache_never_authority ... ok
+test csq_der_rebuild_deterministic ... ok
+test csq_mig_preflight_and_plan_only ... ok
+test csq_mig_roundtrip_preserves_source ... ok
+test csq_mnt_compact_retains_sources_and_live ... ok
+test csq_mnt_reclaim_requires_history_loss_ack ... ok
+test csq_mnt_scrub_non_mutation ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.35s
+
+     Running tests/csq9_concurrency_resources.rs (target/debug/deps/csq9_concurrency_resources-3cd89b2264847785)
+
+running 9 tests
+test csq_con_compact_then_inspect_consistent ... ok
+test csq_con_concurrent_readers_see_complete_generation ... ok
+test csq_con_second_writer_fenced ... ok
+test csq_con_shard_home_stable_and_reopen ... ok
+test csq_con_sharded_put_many_no_half_publication ... ok
+test csq_res_drop_releases_lock_for_reopen ... ok
+test csq_res_enospc_preserves_prior_authority ... ok
+test csq_res_read_budget_stops_explicitly ... ok
+test csq_res_size_limit_fails_before_effect ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.84s
+
+     Running tests/def_scan_001_segment_not_found.rs (target/debug/deps/def_scan_001_segment_not_found-251242ac72768d3e)
+
+running 11 tests
+test compact_reclaim_live_scan_remains_complete ... FAILED
+test empty_entries_with_holes_is_not_empty_live ... ok
+test high_churn_exclusive_writer_scan_still_complete ... ok
+test index_build_with_unresolved_locator_is_partial_not_ready ... FAILED
+test locator_fault_maps_to_hole_for_index_and_scan_sources ... ok
+test locator_offset_invalid_is_distinct ... ok
+test missing_segment_scan_reports_holes_and_survivors ... FAILED
+test multipage_continues_from_last_key_including_hole ... ok
+test present_media_unreadable_frame_is_locator_frame_verify_failed ... FAILED
+test scan_collection_hard_fails_on_unresolved_locator ... FAILED
+test scan_collection_returns_page_entries_when_complete ... ok
+
+failures:
+
+---- compact_reclaim_live_scan_remains_complete stdout ----
+
+thread 'compact_reclaim_live_scan_remains_complete' (62324403) panicked at crates/residiuum-store/tests/def_scan_001_segment_not_found.rs:496:14:
+called `Result::unwrap()` on an `Err` value: ConsistencyViolation("post-flip reclaim requires durable replacement Shadow before source retirement")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- index_build_with_unresolved_locator_is_partial_not_ready stdout ----
+
+thread 'index_build_with_unresolved_locator_is_partial_not_ready' (62324873) panicked at crates/residiuum-store/tests/def_scan_001_segment_not_found.rs:578:5:
+assertion failed: sealed.len() >= 2
+
+---- missing_segment_scan_reports_holes_and_survivors stdout ----
+
+thread 'missing_segment_scan_reports_holes_and_survivors' (62324886) panicked at crates/residiuum-store/tests/def_scan_001_segment_not_found.rs:329:5:
+assertion failed: sealed.len() >= 2
+
+---- present_media_unreadable_frame_is_locator_frame_verify_failed stdout ----
+
+thread 'present_media_unreadable_frame_is_locator_frame_verify_failed' (62324954) panicked at crates/residiuum-store/tests/def_scan_001_segment_not_found.rs:386:5:
+assertion failed: !sealed.is_empty()
+
+---- scan_collection_hard_fails_on_unresolved_locator stdout ----
+
+thread 'scan_collection_hard_fails_on_unresolved_locator' (62324959) panicked at crates/residiuum-store/tests/def_scan_001_segment_not_found.rs:211:5:
+assertion failed: sealed.len() >= 2
+
+
+failures:
+    compact_reclaim_live_scan_remains_complete
+    index_build_with_unresolved_locator_is_partial_not_ready
+    missing_segment_scan_reports_holes_and_survivors
+    present_media_unreadable_frame_is_locator_frame_verify_failed
+    scan_collection_hard_fails_on_unresolved_locator
+
+test result: FAILED. 6 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.46s
+
+error: test failed, to rerun pass `-p residiuum-store --test def_scan_001_segment_not_found`
+     Running tests/derived_catalog_checkpoint.rs (target/debug/deps/derived_catalog_checkpoint-d1d613b02b2761d4)
+
+running 3 tests
+test catalog_apply_cost_flat_across_segment_counts ... ok
+test reopen_exact_after_deleting_derived_catalogs ... ok
+test reopen_exact_before_pending_catalog_checkpoint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 74.48s
+
+     Running tests/hp002_one_heap.rs (target/debug/deps/hp002_one_heap-5e6a9077892c0046)
+
+running 1 test
+test bound_segment_never_admits_foreign_frame ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hp004_catalog_rebuild.rs (target/debug/deps/hp004_catalog_rebuild-8dcee6ca2a97e8c9)
+
+running 1 test
+test delete_catalogs_rebuilds_identical_names_aliases_ids_owners ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+
+     Running tests/hp006_heap_migration.rs (target/debug/deps/hp006_heap_migration-6c771716896472f2)
+
+running 3 tests
+test crash_injection_converges_without_duplicate_or_lost_frames ... ok
+test inventory_hash_rejects_duplicate_segment_ids ... ok
+test phase6_refuses_unlabelled_active_frames ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/hp009_lifecycle.rs (target/debug/deps/hp009_lifecycle-4ecece24acc36d7a)
+
+running 12 tests
+test aws_kms_config_surface ... ok
+test damage_to_one_heap_leaves_other_readable ... ok
+test data_key_destruction_and_permanent_tombstone ... ok
+test data_key_provider_hsm_scaffold_and_in_process ... ok
+test disaster_recovery_retain_id_takeover_fences_old_deployment ... ok
+test incomplete_purge_unavailable_tier_or_replica_stays_retired ... ok
+test live_filesystem_multi_tier_media_wipe ... ok
+test live_media_wipe_unavailable_tier_root_stays_retired ... ok
+test mixed_heap_salvage_classification_drill ... ok
+test payload_only_restore_cannot_grant_access ... ok
+test purge_emits_verifiable_receipt_and_holds_block ... ok
+test retention_scheduler_blocks_purge_until_window_elapses ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+     Running tests/hp010_qualification.rs (target/debug/deps/hp010_qualification-835e9d064af07603)
+
+running 24 tests
+test complete_path_and_external_review_artifacts ... ok
+test derived_path_indexes_streams_scoped ... ok
+test differential_ni_labelled_units ... ok
+test fuzz_budget_structured_mutations ... ok
+test h6_connected_model ... ok
+test h6_decide_obligations_connected ... ok
+test h6_heap_authority_model ... ok
+test h6_isolation_claim_partial_evidence ... ok
+test h6_pure_proof_bundle_connected ... ok
+test heapcap_terminates_on_lifecycle ... ok
+test isolation_profile_registry_closed ... ok
+test key_loss_drill ... ok
+test lifecycle_crash_matrix_peer_heaps_unaffected ... ok
+test load_latency_budget ... ok
+test matrix_records_unqualified_claim_and_mandatory_structure ... ok
+test metadata_hardened_operational_confinement ... ok
+test operational_metrics_logs_export_scoped ... ok
+test operator_runbook_present ... ok
+test query_escape_faulty_planner_confined ... ok
+test restore_drills_payload_and_retain_id ... ok
+test retention_and_incomplete_purge_still_retired ... ok
+test security_revision_bump_terminates_without_lifecycle_helper ... ok
+test single_owner_admit ... ok
+test support_bundle_health_detail_scoped ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+     Running tests/hydra_segment_index.rs (target/debug/deps/hydra_segment_index-7866060b12897da2)
+
+running 2 tests
+test rebuild_hydra_multithread ... ok
+test seal_writes_hydra_sidecar ... FAILED
+
+failures:
+
+---- seal_writes_hydra_sidecar stdout ----
+
+thread 'seal_writes_hydra_sidecar' (62328261) panicked at crates/residiuum-store/tests/hydra_segment_index.rs:27:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    seal_writes_hydra_sidecar
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+error: test failed, to rerun pass `-p residiuum-store --test hydra_segment_index`
+     Running tests/p0_segment_id_collision.rs (target/debug/deps/p0_segment_id_collision-1136b300b4615de0)
+
+running 22 tests
+test p0_async_finalize_refuses_existing_sealed ... ok
+test p0_collision_before_cache_hit_open ... ok
+test p0_collision_before_full_rebuild ... ok
+test p0_compaction_and_sealed_collision_refuses_open ... ok
+test p0_cross_record_sentinel_never_swaps ... ok
+test p0_disk_pread_rejects_wrong_record_at_offset ... ok
+test p0_filename_descriptor_mismatch_refuses ... ok
+test p0_pending_recovery_refuses_existing_sealed ... ok
+test p0_planted_active_pending_collision_refuses_open ... ok
+test p0_planted_active_sealed_collision_refuses_open ... ok
+test p0_protected_pair_rename_refuses_existing_sealed ... ok
+test p0_publish_dest_exists_is_collision_bytes_unchanged ... ok
+test p0_reproducer_async_multi_shard ... ok
+test p0_reproducer_async_single_shard ... ok
+test p0_reproducer_cache_miss_rebuild ... ok
+test p0_reproducer_sync_single_shard ... ok
+test p0_shadow_publish_refuses_existing ... ok
+test p0_summary_frame_publish_refuses_existing_sealed ... ok
+test p0_sync_finalize_refuses_existing_sealed ... ok
+test p0_thousand_reopen_rotation_unique_ids ... ok
+test p0_tier_and_sealed_collision_refuses_open ... ok
+test p0_tier_transfer_refuses_existing_dest ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.44s
+
+     Running tests/reopen_before_enrichment.rs (target/debug/deps/reopen_before_enrichment-0c2a7100a895cf65)
+
+running 1 test
+test reopen_exact_while_content_hash_pending ... FAILED
+
+failures:
+
+---- reopen_exact_while_content_hash_pending stdout ----
+
+thread 'reopen_exact_while_content_hash_pending' (62328841) panicked at crates/residiuum-store/tests/reopen_before_enrichment.rs:38:5:
+auto-rotate with enrichment off must leave typed ContentHashState::Pending
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    reopen_exact_while_content_hash_pending
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+error: test failed, to rerun pass `-p residiuum-store --test reopen_before_enrichment`
+     Running tests/salvage.rs (target/debug/deps/salvage-e6c02253b3f3233e)
+
+running 5 tests
+test destroy_catalogs_and_indexes_still_recovers ... ok
+test incomplete_tail_does_not_poison_earlier_frames ... ok
+test middle_byte_corruption_still_finds_later_items_via_salvage ... ok
+test rebuild_index_matches_get ... ok
+test salvage_to_new_path_is_non_destructive ... FAILED
+
+failures:
+
+---- salvage_to_new_path_is_non_destructive stdout ----
+
+thread 'salvage_to_new_path_is_non_destructive' (62328881) panicked at crates/residiuum-store/tests/salvage.rs:95:45:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    salvage_to_new_path_is_non_destructive
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+
+error: test failed, to rerun pass `-p residiuum-store --test salvage`
+     Running tests/section16_store.rs (target/debug/deps/section16_store-473a217d677f175a)
+
+running 14 tests
+test case01_truncate_active_frame_offsets ... ok
+test case02_overwrite_byte_ranges_in_segment ... ok
+test case03_delete_middle_frame_in_segment ... ok
+test case04_delete_middle_segment ... ok
+test case05_destroy_segment_headers ... FAILED
+test case06_destroy_segment_trailers ... ok
+test case07_destroy_derived_state ... ok
+test case08_corrupt_frame_length_fields ... ok
+test case09_insert_garbage_between_frames ... ok
+test case10_reorder_and_duplicate_segments ... FAILED
+test incomplete_active_tail_after_multi_segment ... ok
+test index_cache_accelerates_open_and_is_optional ... ok
+test index_cache_not_sole_map_after_segment_delete ... FAILED
+test store_descriptor_written_and_readable ... ok
+
+failures:
+
+---- case05_destroy_segment_headers stdout ----
+
+thread 'case05_destroy_segment_headers' (62328967) panicked at crates/residiuum-store/tests/section16_store.rs:239:35:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- case10_reorder_and_duplicate_segments stdout ----
+
+thread 'case10_reorder_and_duplicate_segments' (62329061) panicked at crates/residiuum-store/tests/section16_store.rs:411:35:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("filename segment id does not match descriptor segment id")
+
+---- index_cache_not_sole_map_after_segment_delete stdout ----
+
+thread 'index_cache_not_sole_map_after_segment_delete' (62329139) panicked at crates/residiuum-store/tests/section16_store.rs:507:30:
+called `Result::unwrap()` on an `Err` value: LocatorFault(LocatorFault { kind: SegmentNotFound, segment_id: [2, 0, 0, 0, 0, 0, 0, 0, 95, 76, 1, 108, 187, 33, 238, 183], frame_offset: 181, path: None, file_len: None, observed_segment_id: None, cause: None })
+
+
+failures:
+    case05_destroy_segment_headers
+    case10_reorder_and_duplicate_segments
+    index_cache_not_sole_map_after_segment_delete
+
+test result: FAILED. 11 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.23s
+
+error: test failed, to rerun pass `-p residiuum-store --test section16_store`
+     Running tests/stage6_bench_skeleton.rs (target/debug/deps/stage6_bench_skeleton-8e5f7cbe2ff14a44)
+
+running 1 test
+test bench_skeleton_point_read_append_salvage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+
+     Running tests/stage6_store.rs (target/debug/deps/stage6_store-4a067c2204779403)
+
+running 6 tests
+test checkpoint_declares_coverage ... ok
+test chunked_put_get_and_partial_missing_middle ... FAILED
+test compact_live_preserves_current_values ... ok
+test secondary_index_create_lookup_delete ... ok
+test subject_history_orders_puts_and_deletes ... ok
+test wipe_indexes_and_catalogs_rebuild_same_content ... ok
+
+failures:
+
+---- chunked_put_get_and_partial_missing_middle stdout ----
+
+thread 'chunked_put_get_and_partial_missing_middle' (62329234) panicked at crates/residiuum-store/tests/stage6_store.rs:111:5:
+assertion failed: resolved.len() >= 3
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    chunked_put_get_and_partial_missing_middle
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage6_store`
+     Running tests/stage9_archive_bench.rs (target/debug/deps/stage9_archive_bench-91bd8c6e8edbf40f)
+
+running 1 test
+test archive_path_bench_skeleton ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+
+     Running tests/stage9_tiering.rs (target/debug/deps/stage9_tiering-dca6c71ca104cf82)
+
+running 7 tests
+test archive_path_note_not_hot_slo ... FAILED
+test cold_search_summaries_list_archive_tier ... FAILED
+test copy_then_offline_archive_is_coverage_hole_not_empty_success ... FAILED
+test format_classification_preserves_unsupported_identity ... FAILED
+test hierarchical_catalog_rebuilds_after_loss ... FAILED
+test migration_evidence_written ... FAILED
+test move_segment_to_cold_preserves_identity_and_data ... FAILED
+
+failures:
+
+---- archive_path_note_not_hot_slo stdout ----
+
+thread 'archive_path_note_not_hot_slo' (62329334) panicked at crates/residiuum-store/tests/stage9_tiering.rs:258:10:
+data segment
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- cold_search_summaries_list_archive_tier stdout ----
+
+thread 'cold_search_summaries_list_archive_tier' (62329341) panicked at crates/residiuum-store/tests/stage9_tiering.rs:173:10:
+data segment
+
+---- copy_then_offline_archive_is_coverage_hole_not_empty_success stdout ----
+
+thread 'copy_then_offline_archive_is_coverage_hole_not_empty_success' (62329345) panicked at crates/residiuum-store/tests/stage9_tiering.rs:89:10:
+data-bearing sealed segment
+
+---- format_classification_preserves_unsupported_identity stdout ----
+
+thread 'format_classification_preserves_unsupported_identity' (62329353) panicked at crates/residiuum-store/tests/stage9_tiering.rs:211:39:
+index out of bounds: the len is 0 but the index is 0
+
+---- hierarchical_catalog_rebuilds_after_loss stdout ----
+
+thread 'hierarchical_catalog_rebuilds_after_loss' (62329368) panicked at crates/residiuum-store/tests/stage9_tiering.rs:141:5:
+assertion failed: !before.is_empty()
+
+---- migration_evidence_written stdout ----
+
+thread 'migration_evidence_written' (62329391) panicked at crates/residiuum-store/tests/stage9_tiering.rs:231:10:
+data segment
+
+---- move_segment_to_cold_preserves_identity_and_data stdout ----
+
+thread 'move_segment_to_cold_preserves_identity_and_data' (62329394) panicked at crates/residiuum-store/tests/stage9_tiering.rs:28:10:
+data-bearing sealed segment
+
+
+failures:
+    archive_path_note_not_hot_slo
+    cold_search_summaries_list_archive_tier
+    copy_then_offline_archive_is_coverage_hole_not_empty_success
+    format_classification_preserves_unsupported_identity
+    hierarchical_catalog_rebuilds_after_loss
+    migration_evidence_written
+    move_segment_to_cold_preserves_identity_and_data
+
+test result: FAILED. 0 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage9_tiering`
+     Running tests/stage_def_010_012_013.rs (target/debug/deps/stage_def_010_012_013-05a4771eca682735)
+
+running 5 tests
+test def_010_content_identity_helper_stable ... ok
+test def_010_write_dedup_exact_retry_and_content_mismatch ... ok
+test def_012_offline_tier_makes_ordinary_scan_incomplete ... FAILED
+test def_013_memory_not_flushed_by_later_durable_write ... ok
+test def_013_memory_then_durable_does_not_contaminate_catalog ... ok
+
+failures:
+
+---- def_012_offline_tier_makes_ordinary_scan_incomplete stdout ----
+
+thread 'def_012_offline_tier_makes_ordinary_scan_incomplete' (62329414) panicked at crates/residiuum-store/tests/stage_def_010_012_013.rs:158:10:
+data-bearing sealed segment
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    def_012_offline_tier_makes_ordinary_scan_incomplete
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_010_012_013`
+     Running tests/stage_def_011_salvage.rs (target/debug/deps/stage_def_011_salvage-44f3a6e21c1c6f50)
+
+running 6 tests
+test export_live_state_uses_new_lineage ... ok
+test incomplete_tail_does_not_poison_salvage_to ... FAILED
+test re_salvage_is_deterministic_on_frame_bytes ... FAILED
+test salvage_copies_verified_frames_byte_identical ... FAILED
+test salvage_preserves_history_tombstones_and_event_ids ... FAILED
+test salvage_records_holes_and_still_recovers_survivors ... FAILED
+
+failures:
+
+---- incomplete_tail_does_not_poison_salvage_to stdout ----
+
+thread 'incomplete_tail_does_not_poison_salvage_to' (62329477) panicked at crates/residiuum-store/tests/stage_def_011_salvage.rs:256:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- re_salvage_is_deterministic_on_frame_bytes stdout ----
+
+thread 're_salvage_is_deterministic_on_frame_bytes' (62329484) panicked at crates/residiuum-store/tests/stage_def_011_salvage.rs:204:57:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+---- salvage_copies_verified_frames_byte_identical stdout ----
+
+thread 'salvage_copies_verified_frames_byte_identical' (62329499) panicked at crates/residiuum-store/tests/stage_def_011_salvage.rs:90:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+---- salvage_preserves_history_tombstones_and_event_ids stdout ----
+
+thread 'salvage_preserves_history_tombstones_and_event_ids' (62329506) panicked at crates/residiuum-store/tests/stage_def_011_salvage.rs:39:45:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+---- salvage_records_holes_and_still_recovers_survivors stdout ----
+
+thread 'salvage_records_holes_and_still_recovers_survivors' (62329514) panicked at crates/residiuum-store/tests/stage_def_011_salvage.rs:140:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+
+failures:
+    incomplete_tail_does_not_poison_salvage_to
+    re_salvage_is_deterministic_on_frame_bytes
+    salvage_copies_verified_frames_byte_identical
+    salvage_preserves_history_tombstones_and_event_ids
+    salvage_records_holes_and_still_recovers_survivors
+
+test result: FAILED. 1 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.83s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_011_salvage`
+     Running tests/stage_def_020_021_lock_coverage.rs (target/debug/deps/stage_def_020_021_lock_coverage-b000bea5ab5bb652)
+
+running 6 tests
+test complete_scan_succeeds_when_all_payloads_readable ... ok
+test cross_process_second_writer_fails ... ok
+test drop_writer_releases_lock_for_reopen ... ok
+test inspect_can_run_while_writer_holds_lock ... ok
+test live_logical_entries_fails_closed_when_chunks_missing ... FAILED
+test second_writer_handle_fails_before_touching_segments ... ok
+
+failures:
+
+---- live_logical_entries_fails_closed_when_chunks_missing stdout ----
+
+thread 'live_logical_entries_fails_closed_when_chunks_missing' (62329589) panicked at crates/residiuum-store/tests/stage_def_020_021_lock_coverage.rs:101:44:
+called `Result::unwrap_err()` on an `Ok` value: [([98, 105, 103], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]), ([115, 109, 97, 108, 108], [111, 107])]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    live_logical_entries_fails_closed_when_chunks_missing
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_020_021_lock_coverage`
+     Running tests/stage_def_021_atomic_meta.rs (target/debug/deps/stage_def_021_atomic_meta-4c762397e2f86bf3)
+
+running 8 tests
+test atomic_write_replaces_without_torn_primary ... ok
+test failpoint_after_tmp_sync_leaves_old_or_absent ... ok
+test failpoint_before_rename_leaves_old_generation ... ok
+test index_cache_and_catalog_use_atomic_helper ... ok
+test keep_previous_and_recover_from_prev ... ok
+test lifecycle_policy_keeps_previous_and_loads_fallback ... ok
+test store_meta_writes_survive_reopen ... ok
+test write_dedup_table_keeps_previous_generation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+
+     Running tests/stage_def_022_crash_matrix.rs (target/debug/deps/stage_def_022_crash_matrix-929a8117a2380da6)
+
+running 6 tests
+test ci_subset_failpoints_respect_reopen_invariants ... FAILED
+test crash_matrix_document_is_valid ... ok
+test full_matrix_when_env_set ... ok
+test io_fault_injection_suite ... ok
+test multiprocess_abort_after_sync_full_or_ci ... ok
+test multiprocess_abort_before_write ... ok
+
+failures:
+
+---- ci_subset_failpoints_respect_reopen_invariants stdout ----
+
+thread 'ci_subset_failpoints_respect_reopen_invariants' (62329663) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: store.seal.before_dest_write
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'ci_subset_failpoints_respect_reopen_invariants' (62329663) panicked at crates/residiuum-store/tests/stage_def_022_crash_matrix.rs:651:9:
+seal must panic at failpoint store.seal.before_authoritative_rename
+
+
+failures:
+    ci_subset_failpoints_respect_reopen_invariants
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.13s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_022_crash_matrix`
+     Running tests/stage_def_023_write_path.rs (target/debug/deps/stage_def_023_write_path-9b545c79e89a6cf2)
+
+running 7 tests
+test delete_derived_state_reconstructs_identical_logical_results ... ok
+test durable_write_ack_independent_of_retained_volume ... ok
+test frontier_checkpoint_plus_active_tail_matches_full_rebuild ... ok
+test memory_mode_never_enters_durable_index_cache ... ok
+test rate_limited_checkpoint_still_allows_recovery ... ok
+test seal_cost_independent_of_retained_segment_count ... FAILED
+test write_path_bench_disclosure ... ok
+
+failures:
+
+---- seal_cost_independent_of_retained_segment_count stdout ----
+
+thread 'seal_cost_independent_of_retained_segment_count' (62330105) panicked at crates/residiuum-store/tests/stage_def_023_write_path.rs:267:5:
+assertion failed: store.segment_catalog().len() >= seals
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    seal_cost_independent_of_retained_segment_count
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.48s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_023_write_path`
+     Running tests/stage_def_024_compaction.rs (target/debug/deps/stage_def_024_compaction-3583d1450a1a3cf7)
+
+running 7 tests
+test cancel_before_activate_removes_output ... ok
+test default_compact_retains_sources_and_history ... ok
+test failpoint_after_create_recovers_on_reopen ... ok
+test reclaim_after_activate_measures_bytes_and_keeps_live ... FAILED
+test reclaim_requires_history_loss_ack ... ok
+test refuse_cancel_after_activate ... ok
+test two_phase_reclaim_via_explicit_api ... FAILED
+
+failures:
+
+---- reclaim_after_activate_measures_bytes_and_keeps_live stdout ----
+
+thread 'reclaim_after_activate_measures_bytes_and_keeps_live' (62330308) panicked at crates/residiuum-store/tests/stage_def_024_compaction.rs:123:10:
+called `Result::unwrap()` on an `Err` value: ConsistencyViolation("post-flip reclaim requires durable replacement Shadow before source retirement")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- two_phase_reclaim_via_explicit_api stdout ----
+
+thread 'two_phase_reclaim_via_explicit_api' (62330362) panicked at crates/residiuum-store/tests/stage_def_024_compaction.rs:181:63:
+called `Result::unwrap()` on an `Err` value: ConsistencyViolation("post-flip reclaim requires durable replacement Shadow before source retirement")
+
+
+failures:
+    reclaim_after_activate_measures_bytes_and_keeps_live
+    two_phase_reclaim_via_explicit_api
+
+test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.84s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_024_compaction`
+     Running tests/stage_def_025_identifiers.rs (target/debug/deps/stage_def_025_identifiers-08bcd3f3688dc375)
+
+running 7 tests
+test clone_dirs_get_distinct_store_ids ... ok
+test csprng_random_ids_unique_and_nonzero ... ok
+test event_ids_are_random_not_counter_prefixed ... ok
+test id_profile_tag ... ok
+test item_id_stable_event_id_changes_on_overwrite ... ok
+test segment_ids_sortable_and_recover_after_reopen ... ok
+test store_ids_differ_across_create_and_restart_preserves ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.17s
+
+     Running tests/stage_def_026_cursors.rs (target/debug/deps/stage_def_026_cursors-57db96de54f72cda)
+
+running 9 tests
+test cross_store_token_rejected ... ok
+test cursor_profile_tag ... ok
+test empty_store_single_complete_page ... ok
+test mutation_stales_cursor_generation ... ok
+test no_duplicates_across_pages ... ok
+test paged_scan_matches_full_scan ... ok
+test prefix_not_starved_by_earlier_keys ... ok
+test prefix_scope_and_order ... ok
+test tampered_token_rejected ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.99s
+
+     Running tests/stage_def_050_backup.rs (target/debug/deps/stage_def_050_backup-a42ffeb2c15c6940)
+
+running 8 tests
+test backup_refuses_non_empty_destination ... ok
+test exclusive_backup_is_flushed_and_restorable ... ok
+test inspect_backup_uses_on_disk_consistency ... ok
+test reassign_identity_produces_distinct_store ... FAILED
+test restore_refuses_existing_store ... ok
+test salvage_is_not_a_backup_package ... FAILED
+test source_unchanged_after_backup ... ok
+test tampered_manifest_hash_rejected ... ok
+
+failures:
+
+---- reassign_identity_produces_distinct_store stdout ----
+
+thread 'reassign_identity_produces_distinct_store' (62330716) panicked at crates/residiuum-store/tests/stage_def_050_backup.rs:107:6:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- salvage_is_not_a_backup_package stdout ----
+
+thread 'salvage_is_not_a_backup_package' (62330736) panicked at crates/residiuum-store/tests/stage_def_050_backup.rs:204:38:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+
+failures:
+    reassign_identity_produces_distinct_store
+    salvage_is_not_a_backup_package
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_050_backup`
+     Running tests/stage_def_051_scrub.rs (target/debug/deps/stage_def_051_scrub-fda910326f8abd8b)
+
+running 5 tests
+test clean_rescrub_clears_resolved_findings ... ok
+test clean_store_scrub_completes_without_findings ... ok
+test content_hash_mismatch_against_placement ... ok
+test injected_corruption_detected_and_quarantined ... ok
+test pause_resume_and_bounded_steps ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.39s
+
+     Running tests/stage_def_052_migrate.rs (target/debug/deps/stage_def_052_migrate-5cbc7f2086967bf1)
+
+running 8 tests
+test full_migration_roundtrip_preserves_source ... ok
+test job_content_hash_tamper_detected ... ok
+test phased_apply_verify_and_rollback ... ok
+test preflight_and_plan_only ... ok
+test preflight_blocks_existing_store_dest ... ok
+test preflight_via_free_function ... ok
+test verify_after_apply_skip ... ok
+test wire_and_protocol_matrix_declared ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.48s
+
+     Running tests/stage_def_096_async_lifecycle.rs (target/debug/deps/stage_def_096_async_lifecycle-9e07b7c3a686f9f1)
+
+running 4 tests
+test async_auto_seal_preserves_gets_and_writes_hydra ... ok
+test async_put_loop_completes_with_backpressure ... ok
+test explicit_seal_active_still_sync_and_drains ... FAILED
+test reopen_recovers_pending_seal_files ... ok
+
+failures:
+
+---- explicit_seal_active_still_sync_and_drains stdout ----
+
+thread 'explicit_seal_active_still_sync_and_drains' (62331149) panicked at crates/residiuum-store/tests/stage_def_096_async_lifecycle.rs:62:5:
+assertion `left == right` failed
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    explicit_seal_active_still_sync_and_drains
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.03s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_096_async_lifecycle`
+     Running tests/stage_def_096_sharded_writers.rs (target/debug/deps/stage_def_096_sharded_writers-5076aa0a33e5d352)
+
+running 8 tests
+test create_with_shards_routes_and_gets ... ok
+test put_many_completes_quickly ... ok
+test sharded_async_seal_preserves_gets ... ok
+test sharded_put_many_parallel_records_boundary_probe ... ok
+test sharded_put_many_parallel_roundtrip ... ok
+test sharded_reopen_recovers_all_shards ... ok
+test single_shard_create_keeps_legacy_layout ... ok
+test subject_home_shard_is_stable ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.75s
+
+     Running tests/stage_def_097_token_keys.rs (target/debug/deps/stage_def_097_token_keys-eeec93d09e935f31)
+
+running 6 tests
+test doctor_safe_diagnostics_omit_secret_bytes ... ok
+test forged_token_from_public_ids_only_fails ... ok
+test keyring_file_created_and_not_public_derivable ... ok
+test paged_scan_survives_reopen_with_same_keyring ... ok
+test profiles_and_secret_size ... ok
+test rotation_grace_and_retire ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+     Running tests/stage_def_098_chunk_generation.rs (target/debug/deps/stage_def_098_chunk_generation-978d119c4f21e81f)
+
+running 6 tests
+test chunked_overwrite_returns_latest_generation ... ok
+test chunked_overwrite_survives_reopen ... ok
+test different_key_chunked_values_isolated ... ok
+test inline_to_chunked_to_inline ... ok
+test many_consecutive_chunked_generations ... ok
+test same_size_larger_and_smaller_chunked_replacements ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.97s
+
+     Running tests/stage_def_099_historical_get.rs (target/debug/deps/stage_def_099_historical_get-0067db34aa477732)
+
+running 7 tests
+test delete_boundary_stops_default_search ... ok
+test delete_event_projects_as_tombstone ... ok
+test exact_inline_and_chunked_event_reads ... ok
+test find_last_complete_after_replacements ... ok
+test missing_event_id_errors ... ok
+test ordinary_get_never_auto_falls_back ... ok
+test recovery_is_read_only ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/stage_def_100_coverage_scans.rs (target/debug/deps/stage_def_100_coverage_scans-f493205f38cb1246)
+
+running 6 tests
+test cursor_tamper_rejected_on_key_scan ... ok
+test document_page_keeps_key_when_body_partial ... FAILED
+test dual_keys_one_chunked_one_inline_partial_page_streams_healthy ... ok
+test empty_store_key_scan_is_complete ... ok
+test incomplete_reason_labels_exist ... ok
+test key_scan_lists_keys_without_body_reassembly ... ok
+
+failures:
+
+---- document_page_keeps_key_when_body_partial stdout ----
+
+thread 'document_page_keeps_key_when_body_partial' (62331543) panicked at crates/residiuum-store/tests/stage_def_100_coverage_scans.rs:64:15:
+segment file
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    document_page_keeps_key_when_body_partial
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_100_coverage_scans`
+     Running tests/stage_def_101_writer_lock.rs (target/debug/deps/stage_def_101_writer_lock-606c89180ac15762)
+
+running 9 tests
+test bounded_wait_cancel_creates_no_store_effect ... ok
+test observe_via_writer_lock_api ... ok
+test open_inspect_while_writer_live ... ok
+test stale_pid_text_does_not_block_free_lock ... ok
+test try_open_never_creates ... ok
+test two_handles_same_process_in_process_class ... ok
+test wait_timeout_structured ... ok
+test writer_lock_status_free_after_close ... ok
+test writer_lock_status_in_process_while_held ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running tests/stage_def_102_primary_cache_diag.rs (target/debug/deps/stage_def_102_primary_cache_diag-25b599a868e2fff1)
+
+running 11 tests
+test absent_cache_reports_absent_and_rebuilds_logically ... ok
+test ahead_frontier_classified_corrupt ... ok
+test corrupt_hash_is_corrupt ... ok
+test delete_derived_logically_neutral ... ok
+test diag_matches_measured_file_bytes ... ok
+test foreign_store_id_classified ... ok
+test lifecycle_diag_reports_shards_and_seals ... ok
+test minimal_cache_with_nonempty_active_is_classified ... ok
+test stale_sealed_fingerprint_classified ... ok
+test truncated_cache_is_corrupt ... ok
+test unsupported_magic_classified ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.79s
+
+     Running tests/stage_def_103_large_value_policy.rs (target/debug/deps/stage_def_103_large_value_policy-bc672f3af8443f6a)
+
+running 7 tests
+test effective_with_chooses_tightest ... ok
+test independent_turns_survive_sibling_damage_model ... ok
+test invalid_policy_rejected_before_apply ... ok
+test over_max_logical_rejects_with_zero_effect ... ok
+test rewrite_heavy_key_helpers ... ok
+test threshold_minus_exact_plus_one_layout ... ok
+test tighter_policy_keeps_old_data_readable ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+     Running tests/stage_def_104_crash_recovery_contract.rs (target/debug/deps/stage_def_104_crash_recovery_contract-aedf4f953800c646)
+
+running 11 tests
+test contract_document_present ... ok
+test forbidden_get_no_silent_historical_fallback ... ok
+test forbidden_lock_held_is_not_empty_store ... ok
+test forbidden_payload_too_large_zero_effect ... ok
+test journey_chunked_overwrite_generation_exact ... ok
+test journey_derived_cache_wipe_neutral ... ok
+test journey_durable_put_ack_survives_reopen ... ok
+test journey_key_and_document_pages ... ok
+test journey_prior_complete_via_history_apis ... ok
+test journey_transcript_independent_turns ... ok
+test journey_writer_held_inspect_not_empty ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s
+
+     Running tests/store_basic.rs (target/debug/deps/store_basic-870e26f083ad580c)
+
+running 6 tests
+test memory_mode_not_visible_after_reopen ... ok
+test open_is_create_or_open ... ok
+test overwrite_put_updates_current_state ... ok
+test put_get_delete_roundtrip ... ok
+test reopen_after_durable_writes ... ok
+test seal_moves_active_to_segments ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+     Running tests/wm_seal_probe.rs (target/debug/deps/wm_seal_probe-4f0425aefab267eb)
+
+running 2 tests
+test diag_watermark_seal_succeeds_without_clobbering_prefix ... ok
+test product_watermark_seal_truncates_prealloc_tail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.27s
+
+   Doc-tests residiuum_store
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: 24 targets failed:
+    `-p residiuum-store --lib`
+    `-p residiuum-store --test cse2r_safety_rollback`
+    `-p residiuum-store --test cse3_stage2_step7_shadow_perf`
+    `-p residiuum-store --test cse3_stage2_step9_product_campaign`
+    `-p residiuum-store --test csq0_registry`
+    `-p residiuum-store --test csq2_instrumentation`
+    `-p residiuum-store --test csq6_chunk_large_value`
+    `-p residiuum-store --test csq7_damage_salvage`
+    `-p residiuum-store --test def_scan_001_segment_not_found`
+    `-p residiuum-store --test hydra_segment_index`
+    `-p residiuum-store --test reopen_before_enrichment`
+    `-p residiuum-store --test salvage`
+    `-p residiuum-store --test section16_store`
+    `-p residiuum-store --test stage6_store`
+    `-p residiuum-store --test stage9_tiering`
+    `-p residiuum-store --test stage_def_010_012_013`
+    `-p residiuum-store --test stage_def_011_salvage`
+    `-p residiuum-store --test stage_def_020_021_lock_coverage`
+    `-p residiuum-store --test stage_def_022_crash_matrix`
+    `-p residiuum-store --test stage_def_023_write_path`
+    `-p residiuum-store --test stage_def_024_compaction`
+    `-p residiuum-store --test stage_def_050_backup`
+    `-p residiuum-store --test stage_def_096_async_lifecycle`
+    `-p residiuum-store --test stage_def_100_coverage_scans`

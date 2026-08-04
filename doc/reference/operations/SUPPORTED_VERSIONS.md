@@ -34,6 +34,15 @@ Until a production maturity announcement:
 3. Experimental surfaces (`serve-cluster`, unfinished Studio paths) are
    **unsupported for production** even on tip.
 
+### Packaging 0.2.0 — unsafe for continued store writes
+
+Workspace packaging **0.2.0** / `residiuum-store` **0.2.0** is **unsafe for
+continued writes across reopen/rotation** due to segment-identity remint and
+sealed-media replacement (see
+[SECURITY_ADVISORY_SEGID_0.2.0.md](../../todo/performance-qualification/SECURITY_ADVISORY_SEGID_0.2.0.md)).
+Upgrade to **≥ 0.2.1**. Prefer yanking published 0.2.0 crates on crates.io when
+credentials allow. Affected on-disk stores are **not** auto-repaired.
+
 ## Version identity
 
 - **Crate/workspace version:** monorepo `VERSION` / Cargo package versions.

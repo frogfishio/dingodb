@@ -23,7 +23,7 @@ store API, operator tools, or to embed storage without the collection layer.
 
 ```toml
 [dependencies]
-residiuum-store = "0.1"
+residiuum-store = "0.2.1"
 ```
 
 Or: `cargo add residiuum-store`
@@ -47,6 +47,10 @@ assert!(store.get("user-42")?.is_none());
 ```
 
 ## Status
+
+**Packaging 0.2.1** (P0 segment-identity / immutable publish).  
+**0.2.0 is unsafe for continued writes across reopen/rotation** — see
+[SECURITY_ADVISORY_SEGID_0.2.0.md](../../doc/todo/performance-qualification/SECURITY_ADVISORY_SEGID_0.2.0.md).
 
 **Shipped** (Stages 3 + 6 + 7 inspect/salvage + 9 tiering). Highlights:
 

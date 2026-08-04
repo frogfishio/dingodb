@@ -4858,27 +4858,37 @@ impl Store {
                     f.sync_all()?;
                 }
             }
-            if publish_dest.exists() {
-                return Err(StoreError::SegmentIdCollision {
-                    segment_id: sealed_id,
-                    paths: vec![active_path.clone(), publish_dest.clone()],
-                });
-            }
-            if fs::rename(&active_path, &publish_dest).is_ok() {
-                published = true;
+            match crate::media_inventory::rename_exclusive(
+                &active_path,
+                &publish_dest,
+                sealed_id,
+            ) {
+                Ok(()) => published = true,
+                Err(StoreError::SegmentIdCollision { .. }) => {
+                    return Err(StoreError::SegmentIdCollision {
+                        segment_id: sealed_id,
+                        paths: vec![active_path.clone(), publish_dest.clone()],
+                    });
+                }
+                Err(_) => {
+                    // Cross-device / exotic FS: fall through to staging copy.
+                }
             }
         }
         if !published {
+            let tmp = crate::atomic_file::temp_path_for(&publish_dest);
             {
-                let mut out = crate::media_inventory::create_new_exclusive(
-                    &publish_dest,
-                    sealed_id,
-                )?;
+                let mut out = OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&tmp)?;
                 out.write_all(bytes)?;
                 if flush_mode == DurabilityMode::Durable && !pair_async {
                     out.sync_all()?;
                 }
             }
+            crate::media_inventory::rename_exclusive(&tmp, &publish_dest, sealed_id)?;
             if active_path.exists() {
                 fs::remove_file(&active_path)?;
             }

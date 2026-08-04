@@ -1,6 +1,6 @@
 # P0 — Segment-ID reuse & immutable-media collision
 
-Status: **labor in_review** (2026-08-04) — disposable Residiuum stores only.
+Status: **accepted — packaging 0.2.1** (2026-08-04) — disposable Residiuum stores only.
 No Gremlin database access, salvage, or repair in this package.
 
 ## RCA (released 0.2.0)
@@ -23,16 +23,28 @@ stops the happy-path remint. The P0 remained incomplete until:
 
 ## Atomic exclusive publish
 
-`rename_exclusive` is **not** check-then-`fs::rename` (TOCTOU replace). Protocol:
+`rename_exclusive` is crash-atomic and exclusive (P0 final gap closed 2026-08-04):
 
 1. Dest exists + identical bytes → idempotent unlink of source.
 2. Dest exists + different bytes → `SegmentIdCollision` (both preserved).
-3. Else `hard_link(src, dest)` (atomic exclusive create of the dest name).
-4. Unlink source; on `EXDEV`/`Unsupported` → `create_new` + copy (never replace).
+3. **Same filesystem:** platform no-replace rename (`renameat2` /
+   `RENAME_NOREPLACE` on Linux; `renamex_np` / `RENAME_EXCL` on macOS) —
+   atomic move with no dual-name window.
+4. **Hard-link fallback** (when exclusive rename unavailable): link then unlink;
+   crash between leaves same-inode aliases that
+   `heal_identical_publish_aliases` collapses on open (inode identity only —
+   byte-identical distinct files still refuse as collisions).
+5. **Cross-device (`EXDEV`):** unique temp in dest dir → copy+verify →
+   `sync_all` → no-replace publish temp→final → dir sync → unlink source.
+   Never writes a partial final pathname.
+
+Failpoints: `media.publish.after_link`, `after_create`, `partial_copy`,
+`after_file_sync`, `after_dest_publish`, `before_source_unlink` (plus
+`force_cross_device` / `force_hard_link` test arms).
 
 Wired through sync/async seal finalize, summary-frame publish, pending recovery,
 protected-pair pending→sealed, tier `copy_verified`, and Shadow mirror/dual-stream
-publication.
+publication. Sync seal fallback also stages via temp + `rename_exclusive`.
 
 ## Overwrite-on-collision paths removed
 
@@ -70,24 +82,23 @@ authoritative media. Upgrade to a build that includes this P0 before further
 writes. Existing damaged trees are **not** auto-repaired; open fails closed on
 detected collisions.
 
-Packaging / version bump remains **deferred** until the gates below are accepted.
+Packaging **0.2.1** is the corrected emergency release. **0.2.0 remains unsafe**
+(see [SECURITY_ADVISORY_SEGID_0.2.0.md](./SECURITY_ADVISORY_SEGID_0.2.0.md)).
 
 ## Evidence
 
 ```text
 cargo test -p residiuum-store --features legacy-raw-store \
   --test p0_segment_id_collision -- --test-threads=1
-# 21 passed (2026-08-04) — reproducers, publication paths, planted matrix,
-# disk wrong-record pread, default 64-cycle cell
+# 22 passed (2026-08-04)
 
 cargo test -p residiuum-store --features legacy-raw-store \
   --test cse3_stage2_segment_id_never_reuse -- --test-threads=1
 # 8 passed
 
-P0_SEGID_CYCLES=1000 cargo test -p residiuum-store --features legacy-raw-store \
-  --test p0_segment_id_collision p0_thousand_reopen_rotation_unique_ids \
-  -- --test-threads=1 --nocapture
-# release-gate cell (CI keeps default 64)
+cargo test -p residiuum-store --features legacy-raw-store --lib media_inventory \
+  -- --test-threads=1
+# rename_exclusive crash-atomicity unit tests (failpoint matrix) passed
 ```
 
 ### 1,000-cycle release gate (archived 2026-08-04)

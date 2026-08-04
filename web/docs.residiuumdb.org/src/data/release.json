@@ -1,5 +1,5 @@
 {
-  "productVersion": "0.2.0",
+  "productVersion": "0.2.1",
   "productLine": "0.2",
   "sdkCrate": "residiuum-sdk",
   "sdkSemverRange": "0.2",
@@ -16,8 +16,8 @@
   "githubReleases": "https://github.com/frogfishio/dingodb/releases",
   "sourceRevision": "cdfacb8",
   "contentSchemaVersion": "1.0",
-  "lastVerified": "2026-07-29",
-  "generatedAt": "2026-07-29",
+  "lastVerified": "2026-08-04",
+  "generatedAt": "2026-08-04",
   "versionChannel": "current",
   "msrv": "1.75",
   "benchmarksPublished": false

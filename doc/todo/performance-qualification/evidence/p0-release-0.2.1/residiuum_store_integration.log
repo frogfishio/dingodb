@@ -1,0 +1,294 @@
+warning: fields `mode` and `ops` are never read
+   --> crates/residiuum-store/tests/awo_q2_decision_quality.rs:114:5
+    |
+113 | struct FacadeCell {
+    |        ---------- fields in this struct
+114 |     mode: AdaptiveWriteMode,
+    |     ^^^^
+115 |     concurrency: usize,
+116 |     ops: u64,
+    |     ^^^
+    |
+    = note: `FacadeCell` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `residiuum-store` (test "awo_q2_decision_quality") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_store-c89f782b82abd5e0)
+
+running 241 tests
+test adaptive_write::controller::tests::dwell_blocks_immediate_re_scale ... ok
+test adaptive_write::controller::tests::scale_up_after_consecutive_intervals ... ok
+test adaptive_write::controller::tests::writer_saturation_blocks_up ... ok
+test adaptive_write::cooker::tests::pure_cook_matches_serial_twice ... ok
+test adaptive_write::coordinator::tests::cook_then_install_overlap_shape ... ok
+test adaptive_write::coordinator::tests::depth_two_blocks_third ... ok
+test adaptive_write::coordinator::tests::seal_and_shutdown_refuse_new ... ok
+test adaptive_write::credits::tests::atomic_reject_leaves_unchanged ... ok
+test adaptive_write::credits::tests::byte_exhaustion ... ok
+test adaptive_write::credits::tests::mutation_credit_includes_framing ... ok
+test adaptive_write::credits::tests::reserve_and_release_roundtrip ... ok
+test adaptive_write::estimator::tests::ewma_moves_toward_sample ... ok
+test adaptive_write::estimator::tests::first_sample_sets_mean ... ok
+test adaptive_write::estimator::tests::payload_bucket_pow2 ... ok
+test adaptive_write::estimator::tests::warm_and_stale ... ok
+test adaptive_write::model::tests::all_golden_vectors_match_decide ... ok
+test adaptive_write::model::tests::closed_reason_ids_include_all_golden_reasons ... ok
+test adaptive_write::model::tests::exact_tie_uses_integer_margin_equality ... ok
+test adaptive_write::model::tests::overflow_service_returns_natural_arithmetic_overflow ... ok
+test adaptive_write::model::tests::profile_constant_matches_registry ... ok
+test adaptive_write::ordered_ready::tests::duplicate_rejected ... ok
+test adaptive_write::ordered_ready::tests::ordered_pop_despite_out_of_order_push ... ok
+test adaptive_write::policy::tests::machine_defaults_validate ... ok
+test adaptive_write::policy::tests::rejects_pipeline_zero ... ok
+test adaptive_write::queue::tests::capacity_and_pop ... ok
+test adaptive_write::queue::tests::shutdown_unblocks ... ok
+test adaptive_write::selector::tests::candidates_clip_and_include_queued ... ok
+test adaptive_write::selector::tests::collection_delay_rules ... ok
+test adaptive_write::selector::tests::select_batch_when_gain ... ok
+test adaptive_write::selector::tests::select_natural_when_cold ... ok
+test atomic_file::tests::keep_previous_survives_replace ... ok
+test atomic_file::tests::read_with_previous_falls_back ... ok
+test atomic_file::tests::torn_temp_does_not_replace_published ... ok
+test atomic_file::tests::write_atomic_roundtrip ... ok
+test backup::tests::backup_profile_constant ... ok
+test backup::tests::full_backup_restore_roundtrip ... ok
+test backup::tests::reassign_identity_clone ... FAILED
+test backup::tests::tampered_file_fails_verify ... ok
+test boundary_probe::tests::disabled_is_noop ... ok
+test boundary_probe::tests::enabled_records_kinds_and_digest ... ok
+test boundary_probe::tests::sample_cap_drops_explicitly_counters_exact ... ok
+test boundary_probe::tests::short_write_outcome_counted ... ok
+test catalog::tests::catalog_roundtrip ... ok
+test catalog::tests::subject_collection_parse ... ok
+test chimera::classify::tests::classifies_by_size_defaults ... ok
+test chimera::classify::tests::force_class_override ... ok
+test chimera::classify::tests::initial_kind_respects_scan_hint ... ok
+test chimera::compiler::tests::dictionary_train_deduped_by_family ... ok
+test chimera::compiler::tests::point_hot_relocates_medium_to_container ... ok
+test chimera::compiler::tests::recluster_helper ... ok
+test chimera::compiler::tests::scan_hot_relocates_to_extent ... ok
+test chimera::container::tests::builder_respects_target ... ok
+test chimera::container::tests::corrupt_checksum_rejected ... ok
+test chimera::container::tests::roundtrip_multiple_slots ... ok
+test chimera::io_path::tests::large_cold_batch_uses_async_direct ... ok
+test chimera::io_path::tests::large_without_async_uses_direct ... ok
+test chimera::io_path::tests::medium_default_buffered ... ok
+test chimera::io_path::tests::tiny_cached_stays_buffered ... ok
+test chimera::layout::tests::build_materialized_places_all_classes ... ok
+test chimera::layout::tests::compact_layout_roundtrip_and_amp ... ok
+test chimera::layout::tests::materialized_roundtrip_disk_still_supported ... ok
+test chimera::tests::architecture_path_end_to_end ... ok
+test chimera::tests::pack_medium_values ... ok
+test chimera::tests::place_value_by_class ... ok
+test chimera::tests::resolve_inline ... ok
+test chimera::tests::resolve_point_container_slot ... ok
+test chimera::tests::resolve_scan_extent ... ok
+test chimera::tests::resolve_value_log ... ok
+test chimera::tests::segment_frame_fail_closed_on_len_mismatch_and_missing ... ok
+test chimera::value_log::tests::append_and_read_roundtrip ... ok
+test chimera::value_log::tests::corrupt_rejected ... ok
+test chunk_payload::tests::hostile_chunk_count_does_not_allocate ... ok
+test chunk_payload::tests::ignores_other_generation_same_index ... ok
+test chunk_payload::tests::manifest_roundtrip ... ok
+test chunk_payload::tests::partial_missing_middle ... ok
+test chunk_payload::tests::wrong_event_id_for_slot_is_ignored_not_mixed ... ok
+test composed_failure::tests::rejected_without_reason_fails ... ok
+test composed_failure::tests::schedules_and_rejects ... ok
+test crash_matrix::tests::embedded_matrix_loads_and_validates ... ok
+test csq5_campaign::tests::classify_old_new_unknown ... ok
+test csq5_campaign::tests::hybrid_receipt_without_visibility_fails ... ok
+test csq5_campaign::tests::silent_skip_assert ... ok
+test csq_harness::tests::harness_strings_parse ... ok
+test csq_harness::tests::inventory_covers_required_kinds ... ok
+test cursor::tests::generation_changes_with_inputs ... ok
+test cursor::tests::public_store_id_cannot_forge_mac ... ok
+test cursor::tests::rotation_grace_then_retire ... ok
+test cursor::tests::token_roundtrip_and_mac ... ok
+test envelope::tests::delete_kind_roundtrip ... ok
+test envelope::tests::rejects_incomplete_map ... ok
+test envelope::tests::rejects_non_cbor ... ok
+test envelope::tests::roundtrip ... ok
+test erasure::tests::encode_refuses ... ok
+test erasure::tests::manifest_shard_keys ... ok
+test erasure::tests::shard_key_naming ... ok
+test failpoint::tests::cancel_and_alloc_actions ... ok
+test failpoint::tests::error_action_returns_failpoint ... ok
+test failpoint::tests::hit_proof_requires_visit ... ok
+test failpoint::tests::io_enospc_is_storage_full ... ok
+test failpoint::tests::io_permission_is_permission_denied ... ok
+test failpoint::tests::panic_action_unwinds ... ok
+test failpoint::tests::short_write_consume ... ok
+test failpoint::tests::unarmed_is_noop ... ok
+test failpoint::tests::unreached_arm_stays_armed ... ok
+test heap::admin_op_dedup::tests::binding_stable_and_name_sensitive ... ok
+test heap::admin_op_dedup::tests::table_roundtrip ... ok
+test heap::catalog::tests::staged_genesis_invisible_until_publish ... ok
+test heap::one_heap::tests::mixed_heap_salvage_classifies_bound_and_foreign ... ok
+test heap::one_heap::tests::rejects_cross_heap_and_accepts_match ... ok
+test hydra::eytzinger::tests::eytzinger_all_hits ... ok
+test hydra::mphf::tests::mphf_all_hits_no_false ... ok
+test hydra::mphf::tests::mphf_empty ... ok
+test hydra::pgm::tests::pgm_sparse_hits ... ok
+test hydra::pgm::tests::radix_spline_dense_hits ... ok
+test hydra::radix::tests::prefix_and_sibling_keys ... ok
+test hydra::radix::tests::radix_string_keys ... ok
+test hydra::select::tests::dense_vs_sparse_numeric ... ok
+test hydra::select::tests::strings_are_radix ... ok
+test hydra::select::tests::tiny_and_point_only ... ok
+test hydra::tests::build_many_parallel_preserves_order ... ok
+test hydra::tests::codec_roundtrip_all_kinds ... ok
+test hydra::tests::eytzinger_scan_order ... ok
+test hydra::tests::last_duplicate_wins ... ok
+test hydra::tests::numeric_selects_pgm_or_spline ... ok
+test hydra::tests::point_only_selects_mphf ... ok
+test hydra::tests::strings_select_compressed_radix ... ok
+test hydra::tests::tiny_selects_eytzinger ... ok
+test hydra::tests::write_load_sidecar ... ok
+test ids::tests::id_profile_is_stable ... ok
+test ids::tests::random_and_sortable_kinds_differ_in_shape ... ok
+test ids::tests::random_ids_are_unique_and_nonzero ... ok
+test ids::tests::sortable_segment_ids_order_by_seq ... ok
+test ids::tests::subject_item_id_is_deterministic ... ok
+test incremental_seal::tests::content_hash_state_wire_roundtrip ... ok
+test incremental_seal::tests::meta_publish_plan_defers_content_hash ... ok
+test incremental_seal::tests::rolling_hash_matches_full_blake3_of_sealed_image ... ok
+test index_cache::tests::cache_roundtrip_v1 ... ok
+test index_cache::tests::fingerprint_mismatch_rejects_v1 ... ok
+test index_cache::tests::frontier_cache_corruption_rejects ... ok
+test index_cache::tests::frontier_cache_roundtrip_v2 ... ok
+test index_cache::tests::frontier_cache_roundtrip_v3_preserves_offset ... ok
+test kernel::tests::physical_alias_exists ... ok
+test large_value::tests::default_admits_threshold_boundary ... ok
+test large_value::tests::rejects_over_max_logical ... ok
+test large_value::tests::rejects_zero_chunk_size ... ok
+test layout::tests::hex_roundtrip ... ok
+test lifecycle::tests::evaluate_first_match ... ok
+test lifecycle::tests::roundtrip_file ... ok
+test media::tests::gs_mirror_resolves_media_root_directory ... ok
+test media::tests::local_object_put_get_delete ... ok
+test media::tests::media_root_directory_for_local_object ... ok
+test media::tests::parse_filesystem_and_file_uri ... ok
+test media::tests::parse_object_local_and_roundtrip_uri ... ok
+test media::tests::parse_s3_gs ... ok
+test media::tests::s3_backend_refuses_io_without_mirror ... ok
+test media::tests::s3_mirror_put_get_delete ... ok
+test media::tests::unknown_scheme_errors ... ok
+test media_inventory::tests::rename_exclusive_crash_after_create_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_dest_publish_completes_on_retry ... ok
+test media_inventory::tests::rename_exclusive_crash_after_file_sync_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_link_before_unlink ... ok
+test media_inventory::tests::rename_exclusive_hard_link_crash_before_unlink_retry_ok ... ok
+test media_inventory::tests::rename_exclusive_idempotent_same_bytes ... ok
+test media_inventory::tests::rename_exclusive_partial_copy_leaves_no_final ... ok
+test media_inventory::tests::rename_exclusive_refuses_different_dest ... ok
+test media_inventory::tests::rename_exclusive_uses_exclusive_publish_not_replace ... ok
+test migrate::tests::full_migrate_preserves_live_data_and_source ... ok
+test migrate::tests::matrix_snapshot_non_empty ... ok
+test migrate::tests::plan_only_does_not_create_dest_store ... ok
+test migrate::tests::preflight_blocks_non_empty_dest ... ok
+test migrate::tests::rollback_refuses_completed ... ok
+test migrate::tests::rollback_removes_incomplete_dest ... ok
+test protected_pair::tests::recover_orphan_staging_without_auth_deletes_tmp ... ok
+test protected_pair::tests::recover_sealed_plus_rsh_without_frontier_claims ... ok
+test protected_pair::tests::recover_sealed_plus_staging_claims_p_star ... ok
+test protected_pair::tests::recover_uses_shard_sidecar_not_zero ... ok
+test recovery_shadow::crypto::tests::sealed_has_no_plaintext ... ok
+test recovery_shadow::crypto::tests::wrong_key_fails_closed ... ok
+test recovery_shadow::dual_stream::tests::dual_stream_roundtrip_commitment ... ok
+test recovery_shadow::frontier::tests::coverage_roundtrip ... ok
+test recovery_shadow::frontier::tests::gap_aware_twelve_does_not_conceal_eleven ... ok
+test recovery_shadow::frontier::tests::multi_shard_aggregate_is_min_not_max ... ok
+test recovery_shadow::frontier::tests::refuses_protected_ahead_of_sealed_scalar_api ... ok
+test recovery_shadow::integrate::tests::dual_run_allows_retire_without_replacement_shadow ... ok
+test recovery_shadow::integrate::tests::publish_claims_only_after_atomic ... ok
+test recovery_shadow::integrate::tests::retire_refuses_without_replacement ... ok
+test recovery_shadow::mirror::tests::mirror_roundtrip_and_commitment ... ok
+test recovery_shadow::mirror::tests::publish_mirror_is_durable_path ... ok
+test recovery_shadow::mirror::tests::torn_mirror_fails_closed ... ok
+test recovery_shadow::policy::tests::can_switch_to_require_replacement ... ok
+test recovery_shadow::policy::tests::default_is_dual_run ... ok
+test recovery_shadow::recovery_mode::tests::mode_roundtrip_atomic ... ok
+test recovery_shadow::wire::tests::publish_atomic_and_load ... ok
+test recovery_shadow::wire::tests::refuse_publish_incomplete ... ok
+test recovery_shadow::wire::tests::roundtrip_put_and_tombstone ... ok
+test recovery_shadow::wire::tests::tombstone_prevents_resurrection_across_merge ... ok
+test recovery_shadow::wire::tests::truncated_file_is_incomplete_never_ok ... ok
+test scrub::tests::empty_store_scrub_completes ... ok
+test scrub::tests::hex32_is_64_chars ... ok
+test scrub::tests::pause_blocks_progress ... ok
+test seal_pipeline::tests::authoritative_publish_before_derived_enrichment ... ok
+test seal_pipeline::tests::finalize_append_only_preserves_pending_prefix ... ok
+test seal_pipeline::tests::finalize_roundtrip_files ... ok
+test seal_pipeline::tests::seal_pending_preserves_prefix_bytes ... ok
+test secondary::tests::failed_retains_reason ... ok
+test secondary::tests::partial_and_stale_never_prove_absence_or_exclusive_hits ... ok
+test secondary::tests::secondary_roundtrip ... ok
+test segment_allocator::tests::corrupt_durable_empty_media_refuses ... ok
+test segment_allocator::tests::encode_decode_roundtrip ... ok
+test segment_allocator::tests::reserve_monotonic_and_persistent ... ok
+test segment_catalog::tests::segment_catalog_roundtrip ... ok
+test segment_growth::tests::grow_on_append_is_default ... ok
+test segment_growth::tests::prepare_active_file_zeros_full_capacity ... ok
+test segment_growth::tests::watermark_default_is_modest_and_configurable ... ok
+test store::tests::chimera_compact_writes_output_layout ... ok
+test store::tests::chimera_rebuild_after_wipe ... FAILED
+test store::tests::chimera_seal_layout_and_get_resolve ... FAILED
+test store::tests::concurrent_create_absent_one_wins ... ok
+test store::tests::concurrent_put_if_one_wins ... ok
+test store::tests::create_put_get_delete ... ok
+test store::tests::durable_puts_are_locator_first_not_body_resident ... ok
+test store::tests::get_uses_primary_index_without_chimera_sidecars ... FAILED
+test store::tests::key_atomic_cas_put_and_delete ... ok
+test store::tests::parallel_cook_put_many_roundtrip ... ok
+test store::tests::reopen_recovers_state ... ok
+test store::tests::segment_growth_watermark_background_runway_put ... ok
+test store::tests::segment_growth_watermark_opt_in_put_reopen ... ok
+test tier::tests::classify_empty_supported ... ok
+test tier::tests::coverage_offline_incomplete ... ok
+test tier::tests::placement_roundtrip ... ok
+test tier::tests::transfer_copy_preserves_identity ... ok
+test token_keys::tests::debug_redacts_secret ... ok
+test token_keys::tests::public_id_insufficient_without_secret ... ok
+test token_keys::tests::rotate_retains_previous_only ... ok
+test token_keys::tests::store_persist_roundtrip ... ok
+test write_dedup::tests::content_identity_stable_and_sensitive ... ok
+test write_dedup::tests::table_roundtrip ... ok
+test writer_lock::tests::drop_releases_for_reopen ... ok
+test writer_lock::tests::observe_reports_free_when_unlocked ... ok
+test writer_lock::tests::second_in_process_writer_fails ... ok
+test writer_lock::tests::stale_diagnostic_text_does_not_block ... ok
+
+failures:
+
+---- backup::tests::reassign_identity_clone stdout ----
+
+thread 'backup::tests::reassign_identity_clone' (62316004) panicked at crates/residiuum-store/src/backup.rs:714:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- store::tests::chimera_rebuild_after_wipe stdout ----
+
+thread 'store::tests::chimera_rebuild_after_wipe' (62316354) panicked at crates/residiuum-store/src/store.rs:8465:9:
+assertion failed: store.load_chimera_layout(seg).unwrap().is_some()
+
+---- store::tests::chimera_seal_layout_and_get_resolve stdout ----
+
+thread 'store::tests::chimera_seal_layout_and_get_resolve' (62316401) panicked at crates/residiuum-store/src/store.rs:8357:14:
+chimera layout after seal
+
+---- store::tests::get_uses_primary_index_without_chimera_sidecars stdout ----
+
+thread 'store::tests::get_uses_primary_index_without_chimera_sidecars' (62316452) panicked at crates/residiuum-store/src/store.rs:8395:9:
+assertion failed: store.load_chimera_layout(seg).unwrap().is_some()
+
+
+failures:
+    backup::tests::reassign_identity_clone
+    store::tests::chimera_rebuild_after_wipe
+    store::tests::chimera_seal_layout_and_get_resolve
+    store::tests::get_uses_primary_index_without_chimera_sidecars
+
+test result: FAILED. 237 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.90s
+
+error: test failed, to rerun pass `-p residiuum-store --lib`

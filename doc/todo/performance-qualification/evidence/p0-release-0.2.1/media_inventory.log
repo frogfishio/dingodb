@@ -1,0 +1,16 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_store-c89f782b82abd5e0)
+
+running 9 tests
+test media_inventory::tests::rename_exclusive_crash_after_create_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_dest_publish_completes_on_retry ... ok
+test media_inventory::tests::rename_exclusive_crash_after_file_sync_no_final ... ok
+test media_inventory::tests::rename_exclusive_crash_after_link_before_unlink ... ok
+test media_inventory::tests::rename_exclusive_hard_link_crash_before_unlink_retry_ok ... ok
+test media_inventory::tests::rename_exclusive_idempotent_same_bytes ... ok
+test media_inventory::tests::rename_exclusive_partial_copy_leaves_no_final ... ok
+test media_inventory::tests::rename_exclusive_refuses_different_dest ... ok
+test media_inventory::tests::rename_exclusive_uses_exclusive_publish_not_replace ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 232 filtered out; finished in 0.03s
+

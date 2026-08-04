@@ -13,7 +13,7 @@ use crate::seal_pipeline::list_pending_paths;
 use residiuum_format::{decode_descriptor_body, scan_forward, FrameKind, SafetyLimits};
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::Read;
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 /// One authoritative physical owner of a segment id.
@@ -172,12 +172,15 @@ fn walkdir_residiuum(dir: &Path) -> Result<Vec<PathBuf>, StoreError> {
 /// Fail closed if any segment id has multiple authoritative owners.
 ///
 /// Call **before** pending recovery, index rebuild, or media mutation.
+/// First heals hard-link / byte-identical publish aliases left by a crash
+/// between exclusive link and source unlink (same inode or identical bytes).
 pub fn refuse_authoritative_collisions(
     paths: &StorePaths,
     store_id: [u8; 16],
     writer_shards: usize,
     limits: SafetyLimits,
 ) -> Result<MediaInventory, StoreError> {
+    heal_identical_publish_aliases(paths, store_id, writer_shards, limits)?;
     let inv = build_authoritative_inventory(paths, store_id, writer_shards, limits)?;
     if let Some((segment_id, collision_paths)) = inv.first_collision() {
         return Err(StoreError::SegmentIdCollision {
@@ -186,6 +189,68 @@ pub fn refuse_authoritative_collisions(
         });
     }
     Ok(inv)
+}
+
+fn role_rank(role: &str) -> u8 {
+    match role {
+        "sealed" => 0,
+        "tier" => 1,
+        "compaction" => 2,
+        "pending" => 3,
+        "active" => 4,
+        _ => 5,
+    }
+}
+
+#[cfg(unix)]
+fn file_inode_key(path: &Path) -> io::Result<(u64, u64)> {
+    use std::os::unix::fs::MetadataExt;
+    let m = fs::metadata(path)?;
+    Ok((m.dev(), m.ino()))
+}
+
+#[cfg(not(unix))]
+fn file_inode_key(path: &Path) -> io::Result<(u64, u64)> {
+    let _ = path;
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "inode identity unavailable",
+    ))
+}
+
+/// Collapse hard-link publish aliases left by a crash between link and unlink.
+///
+/// Only **same-inode** dual names are healed (true hard-link identity). Distinct
+/// files with identical bytes remain a typed collision — dual residency /
+/// planted corruption, not a mid-publish alias.
+pub fn heal_identical_publish_aliases(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    writer_shards: usize,
+    limits: SafetyLimits,
+) -> Result<(), StoreError> {
+    let inv = build_authoritative_inventory(paths, store_id, writer_shards, limits)?;
+    for (_id, owners) in inv.by_id {
+        if owners.len() <= 1 {
+            continue;
+        }
+        let mut by_inode: BTreeMap<(u64, u64), Vec<AuthoritativeOwner>> = BTreeMap::new();
+        for o in owners {
+            if let Ok(key) = file_inode_key(&o.path) {
+                by_inode.entry(key).or_default().push(o);
+            }
+        }
+        for (_key, mut group) in by_inode {
+            if group.len() <= 1 {
+                continue;
+            }
+            group.sort_by_key(|o| role_rank(o.role));
+            for extra in group.iter().skip(1) {
+                let _ = fs::remove_file(&extra.path);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn files_byte_identical(a: &Path, b: &Path) -> Result<bool, StoreError> {
@@ -210,15 +275,240 @@ fn files_byte_identical(a: &Path, b: &Path) -> Result<bool, StoreError> {
     }
 }
 
-/// Publish `src` to `dest` with **atomic exclusive** semantics (P0).
+/// Platform exclusive rename: succeed only when `dest` does not exist.
+fn rename_noreplace(src: &Path, dest: &Path) -> io::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::ffi::CString;
+        use std::os::unix::ffi::OsStrExt;
+        const AT_FDCWD: i32 = -100;
+        const RENAME_NOREPLACE: u32 = 1;
+        extern "C" {
+            fn renameat2(
+                olddirfd: i32,
+                oldpath: *const std::os::raw::c_char,
+                newdirfd: i32,
+                newpath: *const std::os::raw::c_char,
+                flags: u32,
+            ) -> i32;
+        }
+        let old = CString::new(src.as_os_str().as_bytes())
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        let new = CString::new(dest.as_os_str().as_bytes())
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        let rc = unsafe {
+            renameat2(
+                AT_FDCWD,
+                old.as_ptr(),
+                AT_FDCWD,
+                new.as_ptr(),
+                RENAME_NOREPLACE,
+            )
+        };
+        if rc == 0 {
+            return Ok(());
+        }
+        Err(io::Error::last_os_error())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use std::ffi::CString;
+        use std::os::unix::ffi::OsStrExt;
+        const RENAME_EXCL: u32 = 0x0000_0004;
+        extern "C" {
+            fn renamex_np(
+                from: *const std::os::raw::c_char,
+                to: *const std::os::raw::c_char,
+                flags: u32,
+            ) -> i32;
+        }
+        let old = CString::new(src.as_os_str().as_bytes())
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        let new = CString::new(dest.as_os_str().as_bytes())
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        let rc = unsafe { renamex_np(old.as_ptr(), new.as_ptr(), RENAME_EXCL) };
+        if rc == 0 {
+            return Ok(());
+        }
+        Err(io::Error::last_os_error())
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let _ = (src, dest);
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "exclusive rename not available on this platform",
+        ))
+    }
+}
+
+fn collision(segment_id: [u8; 16], a: &Path, b: &Path) -> StoreError {
+    StoreError::SegmentIdCollision {
+        segment_id,
+        paths: vec![a.to_path_buf(), b.to_path_buf()],
+    }
+}
+
+fn force_cross_device_publish() -> bool {
+    crate::failpoint::is_armed("media.publish.force_cross_device")
+        || std::env::var_os("RESIDIUUM_FORCE_CROSS_DEVICE_PUBLISH").is_some()
+}
+
+fn force_hard_link_publish() -> bool {
+    crate::failpoint::is_armed("media.publish.force_hard_link")
+}
+
+/// Cross-filesystem / forced staging publish (never partially writes `dest`).
 ///
-/// Does **not** use check-then-`rename` (TOCTOU replace on Unix). Protocol:
+/// 1. unique temp in dest dir → 2. copy+verify → 3. sync_all →
+/// 4. no-replace publish temp→dest → 5. sync dest dir → 6. unlink source.
+fn publish_via_staging_copy(
+    src: &Path,
+    dest: &Path,
+    segment_id: [u8; 16],
+) -> Result<(), StoreError> {
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let tmp = crate::atomic_file::temp_path_for(dest);
+    let _ = fs::remove_file(&tmp);
+
+    {
+        let mut out = fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&tmp)
+            .map_err(|e| {
+                if e.kind() == io::ErrorKind::AlreadyExists {
+                    StoreError::Io(e)
+                } else {
+                    StoreError::Io(e)
+                }
+            })?;
+        crate::failpoint::hit("media.publish.after_create")?;
+
+        let mut input = fs::File::open(src)?;
+        if crate::failpoint::consume_short_write("media.publish.partial_copy") {
+            let mut buf = [0u8; 64 * 1024];
+            let n = input.read(&mut buf)?;
+            let take = crate::failpoint::short_write_len(n.max(1)).min(n);
+            if take > 0 {
+                out.write_all(&buf[..take])?;
+            }
+            let _ = fs::remove_file(&tmp);
+            return Err(StoreError::Io(io::Error::new(
+                io::ErrorKind::WriteZero,
+                "failpoint short write: media.publish.partial_copy",
+            )));
+        }
+        io::copy(&mut input, &mut out)?;
+        out.sync_all()?;
+    }
+    crate::failpoint::hit("media.publish.after_file_sync")?;
+
+    if !files_byte_identical(src, &tmp)? {
+        let _ = fs::remove_file(&tmp);
+        return Err(StoreError::CorruptMeta(
+            "cross-device publish staging copy failed byte verify",
+        ));
+    }
+
+    match rename_noreplace(&tmp, dest) {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            if files_byte_identical(src, dest).unwrap_or(false) {
+                let _ = fs::remove_file(&tmp);
+            } else {
+                let _ = fs::remove_file(&tmp);
+                return Err(collision(segment_id, src, dest));
+            }
+        }
+        Err(e)
+            if e.raw_os_error() == Some(18) /* EXDEV */
+                || e.kind() == io::ErrorKind::Unsupported =>
+        {
+            // Staging tmp is already on dest's filesystem; exclusive create of
+            // dest via hard_link from tmp, then drop tmp.
+            match fs::hard_link(&tmp, dest) {
+                Ok(()) => {
+                    let _ = fs::remove_file(&tmp);
+                }
+                Err(e2) if e2.kind() == io::ErrorKind::AlreadyExists => {
+                    let _ = fs::remove_file(&tmp);
+                    if files_byte_identical(src, dest).unwrap_or(false) {
+                        // ok
+                    } else {
+                        return Err(collision(segment_id, src, dest));
+                    }
+                }
+                Err(e2) => {
+                    let _ = fs::remove_file(&tmp);
+                    return Err(StoreError::Io(e2));
+                }
+            }
+        }
+        Err(e) => {
+            let _ = fs::remove_file(&tmp);
+            return Err(StoreError::Io(e));
+        }
+    }
+
+    crate::failpoint::hit("media.publish.after_dest_publish")?;
+    if let Some(parent) = dest.parent() {
+        let _ = crate::atomic_file::sync_dir(parent);
+    }
+    crate::failpoint::hit("media.publish.before_source_unlink")?;
+    let _ = fs::remove_file(src);
+    Ok(())
+}
+
+fn publish_via_hard_link(
+    src: &Path,
+    dest: &Path,
+    segment_id: [u8; 16],
+) -> Result<(), StoreError> {
+    match fs::hard_link(src, dest) {
+        Ok(()) => {
+            crate::failpoint::hit("media.publish.after_link")?;
+            crate::failpoint::hit("media.publish.after_dest_publish")?;
+            if let Some(parent) = dest.parent() {
+                let _ = crate::atomic_file::sync_dir(parent);
+            }
+            crate::failpoint::hit("media.publish.before_source_unlink")?;
+            let _ = fs::remove_file(src);
+            Ok(())
+        }
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            if files_byte_identical(src, dest).unwrap_or(false) {
+                crate::failpoint::hit("media.publish.before_source_unlink")?;
+                let _ = fs::remove_file(src);
+                Ok(())
+            } else {
+                Err(collision(segment_id, src, dest))
+            }
+        }
+        Err(e)
+            if e.raw_os_error() == Some(18) /* EXDEV */
+                || e.kind() == io::ErrorKind::Unsupported =>
+        {
+            publish_via_staging_copy(src, dest, segment_id)
+        }
+        Err(e) => Err(StoreError::Io(e)),
+    }
+}
+
+/// Publish `src` to `dest` with **crash-atomic exclusive** semantics (P0).
+///
+/// Protocol:
 /// 1. If `dest` exists and bytes match `src` → idempotent: unlink `src` only.
 /// 2. If `dest` exists and bytes differ → [`StoreError::SegmentIdCollision`].
-/// 3. Else `hard_link(src, dest)` — fails atomically if `dest` appears/races.
-/// 4. On success, unlink `src` (dest remains the sole name).
-/// 5. Cross-device (`EXDEV`): fall back to `create_new` + copy + unlink `src`
-///    (`create_new` is atomic exclusive on the destination).
+/// 3. Same filesystem: platform no-replace rename (`renameat2` /
+///    `renamex_np`) when available — atomic move, no dual-name window.
+/// 4. Else hard-link + unlink; crash between link and unlink leaves identical
+///    aliases that [`heal_identical_publish_aliases`] collapses on open.
+/// 5. Cross-device (`EXDEV`): unique temp in dest dir → copy+verify →
+///    `sync_all` → no-replace publish → dir sync → unlink source. Never
+///    writes a partial final pathname.
 pub fn rename_exclusive(
     src: &Path,
     dest: &Path,
@@ -226,53 +516,60 @@ pub fn rename_exclusive(
 ) -> Result<(), StoreError> {
     if dest.exists() {
         if files_byte_identical(src, dest)? {
+            crate::failpoint::hit("media.publish.before_source_unlink")?;
             let _ = fs::remove_file(src);
             return Ok(());
         }
-        return Err(StoreError::SegmentIdCollision {
-            segment_id,
-            paths: vec![src.to_path_buf(), dest.to_path_buf()],
-        });
+        return Err(collision(segment_id, src, dest));
     }
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent)?;
     }
 
-    match fs::hard_link(src, dest) {
+    if force_cross_device_publish() {
+        return publish_via_staging_copy(src, dest, segment_id);
+    }
+    if force_hard_link_publish() {
+        return publish_via_hard_link(src, dest, segment_id);
+    }
+
+    match rename_noreplace(src, dest) {
         Ok(()) => {
-            let _ = fs::remove_file(src);
+            crate::failpoint::hit("media.publish.after_dest_publish")?;
+            if let Some(parent) = dest.parent() {
+                let _ = crate::atomic_file::sync_dir(parent);
+            }
+            // Source already unlinked by rename; checkpoint still fires.
+            crate::failpoint::hit("media.publish.before_source_unlink")?;
             Ok(())
         }
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            // Lost the race: dest appeared between our exists() check and link.
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
             if files_byte_identical(src, dest).unwrap_or(false) {
+                crate::failpoint::hit("media.publish.before_source_unlink")?;
                 let _ = fs::remove_file(src);
-                return Ok(());
+                Ok(())
+            } else {
+                Err(collision(segment_id, src, dest))
             }
-            Err(StoreError::SegmentIdCollision {
-                segment_id,
-                paths: vec![src.to_path_buf(), dest.to_path_buf()],
-            })
         }
         Err(e)
             if e.raw_os_error() == Some(18) /* EXDEV */
-                || e.kind() == std::io::ErrorKind::Unsupported =>
+                || e.kind() == io::ErrorKind::Unsupported =>
         {
-            // Different mount: exclusive create + copy, never replace.
-            let mut out = create_new_exclusive(dest, segment_id)?;
-            {
-                let mut input = fs::File::open(src)?;
-                std::io::copy(&mut input, &mut out)?;
-                out.sync_all()?;
-            }
-            let _ = fs::remove_file(src);
-            Ok(())
+            publish_via_staging_copy(src, dest, segment_id)
         }
-        Err(e) => Err(StoreError::Io(e)),
+        Err(_e) => {
+            // Older kernels / exotic FS: exclusive hard-link then unlink.
+            publish_via_hard_link(src, dest, segment_id)
+        }
     }
 }
 
 /// Create `dest` exclusively (no truncate-overwrite of an existing file).
+///
+/// Prefer [`rename_exclusive`] for byte publication — this helper opens the
+/// final name and must not be used for multi-step copies (partial visibility).
+#[allow(dead_code)]
 pub fn create_new_exclusive(dest: &Path, segment_id: [u8; 16]) -> Result<fs::File, StoreError> {
     if dest.exists() {
         return Err(StoreError::SegmentIdCollision {
@@ -288,7 +585,7 @@ pub fn create_new_exclusive(dest: &Path, segment_id: [u8; 16]) -> Result<fs::Fil
         .write(true)
         .open(dest)
         .map_err(|e| {
-            if e.kind() == std::io::ErrorKind::AlreadyExists {
+            if e.kind() == io::ErrorKind::AlreadyExists {
                 StoreError::SegmentIdCollision {
                     segment_id,
                     paths: vec![dest.to_path_buf()],
@@ -313,6 +610,8 @@ pub fn active_descriptor_id(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::failpoint::{self, Action};
+    use std::panic::{catch_unwind, AssertUnwindSafe};
     use tempfile::tempdir;
 
     #[test]
@@ -348,7 +647,7 @@ mod tests {
     }
 
     #[test]
-    fn rename_exclusive_uses_hard_link_not_replace() {
+    fn rename_exclusive_uses_exclusive_publish_not_replace() {
         let dir = tempdir().unwrap();
         let src = dir.path().join("a.residiuum");
         let dest = dir.path().join("b.residiuum");
@@ -362,5 +661,121 @@ mod tests {
         assert!(matches!(err, StoreError::SegmentIdCollision { .. }));
         assert_eq!(fs::read(&dest).unwrap(), b"payload-bytes");
         assert_eq!(fs::read(&src).unwrap(), b"other");
+    }
+
+    #[test]
+    fn rename_exclusive_hard_link_crash_before_unlink_retry_ok() {
+        // Simulate dual-name window: hard_link then crash before unlink.
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.residiuum");
+        let dest = dir.path().join("dest.residiuum");
+        fs::write(&src, b"link-payload").unwrap();
+        fs::hard_link(&src, &dest).unwrap();
+        assert!(src.is_file() && dest.is_file());
+        // Idempotent completion (same bytes).
+        rename_exclusive(&src, &dest, [4u8; 16]).unwrap();
+        assert!(!src.exists());
+        assert_eq!(fs::read(&dest).unwrap(), b"link-payload");
+    }
+
+    #[test]
+    fn rename_exclusive_crash_after_link_before_unlink() {
+        failpoint::clear_all();
+        failpoint::arm("media.publish.force_hard_link", Action::Error);
+        failpoint::arm_once("media.publish.after_link", Action::Panic);
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.residiuum");
+        let dest = dir.path().join("dest.residiuum");
+        fs::write(&src, b"link-crash-payload").unwrap();
+        let caught = catch_unwind(AssertUnwindSafe(|| {
+            rename_exclusive(&src, &dest, [10u8; 16]).unwrap();
+        }));
+        assert!(caught.is_err());
+        failpoint::clear_all();
+        // Both names remain, identical — safe; retry completes.
+        assert!(src.is_file() && dest.is_file());
+        assert_eq!(fs::read(&src).unwrap(), fs::read(&dest).unwrap());
+        rename_exclusive(&src, &dest, [10u8; 16]).unwrap();
+        assert!(!src.exists());
+        assert_eq!(fs::read(&dest).unwrap(), b"link-crash-payload");
+    }
+
+    #[test]
+    fn rename_exclusive_partial_copy_leaves_no_final() {
+        failpoint::clear_all();
+        failpoint::enable_hit_proof();
+        failpoint::arm("media.publish.force_cross_device", Action::Error);
+        failpoint::arm_once("media.publish.partial_copy", Action::ShortWrite);
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.residiuum");
+        let dest = dir.path().join("dest.residiuum");
+        fs::write(&src, vec![b'x'; 8192]).unwrap();
+        let err = rename_exclusive(&src, &dest, [6u8; 16]).unwrap_err();
+        assert!(matches!(err, StoreError::Io(_) | StoreError::Failpoint(_)));
+        assert!(!dest.exists(), "partial final must not be visible");
+        assert!(src.is_file());
+        failpoint::require_visited("media.publish.partial_copy");
+        failpoint::clear_all();
+    }
+
+    #[test]
+    fn rename_exclusive_crash_after_create_no_final() {
+        failpoint::clear_all();
+        failpoint::arm("media.publish.force_cross_device", Action::Error);
+        failpoint::arm_once("media.publish.after_create", Action::Panic);
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.residiuum");
+        let dest = dir.path().join("dest.residiuum");
+        fs::write(&src, b"payload").unwrap();
+        let caught = catch_unwind(AssertUnwindSafe(|| {
+            rename_exclusive(&src, &dest, [7u8; 16]).unwrap();
+        }));
+        assert!(caught.is_err());
+        failpoint::clear_all();
+        assert!(!dest.exists());
+        assert!(src.is_file());
+    }
+
+    #[test]
+    fn rename_exclusive_crash_after_file_sync_no_final() {
+        failpoint::clear_all();
+        failpoint::arm("media.publish.force_cross_device", Action::Error);
+        failpoint::arm_once("media.publish.after_file_sync", Action::Panic);
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.residiuum");
+        let dest = dir.path().join("dest.residiuum");
+        fs::write(&src, b"payload-sync").unwrap();
+        let caught = catch_unwind(AssertUnwindSafe(|| {
+            rename_exclusive(&src, &dest, [8u8; 16]).unwrap();
+        }));
+        assert!(caught.is_err());
+        failpoint::clear_all();
+        assert!(!dest.exists());
+        assert!(src.is_file());
+        // Retry completes.
+        rename_exclusive(&src, &dest, [8u8; 16]).unwrap();
+        assert!(!src.exists());
+        assert_eq!(fs::read(&dest).unwrap(), b"payload-sync");
+    }
+
+    #[test]
+    fn rename_exclusive_crash_after_dest_publish_completes_on_retry() {
+        failpoint::clear_all();
+        failpoint::arm("media.publish.force_cross_device", Action::Error);
+        failpoint::arm_once("media.publish.after_dest_publish", Action::Panic);
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.residiuum");
+        let dest = dir.path().join("dest.residiuum");
+        fs::write(&src, b"published-bytes").unwrap();
+        let caught = catch_unwind(AssertUnwindSafe(|| {
+            rename_exclusive(&src, &dest, [9u8; 16]).unwrap();
+        }));
+        assert!(caught.is_err());
+        failpoint::clear_all();
+        assert!(dest.is_file());
+        assert_eq!(fs::read(&dest).unwrap(), b"published-bytes");
+        // Source may remain; retry is idempotent.
+        rename_exclusive(&src, &dest, [9u8; 16]).unwrap();
+        assert!(!src.exists());
     }
 }

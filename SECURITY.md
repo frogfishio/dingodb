@@ -15,6 +15,13 @@ Related:
 
 ## Status of the product
 
+**Packaging note (2026-08-04):** `residiuum-store` **0.2.0** is unsafe for
+continued writes across reopen/rotation (segment-identity remint / sealed-media
+replacement). Fixed in **0.2.1**. Advisory:
+[doc/todo/performance-qualification/SECURITY_ADVISORY_SEGID_0.2.0.md](./doc/todo/performance-qualification/SECURITY_ADVISORY_SEGID_0.2.0.md).
+
+## Status of the product
+
 **Residiuum is not production-ready.** Do not treat any release as having
 passed independent security acceptance until:
 
@@ -103,6 +110,12 @@ Security advisories, when issued, will identify:
 - affected versions and fixed versions (or “no release yet — use commit X”);
 - severity and impact summary without unnecessary exploit detail;
 - required operator actions (upgrade, rotate keys, re-run salvage, etc.).
+
+Issued:
+
+- [RESIDIUUM-2026-08-SEGID-01](./doc/todo/performance-qualification/SECURITY_ADVISORY_SEGID_0.2.0.md) —
+  `residiuum-store` **0.2.0** segment-identity remint / sealed-media replacement;
+  fixed in **0.2.1**.
 
 ## Supported versions
 
