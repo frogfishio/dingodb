@@ -1,0 +1,33 @@
+{
+  "kind": "enrichment_on_2g_sustained",
+  "disclosure": "Diagnostic only \u2014 full-product 2GiB enrichment-on. Not a published SLO.",
+  "recipe": {
+    "cell": "real-full",
+    "logical_bytes": 2147483648,
+    "payload_size": 8192,
+    "concurrency": 8,
+    "seed": 42,
+    "seal_threshold": "64M",
+    "enrichment": true,
+    "awo": "disabled"
+  },
+  "acknowledged_write_ops_per_sec": 47427.811204133795,
+  "complete_lifecycle_ops_per_sec": 12429.151758858014,
+  "campaign_ops_per_sec": 7697.8191452479105,
+  "completed_enrichment_ops_per_sec": 1.6126419826920495,
+  "completed_enrichment_jobs": 33,
+  "backlog_slope_per_sec": 4.134674328075783,
+  "peak_backlog": 24,
+  "final_backlog_at_ack": 24,
+  "backlog_after_seal": 24,
+  "backlog_after_enrich_drain": 0,
+  "drain_elapsed_ns": 29320375,
+  "enrichment_drain_elapsed_ns": 14936093333,
+  "reopen_exact": true,
+  "reopen_verify_mode": "coverage_scan",
+  "index_query_verify_ok": true,
+  "segments_hash_known": 33,
+  "segments_hash_pending": 0,
+  "sealed_segments_at_last_ack": 32,
+  "keys": 262144
+}

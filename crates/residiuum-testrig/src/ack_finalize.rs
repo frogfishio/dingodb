@@ -7,7 +7,8 @@ use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
 use crate::write_mimic::{PEER_DATA_BYTES_PER_OP, PEER_OPS};
 use residiuum_format::body_hash;
 use residiuum_store::{
-    DiagnosticIoSink, DurabilityMode, RotationStageTotals, SealStageBreakdown, Store,
+    ContentHashState, DiagnosticIoSink, DurabilityMode, RotationStageTotals, SealStageBreakdown,
+    Store,
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -78,6 +79,28 @@ pub struct AckFinalizeConfig {
     pub enrichment_enabled: bool,
 }
 
+/// Derived-enrichment telemetry for product (enrichment-on) campaigns.
+#[derive(Debug, Clone, Default)]
+pub struct EnrichmentTelemetry {
+    pub enabled: bool,
+    pub peak_backlog: usize,
+    pub final_backlog_at_ack: usize,
+    pub backlog_after_seal: usize,
+    pub backlog_after_enrich_drain: usize,
+    /// Ordinary least-squares slope of backlog vs ack elapsed (jobs/sec).
+    pub backlog_slope_per_sec: f64,
+    pub backlog_samples: usize,
+    pub enrichment_drain_elapsed: Duration,
+    pub completed_enrichment_jobs: u64,
+    /// Jobs completed during post-seal enrich drain / drain wall.
+    pub completed_enrichment_ops_per_sec: f64,
+    /// Keys / (ack + auth seal breakdown + enrich drain). No reopen/verify.
+    pub complete_lifecycle_ops_per_sec: f64,
+    pub segments_hash_known: usize,
+    pub segments_hash_pending: usize,
+    pub index_query_verify_ok: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct AckFinalizeResult {
     pub cell: MeasureCell,
@@ -103,6 +126,7 @@ pub struct AckFinalizeResult {
     pub pending_seal_paths_at_last_ack: usize,
     pub sealed_segments_at_last_ack: usize,
     pub enrichment_backlog_at_last_ack: usize,
+    pub enrichment: EnrichmentTelemetry,
     /// Mid-run auto-rotation stage totals through last ack.
     pub rotation_stages: RotationStageTotals,
     pub logical_bytes: u64,
@@ -328,14 +352,35 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
 
     let workload_start_unix_ns = unix_ns_now();
     let t_workload = Instant::now();
+    let sample_stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let backlog_samples: Arc<Mutex<Vec<(f64, usize)>>> = Arc::new(Mutex::new(Vec::new()));
 
     thread::scope(|scope| {
+        if cfg.enrichment_enabled {
+            let store_arc = Arc::clone(&store_arc);
+            let sample_stop = Arc::clone(&sample_stop);
+            let backlog_samples = Arc::clone(&backlog_samples);
+            let t0 = t_workload;
+            scope.spawn(move || {
+                while !sample_stop.load(Ordering::Relaxed) {
+                    if let Ok(g) = store_arc.try_lock() {
+                        let bl = g.enrichment_backlog();
+                        let t = t0.elapsed().as_secs_f64();
+                        if let Ok(mut samples) = backlog_samples.lock() {
+                            samples.push((t, bl));
+                        }
+                    }
+                    thread::sleep(Duration::from_millis(25));
+                }
+            });
+        }
+        let mut joins = Vec::with_capacity(workers);
         for _ in 0..workers {
             let store_arc = Arc::clone(&store_arc);
             let next = Arc::clone(&next);
             let err = Arc::clone(&err);
             let payload = Arc::clone(&payload);
-            scope.spawn(move || {
+            joins.push(scope.spawn(move || {
                 loop {
                     if err.lock().ok().and_then(|g| g.clone()).is_some() {
                         break;
@@ -368,8 +413,13 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
                         break;
                     }
                 }
-            });
+            }));
         }
+        for j in joins {
+            let _ = j.join();
+        }
+        // Stop sampler before scope joins it (avoids deadlock).
+        sample_stop.store(true, Ordering::Relaxed);
     });
 
     if let Some(e) = err.lock().ok().and_then(|g| g.clone()) {
@@ -400,6 +450,18 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
             }
         };
 
+    let samples = backlog_samples
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    let peak_backlog = samples
+        .iter()
+        .map(|(_, b)| *b)
+        .chain(std::iter::once(enrichment_backlog_at_last_ack))
+        .max()
+        .unwrap_or(0);
+    let backlog_slope_per_sec = backlog_slope_ols(&samples);
+
     // Explicit end-of-run seal: drain + final active (breakdown times both).
     let t_seal = Instant::now();
     let seal_breakdown = store
@@ -410,6 +472,56 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
     let drain_elapsed = Duration::from_nanos(seal_breakdown.drain_lifecycle_ns);
     let drain_complete_unix_ns = last_successful_ack_unix_ns
         .saturating_add(u128::from(seal_breakdown.drain_lifecycle_ns));
+
+    let backlog_after_seal = store.enrichment_backlog();
+    let t_enrich_drain = Instant::now();
+    if cfg.enrichment_enabled {
+        // Full-product closeout: wait for derived enrichment to idle + digests Known.
+        store
+            .drain_enrichment(Duration::from_secs(30 * 60))
+            .map_err(|e| format!("drain_enrichment failed (fail-closed): {e}"))?;
+        let digest_deadline = Instant::now() + Duration::from_secs(30 * 60);
+        loop {
+            let (known, pending) = count_content_hash_states(&store);
+            if pending == 0 && store.enrichment_backlog() == 0 {
+                let _ = known;
+                break;
+            }
+            if Instant::now() >= digest_deadline {
+                return Err(format!(
+                    "enrichment digests incomplete (fail-closed): known={known} pending={pending} backlog={}",
+                    store.enrichment_backlog()
+                ));
+            }
+            let _ = store.drain_enrichment(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(10));
+        }
+    }
+    let enrichment_drain_elapsed = t_enrich_drain.elapsed();
+    let backlog_after_enrich_drain = store.enrichment_backlog();
+    if cfg.enrichment_enabled && backlog_after_enrich_drain > 0 {
+        return Err(format!(
+            "enrichment drain incomplete (fail-closed): backlog={} after {:.1}s",
+            backlog_after_enrich_drain,
+            enrichment_drain_elapsed.as_secs_f64()
+        ));
+    }
+
+    let (segments_hash_known, segments_hash_pending) = count_content_hash_states(&store);
+    // Jobs that finished during post-seal drain (backlog delta) plus those already
+    // known before drain are both "completed"; report Known count as total done.
+    let completed_enrichment_jobs = segments_hash_known as u64;
+    let enrich_wall = ack_elapsed + enrichment_drain_elapsed;
+    let completed_enrichment_ops_per_sec = if cfg.enrichment_enabled {
+        completed_enrichment_jobs as f64 / enrich_wall.as_secs_f64().max(1e-12)
+    } else {
+        0.0
+    };
+    let lifecycle_wall = ack_elapsed
+        + Duration::from_nanos(seal_breakdown.total_ns())
+        + enrichment_drain_elapsed;
+    let complete_lifecycle_ops_per_sec =
+        keys_written as f64 / lifecycle_wall.as_secs_f64().max(1e-12);
 
     let t_close = Instant::now();
     drop(store);
@@ -431,6 +543,11 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
     } else {
         verify_store_coverage_scan(&store, keys_written, &expected_hash)?
     };
+    let index_query_verify_ok = if cfg.cell == MeasureCell::Discard {
+        false
+    } else {
+        verify_index_query_sample(&store, keys_written, &expected_hash)?
+    };
     let verification_complete_unix_ns = unix_ns_now();
     let verify_elapsed = t_verify.elapsed();
     drop(store);
@@ -444,10 +561,14 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
             keys_written
         ));
     }
+    if cfg.cell != MeasureCell::Discard && !index_query_verify_ok {
+        return Err("index/query sample verification failed (fail-closed)".into());
+    }
 
     // seal_breakdown.total_ns already includes drain + final seal stages.
     let campaign_elapsed = ack_elapsed
         + Duration::from_nanos(seal_breakdown.total_ns())
+        + enrichment_drain_elapsed
         + close_elapsed
         + reopen_elapsed
         + verify_elapsed;
@@ -477,6 +598,22 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
         pending_seal_paths_at_last_ack,
         sealed_segments_at_last_ack,
         enrichment_backlog_at_last_ack,
+        enrichment: EnrichmentTelemetry {
+            enabled: cfg.enrichment_enabled,
+            peak_backlog,
+            final_backlog_at_ack: enrichment_backlog_at_last_ack,
+            backlog_after_seal,
+            backlog_after_enrich_drain,
+            backlog_slope_per_sec,
+            backlog_samples: samples.len(),
+            enrichment_drain_elapsed,
+            completed_enrichment_jobs,
+            completed_enrichment_ops_per_sec,
+            complete_lifecycle_ops_per_sec,
+            segments_hash_known,
+            segments_hash_pending,
+            index_query_verify_ok,
+        },
         rotation_stages,
         logical_bytes: keys_written.saturating_mul(cfg.payload_size as u64),
         on_disk_bytes: on_disk,
@@ -490,6 +627,70 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
             verification_complete_unix_ns,
         },
     })
+}
+
+fn backlog_slope_ols(samples: &[(f64, usize)]) -> f64 {
+    if samples.len() < 2 {
+        return 0.0;
+    }
+    let n = samples.len() as f64;
+    let mut sum_t = 0.0;
+    let mut sum_b = 0.0;
+    let mut sum_tt = 0.0;
+    let mut sum_tb = 0.0;
+    for &(t, b) in samples {
+        let bf = b as f64;
+        sum_t += t;
+        sum_b += bf;
+        sum_tt += t * t;
+        sum_tb += t * bf;
+    }
+    let denom = n * sum_tt - sum_t * sum_t;
+    if denom.abs() < 1e-12 {
+        return 0.0;
+    }
+    (n * sum_tb - sum_t * sum_b) / denom
+}
+
+fn count_content_hash_states(store: &Store) -> (usize, usize) {
+    let mut known = 0usize;
+    let mut pending = 0usize;
+    for id in store.list_segment_ids() {
+        match store.sealed_content_hash_state(&id) {
+            Some(ContentHashState::Known(_)) => known = known.saturating_add(1),
+            Some(ContentHashState::Pending) | None => pending = pending.saturating_add(1),
+        }
+    }
+    (known, pending)
+}
+
+fn verify_index_query_sample(
+    store: &Store,
+    keys_written: u64,
+    expected_hash: &[u8; 32],
+) -> Result<bool, String> {
+    if keys_written == 0 {
+        return Ok(true);
+    }
+    // Point-get endpoints + mid-key: dual-index / primary path must serve bodies.
+    let probes = [
+        0u64,
+        keys_written / 2,
+        keys_written.saturating_sub(1),
+    ];
+    for seq in probes {
+        let key = format!("peer/{:020}", seq);
+        let got = store
+            .get(&key)
+            .map_err(|e| format!("index/query get({key}): {e}"))?;
+        let Some(body) = got else {
+            return Ok(false);
+        };
+        if body_hash(&body) != *expected_hash {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn verify_store_coverage_scan(
@@ -661,6 +862,13 @@ fn run_raw_mimic(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> {
         pending_seal_paths_at_last_ack: 0,
         sealed_segments_at_last_ack: 0,
         enrichment_backlog_at_last_ack: 0,
+        enrichment: EnrichmentTelemetry {
+            complete_lifecycle_ops_per_sec: ops as f64
+                / (ack_elapsed + drain_elapsed + seal_elapsed)
+                    .as_secs_f64()
+                    .max(1e-12),
+            ..EnrichmentTelemetry::default()
+        },
         rotation_stages: RotationStageTotals::default(),
         logical_bytes: ops.saturating_mul(cfg.payload_size as u64),
         on_disk_bytes: expect_len,
@@ -702,6 +910,40 @@ fn result_json(r: &AckFinalizeResult) -> Value {
             "all_rotation_stages": pct(rot.total_ns(), r.ack_elapsed),
         },
     });
+    let enrichment = json!({
+        "enabled": r.enrichment.enabled,
+        "peak_backlog": r.enrichment.peak_backlog,
+        "final_backlog_at_ack": r.enrichment.final_backlog_at_ack,
+        "backlog_after_seal": r.enrichment.backlog_after_seal,
+        "backlog_after_enrich_drain": r.enrichment.backlog_after_enrich_drain,
+        "backlog_slope_per_sec": r.enrichment.backlog_slope_per_sec,
+        "backlog_samples": r.enrichment.backlog_samples,
+        "enrichment_drain_elapsed_ns": r.enrichment.enrichment_drain_elapsed.as_nanos() as u64,
+        "completed_enrichment_jobs": r.enrichment.completed_enrichment_jobs,
+        "completed_enrichment_ops_per_sec": r.enrichment.completed_enrichment_ops_per_sec,
+        "complete_lifecycle_ops_per_sec": r.enrichment.complete_lifecycle_ops_per_sec,
+        "segments_hash_known": r.enrichment.segments_hash_known,
+        "segments_hash_pending": r.enrichment.segments_hash_pending,
+        "index_query_verify_ok": r.enrichment.index_query_verify_ok,
+    });
+    let seal_breakdown = json!({
+        "drain_lifecycle_ns": r.seal_breakdown.drain_lifecycle_ns,
+        "final_active_seal_ns": r.seal_breakdown.final_active_seal_ns,
+        "catalog_publication_ns": r.seal_breakdown.catalog_publication_ns,
+        "hydra_ns": r.seal_breakdown.hydra_ns,
+        "chimera_ns": r.seal_breakdown.chimera_ns,
+        "reopen_active_ns": r.seal_breakdown.reopen_active_ns,
+        "total_ns": r.seal_breakdown.total_ns(),
+    });
+    let timestamps = json!({
+        "workload_start": r.timestamps.workload_start_unix_ns as u64,
+        "last_successful_ack": r.timestamps.last_successful_ack_unix_ns as u64,
+        "drain_complete": r.timestamps.drain_complete_unix_ns as u64,
+        "seal_complete": r.timestamps.seal_complete_unix_ns as u64,
+        "close_complete": r.timestamps.close_complete_unix_ns as u64,
+        "reopen_complete": r.timestamps.reopen_complete_unix_ns as u64,
+        "verification_complete": r.timestamps.verification_complete_unix_ns as u64,
+    });
     json!({
         "kind": "ack_finalize_cell",
         "disclosure": DISCLOSURE,
@@ -720,15 +962,7 @@ fn result_json(r: &AckFinalizeResult) -> Value {
         "drain_elapsed_ns": r.drain_elapsed.as_nanos() as u64,
         "seal_elapsed_ns": r.seal_elapsed.as_nanos() as u64,
         "seal_elapsed_ms": r.seal_elapsed.as_secs_f64() * 1000.0,
-        "seal_breakdown": {
-            "drain_lifecycle_ns": r.seal_breakdown.drain_lifecycle_ns,
-            "final_active_seal_ns": r.seal_breakdown.final_active_seal_ns,
-            "catalog_publication_ns": r.seal_breakdown.catalog_publication_ns,
-            "hydra_ns": r.seal_breakdown.hydra_ns,
-            "chimera_ns": r.seal_breakdown.chimera_ns,
-            "reopen_active_ns": r.seal_breakdown.reopen_active_ns,
-            "total_ns": r.seal_breakdown.total_ns(),
-        },
+        "seal_breakdown": seal_breakdown,
         "close_elapsed_ns": r.close_elapsed.as_nanos() as u64,
         "reopen_elapsed_ns": r.reopen_elapsed.as_nanos() as u64,
         "verify_elapsed_ns": r.verify_elapsed.as_nanos() as u64,
@@ -738,18 +972,11 @@ fn result_json(r: &AckFinalizeResult) -> Value {
         "pending_seal_paths_at_last_ack": r.pending_seal_paths_at_last_ack,
         "sealed_segments_at_last_ack": r.sealed_segments_at_last_ack,
         "enrichment_backlog_at_last_ack": r.enrichment_backlog_at_last_ack,
+        "enrichment": enrichment,
         "rotation_stages": rotation_stages,
         "reopen_exact": r.reopen_exact,
         "reopen_verify_mode": r.reopen_verify_mode,
-        "timestamps_unix_ns": {
-            "workload_start": r.timestamps.workload_start_unix_ns as u64,
-            "last_successful_ack": r.timestamps.last_successful_ack_unix_ns as u64,
-            "drain_complete": r.timestamps.drain_complete_unix_ns as u64,
-            "seal_complete": r.timestamps.seal_complete_unix_ns as u64,
-            "close_complete": r.timestamps.close_complete_unix_ns as u64,
-            "reopen_complete": r.timestamps.reopen_complete_unix_ns as u64,
-            "verification_complete": r.timestamps.verification_complete_unix_ns as u64,
-        },
+        "timestamps_unix_ns": timestamps,
         "note": "Use acknowledged_write_ops_per_sec vs campaign_ops_per_sec (includes reopen+verify); no ambiguous ops_per_sec. skip-index disables live dual-index publish only — Hydra/Chimera still run at seal.",
     })
 }

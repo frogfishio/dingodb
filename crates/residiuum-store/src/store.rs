@@ -4867,6 +4867,17 @@ impl Store {
                     .catalog_apply_ns
                     .saturating_add(catalog_ns);
                 self.maybe_schedule_derived_catalog_checkpoint(false);
+                // Enrich only after authoritative publish — sealed bytes must exist.
+                if self.enrichment_enabled {
+                    if let Some(pipe) = self.seal_pipeline.as_mut() {
+                        let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
+                            store_id: self.store_id,
+                            segment_id,
+                            paths: self.paths.clone(),
+                            limits: self.limits,
+                        });
+                    }
+                }
             }
             LifecycleResult::SealFailed { segment_id, error } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
@@ -5062,14 +5073,7 @@ impl Store {
                     require_fsync,
                 })?;
             }
-            if self.enrichment_enabled {
-                let _ = pipe.submit_enrichment(LifecycleJob::EnrichDerived {
-                    store_id: self.store_id,
-                    segment_id,
-                    paths: self.paths.clone(),
-                    limits: self.limits,
-                });
-            }
+            // EnrichDerived is submitted from SealDone apply (sealed file ready).
         } else if zero_scan_meta {
             let plan = crate::incremental_seal::meta_publish_plan(
                 ids,

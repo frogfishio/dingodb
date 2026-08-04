@@ -4,9 +4,15 @@ Status: **Seal Fast Lane = architectural accept (principal)**;
 **Derived Catalog Checkpointing = package accept (principal)** —
 gates met; O(n²) catalog persist risk removed; sustained ack
 **47.8K → 57.6K TPS** (~+20.5%); `catalog_apply` under 1% of ack wall.  
-**Next (only):** three-cell lifecycle attribution — see
-[THREE_CELL_LIFECYCLE_ATTRIBUTION.md](./THREE_CELL_LIFECYCLE_ATTRIBUTION.md).  
-**AWO paused** until those three medians exist.  
+
+**Locked product truth:** complete sustainable throughput ≈ **12.4K**
+8 KiB writes/sec. The **~47.4K acknowledgement TPS is burst throughput
+financed by deferred enrichment debt**. Correctness **PASS**; full-product
+performance **FAIL**.
+
+**Next (only):** [Enrichment Throughput Qualification](./ENRICHMENT_THROUGHPUT_QUALIFICATION.md)
+(service floor ≥5.8 seg/s, prefer ≥7). Three-cell attribution residual
+**deprioritized**. **AWO paused**.  
 Date: 2026-08-04
 
 ## Wording (hard)
@@ -38,6 +44,16 @@ interference** while writes continue. Those are separate residuals.
 
 Evidence: `doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`.
 
+### Full-product (2 GiB @ 64 MiB, enrichment on)
+
+- Ack TPS **~47.4K**; complete-lifecycle TPS **~12.4K**; enrich drain **~14.9 s**.
+- Enrichment **~1.61 seg/s** → capacity \(1.61 \times 8192 \approx 13.2K\) ops/s
+  (matches lifecycle TPS). Writes create **~5.8 seg/s** → backlog slope **+4.1**.
+- Reopen exact + index/query sample **PASS** (correctness).
+- Full-product performance: **FAIL** — sustainable ≈ **12–13K TPS**.
+
+Evidence: `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`.
+
 ### Prior (pre-checkpointing)
 
 - Ack TPS **~47.8K**; `catalog_apply` **~13.9%** of ack wall.
@@ -56,20 +72,14 @@ Evidence: `doc/archive/performance-qualification/2026-08-04-derived-catalog-chec
 Stop speculative seal-architecture changes. Seal Fast Lane accepted
 architecturally; catalog O(n²) persist defect fixed and **package accepted**.
 
-**Only allowed next work:** run the matched sustained **three-cell** campaign
-on the **same binary** (full recipe:
-[THREE_CELL_LIFECYCLE_ATTRIBUTION.md](./THREE_CELL_LIFECYCLE_ATTRIBUTION.md)):
+**Only allowed next work:** **Enrichment Throughput Qualification** —
+[ENRICHMENT_THROUGHPUT_QUALIFICATION.md](./ENRICHMENT_THROUGHPUT_QUALIFICATION.md).
 
-| Cell | Purpose |
-|---|---|
-| 64 MiB, enrichment off | Current authoritative rotation cost |
-| Threshold above workload, enrichment off | Sustained no-rotation ceiling |
-| 64 MiB, enrichment on | Actual product cost of derived enrichment |
-
-Same 2 GiB workload, delete between runs, alternate ordering, compare
-**medians**. Do **not** optimize anything else until those three numbers
-exist. Return to AWO / append-path work only after principal re-opens that
-lane.
+Bottleneck is derived enrichment (~1.61 seg/s) vs create rate (~5.8 seg/s).
+Raise enrichment service so backlog slope ≤ 0 after warm-up and
+complete-lifecycle TPS approaches acknowledgement TPS. Prefer ≥7 seg/s to
+track the ~57.6K authoritative engine. AWO and three-cell attribution
+residuals stay paused / deprioritized until ETQ exits.
 
 ## Archives
 
@@ -82,3 +92,5 @@ lane.
 - `doc/archive/performance-qualification/2026-08-04-defer-segment-blake3/`
 - `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`
 - `doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`
+- `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
+- Plan: `doc/todo/performance-qualification/ENRICHMENT_THROUGHPUT_QUALIFICATION.md`

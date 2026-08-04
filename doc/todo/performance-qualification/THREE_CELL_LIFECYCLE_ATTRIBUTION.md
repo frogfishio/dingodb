@@ -1,9 +1,15 @@
 # Three-cell lifecycle attribution (frozen)
 
-Status: **next measurement only** — AWO paused until these medians exist.  
+Status: **deprioritized** — `product64` measured and yielded the decisive
+product number (~12.4K sustainable TPS). Remaining `auth64` / `ceiling`
+cells are **not** the priority; next package is Enrichment Throughput
+Qualification. AWO paused.  
 Date: 2026-08-04  
 Depends on: Derived Catalog Checkpointing **package accept**
-(`doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`).
+(`doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`).  
+Product cell evidence:
+`doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`.  
+See: [ENRICHMENT_THROUGHPUT_QUALIFICATION.md](./ENRICHMENT_THROUGHPUT_QUALIFICATION.md).
 
 ## Purpose
 
