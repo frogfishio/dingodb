@@ -1,6 +1,7 @@
 # Path to full RQL — de-risk expressiveness + performance
 
-Status: **labor map 2026-08-04** (post store P0 / packaging 0.2.2 diversion)  
+Status: **labor map 2026-08-04** (post store P0 / packaging 0.2.2 diversion);  
+**Phase 1 labor** residual checklist [PHASE1_CORE_BASELINE_RESIDUAL.md](./PHASE1_CORE_BASELINE_RESIDUAL.md)  
 Authority: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md) §0.8 ·  
 [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·  
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) · APP-5 / APB-7 inventories

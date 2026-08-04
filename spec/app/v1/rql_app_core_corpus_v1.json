@@ -82,6 +82,65 @@
         "budget_bytes": 1048576,
         "budget_result_bytes": 65536
       }
+    },
+    {
+      "id": "accept-compare-range",
+      "source_rql": "from orders where amount >= 10 and amount < 100 page size 16",
+      "plan_hash_hex": "edb43216952455bfccb4436aae2977a397445fb1f01e538afd68f836db2539cb",
+      "expect": {
+        "page_size": 16
+      }
+    },
+    {
+      "id": "accept-missing-and-present",
+      "source_rql": "from orders where missing(deleted_at) and present(customer.id) page size 8",
+      "plan_hash_hex": "17f6eb49361de5ae95cfe8a78aa3392cd8593598a29166484f0dff19aba4dc16",
+      "expect": {
+        "page_size": 8
+      }
+    },
+    {
+      "id": "accept-project-limit",
+      "source_rql": "from orders project id, amount limit 5 page size 2",
+      "plan_hash_hex": "6d9d20c380feff7758e39455d057973ade180d1a9d0271447cb50008d43e16b8",
+      "expect": {
+        "page_size": 2,
+        "limit": 5
+      }
+    },
+    {
+      "id": "accept-multi-order-nulls-last",
+      "source_rql": "from orders order by region asc, created_at desc nulls last page size 10",
+      "plan_hash_hex": "9cb7629392b7b4a5c5192b05f1ef7092be2da38d1aa1507cf64b92f51f3a7d97",
+      "expect": {
+        "page_size": 10,
+        "first_order_dir": "asc",
+        "first_order_nulls": "last"
+      }
+    },
+    {
+      "id": "accept-neq-or-eq",
+      "source_rql": "from orders where status != \"cancelled\" or region = \"us\" page size 24",
+      "plan_hash_hex": "e67eda11ef8ee39370f6c15f8c6aa15c990caa9de50c73044979b186e2cee3a5",
+      "expect": {
+        "page_size": 24
+      }
+    },
+    {
+      "id": "accept-is-not-null-and-not-in",
+      "source_rql": "from orders where tags is not null and region not in [\"xx\"] page size 12",
+      "plan_hash_hex": "df1a78dc0a3a1168dd3044e6b796a263a0f14bd0fe9df898bd9422f6c34b8fb8",
+      "expect": {
+        "page_size": 12
+      }
+    },
+    {
+      "id": "accept-contains-and-starts-with",
+      "source_rql": "from orders where contains(notes, \"rush\") and starts_with(sku, \"AB\") page size 4",
+      "plan_hash_hex": "b112494543f8be36744bc38f1aef19c7e6db1d75ac2d2f3f0660e1287daa292e",
+      "expect": {
+        "page_size": 4
+      }
     }
   ],
   "reject": [
@@ -139,6 +198,36 @@
       "id": "reject-not-a-query",
       "source_rql": "select * from orders",
       "diagnostic_contains": ["expected"]
+    },
+    {
+      "id": "reject-sql-offset",
+      "source_rql": "from orders offset 10",
+      "diagnostic_contains": ["unexpected"]
+    },
+    {
+      "id": "reject-sql-group-by",
+      "source_rql": "from orders group by status",
+      "diagnostic_contains": ["unexpected"]
+    },
+    {
+      "id": "reject-sql-join",
+      "source_rql": "from orders join customers",
+      "diagnostic_contains": ["unexpected"]
+    },
+    {
+      "id": "reject-sql-union",
+      "source_rql": "from orders union from other",
+      "diagnostic_contains": ["unexpected"]
+    },
+    {
+      "id": "reject-sql-having",
+      "source_rql": "from orders having count > 1",
+      "diagnostic_contains": ["unexpected"]
+    },
+    {
+      "id": "reject-absent-not-a-predicate",
+      "source_rql": "from orders where absent(x)",
+      "diagnostic_contains": ["expected comparison"]
     }
   ]
 }

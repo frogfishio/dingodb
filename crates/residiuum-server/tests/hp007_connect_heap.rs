@@ -1207,15 +1207,17 @@ fn connect_heap_find_filter() {
     let hits = remote
         .find(&cid, &serde_json::json!({"status": "active"}), Some(10))
         .expect("find");
-    assert_eq!(hits.len(), 2);
-    assert!(hits.iter().any(|(k, _)| k == "a"));
-    assert!(hits.iter().any(|(k, _)| k == "c"));
-    assert!(!hits.iter().any(|(k, _)| k == "b"));
+    assert!(hits.coverage_complete);
+    assert_eq!(hits.rows.len(), 2);
+    assert!(hits.rows.iter().any(|(k, _)| k == "a"));
+    assert!(hits.rows.iter().any(|(k, _)| k == "c"));
+    assert!(!hits.rows.iter().any(|(k, _)| k == "b"));
 
     let gte = remote
         .find(&cid, &serde_json::json!({"n": {"$gte": 2}}), Some(10))
         .expect("find gte");
-    assert_eq!(gte.len(), 2);
+    assert!(gte.coverage_complete);
+    assert_eq!(gte.rows.len(), 2);
 
     drop(remote);
     flag.store(true, Ordering::SeqCst);
@@ -1471,21 +1473,24 @@ fn connect_heap_find_via_index() {
     let hits = remote
         .find(&cid, &serde_json::json!({"status": "active"}), Some(10))
         .expect("find via index");
-    assert_eq!(hits.len(), 2);
-    assert!(hits.iter().any(|(k, _)| k == "a"));
-    assert!(hits.iter().any(|(k, _)| k == "c"));
+    assert!(hits.coverage_complete);
+    assert_eq!(hits.rows.len(), 2);
+    assert!(hits.rows.iter().any(|(k, _)| k == "a"));
+    assert!(hits.rows.iter().any(|(k, _)| k == "c"));
 
     // Absence on a ready complete index should not surface paused rows.
     let none = remote
         .find(&cid, &serde_json::json!({"status": "gone"}), Some(10))
         .expect("find miss");
-    assert!(none.is_empty());
+    assert!(none.coverage_complete);
+    assert!(none.rows.is_empty());
 
     // Non-equality still works via scan fallback.
     let gte = remote
         .find(&cid, &serde_json::json!({"n": {"$gte": 2}}), Some(10))
         .expect("find gte scan");
-    assert_eq!(gte.len(), 2);
+    assert!(gte.coverage_complete);
+    assert_eq!(gte.rows.len(), 2);
 
     // Write after index → stale; equality miss cannot prove absence via index.
     remote
@@ -1507,7 +1512,8 @@ fn connect_heap_find_via_index() {
     let hits2 = remote
         .find(&cid, &serde_json::json!({"status": "active"}), Some(10))
         .expect("find after rebuild");
-    assert_eq!(hits2.len(), 3);
+    assert!(hits2.coverage_complete);
+    assert_eq!(hits2.rows.len(), 3);
 
     drop(remote);
     flag.store(true, Ordering::SeqCst);

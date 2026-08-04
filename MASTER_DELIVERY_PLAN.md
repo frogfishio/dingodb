@@ -1,6 +1,15 @@
 # Residiuum master delivery plan
 
-Status: **definitive execution plan v1.7**
+Status: **dependency and package reference v1.7; current priority superseded**
+
+Current execution authority:
+[CRITICAL_PATH.md](./CRITICAL_PATH.md).
+
+The principal locked the active sequence on 2026-08-04 as
+`RQL -> Atomics -> Cluster`. Where this historical stage plan or its earlier
+NOW/THEN language conflicts with that sequence, `CRITICAL_PATH.md` wins. This
+file remains useful for package definitions, dependencies and accumulated
+delivery history; it no longer selects the next programme.
 
 Effective: 2026-08-01
 

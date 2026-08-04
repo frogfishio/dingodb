@@ -1,0 +1,13 @@
+   Compiling residiuum-server v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.03s
+     Running tests/hp007_connect_heap.rs (target/debug/deps/hp007_connect_heap-8fffbe0f42b3d0d6)
+
+running 1 test
+test apb7_query_from_remote_collection_plane ... {"profile":"residiuum-log-v1","ts_ms":1785857916235,"level":"info","event":"server.start","mode":"serve","store":"/Users/rumpelstiltskin/Code/Frogfish/residiuum/.tmp-test/.tmpJml5L9/app.residiuum","reason":"bind=127.0.0.1:64137 tls=on max_connections=64 admission=residiuum-admission-v1"}
+{"profile":"residiuum-log-v1","ts_ms":1785857916300,"level":"error","event":"connection.error","mode":"serve","store":"/Users/rumpelstiltskin/Code/Frogfish/residiuum/.tmp-test/.tmpJml5L9/app.residiuum","reason":"io: unexpected end of file"}
+{"profile":"residiuum-log-v1","ts_ms":1785857916676,"level":"error","event":"connection.error","mode":"serve","store":"/Users/rumpelstiltskin/Code/Frogfish/residiuum/.tmp-test/.tmpJml5L9/app.residiuum","reason":"io: peer closed connection without sending TLS close_notify: https://docs.rs/rustls/latest/rustls/manual/_03_howto/index.html#unexpected-eof"}
+{"profile":"residiuum-log-v1","ts_ms":1785857916693,"level":"info","event":"server.drain","mode":"serve","store":"/Users/rumpelstiltskin/Code/Frogfish/residiuum/.tmp-test/.tmpJml5L9/app.residiuum","reason":"status=complete active=0 peak=2 rejected=0 accepted=2 mutations_started=0 mutations_finished=0","ok":true}
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.74s
+

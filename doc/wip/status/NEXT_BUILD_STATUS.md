@@ -211,7 +211,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
 | — | **APB-7 T7** dual-pack + accept checklist `9e19bd5f` | `in_review` | suite + checklist; collection-plane dual green; **not** package accept |
 | — | **RQL PATH T0** map `32d30efe` | `in_review` | [PATH_TO_FULL_RQL.md](../../todo/rql/PATH_TO_FULL_RQL.md); post-0.2.2 query de-risk |
-| — | **RQL PATH T1** Core baseline `0a5c700a` | `todo` | Close APB-7/APP-6 accept path before full language |
+| — | **RQL PATH T1** Core baseline `0a5c700a` | `in_review` | Phase 1 labor: expanded corpus + execute oracle + residual checklist; **not** package accept |
 | — | **RQL PATH T2** expressiveness corpus | `todo` | Core + refuse matrix; SQL-filter-class bar |
 | — | **RQL-v1 full language** `89a80e77` | `backlog` | **NOT** APB-7; promote only after Phase 1 accept |
 | — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |

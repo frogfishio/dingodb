@@ -8,8 +8,12 @@ the time they were archived.
 
 ## Authority
 
-There is exactly one execution authority:
-[MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md).
+There is exactly one current execution authority:
+[CRITICAL_PATH.md](../CRITICAL_PATH.md).
+
+[MASTER_DELIVERY_PLAN.md](../MASTER_DELIVERY_PLAN.md) remains the detailed
+package/dependency reference and historical stage map. It does not override the
+principal-locked `RQL -> Atomics -> Cluster` sequence.
 
 There is exactly one living package scoreboard:
 [wip/status/NEXT_BUILD_STATUS.md](wip/status/NEXT_BUILD_STATUS.md).
@@ -29,7 +33,10 @@ under [done/programs/](done/programs/) as history.
 Crate READMEs, public website content, and operator/user manuals remain beside
 the code or publishing system they document.
 
-## Current critical path
+## Historical programme map
+
+The map below is retained to locate earlier package families. It no longer
+selects current work; use [CRITICAL_PATH.md](../CRITICAL_PATH.md).
 
 ```text
 DONE: emergency storage defects + Residiuum rebrand
@@ -71,6 +78,8 @@ They are two layers of one program, not competing plans.
 
 - [README](../README.md) — product introduction and maturity.
 - [Architecture](../ARCHITECTURE.md) — normative technical map.
-- [Master delivery plan](../MASTER_DELIVERY_PLAN.md) — sole priority authority.
+- [Critical path](../CRITICAL_PATH.md) — sole current priority authority.
+- [Master delivery plan](../MASTER_DELIVERY_PLAN.md) — package/dependency
+  reference and historical stage map.
 - [Contributing](../CONTRIBUTING.md) — engineering workflow.
 - [Security](../SECURITY.md) — security policy and reporting.
