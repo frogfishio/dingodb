@@ -1,20 +1,20 @@
 //! Per-segment Chimera layout sidecars (seal / compaction wire-up).
 //!
-//! At seal (and live-projection compact) the store compiles live values that
-//! still live on a segment into physical placement:
+//! **Default (compact, layout version 2):** seal/enrichment persists a sorted
+//! key → [`ValueLocator::SegmentFrame`] table. Payloads stay in authoritative
+//! segments. Containers and value-log regions are empty.
 //!
-//! | Class  | Placement |
-//! |--------|-----------|
-//! | Tiny   | [`ValueLocator::Inline`] in the entry table |
-//! | Medium | Sealed [`PointContainer`] slots |
-//! | Large  | Append-only [`ValueLog`] records |
+//! **Obsolete (materialized, non-default):** [`build_materialized_layout`] still
+//! embeds tiny/medium/large bodies (inline / point containers / value log) for
+//! explicit compiler / migration use. Legacy on-disk version 1 files remain
+//! readable.
 //!
 //! Layouts live under `indexes/chimera/{hex16}.cmr` and are **derived only** —
 //! loss must never block segment salvage or PrimaryIndex rebuild.
 //!
-//! Product `Store::get` resolves via the resident PrimaryIndex body. Layouts
-//! are loaded by `Store::get_via_chimera` / seal tooling; do not full-read a
-//! `.cmr` on every hot get.
+//! Product `Store::get` resolves via PrimaryIndex locators. Layouts are loaded
+//! by `Store::get_via_chimera` / seal tooling; do not full-read a `.cmr` on
+//! every hot get.
 
 use super::{
     pack_point_containers, resolve, ClassifyOptions, IoSelectOptions, LocatorKind, PointContainer,
@@ -37,13 +37,28 @@ pub fn chimera_layout_path(paths: &StorePaths, segment_id: &[u8; 16]) -> PathBuf
 }
 
 const MAGIC: &[u8; 8] = b"RCHIMR01";
-const VERSION: u32 = 1;
+/// Current on-disk layout version (compact SegmentFrame default).
+pub const CHIMERA_LAYOUT_VERSION: u32 = 2;
+/// Legacy full-payload embedding layout (still decodable).
+pub const CHIMERA_LAYOUT_VERSION_LEGACY: u32 = 1;
 
 const TAG_INLINE: u8 = 1;
 const TAG_POINT: u8 = 2;
 const TAG_SCAN: u8 = 3;
 const TAG_LARGE: u8 = 4;
 const TAG_RESIDENT: u8 = 5;
+const TAG_SEGMENT_FRAME: u8 = 6;
+
+/// One compact frame reference used to build a default Chimera layout.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompactFrameRef {
+    /// Establishing segment id.
+    pub segment_id: [u8; 16],
+    /// Item-frame byte offset within that segment.
+    pub frame_offset: u64,
+    /// Expected body length, or 0 when unknown.
+    pub body_len: u32,
+}
 
 /// Compiled Chimera placement for one sealed segment (or live-projection output).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,6 +137,13 @@ impl ChimeraLayout {
                     "chimera scan extent not supported in segment layout resolve",
                 )));
             }
+            ValueLocator::SegmentFrame { .. } => {
+                // Needs store pread of the authoritative segment frame.
+                return Err(StoreError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "chimera segment frame requires store resolve",
+                )));
+            }
         }
         let resolved = resolve(loc, &ctx, &IoSelectOptions::default())?;
         Ok(resolved.bytes)
@@ -137,6 +159,7 @@ impl ChimeraLayout {
                 LocatorKind::PointContainer => c.point_container += 1,
                 LocatorKind::ScanExtent => c.scan_extent += 1,
                 LocatorKind::LargeValueLog => c.large_value_log += 1,
+                LocatorKind::SegmentFrame => c.segment_frame += 1,
             }
         }
         c
@@ -156,10 +179,51 @@ pub struct ChimeraKindCounts {
     pub scan_extent: usize,
     /// Large-value-log locators.
     pub large_value_log: usize,
+    /// Segment-frame locators (compact default).
+    pub segment_frame: usize,
 }
 
-/// Build a layout from logical (key, value) pairs using default classification.
+/// Build the **default compact** layout: key → segment-frame locators only.
 ///
+/// Duplicate keys keep the **last** frame ref. No containers / value-log bytes.
+pub fn build_compact_layout(
+    frames: &[(Vec<u8>, CompactFrameRef)],
+    generation: u32,
+) -> ChimeraLayout {
+    let mut map: BTreeMap<Vec<u8>, CompactFrameRef> = BTreeMap::new();
+    for (k, r) in frames {
+        map.insert(k.clone(), *r);
+    }
+    let mut layout = ChimeraLayout::empty(generation);
+    for (k, r) in map {
+        layout.entries.insert(
+            k,
+            ValueLocator::SegmentFrame {
+                segment_id: r.segment_id,
+                frame_offset: r.frame_offset,
+                body_len: r.body_len,
+                generation,
+            },
+        );
+    }
+    layout
+}
+
+/// Obsolete full-payload embedding layout (non-default).
+///
+/// Tiny → inline, medium → point containers, large → value log.
+/// Prefer [`build_compact_layout`] for seal / enrichment.
+pub fn build_materialized_layout(
+    pairs: &[(Vec<u8>, Vec<u8>)],
+    generation: u32,
+    classify_opts: &ClassifyOptions,
+) -> ChimeraLayout {
+    build_layout(pairs, generation, classify_opts)
+}
+
+/// Build a layout from logical (key, value) pairs using classification.
+///
+/// **Obsolete default path** — embeds payloads. Prefer [`build_compact_layout`].
 /// Tiny → inline, medium → point containers (ids 0..), large → value log id 0.
 /// Duplicate keys keep the **last** value (caller order).
 pub fn build_layout(
@@ -271,7 +335,7 @@ pub fn delete_chimera_layout(path: &Path) -> Result<(), StoreError> {
 fn encode(store_id: [u8; 16], segment_id: [u8; 16], layout: &ChimeraLayout) -> Vec<u8> {
     let mut out = Vec::with_capacity(128 + layout.len() * 48);
     out.extend_from_slice(MAGIC);
-    out.extend_from_slice(&VERSION.to_le_bytes());
+    out.extend_from_slice(&CHIMERA_LAYOUT_VERSION.to_le_bytes());
     out.extend_from_slice(&store_id);
     out.extend_from_slice(&segment_id);
     out.extend_from_slice(&layout.generation.to_le_bytes());
@@ -341,6 +405,18 @@ fn encode_locator(loc: &ValueLocator, out: &mut Vec<u8>) {
             out.push(TAG_RESIDENT);
             out.extend_from_slice(&generation.to_le_bytes());
         }
+        ValueLocator::SegmentFrame {
+            segment_id,
+            frame_offset,
+            body_len,
+            generation,
+        } => {
+            out.push(TAG_SEGMENT_FRAME);
+            out.extend_from_slice(segment_id);
+            out.extend_from_slice(&frame_offset.to_le_bytes());
+            out.extend_from_slice(&body_len.to_le_bytes());
+            out.extend_from_slice(&generation.to_le_bytes());
+        }
     }
 }
 
@@ -355,7 +431,7 @@ fn decode(bytes: &[u8], store_id: [u8; 16], segment_id: [u8; 16]) -> Option<Chim
     i += 8;
     let version = u32::from_le_bytes(bytes[i..i + 4].try_into().ok()?);
     i += 4;
-    if version != VERSION {
+    if version != CHIMERA_LAYOUT_VERSION && version != CHIMERA_LAYOUT_VERSION_LEGACY {
         return None;
     }
     if bytes[i..i + 16] != store_id {
@@ -511,6 +587,29 @@ fn decode_locator(bytes: &[u8], mut i: usize) -> Option<(ValueLocator, usize)> {
             i += 4;
             Some((ValueLocator::Resident { generation }, i))
         }
+        TAG_SEGMENT_FRAME => {
+            if i + 16 + 8 + 4 + 4 > bytes.len() {
+                return None;
+            }
+            let mut segment_id = [0u8; 16];
+            segment_id.copy_from_slice(&bytes[i..i + 16]);
+            i += 16;
+            let frame_offset = u64::from_le_bytes(bytes[i..i + 8].try_into().ok()?);
+            i += 8;
+            let body_len = u32::from_le_bytes(bytes[i..i + 4].try_into().ok()?);
+            i += 4;
+            let generation = u32::from_le_bytes(bytes[i..i + 4].try_into().ok()?);
+            i += 4;
+            Some((
+                ValueLocator::SegmentFrame {
+                    segment_id,
+                    frame_offset,
+                    body_len,
+                    generation,
+                },
+                i,
+            ))
+        }
         _ => None,
     }
 }
@@ -521,13 +620,13 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn build_places_all_classes() {
+    fn build_materialized_places_all_classes() {
         let pairs = vec![
             (b"tiny".to_vec(), b"hi".to_vec()),
             (b"med".to_vec(), vec![9u8; 200]),
             (b"big".to_vec(), vec![7u8; 32 * 1024]),
         ];
-        let layout = build_layout(&pairs, 3, &ClassifyOptions::default());
+        let layout = build_materialized_layout(&pairs, 3, &ClassifyOptions::default());
         assert_eq!(layout.len(), 3);
         let counts = layout.count_by_kind();
         assert_eq!(counts.inline, 1);
@@ -539,7 +638,64 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_disk() {
+    fn compact_layout_roundtrip_and_amp() {
+        let dir = tempdir().unwrap();
+        let paths = StorePaths::new(dir.path());
+        fs::create_dir_all(paths.indexes_dir()).unwrap();
+        let store_id = [1u8; 16];
+        let seg = [2u8; 16];
+        let auth_bytes: u64 = 64 * 1024 * 1024;
+        let n = 8192usize;
+        let body_len = (auth_bytes / n as u64) as u32;
+        let mut frames = Vec::with_capacity(n);
+        for i in 0..n {
+            let key = format!("k{i:05}").into_bytes();
+            frames.push((
+                key,
+                CompactFrameRef {
+                    segment_id: seg,
+                    frame_offset: (i as u64) * 8192,
+                    body_len,
+                },
+            ));
+        }
+        let layout = build_compact_layout(&frames, 1);
+        assert_eq!(layout.count_by_kind().segment_frame, n);
+        assert!(layout.containers.is_empty());
+        assert!(layout.value_log.as_bytes().is_empty());
+        // In-layout get cannot resolve segment frames without store pread.
+        assert!(layout.get(b"k00000").unwrap_err().to_string().contains("store resolve"));
+
+        let path = chimera_layout_path(&paths, &seg);
+        write_chimera_layout(&path, store_id, seg, &layout).unwrap();
+        let loaded = try_load_chimera_layout(&path, store_id, seg)
+            .unwrap()
+            .expect("layout present");
+        assert_eq!(loaded.len(), n);
+        let derived = fs::metadata(&path).unwrap().len();
+        let ratio = derived as f64 / auth_bytes as f64;
+        assert!(
+            ratio <= 0.05,
+            "compact chimera amp {ratio:.4} (derived={derived}) exceeds 5%"
+        );
+        match loaded.locator(b"k00000") {
+            Some(ValueLocator::SegmentFrame {
+                frame_offset,
+                body_len: bl,
+                ..
+            }) => {
+                assert_eq!(*frame_offset, 0);
+                assert_eq!(*bl, body_len);
+            }
+            other => panic!("expected SegmentFrame, got {other:?}"),
+        }
+        assert!(try_load_chimera_layout(&path, [9u8; 16], seg)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn materialized_roundtrip_disk_still_supported() {
         let dir = tempdir().unwrap();
         let paths = StorePaths::new(dir.path());
         fs::create_dir_all(paths.indexes_dir()).unwrap();
@@ -550,7 +706,7 @@ mod tests {
             (b"b".to_vec(), vec![1u8; 128]),
             (b"c".to_vec(), vec![2u8; 20_000]),
         ];
-        let layout = build_layout(&pairs, 1, &ClassifyOptions::default());
+        let layout = build_materialized_layout(&pairs, 1, &ClassifyOptions::default());
         let path = chimera_layout_path(&paths, &seg);
         write_chimera_layout(&path, store_id, seg, &layout).unwrap();
         let loaded = try_load_chimera_layout(&path, store_id, seg)
@@ -560,9 +716,5 @@ mod tests {
         assert_eq!(loaded.get(b"a").unwrap().unwrap(), b"tiny-a");
         assert_eq!(loaded.get(b"b").unwrap().unwrap(), vec![1u8; 128]);
         assert_eq!(loaded.get(b"c").unwrap().unwrap(), vec![2u8; 20_000]);
-        // Wrong store id → None
-        assert!(try_load_chimera_layout(&path, [9u8; 16], seg)
-            .unwrap()
-            .is_none());
     }
 }

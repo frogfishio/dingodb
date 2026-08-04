@@ -59,7 +59,7 @@ assert!(store.get("user-42")?.is_none());
 | Hydra | adaptive per-segment indexes at seal (Eytzinger / PGM·RadixSpline / compressed radix / MPHF); multithread rebuild |
 | Async lifecycle | DEF-096 Axis A: auto-seal O(1) rotates to `active/pending/`; background worker finalizes sealed image + Hydra/Chimera; `seal_active` stays sync; `drain_lifecycle` / recover-on-open |
 | Sharded writers | DEF-096 Axis B: `create_with_shards(N)` → N active segments by subject hash; `put_many` parallel appends; N=1 keeps legacy layout |
-| Chimera | value locators + seal/compaction layouts under `indexes/chimera/`; hot `get` uses PrimaryIndex; `get_via_chimera` probes layouts (put still segment frames; dual-rep/ZNS deferred; compiler worker next) |
+| Chimera | compact seal layouts (`SegmentFrame` locators under `indexes/chimera/`); payloads stay in segments; hot `get` uses PrimaryIndex; `get_via_chimera` preads frames (full-payload embed obsolete; dual-rep/ZNS deferred) |
 | Chunks | chunked payloads with partial maps; phased live compaction |
 | Operator | `open_inspect` (doctor), `salvage_to`, `export_live_state`, `backup_to` / `restore_full_backup` (DEF-050), `scrub_once` / `scrub_status` (DEF-051), `migrate_to` (DEF-052) |
 | Tiering | segment move/copy with stable identities; offline-tier coverage holes |

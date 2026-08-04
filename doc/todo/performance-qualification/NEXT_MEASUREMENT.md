@@ -72,15 +72,14 @@ Evidence: `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`.
 Stop speculative seal-architecture changes. Seal Fast Lane accepted
 architecturally; catalog O(n²) persist defect fixed and **package accepted**.
 
-**Only allowed next work:** **ETQ-1 Compact Chimera Persistence** —
-[ETQ1_COMPACT_CHIMERA.md](./ETQ1_COMPACT_CHIMERA.md).
+**ETQ-1 compact Chimera landed (labor):** `.cmr` v2 `SegmentFrame` default;
+on-disk Chimera amp **~0.74%** (≤5% PASS); Chimera stage **~63 seg/s**.
+Lifecycle TPS **~37.9K** (was ~12.4K). Evidence
+`doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
 
-**ETQ-0 accepted:** Chimera writes ~63 MiB derived per 64 MiB auth (~2× amp);
-persist ~366 ms/seg. Do **not** add enrichment workers first — remove
-full-payload materialization. Default Chimera = locators + metadata; payloads
-stay in authoritative segments. Gates: derived ≤5% auth; ≥7 seg/s; backlog
-slope ≤0; lifecycle TPS near ack; locator query; Chimera optional for
-correctness. AWO / three-cell remain paused / deprioritized.
+**Residual (not package accept):** enrichment jobs/s **~4.93** (need ≥7);
+backlog slope **+0.64**. Dominant stage is now **decode** (~82 ms/seg), not
+Chimera. Do **not** add workers first. AWO / three-cell remain paused.
 
 ## Archives
 
@@ -95,6 +94,7 @@ correctness. AWO / three-cell remain paused / deprioritized.
 - `doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`
 - `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
 - `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`
+- `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`
 - Plan: `doc/todo/performance-qualification/ENRICHMENT_THROUGHPUT_QUALIFICATION.md`
 - ETQ-1 charter: `doc/todo/performance-qualification/ETQ1_COMPACT_CHIMERA.md`
 - `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`

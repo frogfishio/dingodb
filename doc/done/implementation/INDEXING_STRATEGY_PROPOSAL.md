@@ -242,11 +242,14 @@ crates/residiuum-store/src/chimera/
 
 Tests: unit tests under `chimera::*` + store seal/get/compact wire-up tests.
 
-**Seal/compaction wire-up (landed):** `build_layout` → `indexes/chimera/{hex}.cmr`
-at `seal_active` and live-projection compact; `Store::get` resolves via layout when
-present for the live establishing segment (PrimaryIndex / chunks remain fallback).
-Put path still writes full segment frames (Chimera is **derived** placement, not
-write-time authority). Dual-representation and ZNS placement stay deferred.
+**Seal/compaction wire-up (landed):** default `build_compact_layout` →
+`indexes/chimera/{hex}.cmr` **layout version 2** with `SegmentFrame` locators
+(segment id + frame offset/len; empty containers/value-log). Payloads remain in
+authoritative segments. Legacy version-1 full-payload embeds remain readable;
+`build_materialized_layout` is explicit/obsolete. Hot `Store::get` uses
+PrimaryIndex; `get_via_chimera` resolves compact locators via segment pread.
+Put path still writes full segment frames (Chimera is **derived**, never
+authority). Dual-representation and ZNS placement stay deferred.
 
 ### Sequencing decision (do we implement put-compile / dual-rep·ZNS·worker?)
 

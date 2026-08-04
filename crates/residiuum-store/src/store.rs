@@ -5197,89 +5197,85 @@ impl Store {
         crate::hydra::write_hydra_index(&path, self.store_id, segment_id, &index)
     }
 
-    /// Compile and persist a Chimera layout for live values established on `segment_id`.
+    /// Compile and persist a compact Chimera layout for live values on `segment_id`.
     ///
-    /// Derived only — tiny/medium/large classes map to inline / point containers /
-    /// value-log records under `indexes/chimera/`. Failure is non-fatal for seal.
+    /// Derived only — key → segment-frame locators under `indexes/chimera/`.
+    /// Payloads remain in authoritative segments. Failure is non-fatal for seal.
     fn write_chimera_for_sealed(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
-        let pairs = self.logical_live_pairs_for_segment(&segment_id)?;
-        if pairs.is_empty() {
+        let frames = self.compact_frame_refs_for_segment(&segment_id)?;
+        if frames.is_empty() {
             return Ok(());
         }
-        let layout = crate::chimera::build_layout(
-            &pairs,
-            1,
-            &crate::chimera::ClassifyOptions::default(),
-        );
+        let layout = crate::chimera::build_compact_layout(&frames, 1);
         let path = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
         crate::chimera::write_chimera_layout(&path, self.store_id, segment_id, &layout)
     }
 
-    /// Chimera layout for a live-projection compact output (all complete live values).
+    /// Compact Chimera layout for a live-projection compact output.
     fn write_chimera_for_live_projection(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
-        let pairs = self.logical_live_pairs_all()?;
-        if pairs.is_empty() {
+        let frames = self.compact_frame_refs_all()?;
+        if frames.is_empty() {
             return Ok(());
         }
-        let layout = crate::chimera::build_layout(
-            &pairs,
-            1,
-            &crate::chimera::ClassifyOptions::default(),
-        );
+        let layout = crate::chimera::build_compact_layout(&frames, 1);
         let path = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
         crate::chimera::write_chimera_layout(&path, self.store_id, segment_id, &layout)
     }
 
-    /// Logical (subject, body) pairs still live and established on `segment_id`.
+    /// Compact frame refs for live values established on `segment_id`.
     ///
-    /// Chunked subjects contribute only when fully reassembled; partials are skipped
-    /// so the layout never encodes incomplete values.
-    fn logical_live_pairs_for_segment(
+    /// Uses index locators only (no payload materialization). `body_len` is taken
+    /// from a resident index body when present; otherwise 0 (validate on pread).
+    fn compact_frame_refs_for_segment(
         &self,
         segment_id: &[u8; 16],
-    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
-        let mut pairs = Vec::new();
+    ) -> Result<Vec<(Vec<u8>, crate::chimera::CompactFrameRef)>, StoreError> {
+        let mut frames = Vec::new();
         for (subject, lv) in self.index.live_entries() {
-            if lv.segment_id != *segment_id {
+            if lv.segment_id != *segment_id || lv.frame_offset == 0 {
                 continue;
             }
-            if let Some(body) = self.logical_body_for_live(lv)? {
-                pairs.push((subject.clone(), body));
-            }
+            let body_len = if lv.body.is_empty() {
+                0
+            } else {
+                lv.body.len().min(u32::MAX as usize) as u32
+            };
+            frames.push((
+                subject.clone(),
+                crate::chimera::CompactFrameRef {
+                    segment_id: lv.segment_id,
+                    frame_offset: lv.frame_offset,
+                    body_len,
+                },
+            ));
         }
-        Ok(pairs)
+        Ok(frames)
     }
 
-    /// Fully reassembled logical body for a live index entry, if complete.
-    fn logical_body_for_live(
+    /// Compact frame refs for all durable live values (live-projection compact).
+    fn compact_frame_refs_all(
         &self,
-        lv: &crate::index::LiveValue,
-    ) -> Result<Option<Vec<u8>>, StoreError> {
-        let body = self.resolve_live_value_body(lv)?;
-        if !is_chunk_manifest(&body) {
-            return Ok(Some(body));
-        }
-        let Some(manifest) = decode_chunk_manifest(&body) else {
-            return Ok(None);
-        };
-        let resolved = self.resolve_manifest_chunks(lv.item_id, &manifest)?;
-        match reassemble_with_manifest(lv.item_id, &manifest, &resolved) {
-            PayloadResult::Complete { body } => Ok(Some(body)),
-            PayloadResult::Partial { .. }
-            | PayloadResult::Unavailable { .. }
-            | PayloadResult::Conflicting { .. } => Ok(None),
-        }
-    }
-
-    /// All complete live (subject, body) pairs (used for compact-output Chimera).
-    fn logical_live_pairs_all(&self) -> Result<Vec<(Vec<u8>, Vec<u8>)>, StoreError> {
-        let mut pairs = Vec::new();
+    ) -> Result<Vec<(Vec<u8>, crate::chimera::CompactFrameRef)>, StoreError> {
+        let mut frames = Vec::new();
         for (subject, lv) in self.index.live_entries() {
-            if let Some(body) = self.logical_body_for_live(lv)? {
-                pairs.push((subject.clone(), body));
+            if lv.frame_offset == 0 {
+                continue;
             }
+            let body_len = if lv.body.is_empty() {
+                0
+            } else {
+                lv.body.len().min(u32::MAX as usize) as u32
+            };
+            frames.push((
+                subject.clone(),
+                crate::chimera::CompactFrameRef {
+                    segment_id: lv.segment_id,
+                    frame_offset: lv.frame_offset,
+                    body_len,
+                },
+            ));
         }
-        Ok(pairs)
+        Ok(frames)
     }
 
     /// Resolve a subject via the Chimera layout for `segment_id` when present.
@@ -5297,7 +5293,27 @@ impl Store {
         else {
             return Ok(None);
         };
-        layout.get(key)
+        let Some(loc) = layout.locator(key) else {
+            return Ok(None);
+        };
+        match loc {
+            crate::chimera::ValueLocator::SegmentFrame {
+                segment_id: frame_seg,
+                frame_offset,
+                body_len,
+                ..
+            } => {
+                let body = self.pread_body_for_locator(frame_seg, *frame_offset)?;
+                if *body_len != 0 && body.len() as u32 != *body_len {
+                    return Err(StoreError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "chimera segment frame body_len mismatch",
+                    )));
+                }
+                Ok(Some(body))
+            }
+            other => Ok(Some(layout.resolve_locator(other)?)),
+        }
     }
 
     /// Rebuild Hydra indexes for all available sealed segments (multithread).
@@ -7704,18 +7720,17 @@ mod tests {
             .unwrap()
             .expect("chimera layout after seal");
         let counts = layout.count_by_kind();
-        assert_eq!(counts.inline, 1);
-        assert_eq!(counts.point_container, 1);
-        assert_eq!(counts.large_value_log, 1);
-        assert_eq!(layout.get(b"t").unwrap().unwrap(), tiny);
-        assert_eq!(layout.get(b"m").unwrap().unwrap(), medium);
-        assert_eq!(layout.get(b"l").unwrap().unwrap(), large);
+        assert_eq!(counts.segment_frame, 3);
+        assert_eq!(counts.inline, 0);
+        assert_eq!(counts.point_container, 0);
+        assert_eq!(counts.large_value_log, 0);
+        assert!(layout.containers.is_empty());
 
-        // Hot Store::get uses resident PrimaryIndex (not a full .cmr reload).
+        // Hot Store::get uses PrimaryIndex (not a full .cmr reload).
         assert_eq!(store.get("t").unwrap().as_deref(), Some(tiny.as_slice()));
         assert_eq!(store.get("m").unwrap().as_deref(), Some(medium.as_slice()));
         assert_eq!(store.get("l").unwrap().as_deref(), Some(large.as_slice()));
-        // Explicit Chimera probe still resolves sealed layouts.
+        // Explicit Chimera probe resolves via authoritative segment pread.
         assert_eq!(
             store.get_via_chimera("t").unwrap().as_deref(),
             Some(tiny.as_slice())
@@ -7828,7 +7843,11 @@ mod tests {
         let n = store.rebuild_chimera_layouts().unwrap();
         assert!(n >= 1);
         let layout = store.load_chimera_layout(seg).unwrap().expect("rebuilt");
-        assert_eq!(layout.get(b"x").unwrap().unwrap(), b"tiny-x");
+        assert_eq!(layout.count_by_kind().segment_frame, 2);
+        assert_eq!(
+            store.get_via_chimera("x").unwrap().as_deref(),
+            Some(b"tiny-x".as_slice())
+        );
     }
 
     #[test]
@@ -7866,8 +7885,15 @@ mod tests {
             .unwrap()
             .expect("compact output chimera");
         assert!(layout.len() >= 2);
-        assert_eq!(layout.get(b"a").unwrap().unwrap(), b"one");
-        assert_eq!(layout.get(b"b").unwrap().unwrap(), vec![2u8; 256]);
+        assert!(layout.count_by_kind().segment_frame >= 2);
+        assert_eq!(
+            store.get_via_chimera("a").unwrap().as_deref(),
+            Some(b"one".as_slice())
+        );
+        assert_eq!(
+            store.get_via_chimera("b").unwrap().as_deref(),
+            Some(vec![2u8; 256].as_slice())
+        );
     }
 
     #[test]

@@ -1,6 +1,7 @@
 # Enrichment Throughput Qualification (ETQ)
 
-Status: **ETQ-0 accepted**; **ETQ-1 frozen** as Compact Chimera Persistence.  
+Status: **ETQ-0 accepted**; **ETQ-1 compact Chimera labor measured** (amp/stage
+PASS; enrichment ≥7 / slope ≤0 still FAIL — decode residual).  
 AWO: **paused**. Three-cell attribution residual: **deprioritized**.  
 Date: 2026-08-04
 

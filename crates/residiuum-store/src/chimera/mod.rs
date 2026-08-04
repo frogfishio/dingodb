@@ -11,6 +11,7 @@
 //! OR point container
 //! OR scan extent
 //! OR large-value log
+//! OR segment frame (compact default)
 //!     ↓
 //! adaptive buffered/direct async I/O
 //!     ↓
@@ -23,13 +24,13 @@
 //! **Honesty:** codecs + planner + **seal/compaction layout sidecars**. Live
 //! `Store::put` still writes segment frames + `PrimaryIndex` (frames remain
 //! authoritative; do not omit bodies on put until FORMAT/profile says so).
-//! At seal/compact, Chimera compiles live values into `indexes/chimera/*.cmr`.
-//! Hot `Store::get` uses the **resident PrimaryIndex body** first (µs-class);
-//! `Store::get_via_chimera` probes the full sidecar (diagnostic / future
-//! body-less path). Loading `.cmr` on every product get re-decodes whole-segment
-//! placement and is not acceptable. Next Chimera cut: a **compiler worker** that
-//! executes `plan_compile` ops against derived layouts, plus cached locators.
-//! Dual-rep and ZNS stay deferred (see `INDEXING_STRATEGY_PROPOSAL.md`).
+//! At seal/compact, Chimera writes **compact** `indexes/chimera/*.cmr` layouts:
+//! sorted key → [`ValueLocator::SegmentFrame`] (segment id + frame offset/len).
+//! Payloads remain in authoritative segments. Full-payload embedding
+//! (`build_materialized_layout`) is obsolete and non-default.
+//! Hot `Store::get` uses PrimaryIndex locators first; `Store::get_via_chimera`
+//! resolves compact sidecars via segment pread. Chimera is never authoritative
+//! (Law 6). Dual-rep and ZNS stay deferred (see `INDEXING_STRATEGY_PROPOSAL.md`).
 
 mod classify;
 mod compiler;
@@ -51,8 +52,9 @@ pub use container::{
 };
 pub use io_path::{select_io_path, IoHints, IoPath, IoSelectOptions};
 pub use layout::{
-    build_layout, chimera_dir, chimera_layout_path, delete_chimera_layout, try_load_chimera_layout,
-    write_chimera_layout, ChimeraKindCounts, ChimeraLayout,
+    build_compact_layout, build_layout, build_materialized_layout, chimera_dir, chimera_layout_path,
+    delete_chimera_layout, try_load_chimera_layout, write_chimera_layout, ChimeraKindCounts,
+    ChimeraLayout, CompactFrameRef, CHIMERA_LAYOUT_VERSION, CHIMERA_LAYOUT_VERSION_LEGACY,
 };
 pub use value_log::{
     decode_record, ValueLog, ValueLogRecord, VALUE_LOG_HEADER_LEN, VALUE_LOG_MAGIC,
@@ -107,6 +109,21 @@ pub enum ValueLocator {
         /// Relocation generation.
         generation: u32,
     },
+    /// Frame in an authoritative segment (default compact Chimera persistence).
+    ///
+    /// Payload is **not** embedded in the `.cmr`; resolve via segment pread at
+    /// `frame_offset`. `body_len == 0` means unknown (validate by frame verify
+    /// only); non-zero must match the verified item body length (fail-closed).
+    SegmentFrame {
+        /// Segment that holds the establishing item frame.
+        segment_id: [u8; 16],
+        /// Byte offset of the item frame within that segment.
+        frame_offset: u64,
+        /// Expected item body length, or 0 when unknown.
+        body_len: u32,
+        /// Relocation generation.
+        generation: u32,
+    },
 }
 
 impl ValueLocator {
@@ -121,7 +138,8 @@ impl ValueLocator {
             Self::Resident { generation }
             | Self::PointContainer { generation, .. }
             | Self::ScanExtent { generation, .. }
-            | Self::LargeValueLog { generation, .. } => *generation,
+            | Self::LargeValueLog { generation, .. }
+            | Self::SegmentFrame { generation, .. } => *generation,
             Self::Inline { .. } => 0,
         }
     }
@@ -148,6 +166,8 @@ pub struct ResolveContext<'a> {
     pub scan_extent_bytes: Option<&'a [u8]>,
     /// Large-value log when resolving [`ValueLocator::LargeValueLog`].
     pub value_log: Option<&'a ValueLog>,
+    /// Verified item body when resolving [`ValueLocator::SegmentFrame`].
+    pub segment_frame_bytes: Option<&'a [u8]>,
 }
 
 /// Resolved logical value bytes (record-level decompression applied).
@@ -233,6 +253,27 @@ pub fn resolve(
             let n = rec.value.len() as u64;
             (rec.value, LocatorKind::LargeValueLog, n, false)
         }
+        ValueLocator::SegmentFrame { body_len, .. } => {
+            // Segment frames resolve via store pread, not in-layout bytes.
+            let v = ctx.segment_frame_bytes.ok_or_else(|| {
+                StoreError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "segment frame bytes missing from resolve context",
+                ))
+            })?;
+            if *body_len != 0 && v.len() as u32 != *body_len {
+                return Err(StoreError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "chimera segment frame body_len mismatch",
+                )));
+            }
+            (
+                v.to_vec(),
+                LocatorKind::SegmentFrame,
+                v.len() as u64,
+                false,
+            )
+        }
     };
 
     let io_path = select_io_path(
@@ -241,7 +282,10 @@ pub fn resolve(
             likely_cached: cached,
             batchable: matches!(
                 source,
-                LocatorKind::PointContainer | LocatorKind::LargeValueLog | LocatorKind::ScanExtent
+                LocatorKind::PointContainer
+                    | LocatorKind::LargeValueLog
+                    | LocatorKind::ScanExtent
+                    | LocatorKind::SegmentFrame
             ),
             async_available: false,
             direct_available: false,
@@ -286,6 +330,12 @@ pub fn place_value(
             log_id: 0,
             offset: 0,
             len: 0,
+            generation,
+        },
+        LocatorKind::SegmentFrame => ValueLocator::SegmentFrame {
+            segment_id: [0u8; 16],
+            frame_offset: 0,
+            body_len: value.len() as u32,
             generation,
         },
     }
@@ -409,6 +459,31 @@ mod tests {
         };
         let got = resolve(&loc, &ctx, &IoSelectOptions::default()).unwrap();
         assert_eq!(got.bytes, b"PAYLOAD");
+    }
+
+    #[test]
+    fn segment_frame_fail_closed_on_len_mismatch_and_missing() {
+        let loc = ValueLocator::SegmentFrame {
+            segment_id: [1u8; 16],
+            frame_offset: 64,
+            body_len: 4,
+            generation: 1,
+        };
+        assert!(resolve(&loc, &ResolveContext::default(), &IoSelectOptions::default()).is_err());
+        let wrong = b"toolong";
+        let ctx = ResolveContext {
+            segment_frame_bytes: Some(wrong.as_slice()),
+            ..Default::default()
+        };
+        assert!(resolve(&loc, &ctx, &IoSelectOptions::default()).is_err());
+        let ok = b"abcd";
+        let ctx = ResolveContext {
+            segment_frame_bytes: Some(ok.as_slice()),
+            ..Default::default()
+        };
+        let got = resolve(&loc, &ctx, &IoSelectOptions::default()).unwrap();
+        assert_eq!(got.bytes, b"abcd");
+        assert_eq!(got.source, LocatorKind::SegmentFrame);
     }
 
     #[test]

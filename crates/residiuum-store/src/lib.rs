@@ -94,15 +94,16 @@ pub use catalog::{
     CollectionCatalog, COLLECTIONS_CATALOG_FILE,
 };
 pub use chimera::{
-    build_layout, chimera_dir, chimera_layout_path, classify_value, decode_record,
-    delete_chimera_layout, initial_locator_kind, pack_point_containers, place_value, plan_compile,
-    plan_recluster_range, read_slot, resolve, select_io_path, try_load_chimera_layout,
-    write_chimera_layout, ChimeraKindCounts, ChimeraLayout, ClassifyOptions, CompilerOp,
-    CompilerOptions, CompilerPlan, ContainerBuilder, ContainerSlot, IoHints, IoPath,
-    IoSelectOptions, LifetimeClass, LocatorKind, PlacementHints, PointContainer, RecordStats,
-    ResolveContext, ResolvedValue, TemperatureClass, ValueClass, ValueLocator, ValueLog,
-    ValueLogRecord, CODEC_RAW, CONTAINER_MAGIC, CONTAINER_VERSION, DEFAULT_CONTAINER_TARGET,
-    DEFAULT_MEDIUM_MAX, DEFAULT_TINY_MAX, VALUE_LOG_HEADER_LEN, VALUE_LOG_MAGIC,
+    build_compact_layout, build_layout, build_materialized_layout, chimera_dir, chimera_layout_path,
+    classify_value, decode_record, delete_chimera_layout, initial_locator_kind,
+    pack_point_containers, place_value, plan_compile, plan_recluster_range, read_slot, resolve,
+    select_io_path, try_load_chimera_layout, write_chimera_layout, ChimeraKindCounts, ChimeraLayout,
+    ClassifyOptions, CompactFrameRef, CompilerOp, CompilerOptions, CompilerPlan, ContainerBuilder,
+    ContainerSlot, IoHints, IoPath, IoSelectOptions, LifetimeClass, LocatorKind, PlacementHints,
+    PointContainer, RecordStats, ResolveContext, ResolvedValue, TemperatureClass, ValueClass,
+    ValueLocator, ValueLog, ValueLogRecord, CHIMERA_LAYOUT_VERSION, CHIMERA_LAYOUT_VERSION_LEGACY,
+    CODEC_RAW, CONTAINER_MAGIC, CONTAINER_VERSION, DEFAULT_CONTAINER_TARGET, DEFAULT_MEDIUM_MAX,
+    DEFAULT_TINY_MAX, VALUE_LOG_HEADER_LEN, VALUE_LOG_MAGIC,
 };
 pub use chunk_payload::{
     decode_chunk_manifest, encode_chunk_manifest, is_chunk_manifest, reassemble_with_manifest,

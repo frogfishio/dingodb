@@ -216,6 +216,8 @@ pub enum LocatorKind {
     ScanExtent = 4,
     /// Record in the large-value log.
     LargeValueLog = 5,
+    /// Authoritative segment frame (compact Chimera default).
+    SegmentFrame = 6,
 }
 
 impl LocatorKind {
@@ -232,6 +234,7 @@ impl LocatorKind {
             3 => Some(Self::PointContainer),
             4 => Some(Self::ScanExtent),
             5 => Some(Self::LargeValueLog),
+            6 => Some(Self::SegmentFrame),
             _ => None,
         }
     }
@@ -244,6 +247,7 @@ impl LocatorKind {
             Self::PointContainer => "point_container",
             Self::ScanExtent => "scan_extent",
             Self::LargeValueLog => "large_value_log",
+            Self::SegmentFrame => "segment_frame",
         }
     }
 
@@ -255,6 +259,7 @@ impl LocatorKind {
             ValueLocator::PointContainer { .. } => Self::PointContainer,
             ValueLocator::ScanExtent { .. } => Self::ScanExtent,
             ValueLocator::LargeValueLog { .. } => Self::LargeValueLog,
+            ValueLocator::SegmentFrame { .. } => Self::SegmentFrame,
         }
     }
 }

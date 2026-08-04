@@ -1,0 +1,5 @@
+error: unexpected argument '/Users/rumpelstiltskin/Code/Frogfish/residiuum/doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/sustained-2g-64m-enrichment-on.json' found
+
+Usage: residiuum-testrig ack-finalize [OPTIONS] --work <WORK> --cell <CELL>
+
+For more information, try '--help'.

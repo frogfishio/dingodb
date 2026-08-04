@@ -1,8 +1,11 @@
 # ETQ-1 — Compact Chimera Persistence (frozen)
 
-Status: **next implementer package** (principal freeze 2026-08-04).  
+Status: **labor in_review** — compact persistence + 2 GiB campaign measured
+(2026-08-04). Chimera amp/stage gates PASS; overall enrichment floors still
+FAIL (decode-bound). Package accept = principal.  
 Depends on: **ETQ-0 package accept**
-(`doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`).
+(`doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`).  
+Evidence: `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
 
 ## ETQ-0 acceptance (locked)
 
@@ -29,14 +32,25 @@ Default Chimera (seal / enrichment) must persist primarily:
 layouts (today’s `PointContainer` + `ValueLog` full-body sidecars) are
 **lazy**, hotness-driven, or explicitly requested — not rebuilt for every seal.
 
+### On-disk contract (implemented)
+
+| Field | Value |
+|---|---|
+| Magic | `RCHIMR01` |
+| Layout version (default write) | **2** |
+| Legacy readable | version **1** (full-payload embedding) |
+| Default locator | `ValueLocator::SegmentFrame` tag `6` |
+| SegmentFrame wire | `segment_id[16] \|\| frame_offset u64 LE \|\| body_len u32 LE \|\| generation u32 LE` |
+| Containers / value-log | empty on default encode |
+| Authority | segment frames only; Chimera never SoT (Law 6) |
+| Fail-closed | missing frame → pread error; `body_len != 0` mismatch → `InvalidData` |
+| Rebuild | `Store::rebuild_chimera_layouts` from PrimaryIndex locators |
+| Obsolete API | `build_materialized_layout` / `build_layout` (explicit only) |
+
 ### In-tree hooks
 
-- Wire today: `RCHIMR01` / `VERSION=1` embeds full bodies
-  (`chimera/layout.rs` encode of containers + value log).
-- Locator enum already has `ValueLocator::ScanExtent` (and friends) — extend or
-  add a **segment-frame** locator and bump format version for default encode.
-- Hot `Store::get` already prefers PrimaryIndex; Chimera is not required for
-  correctness (rebuildable derived accelerator — Law 6).
+- Default seal/enrichment: `build_compact_layout` → `.cmr` v2.
+- Hot `Store::get` prefers PrimaryIndex; Chimera not required for correctness.
 
 ## Acceptance gates (all required)
 
