@@ -1,11 +1,13 @@
 # RQL Phase 3 — Full language kickoff (labor)
 
-Status: **labor 2026-08-05** · kickoff `89a80e77` + T3.2–**T3.9**  
+Status: **labor 2026-08-05** · kickoff `89a80e77` + T3.2–**T3.10**  
 (`0c101b14` where · `8ac147b5` within · `4ad54b11` multi enrich ·
 `4d9104f7` nested within · `b58eb37f` nested where · `997b3632` root where ·
-`2a92a46e` nested project)  
+`2a92a46e` nested project · `4994c4bd` corpus+residual)  
 Profile **`rql-full-v1`**  
-Authority: [PATH_TO_FULL_RQL.md](./PATH_TO_FULL_RQL.md) · [RQL_SPEC.md](../../wip/query/RQL_SPEC.md)
+Authority: [PATH_TO_FULL_RQL.md](./PATH_TO_FULL_RQL.md) · [RQL_SPEC.md](../../wip/query/RQL_SPEC.md)  
+Residual inventory: [PHASE3_SURFACE_RESIDUAL.md](./PHASE3_SURFACE_RESIDUAL.md)  
+Corpus: [`spec/app/v1/rql_full_v1_corpus_v1.json`](../../../spec/app/v1/rql_full_v1_corpus_v1.json)
 
 Promoted after principal **done** on PATH T1/T2. Application Core (`rql-app-core-v1`)
 is **unchanged** and still rejects `enrich` / `within`.
@@ -27,7 +29,8 @@ is **unchanged** and still rejects `enrich` / `within`.
 | Nested `where` inside `within` (ordered filter steps) | **yes** (T3.7) |
 | Root-level pipeline `where` after enrich/within | **yes** (T3.8; page-then-attach) |
 | Nested post-pipeline `project { … }` | **yes** (T3.9) |
-| `at rank` / access | **residual** |
+| Surface corpus + residual inventory | **yes** (T3.10) |
+| `at rank` / access | **residual** (DDA) |
 | Index pushdown for match keys | **residual** |
 
 ## Two surfaces (honesty)
@@ -65,9 +68,10 @@ cargo test -p residiuum-sdk --test rql_full_nested_within -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_nested_where -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_root_where -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_project -- --test-threads=1
+cargo test -p residiuum-sdk --test rql_full_corpus -- --test-threads=1
 ```
 
-Evidence: `doc/todo/rql/evidence/phase3_project.log`
+Evidence: `doc/todo/rql/evidence/phase3_corpus.log`
 
 ## Non-claims
 
@@ -81,3 +85,4 @@ Evidence: `doc/todo/rql/evidence/phase3_project.log`
 
 1. `at rank` / access policies (DDA-dependent).
 2. Optional: index pushdown for enrich match keys.
+3. Optional: structured `explain` for `rql-full-v1`.

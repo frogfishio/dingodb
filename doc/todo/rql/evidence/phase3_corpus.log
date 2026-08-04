@@ -1,0 +1,61 @@
+warning: function `resolve_path_value` is never used
+   --> crates/residiuum-sdk/src/filter.rs:960:15
+    |
+960 | pub(crate) fn resolve_path_value<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    |               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `compare_field` is never used
+    --> crates/residiuum-sdk/src/filter.rs:1132:15
+     |
+1132 | pub(crate) fn compare_field(
+     |               ^^^^^^^^^^^^^
+
+warning: constant `BUILD_CHECKPOINT_EVERY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:33:7
+   |
+33 | const BUILD_CHECKPOINT_EVERY: usize = 32;
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `BUILD_PAGE_SIZE` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:35:7
+   |
+35 | const BUILD_PAGE_SIZE: usize = 64;
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_AFTER_PLAN` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:37:11
+   |
+37 | pub const FP_INDEX_BUILD_AFTER_PLAN: &str = "index.build.after_plan";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_MID` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:39:11
+   |
+39 | pub const FP_INDEX_BUILD_MID: &str = "index.build.mid";
+   |           ^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_BEFORE_READY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:41:11
+   |
+41 | pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_result_bytes` is never used
+   --> crates/residiuum-sdk/src/resource.rs:200:8
+    |
+200 | pub fn check_result_bytes(
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib) generated 8 warnings
+   Compiling residiuum-sdk v0.2.2 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-sdk)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.61s
+     Running tests/rql_full_corpus.rs (target/debug/deps/rql_full_corpus-0114d3a48bdb880f)
+
+running 2 tests
+test rql_full_corpus_compile_accept_and_refuse ... ok
+test rql_full_corpus_execute_oracles ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s
+

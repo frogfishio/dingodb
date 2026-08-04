@@ -1,0 +1,176 @@
+{
+  "profile": "rql-full-v1",
+  "description": "Phase 3 rql-full-v1 surface corpus: compile accept/refuse + execute attach oracles. Not package accept. Residuals: at rank/access (DDA), index pushdown, remote enrich wire, root re-page after post-attach where.",
+  "default_bindings": {
+    "orders": "00000000-0000-4000-8000-0000000000a1",
+    "customers": "00000000-0000-4000-8000-0000000000a2",
+    "line_items": "00000000-0000-4000-8000-0000000000a3",
+    "products": "00000000-0000-4000-8000-0000000000a4",
+    "warehouses": "00000000-0000-4000-8000-0000000000a5",
+    "components": "00000000-0000-4000-8000-0000000000a6"
+  },
+  "accept": [
+    {
+      "id": "accept-enrich-exactly-one",
+      "source_rql": "from orders enrich customer using customers matching customer_id = id expect exactly_one page size 10",
+      "expect": {
+        "pipeline": ["enrich"],
+        "enrich_outputs": ["customer"],
+        "project": false,
+        "page_size": 10
+      }
+    },
+    {
+      "id": "accept-enrich-many-within",
+      "source_rql": "from orders enrich items using line_items matching order_id = order_id expect many within items as item { enrich product using products as candidate matching item.product_id = candidate.id expect exactly_one }",
+      "expect": {
+        "pipeline": ["enrich", "within"],
+        "enrich_outputs": ["items"],
+        "within_enrich_outputs": ["product"],
+        "project": false
+      }
+    },
+    {
+      "id": "accept-multi-enrich-and-nested-where",
+      "source_rql": "from orders enrich items using line_items matching order_id = order_id expect many within items as item { where item.qty > 1 enrich product using products as candidate matching item.product_id = candidate.id expect exactly_one }",
+      "expect": {
+        "pipeline": ["enrich", "within"],
+        "within_steps": ["filter", "enrich"]
+      }
+    },
+    {
+      "id": "accept-root-where-after-enrich",
+      "source_rql": "from orders where status = \"paid\" enrich customer using customers matching customer_id = id expect exactly_one where customer.country = \"TH\"",
+      "expect": {
+        "pipeline": ["enrich", "filter"],
+        "base_contains": "where status",
+        "base_excludes": "customer.country"
+      }
+    },
+    {
+      "id": "accept-enrich-after-within",
+      "source_rql": "from orders enrich items using line_items matching order_id = order_id expect many within items as item { enrich product using products as candidate matching item.product_id = candidate.id expect exactly_one } enrich customer using customers matching customer_id = id expect exactly_one",
+      "expect": {
+        "pipeline": ["enrich", "within", "enrich"],
+        "enrich_outputs": ["items", "customer"]
+      }
+    },
+    {
+      "id": "accept-nested-within",
+      "source_rql": "from orders enrich items using line_items matching order_id = order_id expect many within items as item { enrich parts using components matching item.sku = parent_sku expect many within item.parts as part { enrich product using products as candidate matching part.product_id = candidate.id expect exactly_one } }",
+      "expect": {
+        "pipeline": ["enrich", "within"],
+        "within_steps": ["enrich", "within"]
+      }
+    },
+    {
+      "id": "accept-nested-project",
+      "source_rql": "from orders enrich customer using customers matching customer_id = id expect exactly_one project { order_id, customer { name } } page size 32",
+      "expect": {
+        "pipeline": ["enrich"],
+        "project": true,
+        "project_outputs": ["order_id", "customer"],
+        "page_size": 32,
+        "base_excludes": "project"
+      }
+    },
+    {
+      "id": "accept-candidate-where",
+      "source_rql": "from orders enrich customer using customers matching customer_id = id where active = true expect exactly_one",
+      "expect": {
+        "pipeline": ["enrich"],
+        "candidate_where": true
+      }
+    }
+  ],
+  "refuse": [
+    {
+      "id": "refuse-at-rank",
+      "source_rql": "from orders at rank 1",
+      "diagnostic_contains": "rql_full_residual"
+    },
+    {
+      "id": "refuse-access-direct",
+      "source_rql": "from orders access direct",
+      "diagnostic_contains": "rql_full_residual"
+    },
+    {
+      "id": "refuse-core-still-rejects-enrich",
+      "source_rql": "from orders enrich customer using customers matching customer_id = id expect exactly_one",
+      "surface": "rql-app-core-v1",
+      "diagnostic_contains": "rql_feature_unavailable"
+    },
+    {
+      "id": "refuse-project-conflict",
+      "source_rql": "from orders project { id, id }",
+      "diagnostic_contains": "rql_projection_conflict"
+    },
+    {
+      "id": "refuse-within-depth-overflow",
+      "source_rql": "from orders within a { within b { within c { within d { within e { within f { within g { within h { within i { enrich x using products matching a = b expect optional } } } } } } } } }",
+      "diagnostic_contains": "rql_full_residual"
+    }
+  ],
+  "execute": [
+    {
+      "id": "exec-enrich-project-oracle",
+      "collections": {
+        "orders": [
+          { "key": "o1", "value": { "order_id": "o1", "customer_id": "c1" } }
+        ],
+        "customers": [
+          { "key": "c1", "value": { "id": "c1", "name": "Ada", "extra": 1 } }
+        ]
+      },
+      "source_rql": "from orders enrich customer using customers matching customer_id = id expect exactly_one project { order_id, customer { name } } page size 64",
+      "expect_rows": [
+        {
+          "key": "o1",
+          "value": {
+            "order_id": "o1",
+            "customer": { "name": "Ada" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "exec-within-many-oracle",
+      "collections": {
+        "orders": [
+          { "key": "o1", "value": { "order_id": "o1" } }
+        ],
+        "line_items": [
+          { "key": "l1", "value": { "order_id": "o1", "product_id": "p1", "sku": "A" } },
+          { "key": "l2", "value": { "order_id": "o1", "product_id": "p2", "sku": "B" } }
+        ],
+        "products": [
+          { "key": "p1", "value": { "id": "p1", "name": "Widget" } },
+          { "key": "p2", "value": { "id": "p2", "name": "Gadget" } }
+        ]
+      },
+      "source_rql": "from orders enrich items using line_items matching order_id = order_id expect many within items as item { enrich product using products as candidate matching item.product_id = candidate.id expect exactly_one } page size 64",
+      "expect_row_count": 1,
+      "expect_path_equals": [
+        { "path": "items.0.product.name", "value": "Widget" },
+        { "path": "items.1.product.name", "value": "Gadget" }
+      ]
+    },
+    {
+      "id": "exec-root-where-after-enrich-oracle",
+      "collections": {
+        "orders": [
+          { "key": "o1", "value": { "customer_id": "c1", "status": "paid" } },
+          { "key": "o2", "value": { "customer_id": "c2", "status": "paid" } },
+          { "key": "o3", "value": { "customer_id": "c1", "status": "open" } }
+        ],
+        "customers": [
+          { "key": "c1", "value": { "id": "c1", "country": "TH", "name": "Ada" } },
+          { "key": "c2", "value": { "id": "c2", "country": "US", "name": "Bob" } }
+        ]
+      },
+      "source_rql": "from orders where status = \"paid\" enrich customer using customers matching customer_id = id expect exactly_one where customer.country = \"TH\" page size 64",
+      "expect_row_count": 1,
+      "expect_keys": ["o1"]
+    }
+  ]
+}
