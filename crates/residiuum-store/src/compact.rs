@@ -698,6 +698,25 @@ pub fn reclaim_source_segments(
         .ok_or(StoreError::CorruptMeta("compact output segment id"))?;
     crate::failpoint::hit("store.compact.before_reclaim")?;
 
+    // Post-flip: refuse before deleting sources if replacement Shadow missing.
+    if let Some(store_id) = unhex16(&job.store_id) {
+        if matches!(
+            crate::recovery_shadow::shadow_reclaim_policy(),
+            crate::recovery_shadow::ShadowReclaimPolicy::RequireReplacementShadow
+        ) {
+            let repl = crate::recovery_shadow::shadow_path(paths, &output);
+            match crate::recovery_shadow::try_load_shadow(&repl, Some(store_id))? {
+                crate::recovery_shadow::ShadowLoad::Ok(_) => {}
+                _ => {
+                    return Err(StoreError::ConsistencyViolation(
+                        "post-flip reclaim requires durable replacement Shadow before source retirement"
+                            .into(),
+                    ));
+                }
+            }
+        }
+    }
+
     let mut reclaimed = 0u64;
     let mut deleted_ids = Vec::new();
     for id_hex in &job.source_segment_ids {
@@ -718,26 +737,15 @@ pub fn reclaim_source_segments(
     }
     sync_dir_best_effort(&paths.segments_dir());
 
-    // Stage 2 step 5: erase Recovery Shadows for reclaimed sources. Replacement
-    // Shadow (if any) must already be durable before old Shadows are retired.
+    // Stage 2: erase Recovery Shadows under current reclaim policy.
     if let Some(store_id) = unhex16(&job.store_id) {
-        if let Err(e) = crate::recovery_shadow::retire_shadows_after_replacement(
+        crate::recovery_shadow::retire_shadows_after_replacement(
             paths,
             store_id,
             &output,
             &deleted_ids,
             0,
-        ) {
-            // If no replacement Shadow yet (dual-run lag), still erase orphan
-            // source Shadows so retention/secure-delete does not leave payloads.
-            if matches!(e, StoreError::ConsistencyViolation(_)) {
-                for id in &deleted_ids {
-                    let _ = crate::recovery_shadow::secure_erase_shadow(paths, store_id, id, 0);
-                }
-            } else {
-                return Err(e);
-            }
-        }
+        )?;
     }
 
     let mut retained = 0u64;

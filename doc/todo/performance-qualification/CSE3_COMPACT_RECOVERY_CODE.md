@@ -1,8 +1,8 @@
 # CSE-3 — Compact + Recovery Shadow (Hybrid)
 
-Status: **Stage 2 active through step 5** (2026-08-04) — 2a invariants
-confirmed; lifecycle dual-run landed. **Materialized remains product until
-step 8.** Next: CSE F0–F5 (step 6).  
+Status: **Stage 2 active through step 6** (2026-08-04) — CSE matrix green;
+reclaim clarification locked. **Materialized remains product until step 8.**
+Next: step 7 perf.  
 Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound, Stage 1 accepted.
 
 ## Stage gate

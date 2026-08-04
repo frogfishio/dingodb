@@ -1,8 +1,8 @@
 # CSE-3 Stage 2 — Recovery Shadow implement
 
-Status: **active** (2026-08-04) — Stage 2a foundation invariants **confirmed**;
-step 5 lifecycle dual-run **landed**. Steps 6–9 open. **No product flip**
-until step 8.  
+Status: **active** (2026-08-04) — Stage 2a invariants confirmed; step 5
+lifecycle dual-run landed; **step 6 CSE F0–F5 + lifecycle/security matrix
+green**. Steps 7–9 open. **No product flip** until step 8.  
 Depends: Stage 1 principal-accepted
 [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md).
 
@@ -18,6 +18,16 @@ Depends: Stage 1 principal-accepted
 
 Formally: \(s \in ProtectedFrontier \Rightarrow \forall p \preceq s,\ p \in DurableShadow\).
 
+## Dual-run vs post-flip reclaim (locked — step 6)
+
+> During dual-run, Materialized may satisfy recovery authority. After the
+> flip, reclaim must **always** require durable replacement Shadow coverage;
+> “when present” is no longer sufficient.
+
+`ShadowReclaimPolicy::DualRunMaterializedAuthority` (default) vs
+`RequireReplacementShadow` (step 8+). Compaction refuses source deletion under
+post-flip policy when replacement `.rsh` is missing.
+
 ## Delivery sequence (normative)
 
 Until step **8**, **Materialized Chimera remains the safe product path**.
@@ -30,7 +40,7 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 | **3** | Generation-exact salvage including tombstones | **Done** (2a) |
 | **4** | `protected_frontier` + protection-lag telemetry (gap-aware, per-shard) | **Done** (2a) |
 | **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | **Done** (lifecycle dual-run; no flip) |
-| **6** | Complete CSE F0–F5 damage/crash suite | Open |
+| **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Done** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
 | **7** | Prove ≥7 segments/sec with non-growing backlog | Open |
 | **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Yes — only here** |
 | **9** | Re-run full-product throughput qualification | Post-flip |

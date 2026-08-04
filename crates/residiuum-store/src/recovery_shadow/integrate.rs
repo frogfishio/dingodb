@@ -10,6 +10,7 @@ use super::frontier::{
     load_protected_coverage, publish_protected_coverage, protection_lag_from_coverage,
     ProtectedCoverage, ProtectionLag,
 };
+use super::policy::{shadow_reclaim_policy, ShadowReclaimPolicy};
 use super::wire::{
     publish_shadow, shadow_path, try_load_shadow, ShadowLoad, ShadowRecord, ShadowWriter,
 };
@@ -221,7 +222,12 @@ pub fn secure_erase_shadow(
     Ok(())
 }
 
-/// Compaction retirement: require replacement Shadow durable before erasing old.
+/// Compaction retirement under the current [`ShadowReclaimPolicy`].
+///
+/// - **Dual-run:** Materialized may satisfy recovery; missing replacement
+///   Shadow does not block erase of old Shadows.
+/// - **Post-flip:** replacement Shadow **must** be durable; never retire the
+///   last valid recovery source without it (“when present” is insufficient).
 pub fn retire_shadows_after_replacement(
     paths: &StorePaths,
     store_id: [u8; 16],
@@ -229,14 +235,42 @@ pub fn retire_shadows_after_replacement(
     old_segment_ids: &[[u8; 16]],
     shard: u16,
 ) -> Result<(), StoreError> {
+    retire_shadows_after_replacement_with_policy(
+        paths,
+        store_id,
+        replacement_segment_id,
+        old_segment_ids,
+        shard,
+        shadow_reclaim_policy(),
+    )
+}
+
+/// Compaction retirement with an explicit policy (CSE / flip tests).
+pub fn retire_shadows_after_replacement_with_policy(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    replacement_segment_id: &[u8; 16],
+    old_segment_ids: &[[u8; 16]],
+    shard: u16,
+    policy: ShadowReclaimPolicy,
+) -> Result<(), StoreError> {
     let repl = shadow_path(paths, replacement_segment_id);
-    match try_load_shadow(&repl, Some(store_id))? {
-        ShadowLoad::Ok(_) => {}
-        ShadowLoad::Missing | ShadowLoad::Incomplete | ShadowLoad::Corrupt { .. } => {
-            return Err(StoreError::ConsistencyViolation(
-                "compaction cannot retire old Shadows until replacement Shadow is durable"
-                    .into(),
-            ));
+    let replacement_ok = matches!(
+        try_load_shadow(&repl, Some(store_id))?,
+        ShadowLoad::Ok(_)
+    );
+    match policy {
+        ShadowReclaimPolicy::RequireReplacementShadow => {
+            if !replacement_ok {
+                return Err(StoreError::ConsistencyViolation(
+                    "post-flip reclaim requires durable replacement Shadow; cannot retire last valid recovery source"
+                        .into(),
+                ));
+            }
+        }
+        ShadowReclaimPolicy::DualRunMaterializedAuthority => {
+            // Materialized may satisfy recovery authority during dual-run.
+            // Still erase old Shadows for retention honesty when reclaiming.
         }
     }
     for id in old_segment_ids {
@@ -348,13 +382,39 @@ mod tests {
 
     #[test]
     fn retire_refuses_without_replacement() {
+        use super::super::policy::{
+            reset_shadow_reclaim_policy_for_tests, set_shadow_reclaim_policy, ShadowReclaimPolicy,
+        };
         let dir = tempdir().unwrap();
         let paths = StorePaths::new(dir.path());
         paths.create_dirs().unwrap();
         let store = [9u8; 16];
         let old = seg(1);
         let repl = seg(2);
+        set_shadow_reclaim_policy(ShadowReclaimPolicy::RequireReplacementShadow);
         let err = retire_shadows_after_replacement(&paths, store, &repl, &[old], 0).unwrap_err();
         assert!(matches!(err, StoreError::ConsistencyViolation(_)));
+        reset_shadow_reclaim_policy_for_tests();
+    }
+
+    #[test]
+    fn dual_run_allows_retire_without_replacement_shadow() {
+        use super::super::policy::{
+            reset_shadow_reclaim_policy_for_tests, set_shadow_reclaim_policy, ShadowReclaimPolicy,
+        };
+        let dir = tempdir().unwrap();
+        let paths = StorePaths::new(dir.path());
+        paths.create_dirs().unwrap();
+        let store = [9u8; 16];
+        let old = seg(1);
+        let repl = seg(2);
+        // Seed an old Shadow then reclaim without replacement under dual-run.
+        let mut live = std::collections::BTreeMap::new();
+        live.insert(b"k".to_vec(), (Some(b"v".to_vec()), 1));
+        build_and_publish_shadow(&paths, store, old, 1, 0, &live).unwrap();
+        set_shadow_reclaim_policy(ShadowReclaimPolicy::DualRunMaterializedAuthority);
+        retire_shadows_after_replacement(&paths, store, &repl, &[old], 0).unwrap();
+        assert!(!shadow_path(&paths, &old).is_file());
+        reset_shadow_reclaim_policy_for_tests();
     }
 }

@@ -18,10 +18,15 @@
 //! Normative: `CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`,
 //! `CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`.
 
+mod crypto;
 mod frontier;
 mod integrate;
+mod policy;
 mod wire;
 
+pub use crypto::{
+    contains_plaintext, envelope_open, envelope_seal, ENVELOPE_MAGIC,
+};
 pub use frontier::{
     load_protected_coverage, load_protected_frontier, protection_lag, protection_lag_from_coverage,
     publish_protected_coverage, publish_protected_frontier, ProtectedCoverage, ProtectedFrontier,
@@ -30,7 +35,12 @@ pub use frontier::{
 pub use integrate::{
     build_and_publish_shadow, current_protection_lag, delete_shadow, is_recovery_shadow_path,
     note_segment_sealed, publish_shadow_claiming_protection, rebuild_coverage_from_shadows,
-    retire_shadows_after_replacement, secure_erase_shadow, snapshot_telemetry, ShadowTelemetry,
+    retire_shadows_after_replacement, retire_shadows_after_replacement_with_policy,
+    secure_erase_shadow, snapshot_telemetry, ShadowTelemetry,
+};
+pub use policy::{
+    reset_shadow_reclaim_policy_for_tests, set_shadow_reclaim_policy, shadow_reclaim_policy,
+    ShadowReclaimPolicy,
 };
 pub use wire::{
     decode_shadow, encode_shadow, project_live, publish_shadow, shadow_dir, shadow_path,

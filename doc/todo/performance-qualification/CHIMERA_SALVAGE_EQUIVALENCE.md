@@ -102,9 +102,11 @@ Stage 1: [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY
 Shadow (recovery artifact, not disposable). Ack ≠ P★; Shadow streaming
 sequential; tombstones + lifecycle + `protected_frontier` normative; Materialized
 remains until CSE equivalence.  
-**Stage 2 (active):** 9-step sequence frozen — wire/writer/salvage/frontier first;
-product flip only at step 8. Charter:
-[`CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`](./CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md).
+**Stage 2 (active through step 6):** CSE F0–F5 + lifecycle/security matrix
+green; dual-run reclaim policy locked. Next: step 7 perf. Product flip only
+at step 8. Charter:
+[`CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`](./CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md);
+matrix: [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md).
 
 ## Evidence homes
 
