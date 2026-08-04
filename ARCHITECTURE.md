@@ -20,6 +20,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Logical heap identity, containment, and access isolation | [HEAP_SPEC.md](./doc/wip/heap/HEAP_SPEC.md) |
 | System architecture, storage model, recovery, quality bars | [OVERVIEW.md](./doc/reference/product/OVERVIEW.md) |
 | Survival wire format, frames, segments, scanner tests | [FORMAT_SPEC.md](./doc/reference/storage/FORMAT_SPEC.md) |
+| Recovery Shadow (`.rsh`) P★ salvage artifact (CSE-3 Hybrid) | [CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md](./doc/todo/performance-qualification/CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md), [Stage 2 implement](./doc/todo/performance-qualification/CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md) |
 | Core storage invariants, failure model, and qualification suite | [CORE_STORAGE_QUALIFICATION_SPEC.md](./doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_SPEC.md), [implementation plan](./doc/todo/core-storage/CORE_STORAGE_QUALIFICATION_IMPLEMENTATION_PLAN.md) |
 | Everyday API, CLI, progressive disclosure | [DX_SPEC.md](./doc/reference/product/DX_SPEC.md) |
 | First Heap-bound Rust application API and RQL delivery package | [doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md](./doc/todo/application-baseline/CORE_APPLICATION_API_IMPLEMENTATION_PLAN.md) |

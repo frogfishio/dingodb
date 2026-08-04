@@ -63,6 +63,7 @@ mod lifecycle;
 mod media;
 mod migrate;
 mod recovery;
+mod recovery_shadow;
 mod scrub;
 mod seal_pipeline;
 mod secondary;
@@ -250,6 +251,13 @@ pub use migrate::{
 pub use recovery::{
     salvage_manifest_path, try_load_recovery_manifest, FrameEvidence, HoleEvidence, LimitsSnapshot,
     RecoveryManifest, SalvageMode, SourceFileEvidence, SALVAGE_MANIFEST_FILE,
+};
+pub use recovery_shadow::{
+    decode_shadow, encode_shadow, ensure_shadow_dirs, load_protected_frontier, project_live,
+    protection_lag, protected_frontier_path, publish_protected_frontier, publish_shadow,
+    shadow_dir, shadow_path, try_load_shadow, DecodedShadow, LiveState, ProtectedFrontier,
+    ProtectionLag, ShadowLoad, ShadowRecord, ShadowWriter, FRONTIER_FILE, RSH_MAGIC, TAG_PUT,
+    TAG_TOMBSTONE,
 };
 pub use scrub::{
     list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,

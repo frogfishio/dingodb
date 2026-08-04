@@ -188,6 +188,7 @@ impl StorePaths {
             self.indexes_dir(),
             self.snapshots_dir(),
             self.recovery_dir(),
+            self.recovery_dir().join("shadow"),
             self.tiers_dir(),
             self.tiers_dir().join("warm"),
             self.tiers_dir().join("cold"),

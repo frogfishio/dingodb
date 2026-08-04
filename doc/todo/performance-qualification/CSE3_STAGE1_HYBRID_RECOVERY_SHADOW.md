@@ -197,15 +197,20 @@ CSE-1 Compact gaps (F3 chimera `t`, F0/F3/F4 layout_direct) are closed by
 
 ## Implementation package outline (Stage 2)
 
-1. Spec freeze + schemas under `spec/` (amend via ARCHITECTURE map).
-2. `recovery_shadow` module in `residiuum-store` (encode/decode/atomic write;
-   tombstones; `protected_frontier`).
-3. Seal / enrichment: write Compact Chimera **and** stream Shadow; keep
-   Materialized path until dual-run equivalence.
-4. CSE campaign + lifecycle gates (resurrection, compaction/crash, expiry,
-   corrupt isolation, frontier).
-5. Perf gates: ≥7 seg/s, backlog ≤0, lifecycle ≈ ack.
-6. Only then: principal may retire Materialized product default.
+Normative sequence:
+[`CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`](./CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md)
+(steps 1–9; product flip only at step 8).
+
+1. Spec freeze + `.rsh` wire + atomic publish — **landed** (`recovery_shadow`).
+2. Streaming sequential writer — **landed**.
+3. Generation-exact salvage + tombstones — **landed**.
+4. `protected_frontier` + lag telemetry — **landed**.
+5. Seal / enrichment dual-run; compaction / retention / secure-delete /
+   encryption / backup / scrub integration — open.
+6. CSE campaign + lifecycle gates — open.
+7. Perf gates: ≥7 seg/s, backlog ≤0, lifecycle ≈ ack — open.
+8. **Only then:** principal may retire Materialized product default.
+9. Full-product throughput re-qualification — open.
 
 ## Evidence
 

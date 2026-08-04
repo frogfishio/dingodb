@@ -1,8 +1,9 @@
 # CSE-3 — Compact + Recovery Shadow (Hybrid)
 
-Status: **Stage 1 principal-accepted** (2026-08-04) — Hybrid **specified** +
-deletion/lifecycle addendum. **Stage 2 ready to implement.**  
-Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound.
+Status: **Stage 2 active** (2026-08-04) — 9-step delivery sequence frozen;
+wire/streaming/salvage/frontier code in `recovery_shadow`. **Materialized remains
+product until step 8.**  
+Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound, Stage 1 accepted.
 
 ## Stage gate
 
@@ -10,8 +11,22 @@ Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound.
 |---|---|---|
 | **0** | P★ bound + reduced-overhead impossibility | **Complete** — [`CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md`](./CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md) |
 | **1** | Principal **C — Hybrid** formalized: Compact + Recovery Shadow (+ lifecycle addendum) | **Principal-accepted** — [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md) |
-| **2** | Implement Shadow + CSE equivalence + lifecycle gates | **Promoted** — ready / next labor |
-| **3** | Perf gates (≥7 seg/s, backlog ≤0, lifecycle ≈ ack); retire Materialized default | Blocked on Stage 2 |
+| **2** | Implement Shadow + CSE equivalence + lifecycle gates | **Active** — [`CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`](./CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md) |
+| **3** | Perf gates (≥7 seg/s, backlog ≤0, lifecycle ≈ ack); retire Materialized default | Blocked on Stage 2 step 8+ |
+
+## Delivery sequence (Stage 2)
+
+1. `.rsh` wire + atomic publication  
+2. Streaming sequential writer  
+3. Generation-exact salvage + tombstones  
+4. `protected_frontier` + lag telemetry  
+5. Compaction / retention / secure-delete / encryption / backup / scrub  
+6. CSE F0–F5 suite  
+7. ≥7 seg/s, non-growing backlog  
+8. **Only then** product seal → Compact + Shadow  
+9. Full-product throughput re-qualification  
+
+Until step 8, Materialized Chimera is the safe product path.
 
 ## Hybrid (normative)
 
