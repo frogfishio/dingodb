@@ -27,7 +27,7 @@ Governing recovery rule: *What is gone is gone. What remains still lives.*
 | Missing application APIs and product-capability closure | [PRODUCT_DEFICIENCIES.md](./doc/reference/product/PRODUCT_DEFICIENCIES.md) |
 | Immediate post-qualification application baseline packages | [MUST_ADD.md](./doc/todo/application-baseline/MUST_ADD.md) |
 | Structured Data Algebra (standalone language) | [SDA_SPEC.md](./doc/reference/query/SDA_SPEC.md) |
-| Residiuum Query Language (v1 design; shipped parser is v0.1 subset) | [RQL_SPEC.md](./doc/wip/query/RQL_SPEC.md), current-subset guide [doc/RQL/USER_GUIDE.md](./doc/RQL/USER_GUIDE.md) |
+| Residiuum Query Language (v1 design; shipped parser is v0.1 subset) | [RQL_SPEC.md](./doc/wip/query/RQL_SPEC.md), current-subset guide [doc/RQL/USER_GUIDE.md](./doc/RQL/USER_GUIDE.md), path to full RQL + comprehensive tests [PATH_TO_FULL_RQL.md](./doc/todo/rql/PATH_TO_FULL_RQL.md) |
 | Exact ranked query access and rank/select substrate | [DIRECT_ACCESS_SPEC.md](./doc/todo/direct-access/DIRECT_ACCESS_SPEC.md) |
 | Filter-conditioned sorting without prefix enumeration | [ORDER_WAVELET_SPEC.md](./doc/todo/order-wavelets/ORDER_WAVELET_SPEC.md) |
 | Shared total predicate semantics for RQL and RRE | [RESIDIUUM_PREDICATE_SPEC.md](./doc/reference/query/RESIDIUUM_PREDICATE_SPEC.md) |
