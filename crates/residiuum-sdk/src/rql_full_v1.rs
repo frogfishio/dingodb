@@ -4,9 +4,10 @@
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.
 //!
-//! Current slice (T3.6):
+//! Current slice (T3.7):
 //! - ordered root pipeline: `enrich` / `within` interleaved (enrich-after-within, multi within)
 //! - nested `within` depth (bounded by [`MAX_WITHIN_DEPTH`])
+//! - nested `where` inside `within` (ordered filter on carrier elements)
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
 //! - candidate `where` filters foreign docs before cardinality
 //! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach pipeline)
@@ -86,6 +87,8 @@ pub enum FullPipelineStepV1 {
     Enrich(EnrichStepV1),
     /// Expand a carrier bag and run nested steps per element.
     Within(WithinStepV1),
+    /// Keep current rows where the predicate is true (nested `where` inside `within`).
+    Filter(Predicate),
 }
 
 /// One compiled `within` step (nested enrich and/or nested `within`).
@@ -114,13 +117,13 @@ pub struct CompiledRqlFull {
 }
 
 impl CompiledRqlFull {
-    /// Root enrich steps in pipeline order (skips `within`).
+    /// Root enrich steps in pipeline order (skips `within` / filter).
     pub fn root_enrich(&self) -> Vec<&EnrichStepV1> {
         self.pipeline
             .iter()
             .filter_map(|s| match s {
                 FullPipelineStepV1::Enrich(e) => Some(e),
-                FullPipelineStepV1::Within(_) => None,
+                FullPipelineStepV1::Within(_) | FullPipelineStepV1::Filter(_) => None,
             })
             .collect()
     }
@@ -129,19 +132,19 @@ impl CompiledRqlFull {
     pub fn first_within(&self) -> Option<&WithinStepV1> {
         self.pipeline.iter().find_map(|s| match s {
             FullPipelineStepV1::Within(w) => Some(w),
-            FullPipelineStepV1::Enrich(_) => None,
+            FullPipelineStepV1::Enrich(_) | FullPipelineStepV1::Filter(_) => None,
         })
     }
 }
 
 impl WithinStepV1 {
-    /// Nested enrich steps in order (skips nested `within`).
+    /// Nested enrich steps in order (skips nested `within` / filter).
     pub fn enrich_steps(&self) -> Vec<&EnrichStepV1> {
         self.steps
             .iter()
             .filter_map(|s| match s {
                 FullPipelineStepV1::Enrich(e) => Some(e),
-                FullPipelineStepV1::Within(_) => None,
+                FullPipelineStepV1::Within(_) | FullPipelineStepV1::Filter(_) => None,
             })
             .collect()
     }
@@ -150,6 +153,12 @@ impl WithinStepV1 {
 enum RawPipelineStep {
     Enrich(String),
     Within(String),
+}
+
+enum RawNestedStep {
+    Enrich(String),
+    Within(String),
+    Where(String),
 }
 
 /// Compile full RQL-v1 source (Core + ordered enrich/within pipeline).
@@ -286,9 +295,28 @@ fn matches_kw(lower: &str, start: usize, kw: &str) -> bool {
 }
 
 fn find_enrich_end(lower: &str, after_enrich: usize) -> usize {
+    // Grammar: enrich … [where …] expect <card> — stop after cardinality.
+    let padded = format!(" {} ", &lower[after_enrich..]);
+    if let Some(rel) = padded.find(" expect ") {
+        let mut i = after_enrich + rel + " expect ".len();
+        while i < lower.len() && lower.as_bytes()[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        while i < lower.len() {
+            let b = lower.as_bytes()[i];
+            if b.is_ascii_alphanumeric() || b == b'_' {
+                i += 1;
+            } else {
+                break;
+            }
+        }
+        return i;
+    }
+
     let terminals = [
         " enrich ",
         " within ",
+        " where ",
         " project ",
         " order ",
         " limit ",
@@ -300,7 +328,6 @@ fn find_enrich_end(lower: &str, after_enrich: usize) -> usize {
         " after ",
         " access ",
     ];
-    let padded = format!(" {} ", &lower[after_enrich..]);
     let mut best = None;
     for t in terminals {
         if let Some(rel) = padded.find(t) {
@@ -369,23 +396,18 @@ fn parse_within_step(
         )));
     }
 
-    let (leftover, nested) = split_full_clauses(&inner)?;
-    if !leftover.split_whitespace().collect::<Vec<_>>().is_empty() {
-        return Err(Error::QueryInvalid(format!(
-            "{DIAG_RQL_FULL_RESIDUAL}: within nested where/tokens not in this slice near `{leftover}`"
-        )));
-    }
+    let nested = split_nested_pipeline(&inner)?;
     let mut steps = Vec::with_capacity(nested.len());
     for step in nested {
         match step {
-            RawPipelineStep::Enrich(b) => {
+            RawNestedStep::Enrich(b) => {
                 steps.push(FullPipelineStepV1::Enrich(parse_enrich_step(
                     &b,
                     bindings,
                     element_alias.as_deref(),
                 )?));
             }
-            RawPipelineStep::Within(b) => {
+            RawNestedStep::Within(b) => {
                 steps.push(FullPipelineStepV1::Within(parse_within_step(
                     &b,
                     bindings,
@@ -393,11 +415,18 @@ fn parse_within_step(
                     depth + 1,
                 )?));
             }
+            RawNestedStep::Where(b) => {
+                steps.push(FullPipelineStepV1::Filter(parse_filter_step(
+                    &b,
+                    bindings,
+                    element_alias.as_deref(),
+                )?));
+            }
         }
     }
     if steps.is_empty() {
         return Err(Error::QueryInvalid(
-            "within block requires at least one enrich or within".into(),
+            "within block requires at least one enrich, within, or where".into(),
         ));
     }
     Ok(WithinStepV1 {
@@ -405,6 +434,195 @@ fn parse_within_step(
         element_alias,
         steps,
     })
+}
+
+/// Split nested `where` / `enrich` / `within` steps inside a `within` block.
+fn split_nested_pipeline(source: &str) -> Result<Vec<RawNestedStep>, Error> {
+    let lower = source.to_ascii_lowercase();
+    let bytes = lower.as_bytes();
+    let mut spans: Vec<(usize, usize, u8)> = Vec::new(); // 0=enrich 1=within 2=where
+    let mut i = 0usize;
+    let mut depth = 0usize;
+    while i < lower.len() {
+        match bytes[i] {
+            b'{' => {
+                depth += 1;
+                i += 1;
+                continue;
+            }
+            b'}' => {
+                depth = depth.saturating_sub(1);
+                i += 1;
+                continue;
+            }
+            _ => {}
+        }
+        if depth == 0 {
+            if matches_kw(&lower, i, "enrich") {
+                let after = i + "enrich".len();
+                let end = find_enrich_end(&lower, after);
+                spans.push((i, end, 0));
+                i = end;
+                continue;
+            }
+            if matches_kw(&lower, i, "within") {
+                let after = i + "within".len();
+                let end = find_within_end(&lower, after)?;
+                spans.push((i, end, 1));
+                i = end;
+                continue;
+            }
+            if matches_kw(&lower, i, "where") {
+                let after = i + "where".len();
+                let end = find_where_end(&lower, after);
+                spans.push((i, end, 2));
+                i = end;
+                continue;
+            }
+        }
+        i += 1;
+    }
+
+    if spans.is_empty() {
+        if source.split_whitespace().next().is_some() {
+            return Err(Error::QueryInvalid(format!(
+                "{DIAG_RQL_FULL_RESIDUAL}: within nested tokens not in this slice near `{source}`"
+            )));
+        }
+        return Ok(Vec::new());
+    }
+
+    // Refuse leftover text between / around steps.
+    let mut cursor = 0usize;
+    let mut steps = Vec::new();
+    for (start, end, kind) in spans {
+        let gap = source[cursor..start].trim();
+        if !gap.is_empty() {
+            return Err(Error::QueryInvalid(format!(
+                "{DIAG_RQL_FULL_RESIDUAL}: within nested tokens not in this slice near `{gap}`"
+            )));
+        }
+        match kind {
+            0 => {
+                let body = source[start + "enrich".len()..end].trim();
+                steps.push(RawNestedStep::Enrich(body.to_string()));
+            }
+            1 => {
+                let body = source[start + "within".len()..end].trim();
+                steps.push(RawNestedStep::Within(body.to_string()));
+            }
+            2 => {
+                let body = source[start + "where".len()..end].trim();
+                if body.is_empty() {
+                    return Err(Error::QueryInvalid(
+                        "within where clause is empty".into(),
+                    ));
+                }
+                steps.push(RawNestedStep::Where(body.to_string()));
+            }
+            _ => unreachable!(),
+        }
+        cursor = end;
+    }
+    let trailing = source[cursor..].trim();
+    if !trailing.is_empty() {
+        return Err(Error::QueryInvalid(format!(
+            "{DIAG_RQL_FULL_RESIDUAL}: within nested tokens not in this slice near `{trailing}`"
+        )));
+    }
+    Ok(steps)
+}
+
+fn find_where_end(lower: &str, after_where: usize) -> usize {
+    let terminals = [" enrich ", " within ", " where "];
+    let padded = format!(" {} ", &lower[after_where..]);
+    let mut best = None;
+    for t in terminals {
+        if let Some(rel) = padded.find(t) {
+            let abs = after_where + rel;
+            best = Some(best.map_or(abs, |b: usize| b.min(abs)));
+        }
+    }
+    best.unwrap_or(lower.len())
+}
+
+fn parse_filter_step(
+    body: &str,
+    bindings: &CollectionBindings,
+    element_alias: Option<&str>,
+) -> Result<Predicate, Error> {
+    let using = bindings.by_name.keys().next().ok_or_else(|| {
+        Error::QueryInvalid("within where requires at least one collection binding".into())
+    })?;
+    let fake = format!("from {using} where {body}");
+    let compiled = compile_app_core(&fake, bindings)?;
+    strip_alias_from_predicate(compiled.plan.where_pred, element_alias)
+}
+
+fn strip_alias_from_predicate(pred: Predicate, alias: Option<&str>) -> Result<Predicate, Error> {
+    let Some(a) = alias else {
+        return Ok(pred);
+    };
+    Ok(match pred {
+        Predicate::True | Predicate::False => pred,
+        Predicate::Cmp { cmp, left, right } => Predicate::Cmp {
+            cmp,
+            left: strip_alias_from_operand(left, a)?,
+            right: strip_alias_from_operand(right, a)?,
+        },
+        Predicate::In {
+            left,
+            list,
+            negated,
+        } => Predicate::In {
+            left: strip_alias_from_operand(left, a)?,
+            list,
+            negated,
+        },
+        Predicate::Present { path } => Predicate::Present {
+            path: strip_alias_prefix(path, Some(a))?,
+        },
+        Predicate::Missing { path } => Predicate::Missing {
+            path: strip_alias_prefix(path, Some(a))?,
+        },
+        Predicate::IsNull { path, negated } => Predicate::IsNull {
+            path: strip_alias_prefix(path, Some(a))?,
+            negated,
+        },
+        Predicate::StartsWith { path, prefix } => Predicate::StartsWith {
+            path: strip_alias_prefix(path, Some(a))?,
+            prefix,
+        },
+        Predicate::Contains { path, needle } => Predicate::Contains {
+            path: strip_alias_prefix(path, Some(a))?,
+            needle,
+        },
+        Predicate::And { args } => Predicate::And {
+            args: args
+                .into_iter()
+                .map(|p| strip_alias_from_predicate(p, Some(a)))
+                .collect::<Result<Vec<_>, _>>()?,
+        },
+        Predicate::Or { args } => Predicate::Or {
+            args: args
+                .into_iter()
+                .map(|p| strip_alias_from_predicate(p, Some(a)))
+                .collect::<Result<Vec<_>, _>>()?,
+        },
+        Predicate::Not { arg } => Predicate::Not {
+            arg: Box::new(strip_alias_from_predicate(*arg, Some(a))?),
+        },
+    })
+}
+
+fn strip_alias_from_operand(op: crate::predicate::Operand, alias: &str) -> Result<crate::predicate::Operand, Error> {
+    use crate::predicate::Operand;
+    match op {
+        Operand::Path { path } => Ok(Operand::Path {
+            path: strip_alias_prefix(path, Some(alias))?,
+        }),
+        other => Ok(other),
+    }
 }
 
 fn parse_enrich_step(
@@ -793,6 +1011,15 @@ pub fn attach_within_rows(
                     elements =
                         attach_within_rows(&elements, foreign_by_using, inner, params)?;
                 }
+                FullPipelineStepV1::Filter(pred) => {
+                    let mut kept = Vec::with_capacity(elements.len());
+                    for (ek, ev) in elements {
+                        if pred.eval(&ev, params)? {
+                            kept.push((ek, ev));
+                        }
+                    }
+                    elements = kept;
+                }
             }
         }
         let new_arr: Vec<JsonValue> = elements.into_iter().map(|(_, v)| v).collect();
@@ -874,7 +1101,7 @@ impl RqlFullPage {
             .iter()
             .filter_map(|s| match s {
                 FullPipelineStepV1::Enrich(e) => Some(e),
-                FullPipelineStepV1::Within(_) => None,
+                FullPipelineStepV1::Within(_) | FullPipelineStepV1::Filter(_) => None,
             })
             .collect()
     }
@@ -883,7 +1110,7 @@ impl RqlFullPage {
     pub fn within(&self) -> Option<&WithinStepV1> {
         self.pipeline.iter().find_map(|s| match s {
             FullPipelineStepV1::Within(w) => Some(w),
-            FullPipelineStepV1::Enrich(_) => None,
+            FullPipelineStepV1::Enrich(_) | FullPipelineStepV1::Filter(_) => None,
         })
     }
 }
@@ -927,6 +1154,11 @@ pub fn execute_rql_full(
                 collect_within_using_names(w, &mut foreign_cache, client)?;
                 rows = attach_within_rows(&rows, &foreign_cache, w, &parameters.values)?;
             }
+            FullPipelineStepV1::Filter(_) => {
+                return Err(Error::QueryInvalid(format!(
+                    "{DIAG_RQL_FULL_RESIDUAL}: root-level pipeline where not in this slice"
+                )));
+            }
         }
     }
 
@@ -963,6 +1195,7 @@ fn collect_within_using_names(
             FullPipelineStepV1::Within(w) => {
                 collect_within_using_names(w, cache, client)?;
             }
+            FullPipelineStepV1::Filter(_) => {}
         }
     }
     Ok(())
@@ -1334,6 +1567,96 @@ mod tests {
             "unexpected: {err}"
         );
         assert!(err.to_string().contains("depth exceeds"));
+    }
+
+    #[test]
+    fn compile_and_attach_nested_where() {
+        let c = compile_rql_full(
+            r#"from orders
+               enrich items using line_items matching order_id = order_id expect many
+               within items as item {
+                 where item.qty > 1
+                 enrich product using products as candidate
+                   matching item.product_id = candidate.id
+                   expect exactly_one
+               }"#,
+            &bindings(),
+        )
+        .unwrap();
+        let w = c.first_within().unwrap();
+        assert_eq!(w.steps.len(), 2);
+        assert!(matches!(&w.steps[0], FullPipelineStepV1::Filter(_)));
+        assert!(matches!(&w.steps[1], FullPipelineStepV1::Enrich(_)));
+
+        let roots = vec![("o1".into(), serde_json::json!({"order_id": "o1"}))];
+        let lines = vec![
+            (
+                "l1".into(),
+                serde_json::json!({"order_id": "o1", "product_id": "p1", "qty": 1}),
+            ),
+            (
+                "l2".into(),
+                serde_json::json!({"order_id": "o1", "product_id": "p2", "qty": 3}),
+            ),
+        ];
+        let products = vec![
+            ("p1".into(), serde_json::json!({"id": "p1", "name": "Widget"})),
+            ("p2".into(), serde_json::json!({"id": "p2", "name": "Gadget"})),
+        ];
+        let after_many =
+            attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
+        let mut foreign = BTreeMap::new();
+        foreign.insert("products".into(), products);
+        let out =
+            attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
+        let bag = out[0].1["items"].as_array().unwrap();
+        assert_eq!(bag.len(), 1);
+        assert_eq!(bag[0]["qty"], 3);
+        assert_eq!(bag[0]["product"]["name"], "Gadget");
+    }
+
+    #[test]
+    fn compile_and_attach_where_after_enrich_in_within() {
+        let c = compile_rql_full(
+            r#"from orders
+               enrich items using line_items matching order_id = order_id expect many
+               within items as item {
+                 enrich product using products as candidate
+                   matching item.product_id = candidate.id
+                   expect exactly_one
+                 where item.product.name = "Widget"
+               }"#,
+            &bindings(),
+        )
+        .unwrap();
+        let w = c.first_within().unwrap();
+        assert!(matches!(&w.steps[0], FullPipelineStepV1::Enrich(_)));
+        assert!(matches!(&w.steps[1], FullPipelineStepV1::Filter(_)));
+
+        let roots = vec![("o1".into(), serde_json::json!({"order_id": "o1"}))];
+        let lines = vec![
+            (
+                "l1".into(),
+                serde_json::json!({"order_id": "o1", "product_id": "p1"}),
+            ),
+            (
+                "l2".into(),
+                serde_json::json!({"order_id": "o1", "product_id": "p2"}),
+            ),
+        ];
+        let products = vec![
+            ("p1".into(), serde_json::json!({"id": "p1", "name": "Widget"})),
+            ("p2".into(), serde_json::json!({"id": "p2", "name": "Gadget"})),
+        ];
+        let after_many =
+            attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
+        let mut foreign = BTreeMap::new();
+        foreign.insert("products".into(), products);
+        let out =
+            attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
+        let bag = out[0].1["items"].as_array().unwrap();
+        assert_eq!(bag.len(), 1);
+        assert_eq!(bag[0]["product"]["name"], "Widget");
     }
 
     #[test]
