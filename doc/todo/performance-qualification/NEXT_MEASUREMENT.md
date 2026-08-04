@@ -83,10 +83,11 @@ Evidence `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/
 **CSE-0 labor complete** (2026-08-04): Materialized recovery baseline frozen —
 `doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`.
 
-**CSE-1 FAIL / CSE-2R safety rollback / CSE-3 Stage 0** (2026-08-04): Compact
-cannot match Materialized **P★** at reduced overhead (info-theoretic).
-**Next:** principal A/B/C fork, then CSE-3 Stage 1 only if claim is weakened.
-**ETQ-2 paused**. AWO / three-cell remain paused.
+**CSE-3 Hybrid Stage 1 principal-accepted** (2026-08-04): Compact + Recovery
+Shadow **specified** with deletion/lifecycle addendum (`protected_frontier`,
+tombstones, compaction coverage, retention erase).
+**Next:** Stage 2 implement Shadow (`recovery/shadow/*.rsh`), CSE P★ + lifecycle
+gates, ≥7 seg/s, backlog ≤0; Materialized until pass. **ETQ-2 paused**. AWO paused.
 
 ## Archives
 

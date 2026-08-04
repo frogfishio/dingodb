@@ -1,47 +1,41 @@
-# CSE-3 — Compact + explicit recovery code
+# CSE-3 — Compact + Recovery Shadow (Hybrid)
 
-Status: **Stage 0 labor complete** (2026-08-04) — analysis/proof only.  
-Depends: CSE-0 baseline, CSE-1 Compact FAIL, CSE-2R safety rollback.
+Status: **Stage 1 principal-accepted** (2026-08-04) — Hybrid **specified** +
+deletion/lifecycle addendum. **Stage 2 ready to implement.**  
+Depends: CSE-0/1, CSE-2R safety rollback, Stage 0 P★ bound.
 
 ## Stage gate
 
 | Stage | Goal | Status |
 |---|---|---|
-| **0** | Strongest Materialized damage pattern + info bound + impossibility or coverage proof | **Complete** — [`CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md`](./CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md) |
-| **1** | Codec selection (XOR / RS / …) **only after** principal A/B/C fork | Blocked |
-| **2+** | Implementation against a named failure set | Not started |
+| **0** | P★ bound + reduced-overhead impossibility | **Complete** — [`CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md`](./CSE3_STAGE0_MATERIALIZED_RECOVERY_BOUND.md) |
+| **1** | Principal **C — Hybrid** formalized: Compact + Recovery Shadow (+ lifecycle addendum) | **Principal-accepted** — [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md) |
+| **2** | Implement Shadow + CSE equivalence + lifecycle gates | **Promoted** — ready / next labor |
+| **3** | Perf gates (≥7 seg/s, backlog ≤0, lifecycle ≈ ack); retire Materialized default | Blocked on Stage 2 |
 
-## Stage 0 verdict (headline)
-
-**P★:** Materialized Chimera guarantees recovery of the sealed **live** value set
-\(V_S\) after **total loss of authoritative segment payloads**, if the `.cmr`
-sidecar survives (`layout_direct`; F3/F4).
-
-Matching P★ needs ≈**100%** independent redundancy for incompressible data.
-**Reduced-overhead Compact ≡ Materialized under P★ is impossible.**
-
-Principal must choose before Stage 1:
-
-- **A** — Keep P★ (full-copy salvage; Compact ETQ-only)
-- **B** — Weaken to a named smaller failure set, then select a code
-- **C** — Hybrid (Compact hot path + full-copy salvage tier)
-
-## Keep both implementations
+## Hybrid (normative)
 
 ```text
-Product default: Materialized — safe, slow
-Experimental:    Compact — fast, not yet equivalent
-Target:          Compact + recovery only if Stage 0 fork allows a named set
+Compact Chimera → query acceleration; tiny, derived, disposable (~0.74% amp)
+Recovery Shadow → full-copy salvage; recovery artifact (~100% of V_S); NOT disposable
 ```
+
+- Preserves P★; does not defeat info theory.
+- Win: sequential Shadow construction vs query-oriented Materialized Chimera persist.
+- **Ack ≠ P★** — P★ only after Shadow atomic durable.
+- Tombstones, compaction coverage, retention/secure delete, and
+  `protected_frontier` are normative (Stage 1 Addendum A).
+- Materialized remains product until Shadow passes CSE equivalence.
 
 ## Non-claims
 
-- Does **not** flip product default to Compact.
-- Does **not** resume ETQ-2.
-- Does **not** select XOR/RS in Stage 0.
-- Does **not** accept Compact durability by demonstration alone.
+- No product flip in Stage 1.
+- No ETQ-2 resume.
+- No Shadow code in Stage 1.
+- No multi-media independence claim.
 
 ## Evidence
 
-- Stage 0: `doc/archive/performance-qualification/2026-08-04-cse3-stage0-recovery-bound/`
+- Stage 0: `doc/archive/…/2026-08-04-cse3-stage0-recovery-bound/`
+- Stage 1: `doc/archive/…/2026-08-04-cse3-stage1-hybrid-recovery-shadow/`
 - Spine: [`CHIMERA_SALVAGE_EQUIVALENCE.md`](./CHIMERA_SALVAGE_EQUIVALENCE.md)

@@ -1,0 +1,50 @@
+{
+  "package": "CSE-3 Stage 1",
+  "stage": 1,
+  "date": "2026-08-04",
+  "kind": "specification_only",
+  "principal_fork": "C-Hybrid",
+  "structures": {
+    "compact_chimera": {
+      "role": "query_acceleration",
+      "amp_class": "~0.74%",
+      "derived": true,
+      "disposable": true,
+      "carries_P_star": false
+    },
+    "recovery_shadow": {
+      "role": "full_copy_salvage",
+      "amp_class": "~100% of V_S",
+      "derived": false,
+      "disposable": false,
+      "label": "recovery_artifact",
+      "path_proposal": "recovery/shadow/{hex16}.rsh",
+      "carries_P_star": true
+    }
+  },
+  "P_star_validity": "only_after_shadow_atomic_durable_fsync",
+  "ack_implies_P_star": false,
+  "construction": "streaming_sequential_no_chimera_containers",
+  "acceptance_deferred_to_implement": {
+    "cse_fault_suite_P_star": true,
+    "generation_exact_fail_closed": true,
+    "shadow_seg_per_sec_min": 7,
+    "backlog_slope_max": 0,
+    "lifecycle_approaches_ack": true,
+    "materialized_until_shadow_equivalence": true
+  },
+  "next": "CSE-3 Stage 2 implement Recovery Shadow",
+  "status": "principal-accepted",
+  "addendum": "deletion-and-lifecycle-semantics",
+  "addendum_sections": [
+    "A.1-tombstones",
+    "A.2-latest-generation",
+    "A.3-compaction",
+    "A.4-retention-secure-delete",
+    "A.5-backup-scrub-encryption",
+    "A.6-partial-shadows",
+    "A.7-protected_frontier"
+  ],
+  "product_flip": false,
+  "spec": "doc/todo/performance-qualification/CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md"
+}

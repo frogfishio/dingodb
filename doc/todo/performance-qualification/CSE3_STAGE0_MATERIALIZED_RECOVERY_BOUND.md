@@ -137,8 +137,9 @@ Therefore:
 | **B — Weaken claim** | Principal renames the durability target to a smaller pattern; then Stage 1 may select XOR/MDS against that pattern. |
 | **C — Hybrid** | Compact hot path + optional full-copy salvage tier (still ≈100% when salvage tier is on). |
 
-**Stage 0 does not choose XOR vs RS.** Codec choice is blocked until principal
-picks A/B/C (or an equally precise alternative failure set).
+**Principal chose C** (2026-08-04). Stage 1:
+[`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md)
+(Recovery Shadow = salvage artifact; Compact = disposable query).
 
 ## Required Stage 0 checklist
 
