@@ -101,7 +101,7 @@ fn execute_rql_full_many_facade() {
     .expect("execute_rql_full");
 
     assert_eq!(page.profile, RQL_FULL_PROFILE);
-    assert_eq!(page.enrich[0].expect, EnrichCardinality::Many);
+    assert_eq!(page.enrich()[0].expect, EnrichCardinality::Many);
     assert_eq!(page.rows.len(), 2);
     let by: std::collections::BTreeMap<_, _> = page.rows.into_iter().collect();
     let bag = by.get("o1").unwrap()["items"].as_array().unwrap();

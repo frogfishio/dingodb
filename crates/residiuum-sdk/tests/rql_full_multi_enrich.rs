@@ -101,7 +101,7 @@ fn execute_rql_full_multi_root_enrich() {
     )
     .expect("multi root enrich");
 
-    assert_eq!(page.enrich.len(), 2);
+    assert_eq!(page.enrich().len(), 2);
     assert_eq!(page.rows[0].1["customer"]["name"], "Ada");
     assert_eq!(page.rows[0].1["items"].as_array().unwrap().len(), 2);
 }
@@ -167,7 +167,7 @@ fn execute_rql_full_multi_within_enrich() {
     )
     .expect("multi within enrich");
 
-    assert_eq!(page.within.as_ref().unwrap().enrich.len(), 2);
+    assert_eq!(page.within().unwrap().enrich_steps().len(), 2);
     let item = &page.rows[0].1["items"].as_array().unwrap()[0];
     assert_eq!(item["product"]["name"], "Widget");
     assert_eq!(item["warehouse"]["city"], "Oslo");

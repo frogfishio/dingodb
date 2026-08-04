@@ -1,4 +1,4 @@
-//! Phase 3.4: within nested carrier via execute_rql_full.
+//! Phase 3.6: nested within + enrich-after-within via execute_rql_full.
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -6,7 +6,7 @@ use residiuum_heap::{
     TrustedInstant, VerifiedCertificate,
 };
 use residiuum_sdk::{
-    execute_rql_full, DIAG_RQL_WITHIN_TYPE, HeapClient, Parameters, QueryRunOptions,
+    execute_rql_full, FullPipelineStepV1, HeapClient, Parameters, QueryRunOptions,
     ResidiuumDeployment, RQL_FULL_PROFILE,
 };
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
@@ -55,14 +55,14 @@ fn uuid() -> [u8; 16] {
 }
 
 #[test]
-fn execute_rql_full_within_nested() {
+fn execute_rql_full_nested_within() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
     let heap_bytes = *HeapId::new_random().unwrap().as_bytes();
-    let staged = stage_heap_genesis(&layout, dep, heap_bytes, uuid(), "heap-within").unwrap();
+    let staged = stage_heap_genesis(&layout, dep, heap_bytes, uuid(), "heap-nested").unwrap();
     publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
     let heap_id = HeapId::from_bytes_unchecked_nonzero(heap_bytes).unwrap();
     let dep_id = DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap();
@@ -70,6 +70,7 @@ fn execute_rql_full_within_nested() {
 
     let mut orders = client.create_collection("orders").unwrap().collection;
     let mut lines = client.create_collection("line_items").unwrap().collection;
+    let mut components = client.create_collection("components").unwrap().collection;
     let mut products = client.create_collection("products").unwrap().collection;
 
     orders
@@ -78,13 +79,19 @@ fn execute_rql_full_within_nested() {
     lines
         .put(
             "l1",
-            &serde_json::json!({"order_id": "o1", "product_id": "p1", "sku": "A"}),
+            &serde_json::json!({"order_id": "o1", "sku": "A"}),
         )
         .unwrap();
-    lines
+    components
         .put(
-            "l2",
-            &serde_json::json!({"order_id": "o1", "product_id": "p2", "sku": "B"}),
+            "c1",
+            &serde_json::json!({"parent_sku": "A", "product_id": "p1"}),
+        )
+        .unwrap();
+    components
+        .put(
+            "c2",
+            &serde_json::json!({"parent_sku": "A", "product_id": "p2"}),
         )
         .unwrap();
     products
@@ -95,67 +102,102 @@ fn execute_rql_full_within_nested() {
         .unwrap();
     drop(orders);
     drop(lines);
+    drop(components);
     drop(products);
-
-    let src = r#"from orders
-      enrich items using line_items matching order_id = order_id expect many
-      within items as item {
-        enrich product using products as candidate
-          matching item.product_id = candidate.id
-          expect exactly_one
-      }
-      page size 64"#;
 
     let page = execute_rql_full(
         &mut client,
-        src,
+        r#"from orders
+           enrich items using line_items matching order_id = order_id expect many
+           within items as item {
+             enrich parts using components matching item.sku = parent_sku expect many
+             within item.parts as part {
+               enrich product using products as candidate
+                 matching part.product_id = candidate.id
+                 expect exactly_one
+             }
+           }
+           page size 64"#,
         &Parameters::default(),
         QueryRunOptions::default(),
     )
-    .expect("execute_rql_full within");
+    .expect("nested within");
 
     assert_eq!(page.profile, RQL_FULL_PROFILE);
-    assert!(page.within().is_some());
-    assert_eq!(page.rows.len(), 1);
-    let bag = page.rows[0].1["items"].as_array().unwrap();
-    assert_eq!(bag.len(), 2);
-    assert_eq!(bag[0]["product"]["name"], "Widget");
-    assert_eq!(bag[1]["product"]["name"], "Gadget");
+    let w = page.within().expect("within");
+    assert_eq!(w.steps.len(), 2);
+    assert!(matches!(&w.steps[1], FullPipelineStepV1::Within(_)));
+    let parts = page.rows[0].1["items"].as_array().unwrap()[0]["parts"]
+        .as_array()
+        .unwrap();
+    assert_eq!(parts.len(), 2);
+    assert_eq!(parts[0]["product"]["name"], "Widget");
+    assert_eq!(parts[1]["product"]["name"], "Gadget");
 }
 
 #[test]
-fn execute_rql_full_within_type_error() {
+fn execute_rql_full_enrich_after_within() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     let deployment = ResidiuumDeployment::create(root).unwrap();
     let layout = HeapMetaLayout::new(root);
     let dep = *DeploymentId::new_random().unwrap().as_bytes();
     let heap_bytes = *HeapId::new_random().unwrap().as_bytes();
-    let staged = stage_heap_genesis(&layout, dep, heap_bytes, uuid(), "heap-within-ty").unwrap();
+    let staged = stage_heap_genesis(&layout, dep, heap_bytes, uuid(), "heap-eaw").unwrap();
     publish_staged_genesis(&layout, &staged.staging_id, &staged.descriptor_hash).unwrap();
     let heap_id = HeapId::from_bytes_unchecked_nonzero(heap_bytes).unwrap();
     let dep_id = DeploymentId::from_bytes_unchecked_nonzero(dep).unwrap();
     let mut client = HeapClient::from(deployment.open_heap(mint_cap_for(heap_id, dep_id)));
 
     let mut orders = client.create_collection("orders").unwrap().collection;
-    let _products = client.create_collection("products").unwrap().collection;
+    let mut lines = client.create_collection("line_items").unwrap().collection;
+    let mut products = client.create_collection("products").unwrap().collection;
+    let mut customers = client.create_collection("customers").unwrap().collection;
+
     orders
-        .put("o1", &serde_json::json!({"order_id": "o1"}))
+        .put(
+            "o1",
+            &serde_json::json!({"order_id": "o1", "customer_id": "c1"}),
+        )
+        .unwrap();
+    lines
+        .put(
+            "l1",
+            &serde_json::json!({"order_id": "o1", "product_id": "p1"}),
+        )
+        .unwrap();
+    products
+        .put("p1", &serde_json::json!({"id": "p1", "name": "Widget"}))
+        .unwrap();
+    customers
+        .put("c1", &serde_json::json!({"id": "c1", "name": "Ada"}))
         .unwrap();
     drop(orders);
+    drop(lines);
+    drop(products);
+    drop(customers);
 
-    let err = execute_rql_full(
+    let page = execute_rql_full(
         &mut client,
         r#"from orders
+           enrich items using line_items matching order_id = order_id expect many
            within items as item {
-             enrich product using products matching product_id = id expect optional
-           }"#,
+             enrich product using products as candidate
+               matching item.product_id = candidate.id
+               expect exactly_one
+           }
+           enrich customer using customers matching customer_id = id expect exactly_one
+           page size 64"#,
         &Parameters::default(),
         QueryRunOptions::default(),
     )
-    .unwrap_err();
-    assert!(
-        err.to_string().contains(DIAG_RQL_WITHIN_TYPE),
-        "unexpected err: {err}"
+    .expect("enrich after within");
+
+    assert_eq!(page.pipeline.len(), 3);
+    assert!(matches!(&page.pipeline[2], FullPipelineStepV1::Enrich(_)));
+    assert_eq!(page.rows[0].1["customer"]["name"], "Ada");
+    assert_eq!(
+        page.rows[0].1["items"].as_array().unwrap()[0]["product"]["name"],
+        "Widget"
     );
 }

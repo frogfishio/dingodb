@@ -98,7 +98,7 @@ fn execute_rql_full_candidate_where() {
     )
     .expect("execute_rql_full with candidate where");
 
-    assert!(page.enrich[0].candidate_where.is_some());
+    assert!(page.enrich()[0].candidate_where.is_some());
     assert_eq!(page.rows[0].1["customer"]["name"], "Ada");
 }
 

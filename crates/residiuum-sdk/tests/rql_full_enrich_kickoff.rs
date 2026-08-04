@@ -105,7 +105,7 @@ fn enrich_exactly_one_attach_oracle() {
     assert!(err.to_string().contains(DIAG_RQL_FEATURE_UNAVAILABLE));
 
     let compiled = compile_rql_full(&src, &bindings).expect("compile_rql_full");
-    assert_eq!(compiled.enrich.len(), 1);
+    assert_eq!(compiled.root_enrich().len(), 1);
 
     // Base page via Core executor (stripped source).
     let page = orders
@@ -130,7 +130,7 @@ fn enrich_exactly_one_attach_oracle() {
     }
 
     let enriched =
-        attach_enrich_rows(&roots, &foreign, &compiled.enrich[0], &Default::default()).unwrap();
+        attach_enrich_rows(&roots, &foreign, compiled.root_enrich()[0], &Default::default()).unwrap();
     assert_eq!(enriched.len(), 2);
     let by_key: std::collections::BTreeMap<_, _> = enriched.into_iter().collect();
     assert_eq!(by_key.get("o1").unwrap()["customer"]["name"], "Ada");

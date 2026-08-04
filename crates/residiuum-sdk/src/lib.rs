@@ -103,8 +103,9 @@ pub use rql_app_core::{
 };
 pub use rql_full_v1::{
     attach_enrich_rows, attach_within_rows, compile_rql_full, execute_rql_full, CompiledRqlFull,
-    EnrichCardinality, EnrichStepV1, RqlFullPage, WithinStepV1, DIAG_RQL_ENRICH_CARDINALITY,
-    DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_WITHIN_TYPE, RQL_FULL_PROFILE,
+    EnrichCardinality, EnrichStepV1, FullPipelineStepV1, RqlFullPage, WithinStepV1,
+    DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_WITHIN_TYPE, MAX_WITHIN_DEPTH,
+    RQL_FULL_PROFILE,
 };
 pub use sql_plus::{
     compile_sql_to_rql, SqlToRqlEmit, SqlToRqlResult, DIAG_SQL_RQL_CONSTRUCT_UNSUPPORTED,
