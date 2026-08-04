@@ -35,3 +35,4 @@ Operator action for damaged trees remains: refuse open / fresh store (advisory).
 - Failed targets include damage/salvage/Chimera-layout/Shadow-republish harnesses
   that conflict with fail-closed inventory / exclusive Shadow publish already on tip.
 
+Tagged commit: `4972624b1f9f49603e052ce4c5bd06d4655bb3c9` (`4972624`)
