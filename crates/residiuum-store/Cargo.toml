@@ -207,6 +207,10 @@ name = "csq7_damage_salvage"
 required-features = ["legacy-raw-store"]
 
 [[test]]
+name = "cse0_materialized_chimera_recovery"
+required-features = ["legacy-raw-store"]
+
+[[test]]
 name = "csq8_derived_maintenance"
 required-features = ["legacy-raw-store"]
 

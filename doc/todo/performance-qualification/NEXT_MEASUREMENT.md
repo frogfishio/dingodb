@@ -14,7 +14,7 @@ behind (~4.93 vs ~5.57 seg/s).
 > Durability equivalence is unproven and blocks product/default acceptance.
 
 **Next (only):** [CSE — Chimera Salvage Equivalence](./CHIMERA_SALVAGE_EQUIVALENCE.md)
-(CSE-0 → CSE-1 → CSE-2 if needed). **ETQ-2 deferred** until Compact salvage
+(**CSE-0 labor done** → **CSE-1** → CSE-2 if needed). **ETQ-2 deferred** until Compact salvage
 viability. **AWO paused**.  
 Date: 2026-08-04
 
@@ -80,10 +80,13 @@ architecturally; catalog O(n²) persist defect fixed and **package accepted**.
 migration-eligible. Materialized format+reader stay intact.
 Evidence `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
 
-**Only allowed next work:** **CSE-0** (then CSE-1; CSE-2 if needed) —
+**CSE-0 labor complete** (2026-08-04): Materialized recovery baseline frozen —
+`doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`.
+
+**Only allowed next work:** **CSE-1** (CSE-2 if needed) —
 [CHIMERA_SALVAGE_EQUIVALENCE.md](./CHIMERA_SALVAGE_EQUIVALENCE.md).
-Require \(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\).
-**ETQ-2 deferred** behind CSE. AWO / three-cell remain paused.
+Require \(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\)
+on the CSE-0 channels. **ETQ-2 deferred** behind CSE. AWO / three-cell remain paused.
 
 ## Archives
 
@@ -99,6 +102,7 @@ Require \(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materiali
 - `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
 - `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`
 - `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`
+- `doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`
 - Plan: `doc/todo/performance-qualification/ENRICHMENT_THROUGHPUT_QUALIFICATION.md`
 - ETQ-1 charter: `doc/todo/performance-qualification/ETQ1_COMPACT_CHIMERA.md`
 - CSE charter: `doc/todo/performance-qualification/CHIMERA_SALVAGE_EQUIVALENCE.md`

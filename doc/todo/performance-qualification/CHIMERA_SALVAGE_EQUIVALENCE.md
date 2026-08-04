@@ -37,18 +37,24 @@ for every frozen failure \(f\) in the CSE-0 set.
 
 | Package | Goal |
 |---|---|
-| **CSE-0** | Materialized Chimera recovery baseline — does it recover authoritative damage? Freeze failure set + recovery oracle. |
-| **CSE-1** | Compact equivalence campaign — identical damage on both formats; recovery-set comparison. |
+| **CSE-0** | Materialized Chimera recovery baseline — **labor complete** 2026-08-04; archive `…/2026-08-04-cse0-materialized-recovery-baseline/`. |
+| **CSE-1** | Compact equivalence campaign — identical damage on both formats; recovery-set comparison. **Next.** |
 | **CSE-2** | Minimum parity — **only if** Compact loses recoverability vs Materialized. |
 | **ETQ-2** | Resume Single-Pass Enrichment Decode **after** Compact is proven viable (or CSE-2 restores parity). |
 
 ## CSE-0 — Materialized recovery baseline
 
-- Damage authoritative segment frames / envelopes under a frozen matrix.
-- Measure what Materialized Chimera (and PrimaryIndex salvage) still recovers.
-- Freeze: failure set \(F\), recovery oracle, reopen/query bounds.
-- Honest outcome may be “Materialized Chimera does not expand salvage beyond
-  segments” — still a required baseline.
+Status: **labor complete** (2026-08-04). Evidence:
+`doc/archive/performance-qualification/2026-08-04-cse0-materialized-recovery-baseline/`.
+
+- Frozen \(F\): F0 control, F1 wipe Chimera, F2 corrupt `.cmr`, F3 XOR auth body
+  `t`, F4 delete sealed segment, F5 F3+wipe Chimera.
+- Channels: `auth` (`Store::get`), `chimera` (`get_via_chimera`, index-gated),
+  `layout_direct` (Materialized `.cmr` resolve).
+- Headline: F3 Materialized **does** expand ChimeraGet for damaged `t`; F4
+  product channels empty (index needs segment) but **format** still recovers
+  all keys from embedded `.cmr`.
+- Test: `crates/residiuum-store/tests/cse0_materialized_chimera_recovery.rs`.
 
 ## CSE-1 — Compact equivalence
 
