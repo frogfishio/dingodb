@@ -17,15 +17,22 @@ Enabled only inside `recovery_shadow::qualify` /
 `tests/cse3_stage2_step7_shadow_perf.rs`. Product seal remains Materialized
 until step **8**.
 
+## Candidate Shadow path (RSHD0003)
+
+Shadow publication is a **canonical segment image mirror** (physical buffered
+copy of sealed `.residiuum` bytes into envelope + image + commitment). No value
+decode/re-encode on the Shadow critical path (`encode_ns=0`). Compact decode
+remains a separate amp/harness path and is **excluded** from the ≥7 seg/s rate.
+
 ## Measured per Shadow
 
 | Stage | Field |
 |---|---|
-| Source read/decode | `source_read_decode_ns` |
-| Record encryption | `encrypt_ns` (harness envelope) |
-| Record encoding | `encode_ns` |
-| Sequential write | `sequential_write_ns` |
-| File sync | `file_sync_ns` |
+| Source read/decode | `source_read_decode_ns` (Compact-only under RSHD0003) |
+| Record encryption | `encrypt_ns` (unused for mirror; 0) |
+| Record encoding | `encode_ns` (0 for RSHD0003 mirror) |
+| Sequential write | `sequential_write_ns` (physical copy + hash) |
+| File sync | `file_sync_ns` (`sync_all`) |
 | Rename | `rename_ns` |
 | Directory sync | `dir_sync_ns` |
 | Frontier publication | `frontier_publish_ns` |
@@ -66,9 +73,19 @@ Smoke default target is 8 MiB (CI-friendly). Full campaign asserts `gates.pass
 
 ## Evidence
 
-Archive: [`doc/archive/performance-qualification/2026-08-04-cse3-stage2-step7-shadow-perf/`](../../archive/performance-qualification/2026-08-04-cse3-stage2-step7-shadow-perf/)
+- RSHD0002 baseline archive: [`…/2026-08-04-cse3-stage2-step7-shadow-perf/`](../../archive/performance-qualification/2026-08-04-cse3-stage2-step7-shadow-perf/)
+- RSHD0003 mirror archive: [`…/2026-08-04-cse3-stage2-step7-rshd0003-mirror/`](../../archive/performance-qualification/2026-08-04-cse3-stage2-step7-rshd0003-mirror/)
 
-**2026-08-04 labor result:** safety/amp/recovery gates PASS on 2 GiB/64 MiB;
-Shadow publication **FAIL** (≥7) — 3.69 seg/s (best quiet 256 MiB cell 6.33).
-Encode+write+sync dominate at ~100% amp. Step 8 blocked.
+**2026-08-04 RSHD0002:** 2 GiB FAIL 3.69 seg/s (best quiet 256 MiB 6.33).
+
+**2026-08-04 RSHD0003:** encode stage removed. Quiet 256 MiB **9.96 seg/s PASS**.
+Best 2 GiB/64 MiB **6.99 seg/s** (FAIL ≥7 under post-seal copy contention).
+
+**2026-08-04 RSHD0004 dual-stream (experimental):** write-time paired append;
+commitment over ordered frame hashes. Sustained 2 GiB/64 MiB ×3 median
+**55.57 seg/s PASS** (min 37.69); recovery/amp/frontier PASS; lifecycle≈ack;
+ack ~27–28K (no bad foreground regression). Archive
+[`…/2026-08-04-cse3-stage2-step7-dual-stream/`](../../archive/performance-qualification/2026-08-04-cse3-stage2-step7-dual-stream/).
+Harness: `CSE3_STEP7_DUAL_STREAM=1`. **No product flip.** Step 8 still needs
+principal accept.
 

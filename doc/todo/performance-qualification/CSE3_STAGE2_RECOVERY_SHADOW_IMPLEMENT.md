@@ -42,7 +42,7 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 | **4** | `protected_frontier` + protection-lag telemetry (gap-aware, per-shard) | **Done** (2a) |
 | **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | **Done** (lifecycle dual-run; no flip) |
 | **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Principal-accepted** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
-| **7** | Prove ≥7 segments/sec with non-growing backlog | **Open (labor)** — harness+RSHD0002; 2 GiB FAIL 3.69 seg/s ([`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-shadow-perf`) |
+| **7** | Prove ≥7 segments/sec with non-growing backlog | **Labor evidence PASS (experimental dual-stream)** — RSHD0004 write-time dual stream; 2 GiB×3 median **55.57** seg/s ([`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-dual-stream`). Principal accept still open; no product flip. |
 | **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Yes — only here** |
 | **9** | Re-run full-product throughput qualification | Post-flip |
 
@@ -54,9 +54,41 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
   contaminates healthy primary reads.
 - Product seal/enrichment stays on Materialized until step 8 principal gate.
 
-## Wire freeze (step 1)
+## Wire freeze
 
 Path: `recovery/shadow/{hex16(segment_id)}.rsh`
+
+### Experimental current (RSHD0004 — write-time dual stream)
+
+```text
+magic[8] = "RSHD0004"
+store_id[16]
+segment_id[16]
+encoded_len[u64 LE]
+image[encoded_len]     # exact sealed .residiuum bytes (dual-streamed)
+commitment[32]         # blake3(store‖seg‖len‖ ordered body_hash‖off‖len‖gen)
+```
+
+Cook once → append auth + append Shadow staging (independent alloc; no reflink;
+no per-record sync; bounded buffer). Seal appends the same summary to both,
+`sync_all`s Shadow independently, publishes atomically, then advances
+`protected_frontier`. Salvage scans `image`. Async rotate disabled while armed.
+
+### Prior (RSHD0003 — post-seal canonical mirror; still readable)
+
+```text
+magic[8] = "RSHD0003"
+store_id[16]
+segment_id[16]
+encoded_len[u64 LE]
+image[encoded_len]     # exact sealed .residiuum bytes (physical copy)
+commitment[32]         # blake3(envelope‖image)
+```
+
+Publication: buffered physical copy (no clone/reflink) → `sync_all` → rename →
+dir sync. V1/V2 record Shadows remain readable for fixtures / older media.
+
+### Legacy record form (RSHD0002 / RSHD0001 — still readable)
 
 ```text
 magic[8] = "RSHD0002"   # RSHD0001 still readable
@@ -74,9 +106,6 @@ records[n] sorted by (key ascending, gen ascending):
   Tombstone: record_hash[32]
 trailer: content_hash[32] = blake3(bytes without trailer)
 ```
-
-Record hash: blake3 over `tag || key || gen_le || [value]` (value only for Put).
-Publication: existing `atomic_file` protocol (temp → sync → rename → dir sync).
 
 ## Module
 

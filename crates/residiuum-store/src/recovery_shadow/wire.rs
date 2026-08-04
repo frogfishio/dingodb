@@ -513,6 +513,9 @@ pub fn project_live(records: &[ShadowRecord]) -> BTreeMap<Vec<u8>, LiveState> {
 }
 
 /// Load Shadow from disk (missing / incomplete / corrupt / ok).
+///
+/// RSHD0003/0004 image mirrors are accepted and projected into records via
+/// segment scan so salvage callers keep a single API.
 pub fn try_load_shadow(
     path: &Path,
     expect_store: Option<[u8; 16]>,
@@ -527,6 +530,29 @@ pub fn try_load_shadow(
     };
     if bytes.is_empty() {
         return Ok(ShadowLoad::Incomplete);
+    }
+    if super::dual_stream::is_dual_magic(&bytes) {
+        return Ok(
+            match super::dual_stream::decode_dual_mirror(&bytes, expect_store) {
+                Ok((store_id, segment_id, image)) => {
+                    let m = super::mirror::MirroredShadow {
+                        store_id,
+                        segment_id,
+                        image,
+                    };
+                    ShadowLoad::Ok(super::mirror::mirror_to_decoded_shadow(&m))
+                }
+                Err(e) => e,
+            },
+        );
+    }
+    if super::mirror::is_mirror_magic(&bytes) {
+        return Ok(
+            match super::mirror::decode_mirror_to_struct(&bytes, expect_store) {
+                Ok(m) => ShadowLoad::Ok(super::mirror::mirror_to_decoded_shadow(&m)),
+                Err(e) => e,
+            },
+        );
     }
     Ok(decode_shadow(&bytes, expect_store))
 }

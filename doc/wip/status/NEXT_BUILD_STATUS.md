@@ -6,10 +6,11 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2 step 7** — Shadow+Compact harness + RSHD0002;
-2 GiB/64 MiB campaign **FAIL** ≥7 seg/s (3.69; best quiet 256 MiB 6.33). Safety/amp/recovery
-gates PASS. **Materialized remains product recovery authority.** Step 8 blocked.
-**No product flip.** **ETQ-2 paused.** **AWO paused.** Prior: step 6 principal-accepted.
+Updated: 2026-08-04 (**CSE-3 Stage 2 step 7** — **RSHD0004** write-time dual-stream
+Shadow experimental; sustained 2 GiB/64 MiB ×3 median **55.57 seg/s PASS**, recovery
+P★ ok, lifecycle≈ack, ack ~27–28K. **Materialized remains product recovery authority.**
+Step 8 awaits principal accept (no product flip). **ETQ-2 paused.** **AWO paused.**
+Prior: RSHD0003 quiet 9.96 / sustained copy 6.99; step 6 accepted.
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

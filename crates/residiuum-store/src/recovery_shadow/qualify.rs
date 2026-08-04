@@ -17,16 +17,15 @@ use crate::envelope::{decode_item_envelope, EventKind};
 use crate::error::StoreError;
 use crate::ids::segment_seq_from_id;
 use crate::layout::{hex16, list_residiuum_files, segment_id_from_filename, StorePaths};
-use crate::recovery_shadow::crypto::{envelope_open, envelope_seal, ENVELOPE_MAGIC};
+use crate::recovery_shadow::crypto::{envelope_open, ENVELOPE_MAGIC};
 use crate::recovery_shadow::frontier::{
     load_protected_coverage, publish_protected_coverage, protection_lag_from_coverage,
 };
+use crate::recovery_shadow::mirror::publish_mirror_shadow_timed;
 use crate::recovery_shadow::wire::{
-    encode_shadow_from_live_map, project_live, shadow_dir, shadow_path, try_load_shadow, LiveState,
-    ShadowLoad,
+    project_live, shadow_dir, shadow_path, try_load_shadow, LiveState, ShadowLoad,
 };
 use residiuum_format::{scan_forward, FrameKind, SafetyLimits, ScanRegion};
-use blake3;
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -152,6 +151,8 @@ pub struct QualifyOptions {
     pub encrypt: bool,
     /// Also write Compact Chimera (no Materialized).
     pub write_compact: bool,
+    /// Publish Recovery Shadow (mirror). Set false when dual-stream already did.
+    pub write_shadow: bool,
     /// Shard for frontier bookkeeping.
     pub shard: u16,
 }
@@ -162,6 +163,7 @@ impl Default for QualifyOptions {
             // Dual-run wire is cleartext; encrypt is a measured security variant.
             encrypt: false,
             write_compact: true,
+            write_shadow: true,
             shard: 0,
         }
     }
@@ -253,10 +255,15 @@ pub fn publish_shadow_timed(
     }
     fs::create_dir_all(shadow_dir(paths))?;
     let path = shadow_path(paths, segment_id);
-    write_atomic_with_timed_ex(&path, bytes, AtomicWriteOptions::default(), true)
+    // Durability: full `sync_all` (do not weaken to sync_data for benchmarks).
+    write_atomic_with_timed_ex(&path, bytes, AtomicWriteOptions::default(), false)
 }
 
 /// Build Compact + Recovery Shadow for one sealed segment (no Materialized).
+///
+/// Shadow path is **RSHD0003** canonical image mirror (physical buffered copy).
+/// Compact Chimera (optional) is measured separately and is not on the Shadow
+/// publication critical path.
 pub fn enrich_segment_candidate(
     paths: &StorePaths,
     store_id: [u8; 16],
@@ -268,48 +275,46 @@ pub fn enrich_segment_candidate(
     let cpu0 = process_cpu_ns();
     let limits = SafetyLimits::default();
 
-    let t_decode = Instant::now();
-    let (mut live, frames, live_payload) =
-        decode_segment_for_candidate(segment_id, segment_bytes, limits);
-    let source_read_decode_ns = t_decode.elapsed().as_nanos() as u64;
-
-    let mut encrypt_ns = 0u64;
-    if opts.encrypt {
-        let t_enc = Instant::now();
-        for (_k, (val, _gen)) in live.iter_mut() {
-            if let Some((plain, _old_hash)) = val.as_ref() {
-                let sealed = envelope_seal(&HARNESS_ENVELOPE_KEY, 1, plain);
-                let body_hash = *blake3::hash(&sealed).as_bytes();
-                *val = Some((sealed, body_hash));
-            }
-        }
-        encrypt_ns = t_enc.elapsed().as_nanos() as u64;
+    // Shadow: physical mirror — no value decode/re-encode (unless dual-stream
+    // already published; then skip remirror / frontier claim).
+    let encrypt_ns = 0u64;
+    let _ = opts.encrypt;
+    let mut atomic = crate::recovery_shadow::MirrorPublishTiming::default();
+    let mut frontier_publish_ns = 0u64;
+    if opts.write_shadow {
+        atomic = publish_mirror_shadow_timed(paths, store_id, &segment_id, segment_bytes)?;
+        let t_front = Instant::now();
+        let seq = segment_seq_from_id(&segment_id);
+        let mut cov = load_protected_coverage(paths, store_id)?;
+        cov.store_id = store_id;
+        cov.note_sealed(opts.shard, seq);
+        cov.note_durable(opts.shard, seq);
+        publish_protected_coverage(paths, &cov)?;
+        frontier_publish_ns = t_front.elapsed().as_nanos() as u64;
+    } else if let Ok(meta) = fs::metadata(shadow_path(paths, &segment_id)) {
+        atomic.bytes_written = meta.len();
     }
+    let cov = load_protected_coverage(paths, store_id)?;
 
-    let t_encode = Instant::now();
-    let shadow_bytes = encode_shadow_from_live_map(store_id, segment_id, 1, &live);
-    let encode_ns = t_encode.elapsed().as_nanos() as u64;
-
-    let atomic = publish_shadow_timed(paths, &segment_id, &shadow_bytes)?;
-
-    let t_front = Instant::now();
-    let seq = segment_seq_from_id(&segment_id);
-    let mut cov = load_protected_coverage(paths, store_id)?;
-    cov.store_id = store_id;
-    cov.note_sealed(opts.shard, seq);
-    cov.note_durable(opts.shard, seq);
-    publish_protected_coverage(paths, &cov)?;
-    let frontier_publish_ns = t_front.elapsed().as_nanos() as u64;
-
+    // Compact (harness amp gate) — not part of Shadow publication rate.
+    let mut source_read_decode_ns = 0u64;
     let mut compact_ns = 0u64;
     let mut bytes_written_compact = 0u64;
-    if opts.write_compact && !frames.is_empty() {
-        let t_c = Instant::now();
-        let layout = build_compact_layout(&frames, 1);
-        let path = chimera_layout_path(paths, &segment_id);
-        write_chimera_layout(&path, store_id, segment_id, &layout)?;
-        compact_ns = t_c.elapsed().as_nanos() as u64;
-        bytes_written_compact = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    let mut live_payload = 0u64;
+    if opts.write_compact {
+        let t_decode = Instant::now();
+        let (_live, frames, lp) =
+            decode_segment_for_candidate(segment_id, segment_bytes, limits);
+        live_payload = lp;
+        source_read_decode_ns = t_decode.elapsed().as_nanos() as u64;
+        if !frames.is_empty() {
+            let t_c = Instant::now();
+            let layout = build_compact_layout(&frames, 1);
+            let path = chimera_layout_path(paths, &segment_id);
+            write_chimera_layout(&path, store_id, segment_id, &layout)?;
+            compact_ns = t_c.elapsed().as_nanos() as u64;
+            bytes_written_compact = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        }
     }
 
     let lag = protection_lag_from_coverage(&cov);
@@ -317,15 +322,16 @@ pub fn enrich_segment_candidate(
     Ok(ShadowStageSample {
         segment_id_hex: hex16(&segment_id),
         bytes_read: segment_bytes.len() as u64,
-        bytes_written_shadow: shadow_bytes.len() as u64,
+        bytes_written_shadow: atomic.bytes_written,
         bytes_written_compact,
         live_payload_bytes: live_payload,
         wall_ns: wall0.elapsed().as_nanos() as u64,
         cpu_ns: cpu1.saturating_sub(cpu0),
+        // Compact-only decode cost (excluded from Shadow pub rate in harness).
         source_read_decode_ns,
         encrypt_ns,
-        encode_ns,
-        sequential_write_ns: atomic.sequential_write_ns,
+        encode_ns: atomic.encode_ns,
+        sequential_write_ns: atomic.copy_ns,
         file_sync_ns: atomic.file_sync_ns,
         rename_ns: atomic.rename_ns,
         dir_sync_ns: atomic.dir_sync_ns,

@@ -135,6 +135,9 @@ pub fn note_segment_sealed(
 }
 
 /// Build + publish Shadow from live put/tombstone map; claim protection.
+///
+/// Prefer [`build_and_publish_mirror_shadow`] (RSHD0003) for sealed segment
+/// dual-run — record re-encode is retained for unit/CSE fixtures only.
 pub fn build_and_publish_shadow(
     paths: &StorePaths,
     store_id: [u8; 16],
@@ -162,6 +165,41 @@ pub fn build_and_publish_shadow(
         bytes_written: bytes.len() as u64,
         construct_ns,
         persist_ns,
+        backlog_segments: lag.lag,
+        protection_lag: lag.lag,
+        protected_frontier: lag.protected_frontier,
+        sealed_frontier: lag.sealed_frontier,
+    })
+}
+
+/// Publish RSHD0003 canonical segment mirror and claim protection.
+pub fn build_and_publish_mirror_shadow(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    shard: u16,
+    segment_image: &[u8],
+) -> Result<ShadowTelemetry, StoreError> {
+    let t0 = Instant::now();
+    let timing = super::mirror::publish_mirror_shadow_timed(
+        paths,
+        store_id,
+        &segment_id,
+        segment_image,
+    )?;
+    let construct_ns = t0.elapsed().as_nanos() as u64;
+    // Protection only after atomic mirror publish returns.
+    let seq = segment_seq_from_id(&segment_id);
+    let mut cov = load_protected_coverage(paths, store_id)?;
+    cov.store_id = store_id;
+    cov.note_durable(shard, seq);
+    publish_protected_coverage(paths, &cov)?;
+    let lag = protection_lag_from_coverage(&cov);
+    Ok(ShadowTelemetry {
+        shadows_built: 1,
+        bytes_written: timing.bytes_written,
+        construct_ns: construct_ns.saturating_sub(timing.file_sync_ns + timing.rename_ns + timing.dir_sync_ns),
+        persist_ns: timing.file_sync_ns + timing.rename_ns + timing.dir_sync_ns,
         backlog_segments: lag.lag,
         protection_lag: lag.lag,
         protected_frontier: lag.protected_frontier,

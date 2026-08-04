@@ -19,8 +19,10 @@
 //! `CSE3_STAGE2_RECOVERY_SHADOW_IMPLEMENT.md`.
 
 mod crypto;
+mod dual_stream;
 mod frontier;
 mod integrate;
+mod mirror;
 mod policy;
 pub mod qualify;
 mod wire;
@@ -34,14 +36,23 @@ pub use frontier::{
     ProtectionLag, FRONTIER_FILE,
 };
 pub use integrate::{
-    build_and_publish_shadow, current_protection_lag, delete_shadow, is_recovery_shadow_path,
-    note_segment_sealed, publish_shadow_claiming_protection, rebuild_coverage_from_shadows,
-    retire_shadows_after_replacement, retire_shadows_after_replacement_with_policy,
-    secure_erase_shadow, snapshot_telemetry, ShadowTelemetry,
+    build_and_publish_mirror_shadow, build_and_publish_shadow, current_protection_lag, delete_shadow,
+    is_recovery_shadow_path, note_segment_sealed, publish_shadow_claiming_protection,
+    rebuild_coverage_from_shadows, retire_shadows_after_replacement,
+    retire_shadows_after_replacement_with_policy, secure_erase_shadow, snapshot_telemetry,
+    ShadowTelemetry,
 };
 pub use policy::{
     reset_shadow_reclaim_policy_for_tests, set_shadow_reclaim_policy, shadow_reclaim_policy,
     ShadowReclaimPolicy,
+};
+pub use dual_stream::{
+    decode_dual_mirror, is_dual_magic, DualStreamFinalizeTiming, ShadowDualStream, RSH_MAGIC_V4,
+};
+pub use mirror::{
+    decode_mirror_to_struct, encode_mirror_shadow, is_mirror_magic, mirror_to_decoded_shadow,
+    publish_mirror_shadow, publish_mirror_shadow_from_path, publish_mirror_shadow_timed,
+    try_load_mirror, MirrorPublishTiming, MirroredShadow, MIRROR_ENVELOPE_LEN, RSH_MAGIC_V3,
 };
 pub use qualify::{
     candidate_config_label, decode_segment_for_candidate, enrich_segment_candidate, evaluate_gates,

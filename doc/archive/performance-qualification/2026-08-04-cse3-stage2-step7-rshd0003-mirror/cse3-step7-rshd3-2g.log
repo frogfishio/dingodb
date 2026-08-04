@@ -1,0 +1,18 @@
+    Finished `release` profile [optimized] target(s) in 0.11s
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/release/deps/cse3_stage2_step7_shadow_perf-c78e47162295434a)
+
+running 1 test
+step7 smoke: pub=6.99 seg/s slope=0.000 compact=0.75% shadow_amp=100.0% ack=26386 life=14375 gates=Step7Gates { shadow_pub_ge_7: false, backlog_slope_le_0: true, frontier_gap_free: true, lifecycle_near_ack: false, shadow_amp_bounded: true, compact_le_5pct: true, recovery_ok: true, verified_rsh: true, pass: false }
+  stage dir_sync_ns: median=3.861ms range=[2.763,13.114]ms
+  stage encode_ns: median=0.000ms range=[0.000,0.000]ms
+  stage encrypt_ns: median=0.000ms range=[0.000,0.000]ms
+  stage file_sync_ns: median=11.542ms range=[7.314,204.941]ms
+  stage frontier_publish_ns: median=11.945ms range=[6.992,29.167]ms
+  stage rename_ns: median=0.129ms range=[0.086,0.495]ms
+  stage sequential_write_ns: median=103.674ms range=[63.533,154.021]ms
+  stage source_read_decode_ns: median=36.269ms range=[30.036,76.093]ms
+  stage wall_ns: median=182.866ms range=[136.565,480.101]ms
+test step7_smoke_candidate_harness ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 28.69s
+

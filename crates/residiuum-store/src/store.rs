@@ -412,6 +412,17 @@ pub struct Store {
     ///
     /// Authoritative seal still runs; enrichment backlog may stay empty.
     enrichment_enabled: bool,
+    /// Experimental: write-time dual-stream Recovery Shadow (RSHD0004).
+    ///
+    /// When enabled, each cooked frame append is mirrored into an independently
+    /// allocated Shadow staging file; seal finalizes Shadow before
+    /// `protected_frontier` advances. **Not** a product flip (Materialized
+    /// remains recovery authority until Stage 2 step 8).
+    shadow_dual_stream: bool,
+    /// Cumulative dual-stream Shadow finalize nanoseconds (measurement).
+    shadow_dual_finalize_ns: u64,
+    /// Dual-stream Shadows successfully published this process (measurement).
+    shadow_dual_published: u64,
     /// Cumulative auto-rotation stage timings (sustained-rotation qualification).
     rotation_stage_totals: RotationStageTotals,
     /// Cumulative derived enrichment stage timings (ETQ-0).
@@ -558,6 +569,8 @@ struct ActiveWriter {
     runway: Option<crate::runway_preparer::RunwayPreparer>,
     /// Item-event frames observed in this active segment (catalog summary).
     item_events: u64,
+    /// Experimental dual-stream Shadow staging for this active segment.
+    shadow_dual: Option<crate::recovery_shadow::ShadowDualStream>,
 }
 
 /// Measured segment-tail file I/O at the actual boundary (write/sync).
@@ -658,6 +671,9 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
             enrichment_enabled: true,
+            shadow_dual_stream: false,
+            shadow_dual_finalize_ns: 0,
+            shadow_dual_published: 0,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -760,6 +776,9 @@ impl Store {
             seal_pipeline: Some(SealPipeline::start()),
             async_lifecycle: true,
             enrichment_enabled: true,
+            shadow_dual_stream: false,
+            shadow_dual_finalize_ns: 0,
+            shadow_dual_published: 0,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -899,6 +918,9 @@ impl Store {
             seal_pipeline: None,
             async_lifecycle: false,
             enrichment_enabled: false,
+            shadow_dual_stream: false,
+            shadow_dual_finalize_ns: 0,
+            shadow_dual_published: 0,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -4588,6 +4610,7 @@ impl Store {
         // After flush, on-disk active length is the verified prefix (no summary yet).
         let prefix_len = writer.durable_len;
         let sealed_id = writer.segment_id;
+        let mut shadow_dual = writer.shadow_dual.take();
         let active_path = self.paths.active_segment_for_shard(shard, self.writer_shards());
         let dest = self.paths.sealed_segment(&sealed_id);
 
@@ -4660,6 +4683,38 @@ impl Store {
         crate::failpoint::hit("store.seal.after_active_remove")?;
         breakdown.final_active_seal_ns =
             breakdown.final_active_seal_ns.saturating_add(elapsed_ns(t_final));
+
+        // Experimental dual-stream Shadow: append the same summary, sync/publish
+        // independently, then advance protected_frontier (never before Shadow).
+        if let Some(dual) = shadow_dual.take() {
+            let summary = if (prefix_len as usize) < bytes.len() {
+                &bytes[prefix_len as usize..]
+            } else {
+                &[]
+            };
+            let timing = dual.finalize_publish(&self.paths, summary)?;
+            self.shadow_dual_finalize_ns = self.shadow_dual_finalize_ns.saturating_add(
+                timing
+                    .append_summary_ns
+                    .saturating_add(timing.encode_ns)
+                    .saturating_add(timing.file_sync_ns)
+                    .saturating_add(timing.rename_ns)
+                    .saturating_add(timing.dir_sync_ns),
+            );
+            self.shadow_dual_published = self.shadow_dual_published.saturating_add(1);
+            let _ = crate::recovery_shadow::note_segment_sealed(
+                &self.paths,
+                self.store_id,
+                &sealed_id,
+                shard as u16,
+            );
+            let seq = crate::ids::segment_seq_from_id(&sealed_id);
+            let mut cov =
+                crate::recovery_shadow::load_protected_coverage(&self.paths, self.store_id)?;
+            cov.store_id = self.store_id;
+            cov.note_durable(shard as u16, seq);
+            crate::recovery_shadow::publish_protected_coverage(&self.paths, &cov)?;
+        }
 
         // Seal Fast Lane: start the replacement active immediately. BLAKE3,
         // segment-catalog scan, Hydra, and Chimera are derived — enqueue them.
@@ -4771,6 +4826,72 @@ impl Store {
     /// finalisation cost from concurrent enrichment contention.
     pub fn set_enrichment_enabled(&mut self, enabled: bool) {
         self.enrichment_enabled = enabled;
+    }
+
+    /// Experimental write-time dual-stream Recovery Shadow (RSHD0004).
+    ///
+    /// Affects newly started active segments. Call
+    /// [`Self::attach_shadow_dual_to_actives`] to also arm the current actives.
+    /// Not a product flip.
+    pub fn set_shadow_dual_stream(&mut self, enabled: bool) {
+        self.shadow_dual_stream = enabled;
+        // Dual-stream finalize runs on the synchronous seal path; async rotate
+        // would orphan staging without Shadow publication.
+        if enabled {
+            self.async_lifecycle = false;
+        }
+    }
+
+    /// Attach dual-stream staging to current actives (seeded from durable prefix).
+    ///
+    /// Used by qualification harnesses that enable dual-stream after `create`.
+    pub fn attach_shadow_dual_to_actives(&mut self) -> Result<(), StoreError> {
+        self.set_shadow_dual_stream(true);
+        let n = self.writer_shards();
+        let store_id = self.store_id;
+        let paths = self.paths.clone();
+        for shard in 0..n {
+            let Some(writer) = self.active_mut(shard) else {
+                continue;
+            };
+            if writer.shadow_dual.is_some() {
+                continue;
+            }
+            let durable = writer.durable_len as usize;
+            let mut prefix = vec![0u8; durable];
+            if durable > 0 {
+                use std::io::Read;
+                writer.file.seek(SeekFrom::Start(0))?;
+                writer.file.read_exact(&mut prefix)?;
+                writer.file.seek(SeekFrom::Start(writer.durable_len))?;
+            }
+            let segment_id = writer.segment_id;
+            let mut dual = crate::recovery_shadow::ShadowDualStream::begin(
+                &paths,
+                store_id,
+                segment_id,
+            )?;
+            if !prefix.is_empty() {
+                dual.append_image_chunk(&prefix)?;
+            }
+            writer.shadow_dual = Some(dual);
+        }
+        Ok(())
+    }
+
+    /// Whether experimental dual-stream Shadow staging is enabled.
+    pub fn shadow_dual_stream(&self) -> bool {
+        self.shadow_dual_stream
+    }
+
+    /// Cumulative dual-stream finalize nanoseconds (summary+sync+rename+dir).
+    pub fn shadow_dual_finalize_ns(&self) -> u64 {
+        self.shadow_dual_finalize_ns
+    }
+
+    /// Dual-stream Shadows published since open.
+    pub fn shadow_dual_published(&self) -> u64 {
+        self.shadow_dual_published
     }
 
     /// Whether derived enrichment is enqueued after authoritative seal.
@@ -5163,7 +5284,7 @@ impl Store {
             return Ok(());
         }
         let t0 = std::time::Instant::now();
-        let r = if self.async_lifecycle_enabled() {
+        let r = if self.async_lifecycle_enabled() && !self.shadow_dual_stream {
             self.rotate_active_async(shard)
         } else {
             self.seal_active_shard(shard)
@@ -6447,6 +6568,10 @@ impl Store {
                     {
                         let pending = &writer.segment.as_bytes()[start..];
                         writer.file.write_all(pending)?;
+                        // Paired Shadow staging write (no sync; independent alloc).
+                        if let Some(dual) = writer.shadow_dual.as_mut() {
+                            dual.append_image_chunk(pending)?;
+                        }
                     }
                     stats.write_duration_ns =
                         t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
@@ -6477,6 +6602,9 @@ impl Store {
                     {
                         let pending = &writer.segment.as_bytes()[start..];
                         writer.file.write_all(pending)?;
+                        if let Some(dual) = writer.shadow_dual.as_mut() {
+                            dual.append_image_chunk(pending)?;
+                        }
                     }
                     stats.write_duration_ns =
                         t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
@@ -6570,6 +6698,9 @@ impl Store {
             .file
             .seek(SeekFrom::Start(writer.coalesce_off))?;
         writer.file.write_all(&writer.coalesce_buf)?;
+        if let Some(dual) = writer.shadow_dual.as_mut() {
+            dual.append_image_chunk(&writer.coalesce_buf)?;
+        }
         writer.coalesce_buf.clear();
         writer.coalesce_since = None;
         Ok(())
@@ -6679,7 +6810,8 @@ impl Store {
             .open(&path)?;
         self.maybe_diagnostic_prealloc(&mut file)?;
         self.maybe_product_growth_prealloc(&mut file)?;
-        file.write_all(segment.as_bytes())?;
+        let initial = segment.as_bytes().to_vec();
+        file.write_all(&initial)?;
         let durable_len = segment.len();
         // New active creation: Durable open paths still fsync the descriptor;
         // Buffered-only workloads skip fsync (CSQ-ACK-004).
@@ -6687,6 +6819,7 @@ impl Store {
         // path that only ever saw Buffered acks may start the next active without
         // fsync via `start_active_segment_with_mode`.
         file.sync_all()?;
+        let shadow_dual = self.open_shadow_dual(segment_id, &initial)?;
         self.set_active(
             shard,
             Some(ActiveWriter {
@@ -6701,6 +6834,7 @@ impl Store {
                 zeroed_thru: self.product_initial_zeroed_thru(),
                 runway: None,
                 item_events: 0,
+                shadow_dual,
             }),
         );
         self.maybe_attach_runway_preparer(shard)?;
@@ -6728,11 +6862,13 @@ impl Store {
             .open(&path)?;
         self.maybe_diagnostic_prealloc(&mut file)?;
         self.maybe_product_growth_prealloc(&mut file)?;
-        file.write_all(segment.as_bytes())?;
+        let initial = segment.as_bytes().to_vec();
+        file.write_all(&initial)?;
         let durable_len = segment.len();
         if mode == DurabilityMode::Durable {
             file.sync_all()?;
         }
+        let shadow_dual = self.open_shadow_dual(segment_id, &initial)?;
         self.set_active(
             shard,
             Some(ActiveWriter {
@@ -6747,10 +6883,29 @@ impl Store {
                 zeroed_thru: self.product_initial_zeroed_thru(),
                 runway: None,
                 item_events: 0,
+                shadow_dual,
             }),
         );
         self.maybe_attach_runway_preparer(shard)?;
         Ok(())
+    }
+
+    /// Open experimental dual-stream Shadow staging seeded with `initial_image`.
+    fn open_shadow_dual(
+        &self,
+        segment_id: [u8; 16],
+        initial_image: &[u8],
+    ) -> Result<Option<crate::recovery_shadow::ShadowDualStream>, StoreError> {
+        if !self.shadow_dual_stream {
+            return Ok(None);
+        }
+        let mut dual = crate::recovery_shadow::ShadowDualStream::begin(
+            &self.paths,
+            self.store_id,
+            segment_id,
+        )?;
+        dual.append_image_chunk(initial_image)?;
+        Ok(Some(dual))
     }
 
     /// Diagnostic: pre-size (and optionally touch) the active file before first write.
@@ -7055,6 +7210,9 @@ impl Store {
                 zeroed_thru: 0,
                 runway: None,
                 item_events,
+                // Resume does not reconstruct dual-stream staging (experimental
+                // path starts fresh actives only).
+                shadow_dual: None,
             }),
         );
         Ok(())

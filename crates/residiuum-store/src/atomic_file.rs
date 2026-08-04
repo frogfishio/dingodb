@@ -216,7 +216,8 @@ pub fn recover_previous_or_corrupt(
     })
 }
 
-fn temp_path_for(path: &Path) -> PathBuf {
+/// Temp path sibling used by atomic publishers (including Recovery Shadow mirror).
+pub fn temp_path_for(path: &Path) -> PathBuf {
     let file_name = path
         .file_name()
         .and_then(|n| n.to_str())

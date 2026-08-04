@@ -40,29 +40,36 @@ fn work_root(target: u64) -> PathBuf {
     std::env::temp_dir().join(format!("cse3-step7-{target}"))
 }
 
+fn dual_stream_enabled() -> bool {
+    matches!(
+        std::env::var("CSE3_STEP7_DUAL_STREAM").as_deref(),
+        Ok("1") | Ok("true") | Ok("TRUE") | Ok("yes")
+    )
+}
+
 fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
     let root = work_root(target_bytes);
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(&root).unwrap();
 
+    let dual = dual_stream_enabled();
     let mut store = Store::create_with_shards(&root, 1).unwrap();
     store.set_enrichment_enabled(false); // no Materialized product enrichment
     store.set_seal_threshold(SEAL_THRESHOLD);
+    if dual {
+        // Arm experimental RSHD0004 on the live active (seeded from durable prefix).
+        store.attach_shadow_dual_to_actives().unwrap();
+    }
 
     let payload = vec![0x5Au8; PAYLOAD];
     let mut expect: BTreeMap<Vec<u8>, Vec<u8>> = BTreeMap::new();
     let mut ops = 0u64;
     let mut written = 0u64;
-    let opts = QualifyOptions {
-        encrypt: false,
-        write_compact: true,
-        shard: 0,
-    };
-
     let store_id = store.store_id();
     let paths = StorePaths::new(&root);
 
     // Phase 1: authoritative ingest + seals (no Materialized).
+    // Dual-stream (RSHD0004): Shadow staging rides the put path; finalize at seal.
     let ack_t0 = Instant::now();
     while written < target_bytes {
         let k = format!("step7/{ops:020}");
@@ -75,9 +82,13 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
     }
     store.seal_active().unwrap();
     let ack_wall = ack_t0.elapsed();
+    let dual_finalize_ns = store.shadow_dual_finalize_ns();
+    let dual_published = store.shadow_dual_published();
     drop(store);
 
-    // Phase 2: candidate Compact + Shadow (quiet disk — no concurrent puts).
+    // Phase 2: post-seal candidate path.
+    // Dual-stream: Shadows already published — only Compact amp + verification.
+    // Mirror path (default): Compact + RSHD0003 post-seal copy.
     let sealed = list_sealed_segment_files(&paths).unwrap();
     assert!(
         !sealed.is_empty(),
@@ -95,34 +106,56 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
         if cmr.is_file() {
             let _ = fs::remove_file(&cmr);
         }
-        let sample =
-            enrich_segment_candidate(&paths, store_id, segment_id, &bytes, opts).unwrap();
+        let sample = enrich_segment_candidate(
+            &paths,
+            store_id,
+            segment_id,
+            &bytes,
+            QualifyOptions {
+                encrypt: false,
+                write_compact: true,
+                write_shadow: !dual,
+                shard: 0,
+            },
+        )
+        .unwrap();
         samples.push(sample);
     }
     let shadow_wall = shadow_t0.elapsed();
 
     // ETQ-comparable lifecycle: ack wall includes seal-path work; here candidate
     // enrichment is the post-seal drain analogue (Compact is tiny; Shadow is the cost).
+    // Dual-stream: Shadow finalize is inside ack_wall — lifecycle ≈ ack.
     let ack_ops_per_sec = ops as f64 / ack_wall.as_secs_f64().max(1e-12);
-    let lifecycle_ops_per_sec =
-        ops as f64 / (ack_wall + shadow_wall).as_secs_f64().max(1e-12);
+    let lifecycle_ops_per_sec = if dual {
+        ack_ops_per_sec
+    } else {
+        ops as f64 / (ack_wall + shadow_wall).as_secs_f64().max(1e-12)
+    };
 
-    let shadow_only_secs: f64 = samples
-        .iter()
-        .map(|s| {
-            let ns = s
-                .source_read_decode_ns
-                .saturating_add(s.encrypt_ns)
-                .saturating_add(s.encode_ns)
-                .saturating_add(s.sequential_write_ns)
-                .saturating_add(s.file_sync_ns)
-                .saturating_add(s.rename_ns)
-                .saturating_add(s.dir_sync_ns)
-                .saturating_add(s.frontier_publish_ns);
-            ns as f64 / 1e9
-        })
-        .sum();
-    let shadow_pub_seg_per_sec = samples.len() as f64 / shadow_only_secs.max(1e-12);
+    // Shadow publication rate.
+    // Dual-stream: finalize-only (summary+sync+rename+dir+frontier folded in seal).
+    // Mirror: physical copy + durable publish + frontier (Compact excluded).
+    let shadow_pub_seg_per_sec = if dual {
+        let secs = dual_finalize_ns as f64 / 1e9;
+        dual_published as f64 / secs.max(1e-12)
+    } else {
+        let shadow_only_secs: f64 = samples
+            .iter()
+            .map(|s| {
+                let ns = s
+                    .encrypt_ns
+                    .saturating_add(s.encode_ns)
+                    .saturating_add(s.sequential_write_ns)
+                    .saturating_add(s.file_sync_ns)
+                    .saturating_add(s.rename_ns)
+                    .saturating_add(s.dir_sync_ns)
+                    .saturating_add(s.frontier_publish_ns);
+                ns as f64 / 1e9
+            })
+            .sum();
+        samples.len() as f64 / shadow_only_secs.max(1e-12)
+    };
 
     let lags: Vec<f64> = samples.iter().map(|s| s.protection_lag as f64).collect();
     let warmup = WARMUP_SKIP.min(lags.len().saturating_sub(1));
@@ -134,8 +167,9 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
         if s.bytes_read > 0 {
             compact_pcts.push(100.0 * s.bytes_written_compact as f64 / s.bytes_read as f64);
         }
-        if s.live_payload_bytes > 0 {
-            shadow_pcts.push(100.0 * s.bytes_written_shadow as f64 / s.live_payload_bytes as f64);
+        // RSHD0003: amp vs authoritative segment image (not reconstructed live payload).
+        if s.bytes_read > 0 {
+            shadow_pcts.push(100.0 * s.bytes_written_shadow as f64 / s.bytes_read as f64);
         }
     }
     let compact_amp_pct_mean = if compact_pcts.is_empty() {
@@ -211,7 +245,40 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
 
 #[test]
 fn step7_smoke_candidate_harness() {
-    let report = run_campaign(parse_target());
+    let repeats = std::env::var("CSE3_STEP7_REPEATS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1usize)
+        .max(1);
+    let mut pubs = Vec::new();
+    let mut last = None;
+    for i in 0..repeats {
+        let report = run_campaign(parse_target());
+        eprintln!(
+            "step7 run[{i}] dual={} pub={:.2} seg/s slope={:.3} compact={:.2}% shadow_amp={:.1}% ack={:.0} life={:.0} gates={:?}",
+            dual_stream_enabled(),
+            report.shadow_pub_seg_per_sec,
+            report.backlog_slope_after_warmup,
+            report.compact_amp_pct_mean,
+            report.shadow_amp_pct_mean,
+            report.ack_ops_per_sec,
+            report.lifecycle_ops_per_sec,
+            report.gates
+        );
+        pubs.push(report.shadow_pub_seg_per_sec);
+        last = Some(report);
+    }
+    let report = last.expect("at least one run");
+    if repeats > 1 {
+        pubs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let median_pub = pubs[pubs.len() / 2];
+        eprintln!(
+            "step7 median pub over {repeats} runs: {:.2} seg/s (min={:.2} max={:.2})",
+            median_pub,
+            pubs[0],
+            pubs[pubs.len() - 1]
+        );
+    }
     eprintln!(
         "step7 smoke: pub={:.2} seg/s slope={:.3} compact={:.2}% shadow_amp={:.1}% ack={:.0} life={:.0} gates={:?}",
         report.shadow_pub_seg_per_sec,

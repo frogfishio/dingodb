@@ -1,0 +1,19 @@
+   Compiling residiuum-store v0.2.0 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `release` profile [optimized] target(s) in 8.01s
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/release/deps/cse3_stage2_step7_shadow_perf-c78e47162295434a)
+
+running 1 test
+step7 smoke: pub=3.49 seg/s slope=0.000 compact=0.75% shadow_amp=100.0% ack=32044 life=11819 gates=Step7Gates { shadow_pub_ge_7: false, backlog_slope_le_0: true, frontier_gap_free: true, lifecycle_near_ack: false, shadow_amp_bounded: true, compact_le_5pct: true, recovery_ok: true, verified_rsh: true, pass: false }
+  stage dir_sync_ns: median=4.548ms range=[1.898,19.358]ms
+  stage encode_ns: median=0.000ms range=[0.000,0.000]ms
+  stage encrypt_ns: median=0.000ms range=[0.000,0.000]ms
+  stage file_sync_ns: median=22.104ms range=[6.370,264.408]ms
+  stage frontier_publish_ns: median=15.762ms range=[7.965,38.857]ms
+  stage rename_ns: median=0.156ms range=[0.109,0.795]ms
+  stage sequential_write_ns: median=164.491ms range=[78.082,412.132]ms
+  stage source_read_decode_ns: median=38.972ms range=[31.201,74.527]ms
+  stage wall_ns: median=315.417ms range=[157.877,600.677]ms
+test step7_smoke_candidate_harness ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 32.49s
+
