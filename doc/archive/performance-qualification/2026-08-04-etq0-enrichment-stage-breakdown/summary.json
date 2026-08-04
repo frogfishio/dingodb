@@ -1,0 +1,112 @@
+{
+  "kind": "etq0_enrichment_stage_breakdown",
+  "disclosure": "Diagnostic only \u2014 ETQ-0 measure, not optimize. Not a published SLO.",
+  "recipe": {
+    "cell": "real-full",
+    "logical_bytes": 2147483648,
+    "payload": 8192,
+    "concurrency": 8,
+    "seed": 42,
+    "seal_threshold": "64M",
+    "enrichment": true
+  },
+  "samples": 32,
+  "per_segment_mean_ns": {
+    "blake3": 28669885.3125,
+    "catalog_apply": 27434.96875,
+    "chimera_construct": 24065237.0625,
+    "chimera_persist": 366391039.09375,
+    "chimera_total": 390456276.15625,
+    "cpu": 433598684.875,
+    "decode": 83577832.0625,
+    "gap_wait": 51624476.53125,
+    "hydra_construct": 1524088.5,
+    "hydra_persist": 15625184.875,
+    "hydra_total": 17149273.375,
+    "read": 27361023.4375,
+    "read_and_decode": 110938855.5,
+    "service_excluding_gap": 554571449.3125,
+    "wall_total": 606195925.84375
+  },
+  "per_segment_mean_bytes": {
+    "read": 67113431.0,
+    "written": 66186128.0
+  },
+  "service_capacity_seg_per_sec": {
+    "blake3": 34.879804683557715,
+    "catalog_apply": 36449.83193210307,
+    "chimera": 2.561106226398131,
+    "hydra": 58.31150848978754,
+    "read_and_decode": 9.013974368971203,
+    "service_excluding_gap": 1.8031941623386778,
+    "wall_total": 1.6496316741293227
+  },
+  "cpu_vs_wall_ratio": 0.7152781244306189,
+  "floors": {
+    "budget_ns_at_5_8": 172413793.10344827,
+    "budget_ns_at_7_0": 142857142.85714287,
+    "keep_pace_ack_seg_per_sec": 5.8,
+    "match_auth_engine_seg_per_sec": 7.0
+  },
+  "ranked_stages": [
+    {
+      "stage": "Chimera construct+persist",
+      "key": "chimera_total",
+      "mean_ns": 390456276.15625,
+      "mean_ms": 390.45627615625,
+      "capacity_seg_per_sec": 2.561106226398131,
+      "vs_5_8": false,
+      "vs_7_0": false
+    },
+    {
+      "stage": "Read+decode",
+      "key": "read_and_decode",
+      "mean_ns": 110938855.5,
+      "mean_ms": 110.9388555,
+      "capacity_seg_per_sec": 9.013974368971203,
+      "vs_5_8": true,
+      "vs_7_0": true
+    },
+    {
+      "stage": "Isolation gap",
+      "key": "gap_wait",
+      "mean_ns": 51624476.53125,
+      "mean_ms": 51.62447653125,
+      "capacity_seg_per_sec": 19.37065646359953,
+      "vs_5_8": true,
+      "vs_7_0": true
+    },
+    {
+      "stage": "BLAKE3",
+      "key": "blake3",
+      "mean_ns": 28669885.3125,
+      "mean_ms": 28.6698853125,
+      "capacity_seg_per_sec": 34.879804683557715,
+      "vs_5_8": true,
+      "vs_7_0": true
+    },
+    {
+      "stage": "Hydra construct+persist",
+      "key": "hydra_total",
+      "mean_ns": 17149273.375,
+      "mean_ms": 17.149273375,
+      "capacity_seg_per_sec": 58.31150848978754,
+      "vs_5_8": true,
+      "vs_7_0": true
+    },
+    {
+      "stage": "Catalog apply",
+      "key": "catalog_apply",
+      "mean_ns": 27434.96875,
+      "mean_ms": 0.02743496875,
+      "capacity_seg_per_sec": 36449.83193210307,
+      "vs_5_8": true,
+      "vs_7_0": true
+    }
+  ],
+  "dominant_stage": "Chimera construct+persist",
+  "wall_total_capacity_seg_per_sec": 1.6496316741293227,
+  "service_excluding_gap_capacity_seg_per_sec": 1.8031941623386778,
+  "ack_tps": 46517.03354649345,
+  "complete_lifecycle_tps": 13399.096669258566
+}

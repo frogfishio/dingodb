@@ -7,8 +7,8 @@ use crate::size::{dir_size_bytes, ensure_free_space, format_bytes};
 use crate::write_mimic::{PEER_DATA_BYTES_PER_OP, PEER_OPS};
 use residiuum_format::body_hash;
 use residiuum_store::{
-    ContentHashState, DiagnosticIoSink, DurabilityMode, RotationStageTotals, SealStageBreakdown,
-    Store,
+    ContentHashState, DiagnosticIoSink, DurabilityMode, EnrichmentStageTotals, RotationStageTotals,
+    SealStageBreakdown, Store,
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -99,6 +99,7 @@ pub struct EnrichmentTelemetry {
     pub segments_hash_known: usize,
     pub segments_hash_pending: usize,
     pub index_query_verify_ok: bool,
+    pub stage_totals: EnrichmentStageTotals,
 }
 
 #[derive(Debug, Clone)]
@@ -508,6 +509,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
     }
 
     let (segments_hash_known, segments_hash_pending) = count_content_hash_states(&store);
+    let stage_totals = store.enrichment_stage_totals();
     // Jobs that finished during post-seal drain (backlog delta) plus those already
     // known before drain are both "completed"; report Known count as total done.
     let completed_enrichment_jobs = segments_hash_known as u64;
@@ -613,6 +615,7 @@ fn run_store_cell(cfg: &AckFinalizeConfig) -> Result<AckFinalizeResult, String> 
             segments_hash_known,
             segments_hash_pending,
             index_query_verify_ok,
+            stage_totals,
         },
         rotation_stages,
         logical_bytes: keys_written.saturating_mul(cfg.payload_size as u64),
@@ -910,6 +913,82 @@ fn result_json(r: &AckFinalizeResult) -> Value {
             "all_rotation_stages": pct(rot.total_ns(), r.ack_elapsed),
         },
     });
+    let st = &r.enrichment.stage_totals;
+    let n = st.samples.max(1) as f64;
+    let mean = |sum: u64| sum as f64 / n;
+    let cap = |mean_ns: f64| {
+        if mean_ns <= 0.0 {
+            0.0
+        } else {
+            1_000_000_000.0 / mean_ns
+        }
+    };
+    let mean_wall = mean(st.wall_ns);
+    let mean_service = mean(st.wall_ns.saturating_sub(st.gap_wait_ns));
+    let mean_read_decode = mean(st.read_ns.saturating_add(st.decode_ns));
+    let mean_blake3 = mean(st.blake3_ns);
+    let mean_hydra = mean(st.hydra_construct_ns.saturating_add(st.hydra_persist_ns));
+    let mean_chimera = mean(st.chimera_construct_ns.saturating_add(st.chimera_persist_ns));
+    let mean_catalog = mean(st.catalog_ns);
+    let stage_breakdown = json!({
+        "samples": st.samples,
+        "per_segment_mean_ns": {
+            "gap_wait": mean(st.gap_wait_ns),
+            "read": mean(st.read_ns),
+            "decode": mean(st.decode_ns),
+            "read_and_decode": mean_read_decode,
+            "blake3": mean_blake3,
+            "hydra_construct": mean(st.hydra_construct_ns),
+            "hydra_persist": mean(st.hydra_persist_ns),
+            "hydra_total": mean_hydra,
+            "chimera_construct": mean(st.chimera_construct_ns),
+            "chimera_persist": mean(st.chimera_persist_ns),
+            "chimera_total": mean_chimera,
+            "catalog_apply": mean_catalog,
+            "wall_total": mean_wall,
+            "service_excluding_gap": mean_service,
+            "cpu": mean(st.cpu_ns),
+        },
+        "per_segment_mean_bytes": {
+            "read": mean(st.bytes_read),
+            "written": mean(st.bytes_written),
+        },
+        "sums": {
+            "gap_wait_ns": st.gap_wait_ns,
+            "read_ns": st.read_ns,
+            "decode_ns": st.decode_ns,
+            "blake3_ns": st.blake3_ns,
+            "hydra_construct_ns": st.hydra_construct_ns,
+            "hydra_persist_ns": st.hydra_persist_ns,
+            "chimera_construct_ns": st.chimera_construct_ns,
+            "chimera_persist_ns": st.chimera_persist_ns,
+            "catalog_ns": st.catalog_ns,
+            "wall_ns": st.wall_ns,
+            "cpu_ns": st.cpu_ns,
+            "bytes_read": st.bytes_read,
+            "bytes_written": st.bytes_written,
+        },
+        "service_capacity_seg_per_sec": {
+            "wall_total": cap(mean_wall),
+            "service_excluding_gap": cap(mean_service),
+            "read_and_decode": cap(mean_read_decode),
+            "blake3": cap(mean_blake3),
+            "hydra": cap(mean_hydra),
+            "chimera": cap(mean_chimera),
+            "catalog_apply": cap(mean_catalog),
+        },
+        "floors": {
+            "keep_pace_ack_seg_per_sec": 5.8,
+            "match_auth_engine_seg_per_sec": 7.0,
+            "budget_ns_at_5_8": 1_000_000_000.0 / 5.8,
+            "budget_ns_at_7_0": 1_000_000_000.0 / 7.0,
+        },
+        "cpu_vs_wall_ratio": if mean_wall > 0.0 {
+            mean(st.cpu_ns) / mean_wall
+        } else {
+            0.0
+        },
+    });
     let enrichment = json!({
         "enabled": r.enrichment.enabled,
         "peak_backlog": r.enrichment.peak_backlog,
@@ -925,6 +1004,7 @@ fn result_json(r: &AckFinalizeResult) -> Value {
         "segments_hash_known": r.enrichment.segments_hash_known,
         "segments_hash_pending": r.enrichment.segments_hash_pending,
         "index_query_verify_ok": r.enrichment.index_query_verify_ok,
+        "stage_breakdown": stage_breakdown,
     });
     let seal_breakdown = json!({
         "drain_lifecycle_ns": r.seal_breakdown.drain_lifecycle_ns,

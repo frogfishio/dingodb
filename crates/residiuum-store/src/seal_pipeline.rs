@@ -46,6 +46,150 @@ fn elapsed_ns(t0: Instant) -> u64 {
     t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64
 }
 
+/// Per-segment derived enrichment stage timings (ETQ-0 measurement).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EnrichmentStageTiming {
+    /// Sleep for [`ENRICHMENT_MIN_GAP`] before this job (resource isolation).
+    pub gap_wait_ns: u64,
+    /// `fs::read` of the sealed segment.
+    pub read_ns: u64,
+    /// Frame/record decode (Hydra `records_from_segment_bytes` + Chimera scan).
+    pub decode_ns: u64,
+    /// Whole-segment BLAKE3 over sealed bytes.
+    pub blake3_ns: u64,
+    /// Hydra index build (in memory).
+    pub hydra_construct_ns: u64,
+    /// Hydra index durable write.
+    pub hydra_persist_ns: u64,
+    /// Chimera layout build (in memory).
+    pub chimera_construct_ns: u64,
+    /// Chimera layout durable write.
+    pub chimera_persist_ns: u64,
+    /// Writer-side catalog digest refresh on EnrichDone apply.
+    pub catalog_ns: u64,
+    /// Enrich-worker wall for the whole job (includes gap).
+    pub wall_ns: u64,
+    /// Thread CPU time for the enrich worker job (0 if unavailable).
+    pub cpu_ns: u64,
+    /// Sealed segment bytes read.
+    pub bytes_read: u64,
+    /// Hydra + Chimera bytes written.
+    pub bytes_written: u64,
+}
+
+impl EnrichmentStageTiming {
+    /// Hydra construct + persist.
+    pub fn hydra_ns(self) -> u64 {
+        self.hydra_construct_ns.saturating_add(self.hydra_persist_ns)
+    }
+
+    /// Chimera construct + persist.
+    pub fn chimera_ns(self) -> u64 {
+        self.chimera_construct_ns
+            .saturating_add(self.chimera_persist_ns)
+    }
+
+    /// Read + decode (requested ETQ-0 aggregate).
+    pub fn read_decode_ns(self) -> u64 {
+        self.read_ns.saturating_add(self.decode_ns)
+    }
+
+    /// Worker service excluding isolation gap.
+    pub fn service_ns_excluding_gap(self) -> u64 {
+        self.wall_ns.saturating_sub(self.gap_wait_ns)
+    }
+}
+
+/// Cumulative enrichment stage timings (sums + sample count).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EnrichmentStageTotals {
+    /// Number of EnrichDone samples accumulated.
+    pub samples: u64,
+    /// Sum of isolation-gap waits.
+    pub gap_wait_ns: u64,
+    /// Sum of sealed-segment read times.
+    pub read_ns: u64,
+    /// Sum of Hydra+Chimera decode times.
+    pub decode_ns: u64,
+    /// Sum of BLAKE3 times.
+    pub blake3_ns: u64,
+    /// Sum of Hydra build times.
+    pub hydra_construct_ns: u64,
+    /// Sum of Hydra persist times.
+    pub hydra_persist_ns: u64,
+    /// Sum of Chimera build times.
+    pub chimera_construct_ns: u64,
+    /// Sum of Chimera persist times.
+    pub chimera_persist_ns: u64,
+    /// Sum of writer catalog-refresh times.
+    pub catalog_ns: u64,
+    /// Sum of enrich-worker wall times (includes gap).
+    pub wall_ns: u64,
+    /// Sum of enrich-worker thread CPU times.
+    pub cpu_ns: u64,
+    /// Sum of sealed bytes read.
+    pub bytes_read: u64,
+    /// Sum of Hydra+Chimera bytes written.
+    pub bytes_written: u64,
+}
+
+impl EnrichmentStageTotals {
+    /// Add one per-segment sample into the cumulative totals.
+    pub fn accumulate(&mut self, s: EnrichmentStageTiming) {
+        self.samples = self.samples.saturating_add(1);
+        self.gap_wait_ns = self.gap_wait_ns.saturating_add(s.gap_wait_ns);
+        self.read_ns = self.read_ns.saturating_add(s.read_ns);
+        self.decode_ns = self.decode_ns.saturating_add(s.decode_ns);
+        self.blake3_ns = self.blake3_ns.saturating_add(s.blake3_ns);
+        self.hydra_construct_ns = self.hydra_construct_ns.saturating_add(s.hydra_construct_ns);
+        self.hydra_persist_ns = self.hydra_persist_ns.saturating_add(s.hydra_persist_ns);
+        self.chimera_construct_ns = self
+            .chimera_construct_ns
+            .saturating_add(s.chimera_construct_ns);
+        self.chimera_persist_ns = self.chimera_persist_ns.saturating_add(s.chimera_persist_ns);
+        self.catalog_ns = self.catalog_ns.saturating_add(s.catalog_ns);
+        self.wall_ns = self.wall_ns.saturating_add(s.wall_ns);
+        self.cpu_ns = self.cpu_ns.saturating_add(s.cpu_ns);
+        self.bytes_read = self.bytes_read.saturating_add(s.bytes_read);
+        self.bytes_written = self.bytes_written.saturating_add(s.bytes_written);
+    }
+
+    /// Mean of a summed field across [`Self::samples`] (0 if empty).
+    pub fn mean_ns(&self, sum: u64) -> f64 {
+        if self.samples == 0 {
+            return 0.0;
+        }
+        sum as f64 / self.samples as f64
+    }
+}
+
+/// Thread CPU nanoseconds via `CLOCK_THREAD_CPUTIME_ID` (Unix). Measurement only.
+fn thread_cpu_ns() -> u64 {
+    #[cfg(unix)]
+    {
+        #[repr(C)]
+        struct Timespec {
+            tv_sec: i64,
+            tv_nsec: i64,
+        }
+        extern "C" {
+            fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
+        }
+        // Linux + Darwin: CLOCK_THREAD_CPUTIME_ID == 16.
+        const CLOCK_THREAD_CPUTIME_ID: i32 = 16;
+        let mut ts = Timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        if unsafe { clock_gettime(CLOCK_THREAD_CPUTIME_ID, &mut ts) } == 0 {
+            return (ts.tv_sec as u64)
+                .saturating_mul(1_000_000_000)
+                .saturating_add(ts.tv_nsec.max(0) as u64);
+        }
+    }
+    0
+}
+
 /// Default bound on **authoritative** seals in flight.
 ///
 /// Historically 2 when finalize included Chimera (derived work held the lane).
@@ -221,6 +365,8 @@ pub enum LifecycleResult {
         content_hash: ContentHashState,
         /// Sealed byte length.
         size: u64,
+        /// Per-job stage timings (ETQ-0). Absent on misrouted/failed early exits.
+        stages: Option<EnrichmentStageTiming>,
     },
 }
 
@@ -566,6 +712,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                     ok: false,
                     content_hash: ContentHashState::Pending,
                     size: 0,
+                    stages: None,
                 });
             }
         }
@@ -585,26 +732,62 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                 paths,
                 limits,
             } => {
+                let job_wall = Instant::now();
+                let cpu0 = thread_cpu_ns();
                 // Resource isolation: never run enrichment back-to-back without a gap.
                 let since = last_enrich.elapsed();
-                if since < ENRICHMENT_MIN_GAP {
+                let gap_wait_ns = if since < ENRICHMENT_MIN_GAP {
+                    let t_gap = Instant::now();
                     thread::sleep(ENRICHMENT_MIN_GAP - since);
-                }
-                let sealed_path = paths.sealed_segment(&segment_id);
-                let (ok, content_hash, size) = match fs::read(&sealed_path) {
-                    Ok(bytes) => {
-                        let hash = ContentHashState::Known(*blake3::hash(&bytes).as_bytes());
-                        let size = bytes.len() as u64;
-                        let enrich_ok =
-                            enrich_sealed_derived(&paths, store_id, segment_id, &bytes, limits)
-                                .is_ok();
-                        // Catalog durability is coalesced on the writer via
-                        // DerivedCatalogCheckpoint — enrichment must not rewrite
-                        // full catalogs (O(segments) per seal → O(n²) lifetime).
-                        (enrich_ok, hash, size)
-                    }
-                    Err(_) => (false, ContentHashState::Pending, 0),
+                    elapsed_ns(t_gap)
+                } else {
+                    0
                 };
+                let sealed_path = paths.sealed_segment(&segment_id);
+                let mut stages = EnrichmentStageTiming {
+                    gap_wait_ns,
+                    ..EnrichmentStageTiming::default()
+                };
+                let (ok, content_hash, size) = {
+                    let t_read = Instant::now();
+                    match fs::read(&sealed_path) {
+                        Ok(bytes) => {
+                            stages.read_ns = elapsed_ns(t_read);
+                            stages.bytes_read = bytes.len() as u64;
+                            let t_b3 = Instant::now();
+                            let hash =
+                                ContentHashState::Known(*blake3::hash(&bytes).as_bytes());
+                            stages.blake3_ns = elapsed_ns(t_b3);
+                            let size = bytes.len() as u64;
+                            let enrich_ok = match enrich_sealed_derived_timed(
+                                &paths, store_id, segment_id, &bytes, limits,
+                            ) {
+                                Ok(enrich_stages) => {
+                                    stages.decode_ns = enrich_stages.decode_ns;
+                                    stages.hydra_construct_ns = enrich_stages.hydra_construct_ns;
+                                    stages.hydra_persist_ns = enrich_stages.hydra_persist_ns;
+                                    stages.chimera_construct_ns =
+                                        enrich_stages.chimera_construct_ns;
+                                    stages.chimera_persist_ns = enrich_stages.chimera_persist_ns;
+                                    stages.bytes_written = enrich_stages.bytes_written;
+                                    true
+                                }
+                                Err(_) => false,
+                            };
+                            // Catalog durability is coalesced on the writer via
+                            // DerivedCatalogCheckpoint — enrichment must not rewrite
+                            // full catalogs (O(segments) per seal → O(n²) lifetime).
+                            (enrich_ok, hash, size)
+                        }
+                        Err(_) => {
+                            stages.read_ns = elapsed_ns(t_read);
+                            (false, ContentHashState::Pending, 0)
+                        }
+                    }
+                };
+                stages.wall_ns = elapsed_ns(job_wall);
+                let cpu1 = thread_cpu_ns();
+                stages.cpu_ns = cpu1.saturating_sub(cpu0);
                 last_enrich = Instant::now();
                 let _ = crate::failpoint::hit("store.seal.after_derived_enrichment");
                 let _ = result_tx.send(LifecycleResult::EnrichDone {
@@ -612,6 +795,7 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                     ok,
                     content_hash,
                     size,
+                    stages: Some(stages),
                 });
             }
             // Ignore non-enrichment jobs on this lane.
@@ -851,13 +1035,35 @@ pub fn enrich_sealed_derived(
     sealed_bytes: &[u8],
     limits: SafetyLimits,
 ) -> Result<(), StoreError> {
-    let hydra_ok = write_hydra_for_bytes(paths, store_id, segment_id, sealed_bytes, limits);
-    let chimera_ok =
-        write_chimera_from_segment_puts(paths, store_id, segment_id, sealed_bytes, limits);
-    match (hydra_ok, chimera_ok) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(e), _) | (_, Err(e)) => Err(e),
-    }
+    enrich_sealed_derived_timed(paths, store_id, segment_id, sealed_bytes, limits).map(|_| ())
+}
+
+/// Timed Hydra+Chimera enrichment (ETQ-0).
+fn enrich_sealed_derived_timed(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    segment_id: [u8; 16],
+    sealed_bytes: &[u8],
+    limits: SafetyLimits,
+) -> Result<EnrichmentStageTiming, StoreError> {
+    let mut stages = EnrichmentStageTiming::default();
+    let h = write_hydra_for_bytes_timed(paths, store_id, segment_id, sealed_bytes, limits)?;
+    let c =
+        write_chimera_from_segment_puts_timed(paths, store_id, segment_id, sealed_bytes, limits)?;
+    stages.decode_ns = h.decode_ns.saturating_add(c.decode_ns);
+    stages.hydra_construct_ns = h.construct_ns;
+    stages.hydra_persist_ns = h.persist_ns;
+    stages.chimera_construct_ns = c.construct_ns;
+    stages.chimera_persist_ns = c.persist_ns;
+    stages.bytes_written = h.bytes_written.saturating_add(c.bytes_written);
+    Ok(stages)
+}
+
+struct TimedWrite {
+    decode_ns: u64,
+    construct_ns: u64,
+    persist_ns: u64,
+    bytes_written: u64,
 }
 
 /// Append summary to pending and rename to sealed. Returns false if rename failed
@@ -1038,35 +1244,54 @@ fn seal_pending_bytes(
     Ok((sealed_bytes, prefix_len))
 }
 
-fn write_hydra_for_bytes(
+fn write_hydra_for_bytes_timed(
     paths: &StorePaths,
     store_id: [u8; 16],
     segment_id: [u8; 16],
     bytes: &[u8],
     limits: SafetyLimits,
-) -> Result<(), StoreError> {
+) -> Result<TimedWrite, StoreError> {
+    let t_decode = Instant::now();
     let records = records_from_segment_bytes(bytes, limits);
+    let decode_ns = elapsed_ns(t_decode);
     if records.is_empty() {
-        return Ok(());
+        return Ok(TimedWrite {
+            decode_ns,
+            construct_ns: 0,
+            persist_ns: 0,
+            bytes_written: 0,
+        });
     }
+    let t_build = Instant::now();
     let index = crate::hydra::build(&records, &HydraBuildOptions::default());
+    let construct_ns = elapsed_ns(t_build);
     let path = hydra_index_path(paths, &segment_id);
-    write_hydra_index(&path, store_id, segment_id, &index)
+    let t_persist = Instant::now();
+    write_hydra_index(&path, store_id, segment_id, &index)?;
+    let persist_ns = elapsed_ns(t_persist);
+    let bytes_written = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    Ok(TimedWrite {
+        decode_ns,
+        construct_ns,
+        persist_ns,
+        bytes_written,
+    })
 }
 
 /// Chimera layout from put events in the sealed segment (derived; may include
 /// superseded keys that were later deleted on a newer segment — same class of
 /// derived approximation as a full live projection when index is unavailable).
-fn write_chimera_from_segment_puts(
+fn write_chimera_from_segment_puts_timed(
     paths: &StorePaths,
     store_id: [u8; 16],
     segment_id: [u8; 16],
     bytes: &[u8],
     limits: SafetyLimits,
-) -> Result<(), StoreError> {
+) -> Result<TimedWrite, StoreError> {
     use crate::envelope::decode_item_envelope;
     use residiuum_format::scan_forward;
 
+    let t_decode = Instant::now();
     let report = scan_forward(bytes, limits);
     let mut pairs: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     // Latest put body per subject within this segment only.
@@ -1090,16 +1315,33 @@ fn write_chimera_from_segment_puts(
     for (k, v) in last {
         pairs.push((k, v));
     }
+    let decode_ns = elapsed_ns(t_decode);
     if pairs.is_empty() {
-        return Ok(());
+        return Ok(TimedWrite {
+            decode_ns,
+            construct_ns: 0,
+            persist_ns: 0,
+            bytes_written: 0,
+        });
     }
+    let t_build = Instant::now();
     let layout = crate::chimera::build_layout(
         &pairs,
         1,
         &crate::chimera::ClassifyOptions::default(),
     );
+    let construct_ns = elapsed_ns(t_build);
     let path = crate::chimera::chimera_layout_path(paths, &segment_id);
-    crate::chimera::write_chimera_layout(&path, store_id, segment_id, &layout)
+    let t_persist = Instant::now();
+    crate::chimera::write_chimera_layout(&path, store_id, segment_id, &layout)?;
+    let persist_ns = elapsed_ns(t_persist);
+    let bytes_written = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    Ok(TimedWrite {
+        decode_ns,
+        construct_ns,
+        persist_ns,
+        bytes_written,
+    })
 }
 
 #[cfg(test)]

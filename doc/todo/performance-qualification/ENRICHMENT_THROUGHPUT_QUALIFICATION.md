@@ -1,10 +1,8 @@
-# Enrichment Throughput Qualification (ETQ) — frozen next package
+# Enrichment Throughput Qualification (ETQ)
 
-Status: **next package** (principal freeze 2026-08-04).  
-AWO: **paused**. Three-cell attribution residual: **deprioritized**.
-
-Depends on evidence:
-`doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`.
+Status: **ETQ-0 accepted**; **ETQ-1 frozen** as Compact Chimera Persistence.  
+AWO: **paused**. Three-cell attribution residual: **deprioritized**.  
+Date: 2026-08-04
 
 ## Honest product numbers (locked)
 
@@ -14,56 +12,49 @@ Depends on evidence:
 | Label | Value | Meaning |
 |---|---:|---|
 | Acknowledgement TPS | ~47.4K | Burst — financed by deferred enrichment debt |
-| Enrichment service | ~1.61 segments/s | Measured completed-enrichment rate |
-| Ops per 64 MiB segment | ~8 192 | 64 MiB / 8 KiB |
-| Enrichment capacity | ~13.2K ops/s | \(1.61 \times 8192\) |
+| Enrichment service | ~1.61–2.7 seg/s | Limited by Chimera persist |
 | Complete-lifecycle TPS | ~12.4K | Matches enrichment capacity |
-| Segment create rate @ ack | ~5.8 seg/s | 47428 / 8192 |
-| Backlog slope | ~+4.1 jobs/s | Create − service; unbounded under continuous load |
+| Chimera derived write | ~63 MiB / 64 MiB auth | ~2× write amplification |
 
-### Verdict
+### ETQ-0 verdict (accepted)
 
 | Gate | Result |
 |---|---|
-| Correctness campaign (reopen exact, digests Known, index/query) | **PASS** |
-| Full-product performance qualification | **FAIL** |
-| Actual sustainable full-product throughput | **~12–13K TPS** |
+| Correctness (reopen, digests, index/query) | **PASS** |
+| Full-product performance | **FAIL** |
+| Dominant stage | **Chimera persist** (~366 ms/seg) |
+| Root cause | Eager full-payload Chimera materialization |
 
-The 2 GiB enrichment-on campaign succeeded as a **measurement and correctness**
-test. It decisively failed as a **performance** qualification. The bottleneck
-is derived enrichment throughput, not authoritative seal finalize.
+Evidence: `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`.
 
-## Required service floor
+> The database is fast; eager full-payload Chimera materialization is not.
 
-| Floor | Segments/sec | Implied ops/sec (8 KiB @ 64 MiB) | Rationale |
-|---|---:|---:|---|
-| Minimum | **≥ 5.8** | ≥ ~47.4K | Match current acknowledgement create rate |
-| Prefer | **≥ 7.0** | ≥ ~57.3K | Match enrichment-off authoritative engine (~57.6K) |
+## ETQ-1 — Compact Chimera Persistence (next)
 
-## Work items (this package)
+**Charter:** [ETQ1_COMPACT_CHIMERA.md](./ETQ1_COMPACT_CHIMERA.md)
 
-1. **Stage breakdown** — measure BLAKE3, Hydra, Chimera, and catalog time
-   independently on the enrichment path (not only aggregate drain).
-2. **Service floor** — prove enrichment can sustain ≥5.8 seg/s (prefer ≥7).
-3. **Bounded parallel enrichment workers** — test N>1 with contention honesty.
-4. **Cooked-index handoff** — investigate eliminating sealed-segment rereads by
-   passing cooked index material asynchronously from the auth lane.
-5. **Lazy Chimera** — only if product semantics explicitly permit deferred
-   Chimera construction; otherwise leave on the critical enrich path.
-6. **Accept gates (all required):**
-   - backlog slope ≤ 0 after warm-up;
-   - bounded final backlog under sustained load;
-   - complete-lifecycle TPS close to acknowledgement TPS;
-   - exact reopen + query/index verification;
-   - no major acknowledgement collapse from worker contention.
+Default Chimera persists locators + metadata only; payloads remain in
+authoritative segments. Fully materialized layouts are lazy / opt-in.
 
-## Non-goals (until ETQ exits)
+**Do not** start with parallel enrichment workers.
 
-- AWO / append-path optimisation (remains paused).
-- Three-cell attribution medians (auth64 / ceiling) — not the priority.
-- Speculative seal-architecture changes unrelated to enrichment service rate.
+### Accept gates
 
-## Evidence home
+- Default Chimera derived bytes **≤ 5%** of authoritative bytes
+- Enrichment capacity **≥ 7** segments/sec
+- Backlog slope **≤ 0** during sustained ingestion
+- Full lifecycle TPS approaches acknowledgement TPS
+- Exact reopen + query verification (locator-based Chimera)
+- Chimera not required for correctness
 
-When labor runs: archive under
-`doc/archive/performance-qualification/YYYY-MM-DD-enrichment-throughput-qualification/`.
+## Non-goals (until ETQ-1 exits)
+
+- AWO / append-path optimisation
+- Three-cell attribution medians
+- Worker-count tuning as a substitute for removing write amplification
+
+## Evidence homes
+
+- ETQ-0: `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`
+- Enrichment-on product: `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
+- ETQ-1: `doc/archive/performance-qualification/YYYY-MM-DD-etq1-compact-chimera/`

@@ -261,7 +261,8 @@ pub use scrub::{
 };
 pub use seal_pipeline::{
     enrich_sealed_derived, finalize_seal, finalize_seal_authoritative, list_pending_paths,
-    recover_all_pending, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
+    recover_all_pending, EnrichmentStageTiming, EnrichmentStageTotals, SealPipeline,
+    DEFAULT_MAX_PENDING_SEALS,
 };
 pub use secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,

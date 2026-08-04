@@ -72,14 +72,15 @@ Evidence: `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`.
 Stop speculative seal-architecture changes. Seal Fast Lane accepted
 architecturally; catalog O(n²) persist defect fixed and **package accepted**.
 
-**Only allowed next work:** **Enrichment Throughput Qualification** —
-[ENRICHMENT_THROUGHPUT_QUALIFICATION.md](./ENRICHMENT_THROUGHPUT_QUALIFICATION.md).
+**Only allowed next work:** **ETQ-1 Compact Chimera Persistence** —
+[ETQ1_COMPACT_CHIMERA.md](./ETQ1_COMPACT_CHIMERA.md).
 
-Bottleneck is derived enrichment (~1.61 seg/s) vs create rate (~5.8 seg/s).
-Raise enrichment service so backlog slope ≤ 0 after warm-up and
-complete-lifecycle TPS approaches acknowledgement TPS. Prefer ≥7 seg/s to
-track the ~57.6K authoritative engine. AWO and three-cell attribution
-residuals stay paused / deprioritized until ETQ exits.
+**ETQ-0 accepted:** Chimera writes ~63 MiB derived per 64 MiB auth (~2× amp);
+persist ~366 ms/seg. Do **not** add enrichment workers first — remove
+full-payload materialization. Default Chimera = locators + metadata; payloads
+stay in authoritative segments. Gates: derived ≤5% auth; ≥7 seg/s; backlog
+slope ≤0; lifecycle TPS near ack; locator query; Chimera optional for
+correctness. AWO / three-cell remain paused / deprioritized.
 
 ## Archives
 
@@ -93,4 +94,7 @@ residuals stay paused / deprioritized until ETQ exits.
 - `doc/archive/performance-qualification/2026-08-04-sustained-rotation/`
 - `doc/archive/performance-qualification/2026-08-04-derived-catalog-checkpoint/`
 - `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`
+- `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`
 - Plan: `doc/todo/performance-qualification/ENRICHMENT_THROUGHPUT_QUALIFICATION.md`
+- ETQ-1 charter: `doc/todo/performance-qualification/ETQ1_COMPACT_CHIMERA.md`
+- `doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`

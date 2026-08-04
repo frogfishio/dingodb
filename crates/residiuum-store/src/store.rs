@@ -38,8 +38,8 @@ use crate::index_cache::{
 use crate::layout::{list_residiuum_files, StorePaths};
 use crate::token_keys::ContinuationKeyring;
 use crate::seal_pipeline::{
-    list_pending_paths, publish_sealed_from_summary_frame, recover_all_pending, LifecycleJob,
-    LifecycleResult, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
+    list_pending_paths, publish_sealed_from_summary_frame, recover_all_pending,
+    EnrichmentStageTotals, LifecycleJob, LifecycleResult, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
 };
 use crate::secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,
@@ -414,6 +414,8 @@ pub struct Store {
     enrichment_enabled: bool,
     /// Cumulative auto-rotation stage timings (sustained-rotation qualification).
     rotation_stage_totals: RotationStageTotals,
+    /// Cumulative derived enrichment stage timings (ETQ-0).
+    enrichment_stage_totals: EnrichmentStageTotals,
     /// Derived chunk_event_id → physical frame locators (DEF-098).
     ///
     /// Non-authoritative: rebuilt from segment scans and updated on chunk append.
@@ -657,6 +659,7 @@ impl Store {
             async_lifecycle: true,
             enrichment_enabled: true,
             rotation_stage_totals: RotationStageTotals::default(),
+            enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -758,6 +761,7 @@ impl Store {
             async_lifecycle: true,
             enrichment_enabled: true,
             rotation_stage_totals: RotationStageTotals::default(),
+            enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -896,6 +900,7 @@ impl Store {
             async_lifecycle: false,
             enrichment_enabled: false,
             rotation_stage_totals: RotationStageTotals::default(),
+            enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
             token_keyring,
             boundary_probe: crate::boundary_probe::BoundaryProbe::disabled(),
@@ -4709,6 +4714,11 @@ impl Store {
         self.rotation_stage_totals
     }
 
+    /// Cumulative derived enrichment stage timings (ETQ-0 measurement).
+    pub fn enrichment_stage_totals(&self) -> EnrichmentStageTotals {
+        self.enrichment_stage_totals
+    }
+
     /// Content-hash state for a sealed segment in the derived catalog (tests).
     pub fn sealed_content_hash_state(
         &self,
@@ -4927,11 +4937,13 @@ impl Store {
                 segment_id,
                 content_hash,
                 size,
-                ..
+                stages,
+                ok: _,
             } => {
                 if let Some(p) = self.seal_pipeline.as_mut() {
                     p.enrichment_backlog = p.enrichment_backlog.saturating_sub(1);
                 }
+                let t_catalog = Instant::now();
                 if size > 0 && !content_hash.is_pending() {
                     // Memory digest refresh only; durable catalogs lag.
                     let _ = register_hot_segment_known(
@@ -4949,6 +4961,11 @@ impl Store {
                     }
                     self.note_derived_catalog_dirty();
                     self.maybe_schedule_derived_catalog_checkpoint(false);
+                }
+                let catalog_ns = elapsed_ns(t_catalog);
+                if let Some(mut s) = stages {
+                    s.catalog_ns = catalog_ns;
+                    self.enrichment_stage_totals.accumulate(s);
                 }
             }
         }
