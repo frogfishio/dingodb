@@ -19,6 +19,9 @@ node_modules/
 .tinker/
 .DS_Store
 
+# Ephemeral test TMPDIR (disk-safe runs; never commit)
+.tmp-test/
+
 # Local Verus toolchain (downloaded by scripts/check_verus_heap.sh; not release content)
 tools/verus/
 tools/verus.zip

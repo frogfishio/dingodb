@@ -437,6 +437,7 @@ fn arm_error(name: &str) {
     arm_failpoint_once(leak_name(name), FailpointAction::Error);
 }
 
+#[allow(dead_code)] // retained for process-local panic cells / nightly drivers
 fn arm_panic(name: &str) {
     arm_failpoint_once(leak_name(name), FailpointAction::Panic);
 }
@@ -644,11 +645,14 @@ fn run_seal(path: &Path, failpoint: &str, expected: &residiuum_store::ExpectedRe
         store
             .put("sealed-key", b"sealed-val", DurabilityMode::Durable)
             .unwrap();
-        arm_panic(failpoint);
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            store.seal_active().expect("seal or panic");
-        }));
-        assert!(result.is_err(), "seal must panic at failpoint {failpoint}");
+        // Prefer Error over Panic: CompactShadow finalize runs on a worker thread;
+        // worker panics are not caught by catch_unwind on the writer.
+        arm_error(failpoint);
+        let result = store.seal_active();
+        assert!(
+            result.is_err(),
+            "seal must fail at failpoint {failpoint}, got {result:?}"
+        );
         drop(store);
     }
     clear_failpoints();

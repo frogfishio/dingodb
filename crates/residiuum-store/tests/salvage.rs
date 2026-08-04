@@ -106,7 +106,7 @@ fn salvage_to_new_path_is_non_destructive() {
         .unwrap();
     assert_eq!(active_meta, after);
 
-    let recovered = Store::open(&dst).unwrap();
+    let recovered = Store::open_with_options(&dst, residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
     assert_eq!(
         recovered.get("keep").unwrap().as_deref(),
         Some(b"alive".as_slice())

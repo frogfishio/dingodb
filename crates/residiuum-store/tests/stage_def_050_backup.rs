@@ -109,7 +109,7 @@ fn reassign_identity_produces_distinct_store() {
     assert_ne!(restored.restored_store_id, sid);
     assert!(restored.identity_reassigned);
 
-    let opened = Store::open(&dst).unwrap();
+    let opened = Store::open_with_options(&dst, residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
     assert_eq!(opened.store_id(), restored.restored_store_id);
     assert_eq!(
         opened.get("users/x").unwrap().as_deref(),

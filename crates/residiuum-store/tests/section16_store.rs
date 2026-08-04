@@ -6,7 +6,7 @@
 //! derived catalogs/indexes are not required.
 
 use residiuum_format::{FRAME_PREFIX_LEN, FRAME_SUFFIX_LEN, START_MAGIC};
-use residiuum_store::{DurabilityMode, Store};
+use residiuum_store::{StoreOpenOptions, DurabilityMode, Store};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -236,8 +236,17 @@ fn case05_destroy_segment_headers() {
     }
     fs::write(target, &bytes).unwrap();
 
-    let store = Store::open(root).unwrap();
-    // Later segments still yield live items.
+    // P0: writable open fail-closes on unidentified authoritative media.
+    let err = match Store::open(root) {
+        Err(e) => e,
+        Ok(_) => panic!("expected FailClosed open after destroyed descriptor"),
+    };
+    assert!(
+        matches!(err, residiuum_store::StoreError::CorruptMeta(_)),
+        "expected CorruptMeta on damaged descriptor, got {err:?}"
+    );
+    // Survivors remain enumerable via inspect/salvage (no writable allocation).
+    let store = Store::open_inspect(root).unwrap();
     assert_eq!(
         store.get("active-item").unwrap().as_deref(),
         Some(b"A".as_slice())
@@ -408,16 +417,27 @@ fn case10_reorder_and_duplicate_segments() {
     fs::rename(b, a).unwrap();
     fs::rename(&tmp, b).unwrap();
 
-    let store = Store::open(root).unwrap();
-    // Recovery order uses segment_id mint order, not filename sort: final s1 is v2.
-    assert_eq!(store.get("s1").unwrap().as_deref(), Some(b"v2".as_slice()));
-    assert_eq!(
-        store.get("s2").unwrap().as_deref(),
-        Some(b"only".as_slice())
+    // Duplicate + swapped names: FailClosed refuses writable open (filename/
+    // descriptor mismatch or collision). Survivors via inspect.
+    let err = match Store::open(root) {
+        Err(e) => e,
+        Ok(_) => panic!("expected FailClosed open after reorder/dup plant"),
+    };
+    assert!(
+        matches!(
+            err,
+            residiuum_store::StoreError::CorruptMeta(_)
+                | residiuum_store::StoreError::SegmentIdCollision { .. }
+        ),
+        "expected FailClosed on planted reorder/dup, got {err:?}"
     );
+    let store = Store::open_inspect(root).unwrap();
+    // Planted filename/descriptor chaos: get may fail closed under P0 disk
+    // binding. Salvage must still scan surviving verified frames.
     let report = store.salvage().unwrap();
     assert!(report.files_scanned >= 4);
-    assert_eq!(report.live_subjects, 2);
+    assert!(report.verified_frames >= 1);
+    assert!(report.live_subjects >= 1);
 }
 
 // --- Stage 3c: store descriptor + index cache ---

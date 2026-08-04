@@ -487,6 +487,7 @@ fn compact_reclaim_live_scan_remains_complete() {
         let phys = ctx.host.physical();
         let mut g = phys.lock().unwrap();
         g.seal_active().unwrap();
+        g.drain_lifecycle().unwrap();
         let _ = g
             .compact_live_with(CompactOptions {
                 reclaim_sources: true,

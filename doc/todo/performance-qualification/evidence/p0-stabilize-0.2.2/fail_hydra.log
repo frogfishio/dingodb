@@ -1,0 +1,21 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running tests/hydra_segment_index.rs (target/debug/deps/hydra_segment_index-1386bc983ca19f4f)
+
+running 1 test
+
+thread 'seal_writes_hydra_sidecar' (62375972) panicked at crates/residiuum-store/tests/hydra_segment_index.rs:27:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test seal_writes_hydra_sidecar ... FAILED
+
+failures:
+
+failures:
+    seal_writes_hydra_sidecar
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.17s
+
+error: test failed, to rerun pass `-p residiuum-store --test hydra_segment_index`

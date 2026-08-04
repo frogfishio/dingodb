@@ -1,0 +1,73 @@
+=== step7 smoke ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.28s
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/debug/deps/cse3_stage2_step7_shadow_perf-ceb55e9a75b82791)
+
+running 1 test
+test step7_smoke_candidate_harness ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.95s
+
+=== step7 medians helper ===
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/debug/deps/cse3_stage2_step7_shadow_perf-ceb55e9a75b82791)
+
+running 1 test
+test step7_stage_medians_helper ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.34s
+
+=== rshd0004 all ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running tests/cse3_stage2_rshd0004_matrix.rs (target/debug/deps/cse3_stage2_rshd0004_matrix-f188e0443e816a09)
+
+running 16 tests
+test r4_chunked_value_recovery ... ok
+test r4_f0_healthy_dual_stream_recovery ... ok
+test r4_fail_finalize_dir_sync ... ok
+test r4_fail_finalize_rename ... ok
+test r4_fail_finalize_summary ... ok
+test r4_fail_finalize_sync ... ok
+test r4_fail_frontier_publish ... ok
+test r4_fail_shadow_append_no_p_star ... ok
+test r4_fail_shadow_flush ... ok
+test r4_matrix_cell_count_charter ... ok
+test r4_multi_shard_rotation ... ok
+test r4_overwrite_tombstone_recovery ... ok
+test r4_step8_activate_requires_gap_free ... ok
+test r4_step8_flip_activate_rollback ... ok
+test r4_step8_mode_persist_failpoint ... ok
+test r4_step8_reopen_loads_marker ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.45s
+
+=== awo ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running tests/awo_crash_matrix.rs (target/debug/deps/awo_crash_matrix-6ef2cba991fcca93)
+
+running 6 tests
+test closed_failpoint_inventory_partition ... ok
+test deferred_cells_named_but_not_required_on_put_many ... ok
+test each_pre_publish_error_failpoint_leaves_index_clean ... ok
+test multiprocess_abort_awo_persist_before ... ok
+test post_publish_failpoints_hit_after_index_visible ... ok
+test short_write_cell_poisons_writer ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.62s
+
+=== mirror unit ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_store-2e38236c1dee835c)
+
+running 5 tests
+test recovery_shadow::mirror::tests::mirror_roundtrip_and_commitment ... ok
+test recovery_shadow::mirror::tests::publish_mirror_is_durable_path ... ok
+test recovery_shadow::mirror::tests::publish_mirror_republish_different_bytes_collides ... ok
+test recovery_shadow::mirror::tests::publish_mirror_republish_same_bytes_is_idempotent ... ok
+test recovery_shadow::mirror::tests::torn_mirror_fails_closed ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 238 filtered out; finished in 0.06s
+

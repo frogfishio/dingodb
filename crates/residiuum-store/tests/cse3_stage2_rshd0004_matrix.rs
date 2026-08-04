@@ -212,20 +212,9 @@ fn r4_fail_finalize_dir_sync() {
 /// Frontier publish failpoint after Shadow file exists — still no durable claim.
 #[test]
 fn r4_fail_frontier_publish() {
-    with_failpoints(|| {
-        let dir = tempdir().unwrap();
-        let mut store = dual_store(dir.path(), 1);
-        let payload = vec![0x44u8; 80];
-        for i in 0..6u64 {
-            store
-                .put(&format!("f{i}"), &payload, DurabilityMode::Buffered)
-                .unwrap();
-        }
-        arm_failpoint_once("rshd4.frontier.publish", FailpointAction::Error);
-        store.seal_active().unwrap();
-        let err = store.drain_lifecycle().expect_err("failpoint");
-        assert!(format!("{err:?}").to_lowercase().contains("failpoint"));
-    });
+    // seal_active waits for protected-pair finalize (incl. frontier), so the
+    // failpoint may surface on seal or on a subsequent drain — same as finalize cells.
+    with_failpoints(|| seal_with_finalize_failpoint("rshd4.frontier.publish"));
 }
 
 /// Multi-shard dual-stream seal + gap-aware coverage.

@@ -40,8 +40,8 @@ Workspace packaging **0.2.0** / `residiuum-store` **0.2.0** is **unsafe for
 continued writes across reopen/rotation** due to segment-identity remint and
 sealed-media replacement (see
 [SECURITY_ADVISORY_SEGID_0.2.0.md](../../todo/performance-qualification/SECURITY_ADVISORY_SEGID_0.2.0.md)).
-Upgrade to **≥ 0.2.1**. Prefer yanking published 0.2.0 crates on crates.io when
-credentials allow. Affected on-disk stores are **not** auto-repaired.
+Upgrade to **≥ 0.2.2** when published. **0.2.0** and **0.2.1** are yanked on
+crates.io (0.2.1 withdrawn for red qualification suite). Prefer yank status as SoT. Affected on-disk stores are **not** auto-repaired.
 
 ## Version identity
 

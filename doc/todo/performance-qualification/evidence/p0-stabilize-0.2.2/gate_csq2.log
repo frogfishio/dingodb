@@ -1,0 +1,29 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
+     Running tests/csq2_instrumentation.rs (target/debug/deps/csq2_instrumentation-7a8ab9067ce60916)
+
+running 9 tests
+test csq2_harness_inventory_ready_flags ... ok
+test csq2_crash_controller_resolves ... ok
+test csq2_hit_proof_unreachable_is_fail ... ok
+test csq2_composed_failure_schedule_from_registry ... ok
+test csq2_embedded_crash_matrix_still_valid ... ok
+test csq2_every_boundary_has_approved_harness ... ok
+
+thread 'csq2_source_failpoints_match_registry' (62442856) panicked at crates/residiuum-store/tests/csq2_instrumentation.rs:98:5:
+assertion `left == right` failed: source failpoints must equal registered failpoint boundaries
+  left: {"store.active.write_tail.before", "rshd4.finalize.rename", "store.catalog.before_write", "awo.publish.after", "media.publish.partial_copy", "store.create.after_active_header", "awo.complete.before", "store.seal.before_authoritative_rename", "heap_migration.before_frame_admit", "awo.install.frame.after", "heap_migration.before_phase_advance", "atomic.before_tmp_write", "awo.install.frame.before", "atomic.after_dir_sync", "rshd4.finalize.sync", "heap_lifecycle.after_transition_receipt", "heap_migration.after_frame_admit", "media.publish.after_link", "atomic.before_rename", "awo.persist.after_sync", "store.dedup.after_rename", "atomic.tmp.short_write", "store.compact.job_write", "store.seal.before_dest_write", "heap_lifecycle.after_coverage_destroy", "atomic.after_tmp_sync", "rshd4.mode.before_persist", "segalloc.before_reserve_persist", "awo.persist.after_write", "store.compact.after_verify", "media.publish.after_create", "store.compact.after_activate", "store.seal.after_active_remove", "media.publish.before_source_unlink", "awo.persist.before", "media.publish.after_file_sync", "store.seal.after_derived_enrichment", "store.dedup.before_write", "store.tier.before_placement_write", "media.publish.after_dest_publish", "store.compact.after_create", "heap_lifecycle.after_state_store", "rshd4.finalize.dir_sync", "awo.cook.before", "store.compact.after_reclaim", "rshd4.shadow.flush", "segalloc.before_reconstruct", "atomic.after_rename", "heap_migration.after_state_persist", "store.compact.after_plan", "rshd4.mode.after_persist", "store.active.write_tail.short_write", "rshd4.shadow.append", "store.index_cache.after_write", "store.index_cache.before_write", "store.active.write_tail.after_sync", "awo.publish.before", "rshd4.finalize.summary", "segalloc.after_reserve_before_media", "store.checkpoint.before_write", "segalloc.after_reconstruct", "store.create.after_meta", "store.active.write_tail.after_write", "segalloc.after_active_media", "store.compact.before_verify", "heap_migration.before_state_persist", "heap_lifecycle.after_purge_plan", "segalloc.after_reserve_persist", "store.compact.before_reclaim", "store.seal.after_authoritative_publish", "store.compact.before_segment_sync", "store.seal.after_dest_sync", "heap_migration.after_phase_advance", "awo.cook.after", "store.active.dir_sync", "rshd4.frontier.publish"}
+ right: {"atomic.before_tmp_write", "store.compact.after_activate", "store.seal.after_active_remove", "atomic.tmp.short_write", "store.tier.before_placement_write", "store.compact.after_plan", "store.index_cache.after_write", "store.create.after_active_header", "heap_lifecycle.after_coverage_destroy", "store.active.dir_sync", "store.compact.after_create", "store.active.write_tail.short_write", "atomic.before_rename", "store.catalog.before_write", "atomic.after_rename", "heap_migration.after_state_persist", "store.compact.after_reclaim", "atomic.after_tmp_sync", "store.compact.before_segment_sync", "store.compact.after_verify", "store.compact.job_write", "store.active.write_tail.after_sync", "heap_migration.after_phase_advance", "store.active.write_tail.after_write", "heap_migration.before_state_persist", "store.dedup.after_rename", "heap_lifecycle.after_state_store", "store.dedup.before_write", "store.index_cache.before_write", "store.checkpoint.before_write", "store.active.write_tail.before", "store.create.after_meta", "heap_lifecycle.after_transition_receipt", "atomic.after_dir_sync", "heap_migration.before_frame_admit", "store.compact.before_verify", "heap_lifecycle.after_purge_plan", "heap_migration.before_phase_advance", "store.compact.before_reclaim", "store.seal.before_dest_write", "store.seal.after_dest_sync", "heap_migration.after_frame_admit"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test csq2_source_failpoints_match_registry ... FAILED
+test csq2_ordered_pair_executor_ci_smoke ... ok
+test csq2_hit_proof_on_put_boundary ... ok
+
+failures:
+
+failures:
+    csq2_source_failpoints_match_registry
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq2_instrumentation`

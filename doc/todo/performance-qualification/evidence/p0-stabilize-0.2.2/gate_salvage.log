@@ -1,0 +1,29 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.02s
+     Running tests/csq7_damage_salvage.rs (target/debug/deps/csq7_damage_salvage-0633e53c8e4a8fa2)
+
+running 8 tests
+test csq_dmg_incomplete_tail_locality ... ok
+test csq_rec_healthy_work_continues_after_damage ... ok
+test csq_dmg_corrupt_bytes_never_verified_survivors_readable ... ok
+test csq_rec_salvage_never_writes_source ... ok
+test csq_dmg_multi_fault_holes_and_incomplete_tail ... ok
+test csq_rec_live_reopen_rebuild_salvage_agree ... FAILED
+test csq_rec_live_export_vs_evidence_differential ... ok
+test csq_rec_reopen_identical_and_resalvage_idempotent ... ok
+
+failures:
+
+---- csq_rec_live_reopen_rebuild_salvage_agree stdout ----
+
+thread 'csq_rec_live_reopen_rebuild_salvage_agree' (62421932) panicked at crates/residiuum-store/tests/csq7_damage_salvage.rs:228:39:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    csq_rec_live_reopen_rebuild_salvage_agree
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.11s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq7_damage_salvage`

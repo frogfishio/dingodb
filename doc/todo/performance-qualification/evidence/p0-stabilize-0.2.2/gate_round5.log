@@ -1,0 +1,227 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.74s
+     Running tests/hydra_segment_index.rs (target/debug/deps/hydra_segment_index-1386bc983ca19f4f)
+
+running 2 tests
+test seal_writes_hydra_sidecar ... ok
+test rebuild_hydra_multithread ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/reopen_before_enrichment.rs (target/debug/deps/reopen_before_enrichment-1a2f9e77e0525790)
+
+running 1 test
+test reopen_exact_while_content_hash_pending ... FAILED
+
+failures:
+
+---- reopen_exact_while_content_hash_pending stdout ----
+
+thread 'reopen_exact_while_content_hash_pending' (62435507) panicked at crates/residiuum-store/tests/reopen_before_enrichment.rs:38:5:
+auto-rotate with enrichment off must leave typed ContentHashState::Pending
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    reopen_exact_while_content_hash_pending
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+error: test failed, to rerun pass `-p residiuum-store --test reopen_before_enrichment`
+     Running tests/section16_store.rs (target/debug/deps/section16_store-94a9d73239cd4270)
+
+running 14 tests
+test case07_destroy_derived_state ... ok
+test case08_corrupt_frame_length_fields ... ok
+test case09_insert_garbage_between_frames ... ok
+test case03_delete_middle_frame_in_segment ... ok
+test case10_reorder_and_duplicate_segments ... FAILED
+test case05_destroy_segment_headers ... FAILED
+test case06_destroy_segment_trailers ... ok
+test case04_delete_middle_segment ... ok
+test case02_overwrite_byte_ranges_in_segment ... ok
+test case01_truncate_active_frame_offsets ... ok
+test store_descriptor_written_and_readable ... ok
+test incomplete_active_tail_after_multi_segment ... ok
+test index_cache_not_sole_map_after_segment_delete ... ok
+test index_cache_accelerates_open_and_is_optional ... ok
+
+failures:
+
+---- case10_reorder_and_duplicate_segments stdout ----
+
+thread 'case10_reorder_and_duplicate_segments' (62435526) panicked at crates/residiuum-store/tests/section16_store.rs:411:35:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("filename segment id does not match descriptor segment id")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- case05_destroy_segment_headers stdout ----
+
+thread 'case05_destroy_segment_headers' (62435521) panicked at crates/residiuum-store/tests/section16_store.rs:239:35:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+
+
+failures:
+    case05_destroy_segment_headers
+    case10_reorder_and_duplicate_segments
+
+test result: FAILED. 12 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.97s
+
+error: test failed, to rerun pass `-p residiuum-store --test section16_store`
+     Running tests/stage6_store.rs (target/debug/deps/stage6_store-47a0fc6f2b2d100f)
+
+running 6 tests
+test secondary_index_create_lookup_delete ... ok
+test subject_history_orders_puts_and_deletes ... ok
+test checkpoint_declares_coverage ... ok
+test chunked_put_get_and_partial_missing_middle ... ok
+test wipe_indexes_and_catalogs_rebuild_same_content ... ok
+test compact_live_preserves_current_values ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+
+     Running tests/stage9_tiering.rs (target/debug/deps/stage9_tiering-a7a20ee631507a4e)
+
+running 7 tests
+test copy_then_offline_archive_is_coverage_hole_not_empty_success ... FAILED
+test move_segment_to_cold_preserves_identity_and_data ... FAILED
+test migration_evidence_written ... FAILED
+test format_classification_preserves_unsupported_identity ... ok
+test cold_search_summaries_list_archive_tier ... FAILED
+test archive_path_note_not_hot_slo ... FAILED
+test hierarchical_catalog_rebuilds_after_loss ... FAILED
+
+failures:
+
+---- copy_then_offline_archive_is_coverage_hole_not_empty_success stdout ----
+
+thread 'copy_then_offline_archive_is_coverage_hole_not_empty_success' (62435774) panicked at crates/residiuum-store/tests/stage9_tiering.rs:89:10:
+data-bearing sealed segment
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- move_segment_to_cold_preserves_identity_and_data stdout ----
+
+thread 'move_segment_to_cold_preserves_identity_and_data' (62435778) panicked at crates/residiuum-store/tests/stage9_tiering.rs:28:10:
+data-bearing sealed segment
+
+---- migration_evidence_written stdout ----
+
+thread 'migration_evidence_written' (62435777) panicked at crates/residiuum-store/tests/stage9_tiering.rs:231:10:
+data segment
+
+---- cold_search_summaries_list_archive_tier stdout ----
+
+thread 'cold_search_summaries_list_archive_tier' (62435773) panicked at crates/residiuum-store/tests/stage9_tiering.rs:173:10:
+data segment
+
+---- archive_path_note_not_hot_slo stdout ----
+
+thread 'archive_path_note_not_hot_slo' (62435772) panicked at crates/residiuum-store/tests/stage9_tiering.rs:258:10:
+data segment
+
+---- hierarchical_catalog_rebuilds_after_loss stdout ----
+
+thread 'hierarchical_catalog_rebuilds_after_loss' (62435776) panicked at crates/residiuum-store/tests/stage9_tiering.rs:141:5:
+assertion failed: !before.is_empty()
+
+
+failures:
+    archive_path_note_not_hot_slo
+    cold_search_summaries_list_archive_tier
+    copy_then_offline_archive_is_coverage_hole_not_empty_success
+    hierarchical_catalog_rebuilds_after_loss
+    migration_evidence_written
+    move_segment_to_cold_preserves_identity_and_data
+
+test result: FAILED. 1 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage9_tiering`
+     Running tests/stage_def_010_012_013.rs (target/debug/deps/stage_def_010_012_013-f873aa488f42ed8d)
+
+running 5 tests
+test def_010_content_identity_helper_stable ... ok
+test def_013_memory_not_flushed_by_later_durable_write ... ok
+test def_013_memory_then_durable_does_not_contaminate_catalog ... ok
+test def_010_write_dedup_exact_retry_and_content_mismatch ... ok
+test def_012_offline_tier_makes_ordinary_scan_incomplete ... FAILED
+
+failures:
+
+---- def_012_offline_tier_makes_ordinary_scan_incomplete stdout ----
+
+thread 'def_012_offline_tier_makes_ordinary_scan_incomplete' (62435853) panicked at crates/residiuum-store/tests/stage_def_010_012_013.rs:158:10:
+data-bearing sealed segment
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    def_012_offline_tier_makes_ordinary_scan_incomplete
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_010_012_013`
+     Running tests/stage_def_020_021_lock_coverage.rs (target/debug/deps/stage_def_020_021_lock_coverage-545a5996792e24f4)
+
+running 6 tests
+test second_writer_handle_fails_before_touching_segments ... ok
+test complete_scan_succeeds_when_all_payloads_readable ... ok
+test inspect_can_run_while_writer_holds_lock ... ok
+test cross_process_second_writer_fails ... ok
+test drop_writer_releases_lock_for_reopen ... ok
+test live_logical_entries_fails_closed_when_chunks_missing ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running tests/stage_def_023_write_path.rs (target/debug/deps/stage_def_023_write_path-82456311df14eda9)
+
+running 7 tests
+test memory_mode_never_enters_durable_index_cache ... ok
+test rate_limited_checkpoint_still_allows_recovery ... ok
+test frontier_checkpoint_plus_active_tail_matches_full_rebuild ... ok
+test delete_derived_state_reconstructs_identical_logical_results ... ok
+test write_path_bench_disclosure ... ok
+test durable_write_ack_independent_of_retained_volume ... ok
+test seal_cost_independent_of_retained_segment_count ... FAILED
+
+failures:
+
+---- seal_cost_independent_of_retained_segment_count stdout ----
+
+thread 'seal_cost_independent_of_retained_segment_count' (62435967) panicked at crates/residiuum-store/tests/stage_def_023_write_path.rs:267:5:
+assertion failed: store.segment_catalog().len() >= seals
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    seal_cost_independent_of_retained_segment_count
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.55s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_023_write_path`
+     Running tests/stage_def_096_async_lifecycle.rs (target/debug/deps/stage_def_096_async_lifecycle-33287b26dbcd4b66)
+
+running 4 tests
+test explicit_seal_active_still_sync_and_drains ... ok
+test async_auto_seal_preserves_gets_and_writes_hydra ... ok
+test reopen_recovers_pending_seal_files ... ok
+test async_put_loop_completes_with_backpressure ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.41s
+
+     Running tests/stage_def_100_coverage_scans.rs (target/debug/deps/stage_def_100_coverage_scans-13d3447fdd84a073)
+
+running 6 tests
+test incomplete_reason_labels_exist ... ok
+test empty_store_key_scan_is_complete ... ok
+test dual_keys_one_chunked_one_inline_partial_page_streams_healthy ... ok
+test key_scan_lists_keys_without_body_reassembly ... ok
+test cursor_tamper_rejected_on_key_scan ... ok
+test document_page_keeps_key_when_body_partial ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+error: 5 targets failed:
+    `-p residiuum-store --test reopen_before_enrichment`
+    `-p residiuum-store --test section16_store`
+    `-p residiuum-store --test stage9_tiering`
+    `-p residiuum-store --test stage_def_010_012_013`
+    `-p residiuum-store --test stage_def_023_write_path`

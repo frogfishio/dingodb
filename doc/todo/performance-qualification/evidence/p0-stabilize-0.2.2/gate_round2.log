@@ -1,0 +1,41 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.09s
+     Running tests/cse2r_safety_rollback.rs (target/debug/deps/cse2r_safety_rollback-a9d01d36e8d489e4)
+
+running 1 test
+test cse2r_product_seal_safety_rollback_guard ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.81s
+
+     Running tests/hydra_segment_index.rs (target/debug/deps/hydra_segment_index-1386bc983ca19f4f)
+
+running 2 tests
+test seal_writes_hydra_sidecar ... ok
+test rebuild_hydra_multithread ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/salvage.rs (target/debug/deps/salvage-e3943028f1328050)
+
+running 5 tests
+test incomplete_tail_does_not_poison_earlier_frames ... ok
+test destroy_catalogs_and_indexes_still_recovers ... ok
+test rebuild_index_matches_get ... ok
+test middle_byte_corruption_still_finds_later_items_via_salvage ... ok
+test salvage_to_new_path_is_non_destructive ... FAILED
+
+failures:
+
+---- salvage_to_new_path_is_non_destructive stdout ----
+
+thread 'salvage_to_new_path_is_non_destructive' (62418816) panicked at crates/residiuum-store/tests/salvage.rs:95:45:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("filename segment id does not match descriptor segment id")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    salvage_to_new_path_is_non_destructive
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+error: test failed, to rerun pass `-p residiuum-store --test salvage`

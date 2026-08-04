@@ -3,7 +3,7 @@
 **Advisory id:** `RESIDIUUM-2026-08-SEGID-01`  
 **Severity:** High (data integrity)  
 **Affected:** `residiuum-store` **0.2.0** (and any workspace crates at packaging **0.2.0** that embed that store)  
-**Fixed:** packaging **0.2.1** (this release)  
+**Fixed (engineering):** tip / upcoming **0.2.2**. Packaging **0.2.1** was published then **yanked** (red full-store suite).  
 **Date:** 2026-08-04  
 
 ## Summary
@@ -24,7 +24,7 @@
 Trees that already reminted identities or contain colliding authoritative owners are **not** healed by upgrade. Operators must:
 
 1. **Stop writes** on 0.2.0 media that may have reminted across reopen/rotation.
-2. Upgrade to **≥ 0.2.1**.
+2. Upgrade to **≥ 0.2.2** when published. Do **not** adopt yanked **0.2.1**.
 3. If open fails with `SegmentIdCollision`, treat the tree as damaged: back up what remains, salvage/inspect offline if needed, and **create a fresh store** for continued service (Gremlin / product DBs are out of scope for this advisory’s automated path).
 
 ## Fixed behavior (0.2.1)
@@ -52,3 +52,7 @@ Archived under `doc/todo/performance-qualification/evidence/p0-release-0.2.1/`:
 - full `residiuum-store` suite log (`--features legacy-raw-store`)
 
 Tag the exact tested commit as `v0.2.1`.
+
+## Withdrawal of 0.2.1
+
+`residiuum-*` **0.2.1** was yanked on crates.io (2026-08-04). Tag `v0.2.1` is preserved as published-but-withdrawn source. Stabilization packaging is **0.2.2** after the full store suite is green.

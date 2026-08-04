@@ -1875,6 +1875,652 @@
       "historical_cell_id": "store.compact.job_write",
       "source_ref": "crates/residiuum-store/src (CSQ-2 census)",
       "generated_for": "CSQ-2"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_complete_before",
+      "operation_id": "adaptive_write",
+      "step": "awo.complete.before",
+      "kind": "failpoint",
+      "failpoint": "awo.complete.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.complete.before (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.complete.before",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_cook_after",
+      "operation_id": "adaptive_write",
+      "step": "awo.cook.after",
+      "kind": "failpoint",
+      "failpoint": "awo.cook.after",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.cook.after (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.cook.after",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_cook_before",
+      "operation_id": "adaptive_write",
+      "step": "awo.cook.before",
+      "kind": "failpoint",
+      "failpoint": "awo.cook.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.cook.before (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.cook.before",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_install_frame_after",
+      "operation_id": "adaptive_write",
+      "step": "awo.install.frame.after",
+      "kind": "failpoint",
+      "failpoint": "awo.install.frame.after",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.install.frame.after (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.install.frame.after",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_install_frame_before",
+      "operation_id": "adaptive_write",
+      "step": "awo.install.frame.before",
+      "kind": "failpoint",
+      "failpoint": "awo.install.frame.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.install.frame.before (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.install.frame.before",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_persist_after_sync",
+      "operation_id": "adaptive_write",
+      "step": "awo.persist.after_sync",
+      "kind": "failpoint",
+      "failpoint": "awo.persist.after_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.persist.after_sync (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.persist.after_sync",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_persist_after_write",
+      "operation_id": "adaptive_write",
+      "step": "awo.persist.after_write",
+      "kind": "failpoint",
+      "failpoint": "awo.persist.after_write",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.persist.after_write (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.persist.after_write",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_persist_before",
+      "operation_id": "adaptive_write",
+      "step": "awo.persist.before",
+      "kind": "failpoint",
+      "failpoint": "awo.persist.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.persist.before (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.persist.before",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_publish_after",
+      "operation_id": "adaptive_write",
+      "step": "awo.publish.after",
+      "kind": "failpoint",
+      "failpoint": "awo.publish.after",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.publish.after (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.publish.after",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-adaptive_write-awo_publish_before",
+      "operation_id": "adaptive_write",
+      "step": "awo.publish.before",
+      "kind": "failpoint",
+      "failpoint": "awo.publish.before",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site awo.publish.before (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "awo.publish.before",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-media_publish-media_publish_after_create",
+      "operation_id": "media_publish",
+      "step": "media.publish.after_create",
+      "kind": "failpoint",
+      "failpoint": "media.publish.after_create",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site media.publish.after_create (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "media.publish.after_create",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-media_publish-media_publish_after_dest_publish",
+      "operation_id": "media_publish",
+      "step": "media.publish.after_dest_publish",
+      "kind": "failpoint",
+      "failpoint": "media.publish.after_dest_publish",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site media.publish.after_dest_publish (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "media.publish.after_dest_publish",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-media_publish-media_publish_after_file_sync",
+      "operation_id": "media_publish",
+      "step": "media.publish.after_file_sync",
+      "kind": "failpoint",
+      "failpoint": "media.publish.after_file_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site media.publish.after_file_sync (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "media.publish.after_file_sync",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-media_publish-media_publish_after_link",
+      "operation_id": "media_publish",
+      "step": "media.publish.after_link",
+      "kind": "failpoint",
+      "failpoint": "media.publish.after_link",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site media.publish.after_link (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "media.publish.after_link",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-media_publish-media_publish_before_source_unlink",
+      "operation_id": "media_publish",
+      "step": "media.publish.before_source_unlink",
+      "kind": "failpoint",
+      "failpoint": "media.publish.before_source_unlink",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site media.publish.before_source_unlink (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "media.publish.before_source_unlink",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-media_publish-media_publish_partial_copy",
+      "operation_id": "media_publish",
+      "step": "media.publish.partial_copy",
+      "kind": "failpoint",
+      "failpoint": "media.publish.partial_copy",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site media.publish.partial_copy (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "media.publish.partial_copy",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_dir_sync",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.finalize.dir_sync",
+      "kind": "failpoint",
+      "failpoint": "rshd4.finalize.dir_sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.finalize.dir_sync (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.finalize.dir_sync",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_rename",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.finalize.rename",
+      "kind": "failpoint",
+      "failpoint": "rshd4.finalize.rename",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.finalize.rename (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.finalize.rename",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_summary",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.finalize.summary",
+      "kind": "failpoint",
+      "failpoint": "rshd4.finalize.summary",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.finalize.summary (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.finalize.summary",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_sync",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.finalize.sync",
+      "kind": "failpoint",
+      "failpoint": "rshd4.finalize.sync",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.finalize.sync (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.finalize.sync",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_frontier_publish",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.frontier.publish",
+      "kind": "failpoint",
+      "failpoint": "rshd4.frontier.publish",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.frontier.publish (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.frontier.publish",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_mode_after_persist",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.mode.after_persist",
+      "kind": "failpoint",
+      "failpoint": "rshd4.mode.after_persist",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.mode.after_persist (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.mode.after_persist",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_mode_before_persist",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.mode.before_persist",
+      "kind": "failpoint",
+      "failpoint": "rshd4.mode.before_persist",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.mode.before_persist (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.mode.before_persist",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_shadow_append",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.shadow.append",
+      "kind": "failpoint",
+      "failpoint": "rshd4.shadow.append",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.shadow.append (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.shadow.append",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-recovery_shadow-rshd4_shadow_flush",
+      "operation_id": "recovery_shadow",
+      "step": "rshd4.shadow.flush",
+      "kind": "failpoint",
+      "failpoint": "rshd4.shadow.flush",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site rshd4.shadow.flush (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "rshd4.shadow.flush",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-segment_alloc-segalloc_after_active_media",
+      "operation_id": "segment_alloc",
+      "step": "segalloc.after_active_media",
+      "kind": "failpoint",
+      "failpoint": "segalloc.after_active_media",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site segalloc.after_active_media (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "segalloc.after_active_media",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-segment_alloc-segalloc_after_reconstruct",
+      "operation_id": "segment_alloc",
+      "step": "segalloc.after_reconstruct",
+      "kind": "failpoint",
+      "failpoint": "segalloc.after_reconstruct",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site segalloc.after_reconstruct (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "segalloc.after_reconstruct",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-segment_alloc-segalloc_after_reserve_before_media",
+      "operation_id": "segment_alloc",
+      "step": "segalloc.after_reserve_before_media",
+      "kind": "failpoint",
+      "failpoint": "segalloc.after_reserve_before_media",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site segalloc.after_reserve_before_media (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "segalloc.after_reserve_before_media",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-segment_alloc-segalloc_after_reserve_persist",
+      "operation_id": "segment_alloc",
+      "step": "segalloc.after_reserve_persist",
+      "kind": "failpoint",
+      "failpoint": "segalloc.after_reserve_persist",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site segalloc.after_reserve_persist (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "segalloc.after_reserve_persist",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-segment_alloc-segalloc_before_reconstruct",
+      "operation_id": "segment_alloc",
+      "step": "segalloc.before_reconstruct",
+      "kind": "failpoint",
+      "failpoint": "segalloc.before_reconstruct",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site segalloc.before_reconstruct (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "segalloc.before_reconstruct",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-segment_alloc-segalloc_before_reserve_persist",
+      "operation_id": "segment_alloc",
+      "step": "segalloc.before_reserve_persist",
+      "kind": "failpoint",
+      "failpoint": "segalloc.before_reserve_persist",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site segalloc.before_reserve_persist (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "segalloc.before_reserve_persist",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-seal_active-store_seal_after_authoritative_publish",
+      "operation_id": "seal_active",
+      "step": "store.seal.after_authoritative_publish",
+      "kind": "failpoint",
+      "failpoint": "store.seal.after_authoritative_publish",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site store.seal.after_authoritative_publish (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.seal.after_authoritative_publish",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-seal_active-store_seal_after_derived_enrichment",
+      "operation_id": "seal_active",
+      "step": "store.seal.after_derived_enrichment",
+      "kind": "failpoint",
+      "failpoint": "store.seal.after_derived_enrichment",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site store.seal.after_derived_enrichment (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.seal.after_derived_enrichment",
+      "source_ref": "crates/residiuum-store/src"
+    },
+    {
+      "id": "CSQ-BND-FP-seal_active-store_seal_before_authoritative_rename",
+      "operation_id": "seal_active",
+      "step": "store.seal.before_authoritative_rename",
+      "kind": "failpoint",
+      "failpoint": "store.seal.before_authoritative_rename",
+      "fault": "error",
+      "ci_subset": false,
+      "expected_on_reopen": {
+        "acknowledged_visible": true,
+        "no_fabricated_commit": true,
+        "salvageable": true,
+        "prior_durable_retained": true,
+        "notes": "Registered for source site store.seal.before_authoritative_rename (P0/CSE instrumentation)."
+      },
+      "harness": "in_process_failpoint",
+      "historical_cell_id": "store.seal.before_authoritative_rename",
+      "source_ref": "crates/residiuum-store/src"
     }
   ]
 }

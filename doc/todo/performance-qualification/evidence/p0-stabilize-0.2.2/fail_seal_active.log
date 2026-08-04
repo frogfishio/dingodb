@@ -1,0 +1,21 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.27s
+     Running tests/stage_def_096_async_lifecycle.rs (target/debug/deps/stage_def_096_async_lifecycle-33287b26dbcd4b66)
+
+running 1 test
+
+thread 'explicit_seal_active_still_sync_and_drains' (62375678) panicked at crates/residiuum-store/tests/stage_def_096_async_lifecycle.rs:62:5:
+assertion `left == right` failed
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test explicit_seal_active_still_sync_and_drains ... FAILED
+
+failures:
+
+failures:
+    explicit_seal_active_still_sync_and_drains
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.29s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_096_async_lifecycle`

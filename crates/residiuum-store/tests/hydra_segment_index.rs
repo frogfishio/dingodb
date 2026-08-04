@@ -16,6 +16,8 @@ fn seal_writes_hydra_sidecar() {
             .unwrap();
     }
     store.seal_active().unwrap();
+    // CompactShadow: Hydra is derived enrichment — drain before asserting sidecar.
+    store.drain_lifecycle().unwrap();
 
     let seg_dir = dir.path().join("segments");
     let segs: Vec<_> = std::fs::read_dir(&seg_dir)

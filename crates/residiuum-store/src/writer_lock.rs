@@ -119,6 +119,8 @@ pub struct StoreOpenOptions {
     pub writer_lock_poll_interval: Duration,
     /// Optional cancellation flag checked between polls.
     pub cancelled: Option<Arc<AtomicBool>>,
+    /// Pre-mutation media inventory policy (P0). Default fail-closed.
+    pub inventory_policy: crate::media_inventory::InventoryPolicy,
 }
 
 impl Default for StoreOpenOptions {
@@ -127,6 +129,7 @@ impl Default for StoreOpenOptions {
             writer_lock_wait: None,
             writer_lock_poll_interval: Duration::from_millis(50),
             cancelled: None,
+            inventory_policy: crate::media_inventory::InventoryPolicy::FailClosed,
         }
     }
 }
@@ -148,6 +151,13 @@ impl StoreOpenOptions {
     /// Attach a cancellation flag (checked between polls).
     pub fn with_cancel(mut self, flag: Arc<AtomicBool>) -> Self {
         self.cancelled = Some(flag);
+        self
+    }
+
+    /// Salvage / identity-reassign reopen: tolerate foreign-store descriptors
+    /// and unscannable media while still refusing segment-id collisions.
+    pub fn tolerate_unidentified_inventory(mut self) -> Self {
+        self.inventory_policy = crate::media_inventory::InventoryPolicy::TolerateUnidentified;
         self
     }
 }

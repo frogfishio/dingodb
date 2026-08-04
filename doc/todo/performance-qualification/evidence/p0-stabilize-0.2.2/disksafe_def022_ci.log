@@ -1,0 +1,18 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+warning: function `arm_panic` is never used
+   --> crates/residiuum-store/tests/stage_def_022_crash_matrix.rs:440:4
+    |
+440 | fn arm_panic(name: &str) {
+    |    ^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `residiuum-store` (test "stage_def_022_crash_matrix") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.54s
+     Running tests/stage_def_022_crash_matrix.rs (target/debug/deps/stage_def_022_crash_matrix-a6c6b151f5ca1d9f)
+
+running 1 test
+test ci_subset_failpoints_respect_reopen_invariants ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 3.05s
+

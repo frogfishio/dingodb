@@ -87,13 +87,16 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
     drop(store);
 
     // Phase 2: post-seal candidate path.
-    // Dual-stream: Shadows already published — only Compact amp + verification.
-    // Mirror path (default): Compact + RSHD0003 post-seal copy.
+    // Dual-stream / CompactShadow (product default): Shadows already published at
+    // seal — only Compact amp + verification (do not remint RSHD0003 over P★).
+    // Materialized + no dual: Compact + RSHD0003 post-seal copy (legacy measure).
     let sealed = list_sealed_segment_files(&paths).unwrap();
     assert!(
         !sealed.is_empty(),
         "expected ≥1 sealed segment at target={target_bytes}"
     );
+    let shadow_prepublished = dual
+        || every_protected_has_verified_rsh(&paths, store_id).unwrap_or(false);
 
     let mut samples: Vec<ShadowStageSample> = Vec::new();
     let shadow_t0 = Instant::now();
@@ -114,7 +117,7 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
             QualifyOptions {
                 encrypt: false,
                 write_compact: true,
-                write_shadow: !dual,
+                write_shadow: !shadow_prepublished,
                 shard: 0,
             },
         )
@@ -125,9 +128,9 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
 
     // ETQ-comparable lifecycle: ack wall includes seal-path work; here candidate
     // enrichment is the post-seal drain analogue (Compact is tiny; Shadow is the cost).
-    // Dual-stream: Shadow finalize is inside ack_wall — lifecycle ≈ ack.
+    // Dual-stream / CompactShadow: Shadow finalize is inside ack_wall — lifecycle ≈ ack.
     let ack_ops_per_sec = ops as f64 / ack_wall.as_secs_f64().max(1e-12);
-    let lifecycle_ops_per_sec = if dual {
+    let lifecycle_ops_per_sec = if shadow_prepublished {
         ack_ops_per_sec
     } else {
         ops as f64 / (ack_wall + shadow_wall).as_secs_f64().max(1e-12)
@@ -135,10 +138,13 @@ fn run_campaign(target_bytes: u64) -> Step7CampaignReport {
 
     // Shadow publication rate.
     // Dual-stream: finalize-only (summary+sync+rename+dir+frontier folded in seal).
+    // CompactShadow (no dual counters): sealed count / ack wall.
     // Mirror: physical copy + durable publish + frontier (Compact excluded).
     let shadow_pub_seg_per_sec = if dual {
         let secs = dual_finalize_ns as f64 / 1e9;
         dual_published as f64 / secs.max(1e-12)
+    } else if shadow_prepublished {
+        sealed.len() as f64 / ack_wall.as_secs_f64().max(1e-12)
     } else {
         let shadow_only_secs: f64 = samples
             .iter()

@@ -431,6 +431,9 @@ pub struct Store {
     shadow_dual_published: u64,
     /// Durable recovery-mode marker (Step 8 flip). Default Materialized dual-run.
     recovery_mode: crate::recovery_shadow::RecoveryMode,
+    /// When true, resume/inventory accept foreign-store segment descriptors
+    /// (salvage dest / identity-reassign reopen only).
+    accept_foreign_store_id: bool,
     /// Cumulative auto-rotation stage timings (sustained-rotation qualification).
     rotation_stage_totals: RotationStageTotals,
     /// Cumulative derived enrichment stage timings (ETQ-0).
@@ -704,6 +707,7 @@ impl Store {
             shadow_dual_finalize_ns: 0,
             shadow_dual_published: 0,
             recovery_mode: crate::recovery_shadow::RecoveryMode::Materialized,
+            accept_foreign_store_id: false,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -817,6 +821,7 @@ impl Store {
             shadow_dual_finalize_ns: 0,
             shadow_dual_published: 0,
             recovery_mode: crate::recovery_shadow::RecoveryMode::Materialized,
+            accept_foreign_store_id: false,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -832,6 +837,10 @@ impl Store {
             awo_writer_poisoned: false,
             awo_lease_active: false,
         };
+        store.accept_foreign_store_id = matches!(
+            options.inventory_policy,
+            crate::media_inventory::InventoryPolicy::TolerateUnidentified
+        );
         if let Some(pipe) = store.seal_pipeline.as_mut() {
             pipe.max_pending_seals =
                 DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
@@ -839,11 +848,12 @@ impl Store {
         store.load_tier_state()?;
         // P0: inventory authoritative media and refuse collisions **before**
         // pending recovery, index rebuild, or any overwrite-capable mutation.
-        let _ = crate::media_inventory::refuse_authoritative_collisions(
+        let _ = crate::media_inventory::inventory_authoritative_media(
             &store.paths,
             store.store_id,
             store.writer_shards,
             store.limits,
+            options.inventory_policy,
         )?;
         // Finish any pending seals left by a prior crash before index rebuild.
         let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
@@ -853,12 +863,26 @@ impl Store {
         store.load_or_rebuild_catalog()?;
         // Durable segment-id high water (never-reuse). Reconstructs above every
         // active/pending/sealed/shadow/chimera id; refuses if ambiguous.
-        store.segment_seq = crate::segment_allocator::reconstruct_reserved_thru(
-            &store.paths,
-            store.store_id,
-            store.writer_shards,
-            store.limits,
-        )?;
+        let accept_foreign = matches!(
+            options.inventory_policy,
+            crate::media_inventory::InventoryPolicy::TolerateUnidentified
+        );
+        store.segment_seq = if accept_foreign {
+            crate::segment_allocator::reconstruct_reserved_thru_with_policy(
+                &store.paths,
+                store.store_id,
+                store.writer_shards,
+                store.limits,
+                true,
+            )?
+        } else {
+            crate::segment_allocator::reconstruct_reserved_thru(
+                &store.paths,
+                store.store_id,
+                store.writer_shards,
+                store.limits,
+            )?
+        };
         store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
         store.resume_or_start_all_actives()?;
         // Finish or cancel incomplete compaction jobs (DEF-024).
@@ -980,6 +1004,7 @@ impl Store {
             shadow_dual_finalize_ns: 0,
             shadow_dual_published: 0,
             recovery_mode: crate::recovery_shadow::RecoveryMode::Materialized,
+            accept_foreign_store_id: false,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -3605,6 +3630,24 @@ impl Store {
         // (derived only). PrimaryIndex segment_ids still point at sources until
         // reclaim/rebuild; per-source chimera sidecars remain the get path.
         let _ = self.write_chimera_for_live_projection(segment_id);
+        // CompactShadow post-flip reclaim requires a durable replacement Shadow
+        // for the compact output before source retirement.
+        if self.recovery_mode.omits_new_materialized()
+            || matches!(
+                crate::recovery_shadow::shadow_reclaim_policy(),
+                crate::recovery_shadow::ShadowReclaimPolicy::RequireReplacementShadow
+            )
+        {
+            let sealed = self.paths.sealed_segment(&segment_id);
+            if sealed.is_file() {
+                crate::recovery_shadow::publish_mirror_shadow_from_path(
+                    &self.paths,
+                    self.store_id,
+                    &segment_id,
+                    &sealed,
+                )?;
+            }
+        }
         crate::failpoint::hit("store.compact.after_activate")?;
         job.phase = CompactPhase::Activated;
         job.updated_ns = now_ns();
@@ -4652,7 +4695,12 @@ impl Store {
         )?;
 
         // Rebuild derived state from the copied frames (does not rewrite them).
-        let mut dest_open = Store::open(dest)?;
+        // Dest mint has a new store_id; evidence frames retain source store_id —
+        // open with TolerateUnidentified so survivors enumerate without FailClosed.
+        let mut dest_open = Store::open_with_options(
+            dest,
+            StoreOpenOptions::default().tolerate_unidentified_inventory(),
+        )?;
         let live_subjects = dest_open.index.live_entries().count();
         manifest.live_subjects = live_subjects;
         // Re-hash after filling live_subjects.
@@ -4751,8 +4799,12 @@ impl Store {
     /// live subjects and caused write-throughput collapse at GB scale). Use
     /// [`Self::persist_index_cache`] when a durable frontier checkpoint is wanted.
     ///
-    /// Always **synchronous** (including Hydra/Chimera) so failpoints and tests
-    /// see a completed seal. Drains any in-flight async seals first (DEF-096).
+    /// Always **synchronous** for authoritative publish + catalog visibility
+    /// (including CompactShadow protected-pair finalize). Derived Hydra/Chimera
+    /// may still enqueue asynchronously under CompactShadow — call
+    /// [`Self::drain_lifecycle`] when sidecars must be present (DEF-096).
+    /// Drains any in-flight async seals first, then waits for seals submitted
+    /// by this call.
     pub fn seal_active(&mut self) -> Result<(), StoreError> {
         self.seal_active_with_breakdown().map(|_| ())
     }
@@ -4773,6 +4825,14 @@ impl Store {
         for shard in 0..n {
             self.seal_active_shard_timed(shard, &mut out)?;
         }
+        // Explicit seal_active is synchronous for authoritative publish (DEF-096):
+        // CompactShadow may enqueue protected-pair finalize; wait until applied
+        // so pending_seal_inflight==0 and sealed media is visible.
+        let t_wait = std::time::Instant::now();
+        self.wait_seals_applied()?;
+        out.drain_lifecycle_ns = out
+            .drain_lifecycle_ns
+            .saturating_add(elapsed_ns(t_wait));
         Ok(out)
     }
 
@@ -5453,6 +5513,21 @@ impl Store {
                     content_hash,
                     size,
                 );
+                // Hierarchical catalog must see the sealed segment immediately
+                // (tiering / seal-cost / list_segment_summaries). Sync seal path
+                // calls note_sealed_segment; protected-pair finalize must match.
+                let sealed_path = self.paths.sealed_segment(&segment_id);
+                if sealed_path.is_file() {
+                    if let Ok(bytes) = fs::read(&sealed_path) {
+                        let _ = self.note_sealed_segment(
+                            segment_id,
+                            TierClass::Hot,
+                            &bytes,
+                            content_hash,
+                            size,
+                        );
+                    }
+                }
                 self.note_derived_catalog_dirty();
                 self.maybe_schedule_derived_catalog_checkpoint(false);
                 if self.enrichment_enabled {
@@ -7606,7 +7681,12 @@ impl Store {
         file.read_to_end(&mut bytes)?;
 
         // Truncate incomplete tail: keep only verified contiguous prefix from offset 0.
-        let (kept, segment_id) = match recover_active_bytes(&bytes, self.store_id, self.limits) {
+        let (kept, segment_id) = match recover_active_bytes(
+            &bytes,
+            self.store_id,
+            self.limits,
+            self.accept_foreign_store_id,
+        ) {
             Ok(v) => v,
             Err(StoreError::CorruptMeta(_)) if bytes.is_empty() => {
                 drop(file);
@@ -8090,6 +8170,7 @@ fn recover_active_bytes(
     bytes: &[u8],
     store_id: [u8; 16],
     limits: SafetyLimits,
+    accept_foreign_store: bool,
 ) -> Result<(Vec<u8>, [u8; 16]), StoreError> {
     if bytes.is_empty() {
         return Ok((Vec::new(), random_id()?));
@@ -8097,6 +8178,7 @@ fn recover_active_bytes(
     let report = scan_forward(bytes, limits);
     let mut end = 0u64;
     let mut segment_id = None;
+    let mut foreign_segment_id = None;
     for region in &report.regions {
         match region {
             residiuum_format::ScanRegion::VerifiedFrame { range, frame } => {
@@ -8109,6 +8191,8 @@ fn recover_active_bytes(
                     if let Some((ids, _, _)) = residiuum_format::decode_descriptor_body(&frame.body) {
                         if ids.store_id == store_id {
                             segment_id = Some(ids.segment_id);
+                        } else if accept_foreign_store && foreign_segment_id.is_none() {
+                            foreign_segment_id = Some(ids.segment_id);
                         }
                     }
                 }
@@ -8120,7 +8204,7 @@ fn recover_active_bytes(
         }
     }
     let kept = bytes[..end as usize].to_vec();
-    let sid = match segment_id {
+    let sid = match segment_id.or(foreign_segment_id) {
         Some(id) => id,
         None if kept.is_empty() => {
             // Empty / no descriptor — caller must discard and mint via allocator.
@@ -8329,7 +8413,13 @@ mod tests {
     #[test]
     fn chimera_seal_layout_and_get_resolve() {
         let dir = tempdir().unwrap();
-        let mut store = Store::create(dir.path()).unwrap();
+        // CSE-2R Materialized embed expectations — not CompactShadow product default.
+        let mut store = Store::create_with_shards_mode(
+            dir.path(),
+            1,
+            crate::recovery_shadow::RecoveryMode::Materialized,
+        )
+        .unwrap();
         let tiny = b"hi";
         let medium = vec![3u8; 200];
         let large = vec![5u8; 32 * 1024];
@@ -8350,6 +8440,7 @@ mod tests {
         };
 
         store.seal_active().unwrap();
+        store.drain_lifecycle().unwrap();
 
         let layout = store
             .load_chimera_layout(seg)
@@ -8383,7 +8474,12 @@ mod tests {
     #[test]
     fn get_uses_primary_index_without_chimera_sidecars() {
         let dir = tempdir().unwrap();
-        let mut store = Store::create(dir.path()).unwrap();
+        let mut store = Store::create_with_shards_mode(
+            dir.path(),
+            1,
+            crate::recovery_shadow::RecoveryMode::Materialized,
+        )
+        .unwrap();
         store
             .put("k", b"value", DurabilityMode::Durable)
             .unwrap();
@@ -8392,6 +8488,7 @@ mod tests {
             _ => panic!("expected live k"),
         };
         store.seal_active().unwrap();
+        store.drain_lifecycle().unwrap();
         assert!(store.load_chimera_layout(seg).unwrap().is_some());
         // Wipe derived chimera; hot get must still resolve via index locator/pread.
         let chimera_root = crate::chimera::chimera_dir(&store.paths);
@@ -8450,7 +8547,12 @@ mod tests {
     #[test]
     fn chimera_rebuild_after_wipe() {
         let dir = tempdir().unwrap();
-        let mut store = Store::create(dir.path()).unwrap();
+        let mut store = Store::create_with_shards_mode(
+            dir.path(),
+            1,
+            crate::recovery_shadow::RecoveryMode::Materialized,
+        )
+        .unwrap();
         store
             .put("x", b"tiny-x", DurabilityMode::Durable)
             .unwrap();
@@ -8462,6 +8564,7 @@ mod tests {
             _ => panic!("expected live x"),
         };
         store.seal_active().unwrap();
+        store.drain_lifecycle().unwrap();
         assert!(store.load_chimera_layout(seg).unwrap().is_some());
 
         // Wipe derived chimera tree and rebuild.

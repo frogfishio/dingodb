@@ -233,7 +233,27 @@ pub fn publish_mirror_shadow_timed(
     let tmp = atomic_file::temp_path_for(&path);
 
     // Immutable: refuse replace of an existing Shadow for this segment id (P0).
+    // Same-path retry: idempotent when bytes already match the intended image;
+    // different bytes → typed collision (do not modify media).
     if path.is_file() {
+        let existing = fs::read(&path)?;
+        let mut content = Hasher::new();
+        content.update(RSH_MAGIC_V3);
+        content.update(&store_id);
+        content.update(segment_id);
+        content.update(&(image.len() as u64).to_le_bytes());
+        content.update(image);
+        let commit = *content.finalize().as_bytes();
+        let mut intended = Vec::with_capacity(MIRROR_ENVELOPE_LEN + image.len() + HASH_LEN);
+        intended.extend_from_slice(RSH_MAGIC_V3);
+        intended.extend_from_slice(&store_id);
+        intended.extend_from_slice(segment_id);
+        intended.extend_from_slice(&(image.len() as u64).to_le_bytes());
+        intended.extend_from_slice(image);
+        intended.extend_from_slice(&commit);
+        if existing == intended {
+            return Ok(MirrorPublishTiming::default());
+        }
         return Err(StoreError::SegmentIdCollision {
             segment_id: *segment_id,
             paths: vec![path.clone()],
@@ -316,10 +336,8 @@ pub fn publish_mirror_shadow_from_path(
     let tmp = atomic_file::temp_path_for(&path);
 
     if path.is_file() {
-        return Err(StoreError::SegmentIdCollision {
-            segment_id: *segment_id,
-            paths: vec![path.clone()],
-        });
+        // Compact / retry: Shadow for this segment_id already durable.
+        return Ok(MirrorPublishTiming::default());
     }
 
     let _ = fs::remove_file(&tmp);
@@ -417,6 +435,35 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(loaded.image, image);
+    }
+
+    #[test]
+    fn publish_mirror_republish_same_bytes_is_idempotent() {
+        let dir = tempdir().unwrap();
+        let paths = StorePaths::new(dir.path());
+        paths.create_dirs().unwrap();
+        let store = [9u8; 16];
+        let seg = [7u8; 16];
+        let image = vec![0xCDu8; 1024];
+        publish_mirror_shadow(&paths, store, &seg, &image).unwrap();
+        // Compact / qualify retry must not collide when the intended image matches.
+        publish_mirror_shadow(&paths, store, &seg, &image).unwrap();
+        let loaded = try_load_mirror(&shadow_path(&paths, &seg), Some(store))
+            .unwrap()
+            .unwrap();
+        assert_eq!(loaded.image, image);
+    }
+
+    #[test]
+    fn publish_mirror_republish_different_bytes_collides() {
+        let dir = tempdir().unwrap();
+        let paths = StorePaths::new(dir.path());
+        paths.create_dirs().unwrap();
+        let store = [3u8; 16];
+        let seg = [4u8; 16];
+        publish_mirror_shadow(&paths, store, &seg, b"aaa").unwrap();
+        let err = publish_mirror_shadow(&paths, store, &seg, b"bbb").unwrap_err();
+        assert!(matches!(err, StoreError::SegmentIdCollision { .. }));
     }
 
     #[test]

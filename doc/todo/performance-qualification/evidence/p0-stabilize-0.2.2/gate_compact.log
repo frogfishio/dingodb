@@ -1,0 +1,15 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.39s
+     Running tests/def_scan_001_segment_not_found.rs (target/debug/deps/def_scan_001_segment_not_found-d166c5653a87509d)
+
+running 1 test
+test compact_reclaim_live_scan_remains_complete ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 2.90s
+
+     Running tests/stage_def_024_compaction.rs (target/debug/deps/stage_def_024_compaction-248b859dc0c7ce76)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+

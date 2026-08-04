@@ -20,6 +20,15 @@ use residiuum_store::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::{Mutex, OnceLock};
+
+/// Serialize failpoint-armed tests (process-global registry).
+fn fp_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+}
 
 fn arm_panic(name: &'static str) {
     clear_failpoints();
@@ -76,6 +85,8 @@ fn seal_and_wait(store: &mut Store) {
 
 #[test]
 fn never_reuse_after_repeated_reopen_seal() {
+    let _guard = fp_lock();
+    disarm();
     let dir = tempfile::tempdir().unwrap();
     let mut all_ids = BTreeSet::new();
     let mut store = Store::create_with_shards(dir.path(), 1).unwrap();
@@ -114,6 +125,8 @@ fn never_reuse_after_repeated_reopen_seal() {
 
 #[test]
 fn never_reuse_multi_shard_allocation() {
+    let _guard = fp_lock();
+    disarm();
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create_with_shards(dir.path(), 4).unwrap();
     let payload = vec![0x5Au8; 32];
@@ -137,6 +150,7 @@ fn never_reuse_multi_shard_allocation() {
 }
 
 fn crash_at(name: &'static str) {
+    // Caller holds fp_lock (tests are serialized).
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().to_path_buf();
     let mut store = Store::create_with_shards(&root, 1).unwrap();
@@ -174,26 +188,31 @@ fn crash_at(name: &'static str) {
 
 #[test]
 fn crash_before_reserve_persist() {
+    let _guard = fp_lock();
     crash_at("segalloc.before_reserve_persist");
 }
 
 #[test]
 fn crash_after_reserve_persist() {
+    let _guard = fp_lock();
     crash_at("segalloc.after_reserve_persist");
 }
 
 #[test]
 fn crash_after_reserve_before_media() {
+    let _guard = fp_lock();
     crash_at("segalloc.after_reserve_before_media");
 }
 
 #[test]
 fn crash_after_active_media() {
+    let _guard = fp_lock();
     crash_at("segalloc.after_active_media");
 }
 
 #[test]
 fn crash_seal_publish_boundaries() {
+    let _guard = fp_lock();
     for name in [
         "store.seal.before_dest_write",
         "store.seal.after_dest_sync",
@@ -205,6 +224,8 @@ fn crash_seal_publish_boundaries() {
 
 #[test]
 fn corrupt_allocator_refuses_without_mutating_media() {
+    let _guard = fp_lock();
+    disarm();
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create_with_shards(dir.path(), 1).unwrap();
     put_n(&mut store, 2, "a");

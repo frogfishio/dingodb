@@ -1,0 +1,24 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running tests/csq0_registry.rs (target/debug/deps/csq0_registry-ca2630e80ed16658)
+
+running 4 tests
+test csq0_store_errors_registered ... ok
+test csq0_registry_profile_and_identity ... ok
+
+thread 'csq0_crash_matrix_import_preserves_historical_ids' (62443088) panicked at crates/residiuum-store/tests/csq0_registry.rs:208:5:
+assertion `left == right` failed: historical failpoint IDs must be preserved
+  left: {"store.index_cache.before_write", "store.seal.after_active_remove", "store.seal.after_dest_sync", "store.checkpoint.before_write", "store.active.write_tail.before", "store.seal.before_dest_write", "heap_lifecycle.after_state_store", "store.active.dir_sync", "store.seal.after_authoritative_publish", "store.create.after_meta", "store.seal.after_derived_enrichment", "store.create.after_active_header", "store.dedup.after_rename", "store.tier.before_placement_write", "store.compact.before_segment_sync", "store.catalog.before_write", "store.active.write_tail.after_write", "heap_lifecycle.after_purge_plan", "heap_lifecycle.after_coverage_destroy", "store.index_cache.after_write", "store.dedup.before_write", "store.active.write_tail.after_sync", "store.active.write_tail.short_write", "store.seal.before_authoritative_rename", "heap_lifecycle.after_transition_receipt"}
+ right: {"store.dedup.before_write", "store.active.write_tail.short_write", "store.create.after_active_header", "store.active.write_tail.after_sync", "store.seal.after_active_remove", "store.active.write_tail.before", "store.checkpoint.before_write", "store.active.dir_sync", "store.dedup.after_rename", "store.index_cache.before_write", "store.active.write_tail.after_write", "store.tier.before_placement_write", "store.create.after_meta", "heap_lifecycle.after_state_store", "store.seal.after_dest_sync", "heap_lifecycle.after_purge_plan", "heap_lifecycle.after_coverage_destroy", "store.seal.before_dest_write", "store.catalog.before_write", "store.compact.before_segment_sync", "store.index_cache.after_write", "heap_lifecycle.after_transition_receipt"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test csq0_crash_matrix_import_preserves_historical_ids ... FAILED
+test csq0_registry_graph_closed ... ok
+
+failures:
+
+failures:
+    csq0_crash_matrix_import_preserves_historical_ids
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p residiuum-store --test csq0_registry`

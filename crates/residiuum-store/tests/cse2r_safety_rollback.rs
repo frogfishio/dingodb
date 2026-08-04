@@ -66,7 +66,12 @@ fn seed_product_seal_fixture() -> Fixture {
     let dir = tempdir().unwrap();
     let root = dir.keep();
 
-    let mut store = Store::create(&root).unwrap();
+    let mut store = Store::create_with_shards_mode(
+        &root,
+        1,
+        residiuum_store::RecoveryMode::Materialized,
+    )
+    .unwrap();
     for k in KEYS {
         store
             .put(k, &expected_body(k), DurabilityMode::Durable)
@@ -74,6 +79,7 @@ fn seed_product_seal_fixture() -> Fixture {
     }
     let store_id = store.store_id();
     store.seal_active().unwrap();
+    store.drain_lifecycle().unwrap();
     drop(store);
 
     let seg_path = {

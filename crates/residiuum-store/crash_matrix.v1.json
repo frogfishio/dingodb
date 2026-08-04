@@ -93,7 +93,7 @@
             "no_fabricated_commit": true,
             "salvageable": true,
             "prior_durable_retained": true,
-            "notes": "Authoritative bytes synced; if op returned before this failpoint, receipt was not issued — post-sync failure leaves durable-on-disk (may be visible on reopen even if caller saw error)."
+            "notes": "Authoritative bytes synced; if op returned before this failpoint, receipt was not issued \u2014 post-sync failure leaves durable-on-disk (may be visible on reopen even if caller saw error)."
           }
         },
         {
@@ -384,7 +384,7 @@
             "no_fabricated_commit": true,
             "salvageable": true,
             "prior_durable_retained": true,
-            "notes": "Seal Fast Lane: crash before pending→sealed rename; pending remains authoritative for recovery."
+            "notes": "Seal Fast Lane: crash before pending\u2192sealed rename; pending remains authoritative for recovery."
           }
         },
         {
@@ -430,7 +430,7 @@
             "no_fabricated_commit": true,
             "salvageable": true,
             "prior_durable_retained": true,
-            "notes": "Append durable; dedup table missing → retry may create a second event until DEF-010 full recovery lands. Skeleton records expected honesty gap."
+            "notes": "Append durable; dedup table missing \u2192 retry may create a second event until DEF-010 full recovery lands. Skeleton records expected honesty gap."
           }
         },
         {
@@ -538,7 +538,7 @@
     },
     {
       "id": "heap_lifecycle",
-      "description": "HP-010/H5 heap administrative transitions and purge (HEAP_SPEC §27/H5)",
+      "description": "HP-010/H5 heap administrative transitions and purge (HEAP_SPEC \u00a727/H5)",
       "persistence_order": [
         "slot.store_state",
         "transition_receipt",
@@ -590,6 +590,576 @@
             "salvageable": true,
             "prior_durable_retained": true,
             "notes": "Partial coverage destroy: incomplete purge stays retired; peer heaps readable. Exercised by hp010."
+          }
+        }
+      ]
+    },
+    {
+      "id": "p0_cse_instrumentation",
+      "description": "P0 media.publish / segalloc / CompactShadow / AWO failpoints",
+      "persistence_order": [
+        "instrumentation_only"
+      ],
+      "failpoints": [
+        {
+          "name": "atomic.after_dir_sync",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for atomic.after_dir_sync"
+          }
+        },
+        {
+          "name": "atomic.after_rename",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for atomic.after_rename"
+          }
+        },
+        {
+          "name": "atomic.after_tmp_sync",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for atomic.after_tmp_sync"
+          }
+        },
+        {
+          "name": "atomic.before_rename",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for atomic.before_rename"
+          }
+        },
+        {
+          "name": "atomic.before_tmp_write",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for atomic.before_tmp_write"
+          }
+        },
+        {
+          "name": "atomic.tmp.short_write",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for atomic.tmp.short_write"
+          }
+        },
+        {
+          "name": "awo.complete.before",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.complete.before"
+          }
+        },
+        {
+          "name": "awo.cook.after",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.cook.after"
+          }
+        },
+        {
+          "name": "awo.cook.before",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.cook.before"
+          }
+        },
+        {
+          "name": "awo.install.frame.after",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.install.frame.after"
+          }
+        },
+        {
+          "name": "awo.install.frame.before",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.install.frame.before"
+          }
+        },
+        {
+          "name": "awo.persist.after_sync",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.persist.after_sync"
+          }
+        },
+        {
+          "name": "awo.persist.after_write",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.persist.after_write"
+          }
+        },
+        {
+          "name": "awo.persist.before",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.persist.before"
+          }
+        },
+        {
+          "name": "awo.publish.after",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.publish.after"
+          }
+        },
+        {
+          "name": "awo.publish.before",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for awo.publish.before"
+          }
+        },
+        {
+          "name": "heap_migration.after_frame_admit",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for heap_migration.after_frame_admit"
+          }
+        },
+        {
+          "name": "heap_migration.after_phase_advance",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for heap_migration.after_phase_advance"
+          }
+        },
+        {
+          "name": "heap_migration.after_state_persist",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for heap_migration.after_state_persist"
+          }
+        },
+        {
+          "name": "heap_migration.before_frame_admit",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for heap_migration.before_frame_admit"
+          }
+        },
+        {
+          "name": "heap_migration.before_phase_advance",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for heap_migration.before_phase_advance"
+          }
+        },
+        {
+          "name": "heap_migration.before_state_persist",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for heap_migration.before_state_persist"
+          }
+        },
+        {
+          "name": "media.publish.after_create",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for media.publish.after_create"
+          }
+        },
+        {
+          "name": "media.publish.after_dest_publish",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for media.publish.after_dest_publish"
+          }
+        },
+        {
+          "name": "media.publish.after_file_sync",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for media.publish.after_file_sync"
+          }
+        },
+        {
+          "name": "media.publish.after_link",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for media.publish.after_link"
+          }
+        },
+        {
+          "name": "media.publish.before_source_unlink",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for media.publish.before_source_unlink"
+          }
+        },
+        {
+          "name": "media.publish.partial_copy",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for media.publish.partial_copy"
+          }
+        },
+        {
+          "name": "rshd4.finalize.dir_sync",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.finalize.dir_sync"
+          }
+        },
+        {
+          "name": "rshd4.finalize.rename",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.finalize.rename"
+          }
+        },
+        {
+          "name": "rshd4.finalize.summary",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.finalize.summary"
+          }
+        },
+        {
+          "name": "rshd4.finalize.sync",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.finalize.sync"
+          }
+        },
+        {
+          "name": "rshd4.frontier.publish",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.frontier.publish"
+          }
+        },
+        {
+          "name": "rshd4.mode.after_persist",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.mode.after_persist"
+          }
+        },
+        {
+          "name": "rshd4.mode.before_persist",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.mode.before_persist"
+          }
+        },
+        {
+          "name": "rshd4.shadow.append",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.shadow.append"
+          }
+        },
+        {
+          "name": "rshd4.shadow.flush",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for rshd4.shadow.flush"
+          }
+        },
+        {
+          "name": "segalloc.after_active_media",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for segalloc.after_active_media"
+          }
+        },
+        {
+          "name": "segalloc.after_reconstruct",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for segalloc.after_reconstruct"
+          }
+        },
+        {
+          "name": "segalloc.after_reserve_before_media",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for segalloc.after_reserve_before_media"
+          }
+        },
+        {
+          "name": "segalloc.after_reserve_persist",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for segalloc.after_reserve_persist"
+          }
+        },
+        {
+          "name": "segalloc.before_reconstruct",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for segalloc.before_reconstruct"
+          }
+        },
+        {
+          "name": "segalloc.before_reserve_persist",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for segalloc.before_reserve_persist"
+          }
+        },
+        {
+          "name": "store.compact.after_activate",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.after_activate"
+          }
+        },
+        {
+          "name": "store.compact.after_create",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.after_create"
+          }
+        },
+        {
+          "name": "store.compact.after_plan",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.after_plan"
+          }
+        },
+        {
+          "name": "store.compact.after_reclaim",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.after_reclaim"
+          }
+        },
+        {
+          "name": "store.compact.after_verify",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.after_verify"
+          }
+        },
+        {
+          "name": "store.compact.before_reclaim",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.before_reclaim"
+          }
+        },
+        {
+          "name": "store.compact.before_verify",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.before_verify"
+          }
+        },
+        {
+          "name": "store.compact.job_write",
+          "ci_subset": false,
+          "expected_on_reopen": {
+            "acknowledged_visible": true,
+            "no_fabricated_commit": true,
+            "salvageable": true,
+            "prior_durable_retained": true,
+            "notes": "Instrumentation cell for store.compact.job_write"
           }
         }
       ]

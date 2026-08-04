@@ -1,0 +1,22 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.48s
+     Running tests/cse3_stage2_step7_shadow_perf.rs (target/debug/deps/cse3_stage2_step7_shadow_perf-ceb55e9a75b82791)
+
+running 1 test
+test step7_smoke_candidate_harness ... FAILED
+
+failures:
+
+---- step7_smoke_candidate_harness stdout ----
+
+thread 'step7_smoke_candidate_harness' (62516423) panicked at crates/residiuum-store/tests/cse3_stage2_step7_shadow_perf.rs:121:10:
+called `Result::unwrap()` on an `Err` value: SegmentIdCollision { segment_id: [1, 0, 0, 0, 0, 0, 0, 0, 5, 39, 244, 104, 39, 33, 105, 101], paths: ["/Users/rumpelstiltskin/Code/Frogfish/residiuum/.tmp-test/cse3-step7-8388608/recovery/shadow/01000000000000000527f46827216965.rsh"] }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    step7_smoke_candidate_harness
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.60s
+
+error: test failed, to rerun pass `-p residiuum-store --test cse3_stage2_step7_shadow_perf`

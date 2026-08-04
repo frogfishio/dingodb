@@ -132,7 +132,7 @@ fn csq_dmg_multi_fault_holes_and_incomplete_tail() {
     );
     assert!(report.subjects_copied >= 1);
 
-    let dest = Store::open(&dst).unwrap();
+    let dest = Store::open_with_options(&dst, residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
     assert_eq!(dest.get("late").unwrap().as_deref(), Some(b"late-v1".as_slice()));
     assert_eq!(dest.get("keep").unwrap().as_deref(), Some(b"keep-v2".as_slice()));
 
@@ -179,7 +179,7 @@ fn csq_rec_reopen_identical_and_resalvage_idempotent() {
         "re-salvage must be deterministic on verified item bodies"
     );
 
-    let dest = Store::open(&dst).unwrap();
+    let dest = Store::open_with_options(&dst, residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
     assert_eq!(dest.get("a").unwrap().as_deref(), Some(b"3".as_slice()));
     assert_eq!(dest.get("b").unwrap().as_deref(), Some(b"2".as_slice()));
 }
@@ -225,7 +225,11 @@ fn csq_rec_live_reopen_rebuild_salvage_agree() {
         .unwrap()
         .salvage_to(&salvaged)
         .unwrap();
-    let dest = Store::open(&salvaged).unwrap();
+    let dest = Store::open_with_options(
+        &salvaged,
+        residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory(),
+    )
+    .unwrap();
     assert_eq!(dest.get("x").unwrap(), live_x);
     assert_eq!(dest.get("y").unwrap(), live_y);
     assert_eq!(dest.get("z").unwrap(), live_z);

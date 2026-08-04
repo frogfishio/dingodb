@@ -1,0 +1,40 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running tests/csq7_damage_salvage.rs (target/debug/deps/csq7_damage_salvage-0633e53c8e4a8fa2)
+
+running 8 tests
+test csq_dmg_incomplete_tail_locality ... ok
+test csq_dmg_corrupt_bytes_never_verified_survivors_readable ... ok
+test csq_rec_healthy_work_continues_after_damage ... ok
+test csq_rec_salvage_never_writes_source ... ok
+test csq_dmg_multi_fault_holes_and_incomplete_tail ... ok
+test csq_rec_live_reopen_rebuild_salvage_agree ... ok
+test csq_rec_live_export_vs_evidence_differential ... ok
+test csq_rec_reopen_identical_and_resalvage_idempotent ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.13s
+
+     Running tests/salvage.rs (target/debug/deps/salvage-e3943028f1328050)
+
+running 5 tests
+test incomplete_tail_does_not_poison_earlier_frames ... ok
+test destroy_catalogs_and_indexes_still_recovers ... ok
+test rebuild_index_matches_get ... ok
+test middle_byte_corruption_still_finds_later_items_via_salvage ... ok
+test salvage_to_new_path_is_non_destructive ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.93s
+
+     Running tests/stage_def_050_backup.rs (target/debug/deps/stage_def_050_backup-bc36ef695757e634)
+
+running 8 tests
+test backup_refuses_non_empty_destination ... ok
+test source_unchanged_after_backup ... ok
+test tampered_manifest_hash_rejected ... ok
+test restore_refuses_existing_store ... ok
+test inspect_backup_uses_on_disk_consistency ... ok
+test exclusive_backup_is_flushed_and_restorable ... ok
+test reassign_identity_produces_distinct_store ... ok
+test salvage_is_not_a_backup_package ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+

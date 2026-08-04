@@ -406,11 +406,25 @@ pub fn restore_full_backup(
         if dedup.is_file() {
             let _ = fs::remove_file(&dedup);
         }
+        // Allocator reservation embeds store_id — drop and reconstruct on open.
+        let seg_seq = crate::segment_allocator::segment_seq_path(&dest_paths);
+        if seg_seq.is_file() {
+            let _ = fs::remove_file(&seg_seq);
+        }
     }
 
     // Verify open + live count. Use a nested scope so the writer lock releases.
     let live_subjects = {
-        let mut opened = crate::store::Store::open(dest_root)?;
+        let mut opened = if opts.reassign_identity {
+            // Segment descriptors still carry the source store_id (byte-identical
+            // backup). Tolerate foreign ownership mapping; collisions still refuse.
+            crate::store::Store::open_with_options(
+                dest_root,
+                crate::writer_lock::StoreOpenOptions::default().tolerate_unidentified_inventory(),
+            )?
+        } else {
+            crate::store::Store::open(dest_root)?
+        };
         if opened.store_id() != restored_store_id {
             return Err(StoreError::CorruptMeta(
                 "restored store_id mismatch after open",
@@ -716,7 +730,7 @@ mod tests {
         assert_ne!(restored.restored_store_id, sid);
         assert!(restored.identity_reassigned);
 
-        let opened = Store::open(&dst).unwrap();
+        let opened = Store::open_with_options(&dst, crate::writer_lock::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
         assert_eq!(opened.store_id(), restored.restored_store_id);
         assert_eq!(opened.get("k").unwrap().as_deref(), Some(b"v".as_slice()));
     }

@@ -771,6 +771,8 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                     if let Some(parent) = sealed_path.parent() {
                         fs::create_dir_all(parent)?;
                     }
+                    // Same Fast Lane failpoints as Materialized finalize (DEF-022).
+                    crate::failpoint::hit("store.seal.before_authoritative_rename")?;
                     fs::rename(&pending_path, &sealed_path)?;
                     if require_fsync {
                         let f = OpenOptions::new().read(true).write(true).open(&sealed_path)?;
@@ -779,6 +781,7 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                             let _ = crate::atomic_file::sync_dir(parent);
                         }
                     }
+                    crate::failpoint::hit("store.seal.after_authoritative_publish")?;
                     Ok(())
                 })();
                 let auth_publish_ns = elapsed_ns(t_auth);
@@ -979,7 +982,7 @@ pub fn publish_sealed_from_summary_frame(
             format!("pending seal missing: {}", pending_path.display()),
         )));
     }
-    let _ = crate::failpoint::hit("store.seal.before_authoritative_rename");
+    crate::failpoint::hit("store.seal.before_authoritative_rename")?;
     {
         {
             let f = OpenOptions::new().write(true).open(pending_path)?;
@@ -1001,7 +1004,7 @@ pub fn publish_sealed_from_summary_frame(
             let _ = crate::atomic_file::sync_dir(parent);
         }
     }
-    let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+    crate::failpoint::hit("store.seal.after_authoritative_publish")?;
     Ok(())
 }
 
@@ -1096,7 +1099,7 @@ pub fn finalize_seal_authoritative(
         )));
     }
 
-    let _ = crate::failpoint::hit("store.seal.before_authoritative_rename");
+    crate::failpoint::hit("store.seal.before_authoritative_rename")?;
 
     let raw = fs::read(pending_path)?;
     let (sealed_bytes, prefix_len) = seal_pending_bytes(raw, store_id, segment_id, limits)?;
@@ -1149,7 +1152,7 @@ pub fn finalize_seal_authoritative(
         }
     }
 
-    let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+    crate::failpoint::hit("store.seal.after_authoritative_publish")?;
     Ok((content_hash, size, sealed_bytes))
 }
 

@@ -1,0 +1,19 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s
+     Running tests/stage_def_011_salvage.rs (target/debug/deps/stage_def_011_salvage-dd985e85c467ba4c)
+
+running 1 test
+
+thread 'salvage_records_holes_and_still_recovers_survivors' (62375845) panicked at crates/residiuum-store/tests/stage_def_011_salvage.rs:140:10:
+called `Result::unwrap()` on an `Err` value: CorruptMeta("authoritative segment media without recoverable store-matching descriptor")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test salvage_records_holes_and_still_recovers_survivors ... FAILED
+
+failures:
+
+failures:
+    salvage_records_holes_and_still_recovers_survivors
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.46s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_011_salvage`

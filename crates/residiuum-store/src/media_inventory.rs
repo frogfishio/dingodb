@@ -16,6 +16,20 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
+/// How to treat non-empty authoritative `.residiuum` without a store-matching
+/// descriptor (P0 open vs salvage/reassign).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum InventoryPolicy {
+    /// Writable / pre-mutation: unidentified media → [`StoreError::CorruptMeta`].
+    #[default]
+    FailClosed,
+    /// Inspect / salvage / identity-reassign reopen: map foreign-store
+    /// descriptors by `segment_id`; skip truly unscannable files into
+    /// [`MediaInventory::unidentified`]. Collisions among identifiable owners
+    /// still refuse.
+    TolerateUnidentified,
+}
+
 /// One authoritative physical owner of a segment id.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthoritativeOwner {
@@ -30,6 +44,8 @@ pub struct AuthoritativeOwner {
 pub struct MediaInventory {
     /// Map of segment id to owners (collision when `owners.len() > 1`).
     pub by_id: BTreeMap<[u8; 16], Vec<AuthoritativeOwner>>,
+    /// Non-empty media with no recoverable descriptor (Tolerate policy only).
+    pub unidentified: Vec<AuthoritativeOwner>,
 }
 
 impl MediaInventory {
@@ -56,11 +72,13 @@ fn decode_segment_id_from_bytes(
     bytes: &[u8],
     store_id: [u8; 16],
     limits: SafetyLimits,
+    accept_foreign_store: bool,
 ) -> Result<Option<[u8; 16]>, StoreError> {
     if bytes.is_empty() {
         return Ok(None);
     }
     let report = scan_forward(bytes, limits);
+    let mut foreign: Option<[u8; 16]> = None;
     for region in &report.regions {
         if let residiuum_format::ScanRegion::VerifiedFrame { frame, .. } = region {
             if frame.header.known_kind() == Some(FrameKind::SegmentDescriptor) {
@@ -68,11 +86,14 @@ fn decode_segment_id_from_bytes(
                     if ids.store_id == store_id {
                         return Ok(Some(ids.segment_id));
                     }
+                    if accept_foreign_store && foreign.is_none() {
+                        foreign = Some(ids.segment_id);
+                    }
                 }
             }
         }
     }
-    Ok(None)
+    Ok(foreign)
 }
 
 fn validate_filename_id(path: &Path, descriptor_id: [u8; 16]) -> Result<(), StoreError> {
@@ -92,17 +113,33 @@ fn inventory_residiuum_file(
     store_id: [u8; 16],
     limits: SafetyLimits,
     role: &'static str,
+    policy: InventoryPolicy,
 ) -> Result<(), StoreError> {
     let bytes = fs::read(&path)?;
-    let Some(id) = decode_segment_id_from_bytes(&bytes, store_id, limits)? else {
-        if !bytes.is_empty() {
-            return Err(StoreError::CorruptMeta(
-                "authoritative segment media without recoverable store-matching descriptor",
-            ));
+    let accept_foreign = matches!(policy, InventoryPolicy::TolerateUnidentified);
+    let Some(id) = decode_segment_id_from_bytes(&bytes, store_id, limits, accept_foreign)? else {
+        if bytes.is_empty() {
+            return Ok(());
         }
-        return Ok(());
+        match policy {
+            InventoryPolicy::FailClosed => {
+                return Err(StoreError::CorruptMeta(
+                    "authoritative segment media without recoverable store-matching descriptor",
+                ));
+            }
+            InventoryPolicy::TolerateUnidentified => {
+                inv.unidentified
+                    .push(AuthoritativeOwner { path, role });
+                return Ok(());
+            }
+        }
     };
-    validate_filename_id(&path, id)?;
+    // FailClosed: filename must match descriptor. Tolerate (salvage evidence /
+    // reassign): allow hash-renamed or foreign-named media; still map by
+    // descriptor segment_id for collision detection.
+    if matches!(policy, InventoryPolicy::FailClosed) {
+        validate_filename_id(&path, id)?;
+    }
     inv.record(id, path, role);
     Ok(())
 }
@@ -117,20 +154,37 @@ pub fn build_authoritative_inventory(
     writer_shards: usize,
     limits: SafetyLimits,
 ) -> Result<MediaInventory, StoreError> {
+    build_authoritative_inventory_with_policy(
+        paths,
+        store_id,
+        writer_shards,
+        limits,
+        InventoryPolicy::FailClosed,
+    )
+}
+
+/// Like [`build_authoritative_inventory`] with an explicit [`InventoryPolicy`].
+pub fn build_authoritative_inventory_with_policy(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    writer_shards: usize,
+    limits: SafetyLimits,
+    policy: InventoryPolicy,
+) -> Result<MediaInventory, StoreError> {
     let mut inv = MediaInventory::default();
 
     for path in list_residiuum_files(&paths.segments_dir())? {
-        inventory_residiuum_file(&mut inv, path, store_id, limits, "sealed")?;
+        inventory_residiuum_file(&mut inv, path, store_id, limits, "sealed", policy)?;
     }
     for path in list_pending_paths(paths)? {
-        inventory_residiuum_file(&mut inv, path, store_id, limits, "pending")?;
+        inventory_residiuum_file(&mut inv, path, store_id, limits, "pending", policy)?;
     }
 
     // Tier placement copies (stable segment identity on other mount roots).
     let tier_root = paths.root.join("tiers");
     if tier_root.is_dir() {
         for ent in walkdir_residiuum(&tier_root)? {
-            inventory_residiuum_file(&mut inv, ent, store_id, limits, "tier")?;
+            inventory_residiuum_file(&mut inv, ent, store_id, limits, "tier", policy)?;
         }
     }
 
@@ -138,7 +192,7 @@ pub fn build_authoritative_inventory(
     let compact_dir = paths.recovery_dir().join("compaction");
     if compact_dir.is_dir() {
         for ent in walkdir_residiuum(&compact_dir)? {
-            inventory_residiuum_file(&mut inv, ent, store_id, limits, "compaction")?;
+            inventory_residiuum_file(&mut inv, ent, store_id, limits, "compaction", policy)?;
         }
     }
 
@@ -146,7 +200,7 @@ pub fn build_authoritative_inventory(
         if !path.is_file() {
             continue;
         }
-        inventory_residiuum_file(&mut inv, path, store_id, limits, "active")?;
+        inventory_residiuum_file(&mut inv, path, store_id, limits, "active", policy)?;
     }
 
     Ok(inv)
@@ -180,8 +234,32 @@ pub fn refuse_authoritative_collisions(
     writer_shards: usize,
     limits: SafetyLimits,
 ) -> Result<MediaInventory, StoreError> {
-    heal_identical_publish_aliases(paths, store_id, writer_shards, limits)?;
-    let inv = build_authoritative_inventory(paths, store_id, writer_shards, limits)?;
+    inventory_authoritative_media(
+        paths,
+        store_id,
+        writer_shards,
+        limits,
+        InventoryPolicy::FailClosed,
+    )
+}
+
+/// Inventory + collision refuse under [`InventoryPolicy`].
+///
+/// `FailClosed` heals publish aliases then refuses unidentified media and
+/// collisions. `TolerateUnidentified` skips heal (no mutation on salvage
+/// reopen), maps foreign-store descriptors, and still refuses collisions.
+pub fn inventory_authoritative_media(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    writer_shards: usize,
+    limits: SafetyLimits,
+    policy: InventoryPolicy,
+) -> Result<MediaInventory, StoreError> {
+    if matches!(policy, InventoryPolicy::FailClosed) {
+        heal_identical_publish_aliases(paths, store_id, writer_shards, limits)?;
+    }
+    let inv =
+        build_authoritative_inventory_with_policy(paths, store_id, writer_shards, limits, policy)?;
     if let Some((segment_id, collision_paths)) = inv.first_collision() {
         return Err(StoreError::SegmentIdCollision {
             segment_id,
@@ -604,7 +682,7 @@ pub fn active_descriptor_id(
     limits: SafetyLimits,
 ) -> Result<Option<[u8; 16]>, StoreError> {
     let bytes = fs::read(path)?;
-    decode_segment_id_from_bytes(&bytes, store_id, limits)
+    decode_segment_id_from_bytes(&bytes, store_id, limits, false)
 }
 
 #[cfg(test)]
@@ -612,10 +690,21 @@ mod tests {
     use super::*;
     use crate::failpoint::{self, Action};
     use std::panic::{catch_unwind, AssertUnwindSafe};
+    use std::sync::{Mutex, OnceLock};
     use tempfile::tempdir;
+
+    fn fp_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+    }
 
     #[test]
     fn rename_exclusive_refuses_different_dest() {
+        let _guard = fp_lock();
+        failpoint::clear_all();
+        failpoint::disable_hit_proof();
         let dir = tempdir().unwrap();
         let src = dir.path().join("a.residiuum");
         let dest = dir.path().join("b.residiuum");
@@ -636,6 +725,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_idempotent_same_bytes() {
+        let _guard = fp_lock();
+        failpoint::clear_all();
+        failpoint::disable_hit_proof();
         let dir = tempdir().unwrap();
         let src = dir.path().join("a.residiuum");
         let dest = dir.path().join("b.residiuum");
@@ -648,6 +740,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_uses_exclusive_publish_not_replace() {
+        let _guard = fp_lock();
+        failpoint::clear_all();
+        failpoint::disable_hit_proof();
         let dir = tempdir().unwrap();
         let src = dir.path().join("a.residiuum");
         let dest = dir.path().join("b.residiuum");
@@ -665,6 +760,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_hard_link_crash_before_unlink_retry_ok() {
+        let _guard = fp_lock();
+        failpoint::clear_all();
+        failpoint::disable_hit_proof();
         // Simulate dual-name window: hard_link then crash before unlink.
         let dir = tempdir().unwrap();
         let src = dir.path().join("src.residiuum");
@@ -680,7 +778,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_crash_after_link_before_unlink() {
+        let _guard = fp_lock();
         failpoint::clear_all();
+        failpoint::disable_hit_proof();
         failpoint::arm("media.publish.force_hard_link", Action::Error);
         failpoint::arm_once("media.publish.after_link", Action::Panic);
         let dir = tempdir().unwrap();
@@ -702,7 +802,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_partial_copy_leaves_no_final() {
+        let _guard = fp_lock();
         failpoint::clear_all();
+        failpoint::disable_hit_proof();
         failpoint::enable_hit_proof();
         failpoint::arm("media.publish.force_cross_device", Action::Error);
         failpoint::arm_once("media.publish.partial_copy", Action::ShortWrite);
@@ -720,7 +822,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_crash_after_create_no_final() {
+        let _guard = fp_lock();
         failpoint::clear_all();
+        failpoint::disable_hit_proof();
         failpoint::arm("media.publish.force_cross_device", Action::Error);
         failpoint::arm_once("media.publish.after_create", Action::Panic);
         let dir = tempdir().unwrap();
@@ -738,6 +842,7 @@ mod tests {
 
     #[test]
     fn rename_exclusive_crash_after_file_sync_no_final() {
+        let _guard = fp_lock();
         failpoint::clear_all();
         failpoint::arm("media.publish.force_cross_device", Action::Error);
         failpoint::arm_once("media.publish.after_file_sync", Action::Panic);
@@ -760,7 +865,9 @@ mod tests {
 
     #[test]
     fn rename_exclusive_crash_after_dest_publish_completes_on_retry() {
+        let _guard = fp_lock();
         failpoint::clear_all();
+        failpoint::disable_hit_proof();
         failpoint::arm("media.publish.force_cross_device", Action::Error);
         failpoint::arm_once("media.publish.after_dest_publish", Action::Panic);
         let dir = tempdir().unwrap();

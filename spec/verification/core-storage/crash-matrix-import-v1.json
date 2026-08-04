@@ -495,6 +495,227 @@
           }
         }
       ]
+    },
+    {
+      "id": "p0_cse_instrumentation",
+      "failpoints": [
+        {
+          "historical_cell_id": "atomic.after_dir_sync",
+          "boundary_id": "CSQ-BND-FP-atomic_control_doc-atomic_after_dir_sync"
+        },
+        {
+          "historical_cell_id": "atomic.after_rename",
+          "boundary_id": "CSQ-BND-FP-atomic_control_doc-atomic_after_rename"
+        },
+        {
+          "historical_cell_id": "atomic.after_tmp_sync",
+          "boundary_id": "CSQ-BND-FP-atomic_control_doc-atomic_after_tmp_sync"
+        },
+        {
+          "historical_cell_id": "atomic.before_rename",
+          "boundary_id": "CSQ-BND-FP-atomic_control_doc-atomic_before_rename"
+        },
+        {
+          "historical_cell_id": "atomic.before_tmp_write",
+          "boundary_id": "CSQ-BND-FP-atomic_control_doc-atomic_before_tmp_write"
+        },
+        {
+          "historical_cell_id": "atomic.tmp.short_write",
+          "boundary_id": "CSQ-BND-FP-atomic_control_doc-atomic_tmp_short_write"
+        },
+        {
+          "historical_cell_id": "awo.complete.before",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_complete_before"
+        },
+        {
+          "historical_cell_id": "awo.cook.after",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_cook_after"
+        },
+        {
+          "historical_cell_id": "awo.cook.before",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_cook_before"
+        },
+        {
+          "historical_cell_id": "awo.install.frame.after",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_install_frame_after"
+        },
+        {
+          "historical_cell_id": "awo.install.frame.before",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_install_frame_before"
+        },
+        {
+          "historical_cell_id": "awo.persist.after_sync",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_persist_after_sync"
+        },
+        {
+          "historical_cell_id": "awo.persist.after_write",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_persist_after_write"
+        },
+        {
+          "historical_cell_id": "awo.persist.before",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_persist_before"
+        },
+        {
+          "historical_cell_id": "awo.publish.after",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_publish_after"
+        },
+        {
+          "historical_cell_id": "awo.publish.before",
+          "boundary_id": "CSQ-BND-FP-adaptive_write-awo_publish_before"
+        },
+        {
+          "historical_cell_id": "heap_migration.after_frame_admit",
+          "boundary_id": "CSQ-BND-FP-heap_migration-heap_migration_after_frame_admit"
+        },
+        {
+          "historical_cell_id": "heap_migration.after_phase_advance",
+          "boundary_id": "CSQ-BND-FP-heap_migration-heap_migration_after_phase_advance"
+        },
+        {
+          "historical_cell_id": "heap_migration.after_state_persist",
+          "boundary_id": "CSQ-BND-FP-heap_migration-heap_migration_after_state_persist"
+        },
+        {
+          "historical_cell_id": "heap_migration.before_frame_admit",
+          "boundary_id": "CSQ-BND-FP-heap_migration-heap_migration_before_frame_admit"
+        },
+        {
+          "historical_cell_id": "heap_migration.before_phase_advance",
+          "boundary_id": "CSQ-BND-FP-heap_migration-heap_migration_before_phase_advance"
+        },
+        {
+          "historical_cell_id": "heap_migration.before_state_persist",
+          "boundary_id": "CSQ-BND-FP-heap_migration-heap_migration_before_state_persist"
+        },
+        {
+          "historical_cell_id": "media.publish.after_create",
+          "boundary_id": "CSQ-BND-FP-media_publish-media_publish_after_create"
+        },
+        {
+          "historical_cell_id": "media.publish.after_dest_publish",
+          "boundary_id": "CSQ-BND-FP-media_publish-media_publish_after_dest_publish"
+        },
+        {
+          "historical_cell_id": "media.publish.after_file_sync",
+          "boundary_id": "CSQ-BND-FP-media_publish-media_publish_after_file_sync"
+        },
+        {
+          "historical_cell_id": "media.publish.after_link",
+          "boundary_id": "CSQ-BND-FP-media_publish-media_publish_after_link"
+        },
+        {
+          "historical_cell_id": "media.publish.before_source_unlink",
+          "boundary_id": "CSQ-BND-FP-media_publish-media_publish_before_source_unlink"
+        },
+        {
+          "historical_cell_id": "media.publish.partial_copy",
+          "boundary_id": "CSQ-BND-FP-media_publish-media_publish_partial_copy"
+        },
+        {
+          "historical_cell_id": "rshd4.finalize.dir_sync",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_dir_sync"
+        },
+        {
+          "historical_cell_id": "rshd4.finalize.rename",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_rename"
+        },
+        {
+          "historical_cell_id": "rshd4.finalize.summary",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_summary"
+        },
+        {
+          "historical_cell_id": "rshd4.finalize.sync",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_finalize_sync"
+        },
+        {
+          "historical_cell_id": "rshd4.frontier.publish",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_frontier_publish"
+        },
+        {
+          "historical_cell_id": "rshd4.mode.after_persist",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_mode_after_persist"
+        },
+        {
+          "historical_cell_id": "rshd4.mode.before_persist",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_mode_before_persist"
+        },
+        {
+          "historical_cell_id": "rshd4.shadow.append",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_shadow_append"
+        },
+        {
+          "historical_cell_id": "rshd4.shadow.flush",
+          "boundary_id": "CSQ-BND-FP-recovery_shadow-rshd4_shadow_flush"
+        },
+        {
+          "historical_cell_id": "segalloc.after_active_media",
+          "boundary_id": "CSQ-BND-FP-segment_alloc-segalloc_after_active_media"
+        },
+        {
+          "historical_cell_id": "segalloc.after_reconstruct",
+          "boundary_id": "CSQ-BND-FP-segment_alloc-segalloc_after_reconstruct"
+        },
+        {
+          "historical_cell_id": "segalloc.after_reserve_before_media",
+          "boundary_id": "CSQ-BND-FP-segment_alloc-segalloc_after_reserve_before_media"
+        },
+        {
+          "historical_cell_id": "segalloc.after_reserve_persist",
+          "boundary_id": "CSQ-BND-FP-segment_alloc-segalloc_after_reserve_persist"
+        },
+        {
+          "historical_cell_id": "segalloc.before_reconstruct",
+          "boundary_id": "CSQ-BND-FP-segment_alloc-segalloc_before_reconstruct"
+        },
+        {
+          "historical_cell_id": "segalloc.before_reserve_persist",
+          "boundary_id": "CSQ-BND-FP-segment_alloc-segalloc_before_reserve_persist"
+        },
+        {
+          "historical_cell_id": "store.compact.after_activate",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_after_activate"
+        },
+        {
+          "historical_cell_id": "store.compact.after_create",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_after_create"
+        },
+        {
+          "historical_cell_id": "store.compact.after_plan",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_after_plan"
+        },
+        {
+          "historical_cell_id": "store.compact.after_reclaim",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_after_reclaim"
+        },
+        {
+          "historical_cell_id": "store.compact.after_verify",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_after_verify"
+        },
+        {
+          "historical_cell_id": "store.compact.before_reclaim",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_before_reclaim"
+        },
+        {
+          "historical_cell_id": "store.compact.before_verify",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_before_verify"
+        },
+        {
+          "historical_cell_id": "store.compact.job_write",
+          "boundary_id": "CSQ-BND-FP-compact_live-store_compact_job_write"
+        },
+        {
+          "historical_cell_id": "store.seal.after_authoritative_publish",
+          "boundary_id": "CSQ-BND-FP-seal_active-store_seal_after_authoritative_publish"
+        },
+        {
+          "historical_cell_id": "store.seal.after_derived_enrichment",
+          "boundary_id": "CSQ-BND-FP-seal_active-store_seal_after_derived_enrichment"
+        },
+        {
+          "historical_cell_id": "store.seal.before_authoritative_rename",
+          "boundary_id": "CSQ-BND-FP-seal_active-store_seal_before_authoritative_rename"
+        }
+      ]
     }
   ]
 }

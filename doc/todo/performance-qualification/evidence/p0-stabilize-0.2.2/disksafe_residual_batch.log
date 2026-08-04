@@ -1,0 +1,65 @@
+=== mirror republish unit ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.53s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_store-2e38236c1dee835c)
+
+running 5 tests
+test recovery_shadow::mirror::tests::mirror_roundtrip_and_commitment ... ok
+test recovery_shadow::mirror::tests::publish_mirror_is_durable_path ... ok
+test recovery_shadow::mirror::tests::publish_mirror_republish_different_bytes_collides ... ok
+test recovery_shadow::mirror::tests::publish_mirror_republish_same_bytes_is_idempotent ... ok
+test recovery_shadow::mirror::tests::torn_mirror_fails_closed ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 238 filtered out; finished in 0.07s
+
+=== awo_crash_matrix ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.48s
+     Running tests/awo_crash_matrix.rs (target/debug/deps/awo_crash_matrix-6ef2cba991fcca93)
+
+running 6 tests
+test closed_failpoint_inventory_partition ... ok
+test deferred_cells_named_but_not_required_on_put_many ... ok
+test each_pre_publish_error_failpoint_leaves_index_clean ... ok
+test multiprocess_abort_awo_persist_before ... ok
+test post_publish_failpoints_hit_after_index_visible ... ok
+test short_write_cell_poisons_writer ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.85s
+
+=== rshd0004 frontier ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.26s
+     Running tests/cse3_stage2_rshd0004_matrix.rs (target/debug/deps/cse3_stage2_rshd0004_matrix-f188e0443e816a09)
+
+running 1 test
+test r4_fail_frontier_publish ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.15s
+
+=== def022 ci_subset ===
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.21s
+     Running tests/stage_def_022_crash_matrix.rs (target/debug/deps/stage_def_022_crash_matrix-a6c6b151f5ca1d9f)
+
+running 1 test
+test ci_subset_failpoints_respect_reopen_invariants ... FAILED
+
+failures:
+
+---- ci_subset_failpoints_respect_reopen_invariants stdout ----
+
+thread 'ci_subset_failpoints_respect_reopen_invariants' (62510623) panicked at crates/residiuum-store/src/failpoint.rs:223:26:
+residiuum failpoint: store.seal.before_dest_write
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'ci_subset_failpoints_respect_reopen_invariants' (62510623) panicked at crates/residiuum-store/tests/stage_def_022_crash_matrix.rs:651:9:
+seal must panic at failpoint store.seal.before_authoritative_rename
+
+
+failures:
+    ci_subset_failpoints_respect_reopen_invariants
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 2.40s
+
+error: test failed, to rerun pass `-p residiuum-store --test stage_def_022_crash_matrix`

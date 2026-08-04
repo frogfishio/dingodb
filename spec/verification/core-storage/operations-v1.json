@@ -1676,6 +1676,161 @@
       },
       "source_ref": "crates/residiuum-store/src/heap/",
       "historical_operation_id": "heap_migration"
+    },
+    {
+      "id": "adaptive_write",
+      "description": "Adaptive write orchestration instrumentation boundaries",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Adaptive write orchestration instrumentation boundaries",
+      "durability_modes": [
+        "Durable",
+        "Buffered"
+      ],
+      "persistence_steps": [
+        "instrumentation"
+      ],
+      "publication_point": "instrumentation",
+      "boundaries": [
+        "CSQ-BND-FP-adaptive_write-awo_complete_before",
+        "CSQ-BND-FP-adaptive_write-awo_cook_after",
+        "CSQ-BND-FP-adaptive_write-awo_cook_before",
+        "CSQ-BND-FP-adaptive_write-awo_install_frame_after",
+        "CSQ-BND-FP-adaptive_write-awo_install_frame_before",
+        "CSQ-BND-FP-adaptive_write-awo_persist_after_sync",
+        "CSQ-BND-FP-adaptive_write-awo_persist_after_write",
+        "CSQ-BND-FP-adaptive_write-awo_persist_before",
+        "CSQ-BND-FP-adaptive_write-awo_publish_after",
+        "CSQ-BND-FP-adaptive_write-awo_publish_before"
+      ],
+      "invariants": [],
+      "oracles": [],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error"
+      ]
+    },
+    {
+      "id": "media_publish",
+      "description": "P0 exclusive media publish / rename_exclusive failpoints",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "P0 exclusive media publish / rename_exclusive failpoints",
+      "durability_modes": [
+        "Durable",
+        "Buffered"
+      ],
+      "persistence_steps": [
+        "instrumentation"
+      ],
+      "publication_point": "instrumentation",
+      "boundaries": [
+        "CSQ-BND-FP-media_publish-media_publish_after_create",
+        "CSQ-BND-FP-media_publish-media_publish_after_dest_publish",
+        "CSQ-BND-FP-media_publish-media_publish_after_file_sync",
+        "CSQ-BND-FP-media_publish-media_publish_after_link",
+        "CSQ-BND-FP-media_publish-media_publish_before_source_unlink",
+        "CSQ-BND-FP-media_publish-media_publish_partial_copy"
+      ],
+      "invariants": [],
+      "oracles": [],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error"
+      ]
+    },
+    {
+      "id": "recovery_shadow",
+      "description": "Recovery Shadow / CompactShadow protection failpoints",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Recovery Shadow / CompactShadow protection failpoints",
+      "durability_modes": [
+        "Durable",
+        "Buffered"
+      ],
+      "persistence_steps": [
+        "instrumentation"
+      ],
+      "publication_point": "instrumentation",
+      "boundaries": [
+        "CSQ-BND-FP-recovery_shadow-rshd4_finalize_dir_sync",
+        "CSQ-BND-FP-recovery_shadow-rshd4_finalize_rename",
+        "CSQ-BND-FP-recovery_shadow-rshd4_finalize_summary",
+        "CSQ-BND-FP-recovery_shadow-rshd4_finalize_sync",
+        "CSQ-BND-FP-recovery_shadow-rshd4_frontier_publish",
+        "CSQ-BND-FP-recovery_shadow-rshd4_mode_after_persist",
+        "CSQ-BND-FP-recovery_shadow-rshd4_mode_before_persist",
+        "CSQ-BND-FP-recovery_shadow-rshd4_shadow_append",
+        "CSQ-BND-FP-recovery_shadow-rshd4_shadow_flush"
+      ],
+      "invariants": [],
+      "oracles": [],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error"
+      ]
+    },
+    {
+      "id": "segment_alloc",
+      "description": "Durable segment-id allocator (never-reuse) failpoints",
+      "authority_inputs": [
+        "store_root",
+        "writer_lock"
+      ],
+      "preconditions": [
+        "store_open_or_create"
+      ],
+      "logical_transition": "Durable segment-id allocator (never-reuse) failpoints",
+      "durability_modes": [
+        "Durable",
+        "Buffered"
+      ],
+      "persistence_steps": [
+        "instrumentation"
+      ],
+      "publication_point": "instrumentation",
+      "boundaries": [
+        "CSQ-BND-FP-segment_alloc-segalloc_after_active_media",
+        "CSQ-BND-FP-segment_alloc-segalloc_after_reconstruct",
+        "CSQ-BND-FP-segment_alloc-segalloc_after_reserve_before_media",
+        "CSQ-BND-FP-segment_alloc-segalloc_after_reserve_persist",
+        "CSQ-BND-FP-segment_alloc-segalloc_before_reconstruct",
+        "CSQ-BND-FP-segment_alloc-segalloc_before_reserve_persist"
+      ],
+      "invariants": [],
+      "oracles": [],
+      "suites": [
+        "CSQ-SUITE-CRASH"
+      ],
+      "failure_classes": [
+        "process_abort",
+        "io_error"
+      ]
     }
   ]
 }

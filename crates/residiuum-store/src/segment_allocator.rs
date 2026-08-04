@@ -101,6 +101,19 @@ pub fn scan_media_max_seq(
     writer_shards: usize,
     limits: SafetyLimits,
 ) -> Result<u64, StoreError> {
+    scan_media_max_seq_with_policy(paths, store_id, writer_shards, limits, false)
+}
+
+/// Like [`scan_media_max_seq`]; when `accept_foreign_store` is set, active
+/// descriptors from another store_id still contribute their segment_id (salvage
+/// / identity-reassign reopen).
+pub fn scan_media_max_seq_with_policy(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    writer_shards: usize,
+    limits: SafetyLimits,
+    accept_foreign_store: bool,
+) -> Result<u64, StoreError> {
     let mut max = 0u64;
 
     let bump = |max: &mut u64, id: [u8; 16]| {
@@ -160,7 +173,7 @@ pub fn scan_media_max_seq(
 
     // Active headers (filename has no seq).
     for path in paths.list_active_segment_paths(writer_shards.max(1)) {
-        match active_segment_id_from_file(&path, store_id, limits)? {
+        match active_segment_id_from_file(&path, store_id, limits, accept_foreign_store)? {
             Some(id) => bump(&mut max, id),
             None => {
                 // Non-empty active without a recoverable store-matching
@@ -182,12 +195,14 @@ fn active_segment_id_from_file(
     path: &Path,
     store_id: [u8; 16],
     limits: SafetyLimits,
+    accept_foreign_store: bool,
 ) -> Result<Option<[u8; 16]>, StoreError> {
     let bytes = fs::read(path)?;
     if bytes.is_empty() {
         return Ok(None);
     }
     let report = scan_forward(&bytes, limits);
+    let mut foreign: Option<[u8; 16]> = None;
     for region in &report.regions {
         if let residiuum_format::ScanRegion::VerifiedFrame { frame, .. } = region {
             if frame.header.known_kind() == Some(FrameKind::SegmentDescriptor) {
@@ -195,11 +210,14 @@ fn active_segment_id_from_file(
                     if ids.store_id == store_id {
                         return Ok(Some(ids.segment_id));
                     }
+                    if accept_foreign_store && foreign.is_none() {
+                        foreign = Some(ids.segment_id);
+                    }
                 }
             }
         }
     }
-    Ok(None)
+    Ok(foreign)
 }
 
 /// Open-time reconstruction: max(durable, media). Persists when durable is
@@ -213,8 +231,23 @@ pub fn reconstruct_reserved_thru(
     writer_shards: usize,
     limits: SafetyLimits,
 ) -> Result<u64, StoreError> {
+    reconstruct_reserved_thru_with_policy(paths, store_id, writer_shards, limits, false)
+}
+
+/// Like [`reconstruct_reserved_thru`] with foreign-store active acceptance.
+pub fn reconstruct_reserved_thru_with_policy(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    writer_shards: usize,
+    limits: SafetyLimits,
+    accept_foreign_store: bool,
+) -> Result<u64, StoreError> {
     crate::failpoint::hit("segalloc.before_reconstruct")?;
-    let media_max = scan_media_max_seq(paths, store_id, writer_shards, limits)?;
+    let media_max = if accept_foreign_store {
+        scan_media_max_seq_with_policy(paths, store_id, writer_shards, limits, true)?
+    } else {
+        scan_media_max_seq(paths, store_id, writer_shards, limits)?
+    };
     let durable = match load_reserved_thru(paths, store_id) {
         Ok(v) => v,
         Err(StoreError::CorruptMeta(_)) => {

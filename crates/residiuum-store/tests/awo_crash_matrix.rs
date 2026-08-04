@@ -11,6 +11,15 @@ use residiuum_store::{
     arm_failpoint_once, clear_failpoints, enable_failpoint_hit_proof, failpoint_visit_count,
     require_failpoint_visited, DurabilityMode, FailpointAction, Store,
 };
+use std::sync::{Mutex, OnceLock};
+
+/// Failpoints are process-global; serialize armed cells across test threads.
+fn fp_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+}
 
 /// Failpoints hit on Durable put_many **before** index publish.
 const PRE_PUBLISH_CELLS: &[&str] = &[
@@ -53,6 +62,7 @@ fn closed_failpoint_inventory_partition() {
 
 #[test]
 fn each_pre_publish_error_failpoint_leaves_index_clean() {
+    let _guard = fp_lock();
     for &name in PRE_PUBLISH_CELLS {
         let dir = tempfile::tempdir().unwrap();
         let mut store = Store::create(dir.path()).unwrap();
@@ -90,6 +100,7 @@ fn each_pre_publish_error_failpoint_leaves_index_clean() {
 
 #[test]
 fn post_publish_failpoints_hit_after_index_visible() {
+    let _guard = fp_lock();
     for &name in POST_PUBLISH_CELLS {
         let dir = tempfile::tempdir().unwrap();
         let mut store = Store::create(dir.path()).unwrap();
@@ -113,6 +124,7 @@ fn post_publish_failpoints_hit_after_index_visible() {
 
 #[test]
 fn deferred_cells_named_but_not_required_on_put_many() {
+    let _guard = fp_lock();
     // Honesty: reserve/cook are not hit by raw put_many today.
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create(dir.path()).unwrap();
@@ -137,6 +149,7 @@ fn deferred_cells_named_but_not_required_on_put_many() {
 
 #[test]
 fn short_write_cell_poisons_writer() {
+    let _guard = fp_lock();
     let dir = tempfile::tempdir().unwrap();
     let mut store = Store::create(dir.path()).unwrap();
     clear_failpoints();

@@ -140,7 +140,7 @@ fn salvage_records_holes_and_still_recovers_survivors() {
         .unwrap();
     assert!(report.holes_recorded > 0 || report.source.holes > 0);
 
-    let dest = Store::open(&dst).unwrap();
+    let dest = Store::open_with_options(&dst, residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
     // At least the uncorrupted active "late" value must survive.
     assert_eq!(dest.get("late").unwrap().as_deref(), Some(b"2".as_slice()));
 
@@ -255,7 +255,7 @@ fn incomplete_tail_does_not_poison_salvage_to() {
         .salvage_to(&dst)
         .unwrap();
     assert!(report.holes_recorded > 0 || report.source.holes > 0);
-    let dest = Store::open(&dst).unwrap();
+    let dest = Store::open_with_options(&dst, residiuum_store::StoreOpenOptions::default().tolerate_unidentified_inventory()).unwrap();
     assert_eq!(
         dest.get("keep").unwrap().as_deref(),
         Some(b"alive".as_slice())

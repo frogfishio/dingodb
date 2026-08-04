@@ -1,0 +1,32 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.34s
+     Running tests/def_scan_001_segment_not_found.rs (target/debug/deps/def_scan_001_segment_not_found-d166c5653a87509d)
+
+running 11 tests
+test empty_entries_with_holes_is_not_empty_live ... ok
+test locator_fault_maps_to_hole_for_index_and_scan_sources ... ok
+test locator_offset_invalid_is_distinct ... ok
+test scan_collection_returns_page_entries_when_complete ... ok
+test present_media_unreadable_frame_is_locator_frame_verify_failed ... ok
+test scan_collection_hard_fails_on_unresolved_locator ... ok
+test index_build_with_unresolved_locator_is_partial_not_ready ... ok
+test missing_segment_scan_reports_holes_and_survivors ... ok
+test multipage_continues_from_last_key_including_hole ... ok
+test compact_reclaim_live_scan_remains_complete ... FAILED
+test high_churn_exclusive_writer_scan_still_complete ... ok
+
+failures:
+
+---- compact_reclaim_live_scan_remains_complete stdout ----
+
+thread 'compact_reclaim_live_scan_remains_complete' (62430803) panicked at crates/residiuum-store/tests/def_scan_001_segment_not_found.rs:496:14:
+called `Result::unwrap()` on an `Err` value: ConsistencyViolation("post-flip reclaim requires durable replacement Shadow before source retirement")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    compact_reclaim_live_scan_remains_complete
+
+test result: FAILED. 10 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.60s
+
+error: test failed, to rerun pass `-p residiuum-store --test def_scan_001_segment_not_found`

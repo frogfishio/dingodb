@@ -1,0 +1,21 @@
+   Compiling residiuum-store v0.2.1 (/Users/rumpelstiltskin/Code/Frogfish/residiuum/crates/residiuum-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.51s
+     Running tests/stage9_tiering.rs (target/debug/deps/stage9_tiering-a7a20ee631507a4e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/stage_def_010_012_013.rs (target/debug/deps/stage_def_010_012_013-f873aa488f42ed8d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/stage_def_023_write_path.rs (target/debug/deps/stage_def_023_write_path-82456311df14eda9)
+
+running 1 test
+test seal_cost_independent_of_retained_segment_count ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 2.28s
+
