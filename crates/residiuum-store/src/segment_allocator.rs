@@ -250,6 +250,13 @@ pub fn reconstruct_reserved_thru(
     Ok(reserved)
 }
 
+/// Raise in-memory high-water only (never invents below observed; never persists).
+///
+/// Sole in-process mutation helper for `segment_seq` outside reserve/reconstruct.
+pub fn note_in_memory_high_water(reserved_thru: &mut u64, observed_seq: u64) {
+    *reserved_thru = (*reserved_thru).max(observed_seq);
+}
+
 /// Reserve and return the next segment id. Persists the reservation **before**
 /// the caller creates media for this id.
 pub fn reserve_next_segment_id(

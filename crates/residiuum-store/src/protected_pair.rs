@@ -54,10 +54,7 @@ pub fn recover_protected_pairs(
         }
 
         if pending.is_file() && !sealed.is_file() {
-            if sealed.exists() {
-                let _ = fs::remove_file(&sealed);
-            }
-            fs::rename(&pending, &sealed)?;
+            crate::media_inventory::rename_exclusive(&pending, &sealed, segment_id)?;
             let _ = crate::atomic_file::sync_dir(&paths.segments_dir());
         }
 
@@ -96,10 +93,11 @@ pub fn recover_protected_pairs(
         };
         let sealed = paths.sealed_segment(&segment_id);
         if sealed.is_file() {
+            // Auth already published — drop pending without replacing sealed.
             let _ = fs::remove_file(&pending_path);
             continue;
         }
-        fs::rename(&pending_path, &sealed)?;
+        crate::media_inventory::rename_exclusive(&pending_path, &sealed, segment_id)?;
         n = n.saturating_add(1);
     }
 

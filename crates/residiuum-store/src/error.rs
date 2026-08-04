@@ -201,6 +201,18 @@ pub enum StoreError {
     #[error("corrupt store metadata: {0}")]
     CorruptMeta(&'static str),
 
+    /// Authoritative segment id owned by multiple physical paths (P0).
+    ///
+    /// Open / publish refuse without mutating either side. `paths` lists every
+    /// conflicting owner discovered (active, pending, sealed, tier, …).
+    #[error("segment id collision ({} conflicting path(s))", .paths.len())]
+    SegmentIdCollision {
+        /// Colliding segment identity.
+        segment_id: [u8; 16],
+        /// Every conflicting physical path (must not be empty).
+        paths: Vec<std::path::PathBuf>,
+    },
+
     /// Control document failed validation; recovery action is documented.
     ///
     /// Used when a mutable control file (endpoints, dedup table, catalogs, …)

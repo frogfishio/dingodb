@@ -7,9 +7,7 @@
 //!
 //! Materialized product seal remains unchanged until Stage 2 step 8.
 
-use crate::atomic_file::{
-    write_atomic_with_timed_ex, AtomicWriteOptions, AtomicWriteTiming,
-};
+use crate::atomic_file::AtomicWriteTiming;
 use crate::chimera::{
     build_compact_layout, chimera_dir, chimera_layout_path, write_chimera_layout, CompactFrameRef,
 };
@@ -255,8 +253,42 @@ pub fn publish_shadow_timed(
     }
     fs::create_dir_all(shadow_dir(paths))?;
     let path = shadow_path(paths, segment_id);
-    // Durability: full `sync_all` (do not weaken to sync_data for benchmarks).
-    write_atomic_with_timed_ex(&path, bytes, AtomicWriteOptions::default(), false)
+    // Immutable segment-scoped Shadow: never replace (P0). Idempotent when equal.
+    if path.is_file() {
+        let existing = fs::read(&path)?;
+        if existing.as_slice() == bytes {
+            return Ok(AtomicWriteTiming::default());
+        }
+        return Err(StoreError::SegmentIdCollision {
+            segment_id: *segment_id,
+            paths: vec![path],
+        });
+    }
+    let tmp = path.with_extension("rsh.publish.tmp");
+    let mut timing = AtomicWriteTiming::default();
+    {
+        use std::io::Write;
+        use std::time::Instant;
+        let t_write = Instant::now();
+        let mut out = fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&tmp)?;
+        out.write_all(bytes)?;
+        timing.sequential_write_ns = t_write.elapsed().as_nanos() as u64;
+        let t_sync = Instant::now();
+        out.sync_all()?;
+        timing.file_sync_ns = t_sync.elapsed().as_nanos() as u64;
+    }
+    let t_rename = std::time::Instant::now();
+    crate::media_inventory::rename_exclusive(&tmp, &path, *segment_id)?;
+    timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
+    if let Some(parent) = path.parent() {
+        let t_dir = std::time::Instant::now();
+        crate::atomic_file::sync_dir(parent)?;
+        timing.dir_sync_ns = t_dir.elapsed().as_nanos() as u64;
+    }
+    Ok(timing)
 }
 
 /// Build Compact + Recovery Shadow for one sealed segment (no Materialized).

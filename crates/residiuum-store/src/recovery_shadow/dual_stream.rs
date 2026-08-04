@@ -310,11 +310,8 @@ pub fn publish_prepared_shadow(
         let final_path = shadow_path(paths, &segment_id);
         let parent = final_path.parent().unwrap_or_else(|| Path::new("."));
         let t_rename = Instant::now();
-        if final_path.exists() {
-            let _ = fs::remove_file(&final_path);
-        }
         crate::failpoint::hit("rshd4.finalize.rename")?;
-        fs::rename(&tmp_path, &final_path)?;
+        crate::media_inventory::rename_exclusive(&tmp_path, &final_path, segment_id)?;
         timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
 
         let t_dir = Instant::now();
@@ -555,13 +552,10 @@ impl ShadowDualStream {
         let final_path = shadow_path(paths, &self.segment_id);
         let parent = final_path.parent().unwrap_or_else(|| Path::new("."));
         let t_rename = Instant::now();
-        if final_path.exists() {
-            let _ = fs::remove_file(&final_path);
-        }
         crate::failpoint::hit("rshd4.finalize.rename")?;
         // Close before rename on platforms that require it.
         // (File drops when self drops after Ok; rename by path is fine while open on unix.)
-        fs::rename(&self.tmp_path, &final_path)?;
+        crate::media_inventory::rename_exclusive(&self.tmp_path, &final_path, self.segment_id)?;
         timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
 
         let t_dir = Instant::now();

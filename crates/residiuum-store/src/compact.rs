@@ -368,17 +368,87 @@ pub fn resolve_live_body(
     Err(StoreError::SegmentNotFound)
 }
 
+/// Expected identity for a durable index locator (disk pread defence).
+#[derive(Debug, Clone)]
+pub struct LocatorExpect {
+    /// Envelope / media segment id.
+    pub segment_id: [u8; 16],
+    /// Frame header event id.
+    pub event_id: [u8; 16],
+    /// Envelope item id.
+    pub item_id: [u8; 16],
+    /// Envelope subject bytes (must match the index key).
+    pub subject: Vec<u8>,
+    /// Frame header writer_sequence (generation-style fence).
+    pub writer_sequence: u64,
+}
+
+/// Pread item body only when frame matches `expect` completely (P0 disk defence).
+pub fn pread_item_body_matching(
+    path: &Path,
+    offset: u64,
+    expect: &LocatorExpect,
+    limits: SafetyLimits,
+) -> Result<Vec<u8>, StoreError> {
+    let (header, envelope, body, file_len) =
+        pread_item_frame_full(path, offset, expect.segment_id, limits)?;
+    if header.event_id != expect.event_id {
+        return Err(StoreError::ConsistencyViolation(
+            "locator event_id mismatch at disk frame offset".into(),
+        ));
+    }
+    let _ = expect.writer_sequence; // event_id is the durable generation fence
+    let _ = header.writer_sequence;
+    let Some(env) = decode_item_envelope(&envelope) else {
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::at_path(
+                crate::error::LocatorFaultKind::FrameVerifyFailed,
+                expect.segment_id,
+                offset,
+                path,
+                Some(file_len),
+                Some("item envelope decode failed".into()),
+            ),
+        )));
+    };
+    if env.segment_id != expect.segment_id {
+        return Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::segment_mismatch(
+                expect.segment_id,
+                env.segment_id,
+                offset,
+                path,
+                Some(file_len),
+            ),
+        )));
+    }
+    if env.item_id != expect.item_id {
+        return Err(StoreError::ConsistencyViolation(
+            "locator item_id mismatch at disk frame offset".into(),
+        ));
+    }
+    if env.subject != expect.subject {
+        return Err(StoreError::ConsistencyViolation(
+            "locator subject mismatch at disk frame offset".into(),
+        ));
+    }
+    Ok(body)
+}
+
 /// Read a verified item-event body at `offset` when the envelope `segment_id` matches.
 ///
-/// Failures are **structured** [`StoreError::LocatorFault`] values (DEF-SCAN-001)
-/// carrying segment id, offset, path, file length, and optional cause.
+/// Failures are structured [`StoreError::LocatorFault`] (DEF-SCAN-001).
 pub fn pread_item_body_if_segment(
     path: &Path,
     offset: u64,
     expect_segment_id: &[u8; 16],
     limits: SafetyLimits,
 ) -> Result<Vec<u8>, StoreError> {
-    let (env_seg, body, file_len) = pread_item_frame(path, offset, *expect_segment_id, limits)?;
+    let (_header, envelope, body, file_len) =
+        pread_item_frame_full(path, offset, *expect_segment_id, limits)?;
+    let env_seg = decode_item_envelope(&envelope)
+        .map(|e| e.segment_id)
+        .unwrap_or([0u8; 16]);
     if env_seg != *expect_segment_id {
         return Err(StoreError::LocatorFault(Box::new(
             crate::error::LocatorFault::segment_mismatch(
@@ -393,12 +463,12 @@ pub fn pread_item_body_if_segment(
     Ok(body)
 }
 
-fn pread_item_frame(
+fn pread_item_frame_full(
     path: &Path,
     offset: u64,
     expect_segment_id: [u8; 16],
     limits: SafetyLimits,
-) -> Result<([u8; 16], Vec<u8>, u64), StoreError> {
+) -> Result<(residiuum_format::FrameHeader, Vec<u8>, Vec<u8>, u64), StoreError> {
     let mut file = File::open(path).map_err(|e| {
         StoreError::LocatorFault(Box::new(crate::error::LocatorFault::at_path(
             crate::error::LocatorFaultKind::SegmentNotFound,
@@ -445,7 +515,6 @@ fn pread_item_frame(
             ),
         )));
     }
-    // body_len at prefix[16..24], envelope_len at [12..16] (see frame layout).
     let envelope_len = u32::from_le_bytes(prefix[12..16].try_into().unwrap()) as u64;
     let body_len = u64::from_le_bytes(prefix[16..24].try_into().unwrap());
     let frame_len = match (FRAME_PREFIX_LEN as u64)
@@ -508,7 +577,7 @@ fn pread_item_frame(
             ),
         )));
     }
-    let (_h, envelope, body, _hash, _len) = match verify_frame_at(&frame, limits) {
+    let (header, envelope, body, _hash, _len) = match verify_frame_at(&frame, limits) {
         Ok(v) => v,
         Err(e) => {
             return Err(StoreError::LocatorFault(Box::new(
@@ -523,10 +592,22 @@ fn pread_item_frame(
             )));
         }
     };
-    let env_seg = crate::envelope::decode_item_envelope(envelope)
+    Ok((header, envelope.to_vec(), body.to_vec(), file_len))
+}
+
+#[allow(dead_code)]
+fn pread_item_frame(
+    path: &Path,
+    offset: u64,
+    expect_segment_id: [u8; 16],
+    limits: SafetyLimits,
+) -> Result<([u8; 16], Vec<u8>, u64), StoreError> {
+    let (_header, envelope, body, file_len) =
+        pread_item_frame_full(path, offset, expect_segment_id, limits)?;
+    let env_seg = decode_item_envelope(&envelope)
         .map(|e| e.segment_id)
         .unwrap_or([0u8; 16]);
-    Ok((env_seg, body.to_vec(), file_len))
+    Ok((env_seg, body, file_len))
 }
 
 /// Collect reclaimable sealed segment ids from source relative names.

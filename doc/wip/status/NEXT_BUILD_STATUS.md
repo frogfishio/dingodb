@@ -6,12 +6,11 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2k + 2l accepted** — CompactShadow fresh-store
-default; **~21–23K** = controlled campaign life=ack SoT ≈1.7–1.9× Materialized
-~12.4K — not a hardware-independent floor. ~30.9K candidate-only, not
-reproducible. Stage **2l** closed; non-blocking residual: activated legacy
-stores may reopen slower (retained Materialized for rollback). Flip stands.
-Ops: `CSE3_COMPACTSHADOW_OPS_NOTES.md`. **ETQ-2 paused.** **AWO paused.**
+Updated: 2026-08-04 (**P0 segment-ID collision** — inventory + immutable
+no-replace publish + refuse open on duplicates; see
+`doc/todo/performance-qualification/P0_SEGMENT_ID_COLLISION.md`. Pause unrelated
+perf work until P0 accepted. CSE-3 2k+2l remain accepted; campaign ~21–23K SoT
+unchanged.) Ops: `CSE3_COMPACTSHADOW_OPS_NOTES.md`. **ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

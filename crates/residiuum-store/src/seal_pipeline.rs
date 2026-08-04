@@ -763,7 +763,10 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                         )));
                     }
                     if sealed_path.exists() {
-                        let _ = fs::remove_file(&sealed_path);
+                        return Err(StoreError::SegmentIdCollision {
+                            segment_id,
+                            paths: vec![pending_path.clone(), sealed_path.clone()],
+                        });
                     }
                     if let Some(parent) = sealed_path.parent() {
                         fs::create_dir_all(parent)?;
@@ -991,51 +994,54 @@ pub fn publish_sealed_from_summary_frame(
     if let Some(parent) = sealed_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    if sealed_path.exists() {
-        let _ = fs::remove_file(sealed_path);
-    }
-    match fs::rename(pending_path, sealed_path) {
-        Ok(()) => {
-            if require_fsync {
-                if let Some(parent) = sealed_path.parent() {
-                    let _ = crate::atomic_file::sync_dir(parent);
-                }
-            }
-            let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
-            Ok(())
-        }
-        Err(_) => {
-            // Cross-device: write summary-extended image via full path is not available
-            // without the prefix bytes; fall back to reading pending (recovery-grade).
-            let mut bytes = fs::read(pending_path)?;
-            if bytes.len() as u64 != prefix_len.saturating_add(summary_frame.len() as u64) {
-                // Truncate/re-append if rename failed before summary landed.
-                bytes.truncate(prefix_len as usize);
-                bytes.extend_from_slice(summary_frame);
-            }
-            let tmp = sealed_path.with_extension("residiuum.tmp");
-            {
-                let mut out = OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .truncate(true)
-                    .open(&tmp)?;
-                out.write_all(&bytes)?;
-                if require_fsync {
-                    out.sync_all()?;
-                }
-            }
-            fs::rename(&tmp, sealed_path)?;
-            if require_fsync {
-                if let Some(parent) = sealed_path.parent() {
-                    let _ = crate::atomic_file::sync_dir(parent);
-                }
-            }
-            let _ = fs::remove_file(pending_path);
-            let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
-            Ok(())
+    let segment_id = crate::layout::segment_id_from_filename(sealed_path).unwrap_or([0u8; 16]);
+    crate::media_inventory::rename_exclusive(pending_path, sealed_path, segment_id)?;
+    if require_fsync {
+        if let Some(parent) = sealed_path.parent() {
+            let _ = crate::atomic_file::sync_dir(parent);
         }
     }
+    let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+    Ok(())
+}
+
+// NOTE: cross-device fallback removed from the happy path — exclusive rename
+// either succeeds or returns SegmentIdCollision / Io without replacing dest.
+#[allow(dead_code)]
+fn publish_sealed_from_summary_frame_cross_device_fallback(
+    pending_path: &std::path::Path,
+    sealed_path: &std::path::Path,
+    prefix_len: u64,
+    summary_frame: &[u8],
+    require_fsync: bool,
+) -> Result<(), StoreError> {
+    let mut bytes = fs::read(pending_path)?;
+    if bytes.len() as u64 != prefix_len.saturating_add(summary_frame.len() as u64) {
+        bytes.truncate(prefix_len as usize);
+        bytes.extend_from_slice(summary_frame);
+    }
+    let tmp = sealed_path.with_extension("residiuum.tmp");
+    {
+        let mut out = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&tmp)?;
+        out.write_all(&bytes)?;
+        if require_fsync {
+            out.sync_all()?;
+        }
+    }
+    let segment_id = crate::layout::segment_id_from_filename(sealed_path).unwrap_or([0u8; 16]);
+    crate::media_inventory::rename_exclusive(&tmp, sealed_path, segment_id)?;
+    if require_fsync {
+        if let Some(parent) = sealed_path.parent() {
+            let _ = crate::atomic_file::sync_dir(parent);
+        }
+    }
+    let _ = fs::remove_file(pending_path);
+    let _ = crate::failpoint::hit("store.seal.after_authoritative_publish");
+    Ok(())
 }
 
 /// Authoritative + derived finalize (open recovery / sync fallback).
@@ -1116,7 +1122,7 @@ pub fn finalize_seal_authoritative(
         require_fsync,
     )?;
     if !published {
-        // Cross-device or exotic FS: full write to temp + rename (old path).
+        // Cross-device or exotic FS: full write to temp + exclusive rename.
         let tmp = sealed_path.with_extension("residiuum.tmp");
         {
             let mut out = OpenOptions::new()
@@ -1129,7 +1135,7 @@ pub fn finalize_seal_authoritative(
                 out.sync_all()?;
             }
         }
-        fs::rename(&tmp, sealed_path)?;
+        crate::media_inventory::rename_exclusive(&tmp, sealed_path, segment_id)?;
         if require_fsync {
             if let Some(parent) = sealed_path.parent() {
                 let _ = crate::atomic_file::sync_dir(parent);
@@ -1214,11 +1220,9 @@ fn publish_sealed_from_pending(
             f.sync_all()?;
         }
     }
-    // Destination must not exist for rename (Windows / some FS).
-    if sealed_path.exists() {
-        let _ = fs::remove_file(sealed_path);
-    }
-    match fs::rename(pending_path, sealed_path) {
+    // Destination must not be replaced (P0 immutable publish).
+    let segment_id = crate::layout::segment_id_from_filename(sealed_path).unwrap_or([0u8; 16]);
+    match crate::media_inventory::rename_exclusive(pending_path, sealed_path, segment_id) {
         Ok(()) => {
             if require_fsync {
                 if let Some(parent) = sealed_path.parent() {
@@ -1227,9 +1231,13 @@ fn publish_sealed_from_pending(
             }
             Ok(true)
         }
+        Err(StoreError::SegmentIdCollision { .. }) => Err(StoreError::SegmentIdCollision {
+            segment_id,
+            paths: vec![pending_path.to_path_buf(), sealed_path.to_path_buf()],
+        }),
         Err(_) => {
             // Leave pending with summary appended; fallback will write sealed_bytes
-            // and remove pending.
+            // without replacing an existing sealed destination.
             Ok(false)
         }
     }

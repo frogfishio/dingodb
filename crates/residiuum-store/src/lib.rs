@@ -61,8 +61,11 @@ mod large_value;
 mod layout;
 mod lifecycle;
 mod media;
+mod media_inventory;
 mod migrate;
 mod protected_pair;
+
+pub use protected_pair::recover_protected_pairs;
 mod recovery;
 mod recovery_shadow;
 mod scrub;
@@ -115,8 +118,8 @@ pub use chunk_payload::{
 };
 pub use compact::{
     compaction_job_path, compaction_jobs_dir, list_compact_jobs, pread_item_body_if_segment,
-    try_load_compact_job, CheckpointMeta, CompactJob, CompactOptions, CompactPhase, CompactReport,
-    COMPACTION_JOB_DIR, COMPACTION_JOB_SUFFIX,
+    pread_item_body_matching, try_load_compact_job, CheckpointMeta, CompactJob, CompactOptions,
+    CompactPhase, CompactReport, LocatorExpect, COMPACTION_JOB_DIR, COMPACTION_JOB_SUFFIX,
 };
 pub use composed_failure::{
     failure_class_action, schedule as schedule_failure_combinations,
@@ -158,6 +161,10 @@ pub use erasure::{
     DEFAULT_DATA_SHARDS, DEFAULT_PARITY_SHARDS,
 };
 pub use error::{LocatorFault, LocatorFaultKind, StoreError};
+pub use media_inventory::{
+    build_authoritative_inventory, refuse_authoritative_collisions, rename_exclusive,
+    MediaInventory,
+};
 pub use failpoint::{
     any_armed as failpoints_armed, arm as arm_failpoint, arm_n as arm_failpoint_n,
     arm_once as arm_failpoint_once, clear as clear_failpoints, clear_all as clear_failpoints_all,
@@ -276,9 +283,9 @@ pub use recovery_shadow::{
     activate_compact_shadow_mode, backfill_shadows_for_sealed, decode_dual_mirror, is_dual_magic,
     load_recovery_mode, persist_recovery_mode, prepare_flip_to_compact_shadow,
     protected_frontier_gap_free, recovery_mode_path, rollback_to_materialized_mode,
-    DualStreamFinalizeTiming, RecoveryMode, ShadowDualStream, HARNESS_ENVELOPE_KEY,
-    MIRROR_ENVELOPE_LEN, RECOVERY_MODE_FILE, RECOVERY_MODE_MAGIC, RSH_MAGIC, RSH_MAGIC_V1,
-    RSH_MAGIC_V3, RSH_MAGIC_V4, TAG_PUT, TAG_TOMBSTONE,
+    DualStreamFinalizeTiming, PreparedShadowPublish, RecoveryMode, ShadowDualStream,
+    HARNESS_ENVELOPE_KEY, MIRROR_ENVELOPE_LEN, RECOVERY_MODE_FILE, RECOVERY_MODE_MAGIC, RSH_MAGIC,
+    RSH_MAGIC_V1, RSH_MAGIC_V3, RSH_MAGIC_V4, TAG_PUT, TAG_TOMBSTONE, publish_prepared_shadow,
 };
 pub use scrub::{
     list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,
@@ -291,8 +298,8 @@ pub use scrub::{
 };
 pub use seal_pipeline::{
     enrich_sealed_derived, finalize_seal, finalize_seal_authoritative, list_pending_paths,
-    recover_all_pending, EnrichmentStageTiming, EnrichmentStageTotals, SealPipeline,
-    DEFAULT_MAX_PENDING_SEALS,
+    publish_sealed_from_summary_frame, recover_all_pending, EnrichmentStageTiming,
+    EnrichmentStageTotals, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
 };
 pub use secondary::{
     delete_secondary_index, list_secondary_index_paths, secondary_index_path,

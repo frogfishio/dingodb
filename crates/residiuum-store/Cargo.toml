@@ -319,5 +319,9 @@ name = "cse3_stage2_step2l_tps_ab"
 required-features = ["legacy-raw-store"]
 
 [[test]]
+name = "p0_segment_id_collision"
+required-features = ["legacy-raw-store"]
+
+[[test]]
 name = "derived_catalog_checkpoint"
 required-features = ["legacy-raw-store"]

@@ -369,7 +369,11 @@ pub fn hash_file(path: &Path) -> Result<([u8; 32], u64), StoreError> {
 }
 
 /// Copy file with fsync of destination (migration safety).
-fn copy_verified(src: &Path, dest: &Path) -> Result<([u8; 32], u64), StoreError> {
+fn copy_verified(
+    src: &Path,
+    dest: &Path,
+    segment_id: [u8; 16],
+) -> Result<([u8; 32], u64), StoreError> {
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -389,7 +393,7 @@ fn copy_verified(src: &Path, dest: &Path) -> Result<([u8; 32], u64), StoreError>
         out.write_all(&bytes)?;
         out.sync_all()?;
     }
-    fs::rename(&tmp, dest)?;
+    crate::media_inventory::rename_exclusive(&tmp, dest, segment_id)?;
     if let Some(parent) = dest.parent() {
         let _ = sync_dir(parent);
     }
@@ -397,7 +401,9 @@ fn copy_verified(src: &Path, dest: &Path) -> Result<([u8; 32], u64), StoreError>
     // Verify destination matches.
     let (dest_hash, dest_size) = hash_file(dest)?;
     if dest_hash != hash || dest_size != size {
-        let _ = fs::remove_file(dest);
+        // Do not delete dest on mismatch after exclusive create — leave for operator;
+        // collision-safe publish already forbade replace. Remove only our tmp residue.
+        let _ = fs::remove_file(&tmp);
         return Err(StoreError::CorruptMeta("tier migration hash mismatch"));
     }
     Ok((hash, size))
@@ -508,7 +514,7 @@ pub fn transfer_segment(
         });
     }
 
-    let (hash, size) = copy_verified(&src, &dest)?;
+    let (hash, size) = copy_verified(&src, &dest, segment_id)?;
     let evidence = MigrationEvidence {
         segment_id,
         from_tier: current.tier,

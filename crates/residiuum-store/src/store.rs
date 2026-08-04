@@ -837,6 +837,14 @@ impl Store {
                 DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
         }
         store.load_tier_state()?;
+        // P0: inventory authoritative media and refuse collisions **before**
+        // pending recovery, index rebuild, or any overwrite-capable mutation.
+        let _ = crate::media_inventory::refuse_authoritative_collisions(
+            &store.paths,
+            store.store_id,
+            store.writer_shards,
+            store.limits,
+        )?;
         // Finish any pending seals left by a prior crash before index rebuild.
         let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
         // Protected seal-pair: finish auth+Shadow+frontier for crash mid-pair.
@@ -3004,7 +3012,7 @@ impl Store {
             return Ok(None);
         };
 
-        let body = self.resolve_live_value_body(lv)?;
+        let body = self.resolve_live_value_body(key, lv)?;
         if body.is_empty() {
             if let Some(via) = self.try_get_via_chimera(key, &lv.segment_id)? {
                 return Ok(Some(PayloadResult::Complete { body: via }));
@@ -3791,7 +3799,7 @@ impl Store {
         // Resolve locator-only entries so the checkpoint still carries payloads.
         let mut live: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
         for (k, lv) in self.index.live_entries() {
-            let body = self.resolve_live_value_body(lv)?;
+            let body = self.resolve_live_value_body(k.as_slice(), lv)?;
             live.push((k.clone(), body));
         }
         let pairs: Vec<(&[u8], &[u8])> = live
@@ -4008,13 +4016,12 @@ impl Store {
     fn install_loaded_index(
         &mut self,
         index: PrimaryIndex,
-        all_paths: &[PathBuf],
+        _all_paths: &[PathBuf],
     ) -> Result<(), StoreError> {
         self.index = index.clone();
         self.durable_index = index;
         self.recompute_collection_catalogs_from_index();
-        let sealed = list_residiuum_files(&self.paths.segments_dir())?;
-        self.segment_seq = max_segment_seq_from_paths(all_paths).max(sealed.len() as u64);
+        // Allocator is sole authority for `segment_seq` — index must not touch it.
         self.derived_ops_since_checkpoint = 0;
         Ok(())
     }
@@ -4028,9 +4035,7 @@ impl Store {
         )?;
         self.durable_index = self.index.clone();
         self.recompute_collection_catalogs_from_index();
-        let sealed = list_residiuum_files(&self.paths.segments_dir())?;
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
-        self.segment_seq = max_segment_seq_from_paths(&paths).max(sealed.len() as u64);
+        // Allocator is sole authority for `segment_seq` — index must not touch it.
         self.derived_ops_since_checkpoint = 0;
         self.rebuild_chunk_locators_from_segments()?;
         Ok(())
@@ -4181,11 +4186,19 @@ impl Store {
     /// Resolve logical stored body for a live entry (resident or frame pread).
     fn resolve_live_value_body(
         &self,
+        subject: &[u8],
         lv: &crate::index::LiveValue,
     ) -> Result<Vec<u8>, StoreError> {
         if !lv.body.is_empty() {
             return Ok(lv.body.clone());
         }
+        let expect = crate::compact::LocatorExpect {
+            segment_id: lv.segment_id,
+            event_id: lv.event_id,
+            item_id: lv.item_id,
+            subject: subject.to_vec(),
+            writer_sequence: lv.writer_sequence,
+        };
         // Prefer in-memory active tail (write-through may have dropped older frames).
         if let Some(w) = self.find_active_by_segment(&lv.segment_id) {
             let base = w.segment.base_offset();
@@ -4193,9 +4206,33 @@ impl Store {
                 let bytes = w.segment.as_bytes();
                 let off = (lv.frame_offset - base) as usize;
                 if off < bytes.len() {
-                    if let Ok((_h, _e, body, _hash, _len)) =
+                    if let Ok((header, envelope, body, _hash, _len)) =
                         residiuum_format::verify_frame_at(&bytes[off..], self.limits)
                     {
+                        if header.event_id != expect.event_id {
+                            return Err(StoreError::ConsistencyViolation(
+                                "locator event_id mismatch at frame offset".into(),
+                            ));
+                        }
+                        let _ = expect.writer_sequence;
+                        let _ = header.writer_sequence;
+                        if let Some(env) = decode_item_envelope(envelope) {
+                            if env.segment_id != expect.segment_id {
+                                return Err(StoreError::ConsistencyViolation(
+                                    "locator segment_id mismatch in envelope".into(),
+                                ));
+                            }
+                            if env.item_id != expect.item_id {
+                                return Err(StoreError::ConsistencyViolation(
+                                    "locator item_id mismatch in envelope".into(),
+                                ));
+                            }
+                            if env.subject != expect.subject {
+                                return Err(StoreError::ConsistencyViolation(
+                                    "locator subject mismatch in envelope".into(),
+                                ));
+                            }
+                        }
                         return Ok(body.to_vec());
                     }
                 }
@@ -4204,7 +4241,7 @@ impl Store {
         if lv.frame_offset == 0 {
             return Ok(Vec::new());
         }
-        self.pread_body_for_locator(&lv.segment_id, lv.frame_offset)
+        self.pread_body_for_locator_matching(&expect, lv.frame_offset)
     }
 
     /// Pread an item body by (segment_id, frame_offset).
@@ -4214,6 +4251,104 @@ impl Store {
     /// matches. The last path covers salvage/evidence copies that rename active
     /// → hash-named sealed files while preserving original envelope ids.
     fn pread_body_for_locator(
+        &self,
+        segment_id: &[u8; 16],
+        frame_offset: u64,
+    ) -> Result<Vec<u8>, StoreError> {
+        // Legacy callers: segment-id only.
+        let expect = crate::compact::LocatorExpect {
+            segment_id: *segment_id,
+            event_id: [0u8; 16],
+            item_id: [0u8; 16],
+            subject: Vec::new(),
+            writer_sequence: 0,
+        };
+        // Use segment-only helper path via tried list + pread_item_body_if_segment.
+        self.pread_body_for_locator_segment_only(&expect.segment_id, frame_offset)
+    }
+
+    fn pread_body_for_locator_matching(
+        &self,
+        expect: &crate::compact::LocatorExpect,
+        frame_offset: u64,
+    ) -> Result<Vec<u8>, StoreError> {
+        let mut tried = Vec::new();
+        if self.find_active_by_segment(&expect.segment_id).is_some() {
+            let n = self.writer_shards();
+            for shard in 0..n {
+                if self
+                    .active_ref(shard)
+                    .map(|a| a.segment_id == expect.segment_id)
+                    .unwrap_or(false)
+                {
+                    let p = self.paths.active_segment_for_shard(shard, n);
+                    if p.is_file() {
+                        tried.push(p);
+                    }
+                    break;
+                }
+            }
+        }
+        if let Some(p) = self.tier_placement.get(&expect.segment_id) {
+            if let Ok(path) = crate::tier::resolve_placement_path(&self.paths, p) {
+                if path.is_file() {
+                    tried.push(path);
+                }
+            }
+        }
+        let sealed = self.paths.sealed_segment(&expect.segment_id);
+        if sealed.is_file() {
+            tried.push(sealed);
+        }
+        let pending = self.paths.pending_segment(&expect.segment_id);
+        if pending.is_file() {
+            tried.push(pending);
+        }
+        let mut last_named_err: Option<StoreError> = None;
+        let mut named_media = false;
+        for path in &tried {
+            named_media = true;
+            match crate::compact::pread_item_body_matching(path, frame_offset, expect, self.limits)
+            {
+                Ok(body) => return Ok(body),
+                Err(e) if is_locator_resolve_error(&e) || matches!(e, StoreError::ConsistencyViolation(_)) => {
+                    last_named_err = Some(e)
+                }
+                Err(_) => {}
+            }
+        }
+        if named_media {
+            return Err(last_named_err.unwrap_or_else(|| {
+                StoreError::LocatorFault(Box::new(crate::error::LocatorFault::at_path(
+                    crate::error::LocatorFaultKind::FrameVerifyFailed,
+                    expect.segment_id,
+                    frame_offset,
+                    tried.first().map(|p| p.as_path()).unwrap_or_else(|| Path::new("")),
+                    None,
+                    Some("named media unreadable".into()),
+                )))
+            }));
+        }
+        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?
+        {
+            if tried.iter().any(|t| t == &path) {
+                continue;
+            }
+            if !path.is_file() {
+                continue;
+            }
+            if let Ok(body) =
+                crate::compact::pread_item_body_matching(&path, frame_offset, expect, self.limits)
+            {
+                return Ok(body);
+            }
+        }
+        Err(StoreError::LocatorFault(Box::new(
+            crate::error::LocatorFault::segment_not_found(expect.segment_id, frame_offset),
+        )))
+    }
+
+    fn pread_body_for_locator_segment_only(
         &self,
         segment_id: &[u8; 16],
         frame_offset: u64,
@@ -4724,7 +4859,10 @@ impl Store {
                 }
             }
             if publish_dest.exists() {
-                let _ = fs::remove_file(&publish_dest);
+                return Err(StoreError::SegmentIdCollision {
+                    segment_id: sealed_id,
+                    paths: vec![active_path.clone(), publish_dest.clone()],
+                });
             }
             if fs::rename(&active_path, &publish_dest).is_ok() {
                 published = true;
@@ -4732,11 +4870,10 @@ impl Store {
         }
         if !published {
             {
-                let mut out = OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .truncate(true)
-                    .open(&publish_dest)?;
+                let mut out = crate::media_inventory::create_new_exclusive(
+                    &publish_dest,
+                    sealed_id,
+                )?;
                 out.write_all(bytes)?;
                 if flush_mode == DurabilityMode::Durable && !pair_async {
                     out.sync_all()?;
@@ -4771,9 +4908,10 @@ impl Store {
                     .shadow_dual_ns
                     .saturating_add(elapsed_ns(t_shadow));
 
-                self.segment_seq = self
-                    .segment_seq
-                    .max(segment_seq_from_id(&sealed_id));
+                crate::segment_allocator::note_in_memory_high_water(
+                    &mut self.segment_seq,
+                    segment_seq_from_id(&sealed_id),
+                );
                 let t_reopen = std::time::Instant::now();
                 self.start_active_segment_with_mode(shard, flush_mode)?;
                 self.persist_active_shard(shard, flush_mode)?;
@@ -4840,9 +4978,10 @@ impl Store {
         }
 
         // Non-dual (or sync dual fallback) continue: start next active + catalog.
-        self.segment_seq = self
-            .segment_seq
-            .max(segment_seq_from_id(&sealed_id));
+        crate::segment_allocator::note_in_memory_high_water(
+            &mut self.segment_seq,
+            segment_seq_from_id(&sealed_id),
+        );
         let t_reopen = std::time::Instant::now();
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
@@ -5403,9 +5542,10 @@ impl Store {
         // Open next active immediately (put path unblocked for new frames).
         // `start_active_segment_with_mode` owns the `segment_seq` increment.
         // Same active-filename under-count as sync seal — bump before mint.
-        self.segment_seq = self
-            .segment_seq
-            .max(segment_seq_from_id(&segment_id));
+        crate::segment_allocator::note_in_memory_high_water(
+            &mut self.segment_seq,
+            segment_seq_from_id(&segment_id),
+        );
         let t_start = std::time::Instant::now();
         self.start_active_segment_with_mode(shard, flush_mode)?;
         self.persist_active_shard(shard, flush_mode)?;
@@ -7467,17 +7607,24 @@ impl Store {
             }
             Err(e) => return Err(e),
         };
-        // If this id is already sealed, the active file is stale (would overwrite
-        // sealed/.rsh on the next seal). Discard and mint a fresh active.
-        if self.paths.sealed_segment(&segment_id).is_file() {
-            drop(file);
-            let _ = fs::remove_file(&path);
-            self.segment_seq = self
-                .segment_seq
-                .max(segment_seq_from_id(&segment_id));
-            self.start_active_segment(shard)?;
-            self.persist_active_shard(shard, DurabilityMode::Durable)?;
-            return Ok(());
+        // If this id is already sealed/pending elsewhere, refuse open — do not
+        // delete the active or mint around the collision (P0).
+        if self.paths.sealed_segment(&segment_id).is_file()
+            || self.paths.pending_segment(&segment_id).is_file()
+        {
+            let mut paths = vec![path.clone()];
+            let sealed = self.paths.sealed_segment(&segment_id);
+            if sealed.is_file() {
+                paths.push(sealed);
+            }
+            let pending = self.paths.pending_segment(&segment_id);
+            if pending.is_file() {
+                paths.push(pending);
+            }
+            return Err(StoreError::SegmentIdCollision {
+                segment_id,
+                paths,
+            });
         }
         if kept.len() != bytes.len() {
             file.set_len(kept.len() as u64)?;
@@ -7488,9 +7635,10 @@ impl Store {
         // Active path is `active.residiuum` (no seq in the name). Index open
         // therefore cannot see this id via `max_segment_seq_from_paths`; bump
         // so the next mint cannot collide with the resumed segment.
-        self.segment_seq = self
-            .segment_seq
-            .max(segment_seq_from_id(&segment_id));
+        crate::segment_allocator::note_in_memory_high_water(
+            &mut self.segment_seq,
+            segment_seq_from_id(&segment_id),
+        );
 
         // Rebuild ActiveSegment by re-appending recovered item events.
         let rebuilt = rebuild_active_from_bytes(&kept, self.store_id, segment_id, self.limits)?;
@@ -7710,6 +7858,7 @@ fn segment_seq_key(segment_id: &[u8; 16]) -> u64 {
     segment_seq_from_id(segment_id)
 }
 
+#[allow(dead_code)]
 fn max_segment_seq_from_paths(paths: &[PathBuf]) -> u64 {
     let mut max = 0u64;
     for path in paths {

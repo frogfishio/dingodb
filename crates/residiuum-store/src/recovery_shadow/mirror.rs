@@ -232,6 +232,14 @@ pub fn publish_mirror_shadow_timed(
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     let tmp = atomic_file::temp_path_for(&path);
 
+    // Immutable: refuse replace of an existing Shadow for this segment id (P0).
+    if path.is_file() {
+        return Err(StoreError::SegmentIdCollision {
+            segment_id: *segment_id,
+            paths: vec![path.clone()],
+        });
+    }
+
     let _ = fs::remove_file(&tmp);
     crate::failpoint::hit("atomic.before_tmp_write")?;
 
@@ -280,7 +288,7 @@ pub fn publish_mirror_shadow_timed(
 
     let t_rename = Instant::now();
     crate::failpoint::hit("atomic.before_rename")?;
-    fs::rename(&tmp, &path)?;
+    crate::media_inventory::rename_exclusive(&tmp, &path, *segment_id)?;
     crate::failpoint::hit("atomic.after_rename")?;
     timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
 
@@ -306,6 +314,14 @@ pub fn publish_mirror_shadow_from_path(
     let path = shadow_path(paths, segment_id);
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     let tmp = atomic_file::temp_path_for(&path);
+
+    if path.is_file() {
+        return Err(StoreError::SegmentIdCollision {
+            segment_id: *segment_id,
+            paths: vec![path.clone()],
+        });
+    }
+
     let _ = fs::remove_file(&tmp);
 
     crate::failpoint::hit("atomic.before_tmp_write")?;
@@ -359,7 +375,7 @@ pub fn publish_mirror_shadow_from_path(
 
     let t_rename = Instant::now();
     crate::failpoint::hit("atomic.before_rename")?;
-    fs::rename(&tmp, &path)?;
+    crate::media_inventory::rename_exclusive(&tmp, &path, *segment_id)?;
     crate::failpoint::hit("atomic.after_rename")?;
     timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
 

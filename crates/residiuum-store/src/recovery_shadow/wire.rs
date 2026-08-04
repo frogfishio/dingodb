@@ -585,9 +585,31 @@ pub fn publish_shadow(
     }
     fs::create_dir_all(shadow_dir(paths))?;
     let path = shadow_path(paths, segment_id);
-    // Atomic publication (Stage 2a): temp write → File::sync_all → rename →
-    // parent directory sync. Protection must not be claimed before this returns.
-    atomic_file::write_atomic(&path, bytes)?;
+    // Immutable segment-scoped Shadow: never replace an existing `.rsh` (P0).
+    if path.is_file() {
+        let existing = fs::read(&path)?;
+        if existing.as_slice() == bytes {
+            return Ok(());
+        }
+        return Err(StoreError::SegmentIdCollision {
+            segment_id: *segment_id,
+            paths: vec![path],
+        });
+    }
+    let tmp = path.with_extension("rsh.publish.tmp");
+    {
+        use std::io::Write;
+        let mut out = fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&tmp)?;
+        out.write_all(bytes)?;
+        out.sync_all()?;
+    }
+    crate::media_inventory::rename_exclusive(&tmp, &path, *segment_id)?;
+    if let Some(parent) = path.parent() {
+        let _ = atomic_file::sync_dir(parent);
+    }
     Ok(())
 }
 
