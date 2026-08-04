@@ -6,11 +6,11 @@ Sources: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-04 (**CSE-3 Stage 2 step 7** — **RSHD0004** write-time dual-stream
-Shadow experimental; sustained 2 GiB/64 MiB ×3 median **55.57 seg/s PASS**, recovery
-P★ ok, lifecycle≈ack, ack ~27–28K. **Materialized remains product recovery authority.**
-Step 8 awaits principal accept (no product flip). **ETQ-2 paused.** **AWO paused.**
-Prior: RSHD0003 quiet 9.96 / sustained copy 6.99; step 6 accepted.
+Updated: 2026-08-04 (**CSE-3 Stage 2 step 8 labor** — RSHD0004 CSE matrix 15/15 +
+controlled flip marker; Step 7 honest product figure **~28K** 8 KiB TPS; finalize
+median 55.57 seg/s is **not** DB TPS. Default seal still Materialized until
+CompactShadow marker activated. **ETQ-2 paused.** **AWO paused.** Prior: step 6
+accepted; RSHD0003 quiet 9.96.
 
 **How to read program order:** open
 [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)

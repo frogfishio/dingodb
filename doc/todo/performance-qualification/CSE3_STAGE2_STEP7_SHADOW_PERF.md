@@ -1,6 +1,8 @@
 # CSE-3 Stage 2 step 7 — Recovery Shadow performance qualification
 
-Status: **active** (2026-08-04) — harness-only candidate; **no product flip**.  
+Status: **labor-accepted evidence** (2026-08-04) — RSHD0004 dual-stream;
+honest product figure **~28K** 8 KiB TPS. Product seal flip is Step 8
+([`CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md`](./CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md)).  
 Depends: Step 6 principal-accepted
 ([`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md)).
 
@@ -81,11 +83,12 @@ Smoke default target is 8 MiB (CI-friendly). Full campaign asserts `gates.pass
 **2026-08-04 RSHD0003:** encode stage removed. Quiet 256 MiB **9.96 seg/s PASS**.
 Best 2 GiB/64 MiB **6.99 seg/s** (FAIL ≥7 under post-seal copy contention).
 
-**2026-08-04 RSHD0004 dual-stream (experimental):** write-time paired append;
-commitment over ordered frame hashes. Sustained 2 GiB/64 MiB ×3 median
-**55.57 seg/s PASS** (min 37.69); recovery/amp/frontier PASS; lifecycle≈ack;
-ack ~27–28K (no bad foreground regression). Archive
+**2026-08-04 RSHD0004 dual-stream:** write-time paired append; commitment over
+ordered frame hashes. Sustained 2 GiB/64 MiB ×3 median finalize **55.57 seg/s**
+(min 37.69) — finalize capacity only, **not** DB TPS. Honest product figure:
+ack **~28K** 8 KiB TPS (~219 MiB/sec; ~2.25× Materialized ~12.4K). Recovery /
+amp / frontier PASS; lifecycle≈ack. Archive
 [`…/2026-08-04-cse3-stage2-step7-dual-stream/`](../../archive/performance-qualification/2026-08-04-cse3-stage2-step7-dual-stream/).
-Harness: `CSE3_STEP7_DUAL_STREAM=1`. **No product flip.** Step 8 still needs
-principal accept.
+Harness: `CSE3_STEP7_DUAL_STREAM=1`. Step 8 flip labor:
+[`CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md`](./CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md).
 

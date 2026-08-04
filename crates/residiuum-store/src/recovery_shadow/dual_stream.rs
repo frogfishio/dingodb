@@ -226,6 +226,8 @@ pub struct ShadowDualStream {
     buf: Vec<u8>,
     /// Wall time spent appending image bytes (put path; no sync).
     pub append_ns: u64,
+    /// Set when a staging append failed after authoritative bytes landed.
+    poisoned: bool,
 }
 
 impl ShadowDualStream {
@@ -260,7 +262,23 @@ impl ShadowDualStream {
             metas: Vec::new(),
             buf: Vec::with_capacity(SHADOW_BUF),
             append_ns: 0,
+            poisoned: false,
         })
+    }
+
+    /// Bytes mirrored so far (image only, excluding envelope).
+    pub fn image_len(&self) -> u64 {
+        self.image_len
+    }
+
+    /// True when staging diverged from authority (refuse P★ finalize).
+    pub fn is_poisoned(&self) -> bool {
+        self.poisoned
+    }
+
+    /// Mark staging unusable for protection claims.
+    pub fn poison(&mut self) {
+        self.poisoned = true;
     }
 
     /// Append a frame-aligned image chunk (no sync; bounded buffer flush only).
@@ -268,6 +286,12 @@ impl ShadowDualStream {
         if chunk.is_empty() {
             return Ok(());
         }
+        if self.poisoned {
+            return Err(StoreError::CorruptMeta(
+                "dual-stream Shadow staging poisoned; refuse further append",
+            ));
+        }
+        crate::failpoint::hit("rshd4.shadow.append")?;
         let t0 = Instant::now();
         let base = self.image_len;
         let mut metas = metas_from_image_chunk(chunk, base)?;
@@ -275,7 +299,10 @@ impl ShadowDualStream {
         self.buf.extend_from_slice(chunk);
         self.image_len = self.image_len.saturating_add(chunk.len() as u64);
         if self.buf.len() >= SHADOW_BUF {
-            self.flush_buf()?;
+            if let Err(e) = self.flush_buf() {
+                self.poisoned = true;
+                return Err(e);
+            }
         }
         self.append_ns = self
             .append_ns
@@ -287,6 +314,7 @@ impl ShadowDualStream {
         if self.buf.is_empty() {
             return Ok(());
         }
+        crate::failpoint::hit("rshd4.shadow.flush")?;
         // Image follows the envelope placeholder.
         let pos = DUAL_ENVELOPE_LEN as u64 + self.image_len - self.buf.len() as u64;
         self.file.seek(SeekFrom::Start(pos))?;
@@ -316,8 +344,14 @@ impl ShadowDualStream {
         paths: &StorePaths,
         summary_chunk: &[u8],
     ) -> Result<DualStreamFinalizeTiming, StoreError> {
+        if self.poisoned {
+            return Err(StoreError::CorruptMeta(
+                "dual-stream Shadow staging poisoned; refuse P★ finalize",
+            ));
+        }
         let mut timing = DualStreamFinalizeTiming::default();
         let t_sum = Instant::now();
+        crate::failpoint::hit("rshd4.finalize.summary")?;
         if !summary_chunk.is_empty() {
             self.append_image_chunk(summary_chunk)?;
         }
@@ -350,6 +384,7 @@ impl ShadowDualStream {
         timing.bytes_written = DUAL_ENVELOPE_LEN as u64 + encoded_len + HASH_LEN as u64;
 
         let t_sync = Instant::now();
+        crate::failpoint::hit("rshd4.finalize.sync")?;
         self.file.sync_all()?;
         timing.file_sync_ns = t_sync.elapsed().as_nanos() as u64;
 
@@ -359,12 +394,14 @@ impl ShadowDualStream {
         if final_path.exists() {
             let _ = fs::remove_file(&final_path);
         }
+        crate::failpoint::hit("rshd4.finalize.rename")?;
         // Close before rename on platforms that require it.
         // (File drops when self drops after Ok; rename by path is fine while open on unix.)
         fs::rename(&self.tmp_path, &final_path)?;
         timing.rename_ns = t_rename.elapsed().as_nanos() as u64;
 
         let t_dir = Instant::now();
+        crate::failpoint::hit("rshd4.finalize.dir_sync")?;
         atomic_file::sync_dir(parent)?;
         timing.dir_sync_ns = t_dir.elapsed().as_nanos() as u64;
         // Prevent Drop from treating the renamed path as abandoned staging.

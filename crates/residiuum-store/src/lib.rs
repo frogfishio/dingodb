@@ -271,9 +271,12 @@ pub use recovery_shadow::{
     LiveState, MirrorPublishTiming, MirroredShadow, ProtectedCoverage, ProtectedFrontier,
     ProtectionLag, QualifyOptions, ShadowLoad, ShadowReclaimPolicy, ShadowRecord, ShadowStageSample,
     ShadowTelemetry, ShadowWriter, Step7CampaignReport, Step7Gates, ENVELOPE_MAGIC, FRONTIER_FILE,
-    decode_dual_mirror, is_dual_magic, DualStreamFinalizeTiming, ShadowDualStream,
-    HARNESS_ENVELOPE_KEY, MIRROR_ENVELOPE_LEN, RSH_MAGIC, RSH_MAGIC_V1, RSH_MAGIC_V3, RSH_MAGIC_V4,
-    TAG_PUT, TAG_TOMBSTONE,
+    activate_compact_shadow_mode, backfill_shadows_for_sealed, decode_dual_mirror, is_dual_magic,
+    load_recovery_mode, persist_recovery_mode, prepare_flip_to_compact_shadow,
+    protected_frontier_gap_free, recovery_mode_path, rollback_to_materialized_mode,
+    DualStreamFinalizeTiming, RecoveryMode, ShadowDualStream, HARNESS_ENVELOPE_KEY,
+    MIRROR_ENVELOPE_LEN, RECOVERY_MODE_FILE, RECOVERY_MODE_MAGIC, RSH_MAGIC, RSH_MAGIC_V1,
+    RSH_MAGIC_V3, RSH_MAGIC_V4, TAG_PUT, TAG_TOMBSTONE,
 };
 pub use scrub::{
     list_scrub_findings, load_or_init_scrub_state, load_scrub_findings, pause_scrub,

@@ -423,6 +423,8 @@ pub struct Store {
     shadow_dual_finalize_ns: u64,
     /// Dual-stream Shadows successfully published this process (measurement).
     shadow_dual_published: u64,
+    /// Durable recovery-mode marker (Step 8 flip). Default Materialized dual-run.
+    recovery_mode: crate::recovery_shadow::RecoveryMode,
     /// Cumulative auto-rotation stage timings (sustained-rotation qualification).
     rotation_stage_totals: RotationStageTotals,
     /// Cumulative derived enrichment stage timings (ETQ-0).
@@ -674,6 +676,7 @@ impl Store {
             shadow_dual_stream: false,
             shadow_dual_finalize_ns: 0,
             shadow_dual_published: 0,
+            recovery_mode: crate::recovery_shadow::RecoveryMode::Materialized,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -779,6 +782,7 @@ impl Store {
             shadow_dual_stream: false,
             shadow_dual_finalize_ns: 0,
             shadow_dual_published: 0,
+            recovery_mode: crate::recovery_shadow::RecoveryMode::Materialized,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -807,6 +811,8 @@ impl Store {
         store.resume_or_start_all_actives()?;
         // Finish or cancel incomplete compaction jobs (DEF-024).
         let _ = store.recover_compact_jobs()?;
+        // Step 8: re-arm dual-stream / reclaim policy from durable marker.
+        store.reload_recovery_mode()?;
         Ok(store)
     }
 
@@ -921,6 +927,7 @@ impl Store {
             shadow_dual_stream: false,
             shadow_dual_finalize_ns: 0,
             shadow_dual_published: 0,
+            recovery_mode: crate::recovery_shadow::RecoveryMode::Materialized,
             rotation_stage_totals: RotationStageTotals::default(),
             enrichment_stage_totals: EnrichmentStageTotals::default(),
             chunk_locators: HashMap::new(),
@@ -4687,6 +4694,11 @@ impl Store {
         // Experimental dual-stream Shadow: append the same summary, sync/publish
         // independently, then advance protected_frontier (never before Shadow).
         if let Some(dual) = shadow_dual.take() {
+            if dual.is_poisoned() || dual.image_len() != prefix_len {
+                return Err(StoreError::CorruptMeta(
+                    "dual-stream Shadow staging diverged from authoritative prefix; refuse P★",
+                ));
+            }
             let summary = if (prefix_len as usize) < bytes.len() {
                 &bytes[prefix_len as usize..]
             } else {
@@ -4708,6 +4720,7 @@ impl Store {
                 &sealed_id,
                 shard as u16,
             );
+            crate::failpoint::hit("rshd4.frontier.publish")?;
             let seq = crate::ids::segment_seq_from_id(&sealed_id);
             let mut cov =
                 crate::recovery_shadow::load_protected_coverage(&self.paths, self.store_id)?;
@@ -4892,6 +4905,65 @@ impl Store {
     /// Dual-stream Shadows published since open.
     pub fn shadow_dual_published(&self) -> u64 {
         self.shadow_dual_published
+    }
+
+    /// Current durable recovery mode (Step 8).
+    pub fn recovery_mode(&self) -> crate::recovery_shadow::RecoveryMode {
+        self.recovery_mode
+    }
+
+    /// Reload recovery mode from disk and apply process policy.
+    pub fn reload_recovery_mode(&mut self) -> Result<(), StoreError> {
+        let mode = crate::recovery_shadow::load_recovery_mode(&self.paths)?;
+        self.apply_recovery_mode(mode);
+        Ok(())
+    }
+
+    fn apply_recovery_mode(&mut self, mode: crate::recovery_shadow::RecoveryMode) {
+        self.recovery_mode = mode;
+        match mode {
+            crate::recovery_shadow::RecoveryMode::Materialized => {
+                crate::recovery_shadow::set_shadow_reclaim_policy(
+                    crate::recovery_shadow::ShadowReclaimPolicy::DualRunMaterializedAuthority,
+                );
+            }
+            crate::recovery_shadow::RecoveryMode::Transitioning => {
+                let _ = self.attach_shadow_dual_to_actives();
+            }
+            crate::recovery_shadow::RecoveryMode::CompactShadow => {
+                let _ = self.attach_shadow_dual_to_actives();
+                crate::recovery_shadow::set_shadow_reclaim_policy(
+                    crate::recovery_shadow::ShadowReclaimPolicy::RequireReplacementShadow,
+                );
+            }
+        }
+    }
+
+    /// Step 8 prepare: Transitioning marker + backfill Shadows + gap-free check.
+    pub fn prepare_flip_to_compact_shadow(&mut self) -> Result<u64, StoreError> {
+        let built = crate::recovery_shadow::prepare_flip_to_compact_shadow(
+            &self.paths,
+            self.store_id,
+            0,
+        )?;
+        self.apply_recovery_mode(crate::recovery_shadow::RecoveryMode::Transitioning);
+        Ok(built)
+    }
+
+    /// Step 8 activate: durable CompactShadow marker, then stop new Materialized.
+    pub fn activate_compact_shadow_mode(&mut self) -> Result<(), StoreError> {
+        crate::recovery_shadow::activate_compact_shadow_mode(&self.paths, self.store_id)?;
+        self.apply_recovery_mode(crate::recovery_shadow::RecoveryMode::CompactShadow);
+        Ok(())
+    }
+
+    /// Step 8 rollback: Materialized dual-run; keep Shadows and Materialized files.
+    pub fn rollback_to_materialized_mode(&mut self) -> Result<(), StoreError> {
+        crate::recovery_shadow::rollback_to_materialized_mode(&self.paths, self.store_id)?;
+        self.apply_recovery_mode(crate::recovery_shadow::RecoveryMode::Materialized);
+        // Dual-stream may stay attached for experimental use; product default off.
+        self.shadow_dual_stream = false;
+        Ok(())
     }
 
     /// Whether derived enrichment is enqueued after authoritative seal.
@@ -5318,14 +5390,15 @@ impl Store {
         crate::hydra::write_hydra_index(&path, self.store_id, segment_id, &index)
     }
 
-    /// Compile and persist a **Materialized** Chimera layout for live values on
-    /// `segment_id` (CSE-2R safety rollback — product default).
+    /// Persist Chimera for a sealed segment.
     ///
-    /// Derived only — embeds payloads via [`crate::chimera::build_materialized_layout`].
-    /// This restores product salvage safety; it is **not** Compact parity.
-    /// Compact SegmentFrame remains available for ETQ via
-    /// [`crate::chimera::build_compact_layout`]. Failure is non-fatal for seal.
+    /// - **Materialized / Transitioning:** Materialized layout (product dual-run).
+    /// - **CompactShadow (Step 8+):** Compact layout only — no new Materialized.
+    ///   Existing `.cmr` Materialized files are retained until operator cleanup.
     fn write_chimera_for_sealed(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
+        if self.recovery_mode.omits_new_materialized() {
+            return self.write_compact_chimera_for_sealed(segment_id);
+        }
         let pairs = self.live_put_pairs_for_segment(&segment_id)?;
         if pairs.is_empty() {
             return Ok(());
@@ -5337,6 +5410,26 @@ impl Store {
         );
         let path = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
         crate::chimera::write_chimera_layout(&path, self.store_id, segment_id, &layout)
+    }
+
+    /// Compact Chimera for post-flip seals (query path; not P★).
+    fn write_compact_chimera_for_sealed(&self, segment_id: [u8; 16]) -> Result<(), StoreError> {
+        let path = self.paths.sealed_segment(&segment_id);
+        if !path.is_file() {
+            return Ok(());
+        }
+        let bytes = fs::read(&path)?;
+        let (_live, frames, _lp) = crate::recovery_shadow::decode_segment_for_candidate(
+            segment_id,
+            &bytes,
+            self.limits,
+        );
+        if frames.is_empty() {
+            return Ok(());
+        }
+        let layout = crate::chimera::build_compact_layout(&frames, 1);
+        let out = crate::chimera::chimera_layout_path(&self.paths, &segment_id);
+        crate::chimera::write_chimera_layout(&out, self.store_id, segment_id, &layout)
     }
 
     /// Materialized Chimera layout for a live-projection compact output (CSE-2R).
@@ -6565,14 +6658,23 @@ impl Store {
                         return Ok(stats);
                     }
                     let t0 = std::time::Instant::now();
-                    {
+                    let dual_err = {
                         let pending = &writer.segment.as_bytes()[start..];
                         writer.file.write_all(pending)?;
                         // Paired Shadow staging write (no sync; independent alloc).
                         if let Some(dual) = writer.shadow_dual.as_mut() {
-                            dual.append_image_chunk(pending)?;
+                            if let Err(e) = dual.append_image_chunk(pending) {
+                                // Auth bytes landed — poison staging so seal
+                                // cannot claim P★ with a divergent Shadow image.
+                                dual.poison();
+                                Some(e)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
                         }
-                    }
+                    };
                     stats.write_duration_ns =
                         t0.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                     stats.write_completed = pending_len as u64;
@@ -6584,6 +6686,9 @@ impl Store {
                             writer.durable_len,
                             std::sync::atomic::Ordering::Release,
                         );
+                    }
+                    if let Some(e) = dual_err {
+                        return Err(e);
                     }
                 }
                 DiagnosticIoSink::SeekOnly => {

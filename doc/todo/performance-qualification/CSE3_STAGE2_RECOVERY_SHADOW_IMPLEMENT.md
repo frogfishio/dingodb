@@ -1,9 +1,11 @@
 # CSE-3 Stage 2 — Recovery Shadow implement
 
 Status: **active** (2026-08-04) — Stage 2a invariants confirmed; step 5
-lifecycle dual-run landed; **step 6 CSE F0–F5 + lifecycle/security matrix
-principal-accepted**; **step 7 perf harness active** (no product flip).
-Steps 8–9 open. **No product flip** until step 8.  
+lifecycle dual-run landed; **step 6 CSE F0–F5 principal-accepted**; **step 7
+RSHD0004 dual-stream labor evidence (~28K TPS)**; **step 8 flip + RSHD0004 CSE
+matrix labor complete** (marker + controlled activate/rollback; principal review).
+Step 9 open. Default product seal remains Materialized until CompactShadow
+marker is activated.  
 Depends: Stage 1 principal-accepted
 [`CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md`](./CSE3_STAGE1_HYBRID_RECOVERY_SHADOW.md).
 
@@ -42,8 +44,8 @@ Compact Chimera + Recovery Shadow must not become authoritative sealing.
 | **4** | `protected_frontier` + protection-lag telemetry (gap-aware, per-shard) | **Done** (2a) |
 | **5** | Integrate compaction, retention, secure deletion, encryption, backup, scrub | **Done** (lifecycle dual-run; no flip) |
 | **6** | Complete CSE F0–F5 damage/crash suite (+ lifecycle/security) | **Principal-accepted** — [`CSE3_STAGE2_STEP6_CSE_MATRIX.md`](./CSE3_STAGE2_STEP6_CSE_MATRIX.md) |
-| **7** | Prove ≥7 segments/sec with non-growing backlog | **Labor evidence PASS (experimental dual-stream)** — RSHD0004 write-time dual stream; 2 GiB×3 median **55.57** seg/s ([`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-dual-stream`). Principal accept still open; no product flip. |
-| **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Yes — only here** |
+| **7** | Prove ≥7 segments/sec with non-growing backlog | **Labor evidence PASS** — RSHD0004 dual-stream; honest product **~28K** 8 KiB TPS; finalize median 55.57 seg/s (not DB TPS). [`CSE3_STAGE2_STEP7_SHADOW_PERF.md`](./CSE3_STAGE2_STEP7_SHADOW_PERF.md); archive `2026-08-04-cse3-stage2-step7-dual-stream`. |
+| **8** | Switch product sealing: Materialized → Compact + Recovery Shadow | **Labor complete / in_review** — RSHD0004 CSE 15/15 + flip marker APIs ([`CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md`](./CSE3_STAGE2_STEP8_RSHD0004_MATRIX.md); archive `2026-08-04-cse3-stage2-step8-rshd0004-matrix`). Principal activates CompactShadow marker for product flip. |
 | **9** | Re-run full-product throughput qualification | Post-flip |
 
 ## Boundary (no ambiguity)
@@ -115,7 +117,6 @@ is step 8 only.
 
 ## Non-claims (this Stage 2 labor slice)
 
-- Does **not** flip product default off Materialized.
-- Does **not** claim CSE F0–F5 pass until step 6 evidence.
+- Does **not** auto-activate CompactShadow on existing deployments (marker opt-in).
 - Does **not** resume ETQ-2.
-- Does **not** claim ≥7 seg/s until step 7 evidence.
+- Does **not** treat finalize seg/s as database TPS (use ~28K ack TPS).

@@ -24,6 +24,7 @@ mod frontier;
 mod integrate;
 mod mirror;
 mod policy;
+mod recovery_mode;
 pub mod qualify;
 mod wire;
 
@@ -48,6 +49,12 @@ pub use policy::{
 };
 pub use dual_stream::{
     decode_dual_mirror, is_dual_magic, DualStreamFinalizeTiming, ShadowDualStream, RSH_MAGIC_V4,
+};
+pub use recovery_mode::{
+    activate_compact_shadow_mode, backfill_shadows_for_sealed, load_recovery_mode,
+    persist_recovery_mode, prepare_flip_to_compact_shadow, protected_frontier_gap_free,
+    recovery_mode_path, rollback_to_materialized_mode, RecoveryMode, RECOVERY_MODE_FILE,
+    RECOVERY_MODE_MAGIC,
 };
 pub use mirror::{
     decode_mirror_to_struct, encode_mirror_shadow, is_mirror_magic, mirror_to_decoded_shadow,

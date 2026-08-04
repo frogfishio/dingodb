@@ -1,8 +1,9 @@
 # CSE-3 Stage 2 step 7 — write-time dual-stream Shadow (2026-08-04)
 
-Status: **labor complete / experimental dual-stream PASS on sustained 2 GiB**  
-**No product flip.** Materialized remains product recovery authority. Step 8 still
-requires principal accept of the same campaign.
+Status: **labor complete / Step 7 evidence PASS on sustained 2 GiB**  
+Honest product figure: **~28K** 8 KiB TPS. Finalize median 55.57 seg/s is
+capacity after dual-stream data writes — **not** database TPS. Step 8 flip labor:
+[`…/2026-08-04-cse3-stage2-step8-rshd0004-matrix/`](../2026-08-04-cse3-stage2-step8-rshd0004-matrix/).
 
 ## Design (RSHD0004)
 
