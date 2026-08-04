@@ -129,7 +129,8 @@ fn enrich_exactly_one_attach_oracle() {
         }
     }
 
-    let enriched = attach_enrich_rows(&roots, &foreign, &compiled.enrich[0]).unwrap();
+    let enriched =
+        attach_enrich_rows(&roots, &foreign, &compiled.enrich[0], &Default::default()).unwrap();
     assert_eq!(enriched.len(), 2);
     let by_key: std::collections::BTreeMap<_, _> = enriched.into_iter().collect();
     assert_eq!(by_key.get("o1").unwrap()["customer"]["name"], "Ada");

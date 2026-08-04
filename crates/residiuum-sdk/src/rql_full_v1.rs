@@ -5,17 +5,18 @@
 //! `enrich` / `within` / `at rank`.
 //!
 //! Current slice:
-//! - compile single-level `enrich … matching … expect …`
+//! - compile single-level `enrich … matching … [where …] expect …`
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
+//! - candidate `where` filters foreign docs before cardinality
 //! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach)
-//! - refuse `within`, `at rank`, nested enrich, enrich candidate `where`
+//! - refuse `within`, `at rank`, nested enrich
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
 
 use crate::app_v1::{HeapClient, Parameters, QueryPage, QueryRunOptions};
 use crate::error::Error;
 use crate::plan_v1::CollectionBindings;
-use crate::predicate::{resolve_path, Path, Resolve};
+use crate::predicate::{resolve_path, Path, Predicate, Resolve};
 use crate::rql_app_core::{compile_app_core, CompiledAppCore};
 use residiuum_heap::CollectionId;
 use serde_json::Value as JsonValue;
@@ -53,7 +54,7 @@ impl EnrichCardinality {
 }
 
 /// One compiled enrich step (single-level).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EnrichStepV1 {
     /// Field name attached onto the root row.
     pub output: String,
@@ -65,6 +66,8 @@ pub struct EnrichStepV1 {
     pub left: Path,
     /// Path on the **foreign** document (right side of matching).
     pub right: Path,
+    /// Optional filter evaluated against each **foreign** candidate.
+    pub candidate_where: Option<Predicate>,
     /// Cardinality expectation.
     pub expect: EnrichCardinality,
 }
@@ -219,11 +222,20 @@ fn parse_enrich_step(body: &str, bindings: &CollectionBindings) -> Result<Enrich
     let left = Path::parse_dotted(&p.next_path()?)?;
     p.expect("=")?;
     let right = Path::parse_dotted(&p.next_path()?)?;
-    if p.eat("where") {
-        return Err(Error::QueryInvalid(format!(
-            "{DIAG_RQL_FULL_RESIDUAL}: enrich candidate where-filter not in kickoff"
-        )));
-    }
+    let candidate_where = if p.eat("where") {
+        let where_src = p.take_until_keyword("expect")?;
+        if where_src.trim().is_empty() {
+            return Err(Error::QueryInvalid(
+                "enrich where clause is empty".into(),
+            ));
+        }
+        // Reuse Application Core predicate parser via a synthetic Core query.
+        let fake = format!("from {using_name} where {where_src}");
+        let compiled = compile_app_core(&fake, bindings)?;
+        Some(compiled.plan.where_pred)
+    } else {
+        None
+    };
     p.expect("expect")?;
     let card_s = p.next_ident()?;
     let expect = match card_s.as_str() {
@@ -257,6 +269,7 @@ fn parse_enrich_step(body: &str, bindings: &CollectionBindings) -> Result<Enrich
         using_id,
         left,
         right,
+        candidate_where,
         expect,
     })
 }
@@ -348,6 +361,37 @@ impl<'a> Words<'a> {
         }
         Ok(parts.join("."))
     }
+
+    /// Consume text until a keyword at a word boundary (keyword not consumed).
+    fn take_until_keyword(&mut self, kw: &str) -> Result<String, Error> {
+        self.skip();
+        let start = self.i;
+        let rest = &self.s[start..];
+        let lower = rest.to_ascii_lowercase();
+        let mut search = 0usize;
+        let at = loop {
+            let Some(rel) = lower[search..].find(kw) else {
+                return Err(Error::QueryInvalid(format!(
+                    "enrich where: expected `{kw}` after predicate"
+                )));
+            };
+            let at = search + rel;
+            let before_ok =
+                at == 0 || lower.as_bytes()[at - 1].is_ascii_whitespace();
+            let after = at + kw.len();
+            let after_ok = after >= lower.len()
+                || (!lower.as_bytes()[after].is_ascii_alphanumeric()
+                    && lower.as_bytes()[after] != b'_');
+            if before_ok && after_ok {
+                break at;
+            }
+            search = at + 1;
+        };
+        let end = start + at;
+        let taken = self.s[start..end].trim().to_string();
+        self.i = end;
+        Ok(taken)
+    }
 }
 
 /// Attach enrich fields onto already-materialised root JSON documents.
@@ -356,14 +400,21 @@ impl<'a> Words<'a> {
 /// (independent oracle / scan). Does **not** claim index pushdown.
 ///
 /// `expect many` attaches a JSON array of matches, ordered by foreign key.
+/// Optional [`EnrichStepV1::candidate_where`] filters foreign docs first.
 pub fn attach_enrich_rows(
     roots: &[(String, JsonValue)],
     foreign_docs: &[(String, JsonValue)],
     step: &EnrichStepV1,
+    params: &BTreeMap<String, JsonValue>,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
     // Index foreign by right-path JSON key; keep keys for stable many-order.
     let mut by_right: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
     for (fk, doc) in foreign_docs {
+        if let Some(pred) = &step.candidate_where {
+            if !pred.eval(doc, params)? {
+                continue;
+            }
+        }
         if let Resolve::Present(v) = resolve_path(doc, &step.right) {
             by_right
                 .entry(canonical_match_key(&v))
@@ -517,7 +568,7 @@ pub fn execute_rql_full(
         .iter()
         .map(|r| (r.key.clone(), r.value.clone()))
         .collect();
-    let rows = attach_enrich_rows(&roots, &foreign, step)?;
+    let rows = attach_enrich_rows(&roots, &foreign, step, &parameters.values)?;
     Ok(RqlFullPage {
         profile: RQL_FULL_PROFILE,
         rows,
@@ -612,7 +663,7 @@ mod tests {
             ("l1".into(), serde_json::json!({"order_id": "o1", "sku": "A"})),
             ("l3".into(), serde_json::json!({"order_id": "o2", "sku": "C"})),
         ];
-        let out = attach_enrich_rows(&roots, &foreign, step).unwrap();
+        let out = attach_enrich_rows(&roots, &foreign, step, &BTreeMap::new()).unwrap();
         let bag = out[0].1["items"].as_array().unwrap();
         assert_eq!(bag.len(), 2);
         // Stable by foreign key: l1 then l2
@@ -629,6 +680,7 @@ mod tests {
             using_id: CollectionId::from_str("00000000-0000-4000-8000-0000000000a2").unwrap(),
             left: Path::parse_dotted("customer_id").unwrap(),
             right: Path::parse_dotted("id").unwrap(),
+            candidate_where: None,
             expect: EnrichCardinality::ExactlyOne,
         };
         let roots = vec![
@@ -641,13 +693,41 @@ mod tests {
             ("c1".into(), serde_json::json!({"id": "c1", "name": "Ada"})),
             ("c2".into(), serde_json::json!({"id": "c2", "name": "Bob"})),
         ];
-        let out = attach_enrich_rows(&roots, &foreign, &step).unwrap();
+        let out = attach_enrich_rows(&roots, &foreign, &step, &BTreeMap::new()).unwrap();
         assert_eq!(out[0].1["customer"]["name"], "Ada");
 
         let mut opt = step.clone();
         opt.expect = EnrichCardinality::Optional;
         let roots2 = vec![("o2".into(), serde_json::json!({"customer_id": "missing"}))];
-        let out2 = attach_enrich_rows(&roots2, &foreign, &opt).unwrap();
+        let out2 = attach_enrich_rows(&roots2, &foreign, &opt, &BTreeMap::new()).unwrap();
         assert!(out2[0].1["customer"].is_null());
+    }
+
+    #[test]
+    fn compile_and_attach_candidate_where() {
+        let c = compile_rql_full(
+            r#"from orders
+               enrich customer using customers matching customer_id = id
+               where active = true
+               expect exactly_one"#,
+            &bindings(),
+        )
+        .unwrap();
+        assert!(c.enrich[0].candidate_where.is_some());
+
+        let roots = vec![("o1".into(), serde_json::json!({"customer_id": "c1"}))];
+        let foreign = vec![
+            (
+                "c1a".into(),
+                serde_json::json!({"id": "c1", "active": false, "name": "old"}),
+            ),
+            (
+                "c1b".into(),
+                serde_json::json!({"id": "c1", "active": true, "name": "Ada"}),
+            ),
+        ];
+        let out =
+            attach_enrich_rows(&roots, &foreign, &c.enrich[0], &BTreeMap::new()).unwrap();
+        assert_eq!(out[0].1["customer"]["name"], "Ada");
     }
 }
