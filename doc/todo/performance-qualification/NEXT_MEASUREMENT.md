@@ -5,13 +5,17 @@ Status: **Seal Fast Lane = architectural accept (principal)**;
 gates met; O(n²) catalog persist risk removed; sustained ack
 **47.8K → 57.6K TPS** (~+20.5%); `catalog_apply` under 1% of ack wall.  
 
-**Locked product truth (after Compact Chimera accept):** complete sustainable
-throughput ≈ **37.9K** 8 KiB writes/sec (~**296 MiB/s**). Burst acknowledgement
-≈ **43.8K**. Chimera amp ≈ **0.74%** (was ~98%). Enrichment still slightly
-behind (~4.93 complete vs ~5.57 produce seg/s) — **ETQ remains open**.
+**Locked product truth (performance only):** complete sustainable throughput ≈
+**37.9K** 8 KiB writes/sec (~**296 MiB/s**) with Compact Chimera experiment.
+Burst ack ≈ **43.8K**. Chimera amp ≈ **0.74%**. Enrichment still slightly
+behind (~4.93 vs ~5.57 seg/s).
 
-**Next (only):** [ETQ-2 Single-Pass Enrichment Decode](./ETQ2_SINGLE_PASS_DECODE.md).
-Three-cell attribution residual **deprioritized**. **AWO paused**.  
+> Compact Chimera performance architecture accepted provisionally.
+> Durability equivalence is unproven and blocks product/default acceptance.
+
+**Next (only):** [CSE — Chimera Salvage Equivalence](./CHIMERA_SALVAGE_EQUIVALENCE.md)
+(CSE-0 → CSE-1 → CSE-2 if needed). **ETQ-2 deferred** until Compact salvage
+viability. **AWO paused**.  
 Date: 2026-08-04
 
 ## Wording (hard)
@@ -71,16 +75,15 @@ Evidence: `doc/archive/performance-qualification/2026-08-04-enrichment-on-2g/`.
 Stop speculative seal-architecture changes. Seal Fast Lane accepted
 architecturally; catalog O(n²) persist defect fixed and **package accepted**.
 
-**Compact Chimera Persistence = architectural package accept (principal):**
-complete TPS **~12.4K → ~37.9K** (~3×); Chimera amp **~98% → ~0.74%**.
+**Compact Chimera = provisional performance-architecture accept only**
+(~12.4K→~37.9K TPS; amp ~0.74%). **Not** product default / durability-equivalent /
+migration-eligible. Materialized format+reader stay intact.
 Evidence `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
-**ETQ remains open.**
 
-**Only allowed next work:** **ETQ-2 Single-Pass Enrichment Decode** —
-[ETQ2_SINGLE_PASS_DECODE.md](./ETQ2_SINGLE_PASS_DECODE.md). One read, one
-verify/decode, one `EnrichmentPlan` → BLAKE3/Hydra/Chimera/catalog. Gates:
-≥7 seg/s; slope ≤0; lifecycle≈ack; reopen+query; **exactly one** decode pass.
-Do **not** add workers first. AWO / three-cell remain paused.
+**Only allowed next work:** **CSE-0** (then CSE-1; CSE-2 if needed) —
+[CHIMERA_SALVAGE_EQUIVALENCE.md](./CHIMERA_SALVAGE_EQUIVALENCE.md).
+Require \(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\).
+**ETQ-2 deferred** behind CSE. AWO / three-cell remain paused.
 
 ## Archives
 
@@ -98,4 +101,5 @@ Do **not** add workers first. AWO / three-cell remain paused.
 - `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`
 - Plan: `doc/todo/performance-qualification/ENRICHMENT_THROUGHPUT_QUALIFICATION.md`
 - ETQ-1 charter: `doc/todo/performance-qualification/ETQ1_COMPACT_CHIMERA.md`
-- ETQ-2 charter: `doc/todo/performance-qualification/ETQ2_SINGLE_PASS_DECODE.md`
+- CSE charter: `doc/todo/performance-qualification/CHIMERA_SALVAGE_EQUIVALENCE.md`
+- ETQ-2 charter (deferred): `doc/todo/performance-qualification/ETQ2_SINGLE_PASS_DECODE.md`

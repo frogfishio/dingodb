@@ -1,9 +1,13 @@
 # ETQ-1 — Compact Chimera Persistence (2026-08-04)
 
-Status: **architectural package accept (principal)** — Compact Chimera
-Persistence. ETQ remains **open** (enrichment floors still short).  
-Evidence of breakthrough: complete-lifecycle TPS **~12.4K → ~37.9K** (~3×);
-Chimera amp **~98% → ~0.74%**.
+Status: **provisional performance-architecture accept only**.  
+Durability equivalence **unproven** — blocks product/default acceptance.
+
+> Compact Chimera performance architecture accepted provisionally.
+> Durability equivalence is unproven and blocks product/default acceptance.
+
+Evidence of performance breakthrough: complete-lifecycle TPS **~12.4K → ~37.9K**
+(~3×); Chimera amp **~98% → ~0.74%**. Not permission to alter damage-tolerance.
 
 ## What landed
 
@@ -48,14 +52,14 @@ Legacy v1 files remain readable.
 | Reopen + query | exact | **PASS** |
 | Chimera optional for correctness | wipe → get | **PASS** (unit) |
 
-## Residual (ETQ still open → ETQ-2)
+## Residual (CSE then ETQ)
 
-Enrichment produces work at ~**5.57** seg/s but completes ~**4.93**, so backlog
-still grows slowly (slope **+0.64**). After Compact Chimera, **decode**
-(~82 ms/seg) dominates; Hydra ≈ Chimera (~15 ms).
+Enrichment produces ~**5.57** seg/s but completes ~**4.93** (slope **+0.64**).
+Decode (~82 ms/seg) dominates after Compact Chimera.
 
-**Next only:** [ETQ-2 Single-Pass Enrichment Decode](../../todo/performance-qualification/ETQ2_SINGLE_PASS_DECODE.md)
-— one read, one verify/decode, one `EnrichmentPlan`; no workers first.
+**Next only:** [CSE — Chimera Salvage Equivalence](../../todo/performance-qualification/CHIMERA_SALVAGE_EQUIVALENCE.md)
+(CSE-0 baseline → CSE-1 equivalence → CSE-2 if needed).  
+**ETQ-2 Single-Pass Decode** resumes only after Compact salvage viability.
 
 ## Evidence
 

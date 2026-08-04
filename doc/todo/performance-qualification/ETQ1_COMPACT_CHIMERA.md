@@ -1,11 +1,25 @@
 # ETQ-1 — Compact Chimera Persistence (frozen)
 
-Status: **architectural package accept (principal)** — Compact Chimera
-Persistence landed; ETQ remains open for Single-Pass Decode.  
-Depends on: **ETQ-0 package accept**
-(`doc/archive/performance-qualification/2026-08-04-etq0-enrichment-stage-breakdown/`).  
-Evidence: `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.
-Next: [ETQ2_SINGLE_PASS_DECODE.md](./ETQ2_SINGLE_PASS_DECODE.md).
+Status: **provisional performance-architecture accept only**.  
+Durability equivalence is **unproven** and blocks product/default acceptance.
+
+> Compact Chimera performance architecture accepted provisionally.
+> Durability equivalence is unproven and blocks product/default acceptance.
+
+Depends on: **ETQ-0 package accept**.  
+Evidence: `doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`.  
+**Next durability gate:** [CHIMERA_SALVAGE_EQUIVALENCE.md](./CHIMERA_SALVAGE_EQUIVALENCE.md) (CSE-0→1→2).  
+ETQ-2 deferred until Compact is viable.
+
+### Explicit non-claims
+
+- Not product default acceptance
+- Not durability-equivalent to materialized Chimera
+- Not safe to remove materialized format/reader
+- Not eligible for migration of existing data
+
+Materialized encode (`build_materialized_layout`) and readers stay intact.
+~3× TPS / ~0.74% amp = performance evidence only.
 
 ## ETQ-0 acceptance (locked)
 

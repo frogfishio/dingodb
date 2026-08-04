@@ -1,7 +1,11 @@
-# ETQ-2 — Single-Pass Enrichment Decode (frozen)
+# ETQ-2 — Single-Pass Enrichment Decode (deferred)
 
-Status: **next implementer package** (principal freeze 2026-08-04).  
-Depends on: **Compact Chimera Persistence architectural accept**
+Status: **deferred** behind [CSE — Chimera Salvage Equivalence](./CHIMERA_SALVAGE_EQUIVALENCE.md).  
+Resume only after Compact Chimera salvage viability
+(\(\mathrm{Recoverable}_{compact}\supseteq\mathrm{Recoverable}_{materialized}\),
+or CSE-2 restores parity).
+
+Depends on: Compact provisional performance accept **and** CSE exit
 (`doc/archive/performance-qualification/2026-08-04-etq1-compact-chimera/`).
 
 ## Why this package
