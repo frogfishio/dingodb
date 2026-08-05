@@ -195,6 +195,13 @@ convergence package is **RQL-X2** (one runtime; delete frozen Rust executors).
 Living short status:
 [RQL_WHAT_IS_LEFT.md](./doc/todo/rql/RQL_WHAT_IS_LEFT.md).
 
+Gate-1 implementation and qualification authority:
+[RQL_QUERY_QUALIFICATION_PROGRAM.md](./doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md).
+This programme owns the capability corpus, independent semantic qualification,
+cross-engine harness, controlled baseline, optimisation sequence and final RQL
+exit decision. `RQL0_GAP_LEDGER.md` remains the implementation inventory; it is
+not a competing qualification roadmap.
+
 RQL-0 still forbids adding syntax until its semantics and execution owner are
 named. Execution owner under Decision 0 is the **one bytecode runtime**, not a
 new Rust façade.

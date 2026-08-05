@@ -4,6 +4,8 @@ Status: **labor 2026-08-05** · CRITICAL_PATH §4.6 · **Decision 0 amended**
 Board: Query spine Feature `1a8a3e05` · inventory `190a97bd` · Decision 0 `d06c909f`  
 **What’s left (short):** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)  
 **Convergence charter:** [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)  
+**Gate-1 qualification programme:**
+[RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md)
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) ·
 [PATH_TO_FULL_RQL.md](./PATH_TO_FULL_RQL.md) ·
@@ -13,6 +15,11 @@ Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·
 This is the **gap ledger + dependency-ordered package sequence** required by
 CRITICAL_PATH §4.6. It is not a second roadmap family. Living package states
 remain on the scoreboard; Kanban owns labor workflow only.
+
+The qualification programme owns RQL-Q0 through RQL-Q7. This ledger remains
+the implementation inventory and historical convergence sequence; where its
+older `RQL-Q1` naming conflicts with the qualification programme, the
+qualification programme wins.
 
 **Law:** refuse new RQL syntax until its semantics and execution owner are named
 in this ledger (or an amended RQL_SPEC section referenced here).
