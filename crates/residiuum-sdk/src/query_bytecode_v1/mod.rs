@@ -1,18 +1,16 @@
-//! Query bytecode v1 — single product runtime (RQL-X2 / X2b / X2c / X3).
+//! Query bytecode v1 — product runtime (Decision 0 — **still open**).
 //!
 //! Profile: **`residiuum-query-bytecode-v1`**
 //! ISA: **`residiuum-query-isa-v1`** ([QUERY_ISA_V1.md](../../../../doc/todo/rql/QUERY_ISA_V1.md))
-//! Normative: [QUERY_BYTECODE_V1.md](../../../../doc/todo/rql/QUERY_BYTECODE_V1.md)
 //!
-//! **Decision 0:** this module tree is the only legal **product** semantic runtime.
+//! **RQL-X5:** [`QueryBytecodeV1`] holds **only** ISA bytes. Execution always
+//! `decode_isa` → interpret. An independent Rust `plan` field is forbidden so
+//! ISA identity cannot diverge from executed meaning.
+//!
 //! Host adapters supply scan/index/get only.
 //!
-//! - [`core_page`] — Application Core page semantics
-//! - [`full_attach`] — enrich / within / project
-//! - [`isa`] — durable binary program encoding (RQL-X3)
-//! - [`kernel`] — ENR+SDA eval substrate for Core `where` (RQL-X4)
-//!
-//! Embedded SDK and op **118** both enter through this module tree.
+//! Residual (Decision 0 still open): page/order/project/coverage/enrich loops
+//! remain Rust interpreters of **ISA-decoded** structures (X5b/X5c).
 
 mod core_page;
 mod full_attach;
@@ -46,13 +44,10 @@ use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
-/// Architecture freeze profile id ([QUERY_BYTECODE_V1.md](../../../../doc/todo/rql/QUERY_BYTECODE_V1.md)).
+/// Architecture freeze profile id.
 pub const BYTECODE_PROFILE: &str = "residiuum-query-bytecode-v1";
 
 /// Host data-access capabilities only (Decision 0 / RQL-X1).
-///
-/// Must not evaluate predicates, enrich, project, order, page meaning, or
-/// missing/null/coverage. Index lookup returns **candidates** only.
 pub trait HostCapabilities {
     /// Deterministic key stream.
     fn list_keys(
@@ -73,30 +68,48 @@ pub trait HostCapabilities {
     }
 }
 
-/// Compiled query bytecode envelope.
+/// Compiled query bytecode envelope — **ISA bytes only** (RQL-X5).
 ///
-/// Durable program identity is [`Self::isa`] (`residiuum-query-isa-v1`).
-/// [`Self::plan`] is the in-memory Core view used by [`core_page`].
+/// Fields are private so callers cannot pair a Rust plan with unrelated ISA.
 #[derive(Debug, Clone)]
 pub struct QueryBytecodeV1 {
-    /// Profile label stamped on the envelope.
-    pub profile: String,
-    /// Application Core logical plan (canonical).
-    pub plan: RqlPlanV1,
-    /// Merged source budget from compile (if any).
-    pub budget: Option<QueryBudget>,
-    /// Durable ISA bytes (always present after lower).
-    pub isa: Vec<u8>,
+    profile: String,
+    isa: Vec<u8>,
 }
 
 impl QueryBytecodeV1 {
-    /// Lower a validated Application Core plan into the bytecode envelope.
+    /// Profile label.
+    pub fn profile(&self) -> &str {
+        &self.profile
+    }
+
+    /// Durable ISA bytes (sole executable identity).
+    pub fn isa_bytes(&self) -> &[u8] {
+        &self.isa
+    }
+
+    /// Domain-separated hash of the ISA bytes.
+    pub fn isa_hash(&self) -> [u8; 32] {
+        isa_hash(&self.isa)
+    }
+
+    /// Decode/validate ISA (same path execution uses).
+    pub fn decode(&self) -> Result<QueryIsaProgram, Error> {
+        decode_isa(&self.isa)
+    }
+
+    /// Lower a validated Application Core plan → ISA envelope.
     pub fn from_core_plan(plan: RqlPlanV1, budget: Option<QueryBudget>) -> Result<Self, Error> {
         let isa = encode_core_program(&plan, budget)?;
+        // Refuse to stamp an envelope whose bytes do not round-trip to `plan`.
+        let prog = decode_isa(&isa)?;
+        if prog.core != plan || prog.budget != budget || prog.full.is_some() {
+            return Err(Error::QueryInvalid(
+                "isa encode/decode mismatch on Core lower".into(),
+            ));
+        }
         Ok(Self {
             profile: BYTECODE_PROFILE.to_string(),
-            plan,
-            budget,
             isa,
         })
     }
@@ -104,6 +117,21 @@ impl QueryBytecodeV1 {
     /// Lower compiled Application Core artefact.
     pub fn from_compiled_core(compiled: CompiledAppCore) -> Result<Self, Error> {
         Self::from_core_plan(compiled.plan, compiled.budget)
+    }
+
+    /// Construct from already-encoded ISA bytes (validates decode).
+    pub fn from_isa_bytes(isa: Vec<u8>) -> Result<Self, Error> {
+        let prog = decode_isa(&isa)?;
+        if prog.full.is_some() {
+            return Err(Error::QueryInvalid(
+                "QueryBytecodeV1::from_isa_bytes: Core envelope cannot carry full pipeline"
+                    .into(),
+            ));
+        }
+        Ok(Self {
+            profile: BYTECODE_PROFILE.to_string(),
+            isa,
+        })
     }
 }
 
@@ -133,7 +161,7 @@ pub fn explain_core_source(
     explain_rql_source(source, collection_id, collection_name)
 }
 
-/// Execute bytecode against a host (product Core path).
+/// Execute bytecode against a host — **decodes ISA; never trusts a side plan**.
 pub fn execute_bytecode<H: HostCapabilities>(
     host: &mut H,
     bytecode: &QueryBytecodeV1,
@@ -142,21 +170,19 @@ pub fn execute_bytecode<H: HostCapabilities>(
     heap_id: HeapId,
     collection_id: CollectionId,
 ) -> Result<QueryPage, Error> {
-    if bytecode.profile != BYTECODE_PROFILE {
+    if bytecode.profile() != BYTECODE_PROFILE {
         return Err(Error::QueryInvalid(format!(
             "query bytecode profile mismatch: got {:?}, want {BYTECODE_PROFILE}",
-            bytecode.profile
+            bytecode.profile()
         )));
     }
-    let mut scan = HostDocScan(host);
-    execute_plan(
-        &mut scan,
-        &bytecode.plan,
+    execute_isa_bytes(
+        host,
+        bytecode.isa_bytes(),
         params,
         options,
         heap_id,
         collection_id,
-        bytecode.budget,
     )
 }
 
@@ -186,10 +212,9 @@ pub fn execute_core_rql<H: HostCapabilities>(
     )
 }
 
-/// Execute durable ISA bytes (Core programs only in this cut).
+/// Sole Core runtime entry: decode ISA bytes, then page-execute.
 ///
-/// Full-language ISA must be executed via the full attach entry after decode;
-/// this path refuses `FLAG_FULL` programs so Core wire stays honest.
+/// Full-language ISA is refused here (X5b owns full dispatch).
 pub fn execute_isa_bytes<H: HostCapabilities>(
     host: &mut H,
     isa_bytes: &[u8],
@@ -201,21 +226,30 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
     let prog = decode_isa(isa_bytes)?;
     if prog.full.is_some() {
         return Err(Error::QueryInvalid(
-            "execute_isa_bytes: full-language ISA requires full attach entry".into(),
+            "execute_isa_bytes: full-language ISA requires full ISA entry (RQL-X5b)".into(),
         ));
+    }
+    if prog.profile != ISA_PROFILE {
+        return Err(Error::QueryInvalid(format!(
+            "isa profile mismatch: got {:?}, want {ISA_PROFILE}",
+            prog.profile
+        )));
     }
     if prog.core.from.collection_id != collection_id {
         return Err(Error::QueryInvalid(
             "execute_isa_bytes: collection_id mismatch".into(),
         ));
     }
-    let bytecode = QueryBytecodeV1 {
-        profile: BYTECODE_PROFILE.to_string(),
-        plan: prog.core,
-        budget: prog.budget,
-        isa: isa_bytes.to_vec(),
-    };
-    execute_bytecode(host, &bytecode, params, options, heap_id, collection_id)
+    let mut scan = HostDocScan(host);
+    execute_plan(
+        &mut scan,
+        &prog.core,
+        params,
+        options,
+        heap_id,
+        collection_id,
+        prog.budget,
+    )
 }
 
 /// Bridge: [`HostCapabilities`] → [`DocScan`] for [`core_page`].
@@ -245,6 +279,8 @@ impl<H: HostCapabilities> DocScan for HostDocScan<'_, H> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::predicate::{CompareOp, Operand, Path};
+    use serde_json::json;
 
     fn uuidish(seed: u8) -> [u8; 16] {
         let mut b = [0u8; 16];
@@ -254,19 +290,29 @@ mod tests {
         b
     }
 
-    struct EmptyHost;
+    struct MapHost {
+        docs: BTreeMap<String, JsonValue>,
+    }
 
-    impl HostCapabilities for EmptyHost {
+    impl HostCapabilities for MapHost {
         fn list_keys(
             &mut self,
-            _limit: Option<usize>,
-            _after_key: Option<&str>,
+            limit: Option<usize>,
+            after_key: Option<&str>,
         ) -> Result<Vec<String>, Error> {
-            Ok(Vec::new())
+            let mut keys: Vec<String> = self.docs.keys().cloned().collect();
+            keys.sort();
+            if let Some(a) = after_key {
+                keys.retain(|k| k.as_str() > a);
+            }
+            if let Some(n) = limit {
+                keys.truncate(n);
+            }
+            Ok(keys)
         }
 
-        fn get_json(&mut self, _key: &str) -> Result<Option<JsonValue>, Error> {
-            Ok(None)
+        fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error> {
+            Ok(self.docs.get(key).cloned())
         }
     }
 
@@ -279,15 +325,18 @@ mod tests {
     fn lower_core_stamps_profile() {
         let id = CollectionId::from_bytes(uuidish(7)).expect("id");
         let bc = lower_core_source("from items", id, "items").expect("lower");
-        assert_eq!(bc.profile, BYTECODE_PROFILE);
-        assert_eq!(bc.plan.from.source_name, "items");
+        assert_eq!(bc.profile(), BYTECODE_PROFILE);
+        let prog = bc.decode().expect("decode");
+        assert_eq!(prog.core.from.source_name, "items");
     }
 
     #[test]
     fn execute_empty_host_one_page() {
         let id = CollectionId::from_bytes(uuidish(9)).expect("id");
         let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
-        let mut host = EmptyHost;
+        let mut host = MapHost {
+            docs: BTreeMap::new(),
+        };
         let page = execute_core_rql(
             &mut host,
             "from items",
@@ -304,5 +353,80 @@ mod tests {
     #[test]
     fn core_page_owned_by_bytecode_module() {
         assert_eq!(EXEC_PROFILE, "residiuum-app-core-exec-v1");
+    }
+
+    #[test]
+    fn execute_bytecode_uses_isa_not_sidecar_plan() {
+        let id = CollectionId::from_bytes(uuidish(3)).expect("id");
+        let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
+        let mut docs = BTreeMap::new();
+        docs.insert("a".into(), json!({"status": "active"}));
+        docs.insert("b".into(), json!({"status": "paused"}));
+        let mut host = MapHost { docs };
+
+        let bc = lower_core_source(
+            "from items where status = \"active\"",
+            id,
+            "items",
+        )
+        .expect("lower");
+
+        // Tamper: replace Core body with a different filter via re-encode.
+        let mut prog = bc.decode().expect("decode");
+        prog.core.where_pred = crate::predicate::Predicate::Cmp {
+            cmp: CompareOp::Eq,
+            left: Operand::path(Path::parse_dotted("status").unwrap()),
+            right: Operand::literal(json!("paused")),
+        };
+        let tampered = encode_core_program(&prog.core, prog.budget).expect("encode");
+        let bc_tampered = QueryBytecodeV1::from_isa_bytes(tampered).expect("wrap");
+
+        let page = execute_bytecode(
+            &mut host,
+            &bc_tampered,
+            &BTreeMap::new(),
+            &QueryRunOptions::default(),
+            heap,
+            id,
+        )
+        .expect("exec");
+        assert_eq!(page.rows.len(), 1);
+        assert_eq!(page.rows[0].key, "b");
+        // Original ISA still selects "active".
+        let page0 = execute_bytecode(
+            &mut host,
+            &bc,
+            &BTreeMap::new(),
+            &QueryRunOptions::default(),
+            heap,
+            id,
+        )
+        .expect("exec0");
+        assert_eq!(page0.rows.len(), 1);
+        assert_eq!(page0.rows[0].key, "a");
+    }
+
+    #[test]
+    fn corrupted_isa_refuses_execute() {
+        let id = CollectionId::from_bytes(uuidish(4)).expect("id");
+        let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
+        let mut host = MapHost {
+            docs: BTreeMap::new(),
+        };
+        let bc = lower_core_source("from items", id, "items").expect("lower");
+        let mut bad = bc.isa_bytes().to_vec();
+        if bad.len() > 10 {
+            bad[10] ^= 0xff;
+        }
+        let err = execute_isa_bytes(
+            &mut host,
+            &bad,
+            &BTreeMap::new(),
+            &QueryRunOptions::default(),
+            heap,
+            id,
+        )
+        .expect_err("corrupt");
+        let _ = err;
     }
 }

@@ -18,8 +18,14 @@ product ISA is not “whatever Rust structs are in memory today.”
 | Runtime (`query_bytecode_v1`) | Sole semantic executor |
 | Host | scan / index / get only |
 
-In-memory `RqlPlanV1` / pipeline structs are **views**. Wire, hash, and
-persistence should bind to ISA bytes (see [`isa_hash`]).
+In-memory `RqlPlanV1` / pipeline structs are **decoded views of ISA bytes**.
+Wire, hash, and Core execution bind to ISA bytes (see [`isa_hash`] /
+`QueryBytecodeV1::isa_bytes`). **RQL-X5:** Core `execute_bytecode` decodes ISA
+only — no independent executable `plan` field.
+
+**Residual:** full-language still bypasses ISA until **RQL-X5b**. Page/order/
+project/coverage remain Rust interpreters of **ISA-decoded** Core plans
+(Decision 0 still open).
 
 ---
 

@@ -76,8 +76,10 @@ proceeds.
 | Delete shims; unify op 118 | **X2d done** — shims deleted; evidence `rql_x2d_shim_delete.log` |
 | Durable binary ISA carrier | **X3 done** — [QUERY_ISA_V1.md](./QUERY_ISA_V1.md); evidence `rql_x3_isa.log` |
 | ENR+SDA kernel eval (Core `where`) | **X4 done** — [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md); evidence `rql_x4_kernel.log` |
-| Full attach on same kernel | **X4b done** — evidence `rql_x4b_attach_kernel.log` |
-| Core product accept | **RQL-C1** (principal) |
+| Full attach on same kernel | **X4b done** (predicates) — evidence `rql_x4b_attach_kernel.log` |
+| ISA sole executable input (Core) | **X5 labor** — private envelope; `execute_*` decodes ISA |
+| Full-language execute from ISA | **RQL-X5b** (next) |
+| Core product accept | **RQL-C1** — **forbidden** until X5+; Decision 0 OPEN |
 
 ---
 

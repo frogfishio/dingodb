@@ -568,15 +568,15 @@ mod tests {
             "items",
         )
         .expect("lower");
-        assert!(!bc.isa.is_empty());
-        assert_eq!(&bc.isa[0..4], ISA_MAGIC);
-        let prog = decode_isa(&bc.isa).expect("decode");
+        assert!(!bc.isa_bytes().is_empty());
+        assert_eq!(&bc.isa_bytes()[0..4], ISA_MAGIC);
+        let prog = bc.decode().expect("decode");
         assert_eq!(prog.profile, ISA_PROFILE);
-        assert_eq!(prog.core, bc.plan);
-        assert_eq!(prog.budget, bc.budget);
-        assert!(prog.full.is_none());
         let again = encode_core_program(&prog.core, prog.budget).expect("re-encode");
-        assert_eq!(again, bc.isa);
+        assert_eq!(again, bc.isa_bytes());
+        assert!(prog.full.is_none());
+        let again2 = encode_core_program(&prog.core, prog.budget).expect("re-encode");
+        assert_eq!(again2, again);
     }
 
     #[test]
@@ -587,7 +587,7 @@ mod tests {
         let mut host = EmptyHost;
         let page = execute_isa_bytes(
             &mut host,
-            &bc.isa,
+            bc.isa_bytes(),
             &Parameters::default().values,
             &QueryRunOptions::default(),
             heap,

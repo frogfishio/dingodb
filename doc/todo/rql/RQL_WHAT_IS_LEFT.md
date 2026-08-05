@@ -1,44 +1,63 @@
 # RQL — what is left to do
 
-Status: **2026-08-05** · Decision 0 **labor programme closed through X4b**  
-Detail: [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md) · [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)
+Status: **2026-08-05** · **Decision 0 OPEN** · Principal rejected premature C1  
+Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · [QUERY_ISA_V1.md](./QUERY_ISA_V1.md)
 
 ---
 
 ## Are we done?
 
-| Question | Answer |
+**No.** Prior “labor DONE / Decision 0 closed” SoT was **false** and is withdrawn.
+**RQL-C1 must not be accepted.**
+
+| Claim | Reality |
 |---|---|
-| **Decision 0 convergence labor (0D→X1→X2→X2b→X2c→X2d→X3→X4→X4b)?** | **Yes — labor closed.** One runtime, durable ISA, Core+attach filters via `residiuum-sda`. Board: no `todo`/`doing` on this spine. |
-| **Product accept (APP-6 / APP-7 / APB-7 / “query qualified”)?** | **No.** That is **RQL-C1** — principal accept, not labor-`done`. |
-| **Full RQL-v1 / S1 / D1 / wire ISA packing / `$key` in where?** | **No** — optional residuals or gated features; not blocking the Decision 0 architecture claim. |
+| Core ISA sole executable input | **X5 labor closed** — private envelope; decode drives exec |
+| Full RQL on same ISA runtime | **False** — still bypasses until **X5b** |
+| One bytecode machine owns all query meaning | **False** — page/order/project/coverage/enrich still Rust interpreters of decoded structures |
+| Ready for RQL-C1 | **Forbidden** |
 
 ```text
-DONE (labor) = Decision 0 architecture: one plan → one ISA → one runtime → SDA kernel
-NOT done     = package accept, feature growth (S1/D1), wire packing polish
+Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
+NEXT labor  = RQL-X5b full-language execute from ISA
 ```
 
 ---
 
-## Do next (only if principal wants more)
+## Blocking findings (principal) — status
 
-| # | Who | Package | What “done” means |
-|---|---|---|---|
-| **1** | **Principal** | **RQL-C1** | Scoreboard APP-6/APP-7/APB-7 → `accept` (or explicit waiver) |
-| **2** | Labor (optional) | Wire / `$key` | Op 118 ISA packing; `$key` in `where` kernel lower |
+1. ISA does not control Core execution — **addressed in X5** (decode-only path + mismatch test).
+2. Full RQL bypasses ISA — **open → X5b**.
+3. Most Core semantics still Rust plan interpreter — **open → X5c** (honest residual).
+4. Arch check filename-only — **partially addressed** (behavioral decode/private-field gate).
+5. Tests weak on ISA identity — **partially addressed** (non-empty mismatch + corrupt ISA).
 
 ---
 
-## Landed sequence
+## Just shipped (X5 — Core only)
 
-`0D` → `X1` → `X2` → `X2b` → `X2c` → `X2d` → `X3` → `X4` → `X4b` — all `in_review` awaiting principal.
+- `QueryBytecodeV1` holds private ISA bytes only
+- `execute_bytecode` → `execute_isa_bytes` → `decode_isa` → page exec
+- Evidence: `doc/todo/rql/evidence/rql_x5_isa_sole.log`
+
+---
+
+## Ordered residual
+
+| # | Who | Package | Exit |
+|---|---|---|---|
+| **1** | Labor | **RQL-X5** | **labor closed** — evidence `rql_x5_isa_sole.log` |
+| **2** | **Labor** | **RQL-X5b** | Full-language execute only via ISA encode→decode; non-empty E2E |
+| **3** | Labor | **RQL-X5c** | One dispatch honesty; order/project/page/coverage IR residual |
+| **4** | Principal | **RQL-C1** | Only after X5+; **never before** |
 
 ---
 
 ## One-line status
 
 ```text
-Verdict     = Decision 0 labor DONE; product accept NOT done
-NEXT        = principal RQL-C1 (or stop / waive)
-OPTIONAL    = wire ISA packing, $key-in-where
+NEXT labor  = RQL-X5b execute full-language from ISA
+FORBIDDEN   = RQL-C1 accept (Decision 0 OPEN)
+LANDED      = X5 Core ISA sole input (private envelope + decode)
+HONESTY     = scaffolding + X5 ≠ full convergence
 ```

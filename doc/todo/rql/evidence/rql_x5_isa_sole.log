@@ -1,0 +1,8 @@
+RQL-X5 ISA sole Core executable input — 2026-08-05
+Principal rejected premature C1; Decision 0 remains OPEN.
+QueryBytecodeV1: private isa only (no pub plan/budget sidecar).
+execute_bytecode → execute_isa_bytes → decode_isa → execute_plan.
+Tests: execute_bytecode_uses_isa_not_sidecar_plan (non-empty host);
+corrupted_isa_refuses_execute.
+Arch gate: behavioral (decode required; pub plan forbidden).
+Residual: X5b full-from-ISA; page/order/project/coverage still Rust of decoded plan.
