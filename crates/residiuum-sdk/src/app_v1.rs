@@ -1965,7 +1965,7 @@ impl<'a> CollectionQuery<'a> {
         if plan.from.collection_id != collection_id {
             plan.from.collection_id = collection_id;
         }
-        let bytecode = crate::query_bytecode_v1::QueryBytecodeV1::from_core_plan(plan, None);
+        let bytecode = crate::query_bytecode_v1::QueryBytecodeV1::from_core_plan(plan, None)?;
         crate::query_bytecode_v1::execute_bytecode(
             self.client,
             &bytecode,
@@ -2172,7 +2172,7 @@ impl<'a> ViewBoundQuery<'a> {
         }
         let page = crate::query_bytecode_v1::execute_bytecode(
             self.client,
-            &crate::query_bytecode_v1::QueryBytecodeV1::from_core_plan(plan, None),
+            &crate::query_bytecode_v1::QueryBytecodeV1::from_core_plan(plan, None)?,
             &parameters.values,
             &options,
             heap_id,

@@ -12,12 +12,22 @@ SDK_SRC="$ROOT/crates/residiuum-sdk/src"
 [[ -f "$SDK_SRC/query_bytecode_v1/mod.rs" ]] || fail "missing query_bytecode_v1/mod.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/core_page.rs" ]] || fail "missing core_page.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/full_attach.rs" ]] || fail "missing full_attach.rs"
+[[ -f "$SDK_SRC/query_bytecode_v1/isa.rs" ]] || fail "missing isa.rs (RQL-X3)"
 
 # Shims must be gone.
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
 [[ ! -e "$SDK_SRC/rql_full_v1.rs" ]] || fail "rql_full_v1.rs shim must be deleted"
 [[ ! -d "$SDK_SRC/query_exec_v1" ]] || fail "query_exec_v1/ must not exist"
 [[ ! -d "$SDK_SRC/rql_full_v1" ]] || fail "rql_full_v1/ must not exist"
+
+rg -q 'residiuum-query-isa-v1' "$SDK_SRC/query_bytecode_v1/isa.rs" \
+  || fail "ISA_PROFILE missing residiuum-query-isa-v1"
+rg -q 'pub fn encode_core_program' "$SDK_SRC/query_bytecode_v1/isa.rs" \
+  || fail "encode_core_program missing"
+rg -q 'pub fn decode_isa' "$SDK_SRC/query_bytecode_v1/isa.rs" \
+  || fail "decode_isa missing"
+rg -q 'pub isa:' "$SDK_SRC/query_bytecode_v1/mod.rs" \
+  || fail "QueryBytecodeV1.isa field missing"
 
 rg -q 'residiuum-query-bytecode-v1' "$SDK_SRC/query_bytecode_v1/mod.rs" \
   || fail "BYTECODE_PROFILE missing residiuum-query-bytecode-v1"

@@ -74,7 +74,8 @@ proceeds.
 | 5–7 Port Core / equivalence / shrink frozen Core executor | **X2b done** — Core in `query_bytecode_v1/core_page` |
 | 5–8 Port full attach; CI bytecode-only `execute_*` | **X2c done** — `full_attach.rs` |
 | Delete shims; unify op 118 | **X2d done** — shims deleted; evidence `rql_x2d_shim_delete.log` |
-| Durable binary ISA / ENR+SDA kernel lower | **RQL-X3** (next) |
+| Durable binary ISA carrier | **X3 done** — [QUERY_ISA_V1.md](./QUERY_ISA_V1.md); evidence `rql_x3_isa.log` |
+| ENR+SDA kernel eval substrate | **RQL-X4** (next) |
 
 ---
 

@@ -1,6 +1,7 @@
-//! Query bytecode v1 — single product runtime (RQL-X2 / X2b / X2c).
+//! Query bytecode v1 — single product runtime (RQL-X2 / X2b / X2c / X3).
 //!
 //! Profile: **`residiuum-query-bytecode-v1`**
+//! ISA: **`residiuum-query-isa-v1`** ([QUERY_ISA_V1.md](../../../../doc/todo/rql/QUERY_ISA_V1.md))
 //! Normative: [QUERY_BYTECODE_V1.md](../../../../doc/todo/rql/QUERY_BYTECODE_V1.md)
 //!
 //! **Decision 0:** this module tree is the only legal **product** semantic runtime.
@@ -8,11 +9,13 @@
 //!
 //! - [`core_page`] — Application Core page semantics
 //! - [`full_attach`] — enrich / within / project
+//! - [`isa`] — durable binary program encoding (RQL-X3)
 //!
 //! Embedded SDK and op **118** both enter through this module tree.
 
 mod core_page;
 mod full_attach;
+mod isa;
 
 pub use core_page::{
     execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE,
@@ -26,6 +29,10 @@ pub use full_attach::{
     DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
     DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH,
     MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
+};
+pub use isa::{
+    decode_isa, encode_core_program, encode_full_program, isa_hash, QueryIsaFullSection,
+    QueryIsaProgram, ISA_MAGIC, ISA_PROFILE, ISA_VERSION,
 };
 
 use crate::app_v1::{Parameters, QueryBudget, QueryExplanation, QueryPage, QueryRunOptions};
@@ -63,10 +70,10 @@ pub trait HostCapabilities {
     }
 }
 
-/// Compiled query bytecode envelope (logical plan carrier for this cut).
+/// Compiled query bytecode envelope.
 ///
-/// Binary ISA encoding remains residual; the envelope + single runtime own
-/// Core page semantics via [`core_page`].
+/// Durable program identity is [`Self::isa`] (`residiuum-query-isa-v1`).
+/// [`Self::plan`] is the in-memory Core view used by [`core_page`].
 #[derive(Debug, Clone)]
 pub struct QueryBytecodeV1 {
     /// Profile label stamped on the envelope.
@@ -75,20 +82,24 @@ pub struct QueryBytecodeV1 {
     pub plan: RqlPlanV1,
     /// Merged source budget from compile (if any).
     pub budget: Option<QueryBudget>,
+    /// Durable ISA bytes (always present after lower).
+    pub isa: Vec<u8>,
 }
 
 impl QueryBytecodeV1 {
     /// Lower a validated Application Core plan into the bytecode envelope.
-    pub fn from_core_plan(plan: RqlPlanV1, budget: Option<QueryBudget>) -> Self {
-        Self {
+    pub fn from_core_plan(plan: RqlPlanV1, budget: Option<QueryBudget>) -> Result<Self, Error> {
+        let isa = encode_core_program(&plan, budget)?;
+        Ok(Self {
             profile: BYTECODE_PROFILE.to_string(),
             plan,
             budget,
-        }
+            isa,
+        })
     }
 
     /// Lower compiled Application Core artefact.
-    pub fn from_compiled_core(compiled: CompiledAppCore) -> Self {
+    pub fn from_compiled_core(compiled: CompiledAppCore) -> Result<Self, Error> {
         Self::from_core_plan(compiled.plan, compiled.budget)
     }
 }
@@ -107,7 +118,7 @@ pub fn lower_core_source(
     if compiled.plan.from.collection_id != collection_id {
         compiled.plan.from.collection_id = collection_id;
     }
-    Ok(QueryBytecodeV1::from_compiled_core(compiled))
+    QueryBytecodeV1::from_compiled_core(compiled)
 }
 
 /// Explain via Core compile (plan tree + hash; no row scan).
@@ -170,6 +181,38 @@ pub fn execute_core_rql<H: HostCapabilities>(
         heap_id,
         collection_id,
     )
+}
+
+/// Execute durable ISA bytes (Core programs only in this cut).
+///
+/// Full-language ISA must be executed via the full attach entry after decode;
+/// this path refuses `FLAG_FULL` programs so Core wire stays honest.
+pub fn execute_isa_bytes<H: HostCapabilities>(
+    host: &mut H,
+    isa_bytes: &[u8],
+    params: &BTreeMap<String, JsonValue>,
+    options: &QueryRunOptions,
+    heap_id: HeapId,
+    collection_id: CollectionId,
+) -> Result<QueryPage, Error> {
+    let prog = decode_isa(isa_bytes)?;
+    if prog.full.is_some() {
+        return Err(Error::QueryInvalid(
+            "execute_isa_bytes: full-language ISA requires full attach entry".into(),
+        ));
+    }
+    if prog.core.from.collection_id != collection_id {
+        return Err(Error::QueryInvalid(
+            "execute_isa_bytes: collection_id mismatch".into(),
+        ));
+    }
+    let bytecode = QueryBytecodeV1 {
+        profile: BYTECODE_PROFILE.to_string(),
+        plan: prog.core,
+        budget: prog.budget,
+        isa: isa_bytes.to_vec(),
+    };
+    execute_bytecode(host, &bytecode, params, options, heap_id, collection_id)
 }
 
 /// Bridge: [`HostCapabilities`] → [`DocScan`] for [`core_page`].

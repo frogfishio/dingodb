@@ -1,0 +1,6 @@
+RQL-X3 durable ISA 2026-08-05
+Profile residiuum-query-isa-v1 (magic RQB1)
+Module query_bytecode_v1/isa.rs — encode/decode Core+full; QueryBytecodeV1.isa stamped; execute_isa_bytes
+Doc QUERY_ISA_V1.md
+lib query_bytecode_v1 26/26 (incl. isa roundtrips)
+Residual: ENR+SDA kernel eval as execution substrate (RQL-X4); wire packing of ISA on op 118
