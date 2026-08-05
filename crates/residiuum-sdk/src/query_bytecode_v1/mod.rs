@@ -10,7 +10,7 @@
 //! Host adapters supply scan/index/get only.
 //!
 //! Residual (Decision 0 still open): page/order/project/coverage/enrich loops
-//! remain Rust interpreters of **ISA-decoded** structures (X5b/X5c).
+//! remain Rust interpreters of **ISA-decoded** structures (X5c).
 
 mod core_page;
 mod full_attach;
@@ -22,13 +22,13 @@ pub use core_page::{
 };
 pub use full_attach::{
     apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full,
-    execute_rql_full, execute_rql_full_with, explain_rql_full, explain_rql_full_on_heap,
-    filter_rows, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
-    CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence, EnrichStepV1,
-    FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
-    DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
-    DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH,
-    MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
+    execute_full_isa_with, execute_rql_full, execute_rql_full_with, explain_rql_full,
+    explain_rql_full_on_heap, filter_rows, refuse_full_language_on_core_wire,
+    source_uses_rql_full_constructs, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
+    EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions,
+    RqlFullPage, WithinStepV1, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
+    DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE,
+    FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
 pub use isa::{
     decode_isa, encode_core_program, encode_full_program, isa_hash, QueryIsaFullSection,

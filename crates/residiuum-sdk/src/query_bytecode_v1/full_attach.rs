@@ -19,9 +19,12 @@
 //!   index. Nested `within` enrich still scan-loads (residual).
 //! - **RQL-X4b:** attach filters / candidate `where` evaluate via
 //!   [`super::kernel`] (same SDA substrate as Core `where`)
+//! - **RQL-X5b:** execute only after ISA encode→decode; pipeline/project from
+//!   decoded full section (not a raw [`CompiledRqlFull`] authority bypass)
 //! - refuse `at rank` / access policies (DDA residual)
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
+//! Decision 0 remains open (page/order/project/coverage still Rust interpreters).
 
 use crate::app_v1::{HeapClient, Parameters, QueryExplanation, QueryPage, QueryRunOptions};
 use crate::error::Error;
@@ -33,6 +36,9 @@ use crate::rql_app_core::{
 use residiuum_heap::CollectionId;
 use serde_json::{Map, Value as JsonValue};
 use std::collections::BTreeMap;
+
+use super::isa::{decode_isa, encode_core_program, encode_full_program, ISA_PROFILE};
+use super::execute_isa_bytes;
 
 /// Full-language compile profile (Phase 3 kickoff).
 pub const RQL_FULL_PROFILE: &str = "rql-full-v1";
@@ -1679,7 +1685,7 @@ impl RqlFullPage {
     }
 }
 
-/// Façade: compile full RQL, run Core base page, attach enrich/within.
+/// Façade: compile full RQL → ISA → decode → execute (RQL-X5b).
 ///
 /// Discovers collection bindings from [`HeapClient::list_collections`].
 /// Root `enrich` tries equality-index pushdown on the foreign match field
@@ -1704,6 +1710,9 @@ pub fn execute_rql_full(
 }
 
 /// [`execute_rql_full`] with differential-oracle controls.
+///
+/// Authority is ISA: compile lowers to bytes, then [`execute_full_isa_with`]
+/// decodes and runs. [`CompiledRqlFull`] is not an executable sidecar.
 pub fn execute_rql_full_with(
     client: &mut HeapClient,
     source: &str,
@@ -1716,9 +1725,56 @@ pub fn execute_rql_full_with(
         bindings.bind(&info.name, info.collection_id);
     }
     let compiled = compile_rql_full(source, &bindings)?;
-    let from_name = compiled.base.plan.from.source_name.clone();
+    let isa = encode_full_program(
+        &compiled.base.plan,
+        compiled.base.budget,
+        &compiled.pipeline,
+        &compiled.project,
+    )?;
+    execute_full_isa_with(client, &isa, parameters, options)
+}
+
+/// Full-language entry: decode ISA (must carry full section), then execute.
+///
+/// Base page uses Core [`execute_isa_bytes`] on a Core-only re-encode of the
+/// decoded plan. Attach pipeline/project come only from the decoded full section.
+pub fn execute_full_isa_with(
+    client: &mut HeapClient,
+    isa_bytes: &[u8],
+    parameters: &Parameters,
+    options: RqlFullExecuteOptions,
+) -> Result<RqlFullPage, Error> {
+    let prog = decode_isa(isa_bytes)?;
+    if prog.profile != ISA_PROFILE {
+        return Err(Error::QueryInvalid(format!(
+            "execute_full_isa: profile mismatch: got {:?}, want {ISA_PROFILE}",
+            prog.profile
+        )));
+    }
+    let full = prog.full.as_ref().ok_or_else(|| {
+        Error::QueryInvalid(
+            "execute_full_isa: Core-only ISA; use execute_isa_bytes".into(),
+        )
+    })?;
+
+    let from_name = prog.core.from.source_name.clone();
     let mut base_col = client.open_collection(&from_name)?;
-    let page = base_col.rql(&compiled.base_source, parameters, options.query)?;
+    let heap_id = base_col.heap_id();
+    let collection_id = base_col.id();
+
+    // Shared Core entry: ISA bytes → decode → page (not base_source / compile).
+    let core_isa = encode_core_program(&prog.core, prog.budget)?;
+    let page = execute_isa_bytes(
+        &mut base_col,
+        &core_isa,
+        &parameters.values,
+        &options.query,
+        heap_id,
+        collection_id,
+    )?;
+
+    let pipeline = full.pipeline.clone();
+    let project = full.project.clone();
 
     let mut rows: Vec<(String, JsonValue)> = page
         .rows
@@ -1728,7 +1784,7 @@ pub fn execute_rql_full_with(
 
     let mut foreign_cache: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
     let mut enrich_loads = Vec::new();
-    for step in &compiled.pipeline {
+    for step in &pipeline {
         match step {
             FullPipelineStepV1::Enrich(e) => {
                 let (foreign, mode) = load_foreign_docs_for_root_enrich(
@@ -1761,7 +1817,7 @@ pub fn execute_rql_full_with(
         }
     }
 
-    if let Some(fields) = &compiled.project {
+    if let Some(fields) = &project {
         rows = apply_project_rows(&rows, fields)?;
     }
 
@@ -1769,8 +1825,8 @@ pub fn execute_rql_full_with(
         profile: RQL_FULL_PROFILE,
         rows,
         base: page,
-        pipeline: compiled.pipeline,
-        project: compiled.project,
+        pipeline,
+        project,
         enrich_loads,
     })
 }

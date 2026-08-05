@@ -13,13 +13,13 @@ Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · [QUERY
 | Claim | Reality |
 |---|---|
 | Core ISA sole executable input | **X5 labor closed** — private envelope; decode drives exec |
-| Full RQL on same ISA runtime | **False** — still bypasses until **X5b** |
+| Full RQL on same ISA runtime | **X5b labor closed** — encode→decode→`execute_full_isa_with` |
 | One bytecode machine owns all query meaning | **False** — page/order/project/coverage/enrich still Rust interpreters of decoded structures |
 | Ready for RQL-C1 | **Forbidden** |
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = RQL-X5b full-language execute from ISA
+NEXT labor  = RQL-X5c one-dispatch honesty / IR residual
 ```
 
 ---
@@ -27,18 +27,19 @@ NEXT labor  = RQL-X5b full-language execute from ISA
 ## Blocking findings (principal) — status
 
 1. ISA does not control Core execution — **addressed in X5** (decode-only path + mismatch test).
-2. Full RQL bypasses ISA — **open → X5b**.
+2. Full RQL bypasses ISA — **addressed in X5b** (`execute_full_isa_with`).
 3. Most Core semantics still Rust plan interpreter — **open → X5c** (honest residual).
-4. Arch check filename-only — **partially addressed** (behavioral decode/private-field gate).
-5. Tests weak on ISA identity — **partially addressed** (non-empty mismatch + corrupt ISA).
+4. Arch check filename-only — **partially addressed** (behavioral decode/private-field + full ISA gate).
+5. Tests weak on ISA identity — **partially addressed** (Core mismatch + full non-empty E2E + corrupt ISA).
 
 ---
 
-## Just shipped (X5 — Core only)
+## Just shipped (X5b — full from ISA)
 
-- `QueryBytecodeV1` holds private ISA bytes only
-- `execute_bytecode` → `execute_isa_bytes` → `decode_isa` → page exec
-- Evidence: `doc/todo/rql/evidence/rql_x5_isa_sole.log`
+- `execute_rql_full_with` → `encode_full_program` → `execute_full_isa_with`
+- Base page via shared `execute_isa_bytes` on Core-only re-encode of decoded plan
+- Pipeline/project from decoded full section only
+- Evidence: `doc/todo/rql/evidence/rql_x5b_full_isa.log`
 
 ---
 
@@ -47,8 +48,8 @@ NEXT labor  = RQL-X5b full-language execute from ISA
 | # | Who | Package | Exit |
 |---|---|---|---|
 | **1** | Labor | **RQL-X5** | **labor closed** — evidence `rql_x5_isa_sole.log` |
-| **2** | **Labor** | **RQL-X5b** | Full-language execute only via ISA encode→decode; non-empty E2E |
-| **3** | Labor | **RQL-X5c** | One dispatch honesty; order/project/page/coverage IR residual |
+| **2** | Labor | **RQL-X5b** | **labor closed** — evidence `rql_x5b_full_isa.log` |
+| **3** | **Labor** | **RQL-X5c** | One dispatch honesty; order/project/page/coverage IR residual |
 | **4** | Principal | **RQL-C1** | Only after X5+; **never before** |
 
 ---
@@ -56,8 +57,8 @@ NEXT labor  = RQL-X5b full-language execute from ISA
 ## One-line status
 
 ```text
-NEXT labor  = RQL-X5b execute full-language from ISA
+NEXT labor  = RQL-X5c one-dispatch honesty / IR residual
 FORBIDDEN   = RQL-C1 accept (Decision 0 OPEN)
-LANDED      = X5 Core ISA sole input (private envelope + decode)
-HONESTY     = scaffolding + X5 ≠ full convergence
+LANDED      = X5 Core + X5b full ISA sole input
+HONESTY     = scaffolding + X5/X5b ≠ full convergence
 ```

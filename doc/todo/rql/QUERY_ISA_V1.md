@@ -59,11 +59,13 @@ canonical JSON for filters / candidate `where`.
 | `decode_isa` | ISA → `QueryIsaProgram` |
 | `QueryBytecodeV1.isa` | Always stamped on Core lower |
 | `execute_isa_bytes` | Decode Core ISA → same `execute_bytecode` path |
+| `execute_full_isa_with` | Decode full ISA → Core page via `execute_isa_bytes` + attach from decoded section |
 | `isa_hash` | Domain-separated BLAKE3-256 over ISA bytes |
 
-Full-language ISA is encode/decode proven; Core wire execute stays on
-`execute_isa_bytes` / `execute_core_rql`. Full execute still enters via
-`execute_rql_full*` after compile (same runtime module).
+Full-language execute: `execute_rql_full*` compiles then
+`encode_full_program` → `execute_full_isa_with` (RQL-X5b). Core wire stays on
+`execute_isa_bytes` / `execute_core_rql`. `CompiledRqlFull` is not an
+executable authority.
 
 ---
 
