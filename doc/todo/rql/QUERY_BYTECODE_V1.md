@@ -168,8 +168,8 @@ violation.
 ## 9. Non-claims
 
 - No claim that bytecode encoding is unimplemented — see [QUERY_ISA_V1.md](./QUERY_ISA_V1.md).
-- No claim that ENR+SDA **eval** is unused — Core `where` uses
-  [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md); attach residual is X4b.
+- No claim that ENR+SDA **eval** is unused — Core + attach filters use
+  [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md).
 - No APP-6 / APP-7 / APB-7 package accept.
 - No full RQL product qualification.
 - Phase 3 corpora remain **port inventory + evidence**, not a second architecture.

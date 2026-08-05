@@ -22,8 +22,8 @@ forbidden. Architecture freeze:
 (`residiuum-query-bytecode-v1`). Host = scan/index/get only. Former Rust
 executors (`query_exec_v1` / `execute_rql_full`) were removed in X2d; product
 path is `query_bytecode_v1/`. Durable ISA is **RQL-X3**; Core `where` kernel
-eval is **RQL-X4** ([QUERY_KERNEL_SDA_V1.md](../todo/rql/QUERY_KERNEL_SDA_V1.md)).
-Attach filter kernel port remains **RQL-X4b**.
+eval is **RQL-X4** ([QUERY_KERNEL_SDA_V1.md](../todo/rql/QUERY_KERNEL_SDA_V1.md));
+attach filters share that kernel (**RQL-X4b**).
 
 ```text
   Pure ENR+SDA ──┐

@@ -46,12 +46,11 @@ Rust builder ┘                                      │
 
 **Allowed:** test-only reference interpreter as oracle (not a product path).
 
-**Honesty:** Core `where` evaluates via ENR+SDA
-([QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md)). Full attach still uses
-Rust `Predicate::eval` internally (**RQL-X4b**).
+**Honesty:** Core and attach filters evaluate via ENR+SDA
+([QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md)). Residual: `$key` in where,
+op 118 ISA packing, principal **RQL-C1** accept.
 
-**Gate:** until X4b lands (or principal waives), treat feature growth (S1 / D1 /
-wire-parity attach) as blocked unless principal waives.
+**Gate:** S1 / D1 / feature growth still require principal waiver or C1 path.
 
 ---
 
@@ -171,7 +170,7 @@ is forbidden.
 | **RQL-X2d** | Delete shim modules; unify op 118 onto bytecode runtime | RQL-X2c | **labor closed** — evidence `rql_x2d_shim_delete.log` |
 | **RQL-X3** | Durable binary ISA carrier (`residiuum-query-isa-v1`) | RQL-X2d | **labor closed** — [QUERY_ISA_V1.md](./QUERY_ISA_V1.md); evidence `rql_x3_isa.log` |
 | **RQL-X4** | ENR+SDA kernel eval for Core `where` | RQL-X3 | **labor closed** — [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md); evidence `rql_x4_kernel.log` |
-| **RQL-X4b** | Port full_attach filters onto same SDA kernel | RQL-X4 | No product `Predicate::eval` in attach path |
+| **RQL-X4b** | Port full_attach filters onto same SDA kernel | RQL-X4 | **labor closed** — evidence `rql_x4b_attach_kernel.log` |
 | **RQL-C1** | Core product accept residuals | RQL-X4b (or principal waiver) | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
 | **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — port inventory only under Decision 0 |
 | **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — parity deferred to shared runtime |
@@ -190,10 +189,10 @@ product build-out, premature “query qualified” without X3 honesty.
 
 | Construct / change | Semantic owner | Execution owner | May add syntax? |
 |---|---|---|---|
-| All query meaning | RQL_SPEC + ENR/SDA | **one runtime** + ISA + SDA kernel (Core) | Attach kernel = RQL-X4b |
-| Core surface | RQL_SPEC §3.1 + APP-5 | `query_bytecode_v1` + `kernel` | No feature growth pending X4b |
-| enrich / within / brace project | RQL_SPEC §6–9 | `full_attach` (filters still Rust eval) | Port via RQL-X4b |
-| `at rank` / access | DIRECT_ACCESS_SPEC | DDA + shared bytecode (RQL-D1) | **No** until RQL-D1 + RQL-X4b |
+| All query meaning | RQL_SPEC + ENR/SDA | **one runtime** + ISA + SDA kernel | Principal C1 / S1–D1 gated |
+| Core surface | RQL_SPEC §3.1 + APP-5 | `query_bytecode_v1` + `kernel` | Accept via RQL-C1 |
+| enrich / within / brace project | RQL_SPEC §6–9 | `full_attach` + `kernel` filters | Accept via RQL-C1 |
+| `at rank` / access | DIRECT_ACCESS_SPEC | DDA + shared bytecode (RQL-D1) | **No** until RQL-D1 |
 | Aggregates | APB-8 / future spec | APB-8 | Out of RQL v1 |
 | SQL+ emit extensions | SQL_TO_RQL_SPEC | sql+ → logical plan → bytecode | Only via RQL-S1 after RQL-X1 |
 

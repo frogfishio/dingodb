@@ -33,6 +33,19 @@ rg -q 'residiuum-query-kernel-sda-v1' "$SDK_SRC/query_bytecode_v1/kernel.rs" \
   || fail "KERNEL_PROFILE missing"
 rg -q 'compile_where' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
   || fail "core_page must compile_where (SDA kernel)"
+rg -q 'compile_where' "$SDK_SRC/query_bytecode_v1/full_attach.rs" \
+  || fail "full_attach must compile_where (RQL-X4b)"
+# Product paths must not call Predicate::eval (oracle OK in kernel tests only).
+hits="$(
+  rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
+    | rg -v 'kernel\.rs:' \
+    | rg -v '^\s*//' \
+    || true
+)"
+if [[ -n "$hits" ]]; then
+  echo "$hits" >&2
+  fail "Predicate::eval outside kernel tests (Decision 0 / X4b)"
+fi
 
 rg -q 'residiuum-query-bytecode-v1' "$SDK_SRC/query_bytecode_v1/mod.rs" \
   || fail "BYTECODE_PROFILE missing residiuum-query-bytecode-v1"

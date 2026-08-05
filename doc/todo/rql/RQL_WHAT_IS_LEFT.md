@@ -1,6 +1,6 @@
 # RQL — what is left to do
 
-Status: **2026-08-05** · **X4 Core kernel landed** · Decision 0 in force  
+Status: **2026-08-05** · **X4b landed** · Decision 0 in force  
 Detail: [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md) · [QUERY_ISA_V1.md](./QUERY_ISA_V1.md)
 
 ---
@@ -8,7 +8,7 @@ Detail: [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md) · [QUERY_ISA_V1.md](
 ## Ordered programme
 
 ```text
-… → X3 ISA → X4 Core SDA kernel (done) → X4b full_attach kernel → …
+… → X3 ISA → X4 Core kernel → X4b attach kernel (done) → …
 ```
 
 ---
@@ -17,22 +17,23 @@ Detail: [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md) · [QUERY_ISA_V1.md](
 
 | # | Who | Package | What “done” means |
 |---|---|---|---|
-| **1** | **Labor** | **RQL-X4b** | Port `full_attach` filters / candidate `where` onto the same SDA kernel (no parallel `Predicate::eval` product path) |
+| **1** | **Principal / labor** | **RQL-C1** (or waiver) | Core product accept residuals for APP-6 / APP-7 / APB-7 scoreboard |
+| **2** | Labor (optional) | Wire / `$key` residuals | Op 118 ISA packing; `$key` in `where` kernel lower |
 
 ---
 
-## Just shipped (X4)
+## Just shipped (X4b)
 
-- Core `where` → SDA via `residiuum-query-kernel-sda-v1`
-- `execute_plan` filters through kernel; oracle tests vs `Predicate::eval`
-- Evidence: `doc/todo/rql/evidence/rql_x4_kernel.log`
+- `full_attach` `filter_rows` + enrich `candidate_where` use SDA kernel
+- No product `Predicate::eval` under `query_bytecode_v1/` (test oracle only)
+- Evidence: `doc/todo/rql/evidence/rql_x4b_attach_kernel.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT labor  = RQL-X4b full_attach on SDA kernel
-LANDED      = Core where meaning via residiuum-sda (+ ISA + unified runtime)
-HONESTY     = attach still uses Predicate::eval internally
+NEXT        = RQL-C1 accept (principal) / optional wire+$key residuals
+LANDED      = one runtime + ISA + SDA kernel for Core and attach filters
+HONESTY     = Decision 0 predicate meaning via residiuum-sda
 ```

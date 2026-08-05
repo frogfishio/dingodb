@@ -44,12 +44,11 @@ Params are substituted as SDA literals at compile-where time (bind-once).
 
 ---
 
-## 4. Residual (RQL-X4b)
+## 4. Residual
 
-- Full-language attach / nested `where` / enrich match still uses Rust
-  `Predicate::eval` inside `full_attach` — port to the same kernel next.
 - `$key` in `where` refused by kernel (order tie-break only today).
-- Wire does not yet ship SDA source / ISA+kernel stamps separately.
+- Wire does not yet ship SDA source / ISA bytes on op **118**.
+- **Attach filters:** landed in RQL-X4b (`filter_rows` + `candidate_where`).
 
 ---
 

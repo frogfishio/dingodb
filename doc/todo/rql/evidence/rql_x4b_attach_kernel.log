@@ -1,0 +1,5 @@
+RQL-X4b full_attach on SDA kernel 2026-08-05
+filter_rows + candidate_where → compile_where / eval_doc
+No product Predicate::eval in query_bytecode_v1/ (oracle only in kernel tests)
+lib query_bytecode_v1 32/32; rql_full_corpus 2/2; app6 4/4
+Residual: $key-in-where; op118 ISA wire packing; principal C1 accept

@@ -17,10 +17,8 @@
 //! - **RQL-I1:** root `enrich` may use equality-index pushdown on the foreign
 //!   match field (`lookup_index_keys`); fall back to full scan when no usable
 //!   index. Nested `within` enrich still scan-loads (residual).
-//! - candidate `where` filters foreign docs before cardinality
-//! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach + project)
-//! - [`explain_rql_full`] structured explain (pipeline + base plan; no row scan)
-//! - op **118** Core wire **refuses** full-language constructs (`rql_feature_unavailable`)
+//! - **RQL-X4b:** attach filters / candidate `where` evaluate via
+//!   [`super::kernel`] (same SDA substrate as Core `where`)
 //! - refuse `at rank` / access policies (DDA residual)
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
@@ -1354,15 +1352,16 @@ impl<'a> Words<'a> {
     }
 }
 
-/// Keep rows where `pred` evaluates to true.
+/// Keep rows where `pred` evaluates to true (SDA kernel — RQL-X4b).
 pub fn filter_rows(
     rows: &[(String, JsonValue)],
     pred: &Predicate,
     params: &BTreeMap<String, JsonValue>,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
+    let where_k = super::kernel::compile_where(pred, params)?;
     let mut kept = Vec::with_capacity(rows.len());
     for (k, v) in rows {
-        if pred.eval(v, params)? {
+        if where_k.eval_doc(v)? {
             kept.push((k.clone(), v.clone()));
         }
     }
@@ -1438,9 +1437,13 @@ pub fn attach_enrich_rows(
     params: &BTreeMap<String, JsonValue>,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
     let mut by_right: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
+    let candidate_k = match &step.candidate_where {
+        Some(pred) => Some(super::kernel::compile_where(pred, params)?),
+        None => None,
+    };
     for (fk, doc) in foreign_docs {
-        if let Some(pred) = &step.candidate_where {
-            if !pred.eval(doc, params)? {
+        if let Some(ref where_k) = candidate_k {
+            if !where_k.eval_doc(doc)? {
                 continue;
             }
         }

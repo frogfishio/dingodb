@@ -167,9 +167,9 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-X4b full_attach on SDA kernel
-LANDED      = Core where via residiuum-sda + ISA + one runtime (X2b–X4)
-NOT next    = S1, D1, premature “query qualified”
+NEXT        = RQL-C1 accept (principal) / optional wire+$key residuals
+LANDED      = ISA + SDA kernel for Core and attach (X2b–X4b)
+NOT next    = S1, D1 without principal waiver
 ```
 
 Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0.
