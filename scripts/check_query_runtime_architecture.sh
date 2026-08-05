@@ -17,7 +17,9 @@ IR_DOC="$ROOT/doc/todo/rql/QUERY_IR_RESIDUAL.md"
 [[ -f "$FULL" ]] || fail "missing full_attach.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/isa.rs" ]] || fail "missing isa.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/kernel.rs" ]] || fail "missing kernel.rs"
+[[ -f "$SDK_SRC/query_bytecode_v1/ir_project.rs" ]] || fail "missing ir_project.rs (RQL-IR1)"
 [[ -f "$IR_DOC" ]] || fail "missing QUERY_IR_RESIDUAL.md (X5c honesty)"
+[[ -f "$ROOT/doc/todo/rql/QUERY_IR_PROJECT_V1.md" ]] || fail "missing QUERY_IR_PROJECT_V1.md"
 
 # Shims must be gone.
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
@@ -27,6 +29,8 @@ rg -q 'residiuum-query-isa-v1' "$SDK_SRC/query_bytecode_v1/isa.rs" \
   || fail "ISA_PROFILE missing"
 rg -q 'residiuum-query-kernel-sda-v1' "$SDK_SRC/query_bytecode_v1/kernel.rs" \
   || fail "KERNEL_PROFILE missing"
+rg -q 'residiuum-query-ir-project-v1' "$SDK_SRC/query_bytecode_v1/ir_project.rs" \
+  || fail "PROJECT_IR_PROFILE missing"
 rg -q 'residiuum-query-bytecode-v1' "$MOD" \
   || fail "BYTECODE_PROFILE missing"
 
@@ -77,10 +81,21 @@ rg -q 'compile_where' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
 rg -q 'compile_where' "$FULL" \
   || fail "full_attach must compile_where"
 
-# IR residual honesty (X5c).
+# RQL-IR1: Core path-project must use named IR module (not private project_doc).
+rg -q 'apply_project_paths' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
+  || fail "core_page must call apply_project_paths"
+if rg -n 'fn project_doc' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
+  fail "core_page must not keep private project_doc (moved to ir_project)"
+fi
+rg -q 'fn apply_project_paths' "$SDK_SRC/query_bytecode_v1/ir_project.rs" \
+  || fail "ir_project must define apply_project_paths"
+
+# IR residual honesty (X5c / IR1).
 rg -qi 'Rust IR residual' "$IR_DOC" || fail "IR residual doc must name Rust IR residual"
 rg -qi 'RQL-C1 must not be accepted' "$IR_DOC" || fail "IR residual doc must forbid C1"
 rg -q 'execute_decoded_core' "$IR_DOC" || fail "IR residual doc must name execute_decoded_core"
+rg -q 'ir_project' "$IR_DOC" || fail "IR residual doc must name ir_project (IR1)"
+rg -q 'RQL-IR2' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-IR2 residual"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -116,4 +131,4 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
 
-echo "check_query_runtime_architecture: OK (X5+X5b+X5c; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1; Decision 0 OPEN; C1 forbidden)"

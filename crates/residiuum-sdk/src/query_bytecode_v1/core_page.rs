@@ -6,6 +6,7 @@
 //! Normative: CORE plan §10 / §14 APP-6 (partial). Compiles via
 //! [`crate::rql_app_core::compile_app_core`], scans with `list_keys` + `get`,
 //! evaluates predicates via the ENR+SDA kernel ([`super::kernel`]).
+//! Core path-project goes through [`super::ir_project`] (RQL-IR1).
 //! [`Predicate::eval`] is the test oracle only.
 //!
 //! **T2 budgets:** `max_documents`, `max_bytes`, `max_result_bytes`.
@@ -32,7 +33,7 @@ use crate::cursor_v1::{
 use crate::error::Error;
 use crate::plan_v1::{CollectionBindings, NullsOrder, OrderDir, OrderTerm, RqlPlanV1};
 use crate::predicate::{
-    resolve_path, CompareOp, Operand, Path, Predicate, Resolve,
+    resolve_path, CompareOp, Operand, Predicate, Resolve,
 };
 use crate::rql_app_core::{compile_app_core, merge_budgets, CompiledAppCore};
 use residiuum_heap::{CollectionId, HeapId};
@@ -227,7 +228,10 @@ pub fn execute_plan<S: DocScan>(
                         check_bytes_budget(budget, examined_bytes)?;
                         if where_k.eval_doc(&doc)? {
                             last_full_for_cursor = Some((key.clone(), doc.clone()));
-                            let value = project_doc(&doc, plan.project.as_ref())?;
+                            let value = super::ir_project::apply_project_paths(
+                                &doc,
+                                plan.project.as_ref(),
+                            )?;
                             let row_len = json_byte_len(&value);
                             let next_result = result_bytes.saturating_add(row_len);
                             check_result_budget(budget, next_result)?;
@@ -277,7 +281,10 @@ pub fn execute_plan<S: DocScan>(
             for (key, doc) in full {
                 check_governance(options, started)?;
                 last_full_for_cursor = Some((key.clone(), doc.clone()));
-                let value = project_doc(&doc, plan.project.as_ref())?;
+                let value = super::ir_project::apply_project_paths(
+                    &doc,
+                    plan.project.as_ref(),
+                )?;
                 let row_len = json_byte_len(&value);
                 let next_result = result_bytes.saturating_add(row_len);
                 check_result_budget(budget, next_result)?;
@@ -312,7 +319,10 @@ pub fn execute_plan<S: DocScan>(
                         check_bytes_budget(budget, examined_bytes)?;
                         if where_k.eval_doc(&doc)? {
                             last_full_for_cursor = Some((key.clone(), doc.clone()));
-                            let value = project_doc(&doc, plan.project.as_ref())?;
+                            let value = super::ir_project::apply_project_paths(
+                                &doc,
+                                plan.project.as_ref(),
+                            )?;
                             let row_len = json_byte_len(&value);
                             let next_result = result_bytes.saturating_add(row_len);
                             check_result_budget(budget, next_result)?;
@@ -372,7 +382,10 @@ pub fn execute_plan<S: DocScan>(
         for (key, doc) in full {
             check_governance(options, started)?;
             last_full_for_cursor = Some((key.clone(), doc.clone()));
-            let value = project_doc(&doc, plan.project.as_ref())?;
+            let value = super::ir_project::apply_project_paths(
+                &doc,
+                plan.project.as_ref(),
+            )?;
             let row_len = json_byte_len(&value);
             let next_result = result_bytes.saturating_add(row_len);
             check_result_budget(budget, next_result)?;
@@ -642,27 +655,6 @@ fn has_later_match<S: DocScan>(
         }
     }
     Ok(false)
-}
-
-fn project_doc(doc: &JsonValue, project: Option<&Vec<Path>>) -> Result<JsonValue, Error> {
-    let Some(paths) = project else {
-        return Ok(doc.clone());
-    };
-    let mut out = serde_json::Map::new();
-    for p in paths {
-        match resolve_path(doc, p) {
-            Resolve::Present(v) => {
-                // Flatten single-segment paths as object fields; multi-segment nest shallowly.
-                if p.0.len() == 1 {
-                    out.insert(p.0[0].clone(), v);
-                } else {
-                    out.insert(p.dotted(), v);
-                }
-            }
-            Resolve::Absent => {}
-        }
-    }
-    Ok(JsonValue::Object(out))
 }
 
 fn compare_rows(

@@ -80,6 +80,7 @@ proceeds.
 | ISA sole executable input (Core) | **X5 done** — private envelope; `execute_*` decodes ISA |
 | Full-language execute from ISA | **X5b done** — `execute_full_isa_with` |
 | One-dispatch + IR residual honesty | **X5c done** — `execute_decoded_core` + [QUERY_IR_RESIDUAL.md](./QUERY_IR_RESIDUAL.md) |
+| Core path-project named IR | **IR1 done** — [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) |
 | Core product accept | **RQL-C1** — **forbidden**; Decision 0 OPEN (IR residual remains) |
 
 ---
