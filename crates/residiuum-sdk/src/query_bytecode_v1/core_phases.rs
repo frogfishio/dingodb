@@ -9,7 +9,9 @@
 //! - **Page** — limit / page-size / field-order resume
 //! - **ProjectPaths** — path-project + page artefact
 //!
-//! [`super::core_page::execute_plan`] remains a demoted thin wrapper.
+//! **RQL-DEL1:** the demoted `execute_plan` / `run_core_page` orchestrator
+//! wrappers (superseded by direct VM opcode dispatch) are deleted; only
+//! [`CoreFrame`] phases remain as the shared implementation.
 //! Decision 0 remains OPEN; RQL-C1 must not be accepted.
 
 use crate::app_v1::{
@@ -609,36 +611,3 @@ impl<'a> CoreFrame<'a> {
     }
 }
 
-/// Demoted orchestrator (RQL-VM3): drives [`CoreFrame`] phases.
-///
-/// Prefer Query VM / [`CoreFrame`] directly. Kept for residual callers that
-/// pass a precomputed IndexEq probe.
-pub(crate) fn run_core_page<S: DocScan>(
-    scan: &mut S,
-    plan: &RqlPlanV1,
-    params: &BTreeMap<String, JsonValue>,
-    options: &QueryRunOptions,
-    heap_id: HeapId,
-    collection_id: CollectionId,
-    source_budget: Option<QueryBudget>,
-    precomputed_index_keys: Option<Option<Vec<String>>>,
-) -> Result<QueryPage, Error> {
-    let mut frame = CoreFrame::begin(
-        plan,
-        params,
-        options,
-        heap_id,
-        collection_id,
-        source_budget,
-    )?;
-    if let Some(pre) = precomputed_index_keys {
-        frame.index_keys = Some(pre);
-    } else {
-        frame.index_eq(scan)?;
-    }
-    frame.scan(scan)?;
-    frame.filter(scan)?;
-    frame.order()?;
-    frame.page()?;
-    frame.project_paths(scan)
-}

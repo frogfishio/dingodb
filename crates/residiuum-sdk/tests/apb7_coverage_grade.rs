@@ -1,7 +1,8 @@
 //! APB-7 T9: QueryPage complete-by-default coverage grade.
 //!
 //! Holey-host cases go through **canonical ISA** (`encode_core_program` →
-//! `execute_isa_bytes`) — not the crate-private `execute_plan` bypass (RQL-P0b).
+//! `execute_isa_bytes`) — the sole product Core execute path (RQL-P0b; the
+//! demoted `execute_plan` orchestrator bypass is deleted, RQL-DEL1).
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,

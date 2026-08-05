@@ -1595,8 +1595,10 @@ pub(crate) fn within_leave(
 /// [`DIAG_RQL_WITHIN_TYPE`] (never treated as empty bags).
 ///
 /// `foreign_by_id` maps immutable collection id → complete foreign docs.
-/// Prefer the flat VM path ([`within_enter`] / body opcodes / [`within_leave`]);
-/// this recursive helper remains for IR unit tests.
+/// Product execute uses the flat VM path ([`within_enter`] / body opcodes /
+/// [`within_leave`]); this recursive helper is **test-only** (RQL-DEL1) —
+/// kept for IR unit tests, not reachable from any product entry.
+#[cfg(test)]
 pub(crate) fn attach_within_rows(
     roots: &[(String, JsonValue)],
     foreign_by_id: &BTreeMap<CollectionId, Vec<(String, JsonValue)>>,
@@ -1924,6 +1926,11 @@ pub(crate) fn ensure_foreign_docs<H: HostCapabilities>(
     Ok(())
 }
 
+/// **Test-only** (RQL-DEL1): product `Within` foreign-doc collection goes
+/// through [`ensure_foreign_docs`] inline in `run_vm`'s attach opcodes, not
+/// this recursive pre-pass (which only served the deleted `run_attach_pipeline`
+/// orchestrator).
+#[cfg(test)]
 pub(crate) fn collect_within_using_names<H: HostCapabilities>(
     step: &WithinStepV1,
     cache: &mut BTreeMap<CollectionId, Vec<(String, JsonValue)>>,

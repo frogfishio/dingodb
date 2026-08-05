@@ -1,18 +1,18 @@
-//! Tiny SQL → SDA mimicry dialect.
+//! Tiny SQL → portable Filter / QVM mimicry dialect (**RQL-DQ1**).
 //!
 //! Intentionally incomplete. Compiles a useful `SELECT` / `WHERE` subset into
-//! pure SDA (via the portable [`Filter`] vocabulary). Joins, aggregates,
-//! subqueries, `ORDER BY`, `LIMIT`, and functions are out of scope.
+//! the portable [`Filter`] vocabulary for Query VM execution. Joins, aggregates,
+//! subqueries, `ORDER BY`, and functions are out of scope.
 //!
 //! See [doc/SDA/DIALECTS.md](../../../../../../doc/SDA/DIALECTS.md).
 
-use super::{CompiledSda, SdaShape};
+use super::portable::CompiledPortable;
 use crate::error::Error;
 use crate::filter::{Filter, Pred};
 use serde_json::{Number, Value as JsonValue};
 
-/// Compile a SQL-ish string into pure SDA.
-pub(super) fn compile_sql(source: &str) -> Result<CompiledSda, Error> {
+/// Compile a SQL-ish string into a portable Filter (+ optional project).
+pub(super) fn compile_sql(source: &str) -> Result<CompiledPortable, Error> {
     let trimmed = source.trim();
     if trimmed.is_empty() {
         return Err(Error::QueryInvalid("dialect 'sql': empty query".into()));
@@ -33,9 +33,10 @@ struct SqlQuery {
     where_clause: Option<Filter>,
 }
 
-fn lower(q: SqlQuery) -> Result<CompiledSda, Error> {
+fn lower(q: SqlQuery) -> Result<CompiledPortable, Error> {
     let mut notes = vec![
         "SQL dialect is mimicry, not full SQL (see doc/SDA/DIALECTS.md)".into(),
+        "RQL-DQ1: compiles to portable Filter → Query VM (not SDA)".into(),
     ];
     if let Some(ref name) = q.from {
         notes.push(format!(
@@ -51,70 +52,20 @@ fn lower(q: SqlQuery) -> Result<CompiledSda, Error> {
                 .into(),
         );
     }
-    let pred_sda = filter.to_sda();
-    sda_core::Program::parse(&pred_sda).map_err(|e| {
-        Error::QueryInvalid(format!(
-            "dialect 'sql': internal predicate SDA failed: {e}; sda={pred_sda}"
-        ))
-    })?;
 
     match q.columns {
-        None => {
-            // SELECT * or WHERE-only → document predicate over `input`.
-            Ok(CompiledSda {
-                dialect: "sql".into(),
-                sda: pred_sda,
-                shape: SdaShape::DocumentPredicate,
-                notes,
-            })
-        }
+        None => Ok(CompiledPortable::new("sql", filter, None, notes)),
         Some(cols) if cols.is_empty() => Err(Error::QueryInvalid(
             "dialect 'sql': SELECT column list must not be empty".into(),
         )),
         Some(cols) => {
-            // Projection: filter a sequence bound as `input`. Column projection
-            // embeds getPath Option carriers — honest about imperfect mapping.
             notes.push(format!(
-                "SELECT {} projects via getPath (Option carriers in SDA; not bare SQL null)",
+                "SELECT {} projects via Application Core path project",
                 cols.join(", ")
             ));
-            let pred_d = rewrite_input_binding(&pred_sda, "d");
-            let fields: Vec<String> = cols
-                .iter()
-                .map(|c| {
-                    let path_segs: Vec<String> =
-                        c.split('.').map(sda_string_lit).collect();
-                    // Map key is the leaf segment (SQL-ish column label).
-                    let map_key = sda_string_lit(c.split('.').next_back().unwrap_or(c));
-                    format!(
-                        "{} -> getPath(d, Seq[{}])",
-                        map_key,
-                        path_segs.join(", ")
-                    )
-                })
-                .collect();
-            let sda = format!(
-                "{{ yield Map{{ {} }} | d in input | ({pred_d}) }}",
-                fields.join(", ")
-            );
-            sda_core::Program::parse(&sda).map_err(|e| {
-                Error::QueryInvalid(format!(
-                    "dialect 'sql': internal program SDA failed: {e}; sda={sda}"
-                ))
-            })?;
-            Ok(CompiledSda {
-                dialect: "sql".into(),
-                sda,
-                shape: SdaShape::Program,
-                notes,
-            })
+            Ok(CompiledPortable::new("sql", filter, Some(cols), notes))
         }
     }
-}
-
-/// Rewrite `getPath(input,` → `getPath(var,` for comprehension rows.
-fn rewrite_input_binding(pred: &str, var: &str) -> String {
-    pred.replace("getPath(input,", &format!("getPath({var},"))
 }
 
 /// Detect SQL `IS NULL` lowering: `Or(Exists(false), Eq(Null))` (and nesting under
@@ -603,24 +554,6 @@ impl Parser {
     }
 }
 
-fn sda_string_lit(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for ch in s.chars() {
-        match ch {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c.is_control() => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -629,51 +562,31 @@ mod tests {
     #[test]
     fn bare_predicate() {
         let c = compile_sql("status = 'active'").unwrap();
-        assert_eq!(c.shape, SdaShape::DocumentPredicate);
-        let prog = sda_core::Program::parse(&c.sda).unwrap();
-        assert_eq!(
-            prog.run_json("input", json!({"status": "active"}))
-                .unwrap(),
-            json!(true)
-        );
+        assert!(c.project.is_none());
+        assert!(c.filter.matches(&json!({"status": "active"})));
+        assert!(!c.filter.matches(&json!({"status": "idle"})));
+        let pred = c.filter.to_predicate().unwrap();
+        let params = std::collections::BTreeMap::new();
+        assert!(pred.eval(&json!({"status": "active"}), &params).unwrap());
     }
 
     #[test]
     fn in_list() {
         let c = compile_sql("country IN ('TH', 'SG')").unwrap();
-        let prog = sda_core::Program::parse(&c.sda).unwrap();
-        assert_eq!(
-            prog.run_json("input", json!({"country": "TH"}))
-                .unwrap(),
-            json!(true)
-        );
-        assert_eq!(
-            prog.run_json("input", json!({"country": "US"}))
-                .unwrap(),
-            json!(false)
-        );
+        assert!(c.filter.matches(&json!({"country": "TH"})));
+        assert!(!c.filter.matches(&json!({"country": "US"})));
     }
 
     #[test]
     fn is_null_missing() {
         let c = compile_sql("nickname IS NULL").unwrap();
-        // Comfort map collapses absence and stored null — documented in notes.
         assert!(
-            c.notes.iter().any(|n| n.contains("Null≠absence") || n.contains("Null")),
+            c.notes.iter().any(|n| n.contains("Null") || n.contains("absence")),
             "expected null-vs-absence note, got {:?}",
             c.notes
         );
-        let prog = sda_core::Program::parse(&c.sda).unwrap();
-        assert_eq!(prog.run_json("input", json!({})).unwrap(), json!(true));
-        assert_eq!(
-            prog.run_json("input", json!({"nickname": null}))
-                .unwrap(),
-            json!(true)
-        );
-        assert_eq!(
-            prog.run_json("input", json!({"nickname": "x"}))
-                .unwrap(),
-            json!(false)
-        );
+        assert!(c.filter.matches(&json!({})));
+        assert!(c.filter.matches(&json!({"nickname": null})));
+        assert!(!c.filter.matches(&json!({"nickname": "x"})));
     }
 }

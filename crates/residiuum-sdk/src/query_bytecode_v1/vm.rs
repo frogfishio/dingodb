@@ -5,7 +5,8 @@
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
 //! This module freezes the opcode vocabulary. Execution is [`super::vm_exec`].
-//! Core opcode bodies still call `execute_plan` until **RQL-VM2**.
+//! Core opcode bodies call [`super::core_phases::CoreFrame`] phases directly
+//! (**RQL-VM2**; the `execute_plan` orchestrator wrapper is deleted, RQL-DEL1).
 //! Decision 0 remains OPEN; RQL-C1 must not be accepted.
 
 /// Query VM profile id (instruction set freeze).

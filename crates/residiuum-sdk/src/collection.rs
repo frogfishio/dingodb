@@ -460,16 +460,19 @@ impl<'a> Collection<'a> {
         self.find(&filter)
     }
 
-    /// Find via a **query dialect** that compiles to pure SDA (`doc/SDA/DIALECTS.md`).
+    /// Find via a **query dialect** (`doc/SDA/DIALECTS.md`).
     ///
-    /// Builtin dialect ids: `json` / `mongo` (object filter text), `sql`
-    /// (`SELECT` / `WHERE` mimicry), `sda` (pure predicate/program text).
-    /// Dialect id `rql` is **retired** on this surface (RQL-R1) — use
-    /// [`crate::app_v1::CollectionClient::rql`] / Query VM instead.
+    /// Builtin dialect ids: `json` / `mongo` (object filter text) and `sql`
+    /// (`SELECT` / `WHERE` mimicry) compile to a portable filter and execute
+    /// on the Query VM (**RQL-DQ1**) — not SDA. `sda` remains pure
+    /// predicate/program text, executed via [`Self::filter_sda_with`] /
+    /// [`Self::sda_with`]. Dialect id `rql` is **retired** on this surface
+    /// (RQL-R1) — use [`crate::app_v1::CollectionClient::rql`] / Query VM
+    /// instead.
     ///
-    /// Document predicates scan live rows; program-shaped dialects materialise
-    /// the collection as a JSON array under `input` and return the SDA result as
-    /// a single synthetic row key `"$result"`.
+    /// Program-shaped `sda` dialects materialise the collection as a JSON
+    /// array under `input` and return the SDA result as a single synthetic
+    /// row key `"$result"`.
     ///
     /// Pure SDA remains the mathematical language; dialects are comfortable
     /// imperfect frontends. Official RQL is **not** a dialect→SDA peer.
@@ -489,15 +492,154 @@ impl<'a> Collection<'a> {
         options: QueryOptions,
     ) -> Result<Vec<(String, JsonValue)>, Error> {
         let compiled = crate::dialects::compile_dialect(dialect, source)?;
-        match compiled.shape {
-            crate::dialects::SdaShape::DocumentPredicate => {
-                self.filter_sda_with(&compiled.sda, options)
-            }
-            crate::dialects::SdaShape::Program => {
-                let value = self.sda_with(&compiled.sda, options)?;
-                Ok(vec![("$result".into(), value)])
+        match compiled {
+            crate::dialects::CompiledDialect::Sda(sda) => match sda.shape {
+                crate::dialects::SdaShape::DocumentPredicate => {
+                    self.filter_sda_with(&sda.sda, options)
+                }
+                crate::dialects::SdaShape::Program => {
+                    let value = self.sda_with(&sda.sda, options)?;
+                    Ok(vec![("$result".into(), value)])
+                }
+            },
+            crate::dialects::CompiledDialect::Portable(portable) => {
+                self.find_portable_with(&portable, options)
             }
         }
+    }
+
+    /// Execute a portable-filter dialect compile via Query VM (**RQL-DQ1**).
+    ///
+    /// Not the Heap-qualified execution path: [`CollectionId`] / [`HeapId`]
+    /// are deterministically derived from the collection name (stable across
+    /// calls, never persisted) so the compiled plan / cursor can bind and
+    /// page correctly. Product Heap query execution
+    /// ([`crate::app_v1::CollectionClient::rql`]) uses real durable ids.
+    fn find_portable_with(
+        &mut self,
+        compiled: &crate::dialects::CompiledPortable,
+        options: QueryOptions,
+    ) -> Result<Vec<(String, JsonValue)>, Error> {
+        use crate::app_v1::{QueryBudget as RunBudget, QueryRunOptions};
+        use crate::plan_v1::{CollectionBindings, PlanBuilder, MAX_PAGE_SIZE};
+        use crate::query_bytecode_v1::{execute_bytecode, HostCapabilities, QueryBytecodeV1};
+        use residiuum_heap::{CollectionId, HeapId};
+
+        let predicate = compiled.filter.to_predicate()?;
+        let collection_id = CollectionId::from_bytes(dialect_uuid_bytes(
+            "residiuum-dialect-collection-id-v1",
+            &self.name,
+        ))
+        .map_err(|e| Error::QueryInvalid(format!("dialect collection id: {e}")))?;
+        let heap_id = HeapId::from_bytes(dialect_uuid_bytes(
+            "residiuum-dialect-heap-id-v1",
+            &self.name,
+        ))
+        .map_err(|e| Error::QueryInvalid(format!("dialect heap id: {e}")))?;
+
+        let mut bindings = CollectionBindings::default();
+        bindings.bind(&self.name, collection_id);
+        let mut builder = PlanBuilder::from_source(&self.name).where_(predicate);
+        if let Some(cols) = &compiled.project {
+            builder = builder.project(cols)?;
+        }
+        builder = builder.coverage(if options.allow_partial_coverage {
+            crate::app_v1::CoveragePolicy::IncompleteAllowed
+        } else {
+            crate::app_v1::CoveragePolicy::Complete
+        });
+        let mut page_size: Option<u32> = None;
+        if let Some(n) = options.limit {
+            builder = builder.limit(n as u64);
+            page_size = Some((n as u32).clamp(1, MAX_PAGE_SIZE));
+        }
+        let plan = builder.compile(&bindings)?;
+        let bytecode = QueryBytecodeV1::from_core_plan(plan, None)?;
+
+        let mut run_options = QueryRunOptions::default();
+        run_options.page_size = page_size;
+        run_options.cancel = options.cancel.clone();
+        if let Some(b) = &options.budget {
+            run_options.budget = Some(RunBudget {
+                max_documents: b.max_docs_scanned.map(|n| n as u64),
+                max_bytes: b.max_bytes_scanned,
+                max_result_bytes: b.max_result_bytes,
+            });
+        }
+
+        struct DialectHost<'c, 'a> {
+            collection: &'c mut Collection<'a>,
+            keys: Option<Vec<String>>,
+        }
+        impl<'c, 'a> DialectHost<'c, 'a> {
+            fn sorted_keys(&mut self) -> Result<&[String], Error> {
+                if self.keys.is_none() {
+                    let mut keys = self.collection.scan_keys()?;
+                    keys.sort();
+                    self.keys = Some(keys);
+                }
+                Ok(self.keys.as_deref().unwrap())
+            }
+        }
+        impl HostCapabilities for DialectHost<'_, '_> {
+            fn list_keys(
+                &mut self,
+                _collection_id: CollectionId,
+                limit: Option<usize>,
+                after_key: Option<&str>,
+            ) -> Result<Vec<String>, Error> {
+                let keys = self.sorted_keys()?;
+                let start = match after_key {
+                    Some(a) => keys.partition_point(|k| k.as_str() <= a),
+                    None => 0,
+                };
+                let mut out = keys[start..].to_vec();
+                if let Some(n) = limit {
+                    out.truncate(n);
+                }
+                Ok(out)
+            }
+
+            fn get_json(
+                &mut self,
+                _collection_id: CollectionId,
+                key: &str,
+            ) -> Result<Option<JsonValue>, Error> {
+                self.collection.get(key)
+            }
+        }
+
+        let mut host = DialectHost {
+            collection: self,
+            keys: None,
+        };
+        let mut out = Vec::new();
+        loop {
+            let page = execute_bytecode(
+                &mut host,
+                &bytecode,
+                &std::collections::BTreeMap::new(),
+                &run_options,
+                heap_id,
+                collection_id,
+            )?;
+            for row in page.rows {
+                out.push((row.key, row.value));
+            }
+            if let Some(n) = options.limit {
+                if out.len() >= n {
+                    break;
+                }
+            }
+            if page.exhausted || page.next.is_none() {
+                break;
+            }
+            run_options.after = page.next;
+        }
+        if let Some(n) = options.limit {
+            out.truncate(n);
+        }
+        Ok(out)
     }
 
     /// Fluent query builder (DX_SPEC §7.2).
@@ -598,6 +740,24 @@ impl<'a> Collection<'a> {
             Backend::Cluster(c) => c.find(&self.name, filter, options),
         }
     }
+}
+
+/// Deterministic UUIDv4-shaped bytes from a domain tag + collection name
+/// (**RQL-DQ1**: synthetic [`residiuum_heap::CollectionId`] / [`residiuum_heap::HeapId`]
+/// for portable-dialect Query VM execution over the legacy flat collection
+/// surface, which has no durable Heap-issued ids). Not security-sensitive;
+/// stable per name, never persisted or trusted as an authority boundary.
+fn dialect_uuid_bytes(domain: &str, name: &str) -> [u8; 16] {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(domain.as_bytes());
+    hasher.update(&[0u8]);
+    hasher.update(name.as_bytes());
+    let hash = hasher.finalize();
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&hash.as_bytes()[..16]);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC variant
+    bytes
 }
 
 /// Run a filter query against an open store (index-accelerated when possible).

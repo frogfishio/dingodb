@@ -31,10 +31,9 @@ mod vm;
 mod vm_exec;
 
 pub use core_page::{explain_rql_source, EXEC_PROFILE};
-// Crate-private semantic executors (RQL-P0b) — available inside the SDK crate only.
-// `execute_plan` remains for VM Core opcode bodies until RQL-VM2.
-#[allow(unused_imports)] // re-export for crate-internal callers / VM residual
-pub(crate) use core_page::{execute_plan, DocScan};
+// Crate-private host-scan adapter trait (RQL-P0b) — implemented by
+// `CollectionClient` (residual) and the VM's internal `HostScan` (product).
+pub(crate) use core_page::DocScan;
 pub use full_attach::{
     compile_rql_full, execute_full_isa_with, execute_rql_full, execute_rql_full_with,
     explain_rql_full, explain_rql_full_on_heap, refuse_full_language_on_core_wire,

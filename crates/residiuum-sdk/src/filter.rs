@@ -267,12 +267,123 @@ impl Filter {
         }
     }
 
+    /// Lower this portable filter into a total [`crate::predicate::Predicate`]
+    /// for Application Core / Query VM (**RQL-DQ1**).
+    ///
+    /// Preserves DX `Filter` comfort semantics where they diverge from the
+    /// Residiuum predicate profile (notably: missing `!=` value is true;
+    /// `Ne` becomes `missing OR cmp ne`). Not a lossless SDA peer — use dialect
+    /// `sda` when Null≠absence must be exact.
+    pub fn to_predicate(&self) -> Result<crate::predicate::Predicate, Error> {
+        use crate::predicate::{CompareOp, Operand, Path, Predicate};
+        match self {
+            Self::Always => Ok(Predicate::True),
+            Self::Field { path, pred } => {
+                let p = Path::parse_dotted(path)?;
+                Ok(match pred {
+                    Pred::Eq(v) => {
+                        if v.is_null() {
+                            Predicate::IsNull {
+                                path: p,
+                                negated: false,
+                            }
+                        } else {
+                            Predicate::Cmp {
+                                cmp: CompareOp::Eq,
+                                left: Operand::path(p),
+                                right: Operand::literal(v.clone()),
+                            }
+                        }
+                    }
+                    Pred::Ne(v) => {
+                        // Filter: missing ≠ concrete value is true.
+                        Predicate::Or {
+                            args: vec![
+                                Predicate::Missing { path: p.clone() },
+                                Predicate::Cmp {
+                                    cmp: CompareOp::Ne,
+                                    left: Operand::path(p),
+                                    right: Operand::literal(v.clone()),
+                                },
+                            ],
+                        }
+                    }
+                    Pred::Lt(v) => Predicate::Cmp {
+                        cmp: CompareOp::Lt,
+                        left: Operand::path(p),
+                        right: Operand::literal(v.clone()),
+                    },
+                    Pred::Lte(v) => Predicate::Cmp {
+                        cmp: CompareOp::Lte,
+                        left: Operand::path(p),
+                        right: Operand::literal(v.clone()),
+                    },
+                    Pred::Gt(v) => Predicate::Cmp {
+                        cmp: CompareOp::Gt,
+                        left: Operand::path(p),
+                        right: Operand::literal(v.clone()),
+                    },
+                    Pred::Gte(v) => Predicate::Cmp {
+                        cmp: CompareOp::Gte,
+                        left: Operand::path(p),
+                        right: Operand::literal(v.clone()),
+                    },
+                    Pred::In(list) => Predicate::In {
+                        left: Operand::path(p),
+                        list: list.clone(),
+                        negated: false,
+                    },
+                    Pred::Exists(true) => Predicate::Present { path: p },
+                    Pred::Exists(false) => Predicate::Missing { path: p },
+                    Pred::Prefix(s) => Predicate::StartsWith {
+                        path: p,
+                        prefix: s.clone(),
+                    },
+                    Pred::Contains(v) => Predicate::Contains {
+                        path: p,
+                        needle: v.clone(),
+                    },
+                })
+            }
+            Self::And(parts) => {
+                let mut args = Vec::with_capacity(parts.len());
+                for part in parts {
+                    args.push(part.to_predicate()?);
+                }
+                Ok(if args.is_empty() {
+                    Predicate::True
+                } else if args.len() == 1 {
+                    args.pop().unwrap()
+                } else {
+                    Predicate::And { args }
+                })
+            }
+            Self::Or(parts) => {
+                let mut args = Vec::with_capacity(parts.len());
+                for part in parts {
+                    args.push(part.to_predicate()?);
+                }
+                Ok(if args.is_empty() {
+                    Predicate::False
+                } else if args.len() == 1 {
+                    args.pop().unwrap()
+                } else {
+                    Predicate::Or { args }
+                })
+            }
+            Self::Not(inner) => Ok(Predicate::Not {
+                arg: Box::new(inner.to_predicate()?),
+            }),
+        }
+    }
+
     /// Compile this filter to a boolean SDA program over binding `input`.
     ///
     /// The program is pure standalone SDA plus filter host helpers `getPath`,
     /// `startsWith`, and `strContains` (DEF-028). Evaluation via
     /// [`Self::matches_sda`] MUST agree with [`Self::matches`] on the portable
-    /// vocabulary.
+    /// vocabulary. Product dialect execute prefers [`Self::to_predicate`] → QVM
+    /// (**RQL-DQ1**); keep `to_sda` for raw SDA comfort / oracles.
     pub fn to_sda(&self) -> String {
         compile_filter_sda(self)
     }

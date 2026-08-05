@@ -4,9 +4,7 @@
 //! lossless path for distinctions foreign surfaces cannot express — especially
 //! Null vs absence (SDA_SPEC §4.0.1).
 
-use residiuum_sdk::{
-    compile_dialect, json, list_builtin_dialects, BuiltinDialect, Residiuum, SdaShape,
-};
+use residiuum_sdk::{compile_dialect, json, list_builtin_dialects, BuiltinDialect, Residiuum};
 use tempfile::tempdir;
 
 #[test]
@@ -51,10 +49,11 @@ fn compile_dialect_profile_and_builtins() {
     let c = BuiltinDialect::Sql
         .compile("WHERE country IN ('TH', 'SG')")
         .unwrap();
-    assert_eq!(c.shape, SdaShape::DocumentPredicate);
-    assert_eq!(c.dialect, "sql");
+    let p = c.as_portable().expect("sql compiles to portable (RQL-DQ1)");
+    assert_eq!(p.dialect, "sql");
     let same = compile_dialect("sql", "WHERE country IN ('TH', 'SG')").unwrap();
-    assert_eq!(c.sda, same.sda);
+    let p_same = same.as_portable().expect("portable");
+    assert_eq!(p.filter, p_same.filter);
 }
 
 /// RQL dialect id is retired on the dialect→SDA surface (RQL-R1).
@@ -110,37 +109,28 @@ fn pure_sda_null_vs_absence_sql_is_null_collapses() {
     assert_eq!(only_absent.run_json("input", present.clone()).unwrap(), json!(false));
 
     // SQL dialect: IS NULL matches both missing and stored null (mimicry).
+    // RQL-DQ1: sql/json/mongo compile to a portable Filter (not SDA text).
     let sql = compile_dialect("sql", "nickname IS NULL").unwrap();
+    let sql_p = sql.as_portable().expect("sql compiles to portable");
     assert!(
-        sql.notes.iter().any(|n| n.contains("absence") || n.contains("Null")),
+        sql_p.notes.iter().any(|n| n.contains("absence") || n.contains("Null")),
         "IS NULL must document Null≠absence collapse: {:?}",
-        sql.notes
+        sql_p.notes
     );
-    let sql_prog = sda_core::Program::parse(&sql.sda).unwrap();
-    assert_eq!(sql_prog.run_json("input", stored_null).unwrap(), json!(true));
-    assert_eq!(sql_prog.run_json("input", missing).unwrap(), json!(true));
-    assert_eq!(sql_prog.run_json("input", present).unwrap(), json!(false));
+    assert_eq!(sql_p.filter.matches(&stored_null), true);
+    assert_eq!(sql_p.filter.matches(&missing), true);
+    assert_eq!(sql_p.filter.matches(&present), false);
 
     // Mongo/JSON can split with $eq / $exists, but still is not full SDA carriers.
     let eq_null = compile_dialect("json", r#"{"nickname": null}"#).unwrap();
     let exists_false =
         compile_dialect("json", r#"{"nickname": {"$exists": false}}"#).unwrap();
-    let eq_prog = sda_core::Program::parse(&eq_null.sda).unwrap();
-    let ex_prog = sda_core::Program::parse(&exists_false.sda).unwrap();
-    assert_eq!(
-        eq_prog
-            .run_json("input", json!({"nickname": null}))
-            .unwrap(),
-        json!(true)
-    );
-    assert_eq!(eq_prog.run_json("input", json!({})).unwrap(), json!(false));
-    assert_eq!(ex_prog.run_json("input", json!({})).unwrap(), json!(true));
-    assert_eq!(
-        ex_prog
-            .run_json("input", json!({"nickname": null}))
-            .unwrap(),
-        json!(false)
-    );
+    let eq_p = eq_null.as_portable().expect("json compiles to portable");
+    let ex_p = exists_false.as_portable().expect("json compiles to portable");
+    assert!(eq_p.filter.matches(&json!({"nickname": null})));
+    assert!(!eq_p.filter.matches(&json!({})));
+    assert!(ex_p.filter.matches(&json!({})));
+    assert!(!ex_p.filter.matches(&json!({"nickname": null})));
 }
 
 #[test]

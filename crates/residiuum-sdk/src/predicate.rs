@@ -309,6 +309,43 @@ impl Predicate {
                     Error::QueryInvalid("missing requires path".into())
                 })?)?,
             }),
+            "is_null" => Ok(Self::IsNull {
+                path: path_from_json(obj.get("path").ok_or_else(|| {
+                    Error::QueryInvalid("is_null requires path".into())
+                })?)?,
+                negated: obj.get("negated").and_then(|b| b.as_bool()).unwrap_or(false),
+            }),
+            "in" => {
+                let left = operand_from_json(obj.get("left").ok_or_else(|| {
+                    Error::QueryInvalid("in requires left".into())
+                })?)?;
+                let list = obj
+                    .get("list")
+                    .and_then(|l| l.as_array())
+                    .ok_or_else(|| Error::QueryInvalid("in requires list".into()))?
+                    .clone();
+                let negated = obj.get("negated").and_then(|b| b.as_bool()).unwrap_or(false);
+                Ok(Self::In { left, list, negated })
+            }
+            "starts_with" => Ok(Self::StartsWith {
+                path: path_from_json(obj.get("path").ok_or_else(|| {
+                    Error::QueryInvalid("starts_with requires path".into())
+                })?)?,
+                prefix: obj
+                    .get("prefix")
+                    .and_then(|p| p.as_str())
+                    .ok_or_else(|| Error::QueryInvalid("starts_with requires prefix".into()))?
+                    .to_string(),
+            }),
+            "contains" => Ok(Self::Contains {
+                path: path_from_json(obj.get("path").ok_or_else(|| {
+                    Error::QueryInvalid("contains requires path".into())
+                })?)?,
+                needle: obj
+                    .get("needle")
+                    .cloned()
+                    .ok_or_else(|| Error::QueryInvalid("contains requires needle".into()))?,
+            }),
             other => Err(Error::QueryInvalid(format!(
                 "unsupported predicate op `{other}` in plan json"
             ))),
@@ -825,5 +862,59 @@ mod tests {
         }
         .eval(&doc, &params)
         .unwrap());
+    }
+
+    /// Plan-json canonical encode → parse must round-trip every op
+    /// (RQL-DQ1: `IsNull`/`In`/`StartsWith`/`Contains` were previously
+    /// encodable via [`Predicate::to_canonical_json`] but not decodable via
+    /// [`Predicate::from_plan_json`] — a latent gap that broke ISA
+    /// encode/decode for `is null`, `in`, `starts_with`, `contains`).
+    #[test]
+    fn plan_json_round_trips_every_op() {
+        let path = || Path::parse_dotted("a.b").unwrap();
+        let cases = vec![
+            Predicate::True,
+            Predicate::False,
+            Predicate::Cmp {
+                cmp: CompareOp::Eq,
+                left: Operand::path(path()),
+                right: Operand::literal(json!(1)),
+            },
+            Predicate::In {
+                left: Operand::path(path()),
+                list: vec![json!(1), json!("x")],
+                negated: true,
+            },
+            Predicate::Present { path: path() },
+            Predicate::Missing { path: path() },
+            Predicate::IsNull {
+                path: path(),
+                negated: true,
+            },
+            Predicate::StartsWith {
+                path: path(),
+                prefix: "pre".into(),
+            },
+            Predicate::Contains {
+                path: path(),
+                needle: json!("needle"),
+            },
+            Predicate::And {
+                args: vec![Predicate::True, Predicate::False],
+            },
+            Predicate::Or {
+                args: vec![Predicate::True, Predicate::False],
+            },
+            Predicate::Not {
+                arg: Box::new(Predicate::True),
+            },
+        ];
+        for p in cases {
+            let j = p.to_canonical_json();
+            let back = Predicate::from_plan_json(&j).unwrap_or_else(|e| {
+                panic!("round-trip decode failed for {p:?}: {e}")
+            });
+            assert_eq!(back, p, "round-trip mismatch for {p:?}");
+        }
     }
 }

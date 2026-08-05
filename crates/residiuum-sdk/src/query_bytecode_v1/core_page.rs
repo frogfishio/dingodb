@@ -18,20 +18,18 @@
 //! **T4 index pushdown:** when [`DocScan::try_equality_index_keys`] returns
 //! candidates for field equalities, examine only those keys (still re-eval
 //! full predicate). Fall back to full scan when no usable index.
-//! **T8 deadline/cancel:** [`QueryRunOptions::deadline`] and
-//! [`QueryRunOptions::cancel`] checked cooperatively between scan steps.
+//! **T8 deadline/cancel:** [`crate::app_v1::QueryRunOptions::deadline`] and
+//! [`crate::app_v1::QueryRunOptions::cancel`] checked cooperatively between scan steps.
 //!
 //! **Not claimed:** product query qualification (APB-7 package accept), product
 //! cursor secrets, remote op 118, snapshot reads.
 
-use crate::app_v1::{
-    QueryBudget, QueryPage, QueryRunOptions, QueryExplanation,
-};
+use crate::app_v1::QueryExplanation;
 use crate::error::Error;
-use crate::plan_v1::{CollectionBindings, RqlPlanV1};
+use crate::plan_v1::CollectionBindings;
 use crate::predicate::{CompareOp, Operand, Predicate};
 use crate::rql_app_core::compile_app_core;
-use residiuum_heap::{CollectionId, HeapId};
+use residiuum_heap::CollectionId;
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
@@ -80,38 +78,6 @@ pub fn explain_rql_source(
         tree: compiled.plan.to_canonical_json(),
     })
 }
-
-/// Execute a validated plan (one page). Crate-private (RQL-P0b) — not a public ISA bypass.
-
-/// Demoted Core page entry (RQL-VM2): runs [`super::core_phases::CoreFrame`] phases.
-///
-/// Product execute enters via Query VM (`run_vm`). This remains crate-private
-/// for residual/oracle callers. Not a public ISA bypass.
-pub(crate) fn execute_plan<S: DocScan>(
-    scan: &mut S,
-    plan: &RqlPlanV1,
-    params: &BTreeMap<String, JsonValue>,
-    options: &QueryRunOptions,
-    heap_id: HeapId,
-    collection_id: CollectionId,
-    source_budget: Option<QueryBudget>,
-) -> Result<QueryPage, Error> {
-    let mut frame = super::core_phases::CoreFrame::begin(
-        plan,
-        params,
-        options,
-        heap_id,
-        collection_id,
-        source_budget,
-    )?;
-    frame.index_eq(scan)?;
-    frame.scan(scan)?;
-    frame.filter(scan)?;
-    frame.order()?;
-    frame.page()?;
-    frame.project_paths(scan)
-}
-
 
 /// Extract field equality constraints for index pushdown (shallow AND of `=` only).
 ///
