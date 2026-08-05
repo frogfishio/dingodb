@@ -1,5 +1,10 @@
 //! Bounded Application Core page executor — APP-6 T2/T3 + APB-7 T2/T4.
 //!
+//! **Decision 0 (2026-08-05): FEATURE FREEZE.** This module is a parallel
+//! semantic executor (architectural violation). Do not add query features here.
+//! Bugfix / evidence honesty only. Convergence: port into one query bytecode
+//! runtime, then delete — see `doc/todo/rql/QUERY_RUNTIME_CONVERGENCE.md`.
+//!
 //! Normative: CORE plan §10 / §14 APP-6 (partial). Compiles via
 //! [`crate::rql_app_core::compile_app_core`], scans with `list_keys` + `get`,
 //! evaluates predicates with [`crate::predicate::Predicate::eval`].

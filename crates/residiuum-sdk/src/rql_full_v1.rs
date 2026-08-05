@@ -1,5 +1,10 @@
 //! Full RQL-v1 compile/execute (`rql-full-v1`) — Phase 3 labor.
 //!
+//! **Decision 0 (2026-08-05): FEATURE FREEZE.** `execute_rql_full` is a parallel
+//! semantic executor (architectural violation). Do not add query features here.
+//! Bugfix / evidence honesty only. Convergence: port into one query bytecode
+//! runtime, then delete — see `doc/todo/rql/QUERY_RUNTIME_CONVERGENCE.md`.
+//!
 //! Normative: [RQL_SPEC.md](../../../doc/wip/query/RQL_SPEC.md) enrich / within.
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.

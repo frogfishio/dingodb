@@ -1,12 +1,14 @@
 # Path to full RQL — de-risk expressiveness + performance
 
 Status: **labor map 2026-08-05** (post store P0 / packaging 0.2.2 diversion);  
+**Decision 0 (HARD):** [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) — one bytecode / one runtime; freeze `query_exec_v1` + `execute_rql_full`  
 **What’s left (read this first):** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)  
-**RQL-0** gap ledger [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) (CRITICAL_PATH §4.6);  
+**RQL-0** gap ledger [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §0 (CRITICAL_PATH §4.6);  
 **Phase 1–3** checklists under `doc/todo/rql/`  
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·  
 [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·  
-[RQL_SPEC.md](../../wip/query/RQL_SPEC.md)
+[RQL_SPEC.md](../../wip/query/RQL_SPEC.md) ·  
+[DIALECTS.md](../../SDA/DIALECTS.md)
 
 **Question answered:** how do we get from *here* to *full RQL support* so we can
 run comprehensive tests that decide (1) SQL-class expressiveness and (2) whether
@@ -164,10 +166,10 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = (none staged) — see RQL_WHAT_IS_LEFT.md
-NEXT human  = RQL-C1 accept APP-6/7/APB-7 + review in_review cards
-JUST SHIPPED = RQL-I1 root enrich index (in_review)
-NOT next    = at-rank, within-nested index, query perf, op118 enrich parity
+NEXT labor  = RQL-X1 freeze query bytecode + host boundary
+FROZEN      = query_exec_v1 + execute_rql_full feature growth (Decision 0)
+NEXT human  = confirm Decision 0; C1 accept only after shared-runtime honesty
+NOT next    = S1, D1, wire parity, more façade features
 ```
 
-F1/F2/I1 are **already labor-closed** (in_review). Do not re-pull them.
+Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0 — do not grow those executors.

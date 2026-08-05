@@ -1,12 +1,14 @@
 # RQL-0 — semantic and implementation inventory
 
-Status: **labor 2026-08-05** · CRITICAL_PATH §4.6  
-Board: Query spine Feature `1a8a3e05` · task `190a97bd`  
+Status: **labor 2026-08-05** · CRITICAL_PATH §4.6 · **Decision 0 amended**  
+Board: Query spine Feature `1a8a3e05` · inventory `190a97bd` · Decision 0 `d06c909f`  
 **What’s left (short):** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)  
+**Convergence charter:** [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)  
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) ·
 [PATH_TO_FULL_RQL.md](./PATH_TO_FULL_RQL.md) ·
-[NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md)
+[NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·
+[DIALECTS.md](../../SDA/DIALECTS.md)
 
 This is the **gap ledger + dependency-ordered package sequence** required by
 CRITICAL_PATH §4.6. It is not a second roadmap family. Living package states
@@ -14,6 +16,45 @@ remain on the scoreboard; Kanban owns labor workflow only.
 
 **Law:** refuse new RQL syntax until its semantics and execution owner are named
 in this ledger (or an amended RQL_SPEC section referenced here).
+
+---
+
+## 0. Decision 0 — one bytecode, one runtime (HARD)
+
+**Class:** architectural violation → convergence. Not scaffolding.
+
+Principal freeze (2026-08-05): parallel **semantic** executors in production are
+forbidden. The doctrine end state is:
+
+```text
+RQL source ─┐
+SQL+ ───────┼─► canonical logical plan ─► one query bytecode ─► one runtime
+Rust builder ┘                                      │
+                                                    └─► host capabilities
+                                                        scan / index / get
+```
+
+| Yes | Absolutely not |
+|---|---|
+| Multiple syntaxes | Multiple semantic executors |
+| Multiple compiler stages | Host implementing filter / join / project / order / cardinality / pagination / missing-null / coverage |
+| Multiple physical access strategies | A second product runtime |
+
+**In-tree violation (feature-frozen):**
+
+- `crates/residiuum-sdk/src/query_exec_v1.rs` — Core / op-118 page semantics
+- `crates/residiuum-sdk/src/rql_full_v1.rs` (`execute_rql_full`) — attach/project façade semantics
+
+**Allowed:** test-only reference interpreter as oracle (not a product path).
+
+**Honesty:** ENR+SDA currently compiles to text and runs through `residiuum-sda`;
+that is **not yet** a fully frozen query bytecode. Defining that bytecode and
+the host-capability boundary is the next architecture deliverable
+([QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) steps 1–8).
+
+**Gate:** until Decision 0 convergence architecture is frozen (bytecode + host
+boundary named), **no additional RQL feature work** proceeds (no S1 / D1 /
+wire-parity / within-index / new attach surface growth on the frozen executors).
 
 ---
 
@@ -30,13 +71,18 @@ in this ledger (or an amended RQL_SPEC section referenced here).
 
 Classification: `implemented` · `partial` · `contradictory` · `absent`
 
-Profiles in play:
+Profiles in play (**Decision 0:** the first two are frozen violation surfaces to
+converge away from; they are not the intended product architecture):
 
 ```text
-rql-app-core-v1  → RqlPlanV1 → APP-6/APB-7 executor     (product Core)
-rql-full-v1      → CompiledRqlFull → execute_rql_full    (local scan attach)
-rql-source-v0.1  → ENR+SDA                              (legacy parallel)
-sql+             → emit/refuse → Core compile           (Phase 2 scaffold)
+rql-app-core-v1  → RqlPlanV1 → query_exec_v1 / op 118   (FROZEN — port then delete)
+rql-full-v1      → CompiledRqlFull → execute_rql_full    (FROZEN — port then delete)
+rql-source-v0.1  → ENR+SDA text → residiuum-sda          (kernel lineage; not frozen bytecode yet)
+sql+             → emit/refuse → logical plan            (frontend only; must share one runtime)
+
+TARGET:
+  any syntax → canonical logical plan → one query bytecode → one runtime
+             → host scan/index/get only
 ```
 
 ---
@@ -121,16 +167,20 @@ is forbidden.
 | ID | Package | Depends on | Exit (labor → principal) |
 |---|---|---|---|
 | **RQL-0** | This ledger | CRITICAL_PATH | Ledger + sequence accepted (this card) |
-| **RQL-C1** | Core product accept residuals | RQL-0, APP-6/7, APB-7 labor | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
-| **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — `explain_rql_full` + tests |
-| **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — `refuse_full_language_on_core_wire`; parity = later |
-| **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **labor closed** — root enrich eq-index; `rql_full_enrich_index` 2/2; within-nested residual |
-| **RQL-S1** | SQL+ → enrich/`within` emit (JOIN class) | RQL-F2 local+honest wire story | Emit vectors + refuse residuals; no silent weaken |
-| **RQL-D1** | `at rank` / access policies | DDA specs + RQL-0 | Spec-first; only after DIRECT_ACCESS owner frozen |
-| **RQL-Q1** | Query perf / read qualification campaign | RQL-C1 minimum; enrich costs after RQL-I1 | CRITICAL_PATH §4.4 evidence law |
+| **RQL-0D** | Decision 0 charter + feature freeze | RQL-0 | **this amend** — [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md); freeze `query_exec_v1` / `execute_rql_full` |
+| **RQL-X1** | Freeze query **bytecode** + host-capability boundary | RQL-0D | Normative bytecode profile; host = scan/index/get only |
+| **RQL-X2** | Lower all syntaxes + route emb/op118; port; equivalence; delete Rust executors; CI anti-executor | RQL-X1 | One runtime; CI gate; production semantic executors gone |
+| **RQL-C1** | Core product accept residuals | RQL-X2 (or principal waiver) | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
+| **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — port inventory only under Decision 0 |
+| **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — parity deferred to shared runtime |
+| **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **labor closed** — port inventory; do not grow on frozen façade |
+| **RQL-S1** | SQL+ → enrich/`within` emit (JOIN class) | **RQL-X1** minimum | Emit into logical plan → shared bytecode only |
+| **RQL-D1** | `at rank` / access policies | DDA specs + **RQL-X1** | Spec-first; only after DIRECT_ACCESS + bytecode owner frozen |
+| **RQL-Q1** | Query perf / read qualification campaign | RQL-C1 + shared runtime | CRITICAL_PATH §4.4 evidence law |
 
-**Explicitly not next:** Studio/UI, search dialects, APB-8 aggregates syntax,
-store perf campaigns as RQL substitutes, Embedded product build-out.
+**Explicitly not next:** further features on `query_exec_v1` / `execute_rql_full`,
+Studio/UI, search dialects, APB-8 aggregates syntax, store perf as RQL
+substitutes, Embedded product build-out.
 
 ---
 
@@ -138,11 +188,12 @@ store perf campaigns as RQL substitutes, Embedded product build-out.
 
 | Construct / change | Semantic owner | Execution owner | May add syntax? |
 |---|---|---|---|
-| Core surface | RQL_SPEC §3.1 + APP-5 | APP-6 / APB-7 | No (frozen) |
-| enrich / within / brace project | RQL_SPEC §6–9 + Phase 3 residual | `rql_full_v1` → later wire (RQL-F2) | No until RQL-F2 names wire semantics |
-| `at rank` / access | DIRECT_ACCESS_SPEC | DDA packages (RQL-D1) | **No** until RQL-D1 |
+| All query meaning | RQL_SPEC + ENR/SDA | **one bytecode runtime** (RQL-X*) | No until RQL-X1 freezes bytecode |
+| Core surface (interim) | RQL_SPEC §3.1 + APP-5 | `query_exec_v1` (**frozen**) | No |
+| enrich / within / brace project (interim) | RQL_SPEC §6–9 | `execute_rql_full` (**frozen**) | No — port via RQL-X2 |
+| `at rank` / access | DIRECT_ACCESS_SPEC | DDA + shared bytecode (RQL-D1) | **No** until RQL-D1 + RQL-X1 |
 | Aggregates | APB-8 / future spec | APB-8 | Out of RQL v1 |
-| SQL+ emit extensions | SQL_TO_RQL_SPEC | sql+ compiler → Core/full | Only via RQL-S1 |
+| SQL+ emit extensions | SQL_TO_RQL_SPEC | sql+ → logical plan → bytecode | Only via RQL-S1 after RQL-X1 |
 
 ---
 
@@ -164,3 +215,6 @@ cargo test -p residiuum-sdk --test app_core_expressiveness -- --test-threads=1
 - Phase 3 attach labor ≠ Gate-1 RQL exit (CRITICAL_PATH §4.5).
 - Packaging 0.2.2 / CompactShadow campaigns ≠ query qualification.
 - Board `in_review` ≠ package `accept`.
+- Decision 0: `query_exec_v1` / `execute_rql_full` are **not** the product
+  architecture; they are frozen violation surfaces pending RQL-X*.
+- ENR+SDA text evaluation is **not** yet the frozen query bytecode.
