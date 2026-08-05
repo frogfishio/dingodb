@@ -4,9 +4,8 @@
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
 //! Product execute enters here after ISA decode + lower. Core pipeline opcodes
-//! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2/VM3**).
-//! Scan/Filter/Order/Page/ProjectPaths own real bodies; key-stream Scan may
-//! apply `where` early for APP-6 page early-stop (honest residual).
+//! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2/VM3/VM3b**).
+//! Scan establishes `PendingKeys`; Filter owns where (+ key-stream get/early-stop).
 //! Full attach opcodes dispatch one step at a time via existing attach helpers.
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
@@ -287,7 +286,7 @@ pub(crate) fn run_vm_core<S: DocScan>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Filter before BindCollection".into())
                 })?;
-                f.filter()?;
+                f.filter(scan)?;
                 pc += 1;
             }
             OpCode::Order => {

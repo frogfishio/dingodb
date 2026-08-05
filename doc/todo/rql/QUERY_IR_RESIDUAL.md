@@ -1,13 +1,13 @@
 # Query IR residual — what is still not a finished bytecode machine
 
-Status: **2026-08-05 · RQL-VM3**  
+Status: **2026-08-05 · RQL-VM3b**  
 Authority: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · Decision 0 **OPEN**  
 **RQL-C1 must not be accepted.** Principal rejected D0 closure — see [QUERY_VM_V1.md](./QUERY_VM_V1.md).
 
 Named IR phases remain **Rust IR residual**. Query VM dispatch + CoreFrame
-opcode-owned materialize (VM3) + frontend funnel (P1c) exist. Honest residual:
-key-stream Scan may apply `where` early (`filtered_during_scan`) for APP-6
-page early-stop. Not Decision 0 closed.
+opcode-owned materialize (VM3) + Filter/Scan separation (VM3b) + frontend funnel
+(P1c) exist. Honest residual: nested Within still on immediates; no durable QVM
+wire; IR helpers remain Rust. Not Decision 0 closed.
 
 ---
 
@@ -26,7 +26,8 @@ page early-stop. Not Decision 0 closed.
 | Core opcode phases | `core_phases.rs` `CoreFrame` | **VM2+VM3** — working bag per opcode |
 | Host scan / index / get | `HostCapabilities` by `CollectionId` | **P1b labor closed** |
 | Product frontends → one loop | SDK rql/builder/view + op 118 + Full | **P1c labor closed** |
-| Key-stream Filter vs Scan | `filtered_during_scan` | **Honest residual** |
+| Key-stream Filter vs Scan | `PendingKeys` + Filter get/where | **VM3b labor closed** |
+| Nested Within flatten / QVM wire | Within imm / no distinct QVM encoding | **Residual** |
 
 Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 [QUERY_IR_ORDER_V1.md](./QUERY_IR_ORDER_V1.md) ·
@@ -39,10 +40,10 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 
 - IR1–IR4 ≠ Decision 0 closed
 - Named IR ≠ finished opcode-granular machine
-- VM1 / P1b / VM2 / VM3 / P1c ≠ Decision 0 closed / C1
-- Key-stream Filter-during-Scan ≠ fully separate Filter body
+- VM1 / P1b / VM2 / VM3 / VM3b / P1c ≠ Decision 0 closed / C1
+- Nested Within on imm ≠ flat Within opcode stream
 - **RQL-C1 must not be accepted**
-- NEXT labor = optional key-stream Filter separation — **not** principal C1
+- NEXT labor = optional nested Within flatten / QVM wire — **not** principal C1
 
 ---
 
@@ -57,3 +58,4 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 - `doc/todo/rql/evidence/rql_vm2_core_phases.log`
 - `doc/todo/rql/evidence/rql_p1c_frontend_dispatch.log`
 - `doc/todo/rql/evidence/rql_vm3_materialize_split.log`
+- `doc/todo/rql/evidence/rql_vm3b_filter_scan_split.log`

@@ -8,10 +8,9 @@ Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
 
 ## Are we done?
 
-**No.** Core opcodes own Scan/Filter/Order/Page/Project bodies (**VM3**), and
-product frontends share one Query VM funnel (**P1c**), but key-stream Scan still
-applies `where` early for APP-6 page early-stop (`filtered_during_scan`).
-**RQL-C1 must not be accepted. Decision 0 must not be closed.**
+**No.** Labor closed through **VM3b** (Filter owns where; Scan does not), but Decision 0
+remains OPEN: IR phases are still Rust, nested Within remains on immediates, and
+no durable QVM wire encoding. **RQL-C1 must not be accepted.**
 
 | Claim | Reality |
 |---|---|
@@ -21,13 +20,13 @@ applies `where` early for APP-6 page early-stop (`filtered_during_scan`).
 | Collection-qualified host API | **P1b labor closed** |
 | Core opcodes drive phases | **VM2 labor closed** — `CoreFrame` |
 | Every product frontend → same dispatch loop | **P1c labor closed** |
-| Scan→Project opcode-owned bodies | **VM3 labor closed** — working bag |
-| Key-stream Filter fully separate from Scan | **Partial** — early-stop honesty |
+| Scan→Project opcode-owned bodies | **VM3 labor closed** |
+| Key-stream Filter separate from Scan | **VM3b labor closed** — `PendingKeys` |
 | Ready for RQL-C1 / Decision 0 close | **Forbidden** |
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = optional key-stream Filter separation; C1 remains principal-only
+NEXT labor  = optional nested Within flatten / QVM wire; C1 remains principal-only
 ```
 
 ---
@@ -56,26 +55,24 @@ All syntax → compiler intermediates → canonical Query ISA
 | **VM2** | Core opcodes → `CoreFrame` phases; demote `execute_plan` | **labor closed** |
 | **P1c** | Arch test: every frontend → same dispatch loop | **labor closed** |
 | **VM3** | Split materialize into opcode-owned bodies | **labor closed** |
+| **VM3b** | Key-stream Filter separate from Scan | **labor closed** |
 | **C1** | Principal only — **never** before invariant holds | |
 
 ---
 
-## Just shipped (VM3)
+## Just shipped (VM3b)
 
-- `CoreFrame` working bag: Scan loads, Filter applies where, Order sorts,
-  Page resumes/truncates, ProjectPaths projects + page artefact
-- `run_core_page` demoted to CoreFrame orchestrator
-- Key-stream honesty: Scan may apply `where` for APP-6 early-stop
-  (`filtered_during_scan`); Filter confirms
-- Evidence: `doc/todo/rql/evidence/rql_vm3_materialize_split.log`
+- Scan establishes `PendingKeys` (Index / Stream / Materialized) — **no** `where`
+- Filter owns `get` + `where` + APP-6 early-stop for key-stream
+- Evidence: `doc/todo/rql/evidence/rql_vm3b_filter_scan_split.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT        = optional key-stream Filter separation
+NEXT        = optional nested Within flatten / QVM wire encoding
 FORBIDDEN   = Decision 0 close; RQL-C1 accept
-LANDED      = IR1–IR4; D0R; P0b; VM0–VM3; P1b; P1c
-HONESTY     = key-stream Scan may apply where early (filtered_during_scan)
+LANDED      = IR1–IR4; D0R; P0b; VM0–VM3b; P1b; P1c
+HONESTY     = IR still Rust; nested Within on imm; no durable QVM wire
 ```

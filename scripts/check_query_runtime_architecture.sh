@@ -210,8 +210,23 @@ rg -n 'fn execute_plan' -A 25 "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q 
 # RQL-VM3: opcode-owned materialize bodies (not gates + fused run_core_page).
 rg -n 'pub fn scan' -A 25 "$CORE_PHASES" | rg -q 'list_keys|scan_key_stream|scan_index|scan_full' \
   || fail "CoreFrame::scan must load host keys/docs (RQL-VM3)"
-rg -n 'pub fn filter' -A 25 "$CORE_PHASES" | rg -q 'eval_doc|filtered_during_scan' \
+rg -n 'pub fn filter' -A 25 "$CORE_PHASES" | rg -q 'eval_doc|PendingKeys' \
   || fail "CoreFrame::filter must apply where (RQL-VM3)"
+# RQL-VM3b: Scan must not apply where; Filter takes DocScan; PendingKeys handoff.
+rg -q 'enum PendingKeys' "$CORE_PHASES" \
+  || fail "missing PendingKeys (RQL-VM3b)"
+if rg -n 'pub fn scan' -A 40 "$CORE_PHASES" | rg -q 'where_k\.eval_doc|filtered_during_scan'; then
+  fail "CoreFrame::scan must not apply where (RQL-VM3b)"
+fi
+rg -n 'pub fn filter' -A 5 "$CORE_PHASES" | rg -q 'scan: &mut S' \
+  || fail "CoreFrame::filter must take DocScan (RQL-VM3b)"
+rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.filter\(scan\)' \
+  || fail "run_vm_core must call CoreFrame::filter(scan) (RQL-VM3b)"
+rg -qi 'VM3b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark VM3b labor closed"
+if rg -qi 'filtered_during_scan' doc/todo/rql/RQL_WHAT_IS_LEFT.md; then
+  fail "SoT must not keep filtered_during_scan residual after VM3b"
+fi
 rg -n 'pub fn order' -A 20 "$CORE_PHASES" | rg -q 'compare_rows' \
   || fail "CoreFrame::order must call compare_rows (RQL-VM3)"
 rg -n 'pub fn page' -A 30 "$CORE_PHASES" | rg -q 'retain_after_sort_tuple|truncate' \
@@ -288,8 +303,8 @@ fi
 
 rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1c labor closed"
-rg -qi 'key-stream|filtered_during_scan|early-stop' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must name key-stream Filter-during-Scan honesty after VM3"
+rg -qi 'PendingKeys|nested Within|QVM wire' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must name PendingKeys or post-VM3b residual"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -349,4 +364,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0–VM3+P1b+P1c; Decision 0 OPEN; C1 forbidden; key-stream residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0–VM3b+P1b+P1c; Decision 0 OPEN; C1 forbidden; Within/QVM residual)"

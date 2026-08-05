@@ -1,10 +1,10 @@
-//! Core VM phase helpers (RQL-VM2 / RQL-VM3).
+//! Core VM phase helpers (RQL-VM2 / RQL-VM3 / RQL-VM3b).
 //!
 //! Product Core execute goes through Query VM opcodes → [`CoreFrame`] phases.
-//! Each Core opcode owns a real phase body (RQL-VM3):
+//! Each Core opcode owns a real phase body:
 //! - **IndexEq** — host equality-index probe
-//! - **Scan** — host `list_keys` / `get` into a working bag
-//! - **Filter** — kernel `where` (key-stream may apply where during Scan for early-stop)
+//! - **Scan** — host key source / unfiltered doc load (no `where`)
+//! - **Filter** — kernel `where` (+ key-stream get / early-stop)
 //! - **Order** — sort-tuple order
 //! - **Page** — limit / page-size / field-order resume
 //! - **ProjectPaths** — path-project + page artefact
@@ -123,7 +123,17 @@ fn has_later_match<S: DocScan>(
     Ok(false)
 }
 
-/// Mutable Core pipeline state driven by Query VM opcodes (RQL-VM2/VM3).
+/// Pending key source after Scan (RQL-VM3b). Filter consumes this.
+enum PendingKeys {
+    /// Field-order: docs already in `working`; Filter only applies where.
+    Materialized,
+    /// Key-stream index path: sorted candidate keys (after resume).
+    Index(Vec<String>),
+    /// Key-stream full scan: resume cursor for `list_keys`.
+    Stream { after: Option<String> },
+}
+
+/// Mutable Core pipeline state driven by Query VM opcodes (RQL-VM2/VM3/VM3b).
 pub(crate) struct CoreFrame<'a> {
     plan: &'a RqlPlanV1,
     params: &'a BTreeMap<String, JsonValue>,
@@ -140,6 +150,8 @@ pub(crate) struct CoreFrame<'a> {
     key_only_order: bool,
     /// `None` until [`Self::index_eq`].
     index_keys: Option<Option<Vec<String>>>,
+    /// Set by Scan; consumed by Filter (RQL-VM3b).
+    pending_keys: Option<PendingKeys>,
     /// Full documents in the working bag (pre-project).
     working: Vec<(String, JsonValue)>,
     known_holes: Vec<HoleEvidence>,
@@ -150,8 +162,6 @@ pub(crate) struct CoreFrame<'a> {
     index_more: bool,
     /// Field-order: truncated for page size.
     field_order_more: bool,
-    /// Key-stream Scan applied `where` for early-stop (Filter becomes confirm).
-    filtered_during_scan: bool,
     saw_scan: bool,
     saw_filter: bool,
     saw_order: bool,
@@ -204,6 +214,7 @@ impl<'a> CoreFrame<'a> {
             remaining_limit,
             key_only_order,
             index_keys: None,
+            pending_keys: None,
             working: Vec::new(),
             known_holes: Vec::new(),
             examined_docs: 0,
@@ -211,7 +222,6 @@ impl<'a> CoreFrame<'a> {
             used_index: false,
             index_more: false,
             field_order_more: false,
-            filtered_during_scan: false,
             saw_scan: false,
             saw_filter: false,
             saw_order: false,
@@ -231,10 +241,10 @@ impl<'a> CoreFrame<'a> {
         Ok(())
     }
 
-    /// OpCode::Scan — host load into the working bag.
+    /// OpCode::Scan — establish key source or load unfiltered docs.
     ///
-    /// Key-stream order applies `where` during Scan so APP-6 can early-stop at
-    /// page size (Filter then confirms). Field-order loads docs unfiltered.
+    /// Does **not** apply `where` (RQL-VM3b). Key-stream paths leave a
+    /// [`PendingKeys`] cursor for Filter; field-order materializes docs now.
     pub fn scan<S: DocScan>(&mut self, scan: &mut S) -> Result<(), Error> {
         let index_keys = self.index_keys.as_ref().ok_or_else(|| {
             Error::QueryInvalid("core frame: Scan before IndexEq".into())
@@ -244,125 +254,51 @@ impl<'a> CoreFrame<'a> {
             .last_sort_tuple_resume
             .as_ref()
             .and_then(super::ir_order::key_from_sort_tuple);
-        let need = super::ir_page::rows_needed(self.remaining_limit, self.page_size);
 
-        if let Some(candidates) = index_keys.clone() {
-            self.scan_index(scan, candidates, after_key.as_deref(), need)?;
+        if let Some(mut candidates) = index_keys.clone() {
+            candidates.sort();
+            if self.key_only_order {
+                if let Some(ak) = after_key.as_deref() {
+                    candidates.retain(|k| k.as_str() > ak);
+                }
+                self.pending_keys = Some(PendingKeys::Index(candidates));
+            } else {
+                self.scan_index_materialize(scan, candidates)?;
+                self.pending_keys = Some(PendingKeys::Materialized);
+            }
         } else if self.key_only_order {
-            self.scan_key_stream(scan, after_key.as_deref(), need)?;
+            self.pending_keys = Some(PendingKeys::Stream { after: after_key });
         } else {
             self.scan_full_unordered(scan)?;
+            self.pending_keys = Some(PendingKeys::Materialized);
         }
         self.saw_scan = true;
         Ok(())
     }
 
-    fn scan_index<S: DocScan>(
+    fn scan_index_materialize<S: DocScan>(
         &mut self,
         scan: &mut S,
-        mut candidates: Vec<String>,
-        after_key: Option<&str>,
-        need: usize,
+        candidates: Vec<String>,
     ) -> Result<(), Error> {
-        candidates.sort();
-        if self.key_only_order {
-            if let Some(ak) = after_key {
-                candidates.retain(|k| k.as_str() > ak);
-            }
-            let mut iter = candidates.into_iter();
-            while let Some(key) = iter.next() {
-                check_governance(self.options, self.started)?;
-                match scan.get_json(&key)? {
-                    None => {
-                        self.examined_docs += 1;
-                        check_doc_budget(self.budget, self.examined_docs)?;
-                        self.known_holes.push(HoleEvidence {
-                            code: "index_key_absent".into(),
-                            key: Some(key),
-                        });
-                    }
-                    Some(doc) => {
-                        self.examined_docs += 1;
-                        self.examined_bytes =
-                            self.examined_bytes.saturating_add(json_byte_len(&doc));
-                        check_doc_budget(self.budget, self.examined_docs)?;
-                        check_bytes_budget(self.budget, self.examined_bytes)?;
-                        if self.where_k.eval_doc(&doc)? {
-                            self.working.push((key, doc));
-                            if self.working.len() >= need {
-                                self.index_more = iter.next().is_some();
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            self.filtered_during_scan = true;
-        } else {
-            for key in candidates {
-                check_governance(self.options, self.started)?;
-                if let Some(doc) = scan.get_json(&key)? {
-                    self.examined_docs += 1;
-                    self.examined_bytes =
-                        self.examined_bytes.saturating_add(json_byte_len(&doc));
-                    check_doc_budget(self.budget, self.examined_docs)?;
-                    check_bytes_budget(self.budget, self.examined_bytes)?;
-                    self.working.push((key, doc));
-                } else {
-                    self.examined_docs += 1;
-                    check_doc_budget(self.budget, self.examined_docs)?;
-                    self.known_holes.push(HoleEvidence {
-                        code: "index_key_absent".into(),
-                        key: Some(key),
-                    });
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn scan_key_stream<S: DocScan>(
-        &mut self,
-        scan: &mut S,
-        after_key: Option<&str>,
-        need: usize,
-    ) -> Result<(), Error> {
-        let mut after = after_key.map(|s| s.to_string());
-        'outer: loop {
+        for key in candidates {
             check_governance(self.options, self.started)?;
-            let batch = scan.list_keys(Some(256), after.as_deref())?;
-            if batch.is_empty() {
-                break;
-            }
-            for key in batch {
-                check_governance(self.options, self.started)?;
-                after = Some(key.clone());
-                match scan.get_json(&key)? {
-                    None => {
-                        self.known_holes.push(HoleEvidence {
-                            code: "key_listed_absent".into(),
-                            key: Some(key),
-                        });
-                        self.examined_docs += 1;
-                        check_doc_budget(self.budget, self.examined_docs)?;
-                    }
-                    Some(doc) => {
-                        self.examined_docs += 1;
-                        self.examined_bytes =
-                            self.examined_bytes.saturating_add(json_byte_len(&doc));
-                        check_doc_budget(self.budget, self.examined_docs)?;
-                        check_bytes_budget(self.budget, self.examined_bytes)?;
-                        if self.where_k.eval_doc(&doc)? {
-                            self.working.push((key, doc));
-                            if self.working.len() >= need {
-                                break 'outer;
-                            }
-                        }
-                    }
-                }
+            if let Some(doc) = scan.get_json(&key)? {
+                self.examined_docs += 1;
+                self.examined_bytes =
+                    self.examined_bytes.saturating_add(json_byte_len(&doc));
+                check_doc_budget(self.budget, self.examined_docs)?;
+                check_bytes_budget(self.budget, self.examined_bytes)?;
+                self.working.push((key, doc));
+            } else {
+                self.examined_docs += 1;
+                check_doc_budget(self.budget, self.examined_docs)?;
+                self.known_holes.push(HoleEvidence {
+                    code: "index_key_absent".into(),
+                    key: Some(key),
+                });
             }
         }
-        self.filtered_during_scan = true;
         Ok(())
     }
 
@@ -397,22 +333,115 @@ impl<'a> CoreFrame<'a> {
         Ok(())
     }
 
-    /// OpCode::Filter — kernel where over the working bag.
-    pub fn filter(&mut self) -> Result<(), Error> {
+    /// OpCode::Filter — kernel where; key-stream also gets docs + early-stop.
+    pub fn filter<S: DocScan>(&mut self, scan: &mut S) -> Result<(), Error> {
         if !self.saw_scan {
             return Err(Error::QueryInvalid("core frame: Filter before Scan".into()));
         }
-        if !self.filtered_during_scan {
-            let mut kept = Vec::with_capacity(self.working.len());
-            for (key, doc) in self.working.drain(..) {
-                check_governance(self.options, self.started)?;
-                if self.where_k.eval_doc(&doc)? {
-                    kept.push((key, doc));
+        let pending = self.pending_keys.take().ok_or_else(|| {
+            Error::QueryInvalid("core frame: Filter without Scan pending keys".into())
+        })?;
+        let need = super::ir_page::rows_needed(self.remaining_limit, self.page_size);
+        match pending {
+            PendingKeys::Materialized => {
+                let mut kept = Vec::with_capacity(self.working.len());
+                for (key, doc) in self.working.drain(..) {
+                    check_governance(self.options, self.started)?;
+                    if self.where_k.eval_doc(&doc)? {
+                        kept.push((key, doc));
+                    }
                 }
+                self.working = kept;
             }
-            self.working = kept;
+            PendingKeys::Index(candidates) => {
+                self.filter_index_stream(scan, candidates, need)?;
+            }
+            PendingKeys::Stream { after } => {
+                self.filter_key_stream(scan, after, need)?;
+            }
         }
         self.saw_filter = true;
+        Ok(())
+    }
+
+    fn filter_index_stream<S: DocScan>(
+        &mut self,
+        scan: &mut S,
+        candidates: Vec<String>,
+        need: usize,
+    ) -> Result<(), Error> {
+        let mut iter = candidates.into_iter();
+        while let Some(key) = iter.next() {
+            check_governance(self.options, self.started)?;
+            match scan.get_json(&key)? {
+                None => {
+                    self.examined_docs += 1;
+                    check_doc_budget(self.budget, self.examined_docs)?;
+                    self.known_holes.push(HoleEvidence {
+                        code: "index_key_absent".into(),
+                        key: Some(key),
+                    });
+                }
+                Some(doc) => {
+                    self.examined_docs += 1;
+                    self.examined_bytes =
+                        self.examined_bytes.saturating_add(json_byte_len(&doc));
+                    check_doc_budget(self.budget, self.examined_docs)?;
+                    check_bytes_budget(self.budget, self.examined_bytes)?;
+                    if self.where_k.eval_doc(&doc)? {
+                        self.working.push((key, doc));
+                        if self.working.len() >= need {
+                            self.index_more = iter.next().is_some();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn filter_key_stream<S: DocScan>(
+        &mut self,
+        scan: &mut S,
+        after_key: Option<String>,
+        need: usize,
+    ) -> Result<(), Error> {
+        let mut after = after_key;
+        'outer: loop {
+            check_governance(self.options, self.started)?;
+            let batch = scan.list_keys(Some(256), after.as_deref())?;
+            if batch.is_empty() {
+                break;
+            }
+            for key in batch {
+                check_governance(self.options, self.started)?;
+                after = Some(key.clone());
+                match scan.get_json(&key)? {
+                    None => {
+                        self.known_holes.push(HoleEvidence {
+                            code: "key_listed_absent".into(),
+                            key: Some(key),
+                        });
+                        self.examined_docs += 1;
+                        check_doc_budget(self.budget, self.examined_docs)?;
+                    }
+                    Some(doc) => {
+                        self.examined_docs += 1;
+                        self.examined_bytes =
+                            self.examined_bytes.saturating_add(json_byte_len(&doc));
+                        check_doc_budget(self.budget, self.examined_docs)?;
+                        check_bytes_budget(self.budget, self.examined_bytes)?;
+                        if self.where_k.eval_doc(&doc)? {
+                            self.working.push((key, doc));
+                            if self.working.len() >= need {
+                                break 'outer;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -608,7 +637,7 @@ pub(crate) fn run_core_page<S: DocScan>(
         frame.index_eq(scan)?;
     }
     frame.scan(scan)?;
-    frame.filter()?;
+    frame.filter(scan)?;
     frame.order()?;
     frame.page()?;
     frame.project_paths(scan)
