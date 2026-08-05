@@ -16,7 +16,7 @@ pub const PROJECT_IR_PROFILE: &str = "residiuum-query-ir-project-v1";
 
 /// Compiled Core path-project (identity when paths empty / absent).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CompiledProjectIr {
+pub(crate) struct CompiledProjectIr {
     /// Profile stamp.
     pub profile: &'static str,
     /// Paths to keep; `None` means identity (full document).
@@ -44,7 +44,7 @@ impl CompiledProjectIr {
 }
 
 /// Apply Core path-project (identity when `paths` is None).
-pub fn apply_project_paths(
+pub(crate) fn apply_project_paths(
     doc: &JsonValue,
     paths: Option<&Vec<Path>>,
 ) -> Result<JsonValue, Error> {

@@ -59,9 +59,10 @@ canonical JSON for filters / candidate `where`.
 | `decode_isa` | ISA → `QueryIsaProgram` (reserved bits + size caps) |
 | `decode_isa_canonical` | Decode + require canonical re-encode equality |
 | `QueryBytecodeV1.isa` | Always stamped on Core lower |
-| `execute_isa_bytes` | Decode Core ISA → `execute_decoded_core` |
-| `execute_decoded_core` | Shared Core page after decode (X5c one-dispatch) |
-| `execute_full_isa_with` | Decode full ISA → `execute_decoded_core` + attach from decoded section |
+| `execute_isa_bytes` | Canonical decode Core ISA → crate-private `execute_decoded_core` |
+| `execute_decoded_core` | **crate-private** shared Core page after decode (X5c) |
+| `execute_full_isa_with` | Canonical decode full ISA → Core + attach |
+| `execute_plan` / attach helpers | **crate-private** (RQL-P0b) — not public ISA bypass |
 | `isa_hash` | Domain-separated BLAKE3-256 over ISA bytes |
 
 Full-language execute: `execute_rql_full*` compiles then

@@ -17,7 +17,7 @@ pub const ORDER_IR_PROFILE: &str = "residiuum-query-ir-order-v1";
 
 /// Compiled Core order terms.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CompiledOrderIr {
+pub(crate) struct CompiledOrderIr {
     /// Profile stamp.
     pub profile: &'static str,
     terms: Vec<OrderTerm>,
@@ -38,7 +38,7 @@ impl CompiledOrderIr {
     }
 
     /// Compare two keyed documents under this order.
-    pub fn compare_rows(
+    pub(crate) fn compare_rows(
         &self,
         ka: &str,
         va: &JsonValue,
@@ -54,7 +54,7 @@ impl CompiledOrderIr {
     }
 
     /// Drop rows whose sort-tuple is `<= last` (multipage field-order resume).
-    pub fn retain_after_sort_tuple(
+    pub(crate) fn retain_after_sort_tuple(
         &self,
         full: &mut Vec<(String, JsonValue)>,
         last: &JsonValue,
@@ -87,7 +87,7 @@ pub fn compare_rows(
 }
 
 /// Sort-tuple for a full document (pre-projection), aligned with [`compare_rows`].
-pub fn build_sort_tuple(key: &str, doc: &JsonValue, order: &[OrderTerm]) -> JsonValue {
+pub(crate) fn build_sort_tuple(key: &str, doc: &JsonValue, order: &[OrderTerm]) -> JsonValue {
     let mut parts = Vec::with_capacity(order.len());
     for term in order {
         if term.tie_break || term.path.0.as_slice() == ["$key"] {
@@ -104,7 +104,7 @@ pub fn build_sort_tuple(key: &str, doc: &JsonValue, order: &[OrderTerm]) -> Json
 }
 
 /// Compare two sort-tuples under `order`.
-pub fn cmp_sort_tuples(a: &JsonValue, b: &JsonValue, order: &[OrderTerm]) -> Ordering {
+pub(crate) fn cmp_sort_tuples(a: &JsonValue, b: &JsonValue, order: &[OrderTerm]) -> Ordering {
     let aa = a.as_array().map(|x| x.as_slice()).unwrap_or(&[]);
     let bb = b.as_array().map(|x| x.as_slice()).unwrap_or(&[]);
     for (i, term) in order.iter().enumerate() {
@@ -143,7 +143,7 @@ pub fn retain_after_sort_tuple(
 
 /// Key stream resume: last element of sort tuple is the document key when
 /// order is key-only (or includes a trailing key tie-break).
-pub fn key_from_sort_tuple(t: &JsonValue) -> Option<String> {
+pub(crate) fn key_from_sort_tuple(t: &JsonValue) -> Option<String> {
     let arr = t.as_array()?;
     arr.iter()
         .rev()

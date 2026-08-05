@@ -28,33 +28,23 @@ mod ir_project;
 mod isa;
 mod kernel;
 
-pub use core_page::{
-    execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE,
-};
+pub use core_page::{explain_rql_source, EXEC_PROFILE};
+// Crate-private semantic executors (RQL-P0b) — available inside the SDK crate only.
+pub(crate) use core_page::{execute_plan, execute_rql, DocScan};
 pub use full_attach::{
-    apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full,
-    execute_full_isa_with, execute_rql_full, execute_rql_full_with, explain_rql_full,
-    explain_rql_full_on_heap, filter_rows, refuse_full_language_on_core_wire,
+    compile_rql_full, execute_full_isa_with, execute_rql_full, execute_rql_full_with,
+    explain_rql_full, explain_rql_full_on_heap, refuse_full_language_on_core_wire,
     source_uses_rql_full_constructs, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
     EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions,
     RqlFullPage, WithinStepV1, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE,
     FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
-pub use ir_attach::{
-    run_attach_pipeline, CompiledAttachIr, ATTACH_IR_PROFILE,
-};
-pub use ir_order::{
-    build_sort_tuple, cmp_sort_tuples, compare_rows, key_from_sort_tuple, retain_after_sort_tuple,
-    CompiledOrderIr, ORDER_IR_PROFILE,
-};
-pub use ir_page::{
-    decode_after, finish_coverage, mint_page_cursor, resolve_coverage_mode, resolve_page_size,
-    rows_needed, CompiledPageIr, PAGE_IR_PROFILE,
-};
-pub use ir_project::{
-    apply_project_paths, CompiledProjectIr, PROJECT_IR_PROFILE,
-};
+// IR / attach orchestration: crate-private (RQL-P0b) — profiles remain public stamps.
+pub use ir_attach::ATTACH_IR_PROFILE;
+pub use ir_order::ORDER_IR_PROFILE;
+pub use ir_page::PAGE_IR_PROFILE;
+pub use ir_project::PROJECT_IR_PROFILE;
 pub use isa::{
     decode_isa, decode_isa_canonical, encode_core_program, encode_full_program, isa_hash,
     QueryIsaFullSection, QueryIsaProgram, ISA_MAGIC, ISA_MAX_SECTION_BYTES, ISA_MAX_TOTAL_BYTES,
@@ -273,10 +263,11 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
 
 /// Shared Core page after ISA decode (RQL-X5c one-dispatch).
 ///
+/// Crate-private (RQL-P0b): not a public bypass of validated ISA.
 /// Both Core and full-language paths use this after `decode_isa`. Meaning of
 /// page/order/project/coverage still lives in [`execute_plan`] (Rust interpreter
 /// of the decoded plan) — see QUERY_IR_RESIDUAL.md. Not Decision 0 closed.
-pub fn execute_decoded_core<H: HostCapabilities>(
+pub(crate) fn execute_decoded_core<H: HostCapabilities>(
     host: &mut H,
     core: &RqlPlanV1,
     budget: Option<QueryBudget>,

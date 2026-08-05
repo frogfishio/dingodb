@@ -24,7 +24,7 @@ pub const ATTACH_IR_PROFILE: &str = "residiuum-query-ir-attach-v1";
 
 /// Compiled attach section (pipeline + optional brace project).
 #[derive(Debug, Clone, PartialEq)]
-pub struct CompiledAttachIr {
+pub(crate) struct CompiledAttachIr {
     /// Profile stamp.
     pub profile: &'static str,
     /// Ordered enrich / within / filter steps.
@@ -66,7 +66,7 @@ impl CompiledAttachIr {
 }
 
 /// Run enrich / within / filter pipeline, then optional brace project.
-pub fn run_attach_pipeline(
+pub(crate) fn run_attach_pipeline(
     client: &mut HeapClient,
     mut rows: Vec<(String, JsonValue)>,
     pipeline: &[FullPipelineStepV1],

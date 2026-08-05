@@ -182,6 +182,19 @@ if [[ -n "$hits" ]]; then
 fi
 
 rg -q 'pub trait HostCapabilities' "$MOD" || fail "HostCapabilities missing"
+# RQL-P0b: crate root must not re-export non-ISA semantic executors.
+LIB="$SDK_SRC/lib.rs"
+for forbid in execute_plan execute_decoded_core attach_enrich_rows attach_within_rows \
+  apply_project_paths apply_project_rows filter_rows DocScan; do
+  if rg -n "pub use query_bytecode_v1::" -A 30 "$LIB" | rg -q "\b${forbid}\b"; then
+    fail "lib.rs must not publicly re-export ${forbid} (RQL-P0b)"
+  fi
+done
+rg -q 'pub\(crate\) fn execute_plan' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
+  || fail "execute_plan must be pub(crate) (RQL-P0b)"
+rg -q 'pub\(crate\) fn execute_decoded_core' "$MOD" \
+  || fail "execute_decoded_core must be pub(crate) (RQL-P0b)"
+
 rg -q 'execute_core_rql' crates/residiuum-server/src/heap_dispatch.rs \
   || fail "op 118 must use execute_core_rql"
 
@@ -193,4 +206,4 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
 
-echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1–IR4+D0R; Decision 0 OPEN; C1 forbidden; VM residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b; Decision 0 OPEN; C1 forbidden; VM residual)"

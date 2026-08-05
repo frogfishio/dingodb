@@ -42,7 +42,8 @@ use std::time::Instant;
 pub const EXEC_PROFILE: &str = "residiuum-app-core-exec-v1";
 
 /// Document accessor used by the scan executor (embedded or remote collection plane).
-pub trait DocScan {
+/// Document scan host adapter (crate-private; RQL-P0b).
+pub(crate) trait DocScan {
     /// List keys in deterministic order.
     fn list_keys(
         &mut self,
@@ -65,8 +66,8 @@ pub trait DocScan {
     }
 }
 
-/// Execute Application Core RQL source against a document scan.
-pub fn execute_rql<S: DocScan>(
+/// Execute Application Core RQL source against a document scan (crate-private).
+pub(crate) fn execute_rql<S: DocScan>(
     scan: &mut S,
     source: &str,
     parameters: &Parameters,
@@ -119,8 +120,8 @@ pub fn explain_rql_source(
     })
 }
 
-/// Execute a validated plan (one page).
-pub fn execute_plan<S: DocScan>(
+/// Execute a validated plan (one page). Crate-private (RQL-P0b) — not a public ISA bypass.
+pub(crate) fn execute_plan<S: DocScan>(
     scan: &mut S,
     plan: &RqlPlanV1,
     params: &BTreeMap<String, JsonValue>,

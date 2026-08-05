@@ -1,4 +1,7 @@
 //! APB-7 T9: QueryPage complete-by-default coverage grade.
+//!
+//! Holey-host cases go through **canonical ISA** (`encode_core_program` →
+//! `execute_isa_bytes`) — not the crate-private `execute_plan` bypass (RQL-P0b).
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -6,8 +9,9 @@ use residiuum_heap::{
     TrustedInstant, VerifiedCertificate,
 };
 use residiuum_sdk::{
-    execute_plan, CollectionBindings, CoveragePolicy, DocScan, ErrorCode, HeapClient, OrderDir,
-    Parameters, PlanBuilder, QueryRunOptions, ResidiuumDeployment,
+    encode_core_program, execute_isa_bytes, CollectionBindings, CoveragePolicy, ErrorCode,
+    HeapClient, HostCapabilities, OrderDir, Parameters, PlanBuilder, QueryRunOptions,
+    ResidiuumDeployment,
 };
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use serde_json::Value as JsonValue;
@@ -71,15 +75,14 @@ fn open_bound_client() -> (TempDir, HeapClient) {
     (dir, HeapClient::from(deployment.open_heap(cap)))
 }
 
-/// Scan that lists keys but omits some bodies → known holes.
-struct HoleyScan {
+/// Host that lists keys but omits some bodies → known holes.
+struct HoleyHost {
     keys: Vec<String>,
-    /// Keys for which get returns None (holes).
     absent: BTreeMap<String, JsonValue>,
     present: BTreeMap<String, JsonValue>,
 }
 
-impl DocScan for HoleyScan {
+impl HostCapabilities for HoleyHost {
     fn list_keys(
         &mut self,
         limit: Option<usize>,
@@ -127,9 +130,17 @@ fn healthy_query_reports_complete_coverage_grade() {
     assert_eq!(page.rows.len(), 2);
 }
 
+fn uuidish(seed: u8) -> [u8; 16] {
+    let mut b = [0u8; 16];
+    b[0] = seed;
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    b
+}
+
 #[test]
 fn complete_policy_fails_closed_on_holes() {
-    let mut scan = HoleyScan {
+    let mut host = HoleyHost {
         keys: vec!["a".into(), "b".into(), "c".into()],
         absent: BTreeMap::from([("b".into(), JsonValue::Null)]),
         present: BTreeMap::from([
@@ -137,23 +148,23 @@ fn complete_policy_fails_closed_on_holes() {
             ("c".into(), serde_json::json!({"n": 3})),
         ]),
     };
-    let heap = HeapId::from_bytes_unchecked_nonzero([1u8; 16]).unwrap();
-    let cid = residiuum_heap::CollectionId::from_bytes_unchecked_nonzero([2u8; 16]).unwrap();
+    let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
+    let cid = residiuum_heap::CollectionId::from_bytes(uuidish(2)).expect("cid");
     let mut bindings = CollectionBindings::default();
     bindings.bind("orders", cid);
     let plan = PlanBuilder::from_source("orders")
         .compile(&bindings)
         .unwrap();
     assert_eq!(plan.coverage, CoveragePolicy::Complete);
+    let isa = encode_core_program(&plan, None).expect("encode");
 
-    let err = execute_plan(
-        &mut scan,
-        &plan,
+    let err = execute_isa_bytes(
+        &mut host,
+        &isa,
         &BTreeMap::new(),
         &QueryRunOptions::default(),
         heap,
         cid,
-        None,
     )
     .unwrap_err();
     assert_eq!(err.code(), ErrorCode::CoverageIncomplete);
@@ -165,7 +176,7 @@ fn complete_policy_fails_closed_on_holes() {
 
 #[test]
 fn incomplete_allowed_returns_page_with_hole_evidence() {
-    let mut scan = HoleyScan {
+    let mut host = HoleyHost {
         keys: vec!["a".into(), "b".into(), "c".into()],
         absent: BTreeMap::from([("b".into(), JsonValue::Null)]),
         present: BTreeMap::from([
@@ -173,18 +184,19 @@ fn incomplete_allowed_returns_page_with_hole_evidence() {
             ("c".into(), serde_json::json!({"n": 3})),
         ]),
     };
-    let heap = HeapId::from_bytes_unchecked_nonzero([1u8; 16]).unwrap();
-    let cid = residiuum_heap::CollectionId::from_bytes_unchecked_nonzero([2u8; 16]).unwrap();
+    let heap = HeapId::from_bytes(uuidish(3)).expect("heap");
+    let cid = residiuum_heap::CollectionId::from_bytes(uuidish(4)).expect("cid");
     let mut bindings = CollectionBindings::default();
     bindings.bind("orders", cid);
     let plan = PlanBuilder::from_source("orders")
         .coverage(CoveragePolicy::IncompleteAllowed)
         .compile(&bindings)
         .unwrap();
+    let isa = encode_core_program(&plan, None).expect("encode");
 
-    let page = execute_plan(
-        &mut scan,
-        &plan,
+    let page = execute_isa_bytes(
+        &mut host,
+        &isa,
         &BTreeMap::new(),
         &QueryRunOptions {
             coverage: CoveragePolicy::IncompleteAllowed,
@@ -192,7 +204,6 @@ fn incomplete_allowed_returns_page_with_hole_evidence() {
         },
         heap,
         cid,
-        None,
     )
     .expect("incomplete allowed");
     assert!(!page.coverage.complete);
@@ -201,7 +212,6 @@ fn incomplete_allowed_returns_page_with_hole_evidence() {
     assert_eq!(page.known_holes.len(), 1);
     assert_eq!(page.known_holes[0].code, "key_listed_absent");
     assert_eq!(page.known_holes[0].key.as_deref(), Some("b"));
-    // Present rows still returned.
     let keys: Vec<_> = page.rows.iter().map(|r| r.key.clone()).collect();
     assert_eq!(keys, vec!["a".to_string(), "c".to_string()]);
 }
@@ -224,5 +234,5 @@ fn builder_incomplete_allowed_path() {
         .unwrap();
     assert!(page.coverage.complete);
     assert_eq!(page.coverage.hole_count, 0);
-    let _ = OrderDir::Asc; // keep import honest if order unused
+    let _ = OrderDir::Asc;
 }

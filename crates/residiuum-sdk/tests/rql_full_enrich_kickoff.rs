@@ -1,4 +1,6 @@
-//! Phase 3 kickoff: compile_rql_full + enrich attach oracle on two collections.
+//! Phase 3 kickoff: compile_rql_full + full-language execute via ISA (RQL-P0b).
+//!
+//! Attach helpers are crate-private; product path is `execute_rql_full`.
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -6,7 +8,7 @@ use residiuum_heap::{
     TrustedInstant, VerifiedCertificate,
 };
 use residiuum_sdk::{
-    attach_enrich_rows, compile_app_core, compile_rql_full, CollectionBindings, HeapClient,
+    compile_app_core, compile_rql_full, execute_rql_full, CollectionBindings, HeapClient,
     Parameters, QueryRunOptions, ResidiuumDeployment, DIAG_RQL_FEATURE_UNAVAILABLE,
 };
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
@@ -107,32 +109,20 @@ fn enrich_exactly_one_attach_oracle() {
     let compiled = compile_rql_full(&src, &bindings).expect("compile_rql_full");
     assert_eq!(compiled.root_enrich().len(), 1);
 
-    // Base page via Core executor (stripped source).
-    let page = orders
-        .rql(
-            &compiled.base_source,
-            &Parameters::default(),
-            QueryRunOptions::default(),
-        )
-        .expect("base rql");
-    let roots: Vec<(String, serde_json::Value)> = page
+    // Product execute: compile → ISA → attach (no public attach_enrich_rows).
+    let page = execute_rql_full(
+        &mut client,
+        &src,
+        &Parameters::default(),
+        QueryRunOptions::default(),
+    )
+    .expect("execute_rql_full");
+    assert_eq!(page.rows.len(), 2);
+    let by_key: std::collections::BTreeMap<_, _> = page
         .rows
-        .iter()
-        .map(|r| (r.key.clone(), r.value.clone()))
+        .into_iter()
+        .map(|(k, v)| (k, v))
         .collect();
-
-    // Independent foreign oracle: full list_keys+get.
-    let mut foreign = Vec::new();
-    for k in customers.list_keys(Some(1000), None).unwrap() {
-        if let Some(v) = customers.get(&k).unwrap() {
-            foreign.push((k, v));
-        }
-    }
-
-    let enriched =
-        attach_enrich_rows(&roots, &foreign, compiled.root_enrich()[0], &Default::default()).unwrap();
-    assert_eq!(enriched.len(), 2);
-    let by_key: std::collections::BTreeMap<_, _> = enriched.into_iter().collect();
     assert_eq!(by_key.get("o1").unwrap()["customer"]["name"], "Ada");
     assert_eq!(by_key.get("o2").unwrap()["customer"]["name"], "Bob");
 }

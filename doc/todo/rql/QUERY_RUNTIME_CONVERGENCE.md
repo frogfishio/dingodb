@@ -85,6 +85,7 @@ proceeds.
 | Core page/coverage named IR | **IR3 done** — [QUERY_IR_PAGE_V1.md](./QUERY_IR_PAGE_V1.md) |
 | Enrich/within attach named IR | **IR4 done** — [QUERY_IR_ATTACH_V1.md](./QUERY_IR_ATTACH_V1.md) |
 | Principal reject D0/C1 + harden | **D0R** — id bind + canonical ISA; [QUERY_VM_V1.md](./QUERY_VM_V1.md) |
+| Public ISA-only execute surface | **P0b done** — non-ISA helpers `pub(crate)` |
 | Core product accept | **RQL-C1** — **forbidden**; Decision 0 OPEN until one Query VM |
 
 ---

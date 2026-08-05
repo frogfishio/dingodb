@@ -42,7 +42,7 @@ All syntax → compiler intermediates → canonical Query ISA
 |---|---|
 | `residiuum-query-isa-v1` | Durable **serialized plan/AST carrier** — not opcode VM |
 | `execute_plan` / `CompiledAttachIr::run` | Rust semantic interpreters |
-| Public SDK re-exports | Still expose non-ISA execute helpers (P0b residual) |
+| Public SDK re-exports | **P0b:** non-ISA execute helpers crate-private; ISA entries remain public |
 | Host | Core: `HostCapabilities`; Full: `HeapClient` (P1b residual) |
 
 ---

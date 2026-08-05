@@ -8,14 +8,14 @@ Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
 
 ## Are we done?
 
-**No.** IR1–IR4 organized Rust interpreters; they did **not** deliver one bytecode
-machine / one semantic executor.
+**No.** Public non-ISA execute helpers are now crate-private, but there is still
+**no** one Query VM opcode machine.
 **RQL-C1 must not be accepted. Decision 0 must not be closed.**
 
 | Claim | Reality |
 |---|---|
 | IR1–IR4 named phases | **Accepted as intermediate labor** |
-| Public execute only via validated ISA | **False** — residual (RQL-P0b) |
+| Public execute only via validated ISA | **P0b labor closed** (helpers `pub(crate)`) |
 | ISA = executable Query VM | **False** — still serialized plan + Rust interpreters |
 | Collection operands bound by immutable id | **Partial** — D0R harden for enrich/within |
 | Canonical ISA (reserved bits + re-encode) | **Partial** — D0R harden |
@@ -24,7 +24,7 @@ machine / one semantic executor.
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = Query VM programme (mandatory implementation)
+NEXT labor  = Query VM programme (RQL-VM0 instruction set)
 ```
 
 ---
@@ -45,8 +45,8 @@ All syntax → compiler intermediates → canonical Query ISA
 
 | # | Package | Exit |
 |---|---|---|
-| **D0R** | SoT + enrich/within `using_id` bind + ISA reserved/canonical | this harden slice |
-| **P0b** | Privatize public non-ISA execute/project/attach APIs | crate-private helpers; ISA entries only |
+| **D0R** | SoT + enrich/within `using_id` bind + ISA reserved/canonical | **labor closed** |
+| **P0b** | Privatize public non-ISA execute/project/attach APIs | **labor closed** |
 | **VM0** | Charter real Query VM instruction set | [QUERY_VM_V1.md](./QUERY_VM_V1.md) |
 | **VM1** | One instruction-dispatch machine (Core + Full) | single loop |
 | **VM2** | Plans/IR compile-only; delete semantic executors after equivalence | |
@@ -56,20 +56,20 @@ All syntax → compiler intermediates → canonical Query ISA
 
 ---
 
-## Just shipped (D0R)
+## Just shipped (P0b)
 
-- Principal reject of D0/C1 recorded; NEXT is Query VM work
-- Enrich/within open-by-name verifies encoded `using_id`
-- ISA rejects reserved flag/budget bits; execute paths require canonical re-encode
-- Evidence: `doc/todo/rql/evidence/rql_d0r_harden.log`
+- `execute_plan` / `execute_decoded_core` / attach+project+order+page helpers → `pub(crate)`
+- SDK `lib.rs` re-exports only ISA/compile/explain sanctioned entries
+- Integration tests routed through `execute_isa_bytes` / `execute_rql_full`
+- Evidence: `doc/todo/rql/evidence/rql_p0b_private_api.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT        = RQL-P0b / RQL-VM0 (mandatory labor)
+NEXT        = RQL-VM0 (Query VM instruction set)
 FORBIDDEN   = Decision 0 close; RQL-C1 accept
-LANDED      = IR1–IR4 intermediate; D0R identity/canonical harden
+LANDED      = IR1–IR4; D0R harden; P0b public ISA-only surface
 HONESTY     = still not one Query VM — see QUERY_VM_V1.md
 ```

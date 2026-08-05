@@ -24,7 +24,7 @@ pub const PAGE_IR_PROFILE: &str = "residiuum-query-ir-page-v1";
 
 /// Compiled page-size + coverage defaults from the plan.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CompiledPageIr {
+pub(crate) struct CompiledPageIr {
     /// Profile stamp.
     pub profile: &'static str,
     /// Plan page size (before run-option override).
@@ -45,14 +45,14 @@ impl CompiledPageIr {
 }
 
 /// Effective page size: run option overrides plan, clamped to `[1, 4096]`.
-pub fn resolve_page_size(plan_page_size: u32, options_page_size: Option<u32>) -> usize {
+pub(crate) fn resolve_page_size(plan_page_size: u32, options_page_size: Option<u32>) -> usize {
     options_page_size
         .unwrap_or(plan_page_size)
         .clamp(1, 4_096) as usize
 }
 
 /// Rows needed this page given remaining limit and page size.
-pub fn rows_needed(remaining_limit: Option<u64>, page_size: usize) -> usize {
+pub(crate) fn rows_needed(remaining_limit: Option<u64>, page_size: usize) -> usize {
     match remaining_limit {
         Some(n) => (n as usize).min(page_size),
         None => page_size,
@@ -60,7 +60,7 @@ pub fn rows_needed(remaining_limit: Option<u64>, page_size: usize) -> usize {
 }
 
 /// Merge plan + run coverage (run may only stay IncompleteAllowed when plan allows).
-pub fn resolve_coverage_mode(
+pub(crate) fn resolve_coverage_mode(
     plan_coverage: CoveragePolicy,
     options_coverage: CoveragePolicy,
 ) -> CoveragePolicy {
@@ -75,7 +75,7 @@ pub fn resolve_coverage_mode(
 }
 
 /// Fail closed on holes under Complete; otherwise build coverage evidence.
-pub fn finish_coverage(
+pub(crate) fn finish_coverage(
     mode: CoveragePolicy,
     known_holes: &[HoleEvidence],
     examined_docs: u64,
@@ -100,7 +100,7 @@ pub fn finish_coverage(
 }
 
 /// Mint a multipage continuation carrying sort-tuple + remaining limit.
-pub fn mint_page_cursor(
+pub(crate) fn mint_page_cursor(
     heap_id: HeapId,
     collection_id: CollectionId,
     plan_hash: &[u8; 32],
@@ -146,7 +146,7 @@ pub fn mint_page_cursor(
 }
 
 /// Decode continuation → (`last_sort_tuple`, remaining limit).
-pub fn decode_after(
+pub(crate) fn decode_after(
     cont: &Continuation,
     heap_id: HeapId,
     collection_id: CollectionId,

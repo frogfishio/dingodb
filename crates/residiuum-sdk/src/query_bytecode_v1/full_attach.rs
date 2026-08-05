@@ -1360,7 +1360,7 @@ impl<'a> Words<'a> {
 }
 
 /// Keep rows where `pred` evaluates to true (SDA kernel — RQL-X4b).
-pub fn filter_rows(
+pub(crate) fn filter_rows(
     rows: &[(String, JsonValue)],
     pred: &Predicate,
     params: &BTreeMap<String, JsonValue>,
@@ -1376,7 +1376,7 @@ pub fn filter_rows(
 }
 
 /// Apply nested `project { … }` to materialised rows.
-pub fn apply_project_rows(
+pub(crate) fn apply_project_rows(
     rows: &[(String, JsonValue)],
     fields: &[ProjectItemV1],
 ) -> Result<Vec<(String, JsonValue)>, Error> {
@@ -1437,7 +1437,7 @@ fn project_value(doc: &JsonValue, fields: &[ProjectItemV1]) -> Result<JsonValue,
 ///
 /// `expect many` attaches a JSON array of matches, ordered by foreign key.
 /// Optional [`EnrichStepV1::candidate_where`] filters foreign docs first.
-pub fn attach_enrich_rows(
+pub(crate) fn attach_enrich_rows(
     roots: &[(String, JsonValue)],
     foreign_docs: &[(String, JsonValue)],
     step: &EnrichStepV1,
@@ -1539,7 +1539,7 @@ pub fn attach_enrich_rows(
 /// `foreign_by_using` maps collection name → complete foreign docs for that
 /// using-collection. Absent / Null / non-array carriers fail with
 /// [`DIAG_RQL_WITHIN_TYPE`] (never treated as empty bags).
-pub fn attach_within_rows(
+pub(crate) fn attach_within_rows(
     roots: &[(String, JsonValue)],
     foreign_by_using: &BTreeMap<String, Vec<(String, JsonValue)>>,
     step: &WithinStepV1,
