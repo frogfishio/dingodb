@@ -102,40 +102,42 @@ rg -q 'execute_full_isa_enrich_within_project_nonempty' \
   crates/residiuum-sdk/tests/rql_full_isa_execute.rs \
   || fail "missing full ISA non-empty E2E test"
 
-rg -q 'compile_where' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must compile_where"
+CORE_PHASES="$SDK_SRC/query_bytecode_v1/core_phases.rs"
+[[ -f "$CORE_PHASES" ]] || fail "missing core_phases.rs (RQL-VM2)"
+rg -q 'compile_where' "$CORE_PHASES" \
+  || fail "core_phases must compile_where"
 rg -q 'compile_where' "$FULL" \
   || fail "full_attach must compile_where"
 
 # RQL-IR1: Core path-project must use named IR module (not private project_doc).
-rg -q 'apply_project_paths' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must call apply_project_paths"
-if rg -n 'fn project_doc' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
-  fail "core_page must not keep private project_doc (moved to ir_project)"
+rg -q 'apply_project_paths' "$CORE_PHASES" \
+  || fail "core_phases must call apply_project_paths"
+if rg -n 'fn project_doc' "$CORE_PHASES" "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
+  fail "core must not keep private project_doc (moved to ir_project)"
 fi
 rg -q 'fn apply_project_paths' "$SDK_SRC/query_bytecode_v1/ir_project.rs" \
   || fail "ir_project must define apply_project_paths"
 
 # RQL-IR2: Core order/sort-tuple must use named IR module.
-rg -q 'ir_order::compare_rows' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must call ir_order::compare_rows"
-rg -q 'ir_order::build_sort_tuple' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must call ir_order::build_sort_tuple"
-if rg -n 'fn compare_rows' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
-  fail "core_page must not keep private compare_rows (moved to ir_order)"
+rg -q 'ir_order::compare_rows' "$CORE_PHASES" \
+  || fail "core_phases must call ir_order::compare_rows"
+rg -q 'ir_order::build_sort_tuple' "$CORE_PHASES" \
+  || fail "core_phases must call ir_order::build_sort_tuple"
+if rg -n 'fn compare_rows' "$CORE_PHASES" "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
+  fail "core must not keep private compare_rows (moved to ir_order)"
 fi
 rg -q 'fn compare_rows' "$SDK_SRC/query_bytecode_v1/ir_order.rs" \
   || fail "ir_order must define compare_rows"
 
 # RQL-IR3: Core page/coverage must use named IR module.
-rg -q 'ir_page::resolve_page_size' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must call ir_page::resolve_page_size"
-rg -q 'ir_page::finish_coverage' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must call ir_page::finish_coverage"
-rg -q 'ir_page::mint_page_cursor' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "core_page must call ir_page::mint_page_cursor"
-if rg -n 'fn mint_page_cursor' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
-  fail "core_page must not keep private mint_page_cursor (moved to ir_page)"
+rg -q 'ir_page::resolve_page_size' "$CORE_PHASES" \
+  || fail "core_phases must call ir_page::resolve_page_size"
+rg -q 'ir_page::finish_coverage' "$CORE_PHASES" \
+  || fail "core_phases must call ir_page::finish_coverage"
+rg -q 'ir_page::mint_page_cursor' "$CORE_PHASES" \
+  || fail "core_phases must call ir_page::mint_page_cursor"
+if rg -n 'fn mint_page_cursor' "$CORE_PHASES" "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
+  fail "core must not keep private mint_page_cursor (moved to ir_page)"
 fi
 rg -q 'fn finish_coverage' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "ir_page must define finish_coverage"
@@ -173,8 +175,10 @@ rg -qi 'does \*\*not\*\* close Decision 0|does not close Decision 0|Decision 0 O
 if rg -qi 'Decision 0 is closed|Decision 0 closed\.|RQL-C1 (is )?accepted\.|C1 accepted' doc/todo/rql/QUERY_VM_V1.md; then
   fail "QUERY_VM_V1 must not affirmatively close Decision 0 or accept C1"
 fi
-rg -qi 'VM2' doc/todo/rql/QUERY_VM_V1.md \
-  || fail "QUERY_VM_V1 must name VM2 residual (fused execute_plan)"
+rg -qi 'run_core_page|CoreFrame' doc/todo/rql/QUERY_VM_V1.md \
+  || fail "QUERY_VM_V1 must name CoreFrame / run_core_page (VM2)"
+rg -qi 'P1c' doc/todo/rql/QUERY_VM_V1.md \
+  || fail "QUERY_VM_V1 must name P1c residual after VM2"
 rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
   || fail "isa must define decode_isa_canonical (D0R)"
 rg -q 'open_collection_bound' "$FULL" \
@@ -187,8 +191,24 @@ rg -n 'fn execute_full_isa_with' -A 20 "$FULL" | rg -q 'decode_isa_canonical' \
 if rg -n '^NEXT' doc/todo/rql/RQL_WHAT_IS_LEFT.md | rg -qi 'principal.*C1'; then
   fail "SoT must not set NEXT to principal C1 while Query VM unfinished"
 fi
-rg -qi 'VM2' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT NEXT residual must name VM2 after P1b"
+rg -q 'struct CoreFrame' "$SDK_SRC/query_bytecode_v1/core_phases.rs" \
+  || fail "missing CoreFrame (RQL-VM2)"
+rg -q 'fn run_core_page' "$SDK_SRC/query_bytecode_v1/core_phases.rs" \
+  || fail "missing run_core_page (RQL-VM2)"
+rg -n 'fn run_vm_core' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'index_eq' \
+  || fail "run_vm_core must call CoreFrame::index_eq (RQL-VM2)"
+rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'project_paths' \
+  || fail "run_vm_core must call CoreFrame::project_paths (RQL-VM2)"
+if rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'execute_plan\('; then
+  fail "run_vm_core must not call execute_plan (RQL-VM2 demotion)"
+fi
+rg -n 'fn execute_plan' -A 25 "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q 'CoreFrame' \
+  || fail "execute_plan must be thin CoreFrame wrapper (RQL-VM2)"
+
+rg -qi 'VM2 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark VM2 labor closed"
+rg -qi 'P1c' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT NEXT residual must name P1c after VM2"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -248,4 +268,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b; Decision 0 OPEN; C1 forbidden; VM2/P1c residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b+VM2; Decision 0 OPEN; C1 forbidden; P1c residual)"

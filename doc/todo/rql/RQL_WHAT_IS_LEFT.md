@@ -8,24 +8,24 @@ Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
 
 ## Are we done?
 
-**No.** Query VM dispatch (**VM1**) and collection-qualified host (**P1b**) exist,
-but Core opcode bodies still call fused `execute_plan` (**VM2**), and not every
-frontend is arch-tested onto the same loop (**P1c**).
+**No.** VM dispatch, collection-qualified host, and Core opcode phases exist,
+but `run_core_page` still fuses Scan→Project materialize for APP-6 equivalence,
+and not every frontend is arch-tested onto the same loop (**P1c**).
 **RQL-C1 must not be accepted. Decision 0 must not be closed.**
 
 | Claim | Reality |
 |---|---|
 | IR1–IR4 named phases | **Accepted as intermediate labor** |
 | Public execute only via validated ISA | **P0b labor closed** |
-| Query VM opcode set defined | **VM0 labor closed** — [QUERY_VM_V1.md](./QUERY_VM_V1.md) |
-| One opcode dispatch machine | **VM1 labor closed** — `vm_exec.rs` |
-| Collection-qualified host API | **P1b labor closed** — `HostCapabilities` by `CollectionId` |
-| Plans/IR compile-only (no semantic executors) | **False** — residual **RQL-VM2** |
+| Query VM opcode set + dispatch | **VM0+VM1 labor closed** |
+| Collection-qualified host API | **P1b labor closed** |
+| Core opcodes drive phases (not fused execute_plan entry) | **VM2 labor closed** — `CoreFrame` |
+| Scan→Project fully split into independent opcode bodies | **Partial** — `run_core_page` residual |
 | Ready for RQL-C1 / Decision 0 close | **Forbidden** |
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = RQL-VM2 (delete fused executors after equivalence) then P1c
+NEXT labor  = RQL-P1c (arch test every frontend → same dispatch) and/or further materialize split
 ```
 
 ---
@@ -51,26 +51,26 @@ All syntax → compiler intermediates → canonical Query ISA
 | **VM0** | Define Query VM instruction set | **labor closed** |
 | **VM1** | One instruction-dispatch machine (Core + Full) | **labor closed** |
 | **P1b** | Unify host behind collection-qualified `HostCapabilities` | **labor closed** |
-| **VM2** | Plans/IR compile-only; delete semantic executors after equivalence | |
+| **VM2** | Core opcodes → `CoreFrame` phases; demote `execute_plan` | **labor closed** |
 | **P1c** | Arch test: every frontend → same dispatch loop | |
 | **C1** | Principal only — **never** before invariant holds | |
 
 ---
 
-## Just shipped (P1b)
+## Just shipped (VM2)
 
-- `HostCapabilities::{list_keys,get_json,lookup_index_keys}` take `CollectionId`
-- `HeapClient` implements collection-qualified host (`open_collection_by_id`)
-- Full attach / VM attach foreign loads use host-by-id (no name-only scan bypass)
-- Evidence: `doc/todo/rql/evidence/rql_p1b_host_by_id.log`
+- `query_bytecode_v1/core_phases.rs` — `CoreFrame` + `run_core_page`
+- `run_vm_core` calls `index_eq` / `scan` / `filter` / `order` / `page` / `project_paths`
+- IndexEq owns host index probe; `execute_plan` is a thin CoreFrame wrapper only
+- Evidence: `doc/todo/rql/evidence/rql_vm2_core_phases.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT        = RQL-VM2 (split/delete fused Core/attach executors) then P1c
+NEXT        = RQL-P1c (frontend→same loop) / optional further materialize split
 FORBIDDEN   = Decision 0 close; RQL-C1 accept
-LANDED      = IR1–IR4; D0R; P0b; VM0; VM1; P1b collection-qualified host
-HONESTY     = host by id; execute_plan fused body residual → VM2
+LANDED      = IR1–IR4; D0R; P0b; VM0–VM2; P1b
+HONESTY     = CoreFrame phases; run_core_page still fused Scan→Project
 ```

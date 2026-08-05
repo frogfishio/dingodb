@@ -1,12 +1,12 @@
-//! Query VM dispatch (RQL-VM1) — one instruction loop for Core + Full.
+//! Query VM dispatch (RQL-VM1/VM2) — one instruction loop for Core + Full.
 //!
 //! Profile: **`residiuum-query-vm-v1`** (see [`super::vm`]).
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
 //! Product execute enters here after ISA decode + lower. Core pipeline opcodes
-//! still call [`super::core_page::execute_plan`] as a **temporary fused body**
-//! (honest residual → **RQL-VM2** splits/deletes that interpreter). Full attach
-//! opcodes dispatch one step at a time via existing attach helpers.
+//! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2**).
+//! `run_core_page` still fuses Scan→Project materialize (honest residual).
+//! Full attach opcodes dispatch one step at a time via existing attach helpers.
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
@@ -18,7 +18,8 @@ use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
-use super::core_page::{execute_plan, DocScan};
+use super::core_page::DocScan;
+use super::core_phases::CoreFrame;
 use super::full_attach::{
     apply_project_rows, attach_enrich_rows, attach_within_rows, collect_within_using_names,
     filter_rows, load_foreign_docs_for_root_enrich, EnrichAttachMode, EnrichLoadEvidence,
@@ -220,6 +221,9 @@ pub(crate) fn lower_full(
 }
 
 /// Run a Core-only VM program (no Enrich / Within / …).
+///
+/// RQL-VM2: each Core opcode calls a [`CoreFrame`] phase helper. IndexEq performs
+/// the host index probe; ProjectPaths completes the page via `run_core_page`.
 pub(crate) fn run_vm_core<S: DocScan>(
     scan: &mut S,
     prog: &VmProgram,
@@ -236,8 +240,8 @@ pub(crate) fn run_vm_core<S: DocScan>(
     }
     let mut pc = 0usize;
     let mut bound: Option<CollectionId> = None;
+    let mut frame: Option<CoreFrame<'_>> = None;
     let mut page: Option<QueryPage> = None;
-    let mut core_done = false;
 
     while pc < prog.ops.len() {
         let instr = &prog.ops[pc];
@@ -254,32 +258,56 @@ pub(crate) fn run_vm_core<S: DocScan>(
                     ));
                 }
                 bound = Some(*id);
+                frame = Some(CoreFrame::begin(
+                    &prog.core,
+                    params,
+                    options,
+                    heap_id,
+                    collection_id,
+                    prog.budget,
+                )?);
                 pc += 1;
             }
-            OpCode::IndexEq
-            | OpCode::Scan
-            | OpCode::Filter
-            | OpCode::Order
-            | OpCode::Page
-            | OpCode::ProjectPaths => {
-                if bound.is_none() {
-                    return Err(Error::QueryInvalid(
-                        "run_vm: Core pipeline before BindCollection".into(),
-                    ));
-                }
-                if !core_done {
-                    // VM1: fused Core body via execute_plan (residual → VM2).
-                    page = Some(execute_plan(
-                        scan,
-                        &prog.core,
-                        params,
-                        options,
-                        heap_id,
-                        collection_id,
-                        prog.budget,
-                    )?);
-                    core_done = true;
-                }
+            OpCode::IndexEq => {
+                let f = frame.as_mut().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: IndexEq before BindCollection".into())
+                })?;
+                f.index_eq(scan)?;
+                pc += 1;
+            }
+            OpCode::Scan => {
+                let f = frame.as_mut().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: Scan before BindCollection".into())
+                })?;
+                f.scan()?;
+                pc += 1;
+            }
+            OpCode::Filter => {
+                let f = frame.as_mut().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: Filter before BindCollection".into())
+                })?;
+                f.filter()?;
+                pc += 1;
+            }
+            OpCode::Order => {
+                let f = frame.as_mut().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: Order before BindCollection".into())
+                })?;
+                f.order()?;
+                pc += 1;
+            }
+            OpCode::Page => {
+                let f = frame.as_mut().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: Page before BindCollection".into())
+                })?;
+                f.page()?;
+                pc += 1;
+            }
+            OpCode::ProjectPaths => {
+                let f = frame.as_mut().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: ProjectPaths before BindCollection".into())
+                })?;
+                page = Some(f.project_paths(scan)?);
                 pc += 1;
             }
             OpCode::Halt => {
@@ -298,6 +326,7 @@ pub(crate) fn run_vm_core<S: DocScan>(
         }
     }
 
+    let _ = bound;
     page.ok_or_else(|| Error::QueryInvalid("run_vm_core: Halt without Core page".into()))
 }
 

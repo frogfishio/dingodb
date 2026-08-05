@@ -20,6 +20,7 @@
 //! still Rust interpreters of ISA-decoded plans/IR. **RQL-C1 must not be accepted.**
 
 mod core_page;
+mod core_phases;
 mod full_attach;
 mod ir_attach;
 mod ir_order;

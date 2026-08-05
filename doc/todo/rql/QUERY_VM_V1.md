@@ -1,12 +1,14 @@
 # Query VM v1 — instruction set + dispatch
 
-Status: **VM0 + VM1 labor closed 2026-08-05** · board RQL-VM1 `46c2478b`  
+Status: **VM0–VM2 labor closed 2026-08-05** · board RQL-VM2 `0a6ac31a`  
 Profile id: **`residiuum-query-vm-v1`** · version byte **`1`**  
-Runtime: `query_bytecode_v1/vm.rs` (opcodes) · `query_bytecode_v1/vm_exec.rs` (dispatch)  
+Runtime: `query_bytecode_v1/vm.rs` (opcodes) · `vm_exec.rs` (dispatch) · `core_phases.rs` (`CoreFrame`)  
 Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
-Opcode vocabulary (**RQL-VM0**) and one instruction-dispatch machine (**RQL-VM1**)
-for Core and Full RQL. Does **not** close Decision 0 / accept RQL-C1.
+Opcode vocabulary (**RQL-VM0**), one dispatch machine (**RQL-VM1**), and Core
+opcode → `CoreFrame` phases (**RQL-VM2**). Does **not** close Decision 0 /
+accept RQL-C1. Honest residual: `run_core_page` still fuses Scan→Project
+materialize for APP-6 equivalence.
 
 ---
 
@@ -22,9 +24,9 @@ All syntax → compiler intermediates → canonical Query ISA / QVM program
 
 Today (`residiuum-query-isa-v1` / `RQB1`) remains a durable **AST carrier**.
 Product execute lowers decoded plans into a QVM program and runs
-`run_vm_core` / `run_vm_attach`. Core pipeline opcodes still call fused
-`execute_plan` until **RQL-VM2**. Host Full attach uses collection-qualified
-`HostCapabilities` (**RQL-P1b** landed).
+`run_vm_core` / `run_vm_attach`. Core opcodes call `CoreFrame` phase helpers
+(**RQL-VM2**); `execute_plan` is a thin wrapper only. Host Full attach uses
+collection-qualified `HostCapabilities` (**RQL-P1b**).
 
 ---
 
@@ -41,7 +43,7 @@ Product execute lowers decoded plans into a QVM program and runs
 Rules:
 
 1. One dispatch loop interprets opcodes (Core via `run_vm_core`; Full attach via `run_vm_attach`).
-2. `RqlPlanV1` / IR structs remain **compiler intermediates**; product entry is ISA → lower → VM. Fused Core body is an honest VM2 residual.
+2. `RqlPlanV1` / IR structs remain **compiler intermediates**; product entry is ISA → lower → VM. `run_core_page` fused materialize is an honest residual after VM2.
 3. Every collection operand is an immutable `CollectionId` (name is diagnostic).
 4. Unknown opcode bytes and reserved immediates **refuse**.
 
@@ -100,11 +102,12 @@ until a later slice expands nested ops onto the flat stream.
 
 ## Relationship to `residiuum-query-isa-v1`
 
-| Artifact | Role now (after VM1) | Role after VM2 |
+| Artifact | Role now (after VM2) | Residual |
 |---|---|---|
 | `RQB1` ISA bytes | Durable AST carrier + execute authority; lower → QVM | Compile input / exchange |
-| `OpCode` / `VmProgram` | **Dispatched** product path | Sole semantic executor input |
-| `execute_plan` / attach helpers | Called from Core/attach opcode bodies | Delete after equivalence |
+| `OpCode` / `VmProgram` / `CoreFrame` | **Dispatched** product path | Further materialize split optional |
+| `execute_plan` | Thin `CoreFrame` wrapper (crate-private) | Prefer VM entry only |
+| Attach helpers | Called from Full attach opcode bodies | Expand nested Within later |
 
 In-memory typed `VmProgram` is the machine form; a durable QVM wire encoding
 may ship later (magic/version distinct from `RQB1`).
@@ -113,10 +116,10 @@ may ship later (magic/version distinct from `RQB1`).
 
 ## Non-claims
 
-- VM1 ≠ Decision 0 complete
-- VM1 ≠ opcode-granular Core semantics without `execute_plan` (that is **VM2**)
-- VM1 ≠ collection-qualified host alone (P1b is separate; now landed)
+- VM2 ≠ Decision 0 complete / C1
+- VM2 ≠ fully split Scan→Project bodies (`run_core_page` residual)
 - **RQL-C1 must not be accepted**
+- NEXT labor = **RQL-P1c** (frontend → same dispatch loop)
 - Named IR phases ≠ finished Query VM alone
 
 ---
@@ -125,3 +128,4 @@ may ship later (magic/version distinct from `RQB1`).
 
 - `doc/todo/rql/evidence/rql_vm0_opcodes.log`
 - `doc/todo/rql/evidence/rql_vm1_dispatch.log`
+- `doc/todo/rql/evidence/rql_vm2_core_phases.log`
