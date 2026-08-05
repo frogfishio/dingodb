@@ -8,27 +8,30 @@ Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
 
 ## Are we done?
 
-**No.** Durable **QVM1** bytes exist; product Core/Full execute materializes them;
-`VmProgram` has no plan/pipeline/project sidecars; and **one `run_vm`** dispatches
-Core + Full (**VM1R labor closed**). Decision 0 remains OPEN: `RQB1` is still the
-public AST carrier, sql/json/mongo still → SDA, and IR helpers remain Rust.
-**RQL-C1 must not be accepted.** Prior VM1 / P1c convergence claims stay rejected.
+**No.** Public product bytecode is **QVM1** (typed opcode immediates + identity
+pool; no `RqlPlanV1` sidecar on `VmPool`). sql/json/mongo builtins compile to
+portable Filter → QVM; raw SDA is restricted to dialect `sda` /
+`compile_sda_source` / `Collection::sda`. One `run_vm` dispatches Core + Full.
+Decision 0 remains OPEN: IR helpers are still Rust phase bodies, and principal
+has not accepted C1. **RQL-C1 must not be accepted.** Prior VM1 / P1c
+convergence claims stay rejected.
 
 | Claim | Reality |
 |---|---|
 | IR1–IR4 named phases | **Accepted as intermediate labor** |
-| Public execute only via validated ISA (Core/Full SDK) | **P0b labor closed** |
+| Public execute only via validated bytecode (Core/Full SDK) | **P0b + WIRE1 labor closed** (QVM1 public) |
 | Query VM opcode vocabulary | **VM0 accepted as design foundation** |
 | Collection-qualified host API | **P1b labor closed** |
 | Core opcodes drive phases / Within flatten | **VM2–VM4 accepted as intermediate** (VM3b labor closed) |
-| Durable QVM wire (`QVM1` magic) | **QVM1 labor closed** — pool + ops; execute via materialize |
+| Durable QVM wire (`QVM1` magic) + typed operands | **QVM1 labor closed** — no plan sidecar |
 | One `run_vm` | **VM1R labor closed** — Core + Full enter the same loop |
-| Every product frontend → same QVM | **P1c rejected** — dialect `rql`→SDA retired (R1); sql/json/mongo still → SDA |
+| Dialects sql/json/mongo → QVM | **DQ1 labor closed** (portable → QVM; not SDA) |
+| Every product frontend → same QVM | **P1c rejected** as prior claim; dialect path now QVM (R1+DQ1) |
 | Ready for RQL-C1 / Decision 0 close | **Forbidden** |
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = dialect→QVM (sql/json/mongo); then delete obsolete executors
+NEXT labor  = residual IR honesty; Decision 0 remains open (not product accept)
 ```
 
 ---
@@ -44,12 +47,18 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 
 ---
 
-## Just shipped (RQL-VM1R)
+## Just shipped (typed QVM + WIRE1 + DEL1)
 
-- Deleted dual dispatchers `run_vm_core` / `run_vm_attach`
-- One `run_vm` + `VmOutcome` (Core page + attach rows in one machine frame)
-- Full path: `lower_full` → `materialize_qvm` → `run_vm` once (no Core re-entry)
-- Evidence: `doc/todo/rql/evidence/rql_vm1r_one_run_vm.log`
+- Architecture gate forbids deleted `run_core_page` / `execute_plan`
+- `VmPool` holds plan_hash / coverage / consistency only (no `RqlPlanV1`)
+- Core opcodes carry typed immediates (`Where`, `Order`, `Page`, `Project`, …)
+- `QueryBytecodeV1` stores **QVM1** bytes; `isa_hash` = `qvm_hash`
+- QVM verifier: single terminal Halt, Core prefix grammar, Within balance
+- `op_count` bounded (`QVM_MAX_OPS` + remaining-byte check)
+- `order_by` / `force_scan` compiled into portable dialect → QVM
+- `compile_json_value` → `CompiledPortable` (not SDA)
+- Custom `QueryDialect` is portable-only; raw SDA is explicit surface only
+- Evidence path: architecture gate + focused corpus
 
 ---
 
@@ -60,9 +69,9 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 | **R1** | Retire dialect rql→SDA; cache-by-id; arch honesty | **labor closed** |
 | **QVM1** | Durable QVM bytecode; eliminate plan/pipeline sidecars | **labor closed** |
 | **VM1R** | One `run_vm` (repair rejected VM1) | **labor closed** |
-| Dialects sql/json/mongo → QVM | Still dialect→SDA today | **residual** |
-| Delete obsolete private executors / oracles | Drift risk | **residual** |
-| Public wire cutover RQB1 → QVM1 | RQB1 still compile carrier | **residual** |
+| **DQ1** | Dialects sql/json/mongo → portable → QVM | **labor closed** |
+| **WIRE1** | Public QVM1 wire (store/hash/execute) | **labor closed** |
+| **DEL1** | Delete obsolete private executors | **labor closed** (gate forbids) |
 | **C1** | Principal only — **never** before invariant holds | |
 
 ---
@@ -70,8 +79,8 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 ## One-line status
 
 ```text
-NEXT        = dialect→QVM (sql/json/mongo); then delete obsolete executors
+NEXT        = residual IR honesty; Decision 0 remains open
 FORBIDDEN   = Decision 0 close; RQL-C1 accept; claim prior VM1/P1c converged
-LANDED      = D0R; P0b; P1b; VM0 vocab; VM2–VM4 intermediate; R1; QVM1; VM1R
-HONESTY     = RQB1 still AST carrier; sql/json/mongo→SDA; IR Rust
+LANDED      = D0R; P0b; P1b; VM0 vocab; VM2–VM4 intermediate; R1; QVM1; VM1R; DQ1; WIRE1; DEL1
+HONESTY     = IR helpers still Rust; Decision 0 OPEN
 ```

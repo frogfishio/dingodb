@@ -11,9 +11,11 @@
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
-use crate::app_v1::{QueryBudget, QueryPage, QueryRunOptions};
+use crate::app_v1::{
+    ConsistencyMode, CoveragePolicy, QueryBudget, QueryPage, QueryRunOptions,
+};
 use crate::error::Error;
-use crate::plan_v1::RqlPlanV1;
+use crate::plan_v1::{OrderTerm, RqlPlanV1};
 use crate::predicate::{Path, Predicate};
 use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
@@ -75,33 +77,54 @@ struct WithinScope {
     parents: Vec<(String, JsonValue)>,
 }
 
-/// Typed immediate for one VM instruction (operands live here or in [`VmPool`]).
+/// Typed immediate for one VM instruction (operands live on the opcode).
+///
+/// Core opcodes no longer recover semantics from a full [`RqlPlanV1`] sidecar —
+/// each instruction carries its own typed operands (**RQL-QVM typed pool**).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum VmImm {
     /// Bind / verify collection id.
     Collection(CollectionId),
-    /// Core pipeline op: meaning comes from [`VmPool::core`] (bound at Bind).
-    Core,
+    /// IndexEq: where for equality probe + optional force-scan (skip index).
+    IndexEq {
+        where_pred: Predicate,
+        force_scan: bool,
+    },
+    /// Scan has no payload (key-source mode is derived from order at run start).
+    None,
+    /// Core Filter where predicate.
+    Where(Predicate),
+    /// Core order terms (includes key tie-break).
+    Order(Vec<OrderTerm>),
+    /// Core page size + optional total limit.
+    Page {
+        page_size: u32,
+        limit: Option<u64>,
+    },
+    /// Core path projection (`None` = full document).
+    Project(Option<Vec<Path>>),
     /// Enrich step (root or nested inside Within…WithinEnd).
     Enrich(EnrichStepV1),
     /// Within shell: carrier + alias only; body is stream ops until WithinEnd.
     Within(WithinStepV1),
-    /// Delimiter after Within body (no payload).
-    None,
     /// Post-attach filter (root or nested).
     FilterAttach(Predicate),
     /// Brace project.
     ProjectBrace(Vec<ProjectItemV1>),
 }
 
-/// Constant pool for Core plan operands (**RQL-QVM1**).
+/// Constant pool for program identity / page artefact (**RQL-QVM typed**).
 ///
-/// Executable meaning for Core opcodes is recovered from this pool after Bind —
-/// not from a parallel `VmProgram::core` sidecar.
+/// Does **not** hold a full logical plan. Core executable meaning lives on
+/// opcode immediates ([`VmImm`]).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct VmPool {
-    /// Application Core plan (owned; also durable in QVM bytes).
-    pub core: RqlPlanV1,
+    /// Stable plan hash (from compile-time plan identity for cursor binding).
+    pub plan_hash: [u8; 32],
+    /// Coverage policy for the Core page artefact.
+    pub coverage: CoveragePolicy,
+    /// Consistency mode stamped on the plan at compile time.
+    pub consistency: ConsistencyMode,
 }
 
 /// One typed VM instruction.
@@ -120,7 +143,7 @@ pub(crate) struct VmProgram {
     pub profile: &'static str,
     /// Instruction stream (executable with [`VmPool`]).
     pub ops: Vec<VmInstr>,
-    /// Constant pool (Core plan).
+    /// Constant pool (page identity only).
     pub pool: VmPool,
     /// Optional execute budget from ISA/QVM.
     pub budget: Option<QueryBudget>,
@@ -135,7 +158,14 @@ impl VmProgram {
                 op: i.op,
                 imm: match &i.imm {
                     VmImm::Collection(id) => id.as_bytes().to_vec(),
-                    VmImm::None | VmImm::Core => Vec::new(),
+                    VmImm::None => Vec::new(),
+                    VmImm::IndexEq { force_scan, .. } => {
+                        vec![if *force_scan { 1 } else { 0 }]
+                    }
+                    VmImm::Where(_) => Vec::new(),
+                    VmImm::Order(o) => (o.len() as u32).to_le_bytes().to_vec(),
+                    VmImm::Page { page_size, .. } => page_size.to_le_bytes().to_vec(),
+                    VmImm::Project(_) => Vec::new(),
                     VmImm::Enrich(e) => e.using_id.as_bytes().to_vec(),
                     VmImm::Within(_) => Vec::new(),
                     VmImm::FilterAttach(_) => Vec::new(),
@@ -146,9 +176,274 @@ impl VmProgram {
     }
 }
 
-/// Lower a Core plan into the canonical opcode sequence.
+/// Core operands extracted from a verified opcode stream (not a plan sidecar).
+#[derive(Debug, Clone)]
+pub(crate) struct CoreOperands {
+    pub where_pred: Predicate,
+    pub order: Vec<OrderTerm>,
+    pub project: Option<Vec<Path>>,
+    pub page_size: u32,
+    pub limit: Option<u64>,
+    #[allow(dead_code)]
+    pub force_scan: bool,
+}
+
+/// Extract typed Core operands from the instruction stream.
+///
+/// Call after [`verify_vm_program`]. Operands come only from opcode immediates.
+pub(crate) fn extract_core_operands(ops: &[VmInstr]) -> Result<CoreOperands, Error> {
+    let mut where_pred = None;
+    let mut order = None;
+    let mut project = None;
+    let mut page_size = None;
+    let mut limit = None;
+    let mut force_scan = false;
+    for i in ops {
+        match (&i.op, &i.imm) {
+            (OpCode::IndexEq, VmImm::IndexEq { where_pred: w, force_scan: fs }) => {
+                force_scan = *fs;
+                if where_pred.is_none() {
+                    where_pred = Some(w.clone());
+                }
+            }
+            (OpCode::Filter, VmImm::Where(w)) => {
+                where_pred = Some(w.clone());
+            }
+            (OpCode::Order, VmImm::Order(o)) => {
+                order = Some(o.clone());
+            }
+            (OpCode::Page, VmImm::Page { page_size: ps, limit: lim }) => {
+                page_size = Some(*ps);
+                limit = *lim;
+            }
+            (OpCode::ProjectPaths, VmImm::Project(p)) => {
+                project = Some(p.clone());
+            }
+            _ => {}
+        }
+    }
+    Ok(CoreOperands {
+        where_pred: where_pred.ok_or_else(|| {
+            Error::QueryInvalid("qvm: missing Core where (IndexEq/Filter)".into())
+        })?,
+        order: order.ok_or_else(|| Error::QueryInvalid("qvm: missing Core Order".into()))?,
+        project: project.ok_or_else(|| {
+            Error::QueryInvalid("qvm: missing Core ProjectPaths".into())
+        })?,
+        page_size: page_size.ok_or_else(|| {
+            Error::QueryInvalid("qvm: missing Core Page".into())
+        })?,
+        limit,
+        force_scan,
+    })
+}
+
+/// Verify a lowered program: grammar, operands, Within balance, single terminal Halt.
+pub(crate) fn verify_vm_program(prog: &VmProgram) -> Result<(), Error> {
+    if prog.profile != VM_PROFILE {
+        return Err(Error::QueryInvalid(format!(
+            "verify: profile mismatch {:?}",
+            prog.profile
+        )));
+    }
+    if prog.ops.is_empty() {
+        return Err(Error::QueryInvalid("verify: empty program".into()));
+    }
+    // Exactly one Halt, must be final.
+    let halt_positions: Vec<usize> = prog
+        .ops
+        .iter()
+        .enumerate()
+        .filter(|(_, i)| i.op == OpCode::Halt)
+        .map(|(i, _)| i)
+        .collect();
+    if halt_positions.len() != 1 {
+        return Err(Error::QueryInvalid(format!(
+            "verify: require exactly one Halt, found {}",
+            halt_positions.len()
+        )));
+    }
+    if *halt_positions.last().unwrap() != prog.ops.len() - 1 {
+        return Err(Error::QueryInvalid(
+            "verify: Halt must be the final instruction (no unreachable ops)".into(),
+        ));
+    }
+    // Core prefix grammar.
+    let need = [
+        OpCode::BindCollection,
+        OpCode::IndexEq,
+        OpCode::Scan,
+        OpCode::Filter,
+        OpCode::Order,
+        OpCode::Page,
+        OpCode::ProjectPaths,
+    ];
+    if prog.ops.len() < need.len() + 1 {
+        return Err(Error::QueryInvalid(
+            "verify: program shorter than Core prefix + Halt".into(),
+        ));
+    }
+    for (i, op) in need.iter().enumerate() {
+        if prog.ops[i].op != *op {
+            return Err(Error::QueryInvalid(format!(
+                "verify: Core prefix[{i}] want {}, got {}",
+                op.name(),
+                prog.ops[i].op.name()
+            )));
+        }
+    }
+    // Operand compatibility for Core prefix.
+    match &prog.ops[0].imm {
+        VmImm::Collection(_) => {}
+        _ => {
+            return Err(Error::QueryInvalid(
+                "verify: BindCollection requires Collection imm".into(),
+            ))
+        }
+    }
+    match &prog.ops[1].imm {
+        VmImm::IndexEq { .. } => {}
+        _ => {
+            return Err(Error::QueryInvalid(
+                "verify: IndexEq requires IndexEq imm".into(),
+            ))
+        }
+    }
+    if !matches!(prog.ops[2].imm, VmImm::None) {
+        return Err(Error::QueryInvalid(
+            "verify: Scan requires None imm".into(),
+        ));
+    }
+    if !matches!(prog.ops[3].imm, VmImm::Where(_)) {
+        return Err(Error::QueryInvalid(
+            "verify: Filter requires Where imm".into(),
+        ));
+    }
+    if !matches!(prog.ops[4].imm, VmImm::Order(_)) {
+        return Err(Error::QueryInvalid(
+            "verify: Order requires Order imm".into(),
+        ));
+    }
+    if !matches!(prog.ops[5].imm, VmImm::Page { .. }) {
+        return Err(Error::QueryInvalid(
+            "verify: Page requires Page imm".into(),
+        ));
+    }
+    if !matches!(prog.ops[6].imm, VmImm::Project(_)) {
+        return Err(Error::QueryInvalid(
+            "verify: ProjectPaths requires Project imm".into(),
+        ));
+    }
+    // Attach section + balanced Within; Halt already checked as final.
+    let mut depth = 0i32;
+    for (i, instr) in prog.ops.iter().enumerate().skip(need.len()) {
+        match instr.op {
+            OpCode::Halt => {
+                if !matches!(instr.imm, VmImm::None) {
+                    return Err(Error::QueryInvalid(
+                        "verify: Halt requires None imm".into(),
+                    ));
+                }
+                if depth != 0 {
+                    return Err(Error::QueryInvalid(
+                        "verify: Halt with unbalanced Within".into(),
+                    ));
+                }
+            }
+            OpCode::Enrich => {
+                if !matches!(instr.imm, VmImm::Enrich(_)) {
+                    return Err(Error::QueryInvalid(format!(
+                        "verify: Enrich imm mismatch at {i}"
+                    )));
+                }
+            }
+            OpCode::Within => {
+                match &instr.imm {
+                    VmImm::Within(w) if w.steps.is_empty() => {}
+                    VmImm::Within(_) => {
+                        return Err(Error::QueryInvalid(
+                            "verify: Within imm must be shell (empty steps)".into(),
+                        ))
+                    }
+                    _ => {
+                        return Err(Error::QueryInvalid(format!(
+                            "verify: Within imm mismatch at {i}"
+                        )))
+                    }
+                }
+                depth += 1;
+            }
+            OpCode::WithinEnd => {
+                if !matches!(instr.imm, VmImm::None) {
+                    return Err(Error::QueryInvalid(
+                        "verify: WithinEnd requires None imm".into(),
+                    ));
+                }
+                depth -= 1;
+                if depth < 0 {
+                    return Err(Error::QueryInvalid(
+                        "verify: WithinEnd without matching Within".into(),
+                    ));
+                }
+            }
+            OpCode::FilterAttach => {
+                if !matches!(instr.imm, VmImm::FilterAttach(_)) {
+                    return Err(Error::QueryInvalid(format!(
+                        "verify: FilterAttach imm mismatch at {i}"
+                    )));
+                }
+            }
+            OpCode::ProjectBrace => {
+                if !matches!(instr.imm, VmImm::ProjectBrace(_)) {
+                    return Err(Error::QueryInvalid(format!(
+                        "verify: ProjectBrace imm mismatch at {i}"
+                    )));
+                }
+                if depth != 0 {
+                    return Err(Error::QueryInvalid(
+                        "verify: ProjectBrace inside Within is illegal".into(),
+                    ));
+                }
+            }
+            OpCode::BindCollection
+            | OpCode::IndexEq
+            | OpCode::Scan
+            | OpCode::Filter
+            | OpCode::Order
+            | OpCode::Page
+            | OpCode::ProjectPaths => {
+                return Err(Error::QueryInvalid(format!(
+                    "verify: Core opcode {} only legal in Core prefix (at {i})",
+                    instr.op.name()
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Lower a Core plan into the canonical opcode sequence with typed immediates.
 pub(crate) fn lower_core(core: RqlPlanV1, budget: Option<QueryBudget>) -> VmProgram {
+    lower_core_with_force_scan(core, budget, false)
+}
+
+/// Lower Core with optional force_scan (dialect QueryOptions).
+pub(crate) fn lower_core_with_force_scan(
+    core: RqlPlanV1,
+    budget: Option<QueryBudget>,
+    force_scan: bool,
+) -> VmProgram {
     let id = core.from.collection_id;
+    let where_pred = core.where_pred.clone();
+    let order = core.order.clone();
+    let project = core.project.clone();
+    let page_size = core.page_size;
+    let limit = core.limit;
+    let pool = VmPool {
+        plan_hash: core.plan_hash(),
+        coverage: core.coverage,
+        consistency: core.consistency,
+    };
     let ops = vec![
         VmInstr {
             op: OpCode::BindCollection,
@@ -156,27 +451,30 @@ pub(crate) fn lower_core(core: RqlPlanV1, budget: Option<QueryBudget>) -> VmProg
         },
         VmInstr {
             op: OpCode::IndexEq,
-            imm: VmImm::Core,
+            imm: VmImm::IndexEq {
+                where_pred: where_pred.clone(),
+                force_scan,
+            },
         },
         VmInstr {
             op: OpCode::Scan,
-            imm: VmImm::Core,
+            imm: VmImm::None,
         },
         VmInstr {
             op: OpCode::Filter,
-            imm: VmImm::Core,
+            imm: VmImm::Where(where_pred),
         },
         VmInstr {
             op: OpCode::Order,
-            imm: VmImm::Core,
+            imm: VmImm::Order(order),
         },
         VmInstr {
             op: OpCode::Page,
-            imm: VmImm::Core,
+            imm: VmImm::Page { page_size, limit },
         },
         VmInstr {
             op: OpCode::ProjectPaths,
-            imm: VmImm::Core,
+            imm: VmImm::Project(project),
         },
         VmInstr {
             op: OpCode::Halt,
@@ -186,7 +484,7 @@ pub(crate) fn lower_core(core: RqlPlanV1, budget: Option<QueryBudget>) -> VmProg
     VmProgram {
         profile: VM_PROFILE,
         ops,
-        pool: VmPool { core },
+        pool,
         budget,
     }
 }
@@ -231,54 +529,18 @@ pub(crate) fn lower_full(
     pipeline: Vec<FullPipelineStepV1>,
     project: Option<Vec<ProjectItemV1>>,
 ) -> VmProgram {
-    let id = core.from.collection_id;
-    let mut ops = vec![
-        VmInstr {
-            op: OpCode::BindCollection,
-            imm: VmImm::Collection(id),
-        },
-        VmInstr {
-            op: OpCode::IndexEq,
-            imm: VmImm::Core,
-        },
-        VmInstr {
-            op: OpCode::Scan,
-            imm: VmImm::Core,
-        },
-        VmInstr {
-            op: OpCode::Filter,
-            imm: VmImm::Core,
-        },
-        VmInstr {
-            op: OpCode::Order,
-            imm: VmImm::Core,
-        },
-        VmInstr {
-            op: OpCode::Page,
-            imm: VmImm::Core,
-        },
-        VmInstr {
-            op: OpCode::ProjectPaths,
-            imm: VmImm::Core,
-        },
-    ];
-    emit_attach_pipeline(&mut ops, &pipeline);
-    if let Some(ref fields) = project {
-        ops.push(VmInstr {
+    let mut prog = lower_core(core, budget);
+    // Insert attach ops before Halt.
+    let halt = prog.ops.pop().expect("Halt");
+    emit_attach_pipeline(&mut prog.ops, &pipeline);
+    if let Some(fields) = project {
+        prog.ops.push(VmInstr {
             op: OpCode::ProjectBrace,
-            imm: VmImm::ProjectBrace(fields.clone()),
+            imm: VmImm::ProjectBrace(fields),
         });
     }
-    ops.push(VmInstr {
-        op: OpCode::Halt,
-        imm: VmImm::None,
-    });
-    VmProgram {
-        profile: VM_PROFILE,
-        ops,
-        pool: VmPool { core },
-        budget,
-    }
+    prog.ops.push(halt);
+    prog
 }
 
 /// One Query VM dispatch for Core and Full programs (**RQL-VM1R**).
@@ -300,6 +562,7 @@ pub(crate) fn run_vm<H: HostCapabilities>(
             prog.profile
         )));
     }
+    verify_vm_program(prog)?;
     let mut pc = 0usize;
     let mut frame: Option<CoreFrame<'_>> = None;
     let mut page: Option<QueryPage> = None;
@@ -317,7 +580,7 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                         "run_vm: BindCollection immediate mismatch".into(),
                     ));
                 };
-                if *id != collection_id || *id != prog.pool.core.from.collection_id {
+                if *id != collection_id {
                     return Err(Error::QueryInvalid(
                         "run_vm: BindCollection id mismatch".into(),
                     ));
@@ -327,8 +590,10 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                         "run_vm: BindCollection after Core page".into(),
                     ));
                 }
+                let core_ops = extract_core_operands(&prog.ops)?;
                 frame = Some(CoreFrame::begin(
-                    &prog.pool.core,
+                    &prog.pool,
+                    &core_ops,
                     params,
                     options,
                     heap_id,
@@ -341,11 +606,20 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: IndexEq before BindCollection".into())
                 })?;
+                let VmImm::IndexEq {
+                    where_pred,
+                    force_scan,
+                } = &instr.imm
+                else {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: IndexEq immediate mismatch".into(),
+                    ));
+                };
                 let mut scan = HostScan {
                     host,
                     collection_id,
                 };
-                f.index_eq(&mut scan)?;
+                f.index_eq(&mut scan, where_pred, *force_scan)?;
                 pc += 1;
             }
             OpCode::Scan => {
@@ -363,6 +637,11 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Filter before BindCollection".into())
                 })?;
+                if !matches!(instr.imm, VmImm::Where(_)) {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Filter immediate mismatch".into(),
+                    ));
+                }
                 let mut scan = HostScan {
                     host,
                     collection_id,
@@ -374,6 +653,11 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Order before BindCollection".into())
                 })?;
+                if !matches!(instr.imm, VmImm::Order(_)) {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Order immediate mismatch".into(),
+                    ));
+                }
                 f.order()?;
                 pc += 1;
             }
@@ -381,6 +665,11 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Page before BindCollection".into())
                 })?;
+                if !matches!(instr.imm, VmImm::Page { .. }) {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Page immediate mismatch".into(),
+                    ));
+                }
                 f.page()?;
                 pc += 1;
             }
@@ -388,6 +677,11 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: ProjectPaths before BindCollection".into())
                 })?;
+                if !matches!(instr.imm, VmImm::Project(_)) {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: ProjectPaths immediate mismatch".into(),
+                    ));
+                }
                 let mut scan = HostScan {
                     host,
                     collection_id,
@@ -511,12 +805,22 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                         "run_vm: Halt with open Within scope".into(),
                     ));
                 }
+                if pc + 1 != prog.ops.len() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Halt must be terminal (unreachable ops after Halt)".into(),
+                    ));
+                }
+                if page.is_none() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Halt without Core page".into(),
+                    ));
+                }
                 break;
             }
         }
     }
 
-    let page = page.ok_or_else(|| Error::QueryInvalid("run_vm: Halt without Core page".into()))?;
+    let page = page.ok_or_else(|| Error::QueryInvalid("run_vm: finished without Core page".into()))?;
     Ok(VmOutcome {
         page,
         rows,

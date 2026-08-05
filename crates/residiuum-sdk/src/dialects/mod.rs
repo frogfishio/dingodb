@@ -16,8 +16,8 @@
 //! `Collection::sda`/`filter_sda`), `rql` (**retired** from this surface —
 //! use Query VM / `CollectionClient::rql`), `json`, `mongo` (alias of `json`),
 //! `sql`, `graphql` (scaffold / refuse). Hosts may register more via
-//! [`DialectRegistry`] (custom dialects may still return raw SDA via
-//! [`CompiledDialect::Sda`]).
+//! [`DialectRegistry`]. Custom dialects return **portable** compiles only;
+//! raw SDA is restricted to builtin dialect id `sda` / [`compile_sda_source`].
 
 #[cfg(test)]
 mod rql; // legacy RQL→SDA compiler kept test-only (RQL-R1); product path refuses
@@ -91,13 +91,14 @@ impl CompiledSda {
     }
 }
 
-/// A frontend that compiles foreign notation into pure SDA or a portable
-/// [`Filter`] for Query VM execution (**RQL-DQ1**).
+/// A frontend that compiles foreign notation into a portable [`Filter`] for
+/// Query VM execution (**RQL-DQ1**).
 ///
 /// Implementations MUST refuse unmappable constructs rather than silently
-/// weaken semantics. Approximate mappings SHOULD attach honesty notes
-/// ([`CompiledDialect::notes`]). Custom dialects that only know how to emit
-/// raw SDA text may return [`CompiledDialect::Sda`].
+/// weaken semantics. Approximate mappings SHOULD attach honesty notes.
+///
+/// **Raw SDA is not available through this trait.** Use builtin dialect `sda`
+/// / [`compile_sda_source`] / `Collection::sda` for explicit raw-SDA surfaces.
 pub trait QueryDialect: Send + Sync {
     /// Stable dialect id (e.g. `"sql"`, `"json"`).
     fn id(&self) -> &str;
@@ -108,8 +109,8 @@ pub trait QueryDialect: Send + Sync {
     /// One-line description of coverage and limits.
     fn description(&self) -> &str;
 
-    /// Compile `source` into a [`CompiledDialect`] (SDA or portable Filter).
-    fn compile(&self, source: &str) -> Result<CompiledDialect, Error>;
+    /// Compile `source` into a portable filter for Query VM.
+    fn compile(&self, source: &str) -> Result<CompiledPortable, Error>;
 }
 
 /// Static metadata for discovery (CLI, docs, explain).
@@ -237,8 +238,14 @@ impl QueryDialect for BuiltinDialect {
         BuiltinDialect::description(*self)
     }
 
-    fn compile(&self, source: &str) -> Result<CompiledDialect, Error> {
-        BuiltinDialect::compile(*self, source)
+    fn compile(&self, source: &str) -> Result<CompiledPortable, Error> {
+        match BuiltinDialect::compile(*self, source)? {
+            CompiledDialect::Portable(p) => Ok(p),
+            CompiledDialect::Sda(_) => Err(Error::QueryInvalid(
+                "raw SDA is not available through QueryDialect; use dialect id `sda` / compile_sda_source"
+                    .into(),
+            )),
+        }
     }
 }
 
@@ -272,7 +279,7 @@ pub fn list_builtin_dialects() -> &'static [DialectInfo] {
         DialectInfo {
             id: "sql",
             name: "SQL mimicry",
-            description: "Partial SELECT/WHERE → SDA; not full SQL",
+            description: "Partial SELECT/WHERE → portable Filter → Query VM; not full SQL",
             implemented: true,
         },
         DialectInfo {
@@ -337,7 +344,8 @@ impl DialectRegistry {
             return d.compile(source);
         }
         if let Some(d) = self.custom.get(&key) {
-            return d.compile(source);
+            // Custom dialects are portable-only (raw SDA is builtin `sda` only).
+            return Ok(CompiledDialect::Portable(d.compile(source)?));
         }
         let mut known: Vec<&str> = list_builtin_dialects().iter().map(|d| d.id).collect();
         known.extend(self.custom.keys().map(|s| s.as_str()));
@@ -433,20 +441,25 @@ fn compile_json_filter_portable(dialect_id: &str, source: &str) -> Result<Compil
     ))
 }
 
-/// Compile a JSON value (not a string) with the `json` dialect.
-pub fn compile_json_value(filter: &JsonValue) -> Result<CompiledSda, Error> {
+/// Compile a JSON value (not a string) with the `json` dialect → portable
+/// Filter for Query VM (**RQL-DQ1**; does not return raw SDA).
+pub fn compile_json_value(filter: &JsonValue) -> Result<CompiledPortable, Error> {
     let f = Filter::from_json(filter)?;
-    let sda = f.to_sda();
-    sda_core::Program::parse(&sda).map_err(|e| {
-        Error::QueryInvalid(format!(
-            "dialect 'json': internal SDA compile failed: {e}; sda={sda}"
-        ))
-    })?;
-    Ok(CompiledSda::predicate(
+    // Sanity: portable filter must lower to a Query VM predicate.
+    f.to_predicate()?;
+    Ok(CompiledPortable::new(
         "json",
-        sda,
-        std::iter::empty::<String>(),
+        f,
+        None,
+        vec!["RQL-DQ1: compile_json_value → portable Filter → Query VM (not SDA)".into()],
     ))
+}
+
+/// Explicit raw-SDA compile surface (dialect id `sda` only).
+///
+/// Prefer this (or `compile_dialect("sda", …)`) over custom dialects for SDA.
+pub fn compile_sda_source(source: &str) -> Result<CompiledSda, Error> {
+    compile_sda(source)
 }
 
 #[cfg(test)]
@@ -585,20 +598,21 @@ mod tests {
             fn description(&self) -> &str {
                 "test"
             }
-            fn compile(&self, source: &str) -> Result<CompiledDialect, Error> {
-                Ok(CompiledDialect::Sda(CompiledSda::predicate(
+            fn compile(&self, source: &str) -> Result<CompiledPortable, Error> {
+                Ok(CompiledPortable::new(
                     "echo",
-                    "true",
-                    [format!("echoed:{source}")],
-                )))
+                    Filter::Always,
+                    None,
+                    vec![format!("echoed:{source}")],
+                ))
             }
         }
         let mut reg = DialectRegistry::new();
         reg.register(Arc::new(Echo)).unwrap();
         let c = reg.compile("echo", "hi").unwrap();
-        let s = c.as_sda().expect("sda");
-        assert_eq!(s.sda, "true");
-        assert!(s.notes.iter().any(|n| n.contains("hi")));
+        let p = c.as_portable().expect("portable only for custom dialects");
+        assert_eq!(p.dialect, "echo");
+        assert!(p.notes.iter().any(|n| n.contains("hi")));
         assert!(reg.register(Arc::new(Echo)).is_err());
         assert!(reg.register(Arc::new(BuiltinDialect::Json)).is_err());
     }
@@ -607,6 +621,8 @@ mod tests {
     fn compile_json_value_api() {
         let c = compile_json_value(&json!({"a": {"$exists": true}})).unwrap();
         assert_eq!(c.dialect, "json");
-        assert!(c.sda.contains("getPath"));
+        // Portable path — not raw SDA.
+        let _ = c.filter.to_predicate().unwrap();
+        assert!(c.notes.iter().any(|n| n.contains("Query VM") || n.contains("portable")));
     }
 }

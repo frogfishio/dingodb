@@ -577,9 +577,11 @@ mod tests {
     use super::*;
     use crate::plan_v1::CollectionBindings;
     use crate::query_bytecode_v1::full_attach::compile_rql_full;
-    use crate::query_bytecode_v1::{execute_isa_bytes, lower_core_source, HostCapabilities};
+    use crate::query_bytecode_v1::{execute_isa_bytes, HostCapabilities};
+    use crate::rql_app_core::compile_app_core;
     use crate::app_v1::{Parameters, QueryRunOptions};
     use residiuum_heap::HeapId;
+    use std::collections::BTreeMap;
 
     fn uuidish(seed: u8) -> [u8; 16] {
         let mut b = [0u8; 16];
@@ -587,6 +589,15 @@ mod tests {
         b[6] = (b[6] & 0x0f) | 0x40;
         b[8] = (b[8] & 0x3f) | 0x80;
         b
+    }
+
+    fn encode_core_source(source: &str, id: CollectionId, name: &str) -> Vec<u8> {
+        let mut bindings = CollectionBindings {
+            by_name: BTreeMap::new(),
+        };
+        bindings.bind(name, id);
+        let compiled = compile_app_core(source, &bindings).expect("compile");
+        encode_core_program(&compiled.plan, compiled.budget).expect("encode RQB1")
     }
 
     struct EmptyHost;
@@ -617,18 +628,17 @@ mod tests {
     #[test]
     fn core_encode_decode_roundtrip() {
         let id = CollectionId::from_bytes(uuidish(3)).expect("id");
-        let bc = lower_core_source(
+        let bytes = encode_core_source(
             "from items where status = $s order by created asc page size 32",
             id,
             "items",
-        )
-        .expect("lower");
-        assert!(!bc.isa_bytes().is_empty());
-        assert_eq!(&bc.isa_bytes()[0..4], ISA_MAGIC);
-        let prog = bc.decode().expect("decode");
+        );
+        assert!(!bytes.is_empty());
+        assert_eq!(&bytes[0..4], ISA_MAGIC);
+        let prog = decode_isa_canonical(&bytes).expect("decode");
         assert_eq!(prog.profile, ISA_PROFILE);
         let again = encode_core_program(&prog.core, prog.budget).expect("re-encode");
-        assert_eq!(again, bc.isa_bytes());
+        assert_eq!(again, bytes);
         assert!(prog.full.is_none());
         let again2 = encode_core_program(&prog.core, prog.budget).expect("re-encode");
         assert_eq!(again2, again);
@@ -638,11 +648,11 @@ mod tests {
     fn execute_from_isa_empty_host() {
         let id = CollectionId::from_bytes(uuidish(4)).expect("id");
         let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
-        let bc = lower_core_source("from items", id, "items").expect("lower");
+        let bytes = encode_core_source("from items", id, "items");
         let mut host = EmptyHost;
         let page = execute_isa_bytes(
             &mut host,
-            bc.isa_bytes(),
+            &bytes,
             &Parameters::default().values,
             &QueryRunOptions::default(),
             heap,
@@ -655,8 +665,8 @@ mod tests {
     #[test]
     fn reserved_top_level_flags_rejected() {
         let id = CollectionId::from_bytes(uuidish(5)).expect("id");
-        let bc = lower_core_source("from items", id, "items").expect("lower");
-        let mut bad = bc.isa_bytes().to_vec();
+        let bytes = encode_core_source("from items", id, "items");
+        let mut bad = bytes;
         bad[5] |= 0x80;
         let err = decode_isa(&bad).expect_err("reserved flags");
         assert!(
@@ -668,11 +678,9 @@ mod tests {
     #[test]
     fn non_canonical_rejected_by_decode_isa_canonical() {
         let id = CollectionId::from_bytes(uuidish(6)).expect("id");
-        let bc = lower_core_source("from items", id, "items").expect("lower");
-        // Trailing zero after a valid program: decode_isa rejects trailing;
-        // flip is exercised by reserved-bit test. Canonical path accepts
-        // encoder output.
-        let prog = decode_isa_canonical(bc.isa_bytes()).expect("canonical");
+        let bytes = encode_core_source("from items", id, "items");
+        // Canonical path accepts encoder output.
+        let prog = decode_isa_canonical(&bytes).expect("canonical");
         assert_eq!(prog.profile, ISA_PROFILE);
     }
 

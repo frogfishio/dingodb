@@ -3,19 +3,18 @@
 //! Profile: **`residiuum-query-bytecode-v1`**
 //! ISA: **`residiuum-query-isa-v1`** ([QUERY_ISA_V1.md](../../../../doc/todo/rql/QUERY_ISA_V1.md))
 //!
-//! **RQL-X5:** [`QueryBytecodeV1`] holds **only** ISA bytes. Execution always
-//! `decode_isa` → interpret. An independent Rust `plan` field is forbidden so
-//! ISA identity cannot diverge from executed meaning.
+//! **RQL-WIRE1 / QVM sole public authority:** [`QueryBytecodeV1`] holds **QVM1**
+//! durable bytes. Execution is `decode_qvm` → `verify_vm_program` → `run_vm`.
+//! Legacy `RQB1` may be accepted at ingress and immediately lowered to QVM.
 //!
-//! **RQL-VM1R:** after decode + QVM materialize, Core and Full lower into one
-//! Query VM program and run through [`vm_exec::run_vm`] (one opcode dispatch).
+//! **RQL-VM1R:** Core and Full run through one [`vm_exec::run_vm`] loop.
 //! See [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) and
 //! [QUERY_VM_V1.md](../../../../doc/todo/rql/QUERY_VM_V1.md).
 //!
 //! Host adapters supply scan/index/get only.
 //!
 //! Residual (Decision 0 still open): VM dispatches, but Core/attach helpers are
-//! still Rust interpreters of ISA-decoded plans/IR. **RQL-C1 must not be accepted.**
+//! still Rust interpreters of typed QVM operands. **RQL-C1 must not be accepted.**
 
 mod core_page;
 mod core_phases;
@@ -54,6 +53,10 @@ pub use isa::{
     ISA_PROFILE, ISA_VERSION,
 };
 pub use kernel::{compile_where, lower_predicate, CompiledKernelWhere, KERNEL_PROFILE};
+pub use qvm::{
+    decode_qvm, encode_qvm, materialize_qvm, qvm_hash, QVM_MAGIC, QVM_MAX_BLOB_BYTES,
+    QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES,
+};
 pub use vm::{Instruction, OpCode, VM_PROFILE, VM_VERSION};
 
 use crate::app_v1::{Parameters, QueryBudget, QueryExplanation, QueryPage, QueryRunOptions};
@@ -98,13 +101,16 @@ pub trait HostCapabilities {
     }
 }
 
-/// Compiled query bytecode envelope — **ISA bytes only** (RQL-X5).
+/// Compiled query bytecode envelope — **QVM1 bytes only** (public authority).
 ///
-/// Fields are private so callers cannot pair a Rust plan with unrelated ISA.
+/// Fields are private so callers cannot pair a Rust plan with unrelated bytes.
+/// Legacy RQB1 may be accepted via [`Self::from_isa_bytes`] and is immediately
+/// lowered to QVM1.
 #[derive(Debug, Clone)]
 pub struct QueryBytecodeV1 {
     profile: String,
-    isa: Vec<u8>,
+    /// Durable QVM1 bytes (sole public executable identity).
+    qvm: Vec<u8>,
 }
 
 impl QueryBytecodeV1 {
@@ -113,34 +119,51 @@ impl QueryBytecodeV1 {
         &self.profile
     }
 
-    /// Durable ISA bytes (sole executable identity).
+    /// Durable QVM1 bytes (sole public executable identity).
+    pub fn qvm_bytes(&self) -> &[u8] {
+        &self.qvm
+    }
+
+    /// Alias of [`Self::qvm_bytes`] for call sites that still say “isa”.
+    ///
+    /// The public stored bytes are **QVM1**, not RQB1.
     pub fn isa_bytes(&self) -> &[u8] {
-        &self.isa
+        &self.qvm
     }
 
-    /// Domain-separated hash of the ISA bytes.
+    /// Domain-separated hash of the QVM1 bytes (public program identity).
     pub fn isa_hash(&self) -> [u8; 32] {
-        isa_hash(&self.isa)
+        qvm::qvm_hash(&self.qvm)
     }
 
-    /// Decode/validate ISA with canonical re-encode check.
-    pub fn decode(&self) -> Result<QueryIsaProgram, Error> {
-        decode_isa_canonical(&self.isa)
+    /// Domain-separated hash of the QVM1 bytes.
+    pub fn qvm_hash(&self) -> [u8; 32] {
+        qvm::qvm_hash(&self.qvm)
     }
 
-    /// Lower a validated Application Core plan → ISA envelope.
+    /// Decode/validate stored QVM into a lowered program.
+    pub fn decode_qvm_program(&self) -> Result<vm_exec::VmProgram, Error> {
+        qvm::decode_qvm(&self.qvm)
+    }
+
+    /// Lower a validated Application Core plan → QVM1 envelope.
     pub fn from_core_plan(plan: RqlPlanV1, budget: Option<QueryBudget>) -> Result<Self, Error> {
-        let isa = encode_core_program(&plan, budget)?;
-        // Refuse to stamp an envelope whose bytes do not round-trip to `plan`.
-        let prog = decode_isa(&isa)?;
-        if prog.core != plan || prog.budget != budget || prog.full.is_some() {
-            return Err(Error::QueryInvalid(
-                "isa encode/decode mismatch on Core lower".into(),
-            ));
-        }
+        Self::from_core_plan_force_scan(plan, budget, false)
+    }
+
+    /// Lower Core with optional force_scan into QVM1.
+    pub fn from_core_plan_force_scan(
+        plan: RqlPlanV1,
+        budget: Option<QueryBudget>,
+        force_scan: bool,
+    ) -> Result<Self, Error> {
+        let prog = vm_exec::lower_core_with_force_scan(plan, budget, force_scan);
+        let qvm = qvm::encode_qvm(&prog)?;
+        // Round-trip authority check.
+        let _ = qvm::decode_qvm(&qvm)?;
         Ok(Self {
             profile: BYTECODE_PROFILE.to_string(),
-            isa,
+            qvm,
         })
     }
 
@@ -149,19 +172,31 @@ impl QueryBytecodeV1 {
         Self::from_core_plan(compiled.plan, compiled.budget)
     }
 
-    /// Construct from already-encoded ISA bytes (validates canonical decode).
-    pub fn from_isa_bytes(isa: Vec<u8>) -> Result<Self, Error> {
-        let prog = decode_isa_canonical(&isa)?;
+    /// Construct from durable QVM1 bytes (validates decode + verify).
+    pub fn from_qvm_bytes(qvm: Vec<u8>) -> Result<Self, Error> {
+        let _ = qvm::decode_qvm(&qvm)?;
+        Ok(Self {
+            profile: BYTECODE_PROFILE.to_string(),
+            qvm,
+        })
+    }
+
+    /// Construct from QVM1 **or** legacy RQB1 Core ISA bytes.
+    ///
+    /// RQB1 is lowered to QVM1 immediately; Full RQB1 is refused (use Full entry).
+    pub fn from_isa_bytes(bytes: Vec<u8>) -> Result<Self, Error> {
+        if bytes.len() >= 4 && &bytes[0..4] == qvm::QVM_MAGIC.as_slice() {
+            return Self::from_qvm_bytes(bytes);
+        }
+        // Legacy RQB1 carrier → QVM1.
+        let prog = decode_isa_canonical(&bytes)?;
         if prog.full.is_some() {
             return Err(Error::QueryInvalid(
                 "QueryBytecodeV1::from_isa_bytes: Core envelope cannot carry full pipeline"
                     .into(),
             ));
         }
-        Ok(Self {
-            profile: BYTECODE_PROFILE.to_string(),
-            isa,
-        })
+        Self::from_core_plan(prog.core, prog.budget)
     }
 }
 
@@ -191,7 +226,7 @@ pub fn explain_core_source(
     explain_rql_source(source, collection_id, collection_name)
 }
 
-/// Execute bytecode against a host — **decodes ISA; never trusts a side plan**.
+/// Execute bytecode against a host — **decodes QVM1; never trusts a side plan**.
 pub fn execute_bytecode<H: HostCapabilities>(
     host: &mut H,
     bytecode: &QueryBytecodeV1,
@@ -206,14 +241,36 @@ pub fn execute_bytecode<H: HostCapabilities>(
             bytecode.profile()
         )));
     }
-    execute_isa_bytes(
+    execute_qvm_bytes(
         host,
-        bytecode.isa_bytes(),
+        bytecode.qvm_bytes(),
         params,
         options,
         heap_id,
         collection_id,
     )
+}
+
+/// Product QVM entry: decode + verify + `run_vm`.
+pub fn execute_qvm_bytes<H: HostCapabilities>(
+    host: &mut H,
+    qvm_bytes: &[u8],
+    params: &BTreeMap<String, JsonValue>,
+    options: &QueryRunOptions,
+    heap_id: HeapId,
+    collection_id: CollectionId,
+) -> Result<QueryPage, Error> {
+    let prog = qvm::decode_qvm(qvm_bytes)?;
+    let out = vm_exec::run_vm(
+        host,
+        &prog,
+        params,
+        options,
+        heap_id,
+        collection_id,
+        false,
+    )?;
+    Ok(out.page)
 }
 
 /// Product entry: Core RQL source → lower → execute on host.
@@ -242,8 +299,9 @@ pub fn execute_core_rql<H: HostCapabilities>(
     )
 }
 
-/// Sole Core ISA entry: decode bytes, refuse full section, then
-/// [`execute_decoded_core`].
+/// Core entry for QVM1 **or** legacy RQB1 Core ISA bytes.
+///
+/// QVM1 is preferred; RQB1 is lowered to QVM then executed. Full RQB1 is refused.
 pub fn execute_isa_bytes<H: HostCapabilities>(
     host: &mut H,
     isa_bytes: &[u8],
@@ -252,6 +310,9 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
     heap_id: HeapId,
     collection_id: CollectionId,
 ) -> Result<QueryPage, Error> {
+    if isa_bytes.len() >= 4 && &isa_bytes[0..4] == qvm::QVM_MAGIC.as_slice() {
+        return execute_qvm_bytes(host, isa_bytes, params, options, heap_id, collection_id);
+    }
     let prog = decode_isa_canonical(isa_bytes)?;
     if prog.full.is_some() {
         return Err(Error::QueryInvalid(
@@ -365,8 +426,13 @@ mod tests {
         let id = CollectionId::from_bytes(uuidish(7)).expect("id");
         let bc = lower_core_source("from items", id, "items").expect("lower");
         assert_eq!(bc.profile(), BYTECODE_PROFILE);
-        let prog = bc.decode().expect("decode");
-        assert_eq!(prog.core.from.source_name, "items");
+        assert_eq!(&bc.qvm_bytes()[0..4], qvm::QVM_MAGIC);
+        let prog = bc.decode_qvm_program().expect("decode");
+        assert_eq!(prog.ops[0].op, OpCode::BindCollection);
+        match &prog.ops[0].imm {
+            vm_exec::VmImm::Collection(cid) => assert_eq!(*cid, id),
+            _ => panic!("expected Collection imm"),
+        }
     }
 
     #[test]
@@ -410,15 +476,21 @@ mod tests {
         )
         .expect("lower");
 
-        // Tamper: replace Core body with a different filter via re-encode.
-        let mut prog = bc.decode().expect("decode");
-        prog.core.where_pred = crate::predicate::Predicate::Cmp {
-            cmp: CompareOp::Eq,
-            left: Operand::path(Path::parse_dotted("status").unwrap()),
-            right: Operand::literal(json!("paused")),
+        // Tamper: rebuild QVM with a different Filter where via plan re-lower.
+        let mut bindings = CollectionBindings {
+            by_name: BTreeMap::new(),
         };
-        let tampered = encode_core_program(&prog.core, prog.budget).expect("encode");
-        let bc_tampered = QueryBytecodeV1::from_isa_bytes(tampered).expect("wrap");
+        bindings.bind("items", id);
+        let mut plan = crate::plan_v1::PlanBuilder::from_source("items")
+            .where_(crate::predicate::Predicate::Cmp {
+                cmp: CompareOp::Eq,
+                left: Operand::path(Path::parse_dotted("status").unwrap()),
+                right: Operand::literal(json!("paused")),
+            })
+            .compile(&bindings)
+            .expect("plan");
+        let _ = &mut plan;
+        let bc_tampered = QueryBytecodeV1::from_core_plan(plan, None).expect("wrap");
 
         let page = execute_bytecode(
             &mut host,
@@ -431,7 +503,7 @@ mod tests {
         .expect("exec");
         assert_eq!(page.rows.len(), 1);
         assert_eq!(page.rows[0].key, "b");
-        // Original ISA still selects "active".
+        // Original QVM still selects "active".
         let page0 = execute_bytecode(
             &mut host,
             &bc,
@@ -453,28 +525,26 @@ mod tests {
             docs: BTreeMap::from([("k1".into(), json!({"n": 1}))]),
         };
         let bc = lower_core_source("from items page size 8", id, "items").expect("lower");
-        let prog = bc.decode().expect("decode");
-        let via_decoded = execute_decoded_core(
+        let via_qvm = execute_bytecode(
             &mut host,
-            &prog.core,
-            prog.budget,
+            &bc,
             &BTreeMap::new(),
             &QueryRunOptions::default(),
             heap,
             id,
         )
-        .expect("decoded");
+        .expect("qvm");
         let via_isa = execute_isa_bytes(
             &mut host,
-            bc.isa_bytes(),
+            bc.qvm_bytes(),
             &BTreeMap::new(),
             &QueryRunOptions::default(),
             heap,
             id,
         )
         .expect("isa");
-        assert_eq!(via_decoded.rows, via_isa.rows);
-        assert_eq!(via_decoded.rows.len(), 1);
+        assert_eq!(via_qvm.rows, via_isa.rows);
+        assert_eq!(via_qvm.rows.len(), 1);
     }
 
     #[test]
@@ -485,11 +555,11 @@ mod tests {
             docs: BTreeMap::new(),
         };
         let bc = lower_core_source("from items", id, "items").expect("lower");
-        let mut bad = bc.isa_bytes().to_vec();
-        if bad.len() > 10 {
-            bad[10] ^= 0xff;
-        }
-        let err = execute_isa_bytes(
+        let mut bad = bc.qvm_bytes().to_vec();
+        // Truncate to drop terminal Halt — verifier requires final Halt.
+        assert!(bad.len() > 8);
+        bad.truncate(bad.len() - 2);
+        let err = execute_qvm_bytes(
             &mut host,
             &bad,
             &BTreeMap::new(),

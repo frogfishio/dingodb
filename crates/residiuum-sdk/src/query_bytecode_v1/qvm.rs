@@ -3,23 +3,26 @@
 //! Profile: **`residiuum-query-vm-v1`** · magic **`QVM1`** (distinct from `RQB1`).
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
-//! This is the **executable** authority: opcode stream + constant-pool operands.
-//! `RQB1` remains a compile/AST carrier that lowers into QVM before run.
+//! This is the **public executable** authority: opcode stream + typed immediates
+//! + identity pool (plan_hash / coverage / consistency). No full `RqlPlanV1`
+//! sidecar is embedded. `RQB1` remains an optional compile/AST carrier that
+//! lowers into QVM before product execute.
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
-use crate::app_v1::QueryBudget;
+use crate::app_v1::{ConsistencyMode, CoveragePolicy, QueryBudget};
 use crate::error::Error;
-use crate::plan_v1::RqlPlanV1;
-use crate::predicate::Predicate;
+use crate::plan_v1::{NullsOrder, OrderDir, OrderTerm};
+use crate::predicate::{Path, Predicate};
 use residiuum_heap::CollectionId;
 use serde_json::Value as JsonValue;
+use std::collections::BTreeMap;
 
 use super::full_attach::FullPipelineStepV1;
 use super::isa::{
     parse_pipeline_step, parse_project_item, pipeline_step_json, project_item_json,
 };
 use super::vm::{OpCode, VM_PROFILE, VM_VERSION};
-use super::vm_exec::{VmImm, VmInstr, VmPool, VmProgram};
+use super::vm_exec::{verify_vm_program, VmImm, VmInstr, VmPool, VmProgram};
 
 /// Durable QVM magic (`QVM1`).
 pub const QVM_MAGIC: &[u8; 4] = b"QVM1";
@@ -28,37 +31,60 @@ pub const QVM_MAGIC: &[u8; 4] = b"QVM1";
 pub const QVM_MAX_TOTAL_BYTES: usize = 1 << 20;
 /// Hard cap on each length-prefixed blob.
 pub const QVM_MAX_BLOB_BYTES: usize = 1 << 20;
+/// Hard cap on opcode count (allocation bound).
+pub const QVM_MAX_OPS: usize = 4_096;
+
+/// Domain-separated hash over durable QVM bytes (public program identity).
+pub fn qvm_hash(bytes: &[u8]) -> [u8; 32] {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"residiuum:query-vm-v1:hash-v1");
+    hasher.update(&[0u8]);
+    hasher.update(bytes);
+    *hasher.finalize().as_bytes()
+}
 
 const FLAG_BUDGET: u8 = 0x01;
 const FLAGS_KNOWN: u8 = FLAG_BUDGET;
 
 const IMM_NONE: u8 = 0;
 const IMM_COLLECTION: u8 = 1;
-const IMM_CORE: u8 = 2;
-const IMM_ENRICH: u8 = 3;
-const IMM_WITHIN: u8 = 4;
-const IMM_FILTER_ATTACH: u8 = 5;
-const IMM_PROJECT_BRACE: u8 = 6;
+const IMM_INDEX_EQ: u8 = 2;
+const IMM_WHERE: u8 = 3;
+const IMM_ORDER: u8 = 4;
+const IMM_PAGE: u8 = 5;
+const IMM_PROJECT: u8 = 6;
+const IMM_ENRICH: u8 = 7;
+const IMM_WITHIN: u8 = 8;
+const IMM_FILTER_ATTACH: u8 = 9;
+const IMM_PROJECT_BRACE: u8 = 10;
 
 /// Encode a lowered [`VmProgram`] into durable QVM bytes.
-pub(crate) fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
+pub fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
     if prog.profile != VM_PROFILE {
         return Err(Error::QueryInvalid(format!(
             "qvm encode: profile mismatch {:?}",
             prog.profile
         )));
     }
-    let core_body = prog.pool.core.canonical_bytes();
+    verify_vm_program(prog)?;
+    if prog.ops.len() > QVM_MAX_OPS {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: op_count {} exceeds max {QVM_MAX_OPS}",
+            prog.ops.len()
+        )));
+    }
     let mut flags: u8 = 0;
     if prog.budget.is_some() {
         flags |= FLAG_BUDGET;
     }
-    let mut out = Vec::with_capacity(32 + core_body.len() + prog.ops.len() * 8);
+    let mut out = Vec::with_capacity(64 + prog.ops.len() * 16);
     out.extend_from_slice(QVM_MAGIC);
     out.push(VM_VERSION);
     out.push(flags);
-    push_u32(&mut out, core_body.len() as u32);
-    out.extend_from_slice(&core_body);
+    // Identity pool (not a full plan body).
+    out.extend_from_slice(&prog.pool.plan_hash);
+    out.push(coverage_to_u8(prog.pool.coverage));
+    out.push(consistency_to_u8(prog.pool.consistency));
     if let Some(b) = prog.budget {
         push_budget(&mut out, b);
     }
@@ -77,14 +103,15 @@ pub(crate) fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
 }
 
 /// Decode durable QVM bytes into a [`VmProgram`] (executable authority).
-pub(crate) fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
+pub fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
     if bytes.len() > QVM_MAX_TOTAL_BYTES {
         return Err(Error::QueryInvalid(format!(
             "qvm: total length {} exceeds max {QVM_MAX_TOTAL_BYTES}",
             bytes.len()
         )));
     }
-    if bytes.len() < 10 {
+    // Header: magic(4) + ver(1) + flags(1) + plan_hash(32) + cov(1) + cons(1) = 40
+    if bytes.len() < 40 {
         return Err(Error::QueryInvalid("qvm: truncated header".into()));
     }
     if &bytes[0..4] != QVM_MAGIC.as_slice() {
@@ -103,23 +130,36 @@ pub(crate) fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
         )));
     }
     let mut off = 6;
-    let core_len = read_u32(bytes, &mut off)? as usize;
-    if core_len > QVM_MAX_BLOB_BYTES {
-        return Err(Error::QueryInvalid(format!(
-            "qvm: core blob {core_len} exceeds max {QVM_MAX_BLOB_BYTES}"
-        )));
-    }
-    if off + core_len > bytes.len() {
-        return Err(Error::QueryInvalid("qvm: truncated core".into()));
-    }
-    let core = decode_core_plan(&bytes[off..off + core_len])?;
-    off += core_len;
+    let mut plan_hash = [0u8; 32];
+    plan_hash.copy_from_slice(&bytes[off..off + 32]);
+    off += 32;
+    let coverage = coverage_from_u8(bytes[off])?;
+    off += 1;
+    let consistency = consistency_from_u8(bytes[off])?;
+    off += 1;
     let budget = if flags & FLAG_BUDGET != 0 {
         Some(read_budget(bytes, &mut off)?)
     } else {
         None
     };
     let op_count = read_u32(bytes, &mut off)? as usize;
+    if op_count > QVM_MAX_OPS {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: op_count {op_count} exceeds max {QVM_MAX_OPS}"
+        )));
+    }
+    // Bound allocation against remaining bytes (each op ≥ 2 bytes: opcode + tag).
+    let remaining = bytes.len().saturating_sub(off);
+    if op_count > remaining {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: op_count {op_count} exceeds remaining {remaining} bytes"
+        )));
+    }
+    if op_count.saturating_mul(2) > remaining {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: op_count {op_count} cannot fit in remaining {remaining} bytes"
+        )));
+    }
     let mut ops = Vec::with_capacity(op_count);
     for _ in 0..op_count {
         if off >= bytes.len() {
@@ -138,18 +178,58 @@ pub(crate) fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
             bytes.len() - off
         )));
     }
-    Ok(VmProgram {
+    let prog = VmProgram {
         profile: VM_PROFILE,
         ops,
-        pool: VmPool { core },
+        pool: VmPool {
+            plan_hash,
+            coverage,
+            consistency,
+        },
         budget,
-    })
+    };
+    verify_vm_program(&prog)?;
+    Ok(prog)
 }
 
 /// Lower → encode → decode so product execute consumes QVM authority (RQL-QVM1).
-pub(crate) fn materialize_qvm(prog: &VmProgram) -> Result<VmProgram, Error> {
+pub fn materialize_qvm(prog: &VmProgram) -> Result<VmProgram, Error> {
     let bytes = encode_qvm(prog)?;
     decode_qvm(&bytes)
+}
+
+fn coverage_to_u8(c: CoveragePolicy) -> u8 {
+    match c {
+        CoveragePolicy::Complete => 0,
+        CoveragePolicy::IncompleteAllowed => 1,
+    }
+}
+
+fn coverage_from_u8(b: u8) -> Result<CoveragePolicy, Error> {
+    match b {
+        0 => Ok(CoveragePolicy::Complete),
+        1 => Ok(CoveragePolicy::IncompleteAllowed),
+        other => Err(Error::QueryInvalid(format!(
+            "qvm: unknown coverage {other}"
+        ))),
+    }
+}
+
+fn consistency_to_u8(c: ConsistencyMode) -> u8 {
+    match c {
+        ConsistencyMode::Available => 0,
+        ConsistencyMode::Current => 1,
+    }
+}
+
+fn consistency_from_u8(b: u8) -> Result<ConsistencyMode, Error> {
+    match b {
+        0 => Ok(ConsistencyMode::Available),
+        1 => Ok(ConsistencyMode::Current),
+        other => Err(Error::QueryInvalid(format!(
+            "qvm: unknown consistency {other}"
+        ))),
+    }
 }
 
 fn encode_imm(out: &mut Vec<u8>, imm: &VmImm) -> Result<(), Error> {
@@ -159,7 +239,37 @@ fn encode_imm(out: &mut Vec<u8>, imm: &VmImm) -> Result<(), Error> {
             out.push(IMM_COLLECTION);
             out.extend_from_slice(id.as_bytes());
         }
-        VmImm::Core => out.push(IMM_CORE),
+        VmImm::IndexEq {
+            where_pred,
+            force_scan,
+        } => {
+            out.push(IMM_INDEX_EQ);
+            out.push(if *force_scan { 1 } else { 0 });
+            push_predicate(out, where_pred)?;
+        }
+        VmImm::Where(p) => {
+            out.push(IMM_WHERE);
+            push_predicate(out, p)?;
+        }
+        VmImm::Order(terms) => {
+            out.push(IMM_ORDER);
+            push_order(out, terms)?;
+        }
+        VmImm::Page { page_size, limit } => {
+            out.push(IMM_PAGE);
+            out.extend_from_slice(&page_size.to_le_bytes());
+            match limit {
+                None => out.push(0),
+                Some(n) => {
+                    out.push(1);
+                    out.extend_from_slice(&n.to_le_bytes());
+                }
+            }
+        }
+        VmImm::Project(paths) => {
+            out.push(IMM_PROJECT);
+            push_project(out, paths)?;
+        }
         VmImm::Enrich(e) => {
             out.push(IMM_ENRICH);
             let body = serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Enrich(
@@ -178,9 +288,7 @@ fn encode_imm(out: &mut Vec<u8>, imm: &VmImm) -> Result<(), Error> {
         }
         VmImm::FilterAttach(p) => {
             out.push(IMM_FILTER_ATTACH);
-            let body = serde_json::to_vec(&p.to_canonical_json())
-                .map_err(|e| Error::QueryInvalid(format!("qvm filter json: {e}")))?;
-            push_blob(out, &body)?;
+            push_predicate(out, p)?;
         }
         VmImm::ProjectBrace(fields) => {
             out.push(IMM_PROJECT_BRACE);
@@ -213,7 +321,45 @@ fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
             })?;
             Ok(VmImm::Collection(id))
         }
-        IMM_CORE => Ok(VmImm::Core),
+        IMM_INDEX_EQ => {
+            if *off >= bytes.len() {
+                return Err(Error::QueryInvalid("qvm: truncated IndexEq flags".into()));
+            }
+            let force_scan = bytes[*off] != 0;
+            *off += 1;
+            let where_pred = read_predicate(bytes, off)?;
+            Ok(VmImm::IndexEq {
+                where_pred,
+                force_scan,
+            })
+        }
+        IMM_WHERE => Ok(VmImm::Where(read_predicate(bytes, off)?)),
+        IMM_ORDER => Ok(VmImm::Order(read_order(bytes, off)?)),
+        IMM_PAGE => {
+            if *off + 5 > bytes.len() {
+                return Err(Error::QueryInvalid("qvm: truncated Page imm".into()));
+            }
+            let page_size = u32::from_le_bytes(bytes[*off..*off + 4].try_into().expect("4"));
+            *off += 4;
+            let has_limit = bytes[*off];
+            *off += 1;
+            let limit = if has_limit == 0 {
+                None
+            } else if has_limit == 1 {
+                if *off + 8 > bytes.len() {
+                    return Err(Error::QueryInvalid("qvm: truncated Page limit".into()));
+                }
+                let n = u64::from_le_bytes(bytes[*off..*off + 8].try_into().expect("8"));
+                *off += 8;
+                Some(n)
+            } else {
+                return Err(Error::QueryInvalid(format!(
+                    "qvm: bad Page limit tag {has_limit}"
+                )));
+            };
+            Ok(VmImm::Page { page_size, limit })
+        }
+        IMM_PROJECT => Ok(VmImm::Project(read_project(bytes, off)?)),
         IMM_ENRICH => {
             let body = read_blob(bytes, off)?;
             let v: JsonValue = serde_json::from_slice(&body)
@@ -232,12 +378,7 @@ fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
                 _ => Err(Error::QueryInvalid("qvm: within imm kind mismatch".into())),
             }
         }
-        IMM_FILTER_ATTACH => {
-            let body = read_blob(bytes, off)?;
-            let v: JsonValue = serde_json::from_slice(&body)
-                .map_err(|e| Error::QueryInvalid(format!("qvm filter json: {e}")))?;
-            Ok(VmImm::FilterAttach(Predicate::from_plan_json(&v)?))
-        }
+        IMM_FILTER_ATTACH => Ok(VmImm::FilterAttach(read_predicate(bytes, off)?)),
         IMM_PROJECT_BRACE => {
             let body = read_blob(bytes, off)?;
             let v: JsonValue = serde_json::from_slice(&body)
@@ -257,10 +398,159 @@ fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
     }
 }
 
-fn decode_core_plan(body: &[u8]) -> Result<RqlPlanV1, Error> {
-    let v: JsonValue = serde_json::from_slice(body)
-        .map_err(|e| Error::QueryInvalid(format!("qvm core json: {e}")))?;
-    RqlPlanV1::from_plan_vector_json(&v)
+fn push_predicate(out: &mut Vec<u8>, p: &Predicate) -> Result<(), Error> {
+    let body = serde_json::to_vec(&p.to_canonical_json())
+        .map_err(|e| Error::QueryInvalid(format!("qvm predicate json: {e}")))?;
+    push_blob(out, &body)
+}
+
+fn read_predicate(bytes: &[u8], off: &mut usize) -> Result<Predicate, Error> {
+    let body = read_blob(bytes, off)?;
+    let v: JsonValue = serde_json::from_slice(&body)
+        .map_err(|e| Error::QueryInvalid(format!("qvm predicate json: {e}")))?;
+    Predicate::from_plan_json(&v)
+}
+
+fn push_order(out: &mut Vec<u8>, terms: &[OrderTerm]) -> Result<(), Error> {
+    let arr: Vec<JsonValue> = terms
+        .iter()
+        .map(|t| {
+            let mut m = BTreeMap::new();
+            m.insert(
+                "path".into(),
+                JsonValue::Array(
+                    t.path
+                        .0
+                        .iter()
+                        .map(|s| JsonValue::String(s.clone()))
+                        .collect(),
+                ),
+            );
+            m.insert(
+                "dir".into(),
+                JsonValue::String(
+                    match t.dir {
+                        OrderDir::Asc => "asc",
+                        OrderDir::Desc => "desc",
+                    }
+                    .into(),
+                ),
+            );
+            m.insert(
+                "nulls".into(),
+                JsonValue::String(
+                    match t.nulls {
+                        NullsOrder::Last => "last",
+                        NullsOrder::First => "first",
+                    }
+                    .into(),
+                ),
+            );
+            m.insert("tie_break".into(), JsonValue::Bool(t.tie_break));
+            JsonValue::Object(m.into_iter().collect())
+        })
+        .collect();
+    let body = serde_json::to_vec(&JsonValue::Array(arr))
+        .map_err(|e| Error::QueryInvalid(format!("qvm order json: {e}")))?;
+    push_blob(out, &body)
+}
+
+fn read_order(bytes: &[u8], off: &mut usize) -> Result<Vec<OrderTerm>, Error> {
+    let body = read_blob(bytes, off)?;
+    let v: JsonValue = serde_json::from_slice(&body)
+        .map_err(|e| Error::QueryInvalid(format!("qvm order json: {e}")))?;
+    let arr = v
+        .as_array()
+        .ok_or_else(|| Error::QueryInvalid("qvm order must be array".into()))?;
+    let mut out = Vec::with_capacity(arr.len());
+    for item in arr {
+        let o = item
+            .as_object()
+            .ok_or_else(|| Error::QueryInvalid("qvm order term must be object".into()))?;
+        let path_v = o
+            .get("path")
+            .ok_or_else(|| Error::QueryInvalid("qvm order.path required".into()))?;
+        let segs = path_v
+            .as_array()
+            .ok_or_else(|| Error::QueryInvalid("qvm order.path must be array".into()))?
+            .iter()
+            .map(|s| {
+                s.as_str()
+                    .map(|x| x.to_string())
+                    .ok_or_else(|| Error::QueryInvalid("qvm order.path segment".into()))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let dir = match o.get("dir").and_then(|d| d.as_str()).unwrap_or("asc") {
+            "asc" => OrderDir::Asc,
+            "desc" => OrderDir::Desc,
+            other => {
+                return Err(Error::QueryInvalid(format!(
+                    "qvm unknown order dir `{other}`"
+                )))
+            }
+        };
+        let nulls = match o.get("nulls").and_then(|n| n.as_str()).unwrap_or("last") {
+            "last" => NullsOrder::Last,
+            "first" => NullsOrder::First,
+            other => {
+                return Err(Error::QueryInvalid(format!(
+                    "qvm unknown nulls order `{other}`"
+                )))
+            }
+        };
+        let tie_break = o.get("tie_break").and_then(|t| t.as_bool()).unwrap_or(false);
+        out.push(OrderTerm {
+            path: Path::from_segments(segs)?,
+            dir,
+            nulls,
+            tie_break,
+        });
+    }
+    Ok(out)
+}
+
+fn push_project(out: &mut Vec<u8>, paths: &Option<Vec<Path>>) -> Result<(), Error> {
+    let body = match paths {
+        None => b"null".to_vec(),
+        Some(ps) => {
+            let arr: Vec<JsonValue> = ps
+                .iter()
+                .map(|p| {
+                    JsonValue::Array(p.0.iter().map(|s| JsonValue::String(s.clone())).collect())
+                })
+                .collect();
+            serde_json::to_vec(&JsonValue::Array(arr))
+                .map_err(|e| Error::QueryInvalid(format!("qvm project paths: {e}")))?
+        }
+    };
+    push_blob(out, &body)
+}
+
+fn read_project(bytes: &[u8], off: &mut usize) -> Result<Option<Vec<Path>>, Error> {
+    let body = read_blob(bytes, off)?;
+    let v: JsonValue = serde_json::from_slice(&body)
+        .map_err(|e| Error::QueryInvalid(format!("qvm project json: {e}")))?;
+    if v.is_null() {
+        return Ok(None);
+    }
+    let arr = v
+        .as_array()
+        .ok_or_else(|| Error::QueryInvalid("qvm project must be array or null".into()))?;
+    let mut paths = Vec::with_capacity(arr.len());
+    for item in arr {
+        let segs = item
+            .as_array()
+            .ok_or_else(|| Error::QueryInvalid("qvm project path must be array".into()))?
+            .iter()
+            .map(|s| {
+                s.as_str()
+                    .map(|x| x.to_string())
+                    .ok_or_else(|| Error::QueryInvalid("qvm project segment".into()))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        paths.push(Path::from_segments(segs)?);
+    }
+    Ok(Some(paths))
 }
 
 fn push_blob(out: &mut Vec<u8>, body: &[u8]) -> Result<(), Error> {
@@ -400,12 +690,13 @@ mod tests {
         assert_eq!(&bytes[0..4], QVM_MAGIC);
         let again = decode_qvm(&bytes).expect("decode");
         assert_eq!(again.ops.len(), prog.ops.len());
-        assert_eq!(again.pool.core, prog.pool.core);
+        assert_eq!(again.pool.plan_hash, prog.pool.plan_hash);
         assert_eq!(again.ops[0].op, OpCode::BindCollection);
+        assert!(matches!(again.ops[1].imm, VmImm::IndexEq { .. }));
     }
 
     #[test]
-    fn qvm_mutation_of_opcode_fails_or_changes() {
+    fn qvm_rejects_huge_op_count() {
         let id = CollectionId::from_bytes(uuidish(10)).expect("id");
         let mut bindings = CollectionBindings::default();
         bindings.bind("items", id);
@@ -414,7 +705,29 @@ mod tests {
             .expect("plan");
         let prog = lower_core(core, None);
         let mut bytes = encode_qvm(&prog).expect("encode");
-        // Corrupt Halt opcode (penultimate byte: opcode then IMM_NONE).
+        // Overwrite op_count (last 4 bytes before ops): find position after pool.
+        // Corrupt op_count at fixed offset: magic4+ver1+flags1+hash32+cov1+cons1 = 40
+        let op_count_off = 40;
+        bytes[op_count_off..op_count_off + 4]
+            .copy_from_slice(&(u32::MAX).to_le_bytes());
+        let err = decode_qvm(&bytes).unwrap_err();
+        assert!(
+            err.to_string().contains("op_count") || err.to_string().contains("qvm:"),
+            "got {err}"
+        );
+    }
+
+    #[test]
+    fn qvm_mutation_of_opcode_fails_or_changes() {
+        let id = CollectionId::from_bytes(uuidish(11)).expect("id");
+        let mut bindings = CollectionBindings::default();
+        bindings.bind("items", id);
+        let core = PlanBuilder::from_source("items")
+            .compile(&bindings)
+            .expect("plan");
+        let prog = lower_core(core, None);
+        let mut bytes = encode_qvm(&prog).expect("encode");
+        // Corrupt Halt opcode (penultimate byte region: opcode then IMM_NONE).
         let corrupt_at = bytes.len() - 2;
         bytes[corrupt_at] = 0xEE;
         let err = decode_qvm(&bytes).unwrap_err();
@@ -422,5 +735,19 @@ mod tests {
             err.to_string().contains("unknown opcode") || err.to_string().contains("qvm:"),
             "got {err}"
         );
+    }
+
+    #[test]
+    fn qvm_rejects_missing_terminal_halt_via_verify() {
+        let id = CollectionId::from_bytes(uuidish(12)).expect("id");
+        let mut bindings = CollectionBindings::default();
+        bindings.bind("items", id);
+        let core = PlanBuilder::from_source("items")
+            .compile(&bindings)
+            .expect("plan");
+        let mut prog = lower_core(core, None);
+        prog.ops.pop(); // drop Halt
+        let err = encode_qvm(&prog).unwrap_err();
+        assert!(err.to_string().contains("Halt") || err.to_string().contains("verify"));
     }
 }

@@ -114,20 +114,21 @@ pub use cursor_v1::{
     TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
 };
 pub use query_bytecode_v1::{
-    compile_rql_full, compile_where, decode_isa, decode_isa_canonical, encode_core_program,
-    encode_full_program, execute_bytecode, execute_core_rql, execute_full_isa_with,
-    execute_isa_bytes, execute_rql_full, execute_rql_full_with, explain_core_source,
-    explain_rql_full, explain_rql_full_on_heap, explain_rql_source, isa_hash, lower_core_source,
-    lower_predicate, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
-    CompiledKernelWhere, CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence,
-    EnrichStepV1, FullPipelineStepV1, HostCapabilities, ProjectItemV1, QueryBytecodeV1,
-    QueryIsaFullSection, QueryIsaProgram, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
-    ATTACH_IR_PROFILE, BYTECODE_PROFILE, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
+    compile_rql_full, compile_where, decode_isa, decode_isa_canonical, decode_qvm,
+    encode_core_program, encode_full_program, encode_qvm, execute_bytecode, execute_core_rql,
+    execute_full_isa_with, execute_isa_bytes, execute_qvm_bytes, execute_rql_full,
+    execute_rql_full_with, explain_core_source, explain_rql_full, explain_rql_full_on_heap,
+    explain_rql_source, isa_hash, lower_core_source, lower_predicate, materialize_qvm, qvm_hash,
+    refuse_full_language_on_core_wire, source_uses_rql_full_constructs, CompiledKernelWhere,
+    CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence, EnrichStepV1,
+    FullPipelineStepV1, HostCapabilities, ProjectItemV1, QueryBytecodeV1, QueryIsaFullSection,
+    QueryIsaProgram, RqlFullExecuteOptions, RqlFullPage, WithinStepV1, ATTACH_IR_PROFILE,
+    BYTECODE_PROFILE, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, EXEC_PROFILE,
     FULL_EXPLAIN_HASH_DOMAIN, ISA_MAGIC, ISA_MAX_SECTION_BYTES, ISA_MAX_TOTAL_BYTES, ISA_PROFILE,
     ISA_VERSION, KERNEL_PROFILE, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, ORDER_IR_PROFILE,
-    PAGE_IR_PROFILE, PROJECT_IR_PROFILE, RQL_FULL_PROFILE, VM_PROFILE, VM_VERSION, Instruction,
-    OpCode,
+    PAGE_IR_PROFILE, PROJECT_IR_PROFILE, QVM_MAGIC, QVM_MAX_BLOB_BYTES, QVM_MAX_OPS,
+    QVM_MAX_TOTAL_BYTES, RQL_FULL_PROFILE, VM_PROFILE, VM_VERSION, Instruction, OpCode,
 };
 pub use read_view_v1::{
     AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,
@@ -159,8 +160,9 @@ pub use directory_cache::{
 };
 pub use error::{Error, ErrorCode};
 pub use dialects::{
-    compile_dialect, compile_json_value, list_builtin_dialects, BuiltinDialect, CompiledSda,
-    DialectInfo, DialectInfoOwned, DialectRegistry, QueryDialect, SdaShape, DIALECT_PROFILE,
+    compile_dialect, compile_json_value, compile_sda_source, list_builtin_dialects,
+    BuiltinDialect, CompiledDialect, CompiledPortable, CompiledSda, DialectInfo,
+    DialectInfoOwned, DialectRegistry, QueryDialect, SdaShape, DIALECT_PROFILE,
 };
 pub use filter::{
     FieldBuilder, Filter, Pred, QueryBudget, QueryOptions, QueryPlan, SortOrder, QUERY_PLAN_PROFILE,

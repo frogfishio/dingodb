@@ -543,6 +543,15 @@ impl<'a> Collection<'a> {
         if let Some(cols) = &compiled.project {
             builder = builder.project(cols)?;
         }
+        if let Some((ref field, order)) = options.order_by {
+            use crate::filter::SortOrder;
+            use crate::plan_v1::OrderDir;
+            let dir = match order {
+                SortOrder::Asc => OrderDir::Asc,
+                SortOrder::Desc => OrderDir::Desc,
+            };
+            builder = builder.order_by(field, dir)?;
+        }
         builder = builder.coverage(if options.allow_partial_coverage {
             crate::app_v1::CoveragePolicy::IncompleteAllowed
         } else {
@@ -554,7 +563,8 @@ impl<'a> Collection<'a> {
             page_size = Some((n as u32).clamp(1, MAX_PAGE_SIZE));
         }
         let plan = builder.compile(&bindings)?;
-        let bytecode = QueryBytecodeV1::from_core_plan(plan, None)?;
+        let bytecode =
+            QueryBytecodeV1::from_core_plan_force_scan(plan, None, options.force_scan)?;
 
         let mut run_options = QueryRunOptions::default();
         run_options.page_size = page_size;
@@ -569,9 +579,19 @@ impl<'a> Collection<'a> {
 
         struct DialectHost<'c, 'a> {
             collection: &'c mut Collection<'a>,
+            bound_id: CollectionId,
             keys: Option<Vec<String>>,
         }
         impl<'c, 'a> DialectHost<'c, 'a> {
+            fn check_id(&self, collection_id: CollectionId) -> Result<(), Error> {
+                if collection_id != self.bound_id {
+                    return Err(Error::QueryInvalid(format!(
+                        "dialect host: collection_id mismatch (got {collection_id}, bound {})",
+                        self.bound_id
+                    )));
+                }
+                Ok(())
+            }
             fn sorted_keys(&mut self) -> Result<&[String], Error> {
                 if self.keys.is_none() {
                     let mut keys = self.collection.scan_keys()?;
@@ -584,10 +604,11 @@ impl<'a> Collection<'a> {
         impl HostCapabilities for DialectHost<'_, '_> {
             fn list_keys(
                 &mut self,
-                _collection_id: CollectionId,
+                collection_id: CollectionId,
                 limit: Option<usize>,
                 after_key: Option<&str>,
             ) -> Result<Vec<String>, Error> {
+                self.check_id(collection_id)?;
                 let keys = self.sorted_keys()?;
                 let start = match after_key {
                     Some(a) => keys.partition_point(|k| k.as_str() <= a),
@@ -602,15 +623,17 @@ impl<'a> Collection<'a> {
 
             fn get_json(
                 &mut self,
-                _collection_id: CollectionId,
+                collection_id: CollectionId,
                 key: &str,
             ) -> Result<Option<JsonValue>, Error> {
+                self.check_id(collection_id)?;
                 self.collection.get(key)
             }
         }
 
         let mut host = DialectHost {
             collection: self,
+            bound_id: collection_id,
             keys: None,
         };
         let mut out = Vec::new();

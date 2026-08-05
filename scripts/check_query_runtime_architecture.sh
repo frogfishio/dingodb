@@ -50,24 +50,21 @@ rg -q 'residiuum-query-vm-v1' "$SDK_SRC/query_bytecode_v1/vm.rs" \
 rg -q 'residiuum-query-bytecode-v1' "$MOD" \
   || fail "BYTECODE_PROFILE missing"
 
-# RQL-X5: envelope must not expose an independent executable plan.
+# Public envelope is QVM1 (sole stored executable identity).
 if rg -n 'pub plan:' "$MOD" | rg -q .; then
-  fail "QueryBytecodeV1 must not have pub plan (ISA sole input)"
+  fail "QueryBytecodeV1 must not have pub plan (QVM sole input)"
 fi
-if rg -n 'pub isa:' "$MOD" | rg -q .; then
-  fail "QueryBytecodeV1.isa must be private (use isa_bytes())"
+if rg -n 'pub qvm:' "$MOD" | rg -q .; then
+  fail "QueryBytecodeV1.qvm must be private (use qvm_bytes())"
 fi
-rg -q 'isa: Vec<u8>' "$MOD" || fail "QueryBytecodeV1 must store isa bytes"
+rg -q 'qvm: Vec<u8>' "$MOD" || fail "QueryBytecodeV1 must store qvm bytes"
+rg -q 'fn qvm_bytes' "$MOD" || fail "QueryBytecodeV1 must expose qvm_bytes()"
 
-# Core execute must decode ISA (not trust a side plan).
-rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_isa_bytes|decode_isa' \
-  || fail "execute_bytecode must decode/dispatch via ISA"
-rg -n 'fn execute_isa_bytes' -A 40 "$MOD" | rg -q 'decode_isa' \
-  || fail "execute_isa_bytes must call decode_isa"
-rg -n 'fn execute_isa_bytes' -A 50 "$MOD" | rg -q 'execute_decoded_core' \
-  || fail "execute_isa_bytes must call execute_decoded_core"
-rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'run_vm\b|vm_exec::' \
-  || fail "execute_decoded_core must dispatch via Query VM (run_vm)"
+# Core execute must decode QVM (not trust a side plan).
+rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_qvm_bytes|decode_qvm|qvm_bytes'   || fail "execute_bytecode must decode/dispatch via QVM"
+rg -n 'fn execute_qvm_bytes' -A 30 "$MOD" | rg -q 'decode_qvm'   || fail "execute_qvm_bytes must call decode_qvm"
+rg -n 'fn execute_qvm_bytes' -A 30 "$MOD" | rg -q 'run_vm'   || fail "execute_qvm_bytes must call run_vm"
+rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'run_vm\b|vm_exec::'   || fail "execute_decoded_core must dispatch via Query VM (run_vm)"
 rg -q 'fn run_vm\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   || fail "missing run_vm (RQL-VM1R)"
 if rg -q 'fn run_vm_core\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs"; then
@@ -182,26 +179,37 @@ rg -qi 'does \*\*not\*\* close Decision 0|does not close Decision 0|Decision 0 O
 if rg -qi 'Decision 0 is closed|Decision 0 closed\.|RQL-C1 (is )?accepted\.|C1 accepted' doc/todo/rql/QUERY_VM_V1.md; then
   fail "QUERY_VM_V1 must not affirmatively close Decision 0 or accept C1"
 fi
-rg -qi 'run_core_page|CoreFrame' doc/todo/rql/QUERY_VM_V1.md \
-  || fail "QUERY_VM_V1 must name CoreFrame / run_core_page (VM2)"
+rg -qi 'CoreFrame' doc/todo/rql/QUERY_VM_V1.md   || fail "QUERY_VM_V1 must name CoreFrame (VM2)"
 rg -qi 'P1c' doc/todo/rql/QUERY_VM_V1.md \
   || fail "QUERY_VM_V1 must name P1c residual after VM2"
 rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
   || fail "isa must define decode_isa_canonical (D0R)"
 rg -q 'open_collection_bound' "$FULL" \
   || fail "full_attach must bind collections by immutable id (D0R)"
-rg -n 'fn execute_isa_bytes' -A 20 "$MOD" | rg -q 'decode_isa_canonical' \
-  || fail "execute_isa_bytes must use decode_isa_canonical"
+rg -n 'fn execute_isa_bytes' -A 40 "$MOD" | rg -q 'decode_isa_canonical|decode_qvm|execute_qvm'   || fail "execute_isa_bytes must handle QVM and/or RQB1"
 rg -n 'fn execute_full_isa_with' -A 20 "$FULL" | rg -q 'decode_isa_canonical' \
   || fail "execute_full_isa_with must use decode_isa_canonical"
 # SoT must not claim NEXT is principal C1 acceptance while VM unfinished.
 if rg -n '^NEXT' doc/todo/rql/RQL_WHAT_IS_LEFT.md | rg -qi 'principal.*C1'; then
   fail "SoT must not set NEXT to principal C1 while Query VM unfinished"
 fi
-rg -q 'struct CoreFrame' "$SDK_SRC/query_bytecode_v1/core_phases.rs" \
-  || fail "missing CoreFrame (RQL-VM2)"
-rg -q 'fn run_core_page' "$SDK_SRC/query_bytecode_v1/core_phases.rs" \
-  || fail "missing run_core_page (RQL-VM2)"
+rg -q 'struct CoreFrame' "$SDK_SRC/query_bytecode_v1/core_phases.rs"   || fail "missing CoreFrame (RQL-VM2)"
+# RQL-DEL1: obsolete fused orchestrators must stay deleted.
+if rg -q 'fn run_core_page' "$SDK_SRC/query_bytecode_v1"; then
+  fail "run_core_page must remain deleted (RQL-DEL1)"
+fi
+if rg -q 'fn execute_plan' "$SDK_SRC/query_bytecode_v1"; then
+  fail "execute_plan must remain deleted (RQL-DEL1)"
+fi
+# Typed QVM operands (no RqlPlanV1 on VmPool).
+if rg -n 'struct VmPool' -A 15 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'RqlPlanV1'; then
+  fail "VmPool must not embed RqlPlanV1 (typed QVM operands)"
+fi
+if rg -n 'enum VmImm' -A 50 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'VmImm::Core|imm: VmImm::Core|/// Core pipeline op'; then
+  fail "VmImm::Core must be removed (typed operands)"
+fi
+rg -q 'fn verify_vm_program' "$SDK_SRC/query_bytecode_v1/vm_exec.rs"   || fail "missing verify_vm_program (QVM verifier)"
+rg -q 'QVM_MAX_OPS' "$SDK_SRC/query_bytecode_v1/qvm.rs"   || fail "qvm must bound op_count (QVM_MAX_OPS)"
 rg -n 'fn run_vm\b' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'index_eq' \
   || fail "run_vm must call CoreFrame::index_eq (RQL-VM2)"
 rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'project_paths' \
@@ -211,8 +219,7 @@ rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.s
 if rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'execute_plan\('; then
   fail "run_vm must not call execute_plan (RQL-VM2 demotion)"
 fi
-rg -n 'fn execute_plan' -A 25 "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q 'CoreFrame' \
-  || fail "execute_plan must be thin CoreFrame wrapper (RQL-VM2)"
+# execute_plan deleted (RQL-DEL1) — checked above.
 
 # RQL-VM3: opcode-owned materialize bodies (not gates + fused run_core_page).
 rg -n 'pub fn scan' -A 25 "$CORE_PHASES" | rg -q 'list_keys|scan_key_stream|scan_index|scan_full' \
@@ -259,9 +266,10 @@ rg -n 'pub fn page' -A 30 "$CORE_PHASES" | rg -q 'retain_after_sort_tuple|trunca
   || fail "CoreFrame::page must page/resume (RQL-VM3)"
 rg -n 'pub fn project_paths' -A 40 "$CORE_PHASES" | rg -q 'apply_project_paths' \
   || fail "CoreFrame::project_paths must project (RQL-VM3)"
-# run_core_page demoted to CoreFrame orchestrator (not fused body).
-rg -n 'fn run_core_page' -A 35 "$CORE_PHASES" | rg -q 'frame\.scan|CoreFrame::begin|frame\.project_paths' \
-  || fail "run_core_page must orchestrate CoreFrame (RQL-VM3)"
+# Fused orchestrators deleted (RQL-DEL1).
+if rg -q 'fn run_core_page' "$CORE_PHASES"; then
+  fail "run_core_page must not exist in core_phases (RQL-DEL1)"
+fi
 
 rg -qi 'VM2–VM4 accepted as intermediate|VM2 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must acknowledge VM2–VM4 intermediate labor"
@@ -275,7 +283,7 @@ if rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md; then
 fi
 
 # Partial funnel: Application Core / builder / view / Full / op 118 → Query VM path.
-# (Honest: this is NOT every frontend — dialects sql/json/mongo remain → SDA.)
+# Dialects sql/json/mongo → portable → QVM (RQL-DQ1).
 APP="$SDK_SRC/app_v1.rs"
 DISPATCH="$ROOT/crates/residiuum-server/src/heap_dispatch.rs"
 DIALECTS="$SDK_SRC/dialects/mod.rs"
@@ -283,17 +291,16 @@ DIALECTS="$SDK_SRC/dialects/mod.rs"
 [[ -f "$DISPATCH" ]] || fail "missing heap_dispatch.rs"
 [[ -f "$DIALECTS" ]] || fail "missing dialects/mod.rs"
 
-# Shared funnel: source/ISA → execute_decoded_core → run_vm (Core);
+# Shared funnel: source → QVM envelope → execute_qvm_bytes → run_vm (Core);
 # Full → lower_full → run_vm (same machine; RQL-VM1R).
 rg -n 'fn execute_core_rql' -A 25 "$MOD" | rg -q 'execute_bytecode' \
   || fail "execute_core_rql must call execute_bytecode"
-rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_isa_bytes' \
-  || fail "execute_bytecode must call execute_isa_bytes"
-rg -n 'fn execute_isa_bytes' -A 35 "$MOD" | rg -q 'execute_decoded_core' \
-  || fail "execute_isa_bytes must call execute_decoded_core"
+rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_qvm_bytes' \
+  || fail "execute_bytecode must call execute_qvm_bytes"
+rg -n 'fn execute_qvm_bytes' -A 30 "$MOD" | rg -q 'run_vm\b' \
+  || fail "execute_qvm_bytes must call run_vm"
 rg -n 'fn execute_decoded_core' -A 35 "$MOD" | rg -q 'run_vm\b' \
   || fail "execute_decoded_core must call run_vm"
-
 # SDK CollectionClient::rql (embedded) → execute_core_rql
 rg -q 'execute_core_rql' "$APP" \
   || fail "app_v1 must call execute_core_rql"
@@ -439,10 +446,25 @@ for forbid in execute_plan execute_decoded_core attach_enrich_rows attach_within
     fail "lib.rs must not publicly re-export ${forbid} (RQL-P0b)"
   fi
 done
-rg -q 'pub\(crate\) fn execute_plan' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
-  || fail "execute_plan must be pub(crate) (RQL-P0b)"
+if rg -q 'fn execute_plan' "$SDK_SRC/query_bytecode_v1"; then
+  fail "execute_plan must remain deleted (RQL-P0b/DEL1)"
+fi
 rg -q 'pub\(crate\) fn execute_decoded_core' "$MOD" \
   || fail "execute_decoded_core must be pub(crate) (RQL-P0b)"
+
+# Public QVM identity + SDA escape closure.
+rg -n 'fn from_core_plan' -A 15 "$MOD" | rg -q 'encode_qvm|from_core_plan_force_scan' \
+  || fail "from_core_plan must encode QVM"
+rg -n 'fn isa_hash' -A 5 "$MOD" | rg -q 'qvm_hash' \
+  || fail "QueryBytecodeV1::isa_hash must hash QVM bytes"
+# compile_json_value signature must be portable (not CompiledSda).
+rg -n 'pub fn compile_json_value' "$DIALECTS" | rg -q 'CompiledPortable' \
+  || fail "compile_json_value must return CompiledPortable"
+if rg -n 'pub fn compile_json_value' "$DIALECTS" | rg -q 'CompiledSda'; then
+  fail "compile_json_value must not return raw SDA"
+fi
+rg -n 'fn compile\(&' -A 2 "$DIALECTS" | rg -q 'CompiledPortable' \
+  || fail "QueryDialect::compile must return CompiledPortable"
 
 rg -q 'execute_core_rql' crates/residiuum-server/src/heap_dispatch.rs \
   || fail "op 118 must use execute_core_rql"
@@ -457,4 +479,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (R1+QVM1+VM1R; VM0–VM4 intermediate; prior VM1/P1c rejected; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (R1+QVM1+WIRE1+typed ops+DEL1; VM0–VM4 intermediate; prior VM1/P1c rejected; Decision 0 OPEN; C1 forbidden)"

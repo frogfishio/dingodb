@@ -20,8 +20,10 @@ use crate::app_v1::{
 };
 use crate::cursor_v1::parameter_hash as cursor_parameter_hash;
 use crate::error::Error;
-use crate::plan_v1::RqlPlanV1;
+use crate::plan_v1::OrderTerm;
+use crate::predicate::{Path, Predicate};
 use crate::rql_app_core::merge_budgets;
+use super::vm_exec::{CoreOperands, VmPool};
 use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
@@ -136,8 +138,14 @@ enum PendingKeys {
 }
 
 /// Mutable Core pipeline state driven by Query VM opcodes (RQL-VM2/VM3/VM3b).
+///
+/// Operands come from typed QVM immediates / pool identity — not a full plan body.
 pub(crate) struct CoreFrame<'a> {
-    plan: &'a RqlPlanV1,
+    plan_hash: [u8; 32],
+    coverage: crate::app_v1::CoveragePolicy,
+    consistency: crate::app_v1::ConsistencyMode,
+    order: Vec<OrderTerm>,
+    project: Option<Vec<Path>>,
     params: &'a BTreeMap<String, JsonValue>,
     options: &'a QueryRunOptions,
     heap_id: HeapId,
@@ -171,9 +179,10 @@ pub(crate) struct CoreFrame<'a> {
 }
 
 impl<'a> CoreFrame<'a> {
-    /// Prepare frame after BindCollection.
+    /// Prepare frame after BindCollection from typed pool + Core opcode operands.
     pub fn begin(
-        plan: &'a RqlPlanV1,
+        pool: &VmPool,
+        core: &CoreOperands,
         params: &'a BTreeMap<String, JsonValue>,
         options: &'a QueryRunOptions,
         heap_id: HeapId,
@@ -182,27 +191,31 @@ impl<'a> CoreFrame<'a> {
     ) -> Result<Self, Error> {
         let started = Instant::now();
         check_governance(options, started)?;
-        let where_k = super::kernel::compile_where(&plan.where_pred, params)?;
+        let where_k = super::kernel::compile_where(&core.where_pred, params)?;
         let budget = merge_budgets(source_budget, options.budget);
-        let page_size = super::ir_page::resolve_page_size(plan.page_size, options.page_size);
+        let page_size = super::ir_page::resolve_page_size(core.page_size, options.page_size);
         let param_hash = cursor_parameter_hash(params);
         let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
             super::ir_page::decode_after(
                 cont,
                 heap_id,
                 collection_id,
-                &plan.plan_hash(),
+                &pool.plan_hash,
                 &param_hash,
             )?
         } else {
-            (None, plan.limit)
+            (None, core.limit)
         };
-        let key_only_order = plan
+        let key_only_order = core
             .order
             .iter()
             .all(|t| t.tie_break || t.path.0 == ["$key"]);
         Ok(Self {
-            plan,
+            plan_hash: pool.plan_hash,
+            coverage: pool.coverage,
+            consistency: pool.consistency,
+            order: core.order.clone(),
+            project: core.project.clone(),
             params,
             options,
             heap_id,
@@ -231,13 +244,22 @@ impl<'a> CoreFrame<'a> {
         })
     }
 
-    /// OpCode::IndexEq — real host equality-index probe.
-    pub fn index_eq<S: DocScan>(&mut self, scan: &mut S) -> Result<(), Error> {
-        let eqs = equality_constraints(&self.plan.where_pred, self.params);
-        let keys = if eqs.is_empty() {
+    /// OpCode::IndexEq — real host equality-index probe (or force-scan skip).
+    pub fn index_eq<S: DocScan>(
+        &mut self,
+        scan: &mut S,
+        where_pred: &Predicate,
+        force_scan: bool,
+    ) -> Result<(), Error> {
+        let keys = if force_scan {
             None
         } else {
-            scan.try_equality_index_keys(&eqs)?
+            let eqs = equality_constraints(where_pred, self.params);
+            if eqs.is_empty() {
+                None
+            } else {
+                scan.try_equality_index_keys(&eqs)?
+            }
         };
         self.index_keys = Some(keys);
         Ok(())
@@ -454,7 +476,7 @@ impl<'a> CoreFrame<'a> {
         }
         if !self.key_only_order {
             self.working.sort_by(|(ka, va), (kb, vb)| {
-                super::ir_order::compare_rows(ka, va, kb, vb, &self.plan.order)
+                super::ir_order::compare_rows(ka, va, kb, vb, &self.order)
             });
         }
         self.saw_order = true;
@@ -470,7 +492,7 @@ impl<'a> CoreFrame<'a> {
             if let Some(ref lst) = self.last_sort_tuple_resume {
                 super::ir_order::retain_after_sort_tuple(
                     &mut self.working,
-                    &self.plan.order,
+                    &self.order,
                     lst,
                 );
             }
@@ -503,7 +525,7 @@ impl<'a> CoreFrame<'a> {
             check_governance(self.options, self.started)?;
             last_full_for_cursor = Some((key.clone(), doc.clone()));
             let value =
-                super::ir_project::apply_project_paths(&doc, self.plan.project.as_ref())?;
+                super::ir_project::apply_project_paths(&doc, self.project.as_ref())?;
             let row_len = json_byte_len(&value);
             let next_result = result_bytes.saturating_add(row_len);
             check_result_budget(self.budget, next_result)?;
@@ -567,23 +589,23 @@ impl<'a> CoreFrame<'a> {
                 )
             });
             let last_tuple =
-                super::ir_order::build_sort_tuple(&last_key, &last_doc, &self.plan.order);
+                super::ir_order::build_sort_tuple(&last_key, &last_doc, &self.order);
             Some(super::ir_page::mint_page_cursor(
                 self.heap_id,
                 self.collection_id,
-                &self.plan.plan_hash(),
+                &self.plan_hash,
                 &self.param_hash,
-                &self.plan.order,
+                &self.order,
                 &last_tuple,
                 remaining_after,
                 self.page_size as u32,
-                self.plan.coverage,
-                self.plan.consistency,
+                self.coverage,
+                self.consistency,
             )?)
         };
 
         let coverage_mode =
-            super::ir_page::resolve_coverage_mode(self.plan.coverage, self.options.coverage);
+            super::ir_page::resolve_coverage_mode(self.coverage, self.options.coverage);
         let coverage = super::ir_page::finish_coverage(
             coverage_mode,
             &self.known_holes,
@@ -595,7 +617,7 @@ impl<'a> CoreFrame<'a> {
 
         Ok(QueryPage {
             query_id: QueryId(residiuum_store::random_id().map_err(Error::from)?),
-            plan_hash: self.plan.plan_hash(),
+            plan_hash: self.plan_hash,
             heap_id: self.heap_id,
             collection_id: self.collection_id,
             rows,
