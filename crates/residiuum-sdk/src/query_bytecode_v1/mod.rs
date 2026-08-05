@@ -21,6 +21,7 @@
 
 mod core_page;
 mod full_attach;
+mod ir_order;
 mod ir_project;
 mod isa;
 mod kernel;
@@ -37,6 +38,10 @@ pub use full_attach::{
     RqlFullPage, WithinStepV1, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE,
     FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
+};
+pub use ir_order::{
+    build_sort_tuple, cmp_sort_tuples, compare_rows, key_from_sort_tuple, retain_after_sort_tuple,
+    CompiledOrderIr, ORDER_IR_PROFILE,
 };
 pub use ir_project::{
     apply_project_paths, CompiledProjectIr, PROJECT_IR_PROFILE,
