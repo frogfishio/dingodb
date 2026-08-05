@@ -6,7 +6,7 @@
 //! [`crate::query_bytecode_v1`] for new code.
 //!
 //! Residual: delete this shim once callers and tests import bytecode directly;
-//! full-language attach still lives in frozen [`crate::rql_full_v1`].
+//! op **118** full-language still refuses on Core wire (F2).
 
 pub use crate::query_bytecode_v1::{
     execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE,

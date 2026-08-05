@@ -73,7 +73,8 @@ proceeds.
 | 3 Lower + single product entry (Core) | **foundation done** — `query_bytecode_v1` + `CollectionClient.rql` / builder `run` |
 | 4 Route op 118 through same runtime | **residual** (wire still server-local Core compile; emb entry unified) |
 | 5–7 Port Core / equivalence / shrink frozen Core executor | **X2b done** — Core in `query_bytecode_v1/core_page`; `query_exec_v1` shim |
-| 5–8 Port full attach; delete façades; unify op 118; CI bytecode-only | **RQL-X2c** |
+| 5–8 Port full attach; CI bytecode-only `execute_*` | **X2c done** — `full_attach.rs`; `rql_full_v1` shim |
+| Delete shims; unify op 118 | **RQL-X2d** |
 
 ---
 

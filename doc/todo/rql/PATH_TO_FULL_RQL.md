@@ -167,9 +167,9 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-X2c port full attach + delete façades
-LANDED      = Core semantics in query_bytecode_v1/core_page (X2b)
-FROZEN      = rql_full_v1 façade (until X2c)
+NEXT labor  = RQL-X2d delete shims + unify op 118
+LANDED      = Core + full attach in query_bytecode_v1/ (X2b/X2c)
+SHIMS       = query_exec_v1 + rql_full_v1 (re-export only)
 NOT next    = S1, D1, premature “query qualified”
 ```
 

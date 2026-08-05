@@ -1,18 +1,31 @@
-//! Query bytecode v1 — single product runtime (RQL-X2 / X2b).
+//! Query bytecode v1 — single product runtime (RQL-X2 / X2b / X2c).
 //!
 //! Profile: **`residiuum-query-bytecode-v1`**
 //! Normative: [QUERY_BYTECODE_V1.md](../../../../doc/todo/rql/QUERY_BYTECODE_V1.md)
 //!
-//! **Decision 0:** this module is the only legal **product** semantic runtime for
-//! Application Core execution. Host adapters supply scan/index/get only.
+//! **Decision 0:** this module tree is the only legal **product** semantic runtime.
+//! Host adapters supply scan/index/get only.
 //!
-//! Core page semantics live in [`core_page`] (ported from the former
-//! `query_exec_v1` executor). [`crate::query_exec_v1`] is a compatibility shim.
+//! - [`core_page`] — Application Core page semantics (former `query_exec_v1`)
+//! - [`full_attach`] — enrich / within / project (former `rql_full_v1`)
+//!
+//! Compatibility shims: [`crate::query_exec_v1`], [`crate::rql_full_v1`].
 
 mod core_page;
+mod full_attach;
 
 pub use core_page::{
     execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE,
+};
+pub use full_attach::{
+    apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full,
+    execute_rql_full, execute_rql_full_with, explain_rql_full, explain_rql_full_on_heap,
+    filter_rows, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
+    CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence, EnrichStepV1,
+    FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
+    DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
+    DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH,
+    MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
 
 use crate::app_v1::{Parameters, QueryBudget, QueryExplanation, QueryPage, QueryRunOptions};

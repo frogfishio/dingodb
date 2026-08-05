@@ -1,0 +1,5 @@
+RQL-X2c full attach port 2026-08-05
+rql_full_v1 → shim; semantics → query_bytecode_v1/full_attach.rs
+CI: only query_bytecode_v1/ may define pub fn execute_*
+lib query_bytecode_v1 22/22; app6 4/4; rql_full_corpus 2/2
+Residual: delete shim modules; unify op 118 onto bytecode runtime

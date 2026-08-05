@@ -56,7 +56,7 @@ pub mod predicate;
 pub mod plan_v1;
 /// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
 pub mod rql_app_core;
-/// Full RQL-v1 kickoff (`rql-full-v1`) — Phase 3 enrich compile/attach (not Core).
+/// Full RQL attach compile/execute — compatibility shim → [`query_bytecode_v1`].
 pub mod rql_full_v1;
 /// SQL-ish+ → Application Core RQL emit/refuse (`residiuum-sql-plus-to-rql-v1`) — Phase 2 scaffold.
 pub mod sql_plus;
@@ -103,16 +103,6 @@ pub use rql_app_core::{
     compile_app_core, merge_budgets, CompiledAppCore, APP_CORE_PROFILE,
     DIAG_RQL_FEATURE_UNAVAILABLE, MAX_RQL_SOURCE_BYTES,
 };
-pub use rql_full_v1::{
-    apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full,
-    execute_rql_full, execute_rql_full_with, explain_rql_full, explain_rql_full_on_heap,
-    filter_rows, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
-    CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence, EnrichStepV1,
-    FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
-    DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
-    DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH,
-    MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
-};
 pub use sql_plus::{
     compile_sql_to_rql, SqlToRqlEmit, SqlToRqlResult, DIAG_SQL_RQL_CONSTRUCT_UNSUPPORTED,
     DIAG_SQL_RQL_PARSE_ERROR, DIAG_SQL_RQL_STATEMENT_UNSUPPORTED, SQL_PLUS_ALIAS, SQL_PLUS_DIALECT,
@@ -128,9 +118,16 @@ pub use cursor_v1::{
     TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
 };
 pub use query_bytecode_v1::{
-    execute_bytecode, execute_core_rql, execute_plan, execute_rql, explain_core_source,
-    explain_rql_source, lower_core_source, DocScan, HostCapabilities, QueryBytecodeV1,
-    BYTECODE_PROFILE, EXEC_PROFILE,
+    apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full,
+    execute_bytecode, execute_core_rql, execute_plan, execute_rql, execute_rql_full,
+    execute_rql_full_with, explain_core_source, explain_rql_full, explain_rql_full_on_heap,
+    explain_rql_source, filter_rows, lower_core_source, refuse_full_language_on_core_wire,
+    source_uses_rql_full_constructs, CompiledRqlFull, DocScan, EnrichAttachMode, EnrichCardinality,
+    EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, HostCapabilities, ProjectItemV1,
+    QueryBytecodeV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1, BYTECODE_PROFILE,
+    DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
+    DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, EXEC_PROFILE, FULL_EXPLAIN_HASH_DOMAIN,
+    MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
 pub use read_view_v1::{
     AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,
