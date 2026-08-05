@@ -7,11 +7,9 @@
 //! `decode_isa` → interpret. An independent Rust `plan` field is forbidden so
 //! ISA identity cannot diverge from executed meaning.
 //!
-//! **RQL-VM1:** after decode, Core and Full lower into one Query VM program and
-//! run through [`vm_exec::run_vm_core`] / [`vm_exec::run_vm_attach`] (opcode
-//! dispatch). Core pipeline opcodes still call [`execute_plan`] as a fused
-//! body until **RQL-VM2**. See
-//! [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) and
+//! **RQL-VM1R:** after decode + QVM materialize, Core and Full lower into one
+//! Query VM program and run through [`vm_exec::run_vm`] (one opcode dispatch).
+//! See [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) and
 //! [QUERY_VM_V1.md](../../../../doc/todo/rql/QUERY_VM_V1.md).
 //!
 //! Host adapters supply scan/index/get only.
@@ -278,11 +276,12 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
     )
 }
 
-/// Shared Core page after ISA decode (RQL-VM1 → Query VM).
+/// Shared Core page after ISA decode (RQL-VM1R → one Query VM).
 ///
 /// Crate-private (RQL-P0b): not a public bypass of validated ISA.
-/// Both Core and full-language paths use this after `decode_isa`. Lowers to a
-/// VM program and runs [`vm_exec::run_vm_core`] (`CoreFrame` phases; RQL-VM2).
+/// Core product path after `decode_isa`. Lowers to a VM program and runs
+/// [`vm_exec::run_vm`] (`CoreFrame` phases; RQL-VM2). Full path also calls
+/// `run_vm` directly on `lower_full` (no second dispatcher).
 /// Not Decision 0 closed.
 pub(crate) fn execute_decoded_core<H: HostCapabilities>(
     host: &mut H,
@@ -300,47 +299,16 @@ pub(crate) fn execute_decoded_core<H: HostCapabilities>(
     }
     let prog = vm_exec::lower_core(core.clone(), budget);
     let prog = qvm::materialize_qvm(&prog)?;
-    let mut scan = HostDocScan {
+    let out = vm_exec::run_vm(
         host,
-        collection_id,
-    };
-    vm_exec::run_vm_core(
-        &mut scan,
         &prog,
         params,
         options,
         heap_id,
         collection_id,
-    )
-}
-
-/// Bridge: [`HostCapabilities`] → [`DocScan`] for [`core_page`] (bound collection).
-struct HostDocScan<'a, H: HostCapabilities> {
-    host: &'a mut H,
-    collection_id: CollectionId,
-}
-
-impl<H: HostCapabilities> DocScan for HostDocScan<'_, H> {
-    fn list_keys(
-        &mut self,
-        limit: Option<usize>,
-        after_key: Option<&str>,
-    ) -> Result<Vec<String>, Error> {
-        self.host
-            .list_keys(self.collection_id, limit, after_key)
-    }
-
-    fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error> {
-        self.host.get_json(self.collection_id, key)
-    }
-
-    fn try_equality_index_keys(
-        &mut self,
-        equalities: &[(String, JsonValue)],
-    ) -> Result<Option<Vec<String>>, Error> {
-        self.host
-            .lookup_index_keys(self.collection_id, equalities)
-    }
+        false,
+    )?;
+    Ok(out.page)
 }
 
 #[cfg(test)]

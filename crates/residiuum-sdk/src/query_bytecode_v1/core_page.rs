@@ -85,7 +85,7 @@ pub fn explain_rql_source(
 
 /// Demoted Core page entry (RQL-VM2): runs [`super::core_phases::CoreFrame`] phases.
 ///
-/// Product execute enters via Query VM (`run_vm_core`). This remains crate-private
+/// Product execute enters via Query VM (`run_vm`). This remains crate-private
 /// for residual/oracle callers. Not a public ISA bypass.
 pub(crate) fn execute_plan<S: DocScan>(
     scan: &mut S,

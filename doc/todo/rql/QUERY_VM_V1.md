@@ -1,6 +1,6 @@
 # Query VM v1 — instruction set + dispatch
 
-Status: **2026-08-05** · Principal **rejected VM1 / P1c** · Decision 0 remains OPEN · RQL-C1 **forbidden**
+Status: **2026-08-05** · Principal **rejected prior VM1 / P1c** · **VM1R labor closed** · Decision 0 remains OPEN · RQL-C1 **forbidden**
 Profile id: **`residiuum-query-vm-v1`** · version byte **`1`** · durable magic **`QVM1`**
 Runtime: `query_bytecode_v1/vm.rs` · `vm_exec.rs` · `qvm.rs` · `core_phases.rs` (`CoreFrame`)
 Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
@@ -8,10 +8,10 @@ Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_W
 Opcode vocabulary (**RQL-VM0**) and intermediate Core/Full phase work (**VM2–VM4**,
 including `CoreFrame` / demoted `run_core_page`) landed. **RQL-QVM1** freezes a
 durable `QVM1` encoding of the opcode stream + constant pool; product execute
-materializes QVM bytes before run. That does **not** close Decision 0: two
-dispatch loops remain (`run_vm_core` / `run_vm_attach` → **VM1R**), and `RQB1`
-remains the public AST carrier that lowers into QVM. Principal rejected prior
-VM1 / P1c convergence claims.
+materializes QVM bytes before run. **RQL-VM1R** unifies dispatch into one
+`run_vm` (Core + Full). That does **not** close Decision 0: `RQB1` remains the
+public AST carrier that lowers into QVM; sql/json/mongo still → SDA. Prior VM1 /
+P1c convergence claims stay rejected.
 
 ---
 
@@ -25,7 +25,7 @@ All syntax → compiler intermediates → canonical QVM bytecode
                           collection-qualified host API
 ```
 
-Today: `RQB1` decode → lower → **`encode_qvm` / `decode_qvm`** → `run_vm_*`.
+Today: `RQB1` decode → lower → **`encode_qvm` / `decode_qvm`** → **`run_vm`**.
 `VmProgram` holds ops + `VmPool` only (no plan/pipeline/project sidecars).
 
 ---
@@ -36,7 +36,7 @@ Today: `RQB1` decode → lower → **`encode_qvm` / `decode_qvm`** → `run_vm_*
 |---|---|---|
 | **`QVM1` bytes** | Durable executable form (ops + pool) | Public wire still often `RQB1` |
 | **Program** | Opcode vector + `VmPool` (Core plan) | — |
-| **Dispatchers** | `run_vm_core` + `run_vm_attach` | One `run_vm` (VM1R) |
+| **Dispatcher** | One `run_vm` (**VM1R labor closed**) | Dialects → QVM |
 | **Host** | scan / index / get by `CollectionId` | — |
 | **Foreign cache** | Keyed by `CollectionId` (R1) | — |
 
@@ -66,11 +66,10 @@ Rust: `query_bytecode_v1::OpCode` / `VM_PROFILE` / `qvm` / `vm_exec`.
 
 ## Non-claims
 
-- QVM1 ≠ Decision 0 complete / C1
-- QVM1 ≠ one `run_vm` (that is VM1R)
+- QVM1 / VM1R ≠ Decision 0 complete / C1 / every frontend → QVM
 - Prior VM1 / P1c board claims remain **rejected**
 - **RQL-C1 must not be accepted**
-- NEXT = **VM1R** then dialect→QVM
+- NEXT = dialect→QVM (sql/json/mongo)
 
 ---
 
@@ -83,3 +82,4 @@ Rust: `query_bytecode_v1::OpCode` / `VM_PROFILE` / `qvm` / `vm_exec`.
 - `doc/todo/rql/evidence/rql_vm4_within_flatten.log`
 - `doc/todo/rql/evidence/rql_r1_dialect_cache_arch.log`
 - `doc/todo/rql/evidence/rql_qvm1_durable_bytecode.log`
+- `doc/todo/rql/evidence/rql_vm1r_one_run_vm.log`

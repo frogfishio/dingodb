@@ -1,17 +1,17 @@
-//! Query VM dispatch (RQL-VM1/VM2/VM3/VM4) — one instruction loop for Core + Full.
+//! Query VM dispatch (**RQL-VM1R**) — one `run_vm` for Core + Full.
 //!
 //! Profile: **`residiuum-query-vm-v1`** (see [`super::vm`]).
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
-//! Product execute enters here after ISA decode + lower. Core pipeline opcodes
-//! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2/VM3/VM3b**).
+//! Product execute enters here after ISA decode + lower (+ QVM materialize).
+//! Core pipeline opcodes call [`super::core_phases::CoreFrame`] (**RQL-VM2/VM3/VM3b**).
 //! Scan establishes `PendingKeys`; Filter owns where (+ key-stream get/early-stop).
-//! Full attach: nested Within enrich/filter expand onto the flat opcode stream
-//! (**RQL-VM4**); `Within` imm is a shell (carrier + alias only).
+//! Full attach continues in the **same** loop after `ProjectPaths` (**RQL-VM4**);
+//! `Within` imm is a shell (carrier + alias only).
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
-use crate::app_v1::{Parameters, QueryBudget, QueryPage, QueryRunOptions};
+use crate::app_v1::{QueryBudget, QueryPage, QueryRunOptions};
 use crate::error::Error;
 use crate::plan_v1::RqlPlanV1;
 use crate::predicate::{Path, Predicate};
@@ -28,6 +28,46 @@ use super::full_attach::{
 };
 use super::vm::{Instruction, OpCode, VM_PROFILE};
 use super::HostCapabilities;
+
+/// Bound-collection [`DocScan`] over [`HostCapabilities`] for Core opcodes.
+struct HostScan<'a, H: HostCapabilities> {
+    host: &'a mut H,
+    collection_id: CollectionId,
+}
+
+impl<H: HostCapabilities> DocScan for HostScan<'_, H> {
+    fn list_keys(
+        &mut self,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        self.host
+            .list_keys(self.collection_id, limit, after_key)
+    }
+
+    fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error> {
+        self.host.get_json(self.collection_id, key)
+    }
+
+    fn try_equality_index_keys(
+        &mut self,
+        equalities: &[(String, JsonValue)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        self.host
+            .lookup_index_keys(self.collection_id, equalities)
+    }
+}
+
+/// Result of one [`run_vm`] pass (Core page + optional attach rows).
+#[derive(Debug, Clone)]
+pub(crate) struct VmOutcome {
+    /// Core page (Bind…ProjectPaths).
+    pub page: QueryPage,
+    /// Working rows after attach (equals `page.rows` when no Full opcodes ran).
+    pub rows: Vec<(String, JsonValue)>,
+    /// Root enrich load evidence (empty for Core-only programs).
+    pub enrich_loads: Vec<EnrichLoadEvidence>,
+}
 
 /// Open Within scope: parents saved; working set is carrier elements.
 struct WithinScope {
@@ -241,18 +281,19 @@ pub(crate) fn lower_full(
     }
 }
 
-/// Run a Core-only VM program (no Enrich / Within / …).
+/// One Query VM dispatch for Core and Full programs (**RQL-VM1R**).
 ///
-/// RQL-VM2/VM3: each Core opcode calls a [`CoreFrame`] phase helper.
-/// IndexEq probes; Scan loads; Filter/Order/Page transform; ProjectPaths finishes.
-pub(crate) fn run_vm_core<S: DocScan>(
-    scan: &mut S,
+/// Core opcodes call [`CoreFrame`] phase helpers; after `ProjectPaths`, Full
+/// opcodes continue in the same loop (no second dispatcher / Core-prefix skip).
+pub(crate) fn run_vm<H: HostCapabilities>(
+    host: &mut H,
     prog: &VmProgram,
     params: &BTreeMap<String, JsonValue>,
     options: &QueryRunOptions,
     heap_id: HeapId,
     collection_id: CollectionId,
-) -> Result<QueryPage, Error> {
+    force_enrich_scan: bool,
+) -> Result<VmOutcome, Error> {
     if prog.profile != VM_PROFILE {
         return Err(Error::QueryInvalid(format!(
             "run_vm: profile mismatch: got {:?}, want {VM_PROFILE}",
@@ -260,9 +301,12 @@ pub(crate) fn run_vm_core<S: DocScan>(
         )));
     }
     let mut pc = 0usize;
-    let mut bound: Option<CollectionId> = None;
     let mut frame: Option<CoreFrame<'_>> = None;
     let mut page: Option<QueryPage> = None;
+    let mut rows: Vec<(String, JsonValue)> = Vec::new();
+    let mut enrich_loads: Vec<EnrichLoadEvidence> = Vec::new();
+    let mut foreign_cache: BTreeMap<CollectionId, Vec<(String, JsonValue)>> = BTreeMap::new();
+    let mut within_stack: Vec<WithinScope> = Vec::new();
 
     while pc < prog.ops.len() {
         let instr = &prog.ops[pc];
@@ -278,7 +322,11 @@ pub(crate) fn run_vm_core<S: DocScan>(
                         "run_vm: BindCollection id mismatch".into(),
                     ));
                 }
-                bound = Some(*id);
+                if page.is_some() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: BindCollection after Core page".into(),
+                    ));
+                }
                 frame = Some(CoreFrame::begin(
                     &prog.pool.core,
                     params,
@@ -293,21 +341,33 @@ pub(crate) fn run_vm_core<S: DocScan>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: IndexEq before BindCollection".into())
                 })?;
-                f.index_eq(scan)?;
+                let mut scan = HostScan {
+                    host,
+                    collection_id,
+                };
+                f.index_eq(&mut scan)?;
                 pc += 1;
             }
             OpCode::Scan => {
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Scan before BindCollection".into())
                 })?;
-                f.scan(scan)?;
+                let mut scan = HostScan {
+                    host,
+                    collection_id,
+                };
+                f.scan(&mut scan)?;
                 pc += 1;
             }
             OpCode::Filter => {
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Filter before BindCollection".into())
                 })?;
-                f.filter(scan)?;
+                let mut scan = HostScan {
+                    host,
+                    collection_id,
+                };
+                f.filter(&mut scan)?;
                 pc += 1;
             }
             OpCode::Order => {
@@ -328,75 +388,27 @@ pub(crate) fn run_vm_core<S: DocScan>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: ProjectPaths before BindCollection".into())
                 })?;
-                page = Some(f.project_paths(scan)?);
+                let mut scan = HostScan {
+                    host,
+                    collection_id,
+                };
+                let p = f.project_paths(&mut scan)?;
+                rows = p
+                    .rows
+                    .iter()
+                    .map(|r| (r.key.clone(), r.value.clone()))
+                    .collect();
+                page = Some(p);
+                // CoreFrame no longer needed; free borrow of pool/params.
+                frame = None;
                 pc += 1;
             }
-            OpCode::Halt => {
-                break;
-            }
-            OpCode::Enrich
-            | OpCode::Within
-            | OpCode::WithinEnd
-            | OpCode::FilterAttach
-            | OpCode::ProjectBrace => {
-                return Err(Error::QueryInvalid(format!(
-                    "run_vm_core: unexpected Full opcode {}",
-                    instr.op.name()
-                )));
-            }
-        }
-    }
-
-    let _ = bound;
-    page.ok_or_else(|| Error::QueryInvalid("run_vm_core: Halt without Core page".into()))
-}
-
-/// Run Full attach / brace-project opcodes after a Core page is already produced.
-///
-/// Expects `prog` from [`lower_full`]. Skips Bind + Core pipeline; dispatches
-/// Enrich / Within / WithinEnd / FilterAttach / ProjectBrace until Halt.
-/// Nested Within bodies are stream ops between Within and WithinEnd (**RQL-VM4**).
-/// Foreign loads use collection-qualified [`HostCapabilities`] (RQL-P1b).
-pub(crate) fn run_vm_attach<H: HostCapabilities>(
-    host: &mut H,
-    prog: &VmProgram,
-    mut rows: Vec<(String, JsonValue)>,
-    parameters: &Parameters,
-    force_enrich_scan: bool,
-) -> Result<(Vec<(String, JsonValue)>, Vec<EnrichLoadEvidence>), Error> {
-    if prog.profile != VM_PROFILE {
-        return Err(Error::QueryInvalid(format!(
-            "run_vm: profile mismatch: got {:?}, want {VM_PROFILE}",
-            prog.profile
-        )));
-    }
-    let mut pc = 0usize;
-    let mut enrich_loads: Vec<EnrichLoadEvidence> = Vec::new();
-    let mut foreign_cache: BTreeMap<CollectionId, Vec<(String, JsonValue)>> = BTreeMap::new();
-    let mut within_stack: Vec<WithinScope> = Vec::new();
-    // Skip Core prefix (Bind + pipeline).
-    while pc < prog.ops.len() {
-        let op = prog.ops[pc].op;
-        if matches!(
-            op,
-            OpCode::BindCollection
-                | OpCode::IndexEq
-                | OpCode::Scan
-                | OpCode::Filter
-                | OpCode::Order
-                | OpCode::Page
-                | OpCode::ProjectPaths
-        ) {
-            pc += 1;
-            continue;
-        }
-        break;
-    }
-
-    while pc < prog.ops.len() {
-        let instr = &prog.ops[pc];
-        match instr.op {
             OpCode::Enrich => {
+                if page.is_none() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Enrich before ProjectPaths".into(),
+                    ));
+                }
                 let VmImm::Enrich(e) = &instr.imm else {
                     return Err(Error::QueryInvalid(
                         "run_vm: Enrich immediate mismatch".into(),
@@ -415,9 +427,8 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                             .entry(e.using_id)
                             .or_insert_with(|| foreign.clone());
                     }
-                    rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;
+                    rows = attach_enrich_rows(&rows, &foreign, e, params)?;
                 } else {
-                    // Nested enrich: scan-load (RQL-I1 residual); no root load evidence.
                     ensure_foreign_docs(host, e.using_id, &mut foreign_cache)?;
                     let foreign = foreign_cache.get(&e.using_id).ok_or_else(|| {
                         Error::QueryInvalid(format!(
@@ -425,11 +436,16 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                             e.using_id, e.using_name
                         ))
                     })?;
-                    rows = attach_enrich_rows(&rows, foreign, e, &parameters.values)?;
+                    rows = attach_enrich_rows(&rows, foreign, e, params)?;
                 }
                 pc += 1;
             }
             OpCode::Within => {
+                if page.is_none() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Within before ProjectPaths".into(),
+                    ));
+                }
                 let VmImm::Within(w) = &instr.imm else {
                     return Err(Error::QueryInvalid(
                         "run_vm: Within immediate mismatch".into(),
@@ -457,15 +473,25 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                 pc += 1;
             }
             OpCode::FilterAttach => {
+                if page.is_none() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: FilterAttach before ProjectPaths".into(),
+                    ));
+                }
                 let VmImm::FilterAttach(pred) = &instr.imm else {
                     return Err(Error::QueryInvalid(
                         "run_vm: FilterAttach immediate mismatch".into(),
                     ));
                 };
-                rows = filter_rows(&rows, pred, &parameters.values)?;
+                rows = filter_rows(&rows, pred, params)?;
                 pc += 1;
             }
             OpCode::ProjectBrace => {
+                if page.is_none() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: ProjectBrace before ProjectPaths".into(),
+                    ));
+                }
                 let VmImm::ProjectBrace(fields) = &instr.imm else {
                     return Err(Error::QueryInvalid(
                         "run_vm: ProjectBrace immediate mismatch".into(),
@@ -487,22 +513,15 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                 }
                 break;
             }
-            OpCode::BindCollection
-            | OpCode::IndexEq
-            | OpCode::Scan
-            | OpCode::Filter
-            | OpCode::Order
-            | OpCode::Page
-            | OpCode::ProjectPaths => {
-                return Err(Error::QueryInvalid(format!(
-                    "run_vm_attach: unexpected Core opcode {} after prefix",
-                    instr.op.name()
-                )));
-            }
         }
     }
 
-    Ok((rows, enrich_loads))
+    let page = page.ok_or_else(|| Error::QueryInvalid("run_vm: Halt without Core page".into()))?;
+    Ok(VmOutcome {
+        page,
+        rows,
+        enrich_loads,
+    })
 }
 
 #[cfg(test)]

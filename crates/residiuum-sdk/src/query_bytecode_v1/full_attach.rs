@@ -38,8 +38,7 @@ use serde_json::{Map, Value as JsonValue};
 use std::collections::BTreeMap;
 
 use super::isa::{decode_isa_canonical, encode_full_program, ISA_PROFILE};
-use super::execute_decoded_core;
-use super::vm_exec::{lower_full, run_vm_attach};
+use super::vm_exec::{lower_full, run_vm};
 use super::HostCapabilities;
 
 /// Full-language compile profile (Phase 3 kickoff).
@@ -1768,10 +1767,9 @@ pub fn execute_rql_full_with(
 
 /// Full-language entry: decode ISA (must carry full section), then execute.
 ///
-/// Base page uses shared [`super::execute_decoded_core`] on the heap host
-/// (collection-qualified; RQL-P1b). Attach pipeline/project lower into the same
-/// Query VM and run via [`run_vm_attach`] — foreign loads use HostCapabilities
-/// by immutable collection id (no name-only open bypass).
+/// Lowers Core+attach into one VM program and runs [`run_vm`] once
+/// (RQL-VM1R). Foreign loads use collection-qualified HostCapabilities
+/// by immutable collection id (no name-only open bypass; RQL-P1b).
 pub fn execute_full_isa_with(
     client: &mut HeapClient,
     isa_bytes: &[u8],
@@ -1800,25 +1798,9 @@ pub fn execute_full_isa_with(
         let _ = open_collection_bound(client, from_name, collection_id)?;
     }
 
-    // Shared Core VM entry — HeapClient is collection-qualified HostCapabilities.
-    let page = execute_decoded_core(
-        client,
-        &prog.core,
-        prog.budget,
-        &parameters.values,
-        &options.query,
-        heap_id,
-        collection_id,
-    )?;
-
+    // One Query VM entry — Core + attach in a single `run_vm` (RQL-VM1R).
     let pipeline = full.pipeline.clone();
     let project = full.project.clone();
-    let rows: Vec<(String, JsonValue)> = page
-        .rows
-        .iter()
-        .map(|r| (r.key.clone(), r.value.clone()))
-        .collect();
-
     let vm = lower_full(
         prog.core.clone(),
         prog.budget,
@@ -1826,21 +1808,23 @@ pub fn execute_full_isa_with(
         project.clone(),
     );
     let vm = super::qvm::materialize_qvm(&vm)?;
-    let (rows, enrich_loads) = run_vm_attach(
+    let out = run_vm(
         client,
         &vm,
-        rows,
-        parameters,
+        &parameters.values,
+        &options.query,
+        heap_id,
+        collection_id,
         options.force_enrich_scan,
     )?;
 
     Ok(RqlFullPage {
         profile: RQL_FULL_PROFILE,
-        rows,
-        base: page,
+        rows: out.rows,
+        base: out.page,
         pipeline,
         project,
-        enrich_loads,
+        enrich_loads: out.enrich_loads,
     })
 }
 

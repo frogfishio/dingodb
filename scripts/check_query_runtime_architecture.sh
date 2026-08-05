@@ -66,12 +66,16 @@ rg -n 'fn execute_isa_bytes' -A 40 "$MOD" | rg -q 'decode_isa' \
   || fail "execute_isa_bytes must call decode_isa"
 rg -n 'fn execute_isa_bytes' -A 50 "$MOD" | rg -q 'execute_decoded_core' \
   || fail "execute_isa_bytes must call execute_decoded_core"
-rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'run_vm_core|vm_exec::' \
-  || fail "execute_decoded_core must dispatch via Query VM (run_vm_core)"
-rg -q 'fn run_vm_core' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
-  || fail "missing run_vm_core (RQL-VM1)"
-rg -q 'fn run_vm_attach' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
-  || fail "missing run_vm_attach (RQL-VM1)"
+rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'run_vm\b|vm_exec::' \
+  || fail "execute_decoded_core must dispatch via Query VM (run_vm)"
+rg -q 'fn run_vm\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing run_vm (RQL-VM1R)"
+if rg -q 'fn run_vm_core\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs"; then
+  fail "run_vm_core must be deleted (RQL-VM1R unified run_vm)"
+fi
+if rg -q 'fn run_vm_attach\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs"; then
+  fail "run_vm_attach must be deleted (RQL-VM1R unified run_vm)"
+fi
 rg -q 'fn lower_core' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   || fail "missing lower_core (RQL-VM1)"
 rg -q 'fn lower_full' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
@@ -90,13 +94,16 @@ rg -n 'fn execute_rql_full_with' -A 35 "$FULL" | rg -q 'execute_full_isa_with' \
   || fail "execute_rql_full_with must dispatch execute_full_isa_with"
 rg -n 'fn execute_full_isa_with' -A 50 "$FULL" | rg -q 'decode_isa' \
   || fail "execute_full_isa_with must decode_isa"
-# RQL-X5c + VM1: full shares execute_decoded_core; attach via VM.
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'execute_decoded_core' \
-  || fail "execute_full_isa_with must share execute_decoded_core"
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach|lower_full' \
-  || fail "execute_full_isa_with must dispatch Full attach via Query VM"
+# RQL-VM1R: full lowers once and enters the same run_vm (no dual dispatcher).
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'lower_full' \
+  || fail "execute_full_isa_with must lower_full"
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm\b' \
+  || fail "execute_full_isa_with must call run_vm (RQL-VM1R)"
+if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach|execute_decoded_core'; then
+  fail "execute_full_isa_with must not dual-dispatch (RQL-VM1R)"
+fi
 if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'encode_core_program'; then
-  fail "execute_full_isa_with must not re-encode Core ISA (use execute_decoded_core)"
+  fail "execute_full_isa_with must not re-encode Core ISA"
 fi
 rg -q 'execute_full_isa_enrich_within_project_nonempty' \
   crates/residiuum-sdk/tests/rql_full_isa_execute.rs \
@@ -142,11 +149,11 @@ fi
 rg -q 'fn finish_coverage' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "ir_page must define finish_coverage"
 
-# RQL-IR4: attach helpers remain; product Full path dispatches via VM (VM1).
+# RQL-IR4: attach helpers remain; product Full path dispatches via run_vm (VM1R).
 rg -q 'fn run_attach_pipeline' "$SDK_SRC/query_bytecode_v1/ir_attach.rs" \
   || fail "ir_attach must define run_attach_pipeline"
-rg -q 'fn run_vm_attach' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
-  || fail "vm_exec must define run_vm_attach (VM1 Full dispatch)"
+rg -q 'fn run_vm\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "vm_exec must define run_vm (VM1R)"
 if rg -n 'fn execute_full_isa_with' -A 120 "$FULL" | rg -q 'FullPipelineStepV1::Enrich'; then
   fail "execute_full_isa_with must not inline Enrich pipeline loop (moved to VM/IR)"
 fi
@@ -195,14 +202,14 @@ rg -q 'struct CoreFrame' "$SDK_SRC/query_bytecode_v1/core_phases.rs" \
   || fail "missing CoreFrame (RQL-VM2)"
 rg -q 'fn run_core_page' "$SDK_SRC/query_bytecode_v1/core_phases.rs" \
   || fail "missing run_core_page (RQL-VM2)"
-rg -n 'fn run_vm_core' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'index_eq' \
-  || fail "run_vm_core must call CoreFrame::index_eq (RQL-VM2)"
-rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'project_paths' \
-  || fail "run_vm_core must call CoreFrame::project_paths (RQL-VM2)"
-rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.scan\(scan\)' \
-  || fail "run_vm_core must call CoreFrame::scan(scan) (RQL-VM3)"
-if rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'execute_plan\('; then
-  fail "run_vm_core must not call execute_plan (RQL-VM2 demotion)"
+rg -n 'fn run_vm\b' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'index_eq' \
+  || fail "run_vm must call CoreFrame::index_eq (RQL-VM2)"
+rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'project_paths' \
+  || fail "run_vm must call CoreFrame::project_paths (RQL-VM2)"
+rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.scan\(' \
+  || fail "run_vm must call CoreFrame::scan (RQL-VM3)"
+if rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'execute_plan\('; then
+  fail "run_vm must not call execute_plan (RQL-VM2 demotion)"
 fi
 rg -n 'fn execute_plan' -A 25 "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q 'CoreFrame' \
   || fail "execute_plan must be thin CoreFrame wrapper (RQL-VM2)"
@@ -220,8 +227,8 @@ if rg -n 'pub fn scan' -A 40 "$CORE_PHASES" | rg -q 'where_k\.eval_doc|filtered_
 fi
 rg -n 'pub fn filter' -A 5 "$CORE_PHASES" | rg -q 'scan: &mut S' \
   || fail "CoreFrame::filter must take DocScan (RQL-VM3b)"
-rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.filter\(scan\)' \
-  || fail "run_vm_core must call CoreFrame::filter(scan) (RQL-VM3b)"
+rg -n 'fn run_vm\b' -A 200 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.filter\(' \
+  || fail "run_vm must call CoreFrame::filter (RQL-VM3b)"
 rg -qi 'VM3b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark VM3b labor closed"
 if rg -qi 'filtered_during_scan' doc/todo/rql/RQL_WHAT_IS_LEFT.md; then
@@ -234,12 +241,12 @@ rg -q 'fn within_enter' "$SDK_SRC/query_bytecode_v1/full_attach.rs" \
   || fail "missing within_enter (RQL-VM4)"
 rg -q 'fn within_leave' "$SDK_SRC/query_bytecode_v1/full_attach.rs" \
   || fail "missing within_leave (RQL-VM4)"
-rg -n 'fn run_vm_attach' -A 160 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'within_stack' \
-  || fail "run_vm_attach must maintain within_stack (RQL-VM4)"
-rg -n 'fn run_vm_attach' -A 160 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'within_enter|within_leave' \
-  || fail "run_vm_attach must call within_enter/leave (RQL-VM4)"
-if rg -n 'fn run_vm_attach' -A 160 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'attach_within_rows'; then
-  fail "run_vm_attach must not call attach_within_rows (RQL-VM4 flatten)"
+rg -n 'fn run_vm\b' -A 280 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'within_stack' \
+  || fail "run_vm must maintain within_stack (RQL-VM4)"
+rg -n 'fn run_vm\b' -A 280 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'within_enter|within_leave' \
+  || fail "run_vm must call within_enter/leave (RQL-VM4)"
+if rg -n 'fn run_vm\b' -A 280 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'attach_within_rows'; then
+  fail "run_vm must not call attach_within_rows (RQL-VM4 flatten)"
 fi
 rg -qi 'VM4 labor closed|Within flatten|R1' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark VM4/R1 progress"
@@ -276,15 +283,16 @@ DIALECTS="$SDK_SRC/dialects/mod.rs"
 [[ -f "$DISPATCH" ]] || fail "missing heap_dispatch.rs"
 [[ -f "$DIALECTS" ]] || fail "missing dialects/mod.rs"
 
-# Shared funnel: source/ISA → execute_decoded_core → run_vm_core.
+# Shared funnel: source/ISA → execute_decoded_core → run_vm (Core);
+# Full → lower_full → run_vm (same machine; RQL-VM1R).
 rg -n 'fn execute_core_rql' -A 25 "$MOD" | rg -q 'execute_bytecode' \
   || fail "execute_core_rql must call execute_bytecode"
 rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_isa_bytes' \
   || fail "execute_bytecode must call execute_isa_bytes"
 rg -n 'fn execute_isa_bytes' -A 35 "$MOD" | rg -q 'execute_decoded_core' \
   || fail "execute_isa_bytes must call execute_decoded_core"
-rg -n 'fn execute_decoded_core' -A 30 "$MOD" | rg -q 'run_vm_core' \
-  || fail "execute_decoded_core must call run_vm_core"
+rg -n 'fn execute_decoded_core' -A 35 "$MOD" | rg -q 'run_vm\b' \
+  || fail "execute_decoded_core must call run_vm"
 
 # SDK CollectionClient::rql (embedded) → execute_core_rql
 rg -q 'execute_core_rql' "$APP" \
@@ -305,11 +313,11 @@ rg -n 'impl<.*> ViewBoundQuery' -A 120 "$APP" | rg -n 'pub fn run' -A 40 | head 
 rg -n 'impl<.*> ViewBoundCollection' -A 80 "$APP" | rg -n 'pub fn rql' -A 20 | head -n 25 | rg -q 'self\.inner\.rql' \
   || fail "ViewBoundCollection::rql must delegate to CollectionClient::rql"
 
-# Full RQL → shared Core VM + attach VM (honest: still two loops until VM1R)
-rg -n 'fn execute_full_isa_with' -A 50 "$FULL" | rg -q 'execute_decoded_core' \
-  || fail "execute_full_isa_with must call execute_decoded_core"
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach' \
-  || fail "execute_full_isa_with must call run_vm_attach"
+# Full RQL → one run_vm (RQL-VM1R)
+rg -n 'fn execute_full_isa_with' -A 80 "$FULL" | rg -q 'run_vm\b' \
+  || fail "execute_full_isa_with must call run_vm"
+rg -qi 'VM1R labor closed|one run_vm' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark VM1R labor closed / one run_vm"
 
 # Op 118 server → execute_core_rql (same Core funnel)
 rg -q 'execute_core_rql' "$DISPATCH" \
@@ -357,9 +365,9 @@ rg -q 'find_dialect' "$SDK_SRC/collection.rs" \
 rg -q 'pub fn sda\b|fn sda_with' "$SDK_SRC/collection.rs" \
   || fail "must name Collection::sda raw-SDA surface for gate inventory"
 # Foreign cache keyed by CollectionId (not using_name).
-rg -n 'fn run_vm_attach' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+rg -n 'fn run_vm\b' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   | rg -q 'BTreeMap<CollectionId' \
-  || fail "run_vm_attach foreign_cache must be CollectionId-keyed (RQL-R1)"
+  || fail "run_vm foreign_cache must be CollectionId-keyed (RQL-R1)"
 rg -qi 'R1' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark R1"
 # RQL-QVM1: durable QVM bytecode is executable authority (not optional).
@@ -449,4 +457,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (R1+QVM1; VM0–VM4 intermediate; VM1/P1c rejected; VM1R residual; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (R1+QVM1+VM1R; VM0–VM4 intermediate; prior VM1/P1c rejected; Decision 0 OPEN; C1 forbidden)"
