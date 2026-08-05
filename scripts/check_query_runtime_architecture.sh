@@ -143,6 +143,21 @@ rg -q 'ir_order' "$IR_DOC" || fail "IR residual doc must name ir_order (IR2)"
 rg -q 'ir_page' "$IR_DOC" || fail "IR residual doc must name ir_page (IR3)"
 rg -q 'ir_attach' "$IR_DOC" || fail "IR residual doc must name ir_attach (IR4)"
 rg -q 'RQL-C1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-C1 residual"
+rg -q 'QUERY_VM_V1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must point at QUERY_VM_V1 (mandatory next)"
+rg -qi 'Query VM' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT NEXT must be Query VM labor (not C1 gate)"
+[[ -f "$ROOT/doc/todo/rql/QUERY_VM_V1.md" ]] || fail "missing QUERY_VM_V1.md charter"
+rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
+  || fail "isa must define decode_isa_canonical (D0R)"
+rg -q 'open_collection_bound' "$FULL" \
+  || fail "full_attach must bind collections by immutable id (D0R)"
+rg -n 'fn execute_isa_bytes' -A 20 "$MOD" | rg -q 'decode_isa_canonical' \
+  || fail "execute_isa_bytes must use decode_isa_canonical"
+rg -n 'fn execute_full_isa_with' -A 20 "$FULL" | rg -q 'decode_isa_canonical' \
+  || fail "execute_full_isa_with must use decode_isa_canonical"
+# SoT must not claim NEXT is principal C1 acceptance while VM unfinished.
+if rg -n '^NEXT' doc/todo/rql/RQL_WHAT_IS_LEFT.md | rg -qi 'principal.*C1'; then
+  fail "SoT must not set NEXT to principal C1 while Query VM unfinished"
+fi
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -178,4 +193,4 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
 
-echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1+IR2+IR3+IR4; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1–IR4+D0R; Decision 0 OPEN; C1 forbidden; VM residual)"

@@ -56,8 +56,9 @@ pub use ir_project::{
     apply_project_paths, CompiledProjectIr, PROJECT_IR_PROFILE,
 };
 pub use isa::{
-    decode_isa, encode_core_program, encode_full_program, isa_hash, QueryIsaFullSection,
-    QueryIsaProgram, ISA_MAGIC, ISA_PROFILE, ISA_VERSION,
+    decode_isa, decode_isa_canonical, encode_core_program, encode_full_program, isa_hash,
+    QueryIsaFullSection, QueryIsaProgram, ISA_MAGIC, ISA_MAX_SECTION_BYTES, ISA_MAX_TOTAL_BYTES,
+    ISA_PROFILE, ISA_VERSION,
 };
 pub use kernel::{compile_where, lower_predicate, CompiledKernelWhere, KERNEL_PROFILE};
 
@@ -118,9 +119,9 @@ impl QueryBytecodeV1 {
         isa_hash(&self.isa)
     }
 
-    /// Decode/validate ISA (same path execution uses).
+    /// Decode/validate ISA with canonical re-encode check.
     pub fn decode(&self) -> Result<QueryIsaProgram, Error> {
-        decode_isa(&self.isa)
+        decode_isa_canonical(&self.isa)
     }
 
     /// Lower a validated Application Core plan → ISA envelope.
@@ -144,9 +145,9 @@ impl QueryBytecodeV1 {
         Self::from_core_plan(compiled.plan, compiled.budget)
     }
 
-    /// Construct from already-encoded ISA bytes (validates decode).
+    /// Construct from already-encoded ISA bytes (validates canonical decode).
     pub fn from_isa_bytes(isa: Vec<u8>) -> Result<Self, Error> {
-        let prog = decode_isa(&isa)?;
+        let prog = decode_isa_canonical(&isa)?;
         if prog.full.is_some() {
             return Err(Error::QueryInvalid(
                 "QueryBytecodeV1::from_isa_bytes: Core envelope cannot carry full pipeline"
@@ -247,7 +248,7 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
     heap_id: HeapId,
     collection_id: CollectionId,
 ) -> Result<QueryPage, Error> {
-    let prog = decode_isa(isa_bytes)?;
+    let prog = decode_isa_canonical(isa_bytes)?;
     if prog.full.is_some() {
         return Err(Error::QueryInvalid(
             "execute_isa_bytes: full-language ISA requires execute_full_isa_with".into(),

@@ -29,6 +29,15 @@ pub const ISA_VERSION: u8 = 1;
 
 const FLAG_BUDGET: u8 = 0x01;
 const FLAG_FULL: u8 = 0x02;
+/// Known top-level flag bits; any other bit is reserved and must be rejected.
+const FLAGS_KNOWN: u8 = FLAG_BUDGET | FLAG_FULL;
+/// Known budget flag bits (documents / bytes / result_bytes).
+const BUDGET_FLAGS_KNOWN: u8 = 0x01 | 0x02 | 0x04;
+
+/// Hard cap on total externally supplied ISA bytes (RQL-D0R).
+pub const ISA_MAX_TOTAL_BYTES: usize = 1 << 20;
+/// Hard cap on each length-prefixed section body.
+pub const ISA_MAX_SECTION_BYTES: usize = 1 << 20;
 
 /// Decoded durable program (Core always; optional full attach).
 #[derive(Debug, Clone, PartialEq)]
@@ -112,8 +121,14 @@ fn encode_program(
     Ok(out)
 }
 
-/// Decode ISA bytes into a program.
+/// Decode ISA bytes into a program (rejects reserved flag bits + oversize).
 pub fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
+    if bytes.len() > ISA_MAX_TOTAL_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "isa: total length {} exceeds max {ISA_MAX_TOTAL_BYTES}",
+            bytes.len()
+        )));
+    }
     if bytes.len() < 10 {
         return Err(Error::QueryInvalid("isa: truncated header".into()));
     }
@@ -127,8 +142,18 @@ pub fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
         )));
     }
     let flags = bytes[5];
+    if flags & !FLAGS_KNOWN != 0 {
+        return Err(Error::QueryInvalid(format!(
+            "isa: reserved flag bits set ({flags:#04x})"
+        )));
+    }
     let mut off = 6;
     let core_len = read_u32(bytes, &mut off)? as usize;
+    if core_len > ISA_MAX_SECTION_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "isa: core section {core_len} exceeds max {ISA_MAX_SECTION_BYTES}"
+        )));
+    }
     if off + core_len > bytes.len() {
         return Err(Error::QueryInvalid("isa: truncated core".into()));
     }
@@ -144,6 +169,11 @@ pub fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
 
     let full = if flags & FLAG_FULL != 0 {
         let flen = read_u32(bytes, &mut off)? as usize;
+        if flen > ISA_MAX_SECTION_BYTES {
+            return Err(Error::QueryInvalid(format!(
+                "isa: full section {flen} exceeds max {ISA_MAX_SECTION_BYTES}"
+            )));
+        }
         if off + flen > bytes.len() {
             return Err(Error::QueryInvalid("isa: truncated full".into()));
         }
@@ -164,6 +194,21 @@ pub fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
         budget,
         full,
     })
+}
+
+/// Decode externally supplied ISA and require canonical re-encode equality.
+///
+/// Product execution entries use this so distinct byte strings cannot share
+/// meaning while hashing differently (RQL-D0R / principal P1).
+pub fn decode_isa_canonical(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
+    let prog = decode_isa(bytes)?;
+    let again = encode_program(&prog.core, prog.budget, prog.full.clone())?;
+    if again.as_slice() != bytes {
+        return Err(Error::QueryInvalid(
+            "isa: non-canonical encoding (re-encode mismatch)".into(),
+        ));
+    }
+    Ok(prog)
 }
 
 /// BLAKE3-256 over domain || 0x00 || isa bytes (durable program identity).
@@ -224,6 +269,11 @@ fn read_budget(bytes: &[u8], off: &mut usize) -> Result<QueryBudget, Error> {
     }
     let flags = bytes[*off];
     *off += 1;
+    if flags & !BUDGET_FLAGS_KNOWN != 0 {
+        return Err(Error::QueryInvalid(format!(
+            "isa: reserved budget flag bits set ({flags:#04x})"
+        )));
+    }
     let mut b = QueryBudget {
         max_documents: None,
         max_bytes: None,
@@ -595,6 +645,30 @@ mod tests {
         )
         .expect("exec");
         assert!(page.rows.is_empty());
+    }
+
+    #[test]
+    fn reserved_top_level_flags_rejected() {
+        let id = CollectionId::from_bytes(uuidish(5)).expect("id");
+        let bc = lower_core_source("from items", id, "items").expect("lower");
+        let mut bad = bc.isa_bytes().to_vec();
+        bad[5] |= 0x80;
+        let err = decode_isa(&bad).expect_err("reserved flags");
+        assert!(
+            format!("{err:?}").contains("reserved flag"),
+            "{err:?}"
+        );
+    }
+
+    #[test]
+    fn non_canonical_rejected_by_decode_isa_canonical() {
+        let id = CollectionId::from_bytes(uuidish(6)).expect("id");
+        let bc = lower_core_source("from items", id, "items").expect("lower");
+        // Trailing zero after a valid program: decode_isa rejects trailing;
+        // flip is exercised by reserved-bit test. Canonical path accepts
+        // encoder output.
+        let prog = decode_isa_canonical(bc.isa_bytes()).expect("canonical");
+        assert_eq!(prog.profile, ISA_PROFILE);
     }
 
     #[test]

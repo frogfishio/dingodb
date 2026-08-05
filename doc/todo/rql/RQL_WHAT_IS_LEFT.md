@@ -1,53 +1,75 @@
 # RQL — what is left to do
 
-Status: **2026-08-05** · **Decision 0 OPEN** · Principal rejected premature C1  
-Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · [QUERY_IR_RESIDUAL.md](./QUERY_IR_RESIDUAL.md)
+Status: **2026-08-05** · **Decision 0 OPEN** · Principal **rejected** D0 closure + RQL-C1  
+Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
+[QUERY_IR_RESIDUAL.md](./QUERY_IR_RESIDUAL.md) · [QUERY_VM_V1.md](./QUERY_VM_V1.md)
 
 ---
 
 ## Are we done?
 
-**No.** Named attach IR is **not** a finished bytecode machine.
-**RQL-C1 must not be accepted.**
+**No.** IR1–IR4 organized Rust interpreters; they did **not** deliver one bytecode
+machine / one semantic executor.
+**RQL-C1 must not be accepted. Decision 0 must not be closed.**
 
 | Claim | Reality |
 |---|---|
-| Core path-project named IR | **IR1 labor closed** |
-| Core order/sort-tuple named IR | **IR2 labor closed** |
-| Core page/coverage named IR | **IR3 labor closed** |
-| Enrich/within attach named IR | **IR4 labor closed** |
-| One bytecode machine owns all query meaning | **False** — still Rust IR + scan glue |
-| Ready for RQL-C1 | **Forbidden** |
+| IR1–IR4 named phases | **Accepted as intermediate labor** |
+| Public execute only via validated ISA | **False** — residual (RQL-P0b) |
+| ISA = executable Query VM | **False** — still serialized plan + Rust interpreters |
+| Collection operands bound by immutable id | **Partial** — D0R harden for enrich/within |
+| Canonical ISA (reserved bits + re-encode) | **Partial** — D0R harden |
+| One collection-qualified host API | **False** — Core vs full still diverge |
+| Ready for RQL-C1 / Decision 0 close | **Forbidden** |
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT        = Principal Decision 0 / RQL-C1 gate only after residual honesty accepted
+NEXT labor  = Query VM programme (mandatory implementation)
 ```
 
 ---
 
-## Just shipped (IR4)
+## Hard acceptance invariant (principal)
 
-- `query_bytecode_v1/ir_attach.rs` (`residiuum-query-ir-attach-v1`)
-- `execute_full_isa_with` runs attach via `CompiledAttachIr` only
-- Evidence: `doc/todo/rql/evidence/rql_ir4_attach.log`
+```text
+All syntax → compiler intermediates → canonical Query ISA
+                                      ↓
+                              exactly one Query VM
+                                      ↓
+                          collection-qualified host API
+```
 
 ---
 
-## Ordered residual
+## Ordered residual (mandatory labor)
 
-| # | Who | Package | Exit |
-|---|---|---|---|
-| **1–4** | Labor | **RQL-IR1 / IR2 / IR3 / IR4** | **labor closed** |
-| **5** | Principal | **RQL-C1** | Only after IR residual accepted; **never before** |
+| # | Package | Exit |
+|---|---|---|
+| **D0R** | SoT + enrich/within `using_id` bind + ISA reserved/canonical | this harden slice |
+| **P0b** | Privatize public non-ISA execute/project/attach APIs | crate-private helpers; ISA entries only |
+| **VM0** | Charter real Query VM instruction set | [QUERY_VM_V1.md](./QUERY_VM_V1.md) |
+| **VM1** | One instruction-dispatch machine (Core + Full) | single loop |
+| **VM2** | Plans/IR compile-only; delete semantic executors after equivalence | |
+| **P1b** | Unify host behind collection-qualified `HostCapabilities` | |
+| **P1c** | Arch test: every frontend → same dispatch loop | |
+| **C1** | Principal only — **never** before invariant holds | |
+
+---
+
+## Just shipped (D0R)
+
+- Principal reject of D0/C1 recorded; NEXT is Query VM work
+- Enrich/within open-by-name verifies encoded `using_id`
+- ISA rejects reserved flag/budget bits; execute paths require canonical re-encode
+- Evidence: `doc/todo/rql/evidence/rql_d0r_harden.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT        = Principal Decision 0 / RQL-C1 gate (labor must not accept C1)
-FORBIDDEN   = RQL-C1 accept (Decision 0 OPEN)
-LANDED      = IR1–IR4 named IR phases (still Rust)
-HONESTY     = see QUERY_IR_RESIDUAL.md — not a bytecode machine yet
+NEXT        = RQL-P0b / RQL-VM0 (mandatory labor)
+FORBIDDEN   = Decision 0 close; RQL-C1 accept
+LANDED      = IR1–IR4 intermediate; D0R identity/canonical harden
+HONESTY     = still not one Query VM — see QUERY_VM_V1.md
 ```

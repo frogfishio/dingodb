@@ -1,11 +1,11 @@
 # Query IR residual — what is still not a bytecode machine
 
-Status: **2026-08-05 · RQL-IR4**  
+Status: **2026-08-05 · RQL-D0R**  
 Authority: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · Decision 0 **OPEN**  
-**RQL-C1 must not be accepted.**
+**RQL-C1 must not be accepted.** Principal rejected D0 closure — see [QUERY_VM_V1.md](./QUERY_VM_V1.md).
 
 Named IR phases (project + order + page + attach orchestration) are still
-**Rust IR residual** — **not** a finished bytecode machine.
+**Rust IR residual** — **not** a finished bytecode machine / Query VM.
 
 ---
 
@@ -33,11 +33,13 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 ## Explicit non-claims
 
 - IR1–IR4 ≠ Decision 0 closed
-- Named IR ≠ opcode machine
+- Named IR ≠ opcode machine / Query VM
 - **RQL-C1 must not be accepted**
+- NEXT labor = Query VM programme ([QUERY_VM_V1.md](./QUERY_VM_V1.md)) — **not** principal C1
 
 ---
 
 ## Evidence
 
 - `doc/todo/rql/evidence/rql_ir4_attach.log`
+- `doc/todo/rql/evidence/rql_d0r_harden.log`

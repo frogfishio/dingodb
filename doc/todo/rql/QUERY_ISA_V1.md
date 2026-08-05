@@ -56,7 +56,8 @@ canonical JSON for filters / candidate `where`.
 | API | Meaning |
 |---|---|
 | `encode_core_program` / `encode_full_program` | Lower plan (+ attach) → ISA |
-| `decode_isa` | ISA → `QueryIsaProgram` |
+| `decode_isa` | ISA → `QueryIsaProgram` (reserved bits + size caps) |
+| `decode_isa_canonical` | Decode + require canonical re-encode equality |
 | `QueryBytecodeV1.isa` | Always stamped on Core lower |
 | `execute_isa_bytes` | Decode Core ISA → `execute_decoded_core` |
 | `execute_decoded_core` | Shared Core page after decode (X5c one-dispatch) |
@@ -75,6 +76,10 @@ executable authority. Residual interpreters:
 
 - Encoding is durable AST carrier; Core **and attach filter** eval is via
   [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md) (X4 / X4b).
+- **RQL-D0R:** reserved top-level / budget flag bits rejected; product execute
+  uses `decode_isa_canonical` (re-encode equality). Size caps:
+  `ISA_MAX_TOTAL_BYTES` / `ISA_MAX_SECTION_BYTES`.
+- Still **not** an opcode Query VM — see [QUERY_VM_V1.md](./QUERY_VM_V1.md).
 - No claim that remote op 118 ships ISA bytes on the wire yet (packing residual).
 
 ---

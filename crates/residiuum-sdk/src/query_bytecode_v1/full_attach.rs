@@ -37,7 +37,7 @@ use residiuum_heap::CollectionId;
 use serde_json::{Map, Value as JsonValue};
 use std::collections::BTreeMap;
 
-use super::isa::{decode_isa, encode_full_program, ISA_PROFILE};
+use super::isa::{decode_isa_canonical, encode_full_program, ISA_PROFILE};
 use super::execute_decoded_core;
 use super::ir_attach::CompiledAttachIr;
 
@@ -1746,7 +1746,7 @@ pub fn execute_full_isa_with(
     parameters: &Parameters,
     options: RqlFullExecuteOptions,
 ) -> Result<RqlFullPage, Error> {
-    let prog = decode_isa(isa_bytes)?;
+    let prog = decode_isa_canonical(isa_bytes)?;
     if prog.profile != ISA_PROFILE {
         return Err(Error::QueryInvalid(format!(
             "execute_full_isa: profile mismatch: got {:?}, want {ISA_PROFILE}",
@@ -1760,7 +1760,8 @@ pub fn execute_full_isa_with(
     })?;
 
     let from_name = prog.core.from.source_name.clone();
-    let mut base_col = client.open_collection(&from_name)?;
+    let expected_base = prog.core.from.collection_id;
+    let mut base_col = open_collection_bound(client, &from_name, expected_base)?;
     let heap_id = base_col.heap_id();
     let collection_id = base_col.id();
 
@@ -1804,6 +1805,9 @@ pub fn execute_full_isa_with(
 }
 
 /// Load foreign docs for a **root** enrich: equality index when usable, else scan.
+///
+/// Opens by `using_name` then **requires** the live collection id to equal the
+/// ISA-encoded `using_id` (name rebinding must not change durable ISA meaning).
 pub(crate) fn load_foreign_docs_for_root_enrich(
     client: &mut HeapClient,
     step: &EnrichStepV1,
@@ -1812,7 +1816,7 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
 ) -> Result<(Vec<(String, JsonValue)>, EnrichAttachMode), Error> {
     if force_scan {
         return Ok((
-            load_collection_docs(client, &step.using_name)?,
+            load_collection_docs(client, &step.using_name, step.using_id)?,
             EnrichAttachMode::Scan,
         ));
     }
@@ -1820,13 +1824,13 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
     // Equality indexes today are single-field path labels (APB-7 T4).
     if right_field.is_empty() || right_field.contains('.') {
         return Ok((
-            load_collection_docs(client, &step.using_name)?,
+            load_collection_docs(client, &step.using_name, step.using_id)?,
             EnrichAttachMode::Scan,
         ));
     }
 
     let left_values = collect_present_left_values(roots, &step.left);
-    let mut col = client.open_collection(&step.using_name)?;
+    let mut col = open_collection_bound(client, &step.using_name, step.using_id)?;
 
     if left_values.is_empty() {
         // Probe whether a usable equality index exists without loading all docs.
@@ -1834,7 +1838,7 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
             None => {
                 drop(col);
                 return Ok((
-                    load_collection_docs(client, &step.using_name)?,
+                    load_collection_docs(client, &step.using_name, step.using_id)?,
                     EnrichAttachMode::Scan,
                 ));
             }
@@ -1848,7 +1852,7 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
             None => {
                 drop(col);
                 return Ok((
-                    load_collection_docs(client, &step.using_name)?,
+                    load_collection_docs(client, &step.using_name, step.using_id)?,
                     EnrichAttachMode::Scan,
                 ));
             }
@@ -1886,10 +1890,11 @@ fn collect_present_left_values(
 fn ensure_foreign_docs(
     client: &mut HeapClient,
     name: &str,
+    expected_id: CollectionId,
     cache: &mut BTreeMap<String, Vec<(String, JsonValue)>>,
 ) -> Result<(), Error> {
     if !cache.contains_key(name) {
-        let docs = load_collection_docs(client, name)?;
+        let docs = load_collection_docs(client, name, expected_id)?;
         cache.insert(name.to_string(), docs);
     }
     Ok(())
@@ -1903,7 +1908,7 @@ pub(crate) fn collect_within_using_names(
     for nested in &step.steps {
         match nested {
             FullPipelineStepV1::Enrich(e) => {
-                ensure_foreign_docs(client, &e.using_name, cache)?;
+                ensure_foreign_docs(client, &e.using_name, e.using_id, cache)?;
             }
             FullPipelineStepV1::Within(w) => {
                 collect_within_using_names(w, cache, client)?;
@@ -1914,11 +1919,28 @@ pub(crate) fn collect_within_using_names(
     Ok(())
 }
 
+/// Open by name and refuse if the live immutable id ≠ ISA-encoded id.
+pub(crate) fn open_collection_bound(
+    client: &mut HeapClient,
+    name: &str,
+    expected_id: CollectionId,
+) -> Result<crate::app_v1::CollectionClient, Error> {
+    let col = client.open_collection(name)?;
+    if col.id() != expected_id {
+        return Err(Error::QueryInvalid(format!(
+            "collection id mismatch for `{name}`: opened {}, isa encoded {expected_id}",
+            col.id()
+        )));
+    }
+    Ok(col)
+}
+
 fn load_collection_docs(
     client: &mut HeapClient,
     name: &str,
+    expected_id: CollectionId,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
-    let mut col = client.open_collection(name)?;
+    let mut col = open_collection_bound(client, name, expected_id)?;
     let mut foreign = Vec::new();
     let mut after: Option<String> = None;
     loop {
