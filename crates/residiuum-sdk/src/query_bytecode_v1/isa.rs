@@ -593,12 +593,17 @@ mod tests {
     impl HostCapabilities for EmptyHost {
         fn list_keys(
             &mut self,
+            _collection_id: CollectionId,
             _limit: Option<usize>,
             _after_key: Option<&str>,
         ) -> Result<Vec<String>, Error> {
             Ok(Vec::new())
         }
-        fn get_json(&mut self, _key: &str) -> Result<Option<JsonValue>, Error> {
+        fn get_json(
+            &mut self,
+            _collection_id: CollectionId,
+            _key: &str,
+        ) -> Result<Option<JsonValue>, Error> {
             Ok(None)
         }
     }

@@ -1,0 +1,22 @@
+=== RQL-P1b evidence 2026-08-05T09:04:18Z ===
+check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b; Decision 0 OPEN; C1 forbidden; VM2/P1c residual)
+test query_bytecode_v1::vm_exec::tests::lower_full_emits_enrich_and_within_end ... ok
+test query_bytecode_v1::vm_exec::tests::lower_core_shape ... ok
+test query_bytecode_v1::tests::execute_empty_host_one_page ... ok
+test query_bytecode_v1::tests::execute_decoded_core_is_shared_core_entry ... ok
+test query_bytecode_v1::tests::execute_bytecode_uses_isa_not_sidecar_plan ... ok
+
+test result: ok. 56 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.01s
+
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib) generated 19 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/rql_full_isa_execute.rs (target/debug/deps/rql_full_isa_execute-46b5532a9a76a005)
+
+running 2 tests
+test execute_full_isa_enrich_within_project_nonempty ... ok
+test corrupted_full_isa_refuses_execute ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+

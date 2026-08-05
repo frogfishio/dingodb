@@ -573,6 +573,34 @@ impl HeapClient {
         }
     }
 
+    /// Open a collection by immutable id (RQL-P1b).
+    ///
+    /// Resolves the live name via [`Self::list_collections`], opens it, and
+    /// refuses if the opened id ≠ `collection_id`.
+    pub fn open_collection_by_id(
+        &mut self,
+        collection_id: CollectionId,
+    ) -> Result<CollectionClient, Error> {
+        let listed = self.list_collections()?;
+        let name = listed
+            .iter()
+            .find(|c| c.collection_id == collection_id)
+            .map(|c| c.name.clone())
+            .ok_or_else(|| {
+                Error::QueryInvalid(format!(
+                    "open_collection_by_id: unknown collection {collection_id}"
+                ))
+            })?;
+        let col = self.open_collection(&name)?;
+        if col.id() != collection_id {
+            return Err(Error::QueryInvalid(format!(
+                "collection id mismatch for `{name}`: opened {}, want {collection_id}",
+                col.id()
+            )));
+        }
+        Ok(col)
+    }
+
     /// Open by canonical name (embedded: [`Heap::collection`]; remote: op 105).
     pub fn open_collection(&mut self, name: &str) -> Result<CollectionClient, Error> {
         match &self.backend {
@@ -1977,23 +2005,78 @@ impl<'a> CollectionQuery<'a> {
     }
 }
 
-impl crate::query_bytecode_v1::HostCapabilities for CollectionClient {
+impl crate::query_bytecode_v1::HostCapabilities for HeapClient {
     fn list_keys(
         &mut self,
+        collection_id: CollectionId,
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, Error> {
+        let mut col = self.open_collection_by_id(collection_id)?;
+        CollectionClient::list_keys(&mut col, limit, after_key)
+    }
+
+    fn get_json(
+        &mut self,
+        collection_id: CollectionId,
+        key: &str,
+    ) -> Result<Option<serde_json::Value>, Error> {
+        let mut col = self.open_collection_by_id(collection_id)?;
+        CollectionClient::get(&mut col, key)
+    }
+
+    fn lookup_index_keys(
+        &mut self,
+        collection_id: CollectionId,
+        equalities: &[(String, serde_json::Value)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        let mut col = self.open_collection_by_id(collection_id)?;
+        <CollectionClient as crate::query_bytecode_v1::HostCapabilities>::lookup_index_keys(
+            &mut col,
+            collection_id,
+            equalities,
+        )
+    }
+}
+
+impl crate::query_bytecode_v1::HostCapabilities for CollectionClient {
+    fn list_keys(
+        &mut self,
+        collection_id: CollectionId,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        if collection_id != self.collection_id {
+            return Err(Error::QueryInvalid(
+                "HostCapabilities: collection_id mismatch on CollectionClient".into(),
+            ));
+        }
         CollectionClient::list_keys(self, limit, after_key)
     }
 
-    fn get_json(&mut self, key: &str) -> Result<Option<serde_json::Value>, Error> {
+    fn get_json(
+        &mut self,
+        collection_id: CollectionId,
+        key: &str,
+    ) -> Result<Option<serde_json::Value>, Error> {
+        if collection_id != self.collection_id {
+            return Err(Error::QueryInvalid(
+                "HostCapabilities: collection_id mismatch on CollectionClient".into(),
+            ));
+        }
         CollectionClient::get(self, key)
     }
 
     fn lookup_index_keys(
         &mut self,
+        collection_id: CollectionId,
         equalities: &[(String, serde_json::Value)],
     ) -> Result<Option<Vec<String>>, Error> {
+        if collection_id != self.collection_id {
+            return Err(Error::QueryInvalid(
+                "HostCapabilities: collection_id mismatch on CollectionClient".into(),
+            ));
+        }
         match &self.backend {
             CollectionBackend::Embedded(hc) => hc.lookup_index_keys(equalities),
             // Remote residual: no index-probe wire for Application Core yet.
@@ -2008,18 +2091,31 @@ impl crate::query_bytecode_v1::DocScan for CollectionClient {
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, Error> {
-        <Self as crate::query_bytecode_v1::HostCapabilities>::list_keys(self, limit, after_key)
+        <Self as crate::query_bytecode_v1::HostCapabilities>::list_keys(
+            self,
+            self.collection_id,
+            limit,
+            after_key,
+        )
     }
 
     fn get_json(&mut self, key: &str) -> Result<Option<serde_json::Value>, Error> {
-        <Self as crate::query_bytecode_v1::HostCapabilities>::get_json(self, key)
+        <Self as crate::query_bytecode_v1::HostCapabilities>::get_json(
+            self,
+            self.collection_id,
+            key,
+        )
     }
 
     fn try_equality_index_keys(
         &mut self,
         equalities: &[(String, serde_json::Value)],
     ) -> Result<Option<Vec<String>>, Error> {
-        <Self as crate::query_bytecode_v1::HostCapabilities>::lookup_index_keys(self, equalities)
+        <Self as crate::query_bytecode_v1::HostCapabilities>::lookup_index_keys(
+            self,
+            self.collection_id,
+            equalities,
+        )
     }
 }
 

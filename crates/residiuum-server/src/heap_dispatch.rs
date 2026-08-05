@@ -1318,9 +1318,15 @@ struct HeapStoreDocScan<'a> {
 impl HostCapabilities for HeapStoreDocScan<'_> {
     fn list_keys(
         &mut self,
+        collection_id: residiuum_heap::CollectionId,
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, SdkError> {
+        if collection_id.as_bytes() != &self.collection_id {
+            return Err(SdkError::QueryInvalid(
+                "HostCapabilities: collection_id mismatch on HeapStoreDocScan".into(),
+            ));
+        }
         let lim = limit.unwrap_or(256).clamp(1, 4096);
         let after = after_key.map(|s| s.as_bytes());
         let keys = self
@@ -1336,7 +1342,16 @@ impl HostCapabilities for HeapStoreDocScan<'_> {
         Ok(out)
     }
 
-    fn get_json(&mut self, key: &str) -> Result<Option<Value>, SdkError> {
+    fn get_json(
+        &mut self,
+        collection_id: residiuum_heap::CollectionId,
+        key: &str,
+    ) -> Result<Option<Value>, SdkError> {
+        if collection_id.as_bytes() != &self.collection_id {
+            return Err(SdkError::QueryInvalid(
+                "HostCapabilities: collection_id mismatch on HeapStoreDocScan".into(),
+            ));
+        }
         let body = self
             .store
             .get_collection(&self.collection_id, key.as_bytes())
@@ -1354,8 +1369,14 @@ impl HostCapabilities for HeapStoreDocScan<'_> {
 
     fn lookup_index_keys(
         &mut self,
+        collection_id: residiuum_heap::CollectionId,
         equalities: &[(String, Value)],
     ) -> Result<Option<Vec<String>>, SdkError> {
+        if collection_id.as_bytes() != &self.collection_id {
+            return Err(SdkError::QueryInvalid(
+                "HostCapabilities: collection_id mismatch on HeapStoreDocScan".into(),
+            ));
+        }
         let found = self
             .store
             .lookup_index_keys(&self.collection_id, equalities)

@@ -8,7 +8,7 @@
 //! Still a **Rust IR residual** (not an opcode machine). Decision 0 remains OPEN;
 //! RQL-C1 must not be accepted.
 
-use crate::app_v1::{HeapClient, Parameters};
+use crate::app_v1::Parameters;
 use crate::error::Error;
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
@@ -18,6 +18,7 @@ use super::full_attach::{
     collect_within_using_names, filter_rows, load_foreign_docs_for_root_enrich, EnrichAttachMode,
     EnrichLoadEvidence, FullPipelineStepV1, ProjectItemV1,
 };
+use super::HostCapabilities;
 
 /// IR profile id for full-language attach.
 pub const ATTACH_IR_PROFILE: &str = "residiuum-query-ir-attach-v1";
@@ -46,16 +47,16 @@ impl CompiledAttachIr {
         }
     }
 
-    /// Run attach against base-page rows.
-    pub fn run(
+    /// Run attach against base-page rows via collection-qualified host (RQL-P1b).
+    pub fn run<H: HostCapabilities>(
         &self,
-        client: &mut HeapClient,
+        host: &mut H,
         rows: Vec<(String, JsonValue)>,
         parameters: &Parameters,
         force_enrich_scan: bool,
     ) -> Result<(Vec<(String, JsonValue)>, Vec<EnrichLoadEvidence>), Error> {
         run_attach_pipeline(
-            client,
+            host,
             rows,
             &self.pipeline,
             &self.project,
@@ -66,8 +67,8 @@ impl CompiledAttachIr {
 }
 
 /// Run enrich / within / filter pipeline, then optional brace project.
-pub(crate) fn run_attach_pipeline(
-    client: &mut HeapClient,
+pub(crate) fn run_attach_pipeline<H: HostCapabilities>(
+    host: &mut H,
     mut rows: Vec<(String, JsonValue)>,
     pipeline: &[FullPipelineStepV1],
     project: &Option<Vec<ProjectItemV1>>,
@@ -80,7 +81,7 @@ pub(crate) fn run_attach_pipeline(
         match step {
             FullPipelineStepV1::Enrich(e) => {
                 let (foreign, mode) = load_foreign_docs_for_root_enrich(
-                    client,
+                    host,
                     e,
                     &rows,
                     force_enrich_scan,
@@ -100,7 +101,7 @@ pub(crate) fn run_attach_pipeline(
                 rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;
             }
             FullPipelineStepV1::Within(w) => {
-                collect_within_using_names(w, &mut foreign_cache, client)?;
+                collect_within_using_names(w, &mut foreign_cache, host)?;
                 rows = attach_within_rows(&rows, &foreign_cache, w, &parameters.values)?;
             }
             FullPipelineStepV1::Filter(pred) => {

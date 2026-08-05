@@ -1,13 +1,12 @@
-# Query VM v1 — instruction set (RQL-VM0)
+# Query VM v1 — instruction set + dispatch
 
-Status: **labor closed 2026-08-05** · board RQL-VM0 `577b4a0b`  
+Status: **VM0 + VM1 labor closed 2026-08-05** · board RQL-VM1 `46c2478b`  
 Profile id: **`residiuum-query-vm-v1`** · version byte **`1`**  
-Runtime stamp: `query_bytecode_v1/vm.rs`  
+Runtime: `query_bytecode_v1/vm.rs` (opcodes) · `query_bytecode_v1/vm_exec.rs` (dispatch)  
 Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
-This freezes the **opcode vocabulary** for one Query VM covering Core and Full
-RQL. It does **not** implement the dispatch loop (**RQL-VM1**) and does **not**
-close Decision 0 / accept RQL-C1.
+Opcode vocabulary (**RQL-VM0**) and one instruction-dispatch machine (**RQL-VM1**)
+for Core and Full RQL. Does **not** close Decision 0 / accept RQL-C1.
 
 ---
 
@@ -22,8 +21,10 @@ All syntax → compiler intermediates → canonical Query ISA / QVM program
 ```
 
 Today (`residiuum-query-isa-v1` / `RQB1`) remains a durable **AST carrier**.
-VM0 defines the **machine** those carriers must lower into. Product execute
-still uses Rust interpreters until VM1 lands.
+Product execute lowers decoded plans into a QVM program and runs
+`run_vm_core` / `run_vm_attach`. Core pipeline opcodes still call fused
+`execute_plan` until **RQL-VM2**. Host Full attach uses collection-qualified
+`HostCapabilities` (**RQL-P1b** landed).
 
 ---
 
@@ -31,17 +32,16 @@ still uses Rust interpreters until VM1 lands.
 
 | Component | Role |
 |---|---|
-| **Program** | Sequence of [`OpCode`] + immediates + const pool |
+| **Program** | Sequence of [`OpCode`] + typed immediates (`VmProgram`) |
 | **Working set** | Ordered row bag `(key, json)` under transformation |
-| **Frame** | Bound collection id(s); nested within stack |
+| **Frame** | Bound collection id(s); nested within still carried on Within imm |
 | **Host** | scan / index / get only — **by immutable collection id** (P1b) |
 | **Kernel** | Predicate eval via `residiuum-query-kernel-sda-v1` |
 
 Rules:
 
-1. One dispatch loop interprets all opcodes (Core and Full share it).
-2. `RqlPlanV1` / IR structs are **compiler intermediates only** — never product
-   execute entry after VM1 equivalence.
+1. One dispatch loop interprets opcodes (Core via `run_vm_core`; Full attach via `run_vm_attach`).
+2. `RqlPlanV1` / IR structs remain **compiler intermediates**; product entry is ISA → lower → VM. Fused Core body is an honest VM2 residual.
 3. Every collection operand is an immutable `CollectionId` (name is diagnostic).
 4. Unknown opcode bytes and reserved immediates **refuse**.
 
@@ -68,7 +68,7 @@ Rules:
 Reserved ranges: `0x00`, `0x02–0x0F` unused bind, `0x12–0x1F`, `0x21–0x2F`,
 `0x31–0x3F`, `0x41–0x4F`, `0x51–0x5F`, `0x65–0xEF`, `0xF0–0xFE`.
 
-Rust: `query_bytecode_v1::OpCode` / `VM_PROFILE`.
+Rust: `query_bytecode_v1::OpCode` / `VM_PROFILE` / `vm_exec`.
 
 ---
 
@@ -76,11 +76,11 @@ Rust: `query_bytecode_v1::OpCode` / `VM_PROFILE`.
 
 ```text
 BindCollection(base_id)
-IndexEq? | Scan
-Filter(where)
-Order(terms)?
-Page(page_size, coverage)
-ProjectPaths(paths)?
+IndexEq | Scan
+Filter
+Order
+Page
+ProjectPaths
 Halt
 ```
 
@@ -93,33 +93,35 @@ ProjectBrace?
 Halt
 ```
 
-Nested enrich inside `Within`…`WithinEnd` uses the same `Enrich` opcode with
-frame-relative left paths.
+Nested enrich inside `Within`…`WithinEnd` remains on the `Within` immediate
+until a later slice expands nested ops onto the flat stream.
 
 ---
 
 ## Relationship to `residiuum-query-isa-v1`
 
-| Artifact | Role now | Role after VM1 |
+| Artifact | Role now (after VM1) | Role after VM2 |
 |---|---|---|
-| `RQB1` ISA bytes | Durable AST carrier + execute authority | Compile input / exchange; lower → QVM ops |
-| `OpCode` program | **Defined (VM0)**; not executed | Sole semantic executor input |
-| `execute_plan` / attach IR | Crate-private Rust interpreters | Delete after equivalence (VM2) |
+| `RQB1` ISA bytes | Durable AST carrier + execute authority; lower → QVM | Compile input / exchange |
+| `OpCode` / `VmProgram` | **Dispatched** product path | Sole semantic executor input |
+| `execute_plan` / attach helpers | Called from Core/attach opcode bodies | Delete after equivalence |
 
-A future durable **QVM wire encoding** (magic/version distinct from `RQB1`) may
-ship with VM1; until then, in-memory `Vec<Instruction>` is the machine form.
+In-memory typed `VmProgram` is the machine form; a durable QVM wire encoding
+may ship later (magic/version distinct from `RQB1`).
 
 ---
 
 ## Non-claims
 
-- VM0 ≠ dispatch machine (that is **RQL-VM1**)
-- VM0 ≠ Decision 0 closed
+- VM1 ≠ Decision 0 complete
+- VM1 ≠ opcode-granular Core semantics without `execute_plan` (that is **VM2**)
+- VM1 ≠ collection-qualified host alone (P1b is separate; now landed)
 - **RQL-C1 must not be accepted**
-- Named IR phases ≠ Query VM
+- Named IR phases ≠ finished Query VM alone
 
 ---
 
 ## Evidence
 
 - `doc/todo/rql/evidence/rql_vm0_opcodes.log`
+- `doc/todo/rql/evidence/rql_vm1_dispatch.log`

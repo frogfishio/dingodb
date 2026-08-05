@@ -39,7 +39,8 @@ use std::collections::BTreeMap;
 
 use super::isa::{decode_isa_canonical, encode_full_program, ISA_PROFILE};
 use super::execute_decoded_core;
-use super::ir_attach::CompiledAttachIr;
+use super::vm_exec::{lower_full, run_vm_attach};
+use super::HostCapabilities;
 
 /// Full-language compile profile (Phase 3 kickoff).
 pub const RQL_FULL_PROFILE: &str = "rql-full-v1";
@@ -1737,9 +1738,10 @@ pub fn execute_rql_full_with(
 
 /// Full-language entry: decode ISA (must carry full section), then execute.
 ///
-/// Base page uses shared [`super::execute_decoded_core`] on the **already
-/// decoded** Core plan (one decode; no Core re-encode). Attach pipeline/project
-/// come only from the decoded full section.
+/// Base page uses shared [`super::execute_decoded_core`] on the heap host
+/// (collection-qualified; RQL-P1b). Attach pipeline/project lower into the same
+/// Query VM and run via [`run_vm_attach`] — foreign loads use HostCapabilities
+/// by immutable collection id (no name-only open bypass).
 pub fn execute_full_isa_with(
     client: &mut HeapClient,
     isa_bytes: &[u8],
@@ -1759,15 +1761,18 @@ pub fn execute_full_isa_with(
         )
     })?;
 
-    let from_name = prog.core.from.source_name.clone();
-    let expected_base = prog.core.from.collection_id;
-    let mut base_col = open_collection_bound(client, &from_name, expected_base)?;
-    let heap_id = base_col.heap_id();
-    let collection_id = base_col.id();
+    let collection_id = prog.core.from.collection_id;
+    let heap_id = client.id();
+    // Optional name↔id honesty check (D0R): when the ISA carries a source name,
+    // refuse if the live collection under that name has a different id.
+    let from_name = prog.core.from.source_name.as_str();
+    if !from_name.is_empty() {
+        let _ = open_collection_bound(client, from_name, collection_id)?;
+    }
 
-    // X5c one-dispatch: same Core entry as execute_isa_bytes after decode.
+    // Shared Core VM entry — HeapClient is collection-qualified HostCapabilities.
     let page = execute_decoded_core(
-        &mut base_col,
+        client,
         &prog.core,
         prog.budget,
         &parameters.values,
@@ -1778,17 +1783,21 @@ pub fn execute_full_isa_with(
 
     let pipeline = full.pipeline.clone();
     let project = full.project.clone();
-
     let rows: Vec<(String, JsonValue)> = page
         .rows
         .iter()
         .map(|r| (r.key.clone(), r.value.clone()))
         .collect();
 
-    // RQL-IR4: attach orchestration via named IR phase.
-    let attach = CompiledAttachIr::lower(pipeline.clone(), project.clone());
-    let (rows, enrich_loads) = attach.run(
+    let vm = lower_full(
+        prog.core.clone(),
+        prog.budget,
+        pipeline.clone(),
+        project.clone(),
+    );
+    let (rows, enrich_loads) = run_vm_attach(
         client,
+        &vm,
         rows,
         parameters,
         options.force_enrich_scan,
@@ -1806,17 +1815,18 @@ pub fn execute_full_isa_with(
 
 /// Load foreign docs for a **root** enrich: equality index when usable, else scan.
 ///
-/// Opens by `using_name` then **requires** the live collection id to equal the
-/// ISA-encoded `using_id` (name rebinding must not change durable ISA meaning).
-pub(crate) fn load_foreign_docs_for_root_enrich(
-    client: &mut HeapClient,
+/// All I/O goes through collection-qualified [`HostCapabilities`] on
+/// `step.using_id` (RQL-P1b). `using_name` is diagnostic only.
+pub(crate) fn load_foreign_docs_for_root_enrich<H: HostCapabilities>(
+    host: &mut H,
     step: &EnrichStepV1,
     roots: &[(String, JsonValue)],
     force_scan: bool,
 ) -> Result<(Vec<(String, JsonValue)>, EnrichAttachMode), Error> {
+    let cid = step.using_id;
     if force_scan {
         return Ok((
-            load_collection_docs(client, &step.using_name, step.using_id)?,
+            load_collection_docs(host, cid)?,
             EnrichAttachMode::Scan,
         ));
     }
@@ -1824,21 +1834,19 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
     // Equality indexes today are single-field path labels (APB-7 T4).
     if right_field.is_empty() || right_field.contains('.') {
         return Ok((
-            load_collection_docs(client, &step.using_name, step.using_id)?,
+            load_collection_docs(host, cid)?,
             EnrichAttachMode::Scan,
         ));
     }
 
     let left_values = collect_present_left_values(roots, &step.left);
-    let mut col = open_collection_bound(client, &step.using_name, step.using_id)?;
 
     if left_values.is_empty() {
         // Probe whether a usable equality index exists without loading all docs.
-        match col.lookup_index_keys(&[(right_field.clone(), JsonValue::Null)])? {
+        match host.lookup_index_keys(cid, &[(right_field.clone(), JsonValue::Null)])? {
             None => {
-                drop(col);
                 return Ok((
-                    load_collection_docs(client, &step.using_name, step.using_id)?,
+                    load_collection_docs(host, cid)?,
                     EnrichAttachMode::Scan,
                 ));
             }
@@ -1848,11 +1856,10 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
 
     let mut by_key: BTreeMap<String, JsonValue> = BTreeMap::new();
     for val in left_values.values() {
-        match col.lookup_index_keys(&[(right_field.clone(), val.clone())])? {
+        match host.lookup_index_keys(cid, &[(right_field.clone(), val.clone())])? {
             None => {
-                drop(col);
                 return Ok((
-                    load_collection_docs(client, &step.using_name, step.using_id)?,
+                    load_collection_docs(host, cid)?,
                     EnrichAttachMode::Scan,
                 ));
             }
@@ -1861,7 +1868,7 @@ pub(crate) fn load_foreign_docs_for_root_enrich(
                     if by_key.contains_key(&k) {
                         continue;
                     }
-                    if let Some(doc) = col.get(&k)? {
+                    if let Some(doc) = host.get_json(cid, &k)? {
                         by_key.insert(k, doc);
                     }
                 }
@@ -1887,31 +1894,31 @@ fn collect_present_left_values(
     out
 }
 
-fn ensure_foreign_docs(
-    client: &mut HeapClient,
+fn ensure_foreign_docs<H: HostCapabilities>(
+    host: &mut H,
     name: &str,
     expected_id: CollectionId,
     cache: &mut BTreeMap<String, Vec<(String, JsonValue)>>,
 ) -> Result<(), Error> {
     if !cache.contains_key(name) {
-        let docs = load_collection_docs(client, name, expected_id)?;
+        let docs = load_collection_docs(host, expected_id)?;
         cache.insert(name.to_string(), docs);
     }
     Ok(())
 }
 
-pub(crate) fn collect_within_using_names(
+pub(crate) fn collect_within_using_names<H: HostCapabilities>(
     step: &WithinStepV1,
     cache: &mut BTreeMap<String, Vec<(String, JsonValue)>>,
-    client: &mut HeapClient,
+    host: &mut H,
 ) -> Result<(), Error> {
     for nested in &step.steps {
         match nested {
             FullPipelineStepV1::Enrich(e) => {
-                ensure_foreign_docs(client, &e.using_name, e.using_id, cache)?;
+                ensure_foreign_docs(host, &e.using_name, e.using_id, cache)?;
             }
             FullPipelineStepV1::Within(w) => {
-                collect_within_using_names(w, cache, client)?;
+                collect_within_using_names(w, cache, host)?;
             }
             FullPipelineStepV1::Filter(_) => {}
         }
@@ -1935,21 +1942,20 @@ pub(crate) fn open_collection_bound(
     Ok(col)
 }
 
-fn load_collection_docs(
-    client: &mut HeapClient,
-    name: &str,
-    expected_id: CollectionId,
+/// Full-scan a collection via collection-qualified host (RQL-P1b).
+fn load_collection_docs<H: HostCapabilities>(
+    host: &mut H,
+    collection_id: CollectionId,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
-    let mut col = open_collection_bound(client, name, expected_id)?;
     let mut foreign = Vec::new();
     let mut after: Option<String> = None;
     loop {
-        let batch = col.list_keys(Some(256), after.as_deref())?;
+        let batch = host.list_keys(collection_id, Some(256), after.as_deref())?;
         if batch.is_empty() {
             break;
         }
         for k in &batch {
-            if let Some(v) = col.get(k)? {
+            if let Some(v) = host.get_json(collection_id, k)? {
                 foreign.push((k.clone(), v));
             }
         }

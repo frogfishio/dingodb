@@ -7,17 +7,17 @@
 //! `decode_isa` → interpret. An independent Rust `plan` field is forbidden so
 //! ISA identity cannot diverge from executed meaning.
 //!
-//! **RQL-X5c one-dispatch:** after decode, Core page always goes through
-//! [`execute_decoded_core`] → [`execute_plan`]. Full path decodes once and
-//! reuses that Core entry (no Core re-encode). See
-//! [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) for
-//! what is still a Rust interpreter of decoded structures.
+//! **RQL-VM1:** after decode, Core and Full lower into one Query VM program and
+//! run through [`vm_exec::run_vm_core`] / [`vm_exec::run_vm_attach`] (opcode
+//! dispatch). Core pipeline opcodes still call [`execute_plan`] as a fused
+//! body until **RQL-VM2**. See
+//! [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) and
+//! [QUERY_VM_V1.md](../../../../doc/todo/rql/QUERY_VM_V1.md).
 //!
 //! Host adapters supply scan/index/get only.
 //!
-//! Residual (Decision 0 still open): Query VM opcodes are frozen (RQL-VM0) but
-//! not yet dispatched; execute still uses Rust interpreters of ISA-decoded
-//! plans/IR. **RQL-C1 must not be accepted.**
+//! Residual (Decision 0 still open): VM dispatches, but Core/attach helpers are
+//! still Rust interpreters of ISA-decoded plans/IR. **RQL-C1 must not be accepted.**
 
 mod core_page;
 mod full_attach;
@@ -28,9 +28,12 @@ mod ir_project;
 mod isa;
 mod kernel;
 mod vm;
+mod vm_exec;
 
 pub use core_page::{explain_rql_source, EXEC_PROFILE};
 // Crate-private semantic executors (RQL-P0b) — available inside the SDK crate only.
+// `execute_plan` remains for VM Core opcode bodies until RQL-VM2.
+#[allow(unused_imports)] // re-export for crate-internal callers / VM residual
 pub(crate) use core_page::{execute_plan, execute_rql, DocScan};
 pub use full_attach::{
     compile_rql_full, execute_full_isa_with, execute_rql_full, execute_rql_full_with,
@@ -65,21 +68,31 @@ use std::collections::BTreeMap;
 /// Architecture freeze profile id.
 pub const BYTECODE_PROFILE: &str = "residiuum-query-bytecode-v1";
 
-/// Host data-access capabilities only (Decision 0 / RQL-X1).
+/// Host data-access capabilities only (Decision 0 / RQL-X1 / **RQL-P1b**).
+///
+/// Every data op is **collection-qualified** by immutable [`CollectionId`].
+/// Core and Full share this surface; Full attach must not bypass via
+/// name-only `HeapClient::open_collection` for foreign loads.
 pub trait HostCapabilities {
-    /// Deterministic key stream.
+    /// Deterministic key stream for `collection_id`.
     fn list_keys(
         &mut self,
+        collection_id: CollectionId,
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, Error>;
 
-    /// Document get (`None` = absent).
-    fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error>;
+    /// Document get on `collection_id` (`None` = absent).
+    fn get_json(
+        &mut self,
+        collection_id: CollectionId,
+        key: &str,
+    ) -> Result<Option<JsonValue>, Error>;
 
-    /// Optional equality-index candidate keys (not a semantic filter).
+    /// Optional equality-index candidate keys on `collection_id` (not a semantic filter).
     fn lookup_index_keys(
         &mut self,
+        _collection_id: CollectionId,
         _equalities: &[(String, JsonValue)],
     ) -> Result<Option<Vec<String>>, Error> {
         Ok(None)
@@ -263,12 +276,12 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
     )
 }
 
-/// Shared Core page after ISA decode (RQL-X5c one-dispatch).
+/// Shared Core page after ISA decode (RQL-VM1 → Query VM).
 ///
 /// Crate-private (RQL-P0b): not a public bypass of validated ISA.
-/// Both Core and full-language paths use this after `decode_isa`. Meaning of
-/// page/order/project/coverage still lives in [`execute_plan`] (Rust interpreter
-/// of the decoded plan) — see QUERY_IR_RESIDUAL.md. Not Decision 0 closed.
+/// Both Core and full-language paths use this after `decode_isa`. Lowers to a
+/// VM program and runs [`vm_exec::run_vm_core`]. Core opcode bodies still call
+/// [`execute_plan`] until RQL-VM2. Not Decision 0 closed.
 pub(crate) fn execute_decoded_core<H: HostCapabilities>(
     host: &mut H,
     core: &RqlPlanV1,
@@ -283,20 +296,26 @@ pub(crate) fn execute_decoded_core<H: HostCapabilities>(
             "execute_decoded_core: collection_id mismatch".into(),
         ));
     }
-    let mut scan = HostDocScan(host);
-    execute_plan(
+    let prog = vm_exec::lower_core(core.clone(), budget);
+    let mut scan = HostDocScan {
+        host,
+        collection_id,
+    };
+    vm_exec::run_vm_core(
         &mut scan,
-        core,
+        &prog,
         params,
         options,
         heap_id,
         collection_id,
-        budget,
     )
 }
 
-/// Bridge: [`HostCapabilities`] → [`DocScan`] for [`core_page`].
-struct HostDocScan<'a, H: HostCapabilities>(&'a mut H);
+/// Bridge: [`HostCapabilities`] → [`DocScan`] for [`core_page`] (bound collection).
+struct HostDocScan<'a, H: HostCapabilities> {
+    host: &'a mut H,
+    collection_id: CollectionId,
+}
 
 impl<H: HostCapabilities> DocScan for HostDocScan<'_, H> {
     fn list_keys(
@@ -304,18 +323,20 @@ impl<H: HostCapabilities> DocScan for HostDocScan<'_, H> {
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, Error> {
-        self.0.list_keys(limit, after_key)
+        self.host
+            .list_keys(self.collection_id, limit, after_key)
     }
 
     fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error> {
-        self.0.get_json(key)
+        self.host.get_json(self.collection_id, key)
     }
 
     fn try_equality_index_keys(
         &mut self,
         equalities: &[(String, JsonValue)],
     ) -> Result<Option<Vec<String>>, Error> {
-        self.0.lookup_index_keys(equalities)
+        self.host
+            .lookup_index_keys(self.collection_id, equalities)
     }
 }
 
@@ -340,6 +361,7 @@ mod tests {
     impl HostCapabilities for MapHost {
         fn list_keys(
             &mut self,
+            _collection_id: CollectionId,
             limit: Option<usize>,
             after_key: Option<&str>,
         ) -> Result<Vec<String>, Error> {
@@ -354,7 +376,11 @@ mod tests {
             Ok(keys)
         }
 
-        fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error> {
+        fn get_json(
+            &mut self,
+            _collection_id: CollectionId,
+            key: &str,
+        ) -> Result<Option<JsonValue>, Error> {
             Ok(self.docs.get(key).cloned())
         }
     }

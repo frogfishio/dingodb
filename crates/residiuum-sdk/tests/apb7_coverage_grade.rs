@@ -85,6 +85,7 @@ struct HoleyHost {
 impl HostCapabilities for HoleyHost {
     fn list_keys(
         &mut self,
+        _collection_id: residiuum_heap::CollectionId,
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, residiuum_sdk::Error> {
@@ -100,7 +101,11 @@ impl HostCapabilities for HoleyHost {
         Ok(out)
     }
 
-    fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, residiuum_sdk::Error> {
+    fn get_json(
+        &mut self,
+        _collection_id: residiuum_heap::CollectionId,
+        key: &str,
+    ) -> Result<Option<JsonValue>, residiuum_sdk::Error> {
         if self.absent.contains_key(key) {
             return Ok(None);
         }

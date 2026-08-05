@@ -1,11 +1,11 @@
-//! Query VM instruction set (RQL-VM0) — **opcodes only; no dispatch yet**.
+//! Query VM instruction set (RQL-VM0 vocabulary) + profile stamps.
 //!
+//! Dispatch loop lives in [`super::vm_exec`] (**RQL-VM1**).
 //! Profile: **`residiuum-query-vm-v1`**
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
-//! This module freezes the opcode vocabulary that **RQL-VM1** must dispatch.
-//! It does **not** execute query semantics. Today's product path still runs
-//! Rust interpreters of ISA-decoded plans (`execute_plan` / attach IR).
+//! This module freezes the opcode vocabulary. Execution is [`super::vm_exec`].
+//! Core opcode bodies still call `execute_plan` until **RQL-VM2**.
 //! Decision 0 remains OPEN; RQL-C1 must not be accepted.
 
 /// Query VM profile id (instruction set freeze).

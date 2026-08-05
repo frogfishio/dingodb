@@ -66,8 +66,16 @@ rg -n 'fn execute_isa_bytes' -A 40 "$MOD" | rg -q 'decode_isa' \
   || fail "execute_isa_bytes must call decode_isa"
 rg -n 'fn execute_isa_bytes' -A 50 "$MOD" | rg -q 'execute_decoded_core' \
   || fail "execute_isa_bytes must call execute_decoded_core"
-rg -n 'fn execute_decoded_core' -A 30 "$MOD" | rg -q 'execute_plan' \
-  || fail "execute_decoded_core must call execute_plan"
+rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'run_vm_core|vm_exec::' \
+  || fail "execute_decoded_core must dispatch via Query VM (run_vm_core)"
+rg -q 'fn run_vm_core' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing run_vm_core (RQL-VM1)"
+rg -q 'fn run_vm_attach' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing run_vm_attach (RQL-VM1)"
+rg -q 'fn lower_core' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing lower_core (RQL-VM1)"
+rg -q 'fn lower_full' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing lower_full (RQL-VM1)"
 
 # Mismatch / ISA-drives-exec test must exist.
 rg -q 'execute_bytecode_uses_isa_not_sidecar_plan' "$MOD" \
@@ -82,10 +90,12 @@ rg -n 'fn execute_rql_full_with' -A 35 "$FULL" | rg -q 'execute_full_isa_with' \
   || fail "execute_rql_full_with must dispatch execute_full_isa_with"
 rg -n 'fn execute_full_isa_with' -A 50 "$FULL" | rg -q 'decode_isa' \
   || fail "execute_full_isa_with must decode_isa"
-# RQL-X5c: full shares execute_decoded_core (no Core re-encode bypass).
-rg -n 'fn execute_full_isa_with' -A 80 "$FULL" | rg -q 'execute_decoded_core' \
+# RQL-X5c + VM1: full shares execute_decoded_core; attach via VM.
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'execute_decoded_core' \
   || fail "execute_full_isa_with must share execute_decoded_core"
-if rg -n 'fn execute_full_isa_with' -A 80 "$FULL" | rg -q 'encode_core_program'; then
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach|lower_full' \
+  || fail "execute_full_isa_with must dispatch Full attach via Query VM"
+if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'encode_core_program'; then
   fail "execute_full_isa_with must not re-encode Core ISA (use execute_decoded_core)"
 fi
 rg -q 'execute_full_isa_enrich_within_project_nonempty' \
@@ -130,13 +140,13 @@ fi
 rg -q 'fn finish_coverage' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "ir_page must define finish_coverage"
 
-# RQL-IR4: full attach orchestration must use named IR module.
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'CompiledAttachIr' \
-  || fail "execute_full_isa_with must use CompiledAttachIr"
+# RQL-IR4: attach helpers remain; product Full path dispatches via VM (VM1).
 rg -q 'fn run_attach_pipeline' "$SDK_SRC/query_bytecode_v1/ir_attach.rs" \
   || fail "ir_attach must define run_attach_pipeline"
+rg -q 'fn run_vm_attach' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "vm_exec must define run_vm_attach (VM1 Full dispatch)"
 if rg -n 'fn execute_full_isa_with' -A 120 "$FULL" | rg -q 'FullPipelineStepV1::Enrich'; then
-  fail "execute_full_isa_with must not inline Enrich pipeline loop (moved to ir_attach)"
+  fail "execute_full_isa_with must not inline Enrich pipeline loop (moved to VM/IR)"
 fi
 
 # IR residual honesty.
@@ -146,18 +156,25 @@ rg -q 'ir_project' "$IR_DOC" || fail "IR residual doc must name ir_project (IR1)
 rg -q 'ir_order' "$IR_DOC" || fail "IR residual doc must name ir_order (IR2)"
 rg -q 'ir_page' "$IR_DOC" || fail "IR residual doc must name ir_page (IR3)"
 rg -q 'ir_attach' "$IR_DOC" || fail "IR residual doc must name ir_attach (IR4)"
+rg -q 'vm_exec' "$IR_DOC" || fail "IR residual doc must name vm_exec (VM1)"
 rg -q 'RQL-C1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-C1 residual"
-rg -q 'QUERY_VM_V1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must point at QUERY_VM_V1 (mandatory next)"
-rg -qi 'Query VM' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT NEXT must be Query VM labor (not C1 gate)"
+rg -q 'QUERY_VM_V1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must point at QUERY_VM_V1"
+rg -qi 'Query VM' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must keep Query VM programme visible"
 [[ -f "$ROOT/doc/todo/rql/QUERY_VM_V1.md" ]] || fail "missing QUERY_VM_V1.md charter"
 rg -q 'OpCode' "$SDK_SRC/query_bytecode_v1/vm.rs" || fail "vm.rs must define OpCode (VM0)"
 rg -q 'Scan' doc/todo/rql/QUERY_VM_V1.md || fail "QUERY_VM_V1 must name Scan"
 rg -q 'Enrich' doc/todo/rql/QUERY_VM_V1.md || fail "QUERY_VM_V1 must name Enrich"
 rg -q 'Within' doc/todo/rql/QUERY_VM_V1.md || fail "QUERY_VM_V1 must name Within"
-# VM0 must not claim dispatch is done.
-if rg -qi 'dispatch machine.*done|VM1 done' doc/todo/rql/QUERY_VM_V1.md; then
-  fail "QUERY_VM_V1 must not claim dispatch machine done (that is VM1)"
+# VM1 docs must keep Decision 0 / C1 forbidden (negative claims only).
+rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/QUERY_VM_V1.md \
+  || fail "QUERY_VM_V1 must forbid RQL-C1"
+rg -qi 'does \*\*not\*\* close Decision 0|does not close Decision 0|Decision 0 OPEN|Decision 0 remains' doc/todo/rql/QUERY_VM_V1.md \
+  || fail "QUERY_VM_V1 must keep Decision 0 unclosed"
+if rg -qi 'Decision 0 is closed|Decision 0 closed\.|RQL-C1 (is )?accepted\.|C1 accepted' doc/todo/rql/QUERY_VM_V1.md; then
+  fail "QUERY_VM_V1 must not affirmatively close Decision 0 or accept C1"
 fi
+rg -qi 'VM2' doc/todo/rql/QUERY_VM_V1.md \
+  || fail "QUERY_VM_V1 must name VM2 residual (fused execute_plan)"
 rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
   || fail "isa must define decode_isa_canonical (D0R)"
 rg -q 'open_collection_bound' "$FULL" \
@@ -170,6 +187,8 @@ rg -n 'fn execute_full_isa_with' -A 20 "$FULL" | rg -q 'decode_isa_canonical' \
 if rg -n '^NEXT' doc/todo/rql/RQL_WHAT_IS_LEFT.md | rg -qi 'principal.*C1'; then
   fail "SoT must not set NEXT to principal C1 while Query VM unfinished"
 fi
+rg -qi 'VM2' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT NEXT residual must name VM2 after P1b"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -194,6 +213,15 @@ if [[ -n "$hits" ]]; then
 fi
 
 rg -q 'pub trait HostCapabilities' "$MOD" || fail "HostCapabilities missing"
+# RQL-P1b: HostCapabilities ops take CollectionId.
+rg -n 'pub trait HostCapabilities' -A 25 "$MOD" | rg -q 'collection_id: CollectionId' \
+  || fail "HostCapabilities must be collection-qualified (RQL-P1b)"
+rg -q 'open_collection_by_id' "$SDK_SRC/app_v1.rs" \
+  || fail "HeapClient must offer open_collection_by_id (RQL-P1b)"
+rg -q 'impl crate::query_bytecode_v1::HostCapabilities for HeapClient' "$SDK_SRC/app_v1.rs" \
+  || fail "HeapClient must implement HostCapabilities (RQL-P1b)"
+rg -n 'fn load_foreign_docs_for_root_enrich' -A 8 "$FULL" | rg -q 'HostCapabilities' \
+  || fail "load_foreign_docs must take HostCapabilities (RQL-P1b)"
 # RQL-P0b: crate root must not re-export non-ISA semantic executors.
 LIB="$SDK_SRC/lib.rs"
 for forbid in execute_plan execute_decoded_core attach_enrich_rows attach_within_rows \
@@ -217,5 +245,7 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must forbid premature RQL-C1"
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
+rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0; Decision 0 OPEN; C1 forbidden; VM1 residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b; Decision 0 OPEN; C1 forbidden; VM2/P1c residual)"
